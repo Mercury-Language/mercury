@@ -35,6 +35,7 @@ SUBDIRS = \
 		analysis \
 		compiler \
 		doc \
+		slice \
 		profiler \
 		deep_profiler \
 		tools
@@ -69,7 +70,7 @@ ANALYSIS_LIB_NAME = mer_analysis
 
 .PHONY: dep
 dep: dep_library dep_mdbcomp dep_browser dep_analysis dep_compiler \
-		dep_profiler dep_deep_profiler
+		dep_slice dep_profiler dep_deep_profiler
 
 .PHONY: dep_library
 dep_library: library/$(deps_subdir)$(STD_LIB_NAME).dep
@@ -115,6 +116,20 @@ dep_compiler: compiler/$(deps_subdir)top_level.dep
 compiler/$(deps_subdir)top_level.dep: library/$(deps_subdir)$(STD_LIB_NAME).dep
 	+cd compiler && $(SUBDIR_MMAKE) depend
 
+.PHONY: dep_slice
+dep_slice: slice/$(deps_subdir)mslice.dep \
+	slice/$(deps_subdir)mdice.dep
+
+slice/$(deps_subdir)mslice.dep: \
+		library/$(deps_subdir)$(STD_LIB_NAME).dep \
+		mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
+	+cd slice && $(SUBDIR_MMAKE) mslice.depend
+
+slice/$(deps_subdir)mdice.dep: \
+		library/$(deps_subdir)$(STD_LIB_NAME).dep \
+		mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
+	+cd slice && $(SUBDIR_MMAKE) mdice.depend
+
 .PHONY: dep_profiler
 dep_profiler: profiler/$(deps_subdir)mercury_profile.dep
 
@@ -147,6 +162,7 @@ depend:
 	+cd browser && $(SUBDIR_MMAKE) depend
 	+cd analysis && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) depend
+	+cd slice && $(SUBDIR_MMAKE) depend
 	+cd profiler && $(SUBDIR_MMAKE) depend
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 
@@ -165,6 +181,10 @@ depend_browser:
 .PHONY: depend_compiler
 depend_compiler:
 	+cd compiler && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_slice
+depend_slice:
+	+cd slice && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_profiler
 depend_profiler:
@@ -235,6 +255,11 @@ libmmc: dep_compiler scripts util boehm_gc runtime library \
 doc: scripts util
 	+cd doc && $(SUBDIR_MMAKE)
 
+.PHONY: slice
+slice: dep_slice scripts util boehm_gc runtime library \
+		mdbcomp browser trace
+	+cd slice && $(SUBDIR_MMAKE)
+
 .PHONY: profiler
 profiler: dep_profiler scripts util boehm_gc runtime library \
 		mdbcomp browser trace
@@ -249,7 +274,7 @@ deep_profiler: dep_deep_profiler scripts util boehm_gc runtime library \
 
 .PHONY: tags
 tags: tags_compiler tags_library tags_mdbcomp tags_browser tags_analysis \
-		tags_profiler tags_deep_profiler
+		tags_slice tags_profiler tags_deep_profiler
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -271,6 +296,10 @@ tags_browser:
 tags_analysis:
 	+cd analysis && $(SUBDIR_MMAKE) tags
 
+.PHONY: tags_slice
+tags_slice:
+	+cd slice && $(SUBDIR_MMAKE) tags
+
 .PHONY: tags_profiler
 tags_profiler:
 	+cd profiler && $(SUBDIR_MMAKE) tags
@@ -285,7 +314,7 @@ tags_deep_profiler:
 # belong there.
 cleanint:
 	for dir in library mdbcomp browser analysis compiler \
-		profiler deep_profiler; \
+		slice profiler deep_profiler; \
 	do \
 		echo Looking for inappropriate files in the $$dir directory: ; \
 		( cd $$dir && ../tools/cleanint > .cleanint ) ; \
@@ -364,6 +393,8 @@ tar: $(GENERATED_DOCS)
 	+cd analysis && $(SUBDIR_MMAKE) all-ints cs tags
 	+cd compiler && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) cs tags
+	+cd slice && $(SUBDIR_MMAKE) depend
+	+cd slice && $(SUBDIR_MMAKE) cs tags
 	+cd profiler && $(SUBDIR_MMAKE) depend
 	+cd profiler && $(SUBDIR_MMAKE) cs tags
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
@@ -461,8 +492,8 @@ install: install_main install_grades
 install_main: all \
 		install_scripts install_util install_runtime install_boehm_gc \
 		install_library install_mdbcomp install_browser install_trace \
-		install_compiler install_profiler install_deep_profiler \
-		install_doc install_config
+		install_compiler install_slice install_profiler \
+		install_deep_profiler install_doc install_config
 
 .PHONY: install_scripts
 install_scripts: scripts
@@ -510,6 +541,10 @@ install_compiler: dep_compiler compiler
 .PHONY: install_doc
 install_doc: doc
 	+cd doc && $(SUBDIR_MMAKE) install
+
+.PHONY: install_slice
+install_slice: slice
+	+cd slice && $(SUBDIR_MMAKE) install
 
 .PHONY: install_profiler
 install_profiler: profiler
@@ -633,6 +668,9 @@ touch_files:
 	touch compiler/*.date*
 	chmod +w compiler/*.dep
 	touch compiler/*.dep
+	touch slice/*.date*
+	chmod +w slice/*.dep
+	touch slice/*.date*
 	touch profiler/*.date*
 	chmod +w profiler/*.dep
 	touch profiler/*.dep
@@ -648,6 +686,7 @@ touch_files:
 	touch browser/*.c
 	touch trace/*.c
 	touch compiler/*.c
+	touch slice/*.c
 	touch profiler/*.c
 	touch deep_profiler/*.c
 	touch doc/*.info doc/*.dvi doc/*.html config.status
@@ -698,6 +737,7 @@ realclean_local: realclean_config realclean_docs
 .PHONY: realclean_subdirs
 realclean_subdirs: clean_subdirs
 	rm -rf stage[1-3] stage[1-3].*
+	rm -rf tests/PASSED_TC_DIR tests/FAILED_TC_DIR
 	+for dir in $(SUBDIRS); do \
 		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \

@@ -106,9 +106,15 @@ extern	void	MR_insert_module_info_into_module_table(
 ** and the number of times it has been executed to trace counts file of this
 ** program, with the exception of labels that haven't been executed.
 **
-** The dummy argument allows this function to be registered with 
+** The dummy argument allows this function to be registered with
 ** MR_register_exception_cleanup.
+**
+** The file can be recognized as a Mercury trace counts file as its first
+** line matches MR_TRACE_COUNT_FILE_ID. The value of that macro should be
+** kept in sync with trace_count_file_id in mdbcomp/trace_counts.m.
 */
+
+#define	MR_TRACE_COUNT_FILE_ID	    "Mercury trace counts file\n"
 
 extern	void	MR_trace_write_label_exec_counts_to_file(void *dummy);
 
@@ -176,6 +182,14 @@ extern	MR_bool		MR_debug_enabled;
 extern	MR_bool		MR_debug_ever_enabled;
 
 /*
+** When writing out trace counts at the end of execution, we will write out
+** the identities of labels with zero execution counts if and only if
+** MR_coverage_test_enabled is true.
+*/
+
+extern	MR_bool		MR_coverage_test_enabled;
+
+/*
 ** MR_trace_count_enabled will keep the same value throughout the execution of
 ** the entire program after being set in mercury_wrapper.c to the same value
 ** as MR_debug_enabled. Unlike MR_debug_enabled, it is never reset, so one can
@@ -228,7 +242,7 @@ extern	MR_Code *(*volatile MR_selected_trace_func_ptr)(
 ** MR_trace_call_depth records the current depth of the call tree. The prologue
 ** of every procedure assigns the current value of this variable plus one
 ** as the depth of that invocation. Just before making a call, the caller
-** will set MR_trace_call_depth to its own remembered depth value. 
+** will set MR_trace_call_depth to its own remembered depth value.
 ** These and retry are the only ways in which MR_trace_call_depth is modified.
 **
 ** Although neither MR_trace_call_seqno nor MR_trace_call_depth are used
@@ -322,7 +336,7 @@ extern	MR_bool		MR_trace_have_unhid_events;
 
 typedef enum {
 	/* from program start to first debugger event */
-	MR_IO_TABLING_UNINIT,	
+	MR_IO_TABLING_UNINIT,
 
 	/* from first debugger event to "table_io start" command */
 	MR_IO_TABLING_BEFORE,
@@ -414,7 +428,7 @@ extern	MR_bool	MR_trace_get_action(int action_number,
 			MR_Word *arg_list_ptr);
 
 /*
-** MR_turn_off_debug saves the current values of the variables controlling 
+** MR_turn_off_debug saves the current values of the variables controlling
 ** debugging (execution tracing and diagnostics) in the structure provided by
 ** the caller, and then turns them off. MR_turn_debug_back_on restores the
 ** saved values from the structure. If include_counter_vars is set, they also

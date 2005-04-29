@@ -70,8 +70,8 @@ Options:
 		Copy the runtime directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
-	-p, --copy-profiler
-		Copy the profiler directory instead of linking it.
+	-p, --copy-profilers
+		Copy the profiler directories instead of linking them.
 		This is sometimes necessary for bootstrapping changes.
 	-b-, --no-bootcheck
 		Do not run the bootstrap check; execute the test suite and/or
@@ -179,7 +179,7 @@ test_params=false
 test_split_library=false
 copy_runtime=false
 copy_boehm_gc=false
-copy_profiler=false
+copy_profilers=false
 mmake_stage_2=true
 keep_stage_2=false
 keep_stage_3=false
@@ -299,8 +299,8 @@ while test $# -gt 0; do
 	-g|--copy-boehm-gc)
 		copy_boehm_gc=true ;;
 
-	-p|--copy-profiler)
-		copy_profiler=true ;;
+	-p|--copy-profilers)
+		copy_profilers=true ;;
 
 	--check-namespace)
 		check_namespace=true ;;
@@ -416,9 +416,9 @@ case $target in
 		target_opt="--target asm"
 		# If the stage 1 directory was built without --target asm,
 		# but the stage 2 will be built with `--target asm',
-		# then we need to copy the profiler directory.
+		# then we need to copy the profiler directories.
 		# So to be safe, we just enable this by default.
-		copy_profiler=true
+		copy_profilers=true
 		;;
 esac
 case $grade in
@@ -427,7 +427,7 @@ case $grade in
 		target_subdir=$ils_subdir
 		target_opt=
 		# See comment above
-		copy_profiler=true
+		copy_profilers=true
 		# The IL back-end generates native Windows executables,
 		# which do not understand symlinks.  So we need to use cp.
 		use_cp=true
@@ -710,8 +710,13 @@ then
 		$LN_S $root/scripts .
 		$LN_S $root/tools .
 		$LN_S $root/util .
-		if $copy_profiler
+		if $copy_profilers
 		then
+			mkdir slice
+			cd slice
+			$LN_S $root/slice/*.m .
+			cp $root/slice/Mmake* $root/slice/Mercury.options .
+			cd $root/$stage2dir
 			mkdir profiler
 			cd profiler
 			$LN_S $root/profiler/*.m .
@@ -724,6 +729,7 @@ then
 			cp $root/deep_profiler/Mercury.options .
 			cd $root/$stage2dir
 		else
+			$LN_S $root/slice .
 			$LN_S $root/profiler .
 			$LN_S $root/deep_profiler .
 		fi
@@ -802,8 +808,8 @@ then
 
 		if (cd $stage2dir && \
 			$MMAKE $mmake_opts dep_library dep_mdbcomp \
-			dep_browser dep_analysis dep_compiler dep_profiler \
-			dep_deep_profiler)
+			dep_browser dep_analysis dep_compiler dep_slice \
+			dep_profiler dep_deep_profiler)
 		then
 			echo "building of stage 2 dependencies successful"
 		else
@@ -952,9 +958,9 @@ then
 		true
 	else
 		libdirs="library mdbcomp browser"
-		if $copy_profiler
+		if $copy_profilers
 		then
-			profdirs="profiler deep_profiler"
+			profdirs="slice profiler deep_profiler"
 		else
 			profdirs=
 		fi
@@ -1055,6 +1061,7 @@ then
 	$LN_S $root/scripts .
 	$LN_S $root/tools .
 	$LN_S $root/util .
+	$LN_S $root/$stage2dir/slice .
 	$LN_S $root/$stage2dir/profiler .
 	$LN_S $root/$stage2dir/deep_profiler .
 	$LN_S $root/conf* .

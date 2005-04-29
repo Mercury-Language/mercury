@@ -45,6 +45,8 @@ ENDINIT
 
 void            (*MR_trace_shutdown)(void) = NULL;
 
+MR_bool         MR_coverage_test_enabled = MR_FALSE;
+
 MR_bool         MR_debug_ever_enabled = MR_FALSE;
 MR_bool         MR_debug_enabled = MR_FALSE;
 MR_bool         MR_trace_count_enabled = MR_FALSE;
@@ -303,6 +305,13 @@ MR_trace_write_label_exec_counts(FILE *fp)
     MR_named_count_port[MR_PORT_NEG_SUCCESS] = PORT_AND_PATH;
     MR_named_count_port[MR_PORT_NEG_FAILURE] = PORT_AND_PATH;
 
+    fprintf(fp, "%s", MR_TRACE_COUNT_FILE_ID);
+    if (MR_coverage_test_enabled) {
+        fprintf(fp, "user_all\n");
+    } else {
+        fprintf(fp, "user_nonzero\n");
+    }
+
     prev_proc = NULL;
     num_modules = MR_module_info_next;
     for (module_num = 0; module_num < num_modules; module_num++) {
@@ -311,14 +320,17 @@ MR_trace_write_label_exec_counts(FILE *fp)
 
         for (file_num = 0; file_num < num_files; file_num++) {
             file = module->MR_ml_module_file_layout[file_num];
+            fprintf(fp, "file ");
+            MR_trace_write_quoted_atom(fp, file->MR_mfl_filename);
+            fprintf(fp, "\n");
             num_labels = file->MR_mfl_label_count;
             for (label_num = 0; label_num < num_labels; label_num++) {
                 label = file->MR_mfl_label_layout[label_num];
                 proc = label->MR_sll_entry;
                 label_index = label->MR_sll_label_num_in_module;
                 exec_count = module->MR_ml_label_exec_count[label_index];
-                if (! MR_PROC_LAYOUT_IS_UCI(proc) &&
-                    exec_count > 0 && label_index > 0)
+                if (! MR_PROC_LAYOUT_IS_UCI(proc) && label_index > 0 &&
+                    (exec_count > 0 || MR_coverage_test_enabled))
                 {
                     id = &proc->MR_sle_user;
                     if (proc != prev_proc) {
@@ -344,17 +356,17 @@ MR_trace_write_label_exec_counts(FILE *fp)
                     switch (path_port) {
 
                         case PORT_ONLY:
-                            fprintf(fp, "%s %u\n",
+                            fprintf(fp, "%s %u",
                                 MR_port_names[port], exec_count);
                             break;
 
                         case PATH_ONLY:
-                            fprintf(fp, "<%s> %u\n",
+                            fprintf(fp, "<%s> %u",
                                 MR_label_goal_path(label), exec_count);
                             break;
 
                         case PORT_AND_PATH:
-                            fprintf(fp, "%s <%s> %u\n",
+                            fprintf(fp, "%s <%s> %u",
                                 MR_port_names[port], MR_label_goal_path(label),
                                 exec_count);
                             break;
@@ -364,6 +376,8 @@ MR_trace_write_label_exec_counts(FILE *fp)
                                 "bad path_port");
                             break;
                     }
+
+                    fprintf(fp, " %d\n", file->MR_mfl_label_lineno[label_num]);
 
                     prev_proc = proc;
                 }

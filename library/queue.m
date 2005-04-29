@@ -123,7 +123,8 @@
 
 :- implementation.
 
-:- import_module list, std_util, int.
+:- import_module std_util.
+:- import_module int.
 
 % This implementation is in terms of a pair of lists.  We impose the
 % extra constraint that the `off' list is empty if and only if the queue

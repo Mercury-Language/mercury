@@ -47,52 +47,35 @@ else
         echo $test_full >> FAILED_TESTS
         echo $this_dir/$test_full $params_msg \
             >> $tests_dir/FAILED_TESTS_SUMMARY
-        case "$trace_count" in
-            true)
-                name=`echo $this_dir/$test | tr '[/]' '[:]'`
-                for counts_file in .mercury_trace_counts.*
-                do
-                    if test -s "$counts_file"
-                    then
-                        name=`echo "$counts_file" | \
-                            sed -e 's/.mercury_trace_counts//'`
-                        mkdir -p $tests_dir/FAILED_TC_DIR
-                        mv $counts_file \
-                            $tests_dir/FAILED_TC_DIR/$counts_file.$name
-                        gzip $tests_dir/FAILED_TC_DIR/$counts_file.$name
-                        echo $tests_dir/FAILED_TC_DIR/$counts_file.$name \
-                            >> $tests_dir/FAILED_TC_FILES
-                    fi
-                done
-                ;;
-        esac
+        tcdir=FAILED_TC_DIR
+        tcfile=FAILED_TC_FILES
         exitstatus=1
     else
         rm -f $test_full.log $test.out* $test.*res*
         mmake $test.realclean > /dev/null 2>&1
         echo PASSED TEST $this_dir/$test_full $params_msg
-        case "$trace_count" in
-            true)
-                name=`echo $this_dir/$test | tr '[/]' '[:]'`
-                for counts_file in .mercury_trace_counts.*
-                do
-                    if test -s "$counts_file"
-                    then
-                        name=`echo "$counts_file" | \
-                            sed -e 's/.mercury_trace_counts//'`
-                        mkdir -p $tests_dir/PASSED_TC_DIR
-                        mv $counts_file \
-                            $tests_dir/PASSED_TC_DIR/$counts_file.$name
-                        /bin/rm -f \
-                            $tests_dir/PASSED_TC_DIR/$counts_file.$name.gz
-                        gzip $tests_dir/PASSED_TC_DIR/$counts_file.$name
-                        echo $tests_dir/PASSED_TC_DIR/$counts_file.$name \
-                            >> $tests_dir/PASSED_TC_FILES
-                    fi
-                done
-                ;;
-        esac
+        tcdir=PASSED_TC_DIR
+        tcfile=PASSED_TC_FILES
     fi
+    case "$trace_count" in
+        true)
+            mkdir -p $tests_dir/$tcdir
+            testname=`echo $this_dir/$test_full | tr '[/]' '[:]'`
+            for counts_file in .mercury_trace_counts.*
+            do
+                if test -s "$counts_file"
+                then
+                    progpidname=`echo "$counts_file" | \
+                        sed -e 's/.mercury_trace_counts.//'`
+                    name="TEST_${testname}_PROG_${progpidname}"
+                    mv $counts_file $tests_dir/$tcdir/$name
+                    /bin/rm -f $tests_dir/$tcdir/$name.gz
+                    gzip $tests_dir/$tcdir/$name
+                    echo $tcdir/$name >> $tests_dir/$tcfile
+                fi
+            done
+            ;;
+    esac
 fi
 
 case "$BOOTCHECK_TEST_PROGRESS" in

@@ -38,7 +38,7 @@
 #include "mdb.browser_info.mh"
 #include "mdb.declarative_execution.mh"
 #include "mdbcomp.program_representation.mh"
-#include "mdb.dice.mh"
+#include "mdbcomp.slice_and_dice.mh"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,12 +89,6 @@
 /* An upper bound on the maximum number of characters in a number. */
 /* If a number has more than this many chars, the user is in trouble. */
 #define MR_NUMBER_LEN       80
-
-/*
-** The maximum size of a sort string for the `dice' command
-*/
-
-#define MR_MAX_DICE_SORT_STR_SIZE   10
 
 /*
 ** The default number of lines to display for a dice.
@@ -205,18 +199,20 @@ static  MR_bool     MR_trace_internal_interacting = MR_FALSE;
 static  MR_bool     MR_print_optionals = MR_FALSE;
 
 /*
-** This variable holds the name of a file which contains a list of
-** the file names of passing test case trace counts.
+** This variable holds either the name of a file which contains a list of
+** the file names of passing test case trace counts, or the name of a single
+** file of passing test case trace counts.
 */
 
 static  char        *MR_dice_pass_trace_counts_file = NULL;
 
 /*
-** This variable holds the name of the file containing the failing test
-** case trace count.
+** This variable holds either the name of a file which contains a list of
+** the file names of failing test case trace counts, or the name of a single
+** file of failing test case trace counts.
 */
 
-static  char        *MR_dice_fail_trace_count_file = NULL;
+static  char        *MR_dice_fail_trace_counts_file = NULL;
 
 /*
 ** MR_context_position specifies whether we print context at events,
@@ -598,7 +594,7 @@ static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         const char **server_cmd, const char **server_name,
                         int *timeout, MR_bool *force, MR_bool *verbose,
                         MR_bool *split, MR_bool *close_window, char ***words,
-                        int *word_count, const char *cat, const char*item);
+                        int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_Integer *depth_step_size,
                         MR_Decl_Search_Mode *search_mode, MR_bool *new_session,
@@ -2353,26 +2349,24 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Word             verbose_format;
     MR_Word             pretty_format;
 
-    if (word_count == 3 && MR_streq(words[1], "fail_trace_count")) {
-        if (MR_dice_fail_trace_count_file == NULL) {
-            MR_dice_fail_trace_count_file = (char*)malloc(strlen(words[2])
-                + 1);
-        } else {
-            MR_dice_fail_trace_count_file =
-                (char*)realloc(MR_dice_fail_trace_count_file,
-                    strlen(words[2]) + 1);
+    if (word_count == 3 &&
+        ( MR_streq(words[1], "fail_trace_count")
+        || MR_streq(words[1], "fail_trace_counts")))
+    {
+        if (MR_dice_fail_trace_counts_file != NULL) {
+            free(MR_dice_fail_trace_counts_file);
         }
-        strcpy(MR_dice_fail_trace_count_file, words[2]);
-    } else if (word_count == 3 && MR_streq(words[1], "pass_trace_counts")) {
-        if (MR_dice_pass_trace_counts_file == NULL) {
-            MR_dice_pass_trace_counts_file =
-                (char*)malloc(strlen(words[2]) + 1);
-        } else {
-            MR_dice_pass_trace_counts_file =
-                (char*)realloc(MR_dice_pass_trace_counts_file,
-                    strlen(words[2]) + 1);
+
+        MR_dice_fail_trace_counts_file = MR_copy_string(words[2]);
+    } else if (word_count == 3 &&
+        ( MR_streq(words[1], "pass_trace_count")
+        || MR_streq(words[1], "pass_trace_counts")))
+    {
+        if (MR_dice_pass_trace_counts_file != NULL) {
+            free(MR_dice_pass_trace_counts_file);
         }
-        strcpy(MR_dice_pass_trace_counts_file, words[2]);
+
+        MR_dice_pass_trace_counts_file = MR_copy_string(words[2]);
     } else if (! MR_trace_options_param_set(&print_set, &browse_set,
         &print_all_set, &flat_format, &raw_pretty_format, &verbose_format,
         &pretty_format, &words, &word_count, "misc", "set"))
@@ -5873,19 +5867,23 @@ MR_trace_cmd_dice(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Code **jumpaddr)
 {
     char    *pass_trace_counts_file;
-    char    *fail_trace_count_file;
-    char    *sort_str = (char*)malloc(MR_MAX_DICE_SORT_STR_SIZE + 1);
-    char    *out_file = NULL;
-    char    *module = NULL;
-    int     number_of_lines = MR_DEFAULT_DICE_LINES;
+    char    *fail_trace_counts_file;
+    char    *sort_str;
+    char    *out_file;
+    char    *module;
+    int     number_of_lines;
+
+    sort_str = NULL;
+    out_file = NULL;
+    module = NULL;
+    number_of_lines = MR_DEFAULT_DICE_LINES;
 
     pass_trace_counts_file = MR_dice_pass_trace_counts_file;
-    fail_trace_count_file = MR_dice_fail_trace_count_file;
-    strcpy(sort_str, "");
+    fail_trace_counts_file = MR_dice_fail_trace_counts_file;
 
     if (! MR_trace_options_dice(&pass_trace_counts_file,
-        &fail_trace_count_file, &sort_str, &number_of_lines, &out_file,
-            &module, &words, &word_count, "exp", "dice"))
+        &fail_trace_counts_file, &sort_str, &number_of_lines, &out_file,
+        &module, &words, &word_count, "exp", "dice"))
     {
         ; /* the usage message has already been printed */
     } else if (word_count == 1) {
@@ -5894,21 +5892,35 @@ MR_trace_cmd_dice(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
             fprintf(MR_mdb_err, "mdb: No passing trace counts file specified."
                 "\nmdb: Specify one with the -p option or using the `set' "
                 "command.\n");
-        } else if (fail_trace_count_file == NULL) {
+        } else if (fail_trace_counts_file == NULL) {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: No failing trace count file specified."
+            fprintf(MR_mdb_err, "mdb: No failing trace counts file specified."
                 "\nmdb: Specify one with the -f option or using the `set' "
                 "command.\n");
         } else {
-            MR_trace_print_dice(pass_trace_counts_file, fail_trace_count_file,
+            if (sort_str == NULL) {
+                sort_str = MR_copy_string("");
+            }
+
+            if (module == NULL) {
+                module = MR_copy_string("");
+            }
+
+            MR_trace_print_dice(pass_trace_counts_file, fail_trace_counts_file,
                 sort_str, number_of_lines, out_file, module);
         }
     } else {
         MR_trace_usage("exp", "dice");
     }
 
-    free(out_file);
-    free(sort_str);
+    if (out_file != NULL) {
+        free(out_file);
+    }
+
+    if (sort_str != NULL) {
+        free(sort_str);
+    }
+
     if (module != NULL) {
         free(module);
     }
@@ -5948,13 +5960,14 @@ MR_trace_print_dice(char *pass_trace_counts_file,
             number_of_lines, aligned_module, &dice, &problem);
     );
 
+    /* The string in dice is a sequence of complete lines */
     if (MR_streq(problem, "")) {
         if (out_file == NULL) {
-            fprintf(MR_mdb_out, "%s\n", dice);
+            fprintf(MR_mdb_out, "%s", dice);
         } else {
             fp = fopen(out_file, "w");
             if (fp != NULL) {
-                fprintf(fp, dice);
+                fprintf(fp, "%s", dice);
                 if (fclose(fp) != 0) {
                     fflush(MR_mdb_out);
                     fprintf(MR_mdb_err, "mdb: Error closing file `%s': %s\n",
@@ -7000,6 +7013,8 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
 static struct MR_option MR_trace_dice_opts[] =
 {
     { "pass-trace-counts",      MR_required_argument,   NULL,   'p' },
+    { "pass-trace-count",       MR_required_argument,   NULL,   'p' },
+    { "fail-trace-counts",      MR_required_argument,   NULL,   'f' },
     { "fail-trace-count",       MR_required_argument,   NULL,   'f' },
     { "sort",                   MR_required_argument,   NULL,   's' },
     { "top",                    MR_required_argument,   NULL,   'n' },
@@ -7010,7 +7025,7 @@ static struct MR_option MR_trace_dice_opts[] =
 
 static MR_bool
 MR_trace_options_dice(char **pass_trace_counts_file,
-    char **fail_trace_count_file, char **sort_str, int *n, char **out_file,
+    char **fail_trace_counts_file, char **sort_str, int *n, char **out_file,
     char **module, char ***words, int *word_count, const char *cat,
     const char *item)
 {
@@ -7023,36 +7038,33 @@ MR_trace_options_dice(char **pass_trace_counts_file,
         switch (c) {
 
             case 'p':
-                if (*pass_trace_counts_file == NULL) {
-                    *pass_trace_counts_file =
-                        (char*)malloc(strlen(MR_optarg) + 1);
-                } else {
-                    *pass_trace_counts_file =
-                        (char*)realloc(*pass_trace_counts_file,
-                            strlen(MR_optarg) + 1);
-                }
-                strcpy(*pass_trace_counts_file, MR_optarg);
+                /*
+                ** Don't free *pass_trace_counts_file even if non-NULL,
+                ** since its initial value comes from a global variable,
+                ** and thus will still be used after the dice command.
+                ** The waste of not freeing of the string allocated by
+                ** MR_copy_string if this option is duplicated can be
+                ** easily lived with.
+                */
+
+                *pass_trace_counts_file = MR_copy_string(MR_optarg);
                 break;
 
             case 'f':
-                if (*fail_trace_count_file == NULL) {
-                    *fail_trace_count_file =
-                        (char*)malloc(strlen(MR_optarg) + 1);
-                } else {
-                    *fail_trace_count_file =
-                        (char*)realloc(*fail_trace_count_file,
-                            strlen(MR_optarg) + 1);
-                }
-                strcpy(*fail_trace_count_file, MR_optarg);
+                /*
+                ** Don't free *fail_trace_counts_file even if non-NULL,
+                ** since its initial value comes from a global variable,
+                ** and thus will still be used after the dice command.
+                ** The waste of not freeing of the string allocated by
+                ** MR_copy_string if this option is duplicated can be
+                ** easily lived with.
+                */
+
+                *fail_trace_counts_file = MR_copy_string(MR_optarg);
                 break;
 
             case 's':
-                if (strlen(MR_optarg) <= MR_MAX_DICE_SORT_STR_SIZE) {
-                    strcpy(*sort_str, MR_optarg);
-                } else {
-                    MR_trace_usage(cat, item);
-                    return MR_FALSE;
-                }
+                *sort_str = MR_copy_string(MR_optarg);
                 break;
 
             case 'n':
@@ -7063,13 +7075,11 @@ MR_trace_options_dice(char **pass_trace_counts_file,
                 break;
 
             case 'o':
-                *out_file = (char*)malloc(strlen(MR_optarg) + 1);
-                strcpy(*out_file, MR_optarg);
+                *out_file = MR_copy_string(MR_optarg);
                 break;
 
             case 'm':
-                *module = (char*)malloc(strlen(MR_optarg) + 1);
-                strcpy(*module, MR_optarg);
+                *module = MR_copy_string(MR_optarg);
                 break;
 
             default:

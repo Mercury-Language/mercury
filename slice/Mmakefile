@@ -1,0 +1,117 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmakefile for building the Mercury slice and dice tools.
+
+MERCURY_DIR=..
+LINK_STATIC=yes
+include $(MERCURY_DIR)/Mmake.common
+
+-include Mmake.slice.params
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+MAIN_TARGET		= all
+MERCURY_MAIN_MODULES	= mslice mdice
+DEPENDS	= $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+INTS	= $(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
+INT3S	= $(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
+CHECKS	= $(patsubst %,%.check,$(MERCURY_MAIN_MODULES))
+
+VPATH = $(MDBCOMP_DIR) $(LIBRARY_DIR)
+
+MCFLAGS += -I $(MDBCOMP_DIR)
+
+#-----------------------------------------------------------------------------#
+
+MLFLAGS += --shared
+MCFLAGS += --linkage shared
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend:	$(DEPENDS)
+
+.PHONY: all
+all:	$(MERCURY_MAIN_MODULES) $(TAGS_FILE_EXISTS)
+
+#-----------------------------------------------------------------------------#
+
+# Add some additional dependencies, so that Mmake knows to remake the
+# slicer and dicer if one of the libraries changes.
+
+ifeq ("$(filter il% java%,$(GRADE))","")        
+mslice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mslice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mslice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+mdice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
+mdice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
+mdice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
+# XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
+# if in .gc(.prof) grade.
+endif
+
+$(cs_subdir)mslice_init.c: $(UTIL_DIR)/mkinit
+$(cs_subdir)mdice_init.c: $(UTIL_DIR)/mkinit
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: check
+check:	$(CHECKS)
+
+.PHONY: ints 
+ints:	$(INTS)
+
+#-----------------------------------------------------------------------------#
+
+tags:	$(MTAGS) $(mslice.ms) $(mdice.ms) $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(mslice.ms) $(mdice.ms) $(LIBRARY_DIR)/*.m
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	$(MTAGS) $(mslice.ms) $(mdice.ms) $(LIBRARY_DIR)/*.m ; \
+	fi
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates:
+	touch $(mslice.dates) $(mdice.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs ss ils
+os:	$(mslice.os) $(mdice.os) \
+	$(os_subdir)mslice_init.o $(os_subdir)mdice_init.o
+cs:	$(mslice.cs) $(mdice.cs) \
+	$(cs_subdir)mslice_init.c $(cs_subdir)mdice_init.c
+ss:	$(mslice.ss) $(mdice.ss)
+ils:	$(mslice.ils) $(mdice.ils)
+
+#-----------------------------------------------------------------------------#
+
+realclean_local:
+	rm -f tags
+
+#-----------------------------------------------------------------------------#
+
+# Installation targets
+
+.PHONY: install
+install: install_slicer
+
+.PHONY: install_slicer
+install_slicer: mslice mdice
+	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mslice$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mslice$(EXT_FOR_EXE)
+	cp `vpath_find mdice$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mdice$(EXT_FOR_EXE)
+
+#-----------------------------------------------------------------------------#

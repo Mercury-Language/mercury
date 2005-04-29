@@ -22,6 +22,7 @@
 
 :- include_module prim_data.
 :- include_module program_representation.
+:- include_module slice_and_dice.
 :- include_module trace_counts.
 
 :- implementation.

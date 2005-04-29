@@ -22,7 +22,6 @@
 :- include_module debugger_interface.
 :- include_module declarative_debugger.
 :- include_module declarative_execution.
-:- include_module dice.
 :- include_module help.
 :- include_module interactive_query.
 :- include_module io_action.
@@ -38,10 +37,6 @@
 :- include_module parse.
 :- include_module sized_pretty.
 :- include_module util.
-:- include_module term_rep.
-
-:- include_module set_cc.
-:- include_module tree234_cc.
 :- include_module term_rep.
 
 	% XXX these modules are more generally useful, but the

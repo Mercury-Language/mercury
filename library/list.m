@@ -508,6 +508,42 @@
 :- mode list__map6(pred(in, in, in, in, in, in, in) is semidet, in, in, in, in,
 	in, in, in) is semidet.
 
+	% list__map7(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
+	% to transform the elements of L into the elements of M1, M2, M3, M4, 
+	% M5, M6 and M7.
+:- pred list__map7(pred(A, B, C, D, E, F, G, H), list(A), list(B), list(C), 
+	list(D), list(E), list(F), list(G), list(H)).
+:- mode list__map7(pred(in, out, out, out, out, out, out, out) is det,
+	in, out, out, out, out, out, out, out) is det.
+:- mode list__map7(pred(in, out, out, out, out, out, out, out) is cc_multi,
+	in, out, out, out, out, out, out, out) is cc_multi.
+:- mode list__map7(pred(in, out, out, out, out, out, out, out) is semidet,
+	in, out, out, out, out, out, out, out) is semidet.
+:- mode list__map7(pred(in, out, out, out, out, out, out, out) is multi,
+	in, out, out, out, out, out, out, out) is multi.
+:- mode list__map7(pred(in, out, out, out, out, out, out, out) is nondet,
+	in, out, out, out, out, out, out, out) is nondet.
+:- mode list__map7(pred(in, in, in, in, in, in, in, in) is semidet,
+	in, in, in, in, in, in, in, in) is semidet.
+
+	% list__map8(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
+	% to transform the elements of L into the elements of M1, M2, M3, M4, 
+	% M5, M6, M7 and M8.
+:- pred list__map8(pred(A, B, C, D, E, F, G, H, I), list(A), list(B), list(C), 
+	list(D), list(E), list(F), list(G), list(H), list(I)).
+:- mode list__map8(pred(in, out, out, out, out, out, out, out, out) is det,
+	in, out, out, out, out, out, out, out, out) is det.
+:- mode list__map8(pred(in, out, out, out, out, out, out, out, out) is cc_multi,
+	in, out, out, out, out, out, out, out, out) is cc_multi.
+:- mode list__map8(pred(in, out, out, out, out, out, out, out, out) is semidet,
+	in, out, out, out, out, out, out, out, out) is semidet.
+:- mode list__map8(pred(in, out, out, out, out, out, out, out, out) is multi,
+	in, out, out, out, out, out, out, out, out) is multi.
+:- mode list__map8(pred(in, out, out, out, out, out, out, out, out) is nondet,
+	in, out, out, out, out, out, out, out, out) is nondet.
+:- mode list__map8(pred(in, in, in, in, in, in, in, in, in) is semidet,
+	in, in, in, in, in, in, in, in, in) is semidet.
+
 	% list__map_corresponding(F, [A1, .. An], [B1, .. Bn]) =
 	% 	[F(A1, B1), .., F(An, Bn)].
 	%
@@ -1543,6 +1579,18 @@ list__map6(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
 		[H6 | T6]) :-
 	call(P, H0, H1, H2, H3, H4, H5, H6),
 	list__map6(P, T0, T1, T2, T3, T4, T5, T6).
+
+list__map7(_, [], [], [], [], [], [], [], []).
+list__map7(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
+		[H6 | T6], [H7 | T7]) :-
+	call(P, H0, H1, H2, H3, H4, H5, H6, H7),
+	list__map7(P, T0, T1, T2, T3, T4, T5, T6, T7).
+
+list__map8(_, [], [], [], [], [], [], [], [], []).
+list__map8(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
+		[H6 | T6], [H7 | T7], [H8 | T8]) :-
+	call(P, H0, H1, H2, H3, H4, H5, H6, H7, H8),
+	list__map8(P, T0, T1, T2, T3, T4, T5, T6, T7, T8).
 
 list__map_corresponding(_, [], []) = [].
 list__map_corresponding(_, [], [_ | _]) =

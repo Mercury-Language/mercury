@@ -157,17 +157,17 @@ tuple_arguments(!ModuleInfo, !IO) :-
 		report_warning("Warning: --tuple requires " ++
 			"--tuple-trace-counts-file to work.\n", !IO)
 	;
-		read_trace_counts(TraceCountsFile, Result, !IO),
+		read_trace_counts_source(try_single_first, TraceCountsFile,
+			Result, !IO),
 		(
-			Result = ok(TraceCounts),
+			Result = list_ok(AssocList),
+			assoc_list__values(AssocList, TraceCountsList),
+			summarize_trace_counts_list(TraceCountsList,
+				TraceCounts),
 			tuple_arguments_2(!ModuleInfo, TraceCounts, !IO)
 		;
-			Result = error_message(Message),
+			Result = list_error_message(Message),
 			warn_trace_counts_error(TraceCountsFile, Message, !IO)
-		;
-			Result = io_error(IOError),
-			warn_trace_counts_error(TraceCountsFile,
-				io__error_message(IOError), !IO)
 		)
 	).
 
@@ -1880,15 +1880,16 @@ get_proc_counts(TraceCounts, ProcLabel, MaybeProcCounts) :-
 :- pred get_proc_calls(proc_trace_counts::in, int::out) is det.
 
 get_proc_calls(ProcCounts, Count) :-
-	map__lookup(ProcCounts, port_only(call), Count).
+	map__lookup(ProcCounts, port_only(call), ContextCount),
+	Count = ContextCount ^ exec_count.
 
 :- pred get_path_only_count(proc_trace_counts::in, mdbcomp_goal_path::in,
 	int::out) is det.
 
 get_path_only_count(ProcCounts, GoalPath, Count) :-
 	PathPort = path_only(GoalPath),
-	( map__search(ProcCounts, PathPort, CountPrime) ->
-		Count = CountPrime
+	( map__search(ProcCounts, PathPort, ContextCount) ->
+		Count = ContextCount ^ exec_count
 	;
 		Count = 0
 	).
@@ -1954,15 +1955,14 @@ get_switch_total_count(ProcCounts, MdbGoalPath, Total) :-
 	map__foldl(get_switch_total_count_2(MdbGoalPath),
 		ProcCounts, 0, Total).
 
-:- pred get_switch_total_count_2(mdbcomp_goal_path::in, path_port::in, int::in,
-	int::in, int::out) is det.
+:- pred get_switch_total_count_2(mdbcomp_goal_path::in, path_port::in,
+	context_and_count::in, int::in, int::out) is det.
 
-get_switch_total_count_2(SwitchGoalPath, PathPort, Count,
-		TotalAcc0, TotalAcc) :-
+get_switch_total_count_2(SwitchGoalPath, PathPort, ContextCount, !TotalAcc) :-
 	( case_in_switch(SwitchGoalPath, PathPort) ->
-		TotalAcc = TotalAcc0 + Count
+		!:TotalAcc = !.TotalAcc + ContextCount ^ exec_count
 	;
-		TotalAcc = TotalAcc0
+		true
 	).
 
 :- pred case_in_switch(mdbcomp_goal_path::in, path_port::in) is semidet.

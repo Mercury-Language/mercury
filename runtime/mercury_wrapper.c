@@ -1010,6 +1010,7 @@ enum MR_long_option {
 	MR_DEEP_PROF_DEBUG_FILE_OPT,
 	MR_TABLING_STATISTICS_OPT,
 	MR_TRACE_COUNT_OPT,
+	MR_COVERAGE_TEST_OPT,
 	MR_MEM_USAGE_REPORT
 };
 
@@ -1042,6 +1043,7 @@ struct MR_option MR_long_opts[] = {
 	{ "deep-debug-file",		0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT },
 	{ "tabling-statistics",		0, 0, MR_TABLING_STATISTICS_OPT },
 	{ "trace-count",		0, 0, MR_TRACE_COUNT_OPT },
+	{ "coverage-test",		0, 0, MR_COVERAGE_TEST_OPT },
 	{ "mem-usage-report",		0, 0, MR_MEM_USAGE_REPORT }
 };
 
@@ -1237,6 +1239,11 @@ process_options(int argc, char **argv)
 			break;
 
 		case MR_TRACE_COUNT_OPT:
+			MR_trace_count_enabled = MR_TRUE;
+			break;
+
+		case MR_COVERAGE_TEST_OPT:
+			MR_coverage_test_enabled = MR_TRUE;
 			MR_trace_count_enabled = MR_TRUE;
 			break;
 
