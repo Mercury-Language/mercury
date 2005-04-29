@@ -1,0 +1,10 @@
+mslice
+mdice
+*.c
+*.c_date
+*.d
+*.dep
+*.dv
+*.err
+*.mh
+*.mih
