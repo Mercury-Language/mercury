@@ -1,5 +1,5 @@
 #!/bin/sh
-# vim: ts=4 sw=4 wm=0 tw=0
+# vim: ts=4 sw=4 wm=0 tw=0 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -392,16 +392,30 @@ then
 fi
 
 case $use_subdirs in
-	yes)
-		cs_subdir=Mercury/cs/
-		ss_subdir=Mercury/ss/
-		ils_subdir=Mercury/ils/
-		;;
-	no)
-		cs_subdir=
-		ss_subdir=
-		ils_subdir=
-		;;
+    yes)
+        # Since stage1 may not use subdirs, we don't want to link the stage1
+        # slice, profiler and deep_profiler directories into a stage2 that
+        # does, because that would cause the unwanted creation of Mercury
+        # subdirectories in the stage1 directories.
+        copy_profilers=true
+        cs_subdir=Mercury/cs/
+        ss_subdir=Mercury/ss/
+        ils_subdir=Mercury/ils/
+        ;;
+    no)
+        cs_subdir=
+        ss_subdir=
+        ils_subdir=
+        ;;
+esac
+
+case $use_mmc_make in
+    yes)
+        # Since stage1 may not use mmc_make, we don't want to link the stage1
+        # slice, profiler and deep_profiler directories into a stage2 that
+        # does, for similar reasons to the block of code above.
+        copy_profilers=true
+        ;;
 esac
 
 case $target in
@@ -439,12 +453,6 @@ then
 	copy_runtime=true
 	copy_boehm_gc=true
 fi
-
-MMAKE_USE_SUBDIRS=$use_subdirs
-export MMAKE_USE_SUBDIRS
-
-MMAKE_USE_MMC_MAKE=$use_mmc_make
-export MMAKE_USE_MMC_MAKE
 
 #-----------------------------------------------------------------------------#
 
@@ -559,6 +567,16 @@ then
 			exit 1
 		fi
 	fi
+
+	# Don't set MMAKE_USE_SUBDIRS and MMAKE_USE_MMC_MAKE until after
+	# we have finished making stage1, because $use_subdirs and $use_mmc_make
+	# come from options that are intended to affect only stages 2 and 3.
+
+	MMAKE_USE_SUBDIRS=$use_subdirs
+	export MMAKE_USE_SUBDIRS
+
+	MMAKE_USE_MMC_MAKE=$use_mmc_make
+	export MMAKE_USE_MMC_MAKE
 
 	MERCURY_OPTIONS="$NEW_MERCURY_OPTIONS"
 	export MERCURY_OPTIONS
@@ -1302,6 +1320,16 @@ else
 	diff_status=0
 	check_namespace_status=0
 	echo "building of stages 1 and 2 skipped"
+
+	# Don't set MMAKE_USE_SUBDIRS and MMAKE_USE_MMC_MAKE until after
+	# we have finished making stage1, because $use_subdirs and $use_mmc_make
+	# come from options that are intended to affect only stages 2 and 3.
+
+	MMAKE_USE_SUBDIRS=$use_subdirs
+	export MMAKE_USE_SUBDIRS
+
+	MMAKE_USE_MMC_MAKE=$use_mmc_make
+	export MMAKE_USE_MMC_MAKE
 fi
 
 #-----------------------------------------------------------------------------#
