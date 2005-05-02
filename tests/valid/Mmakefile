@@ -91,6 +91,7 @@ OTHER_PROGS= \
 	higher_order4 \
 	higher_order5 \
 	higher_order_implied_mode \
+	ho_and_type_spec_bug \
 	ho_func_call \
 	ho_inst \
 	ho_unify \
