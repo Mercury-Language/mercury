@@ -29,7 +29,7 @@ mdb> retry
       E6:     C4 CALL pred resume.wrapper/6-0 (semidet)
 mdb> dd -r
 l([3, 4, 5]) = 5
-Valid? a
+Valid? q
 Diagnosis aborted.
       E6:     C4 CALL pred resume.wrapper/6-0 (semidet)
 mdb> dd -r

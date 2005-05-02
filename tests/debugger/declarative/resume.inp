@@ -14,7 +14,7 @@ break wrapper
 c
 retry
 dd -r
-a
+q
 dd -r
 pd
 print

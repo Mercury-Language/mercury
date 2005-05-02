@@ -18,6 +18,7 @@
 
 :- import_module mdb.browser_info.
 :- import_module mdb.declarative_debugger.
+:- import_module mdb.help.
 
 :- import_module io.
 
@@ -39,7 +40,8 @@
 :- type user_state.
 
 :- pred user_state_init(io.input_stream::in, io.output_stream::in, 
-	browser_info.browser_persistent_state::in, user_state::out) is det.
+	browser_info.browser_persistent_state::in, help.system::in, 
+	user_state::out) is det.
 
 	% This predicate handles the interactive part of the declarative
 	% debugging process.  The user is presented with a question,
@@ -69,14 +71,14 @@
 
 :- import_module mdb.browse.
 :- import_module mdb.browser_term.
-:- import_module mdb.io_action.
-:- import_module mdb.util.
 :- import_module mdb.declarative_execution.
 :- import_module mdb.declarative_tree.
-:- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.program_representation.
+:- import_module mdb.io_action.
 :- import_module mdb.parse.
 :- import_module mdb.term_rep.
+:- import_module mdb.util.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 
 :- import_module bool.
 :- import_module char.
@@ -90,22 +92,45 @@
 
 :- type user_state
 	--->	user(
-			instr	:: io.input_stream,
-			outstr	:: io.output_stream,
-			browser	:: browser_persistent_state
+			instr			:: io.input_stream,
+			outstr			:: io.output_stream,
+			browser			:: browser_persistent_state,
+
+				% yes if the question should be displayed when 
+				% querying the user.  This is used to 
+				% supress the displaying of the question after
+				% the user issues a command which does not
+				% answer the question (such as an `info'
+				% command).
+			display_question	:: bool,
+			help_system		:: help.system
 		).
 
-user_state_init(InStr, OutStr, Browser, user(InStr, OutStr, Browser)).
+user_state_init(InStr, OutStr, Browser, HelpSystem, 
+	user(InStr, OutStr, Browser, yes, HelpSystem)).
 
 %-----------------------------------------------------------------------------%
 
 query_user(UserQuestion, Response, !User, !IO) :-
 	Question = get_decl_question(UserQuestion),
-	write_decl_question(Question, !.User, !IO),
-	user_question_prompt(UserQuestion, Prompt),
+	(
+		!.User ^ display_question = yes,
+		write_decl_question(Question, !.User, !IO),
+		user_question_prompt(UserQuestion, Prompt),
+		!:User = !.User ^ display_question := no
+	;
+		!.User ^ display_question = no,
+		Prompt = "dd> "
+	),
 	get_command(Prompt, Command, !User, !IO),
-	handle_command(Command, UserQuestion, Response, !User, 
-		!IO).
+	handle_command(Command, UserQuestion, Response, !User, !IO),
+	(
+		Response \= show_info(_)
+	->
+		!:User = !.User ^ display_question := yes
+	;
+		true
+	).
 
 :- pred handle_command(user_command::in, user_question(T)::in,
 	user_response(T)::out, user_state::in, user_state::out, 
@@ -158,8 +183,10 @@ handle_command(browse_arg(MaybeArgNum), UserQuestion, Response,
 			query_user(UserQuestion, Response, 
 				!User, !IO)
 		;
+			%
 			% If the user marks the predicate or function,
-			% we make the call invalid.
+			% we make the atom erroneous.
+			%
 			MaybeMark = yes([]),
 			Node = get_decl_question_node(Question),
 			Answer = truth_value(Node, erroneous),
@@ -233,16 +260,33 @@ handle_command(print_io(From, To), UserQuestion, Response,
 	print_chosen_io_actions(IoActions, From, To, !.User, !IO),
 	query_user(UserQuestion, Response, !User, !IO).
 
+handle_command(ask, UserQuestion, Response, !User, !IO) :-
+	!:User = !.User ^ display_question := yes,
+	query_user(UserQuestion, Response, !User, !IO).
+
 handle_command(pd, UserQuestion, Response, !User, !IO) :-
 	Question = get_decl_question(UserQuestion),
 	Node = get_decl_question_node(Question),
 	Response = exit_diagnosis(Node).
 
-handle_command(abort, _, Response, !User, !IO) :-
+handle_command(quit, _, Response, !User, !IO) :-
 	Response = abort_diagnosis.
 
-handle_command(help, UserQuestion, Response, !User, !IO) :-
-	user_help_message(!.User, !IO),
+handle_command(help(MaybeCmd), UserQuestion, Response, !User, !IO) :-
+	(
+		MaybeCmd = yes(Cmd),
+		Path = ["decl", Cmd]
+	;
+		MaybeCmd = no,
+		Path = ["concepts", "decl_debug"]
+	),
+	help.path(!.User ^ help_system, Path, !.User ^ outstr, Res, !IO),
+	(
+		Res = help.ok
+	;
+		Res = help.error(Message),
+		io.write_strings([Message, "\n"], !IO)
+	),
 	query_user(UserQuestion, Response, !User, !IO).
 
 handle_command(empty_command, UserQuestion, Response, !User, 
@@ -263,11 +307,9 @@ handle_command(empty_command, UserQuestion, Response, !User,
 			Command = inadmissible
 		)
 	),
-	handle_command(Command, UserQuestion, Response, !User, 
-		!IO).
+	handle_command(Command, UserQuestion, Response, !User, !IO).
 
-handle_command(illegal_command, UserQuestion, Response, !User, 
-		!IO) :-
+handle_command(illegal_command, UserQuestion, Response, !User, !IO) :-
 	io.write_string(!.User ^ outstr, "Unknown command, 'h' for help.\n", 
 		!IO),
 	query_user(UserQuestion, Response, !User, !IO).
@@ -664,53 +706,22 @@ reverse_and_append([A | As], Bs, Cs) :-
 			% Print some information about the current question.
 	;	info
 
+			% The user wants the current question re-asked.
+	;	ask
+
 			% Abort this diagnosis session.
-	;	abort			
+	;	quit			
 			
-			% Request help before answering.
-	;	help			
+			% Request help before answering.  If the maybe argument
+			% is no then a general help message is displayed,
+			% otherwise help on the given command is displayed.
+	;	help(maybe(string))	
 
 			% User just pressed return.
 	;	empty_command		
 
 			% None of the above.
 	;	illegal_command.	
-
-:- pred user_help_message(user_state::in, io::di, io::uo) is det.
-
-user_help_message(User, !IO) :-
-	io.write_strings(User ^ outstr, [
-		"According to the intended interpretation of the program,",
-		" answer one of:\n",
-		"\ty\tyes\t\tthe node is correct\n",
-		"\tn\tno\t\tthe node is incorrect\n",
-		"\ti\tinadmissible\tthe input arguments are out of range\n",
-		"\ts\tskip\t\tskip this question\n",
-		"\tt [module]\ttrust [module]\t\n",
-		"\t\tTrust the predicate/function about which\n",
-		"\t\tthe current question is being asked.  If the word\n",
-		"\t\t`module' is given as an argument then trust all the\n",
-		"\t\tpredicates/functions in the same module as the\n",
-		"\t\tpredicate/function about which the current question is\n",
-		"\t\tbeing asked.\n",
-		"\tb [-x] [<n>]\tbrowse [-x] [<n>]\n",
-		"\t\tBrowse the atom, or its nth argument.\n",
-		"\t\tIf the `-x' or `--xml' option is given, then browse\n",
-		"\t\tthe term with an XML browser.\n",
-		"\tb io <n>\tbrowse io <n>\tbrowse the atom's nth I/O action\n",
-		"\tp <n>\tprint <n>\tprint the nth argument of the atom\n",
-		"\tp <n-m>\tprint <n-m>\tprint the nth to the mth arguments of the atom\n",
-		"\tp io <n>\tprint io <n>\tprint the atom's nth I/O action\n",
-		"\tp io <n-m>\tprint io <n-m>\tprint the atom's nth to mth I/O actions\n",
-		"\tset [-APBfpv] <param> <value>\t",
-		"set a term browser parameter value\n",
-		"\tinfo\t\t\tDisplay some information about the current\n",
-		"\t\t\t\tquestion and the state of the bug search.\n",
-		"\tpd\t\t\tcommence procedural debugging from this point\n",
-		"\ta\tabort\t\t",
-			"abort this diagnosis session and return to mdb\n",
-		"\th, ?\thelp\t\tthis help message\n"
-	], !IO).
 
 :- pred user_confirm_bug_help(user_state::in, io::di, io::uo) is det.
 
@@ -719,8 +730,8 @@ user_confirm_bug_help(User, !IO) :-
 		"Answer one of:\n",
 		"\ty\tyes\t\tconfirm that the suspect is a bug\n",
 		"\tn\tno\t\tdo not accept that the suspect is a bug\n",
-%		"\tb\tbrowse\t\tbrowse the suspect\n",
-		"\ta\tabort\t\t",
+		"\tb\tbrowse\t\tbrowse the suspect\n",
+		"\tq\tquit\t\t",
 			"abort this diagnosis session and return to mdb\n",
 		"\th, ?\thelp\t\tthis help message\n"
 	], !IO).
@@ -752,38 +763,41 @@ get_command(Prompt, Command, User, User, !IO) :-
 		io.error_message(Error, Msg),
 		io.write_string(User ^ outstr, Msg, !IO),
 		io.nl(User ^ outstr, !IO),
-		Command = abort
+		Command = quit
 	;
 		Result = eof,
-		Command = abort
+		Command = quit
 	).
 
 :- pred cmd_handler(string::in, 
 	(func(list(string)) = user_command)::out(func(in) = out is semidet))
 	is semidet.
 
-cmd_handler("y",	one_word_cmd(yes)).
-cmd_handler("yes",	one_word_cmd(yes)).
-cmd_handler("n",	one_word_cmd(no)).
-cmd_handler("no",	one_word_cmd(no)).
-cmd_handler("i",	one_word_cmd(inadmissible)).
-cmd_handler("inadmissible", one_word_cmd(inadmissible)).
-cmd_handler("s",	one_word_cmd(skip)).
-cmd_handler("skip",	one_word_cmd(skip)).
-cmd_handler("pd",	one_word_cmd(pd)).
-cmd_handler("a",	one_word_cmd(abort)).
-cmd_handler("abort",	one_word_cmd(abort)).
-cmd_handler("?",	one_word_cmd(help)).
-cmd_handler("h",	one_word_cmd(help)).
-cmd_handler("help",	one_word_cmd(help)).
-cmd_handler("info",	one_word_cmd(info)).
-cmd_handler("b",	browse_arg_cmd).
-cmd_handler("browse",	browse_arg_cmd).
-cmd_handler("p",	print_arg_cmd).
-cmd_handler("print",	print_arg_cmd).
-cmd_handler("set",	set_arg_cmd).
-cmd_handler("t",	trust_arg_cmd).
-cmd_handler("trust",	trust_arg_cmd).
+cmd_handler("y",		one_word_cmd(yes)).
+cmd_handler("yes",		one_word_cmd(yes)).
+cmd_handler("n",		one_word_cmd(no)).
+cmd_handler("no",		one_word_cmd(no)).
+cmd_handler("i",		one_word_cmd(inadmissible)).
+cmd_handler("inadmissible", 	one_word_cmd(inadmissible)).
+cmd_handler("s",		one_word_cmd(skip)).
+cmd_handler("skip",		one_word_cmd(skip)).
+cmd_handler("pd",		one_word_cmd(pd)).
+% `abort' is a synonym for `quit' and is just here for backwards compatibility.
+cmd_handler("a",		one_word_cmd(quit)).
+cmd_handler("abort",		one_word_cmd(quit)).
+cmd_handler("q",		one_word_cmd(quit)).
+cmd_handler("quit",		one_word_cmd(quit)).
+cmd_handler("?",		help_cmd).
+cmd_handler("h",		help_cmd).
+cmd_handler("help",		help_cmd).
+cmd_handler("info",		one_word_cmd(info)).
+cmd_handler("b",		browse_arg_cmd).
+cmd_handler("browse",		browse_arg_cmd).
+cmd_handler("p",		print_arg_cmd).
+cmd_handler("print",		print_arg_cmd).
+cmd_handler("set",		set_arg_cmd).
+cmd_handler("t",		trust_arg_cmd).
+cmd_handler("trust",		trust_arg_cmd).
 
 :- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
 	is semidet.
@@ -811,6 +825,7 @@ browse_arg_cmd(["io", Arg]) = browse_io(ArgNum) :-
 
 :- func print_arg_cmd(list(string)::in) = (user_command::out) is semidet.
 
+print_arg_cmd([]) = ask.
 print_arg_cmd([Arg]) = print_arg(From, To) :-
 	string_to_range(Arg, From, To).
 print_arg_cmd(["io", Arg]) = print_io(From, To) :-
@@ -828,6 +843,11 @@ set_arg_cmd(ArgWords) = set(MaybeOptionTable, Setting) :-
 
 trust_arg_cmd([]) = trust_predicate.
 trust_arg_cmd(["module"]) = trust_module.
+
+:- func help_cmd(list(string)::in) = (user_command::out) is semidet.
+
+help_cmd([]) = help(no).
+help_cmd([Cmd]) = help(yes(Cmd)).
 
 string_to_range(Arg, From, To) :-
 	( string.to_int(Arg, Num) ->
@@ -864,7 +884,7 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
 	->
 		Response = overrule_bug
 	;
-		Command = abort
+		Command = quit
 	->
 		Response = abort_diagnosis
 	;

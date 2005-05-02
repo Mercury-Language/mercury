@@ -81,7 +81,7 @@ Is this a bug? y
       E9:     C6 EXIT pred skip.c/2-0 (det)
 mdb> dd
 c(72, 72)
-Valid? [no] a
+Valid? [no] q
 Diagnosis aborted.
       E9:     C6 EXIT pred skip.c/2-0 (det)
 mdb> break a

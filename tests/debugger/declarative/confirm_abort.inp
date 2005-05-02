@@ -9,10 +9,10 @@ no
 help
 h
 ?
-abort
+quit
 dd
 n
-a
+q
 dd
 n
 y

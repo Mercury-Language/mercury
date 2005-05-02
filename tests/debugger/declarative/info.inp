@@ -11,7 +11,7 @@ n
 info
 n
 info
-a
+q
 
 f
 dd
@@ -28,7 +28,7 @@ b 1
 cd 1
 mark
 info
-a
+q
 break q
 c
 delete *
@@ -38,7 +38,7 @@ b 3
 cd 1/1
 mark
 info
-a
+q
 
 f
 dd
@@ -48,5 +48,5 @@ info
 n
 n
 info
-a
+q
 quit -y

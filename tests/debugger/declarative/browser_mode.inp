@@ -12,7 +12,7 @@ mode
 cd ../2
 mode
 quit
-a
+q
 break r
 c
 c
@@ -27,5 +27,5 @@ b
 mode 2
 mode 1
 quit
-a
+q
 quit -y

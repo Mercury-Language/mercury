@@ -8,7 +8,7 @@ continue
 finish -n
 dd
 yes
-abort
+quit
 continue
 continue
 continue

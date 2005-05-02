@@ -11,8 +11,11 @@ browse 2
 ls
 quit
 set format verbose
+print
 set -B format pretty
+p
 set -P format pretty
+p
 b -x 2
 b --xml
 no

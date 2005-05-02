@@ -17,8 +17,8 @@ Valid? browse 2
 browser> ls
 baz(1, bar)
 browser> quit
-p(1, baz(1, bar))
-Valid? set format verbose
+dd> set format verbose
+dd> print
 p
 1-1
 2-baz
@@ -26,6 +26,7 @@ p
   2-bar
 
 Valid? set -B format pretty
+dd> p
 p
 1-1
 2-baz
@@ -33,6 +34,7 @@ p
   2-bar
 
 Valid? set -P format pretty
+dd> p
 p(1, baz(1, bar))
 Valid? b -x 2
 Saving term to XML file...
@@ -42,8 +44,7 @@ Launching XML browser (this may take some time) ...
 	<Int type="int">1</Int>
 	<bar functor="bar" type="browse_arg.foo" arity="0" />
 </baz>
-p(1, baz(1, bar))
-Valid? b --xml
+dd> b --xml
 Saving term to XML file...
 Launching XML browser (this may take some time) ...
 <?xml version="1.0"?>
@@ -64,8 +65,7 @@ Launching XML browser (this may take some time) ...
 		</List>
 	</List>
 </predicate>
-p(1, baz(1, bar))
-Valid? no
+dd> no
 Found incorrect contour:
 p(1, baz(1, bar))
 Is this a bug? yes

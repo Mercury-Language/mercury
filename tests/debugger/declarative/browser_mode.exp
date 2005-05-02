@@ -20,8 +20,7 @@ browser> cd ../2
 browser> mode
 Output
 browser> quit
-p('a', 30)
-Valid? a
+dd> q
 Diagnosis aborted.
       E3:     C2 EXIT pred browser_mode.p/2-0 (nondet)
 mdb> break r
@@ -42,15 +41,13 @@ Unsatisfiable? b 1
 browser> mode
 Input
 browser> quit
-Call r('b', _)
-Unsatisfiable? b
+dd> b
 browser> mode 2
 Unbound
 browser> mode 1
 Input
 browser> quit
-Call r('b', _)
-Unsatisfiable? a
+dd> q
 Diagnosis aborted.
       E8:     C3 FAIL pred browser_mode.r/2-0 (semidet)
 mdb> quit -y

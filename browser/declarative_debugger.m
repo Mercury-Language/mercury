@@ -61,6 +61,7 @@
 :- import_module mdb.declarative_analyser.
 :- import_module mdb.declarative_execution.
 :- import_module mdb.declarative_tree.
+:- import_module mdb.help.
 :- import_module mdb.io_action.
 :- import_module mdb.term_rep.
 :- import_module mdbcomp.program_representation.
@@ -271,7 +272,7 @@
 
 :- pred diagnoser_state_init(io_action_map::in, io.input_stream::in,
 	io.output_stream::in, browser_info.browser_persistent_state::in,
-	diagnoser_state(R)::out) is det.
+	help.system::in, diagnoser_state(R)::out) is det.
 
 :- pred diagnosis(S::in, analysis_type(edt_node(R))::in, int::in, int::in,
 	int::in, diagnoser_response(R)::out,
@@ -309,7 +310,10 @@
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 
-:- import_module exception, int, map, bool.
+:- import_module bool.
+:- import_module exception.
+:- import_module int.
+:- import_module map.
 
 unravel_decl_atom(DeclAtom, TraceAtom, IoActions) :-
 	(
@@ -357,14 +361,14 @@ diagnoser_get_oracle(diagnoser(_, Oracle), Oracle).
 diagnoser_set_oracle(Oracle, diagnoser(Analyser, _), 
 	diagnoser(Analyser, Oracle)).
 
-diagnoser_state_init(IoActionMap, InStr, OutStr, Browser, Diagnoser) :-
+diagnoser_state_init(IoActionMap, InStr, OutStr, Browser, HelpSystem, 
+		Diagnoser) :-
 	analyser_state_init(IoActionMap, Analyser),
-	oracle_state_init(InStr, OutStr, Browser, Oracle),
+	oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle),
 	Diagnoser = diagnoser(Analyser, Oracle).
 
 diagnosis(Store, AnalysisType, UseOldIoActionMap, IoActionStart, IoActionEnd,
-		Response, !Diagnoser, !Browser,
-		!IO) :-
+		Response, !Diagnoser, !Browser, !IO) :-
 	mdb.declarative_oracle.set_browser_state(!.Browser, !.Diagnoser ^
 		oracle_state, Oracle),
 	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
@@ -530,14 +534,15 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
 	% make it easier to call from C code.
 	%
 :- pred diagnoser_state_init_store(io.input_stream::in, io.output_stream::in,
-	browser_info.browser_persistent_state::in, 
+	browser_info.browser_persistent_state::in, help.system::in,
 	diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(diagnoser_state_init_store(in, in, in, out),
+:- pragma export(diagnoser_state_init_store(in, in, in, in, out),
 		"MR_DD_decl_diagnosis_state_init").
 
-diagnoser_state_init_store(InStr, OutStr, Browser, Diagnoser) :-
-	diagnoser_state_init(map.init, InStr, OutStr, Browser, Diagnoser).
+diagnoser_state_init_store(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
+	diagnoser_state_init(map.init, InStr, OutStr, Browser, HelpSystem,
+		Diagnoser).
 
 :- pred set_fallback_search_mode(
 	mdb.declarative_analyser.search_mode::in,
@@ -582,7 +587,7 @@ divide_and_query_search_mode =
 	browser_info.browser_persistent_state::out, io::di, io::uo) 
 	is cc_multi.
 
-:- pragma export(diagnosis_new_tree(in, in, in, in, in, out, in, out, in, out, 
+:- pragma export(diagnosis_new_tree(in, in, in, in, in, out, in, out, in, out,
 	di, uo), "MR_DD_decl_diagnosis_new_tree").
 
 diagnosis_new_tree(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
@@ -601,7 +606,7 @@ diagnosis_new_tree(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
 	browser_info.browser_persistent_state::out, io::di, io::uo) 
 	is cc_multi.
 
-:- pragma export(diagnosis_resume_previous(in, in, in, in,out, in, out, in,
+:- pragma export(diagnosis_resume_previous(in, in, in, in, out, in, out, in,
 	out, di, uo), "MR_DD_decl_diagnosis_resume_previous").
 
 diagnosis_resume_previous(Store, UseOldIoActionMap, IoActionStart, IoActionEnd,

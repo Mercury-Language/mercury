@@ -3,7 +3,7 @@ concepts   - The concepts on which the Mercury debugger is based.
              The concepts for which documentation is available are
              `break_points', `strict_commands', `print_level',
              `default_print_level', `current_environment',
-             and `procedure_specification'.
+             `procedure_specification' and `decl_debug'.
 
 end
 document_category 150 queries
@@ -54,9 +54,15 @@ help       - Commands that let users access and control the help system.
              For help on the `help' command, type `help help help'.
 
 end
-document_category 850 dd
-dd         - Commands related to declarative debugging.  These are `dd', 
+document_category 850 mdb_dd
+mdb_dd     - mdb commands related to declarative debugging.  These are `dd', 
              `trust', `trusted' and `untrust'.
+
+end
+document_category 860 decl
+decl       - Commands available from within the declarative debugger.  These 
+	     are `yes', `no', `inadmissible', `trust', `skip', `browse',
+	     `print', `set', `help', `info', `ask', `mark', `pd' and `quit'.
 
 end
 document_category 900 misc

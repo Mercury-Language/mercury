@@ -44,6 +44,7 @@
 
 #include "mercury_trace.h"
 #include "mercury_trace_browse.h"
+#include "mercury_trace_help.h"
 #include "mercury_trace_internal.h"
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
@@ -1346,6 +1347,7 @@ MR_trace_decl_ensure_init(void)
 			MR_trace_node_store = 0;
 			MR_DD_decl_diagnosis_state_init(&mdb_in, &mdb_out,
 				MR_trace_browser_persistent_state,
+				MR_trace_help_system,
 				&MR_trace_front_end_state);
 		);
 		done = MR_TRUE;

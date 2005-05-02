@@ -3,7 +3,7 @@ register --quiet
 goto 3
 dd
 browse 1
-abort
+quit
 step
 finish
 set depth 20
@@ -14,7 +14,7 @@ dd
 browse 1
 ^1
 mark
-abort
+quit
 dd
 browse 1
 ^2^1
@@ -22,25 +22,25 @@ mark
 browse 2
 print
 mark
-abort
+quit
 dd
 browse 1
 ^2^2^1
 mark
-abort
+quit
 dd
 browse 1
 ^2^2^2^1
 mark
-abort
+quit
 dd
 browse 1
 ^2^2^2^2^1
 mark
-abort
+quit
 dd
 browse 1
 ^2^2^2^2^2
 mark
-abort
+quit
 continue

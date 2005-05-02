@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998,2002 The University of Melbourne.
+** Copyright (C) 1998,2002, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,6 +14,12 @@
 #define MERCURY_TRACE_HELP_H
 
 #include "mercury_trace_completion.h"
+
+/*
+** This global keeps a reference to the help system.
+*/
+
+extern  MR_Word     	MR_trace_help_system;
 
 /*
 ** These function add a help node, which must a category or an item

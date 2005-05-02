@@ -60,25 +60,25 @@ finish
 dd
 browse 2
 mark
-abort
+quit
 continue
 finish
 dd
 browse 3
 mark
-abort
+quit
 continue
 finish
 dd
 browse 3
 mark
-abort
+quit
 continue
 finish
 dd
 browse 3
 mark
-abort
+quit
 continue
 finish
 continue

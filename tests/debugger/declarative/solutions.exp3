@@ -22,8 +22,7 @@ Valid? yes
 q(1, 2)
 Valid? yesy
 Unknown command, 'h' for help.
-q(1, 2)
-Valid? yes
+dd> yes
 q(1, 3)
 Valid? yes
 Call q(1, _)

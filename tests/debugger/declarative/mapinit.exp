@@ -7,7 +7,7 @@ mdb> finish
       E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
 mdb> dd
 xmap_init(empty)
-Valid? a
+Valid? q
 Diagnosis aborted.
       E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
 mdb> c

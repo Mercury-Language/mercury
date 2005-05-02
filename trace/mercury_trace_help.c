@@ -41,7 +41,7 @@
 
 #include <stdio.h>
 
-static  MR_Word     MR_trace_help_system;
+MR_Word             MR_trace_help_system;
 static  MR_TypeInfo MR_trace_help_system_type;
 
 static  const char  *MR_trace_help_add_node(MR_Word path, const char *name,

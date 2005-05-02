@@ -27,11 +27,14 @@
 :- interface.
 
 :- import_module mdb.browser_info.
-:- import_module mdbcomp.prim_data.
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.declarative_execution.
+:- import_module mdb.help.
+:- import_module mdbcomp.prim_data.
 
-:- import_module io, bool, string.
+:- import_module bool. 
+:- import_module io. 
+:- import_module string.
 
 	% A response that the oracle gives to a query about the
 	% truth of an EDT node.
@@ -50,7 +53,8 @@
 	% Produce a new oracle state.
 	%
 :- pred oracle_state_init(io.input_stream::in, io.output_stream::in, 
-	browser_info.browser_persistent_state::in, oracle_state::out) is det.
+	browser_info.browser_persistent_state::in, help.system::in, 
+	oracle_state::out) is det.
 
 	% Add a module to the set of modules trusted by the oracle
 	%
@@ -254,10 +258,10 @@ revise_oracle(Question, !Oracle) :-
 			trusted_id_counter	:: counter
 		).
 
-oracle_state_init(InStr, OutStr, Browser, Oracle) :-
+oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
 	oracle_kb_init(Current),
 	oracle_kb_init(Old),
-	user_state_init(InStr, OutStr, Browser, User),
+	user_state_init(InStr, OutStr, Browser, HelpSystem, User),
 	% Trust the standard library by default.
 	bimap.set(bimap.init, standard_library, 0, Trusted),
 	counter.init(1, Counter),

@@ -140,7 +140,7 @@ s(1, 7, 7)
 Valid? browse 2
 browser> mark
 sa(7)
-Valid? abort
+Valid? quit
 Diagnosis aborted.
      E15:     C8 EXIT pred output_term_dep.s/3-0 (nondet)
 mdb> continue
@@ -152,7 +152,7 @@ s(1, 7, 155)
 Valid? browse 3
 browser> mark
 sc(155)
-Valid? abort
+Valid? quit
 Diagnosis aborted.
      E17:     C8 EXIT pred output_term_dep.s/3-0 (nondet)
 mdb> continue
@@ -164,7 +164,7 @@ s(1, 38, 7)
 Valid? browse 3
 browser> mark
 sa(7)
-Valid? abort
+Valid? quit
 Diagnosis aborted.
      E19:     C8 EXIT pred output_term_dep.s/3-0 (nondet)
 mdb> continue
@@ -176,7 +176,7 @@ s(1, 38, 155)
 Valid? browse 3
 browser> mark
 sc(155)
-Valid? abort
+Valid? quit
 Diagnosis aborted.
      E21:     C8 EXIT pred output_term_dep.s/3-0 (nondet)
 mdb> continue

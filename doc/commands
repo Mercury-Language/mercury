@@ -1,0 +1,12 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1998-1999,2002, 2004-2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# Print a list of commands in a portion of mdb help text.
+# Usage: commands file
+#
+grep "^\`" $1 | sed "s/^\(\`[a-z]\+\>\).*$/\"\1',\"/" | sort -u \
+| xargs echo | sed "s/, \(\`[a-z]\+'\)\,$/ and \1\./"

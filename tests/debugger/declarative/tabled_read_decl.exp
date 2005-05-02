@@ -25,47 +25,21 @@ read_char_code('<<c_pointer>>', 10)
 Valid? print 1-2
 '<<c_pointer>>'
 1123
-test('<<c_pointer>>', 1123, _, _)
-4 tabled IO actions:
+dd> p io 1-2
 read_char_code('<<c_pointer>>', 49)
 read_char_code('<<c_pointer>>', 50)
-read_char_code('<<c_pointer>>', 51)
-read_char_code('<<c_pointer>>', 10)
-Valid? p io 1-2
+dd> print io 2-1
 read_char_code('<<c_pointer>>', 49)
 read_char_code('<<c_pointer>>', 50)
-test('<<c_pointer>>', 1123, _, _)
-4 tabled IO actions:
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
-read_char_code('<<c_pointer>>', 51)
-read_char_code('<<c_pointer>>', 10)
-Valid? print io 2-1
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
-test('<<c_pointer>>', 1123, _, _)
-4 tabled IO actions:
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
-read_char_code('<<c_pointer>>', 51)
-read_char_code('<<c_pointer>>', 10)
-Valid? browse io 4
+dd> browse io 4
 browser> print
 read_char_code('<<c_pointer>>', 10)
 browser> set num_io_actions 3
 browser> quit
-test('<<c_pointer>>', 1123, _, _)
-4 tabled IO actions: too many to show
-Valid? browse 1
+dd> browse 1
 browser> set num_io_actions 10
 browser> quit
-test('<<c_pointer>>', 1123, _, _)
-4 tabled IO actions:
-read_char_code('<<c_pointer>>', 49)
-read_char_code('<<c_pointer>>', 50)
-read_char_code('<<c_pointer>>', 51)
-read_char_code('<<c_pointer>>', 10)
-Valid? no
+dd> no
 test_2('<<c_pointer>>', 1, 1123, _, _)
 4 tabled IO actions:
 read_char_code('<<c_pointer>>', 49)

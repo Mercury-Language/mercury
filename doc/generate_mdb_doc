@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1998-1999,2002, 2004 The University of Melbourne.
+# Copyright (C) 1998-1999,2002, 2004-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -14,6 +14,18 @@ trap 'rm -f $tmp' 0 1 2 3 15
 info -f ./mercury_user_guide.info -o $tmp -n "Mercury debugger concepts"
 ../util/info_to_mdb concepts $tmp >> mdb_doc
 
+# Document the declarative debugger.
+info -f ./mercury_user_guide.info -o $tmp -n "Declarative debugging overview"
+echo "document concepts 10 decl_debug"                           >> mdb_doc
+sed 's/^   //' < $tmp | sed -n '6,1000s/^/     /p'               >> mdb_doc 
+echo                                                             >> mdb_doc
+info -f ./mercury_user_guide.info -o $tmp -n "Declarative debugging commands"
+echo "The following commands are available from within the \
+declarative debugger:" `./commands $tmp` | \
+fold -w72 -s | sed "s/^/     /"                                  >> mdb_doc
+echo end                                                         >> mdb_doc
+../util/info_to_mdb decl $tmp >> mdb_doc
+
 debug_cmd_path="debug debugger"
 for section in interactive forward backward browsing breakpoint \
 	i/o parameter help declarative misc exp developer
@@ -21,7 +33,7 @@ do
 	case $section in
 		interactive)	category=queries ;;
 		i/o)		category=table_io ;;
-		declarative)	category=dd ;;
+		declarative)	category=mdb_dd ;;
 		*)		category=$section ;;
 	esac
 	info -f ./mercury_user_guide.info -o $tmp $debug_cmd_path $section

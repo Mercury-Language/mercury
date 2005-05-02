@@ -19,7 +19,8 @@ Is this a bug? help
 Answer one of:
 	y	yes		confirm that the suspect is a bug
 	n	no		do not accept that the suspect is a bug
-	a	abort		abort this diagnosis session and return to mdb
+	b	browse		browse the suspect
+	q	quit		abort this diagnosis session and return to mdb
 	h, ?	help		this help message
 Found incorrect contour:
 q(27)
@@ -27,7 +28,8 @@ Is this a bug? h
 Answer one of:
 	y	yes		confirm that the suspect is a bug
 	n	no		do not accept that the suspect is a bug
-	a	abort		abort this diagnosis session and return to mdb
+	b	browse		browse the suspect
+	q	quit		abort this diagnosis session and return to mdb
 	h, ?	help		this help message
 Found incorrect contour:
 q(27)
@@ -35,18 +37,19 @@ Is this a bug? ?
 Answer one of:
 	y	yes		confirm that the suspect is a bug
 	n	no		do not accept that the suspect is a bug
-	a	abort		abort this diagnosis session and return to mdb
+	b	browse		browse the suspect
+	q	quit		abort this diagnosis session and return to mdb
 	h, ?	help		this help message
 Found incorrect contour:
 q(27)
-Is this a bug? abort
+Is this a bug? quit
        5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:15 (confirm_abort.m:8)
 mdb> dd
 p(27)
 Valid? [no] n
 Found incorrect contour:
 q(27)
-Is this a bug? a
+Is this a bug? q
        5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:15 (confirm_abort.m:8)
 mdb> dd
 p(27)

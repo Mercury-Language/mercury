@@ -3907,9 +3907,9 @@ using knowledge of the intended interpretation of the program only.
 
 Note that this is a work in progress,
 so there are some limitations in the implementation.
-The main limitations are pointed out in the following sections.
 
 @menu
+* Declarative debugging overview::
 * Declarative debugging concepts::
 * Oracle questions::
 * Declarative debugging commands::
@@ -3917,6 +3917,21 @@ The main limitations are pointed out in the following sections.
 * Search Modes::
 * Improving the search::
 @end menu
+
+@node Declarative debugging overview
+@subsection Overview
+
+The declarative debugger tries to find a bug in your program by asking
+questions about the correctness of calls executed in your program.
+
+Because pure Mercury code does not have any side effects, the declarative
+debugger can make inferences such as ``if a call produces incorrect output
+from correct input, then there must be a bug in the code executed by one of 
+the descendents of the call''.
+
+The declarative debugger is therefore able to automate much of the 
+`detective work' that must be done manually when using the
+procedural debugger.
 
 @node Declarative debugging concepts
 @subsection Concepts
@@ -4048,15 +4063,20 @@ and simply pressing return is equivalent to giving that answer.
 @subsection Commands
 
 At the above mentioned prompts, the following commands may be given.
-Each command (with the exception of @samp{pd})
-can also be abbreviated to just its first letter.
-@sp 1
+Most commands can be abbreviated by their first letter.
+
+It is also legal to press return without specifying a command.
+If there is a default answer (@pxref{Oracle questions}),
+pressing return is equivalent to giving that answer.
+If there is no default answer,
+pressing return is equivalent to the skip command.
+
 @table @code
 @item yes
-Answer that the assertion is correct.
+Answer `yes' to the current question.
 @sp 1
 @item no
-Answer that the assertion is wrong.
+Answer `no' to the current question.
 @sp 1
 @item inadmissible
 Answer that the call is inadmissible.
@@ -4074,7 +4094,7 @@ will be asked.
 @item skip
 Skip this question and ask a different one if possible.
 @sp 1
-@item browse [@var{n}]
+@item browse [--xml] [@var{n}]
 Start the interactive term browser and browse the @var{n}th argument 
 before answering.  If the argument number
 is omitted then browse the whole call as if it were a data term.
@@ -4086,12 +4106,30 @@ on the use of the interactive term browser see the @samp{browse} command
 in @ref{Browsing commands} or type @samp{help} from within the 
 interactive query browser.
 @sp 1
+Giving the @samp{--xml} or @samp{-x} option causes the term to be displayed
+in an XML browser.
+@sp 1
+@item browse io [--xml] @var{n}
+Browse the @var{n}th IO action.
+@sp 1
+@item print [@var{n}]
+Print the @var{n}th argument of the current question.  If no
+argument is given then display the current question.
+@sp 1
+@item print io @var{n}
+Print the @var{n}th IO action.
+@sp 1
+@item set @var{param} @var{value}
+Update the given configuration parameter.
+The parameters that can be configured are
+@samp{format}, @samp{depth}, @samp{size}, @samp{width} and @samp{lines}.
+@sp 1
 @item mark [@var{term-path}]
 The @samp{mark} command can only be given from within the interactive
 term browser and asserts that the marked subterm is incorrect.  The 
-debugger uses this information to better direct the bug search.  If no
-argument is given the the current subterm is taken to be incorrect.  If a 
-@var{term-path} is given then the subterm at @var{tern-path} relative to
+declarative debugger uses this information to better direct the bug search.  
+If no argument is given the the current subterm is taken to be incorrect.  
+If a @var{term-path} is given then the subterm at @var{tern-path} relative to
 the current subterm will be considered incorrect.
 @sp 1
 @item pd
@@ -4099,10 +4137,10 @@ Commence procedural debugging from the current point.
 This command is notionally the inverse of the @samp{dd} command
 in the procedural debugger.
 The session can be resumed with a @samp{dd --resume} command.
-@item abort
+@item quit
 End the declarative debugging session and return to
 the event at which the @samp{dd} command was given.  
-The session can be resume with a @samp{dd --resume} command.
+The session can be resumed with a @samp{dd --resume} command.
 @sp 1
 @item info
 List the filename and line number of the predicate the current question
@@ -4112,15 +4150,10 @@ about the state of the bug search, such as the current search mode,
 how many events are yet to be eliminated and the reason for asking
 the current question.
 @sp 1
-@item help
-Summarize the list of available commands.
+@item help [@var{command}]
+Summarize the list of available commands or give help on a specific
+command.
 @end table
-
-It is also legal to press return without specifying a command.
-If there is a default answer (@pxref{Oracle questions}),
-pressing return is equivalent to giving that answer.
-If there is no default answer,
-pressing return is equivalent to the skip command.
 
 @node Diagnoses
 @subsection Diagnoses
