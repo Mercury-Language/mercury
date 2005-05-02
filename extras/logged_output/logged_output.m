@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -33,16 +33,19 @@ logged_output__init(FileName, Result) -->
 	
 %------------------------------------------------------------------------------%
 
-:- pred create_stream(string::in, io__output_stream::out,
-		io__state::di, io__state::uo) is det.
+:- pred create_stream(string::in, io__output_stream::out, io::di, io::uo)
+	is det.
 
-:- pragma c_code(create_stream(FileName::in, IOStream::out, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	create_stream(FileName::in, IOStream::out, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	MercuryFile	*stream;
 	FILE		*file;
 
 	file = fopen(FileName, ""w"");
 
-	incr_hp(stream, ((sizeof(MercuryFile) / sizeof(MR_Word)) + 1));
+	MR_incr_hp((MR_Word) stream, ((sizeof(MercuryFile) / sizeof(MR_Word)) + 1));
 
 	stream->stream_type	= MR_FILE_STREAM;
 	stream->stream_info.file= file;
@@ -58,7 +61,7 @@ logged_output__init(FileName, Result) -->
 	stream->vprintf		= ME_logged_output_vfprintf;
 	stream->putc		= ME_logged_output_putch;
 
-	IOStream = (MR_Word) stream;
+	IOStream = (MercuryFilePtr) stream;
 
 	IO = IO0;
 ").
@@ -66,7 +69,7 @@ logged_output__init(FileName, Result) -->
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 #ifndef MR_NEW_MERCURYFILE_STRUCT
   #error ""you need to use version of the mercury compiler configured with --enable-new-mercuryfile-struct""
 #endif
@@ -86,7 +89,7 @@ int ME_logged_output_flush(MR_StreamInfo *info);
 int ME_logged_output_read(MR_StreamInfo *info, void *buffer, size_t size);
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 int
 ME_logged_output_putch(MR_StreamInfo *info, int ch)
 {
