@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2000, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -147,12 +147,12 @@
 
 %----------------------------------------------------------------------------%
 
-:- import_module mcurses:misc, mcurses:basics.
+:- import_module mcurses.misc, mcurses.basics.
 :- import_module array, char, int, list, require, std_util, store, string.
 
 :- type curse_store_type ---> curse_store_type.
 :- type curse_store == store(curse_store_type).
-:- type win	== mutvar(window, curse_store_type).
+:- type win	== store_mutvar(window, curse_store_type).
 
 :- type window
 	--->	win(
