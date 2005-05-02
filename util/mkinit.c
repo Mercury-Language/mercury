@@ -157,7 +157,7 @@ const char  *main_func_arg[] =
 #define matches_prefix(s, prefix)                       \
             (strncmp((s), (prefix), sizeof(prefix)-1) == 0)
 
-#define sys_init_prefix(s)                      \
+#define sys_init_prefix(s)                              \
             ( matches_prefix(s, SYS_PREFIX_1) ||        \
               matches_prefix(s, SYS_PREFIX_2) )
 
@@ -198,6 +198,12 @@ static String_List  *init_file_dirs = NULL;
 
     /* Pointer to tail of the init_file_dirs list */
 static String_List  **init_file_dirs_tail = &init_file_dirs;
+
+    /* List of functions to always execute at initialization */
+static String_List  *always_exec_funcs = NULL;
+
+    /* Pointer to tail of the init_file_dirs list */
+static String_List  **always_exec_funcs_tail = &always_exec_funcs;
 
 /* --- code fragments to put in the output file --- */
 static const char header1[] =
@@ -378,6 +384,10 @@ static const char mercury_funcs2[] =
 static const char mercury_funcs3[] =
     "\n"
     "   mercury_runtime_init(argc, argv);\n"
+    "\n"
+    ;
+
+static const char mercury_funcs4[] =
     "   return;\n"
     "}\n"
     "\n"
@@ -434,7 +444,7 @@ static  char    *read_line(const char *filename, FILE *fp, int max);
 static  void    output_complexity_proc(const char *procname);
 static  void    output_complexity_experiment_table(const char *filename);
 static  void    output_headers(void);
-static  int output_sub_init_functions(Purpose purpose);
+static  int     output_sub_init_functions(Purpose purpose);
 static  void    output_main_init_function(Purpose purpose, int num_bunches);
 static  void    output_aditi_load_function(void);
 static  void    output_main(void);
@@ -448,7 +458,7 @@ static  void    output_init_function(const char *func_name,
                     int *num_bunches_ptr, int *num_calls_in_cur_bunch_ptr,
                     Purpose purpose, MR_bool special_module);
 static  void    add_rl_data(char *data);
-static  int get_line(FILE *file, char *line, int line_max);
+static  int     get_line(FILE *file, char *line, int line_max);
 static  void    *checked_malloc(size_t size);
 
 /*---------------------------------------------------------------------------*/
@@ -457,7 +467,7 @@ static  void    *checked_malloc(size_t size);
 
 /*
 ** Apparently SunOS 4.1.3 doesn't have strerror()
-**  (!%^&!^% non-ANSI systems, grumble...)
+** (!%^&!^% non-ANSI systems, grumble...)
 **
 ** This code is duplicated in runtime/mercury_prof.c.
 */
@@ -544,10 +554,26 @@ parse_options(int argc, char *argv[])
     int         i;
     String_List *tmp_slist;
 
-    while ((c = getopt(argc, argv, "ac:g:iI:lo:r:tw:xX:")) != EOF) {
+    while ((c = getopt(argc, argv, "aA:c:g:iI:lo:r:tw:xX:")) != EOF) {
         switch (c) {
         case 'a':
             aditi = MR_TRUE;
+            break;
+
+        case 'A':
+            /*
+            ** Add the argument to the end of the list of always executed
+            ** initialization functions.
+            */
+            if (optarg[0] != '\0') {
+                tmp_slist = (String_List *)
+                    checked_malloc(sizeof(String_List));
+                tmp_slist->next = NULL;
+                tmp_slist->data = (char *) checked_malloc(strlen(optarg) + 1);
+                strcpy(tmp_slist->data, optarg);
+                *always_exec_funcs_tail = tmp_slist;
+                always_exec_funcs_tail = &tmp_slist->next;
+            }
             break;
 
         case 'c':
@@ -941,7 +967,7 @@ static void
 output_main(void)
 {
     const char  *aditi_load_func;
-    String_List *list_tmp;
+    String_List *list;
     char        *options_str;
 
     if (aditi) {
@@ -962,12 +988,9 @@ output_main(void)
     printf(mercury_funcs2, num_experimental_complexity_procs,
         aditi_load_func, hl_entry_point, entry_point);
 
-    printf("    MR_runtime_flags = \"");
-    for (list_tmp = runtime_flags; list_tmp != NULL; list_tmp = list_tmp->next)
-    {
-        for (options_str = list_tmp->data;
-            *options_str != '\0'; options_str++)
-        {
+    printf("   MR_runtime_flags = \"");
+    for (list = runtime_flags; list != NULL; list = list->next) {
+        for (options_str = list->data; *options_str != '\0'; options_str++) {
             if (*options_str == '\n') {
                 putchar('\\');
                 putchar('n');
@@ -987,6 +1010,12 @@ output_main(void)
     printf("\";\n");
 
     fputs(mercury_funcs3, stdout);
+
+    for (list = always_exec_funcs; list != NULL; list = list->next) {
+        printf("   %s();\n", list->data);
+    }
+
+    fputs(mercury_funcs4, stdout);
 
     if (output_main_func) {
         fputs(main_func, stdout);
