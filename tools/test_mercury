@@ -699,7 +699,7 @@ mmake $target_opts depend $PARALLEL || { false; exit 1; }
 version=`mmake $target_opts version` || { false; exit 1; }
 fullarch=`mmake $target_opts fullarch` || { false; exit 1; }
 tools/bootcheck $use_cp_opt $target_opts \
-	--keep-objs --copy-runtime --copy-profiler \
+	--keep-objs --copy-runtime --copy-profilers \
 	--no-test-suite $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
