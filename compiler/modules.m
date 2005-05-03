@@ -2382,7 +2382,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         Items0, PublicChildren, NestedChildren, FactDeps,
         MaybeTimestamps, !:Module),
 
-        % If this module has any seperately-compiled sub-modules,
+        % If this module has any separately-compiled sub-modules,
         % then we need to make everything in the implementation
         % of this module exported_to_submodules.  We do that by
         % splitting out the implementation declarations and putting
@@ -4837,14 +4837,33 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io__write_string(DepStream, "\n", !IO),
 
     % `.int0' files are only generated for modules with sub-modules.
-    ModulesWithSubModules = list__filter(
-        (pred(Module::in) is semidet :-
-            map__lookup(DepsMap, Module, deps(_, ModuleImports)),
-            ModuleImports ^ children = [_ | _]
-        ), Modules),
+    %
+    % XXX The dependencies for nested submodules are wrong - we
+    % currently end up generating .int0 files for nested submodules that
+    % don't have any children (the correct thing is done for separate
+    % submodules).  The following commented out code generates the
+    % correct rules for .int0 files; it and the line below can be
+    % uncommented when the dependency problem is fixed.
+    %
+    % ModulesWithSubModules = list__filter(
+    %   (pred(Module::in) is semidet :-
+    %       map__lookup(DepsMap, Module, deps(_, ModuleImports)),
+    %       ModuleImports ^ children = [_ | _]
+    %   ), Modules),
     io__write_string(DepStream, MakeVarName, !IO),
     io__write_string(DepStream, ".int0s = ", !IO),
-    write_dependencies_list(ModulesWithSubModules, ".int0", DepStream, !IO),
+    %
+    % These next two lines are a workaround for the bug described above.
+    %
+    write_compact_dependencies_list(Modules, "$(ints_subdir)", ".int0",
+        Basis, DepStream, !IO),
+    write_compact_dependencies_separator(Basis, DepStream, !IO),
+    %
+    % End of workaround - it can be deleted when the bug described above
+    % is fixed.  When that happens the following line needs to be
+    % uncommented.
+    %
+    %write_dependencies_list(ModulesWithSubModules, ".int0", DepStream, !IO),
     io__write_string(DepStream, "\n", !IO),
 
     io__write_string(DepStream, MakeVarName, !IO),
@@ -7635,6 +7654,7 @@ report_modification_time_warning(SourceFileName, Error, !IO) :-
 %-----------------------------------------------------------------------------%
 %
 % Java command-line utilities.
+%
 
 create_java_shell_script(MainModuleName, Succeeded, !IO) :-
     % XXX Extension should be ".bat" on Windows
