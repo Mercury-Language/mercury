@@ -238,13 +238,15 @@ endif
 
 # The names `int', `float', and `char' can't be used as class names,
 # because they are Java keywords.  So we use `mr_int', `mr_float', and
-# `mr_char' instead.  Since Java implementations often assume that
+# `mr_char' instead.  `enum' is also a keyword in Java 1.5, so we
+# likewise use `mr_enum'.  Since Java implementations often assume that
 # a class foo is located in a file foo.java, we similarly mangle the
 # Java file names for these standard library modules.
 JAVAS = ` echo $($(STD_LIB_NAME).javas) | sed \
 		-e 's/ int.java/ mr_int.java/' \
 		-e 's/ float.java/ mr_float.java/' \
-		-e 's/ char.java/ mr_char.java/' `
+		-e 's/ char.java/ mr_char.java/' \
+		-e 's/ enum.java/ mr_enum.java/' `
 
 # We need to invoke javac on all of the classes at the same time,
 # rather than compiling them separately.  This is needed because
