@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1994,1997,2000 The University of Melbourne.
+** Copyright (C) 1993-1994,1997,2000, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -30,10 +30,10 @@ MR_get_user_cpu_miliseconds(void)
 	#define FILETIME_TO_MILLISEC(time, msec)			\
 	do								\
 	{								\
-	  SYSTEMTIME tmp;						\
-	  FileTimeToSystemTime(&time, &tmp);				\
-	  msec = tmp.wMilliseconds +					\
-	    1000 * (tmp.wSecond + 60 * (tmp.wMinute + 60 * tmp.wHour));	\
+		SYSTEMTIME tmp;						\
+		FileTimeToSystemTime(&time, &tmp);			\
+		msec = tmp.wMilliseconds + 1000 * 			\
+			(tmp.wSecond + 60 * (tmp.wMinute + 60 * tmp.wHour)); \
 	} while(0)
 
 	FILETIME creation_time;
@@ -43,8 +43,8 @@ MR_get_user_cpu_miliseconds(void)
 	int user_msec, kernel_msec;
 	
 	GetProcessTimes(GetCurrentProcess(),
-					&creation_time, &exit_time,
-					&kernel_time, &user_time);
+		&creation_time, &exit_time,
+		&kernel_time, &user_time);
 	FILETIME_TO_MILLISEC(user_time, user_msec);
 	FILETIME_TO_MILLISEC(kernel_time, kernel_msec);
 	return user_msec + kernel_msec;
