@@ -327,165 +327,154 @@ exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval) :-
 	exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval,
 		0, _SubstCount).
 
-exprn_aux__substitute_lval_in_instr(OldLval, NewLval, Instr0, Instr, N0, N) :-
+exprn_aux__substitute_lval_in_instr(OldLval, NewLval, Instr0, Instr, !N) :-
 	Instr0 = Uinstr0 - Comment,
 	exprn_aux__substitute_lval_in_uinstr(OldLval, NewLval,
-		Uinstr0, Uinstr, N0, N),
+		Uinstr0, Uinstr, !N),
 	Instr = Uinstr - Comment.
 
 :- pred exprn_aux__substitute_lval_in_uinstr(lval::in, lval::in,
 	instr::in, instr::out, int::in, int::out) is det.
 
-exprn_aux__substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, N0, N)
-		:-
+exprn_aux__substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
 	(
 		Uinstr0 = comment(_Comment),
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = livevals(LvalSet0),
 		set__to_sorted_list(LvalSet0, Lvals0),
 		list__map_foldl(
 			exprn_aux__substitute_lval_in_lval_count(OldLval,
 				NewLval),
-			Lvals0, Lvals, N0, N),
+			Lvals0, Lvals, !N),
 		set__list_to_set(Lvals, LvalSet),
 		Uinstr = livevals(LvalSet)
 	;
 		Uinstr0 = block(TempR, TempF, Instrs0),
 		list__map_foldl(
 			exprn_aux__substitute_lval_in_instr(OldLval, NewLval),
-			Instrs0, Instrs, N0, N),
+			Instrs0, Instrs, !N),
 		Uinstr = block(TempR, TempF, Instrs)
 	;
 		Uinstr0 = assign(Lval0, Rval0),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N1),
+			Lval0, Lval, !N),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N1, N),
+			Rval0, Rval, !N),
 		Uinstr = assign(Lval, Rval)
 	;
 		Uinstr0 = call(_, _, _, _, _, _),
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = mkframe(_, _),
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = label(_),
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = goto(_),
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = computed_goto(Rval0, Labels),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Uinstr = computed_goto(Rval, Labels)
 	;
 		Uinstr0 = c_code(Code, LiveLvals0),
 		exprn_aux__substitute_lval_in_live_lval_info(OldLval, NewLval,
-			LiveLvals0, LiveLvals, N0, N),
+			LiveLvals0, LiveLvals, !N),
 		Uinstr = c_code(Code, LiveLvals)
 	;
 		Uinstr0 = if_val(Rval0, CodeAddr),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Uinstr = if_val(Rval, CodeAddr)
 	;
 		Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N1),
+			Lval0, Lval, !N),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N1, N),
+			Rval0, Rval, !N),
 		Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, TypeCtor)
 	;
 		Uinstr0 = mark_hp(Lval0),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N),
+			Lval0, Lval, !N),
 		Uinstr = mark_hp(Lval)
 	;
 		Uinstr0 = restore_hp(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Uinstr = restore_hp(Rval)
 	;
 		Uinstr0 = free_heap(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Uinstr = free_heap(Rval)
 	;
 		Uinstr0 = store_ticket(Lval0),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N),
+			Lval0, Lval, !N),
 		Uinstr = store_ticket(Lval)
 	;
 		Uinstr0 = reset_ticket(Rval0, Reason),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Uinstr = reset_ticket(Rval, Reason)
 	;
 		Uinstr0 = prune_ticket,
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = discard_ticket,
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = mark_ticket_stack(Lval0),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N),
+			Lval0, Lval, !N),
 		Uinstr = mark_ticket_stack(Lval)
 	;
 		Uinstr0 = prune_tickets_to(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Uinstr = prune_tickets_to(Rval)
 %	;
 %		% discard_tickets_to(_) is used only in hand-written code
 %		Uinstr0 = discard_tickets_to(Rval0),
 %		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
-%			Rval0, Rval, N0, N),
+%			Rval0, Rval, !N),
 %		Uinstr = discard_tickets_to(Rval)
 	;
 		Uinstr0 = incr_sp(_, _),
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = decr_sp(_),
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
 			MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
 			ReferStackSlot, MayDupl),
 		list__map_foldl(exprn_aux__substitute_lval_in_component(
-			OldLval, NewLval), Components0, Components, N0, N),
+			OldLval, NewLval), Components0, Components, !N),
 		Uinstr = pragma_c(Decls, Components, MayCallMercury,
 			MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
 			ReferStackSlot, MayDupl)
 	;
 		Uinstr0 = init_sync_term(Lval0, BranchCount),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N),
+			Lval0, Lval, !N),
 		Uinstr = init_sync_term(Lval, BranchCount)
 	;
 		Uinstr0 = fork(_, _, _),
-		Uinstr = Uinstr0,
-		N = N0
+		Uinstr = Uinstr0
 	;
 		Uinstr0 = join_and_terminate(Lval0),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N),
+			Lval0, Lval, !N),
 		Uinstr = join_and_terminate(Lval)
 	;
 		Uinstr0 = join_and_continue(Lval0, Label),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N),
+			Lval0, Lval, !N),
 		Uinstr = join_and_continue(Lval, Label)
 	).
 
@@ -494,34 +483,31 @@ exprn_aux__substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, N0, N)
 	is det.
 
 exprn_aux__substitute_lval_in_component(OldLval, NewLval,
-		Component0, Component, N0, N) :-
+		Component0, Component, !N) :-
 	(
 		Component0 = pragma_c_inputs(Inputs0),
 		list__map_foldl(exprn_aux__substitute_lval_in_pragma_c_input(
-			OldLval, NewLval), Inputs0, Inputs, N0, N),
+			OldLval, NewLval), Inputs0, Inputs, !N),
 		Component = pragma_c_inputs(Inputs)
 	;
 		Component0 = pragma_c_outputs(Outputs0),
 		list__map_foldl(exprn_aux__substitute_lval_in_pragma_c_output(
-			OldLval, NewLval), Outputs0, Outputs, N0, N),
+			OldLval, NewLval), Outputs0, Outputs, !N),
 		Component = pragma_c_outputs(Outputs)
 	;
 		Component0 = pragma_c_user_code(_, _),
-		Component = Component0,
-		N = N0
+		Component = Component0
 	;
 		Component0 = pragma_c_raw_code(Code, LvalSet0),
 		exprn_aux__substitute_lval_in_live_lval_info(OldLval, NewLval,
-			LvalSet0, LvalSet, N0, N),
+			LvalSet0, LvalSet, !N),
 		Component = pragma_c_raw_code(Code, LvalSet)
 	;
 		Component0 = pragma_c_fail_to(_),
-		Component = Component0,
-		N = N0
+		Component = Component0
 	;
 		Component0 = pragma_c_noop,
-		Component = Component0,
-		N = N0
+		Component = Component0
 	).
 
 :- pred exprn_aux__substitute_lval_in_live_lval_info(lval::in, lval::in,
@@ -529,215 +515,200 @@ exprn_aux__substitute_lval_in_component(OldLval, NewLval,
 	is det.
 
 exprn_aux__substitute_lval_in_live_lval_info(_OldLval, _NewLval,
-		no_live_lvals_info, no_live_lvals_info, N, N).
+		no_live_lvals_info, no_live_lvals_info, !N).
 exprn_aux__substitute_lval_in_live_lval_info(OldLval, NewLval,
-		live_lvals_info(LvalSet0), live_lvals_info(LvalSet), N0, N) :-
+		live_lvals_info(LvalSet0), live_lvals_info(LvalSet), !N) :-
 	Lvals0 = set__to_sorted_list(LvalSet0),
 	list__map_foldl(
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval),
-		Lvals0, Lvals, N0, N),
+		Lvals0, Lvals, !N),
 	set__list_to_set(Lvals, LvalSet).
 
 :- pred exprn_aux__substitute_lval_in_pragma_c_input(lval::in, lval::in,
 	pragma_c_input::in, pragma_c_input::out, int::in, int::out) is det.
 
 exprn_aux__substitute_lval_in_pragma_c_input(OldLval, NewLval, Out0, Out,
-		N0, N) :-
+		!N) :-
 	Out0 = pragma_c_input(Name, VarType, OrigType, Rval0, MaybeForeign),
 	exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval,
-		N0, N),
+		!N),
 	Out = pragma_c_input(Name, VarType, OrigType, Rval, MaybeForeign).
 
 :- pred exprn_aux__substitute_lval_in_pragma_c_output(lval::in, lval::in,
 	pragma_c_output::in, pragma_c_output::out, int::in, int::out) is det.
 
 exprn_aux__substitute_lval_in_pragma_c_output(OldLval, NewLval, Out0, Out,
-		N0, N) :-
+		!N) :-
 	Out0 = pragma_c_output(Lval0, VarType, OrigType, Name, MaybeForeign),
 	exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval,
-		N0, N),
+		!N),
 	Out = pragma_c_output(Lval, VarType, OrigType, Name, MaybeForeign).
 
 :- pred exprn_aux__substitute_lval_in_rval_count(lval::in, lval::in,
 	rval::in, rval::out, int::in, int::out) is det.
 
-exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval,
-		N0, N) :-
+exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N) :-
 	(
 		Rval0 = lval(Lval0),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
-			Lval0, Lval, N0, N),
+			Lval0, Lval, !N),
 		Rval = lval(Lval)
 	;
 		Rval0 = var(_Var),
-		Rval = Rval0,
-		N = N0
+		Rval = Rval0
 	;
 		Rval0 = mkword(Tag, Rval1),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval1, Rval2, N0, N),
+			Rval1, Rval2, !N),
 		Rval = mkword(Tag, Rval2)
 	;
 		Rval0 = const(_Const),
-		Rval = Rval0,
-		N = N0
+		Rval = Rval0
 	;
 		Rval0 = unop(Unop, Rval1),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval1, Rval2, N0, N),
+			Rval1, Rval2, !N),
 		Rval = unop(Unop, Rval2)
 	;
 		Rval0 = binop(Binop, Rval1, Rval2),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval1, Rval3, N0, N1),
+			Rval1, Rval3, !N),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval2, Rval4, N1, N),
+			Rval2, Rval4, !N),
 		Rval = binop(Binop, Rval3, Rval4)
 	;
 		Rval0 = mem_addr(MemRef0),
 		exprn_aux__substitute_lval_in_mem_ref(OldLval, NewLval,
-			MemRef0, MemRef, N0, N),
+			MemRef0, MemRef, !N),
 		Rval = mem_addr(MemRef)
 	).
 
 :- pred exprn_aux__substitute_lval_in_mem_ref(lval::in, lval::in,
 	mem_ref::in, mem_ref::out, int::in, int::out) is det.
 
-exprn_aux__substitute_lval_in_mem_ref(OldLval, NewLval, MemRef0, MemRef,
-		N0, N) :-
+exprn_aux__substitute_lval_in_mem_ref(OldLval, NewLval, MemRef0, MemRef, !N) :-
 	(
 		MemRef0 = stackvar_ref(_SlotNum),
-		MemRef = MemRef0,
-		N = N0
+		MemRef = MemRef0
 	;
 		MemRef0 = framevar_ref(_SlotNum),
-		MemRef = MemRef0,
-		N = N0
+		MemRef = MemRef0
 	;
 		MemRef0 = heap_ref(Rval0, Tag, FieldNum),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		MemRef = heap_ref(Rval, Tag, FieldNum)
 	).
 
 :- pred exprn_aux__substitute_lval_in_lval_count(lval::in, lval::in,
 	lval::in, lval::out, int::in, int::out) is det.
 
-exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval,
-		N0, N) :-
+exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N) :-
 	( Lval0 = OldLval ->
 		Lval = NewLval,
-		N = N0 + 1
+		!:N = !.N + 1
 	;
 		exprn_aux__substitute_lval_in_lval_count_2(OldLval, NewLval,
-			Lval0, Lval, N0, N)
+			Lval0, Lval, !N)
 	).
 
 :- pred exprn_aux__substitute_lval_in_lval_count_2(lval::in, lval::in,
 	lval::in, lval::out, int::in, int::out) is det.
 
 exprn_aux__substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval,
-		N0, N) :-
+		!N) :-
 	(
 		Lval0 = reg(_Type, _RegNum),
-		Lval = Lval0,
-		N = N0
+		Lval = Lval0
 	;
 		Lval0 = succip,
-		Lval = succip,
-		N = N0
+		Lval = succip
 	;
 		Lval0 = maxfr,
-		Lval = maxfr,
-		N = N0
+		Lval = maxfr
 	;
 		Lval0 = curfr,
-		Lval = curfr,
-		N = N0
+		Lval = curfr
 	;
 		Lval0 = hp,
-		Lval = hp,
-		N = N0
+		Lval = hp
 	;
 		Lval0 = sp,
-		Lval = sp,
-		N = N0
+		Lval = sp
 	;
 		Lval0 = temp(_Type, _TmpNum),
-		Lval = Lval0,
-		N = N0
+		Lval = Lval0
 	;
 		Lval0 = stackvar(_SlotNum),
-		Lval = Lval0,
-		N = N0
+		Lval = Lval0
 	;
 		Lval0 = framevar(_SlotNum),
-		Lval = Lval0,
-		N = N0
+		Lval = Lval0
 	;
 		Lval0 = succip(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Lval = succip(Rval)
 	;
 		Lval0 = redoip(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Lval = redoip(Rval)
 	;
 		Lval0 = redofr(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Lval = redofr(Rval)
 	;
 		Lval0 = succfr(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Lval = succfr(Rval)
 	;
 		Lval0 = prevfr(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Lval = prevfr(Rval)
 	;
 		Lval0 = field(Tag, Rval1, Rval2),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval1, Rval3, N0, N1),
+			Rval1, Rval3, !N),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval2, Rval4, N1, N),
+			Rval2, Rval4, !N),
 		Lval = field(Tag, Rval3, Rval4)
 	;
 		Lval0 = mem_ref(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
+			Rval0, Rval, !N),
 		Lval = mem_ref(Rval)
 	;
 		Lval0 = lvar(_Var),
-		Lval = Lval0,
-		N = N0
+		Lval = Lval0
 	).
 
 :- pred exprn_aux__substitute_lval_in_args(lval::in, lval::in,
 	list(maybe(rval))::in, list(maybe(rval))::out, int::in, int::out)
 	is det.
 
-exprn_aux__substitute_lval_in_args(_OldLval, _NewLval, [], [], N, N).
+exprn_aux__substitute_lval_in_args(_OldLval, _NewLval, [], [], !N).
 exprn_aux__substitute_lval_in_args(OldLval, NewLval, [M0 | Ms0], [M | Ms],
-		N0, N) :-
-	exprn_aux__substitute_lval_in_arg(OldLval, NewLval, M0, M, N0, N1),
-	exprn_aux__substitute_lval_in_args(OldLval, NewLval, Ms0, Ms, N1, N).
+		!N) :-
+	exprn_aux__substitute_lval_in_arg(OldLval, NewLval, M0, M, !N),
+	exprn_aux__substitute_lval_in_args(OldLval, NewLval, Ms0, Ms, !N).
 
 :- pred exprn_aux__substitute_lval_in_arg(lval::in, lval::in,
 	maybe(rval)::in, maybe(rval)::out, int::in, int::out) is det.
 
-exprn_aux__substitute_lval_in_arg(OldLval, NewLval, M0, M, N0, N) :-
-	( M0 = yes(Rval0) ->
+exprn_aux__substitute_lval_in_arg(OldLval, NewLval, MaybeRval0, MaybeRval,
+		!N) :-
+	(
+		MaybeRval0 = yes(Rval0),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
-			Rval0, Rval, N0, N),
-		M = yes(Rval)
+			Rval0, Rval, !N),
+		MaybeRval = yes(Rval)
 	;
-		M = M0,
-		N = N0
+		MaybeRval0 = no,
+		MaybeRval = MaybeRval0
 	).
 
 exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
@@ -883,23 +854,23 @@ exprn_aux__substitute_rval_in_args(OldRval, NewRval, [M0 | Ms0], [M | Ms]) :-
 :- pred exprn_aux__substitute_rval_in_arg(rval::in, rval::in,
 	maybe(rval)::in, maybe(rval)::out) is det.
 
-exprn_aux__substitute_rval_in_arg(OldRval, NewRval, M0, M) :-
+exprn_aux__substitute_rval_in_arg(OldRval, NewRval, MaybeRval0, MaybeRval) :-
 	(
-		M0 = yes(Rval0)
-	->
+		MaybeRval0 = yes(Rval0),
 		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
 			Rval0, Rval),
-		M = yes(Rval)
+		MaybeRval = yes(Rval)
 	;
-		M = M0
+		MaybeRval0 = no,
+		MaybeRval = MaybeRval0
 	).
 
 %------------------------------------------------------------------------------%
 
-exprn_aux__substitute_vars_in_rval([], Rval, Rval).
-exprn_aux__substitute_vars_in_rval([Var - Sub | Rest], Rval0, Rval) :-
-	exprn_aux__substitute_rval_in_rval(var(Var), Sub, Rval0, Rval1),
-	exprn_aux__substitute_vars_in_rval(Rest, Rval1, Rval).
+exprn_aux__substitute_vars_in_rval([], !Rval).
+exprn_aux__substitute_vars_in_rval([Var - Sub | Rest], !Rval) :-
+	exprn_aux__substitute_rval_in_rval(var(Var), Sub, !Rval),
+	exprn_aux__substitute_vars_in_rval(Rest, !Rval).
 
 % When we substitute one set of rvals for another, we face the problem
 % that the substitution may not be idempotent. We finesse this problem by
@@ -907,11 +878,11 @@ exprn_aux__substitute_vars_in_rval([Var - Sub | Rest], Rval0, Rval) :-
 % the replacement rvals for these unique rvals. We guarantee the uniqueness
 % of these rvals by using framevars with negative numbers for them.
 
-exprn_aux__substitute_rvals_in_rval(RvalPairs, Rval0, Rval) :-
+exprn_aux__substitute_rvals_in_rval(RvalPairs, !Rval) :-
 	exprn_aux__substitute_rvals_in_rval_1(RvalPairs, 0,
 		RvalUniqPairs, UniqRvalPairs),
-	exprn_aux__substitute_rvals_in_rval_2(RvalUniqPairs, Rval0, Rval1),
-	exprn_aux__substitute_rvals_in_rval_2(UniqRvalPairs, Rval1, Rval).
+	exprn_aux__substitute_rvals_in_rval_2(RvalUniqPairs, !Rval),
+	exprn_aux__substitute_rvals_in_rval_2(UniqRvalPairs, !Rval).
 
 :- pred exprn_aux__substitute_rvals_in_rval_1(assoc_list(rval, rval)::in,
 	int::in, assoc_list(rval, rval)::out, assoc_list(rval, rval)::out)
@@ -928,17 +899,15 @@ exprn_aux__substitute_rvals_in_rval_1([Rval1 - Rval2 | RvalPairList], N0,
 :- pred exprn_aux__substitute_rvals_in_rval_2(assoc_list(rval, rval)::in,
 	rval::in, rval::out) is det.
 
-exprn_aux__substitute_rvals_in_rval_2([], Rval, Rval).
-exprn_aux__substitute_rvals_in_rval_2([Left - Right | Rest], Rval0, Rval2) :-
-	exprn_aux__substitute_rval_in_rval(Left, Right, Rval0, Rval1),
-	exprn_aux__substitute_rvals_in_rval_2(Rest, Rval1, Rval2).
+exprn_aux__substitute_rvals_in_rval_2([], !Rval).
+exprn_aux__substitute_rvals_in_rval_2([Left - Right | Rest], !Rval) :-
+	exprn_aux__substitute_rval_in_rval(Left, Right, !Rval),
+	exprn_aux__substitute_rvals_in_rval_2(Rest, !Rval).
 
 %---------------------------------------------------------------------------%
 
 exprn_aux__simplify_rval(Rval0, Rval) :-
-	(
-		exprn_aux__simplify_rval_2(Rval0, Rval1)
-	->
+	( exprn_aux__simplify_rval_2(Rval0, Rval1) ->
 		exprn_aux__simplify_rval(Rval1, Rval)
 	;
 		Rval = Rval0
@@ -981,14 +950,14 @@ exprn_aux__simplify_args([MR0 | Ms0], [MR | Ms]) :-
 
 :- pred exprn_aux__simplify_arg(maybe(rval)::in, maybe(rval)::out) is det.
 
-exprn_aux__simplify_arg(MR0, MR) :-
+exprn_aux__simplify_arg(MaybeRval0, MaybeRval) :-
 	(
-		MR0 = yes(Rval0),
+		MaybeRval0 = yes(Rval0),
 		exprn_aux__simplify_rval_2(Rval0, Rval)
 	->
-		MR = yes(Rval)
+		MaybeRval = yes(Rval)
 	;
-		MR = MR0
+		MaybeRval = MaybeRval0
 	).
 
 %-----------------------------------------------------------------------------%

@@ -36,294 +36,326 @@
 
 :- type var_locn_info.
 
-%	init_state(Arguments, Liveness, VarSet, VarTypes, StackSlots,
-%			FollowVars, Opts, VarLocnInfo)
-%		Produces an initial state of the VarLocnInfo given
-%		an association list of variables and lvalues. The initial
-%		state places the given variables at their corresponding
-%		locations, with the exception of variables which are not in
-%		Liveness (this corresponds to input arguments that are not
-%		used in the body). The VarSet parameter contains a mapping from
-%		variables to names, which is used when code is generated
-%		to provide meaningful comments. VarTypes gives the types of
-%		of all the procedure's variables. StackSlots maps each variable
-%		to its stack slot, if it has one. FollowVars is the initial
-%		follow_vars set; such sets give guidance as to what lvals
-%		(if any) each variable will be needed in next. Opts gives
-%		the table of options; this is used to decide what expressions
-%		are considered constants.
-
+	% init_state(Arguments, Liveness, VarSet, VarTypes, StackSlots,
+	%	FollowVars, Opts, VarLocnInfo)
+	%
+	% Produces an initial state of the VarLocnInfo given
+	% an association list of variables and lvalues. The initial
+	% state places the given variables at their corresponding
+	% locations, with the exception of variables which are not in
+	% Liveness (this corresponds to input arguments that are not
+	% used in the body). The VarSet parameter contains a mapping from
+	% variables to names, which is used when code is generated
+	% to provide meaningful comments. VarTypes gives the types of
+	% of all the procedure's variables. StackSlots maps each variable
+	% to its stack slot, if it has one. FollowVars is the initial
+	% follow_vars set; such sets give guidance as to what lvals
+	% (if any) each variable will be needed in next. Opts gives
+	% the table of options; this is used to decide what expressions
+	% are considered constants.
+	%
 :- pred init_state(assoc_list(prog_var, lval)::in, set(prog_var)::in,
 	prog_varset::in, vartypes::in, stack_slots::in, abs_follow_vars::in,
 	option_table::in, var_locn_info::out) is det.
 
-%	reinit_state(VarLocs, !VarLocnInfo)
-%		Produces a new state of the VarLocnInfo in which the static
-%		and mostly static information (stack slot map, follow vars map,
-%		varset, option settings) comes from VarLocnInfo0 but the
-%		dynamic state regarding variable locations is thrown away
-%		and then rebuilt from the information in VarLocs, an
-%		association list of variables and lvals. The new state
-%		places the given variables at their corresponding locations.
-
+	% reinit_state(VarLocs, !VarLocnInfo)
+	%
+	% Produces a new state of the VarLocnInfo in which the static
+	% and mostly static information (stack slot map, follow vars map,
+	% varset, option settings) comes from VarLocnInfo0 but the
+	% dynamic state regarding variable locations is thrown away
+	% and then rebuilt from the information in VarLocs, an
+	% association list of variables and lvals. The new state
+	% places the given variables at their corresponding locations.
+	%
 :- pred reinit_state(assoc_list(prog_var, lval)::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	clobber_all_regs(OkToDeleteAny, !VarLocnInfo)
-%		Modifies the state VarLocnInfo0 to produce VarLocnInfo
-%		in which all variables stored in registers are clobbered.
-%		Aborts if this deletes the last record of the state of a
-%		variable unless OkToDeleteAny is `yes'.
-
+	% clobber_all_regs(OkToDeleteAny, !VarLocnInfo)
+	%
+	% Modifies the state VarLocnInfo0 to produce VarLocnInfo
+	% in which all variables stored in registers are clobbered.
+	% Aborts if this deletes the last record of the state of a
+	% variable unless OkToDeleteAny is `yes'.
+	%
 :- pred clobber_all_regs(bool::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	clobber_regs(Regs, !VarLocnInfo)
-%		Modifies the state VarLocnInfo0 to produce VarLocnInfo
-%		in which all variables stored in Regs (a list of lvals
-%		which should contain only registers) are clobbered.
-
+	% clobber_regs(Regs, !VarLocnInfo)
+	%
+	% Modifies the state VarLocnInfo0 to produce VarLocnInfo
+	% in which all variables stored in Regs (a list of lvals
+	% which should contain only registers) are clobbered.
+	%
 :- pred clobber_regs(list(lval)::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	set_magic_var_location(Var, Lval, !VarLocnInfo)
-%		Modifies VarLocnInfo0 to produce VarLocnInfo in which
-%		Var is *magically* stored in Lval. Does not care if Lval
-%		is already in use; it overwrites it with the new information.
-%		Used to implement the ends of erroneous branches.
-
+	% set_magic_var_location(Var, Lval, !VarLocnInfo)
+	%
+	% Modifies VarLocnInfo0 to produce VarLocnInfo in which
+	% Var is *magically* stored in Lval. Does not care if Lval
+	% is already in use; it overwrites it with the new information.
+	% Used to implement the ends of erroneous branches.
+	%
 :- pred set_magic_var_location(prog_var::in, lval::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	check_and_set_magic_var_location(Var, Lval, !VarLocnInfo)
-%		Modifies VarLocnInfo0 to produce VarLocnInfo in which
-%		Var is *magically* stored in Lval. (The caller usually
-%		generates code to perform this magic.) Aborts if Lval
-%		is already in use.
-
+	% check_and_set_magic_var_location(Var, Lval, !VarLocnInfo)
+	%
+	% Modifies VarLocnInfo0 to produce VarLocnInfo in which
+	% Var is *magically* stored in Lval. (The caller usually
+	% generates code to perform this magic.) Aborts if Lval
+	% is already in use.
+	%
 :- pred check_and_set_magic_var_location(prog_var::in, lval::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	lval_in_use(VarLocnInfo, Lval)
-%		Succeeds iff Lval, which should be a register or stack slot,
-%		holds (a path to) a variable or is otherwise reserved.
-
+	% lval_in_use(VarLocnInfo, Lval)
+	%
+	% Succeeds iff Lval, which should be a register or stack slot,
+	% holds (a path to) a variable or is otherwise reserved.
+	%
 :- pred lval_in_use(var_locn_info::in, lval::in) is semidet.
 
-%	var_becomes_dead(Var, FirstTime, !VarLocnInfo)
-%		Frees any code generator resources used by Var in VarLocnInfo0
-%		to produce VarLocnInfo. FirstTime should be no if this same
-%		operation may already have been executed on Var; otherwise,
-%		var_becomes_dead will throw an exception if it does
-%		not know about Var.
-
+	% var_becomes_dead(Var, FirstTime, !VarLocnInfo)
+	%
+	% Frees any code generator resources used by Var in VarLocnInfo0
+	% to produce VarLocnInfo. FirstTime should be no if this same
+	% operation may already have been executed on Var; otherwise,
+	% var_becomes_dead will throw an exception if it does
+	% not know about Var.
+	%
 :- pred var_becomes_dead(prog_var::in, bool::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	assign_var_to_var(Var, AssignedVar, !VarLocnInfo)
-%		Reflects the effect of the assignment Var := AssignedVar in the
-%		state of VarLocnInfo0 to yield VarLocnInfo.
-
+	% assign_var_to_var(Var, AssignedVar, !VarLocnInfo)
+	%
+	% Reflects the effect of the assignment Var := AssignedVar in the
+	% state of VarLocnInfo0 to yield VarLocnInfo.
+	%
 :- pred assign_var_to_var(prog_var::in, prog_var::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	assign_lval_to_var(Var, Lval, StaticCellInfo, Code, !VarLocnInfo)
-%		Reflects the effect of the assignment Var := lval(Lval) in the
-%		state of VarLocnInfo0 to yield VarLocnInfo; any code required
-%		to effect the assignment will be returned in Code.
-
+	% assign_lval_to_var(Var, Lval, StaticCellInfo, Code, !VarLocnInfo)
+	%
+	% Reflects the effect of the assignment Var := lval(Lval) in the
+	% state of VarLocnInfo0 to yield VarLocnInfo; any code required
+	% to effect the assignment will be returned in Code.
+	%
 :- pred assign_lval_to_var(prog_var::in, lval::in,
 	static_cell_info::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	assign_const_to_var(Var, ConstRval, !VarLocnInfo)
-%		Reflects the effect of the assignment Var := const(ConstRval)
-%		in the state of VarLocnInfo0 to yield VarLocnInfo.
-
+	% assign_const_to_var(Var, ConstRval, !VarLocnInfo)
+	%
+	% Reflects the effect of the assignment Var := const(ConstRval)
+	% in the state of VarLocnInfo0 to yield VarLocnInfo.
+	%
 :- pred assign_const_to_var(prog_var::in, rval::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	assign_expr_to_var(Var, Rval, Code, !VarLocnInfo)
-%		Generates code to execute the assignment Var := Expr, and
-%		updates the state of VarLocnInfo0 accordingly.
-%
-%		Expr must contain no lvals, although it may (and typically
-%		will) refer to the values of other variables through rvals
-%		of the form var(_).
-
+	% assign_expr_to_var(Var, Rval, Code, !VarLocnInfo)
+	%
+	% Generates code to execute the assignment Var := Expr, and
+	% updates the state of VarLocnInfo0 accordingly.
+	%
+	% Expr must contain no lvals, although it may (and typically
+	% will) refer to the values of other variables through rvals
+	% of the form var(_).
+	%
 :- pred assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, SizeInfo,
-%			TypeMsg, Code, !StaticCellInfo, !VarLocnInfo)
-%		Generates code to assign to Var a pointer, tagged by Ptag, to
-%		the cell whose contents are given by the other arguments,
-%		and updates the state of VarLocnInfo0 accordingly.
-%		If ReserveWordAtStart is yes, and the cell is allocated on
-%		the heap (rather than statically), then reserve an extra
-%		word immediately before the allocated object, for the
-%		garbage collector to use to hold a forwarding pointer.
-%		If SizeInfo is yes(SizeVal), then reserve an extra word
-%		immediately before the allocated object (regardless
-%		of whether it is allocated statically or dynamically),
-%		and initialize this word with the value determined by
-%		SizeVal.
-%		NOTE: ReserveWordAtStart and SizeInfo should not both be
-%		yes / yes(_), because that will cause an obvious conflict!
-
+	% assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, SizeInfo,
+	%	TypeMsg, Code, !StaticCellInfo, !VarLocnInfo)
+	%
+	% Generates code to assign to Var a pointer, tagged by Ptag, to
+	% the cell whose contents are given by the other arguments,
+	% and updates the state of VarLocnInfo0 accordingly.
+	% If ReserveWordAtStart is yes, and the cell is allocated on
+	% the heap (rather than statically), then reserve an extra
+	% word immediately before the allocated object, for the
+	% garbage collector to use to hold a forwarding pointer.
+	% If SizeInfo is yes(SizeVal), then reserve an extra word
+	% immediately before the allocated object (regardless
+	% of whether it is allocated statically or dynamically),
+	% and initialize this word with the value determined by
+	% SizeVal.
+	% NOTE: ReserveWordAtStart and SizeInfo should not both be
+	% yes / yes(_), because that will cause an obvious conflict!
+	%
 :- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
-	list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
-	code_tree::out, static_cell_info::in, static_cell_info::out,
-	var_locn_info::in, var_locn_info::out) is det.
+	list(maybe(rval))::in, maybe(term_size_value)::in,
+	string::in, code_tree::out, static_cell_info::in,
+	static_cell_info::out, var_locn_info::in, var_locn_info::out) is det.
 
-%	place_var(Var, Lval, Code, !VarLocnInfo)
-%		Produces Code and a modified version of VarLocnInfo0,
-%		VarLocnInfo which places the value of Var in Lval.
-
+	% place_var(Var, Lval, Code, !VarLocnInfo)
+	%
+	% Produces Code and a modified version of VarLocnInfo0,
+	% VarLocnInfo which places the value of Var in Lval.
+	%
 :- pred place_var(prog_var::in, lval::in, code_tree::out,
 		var_locn_info::in, var_locn_info::out) is det.
 
-%	place_vars(VarLocns, Code, !VarLocnInfo)
-%		Produces Code and a modified version of VarLocnInfo0,
-%		VarLocnInfo which places the value of each variable
-%		mentioned in VarLocns into the corresponding location.
-
+	% place_vars(VarLocns, Code, !VarLocnInfo)
+	%
+	% Produces Code and a modified version of VarLocnInfo0,
+	% VarLocnInfo which places the value of each variable
+	% mentioned in VarLocns into the corresponding location.
+	%
 :- pred place_vars(assoc_list(prog_var, lval)::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	produce_var(Var, Rval, Code, !VarLocnInfo)
-%		Return the preferred way to refer to the value of Var
-%		(which may be a const rval, or the value in an lval).
-%
-% 		If Var is currently a cached expression, then produce_var
-%		will generate Code to evaluate the expression and put it
-%		into an lval. (Since the code generator can ask for a variable
-%		to be produced more than once, this is necessary to prevent
-%		the expression, which may involve a possibly large number
-%		of operations, from being evaluated several times.) Otherwise,
-%		Code will be empty.
-
+	% produce_var(Var, Rval, Code, !VarLocnInfo)
+	%
+	% Return the preferred way to refer to the value of Var
+	% (which may be a const rval, or the value in an lval).
+	%
+	% If Var is currently a cached expression, then produce_var
+	% will generate Code to evaluate the expression and put it
+	% into an lval. (Since the code generator can ask for a variable
+	% to be produced more than once, this is necessary to prevent
+	% the expression, which may involve a possibly large number
+	% of operations, from being evaluated several times.) Otherwise,
+	% Code will be empty.
+	%
 :- pred produce_var(prog_var::in, rval::out, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	produce_var_in_reg(Var, Lval, Code, !VarLocnInfo)
-%		Produces a code fragment Code to evaluate Var if necessary
-%		and provide it as an Lval of the form reg(_).
-
+	% produce_var_in_reg(Var, Lval, Code, !VarLocnInfo)
+	%
+	% Produces a code fragment Code to evaluate Var if necessary
+	% and provide it as an Lval of the form reg(_).
+	%
 :- pred produce_var_in_reg(prog_var::in, lval::out, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	produce_var_in_reg_or_stack(Var, FollowVars, Lval, Code, !VarLocnInfo)
-%		Produces a code fragment Code to evaluate Var if necessary
-%		and provide it as an Lval of the form reg(_), stackvar(_),
-%		or framevar(_).
-
+	% produce_var_in_reg_or_stack(Var, FollowVars, Lval, Code, !VarLocnInfo)
+	%
+	% Produces a code fragment Code to evaluate Var if necessary
+	% and provide it as an Lval of the form reg(_), stackvar(_),
+	% or framevar(_).
+	%
 :- pred produce_var_in_reg_or_stack(prog_var::in, lval::out,
 	code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
-%	acquire_reg(Lval, !VarLocnInfo)
-%		Finds an unused register and marks it as 'in use'.
-
+	% acquire_reg(Lval, !VarLocnInfo)
+	%
+	% Finds an unused register and marks it as 'in use'.
+	%
 :- pred acquire_reg(lval::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	acquire_reg_require_given(Reg, Lval, !VarLocInfo)
-%		Marks Reg, which must be an unused register, as 'in use'.
-
+	% acquire_reg_require_given(Reg, Lval, !VarLocInfo)
+	%
+	% Marks Reg, which must be an unused register, as 'in use'.
+	%
 :- pred acquire_reg_require_given(lval::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	acquire_reg_prefer_given(Pref, Lval, !VarLocInfo)
-%		Finds an unused register, and marks it as 'in use'.
-%		If Pref itself is free, assigns that.
-
+	% acquire_reg_prefer_given(Pref, Lval, !VarLocInfo)
+	%
+	% Finds an unused register, and marks it as 'in use'.
+	% If Pref itself is free, assigns that.
+	%
 :- pred acquire_reg_prefer_given(int::in, lval::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	acquire_reg_start_at_given(Start, Lval, !VarLocInfo)
-%		Finds an unused register, and marks it as 'in use'.
-%		It starts the search at the one numbered Start,
-%		continuing towards higher register numbers.
-
+	% acquire_reg_start_at_given(Start, Lval, !VarLocInfo)
+	%
+	% Finds an unused register, and marks it as 'in use'.
+	% It starts the search at the one numbered Start,
+	% continuing towards higher register numbers.
+	%
 :- pred acquire_reg_start_at_given(int::in, lval::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	release_reg(Lval, !VarLocnInfo)
-%		Marks a previously acquired reg as no longer 'in use'.
-
+	% release_reg(Lval, !VarLocnInfo)
+	%
+	% Marks a previously acquired reg as no longer 'in use'.
+	%
 :- pred release_reg(lval::in, var_locn_info::in, var_locn_info::out) is det.
 
-%	lock_regs(N, Exceptions, !VarLocnInfo)
-%		Prevents registers r1 through rN from being reused, even if
-%		there are no variables referring to them, with the exceptions
-%		of the registers named in Exceptions, which however can only be
-%		used to store their corresponding variables. Should be followed
-%		by a call to unlock_regs.
-
+	% lock_regs(N, Exceptions, !VarLocnInfo)
+	%
+	% Prevents registers r1 through rN from being reused, even if
+	% there are no variables referring to them, with the exceptions
+	% of the registers named in Exceptions, which however can only be
+	% used to store their corresponding variables. Should be followed
+	% by a call to unlock_regs.
+	%
 :- pred lock_regs(int::in, assoc_list(prog_var, lval)::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	unlock_regs(!VarLocnInfo)
-%		Undoes a lock operation.
-
+	% unlock_regs(!VarLocnInfo)
+	%
+	% Undoes a lock operation.
+	%
 :- pred unlock_regs(var_locn_info::in, var_locn_info::out) is det.
 
-%	clear_r1(Code)
-%		Produces a code fragment Code to move whatever is in r1
-%		to some other register, if r1 is live.  This is used
-%		prior to semidet pragma c_codes.
-
+	% clear_r1(Code)
+	%
+	% Produces a code fragment Code to move whatever is in r1
+	% to some other register, if r1 is live.  This is used
+	% prior to semidet pragma c_codes.
+	%
 :- pred clear_r1(code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
-%	materialize_vars_in_lval(Lval, FinalLval, Code,
-%			!VarLocnInfo)
-%		For every variable in Lval, substitutes the value of the
-%		variable and returns it as FinalLval. If we need to save the
-%		values of some of the substituted variables somewhere so as to
-%		prevent them from being evaluated again (and again ...), the
-%		required code will be returned in Code.
-
+	% materialize_vars_in_lval(Lval, FinalLval, Code, !VarLocnInfo)
+	%
+	% For every variable in Lval, substitutes the value of the
+	% variable and returns it as FinalLval. If we need to save the
+	% values of some of the substituted variables somewhere so as to
+	% prevent them from being evaluated again (and again ...), the
+	% required code will be returned in Code.
+	%
 :- pred materialize_vars_in_lval(lval::in, lval::out, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	get_var_locations(VarLocnInfo, Locations)
-%		Returns a map from each live variable that occurs in
-%		VarLocnInfo to the set of locations in which it may be found
-%		(which may be empty, if the variable's value is either a known
-%		constant, or an as-yet unevaluated expression).
-
+	% get_var_locations(VarLocnInfo, Locations)
+	%
+	% Returns a map from each live variable that occurs in
+	% VarLocnInfo to the set of locations in which it may be found
+	% (which may be empty, if the variable's value is either a known
+	% constant, or an as-yet unevaluated expression).
+	%
 :- pred get_var_locations(var_locn_info::in, map(prog_var, set(lval))::out)
 	is det.
 
-%	get_stack_slots(VarLocnInfo, StackSlots)
-%		Returns the table mapping each variable to its stack slot
-%		(if any).
-
+	% get_stack_slots(VarLocnInfo, StackSlots)
+	%
+	% Returns the table mapping each variable to its stack slot
+	% (if any).
+	%
 :- pred get_stack_slots(var_locn_info::in, stack_slots::out) is det.
 
-%	get_follow_vars(VarLocnInfo, FollowVars)
-%		Returns the table mapping each variable to the lval (if any)
-%		where it is desired next.
-
+	% get_follow_vars(VarLocnInfo, FollowVars)
+	%
+	% Returns the table mapping each variable to the lval (if any)
+	% where it is desired next.
+	%
 :- pred get_follow_var_map(var_locn_info::in, abs_follow_vars_map::out) is det.
 
-%	get_next_non_reserved(VarLocnInfo, NonRes)
-%		Returns the number of the first register which is free for
-%		general use. It does not reserve the register.
-
+	% get_next_non_reserved(VarLocnInfo, NonRes)
+	%
+	% Returns the number of the first register which is free for
+	% general use. It does not reserve the register.
+	%
 :- pred get_next_non_reserved(var_locn_info::in, int::out) is det.
 
-%	set_follow_vars(FollowVars)
-%		Sets the table mapping each variable to the lval (if any)
-%		where it is desired next, and the number of the first
-%		non-reserved register.
-
+	% set_follow_vars(FollowVars)
+	%
+	% Sets the table mapping each variable to the lval (if any)
+	% where it is desired next, and the number of the first
+	% non-reserved register.
+	%
 :- pred set_follow_vars(abs_follow_vars::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	max_reg_in_use(MaxReg)
-%		Returns the number of the highest numbered rN register in use.
-
+	% max_reg_in_use(MaxReg)
+	%
+	% Returns the number of the highest numbered rN register in use.
+	%
 :- pred max_reg_in_use(var_locn_info::in, int::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -811,8 +843,8 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals0, SizeInfo,
 	).
 
 :- pred assign_dynamic_cell_to_var(prog_var::in, bool::in, tag::in,
-	list(maybe(rval))::in, maybe(int)::in, string::in, code_tree::out,
-	var_locn_info::in, var_locn_info::out) is det.
+	list(maybe(rval))::in, maybe(int)::in, string::in,
+	code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
 assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeOffset,
 		TypeMsg, Code, !VLI) :-
@@ -821,17 +853,21 @@ assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeOffset,
 	select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
 	get_var_name(!.VLI, Var, VarName),
 	list__length(Vector, Size),
-	( ReserveWordAtStart = yes ->
-		( MaybeOffset = yes(_) ->
+	(
+		ReserveWordAtStart = yes,
+		(
+			MaybeOffset = yes(_),
 			% Accurate GC and term profiling both want to own
 			% the word before this object
 			sorry(this_file, "accurate GC combined with " ++
 				"term size profiling")
 		;
+			MaybeOffset = no,
 			TotalOffset = yes(1)
 		),
 		TotalSize = Size + 1
 	;
+		ReserveWordAtStart = no,
 		TotalOffset = MaybeOffset,
 		TotalSize = Size
 	),
