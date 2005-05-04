@@ -40,9 +40,9 @@ main(!IO) :-
 
 :- pred test_non(int::in, int::in, int::out) is nondet.
 :- pragma memo(test_non/3).
-
+:- pragma promise_pure(test_non/3).
 test_non(A, B, C) :-
-	marker("non", A, B, Zero),
+	impure marker("non", A, B, Zero),
 	( A = 1 ->
 		(
 			C = Zero + (A * 100) + (B * 10)
@@ -55,20 +55,19 @@ test_non(A, B, C) :-
 
 :- pred test_multi(int::in, int::in, int::out) is multi.
 :- pragma memo(test_multi/3).
-
+:- pragma promise_pure(test_multi/3).
 test_multi(A, B, C) :-
-	marker("multi", A, B, Zero),
+	impure marker("multi", A, B, Zero),
 	(
 		C = Zero + (A * 100) + (B * 10)
 	;
 		C = Zero + (B * 100) + (A * 10)
 	).
 
-:- pred marker(string::in, int::in, int::in, int::out) is det.
-
+:- impure pred marker(string::in, int::in, int::in, int::out) is det.
 :- pragma foreign_proc("C",
 	marker(S::in, A::in, B::in, X::out),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury],
 "
 	printf(""marker executed: %s %d %d\\n"", S, A, B);
 	X = 0;
