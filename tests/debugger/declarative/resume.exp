@@ -192,19 +192,21 @@ mdb> break wrapper
  0: + stop  interface pred resume.wrapper/6-0 (semidet)
 mdb> c
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
-mdb> dd -r
+mdb> dd -r -s divide_and_query
 l([26, 27, 28, 29, 30]) = 30
 Valid? n
-l([27, 28, 29, 30]) = 30
-Valid? n
-l([28, 29, 30]) = 30
-Valid? n
 l([29, 30]) = 30
-Valid? n
-l([30]) = 30
-Valid? n
-Found incorrect contour:
-l([30]) = 30
-Is this a bug? y
-     E23:    C16 EXIT func resume.l/1-0 (semidet)
+Valid? q
+Diagnosis aborted.
+      E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
+mdb> dd -r
+l([29, 30]) = 30
+Valid? q
+Diagnosis aborted.
+      E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
+mdb> dd -rs top_down
+l([27, 28, 29, 30]) = 30
+Valid? q
+Diagnosis aborted.
+      E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
 mdb> quit -y

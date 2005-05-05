@@ -90,11 +90,11 @@ pd
 delete *
 break wrapper
 c
+dd -r -s divide_and_query
+n
+q
 dd -r
-n
-n
-n
-n
-n
-y
+q
+dd -rs top_down
+q
 quit -y

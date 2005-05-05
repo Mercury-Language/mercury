@@ -4234,10 +4234,7 @@ they are returned to the event at which the @samp{dd} command was given.
 Currently the declarative debugger can operate in one of two modes when
 searching for a bug.  The mode to use can be specified as an option to the
 @samp{dd} command.  See @ref{Declarative debugging mdb commands} for
-information on how to do this.  The specified search mode will always be used
-unless a subterm is marked or the user hasn't answered `no' to any questions
-yet (In which case top-down search is used until `no' is answered to at least
-one question).
+information on how to do this.
 
 @subsubsection Top-down Search
 
@@ -4260,6 +4257,23 @@ between the event where the @samp{dd} command was given and the corresponding
 where top-down search would require an unreasonably large number of questions
 to be answered.  However, the questions may appear to come from unrelated parts
 of the program which can make them harder to answer.
+
+@subsubsection When different search modes are used
+
+If a search mode is given when invoking the declarative debugger then that
+search mode will be used, unless (a) a subterm is marked during the session,
+in which case the subterm is tracked to its origin, or (b) the user 
+hasn't answered @samp{no} to any questions yet,
+in which case top-down search is used until @samp{no} is answered to at least
+one question.
+
+If you do not specify a search mode when giving the @samp{dd} command then the
+behaviour depends on wether the @samp{--resume} option is present.  If it is
+then the previous search mode will be used, otherwise top-down search will
+be used.
+
+You can check the search mode used to find a particular question by issuing
+an @samp{info} command at the question prompt in the declarative debugger.
 
 @node Improving the search
 @subsection Improving the search

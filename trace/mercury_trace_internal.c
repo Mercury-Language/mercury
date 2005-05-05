@@ -597,7 +597,8 @@ static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_Integer *depth_step_size,
-                        MR_Decl_Search_Mode *search_mode, MR_bool *new_session,
+                        MR_Decl_Search_Mode *search_mode, 
+                        MR_bool *search_mode_was_set, MR_bool *new_session,
                         char ***words, int *word_count, const char *cat,
                         const char *item);
 static  MR_bool     MR_trace_options_type_ctor(MR_bool *print_rep,
@@ -5654,6 +5655,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Code **jumpaddr)
 {
     MR_Decl_Search_Mode search_mode;
+    MR_bool             search_mode_was_set = MR_FALSE;
     MR_bool             new_session = MR_TRUE;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
@@ -5662,8 +5664,8 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_trace_decl_in_dd_dd_mode = MR_FALSE;
 
     if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-        &MR_edt_depth_step_size, &search_mode, &new_session,
-        &words, &word_count, "dd", "dd"))
+        &MR_edt_depth_step_size, &search_mode, &search_mode_was_set, 
+        &new_session, &words, &word_count, "dd", "dd"))
     {
         ; /* the usage message has already been printed */
     } else if (word_count == 1) {
@@ -5673,9 +5675,11 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
                 "mdb: dd doesn't work after `unhide_events on'.\n");
             return KEEP_INTERACTING;
         }
-
-        MR_trace_decl_set_fallback_search_mode(search_mode);
-
+        if (search_mode_was_set) {
+            MR_trace_decl_set_fallback_search_mode(search_mode);
+        } else if (new_session) {
+            MR_trace_decl_set_fallback_search_mode(search_mode);
+        }
         if (MR_trace_start_decl_debug(MR_TRACE_DECL_DEBUG,
             NULL, new_session, cmd, event_info, event_details, jumpaddr))
         {
@@ -5696,16 +5700,17 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Trace_Mode       trace_mode;
     const char          *filename;
     MR_Decl_Search_Mode search_mode;
+    MR_bool             search_mode_was_set = MR_FALSE;
     MR_bool             new_session = MR_TRUE;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
     MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
-    search_mode = MR_trace_get_default_search_mode();
+    search_mode = (MR_Word) -1;
     MR_trace_decl_in_dd_dd_mode = MR_TRUE;
 
     if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-        &MR_edt_depth_step_size, &search_mode, &new_session,
-        &words, &word_count, "dd", "dd_dd"))
+        &MR_edt_depth_step_size, &search_mode, &search_mode_was_set,
+        &new_session, &words, &word_count, "dd", "dd_dd"))
     {
         ; /* the usage message has already been printed */
     } else if (word_count <= 2) {
@@ -5716,9 +5721,11 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
             trace_mode = MR_TRACE_DECL_DEBUG;
             filename = (const char *) NULL;
         }
-
-        MR_trace_decl_set_fallback_search_mode(search_mode);
-
+        if (search_mode_was_set) {
+            MR_trace_decl_set_fallback_search_mode(search_mode);
+        } else if (new_session) {
+            MR_trace_decl_set_fallback_search_mode(search_mode);
+        }
         if (MR_trace_start_decl_debug(trace_mode, filename,
             new_session, cmd, event_info, event_details, jumpaddr))
         {
@@ -6964,7 +6971,8 @@ static struct MR_option MR_trace_dd_opts[] =
 static MR_bool
 MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
     MR_Integer *depth_step_size, MR_Decl_Search_Mode *search_mode,
-    MR_bool *new_session, char ***words, int *word_count, const char *cat,
+    MR_bool *search_mode_was_set, MR_bool *new_session, 
+    char ***words, int *word_count, const char *cat,
     const char *item)
 {
     int c;
@@ -6987,9 +6995,11 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 break;
 
             case 's':
-                if (! MR_trace_is_valid_search_mode_string(MR_optarg,
+                if (MR_trace_is_valid_search_mode_string(MR_optarg,
                     search_mode))
                 {
+                    *search_mode_was_set = MR_TRUE;
+                } else {
                     MR_trace_usage(cat, item);
                     return MR_FALSE;
                 }

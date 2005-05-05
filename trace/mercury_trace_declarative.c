@@ -1369,17 +1369,21 @@ MR_bool
 MR_trace_is_valid_search_mode_string(const char *search_mode_string,
 	MR_Decl_Search_Mode *search_mode)
 {
-	if (MR_streq(search_mode_string, "top_down")) {
-		*search_mode =
-			MR_DD_decl_top_down_search_mode();
-		return MR_TRUE;
-	} else if (MR_streq(search_mode_string, "divide_and_query")) {
-		*search_mode =
-			MR_DD_decl_divide_and_query_search_mode();
-		return MR_TRUE;
-	} else {
-		return MR_FALSE;
-	}
+	MR_bool	is_valid;
+	
+	MR_TRACE_CALL_MERCURY(
+		if (MR_streq(search_mode_string, "top_down")) {
+			*search_mode = MR_DD_decl_top_down_search_mode();
+			is_valid = MR_TRUE;
+		} else if (MR_streq(search_mode_string, "divide_and_query")) {
+			*search_mode = 
+				MR_DD_decl_divide_and_query_search_mode();
+			is_valid = MR_TRUE;
+		} else {
+			is_valid = MR_FALSE;
+		}
+	);
+	return is_valid;
 }
 
 MR_Decl_Search_Mode
