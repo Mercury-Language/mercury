@@ -23,12 +23,11 @@ MERCURY_MAIN_MODULES=$(ANALYSIS_LIB_NAME)
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params.
 
-MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
-		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+MLFLAGS += -R$(FINAL_INSTALL_MERC_LIB_DIR) -R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 
-MTAGS	=	$(SCRIPTS_DIR)/mtags
+MTAGS	= $(SCRIPTS_DIR)/mtags
 
-LN	=	ln
+LN	= ln
 
 #-----------------------------------------------------------------------------#
 
@@ -47,6 +46,8 @@ DLL_DEF_LIB =
 
 endif
 
+MCFLAGS	     += --flags ANALYSIS_FLAGS $(CONFIG_OVERRIDE)
+
 #-----------------------------------------------------------------------------#
 
 # targets
@@ -56,7 +57,7 @@ all:	library $(TAGS_FILE_EXISTS)
 
 DEPENDS = $(ANALYSIS_LIB_NAME).depend
 .PHONY: depend
-depend:	$(DEPENDS)
+depend:	ANALYSIS_FLAGS $(DEPENDS)
 
 .PHONY: check
 check:	$(ANALYSIS_LIB_NAME).check
@@ -110,6 +111,11 @@ endif
 
 .PHONY: library
 library: lib$(ANALYSIS_LIB_NAME)
+
+#-----------------------------------------------------------------------------#
+
+realclean_local:
+	rm -f ANALYSIS_FLAGS ANALYSIS_FLAGS.date
 
 #-----------------------------------------------------------------------------#
 

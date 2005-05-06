@@ -40,7 +40,7 @@ Mmake.deep.params: ;
 #-----------------------------------------------------------------------------#
 
 MLFLAGS += --shared
-MCFLAGS += --linkage shared
+MCFLAGS      += --flags DEEP_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
@@ -49,6 +49,8 @@ nothing:
 
 .PHONY: depend
 depend:	$(DEPEND)
+
+$(DEPEND): DEEP_FLAGS 
 
 .PHONY: all
 all:	$(ALL_DEEP_MODULES) $(TAGS_FILE_EXISTS)
@@ -122,7 +124,7 @@ cs: $(mdprof_dump.cs) $(cs_subdir)mdprof_dump_init.c
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f tags
+	rm -f tags DEEP_FLAGS DEEP_FLAGS.date
 
 #-----------------------------------------------------------------------------#
 

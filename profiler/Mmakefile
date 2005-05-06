@@ -20,12 +20,14 @@ MERCURY_MAIN_MODULES=mercury_profile
 #-----------------------------------------------------------------------------#
 
 MLFLAGS += --shared
-MCFLAGS += --linkage shared
+MCFLAGS += --flags PROF_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
 depend:	mercury_profile.depend
+
+mercury_profile.depend: PROF_FLAGS
 
 .PHONY: all
 all:	mercury_profile $(TAGS_FILE_EXISTS)
@@ -79,7 +81,7 @@ ils: $(mercury_profile.ils)
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f tags
+	rm -f tags PROF_FLAGS PROF_FLAGS.date
 
 #-----------------------------------------------------------------------------#
 

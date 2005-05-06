@@ -9,144 +9,144 @@
 usage="\
 Usage: $0 [options]
 Options:
-	-d <dirname>, --test-dir <dirname>
-		Run the tests in directory <dirname>. Multiple such options
-		may be given, in which case the tests in all the named
-		directories will be run. In the absence of any such options,
-		all tests in all directories will be run (unless testing
-		as a whole is disabled).
+    -d <dirname>, --test-dir <dirname>
+        Run the tests in directory <dirname>. Multiple such options
+        may be given, in which case the tests in all the named
+        directories will be run. In the absence of any such options,
+        all tests in all directories will be run (unless testing
+        as a whole is disabled).
     -s <testname>, --specified-test <testname>
-	    Run only the tests whose names are specified as arguments of this
-		option, which may be given more than once. The test names must include
-		the directory name component.
-	-f, --failing-tests
-		Run only the tests which failed on the last run, as recorded in the
-		FAILED_TESTS files in the various test directories. Meaningful only
-		in the absence of -s options.
-	--error-file
-		Run only the tests which failed on the last run, as recorded in the
-		tests/runtests.errs file. Meaningful only in the absence of -s and -f
-		options.
-	-e, --extras
-		Test the programs in the extras directory.
-	-h, --help
-		Display this usage message.
-	-j <num-jobs>, --jobs <num-jobs>
-		Run using <num-jobs> different parallel processes.
-	-k, --keep-objs
-		Keep the stage 2 object files even if stage 2 is successful.
-	-m <mmake-args>, --mmake-opts <mmake-args>
-		Pass <mmake-args> as options to \`mmake'.
-	-M <make-args>, --make-opts <make-args>
-		Pass <make-args> as options to \`make'.
-	-o <filename>, --output-file <filename>
-		Output results to <filename>.
-	--target <target>
-		Specify the target to use in creating stages 2 and 3.
-	-G <grade>, --grade <grade>
-		Specify the grade to use in creating stages 2 and 3.
-		The tests will also be executed in this grade, unless
-		the --test-grade option says otherwise. Implies -r -g.
-	--gradedir <grade>
-		Same as '--grade <grade>', except that it also causes
-		the grade name to be included in the names of the stage 2
-		and stage 3 directories.  This can be useful if you have
-		lots of disk space and want to run bootchecks in several
-		grades at once.  Note however that the name of the tests
-		directory doesn't include the grade, so you might also
-		need to use --no-test-suite (see below) for this to work.
-	--test-grade <grade>
-		Specify the grade to use in executing the tests.
-		If this is the same as the grade of stages 2 and 3, then
-		we use the stage 2 runtime, library etc for the tests.
-		Otherwise, we use the stage 1 runtime, library etc,
-		and trust that these are compatible with the given grade.
-		Implies -r -g.
-	-g, --copy-boehm-gc
-		Copy the boehm_gc directory instead of linking it.
-		This is necessary if one wants to bootcheck a grade
-		that is not compatible with the standard one.
-	-r, --copy-runtime
-		Copy the runtime directory instead of linking it.
-		This is necessary if one wants to bootcheck a grade
-		that is not compatible with the standard one.
-	-p, --copy-profilers
-		Copy the profiler directories instead of linking them.
-		This is sometimes necessary for bootstrapping changes.
-	-b-, --no-bootcheck
-		Do not run the bootstrap check; execute the test suite and/or
-		the extras only. This option requires a previous bootstrap
-		check to have left a working stage 2 directory.
-	--no-check-namespace
-		Don't build the check_namespace targets in the runtime,
-		trace, browser, mdbcomp and library directories.
-	-t-, --no-test-suite
-		By default, bootcheck will also run the test quite.
-		This option prevents that.
-	--skip-stage-2
-		Take the existing stage 2 directory as given; do not run mmake
-		in it.
-	-2, --keep-stage-2
-		Don't rebuild the stage 2 directory from scratch after
-		building stage 1. Instead use the existing stage 2 directory
-		as the starting point for mmake.
-	-3, --keep-stage-3
-		Don't rebuild the stage 3 directory from scratch after
-		building stage 1. Instead use the existing stage 3 directory
-		as the starting point for mmake.
-	--test-split-library
-		Build the split version of the stage 2 library.
-	--test-params
-		When executing the test suite, use the stage 2 Mmake.params
-		file.
-	--stop-after-stage-2
-		Stop after building stage 2, even if it is successful.
-	--use-subdirs
-		Assume intermediate files are built in subdirectories.
-		(Same as the \`--use-subdirs' option to mmake and mmc.)
-	--use-mmc-make
-		Use \`mmc --make' to build the files.
-		(Same as the \`--use-mmc-make' option to mmake.)
-	--compile-times
-		Report information about compilation times in the stage 2
-		library and compiler directories.
-	--no-write-out-profile-data
-		When doing bootcheck in a deep profiling grade, disable the
-		writing out of profile data files. This makes the bootcheck
-		faster, but avoiding writing out the profiling data also avoids
-		the checks on its integrity.
-	--type-stats TYPE_STATS_FILE_NAME
-		Collect statistics about the builtin operations (unify, index
-		and compare) performed on various types. The argument of this
-		option should give the absolute pathname of the file in which
-		the runtime has been configured to accumulate statistics. The
-		statistics derived from the creation of the stage 3 compiler
-		will be put TYPE_STATS_FILE_NAME.stage3.$$, while the
-		statistics derived from the execution of the test suite will
-		be put into TYPE_STATS_FILE_NAME.tests.$$. Both filenames will
-		be reported in the output of bootcheck, to allow the statistics
-		files to be matched with the bootcheck that created them.
-	--trace-count
-		Collect counts of the number of times each label is executed
-		in modules compiled with debugging.
-	-W, --windows
-		Translate paths into the Microsoft Windows format and use the
-		extension \`.lib' for libraries. This option also implies
-		--no-sym-links.
-	--no-sym-links
-		Use this option on systems which don't support symbolic links.
-	--disable-debug-libs
-		Make the trace and browser libraries empty. This can be useful
-		when trying to track down the reason why they are being linked
-		into the compiler in the first place.
-	--keep-deep-data
-		Keep the Deep.data files resulting from the bootcheck. The
-		usual behavior is to delete them in the interest of conserving
-		disk space.
-	--progress
-		Create a timestamp file when finishing the execution of each test case,
-		to allow the user to monitor the bootcheck's progress. The timestamp
-		files will have names of the form .date.<testname>.
+        Run only the tests whose names are specified as arguments of this
+        option, which may be given more than once. The test names must include
+        the directory name component.
+    -f, --failing-tests
+        Run only the tests which failed on the last run, as recorded in the
+        FAILED_TESTS files in the various test directories. Meaningful only
+        in the absence of -s options.
+    --error-file
+        Run only the tests which failed on the last run, as recorded in the
+        tests/runtests.errs file. Meaningful only in the absence of -s and -f
+        options.
+    -e, --extras
+        Test the programs in the extras directory.
+    -h, --help
+        Display this usage message.
+    -j <num-jobs>, --jobs <num-jobs>
+        Run using <num-jobs> different parallel processes.
+    -k, --keep-objs
+        Keep the stage 2 object files even if stage 2 is successful.
+    -m <mmake-args>, --mmake-opts <mmake-args>
+        Pass <mmake-args> as options to \`mmake'.
+    -M <make-args>, --make-opts <make-args>
+        Pass <make-args> as options to \`make'.
+    -o <filename>, --output-file <filename>
+        Output results to <filename>.
+    --target <target>
+        Specify the target to use in creating stages 2 and 3.
+    -G <grade>, --grade <grade>
+        Specify the grade to use in creating stages 2 and 3.
+        The tests will also be executed in this grade, unless
+        the --test-grade option says otherwise. Implies -r -g.
+    --gradedir <grade>
+        Same as '--grade <grade>', except that it also causes
+        the grade name to be included in the names of the stage 2
+        and stage 3 directories.  This can be useful if you have
+        lots of disk space and want to run bootchecks in several
+        grades at once.  Note however that the name of the tests
+        directory doesn't include the grade, so you might also
+        need to use --no-test-suite (see below) for this to work.
+    --test-grade <grade>
+        Specify the grade to use in executing the tests.
+        If this is the same as the grade of stages 2 and 3, then
+        we use the stage 2 runtime, library etc for the tests.
+        Otherwise, we use the stage 1 runtime, library etc,
+        and trust that these are compatible with the given grade.
+        Implies -r -g.
+    -g, --copy-boehm-gc
+        Copy the boehm_gc directory instead of linking it.
+        This is necessary if one wants to bootcheck a grade
+        that is not compatible with the standard one.
+    -r, --copy-runtime
+        Copy the runtime directory instead of linking it.
+        This is necessary if one wants to bootcheck a grade
+        that is not compatible with the standard one.
+    -p, --copy-profilers
+        Copy the profiler directories instead of linking them.
+        This is sometimes necessary for bootstrapping changes.
+    -b-, --no-bootcheck
+        Do not run the bootstrap check; execute the test suite and/or
+        the extras only. This option requires a previous bootstrap
+        check to have left a working stage 2 directory.
+    --no-check-namespace
+        Don't build the check_namespace targets in the runtime,
+        trace, browser, mdbcomp and library directories.
+    -t-, --no-test-suite
+        By default, bootcheck will also run the test quite.
+        This option prevents that.
+    --skip-stage-2
+        Take the existing stage 2 directory as given; do not run mmake
+        in it.
+    -2, --keep-stage-2
+        Don't rebuild the stage 2 directory from scratch after
+        building stage 1. Instead use the existing stage 2 directory
+        as the starting point for mmake.
+    -3, --keep-stage-3
+        Don't rebuild the stage 3 directory from scratch after
+        building stage 1. Instead use the existing stage 3 directory
+        as the starting point for mmake.
+    --test-split-library
+        Build the split version of the stage 2 library.
+    --test-params
+        When executing the test suite, use the stage 2 Mmake.params
+        file.
+    --stop-after-stage-2
+        Stop after building stage 2, even if it is successful.
+    --use-subdirs
+        Assume intermediate files are built in subdirectories.
+        (Same as the \`--use-subdirs' option to mmake and mmc.)
+    --use-mmc-make
+        Use \`mmc --make' to build the files.
+        (Same as the \`--use-mmc-make' option to mmake.)
+    --compile-times
+        Report information about compilation times in the stage 2
+        library and compiler directories.
+    --no-write-out-profile-data
+        When doing bootcheck in a deep profiling grade, disable the
+        writing out of profile data files. This makes the bootcheck
+        faster, but avoiding writing out the profiling data also avoids
+        the checks on its integrity.
+    --type-stats TYPE_STATS_FILE_NAME
+        Collect statistics about the builtin operations (unify, index
+        and compare) performed on various types. The argument of this
+        option should give the absolute pathname of the file in which
+        the runtime has been configured to accumulate statistics. The
+        statistics derived from the creation of the stage 3 compiler
+        will be put TYPE_STATS_FILE_NAME.stage3.$$, while the
+        statistics derived from the execution of the test suite will
+        be put into TYPE_STATS_FILE_NAME.tests.$$. Both filenames will
+        be reported in the output of bootcheck, to allow the statistics
+        files to be matched with the bootcheck that created them.
+    --trace-count
+        Collect counts of the number of times each label is executed
+        in modules compiled with debugging.
+    -W, --windows
+        Translate paths into the Microsoft Windows format and use the
+        extension \`.lib' for libraries. This option also implies
+        --no-sym-links.
+    --no-sym-links
+        Use this option on systems which don't support symbolic links.
+    --disable-debug-libs
+        Make the trace and browser libraries empty. This can be useful
+        when trying to track down the reason why they are being linked
+        into the compiler in the first place.
+    --keep-deep-data
+        Keep the Deep.data files resulting from the bootcheck. The
+        usual behavior is to delete them in the interest of conserving
+        disk space.
+    --progress
+        Create a timestamp file when finishing the execution of each test case,
+        to allow the user to monitor the bootcheck's progress. The timestamp
+        files will have names of the form .date.<testname>.
 "
 
 unset WORKSPACE
@@ -163,13 +163,13 @@ outfile=""
 runtests=true
 do_bootcheck=true
 if test -f /bin/cygwin1.dll; then
-	# Don't run check_namespace on Cygwin, unless explicitly asked,
-	# because the `-nostdinc' option doesn't work with gcc 2.95 on Cygwin.
-	# (This has been fixed in later versions of gcc, e.g. 3.2, so
-	# we should reenable this at some point...)
-	check_namespace=false
+    # Don't run check_namespace on Cygwin, unless explicitly asked,
+    # because the `-nostdinc' option doesn't work with gcc 2.95 on Cygwin.
+    # (This has been fixed in later versions of gcc, e.g. 3.2, so
+    # we should reenable this at some point...)
+    check_namespace=false
 else
-	check_namespace=true
+    check_namespace=true
 fi
 grade=
 use_gradedir=false
@@ -186,11 +186,11 @@ keep_stage_3=false
 stop_after_stage_2=false
 windows=false
 use_cp=false
-A=a		# the extension for libraries
+A=a     # the extension for libraries
 if test -d compiler/Mercury; then
-	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
+    use_subdirs=${MMAKE_USE_SUBDIRS=yes}
 else
-	use_subdirs=${MMAKE_USE_SUBDIRS=no}
+    use_subdirs=${MMAKE_USE_SUBDIRS=no}
 fi
 use_mmc_make=no
 compile_times=false
@@ -203,17 +203,17 @@ progress=false
 
 if test -f .KEEP_OBJS
 then
-	keep_objs=true
+    keep_objs=true
 fi
 
 if test -f .BOOT_GRADE
 then
-	grade=`cat .BOOT_GRADE`
+    grade=`cat .BOOT_GRADE`
 fi
 
 if test -f .NO_WRITE_DEEP
 then
-	write_out_profile_data=false
+    write_out_profile_data=false
 fi
 
 # If you change these, you will also need to change the files indicated
@@ -226,169 +226,169 @@ MDBCOMP_LIB_NAME=mer_mdbcomp
 ANALYSIS_LIB_NAME=mer_analysis
 
 while test $# -gt 0; do
-	case "$1" in
+    case "$1" in
 
-	-b-|--no-bootcheck)
-		do_bootcheck=false ;;
+    -b-|--no-bootcheck)
+        do_bootcheck=false ;;
 
-	-d|--test-dir)
-		testdirs="$testdirs $2"; shift ;;
-	-d*)
-		testdirs="$testdirs ` expr $1 : '-d\(.*\)' `"; ;;
+    -d|--test-dir)
+        testdirs="$testdirs $2"; shift ;;
+    -d*)
+        testdirs="$testdirs ` expr $1 : '-d\(.*\)' `"; ;;
 
-	-e|--extras)
-		extras=true ;;
+    -e|--extras)
+        extras=true ;;
 
-	-s|--specified-tests)
-		specified_tests_only="$specified_tests_only $2"; shift ;;
+    -s|--specified-tests)
+        specified_tests_only="$specified_tests_only $2"; shift ;;
 
-	-f|--failing-tests)
-		failing_tests_only=true ;;
+    -f|--failing-tests)
+        failing_tests_only=true ;;
 
-	--error-file)
-		error_file_only=true ;;
+    --error-file)
+        error_file_only=true ;;
 
-	-h|--help)
-		echo "$usage"
-		exit 0 ;;
+    -h|--help)
+        echo "$usage"
+        exit 0 ;;
 
-	-j|--jobs)
-		jfactor="-j$2"; shift ;;
-	-j*)
-		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
-	--jobs*)
-		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+    -j|--jobs)
+        jfactor="-j$2"; shift ;;
+    -j*)
+        jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
+    --jobs*)
+        jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
 
-	-k|--keep-objs)
-		keep_objs=true ;;
+    -k|--keep-objs)
+        keep_objs=true ;;
 
-	-m|--mmake|--mmake-opts)
-		mmake_opts="$mmake_opts $2"; shift ;;
-	-M|--make-opts)
-		make_opts="$make_opts $2"; shift ;;
+    -m|--mmake|--mmake-opts)
+        mmake_opts="$mmake_opts $2"; shift ;;
+    -M|--make-opts)
+        make_opts="$make_opts $2"; shift ;;
 
-	-o|--output-file)
-		outfile="$2"; shift ;;
-	-o*)
-		outfile="` expr $1 : '-o\(.*\)' `"; ;;
+    -o|--output-file)
+        outfile="$2"; shift ;;
+    -o*)
+        outfile="` expr $1 : '-o\(.*\)' `"; ;;
 
-	--target)
-		case "$2" in
-		c|asm)	target="$2"; shift ;;
-		*)	echo "unknown target \`$2'" 1>&2; exit 1 ;;
-		esac
-		;;
+    --target)
+        case "$2" in
+        c|asm)  target="$2"; shift ;;
+        *)  echo "unknown target \`$2'" 1>&2; exit 1 ;;
+        esac
+        ;;
 
-	-G|--grade)
-		grade="$2"; shift ;;
-	-G*)
-		grade="` expr $1 : '-G\(.*\)' `"; ;;
+    -G|--grade)
+        grade="$2"; shift ;;
+    -G*)
+        grade="` expr $1 : '-G\(.*\)' `"; ;;
 
-	--gradedir)
-		use_gradedir=true; grade="$2"; shift ;;
+    --gradedir)
+        use_gradedir=true; grade="$2"; shift ;;
 
-	--test-grade)
-		test_grade="$2"; shift ;;
+    --test-grade)
+        test_grade="$2"; shift ;;
 
-	--test-split-library)
-		test_split_library=true ;;
+    --test-split-library)
+        test_split_library=true ;;
 
-	-r|--copy-runtime)
-		copy_runtime=true ;;
+    -r|--copy-runtime)
+        copy_runtime=true ;;
 
-	-g|--copy-boehm-gc)
-		copy_boehm_gc=true ;;
+    -g|--copy-boehm-gc)
+        copy_boehm_gc=true ;;
 
-	-p|--copy-profilers)
-		copy_profilers=true ;;
+    -p|--copy-profilers)
+        copy_profilers=true ;;
 
-	--check-namespace)
-		check_namespace=true ;;
-	--no-check-namespace)
-		check_namespace=false ;;
+    --check-namespace)
+        check_namespace=true ;;
+    --no-check-namespace)
+        check_namespace=false ;;
 
-	-t-|--no-test-suite)
-		runtests=false ;;
+    -t-|--no-test-suite)
+        runtests=false ;;
 
-	--skip-stage-2)
-		keep_stage_2=true
-		mmake_stage_2=false ;;
+    --skip-stage-2)
+        keep_stage_2=true
+        mmake_stage_2=false ;;
 
-	-2|--keep-stage-2)
-		keep_stage_2=true ;;
+    -2|--keep-stage-2)
+        keep_stage_2=true ;;
 
-	-3|--keep-stage-3)
-		keep_stage_3=true ;;
+    -3|--keep-stage-3)
+        keep_stage_3=true ;;
 
-	--test-params)
-		test_params=true ;;
+    --test-params)
+        test_params=true ;;
 
-	--stop-after-stage-2)
-		stop_after_stage_2=true ;;
+    --stop-after-stage-2)
+        stop_after_stage_2=true ;;
 
-	--use-subdirs)
-		use_subdirs=yes ;;
-	--no-use-subdirs)
-		use_subdirs=no ;;
+    --use-subdirs)
+        use_subdirs=yes ;;
+    --no-use-subdirs)
+        use_subdirs=no ;;
 
-	--use-mmc-make)
-		use_mmc_make=yes ;;
-	--no-use-mmc-make)
-		use_mmc_make=no ;;
+    --use-mmc-make)
+        use_mmc_make=yes ;;
+    --no-use-mmc-make)
+        use_mmc_make=no ;;
 
-	--compile-times)
-		compile_times=true ;;
-	--no-compile-times)
-		compile_times=false ;;
+    --compile-times)
+        compile_times=true ;;
+    --no-compile-times)
+        compile_times=false ;;
 
-	--no-write-out-profile-data)
-		write_out_profile_data=false ;;
+    --no-write-out-profile-data)
+        write_out_profile_data=false ;;
 
-	--type-stats)
-		type_stats="$2"; shift ;;
+    --type-stats)
+        type_stats="$2"; shift ;;
 
-	--trace-count|--trace-counts)
-		trace_count=true ;;
+    --trace-count|--trace-counts)
+        trace_count=true ;;
 
-	-W|--windows)
-		windows=true; use_cp=true; A=lib ;;
+    -W|--windows)
+        windows=true; use_cp=true; A=lib ;;
 
-	--use-cp)
-		use_cp=true ;;
+    --use-cp)
+        use_cp=true ;;
 
-	--no-sym-links)
-		use_cp=true ;;
+    --no-sym-links)
+        use_cp=true ;;
 
-	--disable-debug-libs)
-		disable_debug_libs=true ;;
+    --disable-debug-libs)
+        disable_debug_libs=true ;;
 
-	--keep-deep-data)
-		delete_deep_data=false ;;
+    --keep-deep-data)
+        delete_deep_data=false ;;
 
-	--progress)
-		progress=true ;;
+    --progress)
+        progress=true ;;
 
-	--)
-		shift; break ;;
-	-*)
-		echo "$0: unknown option \`$1'" 1>&2
-		echo "$usage" 1>&2
-		exit 1 ;;
-	*)
-		break ;;
-	esac
-	shift
+    --)
+        shift; break ;;
+    -*)
+        echo "$0: unknown option \`$1'" 1>&2
+        echo "$usage" 1>&2
+        exit 1 ;;
+    *)
+        break ;;
+    esac
+    shift
 done
 
 if test $# -ne 0; then
-	echo "$0: unexpected argument(s) \`$*'" 1>&2
-	echo "$usage" 1>&2
-	exit 1
+    echo "$0: unexpected argument(s) \`$*'" 1>&2
+    echo "$usage" 1>&2
+    exit 1
 fi
 
 if test "$grade" != "" -a "$test_grade" = ""
 then
-	test_grade="$grade"
+    test_grade="$grade"
 fi
 
 case $use_subdirs in
@@ -419,59 +419,59 @@ case $use_mmc_make in
 esac
 
 case $target in
-	c)
-		target_ext=c
-		target_subdir=$cs_subdir
-		target_opt=
-		;;
-	asm)
-		target_ext=s
-		target_subdir=$ss_subdir
-		target_opt="--target asm"
-		# If the stage 1 directory was built without --target asm,
-		# but the stage 2 will be built with `--target asm',
-		# then we need to copy the profiler directories.
-		# So to be safe, we just enable this by default.
-		copy_profilers=true
-		;;
+    c)
+        target_ext=c
+        target_subdir=$cs_subdir
+        target_opt=
+        ;;
+    asm)
+        target_ext=s
+        target_subdir=$ss_subdir
+        target_opt="--target asm"
+        # If the stage 1 directory was built without --target asm,
+        # but the stage 2 will be built with `--target asm',
+        # then we need to copy the profiler directories.
+        # So to be safe, we just enable this by default.
+        copy_profilers=true
+        ;;
 esac
 case $grade in
-	il|ilc)
-		target_ext=il
-		target_subdir=$ils_subdir
-		target_opt=
-		# See comment above
-		copy_profilers=true
-		# The IL back-end generates native Windows executables,
-		# which do not understand symlinks.  So we need to use cp.
-		use_cp=true
-		;;
+    il|ilc)
+        target_ext=il
+        target_subdir=$ils_subdir
+        target_opt=
+        # See comment above
+        copy_profilers=true
+        # The IL back-end generates native Windows executables,
+        # which do not understand symlinks.  So we need to use cp.
+        use_cp=true
+        ;;
 esac
 
 if test "$grade" != "" -o "$test_grade" != ""
 then
-	copy_runtime=true
-	copy_boehm_gc=true
+    copy_runtime=true
+    copy_boehm_gc=true
 fi
 
 #-----------------------------------------------------------------------------#
 
 if $use_cp
 then
-	LN="cp -pr"
-	LN_S="cp -pr"
+    LN="cp -pr"
+    LN_S="cp -pr"
 else
-	LN="ln"
-	LN_S="ln -s"
+    LN="ln"
+    LN_S="ln -s"
 fi
 
 #-----------------------------------------------------------------------------#
 
 if $windows
 then
-	CYGPATH='cygpath -m'
+    CYGPATH='cygpath -m'
 else
-	CYGPATH='echo'
+    CYGPATH='echo'
 fi
 
 #-----------------------------------------------------------------------------#
@@ -482,8 +482,8 @@ fi
 # one too many times - zs.
 if echo $MERCURY_OPTIONS | grep '\-Di' > /dev/null
 then
-	MERCURY_OPTIONS=`echo $MERCURY_OPTIONS | sed -e 's/-Di//'`
-	export MERCURY_OPTIONS
+    MERCURY_OPTIONS=`echo $MERCURY_OPTIONS | sed -e 's/-Di//'`
+    export MERCURY_OPTIONS
 fi
 
 echo "starting at `date`"
@@ -504,996 +504,1026 @@ export PATH
 # in any case.
 if test "$RMSTAGECMD" = ""
 then
-	RMSTAGECMD="/bin/rm -fr"
+    RMSTAGECMD="/bin/rm -fr"
 fi
 
 #-----------------------------------------------------------------------------#
 
 if test "$use_gradedir" = "true"; then
-	stage2dir=stage2.$grade
-	stage3dir=stage3.$grade
+    stage2dir=stage2.$grade
+    stage3dir=stage3.$grade
 else
-	stage2dir=stage2
-	stage3dir=stage3
+    stage2dir=stage2
+    stage3dir=stage3
 fi
 
 if $progress
 then
-	BOOTCHECK_TEST_PROGRESS=yes
-	export BOOTCHECK_TEST_PROGRESS
+    BOOTCHECK_TEST_PROGRESS=yes
+    export BOOTCHECK_TEST_PROGRESS
 fi
 
 ORIG_MERCURY_OPTIONS="$MERCURY_OPTIONS"
 
 if $write_out_profile_data
 then
-	true
+    true
 else
-	# Turn off the writing out of deep profiling files, since
-	# Deep.data will be overwritten many times in each directory,
-	# and thus the time spent writing them out is wasted. If deep
-	# profiling debugging is enabled, this also avoids the writing
-	# of *huge* amounts of stuff on stderr.
-	MERCURY_OPTIONS="$MERCURY_OPTIONS -s"
-	export MERCURY_OPTIONS
+    # Turn off the writing out of deep profiling files, since
+    # Deep.data will be overwritten many times in each directory,
+    # and thus the time spent writing them out is wasted. If deep
+    # profiling debugging is enabled, this also avoids the writing
+    # of *huge* amounts of stuff on stderr.
+    MERCURY_OPTIONS="$MERCURY_OPTIONS -s"
+    export MERCURY_OPTIONS
 fi
 
 if $trace_count
 then
-	MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
-	export MERCURY_OPTIONS
+    MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
+    export MERCURY_OPTIONS
 else
-	true
+    true
 fi
 
 NEW_MERCURY_OPTIONS="$MERCURY_OPTIONS"
 
 if $do_bootcheck
 then
-	MERCURY_OPTIONS="$ORIG_MERCURY_OPTIONS"
-	export MERCURY_OPTIONS
+    MERCURY_OPTIONS="$ORIG_MERCURY_OPTIONS"
+    export MERCURY_OPTIONS
 
-	if mmake $mmake_opts MMAKEFLAGS=$jfactor all
-	then
-		echo "building of stage 1 successful"
-	else
-		cd $root
-		mmake $mmake_opts depend
-		if mmake $mmake_opts MMAKEFLAGS=$jfactor all
-		then
-			echo "building of stage 1 successful"
-		else
-			echo "building of stage 1 not successful"
-			exit 1
-		fi
-	fi
+    if mmake $mmake_opts MMAKEFLAGS=$jfactor all
+    then
+        echo "building of stage 1 successful"
+    else
+        cd $root
+        mmake $mmake_opts depend
+        if mmake $mmake_opts MMAKEFLAGS=$jfactor all
+        then
+            echo "building of stage 1 successful"
+        else
+            echo "building of stage 1 not successful"
+            exit 1
+        fi
+    fi
 
-	# Don't set MMAKE_USE_SUBDIRS and MMAKE_USE_MMC_MAKE until after
-	# we have finished making stage1, because $use_subdirs and $use_mmc_make
-	# come from options that are intended to affect only stages 2 and 3.
+    # Don't set MMAKE_USE_SUBDIRS and MMAKE_USE_MMC_MAKE until after
+    # we have finished making stage1, because $use_subdirs and $use_mmc_make
+    # come from options that are intended to affect only stages 2 and 3.
 
-	MMAKE_USE_SUBDIRS=$use_subdirs
-	export MMAKE_USE_SUBDIRS
+    MMAKE_USE_SUBDIRS=$use_subdirs
+    export MMAKE_USE_SUBDIRS
 
-	MMAKE_USE_MMC_MAKE=$use_mmc_make
-	export MMAKE_USE_MMC_MAKE
+    MMAKE_USE_MMC_MAKE=$use_mmc_make
+    export MMAKE_USE_MMC_MAKE
 
-	MERCURY_OPTIONS="$NEW_MERCURY_OPTIONS"
-	export MERCURY_OPTIONS
+    MERCURY_OPTIONS="$NEW_MERCURY_OPTIONS"
+    export MERCURY_OPTIONS
 
-	MERCURY_COMPILER=$root/compiler/mercury_compile
-	export MERCURY_COMPILER
+    MERCURY_COMPILER=$root/compiler/mercury_compile
+    export MERCURY_COMPILER
 
-	MERCURY_CONFIG_FILE=$root/scripts/Mercury.config
-	export MERCURY_CONFIG_FILE
+    # now in FLAGS files
+    # MERCURY_CONFIG_FILE=$root/scripts/Mercury.config
+    # export MERCURY_CONFIG_FILE
 
-	test -d $stage2dir || mkdir $stage2dir
-	if $keep_stage_2
-	then
-		echo keeping existing stage2
-	else
-		# We try to do the removal of the stage 2 directory in parallel
-		# since recursive rm's across NFS can be quite slow ...
-		$RMSTAGECMD $root/$stage2dir/compiler < /dev/null &
-		$RMSTAGECMD $root/$stage2dir/library < /dev/null &
-		wait
-		$RMSTAGECMD $root/$stage2dir/* < /dev/null
-		/bin/rm -fr $root/$stage2dir/* < /dev/null
-		/bin/rm -fr $root/$stage2dir/.[a-zA-Z]* < /dev/null
-	fi
+    test -d $stage2dir || mkdir $stage2dir
+    if $keep_stage_2
+    then
+        echo keeping existing stage2
+    else
+        # We try to do the removal of the stage 2 directory in parallel
+        # since recursive rm's across NFS can be quite slow ...
+        $RMSTAGECMD $root/$stage2dir/compiler < /dev/null &
+        $RMSTAGECMD $root/$stage2dir/library < /dev/null &
+        wait
+        $RMSTAGECMD $root/$stage2dir/* < /dev/null
+        /bin/rm -fr $root/$stage2dir/* < /dev/null
+        /bin/rm -fr $root/$stage2dir/.[a-zA-Z]* < /dev/null
+    fi
 
-	if $mmake_stage_2
-	then
-		set +x
-		echo linking stage 2... 1>&2
-		cd $stage2dir
-		$LN_S $root/main.c .
-		mkdir compiler
-		cd compiler
-		# Break up the links into several chunks.
-		# This is needed to cope with small limits
-		# on the size of argument vectors.
+    if $mmake_stage_2
+    then
+        set +x
+        echo linking stage 2... 1>&2
+        cd $stage2dir
+        $LN_S $root/main.c .
+        mkdir compiler
+        cd compiler
+        # Break up the links into several chunks.
+        # This is needed to cope with small limits
+        # on the size of argument vectors.
 
-		$LN_S $root/compiler/[a-h]*.m .
-		$LN_S $root/compiler/[i-o]*.m .
-		$LN_S $root/compiler/[p-s]*.m .
-		$LN_S $root/compiler/[t-z]*.m .
-		$LN_S $root/compiler/*.pp .
-		$LN_S $root/compiler/notes .
+        $LN_S $root/compiler/[a-h]*.m .
+        $LN_S $root/compiler/[i-o]*.m .
+        $LN_S $root/compiler/[p-s]*.m .
+        $LN_S $root/compiler/[t-z]*.m .
+        $LN_S $root/compiler/*.pp .
+        $LN_S $root/compiler/notes .
 
-		cp $root/compiler/Mmake* $root/compiler/Mercury.options .
-		cd $root/$stage2dir
-		mkdir library
-		cd library
-		$LN_S $root/library/[a-l]*.m .
-		$LN_S $root/library/[m-z]*.m .
-		# See comment below for why we use $LN rather than $LN_S here
-		$LN $root/library/library_strong_name.sn .
-		$LN_S $root/library/print_extra_inits .
-		cp $root/library/Mmake* $root/library/Mercury.options .
-		$LN_S $root/library/$STD_LIB_NAME.init .
-		$LN_S $root/library/RESERVED_MACRO_NAMES .
-		cd $root/$stage2dir
-		mkdir mdbcomp
-		cd mdbcomp
-		$LN_S $root/mdbcomp/*.m .
-		cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
-		$LN_S $root/mdbcomp/$MDCOMP_LIB_NAME.init .
-		$LN_S $root/mdbcomp/RESERVED_MACRO_NAMES .
-		cd $root/$stage2dir
-		mkdir browser
-		cd browser
-		$LN_S $root/browser/*.m .
-		cp $root/browser/Mmake* $root/browser/Mercury.options .
-		$LN_S $root/browser/$BROWSER_LIB_NAME.init .
-		$LN_S $root/browser/RESERVED_MACRO_NAMES .
-		cd $root/$stage2dir
-		mkdir analysis
-		cd analysis
-		$LN_S $root/analysis/*.m .
-		cp $root/analysis/Mmake* $root/analysis/Mercury.options .
-		$LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
+        cp $root/compiler/Mmake* $root/compiler/Mercury.options .
+        cp $root/compiler/*_FLAGS.in .
+        cd $root/$stage2dir
+        mkdir library
+        cd library
+        $LN_S $root/library/[a-l]*.m .
+        $LN_S $root/library/[m-z]*.m .
+        # See comment below for why we use $LN rather than $LN_S here
+        $LN $root/library/library_strong_name.sn .
+        $LN_S $root/library/print_extra_inits .
+        cp $root/library/Mmake* $root/library/Mercury.options .
+        cp $root/library/*_FLAGS.in .
+        cp $root/library/INTER_FLAGS .
+        $LN_S $root/library/$STD_LIB_NAME.init .
+        $LN_S $root/library/RESERVED_MACRO_NAMES .
+        cd $root/$stage2dir
+        mkdir mdbcomp
+        cd mdbcomp
+        $LN_S $root/mdbcomp/*.m .
+        cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
+        cp $root/mdbcomp/*_FLAGS.in .
+        $LN_S $root/mdbcomp/$MDCOMP_LIB_NAME.init .
+        $LN_S $root/mdbcomp/RESERVED_MACRO_NAMES .
+        cd $root/$stage2dir
+        mkdir browser
+        cd browser
+        $LN_S $root/browser/*.m .
+        cp $root/browser/Mmake* $root/browser/Mercury.options .
+        cp $root/browser/*_FLAGS.in .
+        $LN_S $root/browser/$BROWSER_LIB_NAME.init .
+        $LN_S $root/browser/RESERVED_MACRO_NAMES .
+        cd $root/$stage2dir
+        mkdir analysis
+        cd analysis
+        $LN_S $root/analysis/*.m .
+        cp $root/analysis/Mmake* $root/analysis/Mercury.options .
+        cp $root/analysis/*_FLAGS.in .
+        $LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
 
-		cd $root/$stage2dir
-		if $copy_runtime
-		then
-			# Remove symbolic link to the stage 1 runtime
-			# if it's present, which it can be with the -2 option.
-			rm -f runtime
-			mkdir runtime
-			cd runtime
-			$LN_S $root/runtime/*.h .
-			$LN_S $root/runtime/*.c .
-			# We need to use $LN rather than $LN_S for the files
-			# that get processed with Microsoft's tools, since
-			# Microsoft's tools don't understand Cygwin symbolic
-			# links (hard links are OK, Cygwin's ln just makes
-			# copies).
-			$LN $root/runtime/*.cpp .
-			rm -f mercury_mcpp.h mercury_conf*.h
-			$LN $root/runtime/mercury_mcpp.h .
-			$LN $root/runtime/mercury_conf*.h .
-			$LN $root/runtime/mercury_il.il .
-			$LN_S $root/runtime/*.in .
-			cp $root/runtime/Mmake* .
-			$LN_S $root/runtime/machdeps .
-			$LN_S $root/runtime/RESERVED_MACRO_NAMES .
-			cd $root/$stage2dir
-			rm -f trace
-			mkdir trace
-			cd trace
-			$LN_S $root/trace/*.h .
-			$LN_S $root/trace/*.c .
-			cp $root/trace/Mmake* .
-			$LN_S $root/trace/RESERVED_MACRO_NAMES .
-			cd $root/$stage2dir
-			rm -f robdd
-			mkdir robdd
-			cd robdd
-			$LN_S $root/robdd/*.h .
-			$LN_S $root/robdd/*.c .
-			cp $root/robdd/Mmake* .
-			cp $root/robdd/Make* .
-			cd $root/$stage2dir
-		else
-			$LN_S $root/runtime .
-			$LN_S $root/trace .
-			$LN_S $root/robdd .
-		fi
-		if $copy_boehm_gc
-		then
-			# Remove symbolic link to the stage 1 gc
-			# if it's present, which it can be with the -2 option.
-			rm -f boehm_gc
-			mkdir boehm_gc
-			cd boehm_gc
-			$LN_S $root/boehm_gc/*.h .
-			$LN_S $root/boehm_gc/*.c .
-			$LN_S $root/boehm_gc/*.s .
-			$LN_S $root/boehm_gc/*.S .
-			$LN_S $root/boehm_gc/include .
-			cp $root/boehm_gc/Mmake* .
-			$LN_S $root/boehm_gc/Makefile .
-			cp $root/boehm_gc/NT_MAKEFILE .
-			cp $root/boehm_gc/gc_cpp.cc .
-			$LN_S $root/boehm_gc/machdeps .
-			cd $root/$stage2dir
-		else
-			$LN_S $root/boehm_gc .
-		fi
-		$LN_S $root/java .
-		$LN_S $root/mps_gc .
-		$LN_S $root/bindist .
-		$LN_S $root/doc .
-		$LN_S $root/scripts .
-		$LN_S $root/tools .
-		$LN_S $root/util .
-		if $copy_profilers
-		then
-			mkdir slice
-			cd slice
-			$LN_S $root/slice/*.m .
-			cp $root/slice/Mmake* $root/slice/Mercury.options .
-			cd $root/$stage2dir
-			mkdir profiler
-			cd profiler
-			$LN_S $root/profiler/*.m .
-			cp $root/profiler/Mmake* $root/profiler/Mercury.options .
-			cd $root/$stage2dir
-			mkdir deep_profiler
-			cd deep_profiler
-			$LN_S $root/deep_profiler/*.m .
-			cp $root/deep_profiler/Mmake* .
-			cp $root/deep_profiler/Mercury.options .
-			cd $root/$stage2dir
-		else
-			$LN_S $root/slice .
-			$LN_S $root/profiler .
-			$LN_S $root/deep_profiler .
-		fi
-		$LN_S $root/conf* .
-		$LN_S $root/aclocal.m4 .
-		$LN_S $root/VERSION .
-		$LN_S $root/install-sh .
-		$LN_S $root/.*.in .
-		rm -f config*.log
-		cp $root/Mmake* $root/Mercury.options .
-		if test -f $root/Mmake.stage.params
-		then
-			/bin/rm -f Mmake.params
-			cp $root/Mmake.stage.params Mmake.params
-		fi
-		if test -f $root/Mmake.stage.mdbcomp.params
-		then
-			/bin/rm -f mdbcomp/Mmake.mdbcomp.params
-			cp $root/Mmake.stage.mdbcomp.params mdbcomp/Mmake.mdbcomp.params
-		fi
-		if test -f $root/Mmake.stage.browser.params
-		then
-			/bin/rm -f browser/Mmake.browser.params
-			cp $root/Mmake.stage.browser.params browser/Mmake.browser.params
-		fi
-		if test -f $root/Mmake.stage.deep.params
-		then
-			/bin/rm -f deep_profiler/Mmake.deep.params
-			cp $root/Mmake.stage.deep.params deep_profiler/Mmake.deep.params
-		fi
-		if test -f $root/Mmake.stage.library.params
-		then
-			/bin/rm -f library/Mmake.library.params
-			cp $root/Mmake.stage.library.params library/Mmake.library.params
-		fi
-		if test -f $root/Mmake.stage.runtime.params
-		then
-			/bin/rm -f runtime/Mmake.runtime.params
-			cp $root/Mmake.stage.runtime.params runtime/Mmake.runtime.params
-		fi
-		if test -f $root/Mmake.stage.trace.params
-		then
-			/bin/rm -f trace/Mmake.trace.params
-			cp $root/Mmake.stage.trace.params trace/Mmake.trace.params
-		fi
-		if test -f $root/Mercury.stage.options
-		then
-			/bin/rm -f Mercury.options
-			cp $root/Mercury.stage.options Mercury.options
-		fi
-		if test "$grade" != ""
-		then
-			echo "GRADE = $grade" >> Mmake.params
-		fi
-		echo 'GCC_SRC_DIR := ../$(GCC_SRC_DIR)' >> Mmake.params
-		cd $root
+        cd $root/$stage2dir
+        if $copy_runtime
+        then
+            # Remove symbolic link to the stage 1 runtime
+            # if it's present, which it can be with the -2 option.
+            rm -f runtime
+            mkdir runtime
+            cd runtime
+            $LN_S $root/runtime/*.h .
+            $LN_S $root/runtime/*.c .
+            # We need to use $LN rather than $LN_S for the files
+            # that get processed with Microsoft's tools, since
+            # Microsoft's tools don't understand Cygwin symbolic
+            # links (hard links are OK, Cygwin's ln just makes
+            # copies).
+            $LN $root/runtime/*.cpp .
+            rm -f mercury_mcpp.h mercury_conf*.h
+            $LN $root/runtime/mercury_mcpp.h .
+            $LN $root/runtime/mercury_conf*.h .
+            $LN $root/runtime/mercury_il.il .
+            $LN_S $root/runtime/*.in .
+            cp $root/runtime/Mmake* .
+            $LN_S $root/runtime/machdeps .
+            $LN_S $root/runtime/RESERVED_MACRO_NAMES .
+            cd $root/$stage2dir
+            rm -f trace
+            mkdir trace
+            cd trace
+            $LN_S $root/trace/*.h .
+            $LN_S $root/trace/*.c .
+            cp $root/trace/Mmake* .
+            $LN_S $root/trace/RESERVED_MACRO_NAMES .
+            cd $root/$stage2dir
+            rm -f robdd
+            mkdir robdd
+            cd robdd
+            $LN_S $root/robdd/*.h .
+            $LN_S $root/robdd/*.c .
+            cp $root/robdd/Mmake* .
+            cp $root/robdd/Make* .
+            cd $root/$stage2dir
+        else
+            $LN_S $root/runtime .
+            $LN_S $root/trace .
+            $LN_S $root/robdd .
+        fi
+        if $copy_boehm_gc
+        then
+            # Remove symbolic link to the stage 1 gc
+            # if it's present, which it can be with the -2 option.
+            rm -f boehm_gc
+            mkdir boehm_gc
+            cd boehm_gc
+            $LN_S $root/boehm_gc/*.h .
+            $LN_S $root/boehm_gc/*.c .
+            $LN_S $root/boehm_gc/*.s .
+            $LN_S $root/boehm_gc/*.S .
+            $LN_S $root/boehm_gc/include .
+            cp $root/boehm_gc/Mmake* .
+            $LN_S $root/boehm_gc/Makefile .
+            cp $root/boehm_gc/NT_MAKEFILE .
+            cp $root/boehm_gc/gc_cpp.cc .
+            $LN_S $root/boehm_gc/machdeps .
+            cd $root/$stage2dir
+        else
+            $LN_S $root/boehm_gc .
+        fi
+        $LN_S $root/java .
+        $LN_S $root/mps_gc .
+        $LN_S $root/bindist .
+        $LN_S $root/doc .
+        $LN_S $root/scripts .
+        $LN_S $root/tools .
+        $LN_S $root/util .
+        if $copy_profilers
+        then
+            mkdir slice
+            cd slice
+            $LN_S $root/slice/*.m .
+            cp $root/slice/Mmake* $root/slice/Mercury.options .
+            cp $root/slice/*_FLAGS.in .
+            cd $root/$stage2dir
+            mkdir profiler
+            cd profiler
+            $LN_S $root/profiler/*.m .
+            cp $root/profiler/Mmake* $root/profiler/Mercury.options .
+            cp $root/profiler/*_FLAGS.in .
+            cd $root/$stage2dir
+            mkdir deep_profiler
+            cd deep_profiler
+            $LN_S $root/deep_profiler/*.m .
+            cp $root/deep_profiler/Mmake* .
+            cp $root/deep_profiler/Mercury.options .
+            cp $root/deep_profiler/*_FLAGS.in .
+            cd $root/$stage2dir
+        else
+            $LN_S $root/slice .
+            $LN_S $root/profiler .
+            $LN_S $root/deep_profiler .
+        fi
+        $LN_S $root/conf* .
+        $LN_S $root/aclocal.m4 .
+        $LN_S $root/VERSION .
+        $LN_S $root/install-sh .
+        $LN_S $root/.*.in .
+        rm -f config*.log
+        cp $root/Mmake* $root/Mercury.options .
+        if test -f $root/Mmake.stage.params
+        then
+            /bin/rm -f Mmake.params
+            cp $root/Mmake.stage.params Mmake.params
+        fi
+        if test -f $root/Mmake.stage.mdbcomp.params
+        then
+            /bin/rm -f mdbcomp/Mmake.mdbcomp.params
+            cp $root/Mmake.stage.mdbcomp.params mdbcomp/Mmake.mdbcomp.params
+        fi
+        if test -f $root/Mmake.stage.browser.params
+        then
+            /bin/rm -f browser/Mmake.browser.params
+            cp $root/Mmake.stage.browser.params browser/Mmake.browser.params
+        fi
+        if test -f $root/Mmake.stage.deep.params
+        then
+            /bin/rm -f deep_profiler/Mmake.deep.params
+            cp $root/Mmake.stage.deep.params deep_profiler/Mmake.deep.params
+        fi
+        if test -f $root/Mmake.stage.library.params
+        then
+            /bin/rm -f library/Mmake.library.params
+            cp $root/Mmake.stage.library.params library/Mmake.library.params
+        fi
+        if test -f $root/Mmake.stage.runtime.params
+        then
+            /bin/rm -f runtime/Mmake.runtime.params
+            cp $root/Mmake.stage.runtime.params runtime/Mmake.runtime.params
+        fi
+        if test -f $root/Mmake.stage.trace.params
+        then
+            /bin/rm -f trace/Mmake.trace.params
+            cp $root/Mmake.stage.trace.params trace/Mmake.trace.params
+        fi
+        if test -f $root/Mercury.stage.options
+        then
+            /bin/rm -f Mercury.options
+            cp $root/Mercury.stage.options Mercury.options
+        fi
+        if test "$grade" != ""
+        then
+            echo "GRADE = $grade" >> Mmake.params
+        fi
+        echo 'GCC_SRC_DIR := ../$(GCC_SRC_DIR)' >> Mmake.params
+        cd $root
 
-		set -x
+        set -x
 
-		MMAKE_VPATH=.
-		export MMAKE_VPATH
-		MMAKE_DIR=$root/scripts
-		export MMAKE_DIR
+        MMAKE_VPATH=.
+        export MMAKE_VPATH
+        MMAKE_DIR=$root/scripts
+        export MMAKE_DIR
 
-		# Use the new mmake to build stage 2
-		MMAKE=$MMAKE_DIR/mmake
-		mmake_opts="$mmake_opts $target_opt"
+        # Use the new mmake to build stage 2
+        MMAKE=$MMAKE_DIR/mmake
+        mmake_opts="$mmake_opts $target_opt"
 
-		if (cd $stage2dir && $MMAKE $mmake_opts $jfactor runtime)
-		then
-			echo "building of stage 2 runtime successful"
-		else
-			echo "building of stage 2 runtime not successful"
-			exit 1
-		fi
+        if (cd $stage2dir && $MMAKE $mmake_opts $jfactor runtime)
+        then
+            echo "building of stage 2 runtime successful"
+        else
+            echo "building of stage 2 runtime not successful"
+            exit 1
+        fi
 
-		if (cd $stage2dir && \
-			$MMAKE $mmake_opts dep_library dep_mdbcomp \
-			dep_browser dep_analysis dep_compiler dep_slice \
-			dep_profiler dep_deep_profiler)
-		then
-			echo "building of stage 2 dependencies successful"
-		else
-			echo "building of stage 2 dependencies not successful"
-			exit 1
-		fi
+        if (cd $stage2dir && \
+            $MMAKE $mmake_opts dep_library dep_mdbcomp \
+            dep_browser dep_analysis dep_compiler dep_slice \
+            dep_profiler dep_deep_profiler)
+        then
+            echo "building of stage 2 dependencies successful"
+        else
+            echo "building of stage 2 dependencies not successful"
+            exit 1
+        fi
 
-		if (cd $stage2dir/library && \
-			$MMAKE $mmake_opts $jfactor mercury)
-		then
-			echo "building of stage 2 library successful"
-		else
-			echo "building of stage 2 library not successful"
-			exit 1
-		fi
+        if (cd $stage2dir/library && \
+            $MMAKE $mmake_opts $jfactor mercury)
+        then
+            echo "building of stage 2 library successful"
+        else
+            echo "building of stage 2 library not successful"
+            exit 1
+        fi
 
-		if $test_split_library
-		then
-			if (cd $stage2dir/library && \
-			    $MMAKE $mmake_opts $jfactor $STD_LIB_NAME.split.a)
-			then
-				echo "building of stage 2 split library successful"
-			else
-				echo "building of stage 2 split library not successful"
-				exit 1
-			fi
+        if $test_split_library
+        then
+            if (cd $stage2dir/library && \
+                $MMAKE $mmake_opts $jfactor $STD_LIB_NAME.split.a)
+            then
+                echo "building of stage 2 split library successful"
+            else
+                echo "building of stage 2 split library not successful"
+                exit 1
+            fi
 
-			mv $stage2dir/library/$STD_LIB_NAME.split.a \
-				$stage2dir/library/$STD_LIB_NAME.a
-		fi
+            mv $stage2dir/library/$STD_LIB_NAME.split.a \
+                $stage2dir/library/$STD_LIB_NAME.a
+        fi
 
-		if (cd $stage2dir/mdbcomp && \
-			$MMAKE $mmake_opts $jfactor library)
-		then
-			echo "building of stage 2 mdbcomp successful"
-		else
-			echo "building of stage 2 mdbcomp not successful"
-			exit 1
-		fi
+        if (cd $stage2dir/mdbcomp && \
+            $MMAKE $mmake_opts $jfactor library)
+        then
+            echo "building of stage 2 mdbcomp successful"
+        else
+            echo "building of stage 2 mdbcomp not successful"
+            exit 1
+        fi
 
-		if (cd $stage2dir/browser && \
-			$MMAKE $mmake_opts $jfactor library)
-		then
-			echo "building of stage 2 browser successful"
-		else
-			echo "building of stage 2 browser not successful"
-			exit 1
-		fi
+        if (cd $stage2dir/browser && \
+            $MMAKE $mmake_opts $jfactor library)
+        then
+            echo "building of stage 2 browser successful"
+        else
+            echo "building of stage 2 browser not successful"
+            exit 1
+        fi
 
-		if (cd $stage2dir && $MMAKE $mmake_opts $jfactor trace)
-		then
-			echo "building of stage 2 trace successful"
-		else
-			echo "building of stage 2 trace not successful"
-			exit 1
-		fi
+        if (cd $stage2dir && $MMAKE $mmake_opts $jfactor trace)
+        then
+            echo "building of stage 2 trace successful"
+        else
+            echo "building of stage 2 trace not successful"
+            exit 1
+        fi
 
-		if $disable_debug_libs
-		then
-			/bin/rm $stage2dir/browser/lib$BROWSER_LIB_NAME.a
-			ar cr $stage2dir/browser/lib$BROWSER_LIB_NAME.a
-			/bin/rm $stage2dir/trace/lib$TRACE_LIB_NAME.a
-			ar cr $stage2dir/trace/lib$TRACE_LIB_NAME.a
-		fi
+        if $disable_debug_libs
+        then
+            /bin/rm $stage2dir/browser/lib$BROWSER_LIB_NAME.a
+            ar cr $stage2dir/browser/lib$BROWSER_LIB_NAME.a
+            /bin/rm $stage2dir/trace/lib$TRACE_LIB_NAME.a
+            ar cr $stage2dir/trace/lib$TRACE_LIB_NAME.a
+        fi
 
-		if (cd $stage2dir && $MMAKE $mmake_opts $jfactor analysis)
-		then
-			echo "building of stage 2 analysis successful"
-		else
-			echo "building of stage 2 analysis not successful"
-			exit 1
-		fi
+        if (cd $stage2dir && $MMAKE $mmake_opts $jfactor analysis)
+        then
+            echo "building of stage 2 analysis successful"
+        else
+            echo "building of stage 2 analysis not successful"
+            exit 1
+        fi
 
-		if (cd $stage2dir/compiler && \
-			$MMAKE $mmake_opts $jfactor mercury_compile)
-		then
-			echo "building of stage 2 compiler successful"
-		else
-			echo "building of stage 2 compiler not successful"
-			exit 1
-		fi
+        if (cd $stage2dir/compiler && \
+            $MMAKE $mmake_opts $jfactor mercury_compile)
+        then
+            echo "building of stage 2 compiler successful"
+        else
+            echo "building of stage 2 compiler not successful"
+            exit 1
+        fi
 
-		if (cd $stage2dir && $MMAKE $mmake_opts MMAKEFLAGS=$jfactor all)
-		then
-			echo "building of stage 2 successful"
-		else
-			echo "building of stage 2 not successful"
-			exit 1
-		fi
+        if (cd $stage2dir && $MMAKE $mmake_opts MMAKEFLAGS=$jfactor all)
+        then
+            echo "building of stage 2 successful"
+        else
+            echo "building of stage 2 not successful"
+            exit 1
+        fi
 
-		if $compile_times
-		then
-			ls -lt $stage2dir/library/*.c
-			ls -lt $stage2dir/library/*.o
-			ls -lt $stage2dir/library/*.{a,so}
-			ls -lt $stage2dir/compiler/*.c
-			ls -lt $stage2dir/compiler/*.o
-			ls -lt $stage2dir/compiler/mercury_compile
-		fi
-	fi
+        if $compile_times
+        then
+            ls -lt $stage2dir/library/*.c
+            ls -lt $stage2dir/library/*.o
+            ls -lt $stage2dir/library/*.{a,so}
+            ls -lt $stage2dir/compiler/*.c
+            ls -lt $stage2dir/compiler/*.o
+            ls -lt $stage2dir/compiler/mercury_compile
+        fi
+    fi
 
-	# Build the check_namespace target in the relevant directories.
-	# We want to do so before we delete any of the stage 2 object files.
+    # Build the check_namespace target in the relevant directories.
+    # We want to do so before we delete any of the stage 2 object files.
 
-	check_namespace_status=0
-	if $check_namespace
-	then
-		cd $root/$stage2dir/runtime
-		mmake $mmake_opts check_namespace || {
-			echo '** mmake check_namespace failed in runtime!'
-			check_namespace_status=1
-		}
-		cd $root/$stage2dir/trace
-		mmake $mmake_opts check_namespace || {
-			echo '** mmake check_namespace failed in trace!'
-			check_namespace_status=1
-		}
-		cd $root/$stage2dir/library
-		mmake $mmake_opts check_namespace || {
-			echo '** mmake check_namespace failed in library!'
-			check_namespace_status=1
-		}
-		cd $root/$stage2dir/mdbcomp
-		mmake $mmake_opts check_namespace || {
-			echo '** mmake check_namespace failed in mdbcomp!'
-			check_namespace_status=1
-		}
-		cd $root/$stage2dir/browser
-		mmake $mmake_opts check_namespace || {
-			echo '** mmake check_namespace failed in browser!'
-			check_namespace_status=1
-		}
-		cd $root
-	fi
+    check_namespace_status=0
+    if $check_namespace
+    then
+        cd $root/$stage2dir/runtime
+        mmake $mmake_opts check_namespace || {
+            echo '** mmake check_namespace failed in runtime!'
+            check_namespace_status=1
+        }
+        cd $root/$stage2dir/trace
+        mmake $mmake_opts check_namespace || {
+            echo '** mmake check_namespace failed in trace!'
+            check_namespace_status=1
+        }
+        cd $root/$stage2dir/library
+        mmake $mmake_opts check_namespace || {
+            echo '** mmake check_namespace failed in library!'
+            check_namespace_status=1
+        }
+        cd $root/$stage2dir/mdbcomp
+        mmake $mmake_opts check_namespace || {
+            echo '** mmake check_namespace failed in mdbcomp!'
+            check_namespace_status=1
+        }
+        cd $root/$stage2dir/browser
+        mmake $mmake_opts check_namespace || {
+            echo '** mmake check_namespace failed in browser!'
+            check_namespace_status=1
+        }
+        cd $root
+    fi
 
-	if $stop_after_stage_2
-	then
-		echo "stopping after building stage 2"
-		exit 0
-	fi
+    if $stop_after_stage_2
+    then
+        echo "stopping after building stage 2"
+        exit 0
+    fi
 
-	# We can now remove the object files from most stage 2 directories,
-	# but we will keep the compiler objects for a while longer.
-	if $keep_objs
-	then
-		true
-	else
-		libdirs="library mdbcomp browser"
-		if $copy_profilers
-		then
-			profdirs="slice profiler deep_profiler"
-		else
-			profdirs=
-		fi
-		if $copy_runtime
-		then
-			rundirs="runtime trace"
-		else
-			rundirs=
-		fi
+    # We can now remove the object files from most stage 2 directories,
+    # but we will keep the compiler objects for a while longer.
+    if $keep_objs
+    then
+        true
+    else
+        libdirs="library mdbcomp browser"
+        if $copy_profilers
+        then
+            profdirs="slice profiler deep_profiler"
+        else
+            profdirs=
+        fi
+        if $copy_runtime
+        then
+            rundirs="runtime trace"
+        else
+            rundirs=
+        fi
 
-		objdirs="$libdirs $profdirs $rundirs"
-		for rmdir in $objdirs
-		do
-			cd $root/$stage2dir/$rmdir
-			/bin/rm -f *.o *.pic_o
-		done
+        objdirs="$libdirs $profdirs $rundirs"
+        for rmdir in $objdirs
+        do
+            cd $root/$stage2dir/$rmdir
+            /bin/rm -f *.o *.pic_o
+        done
 
-		for cleandir in runtime trace library mdbcomp browser
-		do
-			cd $root/$stage2dir/$cleandir
-			mmake clean_check
-		done
+        for cleandir in runtime trace library mdbcomp browser
+        do
+            cd $root/$stage2dir/$cleandir
+            mmake clean_check
+        done
 
-		cd $root
-	fi
+        cd $root
+    fi
 
-	MERCURY_COMPILER=$root/$stage2dir/compiler/mercury_compile
-	export MERCURY_COMPILER
+    MERCURY_COMPILER=$root/$stage2dir/compiler/mercury_compile
+    export MERCURY_COMPILER
 
-	test -d $stage3dir || mkdir $stage3dir
-	if $keep_stage_3
-	then
-		echo keeping existing stage3
-	else
-		# We try to do the removal of the stage 3 directory in parallel
-		# since recursive rm's across NFS can be quite slow ...
-		$RMSTAGECMD $root/$stage3dir/compiler < /dev/null &
-		$RMSTAGECMD $root/$stage3dir/library < /dev/null &
-		wait
-		$RMSTAGECMD $root/$stage3dir/* < /dev/null
-		/bin/rm -fr $root/$stage3dir/* < /dev/null
-		/bin/rm -fr $root/$stage3dir/.[a-zA-Z]* < /dev/null
-	fi
+    test -d $stage3dir || mkdir $stage3dir
+    if $keep_stage_3
+    then
+        echo keeping existing stage3
+    else
+        # We try to do the removal of the stage 3 directory in parallel
+        # since recursive rm's across NFS can be quite slow ...
+        $RMSTAGECMD $root/$stage3dir/compiler < /dev/null &
+        $RMSTAGECMD $root/$stage3dir/library < /dev/null &
+        wait
+        $RMSTAGECMD $root/$stage3dir/* < /dev/null
+        /bin/rm -fr $root/$stage3dir/* < /dev/null
+        /bin/rm -fr $root/$stage3dir/.[a-zA-Z]* < /dev/null
+    fi
 
-	echo linking stage 3... 1>&2
-	set +x
-	cd $stage3dir
-	$LN_S $root/main.c .
-	mkdir compiler
-	cd compiler
-	# Break up the links into several chunks.
-	# This is needed to cope with small limits
-	# on the size of argument vectors.
-	$LN_S $root/compiler/[a-h]*.m .
-	$LN_S $root/compiler/[i-o]*.m .
-	$LN_S $root/compiler/[p-s]*.m .
-	$LN_S $root/compiler/[t-z]*.m .
-	$LN_S $root/compiler/*.pp .
-	$LN_S $root/compiler/notes .
+    echo linking stage 3... 1>&2
+    set +x
+    cd $stage3dir
+    $LN_S $root/main.c .
+    mkdir compiler
+    cd compiler
+    # Break up the links into several chunks.
+    # This is needed to cope with small limits
+    # on the size of argument vectors.
+    $LN_S $root/compiler/[a-h]*.m .
+    $LN_S $root/compiler/[i-o]*.m .
+    $LN_S $root/compiler/[p-s]*.m .
+    $LN_S $root/compiler/[t-z]*.m .
+    $LN_S $root/compiler/*.pp .
+    $LN_S $root/compiler/notes .
 
-	cp $root/compiler/Mmake* $root/compiler/Mercury.options .
-	cd $root/$stage3dir
-	mkdir library
-	cd library
-	$LN_S $root/library/[a-l]*.m .
-	$LN_S $root/library/[m-z]*.m .
-	$LN_S $root/library/print_extra_inits .
-	$LN_S $root/library/library_strong_name.sn .
-	cp $root/library/Mmake* $root/library/Mercury.options .
-	$LN_S $root/library/$STD_LIB_NAME.init .
-	cd $root/$stage3dir
-	mkdir mdbcomp
-	cd mdbcomp
-	$LN_S $root/mdbcomp/*.m .
-	cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
-	$LN_S $root/mdbcomp/$MDBCOMP_LIB_NAME.init .
-	cd $root/$stage3dir
-	mkdir browser
-	cd browser
-	$LN_S $root/browser/*.m .
-	cp $root/browser/Mmake* $root/browser/Mercury.options .
-	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
-	cd $root/$stage3dir
-	mkdir analysis
-	cd analysis
-	$LN_S $root/analysis/*.m .
-	cp $root/analysis/Mmake* $root/analysis/Mercury.options .
-	$LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
-	cd $root/$stage3dir
-	$LN_S $root/$stage2dir/boehm_gc .
-	$LN_S $root/$stage2dir/java .
-	$LN_S $root/$stage2dir/mps_gc .
-	$LN_S $root/bindist .
-	$LN_S $root/doc .
-	$LN_S $root/$stage2dir/runtime .
-	$LN_S $root/$stage2dir/trace .
-	$LN_S $root/$stage2dir/robdd .
-	$LN_S $root/scripts .
-	$LN_S $root/tools .
-	$LN_S $root/util .
-	$LN_S $root/$stage2dir/slice .
-	$LN_S $root/$stage2dir/profiler .
-	$LN_S $root/$stage2dir/deep_profiler .
-	$LN_S $root/conf* .
-	$LN_S $root/aclocal.m4 .
-	$LN_S $root/VERSION .
-	$LN_S $root/install-sh .
-	$LN_S $root/.*.in .
-	rm -f config*.log
-	cp $root/$stage2dir/Mmake* $root/$stage2dir/Mercury.options .
-	cd $root
-	set -x
+    cp $root/compiler/Mmake* $root/compiler/Mercury.options .
+    cp $root/compiler/*_FLAGS.in .
+    cd $root/$stage3dir
+    mkdir library
+    cd library
+    $LN_S $root/library/[a-l]*.m .
+    $LN_S $root/library/[m-z]*.m .
+    $LN_S $root/library/print_extra_inits .
+    $LN_S $root/library/library_strong_name.sn .
+    cp $root/library/Mmake* $root/library/Mercury.options .
+    cp $root/library/*_FLAGS.in .
+    cp $root/library/INTER_FLAGS .
+    $LN_S $root/library/$STD_LIB_NAME.init .
+    cd $root/$stage3dir
+    mkdir mdbcomp
+    cd mdbcomp
+    $LN_S $root/mdbcomp/*.m .
+    cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
+    cp $root/mdbcomp/*_FLAGS.in .
+    $LN_S $root/mdbcomp/$MDBCOMP_LIB_NAME.init .
+    cd $root/$stage3dir
+    mkdir browser
+    cd browser
+    $LN_S $root/browser/*.m .
+    cp $root/browser/Mmake* $root/browser/Mercury.options .
+    cp $root/browser/*_FLAGS.in .
+    $LN_S $root/browser/$BROWSER_LIB_NAME.init .
+    cd $root/$stage3dir
+    mkdir analysis
+    cd analysis
+    $LN_S $root/analysis/*.m .
+    cp $root/analysis/Mmake* $root/analysis/Mercury.options .
+    cp $root/analysis/*_FLAGS.in .
+    $LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
+    cd $root/$stage3dir
+    $LN_S $root/$stage2dir/boehm_gc .
+    $LN_S $root/$stage2dir/java .
+    $LN_S $root/$stage2dir/mps_gc .
+    $LN_S $root/bindist .
+    $LN_S $root/doc .
+    $LN_S $root/$stage2dir/runtime .
+    $LN_S $root/$stage2dir/trace .
+    $LN_S $root/$stage2dir/robdd .
+    $LN_S $root/scripts .
+    $LN_S $root/tools .
+    $LN_S $root/util .
+    $LN_S $root/$stage2dir/slice .
+    $LN_S $root/$stage2dir/profiler .
+    $LN_S $root/$stage2dir/deep_profiler .
+    $LN_S $root/conf* .
+    $LN_S $root/aclocal.m4 .
+    $LN_S $root/VERSION .
+    $LN_S $root/install-sh .
+    $LN_S $root/.*.in .
+    rm -f config*.log
+    cp $root/$stage2dir/Mmake* $root/$stage2dir/Mercury.options .
+    cd $root
+    set -x
 
-	MMAKE_VPATH=.
-	export MMAKE_VPATH
-	MMAKE_DIR=$root/scripts
-	export MMAKE_DIR
+    MMAKE_VPATH=.
+    export MMAKE_VPATH
+    MMAKE_DIR=$root/scripts
+    export MMAKE_DIR
 
-	# Use the new mmake to build stage 3
-	MMAKE=$MMAKE_DIR/mmake
+    # Use the new mmake to build stage 3
+    MMAKE=$MMAKE_DIR/mmake
 
-	if test "$type_stats" != ""
-	then
-		# Start collecting statistics from stage 3 with a clean slate,
-		# while making sure that the existing stats are not lost.
-		# Note: we do not have to go to any great lengths to restore
-		# the old stats if bootcheck fails, since the save files
-		# can easily be recovered outside bootcheck.
+    if test "$type_stats" != ""
+    then
+        # Start collecting statistics from stage 3 with a clean slate,
+        # while making sure that the existing stats are not lost.
+        # Note: we do not have to go to any great lengths to restore
+        # the old stats if bootcheck fails, since the save files
+        # can easily be recovered outside bootcheck.
 
-		cat "$type_stats" >> "$type_stats".save.$$
-		cp /dev/null "$type_stats"
-	fi
+        cat "$type_stats" >> "$type_stats".save.$$
+        cp /dev/null "$type_stats"
+    fi
 
-	if (cd $stage3dir && $MMAKE $mmake_opts dep_library dep_mdbcomp \
-		dep_browser_all dep_analysis dep_compiler)
-	then
-		echo "building of stage 3 dependencies successful"
-	else
-		echo "building of stage 3 dependencies not successful"
-		exit 1
-	fi
+    if (cd $stage3dir && $MMAKE $mmake_opts dep_library dep_mdbcomp \
+        dep_browser_all dep_analysis dep_compiler)
+    then
+        echo "building of stage 3 dependencies successful"
+    else
+        echo "building of stage 3 dependencies not successful"
+        exit 1
+    fi
 
-	if (cd $stage3dir/library &&
-		$MMAKE $mmake_opts $jfactor all-ints &&
-		$MMAKE $mmake_opts $jfactor ${target_ext}s)
-	then
-		echo "building of stage 3 library successful"
-	else
-		echo "building of stage 3 library initially not successful"
-		df .
-		# try again, in case the failure cause was transient
-		if (cd $stage3dir/library &&
-			$MMAKE $mmake_opts $jfactor all-ints &&
-			$MMAKE $mmake_opts $jfactor ${target_ext}s)
-		then
-			echo "building of stage 3 library successful"
-		else
-			echo "building of stage 3 library not successful"
-			exit 1
-		fi
-	fi
+    if (cd $stage3dir/library &&
+        $MMAKE $mmake_opts $jfactor all-ints &&
+        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 library successful"
+    else
+        echo "building of stage 3 library initially not successful"
+        df .
+        # try again, in case the failure cause was transient
+        if (cd $stage3dir/library &&
+            $MMAKE $mmake_opts $jfactor all-ints &&
+            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        then
+            echo "building of stage 3 library successful"
+        else
+            echo "building of stage 3 library not successful"
+            exit 1
+        fi
+    fi
 
-	# We delay deleting the stage 2 compiler objects until now,
-	# so that if (a) an error manifests itself during the creation
-	# of the stage 3 library, and (b) this error can be fixed by
-	# changing the runtime, a bootcheck -2, which requires a relink,
-	# will not have to expensively recreate the stage 2 compiler objects.
+    # We delay deleting the stage 2 compiler objects until now,
+    # so that if (a) an error manifests itself during the creation
+    # of the stage 3 library, and (b) this error can be fixed by
+    # changing the runtime, a bootcheck -2, which requires a relink,
+    # will not have to expensively recreate the stage 2 compiler objects.
 
-	if $keep_objs
-	then
-		true
-	else
-		find $root/$stage2dir/compiler -name "*.o" -print |
-		xargs /bin/rm -f
-	fi
+    if $keep_objs
+    then
+        true
+    else
+        find $root/$stage2dir/compiler -name "*.o" -print |
+        xargs /bin/rm -f
+    fi
 
-	if (cd $stage3dir/mdbcomp &&
-		$MMAKE $mmake_opts $jfactor all-ints &&
-		$MMAKE $mmake_opts $jfactor ${target_ext}s)
-	then
-		echo "building of stage 3 mdbcomp successful"
-	else
-		echo "building of stage 3 mdbcomp initially not successful"
-		df .
-		# try again, in case the failure cause was transient
-		if (cd $stage3dir/mdbcomp && \
-			$MMAKE $mmake_opts $jfactor ${target_ext}s)
-		then
-			echo "building of stage 3 mdbcomp successful"
-		else
-			echo "building of stage 3 mdbcomp not successful"
-			exit 1
-		fi
-	fi
+    if (cd $stage3dir/mdbcomp &&
+        $MMAKE $mmake_opts $jfactor all-ints &&
+        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 mdbcomp successful"
+    else
+        echo "building of stage 3 mdbcomp initially not successful"
+        df .
+        # try again, in case the failure cause was transient
+        if (cd $stage3dir/mdbcomp && \
+            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        then
+            echo "building of stage 3 mdbcomp successful"
+        else
+            echo "building of stage 3 mdbcomp not successful"
+            exit 1
+        fi
+    fi
 
-	if (cd $stage3dir/browser &&
-		$MMAKE $mmake_opts $jfactor all-ints &&
-		$MMAKE $mmake_opts $jfactor ${target_ext}s)
-	then
-		echo "building of stage 3 browser successful"
-	else
-		echo "building of stage 3 browser initially not successful"
-		df .
-		# try again, in case the failure cause was transient
-		if (cd $stage3dir/browser && \
-			$MMAKE $mmake_opts $jfactor ${target_ext}s)
-		then
-			echo "building of stage 3 browser successful"
-		else
-			echo "building of stage 3 browser not successful"
-			exit 1
-		fi
-	fi
+    if (cd $stage3dir/browser &&
+        $MMAKE $mmake_opts $jfactor all-ints &&
+        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 browser successful"
+    else
+        echo "building of stage 3 browser initially not successful"
+        df .
+        # try again, in case the failure cause was transient
+        if (cd $stage3dir/browser && \
+            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        then
+            echo "building of stage 3 browser successful"
+        else
+            echo "building of stage 3 browser not successful"
+            exit 1
+        fi
+    fi
 
-	if (cd $stage3dir/analysis &&
-		$MMAKE $mmake_opts $jfactor all-ints &&
-		$MMAKE $mmake_opts $jfactor ${target_ext}s)
-	then
-		echo "building of stage 3 analysis successful"
-	else
-		echo "building of stage 3 analysis initially not successful"
-		df .
-		# try again, in case the failure cause was transient
-		if (cd $stage3dir/analysis &&
-			$MMAKE $mmake_opts $jfactor all-ints &&
-			$MMAKE $mmake_opts $jfactor ${target_ext}s)
-		then
-			echo "building of stage 3 analysis successful"
-		else
-			echo "building of stage 3 analysis not successful"
-			exit 1
-		fi
-	fi
+    if (cd $stage3dir/analysis &&
+        $MMAKE $mmake_opts $jfactor all-ints &&
+        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 analysis successful"
+    else
+        echo "building of stage 3 analysis initially not successful"
+        df .
+        # try again, in case the failure cause was transient
+        if (cd $stage3dir/analysis &&
+            $MMAKE $mmake_opts $jfactor all-ints &&
+            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        then
+            echo "building of stage 3 analysis successful"
+        else
+            echo "building of stage 3 analysis not successful"
+            exit 1
+        fi
+    fi
 
-	if (cd $stage3dir/compiler && \
-		$MMAKE $mmake_opts $jfactor ${target_ext}s)
-	then
-		echo "building of stage 3 compiler successful"
-	else
-		echo "building of stage 3 compiler initially not successful"
-		df .
-		# try again, in case the failure cause was transient
-		if (cd $stage3dir/compiler && \
-			$MMAKE $mmake_opts $jfactor ${target_ext}s)
-		then
-			echo "building of stage 3 compiler successful"
-		else
-			echo "building of stage 3 compiler not successful"
-			exit 1
-		fi
-	fi
+    if (cd $stage3dir/compiler && \
+        $MMAKE $mmake_opts $jfactor ${target_ext}s)
+    then
+        echo "building of stage 3 compiler successful"
+    else
+        echo "building of stage 3 compiler initially not successful"
+        df .
+        # try again, in case the failure cause was transient
+        if (cd $stage3dir/compiler && \
+            $MMAKE $mmake_opts $jfactor ${target_ext}s)
+        then
+            echo "building of stage 3 compiler successful"
+        else
+            echo "building of stage 3 compiler not successful"
+            exit 1
+        fi
+    fi
 
-	if test "$type_stats" != ""
-	then
-		echo "Saving stage 3 stats in $type_stats.stage3.$$"
-		mv "$type_stats" "$type_stats".stage3.$$
-		cp /dev/null "$type_stats"
-	fi
+    if test "$type_stats" != ""
+    then
+        echo "Saving stage 3 stats in $type_stats.stage3.$$"
+        mv "$type_stats" "$type_stats".stage3.$$
+        cp /dev/null "$type_stats"
+    fi
 
-	diff_status=0
+    diff_status=0
 
-	exec 3>&1		# save stdout in fd 3
-	if test -n "$outfile"
-	then
-		exec > "$outfile"	# redirect stdout to $outfile
-	fi
+    exec 3>&1       # save stdout in fd 3
+    if test -n "$outfile"
+    then
+        exec > "$outfile"   # redirect stdout to $outfile
+    fi
 
-	for dir in library mdbcomp browser analysis compiler; do
-		# `mmake cs' in the compiler directory doesn't build
-		# `top_level_init.c', so we only compare the `.c'
-		# files present in the stage 3 directory.
-		for file in $stage3dir/$dir/${target_subdir}*.${target_ext}; do
-		    diff -u $stage2dir/$dir/${cs_subdir}`basename $file` $file \
-			|| diff_status=1
-		done
-	done
+    for dir in library mdbcomp browser analysis compiler; do
+        # `mmake cs' in the compiler directory doesn't build
+        # `top_level_init.c', so we only compare the `.c'
+        # files present in the stage 3 directory.
+        for file in $stage3dir/$dir/${target_subdir}*.${target_ext}; do
+            diff -u $stage2dir/$dir/${cs_subdir}`basename $file` $file \
+            || diff_status=1
+        done
+    done
 
-	exec >&3		# restore stdout from fd 3
-	if test $diff_status -ne 0
-	then
-		echo "** error - stage 2 and stage 3 differ!"
-	else
-		echo "stage 2 and stage 3 compare ok"
-		if test -d $stage3dir/library/ComplexityArgs
-		then
-			mv $stage3dir/library/ComplexityArgs \
-				$root/stage3_library_ComplexityArgs
-		fi
-		if test -d $stage3dir/library/ComplexityData
-		then
-			mv $stage3dir/library/ComplexityData \
-				$root/stage3_library_ComplexityData
-		fi
-		if test -d $stage3dir/compiler/ComplexityArgs
-		then
-			mv $stage3dir/compiler/ComplexityArgs \
-				$root/stage3_compiler_ComplexityArgs
-		fi
-		if test -d $stage3dir/compiler/ComplexityData
-		then
-			mv $stage3dir/compiler/ComplexityData \
-				$root/stage3_compiler_ComplexityData
-		fi
+    exec >&3        # restore stdout from fd 3
+    if test $diff_status -ne 0
+    then
+        echo "** error - stage 2 and stage 3 differ!"
+    else
+        echo "stage 2 and stage 3 compare ok"
+        if test -d $stage3dir/library/ComplexityArgs
+        then
+            mv $stage3dir/library/ComplexityArgs \
+                $root/stage3_library_ComplexityArgs
+        fi
+        if test -d $stage3dir/library/ComplexityData
+        then
+            mv $stage3dir/library/ComplexityData \
+                $root/stage3_library_ComplexityData
+        fi
+        if test -d $stage3dir/compiler/ComplexityArgs
+        then
+            mv $stage3dir/compiler/ComplexityArgs \
+                $root/stage3_compiler_ComplexityArgs
+        fi
+        if test -d $stage3dir/compiler/ComplexityData
+        then
+            mv $stage3dir/compiler/ComplexityData \
+                $root/stage3_compiler_ComplexityData
+        fi
 
-		echo "removing stage 3..."
-		# We try to do the removal of the stage 3 directory in parallel
-		# since recursive rm's across NFS can be quite slow ...
-		$RMSTAGECMD $root/$stage3dir/compiler < /dev/null &
-		$RMSTAGECMD $root/$stage3dir/library < /dev/null &
-		wait
-		$RMSTAGECMD $root/$stage3dir/* < /dev/null
-		/bin/rm -fr $root/$stage3dir/* < /dev/null
-		/bin/rm -fr $root/$stage3dir/.[a-zA-Z]* < /dev/null
+        echo "removing stage 3..."
+        # We try to do the removal of the stage 3 directory in parallel
+        # since recursive rm's across NFS can be quite slow ...
+        $RMSTAGECMD $root/$stage3dir/compiler < /dev/null &
+        $RMSTAGECMD $root/$stage3dir/library < /dev/null &
+        wait
+        $RMSTAGECMD $root/$stage3dir/* < /dev/null
+        /bin/rm -fr $root/$stage3dir/* < /dev/null
+        /bin/rm -fr $root/$stage3dir/.[a-zA-Z]* < /dev/null
 
-		if $keep_objs
-		then
-			true
-		else
-		case "$grade" in
-			*debug*)
-				# These files take up a lot of disk
-				# space, so we compress them. This
-				# reduces the probability that running
-				# the tests will run out of disk space,
-				# while still allowing the original
-				# files to be reconstructed
-				# relatively quickly.
-				gzip $root/$stage2dir/library/*.c
-				gzip $root/$stage2dir/mdbcomp/*.c
-				gzip $root/$stage2dir/browser/*.c
-				gzip $root/$stage2dir/compiler/*.c
-				;;
-		esac
-		fi
-	fi
+        if $keep_objs
+        then
+            true
+        else
+        case "$grade" in
+            *debug*)
+                # These files take up a lot of disk
+                # space, so we compress them. This
+                # reduces the probability that running
+                # the tests will run out of disk space,
+                # while still allowing the original
+                # files to be reconstructed
+                # relatively quickly.
+                gzip $root/$stage2dir/library/*.c
+                gzip $root/$stage2dir/mdbcomp/*.c
+                gzip $root/$stage2dir/browser/*.c
+                gzip $root/$stage2dir/compiler/*.c
+                ;;
+        esac
+        fi
+    fi
 
-	echo "finishing stage 3 at `date`"
+    echo "finishing stage 3 at `date`"
 else
-	diff_status=0
-	check_namespace_status=0
-	echo "building of stages 1 and 2 skipped"
+    diff_status=0
+    check_namespace_status=0
+    echo "building of stages 1 and 2 skipped"
 
-	# Don't set MMAKE_USE_SUBDIRS and MMAKE_USE_MMC_MAKE until after
-	# we have finished making stage1, because $use_subdirs and $use_mmc_make
-	# come from options that are intended to affect only stages 2 and 3.
+    # Don't set MMAKE_USE_SUBDIRS and MMAKE_USE_MMC_MAKE until after
+    # we have finished making stage1, because $use_subdirs and $use_mmc_make
+    # come from options that are intended to affect only stages 2 and 3.
 
-	MMAKE_USE_SUBDIRS=$use_subdirs
-	export MMAKE_USE_SUBDIRS
+    MMAKE_USE_SUBDIRS=$use_subdirs
+    export MMAKE_USE_SUBDIRS
 
-	MMAKE_USE_MMC_MAKE=$use_mmc_make
-	export MMAKE_USE_MMC_MAKE
+    MMAKE_USE_MMC_MAKE=$use_mmc_make
+    export MMAKE_USE_MMC_MAKE
 fi
 
 #-----------------------------------------------------------------------------#
 
 if test "$runtests" = "true" -o "$extras" = "true"
 then
-	# Use everything from stage 2, unless the options say that the tests
-	# should be done in grade different from the grade of stage 2,
-	# in which case use everything from stage 1, trusting the user
-	# that the grade of the tests and the grade of stage 1 are compatible.
+    # Use everything from stage 2, unless the options say that the tests
+    # should be done in grade different from the grade of stage 2,
+    # in which case use everything from stage 1, trusting the user
+    # that the grade of the tests and the grade of stage 1 are compatible.
 
-	MERCURY_COMPILER=$root/$stage2dir/compiler/mercury_compile
-	export MERCURY_COMPILER
+    MERCURY_COMPILER=$root/$stage2dir/compiler/mercury_compile
+    export MERCURY_COMPILER
 
-	MERCURY_CONFIG_FILE=$root/scripts/Mercury.config
-	export MERCURY_CONFIG_FILE
+    # now in FLAGS files
+    # MERCURY_CONFIG_FILE=$root/scripts/Mercury.config
+    # export MERCURY_CONFIG_FILE
 
-	if test "$test_grade" = "$grade"
-	then
-		stage2_insert="/$stage2dir"
-	else
-		stage2_insert=""
-	fi
+    if test "$test_grade" = "$grade"
+    then
+        stage2_insert="/$stage2dir"
+    else
+        stage2_insert=""
+    fi
 
-	WORKSPACE="$root${stage2_insert}"
-	export WORKSPACE
+    WORKSPACE="$root${stage2_insert}"
+    export WORKSPACE
 
-	MMAKE_DIR="$root${stage2_insert}/scripts"
-	export MMAKE_DIR
+    MMAKE_DIR="$root${stage2_insert}/scripts"
+    export MMAKE_DIR
 
-	# Set PATH for mkinit, mmc, mgnuc, ml etc
-	PATH=$root${stage2_insert}/util:$root${stage2_insert}/scripts:$PATH
-	export PATH
+    # Set PATH for mkinit, mmc, mgnuc, ml etc
+    PATH=$root${stage2_insert}/util:$root${stage2_insert}/scripts:$PATH
+    export PATH
 fi
 
 #-----------------------------------------------------------------------------#
 
 # Run the tests in the tests/* directories
 
+if test -s $HOME/.bootcheck_diff_opts
+then
+    DIFF_OPTS=`cat $HOME/.bootcheck_diff_opts`
+    export DIFF_OPTS
+fi
+
 test_status=0
 if $runtests
 then
-	# We need to give tests/debugger access to the mdbrc and mdb_doc
-	# files in the doc and scripts directories, without hardcoding their
-	# pathnames. We must also compensate for scripts/mdbrc having hardcoded
-	# within it the *installed* pathname of mdb_doc and not its current
-	# pathname.
-	cat $root/doc/mdb_doc > $root/scripts/test_mdbrc
-	sed -e '/^source/d' $root/scripts/mdbrc >> $root/scripts/test_mdbrc
-	MERCURY_DEBUGGER_INIT=$root/scripts/test_mdbrc
-	export MERCURY_DEBUGGER_INIT
+    # We need to give tests/debugger access to the mdbrc and mdb_doc
+    # files in the doc and scripts directories, without hardcoding their
+    # pathnames. We must also compensate for scripts/mdbrc having hardcoded
+    # within it the *installed* pathname of mdb_doc and not its current
+    # pathname.
+    cat $root/doc/mdb_doc > $root/scripts/test_mdbrc
+    sed -e '/^source/d' $root/scripts/mdbrc >> $root/scripts/test_mdbrc
+    MERCURY_DEBUGGER_INIT=$root/scripts/test_mdbrc
+    export MERCURY_DEBUGGER_INIT
 
-	MERCURY_SUPPRESS_STACK_TRACE=yes
-	export MERCURY_SUPPRESS_STACK_TRACE
+    MERCURY_SUPPRESS_STACK_TRACE=yes
+    export MERCURY_SUPPRESS_STACK_TRACE
 
-	if test "$test_grade" != ""
-	then
-		test_grade_opt="GRADE=$test_grade"
-	else
-		test_grade_opt=""
-	fi
+    if test "$test_grade" != ""
+    then
+        test_grade_opt="GRADE=$test_grade"
+    else
+        test_grade_opt=""
+    fi
 
-	test_status=0
-	if test -d tests
-	then
-		tests_prefix=""
-	elif test -d ../tests
-	then
-		tests_prefix="../"
-	else
-		echo "cannot find test directory"
-		test_status=1
-	fi
+    test_status=0
+    if test -d tests
+    then
+        tests_prefix=""
+    elif test -d ../tests
+    then
+        tests_prefix="../"
+    else
+        echo "cannot find test directory"
+        test_status=1
+    fi
 
-	if test "$test_status" = 0
-	then
-		if $test_params
-		then
-			cp $root/$stage2dir/Mmake.params ${tests_prefix}tests
-		else
-			/bin/rm ${tests_prefix}tests/Mmake.params > /dev/null 2>&1
-		fi
+    if test "$test_status" = 0
+    then
+        if $test_params
+        then
+            cp $root/$stage2dir/Mmake.params ${tests_prefix}tests
+        else
+            /bin/rm ${tests_prefix}tests/Mmake.params > /dev/null 2>&1
+        fi
 
-		cp $root/doc/mdb_command_test.inp ${tests_prefix}tests/debugger
+        cp $root/doc/mdb_command_test.inp ${tests_prefix}tests/debugger
 
-		case $error_file_only in
-			true)
-				if test ! -f ${tests_prefix}tests/runtests.errs
-				then
-					echo "bootcheck: \`--failing-tests' specified but" 1>&2
-					echo \
-					"\`${tests_prefix}tests/runtests.errs' does not exist." \
-						1>&2
-					exit 1
-				fi
+        sed -e "s:@WORKSPACE@:$WORKSPACE:" \
+            < ${tests_prefix}tests/WS_FLAGS.ws \
+            > ${tests_prefix}tests/WS_FLAGS
 
-				mv ${tests_prefix}tests/runtests.errs \
-					${tests_prefix}tests/runtests.$$
-				test_log_opt="ERROR_FILE=$root/${tests_prefix}tests/runtests.$$"
-				;;
-			false)
-				test_log_opt=""
-				;;
-		esac
+        WORKSPACE_FLAGS=yes
+        export WORKSPACE_FLAGS
 
-		case $failing_tests_only in
-			true)
-				test_log_opt="FAILING_TESTS_ONLY"
-				;;
-		esac
+        case $error_file_only in
+            true)
+                if test ! -f ${tests_prefix}tests/runtests.errs
+                then
+                    echo "bootcheck: \`--failing-tests' specified but" 1>&2
+                    echo \
+                    "\`${tests_prefix}tests/runtests.errs' does not exist." \
+                        1>&2
+                    exit 1
+                fi
 
-		cd $root/${tests_prefix}tests
-		/bin/rm -fr PASSED_TC_DIR PASSED_TC_FILES > /dev/null 2>&1
-		/bin/rm -fr FAILED_TC_DIR FAILED_TC_FILES > /dev/null 2>&1
-		> FAILED_TESTS_SUMMARY
+                mv ${tests_prefix}tests/runtests.errs \
+                    ${tests_prefix}tests/runtests.$$
+                test_log_opt="ERROR_FILE=$root/${tests_prefix}tests/runtests.$$"
+                ;;
+            false)
+                test_log_opt=""
+                ;;
+        esac
 
-		if test "$specified_tests_only" != ""
-		then
-			test_status=0
-			for specified_test in $specified_tests_only
-			do
-				specified_test_dir=`dirname $specified_test`
-				specified_test_base=`basename $specified_test`
-				if test -d "$root/${tests_prefix}/tests/$specified_test_dir"
-				then
-					cd $root/${tests_prefix}tests/$specified_test_dir
-					mmake $target_opt $jfactor $test_grade_opt \
-						SPECIFIED_TESTS="$specified_test_base" runtests
-					if test "$?" -ne "0"
-					then
-						test_status=$?
-					fi
-				else
-					test_status=1
-				fi
-			done
-		else
-			if test "$testdirs" = ""
-			then
-				mmake $target_opt $jfactor $test_grade_opt \
-					$test_log_opt runtests
-			else
-				for testdir in $testdirs
-				do
-					cd $root/${tests_prefix}tests/$testdir
-					mmake $target_opt $jfactor $test_grade_opt \
-						$test_log_opt runtests
-				done
-			fi
-			test_status=$?
-		fi
+        case $failing_tests_only in
+            true)
+                test_log_opt="FAILING_TESTS_ONLY"
+                ;;
+        esac
 
-		case $failing_tests_only in
-			true)	rm -f ${tests_prefix}tests/runtests.$$ ;;
-		esac
+        cd $root/${tests_prefix}tests
+        /bin/rm -fr PASSED_TC_DIR PASSED_TC_FILES > /dev/null 2>&1
+        /bin/rm -fr FAILED_TC_DIR FAILED_TC_FILES > /dev/null 2>&1
+        > FAILED_TESTS_SUMMARY
 
-		if test "$type_stats" != ""
-		then
-			echo "Saving test suite stats in $type_stats.test.$$"
-			mv "$type_stats" "$type_stats".test.$$
-		fi
+        if test "$specified_tests_only" != ""
+        then
+            test_status=0
+            for specified_test in $specified_tests_only
+            do
+                specified_test_dir=`dirname $specified_test`
+                specified_test_base=`basename $specified_test`
+                if test -d "$root/${tests_prefix}/tests/$specified_test_dir"
+                then
+                    cd $root/${tests_prefix}tests/$specified_test_dir
+                    mmake $target_opt $jfactor $test_grade_opt \
+                        SPECIFIED_TESTS="$specified_test_base" runtests
+                    if test "$?" -ne "0"
+                    then
+                        test_status=$?
+                    fi
+                else
+                    test_status=1
+                fi
+            done
+        else
+            if test "$testdirs" = ""
+            then
+                mmake $target_opt $jfactor $test_grade_opt \
+                    $test_log_opt runtests
+            else
+                for testdir in $testdirs
+                do
+                    cd $root/${tests_prefix}tests/$testdir
+                    mmake $target_opt $jfactor $test_grade_opt \
+                        $test_log_opt runtests
+                done
+            fi
+            test_status=$?
+        fi
 
-		cd $root
-	fi
+        case $failing_tests_only in
+            true)   rm -f ${tests_prefix}tests/runtests.$$ ;;
+        esac
+
+        if test "$type_stats" != ""
+        then
+            echo "Saving test suite stats in $type_stats.test.$$"
+            mv "$type_stats" "$type_stats".test.$$
+        fi
+
+        cd $root
+    fi
 fi
 
 #-----------------------------------------------------------------------------#
@@ -1503,95 +1533,95 @@ fi
 extras_status=0
 if $extras
 then
-	cd $root/extras
-	if test -f Mmake.params
-	then
-		mv Mmake.params Mmake.params.$$
-	fi
+    cd $root/extras
+    if test -f Mmake.params
+    then
+        mv Mmake.params Mmake.params.$$
+    fi
 
-	if test -f $root/Mmake.stage.params
-	then
-		cp $root/Mmake.stage.params Mmake.params
-	elif test -f $root/Mmake.params
-	then
-		cp $root/Mmake.params Mmake.params
-	else
-		cp /dev/null Mmake.params
-	fi
+    if test -f $root/Mmake.stage.params
+    then
+        cp $root/Mmake.stage.params Mmake.params
+    elif test -f $root/Mmake.params
+    then
+        cp $root/Mmake.params Mmake.params
+    else
+        cp /dev/null Mmake.params
+    fi
 
-	if test "$test_grade" != ""
-	then
-		echo "GRADE = $test_grade" >> Mmake.params
-	elif test "$grade" != ""
-	then
-		echo "GRADE = $grade" >> Mmake.params
-	fi
+    if test "$test_grade" != ""
+    then
+        echo "GRADE = $test_grade" >> Mmake.params
+    elif test "$grade" != ""
+    then
+        echo "GRADE = $grade" >> Mmake.params
+    fi
 
-	for testdir in *
-	do
-		if test -f $testdir/Mmakefile -a ! -f $testdir/NOBOOTTEST
-		then
-			(cd $testdir;
-			mmake realclean $jfactor;
-			mmake depend    $jfactor &&
-			mmake           $jfactor &&
-			mmake check     $jfactor &&
-			mmake realclean $jfactor ) ||
-			extras_status=1
-		fi
-	done
+    for testdir in *
+    do
+        if test -f $testdir/Mmakefile -a ! -f $testdir/NOBOOTTEST
+        then
+            (cd $testdir;
+            mmake realclean $jfactor;
+            mmake depend    $jfactor &&
+            mmake           $jfactor &&
+            mmake check     $jfactor &&
+            mmake realclean $jfactor ) ||
+            extras_status=1
+        fi
+    done
 
-	if test -f Mmake.params.$$
-	then
-		mv Mmake.params.$$ Mmake.params
-	else
-		/bin/rm Mmake.params
-	fi
+    if test -f Mmake.params.$$
+    then
+        mv Mmake.params.$$ Mmake.params
+    else
+        /bin/rm Mmake.params
+    fi
 
-	cd $root
+    cd $root
 fi
 
 if $delete_deep_data
 then
-	(cd $root; find stage2 tests -name Deep.data -print | xargs /bin/rm -f)
+    (cd $root; find stage2 tests -name Deep.data -print | xargs /bin/rm -f)
 fi
 
 #-----------------------------------------------------------------------------#
 
 if test "$type_stats" != ""
 then
-	mv "$type_stats".save.$$ "$type_stats"
+    mv "$type_stats".save.$$ "$type_stats"
 fi
 
 exitstatus=0
 
 if test "$diff_status" != 0
 then
-	echo "error exit: stages 2 and 3 differ"
-	exitstatus=1
+    echo "error exit: stages 2 and 3 differ"
+    exitstatus=1
 fi
 
 if test "$test_status" != 0
 then
-	echo "error exit: some tests failed"
-	exitstatus=1
+    echo "error exit: some tests failed"
+    exitstatus=1
 fi
 
 if test "$extras_status" != 0
 then
-	echo "error exit: some tests failed in extras"
-	exitstatus=1
+    echo "error exit: some tests failed in extras"
+    exitstatus=1
 fi
 
 if test "$check_namespace_status" != 0
 then
-	echo "error exit: some namespace isn't clean"
-	exitstatus=1
+    echo "error exit: some namespace isn't clean"
+    exitstatus=1
 fi
 
 if test -s $root/${tests_prefix}tests/FAILED_TESTS_SUMMARY
 then
-	cat $root/${tests_prefix}tests/FAILED_TESTS_SUMMARY
+    cat $root/${tests_prefix}tests/FAILED_TESTS_SUMMARY
 fi
 
 echo "finishing at `date`"

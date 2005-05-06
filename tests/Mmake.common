@@ -34,7 +34,9 @@ endif
 # file by setting both GRADEFLAGS-foo.
 #
 
+ifndef DIFF_OPTS
 DIFF_OPTS=-c
+endif
 
 # Override this with `RUN_RECOMPILATION_TESTS=no'
 # if your compiler cannot run smart recompilation.
@@ -69,6 +71,11 @@ PARAMS_MSG = in grade $(GRADE)
 endif
 
 -include $(TESTS_DIR)/Mmake.params
+
+MCFLAGS += --flags $(TESTS_DIR)/TESTS_FLAGS
+ifdef WORKSPACE_FLAGS
+MCFLAGS += --flags $(TESTS_DIR)/WS_FLAGS
+endif
 
 # Avoid trying to make this file with `mmc --make' if it doesn't exist.
 $(TESTS_DIR)/Mmake.params: ;

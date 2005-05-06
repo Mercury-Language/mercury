@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 The University of Melbourne.
+# Copyright (C) 1995-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -333,11 +333,11 @@ esac
 use_msvcrt=@USE_MSVCRT@
 if test $use_msvcrt = "yes"; then
 	case $thread_safe in
-    # /MD states that we will use the MSVC runtime,
-    # the boehm_gc collector assumes that the collector
-    # has been built as a DLL if we are using the MSVC runtime
-    # so we need to define GC_NOT_DLL when the collector isn't
-    # built as a DLL.
+		# /MD states that we will use the MSVC runtime,
+		# the boehm_gc collector assumes that the collector
+		# has been built as a DLL if we are using the MSVC runtime
+		# so we need to define GC_NOT_DLL when the collector isn't
+		# built as a DLL.
 		true)	MSVCRT_OPTS="/MD" ;;
 		false)	MSVCRT_OPTS="/DGC_NOT_DLL /MD" ;;
 	esac
@@ -589,16 +589,24 @@ case $assemble in true)
 	exec $AS $AS_OPTS "$@" ;;
 esac
 
+if test -r .mgnuc_opts
+then
+	INVISIBLE_OPTS=`cat .mgnuc_opts`
+else
+	INVISIBLE_OPTS=""
+fi
 
 ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
-		$HLC_OPTS $HLD_OPTS $GCC_OPTS $MSVCRT_OPTS $GC_OPTS $DEFINE_OPTS \
-		$STACK_TRACE_OPTS $TRACE_OPTS $DECL_DEBUG_OPTS \
-		$LLDEBUG_OPTS $C_DEBUG_OPTS \
-		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
-		$PROF_DEEP_OPTS $INLINE_ALLOC_OPTS $TRAIL_OPTS \
-		$RECORD_TERM_SIZE_OPTS \
-		$RESERVE_TAG_OPTS $MINIMAL_MODEL_OPTS \
-		$SPLIT_OPTS $THREAD_OPTS $PICREG_OPTS $ARCH_OPTS $ARG_OPTS"
+	$HLC_OPTS $HLD_OPTS $GCC_OPTS $MSVCRT_OPTS \
+	$GC_OPTS $DEFINE_OPTS \
+	$STACK_TRACE_OPTS $TRACE_OPTS $DECL_DEBUG_OPTS \
+	$LLDEBUG_OPTS $C_DEBUG_OPTS \
+	$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
+	$PROF_DEEP_OPTS $INLINE_ALLOC_OPTS $TRAIL_OPTS \
+	$RECORD_TERM_SIZE_OPTS \
+	$RESERVE_TAG_OPTS $MINIMAL_MODEL_OPTS \
+	$SPLIT_OPTS $THREAD_OPTS $PICREG_OPTS $ARCH_OPTS $ARG_OPTS \
+	$INVISIBLE_OPTS"
 
 case $verbose in true)
 	echo $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS $ALL_LOCAL_C_INCL_DIRS;;

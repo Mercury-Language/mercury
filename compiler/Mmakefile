@@ -48,14 +48,12 @@ force: ;
 $(GCC_MAIN_LIBS): force
 	cd $(GCC_SRC_DIR)/gcc && $(MAKE) mercury_gcc_backend_libs
 
-MCFLAGS +=	-I $(BROWSER_DIR) -I $(MDBCOMP_DIR) -I $(ANALYSIS_DIR) \
-			--c-include-directory $(ANALYSIS_DIR)
-CFLAGS +=	-I$(ANALYSIS_DIR) -I$(ANALYSIS_DIR)/$(mihs_subdir)
-MLOBJS :=	../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
-ALL_MLLIBS =	$(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
-MLFLAGS +=	--no-main --shared
-MCFLAGS +=	--no-main --linkage shared
-C2INITARGS +=	$(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
+MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
+CFLAGS       += -I$(ANALYSIS_DIR) -I$(ANALYSIS_DIR)/$(mihs_subdir)
+MLOBJS       := ../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
+ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
+MLFLAGS      += --no-main --shared
+C2INITARGS   += $(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
 
 #
 # Work-around for a fixed limit: on alpha-dec-osf3.2, if we compile with
@@ -124,12 +122,12 @@ endif
 #
 ifeq ($(ENABLE_GCC_BACK_END),yes)
 # Remove the #if line and everything between the #else and #endif lines.
-GCC_SED_EXPR =	-e "/^$${hash}if *ENABLE_GCC_BACK_END/s/.*//" \
+GCC_SED_EXPR  = -e "/^$${hash}if *ENABLE_GCC_BACK_END/s/.*//" \
 		-e "/^$${hash}else/,/^$${hash}endif/s/.*//"
 else
 # Remove everything between the #if line and the #else line,
 # and the #endif line.
-GCC_SED_EXPR =	-e "/^$${hash}if *ENABLE_GCC_BACK_END/,/^$${hash}else/s/.*//" \
+GCC_SED_EXPR  = -e "/^$${hash}if *ENABLE_GCC_BACK_END/,/^$${hash}else/s/.*//" \
 		-e "/^$${hash}endif/s/.*//"
 endif
 
@@ -161,13 +159,13 @@ MC_PROG = top_level
 .PHONY: depend
 depend:		$(MC_PROG).depend
 
-$(MC_PROG).depend: regenerate_preprocessed_files Mercury.modules
+$(MC_PROG).depend: regenerate_preprocessed_files Mercury.modules COMP_FLAGS 
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
 # won't work without the Mercury.modules file.
 .PHONY: Mercury.modules
-Mercury.modules:
+Mercury.modules: COMP_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: all
@@ -223,7 +221,7 @@ mercury_compile_init.$O: $(MC_PROG)_init.$O
 ifeq ("$(filter il% java%,$(GRADE))","")
 
 .PHONY: depend
-depend:		mlds_to_gcc.depend
+depend:		COMP_FLAGS mlds_to_gcc.depend
 
 mlds_to_gcc.depend: regenerate_preprocessed_files
 
@@ -314,7 +312,7 @@ clean_local:
 
 realclean_local:
 	rm -f tags $(MC_PROG).stats Mercury.modules \
-		mercury_compile$(EXT_FOR_EXE)
+		COMP_FLAGS COMP_FLAGS.date mercury_compile$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

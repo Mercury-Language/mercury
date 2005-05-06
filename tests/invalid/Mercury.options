@@ -49,6 +49,7 @@ MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-impure_method_impl =	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+MCFLAGS-loopcheck =		--warn-inferred-erroneous
 MCFLAGS-method_impl =		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-missing_det_decls =	--no-infer-det
@@ -64,9 +65,10 @@ MCFLAGS-no_exports = 		--halt-at-warn
 MCFLAGS-nonexistent_import =    --no-verbose-make --make nonexistent_import
 MCFLAGS-overloading = 		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+MCFLAGS-pragma_c_code_no_det =	--warn-inferred-erroneous
+MCFLAGS-record_syntax_errors =	--verbose-error-messages
 MCFLAGS-sub_c = 	--verbose-error-messages --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
-MCFLAGS-record_syntax_errors =	--verbose-error-messages
 MCFLAGS-test_nested =		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-transitive_import = --no-intermodule-optimization \

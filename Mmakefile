@@ -344,7 +344,7 @@ config.status: configure VERSION
 	fi
 
 Mmake.common: Mmake.common.in config.status
-	./config.status
+	./config.status --file Mmake.common
 
 README: .README.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .README.in > README

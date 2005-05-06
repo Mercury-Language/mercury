@@ -43,12 +43,15 @@ CHECKS =	$(patsubst %,%.check,$(MERCURY_MAIN_LIB_MODULES))
 # Don't change these without good reason - if you want to do a temporary
 # change, change ../Mmake.params, or create Mmake.mdbcomp.params.
 
-CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
-MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
+CFLAGS	     += $(DLL_CFLAGS) -I$(TRACE_DIR)
+MCFLAGS      += --flags MDBCOMP_FLAGS $(CONFIG_OVERRIDE)
+ifeq ($(INSTALLABLE_PREFIX),yes)
+MLFLAGS      += -R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
-MCFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
+MCFLAGS      += -R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
-MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
+endif
+MLLIBS       += $(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY) \
 		$(READLINE_LIBRARIES)
 
 #-----------------------------------------------------------------------------#
@@ -65,7 +68,6 @@ MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
 # linker, so we disable the mmc option which causes the -install_name option
 # to be passed in the .dep files.
 
-MCFLAGS += --no-shlib-linker-use-install-name
 LD_LIBFLAGS-libmer_mdbcomp.dylib = -install_name \
 	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_mdbcomp.dylib
 
@@ -73,9 +75,9 @@ LD_LIBFLAGS-libmer_mdbcomp.dylib = -install_name \
 
 JAVACFLAGS = -classpath $(LIBRARY_DIR)
 
-MTAGS	=	$(SCRIPTS_DIR)/mtags
+MTAGS	= $(SCRIPTS_DIR)/mtags
 
-LN	=	ln
+LN	= ln
 
 #-----------------------------------------------------------------------------#
 
@@ -119,7 +121,7 @@ library: $(LIBS)
 all-ints: $(MDBCOMP_LIB_NAME).int3s $(MDBCOMP_LIB_NAME).ints
 
 .PHONY: depend
-depend:	$(DEPENDS)
+depend:	MDBCOMP_FLAGS $(DEPENDS)
 $(DEPENDS): Mercury.modules
 
 # $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
@@ -129,7 +131,7 @@ $(DEPENDS): Mercury.modules
 # name doesn't match the file name, so smart recompilation
 # won't work without the Mercury.modules file.
 .PHONY: Mercury.modules
-Mercury.modules:
+Mercury.modules: MDBCOMP_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: check
@@ -218,7 +220,7 @@ $(os_subdir)mdb.pic_o \
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f Mercury.modules tags
+	rm -f Mercury.modules tags MDBCOMP_FLAGS MDBCOMP_FLAGS.date
 
 #-----------------------------------------------------------------------------#
 

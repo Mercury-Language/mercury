@@ -49,37 +49,31 @@ ifeq ($(LIBRARY_INTERMODULE),yes)
 
 # XXX Smart recompilation doesn't work with `--intermodule-optimization'.
 # We still want to generate version numbers in the interface files, so
-# just disable the warnings here.
-INTERMODULE_OPTS = --transitive-intermodule-optimization \
-			--no-warn-smart-recompilation
-ENABLE_TERM_OPTS = --enable-termination
-CHECK_TERM_OPTS =
+# just disable the warnings in INTER_FLAGS.
 # If you want to actually check termination for the library, then you need
-#	CHECK_TERM_OPTS = --check-termination
-# but that is not enabled by default because it probably just results in
-# spurious warnings.
+# to add --check-termination to INTER_FLAGS, but that is not enabled by default
+# because it probably just results in spurious warnings.
+INTER_FLAGS = --flags INTER_FLAGS
 
 else
 
-INTERMODULE_OPTS =
-ENABLE_TERM_OPTS =
-CHECK_TERM_OPTS =
+INTER_FLAGS =
 
 endif
 
 # We compile the files in the library directory with --trace minimum by
-# default, which has no effect in non-debugging grades and causes the
-# library to be shallow traced, not deep traced, in debugging grades.
-# This is probably what most users want, and it makes it much easier to
+# default (set in FLAGS), which has no effect in non-debugging grades and
+# causes the library to be shallow traced, not deep traced, in debugging
+# grades. This is probably what most users want, and it makes it much easier to
 # maintain the expected output of the debugging test cases in debugging grades.
 # However, this can be overridden by setting LIBRARY_TRACE_MINIMUM to no.
 #
 # Always generate dependencies for use by `mmc --make'.
 
 ifeq ($(LIBRARY_TRACE_MINIMUM),no)
-LIBRARY_TRACE_LEVEL =
+LIBRARY_TRACE_LEVEL = --trace default
 else
-LIBRARY_TRACE_LEVEL = --trace minimum
+LIBRARY_TRACE_LEVEL =
 endif
 
 # We need to compile the library with --strict-sequential for two reasons:
@@ -90,8 +84,8 @@ endif
 # (2) The code for get_determinism in library/exception.m relies on it
 #     (in particular it relies on --no-reorder-disj).
 
-MCFLAGS += --strict-sequential $(LIBRARY_TRACE_LEVEL) --generate-mmc-deps \
-		$(INTERMODULE_OPTS) $(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
+MCFLAGS += --flags LIB_FLAGS $(CONFIG_OVERRIDE)
+MCFLAGS += $(LIBRARY_TRACE_LEVEL) $(INTER_FLAGS)
 
 # The IL and Java implementations of the standard library are not yet complete,
 # so we need to pass `--allow-stubs' to get them to compile.
@@ -103,15 +97,17 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR) -I$(ROBDD_DIR)
-MLFLAGS	+=	-R$(FINAL_INSTALL_MERC_LIB_DIR) \
+CFLAGS	     += $(DLL_CFLAGS) -I$(TRACE_DIR) -I$(ROBDD_DIR)
+ifeq ($(INSTALLABLE_PREFIX),yes)
+MLFLAGS      += -R$(FINAL_INSTALL_MERC_LIB_DIR) \
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
-MCFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR) \
+MCFLAGS      += -R$(FINAL_INSTALL_MERC_LIB_DIR) \
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+endif
 
-MTAGS	=	$(SCRIPTS_DIR)/mtags
+MTAGS	= $(SCRIPTS_DIR)/mtags
 
-LN	=	ln
+LN	= ln
 
 #-----------------------------------------------------------------------------#
 
@@ -127,7 +123,6 @@ LN	=	ln
 # linker, so we disable the mmc option which causes the -install_name option
 # to be passed in the .dep files.
 
-MCFLAGS += --no-shlib-linker-use-install-name
 LD_LIBFLAGS-libmer_std.dylib = -install_name \
 	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_std.dylib
 
@@ -161,7 +156,7 @@ mercury: lib_std
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend:	$(STD_LIB_NAME).depend
+depend:	LIB_FLAGS $(STD_LIB_NAME).depend
 
 .PHONY: check
 check:	$(STD_LIB_NAME).check
@@ -442,7 +437,7 @@ realclean_local:
 	rm -f mercury_dotnet.dll mercury_il.dll
 	rm -f liblibrary.$A liblibrary.so library.init
 	rm -f $($(STD_LIB_NAME).mods:%=%.h)
-	rm -f tags
+	rm -f tags LIB_FLAGS LIB_FLAGS.date
 	rm -f mercury runtime
 	rm -f mr_int.class mr_float.class mr_char.class
 	rm -f mr_int\$$*.class mr_float\$$*.class mr_char\$$*.class

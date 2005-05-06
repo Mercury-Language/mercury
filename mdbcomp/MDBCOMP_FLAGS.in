@@ -1,0 +1,19 @@
+@BOOTSTRAP_MC_ARGS@
+--no-infer-all
+--halt-at-warn
+--no-warn-inferred-erroneous
+--no-mercury-stdlib-dir
+--no-shlib-linker-use-install-name
+-I../library
+--c-include-directory ../boehm_gc
+--c-include-directory ../boehm_gc/include
+--c-include-directory ../runtime
+--c-include-directory ../library
+--c-include-directory ../library/Mercury/mihs
+-L../boehm_gc
+-L../runtime
+-L../library
+-L../trace
+-L../mdbcomp
+-L../browser
+--config-file ../scripts/Mercury.config.bootstrap

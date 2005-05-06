@@ -48,6 +48,8 @@ include Mercury.options
 # `.err' files, not stderr.
 MCFLAGS += --output-compile-error-lines 0
 
+MCFLAGS += --infer-all
+
 $(COMPILE_PROGS:%=%.runtest): %.runtest: %.res_compile ;
 
 $(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;

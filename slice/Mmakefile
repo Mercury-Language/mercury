@@ -25,17 +25,17 @@ CHECKS	= $(patsubst %,%.check,$(MERCURY_MAIN_MODULES))
 
 VPATH = $(MDBCOMP_DIR) $(LIBRARY_DIR)
 
-MCFLAGS += -I $(MDBCOMP_DIR)
-
 #-----------------------------------------------------------------------------#
 
 MLFLAGS += --shared
-MCFLAGS += --linkage shared
+MCFLAGS += --flags SLICE_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
 depend:	$(DEPENDS)
+
+$(DEPENDS): SLICE_FLAGS
 
 .PHONY: all
 all:	$(MERCURY_MAIN_MODULES) $(TAGS_FILE_EXISTS)
@@ -97,7 +97,7 @@ ils:	$(mslice.ils) $(mdice.ils)
 #-----------------------------------------------------------------------------#
 
 realclean_local:
-	rm -f tags
+	rm -f tags SLICE_FLAGS SLICE_FLAGS.date
 
 #-----------------------------------------------------------------------------#
 

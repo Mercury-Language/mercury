@@ -91,9 +91,18 @@ AC_DEFINE_UNQUOTED(MR_FULLARCH, "$FULLARCH")
 AC_DEFINE_UNQUOTED(MR_VERSION, "$VERSION")
 if test "$prefix" = "NONE"; then
 	PREFIX="$ac_default_prefix"
+	if test -d $PREFIX
+	then
+		INSTALLABLE_PREFIX=yes
+	else
+		INSTALLABLE_PREFIX=no
+	fi
 else
 	PREFIX="$prefix"
+	# the directory may be created later
+	INSTALLABLE_PREFIX=yes
 fi
+AC_SUBST(INSTALLABLE_PREFIX)
 case "$PREFIX" in
     *\ *)
 	AC_MSG_ERROR(
@@ -3490,7 +3499,11 @@ fi
 if test "$BOOTSTRAP_MC" = ""; then
 	BOOTSTRAP_MC=mmc
 fi
-BOOTSTRAP_MC="$BOOTSTRAP_MC $HAVE_BOXED_FLOATS --conf-low-tag-bits $LOW_TAG_BITS --bits-per-word $BITS_PER_WORD --bytes-per-word $BYTES_PER_WORD"
+BOOTSTRAP_MC_COMPILER="$BOOTSTRAP_MC"
+BOOTSTRAP_MC_ARGS="$HAVE_BOXED_FLOATS --conf-low-tag-bits $LOW_TAG_BITS --bits-per-word $BITS_PER_WORD --bytes-per-word $BYTES_PER_WORD"
+BOOTSTRAP_MC="$BOOTSTRAP_MC_COMPILER $BOOTSTRAP_MC_ARGS"
+AC_SUBST(BOOTSTRAP_MC_COMPILER)
+AC_SUBST(BOOTSTRAP_MC_ARGS)
 AC_SUBST(BOOTSTRAP_MC)
 #-----------------------------------------------------------------------------#
 
@@ -3999,6 +4012,15 @@ scripts/prepare_tmp_dir_fixed_part
 bindist/bindist.INSTALL bindist/bindist.Makefile
 tools/lmc tools/dotime runtime/mercury_dotnet.cs java/runtime/Constants.java
 java/runtime/Native.java
+compiler/COMP_FLAGS
+library/LIB_FLAGS
+mdbcomp/MDBCOMP_FLAGS
+browser/MDB_FLAGS
+analysis/ANALYSIS_FLAGS
+slice/SLICE_FLAGS
+profiler/PROF_FLAGS
+deep_profiler/DEEP_FLAGS
+tests/TESTS_FLAGS
 ,
 [
 # Only do this when compiling the source, not when reconfiguring

@@ -1,0 +1,16 @@
+--no-mercury-stdlib-dir
+-I@WORKSPACE@/library
+-I@WORKSPACE@/browser
+-I@WORKSPACE@/mdbcomp
+--c-include-directory @WORKSPACE@/boehm_gc
+--c-include-directory @WORKSPACE@/boehm_gc/include
+--c-include-directory @WORKSPACE@/runtime
+--c-include-directory @WORKSPACE@/library
+--c-include-directory @WORKSPACE@/library/Mercury/mihs
+--c-include-directory @WORKSPACE@/mdbcomp
+--c-include-directory @WORKSPACE@/mdbcomp/Mercury/mihs
+--c-include-directory @WORKSPACE@/browser
+--c-include-directory @WORKSPACE@/browser/Mercury/mihs
+--c-include-directory @WORKSPACE@/trace
+--linkage shared
+--config-file @WORKSPACE@/scripts/Mercury.config.bootstrap

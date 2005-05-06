@@ -29,7 +29,7 @@ include $(MERCURY_DIR)/Mmake.workspace
 #-----------------------------------------------------------------------------#
 
 # Specify the Mercury compiler to use for bootstrapping.
-MC		= @BOOTSTRAP_MC@
+MC		= @BOOTSTRAP_MC_COMPILER@
 
 # Specify the compilation model to use for compiling the compiler.
 GRADE		= @GRADE@
@@ -121,6 +121,8 @@ SHARED_LIBS		= @SHARED_LIBS@
 INSTALL_PREFIX		= @prefix@
 FINAL_INSTALL_PREFIX	= @prefix@
 
+INSTALLABLE_PREFIX	= @INSTALLABLE_PREFIX@
+
 #-----------------------------------------------------------------------------#
 
 INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_MERC_GRADELESS_LIB_DIR)
@@ -138,7 +140,8 @@ FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 GRADESTRING = $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
 
 # Options to pass to the Mercury compiler
-MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
+# now included in FLAGS files
+# MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
 
 # Do we want to deal with intermodule information when building the library?
 # By default yes, since this way we note immediately when intermodule
@@ -458,6 +461,13 @@ clean_check:
 	-rm -f $(OBJ_CHECKS)
 
 endif
-# ifdef CHECK_OBJS
+# the endif is for "ifdef CHECK_OBJS" a long way above
+
+#-----------------------------------------------------------------------------#
+
+%_FLAGS:	%_FLAGS.in ../config.status
+		@if test -f $*_FLAGS; then chmod u+w $*_FLAGS; fi
+		@../config.status --file $*_FLAGS
+		@chmod a-w $*_FLAGS
 
 #-----------------------------------------------------------------------------#

@@ -101,39 +101,42 @@ MTAGSFLAGS +=	$(EXTRA_MTAGSFLAGS)
 VPATH =		$(LIBRARY_DIR)
 
 ifeq ($(origin MERCURY_CONFIG_FILE),undefined)
-MERCURY_CONFIG_FILE =	$(SCRIPTS_DIR)/Mercury.config.bootstrap
+MERCURY_CONFIG_FILE = $(SCRIPTS_DIR)/Mercury.config.bootstrap
+CONFIG_OVERRIDE =
+else
+CONFIG_OVERRIDE = --config-file $(MERCURY_CONFIG_FILE)
 endif
-
-MCFLAGS +=	--config-file $(MERCURY_CONFIG_FILE)
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-MCFLAGS +=	--options-file $(WORKSPACE)/Mercury.options
+MCFLAGS      += --options-file $(WORKSPACE)/Mercury.options
 endif
 
-MCFLAGS += 	--no-mercury-stdlib-dir -I$(LIBRARY_DIR)
-MGNUCFLAGS +=	--no-mercury-stdlib-dir
-C2INITFLAGS += 	--trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
+# now in FLAGS files
+# MCFLAGS    += --no-mercury-stdlib-dir -I$(LIBRARY_DIR)
+MGNUCFLAGS   += --no-mercury-stdlib-dir
+C2INITFLAGS  += --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
 		--trace-init-file $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
-C2INITARGS +=	$(LIBRARY_DIR)/$(STD_LIB_NAME).init \
+C2INITARGS   += $(LIBRARY_DIR)/$(STD_LIB_NAME).init \
 		$(RUNTIME_DIR)/$(RT_LIB_NAME).init
-MLFLAGS +=	--no-mercury-stdlib-dir
+MLFLAGS      += --no-mercury-stdlib-dir
 
 #
 # Work out the C include directories.
 #
-C_INCL_DIRS =	-I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include -I$(MPS_GC_DIR)
+C_INCL_DIRS   = -I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include -I$(MPS_GC_DIR)
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
-C_INCL_DIRS +=	-I$(RUNTIME_DIR)
+C_INCL_DIRS  += -I$(RUNTIME_DIR)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
-C_INCL_DIRS +=	-I$(LIBRARY_DIR) -I$(LIBRARY_DIR)/$(mihs_subdir)
+C_INCL_DIRS  += -I$(LIBRARY_DIR) -I$(LIBRARY_DIR)/$(mihs_subdir)
 ifneq ($(LINK_STDLIB_ONLY),yes)
-C_INCL_DIRS +=	-I$(MDBCOMP_DIR) -I$(MDBCOMP_DIR)/$(mihs_subdir) \
+C_INCL_DIRS  += -I$(MDBCOMP_DIR) -I$(MDBCOMP_DIR)/$(mihs_subdir) \
 		-I$(BROWSER_DIR) -I$(BROWSER_DIR)/$(mihs_subdir) -I$(TRACE_DIR)
 endif
 endif
 endif
-CFLAGS +=	$(C_INCL_DIRS)
-MCFLAGS +=	$(C_INCL_DIRS:-I%=--c-include-directory %)
+CFLAGS       += $(C_INCL_DIRS)
+# now in FLAGS files
+# MCFLAGS    += $(C_INCL_DIRS:-I%=--c-include-directory %)
 
 #
 # Work out the .NET directories
@@ -214,13 +217,14 @@ LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(MPS_GC_DIR) -L$(RUNTIME_DIR) \
 		-L$(LIBRARY_DIR) -L$(TRACE_DIR) -L$(MDBCOMP_DIR) \
 		-L$(BROWSER_DIR)
 
-MLFLAGS +=	$(LIB_DIR_OPTS)
-MCFLAGS +=	$(LIB_DIR_OPTS)
-MLLIBS +=	$(LINK_LIB_OPTS)
+MLFLAGS      += $(LIB_DIR_OPTS)
+# now in FLAGS files
+# MCFLAGS    += $(LIB_DIR_OPTS)
+MLLIBS       += $(LINK_LIB_OPTS)
 
 ifeq ($(SET_RPATH),yes)
 MLFLAGS += $(LIB_DIR_OPTS:-L%=-R%)
-MCFLAGS += $(LIB_DIR_OPTS:-L%=-R%)
+MCFLAGS += --flags RPATH
 endif
 
 endif # LINK_STATIC != yes

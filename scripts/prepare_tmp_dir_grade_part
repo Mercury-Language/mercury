@@ -37,15 +37,18 @@ cp trace/*.[ch] tmp_dir/trace
 mkdir tmp_dir/library
 cp library/Mmake* tmp_dir/library
 cp library/Mercury.* tmp_dir/library
+cp library/*FLAGS* tmp_dir/library
 cp library/print_extra_inits tmp_dir/library
 cp library/library_strong_name.sn tmp_dir/library
 cp library/*.m tmp_dir/library
 mkdir tmp_dir/mdbcomp
 cp mdbcomp/Mmake* tmp_dir/mdbcomp
 cp mdbcomp/Mercury.* tmp_dir/mdbcomp
+cp mdbcomp/*FLAGS* tmp_dir/mdbcomp
 cp mdbcomp/*.m tmp_dir/mdbcomp
 mkdir tmp_dir/browser
 cp browser/Mmake* tmp_dir/browser
 cp browser/Mercury.* tmp_dir/browser
+cp browser/*FLAGS* tmp_dir/browser
 cp browser/*.m tmp_dir/browser
 exit 0

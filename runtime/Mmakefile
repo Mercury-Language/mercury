@@ -134,7 +134,7 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 
 # MCPP_HDRS are header files in Microsoft's Managed extensions for C++
 
-MCPP_HDRS	=	mercury_mcpp.h		
+MCPP_HDRS	=	mercury_mcpp.h
 
 #		  keep this list in alphabetical order, please
 CFILES		= 	\
@@ -214,8 +214,8 @@ CFLAGS	+= $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
 
 # We intentionally compile with C level debugging enabled so that problems
 # in the runtime can be debugged without having to recompile it.  The cost
-# of doing this is negligible.  The runtime can be compiled without 
-# debugging enabled by removing the `--c-debug' flag below. 
+# of doing this is negligible.  The runtime can be compiled without
+# debugging enabled by removing the `--c-debug' flag below.
 MGNUCFLAGS	+= --c-debug --no-ansi
 
 #-----------------------------------------------------------------------------#
@@ -290,7 +290,7 @@ mercury_profiling_builtin.h:	mercury_deep_call_port_body.h \
 .PHONY: all
 all:	runtime $(TAGS_FILE_EXISTS)
 
-ifeq ($(findstring java,$(GRADE)),java)        
+ifeq ($(findstring java,$(GRADE)),java)
 #
 # For grade java, there's nothing to do
 
@@ -299,7 +299,7 @@ runtime:
 	@echo "No Mercury runtime needed for grade=java"
 
 else
-ifeq ($(findstring il,$(GRADE)),il)        
+ifeq ($(findstring il,$(GRADE)),il)
 
 # Managed C++ files compiled in this directory should not be put in an
 # assembly of their own.  We put the runtime and library dlls into a single
@@ -312,7 +312,7 @@ DOTNET_DLLS=mercury_il.dll mercury_dotnet.dll
 
 clean_local:
 	rm -f $(DOTNET_DLLS)
-	
+
 runtime: $(DOTNET_DLLS)
 
 mercury_dotnet.dll: mercury_il.dll $(MCPP_HDRS)
@@ -323,7 +323,7 @@ mercury_dotnet.dll: mercury_il.dll $(MCPP_HDRS)
 #	sed '/REMOVE FOR ROTOR/s@^@//@' mercury_il.il > mercury_il.rotor.il
 #	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=mercury_il.dll \
 #			mercury_il.rotor.il
- 
+
 else
 
 .PHONY: runtime
@@ -348,7 +348,8 @@ lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 lib$(RT_LIB_NAME).dylib: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED) 				\
 		-o lib$(RT_LIB_NAME).dylib $(PIC_OBJS)			\
-		-install_name $(FINAL_INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).dylib \
+		-install_name 						\
+			$(FINAL_INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).dylib \
 		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 
@@ -359,7 +360,7 @@ $(RT_LIB_NAME).init: $(CFILES)
 	cat `vpath_find $(CFILES)` | grep '^INIT ' > $(RT_LIB_NAME).init
 
 mercury_conf.h.date: $(MERCURY_DIR)/config.status mercury_conf.h.in
-	CONFIG_FILES= CONFIG_HEADERS=mercury_conf.h $(MERCURY_DIR)/config.status
+	$(MERCURY_DIR)/config.status --header=mercury_conf.h
 	echo datestamp > mercury_conf.h.date
 
 mercury_conf.h: mercury_conf.h.date
@@ -393,33 +394,33 @@ install_dirs:
 	-[ -d $(INSTALL_RECONF_DIR)/runtime ] || \
 		mkdir -p $(INSTALL_RECONF_DIR)/runtime
 
-ifeq ($(findstring java,$(GRADE)),java)        
+ifeq ($(findstring java,$(GRADE)),java)
 
 # For grade java, there's nothing to do.
 # (The java version of the Mercury runtime is in mercury/java/runtime,
 # not mercury/runtime, and its build and installation is handled by
 # mercury/library/Mmakefile.)
 
-.PHONY: install_headers 
+.PHONY: install_headers
 install_headers:
 
-.PHONY: install_init 
+.PHONY: install_init
 install_init:
 
-.PHONY: install_lib 
+.PHONY: install_lib
 install_lib:
 
 else
-ifeq ($(findstring il,$(GRADE)),il)        
+ifeq ($(findstring il,$(GRADE)),il)
 
-.PHONY: install_headers 
+.PHONY: install_headers
 install_headers: $(MCPP_HDRS) install_dirs
 	cp `vpath_find $(MCPP_HDRS)` $(INSTALL_INC_DIR)
 
 .PHONY: install_init
-install_init: 
+install_init:
 
-.PHONY: install_lib 
+.PHONY: install_lib
 install_lib: $(DOTNET_DLLS) install_headers install_dirs
 	cp `vpath_find $(DOTNET_DLLS)` $(INSTALL_MERC_LIB_DIR)
 
@@ -427,7 +428,7 @@ install_lib: $(DOTNET_DLLS) install_headers install_dirs
 
 else
 
-# mercury_conf.h needs to be in a separate directory so it can be 
+# mercury_conf.h needs to be in a separate directory so it can be
 # overridden by a different configuration.
 .PHONY: install_headers
 install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) \
