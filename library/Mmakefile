@@ -53,6 +53,7 @@ ifeq ($(LIBRARY_INTERMODULE),yes)
 INTERMODULE_OPTS = --transitive-intermodule-optimization \
 			--no-warn-smart-recompilation
 ENABLE_TERM_OPTS = --enable-termination
+EXCEP_ANALYSIS_OPTS = --analyse-exceptions
 CHECK_TERM_OPTS =
 # If you want to actually check termination for the library, then you need
 #	CHECK_TERM_OPTS = --check-termination
@@ -63,6 +64,7 @@ else
 
 INTERMODULE_OPTS =
 ENABLE_TERM_OPTS =
+EXCEP_ANALYSIS_OPTS =
 CHECK_TERM_OPTS =
 
 endif
@@ -91,7 +93,8 @@ endif
 #     (in particular it relies on --no-reorder-disj).
 
 MCFLAGS += --strict-sequential $(LIBRARY_TRACE_LEVEL) --generate-mmc-deps \
-		$(INTERMODULE_OPTS) $(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
+		$(INTERMODULE_OPTS) $(EXCEP_ANALYSIS_OPTS) \
+		$(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
 
 # The IL and Java implementations of the standard library are not yet complete,
 # so we need to pass `--allow-stubs' to get them to compile.
