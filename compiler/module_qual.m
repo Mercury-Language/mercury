@@ -870,10 +870,21 @@ qualify_inst(abstract_inst(Name, Args0), abstract_inst(Name, Args), !Info,
 qualify_inst_name(user_inst(SymName0, Insts0), user_inst(SymName, Insts),
 		!Info, !IO) :-
 	qualify_inst_list(Insts0, Insts, !Info, !IO),
-	mq_info_get_insts(!.Info, InstIds),
-	list.length(Insts0, Arity),
-	find_unique_match(SymName0 - Arity, SymName - _,
-		InstIds, inst_id, !Info, !IO).
+	(
+		% Check for a variable inst constructor.
+		SymName0 = unqualified("")
+	->
+		mq_info_get_error_context(!.Info, ErrorContext),
+		report_invalid_user_inst(SymName0, Insts, ErrorContext, !IO),
+		mq_info_set_error_flag(inst_id, !Info),
+		mq_info_incr_errors(!Info),
+		SymName = SymName0
+	;
+		list.length(Insts0, Arity),
+		mq_info_get_insts(!.Info, InstIds),
+		find_unique_match(SymName0 - Arity, SymName - _,
+			InstIds, inst_id, !Info, !IO)
+	).
 qualify_inst_name(merge_inst(_, _), _, !Info, !IO) :-
 	error("compiler generated inst unexpected").
 qualify_inst_name(unify_inst(_, _, _, _), _, !Info, !IO) :-
@@ -941,6 +952,14 @@ qualify_type(Type0, Type, !Info, !IO) :-
 			TypeCtor = TypeCtor0
 		; type_ctor_is_tuple(TypeCtor0) ->
 			TypeCtor = TypeCtor0
+		; type_ctor_is_variable(TypeCtor0) ->
+			TypeCtor = TypeCtor0,
+			% This is an error until we support higher-kinded
+			% types.
+			mq_info_get_error_context(!.Info, ErrorContext),
+			report_invalid_type(Type0, ErrorContext, !IO),
+			mq_info_set_error_flag(type_id, !Info),
+			mq_info_incr_errors(!Info)
 		;
 			mq_info_get_types(!.Info, Types),
 			find_unique_match(TypeCtor0, TypeCtor, Types,
@@ -951,6 +970,8 @@ qualify_type(Type0, Type, !Info, !IO) :-
 	;
 		mq_info_get_error_context(!.Info, ErrorContext),
 		report_invalid_type(Type0, ErrorContext, !IO),
+		mq_info_set_error_flag(type_id, !Info),
+		mq_info_incr_errors(!Info),
 		Type = Type0
 	),
 	%
@@ -1465,16 +1486,29 @@ is_or_are([_], "is").
 is_or_are([_, _ | _], "are").
 
 	% Output an error message about an ill-formed type.
+	%
 :- pred report_invalid_type((type)::in, error_context::in,
 	io::di, io::uo) is det.
 
 report_invalid_type(Type, ErrorContext - Context, !IO) :-
 	ContextPieces = mq_error_context_to_pieces(ErrorContext),
 	varset.init(VarSet),
-	Pieces = [words("In definition of")] ++ ContextPieces ++
+	Pieces = [words("In")] ++ ContextPieces ++
 		[suffix(":"), nl, words("error: ill-formed type"),
 		fixed("`" ++ mercury_term_to_string(Type, VarSet, no) ++
 			"'.")],
+	write_error_pieces(Context, 0, Pieces, !IO),
+	io.set_exit_status(1, !IO).
+
+	% Output an error message about an ill-formed user_inst.
+	%
+:- pred report_invalid_user_inst(sym_name::in, list(inst)::in,
+	error_context::in, io::di, io::uo) is det.
+
+report_invalid_user_inst(_SymName, _Insts, ErrorContext - Context, !IO) :-
+	ContextPieces = mq_error_context_to_pieces(ErrorContext),
+	Pieces = [words("In")] ++ ContextPieces ++ [suffix(":"), nl,
+		words("error: variable used as inst constructor.")],
 	write_error_pieces(Context, 0, Pieces, !IO),
 	io.set_exit_status(1, !IO).
 
