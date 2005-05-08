@@ -58,6 +58,10 @@
 	% type_ctor_is_tuple(TypeCtor) succeeds iff TypeCtor is a tuple type.
 	%
 :- pred type_ctor_is_tuple(type_ctor::in) is semidet.
+
+	% type_ctor_is_variable(TypeCtor) succeeds iff TypeCtor is a variable.
+	%
+:- pred type_ctor_is_variable(type_ctor::in) is semidet.
 	
 	% Given a variable type, return its type variable.
 	%
@@ -279,6 +283,8 @@ type_is_tuple(Type, ArgTypes) :-
 	type_ctor_is_tuple(TypeCtor).
 
 type_ctor_is_tuple(unqualified("{}") - _).
+
+type_ctor_is_variable(unqualified("") - _).
 
 prog_type.var(term.variable(Var), Var).
 

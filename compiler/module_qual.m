@@ -879,10 +879,21 @@ qualify_inst(abstract_inst(Name, Args0), abstract_inst(Name, Args),
 qualify_inst_name(user_inst(SymName0, Insts0), user_inst(SymName, Insts),
 				Info0, Info) -->
 	qualify_inst_list(Insts0, Insts, Info0, Info1),
-	{ mq_info_get_insts(Info1, InstIds) },
-	{ list__length(Insts0, Arity) },
-	find_unique_match(SymName0 - Arity, SymName - _,
-				InstIds, inst_id, Info1, Info).
+	(
+		% Check for a variable inst constructor.
+		{ SymName0 = unqualified("") }
+	->
+		{ mq_info_get_error_context(Info1, ErrorContext) },
+		report_invalid_user_inst(SymName0, Insts, ErrorContext),
+		{ mq_info_set_error_flag(Info1, inst_id, Info2) },
+		{ mq_info_incr_errors(Info2, Info) },
+		{ SymName = SymName0 }
+	;
+		{ mq_info_get_insts(Info1, InstIds) },
+		{ list__length(Insts0, Arity) },
+		find_unique_match(SymName0 - Arity, SymName - _, InstIds,
+			inst_id, Info1, Info)
+	).
 qualify_inst_name(merge_inst(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(unify_inst(_, _, _, _), _, _, _) -->
@@ -941,30 +952,36 @@ qualify_type_list([Type0 | Types0], [Type | Types], Info0, Info) -->
 				io__state::di, io__state::uo) is det.
 
 qualify_type(term__variable(Var), term__variable(Var), Info, Info) --> [].
-qualify_type(Type0, Type, Info0, Info) -->
+qualify_type(Type0, Type, !Info) -->
 	{ Type0 = term__functor(_, _, _) },
 	( { type_to_ctor_and_args(Type0, TypeCtor0, Args0) } ->
 		( { is_builtin_atomic_type(TypeCtor0) } ->
-			{ TypeCtor = TypeCtor0 },
-			{ Info1 = Info0 }
+			{ TypeCtor = TypeCtor0 }
 		; { type_ctor_is_higher_order(TypeCtor0, _, _, _) } ->
-			{ TypeCtor = TypeCtor0 },
-			{ Info1 = Info0 }
+			{ TypeCtor = TypeCtor0 }
 		; { type_ctor_is_tuple(TypeCtor0) } ->
+			{ TypeCtor = TypeCtor0 }
+		; { type_ctor_is_variable(TypeCtor0) } ->
 			{ TypeCtor = TypeCtor0 },
-			{ Info1 = Info0 }
+			% This is an error until we support higher-kinded
+			% types.
+			{ mq_info_get_error_context(!.Info, ErrorContext) },
+			report_invalid_type(Type0, ErrorContext),
+			{ mq_info_set_error_flag(!.Info, type_id, !:Info) },
+			{ mq_info_incr_errors(!Info) }
 		;
-			{ mq_info_get_types(Info0, Types) },
-			find_unique_match(TypeCtor0, TypeCtor, Types,
-						type_id, Info0, Info1)
+			{ mq_info_get_types(!.Info, Types) },
+			find_unique_match(TypeCtor0, TypeCtor, Types, type_id,
+				!Info)
 		),
-		qualify_type_list(Args0, Args, Info1, Info2),
+		qualify_type_list(Args0, Args, !Info),
 		{ construct_type(TypeCtor, Args, Type) }
 	;
-		{ mq_info_get_error_context(Info0, ErrorContext) },
+		{ mq_info_get_error_context(!.Info, ErrorContext) },
 		report_invalid_type(Type0, ErrorContext),
-		{ Type = Type0 },
-		{ Info2 = Info0 }
+		{ mq_info_set_error_flag(!.Info, type_id, !:Info) },
+		{ mq_info_incr_errors(!Info) },
+		{ Type = Type0 }
 	),
 	%
 	% The types `int', `float', and `string' are builtin types,
@@ -983,9 +1000,9 @@ qualify_type(Type0, Type, Info0, Info) -->
 		% -- not yet:
 		% StdLibraryModule = qualified(unqualified("std"), Typename),
 		StdLibraryModule = unqualified(Typename),
-		mq_info_set_module_used(Info2, StdLibraryModule, Info)
+		mq_info_set_module_used(!.Info, StdLibraryModule, !:Info)
 	;
-		Info = Info2
+		true
 	}.
 
 	% Qualify the modes in a pragma c_code(...) decl.
@@ -1512,7 +1529,7 @@ is_or_are([_, _ | _], "are").
 report_invalid_type(Type, ErrorContext - Context) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
-	io__write_string("In definition of "),
+	io__write_string("In "),
 	write_error_context2(ErrorContext),
 	io__write_string(":\n"),
 	prog_out__write_context(Context),
@@ -1520,6 +1537,20 @@ report_invalid_type(Type, ErrorContext - Context) -->
 	{ varset__init(VarSet) },
 	mercury_output_term(Type, VarSet, no),
 	io__write_string("'.\n").
+
+	% Output an error message about an ill-formed user_inst.
+	%
+:- pred report_invalid_user_inst(sym_name::in, list(inst)::in,
+	error_context::in, io::di, io::uo) is det.
+
+report_invalid_user_inst(_SymName, _Insts, ErrorContext - Context) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("In "),
+	write_error_context2(ErrorContext),
+	io__write_string(":\n"),
+	prog_out__write_context(Context),
+	io__write_string("  error: variable used as inst constructor.\n").
 
 %-----------------------------------------------------------------------------%
 
