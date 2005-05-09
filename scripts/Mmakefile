@@ -23,12 +23,21 @@ EMACS_SCRIPTS = gud.el
 
 #-----------------------------------------------------------------------------#
 
-.SUFFIXES: .in
+# ensure there were no mispelt autoconf variable names \
 
-.in:
-	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
-	# check to ensure there were no mispelt autoconf variable names
-	if grep -n '[^$$]@' $@; then false; else true; fi
+# .SUFFIXES: .in
+
+# we test membership of SCRIPTS, because testing $(@D) (the directory part
+# of $*) does the wrong thing for Mercury.config. Not testing anything would
+# make this rule apply even to ../Mmake.common.
+
+%::	%.in $(MERCURY_DIR)/config.status
+	@for script in $(SCRIPTS) ; do \
+		if test "$*" = "$$script" ; then \
+		$(MERCURY_DIR)/config.status --file=$* ; \
+		if grep -n '[^$$]@' $@; then false; else true; fi \
+		fi \
+	done
 
 #-----------------------------------------------------------------------------#
 

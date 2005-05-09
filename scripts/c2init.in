@@ -101,14 +101,15 @@ case $# in
 	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
 		-g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
-		$extra_init_dirs $EXTRA_INIT_FILES $TRACE_INIT_FILES \
-		$MERCURY_ALL_LIB_MODS
+		$extra_init_dirs $always_exec_init_opts \
+		$EXTRA_INIT_FILES $TRACE_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
 		-g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
 		-r "$runtime_flags" \
-		$extra_init_dirs "$@" $EXTRA_INIT_FILES $TRACE_INIT_FILES \
-		$MERCURY_ALL_LIB_MODS
+		$extra_init_dirs $always_exec_init_opts \
+		"$@" \
+		$EXTRA_INIT_FILES $TRACE_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 esac

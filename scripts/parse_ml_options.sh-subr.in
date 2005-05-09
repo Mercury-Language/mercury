@@ -60,6 +60,7 @@ trace_opt=""
 library_opt=""
 extra_inits_opt=""
 aditi_opt=""
+always_exec_init_opts=""
 extra_init_dirs=""
 trace_init_files=""
 init_c_file="-"
@@ -195,6 +196,9 @@ Initialization options:
 		Generate a function to upload Aditi-RL data to a database.
 		This option is needed when interfacing with the Aditi
 		deductive database system.
+	-A <funcname>
+		Always execute the named void function (which must take no
+		arguments) when the Mercury runtime is initialized.
 	-x, --extra-inits
 		Search \`.c' files for extra initialization functions.
 		(This may be necessary if the C files contain
@@ -419,6 +423,10 @@ EOF
 		aditi_opt="-a";;	
 	-a-|--no-aditi)
 		aditi_opt="";;	
+
+	-A)
+		always_exec_init_opts="$always_exec_init_opts -A $2"; shift;;
+
 	-c|--max-calls)
 		maxcalls="$2"; shift;;
 
