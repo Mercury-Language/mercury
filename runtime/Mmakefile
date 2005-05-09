@@ -361,6 +361,8 @@ $(RT_LIB_NAME).init: $(CFILES)
 
 mercury_conf.h.date: $(MERCURY_DIR)/config.status mercury_conf.h.in
 	$(MERCURY_DIR)/config.status --header=mercury_conf.h
+	# check to ensure there were no mispelt autoconf variable names
+	if grep -n '[^$$]@' mercury_conf.h; then false; else true; fi
 	echo datestamp > mercury_conf.h.date
 
 mercury_conf.h: mercury_conf.h.date

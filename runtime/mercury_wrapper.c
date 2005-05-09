@@ -994,6 +994,9 @@ enum MR_long_option {
 	MR_TRAIL_REDZONE_SIZE,
 	MR_HEAP_MARGIN_SIZE,
 	MR_HEAP_EXPANSION_FACTOR,
+	MR_GENSTACK_SIZE,
+	MR_CUTSTACK_SIZE,
+	MR_PNEGSTACK_SIZE,
 	MR_GEN_DETSTACK_SIZE,
 	MR_GEN_NONSTACK_SIZE,
 	MR_GEN_DETSTACK_REDZONE_SIZE,
@@ -1027,6 +1030,9 @@ struct MR_option MR_long_opts[] = {
 	{ "trail-redzone-size", 	1, 0, MR_TRAIL_REDZONE_SIZE },
 	{ "heap-margin-size", 		1, 0, MR_HEAP_MARGIN_SIZE },
 	{ "heap-expansion-factor", 	1, 0, MR_HEAP_EXPANSION_FACTOR },
+	{ "genstack-size", 		1, 0, MR_GENSTACK_SIZE },
+	{ "cutstack-size", 		1, 0, MR_CUTSTACK_SIZE },
+	{ "pnegstack-size", 		1, 0, MR_PNEGSTACK_SIZE },
 	{ "gen-detstack-size", 		1, 0, MR_GEN_DETSTACK_SIZE },
 	{ "gen-nonstack-size", 		1, 0, MR_GEN_NONSTACK_SIZE },
 	{ "gen-detstack-zone-size", 	1, 0, MR_GEN_DETSTACK_REDZONE_SIZE },
@@ -1061,114 +1067,153 @@ process_options(int argc, char **argv)
 		{
 
 		case MR_HEAP_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_heap_size = size;
 			break;
 
 		case MR_DETSTACK_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_detstack_size = size;
 			break;
 
 		case MR_NONDETSTACK_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_nondstack_size = size;
 			break;
 
 		case MR_SOLUTIONS_HEAP_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_solutions_heap_size = size;
 			break;
 
 		case MR_TRAIL_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_trail_size = size;
 			break;
 
 		case MR_HEAP_REDZONE_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_heap_zone_size = size;
 			break;
 
 		case MR_DETSTACK_REDZONE_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_detstack_zone_size = size;
 			break;
 
 		case MR_NONDETSTACK_REDZONE_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_nondstack_zone_size = size;
 			break;
 
 		case MR_SOLUTIONS_HEAP_REDZONE_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_solutions_heap_zone_size = size;
 			break;
 
 		case MR_TRAIL_REDZONE_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_trail_zone_size = size;
 			break;
 
 		case MR_HEAP_MARGIN_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_heap_margin_size = size;
 			break;
 
 		case MR_HEAP_EXPANSION_FACTOR:
-			if (sscanf(MR_optarg, "%lf", &MR_heap_expansion_factor)
-					!= 1)
+			if (sscanf(MR_optarg, "%lf",
+				&MR_heap_expansion_factor) != 1)
 			{
 				usage();
 			}
 			break;
 
-		case MR_GEN_DETSTACK_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+		case MR_GENSTACK_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
+
+			MR_genstack_size = size;
+			break;
+
+		case MR_CUTSTACK_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_cutstack_size = size;
+			break;
+
+		case MR_PNEGSTACK_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_pnegstack_size = size;
+			break;
+
+		case MR_GEN_DETSTACK_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
 
 			MR_gen_detstack_size = size;
 			break;
 
 		case MR_GEN_NONSTACK_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_gen_nonstack_size = size;
 			break;
 
 		case MR_GEN_DETSTACK_REDZONE_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_gen_detstack_zone_size = size;
 			break;
 
 		case MR_GEN_NONSTACK_REDZONE_SIZE:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_gen_nonstack_zone_size = size;
 			break;
@@ -1197,8 +1242,9 @@ process_options(int argc, char **argv)
 
 		case 'n':
 		case MR_NUM_OUTPUT_ARGS:
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_num_output_args = size;
 			break;
@@ -1260,8 +1306,9 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'C':
-			if (sscanf(MR_optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
+			}
 
 			MR_pcache_size = size * 1024;
 
@@ -1390,14 +1437,15 @@ process_options(int argc, char **argv)
 			MR_debug_enabled = MR_TRUE;
 			MR_debug_ever_enabled = MR_TRUE;
 
-			if (MR_streq(MR_optarg, "i"))
+			if (MR_streq(MR_optarg, "i")) {
 				MR_trace_handler = MR_TRACE_INTERNAL;
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
-			else if (MR_streq(MR_optarg, "e"))
+			} else if (MR_streq(MR_optarg, "e")) {
 				MR_trace_handler = MR_TRACE_EXTERNAL;
 #endif
-			else
+			} else {
 				usage();
+			}
 
 			break;
 
@@ -1407,18 +1455,20 @@ process_options(int argc, char **argv)
 
 		case 'P':
 #ifdef	MR_THREAD_SAFE
-			if (sscanf(MR_optarg, "%u", &MR_num_threads) != 1)
+			if (sscanf(MR_optarg, "%u", &MR_num_threads) != 1) {
 				usage();
+			}
 
-			if (MR_num_threads < 1)
+			if (MR_num_threads < 1) {
 				usage();
-
+			}
 #endif
 			break;
 
 		case 'r':	
-			if (sscanf(MR_optarg, "%d", &repeats) != 1)
+			if (sscanf(MR_optarg, "%d", &repeats) != 1) {
 				usage();
+			}
 
 			break;
 

@@ -7983,6 +7983,24 @@ Sets the size of the solutions heap to @var{size} kilobytes.
 @cindex Trail size
 Sets the size of the trail to @var{size} kilobytes.
 
+@sp 1
+@item --genstack-size @var{size}
+@findex --genstack-size
+@cindex Generator stack size
+Sets the size of the generator stack to @var{size} kilobytes.
+
+@sp 1
+@item --cutstack-size @var{size}
+@findex --cutstack-size
+@cindex Cut stack size
+Sets the size of the cut stack to @var{size} kilobytes.
+
+@sp 1
+@item --pnegstack-size @var{size}
+@findex --pnegstack-size
+@cindex Pneg stack size
+Sets the size of the pneg stack to @var{size} kilobytes.
+
 @c @sp 1
 @c @item --heap-redzone-size @var{size}
 @c @findex --heap-redzone-size (runtime option)
