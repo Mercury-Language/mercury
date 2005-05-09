@@ -4001,6 +4001,23 @@ AC_SUBST(CSHPATH)
 
 #-----------------------------------------------------------------------------#
 
+# We should only set up TESTS_FLAGS if the tests directory is accessible.
+# It can be in one of two places:
+# (a) in the mercury directory
+# (b) a sibling of the mercury directory
+
+if test -d tests
+then
+	test_flags="tests/TESTS_FLAGS"
+else
+	if test -d ../tests
+	then
+		test_flags="../tests/TESTS_FLAGS"
+	else
+		test_flags=""
+	fi
+fi
+
 # Any new entries here may need to be handled by scripts/mercury_config.
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc
 scripts/mercury.bat scripts/mprof scripts/mercury_update_interface
@@ -4020,7 +4037,7 @@ analysis/ANALYSIS_FLAGS
 slice/SLICE_FLAGS
 profiler/PROF_FLAGS
 deep_profiler/DEEP_FLAGS
-tests/TESTS_FLAGS
+"$test_flags"
 ,
 [
 # Only do this when compiling the source, not when reconfiguring
