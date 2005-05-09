@@ -1,3 +1,4 @@
 --transitive-intermodule-optimization
 --no-warn-smart-recompilation
 --enable-termination
+--analyse-exceptions
