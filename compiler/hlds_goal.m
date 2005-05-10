@@ -8,6 +8,8 @@
 
 % Main authors: fjh, conway.
 
+%-----------------------------------------------------------------------------%
+
 :- module hlds__hlds_goal.
 
 :- interface.
@@ -26,8 +28,9 @@
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%
-
-	% Here is how goals are represented
+%
+% Goal representation.
+%
 
 :- type hlds_goals	== list(hlds_goal).
 
@@ -36,10 +39,10 @@
 :- type hlds_goal_expr
 
 		% A conjunction.
-		% Note: conjunctions must be fully flattened before
+		% NOTE: conjunctions must be fully flattened before
 		% mode analysis.  As a general rule, it is a good idea
 		% to keep them flattened.
-
+		%
 	--->	conj(hlds_goals)
 
 		% A predicate call.
@@ -47,7 +50,7 @@
 		% are filled in. Type analysis fills in the
 		% pred_id. Mode analysis fills in the
 		% proc_id and the builtin_state field.
-
+		%
 	;	call(
 			call_pred_id	:: pred_id,
 					% which predicate are we calling?
@@ -73,7 +76,7 @@
 		% variable arity.
 		% This currently includes higher-order calls, class-method
 		% calls, Aditi calls and the Aditi update goals.
-
+		%
 	;	generic_call(
 			gcall_details	:: generic_call,
 			gcall_args	:: list(prog_var),
@@ -90,7 +93,7 @@
 
 		% Deterministic disjunctions are converted
 		% into switches by the switch detection pass.
-
+		%
 	;	switch(
 			switch_var	:: prog_var,
 					% the variable we are switching on
@@ -104,11 +107,14 @@
 		% A unification.
 		% Initially only the terms and the context
 		% are known. Mode analysis fills in the missing information.
-
+		%
 	;	unify(
 			unify_lhs	:: prog_var,
 					% the variable on the left hand side
-					% of the unification
+					% of the unification.  
+					% NOTE: for convenience this field
+					% is duplicated in the unification
+					% structure below. 
 			unify_rhs	:: unify_rhs,
 					% whatever is on the right hand side
 					% of the unification
@@ -125,17 +131,19 @@
 		)
 
 		% A disjunction.
-		% Note: disjunctions should be fully flattened.
-
+		% NOTE: disjunctions should be fully flattened.
+		%
 	;	disj(hlds_goals)
 
-		% A negation
+		% A negation.
+		%
 	;	not(hlds_goal)
 
 		% A scope which may be the scope of a quantification,
 		% or may be introduced by a compiler transformation.
 		% See the documentation of scope_reason for what the
 		% compiler may do with the scope.
+		%
 	;	scope(
 			scope_reason	:: scope_reason,
 			some_goal	:: hlds_goal
@@ -146,7 +154,7 @@
 		% The scope of the locally existentially quantified variables
 		% <Vars> is over the <Condition> and the <Then> part,
 		% but not the <Else> part.
-
+		%
 	;	if_then_else(
 			ite_exist_vars	:: list(prog_var),
 					% The locally existentially quantified
@@ -157,7 +165,7 @@
 		)
 
 		% Foreign code from a pragma foreign_proc(...) decl.
-
+		%
 	;	foreign_proc(
 			foreign_attr	:: pragma_foreign_proc_attributes,
 			foreign_pred_id	:: pred_id,
@@ -176,7 +184,8 @@
 					% pragma_foreign_codes; none for others.
 		)
 
-		% parallel conjunction
+		% Parallel conjunction.
+		%
 	;	par_conj(hlds_goals)
 
 		% shorthand goals
@@ -184,11 +193,13 @@
 		% All shorthand goals are eliminated during or shortly after
 		% the construction of the hlds, so most passes of the compiler
 		% will just call error/1 if they occur.
+		%
 	;	shorthand(shorthand_goal_expr).
 
 	% Instances of these `shorthand' goals are implemented by a
 	% hlds --> hlds transformation that replaces them with
 	% equivalent non-shorthand goals.
+	%
 :- type shorthand_goal_expr
 		% bi-implication (A <=> B)
 		%
@@ -198,18 +209,18 @@
 		% do that for bi-implications, because if expansion
 		% of bi-implications is done before implicit quantification,
 		% then the quantification would be wrong
-
+		%
 	--->	bi_implication(hlds_goal, hlds_goal).
 
 :- type scope_reason
 		% The goal inside the scope construct has the listed variables
 		% existentially quantified. The compiler may do whatever
 		% preserves this fact.
-
-	--->	exist_quant(list(prog_var))
 		%
+	--->	exist_quant(list(prog_var))
+		
 		% Even though the code inside the scope may have multiple
-		% solutions, the creater of the scope (which may be the user
+		% solutions, the creator of the scope (which may be the user
 		% or a compiler pass) promises that all these solutions are
 		% equivalent relative to the relevant equality theory.
 		% (This need not be an equality theory known to the compiler.)
@@ -225,9 +236,9 @@
 		% The promise is valid only if the list of outputs of the goal
 		% inside the scope is a subset of the variables listed here.
 		% If it is not valid, the compiler must emit an error message.
-
-	;	promise_equivalent_solutions(list(prog_var))
 		%
+	;	promise_equivalent_solutions(list(prog_var))
+		
 		% The goal inside the scope implements an interface of the
 		% specified purity, even if its implementation uses less pure
 		% components.
@@ -237,9 +248,9 @@
 		% just whole procedure bodies. The implicit_purity_promise
 		% says whether or not the compiler requires explicit purity
 		% annotations on the goals inside the scope.
-
-	;	promise_purity(implicit_purity_promise, purity)
 		%
+	;	promise_purity(implicit_purity_promise, purity)
+		
 		% This scope exists to delimit a piece of code
 		% with at_most_many components but with no outputs,
 		% whose overall determinism is thus at_most_one,
@@ -249,9 +260,9 @@
 		%
 		% If the argument is force_pruning, then the outer goal will
 		% succeed at most once even if the inner goal is impure.
-
-	;	commit(force_pruning)
 		%
+	;	commit(force_pruning)
+		
 		% The scope exists to prevent other compiler passes from
 		% arbitrarily moving computations in or out of the scope.
 		% This kind of scope can only be introduced by program
@@ -270,9 +281,9 @@
 		%
 		% A barrier says nothing about the determinism of either
 		% the inner or the outer goal, or about pruning.
-
-	;	barrier(removable)
 		%
+	;	barrier(removable)
+		
 		% The goal inside the scope, which should be a conjunction,
 		% results from the conversion of one ground term to
 		% superhomogeneous form. The variable specifies what the
@@ -280,7 +291,7 @@
 		%
 		% This kind of scope is not intended to be meaningful after
 		% mode analysis, and should be removed after mode analysis.
-
+		%
 	;	from_ground_term(prog_var).
 
 :- type removable
@@ -329,7 +340,7 @@
 	% The arg_type field gives the original types of the arguments.
 	% (With inlining, the actual types may be instances of the original
 	% types.)
-
+	%
 :- type foreign_arg
 	--->	foreign_arg(
 			arg_var		:: prog_var,
@@ -377,10 +388,12 @@
 		).
 
 	% Get a description of a generic_call goal.
+	%
 :- pred hlds_goal__generic_call_id(generic_call::in, call_id::out) is det.
 
 	% Determine whether a generic_call is calling
 	% a predicate or a function
+	%
 :- func generic_call_pred_or_func(generic_call) = pred_or_func.
 
 %-----------------------------------------------------------------------------%
@@ -392,6 +405,7 @@
 	% unify(prog_var, unify_rhs, _, _, _), but mode analysis replaces
 	% these with various special cases (construct/deconstruct/assign/
 	% simple_test/complicated_unify).
+	%
 :- type unify_rhs
 	--->	var(prog_var)
 	;	functor(
@@ -424,6 +438,7 @@
 		).
 
 	% Was the constructor originally of the form 'new ctor'(...).
+	%
 :- type is_existential_construction == bool.
 
 :- type unification
@@ -488,7 +503,7 @@
 		% Deconstructions are written using `==', e.g. Y == f(X).
 		% Note that deconstruction of lambda expressions is
 		% a mode error.
-
+		%
 	;	deconstruct(
 			deconstruct_cell_var	:: prog_var,
 					% The variable being deconstructed
@@ -513,7 +528,7 @@
 
 		% Y = X where the top node of Y is output,
 		% written Y := X.
-
+		%
 	;	assign(
 			assign_to_var		:: prog_var,
 			assign_from_var		:: prog_var
@@ -521,7 +536,7 @@
 
 		% Y = X where the type of X and Y is an atomic
 		% type and they are both input, written Y == X.
-
+		%
 	;	simple_test(
 			test_var1		:: prog_var,
 			test_var2		:: prog_var
@@ -534,7 +549,7 @@
 		% using out-of-line call to a compiler
 		% generated unification predicate for that
 		% type & mode.
-
+		%
 	;	complicated_unify(
 			compl_unify_mode	:: uni_mode,
 					% The mode of the unification.
@@ -578,11 +593,12 @@
 	% Compile time garbage collection is when the compiler
 	% recognises that a memory cell is no longer needed and can be
 	% safely deallocated (ie by inserting an explicit call to free).
+	%
 :- type can_cgc == bool.
 
 	% A unify_context describes the location in the original source
 	% code of a unification, for use in error messages.
-
+	%
 :- type unify_context
 	--->	unify_context(
 			unify_main_context,
@@ -591,7 +607,7 @@
 
 	% A unify_main_context describes overall location of the
 	% unification within a clause
-
+	%
 :- type unify_main_context
 		% an explicit call to =/2
 	--->	explicit
@@ -621,7 +637,7 @@
 	% A unify_sub_context describes the location of sub-unification
 	% (which is unifying one argument of a term)
 	% within a particular unification.
-
+	%
 :- type unify_sub_context
 	==	pair(
 			cons_id,	% the functor
@@ -635,7 +651,7 @@
 	% and functions.  It records which part of the original source
 	% code the unification (which may be a function application)
 	% occurred in.
-
+	%
 :- type call_unify_context
 	--->	call_unify_context(
 			prog_var,	% the LHS of the unification
@@ -650,6 +666,7 @@
 	% (for the LLDS back-end, the same optimization is
 	% handled by var_locn.m).
 	% The `reuse_cell' alternative is not yet used.
+	%
 :- type how_to_construct
 	--->	construct_statically(		% Use a statically initialized
 						% constant
@@ -665,6 +682,7 @@
 	% statically; we store here a subset of the fields
 	% of the original `construct' unification for the arg.
 	% This is used by the MLDS back-end.
+	%
 :- type static_cons
 	--->	static_cons(
 			cons_id,		% the cons_id of the functor
@@ -673,6 +691,7 @@
 		).
 
 	% Information used to perform structure reuse on a cell.
+	%
 :- type cell_to_reuse
 	---> cell_to_reuse(
 		prog_var,
@@ -688,6 +707,7 @@
 	% Cells marked `cell_is_unique' must be writeable, and therefore
 	% cannot be shared.
 	% `cell_is_unique' is always a safe approximation.
+	%
 :- type cell_is_unique
 	--->	cell_is_unique
 	;	cell_is_shared.
@@ -824,18 +844,22 @@
 	is det.
 :- pred goal_has_feature(hlds_goal::in, goal_feature::in) is semidet.
 
-%  Update a goal info to reflect the specified purity
+	% Update a goal info to reflect the specified purity.
+	%
 :- pred add_goal_info_purity_feature(hlds_goal_info::in, purity::in,
 	hlds_goal_info::out) is det.
 
 	% Determine the purity of a goal from its hlds_goal_info.
+	%
 :- pred infer_goal_info_purity(hlds_goal_info::in, purity::out) is det.
 
 	% Check if a hlds_goal_info is for a pure goal.
+	% 
 :- pred goal_info_is_pure(hlds_goal_info::in) is semidet.
 
 	% Check if a hlds_goal_info is for an impure goal. Fails if the goal
 	% is semipure, so this isn't the same as \+ goal_info_is_pure.
+	% 
 :- pred goal_info_is_impure(hlds_goal_info::in) is semidet.
 
 :- type goal_feature
@@ -945,7 +969,7 @@
 	% If any of the following three types is changed, then the
 	% corresponding types in mdbcomp/program_representation.m must be
 	% updated.
-
+	%
 :- type goal_path == list(goal_path_step).
 
 :- type goal_path_step	--->	conj(int)
@@ -973,26 +997,26 @@
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
-
+	%
 :- pred goal_to_conj_list(hlds_goal::in, list(hlds_goal)::out) is det.
 
 	% Convert a goal to a list of parallel conjuncts.
 	% If the goal is a parallel conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
-
+	%
 :- pred goal_to_par_conj_list(hlds_goal::in, list(hlds_goal)::out) is det.
 
 	% Convert a goal to a list of disjuncts.
 	% If the goal is a disjunction, then return its disjuncts,
 	% otherwise return the goal as a singleton list.
-
+	%
 :- pred goal_to_disj_list(hlds_goal::in, list(hlds_goal)::out) is det.
 
 	% Convert a list of conjuncts to a goal.
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the conjunction of the conjuncts,
 	% with the specified goal_info.
-
+	%
 :- pred conj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
 	hlds_goal::out) is det.
 
@@ -1000,7 +1024,7 @@
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the parallel conjunction of the conjuncts,
 	% with the specified goal_info.
-
+	%
 :- pred par_conj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
 	hlds_goal::out) is det.
 
@@ -1008,18 +1032,18 @@
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the disjunction of the disjuncts,
 	% with the specified goal_info.
-
+	%
 :- pred disj_list_to_goal(list(hlds_goal)::in, hlds_goal_info::in,
 	hlds_goal::out) is det.
 
 	% Takes a goal and a list of goals, and conjoins them
 	% (with a potentially blank goal_info).
-
+	%
 :- pred conjoin_goal_and_goal_list(hlds_goal::in, list(hlds_goal)::in,
 	hlds_goal::out) is det.
 
 	% Conjoin two goals (with a potentially blank goal_info).
-
+	%
 :- pred conjoin_goals(hlds_goal::in, hlds_goal::in, hlds_goal::out) is det.
 
 	% Negate a goal, eliminating double negations as we go.
@@ -1027,6 +1051,7 @@
 :- pred negate_goal(hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
 
 	% Return yes if goal(s) contain any foreign code
+	%
 :- func goal_has_foreign(hlds_goal) = bool.
 :- func goal_list_has_foreign(list(hlds_goal)) = bool.
 
@@ -1034,7 +1059,7 @@
 	% (except possibly goals inside lambda expressions --
 	% but lambda expressions will get transformed into separate
 	% predicates by the polymorphism.m pass).
-
+	%
 :- pred goal_is_atomic(hlds_goal_expr::in) is semidet.
 
 	% Return the HLDS equivalent of `true'.
@@ -1043,19 +1068,23 @@
 :- pred true_goal(prog_context::in, hlds_goal::out) is det.
 
 	% Return the HLDS equivalent of `fail'.
+	%
 :- pred fail_goal(hlds_goal::out) is det.
 
 :- pred fail_goal(prog_context::in, hlds_goal::out) is det.
 
 	% Return the union of all the nonlocals of a list of goals.
+	%
 :- pred goal_list_nonlocals(list(hlds_goal)::in, set(prog_var)::out) is det.
 
 	% Compute the instmap_delta resulting from applying
 	% all the instmap_deltas of the given goals.
+	%
 :- pred goal_list_instmap_delta(list(hlds_goal)::in, instmap_delta::out)
 	is det.
 
 	% Compute the determinism of a list of goals.
+	%
 :- pred goal_list_determinism(list(hlds_goal)::in, determinism::out) is det.
 
 	% Compute the purity of a list of goals.
@@ -1065,23 +1094,24 @@
 	% of the given goal. This is used to ensure that error messages
 	% for automatically generated unification procedures have a useful
 	% context.
+	%
 :- pred set_goal_contexts(prog_context::in, hlds_goal::in, hlds_goal::out)
 	is det.
 
 	% Create the hlds_goal for a unification, filling in all the as yet
 	% unknown slots with dummy values.
+	%
 :- pred create_atomic_unification(prog_var::in, unify_rhs::in,
 	prog_context::in, unify_main_context::in, unify_sub_contexts::in,
 	hlds_goal::out) is det.
 
+	% Produce a goal to construct a given constant.  These
+	% predicates all fill in the non-locals, instmap_delta and
+	% determinism fields of the goal_info of the returned goal.
+	% With alias tracking, the instmap_delta will be correct only if
+	% the variable being assigned to has no aliases.
 	%
-	% Produce a goal to construct a given constant.
-	% These predicates all fill in the non-locals, instmap_delta
-	% and determinism fields of the goal_info of the returned goal.
-	% With alias tracking, the instmap_delta will be correct
-	% only if the variable being assigned to has no aliases.
 	%
-
 :- pred make_int_const_construction(prog_var::in, int::in,
 	hlds_goal::out) is det.
 :- pred make_string_const_construction(prog_var::in, string::in,
@@ -1120,29 +1150,25 @@
 :- pred make_const_construction(cons_id::in, (type)::in, maybe(string)::in,
 	hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
 
-	% Given the variable info field from a pragma foreign_code, get all the
-	% variable names.
+	% Given the variable info field from a pragma foreign_code, get
+	% all the variable names.
+	% 
 :- pred get_pragma_foreign_var_names(list(maybe(pair(string, mode)))::in,
 	list(string)::out) is det.
 
-	%
-	% Produce a goal to construct or deconstruct a
-	% unification with a functor.  It fills in the
-	% non-locals, instmap_delta and determinism fields
-	% of the goal_info.
+	% Produce a goal to construct or deconstruct a unification with
+	% a functor.  It fills in the non-locals, instmap_delta and
+	% determinism fields of the goal_info.
 	%
 :- pred construct_functor(prog_var::in, cons_id::in, list(prog_var)::in,
 	hlds_goal::out) is det.
 :- pred deconstruct_functor(prog_var::in, cons_id::in, list(prog_var)::in,
 	hlds_goal::out) is det.
 
+	% Produce a goal to construct or deconstruct a tuple containing
+	% the given list of arguments, filling in the non-locals,
+	% instmap_delta and determinism fields of the goal_info.
 	%
-	% Produce a goal to construct or deconstruct a
-	% tuple containing the given list of arguments,
-	% filling in the non-locals, instmap_delta and
-	% determinism fields of the goal_info.
-	%
-
 :- pred construct_tuple(prog_var::in, list(prog_var)::in, hlds_goal::out)
 	is det.
 :- pred deconstruct_tuple(prog_var::in, list(prog_var)::in, hlds_goal::out)
@@ -1156,6 +1182,7 @@
 	% Builtin Aditi operations.
 	% These are transformed into ordinary Mercury calls
 	% by aditi_builtin_ops.m before code generation.
+	%
 :- type aditi_builtin
 	--->
 		% Insert or delete a single tuple into/from a base relation.
@@ -1218,6 +1245,7 @@
 	% where the closure to be passed in is not known at the call site.
 	% (See the "Aditi update syntax" section of the Mercury Language
 	% Reference Manual).
+	%
 :- type aditi_builtin_syntax
 	--->	pred_term		% e.g.
 					% aditi_bulk_insert(p(_, X) :- X = 1).
@@ -1232,6 +1260,7 @@
 	% by purity.m because make_hlds.m does not know which relation
 	% is being updated, so it doesn't know which are the `aditi__state'
 	% arguments.
+	%
 :- type fix_aditi_state_modes
 	--->	modes_need_fixing
 	;	modes_are_ok.
@@ -1247,6 +1276,7 @@
 	;	llds_code_gen_info(llds_code_gen :: llds_code_gen_details).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -1254,6 +1284,7 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
 
@@ -1287,7 +1318,7 @@ make_foreign_args(Vars, NamesModes, Types, Args) :-
 	->
 		Args = []
 	;
-		error("make_foreign_args: unmatched lists")
+		unexpected(this_file, "make_foreign_args: unmatched lists")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1696,7 +1727,7 @@ goal_path_steps_to_strings([Step | Steps], [StepStr | StepStrs]) :-
 	% The inverse of this procedure is implemented in
 	% mdbcomp/program_representation.m, and must be updated if this
 	% is changed.
-
+	%
 :- pred goal_path_step_to_string(goal_path_step::in, string::out) is det.
 
 goal_path_step_to_string(conj(N), Str) :-
@@ -1725,7 +1756,7 @@ goal_path_step_to_string(later, "l;").
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
-
+	%
 goal_to_conj_list(Goal, ConjList) :-
 	( Goal = (conj(List) - _) ->
 		ConjList = List
@@ -1736,7 +1767,7 @@ goal_to_conj_list(Goal, ConjList) :-
 	% Convert a goal to a list of parallel conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
-
+	%
 goal_to_par_conj_list(Goal, ConjList) :-
 	( Goal = par_conj(List) - _ ->
 		ConjList = List
@@ -1747,7 +1778,7 @@ goal_to_par_conj_list(Goal, ConjList) :-
 	% Convert a goal to a list of disjuncts.
 	% If the goal is a disjunction, then return its disjuncts
 	% otherwise return the goal as a singleton list.
-
+	%
 goal_to_disj_list(Goal, DisjList) :-
 	( Goal = disj(List) - _ ->
 		DisjList = List
@@ -1759,7 +1790,7 @@ goal_to_disj_list(Goal, DisjList) :-
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the conjunction of the conjuncts,
 	% with the specified goal_info.
-
+	%
 conj_list_to_goal(ConjList, GoalInfo, Goal) :-
 	( ConjList = [Goal0] ->
 		Goal = Goal0
@@ -1771,7 +1802,7 @@ conj_list_to_goal(ConjList, GoalInfo, Goal) :-
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the parallel conjunction of the conjuncts,
 	% with the specified goal_info.
-
+	%
 par_conj_list_to_goal(ConjList, GoalInfo, Goal) :-
 	( ConjList = [Goal0] ->
 		Goal = Goal0
@@ -1783,7 +1814,7 @@ par_conj_list_to_goal(ConjList, GoalInfo, Goal) :-
 	% If the list contains only one goal, then return that goal,
 	% otherwise return the disjunction of the conjuncts,
 	% with the specified goal_info.
-
+	%
 disj_list_to_goal(DisjList, GoalInfo, Goal) :-
 	( DisjList = [Goal0] ->
 		Goal = Goal0
@@ -1810,7 +1841,7 @@ conjoin_goals(Goal1, Goal2, Goal) :-
 	conjoin_goal_and_goal_list(Goal1, GoalList, Goal).
 
 	% Negate a goal, eliminating double negations as we go.
-
+	%
 negate_goal(Goal, GoalInfo, NegatedGoal) :-
 	(
 		% eliminate double negations
@@ -1842,7 +1873,7 @@ all_negated([conj(NegatedConj) - _GoalInfo | NegatedGoals], Goals) :-
 
 	% Returns yes if a goal (or subgoal contained within) contains
 	% any foreign code.
-
+	%
 goal_has_foreign(Goal) = HasForeign :-
 	Goal = GoalExpr - _,
 	(
@@ -1891,7 +1922,8 @@ goal_has_foreign(Goal) = HasForeign :-
 		HasForeign = goal_has_foreign_shorthand(ShorthandGoal)
 	).
 
-	% Return yes if the shorthand goal contains any foreign code
+	% Return yes if the shorthand goal contains any foreign code.
+	%
 :- func goal_has_foreign_shorthand(shorthand_goal_expr) = bool.
 
 goal_has_foreign_shorthand(bi_implication(Goal2, Goal3)) = HasForeign :-
@@ -2178,4 +2210,11 @@ get_pragma_foreign_var_names_2([MaybeName | MaybeNames], !Names) :-
 	get_pragma_foreign_var_names_2(MaybeNames, !Names).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "hlds_goal".
+
+%-----------------------------------------------------------------------------%
+:- end_module hlds_goal.
 %-----------------------------------------------------------------------------%
