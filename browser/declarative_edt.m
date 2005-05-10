@@ -58,10 +58,11 @@
 
 :- interface.
 
-:- import_module mdbcomp.program_representation.
-:- import_module mdbcomp.prim_data.
-:- import_module mdb.io_action.
 :- import_module mdb.declarative_debugger.
+:- import_module mdb.declarative_oracle.
+:- import_module mdb.io_action.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 
 :- import_module bool, list, std_util.
 
@@ -261,25 +262,26 @@
 	%
 :- pred topmost_det(search_space(T)::in, suspect_id::out) is det.
 
-	% suspect_is_bug(Store, SuspectId, !SearchSpace, CorrectDescendents,
-	%	InadmissibleChildren)
-	% Succeeds if the given suspect is erroneous and has only correct,
-	% inadmissible, pruned or ignored descendents.  The direct children of
-	% the root who are inadmissible are placed in InadmissibleChildren.
-	% CorrectDescendents is all the correct and inadmissible 
-	% descendents of the suspect.
+	% non_ignored_descendents(IoActionMap, Store, Oracle, SuspectIds, 
+	% 	!SearchSpace, Descendents).
+	% Descendents is the non-ignored children of the suspects in 
+	% SuspectIds appended together.  If a child is ignored then its
+	% non-ignored children are added to the list.  This is done 
+	% recursively.  Fails if an explicit subtree is required to find
+	% the children of an ignored suspect.
 	%
-:- pred suspect_is_bug(S::in, suspect_id::in, search_space(T)::in, 
-	search_space(T)::out, list(suspect_id)::out, list(suspect_id)::out)
-	is semidet <= mercury_edt(S, T).
+:- pred non_ignored_descendents(io_action_map::in, S::in, oracle_state::in,
+	list(suspect_id)::in, search_space(T)::in, search_space(T)::out,
+	list(suspect_id)::out) is semidet <= mercury_edt(S, T).
 
-	% children(Store, SuspectId, !SearchSpace, Children).
+	% children(IoActionMap, Store, Oracle, SuspectId, !SearchSpace, 
+	% 	Children).
 	% Children is the list of children of SuspectId in the SearchSpace.  If
 	% the children were not in the search space then they are added.  Fails
 	% if SuspectId is the root of an implicit subtree.  
 	% 
-:- pred children(S::in, suspect_id::in, search_space(T)::in, 
-	search_space(T)::out, list(suspect_id)::out) 
+:- pred children(io_action_map::in, S::in, oracle_state::in, suspect_id::in, 
+	search_space(T)::in, search_space(T)::out, list(suspect_id)::out) 
 	is semidet <= mercury_edt(S, T).
 
 	% parent(SearchSpace, SuspectId, ParentId).
@@ -315,16 +317,17 @@
 :- pred skip_suspect(suspect_id::in, search_space(T)::in, search_space(T)::out)
 	is det.
 	
-	% find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
-	% 	Response).  
+	% find_subterm_origin(IoActionMap, Store, Oracle, SuspectId, ArgPos, 
+	%	TermPath, !SearchSpace, Response).  
 	% Finds the origin of the subterm given by SuspectId, ArgPos and
 	% TermPath in its immediate neighbours.  If the children of a suspect
 	% are required then they'll be added to the search space, unless an
 	% explicit subtree is required in which case the appropriate response
 	% is returned (see definition of find_origin_response type below).
 	%
-:- pred find_subterm_origin(S::in, suspect_id::in, arg_pos::in, term_path::in,
-	search_space(T)::in, search_space(T)::out, find_origin_response::out)
+:- pred find_subterm_origin(io_action_map::in, S::in, oracle_state::in, 
+	suspect_id::in, arg_pos::in, term_path::in, search_space(T)::in,
+	search_space(T)::out, find_origin_response::out) 
 	is det <= mercury_edt(S, T).
 
 :- type find_origin_response
@@ -334,8 +337,9 @@
 	
 			% The subterm originated from the suspect referenced by 
 			% argument 1.  The second and third arguments give the
-			% position of the subterm in the origin node.
-	;	origin(suspect_id, arg_pos, term_path)
+			% position of the subterm in the origin node, while the
+			% fourth argument gives the mode of the subterm.
+	;	origin(suspect_id, arg_pos, term_path, subterm_mode)
 	
 			% The subterm was bound by a primitive operation inside
 			% the suspect.  The other arguments are the filename,
@@ -353,7 +357,7 @@
 			)
 			
 			% The suspect is the root of an implicit subtree and
-			% the origin lies in one of it's children.
+			% the origin lies in one of its children.
 	;	require_explicit_subtree
 	
 			% The suspect is the root of the topmost explicit 
@@ -377,21 +381,25 @@
 :- pred incorporate_explicit_subtree(suspect_id::in, T::in,
 	search_space(T)::in, search_space(T)::out) is det.
 
-	% incorporate_explicit_supertree(Store, Node, !SearchSpace).
+	% incorporate_explicit_supertree(IoActionMap, Store, Oracle, Node, 
+	%	!SearchSpace).
 	% Node should be the implicit root in a newly generated supertree
 	% that represents the topmost node of the current search space.
 	% Node's parent will be inserted at the top of the search space.
 	%
-:- pred incorporate_explicit_supertree(S::in, T::in, search_space(T)::in,
+:- pred incorporate_explicit_supertree(io_action_map::in, S::in, 
+	oracle_state::in, T::in, search_space(T)::in,
 	search_space(T)::out) is det <= mercury_edt(S, T).
 
-	% extend_search_space_upwards(Store, !SearchSpace).
+	% extend_search_space_upwards(IoActionMap, Store, Oracle, 
+	%	!SearchSpace).
 	% Attempts to add a parent of the current topmost node to the
 	% search space.  Fails if this is not possible because an explicit
 	% supertree is required.
 	%
-:- pred extend_search_space_upwards(S::in, search_space(T)::in, 
-	search_space(T)::out) is semidet <= mercury_edt(S, T).
+:- pred extend_search_space_upwards(io_action_map::in, S::in, oracle_state::in,
+	search_space(T)::in, search_space(T)::out) 
+	is semidet <= mercury_edt(S, T).
 
 	% Return the EDT node corresponding to the suspect_id.
 	%
@@ -430,8 +438,8 @@
 	%
 :- pred suspect_ignored(search_space(T)::in, suspect_id::in) is semidet.
 
-	% first_unknown_descendent(Store, SuspectId, !SearchSpace, 
-	%	MaybeDescendent).
+	% first_unknown_descendent(IoActionMap, Store, Oracle, SuspectId, 
+	%	!SearchSpace, MaybeDescendent).
 	% Search the search space for a suspect with status = unknown in a
 	% top down fashion, starting with SuspectId.  If no unknown
 	% suspect is found then MaybeDescendent will be no.  If there are no
@@ -439,9 +447,14 @@
 	% skipped, ignored or erroneous suspect is the root of an implicit
 	% subtree, then the call will fail.
 	%
-:- pred first_unknown_descendent(S::in, suspect_id::in,
-	search_space(T)::in, search_space(T)::out, maybe(suspect_id)::out) 
-	is semidet <= mercury_edt(S, T).
+:- pred first_unknown_descendent(io_action_map::in, S::in, oracle_state::in,
+	suspect_id::in, search_space(T)::in, search_space(T)::out,
+	maybe_found_descendent::out) is det <= mercury_edt(S, T).
+
+:- type maybe_found_descendent
+	--->	found(suspect_id)
+	;	not_found
+	;	require_explicit_subtree(suspect_id).
 
 	% choose_skipped_suspect(SearchSpace, Skipped) True iff Skipped is the
 	% skipped suspect in SearchSpace with the lowest skip order (i.e. was
@@ -450,19 +463,6 @@
 	%
 :- pred choose_skipped_suspect(search_space(T)::in, suspect_id::out)
 	is semidet.
-
-	% pick_implicit_root(Store, SearchSpace, ImplicitRoot)
-	% Picks a suspect in SearchSpace who's EDT node is the root of an
-	% implicit subtree. Only suspects with a status of unknown, skipped or
-	% ignored will be considered.  If there are multiple such suspects then
-	% one is committed to.  ImplicitRoot will always be a descendent of the
-	% root of the search space.  XXX currently ImplicitRoot is chosen
-	% naively, but in future better methods could be used to pick an
-	% implicit root (such as the implicit root whos subtree is most lightly
-	% to contain a bug according to some heuristic(s)).
-	%
-:- pred pick_implicit_root(S::in, search_space(T)::in, suspect_id::out) 
-	is semidet <= mercury_edt(S, T).
 
 	% get_path(SearchSpace, BottomId, TopId, Path).
 	% Path is InitialPath appended to the list of suspect_id's between
@@ -478,14 +478,18 @@
 :- pred suspect_correct_or_inadmissible(search_space(T)::in, suspect_id::in) 
 	is semidet.
 
+	% Succeeds if the suspect has been marked inadmissible.
+	%
+:- pred suspect_inadmissible(search_space(T)::in, suspect_id::in) is semidet.
+
 	% When tracking a sub-term, should we give up if we reach the given 
 	% suspect, because the binding node must lie in a portion of 
 	% the tree we've already eliminated?
 	%
-:- pred give_up_subterm_tracking(search_space(T)::in, suspect_id::in) 
-	is semidet.
+:- pred give_up_subterm_tracking(search_space(T)::in, suspect_id::in,
+	subterm_mode::in) is semidet.
 
-	% Mark the root and it's non-ignored children as unknown.
+	% Mark the root and its non-ignored children as unknown.
 	% Throws an exception if the search space doesn't have a root.
 	%
 :- pred revise_root(S::in, search_space(T)::in, search_space(T)::out) 
@@ -614,17 +618,6 @@ topmost_det(SearchSpace, TopMostId) :-
 		throw(internal_error("topmost_det", "search space empty"))
 	).
 
-suspect_is_bug(Store, SuspectId, !SearchSpace, CorrectDescendents,
-		InadmissibleChildren) :-
-	suspect_erroneous(!.SearchSpace, SuspectId),
-	children(Store, SuspectId, !SearchSpace, Children),
-	non_ignored_descendents(Store, Children, !SearchSpace,
-		Descendents),
-	filter(suspect_correct_or_inadmissible(!.SearchSpace),
-		Descendents, CorrectDescendents, []),
-	filter(suspect_inadmissible(!.SearchSpace), Children,
-		InadmissibleChildren).
-
 suspect_correct_or_inadmissible(SearchSpace, SuspectId) :-
 	lookup_suspect(SearchSpace, SuspectId, Suspect),
 	Status = Suspect ^ status,
@@ -638,8 +631,6 @@ suspect_correct_or_inadmissible(SearchSpace, SuspectId) :-
 
 suspect_in_buggy_subtree(SearchSpace, SuspectId) :-
 	in_buggy_subtree(get_status(SearchSpace, SuspectId), yes).
-
-:- pred suspect_inadmissible(search_space(T)::in, suspect_id::in) is semidet.
 
 suspect_inadmissible(SearchSpace, SuspectId) :-
 	lookup_suspect(SearchSpace, SuspectId, Suspect),
@@ -769,9 +760,9 @@ new_parent_status(in_erroneous_subtree_complement) =
 	in_erroneous_subtree_complement.
 new_parent_status(unknown) = unknown.
 
-give_up_subterm_tracking(SearchSpace, SuspectId) :-
+give_up_subterm_tracking(SearchSpace, SuspectId, subterm_in) :-
 	Status = get_status(SearchSpace, SuspectId),
-	(Status = erroneous ; Status = in_erroneous_subtree_complement).
+	excluded_complement(Status, yes).
 
 	% Mark the suspect as correct or inadmissible.
 	%
@@ -903,8 +894,8 @@ travel_up(SearchSpace, StartId, Distance, FinishId) :-
 		FinishId = StartId
 	).
 
-find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
-		Response) :-
+find_subterm_origin(IoActionMap, Store, Oracle, SuspectId, ArgPos, TermPath, 
+		!SearchSpace, Response) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	ImplicitToExplicit = !.SearchSpace ^
 		implicit_roots_to_explicit_roots,
@@ -930,31 +921,32 @@ find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 		Mode = subterm_in,
 		(
 			Suspect ^ parent = yes(ParentId),
-			resolve_origin(Store, Node, ArgPos, TermPath,
-				ParentId, no, !SearchSpace, Response)
+			resolve_origin(IoActionMap, Store, Oracle, Node,
+				ArgPos, TermPath, ParentId, no, !SearchSpace,
+				Response)
 		;
 			Suspect ^ parent = no,
 			(
-				extend_search_space_upwards(Store, 
-					!SearchSpace)
+				extend_search_space_upwards(IoActionMap, Store, 
+					Oracle, !SearchSpace)
 			->
 				topmost_det(!.SearchSpace, NewRootId),
-				resolve_origin(Store, Node, ArgPos,
-					TermPath, NewRootId, no, !SearchSpace,
-					Response)
+				resolve_origin(IoActionMap, Store, Oracle, 
+					Node, ArgPos, TermPath, NewRootId, no,
+					!SearchSpace, Response)
 			;
 				Response = require_explicit_supertree
 			)
 		)
 	;
 		Mode = subterm_out,
-		resolve_origin(Store, Node, ArgPos,
+		resolve_origin(IoActionMap, Store, Oracle, Node, ArgPos,
 			TermPath, SuspectId, yes, !SearchSpace,
 			Response)
 	).
 
-	% resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, Output,
-	% 	!SearchSpace, Response).
+	% resolve_origin(IoActionMap, Store, Oracle, Node, ArgPos, TermPath, 
+	%	SuspectId, Output, !SearchSpace, Response).
 	% Find the origin of the subterm in Node and report the origin as
 	% SuspectId if the origin is a primitive op or an input and as the
 	% appropriate child of SuspectId if the origin is an output.  SuspectId
@@ -963,12 +955,13 @@ find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 	% output.  Output should be yes if the sub-term is an output of
 	% SuspectId and no if it isn't.
 	%
-:- pred resolve_origin(S::in, T::in, arg_pos::in, term_path::in, 
-	suspect_id::in, bool::in, search_space(T)::in, search_space(T)::out, 
-	find_origin_response::out) is det <= mercury_edt(S, T).
-	
-resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, Output, !SearchSpace, 
-		Response) :-
+:- pred resolve_origin(io_action_map::in, S::in, oracle_state::in, T::in, 
+	arg_pos::in, term_path::in, suspect_id::in, bool::in,
+	search_space(T)::in, search_space(T)::out, find_origin_response::out)
+	is det <= mercury_edt(S, T).
+
+resolve_origin(IoActionMap, Store, Oracle, Node, ArgPos, TermPath, SuspectId, 
+		Output, !SearchSpace, Response) :-
 	edt_dependency(Store, Node, ArgPos, TermPath, _, Origin),
 	(
 		Origin = primitive_op(FileName, LineNo, PrimOpType),
@@ -979,7 +972,8 @@ resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, Output, !SearchSpace,
 		Response = not_found
 	;
 		Origin = input(InputArgPos, InputTermPath),
-		Response = origin(SuspectId, InputArgPos, InputTermPath)
+		Response = origin(SuspectId, InputArgPos, InputTermPath, 
+			subterm_in)
 	;
 		Origin = output(OriginNode, OutputArgPos, OutputTermPath),
 		(
@@ -992,7 +986,8 @@ resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, Output, !SearchSpace,
 			ExplicitOrigin = OriginNode
 		),
 		(
-			children(Store, SuspectId, !SearchSpace, Children)
+			children(IoActionMap, Store, Oracle, SuspectId, 
+				!SearchSpace, Children)
 		->
 			(
 				find_edt_node_in_suspect_list(Children,
@@ -1000,7 +995,7 @@ resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, Output, !SearchSpace,
 					OriginId)
 			->
 				Response = origin(OriginId, OutputArgPos,
-					OutputTermPath)
+					OutputTermPath, subterm_out)
 			;
 				throw(internal_error("find_subterm_origin",
 					"output origin for input subterm "++
@@ -1047,7 +1042,7 @@ lookup_suspect(SearchSpace, SuspectId, Suspect) :-
 
 	% propagate_status_downwards(Status, StopStatusSet, SuspectId, 
 	%	StopSuspects, !SearchSpace). 
-	% Sets the status of SuspectId and all it's descendents to Status.
+	% Sets the status of SuspectId and all its descendents to Status.
 	% If a descendent (including the suspect) already has a status in
 	% StopStatusSet then propagate_status_downwards won't update any
 	% further descendents.  The list of all the children of the lowest
@@ -1449,22 +1444,31 @@ get_siblings(SearchSpace, SuspectId, Siblings) :-
 	% the given suspect.  The suspect_ids for the new suspects will
 	% also be returned.
 	%
-:- pred add_children(S::in, list(T)::in, suspect_id::in, suspect_status::in, 
-	search_space(T)::in, search_space(T)::out, list(suspect_id)::out) 
+:- pred add_children(io_action_map::in, S::in, oracle_state::in, list(T)::in, 
+	suspect_id::in, suspect_status::in, search_space(T)::in,
+	search_space(T)::out, list(suspect_id)::out) 
 	is det <= mercury_edt(S, T).
 
-add_children(Store, EDTChildren, SuspectId, Status, !SearchSpace, Children) :-
+add_children(IoActionMap, Store, Oracle, EDTChildren, SuspectId, Status, 
+		!SearchSpace, Children) :-
 	Counter0 = !.SearchSpace ^ suspect_id_counter,
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect0),
-	add_children_2(Store, EDTChildren, SuspectId, Status, 
-		Suspect0 ^ depth + 1, 
-		!SearchSpace, Counter0, Counter, Children),
-	!:SearchSpace = !.SearchSpace ^ suspect_id_counter := Counter,
-	% Lookup the suspect again, since it's weight may have changed.
+	Depth = Suspect0 ^ depth + 1,
+	add_children_2(IoActionMap, Store, Oracle, EDTChildren, SuspectId, 
+		Status, Depth, !SearchSpace, Counter0, Counter, Children),
+	% Lookup the suspect again, since its weight and/or status may have 
+	% changed.
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
+	!:SearchSpace = !.SearchSpace ^ suspect_id_counter := Counter,
+	SuspectWithChildren = Suspect ^ children := yes(Children),
+	map.set(!.SearchSpace ^ store, SuspectId, SuspectWithChildren, 
+		SuspectStoreWithChildren),
+	!:SearchSpace = !.SearchSpace ^ store := SuspectStoreWithChildren,
+	list.foldl(adjust_suspect_status_from_oracle(IoActionMap, Store, 
+		Oracle), Children, !SearchSpace),
 	%
 	% Recalc the weight if the suspect is ignored.  This wouldn't have
-	% been done by ignore_suspect/3 since the children wouldn't have been
+	% been done by ignore_suspect/4 since the children wouldn't have been
 	% available.
 	%
 	(
@@ -1473,36 +1477,89 @@ add_children(Store, EDTChildren, SuspectId, Status, !SearchSpace, Children) :-
 		calc_suspect_weight(Store, Suspect ^ edt_node, yes(Children),
 			ignored, !.SearchSpace, Weight, _),
 		map.set(!.SearchSpace ^ store, SuspectId, 
-			(Suspect ^ weight := Weight) 
-				^ children := yes(Children), SuspectStore),
-		!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+			SuspectWithChildren ^ weight := Weight, 	
+			SuspectStoreWithWeight),
+		!:SearchSpace = !.SearchSpace ^ store := 
+			SuspectStoreWithWeight,
 		add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
 			!SearchSpace)
 	;
-		map.set(!.SearchSpace ^ store, SuspectId, 
-			Suspect ^ children := yes(Children), SuspectStore),
-		!:SearchSpace = !.SearchSpace ^ store := SuspectStore
+		true
 	).
 
-:- pred add_children_2(S::in, list(T)::in, suspect_id::in, suspect_status::in, 
-	int::in, search_space(T)::in, search_space(T)::out, counter::in,
-	counter::out, list(suspect_id)::out) is det <= mercury_edt(S, T).
+:- pred add_children_2(io_action_map::in, S::in, oracle_state::in, list(T)::in,
+	suspect_id::in, suspect_status::in, int::in,
+	search_space(T)::in, search_space(T)::out, counter::in, counter::out, 
+	list(suspect_id)::out) is det <= mercury_edt(S, T).
 
-add_children_2(_, [], _, _, _, SearchSpace, SearchSpace, Counter, Counter, []).
-
-add_children_2(Store, [EDTChild | EDTChildren], SuspectId, Status, Depth, 
-		!SearchSpace, !Counter, Children) :-
+add_children_2(_, _, _, [], _, _, _, !SearchSpace, !Counter, []).
+add_children_2(IoActionMap, Store, Oracle, [EDTChild | EDTChildren], 
+		ParentId, Status, Depth, !SearchSpace, !Counter, Children) 
+		:-
 	allocate(NextId, !Counter),
 	calc_suspect_weight(Store, EDTChild, no, Status, !.SearchSpace, Weight,
 		ExcessWeight),
 	map.det_insert(!.SearchSpace ^ store, NextId, 
-		suspect(yes(SuspectId), EDTChild, Status, Depth, no, Weight), 
+		suspect(yes(ParentId), EDTChild, Status, Depth, no, Weight), 
 		SuspectStore),
 	!:SearchSpace = !.SearchSpace ^ store := SuspectStore,
 	add_weight_to_ancestors(NextId, ExcessWeight, !SearchSpace),
-	add_children_2(Store, EDTChildren, SuspectId, Status, Depth, 
-		!SearchSpace, !Counter, OtherChildren),
+	add_children_2(IoActionMap, Store, Oracle, EDTChildren, ParentId, 
+		Status, Depth, !SearchSpace, !Counter, OtherChildren),
 	Children = [NextId | OtherChildren].
+
+:- pred add_child_to_parent(suspect_id::in, suspect(T)::in, suspect(T)::out) 
+	is det.
+
+add_child_to_parent(ChildId, !Parent) :-
+	(
+		!.Parent ^ children = no,
+		NewChildren = [ChildId]
+	;
+		!.Parent ^ children = yes(Children),
+		list.append(Children, [ChildId], NewChildren)
+	),
+	!:Parent = !.Parent ^ children := yes(NewChildren).
+
+:- pred adjust_suspect_status_from_oracle(io_action_map::in, S::in, 
+	oracle_state::in, suspect_id::in, search_space(T)::in,
+	search_space(T)::out) is det <= mercury_edt(S, T).
+
+adjust_suspect_status_from_oracle(IoActionMap, Store, Oracle, SuspectId, 
+		!SearchSpace) :-
+	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
+	(
+		Suspect ^ status = unknown
+	->
+		edt_question(IoActionMap, Store, Suspect ^ edt_node, Question),
+		(
+			answer_known(Oracle, Question, Answer)
+		->
+			(
+				Answer = ignore(_),
+				ignore_suspect(Store, SuspectId, !SearchSpace)
+			;
+				Answer = truth_value(_, Truth),
+				(
+					Truth = erroneous,
+					assert_suspect_is_erroneous(SuspectId,
+						!SearchSpace)
+				;
+					Truth = correct,
+					assert_suspect_is_correct(SuspectId,
+						!SearchSpace)
+				;
+					Truth = inadmissible,
+					assert_suspect_is_inadmissible(
+						SuspectId, !SearchSpace)
+				)
+			)
+		;
+			true
+		)
+	;
+		true
+	).
 
 initialise_search_space(Store, Node, SearchSpace) :-
 	edt_weight(Store, Node, Weight, _),
@@ -1522,12 +1579,14 @@ incorporate_explicit_subtree(SuspectId, Node, !SearchSpace) :-
 		!.SearchSpace ^ implicit_roots_to_explicit_roots :=
 		ImplicitToExplicit.
 
-incorporate_explicit_supertree(Store, Node, !SearchSpace) :-
+incorporate_explicit_supertree(IoActionMap, Store, Oracle, Node, 
+		!SearchSpace) :-
 	topmost_det(!.SearchSpace, OldTopMostId),
 	(
 		edt_parent(Store, Node, Parent)
 	->
-		insert_new_topmost_node(Store, Parent, !SearchSpace),
+		insert_new_topmost_node(IoActionMap, Store, Oracle, Parent, 
+			!SearchSpace),
 		%
 		% Node implicitly represents the root of the old search space,
 		% which we already have an explicit version of, so we link
@@ -1545,21 +1604,23 @@ incorporate_explicit_supertree(Store, Node, !SearchSpace) :-
 			"no parent"))
 	).
 
-extend_search_space_upwards(Store, !SearchSpace) :-
+extend_search_space_upwards(IoActionMap, Store, Oracle, !SearchSpace) :-
 	topmost_det(!.SearchSpace, OldTopMostId),
 	edt_parent(Store, get_edt_node(!.SearchSpace, OldTopMostId), 
 		NewTopMost),
-	insert_new_topmost_node(Store, NewTopMost, !SearchSpace).
+	insert_new_topmost_node(IoActionMap, Store, Oracle, NewTopMost, 
+		!SearchSpace).
 
 	% Add the given EDT node to the top of the search space.  The given
 	% node should be a parent of the current topmost node in the search 
 	% space.
 	%
-:- pred insert_new_topmost_node(S::in, T::in, 
-	search_space(T)::in, search_space(T)::out)
+:- pred insert_new_topmost_node(io_action_map::in, S::in, oracle_state::in, 
+	T::in, search_space(T)::in, search_space(T)::out)
 	is det <= mercury_edt(S, T).
 
-insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
+insert_new_topmost_node(IoActionMap, Store, Oracle, NewTopMostEDTNode, 
+		!SearchSpace) :-
 	(
 		edt_children(Store, NewTopMostEDTNode, EDTChildren)
 	->	
@@ -1599,7 +1660,7 @@ insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 					!.SuspectStore
 			),
 			SiblingStatus = new_child_status(NewTopMostStatus),
-			add_children(Store, 
+			add_children(IoActionMap, Store, Oracle,
 				append(LeftChildren, RightChildren), 
 				NewTopMostId, SiblingStatus,
 				!SearchSpace, ChildrenIds),
@@ -1642,7 +1703,9 @@ insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 					!.SuspectStore
 			),
 			!:SearchSpace = !.SearchSpace ^ topmost :=
-				yes(NewTopMostId)
+				yes(NewTopMostId),
+			adjust_suspect_status_from_oracle(IoActionMap, Store, 
+				Oracle, NewTopMostId, !SearchSpace)
 		;
 			throw(internal_error("insert_new_topmost_node",
 				"couldn't find event number"))
@@ -1684,7 +1747,7 @@ parent(SearchSpace, SuspectId, ParentId) :-
 	lookup_suspect(SearchSpace, SuspectId, Parent),
 	Parent ^ parent = yes(ParentId).
 
-children(Store, SuspectId, !SearchSpace, Children) :- 
+children(IoActionMap, Store, Oracle, SuspectId, !SearchSpace, Children) :- 
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	(
 		Suspect ^ children = yes(Children)
@@ -1692,36 +1755,26 @@ children(Store, SuspectId, !SearchSpace, Children) :-
 		Suspect ^ children = no,
 		edt_children(Store, Suspect ^ edt_node, EDTChildren),
 		NewStatus = new_child_status(Suspect ^ status),
-		add_children(Store, EDTChildren, SuspectId, NewStatus,
-			!SearchSpace, Children)
+		add_children(IoActionMap, Store, Oracle, EDTChildren, 
+			SuspectId, NewStatus, !SearchSpace, Children)
 	).
 
-	% non_ignored_descendents(Store, SuspectIds, !SearchSpace,
-	%	Descendents).
-	% Descendents is the non-ignored children of the suspects in 
-	% SuspectIds appended together.  If a child is ignored then it's
-	% non-ignored children are added to the list.  This is done 
-	% recursively.  Fails if an explicit subtree is required to find
-	% the children of an ignored suspect.
-	%
-:- pred non_ignored_descendents(S::in, list(suspect_id)::in, 
-	search_space(T)::in, search_space(T)::out, list(suspect_id)::out) 
-	is semidet <= mercury_edt(S, T).
-
-non_ignored_descendents(_, [], !SearchSpace, []).
-non_ignored_descendents(Store, [SuspectId | SuspectIds], !SearchSpace,
-		Descendents) :-
+non_ignored_descendents(_, _, _, [], !SearchSpace, []).
+non_ignored_descendents(IoActionMap, Store, Oracle, [SuspectId | SuspectIds], 
+		!SearchSpace, Descendents) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	(
 		Suspect ^ status = ignored
 	->
-		children(Store, SuspectId, !SearchSpace, Children),
-		non_ignored_descendents(Store, Children, !SearchSpace,
-			Descendents1)
+		children(IoActionMap, Store, Oracle, SuspectId, !SearchSpace, 
+			Children),
+		non_ignored_descendents(IoActionMap, Store, Oracle, Children, 
+			!SearchSpace, Descendents1)
 	;
 		Descendents1 = [SuspectId]
 	),
-	non_ignored_descendents(Store, SuspectIds, !SearchSpace, Descendents2),
+	non_ignored_descendents(IoActionMap, Store, Oracle, SuspectIds, 
+		!SearchSpace, Descendents2),
 	append(Descendents1, Descendents2, Descendents).
 
 choose_skipped_suspect(SearchSpace, Skipped) :-
@@ -1767,13 +1820,13 @@ least_skipped(SearchSpace, SuspectId1, Suspect1, SuspectId2, LeastSkipped) :-
 		LeastSkipped = SuspectId2
 	).
 
-first_unknown_descendent(Store, SuspectId, !SearchSpace, 
-		MaybeDescendent) :-
-	first_unknown_descendent_list(Store, [SuspectId], !SearchSpace,
-		MaybeDescendent).
+first_unknown_descendent(IoActionMap, Store, Oracle, SuspectId, !SearchSpace, 
+		MaybeFound) :-
+	first_unknown_descendent_list(IoActionMap, Store, Oracle, [SuspectId], 
+		!SearchSpace, MaybeFound).
 		
-	% first_unknown_descendent_list(Store, List, !SearchSpace, 
-	%	MaybeDescendent).
+	% first_unknown_descendent_list(IoActionMap, Store, Oracle, List, 
+	%	!SearchSpace, MaybeDescendent).
 	% Find the first unknown suspect in List.  If one is found then 
 	% it is returned through MaybeDescendent.  Otherwise if there are
 	% any skipped, ignored or erroneous suspects in List then look in the
@@ -1783,77 +1836,88 @@ first_unknown_descendent(Store, SuspectId, !SearchSpace,
 	% unknown suspects.  MaybeDescendent will be no if there are no
 	% unknown descendents and no explicit subtree's are required.
 	%
-:- pred first_unknown_descendent_list(S::in, list(suspect_id)::in, 
-	search_space(T)::in, search_space(T)::out, maybe(suspect_id)::out)
-	is semidet <= mercury_edt(S, T).
-	
-first_unknown_descendent_list(Store, SuspectList, !SearchSpace,
-		MaybeDescendent) :-
+:- pred first_unknown_descendent_list(io_action_map::in, S::in, 
+	oracle_state::in, list(suspect_id)::in, search_space(T)::in,
+	search_space(T)::out, maybe_found_descendent::out) 
+	is det <= mercury_edt(S, T).
+
+first_unknown_descendent_list(IoActionMap, Store, Oracle, SuspectList,
+		!SearchSpace, MaybeFound) :-
 	list.filter(suspect_unknown(!.SearchSpace), SuspectList, UnknownList,
 		Others),
 	(
 		UnknownList = [Unknown | _],
-		MaybeDescendent = yes(Unknown)
+		MaybeFound = found(Unknown)
 	;
 		UnknownList = [],
 		list.filter(suspect_in_buggy_subtree(
 			!.SearchSpace), Others, InBuggySubtree),
-		get_children_list(Store, InBuggySubtree, !SearchSpace,
-			ExplicitRequired, Children),
+		get_children_list(IoActionMap, Store, Oracle, InBuggySubtree, 
+			!SearchSpace, ExplicitRequired, Children),
 		(
 			Children = [],
-			ExplicitRequired = no,
-			MaybeDescendent = no
+			(
+				ExplicitRequired = no,
+				MaybeFound = not_found
+			;
+				ExplicitRequired = yes(RequireExplicitId),
+				MaybeFound = require_explicit_subtree(
+					RequireExplicitId)
+			)
 		;
 			Children = [_ | _],
-			first_unknown_descendent_list(Store, Children, 
-				!SearchSpace, MaybeDescendentChildren),
+			first_unknown_descendent_list(IoActionMap, Store, 
+				Oracle, Children, !SearchSpace,
+				MaybeFound0),
 			(
-				MaybeDescendentChildren = no,
-				ExplicitRequired = no,
-				MaybeDescendent = no
+				MaybeFound0 = not_found,
+				(
+					ExplicitRequired = no,
+					MaybeFound = not_found
+				;
+					ExplicitRequired = yes(
+						RequireExplicitId),
+					MaybeFound = require_explicit_subtree(
+						RequireExplicitId)
+				)
 			;
-				MaybeDescendentChildren = yes(Unknown),
-				MaybeDescendent = yes(Unknown)
+				MaybeFound0 = found(_),
+				MaybeFound = MaybeFound0
+			;
+				MaybeFound0 = require_explicit_subtree(_),
+				MaybeFound = MaybeFound0
 			)
 		)
 	).
 
-	% get_children_list(Store, SuspectIds, !SearchSpace, ExplicitRequired,
-	%	Children).
+	% get_children_list(IoActionMap, Store, Oracle, SuspectIds, 
+	% 	!SearchSpace, ExplicitRequired, Children).
 	% Children is the children of all the suspects in SuspectIds appended
 	% together.  If an explicit subtree is required to find the children
 	% of at least one element of SuspectIds, then ExplicitRequired will be
 	% yes, otherwise it'll be no.  If an explicit subtree is required for
-	% a suspect then it's children are not included in Children.
+	% a suspect then its children are not included in Children.
 	%
-:- pred get_children_list(S::in, list(suspect_id)::in, search_space(T)::in,
-	search_space(T)::out, bool::out, list(suspect_id)::out) is det
-	<= mercury_edt(S, T).
+:- pred get_children_list(io_action_map::in, S::in, oracle_state::in, 
+	list(suspect_id)::in, search_space(T)::in, search_space(T)::out,
+	maybe(suspect_id)::out, list(suspect_id)::out) 
+	is det <= mercury_edt(S, T).
 
-get_children_list(_, [], SearchSpace, SearchSpace, no, []).
-get_children_list(Store, [SuspectId | SuspectIds], !SearchSpace, 
-		ExplicitRequired, ChildrenList) :-
-	get_children_list(Store, SuspectIds, !SearchSpace, 
+get_children_list(_, _, _, [], SearchSpace, SearchSpace, no, []).
+get_children_list(IoActionMap, Store, Oracle, [SuspectId | SuspectIds], 
+		!SearchSpace, ExplicitRequired, ChildrenList) :-
+	get_children_list(IoActionMap, Store, Oracle, SuspectIds, !SearchSpace, 
 		ExplicitRequired0, ChildrenList0),
 	(
-		children(Store, SuspectId, !SearchSpace, Children)
+		children(IoActionMap, Store, Oracle, SuspectId, !SearchSpace, 
+			Children)
 	->
 		append(Children, ChildrenList0, ChildrenList),
 		ExplicitRequired = ExplicitRequired0
 	;	
 		ChildrenList = ChildrenList0,
-		ExplicitRequired = yes
+		ExplicitRequired = yes(SuspectId)
 	).
-
-pick_implicit_root(Store, SearchSpace, ImplicitRoot) :-
-	(
-		SearchSpace ^ root = yes(StartId)
-	;
-		SearchSpace ^ root = no,
-		SearchSpace ^ topmost = yes(StartId)
-	),
-	find_first_implicit_root(Store, SearchSpace, [StartId], ImplicitRoot).
 
 	% Look for an implicit root in the descendents of each suspect in
 	% the list in a depth first fashion.

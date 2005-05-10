@@ -55,16 +55,6 @@ mdb> dd
 b(yes)
 Valid? b 1
 browser> mark
-silly_even(801, yes)
-Valid? n
-silly_even(701, yes)
-Valid? n
-silly_even(651, yes)
-Valid? n
-silly_even(625, yes)
-Valid? n
-silly_even(614, yes)
-Valid? y
 Found incorrect contour:
 >(619, 0)
 -(619, 1) = 618
@@ -92,16 +82,18 @@ browser> ls
 [11]
 browser> cd 1
 browser> mark
-add1s([6, 7, 8, 9, 10], [7, 8, ...])
+add1s([10], [11])
 Valid? y
-add1s([3, 4, 5, 6, 7, 8, 9, 10], [|]/2)
+add1s([5, 6, 7, 8, 9, 10], [6, ...])
+Valid? y
+add1s([2, 3, 4, 5, 6, 7, 8, 9, ...], [|]/2)
 Valid? n
-add1s([4, 5, 6, 7, 8, 9, 10], [5, ...])
+add1s([3, 4, 5, 6, 7, 8, 9, 10], [|]/2)
 Valid? y
 Found incorrect contour:
-+(3, 1) = 4
-add1s([4, 5, 6, 7, 8, 9, 10], [5, ...])
++(2, 1) = 3
 add1s([3, 4, 5, 6, 7, 8, 9, 10], [|]/2)
+add1s([2, 3, 4, 5, 6, 7, 8, 9, ...], [|]/2)
 Is this a bug? y
      E10:     C7 EXIT pred binary_search.add1s/2-0 (det)
 mdb> c

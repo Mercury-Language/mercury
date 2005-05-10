@@ -194,6 +194,15 @@
 			% the last question asked.
 	;	show_info(io.output_stream).
 
+	% Answers that are known by the oracle without having to consult the user,
+	% such as answers stored in the knowledge base or answers about trusted
+	% predicates.  mdb.declarative_oracle.answer_known/3 returns answers of
+	% this subtype.
+	%
+:- inst known_answer
+	--->	truth_value(ground, ground)
+	;	ignore(ground).
+
 	% The evidence that a certain node is a bug.  This consists of the
 	% smallest set of questions whose answers are sufficient to
 	% diagnose that bug.
@@ -408,8 +417,8 @@ diagnosis(Store, AnalysisType, UseOldIoActionMap, IoActionStart, IoActionEnd,
 
 diagnosis_2(Store, AnalysisType, Diagnoser0, {Response, Diagnoser}, !IO) :-
 	Analyser0 = Diagnoser0 ^ analyser_state,
-	start_or_resume_analysis(wrap(Store), AnalysisType, 
-		AnalyserResponse, Analyser0, Analyser),
+	start_or_resume_analysis(wrap(Store), Diagnoser0 ^ oracle_state, 
+		AnalysisType, AnalyserResponse, Analyser0, Analyser),
 	diagnoser_set_analyser(Analyser, Diagnoser0, Diagnoser1),
 	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
@@ -472,8 +481,8 @@ handle_analyser_response(Store, revise(Question), _, Response, !Diagnoser, !IO)
 handle_oracle_response(Store, oracle_answer(Answer), Response, !Diagnoser, 
 		!IO) :-
 	diagnoser_get_analyser(!.Diagnoser, Analyser0),
-	continue_analysis(wrap(Store), Answer, AnalyserResponse,
-		Analyser0, Analyser),
+	continue_analysis(wrap(Store), !.Diagnoser ^ oracle_state, Answer, 
+		AnalyserResponse, Analyser0, Analyser),
 	diagnoser_set_analyser(Analyser, !Diagnoser),
 	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,

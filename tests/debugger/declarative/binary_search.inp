@@ -27,11 +27,6 @@ f
 dd
 b 1
 mark
-n
-n
-n
-n
-y
 y
 delete 1
 break add1s

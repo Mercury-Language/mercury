@@ -118,6 +118,12 @@
 :- pred set_browser_state(browser_info.browser_persistent_state::in,
 	oracle_state::in, oracle_state::out) is det.
 
+	% True if the answer to the question is in the knowledge base, or
+	% the predicate is trusted.
+	%
+:- pred answer_known(oracle_state::in, decl_question(T)::in,
+	decl_answer(T)::out(known_answer)) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -481,9 +487,6 @@ get_kb_exceptions_map(KB, KB ^ kb_exceptions_map).
 set_kb_exceptions_map(KB, M, KB ^ kb_exceptions_map := M).
 
 %-----------------------------------------------------------------------------%
-
-:- pred answer_known(oracle_state::in, decl_question(T)::in,
-	decl_answer(T)::out) is semidet.
 
 answer_known(Oracle, Question, Answer) :-
 	Atom = get_decl_question_atom(Question),

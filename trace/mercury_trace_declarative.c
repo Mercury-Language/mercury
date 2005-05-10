@@ -1768,6 +1768,10 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		MR_debug_enabled = MR_TRUE;
 		MR_update_trace_func_enabled();
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+	} else {
+		MR_debug_enabled = MR_FALSE;
+		MR_update_trace_func_enabled();
+		MR_trace_decl_mode = MR_TRACE_DECL_DEBUG;
 	}
 
 	io_start = MR_edt_start_io_counter;
@@ -1785,9 +1789,6 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		MR_io_action_map_cache_start = io_start;
 		MR_io_action_map_cache_end = io_end;
 	}
-
-	MR_debug_enabled = MR_FALSE;
-	MR_update_trace_func_enabled();
 
 	MR_TRACE_CALL_MERCURY(
 		if (new_tree == MR_TRUE) {
@@ -1825,17 +1826,13 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				(MR_Integer *) &topmost_seqno);
 	);
 
-	MR_debug_enabled = MR_TRUE;
-	MR_update_trace_func_enabled();
-
 	/*
 	** Turn off interactive debugging after the diagnosis in case a new
 	** explicit subtree or supertree needs to be constructed.
 	*/
-	if (MR_trace_decl_in_dd_dd_mode) {
-		MR_debug_enabled = MR_FALSE;
-		MR_trace_decl_mode = MR_TRACE_DECL_DEBUG;
-	}
+	MR_debug_enabled = MR_FALSE;
+	MR_update_trace_func_enabled();
+	MR_trace_decl_mode = MR_TRACE_DECL_DEBUG;
 	
 	MR_trace_call_seqno = event_details->MR_call_seqno;
 	MR_trace_call_depth = event_details->MR_call_depth;

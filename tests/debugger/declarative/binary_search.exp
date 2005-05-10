@@ -53,16 +53,6 @@ mdb> dd
 b(yes)
 Valid? b 1
 browser> mark
-silly_even(801, yes)
-Valid? n
-silly_even(701, yes)
-Valid? n
-silly_even(651, yes)
-Valid? n
-silly_even(625, yes)
-Valid? n
-silly_even(614, yes)
-Valid? y
 Found incorrect contour:
 silly_even(618, yes)
 silly_even(619, yes)

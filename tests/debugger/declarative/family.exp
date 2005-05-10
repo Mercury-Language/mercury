@@ -59,8 +59,6 @@ mdb> finish
 mdb> dd
 half_siblings(b, a)
 Valid? no
-siblings(b, a)
-Valid? yes
 Found partially uncovered atom:
 common_father(_, _)
 Is this a bug? yes
