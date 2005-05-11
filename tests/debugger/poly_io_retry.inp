@@ -1,0 +1,12 @@
+register --quiet
+context none
+echo on
+
+f
+retry
+y
+f
+
+f
+retry
+quit -y

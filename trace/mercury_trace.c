@@ -75,7 +75,8 @@ static  MR_Code     *MR_trace_event(MR_Trace_Cmd_Info *cmd,
                         MR_Unsigned depth);
 static  MR_bool     MR_in_traced_region(const MR_Proc_Layout *proc_layout,
                         MR_Word *base_sp, MR_Word *base_curfr);
-static  MR_bool     MR_is_io_state(MR_PseudoTypeInfo pti);
+static  MR_bool     MR_is_io_state(MR_TypeInfoParams type_params, 
+                        MR_PseudoTypeInfo pti);
 static  MR_bool     MR_is_dummy_type(MR_PseudoTypeInfo pti);
 static  MR_bool     MR_find_saved_io_counter(const MR_Label_Layout *call_label,
                         MR_Word *base_sp, MR_Word *base_curfr,
@@ -530,6 +531,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     int                     arg_max;
     int                     arg_num;
     MR_Word                 arg_value;
+    MR_TypeInfoParams       type_params;
     int                     i;
     MR_bool                 succeeded;
     MR_Word                 *saved_regs;
@@ -613,16 +615,25 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         saved_io_action_counter = 0;
     }
 
+    type_params = MR_materialize_type_params_base(return_label_layout, 
+        saved_regs, base_sp, base_curfr);
+
     for (i = 0; i < MR_all_desc_var_count(call_label); i++) {
         arg_value = MR_trace_find_input_arg(return_label_layout,
             saved_regs, base_sp, base_curfr,
             call_label->MR_sll_var_nums[i], &succeeded);
 
         if (! succeeded) {
-            if (! MR_is_io_state(MR_var_pti(call_label, i))) {
+            if (! MR_is_io_state(type_params, MR_var_pti(call_label, i))) {
                 *problem = "Cannot perform retry because the "
                     "values of some input arguments are missing.";
                 goto report_problem;
+            } else {
+                /*
+                ** This would not have been set earlier if the 
+                ** argument is polymorphic.
+                */
+                has_io_state = MR_TRUE;
             }
 
             /*
@@ -933,17 +944,15 @@ MR_in_traced_region(const MR_Proc_Layout *proc_layout,
 }
 
 static MR_bool
-MR_is_io_state(MR_PseudoTypeInfo pti)
+MR_is_io_state(MR_TypeInfoParams type_params, MR_PseudoTypeInfo pti)
 {
     MR_TypeCtorInfo type_ctor_info;
     MR_ConstString  module;
     MR_ConstString  type;
+    MR_TypeInfo     type_info;
 
-    if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
-        return MR_FALSE;
-    }
-
-    type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
+    type_info = MR_create_type_info(type_params, pti);
+    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     module = MR_type_ctor_module_name(type_ctor_info);
     type = MR_type_ctor_name(type_ctor_info);
 

@@ -1,0 +1,21 @@
+      E1:     C1 CALL pred poly_io_retry.main/2-0 (det) poly_io_retry.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> 
+      E2:     C2 CALL pred poly_io_retry.polycall/3-0 (det)
+mdb> f
+hello      E3:     C2 EXIT pred poly_io_retry.polycall/3-0 (det)
+mdb> retry
+Retry across I/O operations is not always safe.
+Are you sure you want to do it? y
+      E2:     C2 CALL pred poly_io_retry.polycall/3-0 (det)
+mdb> f
+hello      E3:     C2 EXIT pred poly_io_retry.polycall/3-0 (det)
+mdb> 
+      E4:     C3 CALL pred poly_io_retry.polycall/3-1 (det)
+mdb> f
+      E5:     C3 EXIT pred poly_io_retry.polycall/3-1 (det)
+mdb> retry
+Cannot perform retry because the values of some input arguments are missing.
+mdb> quit -y
