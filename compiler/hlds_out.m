@@ -3467,24 +3467,13 @@ hlds_out__write_class_defn(Indent, ClassId - ClassDefn, !IO) :-
 :- pred hlds_output_fundep(hlds_class_fundep::in, io::di, io::uo) is det.
 
 hlds_output_fundep(fundep(Domain, Range), !IO) :-
-	hlds_output_fundep_2(Domain, !IO),
-	io.write_string(" >> ", !IO),
-	hlds_output_fundep_2(Range, !IO).
-
-:- pred hlds_output_fundep_2(set(hlds_class_argpos)::in, io::di, io::uo)
-	is det.
-
-hlds_output_fundep_2(ArgNumSet, !IO) :-
-	ArgNumList = set.to_sorted_list(ArgNumSet),
-	(
-		ArgNumList = [ArgNum]
-	->
-		io.write_int(ArgNum, !IO)
-	;
-		io.write_char('{', !IO),
-		io.write_list(ArgNumList, ", ", io.write_int, !IO),
-		io.write_char('}', !IO)
-	).
+	io.write_char('(', !IO),
+	DomainList = set.to_sorted_list(Domain),
+	io.write_list(DomainList, ", ", io.write_int, !IO),
+	io.write_string(" -> ", !IO),
+	RangeList = set.to_sorted_list(Range),
+	io.write_list(RangeList, ", ", io.write_int, !IO),
+	io.write_char(')', !IO).
 
 	% Just output the class methods as pred_ids and proc_ids because
 	% its probably not that useful to have the names. If that information
