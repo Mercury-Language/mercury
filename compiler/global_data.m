@@ -27,7 +27,7 @@
 
 :- pred global_data_init(static_cell_info::in, global_data::out) is det.
 
-:- pred global_data_add_new_proc_var( pred_proc_id::in, comp_gen_c_var::in,
+:- pred global_data_add_new_proc_var(pred_proc_id::in, comp_gen_c_var::in,
 	global_data::in, global_data::out) is det.
 
 :- pred global_data_add_new_proc_layout(pred_proc_id::in, proc_layout_info::in,
