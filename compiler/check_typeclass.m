@@ -1732,6 +1732,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo, !IO) :-
 		Msg = Msg0 ++ [words("function's argument or result types.")]
 	),
 	write_error_pieces(Context, 0, Msg, !IO),
+	maybe_report_unbound_tvars_explanation(Context, !IO),
 	io__set_exit_status(1, !IO).
 
 :- pred report_unbound_tvars_in_ctor_context(list(tvar)::in, type_ctor::in,
@@ -1757,7 +1758,48 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !IO) :-
 		words(choose_number(Vars, "is", "are")),
 		words("not determined by the constructor's argument types.")],
 	write_error_pieces(Context, 0, Msg, !IO),
+	maybe_report_unbound_tvars_explanation(Context, !IO),
 	io__set_exit_status(1, !IO).
+
+:- pred maybe_report_unbound_tvars_explanation(prog_context::in,
+	io::di, io::uo) is det.
+
+maybe_report_unbound_tvars_explanation(Context, !IO) :-
+	globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+	(
+		VerboseErrors = yes,
+		Msg = [words("All types occurring in typeclass constraints"),
+			words("must be fully determined."),
+			words("A type is fully determined if one of the"),
+			words("following holds:"),
+			nl,
+			words("1) All type variables occurring in the type"),
+			words("are determined."),
+			nl,
+			words("2) The type occurs in a constraint argument,"),
+			words("that argument is in the range of some"),
+			words("functional dependency for that class, and"),
+			words("the types in all of the domain arguments for"),
+			words("that functional dependency are fully"),
+			words("determined."),
+			nl,
+			words("A type variable is determined if one of the"),
+			words("following holds:"),
+			nl,
+			words("1) The type variable occurs in the argument"),
+			words("types of the predicate, function, or"),
+			words("constructor which is constrained."),
+			nl,
+			words("2) The type variable occurs in a type which"),
+			words("is fully determined."),
+			nl,
+			words("See the ""Functional dependencies"" section"),
+			words("of the reference manual for details.")
+		],
+		write_error_pieces_not_first_line(Context, 0, Msg, !IO)
+	;
+		VerboseErrors = no
+	).
 
 %---------------------------------------------------------------------------%
 %
