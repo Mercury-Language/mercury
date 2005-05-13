@@ -1,0 +1,8 @@
+fundeps_unbound_in_ctor.m:012: Error: type variables in class constraints introduced with `=>' must be explicitly existentially quantified using `some': some [_2, _3] baz(_2, _3, _1) => foo(_2, _3, _1).
+fundeps_unbound_in_ctor.m:008: In declaration for type
+fundeps_unbound_in_ctor.m:008:   `fundeps_unbound_in_ctor.bar'/0:
+fundeps_unbound_in_ctor.m:008:   error in type class constraints: type variable
+fundeps_unbound_in_ctor.m:008:   C occurs in the constraints, but is not
+fundeps_unbound_in_ctor.m:008:   determined by the constructor's argument
+fundeps_unbound_in_ctor.m:008:   types.
+For more information, try recompiling with `-E'.

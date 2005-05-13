@@ -1482,7 +1482,10 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 
 	% Look for pred or func declarations for which the type variables in
 	% the constraints are not all determined by the type variables in the
-	% type and the functional dependencies.
+	% type and the functional dependencies.  Likewise look for
+	% constructors for which the existential type variables in the
+	% constraints are not all determined by the type variables in the
+	% constructor arguments and the functional dependencies.
 	%
 :- pred check_typeclass.check_constraints(module_info::in,
 	module_info::out, bool::out, io::di, io::uo) is det.
@@ -1490,7 +1493,11 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 check_typeclass.check_constraints(!ModuleInfo, FoundError, !IO) :-
 	module_info_predids(!.ModuleInfo, PredIds),
 	list.foldl3(check_pred_constraints, PredIds, !ModuleInfo,
-		no, FoundError, !IO).
+		no, FoundError0, !IO),
+	module_info_types(!.ModuleInfo, TypeTable),
+	map.keys(TypeTable, TypeCtors),
+	list.foldl3(check_ctor_constraints(TypeTable), TypeCtors, !ModuleInfo,
+		FoundError0, FoundError, !IO).
 
 :- pred check_pred_constraints(pred_id::in, module_info::in,
 	module_info::out, bool::in, bool::out, io::di, io::uo) is det.
@@ -1523,23 +1530,68 @@ needs_no_ambiguity_check(pseudo_imported).
 
 check_pred_type_ambiguities(PredInfo, !ModuleInfo, !FoundError, !IO) :-
 	pred_info_arg_types(PredInfo, ArgTypes),
-	TVars = list_to_set(term.vars_list(ArgTypes)),
 	pred_info_get_class_context(PredInfo, Constraints),
-	module_info_classes(!.ModuleInfo, ClassTable),
-	InducedFunDeps = induced_fundeps(ClassTable, Constraints),
-	FunDepsClosure = fundeps_closure(InducedFunDeps, TVars),
-	solutions(constrained_var_not_in_closure(Constraints, FunDepsClosure),
-		UnboundTVars),
+	TVars = term.vars_list(ArgTypes),
+	get_unbound_tvars(TVars, Constraints, !.ModuleInfo, UnboundTVars),
 	(
 		UnboundTVars = []
 	->
 		true
 	;
-		report_unbound_tvars_in_class_context(UnboundTVars, PredInfo,
+		report_unbound_tvars_in_pred_context(UnboundTVars, PredInfo,
 			!IO),
 		!:FoundError = yes,
 		module_info_incr_errors(!ModuleInfo)
 	).
+
+:- pred check_ctor_constraints(type_table::in, type_ctor::in, module_info::in,
+	module_info::out, bool::in, bool::out, io::di, io::uo) is det.
+
+check_ctor_constraints(TypeTable, TypeCtor, !ModuleInfo, !FoundError, !IO) :-
+	map.lookup(TypeTable, TypeCtor, TypeDefn),
+	get_type_defn_body(TypeDefn, Body),
+	(
+		Body = du_type(Ctors, _, _, _, _, _)
+	->
+		list.foldl3(check_ctor_type_ambiguities(TypeCtor, TypeDefn),
+			Ctors, !ModuleInfo, !FoundError, !IO)
+	;
+		true
+	).
+
+:- pred check_ctor_type_ambiguities(type_ctor::in, hlds_type_defn::in,
+	constructor::in, module_info::in, module_info::out,
+	bool::in, bool::out, io::di, io::uo) is det.
+
+check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo,
+		!FoundError, !IO) :-
+	Ctor = ctor(ExistQVars, Constraints, _, CtorArgs),
+	assoc_list.values(CtorArgs, ArgTypes),
+	ArgTVars = term.vars_list(ArgTypes),
+	list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
+		ArgTVars, ExistQArgTVars),
+	get_unbound_tvars(ExistQArgTVars, constraints([], Constraints),
+		!.ModuleInfo, UnboundTVars),
+	(
+		UnboundTVars = []
+	->
+		true
+	;
+		report_unbound_tvars_in_ctor_context(UnboundTVars, TypeCtor,
+			TypeDefn, !IO),
+		!:FoundError = yes,
+		module_info_incr_errors(!ModuleInfo)
+	).
+
+:- pred get_unbound_tvars(list(tvar)::in, prog_constraints::in,
+	module_info::in, list(tvar)::out) is det.
+
+get_unbound_tvars(TVars, Constraints, ModuleInfo, UnboundTVars) :-
+	module_info_classes(ModuleInfo, ClassTable),
+	InducedFunDeps = induced_fundeps(ClassTable, Constraints),
+	FunDepsClosure = fundeps_closure(InducedFunDeps, list_to_set(TVars)),
+	solutions(constrained_var_not_in_closure(Constraints, FunDepsClosure),
+		UnboundTVars).
 
 :- pred constrained_var_not_in_closure(prog_constraints::in, set(tvar)::in,
 	tvar::out) is nondet.
@@ -1640,11 +1692,16 @@ collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
 % very_long_module_name:002:   error in type class constraints: type variable
 % very_long_module_name:002:   T occurs in the constraints, but is not
 % very_long_module_name:002:   determined by the predicate's argument types.
+%
+% very_long_module_name:002: In declaration for type `long_type/3':
+% very_long_module_name:002:   error in type class constraints: type variable
+% very_long_module_name:002:   T occurs in the constraints, but is not
+% very_long_module_name:002:   determined by the constructor's argument types.
 
-:- pred report_unbound_tvars_in_class_context(list(tvar)::in, pred_info::in,
+:- pred report_unbound_tvars_in_pred_context(list(tvar)::in, pred_info::in,
 	io::di, io::uo) is det.
 
-report_unbound_tvars_in_class_context(Vars, PredInfo, !IO) :-
+report_unbound_tvars_in_pred_context(Vars, PredInfo, !IO) :-
 	pred_info_context(PredInfo, Context),
 	pred_info_arg_types(PredInfo, TVarSet, _, ArgTypes),
 	PredName = pred_info_name(PredInfo),
@@ -1674,6 +1731,31 @@ report_unbound_tvars_in_class_context(Vars, PredInfo, !IO) :-
 		PredOrFunc = function,
 		Msg = Msg0 ++ [words("function's argument or result types.")]
 	),
+	write_error_pieces(Context, 0, Msg, !IO),
+	io__set_exit_status(1, !IO).
+
+:- pred report_unbound_tvars_in_ctor_context(list(tvar)::in, type_ctor::in,
+	hlds_type_defn::in, io::di, io::uo) is det.
+
+report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !IO) :-
+	get_type_defn_context(TypeDefn, Context),
+	get_type_defn_tvarset(TypeDefn, TVarSet),
+	TypeCtor = SymName - Arity,
+
+	VarsStrs = list.map(
+			(func(Var) = mercury_var_to_string(Var, TVarSet, no)),
+			Vars),
+
+	Msg = [words("In declaration for type"),
+		sym_name_and_arity(SymName / Arity),
+		suffix(":"), nl,
+		words("error in type class constraints:"),
+		words(choose_number(Vars, "type variable", "type variables"))]
+		++ list_to_pieces(VarsStrs) ++
+		[words(choose_number(Vars, "occurs", "occur")),
+		words("in the constraints, but"),
+		words(choose_number(Vars, "is", "are")),
+		words("not determined by the constructor's argument types.")],
 	write_error_pieces(Context, 0, Msg, !IO),
 	io__set_exit_status(1, !IO).
 

@@ -278,6 +278,7 @@
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 :- import_module recompilation.
 :- import_module recompilation__version.
@@ -2356,25 +2357,22 @@ process_du_type_2(Functor, Args0, Body, Ctors, MaybeUserEqComp, Result) :-
 			"shadows argument type)", Body)
 
 	% check that all type variables in existential quantifiers
-	% occur somewhere in the constructor argument types
-	% (not just the constraints)
+	% occur somewhere in the constructor argument types or constraints.
 	;
 		list__member(Ctor, Ctors),
-		Ctor = ctor(ExistQVars, _Constraints, _CtorName, CtorArgs),
+		Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs),
 		list__member(Var, ExistQVars),
 		assoc_list__values(CtorArgs, CtorArgTypes),
-		\+ term__contains_var_list(CtorArgTypes, Var)
+		\+ term__contains_var_list(CtorArgTypes, Var),
+		constraint_list_get_tvars(Constraints, ConstraintTVars),
+		\+ list__member(Var, ConstraintTVars)
 	->
 		Result = error("type variable in existential " ++
 			"quantifier does not occur in " ++
-			"arguments of constructor", Body)
+			"arguments or constraints of constructor", Body)
+
 	% check that all type variables in existential constraints
 	% occur in the existential quantifiers
-	% (XXX is this check overly conservative? Perhaps we should
-	% allow existential constraints so long as they contain
-	% at least one type variable which is existentially quantified,
-	% rather than requiring all variables in them to be
-	% existentially quantified.)
 	;
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQVars, Constraints, _CtorName, _CtorArgs),

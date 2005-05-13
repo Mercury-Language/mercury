@@ -1,5 +1,8 @@
-type_vars.m:006: Error: type variable in existential quantifier does not occur in arguments of constructor: some [_1, _2] foo(_1) => c(_2).
-type_vars.m:007: Error: type variable in existential quantifier does not occur in arguments of constructor: some [_1, _2] bar(_1).
+type_vars.m:007: Error: type variable in existential quantifier does not occur in arguments or constraints of constructor: some [_1, _2] bar(_1).
 type_vars.m:008: Error: type variable has overlapping scopes (explicit type quantifier shadows argument type): some [_1] bar(_1).
 type_vars.m:009: Error: type variables in class constraints introduced with `=>' must be explicitly existentially quantified using `some': some [_1] bar(_1) => c(_2).
+type_vars.m:006: In declaration for type `type_vars.t1'/0:
+type_vars.m:006:   error in type class constraints: type variable T2 occurs in
+type_vars.m:006:   the constraints, but is not determined by the constructor's
+type_vars.m:006:   argument types.
 For more information, try recompiling with `-E'.

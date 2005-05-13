@@ -81,6 +81,7 @@ SINGLEMODULE= \
 	func_errors \
 	funcs_as_preds \
 	fundeps_vars \
+	fundeps_unbound_in_ctor \
 	ho_default_func_1 \
 	ho_default_func_3 \
 	ho_type_mode_bug \

@@ -22,6 +22,7 @@ TYPECLASS_PROGS= \
 	complex_constraint \
 	constraint_proof_bug \
 	func_method \
+	fundeps \
 	instance_superclass \
 	instance_unconstrained_tvar \
 	mpj2 \
