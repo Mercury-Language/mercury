@@ -628,12 +628,14 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
                 *problem = "Cannot perform retry because the "
                     "values of some input arguments are missing.";
                 goto report_problem;
-            } else {
+            } else if (! has_io_state) {
                 /*
-                ** This would not have been set earlier if the 
+                ** has_io_state would not have been set to true earlier if the 
                 ** argument is polymorphic.
                 */
                 has_io_state = MR_TRUE;
+                found_io_action_counter = MR_find_saved_io_counter(
+                    call_label, base_sp, base_curfr, &saved_io_action_counter);
             }
 
             /*
