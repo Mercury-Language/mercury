@@ -404,6 +404,12 @@
 				% only -- if you turn this off, then the
 				% debugger may dereference garbage pointers.
 		;	rtti_line_numbers
+				% These four are used to analyze the
+				% performance effects of minimal model tabling.
+		;	disable_minimal_model_stack_copy_pneg
+		;	disable_minimal_model_stack_copy_cut
+		;	use_minimal_model_stack_copy_pneg
+		;	use_minimal_model_stack_copy_cut
 	% Code generation options
 		;	low_level_debug
 		;	trad_passes
@@ -1044,7 +1050,11 @@ option_defaults_2(internal_use_option, [
 	type_ctor_layout	-	bool(yes),
 	type_ctor_functors	-	bool(yes),
 	rtti_line_numbers	-	bool(yes),
-	new_type_class_rtti	-	bool(no)
+	new_type_class_rtti	-	bool(no),
+	disable_minimal_model_stack_copy_pneg - bool(no),
+	disable_minimal_model_stack_copy_cut - bool(no),
+	use_minimal_model_stack_copy_pneg - bool(no),
+	use_minimal_model_stack_copy_cut - bool(no)
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
@@ -1719,6 +1729,8 @@ long_option("type-ctor-layout",		type_ctor_layout).
 long_option("type-ctor-functors",	type_ctor_functors).
 long_option("new-type-class-rtti",	new_type_class_rtti).
 long_option("rtti-line-numbers",	rtti_line_numbers).
+long_option("disable-mm-pneg",		disable_minimal_model_stack_copy_pneg).
+long_option("disable-mm-cut",		disable_minimal_model_stack_copy_cut).
 
 % code generation options
 long_option("low-level-debug",		low_level_debug).

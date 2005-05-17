@@ -1158,6 +1158,35 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% XXX we should allow hijacks in table_builtin.m
 	option_implies(use_minimal_model_stack_copy, allow_hijacks, bool(no)),
 
+	% Stack copy minimal model tabling needs to generate extra code
+	% at possibly negated contexts to handle the pneg stack and at commits
+	% to handle the cut stack. The code below allows the generation of
+	% these extra pieces of code to be disabled. The disabled program will
+	% work only if the program doesn't actually use minimal model tabling,
+	% which makes it useful only for performance testing.
+	globals__io_lookup_bool_option(disable_minimal_model_stack_copy_pneg,
+		DisablePneg),
+	globals__io_lookup_bool_option(disable_minimal_model_stack_copy_cut,
+		DisableCut),
+	(
+		{ UseMinimalModelStackCopy = yes },
+		{ DisablePneg = no }
+	->
+		globals__io_set_option(use_minimal_model_stack_copy_pneg,
+			bool(yes))
+	;
+		[]
+	),
+	(
+		{ UseMinimalModelStackCopy = yes },
+		{ DisableCut = no }
+	->
+		globals__io_set_option(use_minimal_model_stack_copy_cut,
+			bool(yes))
+	;
+		[]
+	),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),

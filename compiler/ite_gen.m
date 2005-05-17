@@ -410,10 +410,10 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
 
 make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode, PNegElseCode)
 		:-
-	globals__lookup_bool_option(Globals, use_minimal_model_stack_copy,
-		UseMinimalModelStackCopy),
+	globals__lookup_bool_option(Globals, use_minimal_model_stack_copy_pneg,
+		UseMinimalModelStackCopyPNeg),
 	(
-		UseMinimalModelStackCopy = yes,
+		UseMinimalModelStackCopyPNeg = yes,
 
 		PNegCondComponents = [
 			pragma_c_raw_code(
@@ -443,7 +443,7 @@ make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode, PNegElseCode)
 				no, no, no, no, yes, yes) - ""
 		])
 	;
-		UseMinimalModelStackCopy = no,
+		UseMinimalModelStackCopyPNeg = no,
 		PNegCondCode = empty,
 		PNegThenCode = empty,
 		PNegElseCode = empty

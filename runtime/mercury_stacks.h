@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2004 The University of Melbourne.
+** Copyright (C) 1995-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -126,6 +126,16 @@
 #define	MR_TABLE_DETFR	(-5)	/* sp, in minimal model main frames only */
 
 /*
+** This setup allows MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT to be defined
+** even if MR_USE_MINIMAL_MODEL_STACK_COPY isn't, which can be useful for
+** performance testing.
+*/
+
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
+  #define MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT
+#endif
+
+/*
 ** MR_Code that traverses the nondet stack depends on the relationship
 ** MR_NONDET_TEMP_SIZE < MR_DET_TEMP_SIZE < MR_NONDET_FIXED_SIZE.
 ** All three sizes are measured in words.
@@ -133,7 +143,7 @@
 
 #define	MR_NONDET_TEMP_SIZE	3 /* prevfr, redoip, redofr */
 #define	MR_DET_TEMP_SIZE	4 /* prevfr, redoip, redofr, detfr */
-#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT
 #define	MR_NONDET_FIXED_SIZE	6 /* prevfr, redoip, redofr, succip, succfr,
 				     sp */
 #else
@@ -179,7 +189,7 @@
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
-#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY_EXTRA_SLOT
   #define	MR_maybe_fill_table_detfr_slot()			\
 			do {						\
 				MR_table_detfr_slot_word(MR_curfr) =	\

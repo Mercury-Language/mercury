@@ -1836,12 +1836,12 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code, !CI) :-
 			"prepare for temp frame commit", TempFrameCode, !CI),
 		code_info__get_globals(!.CI, Globals),
 		globals__lookup_bool_option(Globals,
-			use_minimal_model_stack_copy,
-			UseMinimalModelStackCopy),
+			use_minimal_model_stack_copy_cut,
+			UseMinimalModelStackCopyCut),
 		HijackInfo = commit_temp_frame(MaxfrSlot,
-			UseMinimalModelStackCopy),
+			UseMinimalModelStackCopyCut),
 		(
-			UseMinimalModelStackCopy = yes,
+			UseMinimalModelStackCopyCut = yes,
 			% If the code we are committing across starts but
 			% does not complete the evaluation of a tabled subgoal,
 			% the cut will remove the generator's choice point,
@@ -1868,7 +1868,7 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code, !CI) :-
 					no, no, no, no, no, yes) - ""
 			])
 		;
-			UseMinimalModelStackCopy = no,
+			UseMinimalModelStackCopyCut = no,
 			MarkCode = empty
 		),
 		HijackCode = tree(MaxfrCode, tree(TempFrameCode, MarkCode))
