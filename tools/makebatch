@@ -248,13 +248,13 @@ do
 	then
 		echo saving c files
 		mkdir -p batch/cfiles/$batch.library.$visn
-		/bin/rm -fr batch/cfiles/$batch.library.$visn/*
-		cp stage2/library/*.c batch/cfiles/$batch.library.$visn
-		gzip batch/cfiles/$batch.library.$visn/*
+		/bin/rm -fr batch/cfiles/$batch.library.$visn/* > /dev/null
+		gzip stage2/library/*.c > /dev/null
+		cp stage2/library/*.c.gz batch/cfiles/$batch.library.$visn > /dev/null
 		mkdir -p batch/cfiles/$batch.compiler.$visn
-		/bin/rm -fr batch/cfiles/$batch.compiler.$visn/*
-		cp stage2/compiler/*.c batch/cfiles/$batch.compiler.$visn
-		gzip batch/cfiles/$batch.compiler.$visn/*
+		/bin/rm -fr batch/cfiles/$batch.compiler.$visn/* > /dev/null
+		gzip stage2/ccompiler*.c > /dev/null
+		cp stage2/compiler/*.c.gz batch/cfiles/$batch.compiler.$visn > /dev/null
 	fi
 
 	if "$errfiles"
