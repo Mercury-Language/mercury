@@ -2438,7 +2438,7 @@ opt_level(0, _, [
 ]).
 
 % Optimization level 1: apply optimizations which are cheap and
-% have a good payoff while still keeping compilation time small
+% have a good payoff while still keeping compilation time small.
 
 opt_level(1, OptionTable, [
 	c_optimize		-	bool(yes),	% XXX we want `gcc -O1'
@@ -2453,7 +2453,7 @@ opt_level(1, OptionTable, [
 
 % Optimization level 2: apply optimizations which have a good
 % payoff relative to their cost; but include optimizations
-% which are more costly than with -O1
+% which are more costly than with -O1.
 
 opt_level(2, _, [
 	optimize_fulljumps	-	bool(yes),
@@ -2480,7 +2480,7 @@ opt_level(2, _, [
 ]).
 
 % Optimization level 3: apply optimizations which usually have a good
-% payoff even if they increase compilation time quite a bit
+% payoff even if they increase compilation time quite a bit.
 
 opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
@@ -2497,10 +2497,10 @@ opt_level(3, _, [
 ]).
 
 % Optimization level 4: apply optimizations which may have some
-% payoff even if they increase compilation time quite a bit
+% payoff even if they increase compilation time quite a bit.
 
 % Currently this enables the use of local variables
-% and increases the inlining thresholds
+% and increases the inlining thresholds.
 
 opt_level(4, _, [
 	use_local_vars		-	bool(yes),
@@ -2510,7 +2510,7 @@ opt_level(4, _, [
 ]).
 
 % Optimization level 5: apply optimizations which may have some
-% payoff even if they increase compilation time a lot
+% payoff even if they increase compilation time a lot.
 
 % Currently this enables the search for construction unifications that can be
 % delayed past failing computations, allows more passes of the low-level
@@ -2529,7 +2529,7 @@ opt_level(5, _, [
 
 % Optimization level 6: apply optimizations which may have any
 % payoff even if they increase compilation time to completely
-% unreasonable levels
+% unreasonable levels.
 
 % Currently this sets `everything_in_one_c_function', which causes
 % the compiler to put everything in the one C function and treat
