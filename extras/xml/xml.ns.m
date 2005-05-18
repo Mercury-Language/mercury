@@ -18,12 +18,12 @@
 % <http://www.w3.org/TR-REC-xml-names>
 %
 %---------------------------------------------------------------------------%
-:- module xml:ns.
+:- module xml.ns.
 
 :- interface.
 
 :- import_module list, array, string, std_util.
-:- import_module xml:doc.
+:- import_module xml.doc.
 
 :- type nsDocument
 	--->  	nsDoc(
@@ -82,7 +82,7 @@
 %---------------------------------------------------------------------------%
 
 :- import_module assoc_list, int, map, require.
-:- import_module xml:parse.
+:- import_module xml.parse.
 
 :- type namespaces == map(string, nsURI).
 

@@ -7,7 +7,7 @@
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
-:- module xml:dtd.
+:- module xml.dtd.
 
 :- interface.
 

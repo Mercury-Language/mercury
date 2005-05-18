@@ -7,7 +7,6 @@
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
-:- module xml:parse.
 %
 %                                                        W3C REC-xml-19980210
 %                                                                            
@@ -292,37 +291,44 @@
 %   Document
 %   [1]  document ::= prolog element Misc*
 
+
+:- module xml.parse.
+
 :- interface.
 
-:- import_module parsing.
-:- import_module xml:cat.
-:- import_module xml:doc.
-:- import_module xml:dtd.
 :- import_module list.
+:- import_module parsing.
+:- import_module xml.cat.
+:- import_module xml.doc.
+:- import_module xml.dtd.
 
     %
     % The following three globals should be set in the globals included
     % in the initial parsing state.
     %
 :- type gCatalog	---> gCatalog.
-:- instance global(gCatalog, catalog) where [].
+:- instance global(gCatalog, catalog).
 
 :- type gDirs		---> gDirs.
 :- type dirs		---> dirs(cat:dirs).
-:- instance global(gDirs, parse:dirs) where [].
+:- instance global(gDirs, parse.dirs).
 
 :- type gEncodings	---> gEncodings.
 :- type encodings	---> encodings(string -> encoding).
-:- instance global(gEncodings, encodings) where [].
+:- instance global(gEncodings, encodings).
 
 :- pred document(pstate(_), pstate((dtd, document))).
 :- mode document(in, out) is det.
 
 :- implementation.
 
-:- import_module xml:cat, xml:encoding.
+:- import_module xml.encoding.
 :- import_module unicode.
-:- import_module array, char, int, io, list, map, require, std_util, string.
+:- import_module array, char, int, io, map, require, std_util, string.
+
+:- instance global(gCatalog, catalog) where [].
+:- instance global(gDirs, parse.dirs) where [].
+:- instance global(gEncodings, encodings) where [].
 
 :- type gContent	---> gContent.
 :- instance global(gContent, contentStore) where [].

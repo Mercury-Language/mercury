@@ -7,7 +7,7 @@
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
-:- module xml:parse:chars.
+:- module xml.parse.chars.
 
 :- interface.
 

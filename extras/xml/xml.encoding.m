@@ -7,7 +7,7 @@
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
-:- module xml:encoding.
+:- module xml.encoding.
 
 :- interface.
 

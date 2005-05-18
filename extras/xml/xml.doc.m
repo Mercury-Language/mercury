@@ -7,7 +7,7 @@
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
-:- module xml:doc.
+:- module xml.doc.
 
 :- interface.
 

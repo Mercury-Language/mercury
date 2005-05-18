@@ -11,10 +11,10 @@
 
 :- interface.
 
-:- include_module xml:cat.
-:- include_module xml:doc.
-:- include_module xml:dtd.
-:- include_module xml:encoding.
-:- include_module xml:parse.
-:- include_module xml:ns.
+:- include_module xml.cat.
+:- include_module xml.doc.
+:- include_module xml.dtd.
+:- include_module xml.encoding.
+:- include_module xml.parse.
+:- include_module xml.ns.
 

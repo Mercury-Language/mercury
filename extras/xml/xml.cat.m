@@ -7,11 +7,11 @@
 % Main author: conway@cs.mu.oz.au.
 %
 %---------------------------------------------------------------------------%
-:- module xml:cat.
+:- module xml.cat.
 
 :- interface.
 
-:- import_module xml:dtd.
+:- import_module xml.dtd.
 :- import_module io.
 
 :- type catalog	 ---> catalog(publicId -> systemId).
