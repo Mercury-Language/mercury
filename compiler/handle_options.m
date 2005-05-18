@@ -841,17 +841,25 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	option_implies(exec_trace, stack_trace, bool(yes)),
 	option_implies(profile_deep, stack_trace, bool(yes)),
 
-	% The `.debug' grade implies --use-trail, except with
-	% --use-minimal-model, which is not compatible with --use-trail.
-	%
-	% The reason for this is to avoid unnecessary proliferation in
+	% The `.debug' grade implies --use-trail in most cases. The reason
+	% for the implication is to avoid unnecessary proliferation in
 	% the number of different grades.  If you're using --debug,
 	% you've already taken a major performance hit, so you should
-	% be able to afford the minor performance hit caused by
-	% --use-trail.
+	% be able to afford the minor performance hit caused by --use-trail.
+	%
+	% There are two exceptions. First, --use-minimal-model doesn't work
+	% with trails. Second, the only difference between debug and decldebug
+	% is the latter's support for declarative debugging, which inherently
+	% requires retries in the debugger. These retries don't reset the
+	% trail unless the code that creates the trail entries has prepared for
+	% retries, which usually isn't the case. In any case, the space
+	% overhead of decldebug grades is high enough that we don't want the
+	% space overhead of trailing (mostly for extra code) as well unless the
+	% user has explicitly requested it.
 
 	globals__io_lookup_bool_option(exec_trace, ExecTrace),
-	( { ExecTrace = yes, UseMinimalModel = no } ->
+	globals__io_lookup_bool_option(decl_debug, DeclDebug),
+	( { ExecTrace = yes, DeclDebug = no, UseMinimalModel = no } ->
 		globals__io_set_option(use_trail, bool(yes))
 	;
 		[]

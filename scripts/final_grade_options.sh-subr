@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1998-2002, 2004 The University of Melbourne.
+# Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -41,10 +41,10 @@ case $use_trail,$use_minimal_model in true,true)
 esac
 
 #
-# .debug grade implies --use-trail in the absence of .*mm*
+# .debug grade (but not .decldebug) implies --use-trail in the absence of .*mm*
 #	(see comment in compiler/handle_options.m for rationale)
 #
-case $debug,$use_minimal_model in true,false)
+case $debug,$decl_debug,$use_minimal_model in true,false,false)
 	use_trail=true ;;
 esac
 

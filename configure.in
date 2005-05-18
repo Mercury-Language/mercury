@@ -2773,7 +2773,7 @@ fi
 if test "$enable_debug_grades" = yes; then
 	LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug"
 	if test "$enable_decl_debug_grades" = yes; then
-		LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.decldebug"
+		LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.decldebug"
 	fi
 fi
 
