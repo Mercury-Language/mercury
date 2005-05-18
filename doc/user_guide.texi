@@ -3331,9 +3331,9 @@ the program as much.
 @sp 1
 The @samp{-s@var{search-mode}} or @samp{--search-mode @var{search-mode}} 
 option tells the declarative debugger which 
-search mode to use.  Either @samp{top-down} or @samp{divide-and-query}
+search mode to use.  Either @samp{top_down} or @samp{divide_and_query}
 may be specified.  See @ref{Search Modes} for a more detailed description of
-the available search modes.  @samp{top-down} is the default when this option is
+the available search modes.  @samp{top_down} is the default when this option is
 not given.
 @sp 1
 Use the @samp{-r} or @samp{--resume} option to continue your previous
