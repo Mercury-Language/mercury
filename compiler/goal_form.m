@@ -98,12 +98,6 @@
 	%
 :- pred cannot_stack_flush(hlds_goal::in) is semidet.
 
-	% Succeed if execution of the given goal cannot encounter a context
-	% that causes any variable to be flushed to its stack slot or to a
-	% register.
-	%
-:- pred cannot_flush(hlds_goal::in) is semidet.
-
 	% Succeed if the given goal cannot fail before encountering a
 	% context that forces all variables to be flushed to their stack
 	% slots.  If such a goal needs a resume point, the only entry
@@ -471,27 +465,6 @@ cannot_stack_flush_cases([]).
 cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
 	cannot_stack_flush(Goal),
 	cannot_stack_flush_cases(Cases).
-
-%-----------------------------------------------------------------------------%
-
-cannot_flush(GoalExpr - _) :-
-	cannot_flush_2(GoalExpr).
-
-:- pred cannot_flush_2(hlds_goal_expr::in) is semidet.
-
-cannot_flush_2(unify(_, _, _, Unify, _)) :-
-	Unify \= complicated_unify(_, _, _).
-cannot_flush_2(call(_, _, _, BuiltinState, _, _)) :-
-	BuiltinState = inline_builtin.
-cannot_flush_2(conj(Goals)) :-
-	cannot_flush_goals(Goals).
-
-:- pred cannot_flush_goals(list(hlds_goal)::in) is semidet.
-
-cannot_flush_goals([]).
-cannot_flush_goals([Goal | Goals]) :-
-	cannot_flush(Goal),
-	cannot_flush_goals(Goals).
 
 %-----------------------------------------------------------------------------%
 

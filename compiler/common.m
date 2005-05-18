@@ -40,11 +40,11 @@
 
     % If we find a deconstruction or a construction we cannot optimize,
     % record the details of the memory cell in CommonInfo.
-
+    %
     % If we find a construction that constructs a cell identical to one
     % we have seen before, replace the construction with an assignment
     % from the variable unified with that cell.
-
+    %
 :- pred common__optimise_unification(unification::in, prog_var::in,
     unify_rhs::in, unify_mode::in, unify_context::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
@@ -57,7 +57,7 @@
     % A call is considered replaceable if it has no uniquely moded outputs
     % and no destructive inputs.
     % It is the caller's responsibility to check that the call is pure.
-
+    %
 :- pred common__optimise_call(pred_id::in, proc_id::in, list(prog_var)::in,
     hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out,
     simplify_info::in, simplify_info::out) is det.
@@ -67,16 +67,19 @@
     hlds_goal_expr::in, hlds_goal_expr::out,
     simplify_info::in, simplify_info::out) is det.
 
-    % Succeeds if the two variables are equivalent
-    % according to the specified equivalence class.
+    % Succeeds if the two variables are equivalent according to the specified
+    % equivalence class.
+    %
 :- pred common__vars_are_equivalent(prog_var::in, prog_var::in,
     common_info::in) is semidet.
 
     % Assorted stuff used here that simplify.m doesn't need to know about.
+    %
 :- type common_info.
 :- func common_info_init = common_info.
 
     % Clear the list of structs seen since the last stack flush.
+    %
 :- pred common_info_clear_structs(common_info::in, common_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -161,10 +164,10 @@
 
 :- type common_info
     --->    common_info(
-                var_eqv             :: eqvclass(prog_var),
-                all_structs         :: struct_map,
-                since_call_structs  :: struct_map,
-                seen_calls          :: seen_calls
+                var_eqv                 :: eqvclass(prog_var),
+                all_structs             :: struct_map,
+                since_call_structs      :: struct_map,
+                seen_calls              :: seen_calls
             ).
 
     % A struct_map maps a principal type constructor and a cons_id of that
@@ -222,8 +225,8 @@ common_info_init = CommonInfo :-
     map__init(SeenCalls0),
     CommonInfo = common_info(VarEqv0, StructMap0, StructMap0, SeenCalls0).
 
-    % Clear structs seen since the last call.
-common_info_clear_structs(Info, Info ^ since_call_structs := map__init).
+common_info_clear_structs(!Info) :-
+    !:Info = !.Info ^ since_call_structs := map__init.
 
 %---------------------------------------------------------------------------%
 
@@ -231,141 +234,12 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
         Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
     (
         Unification0 = construct(Var, ConsId, ArgVars, _, _, _, _),
-        Mode = LVarMode - _,
-        simplify_info_get_module_info(!.Info, ModuleInfo),
-        mode_get_insts(ModuleInfo, LVarMode, _, Inst),
-        (
-                % Don't optimise partially instantiated
-                % deconstruction unifications, because it's
-                % tricky to work out how to mode the
-                % replacement asssignment unifications.
-                % In the vast majority of cases, the
-                % variable is ground.
-            \+ inst_is_ground(ModuleInfo, Inst)
-        ->
-            Goal = Goal0,
-            GoalInfo = GoalInfo0
-        ;
-            TypeCtor = lookup_var_type_ctor(!.Info, Var),
-            simplify_info_get_common_info(!.Info, CommonInfo0),
-            VarEqv0 = CommonInfo0 ^ var_eqv,
-            list__map_foldl(eqvclass__ensure_element_partition_id,
-                ArgVars, ArgVarIds, VarEqv0, VarEqv1),
-            AllStructMap0 = CommonInfo0 ^ all_structs,
-            SinceCallStructMap0 = CommonInfo0 ^ since_call_structs,
-            (
-                % common__generate_assign assumes that the output variable
-                % is in the instmap_delta, which will not be true if the
-                % variable is local to the unification. The optimization
-                % is pointless in that case.
-                goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
-                instmap_delta_search_var(InstMapDelta, Var, _),
-
-                map__search(AllStructMap0, TypeCtor, ConsIdMap0),
-                map__search(ConsIdMap0, ConsId, Structs),
-                find_matching_cell_construct(Structs, VarEqv1, ArgVarIds,
-                    OldStruct)
-            ->
-                OldStruct = structure(OldVar, _),
-                sveqvclass__ensure_equivalence(Var, OldVar, VarEqv1, VarEqv),
-                CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
-                simplify_info_set_common_info(CommonInfo, !Info),
-                (
-                    ArgVars = [],
-                    % Constants don't use memory, so there's no point in
-                    % optimizing away their construction; in fact, doing so
-                    % could cause more stack usage.
-                    Goal = Goal0,
-                    GoalInfo = GoalInfo0
-                ;
-                    ArgVars = [_ | _],
-                    UniMode = ((free - Inst) -> (Inst - Inst)),
-                    common__generate_assign(Var, OldVar, UniMode, GoalInfo0,
-                        Goal - GoalInfo, !Info),
-                    simplify_info_set_requantify(!Info),
-                    pd_cost__goal(Goal0 - GoalInfo0, Cost),
-                    simplify_info_incr_cost_delta(Cost, !Info)
-                )
-            ;
-                Goal = Goal0,
-                GoalInfo = GoalInfo0,
-                Struct = structure(Var, ArgVars),
-                common__do_record_cell(TypeCtor, ConsId, Struct,
-                    AllStructMap0, AllStructMap),
-                common__do_record_cell(TypeCtor, ConsId, Struct,
-                    SinceCallStructMap0, SinceCallStructMap),
-                CommonInfo = (((CommonInfo0 ^ var_eqv := VarEqv1)
-                    ^ all_structs := AllStructMap)
-                    ^ since_call_structs := SinceCallStructMap),
-                simplify_info_set_common_info(CommonInfo, !Info)
-            )
-        )
+        common__optimise_construct(Var, ConsId, ArgVars, Mode,
+            Goal0, Goal, GoalInfo0, GoalInfo, !Info)
     ;
         Unification0 = deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, _),
-        simplify_info_get_module_info(!.Info, ModuleInfo),
-        (
-                % Don't optimise partially instantiated
-                % deconstruction unifications, because it's
-                % tricky to work out how to mode the
-                % replacement asssignment unifications.
-                % In the vast majority of cases, the
-                % variable is ground.
-            Mode = LVarMode - _,
-            mode_get_insts(ModuleInfo, LVarMode, Inst0, _),
-            \+ inst_is_ground(ModuleInfo, Inst0)
-        ->
-            Goal = Goal0
-        ;
-            TypeCtor = lookup_var_type_ctor(!.Info, Var),
-            simplify_info_get_common_info(!.Info, CommonInfo0),
-            VarEqv0 = CommonInfo0 ^ var_eqv,
-            eqvclass__ensure_element_partition_id(Var, VarId,
-                VarEqv0, VarEqv1),
-            AllStructMap0 = CommonInfo0 ^ all_structs,
-            SinceCallStructMap0 = CommonInfo0 ^ since_call_structs,
-            (
-                % Do not delete deconstruction unifications inserted by
-                % stack_opt.m, which has done a more comprehensive cost
-                % analysis than common.m can do.
-                \+ goal_info_has_feature(GoalInfo, stack_opt),
-                \+ goal_info_has_feature(GoalInfo, tuple_opt),
-
-                map__search(SinceCallStructMap0, TypeCtor, ConsIdMap0),
-                map__search(ConsIdMap0, ConsId, Structs),
-                find_matching_cell_deconstruct(Structs, VarEqv1, VarId,
-                    OldStruct)
-            ->
-                OldStruct = structure(_, OldArgVars),
-                eqvclass__ensure_corresponding_equivalences(ArgVars,
-                    OldArgVars, VarEqv1, VarEqv),
-                CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
-                simplify_info_set_common_info(CommonInfo, !Info),
-                common__create_output_unifications(GoalInfo0, ArgVars,
-                    OldArgVars, UniModes, Goals, !Info),
-                Goal = conj(Goals),
-                pd_cost__goal(Goal0 - GoalInfo0, Cost),
-                simplify_info_incr_cost_delta(Cost, !Info),
-                simplify_info_set_requantify(!Info),
-                (
-                    CanFail = can_fail,
-                    simplify_info_set_rerun_det(!Info)
-                ;
-                    CanFail = cannot_fail
-                )
-            ;
-                Goal = Goal0,
-                Struct = structure(Var, ArgVars),
-                common__do_record_cell(TypeCtor, ConsId, Struct,
-                    AllStructMap0, AllStructMap),
-                common__do_record_cell(TypeCtor, ConsId, Struct,
-                    SinceCallStructMap0, SinceCallStructMap),
-                CommonInfo = (((CommonInfo0 ^ var_eqv := VarEqv1)
-                    ^ all_structs := AllStructMap)
-                    ^ since_call_structs := SinceCallStructMap),
-                simplify_info_set_common_info(CommonInfo, !Info)
-            )
-        ),
-        GoalInfo = GoalInfo0
+        common__optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail,
+            Mode, Goal0, Goal, GoalInfo0, GoalInfo, !Info)
     ;
         Unification0 = assign(Var1, Var2),
         common__record_equivalence(Var1, Var2, !Info),
@@ -381,6 +255,135 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
         Goal = Goal0,
         GoalInfo = GoalInfo0
     ).
+
+:- pred common__optimise_construct(prog_var::in, cons_id::in,
+    list(prog_var)::in, unify_mode::in,
+    hlds_goal_expr::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out) is det.
+
+common__optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
+        GoalInfo0, GoalInfo, !Info) :-
+    Mode = LVarMode - _,
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    mode_get_insts(ModuleInfo, LVarMode, _, Inst),
+    (
+            % Don't optimise partially instantiated deconstruction
+            % unifications, because it's tricky to work out how to mode
+            % the replacement asssignment unifications. In the vast
+            % majority of cases, the variable is ground.
+        \+ inst_is_ground(ModuleInfo, Inst)
+    ->
+        Goal = Goal0,
+        GoalInfo = GoalInfo0
+    ;
+        TypeCtor = lookup_var_type_ctor(!.Info, Var),
+        simplify_info_get_common_info(!.Info, CommonInfo0),
+        VarEqv0 = CommonInfo0 ^ var_eqv,
+        list__map_foldl(eqvclass__ensure_element_partition_id,
+            ArgVars, ArgVarIds, VarEqv0, VarEqv1),
+        AllStructMap0 = CommonInfo0 ^ all_structs,
+        (
+            % common__generate_assign assumes that the output variable
+            % is in the instmap_delta, which will not be true if the
+            % variable is local to the unification. The optimization
+            % is pointless in that case.
+            goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
+            instmap_delta_search_var(InstMapDelta, Var, _),
+
+            map__search(AllStructMap0, TypeCtor, ConsIdMap0),
+            map__search(ConsIdMap0, ConsId, Structs),
+            find_matching_cell_construct(Structs, VarEqv1, ArgVarIds,
+                OldStruct)
+        ->
+            OldStruct = structure(OldVar, _),
+            sveqvclass__ensure_equivalence(Var, OldVar, VarEqv1, VarEqv),
+            CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
+            simplify_info_set_common_info(CommonInfo, !Info),
+            (
+                ArgVars = [],
+                % Constants don't use memory, so there's no point in
+                % optimizing away their construction; in fact, doing so
+                % could cause more stack usage.
+                Goal = Goal0,
+                GoalInfo = GoalInfo0
+            ;
+                ArgVars = [_ | _],
+                UniMode = ((free - Inst) -> (Inst - Inst)),
+                common__generate_assign(Var, OldVar, UniMode, GoalInfo0,
+                    Goal - GoalInfo, !Info),
+                simplify_info_set_requantify(!Info),
+                pd_cost__goal(Goal0 - GoalInfo0, Cost),
+                simplify_info_incr_cost_delta(Cost, !Info)
+            )
+        ;
+            Goal = Goal0,
+            GoalInfo = GoalInfo0,
+            Struct = structure(Var, ArgVars),
+            record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv1, !Info)
+        )
+    ).
+
+:- pred common__optimise_deconstruct(prog_var::in, cons_id::in,
+    list(prog_var)::in, list(uni_mode)::in, can_fail::in, unify_mode::in,
+    hlds_goal_expr::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    simplify_info::in, simplify_info::out) is det.
+
+common__optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
+        Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
+    simplify_info_get_module_info(!.Info, ModuleInfo),
+    (
+            % Don't optimise partially instantiated deconstruction
+            % unifications, because it's tricky to work out how to mode
+            % the replacement asssignment unifications. In the vast
+            % majority of cases, the variable is ground.
+        Mode = LVarMode - _,
+        mode_get_insts(ModuleInfo, LVarMode, Inst0, _),
+        \+ inst_is_ground(ModuleInfo, Inst0)
+    ->
+        Goal = Goal0
+    ;
+        TypeCtor = lookup_var_type_ctor(!.Info, Var),
+        simplify_info_get_common_info(!.Info, CommonInfo0),
+        VarEqv0 = CommonInfo0 ^ var_eqv,
+        eqvclass__ensure_element_partition_id(Var, VarId, VarEqv0, VarEqv1),
+        SinceCallStructMap0 = CommonInfo0 ^ since_call_structs,
+        (
+            % Do not delete deconstruction unifications inserted by
+            % stack_opt.m, which has done a more comprehensive cost
+            % analysis than common.m can do.
+            \+ goal_info_has_feature(GoalInfo, stack_opt),
+            \+ goal_info_has_feature(GoalInfo, tuple_opt),
+
+            map__search(SinceCallStructMap0, TypeCtor, ConsIdMap0),
+            map__search(ConsIdMap0, ConsId, Structs),
+            find_matching_cell_deconstruct(Structs, VarEqv1, VarId, OldStruct)
+        ->
+            OldStruct = structure(_, OldArgVars),
+            eqvclass__ensure_corresponding_equivalences(ArgVars,
+                OldArgVars, VarEqv1, VarEqv),
+            CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
+            simplify_info_set_common_info(CommonInfo, !Info),
+            common__create_output_unifications(GoalInfo0, ArgVars, OldArgVars,
+                UniModes, Goals, !Info),
+            Goal = conj(Goals),
+            pd_cost__goal(Goal0 - GoalInfo0, Cost),
+            simplify_info_incr_cost_delta(Cost, !Info),
+            simplify_info_set_requantify(!Info),
+            (
+                CanFail = can_fail,
+                simplify_info_set_rerun_det(!Info)
+            ;
+                CanFail = cannot_fail
+            )
+        ;
+            Goal = Goal0,
+            Struct = structure(Var, ArgVars),
+            record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv1, !Info)
+        )
+    ),
+    GoalInfo = GoalInfo0.
 
 :- func lookup_var_type_ctor(simplify_info, prog_var) = type_ctor.
 
@@ -437,10 +440,28 @@ common__id_var_match(Id, Var, VarEqv) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred common__do_record_cell(type_ctor::in, cons_id::in, structure::in,
-    struct_map::in, struct_map::out) is det.
+:- pred record_cell_in_maps(type_ctor::in, cons_id::in, structure::in,
+    eqvclass(prog_var)::in, simplify_info::in, simplify_info::out) is det.
 
-common__do_record_cell(TypeCtor, ConsId, Struct, !StructMap) :-
+record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv, !Info) :-
+    some [!CommonInfo] (
+        simplify_info_get_common_info(!.Info, !:CommonInfo),
+        AllStructMap0 = !.CommonInfo ^ all_structs,
+        SinceCallStructMap0 = !.CommonInfo ^ since_call_structs,
+        common__do_record_cell_in_struct_map(TypeCtor, ConsId, Struct,
+            AllStructMap0, AllStructMap),
+        common__do_record_cell_in_struct_map(TypeCtor, ConsId, Struct,
+            SinceCallStructMap0, SinceCallStructMap),
+        !:CommonInfo = !.CommonInfo ^ var_eqv := VarEqv,
+        !:CommonInfo = !.CommonInfo ^ all_structs := AllStructMap,
+        !:CommonInfo = !.CommonInfo ^ since_call_structs := SinceCallStructMap,
+        simplify_info_set_common_info(!.CommonInfo, !Info)
+    ).
+
+:- pred common__do_record_cell_in_struct_map(type_ctor::in, cons_id::in,
+    structure::in, struct_map::in, struct_map::out) is det.
+
+common__do_record_cell_in_struct_map(TypeCtor, ConsId, Struct, !StructMap) :-
     ( map__search(!.StructMap, TypeCtor, ConsIdMap0) ->
         ( map__search(ConsIdMap0, ConsId, Structs0) ->
             Structs = [Struct | Structs0],
