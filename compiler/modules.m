@@ -5648,10 +5648,10 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 
 :- type module_foreign_info --->
     module_foreign_info(
-        used_foreign_languages :: set(foreign_language),
-        foreign_proc_languages :: map(sym_name, foreign_language),
-        all_foreign_import_module_info :: foreign_import_module_info,
-        module_contains_foreign_export :: contains_foreign_export
+        used_foreign_languages          :: set(foreign_language),
+        foreign_proc_languages          :: map(sym_name, foreign_language),
+        all_foreign_import_module_info  :: foreign_import_module_info,
+        module_contains_foreign_export  :: contains_foreign_export
     ).
 
 :- pred get_item_list_foreign_code(globals::in, item_list::in,
@@ -5709,11 +5709,10 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         ( OldLang = Info0 ^ foreign_proc_languages ^ elem(Name) ->
             % is it better than an existing one?
             (
-                yes = prefer_foreign_language(Globals,
-                    Target, OldLang, NewLang)
+                yes = prefer_foreign_language(Globals, Target,
+                    OldLang, NewLang)
             ->
-                Info = Info0 ^ foreign_proc_languages
-                    ^ elem(Name) := NewLang
+                Info = Info0 ^ foreign_proc_languages ^ elem(Name) := NewLang
             ;
                 Info = Info0
             )
@@ -5800,7 +5799,10 @@ referenced_dlls(Module, DepModules0) = Modules :-
         % If we are not compiling a module in the mercury
         % std library then replace all the std library dlls with
         % one reference to mercury.dll.
-    ( Module = unqualified(Str), mercury_std_library_module(Str) ->
+    (
+        Module = unqualified(Str),
+        mercury_std_library_module(Str)
+    ->
             % In the standard library we need to add the
             % runtime dlls.
         Modules = list__remove_dups(
@@ -6132,8 +6134,7 @@ read_mod_2(IgnoreErrors, ModuleName, Extension, Descr, Search,
         MaybeTimestamp, !IO) :-
     (
         Search = yes,
-        module_name_to_search_file_name(ModuleName,
-            Extension, FileName0, !IO)
+        module_name_to_search_file_name(ModuleName, Extension, FileName0, !IO)
     ;
         Search = no,
         module_name_to_file_name(ModuleName, Extension, no, FileName0, !IO)
@@ -6148,8 +6149,8 @@ read_mod_2(IgnoreErrors, ModuleName, Extension, Descr, Search,
 
     (
         Search = yes,
-        globals__io_lookup_accumulating_option(search_directories,
-            SearchDirs, !IO)
+        globals__io_lookup_accumulating_option(search_directories, SearchDirs,
+            !IO)
     ;
         Search = no,
         SearchDirs = [dir__this_directory]
@@ -6262,12 +6263,11 @@ check_timestamp(FileName, MaybeTimestamp0, MaybeTimestamp, !IO) :-
     ;
         MaybeTimestamp0 = yes(error(IOError)),
         MaybeTimestamp = no,
-        globals__io_lookup_bool_option(smart_recompilation,
-            SmartRecompilation, !IO),
+        globals__io_lookup_bool_option(smart_recompilation, SmartRecompilation,
+            !IO),
         (
             SmartRecompilation = yes,
-            report_modification_time_warning(FileName, IOError,
-                !IO)
+            report_modification_time_warning(FileName, IOError, !IO)
         ;
             SmartRecompilation = no
         )
@@ -6377,13 +6377,11 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
         maybe_report_stats(Statistics, !IO),
 
         ( LongIntError = fatal_module_errors ->
-            ModImplementationImports =
-                ModImplementationImports0
+            ModImplementationImports = ModImplementationImports0
         ;
-            maybe_record_timestamp(Import, Ext, NeedQualifier,
-                MaybeTimestamp, !Module),
-            ModImplementationImports =
-                [Import | ModImplementationImports0]
+            maybe_record_timestamp(Import, Ext, NeedQualifier, MaybeTimestamp,
+                !Module),
+            ModImplementationImports = [Import | ModImplementationImports0]
         ),
         !:IndirectImports = !.IndirectImports ++ IndirectImports1
             ++ IndirectUses1,
@@ -7630,8 +7628,7 @@ report_modification_time_warning(SourceFileName, Error, !IO) :-
     globals__io_lookup_bool_option(warn_smart_recompilation, Warn, !IO),
     (
         Warn = yes,
-        io__write_string(
-            "Warning: cannot find modification time for ", !IO),
+        io__write_string("Warning: cannot find modification time for ", !IO),
         io__write_string(SourceFileName, !IO),
         io__write_string(":\n", !IO),
         io__error_message(Error, Msg),
@@ -7715,8 +7712,7 @@ list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles, !IO) :-
     AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
     (
         AnySubdirs = yes,
-        module_name_to_file_name(ModuleName, ".class", no, ClassFile,
-            !IO),
+        module_name_to_file_name(ModuleName, ".class", no, ClassFile, !IO),
         ClassSubdir = dir.dirname(ClassFile),
         % Here we use the `-C' option of jar to change directory during
         % execution, then use sed to strip away the Mercury/classs/
