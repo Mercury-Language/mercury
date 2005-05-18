@@ -26,7 +26,14 @@
 :- module io.
 :- interface.
 
-:- import_module bool, char, string, std_util, list, map, time, deconstruct.
+:- import_module bool.
+:- import_module char.
+:- import_module deconstruct.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
+:- import_module time.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1583,10 +1590,22 @@
 
 :- implementation.
 
-:- import_module map, dir, term, term_io, varset, require, benchmarking, array.
-:- import_module bool, enum, int, parser, exception.
-:- use_module table_builtin.
+:- import_module array.
+:- import_module benchmarking.
+:- import_module bool.
+:- import_module dir.
+:- import_module enum.
+:- import_module exception.
+:- import_module int.
+:- import_module map.
+:- import_module parser.
+:- import_module require.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
+
 :- use_module rtti_implementation.
+:- use_module table_builtin.
 
 :- pragma foreign_import_module(c, string).
 
@@ -3364,11 +3383,28 @@ io__binary_input_stream_foldl_io(Pred, Res, !IO) :-
 	io__binary_input_stream_foldl_io(Stream, Pred, Res, !IO).
 
 io__binary_input_stream_foldl_io(Stream, Pred, Res, !IO) :-
+	should_reduce_stack_usage(ShouldReduce),
+	(
+		ShouldReduce = no,
+		io__binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO)
+	;
+		ShouldReduce = yes,
+		io__binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO)
+	).
+
+:- pred io__binary_input_stream_foldl_io_plain(io__binary_input_stream,
+	pred(int, io, io), io__res, io, io).
+:- mode io__binary_input_stream_foldl_io_plain(in,
+	(pred(in, di, uo) is det), out, di, uo) is det.
+:- mode io__binary_input_stream_foldl_io_plain(in,
+	(pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
+
+io__binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO) :-
 	io__read_byte(Stream, ByteResult, !IO),
 	(
 		ByteResult = ok(Byte),
 		Pred(Byte, !IO),
-		io__binary_input_stream_foldl_io(Stream, Pred, Res, !IO)
+		io__binary_input_stream_foldl_io_plain(Stream, Pred, Res, !IO)
 	;
 		ByteResult = eof,
 		Res = ok
@@ -3377,16 +3413,86 @@ io__binary_input_stream_foldl_io(Stream, Pred, Res, !IO) :-
 		Res = error(Error)
 	).
 
+:- pred io__binary_input_stream_foldl_io_chunk(io__binary_input_stream,
+	pred(int, io, io), io__res, io, io).
+:- mode io__binary_input_stream_foldl_io_chunk(in,
+	(pred(in, di, uo) is det), out, di, uo) is det.
+:- mode io__binary_input_stream_foldl_io_chunk(in,
+	(pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
+
+io__binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO) :-
+	io__binary_input_stream_foldl_io_inner(chunk_size, Stream, Pred,
+		InnerRes, !IO),
+	(
+		InnerRes = ok,
+		Res = ok
+	;
+		InnerRes = error(Error),
+		Res = error(Error)
+	;
+		InnerRes = more,
+		io__binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO)
+	).
+
+:- pred io__binary_input_stream_foldl_io_inner(int, io__binary_input_stream,
+	pred(int, io, io), chunk_inner_res0, io, io).
+:- mode io__binary_input_stream_foldl_io_inner(in, in,
+	(pred(in, di, uo) is det), out, di, uo) is det.
+:- mode io__binary_input_stream_foldl_io_inner(in, in,
+	(pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
+
+io__binary_input_stream_foldl_io_inner(Left, Stream, Pred, Res, !IO) :-
+	( Left > 0 ->
+		io__read_byte(Stream, ByteResult, !IO),
+		(
+			ByteResult = ok(Byte),
+			Pred(Byte, !IO),
+			io__binary_input_stream_foldl_io_inner(Left - 1,
+				Stream, Pred, Res, !IO)
+		;
+			ByteResult = eof,
+			Res = ok
+		;
+			ByteResult = error(Error),
+			Res = error(Error)
+		)
+	;
+		Res = more
+	).
+
 io__binary_input_stream_foldl2_io(Pred, T0, Res, !IO) :-
 	io__binary_input_stream(Stream, !IO),
 	io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO).
 
 io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
+	should_reduce_stack_usage(ShouldReduce),
+	(
+		ShouldReduce = no,
+		io__binary_input_stream_foldl2_io_plain(Stream, Pred, T0, Res,
+			!IO)
+	;
+		ShouldReduce = yes,
+		io__binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res,
+			!IO)
+	).
+
+:- pred io__binary_input_stream_foldl2_io_plain(io__binary_input_stream,
+	pred(int, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
+:- mode io__binary_input_stream_foldl2_io_plain(in,
+	(pred(in, in, out, di, uo) is det),
+	in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io_plain(in,
+	(pred(in, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
+
+io__binary_input_stream_foldl2_io_plain(Stream, Pred, T0, Res, !IO) :-
 	io__read_byte(Stream, ByteResult, !IO),
 	(
 		ByteResult = ok(Byte),
 		Pred(Byte, T0, T1, !IO),
-		io__binary_input_stream_foldl2_io(Stream, Pred, T1, Res, !IO)
+		io__binary_input_stream_foldl2_io_plain(Stream, Pred, T1, Res,
+			!IO)
 	;
 		ByteResult = eof,
 		Res = ok(T0)
@@ -3395,12 +3501,89 @@ io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res, !IO) :-
 		Res = error(T0, Error)
 	).
 
+:- pred io__binary_input_stream_foldl2_io_chunk(io__binary_input_stream,
+	pred(int, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
+:- mode io__binary_input_stream_foldl2_io_chunk(in,
+	(pred(in, in, out, di, uo) is det),
+	in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io_chunk(in,
+	(pred(in, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
+
+io__binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO) :-
+	io__binary_input_stream_foldl2_io_inner(chunk_size, Stream, Pred, T0,
+		InnerRes, !IO),
+	(
+		InnerRes = ok(T),
+		Res = ok(T)
+	;
+		InnerRes = error(T, Error),
+		Res = error(T, Error)
+	;
+		InnerRes = more(T1),
+		io__binary_input_stream_foldl2_io_chunk(Stream, Pred, T1, Res,
+			!IO)
+	).
+
+:- pred io__binary_input_stream_foldl2_io_inner(int, io__binary_input_stream,
+	pred(int, T, T, io, io),
+	T, chunk_inner_res(T), io, io).
+:- mode io__binary_input_stream_foldl2_io_inner(in, in,
+	(pred(in, in, out, di, uo) is det),
+	in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io_inner(in, in,
+	(pred(in, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
+
+io__binary_input_stream_foldl2_io_inner(Left, Stream, Pred, T0, Res, !IO) :-
+	( Left > 0 ->
+		io__read_byte(Stream, ByteResult, !IO),
+		(
+			ByteResult = ok(Byte),
+			Pred(Byte, T0, T1, !IO),
+			io__binary_input_stream_foldl2_io_inner(Left - 1,
+				Stream, Pred, T1, Res, !IO)
+		;
+			ByteResult = eof,
+			Res = ok(T0)
+		;
+			ByteResult = error(Error),
+			Res = error(T0, Error)
+		)
+	;
+		Res = more(T0)
+	).
+
 io__binary_input_stream_foldl2_io_maybe_stop(Pred, T0, Res, !IO) :-
 	io__binary_input_stream(Stream, !IO),
 	io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res,
 		!IO).
 
 io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
+	should_reduce_stack_usage(ShouldReduce),
+	(
+		ShouldReduce = no,
+		io__binary_input_stream_foldl2_io_maybe_stop_plain(Stream,
+			Pred, T0, Res, !IO)
+	;
+		ShouldReduce = yes,
+		io__binary_input_stream_foldl2_io_maybe_stop_chunk(Stream,
+			Pred, T0, Res, !IO)
+	).
+
+:- pred io__binary_input_stream_foldl2_io_maybe_stop_plain(
+	io__binary_input_stream, pred(int, bool, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
+:- mode io__binary_input_stream_foldl2_io_maybe_stop_plain(
+	in, (pred(in, out, in, out, di, uo) is det),
+	in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io_maybe_stop_plain(
+	in, (pred(in, out, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
+
+io__binary_input_stream_foldl2_io_maybe_stop_plain(Stream, Pred, T0, Res,
+		!IO) :-
 	io__read_byte(Stream, ByteResult, !IO),
 	(
 		ByteResult = ok(Byte),
@@ -3410,8 +3593,8 @@ io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
 			Res = ok(T1)
 		;
 			Continue = yes,
-			io__binary_input_stream_foldl2_io_maybe_stop(Stream,
-				Pred, T1, Res, !IO)
+			io__binary_input_stream_foldl2_io_maybe_stop_plain(
+				Stream, Pred, T1, Res, !IO)
 		)
 	;
 		ByteResult = eof,
@@ -3420,6 +3603,98 @@ io__binary_input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res, !IO) :-
 		ByteResult = error(Error),
 		Res = error(T0, Error)
 	).
+
+:- pred io__binary_input_stream_foldl2_io_maybe_stop_chunk(
+	io__binary_input_stream, pred(int, bool, T, T, io, io),
+	T, io__maybe_partial_res(T), io, io).
+:- mode io__binary_input_stream_foldl2_io_maybe_stop_chunk(
+	in, (pred(in, out, in, out, di, uo) is det),
+	in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io_maybe_stop_chunk(
+	in, (pred(in, out, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
+
+io__binary_input_stream_foldl2_io_maybe_stop_chunk(Stream, Pred, T0, Res,
+		!IO) :-
+	io__binary_input_stream_foldl2_io_maybe_stop_inner(chunk_size,
+		Stream, Pred, T0, InnerRes, !IO),
+	(
+		InnerRes = ok(T),
+		Res = ok(T)
+	;
+		InnerRes = error(T, Error),
+		Res = error(T, Error)
+	;
+		InnerRes = more(T1),
+		io__binary_input_stream_foldl2_io_maybe_stop_chunk(Stream,
+			Pred, T1, Res, !IO)
+	).
+
+:- pred io__binary_input_stream_foldl2_io_maybe_stop_inner(int,
+	io__binary_input_stream, pred(int, bool, T, T, io, io),
+	T, chunk_inner_res(T), io, io).
+:- mode io__binary_input_stream_foldl2_io_maybe_stop_inner(in,
+	in, (pred(in, out, in, out, di, uo) is det),
+	in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io_maybe_stop_inner(in,
+	in, (pred(in, out, in, out, di, uo) is cc_multi),
+	in, out, di, uo) is cc_multi.
+
+binary_input_stream_foldl2_io_maybe_stop_inner(Left, Stream, Pred, T0, Res,
+		!IO) :-
+	( Left > 0 ->
+		io__read_byte(Stream, ByteResult, !IO),
+		(
+			ByteResult = ok(Byte),
+			Pred(Byte, Continue, T0, T1, !IO),
+			(
+				Continue = no,
+				Res = ok(T1)
+			;
+				Continue = yes,
+				binary_input_stream_foldl2_io_maybe_stop_inner(
+					Left - 1, Stream, Pred, T1, Res, !IO)
+			)
+		;
+			ByteResult = eof,
+			Res = ok(T0)
+		;
+			ByteResult = error(Error),
+			Res = error(T0, Error)
+		)
+	;
+		Res = more(T0)
+	).
+
+:- type chunk_inner_res0
+	--->	ok
+	;	error(io__error)
+	;	more.
+
+:- type chunk_inner_res(T)
+	--->	ok(T)
+	;	error(T, io__error)
+	;	more(T).
+
+:- pred should_reduce_stack_usage(bool::out) is det.
+
+% For non-C backends.
+should_reduce_stack_usage(yes).
+
+:- pragma foreign_proc("C",
+	should_reduce_stack_usage(ShouldReduce::out),
+	[will_not_call_mercury, promise_pure],
+"
+#ifdef	MR_EXEC_TRACE
+	ShouldReduce = MR_TRUE;
+#else
+	ShouldReduce = MR_FALSE;
+#endif
+").
+
+:- func chunk_size = int.
+
+chunk_size = 1000.
 
 %-----------------------------------------------------------------------------%
 
