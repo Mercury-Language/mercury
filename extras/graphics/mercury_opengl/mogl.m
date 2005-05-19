@@ -31,14 +31,19 @@
 
 :- interface.
 
-:- import_module io, int, float, list, bool, std_util.
+:- import_module bool.
+:- import_module float.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 %------------------------------------------------------------------------------%
 %
-% GL Errors.
+% GL errors
 %
 
-:- type mogl__error	
+:- type mogl.error	
 	--->	no_error
 	;	invalid_enum
 	;	invalid_value
@@ -47,11 +52,11 @@
 	;	stack_underflow
 	;	out_of_memory.
 
-:- pred get_error(mogl__error::out, io::di, io::uo) is det.
+:- pred get_error(mogl.error::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% Begin/End objects.
+% Begin/End objects
 %
 
 :- type block_mode	
@@ -107,7 +112,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Coordinate transformations.
+% Coordinate transformations
 %
 
 :- pred depth_range(float::in, float::in, io::di, io::uo) is det.
@@ -154,7 +159,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Clipping.
+% Clipping
 %
 
 :- type clip_plane
@@ -169,7 +174,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Current raster position.
+% Current raster position
 %
 
 :- pred raster_pos2(float::in, float::in, io::di, io::uo) is det.
@@ -181,10 +186,10 @@
 
 %------------------------------------------------------------------------------%
 %
-% Colors and coloring.
+% Colors and coloring
 %
 
-:- type face_direction ---> cw ; ccw .
+:- type face_direction ---> cw ; ccw.
 
 :- type face_side
 	--->	front 
@@ -215,16 +220,16 @@
 	;	quadratic_attenuation(float).
 
 :- type lighting_model
-		--->	light_model_ambient(float, float, float, float)
-		;	light_model_local_viewer(bool)
-		;	light_model_two_side(bool).
+	--->	light_model_ambient(float, float, float, float)
+	;	light_model_local_viewer(bool)
+	;	light_model_two_side(bool).
 
 :- type color_material_mode
-		--->	ambient
-		;	diffuse
-		;	ambient_and_diffuse
-		;	specular
-		;	emission.
+	--->	ambient
+	;	diffuse
+	;	ambient_and_diffuse
+	;	specular
+	;	emission.
 
 :- type shade_model ---> smooth ; flat.
 
@@ -245,14 +250,14 @@
 
 %------------------------------------------------------------------------------%
 %
-% Points.
+% Points
 %
 
 :- pred point_size(float::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% Line segments.
+% Line segments
 %
 
 :- pred line_width(float::in, io::di, io::uo) is det.
@@ -261,15 +266,15 @@
 
 %------------------------------------------------------------------------------%
 %
-% Polygons.
+% Polygons
 %
 
 :- type polygon_stipple == int.		% use bottom 32 bits of each int.
 
 :- type polygon_mode
-		--->	point
-		;	line
-		;	fill.
+	--->	point
+	;	line
+	;	fill.
 
 :- pred cull_face(face_side::in, io::di, io::uo) is det.
 
@@ -281,45 +286,45 @@
 
 %------------------------------------------------------------------------------%
 %
-% Pixel Rectangles.
+% Pixel rectangles
 %
 
 :- type pixel_store_parameter
-		--->	pack_swap_bytes(bool)
-		;	pack_lsb_first(bool)
-		;	pack_row_length(int)
-		;	pack_image_height(int)
-		;	pack_skip_rows(int)
-		;	pack_skip_pixels(int)
-		;	pack_skip_images(int)
-		;	pack_alignment(int)
-		;	unpack_swap_bytes(bool)
-		;	unpack_lsb_first(bool)
-		;	unpack_row_length(int)
-		;	unpack_image_height(int)
-		;	unpack_skip_rows(int)
-		;	unpack_skip_pixels(int)
-		;	unpack_skip_images(int)
-		;	unpack_alignment(int).
+	--->	pack_swap_bytes(bool)
+	;	pack_lsb_first(bool)
+	;	pack_row_length(int)
+	;	pack_image_height(int)
+	;	pack_skip_rows(int)
+	;	pack_skip_pixels(int)
+	;	pack_skip_images(int)
+	;	pack_alignment(int)
+	;	unpack_swap_bytes(bool)
+	;	unpack_lsb_first(bool)
+	;	unpack_row_length(int)
+	;	unpack_image_height(int)
+	;	unpack_skip_rows(int)
+	;	unpack_skip_pixels(int)
+	;	unpack_skip_images(int)
+	;	unpack_alignment(int).
 
 :- pred pixel_store(pixel_store_parameter::in, io::di, io::uo) is det.
 
 :- pred pixel_zoom(float::in, float::in, io::di, io::uo) is det.
 	
 :- type pixel_transfer_mode
-		--->	map_color(bool)
-		;	map_stencil(bool)
-		;	index_shift(int)
-		;	index_offset(int)
-		;	red_scale(float)
-		;	green_scale(float)
-		;	blue_scale(float)
-		;	alpha_scale(float)
-		;	red_bias(float)
-		;	green_bias(float)
-		;	blue_bias(float)
-		;	alpha_bias(float)
-		;	depth_bias(float).
+	--->	map_color(bool)
+	;	map_stencil(bool)
+	;	index_shift(int)
+	;	index_offset(int)
+	;	red_scale(float)
+	;	green_scale(float)
+	;	blue_scale(float)
+	;	alpha_scale(float)
+	;	red_bias(float)
+	;	green_bias(float)
+	;	blue_bias(float)
+	;	alpha_bias(float)
+	;	depth_bias(float).
 
 :- pred pixel_transfer(pixel_transfer_mode::in, io::di, io::uo) is det.
 
@@ -366,18 +371,18 @@
 
 %------------------------------------------------------------------------------%
 %
-% Bitmaps.
+% Bitmaps
 %
 
 /*
 :- pred bitmap(int, int, float, float, float, float, list(int),
-		io__state, io__state).
+		io.state, io.state).
 :- mode bitmap(in, in, in, in, in, in, in, di, uo) is det.
 */
 
 %------------------------------------------------------------------------------%
 %
-% Texture mapping.
+% Texture mapping
 %
 
 :- type texture_target
@@ -499,16 +504,16 @@
 
 %------------------------------------------------------------------------------%
 %
-% Fog.
+% Fog
 %
 
 :- type fog_parameter
-		--->	fog_mode(fog_mode)
-		;	fog_density(float)
-		;	fog_start(float)
-		;	fog_end(float)
-		;	fog_index(float)
-		;	fog_color(float, float, float, float).
+	--->	fog_mode(fog_mode)
+	;	fog_density(float)
+	;	fog_start(float)
+	;	fog_end(float)
+	;	fog_index(float)
+	;	fog_color(float, float, float, float).
 
 :- type fog_mode ---> linear ; exp ; exp2.
 
@@ -518,20 +523,20 @@
 
 %------------------------------------------------------------------------------%
 %
-% Per-fragment operations.
+% Per-fragment operations
 %
 
 :- pred scissor(int::in, int::in, int::in, int::in, io::di, io::uo) is det.
 
 :- type test_func
-		--->	never
-		;	always
-		;	less
-		;	lequal
-		;	equal
-		;	gequal
-		;	greater
-		;	not_equal.
+	--->	never
+	;	always
+	;	less
+	;	lequal
+	;	equal
+	;	gequal
+	;	greater
+	;	not_equal.
 
 :- pred alpha_func(test_func::in, float::in, io::di, io::uo) is det.
 
@@ -552,25 +557,25 @@
 :- pred depth_func(test_func::in, io::di, io::uo) is det.
 
 :- type	blend_src
-		--->	zero
-		;	one
-		;	dst_color
-		;	one_minus_dst_color
-		;	src_alpha
-		;	one_minus_src_alpha
-		;	dst_alpha
-		;	one_minus_dst_alpha
-		;	src_alpha_saturate.
+	--->	zero
+	;	one
+	;	dst_color
+	;	one_minus_dst_color
+	;	src_alpha
+	;	one_minus_src_alpha
+	;	dst_alpha
+	;	one_minus_dst_alpha
+	;	src_alpha_saturate.
 
 :- type blend_dst
-		--->	zero
-		;	one
-		;	src_color
-		;	one_minus_src_color
-		;	src_alpha
-		;	one_minus_src_alpha
-		;	dst_alpha
-		;	one_minus_dst_alpha.
+	--->	zero
+	;	one
+	;	src_color
+	;	one_minus_src_color
+	;	src_alpha
+	;	one_minus_src_alpha
+	;	dst_alpha
+	;	one_minus_dst_alpha.
 
 :- pred blend_func(blend_src::in, blend_dst::in, io::di, io::uo) is det.
 
@@ -596,7 +601,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Whole framebuffer operations.
+% Whole framebuffer operations
 %
 
 :- type draw_buffer
@@ -654,7 +659,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Evaluators.
+% Evaluators
 %
 
 :- type control_points(One, Two, Three, Four)
@@ -695,7 +700,7 @@
 :- pred map1(eval_target::in, float::in, float::in, curve_points::in,
 	io::di, io::uo) is det.
 
-	% This version does perform the runtime check above.
+	% This version does not perform the runtime check above.
 	%
 :- pred unsafe_map1(eval_target::in, float::in, float::in,
 	curve_points::in, io::di, io::uo) is det.
@@ -754,14 +759,14 @@
 
 %------------------------------------------------------------------------------%
 %
-% Feedback.
+% Feedback
 %
 
 :- pred pass_through(float::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% Selection.
+% Selection
 %
 
 :- pred init_names(io::di, io::uo) is det.
@@ -773,15 +778,15 @@
 :- pred load_name(int::in, io::di, io::uo) is det.
 
 :- type render_mode
-		--->	render
-		;	select
-		;	feedback.
+	--->	render
+	;	select
+	;	feedback.
 
 :- pred render_mode(render_mode::in, int::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% Display lists.
+% Display lists
 %
 
 :- type display_list_mode 
@@ -804,7 +809,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Flush and Finish.
+% Flush and finish
 %
 
 :- pred flush(io::di, io::uo) is det.
@@ -813,59 +818,59 @@
 
 %------------------------------------------------------------------------------%
 %
-% Enable/Disable.
+% Enable/Disable
 %
 
 :- type	control_flag
-		--->	alpha_test
-		;	auto_normal
-		;	blend
-		;	clip_plane(int)
-		;	color_logic_op
-		;	color_material
-		;	cull_face
-		;	depth_test
-		;	dither
-		;	fog
-		;	index_logic_op
-		;	light(int)
-		;	lighting
-		;	line_smooth
-		;	line_stipple
-		;	normalize
-		;	point_smooth
-		;	polygon_offset_fill
-		;	polygon_offset_line
-		;	polygon_offset_point
-		;	polygon_stipple
-		;	scissor_test
-		;	stencil_test
-		;	texture_1d
-		;	texture_2d
+	--->	alpha_test
+	;	auto_normal
+	;	blend
+	;	clip_plane(int)
+	;	color_logic_op
+	;	color_material
+	;	cull_face
+	;	depth_test
+	;	dither
+	;	fog
+	;	index_logic_op
+	;	light(int)
+	;	lighting
+	;	line_smooth
+	;	line_stipple
+	;	normalize
+	;	point_smooth
+	;	polygon_offset_fill
+	;	polygon_offset_line
+	;	polygon_offset_point
+	;	polygon_stipple
+	;	scissor_test
+	;	stencil_test
+	;	texture_1d
+	;	texture_2d
 
 	% 1D evaluator control flags
 
-		;	map1_vertex_3
-		;	map1_vertex_4
-		;	map1_index
-		;	map1_color_4
-		;	map1_normal
-		;	map1_texture_coord_1
-		;	map1_texture_coord_2
-		;	map1_texture_coord_3
-		;	map1_texture_coord_4
+	;	map1_vertex_3
+	;	map1_vertex_4
+	;	map1_index
+	;	map1_color_4
+	;	map1_normal
+	;	map1_texture_coord_1
+	;	map1_texture_coord_2
+	;	map1_texture_coord_3
+	;	map1_texture_coord_4
  
 	% 2D evaluator control flags
 
-		;	map2_vertex_3
-		;	map2_vertex_4
-		;	map2_index
-		;	map2_color_4
-		;	map2_normal
-		;	map2_texture_coord_1
-		;	map2_texture_coord_2
-		;	map2_texture_coord_3
-		;	map2_texture_coord_4.	
+	;	map2_vertex_3
+	;	map2_vertex_4
+	;	map2_index
+	;	map2_color_4
+	;	map2_normal
+	;	map2_texture_coord_1
+	;	map2_texture_coord_2
+	;	map2_texture_coord_3
+	;	map2_texture_coord_4.	
 	
 
 :- pred enable(control_flag::in, io::di, io::uo) is det.
@@ -876,7 +881,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Hints.
+% Hints
 %
 
 :- type hint_target
@@ -897,7 +902,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% State and state requests.
+% State and state requests
 %
 
 :- pred get_clip_plane(int::in, clip_plane::out, io::di, io::uo) is det.
@@ -1068,7 +1073,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Server attribute stack.
+% Server attribute stack
 %
 
 :- type server_attrib_group
@@ -1102,7 +1107,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Client attribute stack.
+% Client attribute stack
 %
 	
 	% There are others but these are the only two that can be pushed
@@ -1123,7 +1128,10 @@
 
 :- implementation.
 
-:- import_module exception, list, int, float, require, std_util.
+:- import_module exception.
+:- import_module require.
+
+%------------------------------------------------------------------------------%
 
 	% XXX Check that this works on Windows.
 	% We may need to #include <windows.h> to make it work.
@@ -1136,10 +1144,10 @@
 
 %------------------------------------------------------------------------------%
 %
-% GL Errors.
+% GL errors
 %
 
-:- func error_to_int(int::in) = (mogl__error::out) is semidet.
+:- func error_to_int(int::in) = (mogl.error::out) is semidet.
 
 error_to_int(0) = no_error.
 error_to_int(1) = invalid_enum.
@@ -1194,7 +1202,7 @@ get_error(Err, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Begin/End objects.
+% Begin/end objects
 %
 
 :- func block_mode_to_int(block_mode) = int.
@@ -1425,7 +1433,7 @@ edge_flag(yes, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Coordinate transformations.
+% Coordinate transformations
 %
 
 :- pragma foreign_proc("C", 
@@ -1683,7 +1691,7 @@ mult_matrix(Matrix, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Clipping.
+% Clipping
 %
 
 clip_plane(Num, clip(X, Y, Z, W), !IO) :-
@@ -1707,7 +1715,7 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Current raster position.
+% Current raster position
 %
 
 :- pragma foreign_proc("C", 
@@ -1750,7 +1758,7 @@ clip_plane(Num, clip(X, Y, Z, W), !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Colors and coloring.
+% Colors and coloring
 %
 
 :- func face_direction_to_int(face_direction) = int.
@@ -2199,7 +2207,7 @@ get_shade_model(Model, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Points.
+% Points
 %
 
 :- pragma foreign_proc("C",
@@ -2212,7 +2220,7 @@ get_shade_model(Model, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Line segments.
+% Line segments
 %
 
 :- pragma foreign_proc("C",
@@ -2233,7 +2241,7 @@ get_shade_model(Model, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Polygons.
+% Polygons
 %
 
 :- func polygon_mode_to_int(polygon_mode) = int.
@@ -2266,7 +2274,7 @@ cull_face(Face, !IO) :-
 	IO = IO0;
 ").
 
-%:- pred polygon_stipple(polygon_stipple, io__state, io__state).
+%:- pred polygon_stipple(polygon_stipple, io, io).
 %:- mode polygon_stipple(in, di, uo) is det.
 
 polygon_stipple(_, _, _) :-
@@ -2294,7 +2302,7 @@ polygon_mode(Face, Mode, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Pixel Rectangles.
+% Pixel rectangles
 %
 
 :- pragma foreign_decl("C", "
@@ -2468,7 +2476,7 @@ copy_type_to_int(depth)   = 2.
 	---> pixels(
 		pixel_format :: int,
 		pixel_type   :: int,
-		pixle_data   :: pixel_data
+		pixel_data   :: pixel_data
 	).
 
 :- type pixel_data.
@@ -2512,13 +2520,13 @@ read_buffer_to_int_and_offset(aux(I), 10, I).
 
 /*
 :- pred bitmap(int, int, float, float, float, float, list(int),
-		io__state, io__state).
+		io.state, io.state).
 :- mode bitmap(in, in, in, in, in, in, in, di, uo) is det.
 */
 
 %------------------------------------------------------------------------------%
 %
-% Texture mapping.
+% Texture mapping
 %
 
 :- pragma foreign_decl("C", "
@@ -2533,7 +2541,6 @@ read_buffer_to_int_and_offset(aux(I), 10, I).
 		GL_PROXY_TEXTURE_2D
 	};
 ").
-
 
 :- pred texture_target_to_int(texture_target, int).
 :- mode texture_target_to_int(in, out) is det.
@@ -2636,7 +2643,7 @@ texture_format_to_int(rgba16, 36).
 	extern const GLenum texture_parameter_flags[];
 ").
 
-	% NOTE: If you alter this array make sure that you change 
+	% NOTE: if you alter this array make sure that you change 
 	% mogl.tex_parameter/5 accordingly.
 :- pragma foreign_code("C", "
 	const GLenum texture_parameter_flags[] = {
@@ -2645,7 +2652,7 @@ texture_format_to_int(rgba16, 36).
 		GL_TEXTURE_MIN_FILTER,
 		GL_TEXTURE_MAG_FILTER
 		/*
-		 * NOTE: These two cases are handled separately at
+		 * NOTE: these two cases are handled separately at
 		 * the moment so we don't use them here.
 		 *
 		 * GL_TEXTURE_BORDER_COLOR,
@@ -2703,7 +2710,7 @@ tex_parameter(Target0, Param, !IO) :-
 	texture_target_to_int(Target0, Target),
 	tex_parameter_2(Target, Param, !IO).
 
-	% NOTE: The magic numbers below are indicies into the
+	% NOTE: the magic numbers below are indicies into the
 	% texture_parameter_flags array.
 :- pred tex_parameter_2(int::in, texture_parameter::in, io::di, io::uo) is det.
 
@@ -2787,7 +2794,7 @@ bind_texture(Target0, TexName, !IO) :-
 
 delete_textures([], !IO).
 delete_textures(Textures @ [_|_], !IO) :-
-	list__length(Textures, NumTextures),
+	list.length(Textures, NumTextures),
 	delete_textures_2(Textures, NumTextures, !IO).
 
 :- pred delete_textures_2(list(texture_name)::in, int::in, io::di,
@@ -3024,7 +3031,7 @@ tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Fog.
+% Fog
 %
 
 :- pred fog_mode_to_int(fog_mode, int).
@@ -3137,7 +3144,7 @@ get_fog_mode(Mode, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Per-fragment operations.
+% Per-fragment operations
 %
 
 :- pragma foreign_proc("C", 
@@ -3380,7 +3387,7 @@ logic_op(Op, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Whole framebuffer operations.
+% Whole framebuffer operations
 %
 
 :- pred buffer_to_int_and_offset(draw_buffer::in, int::out, int::out) is det.
@@ -3473,7 +3480,7 @@ depth_mask(Bool, !IO) :-
 ").
 
 clear(BitList, !IO) :-
-	Mask = list__foldr((\/), list.map(buffer_bit_to_bit, BitList), 0),
+	Mask = list.foldr((\/), list.map(buffer_bit_to_bit, BitList), 0),
 	clear2(Mask, !IO).
 
 :- func buffer_bit_to_bit(buffer_bit) = int.
@@ -3589,7 +3596,7 @@ accum(Op, Param, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Evaluators.
+% Evaluators
 %
 
 map1(Target, U1, U2, curve(Stride, Order, CtrlPoints), !IO) :-
@@ -3642,7 +3649,7 @@ unsafe_map1(Target, U1, U2, MaybeAltStride, MaybeAltOrder,
 	IO = IO0;
 ").
 
-	% NOTE: We just reuse the control_flag_flags array
+	% NOTE: we just reuse the control_flag_flags array
 	% for these, which is why the indicies are not what
 	% you might expect.
 :- func eval_1d_to_int(eval_target) = int.
@@ -3686,7 +3693,7 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
 ** The following macros create and manipulate control point arrays.
 ** These macros abstract away the differences that occur
 ** when we use arrays of GLfloat as opposed to GLdouble (which in turn
-** depends upon whether MR_float is single or double-precision).
+** depends upon whether MR_Float is single or double-precision).
 */ 
 
 /* 
@@ -3704,7 +3711,8 @@ make_curve(four(Verticies)) = curve(4, Order, CtrlPts) :-
 		}							\
 	} while(0)
 
-/* The MGOGL_set_ctrl_point() macro sets the value of a particular
+/*
+** The MGOGL_set_ctrl_point() macro sets the value of a particular
 ** index in a control point array.
 */ 
 #define MOGL_set_ctrl_point(array, address, value)			\
@@ -3948,7 +3956,7 @@ eval_mesh2(Mode, P1, P2, Q1, Q2, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Feedback.
+% Feedback
 %
 
 :- pragma foreign_proc("C",
@@ -3961,7 +3969,7 @@ eval_mesh2(Mode, P1, P2, Q1, Q2, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Selection.
+% Selection
 %
 
 :- pragma foreign_proc("C",
@@ -4028,7 +4036,7 @@ render_mode(Mode, Output, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Display lists.
+% Display lists
 % 
 
 :- func display_list_mode_to_int(display_list_mode) = int.
@@ -4133,7 +4141,7 @@ new_list(Num, Mode, !IO) :-
 
 %------------------------------------------------------------------------------%
 
-% NOTE: The ordering of these control flags is important.  The code for
+% NOTE: the ordering of these control flags is important.  The code for
 % handling evaluator targets depends upon this ordering.
 
 :- pred control_flag_to_int_and_offset(control_flag::in, int::out, int::out)
@@ -4280,7 +4288,7 @@ is_enabled(Flag, IsEnabled, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Hints.
+% Hints
 %
 
 :- pragma foreign_decl("C", "
@@ -4359,7 +4367,7 @@ get_hint(Target0, Mode, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% State and state requests.
+% State and state requests
 %
 
 get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
@@ -4989,7 +4997,7 @@ server_attrib_group_to_int(viewport) = 18.
 
 push_attrib([], _, _) :- error("No server attribute groups specified.").
 push_attrib(Groups @ [_|_], !IO) :-
-	Mask = list__foldr((\/), list__map(server_attrib_group_to_bit, Groups),
+	Mask = list.foldr((\/), list.map(server_attrib_group_to_bit, Groups),
 		0),
 	push_attrib_2(Mask, !IO).
 	
@@ -5025,7 +5033,7 @@ server_attrib_group_to_bit(Flag) =
 
 %------------------------------------------------------------------------------%
 %
-% Client attribute stack.
+% Client attribute stack
 %
 
 :- pragma foreign_decl("C", "
@@ -5054,7 +5062,7 @@ client_attrib_group_to_int(pixel_store) = 1.
 
 push_client_attrib([], !IO) :- error("No client attribute groups specified.").
 push_client_attrib(Groups @ [_|_], !IO) :-
-	Mask = list__foldr((\/), list__map(client_attrib_group_to_bit, Groups),
+	Mask = list.foldr((\/), list.map(client_attrib_group_to_bit, Groups),
 		0),
 	push_client_attrib_2(Mask, !IO).
 
