@@ -3692,6 +3692,17 @@ should_reduce_stack_usage(yes).
 #endif
 ").
 
+	% Chunk_size gives the maximum number of recursive calls we want to
+	% allow in the binary_input_stream_foldl*_inner predicates. Without
+	% such a limit, the depth of recursion, which depends on the size of
+	% the file they read, will cause exhaustion of the det stack in debug
+	% grades, since there is no tail recursion in such grades.
+	%
+	% With this arrangement, the maximum number of stack frames needed
+	% to process a file of size N is N/1000 + 1000, the former being the
+	% number of frames of binary_input_stream_foldl*_chunk predicates,
+	% the latter being the max number of frames of the *_inner predicates.
+	%
 :- func chunk_size = int.
 
 chunk_size = 1000.
