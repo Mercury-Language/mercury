@@ -1,0 +1,14 @@
+echo on
+register --quiet
+table_io start
+finish
+set format pretty
+set depth 1
+dd
+set depth 10
+print io 9
+set depth 1
+no
+yes
+quit
+quit -y

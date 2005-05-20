@@ -1928,7 +1928,12 @@ io__read_line_as_string(Stream, Result, !IO) :-
 		memcpy(RetString, read_buffer, i * sizeof(MR_Char));
 		RetString[i] = '\\0';
 	} else {
-		RetString = NULL;
+		/*						
+		** We can't just return NULL here, because 	
+		** otherwise mdb will break when it tries to 	
+		** print the string.				
+		*/						
+		RetString = MR_make_string_const("""");
 	}
 	if (read_buffer != initial_read_buffer) {
 		MR_free(read_buffer);
@@ -8371,7 +8376,7 @@ io__make_temp(Dir, Prefix, Name, !IO) :-
 /*
 ** ML_maybe_make_err_msg(was_error, errno, msg, procname, error_msg):
 **	if `was_error' is true, then append `msg' and `strerror(errno)'
-**	to give `error_msg'; otherwise, set `error_msg' to NULL.
+**	to give `error_msg'; otherwise, set `error_msg' to "".
 **
 ** WARNING: this must only be called when the `hp' register is valid.
 ** That means it must only be called from procedures declared
@@ -8401,7 +8406,12 @@ io__make_temp(Dir, Prefix, Name, !IO) :-
 			strcpy((error_msg), msg);			\\
 			strcat((error_msg), errno_msg);			\\
 		} else {						\\
-			(error_msg) = NULL;				\\
+			/*						\\
+			** We can't just return NULL here, because 	\\
+			** otherwise mdb will break when it tries to 	\\
+			** print the string.				\\
+			*/						\\
+			(error_msg) = MR_make_string_const("""");	\\
 		}							\\
 	} while(0)
 
@@ -8409,7 +8419,7 @@ io__make_temp(Dir, Prefix, Name, !IO) :-
 ** ML_maybe_make_win32_err_msg(was_error, error, msg, procname, error_msg):
 **	if `was_error' is true, then append `msg' and the string
 **	returned by the Win32 API function FormatMessage() for the
-**	last error to give `error_msg'; otherwise, set `error_msg' to NULL.
+**	last error to give `error_msg'; otherwise, set `error_msg' to "".
 **	Aborts if MR_WIN32 is not defined.
 **
 ** WARNING: this must only be called when the `hp' register is valid.
@@ -8461,7 +8471,12 @@ io__make_temp(Dir, Prefix, Name, !IO) :-
 				LocalFree(err_buf);			\\
 			}						\\
 		} else {						\\
-			(error_msg) = NULL;				\\
+			/*						\\
+			** We can't just return NULL here, because 	\\
+			** otherwise mdb will break when it tries to 	\\
+			** print the string.				\\
+			*/						\\
+			(error_msg) = MR_make_string_const("""");	\\
 		}							\\
 	} while(0)
 
@@ -8712,7 +8727,12 @@ io__read_symlink(FileName, Result, !IO) :-
 		Status = 1;
 	}
 #else /* !MR_HAVE_READLINK */
-	TargetFileName = NULL;
+	/*						
+	** We can't just return NULL here, because 	
+	** otherwise mdb will break when it tries to 	
+	** print the string.				
+	*/						
+	TargetFileName = MR_make_string_const("""");
 	Status = 0;
 #endif
 	MR_update_io(IO0, IO);
