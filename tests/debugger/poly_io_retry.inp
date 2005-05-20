@@ -1,0 +1,15 @@
+register --quiet
+context none
+echo on
+table_io allow
+table_io start
+break polycall
+*
+c
+f
+retry -a
+f
+c
+f
+retry
+quit -y

@@ -1,0 +1,55 @@
+      E1:     C1 CALL pred sort.main/2-0 (det) sort.m:27
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> table_io start
+I/O tabling started.
+mdb> finish
+ian
+ian
+ian
+ian
+      E2:     C1 EXIT pred sort.main/2-0 (det) sort.m:27
+mdb> set format pretty
+mdb> set depth 1
+mdb> dd
+main(...)
+16 tabled IO actions:
+command_line_arguments(...)
+do_open_text(...)
+get_stream_db(...)
+set_stream_db(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+write_string(...)
+write_string(...)
+write_string(...)
+write_string(...)
+write_string(...)
+write_string(...)
+write_string(...)
+Valid? set depth 10
+dd> print io 9
+read_line_as_string_2(<<foreign>>, yes, -1, "")
+dd> set depth 1
+dd> no
+open_stream(...)
+3 tabled IO actions:
+do_open_text(...)
+get_stream_db(...)
+set_stream_db(...)
+Valid? yes
+read_lines(...)
+5 tabled IO actions:
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+Valid? quit
+Diagnosis aborted.
+      E2:     C1 EXIT pred sort.main/2-0 (det) sort.m:27
+mdb> quit -y
