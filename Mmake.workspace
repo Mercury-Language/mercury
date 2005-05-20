@@ -120,21 +120,23 @@ C2INITARGS   += $(LIBRARY_DIR)/$(STD_LIB_NAME).init \
 		$(RUNTIME_DIR)/$(RT_LIB_NAME).init
 MLFLAGS      += --no-mercury-stdlib-dir
 
-#
-# Work out the C include directories.
-#
-C_INCL_DIRS   = -I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include -I$(MPS_GC_DIR)
-ifneq ($(LINK_BOEHM_GC_ONLY),yes)
-C_INCL_DIRS  += -I$(RUNTIME_DIR)
-ifneq ($(LINK_RUNTIME_ONLY),yes)
-C_INCL_DIRS  += -I$(LIBRARY_DIR) -I$(LIBRARY_DIR)/$(mihs_subdir)
-ifneq ($(LINK_STDLIB_ONLY),yes)
-C_INCL_DIRS  += -I$(MDBCOMP_DIR) -I$(MDBCOMP_DIR)/$(mihs_subdir) \
-		-I$(BROWSER_DIR) -I$(BROWSER_DIR)/$(mihs_subdir) -I$(TRACE_DIR)
-endif
-endif
-endif
-CFLAGS       += $(C_INCL_DIRS)
+# now in .mgnuc_copts files
+# #
+# # Work out the C include directories.
+# #
+# C_INCL_DIRS   = -I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include -I$(MPS_GC_DIR)
+# ifneq ($(LINK_BOEHM_GC_ONLY),yes)
+# C_INCL_DIRS  += -I$(RUNTIME_DIR)
+# ifneq ($(LINK_RUNTIME_ONLY),yes)
+# C_INCL_DIRS  += -I$(LIBRARY_DIR) -I$(LIBRARY_DIR)/$(mihs_subdir)
+# ifneq ($(LINK_STDLIB_ONLY),yes)
+# C_INCL_DIRS  += -I$(MDBCOMP_DIR) -I$(MDBCOMP_DIR)/$(mihs_subdir) \
+# 		-I$(BROWSER_DIR) -I$(BROWSER_DIR)/$(mihs_subdir) -I$(TRACE_DIR)
+# endif
+# endif
+# endif
+# CFLAGS       += $(C_INCL_DIRS)
+
 # now in FLAGS files
 # MCFLAGS    += $(C_INCL_DIRS:-I%=--c-include-directory %)
 

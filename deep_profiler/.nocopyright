@@ -1,3 +1,4 @@
 .cvsignore
+.mgnuc_copts
 DESIGN
 DEEP_FLAGS.in

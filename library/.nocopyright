@@ -1,4 +1,5 @@
 .cvsignore
+.mgnuc_copts
 library_strong_name.sn
 INTER_FLAGS
 LIB_FLAGS.in

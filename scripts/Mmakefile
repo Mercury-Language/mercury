@@ -14,26 +14,63 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SCRIPTS = mmake mmc mdb mtc c2init mgnuc ml mprof mprof_merge_runs \
-	  mtags vpath_find mercury_update_interface \
-	  mkfifo_using_mknod mercury_cleanup_install canonical_grade \
-	  mercury_config mercury.bat prepare_tmp_dir_fixed_part
-DEBUGGER_SCRIPTS = mdbrc xul_tree.xsl
+NONCONF_SCRIPTS = \
+	mercury_cleanup_install \
+	mprof_merge_runs \
+	mtags \
+	mtc \
+	vpath_find
+
+CONF_SCRIPTS = \
+	c2init \
+	canonical_grade \
+	mdb \
+	mdprof \
+	mercury.bat \
+	mercury_config \
+	mercury_update_interface \
+	mgnuc \
+	mkfifo_using_mknod \
+	ml \
+	mmake \
+	mmc \
+	mprof \
+	prepare_tmp_dir_fixed_part
+
+SCRIPTS = $(NONCONF_SCRIPTS) $(CONF_SCRIPTS)
+
+CONF_FILES = \
+	Mercury.config.bootstrap \
+	Mercury.config \
+	Mmake.vars \
+	parse_ml_options.sh-subr
+
+CONF_DEBUG_SCIRPTS = \
+	mdbrc.in
+
+DEBUGGER_SCRIPTS = $(CONF_DEBUG_SCIRPTS) xul_tree.xsl
 EMACS_SCRIPTS = gud.el
 
 #-----------------------------------------------------------------------------#
 
-# ensure there were no mispelt autoconf variable names \
-
 # .SUFFIXES: .in
 
-# we test membership of SCRIPTS, because testing $(@D) (the directory part
-# of $*) does the wrong thing for Mercury.config. Not testing anything would
-# make this rule apply even to ../Mmake.common.
+# we test membership of CONF_SCRIPTS and CONF_FILES, because testing $(@D)
+# (the directory part of $*) does the wrong thing for Mercury.config.
+# Not testing anything would make this rule apply even to ../Mmake.common.
+# The grep is there to ensure that there were no mispelt autoconf variable
+# names.
 
 %::	%.in $(MERCURY_DIR)/config.status
-	@for script in $(SCRIPTS) ; do \
-		if test "$*" = "$$script" ; then \
+	@for file in $(CONF_SCRIPTS) ; do \
+		if test "$*" = "$$file" ; then \
+		$(MERCURY_DIR)/config.status --file=$* ; \
+		if grep -n '[^$$]@' $@; then false; else true; fi ; \
+		chmod a+x $* ; \
+		fi \
+	done
+	@for file in $(CONF_FILES) ; do \
+		if test "$*" = "$$file" ; then \
 		$(MERCURY_DIR)/config.status --file=$* ; \
 		if grep -n '[^$$]@' $@; then false; else true; fi \
 		fi \
@@ -42,8 +79,7 @@ EMACS_SCRIPTS = gud.el
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
-all: Mmake.vars Mercury.config Mercury.config.bootstrap
+all: $(CONF_FILES) $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
 

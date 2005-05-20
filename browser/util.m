@@ -83,7 +83,6 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
 	#include ""mercury_wrapper.h""
 	#include ""mercury_string.h""
 	#include ""mercury_trace_base.h""
-	#include ""mercury_trace_internal.h""
 	#include ""mercury_library_types.h""
 ").
 

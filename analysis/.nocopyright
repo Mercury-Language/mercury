@@ -1,2 +1,3 @@
 .cvsignore
+.mgnuc_copts
 ANALYSIS_FLAGS.in

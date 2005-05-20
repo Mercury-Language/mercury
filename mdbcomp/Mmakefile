@@ -43,7 +43,7 @@ CHECKS =	$(patsubst %,%.check,$(MERCURY_MAIN_LIB_MODULES))
 # Don't change these without good reason - if you want to do a temporary
 # change, change ../Mmake.params, or create Mmake.mdbcomp.params.
 
-CFLAGS	     += $(DLL_CFLAGS) -I$(TRACE_DIR)
+CFLAGS	     += $(DLL_CFLAGS)
 MCFLAGS      += --flags MDBCOMP_FLAGS $(CONFIG_OVERRIDE)
 ifeq ($(INSTALLABLE_PREFIX),yes)
 MLFLAGS      += -R$(FINAL_INSTALL_MERC_LIB_DIR)	\

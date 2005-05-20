@@ -1,2 +1,3 @@
 .cvsignore
+.mgnuc_copts
 MDBCOMP_FLAGS.in

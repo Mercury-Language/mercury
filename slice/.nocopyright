@@ -1,2 +1,4 @@
+.nocopyright
+.mgnuc_copts
 Mercury.options
 SLICE_FLAGS.in

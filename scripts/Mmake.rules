@@ -81,43 +81,51 @@ endif
 
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
-# beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
+# Beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated,
+# with each copy having two variants that differ only by a @.
+# javac doesn't create the destination directory for class files
+# so we must create it manually
+# the following mkdirs work around a bug in GNU Make
 $(deps_subdir)%.dep $(deps_subdir)%.dv:
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
-	# javac doesn't create the destination directory for class files
-	# so we must create it manually
-	-[ -d $(classes_subdir) ] || mkdir $(classes_subdir)
-	# the following mkdirs work around a bug in GNU Make
-	-[ -d Mercury/dates ] || mkdir Mercury/dates
-	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
-	-[ -d Mercury/date3s ] || mkdir Mercury/date3s
-	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
-	-[ -d Mercury/trans_opt_dates ] || mkdir Mercury/trans_opt_dates
-	-[ -d Mercury/c_dates ] || mkdir Mercury/c_dates
-	-[ -d Mercury/il_dates ] || mkdir Mercury/il_dates
-	-[ -d Mercury/s_dates ] || mkdir Mercury/s_dates
-	-[ -d Mercury/pic_s_dates ] || mkdir Mercury/pic_s_dates
+ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
+	-mkdir -p $(classes_subdir) \
+		Mercury/dates Mercury/date0s Mercury/date3s \
+		Mercury/optdates Mercury/trans_opt_dates \
+		Mercury/c_dates Mercury/il_dates \
+		Mercury/s_dates Mercury/pic_s_dates
+else
+	@-mkdir -p $(classes_subdir) \
+		Mercury/dates Mercury/date0s Mercury/date3s \
+		Mercury/optdates Mercury/trans_opt_dates \
+		Mercury/c_dates Mercury/il_dates \
+		Mercury/s_dates Mercury/pic_s_dates
+endif
 endif
 
-# beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
+# Beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated,
+# with each copy having two variants that differ only by a @.
+# javac doesn't create the destination directory for class files
+# so we must create it manually
+# the following mkdirs work around a bug in GNU Make
 .PHONY: %.depend
 %.depend :
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
-	# javac doesn't create the destination directory for class files
-	# so we must create it manually
-	-[ -d $(classes_subdir) ] || mkdir $(classes_subdir)
-	# the following mkdirs work around a bug in GNU Make
-	-[ -d Mercury/dates ] || mkdir Mercury/dates
-	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
-	-[ -d Mercury/date3s ] || mkdir Mercury/date3s
-	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
-	-[ -d Mercury/trans_opt_dates ] || mkdir Mercury/trans_opt_dates
-	-[ -d Mercury/c_dates ] || mkdir Mercury/c_dates
-	-[ -d Mercury/il_dates ] || mkdir Mercury/il_dates
-	-[ -d Mercury/s_dates ] || mkdir Mercury/s_dates
-	-[ -d Mercury/pic_s_dates ] || mkdir Mercury/pic_s_dates
+ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
+	-mkdir -p $(classes_subdir) \
+		Mercury/dates Mercury/date0s Mercury/date3s \
+		Mercury/optdates Mercury/trans_opt_dates \
+		Mercury/c_dates Mercury/il_dates \
+		Mercury/s_dates Mercury/pic_s_dates
+else
+	@-mkdir -p $(classes_subdir) \
+		Mercury/dates Mercury/date0s Mercury/date3s \
+		Mercury/optdates Mercury/trans_opt_dates \
+		Mercury/c_dates Mercury/il_dates \
+		Mercury/s_dates Mercury/pic_s_dates
+endif
 endif
 
 endif	# MMAKE_USE_MMC_MAKE != yes
@@ -273,7 +281,7 @@ $(il_dates_subdir)%.il_date : %.m
 # These rules are only available in *il* backends, because we'd like to avoid
 # processing user code that is in a .cpp file, and we'd like to avoid going via
 # IL to generate a DLL if we are in a non-IL grade.
-ifeq ($(findstring il,$(GRADE)),il)        
+ifeq ($(findstring il,$(GRADE)),il)
 
 # Note that we use `-' rather than `/' as the option character for options
 # to $(MS_CL), to avoid confusion with Unix-style path names.
@@ -301,6 +309,10 @@ endif
 # the new .err file is also of size zero,
 # the time-stamp doesn't get updated!
 # (Is that a bug in unix? In bash?)
+# zs: It is neither. The timestamp is updated by the write system call:
+# if the new file is of zero size, write is never called.
+# touch has code to test specifically for this situation,
+# and adds a byte to the file and then removes it.
 
 .m.err:
 	$(MCE) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $(*F) $(ERR_REDIRECT)
@@ -379,13 +391,13 @@ endif # $(MMAKE_USE_MMC_MAKE) != yes
 # we only activate these rules when in an IL grade.
 #
 
-ifeq ($(findstring il,$(GRADE)),il)        
+ifeq ($(findstring il,$(GRADE)),il)
 
 .il.dll:
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
 
 .il.exe:
-	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /quiet /OUT=$@ $< 
+	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /quiet /OUT=$@ $<
 
 .cpp.dll:
 	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \

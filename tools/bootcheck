@@ -624,6 +624,7 @@ then
 
         cp $root/compiler/Mmake* $root/compiler/Mercury.options .
         cp $root/compiler/*_FLAGS.in .
+        cp $root/compiler/.mgnu* .
         cd $root/$stage2dir
         mkdir library
         cd library
@@ -635,6 +636,7 @@ then
         cp $root/library/Mmake* $root/library/Mercury.options .
         cp $root/library/*_FLAGS.in .
         cp $root/library/INTER_FLAGS .
+        cp $root/library/.mgnu* .
         $LN_S $root/library/$STD_LIB_NAME.init .
         $LN_S $root/library/RESERVED_MACRO_NAMES .
         cd $root/$stage2dir
@@ -643,6 +645,7 @@ then
         $LN_S $root/mdbcomp/*.m .
         cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
         cp $root/mdbcomp/*_FLAGS.in .
+        cp $root/mdbcomp/.mgnu* .
         $LN_S $root/mdbcomp/$MDCOMP_LIB_NAME.init .
         $LN_S $root/mdbcomp/RESERVED_MACRO_NAMES .
         cd $root/$stage2dir
@@ -651,6 +654,7 @@ then
         $LN_S $root/browser/*.m .
         cp $root/browser/Mmake* $root/browser/Mercury.options .
         cp $root/browser/*_FLAGS.in .
+        cp $root/browser/.mgnu* .
         $LN_S $root/browser/$BROWSER_LIB_NAME.init .
         $LN_S $root/browser/RESERVED_MACRO_NAMES .
         cd $root/$stage2dir
@@ -659,6 +663,7 @@ then
         $LN_S $root/analysis/*.m .
         cp $root/analysis/Mmake* $root/analysis/Mercury.options .
         cp $root/analysis/*_FLAGS.in .
+        cp $root/analysis/.mgnu* .
         $LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
 
         cd $root/$stage2dir
@@ -683,6 +688,7 @@ then
             $LN $root/runtime/mercury_il.il .
             $LN_S $root/runtime/*.in .
             cp $root/runtime/Mmake* .
+            cp $root/runtime/.mgnu* .
             $LN_S $root/runtime/machdeps .
             $LN_S $root/runtime/RESERVED_MACRO_NAMES .
             cd $root/$stage2dir
@@ -692,6 +698,7 @@ then
             $LN_S $root/trace/*.h .
             $LN_S $root/trace/*.c .
             cp $root/trace/Mmake* .
+            cp $root/trace/.mgnu* .
             $LN_S $root/trace/RESERVED_MACRO_NAMES .
             cd $root/$stage2dir
             rm -f robdd
@@ -742,12 +749,14 @@ then
             $LN_S $root/slice/*.m .
             cp $root/slice/Mmake* $root/slice/Mercury.options .
             cp $root/slice/*_FLAGS.in .
+            cp $root/slice/.mgnu* .
             cd $root/$stage2dir
             mkdir profiler
             cd profiler
             $LN_S $root/profiler/*.m .
             cp $root/profiler/Mmake* $root/profiler/Mercury.options .
             cp $root/profiler/*_FLAGS.in .
+            cp $root/profiler/.mgnu* .
             cd $root/$stage2dir
             mkdir deep_profiler
             cd deep_profiler
@@ -755,6 +764,7 @@ then
             cp $root/deep_profiler/Mmake* .
             cp $root/deep_profiler/Mercury.options .
             cp $root/deep_profiler/*_FLAGS.in .
+            cp $root/deep_profiler/.mgnu* .
             cd $root/$stage2dir
         else
             $LN_S $root/slice .
@@ -1051,6 +1061,7 @@ then
 
     cp $root/compiler/Mmake* $root/compiler/Mercury.options .
     cp $root/compiler/*_FLAGS.in .
+    cp $root/compiler/.mgnu* .
     cd $root/$stage3dir
     mkdir library
     cd library
@@ -1061,6 +1072,7 @@ then
     cp $root/library/Mmake* $root/library/Mercury.options .
     cp $root/library/*_FLAGS.in .
     cp $root/library/INTER_FLAGS .
+    cp $root/library/.mgnu* .
     $LN_S $root/library/$STD_LIB_NAME.init .
     cd $root/$stage3dir
     mkdir mdbcomp
@@ -1068,6 +1080,7 @@ then
     $LN_S $root/mdbcomp/*.m .
     cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
     cp $root/mdbcomp/*_FLAGS.in .
+    cp $root/mdbcomp/.mgnu* .
     $LN_S $root/mdbcomp/$MDBCOMP_LIB_NAME.init .
     cd $root/$stage3dir
     mkdir browser
@@ -1075,6 +1088,7 @@ then
     $LN_S $root/browser/*.m .
     cp $root/browser/Mmake* $root/browser/Mercury.options .
     cp $root/browser/*_FLAGS.in .
+    cp $root/browser/.mgnu* .
     $LN_S $root/browser/$BROWSER_LIB_NAME.init .
     cd $root/$stage3dir
     mkdir analysis
@@ -1082,6 +1096,7 @@ then
     $LN_S $root/analysis/*.m .
     cp $root/analysis/Mmake* $root/analysis/Mercury.options .
     cp $root/analysis/*_FLAGS.in .
+    cp $root/analysis/.mgnu* .
     $LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
     cd $root/$stage3dir
     $LN_S $root/$stage2dir/boehm_gc .
@@ -1441,6 +1456,40 @@ then
         sed -e "s:@WORKSPACE@:$WORKSPACE:" \
             < ${tests_prefix}tests/WS_FLAGS.ws \
             > ${tests_prefix}tests/WS_FLAGS
+
+        sed -e "s:@WORKSPACE@:$WORKSPACE:" \
+            < ${tests_prefix}tests/.mgnuc_copts.ws \
+            > ${tests_prefix}tests/.mgnuc_copts
+
+        all_test_dirs="
+            benchmarks
+            debugger
+            debugger/declarative
+            dppd
+            general
+            general/accumulator
+            general/string_format
+            general/structure_reuse
+            grade_subdirs
+            hard_coded
+            hard_coded/exceptions
+            hard_coded/purity
+            hard_coded/sub-modules
+            hard_coded/typeclasses
+            invalid
+            invalid/purity
+            misc_tests
+            mmc_make
+            recompilation
+            tabling
+            term
+            valid
+            warnings"
+
+        for d in $all_test_dirs
+        do
+            cp ${tests_prefix}tests/.mgnuc_copts ${tests_prefix}tests/$d
+        done
 
         WORKSPACE_FLAGS=yes
         export WORKSPACE_FLAGS

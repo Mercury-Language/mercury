@@ -1,0 +1,7 @@
+-I../boehm_gc
+-I../boehm_gc/include
+-I../runtime
+-I../library
+-I../library/Mercury/mihs
+-I../trace
+-I../robdd

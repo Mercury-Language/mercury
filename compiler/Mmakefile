@@ -49,7 +49,6 @@ $(GCC_MAIN_LIBS): force
 	cd $(GCC_SRC_DIR)/gcc && $(MAKE) mercury_gcc_backend_libs
 
 MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
-CFLAGS       += -I$(ANALYSIS_DIR) -I$(ANALYSIS_DIR)/$(mihs_subdir)
 MLOBJS       := ../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS      += --no-main --shared

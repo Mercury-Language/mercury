@@ -138,6 +138,11 @@ Description:
 	options.
 Environment variables:
 	MERCURY_DEFAULT_GRADE.
+Files:
+	If the current directory contains a file named .mgnuc_copts, then
+	mgnuc will assume that it contains C compiler options that should
+	be included on the C compiler's command line. This is usually used
+	to specify C compiler search paths.
 "
 
 while : ; do
@@ -589,9 +594,9 @@ case $assemble in true)
 	exec $AS $AS_OPTS "$@" ;;
 esac
 
-if test -r .mgnuc_opts
+if test -r .mgnuc_copts
 then
-	INVISIBLE_OPTS=`cat .mgnuc_opts`
+	INVISIBLE_OPTS=`cat .mgnuc_copts`
 else
 	INVISIBLE_OPTS=""
 fi

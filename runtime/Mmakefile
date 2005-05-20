@@ -210,7 +210,7 @@ Mmake.runtime.params: ;
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS	+= $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
+CFLAGS	+= $(DLL_CFLAGS)
 
 # We intentionally compile with C level debugging enabled so that problems
 # in the runtime can be debugged without having to recompile it.  The cost

@@ -86,8 +86,7 @@ Mmake.trace.params: ;
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS		+= -I$(BROWSER_DIR) -I$(MDBCOMP_DIR) -g $(DLL_CFLAGS) \
-			-DMR_NO_BACKWARDS_COMPAT -DMERCURY_CONF_BOOTSTRAP_H
+CFLAGS		+= -g $(DLL_CFLAGS)
 MGNUCFLAGS	+= --no-ansi
 
 #-----------------------------------------------------------------------------#
