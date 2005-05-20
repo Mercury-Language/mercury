@@ -8,7 +8,7 @@ mdb> continue
       E2:     C2 CALL pred inadmissible.gtmax/2-0 (semidet)
 mdb> finish
       E3:     C2 EXIT pred inadmissible.gtmax/2-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 gtmax(2, [2, 3, 1])
 Valid? no
 list_to_set([2, 3, 1], [2, 3, 1])
@@ -20,7 +20,7 @@ Parent gtmax(2, [2, 3, 1])
 Call oset_max([2, 3, 1], _)
 Is this a bug? yes
       E3:     C2 EXIT pred inadmissible.gtmax/2-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 gtmax(2, [2, 3, 1])
 Valid? [no] 
 Found inadmissible call:

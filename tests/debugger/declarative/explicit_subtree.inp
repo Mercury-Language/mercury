@@ -6,7 +6,7 @@ table_io start
 break divide2
 continue
 finish
-dd -ad3
+dd -d 3 -n 7 -ad3
 browse 2
 mark
 n

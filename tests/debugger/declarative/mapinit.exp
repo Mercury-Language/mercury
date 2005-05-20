@@ -5,7 +5,7 @@ mdb> step
       E2:     C2 CALL pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
 mdb> finish
       E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
-mdb> dd
+mdb> dd -d 3 -n 7
 xmap_init(empty)
 Valid? q
 Diagnosis aborted.

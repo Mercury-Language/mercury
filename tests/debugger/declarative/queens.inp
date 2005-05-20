@@ -1,10 +1,10 @@
 echo on
 register --quiet
-dd
+dd -d 3 -n 7
 break queen
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes

@@ -30,7 +30,7 @@ untrust 5
 untrust 6
 step
 finish
-dd
+dd -d 3 -n 7
 n
 trust
 trust module

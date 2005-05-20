@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
 mdb> finish
        3:      2  2 EXIT pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(41)
 Valid? no
 Found incorrect contour:

@@ -15,7 +15,7 @@ mdb> finish -n
       E3:     C2 EXIT pred tabled_read_decl.test/4-0 (det)
 mdb> print
 test('<<c_pointer>>', 1123, _, _)
-mdb> dd -a
+mdb> dd -d 3 -n 7 -a
 test('<<c_pointer>>', 1123, _, _)
 4 tabled IO actions:
 read_char_code('<<c_pointer>>', 49)
@@ -78,7 +78,7 @@ mdb> delete *
  2: E stop  interface pred tabled_read_decl.test/4-0 (det)
 mdb> f
       E6:     C4 EXIT pred tabled_read_decl.test/4-0 (det)
-mdb> dd -ad1
+mdb> dd -d 3 -n 7 -ad1
 test('<<c_pointer>>', 1789, _, _)
 4 tabled IO actions:
 read_char_code('<<c_pointer>>', 55)
@@ -133,7 +133,7 @@ mdb> delete *
  1: E stop  interface pred tabled_read_decl.fake_io/3-0 (det)
 mdb> f
      E10:     C6 EXIT pred tabled_read_decl.fake_io/3-0 (det)
-mdb> dd -ad1
+mdb> dd -d 3 -n 7 -ad1
 The declarative debugger needs to perform a retry across
 an area in which IO is not tabled.  This is not always safe.
 To avoid this warning restart mdb and issue a `table_io start'

@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred backtrack.p/2-0 (det) backtrack.m:24 (backtrack.m:10)
 mdb> finish
       23:      2  2 EXIT pred backtrack.p/2-0 (det) backtrack.m:24 (backtrack.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, no)
 Valid? no
 q(1, 1)

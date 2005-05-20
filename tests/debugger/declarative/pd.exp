@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL func pd.rev/1-0 (det) pd.m:14 (pd.m:9)
 mdb> finish
       15:      2  2 EXIT func pd.rev/1-0 (det) pd.m:14 (pd.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 rev([1, 2, 3]) = []
 Valid? no
 rev_2([1, 2, 3], []) = []
@@ -22,13 +22,13 @@ mdb> step
        5:      4  4 CALL func pd.rev_2/2-0 (det) pd.m:18 (pd.m:19)
 mdb> finish
       13:      4  4 EXIT func pd.rev_2/2-0 (det) pd.m:18 (pd.m:19)
-mdb> dd
+mdb> dd -d 3 -n 7
 rev_2([2, 3], [1]) = []
 Valid? no
 rev_2([3], [2, 1]) = []
 Valid? pd
       12:      5  5 EXIT func pd.rev_2/2-0 (det) pd.m:18 (pd.m:19)
-mdb> dd
+mdb> dd -d 3 -n 7
 rev_2([3], [2, 1]) = []
 Valid? no
 rev_2([], [3, 2, 1]) = []

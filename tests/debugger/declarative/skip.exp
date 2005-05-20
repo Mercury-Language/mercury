@@ -6,7 +6,7 @@ mdb> step
       E2:     C2 CALL pred skip.a/2-0 (det)
 mdb> finish
       E3:     C2 EXIT pred skip.a/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(1, 70)
 Valid? skip
 b(1, 70)
@@ -32,7 +32,7 @@ mdb> step
       E4:     C3 CALL pred skip.a/2-0 (det)
 mdb> finish
       E5:     C3 EXIT pred skip.a/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(2, 71)
 Valid? skip
 c(71, 71)
@@ -56,7 +56,7 @@ mdb> step
       E7:     C5 CALL pred skip.a/2-0 (det)
 mdb> finish
       E8:     C5 EXIT pred skip.a/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(3, 72)
 Valid? n
 b(3, 72)
@@ -79,7 +79,7 @@ f(72, 72)
 c(72, 72)
 Is this a bug? y
       E9:     C6 EXIT pred skip.c/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 c(72, 72)
 Valid? [no] q
 Diagnosis aborted.
@@ -92,7 +92,7 @@ mdb> retry
       E7:     C5 CALL pred skip.a/2-0 (det)
 mdb> f
       E8:     C5 EXIT pred skip.a/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(3, 72)
 Valid? [no] 
 c(72, 72)

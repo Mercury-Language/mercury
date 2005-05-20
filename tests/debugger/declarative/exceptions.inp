@@ -5,7 +5,7 @@ break q
 c
 f
 delete *
-dd -d1000
+dd -d 3 -n 7 -d1000
 n
 y
 y
@@ -16,7 +16,7 @@ break r
 c
 f
 delete *
-dd -d1000
+dd -d 3 -n 7 -d1000
 n
 n
 y
@@ -27,7 +27,7 @@ y
 break v
 c
 f
-dd -d1000
+dd -d 3 -n 7 -d1000
 n
 y
 y

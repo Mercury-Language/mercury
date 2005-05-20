@@ -6,13 +6,13 @@ continue
 continue
 continue
 finish -n
-dd
+dd -d 3 -n 7
 yes
 quit
 continue
 continue
 continue
-dd
+dd -d 3 -n 7
 no
 no
 no
@@ -21,7 +21,7 @@ continue
 continue
 continue
 finish -n
-dd
+dd -d 3 -n 7
 no
 no
 no

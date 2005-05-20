@@ -4,7 +4,7 @@ echo on
 trust ignore_1
 step
 finish
-dd
+dd -d 3 -n 7
 b 1
 mark
 n
@@ -12,7 +12,7 @@ y
 break 15
 continue
 finish
-dd
+dd -d 3 -n 7
 n
 n
 y

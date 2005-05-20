@@ -8,7 +8,7 @@ mdb> continue
       E2:     C2 CALL pred remember_modes.q/5-0 (semidet)
 mdb> finish
       E3:     C2 EXIT pred remember_modes.q/5-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 q(1, 1, 2, 1, 2)
 Valid? no
 p(1, 2)

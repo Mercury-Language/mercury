@@ -1,6 +1,6 @@
 echo on
 step
 finish
-dd
+dd -d 3 -n 7
 q
 c

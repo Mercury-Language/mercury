@@ -9,7 +9,7 @@ print *
 finish -n
 print *
 print
-dd -a
+dd -d 3 -n 7 -a
 print 1-2
 p io 1-2
 no

@@ -4,14 +4,14 @@ break p
 break q
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 1
 mark
 yes
 yes
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 2
 mark
 browse 1

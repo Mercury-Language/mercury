@@ -10,7 +10,7 @@ mdb> step
       E2:     C2 CALL pred ignore.p/1-0 (det)
 mdb> finish
       E3:     C2 EXIT pred ignore.p/1-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(15)
 Valid? b 1
 browser> mark
@@ -27,7 +27,7 @@ mdb> continue
       E5:     C4 CALL pred ignore.p/1-0 (det)
 mdb> finish
       E6:     C4 EXIT pred ignore.p/1-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(15)
 Valid? n
 q(1, 0) = 1

@@ -10,7 +10,7 @@ mdb> continue
        3:      3  3 CALL pred lpe_example.p/2-0 (nondet)
 mdb> finish
       13:      3  3 EXIT pred lpe_example.p/2-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, 13)
 Valid? no
 q(3)
@@ -27,7 +27,7 @@ mdb> continue
       14:      3  3 REDO pred lpe_example.p/2-0 (nondet)
 mdb> finish
       20:      3  3 EXIT pred lpe_example.p/2-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, 23)
 Valid? no
 r(3, 23)
@@ -42,7 +42,7 @@ mdb> continue
       21:      3  3 REDO pred lpe_example.p/2-0 (nondet)
 mdb> finish
       25:      3  3 EXIT pred lpe_example.p/2-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, 3)
 Valid? no
 Found incorrect contour:
@@ -54,7 +54,7 @@ mdb> continue
       26:      3  3 REDO pred lpe_example.p/2-0 (nondet)
 mdb> finish
       27:      3  3 FAIL pred lpe_example.p/2-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(1, _)
 Solutions:
 	p(1, 13)

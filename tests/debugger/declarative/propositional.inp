@@ -4,13 +4,13 @@ break a
 break b
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 yes
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes

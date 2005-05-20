@@ -6,7 +6,7 @@ finish
 set depth 10
 set xml_browser_cmd 'cat ./browse_arg.xml.out'
 set xml_tmp_filename './browse_arg.xml.out'
-dd
+dd -d 3 -n 7
 browse 2
 ls
 quit

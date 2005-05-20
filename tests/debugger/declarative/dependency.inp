@@ -1,7 +1,7 @@
 echo on
 register --quiet
 goto 3
-dd
+dd -d 3 -n 7
 browse 1
 quit
 step
@@ -10,12 +10,12 @@ set depth 20
 set size 201
 set format raw_pretty
 p proc_body
-dd
+dd -d 3 -n 7
 browse 1
 ^1
 mark
 quit
-dd
+dd -d 3 -n 7
 browse 1
 ^2^1
 mark
@@ -23,22 +23,22 @@ browse 2
 print
 mark
 quit
-dd
+dd -d 3 -n 7
 browse 1
 ^2^2^1
 mark
 quit
-dd
+dd -d 3 -n 7
 browse 1
 ^2^2^2^1
 mark
 quit
-dd
+dd -d 3 -n 7
 browse 1
 ^2^2^2^2^1
 mark
 quit
-dd
+dd -d 3 -n 7
 browse 1
 ^2^2^2^2^2
 mark

@@ -11,7 +11,7 @@ mdb> continue
       E2:     C2 CALL pred explicit_subtree.divide2/3-0 (det)
 mdb> finish
       E3:     C2 EXCP pred explicit_subtree.divide2/3-0 (det) t;c3;
-mdb> dd -ad3
+mdb> dd -d 3 -n 7 -ad3
 Call divide2(10, 0, _)
 Throws "zero denominator"
 Expected? browse 2

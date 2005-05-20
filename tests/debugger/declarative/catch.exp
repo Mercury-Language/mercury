@@ -11,7 +11,7 @@ mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
       E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
@@ -35,7 +35,7 @@ exception(univ_cons("q: bad input"))
       E5:     C4 CALL pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
 mdb> finish
       E6:     C4 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(2, succeeded(2))
 Valid? no
 q(2, 2)

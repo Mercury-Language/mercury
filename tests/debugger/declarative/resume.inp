@@ -5,17 +5,17 @@ break -E3 resume.l
 c
 delete *
 f
-dd
+dd -d 3 -n 7
 pd
-dd -r
+dd -d 3 -n 7 -r
 y
 pd
 break wrapper
 c
 retry
-dd -r
+dd -d 3 -n 7 -r
 q
-dd -r
+dd -d 3 -n 7 -r
 pd
 print
 c
@@ -27,12 +27,12 @@ break -E3 resume.l
 c
 delete *
 f
-dd
+dd -d 3 -n 7
 pd
 break wrapper
 c
 retry
-dd -r
+dd -d 3 -n 7 -r
 y
 y
 n
@@ -45,21 +45,21 @@ delete *
 break -E3 resume.l
 c
 f
-dd
+dd -d 3 -n 7
 pd
 delete *
 break wrapper
 c
-dd -r
+dd -d 3 -n 7 -r
 y
 pd
 break resume.m:35
 c
 delete *
 f
-dd -d 2
+dd -d 2 -n 7
 pd
-dd -r
+dd -d 3 -n 7 -r
 n
 n
 n
@@ -69,13 +69,13 @@ y
 break resume.m:36
 c
 f
-dd -d 2
+dd -d 2 -n 7
 pd
 delete *
 break wrapper
 c
 retry
-dd -r
+dd -d 3 -n 7 -r
 n
 n
 n
@@ -85,16 +85,16 @@ y
 break resume.m:37
 c
 f
-dd -d 2
+dd -d 2 -n 7
 pd
 delete *
 break wrapper
 c
-dd -r -s divide_and_query
+dd -d 3 -n 7 -r -s divide_and_query
 n
 q
-dd -r
+dd -d 3 -n 7 -r
 q
-dd -rs top_down
+dd -d 3 -n 7 -rs top_down
 q
 quit -y

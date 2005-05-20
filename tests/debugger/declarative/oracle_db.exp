@@ -8,7 +8,7 @@ mdb> continue
        3:      2  2 CALL pred oracle_db.a/3-0 (semidet) oracle_db.m:19 (oracle_db.m:9)
 mdb> finish
       10:      2  2 EXIT pred oracle_db.a/3-0 (semidet) oracle_db.m:19 (oracle_db.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(99, 99, 99)
 Valid? no
 b(99)

@@ -3,7 +3,7 @@ context none
 echo on
 step
 finish
-dd
+dd -d 3 -n 7
 b 1
 mark
 n
@@ -11,7 +11,7 @@ y
 break polytest
 c
 f
-dd
+dd -d 3 -n 7
 b 2
 mark
 n
@@ -21,7 +21,7 @@ delete 0
 break tracetest
 c
 f
-dd
+dd -d 3 -n 7
 b 1
 mark
 n

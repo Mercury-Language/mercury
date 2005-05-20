@@ -3,7 +3,7 @@ register --quiet
 break dependency2__test
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 1
 ^2^1
 mark

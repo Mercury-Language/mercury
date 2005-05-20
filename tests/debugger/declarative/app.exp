@@ -14,7 +14,7 @@ mdb> continue
       E5:     C5 CALL pred app.app/3-0 (det) app.m:26 (app.m:28)
 mdb> finish -n
       E6:     C5 EXIT pred app.app/3-0 (det) app.m:26 (app.m:28)
-mdb> dd
+mdb> dd -d 3 -n 7
 app([4, 5], [6, 7, 8], [4, ...])
 Valid? yes
 app([3, 4, 5], [6, 7, 8], [3, ...])
@@ -27,7 +27,7 @@ mdb> continue
       E8:     C3 EXIT pred app.app/3-0 (det) app.m:26 (app.m:28)
 mdb> continue
       E9:     C2 EXIT pred app.app/3-0 (det) app.m:26 (app.m:13)
-mdb> dd
+mdb> dd -d 3 -n 7
 app([1, 2, 3, 4, 5], [6, 7, ...], [|]/2)
 Valid? no
 app([2, 3, 4, 5], [6, 7, 8], [|]/2)
@@ -48,7 +48,7 @@ append([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8]).
      E10:     C6 CALL pred app.app/3-0 (det) app.m:26 (app.m:18)
 mdb> finish -n
      E11:     C6 EXIT pred app.app/3-0 (det) app.m:26 (app.m:18)
-mdb> dd
+mdb> dd -d 3 -n 7
 app([1, 2, 3, 4, 5, 6, 7, 8, ...], [|]/2, [|]/2)
 Valid? no
 app([2, 3, 4, 5, 6, 7, 8, 9, ...], [|]/2, [|]/2)

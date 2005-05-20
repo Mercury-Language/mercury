@@ -5,7 +5,7 @@ mdb> step
        2:      2  2 CALL pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
 mdb> finish
        5:      2  2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
-mdb> dd
+mdb> dd -d 3 -n 7
 xmap_init(empty)
 Valid? y
 No bug found.

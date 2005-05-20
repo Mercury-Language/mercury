@@ -10,7 +10,7 @@ mdb> f
       E3:     C2 EXIT pred exceptions.q/2-0 (cc_multi)
 mdb> delete *
  0: E stop  interface pred exceptions.q/2-0 (cc_multi)
-mdb> dd -d1000
+mdb> dd -d 3 -n 7 -d1000
 q(yes(univ_cons("Error")), [1, 2, 3])
 Valid? n
 p(1)
@@ -35,7 +35,7 @@ mdb> f
       E5:     C3 FAIL pred exceptions.r/1-0 (semidet)
 mdb> delete *
  0: E stop  interface pred exceptions.r/1-0 (semidet)
-mdb> dd -d1000
+mdb> dd -d 3 -n 7 -d1000
 Call r(_)
 Unsatisfiable? n
 t({yes(univ_cons("Error")), [4, 5, 6]})
@@ -61,7 +61,7 @@ no
       E7:     C5 CALL pred exceptions.v/1-0 (nondet)
 mdb> f
       E8:     C5 EXCP pred exceptions.v/1-0 (nondet) c2;
-mdb> dd -d1000
+mdb> dd -d 3 -n 7 -d1000
 Call v(_)
 Throws "Error"
 Expected? n

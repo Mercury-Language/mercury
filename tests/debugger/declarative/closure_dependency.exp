@@ -6,7 +6,7 @@ mdb> step
       E2:     C2 CALL pred closure_dependency.a/3-0 (det)
 mdb> f
       E3:     C2 EXIT pred closure_dependency.a/3-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(0, [100, 0], t(p([0])))
 Valid? b 2
 browser> mark
@@ -28,7 +28,7 @@ mdb> c
       E5:     C4 CALL pred closure_dependency.a/3-0 (det)
 mdb> f
       E6:     C4 EXIT pred closure_dependency.a/3-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(1, [100, 1], t(p([1])))
 Valid? b 2
 browser> mark
@@ -48,7 +48,7 @@ mdb> c
       E8:     C6 CALL pred closure_dependency.a/3-0 (det)
 mdb> f
       E9:     C6 EXIT pred closure_dependency.a/3-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(2, [100, 2], t(p([2])))
 Valid? b 2
 browser> mark
@@ -67,7 +67,7 @@ mdb> c
      E11:     C8 CALL pred closure_dependency.a/3-0 (det)
 mdb> f
      E12:     C8 EXIT pred closure_dependency.a/3-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(3, [100, 3], t(p([3])))
 Valid? b 3
 browser> ls

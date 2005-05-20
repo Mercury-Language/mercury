@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred solutions.p/2-0 (det) solutions.m:15 (solutions.m:9)
 mdb> finish
       15:      2  2 EXIT pred solutions.p/2-0 (det) solutions.m:15 (solutions.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, [1, 2, 3])
 Valid? no
 q(1, 1)

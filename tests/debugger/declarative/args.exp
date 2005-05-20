@@ -8,7 +8,7 @@ mdb> continue
       E2:     C2 CALL pred args.p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> finish
       E3:     C2 EXIT pred args.p/5-0 (nondet) args.m:24 (args.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, 16, 3, 20, 5)
 Valid? no
 +(1, 3) = 4
@@ -34,7 +34,7 @@ mdb> continue
       E4:     C2 REDO pred args.p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> finish
       E5:     C2 EXIT pred args.p/5-0 (nondet) args.m:24 (args.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, -2, 3, 2, 5)
 Valid? no
 -(1, 3) = -2
@@ -52,7 +52,7 @@ mdb> continue
       E6:     C2 REDO pred args.p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> finish
       E7:     C2 FAIL pred args.p/5-0 (nondet) args.m:24 (args.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(1, _, 3, _, 5)
 Solutions:
 	p(1, 16, 3, 20, 5)

@@ -14,7 +14,7 @@ mdb> continue
       E2:     C2 CALL pred input_term_dep.p/3-0 (det) input_term_dep.m:33 (input_term_dep.m:22)
 mdb> finish
       E3:     C2 EXIT pred input_term_dep.p/3-0 (det) input_term_dep.m:33 (input_term_dep.m:22)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(5, 8, 13)
 Valid? browse 3
 browser> mark
@@ -37,7 +37,7 @@ mdb> continue
       E4:     C3 CALL pred input_term_dep.q/1-0 (semidet) input_term_dep.m:69 (input_term_dep.m:58)
 mdb> finish
       E5:     C3 EXIT pred input_term_dep.q/1-0 (semidet) input_term_dep.m:69 (input_term_dep.m:58)
-mdb> dd
+mdb> dd -d 3 -n 7
 q([[2, 3], [], [1]])
 Valid? browse 1
 browser> mark 1/2
@@ -59,7 +59,7 @@ mdb> continue
       E6:     C4 CALL pred input_term_dep.r/2-0 (det) input_term_dep.m:111 (input_term_dep.m:93)
 mdb> finish
       E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:111 (input_term_dep.m:93)
-mdb> dd
+mdb> dd -d 3 -n 7
 r(1, 33)
 Valid? browse 2
 browser> mark
@@ -80,7 +80,7 @@ mdb> continue
       E8:     C5 CALL pred input_term_dep.s/1-0 (semidet) input_term_dep.m:146 (input_term_dep.m:135)
 mdb> finish
       E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:146 (input_term_dep.m:135)
-mdb> dd
+mdb> dd -d 3 -n 7
 s(1)
 Valid? no
 sa(1, 7)

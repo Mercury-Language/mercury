@@ -11,7 +11,7 @@ mdb> finish
 mdb> set depth 10
 mdb> set xml_browser_cmd 'cat ./browse_arg.xml.out'
 mdb> set xml_tmp_filename './browse_arg.xml.out'
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, baz(1, bar))
 Valid? browse 2
 browser> ls

@@ -49,8 +49,12 @@
 						% Call sequence number.
 			call_event		:: event_number,
 						% Trace event number.
-			call_at_max_depth	:: bool,
-						% At the maximum depth?
+			call_at_max_depth	:: maybe(implicit_tree_info),
+						% yes if the node is the root
+						% of an implicitly represented
+						% tree.  Some information about
+						% the implicit tree is also
+						% stored.
 			call_return_label	:: maybe(label_layout),
 						% The return label, if there
 						% is one.
@@ -198,6 +202,15 @@
 						% XXX This representation can't
 						% handle partially instantiated
 						% data structures.
+		).
+
+:- type implicit_tree_info
+	--->	implicit_tree_info(
+				% The maximum depth to which the implicit
+				% subtree can be materialized, so that its
+				% weight will be less than or equal to the
+				% desired subtree weight.
+			ideal_depth	:: int
 		).
 
 :- func get_trace_exit_atom(trace_node(R)) = trace_atom.
@@ -1057,6 +1070,49 @@ call_node_set_last_interface(Call0, Last) = Call :-
 		%
 	set_trace_node_arg(Call1, 1, Last, Call).
 
+:- func call_node_update_implicit_tree_info(trace_node(trace_node_id)::di, 
+	int::di) = (trace_node(trace_node_id)::out) is det.
+
+:- pragma export(call_node_update_implicit_tree_info(di, di) = out,
+		"MR_DD_call_node_update_implicit_tree_info").
+
+call_node_update_implicit_tree_info(Call0, IdealDepth) = Call :-
+	(
+		Call0 = call(_, _, _, _, _, _, _, _, _)
+	->
+		Call1 = Call0
+	;
+		throw(internal_error("call_node_update_implicit_tree_info",
+			"not a CALL node"))
+	),
+		% call_at_max_depth is the sixth field, so we pass 5
+		% (since argument numbers start from 0).
+		%
+	set_trace_node_arg(Call1, 5, yes(implicit_tree_info(IdealDepth)), 
+		Call).
+
+:- func get_implicit_tree_ideal_depth(trace_node(trace_node_id)) = int.
+
+:- pragma export(get_implicit_tree_ideal_depth(in) = out, 
+	"MR_DD_get_implicit_tree_ideal_depth").
+
+get_implicit_tree_ideal_depth(Call) = IdealDepth :-
+	(
+		MaybeImplicitTreeInfo = Call ^ call_at_max_depth
+	->
+		(
+			MaybeImplicitTreeInfo = yes(implicit_tree_info(
+				IdealDepth))
+		;
+			MaybeImplicitTreeInfo = no,
+			throw(internal_error("get_implicit_tree_max_depth",
+				"not at max depth"))
+		)
+	;
+		throw(internal_error("get_implicit_tree_max_depth",
+			"not a CALL node"))
+	).
+
 :- func cond_node_set_status(trace_node(trace_node_id)::di, goal_status::di)
 		= (trace_node(trace_node_id)::out) is det.
 
@@ -1238,16 +1294,26 @@ print_trace_node(OutStr, Node, !IO) :-
 	%
 
 :- func construct_call_node(trace_node_id, list(trace_atom_arg), 
-	sequence_number, event_number, bool, maybe(label_layout), 
-	label_layout, int) = trace_node(trace_node_id).
+	sequence_number, event_number, bool, maybe(label_layout), label_layout,
+	int) = trace_node(trace_node_id).
 :- pragma export(construct_call_node(in, in, in, in, in, in, in, in) = out,
 	"MR_DD_construct_call_node").
 
-construct_call_node(Preceding, AtomArgs, SeqNo, EventNo, MaxDepth, 
+construct_call_node(Preceding, AtomArgs, SeqNo, EventNo, AtMaxDepth, 
 		MaybeReturnLabel, Label, IoSeqNum) = Call :-
-	Call = call(Preceding, Answer, AtomArgs, SeqNo, EventNo, MaxDepth,
-		MaybeReturnLabel, Label, IoSeqNum),
-	null_trace_node_id(Answer).
+	(
+		AtMaxDepth = no,
+		MaybeImplicitTreeInfo = no
+	;
+		AtMaxDepth = yes,
+		% The ideal depth of the implicit tree will be updated
+		% when the corresponding EXIT, FAIL or EXCP event occurs,
+		% so for now we just set it to 0.
+		MaybeImplicitTreeInfo = yes(implicit_tree_info(0))
+	),
+	null_trace_node_id(LastInterface),
+	Call = call(Preceding, LastInterface, AtomArgs, SeqNo, EventNo, 
+		MaybeImplicitTreeInfo, MaybeReturnLabel, Label, IoSeqNum).
 
 :- func make_yes_maybe_label(label_layout) = maybe(label_layout).
 :- pragma export(make_yes_maybe_label(in) = out, "MR_DD_make_yes_maybe_label").

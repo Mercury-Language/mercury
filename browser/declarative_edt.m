@@ -197,7 +197,10 @@
 
 			% The origin could not be found due to missing
 			% information.
-	;	not_found.
+	;	not_found
+			
+			% An explicit subtree is required.
+	;	require_explicit_subtree.
 
 	% The type of primitive operation that bound a subterm that was being
 	% tracked.
@@ -1004,6 +1007,9 @@ resolve_origin(IoActionMap, Store, Oracle, Node, ArgPos, TermPath, SuspectId,
 		;
 			Response = require_explicit_subtree
 		)
+	;
+		Origin = require_explicit_subtree,
+		Response = require_explicit_subtree
 	).
 
 	% Returns the suspect id in the given list that refers to the given edt

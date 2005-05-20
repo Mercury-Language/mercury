@@ -13,7 +13,7 @@ atomic_goal_rep(det_rep, "int.m", NN, [3], builtin_call_rep("int", "+", [1, 2, 3
 browser> quit
 mdb> f
       E3:     C2 EXIT func int.+/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 +(1, 2) = 3
 Valid? b 3
 browser> mark

@@ -9,7 +9,7 @@ cd 2
 ls
 quit
 f
-dd
+dd -d 3 -n 7
 b 3
 mark
 y

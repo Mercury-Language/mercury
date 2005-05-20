@@ -8,7 +8,7 @@ mdb> continue
       E2:     C2 CALL pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
       E3:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(-12)
 Valid? no
 a(0)
@@ -36,7 +36,7 @@ mdb> continue
       E4:     C2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
       E5:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(-14)
 Valid? no
 c(2, 7)
@@ -56,7 +56,7 @@ mdb> continue
       E6:     C2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
       E7:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(-20)
 Valid? no
 b(0, 1)
@@ -87,7 +87,7 @@ mdb> continue
       E8:     C2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
       E9:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(-22)
 Valid? no
 e(1, 11)
@@ -106,7 +106,7 @@ mdb> continue
      E10:     C2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
      E11:     C2 EXIT pred big.p/1-0 (nondet) big.m:24 (big.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(2)
 Valid? no
 f(0, 0)
@@ -141,7 +141,7 @@ mdb> continue
      E12:     C2 REDO pred big.p/1-0 (nondet) big.m:24 (big.m:12)
 mdb> finish
      E13:     C2 FAIL pred big.p/1-0 (nondet) big.m:24 (big.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(_)
 Solutions:
 	p(-12)

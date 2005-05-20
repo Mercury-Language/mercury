@@ -3,17 +3,17 @@ register --quiet
 break rev
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 pd
 retry
 step
 step
 finish
-dd
+dd -d 3 -n 7
 no
 pd
-dd
+dd -d 3 -n 7
 no
 no
 yes

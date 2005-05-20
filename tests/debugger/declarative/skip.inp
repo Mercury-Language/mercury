@@ -3,7 +3,7 @@ context none
 echo on
 step
 finish
-dd
+dd -d 3 -n 7
 skip
 y
 y
@@ -14,7 +14,7 @@ trust b
 trust d
 step
 finish
-dd
+dd -d 3 -n 7
 skip
 skip
 n
@@ -26,7 +26,7 @@ break a
 continue
 step
 finish
-dd
+dd -d 3 -n 7
 n
 y
 n
@@ -36,13 +36,13 @@ skip
 y
 y
 y
-dd
+dd -d 3 -n 7
 q
 break a
 c
 retry
 f
-dd
+dd -d 3 -n 7
 
 y
 n

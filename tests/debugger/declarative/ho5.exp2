@@ -8,7 +8,7 @@ mdb> continue
        3:      3  3 CALL pred ho5.p/2-0 (det) ho5.m:18 (exception.m:NNNN)
 mdb> finish
       12:      3  3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(1, _)
 Throws zero
 Expected? no
@@ -27,7 +27,7 @@ exception(univ_cons('<<function>>'))
       19:     10  3 CALL pred ho5.p/2-0 (det) ho5.m:18 (exception.m:NNNN)
 mdb> finish
       28:     10  3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(2, _)
 Throws zero
 Expected? no

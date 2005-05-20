@@ -13,14 +13,14 @@ mdb> c
       E2:     C2 CALL pred all_trusted.p/2-0 (det)
 mdb> f
       E3:     C2 EXIT pred all_trusted.p/2-0 (det)
-mdb> dd -a
+mdb> dd -d 3 -n 7 -a
 2No bug found.
       E3:     C2 EXIT pred all_trusted.p/2-0 (det)
 mdb> break main
  1: + stop  interface pred all_trusted.main/2-0 (det)
 mdb> c
 2      E4:     C1 EXIT pred all_trusted.main/2-0 (det)
-mdb> dd -a
+mdb> dd -d 3 -n 7 -a
 2No bug found.
 2      E4:     C1 EXIT pred all_trusted.main/2-0 (det)
 mdb> quit -y

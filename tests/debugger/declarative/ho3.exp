@@ -8,7 +8,7 @@ mdb> continue
        3:      2  2 CALL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:10)
 mdb> finish
       16:      2  2 FAIL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(1)
 Unsatisfiable? no
 q(0, x(0))
@@ -32,7 +32,7 @@ mdb> continue
       19:      6  2 CALL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:17)
 mdb> finish
       32:      6  2 FAIL pred ho3.p/1-0 (semidet) ho3.m:28 (ho3.m:17)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(2)
 Unsatisfiable? no
 Call x(0, 2)

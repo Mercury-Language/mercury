@@ -10,7 +10,7 @@ mdb> continue
       E2:     C2 CALL pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
 mdb> finish
       E3:     C2 EXIT pred propositional.a/0-0 (semidet) propositional.m:27 (propositional.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 a
 Valid? no
 c
@@ -24,7 +24,7 @@ mdb> continue
       E4:     C3 CALL pred propositional.b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> finish
       E5:     C3 EXIT pred propositional.b/0-0 (semidet) propositional.m:29 (propositional.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 b
 Valid? no
 f

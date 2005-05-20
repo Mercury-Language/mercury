@@ -8,7 +8,7 @@ break s
 break t
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 2
 mark
 yes
@@ -17,7 +17,7 @@ yes
 yes
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 1
 mark 2/1
 yes
@@ -26,30 +26,13 @@ yes
 yes
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 2
 mark
 yes
 continue
 finish
-dd
-browse 2
-mark
-yes
-yes
-yes
-continue
-finish
-dd
-browse 2
-mark
-yes
-yes
-yes
-yes
-continue
-finish
-dd
+dd -d 3 -n 7
 browse 2
 mark
 yes
@@ -57,25 +40,42 @@ yes
 yes
 continue
 finish
-dd
+dd -d 3 -n 7
+browse 2
+mark
+yes
+yes
+yes
+yes
+continue
+finish
+dd -d 3 -n 7
+browse 2
+mark
+yes
+yes
+yes
+continue
+finish
+dd -d 3 -n 7
 browse 2
 mark
 quit
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 3
 mark
 quit
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 3
 mark
 quit
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 3
 mark
 quit
@@ -83,7 +83,7 @@ continue
 finish
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 3
 mark
 no
@@ -91,7 +91,7 @@ yes
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 2
 mark
 yes
@@ -100,7 +100,7 @@ continue
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 browse 2
 mark
 yes

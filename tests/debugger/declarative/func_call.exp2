@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL func func_call.fib/1-0 (det) func_call.m:14 (func_call.m:9)
 mdb> finish -n
      233:      2  2 EXIT func func_call.fib/1-0 (det) func_call.m:14 (func_call.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 fib(6) = 9
 Valid? no
 Call =<(6, 1)

@@ -3,7 +3,7 @@ context none
 echo on
 
 f
-dd
+dd -d 3 -n 7
 b 4
 mark
 n

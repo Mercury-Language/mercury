@@ -10,7 +10,7 @@ mdb> continue
       E2:     C2 CALL pred special_term_dep.p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)
 mdb> finish
       E3:     C2 EXIT pred special_term_dep.p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)
-mdb> dd
+mdb> dd -d 3 -n 7
 p([2, 3])
 Valid? browse 1
 browser> mark
@@ -26,7 +26,7 @@ mdb> continue
       E4:     C3 CALL pred special_term_dep.q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
 mdb> finish
       E5:     C3 EXIT pred special_term_dep.q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
-mdb> dd
+mdb> dd -d 3 -n 7
 q([1, 2], [3])
 Valid? browse 2
 browser> mark

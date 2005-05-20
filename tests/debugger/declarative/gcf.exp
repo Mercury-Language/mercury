@@ -8,7 +8,7 @@ mdb> continue
        3:      2  2 CALL pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> finish
       23:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(11)
 Valid? no
 g(2)
@@ -28,7 +28,7 @@ mdb> continue
       24:      2  2 REDO pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> finish
       30:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(12)
 Valid? no
 c(2, 12)
@@ -46,7 +46,7 @@ mdb> continue
       31:      2  2 REDO pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
 mdb> finish
       42:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:26 (gcf.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 a(20)
 Valid? no
 g(3)

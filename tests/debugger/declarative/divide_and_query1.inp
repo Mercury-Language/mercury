@@ -6,7 +6,7 @@ set size 100
 break to_b
 c -n
 f -n
-dd -s divide_and_query
+dd -d 3 -n 7 -s divide_and_query
 n
 n
 y
@@ -17,7 +17,7 @@ delete *
 break abba
 c
 f -n
-dd -s divide_and_query
+dd -d 3 -n 7 -s divide_and_query
 n
 y
 n
@@ -27,7 +27,7 @@ y
 c
 c
 f
-dd -s divide_and_query
+dd -d 3 -n 7 -s divide_and_query
 n
 n
 y
@@ -40,7 +40,7 @@ c
 c
 f
 trust abba_delete
-dd -s divide_and_query
+dd -d 3 -n 7 -s divide_and_query
 n
 n
 n
@@ -50,7 +50,7 @@ delete *
 break to_b2
 c
 f
-dd -s divide_and_query
+dd -d 3 -n 7 -s divide_and_query
 b 2
 cd 2/2
 mark

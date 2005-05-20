@@ -10,7 +10,7 @@ mdb> c -n
       E2:     C2 CALL pred divide_and_query1.to_b/2-0 (det)
 mdb> f -n
       E3:     C2 EXIT pred divide_and_query1.to_b/2-0 (det)
-mdb> dd -s divide_and_query
+mdb> dd -d 3 -n 7 -s divide_and_query
 to_b([a, a, a, a, a, a, a, a, a, a], [b, b, b, b, b, b, b, b, b, b])
 Valid? n
 to_b([a, a, a, a], [b, b, b, b])
@@ -34,7 +34,7 @@ mdb> c
       E5:     C4 CALL pred divide_and_query1.abba/1-0 (semidet)
 mdb> f -n
       E6:     C4 EXIT pred divide_and_query1.abba/1-0 (semidet)
-mdb> dd -s divide_and_query
+mdb> dd -d 3 -n 7 -s divide_and_query
 abba([b, a, a, b])
 Valid? n
 abba_perm([a, a, b], [a, b, a])
@@ -56,7 +56,7 @@ mdb> c
       E8:     C6 CALL pred divide_and_query1.abba/1-0 (semidet)
 mdb> f
       E9:     C6 FAIL pred divide_and_query1.abba/1-0 (semidet)
-mdb> dd -s divide_and_query
+mdb> dd -d 3 -n 7 -s divide_and_query
 Call abba([a, a, a, b])
 Unsatisfiable? n
 Call abba_perm([a, a, a, b], _)
@@ -117,7 +117,7 @@ mdb> f
      E12:     C8 EXIT pred divide_and_query1.abba/1-0 (semidet)
 mdb> trust abba_delete
 Trusting pred divide_and_query1.abba_delete/3
-mdb> dd -s divide_and_query
+mdb> dd -d 3 -n 7 -s divide_and_query
 abba([a, a, b, b])
 Valid? n
 abba_perm([a, a, b, b], [a, b, b, a])
@@ -140,7 +140,7 @@ mdb> c
      E14:    C10 CALL pred divide_and_query1.to_b2/2-0 (det)
 mdb> f
      E15:    C10 EXIT pred divide_and_query1.to_b2/2-0 (det)
-mdb> dd -s divide_and_query
+mdb> dd -d 3 -n 7 -s divide_and_query
 to_b2([c, c, c, c, c, c, c], [b, b, b, b, b, b, b])
 Valid? b 2
 browser> cd 2/2

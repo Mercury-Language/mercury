@@ -4,12 +4,12 @@ echo on
 break gtmax
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 inadmissible
 yes
-dd
+dd -d 3 -n 7
 
 no
 no

@@ -4,14 +4,14 @@ break p
 break q
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 yes
 yes
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 yes

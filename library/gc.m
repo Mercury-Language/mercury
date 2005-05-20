@@ -41,6 +41,8 @@ garbage_collect(!IO) :-
 
 :- pragma no_inline(garbage_collect/0).
 
+:- pragma export(garbage_collect, "ML_garbage_collect").
+
 :- pragma foreign_proc("C",
 	garbage_collect,
 	[may_call_mercury, terminates],

@@ -5,7 +5,7 @@ break info.last
 c
 delete *
 f
-dd -s divide_and_query
+dd -d 3 -n 7 -s divide_and_query
 info
 n
 info
@@ -14,7 +14,7 @@ info
 q
 
 f
-dd
+dd -d 3 -n 7
 n
 info
 b 2
@@ -33,7 +33,7 @@ break q
 c
 delete *
 f
-dd
+dd -d 3 -n 7
 b 3
 cd 1/1
 mark
@@ -41,7 +41,7 @@ info
 q
 
 f
-dd
+dd -d 3 -n 7
 b 4
 mark
 info

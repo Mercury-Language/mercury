@@ -40,6 +40,9 @@
 :- pred trace_atom_subterm_is_ground(trace_atom::in, arg_pos::in, 
 	term_path::in) is semidet.
 
+:- pred trace_implicit_tree_info(wrap(S)::in, edt_node(R)::in, 
+	implicit_tree_info::out) is semidet <= annotated_trace(S, R).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -304,6 +307,11 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 trace_is_implicit_root(wrap(Store), dynamic(Ref)) :-
 	get_edt_call_node(Store, Ref, CallId),
 	\+ not_at_depth_limit(Store, CallId).
+
+trace_implicit_tree_info(wrap(Store), dynamic(Ref), ImplicitTreeInfo) :-
+	get_edt_call_node(Store, Ref, CallId),
+	call_node_from_id(Store, CallId, CallNode),
+	CallNode ^ call_at_max_depth = yes(ImplicitTreeInfo).
 
 :- pred trace_weight(wrap(S)::in, edt_node(R)::in, int::out, int::out)
 	is det <= annotated_trace(S, R).
@@ -720,7 +728,10 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 			maybe(proc_rep)
 					% The body of the procedure indicated
 					% by start_loc.
-		).
+		)
+			% An explicit subtree is required before the
+			% chain start can be calculated.
+	;	require_explicit_subtree.
 
 :- type start_loc(R)
 	--->	cur_goal
@@ -747,8 +758,15 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 
 trace_subterm_mode(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode) :-
 	find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart),
-	ChainStart = chain_start(StartLoc, _, _, _, _, _),
-	Mode = start_loc_to_subterm_mode(StartLoc).
+	(
+		ChainStart = chain_start(StartLoc, _, _, _, _, _),
+		Mode = start_loc_to_subterm_mode(StartLoc)
+	;
+		ChainStart = require_explicit_subtree,
+		% The only time a subtree will be required is if the
+		% mode of the subterm is output.
+		Mode = subterm_out
+	).
 
 :- pred trace_dependency(wrap(S)::in, edt_node(R)::in, arg_pos::in,
 	term_path::in, subterm_mode::out, subterm_origin(edt_node(R))::out) 
@@ -756,57 +774,69 @@ trace_subterm_mode(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode) :-
 
 trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 	find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart),
-	ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, NodeId, 
-		StartPath, MaybeProcRep),
-	Mode = start_loc_to_subterm_mode(StartLoc),
 	(
-		MaybeProcRep = no,
-		Origin = not_found
-	;
-		MaybeProcRep = yes(ProcRep),
-		det_trace_node_from_id(Store, NodeId, Node),
-		materialize_contour(Store, NodeId, Node, [], Contour0),
+		ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, NodeId, 
+			StartPath, MaybeProcRep),
+		Mode = start_loc_to_subterm_mode(StartLoc),
 		(
-			StartLoc = parent_goal(CallId, CallNode),
-			Contour = list.append(Contour0, [CallId - CallNode])
-		;
-			StartLoc = cur_goal,
-			Contour = Contour0
-		),
-		ProcRep = proc_rep(HeadVars, GoalRep),
-		is_traced_grade(AllTraced),
-		MaybePrims = make_primitive_list(Store, 
-			[goal_and_path(GoalRep, [])],
-			Contour, StartPath, ArgNum, TotalArgs,
-			HeadVars, AllTraced, []),
-		(
-			MaybePrims = yes(primitive_list_and_var(Primitives, 
-				Var, MaybeClosure)),
-			%
-			% If the subterm is in a closure argument (i.e. an
-			% argument passed to the predicate that originally
-			% formed the closure), then the argument number of the
-			% closure argument is prefixed to the term path, since
-			% the closure is itself a term.  This is done because
-			% at the time of the closure call it's not easy (XXX or
-			% is it?) to decide if the call is higher order or not,
-			% without repeating all the work done in
-			% make_primitive_list, so the original TermPath doesn't
-			% reflect the closure argument position.
-			%
-			(
-				MaybeClosure = yes,
-				AdjustedTermPath = [ArgNum | TermPath]
-			;
-				MaybeClosure = no,
-				AdjustedTermPath = TermPath
-			),
-			traverse_primitives(Primitives, Var, AdjustedTermPath,
-				Store, ProcRep, Origin)
-		;
-			MaybePrims = no,
+			MaybeProcRep = no,
 			Origin = not_found
+		;
+			MaybeProcRep = yes(ProcRep),
+			det_trace_node_from_id(Store, NodeId, Node),
+			materialize_contour(Store, NodeId, Node, [], Contour0),
+			(
+				StartLoc = parent_goal(CallId, CallNode),
+				Contour = list.append(Contour0, 
+					[CallId - CallNode])
+			;
+				StartLoc = cur_goal,
+				Contour = Contour0
+			),
+			ProcRep = proc_rep(HeadVars, GoalRep),
+			is_traced_grade(AllTraced),
+			MaybePrims = make_primitive_list(Store, 
+				[goal_and_path(GoalRep, [])],
+				Contour, StartPath, ArgNum, TotalArgs,
+				HeadVars, AllTraced, []),
+			(
+				MaybePrims = yes(primitive_list_and_var(
+					Primitives, Var, MaybeClosure)),
+				%
+				% If the subterm is in a closure argument (i.e.
+				% an argument passed to the predicate that
+				% originally formed the closure), then the
+				% argument number of the closure argument is
+				% prefixed to the term path, since the closure
+				% is itself a term.  This is done because at
+				% the time of the closure call it's not easy
+				% to decide if the call is higher order or not,
+				% without repeating all the work done in
+				% make_primitive_list, so the original TermPath
+				% doesn't reflect the closure argument
+				% position.
+				%
+				(
+					MaybeClosure = yes,
+					AdjustedTermPath = [ArgNum | TermPath]
+				;
+					MaybeClosure = no,
+					AdjustedTermPath = TermPath
+				),
+				traverse_primitives(Primitives, Var,
+					AdjustedTermPath, Store, ProcRep,
+					Origin)
+			;
+				MaybePrims = no,
+				Origin = not_found
+			)
 		)
+	;
+		ChainStart = require_explicit_subtree,
+		Origin = require_explicit_subtree,
+		% The only time a subtree will be required is if the
+		% mode of the subterm is output.
+		Mode = subterm_out
 	).
 
 :- pred find_chain_start(S::in, R::in, arg_pos::in, term_path::in,
@@ -823,8 +853,14 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 			find_chain_start_inside(Store, CallId, CallNode,
 				ArgPos, ChainStart)
 		; trace_atom_subterm_is_ground(ExitAtom, ArgPos, TermPath) ->
-			find_chain_start_outside(CallNode, Node, ArgPos,
-				ChainStart)
+			(
+				not_at_depth_limit(Store, CallId)
+			->
+				find_chain_start_outside(CallNode, Node,
+					ArgPos, ChainStart)
+			;
+				ChainStart = require_explicit_subtree
+			)
 		;
 			throw(internal_error("find_chain_start",
 				"unbound wrong answer term"))

@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred negation.p/2-0 (det) negation.m:29 (negation.m:14)
 mdb> finish
       31:      2  2 EXIT pred negation.p/2-0 (det) negation.m:29 (negation.m:14)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, 42)
 Valid? no
 r(1, 11)

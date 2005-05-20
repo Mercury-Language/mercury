@@ -12,7 +12,7 @@ mdb> finish
        5:      3  3 CALL pred deep_sub.q/1-0 (multi) deep_sub.m:5 (deep_warning.m:29)
        7:      3  3 EXIT pred deep_sub.q/1-0 (multi) deep_sub.m:5 (deep_warning.m:29)
        8:      2  2 EXIT pred deep_warning.p/2-0 (nondet) deep_warning.m:28 (deep_warning.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 Warning: some modules were compiled with a trace level lower than `decl'.
 This may result in calls being omitted from the debugging tree.
 p(1, 1)
@@ -27,7 +27,7 @@ mdb> continue
        5:      3  3 CALL pred deep_sub.q/1-0 (multi) deep_sub.m:5 (deep_warning.m:29)
 mdb> finish
        7:      3  3 EXIT pred deep_sub.q/1-0 (multi) deep_sub.m:5 (deep_warning.m:29)
-mdb> dd
+mdb> dd -d 3 -n 7
 mdb: cannot start declarative debugging, because some event types were
 suppressed when this procedure was compiled.
 mdb> quit -y

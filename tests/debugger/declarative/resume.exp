@@ -11,11 +11,11 @@ mdb> delete *
  0: E stop  interface func resume.l/1-0 (semidet)
 mdb> f
       E3:     C2 EXIT func resume.l/1-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 l([4, 5]) = 5
 Valid? pd
       E3:     C2 EXIT func resume.l/1-0 (semidet)
-mdb> dd -r
+mdb> dd -d 3 -n 7 -r
 l([4, 5]) = 5
 Valid? y
 l([3, 4, 5]) = 5
@@ -27,12 +27,12 @@ mdb> c
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
 mdb> retry
       E6:     C4 CALL pred resume.wrapper/6-0 (semidet)
-mdb> dd -r
+mdb> dd -d 3 -n 7 -r
 l([3, 4, 5]) = 5
 Valid? q
 Diagnosis aborted.
       E6:     C4 CALL pred resume.wrapper/6-0 (semidet)
-mdb> dd -r
+mdb> dd -d 3 -n 7 -r
 l([3, 4, 5]) = 5
 Valid? pd
       E4:     C3 EXIT func resume.l/1-0 (semidet)
@@ -58,7 +58,7 @@ mdb> delete *
  0: E stop  interface func resume.l/1-0 (semidet)
 mdb> f
       E9:     C6 EXIT func resume.l/1-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 l([10]) = 10
 Valid? pd
       E9:     C6 EXIT func resume.l/1-0 (semidet)
@@ -68,7 +68,7 @@ mdb> c
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
 mdb> retry
       E6:     C4 CALL pred resume.wrapper/6-0 (semidet)
-mdb> dd -r
+mdb> dd -d 3 -n 7 -r
 l([10]) = 10
 Valid? y
 l([9, 10]) = 10
@@ -98,7 +98,7 @@ mdb> c
      E12:     C9 CALL func resume.l/1-0 (semidet)
 mdb> f
      E13:     C9 EXIT func resume.l/1-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 l([15]) = 15
 Valid? pd
      E13:     C9 EXIT func resume.l/1-0 (semidet)
@@ -108,7 +108,7 @@ mdb> break wrapper
  0: + stop  interface pred resume.wrapper/6-0 (semidet)
 mdb> c
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
-mdb> dd -r
+mdb> dd -d 3 -n 7 -r
 l([15]) = 15
 Valid? y
 l([14, 15]) = 15
@@ -123,11 +123,11 @@ mdb> delete *
  3: E stop  linenumber resume.m:35
 mdb> f
      E16:    C11 EXIT func resume.l/1-0 (semidet)
-mdb> dd -d 2
+mdb> dd -d 2 -n 7
 l([16, 17, 18, 19, 20]) = 20
 Valid? pd
      E16:    C11 EXIT func resume.l/1-0 (semidet)
-mdb> dd -r
+mdb> dd -d 3 -n 7 -r
 l([16, 17, 18, 19, 20]) = 20
 Valid? n
 l([17, 18, 19, 20]) = 20
@@ -148,7 +148,7 @@ mdb> c
      E18:    C13 CALL func resume.l/1-0 (semidet)
 mdb> f
      E19:    C13 EXIT func resume.l/1-0 (semidet)
-mdb> dd -d 2
+mdb> dd -d 2 -n 7
 l([21, 22, 23, 24, 25]) = 25
 Valid? pd
      E19:    C13 EXIT func resume.l/1-0 (semidet)
@@ -160,7 +160,7 @@ mdb> c
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
 mdb> retry
       E6:     C4 CALL pred resume.wrapper/6-0 (semidet)
-mdb> dd -r
+mdb> dd -d 3 -n 7 -r
 l([21, 22, 23, 24, 25]) = 25
 Valid? n
 l([22, 23, 24, 25]) = 25
@@ -181,7 +181,7 @@ mdb> c
      E21:    C15 CALL func resume.l/1-0 (semidet)
 mdb> f
      E22:    C15 EXIT func resume.l/1-0 (semidet)
-mdb> dd -d 2
+mdb> dd -d 2 -n 7
 l([26, 27, 28, 29, 30]) = 30
 Valid? pd
      E22:    C15 EXIT func resume.l/1-0 (semidet)
@@ -192,19 +192,19 @@ mdb> break wrapper
  0: + stop  interface pred resume.wrapper/6-0 (semidet)
 mdb> c
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
-mdb> dd -r -s divide_and_query
+mdb> dd -d 3 -n 7 -r -s divide_and_query
 l([26, 27, 28, 29, 30]) = 30
 Valid? n
 l([29, 30]) = 30
 Valid? q
 Diagnosis aborted.
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
-mdb> dd -r
+mdb> dd -d 3 -n 7 -r
 l([29, 30]) = 30
 Valid? q
 Diagnosis aborted.
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
-mdb> dd -rs top_down
+mdb> dd -d 3 -n 7 -rs top_down
 l([27, 28, 29, 30]) = 30
 Valid? q
 Diagnosis aborted.

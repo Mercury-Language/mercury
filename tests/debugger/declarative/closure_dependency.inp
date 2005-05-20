@@ -3,7 +3,7 @@ context none
 echo on
 step
 f
-dd
+dd -d 3 -n 7
 b 2
 mark
 n
@@ -14,7 +14,7 @@ break a
 c
 c
 f
-dd
+dd -d 3 -n 7
 b 2
 mark
 n
@@ -24,7 +24,7 @@ y
 c
 c
 f
-dd
+dd -d 3 -n 7
 b 2
 mark
 n
@@ -34,7 +34,7 @@ y
 c
 c
 f
-dd
+dd -d 3 -n 7
 b 3
 ls
 mark

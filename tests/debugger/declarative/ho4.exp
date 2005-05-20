@@ -8,7 +8,7 @@ mdb> continue
        3:      2  2 CALL pred ho4.p/1-0 (semidet) ho4.m:28 (ho4.m:10)
 mdb> finish
       18:      2  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:28 (ho4.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(1)
 Unsatisfiable? no
 q(r(5), 5)
@@ -28,7 +28,7 @@ mdb> continue
       21:      5  2 CALL pred ho4.p/1-0 (semidet) ho4.m:28 (ho4.m:17)
 mdb> finish
       36:      5  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:28 (ho4.m:17)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(2)
 Unsatisfiable? no
 Found partially uncovered atom:

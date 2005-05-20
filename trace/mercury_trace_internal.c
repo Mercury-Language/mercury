@@ -596,7 +596,7 @@ static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         MR_bool *split, MR_bool *close_window, char ***words,
                         int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
-                        MR_Integer *depth_step_size,
+                        MR_Integer *default_depth, MR_Integer *num_nodes,
                         MR_Decl_Search_Mode *search_mode, 
                         MR_bool *search_mode_was_set, MR_bool *new_session,
                         char ***words, int *word_count, const char *cat,
@@ -5659,13 +5659,14 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_bool             new_session = MR_TRUE;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
-    MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
+    MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
     search_mode = MR_trace_get_default_search_mode();
     MR_trace_decl_in_dd_dd_mode = MR_FALSE;
 
     if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-        &MR_edt_depth_step_size, &search_mode, &search_mode_was_set, 
-        &new_session, &words, &word_count, "dd", "dd"))
+        &MR_edt_default_depth_limit, &MR_edt_desired_nodes_in_subtree,
+        &search_mode, &search_mode_was_set, &new_session,
+        &words, &word_count, "dd", "dd"))
     {
         ; /* the usage message has already been printed */
     } else if (word_count == 1) {
@@ -5704,13 +5705,14 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_bool             new_session = MR_TRUE;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
-    MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
-    search_mode = (MR_Word) -1;
+    MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
+    search_mode = MR_trace_get_default_search_mode();
     MR_trace_decl_in_dd_dd_mode = MR_TRUE;
 
     if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-        &MR_edt_depth_step_size, &search_mode, &search_mode_was_set,
-        &new_session, &words, &word_count, "dd", "dd_dd"))
+        &MR_edt_default_depth_limit, &MR_edt_desired_nodes_in_subtree, 
+        &search_mode, &search_mode_was_set, &new_session,
+        &words, &word_count, "dd", "dd_dd"))
     {
         ; /* the usage message has already been printed */
     } else if (word_count <= 2) {
@@ -6962,7 +6964,8 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 static struct MR_option MR_trace_dd_opts[] =
 {
     { "assume-all-io-is-tabled",    MR_no_argument,         NULL,   'a' },
-    { "depth-step-size",            MR_required_argument,   NULL,   'd' },
+    { "depth",                      MR_required_argument,   NULL,   'd' },
+    { "nodes",                      MR_required_argument,   NULL,   'n' },
     { "search-mode",                MR_required_argument,   NULL,   's' },
     { "resume",                     MR_required_argument,   NULL,   'r' },
     { NULL,                         MR_no_argument,         NULL,   0 }
@@ -6970,15 +6973,15 @@ static struct MR_option MR_trace_dd_opts[] =
 
 static MR_bool
 MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
-    MR_Integer *depth_step_size, MR_Decl_Search_Mode *search_mode,
-    MR_bool *search_mode_was_set, MR_bool *new_session, 
-    char ***words, int *word_count, const char *cat,
+    MR_Integer *default_depth, MR_Integer *num_nodes,
+    MR_Decl_Search_Mode *search_mode, MR_bool *search_mode_was_set, 
+    MR_bool *new_session, char ***words, int *word_count, const char *cat, 
     const char *item)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "ad:s:r",
+    while ((c = MR_getopt_long(*word_count, *words, "ad:n:s:r",
         MR_trace_dd_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -6988,7 +6991,14 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 break;
 
             case 'd':
-                if (!MR_trace_is_natural_number(MR_optarg, depth_step_size)) {
+                if (! MR_trace_is_natural_number(MR_optarg, default_depth)) {
+                    MR_trace_usage(cat, item);
+                    return MR_FALSE;
+                }
+                break;
+
+            case 'n':
+                if (! MR_trace_is_natural_number(MR_optarg, num_nodes)) {
                     MR_trace_usage(cat, item);
                     return MR_FALSE;
                 }
@@ -8004,8 +8014,8 @@ static const char *const    MR_trace_scope_cmd_args[] =
     { "all", "interface", "entry", NULL };
 
 static const char *const    MR_trace_dd_cmd_args[] =
-    { "-s", "-a", "-d", "--search-mode",
-    "--assume-all-io-is-tabled", "--depth-step-size",
+    { "-s", "-a", "-d", "-n", "--search-mode",
+    "--assume-all-io-is-tabled", "--depth", "--nodes",
     "top_down", "divide_and_query", NULL };
 
 /*

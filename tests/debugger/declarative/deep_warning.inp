@@ -4,11 +4,11 @@ break p
 break q
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 retry
 continue
 finish
-dd
+dd -d 3 -n 7
 quit -y

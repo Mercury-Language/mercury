@@ -10,11 +10,11 @@ mdb> step
        6:      4  3 CALL __Unify__ for comp_gen.foo/1-0 (semidet) comp_gen.m:17 (comp_gen.m:27)
 mdb> finish
        7:      4  3 FAIL __Unify__ for comp_gen.foo/1-0 (semidet) comp_gen.m:17 (comp_gen.m:27)
-mdb> dd
+mdb> dd -d 3 -n 7
 mdb: cannot start declarative debugging at compiler generated procedures.
 mdb> continue
        8:      3  2 FAIL pred comp_gen.p/2-0 (semidet) comp_gen.m:27 (comp_gen.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(f(1), f(2))
 Unsatisfiable? no
 Found partially uncovered atom:

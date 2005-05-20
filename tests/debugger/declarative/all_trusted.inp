@@ -7,8 +7,8 @@ trust all_trusted
 break p
 c
 f
-dd -a
+dd -d 3 -n 7 -a
 break main
 c
-dd -a
+dd -d 3 -n 7 -a
 quit -y

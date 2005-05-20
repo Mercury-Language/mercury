@@ -3,7 +3,7 @@ register --quiet
 break shallow__test
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes
@@ -14,7 +14,7 @@ yes
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes
@@ -25,7 +25,7 @@ yes
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes
@@ -35,7 +35,7 @@ yes
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes
@@ -43,7 +43,7 @@ yes
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes

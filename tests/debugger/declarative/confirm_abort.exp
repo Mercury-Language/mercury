@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred confirm_abort.p/1-0 (det) confirm_abort.m:15 (confirm_abort.m:8)
 mdb> finish
        5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:15 (confirm_abort.m:8)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(27)
 Valid? no
 q(27)
@@ -44,14 +44,14 @@ Found incorrect contour:
 q(27)
 Is this a bug? quit
        5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:15 (confirm_abort.m:8)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(27)
 Valid? [no] n
 Found incorrect contour:
 q(27)
 Is this a bug? q
        5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:15 (confirm_abort.m:8)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(27)
 Valid? [no] n
 Found incorrect contour:

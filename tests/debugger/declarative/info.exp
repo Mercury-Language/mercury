@@ -10,7 +10,7 @@ mdb> delete *
  0: E stop  interface pred info.last/2-0 (semidet)
 mdb> f
       E3:     C2 EXIT pred info.last/2-0 (semidet)
-mdb> dd -s divide_and_query
+mdb> dd -d 3 -n 7 -s divide_and_query
 last([1, 2, 3, 4, 5, 6, 7, 8, ...], t/1)
 Valid? info
 Context of current question   : info.m:43 (info.m:15)
@@ -44,7 +44,7 @@ mdb>
       E4:     C3 CALL pred info.last/2-0 (semidet)
 mdb> f
       E5:     C3 EXIT pred info.last/2-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 last([101, 112, 103, 104, 105, 106, 107, 108], t/1)
 Valid? n
 last([112, 103, 104, 105, 106, 107, 108], t(108))
@@ -102,7 +102,7 @@ mdb> delete *
  0: E stop  interface pred info.q/4-0 (det)
 mdb> f
       E7:     C4 EXIT pred info.q/4-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 q(0, "lala", t(t(t("lala"))), 2)
 Valid? b 3
 browser> cd 1/1
@@ -122,7 +122,7 @@ mdb>
       E8:     C5 CALL pred info.q/4-0 (det)
 mdb> f
       E9:     C5 EXIT pred info.q/4-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 q(1, "lala", t(t(t("lala"))), 2)
 Valid? b 4
 browser> mark

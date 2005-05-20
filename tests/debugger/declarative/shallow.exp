@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:9)
 mdb> finish
       15:      2  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 test(p("t1", 5), 1)
 Valid? no
 p("t1", 5, 1)
@@ -35,7 +35,7 @@ mdb> continue
       16:      6  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:10)
 mdb> finish
       29:      6  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 test(p("t2", 37), -11)
 Valid? no
 p("t2", 37, -11)
@@ -62,7 +62,7 @@ mdb> continue
       30:     10  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:11)
 mdb> finish
       41:     10  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:11)
-mdb> dd
+mdb> dd -d 3 -n 7
 test(q("t3", 2), 2)
 Valid? no
 q("t3", 2, 2)
@@ -86,7 +86,7 @@ mdb> continue
       42:     13  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:12)
 mdb> finish
       48:     13  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 test(q("t4", -1), 11)
 Valid? no
 q("t4", -1, 11)
@@ -104,7 +104,7 @@ mdb> continue
       49:     16  2 CALL pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:13)
 mdb> finish
       62:     16  2 EXIT pred shallow.test/2-0 (det) shallow.m:29 (shallow.m:13)
-mdb> dd
+mdb> dd -d 3 -n 7
 test(r("t5", 3), 23)
 Valid? no
 r("t5", 3, 23)

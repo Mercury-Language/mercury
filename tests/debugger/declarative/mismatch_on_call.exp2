@@ -6,7 +6,7 @@ mdb>
       E2:     C2 CALL pred mismatch_on_call.p/4-0 (det)
 mdb> f
       E3:     C2 EXIT pred mismatch_on_call.p/4-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, 2, 204, 202)
 Valid? b 4
 browser> mark

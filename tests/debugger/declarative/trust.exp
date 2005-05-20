@@ -73,7 +73,7 @@ mdb> step
       E2:     C2 CALL pred trust.dostuff/2-0 (cc_multi)
 mdb> finish
       E3:     C2 EXIT pred trust.dostuff/2-0 (cc_multi)
-mdb> dd
+mdb> dd -d 3 -n 7
 dostuff(w("aaabbb"), '=')
 Valid? n
 w_cmp('=', w("aaB"), w("aAB"))

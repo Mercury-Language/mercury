@@ -8,7 +8,7 @@ mdb> continue
        3:      2  2 CALL pred family.half_siblings/2-0 (nondet) family.m:82 (family.m:9)
 mdb> finish
      268:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:82 (family.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 half_siblings(a, b)
 Valid? no
 siblings(a, b)
@@ -56,7 +56,7 @@ mdb> continue
      269:      2  2 REDO pred family.half_siblings/2-0 (nondet) family.m:82 (family.m:9)
 mdb> finish
      530:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:82 (family.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 half_siblings(b, a)
 Valid? no
 Found partially uncovered atom:
@@ -69,7 +69,7 @@ mdb> continue
      531:      2  2 REDO pred family.half_siblings/2-0 (nondet) family.m:82 (family.m:9)
 mdb> finish
      695:      2  2 FAIL pred family.half_siblings/2-0 (nondet) family.m:82 (family.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call half_siblings(_, _)
 Solutions:
 	half_siblings(a, b)

@@ -7,7 +7,7 @@ trust std_util
 break p
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 yesy

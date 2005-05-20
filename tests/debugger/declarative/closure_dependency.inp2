@@ -4,7 +4,7 @@ echo on
 break a
 c
 f
-dd
+dd -d 3 -n 7
 browse
 cd 3/1
 ls
@@ -15,7 +15,7 @@ y
 c
 c
 f
-dd
+dd -d 3 -n 7
 b 2
 mark
 b
@@ -26,7 +26,7 @@ y
 c
 c
 f
-dd
+dd -d 3 -n 7
 b 2
 mark
 b 2
@@ -36,7 +36,7 @@ y
 c
 c
 f
-dd
+dd -d 3 -n 7
 b 2
 mark
 b

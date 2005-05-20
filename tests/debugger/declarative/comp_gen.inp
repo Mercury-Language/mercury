@@ -4,9 +4,9 @@ break p
 continue
 step
 finish
-dd
+dd -d 3 -n 7
 continue
-dd
+dd -d 3 -n 7
 no
 yes
 continue

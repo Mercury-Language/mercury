@@ -182,7 +182,7 @@
 	;	suspicious_subterm(T, arg_pos, term_path)
 
 			% This node should be ignored.  It cannot contain a bug
-			% but it's children may or may not contain a bug.
+			% but its children may or may not contain a bug.
 			%
 	;	ignore(T)
 	
@@ -260,15 +260,27 @@
 
 			% The analyser requires the back end to reproduce
 			% part of the annotated trace, with a greater
-			% depth bound.  The event number and sequence
-			% number are for the final event required (the
-			% first event required is the call event with
-			% the same sequence number). 
-			% R is the node preceeding the call node.  This is
-			% needed so the root of the new tree can have the
-			% correct preceding node.
+			% depth bound.   
 			%
-	;	require_subtree(event_number, sequence_number, R)
+	;	require_subtree(
+				%
+				% The event number and sequence
+				% number are for the final event required (the
+				% first event required is the call event with
+				% the same sequence number).
+				%
+			require_subtree_final_event	:: event_number, 
+			require_subtree_seqno		:: sequence_number, 
+
+				% The node preceding the call node.  This
+				% is needed so the root of the new tree has
+				% the correct preceding node.
+			require_subtree_call_preceding_node	:: R, 
+
+				% The maximum depth to build the new subtree
+				% to.
+			require_subtree_max_depth		:: int
+		)
 			
 			% The analyser requires events before and after the
 			% current set of materialized events to be generated.
@@ -455,10 +467,19 @@ handle_analyser_response(Store, oracle_question(Question), MaybeOrigin,
 	handle_oracle_response(Store, OracleResponse, Response, !Diagnoser,
 		!IO).
 
-handle_analyser_response(Store, require_explicit_subtree(Node), _, 
-		Response, Diagnoser, Diagnoser, !IO) :-
-	edt_subtree_details(Store, Node, Event, Seqno, CallPreceding),
-	Response = require_subtree(Event, Seqno, CallPreceding).
+handle_analyser_response(Store, require_explicit_subtree(Node), _, Response,
+		Diagnoser, Diagnoser, !IO) :-
+ 	edt_subtree_details(Store, Node, Event, Seqno, CallPreceding),
+	(
+		trace_implicit_tree_info(wrap(Store), Node, ImplicitTreeInfo)
+	->
+		ImplicitTreeInfo = implicit_tree_info(IdealDepth)
+	;
+		throw(internal_error("handle_analyser_response",
+			"subtree requested for node which is not an " ++
+			"implicit root"))
+	),
+	Response = require_subtree(Event, Seqno, CallPreceding, IdealDepth).
 
 handle_analyser_response(Store, require_explicit_supertree(Node), _, 
 		Response, Diagnoser, Diagnoser, !IO) :-
@@ -649,14 +670,14 @@ diagnoser_symptom_found(symptom_found(Event), Event).
 diagnoser_no_bug_found(no_bug_found).
 
 :- pred diagnoser_require_subtree(diagnoser_response(trace_node_id)::in, 
-	event_number::out, sequence_number::out, trace_node_id::out) 
+	event_number::out, sequence_number::out, trace_node_id::out, int::out) 
 	is semidet.
 
-:- pragma export(diagnoser_require_subtree(in, out, out, out),
+:- pragma export(diagnoser_require_subtree(in, out, out, out, out),
 		"MR_DD_diagnoser_require_subtree").
 
-diagnoser_require_subtree(require_subtree(Event, SeqNo, CallPreceding), 
-	Event, SeqNo, CallPreceding).
+diagnoser_require_subtree(require_subtree(Event, SeqNo, CallPreceding, 
+	MaxDepth), Event, SeqNo, CallPreceding, MaxDepth).
 
 :- pred diagnoser_require_supertree(diagnoser_response(trace_node_id)::in, 
 	event_number::out, sequence_number::out) is semidet.

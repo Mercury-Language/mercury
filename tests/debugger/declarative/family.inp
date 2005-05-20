@@ -3,7 +3,7 @@ register --quiet
 break half_siblings
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 no
@@ -23,13 +23,13 @@ yes
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 quit -y

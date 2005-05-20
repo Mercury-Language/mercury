@@ -7,7 +7,7 @@ break tabled_read_decl__test
 continue
 finish -n
 print
-dd -a
+dd -d 3 -n 7 -a
 print 1-2
 p io 1-2
 print io 2-1
@@ -27,7 +27,7 @@ break tabled_read_decl.test
 c
 delete *
 f
-dd -ad1
+dd -d 3 -n 7 -ad1
 y
 n
 y
@@ -39,7 +39,7 @@ c
 table_io stop
 delete *
 f
-dd -ad1
+dd -d 3 -n 7 -ad1
 y
 y
 y

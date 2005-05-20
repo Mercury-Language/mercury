@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)
 mdb> finish
        9:      2  2 EXIT pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(53, 53)
 Valid? no
 q(53, 53)

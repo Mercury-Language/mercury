@@ -4,7 +4,7 @@ Command echo enabled.
 mdb> register --quiet
 mdb> goto 3
        3:      2  2 EXIT pred dependency.turn_on_origin_debug/0-0 (det) dependency.m:69 (dependency.m:12)
-mdb> dd
+mdb> dd -d 3 -n 7
 turn_on_origin_debug
 Valid? browse 1
 Invalid argument number
@@ -33,7 +33,7 @@ proc_rep(
       [|](
         ite_rep(atomic_goal_rep/5, atomic_goal_rep/5, atomic_goal_rep/5), 
         [|](atomic_goal_rep/5, [|](switch_rep([|]/2), [|](disj_rep([|]/2), [])))))))
-mdb> dd
+mdb> dd -d 3 -n 7
 test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
 Valid? browse 1
 browser> ^1
@@ -43,7 +43,7 @@ p(1)
 Valid? quit
 Diagnosis aborted.
       18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
-mdb> dd
+mdb> dd -d 3 -n 7
 test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
 Valid? browse 1
 browser> ^2^1
@@ -59,7 +59,7 @@ p(1)
 Valid? quit
 Diagnosis aborted.
       18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
-mdb> dd
+mdb> dd -d 3 -n 7
 test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
 Valid? browse 1
 browser> ^2^2^1
@@ -69,7 +69,7 @@ p(1)
 Valid? quit
 Diagnosis aborted.
       18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
-mdb> dd
+mdb> dd -d 3 -n 7
 test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
 Valid? browse 1
 browser> ^2^2^2^1
@@ -79,7 +79,7 @@ p(1)
 Valid? quit
 Diagnosis aborted.
       18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
-mdb> dd
+mdb> dd -d 3 -n 7
 test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
 Valid? browse 1
 browser> ^2^2^2^2^1
@@ -89,7 +89,7 @@ r(1, [|](3, [|](4, [])), -(3, 4))
 Valid? quit
 Diagnosis aborted.
       18:      3  2 EXIT pred dependency.test/1-0 (cc_multi) dependency.m:19 (dependency.m:13)
-mdb> dd
+mdb> dd -d 3 -n 7
 test([|](1, [|](3, [|](6, [|](1, [|](3, []))))))
 Valid? browse 1
 browser> ^2^2^2^2^2

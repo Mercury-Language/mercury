@@ -8,7 +8,7 @@ mdb> continue
        4:      3  2 CALL pred dependency2.test/1-0 (cc_multi) dependency2.m:19 (dependency2.m:13)
 mdb> finish
       18:      3  2 EXIT pred dependency2.test/1-0 (cc_multi) dependency2.m:19 (dependency2.m:13)
-mdb> dd
+mdb> dd -d 3 -n 7
 test([1, 3, 6, 1, 3])
 Valid? browse 1
 browser> ^2^1

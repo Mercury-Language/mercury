@@ -10,7 +10,7 @@ mdb> continue
       13:      9  7 CALL pred throw.p/1-0 (cc_nondet) throw.m:20 (exception.m:NNNN)
 mdb> finish
       70:      9  7 EXCP pred throw.p/1-0 (cc_nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p(_)
 Throws "Too big"
 Expected? no
@@ -29,7 +29,7 @@ exception(univ_cons("Too big"))
     1210:    466  7 CALL pred throw.q/1-0 (semidet) throw.m:48 (exception.m:NNNN)
 mdb> finish
     1267:    466  7 EXCP pred throw.q/1-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call q(_)
 Throws "Too big"
 Expected? no

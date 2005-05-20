@@ -2,7 +2,7 @@
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
-mdb> dd
+mdb> dd -d 3 -n 7
 mdb: declarative debugging is only available from EXIT, FAIL or EXCP events.
 mdb> break queen
  0: + stop  interface pred queens.queen/2-0 (nondet)
@@ -10,7 +10,7 @@ mdb> continue
        5:      3  2 CALL pred queens.queen/2-0 (nondet) queens.m:41 (queens.m:15)
 mdb> finish
      161:      3  2 FAIL pred queens.queen/2-0 (nondet) queens.m:41 (queens.m:15)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call queen([1, 2, 3, 4, 5], _)
 Unsatisfiable? no
 Call qperm([1, 2, 3, 4, 5], _)

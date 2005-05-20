@@ -8,7 +8,7 @@ mdb> continue
       E2:     C2 CALL pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
       E3:     C2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 p('a', 30)
 Valid? no
 q('a', 'a')
@@ -28,7 +28,7 @@ mdb> continue
       E4:     C2 REDO pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
       E5:     C2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 p('a', 31)
 Valid? no
 Found incorrect contour:
@@ -41,7 +41,7 @@ mdb> continue
       E6:     C2 REDO pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
       E7:     C2 EXIT pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 p('a', 32)
 Valid? no
 q('a', 'b')
@@ -59,7 +59,7 @@ mdb> continue
       E8:     C2 REDO pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
       E9:     C2 FAIL pred aadebug.p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 Call p('a', _)
 Solutions:
 	p('a', 30)

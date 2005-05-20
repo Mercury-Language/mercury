@@ -18,7 +18,7 @@ mdb> continue
       E2:     C2 CALL pred output_term_dep.p/3-0 (det)
 mdb> finish
       E3:     C2 EXIT pred output_term_dep.p/3-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(5, 8, 13)
 Valid? browse 2
 browser> mark
@@ -42,7 +42,7 @@ mdb> continue
       E4:     C3 CALL pred output_term_dep.q/1-0 (det)
 mdb> finish
       E5:     C3 EXIT pred output_term_dep.q/1-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 q([[1, ...], [], [99]])
 Valid? browse 1
 browser> mark 2/1
@@ -64,7 +64,7 @@ mdb> continue
       E6:     C4 CALL pred output_term_dep.r/2-0 (det)
 mdb> finish
       E7:     C4 EXIT pred output_term_dep.r/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 r(1, 999)
 Valid? browse 2
 browser> mark
@@ -77,7 +77,7 @@ mdb> continue
       E8:     C5 CALL pred output_term_dep.r/2-0 (det)
 mdb> finish
       E9:     C5 EXIT pred output_term_dep.r/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 r(2, 43)
 Valid? browse 2
 browser> mark
@@ -95,7 +95,7 @@ mdb> continue
      E10:     C6 CALL pred output_term_dep.r/2-0 (det)
 mdb> finish
      E11:     C6 EXIT pred output_term_dep.r/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 r(3, 57)
 Valid? browse 2
 browser> mark
@@ -117,7 +117,7 @@ mdb> continue
      E12:     C7 CALL pred output_term_dep.r/2-0 (det)
 mdb> finish
      E13:     C7 EXIT pred output_term_dep.r/2-0 (det)
-mdb> dd
+mdb> dd -d 3 -n 7
 r(4, -1)
 Valid? browse 2
 browser> mark
@@ -135,7 +135,7 @@ mdb> continue
      E14:     C8 CALL pred output_term_dep.s/3-0 (nondet)
 mdb> finish
      E15:     C8 EXIT pred output_term_dep.s/3-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 s(1, 7, 7)
 Valid? browse 2
 browser> mark
@@ -147,7 +147,7 @@ mdb> continue
      E16:     C8 REDO pred output_term_dep.s/3-0 (nondet)
 mdb> finish
      E17:     C8 EXIT pred output_term_dep.s/3-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 s(1, 7, 155)
 Valid? browse 3
 browser> mark
@@ -159,7 +159,7 @@ mdb> continue
      E18:     C8 REDO pred output_term_dep.s/3-0 (nondet)
 mdb> finish
      E19:     C8 EXIT pred output_term_dep.s/3-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 s(1, 38, 7)
 Valid? browse 3
 browser> mark
@@ -171,7 +171,7 @@ mdb> continue
      E20:     C8 REDO pred output_term_dep.s/3-0 (nondet)
 mdb> finish
      E21:     C8 EXIT pred output_term_dep.s/3-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 s(1, 38, 155)
 Valid? browse 3
 browser> mark
@@ -188,7 +188,7 @@ no
      E24:     C9 CALL pred output_term_dep.s/3-0 (nondet)
 mdb> finish
      E25:     C9 EXIT pred output_term_dep.s/3-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 s(2, 7, 38)
 Valid? browse 3
 browser> mark
@@ -204,7 +204,7 @@ mdb> continue
      E27:     C9 REDO pred output_term_dep.s/3-0 (nondet)
 mdb> finish
      E28:     C9 EXIT pred output_term_dep.s/3-0 (nondet)
-mdb> dd
+mdb> dd -d 3 -n 7
 s(2, 38, 155)
 Valid? browse 2
 browser> mark
@@ -223,7 +223,7 @@ no
      E32:    C12 CALL pred output_term_dep.t/2-0 (semidet)
 mdb> finish
      E33:    C12 EXIT pred output_term_dep.t/2-0 (semidet)
-mdb> dd
+mdb> dd -d 3 -n 7
 t(1, 77)
 Valid? browse 2
 browser> mark

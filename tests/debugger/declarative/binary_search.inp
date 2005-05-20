@@ -4,7 +4,7 @@ echo on
 break a
 c
 f
-dd
+dd -d 3 -n 7
 b 1
 mark
 y
@@ -24,7 +24,7 @@ break b
 delete 0
 c
 f
-dd
+dd -d 3 -n 7
 b 1
 mark
 y
@@ -33,7 +33,7 @@ break add1s
 c
 delete 0
 f
-dd
+dd -d 3 -n 7
 b 2
 ls
 cdr 9 2

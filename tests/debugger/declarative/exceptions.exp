@@ -13,7 +13,7 @@ being omitted from the trace.
       E3:     C2 EXIT pred exceptions.q/2-0 (cc_multi)
 mdb> delete *
  0: E stop  interface pred exceptions.q/2-0 (cc_multi)
-mdb> dd -d1000
+mdb> dd -d 3 -n 7 -d1000
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
@@ -46,7 +46,7 @@ being omitted from the trace.
       E5:     C3 FAIL pred exceptions.r/1-0 (semidet)
 mdb> delete *
  0: E stop  interface pred exceptions.r/1-0 (semidet)
-mdb> dd -d1000
+mdb> dd -d 3 -n 7 -d1000
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
@@ -77,7 +77,7 @@ no
       E7:     C5 CALL pred exceptions.v/1-0 (nondet)
 mdb> f
       E8:     C5 EXCP pred exceptions.v/1-0 (nondet) c2;
-mdb> dd -d1000
+mdb> dd -d 3 -n 7 -d1000
 Call v(_)
 Throws "Error"
 Expected? n

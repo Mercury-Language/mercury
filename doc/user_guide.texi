@@ -3312,22 +3312,28 @@ The following commands relate to the declarative debugger.  See
 @ref{Declarative debugging} for details.
 @sp 1
 @table @code
-@item dd [-r] [-d@var{depth}] [-s@var{search-mode}]
-@c @item dd [--assume-all-io-is-tabled]
+@item dd [-r] [-n@var{nodes}] [-s@var{search-mode}]
+@c @item dd [--assume-all-io-is-tabled] [-d@var{depth}] 
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
 @c makes an assertion, and if the assertion is incorrect, the resulting
 @c behaviour would be hard for non-developers to understand. The option is
 @c therefore deliberately not documented.
+@c The value of the @samp{-d} or @samp{--depth} option determines
+@c how much of the annotated trace to build initially.  Subsequent runs
+@c will try to add @var{nodes} events to the annotated trace, but initially
+@c there is not enough information available to do this.  We do not document
+@c this option since it requires an understanding of the internal workings of
+@c the declarative debugger.
 Starts declarative debugging using the current event as the initial symptom.
 @sp 1
 When searching for bugs the declarative debugger needs to keep portions of the
 execution trace in memory.  If it requires a new portion of the trace then it
-needs to rerun the program.  The @samp{-d@var{depth}} and
-@samp{--depth-step-size @var{depth}} options tell the declarative debugger how
+needs to rerun the program.  The @samp{-n@var{nodes}} or
+@samp{--nodes @var{nodes}} option tells the declarative debugger how
 much of the execution trace to gather when it reruns the program.  A higher
-@var{depth} will require more memory, but will improve the performance of the
-declarative debugger for long running programs since it will not have to rerun
-the program as much.
+value for @var{nodes} requires more memory, but improves the
+performance of the declarative debugger for long running programs since it will
+not have to rerun the program as often.
 @sp 1
 The @samp{-s@var{search-mode}} or @samp{--search-mode @var{search-mode}} 
 option tells the declarative debugger which 
@@ -3339,10 +3345,10 @@ not given.
 Use the @samp{-r} or @samp{--resume} option to continue your previous
 declarative debugging session.  If the @samp{--resume} option is given and
 there were no previous declarative debugging sessions then the option will be
-ignored.  A @samp{dd --resume} command can be issued at any event.  The
-@samp{--search-mode} or @samp{--depth-step-size} options can be used in
-conjunction with the @samp{--resume} option to change the search mode or depth
-step size of a previously started declarative debugging session.
+ignored.  A @samp{dd --resume} command can be issued at any event. 
+The @samp{--search-mode} option may be used with the @samp{--resume} option
+to change the search mode of a previously started declarative debugging
+session.
 @sp 1
 @item trust @var{module-name}|@var{proc-spec}
 @kindex trust (mdb command)

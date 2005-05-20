@@ -3,14 +3,14 @@ register --quiet
 break p
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes
 continue
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 yes
 yes

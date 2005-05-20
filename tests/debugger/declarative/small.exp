@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred small.p/1-0 (det) small.m:14 (small.m:8)
 mdb> finish
        3:      2  2 EXIT pred small.p/1-0 (det) small.m:14 (small.m:8)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(42)
 Valid? no
 Found incorrect contour:

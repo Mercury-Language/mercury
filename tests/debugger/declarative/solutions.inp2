@@ -4,7 +4,7 @@ untrust 0
 break p
 continue
 finish
-dd
+dd -d 3 -n 7
 no
 no
 yes

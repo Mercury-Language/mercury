@@ -8,7 +8,7 @@ mdb> continue
        2:      2  2 CALL pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:9)
 mdb> finish
        7:      2  2 EXIT pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:9)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(0, 3, 27)
 Valid? no
 q(lambda_ho2_22(3), 3, 27)
@@ -22,7 +22,7 @@ mdb> continue
        8:      5  2 CALL pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:10)
 mdb> finish
       13:      5  2 EXIT pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:10)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(1, 3, 27)
 Valid? no
 Found incorrect contour:
@@ -34,7 +34,7 @@ mdb> continue
       14:      8  2 CALL pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:11)
 mdb> finish
       19:      8  2 EXIT pred ho2.p/3-0 (det) ho2.m:21 (ho2.m:11)
-mdb> dd
+mdb> dd -d 3 -n 7
 p(2, 4, 64)
 Valid? no
 q(lambda_ho2_22(4), 4, 64)

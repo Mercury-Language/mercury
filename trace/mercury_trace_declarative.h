@@ -112,21 +112,74 @@ typedef MR_Word MR_Trace_Node;
 #define MR_TRACE_STATUS_UNDECIDED	(MR_Word) 2
 
 /*
-** The initial depth step size.  The choice of 3 is quite arbitrary, but
-** it does mean the code which generates new portions of the annotated trace
-** is exercised more during testing.
+** The initial depth step size.  We want to be quite conservative with this
+** value since initially we don't know what the branching factor of the tree
+** is.
 */
 
-#define MR_TRACE_DECL_INITIAL_DEPTH	3
+#define MR_TRACE_DECL_INITIAL_DEPTH	5
 
 /*
-** We only build the annotated trace for events down to a certain depth.
-** MR_edt_depth_step_size gives the default depth limit (relative to the
-** starting depth).  In future it would be nice to adjust this factor based on
-** profiling information.  
+** The default desired number of nodes to add to the annotated trace when 
+** materializing a new subtree.
 */
 
-extern	MR_Integer	MR_edt_depth_step_size;
+#define	MR_TRACE_DESIRED_SUBTREE_NODES	10000
+
+/*
+** The message to display when attempting to retry over an untabled area.
+*/
+
+#define MR_DECL_UNTABLED_IO_RETRY_MESSAGE \
+	"The declarative debugger needs to perform a retry across\n" \
+	"an area in which IO is not tabled.  This is not always safe.\n" \
+	"To avoid this warning restart mdb and issue a `table_io start'\n" \
+	"command at an event before the suspect area.\n" \
+	"Do you wish to proceed with the retry? "
+
+/*
+** How often to update the progress message, expressed in terms of number of
+** events.
+*/
+
+#define	MR_DECL_PROGRESS_CHECK_INTERVAL 100000
+
+/*
+** The total number of progress ticks that should be displayed when building of
+** the current portion of the annotated trace is 100% complete.
+*/
+
+#define	MR_DECL_PROGRESS_TOTAL	40
+
+/*
+** The progress message to display and the tick string to repeatedly display
+** after the initial progress message.
+*/
+
+#define	MR_DECL_PROGRESS_MESSAGE	"Generating execution trace.."
+#define	MR_DECL_PROGRESS_TICK_STRING	"."
+
+/*
+** How many milliseconds to wait before displaying progress.
+*/
+
+#define	MR_DECL_DISPLAY_PROGRESS_DELAY	1000 
+
+/*
+** When building a new explicit tree we build it to the maximum depth such
+** that the number of nodes in the explicit tree is less than or equal to
+** MR_edt_desired_nodes_in_subtree.
+*/
+
+extern	MR_Unsigned	MR_edt_desired_nodes_in_subtree;
+
+/*
+** In the event that the ideal depth to build a tree to cannot be calculated,
+** either because it is the initial build of the annotated trace or a supertree
+** is being built, use the value of the following global as the depth limit.
+*/
+
+extern	MR_Unsigned	MR_edt_default_depth_limit;
 
 /*
 ** The following variable indicates whether the declarative debugger was 
