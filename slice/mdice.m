@@ -70,9 +70,9 @@ main(!IO) :-
 :- pred usage(io::di, io::uo) is det.
 
 usage(!IO) :-
-	io__write_string(
-		"Usage: mdice [-s sortspec] [-l N] [-m module] file1 file2",
-		!IO).
+	io__write_strings(
+		["Usage: mdice [-s sortspec] [-l N] [-m module] ",
+		"passfile failfile\n"], !IO).
 
 %-----------------------------------------------------------------------------%
 

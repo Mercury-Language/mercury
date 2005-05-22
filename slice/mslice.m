@@ -65,7 +65,7 @@ main(!IO) :-
 
 usage(!IO) :-
 	io__write_string(
-		"Usage: mslice [-s sortspec] [-l N] [-m module] filename",
+		"Usage: mslice [-s sortspec] [-l N] [-m module] filename\n",
 		!IO).
 
 %-----------------------------------------------------------------------------%
