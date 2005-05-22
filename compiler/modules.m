@@ -1752,12 +1752,12 @@ is_necessary_impl_type(NecessaryTypeCtors, ItemAndContext) :-
     % Figure out the set of abstract equivalence type constructors
     % (i.e. the types that are exported as abstract types and which are defined
     % in the implementation section as equivalence types or as foreign types).
-    % Return in NecessaryTypeCtors this set, plus the set of private type
-    % constructors referred to by the right hand side of *any* type definition
-    % for those constructors.
+    % Return in NecessaryTypeCtors the smallest set containing those
+    % constructors, and the set of private type constructors referred to
+    % by the right hand side of any equivalence type in NecessaryTypeCtors.
     %
     % Given a du type definition in the implementation section, we should
-    % include it in AbsEqvRhsTypeCtors if the type constructor is abstract
+    % include it in AbsEqvLhsTypeCtors if the type constructor is abstract
     % exported and the implementation section also contains a foreign_type
     % definition of the type constructor.
     %
@@ -1772,9 +1772,7 @@ get_requirements_of_eqv_types(InterfaceTypeMap, ImplTypeMap,
     multi_map.to_flat_assoc_list(ImplTypeMap, ImplTypes),
     list.foldl(accumulate_abs_eqv_type_lhs(InterfaceTypeMap), ImplTypes,
         set.init, AbsEqvLhsTypeCtors),
-    list.foldl(accumulate_abs_eqv_type_rhs(AbsEqvLhsTypeCtors), ImplTypes,
-        set.init, AbsEqvRhsTypes),
-    get_user_type_ctors_and_modules_from_types(AbsEqvRhsTypes,
+    set.fold2(accumulate_abs_eqv_type_rhs(ImplTypeMap), AbsEqvLhsTypeCtors,
         set.init, AbsEqvRhsTypeCtors, set.init, Modules),
     set.union(AbsEqvLhsTypeCtors, AbsEqvRhsTypeCtors, NecessaryTypeCtors).
 
@@ -1803,56 +1801,76 @@ accumulate_abs_eqv_type_lhs(InterfaceTypeMap,
         true
     ).
 
-:- pred accumulate_abs_eqv_type_rhs(set(type_ctor)::in,
-    pair(type_ctor, pair(type_defn, item_and_context))::in,
-    set(type)::in, set(type)::out) is det.
+:- pred accumulate_abs_eqv_type_rhs(type_defn_map::in, type_ctor::in,
+    set(type_ctor)::in, set(type_ctor)::out,
+    set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_abs_eqv_type_rhs(AbsEqvLhsTypeCtors,
-        TypeCtor - (TypeDefn - _ItemAndContext), !AbsEqvRhsTypes) :-
+accumulate_abs_eqv_type_rhs(ImplTypeMap, TypeCtor, !AbsEqvRhsTypeCtors,
+        !Modules) :-
     (
-        TypeDefn = eqv_type(RhsType),
-        set.member(TypeCtor, AbsEqvLhsTypeCtors)
+        map.search(ImplTypeMap, TypeCtor, TypeDefns)
     ->
-        svset.insert(RhsType, !AbsEqvRhsTypes)
+        list.foldl2(accumulate_abs_eqv_type_rhs_2(ImplTypeMap), TypeDefns,
+            !AbsEqvRhsTypeCtors, !Modules)
     ;
         true
     ).
 
-    % Given a list of types, return the set of user-defined type constructors
-    % occurring in those types, and the set of modules that define these type
-    % constructors.
-    %
+:- pred accumulate_abs_eqv_type_rhs_2(type_defn_map::in,
+    pair(type_defn, item_and_context)::in,
+    set(type_ctor)::in, set(type_ctor)::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _, !AbsEqvRhsTypeCtors,
+        !Modules) :-
+    (
+        TypeDefn = eqv_type(RhsType)
+    ->
+        type_to_type_ctor_set(RhsType, set.init, RhsTypeCtors),
+        set.difference(RhsTypeCtors, !.AbsEqvRhsTypeCtors, NewRhsTypeCtors),
+        set.fold(accumulate_modules, NewRhsTypeCtors, !Modules),
+        set.union(NewRhsTypeCtors, !AbsEqvRhsTypeCtors),
+        set.fold2(accumulate_abs_eqv_type_rhs(ImplTypeMap), NewRhsTypeCtors,
+            !AbsEqvRhsTypeCtors, !Modules)
+    ;
+        true
+    ).
+
+:- pred accumulate_modules(type_ctor::in, set(module_name)::in,
+    set(module_name)::out) is det.
+
+accumulate_modules(TypeCtor, !Modules) :-
     % NOTE: This assumes that everything has been module qualified.
+    TypeCtor = SymName - _Arity,
+    (
+        sym_name_get_module_name(SymName, ModuleName)
+    ->
+        svset.insert(ModuleName, !Modules)
+    ;
+        unexpected(this_file, "accumulate_modules/3: unknown type encountered")
+    ).
+
+    % Given a type, return the set of user-defined type constructors
+    % occurring in it.
     %
-:- pred get_user_type_ctors_and_modules_from_types(set(type)::in,
-    set(type_ctor)::in, set(type_ctor)::out,
-    set(module_name)::in, set(module_name)::out) is det.
+:- pred type_to_type_ctor_set((type)::in, set(type_ctor)::in,
+    set(type_ctor)::out) is det.
 
-get_user_type_ctors_and_modules_from_types(Types, !TypeCtors, !Modules) :-
-    list.foldl2(get_user_type_ctors_and_modules_from_type,
-        set__to_sorted_list(Types), !TypeCtors, !Modules).
-
-:- pred get_user_type_ctors_and_modules_from_type((type)::in,
-    set(type_ctor)::in, set(type_ctor)::out,
-    set(module_name)::in, set(module_name)::out) is det.
-
-get_user_type_ctors_and_modules_from_type(Type, !TypeCtors, !Modules) :-
+type_to_type_ctor_set(Type, !TypeCtors) :-
     ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
         TypeCtor = SymName - _Arity,
         (
             type_ctor_is_higher_order(TypeCtor, _, _, _)
         ->
-            % Higher-order types are builtin so just get the type_ctors and
-            % modules required by the arguments.
-            list.foldl2(get_user_type_ctors_and_modules_from_type, Args,
-                !TypeCtors, !Modules)
+            % Higher-order types are builtin so just get the type_ctors
+            % from the arguments.
+            true
         ;
             type_ctor_is_tuple(TypeCtor)
         ->
-            % Tuples are builtin so just get the type_ctors and modules
-            % required by the arguments.
-            list.foldl2(get_user_type_ctors_and_modules_from_type, Args,
-                !TypeCtors, !Modules)
+            % Tuples are builtin so just get the type_ctors from the
+            % arguments.
+            true
         ;
             ( SymName = unqualified("int")
             ; SymName = unqualified("float")
@@ -1863,17 +1881,9 @@ get_user_type_ctors_and_modules_from_type(Type, !TypeCtors, !Modules) :-
             % We don't need to import these modules as the types are builtin.
             true
         ;
-            sym_name_get_module_name(SymName, ModuleName)
-        ->
-            svset.insert(TypeCtor, !TypeCtors),
-            svset.insert(ModuleName, !Modules),
-            list.foldl2(get_user_type_ctors_and_modules_from_type, Args,
-                !TypeCtors, !Modules)
-        ;
-            unexpected(this_file,
-                "get_user_type_ctors_modules_from_type/5: " ++
-                "unknown type encountered")
-        )
+            svset.insert(TypeCtor, !TypeCtors)
+        ),
+        list.foldl(type_to_type_ctor_set, Args, !TypeCtors)
     ;
         true
     ).
