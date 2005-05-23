@@ -152,6 +152,7 @@
 	% "wrong number of arguments (<Arity>; should be <CorrectArities>)",
 	% adjusting `Arity' and `CorrectArities' if `MaybePredOrFunc' is
 	% `yes(function)'.
+	%
 :- pred report_error_num_args(maybe(pred_or_func)::in, int::in, list(int)::in,
 	io::di, io::uo) is det.
 
@@ -175,19 +176,23 @@
 
 	% Record the fact that a warning has been issued; set the exit status
 	% to error if the --halt-at-warn option is set.
+	%
 :- pred record_warning(io::di, io::uo) is det.
 
 	% Report a warning, and set the exit status to error if the
 	% --halt-at-warn option is set.
+	%
 :- pred report_warning(string::in, io::di, io::uo) is det.
 
 	% Report a warning to the specified stream, and set the exit status
 	% to error if the --halt-at-warn option is set.
+	%
 :- pred report_warning(io__output_stream::in, string::in, io::di, io::uo)
 	is det.
 
 	% Report a warning, and set the exit status to error if the
 	% --halt-at-warn option is set.
+	%
 :- pred report_warning(prog_context::in, int::in, list(format_component)::in,
 	io::di, io::uo) is det.
 
@@ -702,10 +707,11 @@ unexpected(Module, What) :-
 
 record_warning(!IO) :-
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
-	( HaltAtWarn = yes ->
+	(
+		HaltAtWarn = yes,
 		io__set_exit_status(1, !IO)
 	;
-		true
+		HaltAtWarn = no
 	).
 
 report_warning(Message, !IO) :-
