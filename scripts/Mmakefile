@@ -48,7 +48,7 @@ CONF_FILES = \
 CONF_DEBUG_SCIRPTS = \
 	mdbrc.in
 
-DEBUGGER_SCRIPTS = $(CONF_DEBUG_SCIRPTS) xul_tree.xsl
+DEBUGGER_SCRIPTS = $(CONF_DEBUG_SCRIPTS) xul_tree.xsl
 EMACS_SCRIPTS = gud.el
 
 #-----------------------------------------------------------------------------#
