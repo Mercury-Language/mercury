@@ -67,6 +67,7 @@ OTHER_PROGS= \
 	compl_unify_bug \
 	constrained_poly_bound_arg \
 	constrained_poly_insts \
+	constraint_prop_bug \
 	constructor_arg_names \
 	dcg_test \
 	deforest_bug \
