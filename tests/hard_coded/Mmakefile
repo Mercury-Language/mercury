@@ -112,6 +112,7 @@ ORDINARY_PROGS=	\
 	mapped_module \
 	merge_and_remove_dups \
 	minint_bug \
+	mode_check_clauses \
 	mode_choice \
 	multi_map_test \
 	multimode \

@@ -1069,6 +1069,7 @@ qualify_pragma(termination2_info(PredOrFunc, SymName, ModeList0, HeadVars,
 qualify_pragma(X@terminates(_, _), X, !Info, !IO).
 qualify_pragma(X@does_not_terminate(_, _), X, !Info, !IO).
 qualify_pragma(X@check_termination(_, _), X, !Info, !IO).
+qualify_pragma(X@mode_check_clauses(_, _), X, !Info, !IO).
 
 :- pred qualify_pragma_vars(list(pragma_var)::in, list(pragma_var)::out,
 	mq_info::in, mq_info::out, io::di, io::uo) is det.

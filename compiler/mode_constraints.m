@@ -271,7 +271,7 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
 	( pred_info_is_imported(PredInfo0) ->
 		true
 	;
-		clauses_info_clauses(ClausesInfo0, Clauses0),
+		clauses_info_clauses_only(ClausesInfo0, Clauses0),
 		clauses_info_vartypes(ClausesInfo0, VarTypes),
 		NRInfo0 = number_robdd_info(!.MCI, !.ModuleInfo, VarTypes),
 
@@ -927,7 +927,7 @@ mode_constraints__process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
 	map__foldl2(input_output_constraints(HeadVars, InstGraph),
 		InstGraph, !Constraint, !ConstraintInfo),
 
-	clauses_info_clauses(!.ClausesInfo, Clauses),
+	clauses_info_clauses(Clauses, !ClausesInfo),
 	list__map(pred(clause(_, Goal, _, _)::in, Goal::out) is det, Clauses,
 		Goals),
 	DisjGoal = disj(Goals),

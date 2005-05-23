@@ -157,8 +157,9 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
-	ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars, Clauses,
-		TI_VarMap, TCI_VarMap, _),
+	ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars,
+		ClausesRep, TI_VarMap, TCI_VarMap, _),
+	get_clause_list(ClausesRep, Clauses),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
 	get_clause_goals(MatchingClauses, GoalList),
 	( GoalList = [SingleGoal] ->
@@ -208,10 +209,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 		% The disjunction is impure/semipure if any of the disjuncts
 		% is impure/semipure.
 		%
-		(
-			list__member(_SubGoal - SubGoalInfo, GoalList),
-			\+ goal_info_is_pure(SubGoalInfo)
-		->
+		( contains_nonpure_goal(GoalList) ->
 			list__map(get_purity, GoalList, PurityList),
 			Purity = list__foldl(worst_purity, PurityList, (pure)),
 			add_goal_info_purity_feature(GoalInfo2, Purity,
@@ -224,6 +222,16 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 	),
 	proc_info_set_body(VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, !Proc).
+
+:- pred contains_nonpure_goal(list(hlds_goal)::in) is semidet.
+
+contains_nonpure_goal([Goal | Goals]) :-
+	(
+		Goal = _ - GoalInfo,
+		\+ goal_info_is_pure(GoalInfo)
+	;
+		contains_nonpure_goal(Goals)
+	).
 
 :- func set_arg_names(foreign_arg, prog_varset) = prog_varset.
 
@@ -261,7 +269,7 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 
 get_clause_goals([], []).
 get_clause_goals([Clause | Clauses], Goals) :-
+	get_clause_goals(Clauses, Goals1),
 	Clause = clause(_, Goal, _, _),
 	goal_to_disj_list(Goal, GoalList),
-	list__append(GoalList, Goals1, Goals),
-	get_clause_goals(Clauses, Goals1).
+	list__append(GoalList, Goals1, Goals).

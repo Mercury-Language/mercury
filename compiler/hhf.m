@@ -126,7 +126,7 @@ hhf__process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
 	Info0 = hhf_info(InstGraph0, VarSet0, VarTypes0),
 
 	clauses_info_headvars(!.ClausesInfo, HeadVars),
-	clauses_info_clauses(!.ClausesInfo, Clauses0),
+	clauses_info_clauses(Clauses0, !ClausesInfo),
 
 	(
 	%	% For simple mode checking we do not give the inst_graph any

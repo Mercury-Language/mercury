@@ -887,6 +887,10 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         add_pred_marker("check_termination", Name, Arity, ImportStatus,
             Context, check_termination, [terminates, does_not_terminate],
             !ModuleInfo, !IO)
+    ;
+        Pragma = mode_check_clauses(Name, Arity),
+        add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
+            Context, mode_check_clauses, [], !ModuleInfo, !IO)
     ).
 add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
     Item = pred_or_func(_TypeVarSet, _InstVarSet, _ExistQVars,
@@ -1690,8 +1694,9 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             map__init(TCI_VarMap),
             map__init(TVarNameMap),
             HasForeignClauses = no,
+            set_clause_list([Clause], ClausesRep),
             Clauses = clauses_info(ArgVarSet, VarTypes0,
-                TVarNameMap, VarTypes0, Args, [Clause],
+                TVarNameMap, VarTypes0, Args, ClausesRep,
                 TI_VarMap, TCI_VarMap, HasForeignClauses),
             pred_info_get_markers(PredInfo0, Markers0),
             add_marker(calls_are_fully_qualified, Markers0, Markers),
@@ -2219,12 +2224,13 @@ add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 
     % add_pred_marker(ModuleInfo0, PragmaName, Name, Arity, Status,
-    %   Context, Marker, ConflictMarkers, ModuleInfo, IO0, IO)
+    %   Context, Marker, ConflictMarkers, ModuleInfo, !IO):
     %
     % Adds Marker to the marker list of the pred(s) with give Name and
     % Arity, updating the ModuleInfo. If the named pred does not exist,
     % or the pred already has a marker in ConflictMarkers, report
     % an error.
+    %
 :- pred add_pred_marker(string::in, sym_name::in, arity::in, import_status::in,
     prog_context::in, marker::in, list(marker)::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -4002,14 +4008,14 @@ add_builtin(PredId, Types, !PredInfo) :-
         % put the clause we just built into the pred_info,
         % annotateed with the appropriate types
         %
-    ClauseList = [Clause],
     map__from_corresponding_lists(HeadVars, Types, VarTypes),
     map__init(TVarNameMap),
     map__init(TI_VarMap),
     map__init(TCI_VarMap),
     HasForeignClauses = no,
+    set_clause_list([Clause], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, ClauseList, TI_VarMap, TCI_VarMap, HasForeignClauses),
+        HeadVars, ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
         %
@@ -4944,9 +4950,9 @@ produce_instance_method_clauses(name(InstancePredName), PredOrFunc, PredArity,
     map__init(TI_VarMap),
     map__init(TCI_VarMap),
     HasForeignClauses = no,
+    set_clause_list([IntroducedClause], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, [IntroducedClause], TI_VarMap, TCI_VarMap,
-        HasForeignClauses).
+        HeadVars, ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses).
 
     % handle the arbitrary clauses syntax
 produce_instance_method_clauses(clauses(InstanceClauses), PredOrFunc,
@@ -5237,15 +5243,15 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
             pred_info_clause_goal_type(!.PredInfo)
         ->
             pred_info_clauses_info(!.PredInfo, CInfo0),
-            clauses_info_clauses(CInfo0, ClauseList0),
+            clauses_info_clauses_only(CInfo0, ClauseList0),
             ClauseList = list__map(
-                (func(C) =
+                (func(C) = Res :-
+                    AllProcIds = pred_info_all_procids(!.PredInfo),
                     ( C = clause([], Goal, mercury, Ctxt) ->
-                        clause(AllProcIds, Goal, mercury, Ctxt)
+                        Res = clause(AllProcIds, Goal, mercury, Ctxt)
                     ;
-                        C
-                    ) :-
-                    AllProcIds = pred_info_all_procids(!.PredInfo)
+                        Res = C
+                    )
                 ), ClauseList0),
             clauses_info_set_clauses(ClauseList, CInfo0, CInfo),
             pred_info_set_clauses_info(CInfo, !PredInfo)
@@ -6308,8 +6314,9 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     map__init(TI_VarMap),
     map__init(TCI_VarMap),
     HasForeignClauses = no,
+    set_clause_list([], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, [], TI_VarMap, TCI_VarMap, HasForeignClauses).
+        HeadVars, ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses).
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
 
@@ -6321,8 +6328,9 @@ clauses_info_init(Arity, ClausesInfo) :-
     map__init(TI_VarMap),
     map__init(TCI_VarMap),
     HasForeignClauses = no,
+    set_clause_list([], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, [], TI_VarMap, TCI_VarMap, HasForeignClauses).
+        HeadVars, ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses).
 
 :- pred clauses_info_add_clause(list(proc_id)::in,
     prog_varset::in, tvarset::in, list(prog_term)::in, goal::in,
@@ -6336,10 +6344,11 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
         Status, PredOrFunc, Arity, GoalType, Goal, VarSet, TVarSet,
         !ClausesInfo, Warnings, !ModuleInfo, !QualInfo, !IO) :-
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes0,
-        TVarNameMap0, InferredVarTypes, HeadVars, ClauseList0,
+        TVarNameMap0, InferredVarTypes, HeadVars, ClausesRep0,
         TI_VarMap, TCI_VarMap, HasForeignClauses),
+    IsEmpty = clause_list_is_empty(ClausesRep0),
     (
-        ClauseList0 = [],
+        IsEmpty = yes,
         % Create the mapping from type variable name, used to
         % rename type variables occurring in explicit type
         % qualifications. The version of this mapping stored
@@ -6349,7 +6358,7 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
         % qualifications are local to the clause in which they appear.
         varset__create_name_var_map(TVarSet0, TVarNameMap)
     ;
-        ClauseList0 = [_ | _],
+        IsEmpty = no,
         TVarNameMap = TVarNameMap0
     ),
     update_qual_info(TVarNameMap, TVarSet0, ExplicitVarTypes0, Status,
@@ -6373,36 +6382,34 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
         FoundError = no,
         Goal = Goal0,
 
-            % If we have foreign clauses, we should only
-            % add this clause for modes *not* covered by the
-            % foreign clauses.
+            % If we have foreign clauses, we should only add this clause
+            % for modes *not* covered by the foreign clauses.
         (
             HasForeignClauses = yes,
+            get_clause_list_any_order(ClausesRep0, AnyOrderClauseList),
             ForeignModeIds = list__condense(list__filter_map(
                 (func(C) = ProcIds is semidet :-
                     C = clause(ProcIds, _, ClauseLang, _),
                     not ClauseLang = mercury
                 ),
-                ClauseList0)),
+                AnyOrderClauseList)),
             ModeIds = list__delete_elems(ModeIds0, ForeignModeIds),
             (
                 ModeIds = [],
-                ClauseList = ClauseList0
+                ClausesRep = ClausesRep0
             ;
                 ModeIds = [_ | _],
-                % XXX we should avoid append - this gives O(N*N)
-                list__append(ClauseList0,
-                    [clause(ModeIds, Goal, mercury, Context)], ClauseList)
+                Clause = clause(ModeIds, Goal, mercury, Context),
+                add_clause(Clause, ClausesRep0, ClausesRep)
             )
         ;
             HasForeignClauses = no,
-            % XXX we should avoid append - this gives O(N*N)
-            list__append(ClauseList0,
-                [clause(ModeIds0, Goal, mercury, Context)], ClauseList)
+            Clause = clause(ModeIds0, Goal, mercury, Context),
+            add_clause(Clause, ClausesRep0, ClausesRep)
         ),
         qual_info_get_var_types(!.QualInfo, ExplicitVarTypes),
         !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-            InferredVarTypes, HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
+            InferredVarTypes, HeadVars, ClausesRep, TI_VarMap, TCI_VarMap,
             HasForeignClauses)
     ).
 
@@ -6425,8 +6432,9 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         PredName, Arity, !ClausesInfo, !ModuleInfo, !IO) :-
 
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
-        InferredVarTypes, HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
+        InferredVarTypes, HeadVars, ClauseRep, TI_VarMap, TCI_VarMap,
         _HasForeignClauses),
+    get_clause_list(ClauseRep, ClauseList),
 
         % Find all the existing clauses for this mode, and
         % extract their implementation language and clause number
@@ -6518,8 +6526,9 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
             NewClauseList = [NewClause | NewClauseListTail]
         ),
         HasForeignClauses = yes,
+        set_clause_list(NewClauseList, NewClauseRep),
         !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-            InferredVarTypes, HeadVars, NewClauseList,
+            InferredVarTypes, HeadVars, NewClauseRep,
             TI_VarMap, TCI_VarMap, HasForeignClauses)
     ).
 

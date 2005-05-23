@@ -72,7 +72,7 @@ goal_path__fill_slots(ModuleInfo, !Proc) :-
 
 goal_path__fill_slots_in_clauses(ModuleInfo, OmitModeEquivPrefix, !PredInfo) :-
 	pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-	clauses_info_clauses(ClausesInfo0, Clauses0),
+	clauses_info_clauses_only(ClausesInfo0, Clauses0),
 	clauses_info_vartypes(ClausesInfo0, VarTypes),
 	SlotInfo = slot_info(VarTypes, ModuleInfo, OmitModeEquivPrefix),
 	list__map_foldl(fill_slots_in_clause(SlotInfo), Clauses0, Clauses,

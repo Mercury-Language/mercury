@@ -804,7 +804,7 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm, _VarSet,
     ;
         Result = error("wrong number of arguments in " ++
             "`:- pragma export' declaration", ErrorTerm)
-       ).
+    ).
 
 parse_pragma_type(ModuleName, "inline", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
@@ -1237,6 +1237,13 @@ parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
     ;
         Result = error("error in `:- pragma exceptions'", ErrorTerm)
     ).
+
+parse_pragma_type(ModuleName, "mode_check_clauses", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    parse_simple_pragma(ModuleName, "mode_check_clauses",
+        (pred(Name::in, Arity::in, Pragma::out) is det :-
+            Pragma = mode_check_clauses(Name, Arity)),
+        PragmaTerms, ErrorTerm, Result).
 
     % This parses a pragma that refers to a predicate or function.
     %

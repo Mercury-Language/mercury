@@ -44,15 +44,18 @@
 :- import_module bool.
 :- import_module io.
 
-	% check every predicate in a module
+	% Check every predicate in a module.
+	%
 :- pred unique_modes__check_module(module_info::in, module_info::out,
 	io::di, io::uo) is det.
 
-	% just check a single procedure
+	% Just check a single procedure.
+	%
 :- pred unique_modes__check_proc(proc_id::in, pred_id::in, module_info::in,
 	module_info::out, bool::out, io::di, io::uo) is det.
 
-	% just check a single goal
+	% Just check a single goal.
+	%
 :- pred unique_modes__check_goal(hlds_goal::in, hlds_goal::out,
 	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
@@ -99,7 +102,7 @@ unique_modes__check_module(!ModuleInfo, !IO) :-
 		!ModuleInfo, _UnsafeToContinue, !IO).
 
 unique_modes__check_proc(ProcId, PredId, !ModuleInfo, Changed, !IO) :-
-	modecheck_proc(ProcId, PredId, check_unique_modes,
+	modecheck_proc_general(ProcId, PredId, check_unique_modes,
 		may_change_called_proc, !ModuleInfo, NumErrors, Changed, !IO),
 	( NumErrors \= 0 ->
 		io__set_exit_status(1, !IO)
@@ -276,9 +279,11 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
 unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List), !ModeInfo,
 		!IO) :-
 	mode_checkpoint(enter, "conj", !ModeInfo, !IO),
-	( List0 = [] ->	% for efficiency, optimize common case
+	(
+		List0 = [],	% for efficiency, optimize common case
 		List = []
 	;
+		List0 = [_ | _],
 		mode_info_add_goals_live_vars(List0, !ModeInfo),
 		unique_modes__check_conj(List0, List, !ModeInfo, !IO)
 	),
@@ -302,15 +307,17 @@ unique_modes__check_goal_2(par_conj(List0), GoalInfo0, par_conj(List),
 unique_modes__check_goal_2(disj(List0), GoalInfo0, disj(List), !ModeInfo,
 		!IO) :-
 	mode_checkpoint(enter, "disj", !ModeInfo, !IO),
-	( List0 = [] ->
+	(
+		List0 = [],
 		List = [],
 		instmap__init_unreachable(InstMap),
 		mode_info_set_instmap(InstMap, !ModeInfo)
 	;
+		List0 = [_ | _],
 		%
-		% If the disjunction creates a choice point (i.e. is model_non),
-		% then mark all the variables which are live at the
-		% start of the disjunction and whose inst is `unique'
+		% If the disjunction creates a choice point (i.e. is
+		% model_non), then mark all the variables which are live
+		% at the start of the disjunction and whose inst is `unique'
 		% as instead being only `mostly_unique', since those variables
 		% may be needed again after we backtrack to that choice point
 		% and resume forward execution again.
@@ -508,11 +515,13 @@ unique_modes__check_goal_2(unify(LHS0, RHS0, _, UnifyInfo0, UnifyContext),
 unique_modes__check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
 		switch(Var, CanFail, Cases), !ModeInfo, !IO) :-
 	mode_checkpoint(enter, "switch", !ModeInfo, !IO),
-	( Cases0 = [] ->
+	(
+		Cases0 = [],
 		Cases = [],
 		instmap__init_unreachable(InstMap),
 		mode_info_set_instmap(InstMap, !ModeInfo)
 	;
+		Cases0 = [_ | _],
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
 		unique_modes__check_case_list(Cases0, Var, Cases, InstMapList,
 			!ModeInfo, !IO),
@@ -563,7 +572,9 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
 	unique_modes__check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
 		InterfaceDeterminism, NeverSucceeds, !ModeInfo),
-	( ProcInfo ^ mode_errors = [_|_] ->
+	ModeErrors = ProcInfo ^ mode_errors,
+	(
+		ModeErrors = [_ | _],
 		% mode error in callee for this mode
 		WaitingVars = set__list_to_set(ArgVars),
 		mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -574,7 +585,7 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
 				ProcInfo ^ mode_errors),
 			!ModeInfo)
 	;
-		true
+		ModeErrors = []
 	),
 
 	%
@@ -612,7 +623,10 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
 		modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
 			ArgVars, NewArgVars, ExtraGoals, !ModeInfo),
 
-		( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
+		(
+			NewArgVars = ArgVars,
+			ExtraGoals = no_extra_goals
+		->
 			true
 		;
 			% this shouldn't happen, since modes.m should do
@@ -645,17 +659,22 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
 	inst_list_apply_substitution(FinalInsts0, InstVarSub, FinalInsts),
 	modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,
 		ArgOffset, NewArgVars, ExtraGoals, !ModeInfo),
-	( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
+	(
+		NewArgVars = ArgVars,
+		ExtraGoals = no_extra_goals
+	->
 		true
 	;
 		% this shouldn't happen, since modes.m should do
 		% all the handling of implied modes
 		error("unique_modes.m: call to implied mode?")
 	),
-	( NeverSucceeds = yes ->
+	(
+		NeverSucceeds = yes,
 		instmap__init_unreachable(InstMap),
 		mode_info_set_instmap(InstMap, !ModeInfo)
 	;
+		NeverSucceeds = no,
 		%
 		% Check whether we are at a call to a nondet predicate.
 		% If so, mark all the currently nondet-live variables
@@ -688,7 +707,7 @@ unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals], !ModeInfo, !IO) :-
 		% later passes won't complain about them not having
 		% unique mode information.
 		mode_info_remove_goals_live_vars(Goals0, !ModeInfo),
-		Goals  = []
+		Goals = []
 	;
 		unique_modes__check_conj(Goals0, Goals, !ModeInfo, !IO)
 	).
@@ -707,8 +726,7 @@ make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) :-
 	goal_get_nonlocals(Goal, NonLocals),
 	set__to_sorted_list(NonLocals, NonLocalsList),
 	bag__from_list(NonLocalsList, NonLocalsMultiSet1),
-	bag__union(NonLocalsMultiSet0, NonLocalsMultiSet1,
-		NonLocalsMultiSet).
+	bag__union(NonLocalsMultiSet0, NonLocalsMultiSet1, NonLocalsMultiSet).
 
 	% To unique-modecheck a parallel conjunction, we find the variables
 	% that are nonlocal to more than one conjunct and make them shared,

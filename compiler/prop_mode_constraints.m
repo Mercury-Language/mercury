@@ -180,7 +180,7 @@ process_pred(ModuleInfo, PredId, PredInfo0, !Varset, !VarMap, !Constraints) :-
 		% Needed for defined modes.
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	clauses_info_headvars(ClausesInfo, HeadVars),
-	clauses_info_clauses(ClausesInfo, Clauses),
+	clauses_info_clauses_only(ClausesInfo, Clauses),
 	clauses_info_varset(ClausesInfo, ProgVarset),
 	Goals = list.map((func(clause(_, ClauseBody, _, _)) = ClauseBody),
 		Clauses),

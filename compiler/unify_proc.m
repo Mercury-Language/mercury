@@ -715,9 +715,10 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	map__init(TVarNameMap),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
+	set_clause_list(Clauses, ClausesRep),
 	HasForeignClauses = yes,
 	ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, Args,
-		Clauses, TI_VarMap, TCI_VarMap, HasForeignClauses).
+		ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses).
 
 
 :- pred unify_proc__generate_initialise_clauses(module_info::in, (type)::in,

@@ -860,7 +860,8 @@ dead_pred_elim_analyze(DeadInfo0, DeadInfo) :-
 				Needed, NeededNames),
 			module_info_pred_info(ModuleInfo, PredId, PredInfo),
 			pred_info_clauses_info(PredInfo, ClausesInfo),
-			clauses_info_clauses(ClausesInfo, Clauses),
+			clauses_info_clauses_rep(ClausesInfo, ClausesRep),
+			get_clause_list_any_order(ClausesRep, Clauses),
 			list__foldl(dead_pred_elim_process_clause, Clauses,
 				DeadInfo1, DeadInfo2)
 		),

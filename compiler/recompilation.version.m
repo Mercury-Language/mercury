@@ -630,6 +630,7 @@ is_pred_pragma(termination2_info(PredOrFunc, Name, Modes, _, _, _, _),
 is_pred_pragma(terminates(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(does_not_terminate(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(check_termination(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(mode_check_clauses(Name, Arity), yes(no - Name / Arity)).
 
 	% XXX This is a bit brittle (need to be careful with term__contexts).
 	% For example, it won't work for clauses.

@@ -806,7 +806,7 @@ store_promise(PromiseType, PromiseId, !Module, Goal) :-
 promise_ex_goal(ExclusiveDecl, Module, Goal) :-
         module_info_pred_info(Module, ExclusiveDecl, PredInfo),
         pred_info_clauses_info(PredInfo, ClausesInfo),
-        clauses_info_clauses(ClausesInfo, Clauses),
+        clauses_info_clauses_only(ClausesInfo, Clauses),
         (
 		Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)]
 	->

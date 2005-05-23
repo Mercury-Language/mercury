@@ -660,6 +660,10 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context, !IO) :-
         Pragma = check_termination(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate,
             "check_termination", !IO)
+    ;
+        Pragma = mode_check_clauses(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, predicate,
+            "mode_check_clauses", !IO)
     ).
 
 mercury_output_item(_, promise(PromiseType, Goal0, VarSet, UnivVars), _,

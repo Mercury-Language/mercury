@@ -578,37 +578,36 @@ polymorphism__process_pred(PredId, !ModuleInfo) :-
 	clauses_info::in, clauses_info::out, poly_info::out, list(mode)::out)
 	is det.
 
-polymorphism__process_clause_info(PredInfo0, ModuleInfo0,
-	ClausesInfo0, ClausesInfo, Info, ExtraArgModes) :-
-
-	init_poly_info(ModuleInfo0, PredInfo0, ClausesInfo0, Info0),
-	clauses_info_headvars(ClausesInfo0, HeadVars0),
+polymorphism__process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
+		ExtraArgModes) :-
+	init_poly_info(ModuleInfo0, PredInfo0, !.ClausesInfo, !:Info),
+	clauses_info_headvars(!.ClausesInfo, HeadVars0),
 
 	polymorphism__setup_headvars(PredInfo0, HeadVars0, HeadVars,
 		ExtraArgModes, _HeadTypeVars, UnconstrainedTVars,
-		ExtraTypeInfoHeadVars, ExistTypeClassInfoHeadVars,
-		Info0, Info1),
+		ExtraTypeInfoHeadVars, ExistTypeClassInfoHeadVars, !Info),
 
-	clauses_info_clauses(ClausesInfo0, Clauses0),
+	clauses_info_clauses_only(!.ClausesInfo, Clauses0),
 	list__map_foldl(
 		polymorphism__process_clause(PredInfo0,
 			HeadVars0, HeadVars, UnconstrainedTVars,
 			ExtraTypeInfoHeadVars,
 			ExistTypeClassInfoHeadVars),
-		Clauses0, Clauses, Info1, Info),
+		Clauses0, Clauses, !Info),
 
 	%
 	% Set the new values of the fields in clauses_info.
 	%
-	poly_info_get_varset(Info, VarSet),
-	poly_info_get_var_types(Info, VarTypes),
-	poly_info_get_type_info_map(Info, TypeInfoMap),
-	poly_info_get_typeclass_info_map(Info, TypeClassInfoMap),
-	clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
+	poly_info_get_varset(!.Info, VarSet),
+	poly_info_get_var_types(!.Info, VarTypes),
+	poly_info_get_type_info_map(!.Info, TypeInfoMap),
+	poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap),
+	clauses_info_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes),
+	set_clause_list(Clauses, ClausesRep),
 	map__init(TVarNameMap), % This is only used while adding the clauses.
-	ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-		VarTypes, HeadVars, Clauses, TypeInfoMap, TypeClassInfoMap,
-		ClausesInfo0 ^ have_foreign_clauses).
+	!:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
+		VarTypes, HeadVars, ClausesRep, TypeInfoMap, TypeClassInfoMap,
+		!.ClausesInfo ^ have_foreign_clauses).
 
 :- pred polymorphism__process_clause(pred_info::in, list(prog_var)::in,
 	list(prog_var)::in, list(tvar)::in,

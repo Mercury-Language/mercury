@@ -104,7 +104,6 @@
 :- pred instmap_delta_changed_vars(instmap_delta::in, set(prog_var)::out)
 	is det.
 
-	%
 	% instmap_changed_vars(IMA, IMB, MI, CV)
 	%
 	% Given an earlier instmap, IMA, and a later instmap, IMB,
@@ -160,6 +159,7 @@
 
 	% Bind a variable in an instmap to a functor at the beginning
 	% of a case in a switch. Aborts on compiler generated cons_ids.
+	%
 :- pred instmap_delta_bind_var_to_functor(prog_var::in, (type)::in,
 	cons_id::in, instmap::in, instmap_delta::in, instmap_delta::out,
 	module_info::in, module_info::out) is det.
@@ -169,6 +169,7 @@
 
 	% Update the given instmap to include the initial insts of the
 	% lambda variables.
+	%
 :- pred instmap__pre_lambda_update(module_info::in, list(prog_var)::in,
 	list(mode)::in, instmap::in, instmap::out) is det.
 
@@ -193,28 +194,28 @@
 	instmap::out) is det.
 
 	% Given an instmap_delta and an instmap_delta, apply the
-	% second instmap_delta to the first to produce a new
-	% instmap_delta.
+	% second instmap_delta to the first to produce a new instmap_delta.
 	%
 :- pred instmap_delta_apply_instmap_delta(instmap_delta::in, instmap_delta::in,
 	overlay_how::in, instmap_delta::out) is det.
 
 	% instmap_merge(NonLocalVars, InstMaps, MergeContext):
-	%       Merge the `InstMaps' resulting from different branches
-	%       of a disjunction or if-then-else, and update the
-	%       instantiatedness of all the nonlocal variables,
-	%       checking that it is the same for every branch.
+	%
+	% Merge the `InstMaps' resulting from different branches of a
+	% disjunction or if-then-else, and update the instantiatedness
+	% of all the nonlocal variables, checking that it is the same
+	% for every branch.
 	%
 :- pred instmap__merge(set(prog_var)::in, list(instmap)::in, merge_context::in,
 	mode_info::in, mode_info::out) is det.
 
 	% instmap__unify(NonLocalVars, InstMapNonlocalvarPairss):
-	%       Unify the `InstMaps' in the list of pairs resulting
-	%	from different branches of a parallel conjunction and
-	%	update the instantiatedness of all the nonlocal variables.
-	%	The variable locking that is done when modechecking
-	%	the individual conjuncts ensures that variables have
-	%	at most one producer.
+	%
+	% Unify the `InstMaps' in the list of pairs resulting from different
+	% branches of a parallel conjunction and update the instantiatedness
+	% of all the nonlocal variables. The variable locking that is done
+	% when modechecking the individual conjuncts ensures that variables
+	% have at most one producer.
 	%
 :- pred instmap__unify(set(prog_var)::in, list(pair(instmap,
 	set(prog_var)))::in, mode_info::in, mode_info::out) is det.
@@ -243,30 +244,37 @@
 	% `instmap__no_output_vars(Instmap, InstmapDelta, Vars, ModuleInfo)'
 	% is true if none of the vars in the set Vars could have become more
 	% instantiated when InstmapDelta is applied to Instmap.
+	%
 :- pred instmap__no_output_vars(instmap::in, instmap_delta::in,
 	set(prog_var)::in, vartypes::in, module_info::in) is semidet.
 
 	% merge_instmap_delta(InitialInstMap, NonLocals,
-	%	InstMapDeltaA, InstMapDeltaB, ModuleInfo0, ModuleInfo)
+	%	InstMapDeltaA, InstMapDeltaB, !ModuleInfo):
+	%
 	% Merge the instmap_deltas of different branches of an if-then-else,
 	% disj or switch.
+	%
 :- pred merge_instmap_delta(instmap::in, set(prog_var)::in, vartypes::in,
 	instmap_delta::in, instmap_delta::in, instmap_delta::out,
 	module_info::in, module_info::out) is det.
 
 	% merge_instmap_deltas(Vars, InstMapDeltas,
-	%	MergedInstMapDelta, ModuleInfo0, ModuleInfo)
-	% takes a list of instmap deltas from the branches of an if-then-else,
+	%	MergedInstMapDelta, ModuleInfo):
+	%
+	% Takes a list of instmap deltas from the branches of an if-then-else,
 	% switch, or disj and merges them. This is used in situations
 	% where the bindings are known to be compatible.
+	%
 :- pred merge_instmap_deltas(instmap::in, set(prog_var)::in, vartypes::in,
 	list(instmap_delta)::in, instmap_delta::out,
 	module_info::in, module_info::out) is det.
 
 	% unify_instmap_delta(InitialInstMap, NonLocals,
 	%	InstMapDeltaA, InstMapDeltaB, !ModuleInfo)
+	%
 	% Unify the instmap_deltas of different branches of a parallel
 	% conjunction.
+	%
 :- pred unify_instmap_delta(instmap::in, set(prog_var)::in, instmap_delta::in,
 	instmap_delta::in, instmap_delta::out,
 	module_info::in, module_info::out) is det.
@@ -294,6 +302,7 @@
 	assoc_list(prog_var, inst)::out) is det.
 
 	% Apply the specified procedure to all insts in an instmap_delta.
+	%
 :- pred instmap_delta_map_foldl(
 	pred(prog_var, inst, inst, T, T)::in(pred(in, in, out, in, out) is det),
 	instmap_delta::in, instmap_delta::out, T::in, T::out) is det.
@@ -698,7 +707,7 @@ get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
 	merge_errors::out) is det.
 
 instmap__merge_2([], _, _, !InstMap, !ModuleInfo, []).
-instmap__merge_2([Var|Vars], InstMapList, VarTypes, !InstMap, !ModuleInfo,
+instmap__merge_2([Var | Vars], InstMapList, VarTypes, !InstMap, !ModuleInfo,
 		!:ErrorList) :-
 	instmap__merge_2(Vars, InstMapList, VarTypes, !InstMap, !ModuleInfo,
 		!:ErrorList),
@@ -714,11 +723,11 @@ instmap__merge_2([Var|Vars], InstMapList, VarTypes, !InstMap, !ModuleInfo,
 	).
 
 	% instmap_merge_var(InstMaps, Var, ModuleInfo, Insts, Error):
-	%       Let `Insts' be the list of the inst of `Var' in the
-	%       corresponding `InstMaps'.  Let `Error' be yes iff
-	%       there are two instmaps for which the inst of `Var'
-	%       is incompatible.
-
+	%
+	% Let `Insts' be the list of the inst of `Var' in the corresponding
+	% `InstMaps'.  Let `Error' be yes iff there are two instmaps
+	% for which the inst of `Var' is incompatible.
+	%
 :- pred instmap__merge_var(list(instmap)::in, prog_var::in, (type)::in,
 	list(inst)::out, (inst)::out, module_info::in, module_info::out,
 	bool::out) is det.
@@ -796,13 +805,14 @@ instmap__unify(NonLocals, InstMapList, !ModeInfo) :-
 
 			% If there were any errors, then add the error
 			% to the list of possible errors in the mode_info.
-		( ErrorList = [FirstError | _] ->
+		(
+			ErrorList = [FirstError | _],
 			FirstError = Var - _,
 			set__singleton_set(WaitingVars, Var),
 			mode_info_error(WaitingVars,
 				mode_error_par_conj(ErrorList), !ModeInfo)
 		;
-			true
+			ErrorList = []
 		),
 		mode_info_set_instmap(reachable(InstMapping), !ModeInfo)
 	;
@@ -813,9 +823,11 @@ instmap__unify(NonLocals, InstMapList, !ModeInfo) :-
 
 	% instmap__unify_2(Vars, InitialInstMap, InstMaps, ModuleInfo,
 	%		ErrorList):
-	%       Let `ErrorList' be the list of variables in `Vars' for
-	%       which there are two instmaps in `InstMaps' for which the insts
-	%       of the variable is incompatible.
+	%
+	% Let `ErrorList' be the list of variables in `Vars' for which
+	% there are two instmaps in `InstMaps' for which the insts
+	% of the variable is incompatible.
+	%
 :- pred instmap__unify_2(list(prog_var)::in, instmap::in,
 	list(pair(instmap, set(prog_var)))::in, module_info::in,
 	map(prog_var, inst)::in, module_info::out,
@@ -837,12 +849,11 @@ instmap__unify_2([Var|Vars], InitialInstMap, InstMapList, ModuleInfo0, InstMap0,
 	map__set(InstMap1, Var, Inst, InstMap).
 
 	% instmap__unify_var(InstMaps, Var, InitialInstMap, ModuleInfo,
-	%		Insts, Error):
-	%       Let `Insts' be the list of the inst of `Var' in
-	%       each of the corresponding `InstMaps'.  Let `Error' be yes
-	%	iff there are two instmaps for which the inst of `Var'
-	%       is incompatible.
-
+	%	Insts, Error):
+	% Let `Insts' be the list of the inst of `Var' in each of the
+	% corresponding `InstMaps'.  Let `Error' be yes iff there are two
+	% instmaps for which the inst of `Var' is incompatible.
+	%
 :- pred instmap__unify_var(list(pair(instmap, set(prog_var)))::in,
 	prog_var::in, list(inst)::in, list(inst)::out, (inst)::in, (inst)::out,
 	module_info::in, module_info::out, bool::in, bool::out) is det.
@@ -877,7 +888,7 @@ instmap__unify_var([InstMap - Nonlocals| Rest], Var, !InstList, !Inst,
 	% Given two instmaps and a set of variables, compute an instmap delta
 	% which records the change in the instantiation state of those
 	% variables.
-
+	%
 compute_instmap_delta(unreachable, _, _, unreachable).
 compute_instmap_delta(reachable(_), unreachable, _, unreachable).
 compute_instmap_delta(reachable(InstMapA), reachable(InstMapB), NonLocals,
@@ -937,7 +948,7 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes,
 %-----------------------------------------------------------------------------%
 
 	% Given two instmap deltas, merge them to produce a new instmap_delta.
-
+	%
 merge_instmap_delta(_, _, _, unreachable, InstMapDelta, InstMapDelta,
 		!ModuleInfo).
 merge_instmap_delta(_, _, _, reachable(InstMapping), unreachable,

@@ -255,23 +255,25 @@ intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 		% Write a declaration to the `.opt' file for
 		% `exported_to_submodules' predicates.
 		intermod__add_proc(PredId, DoWrite0, !Info),
-		clauses_info_clauses(ClausesInfo0, Clauses0),
+		clauses_info_clauses_rep(ClausesInfo0, ClausesRep0),
 		(
 			DoWrite0 = yes,
 			clauses_info_vartypes(ClausesInfo0, VarTypes),
 			pred_info_typevarset(PredInfo0, TVarSet),
 			intermod_info_set_var_types(VarTypes, !Info),
 			intermod_info_set_tvarset(TVarSet, !Info),
+			get_clause_list(ClausesRep0, Clauses0),
 			intermod__traverse_clauses(Clauses0, Clauses, DoWrite,
-				!Info)
+				!Info),
+			set_clause_list(Clauses, ClausesRep)
 		;
 			DoWrite0 = no,
-			Clauses = Clauses0,
+			ClausesRep = ClausesRep0,
 			DoWrite = no
 		),
 		(
 			DoWrite = yes,
-			clauses_info_set_clauses(Clauses,
+			clauses_info_set_clauses_rep(ClausesRep,
 				ClausesInfo0, ClausesInfo),
 			pred_info_set_clauses_info(ClausesInfo,
 				PredInfo0, PredInfo),
@@ -320,7 +322,7 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 	),
 	(
 		pred_info_clauses_info(PredInfo, ClauseInfo),
-		clauses_info_clauses(ClauseInfo, Clauses),
+		clauses_info_clauses_only(ClauseInfo, Clauses),
 
 		[ProcId | _ProcIds] = pred_info_procids(PredInfo),
 		pred_info_procedures(PredInfo, Procs),
@@ -1612,7 +1614,7 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	clauses_info_varset(ClausesInfo, VarSet),
 	clauses_info_headvars(ClausesInfo, HeadVars),
-	clauses_info_clauses(ClausesInfo, Clauses),
+	clauses_info_clauses_only(ClausesInfo, Clauses),
 
 	( pred_info_get_goal_type(PredInfo, promise(PromiseType)) ->
 		( Clauses = [Clause] ->
@@ -1872,6 +1874,7 @@ intermod__should_output_marker(generate_inline, _) :-
 	% This marker should only occur after the magic sets transformation.
 	error("intermod__should_output_marker: generate_inline").
 intermod__should_output_marker(calls_are_fully_qualified, no).
+intermod__should_output_marker(mode_check_clauses, yes).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mode)::in,
 	prog_varset::in, prog_varset::out, list(pragma_var)::out) is det.

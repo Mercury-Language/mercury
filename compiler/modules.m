@@ -2052,6 +2052,7 @@ pragma_allowed_in_interface(aditi_no_memo(_, _), no).
 pragma_allowed_in_interface(naive(_, _), no).
 pragma_allowed_in_interface(psn(_, _), no).
 pragma_allowed_in_interface(owner(_, _, _), yes).
+pragma_allowed_in_interface(mode_check_clauses(_, _), yes).
 
 check_for_no_exports(Items, ModuleName, !IO) :-
     globals__io_lookup_bool_option(warn_nothing_exported, ExportWarning, !IO),

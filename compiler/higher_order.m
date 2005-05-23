@@ -2524,8 +2524,9 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 
 	% This isn't looked at after here, and just clutters up
 	% hlds dumps if it's filled in.
+	set_clause_list([], ClausesRep),
 	ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
-		EmptyTVarNameMap, EmptyVarTypes, [], [],
+		EmptyTVarNameMap, EmptyVarTypes, [], ClausesRep,
 		EmptyTIMap, EmptyTCIMap, no),
 	Origin = transformed(Transform, OrigOrigin, CallerPredId),
 	pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,

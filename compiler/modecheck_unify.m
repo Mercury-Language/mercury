@@ -362,7 +362,7 @@ modecheck_unification(X, lambda_goal(Purity, PredOrFunc, EvalMethod, _,
 			modecheck_goal(Goal0, Goal1, !ModeInfo, !IO)
 		),
 		mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
-		modecheck_final_insts(Vars, FinalInsts, Goal1, Goal,
+		modecheck_lambda_final_insts(Vars, FinalInsts, Goal1, Goal,
 			!ModeInfo),
 		mode_checkpoint(exit, "lambda goal", !ModeInfo, !IO),
 

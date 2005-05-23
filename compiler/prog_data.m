@@ -524,6 +524,11 @@
 			checkterm_name	:: sym_name,
 			checkterm_arity	:: arity
 			% Predname, Arity
+		)
+
+	;	mode_check_clauses(
+			mode_check_clause_name	:: sym_name,
+			mode_check_clause_arity	:: arity
 		).
 
 %

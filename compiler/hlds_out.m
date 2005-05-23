@@ -952,8 +952,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 	;
 		true
 	),
-	ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars, Clauses,
-		TypeInfoMap, TypeClassInfoMap, _),
+	ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars,
+		ClausesRep, TypeInfoMap, TypeClassInfoMap, _),
 	( string__contains_char(Verbose, 'C') ->
 		hlds_out__write_indent(Indent, !IO),
 		io__write_string("% pred id: ", !IO),
@@ -1020,7 +1020,9 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 		hlds_out__write_var_types(Indent, VarSet, AppendVarNums,
 			VarTypes, TVarSet, !IO),
 
-		( Clauses \= [] ->
+		get_clause_list(ClausesRep, Clauses),
+		(
+			Clauses = [_ | _],
 			set_dump_opts_for_clauses(SavedDumpString, !IO),
 			hlds_out__write_clauses(Indent, ModuleInfo, PredId,
 				VarSet, AppendVarNums, HeadVars, PredOrFunc,
@@ -1028,7 +1030,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 			globals__io_set_option(dump_hlds_options,
 				string(SavedDumpString), !IO)
 		;
-			true
+			Clauses = []
 		),
 
 		pred_info_get_origin(PredInfo, Origin),
@@ -1155,6 +1157,7 @@ hlds_out__marker_name(psn, "psn").
 hlds_out__marker_name(supp_magic, "supp_magic").
 hlds_out__marker_name(context, "context").
 hlds_out__marker_name(calls_are_fully_qualified, "calls_are_fully_qualified").
+hlds_out__marker_name(mode_check_clauses, "mode_check_clauses").
 
 hlds_out__write_marker(Marker, !IO) :-
 	hlds_out__marker_name(Marker, Name),

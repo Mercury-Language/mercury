@@ -220,7 +220,7 @@
 						% typecheck.m.
 		headvars		:: list(prog_var),
 						% head vars
-		clauses			:: list(clause),
+		clauses_rep		:: clauses_rep,
 						% the following two
 						% fields are computed
 						% by polymorphism.m
@@ -231,6 +231,30 @@
 						% language clauses?
 	).
 
+:- type clauses_rep.
+
+	% Returns yes iff the given clauses_rep represents the empty list of
+	% clauses.
+	%
+:- func clause_list_is_empty(clauses_rep) = bool.
+
+	% Adds the given clause to the end of the clause list.
+	%
+:- pred add_clause(clause::in, clauses_rep::in, clauses_rep::out) is det.
+
+	% Get the list of clauses in the given clauses_rep in whatever order
+	% happens to be efficient.
+	%
+:- pred get_clause_list_any_order(clauses_rep::in, list(clause)::out) is det.
+
+	% Get the list of clauses in the given clauses_rep in program order.
+	%
+:- pred get_clause_list(clauses_rep::in, list(clause)::out) is det.
+
+	% Set the list of clauses to the one given.
+	%
+:- pred set_clause_list(list(clause)::in, clauses_rep::out) is det.
+
 :- type vartypes == map(prog_var, type).
 
 :- type tvar_name_map == map(string, tvar).
@@ -239,10 +263,12 @@
 
 	% This partial map holds the types specified by any explicit
 	% type qualifiers in the clauses.
+	%
 :- pred clauses_info_explicit_vartypes(clauses_info::in, vartypes::out) is det.
 
 	% This map contains the types of all the variables, as inferred
 	% by typecheck.m.
+	%
 :- pred clauses_info_vartypes(clauses_info::in, vartypes::out) is det.
 
 :- pred clauses_info_type_info_varmap(clauses_info::in, type_info_varmap::out)
@@ -253,7 +279,17 @@
 
 :- pred clauses_info_headvars(clauses_info::in, list(prog_var)::out) is det.
 
-:- pred clauses_info_clauses(clauses_info::in, list(clause)::out) is det.
+:- pred clauses_info_clauses_rep(clauses_info::in, clauses_rep::out) is det.
+
+	% Return the list of clauses in program order.
+	%
+:- pred clauses_info_clauses_only(clauses_info::in, list(clause)::out) is det.
+
+	% Return the list of clauses in program order, and if necessary update
+	% the cache of this info in the clauses_info.
+	%
+:- pred clauses_info_clauses(list(clause)::out,
+	clauses_info::in, clauses_info::out) is det.
 
 :- pred clauses_info_set_headvars(list(prog_var)::in,
 	clauses_info::in, clauses_info::out) is det.
@@ -261,16 +297,21 @@
 :- pred clauses_info_set_clauses(list(clause)::in,
 	clauses_info::in, clauses_info::out) is det.
 
+:- pred clauses_info_set_clauses_rep(clauses_rep::in,
+	clauses_info::in, clauses_info::out) is det.
+
 :- pred clauses_info_set_varset(prog_varset::in,
 	clauses_info::in, clauses_info::out) is det.
 
 	% This partial map holds the types specified by any explicit
 	% type qualifiers in the clauses.
+	%
 :- pred clauses_info_set_explicit_vartypes(vartypes::in,
 	clauses_info::in, clauses_info::out) is det.
 
 	% This map contains the types of all the variables, as inferred
 	% by typecheck.m.
+	%
 :- pred clauses_info_set_vartypes(vartypes::in,
 	clauses_info::in, clauses_info::out) is det.
 
@@ -292,6 +333,106 @@
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- implementation.
+
+clauses_info_varset(CI, CI ^ varset).
+clauses_info_explicit_vartypes(CI, CI ^ explicit_vartypes).
+clauses_info_vartypes(CI, CI ^ vartypes).
+clauses_info_headvars(CI, CI ^ headvars).
+clauses_info_clauses_rep(CI, CI ^ clauses_rep).
+clauses_info_type_info_varmap(CI, CI ^ clause_type_info_varmap).
+clauses_info_typeclass_info_varmap(CI, CI ^ clause_typeclass_info_varmap).
+
+clauses_info_set_varset(X, CI, CI ^ varset := X).
+clauses_info_set_explicit_vartypes(X, CI, CI ^ explicit_vartypes := X).
+clauses_info_set_vartypes(X, CI, CI ^ vartypes := X).
+clauses_info_set_headvars(X, CI, CI ^ headvars := X).
+clauses_info_set_clauses(X, CI, CI ^ clauses_rep := forw(X)).
+clauses_info_set_clauses_rep(X, CI, CI ^ clauses_rep := X).
+clauses_info_set_type_info_varmap(X, CI, CI ^ clause_type_info_varmap := X).
+clauses_info_set_typeclass_info_varmap(X, CI,
+	CI ^ clause_typeclass_info_varmap := X).
+
+:- type clauses_rep
+	--->	rev(list(clause))
+	;	forw(list(clause))
+	;	both(rev :: list(clause), forw :: list(clause)).
+
+clause_list_is_empty(ClausesRep) = IsEmpty :-
+	(
+		ClausesRep = rev(List)
+	;
+		ClausesRep = forw(List)
+	;
+		ClausesRep = both(List, _)
+	),
+	(
+		List = [],
+		IsEmpty = yes
+	;
+		List = [_ | _],
+		IsEmpty = no
+	).
+
+get_clause_list_any_order(ClausesRep, Clauses) :-
+	(
+		ClausesRep = rev(Clauses)
+	;
+		ClausesRep = forw(Clauses)
+	;
+		ClausesRep = both(_, Clauses)
+	).
+
+get_clause_list(ClausesRep, Clauses) :-
+	(
+		ClausesRep = rev(RevClauses),
+		list__reverse(RevClauses, Clauses)
+	;
+		ClausesRep = forw(Clauses)
+	;
+		ClausesRep = both(_, Clauses)
+	).
+
+set_clause_list(Clauses, forw(Clauses)).
+
+clauses_info_clauses_only(CI, Clauses) :-
+	ClausesRep = CI ^ clauses_rep,
+	get_clause_list(ClausesRep, Clauses).
+
+clauses_info_clauses(Clauses, !CI) :-
+	ClausesRep = !.CI ^ clauses_rep,
+	(
+		ClausesRep = rev(RevClauses),
+		list__reverse(RevClauses, Clauses),
+		!:CI = !.CI ^ clauses_rep := both(RevClauses, Clauses)
+	;
+		ClausesRep = forw(Clauses)
+	;
+		ClausesRep = both(_, Clauses)
+	).
+
+add_clause(Clause, !ClausesRep) :-
+	% We keep the clause list in reverse order, to make it possible
+	% to add other clauses without quadratic behavior.
+	(
+		!.ClausesRep = rev(RevClauses0),
+		RevClauses = [Clause | RevClauses0],
+		!:ClausesRep = rev(RevClauses)
+	;
+		!.ClausesRep = forw(Clauses0),
+		list__reverse(Clauses0, RevClauses0),
+		RevClauses = [Clause | RevClauses0],
+		!:ClausesRep = rev(RevClauses)
+	;
+		!.ClausesRep = both(RevClauses0, _),
+		RevClauses = [Clause | RevClauses0],
+		!:ClausesRep = rev(RevClauses)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
 
 :- type implementation_language
 	--->	mercury
@@ -357,7 +498,7 @@
 	% the current module, or imported from some other module.
 	% Only predicates can have status pseudo_exported or pseudo_imported.
 	% Only types can have status abstract_exported or abstract_imported.
-
+	%
 :- type import_status
 	--->	external(import_status)
 				% Declared `:- external'.
@@ -402,25 +543,29 @@
 				% and the module does not contain any
 				% sub-modules.
 
-	% returns yes if the status indicates that the item was
+	% Returns yes if the status indicates that the item was
 	% in any way exported -- that is, if it could be used
 	% by any other module, or by sub-modules of this module.
+	%
 :- pred status_is_exported(import_status::in, bool::out) is det.
 
-	% returns yes if the status indicates that the item was
+	% Returns yes if the status indicates that the item was
 	% exported to importing modules (not just to sub-modules).
+	%
 :- pred status_is_exported_to_non_submodules(import_status::in, bool::out)
 	is det.
 
-	% returns yes if the status indicates that the item was
+	% Returns yes if the status indicates that the item was
 	% in any way imported -- that is, if it was defined in
 	% some other module, or in a sub-module of this module.
 	% This is the opposite of status_defined_in_this_module.
+	%
 :- pred status_is_imported(import_status::in, bool::out) is det.
 
-	% returns yes if the status indicates that the item was
+	% Returns yes if the status indicates that the item was
 	% defined in this module.  This is the opposite of
 	% status_is_imported.
+	%
 :- pred status_defined_in_this_module(import_status::in, bool::out) is det.
 
 	% Are calls from a predicate with the given import_status
@@ -432,7 +577,7 @@
 	% Predicates can be marked with various boolean flags, called
 	% "markers".
 
-	% an abstract set of markers.
+	% An abstract set of markers.
 :- type pred_markers.
 
 :- type marker
@@ -561,6 +706,14 @@
 				% fully qualified. This occurs for
 				% predicates read from `.opt' files
 				% and compiler-generated predicates.
+	;	mode_check_clauses
+				% Each clause of the predicate should be
+				% modechecked separately. Used for predicates
+				% defined by lots of clauses (usually facts)
+				% for which the compiler's quadratic behavior
+				% during mode checking (in instmap__merge and
+				% inst_match.bound_inst_list_contains_instname)
+				% would be unacceptable.
 	.
 
 	% An abstract set of attributes.
@@ -622,9 +775,11 @@
 				% MR_typeclass_info_superclass_info.
 
 	% type_info_locn_var(TypeInfoLocn, Var):
-	% 	Var is the variable corresponding to the TypeInfoLocn. Note
-	% 	that this does *not* mean that Var is a type_info; it may be
-	% 	a typeclass_info in which the type_info is nested.
+	%
+	% Var is the variable corresponding to the TypeInfoLocn. Note
+	% that this does *not* mean that Var is a type_info; it may be
+	% a typeclass_info in which the type_info is nested.
+	%
 :- pred type_info_locn_var(type_info_locn::in, prog_var::out) is det.
 
 :- pred type_info_locn_set_var(prog_var::in,
@@ -721,7 +876,7 @@
 	%
 	% Return a pred_info whose fields are filled in from the information
 	% (direct and indirect) in the arguments, and from defaults.
-
+	%
 :- pred pred_info_init(module_name::in, sym_name::in, arity::in,
 	pred_or_func::in, prog_context::in, pred_origin::in, import_status::in,
 	goal_type::in, pred_markers::in, list(type)::in, tvarset::in,
@@ -737,7 +892,7 @@
 	% (direct and indirect) in the arguments, and from defaults. The given
 	% proc_info becomes the only procedure of the predicate (currently)
 	% and its proc_id is returned as the second last argument.
-
+	%
 :- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
 	prog_context::in, pred_origin::in, import_status::in, pred_markers::in,
 	list(type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
@@ -753,7 +908,7 @@
 	% call the created predicate. ExtraArgs is the list of extra
 	% type_infos and typeclass_infos required by typeinfo liveness
 	% which were added to the front of the argument list.
-
+	%
 :- pred hlds_pred__define_new_pred(pred_origin::in,
 	hlds_goal::in, hlds_goal::out, list(prog_var)::in, list(prog_var)::out,
 	instmap::in, string::in, tvarset::in, vartypes::in,
@@ -764,7 +919,7 @@
 
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
-
+	%
 :- type head_type_params == list(tvar).
 
 :- func pred_info_module(pred_info) =  module_name.
@@ -781,6 +936,7 @@
 	% The `is_pred_or_func' field of the pred_info records whether
 	% a pred_info is really for a predicate or whether it is for
 	% what was originally a function.
+	%
 :- func pred_info_is_pred_or_func(pred_info) = pred_or_func.
 
 :- pred pred_info_context(pred_info::in, prog_context::out) is det.
@@ -1084,109 +1240,109 @@ calls_are_fully_qualified(Markers) =
 	% polymorphically-typed arguments whose type depends on the
 	% values of those type_info-related variables;
 	% accurate GC for the MLDS back-end relies on this.
-:- type pred_info --->
-	pred_info(
-		module_name	:: module_name,
-				% module in which pred occurs
-		name		:: string,
-				% predicate name
-		orig_arity	:: arity,
-				% the arity of the pred
-				% (*not* counting any inserted
-				% type_info arguments)
-		is_pred_or_func	:: pred_or_func,
-				% whether this "predicate" was really
-				% a predicate or a function
-		context		:: prog_context,
-				% the location (line #) of the :- pred decl.
-		pred_origin	:: pred_origin,
-				% where did the predicate come from.
-
-		import_status	:: import_status,
-		goal_type	:: goal_type,
-				% whether the goals seen so far, if any,
-				% for this predicate are clauses or
-				% pragma foreign_code(...) declarations
-
-		markers		:: pred_markers,
-				% various boolean flags
-		attributes	:: pred_attributes,
-				% various attributes
-
-		arg_types	:: list(type),
-				% argument types
-		decl_typevarset	:: tvarset,
-				% names of type vars
-				% in the predicate's type decl
-		typevarset	:: tvarset,
-				% names of type vars
-				% in the predicate's type decl
-				% or in the variable type assignments
-
-		exist_quant_tvars :: existq_tvars,
-				% the set of existentially quantified
-				% type variables in the predicate's
-				% type decl
-		head_type_params :: head_type_params,
-				% The set of type variables which the
-				% body of the predicate can't bind,
-				% and whose type_infos are produced
-				% elsewhere.  This includes
-				% universally quantified head types
-				% (the type_infos are passed in)
-				% plus existentially quantified types
-				% in preds called from the body
-				% (the type_infos are returned from
-				% the called preds).
-				% Computed during type checking.
-
-		class_context	:: prog_constraints,
-				% the class constraints on the
-				% type variables in the predicate's
-				% type declaration
-		constraint_proofs :: constraint_proof_map,
-				% explanations of how redundant
-				% constraints were eliminated. These
-				% are needed by polymorphism.m to
-				% work out where to get the
-				% typeclass_infos from.
-				% Computed during type checking.
-		constraint_map	:: constraint_map,
-				% maps constraint identifiers to the actual
-				% constraints.
-				% Computed during type checking.
-		unproven_body_constraints :: list(prog_constraint),
-				% unproven class constraints on type
-				% variables in the predicate's body,
-				% if any (if this remains non-empty
-				% after type checking has finished,
-				% post_typecheck.m will report a type
-				% error).
-
-		inst_graph_info	:: inst_graph_info,
-				% The predicate's inst graph, for constraint
-				% based mode analysis.
-		modes		:: list(arg_modes_map),
-				% Mode information extracted from constraint
-				% based mode analysis.
-
-		assertions	:: set(assert_id),
-				% List of assertions which
-				% mention this predicate.
-
-		aditi_owner	:: aditi_owner,
-				% The owner of this predicate if
-				% it is an Aditi predicate. Set to
-				% the value of --aditi-user if no
-				% `:- pragma owner' declaration exists.
-		indexes		:: list(index_spec),
-				% Indexes if this predicate is
-				% an Aditi base relation, ignored
-				% otherwise.
-
-		clauses_info	:: clauses_info,
-		procedures	:: proc_table
-	).
+ :- type pred_info --->
+ 	pred_info(
+ 		module_name	:: module_name,
+ 				% module in which pred occurs
+ 		name		:: string,
+ 				% predicate name
+ 		orig_arity	:: arity,
+ 				% the arity of the pred
+ 				% (*not* counting any inserted
+ 				% type_info arguments)
+ 		is_pred_or_func	:: pred_or_func,
+ 				% whether this "predicate" was really
+ 				% a predicate or a function
+ 		context		:: prog_context,
+ 				% the location (line #) of the :- pred decl.
+ 		pred_origin	:: pred_origin,
+ 				% where did the predicate come from.
+ 
+ 		import_status	:: import_status,
+ 		goal_type	:: goal_type,
+ 				% whether the goals seen so far, if any,
+ 				% for this predicate are clauses or
+ 				% pragma foreign_code(...) declarations
+ 
+ 		markers		:: pred_markers,
+ 				% various boolean flags
+ 		attributes	:: pred_attributes,
+ 				% various attributes
+ 
+ 		arg_types	:: list(type),
+ 				% argument types
+ 		decl_typevarset	:: tvarset,
+ 				% names of type vars
+ 				% in the predicate's type decl
+ 		typevarset	:: tvarset,
+ 				% names of type vars
+ 				% in the predicate's type decl
+ 				% or in the variable type assignments
+ 
+ 		exist_quant_tvars :: existq_tvars,
+ 				% the set of existentially quantified
+ 				% type variables in the predicate's
+ 				% type decl
+ 		head_type_params :: head_type_params,
+ 				% The set of type variables which the
+ 				% body of the predicate can't bind,
+ 				% and whose type_infos are produced
+ 				% elsewhere.  This includes
+ 				% universally quantified head types
+ 				% (the type_infos are passed in)
+ 				% plus existentially quantified types
+ 				% in preds called from the body
+ 				% (the type_infos are returned from
+ 				% the called preds).
+ 				% Computed during type checking.
+ 
+ 		class_context	:: prog_constraints,
+ 				% the class constraints on the
+ 				% type variables in the predicate's
+ 				% type declaration
+ 		constraint_proofs :: constraint_proof_map,
+ 				% explanations of how redundant
+ 				% constraints were eliminated. These
+ 				% are needed by polymorphism.m to
+ 				% work out where to get the
+ 				% typeclass_infos from.
+ 				% Computed during type checking.
+ 		constraint_map	:: constraint_map,
+ 				% maps constraint identifiers to the actual
+ 				% constraints.
+ 				% Computed during type checking.
+ 		unproven_body_constraints :: list(prog_constraint),
+ 				% unproven class constraints on type
+ 				% variables in the predicate's body,
+ 				% if any (if this remains non-empty
+ 				% after type checking has finished,
+ 				% post_typecheck.m will report a type
+ 				% error).
+ 
+ 		inst_graph_info	:: inst_graph_info,
+ 				% The predicate's inst graph, for constraint
+ 				% based mode analysis.
+ 		modes		:: list(arg_modes_map),
+ 				% Mode information extracted from constraint
+ 				% based mode analysis.
+ 
+ 		assertions	:: set(assert_id),
+ 				% List of assertions which
+ 				% mention this predicate.
+ 
+ 		aditi_owner	:: aditi_owner,
+ 				% The owner of this predicate if
+ 				% it is an Aditi predicate. Set to
+ 				% the value of --aditi-user if no
+ 				% `:- pragma owner' declaration exists.
+ 		indexes		:: list(index_spec),
+ 				% Indexes if this predicate is
+ 				% an Aditi base relation, ignored
+ 				% otherwise.
+ 
+ 		clauses_info	:: clauses_info,
+ 		procedures	:: proc_table
+ 	).
 
 pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
 		Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
@@ -1205,8 +1361,8 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
 		Context, Origin, Status, GoalType, Markers, Attributes,
 		ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, HeadTypeParams,
 		ClassContext, ClassProofs, ClassConstraintMap,
-		UnprovenBodyConstraints, inst_graph_info_init, [], Assertions,
-		User, Indexes, ClausesInfo, Procs).
+		UnprovenBodyConstraints, inst_graph_info_init, [],
+		Assertions, User, Indexes, ClausesInfo, Procs).
 
 pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 		Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
@@ -1225,7 +1381,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 	Indexes = [],
 
 	% The empty list of clauses is a little white lie.
-	Clauses = [],
+	Clauses = forw([]),
 	map__init(TVarNameMap),
 	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
 	proc_info_typeclass_info_varmap(ProcInfo, TypeClassInfoMap),
@@ -1669,25 +1825,6 @@ remove_attribute(Attribute, Attributes0, Attributes) :-
 attributes_to_attribute_list(Attributes, Attributes).
 
 attribute_list_to_attributes(Attributes, Attributes).
-
-%-----------------------------------------------------------------------------%
-
-clauses_info_varset(CI, CI ^ varset).
-clauses_info_explicit_vartypes(CI, CI ^ explicit_vartypes).
-clauses_info_vartypes(CI, CI ^ vartypes).
-clauses_info_headvars(CI, CI ^ headvars).
-clauses_info_clauses(CI, CI ^ clauses).
-clauses_info_type_info_varmap(CI, CI ^ clause_type_info_varmap).
-clauses_info_typeclass_info_varmap(CI, CI ^ clause_typeclass_info_varmap).
-
-clauses_info_set_varset(X, CI, CI ^ varset := X).
-clauses_info_set_explicit_vartypes(X, CI, CI ^ explicit_vartypes := X).
-clauses_info_set_vartypes(X, CI, CI ^ vartypes := X).
-clauses_info_set_headvars(X, CI, CI ^ headvars := X).
-clauses_info_set_clauses(X, CI, CI ^ clauses := X).
-clauses_info_set_type_info_varmap(X, CI, CI ^ clause_type_info_varmap := X).
-clauses_info_set_typeclass_info_varmap(X, CI,
-	CI ^ clause_typeclass_info_varmap := X).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
