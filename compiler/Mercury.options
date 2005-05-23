@@ -37,7 +37,13 @@ MCFLAGS-make.module_target = --no-ansi-c
 MCFLAGS-make.program_target = --no-ansi-c
 
 # Bug workarounds
+
+# This is the same bug as tests/valid/ho_and_type_spec_bug
 MCFLAGS-mode_robdd.tfeirn = -O3
+
+# This is the same bug as tests/valid/constraint_prop_bug
+MCFLAGS-recompilation.version = --no-local-constraint-propagation
+MCFLAGS-transform_hlds.exception_analysis = --no-local-constraint-propagation
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.  Note that we need to compile these with
