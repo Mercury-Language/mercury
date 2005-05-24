@@ -275,7 +275,7 @@
 	% iteration to stop before all solutions have been found.
 	% Declaratively, the specification is as follows:
 	%
-	%	do_while(Generator, Filter, !Acc) -->
+	%	do_while(Generator, Filter, !Acc) :-
 	%		unsorted_solutions(Generator, Solutions),
 	%		do_while_2(Solutions, Filter, !Acc).
 	%
