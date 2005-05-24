@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -35,11 +37,7 @@
 :- import_module int.
 :- import_module list.
 
-
-
 :- type version_array(T).
-
-
 
     % empty_array returns the empty array.
     %
@@ -131,10 +129,11 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-% The first implementation  of version arrays used nb_references.
-% This incurred three memory allocations for every update.  This
-% version works at a lower level, but only performs one allocation
-% per update.
+
+% The first implementation of version arrays used nb_references.
+% This incurred three memory allocations for every update. This version
+% works at a lower level, but only performs one allocation per update.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -153,14 +152,11 @@ version_array([]) = version_array.empty.
 version_array([X | Xs]) =
     version_array_2(1, Xs, version_array.new(1 + length(Xs), X)).
 
-
 :- func version_array_2(int, list(T), version_array(T)) = version_array(T).
 
 version_array_2(_, [],       VA) = VA.
-
 version_array_2(I, [X | Xs], VA) =
     version_array_2(I + 1, Xs, VA ^ elem(I) := X).
-
 
 from_list(Xs) = version_array(Xs).
 
@@ -172,7 +168,6 @@ VA ^ elem(I) =
       else func_error("version_array.elem: index out of range")
     ).
 
-
 lookup(VA, I) = VA ^ elem(I).
 
 %-----------------------------------------------------------------------------%
@@ -182,7 +177,6 @@ lookup(VA, I) = VA ^ elem(I).
       then VA
       else func_error("version_array.'elem :=': index out of range")
     ).
-
 
 set(I, X, VA, VA ^ elem(I) := X).
 
@@ -201,13 +195,11 @@ copy(VA) =
 
 list(VA) = foldr(list.cons, VA, []).
 
-
 to_list(VA) = list(VA).
 
 %-----------------------------------------------------------------------------%
 
 foldl(F, VA, Acc) = foldl_2(F, VA, Acc, 0, size(VA)).
-
 
 :- func foldl_2(func(T1, T2) = T2, version_array(T1), T2, int, int) = T2.
 
@@ -219,7 +211,6 @@ foldl_2(F, VA, Acc, Lo, Hi) =
 %-----------------------------------------------------------------------------%
 
 foldr(F, VA, Acc) = foldr_2(F, VA, Acc, size(VA) - 1).
-
 
 :- func foldr_2(func(T1, T2) = T2, version_array(T1), T2, int) = T2.
 
@@ -256,7 +247,6 @@ eq_version_array(VAa, VAb) :-
     N = max(VAb),
     eq_version_array_2(N, VAa, VAb).
 
-
 :- pred eq_version_array_2(int::in,
             version_array(T)::in, version_array(T)::in) is semidet.
 
@@ -276,7 +266,6 @@ cmp_version_array(R, VAa, VAb) :-
     N = min(max(VAa), max(VAb)),
     cmp_version_array_2(N, VAa, VAb, R).
 
-
 :- pred cmp_version_array_2(int::in,
             version_array(T)::in, version_array(T)::in, comparison_result::uo)
                 is det.
@@ -292,283 +281,268 @@ cmp_version_array_2(I, VAa, VAb, R) :-
         R = (=)
     ).
 
-
-:- pragma foreign_proc("C", version_array.empty = (VA::out),
+:- pragma foreign_proc("C",
+    version_array.empty = (VA::out),
     [will_not_call_mercury, promise_pure],
-    "
-        VA = ML_va_new_empty();
-    ").
+"
+    VA = ML_va_new_empty();
+").
 
-
-:- pragma foreign_proc("C", version_array.new(N::in, X::in) = (VA::out),
+:- pragma foreign_proc("C",
+    version_array.new(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure],
-    "
-        VA = ML_va_new(N, X);
-    ").
-
+"
+    VA = ML_va_new(N, X);
+").
 
 :- pragma foreign_proc("C",
     resize(VA0::in, N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure],
-    "
-        VA = ML_va_resize(VA0, N, X);
-    ").
-
+"
+    VA = ML_va_resize(VA0, N, X);
+").
 
 resize(N, X, VA, resize(VA, N, X)).
 
-
 :- pragma foreign_proc("C", size(VA::in) = (N::out),
     [will_not_call_mercury, promise_pure],
-    "
-        N = ML_va_size(VA);
-    ").
-
+"
+    N = ML_va_size(VA);
+").
 
 :- pred get_if_in_range(version_array(T)::in, int::in, T::out) is semidet.
 
-:- pragma foreign_proc("C", get_if_in_range(VA::in, I::in, X::out),
+:- pragma foreign_proc("C",
+    get_if_in_range(VA::in, I::in, X::out),
     [will_not_call_mercury, promise_pure],
-    "
-        SUCCESS_INDICATOR = ML_va_get(VA, I, &X);
-    ").
-
+"
+    SUCCESS_INDICATOR = ML_va_get(VA, I, &X);
+").
 
 :- pred set_if_in_range(version_array(T)::in, int::in, T::in,
                     version_array(T)::out) is semidet.
 
-:- pragma foreign_proc("C", set_if_in_range(VA0::in, I::in, X::in, VA::out),
+:- pragma foreign_proc("C",
+    set_if_in_range(VA0::in, I::in, X::in, VA::out),
     [will_not_call_mercury, promise_pure],
-    "
-        SUCCESS_INDICATOR = ML_va_set(VA0, I, X, &VA);
-    ").
+"
+    SUCCESS_INDICATOR = ML_va_set(VA0, I, X, &VA);
+").
 
-
-:- pragma foreign_proc("C", unsafe_rewind(VA0::in) = (VA::out),
+:- pragma foreign_proc("C",
+    unsafe_rewind(VA0::in) = (VA::out),
     [will_not_call_mercury, promise_pure],
-    "
-        VA = ML_va_rewind(VA0);
-    ").
-
+"
+    VA = ML_va_rewind(VA0);
+").
 
 :- pragma foreign_decl("C", "
-        /*
-        ** If index is -1 then value is undefined and rest is the latest
-        ** array value.
-        **
-        ** Otherwise value is the overwritten value at index and rest is
-        ** a pointer to the next version in the chain.
-        */
-    struct ML_va {
-        MR_Integer index;               /* -1 for latest, >= 0 for older */
-        MR_Word    value;               /* Valid if index >= 0           */
-        union {
-            MR_ArrayPtr           array;/* Valid if index == -1          */
-            struct ML_va         *next; /* Valid if index >= 0           */
-        } rest;
-    };
+    /*
+    ** If index is -1 then value is undefined and rest is the latest
+    ** array value.
+    **
+    ** Otherwise value is the overwritten value at index and rest is
+    ** a pointer to the next version in the chain.
+    */
 
-        /*
-        ** Constructs a new empty version array.
-        */
-    struct ML_va *
-    ML_va_new_empty(void);
+typedef struct ML_va    *ML_va_ptr;
 
-        /*
-        ** Constructs a new populated version array.
-        */
-    struct ML_va *
-    ML_va_new(MR_Integer, MR_Word);
+struct ML_va {
+    MR_Integer          index;  /* -1 for latest, >= 0 for older */
+    MR_Word             value;  /* Valid if index >= 0           */
+    union {
+        MR_ArrayPtr     array;  /* Valid if index == -1          */
+        ML_va_ptr       next;   /* Valid if index >= 0           */
+    } rest;
+};
 
-        /*
-        ** Resizes a version array, populating new items with the
-        ** given default value.  The result is always a `latest'
-        ** version.
-        */
-    struct ML_va *
-    ML_va_resize(struct ML_va *, MR_Integer, MR_Word);
+    /*
+    ** Constructs a new empty version array.
+    */
+extern ML_va_ptr    ML_va_new_empty(void);
 
-        /*
-        ** Returns the number of items in a version array.
-        */
-    MR_Integer
-    ML_va_size(struct ML_va *);
+    /*
+    ** Constructs a new populated version array.
+    */
+extern ML_va_ptr    ML_va_new(MR_Integer, MR_Word);
 
-        /*
-        ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
-        ** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
-        ** returns MR_FALSE.
-        */
-    int
-    ML_va_get(struct ML_va *, MR_Integer, MR_Word *);
+    /*
+    ** Resizes a version array, populating new items with the
+    ** given default value.  The result is always a `latest'
+    ** version.
+    */
+extern ML_va_ptr    ML_va_resize(ML_va_ptr, MR_Integer, MR_Word);
 
-        /*
-        ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
-        ** updated with the Ith item as X (counting from zero) and
-        returns MR_TRUE.  Otherwise it returns MR_FALSE.
-        */
-    int
-    ML_va_set(struct ML_va *, MR_Integer, MR_Word, struct ML_va **);
+    /*
+    ** Returns the number of items in a version array.
+    */
+extern MR_Integer   ML_va_size(ML_va_ptr);
 
-        /*
-        ** `Rewinds' a version array, invalidating all extant successors
-        ** including the argument.
-        */
-    struct ML_va*
-    ML_va_rewind(struct ML_va *);
+    /*
+    ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
+    ** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
+    ** returns MR_FALSE.
+    */
+extern int          ML_va_get(ML_va_ptr, MR_Integer, MR_Word *);
+
+    /*
+    ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
+    ** updated with the Ith item as X (counting from zero) and
+    ** returns MR_TRUE.  Otherwise it returns MR_FALSE.
+    */
+extern int          ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
+
+    /*
+    ** `Rewinds' a version array, invalidating all extant successors
+    ** including the argument.
+    */
+extern ML_va_ptr    ML_va_rewind(ML_va_ptr);
 
 ").
 
 :- pragma foreign_code("C", "
 
-    #define ML_va_latest_version(VA)   ((VA)->index == -1)
+#define ML_va_latest_version(VA)   ((VA)->index == -1)
 
+ML_va_ptr
+ML_va_new_empty(void)
+{
+    ML_va_ptr VA        = MR_GC_NEW(struct ML_va);
 
-    struct ML_va *
-    ML_va_new_empty(void) {
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, 1);
+    VA->rest.array->size = 0;
 
-        struct ML_va *VA        = MR_GC_NEW(struct ML_va);
+    return VA;
+}
 
-        VA->index            = -1;
-        VA->value            = (MR_Word) NULL;
-        VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, 1);
-        VA->rest.array->size = 0;
+ML_va_ptr
+ML_va_new(MR_Integer N, MR_Word X)
+{
+    MR_Integer  i;
+    ML_va_ptr   VA       = MR_GC_NEW(struct ML_va);
 
-        return VA;
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array->size = N;
+
+    for (i = 0; i < N; i++) {
+        VA->rest.array->elements[i] = X;
     }
 
+    return VA;
+}
 
-    struct ML_va *
-    ML_va_new(MR_Integer N, MR_Word X) {
+ML_va_ptr
+ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X)
+{
+    MR_Integer  i;
+    MR_Integer  size_VA0;
+    MR_Integer  min;
+    ML_va_ptr   VA;
 
-        MR_Integer  i;
-        struct ML_va  *VA       = MR_GC_NEW(struct ML_va);
+    size_VA0 = ML_va_size(VA0);
+    min      = (N <= size_VA0 ? N : size_VA0);
+    VA       = MR_GC_NEW(struct ML_va);
 
-        VA->index            = -1;
-        VA->value            = (MR_Word) NULL;
-        VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
-        VA->rest.array->size = N;
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array->size = N;
 
-        for (i = 0; i < N; i++) {
-            VA->rest.array->elements[i] = X;
-        }
-
-        return VA;
+    for (i = 0; i < min; i++) {
+        (void) ML_va_get(VA0, i, &VA->rest.array->elements[i]);
     }
 
-
-    struct ML_va *
-    ML_va_resize(struct ML_va *VA0, MR_Integer N, MR_Word X) {
-
-        MR_Integer i;
-        MR_Integer size_VA0  = ML_va_size(VA0);
-        MR_Integer min       = (N <= size_VA0 ? N : size_VA0);
-        struct ML_va *VA     = MR_GC_NEW(struct ML_va);
-
-        VA->index            = -1;
-        VA->value            = (MR_Word) NULL;
-        VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
-        VA->rest.array->size = N;
-
-        for (i = 0; i < min; i++) {
-            (void) ML_va_get(VA0, i, &VA->rest.array->elements[i]);
-        }
-
-        for (i = min; i < N; i++) {
-            VA->rest.array->elements[i] = X;
-        }
-
-        return VA;
+    for (i = min; i < N; i++) {
+        VA->rest.array->elements[i] = X;
     }
 
+    return VA;
+}
 
-    MR_Integer
-    ML_va_size(struct ML_va *VA) {
-
-        while (!ML_va_latest_version(VA)) {
-            VA = VA->rest.next;
-        }
-        return VA->rest.array->size;
-
+MR_Integer
+ML_va_size(ML_va_ptr VA)
+{
+    while (!ML_va_latest_version(VA)) {
+        VA = VA->rest.next;
     }
 
+    return VA->rest.array->size;
+}
 
-    int
-    ML_va_get(struct ML_va *VA, MR_Integer I, MR_Word *Xptr) {
-
-        while (!ML_va_latest_version(VA)) {
-            if(I == VA->index) {
-                *Xptr = VA->value;
-                return MR_TRUE;
-            }
-            VA = VA->rest.next;
-        }
-
-        if(0 <= I && I < VA->rest.array->size) {
-            *Xptr = VA->rest.array->elements[I];
+int
+ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
+{
+    while (!ML_va_latest_version(VA)) {
+        if (I == VA->index) {
+            *Xptr = VA->value;
             return MR_TRUE;
-        } else {
+        }
+
+        VA = VA->rest.next;
+    }
+
+    if (0 <= I && I < VA->rest.array->size) {
+        *Xptr = VA->rest.array->elements[I];
+        return MR_TRUE;
+    } else {
+        return MR_FALSE;
+    }
+}
+
+int
+ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
+{
+    ML_va_ptr VA1 = MR_GC_NEW(struct ML_va);
+
+    if (ML_va_latest_version(VA0)) {
+        if (I < 0 || I >= VA0->rest.array->size) {
             return MR_FALSE;
         }
-    }
 
+        VA1->index      = -1;
+        VA1->value      = (MR_Word) NULL;
+        VA1->rest.array = VA0->rest.array;
 
-    int
-    ML_va_set(struct ML_va *VA0, MR_Integer I, MR_Word X,
-            struct ML_va **VAptr) {
+        VA0->index     = I;
+        VA0->value     = VA0->rest.array->elements[I];
+        VA0->rest.next = VA1;
 
-        struct ML_va *VA1 = MR_GC_NEW(struct ML_va);
-
-        if(ML_va_latest_version(VA0)) {
-
-            if(I < 0 || I >= VA0->rest.array->size) {
-                return MR_FALSE;
-            }
-
-            VA1->index      = -1;
-            VA1->value      = (MR_Word) NULL;
-            VA1->rest.array = VA0->rest.array;
-
-            VA0->index     = I;
-            VA0->value     = VA0->rest.array->elements[I];
-            VA0->rest.next = VA1;
-
-            VA1->rest.array->elements[I] = X;
-
-        } else {
-
-            if(I >= ML_va_size(VA0)) {
-                return MR_FALSE;
-            }
-
-            VA1->index      = I;
-            VA1->value      = X;
-            VA1->rest.next  = VA0;
-
+        VA1->rest.array->elements[I] = X;
+    } else {
+        if (I >= ML_va_size(VA0)) {
+            return MR_FALSE;
         }
 
-        *VAptr = VA1;
-        return MR_TRUE;
+        VA1->index      = I;
+        VA1->value      = X;
+        VA1->rest.next  = VA0;
     }
 
+    *VAptr = VA1;
+    return MR_TRUE;
+}
 
-    struct ML_va*
-    ML_va_rewind(struct ML_va *VA) {
+ML_va_ptr
+ML_va_rewind(ML_va_ptr VA)
+{
+    MR_Integer I;
+    MR_Word    X;
 
-        MR_Integer I;
-        MR_Word    X;
-
-        if(ML_va_latest_version(VA)) {
-            return VA;
-        }
-
-        I  = VA->index;
-        X  = VA->value;
-        VA = ML_va_rewind(VA->rest.next);
-        VA->rest.array->elements[I] = X;
-
+    if (ML_va_latest_version(VA)) {
         return VA;
     }
+
+    I  = VA->index;
+    X  = VA->value;
+    VA = ML_va_rewind(VA->rest.next);
+    VA->rest.array->elements[I] = X;
+
+    return VA;
+}
 
 ").
 
