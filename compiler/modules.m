@@ -7440,12 +7440,12 @@ maybe_strip_import_decls(!Items) :-
 :- pred order_items(item_list::in, item_list::out) is det.
 
 order_items(Items0, Items) :-
-    do_order_items(Items0, Items1),
+    filter_unnecessary_flips(Items0, other, Items1),
+    do_order_items(Items1, Items2),
         % Delete any redundant :- interface and :- implementation markers
         % at the end, to make Items as insensitive as we can to the number
         % of interface sections in the source file. If some of the
         % implementation sections are not empty, we won't be fully successful.
-    filter_unnecessary_flips(Items1, Items2),
     list__reverse(Items2, RevItems2),
     list__takewhile(interface_or_import_marker, RevItems2, _, RevItems),
     list__reverse(RevItems, Items).
@@ -7455,26 +7455,45 @@ order_items(Items0, Items) :-
 interface_or_import_marker(module_defn(_, interface) - _).
 interface_or_import_marker(module_defn(_, implementation) - _).
 
-:- pred filter_unnecessary_flips(item_list::in, item_list::out) is det.
+    % Which section of the module we are in. The "other" alternative
+    % reflects my ignorance (based on the lack of documentation) of
+    % the invariants that govern the items involved in the representation
+    % of nested modules. -zs
 
-filter_unnecessary_flips([], []).
-filter_unnecessary_flips([Item], [Item]).
-filter_unnecessary_flips([Item1, Item2], [Item1, Item2]).
-filter_unnecessary_flips([Item1, Item2, Item3 | Items0], Items) :-
+:- type cur_pos
+    --->    in_interface
+    ;       in_implementation
+    ;       other.
+
+:- pred filter_unnecessary_flips(item_list::in, cur_pos::in, item_list::out)
+    is det.
+
+filter_unnecessary_flips([], _, []).
+filter_unnecessary_flips([Item], _, [Item]).
+filter_unnecessary_flips([Item1, Item2 | Items0], CurPos, Items) :-
     (
-        Item1 = module_defn(_, interface) - _,
-        Item2 = module_defn(_, implementation) - _,
-        Item3 = module_defn(_, interface) - _
-    ->
-        filter_unnecessary_flips([Item3 | Items0], Items)
-    ;
+        CurPos = in_interface,
         Item1 = module_defn(_, implementation) - _,
-        Item2 = module_defn(_, interface) - _,
-        Item3 = module_defn(_, implementation) - _
+        Item2 = module_defn(_, interface) - _
     ->
-        filter_unnecessary_flips([Item3 | Items0], Items)
+        filter_unnecessary_flips(Items0, CurPos, Items)
     ;
-        filter_unnecessary_flips([Item2, Item3 | Items0], ItemsTail),
+        CurPos = in_implementation,
+        Item1 = module_defn(_, interface) - _,
+        Item2 = module_defn(_, implementation) - _
+    ->
+        filter_unnecessary_flips(Items0, CurPos, Items)
+    ;
+        ( Item1 = module_defn(_, implementation) - _ ->
+            NextPos = in_implementation
+        ; Item1 = module_defn(_, interface) - _ ->
+            NextPos = in_interface
+        ; chunkable_item_and_context(Item1) = yes ->
+            NextPos = CurPos
+        ;
+            NextPos = other
+        ),
+        filter_unnecessary_flips([Item2 | Items0], NextPos, ItemsTail),
         Items = [Item1 | ItemsTail]
     ).
 
@@ -7491,9 +7510,9 @@ filter_unnecessary_flips([Item1, Item2, Item3 | Items0], Items) :-
 
 do_order_items([], []).
 do_order_items([Item0 | Items0], OrderedItems) :-
-    ( chunkable(Item0) ->
-        list__takewhile(chunkable, Items0, FrontItems, RemainItems),
-        list__filter(reorderable, [Item0 | FrontItems],
+    ( chunkable_item_and_context(Item0) = yes ->
+        list__takewhile(is_chunkable, Items0, FrontItems, RemainItems),
+        list__filter(is_reorderable, [Item0 | FrontItems],
             ReorderableItems, NonReorderableItems),
         list__filter(import_or_use, ReorderableItems,
             ImportReorderableItems, NonImportReorderableItems),
@@ -7516,65 +7535,178 @@ do_order_items([Item0 | Items0], OrderedItems) :-
 import_or_use(module_defn(_, import(_)) - _).
 import_or_use(module_defn(_, use(_)) - _).
 
-    % The kinds of items for which reorderable succeeds can be arbitrarily
-    % reordered with respect to each other and with respect to other chunkable
-    % items in all kinds of interface files (.int, .int2, .int3, and .int0).
-    % This predicate is not relevant to .opt and .trans_opt files, since those
-    % are generated from the HLDS, not from item_lists.
+:- pred is_reorderable(item_and_context::in) is semidet.
+
+is_reorderable(ItemAndContext) :-
+    reorderable_item_and_context(ItemAndContext) = yes.
+
+:- func reorderable_item_and_context(item_and_context) = bool.
+
+reorderable_item_and_context(Item - _Context) =
+    reorderable_item(Item).
+
+    % The kinds of items for which reorderable_item returns yes can be
+    % arbitrarily reordered with respect to each other and with respect to
+    % other chunkable items in all kinds of interface files (.int, .int2,
+    % .int3, and .int0). This predicate is not relevant to .opt and
+    % .trans_opt files, since those are generated from the HLDS, not
+    % from item_lists.
     %
-:- pred reorderable(item_and_context::in) is semidet.
-
-reorderable(module_defn(_, import(_)) - _).
-reorderable(module_defn(_, use(_)) - _).
-reorderable(pragma(export(_, _, _, _)) - _).
-reorderable(pragma(type_spec(_, _, _, _, _, _, _, _)) - _).
-reorderable(pragma(inline(_, _)) - _).
-reorderable(pragma(no_inline(_, _)) - _).
-reorderable(pragma(unused_args(_, _, _, _, _)) - _).
-reorderable(pragma(tabled(_, _, _, _, _)) - _).
-reorderable(pragma(reserve_tag(_, _)) - _).
-reorderable(pragma(promise_pure(_, _)) - _).
-reorderable(pragma(promise_semipure(_, _)) - _).
-reorderable(pragma(termination_info(_, _, _, _, _)) - _).
-reorderable(pragma(terminates(_, _)) - _).
-reorderable(pragma(does_not_terminate(_, _)) - _).
-reorderable(pragma(check_termination(_, _)) - _).
-reorderable(type_defn(_, _, _, _, _) - _).
-reorderable(inst_defn(_, _, _, _, _) - _).
-reorderable(mode_defn(_, _, _, _, _) - _).
-reorderable(promise(_, _, _, _) - _).
-reorderable(typeclass(_, _, _, _, _, _) - _).
-reorderable(instance(_, _, _, _, _, _) - _).
-
-    % Given a list of items for which chunkable succeeds, we need to keep
-    % the relative order of the non-reorderable items, but we can move the
-    % reorderable items around arbitrarily.
+    % We should make this predicate call "unexpected" for items that should
+    % never occur in interface files. However, I don't have a reliable list
+    % of exactly which items those are.
     %
-:- pred chunkable(item_and_context::in) is semidet.
+:- func reorderable_item(item) = bool.
 
-chunkable(module_defn(_, import(_)) - _).
-chunkable(module_defn(_, use(_)) - _).
-chunkable(pragma(export(_, _, _, _)) - _).
-chunkable(pragma(type_spec(_, _, _, _, _, _, _, _)) - _).
-chunkable(pragma(inline(_, _)) - _).
-chunkable(pragma(no_inline(_, _)) - _).
-chunkable(pragma(unused_args(_, _, _, _, _)) - _).
-chunkable(pragma(tabled(_, _, _, _, _)) - _).
-chunkable(pragma(reserve_tag(_, _)) - _).
-chunkable(pragma(promise_pure(_, _)) - _).
-chunkable(pragma(promise_semipure(_, _)) - _).
-chunkable(pragma(termination_info(_, _, _, _, _)) - _).
-chunkable(pragma(terminates(_, _)) - _).
-chunkable(pragma(does_not_terminate(_, _)) - _).
-chunkable(pragma(check_termination(_, _)) - _).
-chunkable(type_defn(_, _, _, _, _) - _).
-chunkable(inst_defn(_, _, _, _, _) - _).
-chunkable(mode_defn(_, _, _, _, _) - _).
-chunkable(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _) - _).
-chunkable(pred_or_func_mode(_, _, _, _, _, _, _) - _).
-chunkable(promise(_, _, _, _) - _).
-chunkable(typeclass(_, _, _, _, _, _) - _).
-chunkable(instance(_, _, _, _, _, _) - _).
+reorderable_item(module_defn(_, ModuleDefn)) = Reorderable :-
+    ( ModuleDefn = import(_), Reorderable = yes
+    ; ModuleDefn = abstract_imported, Reorderable = no
+    ; ModuleDefn = end_module(_), Reorderable = no
+    ; ModuleDefn = export(_), Reorderable = yes
+    ; ModuleDefn = external(_, _), Reorderable = yes
+    ; ModuleDefn = implementation, Reorderable = no
+    ; ModuleDefn = imported(_), Reorderable = no
+    ; ModuleDefn = include_module(_), Reorderable = no
+    ; ModuleDefn = interface, Reorderable = no
+    ; ModuleDefn = module(_), Reorderable = no
+    ; ModuleDefn = opt_imported, Reorderable = no
+    ; ModuleDefn = private_interface, Reorderable = no
+    ; ModuleDefn = transitively_imported, Reorderable = no
+    ; ModuleDefn = use(_), Reorderable = yes
+    ; ModuleDefn = used(_), Reorderable = no
+    ; ModuleDefn = version_numbers(_, _), Reorderable = no
+    ).
+reorderable_item(pragma(Pragma)) = Reorderable :-
+    ( Pragma = aditi(_, _), Reorderable = no
+    ; Pragma = aditi_index(_, _, _), Reorderable = no
+    ; Pragma = aditi_memo(_, _), Reorderable = no
+    ; Pragma = aditi_no_memo(_, _), Reorderable = no
+    ; Pragma = base_relation(_, _), Reorderable = no
+    ; Pragma = check_termination(_, _), Reorderable = yes
+    ; Pragma = context(_, _), Reorderable = no
+    ; Pragma = does_not_terminate(_, _), Reorderable = yes
+    ; Pragma = exceptions(_, _, _, _, _), Reorderable = no
+    ; Pragma = export(_, _, _, _), Reorderable = yes
+    ; Pragma = fact_table(_, _, _), Reorderable = no
+    ; Pragma = foreign_code(_, _), Reorderable = no
+    ; Pragma = foreign_decl(_, _, _), Reorderable = no
+    ; Pragma = foreign_import_module(_, _), Reorderable = no
+    ; Pragma = foreign_proc(_, _, _, _, _, _), Reorderable = no
+    ; Pragma = import(_, _, _, _, _), Reorderable = no
+    ; Pragma = inline(_, _), Reorderable = yes
+    ; Pragma = mode_check_clauses(_, _), Reorderable = yes
+    ; Pragma = naive(_, _), Reorderable = no
+    ; Pragma = no_inline(_, _), Reorderable = yes
+    ; Pragma = obsolete(_, _), Reorderable = yes
+    ; Pragma = owner(_, _, _), Reorderable = no
+    ; Pragma = promise_pure(_, _), Reorderable = yes
+    ; Pragma = promise_semipure(_, _), Reorderable = yes
+    ; Pragma = psn(_, _), Reorderable = no
+    ; Pragma = reserve_tag(_, _), Reorderable = yes
+    ; Pragma = source_file(_), Reorderable = no
+    ; Pragma = supp_magic(_, _), Reorderable = no
+    ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
+    ; Pragma = terminates(_, _), Reorderable = yes
+    ; Pragma = termination2_info(_, _, _, _, _, _, _), Reorderable = no
+    ; Pragma = termination_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
+    ; Pragma = unused_args(_, _, _, _, _), Reorderable = yes
+    ).
+reorderable_item(type_defn(_, _, _, _, _)) = yes.
+reorderable_item(inst_defn(_, _, _, _, _)) = yes.
+reorderable_item(mode_defn(_, _, _, _, _)) = yes.
+reorderable_item(promise(_, _, _, _)) = yes.
+reorderable_item(typeclass(_, _, _, _, _, _)) = yes.
+reorderable_item(instance(_, _, _, _, _, _)) = yes.
+reorderable_item(clause(_, _, _, _, _)) = no.
+reorderable_item(nothing(_)) = no.
+reorderable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
+reorderable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = no.
+
+:- pred is_chunkable(item_and_context::in) is semidet.
+
+is_chunkable(ItemAndContext) :-
+    chunkable_item_and_context(ItemAndContext) = yes.
+
+:- func chunkable_item_and_context(item_and_context) = bool.
+
+chunkable_item_and_context(Item - _Context) =
+    chunkable_item(Item).
+
+    % Given a list of items for which chunkable_item returns yes, we need
+    % to keep the relative order of the non-reorderable items, but we can
+    % move the reorderable items around arbitrarily.
+    %
+    % We should make this predicate call "unexpected" for items that should
+    % never occur in interface files. However, I don't have a reliable list
+    % of exactly which items those are.
+    %
+:- func chunkable_item(item) = bool.
+
+chunkable_item(module_defn(_, ModuleDefn)) = Reorderable :-
+    ( ModuleDefn = abstract_imported, Reorderable = no
+    ; ModuleDefn = end_module(_), Reorderable = no
+    ; ModuleDefn = export(_), Reorderable = yes
+    ; ModuleDefn = external(_, _), Reorderable = yes
+    ; ModuleDefn = implementation, Reorderable = no
+    ; ModuleDefn = import(_), Reorderable = yes
+    ; ModuleDefn = imported(_), Reorderable = no
+    ; ModuleDefn = include_module(_), Reorderable = no
+    ; ModuleDefn = interface, Reorderable = no
+    ; ModuleDefn = module(_), Reorderable = no
+    ; ModuleDefn = opt_imported, Reorderable = no
+    ; ModuleDefn = private_interface, Reorderable = no
+    ; ModuleDefn = transitively_imported, Reorderable = no
+    ; ModuleDefn = use(_), Reorderable = yes
+    ; ModuleDefn = used(_), Reorderable = no
+    ; ModuleDefn = version_numbers(_, _), Reorderable = no
+    ).
+chunkable_item(pragma(Pragma)) = Reorderable :-
+    ( Pragma = aditi(_, _), Reorderable = no
+    ; Pragma = aditi_index(_, _, _), Reorderable = no
+    ; Pragma = aditi_memo(_, _), Reorderable = no
+    ; Pragma = aditi_no_memo(_, _), Reorderable = no
+    ; Pragma = base_relation(_, _), Reorderable = no
+    ; Pragma = check_termination(_, _), Reorderable = yes
+    ; Pragma = context(_, _), Reorderable = no
+    ; Pragma = does_not_terminate(_, _), Reorderable = yes
+    ; Pragma = exceptions(_, _, _, _, _), Reorderable = no
+    ; Pragma = export(_, _, _, _), Reorderable = yes
+    ; Pragma = fact_table(_, _, _), Reorderable = no
+    ; Pragma = foreign_code(_, _), Reorderable = no
+    ; Pragma = foreign_decl(_, _, _), Reorderable = no
+    ; Pragma = foreign_import_module(_, _), Reorderable = no
+    ; Pragma = foreign_proc(_, _, _, _, _, _), Reorderable = no
+    ; Pragma = import(_, _, _, _, _), Reorderable = no
+    ; Pragma = inline(_, _), Reorderable = yes
+    ; Pragma = mode_check_clauses(_, _), Reorderable = yes
+    ; Pragma = naive(_, _), Reorderable = no
+    ; Pragma = no_inline(_, _), Reorderable = yes
+    ; Pragma = obsolete(_, _), Reorderable = yes
+    ; Pragma = owner(_, _, _), Reorderable = no
+    ; Pragma = promise_pure(_, _), Reorderable = yes
+    ; Pragma = promise_semipure(_, _), Reorderable = yes
+    ; Pragma = psn(_, _), Reorderable = no
+    ; Pragma = reserve_tag(_, _), Reorderable = yes
+    ; Pragma = source_file(_), Reorderable = no
+    ; Pragma = supp_magic(_, _), Reorderable = no
+    ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
+    ; Pragma = terminates(_, _), Reorderable = yes
+    ; Pragma = termination2_info(_, _, _, _, _, _, _), Reorderable = no
+    ; Pragma = termination_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
+    ; Pragma = unused_args(_, _, _, _, _), Reorderable = yes
+    ).
+chunkable_item(type_defn(_, _, _, _, _)) = yes.
+chunkable_item(inst_defn(_, _, _, _, _)) = yes.
+chunkable_item(mode_defn(_, _, _, _, _)) = yes.
+chunkable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
+chunkable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
+chunkable_item(promise(_, _, _, _)) = yes.
+chunkable_item(typeclass(_, _, _, _, _, _)) = yes.
+chunkable_item(instance(_, _, _, _, _, _)) = yes.
+chunkable_item(clause(_, _, _, _, _)) = yes.
+chunkable_item(nothing(_)) = yes.
 
     % Given a list of items for which symname_ordered succeeds, we need to keep
     % the relative order of the items with the same sym_name as returned by
