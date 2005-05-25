@@ -45,8 +45,8 @@ CONF_FILES = \
 	Mmake.vars \
 	parse_ml_options.sh-subr
 
-CONF_DEBUG_SCIRPTS = \
-	mdbrc.in
+CONF_DEBUG_SCRIPTS = \
+	mdbrc
 
 DEBUGGER_SCRIPTS = $(CONF_DEBUG_SCRIPTS) xul_tree.xsl
 EMACS_SCRIPTS = gud.el
