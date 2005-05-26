@@ -519,10 +519,11 @@
 
 :- pred module_info_incr_errors(module_info::in, module_info::out) is det.
 
-	% The module_info stores a counter which is used to number introduced
-	% lambda predicates as __LambdaGoal__1, __LambdaGoal__2, etc.; this
-	% predicate returns the next number and increments the counter.
-:- pred module_info_next_lambda_count(int::out,
+	% The module_info stores a counter which is used to distinguish
+	% lambda predicates which appear on the same line in the same file.
+	% This predicate returns the next number for the given context
+	% and increments the counter for that context.
+:- pred module_info_next_lambda_count(prog_context::in, int::out,
 	module_info::in, module_info::out) is det.
 
 :- pred module_info_next_model_non_pragma_count(int::out,
@@ -544,9 +545,10 @@
 
 :- import_module counter.
 
-:- pred module_info_get_lambda_counter(module_info::in, counter::out) is det.
+:- pred module_info_get_lambdas_per_context(module_info::in, 
+	map(prog_context, counter)::out) is det.
 
-:- pred module_info_set_lambda_counter(counter::in,
+:- pred module_info_set_lambdas_per_context(map(prog_context, counter)::in,
 	module_info::in, module_info::out) is det.
 
 :- pred module_info_get_model_non_pragma_counter(module_info::in, counter::out)
@@ -623,7 +625,14 @@
 						% module (this includes
 						% opt_imported procedures).
 
-		lambda_number_counter		:: counter,
+		lambdas_per_context		:: map(prog_context, counter),
+						% How many lambda expressions
+						% there are at different
+						% contexts in the module.
+						% This is used to uniquely
+						% identify lambda expressions
+						% that appear on the same
+						% line of the same file.
 
 		model_non_pragma_counter	:: counter,
 						% Used to ensure uniqueness of
@@ -717,7 +726,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	map__init(NoTagTypes),
 	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], [], no, 0,
 		[], [], StratPreds, UnusedArgInfo, ExceptionInfo,
-		counter__init(1), counter__init(1), ImportedModules,
+		map.init, counter__init(1), ImportedModules,
 		IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
 		NoTagTypes, no, [], init_analysis_info(mmc),
 		[], counter__init(1)),
@@ -790,7 +799,7 @@ module_info_type_ctor_gen_infos(MI, MI ^ sub_info ^ type_ctor_gen_infos).
 module_info_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
 module_info_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
 module_info_exception_info(MI, MI ^ sub_info ^ exception_info).
-module_info_get_lambda_counter(MI, MI ^ sub_info ^ lambda_number_counter).
+module_info_get_lambdas_per_context(MI, MI ^ sub_info ^ lambdas_per_context).
 module_info_get_model_non_pragma_counter(MI,
 	MI ^ sub_info ^ model_non_pragma_counter).
 module_info_get_imported_module_specifiers(MI,
@@ -842,8 +851,8 @@ module_info_set_unused_arg_info(NewVal, MI,
 	MI ^ sub_info ^ unused_arg_info := NewVal).
 module_info_set_exception_info(NewVal, MI,
 	MI ^ sub_info ^ exception_info := NewVal).
-module_info_set_lambda_counter(NewVal, MI,
-	MI ^ sub_info ^ lambda_number_counter := NewVal).
+module_info_set_lambdas_per_context(NewVal, MI,
+	MI ^ sub_info ^ lambdas_per_context := NewVal).
 module_info_set_model_non_pragma_counter(NewVal, MI,
 	MI ^ sub_info ^ model_non_pragma_counter := NewVal).
 module_add_imported_module_specifiers(ModuleSpecifiers, MI,
@@ -985,10 +994,20 @@ module_info_incr_errors(MI0, MI) :-
 	Errs = Errs0 + 1,
 	module_info_set_num_errors(Errs, MI0, MI).
 
-module_info_next_lambda_count(Count, MI0, MI) :-
-	module_info_get_lambda_counter(MI0, Counter0),
-	counter__allocate(Count, Counter0, Counter),
-	module_info_set_lambda_counter(Counter, MI0, MI).
+module_info_next_lambda_count(Context, Count, MI0, MI) :-
+	module_info_get_lambdas_per_context(MI0, ContextCounter0),
+	(
+		map.insert(ContextCounter0, Context, counter.init(2), 
+			FoundContextCounter)
+	->
+		Count = 1,
+		ContextCounter = FoundContextCounter
+	;
+		map.lookup(ContextCounter0, Context, Counter0),
+		counter.allocate(Count, Counter0, Counter),
+		map.det_update(ContextCounter0, Context, Counter, ContextCounter)
+	),
+	module_info_set_lambdas_per_context(ContextCounter, MI0, MI).
 
 module_info_next_model_non_pragma_count(Count, MI0, MI) :-
 	module_info_get_model_non_pragma_counter(MI0, Counter0),

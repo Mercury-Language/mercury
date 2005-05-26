@@ -860,11 +860,13 @@ add_clause(Clause, !ClausesRep) :-
 				% backend.)
 	;	assertion(string, int)
 				% The predicate represents an assertion.
-	;	lambda(string, int)
+	;	lambda(string, int, int)
 				% The predicate is a higher-order manifest
 				% constant. The arguments specify its location
 				% in the source, as a filename/line number
-				% pair.
+				% pair, and a sequence number used to 
+				% distinguish multiple lambdas on the same
+				% line.
 	;	user(sym_name).
 				% The predicate is a normal user-written
 				% predicate; the string is its name.

@@ -28,6 +28,7 @@
 :- interface.
 
 :- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
@@ -44,9 +45,9 @@
 
 :- pred stack_layout__construct_closure_layout(proc_label::in, int::in,
 	closure_layout_info::in, proc_label::in, module_name::in,
-	string::in, int::in, string::in,
-	static_cell_info::in, static_cell_info::out,
-	assoc_list(rval, llds_type)::out, comp_gen_c_data::out) is det.
+	string::in, int::in, pred_origin::in, string::in, static_cell_info::in,
+	static_cell_info::out, assoc_list(rval, llds_type)::out,
+	comp_gen_c_data::out) is det.
 
 	% Construct a representation of a variable location as a 32-bit
 	% integer.
@@ -1241,12 +1242,13 @@ stack_layout__convert_var_to_int(VarNumMap, Var, VarNum) :-
 
 stack_layout__construct_closure_layout(CallerProcLabel, SeqNo,
 		ClosureLayoutInfo, ClosureProcLabel, ModuleName,
-		FileName, LineNumber, GoalPath, !StaticCellInfo,
+		FileName, LineNumber, Origin, GoalPath, !StaticCellInfo, 
 		RvalsTypes, Data) :-
 	DataAddr = layout_addr(
 		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
 	Data = layout_data(closure_proc_id_data(CallerProcLabel, SeqNo,
-		ClosureProcLabel, ModuleName, FileName, LineNumber, GoalPath)),
+		ClosureProcLabel, ModuleName, FileName, LineNumber, Origin, 
+		GoalPath)),
 	ProcIdRvalType = const(data_addr_const(DataAddr, no)) - data_ptr,
 	ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
 	stack_layout__construct_closure_arg_rvals(ClosureArgs,

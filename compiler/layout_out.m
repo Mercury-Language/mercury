@@ -119,10 +119,11 @@ output_layout_data_defn(proc_layout_data(ProcLabel, Traversal, MaybeRest),
 	output_proc_layout_data_defn(ProcLabel, Traversal, MaybeRest,
 		!DeclSet, !IO).
 output_layout_data_defn(closure_proc_id_data(CallerProcLabel, SeqNo,
-		ProcLabel, ModuleName, FileName, LineNumber, GoalPath),
-		!DeclSet, !IO) :-
+		ProcLabel, ModuleName, FileName, LineNumber, PredOrigin, 
+		GoalPath), !DeclSet, !IO) :-
 	output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ProcLabel,
-		ModuleName, FileName, LineNumber, GoalPath, !DeclSet, !IO).
+		ModuleName, FileName, LineNumber, PredOrigin, GoalPath, 
+		!DeclSet, !IO).
 output_layout_data_defn(module_layout_data(ModuleName, StringTableSize,
 		StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
 		SuppressedEvents, NumLabels), !DeclSet, !IO) :-
@@ -170,7 +171,7 @@ extract_layout_name(proc_layout_data(RttiProcLabel, _, MaybeRest),
 	Kind = maybe_proc_layout_and_more_kind(MaybeRest, ProcLabel),
 	LayoutName = proc_layout(RttiProcLabel, Kind).
 extract_layout_name(closure_proc_id_data(CallerProcLabel, SeqNo,
-		ClosureProcLabel, _, _, _, _),
+		ClosureProcLabel, _, _, _, _, _),
 		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)).
 extract_layout_name(module_layout_data(ModuleName, _, _, _, _, _, _, _),
 		LayoutName) :-
@@ -1063,16 +1064,17 @@ output_proc_layout_var_names(ProcLabel, VarNames, MaxVarNum, !DeclSet, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred output_closure_proc_id_data_defn(proc_label::in, int::in,
-	proc_label::in, module_name::in, string::in, int::in, string::in,
-	decl_set::in, decl_set::out, io::di, io::uo) is det.
+	proc_label::in, module_name::in, string::in, int::in, pred_origin::in, 
+	string::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ClosureProcLabel,
-		ModuleName, FileName, LineNumber, GoalPath, !DeclSet, !IO) :-
+		ModuleName, FileName, LineNumber, PredOrigin, GoalPath,
+		!DeclSet, !IO) :-
 	io__write_string("\n", !IO),
 	LayoutName = closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel),
 	output_layout_name_storage_type_name(LayoutName, yes, !IO),
 	io__write_string(" = {\n{\n", !IO),
-	output_proc_id(ClosureProcLabel, lambda(FileName, LineNumber), !IO),
+	output_proc_id(ClosureProcLabel, PredOrigin, !IO),
 	io__write_string("},\n", !IO),
 	mdbcomp__prim_data__sym_name_to_string(ModuleName, ModuleNameStr),
 	quote_and_write_string(ModuleNameStr, !IO),
@@ -1136,16 +1138,19 @@ output_proc_id(ProcLabel, Origin, !IO) :-
 
 origin_name(Origin, Name0) = Name :-
 	(
-		Origin = lambda(FileName0, LineNum),
+		Origin = lambda(FileName0, LineNum, SeqNo),
 		( string__append("IntroducedFrom", _, Name0) ->
-			( string__remove_suffix(FileName0, ".m", FileName1) ->
-				FileName2 = FileName1
+			string__replace_all(FileName0, ".", "_", FileName),
+			(
+				SeqNo > 1
+			->
+				string__format("lambda%d_%s_%d",
+					[i(SeqNo), s(FileName), i(LineNum)], 
+					Name)
 			;
-				FileName2 = FileName0
-			),
-			string__replace_all(FileName2, ".", "_", FileName),
-			string__format("lambda_%s_%d",
-				[s(FileName), i(LineNum)], Name)
+				string__format("lambda_%s_%d",
+					[s(FileName), i(LineNum)], Name)
+			)
 		;
 			% If the lambda pred has a meaningful name, use it.
 			% This happens when the lambda is a partial application

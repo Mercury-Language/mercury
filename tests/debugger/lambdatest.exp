@@ -1,0 +1,27 @@
+      E1:     C1 CALL pred lambdatest.main/2-0 (det) lambdatest.m:13
+mdb> mdb> echo on
+Command echo enabled.
+mdb> procedures lambdatest
+List of procedures in module `lambdatest'
+
+func lambdatest.lambda2_lambdatest_m_14/1-0 (det)
+func lambdatest.lambda_lambdatest_m_14/1-0 (det)
+func lambdatest.polycall/2-0 (det)
+pred lambdatest.main/2-0 (det)
+mdb> break lambda_lambdatest_m_14
+ 0: + stop  interface func lambdatest.lambda_lambdatest_m_14/1-0 (det)
+mdb> c
+      E2:     C2 CALL func lambdatest.lambda_lambdatest_m_14/1-0 (det) lambdatest.m:14 (lambdatest.m:22)
+mdb> f
+      E3:     C2 EXIT func lambdatest.lambda_lambdatest_m_14/1-0 (det) lambdatest.m:14 (lambdatest.m:22)
+mdb> p
+lambda_lambdatest_m_14(1) = 2
+mdb> break lambda2_lambdatest_m_14
+ 1: + stop  interface func lambdatest.lambda2_lambdatest_m_14/1-0 (det)
+mdb> c
+      E4:     C3 CALL func lambdatest.lambda2_lambdatest_m_14/1-0 (det) lambdatest.m:14 (lambdatest.m:22)
+mdb> f
+      E5:     C3 EXIT func lambdatest.lambda2_lambdatest_m_14/1-0 (det) lambdatest.m:14 (lambdatest.m:22)
+mdb> p
+lambda2_lambdatest_m_14(2) = 4
+mdb> quit -y

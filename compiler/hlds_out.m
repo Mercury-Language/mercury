@@ -1083,7 +1083,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 			Origin = assertion(_, _),
 			io__write_string("% assertion\n", !IO)
 		;
-			Origin = lambda(_, _)
+			Origin = lambda(_, _, _)
 		;
 			Origin = user(_)
 		)

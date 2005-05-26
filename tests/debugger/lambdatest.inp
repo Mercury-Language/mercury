@@ -1,0 +1,12 @@
+register --quiet
+echo on
+procedures lambdatest
+break lambda_lambdatest_m_14
+c
+f
+p
+break lambda2_lambdatest_m_14
+c
+f
+p
+quit -y

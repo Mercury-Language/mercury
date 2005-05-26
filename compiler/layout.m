@@ -79,6 +79,7 @@
 			closure_module_name	:: module_name,
 			closure_file_name	:: string,
 			closure_line_number	:: int,
+			closure_origin		:: pred_origin,
 			closure_goal_path	:: string
 		)
 	;	table_io_decl_data(
