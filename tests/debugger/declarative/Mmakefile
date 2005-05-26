@@ -73,7 +73,8 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 # decldebug grade.
 #
 DECLDEBUG_DECLARATIVE_PROGS=	\
-	builtin_call_rep
+	builtin_call_rep	\
+	sort
 	
 # The following should not be run in decldebug grades.
 #
@@ -408,6 +409,11 @@ solutions.out: solutions solutions.$(DECLDEBUG_INP)
 	$(MDB) ./solutions < solutions.$(DECLDEBUG_INP) 2>&1 | \
 		sed -e 's/std_util.m:[0-9]*/std_util.m:NNNN/g' \
 		> solutions.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+sort.out: sort sort.inp
+	$(MDB_STD) ./sort sort.input < sort.inp \
+		> sort.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 special_term_dep.out: special_term_dep special_term_dep.inp

@@ -28,7 +28,7 @@ main(!IO) :-
 	io.command_line_arguments(Args, !IO),
 	open_stream(Args, MaybeStream, !IO),
 	(
-		MaybeStream = ok(InputStream),			
+		MaybeStream = ok(InputStream),
 		some [!Words] (
 			read_lines(InputStream, !:Words, !IO),
  			sort_lines(!Words),
@@ -58,7 +58,7 @@ open_stream([Arg], MaybeStream, !IO) :-
 		MaybeStream0 = error(Error),
 		io.error_message(Error, ErrorMessage),
 		MaybeStream  = error(ErrorMessage)
-	).	
+	).
 open_stream([_,_|_], error(ErrorMessage), !IO) :-
 	ErrorMessage = "usage: sort [Input]".
 
@@ -129,7 +129,7 @@ merge([], [S | Ss], [S | Ss]).
 merge([A | As], [B | Bs], [C | Cs]) :-
 	compare(Cmp, A, B),
 	(
-		( Cmp = (<) ; Cmp = (=) )	
+		( Cmp = (<) ; Cmp = (=) )
 	->
 		sort.merge(As, [B | Bs], Cs),
 		C = A
