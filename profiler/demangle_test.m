@@ -51,7 +51,7 @@ main(!IO) :-
 		% copy stdin to stdout, calling demangle/2 for
 		% every valid C identifier in the input
 		%
-		demangle_stdin([])
+		demangle_stdin([], !IO)
 	).
 
 :- pred demangle_stdin(list(char)::in, state::di, state::uo) is det.
