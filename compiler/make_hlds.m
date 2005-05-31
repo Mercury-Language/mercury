@@ -890,7 +890,15 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     ;
         Pragma = mode_check_clauses(Name, Arity),
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
-            Context, mode_check_clauses, [], !ModuleInfo, !IO)
+            Context, mode_check_clauses, [], !ModuleInfo, !IO),
+
+        % Allowing the predicate to be inlined could lead to code generator
+        % aborts. This is because the caller that inlines this predicate may
+        % then push other code into the disjunction or switch's branches,
+        % which would invalidate the instmap_deltas that the mode_check_clauses
+        % feature prevents the recomputation of.
+        add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
+            Context, no_inline, [inline], !ModuleInfo, !IO)
     ).
 add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
     Item = pred_or_func(_TypeVarSet, _InstVarSet, _ExistQVars,

@@ -40,9 +40,11 @@
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool.
 :- import_module io.
+:- import_module set.
 
 	% Check every predicate in a module.
 	%
@@ -58,6 +60,17 @@
 	%
 :- pred unique_modes__check_goal(hlds_goal::in, hlds_goal::out,
 	mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+	% Prepare for checking a disjunct in a disjunction.
+	%
+:- pred unique_modes__prepare_for_disjunct(hlds_goal::in, determinism::in,
+	set(prog_var)::in, mode_info::in, mode_info::out) is det.
+
+	% Make all nondet-live variables whose current inst
+	% is `unique' become `mostly_unique'.
+	%
+:- pred make_all_nondet_live_vars_mostly_uniq(mode_info::in, mode_info::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -78,7 +91,6 @@
 :- import_module hlds__instmap.
 :- import_module hlds__passes_aux.
 :- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module mdbcomp__prim_data.
@@ -89,7 +101,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -167,12 +178,6 @@ unique_modes__check_goal(Goal0, Goal, !ModeInfo, !IO) :-
 		!ModeInfo),
 
 	Goal = GoalExpr - GoalInfo.
-
-	% Make all nondet-live variables whose current inst
-	% is `unique' become `mostly_unique'.
-	%
-:- pred make_all_nondet_live_vars_mostly_uniq(mode_info::in, mode_info::out)
-	is det.
 
 make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, FullInstMap0),
@@ -800,6 +805,19 @@ unique_modes__check_disj([], _, _, [], [], !ModeInfo, !IO).
 unique_modes__check_disj([Goal0 | Goals0], DisjDetism, DisjNonLocals,
 		[Goal | Goals], [InstMap | InstMaps], !ModeInfo, !IO) :-
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
+	% If you modify this code, you may also need to modify
+	% unique_modecheck_clause_disj or the code that calls it.
+
+	unique_modes__prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals,
+		!ModeInfo),
+	unique_modes__check_goal(Goal0, Goal, !ModeInfo, !IO),
+	mode_info_get_instmap(!.ModeInfo, InstMap),
+	mode_info_set_instmap(InstMap0, !ModeInfo),
+	unique_modes__check_disj(Goals0, DisjDetism, DisjNonLocals,
+		Goals, InstMaps, !ModeInfo, !IO).
+
+unique_modes__prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals,
+		!ModeInfo) :-
 	(
 		%
 		% If the disjunction was model_nondet, then we already marked
@@ -824,12 +842,7 @@ unique_modes__check_disj([Goal0 | Goals0], DisjDetism, DisjNonLocals,
 		mode_info_remove_live_vars(DisjNonLocals, !ModeInfo)
 	;
 		true
-	),
-	unique_modes__check_goal(Goal0, Goal, !ModeInfo, !IO),
-	mode_info_get_instmap(!.ModeInfo, InstMap),
-	mode_info_set_instmap(InstMap0, !ModeInfo),
-	unique_modes__check_disj(Goals0, DisjDetism, DisjNonLocals,
-		Goals, InstMaps, !ModeInfo, !IO).
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -844,8 +857,11 @@ unique_modes__check_case_list([Case0 | Cases0], Var, [Case | Cases],
 	Case = case(ConsId, Goal),
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 
-	% record the fact that Var was bound to ConsId in the
-	% instmap before processing this case
+	% If you modify this code, you may also need to modify
+	% unique_modecheck_clause_switch or the code that calls it.
+
+	% Record the fact that Var was bound to ConsId in the
+	% instmap before processing this case.
 	modecheck_functor_test(Var, ConsId, !ModeInfo),
 
 	mode_info_get_instmap(!.ModeInfo, InstMap1),

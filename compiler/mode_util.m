@@ -945,9 +945,14 @@ update_module_info(P, R, !RI) :-
 recompute_instmap_delta_2(Atomic, switch(Var, Det, Cases0), GoalInfo,
 		switch(Var, Det, Cases), VarTypes, InstMap, InstMapDelta,
 		!RI) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
-		VarTypes, InstMap, NonLocals, InstMapDelta, !RI).
+	( goal_info_has_feature(GoalInfo, mode_check_clauses_goal) ->
+		Cases = Cases0,
+		goal_info_get_instmap_delta(GoalInfo, InstMapDelta)
+	;
+		goal_info_get_nonlocals(GoalInfo, NonLocals),
+		recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
+			VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
+	).
 
 recompute_instmap_delta_2(Atomic, conj(Goals0), _, conj(Goals),
 		VarTypes, InstMap, InstMapDelta, !RI) :-
@@ -962,9 +967,14 @@ recompute_instmap_delta_2(Atomic, par_conj(Goals0), GoalInfo,
 
 recompute_instmap_delta_2(Atomic, disj(Goals0), GoalInfo, disj(Goals),
 		VarTypes, InstMap, InstMapDelta, !RI) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	recompute_instmap_delta_disj(Atomic, Goals0, Goals,
-		VarTypes, InstMap, NonLocals, InstMapDelta, !RI).
+	( goal_info_has_feature(GoalInfo, mode_check_clauses_goal) ->
+		Goals = Goals0,
+		goal_info_get_instmap_delta(GoalInfo, InstMapDelta)
+	;
+		goal_info_get_nonlocals(GoalInfo, NonLocals),
+		recompute_instmap_delta_disj(Atomic, Goals0, Goals,
+			VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
+	).
 
 recompute_instmap_delta_2(Atomic, not(Goal0), _, not(Goal),
 		VarTypes, InstMap, InstMapDelta, !RI) :-
@@ -1133,8 +1143,8 @@ recompute_instmap_delta_cases(Atomic, Var, [Case0 | Cases0], [Case | Cases],
 		InstMap0), InstMap, !RI),
 	recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes, InstMap,
 		InstMapDelta0, !RI),
-	update_module_info(instmap_delta_bind_var_to_functor(Var, Type, Functor,
-		InstMap0, InstMapDelta0), InstMapDelta1, !RI),
+	update_module_info(instmap_delta_bind_var_to_functor(Var, Type,
+		Functor, InstMap0, InstMapDelta0), InstMapDelta1, !RI),
 	Case = case(Functor, Goal),
 	recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
 		VarTypes, InstMap0, NonLocals, InstMapDelta2, !RI),

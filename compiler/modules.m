@@ -7120,11 +7120,15 @@ maybe_add_foreign_import_module(ModuleName, Items0, Items) :-
     is det.
 
 get_foreign_self_imports(Items, Langs) :-
-    solutions(
-        (pred(Lang::out) is nondet :-
-            list__member(Item - _, Items),
-            item_needs_foreign_imports(Item, Lang)
-        ), Langs).
+    list.foldl(accumulate_item_foreign_import_langs, Items, set.init, LangSet),
+    set.to_sorted_list(LangSet, Langs).
+
+:- pred accumulate_item_foreign_import_langs(item_and_context::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
+accumulate_item_foreign_import_langs(Item - _, !LangSet) :-
+    solutions(item_needs_foreign_imports(Item), Langs),
+    set.insert_list(!.LangSet, Langs, !:LangSet).
 
 :- pred get_interface_and_implementation_2(bool::in, item_list::in, bool::in,
     item_list::in, item_list::out,

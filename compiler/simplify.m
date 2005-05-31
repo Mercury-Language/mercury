@@ -196,7 +196,22 @@ simplify__proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
     simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
     proc_info_goal(!.ProcInfo, Goal0),
 
-    simplify__process_goal(Goal0, Goal, Info0, Info),
+    simplify_info_get_pred_info(Info0, PredInfo),
+    pred_info_get_markers(PredInfo, Markers),
+    (
+        check_marker(Markers, mode_check_clauses),
+        Goal0 = GoalExpr0 - GoalInfo0,
+        ( GoalExpr0 = disj(_)
+        ; GoalExpr0 = switch(_, _, _)
+        )
+    ->
+        goal_info_add_feature(GoalInfo0, mode_check_clauses_goal, GoalInfo1),
+        Goal1 = GoalExpr0 - GoalInfo1
+    ;
+        Goal1 = Goal0
+    ),
+
+    simplify__process_goal(Goal1, Goal, Info0, Info),
 
     simplify_info_get_varset(Info, VarSet),
     simplify_info_get_var_types(Info, VarTypes),
@@ -577,13 +592,19 @@ simplify__goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info) :-
     ;
         Disjuncts = [_, _ | _],
         Goal = disj(Disjuncts),
-        simplify_info_get_module_info(!.Info, ModuleInfo1),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        simplify_info_get_var_types(!.Info, VarTypes),
-        merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
-            NewDelta, ModuleInfo1, ModuleInfo2),
-        simplify_info_set_module_info(ModuleInfo2, !Info),
-        goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+        ( goal_info_has_feature(GoalInfo0, mode_check_clauses_goal) ->
+            % Recomputing the instmap delta would take very long and is
+            % very unlikely to get any better precision.
+            GoalInfo = GoalInfo0
+        ;
+            simplify_info_get_module_info(!.Info, ModuleInfo1),
+            goal_info_get_nonlocals(GoalInfo0, NonLocals),
+            simplify_info_get_var_types(!.Info, VarTypes),
+            merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
+                NewDelta, ModuleInfo1, ModuleInfo2),
+            simplify_info_set_module_info(ModuleInfo2, !Info),
+            goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+        )
     ),
     list__length(Disjuncts, DisjunctsLength),
     list__length(Disjuncts0, Disjuncts0Length),
@@ -638,12 +659,10 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
             MaybeConsIds \= yes([ConsId])
         ->
             %
-            % Don't optimize in the case of an existentially
-            % typed constructor because currently
-            % simplify__create_test_unification does not
-            % handle the existential type variables
-            % in the types of the constructor arguments
-            % or their type-infos.
+            % Don't optimize in the case of an existentially typed constructor
+            % because currently simplify__create_test_unification does not
+            % handle the existential type variables in the types of the
+            % constructor arguments or their typeinfos.
             %
             simplify_info_get_var_types(!.Info, VarTypes1),
             map__lookup(VarTypes1, Var, Type),
@@ -694,13 +713,19 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
     ;
         Cases = [_, _ | _],
         Goal = switch(Var, SwitchCanFail, Cases),
-        simplify_info_get_module_info(!.Info, ModuleInfo1),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        simplify_info_get_var_types(!.Info, VarTypes),
-        merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
-            NewDelta, ModuleInfo1, ModuleInfo2),
-        simplify_info_set_module_info(ModuleInfo2, !Info),
-        goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+        ( goal_info_has_feature(GoalInfo0, mode_check_clauses_goal) ->
+            % Recomputing the instmap delta would take very long and is
+            % very unlikely to get any better precision.
+            GoalInfo = GoalInfo0
+        ;
+            simplify_info_get_module_info(!.Info, ModuleInfo1),
+            goal_info_get_nonlocals(GoalInfo0, NonLocals),
+            simplify_info_get_var_types(!.Info, VarTypes),
+            merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
+                NewDelta, ModuleInfo1, ModuleInfo2),
+            simplify_info_set_module_info(ModuleInfo2, !Info),
+            goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+        )
     ),
     list__length(Cases0, Cases0Length),
     list__length(Cases, CasesLength),

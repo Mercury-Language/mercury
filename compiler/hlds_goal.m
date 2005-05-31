@@ -918,7 +918,7 @@
 				% is known to be bound to a given constant,
 				% then the second variable should be set
 				% to the corresponding local tag value.
-	;	dont_warn_singleton.
+	;	dont_warn_singleton
 				% Don't warn about singletons in this goal.
 				% Intended to be used by the state variable
 				% transformation, for situations such as the
@@ -951,6 +951,15 @@
 				% of quantification as well, we simply make it
 				% mark the unifications it creates, and get
 				% the singleton warning code to respect it.
+	;	mode_check_clauses_goal.
+				% This goal is the main disjunction of a
+				% predicate with the mode_check_clauses pragma.
+				% No compiler pass should try to invoke
+				% quadratic or worse algorithms on the arms
+				% of this goal, since it probably has many
+				% arms (possibly several thousand). This
+				% feature may be attached to switches as well
+				% as disjunctions.
 
 	% We can think of the goal that defines a procedure to be a tree,
 	% whose leaves are primitive goals and whose interior nodes are

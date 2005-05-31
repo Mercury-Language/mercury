@@ -211,6 +211,7 @@ ok_to_duplicate(tailcall) = no.
 ok_to_duplicate(keep_constant_binding) = no.
 ok_to_duplicate(save_deep_excp_vars) = no.
 ok_to_duplicate(dont_warn_singleton) = yes.
+ok_to_duplicate(mode_check_clauses_goal) = yes.
 
 	% Divide a list of goals into an initial subsequence of goals
 	% that construct constants, and all other goals.
