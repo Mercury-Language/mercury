@@ -891,7 +891,6 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
                         Cases1, Cases, !ModeInfo, !IO),
                     NewGoalExpr = switch(SwitchVar, CanFail, Cases)
                 )
-                % error("do_modecheck_proc: unexpected check_unique_modes")
             ),
 
             % Manufacture an instmap_delta for the disjunction as a whole.
