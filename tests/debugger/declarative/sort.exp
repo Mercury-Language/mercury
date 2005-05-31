@@ -14,7 +14,7 @@ mdb> set format pretty
 mdb> set depth 1
 mdb> dd
 main(...)
-16 tabled IO actions:
+16 io actions:
 command_line_arguments(...)
 do_open_text(...)
 get_stream_db(...)
@@ -32,24 +32,125 @@ write_string(...)
 write_string(...)
 write_string(...)
 Valid? set depth 10
-dd> print io 9
+main(_, _)
+16 io actions:
+command_line_arguments(["sort.input"])
+do_open_text("sort.input", "r", 0, 0, <<foreign>>)
+get_stream_db(
+  map([150336788 -> stream(0, input, preopen, stdin), 
+   150336796 -> stream(1, output, preopen, stdout), 
+   150336820 -> stream(1, output, preopen, stderr)]))
+set_stream_db(
+  map([150336788 -> stream(0, input, preopen, stdin), 
+   150336796 -> stream(1, output, preopen, stdout), 
+   150336820 -> stream(1, output, preopen, stderr), 
+   158215080 -> stream(0, input, text, file("sort.input"))]))
+read_line_as_string_2(<<foreign>>, yes, 0, "ian
+")
+read_line_as_string_2(<<foreign>>, yes, 0, "zoltan
+")
+read_line_as_string_2(<<foreign>>, yes, 0, "rafe
+")
+read_line_as_string_2(<<foreign>>, yes, 0, "julien
+")
 read_line_as_string_2(<<foreign>>, yes, -1, "")
-dd> set depth 1
-dd> no
+write_string("ian
+")
+write_string("")
+write_string("ian
+")
+write_string("")
+write_string("ian
+")
+write_string("")
+write_string("ian
+")
+Valid? print io 9
+read_line_as_string_2(<<foreign>>, yes, -1, "")
+main(_, _)
+16 io actions:
+command_line_arguments(["sort.input"])
+do_open_text("sort.input", "r", 0, 0, <<foreign>>)
+get_stream_db(
+  map([150336788 -> stream(0, input, preopen, stdin), 
+   150336796 -> stream(1, output, preopen, stdout), 
+   150336820 -> stream(1, output, preopen, stderr)]))
+set_stream_db(
+  map([150336788 -> stream(0, input, preopen, stdin), 
+   150336796 -> stream(1, output, preopen, stdout), 
+   150336820 -> stream(1, output, preopen, stderr), 
+   158215080 -> stream(0, input, text, file("sort.input"))]))
+read_line_as_string_2(<<foreign>>, yes, 0, "ian
+")
+read_line_as_string_2(<<foreign>>, yes, 0, "zoltan
+")
+read_line_as_string_2(<<foreign>>, yes, 0, "rafe
+")
+read_line_as_string_2(<<foreign>>, yes, 0, "julien
+")
+read_line_as_string_2(<<foreign>>, yes, -1, "")
+write_string("ian
+")
+write_string("")
+write_string("ian
+")
+write_string("")
+write_string("ian
+")
+write_string("")
+write_string("ian
+")
+Valid? set depth 1
+main(...)
+16 io actions:
+command_line_arguments(...)
+do_open_text(...)
+get_stream_db(...)
+set_stream_db(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+write_string(...)
+write_string(...)
+write_string(...)
+write_string(...)
+write_string(...)
+write_string(...)
+write_string(...)
+Valid? no
 open_stream(...)
-3 tabled IO actions:
+3 io actions:
 do_open_text(...)
 get_stream_db(...)
 set_stream_db(...)
 Valid? yes
 read_lines(...)
-5 tabled IO actions:
+5 io actions:
 read_line_as_string_2(...)
 read_line_as_string_2(...)
 read_line_as_string_2(...)
 read_line_as_string_2(...)
 read_line_as_string_2(...)
 Valid? quit
-Diagnosis aborted.
+Unknown command, 'h' for help.
+read_lines(...)
+5 io actions:
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+Valid? quit -y
+Unknown command, 'h' for help.
+read_lines(...)
+5 io actions:
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+read_line_as_string_2(...)
+Valid? Diagnosis aborted.
       E2:     C1 EXIT pred sort.main/2-0 (det) sort.m:27
-mdb> quit -y
+mdb> mdb: are you sure you want to quit? 
