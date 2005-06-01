@@ -865,7 +865,7 @@ piTarget -->
 
 cdSect -->
     lit("<![CDATA[")		    then (pred(_::in, pdi, puo) is det -->
-    upto(char, lit("]]>", ''))	    then (pred((Cs, _)::in, pdi, puo) is det -->
+    upto(char, lit("]]>", unit))    then (pred((Cs, _)::in, pdi, puo) is det -->
     mkString(Cs, Data),
     add(data(Data), Ref),
     return(Ref)
@@ -1086,9 +1086,9 @@ doctypedecl -->
     name			    then (pred(Root::in, pdi, puo) is det -->
     opt(snd(s and externalID))	    then (pred(MExId::in, pdi, puo) is det -->
     opt(s)			    then (pred(_::in, pdi, puo) is det -->
-    opt(lit1(('['), '') and
+    opt(lit1(('['), unit) and
       parseInternalSubSet and
-      (lit1((']'), '') and opt(s)))
+      (lit1((']'), unit) and opt(s)))
 				    then (pred(_::in, pdi, puo) is det -->
     lit1(('>'))			    then (pred(_::in, pdi, puo) is det -->
     opt(MExId, parseExtSubset, return)
@@ -2142,7 +2142,7 @@ enumeration -->
 defaultDecl -->
     lit("#REQUIRED", required) or
     lit("#IMPLIED", implied) or
-    wrap(snd((lit("#FIXED", '') and s) and attValue), wrapFixed) or
+    wrap(snd((lit("#FIXED", unit) and s) and attValue), wrapFixed) or
     wrap(attValue, wrapDefault).
 
 :- pred wrapFixed(string, default).
@@ -2676,8 +2676,8 @@ peDef -->
 :- mode externalID(in, out) is det.
 
 externalID -->
-    wrap(snd((lit("SYSTEM", '') and s) and systemLiteral), wrapSystem) or
-    wrap(snd((lit("PUBLIC", '') and s) and pubidLiteral) and
+    wrap(snd((lit("SYSTEM", unit) and s) and systemLiteral), wrapSystem) or
+    wrap(snd((lit("PUBLIC", unit) and s) and pubidLiteral) and
            snd(s and systemLiteral), wrapPublic).
 
 :- pred wrapSystem(string, externalId).
