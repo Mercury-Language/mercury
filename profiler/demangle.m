@@ -171,12 +171,12 @@ demangle_proc_ll -->
 		remove_prefix("_"),
 		remove_maybe_module_prefix(MaybeModule,
 			["IntroducedFrom__", "DeforestationIn__",
-			"AccFrom__", "TypeSpecOf__"]),
+			"AccFrom__", "TypeSpecOf__", "UnusedArgs__"]),
 		{ MaybeModule \= yes("") }
 	;
 		remove_maybe_module_prefix(MaybeModule,
 			["IntroducedFrom__", "DeforestationIn__",
-			"AccFrom__", "TypeSpecOf__"])
+			"AccFrom__", "TypeSpecOf__", "UnusedArgs__"])
 	),
 
 	% Remove any prefixes added for introduced predicates,
@@ -284,7 +284,7 @@ demangle_proc_hl -->
 	%
 	remove_maybe_module_prefix(MaybeModule0,
 		["IntroducedFrom__", "DeforestationIn__",
-		"AccFrom__", "TypeSpecOf__", "__"]),
+		"AccFrom__", "TypeSpecOf__", "UnusedArgs__", "__"]),
 
 	%
 	% Check whether the start of the string matches the name of

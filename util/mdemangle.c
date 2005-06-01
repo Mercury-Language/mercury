@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2004 The University of Melbourne.
+** Copyright (C) 1995-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -162,6 +162,7 @@ demangle(const char *orig_name)
 	static const char deforestation[]  = "DeforestationIn__";
 	static const char accumulator[]  = "AccFrom__";
 	static const char type_spec[]  = "TypeSpecOf__";
+	static const char unused_arg[] = "UnusedArgs__";
 	static const char pred[]  = "pred__";
 	static const char func[]  = "func__";
 	static const char porf[]  = "pred_or_func__";
@@ -195,6 +196,7 @@ demangle(const char *orig_name)
 		deforestation,
 		accumulator,
 		type_spec,
+		unused_arg,
 		unify1, compare1, index1, initialise1,
 		NULL
 	};
@@ -204,7 +206,6 @@ demangle(const char *orig_name)
 		ho_suffix,
 		NULL
 	};
-
 
 	static const char * trailing_context_2[] = {
 		type_ctor_layout,
