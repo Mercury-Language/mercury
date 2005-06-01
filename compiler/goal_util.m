@@ -1449,8 +1449,7 @@ goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
 
 goal_util__generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo,
 		Detism, Attributes, Args, ExtraArgs, PrefixCode, Code,
-		SuffixCode, Features, InstMap, ModuleInfo, Context,
-		Goal) :-
+		SuffixCode, Features, InstMap, ModuleInfo, Context, Goal) :-
 	list__length(Args, Arity),
 	lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
 		PredOrFunc, Arity, ModeNo, PredId, ProcId),
