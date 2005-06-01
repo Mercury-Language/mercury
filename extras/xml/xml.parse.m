@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -946,7 +946,7 @@ prolog -->
 
 %   [23]  XMLDecl ::= '<?xml' VersionInfo EncodingDecl? SDDecl? S? '?>'
 
-:- pred xmlDecl(pstate(_), pstate('')).
+:- pred xmlDecl(pstate(_), pstate(unit)).
 :- mode xmlDecl(in, out) is det.
 
 xmlDecl -->
@@ -973,7 +973,7 @@ xmlDecl -->
 
 %   [24]  VersionInfo ::= S 'version' Eq (' VersionNum ' | " VersionNum ")
 
-:- pred versionInfo(pstate(_), pstate('')).
+:- pred versionInfo(pstate(_), pstate(unit)).
 :- mode versionInfo(in, out) is det.
 
 versionInfo -->
@@ -991,7 +991,7 @@ versionInfo -->
 
 %   [25]  Eq ::= S? '=' S?
 
-:- pred eq(pstate(_), pstate('')).
+:- pred eq(pstate(_), pstate(unit)).
 :- mode eq(in, out) is det.
 
 eq -->
@@ -1099,7 +1099,7 @@ doctypedecl -->
     return(dtd(Root, Elements, Entities, PEntities))
     ))))))))).
 
-:- pred parseInternalSubSet(pstate(_), pstate('')).
+:- pred parseInternalSubSet(pstate(_), pstate(unit)).
 :- mode parseInternalSubSet(pdi, puo) is det.
 
 parseInternalSubSet -->
@@ -1108,7 +1108,7 @@ parseInternalSubSet -->
     return
     ).
 
-:- pred parseExtSubset(externalId, pstate(_), pstate('')).
+:- pred parseExtSubset(externalId, pstate(_), pstate(unit)).
 :- mode parseExtSubset(in, pdi, puo) is det.
 
 parseExtSubset(ExId) -->
@@ -1122,7 +1122,7 @@ parseExtSubset(ExId) -->
 %   | NotationDecl | PI | Comment [ VC: Proper Declaration/PE Nesting ]
 %   [ WFC: PEs in Internal Subset ]
 
-:- pred markupdecl(pstate(_), pstate('')).
+:- pred markupdecl(pstate(_), pstate(unit)).
 :- mode markupdecl(in, out) is det.
 
 markupdecl -->
@@ -1167,7 +1167,7 @@ markupdecl -->
 %   External Subset
 %   [30]  extSubset ::= TextDecl? extSubsetDecl
 
-:- pred extSubset(pstate(T1), pstate('')).
+:- pred extSubset(pstate(T1), pstate(unit)).
 :- mode extSubset(in, out) is det.
 
 extSubset -->
@@ -1181,7 +1181,7 @@ extSubset -->
 %   [31]  extSubsetDecl ::= ( markupdecl | conditionalSect | PEReference
 %   | S )*
 
-:- pred extSubsetDecl(pstate(_), pstate('')).
+:- pred extSubsetDecl(pstate(_), pstate(unit)).
 :- mode extSubsetDecl(in, out) is det.
 
 extSubsetDecl -->
@@ -1232,7 +1232,7 @@ extSubsetDecl -->
 %   [32]  SDDecl ::= S 'standalone' Eq (("'" ('yes' | 'no') "'") | ('"'
 %   ('yes' | 'no') '"')) [ VC: Standalone Document Declaration ]
 
-:- pred sdDecl(pstate(_), pstate('')).
+:- pred sdDecl(pstate(_), pstate(unit)).
 :- mode sdDecl(in, out) is det.
 
 sdDecl -->
@@ -1351,7 +1351,7 @@ sdDecl -->
 %   Language Identification
 %   [33]  LanguageID ::= Langcode ('-' Subcode)*
 
-:- pred languageID(pstate(_), pstate('')).
+:- pred languageID(pstate(_), pstate(unit)).
 :- mode languageID(in, out) is det.
 
 languageID -->
@@ -1362,7 +1362,7 @@ languageID -->
 
 %   [34]  Langcode ::= ISO639Code |  IanaCode |  UserCode
 
-:- pred langcode(pstate(_), pstate('')).
+:- pred langcode(pstate(_), pstate(unit)).
 :- mode langcode(in, out) is det.
 
 langcode -->
@@ -1678,7 +1678,7 @@ emptyElemTag -->
 %   [45]  elementdecl ::= '<!ELEMENT' S Name S contentspec S? '>' [ VC:
 %   Unique Element Type Declaration ]
 
-:- pred elementdecl(pstate(_), pstate('')).
+:- pred elementdecl(pstate(_), pstate(unit)).
 :- mode elementdecl(in, out) is det.
 
 elementdecl -->
@@ -1913,7 +1913,7 @@ mixed2 -->
 %   Attribute-list Declaration
 %   [52]  AttlistDecl ::= '<!ATTLIST' S Name AttDef* S? '>'
 
-:- pred attlistDecl(pstate(_), pstate('')).
+:- pred attlistDecl(pstate(_), pstate(unit)).
 :- mode attlistDecl(in, out) is det.
 
 attlistDecl -->
@@ -2222,7 +2222,7 @@ wrapDefault(AttValue, defaulted(AttValue)).
 %   Conditional Section
 %   [61]  conditionalSect ::= includeSect | ignoreSect
 
-:- pred conditionalSect(pstate(_), pstate('')).
+:- pred conditionalSect(pstate(_), pstate(unit)).
 :- mode conditionalSect(in, out) is det.
 
 conditionalSect -->
@@ -2230,7 +2230,7 @@ conditionalSect -->
 
 %   [62]  includeSect ::= '<![' S? 'INCLUDE' S? '[' extSubsetDecl ']]>'
 
-:- pred includeSect(pstate(_), pstate('')).
+:- pred includeSect(pstate(_), pstate(unit)).
 :- mode includeSect(in, out) is det.
 
 includeSect -->
@@ -2248,7 +2248,7 @@ includeSect -->
 %   [63]  ignoreSect ::= '<![' S? 'IGNORE' S? '[' ignoreSectContents*
 %   ']]>'
 
-:- pred ignoreSect(pstate(_), pstate('')).
+:- pred ignoreSect(pstate(_), pstate(unit)).
 :- mode ignoreSect(in, out) is det.
 
 ignoreSect -->
@@ -2264,7 +2264,7 @@ ignoreSect -->
 %   [64]  ignoreSectContents ::= Ignore ('<![' ignoreSectContents ']]>'
 %   Ignore)*
 
-:- pred ignoreSectContents(pstate(_), pstate('')).
+:- pred ignoreSectContents(pstate(_), pstate(unit)).
 :- mode ignoreSectContents(in, out) is det.
 
 ignoreSectContents -->
@@ -2425,7 +2425,7 @@ hex_digits_to_number([D|Ds], U0, U) :-
 %   Entity Reference
 %   [67]  Reference ::= EntityRef | CharRef
 
-%:- pred reference(pstate(_), pstate('')).
+%:- pred reference(pstate(_), pstate(unit)).
 %:- mode reference(in, out) is det.
 %
 %reference -->
@@ -2556,7 +2556,7 @@ pEReference -->
 %   Entity Declaration
 %   [70]  EntityDecl ::= GEDecl | PEDecl
 
-:- pred entityDecl(pstate(_), pstate('')).
+:- pred entityDecl(pstate(_), pstate(unit)).
 :- mode entityDecl(in, out) is det.
 
 entityDecl -->
@@ -2564,7 +2564,7 @@ entityDecl -->
 
 %   [71]  GEDecl ::= '<!ENTITY' S Name S EntityDef S? '>'
 
-:- pred geDecl(pstate(_), pstate('')).
+:- pred geDecl(pstate(_), pstate(unit)).
 :- mode geDecl(in, out) is det.
 
 geDecl -->
@@ -2589,7 +2589,7 @@ geDecl -->
 
 %   [72]  PEDecl ::= '<!ENTITY' S '%' S Name S PEDef S? '>'
 
-:- pred peDecl(pstate(_), pstate('')).
+:- pred peDecl(pstate(_), pstate(unit)).
 :- mode peDecl(in, out) is det.
 
 peDecl -->
@@ -2760,7 +2760,7 @@ nDataDecl -->
 %   Text Declaration
 %   [77]  TextDecl ::= '<?xml' VersionInfo? EncodingDecl S? '?>'
 
-:- pred textDecl(pstate(_), pstate('')).
+:- pred textDecl(pstate(_), pstate(unit)).
 :- mode textDecl(in, out) is det.
 
 textDecl -->
@@ -2802,7 +2802,7 @@ extParsedEnt -->
 
 %   [79]  extPE ::= TextDecl? extSubsetDecl
 
-:- pred extPE(pstate(_), pstate('')).
+:- pred extPE(pstate(_), pstate(unit)).
 :- mode extPE(in, out) is det.
 
 extPE -->
@@ -3132,7 +3132,7 @@ encName -->
 %   [82]  NotationDecl ::= '<!NOTATION' S Name S (ExternalID |  PublicID)
 %   S? '>'
 
-:- pred notationDecl(pstate(_), pstate('')).
+:- pred notationDecl(pstate(_), pstate(unit)).
 :- mode notationDecl(in, out) is det.
 
 notationDecl -->
@@ -3655,7 +3655,7 @@ add(Cont, Ref) -->
     { doc:add(Cont, Ref, Content0, Content) },
     set(gContent, Content).
 
-%:- pred psp(pstate(T1), pstate('')).
+%:- pred psp(pstate(T1), pstate(unit)).
 %:- mode psp(pdi, puo) is det.
 %
 %psp -->
@@ -3663,7 +3663,7 @@ add(Cont, Ref) -->
 %    return
 %    ).
 
-%:- pred ps(pstate(T1), pstate('')).
+%:- pred ps(pstate(T1), pstate(unit)).
 %:- mode ps(pdi, puo) is det.
 %
 %ps -->

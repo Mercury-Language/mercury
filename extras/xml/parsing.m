@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -81,7 +81,7 @@
 	--->	ok(T)
 	;	error(string).
 
-:- pred pstate(entity, encoding, globals, io__state, pstate('')).
+:- pred pstate(entity, encoding, globals, io__state, pstate(unit)).
 :- mode pstate(in, in, in, di, puo) is det.
 
 :- pred finish(parse(T1), pstate(T1), io__state).
@@ -109,7 +109,7 @@
 :- pred return(T, pstate(_), pstate(T)).
 :- mode return(in, pdi, puo) is det.
 
-:- pred return(pstate(_), pstate('')).
+:- pred return(pstate(_), pstate(unit)).
 :- mode return(pdi, puo) is det.
 
 :- pred fail(string, pstate(_), pstate(_)).
@@ -151,8 +151,6 @@
 :- type (A, B) ---> (A, B).
 
 :- type opt(T) ---> no ; yes(T).
-
-:- type '' ---> ''.
 
 :- type parser(T1, T2) == pred(pstate(T1), pstate(T2)).
 
@@ -196,7 +194,7 @@
 :- pred wrap(parser(T1, T2), pred(T2, T3), pstate(T1), pstate(T3)).
 :- mode wrap(in(parser), pred(in, out) is det, pdi, puo) is det.
 
-:- pred x(parser(T1, T2), pstate(T1), pstate('')).
+:- pred x(parser(T1, T2), pstate(T1), pstate(unit)).
 :- mode x(in(parser), pdi, puo) is det.
 
 :- pred fst(parser(S, (T,U)), pstate(S), pstate(T)).
@@ -261,7 +259,7 @@ mkEntity(Name, Str) = entity(0, Leng, Str, Name) :-
 mkEncoding(Enc) = 'new enc'(Enc).
 
 pstate(Entity, Enc, Globs, IO, PS) :-
-    PS = s(0, Entity, Enc, ok(''), Globs, IO).
+    PS = s(0, Entity, Enc, ok(unit), Globs, IO).
 
 finish(Res, PS0, IO) :-
     status(Status, PS0, PS),
@@ -380,7 +378,7 @@ return(X, PS0, PS) :-
     PS = PS0^status := ok(X).
 
 return -->
-    return('').
+    return(unit).
 
 fail(Msg, PS0, PS) :-
     PS = PS0^status := fail(Msg).
@@ -431,11 +429,11 @@ lit(Str, Thing) -->
     return(Thing)
     )).
 
-:- pred lit2(list(char), pstate(_), pstate('')).
+:- pred lit2(list(char), pstate(_), pstate(unit)).
 :- mode lit2(in, pdi, puo) is det.
 
 lit2([]) -->
-    return('').
+    return(unit).
 lit2([C|Is]) -->
     { char__to_int(C, I) },
     (tok			    then (pred(I0::in, pdi, puo) is det -->
@@ -581,7 +579,7 @@ wrap(P, Q) -->
 
 x(P) -->
     P				    then (pred(_::in, pdi, puo) is det -->
-    return('')
+    return(unit)
     ).
 
 fst(P) -->
