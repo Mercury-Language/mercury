@@ -1293,7 +1293,7 @@ static MR_bool
 MR_insert_call_site_static(const MR_CallSiteStatic *css, int *id,
     MR_bool *already_written, MR_bool init_written)
 {
-    return MR_hash_table_insert_INTERNAL(MR_call_site_dynamic_table,
+    return MR_hash_table_insert_INTERNAL(MR_call_site_static_table,
         (const void *) css, id, already_written, init_written);
 }
 
