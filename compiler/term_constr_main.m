@@ -509,38 +509,33 @@ maybe_make_optimization_interface(ModuleInfo, !IO) :-
 
 :- pred make_opt_int(list(pred_id)::in, module_info::in, io::di, io::uo) is det.
 
-make_opt_int(_PredIds, _ModuleInfo, !IO).
-
-% XXX The code for writing .opt files is currently disabled.
-% NOTE: in order to enable this you also need to uncomment the relevant
-% code in trans_opt.m.
-%
-%   module_info_name(ModuleInfo, ModuleName),
-%   module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
-%   globals.io_lookup_bool_option(verbose, Verbose, !IO),
-%   maybe_write_string(Verbose, 
-%       "% Appending termination2_info pragmas to `", !IO),
-%   maybe_write_string(Verbose, OptFileName, !IO),
-%   maybe_write_string(Verbose, "'...", !IO),
-%   maybe_flush_output(Verbose, !IO),
-%   io.open_append(OptFileName, OptFileRes, !IO),
-%   (   
-%       OptFileRes = ok(OptFile),
-%       io.set_output_stream(OptFile, OldStream, !IO),
-%         list.foldl(output_pred_termination2_info(ModuleInfo), PredIds,
-%           !IO),
-%       io.set_output_stream(OldStream, _, !IO),
-%       io.close_output(OptFile, !IO),
-%       maybe_write_string(Verbose, " done.\n", !IO)
-%   ;   
-%       OptFileRes = error(IOError),
-%           % failed to open the .opt file for processing
-%       maybe_write_string(Verbose, " failed!\n", !IO),
-%       io.error_message(IOError, IOErrorMessage),
-%       io.write_strings(["Error opening file `",
-%           OptFileName, "' for output: ", IOErrorMessage], !IO),
-%       io.set_exit_status(1, !IO)
-%   ).
+make_opt_int(PredIds, ModuleInfo, !IO) :-
+  module_info_name(ModuleInfo, ModuleName),
+  module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
+  globals.io_lookup_bool_option(verbose, Verbose, !IO),
+  maybe_write_string(Verbose, 
+      "% Appending termination2_info pragmas to `", !IO),
+  maybe_write_string(Verbose, OptFileName, !IO),
+  maybe_write_string(Verbose, "'...", !IO),
+  maybe_flush_output(Verbose, !IO),
+  io.open_append(OptFileName, OptFileRes, !IO),
+  (   
+      OptFileRes = ok(OptFile),
+      io.set_output_stream(OptFile, OldStream, !IO),
+        list.foldl(output_pred_termination2_info(ModuleInfo), PredIds,
+          !IO),
+      io.set_output_stream(OldStream, _, !IO),
+      io.close_output(OptFile, !IO),
+      maybe_write_string(Verbose, " done.\n", !IO)
+  ;   
+      OptFileRes = error(IOError),
+          % failed to open the .opt file for processing
+      maybe_write_string(Verbose, " failed!\n", !IO),
+      io.error_message(IOError, IOErrorMessage),
+      io.write_strings(["Error opening file `",
+          OptFileName, "' for output: ", IOErrorMessage], !IO),
+      io.set_exit_status(1, !IO)
+  ).
 
 output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
     % 

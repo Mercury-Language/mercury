@@ -1,3 +1,5 @@
 :- module pl8_4_1.
 :- pragma termination_info(pl8_4_1.even((builtin.in)), finite(0, [no]), cannot_loop).
 :- pragma termination_info(pl8_4_1.odd((builtin.in)), finite(0, [no]), cannot_loop).
+:- pragma termination2_info(pl8_4_1.even((builtin.in)), [1], constraints([le([term(1, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).
+:- pragma termination2_info(pl8_4_1.odd((builtin.in)), [3], constraints([le([term(3, r(-1, 1))], r(-1, 1))]), not_set, cannot_loop).

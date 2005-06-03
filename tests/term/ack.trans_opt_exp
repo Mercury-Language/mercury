@@ -1,2 +1,3 @@
 :- module ack.
 :- pragma termination_info(ack.ack((builtin.in), (builtin.in), (builtin.out)), infinite, can_loop).
+:- pragma termination2_info(ack.ack((builtin.in), (builtin.in), (builtin.out)), [1, 2, 3], constraints([le([term(2, r(-1, 1))], r(0, 1)), le([term(1, r(-1, 1)), term(3, r(-1, 1))], r(-1, 1))]), not_set, can_loop).

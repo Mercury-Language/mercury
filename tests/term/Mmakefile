@@ -96,7 +96,7 @@ include $(TESTS_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-MCTERMFLAGS = --enable-termination --term-single-arg 5
+MCTERMFLAGS = --enable-termination --term-single-arg 5 --enable-termination2
 MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
 	      --no-optimize-higher-order
 MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)

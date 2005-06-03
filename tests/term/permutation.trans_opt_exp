@@ -1,2 +1,3 @@
 :- module permutation.
 :- pragma termination_info(permutation.perm((builtin.in), (builtin.out)), finite(0, [no, yes, no]), cannot_loop).
+:- pragma termination2_info(permutation.perm((builtin.in), (builtin.out)), [9, 1, 2], constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).

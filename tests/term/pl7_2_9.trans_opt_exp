@@ -1,2 +1,3 @@
 :- module pl7_2_9.
 :- pragma termination_info(pl7_2_9.mult((builtin.in), (builtin.in), (builtin.out)), infinite, cannot_loop).
+:- pragma termination2_info(pl7_2_9.mult((builtin.in), (builtin.in), (builtin.out)), [1, 2, 3], constraints([le([term(1, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).

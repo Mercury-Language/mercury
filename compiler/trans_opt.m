@@ -133,10 +133,8 @@ trans_opt__write_optfile(Module, !IO) :-
 		module_info_predids(Module, PredIds),
 		list__foldl(termination__write_pred_termination_info(Module),
 			PredIds, !IO),
-% XXX Writing termination2_info pragma to .trans_opt files is currently
-% disabled.  (The code in term_constr_main also needs to be uncommented).
-% 		list__foldl(term_constr_main.output_pred_termination2_info(Module),
-% 			PredIds, !IO),
+		list__foldl(term_constr_main.output_pred_termination2_info(Module),
+			PredIds, !IO),
 		
 		module_info_exception_info(Module, ExceptionInfo),
 		list__foldl(

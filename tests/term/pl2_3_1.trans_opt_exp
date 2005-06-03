@@ -1,2 +1,3 @@
 :- module pl2_3_1.
 :- pragma termination_info(pl2_3_1.p((builtin.in), (builtin.out)), finite(0, [yes, no]), can_loop).
+:- pragma termination2_info(pl2_3_1.p((builtin.in), (builtin.out)), [1, 2], constraints([]), not_set, can_loop).

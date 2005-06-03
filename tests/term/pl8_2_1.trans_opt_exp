@@ -1,2 +1,3 @@
 :- module pl8_2_1.
 :- pragma termination_info(pl8_2_1.mergesort((builtin.in), (builtin.out)), finite(0, [yes, no]), can_loop).
+:- pragma termination2_info(pl8_2_1.mergesort((builtin.in), (builtin.out)), [1, 2], constraints([le([term(1, r(-1, 1))], r(0, 1))]), not_set, can_loop).

@@ -1,2 +1,3 @@
 :- module existential_error2.
 :- pragma termination_info(existential_error2.construct_list_of_any((builtin.out)), finite(1, [no]), cannot_loop).
+:- pragma termination2_info(existential_error2.construct_list_of_any((builtin.out)), [1], constraints([eq([term(1, r(1, 1))], r(2, 1))]), not_set, cannot_loop).

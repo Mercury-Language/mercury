@@ -9,3 +9,13 @@
 :- pragma termination_info(foreign_valid.test8((builtin.out)), infinite, can_loop).
 :- pragma termination_info(foreign_valid.test9((builtin.out)), infinite, cannot_loop).
 :- pragma termination_info(foreign_valid.test10((builtin.out)), infinite, can_loop).
+:- pragma termination2_info(foreign_valid.test1((builtin.out)), [1], constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(foreign_valid.test2((builtin.out)), [1], constraints([]), not_set, can_loop).
+:- pragma termination2_info(foreign_valid.test3((builtin.out)), [1], constraints([]), not_set, can_loop).
+:- pragma termination2_info(foreign_valid.test4((builtin.out)), [1], constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(foreign_valid.test5((builtin.out)), [1], constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(foreign_valid.test6((builtin.out)), [1], constraints([]), not_set, can_loop).
+:- pragma termination2_info(foreign_valid.test7((builtin.out)), [1], constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(foreign_valid.test8((builtin.out)), [1], constraints([]), not_set, can_loop).
+:- pragma termination2_info(foreign_valid.test9((builtin.out)), [1], constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(foreign_valid.test10((builtin.out)), [1], constraints([]), not_set, can_loop).

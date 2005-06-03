@@ -1,3 +1,5 @@
 :- module pl4_5_3a.
 :- pragma termination_info(pl4_5_3a.p((builtin.in)), finite(0, [no]), can_loop).
 :- pragma termination_info(pl4_5_3a.p((builtin.out)), finite(0, [no]), can_loop).
+:- pragma termination2_info(pl4_5_3a.p((builtin.in)), [1], constraints([]), not_set, can_loop).
+:- pragma termination2_info(pl4_5_3a.p((builtin.out)), [1], constraints([]), not_set, can_loop).

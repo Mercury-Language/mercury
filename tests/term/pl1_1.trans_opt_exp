@@ -1,3 +1,5 @@
 :- module pl1_1.
 :- pragma termination_info(pl1_1.append((builtin.in), (builtin.in), (builtin.out)), finite(0, [no, yes, yes, no]), cannot_loop).
 :- pragma termination_info(pl1_1.append((builtin.out), (builtin.out), (builtin.in)), finite(0, [no, no, no, yes]), cannot_loop).
+:- pragma termination2_info(pl1_1.append((builtin.in), (builtin.in), (builtin.out)), [7, 1, 2, 3], constraints([eq([term(1, r(1, 1)), term(2, r(1, 1)), term(3, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).
+:- pragma termination2_info(pl1_1.append((builtin.out), (builtin.out), (builtin.in)), [7, 1, 2, 3], constraints([eq([term(1, r(1, 1)), term(2, r(1, 1)), term(3, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).
