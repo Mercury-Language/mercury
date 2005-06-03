@@ -448,6 +448,22 @@
   #error "MR_THREAD_SAFE and MR_STACK_FRAME_STATS are not supported together"
 #endif
 
+/*
+** Neither form of the minimal model tabling works if the system recovers
+** memory allocated after a choice point when backtracking to that choice
+** point. This rules out the use of the native Mercury collector, as well as
+** the absence of a collector. (This may change for the own stack model,
+** with more work.)
+*/
+
+#if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) && !defined(MR_CONSERVATIVE_GC)
+  #error "MR_USE_MINIMAL_MODEL_OWN_STACKS requires MR_CONSERVATIVE_GC"
+#endif
+
+#if defined(MR_USE_MINIMAL_MODEL_OWN_STACKS) && !defined(MR_CONSERVATIVE_GC)
+  #error "MR_USE_MINIMAL_MODEL_OWN_STACKS requires MR_CONSERVATIVE_GC"
+#endif
+
 #ifdef MR_MINIMAL_MODEL_DEBUG
   #define MR_TABLE_STATISTICS
 #endif

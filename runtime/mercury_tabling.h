@@ -155,7 +155,7 @@ union MR_TableNode_Union {
 	MR_Unsigned		MR_memo_status;
 	MR_Subgoal		*MR_subgoal;
 	MR_MemoNonRecordPtr	MR_memo_non_record;
-	MR_Consumer		*MR_consumer;
+	MR_GeneratorPtr		MR_generator;
 	MR_AnswerBlock		MR_answerblock;
 	MR_Dlist		*MR_type_table;
 };

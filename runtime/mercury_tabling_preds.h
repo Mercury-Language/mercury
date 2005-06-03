@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2004 The University of Melbourne.
+** Copyright (C) 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -771,6 +771,43 @@
         MR_fatal_error(MR_MMSC_ERROR);                                  \
     } while(0)
 
+/***********************************************************************/
+
+#ifdef  MR_TABLE_DEBUG
+  #define MR_table_mmos_answer_is_not_duplicate_msg(T)                    \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("checking if %p is a duplicate answer: %ld\n",       \
+                T, (long) T->MR_integer);                               \
+        }                                                               \
+    } while(0)
+#else
+  #define MR_table_mmos_answer_is_not_duplicate_msg(T)    ((void) 0)
+#endif
+
+#ifdef  MR_TABLE_STATISTICS
+  #define MR_table_mmos_answer_is_not_duplicate_stats(T, is_new_answer) \
+    do {                                                                \
+        MR_mmos_stats_cnt_dupl_check++;                                 \
+        if (is_new_answer) {                                            \
+            MR_mmos_stats_cnt_dupl_check_not_dupl++;                    \
+        }                                                               \
+    } while(0)
+#else
+  #define MR_table_mmos_answer_is_not_duplicate_stats(T, is_new_answer) \
+    ((void) 0)
+#endif
+
+#define MR_table_mmos_answer_is_not_duplicate(T, SUCCESS_INDICATOR)     \
+    do {                                                                \
+        MR_bool     is_new_answer;                                      \
+        MR_table_mmos_answer_is_not_duplicate_msg(T);                   \
+        is_new_answer = (T->MR_integer == 0);                           \
+        MR_table_mmos_answer_is_not_duplicate_stats(T, is_new_answer);  \
+        T->MR_integer = 1;  /* any nonzero value will do */             \
+        SUCCESS_INDICATOR = is_new_answer;                              \
+    } while(0)
+
 #endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 /***********************************************************************/
@@ -780,45 +817,12 @@
 #define MR_MMOS_ERROR  \
         "own stack minimal model code entered when not enabled"
 
-#define MR_table_mmos_save_inputs_shortcut(num_inputs)                  \
-    do {                                                                \
-        MR_fatal_error(MR_MMOS_ERROR);                                  \
-    } while(0)
-#define MR_table_mmos_setup_consumer(t, num_inputs, gen_pred, name, consumer) \
-    do {                                                                \
-        MR_fatal_error(MR_MMOS_ERROR);                                  \
-    } while(0)
-#define MR_table_mmos_consume_next_answer_nondet(consumer, answerblock, succ) \
-    do {                                                                \
-        MR_fatal_error(MR_MMOS_ERROR);                                  \
-    } while(0)
-#define MR_table_mmos_get_answer_table(generator, trienode)             \
-    do {                                                                \
-        MR_fatal_error(MR_MMOS_ERROR);                                  \
-    } while(0)
-#define MR_table_mmos_create_answer_block(generator, blocksize, answerblock) \
-    do {                                                                \
-        MR_fatal_error(MR_MMOS_ERROR);                                  \
-    } while(0)
-#define MR_table_mmos_return_answer(generator, answerblock)             \
-    do {                                                                \
-        MR_fatal_error(MR_MMOS_ERROR);                                  \
-    } while(0)
-#define MR_table_mmos_completion(generator)                             \
-    do {                                                                \
-        MR_fatal_error(MR_MMOS_ERROR);                                  \
-    } while(0)
-
 #else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
 #define MR_MMOS_ERROR  \
         "own stack minimal model code entered when not enabled"
 
 #define MR_table_mmos_save_inputs_shortcut(num_inputs)                  \
-    do {                                                                \
-        MR_fatal_error(MR_MMOS_ERROR);                                  \
-    } while(0)
-#define MR_table_mmos_setup_consumer(t, num_inputs, gen_pred, name, consumer) \
     do {                                                                \
         MR_fatal_error(MR_MMOS_ERROR);                                  \
     } while(0)

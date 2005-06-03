@@ -17,6 +17,7 @@
 ** IMPORTANT: any changes here may also require changes to
 **	runtime/mercury_conf_param.h
 ** 	scripts/init_grade_options.sh-subr
+** 	scripts/canonical_grade.sh-subr
 ** 	scripts/parse_grade_options.sh-subr
 ** 	scripts/final_grade_options.sh-subr
 ** 	scripts/mgnuc.in

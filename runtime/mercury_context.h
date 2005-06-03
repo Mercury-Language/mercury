@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1997-2004 The University of Melbourne.
+** vim:ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -10,8 +13,8 @@
 ** A "context" is a Mercury thread.  (We use a different term than "thread"
 ** to avoid confusing Mercury threads and Posix threads.) 
 ** Each context is represented by a value of type MR_Context,
-** which contains a detstack, a nondetstack, a trail, the various pointers
-** that refer to them, a succip, and a thread-resumption continuation. 
+** which contains a detstack, a nondetstack, a trail (if needed), the various
+** pointers that refer to them, a succip, and a thread-resumption continuation. 
 ** Contexts are initally stored in a free-list.
 ** When one is running, the Posix thread that is executing it has a pointer
 ** to its context structure `this_context'. When a context suspends, it
@@ -42,120 +45,124 @@
 #ifndef MERCURY_CONTEXT_H
 #define MERCURY_CONTEXT_H
 
-#include "mercury_regs.h"		/* for MR_hp, etc. Must come before
-					   system headers. */
+#include "mercury_regs.h"       /* for MR_hp, etc. */
+                                /* Must come before system headers. */
 
 #include <stdio.h>
 
-#include "mercury_types.h"		/* for MR_Word, MR_Code, etc */
-#include "mercury_trail.h"		/* for MR_TrailEntry */
-#include "mercury_memory.h"		/* for MR_MemoryZone */
-#include "mercury_thread.h"		/* for MercuryLock */
-#include "mercury_goto.h"		/* for MR_GOTO() */
-#include "mercury_conf.h"		/* for MR_CONSERVATIVE_GC */
+#include "mercury_types.h"      /* for MR_Word, MR_Code, etc */
+#include "mercury_trail.h"      /* for MR_TrailEntry */
+#include "mercury_memory.h"     /* for MR_MemoryZone */
+#include "mercury_thread.h"     /* for MercuryLock */
+#include "mercury_goto.h"       /* for MR_GOTO() */
+#include "mercury_conf.h"       /* for MR_CONSERVATIVE_GC */
 
-#ifdef	MR_THREAD_SAFE
-  #define MR_IF_THREAD_SAFE(x)	x
+#ifdef  MR_THREAD_SAFE
+  #define MR_IF_THREAD_SAFE(x)  x
 #else
   #define MR_IF_THREAD_SAFE(x)
 #endif
 
 typedef struct MR_Context_Struct MR_Context;
 struct MR_Context_Struct {
-	const char	*MR_ctxt_id;
+    const char          *MR_ctxt_id;
 
-	MR_Context	 *MR_ctxt_next;	
-			/*
-			** If this context is in the free-list `next' will
-			** point to the next free context. If this context
-			** is suspended waiting for a variable to become bound,
-			** `next' will point to the next waiting context.
-			** If this context is runnable but not currently
-			** running then `next' points to the next runnable
-			** context in the runqueue.
-			*/
+    MR_Context          *MR_ctxt_next; 
+                        /*
+                        ** If this context is in the free-list `next' will
+                        ** point to the next free context. If this context
+                        ** is suspended waiting for a variable to become bound,
+                        ** `next' will point to the next waiting context.
+                        ** If this context is runnable but not currently
+                        ** running then `next' points to the next runnable
+                        ** context in the runqueue.
+                        */
 
-	MR_Code		*MR_ctxt_resume;
-			/*
-			** A pointer to the code at which execution should
-			** resume when this context is next scheduled.
-			*/
+    MR_Code             *MR_ctxt_resume;
+                        /*
+                        ** A pointer to the code at which execution should
+                        ** resume when this context is next scheduled.
+                        */
 
-#ifdef	MR_THREAD_SAFE
-	MercuryThread	MR_ctxt_owner_thread;
-			/*
-			** The owner_thread field is used to ensure that when
-			** we enter a mercury engine from C, we return to the
-			** same engine. See the coments in mercury_engine.h
-			*/
+#ifdef  MR_THREAD_SAFE
+    MercuryThread       MR_ctxt_owner_thread;
+                        /*
+                        ** The owner_thread field is used to ensure that when
+                        ** we enter a mercury engine from C, we return to the
+                        ** same engine. See the coments in mercury_engine.h
+                        */
 #endif
 
 #ifndef MR_HIGHLEVEL_CODE
-	MR_Code		*MR_ctxt_succip;
-			/* succip for this context */
+    MR_Code             *MR_ctxt_succip;
+                        /* succip for this context */
 
-	MR_MemoryZone	*MR_ctxt_detstack_zone;
-			/* pointer to the detstack_zone for this context */
-	MR_Word		*MR_ctxt_sp;
-			/* saved stack pointer for this context */
+    MR_MemoryZone       *MR_ctxt_detstack_zone;
+                        /* pointer to the detstack_zone for this context */
+    MR_Word             *MR_ctxt_sp;
+                        /* saved stack pointer for this context */
 
-	MR_MemoryZone	*MR_ctxt_nondetstack_zone;
-			/* pointer to the nondetstack_zone for this context */
-	MR_Word		*MR_ctxt_maxfr;
-			/* saved maxfr pointer for this context */
-	MR_Word		*MR_ctxt_curfr;
-			/* saved curfr pointer for this context */
+    MR_MemoryZone       *MR_ctxt_nondetstack_zone;
+                        /* pointer to the nondetstack_zone for this context */
+    MR_Word             *MR_ctxt_maxfr;
+                        /* saved maxfr pointer for this context */
+    MR_Word             *MR_ctxt_curfr;
+                        /* saved curfr pointer for this context */
+
   #ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
-	MR_MemoryZone	*MR_ctxt_genstack_zone;
-			/* pointer to the genstack_zone for this context */
-	MR_Integer	MR_ctxt_gen_next;
-			/* saved generator stack index for this context */
-	MR_MemoryZone	*MR_ctxt_cutstack_zone;
-			/* pointer to the cutstack_zone for this context */
-	MR_Integer	MR_ctxt_cut_next;
-			/* saved cut stack index for this context */
-	MR_MemoryZone	*MR_ctxt_pnegstack_zone;
-			/* pointer to the pnegstack_zone for this context */
-	MR_Integer	MR_ctxt_pneg_next;
-			/* saved pneg stack index for this context */
+    MR_MemoryZone       *MR_ctxt_genstack_zone;
+                        /* pointer to the genstack_zone for this context */
+    MR_Integer          MR_ctxt_gen_next;
+                        /* saved generator stack index for this context */
+
+    MR_MemoryZone       *MR_ctxt_cutstack_zone;
+                        /* pointer to the cutstack_zone for this context */
+    MR_Integer          MR_ctxt_cut_next;
+                        /* saved cut stack index for this context */
+
+    MR_MemoryZone       *MR_ctxt_pnegstack_zone;
+                        /* pointer to the pnegstack_zone for this context */
+    MR_Integer          MR_ctxt_pneg_next;
+                        /* saved pneg stack index for this context */
+
   #endif /* MR_USE_MINIMAL_MODEL_STACK_COPY */
   #ifdef MR_USE_MINIMAL_MODEL_OWN_STACKS
-	MR_Generator	*MR_ctxt_owner_generator;
+    MR_Generator        *MR_ctxt_owner_generator;
   #endif /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 #endif /* !MR_HIGHLEVEL_CODE */
 
-#ifdef	MR_USE_TRAIL
-	MR_MemoryZone	*MR_ctxt_trail_zone;
-			/* pointer to the MR_trail_zone for this context */
-	MR_TrailEntry	*MR_ctxt_trail_ptr;
-			/* saved MR_trail_ptr for this context */
-	MR_ChoicepointId MR_ctxt_ticket_counter;
-			/* saved MR_ticket_counter for this context */
-	MR_ChoicepointId MR_ctxt_ticket_high_water;
-			/* saved MR_ticket_high_water for this context */
+#ifdef  MR_USE_TRAIL
+    MR_MemoryZone       *MR_ctxt_trail_zone;
+                        /* pointer to the MR_trail_zone for this context */
+    MR_TrailEntry       *MR_ctxt_trail_ptr;
+                        /* saved MR_trail_ptr for this context */
+    MR_ChoicepointId    MR_ctxt_ticket_counter;
+                         /* saved MR_ticket_counter for this context */
+    MR_ChoicepointId    MR_ctxt_ticket_high_water;
+                        /* saved MR_ticket_high_water for this context */
 #endif
 
-#ifndef	MR_CONSERVATIVE_GC
-	MR_Word		*MR_ctxt_hp;
-			/* saved hp for this context */
-	MR_Word		*MR_ctxt_min_hp_rec;
-			/*
-			** This pointer marks the minimum value of MR_hp to
-			** which we can truncate the heap on backtracking.
-			** See comments before the macro
-			** set_min_heap_reclamation_point (below).
-			*/
+#ifndef MR_CONSERVATIVE_GC
+    MR_Word             *MR_ctxt_hp;
+                        /* saved hp for this context */
+    MR_Word             *MR_ctxt_min_hp_rec;
+                        /*
+                        ** This pointer marks the minimum value of MR_hp to
+                        ** which we can truncate the heap on backtracking.
+                        ** See comments before the macro
+                        ** set_min_heap_reclamation_point (below).
+                        */
 #endif
 };
 
 /*
 ** The runqueue is a linked list of contexts that are runnable.
 */
-extern		MR_Context	*MR_runqueue_head;
-extern		MR_Context	*MR_runqueue_tail;
-#ifdef	MR_THREAD_SAFE
-  extern	MercuryLock	MR_runqueue_lock;
-  extern	MercuryCond	MR_runqueue_cond;
+extern      MR_Context  *MR_runqueue_head;
+extern      MR_Context  *MR_runqueue_tail;
+#ifdef  MR_THREAD_SAFE
+  extern    MercuryLock MR_runqueue_lock;
+  extern    MercuryCond MR_runqueue_cond;
 #endif
 
 /*
@@ -176,77 +183,75 @@ extern		MR_Context	*MR_runqueue_tail;
 */
 
 typedef enum {
-	MR_PENDING_READ  = 0x01,
-	MR_PENDING_WRITE = 0x02,
-	MR_PENDING_EXEC  = 0x04
+    MR_PENDING_READ  = 0x01,
+    MR_PENDING_WRITE = 0x02,
+    MR_PENDING_EXEC  = 0x04
 } MR_WaitingMode;
 
 typedef struct MR_PendingContext_Struct {
-	struct MR_PendingContext_Struct	*next;
-	MR_Context			*context;
-	int				fd;
-	MR_WaitingMode			waiting_mode;
+    struct MR_PendingContext_Struct *next;
+    MR_Context                      *context;
+    int                             fd;
+    MR_WaitingMode                  waiting_mode;
 } MR_PendingContext;
 
-extern	MR_PendingContext	*MR_pending_contexts;
-#ifdef	MR_THREAD_SAFE
-  extern	MercuryLock	MR_pending_contexts_lock;
+extern  MR_PendingContext   *MR_pending_contexts;
+#ifdef  MR_THREAD_SAFE
+  extern    MercuryLock     MR_pending_contexts_lock;
 #endif
 
 /*
 ** Initializes a context structure, and gives it the given id. If gen is
 ** non-NULL, the context is for the given generator.
 */
-extern	void		MR_init_context(MR_Context *context, const char *id,
-				MR_Generator *gen);
+extern  void        MR_init_context(MR_Context *context, const char *id,
+                        MR_Generator *gen);
 
 /*
 ** Allocates and initializes a new context structure, and gives it the given
 ** id. If gen is non-NULL, the context is for the given generator.
 */
-extern	MR_Context 	*MR_create_context(const char *id, MR_Generator *gen);
+extern  MR_Context  *MR_create_context(const char *id, MR_Generator *gen);
 
 /*
-** MR_destroy_context(ptr) returns the context structure pointed
-** to by ptr to the free list, and releases resources as
-** necessary.
+** MR_destroy_context(context) returns the pointed-to context structure
+** to the free list, and releases resources as necessary.
 */
-extern	void		MR_destroy_context(MR_Context *context);
+extern  void        MR_destroy_context(MR_Context *context);
 
 /*
 ** MR_init_thread_stuff() initializes the lock structures for the runqueue.
 */
-extern	void		MR_init_thread_stuff(void);
+extern  void        MR_init_thread_stuff(void);
 
 /*
 ** MR_finialize_runqueue() finalizes the lock structures for the runqueue.
 */
-extern	void		MR_finalize_runqueue(void);
+extern  void        MR_finalize_runqueue(void);
 
 /*
 ** MR_flounder() aborts with a runtime error message. It is called if
 ** the runqueue becomes empty and none of the running processes are
-** working - ie the computation has floundered.
+** working, which means that the computation has floundered.
 */
-extern	void		MR_flounder(void);
+extern  void        MR_flounder(void);
 
 /*
-** MR_schedule(MR_Context *cptr):
-**	Append a context onto the end of the run queue.
+** Append the given context onto the end of the run queue.
 */
 
-extern	void		MR_schedule(MR_Context *ctxt);
+extern  void        MR_schedule(MR_Context *ctxt);
 
 #ifndef MR_HIGHLEVEL_CODE
   MR_declare_entry(MR_do_runnext);
-  #define MR_runnext()						\
-	do {							\
-		MR_GOTO(MR_ENTRY(MR_do_runnext));		\
-	} while (0)
+  #define MR_runnext()                          \
+    do {                                        \
+        MR_GOTO(MR_ENTRY(MR_do_runnext));       \
+    } while (0)
 #endif
 
-#ifdef	MR_THREAD_SAFE
-  #define MR_IF_MR_THREAD_SAFE(x)	x
+#ifdef  MR_THREAD_SAFE
+  #define MR_IF_MR_THREAD_SAFE(x)   x
 #else
   #define MR_IF_MR_THREAD_SAFE(x)
 #endif
@@ -259,30 +264,30 @@ extern	void		MR_schedule(MR_Context *ctxt);
   ** The new context gets put on the runqueue, and the current
   ** context resumes at `parent'.
   */
-  #define MR_fork_new_context(child, parent, numslots)			\
-	do {								\
-		MR_Context	*f_n_c_context;				\
-		int		fork_new_context_i;			\
-									\
-		f_n_c_context = MR_create_context();			\
-		MR_IF_MR_THREAD_SAFE(					\
-			f_n_c_context->owner_thread = NULL;		\
-		)							\
-		for (fork_new_context_i = (numslots);			\
-			fork_new_context_i > 0;				\
-			fork_new_context_i--)				\
-		{							\
-			*(f_n_c_context->context_sp) = 			\
-				MR_stackvar(fork_new_context_i);	\
-			f_n_c_context->MR_ctxt_sp++;			\
-		}							\
-		f_n_c_context->MR_ctxt_resume = (child);		\
-		MR_schedule(f_n_c_context);				\
-		MR_GOTO(parent);					\
-	} while (0)
+  #define MR_fork_new_context(child, parent, numslots)          \
+    do {                                                        \
+        MR_Context  *f_n_c_context;                             \
+        int     fork_new_context_i;                             \
+                                                                \
+        f_n_c_context = MR_create_context();                    \
+        MR_IF_MR_THREAD_SAFE(                                   \
+            f_n_c_context->owner_thread = NULL;                 \
+        )                                                       \
+        for (fork_new_context_i = (numslots);                   \
+            fork_new_context_i > 0;                             \
+            fork_new_context_i--)                               \
+        {                                                       \
+            *(f_n_c_context->context_sp) =                      \
+                MR_stackvar(fork_new_context_i);                \
+            f_n_c_context->MR_ctxt_sp++;                        \
+        }                                                       \
+        f_n_c_context->MR_ctxt_resume = (child);                \
+        MR_schedule(f_n_c_context);                             \
+        MR_GOTO(parent);                                        \
+    } while (0)
 #endif /* MR_HIGHLEVEL_CODE */
 
-#ifndef	MR_CONSERVATIVE_GC
+#ifndef MR_CONSERVATIVE_GC
 
   /*
   ** To figure out the maximum amount of heap we can reclaim on backtracking,
@@ -312,29 +317,29 @@ extern	void		MR_schedule(MR_Context *ctxt);
   ** furthest back that we can backtrack is the same as it was last time we
   ** were executing.
   */
-  #define MR_set_min_heap_reclamation_point(ctxt)			\
-	do {								\
-		if (MR_hp != (ctxt)->MR_ctxt_hp 			\
-			|| (ctxt)->MR_ctxt_hp == NULL)			\
-		{							\
-			MR_min_hp_rec = MR_hp;				\
-			(ctxt)->MR_ctxt_min_hp_rec = MR_hp;		\
-		} else {						\
-			MR_min_hp_rec =	(ctxt)->MR_ctxt_min_hp_rec;	\
-		}							\
-	} while (0)
+  #define MR_set_min_heap_reclamation_point(ctxt)           \
+    do {                                                    \
+        if (MR_hp != (ctxt)->MR_ctxt_hp                     \
+            || (ctxt)->MR_ctxt_hp == NULL)                  \
+        {                                                   \
+            MR_min_hp_rec = MR_hp;                          \
+            (ctxt)->MR_ctxt_min_hp_rec = MR_hp;             \
+        } else {                                            \
+            MR_min_hp_rec = (ctxt)->MR_ctxt_min_hp_rec;     \
+        }                                                   \
+    } while (0)
 
-  #define MR_save_hp_in_context(ctxt)					\
-  	do {								\
-		(ctxt)->MR_ctxt_hp = MR_hp;				\
-		(ctxt)->MR_ctxt_min_hp_rec = MR_min_hp_rec;		\
-	} while (0)
+  #define MR_save_hp_in_context(ctxt)                       \
+    do {                                                    \
+        (ctxt)->MR_ctxt_hp = MR_hp;                         \
+        (ctxt)->MR_ctxt_min_hp_rec = MR_min_hp_rec;         \
+    } while (0)
 
 #else
 
-  #define MR_set_min_heap_reclamation_point(ctxt)	do { } while (0)
+  #define MR_set_min_heap_reclamation_point(ctxt)   do { } while (0)
 
-  #define MR_save_hp_in_context(ctxt)			do { } while (0)
+  #define MR_save_hp_in_context(ctxt)               do { } while (0)
 
 #endif
 
@@ -356,158 +361,149 @@ extern	void		MR_schedule(MR_Context *ctxt);
   #define MR_IF_NOT_HIGHLEVEL_CODE(x)
 #endif
 
-#define MR_load_context(cptr)						\
-	do {								\
-		MR_Context	*load_context_c;			\
-									\
-		load_context_c = (cptr);				\
-		MR_IF_NOT_HIGHLEVEL_CODE(				\
-		  MR_succip_word  = (MR_Word)				\
-		    load_context_c->MR_ctxt_succip;			\
-		  MR_sp_word	= (MR_Word)				\
-		    load_context_c->MR_ctxt_sp;				\
-		  MR_maxfr_word   = (MR_Word)				\
-		    load_context_c->MR_ctxt_maxfr; 			\
-		  MR_curfr_word   = (MR_Word)				\
-		    load_context_c->MR_ctxt_curfr;			\
-		  MR_IF_USE_MINIMAL_MODEL_STACK_COPY(			\
-		    MR_gen_next = load_context_c->MR_ctxt_gen_next;	\
-		    MR_cut_next = load_context_c->MR_ctxt_cut_next;	\
-		    MR_pneg_next = load_context_c->MR_ctxt_pneg_next;	\
-		  )							\
-		)							\
-	        MR_IF_USE_TRAIL(					\
-		  MR_trail_zone = load_context_c->MR_ctxt_trail_zone;	\
-		  MR_trail_ptr = load_context_c->MR_ctxt_trail_ptr;	\
-		  MR_ticket_counter =					\
-		    load_context_c->MR_ctxt_ticket_counter;		\
-		  MR_ticket_high_water =				\
-		    load_context_c->MR_ctxt_ticket_high_water;		\
-	    	)							\
-		MR_IF_NOT_HIGHLEVEL_CODE(				\
-		  MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone =	\
-		    load_context_c->MR_ctxt_detstack_zone;		\
-		  MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone =	\
-		    load_context_c->MR_ctxt_nondetstack_zone;		\
-		  MR_IF_USE_MINIMAL_MODEL_STACK_COPY(			\
-		    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone =   \
-		      load_context_c->MR_ctxt_genstack_zone;		\
-		    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone =   \
-		      load_context_c->MR_ctxt_cutstack_zone;		\
-		    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone =  \
-		      load_context_c->MR_ctxt_pnegstack_zone;		\
-		    MR_gen_stack = (MR_GenStackFrame *)			\
-		      MR_ENGINE(MR_eng_context).			\
-		      	MR_ctxt_genstack_zone->min;			\
-		    MR_cut_stack = (MR_CutStackFrame *)			\
-		      MR_ENGINE(MR_eng_context).			\
-		      	MR_ctxt_cutstack_zone->min;			\
-		    MR_pneg_stack = (MR_PNegStackFrame *)		\
-		      MR_ENGINE(MR_eng_context).			\
-		      	MR_ctxt_pnegstack_zone->min;			\
-	    	  )							\
-	    	)							\
-		MR_set_min_heap_reclamation_point(load_context_c);	\
-	} while (0)
+#define MR_load_context(cptr)                                           \
+    do {                                                                \
+        MR_Context  *load_context_c;                                    \
+                                                                        \
+        load_context_c = (cptr);                                        \
+        MR_IF_NOT_HIGHLEVEL_CODE(                                       \
+            MR_succip_word = (MR_Word) load_context_c->MR_ctxt_succip;  \
+            MR_sp_word     = (MR_Word) load_context_c->MR_ctxt_sp;      \
+            MR_maxfr_word  = (MR_Word) load_context_c->MR_ctxt_maxfr;   \
+            MR_curfr_word  = (MR_Word) load_context_c->MR_ctxt_curfr;   \
+            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                         \
+                MR_gen_next = load_context_c->MR_ctxt_gen_next;         \
+                MR_cut_next = load_context_c->MR_ctxt_cut_next;         \
+                MR_pneg_next = load_context_c->MR_ctxt_pneg_next;       \
+            )                                                           \
+        )                                                               \
+        MR_IF_USE_TRAIL(                                                \
+            MR_trail_zone = load_context_c->MR_ctxt_trail_zone;         \
+            MR_trail_ptr = load_context_c->MR_ctxt_trail_ptr;           \
+            MR_ticket_counter = load_context_c->MR_ctxt_ticket_counter; \
+            MR_ticket_high_water = load_context_c->MR_ctxt_ticket_high_water; \
+        )                                                               \
+        MR_IF_NOT_HIGHLEVEL_CODE(                                       \
+            MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone =           \
+                load_context_c->MR_ctxt_detstack_zone;                  \
+            MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone =        \
+                load_context_c->MR_ctxt_nondetstack_zone;               \
+            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                         \
+                MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone =       \
+                    load_context_c->MR_ctxt_genstack_zone;              \
+                MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone =       \
+                    load_context_c->MR_ctxt_cutstack_zone;              \
+                MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone =      \
+                    load_context_c->MR_ctxt_pnegstack_zone;             \
+                MR_gen_stack = (MR_GenStackFrame *)                     \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone->min; \
+                MR_cut_stack = (MR_CutStackFrame *)                     \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone->min; \
+                MR_pneg_stack = (MR_PNegStackFrame *)                   \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->min;\
+             )                                                          \
+        )                                                               \
+        MR_set_min_heap_reclamation_point(load_context_c);              \
+    } while (0)
 
-#define MR_save_context(cptr)						\
-	do {								\
-		MR_Context	*save_context_c;			\
-									\
-		save_context_c = (cptr);				\
-		MR_IF_NOT_HIGHLEVEL_CODE(				\
-		  save_context_c->MR_ctxt_succip  = MR_succip;		\
-		  save_context_c->MR_ctxt_sp	  = MR_sp;		\
-		  save_context_c->MR_ctxt_maxfr   = MR_maxfr;		\
-		  save_context_c->MR_ctxt_curfr   = MR_curfr;		\
-		  MR_IF_USE_MINIMAL_MODEL_STACK_COPY(			\
-		    save_context_c->MR_ctxt_gen_next = MR_gen_next;	\
-		    save_context_c->MR_ctxt_cut_next = MR_cut_next;	\
-		    save_context_c->MR_ctxt_pneg_next = MR_pneg_next;\
-		  )							\
-		)							\
-		MR_IF_USE_TRAIL(					\
-		  save_context_c->MR_ctxt_trail_zone = MR_trail_zone;	\
-		  save_context_c->MR_ctxt_trail_ptr = MR_trail_ptr;	\
-		  save_context_c->MR_ctxt_ticket_counter =		\
-		    MR_ticket_counter;					\
-		  save_context_c->MR_ctxt_ticket_high_water =		\
-		    MR_ticket_high_water;				\
-		)							\
-		MR_IF_NOT_HIGHLEVEL_CODE(				\
-		  save_context_c->MR_ctxt_detstack_zone =		\
-		    MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone;	\
-		  save_context_c->MR_ctxt_nondetstack_zone =		\
-		    MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone;	\
-		  MR_IF_USE_MINIMAL_MODEL_STACK_COPY(			\
-		    save_context_c->MR_ctxt_genstack_zone =		\
-		      MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone;	\
-		    save_context_c->MR_ctxt_cutstack_zone =		\
-		      MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone;	\
-		    save_context_c->MR_ctxt_pnegstack_zone =		\
-		      MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone;	\
-		    assert(MR_gen_stack == (MR_GenStackFrame *)		\
-		      MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone->min); \
-		    assert(MR_cut_stack == (MR_CutStackFrame *)		\
-		      MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone->min); \
-		    assert(MR_pneg_stack == (MR_PNegStackFrame *)	\
-		      MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->min);\
-		  )							\
-		)							\
-		MR_save_hp_in_context(save_context_c);			\
-	} while (0)
+#define MR_save_context(cptr)                                           \
+    do {                                                                \
+        MR_Context  *save_context_c;                                    \
+                                                                        \
+        save_context_c = (cptr);                                        \
+        MR_IF_NOT_HIGHLEVEL_CODE(                                       \
+            save_context_c->MR_ctxt_succip  = MR_succip;                \
+            save_context_c->MR_ctxt_sp      = MR_sp;                    \
+            save_context_c->MR_ctxt_maxfr   = MR_maxfr;                 \
+            save_context_c->MR_ctxt_curfr   = MR_curfr;                 \
+            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                         \
+                save_context_c->MR_ctxt_gen_next = MR_gen_next;         \
+                save_context_c->MR_ctxt_cut_next = MR_cut_next;         \
+                save_context_c->MR_ctxt_pneg_next = MR_pneg_next;       \
+            )                                                           \
+        )                                                               \
+        MR_IF_USE_TRAIL(                                                \
+            save_context_c->MR_ctxt_trail_zone = MR_trail_zone;         \
+            save_context_c->MR_ctxt_trail_ptr = MR_trail_ptr;           \
+            save_context_c->MR_ctxt_ticket_counter =                    \
+                MR_ticket_counter;                                      \
+            save_context_c->MR_ctxt_ticket_high_water =                 \
+                MR_ticket_high_water;                                   \
+        )                                                               \
+        MR_IF_NOT_HIGHLEVEL_CODE(                                       \
+            save_context_c->MR_ctxt_detstack_zone =                     \
+                MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone;        \
+            save_context_c->MR_ctxt_nondetstack_zone =                  \
+                MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone;     \
+            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                         \
+                save_context_c->MR_ctxt_genstack_zone =                 \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone;    \
+                save_context_c->MR_ctxt_cutstack_zone =                 \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone;    \
+                save_context_c->MR_ctxt_pnegstack_zone =                \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone;   \
+                assert(MR_gen_stack == (MR_GenStackFrame *)             \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone->min); \
+                assert(MR_cut_stack == (MR_CutStackFrame *)             \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone->min); \
+                assert(MR_pneg_stack == (MR_PNegStackFrame *)           \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->min);\
+          )                                                             \
+        )                                                               \
+        MR_save_hp_in_context(save_context_c);                          \
+    } while (0)
 
 typedef struct MR_Sync_Term_Struct MR_SyncTerm;
 struct MR_Sync_Term_Struct {
   #ifdef MR_THREAD_SAFE
-	MercuryLock	lock;
+    MercuryLock     lock;
   #endif
-	int		count;
-	MR_Context	*parent;
+    int             count;
+    MR_Context      *parent;
 };
 
-#define MR_init_sync_term(sync_term, nbranches)				\
-	do {								\
-		SyncTerm *st = (SyncTerm *) sync_term;			\
-		MR_IF_THREAD_SAFE(					\
-			pthread_mutex_init(&(st->lock), MR_MUTEX_ATTR);	\
-		)							\
-		st->count = (nbranches);				\
-		st->parent = NULL;					\
-	} while (0)
+#define MR_init_sync_term(sync_term, nbranches)             \
+    do {                                                    \
+        SyncTerm *st = (SyncTerm *) sync_term;              \
+        MR_IF_THREAD_SAFE(                                  \
+            pthread_mutex_init(&(st->lock), MR_MUTEX_ATTR); \
+        )                                                   \
+        st->count = (nbranches);                            \
+        st->parent = NULL;                                  \
+    } while (0)
 
-#define MR_join_and_terminate(sync_term)				\
-	do {								\
-		SyncTerm *st = (SyncTerm *) sync_term;			\
-		MR_LOCK(&(st->lock), "terminate");			\
-		(st->count)--;						\
-		if (st->count == 0) {					\
-			assert(st->parent != NULL);			\
-			MR_UNLOCK(&(st->lock), "terminate i");		\
-			MR_schedule(st->parent);			\
-		} else {						\
-			assert(st->count > 0);				\
-			MR_UNLOCK(&(st->lock), "terminate ii");		\
-		}							\
-		MR_destroy_context(MR_ENGINE(MR_eng_this_context));	\
-		MR_runnext();						\
-	} while (0)
+#define MR_join_and_terminate(sync_term)                    \
+    do {                                                    \
+        SyncTerm *st = (SyncTerm *) sync_term;              \
+        MR_LOCK(&(st->lock), "terminate");                  \
+        (st->count)--;                                      \
+        if (st->count == 0) {                               \
+            assert(st->parent != NULL);                     \
+            MR_UNLOCK(&(st->lock), "terminate i");          \
+            MR_schedule(st->parent);                        \
+        } else {                                            \
+            assert(st->count > 0);                          \
+            MR_UNLOCK(&(st->lock), "terminate ii");         \
+        }                                                   \
+        MR_destroy_context(MR_ENGINE(MR_eng_this_context)); \
+        MR_runnext();                       \
+    } while (0)
 
-#define MR_join_and_continue(sync_term, where_to)			\
-	do {								\
-		SyncTerm *st = (SyncTerm *) sync_term;			\
-		MR_LOCK(&(st->lock), "continue");			\
-		(st->count)--;						\
-		if (st->count == 0) {					\
-			MR_UNLOCK(&(st->lock), "continue i");		\
-			MR_GOTO((where_to));				\
-		}							\
-		assert(st->count > 0);					\
-		MR_save_context(MR_ENGINE(MR_eng_this_context));	\
-		MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume = (where_to);\
-		st->parent = MR_ENGINE(MR_eng_this_context);		\
-		MR_UNLOCK(&(st->lock), "continue ii");			\
-		MR_runnext();						\
-	} while (0)
+#define MR_join_and_continue(sync_term, where_to)           \
+    do {                                                    \
+        SyncTerm *st = (SyncTerm *) sync_term;              \
+        MR_LOCK(&(st->lock), "continue");                   \
+        (st->count)--;                                      \
+        if (st->count == 0) {                               \
+            MR_UNLOCK(&(st->lock), "continue i");           \
+            MR_GOTO((where_to));                            \
+        }                                                   \
+        assert(st->count > 0);                              \
+        MR_save_context(MR_ENGINE(MR_eng_this_context));    \
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume = (where_to);\
+        st->parent = MR_ENGINE(MR_eng_this_context);        \
+        MR_UNLOCK(&(st->lock), "continue ii");              \
+        MR_runnext();                                       \
+    } while (0)
 
 #endif /* not MERCURY_CONTEXT_H */

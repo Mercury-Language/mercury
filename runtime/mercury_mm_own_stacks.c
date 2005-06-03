@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2004 The University of Melbourne.
+** Copyright (C) 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,8 +21,14 @@
 
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
 
-static  void    make_gen_follow_leader(MR_Generator *this_follower,
-                    MR_Generator *leader);
+MR_Word                 MR_mmos_arg_regs[MR_MAX_FAKE_REG];
+MR_GeneratorPtr         MR_mmos_new_generator;
+
+#if 0
+static  void            MR_table_mmos_make_gen_follow_leader(
+                            MR_GeneratorPtr this_follower,
+                            MR_GeneratorPtr leader);
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -412,82 +418,79 @@ MR_get_context_for_gen(MR_Generator *gen)
 }
 
 MR_ConsumerPtr
-MR_table_setup_consumer(MR_TableNode trie_node, MR_Integer num_input_args,
-    MR_Word *generator_pred, MR_String pred_id)
+MR_table_mmos_setup_consumer(MR_GeneratorPtr generator, MR_ConstString pred_id)
 {
-    /* not yet implemented */
+    MR_ConsumerPtr  consumer;
+
+    consumer = MR_TABLE_NEW(MR_Consumer);
+    consumer->MR_cons_answer_generator = generator;
+    consumer->MR_cons_containing_generator =
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_owner_generator;
+    consumer->MR_cons_num_returned_answers = 0;
+    consumer->MR_cons_remaining_answer_list_ptr =
+        generator->MR_gen_answer_list_tail;
+    return consumer;
 }
 
-MR_Generator *
-MR_setup_generator(MR_String pred_id, MR_TrieNode trie_node)
+MR_GeneratorPtr
+MR_table_mmos_setup_generator(MR_TrieNode trie_node, MR_Integer num_input_args,
+    MR_Word generator_pred, MR_ConstString pred_id)
 {
+    MR_GeneratorPtr gen;
+    MR_Context      *context;
+
+    gen = MR_TABLE_NEW(MR_Generator);
+    context = MR_get_context_for_gen(gen);
+
+    gen->MR_gen_back_ptr = trie_node;
+    gen->MR_gen_context = context;
+    gen->MR_gen_leader = gen;
+    gen->MR_gen_led_generators = MR_dlist_makelist(gen);
+    gen->MR_gen_consumers = MR_dlist_makelist0();
+    gen->MR_gen_num_answers = 0;
+    gen->MR_gen_answer_table.MR_integer = 0;
+    gen->MR_gen_answer_list = NULL;
+    gen->MR_gen_answer_list_tail = &gen->MR_gen_answer_list;
+
     /*
-    ** Initialize the generator if this is the first time we see it.
-    ** If the subgoal structure already exists but is marked inactive,
-    ** then it was left by a previous generator that couldn't
-    ** complete the evaluation of the subgoal due to a commit.
-    ** In that case, we want to forget all about the old generator.
+    ** MR_subgoal_debug_cur_proc refers to the last procedure
+    ** that executed a call event, if any. If the procedure that is
+    ** executing table_mmos_setup_consumer is traced, this will be that
+    ** procedure, and recording the layout structure of the
+    ** processor in the generator allows us to interpret the contents
+    ** of the generator's answer tables. If the procedure executing
+    ** table_mmos_setup_consumer is not traced, then the layout structure
+    ** belongs to another procedure and any use of the MR_gen_proc_layout
+    ** field will probably cause a core dump.
+    ** For implementors debugging minimal model tabling, this is
+    ** the right tradeoff.
     */
-
-    MR_restore_transient_registers();
-#if 0
-    if (trie_node->MR_generator == NULL) {
-        MR_Generator *gen;
-        MR_Context   *context;
-
-        gen = MR_TABLE_NEW(MR_Generator);
-        context = MR_get_context_for_gen(gen);
-
-        gen->MR_gen_back_ptr = trie_node;
-        gen->MR_gen_context = context;
-        gen->MR_gen_leader = gen;
-        gen->MR_gen_led_generators = MR_dlist_makelist(gen);
-        gen->MR_gen_consumers = MR_dlist_makelist0();
-        gen->MR_gen_num_answers = 0;
-        gen->MR_gen_answer_table.MR_integer = 0;
-        gen->MR_gen_answer_list = NULL;
-        gen->MR_gen_answer_list_tail = &gen->MR_gen_answer_list;
-
-        /*
-        ** MR_subgoal_debug_cur_proc refers to the last procedure
-        ** that executed a call event, if any. If the procedure that is
-        ** executing table_nondet_setup is traced, this will be that
-        ** procedure, and recording the layout structure of the
-        ** processor in the generator allows us to interpret the contents
-        ** of the generator's answer tables. If the procedure executing
-        ** table_nondet_setup is not traced, then the layout structure
-        ** belongs to another procedure and the any use of the
-        ** MR_gen_proc_layout field will probably cause a core dump.
-        ** For implementors debugging minimal model tabling, this is
-        ** the right tradeoff.
-        */
-        gen->MR_gen_proc_layout = MR_subgoal_debug_cur_proc;
+    gen->MR_gen_proc_layout = MR_subgoal_debug_cur_proc;
 
 #ifdef  MR_TABLE_DEBUG
-        MR_enter_gen_debug(gen);
+    MR_enter_gen_debug(gen);
 
-        if (MR_tabledebug) {
-            printf("setting up generator %p -> %s, ",
-                trie_node, MR_gen_addr_name(gen));
-            printf("answer slot %p\n", subgoal->MR_sg_answer_list_tail);
-            if (subgoal->MR_gen_proc_layout != NULL) {
-                printf("proc: ");
-                MR_print_proc_id(stdout, gen->MR_gen_proc_layout);
-                printf("\n");
-            }
+    if (MR_tabledebug) {
+        printf("setting up generator %p -> %s, ",
+            trie_node, MR_gen_addr_name(gen));
+        printf("answer slot %p\n", subgoal->MR_sg_answer_list_tail);
+        if (subgoal->MR_gen_proc_layout != NULL) {
+            printf("proc: ");
+            MR_print_proc_id(stdout, gen->MR_gen_proc_layout);
+            printf("\n");
         }
-
-        if (MR_maxfr != MR_curfr) {
-            MR_fatal_error("MR_maxfr != MR_curfr at table setup\n");
-        }
-#endif
-        trie_node->MR_generator = gen;
     }
 
+    if (MR_maxfr != MR_curfr) {
+        MR_fatal_error("MR_maxfr != MR_curfr at table setup\n");
+    }
 #endif
-    return trie_node->MR_generator;
-    MR_save_transient_registers();
+
+    /* MR_save_transient_registers(); */
+    return gen;
 }
+
+#if 0
 
 MR_AnswerBlock
 MR_table_consumer_get_next_answer(MR_ConsumerPtr consumer)
@@ -506,6 +509,8 @@ MR_table_generator_new_answer_slot(MR_GeneratorPtr generator)
 {
     /* not yet implemented */
 }
+
+#endif /* if 0 */
 
 #endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 

@@ -270,7 +270,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
 
 	classify_args(HeadVars, ArgModes, !.ModuleInfo, VarSet, VarTypes,
 		VarInfos),
-	allocate_slot_numbers(VarInfos, 0, NumberedProfiledVars),
+	allocate_slot_numbers_cl(VarInfos, 0, NumberedProfiledVars),
 	list__length(NumberedProfiledVars, NumProfiledVars),
 	generate_slot_goals(ProcNum, NumberedProfiledVars, NumProfiledVars,
 		Context, PredId, !ProcInfo, !ModuleInfo, SlotVar, SlotVarName,
@@ -290,28 +290,28 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
 		int_to_string(NumProfiledVars) ++ ", " ++
 		IsActiveVarName ++ ");\n",
 
-	generate_foreign_proc(IsActivePred, det, [IsActiveOutputArg], [],
-		"", IsActiveStr, "", [IsActiveVar], !.ModuleInfo, Context,
-		IsActiveGoal),
+	complexity_generate_foreign_proc(IsActivePred, det,
+		[IsActiveOutputArg], [], "", IsActiveStr, "", [IsActiveVar],
+		!.ModuleInfo, Context, IsActiveGoal),
 
 	ExitPred = "complexity_exit_proc",
 	ExitStr = "\tMR_" ++ ExitPred ++ "(" ++
 		ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
-	generate_foreign_proc(ExitPred, det,
+	complexity_generate_foreign_proc(ExitPred, det,
 		[SlotInputArg], [], "", ExitStr, "", [],
 		!.ModuleInfo, Context, ExitGoal),
 
 	FailPred = "complexity_fail_proc",
 	FailStr = "\tMR_" ++ FailPred ++ "(" ++
 		ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
-	generate_foreign_proc(FailPred, failure,
+	complexity_generate_foreign_proc(FailPred, failure,
 		[SlotInputArg], [], "", FailStr, "", [],
 		!.ModuleInfo, Context, FailGoal),
 
 	RedoPred = "complexity_redo_proc",
 	RedoStr = "\tMR_" ++ RedoPred ++ "(" ++
 		ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
-	generate_foreign_proc(RedoPred, failure,
+	complexity_generate_foreign_proc(RedoPred, failure,
 		[SlotInputArg], [], "", RedoStr, "", [],
 		!.ModuleInfo, Context, RedoGoal0),
 
@@ -409,9 +409,9 @@ generate_slot_goals(ProcNum, NumberedVars, NumProfiledVars, Context, PredId,
 		int_to_string(ProcNum) ++ ", " ++ SlotVarName ++ ");\n",
 	ProcStr = "\t" ++ ProcVarName ++ " = &MR_complexity_procs[" ++
 		int_to_string(ProcNum) ++ "];\n",
-	generate_foreign_proc(PredName, det, [SlotVarArg], ForeignArgs,
-		DeclCodeStr, PredCodeStr, ProcStr ++ FillCodeStr, [SlotVar],
-		!.ModuleInfo, Context, CallGoal),
+	complexity_generate_foreign_proc(PredName, det, [SlotVarArg],
+		ForeignArgs, DeclCodeStr, PredCodeStr, ProcStr ++ FillCodeStr,
+		[SlotVar], !.ModuleInfo, Context, CallGoal),
 	list__append(PrefixGoals, [CallGoal], Goals).
 
 :- pred generate_size_goals(assoc_list(prog_var, int)::in,
@@ -475,12 +475,12 @@ generate_new_var(Name, Type, !ProcInfo, Var) :-
 	proc_info_set_varset(VarSet, !ProcInfo),
 	proc_info_set_vartypes(VarTypes, !ProcInfo).
 
-:- pred generate_foreign_proc(string::in, determinism::in,
+:- pred complexity_generate_foreign_proc(string::in, determinism::in,
 	list(foreign_arg)::in, list(foreign_arg)::in, string::in, string::in,
 	string::in, list(prog_var)::in, module_info::in, term__context::in,
 	hlds_goal::out) is det.
 
-generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
+complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
 		PrefixCode, Code, SuffixCode, BoundVars, ModuleInfo, Context,
 		Goal) :-
 	mercury_term_size_prof_builtin_module(BuiltinModule),
@@ -523,19 +523,21 @@ classify_args([Var | Vars], [Mode | Modes], ModuleInfo, VarSet, VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_slot_numbers(assoc_list(prog_var, complexity_arg_info)::in,
+:- pred allocate_slot_numbers_cl(assoc_list(prog_var, complexity_arg_info)::in,
 	int::in, assoc_list(prog_var, int)::out) is det.
 
-allocate_slot_numbers([], _, []).
-allocate_slot_numbers([Var - Info | VarInfos], Offset, NumberedProfiledVars) :-
+allocate_slot_numbers_cl([], _, []).
+allocate_slot_numbers_cl([Var - Info | VarInfos], Offset,
+		NumberedProfiledVars) :-
 	Info = complexity_arg_info(_, Kind),
 	( Kind = complexity_input_variable_size ->
-		allocate_slot_numbers(VarInfos, Offset + 1,
+		allocate_slot_numbers_cl(VarInfos, Offset + 1,
 			NumberedProfiledVarsTail),
 		NumberedProfiledVars =
 			[Var - Offset | NumberedProfiledVarsTail]
 	;
-		allocate_slot_numbers(VarInfos, Offset, NumberedProfiledVars)
+		allocate_slot_numbers_cl(VarInfos, Offset,
+			NumberedProfiledVars)
 	).
 
 :- func ground_vars(list(prog_var)) = assoc_list(prog_var, inst).

@@ -4992,14 +4992,14 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
             MR_trace_print_subgoal(proc, subgoal);
         }
     } else if (eval_method == MR_EVAL_METHOD_MINIMAL_OWN_STACKS) {
-        MR_Consumer *consumer;
+        MR_GeneratorPtr generator;
 
         fprintf(MR_mdb_out, "trie node %p\n", table);
-        consumer = table->MR_consumer;
-        if (consumer == NULL) {
+        generator = table->MR_generator;
+        if (generator == NULL) {
             fprintf(MR_mdb_out, "uninitialized\n");
         } else {
-            MR_trace_print_consumer(proc, consumer);
+            MR_trace_print_generator(proc, generator);
         }
     } else if (eval_method == MR_EVAL_METHOD_MEMO) {
         MR_Determinism  detism;
@@ -5056,7 +5056,7 @@ MR_trace_print_generator_debug(const MR_Proc_Layout *proc,
     MR_GenDebug *generator_debug)
 {
 #ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
-    MR_print_generator_debug(MR_mdb_out, proc, generator_debug);
+    MR_print_gen_debug(MR_mdb_out, proc, generator_debug);
 #else
     fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
 #endif
@@ -5077,9 +5077,10 @@ static void
 MR_trace_print_consumer_debug(const MR_Proc_Layout *proc,
     MR_ConsumerDebug *consumer_debug)
 {
-#if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) \
-        || defined(MR_USE_MINIMAL_MODEL_OWN_STACKS)
+#if defined(MR_USE_MINIMAL_MODEL_STACK_COPY)
     MR_print_consumer_debug(MR_mdb_out, proc, consumer_debug);
+#elif defined(MR_USE_MINIMAL_MODEL_STACK_COPY)
+    MR_print_cons_debug(MR_mdb_out, proc, consumer_debug);
 #else
     fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
 #endif
