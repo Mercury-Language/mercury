@@ -27,6 +27,9 @@ Options:
         Run only the tests which failed on the last run, as recorded in the
         tests/runtests.errs file. Meaningful only in the absence of -s and -f
         options.
+    --expect-no-failures
+        Exit with a nonzero exit status if any test fails, even if the failure
+        of that test is otherwise expected.
     -e, --extras
         Test the programs in the extras directory.
     -h, --help
@@ -154,6 +157,7 @@ testdirs=""
 specified_tests_only=""
 failing_tests_only=false
 error_file_only=false
+expect_listed_failures=true
 extras=false
 jfactor=""
 keep_objs=false
@@ -247,6 +251,9 @@ while test $# -gt 0; do
 
     --error-file)
         error_file_only=true ;;
+
+    --expect-no-failures)
+        expect_listed_failures=false ;;
 
     -h|--help)
         echo "$usage"
@@ -1644,6 +1651,47 @@ fi
 
 exitstatus=0
 
+tests_dir="$root/${tests_prefix}tests"
+
+cat /dev/null > $tests_dir/EXPECT_FAIL_TESTS
+
+if test -s $tests_dir/FAILED_TESTS_SUMMARY
+then
+    sed -e 's/ .*//' < $tests_dir/FAILED_TESTS_SUMMARY > $tests_dir/FAIL_TESTS
+
+    if test -f $tests_dir/EXPECT_FAIL_TESTS.all_grades
+    then
+        cat $tests_dir/EXPECT_FAIL_TESTS.all_grades >> \
+            $tests_dir/EXPECT_FAIL_TESTS
+    fi
+    if test -f $tests_dir/EXPECT_FAIL_TESTS.$test_grade
+    then
+        cat $tests_dir/EXPECT_FAIL_TESTS.$test_grade >> \
+            $tests_dir/EXPECT_FAIL_TESTS
+    fi
+
+    sort $tests_dir/EXPECT_FAIL_TESTS > $tests_dir/EXPECT_FAIL_TESTS.sort
+    mv $tests_dir/EXPECT_FAIL_TESTS.sort $tests_dir/EXPECT_FAIL_TESTS
+
+    sort $tests_dir/FAIL_TESTS > $tests_dir/FAIL_TESTS.sort
+    mv $tests_dir/FAIL_TESTS.sort $tests_dir/FAIL_TESTS
+
+    comm -23 $tests_dir/FAIL_TESTS \
+        $tests_dir/EXPECT_FAIL_TESTS \
+        > $tests_dir/UNEXPECTED_FAILED_TESTS
+    comm -12 $tests_dir/FAIL_TESTS \
+        $tests_dir/EXPECT_FAIL_TESTS \
+        > $tests_dir/EXPECTED_FAILED_TESTS
+
+    if $expect_listed_failures
+    then
+        if test ! -s $tests_dir/UNEXPECTED_FAILED_TESTS
+        then
+            test_status=0
+        fi
+    fi
+fi
+
 if test "$diff_status" != 0
 then
     echo "error exit: stages 2 and 3 differ"
@@ -1668,9 +1716,19 @@ then
     exitstatus=1
 fi
 
-if test -s $root/${tests_prefix}tests/FAILED_TESTS_SUMMARY
+if test -s $tests_dir/FAILED_TESTS_SUMMARY
 then
-    cat $root/${tests_prefix}tests/FAILED_TESTS_SUMMARY
+    if test -s $tests_dir/EXPECTED_FAILED_TESTS
+    then
+        echo expected test case failures:
+        cat $tests_dir/EXPECTED_FAILED_TESTS
+    fi
+
+    if test -s $tests_dir/UNEXPECTED_FAILED_TESTS
+    then
+        echo unexpected test case failures:
+        cat $tests_dir/UNEXPECTED_FAILED_TESTS
+    fi
 fi
 
 echo "finishing at `date`"
