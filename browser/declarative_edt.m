@@ -1838,9 +1838,9 @@ first_unknown_descendent(IoActionMap, Store, Oracle, SuspectId, !SearchSpace,
 	% any skipped, ignored or erroneous suspects in List then look in the
 	% list of all the children of the skipped, ignored or erroneous nodes
 	% in List, recursively.  Fails if an explicit subtree is required to
-	% get the children of an explicit subtree and there are no other
+	% get the children of an implicit subtree and there are no other
 	% unknown suspects.  MaybeDescendent will be no if there are no
-	% unknown descendents and no explicit subtree's are required.
+	% unknown descendents and no explicit subtrees are required.
 	%
 :- pred first_unknown_descendent_list(io_action_map::in, S::in, 
 	oracle_state::in, list(suspect_id)::in, search_space(T)::in,
