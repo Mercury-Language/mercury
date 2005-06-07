@@ -1223,9 +1223,23 @@ pretend_to_generate_value(Bogus) :-
 :- impure pred table_lookup_insert_user(ml_trie_node::in, T::in,
 	ml_trie_node::out) is det.
 
+	% Lookup or insert a monomorphic user defined type in the given trie,
+	% tabling terms without traversing them. This makes the operation fast,
+	% but if a term was inserted previously, we will catch it only if the
+	% insert was the exact same memory cells. (This is the "loose" part.)
+:- impure pred table_lookup_insert_user_fast_loose(ml_trie_node::in, T::in,
+	ml_trie_node::out) is det.
+
 	% Lookup or insert a polymorphic user defined type in the given trie.
 	%
 :- impure pred table_lookup_insert_poly(ml_trie_node::in, T::in,
+	ml_trie_node::out) is det.
+
+	% Lookup or insert a polymorphic user defined type in the given trie,
+	% tabling terms without traversing them. This makes the operation fast,
+	% but if a term was inserted previously, we will catch it only if the
+	% insert was the exact same memory cells. (This is the "loose" part.)
+:- impure pred table_lookup_insert_poly_fast_loose(ml_trie_node::in, T::in,
 	ml_trie_node::out) is det.
 
 	% Lookup or insert a type_info in the given trie.
@@ -1383,10 +1397,24 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
 :- pragma foreign_proc("C",
+	table_lookup_insert_user_fast_loose(T0::in, V::in, T::out),
+	[will_not_call_mercury],
+"
+	MR_table_lookup_insert_user_fast_loose(T0, TypeInfo_for_T, V, T);
+").
+
+:- pragma foreign_proc("C",
 	table_lookup_insert_poly(T0::in, V::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_table_lookup_insert_user(T0, TypeInfo_for_T, V, T);
+	MR_table_lookup_insert_poly(T0, TypeInfo_for_T, V, T);
+").
+
+:- pragma foreign_proc("C",
+	table_lookup_insert_poly_fast_loose(T0::in, V::in, T::out),
+	[will_not_call_mercury],
+"
+	MR_table_lookup_insert_poly_fast_loose(T0, TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",

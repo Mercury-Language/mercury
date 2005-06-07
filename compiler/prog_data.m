@@ -591,13 +591,18 @@
 	--->	eval_normal		% normal mercury
 					% evaluation
 	;	eval_loop_check		% loop check only
-	;	eval_memo		% memoing + loop check
+	;	eval_memo(call_table_strictness)
+					% memoing + loop check
 	;	eval_table_io(		% memoing I/O actions for debugging
 			table_io_is_decl,
 			table_io_is_unitize
 		)
 	;	eval_minimal(eval_minimal_method).
 					% minimal model evaluation
+
+:- type call_table_strictness
+	--->	strict
+	;	fast_loose.
 
 :- type table_io_is_decl
 	--->	table_io_decl		% The procedure is tabled for

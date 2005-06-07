@@ -1967,7 +1967,9 @@ attribute_list_to_attributes(Attributes, Attributes).
 						% type, and thus the size of
 						% the corresponding trie node.
 	;	table_trie_step_user(type)
+	;	table_trie_step_user_fast_loose(type)
 	;	table_trie_step_poly
+	;	table_trie_step_poly_fast_loose
 	;	table_trie_step_typeinfo
 	;	table_trie_step_typeclassinfo.
 
@@ -3277,7 +3279,7 @@ valid_determinism_for_eval_method(eval_loop_check, Detism) = Valid :-
 	;
 		Valid = yes
 	).
-valid_determinism_for_eval_method(eval_memo, Detism) = Valid :-
+valid_determinism_for_eval_method(eval_memo(_), Detism) = Valid :-
 	determinism_components(Detism, _, MaxSoln),
 	( MaxSoln = at_most_zero ->
 		Valid = no
@@ -3304,37 +3306,37 @@ valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
 eval_method_needs_stratification(eval_normal) = no.
 eval_method_needs_stratification(eval_loop_check) = no.
 eval_method_needs_stratification(eval_table_io(_, _)) = no.
-eval_method_needs_stratification(eval_memo) = no.
+eval_method_needs_stratification(eval_memo(_)) = no.
 eval_method_needs_stratification(eval_minimal(_)) = yes.
 
 eval_method_has_per_proc_tabling_pointer(eval_normal) = no.
 eval_method_has_per_proc_tabling_pointer(eval_loop_check) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_table_io(_, _)) = no.
-eval_method_has_per_proc_tabling_pointer(eval_memo) = yes.
+eval_method_has_per_proc_tabling_pointer(eval_memo(_)) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_minimal(_)) = yes.
 
 eval_method_requires_tabling_transform(eval_normal) = no.
 eval_method_requires_tabling_transform(eval_loop_check) = yes.
 eval_method_requires_tabling_transform(eval_table_io(_, _)) = yes.
-eval_method_requires_tabling_transform(eval_memo) = yes.
+eval_method_requires_tabling_transform(eval_memo(_)) = yes.
 eval_method_requires_tabling_transform(eval_minimal(_)) = yes.
 
 eval_method_requires_ground_args(eval_normal) = no.
 eval_method_requires_ground_args(eval_loop_check) = yes.
 eval_method_requires_ground_args(eval_table_io(_, _)) = yes.
-eval_method_requires_ground_args(eval_memo) = yes.
+eval_method_requires_ground_args(eval_memo(_)) = yes.
 eval_method_requires_ground_args(eval_minimal(_)) = yes.
 
 eval_method_destroys_uniqueness(eval_normal) = no.
 eval_method_destroys_uniqueness(eval_loop_check) = yes.
 eval_method_destroys_uniqueness(eval_table_io(_, _)) = no.
-eval_method_destroys_uniqueness(eval_memo) = yes.
+eval_method_destroys_uniqueness(eval_memo(_)) = yes.
 eval_method_destroys_uniqueness(eval_minimal(_)) = yes.
 
 eval_method_change_determinism(eval_normal, Detism) = Detism.
 eval_method_change_determinism(eval_loop_check, Detism) = Detism.
 eval_method_change_determinism(eval_table_io(_, _), Detism) = Detism.
-eval_method_change_determinism(eval_memo, Detism) = Detism.
+eval_method_change_determinism(eval_memo(_), Detism) = Detism.
 eval_method_change_determinism(eval_minimal(_), Detism0) = Detism :-
 	det_conjunction_detism(semidet, Detism0, Detism).
 

@@ -4451,7 +4451,8 @@ MR_trace_cmd_table(char **words, int word_count,
             return KEEP_INTERACTING;
 
         case MR_EVAL_METHOD_LOOP_CHECK:
-        case MR_EVAL_METHOD_MEMO:
+        case MR_EVAL_METHOD_MEMO_STRICT:
+        case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
         case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
         case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
             break;
@@ -4574,7 +4575,8 @@ MR_trace_cmd_table(char **words, int word_count,
             fprintf(MR_mdb_out, ":\n");
             break;
 
-        case MR_EVAL_METHOD_MEMO:
+        case MR_EVAL_METHOD_MEMO_STRICT:
+        case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
             fprintf(MR_mdb_out, "memo table for ");
             MR_print_proc_id(MR_mdb_out, proc);
             fprintf(MR_mdb_out, ":\n");
@@ -4980,43 +4982,64 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
     fprintf(MR_mdb_out, ">: ");
 
     eval_method = MR_sle_eval_method(proc);
-    if (eval_method == MR_EVAL_METHOD_MINIMAL_STACK_COPY) {
-        MR_Subgoal  *subgoal;
-        int         subgoal_num;
+    switch (eval_method) {
+        case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
+            {
+                MR_Subgoal  *subgoal;
+                int         subgoal_num;
 
-        fprintf(MR_mdb_out, "trie node %p\n", table);
-        subgoal = table->MR_subgoal;
-        if (subgoal == NULL) {
-            fprintf(MR_mdb_out, "uninitialized\n");
-        } else {
-            MR_trace_print_subgoal(proc, subgoal);
-        }
-    } else if (eval_method == MR_EVAL_METHOD_MINIMAL_OWN_STACKS) {
-        MR_GeneratorPtr generator;
+                fprintf(MR_mdb_out, "trie node %p\n", table);
+                subgoal = table->MR_subgoal;
+                if (subgoal == NULL) {
+                    fprintf(MR_mdb_out, "uninitialized\n");
+                } else {
+                    MR_trace_print_subgoal(proc, subgoal);
+                }
+            }
+            break;
 
-        fprintf(MR_mdb_out, "trie node %p\n", table);
-        generator = table->MR_generator;
-        if (generator == NULL) {
-            fprintf(MR_mdb_out, "uninitialized\n");
-        } else {
-            MR_trace_print_generator(proc, generator);
-        }
-    } else if (eval_method == MR_EVAL_METHOD_MEMO) {
-        MR_Determinism  detism;
+        case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
+            {
+                MR_GeneratorPtr generator;
 
-        detism = proc->MR_sle_detism;
-        if (MR_DETISM_DET_STACK(detism)) {
-            MR_print_memo_tip(MR_mdb_out, proc, table);
-        } else {
-            MR_MemoNonRecordPtr record;
+                fprintf(MR_mdb_out, "trie node %p\n", table);
+                generator = table->MR_generator;
+                if (generator == NULL) {
+                    fprintf(MR_mdb_out, "uninitialized\n");
+                } else {
+                    MR_trace_print_generator(proc, generator);
+                }
+            }
+            break;
 
-            record = table->MR_memo_non_record;
-            MR_print_memo_non_record(MR_mdb_out, proc, record);
-        }
-    } else if (eval_method == MR_EVAL_METHOD_LOOP_CHECK) {
-        MR_print_loopcheck_tip(MR_mdb_out, proc, table);
-    } else {
-        MR_fatal_error("MR_trace_cmd_table_print_tip: bad eval method");
+        case MR_EVAL_METHOD_MEMO_STRICT:
+        case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
+            {
+                MR_Determinism  detism;
+
+                detism = proc->MR_sle_detism;
+                if (MR_DETISM_DET_STACK(detism)) {
+                    MR_print_memo_tip(MR_mdb_out, proc, table);
+                } else {
+                    MR_MemoNonRecordPtr record;
+
+                    record = table->MR_memo_non_record;
+                    MR_print_memo_non_record(MR_mdb_out, proc, record);
+                }
+            }
+            break;
+
+        case MR_EVAL_METHOD_LOOP_CHECK:
+            MR_print_loopcheck_tip(MR_mdb_out, proc, table);
+            break;
+
+        case MR_EVAL_METHOD_NORMAL:
+        case MR_EVAL_METHOD_TABLE_IO:
+        case MR_EVAL_METHOD_TABLE_IO_DECL:
+        case MR_EVAL_METHOD_TABLE_IO_UNITIZE:
+        case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
+            MR_fatal_error("MR_trace_cmd_table_print_tip: bad eval method");
+            break;
     }
 }
 

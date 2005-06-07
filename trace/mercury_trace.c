@@ -1451,13 +1451,17 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
         /* nothing to do */
         return;
 
-    case MR_EVAL_METHOD_MEMO:
+    case MR_EVAL_METHOD_MEMO_STRICT:
+    case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
     case MR_EVAL_METHOD_LOOP_CHECK:
         if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
             call_table = (MR_TrieNode) MR_based_stackvar(base_sp,
                 level_layout->MR_sle_maybe_call_table);
         } else {
-            if (eval_method == MR_EVAL_METHOD_MEMO) {
+            if (eval_method == MR_EVAL_METHOD_LOOP_CHECK) {
+                call_table = (MR_TrieNode) MR_based_framevar(base_curfr,
+                    level_layout->MR_sle_maybe_call_table);
+            } else {
                 MR_MemoNonRecordPtr record;
 
                 record = (MR_MemoNonRecordPtr) MR_based_framevar(base_curfr,
@@ -1468,9 +1472,6 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
                 printf("reset: memo non record %p, call_table %p\n",
                         record, call_table);
 #endif
-            } else {
-                call_table = (MR_TrieNode) MR_based_framevar(base_curfr,
-                    level_layout->MR_sle_maybe_call_table);
             }
         }
 

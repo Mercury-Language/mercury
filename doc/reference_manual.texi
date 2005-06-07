@@ -8856,6 +8856,13 @@ pragmas for tabling, to cover these three cases: @samp{pragma memo}
 does no loop checking, @samp{pragma loop_check} checks for loops
 and throws an exception if a loop is detected, while
 @samp{pragma minimal_model} computes the ``minimal model'' semantics.
+@samp{pragma fast_loose_memo} is a variant of @samp{pragma memo}.
+While @samp{memo} tabling requires time proportional to the size of
+the input arguments to look up the current call in its table,
+@samp{fast_loose_memo} requires constant time.
+The tradeoff is that @samp{fast_loose_memo} does not recognize
+calls as duplicates if they involve input arguments that are logically equal
+but are stored at different locations in memory.
 
 @c XXX we should fix this bug...
 @cartouche
@@ -8872,6 +8879,7 @@ The syntax for each of these declarations is
 
 @example
 :- pragma memo(@var{Name}/@var{Arity}).
+:- pragma fast_loose_memo(@var{Name}/@var{Arity}).
 :- pragma loop_check(@var{Name}/@var{Arity}).
 :- pragma minimal_model(@var{Name}/@var{Arity}).
 @end example

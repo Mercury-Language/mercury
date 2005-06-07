@@ -10,6 +10,7 @@ SIMPLE_NONLOOP_PROGS = \
 	expand_float \
 	expand_poly \
 	expand_tuple \
+	fast_loose \
 	fib \
 	fib_float \
 	fib_list \

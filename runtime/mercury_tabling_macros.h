@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000,2002-2004 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,6 +18,9 @@
 
 #define MR_RAW_TABLE_ANY(table, type_info, value)			\
 	MR_table_type((table), (type_info), (value))
+
+#define MR_RAW_TABLE_ANY_FAST_LOOSE(table, type_info, value)		\
+	MR_word_hash_lookup_or_add((table), (value))
 
 #define MR_RAW_TABLE_TAG(table, tag)					\
 	MR_int_fix_index_lookup_or_add((table), 1 << MR_TAGBITS, (tag))
@@ -64,6 +67,27 @@
 	do {								\
 		MR_TrieNode prev_table = (table);			\
 		(table) = MR_RAW_TABLE_ANY((table), 			\
+			(type_info), (value));				\
+		if (MR_tabledebug) {					\
+			printf("TABLE %p: any %x type %p => %p\n",	\
+				prev_table, (value), (type_info),	\
+				(table));				\
+		}							\
+	} while (0)
+
+#define	MR_DEBUG_NEW_TABLE_ANY_FAST_LOOSE(table, table0, type_info, value) \
+	do {								\
+		(table) = MR_RAW_TABLE_ANY_FAST_LOOSE((table0), (type_info), \
+			(value));					\
+		if (MR_tabledebug) {					\
+			printf("TABLE %p: any %x type %p => %p\n",	\
+				(table0), (value), (type_info), (table));\
+		}							\
+	} while (0)
+#define	MR_DEBUG_TABLE_ANY_FAST_LOOSE(table, type_info, value)		\
+	do {								\
+		MR_TrieNode prev_table = (table);			\
+		(table) = MR_RAW_TABLE_ANY_FAST_LOOSE((table),		\
 			(type_info), (value));				\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: any %x type %p => %p\n",	\
@@ -263,6 +287,17 @@
 #define	MR_DEBUG_TABLE_ANY(table, type_info, value)			\
 	do {								\
 		(table) = MR_RAW_TABLE_ANY((table), (type_info), (value));\
+	} while (0)
+
+#define	MR_DEBUG_NEW_TABLE_ANY_FAST_LOOSE(table, table0, type_info, value) \
+	do {								\
+		(table) = MR_RAW_TABLE_ANY_FAST_LOOSE((table0), (type_info), \
+			(value));					\
+	} while (0)
+#define	MR_DEBUG_TABLE_ANY_FAST_LOOSE(table, type_info, value)		\
+	do {								\
+		(table) = MR_RAW_TABLE_ANY_FAST_LOOSE((table), (type_info), \
+			(value));					\
 	} while (0)
 
 #define	MR_DEBUG_NEW_TABLE_TAG(table, table0, value)			\

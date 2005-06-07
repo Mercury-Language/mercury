@@ -191,6 +191,8 @@ extern	MR_TrieNode	MR_float_hash_lookup_or_add(MR_TrieNode table,
 				MR_Float key);
 extern	MR_TrieNode	MR_string_hash_lookup_or_add(MR_TrieNode table,
 				MR_ConstString key);
+extern	MR_TrieNode	MR_word_hash_lookup_or_add(MR_TrieNode table,
+				MR_Word key);
 
 /*
 ** This function assumes that the table is a statically sized array,
@@ -224,7 +226,10 @@ extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
 
 /*
 ** This function tables values of arbitrary types; the form of the data
-** structure depends on the actual type of the value.
+** structure depends on the actual type of the value. The tabling is done
+** by tabling all the function symbols of the value; unlike
+** MR_word_hash_lookup, this function *does* guarantee that all duplicates
+** will be detected.
 */
 
 extern	MR_TrieNode	MR_table_type(MR_TrieNode table,
@@ -244,6 +249,8 @@ extern	MR_TrieNode	MR_float_hash_lookup(MR_TrieNode table,
 				MR_Float key);
 extern	MR_TrieNode	MR_string_hash_lookup(MR_TrieNode table,
 				MR_ConstString key);
+extern	MR_TrieNode	MR_word_hash_lookup(MR_TrieNode table,
+				MR_Word data_value);
 
 /*
 ** These functions return a dynamically resizable array (using the primitives

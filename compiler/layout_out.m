@@ -988,7 +988,14 @@ write_maybe_slot_num(no, !IO) :-
 
 eval_method_to_c_string(eval_normal) =	      "MR_EVAL_METHOD_NORMAL".
 eval_method_to_c_string(eval_loop_check) =    "MR_EVAL_METHOD_LOOP_CHECK".
-eval_method_to_c_string(eval_memo) =          "MR_EVAL_METHOD_MEMO".
+eval_method_to_c_string(eval_memo(CallStrictness)) =  Str :-
+	(
+		CallStrictness = strict,
+		Str = "MR_EVAL_METHOD_MEMO_STRICT"
+	;
+		CallStrictness = fast_loose,
+		Str = "MR_EVAL_METHOD_MEMO_FAST_LOOSE"
+	).
 eval_method_to_c_string(eval_minimal(MinimalMethod)) = Str :-
 	(
 		MinimalMethod = stack_copy,
@@ -1817,8 +1824,16 @@ output_table_gen_steps([Step | Steps], [MaybeEnumParam | MaybeEnumParams],
 		StepType = "MR_TABLE_STEP_USER",
 		MaybeEnumParam = no
 	;
+		Step = table_trie_step_user_fast_loose(_),
+		StepType = "MR_TABLE_STEP_USER_FAST_LOOSE",
+		MaybeEnumParam = no
+	;
 		Step = table_trie_step_poly,
 		StepType = "MR_TABLE_STEP_POLY",
+		MaybeEnumParam = no
+	;
+		Step = table_trie_step_poly_fast_loose,
+		StepType = "MR_TABLE_STEP_POLY_FAST_LOOSE",
 		MaybeEnumParam = no
 	;
 		Step = table_trie_step_typeinfo,

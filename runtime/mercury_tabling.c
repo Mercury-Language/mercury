@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2004 The University of Melbourne.
+** Copyright (C) 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,6 +37,7 @@
 typedef struct MR_IntHashTableSlot_Struct       MR_IntHashTableSlot;
 typedef struct MR_FloatHashTableSlot_Struct     MR_FloatHashTableSlot;
 typedef struct MR_StringHashTableSlot_Struct    MR_StringHashTableSlot;
+typedef struct MR_WordHashTableSlot_Struct      MR_WordHashTableSlot;
 
 typedef struct MR_AllocRecord_Struct            MR_AllocRecord;
 
@@ -58,10 +59,17 @@ struct MR_StringHashTableSlot_Struct {
     MR_ConstString          key;
 };
 
+struct MR_WordHashTableSlot_Struct {
+    MR_WordHashTableSlot    *next;
+    MR_TableNode            data;
+    MR_Word                 key;
+};
+
 typedef union {
     MR_IntHashTableSlot     *int_slot_ptr;
     MR_FloatHashTableSlot   *float_slot_ptr;
     MR_StringHashTableSlot  *string_slot_ptr;
+    MR_WordHashTableSlot    *word_slot_ptr;
 } MR_HashTableSlotPtr;
 
 struct MR_AllocRecord_Struct {
@@ -455,6 +463,46 @@ MR_string_hash_lookup(MR_TrieNode t, MR_ConstString key)
 #undef  lookup_only
 }
 
+MR_TrieNode
+MR_word_hash_lookup_or_add(MR_TrieNode t, MR_Word key)
+{
+#define key_format              "%p"
+#define key_cast                (MR_Word)
+#define table_type              MR_WordHashTableSlot
+#define table_field             word_slot_ptr
+#define hash(key)               ((long) (key))
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_FALSE
+#include "mercury_hash_lookup_or_add_body.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_ptr_hash_lookup(MR_TrieNode t, MR_Word key)
+{
+#define key_format              "%p"
+#define key_cast                (MR_Word)
+#define table_type              MR_WordHashTableSlot
+#define table_field             word_slot_ptr
+#define hash(key)               ((long) (key))
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_TRUE
+#include "mercury_hash_lookup_or_add_body.h"
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
 static int
 MR_cmp_ints(const void *p1, const void *p2)
 {
@@ -717,8 +765,6 @@ MR_type_class_info_lookup_or_add(MR_TrieNode table, MR_Word *type_class_info)
 
 /*
 ** This part defines the MR_table_type() function.
-**
-** Due to the depth of the control here, we'll use 4 space indentation.
 **
 ** NOTE: changes to this function will probably also have to be reflected
 ** in the places listed in mercury_type_info.h.

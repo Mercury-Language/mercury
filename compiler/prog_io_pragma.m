@@ -822,7 +822,11 @@ parse_pragma_type(ModuleName, "no_inline", PragmaTerms, ErrorTerm, _VarSet,
 
 parse_pragma_type(ModuleName, "memo", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
-    parse_tabling_pragma(ModuleName, "memo", eval_memo,
+    parse_tabling_pragma(ModuleName, "memo", eval_memo(strict),
+        PragmaTerms, ErrorTerm, Result).
+parse_pragma_type(ModuleName, "fast_loose_memo", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    parse_tabling_pragma(ModuleName, "fast_loose_memo", eval_memo(fast_loose),
         PragmaTerms, ErrorTerm, Result).
 parse_pragma_type(ModuleName, "loop_check", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-

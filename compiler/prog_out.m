@@ -306,7 +306,8 @@ purity_name((impure), "impure").
 
 eval_method_to_string(eval_normal) =		"normal".
 eval_method_to_string(eval_loop_check) =	"loop_check".
-eval_method_to_string(eval_memo) =		"memo".
+eval_method_to_string(eval_memo(strict)) =	"memo".
+eval_method_to_string(eval_memo(fast_loose)) =	"fast_loose_memo".
 eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
 	(
 		MinimalMethod = own_stacks,

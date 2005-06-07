@@ -56,9 +56,19 @@
         MR_DEBUG_NEW_TABLE_ANY(T, T0, (MR_TypeInfo) TI, V);             \
     } while(0)
 
+#define MR_table_lookup_insert_user_fast_loose(T0, TI, V, T)            \
+    do {                                                                \
+        MR_DEBUG_NEW_TABLE_ANY_FAST_LOOSE(T, T0, (MR_TypeInfo) TI, V);  \
+    } while(0)
+
 #define MR_table_lookup_insert_poly(T0, TI, V, T)                       \
     do {                                                                \
         MR_DEBUG_NEW_TABLE_ANY(T, T0, (MR_TypeInfo) TI, V);             \
+    } while(0)
+
+#define MR_table_lookup_insert_poly_fast_loose(T0, TI, V, T)            \
+    do {                                                                \
+        MR_DEBUG_NEW_TABLE_ANY_FAST_LOOSE(T, T0, (MR_TypeInfo) TI, V);  \
     } while(0)
 
 #define MR_table_lookup_insert_typeinfo(T0, TI, T)                      \
@@ -549,15 +559,14 @@
             Start = MR_io_tabling_start;                                \
             if (MR_io_tabling_counter > MR_io_tabling_counter_hwm)      \
             {                                                           \
-                MR_io_tabling_counter_hwm =                             \
-                    MR_io_tabling_counter;                              \
+                MR_io_tabling_counter_hwm = MR_io_tabling_counter;      \
             }                                                           \
                                                                         \
             MR_table_io_in_range_in_range_msg;                          \
             Succ = MR_TRUE;                                             \
         } else {                                                        \
             MR_table_io_in_range_not_in_range_msg;                      \
-        Succ = MR_FALSE;                                                \
+            Succ = MR_FALSE;                                            \
         }                                                               \
     } else {                                                            \
         Succ = MR_FALSE;                                                \
