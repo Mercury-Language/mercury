@@ -644,10 +644,10 @@ output_maybe_constr_arg_size_info(MaybeArgSizeConstrs, !IO) :-
     ;
         MaybeArgSizeConstrs = yes(Polyhedron),  
         io.write_string("constraints(", !IO),
-        Constraints = polyhedron.non_false_constraints(Polyhedron),
-        OutputVar = (func(Var) =
-            int_to_string(term.var_to_int(Var))
-        ),
+        Constraints0 = polyhedron.non_false_constraints(Polyhedron),
+        Constraints1 = list.filter(isnt(nonneg_constr), Constraints0),
+        Constraints  = list.sort(Constraints1),
+        OutputVar = (func(Var) = int_to_string(term.var_to_int(Var))),
         lp_rational.output_constraints(OutputVar, Constraints, !IO),
         io.write_char(')', !IO)
     ).

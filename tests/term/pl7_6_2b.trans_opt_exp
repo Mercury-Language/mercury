@@ -1,3 +1,3 @@
 :- module pl7_6_2b.
 :- pragma termination_info(pl7_6_2b.reach((builtin.in), (builtin.in), (builtin.in), (builtin.in)), finite(0, [no, no, no, no, no]), can_loop).
-:- pragma termination2_info(pl7_6_2b.reach((builtin.in), (builtin.in), (builtin.in), (builtin.in)), [13, 1, 2, 3, 4], constraints([le([term(3, r(-1, 1))], r(-2, 1)), le([term(1, r(-1, 1))], r(0, 1))]), not_set, can_loop).
+:- pragma termination2_info(pl7_6_2b.reach((builtin.in), (builtin.in), (builtin.in), (builtin.in)), [13, 1, 2, 3, 4], constraints([le([term(3, r(-1, 1))], r(-2, 1))]), not_set, can_loop).
