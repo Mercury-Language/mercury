@@ -1544,7 +1544,6 @@ table_gen__do_own_stack_transform(Detism, OrigGoal, PredId, ProcId,
     make_const_construction(GeneratorPredVar, GeneratorConsId,
         MakeGeneratorVarGoal),
 
-    % XXX use tabling via foreign_proc
     generate_call_table_lookup_goals(strict, NumberedInputVars, PredId, ProcId,
         Context, !VarTypes, !VarSet, !TableInfo, _TableTipVar, _LookupGoals,
         Steps, PredTableVar, LookupForeignArgs, LookupPrefixGoals,
@@ -2459,43 +2458,50 @@ generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, BlockSize,
     generate_new_table_var("AnswerTableVar", trie_node_type,
         !VarTypes, !VarSet, AnswerTableVar),
     GeneratorName = generator_name,
-    AnswerTableName = answer_table_name,
-    GeneratorArg = foreign_arg(GeneratorVar,
-        yes(GeneratorName - in_mode), generator_type),
-    AnswerTableArg = foreign_arg(AnswerTableVar,
-        yes(AnswerTableName - in_mode), trie_node_type),
-    GetPredName = "table_mmos_get_answer_table",
-    GetPredCode = "\t" ++ AnswerTableName ++ " = " ++
-        "MR_" ++ GetPredName ++ "(" ++ GeneratorName ++ ");\n",
-    table_generate_foreign_proc(GetPredName, det, tabling_c_attributes,
-        [GeneratorArg, AnswerTableArg], [], "", GetPredCode, "",
-        semipure_code, ground_vars([AnswerTableVar]),
-        ModuleInfo, Context, GetAnswerTableGoal),
-
-    % XXX use foreign_proc
+    GeneratorArg = foreign_arg(GeneratorVar, yes(GeneratorName - in_mode),
+        generator_type),
     generate_table_lookup_goals(NumberedOutputVars, strict, "AnswerTableNode",
-        Context, AnswerTableVar, AnswerTableTipVar, !VarTypes, !VarSet,
-        !TableInfo, LookupAnswerGoals, _, _LookupForeignArgs,
-        _LookupPrefixGoals, _LookupCodeStr),
+        Context, AnswerTableVar, _AnswerTableTipVar, !VarTypes, !VarSet,
+        !TableInfo, _LookupAnswerGoals, _Steps, LookupForeignArgs,
+        LookupPrefixGoals, LookupCodeStr),
 
-    generate_call("table_mmos_answer_is_not_duplicate", semidet,
-        [AnswerTableTipVar], impure_code,
-        [], ModuleInfo, Context, DuplicateCheckGoal),
+    CreatePredName = "table_mm_create_answer_block",
     generate_new_table_var("AnswerBlock", answer_block_type,
         !VarTypes, !VarSet, AnswerBlockVar),
-    gen_int_construction("BlockSize", BlockSize, !VarTypes, !VarSet,
-        BlockSizeVar, BlockSizeVarUnifyGoal),
-    generate_call("table_mmos_create_answer_block", det,
-        [GeneratorVar, BlockSizeVar, AnswerBlockVar], impure_code,
-        ground_vars([AnswerBlockVar]), ModuleInfo, Context,
-        CreateAnswerBlockGoal),
-    % use foreign_proc
     generate_save_goals(NumberedOutputVars, AnswerBlockVar, Context,
-        !VarTypes, !VarSet, !TableInfo, SaveGoals, _X, _XX, _XXX),
-    TailGoals = SaveGoals,
-    Goals = [GetAnswerTableGoal | LookupAnswerGoals] ++
-        [DuplicateCheckGoal, BlockSizeVarUnifyGoal,
-        CreateAnswerBlockGoal | TailGoals].
+        !VarTypes, !VarSet, !TableInfo, _SaveGoals,
+        _SaveArgs, SavePrefixGoals, SaveCodeStr),
+
+    DuplCheckPredNameShortCut = DuplCheckPredName ++ "_shortcut",
+    Args = [GeneratorArg],
+    SuccName = "succeeded",
+    LookupSaveDeclCodeStr =
+        "\tMR_TrieNode " ++ cur_table_node_name ++ ";\n" ++
+        "\tMR_TrieNode " ++ next_table_node_name ++ ";\n" ++
+        "\tMR_AnswerBlock " ++ answer_block_name ++ ";\n" ++
+        "\tMR_bool " ++ SuccName ++ ";\n",
+    GetPredName = "table_mmos_get_answer_table",
+    GetLookupCodeStr = "\t" ++ cur_table_node_name ++ " = " ++
+        "MR_" ++ GetPredName ++ "(" ++ GeneratorName ++ ");\n" ++
+        LookupCodeStr,
+    DuplCheckCodeStr =
+        "\tMR_" ++ DuplCheckPredName ++ "(" ++
+            cur_table_node_name ++ ", " ++ SuccName ++ ");\n",
+    AssignSuccessCodeStr =
+        "\t" ++ success_indicator_name ++ " = " ++ SuccName ++ ";\n",
+    CreateCodeStr = "\tMR_" ++ CreatePredName ++ "(" ++
+        GeneratorName ++ ", " ++ int_to_string(BlockSize) ++ ", " ++
+        answer_block_name ++ ");\n",
+    CreateSaveCodeStr = CreateCodeStr ++ SaveCodeStr,
+    PreStr = LookupSaveDeclCodeStr ++ GetLookupCodeStr,
+    PostStr = "\tif (" ++ SuccName ++ ") {\n" ++
+        CreateSaveCodeStr ++ "\t}\n" ++
+        AssignSuccessCodeStr,
+    table_generate_foreign_proc(DuplCheckPredNameShortCut, semidet,
+        tabling_c_attributes, Args, LookupForeignArgs,
+        PreStr, DuplCheckCodeStr, PostStr, impure_code, [],
+        ModuleInfo, Context, DuplicateCheckSaveGoal),
+    Goals = LookupPrefixGoals ++ SavePrefixGoals ++ [DuplicateCheckSaveGoal].
 
 :- pred generate_save_goals(list(var_mode_pos)::in, prog_var::in,
     term__context::in, vartypes::in, vartypes::out,
