@@ -2472,6 +2472,7 @@ generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, BlockSize,
         !VarTypes, !VarSet, !TableInfo, _SaveGoals,
         _SaveArgs, SavePrefixGoals, SaveCodeStr),
 
+    DuplCheckPredName = "table_mmos_answer_is_not_duplicate",
     DuplCheckPredNameShortCut = DuplCheckPredName ++ "_shortcut",
     Args = [GeneratorArg],
     SuccName = "succeeded",
