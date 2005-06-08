@@ -18,6 +18,8 @@
 :- import_module io.
 :- import_module bool.
 
+%-----------------------------------------------------------------------------%
+
 	% dump_initial_deep(ProfStats, Restrict, DumpCSDs, DumpPDs,
 	%	DumpCSSs, DumpPSs, InitialDeep, !IO):
 	% Dump selected parts of InitialDeep to standard output. The array
@@ -27,15 +29,19 @@
 	% that will be dumped are the ones that are referred to from the
 	% dynamic arrays. The statistics and the root node are dumped if
 	% ProfStats is "yes".
-
+	%
 :- pred dump_initial_deep(bool::in, bool::in, bool::in, bool::in, bool::in,
 	bool::in, initial_deep::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module array_util.
 :- import_module measurements.
 
+:- import_module array.
 :- import_module list.
 :- import_module set.
 :- import_module std_util.
@@ -49,7 +55,8 @@ dump_initial_deep(ProfStats, Restrict, DumpCSDs, DumpPDs, DumpCSSs, DumpPSs,
 	InitialDeep = initial_deep(Stats, InitRoot, CSDs, PDs, CSSs, PSs),
 	(
 		Restrict = yes,
-		get_static_ptrs_from_dynamic_procs(PDs, UsedPSs, UsedCSSs),
+		get_static_ptrs_from_dynamic_procs(PDs, PSs,
+			UsedPSs, UsedCSSs),
 		Restriction = these(UsedPSs, UsedCSSs)
 	;
 		Restrict = no,
@@ -76,7 +83,7 @@ dump_initial_deep(ProfStats, Restrict, DumpCSDs, DumpPDs, DumpCSSs, DumpPSs,
 	),
 	(
 		DumpCSSs = yes,
-		dump_init_call_site_statics(CSSs, !IO)
+		dump_init_call_site_statics(Restriction, CSSs, !IO)
 	;
 		DumpCSSs = no
 	),
@@ -89,31 +96,34 @@ dump_initial_deep(ProfStats, Restrict, DumpCSDs, DumpPDs, DumpCSSs, DumpPSs,
 	
 %----------------------------------------------------------------------------%
 %
-% Restricting static structures to those referenced by dynamic ones.
+% Restricting static structures to those referenced by dynamic ones
 %
 
 :- type restriction
 	---> 	none
 	;	these(set(proc_static_ptr), set(call_site_static_ptr)).
 
-:- pred get_static_ptrs_from_dynamic_procs(proc_dynamics::in,
+:- pred get_static_ptrs_from_dynamic_procs(proc_dynamics::in, proc_statics::in,
 	set(proc_static_ptr)::out, set(call_site_static_ptr)::out) is det.
 
-get_static_ptrs_from_dynamic_procs(ProcDynamics, PS_Ptrs, CSS_Ptrs) :-
-	array_foldl2_from_1(get_static_ptrs_from_dynamic_proc,
+get_static_ptrs_from_dynamic_procs(ProcDynamics, ProcStatics, PS_Ptrs, CSS_Ptrs) :-
+	array_foldl2_from_1(get_static_ptrs_from_dynamic_proc(ProcStatics),
 		ProcDynamics, set.init, PS_Ptrs, set.init, CSS_Ptrs).
 
-:- pred get_static_ptrs_from_dynamic_proc(int::in, proc_dynamic::in,
-	set(proc_static_ptr)::in, set(proc_static_ptr)::out,
+:- pred get_static_ptrs_from_dynamic_proc(proc_statics::in, int::in,
+	proc_dynamic::in, set(proc_static_ptr)::in, set(proc_static_ptr)::out,
 	set(call_site_static_ptr)::in, set(call_site_static_ptr)::out) is det.
 
-get_static_ptrs_from_dynamic_proc(_, ProcDynamic, !PS_Ptrs, !CSS_Ptrs) :-
-	ProcDynamic = proc_dynamic(PD_ProcStatic, _PDSites),
-	svset.insert(PD_ProcStatic, !PS_Ptrs).	
+get_static_ptrs_from_dynamic_proc(ProcStatics, _, ProcDynamic, !PS_Ptrs, !CSS_Ptrs) :-
+	ProcDynamic = proc_dynamic(ProcStaticPtr, _PDSites),
+	svset.insert(ProcStaticPtr, !PS_Ptrs),
+	lookup_proc_statics(ProcStatics, ProcStaticPtr, ProcStatic),
+	CSSs = array.to_list(ProcStatic ^ ps_sites),
+	svset.insert_list(CSSs, !CSS_Ptrs).	 	
 
 %----------------------------------------------------------------------------%
 %
-% Code for dumping profile_stats.
+% Code for dumping profile_stats
 %
 
 :- pred dump_init_profile_stats(profile_stats::in, io::di, io::uo) is det.
@@ -259,30 +269,43 @@ call_site_array_slot_to_string(multi(_, _)) = "multi".
 	
 %----------------------------------------------------------------------------%
 
-:- pred dump_init_call_site_statics(call_site_statics::in, io::di, io::uo)
-	is det.
+:- pred dump_init_call_site_statics(restriction::in, call_site_statics::in,
+	io::di, io::uo) is det.
 
-dump_init_call_site_statics(CallStatics, !IO) :-
+dump_init_call_site_statics(Restriction, CallStatics, !IO) :-
 	io.write_string("SECTION CALL SITE STATICS:\n\n", !IO),
-	array_foldl_from_1(dump_call_site_static, CallStatics, !IO).
+	array_foldl_from_1(dump_call_site_static(Restriction), CallStatics,
+		!IO).
 
-:- pred dump_call_site_static(int::in, call_site_static::in, io::di, io::uo)
-	is det.
+:- pred dump_call_site_static(restriction::in, int::in, call_site_static::in,
+	io::di, io::uo) is det.
 
-dump_call_site_static(Index, CallSiteStatic, !IO) :-
-	CallSiteStatic = call_site_static(ContainerPSPtr, SlotNum, Kind,
-		LineNum, GoalPath),
-	ContainerPSPtr = proc_static_ptr(ContainerPSI),
-	io.format("css%d:\n", [i(Index)], !IO),
-	io.format("\tcss_container\t= ps%d\n", [i(ContainerPSI)],
-		!IO),
-	io.format("\tcss_slot_num\t= <%d>\n", [i(SlotNum)], !IO),
-	io.format("\tcss_line_num\t= <%d>\n", [i(LineNum)], !IO),
-	io.format("\tcss_goal_path\t= <%s>\n", [s(GoalPath)], !IO),
-	io.write_string("\tcss_kind\t= ", !IO),
-	dump_call_site_kind_and_callee(Kind, !IO),
-	io.nl(!IO),
-	io.nl(!IO).
+dump_call_site_static(Restriction, Index, CallSiteStatic, !IO) :-
+	(
+		( 
+			Restriction = none
+		;
+			Restriction = these(_, UsedCallSiteStatics),
+			set.member(call_site_static_ptr(Index),
+				UsedCallSiteStatics)
+		)
+	->
+		CallSiteStatic = call_site_static(ContainerPSPtr, SlotNum,
+			Kind, LineNum, GoalPath),
+		ContainerPSPtr = proc_static_ptr(ContainerPSI),
+		io.format("css%d:\n", [i(Index)], !IO),
+		io.format("\tcss_container\t= ps%d\n", [i(ContainerPSI)],
+			!IO),
+		io.format("\tcss_slot_num\t= <%d>\n", [i(SlotNum)], !IO),
+		io.format("\tcss_line_num\t= <%d>\n", [i(LineNum)], !IO),
+		io.format("\tcss_goal_path\t= <%s>\n", [s(GoalPath)], !IO),
+		io.write_string("\tcss_kind\t= ", !IO),
+		dump_call_site_kind_and_callee(Kind, !IO),
+		io.nl(!IO),
+		io.nl(!IO)
+	;
+		true
+	).
 
 %----------------------------------------------------------------------------%
 
@@ -387,3 +410,7 @@ dump_call_site_kind_and_callee(method_call, !IO) :-
 	io.write_string("method_call", !IO).
 dump_call_site_kind_and_callee(callback, !IO) :-
 	io.write_string("callback", !IO).
+
+%----------------------------------------------------------------------------%
+:- end_module dump.
+%----------------------------------------------------------------------------%
