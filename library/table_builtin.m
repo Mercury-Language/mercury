@@ -976,6 +976,12 @@ table_mm_fill_answer_block_shortcut(_) :-
 	%
 :- impure pred table_mmos_answer_is_not_duplicate(ml_trie_node::in) is semidet.
 
+	% This is a version of table_mmos_answer_is_not_duplicate
+	% in intended for bundling with other operations.
+	%
+:- impure pred table_mmos_answer_is_not_duplicate_shortcut(ml_generator::in)
+	is semidet.
+
 	% This predicate checks whether there is a next answer already listed
 	% for the consumer. If yes, it returns it. If not, it wakes up the
 	% generator to create more answers if possible.
@@ -1073,6 +1079,19 @@ table_mm_fill_answer_block_shortcut(_) :-
 	*/
 	/* mention T to shut up the warning */
 	MR_fatal_error(""table_mmos_answer_is_not_duplicate: direct call"");
+").
+
+:- pragma foreign_proc("C",
+	table_mmos_answer_is_not_duplicate_shortcut(G::in),
+	[will_not_call_mercury],
+"
+	/*
+	** The body of this predicate doesn't matter, because it will never be
+	** referred to. When the compiler creates references to this predicate,
+	** it always overrides the predicate body.
+	*/
+	/* mention G to shut up the warning */
+	MR_fatal_error(""table_mmos_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
 :- external(table_mmos_consume_next_answer_nondet/2).

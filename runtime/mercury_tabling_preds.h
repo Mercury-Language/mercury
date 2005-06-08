@@ -688,14 +688,14 @@
     ((void) 0)
 #endif
 
-#define MR_table_mm_answer_is_not_duplicate(T, SUCCESS_INDICATOR)       \
+#define MR_table_mm_answer_is_not_duplicate(T, succ)                    \
     do {                                                                \
         MR_bool     is_new_answer;                                      \
         MR_table_mm_answer_is_not_duplicate_msg(T);                     \
         is_new_answer = (T->MR_integer == 0);                           \
         MR_table_mm_answer_is_not_duplicate_stats(T, is_new_answer);    \
         T->MR_integer = 1;  /* any nonzero value will do */             \
-        SUCCESS_INDICATOR = is_new_answer;                              \
+        succ = is_new_answer;                                           \
     } while(0)
 
 /***********************************************************************/
@@ -807,14 +807,14 @@
     ((void) 0)
 #endif
 
-#define MR_table_mmos_answer_is_not_duplicate(T, SUCCESS_INDICATOR)     \
+#define MR_table_mmos_answer_is_not_duplicate(T, succ)                  \
     do {                                                                \
         MR_bool     is_new_answer;                                      \
         MR_table_mmos_answer_is_not_duplicate_msg(T);                   \
         is_new_answer = (T->MR_integer == 0);                           \
         MR_table_mmos_answer_is_not_duplicate_stats(T, is_new_answer);  \
         T->MR_integer = 1;  /* any nonzero value will do */             \
-        SUCCESS_INDICATOR = is_new_answer;                              \
+        succ = is_new_answer;                                           \
     } while(0)
 
 #endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
