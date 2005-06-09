@@ -193,6 +193,8 @@ extern	MR_TrieNode	MR_string_hash_lookup_or_add(MR_TrieNode table,
 				MR_ConstString key);
 extern	MR_TrieNode	MR_word_hash_lookup_or_add(MR_TrieNode table,
 				MR_Word key);
+extern	MR_TrieNode	MR_ptr_hash_lookup(MR_TrieNode table,
+				MR_Word key);
 
 /*
 ** This function assumes that the table is a statically sized array,
