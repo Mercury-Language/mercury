@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2004 The University of Melbourne.
+** Copyright (C) 2002-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -853,6 +853,9 @@ MR_UNIFY_COMPARE_REP_DEFNS(builtin, user_by_rtti, 0)
 /*
 ** If you add another entry to this list, you should also add the corresponding
 ** declaration to mercury_builtin_types_proc_layouts.h.
+** You should also make sure that any changes made here are reflected in
+** the definition of the function
+** mercury_sys_init_mercury_builtin_types_write_out_proc_statics() below.
 */
 
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, int, 0);
@@ -1703,6 +1706,7 @@ mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *fp)
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, type_ctor_desc, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, pseudo_type_desc, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, type_desc, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, user_by_rtti, 0); 
 }
 #endif
 
