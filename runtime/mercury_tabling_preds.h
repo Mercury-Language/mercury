@@ -771,6 +771,10 @@
     do {                                                                \
         MR_fatal_error(MR_MMSC_ERROR);                                  \
     } while(0)
+#define MR_table_mm_answer_is_not_duplicate(T, Succ)                    \
+    do {                                                                \
+        MR_fatal_error(MR_MMSC_ERROR);                                  \
+    } while(0)
 #define MR_table_mm_create_answer_block(Subgoal, Size, AnswerBlock)     \
     do {                                                                \
         MR_fatal_error(MR_MMSC_ERROR);                                  \
