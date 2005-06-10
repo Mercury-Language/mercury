@@ -1749,13 +1749,15 @@ handle_solver_vars_in_ite(NonLocals, VarTypes, Then0, Then, Else0, Else,
     ThenVarsToInit = solver_vars_to_init(EnsureInitialised, ModuleInfo,
         ThenInstMap0),
     construct_initialisation_calls(ThenVarsToInit, ThenInitCalls, !ModeInfo),
-    Then = append_init_calls_to_goal(ThenInitCalls, Then0),
+    InitedThenVars = list_to_set(ThenVarsToInit),
+    Then = append_init_calls_to_goal(InitedThenVars, ThenInitCalls, Then0),
     ThenInstMap = set_vars_to_inst_any(ThenVarsToInit, ThenInstMap0),
 
     ElseVarsToInit = solver_vars_to_init(EnsureInitialised, ModuleInfo,
         ElseInstMap0),
     construct_initialisation_calls(ElseVarsToInit, ElseInitCalls, !ModeInfo),
-    Else = append_init_calls_to_goal(ElseInitCalls, Else0),
+    InitedElseVars = list_to_set(ElseVarsToInit),
+    Else = append_init_calls_to_goal(InitedElseVars, ElseInitCalls, Else0),
     ElseInstMap = set_vars_to_inst_any(ElseVarsToInit, ElseInstMap0).
 
 :- func solver_vars_that_must_be_initialised(list(prog_var),
@@ -1797,17 +1799,23 @@ add_necessary_disj_init_calls([Goal0 | Goals0], [Goal | Goals],
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     VarsToInit = solver_vars_to_init(EnsureInitialised, ModuleInfo, InstMap0),
     construct_initialisation_calls(VarsToInit, InitCalls, !ModeInfo),
-    Goal = append_init_calls_to_goal(InitCalls, Goal0),
+    InitedVars = list_to_set(VarsToInit),
+    Goal = append_init_calls_to_goal(InitedVars, InitCalls, Goal0),
     InstMap = set_vars_to_inst_any(VarsToInit, InstMap0),
     add_necessary_disj_init_calls(Goals0, Goals, InstMaps0, InstMaps,
         EnsureInitialised, !ModeInfo).
 
-:- func append_init_calls_to_goal(list(hlds_goal), hlds_goal) = hlds_goal.
+:- func append_init_calls_to_goal(set(prog_var), list(hlds_goal), hlds_goal) =
+        hlds_goal.
 
-append_init_calls_to_goal(InitCalls, Goal0) = Goal :-
-    Goal0 = GoalExpr - GoalInfo,
-    ( GoalExpr = disj(Disjs0) ->
-        Disjs = list__map(append_init_calls_to_goal(InitCalls), Disjs0),
+append_init_calls_to_goal(InitedVars, InitCalls, Goal0) = Goal :-
+    Goal0 = GoalExpr0 - GoalInfo0,
+    hlds_goal__goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+    NonLocals = set__union(InitedVars, NonLocals0),
+    hlds_goal__goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+    ( GoalExpr0 = disj(Disjs0) ->
+        Disjs = list__map(append_init_calls_to_goal(InitedVars, InitCalls),
+                Disjs0),
         Goal  = disj(Disjs) - GoalInfo
     ;
         goal_to_conj_list(Goal0, Conjs),
