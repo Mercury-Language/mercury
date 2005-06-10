@@ -181,6 +181,7 @@
 :- import_module ll_backend__exprn_aux.
 :- import_module ll_backend__layout.
 :- import_module ll_backend__layout_out.
+:- import_module ll_backend__pragma_c_gen.
 :- import_module ll_backend__rtti_out.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
@@ -2356,7 +2357,8 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code), !IO) :-
 output_pragma_c_component(pragma_c_raw_code(C_Code, _), !IO) :-
 	io__write_string(C_Code, !IO).
 output_pragma_c_component(pragma_c_fail_to(Label), !IO) :-
-	io__write_string("if (!MR_r1) MR_GOTO_LAB(", !IO),
+	io__write_string("if (!" ++ pragma_succ_ind_name ++
+		") MR_GOTO_LAB(", !IO),
 	output_label(Label, no, !IO),
 	io__write_string(");\n", !IO).
 output_pragma_c_component(pragma_c_noop, !IO).

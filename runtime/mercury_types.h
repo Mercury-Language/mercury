@@ -149,8 +149,10 @@ typedef const MR_ArrayType	*MR_ConstArrayPtr;
 
 #ifndef MR_HIGHLEVEL_CODE
   /*
-  ** semidet predicates indicate success or failure by leaving nonzero or zero
-  ** respectively in register MR_r1
+  ** Semidet predicates indicate success or failure by leaving nonzero or zero
+  ** respectively in SUCCESS_INDICATOR, which the code generator (code_gen.m,
+  ** call_gen.m, pragma_c_gen.m etc) knows to be MR_r1. (Note that
+  ** pragma_c_gen.m temporarily redefines SUCCESS_INDICATOR.)
   ** (should this #define go in some other header file?)
   */
   #define SUCCESS_INDICATOR MR_r1

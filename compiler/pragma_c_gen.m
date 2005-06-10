@@ -40,6 +40,11 @@
 :- pred pragma_c_gen__struct_name(module_name::in, string::in, int::in,
 	proc_id::in, string::out) is det.
 
+	% The name of the variable model_semi foreign_procs in C assign to
+	% to indicate success or failure. Exported for llds_out.m.
+	%
+:- func pragma_succ_ind_name = string.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -426,48 +431,12 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 		code_info__save_variables(OutVarsSet, _, SaveVarsCode, !CI)
 	),
 
-	goal_info_get_determinism(GoalInfo, Detism),
-	( CodeModel = model_semi ->
-		% We want to clear r1 even for Detism = failure,
-		% since code with such detism may still assign to
-		% SUCCESS_INDICATOR (i.e. r1).
-		code_info__reserve_r1(ReserveR1_Code, !CI)
-	;
-		ReserveR1_Code = empty
-	),
-
 	%
 	% Generate the values of input variables.
 	% (NB we need to be careful that the rvals generated here
 	% remain valid below.)
 	%
 	get_pragma_input_vars(InCArgs, InputDescs, InputVarsCode, !CI),
-
-	%
-	% For semidet pragma c_code, we have to move anything that is
-	% currently in r1 elsewhere, so that the C code can assign to
-	% SUCCESS_INDICATOR without clobbering anything important.
-	%
-	% The call to code_info__reserve_r1 will have reserved r1,
-	% ensuring that none of InCArgs is placed there, and
-	% code_info__clear_r1 just releases r1. This reservation of r1
-	% is not strictly necessary, as we generate assignments from
-	% the input registers to C variables before we invoke code that could
-	% assign to SUCCESS_INDICATOR. However, by not storing an argument in
-	% r1, we don't require the C compiler to generate a copy instruction
-	% from r1 to somewhere else in cases where the last use of the variable
-	% we are trying to pass in r1 is after the first reference to
-	% SUCCESS_INDICATOR. Instead we generate that argument directly
-	% into some other location.
-	%
-	( CodeModel = model_semi ->
-		% We want to clear r1 even for Detism = failure,
-		% since code with such detism may still assign to
-		% SUCCESS_INDICATOR (i.e. r1).
-		code_info__clear_r1(ClearR1_Code, !CI)
-	;
-		ClearR1_Code = empty
-	),
 
 	%
 	% We cannot kill the forward dead input arguments until we have
@@ -542,15 +511,34 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	C_Code_Comp = pragma_c_user_code(Context, C_Code),
 
 	%
-	% <for semidet code, check of r1>
+	% <for semidet code, check of SUCCESS_INDICATOR>
 	%
-	( ( CodeModel = model_semi, Detism \= failure ) ->
-		code_info__get_next_label(FailLabel, !CI),
-		CheckR1_Comp = pragma_c_fail_to(FailLabel),
-		MaybeFailLabel = yes(FailLabel)
+	goal_info_get_determinism(GoalInfo, Detism),
+	( CodeModel = model_semi ->
+		( Detism = failure ->
+			CheckSuccess_Comp = pragma_c_noop,
+			MaybeFailLabel = no
+		;
+			code_info__get_next_label(FailLabel, !CI),
+			CheckSuccess_Comp = pragma_c_fail_to(FailLabel),
+			MaybeFailLabel = yes(FailLabel)
+		),
+		DefSuccessComp = pragma_c_raw_code(
+			"\tMR_bool " ++ pragma_succ_ind_name ++ ";\n" ++
+			"#undef SUCCESS_INDICATOR\n" ++
+			"#define SUCCESS_INDICATOR MercurySuccessIndicator\n",
+			live_lvals_info(set__init)),
+		UndefSuccessComp = pragma_c_raw_code(
+			"#undef SUCCESS_INDICATOR\n" ++
+			"#define SUCCESS_INDICATOR MR_r1\n",
+			live_lvals_info(set__init))
 	;
-		CheckR1_Comp = pragma_c_noop,
-		MaybeFailLabel = no
+		CheckSuccess_Comp = pragma_c_noop,
+		MaybeFailLabel = no,
+		DefSuccessComp = pragma_c_raw_code("",
+			live_lvals_info(set__init)),
+		UndefSuccessComp = pragma_c_raw_code("",
+			live_lvals_info(set__init))
 	),
 
 	%
@@ -598,10 +586,10 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	%
 	% join all the components of the pragma_c together
 	%
-	Components = [ProcLabelHashDefine, InputComp, SaveRegsComp,
-		ObtainLock, C_Code_Comp, ReleaseLock,
-		CheckR1_Comp, RestoreRegsComp,
-		OutputComp, ProcLabelHashUndef],
+	Components = [ProcLabelHashDefine, DefSuccessComp, InputComp,
+		SaveRegsComp, ObtainLock, C_Code_Comp, ReleaseLock,
+		CheckSuccess_Comp, RestoreRegsComp,
+		OutputComp, UndefSuccessComp, ProcLabelHashUndef],
 	(
 		ExtraArgs = [],
 		MaybeDupl = yes
@@ -634,13 +622,10 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 		GotoSkipLabelCode = node([
 			goto(label(SkipLabel)) - "Skip past failure code"
 		]),
-		SkipLabelCode = node([ label(SkipLabel) - "" ]),
-		FailLabelCode = node([ label(TheFailLabel) - "" ]),
-		FailureCode =
-			tree(GotoSkipLabelCode,
-			tree(FailLabelCode,
-			tree(FailCode,
-			     SkipLabelCode)))
+		SkipLabelCode = node([label(SkipLabel) - ""]),
+		FailLabelCode = node([label(TheFailLabel) - ""]),
+		FailureCode = tree_list([GotoSkipLabelCode, FailLabelCode,
+			FailCode, SkipLabelCode])
 	; Detism = failure ->
 		code_info__generate_failure(FailureCode, !CI)
 	;
@@ -650,13 +635,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	%
 	% join all code fragments together
 	%
-	Code =
-		tree(SaveVarsCode,
-		tree(ReserveR1_Code,
-		tree(InputVarsCode,
-		tree(ClearR1_Code,
-		tree(PragmaCCode,
-		     FailureCode))))).
+	Code = tree_list([SaveVarsCode, InputVarsCode, PragmaCCode,
+		FailureCode]).
 
 :- pred make_proc_label_hash_define(module_info::in, pred_id::in, proc_id::in,
 	pragma_c_component::out, pragma_c_component::out) is det.
@@ -1407,6 +1387,8 @@ pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId, StructName) :-
 	string__int_to_string(ProcNum, ProcNumStr),
 	string__append_list(["mercury_save__", MangledModuleName, "__",
 		MangledPredName, "__", ArityStr, "_", ProcNumStr], StructName).
+
+pragma_succ_ind_name = "MercurySuccessIndicator".
 
 %---------------------------------------------------------------------------%
 
