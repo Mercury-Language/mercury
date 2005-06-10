@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003-2004 The University of Melbourne.
+** Copyright (C) 2003-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1012,7 +1012,7 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
     }
 
     if (MR_tablestackdebug) {
-        MR_dump_nondet_stack_from_layout(stdout, start_non, 0, MR_maxfr,
+        MR_dump_nondet_stack_from_layout(stdout, start_non, 0, 0, MR_maxfr,
             top_layout, MR_sp, MR_curfr);
     }
   #endif /* MR_TABLE_DEBUG */
@@ -1101,7 +1101,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
   #ifdef MR_MINIMAL_MODEL_DEBUG
     if (MR_tablestackdebug) {
         MR_dump_nondet_stack_from_layout(stdout,
-            saved_state->MR_ss_non_stack_real_start, 0, MR_maxfr,
+            saved_state->MR_ss_non_stack_real_start, 0, 0, MR_maxfr,
             saved_state->MR_ss_top_layout, MR_sp, MR_curfr);
     }
   #endif /* MR_MINIMAL_MODEL_DEBUG */
@@ -1703,21 +1703,12 @@ mercury__table_builtin__table_mm_return_all_multi_2_p_0(
         "minimal model tabling with --high-level-code");
 }
 
-void MR_CALL
-mercury__table_builtin__table_mm_answer_is_not_duplicate_1_p_0(
-    MR_C_Pointer subgoal_table_node)
-{
-    MR_fatal_error("sorry, not implemented: "
-        "minimal model tabling with --high-level-code");
-}
-
 #else   /* ! MR_HIGHLEVEL_CODE */
 
 MR_define_extern_entry(MR_MMSC_SUSPEND_ENTRY);
 MR_define_extern_entry(MR_MMSC_COMPLETION_ENTRY);
 MR_define_extern_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
 MR_define_extern_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
-MR_define_extern_entry(MR_MMSC_IS_NOT_DUPL_ENTRY);
 
 MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
     MR_PREDICATE, table_builtin, table_mm_suspend_consumer, 2, 0);
@@ -1727,8 +1718,6 @@ MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
     MR_PREDICATE, table_builtin, table_mm_return_all_nondet, 2, 0);
 MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
     MR_PREDICATE, table_builtin, table_mm_return_all_multi, 2, 0);
-MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
-    MR_PREDICATE, table_builtin, table_mm_answer_is_not_duplicate, 1, 0);
 
 #ifndef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
@@ -1737,12 +1726,10 @@ MR_BEGIN_MODULE(mmsc_module)
     MR_init_entry_sl(MR_MMSC_COMPLETION_ENTRY);
     MR_init_entry_sl(MR_MMSC_RET_ALL_NONDET_ENTRY);
     MR_init_entry_sl(MR_MMSC_RET_ALL_MULTI_ENTRY);
-    MR_init_entry_sl(MR_MMSC_IS_NOT_DUPL_ENTRY);
     MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_SUSPEND_ENTRY);
     MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_COMPLETION_ENTRY);
     MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_RET_ALL_NONDET_ENTRY);
     MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_RET_ALL_MULTI_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_IS_NOT_DUPL_ENTRY);
 MR_BEGIN_CODE
 
 MR_define_entry(MR_MMSC_SUSPEND_ENTRY);
@@ -1756,9 +1743,6 @@ MR_define_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
         "without stack copy minimal model tabling");
 MR_define_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
     MR_fatal_error("call to table_mm_return_all_multi/2 in a grade "
-        "without stack copy minimal model tabling");
-MR_define_entry(MR_MMSC_IS_NOT_DUPL_ENTRY);
-    MR_fatal_error("call to table_mm_answer_is_not_duplicate/1 in a grade "
         "without stack copy minimal model tabling");
 MR_END_MODULE
 
@@ -1831,8 +1815,6 @@ MR_BEGIN_MODULE(mmsc_module)
     MR_init_entry_sl(MR_MMSC_RET_ALL_MULTI_ENTRY);
     MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_RET_ALL_MULTI_ENTRY);
     MR_init_label_sl(RET_ALL_MULTI_LABEL(Next));
-
-    MR_init_entry_sl(MR_MMSC_IS_NOT_DUPL_ENTRY);
 MR_BEGIN_CODE
 
 MR_define_entry(MR_MMSC_SUSPEND_ENTRY);
@@ -2512,15 +2494,6 @@ MR_define_label(RET_ALL_MULTI_LABEL(Next));
     MR_r1 = (MR_Word) AnswerBlock;
 }
     MR_succeed();
-
-MR_define_entry(MR_MMSC_IS_NOT_DUPL_ENTRY);
-{
-    MR_TrieNode T;
-
-    T = (MR_TrieNode) MR_r1;
-    MR_table_mm_answer_is_not_duplicate(T, MR_r1);
-}
-    MR_proceed();
 
 MR_END_MODULE
 

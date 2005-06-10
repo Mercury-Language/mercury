@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2003-2004 The University of Melbourne.
+** Copyright (C) 2003-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -249,9 +249,6 @@ extern	int		MR_minmodel_stats_cnt_dupl_check_not_dupl;
   extern void MR_CALL
   	mercury__table_builtin__table_mm_return_all_multi_2_p_0(
 		MR_C_Pointer answer_list, MR_C_Pointer answer_block);
-  extern void MR_CALL
-  	mercury__table_builtin__table_mm_answer_is_not_duplicate_1_p_0(
-		MR_C_Pointer subgoal_table_node);
 
 #else	/* ! MR_HIGHLEVEL_CODE */
 
@@ -267,15 +264,11 @@ extern	int		MR_minmodel_stats_cnt_dupl_check_not_dupl;
   #define MR_MMSC_RET_ALL_MULTI_ENTRY					\
 	MR_proc_entry_user_name(table_builtin,				\
 		table_mm_return_all_multi, 2, 0)
-  #define MR_MMSC_IS_NOT_DUPL_ENTRY					\
-	MR_proc_entry_user_name(table_builtin,				\
-		table_mm_answer_is_not_duplicate, 1, 0)
 
   MR_declare_entry(MR_MMSC_SUSPEND_ENTRY);
   MR_declare_entry(MR_MMSC_COMPLETION_ENTRY);
   MR_declare_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
   MR_declare_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
-  MR_declare_entry(MR_MMSC_IS_NOT_DUPL_ENTRY);
 
 #endif	/* !MR_HIGHLEVEL_CODE */
 

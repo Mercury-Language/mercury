@@ -833,6 +833,8 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	% If the answer has been generated before, fail.
 	%
 :- impure pred table_mm_answer_is_not_duplicate(ml_trie_node::in) is semidet.
+:- impure pred table_mm_answer_is_not_duplicate_shortcut(ml_subgoal::in)
+	is semidet.
 
 	% Create a new slot in the answer list of the subgoal, create a new
 	% answer block of the given size, and put the answer block in the new
@@ -881,7 +883,6 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	%
 :- external(table_mm_suspend_consumer/2).
 :- external(table_mm_completion/1).
-:- external(table_mm_answer_is_not_duplicate/1).
 :- external(table_mm_return_all_nondet/2).
 :- external(table_mm_return_all_multi/2).
 
@@ -897,6 +898,26 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	[will_not_call_mercury, promise_semipure],
 "
 	MR_table_mm_get_answer_table(Subgoal, AnswerTable);
+").
+
+:- pragma foreign_proc("C",
+	table_mm_answer_is_not_duplicate(TrieNode::in),
+	[will_not_call_mercury],
+"
+	MR_table_mm_answer_is_not_duplicate(TrieNode, SUCCESS_INDICATOR);
+").
+
+:- pragma foreign_proc("C",
+	table_mm_answer_is_not_duplicate_shortcut(Subgoal::in),
+	[will_not_call_mercury],
+"
+	/*
+	** The body of this predicate doesn't matter, because it will never be
+	** referred to. When the compiler creates references to this predicate,
+	** it always overrides the predicate body.
+	*/
+	/* mention Subgoal to shut up the warning */
+	MR_fatal_error(""table_mm_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
 :- pragma foreign_proc("C",
@@ -924,6 +945,18 @@ table_mm_get_answer_table(_, _) :-
 	% matching foreign_proc version.
 	semipure private_builtin__semip,
 	private_builtin__sorry("table_mm_get_answer_table").
+
+table_mm_answer_is_not_duplicate(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_mm_answer_is_not_duplicate").
+
+table_mm_answer_is_not_duplicate_shortcut(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_mm_answer_is_not_duplicate_shortcut").
 
 table_mm_create_answer_block(_, _, _) :-
 	% This version is only used for back-ends for which there is no

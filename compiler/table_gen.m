@@ -2358,6 +2358,7 @@ generate_mm_save_goals(NumberedSaveVars, SubgoalVar, BlockSize,
         SaveDeclCode, CreateSaveCode),
 
     DuplCheckPredName = "table_mm_answer_is_not_duplicate",
+    DuplCheckPredNameShortCut = DuplCheckPredName ++ "_shortcut",
     (
         TablingViaExtraArgs = yes,
         SubgoalName = subgoal_name,
@@ -2381,7 +2382,7 @@ generate_mm_save_goals(NumberedSaveVars, SubgoalVar, BlockSize,
         PostStr = "\tif (" ++ SuccName ++ ") {\n" ++
             CreateSaveCode ++ "\t}\n" ++
             AssignSuccessCodeStr,
-        table_generate_foreign_proc(DuplCheckPredName, semidet,
+        table_generate_foreign_proc(DuplCheckPredNameShortCut, semidet,
             tabling_c_attributes, Args, LookupForeignArgs,
             PreStr, DuplCheckCodeStr, PostStr, impure_code, [],
             ModuleInfo, Context, DuplicateCheckSaveGoal),

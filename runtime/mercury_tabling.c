@@ -484,7 +484,7 @@ MR_word_hash_lookup_or_add(MR_TrieNode t, MR_Word key)
 }
 
 MR_TrieNode
-MR_ptr_hash_lookup(MR_TrieNode t, MR_Word key)
+MR_word_hash_lookup(MR_TrieNode t, MR_Word key)
 {
 #define key_format              "%p"
 #define key_cast                (MR_Word)

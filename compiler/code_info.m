@@ -1436,7 +1436,8 @@ code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 
 code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
     code_info__get_fail_info(!.CI, FailInfo),
-    FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, CondEnv, Allow),
+    FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr, CondEnv,
+        Allow),
     (
         CodeModel \= model_non
     ->
@@ -1445,11 +1446,30 @@ code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
             comment("disj no hijack") - ""
         ])
     ;
-        ( Allow = not_allowed ; CondEnv = inside_non_condition )
+        CondEnv = inside_non_condition
     ->
         HijackInfo = disj_temp_frame,
         code_info__create_temp_frame(do_fail, "prepare for disjunction",
             Code, !CI)
+    ;
+        Allow = not_allowed
+    ->
+        (
+            CurfrMaxfr = must_be_equal,
+            ResumeKnown = resume_point_known(has_been_done),
+            stack__pop(ResumePoints, TopResumePoint, RestResumePoints),
+            stack__is_empty(RestResumePoints),
+            TopResumePoint = stack_only(_, do_fail)
+        ->
+            HijackInfo = disj_quarter_hijack,
+            Code = node([
+                comment("disj quarter hijack of do_fail") - ""
+            ])
+        ;
+            HijackInfo = disj_temp_frame,
+            code_info__create_temp_frame(do_fail, "prepare for disjunction",
+                Code, !CI)
+        )
     ;
         CurfrMaxfr = must_be_equal,
         ResumeKnown = resume_point_known(has_been_done)
