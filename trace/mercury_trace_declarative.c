@@ -2503,9 +2503,9 @@ MR_decl_print_edt_stats()
     /*
     ** Restore the trace globals in case the called Mercury code is traced.
     */
-    MR_trace_call_seqno = event_details->MR_call_seqno;
-    MR_trace_call_depth = event_details->MR_call_depth;
-    MR_trace_event_number = event_details->MR_event_number;
+    MR_trace_call_seqno = event_details.MR_call_seqno;
+    MR_trace_call_depth = event_details.MR_call_depth;
+    MR_trace_event_number = event_details.MR_event_number;
 
     MR_debug_enabled = debug_enabled_before;
     MR_update_trace_func_enabled();
