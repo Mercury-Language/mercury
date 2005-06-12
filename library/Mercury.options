@@ -18,6 +18,7 @@ MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
 # Bug workarounds.
 MCFLAGS-std_util += --no-halt-at-warn
+MCFLAGS-array += --no-optimize-dups
  
 # io.m uses library features that are supported by POSIX but which are not
 # part of ANSI C, such as `struct stat', fileno(), and putenv().
