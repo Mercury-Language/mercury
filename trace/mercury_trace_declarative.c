@@ -2462,7 +2462,9 @@ static    void
 MR_decl_print_edt_stats()
 {
     MR_Event_Details    event_details;
-    MR_bool            debug_enabled_before = MR_debug_enabled;
+    MR_bool             debug_enabled_before = MR_debug_enabled;
+    pid_t               pid;
+    char                cmdstr[200];
 
     MR_edt_stats_total_constructed_nodes +=
         MR_edt_stats_constructed_nodes_this_time;
@@ -2474,16 +2476,21 @@ MR_decl_print_edt_stats()
     ** writes to stderr.
     */
     fprintf(stderr, "EDT construction stats: \n");
-    fprintf(stderr, "\tTotal reexecutions so far = %i\n", 
+    fprintf(stderr, "Total reexecutions so far = %i\n", 
         MR_edt_stats_total_reexecutions);
-    fprintf(stderr, "\tNodes constructed in this run = %i\n",
+    fprintf(stderr, "Nodes constructed in this run = %i\n",
         MR_edt_stats_constructed_nodes_this_time);
-    fprintf(stderr, "\tMax depth for this run = %i\n",
+    fprintf(stderr, "Max depth for this run = %i\n",
         MR_edt_max_depth);
-    fprintf(stderr, "\tTotal nodes constructed so far = %i\n",
+    fprintf(stderr, "Total nodes constructed so far = %i\n",
         MR_edt_stats_total_constructed_nodes);
-    fprintf(stderr, "\tCurrent event = %i\n", MR_trace_event_number);
-    fprintf(stderr, "Benchmarking stats follow:\n");
+    fprintf(stderr, "Current event = %i\n", MR_trace_event_number);
+    fprintf(stderr, "Total CPU time = %.2f\n", 
+        MR_get_user_cpu_miliseconds() / 1000.0);
+    pid = getpid();
+    sprintf(cmdstr, "ps -o pid,rss | grep %i | awk '{print $2}' 1>&2", pid);
+    fprintf(stderr, "RSS = ");
+    system(cmdstr);
 
     MR_debug_enabled = MR_FALSE;
     MR_update_trace_func_enabled();
@@ -2495,8 +2502,8 @@ MR_decl_print_edt_stats()
     event_details.MR_call_depth = MR_trace_call_depth;
     event_details.MR_event_number = MR_trace_event_number;
 
+    fprintf(stderr, "Benchmarking stats:\n");
     MR_TRACE_CALL_MERCURY(
-        ML_garbage_collect();
         ML_report_stats();
     );
 
@@ -2510,6 +2517,7 @@ MR_decl_print_edt_stats()
     MR_debug_enabled = debug_enabled_before;
     MR_update_trace_func_enabled();
 
+    fprintf(stderr, "\n");
     fflush(stderr);
 
     MR_edt_stats_constructed_nodes_this_time = 0;
