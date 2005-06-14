@@ -1,0 +1,12 @@
+register --quiet
+table_io start
+echo on
+break p
+c
+f
+dd
+b 1
+mark
+n
+y
+quit -y

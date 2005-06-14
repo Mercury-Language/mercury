@@ -285,7 +285,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, char, require.
+
+:- import_module char.
+:- import_module require.
+:- import_module string.
+
+:- import_module mdbcomp.prim_data.
 
 atomic_goal_generates_event(unify_construct_rep(_, _, _)) = no.
 atomic_goal_generates_event(unify_deconstruct_rep(_, _, _)) = no.
@@ -306,14 +311,8 @@ atomic_goal_generates_event(plain_call_rep(ModuleName, PredName, Args)) =
 
 call_is_primitive(ModuleName, PredName) :-
 	(
-		ModuleName = "builtin",
-		( PredName = "unify"
-		; PredName = "compare"
-		)
-	;
-		ModuleName = "profiling_builtin"
-	;
-		ModuleName = "term_size_prof_builtin"
+		string_to_sym_name(ModuleName, ".", SymModuleName),
+		any_mercury_builtin_module(SymModuleName)
 	;
 	%
 	% The following are also treated as primitive since

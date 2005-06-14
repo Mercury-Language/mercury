@@ -76,7 +76,8 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 #
 DECLDEBUG_DECLARATIVE_PROGS=	\
 	builtin_call_rep	\
-	sort
+	sort			\
+	priv_builtin_bug
 	
 # The following should not be run in decldebug grades.
 #
@@ -378,6 +379,11 @@ output_term_dep.out: output_term_dep output_term_dep.inp
 
 pd.out: pd pd.inp
 	$(MDB) ./pd < pd.inp > pd.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+priv_builtin_bug.out: priv_builtin_bug priv_builtin_bug.inp
+	$(MDB_STD) ./priv_builtin_bug < priv_builtin_bug.inp > \
+		priv_builtin_bug.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 propositional.out: propositional propositional.inp

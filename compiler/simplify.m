@@ -1169,7 +1169,7 @@ simplify__inequality_goal(TI, X, Y, Inequality, Invert,
 
         % Construct the call to compare/3.
         %
-    prog_util__mercury_public_builtin_module(BuiltinModule),
+    mercury_public_builtin_module(BuiltinModule),
     hlds_goal__goal_info_get_context(GoalInfo, Context),
     Args     = [TI, R, X, Y],
 
