@@ -1911,7 +1911,7 @@ io__read_line_as_string(Stream, Result, !IO) :-
 			if (read_buffer == initial_read_buffer) {
 				read_buffer = MR_NEW_ARRAY(MR_Char,
 					read_buf_size);
-				memcpy(read_buffer, initial_read_buffer,
+				MR_memcpy(read_buffer, initial_read_buffer,
 					ML_IO_READ_LINE_START);
 			} else {
 				read_buffer = MR_RESIZE_ARRAY(read_buffer,
@@ -1925,7 +1925,7 @@ io__read_line_as_string(Stream, Result, !IO) :-
 			0, ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
 			MR_PROC_LABEL, ""string:string/0"");
 		RetString = (MR_String) ret_string_word;
-		memcpy(RetString, read_buffer, i * sizeof(MR_Char));
+		MR_memcpy(RetString, read_buffer, i * sizeof(MR_Char));
 		RetString[i] = '\\0';
 	} else {
 		/*						
@@ -3270,9 +3270,9 @@ io__alloc_buffer(Size, buffer(Array)) :-
 			MR_PROC_LABEL, ""io:buffer/0"");
 		Buffer = (MR_Char *) buf;
 		if (OldSize > NewSize) {
-			memcpy(Buffer, Buffer0, NewSize);
+			MR_memcpy(Buffer, Buffer0, NewSize);
 		} else {
-			memcpy(Buffer, Buffer0, OldSize);
+			MR_memcpy(Buffer, Buffer0, OldSize);
 		}
 	}
 #endif

@@ -1243,12 +1243,17 @@ static MR_ProfilingHashTable *
 MR_create_hash_table(int size)
 {
     MR_ProfilingHashTable *ptr;
+    int i;
 
     ptr = MR_NEW(MR_ProfilingHashTable);
     ptr->length = size;
     ptr->last_id = 0;
     ptr->nodes = MR_NEW_ARRAY(MR_ProfilingHashNode *, size);
-
+    
+    for (i = 0; i < size; i++) {
+        ptr->nodes[i] = NULL;
+    }
+    
     return ptr;
 }
 
