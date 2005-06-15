@@ -165,6 +165,13 @@
 		;	trace_table_io_all
 		;	delay_death
 		;	suppress_trace
+
+				% Force no tracing, even in .debug grades.
+				% This is used to turn off tracing in the 
+				% browser directory while still allowing 
+				% the browser library to be linked in with an
+				% executable compiled in a .debug grade.
+		;	force_disable_tracing
 		;	stack_trace_higher_order
 		;	tabling_via_extra_args
 		;	allow_table_reset
@@ -892,6 +899,7 @@ option_defaults_2(aux_output_option, [
 	trace_table_io_require	-	bool(no),
 	trace_table_io_all	-	bool(no),
 	suppress_trace		-	string(""),
+	force_disable_tracing	-	bool(no),
 	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
 	tabling_via_extra_args	-	bool(yes),
@@ -1579,6 +1587,7 @@ long_option("trace-table-io-states",	trace_table_io_states).
 long_option("trace-table-io-require",	trace_table_io_require).
 long_option("trace-table-io-all",	trace_table_io_all).
 long_option("suppress-trace",		suppress_trace).
+long_option("force-disable-tracing",	force_disable_tracing).
 long_option("delay-death",		delay_death).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("tabling-via-extra-args",	tabling_via_extra_args).
@@ -2955,6 +2964,12 @@ options_help_aux_output -->
 		"\tfor details.",
 %		"--suppress-trace <suppress-items>,",
 %		"\tSuppress the named aspects of the execution tracing system.",
+%		This is a developer-only option:
+% 		"--force-disable-trace",
+% 		"\tForce tracing to be set to trace level none.",
+% 		"\tThis overrides all other tracing/grade options.",
+% 		"\tIts main use is to turn off tracing in the browser",
+% 		"\tdirectory, even for .debug and .decldebug grades.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
 % I/O tabling is deliberately not documented. It is mean to be switched on,

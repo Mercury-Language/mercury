@@ -254,29 +254,36 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
 			"`--termination2-norm'\n\t(must be" ++
 			"`simple', `total' or `num-data-elems').", !Errors)
 	),
-	map__lookup(OptionTable0, trace, Trace),
-	map__lookup(OptionTable0, exec_trace, ExecTraceOpt),
-	map__lookup(OptionTable0, decl_debug, DeclDebugOpt),
+	map__lookup(OptionTable0, force_disable_tracing, ForceDisableTracing),
 	(
-		Trace = string(TraceStr),
-		ExecTraceOpt = bool(ExecTrace),
-		DeclDebugOpt = bool(DeclDebug),
-		convert_trace_level(TraceStr, ExecTrace, DeclDebug,
-			MaybeTraceLevel)
+		ForceDisableTracing = bool(yes)
 	->
-		(
-			MaybeTraceLevel = yes(TraceLevel)
-		;
-			MaybeTraceLevel = no,
-			TraceLevel = trace_level_none,	% dummy
-			add_error("Specified trace level is not " ++
-				"compatible with grade", !Errors)
-		)
+		TraceLevel = trace_level_none
 	;
-		TraceLevel = trace_level_none,	% dummy
-		add_error("Invalid argument to option `--trace'\n\t" ++
-			"(must be `minimum', `shallow', `deep', `decl', " ++
-			"`rep' or `default').", !Errors)
+		map__lookup(OptionTable0, trace, Trace),
+		map__lookup(OptionTable0, exec_trace, ExecTraceOpt),
+		map__lookup(OptionTable0, decl_debug, DeclDebugOpt),
+		(
+			Trace = string(TraceStr),
+			ExecTraceOpt = bool(ExecTrace),
+			DeclDebugOpt = bool(DeclDebug),
+			convert_trace_level(TraceStr, ExecTrace, DeclDebug,
+				MaybeTraceLevel)
+		->
+			(
+				MaybeTraceLevel = yes(TraceLevel)
+			;
+				MaybeTraceLevel = no,
+				TraceLevel = trace_level_none,	% dummy
+				add_error("Specified trace level is not " ++
+					"compatible with grade", !Errors)
+			)
+		;
+			TraceLevel = trace_level_none,	% dummy
+			add_error("Invalid argument to option `--trace'\n\t" ++
+				"(must be `minimum', `shallow', `deep', " ++
+				"`decl', `rep' or `default').", !Errors)
+		)
 	),
 	map__lookup(OptionTable0, suppress_trace, Suppress),
 	(

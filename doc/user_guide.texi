@@ -5482,6 +5482,14 @@ The @var{level} should be one of
 @findex --trace-optimized
 Do not disable optimizations that can change the trace.
 
+@c This is a developer only option:
+@c @item --force-disable-trace
+@c findex --force-disable-trace
+@c Force tracing to be set to trace level none.
+@c This overrides all other tracing/grade options.
+@c Its main use is to turn off tracing in the browser directory
+@c even for .debug and .decldebug grades.
+
 @item --no-delay-death
 @findex --no-delay-death
 @findex --delay-death
