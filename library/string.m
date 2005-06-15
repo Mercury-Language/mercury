@@ -3509,7 +3509,7 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	MR_allocate_aligned_string_msg(S1, S1Len, MR_PROC_LABEL);
-	memcpy(S1, S3, S1Len);
+	MR_memcpy(S1, S3, S1Len);
 	S1[S1Len] = '\\0';
 	MR_allocate_aligned_string_msg(S2, S3Len - S1Len, MR_PROC_LABEL);
 	strcpy(S2, S3 + S1Len);
@@ -3572,7 +3572,7 @@ strchars(I, End, Str) =
 		if (Start > len) Start = len;
 		if (Count > len - Start) Count = len - Start;
 		MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
-		memcpy(SubString, Str + Start, Count);
+		MR_memcpy(SubString, Str + Start, Count);
 		SubString[Count] = '\\0';
 	}
 }").
@@ -3584,7 +3584,7 @@ strchars(I, End, Str) =
 	MR_Integer len;
 
 	MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
-	memcpy(SubString, Str + Start, Count);
+	MR_memcpy(SubString, Str + Start, Count);
 	SubString[Count] = '\\0';
 }").
 :- pragma foreign_proc("C#",
@@ -3614,7 +3614,7 @@ strchars(I, End, Str) =
 		len = strlen(Str);
 		if (Count > len) Count = len;
 		MR_allocate_aligned_string_msg(Left, Count, MR_PROC_LABEL);
-		memcpy(Left, Str, Count);
+		MR_memcpy(Left, Str, Count);
 		Left[Count] = '\\0';
 		/*
 		** We need to make a copy to ensure that the pointer is
