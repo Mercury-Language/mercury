@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% Utilities for LLDS to LLDS peephole optimization.
+% Utilities for LLDS to LLDS optimization.
 
 % Main author: zs.
 
@@ -49,7 +49,7 @@
 	% Find the next assignment to the redoip of the frame whose address
 	% is given by the base addresses in the second argument, provided
 	% it is guaranteed to be reached from here.
-
+	%
 :- pred next_assign_to_redoip(list(instruction)::in, list(lval)::in,
 	list(instruction)::in, code_addr::out, list(instruction)::out,
 	list(instruction)::out) is semidet.
@@ -57,28 +57,28 @@
 	% See if these instructions touch nondet stack controls, i.e.
 	% the virtual machine registers that point to the nondet stack
 	% (curfr and maxfr) and the fixed slots in nondet stack frames.
-
+	%
 :- pred touches_nondet_ctrl(list(instruction)::in, bool::out) is det.
 
 	% Find the instructions up to and including
 	% the next one that cannot fall through
-
+	%
 :- pred find_no_fallthrough(list(instruction)::in,
 	list(instruction)::out) is det.
 
 	% Find the first label in the instruction stream.
-
+	%
 :- pred find_first_label(list(instruction)::in, label::out) is det.
 
 	% Skip to the next label, returning the code before the label,
 	% and the label together with the code after the label.
-
+	%
 :- pred skip_to_next_label(list(instruction)::in,
 	list(instruction)::out, list(instruction)::out) is det.
 
 	% Check whether the named label follows without any intervening code.
 	% If yes, return the instructions after the label.
-
+	%
 :- pred is_this_label_next(label::in, list(instruction)::in,
 	list(instruction)::out) is semidet.
 
@@ -86,7 +86,7 @@
  	% next in the instruction list, possibly preceded by a restoration
  	% of succip and a det stack frame removal? If yes, return the
  	% instructions up to the proceed.
-
+	%
 :- pred is_proceed_next(list(instruction)::in,
 	list(instruction)::out) is semidet.
 
@@ -94,20 +94,20 @@
  	% next in the instruction list, possibly preceded by an assignment
 	% to r1, a restoration of succip and a det stack frame removal?
 	% If yes, return the instructions up to the proceed.
-
+	%
 :- pred is_sdproceed_next(list(instruction)::in,
 	list(instruction)::out) is semidet.
 
 	% Same as the previous predicate, but also return whether it is
 	% a success or a fail.
-
+	%
 :- pred is_sdproceed_next_sf(list(instruction)::in,
 	list(instruction)::out, bool::out) is semidet.
 
  	% Is a succeed instruction (i.e. a goto(do_succeed(_)) instruction)
  	% next in the instruction list? If yes, return the instructions
 	% up to and including the succeed.
-
+	%
 :- pred is_succeed_next(list(instruction)::in,
 	list(instruction)::out) is semidet.
 
@@ -117,13 +117,13 @@
 	% assigned to r1 in the success continuation and MR_FALSE in the failure
 	% continuation? If the answer is yes to all these questions, return
 	% the code shared by the two continuations.
-
+	%
 :- pred is_forkproceed_next(list(instruction)::in, tailmap::in,
 	list(instruction)::out) is semidet.
 
 	% Remove the assignment to r1 from the list returned by
 	% is_sdproceed_next.
-
+	%
 :- pred filter_out_r1(list(instruction)::in, maybe(rval_const)::out,
 	list(instruction)::out) is det.
 
@@ -132,78 +132,78 @@
 	% if_val(..., dofail), and then a succeed?
 	% If yes, then return all the instructions up to the succeed,
 	% and all the following instructions.
-
+	%
 :- pred straight_alternative(list(instruction)::in,
 	list(instruction)::out, list(instruction)::out) is semidet.
 
 	% Find and return the initial sequence of instructions that do not
 	% refer to stackvars and do not branch.
-
+	%
 :- pred no_stack_straight_line(list(instruction)::in,
 	list(instruction)::out, list(instruction)::out) is det.
 
 	% Remove the labels from a block of code for jumpopt.
-
-:- pred filter_out_labels(list(instruction)::in,
-	list(instruction)::out) is det.
+	%
+:- pred filter_out_labels(list(instruction)::in, list(instruction)::out)
+	is det.
 
 	% Remove any livevals instructions that do not precede an instruction
 	% that needs one.
-
-:- pred filter_out_bad_livevals(list(instruction)::in,
-	list(instruction)::out) is det.
+	%
+:- pred filter_out_bad_livevals(list(instruction)::in, list(instruction)::out)
+	is det.
 
 	% Remove the livevals instruction from the list returned by
 	% is_proceed_next.
-
-:- pred filter_out_livevals(list(instruction)::in,
-	list(instruction)::out) is det.
+	%
+:- pred filter_out_livevals(list(instruction)::in, list(instruction)::out)
+	is det.
 
 	% Get just the livevals instructions from a list of instructions.
-
+	%
 :- pred filter_in_livevals(list(instruction)::in,
 	list(instruction)::out) is det.
 
 	% See if the condition of an if-then-else is constant,
 	% and if yes, whether the branch will be taken or not.
-
+	%
 :- pred is_const_condition(rval::in, bool::out) is semidet.
 
 	% Check whether an instruction can possibly branch away.
-
+	%
 :- pred can_instr_branch_away(instr::in, bool::out) is det.
 
 	% Check whether an instruction can possibly fall through
 	% to the next instruction without using its label.
-
+	%
 :- pred can_instr_fall_through(instr::in, bool::out) is det.
 
 	% Check whether a code_addr, when the target of a goto, represents
 	% either a call or a proceed/succeed; if so, it is the end of an
 	% extended basic block and needs a livevals in front of it.
-
+	%
 :- pred livevals_addr(code_addr::in, bool::out) is det.
 
 	% Determine all the labels and code addresses which are referenced
 	% by an instruction. The code addresses that are labels are returned
 	% in both output arguments.
-
+	%
 :- pred instr_labels(instr::in, list(label)::out, list(code_addr)::out) is det.
 
 	% Determine all the labels and code addresses which are referenced
 	% by a list of instructions.
-
+	%
 :- pred instr_list_labels(list(instruction)::in,
 	list(label)::out, list(code_addr)::out) is det.
 
 	% Given an instruction, find the set of labels to which it can cause
 	% control to transfer. In the case of calls, this includes transfer
 	% via return from the called procedure.
-
+	%
 :- pred possible_targets(instr::in, list(label)::out) is det.
 
 	% Find the maximum temp variable number used.
-
+	%
 :- pred count_temps_instr_list(list(instruction)::in, int::in, int::out,
 	int::in, int::out) is det.
 
@@ -211,15 +211,15 @@
 	int::in, int::out) is det.
 
 	% See whether an lval references any stackvars.
-
+	%
 :- pred lval_refers_stackvars(lval::in, bool::out) is det.
 
 	% See whether an rval references any stackvars.
-
+	%
 :- pred rval_refers_stackvars(rval::in, bool::out) is det.
 
 	% See whether a list of maybe rvals references any stackvars.
-
+	%
 :- pred rvals_refer_stackvars(list(maybe(rval))::in, bool::out) is det.
 
 	% See whether instructions until the next decr_sp (if any) refer to
@@ -228,36 +228,36 @@
 	% is allowed; this instruction is not returned in the output.
 	% The same thing applies to assignments to detstackvars; these are
 	% not useful if we throw away the stack frame.
-
+	%
 :- pred no_stackvars_til_decr_sp(list(instruction)::in, int::in,
 	list(instruction)::out, list(instruction)::out) is semidet.
 
 	% See whether a list of instructions references any stackvars.
-
+	%
 :- pred block_refers_stackvars(list(instruction)::in, bool::out) is det.
 
 	% Format a label for verbose messages during compilation
-
+	%
 :- pred format_label(label::in, string::out) is det.
 
 	% Find out if an instruction sequence has both incr_sp and decr_sp.
-
+	%
 :- pred has_both_incr_decr_sp(list(instruction)::in) is semidet.
 
 	% Find out what rvals, if any, are needed to access an lval.
-
+	%
 :- pred lval_access_rvals(lval::in, list(rval)::out) is det.
 
 	% See whether an rval is free of references to a given lval.
-
+	%
 :- pred rval_free_of_lval(rval::in, lval::in) is semidet.
 
 	% See whether a list of rvals is free of references to a given lval.
-
+	%
 :- pred rvals_free_of_lval(list(rval)::in, lval::in) is semidet.
 
 	% Count the number of hp increments in a block of code.
-
+	%
 :- pred count_incr_hp(list(instruction)::in, int::out) is det.
 
 	% Whenever the input list of instructions contains two livevals
@@ -266,7 +266,7 @@
 	% that is live in the second, except those that are assigned to
 	% by intervening instructions. This makes the shadowing of the
 	% second livevals by the first benign.
-
+	%
 :- pred propagate_livevals(list(instruction)::in, list(instruction)::out)
 	is det.
 
@@ -277,7 +277,7 @@
 	% directly or via return from a called procedure) are always replaced;
 	% references that treat the label as data are replaced iff the third
 	% argument is set to "yes".
-
+	%
 :- pred replace_labels_instr(instr::in, map(label, label)::in,
 	bool::in, instr::out) is det.
 
@@ -450,8 +450,7 @@ is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 		( Label = NextLabel ->
 			Remainder = Moreinstr
 		;
-			is_this_label_next(Label, Moreinstr,
-				Remainder)
+			is_this_label_next(Label, Moreinstr, Remainder)
 		)
 	;
 		fail
@@ -568,8 +567,7 @@ straight_alternative(Instrs0, Between, After) :-
 :- pred straight_alternative_2(list(instruction)::in, list(instruction)::in,
 	list(instruction)::out, list(instruction)::out) is semidet.
 
-straight_alternative_2([Instr0 | Instrs0], Between0, Between,
-		After) :-
+straight_alternative_2([Instr0 | Instrs0], Between0, Between, After) :-
 	Instr0 = Uinstr0 - _,
 	(
 		(
@@ -691,13 +689,11 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize,
 	Instr0 = Uinstr0 - _,
 	(
 		Uinstr0 = comment(_),
-		no_stackvars_til_decr_sp(Instrs0, FrameSize,
-			Between0, Remain),
+		no_stackvars_til_decr_sp(Instrs0, FrameSize, Between0, Remain),
 		Between = [Instr0 | Between0]
 	;
 		Uinstr0 = livevals(_),
-		no_stackvars_til_decr_sp(Instrs0, FrameSize,
-			Between0, Remain),
+		no_stackvars_til_decr_sp(Instrs0, FrameSize, Between0, Remain),
 		Between = [Instr0 | Between0]
 	;
 		Uinstr0 = assign(Lval, Rval),
@@ -751,11 +747,7 @@ block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		lval_refers_stackvars(Lval, Use1),
 		rval_refers_stackvars(Rval, Use2),
 		bool__or(Use1, Use2, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = call(_, _, _, _, _, _),
 		Need = no
@@ -771,72 +763,40 @@ block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 	;
 		Uinstr0 = computed_goto(Rval, _),
 		rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			Need = no
-		)
+		Need = Use
 	;
 		Uinstr0 = c_code(_, _),
 		Need = no
 	;
 		Uinstr0 = if_val(Rval, _),
 		rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			Need = no
-		)
+		Need = Use
 	;
 		Uinstr0 = incr_hp(Lval, _, _, Rval, _),
 		lval_refers_stackvars(Lval, Use1),
 		rval_refers_stackvars(Rval, Use2),
 		bool__or(Use1, Use2, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = mark_hp(Lval),
 		lval_refers_stackvars(Lval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = restore_hp(Rval),
 		rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = free_heap(Rval),
 		rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = store_ticket(Lval),
 		lval_refers_stackvars(Lval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = reset_ticket(Rval, _Reason),
 		rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = discard_ticket,
 		block_refers_stackvars(Instrs0, Need)
@@ -846,19 +806,11 @@ block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 	;
 		Uinstr0 = mark_ticket_stack(Lval),
 		lval_refers_stackvars(Lval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = prune_tickets_to(Rval),
 		rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		% handled specially
 		Uinstr0 = incr_sp(_, _),
@@ -879,19 +831,26 @@ block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 	;
 		Uinstr0 = join_and_terminate(Lval),
 		lval_refers_stackvars(Lval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
 	;
 		Uinstr0 = join_and_continue(Lval, _),
 		lval_refers_stackvars(Lval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			block_refers_stackvars(Instrs0, Need)
-		)
+		need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+	).
+
+	% This is to make block_refers_stackvars tail recursive.
+:- pragma inline(need_if_use_or_refers_stackvars/3).
+
+:- pred need_if_use_or_refers_stackvars(bool::in, list(instruction)::in,
+	bool::out) is det.
+
+need_if_use_or_refers_stackvars(Use, Instrs, Need) :-
+	(
+		Use = yes,
+		Need = yes
+	;
+		Use = no,
+		block_refers_stackvars(Instrs, Need)
 	).
 
 filter_out_labels([], []).
@@ -983,8 +942,7 @@ can_instr_branch_away(init_sync_term(_, _), no).
 can_instr_branch_away(fork(_, _, _), yes).
 can_instr_branch_away(join_and_terminate(_), no).
 can_instr_branch_away(join_and_continue(_, _), yes).
-can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _, _, _),
-		BranchAway) :-
+can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _, _, _), BranchAway) :-
 	can_components_branch_away(Comps, BranchAway).
 
 :- pred can_components_branch_away(list(pragma_c_component)::in,
@@ -993,9 +951,11 @@ can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _, _, _),
 can_components_branch_away([], no).
 can_components_branch_away([Component | Components], BranchAway) :-
 	can_component_branch_away(Component, BranchAway1),
-	( BranchAway1 = yes ->
+	(
+		BranchAway1 = yes,
 		BranchAway = yes
 	;
+		BranchAway1 = no,
 		can_components_branch_away(Components, BranchAway)
 	).
 
@@ -1012,11 +972,10 @@ can_components_branch_away([Component | Components], BranchAway) :-
 	% this one. We the developers could write C code that branched away,
 	% but we are careful to preserve a declarative interface, and that
 	% is incompatible with branching away.)
-
+	%
 can_component_branch_away(pragma_c_inputs(_), no).
 can_component_branch_away(pragma_c_outputs(_), no).
-can_component_branch_away(pragma_c_raw_code(Code, _),
-		CanBranchAway) :-
+can_component_branch_away(pragma_c_raw_code(Code, _), CanBranchAway) :-
 	( Code = "" -> CanBranchAway = no ; CanBranchAway = yes ).
 can_component_branch_away(pragma_c_user_code(_, _), no).
 can_component_branch_away(pragma_c_fail_to(_), yes).
@@ -1054,7 +1013,7 @@ can_instr_fall_through(pragma_c(_, _, _, _, _, _, _, _, _), yes).
 
 	% Check whether an instruction sequence can possibly fall through
 	% to the next instruction without using its label.
-
+	%
 :- pred can_block_fall_through(list(instruction)::in, bool::out) is det.
 
 can_block_fall_through([], yes).
@@ -1096,8 +1055,6 @@ can_use_livevals(join_and_terminate(_), no).
 can_use_livevals(join_and_continue(_, _), no).
 can_use_livevals(pragma_c(_, _, _, _, _, _, _, _, _), no).
 
-% determine all the labels and code_addresses that are referenced by Instr
-
 instr_labels(Instr, Labels, CodeAddrs) :-
 	instr_labels_2(Instr, Labels0, CodeAddrs1),
 	instr_rvals_and_lvals(Instr, Rvals, Lvals),
@@ -1107,10 +1064,10 @@ instr_labels(Instr, Labels, CodeAddrs) :-
 	list__append(CodeAddrs12, CodeAddrs3, CodeAddrs),
 	find_label_code_addrs(CodeAddrs, Labels0, Labels).
 
+	% Find out which code addresses are also labels.
+	%
 :- pred find_label_code_addrs(list(code_addr)::in,
 	list(label)::in, list(label)::out) is det.
-
-	% Find out which code addresses are also labels.
 
 find_label_code_addrs([], Labels, Labels).
 find_label_code_addrs([CodeAddr | Rest], Labels0, Labels) :-
@@ -1121,12 +1078,12 @@ find_label_code_addrs([CodeAddr | Rest], Labels0, Labels) :-
 	),
 	find_label_code_addrs(Rest, Labels1, Labels).
 
+	% Determine all the labels and code_addresses that are directly
+	% referenced by an instruction (not counting ones referenced indirectly
+	% via rvals or lvals).
+	%
 :- pred instr_labels_2(instr::in, list(label)::out, list(code_addr)::out)
 	is det.
-
-% determine all the labels and code_addresses that are directly
-% referenced by an instruction (not counting ones referenced indirectly
-% via rvals or lvals)
 
 instr_labels_2(comment(_), [], []).
 instr_labels_2(livevals(_), [], []).
@@ -1214,32 +1171,37 @@ possible_targets(pragma_c(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
 	maybe(label)::in, list(label)::out) is det.
 
 pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel,
-		MaybeOnlyLayoutLabel, MaybeSubLabel, Labels) :-
-	( MaybeFixedLabel = yes(FixedLabel) ->
-		Labels0 = [FixedLabel]
+		MaybeOnlyLayoutLabel, MaybeSubLabel, !:Labels) :-
+	!:Labels = [],
+	(
+		MaybeFixedLabel = yes(FixedLabel),
+		!:Labels = [FixedLabel | !.Labels]
 	;
-		Labels0 = []
+		MaybeFixedLabel = no
 	),
-	( MaybeLayoutLabel = yes(LayoutLabel) ->
-		Labels1 = [LayoutLabel | Labels0]
+	(
+		MaybeLayoutLabel = yes(LayoutLabel),
+		!:Labels = [LayoutLabel | !.Labels]
 	;
-		Labels1 = Labels0
+		MaybeLayoutLabel = no
 	),
-	( MaybeOnlyLayoutLabel = yes(OnlyLayoutLabel) ->
-		Labels2 = [OnlyLayoutLabel | Labels1]
+	(
+		MaybeOnlyLayoutLabel = yes(OnlyLayoutLabel),
+		!:Labels = [OnlyLayoutLabel | !.Labels]
 	;
-		Labels2 = Labels1
+		MaybeOnlyLayoutLabel = no
 	),
-	( MaybeSubLabel = yes(SubLabel) ->
-		Labels = [SubLabel | Labels2]
+	(
+		MaybeSubLabel = yes(SubLabel),
+		!:Labels = [SubLabel | !.Labels]
 	;
-		Labels = Labels2
+		MaybeSubLabel = no
 	).
 
+	% Determine all the rvals and lvals referenced by an instruction.
+	%
 :- pred instr_rvals_and_lvals(instr::in, list(rval)::out, list(lval)::out)
 	is det.
-
-% determine all the rvals and lvals referenced by an instruction
 
 instr_rvals_and_lvals(comment(_), [], []).
 instr_rvals_and_lvals(livevals(_), [], []).
@@ -1273,7 +1235,8 @@ instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _, _, _, _),
 		Rvals, Lvals) :-
 	pragma_c_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
 
-	% extract the rvals and lvals from the pragma_c_components
+	% Extract the rvals and lvals from the pragma_c_components.
+	%
 :- pred pragma_c_components_get_rvals_and_lvals(list(pragma_c_component)::in,
 	list(rval)::out, list(lval)::out) is det.
 
@@ -1283,8 +1246,9 @@ pragma_c_components_get_rvals_and_lvals([Comp | Comps], Rvals, Lvals) :-
 	pragma_c_component_get_rvals_and_lvals(Comp,
 		Rvals1, Rvals, Lvals1, Lvals).
 
-	% extract the rvals and lvals from the pragma_c_component
+	% Extract the rvals and lvals from the pragma_c_component
 	% and add them to the list.
+	%
 :- pred pragma_c_component_get_rvals_and_lvals(pragma_c_component::in,
 	list(rval)::in, list(rval)::out, list(lval)::in, list(lval)::out)
 	is det.
@@ -1306,7 +1270,8 @@ pragma_c_component_get_rvals_and_lvals(pragma_c_fail_to(_),
 pragma_c_component_get_rvals_and_lvals(pragma_c_noop,
 		Rvals, Rvals, Lvals, Lvals).
 
-	% extract the rvals from the pragma_c_input
+	% Extract the rvals from the pragma_c_input.
+	%
 :- pred pragma_c_inputs_get_rvals(list(pragma_c_input)::in, list(rval)::out)
 	is det.
 
@@ -1315,7 +1280,8 @@ pragma_c_inputs_get_rvals([I|Inputs], [R|Rvals]) :-
 	I = pragma_c_input(_Name, _VarType, _OrigType, R, _),
 	pragma_c_inputs_get_rvals(Inputs, Rvals).
 
-	% extract the lvals from the pragma_c_output
+	% Extract the lvals from the pragma_c_output.
+	%
 :- pred pragma_c_outputs_get_lvals(list(pragma_c_output)::in, list(lval)::out)
 	is det.
 
@@ -1324,8 +1290,9 @@ pragma_c_outputs_get_lvals([O|Outputs], [L|Lvals]) :-
 	O = pragma_c_output(L, _VarType, _OrigType, _Name, _),
 	pragma_c_outputs_get_lvals(Outputs, Lvals).
 
-% determine all the rvals and lvals referenced by a list of instructions
-
+	% Determine all the rvals and lvals referenced by a list of
+	% instructions.
+	%
 :- pred instr_list_rvals_and_lvals(list(pair(instr, string))::in,
 	list(rval)::out, list(lval)::out) is det.
 
@@ -1434,7 +1401,7 @@ count_temps_lval(Lval, !R, !F) :-
 :- pred count_temps_rval(rval::in, int::in, int::out, int::in, int::out)
 	is det.
 
-% XXX assume that we don't generate code
+% XXX We assume that we don't generate code
 % that uses a temp var without defining it.
 count_temps_rval(_, !R, !F).
 
@@ -1464,21 +1431,19 @@ has_both_incr_decr_sp(Instrs) :-
 :- pred has_both_incr_decr_sp_2(list(instruction)::in,
 	bool::in, bool::out, bool::in, bool::out) is det.
 
-has_both_incr_decr_sp_2([], HasIncr, HasIncr, HasDecr, HasDecr).
-has_both_incr_decr_sp_2([Uinstr - _ | Instrs],
-		HasIncr0, HasIncr, HasDecr0, HasDecr) :-
+has_both_incr_decr_sp_2([], !HasIncr, !HasDecr).
+has_both_incr_decr_sp_2([Uinstr - _ | Instrs], !HasIncr, !HasDecr) :-
 	( Uinstr = incr_sp(_, _) ->
-		HasIncr1 = yes
+		!:HasIncr = yes
 	;
-		HasIncr1 = HasIncr0
+		true
 	),
 	( Uinstr = decr_sp(_) ->
-		HasDecr1 = yes
+		!:HasDecr = yes
 	;
-		HasDecr1 = HasDecr0
+		true
 	),
-	has_both_incr_decr_sp_2(Instrs,
-		HasIncr1, HasIncr, HasDecr1, HasDecr).
+	has_both_incr_decr_sp_2(Instrs, !HasIncr, !HasDecr).
 
 touches_nondet_ctrl([], no).
 touches_nondet_ctrl([Uinstr - _ | Instrs], Touch) :-
@@ -1569,15 +1534,15 @@ touches_nondet_ctrl_components([C | Cs], Touch) :-
 	touches_nondet_ctrl_components(Cs, Touch2),
 	bool__or(Touch1, Touch2, Touch).
 
-:- pred touches_nondet_ctrl_component(pragma_c_component::in, bool::out)
-	is det.
-
 	% The inputs and outputs components get emitted as simple
 	% straight-line code that do not refer to control slots.
 	% The compiler does not generate raw_code that refers to control slots.
 	% User code shouldn't either, but until we have prohibited the
 	% use of ordinary pragma C codes for model_non procedures,
 	% some user code will need to ignore this restriction.
+	%
+:- pred touches_nondet_ctrl_component(pragma_c_component::in, bool::out)
+	is det.
 
 touches_nondet_ctrl_component(pragma_c_inputs(_), no).
 touches_nondet_ctrl_component(pragma_c_outputs(_), no).
@@ -1636,14 +1601,14 @@ count_incr_hp(Instrs, N) :-
 
 :- pred count_incr_hp_2(list(instruction)::in, int::in, int::out) is det.
 
-count_incr_hp_2([], N, N).
-count_incr_hp_2([Uinstr0 - _ | Instrs], N0, N) :-
+count_incr_hp_2([], !N).
+count_incr_hp_2([Uinstr0 - _ | Instrs], !N) :-
 	( Uinstr0 = incr_hp(_, _, _, _, _) ->
-		N1 = N0 + 1
+		!:N = !.N + 1
 	;
-		N1 = N0
+		true
 	),
-	count_incr_hp_2(Instrs, N1, N).
+	count_incr_hp_2(Instrs, !N).
 
 %-----------------------------------------------------------------------------%
 
@@ -1872,7 +1837,7 @@ replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
 		MaybeLayout = yes(LayoutLabel0),
 		replace_labels_label(LayoutLabel0, ReplMap,
 			LayoutLabel),
-			% We cannot replace the label that has a layout
+			% We cannot replace a label that has a layout
 			% structure.
 		require(unify(LayoutLabel0, LayoutLabel),
 			"trying to replace Mercury label with layout")
@@ -1883,7 +1848,7 @@ replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
 		MaybeOnlyLayout = yes(OnlyLayoutLabel0),
 		replace_labels_label(OnlyLayoutLabel0, ReplMap,
 			OnlyLayoutLabel),
-			% We cannot replace the label that has a layout
+			% We cannot replace a label that has a layout
 			% structure.
 		require(unify(OnlyLayoutLabel0, OnlyLayoutLabel),
 			"trying to replace Mercury label with layout")
@@ -2019,8 +1984,7 @@ replace_labels_code_addr(do_not_reached, _, do_not_reached).
 	map(label, label)::in, list(label)::out) is det.
 
 replace_labels_label_list([], _ReplMap, []).
-replace_labels_label_list([Label0 | Labels0], ReplMap,
-		[Label | Labels]) :-
+replace_labels_label_list([Label0 | Labels0], ReplMap, [Label | Labels]) :-
 	replace_labels_label(Label0, ReplMap, Label),
 	replace_labels_label_list(Labels0, ReplMap, Labels).
 

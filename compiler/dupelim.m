@@ -65,6 +65,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
+:- import_module svset.
 
 	% A std_map maps a list of standardized instructions to the list
 	% of labels whose basic blocks have that standardized form.
@@ -86,11 +87,13 @@ dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
 		Fixed0, Fixed),
 	map__values(StdMap, StdList),
 	find_clusters(StdList, Fixed, [], Clusters),
-	( Clusters = [] ->
+	(
+		Clusters = [],
 			% We don't want to introduce any incidental changes
 			% if we cannot eliminate any blocks.
 		Instrs = Instrs0
 	;
+		Clusters = [_ | _],
 		map__init(ReplMap0),
 		process_clusters(Clusters, LabelSeq0, LabelSeq,
 			BlockMap0, BlockMap, ReplMap0, ReplMap),
@@ -120,41 +123,45 @@ dupelim__build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
 	;
 		map__det_insert(!.StdMap, StdInstrs, [Label], !:StdMap)
 	),
-	( MaybeFallThrough = yes(FallIntoLabel) ->
+	(
+		MaybeFallThrough = yes(FallIntoLabel),
 		set__insert(!.Fixed, FallIntoLabel, !:Fixed)
 	;
-		true
+		MaybeFallThrough = no
 	),
-	AddPragmaReferredLabels =
-		(pred(Instr::in, FoldFixed0::in, FoldFixed::out) is det :-
-		(
-			Instr = pragma_c(_, _, _,
-				MaybeFixedLabel, MaybeLayoutLabel,
-				MaybeOnlyLayoutLabel, _, _, _) - _
-		->
-			( MaybeFixedLabel = yes(FixedLabel) ->
-				set__insert(FoldFixed0, FixedLabel, FoldFixed1)
-			;
-				FoldFixed1 = FoldFixed0
-			),
-			( MaybeLayoutLabel = yes(LayoutLabel) ->
-				set__insert(FoldFixed1, LayoutLabel,
-					FoldFixed2)
-			;
-				FoldFixed2 = FoldFixed1
-			),
-			( MaybeOnlyLayoutLabel = yes(OnlyLayoutLabel) ->
-				set__insert(FoldFixed2, OnlyLayoutLabel,
-					FoldFixed)
-			;
-				FoldFixed = FoldFixed2
-			)
-		;
-			FoldFixed = FoldFixed0
-		)
-	),
-	list__foldl(AddPragmaReferredLabels, Instrs, !Fixed),
+	list__foldl(add_pragma_pref_labels, Instrs, !Fixed),
 	dupelim__build_maps(Labels, BlockMap, !StdMap, !Fixed).
+
+
+:- pred add_pragma_pref_labels(instruction::in,
+	set(label)::in, set(label)::out) is det.
+
+add_pragma_pref_labels(Instr, !FoldFixed) :-
+	(
+		Instr = pragma_c(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
+			MaybeOnlyLayoutLabel, _, _, _) - _
+	->
+		(
+			MaybeFixedLabel = yes(FixedLabel),
+			svset__insert(FixedLabel, !FoldFixed)
+		;
+			MaybeFixedLabel = no
+		),
+		(
+			MaybeLayoutLabel = yes(LayoutLabel),
+			svset__insert(LayoutLabel, !FoldFixed)
+		;
+			MaybeLayoutLabel = no
+		),
+		(
+			MaybeOnlyLayoutLabel = yes(OnlyLayoutLabel),
+			svset__insert(OnlyLayoutLabel, !FoldFixed)
+		;
+			MaybeOnlyLayoutLabel = no
+		)
+	;
+		true
+	).
 
 % For each set of labels that start basic blocks with identical standard forms,
 % find_clusters finds out whether we can eliminate some of those blocks;
@@ -186,9 +193,11 @@ find_clusters([Labels | LabelsList], Fixed, !Clusters) :-
 			FixedLabels, NonFixedLabels),
 		NonFixedLabels = [FirstNonFixed | OtherNonFixed]
 	->
-		( FixedLabels = [ChosenLabel | _] ->
+		(
+			FixedLabels = [ChosenLabel | _],
 			Cluster = cluster(ChosenLabel, NonFixedLabels)
 		;
+			FixedLabels = [],
 			Cluster = cluster(FirstNonFixed, OtherNonFixed)
 		),
 		!:Clusters = [Cluster | !.Clusters]
@@ -216,9 +225,9 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
 	ExemplarInfo0 = block_info(ExLabel, ExLabelInstr, ExInstrs0,
 		ExSideLabels, ExMaybeFallThrough),
 	require(unify(Exemplar, ExLabel), "exemplar label mismatch"),
-	process_elim_labels(ElimLabels, ExInstrs0, ExMaybeFallThrough,
-		!LabelSeq, !.BlockMap, Exemplar, !ReplMap,
-		UnifiedInstrs, UnifiedMaybeFallThrough),
+	process_elim_labels(ElimLabels, ExInstrs0, !LabelSeq, !.BlockMap,
+		Exemplar, !ReplMap, UnifiedInstrs,
+		ExMaybeFallThrough, UnifiedMaybeFallThrough),
 	ExemplarInfo = block_info(ExLabel, ExLabelInstr, UnifiedInstrs,
 		ExSideLabels, UnifiedMaybeFallThrough),
 	map__det_update(!.BlockMap, Exemplar, ExemplarInfo, !:BlockMap),
@@ -235,29 +244,27 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
 % that will need to be done.
 
 :- pred process_elim_labels(list(label)::in, list(instruction)::in,
-	maybe(label)::in, list(label)::in, list(label)::out, block_map::in,
+	list(label)::in, list(label)::out, block_map::in,
 	label::in, map(label, label)::in, map(label, label)::out,
-	list(instruction)::out, maybe(label)::out) is det.
+	list(instruction)::out, maybe(label)::in, maybe(label)::out) is det.
 
-process_elim_labels([], Instrs, MaybeFT, !LabelSeq, _,
-		_, !ReplMap, Instrs, MaybeFT).
-process_elim_labels([ElimLabel | ElimLabels], Instrs0, MaybeFallThrough0,
-		!LabelSeq, BlockMap, Exemplar, !ReplMap, Instrs,
-		MaybeFallThrough) :-
+process_elim_labels([], Instrs, !LabelSeq, _, _, !ReplMap, Instrs,
+		!MaybeFallThrough).
+process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
+		Exemplar, !ReplMap, Instrs, !MaybeFallThrough) :-
 	map__lookup(BlockMap, ElimLabel, ElimLabelInfo),
 	ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs,
 		_, ElimMaybeFallThrough),
 	require(unify(ElimLabel, ElimLabel2), "elim label mismatch"),
 	(
-		most_specific_block(Instrs0, MaybeFallThrough0,
+		most_specific_block(Instrs0, !.MaybeFallThrough,
 			ElimInstrs, ElimMaybeFallThrough,
-			Instrs1, MaybeFallThrough1)
+			Instrs1, !:MaybeFallThrough)
 	->
 		list__delete_all(!.LabelSeq, ElimLabel, !:LabelSeq),
 		map__det_insert(!.ReplMap, ElimLabel, Exemplar, !:ReplMap),
-		process_elim_labels(ElimLabels, Instrs1, MaybeFallThrough1,
-			!LabelSeq, BlockMap, Exemplar, !ReplMap, Instrs,
-			MaybeFallThrough)
+		process_elim_labels(ElimLabels, Instrs1, !LabelSeq, BlockMap,
+			Exemplar, !ReplMap, Instrs, !MaybeFallThrough)
 	;
 		error("blocks with same standard form don't antiunify")
 	).
