@@ -58,7 +58,10 @@
 
 :- implementation.
 
-:- import_module string, list, std_util, exception.
+:- import_module exception.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
 
 require(Goal, Message) :-
 	( call(Goal) ->

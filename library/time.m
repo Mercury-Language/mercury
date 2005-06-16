@@ -19,7 +19,8 @@
 
 :- interface.
 
-:- import_module io, std_util.
+:- import_module io.
+:- import_module std_util.
 
 	% The `clock_t' type represents times measured in clock ticks.
 	% NOTE: the unit used for a value of this type depends on whether it was
@@ -179,7 +180,11 @@
 
 :- implementation.
 
-:- import_module int, exception, list, require, string.
+:- import_module exception.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module string.
 
 :- pragma foreign_decl("C",
 "

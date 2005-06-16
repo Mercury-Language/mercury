@@ -41,6 +41,7 @@
 % Please keep both parts of this list in alphabetical order.
 
 % The modules intended for application programmers.
+
 :- import_module array.
 :- import_module array2d.
 :- import_module assoc_list.
@@ -91,10 +92,10 @@
 :- import_module robdd.
 :- import_module set.
 :- import_module set_bbbtree.
-:- import_module set_ordlist.
-:- import_module set_unordlist.
 :- import_module set_ctree234.
+:- import_module set_ordlist.
 :- import_module set_tree234.
+:- import_module set_unordlist.
 :- import_module sparse_bitset.
 :- import_module stack.
 :- import_module std_util.

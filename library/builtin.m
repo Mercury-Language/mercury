@@ -369,7 +369,15 @@
 :- mode compare_representation(uo, in, in) is cc_multi.
 
 :- implementation.
-:- import_module require, string, std_util, int, float, char, string, list.
+
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

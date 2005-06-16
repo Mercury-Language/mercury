@@ -25,7 +25,9 @@
 
 :- interface.
 
-:- import_module array, int, bool.
+:- import_module array.
+:- import_module bool.
+:- import_module int.
 
 :- type bitmap.
 
@@ -158,7 +160,8 @@
 
 :- implementation.
 
-:- import_module exception, require.
+:- import_module exception.
+:- import_module require.
 
     % A bitmap is represented as an array of ints where each int stores
     % int__bits_per_int bits.  The first element of the array (index 0)

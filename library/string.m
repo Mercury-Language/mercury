@@ -19,8 +19,10 @@
 :- module string.
 
 :- interface.
-:- import_module list, char.
+
+:- import_module char.
 :- import_module deconstruct.
+:- import_module list.
 :- import_module ops.
 
 	% Determine the length of a string.
@@ -719,8 +721,18 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module array, bool, float, int, integer, require, std_util.
-:- use_module rtti_implementation, term_io, type_desc.
+
+:- import_module array.
+:- import_module bool.
+:- import_module float.
+:- import_module int.
+:- import_module integer.
+:- import_module require.
+:- import_module std_util.
+
+:- use_module rtti_implementation.
+:- use_module term_io.
+:- use_module type_desc.
 
 string__replace(Str, Pat, Subst, Result) :-
 	sub_string_search(Str, Pat, Index),

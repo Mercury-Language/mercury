@@ -41,7 +41,10 @@
 
 :- interface.
 
-:- import_module enum, list, term.
+:- import_module enum.
+:- import_module list.
+:- import_module term.
+
 :- use_module set.
 
 :- type sparse_bitset(T). % <= enum(T).
@@ -368,7 +371,10 @@
 
 :- implementation.
 
-:- import_module list, int, require, std_util.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
 
 	% The number of variables for most procedures
 	% should fit into one or two words.

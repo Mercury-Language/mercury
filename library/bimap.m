@@ -18,7 +18,10 @@
 
 :- module bimap.
 :- interface.
-:- import_module list, assoc_list, map.
+
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
 
 %-----------------------------------------------------------------------------%
 
@@ -298,7 +301,8 @@
 
 :- implementation.
 
-:- import_module std_util, require.
+:- import_module require.
+:- import_module std_util.
 
 :- type bimap(K, V)	--->	bimap(map(K, V), map(V, K)).
 

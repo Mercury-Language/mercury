@@ -22,7 +22,10 @@
 
 :- module map.
 :- interface.
-:- import_module set, list, assoc_list.
+
+:- import_module assoc_list.
+:- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -448,8 +451,8 @@
 
 :- interface.
 
-:- import_module tree234.
 :- import_module term. % for var/1.
+:- import_module tree234.
 
 :- type map(K, V)	==	tree234(K, V).
 
@@ -502,7 +505,12 @@
 
 
 :- implementation.
-:- import_module svmap, svset, std_util, require, string.
+
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module svmap.
+:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

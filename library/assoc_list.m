@@ -18,7 +18,8 @@
 
 :- interface.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -84,7 +85,9 @@
 
 :- implementation.
 
-:- import_module require, set, string.
+:- import_module require.
+:- import_module set.
+:- import_module string.
 
 assoc_list__reverse_members([], []).
 assoc_list__reverse_members([K - V | KVs], [V - K | VKs]) :-

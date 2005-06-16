@@ -83,7 +83,14 @@
 
 :- module getopt_io.
 :- interface.
-:- import_module io, bool, char, list, set, map, std_util.
+
+:- import_module bool.
+:- import_module char.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 % getopt_io__process_options(OptionOps, Args, NonOptionArgs, Result)
 % getopt_io__process_options(OptionOps, Args, OptionArgs, NonOptionArgs, Result)
@@ -278,7 +285,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, string, svset.
+
+:- import_module require.
+:- import_module string.
+:- import_module svset.
 
 % Please keep the differences between this module and getopt.m to the
 % minimum. Most changes should done in both modules.

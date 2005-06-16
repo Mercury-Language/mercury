@@ -18,7 +18,12 @@
 :- module relation.
 
 :- interface.
-:- import_module enum, list, set, assoc_list, sparse_bitset.
+
+:- import_module assoc_list.
+:- import_module enum.
+:- import_module list.
+:- import_module set.
+:- import_module sparse_bitset.
 
 :- type relation(T).
 
@@ -314,8 +319,15 @@
 
 :- implementation.
 
-:- import_module map, bimap, int, std_util, list, queue, stack.
-:- import_module require, sparse_bitset.
+:- import_module bimap.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module queue.
+:- import_module require.
+:- import_module sparse_bitset.
+:- import_module stack.
+:- import_module std_util.
 
 :- type relation_key
 	--->	relation_key(int).

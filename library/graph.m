@@ -18,7 +18,10 @@
 :- module graph.
 
 :- interface.
-:- import_module list, set, std_util.
+
+:- import_module list.
+:- import_module set.
+:- import_module std_util.
 
 	% graph(Node, Arc) represents a directed graph with information of
 	% type Node associated with each node, and information of type Arc
@@ -177,8 +180,11 @@
 
 :- implementation.
 
-:- import_module map, int, std_util, list.
+:- import_module int.
+:- import_module list.
+:- import_module map.
 :- import_module require.
+:- import_module std_util.
 
 :- type graph(N, A)	--->
 		graph(

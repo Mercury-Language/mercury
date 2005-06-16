@@ -159,7 +159,9 @@
 %--------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bintree, assoc_list.
+
+:- import_module assoc_list.
+:- import_module bintree.
 :- import_module std_util.
 
 :- type bintree_set(T)          ==      bintree(T, unit).

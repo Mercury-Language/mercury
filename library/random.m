@@ -117,7 +117,9 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, array.
+
+:- import_module array.
+:- import_module int.
 
 :- type random__supply ---> rs(int). % I(j)
 

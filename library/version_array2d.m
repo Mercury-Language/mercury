@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -22,15 +22,11 @@
 :- import_module list.
 :- import_module int.
 
-
-
     % A version_array2d is a two-dimensional version array stored in row-major
     % order (that is, the elements of the first row in left-to-right order,
     % followed by the elements of the second row and so forth.)
     %
 :- type version_array2d(T).
-
-
 
     % version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs a 2d
     % version array of size M * N, with the special case that
@@ -114,8 +110,6 @@
 :- import_module string.
 :- import_module version_array.
 
-
-
     % version_array2d(Rows, Cols, Array)
     %
 :- type version_array2d(T) ---> version_array2d(int, int, version_array(T)).
@@ -142,7 +136,6 @@ new(M, N, X) =
       else  func_error("version_array2d.new: bounds must be non-negative")
     ).
 
-
 init(M, N, X) = new(M, N, X).
 
 %-----------------------------------------------------------------------------%
@@ -161,16 +154,14 @@ version_array2d(_M, N, VA) ^ elem(I, J) = VA ^ elem(I * N + J).
 
 %-----------------------------------------------------------------------------%
 
-( version_array2d(M, N, VA) ^ elem(I, J) := X ) = 
+( version_array2d(M, N, VA) ^ elem(I, J) := X ) =
     version_array2d(M, N, VA ^ elem(I * N + J) := X).
-
 
 set(I, J, X, VA2D, VA2D ^ elem(I, J) := X).
 
 %-----------------------------------------------------------------------------%
 
 lists(version_array2d(M, N, VA)) = lists_2((M * N) - 1, N - 1, N, VA, [], []).
-
 
 :- func lists_2(int, int, int, version_array(T), list(T), list(list(T))) =
             list(list(T)).
@@ -197,7 +188,6 @@ resize(VA2D0, M, N, X) = VA2D :-
     M1    = min(M0, M),
     N1    = min(N0, N),
     VA2D  = resize_2(0, 0, M1, N1, VA2D0, VA2D1).
-
 
 :- func resize_2(int, int, int, int, version_array2d(T), version_array2d(T)) =
             version_array2d(T).

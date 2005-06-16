@@ -16,7 +16,8 @@
 
 :- interface.
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 :- type set_bbbtree(T).
 
@@ -269,7 +270,8 @@
 
 :- implementation.
 
-:- import_module int, require.
+:- import_module require.
+:- import_module int.
 
 % Implementation based on "Functional Pearls: Efficient sets - a balancing act"
 % by Stephen Adams, J. Functional Programming 3 (4): 553-561, Oct 1993.

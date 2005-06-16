@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -24,13 +24,9 @@
 
 :- interface.
 
-
-
 :- type version_store(S).
 
 :- type mutvar(T, S).
-
-
 
     % Construct a new version store.  This is distinguished from other
     % version stores by its existentially quantified type.  This means
@@ -106,8 +102,6 @@
 :- import_module std_util.
 :- import_module version_array.
 
-
-
     % Index 0 of the version_store contains the counter used to assign
     % new version store mutvars.  A mutvar is just an index into the
     % version_store.
@@ -143,11 +137,9 @@ new_cyclic_mutvar(F, Mutvar, VS0, VS) :-
     VS  = (( VS1 ^ elem(mutvar(0)) := Counter   )
                  ^ elem(Mutvar   ) := F(Mutvar) ).
 
-
 :- func size(version_store(S)) = int.
 
 size(version_store(VA)) = size(VA).
-
 
 :- func resize(version_store(S), int) = version_store(S).
 
@@ -165,9 +157,7 @@ version_store(VA) ^ elem(mutvar(I)) = X :-
     UnivX = lookup(VA, I),
     det_univ_to_type(UnivX, X).
 
-
 lookup(VS, Mutvar) = VS ^ elem(Mutvar).
-
 
 get_mutvar(Mutvar, VS ^ elem(Mutvar), VS, VS).
 
@@ -176,16 +166,13 @@ get_mutvar(Mutvar, VS ^ elem(Mutvar), VS, VS).
 ( version_store(VA) ^ elem(mutvar(I)) := X ) =
     version_store(VA ^ elem(I) := univ(X)).
 
-
 set(VS, Mutvar, X) = ( VS ^ elem(Mutvar) := X ).
-
 
 set_mutvar(Mutvar, X, VS, VS ^ elem(Mutvar) := X).
 
 %-----------------------------------------------------------------------------%
 
 unsafe_rewind(version_store(VA)) = version_store(unsafe_rewind(VA)).
-
 
 unsafe_rewind(VS, unsafe_rewind(VS)).
 

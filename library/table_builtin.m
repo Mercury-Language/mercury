@@ -1385,7 +1385,9 @@ pretend_to_generate_value(Bogus) :-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, std_util.
+
+:- import_module require.
+:- import_module std_util.
 
 :- pragma foreign_decl("C", "
 

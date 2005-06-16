@@ -16,7 +16,9 @@
 
 :- module set.
 :- interface.
-:- import_module bool, list.
+
+:- import_module bool.
+:- import_module list.
 
 :- type set(T).
 
@@ -326,7 +328,9 @@
 
 :- implementation.
 
-:- import_module set_ordlist, set_unordlist, require.
+:- import_module require.
+:- import_module set_ordlist.
+:- import_module set_unordlist.
 
 :- type set(T) ==	set_ordlist(T).
 

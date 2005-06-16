@@ -16,7 +16,9 @@
 
 :- interface.
 
-:- import_module std_util, list, type_desc.
+:- import_module list.
+:- import_module std_util.
+:- import_module type_desc.
 
     % num_functors(TypeInfo)
     %

@@ -228,7 +228,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, require.
+
+:- import_module require.
+:- import_module std_util.
 
 :- typeclass store(T) where [].
 :- instance store(store(S)) where [].

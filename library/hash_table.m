@@ -39,7 +39,13 @@
 
 :- interface.
 
-:- import_module int, assoc_list, float, string, array, bitmap, char.
+:- import_module array.
+:- import_module assoc_list.
+:- import_module bitmap.
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module string.
 
 :- type hash_table(K, V).
 
@@ -205,7 +211,12 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module math, bool, exception, list, require, std_util.
+:- import_module bool.
+:- import_module exception.
+:- import_module list.
+:- import_module math.
+:- import_module require.
+:- import_module std_util.
 
 :- type hash_table(K, V)
     --->    ht(

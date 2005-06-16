@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -23,9 +23,11 @@
 
 :- interface.
 
-:- import_module int, assoc_list, float, string, char.
-
-
+:- import_module assoc_list.
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module string.
 
 :- type version_hash_table(K, V).
 
@@ -144,7 +146,13 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module math, bool, exception, list, require, std_util, array.
+:- import_module array.
+:- import_module bool.
+:- import_module exception.
+:- import_module list.
+:- import_module math.
+:- import_module require.
+:- import_module std_util.
 :- import_module version_array.
 
 :- type version_hash_table(K, V) 
@@ -267,9 +275,7 @@ set(HT0, K, V) = HT :-
         HT = ( HT0 ^ buckets ^ elem(H) := full(K, V) )
     ).
 
-
 'elem :='(K, HT, V) = set(HT, K, V).
-
 
 set(K, V, HT, set(HT, K, V)).
 
@@ -300,7 +306,6 @@ det_insert(HT0, K, V) = HT :-
             )
     ).
 
-
 det_insert(K, V, HT, det_insert(HT, K, V)).
 
 %-----------------------------------------------------------------------------%
@@ -315,7 +320,6 @@ det_update(HT0, K, V) = HT :-
         B = full(_, _),
         HT = ( HT0 ^ buckets ^ elem(H) := full(K, V) )
     ).
-
 
 det_update(K, V, HT, det_update(HT, K, V)).
 
@@ -334,14 +338,12 @@ HT ^ elem(K) = lookup(HT, K).
 delete(HT, K) =
     HT ^ buckets ^ elem(find_slot(HT, K)) := empty.
 
-
 delete(K, HT, delete(HT, K)).
 
 %-----------------------------------------------------------------------------%
 
 to_assoc_list(HT) =
     fold_up(cons_k_v(HT ^ buckets), 0, HT ^ num_buckets - 1, []).
-
 
 :- func cons_k_v(version_array(bucket(K, V)), int, assoc_list(K, V)) =
             assoc_list(K, V).
@@ -369,7 +371,6 @@ expand(HT0) = HT :-
     HT1 = ht(NBs, 0, MOs, HF, Bs1),
 
     HT  = fold_up(reinsert_k_v(Bs0), 0, NBs0 - 1, HT1).
-
 
 :- func reinsert_k_v(buckets(K, V), int, version_hash_table(K, V)) =
             version_hash_table(K, V).
@@ -492,7 +493,6 @@ munge(N, X, Y) =
 %-----------------------------------------------------------------------------%
 
 fold(Fn, HT, X) = fold_up(apply_k_v(Fn, HT ^ buckets), 0, HT ^ num_buckets, X).
-
 
 :- func apply_k_v(func(K, V, T) = T, buckets(K, V), int, T) = T.
 

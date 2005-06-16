@@ -63,7 +63,11 @@
 :- module term_to_xml.
 :- interface.
 
-:- import_module io, int, type_desc, deconstruct, list.
+:- import_module deconstruct.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
 
@@ -367,8 +371,15 @@
 
 :- implementation.
 
-:- import_module std_util, string, char, bool, array.
-:- import_module exception, map, require, construct.
+:- import_module array.
+:- import_module bool.
+:- import_module char.
+:- import_module construct.
+:- import_module exception.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

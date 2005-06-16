@@ -34,7 +34,11 @@
 
 :- module parser.
 :- interface.
-:- import_module io, ops, term_io, lexer.
+
+:- import_module io.
+:- import_module lexer.
+:- import_module ops.
+:- import_module term_io.
 
 %-----------------------------------------------------------------------------%
 
@@ -128,9 +132,18 @@
 
 :- implementation.
 
-:- import_module string, char, int, float, bool, list, std_util, require.
-:- import_module map, term, varset.
+:- import_module bool.
+:- import_module char.
+:- import_module float.
+:- import_module int.
 :- import_module lexer.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 :- type parse(T)
 	--->	ok(T)

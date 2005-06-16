@@ -19,7 +19,8 @@
 
 :- interface.
 
-:- import_module list, queue.
+:- import_module list.
+:- import_module queue.
 
 	% `svqueue__put(Elem, Queue0, Queue)' is true iff `Queue' is
 	% the queue which results from appending `Elem' onto the end

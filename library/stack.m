@@ -83,7 +83,8 @@
 
 :- implementation.
 
-:- import_module list, require, std_util.
+:- import_module require.
+:- import_module std_util.
 
 :- type stack(T) == list(T).
 

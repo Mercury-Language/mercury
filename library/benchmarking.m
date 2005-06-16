@@ -68,7 +68,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, std_util.
+
+:- import_module int.
+:- import_module std_util.
 
 :- pragma foreign_decl("C", "
 

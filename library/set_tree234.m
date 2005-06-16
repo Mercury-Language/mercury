@@ -13,7 +13,8 @@
 :- module set_tree234.
 :- interface.
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 :- type set_tree234(_T).
 
@@ -222,8 +223,9 @@
 
 :- implementation.
 
+:- import_module int.
+:- import_module require.
 :- import_module term.  % for var/1.
-:- import_module int, require.
 
 :- pragma type_spec(set_tree234__sorted_list_to_set/1, T = var(_)).
 :- pragma type_spec(set_tree234__contains(in, in), T = var(_)).

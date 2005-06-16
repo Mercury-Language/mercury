@@ -17,7 +17,11 @@
 
 :- module term.
 :- interface.
-:- import_module enum, list, map, std_util.
+
+:- import_module enum.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
@@ -426,8 +430,15 @@
 
 :- implementation.
 
-:- import_module bool, char, float, std_util, require, array, int, string.
+:- import_module array.
+:- import_module bool.
+:- import_module char.
 :- import_module construct.
+:- import_module float.
+:- import_module int.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

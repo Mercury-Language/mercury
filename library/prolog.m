@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,7 +14,9 @@
 %-----------------------------------------------------------------------------%
 :- module prolog.
 :- interface.
-:- import_module std_util, list.
+
+:- import_module list.
+:- import_module std_util.
 
 % Prolog arithmetic operators.
 
@@ -68,7 +70,9 @@ is/2 is currently defined in int.m, for historical reasons.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, int.
+
+:- import_module int.
+:- import_module require.
 
 % we use module qualifiers here to avoid
 % overriding the builtin Prolog versions

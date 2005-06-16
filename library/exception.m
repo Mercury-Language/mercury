@@ -19,7 +19,11 @@
 %-----------------------------------------------------------------------------%
 :- module exception.
 :- interface.
-:- import_module std_util, list, io, store.
+
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module store.
 
 	% throw(Exception):
 	%	Throw the specified exception.
@@ -234,7 +238,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, require.
+
+:- import_module require.
+:- import_module string.
 
 :- pred try(determinism,      	  pred(T),		  exception_result(T)).
 :- mode try(in(bound(det)),	  pred(out) is det,       out(cannot_fail))

@@ -213,7 +213,10 @@
 
 :- implementation.
 
-:- import_module bool, string, require.
+:- import_module bool.
+:- import_module require.
+:- import_module string.
+
 :- use_module    rtti_implementation.
 :- use_module	 std_util.
 

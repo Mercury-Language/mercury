@@ -22,7 +22,8 @@
 
 :- interface.
 
-:- import_module array, enum.
+:- import_module array.
+:- import_module enum.
 
 :- instance enum(int).
 
@@ -389,7 +390,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module exception, math, std_util.
+
+:- import_module exception.
+:- import_module math.
+:- import_module std_util.
 
 :- instance enum(int) where [
 	to_int(X) = X,

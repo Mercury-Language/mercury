@@ -17,7 +17,9 @@
 
 :- module lexer.
 :- interface.
-:- import_module io, char.
+
+:- import_module char.
+:- import_module io.
 
 :- type	token
 	--->	name(string)
@@ -107,7 +109,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, term, require, string, int.
+
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module string.
+:- import_module term.
 
 %
 % Note that there are two implementations of most predicates here:

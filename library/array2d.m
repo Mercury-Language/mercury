@@ -19,9 +19,9 @@
 
 :- interface.
 
-:- import_module int, array, list.
-
-
+:- import_module array.
+:- import_module int.
+:- import_module list.
 
     % A array2d is a two-dimensional array stored in row-major order
     % (that is, the elements of the first row in left-to-right
@@ -36,8 +36,6 @@
 :- mode array2d_di == di(array2d).
 :- mode array2d_ui == in(array2d).
 :- mode array2d_uo == out(array2d).
-
-
 
     % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs a array2d
     % of size M * N, with the special case that bounds(array2d([]), 0, 0).
@@ -125,9 +123,9 @@
 
 :- implementation.
 
-:- import_module array, require, std_util.
-
-
+:- import_module array.
+:- import_module require.
+:- import_module std_util.
 
     % array2d(Rows, Cols, Array)
     %
@@ -145,7 +143,6 @@ array2d(Xss @ [Xs | _]) = T :-
           then  array2d(M, N, A)
           else  func_error("array2d.array2d/1: non-rectangular list of lists")
         ).
-
 
 from_lists(Xss) = array2d(Xss).
 
@@ -187,7 +184,6 @@ array2d(_M, N, A) ^ unsafe_elem(I, J) = A ^ elem(I * N + J).
       else  func_error("array2d.'elem :=': indices out of bounds")
     ).
 
-
 set(I, J, X, A, A ^ elem(I, J) := X).
 
 %-----------------------------------------------------------------------------%
@@ -195,13 +191,11 @@ set(I, J, X, A, A ^ elem(I, J) := X).
 ( array2d(M, N, A) ^ unsafe_elem(I, J) := X ) = 
     array2d(M, N, A ^ elem(I * N + J) := X).
 
-
 unsafe_set(I, J, X, A, A ^ unsafe_elem(I, J) := X).
 
 %-----------------------------------------------------------------------------%
 
 lists(array2d(M, N, A)) = lists_2((M * N) - 1, N - 1, N, A, [], []).
-
 
 :- func lists_2(int, int, int, array(T), list(T), list(list(T))) =
             list(list(T)).

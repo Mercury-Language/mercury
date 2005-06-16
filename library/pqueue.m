@@ -67,7 +67,9 @@
 
 :- implementation.
 
-:- import_module int, list, std_util.
+:- import_module int.
+:- import_module list.
+:- import_module std_util.
 
 :- type pqueue(K, V)
 	--->	empty

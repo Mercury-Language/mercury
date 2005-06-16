@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,8 @@
 
 :- interface.
 
-:- import_module string, float.
+:- import_module float.
+:- import_module string.
 
 :- type integer.
 
@@ -91,7 +92,11 @@
 
 :- implementation.
 
-:- import_module require, list, char, std_util, int.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
 
 % Possible improvements:
 %

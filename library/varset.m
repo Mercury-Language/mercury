@@ -28,7 +28,13 @@
 
 :- module varset.
 :- interface.
-:- import_module std_util, term, list, map, set, assoc_list.
+
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
 
 :- type varset(T).
 
@@ -242,8 +248,14 @@
 
 :- implementation.
 
-:- import_module bool, int, list, map, assoc_list.
-:- import_module set, require, string.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module string.
 
 :- type varset(T)	--->	varset(
 					var_supply	:: var_supply(T),

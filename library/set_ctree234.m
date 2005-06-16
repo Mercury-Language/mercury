@@ -23,7 +23,8 @@
 :- module set_ctree234.
 :- interface.
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 :- type set_ctree234(_T).
 
@@ -237,8 +238,10 @@
 
 :- implementation.
 
+:- import_module int.
+:- import_module require.
+:- import_module string.
 :- import_module term.  % for var/1.
-:- import_module int, string, require.
 
 :- pragma type_spec(set_ctree234__contains/2, T = var(_)).
 :- pragma type_spec(set_ctree234__do_is_member/3, T = var(_)).

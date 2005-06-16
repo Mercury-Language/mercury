@@ -17,7 +17,8 @@
 
 :- interface.
 
-:- import_module enum, list.
+:- import_module enum.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 

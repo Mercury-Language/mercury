@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne
+% Copyright (C) 2004-2005 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -22,9 +22,8 @@
 
 :- interface.
 
-:- import_module int, bool.
-
-
+:- import_module bool.
+:- import_module int.
 
 :- type version_bitmap.
 
@@ -50,7 +49,6 @@
 
 :- func flip(version_bitmap, int) = version_bitmap.
 :- pred flip(int::in, version_bitmap::in, version_bitmap::out) is det.
-
 
     % is_set(BM, I) and is_clear(BM, I) succeed iff bit I in BM
     % is set or clear respectively.
@@ -106,7 +104,9 @@
 
 :- implementation.
 
-:- import_module version_array, exception, require.
+:- import_module exception.
+:- import_module require.
+:- import_module version_array.
 
     % A version_bitmap is represented as an array of ints where each int stores
     % int.bits_per_int bits.  The first element of the array (index 0)
@@ -152,7 +152,6 @@ resize(BM0, N, B) = BM :-
                         ^ elem(Offset) := (BM1 ^ elem(Offset) /\ Mask) \/ Bits),
         BM      = clear_filler_bits(BM2)
     ).
-
 
 resize(N, B, BM, resize(BM, N, B)).
 
@@ -244,8 +243,6 @@ copy(BM) = version_array.copy(BM).
 
 complement(BM) =
     clear_filler_bits(complement_2(BM ^ elem(0) - 1, BM)).
-
-
 
 :- func complement_2(int, version_bitmap) = version_bitmap.
 

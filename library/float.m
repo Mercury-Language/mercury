@@ -221,7 +221,10 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module exception, int, math.
+
+:- import_module exception.
+:- import_module int.
+:- import_module math.
 
 %
 % Header files of mathematical significance.

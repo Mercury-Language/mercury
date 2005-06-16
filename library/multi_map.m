@@ -21,7 +21,11 @@
 
 :- module multi_map.
 :- interface.
-:- import_module map, list, assoc_list, set.
+
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -251,7 +255,10 @@
 
 :- implementation.
 
-:- import_module std_util, int, string, require.
+:- import_module int.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

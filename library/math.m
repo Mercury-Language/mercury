@@ -223,7 +223,9 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module float, exception.
+
+:- import_module exception.
+:- import_module float.
 
 % These operations are mostly implemented using the C interface.
 

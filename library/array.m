@@ -59,7 +59,10 @@
 
 :- module array.
 :- interface.
-:- import_module list, std_util, random.
+
+:- import_module list.
+:- import_module random.
+:- import_module std_util.
 
 :- type array(T).
 
@@ -398,7 +401,10 @@
 % Everything beyond here is not intended as part of the public interface,
 % and will not appear in the Mercury Library Reference Manual.
 
-:- import_module exception, int, require, string.
+:- import_module exception.
+:- import_module int.
+:- import_module require.
+:- import_module string.
 
 %
 % Define the array type appropriately for the different targets.

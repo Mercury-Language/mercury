@@ -17,7 +17,9 @@
 
 :- module svset.
 :- interface.
-:- import_module list, set.
+
+:- import_module list.
+:- import_module set.
 
 	% `svset__insert(X, Set0, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.

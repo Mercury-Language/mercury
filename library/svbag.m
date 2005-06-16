@@ -19,7 +19,8 @@
 :- interface.
 
 :- import_module bag.
-:- import_module list, set.
+:- import_module list.
+:- import_module set.
 
 	% Insert a particular value in a bag.
 	%

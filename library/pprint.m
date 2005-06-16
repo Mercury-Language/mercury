@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim:ts=4 sw=4 expandtab tw=0 wm=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2004 The University of Melbourne
+% Copyright (C) 2000-2005 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -154,7 +154,13 @@
 
 :- interface.
 
-:- import_module std_util, int, string, char, float, list, io.
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
 
     % Clients must translate data structures into docs for
     % the pretty printer to display.
@@ -369,8 +375,14 @@
 
 :- implementation.
 
-:- import_module array, map, sparse_bitset, enum, term, exception.
-:- import_module ops, robdd.
+:- import_module array.
+:- import_module enum.
+:- import_module exception.
+:- import_module map.
+:- import_module ops.
+:- import_module robdd.
+:- import_module sparse_bitset.
+:- import_module term.
 
 :- type doc
     --->    'NIL'

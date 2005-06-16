@@ -18,7 +18,9 @@
 
 :- interface.
 
-:- import_module list, set, bool.
+:- import_module bool.
+:- import_module list.
+:- import_module set.
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
@@ -748,8 +750,14 @@
 
 :- implementation.
 
-:- import_module require, set, int, string, bool.
-:- import_module construct, deconstruct.
+:- import_module bool.
+:- import_module construct.
+:- import_module deconstruct.
+:- import_module int.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+
 :- use_module private_builtin. % for the `heap_pointer' type.
 
 % XXX This should not be necessary, but the current compiler is broken in that

@@ -16,7 +16,12 @@
 
 :- module term_io.
 :- interface.
-:- import_module char, io, varset, ops, term.
+
+:- import_module char.
+:- import_module io.
+:- import_module ops.
+:- import_module term.
+:- import_module varset.
 
 % External interface: exported predicates
 
@@ -163,8 +168,16 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, std_util, require, list, string, int, char.
-:- import_module lexer, parser.
+
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module lexer.
+:- import_module list.
+:- import_module parser.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 term_io__read_term(Result, !IO) :-
 	io__get_op_table(Ops, !IO),

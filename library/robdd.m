@@ -52,7 +52,11 @@
 
 :- interface.
 
-:- import_module term, io, sparse_bitset, list, map.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module sparse_bitset.
+:- import_module term.
 
 :- type robdd(T).
 :- type robdd == robdd(generic).
@@ -343,9 +347,18 @@
 
 :- implementation.
 
-:- import_module bool, int, string, std_util, require.
-:- import_module list, assoc_list, map, multi_map.
-:- import_module set_unordlist, set_bbbtree, hash_table.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module hash_table.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module multi_map.
+:- import_module require.
+:- import_module set_bbbtree.
+:- import_module set_unordlist.
+:- import_module std_util.
+:- import_module string.
 
 % :- import_module unsafe.
 

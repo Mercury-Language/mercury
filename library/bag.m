@@ -16,7 +16,9 @@
 
 :- interface.
 
-:- import_module list, assoc_list, set.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module set.
 
 :- type bag(T).
 
@@ -220,7 +222,10 @@
 
 :- implementation.
 
-:- import_module map, int, require, std_util.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
 
 :- type bag(T)		==	map(T, int).
 

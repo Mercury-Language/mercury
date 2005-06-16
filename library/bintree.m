@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999, 2002-2004 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999, 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,7 +28,9 @@
 
 :- module bintree.
 :- interface.
-:- import_module list, assoc_list.
+
+:- import_module assoc_list.
+:- import_module list.
 
 :- type bintree(K, V).
 
@@ -121,7 +123,10 @@
 
 :- implementation.
 
-:- import_module require, int, string, std_util.
+:- import_module int.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 :- type bintree(K, V)
 	--->	empty

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,10 @@
 
 :- module svmap.
 :- interface.
-:- import_module list, assoc_list, map.
+
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
 
 %-----------------------------------------------------------------------------%
 

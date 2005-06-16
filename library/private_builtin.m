@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -103,7 +103,15 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, string, std_util, int, float, char, string, list.
+
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module string.
 
 :- pragma foreign_code("C#", "
 

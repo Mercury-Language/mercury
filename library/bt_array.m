@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999-2000, 2002-2003 The University of Melbourne.
+% Copyright (C) 1997, 1999-2000, 2002-2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,7 +27,8 @@
 
 :- module bt_array.
 :- interface.
-:- import_module int, list.
+:- import_module int.
+:- import_module list.
 
 :- type bt_array(T).
 

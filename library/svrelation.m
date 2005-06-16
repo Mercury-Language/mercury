@@ -19,7 +19,8 @@
 
 :- interface.
 
-:- import_module relation, assoc_list.
+:- import_module assoc_list.
+:- import_module relation.
 
 	% svrelation__add_element adds an element to the domain of a
 	% relation.  Return the old relation_key if one already exists.

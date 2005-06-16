@@ -15,7 +15,8 @@
 
 :- interface.
 
-:- import_module std_util, list.
+:- import_module list.
+:- import_module std_util.
 
 	% Values of type noncanon_handling are intended to control how
 	% predicates that deconstruct terms behave when they find that
@@ -249,7 +250,10 @@
 
 :- implementation.
 
-:- import_module int, string, require, rtti_implementation.
+:- import_module int.
+:- import_module require.
+:- import_module rtti_implementation.
+:- import_module string.
 
 :- pragma foreign_import_module("C", std_util).
 
