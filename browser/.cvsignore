@@ -43,3 +43,4 @@ libmer_browser.dylib
 *.*_date
 Mercury.modules
 browse_test
+MDB_FLAGS

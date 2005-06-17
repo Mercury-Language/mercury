@@ -24,6 +24,7 @@
 :- import_module bool.
 :- import_module char.
 :- import_module list.
+:- import_module map.
 :- import_module set.
 :- import_module std_util.
 
@@ -744,6 +745,7 @@
 
 :- type hlds_goal_info.
 :- type hlds_goal_code_gen_info.
+:- type hlds_goal_extra_info.
 
 :- pred goal_info_init(hlds_goal_info::out) is det.
 :- pred goal_info_init(prog_context::in, hlds_goal_info::out) is det.
@@ -773,6 +775,7 @@
 :- pred goal_info_get_goal_path(hlds_goal_info::in, goal_path::out) is det.
 :- pred goal_info_get_code_gen_info(hlds_goal_info::in,
 	hlds_goal_code_gen_info::out) is det.
+:- func goal_info_get_extra_info(hlds_goal_info) = hlds_goal_extra_info.
 
 :- pred goal_info_set_determinism(hlds_goal_info::in, determinism::in,
 	hlds_goal_info::out) is det.
@@ -790,6 +793,8 @@
 	hlds_goal_info::out) is det.
 :- pred goal_info_set_code_gen_info(hlds_goal_info::in,
 	hlds_goal_code_gen_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_extra_info(hlds_goal_extra_info::in, hlds_goal_info::in,
+	hlds_goal_info::out) is det.
 
 :- pred goal_info_get_occurring_vars(hlds_goal_info::in, set(prog_var)::out)
 	is det.
@@ -1000,6 +1005,16 @@
 
 %-----------------------------------------------------------------------------%
 %
+% get/set predicates for the extra_goal_info strucutre.
+%
+
+:- func goal_info_get_ho_values(hlds_goal_info) = ho_values.
+
+:- pred goal_info_set_ho_values(ho_values::in,
+	hlds_goal_info::in, hlds_goal_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
 % Miscellaneous utility procedures for dealing with HLDS goals
 %
 
@@ -1072,6 +1087,7 @@
 :- pred goal_is_atomic(hlds_goal_expr::in) is semidet.
 
 	% Return the HLDS equivalent of `true'.
+	%
 :- pred true_goal(hlds_goal::out) is det.
 
 :- pred true_goal(prog_context::in, hlds_goal::out) is det.
@@ -1285,6 +1301,19 @@
 	;	llds_code_gen_info(llds_code_gen :: llds_code_gen_details).
 
 %-----------------------------------------------------------------------------%
+%
+% Stuff specific to the auxiliary analysis passes of the compiler.
+%
+% At the moment only closure analysis annotates the HLDS at a per-goal level.
+
+	% This type stores the possible values of a higher order variable
+	% (at a particular point) as determined by the closure analysis
+	% (see closure_analysis.m.)  If a variable does not have an entry
+	% in the map then it may take any (valid) value.
+	%
+:- type ho_values == map(prog_var, set(pred_proc_id)).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1434,7 +1463,12 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 
 		maybe_mode_constraint_info :: maybe(mode_constraint_goal_info),
 
-		code_gen_info	:: hlds_goal_code_gen_info
+		code_gen_info	:: hlds_goal_code_gen_info,
+
+		extra_goal_info :: hlds_goal_extra_info
+				% Extra information about that goal that may
+				% be attached by various optional analysis
+				% passes, e.g closure analysis.
 	).
 
 :- type mode_constraint_goal_info --->
@@ -1465,7 +1499,8 @@ goal_info_init(GoalInfo) :-
 	term__context_init(Context),
 	set__init(Features),
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
-		Features, [], no, no_code_gen_info).
+		Features, [], no, no_code_gen_info,
+		hlds_goal_extra_info_init).
 
 :- pragma inline(goal_info_init/2).
 goal_info_init(Context, GoalInfo) :-
@@ -1474,18 +1509,21 @@ goal_info_init(Context, GoalInfo) :-
 	set__init(NonLocals),
 	set__init(Features),
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
-		Features, [], no, no_code_gen_info).
+		Features, [], no, no_code_gen_info,
+		hlds_goal_extra_info_init).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
 	term__context_init(Context),
 	purity_features(Purity, _, Features),
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
-		list_to_set(Features), [], no, no_code_gen_info).
+		list_to_set(Features), [], no, no_code_gen_info,
+		hlds_goal_extra_info_init).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
 	purity_features(Purity, _, Features),
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
-		list_to_set(Features), [], no, no_code_gen_info).
+		list_to_set(Features), [], no, no_code_gen_info,
+		hlds_goal_extra_info_init).
 
 goal_info_get_determinism(GoalInfo, GoalInfo ^ determinism).
 goal_info_get_instmap_delta(GoalInfo, GoalInfo ^ instmap_delta).
@@ -1494,6 +1532,7 @@ goal_info_get_nonlocals(GoalInfo, GoalInfo ^ nonlocals).
 goal_info_get_features(GoalInfo, GoalInfo ^ features).
 goal_info_get_goal_path(GoalInfo, GoalInfo ^ goal_path).
 goal_info_get_code_gen_info(GoalInfo, GoalInfo ^ code_gen_info).
+goal_info_get_extra_info(GoalInfo) = GoalInfo ^ extra_goal_info.
 
 goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
 	( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
@@ -1542,6 +1581,8 @@ goal_info_set_goal_path(GoalInfo0, GoalPath,
 		GoalInfo0 ^ goal_path := GoalPath).
 goal_info_set_code_gen_info(GoalInfo0, CodeGenInfo,
 		GoalInfo0 ^ code_gen_info := CodeGenInfo).
+goal_info_set_extra_info(ExtraInfo, GoalInfo,
+	GoalInfo ^ extra_goal_info := ExtraInfo).
 
 	% The code-gen non-locals are always the same as the
 	% non-locals when structure reuse is not being performed.
@@ -2217,6 +2258,29 @@ get_pragma_foreign_var_names_2([MaybeName | MaybeNames], !Names) :-
 		MaybeName = no
 	),
 	get_pragma_foreign_var_names_2(MaybeNames, !Names).
+
+%-----------------------------------------------------------------------------%
+%
+% Extra goal info.
+%
+
+:- type hlds_goal_extra_info
+	---> extra_info(
+			extra_info_ho_vals :: ho_values
+	).
+
+:- func hlds_goal_extra_info_init = hlds_goal_extra_info.
+
+hlds_goal_extra_info_init = ExtraInfo :-
+	HO_Values = map.init,
+	ExtraInfo = extra_info(HO_Values).
+
+goal_info_get_ho_values(GoalInfo) =
+	GoalInfo ^ extra_goal_info ^ extra_info_ho_vals.
+
+goal_info_set_ho_values(Values, !GoalInfo) :-
+	!:GoalInfo = !.GoalInfo ^ extra_goal_info 
+				^ extra_info_ho_vals:= Values. 
 
 %-----------------------------------------------------------------------------%
 

@@ -20,3 +20,4 @@ mer_mdbcomp
 mer_mdbcomp.dep
 Mercury
 Mercury.modules
+MDBCOMP_FLAGS

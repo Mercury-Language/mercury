@@ -23,6 +23,11 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Succeeds iff the given type is a higher-order predicate or function
+	% type.
+	%
+:- pred type_is_higher_order((type)::in) is semidet.
+
 	% type_is_higher_order(Type, Purity, PredOrFunc, ArgTypes, EvalMeth):
 	% succeeds iff Type is a higher-order predicate or function type with
 	% the specified argument types (for functions, the return type is
@@ -31,7 +36,7 @@
 	% 
 :- pred type_is_higher_order((type)::in, purity::out, pred_or_func::out,
  	lambda_eval_method::out, list(type)::out) is semidet.
-	
+
 	% Succeed if the given type is a tuple type, returning
 	% the argument types.
 	%
@@ -156,6 +161,8 @@
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
+
+type_is_higher_order(Type) :- type_is_higher_order(Type, _, _, _, _).
 
 type_is_higher_order(Type, Purity, PredOrFunc, EvalMethod, PredArgTypes) :-
 	(
@@ -318,6 +325,7 @@ get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
 		EvalMethod = normal,
 		Purity = (pure)
 	).
+
 
 type_is_tuple(Type, ArgTypes) :-
 	type_to_ctor_and_args(Type, TypeCtor, ArgTypes),

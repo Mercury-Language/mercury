@@ -31,6 +31,8 @@
 
 :- include_module (lambda).
 
+:- include_module closure_analysis.
+
 :- include_module termination.
    :- include_module term_pass1.
    :- include_module term_pass2.

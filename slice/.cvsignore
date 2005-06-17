@@ -8,3 +8,4 @@ mdice
 *.err
 *.mh
 *.mih
+SLICE_FLAGS

@@ -30,3 +30,4 @@ Mercury
 libmer_analysis.lib
 libmer_analysis.dylib
 Mercury.modules
+ANALYSIS_FLAGS

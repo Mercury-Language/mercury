@@ -71,6 +71,7 @@
 :- import_module transform_hlds__table_gen.
 :- import_module transform_hlds__complexity.
 :- import_module transform_hlds__lambda.
+:- import_module transform_hlds__closure_analysis.
 :- import_module backend_libs__type_ctor_info.
 :- import_module transform_hlds__termination.
 :- import_module transform_hlds__term_constr_main.
@@ -2064,6 +2065,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
     globals__lookup_bool_option(Globals, termination2, Termination2),
     globals__lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
+    globals__lookup_bool_option(Globals, analyse_closures,
+        ClosureAnalysis),
     (
         MakeOptInt = yes,
         intermod__write_optfile(!HLDS, !IO),
@@ -2082,6 +2085,12 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
             mercury_compile__frontend_pass_by_phases(!HLDS, FoundModeError,
                 !IO),
             ( FoundModeError = no ->
+                ( ClosureAnalysis = yes ->
+                    mercury_compile.maybe_closure_analysis(
+                        Verbose, Stats, !HLDS, !IO)
+                ;
+                    true
+                ),  
                 (
                     ExceptionAnalysis = yes,
                     mercury_compile__maybe_exception_analysis(Verbose, Stats,
@@ -2248,6 +2257,9 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 
     mercury_compile__expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO),
     mercury_compile__maybe_dump_hlds(!.HLDS, 115, "equiv_types", !IO),
+    
+    mercury_compile__maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 117, "closure_analysis", !IO),
 
     %
     % Uncomment the following code to check that unique mode analysis
@@ -2799,6 +2811,22 @@ mercury_compile__check_determinism(Verbose, Stats, !HLDS, FoundError, !IO) :-
         maybe_write_string(Verbose, "% Program is determinism-correct.\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
+
+:- pred mercury_compile.maybe_closure_analysis(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+mercury_compile.maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
+    globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis,
+        !IO),
+    (
+        ClosureAnalysis = yes,
+        maybe_write_string(Verbose, "% Analysing closures...\n", !IO),
+        closure_analysis.process_module(!HLDS, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        ClosureAnalysis = no
+    ).
 
 :- pred mercury_compile.maybe_exception_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

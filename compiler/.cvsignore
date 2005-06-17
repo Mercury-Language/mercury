@@ -38,3 +38,4 @@ Mercury.modules
 *.optdate
 *.trans_opt
 *.trans_opt_date
+COMP_FLAGS

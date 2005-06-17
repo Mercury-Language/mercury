@@ -5280,6 +5280,14 @@ of the predicate with the given predicate id.
 @findex --make
 Output detailed debugging traces of the `--make' option.
 
+@c XXX This can be uncommented when the documentation for 
+@c `--analyse-closures' is uncommented.
+
+@c @sp 1
+@c @item --debug-closures
+@c @findex --debug-closures
+@c Output detailed debugging traces of the `--analyse-closures' option.
+
 @end table
 
 @node Output options
@@ -7001,6 +7009,16 @@ A value of -1 specifies no limit. The default is 15.
 Try to identify those procedures that cannot throw an
 exception.  This information can be used by some 
 optimization passes.
+
+@c XXX The documentation `--analyse-closures' can be uncommented
+@c when we actually have something that makes use of it.
+
+@c @sp1
+@c @item --analyse-closures
+@c @findex --analyse-closures
+@c Enable closure analysis.  Try to identify the possible
+@c values that higher-order valued variables can take.
+@c Some optimizations can make use of this information.
 
 @c @sp 1
 @c @item --untuple

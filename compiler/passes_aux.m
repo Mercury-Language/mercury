@@ -131,6 +131,9 @@
 :- pred write_pred_progress_message(string::in, pred_id::in, module_info::in,
 	io::di, io::uo) is det.
 
+:- pred write_proc_progress_message(string::in, pred_proc_id::in, 
+	module_info::in, io::di, io::uo) is det.
+
 :- pred write_proc_progress_message(string::in, pred_id::in, proc_id::in,
 	module_info::in, io::di, io::uo) is det.
 
@@ -394,6 +397,9 @@ write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
 	;
 		VeryVerbose = no
 	).
+
+write_proc_progress_message(Message, proc(PredId, ProcId), ModuleInfo, !IO) :-
+	write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO).
 
 write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),

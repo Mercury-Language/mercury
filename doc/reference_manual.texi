@@ -1800,7 +1800,7 @@ Such declarations are only useful in the interface section of a module.
 This means that the type names will be exported,
 but the constructors (functors) for these types will not be exported.
 The implementation section of a module
-must have give the definition of all the abstract types
+must give a definition for all of the abstract types
 named in the interface section of the module.
 Abstract types may be defined as either discriminated union types
 or as equivalence types.

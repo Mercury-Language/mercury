@@ -127,6 +127,7 @@
 		;	debug_liveness
 		;	debug_stack_opt
 		;	debug_make
+		;	debug_closure
 	% Output options
 		;	make_short_interface
 		;	make_interface
@@ -528,6 +529,7 @@
 		;	propagate_failure_constrs
 		;	term2_maximum_matrix_size
 		;	analyse_exceptions
+		;	analyse_closures
 		;	untuple
 		;	tuple
 		;	tuple_trace_counts_file
@@ -861,7 +863,8 @@ option_defaults_2(verbosity_option, [
 	debug_il_asm		-	bool(no),
 	debug_liveness		-	int(-1),
 	debug_stack_opt		-	int(-1),
-	debug_make		-	bool(no)
+	debug_make		-	bool(no),
+	debug_closure		-	bool(no)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -1126,7 +1129,8 @@ option_defaults_2(special_optimization_option, [
 	% XXX This is just a guess - I'm not sure what sensible
 	% value for this is.
 	term2_maximum_matrix_size - int(70),
-	analyse_exceptions 	-	bool(no)
+	analyse_exceptions 	-	bool(no),
+	analyse_closures	-	bool(no)
 ]).
 option_defaults_2(optimization_option, [
 		% Optimization options
@@ -1536,6 +1540,7 @@ long_option("debug-il-asm",		debug_il_asm).
 long_option("debug-liveness",		debug_liveness).
 long_option("debug-stack-opt",		debug_stack_opt).
 long_option("debug-make",		debug_make).
+long_option("debug-closure",		debug_closure).
 
 % output options (mutually exclusive)
 long_option("generate-source-file-mapping",
@@ -1903,6 +1908,8 @@ long_option("term2-norm", termination2_norm).
 long_option("termination2-maximum-matrix-size", term2_maximum_matrix_size).
 long_option("term2-max-matrix-size", term2_maximum_matrix_size).
 long_option("analyse-exceptions", 	analyse_exceptions).
+long_option("analyse-closures",		analyse_closures).
+long_option("analyse-local-closures", 	analyse_closures).
 long_option("untuple",			untuple).
 long_option("tuple",			tuple).
 long_option("tuple-trace-counts-file",	tuple_trace_counts_file).
@@ -2850,6 +2857,10 @@ options_help_verbosity -->
 		"\tof the predicate with the given predicate id.",
 		"--debug-make",
 		"\tOutput detailed debugging traces of the `--make' option."
+% This can be uncommented when the '--analyse-closures' option is uncommented.
+% (See below.)
+%		"--debug-closure",
+%		"\tOutput detailed debugging traces of the closure analysis."
 	]).
 
 :- pred options_help_output(io::di, io::uo) is det.
@@ -3913,6 +3924,13 @@ options_help_hlds_hlds_optimization -->
 		"\tEnable exception analysis.  Identify those",
 		"\tprocedures that will not throw an exception.",
 		"\tSome optimizations can make use of this information."
+% XXX The options controlling closure analysis are currently
+% commented out because it isn't useful.  It can be uncommented when
+% we actually have something that uses it.
+% 		"--analyse-closures",
+% 		"\tEnable closure analysis.  Try to identify the possible",
+% 		"\tvalues that higher-order valued variables can take.",
+% 		"\tSome optimizations can make use of this information.",
 		% ,
 		% "--untuple",
 		% "\tExpand out procedure arguments when the argument type",

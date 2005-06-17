@@ -39,3 +39,4 @@ libmer_std.dylib
 *.java
 *.class
 *.jar
+LIB_FLAGS

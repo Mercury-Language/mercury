@@ -22,3 +22,4 @@ mdprof_cgi
 mdprof_server
 Mercury
 .deep.tags
+DEEP_FLAGS
