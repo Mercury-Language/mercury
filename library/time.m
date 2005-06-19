@@ -92,6 +92,9 @@
 	%	Returns the number of "clocks" per second as defined by
 	%	CLOCKS_PER_SEC.  A `clock_t' value returned by `time__clock' can
 	%	be divided by this value to obtain a time in seconds.
+	%	Note that the value of this function does not necessarily
+	%	reflect the actual clock precision; it just indicates the
+	%	scaling factor for the results of time__clock.
 	%
 :- func time__clocks_per_sec = int.
 
