@@ -229,7 +229,7 @@
 :- type final_decl_atom
 	--->	final_decl_atom(
 			final_atom		:: trace_atom,
-			final_io_actions	:: list(maybe_tabled_io_action)
+			final_io_actions	:: maybe(io_action_range)
 		).
 
 :- type decl_exception == term_rep.
@@ -291,19 +291,19 @@
 
 :- type diagnoser_state(R).
 
-:- pred diagnoser_state_init(io_action_map::in, io.input_stream::in,
+:- pred diagnoser_state_init(io.input_stream::in,
 	io.output_stream::in, browser_info.browser_persistent_state::in,
 	help.system::in, diagnoser_state(R)::out) is det.
 
-:- pred diagnosis(S::in, analysis_type(edt_node(R))::in, int::in, int::in,
-	int::in, diagnoser_response(R)::out,
+:- pred diagnosis(S::in, analysis_type(edt_node(R))::in, 
+	diagnoser_response(R)::out,
 	diagnoser_state(R)::in, diagnoser_state(R)::out,
 	browser_info.browser_persistent_state::in,
 	browser_info.browser_persistent_state::out,
 	io::di, io::uo) is cc_multi <= annotated_trace(S, R).
 
 :- pred unravel_decl_atom(some_decl_atom::in, trace_atom::out,
-	list(maybe_tabled_io_action)::out) is det.
+	maybe(io_action_range)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -336,12 +336,12 @@
 :- import_module int.
 :- import_module map.
 
-unravel_decl_atom(DeclAtom, TraceAtom, IoActions) :-
+unravel_decl_atom(DeclAtom, TraceAtom, MaybeIoActions) :-
 	(
 		DeclAtom = init(init_decl_atom(TraceAtom)),
-		IoActions = []
+		MaybeIoActions = no
 	;
-		DeclAtom = final(final_decl_atom(TraceAtom, IoActions))
+		DeclAtom = final(final_decl_atom(TraceAtom, MaybeIoActions))
 	).
 
 get_decl_question_node(wrong_answer(Node, _, _)) = Node.
@@ -382,29 +382,15 @@ diagnoser_get_oracle(diagnoser(_, Oracle), Oracle).
 diagnoser_set_oracle(Oracle, diagnoser(Analyser, _), 
 	diagnoser(Analyser, Oracle)).
 
-diagnoser_state_init(IoActionMap, InStr, OutStr, Browser, HelpSystem, 
-		Diagnoser) :-
-	analyser_state_init(IoActionMap, Analyser),
+diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
+	analyser_state_init(Analyser),
 	oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle),
 	Diagnoser = diagnoser(Analyser, Oracle).
 
-diagnosis(Store, AnalysisType, UseOldIoActionMap, IoActionStart, IoActionEnd,
-		Response, !Diagnoser, !Browser, !IO) :-
+diagnosis(Store, AnalysisType, Response, !Diagnoser, !Browser, !IO) :-
 	mdb.declarative_oracle.set_browser_state(!.Browser, !.Diagnoser ^
 		oracle_state, Oracle),
 	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
-	( 
-		UseOldIoActionMap > 0
-	->
-		true
-	;
-		make_io_action_map(IoActionStart, IoActionEnd, IoActionMap, 
-			!IO),
-		Analyser0 = !.Diagnoser ^ analyser_state,
-		analyser_state_replace_io_map(IoActionMap,
-			Analyser0, Analyser1),
-		!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser1
-	),
 	try_io(diagnosis_2(Store, AnalysisType, !.Diagnoser), Result, !IO),
 	(
 		Result = succeeded({Response, !:Diagnoser})
@@ -571,8 +557,7 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
 		"MR_DD_decl_diagnosis_state_init").
 
 diagnoser_state_init_store(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
-	diagnoser_state_init(map.init, InStr, OutStr, Browser, HelpSystem,
-		Diagnoser).
+	diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser).
 
 :- pred set_fallback_search_mode(
 	mdb.declarative_analyser.search_mode::in,
@@ -610,39 +595,36 @@ divide_and_query_search_mode =
 	% materialized tree for use with the C backend code.
 	%
 :- pred diagnosis_new_tree(trace_node_store::in, trace_node_id::in,
-	int::in, int::in, int::in, diagnoser_response(trace_node_id)::out,
+	diagnoser_response(trace_node_id)::out,
 	diagnoser_state(trace_node_id)::in,
 	diagnoser_state(trace_node_id)::out, 
 	browser_info.browser_persistent_state::in, 
 	browser_info.browser_persistent_state::out, io::di, io::uo) 
 	is cc_multi.
 
-:- pragma export(diagnosis_new_tree(in, in, in, in, in, out, in, out, in, out,
-	di, uo), "MR_DD_decl_diagnosis_new_tree").
+:- pragma export(diagnosis_new_tree(in, in, out, in, out, in, out, di, uo),
+	"MR_DD_decl_diagnosis_new_tree").
 
-diagnosis_new_tree(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
-		Response, !State, !Browser, !IO) :-
-	diagnosis(Store, new_tree(dynamic(Node)), UseOldIoActionMap, 
-		IoActionStart, IoActionEnd, Response, !State, !Browser, !IO).
+diagnosis_new_tree(Store, Node, Response, !State, !Browser, !IO) :-
+	diagnosis(Store, new_tree(dynamic(Node)), Response, !State, !Browser,
+		!IO).
 
 	% Export a monomorphic version of diagnosis/10 that requests the
 	% continuation of a previously suspended declarative debugging session.
 	%
-:- pred diagnosis_resume_previous(trace_node_store::in, int::in, int::in,
-	int::in, diagnoser_response(trace_node_id)::out,
+:- pred diagnosis_resume_previous(trace_node_store::in, 
+	diagnoser_response(trace_node_id)::out,
 	diagnoser_state(trace_node_id)::in,
 	diagnoser_state(trace_node_id)::out, 
 	browser_info.browser_persistent_state::in, 
 	browser_info.browser_persistent_state::out, io::di, io::uo) 
 	is cc_multi.
 
-:- pragma export(diagnosis_resume_previous(in, in, in, in, out, in, out, in,
-	out, di, uo), "MR_DD_decl_diagnosis_resume_previous").
+:- pragma export(diagnosis_resume_previous(in, out, in, out, in, out, di, uo),
+	"MR_DD_decl_diagnosis_resume_previous").
 
-diagnosis_resume_previous(Store, UseOldIoActionMap, IoActionStart, IoActionEnd,
-		Response, !State, !Browser, !IO) :-
-	diagnosis(Store, resume_previous, UseOldIoActionMap, IoActionStart,
-		IoActionEnd, Response, !State, !Browser, !IO).
+diagnosis_resume_previous(Store, Response, !State, !Browser, !IO) :-
+	diagnosis(Store, resume_previous, Response, !State, !Browser, !IO).
 
 	% Export some predicates so that C code can interpret the
 	% diagnoser response.

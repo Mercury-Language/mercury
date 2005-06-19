@@ -21,7 +21,6 @@
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_oracle.
-:- import_module mdb.io_action.
 
 :- import_module std_util, io.
 
@@ -60,9 +59,9 @@
 
 :- func top_down_search_mode = search_mode.
 
-:- pred analyser_state_init(io_action_map::in, analyser_state(T)::out) is det.
+:- pred analyser_state_init(analyser_state(T)::out) is det.
 
-	% Resets the state of the analyser except for the io_action_map.
+	% Resets the state of the analyser.
 	%
 :- pred reset_analyser(analyser_state(T)::in, analyser_state(T)::out) is det.
 
@@ -70,9 +69,6 @@
 	% and the current search mode for the analyser.
 	%
 :- pred set_fallback_search_mode(search_mode::in, 
-	analyser_state(T)::in, analyser_state(T)::out) is det.
-
-:- pred analyser_state_replace_io_map(io_action_map::in,
 	analyser_state(T)::in, analyser_state(T)::out) is det.
 
 :- type analysis_type(T)
@@ -286,10 +282,6 @@ top_down_search_mode = top_down.
 				% it gets an answer.
 			last_search_question	:: maybe(suspect_and_reason),
 
-				% This field allows us to map I/O action
-				% numbers to the actions themselves.
-			io_action_map		:: io_action_map,
-			
 				% This field is present only to make it easier
 				% to debug the dependency tracking algorithm;
 				% if bound to yes, it records the result of
@@ -311,21 +303,18 @@ top_down_search_mode = top_down.
 			% explicit tree.
 	;	explicit_supertree.
 
-analyser_state_init(IoActionMap, Analyser) :-
+analyser_state_init(Analyser) :-
 	Analyser = analyser(empty_search_space, no, top_down, 
-		top_down, no, IoActionMap, no).
+		top_down, no, no).
 
 reset_analyser(!Analyser) :-
 	FallBack = !.Analyser ^ fallback_search_mode,
 	!:Analyser = analyser(empty_search_space, no, FallBack, 
-		FallBack, no, !.Analyser ^ io_action_map, no).
+		FallBack, no, no).
 
 set_fallback_search_mode(FallBackSearchMode, !Analyser) :-
 	!:Analyser = !.Analyser ^ fallback_search_mode := FallBackSearchMode,
 	!:Analyser = !.Analyser ^ search_mode := FallBackSearchMode.
-
-analyser_state_replace_io_map(IoActionMap, !Analyser) :-
-	!:Analyser = !.Analyser ^ io_action_map := IoActionMap.
 
 debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
@@ -338,8 +327,7 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
 			SearchSpace0 = !.Analyser ^ search_space,
 			(
 				TreeType = explicit_supertree,
-				incorporate_explicit_supertree(
-					!.Analyser ^ io_action_map, Store, 
+				incorporate_explicit_supertree(Store, 
 					Oracle, Node, SearchSpace0,
 					SearchSpace)
 			;
@@ -363,8 +351,7 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
 			topmost_det(SearchSpace, TopMostId),
 			!:Analyser = !.Analyser ^ last_search_question := 
 				yes(suspect_and_reason(TopMostId, start)),
-			edt_question(!.Analyser ^ io_action_map, Store, Node, 
-				Question),
+			edt_question(Store, Node, Question),
 			Response = revise(Question)
 		)
 	;
@@ -450,8 +437,7 @@ revise_analysis(Store, Response, !Analyser) :-
 		root(SearchSpace, RootId)
 	->
 		Node = get_edt_node(!.Analyser ^ search_space, RootId),
-		edt_question(!.Analyser ^ io_action_map, Store, Node,
-			Question),
+		edt_question(Store, Node, Question),
 		Response = revise(Question),
 		revise_root(Store, SearchSpace, SearchSpace1),
 		!:Analyser = !.Analyser ^ search_space := SearchSpace1,
@@ -474,8 +460,7 @@ decide_analyser_response(Store, Oracle, Response, !Analyser) :-
 		"Start of decide_analyser_response"),
 	some [!SearchSpace] (
 		!:SearchSpace = !.Analyser ^ search_space,
-		search(!.Analyser ^ io_action_map, Store, Oracle, !SearchSpace, 
-			!.Analyser ^ search_mode,
+		search(Store, Oracle, !SearchSpace, !.Analyser ^ search_mode,
 			!.Analyser ^ fallback_search_mode, NewMode, 
 			SearchResponse),
 		!:Analyser = !.Analyser ^ search_space := !.SearchSpace,
@@ -494,8 +479,7 @@ handle_search_response(Store, question(SuspectId, Reason), !Analyser,
 		Response) :-
 	SearchSpace = !.Analyser ^ search_space,
 	Node = get_edt_node(SearchSpace, SuspectId),
-	edt_question(!.Analyser ^ io_action_map, Store, Node,
-		OracleQuestion),
+	edt_question(Store, Node, OracleQuestion),
 	(
 		(
 			suspect_unknown(SearchSpace, SuspectId) 
@@ -539,22 +523,21 @@ handle_search_response(_, no_suspects, !Analyser, no_suspects).
 
 handle_search_response(Store, found_bug(BugId, CorrectDescendents, 
 		InadmissibleChildren), !Analyser, Response) :-
-	bug_response(Store, !.Analyser ^ io_action_map, 
-		!.Analyser ^ search_space, BugId, [BugId | CorrectDescendents],
-		InadmissibleChildren, Response).
+	bug_response(Store, !.Analyser ^ search_space, BugId, 
+		[BugId | CorrectDescendents], InadmissibleChildren, Response).
 
-	% bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence, 
+	% bug_response(Store, SearchSpace, BugId, Evidence, 
 	%	InadmissibleChildren, Response)
 	% Create a bug analyser-response using the given Evidence.  If 
 	% InadmissibleChildren isn't empty then an i_bug will be created,
 	% otherwise an e_bug will be created.
 	%
-:- pred bug_response(S::in, io_action_map::in, search_space(T)::in, 
+:- pred bug_response(S::in, search_space(T)::in, 
 	suspect_id::in, list(suspect_id)::in, list(suspect_id)::in,
 	analyser_response(T)::out) is det <= mercury_edt(S, T).
 
-bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence, 
-		InadmissibleChildren, Response) :-
+bug_response(Store, SearchSpace, BugId, Evidence, InadmissibleChildren,
+		Response) :-
 	BugNode = get_edt_node(SearchSpace, BugId),
 	(
 		InadmissibleChildren = [InadmissibleChild | _],
@@ -563,11 +546,11 @@ bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence,
 		Bug = i_bug(IBug)
 	;
 		InadmissibleChildren = [],
-		edt_get_e_bug(IoActionMap, Store, BugNode, EBug),
+		edt_get_e_bug(Store, BugNode, EBug),
 		Bug = e_bug(EBug)
 	),
 	EDTNodes = list.map(get_edt_node(SearchSpace), Evidence),
-	list.map(edt_question(IoActionMap, Store), EDTNodes,
+	list.map(edt_question(Store), EDTNodes,
 		EvidenceAsQuestions),
 	Response = bug_found(Bug, EvidenceAsQuestions).
 
@@ -579,44 +562,45 @@ bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence,
 	% that the search algorithm being used can remember its current state
 	% next time round.
 	% 
-:- pred search(io_action_map::in, S::in, oracle_state::in, 
+:- pred search(S::in, oracle_state::in, 
 	search_space(T)::in, search_space(T)::out, 
 	search_mode::in, search_mode::in, 
 	search_mode::out, search_response::out) is det <= mercury_edt(S, T).
 
-search(IoActionMap, Store, Oracle, !SearchSpace, top_down, FallBackSearchMode, 
+search(Store, Oracle, !SearchSpace, top_down, FallBackSearchMode, 
 		NewMode, Response) :-
-	top_down_search(IoActionMap, Store, Oracle, !SearchSpace, Response),
+	top_down_search(Store, Oracle, !SearchSpace, Response),
 	% We always go back to the fallback search mode after a top-down
 	% search, because some fallback searches (such as divide and query)
 	% use top-down as a fail safe and we want the fallback search to 
 	% resume after the top-down search.
 	NewMode = FallBackSearchMode.
 
-search(IoActionMap, Store, Oracle, !SearchSpace, SearchMode, FallBackSearchMode,
+search(Store, Oracle, !SearchSpace, SearchMode, FallBackSearchMode,
 		NewMode, Response) :-
-	SearchMode = follow_subterm_end(SuspectId, ArgPos, TermPath, LastUnknown), 
-	follow_subterm_end_search(IoActionMap, Store, Oracle, !SearchSpace,
+	SearchMode = follow_subterm_end(SuspectId, ArgPos, TermPath, 
+		LastUnknown), 
+	follow_subterm_end_search(Store, Oracle, !SearchSpace,
 		LastUnknown, SuspectId, ArgPos, TermPath, FallBackSearchMode,
 		NewMode, Response).
 
-search(IoActionMap, Store, Oracle, !SearchSpace, SearchMode,
-		FallBackSearchMode, NewMode, Response) :-
+search(Store, Oracle, !SearchSpace, SearchMode, FallBackSearchMode, NewMode,
+		Response) :-
 	SearchMode = binary(PathArray, Top - Bottom, LastTested),
-	binary_search(IoActionMap, Store, Oracle, PathArray, Top, Bottom,
+	binary_search(Store, Oracle, PathArray, Top, Bottom,
 		LastTested, !SearchSpace, FallBackSearchMode, NewMode,
 		Response).
 
-search(IoActionMap, Store, Oracle, !SearchSpace, divide_and_query, _, NewMode, 
+search(Store, Oracle, !SearchSpace, divide_and_query, _, NewMode, 
 		Response) :-
-	divide_and_query_search(IoActionMap, Store, Oracle, !SearchSpace, 
+	divide_and_query_search(Store, Oracle, !SearchSpace, 
 		Response, NewMode).
 
-:- pred top_down_search(io_action_map::in, S::in, oracle_state::in, 
+:- pred top_down_search(S::in, oracle_state::in, 
 	search_space(T)::in, search_space(T)::out,
 	search_response::out) is det <= mercury_edt(S, T).
 
-top_down_search(IoActionMap, Store, Oracle, !SearchSpace, Response) :-
+top_down_search(Store, Oracle, !SearchSpace, Response) :-
 	%
 	% If there's no root yet (because the oracle hasn't asserted any nodes
 	% are erroneous yet) then use the topmost suspect as a starting point.
@@ -628,7 +612,7 @@ top_down_search(IoActionMap, Store, Oracle, !SearchSpace, Response) :-
 	;
 		topmost_det(!.SearchSpace, Start)
 	),
-	first_unknown_descendent(IoActionMap, Store, Oracle, Start,
+	first_unknown_descendent(Store, Oracle, Start,
 		!SearchSpace, MaybeUnknownDescendent),
 	(
 		MaybeUnknownDescendent = found(Unknown),
@@ -644,17 +628,18 @@ top_down_search(IoActionMap, Store, Oracle, !SearchSpace, Response) :-
 			% Since the are no skipped suspects and no unknown
 			% suspects in the search space, if there is a root
 			% (i.e. an erroneous suspect), then it must be a bug.
-			% Note that only top down search actually checks if a bug was
-			% found.  This is okay, since all the other search algorithms 
-			% call top down search if they can't find an unknown suspect.
+			% Note that only top down search actually checks if a
+			% bug was found.  This is okay, since all the other
+			% search algorithms call top down search if they can't
+			% find an unknown suspect.
 			root(!.SearchSpace, BugId)
 		->
 			(
-				children(IoActionMap, Store, Oracle, BugId,
+				children(Store, Oracle, BugId,
 					!SearchSpace, BugChildren),
-				non_ignored_descendents(IoActionMap,
-					Store, Oracle, BugChildren, 
-					!SearchSpace, NonIgnoredDescendents),
+				non_ignored_descendents(Store, Oracle,
+					BugChildren, !SearchSpace,
+					NonIgnoredDescendents),
 				list.filter(suspect_correct_or_inadmissible(
 					!.SearchSpace), NonIgnoredDescendents,
 					CorrectDescendents, [])
@@ -677,12 +662,10 @@ top_down_search(IoActionMap, Store, Oracle, !SearchSpace, Response) :-
 			% supertree be generated.
 			%
 			(
-				extend_search_space_upwards(
-					IoActionMap, Store, Oracle,
-					!.SearchSpace,
-					ExtendedSearchSpace)
+				extend_search_space_upwards(Store, Oracle,
+					!.SearchSpace, ExtendedSearchSpace)
 			->
-				top_down_search(IoActionMap, Store,
+				top_down_search(Store,
 					Oracle, ExtendedSearchSpace,
 					!:SearchSpace, Response)
 			;
@@ -706,16 +689,16 @@ top_down_search(IoActionMap, Store, Oracle, !SearchSpace, Response) :-
 		Response = require_explicit_subtree(RequireExplicitId)
 	).
 
-:- pred follow_subterm_end_search(io_action_map::in, S::in, oracle_state::in, 
+:- pred follow_subterm_end_search(S::in, oracle_state::in, 
 	search_space(T)::in, search_space(T)::out, 
 	maybe(suspect_id)::in, suspect_id::in,
 	arg_pos::in, term_path::in, search_mode::in, search_mode::out,
 	search_response::out) is det <= mercury_edt(S, T).
 
-follow_subterm_end_search(IoActionMap, Store, Oracle, !SearchSpace, 
+follow_subterm_end_search(Store, Oracle, !SearchSpace, 
 		LastUnknown, SuspectId, ArgPos, TermPath, FallBackSearchMode,
 		NewMode, SearchResponse) :-
-	find_subterm_origin(IoActionMap, Store, Oracle, SuspectId, ArgPos, 
+	find_subterm_origin(Store, Oracle, SuspectId, ArgPos, 
 		TermPath, !SearchSpace, FindOriginResponse),
 	(
 		FindOriginResponse = primitive_op(BindingSuspectId, FileName, 
@@ -765,7 +748,7 @@ follow_subterm_end_search(IoActionMap, Store, Oracle, !SearchSpace,
 				setup_binary_search(!.SearchSpace, 
 					Unknown, NewMode)
 			;
-				search(IoActionMap, Store, Oracle, 
+				search(Store, Oracle, 
 					!SearchSpace, FallBackSearchMode, 
 					FallBackSearchMode, NewMode, 
 					SearchResponse)
@@ -781,7 +764,7 @@ follow_subterm_end_search(IoActionMap, Store, Oracle, !SearchSpace,
 				subterm_no_proc_rep),
 			setup_binary_search(!.SearchSpace, Unknown, NewMode)
 		;
-			search(IoActionMap, Store, Oracle, !SearchSpace, 
+			search(Store, Oracle, !SearchSpace, 
 				FallBackSearchMode, FallBackSearchMode,
 				NewMode, SearchResponse)
 		)
@@ -830,7 +813,7 @@ follow_subterm_end_search(IoActionMap, Store, Oracle, !SearchSpace,
 				setup_binary_search(!.SearchSpace,
 					Unknown, NewMode)
 			;
-				search(IoActionMap, Store, Oracle, 
+				search(Store, Oracle, 
 					!SearchSpace, FallBackSearchMode, 
 					FallBackSearchMode, NewMode, 
 					SearchResponse)
@@ -844,7 +827,7 @@ follow_subterm_end_search(IoActionMap, Store, Oracle, !SearchSpace,
 			% information to continue (and find_subterm_origin will
 			% respond with not_found).
 			%
-			follow_subterm_end_search(IoActionMap, Store, Oracle,
+			follow_subterm_end_search(Store, Oracle,
 				!SearchSpace, NewLastUnknown, OriginId,
 				OriginArgPos, OriginTermPath,
 				FallBackSearchMode, NewMode, SearchResponse)
@@ -881,12 +864,12 @@ setup_binary_search(SearchSpace, SuspectId, SearchMode) :-
 			"TopId not an ancestor of BottomId"))
 	).
 
-:- pred binary_search(io_action_map::in, S::in, oracle_state::in, 
+:- pred binary_search(S::in, oracle_state::in, 
 	array(suspect_id)::in, int::in, int::in, int::in,
 	search_space(T)::in, search_space(T)::out, search_mode::in,
 	search_mode::out, search_response::out) is det <= mercury_edt(S, T).
 
-binary_search(IoActionMap, Store, Oracle, PathArray, Top, Bottom, LastTested,
+binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
 		!SearchSpace, FallBackSearchMode, NewMode, Response) :-
 	SuspectId = PathArray ^ elem(LastTested),
 	%
@@ -915,7 +898,7 @@ binary_search(IoActionMap, Store, Oracle, PathArray, Top, Bottom, LastTested,
 	->
 		% Revert to the fallback search mode when binary search is 
 		% over.
-		search(IoActionMap, Store, Oracle, !SearchSpace, 
+		search(Store, Oracle, !SearchSpace, 
 			FallBackSearchMode, FallBackSearchMode, NewMode,
 			Response)
 	;
@@ -932,7 +915,7 @@ binary_search(IoActionMap, Store, Oracle, PathArray, Top, Bottom, LastTested,
 		;
 			% No unknown suspects on the path, so revert to
 			% the fallback search mode.
-			search(IoActionMap, Store, Oracle, !SearchSpace, 
+			search(Store, Oracle, !SearchSpace, 
 				FallBackSearchMode, FallBackSearchMode,
 				NewMode, Response)
 		)
@@ -986,11 +969,11 @@ find_unknown_closest_to_range(SearchSpace, PathArray, OuterTop, OuterBottom,
 			Unknown)
 	).	
 
-:- pred divide_and_query_search(io_action_map::in, S::in, oracle_state::in,
+:- pred divide_and_query_search(S::in, oracle_state::in,
 	search_space(T)::in, search_space(T)::out, search_response::out,
 	search_mode::out) is det <= mercury_edt(S, T).
 
-divide_and_query_search(IoActionMap, Store, Oracle, !SearchSpace, Response, 
+divide_and_query_search(Store, Oracle, !SearchSpace, Response, 
 		NewMode) :-
 	%
 	% If there's no root yet (because the oracle hasn't asserted any nodes
@@ -1001,42 +984,41 @@ divide_and_query_search(IoActionMap, Store, Oracle, !SearchSpace, Response,
 	->
 		NewMode = divide_and_query,
 		(
-			children(IoActionMap, Store, Oracle, RootId, 
+			children(Store, Oracle, RootId, 
 				!SearchSpace, Children)
 		->
-			find_middle_weight(IoActionMap, Store, Oracle, 
+			find_middle_weight(Store, Oracle, 
 				Children, RootId, no, !SearchSpace, Response)
 		;
 			Response = require_explicit_subtree(RootId)
 		)
 	;
-		top_down_search(IoActionMap, Store, Oracle, !SearchSpace, 
-			Response),
+		top_down_search(Store, Oracle, !SearchSpace, Response),
 		NewMode = divide_and_query
 	).
 
-	% Call find_middle_weight/9 if we are able to find the children of the
+	% Call find_middle_weight/8 if we are able to find the children of the
 	% given suspect id, otherwise return a require_explicit_subtree
 	% search response in the last argument.
 	%
-:- pred find_middle_weight_if_children(io_action_map::in, S::in,
+:- pred find_middle_weight_if_children(S::in,
 	oracle_state::in, suspect_id::in, suspect_id::in,
 	maybe(suspect_id)::in, search_space(T)::in, search_space(T)::out,
 	search_response::out) is det <= mercury_edt(S, T).
 
-find_middle_weight_if_children(IoActionMap, Store, Oracle, SuspectId, TopId, 
+find_middle_weight_if_children(Store, Oracle, SuspectId, TopId, 
 		MaybeLastUnknown, !SearchSpace, Response) :-
 	(
-		children(IoActionMap, Store, Oracle, SuspectId, !SearchSpace, 
+		children(Store, Oracle, SuspectId, !SearchSpace, 
 			Children)
 	->
-		find_middle_weight(IoActionMap, Store, Oracle, Children, TopId,
+		find_middle_weight(Store, Oracle, Children, TopId,
 			MaybeLastUnknown, !SearchSpace, Response)
 	;
 		Response = require_explicit_subtree(SuspectId)
 	).
 
-	% find_middle_weight(IoActionMap, Store, Oracle, SuspectIds, TopId, 
+	% find_middle_weight(Store, Oracle, SuspectIds, TopId, 
 	%	MaybeLastUnknown, !SearchSpace, Response).
 	% Find the unknown suspect whose weight is closest to half the weight
 	% of TopId, considering only the heaviest suspect in SuspectIds, the
@@ -1044,13 +1026,13 @@ find_middle_weight_if_children(IoActionMap, Store, Oracle, SuspectId, TopId,
 	% MaybeLastUnknown is the last node that was unknown in the search (if
 	% any).  
 	%
-:- pred find_middle_weight(io_action_map::in, S::in, oracle_state::in, 
+:- pred find_middle_weight(S::in, oracle_state::in, 
 	list(suspect_id)::in, suspect_id::in,
 	maybe(suspect_id)::in, search_space(T)::in, 
 	search_space(T)::out, search_response::out)
 	is det <= mercury_edt(S, T).
 
-find_middle_weight(IoActionMap, Store, Oracle, [], TopId, MaybeLastUnknown,
+find_middle_weight(Store, Oracle, [], TopId, MaybeLastUnknown,
 		!SearchSpace, Response) :-
 	(
 		MaybeLastUnknown = yes(LastUnknown),
@@ -1063,10 +1045,10 @@ find_middle_weight(IoActionMap, Store, Oracle, [], TopId, MaybeLastUnknown,
 		% This could happen when there were no unknown suspects 
 		% encountered during the search, in which case we revert 
 		% to top-down search.
-		top_down_search(IoActionMap, Store, Oracle, !SearchSpace, 
+		top_down_search(Store, Oracle, !SearchSpace, 
 			Response)
 	).
-find_middle_weight(IoActionMap, Store, Oracle, [SuspectId | SuspectIds], TopId,
+find_middle_weight(Store, Oracle, [SuspectId | SuspectIds], TopId,
 		MaybeLastUnknown, !SearchSpace, Response) :-
 	TopWeight = get_weight(!.SearchSpace, TopId),
 	Target = TopWeight // 2,
@@ -1086,7 +1068,7 @@ find_middle_weight(IoActionMap, Store, Oracle, [SuspectId | SuspectIds], TopId,
 		;
 			NewMaybeLastUnknown = MaybeLastUnknown
 		),
-		find_middle_weight_if_children(IoActionMap, Store, Oracle, 
+		find_middle_weight_if_children(Store, Oracle, 
 			Heaviest, TopId, NewMaybeLastUnknown, !SearchSpace,
 			Response)
 	;
@@ -1095,7 +1077,8 @@ find_middle_weight(IoActionMap, Store, Oracle, [SuspectId | SuspectIds], TopId,
 		->
 			(
 				MaybeLastUnknown = yes(LastUnknown),
-				suspect_still_unknown(!.SearchSpace, LastUnknown)
+				suspect_still_unknown(!.SearchSpace, 
+					LastUnknown)
 			->
 				LastUnknownWeight = get_weight(!.SearchSpace, 
 					LastUnknown),
@@ -1122,7 +1105,8 @@ find_middle_weight(IoActionMap, Store, Oracle, [SuspectId | SuspectIds], TopId,
 		;
 			(
 				MaybeLastUnknown = yes(LastUnknown),
-				suspect_still_unknown(!.SearchSpace, LastUnknown)
+				suspect_still_unknown(!.SearchSpace, 
+					LastUnknown)
 			->
 				LastUnknownWeight = get_weight(!.SearchSpace, 
 					LastUnknown),
@@ -1131,7 +1115,7 @@ find_middle_weight(IoActionMap, Store, Oracle, [SuspectId | SuspectIds], TopId,
 						LastUnknownWeight))
 			;
 				% Look deeper until we find an unknown:
-				find_middle_weight_if_children(IoActionMap,
+				find_middle_weight_if_children(
 					Store, Oracle, Heaviest, TopId, no,
 					!SearchSpace, Response)
 			)
@@ -1325,8 +1309,7 @@ show_info(Store, OutStream, Analyser, Response, !IO) :-
  	io.format(OutStream, "%s\n%s\n", [s(InfoMessage), s(WrappedReason)], 
 		!IO),
 	Node = get_edt_node(SearchSpace, LastId),
-	edt_question(Analyser ^ io_action_map, Store, Node,
-		OracleQuestion),
+	edt_question(Store, Node, OracleQuestion),
 	Response = oracle_question(OracleQuestion).
 
 :- func search_mode_to_string(search_mode) = string.

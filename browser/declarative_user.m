@@ -246,18 +246,17 @@ handle_command(info, _, show_info(!.User ^ outstr), !User, !IO).
 handle_command(browse_io(ActionNum), UserQuestion, Response, 
 		!User, !IO) :-
 	Question = get_decl_question(UserQuestion),
-	edt_node_io_actions(Question, MaybeTabledIoActions),
-	filter_tabled_io_actions(MaybeTabledIoActions, IoActions, _),
+	edt_node_io_actions(Question, MaybeIoActions),
 	% We don't have code yet to trace a marked I/O action.
-	browse_chosen_io_action(IoActions, ActionNum, _MaybeMark, !User, !IO),
+	browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeMark, 
+		!User, !IO),
 	query_user(UserQuestion, Response, !User, !IO).
 
 handle_command(print_io(From, To), UserQuestion, Response, 
 		!User, !IO) :-
 	Question = get_decl_question(UserQuestion),
-	edt_node_io_actions(Question, MaybeTabledIoActions),
-	filter_tabled_io_actions(MaybeTabledIoActions, IoActions, _),
-	print_chosen_io_actions(IoActions, From, To, !.User, !IO),
+	edt_node_io_actions(Question, MaybeIoActions),
+	print_chosen_io_actions(MaybeIoActions, From, To, !.User, !IO),
 	query_user(UserQuestion, Response, !User, !IO).
 
 handle_command(ask, UserQuestion, Response, !User, !IO) :-
@@ -368,13 +367,13 @@ edt_node_trace_atoms(missing_answer(_, InitDeclAtom, _),
 edt_node_trace_atoms(unexpected_exception(_, InitDeclAtom, _),
 	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
 
-:- pred edt_node_io_actions(decl_question(T)::in, 
-	list(maybe_tabled_io_action)::out) is det.
+:- pred edt_node_io_actions(decl_question(T)::in, maybe(io_action_range)::out) 
+	is det.
 
 edt_node_io_actions(wrong_answer(_, _, FinalDeclAtom),
 	FinalDeclAtom ^ final_io_actions).
-edt_node_io_actions(missing_answer(_, _, _), []).
-edt_node_io_actions(unexpected_exception(_, _, _), []).
+edt_node_io_actions(missing_answer(_, _, _), no).
+edt_node_io_actions(unexpected_exception(_, _, _), no).
 
 :- pred decl_bug_trace_atom(decl_bug::in, trace_atom::out, trace_atom::out) 
 	is det.
@@ -388,47 +387,96 @@ decl_bug_trace_atom(e_bug(unhandled_exception(InitDeclAtom, _, _)),
 decl_bug_trace_atom(i_bug(inadmissible_call(_, _, InitDeclAtom, _)),
 	InitDeclAtom ^ init_atom, InitDeclAtom ^ init_atom).
 
-:- pred decl_bug_io_actions(decl_bug::in, list(maybe_tabled_io_action)::out) 
-	is det.
+:- pred decl_bug_io_actions(decl_bug::in, maybe(io_action_range)::out) is det.
 
 decl_bug_io_actions(e_bug(incorrect_contour(_, FinalDeclAtom, _, _)),
 	FinalDeclAtom ^ final_io_actions).
-decl_bug_io_actions(e_bug(partially_uncovered_atom(_, _)), []).
-decl_bug_io_actions(e_bug(unhandled_exception(_, _, _)), []).
-decl_bug_io_actions(i_bug(inadmissible_call(_, _, _, _)), []).
+decl_bug_io_actions(e_bug(partially_uncovered_atom(_, _)), no).
+decl_bug_io_actions(e_bug(unhandled_exception(_, _, _)), no).
+decl_bug_io_actions(i_bug(inadmissible_call(_, _, _, _)), no).
 
-:- pred browse_chosen_io_action(list(io_action)::in, int::in,
+:- pred browse_chosen_io_action(maybe(io_action_range)::in, int::in,
 	maybe(term_path)::out, user_state::in, user_state::out,
 	io::di, io::uo) is cc_multi.
 
-browse_chosen_io_action(IoActions, ActionNum, MaybeMark, User0, User, !IO) :-
-	( list.index1(IoActions, ActionNum, IoAction) ->
-		browse_io_action(IoAction, MaybeMark, User0, User, !IO)
+browse_chosen_io_action(MaybeIoActions, ActionNum, MaybeMark, !User, !IO) :-
+	( 
+		MaybeIoActions = yes(IoActions),
+		find_tabled_io_action(IoActions, ActionNum, MaybeIoAction, 
+			!IO),
+		(
+			MaybeIoAction = yes(IoAction),
+			browse_io_action(IoAction, MaybeMark, !User, !IO)
+		;
+			MaybeIoAction = no,
+			MaybeMark = no
+		)
 	;
+		MaybeIoActions = no,
 		io.write_string("No such IO action.\n", !IO),
-		MaybeMark = no,
-		User = User0
+		MaybeMark = no
 	).
 
-:- pred print_chosen_io_actions(list(io_action)::in, int::in, int::in,
+:- pred find_tabled_io_action(io_action_range::in, int::in, 
+	maybe(io_action)::out, io::di, io::uo) is det.
+
+find_tabled_io_action(io_action_range(Cur, End), TabledActionNum, 
+		MaybeIoAction, !IO) :-
+	(
+		Cur = End
+	->
+		MaybeIoAction = no
+	;
+		get_maybe_io_action(Cur, MaybeTabledIoAction, !IO),
+		(
+			MaybeTabledIoAction = tabled(IoAction),
+			(
+				TabledActionNum = 1
+			->
+				MaybeIoAction = yes(IoAction)
+			;
+				find_tabled_io_action(io_action_range(Cur + 1,
+					End), TabledActionNum - 1,
+					MaybeIoAction, !IO)
+			)
+		;
+			MaybeTabledIoAction = untabled,
+			find_tabled_io_action(io_action_range(Cur + 1, End),
+				TabledActionNum, MaybeIoAction, !IO)
+		)
+	).
+
+:- pred print_chosen_io_actions(maybe(io_action_range)::in, int::in, int::in,
 	user_state::in, io::di, io::uo) is cc_multi.
 
-print_chosen_io_actions(Atom, From, To, User0, !IO) :-
-	print_chosen_io_action(Atom, From, User0, OK, !IO),
+print_chosen_io_actions(MaybeIoActions, From, To, User0, !IO) :-
+	print_chosen_io_action(MaybeIoActions, From, User0, OK, !IO),
 	( OK = yes, From + 1 =< To ->
-		print_chosen_io_actions(Atom, From + 1, To, User0, !IO)
+		print_chosen_io_actions(MaybeIoActions, From + 1, To, User0, 
+			!IO)
 	;
 		true
 	).
 
-:- pred print_chosen_io_action(list(io_action)::in, int::in, user_state::in,
-	bool::out, io::di, io::uo) is cc_multi.
+:- pred print_chosen_io_action(maybe(io_action_range)::in, int::in, 
+	user_state::in, bool::out, io::di, io::uo) is cc_multi.
 
-print_chosen_io_action(IoActions, ActionNum, User0, OK, !IO) :-
-	( list.index1(IoActions, ActionNum, IoAction) ->
-		print_io_action(User0, IoAction, !IO),
-		OK = yes
+print_chosen_io_action(MaybeIoActions, ActionNum, User0, OK, !IO) :-
+	( 
+		MaybeIoActions = yes(IoActions),
+		find_tabled_io_action(IoActions, ActionNum, MaybeIoAction, 
+			!IO),
+		(
+			MaybeIoAction = yes(IoAction),
+			print_tabled_io_action(User0, tabled(IoAction), !IO),
+			OK = yes
+		;
+			MaybeIoAction = no,
+			io.write_string("No such IO action.\n", !IO),
+			OK = no
+		)
 	;
+		MaybeIoActions = no,
 		io.write_string("No such IO action.\n", !IO),
 		OK = no
 	).
@@ -900,9 +948,8 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
 	;
 		Command = browse_io(ActionNum)
 	->
-		decl_bug_io_actions(Bug, MaybeTabledIoActions),
-		filter_tabled_io_actions(MaybeTabledIoActions, IoActions, _),
-		browse_chosen_io_action(IoActions, ActionNum, _MaybeMark,
+		decl_bug_io_actions(Bug, MaybeIoActions),
+		browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeMark,
 			!User, !IO),
 		user_confirm_bug(Bug, Response, !User, !IO)
 	;
@@ -998,7 +1045,7 @@ write_decl_final_atom(User, Indent, CallerType, FinalAtom, !IO) :-
 
 write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
 	io.write_string(User ^ outstr, Indent, !IO),
-	unravel_decl_atom(DeclAtom, TraceAtom, MaybeTabledIoActions),
+	unravel_decl_atom(DeclAtom, TraceAtom, MaybeIoActions),
 	TraceAtom = atom(ProcLayout, Args0),
 	ProcLabel = get_proc_label_from_layout(ProcLayout),
 	get_pred_attributes(ProcLabel, _, Functor, _, PredOrFunc),
@@ -1013,46 +1060,62 @@ write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
 		is_function(PredOrFunc)),
 	browse.print_browser_term(BrowserTerm, User ^ outstr, CallerType,
 		User ^ browser, !IO),
-	write_maybe_tabled_io_actions(User, MaybeTabledIoActions, !IO).
+	write_maybe_tabled_io_actions(User, MaybeIoActions, !IO).
 
 :- pred write_maybe_tabled_io_actions(user_state::in, 
-	list(maybe_tabled_io_action)::in, io::di, io::uo) is cc_multi.
+	maybe(io_action_range)::in, io::di, io::uo) is cc_multi.
 
-write_maybe_tabled_io_actions(User, MaybeTabledIoActions, !IO) :-
-	filter_tabled_io_actions(MaybeTabledIoActions, IoActions, AreUntabled),
-	write_io_actions(User, IoActions, !IO),
+write_maybe_tabled_io_actions(User, MaybeIoActions, !IO) :-
 	(
-		AreUntabled = yes,
-		io.write_string(User ^ outstr, "Warning: some IO actions " ++
-			"for this atom are not tabled.\n", !IO)
+		MaybeIoActions = yes(IoActions),
+		count_tabled_io_actions(IoActions, NumTabled, NumUntabled, 
+			!IO),
+		write_io_actions(User, NumTabled, IoActions, !IO),
+		(
+			NumUntabled > 0
+		->
+			io.write_string(User ^ outstr, "Warning: some IO " ++
+				"actions for this atom are not tabled.\n", !IO)
+		;
+			true
+		)
 	;
-		AreUntabled = no
+		MaybeIoActions = no
 	).
 
-:- pred filter_tabled_io_actions(list(maybe_tabled_io_action)::in, 
-	list(io_action)::out, bool::out) is det.
+:- pred count_tabled_io_actions(io_action_range::in, int::out, int::out,
+	io::di, io::uo) is det. 
 
-filter_tabled_io_actions(MaybeTabledIoActions, IoActions, AreUntabled) :-
-	list.filter(io_action_is_tabled, MaybeTabledIoActions, TabledIoActions,
-		UnTabledIoActions),
-	IoActions = list.map(get_tabled_io_action, TabledIoActions),
+count_tabled_io_actions(io_action_range(Start, End), NumTabled,
+		NumUntabled, !IO) :-
+	count_tabled_io_actions_2(Start, End, 0, NumTabled, 0,
+		NumUntabled, !IO).
+
+:- pred count_tabled_io_actions_2(io_seq_num::in, 
+	io_seq_num::in, int::in, int::out, int::in, int::out, io::di, io::uo)
+	is det.
+
+count_tabled_io_actions_2(Cur, End, PrevTabled, Tabled, 
+		PrevUntabled, Untabled, !IO) :-
 	(
-		UnTabledIoActions = [],
-		AreUntabled = no
+		Cur = End
+	->
+		Untabled = PrevUntabled,
+		Tabled = PrevTabled
 	;
-		UnTabledIoActions = [_ | _],
-		AreUntabled = yes
+		get_maybe_io_action(Cur, MaybeIoAction, !IO),
+		(
+			MaybeIoAction = tabled(_),
+			NewPrevUntabled = PrevUntabled,
+			NewPrevTabled = PrevTabled + 1
+		;
+			MaybeIoAction = untabled,
+			NewPrevUntabled = PrevUntabled + 1,
+			NewPrevTabled = PrevTabled
+		),
+		count_tabled_io_actions_2(Cur + 1, End, 
+			NewPrevTabled, Tabled, NewPrevUntabled, Untabled, !IO)
 	).
-
-:- pred io_action_is_tabled(maybe_tabled_io_action::in) is semidet.
-
-io_action_is_tabled(tabled(_)).
-
-:- func get_tabled_io_action(maybe_tabled_io_action) = io_action.
-
-get_tabled_io_action(tabled(IoAction)) = IoAction.
-get_tabled_io_action(untabled(_)) = _ :-
-	throw(internal_error("get_tabled_io_action", "io action not tabled")).
 
 :- pred trace_atom_arg_to_univ(trace_atom_arg::in, univ::out) is det.
 
@@ -1066,26 +1129,25 @@ trace_atom_arg_to_univ(TraceAtomArg, Univ) :-
 		Univ = univ('_' `with_type` unbound)
 	).
 
-:- pred write_io_actions(user_state::in, list(io_action)::in, 
+:- pred write_io_actions(user_state::in, int::in, io_action_range::in, 
 	io::di, io::uo) is cc_multi.
 
-write_io_actions(User, IoActions, !IO) :-
-	list.length(IoActions, NumIoActions),
-	( NumIoActions = 0 ->
+write_io_actions(User, NumTabled, IoActions, !IO) :-
+	( NumTabled = 0 ->
 		true
 	;
-		( NumIoActions = 1 ->
+		( NumTabled = 1 ->
 			io.write_string(User ^ outstr, "1 tabled IO action:", 
 				!IO)
 		;
-			io.write_int(User ^ outstr, NumIoActions, !IO),
+			io.write_int(User ^ outstr, NumTabled, !IO),
 			io.write_string(User ^ outstr, " tabled IO actions:", 
 				!IO)
 		),
  		NumPrinted = get_num_printed_io_actions(User ^ browser),
- 		( NumIoActions =< NumPrinted ->
+ 		( NumTabled =< NumPrinted ->
 			io.nl(User ^ outstr, !IO),
-			list.foldl(print_io_action(User), IoActions, !IO)
+			print_tabled_io_actions(User, IoActions, !IO)
 		;
 			io.write_string(User ^ outstr, " too many to show",
 				!IO),
@@ -1093,10 +1155,30 @@ write_io_actions(User, IoActions, !IO) :-
 		)
 	).
 
-:- pred print_io_action(user_state::in, io_action::in, io::di, io::uo) 
-	is cc_multi.
+:- pred print_tabled_io_actions(user_state::in, io_action_range::in,
+	io::di, io::uo) is cc_multi.
 
-print_io_action(User, IoAction, !IO) :-
+print_tabled_io_actions(User, IoActions, !IO) :-
+	IoActions = io_action_range(Start, End),
+	print_tabled_io_actions_2(User, Start, End, !IO).
+
+:- pred print_tabled_io_actions_2(user_state::in,
+	io_seq_num::in, io_seq_num::in, io::di, io::uo) is cc_multi.
+
+print_tabled_io_actions_2(User, Cur, End, !IO) :-
+	( Cur = End ->
+		true
+	;
+		get_maybe_io_action(Cur, MaybeIoAction, !IO),
+		print_tabled_io_action(User, MaybeIoAction, !IO),
+		print_tabled_io_actions_2(User, Cur + 1, End, !IO)
+	).
+
+:- pred print_tabled_io_action(user_state::in, maybe_tabled_io_action::in, 
+	io::di, io::uo) is cc_multi.
+
+print_tabled_io_action(_, untabled, !IO).
+print_tabled_io_action(User, tabled(IoAction), !IO) :-
 	Term = io_action_to_browser_term(IoAction),
 	browse.print_browser_term(Term, User ^ outstr, print_all,
 		User ^ browser, !IO).

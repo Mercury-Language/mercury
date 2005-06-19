@@ -218,8 +218,6 @@ static    MR_Unsigned    MR_edt_last_event;
 
 static    MR_Unsigned    MR_edt_start_seqno;
 
-static    MR_Unsigned    MR_edt_start_io_counter;
-
 /*
 ** This tells MR_trace_decl_debug whether it is inside a portion of the
 ** annotated trace that should be materialized (ignoring any depth limit).  It
@@ -654,12 +652,6 @@ MR_trace_include_event(const MR_Proc_Layout *entry,
                     MR_edt_max_depth, 
                     event_info, &event_details);
                 /*
-                ** We will need all the io actions from
-                ** the point after the retry above onwards.
-                */
-                MR_edt_start_io_counter = 
-                    MR_io_tabling_counter;
-                /*
                 ** Reset the depth since we will now
                 ** be at the top of the supertree to be 
                 ** materialized.  We set it to -1 since
@@ -707,15 +699,6 @@ MR_trace_include_event(const MR_Proc_Layout *entry,
                 ** we are (re)entering the topmost call.
                 */
                 MR_edt_inside = MR_TRUE;
-                /*
-                ** If the port is a call and not a redo, then
-                ** we need the io actions from here on.
-                */
-                if (event_info->MR_trace_port == MR_PORT_CALL) 
-                {
-                    MR_edt_start_io_counter = 
-                        MR_io_tabling_counter;
-                }
                 MR_edt_depth = -1;
                 return MR_TRUE;
             } else {
@@ -1900,10 +1883,6 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     return NULL;
 }
 
-static MR_bool        MR_io_action_map_cache_is_valid = MR_FALSE;
-static MR_Unsigned    MR_io_action_map_cache_start;
-static MR_Unsigned    MR_io_action_map_cache_end;
-
 static    MR_Code *
 MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Event_Details *event_details, 
@@ -1921,9 +1900,6 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
     MR_Unsigned        topmost_seqno;
     MR_Trace_Node        call_preceding;
     MercuryFile        stream;
-    MR_Integer        use_old_io_map;
-    MR_Unsigned        io_start;
-    MR_Unsigned        io_end;
     MR_Integer        requested_subtree_depth;
 
     if (MR_edt_compiler_flag_warning) {
@@ -1965,38 +1941,17 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         MR_trace_decl_mode = MR_TRACE_DECL_DEBUG;
     }
 
-    io_start = MR_edt_start_io_counter;
-    io_end = MR_io_tabling_counter;
-
-    if (MR_io_action_map_cache_is_valid
-        && MR_io_action_map_cache_start <= io_start
-        && io_end <= MR_io_action_map_cache_end)
-    {
-        use_old_io_map = MR_TRUE;
-    } else {
-        use_old_io_map = MR_FALSE;
-
-        MR_io_action_map_cache_is_valid = MR_TRUE;
-        MR_io_action_map_cache_start = io_start;
-        MR_io_action_map_cache_end = io_end;
-    }
-
     MR_TRACE_CALL_MERCURY(
         if (new_tree == MR_TRUE) {
             MR_DD_decl_diagnosis_new_tree(MR_trace_node_store, 
-                root, use_old_io_map,
-                MR_io_action_map_cache_start,
-                MR_io_action_map_cache_end,
-                &response, MR_trace_front_end_state,
+                root, &response, MR_trace_front_end_state,
                 &MR_trace_front_end_state,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state
             );
         } else {
             MR_DD_decl_diagnosis_resume_previous(
-                MR_trace_node_store, MR_FALSE,
-                MR_io_action_map_cache_start,
-                MR_io_action_map_cache_end,
+                MR_trace_node_store,
                 &response, MR_trace_front_end_state,
                 &MR_trace_front_end_state,
                 MR_trace_browser_persistent_state,
@@ -2363,8 +2318,10 @@ MR_trace_maybe_show_progress(MR_Unsigned event_number)
 {
     MR_Unsigned        current_tick;
 
-    if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL == 0) {
-        if (! MR_edt_building_supertree) {
+    if (! MR_edt_building_supertree) {
+        if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL == 0
+            || event_number == MR_edt_last_event) 
+        {
             if (MR_edt_progress_last_tick == 0 && 
                 (MR_edt_start_time + MR_DECL_DISPLAY_PROGRESS_DELAY
                 < MR_get_user_cpu_miliseconds()))
@@ -2377,9 +2334,10 @@ MR_trace_maybe_show_progress(MR_Unsigned event_number)
                 */
                 MR_edt_progress_last_tick = 1;
             } else if (MR_edt_progress_last_tick > 0) {
-                current_tick = ((event_number - MR_edt_first_event) 
-                        * MR_DECL_PROGRESS_TOTAL) 
-                    / (MR_edt_last_event - MR_edt_first_event);
+                current_tick = (MR_Unsigned)((
+                        (float)(event_number - MR_edt_first_event) 
+                        * (float)MR_DECL_PROGRESS_TOTAL) 
+                    / (float)(MR_edt_last_event - MR_edt_first_event));
                 if (current_tick != MR_edt_progress_last_tick) {
                     for (; MR_edt_progress_last_tick < current_tick; 
                         MR_edt_progress_last_tick++) 
@@ -2390,7 +2348,9 @@ MR_trace_maybe_show_progress(MR_Unsigned event_number)
                     }
                 }
             }
-        } else {
+        }
+    } else {
+        if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL == 0) {
             /*
             ** If we are building a supertree we don't know what the
             ** final event will be, so we just show a tick every

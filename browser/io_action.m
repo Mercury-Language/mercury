@@ -19,7 +19,9 @@
 :- import_module mdb.browser_term.
 :- import_module mdbcomp.prim_data.
 
-:- import_module list, map, std_util, io.
+:- import_module list. 
+:- import_module io.
+:- import_module std_util. 
 
 :- type io_action
 	--->	io_action(
@@ -30,22 +32,42 @@
 
 :- type maybe_tabled_io_action
 	--->	tabled(io_action)
-	;	untabled(io_seq_num).
+	;	untabled.
 
 :- type io_seq_num	== int.
-:- type io_action_map	== map(io_seq_num, io_action).
 
-:- pred make_io_action_map(int::in, int::in, io_action_map::out,
-	io__state::di, io__state::uo) is det.
+:- type io_action_range
+	--->	io_action_range(
+			from_io_action		:: io_seq_num,
+			to_io_action		:: io_seq_num
+		).
 
 :- func io_action_to_browser_term(io_action) = browser_term.
 
+:- pred get_maybe_io_action(io_seq_num::in, maybe_tabled_io_action::out,
+	io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
+:- import_module mdb.declarative_debugger.
+
 :- import_module bool.
+:- import_module exception.
 :- import_module int.
 :- import_module require.
 :- import_module svmap.
+
+get_maybe_io_action(IoActionNum, MaybeTabledIoAction, !IO) :-
+	pickup_io_action(IoActionNum, MaybeIoAction, !IO),
+	(
+		MaybeIoAction = yes(IoAction),
+		MaybeTabledIoAction = tabled(IoAction)
+	;
+		MaybeIoAction = no,
+		MaybeTabledIoAction = untabled
+	).
 
 io_action_to_browser_term(IoAction) = Term :-
 	IoAction = io_action(ProcName, PredFunc, Args),
@@ -58,33 +80,12 @@ io_action_to_browser_term(IoAction) = Term :-
 	),
 	Term = synthetic_term_to_browser_term(ProcName, Args, IsFunc).
 
-make_io_action_map(Start, End, IoActionMap) -->
-	make_io_action_map_2(Start, End, map__init, IoActionMap).
-
-:- pred make_io_action_map_2(int::in, int::in,
-	io_action_map::in, io_action_map::out, io__state::di, io__state::uo)
-	is det.
-
-make_io_action_map_2(Cur, End, !IoActionMap, !IO) :-
-	( Cur = End ->
-		true
-	;
-		pickup_io_action(Cur, MaybeIoAction, !IO),
-		(
-			MaybeIoAction = yes(IoAction),
-			svmap.det_insert(Cur, IoAction, !IoActionMap)
-		;
-			MaybeIoAction = no
-		),
-		make_io_action_map_2(Cur + 1, End, !IoActionMap, !IO)
-	).
-
 :- pred pickup_io_action(int::in, maybe(io_action)::out,
 	io__state::di, io__state::uo) is det.
 
 :- pragma foreign_proc("C",
 	pickup_io_action(SeqNum::in, MaybeIOAction::out, S0::di, S::uo),
-	[thread_safe, promise_pure, tabled_for_io],
+	[thread_safe, promise_pure, tabled_for_io, may_call_mercury],
 "{
 	const char	*problem;
 	const char	*proc_name;

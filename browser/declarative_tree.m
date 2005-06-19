@@ -58,8 +58,8 @@
 
 :- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)
 	where [
-		pred(edt_question/4) is trace_question,
-		pred(edt_get_e_bug/4) is trace_get_e_bug,
+		pred(edt_question/3) is trace_question,
+		pred(edt_get_e_bug/3) is trace_get_e_bug,
 		pred(edt_get_i_bug/4) is trace_get_i_bug,
 		pred(edt_children/3) is trace_children,
 		pred(edt_parent/3) is trace_last_parent,
@@ -77,18 +77,24 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func exit_node_decl_atom(io_action_map::in, S::in,
+:- func exit_node_decl_atom(S::in,
 	trace_node(R)::in(trace_node_exit)) = (final_decl_atom::out) is det
 	<= annotated_trace(S, R).
 
-exit_node_decl_atom(IoActionMap, Store, ExitNode) = DeclAtom :-
+exit_node_decl_atom(Store, ExitNode) = DeclAtom :-
 	ExitAtom = get_trace_exit_atom(ExitNode),
 	CallId = ExitNode ^ exit_call,
 	call_node_from_id(Store, CallId, Call),
 	CallIoSeq = Call ^ call_io_seq_num,
 	ExitIoSeq = ExitNode ^ exit_io_seq_num,
-	IoActions = make_io_actions(IoActionMap, CallIoSeq, ExitIoSeq),
-	DeclAtom = final_decl_atom(ExitAtom, IoActions).
+	(
+		CallIoSeq = ExitIoSeq
+	->
+		DeclAtom = final_decl_atom(ExitAtom, no)
+	;
+		DeclAtom = final_decl_atom(ExitAtom, 
+			yes(io_action_range(CallIoSeq, ExitIoSeq)))
+	).
 
 :- func call_node_decl_atom(S, R) = init_decl_atom <= annotated_trace(S, R).
 
@@ -96,21 +102,6 @@ call_node_decl_atom(Store, CallId) = DeclAtom :-
 	call_node_from_id(Store, CallId, CallNode),
 	CallAtom = get_trace_call_atom(CallNode),
 	DeclAtom = init_decl_atom(CallAtom).
-
-:- func make_io_actions(io_action_map, io_seq_num, io_seq_num) 
-	= list(maybe_tabled_io_action).
-
-make_io_actions(IoActionMap, InitIoSeq, ExitIoSeq) = IoActions :-
-	( InitIoSeq = ExitIoSeq ->
-		IoActions = []
-	;	
-		Rest = make_io_actions(IoActionMap, InitIoSeq + 1, ExitIoSeq),
-		( map.search(IoActionMap, InitIoSeq, IoAction) ->
-			IoActions = [tabled(IoAction) | Rest]
-		;
-			IoActions = [untabled(InitIoSeq) | Rest]
-		)
-	).
 
 :- pred get_edt_node_initial_atom(S::in, R::in, init_decl_atom::out)
 	is det <= annotated_trace(S, R).
@@ -143,20 +134,20 @@ get_edt_node_event_number(Store, Ref, Event) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred trace_question(io_action_map::in, wrap(S)::in, edt_node(R)::in,
+:- pred trace_question(wrap(S)::in, edt_node(R)::in,
 	decl_question(edt_node(R))::out) is det <= annotated_trace(S, R).
 
-trace_question(IoActionMap, wrap(Store), dynamic(Ref), Root) :-
+trace_question(wrap(Store), dynamic(Ref), Root) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
 		Node = fail(_, CallId, RedoId, _, _),
 		DeclAtom = call_node_decl_atom(Store, CallId),
-		get_answers(IoActionMap, Store, RedoId, [], Answers),
+		get_answers(Store, RedoId, [], Answers),
 		Root = missing_answer(dynamic(Ref), DeclAtom, Answers)
 	;
 		Node = exit(_, CallId, _, _, _, _, _),
 		InitDeclAtom = call_node_decl_atom(Store, CallId),
-		FinalDeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
+		FinalDeclAtom = exit_node_decl_atom(Store, Node),
 		Root = wrong_answer(dynamic(Ref), InitDeclAtom, FinalDeclAtom)
 	;
 		Node = excp(_, CallId, _, Exception, _, _),
@@ -164,33 +155,32 @@ trace_question(IoActionMap, wrap(Store), dynamic(Ref), Root) :-
 		Root = unexpected_exception(dynamic(Ref), DeclAtom, Exception)
 	).
 
-:- pred get_answers(io_action_map::in, S::in, R::in,
+:- pred get_answers(S::in, R::in,
 	list(final_decl_atom)::in, list(final_decl_atom)::out) is det
 	<= annotated_trace(S, R).
 
-get_answers(IoActionMap, Store, RedoId, DeclAtoms0, DeclAtoms) :-
+get_answers(Store, RedoId, DeclAtoms0, DeclAtoms) :-
 	(
 		maybe_redo_node_from_id(Store, RedoId, redo(_, ExitId, _, _))
 	->
 		exit_node_from_id(Store, ExitId, ExitNode),
 		NextId = ExitNode ^ exit_prev_redo,
-		DeclAtom = exit_node_decl_atom(IoActionMap, Store, ExitNode),
-		get_answers(IoActionMap, Store, NextId,
-			[DeclAtom | DeclAtoms0], DeclAtoms)
+		DeclAtom = exit_node_decl_atom(Store, ExitNode),
+		get_answers(Store, NextId, [DeclAtom | DeclAtoms0], DeclAtoms)
 	;
 		DeclAtoms = DeclAtoms0
 	).
 
-:- pred trace_get_e_bug(io_action_map::in, wrap(S)::in, edt_node(R)::in,
+:- pred trace_get_e_bug(wrap(S)::in, edt_node(R)::in,
 	decl_e_bug::out) is det <= annotated_trace(S, R).
 
-trace_get_e_bug(IoActionMap, wrap(Store), dynamic(Ref), Bug) :-
+trace_get_e_bug(wrap(Store), dynamic(Ref), Bug) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
 		Node = exit(_, CallId, _, _, Event, _, _),
 		InitDeclAtom = call_node_decl_atom(Store, CallId),
-		FinalDeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
-		get_exit_atoms_in_contour(IoActionMap, Store, Node, Contour),
+		FinalDeclAtom = exit_node_decl_atom(Store, Node),
+		get_exit_atoms_in_contour(Store, Node, Contour),
 		Bug = incorrect_contour(InitDeclAtom, FinalDeclAtom, Contour, 
 			Event)
 	;
@@ -1011,22 +1001,22 @@ materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
 			Nodes1, Nodes)
 	).
 
-:- pred get_exit_atoms_in_contour(io_action_map::in, S::in, 
+:- pred get_exit_atoms_in_contour(S::in, 
 	trace_node(R)::in(trace_node_exit),
 	list(final_decl_atom)::out) is det <= annotated_trace(S, R).
 
-get_exit_atoms_in_contour(IoActionMap, Store, ExitNode, ExitAtoms) :-
+get_exit_atoms_in_contour(Store, ExitNode, ExitAtoms) :-
 	ExitPrecId = ExitNode ^ exit_preceding,
 	det_trace_node_from_id(Store, ExitPrecId, ExitPrec),
 	materialize_contour(Store, ExitPrecId, ExitPrec, [], Contour),
-	list.filter_map(get_exit_atom(IoActionMap, Store), Contour, ExitAtoms).
+	list.filter_map(get_exit_atom(Store), Contour, ExitAtoms).
 
-:- pred get_exit_atom(io_action_map::in, S::in, pair(R, trace_node(R))::in, 
+:- pred get_exit_atom(S::in, pair(R, trace_node(R))::in, 
 	final_decl_atom::out) is semidet <= annotated_trace(S, R).
 
-get_exit_atom(IoActionMap, Store, _ - Exit, FinalAtom) :-
+get_exit_atom(Store, _ - Exit, FinalAtom) :-
 	Exit = exit(_, _, _, _, _, _, _),
-	FinalAtom = exit_node_decl_atom(IoActionMap, Store, Exit).
+	FinalAtom = exit_node_decl_atom(Store, Exit).
 
 :- type primitive_list_and_var(R)
 	--->	primitive_list_and_var(
