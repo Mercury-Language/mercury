@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2004 The University of Melbourne.
+** Copyright (C) 1995-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -45,7 +45,7 @@
 
 /*
 ** MR_bool MR_string_equal(MR_ConstString s1, MR_ConstString s2):
-**	Return true iff the two Mercury strings s1 and s2 are equal.
+** Return true iff the two Mercury strings s1 and s2 are equal.
 */
 
 #define MR_string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
@@ -79,10 +79,10 @@
 	} while(0)
 
 /*
-** void MR_make_aligned_string_copy(MR_String ptr, const char * string);
-**	Same as MR_make_aligned_string(ptr, string), except that the string
-**	is guaranteed to be copied. This is useful for copying C strings
-**	onto the Mercury heap.
+** void MR_make_aligned_string_copy(MR_String ptr, const char * string):
+** Same as MR_make_aligned_string(ptr, string), except that the string
+** is guaranteed to be copied. This is useful for copying C strings
+** onto the Mercury heap.
 **
 ** BEWARE: this may modify `MR_hp', so it must only be called from
 ** places where `MR_hp' is valid.  If calling it from inside a C function,
@@ -105,9 +105,9 @@
 
 /*
 ** void MR_make_aligned_string_copy_saved_hp(MR_String ptr,
-** 		const char * string);
-**	Same as MR_make_aligned_string_copy(ptr, string), except that it uses
-**	MR_offset_incr_saved_hp_atomic instead of MR_offset_incr_hp_atomic.
+** 	const char * string):
+** Same as MR_make_aligned_string_copy(ptr, string), except that it uses
+** MR_offset_incr_saved_hp_atomic instead of MR_offset_incr_hp_atomic.
 */
 
 #define MR_make_aligned_string_copy_saved_hp(ptr, string) 		\
@@ -125,9 +125,9 @@
 
 /*
 ** void MR_make_aligned_string_copy_saved_hp_quote(MR_String ptr,
-** 		const char * string);
-**	Same as MR_make_aligned_string_copy_saved_hp(ptr, string), except that
-**	it puts double quote marks at the start and end of the string.
+**		const char * string):
+** Same as MR_make_aligned_string_copy_saved_hp(ptr, string), except that
+** it puts double quote marks at the start and end of the string.
 */
 
 #define MR_make_aligned_string_copy_saved_hp_quote(ptr, string)		\
@@ -145,7 +145,7 @@
 
 /*
 ** void MR_allocate_aligned_string_msg(MR_String ptr, size_t len,
-**		MR_Code *proclabel);
+**	MR_Code *proclabel):
 ** Allocate enough word aligned memory to hold len characters.  Also
 ** record for memory profiling purposes the location, proclabel, of the
 ** allocation if profiling is enabled.
@@ -171,8 +171,8 @@
 
 /*
 ** MR_do_hash_string(int & hash, MR_Word string):
-**	Given a Mercury string `string', set `hash' to the hash value
-**	for that string.  (`hash' must be an lvalue.)
+** Given a Mercury string `string', set `hash' to the hash value
+** for that string.  (`hash' must be an lvalue.)
 **
 ** This is an implementation detail used to implement MR_hash_string().
 ** It should not be used directly.  Use MR_hash_string() instead.

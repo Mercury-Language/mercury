@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998, 2000, 2003 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000, 2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,7 +20,7 @@
   #else
     #define MR_MUTEX_ATTR		NULL
     #define MR_COND_ATTR		NULL
-    #define MR_THREAD_ATTR	NULL
+    #define MR_THREAD_ATTR		NULL
   #endif
 
   typedef pthread_t		MercuryThread;
@@ -51,20 +51,28 @@
     #define	MR_LOCK(lck, from)					\
     				( MR_debug_threads ?			\
 					MR_mutex_lock((lck), (from))	\
-				:	pthread_mutex_lock((lck)))
+				:					\
+					pthread_mutex_lock((lck))	\
+				)
     #define	MR_UNLOCK(lck, from)					\
     				( MR_debug_threads ?			\
     					MR_mutex_unlock((lck), (from))	\
-				:	pthread_mutex_unlock((lck)))
+				:					\
+					pthread_mutex_unlock((lck))	\
+				)
 
     #define	MR_SIGNAL(cnd)						\
     				( MR_debug_threads ?			\
 					MR_cond_signal((cnd))		\
-				:	pthread_cond_signal((cnd)))
+				:					\
+					pthread_cond_signal((cnd))	\
+				)
     #define	MR_WAIT(cnd, mtx)					\
     				( MR_debug_threads ?			\
 					MR_cond_wait((cnd), (mtx))	\
-				:	pthread_cond_wait((cnd), (mtx)))
+				:					\
+					pthread_cond_wait((cnd), (mtx))	\
+				)
 
   #endif
 
@@ -101,27 +109,30 @@
   ** structure containing a function and an argument. The function will
   ** be called with the given argument in the new thread.
   */
+
   MercuryThread		*MR_create_thread(MR_ThreadGoal *);
   void			MR_destroy_thread(void *eng);
   extern MR_bool	MR_exit_now;
 
-	/*
-	** MR_global_lock is a mutex for ensuring that only one non-threadsafe
-	** piece of pragma c code executes at a time. If `not_threadsafe' is
-	** given or `threadsafe' is not given in the attributes of a pragma
-	** c code definition of a predicate, then the generated code will
-	** obtain this lock before executing the C code fragment, and then
-	** release it afterwards.
-	** XXX we should emit a warning if may_call_mercury and not_threadsafe
-	** (the defaults) are specified since if you obtain the lock then
-	** call back into Mercury deadlock could result.
-	*/
+  /*
+  ** MR_global_lock is a mutex for ensuring that only one non-threadsafe
+  ** piece of pragma c code executes at a time. If `not_threadsafe' is
+  ** given or `threadsafe' is not given in the attributes of a pragma
+  ** c code definition of a predicate, then the generated code will
+  ** obtain this lock before executing the C code fragment, and then
+  ** release it afterwards.
+  ** XXX we should emit a warning if may_call_mercury and not_threadsafe
+  ** (the defaults) are specified since if you obtain the lock then
+  ** call back into Mercury deadlock could result.
+  */
+
   extern MercuryLock MR_global_lock;
 
-  	/*
-	** MR_exception_handler_key stores a key which can be used to get
-	** the current exception handler for the current thread.
-	*/
+  /*
+  ** MR_exception_handler_key stores a key which can be used to get
+  ** the current exception handler for the current thread.
+  */
+
   extern MercuryThreadKey MR_exception_handler_key;
 
 #else /* not MR_THREAD_SAFE */
@@ -147,6 +158,7 @@
 ** runqueue. The engine is destroyed when the execution of work from
 ** the runqueue returns.
 */
+
 typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 
 /*

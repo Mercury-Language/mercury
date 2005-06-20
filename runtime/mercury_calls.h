@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000, 2004 The University of Melbourne.
+** Copyright (C) 1995-2000, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,7 +20,7 @@
 */
 
 /*
-** On some systems [basically those using PIC (Position Independent MR_Code)],
+** On some systems [basically those using PIC (Position Independent Code)],
 ** if we're using gcc non-local gotos to jump between functions then
 ** we need to do ASM_FIXUP_REGS after each return from a procedure call.
 ** However, if we're using asm labels, then this is done in the
@@ -48,7 +48,7 @@
 			ASM_FIXUP_REGS					\
 			MR_GOTO(succ_cont); 				\
 		})
-	/* same as above, but with MR_GOTO_LABEL rather than MR_GOTO */
+		/* same as above, but with MR_GOTO_LABEL rather than MR_GOTO */
   #define	MR_noprof_call_localret(proc, succ_cont)		\
 		({							\
 			__label__ fixup_gp;				\

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997,2000-2002, 2004 The University of Melbourne.
+** Copyright (C) 1995-1997,2000-2002, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -76,7 +76,8 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 ** mercury_label.c to record the address of each entry label.
 */
 
-extern void	MR_prof_output_addr_decl(const char *name, const MR_Code *address);
+extern void	MR_prof_output_addr_decl(const char *name,
+			const MR_Code *address);
 
 
 /*
