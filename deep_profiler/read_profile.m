@@ -379,12 +379,12 @@ read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
 raw_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
         PredName, Arity, Mode)) =
     string__append_list(
-        [PredName, " for ", TypeModule, ":", TypeName,
+        [PredName, " for ", TypeModule, ".", TypeName,
         "/", string__int_to_string(Arity),
         " mode ", string__int_to_string(Mode)]).
 raw_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
         Name, Arity, Mode)) =
-    string__append_list([DeclModule, ":", Name,
+    string__append_list([DeclModule, ".", Name,
         "/", string__int_to_string(Arity),
         ( PredOrFunc = function -> "+1" ; "" ),
         "-", string__int_to_string(Mode)]).
@@ -407,7 +407,7 @@ refined_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
         string__append("unknown special predicate name ", RawPredName, Msg),
         error(Msg)
     ),
-    Name0 = string__append_list([PredName, " for ", TypeModule, ":", TypeName,
+    Name0 = string__append_list([PredName, " for ", TypeModule, ".", TypeName,
         "/", string__int_to_string(Arity)]),
     ( Mode = 0 ->
         Name = Name0
@@ -431,7 +431,7 @@ refined_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
         fix_type_spec_suffix(ProcName2Chars, ProcNameChars, SpecInfo)
     ->
         RefinedProcName = string__from_char_list(ProcNameChars),
-        Name = string__append_list([DeclModule, ":", RefinedProcName,
+        Name = string__append_list([DeclModule, ".", RefinedProcName,
             "/", string__int_to_string(Arity),
             ( PredOrFunc = function -> "+1" ; "" ),
             "-", string__int_to_string(Mode),
@@ -452,12 +452,12 @@ refined_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
     ->
         string__from_char_list(ContainingNameChars, ContainingName),
         string__from_char_list(LineNumberChars, LineNumber),
-        Name = string__append_list([DeclModule, ":", ContainingName,
+        Name = string__append_list([DeclModule, ".", ContainingName,
             " lambda line ", LineNumber,
             "/", string__int_to_string(Arity),
             ( PredOrFunc = function -> "+1" ; "" )])
     ;
-        Name = string__append_list([DeclModule, ":", ProcName,
+        Name = string__append_list([DeclModule, ".", ProcName,
             "/", string__int_to_string(Arity),
             ( PredOrFunc = function -> "+1" ; "" ),
             "-", string__int_to_string(Mode)])
