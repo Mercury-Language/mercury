@@ -20,6 +20,7 @@
 
 /*---------------------------------------------------------------------------*/
 
+/* mercury_std.h includes mercury_regs.h, and must precede system headers */
 #include    "mercury_conf.h"
 #include    "mercury_std.h"
 #include    "getopt.h"
