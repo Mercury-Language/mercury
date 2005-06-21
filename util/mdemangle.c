@@ -21,11 +21,12 @@
 ** Any changes here will need to be duplicated there and vice versa.
 */
 
+/* mercury_std.h includes mercury_regs.h, and must precede system headers */
+#include "mercury_std.h"
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "mercury_std.h"
 
 /* We used this for the size of fixed-length buffers in a few places <sigh> */
 #define MAX_SYMBOL_LENGTH 1000
