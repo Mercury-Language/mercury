@@ -41,7 +41,8 @@
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module std_util.
 
 	% Mode checking is like abstract interpretation.
 	% The predicates below define the abstract unification operation
@@ -135,7 +136,15 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_mode.
 
-:- import_module bool, int, std_util, require, list, set, svset, map, svmap.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module svmap.
+:- import_module svset.
 
 	% Abstractly unify two insts.
 
@@ -614,7 +623,11 @@ abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, L, Det, !ModuleInfo) :-
 		% alternative for each input doesn't match, then the
 		% unification can fail, so adjust the determinism.
 		%
-		( Xs = [functor(ConsId, _)], Ys = [functor(ConsId, _)] ->
+		(
+			Xs = [functor(ConsIdX, _)],
+			Ys = [functor(ConsIdY, _)],
+			cons_ids_match(ConsIdX, ConsIdY)
+		->
 			Det = Det0
 		;
 			determinism_components(Det0, _, MaxSoln),
@@ -634,7 +647,7 @@ abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, L, Det,
 		!ModuleInfo) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
-	( ConsIdX = ConsIdY ->
+	( cons_ids_match(ConsIdX, ConsIdY) ->
 		abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real,
 			Args, Det1, !ModuleInfo),
 		abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
@@ -670,7 +683,7 @@ abstractly_unify_bound_inst_list_lives([X|Xs], ConsIdY, ArgsY, LivesY, Real,
 		L, Det, !ModuleInfo) :-
 	X = functor(ConsIdX, ArgsX),
 	(
-		ConsIdX = ConsIdY
+		cons_ids_match(ConsIdX, ConsIdY)
 	->
 		abstractly_unify_inst_list_lives(ArgsX, ArgsY, LivesY, Real,
 			Args, Det, !ModuleInfo),
@@ -1671,7 +1684,7 @@ bound_inst_list_merge(Xs, Ys, MaybeType, Zs, !ModuleInfo) :-
 		Ys = [Y | Ys1],
 		X = functor(ConsIdX, ArgsX),
 		Y = functor(ConsIdY, ArgsY),
-		( ConsIdX = ConsIdY ->
+		( cons_ids_match(ConsIdX, ConsIdY) ->
 			maybe_get_cons_id_arg_types(!.ModuleInfo, MaybeType,
 				ConsIdX, list__length(ArgsX), MaybeTypes),
 			inst_list_merge(ArgsX, ArgsY, MaybeTypes, Args,
@@ -1735,6 +1748,36 @@ pred_inst_info_standard_func_mode(Arity) =
 	in_mode(InMode),
 	out_mode(OutMode),
 	ArgModes = list__duplicate(Arity - 1, InMode) ++ [OutMode].
+
+%-----------------------------------------------------------------------------%
+
+	% A non-module-qualified cons_id name matches a module-qualified
+	% cons_id name.
+	%
+:- pred cons_ids_match(cons_id::in, cons_id::in) is semidet.
+
+cons_ids_match(ConsIdA, ConsIdB) :-
+	(
+		ConsIdA = cons(SymNameA, ArityA),
+		ConsIdB = cons(SymNameB, ArityB)
+	->
+		ArityA = ArityB,
+		(
+			SymNameA = unqualified(Name),
+			SymNameB = unqualified(Name)
+		;
+			SymNameA = unqualified(Name),
+			SymNameB = qualified(_, Name)
+		;
+			SymNameA = qualified(_, Name),
+			SymNameB = unqualified(Name)
+		;
+			SymNameA = qualified(Qualifier, Name),
+			SymNameB = qualified(Qualifier, Name)
+		)
+	;
+		ConsIdA = ConsIdB
+	).
 
 %-----------------------------------------------------------------------------%
 :- end_module inst_util.
