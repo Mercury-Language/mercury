@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,17 +18,19 @@
 #include "mercury_type_info.h"
 #include "mercury_stack_layout.h"
 
+union MR_Construct_Functor_Union {
+	const MR_EnumFunctorDesc		*enum_functor_desc;
+	const MR_NotagFunctorDesc		*notag_functor_desc;
+	const MR_DuFunctorDesc			*du_functor_desc;
+};
+
 typedef struct MR_Construct_Info_Struct {
-	MR_ConstString		functor_name;
-	MR_Integer		arity;
-	const MR_PseudoTypeInfo	*arg_pseudo_type_infos;
-	const MR_ConstString	*arg_names;
-	MR_TypeCtorRep		type_ctor_rep;
-	union {
-		const MR_EnumFunctorDesc	*enum_functor_desc;
-		const MR_NotagFunctorDesc	*notag_functor_desc;
-		const MR_DuFunctorDesc		*du_functor_desc;
-	}			functor_info;
+	MR_ConstString				functor_name;
+	MR_Integer				arity;
+	const MR_PseudoTypeInfo			*arg_pseudo_type_infos;
+	const MR_ConstString			*arg_names;
+	MR_TypeCtorRep				type_ctor_rep;
+	union MR_Construct_Functor_Union	functor_info;
 } MR_Construct_Info;
 
 /*

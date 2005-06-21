@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000, 2004 The University of Melbourne.
+** Copyright (C) 1997-2000, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -54,6 +54,7 @@
 **	called when an exception is thrown,
 **	or when doing a retry in the debugger
 */
+
 /*---------------------------------------------------------------------------*/
 
 /* void MR_mark_ticket_stack(MR_Word &); */
@@ -87,10 +88,11 @@
 			(save_ticket_counter);			\
 	} while(0)
 
-	/* 
-	** Called when we create a choice point
-	** (including semidet choice points).
-	*/
+/* 
+** Called when we create a choice point
+** (including semidet choice points).
+*/
+
 /* void MR_store_ticket(MR_Word &); */
 #define MR_store_ticket(save_trail_ptr)				\
 	do {							\
@@ -98,14 +100,15 @@
 		MR_ticket_counter = ++MR_ticket_high_water;	\
 	} while(0)
 
-	/*
-	** Unwind restoration info back to `old'.  `kind' indicates
-	** whether we are restoring or just discarding the info.
-	** 
-	** Note that the commented out calls to save/restore
-	** transient registers are not needed because
-	** MR_trail_ptr is never a real register.
-	*/
+/*
+** Unwind restoration info back to `old'.  `kind' indicates
+** whether we are restoring or just discarding the info.
+** 
+** Note that the commented out calls to save/restore
+** transient registers are not needed because
+** MR_trail_ptr is never a real register.
+*/
+
 /* void MR_reset_ticket(MR_Word, MR_untrail_reason); */
 #define MR_reset_ticket(old, kind)				\
 	do {							\
@@ -324,6 +327,7 @@ extern MR_MemoryZone *MR_trail_zone;
 ** N.B. Use `MR_trail_ptr', defined in mercury_regorder.h,
 ** not `MR_trail_ptr_var'.
 */
+
 extern MR_TrailEntry *MR_trail_ptr_var;
 
 /*
@@ -336,6 +340,7 @@ extern MR_TrailEntry *MR_trail_ptr_var;
 ** N.B.  Use `MR_ticket_counter', defined in mercury_regorder.h,
 ** not `MR_ticket_counter_var'.
 */
+
 extern MR_Unsigned MR_ticket_counter_var;
 
 /*
@@ -348,6 +353,7 @@ extern MR_Unsigned MR_ticket_counter_var;
 ** N.B.  Use `MR_ticket_high_water', defined in mercury_regorder.h,
 ** not `MR_ticket_high_water_var'.
 */
+
 extern MR_Unsigned MR_ticket_high_water_var;
 
 /*---------------------------------------------------------------------------*/
@@ -366,6 +372,7 @@ extern MR_Unsigned MR_ticket_high_water_var;
 ** Make sure that when the current execution is
 ** backtracked over, `value' is placed in `address'.
 */
+
 #define MR_trail_value(address, value)		\
 	do {							\
 		MR_store_value_trail_entry(MR_trail_ptr,	\
@@ -380,6 +387,7 @@ extern MR_Unsigned MR_ticket_high_water_var;
 ** backtracked over, the value currently in `address'
 ** is restored.
 */
+
 #define MR_trail_current_value(address) \
 	MR_trail_value((address), *(address))
 
@@ -394,6 +402,7 @@ extern MR_Unsigned MR_ticket_high_water_var;
 ** current choice is committed to), then
 ** (*untrail_func)(value, MR_commit) is called.
 */
+
 #define MR_trail_function(untrail_func, datum)				\
 	do {								\
 		MR_store_function_trail_entry((MR_trail_ptr),		\
@@ -404,6 +413,7 @@ extern MR_Unsigned MR_ticket_high_water_var;
 /*
 ** Apply all the trail entries between MR_trail_ptr and old_trail_ptr.
 */
+
 void MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason);
 
 /* abstract type */
@@ -430,6 +440,7 @@ typedef MR_Unsigned MR_ChoicepointId;
 ** then code A will be executed if and only if the
 ** current choicepoint is the same in both calls.
 */
+
 #define MR_current_choicepoint_id() ((const MR_ChoicepointId) MR_ticket_counter)
 
 /*
@@ -438,6 +449,7 @@ typedef MR_Unsigned MR_ChoicepointId;
 ** A macro defining a "null" ChoicepointId.
 ** This is suitable for use in static initializers.
 */
+
 #define MR_null_choicepoint_id() ((const MR_ChoicepointId)0)
 
 /*
@@ -451,6 +463,7 @@ typedef MR_Unsigned MR_ChoicepointId;
 ** If either of the choice points have been
 ** backtracked over, the behaviour is undefined.
 */
+
 #define MR_choicepoint_newer(x, y) ((x) > (y))
 
 #endif /* not MERCURY_TRAIL_H */

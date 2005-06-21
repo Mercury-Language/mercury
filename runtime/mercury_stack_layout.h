@@ -240,7 +240,7 @@ typedef enum {
 ** event should have no effects that the user can see (no message printed, no
 ** increment of the event number etc), and false otherwise. Hidden events
 ** are sometimes needed by the declarative debugger to provide the proper
-** context for other events. XXX this field is not used yet.
+** context for other events.
 **
 ** The MR_sll_goal_path field contains an offset into the module-wide string
 ** table, leading to a string that gives the goal path associated with the

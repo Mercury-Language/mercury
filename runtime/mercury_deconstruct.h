@@ -3,7 +3,7 @@
 */
 
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -116,7 +116,7 @@ extern  void    MR_expand_named_arg_only(MR_TypeInfo type_info,
 ** calls to this function.
 */
 
-extern  MR_bool    MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
+extern  MR_bool MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
                     MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr,
                     MR_noncanon_handling noncanon);
 
@@ -128,7 +128,7 @@ extern  MR_bool    MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
 ** calls to this function.
 */
 
-extern  MR_bool    MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
+extern  MR_bool MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
                     MR_ConstString arg_name, MR_TypeInfo *arg_type_info_ptr,
                     MR_Word **argument_ptr, MR_noncanon_handling noncanon);
 
@@ -143,7 +143,7 @@ extern  MR_bool    MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
 ** calls to this function.
 */
 
-extern  MR_bool    MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
+extern  MR_bool MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     const char *arg_name, int *arg_num_ptr);
 
 #endif /* MERCURY_DECONSTRUCT_H */

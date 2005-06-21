@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -101,14 +101,12 @@ extern	MR_Word	MR_lookup_long_lval(MR_Long_Lval locn,
 			MR_Word *saved_regs, MR_bool *succeeded);
 extern	MR_Word	MR_lookup_long_lval_base(MR_Long_Lval locn,
 			MR_Word *saved_regs, MR_Word *base_sp,
-			MR_Word *base_curfr,
-			MR_bool *succeeded);
+			MR_Word *base_curfr, MR_bool *succeeded);
 extern	MR_Word	MR_lookup_short_lval(MR_Short_Lval locn,
 			MR_Word *saved_regs, MR_bool *succeeded);
 extern	MR_Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
 			MR_Word *saved_regs, MR_Word *base_sp,
-			MR_Word *base_curfr,
-			MR_bool *succeeded);
+			MR_Word *base_curfr, MR_bool *succeeded);
 
 /*
 ** Given information about the location of a variable (var) and a vector giving

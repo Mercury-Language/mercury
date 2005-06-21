@@ -35,6 +35,7 @@
 ** mercury_main() is defined in the <module>_init.c file.
 ** It calls mercury_init(), mercury_call_main(), and then mercury_terminate().
 */
+
 extern	int	mercury_main(int argc, char **argv);
 
 /*
@@ -51,6 +52,7 @@ extern	int	mercury_main(int argc, char **argv);
 ** collector, sets some global variables, and then calls
 ** mercury_runtime_init().
 */
+
 extern	void	mercury_init(int argc, char **argv, void *stack_bottom);
 
 /*
@@ -58,6 +60,7 @@ extern	void	mercury_init(int argc, char **argv, void *stack_bottom);
 ** It just calls mercury_runtime_main(), which calls main/2
 ** in the Mercury program.
 */
+
 extern	void	mercury_call_main(void);
 
 /*
@@ -66,6 +69,7 @@ extern	void	mercury_call_main(void);
 ** any necessary cleanup, and then returns the appropriate
 ** exit status as set by io__set_exit_status.
 */
+
 extern	int	mercury_terminate(void);
 
 /*---------------------------------------------------------------------------*/

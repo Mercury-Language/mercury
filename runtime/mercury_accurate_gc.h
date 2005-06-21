@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998, 2000, 2002 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000, 2002, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -45,9 +45,9 @@ extern	void	MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 */
 
 struct	MR_RootNode {
-	MR_Word *root;
-	MR_TypeInfo type_info;
-	struct MR_RootNode* next;
+	MR_Word 		*root;
+	MR_TypeInfo		type_info;
+	struct MR_RootNode	* next;
 };
 
 typedef	struct MR_RootNode	*MR_RootList;
