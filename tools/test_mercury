@@ -527,6 +527,7 @@ case $HOST in
 		INSTALL_LIBGRADES="asm_fast.gc asm_fast.gc.debug.tr \
 			asm_fast.gc.mmsc asm_fast.gc.mm.debug \
 			asm_fast.gc.profdeep hlc.gc"
+		CONFIG_OPTS="--enable-deep-profiler=/var/www/cgi-bin"
 		;;
 	*)	
 		CONFIG_OPTS="" ;;
