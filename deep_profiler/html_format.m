@@ -121,6 +121,11 @@
 :- func deep_cmd_pref_to_url(preferences, deep, cmd) = string.
 
 :- func plural(int) = string.
+	
+	% Convert any special characters in a string into appropriate
+	% HTML escapes.
+	%
+:- func escape_html_string(string) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -1840,18 +1845,18 @@ proc_static_to_html_ref(Pref, Deep, PSPtr) = HTML :-
 	deep_lookup_proc_statics(Deep, PSPtr, PS),
 	ProcName = PS ^ ps_refined_id,
 	HTML = string__format("<A HREF=""%s"">%s</A>",
-		[s(URL), s(ProcName)]).
+		[s(URL), s(escape_html_string(ProcName))]).
 
 module_name_to_html_ref(Pref, Deep, ModuleName) = HTML :-
 	URL = deep_cmd_pref_to_url(Pref, Deep, module(ModuleName)),
 	HTML = string__format("<A HREF=""%s"">%s</A>",
-		[s(URL), s(ModuleName)]).
+		[s(URL), s(escape_html_string(ModuleName))]).
 
 clique_ptr_to_html_ref(Pref, Deep, ProcName, CliquePtr) = HTML :-
 	CliquePtr = clique_ptr(CliqueNum),
 	URL = deep_cmd_pref_to_url(Pref, Deep, clique(CliqueNum)),
 	HTML = string__format("<A HREF=""%s"">%s</A>",
-		[s(URL), s(ProcName)]).
+		[s(URL), s(escape_html_string(ProcName))]).
 
 deep_cmd_pref_to_url(Pref, Deep, Cmd) =
 	machine_datafile_cmd_pref_to_url(Deep ^ server_name,
@@ -1866,4 +1871,45 @@ plural(N) = Plural :-
 		Plural = "s"
 	).
 
+%-----------------------------------------------------------------------------%
+
+% This code was pretty much taken directly from extras/cgi/html.m. 
+
+escape_html_string(String) = EscapedString :-
+	string.to_char_list(String, Chars),
+	escape_html_chars(Chars, EscapedChars, []),
+	string.from_char_list(EscapedChars, EscapedString).
+
+:- pred escape_html_chars(list(char)::in, list(char)::out, list(char)::in)
+	is det.
+
+escape_html_chars([]) --> [].
+escape_html_chars([Char | Chars]) -->
+	escape_html_char(Char),
+	escape_html_chars(Chars).
+
+:- pred escape_html_char(char::in, list(char)::out, list(char)::in) is det.
+
+escape_html_char(Char) -->
+	( { special_html_char(Char, String) } ->
+		{ string.to_char_list(String, Chars) },
+		insert(Chars)
+	;
+		[Char]
+	).
+
+:- pred special_html_char(char::in, string::out) is semidet.
+
+special_html_char('&', "&amp;").
+special_html_char('<', "&lt;").
+special_html_char('>', "&gt;").
+
+:- pred insert(list(T), list(T), list(T)).
+:- mode insert(in, out, in) is det.
+
+insert(NewChars, Chars, Chars0) :-
+	list__append(NewChars, Chars0, Chars).
+
+%-----------------------------------------------------------------------------%
+:- end_module html_format.
 %-----------------------------------------------------------------------------%
