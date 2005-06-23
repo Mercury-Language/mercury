@@ -6,8 +6,8 @@
 %
 % Authors: conway, zs.
 %
-% This module defines utility predicates for both the CGI program and
-% for the server.
+% This module defines utility predicates for the CGI program.
+%-----------------------------------------------------------------------------%
 
 :- module util.
 
@@ -16,6 +16,8 @@
 :- import_module char.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 	% split(Str, Char, Pieces): splits Str into pieces at every occurrence
 	% of Char, and returns the pieces in order. No piece will contain Char.
 	% If two Chars occur in a row, split will return the empty string as
@@ -23,10 +25,15 @@
 	%
 :- pred split(string::in, char::in, list(string)::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module require.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 split(Str0, SplitChar, Strs) :-
 	string__to_char_list(Str0, Chars0),
@@ -68,3 +75,7 @@ find_split_char_2([Char | Chars], SplitChar, BeforeRev0, BeforeRev, After) :-
 		find_split_char_2(Chars, SplitChar, [Char | BeforeRev0],
 			BeforeRev, After)
 	).
+
+%-----------------------------------------------------------------------------%
+:- end_module util.
+%-----------------------------------------------------------------------------%

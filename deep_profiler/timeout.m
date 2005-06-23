@@ -20,6 +20,7 @@
 % created, but we don't want the parent process after the fork to delete them
 % while they are still in use by the child process. This is prevented by the
 % boolean flag process_is_detached_server.
+%-----------------------------------------------------------------------------%
 
 :- module timeout.
 
@@ -28,6 +29,8 @@
 :- import_module bool.
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+	
 	% Add the given file name to the list of files to be cleaned up.
 	%
 :- pred register_file_for_cleanup(string::in, io::di, io::uo)
@@ -79,10 +82,15 @@
 	%
 :- pred remove_want_file(string::in, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module int.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C",
 "
@@ -668,3 +676,7 @@ release_lock(Debug, MutexFile, !IO) :-
 	MR_fatal_error(""deep profiler not enabled"");
 #endif
 ").
+
+%----------------------------------------------------------------------------%
+:- end_module timeout.
+%----------------------------------------------------------------------------%

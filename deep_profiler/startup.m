@@ -9,9 +9,10 @@
 % Authors: conway, zs.
 %
 % This module contains the code for turning the raw list of nodes read in by
-% read_profile.m into the data structure that server.m needs to service
+% read_profile.m into the data structure that mdprof_cgi.m needs to service
 % requests for web pages. The algorithm it implements is documented in the
 % deep profiling paper.
+%-----------------------------------------------------------------------------%
 
 :- module startup.
 
@@ -24,10 +25,13 @@
 :- import_module list.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
 :- pred read_and_startup(string::in, list(string)::in, bool::in,
     maybe(io__output_stream)::in, list(string)::in, maybe_error(deep)::out,
     io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -46,12 +50,13 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module svarray.
 :- import_module svmap.
 
 % :- import_module unsafe.
+
+%-----------------------------------------------------------------------------%
 
 read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream,
     DumpStages, Res, !IO) :-
@@ -891,4 +896,6 @@ maybe_report_msg(yes(OutputStream), Msg, !IO) :-
     flush_output(OutputStream, !IO).
 maybe_report_msg(no, _, !IO).
 
+%-----------------------------------------------------------------------------%
+:- end_module startup.
 %-----------------------------------------------------------------------------%

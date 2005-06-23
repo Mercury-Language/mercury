@@ -9,6 +9,7 @@
 %
 % This file contains the CGI "script" that is executed by the web server
 % to handle web page requests implemented by the Mercury deep profiler server.
+%-----------------------------------------------------------------------------%
 
 :- module mdprof_cgi.
 
@@ -16,7 +17,12 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred main(io::di, io::uo) is cc_multi.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -41,6 +47,8 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 % The web server should always set QUERY_STRING. It may also pass its contents
 % as arguments, but if any characters special to the shell occur in the query,
@@ -744,4 +752,6 @@ default_cmd(Options) = Cmd :-
 		Cmd = menu
 	).
 
+%-----------------------------------------------------------------------------%
+:- end_module mdprof_cgi.
 %-----------------------------------------------------------------------------%

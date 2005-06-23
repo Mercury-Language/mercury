@@ -9,6 +9,7 @@
 % Author: zs.
 %
 % This file contains a tool for testing the behavior of the deep profiler.
+%-----------------------------------------------------------------------------%
 
 :- module mdprof_test.
 
@@ -16,7 +17,12 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred main(io::di, io::uo) is cc_multi.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -40,6 +46,8 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 main(!IO) :-
     io__progname_base("mdprof_test", ProgName, !IO),
@@ -259,4 +267,6 @@ defaults(test_dir,          string("deep_test")).
 defaults(verbose,           bool(no)).
 defaults(version,           bool(no)).
 
+%-----------------------------------------------------------------------------%
+:- end_module mdprof_test.
 %-----------------------------------------------------------------------------%

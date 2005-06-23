@@ -41,8 +41,10 @@
 
 :- import_module profile.
 
-:- import_module std_util.
 :- import_module io.
+:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type exclude_file.
 
@@ -52,6 +54,7 @@
 :- func apply_contour_exclusion(deep, exclude_file, call_site_dynamic_ptr)
 	= call_site_dynamic_ptr.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -63,6 +66,8 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type exclude_file == set(exclude_spec).
 
@@ -204,3 +209,7 @@ apply_contour_exclusion(Deep, ExcludedSpecs, CSDPtr0) = CSDPtr :-
 	;
 		CSDPtr = CSDPtr0
 	).
+
+%-----------------------------------------------------------------------------%
+:- end_module exclude.
+%-----------------------------------------------------------------------------%

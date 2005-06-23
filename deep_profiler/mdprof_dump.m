@@ -10,12 +10,15 @@
 % of a deep profiling data file (Deep.data file) for the purpose of debugging
 % the deep profiler or the part of the Mercury runtime that generates Deep.data
 % files.
+%-----------------------------------------------------------------------------%
 
 :- module mdprof_dump.
 
 :- interface.
 
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 :- pred main(io::di, io::uo) is det.
 

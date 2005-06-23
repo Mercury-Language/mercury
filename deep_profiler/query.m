@@ -8,6 +8,7 @@
 %
 % This module contains the top level predicates for servicing individual
 % queries.
+%-----------------------------------------------------------------------------%
 
 :- module query.
 
@@ -17,6 +18,8 @@
 :- import_module interface.
 
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 :- pred try_exec(cmd::in, preferences::in, deep::in, string::out,
 	io::di, io::uo) is cc_multi.
@@ -1971,3 +1974,7 @@ wrap_top_procs_links(Limit, Pref, Deep, Str0, Criteria) = Str :-
 		Str = string__format("<A HREF=%s>%s</A>",
 			[s(URL), s(escape_html_string(Str0))])
 	).
+
+%----------------------------------------------------------------------------%
+:- end_module query.
+%----------------------------------------------------------------------------%

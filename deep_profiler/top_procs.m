@@ -10,6 +10,7 @@
 %
 % For comparisons on costs, we sort highest first. For comparisons on names and
 % contexts, we sort lowest first. This is consistently what users want.
+%-----------------------------------------------------------------------------%
 
 :- module top_procs.
 
@@ -21,6 +22,8 @@
 
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- func find_top_procs(cost_kind, include_descendants, measurement_scope,
 	display_limit, deep) = maybe_error(list(int)).
@@ -49,6 +52,7 @@
 	own_prof_info::out, inherit_prof_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -57,6 +61,8 @@
 :- import_module float.
 :- import_module int.
 :- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
 	find_top_sort_predicate(Sort, InclDesc, Scope, SortCompatible,
@@ -122,8 +128,7 @@ int_list_from_to(From, To) = List :-
 
 %-----------------------------------------------------------------------------%
 
-:- type compare_proc_statics ==
-	(func(deep, int, int) = comparison_result).
+:- type compare_proc_statics == (func(deep, int, int) = comparison_result).
 
 :- func compare_procs_fallback(compare_proc_statics, deep, int, int)
 	= comparison_result.
@@ -886,4 +891,6 @@ accumulate_line_group_measurements(LineGroup, Own0, Own, Desc0, Desc) :-
 	Own = add_own_to_own(Own0, LineGroup ^ group_own),
 	Desc = add_inherit_to_inherit(Desc0, LineGroup ^ group_desc).
 
+%-----------------------------------------------------------------------------%
+:- end_module top_procs.
 %-----------------------------------------------------------------------------%

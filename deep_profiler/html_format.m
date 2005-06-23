@@ -8,6 +8,7 @@
 %
 % This module contains code that sets the format of the HTML tables
 % we generate for individual queries.
+%-----------------------------------------------------------------------------%
 
 :- module html_format.
 
@@ -21,6 +22,8 @@
 :- import_module bool.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- func table_start(preferences) = string.
 :- func table_end(preferences) = string.
@@ -128,10 +131,9 @@
 :- func escape_html_string(string) = string.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module top_procs.
 
 :- import_module char.
 :- import_module float.

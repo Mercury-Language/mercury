@@ -19,6 +19,8 @@
 :- import_module array.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 :- pred find_cliques(initial_deep::in, list(list(proc_dynamic_ptr))::out)
 	is det.
 
@@ -27,19 +29,24 @@
 	is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module array_util.
 :- import_module cliques.
-:- import_module int.
 :- import_module profile.
+
+:- import_module int.
 :- import_module set.
+:- import_module svarray.
 
 % :- import_module io.
 % :- import_module require.
 % :- import_module string.
 % :- import_module unsafe.
+
+%-----------------------------------------------------------------------------%
 
 find_cliques(InitDeep, BottomUpPDPtrCliqueList) :-
 	make_graph(InitDeep, Graph),
@@ -82,24 +89,23 @@ make_graph(InitDeep, Graph) :-
 :- pred add_pd_arcs(initial_deep::in, int::in, proc_dynamic::in,
 	graph::in, graph::out) is det.
 
-add_pd_arcs(InitDeep, PDI, PD, Graph0, Graph) :-
+add_pd_arcs(InitDeep, PDI, PD, !Graph) :-
 	CallSiteRefArray = PD ^ pd_sites,
 	array__to_list(CallSiteRefArray, CallSiteRefList),
-	list__foldl(add_call_site_arcs(InitDeep, PDI), 
-		CallSiteRefList, Graph0, Graph).
+	list__foldl(add_call_site_arcs(InitDeep, PDI), CallSiteRefList,
+		!Graph).
 
 :- pred add_call_site_arcs(initial_deep::in, int::in, call_site_array_slot::in,
 	graph::in, graph::out) is det.
 
-add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, Graph0, Graph) :-
+add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, !Graph) :-
 	(
 		CallSiteSlot = normal(CSDPtr),
-		add_csd_arcs(InitDeep, FromPDI, CSDPtr, Graph0, Graph)
+		add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph)
 	;
 		CallSiteSlot = multi(_, CSDPtrArray),
 		array__to_list(CSDPtrArray, CSDPtrs),
-		list__foldl(add_csd_arcs(InitDeep, FromPDI), CSDPtrs,
-			Graph0, Graph)
+		list__foldl(add_csd_arcs(InitDeep, FromPDI), CSDPtrs, !Graph)
 	).
 
 :- pred add_csd_arcs(initial_deep::in, int::in, call_site_dynamic_ptr::in,
@@ -107,16 +113,16 @@ add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, Graph0, Graph) :-
 
 % :- pragma promise_pure(add_csd_arcs/5).
 
-add_csd_arcs(InitDeep, FromPDI, CSDPtr, Graph0, Graph) :-
+add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	( CSDI > 0 ->
 		array__lookup(InitDeep ^ init_call_site_dynamics, CSDI, CSD),
 		ToPDPtr = CSD ^ csd_callee,
 		ToPDPtr = proc_dynamic_ptr(ToPDI),
 		% impure unsafe_perform_io(write_arc(FromPDI, ToPDI, CSDI)),
-		add_arc(Graph0, FromPDI, ToPDI, Graph)
+		add_arc(!.Graph, FromPDI, ToPDI, !:Graph)
 	;
-		Graph = Graph0
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -132,23 +138,24 @@ make_clique_indexes(NPDs, CliqueList, Cliques, CliqueIndex) :-
 :- pred index_clique(int::in, list(proc_dynamic_ptr)::in,
 	array(clique_ptr)::array_di, array(clique_ptr)::array_uo) is det.
 
-index_clique(CliqueNum, CliqueMembers, CliqueIndex0, CliqueIndex) :-
+index_clique(CliqueNum, CliqueMembers, !CliqueIndex) :-
 	array_list_foldl(index_clique_member(CliqueNum),
-		CliqueMembers, CliqueIndex0, CliqueIndex).
+		CliqueMembers, !CliqueIndex).
 
 :- pred index_clique_member(int::in, proc_dynamic_ptr::in,
 	array(clique_ptr)::array_di, array(clique_ptr)::array_uo) is det.
 
 % :- pragma promise_pure(index_clique_member/4).
 
-index_clique_member(CliqueNum, PDPtr, CliqueIndex0, CliqueIndex) :-
+index_clique_member(CliqueNum, PDPtr, !CliqueIndex) :-
 	PDPtr = proc_dynamic_ptr(PDI),
 	% impure unsafe_perform_io(write_pdi_cn(PDI, CliqueNum)),
-	array__set(CliqueIndex0, PDI, clique_ptr(CliqueNum), CliqueIndex).
+	svarray.set(PDI, clique_ptr(CliqueNum), !CliqueIndex).
 
 %-----------------------------------------------------------------------------%
-
+%
 % Predicates for use in debugging.
+%
 
 % :- pred write_arc(int::in, int::in, int::in, io::di, io::uo)
 % 	is det.
@@ -166,3 +173,8 @@ index_clique_member(CliqueNum, PDPtr, CliqueIndex0, CliqueIndex) :-
 % 	io__write_int(CN, !IO),
 % 	io__nl(!IO),
 % 	io__flush_output(!IO).
+%
+
+%-----------------------------------------------------------------------------%
+:- end_module callgraph.
+%-----------------------------------------------------------------------------%

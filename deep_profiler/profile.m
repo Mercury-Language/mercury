@@ -15,6 +15,7 @@
 % at index 0; their first real element is at index 1. The arrays in
 % proc_static and proc_dynamic structures, being reflections of arrays created
 % in C code, start at index 0.
+%-----------------------------------------------------------------------------%
 
 :- module profile.
 
@@ -27,6 +28,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type profile_stats --->
 	profile_stats(
@@ -426,6 +429,7 @@
 :- func root_desc_info(deep) = inherit_prof_info.
 :- func root_own_info(deep) = own_prof_info.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -895,4 +899,6 @@ root_desc_info(Deep) = RootDesc :-
 root_own_info(Deep) = RootOwn :-
 	deep_lookup_pd_own(Deep, Deep ^ root, RootOwn).
 
+%-----------------------------------------------------------------------------%
+:- end_module profile.
 %-----------------------------------------------------------------------------%
