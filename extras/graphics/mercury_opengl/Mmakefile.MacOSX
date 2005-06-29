@@ -1,0 +1,25 @@
+# To build the OpenGL binding on OS X, do the following:
+#
+# $ mmake -f Mmakefile.MacOSX depend
+# $ mmake -f Mmakefile.MacOSX
+#
+# After which you can install by ....
+#
+# $ mmake -f Mmakefile.MacOSX install
+
+MAIN_TARGET = libmercury_opengl
+
+# Don't issue a warning because mercury_opengl doesn't export anything.
+MCFLAGS-mercury_opengl = --no-warn-nothing-exported
+
+# This is necessary for a couple of predicates that have not been
+# implemented completely.
+MCFLAGS-mogl = --no-warn-inferred-erroneous
+
+MCFLAGS = --halt-at-warn --intermodule-optimization
+
+MLLIBS = -framework OpenGL
+
+depend: mercury_opengl.depend
+
+install: libmercury_opengl.install
