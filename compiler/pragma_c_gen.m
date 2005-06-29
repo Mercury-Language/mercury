@@ -526,7 +526,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 		DefSuccessComp = pragma_c_raw_code(
 			"\tMR_bool " ++ pragma_succ_ind_name ++ ";\n" ++
 			"#undef SUCCESS_INDICATOR\n" ++
-			"#define SUCCESS_INDICATOR MercurySuccessIndicator\n",
+			"#define SUCCESS_INDICATOR " ++
+				pragma_succ_ind_name ++ "\n",
 			live_lvals_info(set__init)),
 		UndefSuccessComp = pragma_c_raw_code(
 			"#undef SUCCESS_INDICATOR\n" ++
