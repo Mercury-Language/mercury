@@ -19,6 +19,9 @@ ENDINIT
 #ifdef MR_CAN_DO_PENDING_IO
   #include <sys/types.h>	/* for fd_set */
   #include <sys/time.h>		/* for struct timeval */
+  #ifdef MR_HAVE_UNISTD_H
+	#include <unistd.h>	/* for select() on OS X */
+  #endif	
 #endif
 
 #include "mercury_memory_handlers.h"

@@ -16,6 +16,15 @@
 
 #ifdef	MR_CAN_DO_PENDING_IO
 
+/*
+** Work around for a problem on MacOS 10.3 and earlier.
+** The function prototype for bzero() is not visible otherwise.
+** This seems to have been fixed in MacOS 10.4.
+*/
+#if defined(__APPLE__) && (__MACH__)
+	#include <strings.h>
+#endif
+
 #include <sys/types.h>	/* for fd_set and FD_ZERO() */
 #include <sys/time.h>	/* for FD_ZERO() */
 
