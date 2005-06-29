@@ -154,7 +154,7 @@ process_proc(Debug, PPId, !ModuleInfo, !IO) :-
     proc_info_argmodes(ProcInfo0, ArgModes),
     ClosureInfo0 = closure_info_init(!.ModuleInfo, VarTypes, HeadVars,
         ArgModes),
-    write_proc_progress_message("Analysing closures in ", PPId, !.ModuleInfo,
+    write_proc_progress_message("% Analysing closures in ", PPId, !.ModuleInfo,
         !IO), 
     proc_info_goal(ProcInfo0, Body0),
     process_goal(VarTypes, !.ModuleInfo, Body0, Body,
@@ -235,9 +235,20 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     % XXX We should probably just ignore Aditi stuff and unsafe_casts
     % but annotating them with closure_infos won't hurt.
     %
-    GoalExpr = generic_call(_Details, GCallArgs, GCallModes, _),
+    GoalExpr = generic_call(Details, GCallArgs, GCallModes, _),
     partition_arguments(ModuleInfo, VarTypes, GCallArgs, GCallModes,
-        set.init, InputArgs, set.init, OutputArgs),
+        set.init, InputArgs0, set.init, OutputArgs),
+    %
+    % For higher-order calls we need to make sure that the actual higher-order
+    % variable being called is also considered (it will typically be the
+    % variable of interest).  This variable is not included in 'GCallArgs' so
+    % we need to include in the set of input argument separately.  
+    %
+    ( Details = higher_order(CalledClosure0, _, _, _) ->
+        svset.insert(CalledClosure0, InputArgs0, InputArgs)
+    ;
+        InputArgs = InputArgs0 
+    ),         
     AddValues = (pred(Var::in, !.ValueMap::in, !:ValueMap::out) is det :-
         %
         % The closure_info won't yet contain any information about
