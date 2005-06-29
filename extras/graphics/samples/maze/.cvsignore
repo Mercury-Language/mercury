@@ -1,0 +1,13 @@
+maze
+*.c
+*.c_date
+*.d
+*.date
+*.dep
+*.err
+*.mh
+*.mih
+*.o
+*.dv
+*.int
+*.int2

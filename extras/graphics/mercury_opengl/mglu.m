@@ -96,7 +96,12 @@
 
 :- pragma foreign_decl("C", "
 	#include <math.h>
-	#include <GL/glu.h>
+
+	#if defined(__APPLE__) && (__MACH__)	
+		#include <OpenGL/glu.h>
+	#else
+		#include <GL/glu.h>
+	#endif
 ").
 
 %------------------------------------------------------------------------------%

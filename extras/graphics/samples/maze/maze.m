@@ -34,12 +34,25 @@
 :- implementation.
 
 :- import_module globals.
+:- import_module glut.
+:- import_module glut.callback.
+:- import_module glut.window.
+:- import_module mglu.
+:- import_module mogl.
 
-:- import_module glut, glut.window, glut.callback.	
-:- import_module mogl, mglu.
-
-:- import_module bool, char, float, getopt, int, list, map, math.
-:- import_module random, require, set, std_util, string.
+:- import_module bool.
+:- import_module char.
+:- import_module float.
+:- import_module getopt.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module math.
+:- import_module random.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

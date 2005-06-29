@@ -1139,7 +1139,12 @@
 	#include <stdio.h>
 	#include <math.h>
 	#include <assert.h>
-	#include <GL/gl.h>
+	
+	#if defined(__APPLE__) && defined(__MACH__)
+		#include <OpenGL/gl.h>
+	#else
+		#include <GL/gl.h>
+	#endif
 ").
 
 %------------------------------------------------------------------------------%
@@ -5056,7 +5061,16 @@ client_attrib_group_to_int(pixel_store) = 1.
 	push_client_attrib(IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	glPushClientAttrib(GL_ALL_CLIENT_ATTRIB_BITS);
+	/*
+ 	** XXX Apple's OpenGL implementation is broken.
+	** It doesn't define GL_ALL_CLIENT_ATTRIB_BITS.
+	*/
+	#if defined(__APPLE__) && defined(__MACH__)
+		glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+		glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
+	#else
+		glPushClientAttrib(GL_ALL_CLIENT_ATTRIB_BITS);
+	#endif
 	IO = IO0;
 ").
 
