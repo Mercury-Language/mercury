@@ -53,6 +53,7 @@ MLOBJS       := ../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS      += --no-main --shared
 C2INITARGS   += $(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
+C2INITARGS   += $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
 
 #
 # Work-around for a fixed limit: on alpha-dec-osf3.2, if we compile with
