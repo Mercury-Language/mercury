@@ -421,6 +421,13 @@
 #undef MR_CAN_DO_PENDING_IO
 
 /*
+** To see if the problem where the function prototype for bzero() is
+** not visible on some BSD based systems can be fixed by #including
+** strings.h.
+*/
+#undef MR_BZERO_NEEDS_STRINGS_HEADER
+
+/*
 ** MR_USE_EXTERNAL_DEBUGGER:
 **	Allow MR_trace() to use an external process debugger
 **	(with communication done via a socket interface)
