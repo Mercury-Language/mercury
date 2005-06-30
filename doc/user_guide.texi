@@ -2774,8 +2774,10 @@ invoking your XML browser.
 @item
 @samp{xml_browser_cmd} is the shell command(s) used to invoke your XML browser.
 If you want a stylesheet to be applied to the XML before the browser is invoked
-then you should do that in this command using the appropriate program (such as
-xsltproc).  By default if xsltproc and mozilla (or firefox) are available,
+then you should do that in this command using the appropriate program 
+(such as xsltproc, which comes with libxslt and is available from
+http://xmlsoft.org/XSLT/).  
+By default if xsltproc and mozilla (or firefox) are available,
 xsltproc is invoked to apply the xul_tree.xsl stylesheet in
 extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.  
 @sp 1

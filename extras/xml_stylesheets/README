@@ -6,6 +6,9 @@ You can apply a stylesheet to an XML document using the program xsltproc
 include a reference to the stylesheet in the XML document and have your browser
 apply the stylesheet, although this only works with some browsers.
 
+These stylesheets can also be used with mdb's `browse --xml' command
+(see the user guide for more details on `browse --xml').
+
 mercury_term.xsl
 	Stylesheet to convert an XML document generated with 
 	term_to_xml.write_xml_doc/6 back to a Mercury term suitable for reading
@@ -15,3 +18,11 @@ xul_tree.xsl
 	Stylesheet to convert an XML document generated with 
 	term_to_xml.write_xml_doc/6 to a XUL tree structure suitable for
 	browsing with Mozilla or Firefox.
+
+html_234tree.xsl
+	Converts a 234 tree (as defined in the standard library) to an XHTML
+	table.  The paths of each key and value are also shown.  This
+	is useful for looking up values or keys in 234 trees from the 
+	debugger by using the search facilities of your web browser, 
+	although it's impractical for very large 234 trees and doesn't work
+	with nested 234 trees.
