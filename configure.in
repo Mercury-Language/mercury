@@ -2796,6 +2796,11 @@ fi
 
 # Allow the user to override the default list of library grades
 
+if test "$enable_libgrades_given" = no -a -f .enable_lib_grades ; then
+	enable_libgrades=`cat .enable_lib_grades`
+	enable_libgrades_given=yes
+fi
+
 if test "$enable_libgrades_given" = yes; then
 	if test "$enable_libgrades" = no; then
 		AC_MSG_ERROR(
