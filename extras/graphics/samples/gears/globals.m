@@ -4,7 +4,8 @@
 
 :- interface.
 
-:- import_module io, string.
+:- import_module io.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -19,7 +20,9 @@
 
 :- implementation.
 
-:- import_module io, string, map, require, std_util.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -210,17 +210,21 @@
 
 :- implementation.
 
-:- import_module io, int.
-
-:- pragma foreign_decl("C", "
+:- pragma foreign_decl("C",
+"
 	#include <stdio.h>
-	#include <GL/glut.h>
+	
+	#if defined(__APPLE__) && defined(__MACH__)
+		#include <GLUT/glut.h>
+	#else
+		#include <GL/glut.h>
+	#endif
 ").
 
 %-----------------------------------------------------------------------------%
 
-
 	% Global callbacks.
+	%
 :- pragma foreign_decl("C", "
 	void MGLUT_idle_callback(void);
 	
@@ -228,6 +232,7 @@
 ").
 
 	% Window specific callbacks.
+	%
 :- pragma foreign_decl("C", "
 	
 	void MGLUT_display_callback(void);

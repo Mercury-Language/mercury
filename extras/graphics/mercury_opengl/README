@@ -33,6 +33,8 @@ This directory contains the following modules.
 	files
 
 See the file Mmakefile for instructions on how to build the OpenGL binding.
+The file Mmakefile.MacOSX contains instructions on how to build the binding
+on systems with MacOS X.
 The file Mmakefile.mtogl contains instructions on how to build mtogl.
 
 See HOWTO for details on how to link the package in with your own

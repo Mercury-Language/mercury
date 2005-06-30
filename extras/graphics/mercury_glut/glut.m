@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,7 +24,14 @@
 
 :- import_module glut.window.
 
-:- import_module bool, char, float, int, io, list, string, std_util.
+:- import_module bool.
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module string.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 %
@@ -141,9 +148,18 @@
 
 :- implementation.
 
-:- import_module map, require.
+:- import_module map.
+:- import_module require.
 
-:- pragma foreign_decl("C", "#include <GL/glut.h>").
+:- pragma foreign_decl("C",
+"
+	#if defined(__APPLE__) && defined(__MACH__)
+		#include <GLUT/glut.h>
+	#else
+		#include <GL/glut.h>
+
+	#endif
+").
 
 %-----------------------------------------------------------------------------%
 

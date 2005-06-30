@@ -25,11 +25,20 @@
 
 :- implementation.
 
-:- import_module mogl, mglu.
-:- import_module glut, glut.window, glut.callback.
 :- import_module globals.
+:- import_module glut.
+:- import_module glut.callback.
+:- import_module glut.window.
+:- import_module mglu.
+:- import_module mogl.
 
-:- import_module std_util, char, float, int, list, math, string.
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module math.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

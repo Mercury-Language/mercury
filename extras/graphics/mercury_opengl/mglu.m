@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 2003-2004 The University of Melbourne.
+% Copyright (C) 1997, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,11 +21,14 @@
 
 :- interface.
 
-:- import_module float, int, io, bool.
+:- import_module bool.
+:- import_module float.
+:- import_module int.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 %
-% Viewing transformations.
+% Viewing transformations
 %
 
 :- pred look_at(float::in, float::in, float::in, float::in, float::in,
@@ -39,25 +42,25 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Quadric functions.
+% Quadrics
 %
 
 :- type quadric.
 
 :- type quadric_normals
-		--->	smooth 
-		;	flat 
-		;	none.
+	--->	smooth 
+	;	flat 
+	;	none.
 
 :- type quadric_draw_style
-		--->	point
-		;	line
-		;	fill
-		;	silhouette.
+	--->	point
+	;	line
+	;	fill
+	;	silhouette.
 
 :- type quadric_orientation
-		--->	outside
-		;	inside.
+	--->	outside
+	;	inside.
 
 :- pred new_quadric(quadric::out, io::di, io::uo) is det.
 
@@ -93,12 +96,17 @@
 
 :- pragma foreign_decl("C", "
 	#include <math.h>
-	#include <GL/glu.h>
+
+	#if defined(__APPLE__) && (__MACH__)	
+		#include <OpenGL/glu.h>
+	#else
+		#include <GL/glu.h>
+	#endif
 ").
 
 %------------------------------------------------------------------------------%
 %
-% Viewing transformations.
+% Viewing transformations
 %
 
 :- pragma foreign_proc("C", 
@@ -133,7 +141,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Quadric functions.
+% Quadrics
 %
 
 :- pragma foreign_type("C", quadric, "GLUquadric *").
