@@ -1859,6 +1859,60 @@ if test "$mercury_cv_can_do_pending_io" = yes; then
 fi
 AC_SUBST(MR_CAN_DO_PENDING_IO)
 #-----------------------------------------------------------------------------#
+# There is a problem on some BSD based systems that FD_ZERO is defined
+# defined in terms of bzero() but the appropriate header file for bzero()
+# is not automatically included.  The following deals with this situation
+# on MacOS 10.3.  (It appears to be fixed in MacOS 10.4.)
+
+AC_MSG_CHECKING(to see if strings.h is needed for bzero)
+AC_CACHE_VAL(mercury_cv_bzero_needs_strings_header, [
+	
+	save_CC="$CC"
+	
+	case $CC in
+		*gcc*) CC="$CC -Wall -Werror" ;;
+	esac
+
+	cat > conftest.c << EOF
+		#ifdef MR_BZERO_NEEDS_STRINGS_HEADER
+			#include <strings.h>
+		#endif	
+		#include <sys/types.h>
+		#include <sys/time.h>
+		#include <unistd.h>
+		
+		void MR_fd_zero(fd_set *fdset);
+
+		void
+		MR_fd_zero(fd_set *fdset)
+		{
+			FD_ZERO(fdset);
+		}
+EOF
+	
+	if $CC -c conftest.c < /dev/null >&AC_FD_CC 2>&1
+	then
+		mercury_cv_bzero_needs_strings_header=no
+	else
+		if $CC -DMR_BZERO_NEEDS_STRINGS_HEADER -c conftest.c \
+			< /dev/null >&AC_FD_CC 2>&1
+		then
+			mercury_cv_bzero_needs_strings_header=yes
+		else
+			mercury_cv_bzero_needs_strings_header=no
+		fi			
+	fi
+	
+	rm -f conftest*
+	CC="$save_CC"
+])
+
+AC_MSG_RESULT($mercury_cv_bzero_needs_strings_header)
+if test	"$mercury_cv_bzero_needs_strings_header" = yes; then
+	AC_DEFINE(MR_BZERO_NEEDS_STRINGS_HEADER)
+fi
+AC_SUBST(MR_BZERO_NEEDS_STRINGS_HEADER)
+#-----------------------------------------------------------------------------#
 #
 # On sparc, x86, and probably on other architectures,
 # if we're using non-local gotos, then for egcs 1.1, we need

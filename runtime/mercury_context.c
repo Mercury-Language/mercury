@@ -3,7 +3,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2004 The University of Melbourne.
+** Copyright (C) 1995-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,6 +17,9 @@ ENDINIT
   #include "mercury_thread.h"
 #endif
 #ifdef MR_CAN_DO_PENDING_IO
+  #ifdef MR_HAVE_UNISTD_H
+	#include <unistd.h>
+  #endif
   #include <sys/types.h>	/* for fd_set */
   #include <sys/time.h>		/* for struct timeval */
 #endif

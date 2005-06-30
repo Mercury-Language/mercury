@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -419,6 +419,13 @@
 ** call and supporting data structures which while POSIX, are not ANSI.
 */
 #undef MR_CAN_DO_PENDING_IO
+
+/*
+** To see if the problem where the function prototype for bzero() is
+** not visible on some BSD based systems can be fixed by #including
+** strings.h.
+*/
+#undef MR_BZERO_NEEDS_STRINGS_HEADER
 
 /*
 ** MR_USE_EXTERNAL_DEBUGGER:
