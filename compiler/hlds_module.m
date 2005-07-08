@@ -167,7 +167,7 @@
 
 	% Mercury procedures which can be called from Aditi join conditions.
 	% Each procedure has one input and one output argument.
-	% The compiler generates a constant structure containing 
+	% The compiler generates a constant structure containing
 	% the address and other information for each procedure,
 	% which Aditi will find using dlsym().
 :- type aditi_top_down_proc
@@ -545,7 +545,7 @@
 
 :- import_module counter.
 
-:- pred module_info_get_lambdas_per_context(module_info::in, 
+:- pred module_info_get_lambdas_per_context(module_info::in,
 	map(prog_context, counter)::out) is det.
 
 :- pred module_info_set_lambdas_per_context(map(prog_context, counter)::in,
@@ -670,7 +670,6 @@
 
 		maybe_complexity_proc_map	:: maybe(pair(int,
 							complexity_proc_map)),
-
 		complexity_proc_infos		:: list(complexity_proc_info),
 						% Information about the
 						% procedures we are performing
@@ -680,6 +679,7 @@
 						% Information for the
 						% inter-module analysis
 						% framework.
+
 		aditi_top_down_procs		:: list(aditi_top_down_proc),
 						% List of top-down procedures
 						% which could be called from
@@ -912,41 +912,41 @@ module_info_predids(MI, PredIds) :-
 	module_info_get_predicate_table(MI, PredTable),
 	predicate_table_get_predids(PredTable, PredIds).
 
-module_info_reverse_predids(MI0, MI) :-
-	module_info_get_predicate_table(MI0, PredTable0),
+module_info_reverse_predids(!MI) :-
+	module_info_get_predicate_table(!.MI, PredTable0),
 	predicate_table_reverse_predids(PredTable0, PredTable),
-	module_info_set_predicate_table(PredTable, MI0, MI).
+	module_info_set_predicate_table(PredTable, !MI).
 
-module_info_remove_predid(PredId, MI0, MI) :-
-	module_info_get_predicate_table(MI0, PredTable0),
+module_info_remove_predid(PredId, !MI) :-
+	module_info_get_predicate_table(!.MI, PredTable0),
 	predicate_table_remove_predid(PredId, PredTable0, PredTable),
-	module_info_set_predicate_table(PredTable, MI0, MI).
+	module_info_set_predicate_table(PredTable, !MI).
 
-module_info_remove_predicate(PredId, MI0, MI) :-
-	module_info_get_predicate_table(MI0, PredTable0),
+module_info_remove_predicate(PredId, !MI) :-
+	module_info_get_predicate_table(!.MI, PredTable0),
 	predicate_table_remove_predicate(PredId, PredTable0, PredTable),
-	module_info_set_predicate_table(PredTable, MI0, MI).
+	module_info_set_predicate_table(PredTable, !MI).
 
-module_info_set_preds(Preds, MI0, MI) :-
-	module_info_get_predicate_table(MI0, PredTable0),
+module_info_set_preds(Preds, !MI) :-
+	module_info_get_predicate_table(!.MI, PredTable0),
 	predicate_table_set_preds(Preds, PredTable0, PredTable),
-	module_info_set_predicate_table(PredTable, MI0, MI).
+	module_info_set_predicate_table(PredTable, !MI).
 
-module_info_set_pred_info(PredId, PredInfo, MI0, MI) :-
-	module_info_preds(MI0, Preds0),
+module_info_set_pred_info(PredId, PredInfo, !MI) :-
+	module_info_preds(!.MI, Preds0),
 	map__set(Preds0, PredId, PredInfo, Preds),
-	module_info_set_preds(Preds, MI0, MI).
+	module_info_set_preds(Preds, !MI).
 
 module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
-		MI0, MI) :-
+		!MI) :-
 	module_info_set_pred_proc_info(PredId, ProcId,
-		PredInfo, ProcInfo, MI0, MI).
+		PredInfo, ProcInfo, !MI).
 
-module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, MI0, MI) :-
+module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	map__set(Procs0, ProcId, ProcInfo, Procs),
 	pred_info_set_procedures(Procs, PredInfo0, PredInfo),
-	module_info_set_pred_info(PredId, PredInfo, MI0, MI).
+	module_info_set_pred_info(PredId, PredInfo, !MI).
 
 module_info_typeids(MI, TypeCtors) :-
 	module_info_types(MI, Types),
@@ -967,9 +967,11 @@ module_info_consids(MI, ConsIds) :-
 
 module_info_dependency_info(MI, DepInfo) :-
 	module_info_get_maybe_dependency_info(MI, MaybeDepInfo),
-	( MaybeDepInfo = yes(DepInfoPrime) ->
+	(
+		MaybeDepInfo = yes(DepInfoPrime),
 		DepInfo = DepInfoPrime
 	;
+		MaybeDepInfo = no,
 		error("Attempted to access invalid dependency_info")
 	).
 
@@ -977,27 +979,29 @@ module_info_aditi_dependency_ordering(MI, AditiOrdering) :-
 	module_info_dependency_info(MI, DepInfo),
 	hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo,
 		MaybeOrdering),
-	( MaybeOrdering = yes(OrderingPrime) ->
+	(
+		MaybeOrdering = yes(OrderingPrime),
 		AditiOrdering = OrderingPrime
 	;
+		MaybeOrdering = no,
 		error("Attempted to access invalid aditi_dependency_ordering")
 	).
 
-module_info_set_dependency_info(DependencyInfo, MI0, MI) :-
-	module_info_set_maybe_dependency_info(yes(DependencyInfo), MI0, MI).
+module_info_set_dependency_info(DependencyInfo, !MI) :-
+	module_info_set_maybe_dependency_info(yes(DependencyInfo), !MI).
 
-module_info_clobber_dependency_info(MI0, MI) :-
-	module_info_set_maybe_dependency_info(no, MI0, MI).
+module_info_clobber_dependency_info(!MI) :-
+	module_info_set_maybe_dependency_info(no, !MI).
 
-module_info_incr_errors(MI0, MI) :-
-	module_info_num_errors(MI0, Errs0),
+module_info_incr_errors(!MI) :-
+	module_info_num_errors(!.MI, Errs0),
 	Errs = Errs0 + 1,
-	module_info_set_num_errors(Errs, MI0, MI).
+	module_info_set_num_errors(Errs, !MI).
 
-module_info_next_lambda_count(Context, Count, MI0, MI) :-
-	module_info_get_lambdas_per_context(MI0, ContextCounter0),
+module_info_next_lambda_count(Context, Count, !MI) :-
+	module_info_get_lambdas_per_context(!.MI, ContextCounter0),
 	(
-		map.insert(ContextCounter0, Context, counter.init(2), 
+		map.insert(ContextCounter0, Context, counter.init(2),
 			FoundContextCounter)
 	->
 		Count = 1,
@@ -1005,14 +1009,15 @@ module_info_next_lambda_count(Context, Count, MI0, MI) :-
 	;
 		map.lookup(ContextCounter0, Context, Counter0),
 		counter.allocate(Count, Counter0, Counter),
-		map.det_update(ContextCounter0, Context, Counter, ContextCounter)
+		map.det_update(ContextCounter0, Context, Counter,
+			ContextCounter)
 	),
-	module_info_set_lambdas_per_context(ContextCounter, MI0, MI).
+	module_info_set_lambdas_per_context(ContextCounter, !MI).
 
-module_info_next_model_non_pragma_count(Count, MI0, MI) :-
-	module_info_get_model_non_pragma_counter(MI0, Counter0),
+module_info_next_model_non_pragma_count(Count, !MI) :-
+	module_info_get_model_non_pragma_counter(!.MI, Counter0),
 	counter__allocate(Count, Counter0, Counter),
-	module_info_set_model_non_pragma_counter(Counter, MI0, MI).
+	module_info_set_model_non_pragma_counter(Counter, !MI).
 
 	% After we have finished constructing the symbol tables,
 	% we balance all the binary trees, to improve performance
@@ -1060,7 +1065,7 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
 	module_info_get_indirectly_imported_module_specifiers(ModuleInfo,
 		IndirectImports),
 	AllImports = (IndirectImports `set__union` DirectImports)
-			`set__union` set__list_to_set(Parents).
+		`set__union` set__list_to_set(Parents).
 
 module_add_foreign_decl(Lang, IsLocal, ForeignDecl, Context, !Module) :-
 	module_info_get_foreign_decl(!.Module, ForeignDeclIndex0),
@@ -1188,16 +1193,16 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% module+name+arity, for both functions and predicates.
 
 	% Initialize the predicate table
-
+	%
 :- pred predicate_table_init(predicate_table::out) is det.
 
 	% Balance all the binary trees in the predicate table
-
+	%
 :- pred predicate_table_optimize(predicate_table::in, predicate_table::out)
 	is det.
 
 	% Get the pred_id->pred_info map.
-
+	%
 :- pred predicate_table_get_preds(predicate_table::in, pred_table::out) is det.
 
 	% Restrict the predicate table to the list of predicates.
@@ -1205,7 +1210,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% to restrict the table to is significantly smaller then the
 	% predicate_table size, as rather than removing entries from
 	% the table it builds a new table from scratch.
-
+	%
 :- pred predicate_table_restrict(partial_qualifier_info::in,
 	list(pred_id)::in, predicate_table::in, predicate_table::out) is det.
 
@@ -1213,17 +1218,17 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% NB You shouldn't modify the keys in this table, only
 	% use predicate_table_insert, predicate_table_remove_predid and
 	% predicate_table_remove_predicate.
-
+	%
 :- pred predicate_table_set_preds(pred_table::in,
 	predicate_table::in, predicate_table::out) is det.
 
 	% Get a list of all the valid predids in the predicate_table.
-
+	%
 :- pred predicate_table_get_predids(predicate_table::in, list(pred_id)::out)
 	is det.
 
 	% Remove a pred_id from the valid list.
-
+	%
 :- pred predicate_table_remove_predid(pred_id::in,
 	predicate_table::in, predicate_table::out) is det.
 :- pred predicate_table_remove_predicate(pred_id::in,
@@ -1232,7 +1237,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% Search the table for (a) predicates or functions
 	% (b) predicates only or (c) functions only
 	% matching this (possibly module-qualified) sym_name.
-
+	%
 :- pred predicate_table_search_sym(predicate_table::in, is_fully_qualified::in,
 	sym_name::in, list(pred_id)::out) is semidet.
 
@@ -1245,7 +1250,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% Search the table for (a) predicates or functions
 	% (b) predicates only or (c) functions only matching this
 	% (possibly module-qualified) sym_name & arity.
-
+	%
 :- pred predicate_table_search_sym_arity(predicate_table::in,
 	is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
 	is semidet.
@@ -1259,9 +1264,8 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	is semidet.
 
 	% Search the table for (a) predicates or functions
-	% (b) predicates only or (c) functions only
-	% matching this name.
-
+	% (b) predicates only or (c) functions only matching this name.
+	%
 :- pred predicate_table_search_name(predicate_table::in, string::in,
 	list(pred_id)::out) is semidet.
 
@@ -1277,7 +1281,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% When searching for functions, the arity used
 	% is the arity of the function, not the arity N+1 predicate
 	% that it gets converted to.
-
+	%
 :- pred predicate_table_search_name_arity(predicate_table::in, string::in,
 	arity::in, list(pred_id)::out) is semidet.
 
@@ -1331,7 +1335,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% to, i.e. the arity of the function plus one.
 	% NB.  This is opposite to what happens with the search
 	% predicates declared above!!
-
+	%
 :- pred predicate_table_search_pf_m_n_a(predicate_table::in,
 	is_fully_qualified::in, pred_or_func::in, module_name::in, string::in,
 	arity::in, list(pred_id)::out) is semidet.
@@ -1343,7 +1347,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% to, i.e. the arity of the function plus one.
 	% NB.  This is opposite to what happens with the search
 	% predicates declared above!!
-
+	%
 :- pred predicate_table_search_pf_name_arity(predicate_table::in,
 	pred_or_func::in, string::in, arity::in, list(pred_id)::out)
 	is semidet.
@@ -1355,14 +1359,14 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% to, i.e. the arity of the function plus one.
 	% NB.  This is opposite to what happens with the search
 	% predicates declared above!!
-
+	%
 :- pred predicate_table_search_pf_sym_arity(predicate_table::in,
 	is_fully_qualified::in, pred_or_func::in, sym_name::in, arity::in,
 	list(pred_id)::out) is semidet.
 
 	% Search the table for predicates or functions matching
 	% this pred_or_func category and sym_name.
-
+	%
 :- pred predicate_table_search_pf_sym(predicate_table::in,
 	is_fully_qualified::in, pred_or_func::in, sym_name::in,
 	list(pred_id)::out) is semidet.
@@ -1373,6 +1377,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% Insert PredInfo into PredTable0 and assign it a new pred_id.
 	% You should check beforehand that the pred doesn't already
 	% occur in the table.
+	%
 :- pred predicate_table_insert(pred_info::in, need_qualifier::in,
 	partial_qualifier_info::in, pred_id::out,
 	predicate_table::in, predicate_table::out) is det.
@@ -1382,6 +1387,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% the predicate symbol table.  This is useful for creating
 	% compiler-generated predicates which will only ever be accessed
 	% via fully-qualified names.
+	%
 :- pred predicate_table_insert(pred_info::in, pred_id::out,
 	predicate_table::in, predicate_table::out) is det.
 
@@ -1394,19 +1400,21 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 :- pred predicate_arity(module_info::in, pred_id::in, arity::out) is det.
 
 	% Get the pred_id and proc_id matching a higher-order term with
-	% the given argument types, aborting with an error if none is
-	% found.
+	% the given argument types, aborting with an error if none is found.
+	%
 :- pred get_pred_id_and_proc_id(is_fully_qualified::in, sym_name::in,
 	pred_or_func::in, tvarset::in, list(type)::in, module_info::in,
 	pred_id::out, proc_id::out) is det.
 
 	% Get the pred_id matching a higher-order term with
 	% the given argument types, failing if none is found.
+	%
 :- pred get_pred_id(is_fully_qualified::in, sym_name::in, pred_or_func::in,
 	tvarset::in, list(type)::in, module_info::in, pred_id::out) is semidet.
 
 	% Given a pred_id, return the single proc_id, aborting
 	% if there are no modes or more than one mode.
+	%
 :- pred get_proc_id(module_info::in, pred_id::in, proc_id::out) is det.
 
 :- type mode_no
@@ -1465,11 +1473,11 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 
 :- type name_accessibility --->
 	access(
-	 	accessible_by_unqualifed_name :: bool,
+	 	accessible_by_unqualifed_name 		:: bool,
 				% Is this predicate accessible by its
 				% unqualified name.
 
-	 	accessible_by_partially_qualified_names :: bool
+	 	accessible_by_partially_qualified_names	:: bool
 				% Is this predicate accessible by any
 				% partially qualified names.
 	).
@@ -1561,10 +1569,10 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
 	module_name_arity_index::in, module_name_arity_index::out) is det.
 
 predicate_table_remove_from_index(Module, Name, Arity, PredId,
-		N0, N, NA0, NA, MNA0, MNA) :-
-	do_remove_from_index(Name, PredId, N0, N),
-	do_remove_from_index(Name / Arity, PredId, NA0, NA),
-	do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA).
+		!N, !NA, !MNA) :-
+	do_remove_from_index(Name, PredId, !N),
+	do_remove_from_index(Name / Arity, PredId, !NA),
+	do_remove_from_m_n_a_index(Module, Name, Arity, PredId, !MNA).
 
 :- pred do_remove_from_index(T::in, pred_id::in,
 	map(T, list(pred_id))::in, map(T, list(pred_id))::out) is det.
@@ -1572,9 +1580,11 @@ predicate_table_remove_from_index(Module, Name, Arity, PredId,
 do_remove_from_index(T, PredId, Index0, Index) :-
 	( map__search(Index0, T, NamePredIds0) ->
 		list__delete_all(NamePredIds0, PredId, NamePredIds),
-		( NamePredIds = [] ->
+		(
+			NamePredIds = [],
 			map__delete(Index0, T, Index)
 		;
+			NamePredIds = [_ | _],
 			map__det_update(Index0, T, NamePredIds, Index)
 		)
 	;
@@ -1619,7 +1629,7 @@ predicate_table_search_sym(PredicateTable, IsFullyQualified,
 		qualified(Module, Name), PredIdList) :-
 	predicate_table_search_module_name(PredicateTable, IsFullyQualified,
 		Module, Name, PredIdList),
-	PredIdList \= [].
+	PredIdList = [_ | _].
 
 predicate_table_search_pred_sym(PredicateTable, may_be_partially_qualified,
 		unqualified(Name), PredIdList) :-
@@ -1628,7 +1638,7 @@ predicate_table_search_pred_sym(PredicateTable, IsFullyQualified,
 		qualified(Module, Name), PredIdList) :-
 	predicate_table_search_pred_module_name(PredicateTable,
 		IsFullyQualified, Module, Name, PredIdList),
-	PredIdList \= [].
+	PredIdList = [_ | _].
 
 predicate_table_search_func_sym(PredicateTable, may_be_partially_qualified,
 		unqualified(Name), PredIdList) :-
@@ -1637,7 +1647,7 @@ predicate_table_search_func_sym(PredicateTable, IsFullyQualified,
 		qualified(Module, Name), PredIdList) :-
 	predicate_table_search_func_module_name(PredicateTable,
 		IsFullyQualified, Module, Name, PredIdList),
-	PredIdList \= [].
+	PredIdList = [_ | _].
 
 	% Given a list of predicates, and a module name, find all the
 	% predicates which came from that module.
@@ -1693,7 +1703,7 @@ predicate_table_search_name(PredicateTable, Name, PredIds) :-
 		FuncPredIds = []
 	),
 	list__append(FuncPredIds, PredPredIds, PredIds),
-	PredIds \= [].
+	PredIds = [_ | _].
 
 predicate_table_search_pred_name(PredicateTable, PredName, PredIds) :-
 	map__search(PredicateTable ^ pred_name_index, PredName, PredIds).
@@ -1726,7 +1736,7 @@ predicate_table_search_module_name(PredicateTable, IsFullyQualified,
 		FuncPredIds = []
 	),
 	list__append(FuncPredIds, PredPredIds, PredIds),
-	PredIds \= [].
+	PredIds = [_ | _].
 
 :- pred predicate_table_search_pred_module_name(predicate_table::in,
 	is_fully_qualified::in, module_name::in, string::in,
@@ -1774,7 +1784,7 @@ predicate_table_search_name_arity(PredicateTable, Name, Arity, PredIds) :-
 		FuncPredIds = []
 	),
 	list__append(FuncPredIds, PredPredIds, PredIds),
-	PredIds \= [].
+	PredIds = [_ | _].
 
 predicate_table_search_pred_name_arity(PredicateTable, PredName, Arity,
 		PredIds) :-
@@ -1807,7 +1817,7 @@ predicate_table_search_m_n_a(PredicateTable, IsFullyQualified,
 		FuncPredIds = []
 	),
 	list__append(FuncPredIds, PredPredIds, PredIds),
-	PredIds \= [].
+	PredIds = [_ | _].
 
 predicate_table_search_pred_m_n_a(PredicateTable, IsFullyQualified,
 		Module, PredName, Arity, PredIds) :-
@@ -2014,7 +2024,8 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		PredId, AccessibilityTable0, AccessibilityTable,
 		N_Index0, N_Index, NA_Index0, NA_Index,
 		MNA_Index0, MNA_Index) :-
-	( NeedQual = may_be_unqualified ->
+	(
+		NeedQual = may_be_unqualified,
 			% insert the unqualified name into the name index
 		multi_map__set(N_Index0, Name, PredId, N_Index),
 
@@ -2025,11 +2036,13 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 
 		AccessibleByUnqualifiedName = yes
 	;
+		NeedQual = must_be_qualified,
 		N_Index = N_Index0,
 		NA_Index = NA_Index0,
 		AccessibleByUnqualifiedName = no
 	),
-	( MaybeQualInfo = yes(QualInfo) ->
+	(
+		MaybeQualInfo = yes(QualInfo),
 
 			% insert partially module-qualified versions
 			% of the name into the module:name/arity index
@@ -2042,6 +2055,7 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 
 		AccessibleByPartiallyQualifiedNames = yes
 	;
+		MaybeQualInfo = no,
 		MNA_Index1 = MNA_Index0,
 		AccessibleByPartiallyQualifiedNames = no
 	),
@@ -2122,7 +2136,8 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
 		Arity = pred_info_orig_arity(PredInfo),
 		PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
 		string__int_to_string(Arity, ArityString),
-		( ProcIds = [] ->
+		(
+			ProcIds = [],
 			string__append_list([
 				"cannot take address of ", PredOrFuncStr,
 				"\n`", Name, "/", ArityString,
@@ -2131,6 +2146,7 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
 				"bailing out.)"],
 				Message)
 		;
+			ProcIds = [_ | _],
 			string__append_list([
 				"sorry, not implemented: ",
 				"taking address of ", PredOrFuncStr,

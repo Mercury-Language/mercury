@@ -44,12 +44,19 @@
 	bool::in, dependency_info(pred_id)::out) is det.
 
 	% Output a form of the static call graph to a file, in a format
-	% suitable for use in .dependency_info files.
+	% suitable for use in .dependency_info files. After the heading,
+	% the format of each line is
+	%
+	%	CallerModeDecl \t CalleeModeDecl
+	%
 :- pred dependency_graph__write_dependency_graph(module_info::in,
 	module_info::out, io::di, io::uo) is det.
 
 	% Output a form of the static call graph to a file for use by the
-	% profiler.
+	% profiler. There is no heading, and the format of each line is
+	%
+	%	CallerLabel \t CalleeLabel
+	%
 :- pred dependency_graph__write_prof_dependency_graph(module_info::in,
 	module_info::out, io::di, io::uo) is det.
 
@@ -57,6 +64,7 @@
 	% of the dependency graph, a list of the higher SCCs in the module
 	% and a module_info, find out which members of the SCC can be
 	% called from outside the SCC.
+	%
 :- pred dependency_graph__get_scc_entry_points(list(pred_proc_id)::in,
 	dependency_ordering::in, module_info::in, list(pred_proc_id)::out)
 	is det.
@@ -70,6 +78,7 @@
 	% dead_proc_elim.m should be be run before this is called
 	% to avoid missing some opportunities for merging where
 	% a procedure is called from a dead procedure.
+	%
 :- pred module_info_ensure_aditi_dependency_info(module_info::in,
 	module_info::out) is det.
 
@@ -130,40 +139,39 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Ensure that the dependency graph has been built by building
-	% it if necessary.
-
 module_info_ensure_dependency_info(!ModuleInfo) :-
 	module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
-	( MaybeDepInfo = yes(_) ->
-		true
+	(
+		MaybeDepInfo = yes(_)
 	;
+		MaybeDepInfo = no,
 		dependency_graph__build_dependency_graph(!.ModuleInfo, no,
 			DepInfo),
 		module_info_set_dependency_info(DepInfo, !ModuleInfo)
 	).
 
+dependency_graph__build_pred_dependency_graph(ModuleInfo, Imported, DepInfo) :-
+	dependency_graph__build_dependency_graph(ModuleInfo, Imported,
+		DepInfo).
+
 	% Traverse the module structure, calling `dependency_graph__add_arcs'
 	% for each procedure body.
-
-dependency_graph__build_pred_dependency_graph(ModuleInfo, Imported, DepInfo) :-
-	dependency_graph__build_dependency_graph(ModuleInfo, Imported, DepInfo).
 
 :- pred dependency_graph__build_dependency_graph(module_info::in, bool::in,
 	dependency_info(T)::out) is det <= dependency_node(T).
 
-dependency_graph__build_dependency_graph(ModuleInfo, Imported, DepInfo) :-
+dependency_graph__build_dependency_graph(ModuleInfo, Imported, !:DepInfo) :-
 	module_info_predids(ModuleInfo, PredIds),
 	relation__init(DepGraph0),
 	dependency_graph__add_nodes(PredIds, ModuleInfo, Imported,
 		DepGraph0, DepGraph1),
 	dependency_graph__add_arcs(PredIds, ModuleInfo, Imported,
 		DepGraph1, DepGraph),
-	hlds_dependency_info_init(DepInfo0),
-	hlds_dependency_info_set_dependency_graph(DepGraph, DepInfo0, DepInfo1),
+	hlds_dependency_info_init(!:DepInfo),
+	hlds_dependency_info_set_dependency_graph(DepGraph, !DepInfo),
 	relation__atsort(DepGraph, DepOrd0),
 	dependency_graph__sets_to_lists(DepOrd0, [], DepOrd),
-	hlds_dependency_info_set_dependency_ordering(DepOrd, DepInfo1, DepInfo).
+	hlds_dependency_info_set_dependency_ordering(DepOrd, !DepInfo).
 
 :- pred dependency_graph__sets_to_lists(list(set(T))::in, list(list(T))::in,
 	list(list(T))::out) is det.
@@ -307,8 +315,8 @@ dependency_graph__add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
 		IncludeImported = no,
 		proc_info_goal(ProcInfo0, Goal),
 
-		relation__lookup_element(!.DepGraph,
-			proc(PredId, ProcId), Caller),
+		relation__lookup_element(!.DepGraph, proc(PredId, ProcId),
+			Caller),
 		dependency_graph__add_arcs_in_goal(Goal, Caller, !DepGraph)
 	;
 		IncludeImported = yes,
@@ -432,12 +440,10 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 		Unify = simple_test(_, _)
 	;
 		Unify = construct(_, Cons, _, _, _, _, _),
-		dependency_graph__add_arcs_in_cons(Cons, Caller,
-			!DepGraph)
+		dependency_graph__add_arcs_in_cons(Cons, Caller, !DepGraph)
 	;
 		Unify = deconstruct(_, Cons, _, _, _, _),
-		dependency_graph__add_arcs_in_cons(Cons, Caller,
-			!DepGraph)
+		dependency_graph__add_arcs_in_cons(Cons, Caller, !DepGraph)
 	;
 		Unify = complicated_unify(_, _, _)
 	).
@@ -498,9 +504,8 @@ dependency_graph__add_arcs_in_cons(pred_const(ShroudedPredProcId, _), Caller,
 		!DepGraph) :-
 	PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
 	(
-			% If the node isn't in the relation, then
-			% we didn't insert it because is was imported,
-			% and we don't consider it.
+		% If the node isn't in the relation, then we didn't insert it
+		% because it was imported, and we don't consider it.
 		relation__search_element(!.DepGraph,
 			dependency_node(PredProcId), Callee)
 	->
@@ -522,9 +527,6 @@ dependency_graph__add_arcs_in_cons(deep_profiling_proc_layout(_),
 		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(table_io_decl(_),
 		_Caller, !DepGraph).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 %-----------------------------------------------------------------------------%
 
@@ -565,21 +567,12 @@ dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-% dependency_graph__write_prof_dependency_graph:
-%	Output the static call graph of the current module in the form of
-%		CallerLabel (\t) CalleeLabel
-%
 dependency_graph__write_prof_dependency_graph(!ModuleInfo, !IO) :-
 	module_info_ensure_dependency_info(!ModuleInfo),
 	module_info_dependency_info(!.ModuleInfo, DepInfo),
 	write_graph(DepInfo, write_empty_node,
 		write_prof_dep_graph_link(!.ModuleInfo), !IO).
 
-% dependency_graph__write_dependency_graph:
-%	Output the static call graph of the current module in the form of
-%		CallerModeDecl (\t) CalleeModeDecl
-%	with a heading.
-%
 dependency_graph__write_dependency_graph(!ModuleInfo, !IO) :-
 	module_info_ensure_dependency_info(!ModuleInfo),
 	module_info_dependency_info(!.ModuleInfo, DepInfo),
@@ -659,10 +652,8 @@ write_graph_children([ChildKey | Children], Parent, Graph, WriteLink, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-% dependency_graph__output_label:
-%	Prints out the label corresponding to PredId and ProcId.
-%
-
+	% Print out the label corresponding to the given pred_id and proc_id.
+	%
 :- pred dependency_graph__output_label(module_info::in,
 	pred_id::in, proc_id::in, io::di, io::uo) is det.
 
@@ -689,14 +680,12 @@ dependency_graph__is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
 	;
 		% Is the predicate called from a higher SCC?
 		module_info_dependency_info(ModuleInfo, DepInfo),
-		hlds_dependency_info_get_dependency_graph(DepInfo,
-			DepGraph),
+		hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph),
 
 		relation__lookup_element(DepGraph, PredProcId, PredProcIdKey),
 		relation__lookup_to(DepGraph, PredProcIdKey, CallingKeys),
 		set__member(CallingKey, CallingKeys),
-		relation__lookup_key(DepGraph, CallingKey,
-			CallingPred),
+		relation__lookup_key(DepGraph, CallingKey, CallingPred),
 		list__member(HigherSCC, HigherSCCs),
 		list__member(CallingPred, HigherSCC)
 	).
@@ -708,9 +697,10 @@ module_info_ensure_aditi_dependency_info(!ModuleInfo) :-
 	module_info_dependency_info(!.ModuleInfo, DepInfo0),
 	hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo0,
 		MaybeAditiInfo),
-	( MaybeAditiInfo = yes(_) ->
-		true
+	(
+		MaybeAditiInfo = yes(_)
 	;
+		MaybeAditiInfo = no,
 		hlds_dependency_info_get_dependency_ordering(DepInfo0,
 			DepOrdering),
 		aditi_scc_info_init(!.ModuleInfo, AditiInfo0),
@@ -749,8 +739,7 @@ dependency_graph__build_aditi_scc_info([SCC | SCCs], !Info) :-
 
 dependency_graph__process_aditi_pred_proc_id(SCCid, PredProcId, !Info) :-
 	aditi_scc_info_get_module_info(ModuleInfo, !Info),
-	module_info_pred_proc_info(ModuleInfo, PredProcId,
-		PredInfo, ProcInfo),
+	module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
 	dependency_graph__process_aditi_proc_info(SCCid, PredInfo, ProcInfo,
 		!Info).
 
@@ -900,6 +889,7 @@ dependency_graph__merge_aditi_sccs_2([SCCid | SCCs0], ModuleInfo, EqvSCCs0,
 		MergedSCCs0, NoMergeSCCs, SCCRel, SCCPreds, !Ordering).
 
 	% Find the SCCs called from a given SCC.
+	%
 :- pred dependency_graph__get_called_scc_ids(scc_id::in, relation(scc_id)::in,
 	set(scc_id)::out) is det.
 
@@ -910,8 +900,9 @@ dependency_graph__get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
 	list__map(relation__lookup_key(SCCRel), CalledSCCKeyList, CalledSCCs),
 	set__list_to_set(CalledSCCs, CalledSCCSet).
 
-	% Go over the list of SCCs finding all those which
-	% can be merged into a given SCC.
+	% Go over the list of SCCs finding all those which can be merged
+	% into a given SCC.
+	%
 :- pred dependency_graph__do_merge_aditi_sccs(scc_id::in, set(scc_id)::in,
 	set(scc_id)::in, list(scc_id)::in, list(scc_id)::out,
 	scc_pred_map::in, relation(scc_id)::in,
@@ -1089,6 +1080,7 @@ aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args, Map, !Info) :-
 
 	% An SCC cannot be merged into its parents if one of its
 	% procedures is called as an aggregate query.
+	%
 :- pred handle_higher_order_args(list(prog_var)::in, bool::in, scc_id::in,
 	multi_map(prog_var, pred_proc_id)::in, map(pred_proc_id, scc_id)::in,
 	relation(scc_id)::in, relation(scc_id)::out,
@@ -1136,8 +1128,8 @@ handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
 	multi_map(prog_var, pred_proc_id)::out,
 	aditi_scc_info::in, aditi_scc_info::out) is det.
 
-aditi_scc_info_add_closure(Var, PredProcId, Map0, Map, Info, Info) :-
-	AditiPreds = Info ^ aditi_scc_local_procs,
+aditi_scc_info_add_closure(Var, PredProcId, Map0, Map, !Info) :-
+	AditiPreds = !.Info ^ aditi_scc_local_procs,
 	( set__member(PredProcId, AditiPreds) ->
 		multi_map__set(Map0, Var, PredProcId, Map)
 	;

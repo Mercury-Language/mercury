@@ -314,9 +314,6 @@ dump_const(data_addr_const(DataAddr, MaybeOffset), Str) :-
 			["data_addr_const(", DataAddr_str, ", ",
 			Offset_str, ")"], Str)
 	).
-dump_const(label_entry(Label), Str) :-
-	dump_label(Label, LabelStr),
-	string__append_list(["label_entry(", LabelStr, ")"], Str).
 
 dump_data_addr(data_addr(ModuleName, DataName), Str) :-
 	mdbcomp__prim_data__sym_name_to_string(ModuleName, ModuleName_str),

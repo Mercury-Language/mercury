@@ -105,16 +105,15 @@
 	% to be used to initialize the relevant fields in in call(...) goals
 	% before we do type- and mode-checks, or when those check find that
 	% there was no predicate matching the call.
-
+	%
 :- func invalid_pred_id = pred_id.
 :- func invalid_proc_id = proc_id.
 
 :- pred hlds_pred__next_pred_id(pred_id::in, pred_id::out) is det.
 
-	% For semidet complicated unifications with mode (in, in),
-	% these are defined to have the same proc_id (0).  This
-	% returns that proc_id.
-
+	% For semidet complicated unifications with mode (in, in), these are
+	% defined to have the same proc_id (0).  This returns that proc_id.
+	%
 :- pred hlds_pred__in_in_unification_proc_id(proc_id::out) is det.
 
 :- type pred_info.
@@ -864,7 +863,7 @@ add_clause(Clause, !ClausesRep) :-
 				% The predicate is a higher-order manifest
 				% constant. The arguments specify its location
 				% in the source, as a filename/line number
-				% pair, and a sequence number used to 
+				% pair, and a sequence number used to
 				% distinguish multiple lambdas on the same
 				% line.
 	;	user(sym_name).
@@ -927,8 +926,9 @@ add_clause(Clause, !ClausesRep) :-
 :- func pred_info_module(pred_info) =  module_name.
 :- func pred_info_name(pred_info) = string.
 
-	% pred_info_orig_arity returns the arity of the predicate
+	% Pred_info_orig_arity returns the arity of the predicate
 	% *not* counting inserted type_info arguments for polymorphic preds.
+	%
 :- func pred_info_orig_arity(pred_info) = arity.
 
 	% N-ary functions are converted into N+1-ary predicates.
@@ -1259,18 +1259,18 @@ calls_are_fully_qualified(Markers) =
  				% the location (line #) of the :- pred decl.
  		pred_origin	:: pred_origin,
  				% where did the predicate come from.
- 
+
  		import_status	:: import_status,
  		goal_type	:: goal_type,
  				% whether the goals seen so far, if any,
  				% for this predicate are clauses or
  				% pragma foreign_code(...) declarations
- 
+
  		markers		:: pred_markers,
  				% various boolean flags
  		attributes	:: pred_attributes,
  				% various attributes
- 
+
  		arg_types	:: list(type),
  				% argument types
  		decl_typevarset	:: tvarset,
@@ -1280,7 +1280,7 @@ calls_are_fully_qualified(Markers) =
  				% names of type vars
  				% in the predicate's type decl
  				% or in the variable type assignments
- 
+
  		exist_quant_tvars :: existq_tvars,
  				% the set of existentially quantified
  				% type variables in the predicate's
@@ -1297,7 +1297,7 @@ calls_are_fully_qualified(Markers) =
  				% (the type_infos are returned from
  				% the called preds).
  				% Computed during type checking.
- 
+
  		class_context	:: prog_constraints,
  				% the class constraints on the
  				% type variables in the predicate's
@@ -1320,18 +1320,18 @@ calls_are_fully_qualified(Markers) =
  				% after type checking has finished,
  				% post_typecheck.m will report a type
  				% error).
- 
+
  		inst_graph_info	:: inst_graph_info,
  				% The predicate's inst graph, for constraint
  				% based mode analysis.
  		modes		:: list(arg_modes_map),
  				% Mode information extracted from constraint
  				% based mode analysis.
- 
+
  		assertions	:: set(assert_id),
  				% List of assertions which
  				% mention this predicate.
- 
+
  		aditi_owner	:: aditi_owner,
  				% The owner of this predicate if
  				% it is an Aditi predicate. Set to
@@ -1341,7 +1341,7 @@ calls_are_fully_qualified(Markers) =
  				% Indexes if this predicate is
  				% an Aditi base relation, ignored
  				% otherwise.
- 
+
  		clauses_info	:: clauses_info,
  		procedures	:: proc_table
  	).
@@ -1460,7 +1460,7 @@ hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 
 	MaybeDeclaredDetism = no,
 	proc_info_create(Context, VarSet, VarTypes, ArgVars, InstVarSet,
-		ArgModes, MaybeDeclaredDetism, Detism, Goal0, 
+		ArgModes, MaybeDeclaredDetism, Detism, Goal0,
 		TVarMap, TCVarMap, IsAddressTaken, ProcInfo0),
 	proc_info_set_maybe_termination_info(TermInfo, ProcInfo0, ProcInfo),
 
@@ -1617,7 +1617,7 @@ pred_info_proc_info(PredInfo, ProcId, ProcInfo) :-
 	ProcInfo = map__lookup(PredInfo ^ procedures, ProcId).
 
 pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo) :-
-	PredInfo = PredInfo0 ^ procedures := 
+	PredInfo = PredInfo0 ^ procedures :=
 		map__set(PredInfo0 ^ procedures, ProcId, ProcInfo).
 
 pred_info_is_imported(PredInfo) :-
@@ -2133,10 +2133,10 @@ attribute_list_to_attributes(Attributes, Attributes).
 	maybe(untuple_proc_info)::in,
 	proc_info::in, proc_info::out) is det.
 
-:- pred proc_info_get_termination2_info(proc_info::in, 
+:- pred proc_info_get_termination2_info(proc_info::in,
 	termination2_info::out) is det.
 
-:- pred proc_info_set_termination2_info(termination2_info::in, 
+:- pred proc_info_set_termination2_info(termination2_info::in,
 	proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_head_modes_constraint(proc_info::in, mode_constraint::out)
@@ -2574,7 +2574,7 @@ proc_info_set_maybe_untuple_info(MUI, PI,
 
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
 	MaybeHeadModesConstraint = ProcInfo ^ maybe_head_modes_constraint,
-	(	
+	(
 		MaybeHeadModesConstraint = yes(HeadModesConstraint)
 	;
 		MaybeHeadModesConstraint = no,
@@ -3101,9 +3101,9 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
 		% The automatically generated "recursive" call in the
 		% goal for each builtin must be generated inline, or
 		% we would generate an infinite loop.
-		( 
+		(
 			AllowInlining = yes, InlineBuiltins = yes
-		; 
+		;
 			CallerPredId = PredId
 		),
 		is_inline_builtin(ModuleName, PredName, ProcId, Arity)

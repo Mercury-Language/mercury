@@ -7253,7 +7253,12 @@ Disable elimination of dead labels and code.
 @sp 1
 @item --optimize-dups
 @findex --optimize-dups
-Enable elimination of duplicate code.
+Enable elimination of duplicate code within procedures.
+
+@sp 1
+@item --optimize-proc-dups
+@findex --optimize-proc-dups
+Enable elimination of duplicate procedures.
 
 @c @sp 1
 @c @item --optimize-copyprop

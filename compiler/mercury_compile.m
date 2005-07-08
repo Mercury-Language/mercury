@@ -42,7 +42,6 @@
     %
 
     % semantic analysis
-:- import_module libs__handle_options.
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
@@ -72,7 +71,6 @@
 :- import_module transform_hlds__complexity.
 :- import_module transform_hlds__lambda.
 :- import_module transform_hlds__closure_analysis.
-:- import_module backend_libs__type_ctor_info.
 :- import_module transform_hlds__termination.
 :- import_module transform_hlds__term_constr_main.
 :- import_module transform_hlds__exception_analysis.
@@ -109,10 +107,7 @@
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__stack_layout.
 :- import_module ll_backend__global_data.
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__export.
-:- import_module backend_libs__base_typeclass_info.
-:- import_module backend_libs__type_class_info.
+:- import_module ll_backend__dupproc.
 
     % the Aditi-RL back-end
 :- import_module aditi_backend__rl_gen.
@@ -143,9 +138,6 @@
 :- import_module aditi_backend__rl.
 :- import_module aditi_backend__rl_dump.
 :- import_module aditi_backend__rl_file.
-:- import_module backend_libs__compile_target_code.
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__rtti.
 :- import_module check_hlds__goal_path.
 :- import_module hlds__arg_info.
 :- import_module hlds__hlds_data.
@@ -153,10 +145,6 @@
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__timestamp.
-:- import_module libs__trace_params.
 :- import_module ll_backend__layout.
 :- import_module ll_backend__llds.
 :- import_module make.
@@ -175,6 +163,22 @@
     % inter-module analysis framework
 :- import_module analysis.
 :- import_module transform_hlds__mmc_analysis.
+
+    % compiler library modules
+:- import_module backend_libs__base_typeclass_info.
+:- import_module backend_libs__compile_target_code.
+:- import_module backend_libs__export.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
+:- import_module backend_libs__proc_label.
+:- import_module backend_libs__rtti.
+:- import_module backend_libs__type_class_info.
+:- import_module backend_libs__type_ctor_info.
+:- import_module libs__globals.
+:- import_module libs__handle_options.
+:- import_module libs__options.
+:- import_module libs__timestamp.
+:- import_module libs__trace_params.
 
     % library modules
 :- import_module assoc_list.
@@ -2529,16 +2533,30 @@ mercury_compile__backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !IO) :-
 
 mercury_compile__backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
     module_info_predids(!.HLDS, PredIds),
-    mercury_compile__backend_pass_by_preds_2(PredIds, !HLDS, !GlobalData,
-        LLDS, !IO).
+    globals__io_lookup_bool_option(optimize_proc_dups, ProcDups, !IO),
+    (
+        ProcDups = no,
+        OrderedPredIds = PredIds,
+        MaybeDupProcMap = no
+    ;
+        ProcDups = yes,
+        dependency_graph__build_pred_dependency_graph(!.HLDS, no, DepInfo),
+        hlds_dependency_info_get_dependency_ordering(DepInfo, PredSCCs),
+        list__condense(PredSCCs, OrderedPredIds),
+        MaybeDupProcMap = yes(map.init)
+    ),
+    mercury_compile__backend_pass_by_preds_2(OrderedPredIds, !HLDS,
+        !GlobalData, MaybeDupProcMap, LLDS, !IO).
 
 :- pred mercury_compile__backend_pass_by_preds_2(list(pred_id)::in,
     module_info::in, module_info::out, global_data::in, global_data::out,
+    maybe(map(mdbcomp__prim_data__proc_label,
+        mdbcomp__prim_data__proc_label))::in,
     list(c_procedure)::out, io::di, io::uo) is det.
 
-mercury_compile__backend_pass_by_preds_2([], !HLDS, !GlobalData, [], !IO).
+mercury_compile__backend_pass_by_preds_2([], !HLDS, !GlobalData, _, [], !IO).
 mercury_compile__backend_pass_by_preds_2([PredId | PredIds], !HLDS,
-        !GlobalData, Code, !IO) :-
+        !GlobalData, !.MaybeDupProcMap, Code, !IO) :-
     module_info_preds(!.HLDS, PredTable),
     map__lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
@@ -2547,7 +2565,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], !HLDS,
         ; hlds_pred__pred_info_is_aditi_relation(PredInfo)
         )
     ->
-        Code1 = []
+        ProcList = []
     ;
         globals__io_lookup_bool_option(verbose, Verbose, !IO),
         (
@@ -2576,7 +2594,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], !HLDS,
             copy(Globals1, Globals1Unique),
             globals__io_set_globals(Globals1Unique, !IO),
             mercury_compile__backend_pass_by_preds_3(ProcIds, PredId, PredInfo,
-                !HLDS, !GlobalData, Code1, !IO),
+                !HLDS, !GlobalData, IdProcList, !IO),
             module_info_globals(!.HLDS, Globals2),
             globals__set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS),
@@ -2584,22 +2602,33 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], !HLDS,
             globals__io_set_globals(GlobalsUnique, !IO)
         ;
             mercury_compile__backend_pass_by_preds_3(ProcIds, PredId, PredInfo,
-                !HLDS, !GlobalData, Code1, !IO)
+                !HLDS, !GlobalData, IdProcList, !IO)
+        ),
+        (
+            !.MaybeDupProcMap = no,
+            assoc_list__values(IdProcList, ProcList)
+        ;
+            !.MaybeDupProcMap = yes(DupProcMap0),
+            eliminate_duplicate_procs(IdProcList, ProcList,
+                DupProcMap0, DupProcMap),
+            !:MaybeDupProcMap = yes(DupProcMap)
         )
     ),
     mercury_compile__backend_pass_by_preds_2(PredIds, !HLDS, !GlobalData,
-        Code2, !IO),
-    list__append(Code1, Code2, Code).
+        !.MaybeDupProcMap, TailPredsCode, !IO),
+    list__append(ProcList, TailPredsCode, Code).
 
 :- pred mercury_compile__backend_pass_by_preds_3(list(proc_id)::in,
     pred_id::in, pred_info::in, module_info::in, module_info::out,
-    global_data::in, global_data::out, list(c_procedure)::out,
+    global_data::in, global_data::out,
+    assoc_list(mdbcomp__prim_data__proc_label, c_procedure)::out,
     io::di, io::uo) is det.
 
 mercury_compile__backend_pass_by_preds_3([], _, _, !HLDS, !GlobalData, [],
         !IO).
 mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
-        !HLDS, !GlobalData, [Proc | Procs], !IO) :-
+        !HLDS, !GlobalData, [ProcLabel - Proc | Procs], !IO) :-
+    ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_procedures(PredInfo, ProcTable),
     map__lookup(ProcTable, ProcId, ProcInfo),
     mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo, _,

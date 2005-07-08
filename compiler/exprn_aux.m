@@ -149,8 +149,6 @@ exprn_aux__const_is_constant(multi_string_const(_, _), _, yes).
 exprn_aux__const_is_constant(code_addr_const(CodeAddr), ExprnOpts, IsConst) :-
 	exprn_aux__addr_is_constant(CodeAddr, ExprnOpts, IsConst).
 exprn_aux__const_is_constant(data_addr_const(_, _), _, yes).
-exprn_aux__const_is_constant(label_entry(Label), ExprnOpts, IsConst) :-
-	exprn_aux__addr_is_constant(label(Label), ExprnOpts, IsConst).
 
 :- pred exprn_aux__addr_is_constant(code_addr::in, exprn_opts::in, bool::out)
 	is det.

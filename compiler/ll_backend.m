@@ -70,6 +70,7 @@
 :- include_module optimize.
    :- include_module jumpopt.
    :- include_module dupelim.
+   :- include_module dupproc.
    :- include_module frameopt.
    :- include_module delay_slot.
    :- include_module labelopt.

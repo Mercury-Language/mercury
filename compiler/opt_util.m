@@ -1959,7 +1959,6 @@ replace_labels_rval_const(code_addr_const(Addr0), ReplMap,
 	replace_labels_code_addr(Addr0, ReplMap, Addr).
 replace_labels_rval_const(data_addr_const(DataAddr, MaybeOffset), _,
 		data_addr_const(DataAddr, MaybeOffset)).
-replace_labels_rval_const(label_entry(Label), _, label_entry(Label)).
 
 :- pred replace_labels_code_addr(code_addr::in, map(label, label)::in,
 	code_addr::out) is det.

@@ -1115,13 +1115,16 @@ which is then flattened (tree.m).
 
 <p>
 
-The various LLDS-to-LLDS optimizations are invoked from optimize.m.
+Most of the various LLDS-to-LLDS optimizations are invoked from optimize.m.
 They are:
 
 <ul>
 <li> optimization of jumps to jumps (jumpopt.m)
 
-<li> elimination of duplicate code sequences (dupelim.m)
+<li> elimination of duplicate code sequences within procedures (dupelim.m)
+
+<li> elimination of duplicate procedure bodies (dupproc.m,
+invoked directly from mercury_compile.m)
 
 <li> optimization of stack frame allocation/deallocation (frameopt.m)
 
@@ -1131,11 +1134,10 @@ They are:
 
 <li> peephole optimization (peephole.m)
 
-<li> introduction of local C variables (use_local_vars.m) <br>
+<li> introduction of local C variables (use_local_vars.m)
 
 <li> removal of redundant assignments, i.e. assignments that assign a value
-that the target location already holds (reassign.m) <br>
-
+that the target location already holds (reassign.m)
 
 </ul>
 
@@ -1618,6 +1620,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-04-24 01:47:58 $ by $Author: mark $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-07-08 04:22:11 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

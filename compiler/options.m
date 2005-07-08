@@ -565,6 +565,7 @@
 		;	local_var_access_threshold
 		;	optimize_labels
 		;	optimize_dups
+		;	optimize_proc_dups
 %%% unused:	;	optimize_copyprop
 		;	optimize_frames
 		;	optimize_delay_slot
@@ -1234,6 +1235,7 @@ option_defaults_2(optimization_option, [
 	local_var_access_threshold -	int(2),
 	optimize_labels		-	bool(no),
 	optimize_dups		-	bool(no),
+	optimize_proc_dups	-	bool(no),
 %%%	optimize_copyprop	-	bool(no),
 	optimize_frames		-	bool(no),
 	optimize_delay_slot	-	bool(no),
@@ -1960,6 +1962,8 @@ long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
 long_option("optimize-dups",		optimize_dups).
 long_option("optimise-dups",		optimize_dups).
+long_option("optimize-proc-dups",	optimize_proc_dups).
+long_option("optimise-proc-dups",	optimize_proc_dups).
 %%% long_option("optimize-copyprop",	optimize_copyprop).
 %%% long_option("optimise-copyprop",	optimize_copyprop).
 long_option("optimize-frames",		optimize_frames).
@@ -2419,6 +2423,7 @@ opt_space([
 	optimize_dead_procs	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(yes),
+	optimize_proc_dups	-	bool(yes),
 	optimize_fulljumps	-	bool(no),
 	optimize_reassign	-	bool(yes),
 	inline_alloc		-	bool(no),
@@ -4037,7 +4042,9 @@ options_help_llds_llds_optimization -->
 		"--no-optimize-labels",
 		"\tDisable elimination of dead labels and code.",
 		"--optimize-dups",
-		"\tEnable elimination of duplicate code.",
+		"\tEnable elimination of duplicate code within procedures.",
+		"--optimize-proc-dups",
+		"\tEnable elimination of duplicate procedures.",
 %%%		"--optimize-copyprop",
 %%%		"\tEnable the copy propagation optimization.",
 		"--no-optimize-frames",

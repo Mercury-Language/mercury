@@ -4806,10 +4806,6 @@ output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
 		io__write_int(Offset, !IO),
 		io__write_string(")", !IO)
 	).
-output_rval_const(label_entry(Label), !IO) :-
-	io__write_string("MR_ENTRY_AP(", !IO),
-	output_label(Label, no, !IO),
-	io__write_string(")", !IO).
 
 :- pred output_type_ctor_addr(module_name::in, string::in, int::in,
 	io::di, io::uo) is det.

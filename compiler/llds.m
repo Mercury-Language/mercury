@@ -747,11 +747,10 @@
 
 	% An lval represents a data location or register that can be used
 	% as the target of an assignment.
-:- type lval --->
-
+:- type lval
 	/* virtual machine registers */
 
-		reg(reg_type, int)
+	--->	reg(reg_type, int)
 				% One of the general-purpose virtual machine
 				% registers (either an int or float reg).
 
@@ -891,11 +890,9 @@
 			% whose real length is given by the integer,
 			% and not the location of the first NULL
 	;	code_addr_const(code_addr)
-	;	data_addr_const(data_addr, maybe(int))
+	;	data_addr_const(data_addr, maybe(int)).
 			% if the second arg is yes(Offset), then increment the
 			% address of the first by Offset words
-	;	label_entry(label).
-			% the address of the label (uses MR_ENTRY macro).
 
 :- type data_addr
 	--->	data_addr(module_name, data_name)
@@ -1149,7 +1146,6 @@ llds__const_type(string_const(_), string).
 llds__const_type(multi_string_const(_, _), string).
 llds__const_type(code_addr_const(_), code_ptr).
 llds__const_type(data_addr_const(_, _), data_ptr).
-llds__const_type(label_entry(_), code_ptr).
 
 llds__unop_return_type(mktag, word).
 llds__unop_return_type(tag, word).

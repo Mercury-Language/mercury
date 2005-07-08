@@ -495,10 +495,10 @@ standardize_rval(Rval1, Rval) :-
 		standardize_rval(Rval1L, RvalL),
 		Rval = unop(Unop, RvalL)
 	;
-		Rval1 = binop(Binnop, Rval1L, Rval1R),
+		Rval1 = binop(Binop, Rval1L, Rval1R),
 		standardize_rval(Rval1L, RvalL),
 		standardize_rval(Rval1R, RvalR),
-		Rval = binop(Binnop, RvalL, RvalR)
+		Rval = binop(Binop, RvalL, RvalR)
 	;
 		Rval1 = mem_addr(_),
 		Rval = Rval1

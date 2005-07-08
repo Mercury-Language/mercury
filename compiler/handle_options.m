@@ -1557,7 +1557,10 @@ postprocess_options_lowlevel -->
 		% --optimize-frames requires --optimize-labels and
 		% --optimize-jumps
 	option_implies(optimize_frames, optimize_labels, bool(yes)),
-	option_implies(optimize_frames, optimize_jumps, bool(yes)).
+	option_implies(optimize_frames, optimize_jumps, bool(yes)),
+
+		% --optimize-proc-dups is implemented only with --trad-passes.
+	option_implies(optimize_proc_dups, trad_passes, bool(yes)).
 
 % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue, IO0, IO).
 % If the SourceBoolOption is set to yes, then the ImpliedOption is set

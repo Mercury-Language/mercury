@@ -1025,9 +1025,6 @@ jumpopt__short_labels_const(_, float_const(F), float_const(F)).
 jumpopt__short_labels_const(_, string_const(S), string_const(S)).
 jumpopt__short_labels_const(_, multi_string_const(L, S),
         multi_string_const(L, S)).
-jumpopt__short_labels_const(Instrmap, label_entry(Label0),
-        label_entry(Label)) :-
-    jumpopt__short_label(Instrmap, Label0, Label).
 jumpopt__short_labels_const(Instrmap, code_addr_const(CodeAddr0),
         code_addr_const(CodeAddr)) :-
     ( CodeAddr0 = label(Label0) ->
