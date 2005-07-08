@@ -473,7 +473,7 @@ recv_string(FromPipeName, Debug, Resp, !IO) :-
 :- func field_separator_char = char.
 :- func limit_separator_char = char.
 
-query_separator_char = ('%').
+query_separator_char = ('&').
 cmd_separator_char = ('/').
 pref_separator_char = ('/').
 criteria_separator_char = ('-').

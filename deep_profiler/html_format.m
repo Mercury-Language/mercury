@@ -402,7 +402,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
 	;
 		Time3Fields = Fields ^ time_fields := time,
 		Time3Pref = Pref ^ pref_fields := Time3Fields,
-		Time3Msg = "Ticks and times",
+		Time3Msg = "Times",
 		Time3Toggle = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(deep_cmd_pref_to_url(Time3Pref, Deep, Cmd)),
 			s(Time3Msg)])
@@ -1226,7 +1226,7 @@ table_width(Pref, IdFields, TotalsDisp) = Width :-
 		Port = 0
 	;
 		Fields ^ port_fields = port,
-		Port = 4
+		Port = 5
 	),
 	(
 		Fields ^ time_fields = no_time,
@@ -1574,7 +1574,11 @@ per_call_time(Pref, Deep, Quanta, Calls) = TimeStr :-
 	% We display Time as seconds, with two digits after the decimal point.
 	% This is the most we can do, given clock granularity.
 	Time = float(Quanta) / float(TicksPerSec),
-	TimePerCall = Time / float(Calls),
+	( Calls \= 0 ->
+		TimePerCall = Time / float(Calls)
+	;
+		TimePerCall = 0.0
+	),
 	TimeStr = format_time(Pref, TimePerCall).
 
 :- func format_time(preferences, float) = string.
