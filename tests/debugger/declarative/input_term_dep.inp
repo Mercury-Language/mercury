@@ -38,10 +38,8 @@ finish
 dd -d 3 -n 7
 no
 skip
-skip
 browse 1
 mark
-yes
 yes
 yes
 continue

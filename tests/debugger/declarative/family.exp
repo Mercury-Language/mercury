@@ -75,8 +75,15 @@ Solutions:
 	half_siblings(a, b)
 	half_siblings(b, a)
 Complete? no
+siblings(b, a)
+Valid? yes
+Call siblings(_, _)
+Solutions:
+	siblings(a, b)
+	siblings(b, a)
+Complete? no
 Found partially uncovered atom:
 common_father(_, _)
 Is this a bug? yes
-      86:     15  4 FAIL pred family.common_father/2-0 (nondet) family.m:58 (family.m:77)
+     693:    110  4 FAIL pred family.common_father/2-0 (nondet) family.m:58 (family.m:70)
 mdb> quit -y

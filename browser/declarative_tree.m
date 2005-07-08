@@ -616,8 +616,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 		throw(internal_error("stratum_children_2",
 			"unexpected start of contour"))
 	;
-		( Node = exit(_, _, _, _, _, _, _)
-		; Node = fail(_, _, _, _, _)
+		( Node = fail(_, _, _, _, _)
 		; Node = excp(_, _, _, _, _, _)
 		)
 	->
@@ -633,20 +632,38 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 			%
 		contour_children(normal, Store, Prec, NestedStartId, Ns0, Ns1)
 	;
-		( Node = else(Prec, NestedStartId, _)
-		; Node = neg_succ(Prec, NestedStartId, _)
-		)
+		Node = else(Prec, NestedStartId, _)
 	->
 			%
 			% There is a nested failed context.
 			%
 		stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
 	;
+		Node = exit(_, CallId, _, _, _, _, _)
+	->
 			%
-			% This handles the following cases:
-			% redo, switch, first_disj, later_disj and
-			% then.  Also handles cond when the status
-			% is anything other than failed.
+			% Only include an exit node as a missing answer child
+			% if it produces output.  If the exit event doesn't
+			% produce output then the only way the call could have
+			% behaved differently is by failing, which won't change
+			% the fail, negs or else event anchoring the end of the 
+			% current stratum, since the rest of the goal failed 
+			% anyway.
+			%
+		( calls_arguments_are_all_ground(Store, CallId) ->
+			Ns1 = Ns0
+		;
+			Ns1 = [dynamic(NodeId) | Ns0]
+		)
+	;
+			%
+			% This handles the following cases: redo, switch,
+			% first_disj, later_disj, then and neg_succ.  Also
+			% handles cond when the status is anything other than
+			% failed.  
+			% We skip neg_succ nodes for the same reason that we
+			% skip exit nodes where there are no outputs (see
+			% above).
 			%
 		Ns1 = Ns0
 	),
@@ -1769,6 +1786,21 @@ trace_arg_pos_to_user_arg_num(wrap(Store), dynamic(Ref), ArgPos) = ArgNum :-
 	call_node_from_id(Store, CallId, Call),
 	Atom = get_trace_call_atom(Call),
 	user_arg_num(ArgPos, Atom, ArgNum).
+
+:- pred calls_arguments_are_all_ground(S::in, R::in) is semidet
+	<= annotated_trace(S, R).
+
+calls_arguments_are_all_ground(Store, CallId) :-
+	call_node_from_id(Store, CallId, Call),
+	Args = Call ^ call_atom_args,
+	%
+	% XXX The following won't work for partially instantiated arguments.
+	%
+	all [Arg] (
+		list.member(Arg, Args)
+	=> 
+		Arg = arg_info(_, _, yes(_))
+	).
 
 %-----------------------------------------------------------------------------%
 

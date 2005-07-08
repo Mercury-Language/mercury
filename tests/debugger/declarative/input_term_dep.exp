@@ -85,14 +85,10 @@ s(1)
 Valid? no
 sa(1, 7)
 Valid? skip
-sb(7)
-Valid? skip
 sc(7)
 Valid? browse 1
 browser> mark
 sa(1, 7)
-Valid? yes
-sb(7)
 Valid? yes
 Found inadmissible call:
 Parent s(1)

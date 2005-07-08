@@ -32,5 +32,6 @@ finish
 dd -d 3 -n 7
 no
 yes
+no
+yes
 quit -y
-
