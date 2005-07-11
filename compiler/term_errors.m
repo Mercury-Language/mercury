@@ -58,15 +58,29 @@
 	;	horder_call
 			% horder_call
 			% There is a higher order call at the associated
-			% context.
-			% Valid in both passes.
+			% context.  Valid in both passes.
+	;
+		method_call
+			% method_call
+			% There is a call to a typeclass method at the associated
+			% context.  Valid in both passes.
+	;
+		aditi_call
+			% There is a call to an Aditi builtin at the associated
+			% context. Valid in both passes.
 
 	;	inf_termination_const(pred_proc_id, pred_proc_id)
-			% inf_termination_const(Caller, Callee, Context)
+			% inf_termination_const(Caller, Callee)
 			% The call from Caller to Callee at the associated
 			% context is to a procedure (Callee) whose arg size
 			% info is set to infinite.
 			% Valid in both passes.
+
+	;	ho_inf_termination_const(pred_proc_id, list(pred_proc_id))
+			% ho_inf_termination_const(Caller, Callees).
+			% Caller makes a call to either call/N or apply/N
+			% at the associated context.  'Callees' gives the
+			% possible values of the higher-order argument.
 
 	;	not_subset(pred_proc_id, bag(prog_var), bag(prog_var))
 			% not_subset(Proc, SupplierVariables, InHeadVariables)
@@ -161,6 +175,8 @@
 :- import_module varset.
 
 indirect_error(horder_call).
+indirect_error(method_call).
+indirect_error(aditi_call).
 indirect_error(pragma_foreign_code).
 indirect_error(imported_pred).
 indirect_error(can_loop_proc_called(_, _)).
@@ -288,6 +304,12 @@ term_errors__output_error(Context - Error, Single, ErrorNum, Indent, Module,
 term_errors__description(horder_call, _, _, Pieces, no) :-
 	Pieces = [words("It contains a higher order call.")].
 
+term_errors__description(method_call, _, _, Pieces, no) :-
+	Pieces = [words("It contains a typeclass method call.")].
+
+term_errors__description(aditi_call, _, _, Pieces, no) :-
+	Pieces = [words("It contains an Aditi builtin call.")]. 
+
 term_errors__description(pragma_foreign_code, _, _, Pieces, no) :-
 	Pieces = [words("It depends on the properties of"),
 		words("foreign language code included via a"),
@@ -369,6 +391,22 @@ term_errors__description(inf_termination_const(CallerPPId, CalleePPId),
 		CalleePPId),
 	Piece3 = words("which has a termination constant of infinity."),
 	Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
+
+term_errors__description(ho_inf_termination_const(CallerPPId, _ClosurePPIds),
+		Single, Module, Pieces, no) :-
+	(
+		Single = yes(PPId),
+		require(unify(PPId, CallerPPId), "caller outside this SCC"),
+		Pieces1 = [words("It")]
+	;
+		Single = no,
+		Pieces1 = describe_one_proc_name(Module, should_module_qualify,
+			CallerPPId)
+	),
+	Piece2 = words("makes one or more higher-order calls."),
+	Piece3 = words("Each of these higher-order calls has a"),
+	Piece4 = words("termination constant of infinity."),
+	Pieces = Pieces1 ++ [Piece2, Piece3, Piece4].
 
 term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		Single, Module, Pieces, no) :-

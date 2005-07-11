@@ -226,26 +226,66 @@ traverse_goal_2(foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
 				Params, !Info)
 		)
 	).
-
-traverse_goal_2(generic_call(_, _, _, _), GoalInfo, Params, !Info) :-
-	%
-	% For class method calls, we could probably analyse further
-	% than this, since we know that the method being called must come
-	% from one of the instance declarations, and we could potentially
-	% (globally) analyse these.
-	%
-	% Aditi builtins are not guaranteed to terminate
-	% - all of them cause the transaction to abort if an error occurs
-	% (e.g. if the database server dies).
-	% - all except `aditi_insert' execute a user-specified goal
-	% which could possibly loop. Analysis of the termination of
-	% goals executed bottom-up is not yet implemented.
-	%
-	% The error message for `generic_call's other than higher-order calls
-	% could be better.
-	%
+			
+traverse_goal_2(generic_call(Details, Args, ArgModes, _), GoalInfo, Params, !Info) :-
 	goal_info_get_context(GoalInfo, Context),
-	add_error(Context, horder_call, Params, !Info).
+	(
+		Details = higher_order(Var, _, _, _),
+		ClosureValueMap = goal_info_get_ho_values(GoalInfo),
+		%
+		% If closure analysis has identified a set of values
+		% this higher-order variable can take, then we can check
+		% if they terminate.  We cannot anything about the
+		% size of the arguments of the higher-order call, so
+		% we assume that they are unbounded.
+		%
+		params_get_module_info(Params, Module),
+		( ClosureValues0 = ClosureValueMap ^ elem(Var) ->
+			ClosureValues = set.to_sorted_list(ClosureValues0),
+			list.filter(terminates(Module), ClosureValues,
+				Terminating, NonTerminating),
+			( 
+				NonTerminating = [],
+				partition_call_args(Module, ArgModes, Args,
+					_InVars, OutVars),
+				params_get_ppid(Params, PPId),
+				Error = ho_inf_termination_const(PPId,
+					Terminating),
+				error_if_intersect(OutVars, Context, Error,
+					!Info)
+			;
+				NonTerminating = [_|_],
+				% XXX We should tell the user what the
+				% non-terminating closures are.
+				add_error(Context, horder_call, Params, !Info)
+			)
+		;
+			add_error(Context, horder_call, Params, !Info)		
+		)
+	;
+		Details = class_method(_, _, _, _),
+		%
+		% For class method calls, we could probably analyse
+		% further than this, since we know that the method being
+		% called must come from one of the instance
+		% declarations, and we could potentially (globally)
+		% analyse these.
+		%
+		add_error(Context, method_call, Params, !Info)
+	;
+		Details = unsafe_cast
+	;
+		Details = aditi_builtin(_, _),
+		%	
+		% Aditi builtins are not guaranteed to terminate
+		% - all of them cause the transaction to abort if an error occurs
+		% (e.g. if the database server dies).
+		% - all except `aditi_insert' execute a user-specified goal
+		% which could possibly loop. Analysis of the termination of
+		% goals executed bottom-up is not yet implemented.
+		%
+		add_error(Context, aditi_call, Params, !Info)
+	).
 
 traverse_goal_2(call(CallPredId, CallProcId, Args, _, _, _),
 		GoalInfo, Params, !Info) :-

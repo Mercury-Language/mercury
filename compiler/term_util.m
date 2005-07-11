@@ -135,6 +135,12 @@
 :- pred attributes_imply_termination(pragma_foreign_proc_attributes::in)
 	is semidet.
 
+	% terminates(Module, PPId).
+	% Succeeds iff the procedure given by 'PPId' has been
+	% proven to terminate.
+	%
+:- pred terminates(module_info::in, pred_proc_id::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 	% Convert a prog_data__pragma_termination_info into a
@@ -368,6 +374,13 @@ attributes_imply_termination(Attributes) :-
 		terminates(Attributes) = depends_on_mercury_calls,
 		may_call_mercury(Attributes) = will_not_call_mercury
 	).
+
+%-----------------------------------------------------------------------------%
+
+terminates(Module, PPId) :-
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
+	proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
+	TerminationInfo = yes(cannot_loop(_)).
 
 %-----------------------------------------------------------------------------%
 

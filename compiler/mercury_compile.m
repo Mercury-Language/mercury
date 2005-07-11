@@ -2069,8 +2069,6 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
     globals__lookup_bool_option(Globals, termination2, Termination2),
     globals__lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
-    globals__lookup_bool_option(Globals, analyse_closures,
-        ClosureAnalysis),
     (
         MakeOptInt = yes,
         intermod__write_optfile(!HLDS, !IO),
@@ -2089,12 +2087,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
             mercury_compile__frontend_pass_by_phases(!HLDS, FoundModeError,
                 !IO),
             ( FoundModeError = no ->
-                ( ClosureAnalysis = yes ->
-                    mercury_compile.maybe_closure_analysis(
-                        Verbose, Stats, !HLDS, !IO)
-                ;
-                    true
-                ),  
+                mercury_compile.maybe_closure_analysis(Verbose, Stats,
+                    !HLDS, !IO),
                 (
                     ExceptionAnalysis = yes,
                     mercury_compile__maybe_exception_analysis(Verbose, Stats,
@@ -2163,17 +2157,18 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 :- pred mercury_compile__output_trans_opt_file(module_info::in, io::di,
     io::uo) is det.
 
-mercury_compile__output_trans_opt_file(HLDS0, !IO) :-
+mercury_compile__output_trans_opt_file(!.HLDS, !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     globals__io_lookup_bool_option(statistics, Stats, !IO),
-    mercury_compile__maybe_exception_analysis(Verbose, Stats, HLDS0, HLDS1,
-        !IO),
-    mercury_compile__maybe_dump_hlds(HLDS1, 118, "exception_analysis", !IO),
-    mercury_compile__maybe_termination(Verbose, Stats, HLDS1, HLDS2, !IO),
-    mercury_compile__maybe_dump_hlds(HLDS2, 120, "termination", !IO),
-    mercury_compile__maybe_termination2(Verbose, Stats, HLDS2, HLDS, !IO),
-    mercury_compile__maybe_dump_hlds(HLDS, 121, "termination_2", !IO),
-    trans_opt__write_optfile(HLDS, !IO).
+    mercury_compile__maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 117, "closure_analysis", !IO),
+    mercury_compile__maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 118, "exception_analysis", !IO),
+    mercury_compile__maybe_termination(Verbose, Stats, !HLDS, !IO),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 120, "termination", !IO),
+    mercury_compile__maybe_termination2(Verbose, Stats, !HLDS, !IO),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 121, "termination_2", !IO),
+    trans_opt__write_optfile(!.HLDS, !IO).
 
 :- pred mercury_compile__frontend_pass_by_phases(module_info::in,
     module_info::out, bool::out, io::di, io::uo) is det.
