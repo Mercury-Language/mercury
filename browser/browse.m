@@ -23,11 +23,13 @@
 :- import_module mdb.browser_info.
 :- import_module mdb.browser_term.
 
-:- import_module io, std_util, list.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 	% The interactive term browser.  The caller type will be `browse', and
 	% the default format for the `browse' caller type will be used.  Since
-	% this predicate is exported to be used by C code, no browser term 
+	% this predicate is exported to be used by C code, no browser term
 	% mode function can be supplied.
 	%
 :- pred browse__browse_browser_term_no_modes(browser_term::in,
@@ -35,11 +37,11 @@
 	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
 
-	% The interactive term browser.  The caller type will be `browse' and 
+	% The interactive term browser.  The caller type will be `browse' and
 	% the default format for the `browse' caller type will be used.
 	%
 :- pred browse__browse_browser_term(browser_term::in,
-	io__input_stream::in, io__output_stream::in, 
+	io__input_stream::in, io__output_stream::in,
 	maybe(browser_mode_func)::in, maybe(list(dir))::out,
 	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
@@ -149,8 +151,18 @@
 :- import_module mdb__frame.
 :- import_module mdb__sized_pretty.
 
-:- import_module bool, string, int, char, map, std_util, term_to_xml.
-:- import_module parser, require, pprint, getopt, deconstruct.
+:- import_module bool.
+:- import_module char.
+:- import_module deconstruct.
+:- import_module getopt.
+:- import_module int.
+:- import_module map.
+:- import_module parser.
+:- import_module pprint.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term_to_xml.
 
 %---------------------------------------------------------------------------%
 %
@@ -158,9 +170,9 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__browse_browser_term_no_modes(in, in, in, out, in, out, 
+:- pragma export(browse__browse_browser_term_no_modes(in, in, in, out, in, out,
 	di, uo), "ML_BROWSE_browse_browser_term").
-:- pragma export(browse__browse_browser_term_format_no_modes(in, in, in, in, 
+:- pragma export(browse__browse_browser_term_format_no_modes(in, in, in, in,
 	in, out, di, uo), "ML_BROWSE_browse_browser_term_format").
 :- pragma export(browse__browse_external_no_modes(in, in, in, in, out, di, uo),
 	"ML_BROWSE_browse_external").
@@ -175,7 +187,7 @@
 :- pragma export(save_term_to_file_xml(in, in, in, di, uo),
 	"ML_BROWSE_save_term_to_file_xml").
 
-:- pragma export(browse__save_and_browse_browser_term_xml(in, in, in, in, 
+:- pragma export(browse__save_and_browse_browser_term_xml(in, in, in, in,
 	di, uo), "ML_BROWSE_browse_term_xml").
 
 %---------------------------------------------------------------------------%
@@ -239,14 +251,14 @@ save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
 
 :- type xml_predicate_wrapper
 	--->	predicate(
-			predicate_name		:: string, 
+			predicate_name		:: string,
 			predicate_arguments	:: list(univ)
 		).
 
 :- type xml_function_wrapper
 	--->	function(
-			function_name		:: string, 
-			function_arguments	:: list(univ), 
+			function_name		:: string,
+			function_arguments	:: list(univ),
 			return_value		:: univ
 		).
 
@@ -278,12 +290,12 @@ maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
 			(
 				MaybeRes = no,
 				PredicateTerm = predicate(Functor, Args),
-				term_to_xml.write_xml_doc_cc(PredicateTerm, 
+				term_to_xml.write_xml_doc_cc(PredicateTerm,
 					simple, no_stylesheet, no_dtd, _, !IO)
 			;
 				MaybeRes = yes(Result),
 				FunctionTerm = function(Functor, Args, Result),
-				term_to_xml.write_xml_doc_cc(FunctionTerm, 
+				term_to_xml.write_xml_doc_cc(FunctionTerm,
 					simple, no_stylesheet, no_dtd, _, !IO)
 			)
 		),
@@ -292,7 +304,7 @@ maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
 		FileStreamRes = error(_)
 	).
 
-browse__save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State, 
+browse__save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State,
 		!IO) :-
 	MaybeXMLBrowserCmd = State ^ xml_browser_cmd,
 	(
@@ -300,9 +312,9 @@ browse__save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State,
 		MaybeTmpFileName = State ^ xml_tmp_filename,
 		(
 			MaybeTmpFileName = yes(TmpFileName),
-			io.write_string(OutStream, 
+			io.write_string(OutStream,
 				"Saving term to XML file...\n", !IO),
-			maybe_save_term_to_file_xml(TmpFileName, Term, 
+			maybe_save_term_to_file_xml(TmpFileName, Term,
 				SaveResult, !IO),
 			(
 				SaveResult = ok,
@@ -311,7 +323,7 @@ browse__save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State,
 			;
 				SaveResult = error(Error),
 				io.error_message(Error, Msg),
-				io.write_string(ErrStream, 
+				io.write_string(ErrStream,
 					"Error opening file `" ++
 					TmpFileName ++ "': ", !IO),
 				io.write_string(ErrStream, Msg, !IO),
@@ -319,7 +331,7 @@ browse__save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State,
 			)
 		;
 			MaybeTmpFileName = no,
-			io.write_string(ErrStream, 
+			io.write_string(ErrStream,
 				"mdb: You need to issue a " ++
 				"\"set xml_tmp_filename '<filename>'\" " ++
 				" command first.\n", !IO)
@@ -331,7 +343,7 @@ browse__save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State,
 			" command first.\n", !IO)
 	).
 
-:- pred launch_xml_browser(io.output_stream::in, io.output_stream::in, 
+:- pred launch_xml_browser(io.output_stream::in, io.output_stream::in,
 	string::in, io::di, io::uo) is det.
 
 launch_xml_browser(OutStream, ErrStream, CommandStr, !IO) :-
@@ -350,8 +362,8 @@ launch_xml_browser(OutStream, ErrStream, CommandStr, !IO) :-
 			->
 				true
 			;
-				io.write_string(ErrStream, 
-					"mdb: The command `" ++ CommandStr ++ 
+				io.write_string(ErrStream,
+					"mdb: The command `" ++ CommandStr ++
 					"' terminated with a non-zero exit "++
 					"code.\n", !IO)
 			)
@@ -483,14 +495,14 @@ browse__print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State,
 % Interactive display
 %
 
-browse__browse_browser_term_no_modes(Term, InputStream, OutputStream, 
+browse__browse_browser_term_no_modes(Term, InputStream, OutputStream,
 		MaybeMark, !State, !IO) :-
 	browse_common(internal, Term, InputStream, OutputStream, no, no,
 		MaybeMark, !State, !IO).
 
 browse__browse_browser_term(Term, InputStream, OutputStream, MaybeModeFunc,
 		MaybeMark, !State, !IO) :-
-	browse_common(internal, Term, InputStream, OutputStream, no, 
+	browse_common(internal, Term, InputStream, OutputStream, no,
 		MaybeModeFunc, MaybeMark, !State, !IO).
 
 browse__browse_browser_term_format_no_modes(Term, InputStream, OutputStream,
@@ -503,7 +515,7 @@ browse__browse_browser_term_format(Term, InputStream, OutputStream,
 	browse_common(internal, Term, InputStream, OutputStream, yes(Format),
 		MaybeModeFunc, _, !State, !IO).
 
-browse__browse_external_no_modes(Term, InputStream, OutputStream, !State, !IO) 
+browse__browse_external_no_modes(Term, InputStream, OutputStream, !State, !IO)
 		:-
 	browse_common(external, plain_term(univ(Term)),
 		InputStream, OutputStream, no, no, _, !State, !IO).
@@ -514,9 +526,9 @@ browse__browse_external(Term, InputStream, OutputStream, MaybeModeFunc, !State,
 		InputStream, OutputStream, no, MaybeModeFunc, _, !State, !IO).
 
 :- pred browse_common(debugger::in, browser_term::in, io__input_stream::in,
-	io__output_stream::in, maybe(portray_format)::in, 
-	maybe(browser_mode_func)::in, maybe(list(dir))::out, 
-	browser_persistent_state::in, browser_persistent_state::out, 
+	io__output_stream::in, maybe(portray_format)::in,
+	maybe(browser_mode_func)::in, maybe(list(dir))::out,
+	browser_persistent_state::in, browser_persistent_state::out,
 	io::di, io::uo) is cc_multi.
 
 browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
@@ -651,7 +663,7 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
 	;
 		Command = mode_query,
 		MaybeModeFunc = !.Info ^ maybe_mode_func,
-		write_term_mode_debugger(Debugger, MaybeModeFunc, 
+		write_term_mode_debugger(Debugger, MaybeModeFunc,
 			!.Info ^ dirs, !IO),
 		Quit = no
 	;
@@ -749,7 +761,7 @@ bool_format_option_is_true(Format - bool(yes), Format).
 	browser_info::in, browser_info::out) is det.
 
 set_browse_param(OptionTable, Setting, !Info) :-
-	browser_info.set_param(yes, OptionTable, Setting, !.Info ^ state, 
+	browser_info.set_param(yes, OptionTable, Setting, !.Info ^ state,
 		NewState),
 	!:Info = !.Info ^ state := NewState.
 
@@ -1692,7 +1704,7 @@ simplify_dirs(Dirs, SimpleDirs) :-
 	% SoFar accumulates the simplified dirs processed so far so we can be
 	% tail recursive.
 	%
-:- pred simplify_rev_dirs(list(dir)::in, int::in, list(dir)::in, 
+:- pred simplify_rev_dirs(list(dir)::in, int::in, list(dir)::in,
 	list(dir)::out) is det.
 
 simplify_rev_dirs([], _, SimpleDirs, SimpleDirs).
@@ -1706,7 +1718,7 @@ simplify_rev_dirs([Dir | Dirs], N, SoFar, SimpleDirs) :-
 			simplify_rev_dirs(Dirs, N, [Dir | SoFar], SimpleDirs)
 		)
 	).
-	
+
 :- func dir_to_string(dir) = string.
 
 dir_to_string(parent) = "..".
@@ -1732,7 +1744,7 @@ write_string_debugger(internal, String, !IO) :-
 write_string_debugger(external, String, !IO) :-
 	send_term_to_socket(browser_str(String), !IO).
 
-:- pred write_term_mode_debugger(debugger::in, maybe(browser_mode_func)::in, 
+:- pred write_term_mode_debugger(debugger::in, maybe(browser_mode_func)::in,
 	list(dir)::in, io::di, io::uo) is det.
 
 write_term_mode_debugger(Debugger, MaybeModeFunc, Dirs, !IO) :-
@@ -1743,7 +1755,7 @@ write_term_mode_debugger(Debugger, MaybeModeFunc, Dirs, !IO) :-
 		write_string_debugger(Debugger, ModeStr ++ "\n", !IO)
 	;
 		MaybeModeFunc = no,
-		write_string_debugger(Debugger, 
+		write_string_debugger(Debugger,
 			"Mode information not available.\n", !IO)
 	).
 
@@ -1837,7 +1849,7 @@ synthetic_term_to_doc(Depth, Functor, Args, MaybeReturn) = Doc :-
 						nest(2, ArgDocs)
 					) `<>`
 					nest(2, text(" = ") `<>`
-						to_doc(Depth - 1, 
+						to_doc(Depth - 1,
 							univ_value(Return))
 					)
 				)

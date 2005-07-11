@@ -23,7 +23,12 @@
 :- import_module mdb__browse.
 :- import_module mdb__browser_info.
 
-:- import_module list, string, int, std_util, tree234, assoc_list.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
+:- import_module tree234.
 
 main -->
 	{ Filename = "/etc/fstab" },

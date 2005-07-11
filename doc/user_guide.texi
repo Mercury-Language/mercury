@@ -2016,6 +2016,21 @@ Each subterm specification such as "^2" goes one level down in the hierarchy.
 The exception is the subterm specification "^..",
 which goes one level up, to the parent of the current directory.
 @sp 1
+@item held variables
+@cindex held variables (in mdb)
+Normally, the only variables from the program accessible in the debugger
+are the variables in the current environment at the current program point.
+However, the user can @emph{hold} variables,
+causing their values -or selected parts of their values-
+to stay available for the rest of the debugger session.
+@c XXX Document the relationship of this command
+@c to partially instantiated data structures and solver types
+@c when the debugger is extended to handle these constructs.
+All the commands that accept variable names
+also accept the names of held variables;
+users can ask for a held variable
+by prefixing the name of the held variable with a dollar sign.
+@sp 1
 @item procedure specification
 @cindex procedure specification (in mdb)
 @cindex debugger procedure specification
@@ -2516,6 +2531,9 @@ if a previous option suppressed it.
 @kindex vars (mdb command)
 Prints the names of all the known variables in the current environment,
 together with an ordinal number for each variable.
+@item held_vars
+@kindex held_vars (mdb command)
+Prints the names of all the held variables.
 @sp 1
 @item print [-fpv] @var{name}[@var{termpath}]
 @itemx print [-fpv] @var{num}[@var{termpath}]
@@ -2782,11 +2800,32 @@ mdb will attempt to connect to the existing one.
 The option @samp{-t} (or @samp{--timeout}) specifies
 the maximum number of seconds to wait for the server to start.
 @sp 1
+@item hold @var{name}[@var{termpath}] [@var{heldname}]
+@kindex hold (mdb command)
+Holds on to the variable @var{name} of the current event,
+or the part of the specified by @var{termpath},
+even after execution leaves the current event.
+The held value will stay accessible via the name @var{$heldname}.
+If @var{heldname} is not specified, it defaults to @var{name}.
+There must not already be a held variable named @var{heldname}.
+@sp 1
+@item diff [-s @var{start}] [-m @var{max}] @var{name1}[@var{termpath1}] @var{name2}[@var{termpath2}]
+@kindex diff (mdb command)
+Prints a list of some of the term paths
+at which the (specified parts of) the specified terms differ.
+Normally this command prints the term paths of the first 20 differences.
+@sp 1
+The option @samp{-s} (or @samp{--start}), if present,
+specifies how many of the initial differences to skip.
+@sp 1
+The option @samp{-m} (or @samp{--max}), if present,
+specifies how many differences to print.
+@sp 1
 @item save_to_file [-x] goal @var{filename}
 @kindex save_to_file (mdb command)
 Writes the goal of the current call in its present state of instantiation
-to the specified file.  The option @samp{-x} (or @samp{--xml}) causes the
-output to be in XML.
+to the specified file.
+The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
 @item save_to_file [-x] exception @var{filename}
 Writes the value of the exception at an EXCP port

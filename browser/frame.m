@@ -19,7 +19,8 @@
 
 :- interface.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module std_util.
 
 	% XXX: Make frame type abstract instead?
 % :- type frame.
@@ -57,7 +58,12 @@
 :- implementation.
 
 :- import_module mdb.util.
-:- import_module string, list, int, io, require.
+
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module require.
+:- import_module string.
 
 frame__from_string(Str, [Str]).
 

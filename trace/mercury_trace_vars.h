@@ -65,13 +65,15 @@ typedef	void	(*MR_GoalBrowser)(MR_ConstString name, MR_Word arg_list,
 
 typedef	enum {
 	MR_VAR_SPEC_NUMBER,
-	MR_VAR_SPEC_NAME
+	MR_VAR_SPEC_NAME,
+	MR_VAR_SPEC_HELD_NAME
 } MR_Var_Spec_Kind;
 
 typedef struct {
 	MR_Var_Spec_Kind	MR_var_spec_kind;
 	int			MR_var_spec_number; /* valid if NUMBER */
 	const char		*MR_var_spec_name;  /* valid if NAME   */
+						    /* or HELD_NAME    */
 } MR_Var_Spec;
 
 /*
@@ -193,6 +195,20 @@ extern	const char	*MR_trace_parse_var_path(char *word_spec,
 				MR_Var_Spec *var_spec, char **path);
 
 /*
+** Parse the given word into a variable specification and the specification
+** of a path within that variable, as with MR_trace_parse_var_path, then
+** look up and record the term at that path in *type_info and *value,
+** and return NULL. If there is a problem with changing to a specified subterm,
+** then return the term path of the problematic subterm and set *bad_subterm
+** to true. If there is some other problem, return a description of the problem
+** and set *bad_subterm to false.
+*/
+
+extern	const char	*MR_trace_parse_lookup_var_path(char *word_spec,
+				MR_TypeInfo *type_info, MR_Word *value,
+				MR_bool *bad_subterm);
+
+/*
 ** Print the (names and) values of (the specified parts of) the specified
 ** variable. (The variable is specified by either its name or its sequence
 ** number in the set of live variables at the current point; the desired part
@@ -257,12 +273,16 @@ extern	const char	*MR_trace_browse_all_on_level(FILE *out,
 				int ancestor_level, MR_bool print_optionals);
 
 /*
-** If the given variable specification is unambiguous, then set *value to
-** the value of the specified variable, and set *type_info to its type.
+** If the given variable specification is unambiguous, then set set *type_info
+** to the type of the specified variable, set *value to its value, and set
+** *name to its name (the storage name points to will remain valid only until
+** the next call to MR_lookup_unambiguous_var_spec). Return a non-NULL error
+** message if this is not possible.
 */
 
 extern	const char	*MR_lookup_unambiguous_var_spec(MR_Var_Spec var_spec,
-				MR_TypeInfo *type_info, MR_Word *value);
+				MR_TypeInfo *type_info, MR_Word *value,
+				const char **name);
 
 /*
 ** *value and type_info describe a term, and path specifies a subterm of that
@@ -306,16 +326,6 @@ extern	void		MR_convert_goal_to_synthetic_term(
 				const char **functor_ptr,
 				MR_Word *arg_list_ptr, MR_bool *is_func_ptr);
 
-
-/*
-** Given a variable specification, return the type_info and the value of the
-** chosen variable. Return a non-NULL error message if this is not possible.
-*/
-
-extern	const char	*MR_convert_var_spec_to_type_value(
-				MR_Var_Spec var_spec,
-				MR_TypeInfo *type_info_ptr,
-				MR_Word *value_ptr);
 
 /*
 ** Return the name (if any) of the variable with the given HLDS variable number

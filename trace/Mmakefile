@@ -11,13 +11,14 @@
 
 # keep this list in alphabetical order, please
 HDRS		=	\
-			mercury_trace.h			\
 			mercury_trace_alias.h		\
 			mercury_trace_browse.h		\
 			mercury_trace_completion.h	\
 			mercury_trace_declarative.h	\
 			mercury_trace_external.h 	\
+			mercury_trace.h			\
 			mercury_trace_help.h		\
+			mercury_trace_hold_vars.h	\
 			mercury_trace_internal.h	\
 			mercury_trace_readline.h	\
 			mercury_trace_source.h		\
@@ -28,13 +29,14 @@ HDRS		=	\
 
 # keep this list in alphabetical order, please
 CFILES		= 	\
-			mercury_trace.c			\
 			mercury_trace_alias.c		\
 			mercury_trace_browse.c		\
+			mercury_trace.c			\
 			mercury_trace_completion.c	\
 			mercury_trace_declarative.c	\
 			mercury_trace_external.c 	\
 			mercury_trace_help.c		\
+			mercury_trace_hold_vars.c	\
 			mercury_trace_internal.c	\
 			mercury_trace_readline.c	\
 			mercury_trace_source.c		\

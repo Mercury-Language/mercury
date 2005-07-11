@@ -31,7 +31,7 @@ MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 MR_bool
 MR_trace_is_natural_number(const char *word, int *value)
 {
-    if (MR_isdigit(*word)) {
+    if (word != NULL && MR_isdigit(*word)) {
         *value = *word - '0';
         word++;
         while (MR_isdigit(*word)) {

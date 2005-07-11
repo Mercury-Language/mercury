@@ -9,6 +9,12 @@ Changes to the Mercury language:
 Changes to the Mercury standard library:
 * We have added string.word_wrap/2.
 
+Changes to the Mercury debugger:
+* Users can now keep hold of a term, referring to it even when execution has
+  left the goal at which the term was available as the value of a program
+  variable.
+* Users can now see the set of places where two terms differ from each other.
+
 NEWS since Mercury release 0.11.0:
 ----------------------------------
 

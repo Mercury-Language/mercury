@@ -3,6 +3,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: declarative_analyser.m
 % Authors: Mark Brown, Ian MacLarty
 %
@@ -12,7 +13,6 @@
 % EDT, storing information relevant to the bug search.  Throughout this module
 % the type variables T and S refer to the types of nodes in the EDT and the
 % store of EDT nodes respectively.
-%
 
 :- module mdb.declarative_analyser.
 
@@ -22,7 +22,8 @@
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_oracle.
 
-:- import_module std_util, io.
+:- import_module io.
+:- import_module std_util.
 
 :- type analyser_response(T)
 
@@ -127,8 +128,16 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 
-:- import_module bool, exception, counter, array, list, float.
-:- import_module math, string, map, int. 
+:- import_module array.
+:- import_module bool.
+:- import_module counter.
+:- import_module exception.
+:- import_module float.
+:- import_module int. 
+:- import_module list.
+:- import_module map.
+:- import_module math.
+:- import_module string.
 
 	% Describes what search strategy is being used by the analyser and the
 	% state of the search.

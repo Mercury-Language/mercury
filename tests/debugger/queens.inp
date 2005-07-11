@@ -38,6 +38,20 @@ print *
 print HeadVar__1
 print HeadVar__2
 print HeadVar__3
+hold HeadVar__2^1 x
+hold HeadVar__2^2 y
+hold HeadVar__2 y
+hold HeadVar__2 z
+held_vars
+print $x
+print $y
+print $z
+diff $x $y
+diff $y $z
+diff -m 2 $y $z
+diff -s 2 -m 2 $y $z
+diff -s 4 -m 2 $y $z
+diff $y $z^2
 
 print *
 

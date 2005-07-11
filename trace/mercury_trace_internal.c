@@ -31,10 +31,12 @@
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
+#include "mercury_trace_hold_vars.h"
 #include "mercury_trace_readline.h"
 #include "mercury_trace_source.h"
 
 #include "mdb.browse.mh"
+#include "mdb.diff.mh"
 #include "mdb.browser_info.mh"
 #include "mdb.declarative_execution.mh"
 #include "mdbcomp.program_representation.mh"
@@ -452,12 +454,15 @@ static  MR_TraceCmdFunc MR_trace_cmd_level;
 static  MR_TraceCmdFunc MR_trace_cmd_up;
 static  MR_TraceCmdFunc MR_trace_cmd_down;
 static  MR_TraceCmdFunc MR_trace_cmd_vars;
+static  MR_TraceCmdFunc MR_trace_cmd_held_vars;
 static  MR_TraceCmdFunc MR_trace_cmd_print;
 static  MR_TraceCmdFunc MR_trace_cmd_browse;
 static  MR_TraceCmdFunc MR_trace_cmd_stack;
 static  MR_TraceCmdFunc MR_trace_cmd_current;
 static  MR_TraceCmdFunc MR_trace_cmd_set;
 static  MR_TraceCmdFunc MR_trace_cmd_view;
+static  MR_TraceCmdFunc MR_trace_cmd_hold;
+static  MR_TraceCmdFunc MR_trace_cmd_diff;
 static  MR_TraceCmdFunc MR_trace_cmd_save_to_file;
 static  MR_TraceCmdFunc MR_trace_cmd_break;
 static  MR_TraceCmdFunc MR_trace_cmd_condition;
@@ -610,6 +615,9 @@ static  MR_bool     MR_trace_options_class_decl(MR_bool *print_methods,
 static  MR_bool     MR_trace_options_all_procedures(MR_bool *separate,
                         MR_bool *uci, char **module, char ***words,
                         int *word_count, const char *cat, const char *item);
+static  MR_bool     MR_trace_options_diff(int *start, int *max,
+                        char ***words, int *word_count, const char *cat,
+                        const char *item);
 static  MR_bool     MR_trace_options_save_to_file(MR_bool *xml,
                         char ***words, int *word_count, const char *cat,
                         const char *item);
@@ -2123,6 +2131,20 @@ MR_trace_cmd_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static MR_Next
+MR_trace_cmd_held_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+    MR_Event_Info *event_info, MR_Event_Details *event_details,
+    MR_Code **jumpaddr)
+{
+    if (word_count == 1) {
+        MR_trace_list_held_vars(MR_mdb_out);
+    } else {
+        MR_trace_usage("browsing", "held_vars");
+    }
+
+    return KEEP_INTERACTING;
+}
+
+static MR_Next
 MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_Code **jumpaddr)
@@ -2424,6 +2446,119 @@ MR_trace_cmd_view(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static MR_Next
+MR_trace_cmd_hold(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+    MR_Event_Info *event_info, MR_Event_Details *event_details,
+    MR_Code **jumpaddr)
+{
+    char        *event_var_name;
+    char        *held_var_name;
+    MR_TypeInfo type_info;
+    MR_Word     value;
+    const char  *ignored_name;
+    const char  *problem;
+    MR_bool     bad_subterm;
+
+    if (word_count == 2) {
+        event_var_name = words[1];
+        held_var_name = words[1];
+    } else if (word_count == 3) {
+        event_var_name = words[1];
+        held_var_name = words[2];
+    } else {
+        MR_trace_usage("browsing", "hold");
+        return KEEP_INTERACTING;
+    }
+
+    if (strpbrk(held_var_name, "^/") != NULL) {
+        /* Don't allow path separators in variable names. */
+        MR_trace_usage("browsing", "hold");
+        return KEEP_INTERACTING;
+    }
+
+    if (held_var_name[0] == '$') {
+        /* Ignore any unneeded initial $ signs. */
+        held_var_name = &held_var_name[1];
+    }
+
+    problem = MR_trace_parse_lookup_var_path(event_var_name, &type_info,
+        &value, &bad_subterm);
+    if (problem != NULL) {
+        fflush(MR_mdb_out);
+        fprintf(MR_mdb_err, "mdb: %s%s.\n",
+            (bad_subterm? "there is no path " : ""), problem);
+        return KEEP_INTERACTING;
+    }
+
+    if (! MR_add_hold_var(held_var_name, type_info, value)) {
+        fflush(MR_mdb_out);
+        fprintf(MR_mdb_err, "mdb: there is already a held variable $%s\n",
+            held_var_name);
+    }
+
+    return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_diff(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+    MR_Event_Info *event_info, MR_Event_Details *event_details,
+    MR_Code **jumpaddr)
+{
+    int         start;
+    int         max;
+    char        *name1;
+    char        *name2;
+    MR_TypeInfo type_info1;
+    MR_TypeInfo type_info2;
+    MR_Word     value1;
+    MR_Word     value2;
+    MR_Word     univ1;
+    MR_Word     univ2;
+    const char  *problem1;
+    const char  *problem2;
+    MR_bool     bad_subterm1;
+    MR_bool     bad_subterm2;
+
+    start = 0;
+    max = 20;
+    if (! MR_trace_options_diff(&start, &max, &words, &word_count,
+        "browsing", "diff"))
+    {
+        /* the usage message has already been printed */
+        return KEEP_INTERACTING;
+    } else if (word_count != 3) {
+        MR_trace_usage("browsing", "diff");
+        return KEEP_INTERACTING;
+    }
+
+    name1 = words[1];
+    name2 = words[2];
+    problem1 = MR_trace_parse_lookup_var_path(name1, &type_info1, &value1,
+        &bad_subterm1);
+    problem2 = MR_trace_parse_lookup_var_path(name2, &type_info2, &value2,
+        &bad_subterm2);
+    if (problem1 != NULL) {
+        fflush(MR_mdb_out);
+        fprintf(MR_mdb_err, "mdb: %s%s.\n",
+            (bad_subterm1? "arg1: there is no path " : ""), problem1);
+        return KEEP_INTERACTING;
+    }
+    if (problem2 != NULL) {
+        fflush(MR_mdb_out);
+        fprintf(MR_mdb_err, "mdb: %s%s.\n",
+            (bad_subterm2? "arg2: there is no path " : ""), problem2);
+        return KEEP_INTERACTING;
+    }
+
+    MR_TRACE_CALL_MERCURY(
+        MR_new_univ_on_hp(univ1, type_info1, value1);
+        MR_new_univ_on_hp(univ2, type_info2, value2);
+        ML_report_diffs(start, max, univ1, univ2);
+    );
+
+    return KEEP_INTERACTING;
+}
+
+static MR_Next
 MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_Code **jumpaddr)
@@ -2479,10 +2614,11 @@ MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
             MR_Var_Spec var_spec;
             MR_TypeInfo type_info;
             MR_Word     value;
+            const char  *name;
 
             MR_convert_arg_to_var_spec(words[1], &var_spec);
-            problem = MR_convert_var_spec_to_type_value(var_spec,
-                &type_info, &value);
+            problem = MR_lookup_unambiguous_var_spec(var_spec,
+                &type_info, &value, &name);
             if (problem == NULL) {
                 browser_term = MR_type_value_to_browser_term(type_info, value);
             }
@@ -7256,6 +7392,50 @@ MR_trace_options_all_procedures(MR_bool *separate, MR_bool *uci, char **module,
     return MR_TRUE;
 }
 
+static struct MR_option MR_trace_diff_opts[] =
+{
+    { "start",      MR_required_argument,   NULL,   's' },
+    { "max",        MR_required_argument,   NULL,   'm' },
+    { NULL,         MR_no_argument,         NULL,   0 }
+};
+
+static MR_bool
+MR_trace_options_diff(int *start, int *max,
+    char ***words, int *word_count, const char *cat, const char *item)
+{
+    int c;
+
+    MR_optind = 0;
+    while ((c = MR_getopt_long(*word_count, *words, "m:s:", MR_trace_diff_opts,
+        NULL)) != EOF)
+    {
+        switch (c) {
+
+            case 'm':
+                if (! MR_trace_is_natural_number(MR_optarg, max)) {
+                    MR_trace_usage(cat, item);
+                    return MR_FALSE;
+                }
+                break;
+
+            case 's':
+                if (! MR_trace_is_natural_number(MR_optarg, start)) {
+                    MR_trace_usage(cat, item);
+                    return MR_FALSE;
+                }
+                break;
+
+            default:
+                MR_trace_usage(cat, item);
+                return MR_FALSE;
+        }
+    }
+
+    *words = *words + MR_optind - 1;
+    *word_count = *word_count - MR_optind + 1;
+    return MR_TRUE;
+}
+
 static struct MR_option MR_trace_save_to_file_opts[] =
 {
     { "xml",        MR_no_argument,     NULL,   'x' },
@@ -8099,6 +8279,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         MR_trace_stack_cmd_args, MR_trace_null_completer },
     { "browsing", "vars", MR_trace_cmd_vars,
         NULL, MR_trace_null_completer },
+    { "browsing", "held_vars", MR_trace_cmd_held_vars,
+        NULL, MR_trace_null_completer },
     { "browsing", "print", MR_trace_cmd_print,
         MR_trace_print_cmd_args, MR_trace_var_completer },
     { "browsing", "browse", MR_trace_cmd_browse,
@@ -8109,6 +8291,10 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         NULL, MR_trace_null_completer },
     { "browsing", "view", MR_trace_cmd_view,
         MR_trace_view_cmd_args, MR_trace_null_completer },
+    { "browsing", "hold", MR_trace_cmd_hold,
+        NULL, MR_trace_var_completer },
+    { "browsing", "diff", MR_trace_cmd_diff,
+        NULL, MR_trace_var_completer },
     { "browsing", "save_to_file", MR_trace_cmd_save_to_file,
         NULL, MR_trace_var_completer },
 

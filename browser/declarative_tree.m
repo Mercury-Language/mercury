@@ -53,8 +53,15 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 
-:- import_module assoc_list, bool, exception, int, list, map, std_util, string.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module exception.
+:- import_module int.
 :- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
 
 :- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)
 	where [

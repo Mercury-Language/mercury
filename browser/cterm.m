@@ -34,8 +34,8 @@
 
 :- implementation.
 
-:- import_module list.
 :- import_module deconstruct.
+:- import_module list.
 :- import_module std_util.
 
 :- pragma foreign_decl(c, "
@@ -93,7 +93,7 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
 		)
 	).
 
-:- pragma foreign_proc(c, 
+:- pragma foreign_proc(c,
 	cterm_deconstruct(Term::in, Functor::out, Args::out),
 	[will_not_call_mercury, promise_pure],
 "
@@ -105,7 +105,7 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
 	Args = Term->term_args;
 ").
 
-:- pragma foreign_proc(c, 
+:- pragma foreign_proc(c,
 	cterm_head_tail(Args::in, Head::out, Tail::out),
 	[will_not_call_mercury, promise_pure],
 "

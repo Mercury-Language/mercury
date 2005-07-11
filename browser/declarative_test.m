@@ -23,7 +23,10 @@
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.declarative_execution.
 
-:- import_module list, std_util, map, require.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
 
 main(!IO) :-
 	process_arguments(MaybeFile, !IO),

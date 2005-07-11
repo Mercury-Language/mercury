@@ -3,6 +3,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: term_rep.m
 % Author: Ian MacLarty
 %
@@ -13,7 +14,6 @@
 %
 % This is useful when we only want to consider the representation of a term
 % and don't care about it's actual value.
-%
 
 :- module mdb.term_rep.
 

@@ -18,7 +18,11 @@
 :- import_module mdb.parse.
 :- import_module mdbcomp.program_representation.
 
-:- import_module bool, list, std_util, io, getopt.
+:- import_module bool.
+:- import_module getopt.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 	% The non-persistent browser information.  A new one of these is
 	% created every time the browser is called, based on the contents
@@ -61,7 +65,7 @@
 			% The sub-term is bound at the call.  For example the
 			% Mercury builtin modes `in', `di' and `ui'.
 	--->	input
-			% The sub-term is unbound at the call.  The call 
+			% The sub-term is unbound at the call.  The call
 			% succeeded and bound the sub-term.  For example the
 			% Mercury builtin modes `out' and `uo'.
 	;	output
@@ -69,7 +73,7 @@
 			% final EXIT, FAIL or EXCP event.
 	;	unbound
 			% If the user asks about the mode of an atom, this
-			% value should be returned by the browser term mode 
+			% value should be returned by the browser term mode
 			% function.
 	;	not_applicable.
 
@@ -95,11 +99,11 @@
 	%
 :- type portray_format
 	--->	flat
-	;	raw_pretty	% calls pprint module directly, without first 
+	;	raw_pretty	% calls pprint module directly, without first
 				% attempting to manipulate the term in any way.
 	;	verbose
-	;	pretty.		% It allows the user to specify the maximum 
-				% number of lines which the term has to be 
+	;	pretty.		% It allows the user to specify the maximum
+				% number of lines which the term has to be
 				% printed within.
 
 :- type format_params
@@ -124,7 +128,7 @@
 	% overrides the default format.
 	%
 :- func browser_info__init(browser_term, browse_caller_type,
-	maybe(portray_format), maybe(browser_mode_func), 
+	maybe(portray_format), maybe(browser_mode_func),
 	browser_persistent_state) = browser_info.
 
 	% Get the format to use for the given caller type.  The optional
@@ -155,11 +159,11 @@
 
 :- func browser_persistent_state ^ xml_browser_cmd = maybe(string).
 :- func browser_persistent_state ^ xml_browser_cmd := maybe(string) =
-	browser_persistent_state. 
+	browser_persistent_state.
 
 :- func browser_persistent_state ^ xml_tmp_filename = maybe(string).
 :- func browser_persistent_state ^ xml_tmp_filename := maybe(string) =
-	browser_persistent_state. 
+	browser_persistent_state.
 
 	% Initialize the persistent browser state with default values.
 	%
@@ -172,7 +176,7 @@
 	% -P, -B, -A, -f, -r, -v and -p, in that order.
 	%
 :- pred browser_info__set_param(bool::in, bool::in, bool::in, bool::in,
-	bool::in, bool::in, bool::in, bool::in, setting::in, 
+	bool::in, bool::in, bool::in, bool::in, setting::in,
 	browser_persistent_state::in, browser_persistent_state::out) is det.
 
 	% Update a setting in the browser state.  The first argument should be
@@ -182,7 +186,7 @@
 	% and -p, in that order.
 	%
 :- pred browser_info__set_param(bool::in, maybe(browse_caller_type)::in,
-	bool::in, bool::in, bool::in, bool::in, setting::in, 
+	bool::in, bool::in, bool::in, bool::in, setting::in,
 	browser_persistent_state::in, browser_persistent_state::out) is det.
 
 	% browser_info.set_param(FromBrowser, OptionTable, Setting, !State)
@@ -192,7 +196,7 @@
 :- pred browser_info.set_param(bool::in, option_table(setting_option)::in,
 	setting::in, browser_persistent_state::in,
 	browser_persistent_state::out) is det.
-	
+
 %---------------------------------------------------------------------------%
 
 % These three predicates are like the deconstruct, limited_deconstruct
@@ -224,7 +228,10 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module deconstruct, require, io.
+
+:- import_module deconstruct.
+:- import_module io.
+:- import_module require.
 
 :- pragma export(browser_info__init_persistent_state(out),
 		"ML_BROWSE_init_persistent_state").
@@ -282,26 +289,26 @@ set_param_format_from_mdb(P, B, A, Format) -->
 	%
 	browser_info__set_param(no, P, B, A, no, no, no, no, format(Format)).
 
-:- pred set_param_xml_browser_cmd_from_mdb(string::in, 
+:- pred set_param_xml_browser_cmd_from_mdb(string::in,
 	browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(mdb.browser_info.set_param_xml_browser_cmd_from_mdb(in, in, 
+:- pragma export(mdb.browser_info.set_param_xml_browser_cmd_from_mdb(in, in,
 	out), "ML_BROWSE_set_param_xml_browser_cmd_from_mdb").
 
 set_param_xml_browser_cmd_from_mdb(Command, !Browser) :-
-	browser_info.set_param(no`with_type`bool, 
-		no`with_type`bool, no`with_type`bool, no`with_type`bool, 
-		no`with_type`bool, no`with_type`bool, no`with_type`bool, 
+	browser_info.set_param(no`with_type`bool,
+		no`with_type`bool, no`with_type`bool, no`with_type`bool,
+		no`with_type`bool, no`with_type`bool, no`with_type`bool,
 		no`with_type`bool, xml_browser_cmd(Command), !Browser).
 
-:- pred set_param_xml_tmp_filename_from_mdb(string::in, 
+:- pred set_param_xml_tmp_filename_from_mdb(string::in,
 	browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(mdb.browser_info.set_param_xml_tmp_filename_from_mdb(in, in, 
+:- pragma export(mdb.browser_info.set_param_xml_tmp_filename_from_mdb(in, in,
 	out), "ML_BROWSE_set_param_xml_tmp_filename_from_mdb").
 
 set_param_xml_tmp_filename_from_mdb(FileName, !Browser) :-
-	browser_info.set_param(no`with_type`bool, 
-		no`with_type`bool, no`with_type`bool, no`with_type`bool, 
-		no`with_type`bool, no`with_type`bool, no`with_type`bool, 
+	browser_info.set_param(no`with_type`bool,
+		no`with_type`bool, no`with_type`bool, no`with_type`bool,
+		no`with_type`bool, no`with_type`bool, no`with_type`bool,
 		no`with_type`bool, xml_tmp_filename(FileName),
 		!Browser).
 
@@ -322,9 +329,9 @@ mercury_bool_no = no.
 
 %---------------------------------------------------------------------------%
 
-browser_info__init(BrowserTerm, CallerType, MaybeFormat, MaybeModeFunc, 
+browser_info__init(BrowserTerm, CallerType, MaybeFormat, MaybeModeFunc,
 		State) =
-	browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no, 
+	browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no,
 		MaybeModeFunc).
 
 browser_info__get_format(Info, Caller, MaybeFormat, Format) :-

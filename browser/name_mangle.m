@@ -59,7 +59,10 @@
 
 :- implementation.
 
-:- import_module string, char, int, list.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module string.
 
 % XXX most of the code below is very similar to the code in
 % compiler/llds_out.m.  Any changes there may require changes here
@@ -151,14 +154,13 @@ sym_name_mangle(unqualified(Name), MangledName) :-
 sym_name_mangle(qualified(ModuleName, PlainName), MangledName) :-
 	sym_name_mangle(ModuleName, MangledModuleName),
 	name_mangle(PlainName, MangledPlainName),
-	qualify_name(MangledModuleName, MangledPlainName,
-			MangledName).
+	qualify_name(MangledModuleName, MangledPlainName, MangledName).
 	
 	% Convert a Mercury predicate name into something that can form
 	% part of a C identifier.  This predicate is necessary because
 	% quoted names such as 'name with embedded spaces' are valid
 	% predicate names in Mercury.
-
+	%
 :- pred name_mangle(string::in, string::out) is det.
 
 name_mangle(Name, MangledName) :-
@@ -203,7 +205,7 @@ qualify_name(Module0, Name0, Name) :-
 	% to avoid introducing name clashes.
 	% If the functor name is not found in the table, then
 	% we use a fall-back method which produces ugly names.
-
+	%
 :- pred name_conversion_table(string::in, string::out) is semidet.
 
 name_conversion_table("\\=", "f_not_equal").
@@ -229,7 +231,7 @@ name_conversion_table("!", "f_cut").
 	% constructs everything except the initial "f".
 	%
 	% For example, given the input "\n\t" we return "_10_8".
-
+	%
 :- pred convert_to_valid_c_identifier_2(string::in, string::out) is det.
 
 convert_to_valid_c_identifier_2(String, Name) :-	

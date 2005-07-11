@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000,2002-2003 The University of Melbourne.
+** Copyright (C) 1998-2000,2002-2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -52,8 +52,7 @@ MR_trace_add_alias(char *name, char **words, int word_count)
 			INIT_ALIAS_COUNT);
 		MR_prepare_insert_into_sorted(MR_alias_records,
 			MR_alias_record_next, slot,
-			strcmp(MR_alias_records[slot].MR_alias_name,
-				name));
+			strcmp(MR_alias_records[slot].MR_alias_name, name));
 	}
 
 	MR_alias_records[slot].MR_alias_name = MR_copy_string(name);
@@ -182,4 +181,3 @@ MR_trace_filter_alias_completions(const char *word, MR_Completer_Data *data)
 {
 	return (MR_strdiff(word, "EMPTY") && MR_strdiff(word, "NUMBER"));
 }
-

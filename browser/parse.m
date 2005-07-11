@@ -107,7 +107,11 @@
 
 :- import_module mdb.browser_info.
 
-:- import_module io, string, list, std_util, getopt.
+:- import_module getopt.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
 
 :- type command
 	--->	print(
@@ -169,7 +173,10 @@
 
 :- import_module mdb.util.
 
-:- import_module bool, list, char, int.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
 
 :- type token
 	--->	(.)

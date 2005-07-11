@@ -3,6 +3,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: declarative_debugger.m
 % Author: Mark Brown
 %
@@ -66,7 +67,10 @@
 :- import_module mdb.term_rep.
 :- import_module mdbcomp.program_representation.
 
-:- import_module io, list, std_util, string.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
 
 	% This type represents the possible truth values for nodes
 	% in the EDT.

@@ -14,7 +14,7 @@
 % This module corresponds to what is called the "Query Handler" in Opium.
 
 :- module mdb.debugger_interface.
-:- interface. 
+:- interface.
 
 % This module exports the following C functions:
 % 	ML_DI_output_current_slots_user
@@ -35,8 +35,11 @@
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 
-:- import_module list, bool, std_util.
-:- import_module io, require.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 
@@ -44,29 +47,28 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 
 :- type arity == int.
 
-:- type determinism == int. 
+:- type determinism == int.
 	% encoded as specified in ../runtime/mercury_stack_layout.h
 	% and ../compiler/stack_layout.m.
-
 
 % Depending whether the Opium side is requesting for a user defined procedure
 % or a compiler generated one, the event has not exactly the same structure.
 % The differences between the two types of event are gathered in a forward_move
 % slot of that type.
 
-:- type pred_match --->	
+:- type pred_match --->
 		% match user-defined preds only
 		match_user_pred(
 			match(pred_or_func),
 			match(string)		% declaration module name
 		)
-	;	
+	;
 		% match compiler-generated preds only
 		match_compiler_generated_pred(
 			match(string),		% type name
 			match(string)   	% type module name
 		)
-	;	
+	;
 		% match either user-defined or compiler-generated preds
 		match_any_pred.
 
@@ -99,37 +101,37 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 
 		% A `current_slots' request instructs the debuggee to
 		% retrieve the attributes of the current trace
-		% event (except for argument slot) and report them 
+		% event (except for argument slot) and report them
 		% to the debugger via the socket.
 	;	current_slots
 		% A `current_vars' request instructs the debuggee to
 		% retrieve the list of values and the list of internal
 		% names of live variables of the current event and
 		% report it to the debugger via the socket.
-	;	current_vars    % 
+	;	current_vars    %
  				% XXX should provide a way of getting
 				% just part of the arguments
  				% (to reduce unnecessary socket traffic)
 		% A `current_live_var_names' request instructs the debuggee to
-		% retrieve the list of internal names of the currently 
+		% retrieve the list of internal names of the currently
 		% live variables and a list of their corresponding types.
 	;	current_live_var_names
-		% A 'current_nth_var' request instructs the debuggee to 
+		% A 'current_nth_var' request instructs the debuggee to
 		% retrieve the specified live variable.
 	;	current_nth_var(int)
 			% just abort the program
 	;	abort_prog
 			% stop tracing, and run the program to completion
 	;	no_trace
-			% restarts execution at the call port of the call 
+			% restarts execution at the call port of the call
 			% corresponding to the current event
 	;	retry
 			% print the ancestors stack
 	;	stack
-			% prints the contents of the fixed slots of the 
+			% prints the contents of the fixed slots of the
 			% frames on the nondet stack
 	;	nondet_stack
-			% print the contents of the virtual machine registers 
+			% print the contents of the virtual machine registers
 			% that point to the det and nondet stacks
 	;	stack_regs
 			% something went wrong when trying to get the
@@ -145,12 +147,12 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	mmc_options(options)
 			% to call the term browser
 	;	browse(string)
-			% dynamically link the collect module with the 
+			% dynamically link the collect module with the
 			% current execution
 	;	link_collect(string)
 			% execute the collect command
 	;	collect
-			% retrieve the grade the current execution has been 
+			% retrieve the grade the current execution has been
 			% compiled with
 	;	current_grade
 			% switch the argument collecting on (for collect request)
@@ -163,7 +165,6 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 :- type call_number == int.
 :- type depth_number == int.
 
-
 % `match' is called "get status" in the Opium documentation.
 % This type defines a unary predicate which determines whether
 % or not a particular value will be selected.
@@ -175,7 +176,6 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	interval(T,T)	% interval(Low, High): Low =< X, X =< High
 	.
 
-
 % The debugger_response type is used for response sent
 % to the debugger process from the Mercury program being debugged.
 :- type debugger_response
@@ -186,7 +186,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	% responses to forward_move
 	;	forward_move_match_found
 	;	forward_move_match_not_found
-	% responses to current 
+	% responses to current
 	% responses to current_slots for user event
 	;	current_slots_user(
 			event_number,
@@ -228,18 +228,19 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	% response sent when the last event is reached
 	;	last_event
 	% responses to a successful browse request session
-	;	browser_end	
+	;	browser_end
 	% responses to a successful mmc_option request
 	;	mmc_option_ok
 	% responses to requests that proceeded successfully
 	;	ok
 	% responses to requests that went wrong
 	;	error(string)
-	% responses to stack 
+	% responses to stack
 	% The protocol between the debugger and the debuggee is described is
 	% trace/mercury_trace_external.c.
 	;	level(int)				% stack level
-	;	proc(string, string, string, int, int)	% compiler generated proc
+	;	proc(string, string, string, int, int)	% compiler generated
+							% proc
 	;	proc(string, string, int, int)		% user generated proc
 	;	def_module(string)
 	;	detail(int, int, int)
@@ -259,7 +260,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	grade(string)
 	% responses to collect
 	%;	collected(collected_type)
-		% This is commented out because collected_type is unknown at  
+		% This is commented out because collected_type is unknown at
 		% compile time since it is defined by users in the dynamically
 		% linked collect module.
 	% sent if the execution is not terminated after a collect request
@@ -272,7 +273,6 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	collect_arg_off_ok
 	.
 
-
 %-----------------------------------------------------------------------------%
 %	send to the debugger (e.g. Opium) the wanted features.
 
@@ -280,24 +280,23 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 %	send to the debugger (e.g. Opium) the attributes of the current event
 %	except the list of arguments.
 
-:- pragma export(output_current_slots_user(in, in, in, in, in, in, in, in, 
+:- pragma export(output_current_slots_user(in, in, in, in, in, in, in, in,
 	in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_user").
-			
-:- pred output_current_slots_user(event_number, call_number, depth_number, 
+
+:- pred output_current_slots_user(event_number, call_number, depth_number,
 	trace_port, pred_or_func, /* declarated module name */ string,
-	/* definition module name */ string, /* pred name */ string, arity, 
+	/* definition module name */ string, /* pred name */ string, arity,
 	/* mode num */ int, determinism, goal_path_string, line_number,
 	io__output_stream, io__state, io__state).
-:- mode output_current_slots_user(in, in, in, in, in, in, in, in, in, in, 
+:- mode output_current_slots_user(in, in, in, in, in, in, in, in, in, in,
 	in, in, in, in, di, uo) is det.
 
-
-output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port, 
-	PredOrFunc, DeclModuleName, DefModuleName, PredName, Arity, ModeNum, 
+output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
+	PredOrFunc, DeclModuleName, DefModuleName, PredName, Arity, ModeNum,
 	Determinism, Path, LineNo, OutputStream) -->
-	
-	{ CurrentTraceInfo = current_slots_user(EventNumber, CallNumber, 
-		DepthNumber, Port, PredOrFunc, DeclModuleName, DefModuleName, 
+
+	{ CurrentTraceInfo = current_slots_user(EventNumber, CallNumber,
+		DepthNumber, Port, PredOrFunc, DeclModuleName, DefModuleName,
 		PredName, Arity, ModeNum, Determinism, Path, LineNo) },
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
@@ -307,43 +306,41 @@ output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
 %	send to the debugger (e.g. Opium) the attributes of the current event
 %	except the list of arguments.
 
-:- pragma export(output_current_slots_comp(in, in, in, in, in, in, in, 
+:- pragma export(output_current_slots_comp(in, in, in, in, in, in, in,
 	in, in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_comp").
-			
-:- pred output_current_slots_comp(event_number, call_number, depth_number, 
+
+:- pred output_current_slots_comp(event_number, call_number, depth_number,
 	trace_port, /* name type */ string, /* module type */ string,
-	/* definition module */ string, /* pred name */ string, arity, 
+	/* definition module */ string, /* pred name */ string, arity,
 	/* mode num */ int, determinism, goal_path_string, line_number,
 	io__output_stream, io__state, io__state).
-:- mode output_current_slots_comp(in, in, in, in, in, in, in, in, in, in, 
+:- mode output_current_slots_comp(in, in, in, in, in, in, in, in, in, in,
 	in, in, in, in, di, uo) is det.
 
-
-output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port, 
-	NameType, ModuleType, DefModuleName, PredName, Arity, 
+output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port,
+	NameType, ModuleType, DefModuleName, PredName, Arity,
 	ModeNum, Determinism, Path, LineNo, OutputStream) -->
-	
-	{ CurrentTraceInfo = current_slots_comp(EventNumber, CallNumber, 
-		DepthNumber, Port, NameType, ModuleType, DefModuleName, 
+
+	{ CurrentTraceInfo = current_slots_comp(EventNumber, CallNumber,
+		DepthNumber, Port, NameType, ModuleType, DefModuleName,
 		PredName, Arity, ModeNum, Determinism, Path, LineNo) },
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
 	io__flush_output(OutputStream).
 
 % output_current_vars "ML_DI_output_current_vars":
-%	send to the debugger the list of the live variables of the current 
+%	send to the debugger the list of the live variables of the current
 %	event.
 
-:- pragma export(output_current_vars(in, in, in, di, uo), 
+:- pragma export(output_current_vars(in, in, in, di, uo),
 	"ML_DI_output_current_vars").
-			
-:- pred output_current_vars(list(univ), list(string), 
+
+:- pred output_current_vars(list(univ), list(string),
 	io__output_stream, io__state, io__state).
 :- mode output_current_vars(in, in, in, di, uo) is det.
 
-
 output_current_vars(VarList, StringList, OutputStream) -->
-		
+
 	{ CurrentTraceInfo = current_vars(VarList, StringList) },
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
@@ -352,32 +349,29 @@ output_current_vars(VarList, StringList, OutputStream) -->
 % output_current_nth_var "ML_DI_output_current_nth_var":
 %	send to the debugger the requested live variable of the current event.
 
-:- pragma export(output_current_nth_var(in, in, di, uo), 
+:- pragma export(output_current_nth_var(in, in, di, uo),
 	"ML_DI_output_current_nth_var").
-			
+
 :- pred output_current_nth_var(univ, io__output_stream, io__state, io__state).
 :- mode output_current_nth_var(in, in, di, uo) is det.
 
-
 output_current_nth_var(Var, OutputStream) -->
-		
+
 	{ CurrentTraceInfo = current_nth_var(Var) },
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
 	io__flush_output(OutputStream).
 
-
-:- pragma export(output_current_live_var_names(in, in, in, di, uo), 
+:- pragma export(output_current_live_var_names(in, in, in, di, uo),
 	"ML_DI_output_current_live_var_names").
-			
+
 :- pred output_current_live_var_names(list(string), list(string),
 	io__output_stream, io__state, io__state).
 :- mode output_current_live_var_names(in, in, in, di, uo) is det.
 
-
-output_current_live_var_names(LiveVarNameList, LiveVarTypeList, 
+output_current_live_var_names(LiveVarNameList, LiveVarTypeList,
 	OutputStream) -->
-		
+
 	{ CurrentTraceInfo = current_live_var_names(
 				LiveVarNameList, LiveVarTypeList) },
 	io__write(OutputStream, CurrentTraceInfo),
@@ -387,11 +381,11 @@ output_current_live_var_names(LiveVarNameList, LiveVarTypeList,
 %-----------------------------------------------------------------------------%
 
 :- pragma export(get_var_number(in) = out, "ML_DI_get_var_number").
-			
+
 :- func get_var_number(debugger_request) = int.
 :- mode get_var_number(in) = out is det.
-	% This function is intended to retrieve the integer in 
-	% "current_nth_var(int)" requests. 
+	% This function is intended to retrieve the integer in
+	% "current_nth_var(int)" requests.
 
 get_var_number(DebuggerRequest) = VarNumber :-
 	(
@@ -406,10 +400,10 @@ get_var_number(DebuggerRequest) = VarNumber :-
 
 :- pragma export(found_match_user(in, in, in, in, in, in, in, in, in, in, in,
 			in, in, in), "ML_DI_found_match_user").
-			
-:- pred found_match_user(event_number, call_number, depth_number, 
-	trace_port, pred_or_func, /* declarated module name */ string, 
-	/* defined module name */ string, /* pred name */ string, arity, 
+
+:- pred found_match_user(event_number, call_number, depth_number,
+	trace_port, pred_or_func, /* declarated module name */ string,
+	/* defined module name */ string, /* pred name */ string, arity,
 	/* mode num */ int, determinism, /* the arguments */ list(univ),
 				% XXX we could provide better ways of
 				% matching on arguments
@@ -417,14 +411,14 @@ get_var_number(DebuggerRequest) = VarNumber :-
 :- mode found_match_user(in, in, in, in, in, in, in, in, in, in, in, in, in, in)
 	is semidet.
 
-found_match_user(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc, 
-		DeclModuleName, DefModuleName, PredName, Arity, ModeNum, 
+found_match_user(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
+		DeclModuleName, DefModuleName, PredName, Arity, ModeNum,
 		Determinism, Args, Path, DebuggerRequest) :-
 	(
 		DebuggerRequest = forward_move(MatchEventNumber,
 			MatchCallNumber, MatchDepthNumber, MatchPort,
-			UserPredMatch, MatchDefModuleName, MatchPredName, 
-			MatchArity, MatchModeNum, MatchDeterminism, 
+			UserPredMatch, MatchDefModuleName, MatchPredName,
+			MatchArity, MatchModeNum, MatchDeterminism,
 			MatchArgs, MatchPath)
 	->
 		match(MatchEventNumber, EventNumber),
@@ -452,7 +446,6 @@ found_match_user(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
 		error("found_match: forward_move expected")
 	).
 
-
 % match(MatchPattern, Value) is true iff Value matches the specified pattern.
 :- pred match(match(T), T).
 :- mode match(in, in) is semidet.
@@ -463,18 +456,17 @@ match(neg(X), Y) :- X \= Y.
 match(list(L), X) :- list__member(X, L).
 match(interval(Low, High), X) :-
 	% X >= Low, X =< High
-	compare(LE, X, High), 
+	compare(LE, X, High),
 	(LE = (<) ; LE = (=)),
-	compare(GE, X, Low), 
+	compare(GE, X, Low),
 	(GE = (>) ; GE = (=)).
-
 
 :- pragma export(found_match_comp(in, in, in, in, in, in, in, in, in, in, in,
 			in, in, in), "ML_DI_found_match_comp").
-			
-:- pred found_match_comp(event_number, call_number, depth_number, 
-	trace_port, /* name type */ string, /* module type */ string, 
-	/* definition module name */ string, /* pred name */ string, arity, 
+
+:- pred found_match_comp(event_number, call_number, depth_number,
+	trace_port, /* name type */ string, /* module type */ string,
+	/* definition module name */ string, /* pred name */ string, arity,
 	/* mode num */ int, determinism, /* the arguments */ list(univ),
 				% XXX we could provide better ways of
 				% matching on arguments
@@ -482,14 +474,14 @@ match(interval(Low, High), X) :-
 :- mode found_match_comp(in, in, in, in, in, in, in, in, in, in, in, in, in, in)
 	is semidet.
 
-found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType, 
-		ModuleType, DefModuleName, PredName, Arity, ModeNum, 
+found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
+		ModuleType, DefModuleName, PredName, Arity, ModeNum,
 		Determinism, Args, Path, DebuggerRequest) :-
 	(
 		DebuggerRequest = forward_move(MatchEventNumber,
 			MatchCallNumber, MatchDepthNumber, MatchPort,
 			CompilerGeneratedPredMatch,
-			MatchDefModuleName, MatchPredName, MatchArity, 
+			MatchDefModuleName, MatchPredName, MatchArity,
 			MatchModeNum, MatchDeterminism, MatchArgs, MatchPath)
 	->
 		match(MatchEventNumber, EventNumber),
@@ -498,7 +490,7 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
 		match(MatchPort, Port),
 		(
 		if
-			CompilerGeneratedPredMatch = 
+			CompilerGeneratedPredMatch =
 				match_compiler_generated_pred(MatchNameType,
 			MatchModuleType)
 		then
@@ -518,12 +510,11 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
 		error("found_match: forward_move expected")
 	).
 
-
 %-----------------------------------------------------------------------------%
 
 :- pred read_request_from_socket(io__input_stream, debugger_request, int,
 		io__state, io__state).
-			
+
 :- mode read_request_from_socket(in, out, out, di, uo) is det.
 
 :- pragma export(read_request_from_socket(in, out, out, di, uo),
@@ -549,7 +540,6 @@ read_request_from_socket(SocketStream, Request, RequestType) -->
 	io__print(StdErr, RequestType),
 	io__print(StdErr, ".\n").
 	***********/
-
 
 %-----------------------------------------------------------------------------%
 
@@ -598,8 +588,8 @@ get_mmc_options(DebuggerRequest, Options) :-
 :- mode get_object_file_name(in, out) is det.
 
 :- pragma export(get_object_file_name(in, out), "ML_DI_get_object_file_name").
-	% This predicate allows mercury_trace_external.c to retrieve the name 
-	% of the object file to link the current execution with from a 
+	% This predicate allows mercury_trace_external.c to retrieve the name
+	% of the object file to link the current execution with from a
 	% `link_collect(ObjectFileName)' request.
 get_object_file_name(DebuggerRequest, ObjectFileName) :-
 	(
@@ -625,7 +615,7 @@ init_mercury_string("").
 :- mode get_variable_name(in, out) is det.
 
 :- pragma export(get_variable_name(in, out), "ML_DI_get_variable_name").
-	% This predicate allows mercury_trace_external.c to retrieve the name 
+	% This predicate allows mercury_trace_external.c to retrieve the name
 	% of the variable to browse from a `browse(var_name)' request.
 get_variable_name(DebuggerRequest, Options) :-
 	(
@@ -667,6 +657,5 @@ classify_request(collect,19).
 classify_request(current_grade,20).
 classify_request(collect_arg_on,21).
 classify_request(collect_arg_off,22).
-
 
 %-----------------------------------------------------------------------------%

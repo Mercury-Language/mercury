@@ -63,7 +63,9 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 
-:- import_module bool, list, std_util.
+:- import_module bool.
+:- import_module list.
+:- import_module std_util.
 
 	% This typeclass defines how EDTs may be accessed by this module.
 	% An EDT is a tree of nodes, each of which contains a question
@@ -512,8 +514,14 @@
 
 :- implementation.
 
-:- import_module exception, map, int, counter, std_util, string, bimap.
+:- import_module bimap.
+:- import_module counter.
+:- import_module exception.
 :- import_module float.
+:- import_module int.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
 
 	% A suspect is an edt node with some additional information relevant
 	% to the bug search.

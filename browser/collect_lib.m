@@ -60,9 +60,16 @@
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
 
 %------------------------------------------------------------------------------%
+
 :- implementation.
-:- import_module int, list, std_util, io, char.
+
 :- import_module mdb__dl.
+
+:- import_module char.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 
@@ -88,7 +95,7 @@ link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
 	% Link in the object code for the module `collect' from ObjectFile.
 	%
 	dl__open(ObjectFile, lazy, local, MaybeHandle),
-	(	
+	(
 		{ MaybeHandle = error(Msg) },
 		print("dlopen failed: "), print(Msg), nl,
 		{ set_to_null_pointer(Initialize) },

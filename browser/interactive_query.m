@@ -19,7 +19,8 @@
 
 :- interface.
 
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 :- pred query(query_type::in, imports::in, options::in,
 	io__input_stream::in, io__output_stream::in, io::di, io::uo) is det.
@@ -39,7 +40,13 @@
 :- import_module mdb.name_mangle.
 :- import_module mdb.util.
 
-:- import_module std_util, bool, string, term, varset, term_io, parser.
+:- import_module bool.
+:- import_module parser.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
 
 :- pragma export(query(in, in, in, in, in, di, uo), "ML_query").
 
@@ -64,7 +71,6 @@ query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, !IO) :-
 		query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout,
 			ReadTerm, !IO)
 	).
-
 
 :- pred query_2(query_type::in, imports::in, options::in,
 	io__input_stream::in, io__output_stream::in,
@@ -118,7 +124,6 @@ query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, ReadTerm, !IO) :-
 				MDB_Stdin, MDB_Stdout, !IO)
 		)
 	).
-
 
 	% interactive_query_response is type of the terms sent to the socket
 	% during an interactive query session under the control of the
@@ -503,7 +508,7 @@ cleanup_query(_Options) -->
 	#include ""mercury_grade.h""
 	#include ""mercury_string.h""
 ").
-:- pragma foreign_proc("C", 
+:- pragma foreign_proc("C",
 	grade_option = (GradeOpt::out),
 	[promise_pure, thread_safe, will_not_call_mercury],
 "
@@ -617,7 +622,7 @@ dynamically_load_and_run -->
 
 :- pragma foreign_proc("C",
 	inst_cast(X::in) = (Y::out(io_pred)),
-	[promise_pure, will_not_call_mercury, thread_safe], 
+	[promise_pure, will_not_call_mercury, thread_safe],
 "
 	Y = X
 ").

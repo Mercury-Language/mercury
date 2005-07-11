@@ -25,6 +25,7 @@ maxdepth             xyzzy xyzzy xyzzy xyzzy xyzzy
 continue             xyzzy xyzzy xyzzy xyzzy xyzzy
 retry                xyzzy xyzzy xyzzy xyzzy xyzzy
 vars                 xyzzy xyzzy xyzzy xyzzy xyzzy
+held_vars            xyzzy xyzzy xyzzy xyzzy xyzzy
 print                xyzzy xyzzy xyzzy xyzzy xyzzy
 browse               xyzzy xyzzy xyzzy xyzzy xyzzy
 stack                xyzzy xyzzy xyzzy xyzzy xyzzy
@@ -33,6 +34,8 @@ down                 xyzzy xyzzy xyzzy xyzzy xyzzy
 level                xyzzy xyzzy xyzzy xyzzy xyzzy
 current              xyzzy xyzzy xyzzy xyzzy xyzzy
 view                 xyzzy xyzzy xyzzy xyzzy xyzzy
+hold                 xyzzy xyzzy xyzzy xyzzy xyzzy
+diff                 xyzzy xyzzy xyzzy xyzzy xyzzy
 save_to_file         xyzzy xyzzy xyzzy xyzzy xyzzy
 break                xyzzy xyzzy xyzzy xyzzy xyzzy
 condition            xyzzy xyzzy xyzzy xyzzy xyzzy

@@ -23,7 +23,9 @@
 
 :- interface.
 
-:- import_module list, io, std_util.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 :- type help__system.
 
@@ -70,7 +72,9 @@
 
 :- implementation.
 
-:- import_module int, string, require.
+:- import_module int.
+:- import_module require.
+:- import_module string.
 
 :- type help__system	==	list(help__entry).
 

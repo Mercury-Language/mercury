@@ -372,6 +372,7 @@ MR_spy_cond_is_true(MR_Spy_Point *point, const MR_Label_Layout *label_layout)
     char            *bad_path;
     MR_TypeInfo     type_info;
     MR_Word         value;
+    const char      *name;
     MR_Word         *value_ptr;
     MR_TypeInfo     sub_type_info;
     MR_Word         *sub_value_ptr;
@@ -404,7 +405,7 @@ MR_spy_cond_is_true(MR_Spy_Point *point, const MR_Label_Layout *label_layout)
         (MR_Trace_Port) label_layout->MR_sll_port, MR_FALSE);
 
     problem = MR_lookup_unambiguous_var_spec(cond->cond_var_spec,
-        &type_info, &value);
+        &type_info, &value, &name);
     if (problem != NULL) {
         if (cond->cond_require_var) {
             MR_spy_point_cond_problem = problem;

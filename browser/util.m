@@ -10,7 +10,10 @@
 
 :- import_module mdbcomp.prim_data.
 
-:- import_module list, string, io, bool.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module string.
 
 :- func util__is_predicate(pred_or_func) = bool.
 :- func util__is_function(pred_or_func) = bool.
@@ -55,7 +58,8 @@
 
 :- implementation.
 
-:- import_module int, require.
+:- import_module int.
+:- import_module require.
 
 util__is_predicate(predicate) = yes.
 util__is_predicate(function) = no.

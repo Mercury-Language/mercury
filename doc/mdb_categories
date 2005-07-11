@@ -2,7 +2,7 @@ document_category 100 concepts
 concepts   - The concepts on which the Mercury debugger is based.
              The concepts for which documentation is available are
              `break_points', `strict_commands', `print_level',
-             `default_print_level', `current_environment',
+             `default_print_level', `current_environment', `held_variables'
              `procedure_specification' and `decl_debug'.
 
 end
@@ -25,9 +25,9 @@ backward   - Commands that move execution backward.
 end
 document_category 400 browsing
 browsing   - Commands that let users explore the state of the computation.
-             The browsing commands are `vars', `print', `browse',
-             `stack', `up', `down', `level', `current', `view' and
-             `save_to_file'.
+             The browsing commands are `vars', `held_vars', `print', `browse',
+             `stack', `up', `down', `level', `current', `view', `hold',
+	     `diff' and `save_to_file'.
 
 end
 document_category 500 breakpoint

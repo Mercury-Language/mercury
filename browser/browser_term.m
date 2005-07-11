@@ -11,7 +11,9 @@
 
 :- interface.
 
-:- import_module bool, std_util, list.
+:- import_module bool.
+:- import_module list.
+:- import_module std_util.
 
 :- type browser_term
 	--->	plain_term(

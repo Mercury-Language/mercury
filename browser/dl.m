@@ -82,7 +82,11 @@
 
 :- implementation.
 
-:- import_module std_util, require, string, list, int.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 :- pragma foreign_decl("C", "
 	#include <stdio.h>
