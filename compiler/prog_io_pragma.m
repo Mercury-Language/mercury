@@ -1135,7 +1135,6 @@ parse_pragma_type(ModuleName, "termination2_info", PragmaTerms, ErrorTerm,
     (
 	PragmaTerms = [
 	    PredAndModesTerm0,
-	    HeadVarListTerm,
 	    SuccessArgSizeTerm,
 	    FailureArgSizeTerm,
 	    TerminationTerm
@@ -1144,8 +1143,6 @@ parse_pragma_type(ModuleName, "termination2_info", PragmaTerms, ErrorTerm,
 		ErrorTerm, "`:- pragma termination2_info' declaration",
 		NameAndModesResult),
 	NameAndModesResult = ok(PredName - PredOrFunc, ModeList),
-	convert_int_list(HeadVarListTerm, HeadVarListResult),
-	HeadVarListResult = ok(HeadVars),
 	parse_arg_size_constraints(SuccessArgSizeTerm, SuccessArgSizeResult),
 	SuccessArgSizeResult = ok(SuccessArgSizeInfo),
 	parse_arg_size_constraints(FailureArgSizeTerm, FailureArgSizeResult),
@@ -1162,8 +1159,8 @@ parse_pragma_type(ModuleName, "termination2_info", PragmaTerms, ErrorTerm,
 		MaybeTerminationInfo = yes(cannot_loop(unit))
 	),
 	Result0 = ok(pragma(termination2_info(PredOrFunc, PredName, 
-		ModeList, HeadVars, SuccessArgSizeInfo, 
-		FailureArgSizeInfo, MaybeTerminationInfo)))
+		ModeList, SuccessArgSizeInfo, FailureArgSizeInfo,
+        MaybeTerminationInfo)))
     ->
 	    Result = Result0
     ;

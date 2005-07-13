@@ -89,7 +89,7 @@
 
 %----------------------------------------------------------------------------%
 % 
-% Types that define termination information about procedures.
+% Types that define termination information about procedures
 %
 
     % This type is the interargument size relationships between
@@ -109,7 +109,7 @@
 :- type term_reason 
     --->    builtin             % procedure was a builtin. 
     
-    ;       pragma_supplied     % procedure has pramga terminates decl.    
+    ;       pragma_supplied     % procedure has pragma terminates decl.    
 
     ;       foreign_supplied    % procedure has foreign code attribute.
             
@@ -131,7 +131,7 @@
 
 %----------------------------------------------------------------------------%
 %
-% The `termination2_info' structure.
+% The 'termination2_info' structure
 %
 
 % All the information needed by the termination analysis is stored in
@@ -143,7 +143,6 @@
 :- func term2_info_init = termination2_info.
 
 :- func termination2_info ^ size_var_map = size_var_map.
-:- func termination2_info ^ import_headvarids = maybe(list(int)).
 :- func termination2_info ^ import_success =
     maybe(pragma_constr_arg_size_info).
 :- func termination2_info ^ import_failure = 
@@ -156,8 +155,6 @@
 :- func termination2_info ^ head_vars = list(size_var).
 
 :- func termination2_info ^ size_var_map := size_var_map = termination2_info.
-:- func termination2_info ^ import_headvarids := maybe(list(int)) = 
-    termination2_info.
 :- func termination2_info ^ import_success := 
     maybe(pragma_constr_arg_size_info) = termination2_info.
 :- func termination2_info ^ import_failure := 
@@ -177,19 +174,13 @@
 
 %----------------------------------------------------------------------------%
 %
-% Termination analysis. 
+% Termination analysis
 %
 
     % Perform termination analysis on a module.
     %
 :- pred term_constr_main.pass(module_info::in, module_info::out,
     io::di, io::uo) is det.
-
-:- pred term_constr_main.output_maybe_constr_arg_size_info(
-    maybe(constr_arg_size_info)::in, io::di, io::uo) is det. 
-    
-:- pred term_constr_main.output_maybe_termination2_info(
-    maybe(constr_termination_info)::in, io::di, io::uo) is det.
 
     % Write out a termination2_info pragma for the predicate if:
     %   - it is exported.
@@ -252,7 +243,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% The termination2_info structure.
+% The 'termination2_info' structure
 %
 
 :- type termination2_info 
@@ -267,9 +258,8 @@
                 % the initial pass, for procedures in the module we are
                 % analysing, pass 1 sets it. 
     
-            import_headvarids :: maybe(list(int)),
-            import_success   :: maybe(pragma_constr_arg_size_info),
-            import_failure   :: maybe(pragma_constr_arg_size_info),
+            import_success :: maybe(pragma_constr_arg_size_info),
+            import_failure :: maybe(pragma_constr_arg_size_info),
                 % Arg size info. imported from another module via a
                 % `.opt' or `.trans_opt' file.  Pass 0  needs to convert
                 % these to the proper form.  These particular fields are
@@ -297,11 +287,11 @@
                 % proc. Set by term_constr_build.m.
         ).
 
-term2_info_init = term2_info(map.init, [], no, no, no, no, no, no, no, no).
+term2_info_init = term2_info(map.init, [], no, no, no, no, no, no, no).
 
 %----------------------------------------------------------------------------%
 %
-% Main pass. 
+% Main pass
 %
 
 term_constr_main.pass(!ModuleInfo, !IO) :- 
@@ -357,7 +347,7 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 %
-% Analyse a single SCC.
+% Analyse a single SCC
 %
 
     % Analyse a single SCC of the call graph.  This will require results
@@ -470,7 +460,7 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
 
 %------------------------------------------------------------------------------%
 % 
-% Procedures for storing termination2_info in the HLDS.
+% Procedures for storing 'termination2_info' in the HLDS
 %
 
 :- pred set_termination_info_for_procs(list(pred_proc_id)::in, 
@@ -492,7 +482,7 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates for writing optimization interfaces.
+% Predicates for writing optimization interfaces
 %
 
 :- pred maybe_make_optimization_interface(module_info::in, io::di, io::uo) 
@@ -594,7 +584,7 @@ make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 
 %----------------------------------------------------------------------------%
 %
-% Predicates for writing termination2_info pragmas.
+% Predicates for writing 'termination2_info' pragmas
 %
 
 % NOTE: if these predicates are changed then prog_io_pragma.m must 
@@ -615,29 +605,27 @@ output_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         mercury_output_func_mode_subdecl(varset.init, SymName, 
             FuncModeList, RetMode, no, Context, !IO)
     ),
+    
+    list.length(HeadVars, NumHeadVars),
+    HeadVarIds = 0 .. NumHeadVars - 1,
+    map.det_insert_from_corresponding_lists(map.init, HeadVars,
+        HeadVarIds, VarToVarIdMap), 
+    
     io.write_string(", ", !IO),
-    output_headvars(HeadVars, !IO),
+    output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeSuccess,
+        !IO),
     io.write_string(", ", !IO),
-    output_maybe_constr_arg_size_info(MaybeSuccess, !IO),
-    io.write_string(", ", !IO),
-    output_maybe_constr_arg_size_info(MaybeFailure, !IO),
+    output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeFailure,
+        !IO),
     io.write_string(", ", !IO), 
     output_maybe_termination2_info(MaybeTermination, !IO),
     io.write_string(").\n", !IO).
 
-:- pred output_headvars(size_vars::in, io::di, io::uo) is det.
+:- pred output_maybe_constr_arg_size_info(map(size_var, int)::in,
+    maybe(constr_arg_size_info)::in, io::di, io::uo) is det. 
 
-output_headvars(Vars, !IO) :-
-    io.write_char('[', !IO),
-    io.write_list(Vars, ", ", output_headvar, !IO),
-    io.write_char(']', !IO).
-
-:- pred output_headvar(size_var::in, io::di, io::uo) is det.
-
-output_headvar(Var, !IO) :-
-    io.write_int(term.var_to_int(Var), !IO).
-
-output_maybe_constr_arg_size_info(MaybeArgSizeConstrs, !IO) :- 
+output_maybe_constr_arg_size_info(VarToVarIdMap,
+        MaybeArgSizeConstrs, !IO) :- 
     (   
         MaybeArgSizeConstrs = no,
         io.write_string("not_set", !IO) 
@@ -647,10 +635,13 @@ output_maybe_constr_arg_size_info(MaybeArgSizeConstrs, !IO) :-
         Constraints0 = polyhedron.non_false_constraints(Polyhedron),
         Constraints1 = list.filter(isnt(nonneg_constr), Constraints0),
         Constraints  = list.sort(Constraints1),
-        OutputVar = (func(Var) = int_to_string(term.var_to_int(Var))),
+        OutputVar = (func(Var) = int_to_string(VarToVarIdMap ^ det_elem(Var))),
         lp_rational.output_constraints(OutputVar, Constraints, !IO),
         io.write_char(')', !IO)
     ).
+
+:- pred output_maybe_termination2_info(maybe(constr_termination_info)::in,
+    io::di, io::uo) is det.
 
 output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :- 
     (   
@@ -666,7 +657,7 @@ output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 %
-% Utility predicates.
+% Utility predicates
 %
 
 % These test whether various fields in the termination2_info struct have

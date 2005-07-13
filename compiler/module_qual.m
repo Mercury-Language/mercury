@@ -1093,9 +1093,9 @@ qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term),
         termination_info(PredOrFunc, SymName, ModeList, Args, Term),
         !Info, !IO) :-
     qualify_mode_list(ModeList0, ModeList, !Info, !IO).
-qualify_pragma(termination2_info(PredOrFunc, SymName, ModeList0, HeadVars,
+qualify_pragma(termination2_info(PredOrFunc, SymName, ModeList0,
             SuccessArgs, FailureArgs, Term), 
-        termination2_info(PredOrFunc, SymName, ModeList, HeadVars,
+        termination2_info(PredOrFunc, SymName, ModeList,
             SuccessArgs, FailureArgs, Term), 
         !Info, !IO)  :-
     qualify_mode_list(ModeList0, ModeList, !Info, !IO).

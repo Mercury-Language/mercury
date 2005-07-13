@@ -871,7 +871,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         Pragma = termination_info(_, _, _, _, _)
     ;
         % As for termination_info pragmas
-        Pragma = termination2_info(_, _, _, _, _, _, _)
+        Pragma = termination2_info(_, _, _, _, _, _)
     ;
         Pragma = terminates(Name, Arity),
         add_pred_marker("terminates", Name, Arity, ImportStatus, Context,
@@ -1134,11 +1134,11 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             !ModuleInfo, !IO)
     ;
         Pragma = termination2_info(PredOrFunc, SymName, ModeList,
-            HeadVarIds, MaybeSuccessArgSizeInfo, 
-            MaybeFailureArgSizeInfo, MaybeTerminationInfo)
+            MaybeSuccessArgSizeInfo, MaybeFailureArgSizeInfo,
+            MaybeTerminationInfo)
     ->
         add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
-            HeadVarIds, MaybeSuccessArgSizeInfo,
+            MaybeSuccessArgSizeInfo,
             MaybeFailureArgSizeInfo, MaybeTerminationInfo, Context,
             !ModuleInfo, !IO)
     ;
@@ -2058,11 +2058,11 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
 %-----------------------------------------------------------------------------%
 
 :- pred add_pragma_termination2_info(pred_or_func::in, sym_name::in, 
-    list(mode)::in, list(int)::in, maybe(pragma_constr_arg_size_info)::in,
+    list(mode)::in, maybe(pragma_constr_arg_size_info)::in,
     maybe(pragma_constr_arg_size_info)::in, 
     maybe(pragma_termination_info)::in, prog_context::in, module_info::in, 
     module_info::out, io::di, io::uo) is det.
-add_pragma_termination2_info(PredOrFunc, SymName, ModeList, HeadVarIds,
+add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         MaybePragmaSuccessArgSizeInfo, MaybePragmaFailureArgSizeInfo,
         MaybePragmaTerminationInfo,
         Context, !ModuleInfo, !IO) :-
@@ -2090,8 +2090,6 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList, HeadVarIds,
             some [!TermInfo] (  
                 proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
         
-                !:TermInfo = !.TermInfo ^ import_headvarids 
-                    := yes(HeadVarIds),
                 !:TermInfo = !.TermInfo ^ import_success := 
                     MaybePragmaSuccessArgSizeInfo,
                 !:TermInfo = !.TermInfo ^ import_failure :=

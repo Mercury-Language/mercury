@@ -502,7 +502,6 @@
 			pred_or_func, 
 			sym_name, 
 			list(mode),
-			list(int),
 			maybe(pragma_constr_arg_size_info),
 			maybe(pragma_constr_arg_size_info),
 			maybe(pragma_termination_info)

@@ -2036,7 +2036,7 @@ pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
 pragma_allowed_in_interface(exceptions(_, _, _, _, _), no).
 pragma_allowed_in_interface(type_spec(_, _, _, _, _, _, _, _), yes).
 pragma_allowed_in_interface(termination_info(_, _, _, _, _), yes).
-pragma_allowed_in_interface(termination2_info(_,_,_, _, _, _, _), yes).
+pragma_allowed_in_interface(termination2_info(_,_, _, _, _, _), yes).
 pragma_allowed_in_interface(terminates(_, _), yes).
 pragma_allowed_in_interface(does_not_terminate(_, _), yes).
 pragma_allowed_in_interface(check_termination(_, _), yes).
@@ -7611,7 +7611,7 @@ reorderable_item(pragma(Pragma)) = Reorderable :-
     ; Pragma = supp_magic(_, _), Reorderable = no
     ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
     ; Pragma = terminates(_, _), Reorderable = yes
-    ; Pragma = termination2_info(_, _, _, _, _, _, _), Reorderable = no
+    ; Pragma = termination2_info(_, _, _, _, _, _), Reorderable = no
     ; Pragma = termination_info(_, _, _, _, _), Reorderable = yes
     ; Pragma = type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
     ; Pragma = unused_args(_, _, _, _, _), Reorderable = yes
@@ -7696,7 +7696,7 @@ chunkable_item(pragma(Pragma)) = Reorderable :-
     ; Pragma = supp_magic(_, _), Reorderable = no
     ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
     ; Pragma = terminates(_, _), Reorderable = yes
-    ; Pragma = termination2_info(_, _, _, _, _, _, _), Reorderable = no
+    ; Pragma = termination2_info( _, _, _, _, _, _), Reorderable = no
     ; Pragma = termination_info(_, _, _, _, _), Reorderable = yes
     ; Pragma = type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
     ; Pragma = unused_args(_, _, _, _, _), Reorderable = yes

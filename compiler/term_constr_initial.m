@@ -192,9 +192,11 @@ process_imported_proc(ProcId, !ProcTable) :-
     some [!ProcInfo] (
         !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
         proc_info_get_termination2_info(!.ProcInfo, TermInfo0),
-        ( TermInfo0 ^ import_headvarids = yes(HeadVarIds) ->
-            process_imported_term_info(HeadVarIds, !.ProcInfo,
-                TermInfo0, TermInfo),
+        (
+            % Check that there is something to import. 
+            TermInfo0 ^ import_success = yes(_) 
+        ->
+            process_imported_term_info(!.ProcInfo, TermInfo0, TermInfo),
             proc_info_set_termination2_info(TermInfo, !ProcInfo),
             svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
         ;
@@ -202,12 +204,14 @@ process_imported_proc(ProcId, !ProcTable) :-
         )
     ).
 
-:- pred process_imported_term_info(list(int)::in, proc_info::in,
+:- pred process_imported_term_info(proc_info::in,
     termination2_info::in, termination2_info::out) is det.
 
-process_imported_term_info(HeadVarIds, ProcInfo, !TermInfo) :-
+process_imported_term_info(ProcInfo, !TermInfo) :-
     proc_info_headvars(ProcInfo, HeadVars),
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
+    list.length(HeadVars, NumHeadVars),
+    HeadVarIds = 0 .. NumHeadVars - 1,
     map.from_corresponding_lists(HeadVarIds, HeadVars, IdsToProgVars),  
     create_substitution_map(HeadVarIds, IdsToProgVars, SizeVarMap, SubstMap),
     create_arg_size_polyhedron(SubstMap, !.TermInfo ^ import_success,
@@ -219,7 +223,9 @@ process_imported_term_info(HeadVarIds, ProcInfo, !TermInfo) :-
     !:TermInfo = !.TermInfo ^ head_vars := SizeVars,
     !:TermInfo = !.TermInfo ^ success_constrs := MaybeSuccessPoly,
     !:TermInfo = !.TermInfo ^ failure_constrs := MaybeFailurePoly,
-    !:TermInfo = !.TermInfo ^ import_headvarids := no,
+    %
+    % We don't use these fields after this point.
+    %
     !:TermInfo = !.TermInfo ^ import_success := no,
     !:TermInfo = !.TermInfo ^ import_failure := no.
 

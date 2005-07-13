@@ -644,10 +644,9 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context, !IO) :-
             Context, MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo, !IO)
 	;
 		Pragma = termination2_info(PredOrFunc, PredName,
-			ModeList, HeadVarIds, SuccessInfo, FailureInfo,
-			MaybeTermination),
+			ModeList, SuccessInfo, FailureInfo, MaybeTermination),
 		write_pragma_termination2_info(PredOrFunc, PredName,
-			ModeList, HeadVarIds, SuccessInfo, FailureInfo,
+			ModeList, SuccessInfo, FailureInfo,
 			MaybeTermination, Context, !IO) 
     ;
         Pragma = terminates(Pred, Arity),
@@ -4165,12 +4164,12 @@ write_maybe_termination_info(MaybeTerminationInfo, Verbose, !IO) :-
 %
 		
 :- pred write_pragma_termination2_info(pred_or_func::in, sym_name::in,
-	list(mode)::in, list(int)::in, maybe(pragma_constr_arg_size_info)::in,
+	list(mode)::in, maybe(pragma_constr_arg_size_info)::in,
 	maybe(pragma_constr_arg_size_info)::in,
 	maybe(pragma_termination_info)::in, prog_context::in,
 	io::di, io::uo) is det.
 
-write_pragma_termination2_info(PredOrFunc, PredName, ModeList, HeadVarIds,
+write_pragma_termination2_info(PredOrFunc, PredName, ModeList,
 		MaybeSuccess, MaybeFailure, MaybeTermination, Context,
 		!IO) :-
 	io.write_string(":- pragma termination2_info(", !IO),
@@ -4185,21 +4184,12 @@ write_pragma_termination2_info(PredOrFunc, PredName, ModeList, HeadVarIds,
 			FuncModeList, RetMode, no, Context, !IO)
 	),
 	io.write_string(", ", !IO),
-	write_head_var_ids(HeadVarIds, !IO),
-	io.write_string(", ", !IO),
 	write_maybe_pragma_constr_arg_size_info(MaybeSuccess, !IO),
 	io.write_string(", ", !IO),
 	write_maybe_pragma_constr_arg_size_info(MaybeFailure, !IO),
 	io.write_string(", ", !IO),	
 	write_maybe_pragma_termination_info(MaybeTermination, !IO),
 	io.write_string(").\n", !IO).
-
-:- pred write_head_var_ids(list(int)::in, io::di, io::uo) is det.
-
-write_head_var_ids(VarIds, !IO) :-
-	io.write_char('[', !IO),
-	io.write_list(VarIds, ", ", io.write_int, !IO),
-	io.write_char(']', !IO).	
 
 :- pred write_maybe_pragma_constr_arg_size_info(
 	maybe(pragma_constr_arg_size_info)::in, io::di, io::uo) is det.
