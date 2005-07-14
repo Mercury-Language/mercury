@@ -866,10 +866,11 @@ cost_criteria_to_description(CostKind, InclDesc, Scope) = Desc :-
 
 :- func cost_kind_to_description(cost_kind) = string.
 
-cost_kind_to_description(calls) = "number of calls".
-cost_kind_to_description(time) = "time".
+cost_kind_to_description(calls)  = "number of calls".
+cost_kind_to_description(redos)  = "number of redos".
+cost_kind_to_description(time)   = "time".
 cost_kind_to_description(allocs) = "memory allocations".
-cost_kind_to_description(words) = "words allocated".
+cost_kind_to_description(words)  = "words allocated".
 
 :- func incl_desc_to_description(include_descendants) = string.
 
@@ -925,13 +926,14 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
 	SecondRow0 = "<TR>\n",
 	( show_port_counts(Fields) = yes ->
 		Calls = WrapFunc("Calls", by_cost(calls, self, overall)),
+		Redos = WrapFunc("Redos", by_cost(redos, self, overall)),
 		FirstRow1 = FirstRow0 ++
 			"<TH COLSPAN=5>Port counts\n",
 		SecondRow1 = SecondRow0 ++
-			string__format("<TH ALIGN=RIGHT>%s\n", [s(Calls)]) ++
+			string.format("<TH ALIGN=RIGHT>%s\n", [s(Calls)]) ++
 			"<TH ALIGN=RIGHT>Exits\n" ++
 			"<TH ALIGN=RIGHT>Fails\n" ++
-			"<TH ALIGN=RIGHT>Redos\n" ++
+			string.format("<TH ALIGN=RIGHT>%s\n", [s(Redos)]) ++
 			"<TH ALIGN=RIGHT>Excps\n"
 	;
 		FirstRow1 = FirstRow0,

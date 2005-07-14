@@ -139,6 +139,7 @@
 
 :- type cost_kind
 	--->	calls
+	;	redos
 	;	time
 	;	allocs
 	;	words.
@@ -825,14 +826,16 @@ string_to_caller_groups("cl", group_by_clique).
 
 :- func cost_kind_to_string(cost_kind) = string.
 
-cost_kind_to_string(calls) =  "calls".
-cost_kind_to_string(time) =   "time".
+cost_kind_to_string(calls)  = "calls".
+cost_kind_to_string(redos)  = "redos".
+cost_kind_to_string(time)   = "time".
 cost_kind_to_string(allocs) = "allocs".
-cost_kind_to_string(words) =  "words".
+cost_kind_to_string(words)  = "words".
 
 :- pred string_to_cost_kind(string::in, cost_kind::out) is semidet.
 
 string_to_cost_kind("calls",  calls).
+string_to_cost_kind("redos",  redos).
 string_to_cost_kind("time",   time).
 string_to_cost_kind("allocs", allocs).
 string_to_cost_kind("words",  words).
