@@ -1,5 +1,5 @@
 :- module associative.
 :- pragma termination_info(associative.normal_form((builtin.in), (builtin.out)), finite(0, [yes, no]), can_loop).
 :- pragma termination_info(associative.rewrite((builtin.in), (builtin.out)), finite(0, [yes, no]), cannot_loop).
-:- pragma termination2_info(associative.normal_form((builtin.in), (builtin.out)), [1, 2], constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
-:- pragma termination2_info(associative.rewrite((builtin.in), (builtin.out)), [1, 2], constraints([le([term(2, r(-1, 1))], r(-4, 1)), eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).
+:- pragma termination2_info(associative.normal_form((builtin.in), (builtin.out)), constraints([eq([term(0, r(1, 1)), term(1, r(-1, 1))], r(0, 1))]), not_set, can_loop).
+:- pragma termination2_info(associative.rewrite((builtin.in), (builtin.out)), constraints([le([term(1, r(-1, 1))], r(-4, 1)), eq([term(0, r(1, 1)), term(1, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).

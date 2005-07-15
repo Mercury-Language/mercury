@@ -6,13 +6,13 @@
 :- pragma termination_info(exception_analysis_test.mutual_test1((builtin.in), (builtin.in)), finite(0, [no, no, no]), can_loop).
 :- pragma termination_info(exception_analysis_test.mutual_test2((builtin.in), (builtin.in)), finite(0, [no, no]), can_loop).
 :- pragma termination_info(exception_analysis_test.wrap_equals((builtin.in), (builtin.in)), infinite, cannot_loop).
-:- pragma termination2_info(exception_analysis_test.test1((builtin.in)), [3, 1], constraints([]), not_set, can_loop).
-:- pragma termination2_info(exception_analysis_test.test2((builtin.in), (builtin.in)), [5, 1, 2], constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
-:- pragma termination2_info(exception_analysis_test.test3((builtin.in), (builtin.in)), [3, 1, 2], constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
-:- pragma termination2_info(exception_analysis_test.test4((builtin.in), (builtin.in)), [4, 1, 2], constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
-:- pragma termination2_info(exception_analysis_test.mutual_test1((builtin.in), (builtin.in)), [7, 1, 2], constraints([]), not_set, can_loop).
-:- pragma termination2_info(exception_analysis_test.mutual_test2((builtin.in), (builtin.in)), [9, 10], constraints([]), not_set, can_loop).
-:- pragma termination2_info(exception_analysis_test.wrap_equals((builtin.in), (builtin.in)), [2, 3, 4], constraints([]), not_set, can_loop).
+:- pragma termination2_info(exception_analysis_test.test1((builtin.in)), constraints([]), not_set, can_loop).
+:- pragma termination2_info(exception_analysis_test.test2((builtin.in), (builtin.in)), constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
+:- pragma termination2_info(exception_analysis_test.test3((builtin.in), (builtin.in)), constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
+:- pragma termination2_info(exception_analysis_test.test4((builtin.in), (builtin.in)), constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, can_loop).
+:- pragma termination2_info(exception_analysis_test.mutual_test1((builtin.in), (builtin.in)), constraints([]), not_set, can_loop).
+:- pragma termination2_info(exception_analysis_test.mutual_test2((builtin.in), (builtin.in)), constraints([]), not_set, can_loop).
+:- pragma termination2_info(exception_analysis_test.wrap_equals((builtin.in), (builtin.in)), constraints([]), not_set, can_loop).
 :- pragma exceptions(predicate, (exception_analysis_test.test1), 1, 0, will_not_throw).
 :- pragma exceptions(predicate, (exception_analysis_test.test2), 2, 0, may_throw(type_exception)).
 :- pragma exceptions(predicate, (exception_analysis_test.test3), 2, 0, conditional).

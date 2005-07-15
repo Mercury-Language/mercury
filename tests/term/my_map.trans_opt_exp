@@ -1,3 +1,3 @@
 :- module my_map.
 :- pragma termination_info(my_map.map((builtin.in), (builtin.out)), infinite, cannot_loop).
-:- pragma termination2_info(my_map.map((builtin.in), (builtin.out)), [1, 2], constraints([eq([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).
+:- pragma termination2_info(my_map.map((builtin.in), (builtin.out)), constraints([eq([term(0, r(1, 1)), term(1, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).

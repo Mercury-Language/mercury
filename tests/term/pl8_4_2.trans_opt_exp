@@ -1,3 +1,3 @@
 :- module pl8_4_2.
 :- pragma termination_info(pl8_4_2.e((builtin.in), (builtin.out)), finite(-1, [yes, no]), cannot_loop).
-:- pragma termination2_info(pl8_4_2.e((builtin.in), (builtin.out)), [1, 2], constraints([le([term(1, r(-1, 1)), term(2, r(1, 1))], r(-2, 1))]), not_set, cannot_loop).
+:- pragma termination2_info(pl8_4_2.e((builtin.in), (builtin.out)), constraints([le([term(0, r(-1, 1)), term(1, r(1, 1))], r(-2, 1))]), not_set, cannot_loop).

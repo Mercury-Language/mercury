@@ -4,8 +4,8 @@
 :- pragma termination_info(inf_const_bug.square((builtin.in)) = (builtin.out), infinite, cannot_loop).
 :- pragma termination_info(inf_const_bug.multiply((builtin.in), (builtin.in)) = (builtin.out), infinite, cannot_loop).
 :- pragma termination_info(inf_const_bug.map((builtin.in), (builtin.in)) = (builtin.out), infinite, can_loop).
-:- pragma termination2_info(inf_const_bug.foo((builtin.in)) = (builtin.out), [1, 2], constraints([le([term(1, r(-1, 1))], r(-3, 1)), le([term(2, r(-1, 1))], r(-3, 1))]), not_set, can_loop).
-:- pragma termination2_info(inf_const_bug.bar((builtin.in)) = (builtin.out), [1, 2], constraints([le([term(1, r(-1, 1))], r(-1, 1)), le([term(2, r(-1, 1))], r(-1, 1))]), not_set, can_loop).
-:- pragma termination2_info(inf_const_bug.square((builtin.in)) = (builtin.out), [2, 1], constraints([]), not_set, cannot_loop).
-:- pragma termination2_info(inf_const_bug.multiply((builtin.in), (builtin.in)) = (builtin.out), [1, 2, 3], constraints([]), not_set, cannot_loop).
-:- pragma termination2_info(inf_const_bug.map((builtin.in), (builtin.in)) = (builtin.out), [8, 9, 1, 2, 3], constraints([]), not_set, can_loop).
+:- pragma termination2_info(inf_const_bug.foo((builtin.in)) = (builtin.out), constraints([le([term(0, r(-1, 1))], r(-3, 1)), le([term(1, r(-1, 1))], r(-3, 1))]), not_set, can_loop).
+:- pragma termination2_info(inf_const_bug.bar((builtin.in)) = (builtin.out), constraints([le([term(0, r(-1, 1))], r(-1, 1)), le([term(1, r(-1, 1))], r(-1, 1))]), not_set, can_loop).
+:- pragma termination2_info(inf_const_bug.square((builtin.in)) = (builtin.out), constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(inf_const_bug.multiply((builtin.in), (builtin.in)) = (builtin.out), constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(inf_const_bug.map((builtin.in), (builtin.in)) = (builtin.out), constraints([]), not_set, can_loop).

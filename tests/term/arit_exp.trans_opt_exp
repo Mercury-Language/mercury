@@ -1,3 +1,3 @@
 :- module arit_exp.
 :- pragma termination_info(arit_exp.e((builtin.in)), finite(0, [no]), cannot_loop).
-:- pragma termination2_info(arit_exp.e((builtin.in)), [1], constraints([le([term(1, r(-1, 1))], r(-1, 1))]), not_set, cannot_loop).
+:- pragma termination2_info(arit_exp.e((builtin.in)), constraints([le([term(0, r(-1, 1))], r(-1, 1))]), not_set, cannot_loop).
