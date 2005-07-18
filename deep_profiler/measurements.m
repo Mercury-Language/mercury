@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004 The University of Melbourne.
+% Copyright (C) 2001, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,6 +14,8 @@
 :- interface.
 
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- type own_prof_info.
 :- type inherit_prof_info.
@@ -52,14 +54,20 @@
 :- func compress_profile(int, int, int, int, int, int, int) = own_prof_info.
 :- func compress_profile(own_prof_info) = own_prof_info.
 
+:- pred decompress_profile(own_prof_info::in, int::out, int::out, int::out,
+	int::out, int::out, int::out, int::out, int::out) is det.
+
 :- func own_to_string(own_prof_info) = string.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type own_prof_info
 	--->	all(int, int, int, int, int, int, int)
@@ -86,7 +94,7 @@
 			int, 		% quanta
 			int, 		% allocs
 			int 		% words
-		).
+	).
 
 calls(fast_nomem_semi(Exits, Fails)) = Exits + Fails.
 exits(fast_nomem_semi(Exits, _)) = Exits.
@@ -254,6 +262,34 @@ compress_profile(PI0) = PI :-
 
 %-----------------------------------------------------------------------------%
 
+decompress_profile(Own, Calls, Exits, Fails, Redos, Excps,
+		Quanta, Allocs, Words) :-
+	(
+		Own = all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words),
+		Calls = Exits + Fails + Redos
+	;
+		Own = det(Exits, Quanta, Allocs, Words),
+		Calls = Exits,
+		Fails = 0,
+		Redos = 0,
+		Excps = 0
+	;
+		Own = fast_det(Exits, Allocs, Words),
+		Calls = Exits,
+		Fails = 0,
+		Redos = 0,
+		Excps = 0,
+		Quanta = 0
+	;
+		Own = fast_nomem_semi(Exits, Fails),
+		Calls = Exits + Fails,
+		Redos = 0,
+		Excps = 0,
+		Quanta = 0,
+		Allocs = 0,
+		Words = 0
+	).
+
 own_to_string(all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)) =
 	"all(" ++
 	string__int_to_string(Exits) ++ ", " ++
@@ -282,3 +318,7 @@ own_to_string(fast_nomem_semi(Exits, Fails)) =
 	string__int_to_string(Exits) ++ ", " ++
 	string__int_to_string(Fails) ++
 	")".
+
+%----------------------------------------------------------------------------%
+:- end_module measurements.
+%----------------------------------------------------------------------------%

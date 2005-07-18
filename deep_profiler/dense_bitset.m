@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,8 @@
 
 :- interface.
 
-:- import_module array, int.
+:- import_module array.
+:- import_module int.
 
 % XXX should be abstract type; it is exported only as a workaround.
 :- type dense_bitset == array(int).
@@ -52,7 +53,8 @@
 
 :- implementation.
 
-:- import_module list, require.
+:- import_module list.
+:- import_module require.
 
 init = array([0]).
 

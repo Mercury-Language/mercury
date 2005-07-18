@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,29 +8,50 @@
 %
 % This module contains the top level predicates for servicing individual
 % queries.
+%-----------------------------------------------------------------------------%
 
 :- module query.
 
 :- interface.
 
-:- import_module profile, interface.
+:- import_module profile.
+:- import_module interface.
+
 :- import_module io.
 
-:- pred try_exec(cmd::in, preferences::in, deep::in, string::out,
-	io__state::di, io__state::uo) is cc_multi.
+%-----------------------------------------------------------------------------%
 
+:- pred try_exec(cmd::in, preferences::in, deep::in, string::out,
+	io::di, io::uo) is cc_multi.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module measurements, top_procs, html_format, exclude.
-:- import_module std_util, bool, int, float, char, string.
-:- import_module array, list, assoc_list, set, map, exception, require.
+:- import_module exclude.
+:- import_module html_format.
+:- import_module measurements.
+:- import_module top_procs.
+
+:- import_module array.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module exception.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-try_exec(Cmd, Pref, Deep, HTML, IO0, IO) :-
-	try_io(exec(Cmd, Pref, Deep), Result, IO0, IO),
+try_exec(Cmd, Pref, Deep, HTML, !IO) :-
+	try_io(exec(Cmd, Pref, Deep), Result, !IO),
 	(
 		Result = succeeded(HTML)
 	;
@@ -49,22 +70,22 @@ try_exec(Cmd, Pref, Deep, HTML, IO0, IO) :-
 	).
 
 :- pred exec(cmd::in, preferences::in, deep::in, string::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-exec(restart, _Pref, _Deep, _HTML, IO, IO) :-
+exec(restart, _Pref, _Deep, _HTML, !IO) :-
 	% Our caller is supposed to filter out restart commands.
 	error("exec: found restart command").
-exec(quit, _Pref, Deep, HTML, IO, IO) :-
+exec(quit, _Pref, Deep, HTML, !IO) :-
 	HTML = string__format(
 		"<H3>Shutting down deep profile server for %s.</H3>\n",
 		[s(Deep ^ data_file_name)]).
-exec(timeout(TimeOut), _Pref, _Deep, HTML, IO, IO) :-
+exec(timeout(TimeOut), _Pref, _Deep, HTML, !IO) :-
 	HTML = string__format("<H3>Timeout set to %d minutes</H3>\n",
 		[i(TimeOut)]).
-exec(Cmd, Pref, Deep, HTML, IO, IO) :-
+exec(Cmd, Pref, Deep, HTML, !IO) :-
 	Cmd = menu,
 	HTML = generate_menu_page(Cmd, Pref, Deep).
-exec(Cmd, Pref, Deep, HTML, IO, IO) :-
+exec(Cmd, Pref, Deep, HTML, !IO) :-
 	Cmd = root(MaybePercent),
 	deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
 	RootCliquePtr = clique_ptr(RootCliqueNum),
@@ -77,7 +98,7 @@ exec(Cmd, Pref, Deep, HTML, IO, IO) :-
 		generate_clique_page(Cmd, RootCliqueNum, Pref, Deep, HTML,
 			100, _)
 	).
-exec(Cmd, Pref, Deep, HTML, IO, IO) :-
+exec(Cmd, Pref, Deep, HTML, !IO) :-
 	Cmd = clique(CliqueNum),
 	CliquePtr = clique_ptr(CliqueNum),
 	( valid_clique_ptr(Deep, CliquePtr) ->
@@ -88,7 +109,7 @@ exec(Cmd, Pref, Deep, HTML, IO, IO) :-
 			"There is no clique with that number.\n" ++
 			page_footer(Cmd, Pref, Deep)
 	).
-exec(Cmd, Pref, Deep, HTML, IO, IO) :-
+exec(Cmd, Pref, Deep, HTML, !IO) :-
 	Cmd = proc(PSI),
 	PSPtr = proc_static_ptr(PSI),
 	( valid_proc_static_ptr(Deep, PSPtr) ->
@@ -99,23 +120,22 @@ exec(Cmd, Pref, Deep, HTML, IO, IO) :-
 			"There is no procedure with that number.\n" ++
 			page_footer(Cmd, Pref, Deep)
 	).
-exec(Cmd, Pref, Deep, HTML, IO0, IO) :-
+exec(Cmd, Pref, Deep, HTML, !IO) :-
 	Cmd = proc_callers(PSI, CallerGroups, BunchNum),
 	PSPtr = proc_static_ptr(PSI),
 	( valid_proc_static_ptr(Deep, PSPtr) ->
 		generate_proc_callers_page(Cmd, PSPtr, CallerGroups, BunchNum,
-			Pref, Deep, HTML, IO0, IO)
+			Pref, Deep, HTML, !IO)
 	;
 		HTML =
 			page_banner(Cmd, Pref) ++
 			"There is no procedure with that number.\n" ++
-			page_footer(Cmd, Pref, Deep),
-		IO = IO0
+			page_footer(Cmd, Pref, Deep)
 	).
-exec(Cmd, Pref, Deep, HTML, IO, IO) :-
+exec(Cmd, Pref, Deep, HTML, !IO) :-
 	Cmd = modules,
 	HTML = generate_modules_page(Cmd, Pref, Deep).
-exec(Cmd, Pref, Deep, HTML, IO, IO) :-
+exec(Cmd, Pref, Deep, HTML, !IO) :-
 	Cmd = module(ModuleName),
 	( map__search(Deep ^ module_data, ModuleName, ModuleData) ->
 		HTML = generate_module_page(Cmd, ModuleName, ModuleData,
@@ -126,19 +146,19 @@ exec(Cmd, Pref, Deep, HTML, IO, IO) :-
 			"There is no procedure with that number.\n" ++
 			page_footer(Cmd, Pref, Deep)
 	).
-exec(Cmd, Pref, Deep, HTML, IO, IO) :-
+exec(Cmd, Pref, Deep, HTML, !IO) :-
 	Cmd = top_procs(Limit, CostKind, InclDesc, Scope),
 	HTML = generate_top_procs_page(Cmd, Limit, CostKind, InclDesc, Scope,
 		Pref, Deep).
-exec(proc_static(PSI), _Pref, Deep, HTML, IO, IO) :-
+exec(proc_static(PSI), _Pref, Deep, HTML, !IO) :-
 	HTML = generate_proc_static_debug_page(PSI, Deep).
-exec(proc_dynamic(PDI), _Pref, Deep, HTML, IO, IO) :-
+exec(proc_dynamic(PDI), _Pref, Deep, HTML, !IO) :-
 	HTML = generate_proc_dynamic_debug_page(PDI, Deep).
-exec(call_site_static(CSSI), _Pref, Deep, HTML, IO, IO) :-
+exec(call_site_static(CSSI), _Pref, Deep, HTML, !IO) :-
 	HTML = generate_call_site_static_debug_page(CSSI, Deep).
-exec(call_site_dynamic(CSDI), _Pref, Deep, HTML, IO, IO) :-
+exec(call_site_dynamic(CSDI), _Pref, Deep, HTML, !IO) :-
 	HTML = generate_call_site_dynamic_debug_page(CSDI, Deep).
-exec(raw_clique(CI), _Pref, Deep, HTML, IO, IO) :-
+exec(raw_clique(CI), _Pref, Deep, HTML, !IO) :-
 	HTML = generate_clique_debug_page(CI, Deep).
 
 %-----------------------------------------------------------------------------%
@@ -455,7 +475,7 @@ generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML,
 		fields_header(Pref, source_proc, totals_meaningful,
 			wrap_clique_links(clique_ptr(CliqueNum),
 				Pref, Deep)) ++
-		CliqueHTML ++
+ 		CliqueHTML ++
 		table_end(Pref) ++
 		page_footer(Cmd, Pref, Deep).
 
@@ -465,7 +485,7 @@ generate_clique_page(Cmd, CliqueNum, Pref, Deep, HTML,
 generate_proc_page(Cmd, PSPtr, Pref, Deep) =
 	page_banner(Cmd, Pref) ++
 	string__format("<H3>Summary of procedure %s:</H3>\n",
-		[s(proc_static_name(Deep, PSPtr))]) ++
+		[s(escape_html_string(proc_static_name(Deep, PSPtr)))]) ++
 	table_start(Pref) ++
 	fields_header(Pref, source_proc, totals_meaningful,
 		wrap_proc_links(PSPtr, Pref, Deep)) ++
@@ -477,7 +497,7 @@ generate_proc_page(Cmd, PSPtr, Pref, Deep) =
 
 :- pred generate_proc_callers_page(cmd::in, proc_static_ptr::in,
 	caller_groups::in, int::in, preferences::in, deep::in, string::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 generate_proc_callers_page(Cmd, PSPtr, CallerGroups, BunchNum, Pref, Deep,
 		HTML, IO0, IO) :-
@@ -1032,7 +1052,11 @@ multi_call_site_clique_to_html(Pref, Deep, FileName, LineNumber, Kind,
 	sum_line_group_measurements(SubLines, Own, Desc),
 	SummaryHTML =
 		string__format("<TD CLASS=id>%s:%d</TD>\n",
-			[s(FileName), i(LineNumber)]) ++
+			[s(escape_html_string(FileName)), i(LineNumber)]) ++
+		%
+		% NOTE: we don't escape HTML special characters for
+		% 'CallSiteName' because it has already been done.
+		%
 		string__format("<TD CLASS=id>%s</TD>\n",
 			[s(CallSiteName)]),
 	(
@@ -1069,7 +1093,8 @@ call_site_summary_to_html(Pref, Deep, CSSPtr) = LineGroup :-
 			FileName, LineNumber, Kind,
 			CallerPSPtr, CallSiteCallList)
 	),
-	CSSContext = string__format("%s:%d", [s(FileName), i(LineNumber)]),
+	CSSContext = string__format("%s:%d",
+		[s(escape_html_string(FileName)), i(LineNumber)]),
 	LineGroup = add_context(CSSContext, LineGroup0).
 
 :- func normal_call_site_summary_to_html(preferences, deep, string, int,
@@ -1117,6 +1142,10 @@ multi_call_site_summary_to_html(Pref, Deep, FileName, LineNumber, Kind,
 		FileName, LineNumber, RawCallSiteName, CallerPSPtr),
 		CallSiteCallList),
 	sum_line_group_measurements(SubLines, Own, Desc),
+	%
+	% NOTE: we don't escape HTML special characters for
+	% 'CallSiteName' because it has already been done.
+	%
 	SummaryHTML =
 		string__format("<TD CLASS=id>%s</TD>\n",
 			[s(CallSiteName)]),
@@ -1239,11 +1268,12 @@ call_site_dynamic_to_html(Pref, Deep, CallSiteDisplay, MaybeCallerCliquePtr,
 	deep_lookup_csd_desc(Deep, CSDPtr, CallSiteDesc),
 	deep_lookup_clique_index(Deep, CalleePDPtr, CalleeCliquePtr),
 	call_site_dynamic_context(Deep, CSDPtr, FileName, LineNumber),
-	Context = string__format("%s:%d", [s(FileName), i(LineNumber)]),
+	Context = string__format("%s:%d", [s(escape_html_string(FileName)),
+		i(LineNumber)]),
 	HTML = call_to_html(Pref, Deep, CallSiteDisplay, Context,
 		CallerPDPtr, CalleePDPtr,
 		MaybeCallerCliquePtr, CalleeCliquePtr),
-	ProcName = proc_dynamic_name(Deep, CalleePDPtr),
+	ProcName = escape_html_string(proc_dynamic_name(Deep, CalleePDPtr)),
 	LineGroup = line_group(FileName, LineNumber, ProcName,
 		CallSiteOwn, CallSiteDesc, HTML, unit).
 
@@ -1337,7 +1367,7 @@ call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
 	ChosenCliquePtr = clique_ptr(ChosenCliqueNum),
 	WrappedProcName = string__format("<A HREF=""%s"">%s</A>",
 		[s(deep_cmd_pref_to_url(Pref, Deep, clique(ChosenCliqueNum))),
-		s(ProcName)]),
+		s(escape_html_string(ProcName))]),
 	(
 		CallSiteDisplay ^ display_wrap = always,
 		UsedProcName0 = WrappedProcName
@@ -1348,7 +1378,7 @@ call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
 			( CallerCliquePtr \= CalleeCliquePtr ->
 				UsedProcName0 = WrappedProcName
 			;
-				UsedProcName0 = ProcName
+				UsedProcName0 = escape_html_string(ProcName)
 			)
 		;
 			MaybeCallerCliquePtr = no,
@@ -1357,12 +1387,12 @@ call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
 				UsedProcName0 = WrappedProcName
 			;
 				Assume = assume_within_clique,
-				UsedProcName0 = ProcName
+				UsedProcName0 = escape_html_string(ProcName)
 			)
 		)
 	;
 		CallSiteDisplay ^ display_wrap = never,
-		UsedProcName0 = ProcName
+		UsedProcName0 = escape_html_string(ProcName)
 	),
 	(
 		UsedProcName0 = WrappedProcName,
@@ -1370,7 +1400,7 @@ call_to_html(Pref, Deep, CallSiteDisplay, CallContext,
 	->
 		UsedProcName = UsedProcName0
 	;
-		UsedProcName = ProcName
+		UsedProcName = escape_html_string(ProcName)
 	),
 	HTML =
 		string__format("<TD CLASS=id>%s</TD>\n", [s(Context)]) ++
@@ -1394,7 +1424,7 @@ call_site_dynamic_context(Deep, CSDPtr, FileName, LineNumber) :-
 :- pred proc_callers_to_html(preferences::in, deep::in, proc_static_ptr::in,
 	caller_groups::in, int::in,
 	maybe_error({id_fields, string, string, string})::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
 		IO0, IO) :-
@@ -1604,7 +1634,8 @@ proc_callers_banner(PSI, ProcName, Pref, Deep, NumLines, BunchSize, BunchNum,
 		Parent) = HTML :-
 	Cmd = proc(PSI),
 	WrappedProcName = string__format("<A HREF=""%s"">%s</A>",
-		[s(deep_cmd_pref_to_url(Pref, Deep, Cmd)), s(ProcName)]),
+		[s(deep_cmd_pref_to_url(Pref, Deep, Cmd)),
+			s(escape_html_string(ProcName))]),
 	( NumLines = 0 ->
 		HTML = string__format("<H3>There are no %ss calling %s</H3>",
 			[s(Parent), s(WrappedProcName)])
@@ -1882,7 +1913,7 @@ wrap_clique_links(CliquePtr, Pref0, Deep, Str0, Criteria) = Str :-
 	Pref = Pref0 ^ pref_criteria := Criteria,
 	URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
 	Str = string__format("<A HREF=%s>%s</A>",
-		[s(URL), s(Str0)]).
+		[s(URL), s(escape_html_string(Str0))]).
 
 :- func wrap_proc_links(proc_static_ptr, preferences, deep, string,
 	order_criteria) = string.
@@ -1893,7 +1924,7 @@ wrap_proc_links(PSPtr, Pref0, Deep, Str0, Criteria) = Str :-
 	Pref = Pref0 ^ pref_criteria := Criteria,
 	URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
 	Str = string__format("<A HREF=%s>%s</A>",
-		[s(URL), s(Str0)]).
+		[s(URL), s(escape_html_string(Str0))]).
 
 :- func wrap_proc_callers_links(proc_static_ptr, caller_groups, int,
 	preferences, deep, string, order_criteria) = string.
@@ -1905,7 +1936,7 @@ wrap_proc_callers_links(PSPtr, CallerGroups, BunchNum, Pref0, Deep,
 	Pref = Pref0 ^ pref_criteria := Criteria,
 	URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
 	Str = string__format("<A HREF=%s>%s</A>",
-		[s(URL), s(Str0)]).
+		[s(URL), s(escape_html_string(Str0))]).
 
 :- func wrap_module_links(string, preferences, deep, string,
 	order_criteria) = string.
@@ -1915,7 +1946,7 @@ wrap_module_links(ModuleName, Pref0, Deep, Str0, Criteria) = Str :-
 	Pref = Pref0 ^ pref_criteria := Criteria,
 	URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
 	Str = string__format("<A HREF=%s>%s</A>",
-		[s(URL), s(Str0)]).
+		[s(URL), s(escape_html_string(Str0))]).
 
 :- func wrap_modules_links(preferences, deep, string, order_criteria) = string.
 
@@ -1924,7 +1955,7 @@ wrap_modules_links(Pref0, Deep, Str0, Criteria) = Str :-
 	Pref = Pref0 ^ pref_criteria := Criteria,
 	URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
 	Str = string__format("<A HREF=%s>%s</A>",
-		[s(URL), s(Str0)]).
+		[s(URL), s(escape_html_string(Str0))]).
 
 :- func wrap_top_procs_links(display_limit, preferences, deep, string,
 	order_criteria) = string.
@@ -1941,5 +1972,9 @@ wrap_top_procs_links(Limit, Pref, Deep, Str0, Criteria) = Str :-
 		Cmd = top_procs(Limit, CostKind, InclDesc, Scope),
 		URL = deep_cmd_pref_to_url(Pref, Deep, Cmd),
 		Str = string__format("<A HREF=%s>%s</A>",
-			[s(URL), s(Str0)])
+			[s(URL), s(escape_html_string(Str0))])
 	).
+
+%----------------------------------------------------------------------------%
+:- end_module query.
+%----------------------------------------------------------------------------%

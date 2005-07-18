@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,11 +18,28 @@
 :- pred canonicalize_cliques(initial_deep::in, initial_deep::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module measurements, callgraph, array_util.
-:- import_module io, std_util, bool, int, array, list, map, set, require.
+:- import_module array_util.
+:- import_module callgraph.
+:- import_module measurements.
+
+:- import_module array.
+:- import_module bool.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module svarray.
+:- import_module svmap.
+
+%-----------------------------------------------------------------------------%
+
 % :- import_module unsafe.
 
 :- type merge_info
@@ -39,63 +56,55 @@
 						% index: proc_dynamic_ptr
 		).
 
-canonicalize_cliques(InitDeep0, InitDeep) :-
-	MaxCSDs = array__max(InitDeep0 ^ init_call_site_dynamics),
-	MaxPDs = array__max(InitDeep0 ^ init_proc_dynamics),
+canonicalize_cliques(!InitDeep) :-
+	MaxCSDs = array__max(!.InitDeep ^ init_call_site_dynamics),
+	MaxPDs = array__max(!.InitDeep ^ init_proc_dynamics),
 	NumCSDs = MaxCSDs + 1,
 	NumPDs = MaxPDs + 1,
 
-	find_cliques(InitDeep0, CliqueList),
+	find_cliques(!.InitDeep, CliqueList),
 	make_clique_indexes(NumPDs, CliqueList, Cliques, CliqueIndex),
 	MergeInfo = merge_info(Cliques, CliqueIndex),
 
 	CSDRedirect0 = array__init(NumCSDs, call_site_dynamic_ptr(0)),
 	PDRedirect0 = array__init(NumPDs, proc_dynamic_ptr(0)),
 	Redirect0 = redirect(CSDRedirect0, PDRedirect0),
-	merge_cliques(CliqueList, MergeInfo, InitDeep0, Redirect0,
-		InitDeep1, Redirect1),
-	compact_dynamics(InitDeep1, Redirect1, NumCSDs, NumPDs, InitDeep).
+	merge_cliques(CliqueList, MergeInfo, !InitDeep, Redirect0, Redirect1),
+	compact_dynamics(Redirect1, NumCSDs, NumPDs, !InitDeep).
 
 :- pred merge_cliques(list(list(proc_dynamic_ptr))::in,
-	merge_info::in, initial_deep::in, redirect::in,
-	initial_deep::out, redirect::out) is det.
+	merge_info::in, initial_deep::in, initial_deep::out,
+	redirect::in, redirect::out) is det.
 
-merge_cliques([], _, InitDeep, Redirect, InitDeep, Redirect).
-merge_cliques([Clique | Cliques], MergeInfo, InitDeep0, Redirect0,
-		InitDeep, Redirect) :-
-	merge_clique(Clique, MergeInfo, InitDeep0, Redirect0,
-		InitDeep1, Redirect1),
-	merge_cliques(Cliques, MergeInfo, InitDeep1, Redirect1,
-		InitDeep, Redirect).
+merge_cliques([], _, !InitDeep, !Redirect).
+merge_cliques([Clique | Cliques], MergeInfo, !InitDeep, !Redirect) :-
+	merge_clique(Clique, MergeInfo, !InitDeep, !Redirect),
+	merge_cliques(Cliques, MergeInfo, !InitDeep, !Redirect).
 
 :- pred merge_clique(list(proc_dynamic_ptr)::in,
-	merge_info::in, initial_deep::in, redirect::in,
-	initial_deep::out, redirect::out) is det.
+	merge_info::in, initial_deep::in, initial_deep::out,
+	redirect::in, redirect::out) is det.
 
-merge_clique(CliquePDs0, MergeInfo, InitDeep0, Redirect0,
-		InitDeep, Redirect) :-
+merge_clique(CliquePDs0, MergeInfo, !InitDeep, !Redirect) :-
 	( CliquePDs0 = [_, _ | _] ->
 		map__init(ProcMap0),
-		list__foldl(cluster_pds_by_ps(InitDeep0), CliquePDs0,
+		list__foldl(cluster_pds_by_ps(!.InitDeep), CliquePDs0,
 			ProcMap0, ProcMap1),
 		map__values(ProcMap1, PDsList1),
 		list__filter(two_or_more, PDsList1, ToMergePDsList1),
 		( ToMergePDsList1 = [_ | _] ->
-			complete_clique(InitDeep0, Redirect0,
+			complete_clique(!.InitDeep, !.Redirect,
 				ProcMap1, ProcMap, Clique),
 			map__values(ProcMap, PDsList),
 			list__filter(two_or_more, PDsList, ToMergePDsList),
 			list__foldl2(merge_proc_dynamics_ignore_chosen(
 				MergeInfo, Clique),
-				ToMergePDsList, InitDeep0, InitDeep,
-				Redirect0, Redirect)
+				ToMergePDsList, !InitDeep, !Redirect)
 		;
-			InitDeep = InitDeep0,
-			Redirect = Redirect0
+			true
 		)
 	;
-		InitDeep = InitDeep0,
-		Redirect = Redirect0
+		true
 	).
 
 :- pred insert_pds(list(T)::in, set(T)::in, set(T)::out) is det.
@@ -112,17 +121,16 @@ insert_pds(List, Set0, Set) :-
 	map(proc_static_ptr, list(proc_dynamic_ptr))::out,
 	set(proc_dynamic_ptr)::out) is det.
 
-complete_clique(InitDeep, Redirect, ProcMap0, ProcMap, Clique) :-
-	map__values(ProcMap0, PDsList0),
+complete_clique(InitDeep, Redirect, !ProcMap, Clique) :-
+	map__values(!.ProcMap, PDsList0),
 	list__foldl(insert_pds, PDsList0, set__init, Clique0),
-	complete_clique_pass(InitDeep, Redirect, Clique0, ProcMap0, ProcMap1,
-		no, AddedPD),
+	complete_clique_pass(InitDeep, Redirect, Clique0, !ProcMap, no,
+		AddedPD),
 	(
 		AddedPD = yes,
-		complete_clique(InitDeep, Redirect, ProcMap1, ProcMap, Clique)
+		complete_clique(InitDeep, Redirect, !ProcMap, Clique)
 	;
 		AddedPD = no,
-		ProcMap = ProcMap1,
 		Clique = Clique0
 	).
 
@@ -132,11 +140,10 @@ complete_clique(InitDeep, Redirect, ProcMap0, ProcMap, Clique) :-
 	map(proc_static_ptr, list(proc_dynamic_ptr))::out,
 	bool::in, bool::out) is det.
 
-complete_clique_pass(InitDeep, _Redirect, Clique, ProcMap0, ProcMap,
-		AddedPD0, AddedPD) :-
-	map__to_assoc_list(ProcMap0, PSPDs0),
+complete_clique_pass(InitDeep, _Redirect, Clique, !ProcMap, !AddedPD) :-
+	map__to_assoc_list(!.ProcMap, PSPDs0),
 	list__foldl2(complete_clique_ps(InitDeep, Clique),
-		PSPDs0, ProcMap0, ProcMap, AddedPD0, AddedPD).
+		PSPDs0, !ProcMap, !AddedPD).
 
 :- pred complete_clique_ps(initial_deep::in,
 	set(proc_dynamic_ptr)::in,
@@ -145,17 +152,14 @@ complete_clique_pass(InitDeep, _Redirect, Clique, ProcMap0, ProcMap,
 	map(proc_static_ptr, list(proc_dynamic_ptr))::out,
 	bool::in, bool::out) is det.
 
-complete_clique_ps(InitDeep, Clique, PSPtr - PDPtrs, ProcMap0, ProcMap,
-		AddedPD0, AddedPD) :-
+complete_clique_ps(InitDeep, Clique, PSPtr - PDPtrs, !ProcMap, !AddedPD) :-
 	( PDPtrs = [_, _ | _] ->
 		lookup_proc_statics(InitDeep ^ init_proc_statics, PSPtr, PS),
 		list__map(lookup_pd_site(InitDeep), PDPtrs, PDSites),
 		complete_clique_slots(array__max(PS ^ ps_sites), InitDeep,
-			Clique, PS ^ ps_sites, PDSites, ProcMap0, ProcMap,
-			AddedPD0, AddedPD)
+			Clique, PS ^ ps_sites, PDSites, !ProcMap, !AddedPD)
 	;
-		ProcMap = ProcMap0,
-		AddedPD = AddedPD0
+		true
 	).
 
 :- pred lookup_pd_site(initial_deep::in, proc_dynamic_ptr::in,
@@ -173,7 +177,7 @@ lookup_pd_site(InitDeep, PDPtr, Sites) :-
 	bool::in, bool::out) is det.
 
 complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
-		ProcMap0, ProcMap, AddedPD0, AddedPD) :-
+		!ProcMap, !AddedPD) :-
 	( SlotNum >= 0 ->
 		array__lookup(PSSites, SlotNum, CSSPtr),
 		lookup_call_site_statics(InitDeep ^ init_call_site_statics,
@@ -192,25 +196,22 @@ complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
 		CalleePDPtrSet = set__list_to_set(CalleePDPtrs),
 		set__intersect(CalleePDPtrSet, Clique, Common),
 		( set__empty(Common) ->
-			ProcMap1 = ProcMap0,
-			AddedPD1 = AddedPD0
+			true
 		;
 			set__difference(CalleePDPtrSet, Clique, NewMembers),
 			( set__empty(NewMembers) ->
-				ProcMap1 = ProcMap0,
-				AddedPD1 = no
+				!:AddedPD = no
 			;
 				set__to_sorted_list(NewMembers, NewMemberList),
 				list__foldl(cluster_pds_by_ps(InitDeep),
-					NewMemberList, ProcMap0, ProcMap1),
-				AddedPD1 = yes
+					NewMemberList, !ProcMap),
+				!:AddedPD = yes
 			)
 		),
 		complete_clique_slots(SlotNum - 1, InitDeep, Clique,
-			PSSites, PDSites, ProcMap1, ProcMap, AddedPD1, AddedPD)
+			PSSites, PDSites, !ProcMap, !AddedPD)
 	;
-		ProcMap = ProcMap0,
-		AddedPD = AddedPD0
+		true
 	).
 
 :- pred merge_proc_dynamics_ignore_chosen(merge_info::in,
@@ -219,9 +220,9 @@ complete_clique_slots(SlotNum, InitDeep, Clique, PSSites, PDSites,
 	is det.
 
 merge_proc_dynamics_ignore_chosen(MergeInfo, Clique, CandidatePDPtrs,
-		InitDeep0, InitDeep, Redirect0, Redirect) :-
+		!InitDeep, !Redirect) :-
 	merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, _ChosenPDPtr,
-		InitDeep0, InitDeep, Redirect0, Redirect).
+		!InitDeep, !Redirect).
 
 :- pred merge_proc_dynamics(merge_info::in, set(proc_dynamic_ptr)::in,
 	list(proc_dynamic_ptr)::in, proc_dynamic_ptr::out,
@@ -229,15 +230,14 @@ merge_proc_dynamics_ignore_chosen(MergeInfo, Clique, CandidatePDPtrs,
 	is det.
 
 merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
-		InitDeep0, InitDeep, Redirect0, Redirect) :-
-	ProcDynamics0 = InitDeep0 ^ init_proc_dynamics,
+		!InitDeep, !Redirect) :-
+	ProcDynamics0 = !.InitDeep ^ init_proc_dynamics,
 	list__filter(valid_proc_dynamic_ptr_raw(ProcDynamics0),
 		CandidatePDPtrs, ValidPDPtrs, InvalidPDPtrs),
 	require(unify(InvalidPDPtrs, []),
 		"merge_proc_dynamics: invalid pdptrs"),
 	( ValidPDPtrs = [PrimePDPtr | RestPDPtrs] ->
-		record_pd_redirect(RestPDPtrs, PrimePDPtr,
-			Redirect0, Redirect1),
+		record_pd_redirect(RestPDPtrs, PrimePDPtr, !Redirect),
 		lookup_proc_dynamics(ProcDynamics0, PrimePDPtr, PrimePD0),
 		list__map(lookup_proc_dynamics(ProcDynamics0),
 			RestPDPtrs, RestPDs),
@@ -246,20 +246,18 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
 		array__max(PrimeSites0, MaxSiteNum),
 		merge_proc_dynamic_slots(MergeInfo, MaxSiteNum, Clique,
 			PrimePDPtr, u(PrimeSites0), RestSites, PrimeSites,
-			InitDeep0, InitDeep1, Redirect1, Redirect),
+			!InitDeep, !Redirect),
 		PrimePD = PrimePD0 ^ pd_sites := PrimeSites,
-		ProcDynamics1 = InitDeep1 ^ init_proc_dynamics,
-		update_proc_dynamics(u(ProcDynamics1), PrimePDPtr, PrimePD,
-			ProcDynamics),
-		InitDeep = InitDeep1 ^ init_proc_dynamics := ProcDynamics,
+		ProcDynamics1 = !.InitDeep ^ init_proc_dynamics,
+		update_proc_dynamics(PrimePDPtr, PrimePD,
+			u(ProcDynamics1), ProcDynamics),
+		!:InitDeep = !.InitDeep ^ init_proc_dynamics := ProcDynamics,
 		ChosenPDPtr = PrimePDPtr
 	;
 		% This could happen when merging the callees of CSDs
 		% representing special calls, but only before we added callcode
 		% to the unify/compare routines of builtin types.
 		% ChosenPDPtr = proc_dynamic_ptr(0),
-		% InitDeep = InitDeep0,
-		% Redirect = Redirect0
 		error("merge_proc_dynamics: no valid pdptrs")
 	).
 
@@ -273,7 +271,7 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
 
 merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
 		PrimeSiteArray0, RestSiteArrays, PrimeSiteArray,
-		InitDeep0, InitDeep, Redirect0, Redirect) :-
+		!InitDeep, !Redirect) :-
 	( SlotNum >= 0 ->
 		array__lookup(PrimeSiteArray0, SlotNum, PrimeSite0),
 		(
@@ -281,7 +279,7 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
 			merge_proc_dynamic_normal_slot(MergeInfo, SlotNum,
 				Clique, PrimePDPtr, PrimeCSDPtr0,
 				RestSiteArrays, PrimeCSDPtr,
-				InitDeep0, InitDeep1, Redirect0, Redirect1),
+				!InitDeep, !Redirect),
 			array__set(PrimeSiteArray0, SlotNum,
 				normal(PrimeCSDPtr), PrimeSiteArray1)
 		;
@@ -290,7 +288,7 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
 			merge_proc_dynamic_multi_slot(MergeInfo, SlotNum,
 				Clique, PrimePDPtr, PrimeCSDPtrList0,
 				RestSiteArrays, PrimeCSDPtrList,
-				InitDeep0, InitDeep1, Redirect0, Redirect1),
+				!InitDeep, !Redirect),
 			PrimeCSDPtrArray = array(PrimeCSDPtrList),
 			array__set(PrimeSiteArray0, SlotNum,
 				multi(IsZeroed, PrimeCSDPtrArray),
@@ -298,12 +296,9 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
 		),
 		merge_proc_dynamic_slots(MergeInfo, SlotNum - 1, Clique,
 			PrimePDPtr, PrimeSiteArray1, RestSiteArrays,
-			PrimeSiteArray, InitDeep1, InitDeep,
-			Redirect1, Redirect)
+			PrimeSiteArray, !InitDeep, !Redirect)
 	;
-		PrimeSiteArray = PrimeSiteArray0,
-		InitDeep = InitDeep0,
-		Redirect = Redirect0
+		PrimeSiteArray = PrimeSiteArray0
 	).
 
 :- pred merge_proc_dynamic_normal_slot(merge_info::in, int::in,
@@ -314,11 +309,11 @@ merge_proc_dynamic_slots(MergeInfo, SlotNum, Clique, PrimePDPtr,
 
 merge_proc_dynamic_normal_slot(MergeInfo, SlotNum, Clique,
 		PrimePDPtr, PrimeCSDPtr0, RestSiteArrays, PrimeCSDPtr,
-		InitDeep0, InitDeep, Redirect0, Redirect) :-
+		!InitDeep, !Redirect) :-
 	lookup_normal_sites(RestSiteArrays, SlotNum, RestCSDPtrs),
 	merge_call_site_dynamics(MergeInfo, Clique, PrimePDPtr,
 		[PrimeCSDPtr0 | RestCSDPtrs], PrimeCSDPtr,
-		InitDeep0, InitDeep, Redirect0, Redirect).
+		!InitDeep, !Redirect).
 
 :- pred accumulate_csd_owns(call_site_dynamic::in,
 	own_prof_info::in, own_prof_info::out) is det.
@@ -343,16 +338,15 @@ callee_in_clique(InitDeep, Clique, CSDPtr) :-
 
 merge_proc_dynamic_multi_slot(MergeInfo, SlotNum, Clique,
 		ParentPDPtr, PrimeCSDPtrs0, RestSiteArrays, PrimeCSDPtrs,
-		InitDeep0, InitDeep, Redirect0, Redirect) :-
+		!InitDeep, !Redirect) :-
 	lookup_multi_sites(RestSiteArrays, SlotNum, RestCSDPtrLists),
 	list__condense([PrimeCSDPtrs0 | RestCSDPtrLists], AllCSDPtrs),
 	map__init(ProcMap0),
-	list__foldl(cluster_csds_by_ps(InitDeep0), AllCSDPtrs,
+	list__foldl(cluster_csds_by_ps(!.InitDeep), AllCSDPtrs,
 		ProcMap0, ProcMap),
 	map__values(ProcMap, CSDPtrsClusters),
 	list__foldl3(merge_multi_slot_cluster(MergeInfo, ParentPDPtr, Clique),
-		CSDPtrsClusters, [], PrimeCSDPtrs, InitDeep0, InitDeep,
-		Redirect0, Redirect).
+		CSDPtrsClusters, [], PrimeCSDPtrs, !InitDeep, !Redirect).
 
 :- pred merge_multi_slot_cluster(merge_info::in, proc_dynamic_ptr::in,
 	set(proc_dynamic_ptr)::in, list(call_site_dynamic_ptr)::in,
@@ -374,34 +368,29 @@ merge_multi_slot_cluster(MergeInfo, ParentPDPtr, Clique, ClusterCSDPtrs,
 	redirect::in, redirect::out) is det.
 
 merge_call_site_dynamics(MergeInfo, Clique, ParentPDPtr, CandidateCSDPtrs,
-		ChosenCSDPtr, InitDeep0, InitDeep, Redirect0, Redirect) :-
-	CallSiteDynamics0 = InitDeep0 ^ init_call_site_dynamics,
+		ChosenCSDPtr, !InitDeep, !Redirect) :-
+	CallSiteDynamics0 = !.InitDeep ^ init_call_site_dynamics,
 	list__filter(valid_call_site_dynamic_ptr_raw(CallSiteDynamics0),
 		CandidateCSDPtrs, ValidCSDPtrs),
 	(
 		ValidCSDPtrs = [],
 			% This signifies that there is no call here.
-		ChosenCSDPtr = call_site_dynamic_ptr(0),
-		InitDeep = InitDeep0,
-		Redirect = Redirect0
+		ChosenCSDPtr = call_site_dynamic_ptr(0)
 	;
 		ValidCSDPtrs = [FirstCSDPtr | LaterCSDPtrs],
 		lookup_call_site_dynamics(CallSiteDynamics0, FirstCSDPtr,
 			FirstCSD0),
 		FirstCSD = FirstCSD0 ^ csd_caller := ParentPDPtr,
-		update_call_site_dynamics(u(CallSiteDynamics0), FirstCSDPtr,
-			FirstCSD, CallSiteDynamics),
-		InitDeep1 = InitDeep0 ^ init_call_site_dynamics
+		update_call_site_dynamics(FirstCSDPtr, FirstCSD,
+			u(CallSiteDynamics0), CallSiteDynamics),
+		!:InitDeep = !.InitDeep ^ init_call_site_dynamics
 			:= CallSiteDynamics,
 		(
-			LaterCSDPtrs = [],
-			InitDeep = InitDeep1,
-			Redirect = Redirect0
+			LaterCSDPtrs = []
 		;
 			LaterCSDPtrs = [_ | _],
 			merge_call_site_dynamics_2(MergeInfo, Clique,
-				FirstCSDPtr, LaterCSDPtrs, InitDeep1, InitDeep,
-				Redirect0, Redirect)
+				FirstCSDPtr, LaterCSDPtrs, !InitDeep, !Redirect)
 		),
 		ChosenCSDPtr = FirstCSDPtr
 	).
@@ -438,8 +427,8 @@ merge_call_site_dynamics_2(MergeInfo, Clique, PrimeCSDPtr, RestCSDPtrs,
 	PrimeOwn0 = PrimeCSD0 ^ csd_own_prof,
 	list__foldl(accumulate_csd_owns, RestCSDs, PrimeOwn0, PrimeOwn1),
 	PrimeCSD1 = PrimeCSD0 ^ csd_own_prof := PrimeOwn1,
-	update_call_site_dynamics(u(CallSiteDynamics0), PrimeCSDPtr, PrimeCSD1,
-		CallSiteDynamics1),
+	update_call_site_dynamics(PrimeCSDPtr, PrimeCSD1,
+		u(CallSiteDynamics0), CallSiteDynamics1),
 	InitDeep1 = InitDeep0 ^ init_call_site_dynamics := CallSiteDynamics1,
 	(
 		MergeChildren = no,
@@ -456,8 +445,8 @@ merge_call_site_dynamics_2(MergeInfo, Clique, PrimeCSDPtr, RestCSDPtrs,
 		lookup_call_site_dynamics(CallSiteDynamics2, PrimeCSDPtr,
 			PrimeCSD2),
 		PrimeCSD = PrimeCSD2 ^ csd_callee := ChosenPDPtr,
-		update_call_site_dynamics(u(CallSiteDynamics2),
-			PrimeCSDPtr, PrimeCSD, CallSiteDynamics),
+		update_call_site_dynamics(PrimeCSDPtr, PrimeCSD,
+			u(CallSiteDynamics2), CallSiteDynamics),
 		InitDeep = InitDeep2 ^ init_call_site_dynamics
 			:= CallSiteDynamics
 	).
@@ -468,8 +457,8 @@ merge_call_site_dynamics_2(MergeInfo, Clique, PrimeCSDPtr, RestCSDPtrs,
 	redirect::in, redirect::out) is det.
 
 merge_call_site_dynamics_descendants(MergeInfo, PrimeCSDPtr, RestCSDPtrs,
-		ChosenPDPtr, InitDeep0, InitDeep, Redirect0, Redirect) :-
-	CallSiteDynamics = InitDeep0 ^ init_call_site_dynamics,
+		ChosenPDPtr, !InitDeep, !Redirect) :-
+	CallSiteDynamics = !.InitDeep ^ init_call_site_dynamics,
 	lookup_call_site_dynamics(CallSiteDynamics, PrimeCSDPtr, PrimeCSD),
 	extract_csd_callee(PrimeCSD, PrimeCSDCallee),
 	list__map(lookup_call_site_dynamics(CallSiteDynamics), 
@@ -478,22 +467,22 @@ merge_call_site_dynamics_descendants(MergeInfo, PrimeCSDPtr, RestCSDPtrs,
 	PDPtrs = [PrimeCSDCallee | RestCSDCallees],
 	list__foldl(union_cliques(MergeInfo), PDPtrs, set__init, CliqueUnion),
 	merge_proc_dynamics(MergeInfo, CliqueUnion, PDPtrs, ChosenPDPtr,
-		InitDeep0, InitDeep, Redirect0, Redirect).
+		!InitDeep, !Redirect).
 
 :- pred union_cliques(merge_info::in, proc_dynamic_ptr::in,
 	set(proc_dynamic_ptr)::in, set(proc_dynamic_ptr)::out) is det.
 
-union_cliques(MergeInfo, PDPtr, CliqueUnion0, CliqueUnion) :-
+union_cliques(MergeInfo, PDPtr, !CliqueUnion) :-
 	( PDPtr = proc_dynamic_ptr(0) ->
 		% This can happen with calls to the unify/compare preds
 		% of builtin types.
-		CliqueUnion = CliqueUnion0
+		true
 	;
 		lookup_clique_index(MergeInfo ^ merge_clique_index, PDPtr,
 			CliquePtr),
 		lookup_clique_members(MergeInfo ^ merge_clique_members,
 			CliquePtr, Members),
-		set__insert_list(CliqueUnion0, Members, CliqueUnion)
+		set__insert_list(!.CliqueUnion, Members, !:CliqueUnion)
 	).
 
 :- pred lookup_normal_sites(list(array(call_site_array_slot))::in, int::in,
@@ -529,16 +518,15 @@ lookup_multi_sites([RestArray | RestArrays], SlotNum, [CSDList | CSDLists]) :-
 :- pred record_pd_redirect(list(proc_dynamic_ptr)::in, proc_dynamic_ptr::in,
 	redirect::in, redirect::out) is det.
 
-record_pd_redirect(RestPDPtrs, PrimePDPtr, Redirect0, Redirect) :-
+record_pd_redirect(RestPDPtrs, PrimePDPtr, !Redirect) :-
 	% impure unsafe_perform_io(io__write_string("pd redirect: ")),
 	% impure unsafe_perform_io(io__print(RestPDPtrs)),
 	% impure unsafe_perform_io(io__write_string(" -> ")),
 	% impure unsafe_perform_io(io__print(PrimePDPtr)),
 	% impure unsafe_perform_io(io__nl),
-	lookup_pd_redirect(Redirect0 ^ pd_redirect, PrimePDPtr, OldRedirect),
+	lookup_pd_redirect(!.Redirect ^ pd_redirect, PrimePDPtr, OldRedirect),
 	( OldRedirect = proc_dynamic_ptr(0) ->
-		record_pd_redirect_2(RestPDPtrs, PrimePDPtr,
-			Redirect0, Redirect)
+		record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect)
 	;
 		error("record_pd_redirect: prime is redirected")
 	).
@@ -546,10 +534,9 @@ record_pd_redirect(RestPDPtrs, PrimePDPtr, Redirect0, Redirect) :-
 :- pred record_pd_redirect_2(list(proc_dynamic_ptr)::in, proc_dynamic_ptr::in,
 	redirect::in, redirect::out) is det.
 
-record_pd_redirect_2([], _, Redirect, Redirect).
-record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr,
-		Redirect0, Redirect) :-
-	ProcRedirect0 = Redirect0 ^ pd_redirect,
+record_pd_redirect_2([], _, !Redirect).
+record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr, !Redirect) :-
+	ProcRedirect0 = !.Redirect ^ pd_redirect,
 	lookup_pd_redirect(ProcRedirect0, RestPDPtr, OldRedirect),
 	( OldRedirect = proc_dynamic_ptr(0) ->
 		set_pd_redirect(u(ProcRedirect0), RestPDPtr, PrimePDPtr,
@@ -557,23 +544,22 @@ record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr,
 	;
 		error("record_pd_redirect_2: already redirected")
 	),
-	Redirect1 = Redirect0 ^ pd_redirect := ProcRedirect,
-	record_pd_redirect_2(RestPDPtrs, PrimePDPtr, Redirect1, Redirect).
+	!:Redirect = !.Redirect ^ pd_redirect := ProcRedirect,
+	record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect).
 
 % :- pragma promise_pure(record_csd_redirect/4).
 :- pred record_csd_redirect(list(call_site_dynamic_ptr)::in,
 	call_site_dynamic_ptr::in, redirect::in, redirect::out) is det.
 
-record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, Redirect0, Redirect) :-
+record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, !Redirect) :-
 	% impure unsafe_perform_io(io__write_string("csd redirect: ")),
 	% impure unsafe_perform_io(io__print(RestCSDPtrs)),
 	% impure unsafe_perform_io(io__write_string(" -> ")),
 	% impure unsafe_perform_io(io__print(PrimeCSDPtr)),
 	% impure unsafe_perform_io(io__nl),
-	lookup_csd_redirect(Redirect0 ^ csd_redirect, PrimeCSDPtr, OldRedirect),
+	lookup_csd_redirect(!.Redirect ^ csd_redirect, PrimeCSDPtr, OldRedirect),
 	( OldRedirect = call_site_dynamic_ptr(0) ->
-		record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr,
-			Redirect0, Redirect)
+		record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect)
 	;
 		error("record_pd_redirect: prime is redirected")
 	).
@@ -581,10 +567,9 @@ record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, Redirect0, Redirect) :-
 :- pred record_csd_redirect_2(list(call_site_dynamic_ptr)::in,
 	call_site_dynamic_ptr::in, redirect::in, redirect::out) is det.
 
-record_csd_redirect_2([], _, Redirect, Redirect).
-record_csd_redirect_2([RestCSDPtr | RestCSDPtrs], PrimeCSDPtr,
-		Redirect0, Redirect) :-
-	CallSiteRedirect0 = Redirect0 ^ csd_redirect,
+record_csd_redirect_2([], _, !Redirect).
+record_csd_redirect_2([RestCSDPtr | RestCSDPtrs], PrimeCSDPtr, !Redirect) :-
+	CallSiteRedirect0 = !.Redirect ^ csd_redirect,
 	lookup_csd_redirect(CallSiteRedirect0, RestCSDPtr, OldRedirect),
 	( OldRedirect = call_site_dynamic_ptr(0) ->
 		set_csd_redirect(u(CallSiteRedirect0), RestCSDPtr, PrimeCSDPtr,
@@ -592,8 +577,8 @@ record_csd_redirect_2([RestCSDPtr | RestCSDPtrs], PrimeCSDPtr,
 	;
 		error("record_csd_redirect_2: already redirected")
 	),
-	Redirect1 = Redirect0 ^ csd_redirect := CallSiteRedirect,
-	record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, Redirect1, Redirect).
+	!:Redirect = !.Redirect ^ csd_redirect := CallSiteRedirect,
+	record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect).
 
 :- pred two_or_more(list(proc_dynamic_ptr)::in) is semidet.
 
@@ -603,26 +588,25 @@ two_or_more([_, _ | _]).
 	map(proc_static_ptr, list(proc_dynamic_ptr))::in,
 	map(proc_static_ptr, list(proc_dynamic_ptr))::out) is det.
 
-cluster_pds_by_ps(InitDeep, PDPtr, ProcMap0, ProcMap) :-
+cluster_pds_by_ps(InitDeep, PDPtr, !ProcMap) :-
 	ProcDynamics = InitDeep ^ init_proc_dynamics,
 	( valid_proc_dynamic_ptr_raw(ProcDynamics, PDPtr) ->
 		lookup_proc_dynamics(ProcDynamics, PDPtr, PD),
 		PSPtr = PD ^ pd_proc_static,
-		( map__search(ProcMap0, PSPtr, PDPtrs0) ->
-			map__det_update(ProcMap0, PSPtr, [PDPtr | PDPtrs0],
-				ProcMap)
+		( map__search(!.ProcMap, PSPtr, PDPtrs0) ->
+			svmap.det_update(PSPtr, [PDPtr | PDPtrs0], !ProcMap)
 		;
-			map__det_insert(ProcMap0, PSPtr, [PDPtr], ProcMap)
+			svmap.det_insert(PSPtr, [PDPtr], !ProcMap)
 		)
 	;
-		ProcMap = ProcMap0
+		true
 	).
 
 :- pred cluster_csds_by_ps(initial_deep::in, call_site_dynamic_ptr::in,
 	map(proc_static_ptr, list(call_site_dynamic_ptr))::in,
 	map(proc_static_ptr, list(call_site_dynamic_ptr))::out) is det.
 
-cluster_csds_by_ps(InitDeep, CSDPtr, ProcMap0, ProcMap) :-
+cluster_csds_by_ps(InitDeep, CSDPtr, !ProcMap) :-
 	CallSiteDynamics = InitDeep ^ init_call_site_dynamics,
 	( valid_call_site_dynamic_ptr_raw(CallSiteDynamics, CSDPtr) ->
 		lookup_call_site_dynamics(CallSiteDynamics, CSDPtr, CSD),
@@ -634,14 +618,14 @@ cluster_csds_by_ps(InitDeep, CSDPtr, ProcMap0, ProcMap) :-
 		;
 			PSPtr = proc_static_ptr(0)
 		),
-		( map__search(ProcMap0, PSPtr, CSDPtrs0) ->
-			map__det_update(ProcMap0, PSPtr, [CSDPtr | CSDPtrs0],
-				ProcMap)
+		( map__search(!.ProcMap, PSPtr, CSDPtrs0) ->
+			svmap.det_update(PSPtr, [CSDPtr | CSDPtrs0],
+				!ProcMap)
 		;
-			map__det_insert(ProcMap0, PSPtr, [CSDPtr], ProcMap)
+			svmap.det_insert(PSPtr, [CSDPtr], !ProcMap)
 		)
 	;
-		ProcMap = ProcMap0
+		true
 	).
 
 :- pred lookup_pd_redirect(array(proc_dynamic_ptr)::in,
@@ -679,35 +663,35 @@ set_csd_redirect(CallSiteRedirect0, CSDPtr, NewRedirect, CallSiteRedirect) :-
 :- pred deref_call_site_dynamic(redirect::in, call_site_dynamic_ptr::in,
 	call_site_dynamic_ptr::out) is det.
 
-deref_call_site_dynamic(Redirect, CSDPtr0, CSDPtr) :-
-	lookup_csd_redirect(Redirect ^ csd_redirect, CSDPtr0, RedirectCSDPtr),
+deref_call_site_dynamic(Redirect, !CSDPtr) :-
+	lookup_csd_redirect(Redirect ^ csd_redirect, !.CSDPtr, RedirectCSDPtr),
 	RedirectCSDPtr = call_site_dynamic_ptr(RedirectCSDI),
 	( RedirectCSDI > 0 ->
-		deref_call_site_dynamic(Redirect, RedirectCSDPtr, CSDPtr)
+		deref_call_site_dynamic(Redirect, RedirectCSDPtr, !:CSDPtr)
 	;
-		CSDPtr = CSDPtr0
+		true
 	).
 
 :- pred deref_proc_dynamic(redirect::in, proc_dynamic_ptr::in,
 	proc_dynamic_ptr::out) is det.
 
-deref_proc_dynamic(Redirect, PDPtr0, PDPtr) :-
-	lookup_pd_redirect(Redirect ^ pd_redirect, PDPtr0, RedirectPDPtr),
+deref_proc_dynamic(Redirect, !PDPtr) :-
+	lookup_pd_redirect(Redirect ^ pd_redirect, !.PDPtr, RedirectPDPtr),
 	RedirectPDPtr = proc_dynamic_ptr(RedirectPDI),
 	( RedirectPDI > 0 ->
-		deref_proc_dynamic(Redirect, RedirectPDPtr, PDPtr)
+		deref_proc_dynamic(Redirect, RedirectPDPtr, !:PDPtr)
 	;
-		PDPtr = PDPtr0
+		true
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred compact_dynamics(initial_deep::in, redirect::in, int::in, int::in,
-	initial_deep::out) is det.
+:- pred compact_dynamics(redirect::in, int::in, int::in,
+	initial_deep::in, initial_deep::out) is det.
 
-compact_dynamics(InitDeep0, Redirect0, MaxCSD0, MaxPD0, InitDeep) :-
+compact_dynamics(Redirect0, MaxCSD0, MaxPD0, !InitDeep) :-
 	Redirect0 = redirect(CSDredirect0, PDredirect0),
-	InitDeep0 = initial_deep(Stats, Root0, CSDs0, PDs0, CSSs, PSs),
+	!.InitDeep = initial_deep(Stats, Root0, CSDs0, PDs0, CSSs, PSs),
 	compact_csd_redirect(1, 1, MaxCSD0, NumCSD,
 		u(CSDredirect0), CSDredirect),
 	compact_pd_redirect(1, 1, MaxPD0, NumPD,
@@ -720,29 +704,27 @@ compact_dynamics(InitDeep0, Redirect0, MaxCSD0, MaxPD0, InitDeep) :-
 	array__shrink(CSDs1, NumCSD, CSDs),
 	array__shrink(PDs1, NumPD, PDs),
 	lookup_pd_redirect(PDredirect, Root0, Root),
-	InitDeep = initial_deep(Stats, Root, CSDs, PDs, CSSs, PSs).
+	!:InitDeep = initial_deep(Stats, Root, CSDs, PDs, CSSs, PSs).
 
 :- pred compact_csd_redirect(int::in, int::in, int::in, int::out,
 	array(call_site_dynamic_ptr)::array_di,
 	array(call_site_dynamic_ptr)::array_uo) is det.
 
-compact_csd_redirect(CurOld, CurNew, MaxOld, NumNew,
-		CSDredirect0, CSDredirect) :-
+compact_csd_redirect(CurOld, CurNew, MaxOld, NumNew, !CSDredirect) :-
 	( CurOld > MaxOld ->
-		NumNew = CurNew,
-		CSDredirect = CSDredirect0
+		NumNew = CurNew
 	;
-		array__lookup(CSDredirect0, CurOld, Redirect0),
+		array__lookup(!.CSDredirect, CurOld, Redirect0),
 		( Redirect0 = call_site_dynamic_ptr(0) ->
-			array__set(CSDredirect0, CurOld,
-				call_site_dynamic_ptr(CurNew), CSDredirect1),
+			svarray.set(CurOld, call_site_dynamic_ptr(CurNew),
+				!CSDredirect),
 			compact_csd_redirect(CurOld + 1, CurNew + 1,
-				MaxOld, NumNew, CSDredirect1, CSDredirect)
+				MaxOld, NumNew, !CSDredirect)
 		;
 			% Since this CSD is being redirected, its slot is
 			% available for another (non-redirected) CSD.
 			compact_csd_redirect(CurOld + 1, CurNew,
-				MaxOld, NumNew, CSDredirect0, CSDredirect)
+				MaxOld, NumNew, !CSDredirect)
 		)
 	).
 
@@ -750,42 +732,40 @@ compact_csd_redirect(CurOld, CurNew, MaxOld, NumNew,
 	array(proc_dynamic_ptr)::array_di,
 	array(proc_dynamic_ptr)::array_uo) is det.
 
-compact_pd_redirect(CurOld, CurNew, MaxOld, NumNew,
-		PDredirect0, PDredirect) :-
+compact_pd_redirect(CurOld, CurNew, MaxOld, NumNew, !PDredirect) :-
 	( CurOld > MaxOld ->
-		NumNew = CurNew,
-		PDredirect = PDredirect0
+		NumNew = CurNew
 	;
-		array__lookup(PDredirect0, CurOld, Redirect0),
+		array__lookup(!.PDredirect, CurOld, Redirect0),
 		( Redirect0 = proc_dynamic_ptr(0) ->
-			array__set(PDredirect0, CurOld,
-				proc_dynamic_ptr(CurNew), PDredirect1),
+			svarray.set(CurOld, proc_dynamic_ptr(CurNew),
+				!PDredirect),
 			compact_pd_redirect(CurOld + 1, CurNew + 1,
-				MaxOld, NumNew, PDredirect1, PDredirect)
+				MaxOld, NumNew, !PDredirect)
 		;
 			% Since this PD is being redirected, its slot is
 			% available for another (non-redirected) PD.
 			compact_pd_redirect(CurOld + 1, CurNew,
-				MaxOld, NumNew, PDredirect0, PDredirect)
+				MaxOld, NumNew, !PDredirect)
 		)
 	).
 
 :- pred subst_in_call_site_dynamic(redirect::in, call_site_dynamic::in,
 	call_site_dynamic::out) is det.
 
-subst_in_call_site_dynamic(Redirect, CSD0, CSD) :-
-	CSD0 = call_site_dynamic(Caller0, Callee0, Own),
+subst_in_call_site_dynamic(Redirect, !CSD) :-
+	!.CSD = call_site_dynamic(Caller0, Callee0, Own),
 	lookup_pd_redirect(Redirect ^ pd_redirect, Caller0, Caller),
 	lookup_pd_redirect(Redirect ^ pd_redirect, Callee0, Callee),
-	CSD = call_site_dynamic(Caller, Callee, Own).
+	!:CSD = call_site_dynamic(Caller, Callee, Own).
 
 :- pred subst_in_proc_dynamic(redirect::in, proc_dynamic::in,
 	proc_dynamic::out) is det.
 
-subst_in_proc_dynamic(Redirect, PD0, PD) :-
-	PD0 = proc_dynamic(PDPtr, Slots0),
+subst_in_proc_dynamic(Redirect, !PD) :-
+	!.PD = proc_dynamic(PDPtr, Slots0),
 	array__map(subst_in_slot(Redirect), u(Slots0), Slots),
-	PD = proc_dynamic(PDPtr, Slots).
+	!:PD = proc_dynamic(PDPtr, Slots).
 
 :- pred subst_in_slot(redirect::in, call_site_array_slot::in,
 	call_site_array_slot::out) is det.
@@ -886,18 +866,14 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
 	proc_dynamics::array_di, proc_dynamics::array_uo) is det.
 
 concatenate_profiles([], _PrevMaxCSD, _PrevMaxPD,
-		ConcatCallSiteDynamics, ConcatCallSiteDynamics,
-		ConcatProcDynamics, ConcatProcDynamics).
+		!ConcatCallSiteDynamics, !ConcatProcDynamics).
 concatenate_profiles([InitDeep | InitDeeps], PrevMaxCSD, PrevMaxPD,
-		ConcatCallSiteDynamics0, ConcatCallSiteDynamics,
-		ConcatProcDynamics0, ConcatProcDynamics) :-
+		!ConcatCallSiteDynamics, !ConcatProcDynamics) :-
 	concatenate_profile(InitDeep,
 		PrevMaxCSD, PrevMaxPD, NextMaxCSD, NextMaxPD,
-		ConcatCallSiteDynamics0, ConcatCallSiteDynamics1,
-		ConcatProcDynamics0, ConcatProcDynamics1),
+		!ConcatCallSiteDynamics, !ConcatProcDynamics),
 	concatenate_profiles(InitDeeps, NextMaxCSD, NextMaxPD,
-		ConcatCallSiteDynamics1, ConcatCallSiteDynamics,
-		ConcatProcDynamics1, ConcatProcDynamics).
+		!ConcatCallSiteDynamics, !ConcatProcDynamics).
 
 :- pred concatenate_profile(initial_deep::in,
 	int::in, int::in, int::out, int::out,
@@ -905,38 +881,33 @@ concatenate_profiles([InitDeep | InitDeeps], PrevMaxCSD, PrevMaxPD,
 	proc_dynamics::array_di, proc_dynamics::array_uo) is det.
 
 concatenate_profile(InitDeep, PrevMaxCSD, PrevMaxPD, NextMaxCSD, NextMaxPD,
-		ConcatCallSiteDynamics0, ConcatCallSiteDynamics,
-		ConcatProcDynamics0, ConcatProcDynamics) :-
+		!ConcatCallSiteDynamics, !ConcatProcDynamics) :-
 	extract_max_csd(InitDeep, MaxCSD),
 	extract_max_pd(InitDeep, MaxPD),
 	NextMaxCSD = PrevMaxCSD + MaxCSD,
 	NextMaxPD = PrevMaxPD + MaxPD,
 	concatenate_profile_csds(1, MaxCSD, PrevMaxCSD, PrevMaxPD,
-		InitDeep ^ init_call_site_dynamics,
-		ConcatCallSiteDynamics0, ConcatCallSiteDynamics),
+		InitDeep ^ init_call_site_dynamics, !ConcatCallSiteDynamics),
 	concatenate_profile_pds(1, MaxPD, PrevMaxCSD, PrevMaxPD,
-		InitDeep ^ init_proc_dynamics,
-		ConcatProcDynamics0, ConcatProcDynamics).
+		InitDeep ^ init_proc_dynamics, !ConcatProcDynamics).
 
 :- pred concatenate_profile_csds(int::in, int::in, int::in, int::in,
 	call_site_dynamics::in,
 	call_site_dynamics::array_di, call_site_dynamics::array_uo) is det.
 
 concatenate_profile_csds(Cur, Max, PrevMaxCSD, PrevMaxPD, CallSiteDynamics,
-		ConcatCallSiteDynamics0, ConcatCallSiteDynamics) :-
+		!ConcatCallSiteDynamics) :-
 	( Cur =< Max ->
 		array__lookup(CallSiteDynamics, Cur, CSD0),
 		CSD0 = call_site_dynamic(CallerPDPtr0, CalleePDPtr0, Own),
 		concat_proc_dynamic_ptr(PrevMaxPD, CallerPDPtr0, CallerPDPtr),
 		concat_proc_dynamic_ptr(PrevMaxPD, CalleePDPtr0, CalleePDPtr),
 		CSD = call_site_dynamic(CallerPDPtr, CalleePDPtr, Own),
-		array__set(ConcatCallSiteDynamics0, PrevMaxCSD + Cur, CSD,
-			ConcatCallSiteDynamics1),
+		svarray.set(PrevMaxCSD + Cur, CSD, !ConcatCallSiteDynamics),
 		concatenate_profile_csds(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,
-			CallSiteDynamics,
-			ConcatCallSiteDynamics1, ConcatCallSiteDynamics)
+			CallSiteDynamics, !ConcatCallSiteDynamics)
 	;
-		ConcatCallSiteDynamics = ConcatCallSiteDynamics0
+		true
 	).
 
 :- pred concatenate_profile_pds(int::in, int::in, int::in, int::in,
@@ -944,7 +915,7 @@ concatenate_profile_csds(Cur, Max, PrevMaxCSD, PrevMaxPD, CallSiteDynamics,
 	proc_dynamics::array_di, proc_dynamics::array_uo) is det.
 
 concatenate_profile_pds(Cur, Max, PrevMaxCSD, PrevMaxPD, ProcDynamics,
-		ConcatProcDynamics0, ConcatProcDynamics) :-
+		!ConcatProcDynamics) :-
 	( Cur =< Max ->
 		array__lookup(ProcDynamics, Cur, PD0),
 		PD0 = proc_dynamic(PSPtr, Sites0),
@@ -952,22 +923,20 @@ concatenate_profile_pds(Cur, Max, PrevMaxCSD, PrevMaxPD, ProcDynamics,
 		concatenate_profile_slots(0, MaxSite, PrevMaxCSD, PrevMaxPD,
 			u(Sites0), Sites),
 		PD = proc_dynamic(PSPtr, Sites),
-		array__set(ConcatProcDynamics0, PrevMaxPD + Cur, PD,
-			ConcatProcDynamics1),
+		svarray.set(PrevMaxPD + Cur, PD, !ConcatProcDynamics),
 		concatenate_profile_pds(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,
-			ProcDynamics,
-			ConcatProcDynamics1, ConcatProcDynamics)
+			ProcDynamics, !ConcatProcDynamics)
 	;
-		ConcatProcDynamics = ConcatProcDynamics0
+		true
 	).
 
 :- pred concatenate_profile_slots(int::in, int::in, int::in, int::in,
 	array(call_site_array_slot)::array_di,
 	array(call_site_array_slot)::array_uo) is det.
 
-concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, Sites0, Sites) :-
+concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, !Sites) :-
 	( Cur =< Max ->
-		array__lookup(Sites0, Cur, Slot0),
+		array__lookup(!.Sites, Cur, Slot0),
 		(
 			Slot0 = normal(CSDPtr0),
 			concat_call_site_dynamic_ptr(PrevMaxCSD,
@@ -980,33 +949,33 @@ concatenate_profile_slots(Cur, Max, PrevMaxCSD, PrevMaxPD, Sites0, Sites) :-
 				u(CSDPtrs0), CSDPtrs),
 			Slot = multi(IsZeroed, CSDPtrs)
 		),
-		array__set(Sites0, Cur, Slot, Sites1),
+		svarray.set(Cur, Slot, !Sites),
 		concatenate_profile_slots(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,
-			Sites1, Sites)
+			!Sites)
 	;
-		Sites = Sites0
+		true
 	).
 
 :- pred concat_call_site_dynamic_ptr(int::in, call_site_dynamic_ptr::in,
 	call_site_dynamic_ptr::out) is det.
 
-concat_call_site_dynamic_ptr(PrevMaxCSD, CSDPtr0, CSDPtr) :-
-	CSDPtr0 = call_site_dynamic_ptr(CSDI0),
+concat_call_site_dynamic_ptr(PrevMaxCSD, !CSDPtr) :-
+	!.CSDPtr = call_site_dynamic_ptr(CSDI0),
 	( CSDI0 = 0 ->
-		CSDPtr = CSDPtr0
+		true
 	;
-		CSDPtr = call_site_dynamic_ptr(CSDI0 + PrevMaxCSD)
+		!:CSDPtr = call_site_dynamic_ptr(CSDI0 + PrevMaxCSD)
 	).
 
 :- pred concat_proc_dynamic_ptr(int::in, proc_dynamic_ptr::in,
 	proc_dynamic_ptr::out) is det.
 
-concat_proc_dynamic_ptr(PrevMaxPD, PDPtr0, PDPtr) :-
-	PDPtr0 = proc_dynamic_ptr(PDI0),
+concat_proc_dynamic_ptr(PrevMaxPD, !PDPtr) :-
+	!.PDPtr = proc_dynamic_ptr(PDI0),
 	( PDI0 = 0 ->
-		PDPtr = PDPtr0
+		true
 	;
-		PDPtr = proc_dynamic_ptr(PDI0 + PrevMaxPD)
+		!:PDPtr = proc_dynamic_ptr(PDI0 + PrevMaxPD)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1014,6 +983,7 @@ concat_proc_dynamic_ptr(PrevMaxPD, PDPtr0, PDPtr) :-
 	% array_match_elements(Min, Max, BaseArray, OtherArrays):
 	% Succeeds iff all the elements of all the OtherArrays are equal to the
 	% corresponding element of BaseArray.
+	%
 :- pred array_match_elements(int::in, int::in, array(T)::in,
 	list(array(T))::in) is semidet.
 
@@ -1029,6 +999,7 @@ array_match_elements(N, Max, BaseArray, OtherArrays) :-
 	% match_element(TestElement, Index, Arrays):
 	% Succeeds iff the elements of all the Arrays at index Index
 	% are equal to TestElement.
+	%
 :- pred match_element(T::in, int::in, list(array(T))::in) is semidet.
 
 match_element(_, _, []).
@@ -1041,3 +1012,7 @@ match_element(TestElement, Index, [Array | Arrays]) :-
 
 int_add(A, B, C) :-
 	C = A + B.
+
+%----------------------------------------------------------------------------%
+:- end_module canonical.
+%----------------------------------------------------------------------------%

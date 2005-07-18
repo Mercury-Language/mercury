@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -44,7 +44,10 @@
 
 :- interface.
 
-:- import_module bool, char, std_util, io.
+:- import_module bool.
+:- import_module char.
+:- import_module io.
+:- import_module std_util.
 
 	% These functions derive the names of auxiliary files (or parts
 	% thereof) from the name of the profiling data file being explored.
@@ -78,28 +81,28 @@
 	%	If Debug is `yes', write it to the file `/tmp/.send_term'
 	%	as well.
 :- pred send_term(string::in, bool::in, T::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% send_string(ToFileName, Debug, Str):
 	%	Write the string Str to ToFileName, making it is new contents.
 	%	If Debug is `yes', write it to the file `/tmp/.send_string'
 	%	as well.
 :- pred send_string(string::in, bool::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% recv_term(FromFileName, Debug, Term):
 	%	Read the contents of FromFileName, which should be a single
 	%	Mercury term. If Debug is `yes', write the result of the read
 	%	to the file `/tmp/.recv_term' as well.
 :- pred recv_term(string::in, bool::in, T::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% recv_string(FromFileName, Debug, Str):
 	%	Read the contents of FromFileName, and return it as Str.
 	%	If Debug is `yes', write the result of the read to the file
 	%	`/tmp/.recv_string' as well.
 :- pred recv_string(string::in, bool::in, string::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- type resp
 	--->	html(string).
@@ -136,6 +139,7 @@
 
 :- type cost_kind
 	--->	calls
+	;	redos
 	;	time
 	;	allocs
 	;	words.
@@ -269,8 +273,14 @@
 
 :- implementation.
 
-:- import_module conf, util.
-:- import_module char, string, list, set, require.
+:- import_module conf.
+:- import_module util.
+
+:- import_module char.
+:- import_module list.
+:- import_module require.
+:- import_module set.
+:- import_module string.
 
 default_preferences =
 	preferences(
@@ -464,7 +474,7 @@ recv_string(FromPipeName, Debug, Resp, !IO) :-
 :- func field_separator_char = char.
 :- func limit_separator_char = char.
 
-query_separator_char = ('%').
+query_separator_char = ('&').
 cmd_separator_char = ('/').
 pref_separator_char = ('/').
 criteria_separator_char = ('-').
@@ -601,7 +611,7 @@ url_component_to_maybe_cmd(QueryString) = MaybeCmd :-
 		Pieces = ["root", MaybePercentStr],
 		( MaybePercentStr = "no" ->
 			MaybePercent = no
-		; string__to_int(MaybePercentStr, Percent) ->	
+		; string__to_int(MaybePercentStr, Percent) ->
 			MaybePercent = yes(Percent)
 		;
 			fail
@@ -816,14 +826,16 @@ string_to_caller_groups("cl", group_by_clique).
 
 :- func cost_kind_to_string(cost_kind) = string.
 
-cost_kind_to_string(calls) =  "calls".
-cost_kind_to_string(time) =   "time".
+cost_kind_to_string(calls)  = "calls".
+cost_kind_to_string(redos)  = "redos".
+cost_kind_to_string(time)   = "time".
 cost_kind_to_string(allocs) = "allocs".
-cost_kind_to_string(words) =  "words".
+cost_kind_to_string(words)  = "words".
 
 :- pred string_to_cost_kind(string::in, cost_kind::out) is semidet.
 
 string_to_cost_kind("calls",  calls).
+string_to_cost_kind("redos",  redos).
 string_to_cost_kind("time",   time).
 string_to_cost_kind("allocs", allocs).
 string_to_cost_kind("words",  words).

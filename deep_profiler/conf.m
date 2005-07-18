@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,16 +18,25 @@
 
 	% Given a pathname, return a shell command that will create
 	% a named pipe with that pathname.
+	%
 :- func make_pipe_cmd(string) = string.
 
 	% The name of the server on which mdprof is being run.
-:- pred server_name(string::out, io__state::di, io__state::uo) is det.
+	%
+:- pred server_name(string::out, io::di, io::uo) is det.
 
 :- func getpid = int.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module string, list, require.
+:- import_module list.
+:- import_module require.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 make_pipe_cmd(PipeName) = Cmd :-
 	mkfifo_cmd(CmdName),
@@ -108,3 +117,7 @@ server_name(ServerName, !IO) :-
 	MR_fatal_error(""the deep profiler is not supported"");
 #endif
 ").
+
+%-----------------------------------------------------------------------------%
+:- end_module conf.
+%-----------------------------------------------------------------------------%

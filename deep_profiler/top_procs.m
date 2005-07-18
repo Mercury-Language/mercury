@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,13 +10,20 @@
 %
 % For comparisons on costs, we sort highest first. For comparisons on names and
 % contexts, we sort lowest first. This is consistently what users want.
+%-----------------------------------------------------------------------------%
 
 :- module top_procs.
 
 :- interface.
 
-:- import_module profile, interface, measurements.
-:- import_module std_util, list.
+:- import_module interface.
+:- import_module measurements.
+:- import_module profile.
+
+:- import_module list.
+:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- func find_top_procs(cost_kind, include_descendants, measurement_scope,
 	display_limit, deep) = maybe_error(list(int)).
@@ -45,10 +52,17 @@
 	own_prof_info::out, inherit_prof_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bool, int, float, array, require.
+:- import_module array.
+:- import_module bool.
+:- import_module float.
+:- import_module int.
+:- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
 	find_top_sort_predicate(Sort, InclDesc, Scope, SortCompatible,
@@ -114,8 +128,7 @@ int_list_from_to(From, To) = List :-
 
 %-----------------------------------------------------------------------------%
 
-:- type compare_proc_statics ==
-	(func(deep, int, int) = comparison_result).
+:- type compare_proc_statics == (func(deep, int, int) = comparison_result).
 
 :- func compare_procs_fallback(compare_proc_statics, deep, int, int)
 	= comparison_result.
@@ -136,19 +149,17 @@ compare_procs_fallback(MainFunc, Deep, PSI1, PSI2) = Result :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred filter_top_procs(deep, int, pred(deep, int), int).
-:- mode filter_top_procs(in, in, pred(in, in) is semidet, in) is semidet.
+:- pred filter_top_procs(deep::in, int::in,
+	pred(deep, int)::in(pred(in, in) is semidet), int::in) is semidet.
 
 filter_top_procs(Deep, RootPSI, FilterPred, PSI) :-
 	PSI \= RootPSI,
 	FilterPred(Deep, PSI).
 
-:- pred find_top_sort_predicate(cost_kind, include_descendants,
-	measurement_scope, bool,
-	compare_proc_statics, pred(deep, int)).
-:- mode find_top_sort_predicate(in, in, in, out,
-	out(func(in, in, in) = out is det),
-	out(pred(in, in) is semidet)) is det.
+:- pred find_top_sort_predicate(cost_kind::in, include_descendants::in,
+	measurement_scope::in, bool::out,
+	compare_proc_statics::out(func(in, in, in) = out is det),
+	pred(deep, int)::out(pred(in, in) is semidet)) is det.
 
 find_top_sort_predicate(calls,  self,          overall,  yes,
 	compare_ps_calls_self_overall,  filter_ps_calls_self).
@@ -158,6 +169,14 @@ find_top_sort_predicate(calls,  self_and_desc, overall,  no,
 	compare_ps_calls_self_overall,  filter_ps_calls_self).
 find_top_sort_predicate(calls,  self_and_desc, per_call, no,
 	compare_ps_calls_self_overall,  filter_ps_calls_self).
+find_top_sort_predicate(redos,  self,          overall,  yes,
+	compare_ps_redos_self_overall,  filter_ps_redos_self).
+find_top_sort_predicate(redos,  self,          per_call, no,
+	compare_ps_redos_self_overall,  filter_ps_redos_self).
+find_top_sort_predicate(redos,  self_and_desc, overall,  no,
+	compare_ps_redos_self_overall,  filter_ps_redos_self).
+find_top_sort_predicate(redos,  self_and_desc, per_call, no,
+	compare_ps_redos_self_overall,  filter_ps_redos_self).
 find_top_sort_predicate(time,   self,          overall,  yes,
 	compare_ps_time_self_overall,   filter_ps_time_self).
 find_top_sort_predicate(time,   self,          per_call, yes,
@@ -183,13 +202,14 @@ find_top_sort_predicate(words,  self_and_desc, overall,  yes,
 find_top_sort_predicate(words,  self_and_desc, per_call, yes,
 	compare_ps_words_both_percall,  filter_ps_words_both).
 
-:- pred find_threshold_predicate(cost_kind, include_descendants,
-	bool, pred(deep, float, int)).
-:- mode find_threshold_predicate(in, in, out, out(pred(in, in, in) is semidet))
+:- pred find_threshold_predicate(cost_kind::in, include_descendants::in,
+	bool::out, pred(deep, float, int)::out(pred(in, in, in) is semidet))
 	is det.
 
 find_threshold_predicate(calls,  self,          no,  threshold_ps_time_self).
 find_threshold_predicate(calls,  self_and_desc, no,  threshold_ps_time_self).
+find_threshold_predicate(redos,  self,          no,  threshold_ps_time_self).
+find_threshold_predicate(redos,  self_and_desc, no,  threshold_ps_time_self).
 find_threshold_predicate(time,   self,          yes, threshold_ps_time_self).
 find_threshold_predicate(time,   self_and_desc, yes, threshold_ps_time_both).
 find_threshold_predicate(allocs, self,          yes, threshold_ps_allocs_self).
@@ -208,6 +228,16 @@ compare_ps_calls_self_overall(Deep, PSI1, PSI2) = Result :-
 	OwnCalls1 = calls(Own1),
 	OwnCalls2 = calls(Own2),
 	compare(Result, OwnCalls2, OwnCalls1).
+
+:- func compare_ps_redos_self_overall(deep, int, int) = comparison_result.
+
+compare_ps_redos_self_overall(Deep, PSI1, PSI2) = Result :-
+	PSOwn = Deep ^ ps_own,
+	array__lookup(PSOwn, PSI1, Own1),
+	array__lookup(PSOwn, PSI2, Own2),
+	OwnRedos1 = redos(Own1),
+	OwnRedos2 = redos(Own2),
+	compare(Result, OwnRedos2, OwnRedos1).
 
 :- func compare_ps_time_self_overall(deep, int, int) = comparison_result.
 
@@ -405,6 +435,14 @@ filter_ps_calls_self(Deep, PSI1) :-
 	OwnCalls1 = calls(Own1),
 	OwnCalls1 > 0.
 
+:- pred filter_ps_redos_self(deep::in, int::in) is semidet.
+
+filter_ps_redos_self(Deep, PSI1) :-
+	PSOwn = Deep ^ ps_own,
+	array__lookup(PSOwn, PSI1, Own1),
+	OwnCalls1 = redos(Own1),
+	OwnCalls1 > 0.
+
 :- pred filter_ps_time_self(deep::in, int::in) is semidet.
 
 filter_ps_time_self(Deep, PSI1) :-
@@ -576,6 +614,9 @@ sort_line_groups(Criteria, Groups) = SortedGroups :-
 			% sorting on "calls per call" is not useful.
 			CompFunc = compare_line_groups_by_calls
 		;
+			Measurement = redos,
+			CompFunc = compare_line_groups_by_redos
+		;
 			Measurement = time,
 			InclDesc = self,
 			Scope = overall,
@@ -686,6 +727,14 @@ compare_line_groups_by_calls(Group1, Group2) = Result :-
 	Calls1 = calls(Group1 ^ group_own),
 	Calls2 = calls(Group2 ^ group_own),
 	compare(Result, Calls2, Calls1).
+
+:- func compare_line_groups_by_redos(line_group(FL, LL), line_group(FL, LL))
+	= comparison_result.
+
+compare_line_groups_by_redos(Group1, Group2) = Result :-
+	Redos1 = redos(Group1 ^ group_own),
+	Redos2 = redos(Group2 ^ group_own),
+	compare(Result, Redos2, Redos1).
 
 :- func compare_line_groups_by_time_self_overall(line_group(FL, LL),
 	line_group(FL, LL)) = comparison_result.
@@ -881,4 +930,6 @@ accumulate_line_group_measurements(LineGroup, Own0, Own, Desc0, Desc) :-
 	Own = add_own_to_own(Own0, LineGroup ^ group_own),
 	Desc = add_inherit_to_inherit(Desc0, LineGroup ^ group_desc).
 
+%-----------------------------------------------------------------------------%
+:- end_module top_procs.
 %-----------------------------------------------------------------------------%

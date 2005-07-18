@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,13 +8,22 @@
 %
 % This module contains code that sets the format of the HTML tables
 % we generate for individual queries.
+%-----------------------------------------------------------------------------%
 
 :- module html_format.
 
 :- interface.
 
-:- import_module profile, interface, measurements, top_procs.
-:- import_module std_util, bool, list.
+:- import_module interface.
+:- import_module measurements.
+:- import_module profile.
+:- import_module top_procs.
+
+:- import_module bool.
+:- import_module list.
+:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- func table_start(preferences) = string.
 :- func table_end(preferences) = string.
@@ -66,7 +75,7 @@
 :- type one_two_id_line_group	== line_group(one_id, two_id_sub_lines).
 
 	% This function takes a context description (which may be empty)
-	% and a HTML string describing all fields on in row but the first,
+	% and a HTML string describing all fields in a row but the first,
 	% and returns the HTML for the full row.
 :- func add_context(string, line_group(one_id, LL)) = line_group(two_id, LL).
 
@@ -115,13 +124,23 @@
 :- func deep_cmd_pref_to_url(preferences, deep, cmd) = string.
 
 :- func plural(int) = string.
+	
+	% Convert any special characters in a string into appropriate
+	% HTML escapes.
+	%
+:- func escape_html_string(string) = string.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module top_procs.
-:- import_module int, float, char, string, map, require.
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -383,7 +402,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
 	;
 		Time3Fields = Fields ^ time_fields := time,
 		Time3Pref = Pref ^ pref_fields := Time3Fields,
-		Time3Msg = "Ticks and times",
+		Time3Msg = "Times",
 		Time3Toggle = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(deep_cmd_pref_to_url(Time3Pref, Deep, Cmd)),
 			s(Time3Msg)])
@@ -847,10 +866,11 @@ cost_criteria_to_description(CostKind, InclDesc, Scope) = Desc :-
 
 :- func cost_kind_to_description(cost_kind) = string.
 
-cost_kind_to_description(calls) = "number of calls".
-cost_kind_to_description(time) = "time".
+cost_kind_to_description(calls)  = "number of calls".
+cost_kind_to_description(redos)  = "number of redos".
+cost_kind_to_description(time)   = "time".
 cost_kind_to_description(allocs) = "memory allocations".
-cost_kind_to_description(words) = "words allocated".
+cost_kind_to_description(words)  = "words allocated".
 
 :- func incl_desc_to_description(include_descendants) = string.
 
@@ -906,13 +926,14 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
 	SecondRow0 = "<TR>\n",
 	( show_port_counts(Fields) = yes ->
 		Calls = WrapFunc("Calls", by_cost(calls, self, overall)),
+		Redos = WrapFunc("Redos", by_cost(redos, self, overall)),
 		FirstRow1 = FirstRow0 ++
 			"<TH COLSPAN=5>Port counts\n",
 		SecondRow1 = SecondRow0 ++
-			string__format("<TH ALIGN=RIGHT>%s\n", [s(Calls)]) ++
+			string.format("<TH ALIGN=RIGHT>%s\n", [s(Calls)]) ++
 			"<TH ALIGN=RIGHT>Exits\n" ++
 			"<TH ALIGN=RIGHT>Fails\n" ++
-			"<TH ALIGN=RIGHT>Redos\n" ++
+			string.format("<TH ALIGN=RIGHT>%s\n", [s(Redos)]) ++
 			"<TH ALIGN=RIGHT>Excps\n"
 	;
 		FirstRow1 = FirstRow0,
@@ -1207,7 +1228,7 @@ table_width(Pref, IdFields, TotalsDisp) = Width :-
 		Port = 0
 	;
 		Fields ^ port_fields = port,
-		Port = 4
+		Port = 5
 	),
 	(
 		Fields ^ time_fields = no_time,
@@ -1555,7 +1576,11 @@ per_call_time(Pref, Deep, Quanta, Calls) = TimeStr :-
 	% We display Time as seconds, with two digits after the decimal point.
 	% This is the most we can do, given clock granularity.
 	Time = float(Quanta) / float(TicksPerSec),
-	TimePerCall = Time / float(Calls),
+	( Calls \= 0 ->
+		TimePerCall = Time / float(Calls)
+	;
+		TimePerCall = 0.0
+	),
 	TimeStr = format_time(Pref, TimePerCall).
 
 :- func format_time(preferences, float) = string.
@@ -1828,18 +1853,18 @@ proc_static_to_html_ref(Pref, Deep, PSPtr) = HTML :-
 	deep_lookup_proc_statics(Deep, PSPtr, PS),
 	ProcName = PS ^ ps_refined_id,
 	HTML = string__format("<A HREF=""%s"">%s</A>",
-		[s(URL), s(ProcName)]).
+		[s(URL), s(escape_html_string(ProcName))]).
 
 module_name_to_html_ref(Pref, Deep, ModuleName) = HTML :-
 	URL = deep_cmd_pref_to_url(Pref, Deep, module(ModuleName)),
 	HTML = string__format("<A HREF=""%s"">%s</A>",
-		[s(URL), s(ModuleName)]).
+		[s(URL), s(escape_html_string(ModuleName))]).
 
 clique_ptr_to_html_ref(Pref, Deep, ProcName, CliquePtr) = HTML :-
 	CliquePtr = clique_ptr(CliqueNum),
 	URL = deep_cmd_pref_to_url(Pref, Deep, clique(CliqueNum)),
 	HTML = string__format("<A HREF=""%s"">%s</A>",
-		[s(URL), s(ProcName)]).
+		[s(URL), s(escape_html_string(ProcName))]).
 
 deep_cmd_pref_to_url(Pref, Deep, Cmd) =
 	machine_datafile_cmd_pref_to_url(Deep ^ server_name,
@@ -1854,4 +1879,45 @@ plural(N) = Plural :-
 		Plural = "s"
 	).
 
+%-----------------------------------------------------------------------------%
+
+% This code was pretty much taken directly from extras/cgi/html.m. 
+
+escape_html_string(String) = EscapedString :-
+	string.to_char_list(String, Chars),
+	escape_html_chars(Chars, EscapedChars, []),
+	string.from_char_list(EscapedChars, EscapedString).
+
+:- pred escape_html_chars(list(char)::in, list(char)::out, list(char)::in)
+	is det.
+
+escape_html_chars([]) --> [].
+escape_html_chars([Char | Chars]) -->
+	escape_html_char(Char),
+	escape_html_chars(Chars).
+
+:- pred escape_html_char(char::in, list(char)::out, list(char)::in) is det.
+
+escape_html_char(Char) -->
+	( { special_html_char(Char, String) } ->
+		{ string.to_char_list(String, Chars) },
+		insert(Chars)
+	;
+		[Char]
+	).
+
+:- pred special_html_char(char::in, string::out) is semidet.
+
+special_html_char('&', "&amp;").
+special_html_char('<', "&lt;").
+special_html_char('>', "&gt;").
+
+:- pred insert(list(T), list(T), list(T)).
+:- mode insert(in, out, in) is det.
+
+insert(NewChars, Chars, Chars0) :-
+	list__append(NewChars, Chars0, Chars).
+
+%-----------------------------------------------------------------------------%
+:- end_module html_format.
 %-----------------------------------------------------------------------------%

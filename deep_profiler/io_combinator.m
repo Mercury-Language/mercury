@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2001, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,16 +34,19 @@
 %-----------------------------------------------------------------------------%
 
 :- module io_combinator.
+
 :- interface.
-:- import_module io, std_util.
+
+:- import_module io.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
 :- pred io_combinator__sequence_2(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
     pred(T1, T2, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_2(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -51,11 +54,11 @@
     out, di, uo) is det.
 
 :- pred io_combinator__sequence_3(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
-    pred(io__result(T3), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
+    pred(io__result(T3), io, io),
     pred(T1, T2, T3, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_3(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -64,12 +67,12 @@
     out, di, uo) is det.
 
 :- pred io_combinator__sequence_4(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
-    pred(io__result(T3), io__state, io__state),
-    pred(io__result(T4), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
+    pred(io__result(T3), io, io),
+    pred(io__result(T4), io, io),
     pred(T1, T2, T3, T4, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_4(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -79,13 +82,13 @@
     out, di, uo) is det.
 
 :- pred io_combinator__sequence_5(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
-    pred(io__result(T3), io__state, io__state),
-    pred(io__result(T4), io__state, io__state),
-    pred(io__result(T5), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
+    pred(io__result(T3), io, io),
+    pred(io__result(T4), io, io),
+    pred(io__result(T5), io, io),
     pred(T1, T2, T3, T4, T5, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_5(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -96,14 +99,14 @@
     out, di, uo) is det.
 
 :- pred io_combinator__sequence_6(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
-    pred(io__result(T3), io__state, io__state),
-    pred(io__result(T4), io__state, io__state),
-    pred(io__result(T5), io__state, io__state),
-    pred(io__result(T6), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
+    pred(io__result(T3), io, io),
+    pred(io__result(T4), io, io),
+    pred(io__result(T5), io, io),
+    pred(io__result(T6), io, io),
     pred(T1, T2, T3, T4, T5, T6, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_6(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -115,15 +118,15 @@
     out, di, uo) is det.
 
 :- pred io_combinator__sequence_7(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
-    pred(io__result(T3), io__state, io__state),
-    pred(io__result(T4), io__state, io__state),
-    pred(io__result(T5), io__state, io__state),
-    pred(io__result(T6), io__state, io__state),
-    pred(io__result(T7), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
+    pred(io__result(T3), io, io),
+    pred(io__result(T4), io, io),
+    pred(io__result(T5), io, io),
+    pred(io__result(T6), io, io),
+    pred(io__result(T7), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_7(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -136,16 +139,16 @@
     out, di, uo) is det.
 
 :- pred io_combinator__sequence_8(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
-    pred(io__result(T3), io__state, io__state),
-    pred(io__result(T4), io__state, io__state),
-    pred(io__result(T5), io__state, io__state),
-    pred(io__result(T6), io__state, io__state),
-    pred(io__result(T7), io__state, io__state),
-    pred(io__result(T8), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
+    pred(io__result(T3), io, io),
+    pred(io__result(T4), io, io),
+    pred(io__result(T5), io, io),
+    pred(io__result(T6), io, io),
+    pred(io__result(T7), io, io),
+    pred(io__result(T8), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_8(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -159,17 +162,17 @@
     out, di, uo) is det.
 
 :- pred io_combinator__sequence_9(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
-    pred(io__result(T3), io__state, io__state),
-    pred(io__result(T4), io__state, io__state),
-    pred(io__result(T5), io__state, io__state),
-    pred(io__result(T6), io__state, io__state),
-    pred(io__result(T7), io__state, io__state),
-    pred(io__result(T8), io__state, io__state),
-    pred(io__result(T9), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
+    pred(io__result(T3), io, io),
+    pred(io__result(T4), io, io),
+    pred(io__result(T5), io, io),
+    pred(io__result(T6), io, io),
+    pred(io__result(T7), io, io),
+    pred(io__result(T8), io, io),
+    pred(io__result(T9), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_9(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -184,18 +187,18 @@
     out, di, uo) is det.
 
 :- pred io_combinator__sequence_10(
-    pred(io__result(T1), io__state, io__state),
-    pred(io__result(T2), io__state, io__state),
-    pred(io__result(T3), io__state, io__state),
-    pred(io__result(T4), io__state, io__state),
-    pred(io__result(T5), io__state, io__state),
-    pred(io__result(T6), io__state, io__state),
-    pred(io__result(T7), io__state, io__state),
-    pred(io__result(T8), io__state, io__state),
-    pred(io__result(T9), io__state, io__state),
-    pred(io__result(T10), io__state, io__state),
+    pred(io__result(T1), io, io),
+    pred(io__result(T2), io, io),
+    pred(io__result(T3), io, io),
+    pred(io__result(T4), io, io),
+    pred(io__result(T5), io, io),
+    pred(io__result(T6), io, io),
+    pred(io__result(T7), io, io),
+    pred(io__result(T8), io, io),
+    pred(io__result(T9), io, io),
+    pred(io__result(T10), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, io__result(T)),
-    io__result(T), io__state, io__state).
+    io__result(T), io, io).
 :- mode io_combinator__sequence_10(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -213,10 +216,10 @@
 %-----------------------------------------------------------------------------%
 
 :- pred io_combinator__res_sequence_2(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
     pred(T1, T2, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_2(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -224,11 +227,11 @@
     out, di, uo) is det.
 
 :- pred io_combinator__res_sequence_3(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
-    pred(io__res(T3), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
+    pred(io__res(T3), io, io),
     pred(T1, T2, T3, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_3(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -237,12 +240,12 @@
     out, di, uo) is det.
 
 :- pred io_combinator__res_sequence_4(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
-    pred(io__res(T3), io__state, io__state),
-    pred(io__res(T4), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
+    pred(io__res(T3), io, io),
+    pred(io__res(T4), io, io),
     pred(T1, T2, T3, T4, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_4(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -252,13 +255,13 @@
     out, di, uo) is det.
 
 :- pred io_combinator__res_sequence_5(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
-    pred(io__res(T3), io__state, io__state),
-    pred(io__res(T4), io__state, io__state),
-    pred(io__res(T5), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
+    pred(io__res(T3), io, io),
+    pred(io__res(T4), io, io),
+    pred(io__res(T5), io, io),
     pred(T1, T2, T3, T4, T5, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_5(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -269,14 +272,14 @@
     out, di, uo) is det.
 
 :- pred io_combinator__res_sequence_6(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
-    pred(io__res(T3), io__state, io__state),
-    pred(io__res(T4), io__state, io__state),
-    pred(io__res(T5), io__state, io__state),
-    pred(io__res(T6), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
+    pred(io__res(T3), io, io),
+    pred(io__res(T4), io, io),
+    pred(io__res(T5), io, io),
+    pred(io__res(T6), io, io),
     pred(T1, T2, T3, T4, T5, T6, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_6(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -288,15 +291,15 @@
     out, di, uo) is det.
 
 :- pred io_combinator__res_sequence_7(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
-    pred(io__res(T3), io__state, io__state),
-    pred(io__res(T4), io__state, io__state),
-    pred(io__res(T5), io__state, io__state),
-    pred(io__res(T6), io__state, io__state),
-    pred(io__res(T7), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
+    pred(io__res(T3), io, io),
+    pred(io__res(T4), io, io),
+    pred(io__res(T5), io, io),
+    pred(io__res(T6), io, io),
+    pred(io__res(T7), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_7(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -309,16 +312,16 @@
     out, di, uo) is det.
 
 :- pred io_combinator__res_sequence_8(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
-    pred(io__res(T3), io__state, io__state),
-    pred(io__res(T4), io__state, io__state),
-    pred(io__res(T5), io__state, io__state),
-    pred(io__res(T6), io__state, io__state),
-    pred(io__res(T7), io__state, io__state),
-    pred(io__res(T8), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
+    pred(io__res(T3), io, io),
+    pred(io__res(T4), io, io),
+    pred(io__res(T5), io, io),
+    pred(io__res(T6), io, io),
+    pred(io__res(T7), io, io),
+    pred(io__res(T8), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_8(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -332,17 +335,17 @@
     out, di, uo) is det.
 
 :- pred io_combinator__res_sequence_9(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
-    pred(io__res(T3), io__state, io__state),
-    pred(io__res(T4), io__state, io__state),
-    pred(io__res(T5), io__state, io__state),
-    pred(io__res(T6), io__state, io__state),
-    pred(io__res(T7), io__state, io__state),
-    pred(io__res(T8), io__state, io__state),
-    pred(io__res(T9), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
+    pred(io__res(T3), io, io),
+    pred(io__res(T4), io, io),
+    pred(io__res(T5), io, io),
+    pred(io__res(T6), io, io),
+    pred(io__res(T7), io, io),
+    pred(io__res(T8), io, io),
+    pred(io__res(T9), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_9(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -357,18 +360,18 @@
     out, di, uo) is det.
 
 :- pred io_combinator__res_sequence_10(
-    pred(io__res(T1), io__state, io__state),
-    pred(io__res(T2), io__state, io__state),
-    pred(io__res(T3), io__state, io__state),
-    pred(io__res(T4), io__state, io__state),
-    pred(io__res(T5), io__state, io__state),
-    pred(io__res(T6), io__state, io__state),
-    pred(io__res(T7), io__state, io__state),
-    pred(io__res(T8), io__state, io__state),
-    pred(io__res(T9), io__state, io__state),
-    pred(io__res(T10), io__state, io__state),
+    pred(io__res(T1), io, io),
+    pred(io__res(T2), io, io),
+    pred(io__res(T3), io, io),
+    pred(io__res(T4), io, io),
+    pred(io__res(T5), io, io),
+    pred(io__res(T6), io, io),
+    pred(io__res(T7), io, io),
+    pred(io__res(T8), io, io),
+    pred(io__res(T9), io, io),
+    pred(io__res(T10), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, io__res(T)),
-    io__res(T), io__state, io__state).
+    io__res(T), io, io).
 :- mode io_combinator__res_sequence_10(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -386,10 +389,10 @@
 %-----------------------------------------------------------------------------%
 
 :- pred io_combinator__maybe_error_sequence_2(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
     pred(T1, T2, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_2(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -397,11 +400,11 @@
     out, di, uo) is det.
 
 :- pred io_combinator__maybe_error_sequence_3(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
-    pred(maybe_error(T3), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
     pred(T1, T2, T3, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_3(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -410,12 +413,12 @@
     out, di, uo) is det.
 
 :- pred io_combinator__maybe_error_sequence_4(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
-    pred(maybe_error(T3), io__state, io__state),
-    pred(maybe_error(T4), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
     pred(T1, T2, T3, T4, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_4(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -425,13 +428,13 @@
     out, di, uo) is det.
 
 :- pred io_combinator__maybe_error_sequence_5(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
-    pred(maybe_error(T3), io__state, io__state),
-    pred(maybe_error(T4), io__state, io__state),
-    pred(maybe_error(T5), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
+    pred(maybe_error(T5), io, io),
     pred(T1, T2, T3, T4, T5, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_5(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -442,14 +445,14 @@
     out, di, uo) is det.
 
 :- pred io_combinator__maybe_error_sequence_6(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
-    pred(maybe_error(T3), io__state, io__state),
-    pred(maybe_error(T4), io__state, io__state),
-    pred(maybe_error(T5), io__state, io__state),
-    pred(maybe_error(T6), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
+    pred(maybe_error(T5), io, io),
+    pred(maybe_error(T6), io, io),
     pred(T1, T2, T3, T4, T5, T6, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_6(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -461,15 +464,15 @@
     out, di, uo) is det.
 
 :- pred io_combinator__maybe_error_sequence_7(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
-    pred(maybe_error(T3), io__state, io__state),
-    pred(maybe_error(T4), io__state, io__state),
-    pred(maybe_error(T5), io__state, io__state),
-    pred(maybe_error(T6), io__state, io__state),
-    pred(maybe_error(T7), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
+    pred(maybe_error(T5), io, io),
+    pred(maybe_error(T6), io, io),
+    pred(maybe_error(T7), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_7(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -482,16 +485,16 @@
     out, di, uo) is det.
 
 :- pred io_combinator__maybe_error_sequence_8(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
-    pred(maybe_error(T3), io__state, io__state),
-    pred(maybe_error(T4), io__state, io__state),
-    pred(maybe_error(T5), io__state, io__state),
-    pred(maybe_error(T6), io__state, io__state),
-    pred(maybe_error(T7), io__state, io__state),
-    pred(maybe_error(T8), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
+    pred(maybe_error(T5), io, io),
+    pred(maybe_error(T6), io, io),
+    pred(maybe_error(T7), io, io),
+    pred(maybe_error(T8), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_8(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -505,17 +508,17 @@
     out, di, uo) is det.
 
 :- pred io_combinator__maybe_error_sequence_9(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
-    pred(maybe_error(T3), io__state, io__state),
-    pred(maybe_error(T4), io__state, io__state),
-    pred(maybe_error(T5), io__state, io__state),
-    pred(maybe_error(T6), io__state, io__state),
-    pred(maybe_error(T7), io__state, io__state),
-    pred(maybe_error(T8), io__state, io__state),
-    pred(maybe_error(T9), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
+    pred(maybe_error(T5), io, io),
+    pred(maybe_error(T6), io, io),
+    pred(maybe_error(T7), io, io),
+    pred(maybe_error(T8), io, io),
+    pred(maybe_error(T9), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_9(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -530,18 +533,18 @@
     out, di, uo) is det.
 
 :- pred io_combinator__maybe_error_sequence_10(
-    pred(maybe_error(T1), io__state, io__state),
-    pred(maybe_error(T2), io__state, io__state),
-    pred(maybe_error(T3), io__state, io__state),
-    pred(maybe_error(T4), io__state, io__state),
-    pred(maybe_error(T5), io__state, io__state),
-    pred(maybe_error(T6), io__state, io__state),
-    pred(maybe_error(T7), io__state, io__state),
-    pred(maybe_error(T8), io__state, io__state),
-    pred(maybe_error(T9), io__state, io__state),
-    pred(maybe_error(T10), io__state, io__state),
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
+    pred(maybe_error(T5), io, io),
+    pred(maybe_error(T6), io, io),
+    pred(maybe_error(T7), io, io),
+    pred(maybe_error(T8), io, io),
+    pred(maybe_error(T9), io, io),
+    pred(maybe_error(T10), io, io),
     pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, maybe_error(T)),
-    maybe_error(T), io__state, io__state).
+    maybe_error(T), io, io).
 :- mode io_combinator__maybe_error_sequence_10(
     pred(out, di, uo) is det,
     pred(out, di, uo) is det,
@@ -557,8 +560,11 @@
     out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
+
+%-----------------------------------------------------------------------------%
 
 io_combinator__sequence_2(P1, P2, Combine, Res) -->
     call(P1, Res1),
@@ -1969,4 +1975,6 @@ io_combinator__maybe_error_sequence_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
         { Res = error(Err) }
     ).
 
+%-----------------------------------------------------------------------------%
+:- end_module io_combinator.
 %-----------------------------------------------------------------------------%

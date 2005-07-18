@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,8 @@
 
 :- type graph.
 
-:- import_module list, set.
+:- import_module list.
+:- import_module set.
 
 	% Create a graph with no edges.
 :- pred init(graph::out) is det.
@@ -34,9 +35,15 @@
 
 :- implementation.
 
-:- import_module array_util, dense_bitset.
-:- import_module array, int.
-% :- import_module io, unsafe, string.
+:- import_module array_util.
+:- import_module dense_bitset.
+
+:- import_module array.
+:- import_module int.
+
+% :- import_module io.
+% :- import_module string.
+% :- import_module unsafe.
 
 :- type graph
 	--->	graph(
@@ -232,7 +239,7 @@ add_arcs_to([From | FromList], To, Graph0, Graph) :-
 
 % Predicates to use in debugging.
 
-% :- pred write_graph(graph::in, io__state::di, io__state::uo)
+% :- pred write_graph(graph::in, io::di, io::uo)
 % 	is det.
 % 
 % write_graph(Graph, !IO) :-
@@ -241,7 +248,7 @@ add_arcs_to([From | FromList], To, Graph0, Graph) :-
 % 	write_graph_nodes(0, Size, Array, !IO).
 % 
 % :- pred write_graph_nodes(int::in, int::in, array(set(int))::in,
-% 	io__state::di, io__state::uo) is det.
+% 	io::di, io::uo) is det.
 % 
 % write_graph_nodes(Cur, Max, Array, !IO) :-
 % 	( Cur =< Max ->
@@ -255,19 +262,19 @@ add_arcs_to([From | FromList], To, Graph0, Graph) :-
 % 		true
 % 	).
 % 
-% :- pred write_dfs(list(int)::in, io__state::di, io__state::uo)
+% :- pred write_dfs(list(int)::in, io::di, io::uo)
 % 	is det.
 % 
 % write_dfs(Dfs, !IO) :-
 % 	io__write_list(Dfs, "\n", io__write_int, !IO).
 % 
-% :- pred write_cliques(list(set(int))::in, io__state::di, io__state::uo)
+% :- pred write_cliques(list(set(int))::in, io::di, io::uo)
 % 	is det.
 % 
 % write_cliques(Cliques, !IO) :-
 % 	io__write_list(Cliques, "\n", io__write, !IO).
 % 
-% :- pred write_clique(list(int)::in, io__state::di, io__state::uo)
+% :- pred write_clique(list(int)::in, io::di, io::uo)
 % 	is det.
 % 
 % write_clique(Nodes, !IO) :-

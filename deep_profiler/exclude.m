@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004 The University of Melbourne.
+% Copyright (C) 2001, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,21 +40,34 @@
 :- interface.
 
 :- import_module profile.
-:- import_module std_util, io.
+
+:- import_module io.
+:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type exclude_file.
 
 :- pred read_exclude_file(string::in, deep::in, maybe_error(exclude_file)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- func apply_contour_exclusion(deep, exclude_file, call_site_dynamic_ptr)
 	= call_site_dynamic_ptr.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bool, char, string, list, set, map, require.
+:- import_module bool.
+:- import_module char.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type exclude_file == set(exclude_spec).
 
@@ -95,7 +108,7 @@ read_exclude_file(FileName, Deep, Res, !IO) :-
 
 :- pred read_exclude_lines(string::in, io__input_stream::in,
 	list(exclude_spec)::in, maybe_error(list(exclude_spec))::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
 	io__read_line_as_string(InputStream, Res0, !IO),
@@ -142,10 +155,12 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
 validate_exclude_lines(FileName, Specs, Deep, Res) :-
 	list__filter(has_valid_module_name(Deep), Specs,
 		ValidSpecs, InvalidSpecs),
-	( InvalidSpecs = [] ->
+	(
+		InvalidSpecs = [],
 		set__list_to_set(ValidSpecs, ModuleSpecSet),
 		Res = ok(ModuleSpecSet)
 	;
+		InvalidSpecs = [_ | _],
 		InvalidModuleNames = list__map(spec_to_module_name,
 			InvalidSpecs),
 		BadNames = string__join_list(", ", InvalidModuleNames),
@@ -194,3 +209,7 @@ apply_contour_exclusion(Deep, ExcludedSpecs, CSDPtr0) = CSDPtr :-
 	;
 		CSDPtr = CSDPtr0
 	).
+
+%-----------------------------------------------------------------------------%
+:- end_module exclude.
+%-----------------------------------------------------------------------------%

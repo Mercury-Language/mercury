@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004 The University of Melbourne.
+% Copyright (C) 2001, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,13 +15,21 @@
 % at index 0; their first real element is at index 1. The arrays in
 % proc_static and proc_dynamic structures, being reflections of arrays created
 % in C code, start at index 0.
+%-----------------------------------------------------------------------------%
 
 :- module profile.
 
 :- interface.
 
 :- import_module measurements.
-:- import_module bool, std_util, array, list, map.
+
+:- import_module array.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type profile_stats --->
 	profile_stats(
@@ -343,46 +351,44 @@
 :- pred deep_lookup_css_desc(deep::in, call_site_static_ptr::in,
 	inherit_prof_info::out) is det.
 
-:- pred update_call_site_dynamics(call_site_dynamics::array_di,
-	call_site_dynamic_ptr::in, call_site_dynamic::in,
-	call_site_dynamics::array_uo) is det.
-:- pred update_call_site_statics(call_site_statics::array_di,
-	call_site_static_ptr::in, call_site_static::in,
-	call_site_statics::array_uo) is det.
-:- pred update_proc_dynamics(proc_dynamics::array_di,
-	proc_dynamic_ptr::in, proc_dynamic::in,
-	proc_dynamics::array_uo) is det.
-:- pred update_proc_statics(proc_statics::array_di,
-	proc_static_ptr::in, proc_static::in, proc_statics::array_uo) is det.
-:- pred update_proc_callers(array(list(call_site_dynamic_ptr))::array_di,
-	proc_static_ptr::in, list(call_site_dynamic_ptr)::in,
+:- pred update_call_site_dynamics(call_site_dynamic_ptr::in,
+	call_site_dynamic::in,
+	call_site_dynamics::array_di, call_site_dynamics::array_uo) is det.
+:- pred update_call_site_statics(call_site_static_ptr::in,
+	call_site_static::in,
+	call_site_statics::array_di, call_site_statics::array_uo) is det.
+:- pred update_proc_dynamics(proc_dynamic_ptr::in, proc_dynamic::in,
+	proc_dynamics::array_di, proc_dynamics::array_uo) is det.
+:- pred update_proc_statics(proc_static_ptr::in, proc_static::in,
+	proc_statics::array_di, proc_statics::array_uo) is det.
+:- pred update_proc_callers(proc_static_ptr::in,
+	list(call_site_dynamic_ptr)::in,
+	array(list(call_site_dynamic_ptr))::array_di,
 	array(list(call_site_dynamic_ptr))::array_uo) is det.
-:- pred update_call_site_static_map(call_site_static_map::array_di,
-	call_site_dynamic_ptr::in, call_site_static_ptr::in,
-	call_site_static_map::array_uo) is det.
-:- pred update_ps_own(array(own_prof_info)::array_di,
-	proc_static_ptr::in, own_prof_info::in,
-	array(own_prof_info)::array_uo) is det.
-:- pred update_ps_desc(array(inherit_prof_info)::array_di,
-	proc_static_ptr::in, inherit_prof_info::in,
-	array(inherit_prof_info)::array_uo) is det.
-:- pred update_css_own(array(own_prof_info)::array_di,
-	call_site_static_ptr::in, own_prof_info::in,
-	array(own_prof_info)::array_uo) is det.
-:- pred update_css_desc(array(inherit_prof_info)::array_di,
-	call_site_static_ptr::in, inherit_prof_info::in,
-	array(inherit_prof_info)::array_uo) is det.
+:- pred update_call_site_static_map(call_site_dynamic_ptr::in,
+	call_site_static_ptr::in,
+	call_site_static_map::array_di, call_site_static_map::array_uo) is det.
+:- pred update_ps_own(proc_static_ptr::in, own_prof_info::in,
+	array(own_prof_info)::array_di, array(own_prof_info)::array_uo) is det.
+:- pred update_ps_desc(proc_static_ptr::in, inherit_prof_info::in,
+	array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo)
+	is det.
+:- pred update_css_own(call_site_static_ptr::in, own_prof_info::in,
+	array(own_prof_info)::array_di, array(own_prof_info)::array_uo) is det.
+:- pred update_css_desc(call_site_static_ptr::in, inherit_prof_info::in,
+	array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo)
+	is det.
 
-:- pred deep_update_csd_desc(deep::in, call_site_dynamic_ptr::in,
-	inherit_prof_info::in, deep::out) is det.
-:- pred deep_update_pd_desc(deep::in, proc_dynamic_ptr::in,
-	inherit_prof_info::in, deep::out) is det.
-:- pred deep_update_pd_own(deep::in, proc_dynamic_ptr::in,
-	own_prof_info::in, deep::out) is det.
-:- pred deep_update_pd_comp_table(deep::in, proc_dynamic_ptr::in,
-	compensation_table::in, deep::out) is det.
-:- pred deep_update_csd_comp_table(deep::in, call_site_dynamic_ptr::in,
-	compensation_table::in, deep::out) is det.
+:- pred deep_update_csd_desc(call_site_dynamic_ptr::in, inherit_prof_info::in,
+	deep::in, deep::out) is det.
+:- pred deep_update_pd_desc(proc_dynamic_ptr::in, inherit_prof_info::in,
+	deep::in, deep::out) is det.
+:- pred deep_update_pd_own(proc_dynamic_ptr::in, own_prof_info::in,
+	deep::in, deep::out) is det.
+:- pred deep_update_pd_comp_table(proc_dynamic_ptr::in, compensation_table::in,
+	deep::in, deep::out) is det.
+:- pred deep_update_csd_comp_table(call_site_dynamic_ptr::in,
+	compensation_table::in, deep::in, deep::out) is det.
 
 :- pred extract_pd_sites(proc_dynamic::in, array(call_site_array_slot)::out)
 	is det.
@@ -424,11 +430,14 @@
 :- func root_own_info(deep) = own_prof_info.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module array_util.
-:- import_module int, require.
+
+:- import_module int.
+:- import_module require.
 
 decl_module(ProcId) = DeclModule :-
 	(
@@ -746,70 +755,70 @@ deep_lookup_css_desc(Deep, CSSPtr, Desc) :-
 
 %-----------------------------------------------------------------------------%
 
-update_call_site_dynamics(CallSiteDynamics0, CSDPtr, CSD, CallSiteDynamics) :-
+update_call_site_dynamics(CSDPtr, CSD, CallSiteDynamics0, CallSiteDynamics) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	array__set(CallSiteDynamics0, CSDI, CSD, CallSiteDynamics).
 
-update_call_site_statics(CallSiteStatics0, CSSPtr, CSS, CallSiteStatics) :-
+update_call_site_statics(CSSPtr, CSS, CallSiteStatics0, CallSiteStatics) :-
 	CSSPtr = call_site_static_ptr(CSSI),
 	array__set(CallSiteStatics0, CSSI, CSS, CallSiteStatics).
 
-update_proc_dynamics(ProcDynamics0, PDPtr, PD, ProcDynamics) :-
+update_proc_dynamics(PDPtr, PD, ProcDynamics0, ProcDynamics) :-
 	PDPtr = proc_dynamic_ptr(PDI),
 	array__set(ProcDynamics0, PDI, PD, ProcDynamics).
 
-update_proc_statics(ProcStatics0, PSPtr, PS, ProcStatics) :-
+update_proc_statics(PSPtr, PS, ProcStatics0, ProcStatics) :-
 	PSPtr = proc_static_ptr(PSI),
 	array__set(ProcStatics0, PSI, PS, ProcStatics).
 
-update_call_site_static_map(CallSiteStaticMap0, CSDPtr, CSSPtr,
-		CallSiteStaticMap) :-
+update_call_site_static_map(CSDPtr, CSSPtr,
+		CallSiteStaticMap0, CallSiteStaticMap) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	array__set(CallSiteStaticMap0, CSDI, CSSPtr, CallSiteStaticMap).
 
-update_proc_callers(ProcCallers0, PSPtr, CSDPtrs, ProcCallers) :-
+update_proc_callers(PSPtr, CSDPtrs, ProcCallers0, ProcCallers) :-
 	PSPtr = proc_static_ptr(PSI),
 	array__set(ProcCallers0, PSI, CSDPtrs, ProcCallers).
 
-update_ps_own(PSOwns0, PSPtr, Own, PSOwns) :-
+update_ps_own(PSPtr, Own, PSOwns0, PSOwns) :-
 	PSPtr = proc_static_ptr(PSI),
 	array__set(PSOwns0, PSI, Own, PSOwns).
 
-update_ps_desc(PSDescs0, PSPtr, Desc, PSDescs) :-
+update_ps_desc(PSPtr, Desc, PSDescs0, PSDescs) :-
 	PSPtr = proc_static_ptr(PSI),
 	array__set(PSDescs0, PSI, Desc, PSDescs).
 
-update_css_own(CSSOwns0, CSSPtr, Own, CSSOwns) :-
+update_css_own(CSSPtr, Own, CSSOwns0, CSSOwns) :-
 	CSSPtr = call_site_static_ptr(CSSI),
 	array__set(CSSOwns0, CSSI, Own, CSSOwns).
 
-update_css_desc(CSSDescs0, CSSPtr, Desc, CSSDescs) :-
+update_css_desc(CSSPtr, Desc, CSSDescs0, CSSDescs) :-
 	CSSPtr = call_site_static_ptr(CSSI),
 	array__set(CSSDescs0, CSSI, Desc, CSSDescs).
 
 %-----------------------------------------------------------------------------%
 
-deep_update_csd_desc(Deep0, CSDPtr, CSDDesc, Deep) :-
+deep_update_csd_desc(CSDPtr, CSDDesc, Deep0, Deep) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	array__set(u(Deep0 ^ csd_desc), CSDI, CSDDesc, CSDDescs),
 	Deep = Deep0 ^ csd_desc := CSDDescs.
 
-deep_update_pd_desc(Deep0, PDPtr, PDDesc, Deep) :-
+deep_update_pd_desc(PDPtr, PDDesc, Deep0, Deep) :-
 	PDPtr = proc_dynamic_ptr(PDI),
 	array__set(u(Deep0 ^ pd_desc), PDI, PDDesc, PDDescs),
 	Deep = Deep0 ^ pd_desc := PDDescs.
 
-deep_update_pd_own(Deep0, PDPtr, PDOwn, Deep) :-
+deep_update_pd_own(PDPtr, PDOwn, Deep0, Deep) :-
 	PDPtr = proc_dynamic_ptr(PDI),
 	array__set(u(Deep0 ^ pd_own), PDI, PDOwn, PDOwns),
 	Deep = Deep0 ^ pd_own := PDOwns.
 
-deep_update_pd_comp_table(Deep0, PDPtr, CompTable, Deep) :-
+deep_update_pd_comp_table(PDPtr, CompTable, Deep0, Deep) :-
 	PDPtr = proc_dynamic_ptr(PDI),
 	array__set(u(Deep0 ^ pd_comp_table), PDI, CompTable, PDCompTables),
 	Deep = Deep0 ^ pd_comp_table := PDCompTables.
 
-deep_update_csd_comp_table(Deep0, CSDPtr, CompTable, Deep) :-
+deep_update_csd_comp_table(CSDPtr, CompTable, Deep0, Deep) :-
 	CSDPtr = call_site_dynamic_ptr(CSDI),
 	array__set(u(Deep0 ^ csd_comp_table), CSDI, CompTable, CSDCompTables),
 	Deep = Deep0 ^ csd_comp_table := CSDCompTables.
@@ -890,4 +899,6 @@ root_desc_info(Deep) = RootDesc :-
 root_own_info(Deep) = RootOwn :-
 	deep_lookup_pd_own(Deep, Deep ^ root, RootOwn).
 
+%-----------------------------------------------------------------------------%
+:- end_module profile.
 %-----------------------------------------------------------------------------%
