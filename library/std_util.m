@@ -168,14 +168,13 @@
 
 %-----------------------------------------------------------------------------%
 
-% solutions/2 collects all the solutions to a predicate and
-% returns them as a list in sorted order, with duplicates removed.
-% solutions_set/2 returns them as a set.
-% unsorted_solutions/2 returns them as an unsorted list with possible
-% duplicates; since there are an infinite number of such lists,
-% this must be called from a context in which only a single solution
-% is required.
-
+	% solutions/2 collects all the solutions to a predicate and returns
+	% them as a list in sorted order, with duplicates removed.
+	% solutions_set/2 returns them as a set.  unsorted_solutions/2 returns
+	% them as an unsorted list with possible duplicates; since there are an
+	% infinite number of such lists, this must be called from a context in
+	% which only a single solution is required.
+	%
 :- pred solutions(pred(T), list(T)).
 :- mode solutions(pred(out) is multi, out(non_empty_list)) is det.
 :- mode solutions(pred(out) is nondet, out) is det.
@@ -213,7 +212,6 @@
 	%	solutions(Generator, Solutions),
 	%	list__foldl(Accumulator, Solutions, Acc0, Acc).
 	%
-
 :- pred aggregate(pred(T), pred(T, U, U), U, U).
 :- mode aggregate(pred(out) is multi, pred(in, in, out) is det,
 	in, out) is det.
@@ -232,7 +230,6 @@
 	%	solutions(Generator, Solutions),
 	%	list__foldl2(Accumulator, Solutions, AccA0, AccA, AccB0, AccB).
 	%
-
 :- pred aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
 :- mode aggregate2(pred(out) is multi, pred(in, in, out, in, out) is det,
 	in, out, in, out) is det.
@@ -254,9 +251,11 @@
 	% Operationally, however, unsorted_aggregate/4 will call the
 	% Accumulator for each solution as it is obtained, rather than
 	% first building a list of all the solutions.
-
+	%
 :- pred unsorted_aggregate(pred(T), pred(T, U, U), U, U).
 :- mode unsorted_aggregate(pred(out) is multi, pred(in, in, out) is det,
+	in, out) is cc_multi.
+:- mode unsorted_aggregate(pred(out) is multi, pred(in, in, out) is cc_multi,
 	in, out) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is multi, pred(in, di, uo) is det,
 	di, uo) is cc_multi.
@@ -269,6 +268,8 @@
 :- mode unsorted_aggregate(pred(out) is nondet, pred(in, di, uo) is cc_multi,
 	di, uo) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is nondet, pred(in, in, out) is det,
+	in, out) is cc_multi.
+:- mode unsorted_aggregate(pred(out) is nondet, pred(in, in, out) is cc_multi,
 	in, out) is cc_multi.
 :- mode unsorted_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
 	di, uo) is cc_multi.
