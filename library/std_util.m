@@ -831,6 +831,8 @@ maybe_pred(Pred, X, Y) :-
 	in, out) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(out) is multi, pred(in, di, uo) is det,
 	di, uo) is det. /* really cc_multi */
+:- mode builtin_aggregate(pred(out) is multi, pred(in, in, out) is cc_multi,
+	in, out) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(out) is multi, pred(in, di, uo) is cc_multi,
 	di, uo) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(muo) is multi, pred(mdi, di, uo) is det,
@@ -840,6 +842,8 @@ maybe_pred(Pred, X, Y) :-
 :- mode builtin_aggregate(pred(out) is nondet, pred(in, di, uo) is cc_multi,
 	di, uo) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(out) is nondet, pred(in, in, out) is det,
+	in, out) is det. /* really cc_multi */
+:- mode builtin_aggregate(pred(out) is nondet, pred(in, in, out) is cc_multi,
 	in, out) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
 	di, uo) is det. /* really cc_multi */
@@ -988,12 +992,16 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	% even when the called predicate is cc_multi.
 :- impure pred non_cc_call(pred(T, Acc, Acc), T, Acc, Acc).
 :- mode non_cc_call(pred(in, in, out) is det, in, in, out) is det.
+:- mode non_cc_call(pred(in, in, out) is cc_multi, in, in, out) is det.
 :- mode non_cc_call(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode non_cc_call(pred(in, di, uo) is cc_multi, in, di, uo) is det.
 :- mode non_cc_call(pred(mdi, di, uo) is det, mdi, di, uo) is det.
 
 non_cc_call(P::pred(in, in, out) is det, X::in, Acc0::in, Acc::out) :-
 	P(X, Acc0, Acc).
+non_cc_call(P::pred(in, in, out) is cc_multi, X::in, Acc0::in, Acc::out) :-
+	Pred = (pred(Soln::out) is cc_multi :- P(X, Acc0, Soln)),
+	impure Acc = builtin.get_one_solution(Pred).
 non_cc_call(P::pred(in, di, uo) is cc_multi, X::in, Acc0::di, Acc::uo) :-
 	impure builtin__get_one_solution_io(
 		(pred({}::out, di, uo) is cc_multi --> P(X)),
