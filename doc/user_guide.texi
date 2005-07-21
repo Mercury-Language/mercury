@@ -3582,11 +3582,11 @@ In other grades, it reports an error.
 @item nondet_stack [-d] [-f@var{numframes}] [@var{numlines}]
 @kindex nondet_stack (mdb command)
 Prints the contents of the frames on the nondet stack.
-By default, it prints only of the fixed slots in each nondet stack frame,
-but if the option @samp{-d} or @samp{--detailed} option is given,
+By default, it prints only the fixed slots in each nondet stack frame,
+but if the @samp{-d} or @samp{--detailed} option is given,
 it will also print the names and values of the live variables in them.
 @sp 1
-If the @samp{-f} option, if present, specifies that
+The @samp{-f} option, if present, specifies that
 only the topmost @var{numframes} stack frames should be printed.
 @sp 1
 The optional number @var{numlines}, if present,
