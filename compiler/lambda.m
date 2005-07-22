@@ -121,11 +121,7 @@
 		prog_constraints,	% from the pred_info
 		tvarset,		% from the proc_info
 		inst_varset,		% from the proc_info
-		map(tvar, type_info_locn),
-					% from the proc_info
-					% (typeinfos)
-		typeclass_info_varmap,	% from the proc_info
-					% (typeclass_infos)
+		rtti_varmaps,		% from the proc_info
 		pred_markers,		% from the pred_info
 		pred_or_func,
 		string,			% pred/func name
@@ -200,18 +196,17 @@ lambda__process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
 	proc_info_varset(!.ProcInfo, VarSet0),
 	proc_info_vartypes(!.ProcInfo, VarTypes0),
 	proc_info_goal(!.ProcInfo, Goal0),
-	proc_info_typeinfo_varmap(!.ProcInfo, TVarMap0),
-	proc_info_typeclass_info_varmap(!.ProcInfo, TCVarMap0),
+	proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
 	proc_info_inst_varset(!.ProcInfo, InstVarSet0),
 	MustRecomputeNonLocals0 = no,
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
-		InstVarSet0, TVarMap0, TCVarMap0, Markers, PredOrFunc,
+		InstVarSet0, RttiVarMaps0, Markers, PredOrFunc,
 		PredName, Owner, !.ModuleInfo, MustRecomputeNonLocals0),
 	lambda__process_goal(Goal0, Goal1, Info0, Info1),
 	Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet,
-		_, TVarMap, TCVarMap, _, _, _, _, !:ModuleInfo,
+		_, RttiVarMaps, _, _, _, _, !:ModuleInfo,
 		MustRecomputeNonLocals),
 
 	% check if we need to requantify
@@ -228,8 +223,7 @@ lambda__process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
 	proc_info_set_goal(Goal, !ProcInfo),
 	proc_info_set_varset(VarSet, !ProcInfo),
 	proc_info_set_vartypes(VarTypes, !ProcInfo),
-	proc_info_set_typeinfo_varmap(TVarMap, !ProcInfo),
-	proc_info_set_typeclass_info_varmap(TCVarMap, !ProcInfo),
+	proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 	pred_info_set_typevarset(TypeVarSet, !PredInfo),
 	pred_info_set_class_context(Constraints, !PredInfo).
 
@@ -323,14 +317,14 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		OrigNonLocals0, LambdaGoal, Unification0, Functor,
 		Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
-		InstVarSet, TVarMap, TCVarMap, Markers, POF, OrigPredName,
+		InstVarSet, RttiVarMaps, Markers, POF, OrigPredName,
 		Owner, ModuleInfo0, MustRecomputeNonLocals0),
 
 		% Calculate the constraints which apply to this lambda
 		% expression.
 		% Note currently we only allow lambda expressions
 		% to have universally quantified constraints.
-	map__keys(TCVarMap, AllConstraints),
+	rtti_varmaps_constraints(RttiVarMaps, AllConstraints),
 	map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
 	list__map(prog_type__vars, LambdaVarTypes, LambdaTypeVarsList),
 	list__condense(LambdaTypeVarsList, LambdaTypeVars),
@@ -344,8 +338,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, LambdaGoalNonLocals),
 	set__insert_list(LambdaGoalNonLocals, Vars, LambdaNonLocals),
-	goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap, VarTypes,
-		ExistQVars, LambdaNonLocals, ExtraTypeInfos),
+	goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
+		LambdaNonLocals, ExtraTypeInfos),
 	OrigVars = OrigNonLocals0,
 
 	(
@@ -553,8 +547,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
 		proc_info_create(LambdaContext, VarSet, VarTypes,
 			AllArgVars, InstVarSet, AllArgModes, Detism,
-			LambdaGoal, TVarMap, TCVarMap, address_is_taken,
-			ProcInfo0),
+			LambdaGoal, RttiVarMaps, address_is_taken, ProcInfo0),
 
 		% The debugger ignores unnamed variables.
 		ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
@@ -593,8 +586,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 	Unification = construct(Var, ConsId, ArgVars, UniModes,
 		construct_dynamically, cell_is_unique, no),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-		InstVarSet, TVarMap, TCVarMap, Markers, POF, OrigPredName,
-		Owner, ModuleInfo, MustRecomputeNonLocals).
+		InstVarSet, RttiVarMaps, Markers, POF, OrigPredName, Owner,
+		ModuleInfo, MustRecomputeNonLocals).
 
 :- pred lambda__constraint_contains_vars(list(tvar)::in, prog_constraint::in)
 	is semidet.

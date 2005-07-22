@@ -424,8 +424,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 	pred_info_typevarset(PredInfo, TVarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	pred_info_get_class_context(PredInfo, ClassContext),
-	proc_info_typeinfo_varmap(ProcInfo, TVarMap),
-	proc_info_typeclass_info_varmap(ProcInfo, TCVarMap),
+	proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_inst_varset(ProcInfo, InstVarSet),
 	pred_info_get_markers(PredInfo, Markers),
@@ -458,8 +457,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 		TVarSet,		% in
 		VarTypes,		% in
 		ClassContext,		% in
-		TVarMap,		% in
-		TCVarMap,		% in
+		RttiVarMaps,		% in
 		VarSet,			% in
 		InstVarSet,		% in
 		Markers,		% in

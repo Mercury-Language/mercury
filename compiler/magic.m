@@ -889,12 +889,11 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ pred_info_get_aditi_owner(ExportedPredInfo0, Owner) },
 
 	{ ClassContext = constraints([], []) },
-	{ map__init(TVarMap) },
-	{ map__init(TCVarMap) },
+	{ rtti_varmaps_init(RttiVarMaps) },
 	{ varset__init(TVarSet) },
 	{ hlds_pred__define_new_pred(created(aditi_magic_interface),
 		Goal, CallGoal, HeadVars, ExtraArgs, InstMap, PredName,
-		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
+		TVarSet, VarTypes, ClassContext, RttiVarMaps,
 		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
 		ModuleInfo1, ModuleInfo2, LocalPredProcId) },
 	{ ExtraArgs = [] ->
@@ -1285,12 +1284,11 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ term__context_init(Context) },
 
 	% types must all be ground.
-	{ map__init(TVarMap) },
-	{ map__init(TCVarMap) },
+	{ rtti_varmaps_init(RttiVarMaps) },
 
 	{ proc_info_create(Context, VarSet, VarTypes, AllArgs, InstVarSet,
-		AllArgModes, nondet, Goal, TVarMap, TCVarMap,
-		address_is_not_taken, ProcInfo) },
+		AllArgModes, nondet, Goal, RttiVarMaps, address_is_not_taken,
+		ProcInfo) },
 
 	%
 	% Fill in the pred_info.

@@ -385,9 +385,9 @@ setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage, !PredProcs,
 		proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId,
 			Globals, TypeInfoLiveness),
 		( TypeInfoLiveness = yes ->
-			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+			proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
 			setup_typeinfo_deps(Vars, VarTypes,
-				proc(PredId, ProcId), TVarMap, VarDep2,
+				proc(PredId, ProcId), RttiVarMaps, VarDep2,
 				VarDep3)
 		;
 			VarDep2 = VarDep3
@@ -422,15 +422,15 @@ initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
 	% For example, if HeadVar1 has type list(T), then TypeInfo_for_T
 	% is used if HeadVar1 is used.
 :- pred setup_typeinfo_deps(list(prog_var)::in, map(prog_var, type)::in,
-	pred_proc_id::in, map(tvar, type_info_locn)::in,
-	var_dep::in, var_dep::out) is det.
+	pred_proc_id::in, rtti_varmaps::in, var_dep::in, var_dep::out) is det.
 
 setup_typeinfo_deps([], _, _, _, !VarDep).
-setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, !VarDep) :-
+setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, RttiVarMaps,
+		!VarDep) :-
 	map__lookup(VarTypeMap, Var, Type),
 	prog_type__vars(Type, TVars),
 	list__map((pred(TVar::in, TypeInfoVar::out) is det :-
-		map__lookup(TVarMap, TVar, Locn),
+		rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn),
 		type_info_locn_var(Locn, TypeInfoVar)
 	), TVars, TypeInfoVars),
 	AddArgDependency =
@@ -438,7 +438,8 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, !VarDep) :-
 			add_arg_dep(TVar, PredProcId, Var, VarDepA, VarDepB)
 		),
 	list__foldl(AddArgDependency, TypeInfoVars, !VarDep),
-	setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, TVarMap, !VarDep).
+	setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, RttiVarMaps,
+		!VarDep).
 
 	% Get output arguments for a procedure given the headvars and the
 	% argument modes, and set them as used.

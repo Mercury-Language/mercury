@@ -628,15 +628,14 @@ pd_info__define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
 	pred_info_get_aditi_owner(PredInfo, Owner),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_typeinfo_varmap(ProcInfo, TVarMap),
-	proc_info_typeclass_info_varmap(ProcInfo, TCVarMap),
+	proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
 	proc_info_inst_varset(ProcInfo, InstVarSet),
 	% XXX handle the extra typeinfo arguments for
 	% --typeinfo-liveness properly.
 	hlds_pred__define_new_pred(Origin, Goal, CallGoal, Args, _ExtraArgs,
-		InstMap, Name, TVarSet, VarTypes, ClassContext,
-		TVarMap, TCVarMap, VarSet, InstVarSet, Markers, Owner,
-		address_is_not_taken, ModuleInfo0, ModuleInfo, PredProcId),
+		InstMap, Name, TVarSet, VarTypes, ClassContext, RttiVarMaps,
+		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
+		ModuleInfo0, ModuleInfo, PredProcId),
 	pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %-----------------------------------------------------------------------------%

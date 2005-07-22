@@ -552,10 +552,10 @@ maybe_add_typeinfo_liveness(ProcInfo, TypeInfoLiveness, OutVars,
 		LiveVars1, LiveVars) :-
 	( TypeInfoLiveness = yes ->
 		proc_info_vartypes(ProcInfo, VarTypes),
-		proc_info_typeinfo_varmap(ProcInfo, TVarMap),
-		proc_info_get_typeinfo_vars(LiveVars1, VarTypes, TVarMap,
+		proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+		proc_info_get_typeinfo_vars(LiveVars1, VarTypes, RttiVarMaps,
 			TypeInfoVarsLive),
-		proc_info_get_typeinfo_vars(OutVars, VarTypes, TVarMap,
+		proc_info_get_typeinfo_vars(OutVars, VarTypes, RttiVarMaps,
 			TypeInfoVarsOut),
 		set__union(LiveVars1, TypeInfoVarsOut, LiveVars2),
 		set__union(LiveVars2, TypeInfoVarsLive, LiveVars)

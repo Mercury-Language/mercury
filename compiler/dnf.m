@@ -168,10 +168,9 @@ dnf__transform_proc(ProcInfo0, PredInfo0, PredId, MaybeNonAtomic,
 	proc_info_varset(ProcInfo0, VarSet),
 	proc_info_inst_varset(ProcInfo0, InstVarSet),
 	proc_info_vartypes(ProcInfo0, VarTypes),
-	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
-	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap),
+	proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps),
 	DnfInfo = dnf_info(PredId, Origin, PredName, TVarSet, VarTypes,
-		ClassContext, VarSet, InstVarSet, Markers, TVarMap, TCVarMap,
+		ClassContext, VarSet, InstVarSet, Markers, RttiVarMaps,
 		Owner),
 
 	proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap),
@@ -192,8 +191,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, PredId, MaybeNonAtomic,
 			orig_varset	:: prog_varset,
 			orig_instvarset	:: inst_varset,
 			orig_markers	:: pred_markers,
-			orig_ti_locns	:: map(tvar, type_info_locn),
-			orig_tcis	:: typeclass_info_varmap,
+			orig_rtti_varmaps :: rtti_varmaps,
 			orig_owner	:: aditi_owner
 		).
 
@@ -390,7 +388,7 @@ dnf__get_new_pred_name(PredTable, Base, Name, Num, !Counter) :-
 dnf__define_new_pred(Origin, Goal0, Goal, InstMap0, PredName, DnfInfo,
 		!ModuleInfo, PredId) :-
 	DnfInfo = dnf_info(_, _, _, TVarSet, VarTypes, ClassContext, VarSet,
-		InstVarSet, Markers, TVarMap, TCVarMap, Owner),
+		InstVarSet, Markers, RttiVarMaps, Owner),
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars),
@@ -398,7 +396,7 @@ dnf__define_new_pred(Origin, Goal0, Goal, InstMap0, PredName, DnfInfo,
 		% We could get rid of some constraints on variables
 		% that are not part of the goal.
 	hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars, _, InstMap0,
-		PredName, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
+		PredName, TVarSet, VarTypes, ClassContext, RttiVarMaps,
 		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
 		!ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).

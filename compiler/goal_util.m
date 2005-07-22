@@ -126,8 +126,8 @@
 	% i.e. a constraint which contrains an existentially quantified
 	% type variable.
 	%
-:- pred goal_util__extra_nonlocal_typeinfos(map(tvar, type_info_locn)::in,
-	typeclass_info_varmap::in, map(prog_var, type)::in, existq_tvars::in,
+:- pred goal_util__extra_nonlocal_typeinfos(rtti_varmaps::in,
+	map(prog_var, type)::in, existq_tvars::in,
 	set(prog_var)::in, set(prog_var)::out) is det.
 
 	% See whether the goal is a branched structure.
@@ -885,40 +885,49 @@ attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_util__extra_nonlocal_typeinfos(TypeVarMap, TypeClassVarMap, VarTypes,
-		ExistQVars, NonLocals, NonLocalTypeInfos) :-
+goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
+		NonLocals, NonLocalTypeInfos) :-
+
+		% Find all non-local type vars.  That is, type vars that are
+		% existentially quantified or type vars that appear in the
+		% type of a non-local prog_var.
+		%
 	set__to_sorted_list(NonLocals, NonLocalsList),
 	map__apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
-	term__vars_list(NonLocalsTypes, NonLocalTypeVars),
-		% Find all the type-infos and typeclass-infos that are
-		% non-local
+	term__vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
+	list__append(ExistQVars, NonLocalTypeVarsList0, NonLocalTypeVarsList),
+	set__list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
+
+		% Find all the type_infos that are non-local, that is,
+		% type_infos for type vars that are non-local in the above
+		% sense.
+		%
+	TypeVarToProgVar = (func(TypeVar) = ProgVar :-
+			rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, Locn),
+			type_info_locn_var(Locn, ProgVar)
+		),
+	NonLocalTypeInfoVars = set__map(TypeVarToProgVar, NonLocalTypeVars),
+
+		% Find all the typeclass_infos that are non-local.  These
+		% include all typeclass_infos that constrain a type variable
+		% that is non-local in the above sense.
+		%
 	solutions_set((pred(Var::out) is nondet :-
-			%
-			% if there is some TypeVar for which either
-			% (a) the type of some non-local variable
-			%     depends on that type variable, or
-			% (b) that type variable is existentially
-			%     quantified
-			%
-			( list__member(TypeVar, NonLocalTypeVars)
-			; list__member(TypeVar, ExistQVars)
-			),
-			%
-			% then the type_info Var for that type,
-			% and any type_class_info Vars which represent
-			% constraints on types which include that type,
-			% should be included in the NonLocalTypeInfos.
-			%
-			(
-				map__search(TypeVarMap, TypeVar, Location),
-				type_info_locn_var(Location, Var)
-			;
-				% this is probably not very efficient...
-				map__member(TypeClassVarMap, Constraint, Var),
-				Constraint = constraint(_Name, ArgTypes),
-				term__contains_var_list(ArgTypes, TypeVar)
-			)
-		), NonLocalTypeInfos).
+			% Search through all arguments of all constraints.
+			rtti_varmaps_constraints(RttiVarMaps, Constraints),
+			list__member(Constraint, Constraints),
+			Constraint = constraint(_Name, ArgTypes),
+			term__contains_var_list(ArgTypes, TypeVar),
+			set__member(TypeVar, NonLocalTypeVars),
+
+			% We found a constraint that is non-local.  Include
+			% the variable holding its typeclass_info.
+			rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint,
+				Var)
+		), NonLocalTypeClassInfoVars),
+	
+	NonLocalTypeInfos = set__union(NonLocalTypeInfoVars,
+		NonLocalTypeClassInfoVars).
 
 %-----------------------------------------------------------------------------%
 

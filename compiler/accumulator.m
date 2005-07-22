@@ -1553,8 +1553,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 	proc_info_inferred_determinism(OrigProcInfo, Detism),
 	proc_info_goal(OrigProcInfo, Goal),
 	proc_info_context(OrigProcInfo, Context),
-	proc_info_typeinfo_varmap(OrigProcInfo, TVarMap),
-	proc_info_typeclass_info_varmap(OrigProcInfo, TCVarsMap),
+	proc_info_rtti_varmaps(OrigProcInfo, RttiVarMaps),
 	proc_info_is_address_taken(OrigProcInfo, IsAddressTaken),
 
 	Substs = substs(AccVarSubst, _RecCallSubst, _AssocCallSubst,
@@ -1579,9 +1578,9 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 
 	list__map(map__lookup(VarTypes), Accs, AccTypes),
 
-	proc_info_create(Context, VarSet, VarTypes, HeadVars,
-		InstVarSet, HeadModes, Detism, Goal, TVarMap, TCVarsMap,
-		IsAddressTaken, AccProcInfo).
+	proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
+		HeadModes, Detism, Goal, RttiVarMaps, IsAddressTaken,
+		AccProcInfo).
 
 %-----------------------------------------------------------------------------%
 

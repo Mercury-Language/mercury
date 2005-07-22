@@ -382,28 +382,6 @@
 :- pred apply_rec_substitution_to_type_map(map(prog_var, type)::in, tsubst::in,
 	map(prog_var, type)::out) is det.
 
-	% Update a map from tvar to type_info_locn, using the type renaming
-	% and substitution to rename tvars and a variable substitution to
-	% rename vars. The type renaming is applied before the type
-	% substitution.
-	%
-	% If tvar maps to a another type variable, we keep the new
-	% variable, if it maps to a type, we remove it from the map.
-	%
-:- pred apply_substitutions_to_var_map(map(tvar, type_info_locn)::in,
-	tsubst::in, map(tvar, type)::in, map(prog_var, prog_var)::in,
-	map(tvar, type_info_locn)::out) is det.
-
-	% Update a map from prog_constraint to var, using the type renaming
-	% and substitution to rename tvars and a variable substition to
-	% rename vars. The type renaming is applied before the type
-	% substitution.
-	%
-:- pred apply_substitutions_to_typeclass_var_map(
-	typeclass_info_varmap::in, tsubst::in, map(tvar, type)::in,
-	map(prog_var, prog_var)::in, typeclass_info_varmap::out)
-	is det.
-
 :- pred apply_rec_subst_to_constraints(tsubst::in, hlds_constraints::in,
 	hlds_constraints::out) is det.
 
@@ -1580,99 +1558,6 @@ apply_rec_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
 	term__apply_rec_substitution(VarType0, Subst, VarType),
 	map__det_update(VarTypes0, Var, VarType, VarTypes1),
 	apply_rec_substitution_to_type_map_2(Vars, VarTypes1, Subst, VarTypes).
-
-%-----------------------------------------------------------------------------%
-
-apply_substitutions_to_var_map(VarMap0, TRenaming, TSubst, Subst, VarMap) :-
-	% optimize the common case of empty substitutions
-	(
-		map__is_empty(Subst),
-		map__is_empty(TSubst),
-		map__is_empty(TRenaming)
-	->
-		VarMap = VarMap0
-	;
-		map__keys(VarMap0, TVars),
-		map__init(NewVarMap),
-		apply_substitutions_to_var_map_2(TVars, VarMap0,
-			TRenaming, TSubst, Subst, NewVarMap, VarMap)
-	).
-
-:- pred apply_substitutions_to_var_map_2(list(tvar)::in, map(tvar,
-	type_info_locn)::in, tsubst::in, map(tvar, type)::in,
-	map(prog_var, prog_var)::in, map(tvar, type_info_locn)::in,
-	map(tvar, type_info_locn)::out) is det.
-
-apply_substitutions_to_var_map_2([], _VarMap0, _, _, _, !NewVarMap).
-apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TRenaming,
-		TSubst, VarSubst, !NewVarMap) :-
-	map__lookup(VarMap0, TVar, Locn),
-	type_info_locn_var(Locn, Var),
-
-		% find the new var, if there is one
-	( map__search(VarSubst, Var, NewVar0) ->
-		NewVar = NewVar0
-	;
-		NewVar = Var
-	),
-	type_info_locn_set_var(NewVar, Locn, NewLocn),
-
-		% find the new tvar, if there is one, otherwise just
-		% create the old var as a type variable.
-	(
-		map__search(TRenaming, TVar, NewTVar0)
-	->
-		( NewTVar0 = term__variable(NewTVar1) ->
-			NewTVar2 = NewTVar1
-		;
-			% varset__merge_subst only returns var->var mappings,
-			% never var->term.
-			error(
-			"apply_substitution_to_var_map_2: weird type renaming")
-		)
-	;
-		% The variable wasn't renamed.
-		NewTVar2 = TVar
-	),
-
-	term__apply_rec_substitution(term__variable(NewTVar2),
-		TSubst, NewType),
-
-		% if the tvar is still a variable, insert it into the
-		% map with the new var.
-	( prog_type__var(NewType, NewTVar) ->
-		% Don't abort if two old type variables
-		% map to the same new type variable.
-		map__set(!.NewVarMap, NewTVar, NewLocn, !:NewVarMap)
-	;
-		true
-	),
-	apply_substitutions_to_var_map_2(TVars, VarMap0, TRenaming,
-		TSubst, VarSubst, !NewVarMap).
-
-%-----------------------------------------------------------------------------%
-
-apply_substitutions_to_typeclass_var_map(VarMap0, TRenaming, TSubst, Subst,
-		VarMap) :-
-	map__to_assoc_list(VarMap0, VarAL0),
-	list__map(apply_substitutions_to_typeclass_var_map_2(TRenaming,
-		TSubst, Subst), VarAL0, VarAL),
-	map__from_assoc_list(VarAL, VarMap).
-
-:- pred apply_substitutions_to_typeclass_var_map_2(tsubst::in,
-	map(tvar, type)::in, map(prog_var, prog_var)::in,
-	pair(prog_constraint, prog_var)::in,
-	pair(prog_constraint, prog_var)::out) is det.
-
-apply_substitutions_to_typeclass_var_map_2(TRenaming, TSubst, VarRenaming,
-		Constraint0 - Var0, Constraint - Var) :-
-	apply_subst_to_prog_constraint(TRenaming, Constraint0, Constraint1),
-	apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
-	( map__search(VarRenaming, Var0, Var1) ->
-		Var = Var1
-	;
-		Var = Var0
-	).
 
 %-----------------------------------------------------------------------------%
 

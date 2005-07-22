@@ -850,7 +850,7 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
 	mode_info_get_procid(ModeInfo, ProcId),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		_PredInfo, ProcInfo),
-	proc_info_typeinfo_varmap(ProcInfo, TypeInfoVarMap),
+	proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
 
 	%
 	% Call polymorphism__unification_typeinfos to add the appropriate
@@ -860,7 +860,7 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
 	(
 		Goal0 = unify(X, Y, Mode, Unification0, FinalUnifyContext)
 	->
-		polymorphism__unification_typeinfos(Type, TypeInfoVarMap,
+		polymorphism__unification_typeinfos(Type, RttiVarMaps,
 			Unification0, Unification, GoalInfo2, GoalInfo),
 		Goal = unify(X, Y, Mode, Unification, FinalUnifyContext)
 	;

@@ -713,12 +713,11 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	),
 	unify_proc__info_extract(Info, VarSet, Types),
 	map__init(TVarNameMap),
-	map__init(TI_VarMap),
-	map__init(TCI_VarMap),
+	rtti_varmaps_init(RttiVarMaps),
 	set_clause_list(Clauses, ClausesRep),
 	HasForeignClauses = yes,
 	ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, Args,
-		ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses).
+		ClausesRep, RttiVarMaps, HasForeignClauses).
 
 
 :- pred unify_proc__generate_initialise_clauses(module_info::in, (type)::in,
@@ -2088,7 +2087,7 @@ unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
 	unify_proc_info::in, unify_proc_info::out) is det.
 :- pred unify_proc__info_set_types(vartypes::in,
 	unify_proc_info::in, unify_proc_info::out) is det.
-:- pred unify_proc__info_get_type_info_varmap(type_info_varmap::out,
+:- pred unify_proc__info_get_rtti_varmaps(rtti_varmaps::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 :- pred unify_proc__info_get_module_info(module_info::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
@@ -2101,15 +2100,15 @@ unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
 	--->	unify_proc_info(
 			varset			::	prog_varset,
 			vartypes		::	vartypes,
-			type_info_varmap	::	type_info_varmap,
+			rtti_varmaps		::	rtti_varmaps,
 			module_info		::	module_info
 		).
 
 unify_proc__info_init(ModuleInfo, UPI) :-
 	varset__init(VarSet),
 	map__init(Types),
-	map__init(TVarMap),
-	UPI = unify_proc_info(VarSet, Types, TVarMap, ModuleInfo).
+	rtti_varmaps_init(RttiVarMaps),
+	UPI = unify_proc_info(VarSet, Types, RttiVarMaps, ModuleInfo).
 
 unify_proc__info_new_var(Type, Var, UPI,
 		(UPI^varset := VarSet) ^vartypes := Types) :-
@@ -2125,7 +2124,7 @@ unify_proc__info_extract(UPI, UPI^varset, UPI^vartypes).
 
 unify_proc__info_get_varset(UPI^varset, UPI, UPI).
 unify_proc__info_get_types(UPI^vartypes, UPI, UPI).
-unify_proc__info_get_type_info_varmap(UPI^type_info_varmap, UPI, UPI).
+unify_proc__info_get_rtti_varmaps(UPI^rtti_varmaps, UPI, UPI).
 unify_proc__info_get_module_info(UPI^module_info, UPI, UPI).
 
 unify_proc__info_set_varset(VarSet, UPI, UPI^varset := VarSet).

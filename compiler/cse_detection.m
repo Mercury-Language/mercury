@@ -61,6 +61,7 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -146,8 +147,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
 	--->	cse_info(
 			varset			:: prog_varset,
 			vartypes		:: vartypes,
-			type_info_varmap	:: type_info_varmap,
-			typeclass_info_varmap	:: typeclass_info_varmap,
+			rtti_varmaps		:: rtti_varmaps,
 			module_info		:: module_info
 		).
 
@@ -168,10 +168,8 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_typeinfo_varmap(ProcInfo0, TypeInfoVarMap0),
-	proc_info_typeclass_info_varmap(ProcInfo0, TypeClassInfoVarMap0),
-	CseInfo0 = cse_info(Varset0, VarTypes0,
-		TypeInfoVarMap0, TypeClassInfoVarMap0, ModuleInfo0),
+	proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps0),
+	CseInfo0 = cse_info(Varset0, VarTypes0, RttiVarMaps0, ModuleInfo0),
 	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo, Goal1),
 
 	(
@@ -181,8 +179,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 		Redo = yes,
 
 		% ModuleInfo should not be changed by detect_cse_in_goal
-		CseInfo = cse_info(VarSet1, VarTypes1,
-			TypeInfoVarMap, TypeClassInfoVarMap, _),
+		CseInfo = cse_info(VarSet1, VarTypes1, RttiVarMaps, _),
 		proc_info_headvars(ProcInfo0, HeadVars),
 
 		implicitly_quantify_clause_body(HeadVars, _Warnings,
@@ -191,10 +188,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 		proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
 		proc_info_set_varset(VarSet, ProcInfo1, ProcInfo2),
 		proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo3),
-		proc_info_set_typeinfo_varmap(TypeInfoVarMap,
-			ProcInfo3, ProcInfo4),
-		proc_info_set_typeclass_info_varmap(TypeClassInfoVarMap,
-			ProcInfo4, ProcInfo),
+		proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo3, ProcInfo),
 
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
@@ -772,99 +766,81 @@ maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
 
 update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
 	list__condense(LaterOldNews, LaterOldNew),
-	list__append(FirstOldNew, LaterOldNew, OldNew),
-	map__from_assoc_list(OldNew, OldNewMap),
 	map__from_assoc_list(FirstOldNew, FirstOldNewMap),
+	map__from_assoc_list(LaterOldNew, LaterOldNewMap),
 
-	TypeInfoVarMap0 = !.CseInfo ^ type_info_varmap,
-	TypeClassInfoVarMap0 = !.CseInfo ^ typeclass_info_varmap,
+	RttiVarMaps0 = !.CseInfo ^ rtti_varmaps,
 	VarTypes0 = !.CseInfo ^ vartypes,
 
-	map__to_assoc_list(TypeInfoVarMap0, TypeInfoVarList0),
-	list__foldl(find_type_info_locn_tvar_map(FirstOldNewMap),
-		TypeInfoVarList0, map__init, NewTvarMap),
+		% Build a map for all locations in the rtti_varmaps that are
+		% changed by the application of FirstOldNewMap.  The keys
+		% of this map are the new locations, and the values are
+		% the tvars (from the first branch) that have had their
+		% locations moved.
+		%
+	rtti_varmaps_tvars(RttiVarMaps0, TvarsList),
+	list__foldl(find_type_info_locn_tvar_map(RttiVarMaps0, FirstOldNewMap),
+		TvarsList, map__init, NewTvarMap),
 
-	list__foldl2(reconstruct_type_info_varmap(OldNewMap, NewTvarMap),
-		TypeInfoVarList0, map__init, TypeInfoVarMap1,
-		map__init, TvarSub),
-	map__keys(TvarSub, ElimTvars),
-	map__delete_list(TypeInfoVarMap1, ElimTvars, TypeInfoVarMap),
+		% Traverse TVarsList again, this time looking for locations
+		% in later branches that merge with locations in the first
+		% branch.  When we find one, add a type substitution which
+		% represents the type variables that were merged.
+		%
+	list__foldl(find_merged_tvars(RttiVarMaps0, LaterOldNewMap, NewTvarMap),
+		TvarsList, map__init, TSubst),
 
-	map__to_assoc_list(TypeClassInfoVarMap0, TypeClassInfoVarList0),
-	list__foldl(reconstruct_typeclass_info_varmap(OldNewMap, TvarSub),
-		TypeClassInfoVarList0, map__init, TypeClassInfoVarMap),
+		% Apply the full old->new map and the type substitution
+		% to the rtti_varmaps, and apply the type substitution to the
+		% vartypes.
+		%
+	list__append(FirstOldNew, LaterOldNew, OldNew),
+	map__from_assoc_list(OldNew, OldNewMap),
+	apply_substitutions_to_rtti_varmaps(TSubst, map__init, OldNewMap,
+		RttiVarMaps0, RttiVarMaps),
+	map__map_values(apply_tvar_rename(TSubst), VarTypes0, VarTypes),
 
-	map__map_values(apply_tvar_rename(TvarSub), VarTypes0, VarTypes),
-
-	!:CseInfo = !.CseInfo ^ type_info_varmap := TypeInfoVarMap,
-	!:CseInfo = !.CseInfo ^ typeclass_info_varmap := TypeClassInfoVarMap,
+	!:CseInfo = !.CseInfo ^ rtti_varmaps := RttiVarMaps,
 	!:CseInfo = !.CseInfo ^ vartypes := VarTypes.
 
-:- pred apply_tvar_rename(map(tvar, tvar)::in, prog_var::in,
-	(type)::in, (type)::out) is det.
+:- pred apply_tvar_rename(tsubst::in, prog_var::in, (type)::in, (type)::out)
+	is det.
 
-apply_tvar_rename(TvarSub, _Var, Type0, Type) :-
-	Type = term__apply_variable_renaming(Type0, TvarSub).
+apply_tvar_rename(TSubst, _Var, Type0, Type) :-
+	Type = term__apply_substitution(Type0, TSubst).
 
-:- pred find_type_info_locn_tvar_map(map(prog_var, prog_var)::in,
-	pair(tvar, type_info_locn)::in,
+:- pred find_type_info_locn_tvar_map(rtti_varmaps::in,
+	map(prog_var, prog_var)::in, tvar::in,
  	map(type_info_locn, tvar)::in, map(type_info_locn, tvar)::out) is det.
 
-find_type_info_locn_tvar_map(FirstOldNewMap, Tvar - TypeInfoLocn0,
-		NewTvarMap0, NewTvarMap) :-
+find_type_info_locn_tvar_map(RttiVarMaps, FirstOldNewMap, Tvar, !NewTvarMap) :-
+	rtti_lookup_type_info_locn(RttiVarMaps, Tvar, TypeInfoLocn0),
  	type_info_locn_var(TypeInfoLocn0, Old),
  	( map__search(FirstOldNewMap, Old, New) ->
   		type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
- 		map__det_insert(NewTvarMap0, TypeInfoLocn, Tvar, NewTvarMap)
+ 		svmap__det_insert(TypeInfoLocn, Tvar, !NewTvarMap)
  	;
- 		NewTvarMap = NewTvarMap0
+		true
  	).
 
-:- pred reconstruct_type_info_varmap(map(prog_var, prog_var)::in,
-	map(type_info_locn, tvar)::in, pair(tvar, type_info_locn)::in,
- 	map(tvar, type_info_locn)::in, map(tvar, type_info_locn)::out,
-	map(tvar, tvar)::in, map(tvar, tvar)::out) is det.
+:- pred find_merged_tvars(rtti_varmaps::in, map(prog_var, prog_var)::in,
+	map(type_info_locn, tvar)::in, tvar::in, tsubst::in, tsubst::out)
+	is det.
 
-reconstruct_type_info_varmap(FirstOldNewMap, NewTvarMap, Tvar - TypeInfoLocn0,
-		TypeInfoVarMap0, TypeInfoVarMap, TvarSub0, TvarSub) :-
+find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !TSubst) :-
+	rtti_lookup_type_info_locn(RttiVarMaps, Tvar, TypeInfoLocn0),
  	type_info_locn_var(TypeInfoLocn0, Old),
- 	( map__search(FirstOldNewMap, Old, New) ->
+ 	( map__search(LaterOldNewMap, Old, New) ->
   		type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
- 		map__det_insert(TypeInfoVarMap0, Tvar, TypeInfoLocn,
-			TypeInfoVarMap),
 		map__lookup(NewTvarMap, TypeInfoLocn, NewTvar),
-		( Tvar = NewTvar ->
-			TvarSub = TvarSub0
+		( NewTvar = Tvar ->
+			true
 		;
-			map__det_insert(TvarSub0, Tvar, NewTvar, TvarSub)
+			svmap__det_insert(Tvar, term__variable(NewTvar),
+				!TSubst)
 		)
- 	;
-		map__det_insert(TypeInfoVarMap0, Tvar, TypeInfoLocn0,
-			TypeInfoVarMap),
-		TvarSub = TvarSub0
- 	).
-
-:- pred reconstruct_typeclass_info_varmap(map(prog_var, prog_var)::in,
-	map(tvar, tvar)::in, pair(prog_constraint, prog_var)::in,
-	typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
-
-reconstruct_typeclass_info_varmap(OldNewMap, TvarSub,
-		Constraint0 - TypeClassInfoVar0,
-		TypeClassInfoVarMap0, TypeClassInfoVarMap) :-
-	apply_variable_renaming_to_prog_constraint(TvarSub,
-		Constraint0, Constraint),
-	( map__search(OldNewMap, TypeClassInfoVar0, TypeClassInfoVar1) ->
-		TypeClassInfoVar = TypeClassInfoVar1
 	;
-		TypeClassInfoVar = TypeClassInfoVar0
-	),
-	( map__search(TypeClassInfoVarMap0, Constraint, OldTypeClassInfoVar) ->
-		require(unify(OldTypeClassInfoVar, TypeClassInfoVar),
-			"reconstruct_typeclass_info_varmap: mismatch"),
-		TypeClassInfoVarMap = TypeClassInfoVarMap0
-	;
-		map__det_insert(TypeClassInfoVarMap0, Constraint,
-			TypeClassInfoVar, TypeClassInfoVarMap)
+		true
 	).
 
 %-----------------------------------------------------------------------------%

@@ -39,6 +39,8 @@
 :- implementation.
 
 % Parse tree modules.
+:- import_module parse_tree__error_util.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
 % HLDS modules.
@@ -53,9 +55,11 @@
 :- import_module libs__options.
 
 % Standard library modules.
+:- import_module injection.
 :- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -188,6 +192,473 @@
 	).
 
 %-----------------------------------------------------------------------------%
+%
+% Types and predicates to store information about RTTI.
+%
+
+	% Describes the class constraints on an instance method implementation.
+	% This information is used by polymorphism.m to ensure that the
+	% type_info and typeclass_info arguments are added in the order in
+	% which they will be passed in by do_call_class_method.
+	%
+:- type instance_method_constraints
+	---> instance_method_constraints(
+		class_id,
+		list(type),		% The types in the head of the
+					% instance declaration.
+		list(prog_constraint),	% The universal constraints
+					% on the instance declaration.
+		prog_constraints	% The contraints on the method's
+					% type declaration in the
+					% `:- typeclass' declaration.
+	).
+
+	%  A type_info_locn specifies how to access a type_info.
+	%
+:- type type_info_locn
+	--->	type_info(prog_var)
+				% It is a normal type_info, i.e. the type
+				% is not constrained.
+
+	;	typeclass_info(prog_var, int).
+				% The type_info is packed inside a
+				% typeclass_info. If the int is N, it is
+				% the Nth type_info inside the typeclass_info,
+				% but there may be several superclass pointers
+				% before the block of type_infos, so it won't
+				% be the Nth word of the typeclass_info.
+				%
+				% To find the type_info inside the
+				% typeclass_info, use the predicate
+				% type_info_from_typeclass_info from Mercury
+				% code; from C code use the macro
+				% MR_typeclass_info_superclass_info.
+
+	% type_info_locn_var(TypeInfoLocn, Var):
+	%
+	% Var is the variable corresponding to the TypeInfoLocn. Note
+	% that this does *not* mean that Var is a type_info; it may be
+	% a typeclass_info in which the type_info is nested.
+	%
+:- pred type_info_locn_var(type_info_locn::in, prog_var::out) is det.
+
+:- pred type_info_locn_set_var(prog_var::in,
+	type_info_locn::in, type_info_locn::out) is det.
+
+	% This type describes the contents of a prog_var.
+	%
+:- type rtti_var_info
+	--->	type_info_var(type)
+			% The variable holds a type_info for the given type.
+
+	;	typeclass_info_var(prog_constraint)
+			% The variable holds a typeclass_info for the given
+			% constraint.
+
+	;	non_rtti_var.
+			% The variable does not directly hold any run time
+			% type information.
+
+	% This records information about how type_infos and typeclass_infos
+	% were introduced in the polymorphism transformation.
+	%
+:- type rtti_varmaps.
+
+	% Returns an empty rtti_varmaps structure.
+	%
+:- pred rtti_varmaps_init(rtti_varmaps::out) is det.
+
+	% Succeeds iff the rtti_varmaps contain no information about any
+	% type variables.
+	%
+:- pred rtti_varmaps_no_tvars(rtti_varmaps::in) is semidet.
+
+	% Find the location of a type_info.
+	%
+:- pred rtti_lookup_type_info_locn(rtti_varmaps::in, tvar::in,
+	type_info_locn::out) is det.
+
+	% Find the location of a type_info, if it is known.
+	%
+:- pred rtti_search_type_info_locn(rtti_varmaps::in, tvar::in,
+	type_info_locn::out) is semidet.
+
+	% Find the prog_var which contains the typeclass_info for a given
+	% constraint.
+	%
+:- pred rtti_lookup_typeclass_info_var(rtti_varmaps::in, prog_constraint::in,
+	prog_var::out) is det.
+
+	% Find the prog_var which contains the typeclass_info for a given
+	% constraint, if it is known.
+	%
+:- pred rtti_search_typeclass_info_var(rtti_varmaps::in, prog_constraint::in,
+	prog_var::out) is semidet.
+
+	% Find what RTTI, if any, is stored in a prog_var.
+	%
+:- pred rtti_varmaps_var_info(rtti_varmaps::in, prog_var::in,
+	rtti_var_info::out) is det.
+
+	% Insert the location of a type_info.  Abort if such information
+	% already exists.
+	%
+:- pred rtti_det_insert_type_info_locn(tvar::in, type_info_locn::in,
+	rtti_varmaps::in, rtti_varmaps::out) is det.
+
+	% Set the location of a type_info, overwriting any previous
+	% information.
+	%
+:- pred rtti_set_type_info_locn(tvar::in, type_info_locn::in,
+	rtti_varmaps::in, rtti_varmaps::out) is det.
+
+	% Insert the prog_var which contains the typeclass_info for a
+	% given constraint.  Abort if such information already exists.
+	%
+:- pred rtti_det_insert_typeclass_info_var(prog_constraint::in, prog_var::in,
+	rtti_varmaps::in, rtti_varmaps::out) is det.
+
+	% Set the prog_var which contains the typeclass_info for a given
+	% constraint, overwriting any previous information.
+	%
+:- pred rtti_set_typeclass_info_var(prog_constraint::in, prog_var::in,
+	rtti_varmaps::in, rtti_varmaps::out) is det.
+
+	% For a prog_var which holds a type_info, set the type that the
+	% type_info is for.  Abort if such information already exists.
+	%
+:- pred rtti_det_insert_type_info_type(prog_var::in, (type)::in,
+	rtti_varmaps::in, rtti_varmaps::out) is det.
+
+	% Returns all of the tvars that we have information about in the
+	% rtti_varmaps structure.
+	%
+:- pred rtti_varmaps_tvars(rtti_varmaps::in, list(tvar)::out) is det.
+
+	% Returns all of the prog_constraints that we have information
+	% about in the rtti_varmaps structure.
+	%
+:- pred rtti_varmaps_constraints(rtti_varmaps::in, list(prog_constraint)::out)
+	is det.
+
+	% apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst,
+	% 	!RttiVarMaps)
+	%
+	% Apply substitutions to the rtti_varmaps data.  TRenaming is applied
+	% to all types first, then TSubst is applied to all types.  Subst
+	% is applied to all prog_vars.
+	%
+:- pred apply_substitutions_to_rtti_varmaps(tsubst::in, tsubst::in,
+	map(prog_var, prog_var)::in, rtti_varmaps::in, rtti_varmaps::out)
+	is det.
+
+	% rtti_varmaps_transform_constraints(Pred, !RttiVarMaps)
+	%
+	% Apply the transformation predicate to every constraint appearing
+	% in the rtti_varmaps structure.
+	%
+:- pred rtti_varmaps_transform_constraints(
+	pred(prog_constraint, prog_constraint)::in(pred(in, out) is det),
+	rtti_varmaps::in, rtti_varmaps::out) is det.
+
+	% rtti_varmaps_overlay(A, B, C)
+	%
+	% Merge the information in rtti_varmaps A and B to produce C.  Where
+	% information conflicts, use the information in B rather than A.
+	%
+:- pred rtti_varmaps_overlay(rtti_varmaps::in, rtti_varmaps::in,
+	rtti_varmaps::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+type_info_locn_var(type_info(Var), Var).
+type_info_locn_var(typeclass_info(Var, _), Var).
+
+type_info_locn_set_var(Var, type_info(_), type_info(Var)).
+type_info_locn_set_var(Var, typeclass_info(_, Num), typeclass_info(Var, Num)).
+
+:- type rtti_varmaps
+	---> rtti_varmaps(
+		tci_varmap		:: typeclass_info_varmap,
+		ti_varmap		:: type_info_varmap,
+		ti_type_map		:: type_info_type_map
+	).
+
+	% A typeclass_info_varmap is a map which for each type class constraint
+	% records which variable contains the typeclass_info for that
+	% constraint.  The map is reversible in the sense that we can
+	% efficiently look up which constraint, if any, has its
+	% typeclass_info stored in a given prog_var.
+	%
+:- type typeclass_info_varmap == injection(prog_constraint, prog_var).
+
+	% A type_info_varmap is a map which for each type variable
+	% records where the type_info for that type variable is stored.
+	%
+	% XXX this doesn't record the information that we want.  For a
+	% constraint such as foo(list(T)) we can't properly record the
+	% location of the type_info for T, since it does not occupy a slot
+	% in the typeclass_info directly, but is inside the type_info for
+	% list(T).
+	%
+:- type type_info_varmap == map(tvar, type_info_locn).
+
+	% Every program variable which holds a type_info is a key in this
+	% map.  The value associated with a given key is the type that the
+	% type_info is for.
+	%
+:- type type_info_type_map == map(prog_var, type).
+
+rtti_varmaps_init(rtti_varmaps(TCIMap, TIMap, TypeMap)) :-
+	injection__init(TCIMap),
+	map__init(TIMap),
+	map__init(TypeMap).
+
+rtti_varmaps_no_tvars(VarMaps) :-
+	map__is_empty(VarMaps ^ ti_varmap).
+
+rtti_lookup_type_info_locn(VarMaps, TVar, Locn) :-
+	map__lookup(VarMaps ^ ti_varmap, TVar, Locn).
+
+rtti_search_type_info_locn(VarMaps, TVar, Locn) :-
+	map__search(VarMaps ^ ti_varmap, TVar, Locn).
+
+rtti_lookup_typeclass_info_var(VarMaps, Constraint, ProgVar) :-
+	injection__lookup(VarMaps ^ tci_varmap, Constraint, ProgVar).
+
+rtti_search_typeclass_info_var(VarMaps, Constraint, ProgVar) :-
+	injection__forward_search(VarMaps ^ tci_varmap, Constraint, ProgVar).
+
+rtti_varmaps_var_info(VarMaps, Var, VarInfo) :-
+	(
+		map__search(VarMaps ^ ti_type_map, Var, Type)
+	->
+		VarInfo = type_info_var(Type)
+	;
+		injection__reverse_search(VarMaps ^ tci_varmap, Constraint,
+			Var)
+	->
+		VarInfo = typeclass_info_var(Constraint)
+	;
+		VarInfo = non_rtti_var
+	).
+
+rtti_det_insert_type_info_locn(TVar, Locn, !VarMaps) :-
+	Map0 = !.VarMaps ^ ti_varmap,
+	map__det_insert(Map0, TVar, Locn, Map),
+	!:VarMaps = !.VarMaps ^ ti_varmap := Map,
+	maybe_check_type_info_var(Locn, TVar, !VarMaps).
+
+rtti_set_type_info_locn(TVar, Locn, !VarMaps) :-
+	Map0 = !.VarMaps ^ ti_varmap,
+	map__set(Map0, TVar, Locn, Map),
+	!:VarMaps = !.VarMaps ^ ti_varmap := Map,
+	maybe_check_type_info_var(Locn, TVar, !VarMaps).
+
+:- pred maybe_check_type_info_var(type_info_locn::in, tvar::in,
+	rtti_varmaps::in, rtti_varmaps::out) is det.
+
+maybe_check_type_info_var(type_info(Var), TVar, !VarMaps) :-
+	(
+		map__search(!.VarMaps ^ ti_type_map, Var, Type)
+	->
+		(
+			Type = term__variable(TVar)
+		->
+			true
+		;
+			unexpected(this_file,
+				"inconsistent info in rtti_varmaps")
+		)
+	;
+		unexpected(this_file, "missing info in rtti_varmaps")
+	).
+maybe_check_type_info_var(typeclass_info(_, _), _, !VarMaps).
+
+rtti_det_insert_typeclass_info_var(Constraint, ProgVar, !VarMaps) :-
+	Map0 = !.VarMaps ^ tci_varmap,
+	injection__det_insert(Map0, Constraint, ProgVar, Map),
+	!:VarMaps = !.VarMaps ^ tci_varmap := Map.
+
+rtti_set_typeclass_info_var(Constraint, ProgVar, !VarMaps) :-
+	Map0 = !.VarMaps ^ tci_varmap,
+	injection__det_set(Map0, Constraint, ProgVar, Map),
+	!:VarMaps = !.VarMaps ^ tci_varmap := Map.
+
+rtti_det_insert_type_info_type(ProgVar, Type, !VarMaps) :-
+	Map0 = !.VarMaps ^ ti_type_map,
+	map__det_insert(Map0, ProgVar, Type, Map),
+	!:VarMaps = !.VarMaps ^ ti_type_map := Map.
+
+rtti_varmaps_tvars(VarMaps, TVars) :-
+	map__keys(VarMaps ^ ti_varmap, TVars).
+
+rtti_varmaps_constraints(VarMaps, Constraints) :-
+	injection__keys(VarMaps ^ tci_varmap, Constraints).
+
+apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
+	(
+		% Optimize the simple case.
+		map__is_empty(Subst),
+		map__is_empty(TSubst),
+		map__is_empty(TRenaming)
+	->
+		true
+	;
+		!.RttiVarMaps = rtti_varmaps(TCIMap0, TIMap0, TypeMap0),
+		apply_substitutions_to_typeclass_var_map(TRenaming, TSubst,
+			Subst, TCIMap0, TCIMap),
+		apply_substitutions_to_var_map(TRenaming, TSubst, Subst,
+			TIMap0, TIMap),
+		apply_substitutions_to_type_map(TRenaming, TSubst, Subst,
+			TypeMap0, TypeMap),
+		!:RttiVarMaps = rtti_varmaps(TCIMap, TIMap, TypeMap)
+	).
+
+	% Update a map from prog_constraint to var, using the type renaming
+	% and substitution to rename tvars and a variable substition to
+	% rename vars. The type renaming is applied before the type
+	% substitution.
+	%
+:- pred apply_substitutions_to_typeclass_var_map(tsubst::in, tsubst::in,
+	map(prog_var, prog_var)::in,
+	typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
+
+apply_substitutions_to_typeclass_var_map(TRenaming, TSubst, Subst, !VarMap) :-
+	
+		% Note that the transformation on keys must be done before
+		% the transformation on values.  If the values are transformed
+		% first then the invariants on the data structure may be
+		% violated.
+		%
+	injection.map_keys(
+		apply_substitutions_to_tc_varmap_keys(TRenaming, TSubst),
+		!VarMap),
+	injection.map_values(apply_renaming_to_tc_varmap_values(Subst),
+		!VarMap).
+
+:- pred apply_substitutions_to_tc_varmap_keys(tsubst::in, tsubst::in,
+	prog_var::in, prog_constraint::in, prog_constraint::out) is det.
+
+apply_substitutions_to_tc_varmap_keys(TRenaming, TSubst, _Var, !Constraint) :-
+	apply_subst_to_prog_constraint(TRenaming, !Constraint),
+	apply_rec_subst_to_prog_constraint(TSubst, !Constraint).
+
+:- pred apply_renaming_to_tc_varmap_values(map(prog_var, prog_var)::in,
+	prog_constraint::in, prog_var::in, prog_var::out) is det.
+
+apply_renaming_to_tc_varmap_values(Subst, _Constraint, Var0, Var) :-
+	( map__search(Subst, Var0, Var1) ->
+		Var = Var1
+	;
+		Var = Var0
+	).
+
+	% Update a map from tvar to type_info_locn, using the type renaming
+	% and substitution to rename tvars and a variable substitution to
+	% rename vars. The type renaming is applied before the type
+	% substitution.
+	%
+	% If tvar maps to a another type variable, we keep the new
+	% variable, if it maps to a type, we remove it from the map.
+	%
+:- pred apply_substitutions_to_var_map(tsubst::in, tsubst::in,
+	map(prog_var, prog_var)::in,
+	type_info_varmap::in, type_info_varmap::out) is det.
+
+apply_substitutions_to_var_map(TRenaming, TSubst, Subst, VarMap0, VarMap) :-
+	map__foldl(apply_substitutions_to_var_map_2(TRenaming, TSubst, Subst),
+		VarMap0, map__init, VarMap).
+
+:- pred apply_substitutions_to_var_map_2(tsubst::in, tsubst::in,
+	map(prog_var, prog_var)::in, tvar::in, type_info_locn::in,
+	type_info_varmap::in, type_info_varmap::out) is det.
+
+apply_substitutions_to_var_map_2(TRenaming, TSubst, Subst, TVar, Locn,
+		!NewVarMap) :-
+	type_info_locn_var(Locn, Var),
+	(
+		% Find the new var, if there is one.
+		map__search(Subst, Var, NewVar0)
+	->
+		NewVar = NewVar0
+	;
+		NewVar = Var
+	),
+	type_info_locn_set_var(NewVar, Locn, NewLocn),
+	(
+		% Find the new tvar, if there is one.
+		map__search(TRenaming, TVar, NewTVarType0)
+	->
+		NewTVarType1 = NewTVarType0
+	;
+		% The variable wasn't renamed.
+		NewTVarType1 = term__variable(TVar)
+	),
+	term__apply_rec_substitution(NewTVarType1, TSubst, NewTVarType),
+
+	(
+		% If the tvar is still a variable, insert it into the
+		% map with the new var.
+		prog_type__var(NewTVarType, NewTVar)
+	->
+		% Don't abort if two old type variables
+		% map to the same new type variable.
+		svmap__set(NewTVar, NewLocn, !NewVarMap)
+	;
+		true
+	).
+
+:- pred apply_substitutions_to_type_map(tsubst::in, tsubst::in,
+	map(prog_var, prog_var)::in,
+	type_info_type_map::in, type_info_type_map::out) is det.
+
+apply_substitutions_to_type_map(TRenaming, TSubst, Subst, TypeMap0, TypeMap) :-
+	map__foldl(apply_substitutions_to_type_map_2(TRenaming, TSubst, Subst),
+		TypeMap0, map__init, TypeMap).
+
+:- pred apply_substitutions_to_type_map_2(tsubst::in, tsubst::in,
+	map(prog_var, prog_var)::in, prog_var::in, (type)::in,
+	type_info_type_map::in, type_info_type_map::out) is det.
+
+apply_substitutions_to_type_map_2(TRenaming, TSubst, Subst, Var0, Type0,
+		!TypeMap) :-
+	term__apply_substitution(Type0, TRenaming, Type1),
+	term__apply_rec_substitution(Type1, TSubst, Type),
+	( map__search(Subst, Var0, Var1) ->
+		Var = Var1
+	;
+		Var = Var0
+	),
+	svmap__set(Var, Type, !TypeMap).
+
+rtti_varmaps_transform_constraints(Pred, !RttiVarMaps) :-
+	Map0 = !.RttiVarMaps ^ tci_varmap,
+	Pred2 = (pred(_::in, !.C::in, !:C::out) is det :- Pred(!C)),
+	injection__map_keys(Pred2, Map0, Map),
+	!:RttiVarMaps = !.RttiVarMaps ^ tci_varmap := Map.
+
+rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
+	VarMapsA = rtti_varmaps(TCImapA, TImapA, TypeMapA),
+	VarMapsB = rtti_varmaps(TCImapB, TImapB, TypeMapB),
+
+		% Prefer VarMapsB for this information.
+		%
+	injection__overlay(TCImapA, TCImapB, TCImap),
+	map__overlay(TImapA, TImapB, TImap),
+
+		% On the other hand, we insist that this information is
+		% consistent.
+		%
+	map__merge(TypeMapA, TypeMapB, TypeMap),
+
+	VarMaps = rtti_varmaps(TCImap, TImap, TypeMap).
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
 
 	% The clauses_info structure contains the clauses for a predicate
 	% after conversion from the item_list by make_hlds.m.
@@ -220,11 +691,9 @@
 		headvars		:: list(prog_var),
 						% head vars
 		clauses_rep		:: clauses_rep,
-						% the following two
-						% fields are computed
-						% by polymorphism.m
-		clause_type_info_varmap	:: type_info_varmap,
-		clause_typeclass_info_varmap :: typeclass_info_varmap,
+						% the following field is
+						% computed by polymorphism.m
+		clauses_rtti_varmaps	:: rtti_varmaps,
 		have_foreign_clauses	:: bool
 						% do we have foreign
 						% language clauses?
@@ -270,11 +739,7 @@
 	%
 :- pred clauses_info_vartypes(clauses_info::in, vartypes::out) is det.
 
-:- pred clauses_info_type_info_varmap(clauses_info::in, type_info_varmap::out)
-	is det.
-
-:- pred clauses_info_typeclass_info_varmap(clauses_info::in,
-	typeclass_info_varmap::out) is det.
+:- pred clauses_info_rtti_varmaps(clauses_info::in, rtti_varmaps::out) is det.
 
 :- pred clauses_info_headvars(clauses_info::in, list(prog_var)::out) is det.
 
@@ -314,10 +779,7 @@
 :- pred clauses_info_set_vartypes(vartypes::in,
 	clauses_info::in, clauses_info::out) is det.
 
-:- pred clauses_info_set_type_info_varmap(type_info_varmap::in,
-	clauses_info::in, clauses_info::out) is det.
-
-:- pred clauses_info_set_typeclass_info_varmap(typeclass_info_varmap::in,
+:- pred clauses_info_set_rtti_varmaps(rtti_varmaps::in,
 	clauses_info::in, clauses_info::out) is det.
 
 :- type clause --->
@@ -340,8 +802,7 @@ clauses_info_explicit_vartypes(CI, CI ^ explicit_vartypes).
 clauses_info_vartypes(CI, CI ^ vartypes).
 clauses_info_headvars(CI, CI ^ headvars).
 clauses_info_clauses_rep(CI, CI ^ clauses_rep).
-clauses_info_type_info_varmap(CI, CI ^ clause_type_info_varmap).
-clauses_info_typeclass_info_varmap(CI, CI ^ clause_typeclass_info_varmap).
+clauses_info_rtti_varmaps(CI, CI ^ clauses_rtti_varmaps).
 
 clauses_info_set_varset(X, CI, CI ^ varset := X).
 clauses_info_set_explicit_vartypes(X, CI, CI ^ explicit_vartypes := X).
@@ -349,9 +810,7 @@ clauses_info_set_vartypes(X, CI, CI ^ vartypes := X).
 clauses_info_set_headvars(X, CI, CI ^ headvars := X).
 clauses_info_set_clauses(X, CI, CI ^ clauses_rep := forw(X)).
 clauses_info_set_clauses_rep(X, CI, CI ^ clauses_rep := X).
-clauses_info_set_type_info_varmap(X, CI, CI ^ clause_type_info_varmap := X).
-clauses_info_set_typeclass_info_varmap(X, CI,
-	CI ^ clause_typeclass_info_varmap := X).
+clauses_info_set_rtti_varmaps(X, CI, CI ^ clauses_rtti_varmaps := X).
 
 :- type clauses_rep
 	--->	rev(list(clause))
@@ -728,62 +1187,6 @@ add_clause(Clause, !ClausesRep) :-
 	% module, name and arity.
 :- type aditi_owner == string.
 
-	% Describes the class constraints on an instance method implementation.
-	% This information is used by polymorphism.m to ensure that the
-	% type_info and typeclass_info arguments are added in the order in
-	% which they will be passed in by do_call_class_method.
-:- type instance_method_constraints
-	---> instance_method_constraints(
-		class_id,
-		list(type),		% The types in the head of the
-					% instance declaration.
-		list(prog_constraint),	% The universal constraints
-					% on the instance declaration.
-		prog_constraints	% The contraints on the method's
-					% type declaration in the
-					% `:- typeclass' declaration.
-	).
-
-	% A typeclass_info_varmap is a map which for each type class constraint
-	% records which variable contains the typeclass_info for that
-	% constraint.
-:- type typeclass_info_varmap == map(prog_constraint, prog_var).
-
-	% A type_info_varmap is a map which for each type variable
-	% records where the type_info for that type variable is stored.
-:- type type_info_varmap == map(tvar, type_info_locn).
-
-	%  A type_info_locn specifies how to access a type_info.
-:- type type_info_locn
-	--->	type_info(prog_var)
-				% It is a normal type_info, i.e. the type
-				% is not constrained.
-
-	;	typeclass_info(prog_var, int).
-				% The type_info is packed inside a
-				% typeclass_info. If the int is N, it is
-				% the Nth type_info inside the typeclass_info,
-				% but there may be several superclass pointers
-				% before the block of type_infos, so it won't
-				% be the Nth word of the typeclass_info.
-				%
-				% To find the type_info inside the
-				% typeclass_info, use the predicate
-				% type_info_from_typeclass_info from Mercury
-				% code; from C code use the macro
-				% MR_typeclass_info_superclass_info.
-
-	% type_info_locn_var(TypeInfoLocn, Var):
-	%
-	% Var is the variable corresponding to the TypeInfoLocn. Note
-	% that this does *not* mean that Var is a type_info; it may be
-	% a typeclass_info in which the type_info is nested.
-	%
-:- pred type_info_locn_var(type_info_locn::in, prog_var::out) is det.
-
-:- pred type_info_locn_set_var(prog_var::in,
-	type_info_locn::in, type_info_locn::out) is det.
-
 :- type pred_transformation
 	--->	higher_order_specialization(
 			int	% Sequence number among the higher order
@@ -913,8 +1316,8 @@ add_clause(Clause, !ClausesRep) :-
 :- pred hlds_pred__define_new_pred(pred_origin::in,
 	hlds_goal::in, hlds_goal::out, list(prog_var)::in, list(prog_var)::out,
 	instmap::in, string::in, tvarset::in, vartypes::in,
-	prog_constraints::in, type_info_varmap::in, typeclass_info_varmap::in,
-	prog_varset::in, inst_varset::in, pred_markers::in, aditi_owner::in,
+	prog_constraints::in, rtti_varmaps::in, prog_varset::in,
+	inst_varset::in, pred_markers::in, aditi_owner::in,
 	is_address_taken::in, module_info::in, module_info::out,
 	pred_proc_id::out) is det.
 
@@ -1385,12 +1788,10 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 	% The empty list of clauses is a little white lie.
 	Clauses = forw([]),
 	map__init(TVarNameMap),
-	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
-	proc_info_typeclass_info_varmap(ProcInfo, TypeClassInfoMap),
+	proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
 	HasForeignClauses = no,
-	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
-		VarTypes, HeadVars, Clauses, TypeInfoMap, TypeClassInfoMap,
-		HasForeignClauses),
+	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+		HeadVars, Clauses, RttiVarMaps, HasForeignClauses),
 
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	map__init(Procs0),
@@ -1406,7 +1807,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 
 hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 		InstMap0, PredName, TVarSet, VarTypes0, ClassContext,
-		TVarMap, TCVarMap, VarSet0, InstVarSet, Markers, Owner,
+		RttiVarMaps, VarSet0, InstVarSet, Markers, Owner,
 		IsAddressTaken, ModuleInfo0, ModuleInfo, PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
@@ -1426,8 +1827,8 @@ hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 		IsAddressTaken, Globals, TypeInfoLiveness),
 	( TypeInfoLiveness = yes ->
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
-		goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap,
-			VarTypes0, ExistQVars, NonLocals, ExtraTypeInfos0),
+		goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes0,
+			ExistQVars, NonLocals, ExtraTypeInfos0),
 		set__delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos1),
 		set__to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
 		list__append(ExtraTypeInfos, ArgVars0, ArgVars)
@@ -1461,7 +1862,7 @@ hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 	MaybeDeclaredDetism = no,
 	proc_info_create(Context, VarSet, VarTypes, ArgVars, InstVarSet,
 		ArgModes, MaybeDeclaredDetism, Detism, Goal0,
-		TVarMap, TCVarMap, IsAddressTaken, ProcInfo0),
+		RttiVarMaps, IsAddressTaken, ProcInfo0),
 	proc_info_set_maybe_termination_info(TermInfo, ProcInfo0, ProcInfo),
 
 	set__init(Assertions),
@@ -1788,14 +2189,6 @@ pred_info_get_call_id(PredInfo, PredOrFunc - qualified(Module, Name)/Arity) :-
 
 %-----------------------------------------------------------------------------%
 
-type_info_locn_var(type_info(Var), Var).
-type_info_locn_var(typeclass_info(Var, _), Var).
-
-type_info_locn_set_var(Var, type_info(_), type_info(Var)).
-type_info_locn_set_var(Var, typeclass_info(_, Num), typeclass_info(Var, Num)).
-
-%-----------------------------------------------------------------------------%
-
 :- type pred_markers == list(marker).
 
 init_markers([]).
@@ -2017,27 +2410,24 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set(prog_context::in, prog_varset::in, vartypes::in,
 	list(prog_var)::in, inst_varset::in, list(mode)::in,
 	maybe(list(is_live))::in, maybe(determinism)::in, determinism::in,
-	hlds_goal::in, bool::in,
-	type_info_varmap::in, typeclass_info_varmap::in,
+	hlds_goal::in, bool::in, rtti_varmaps::in,
 	maybe(arg_size_info)::in, maybe(termination_info)::in,
 	termination2_info::in, is_address_taken::in, stack_slots::in,
 	maybe(list(arg_info))::in, liveness_info::in, proc_info::out) is det.
 
 :- pred proc_info_create(prog_context::in, prog_varset::in, vartypes::in,
 	list(prog_var)::in, inst_varset::in, list(mode)::in,
-	determinism::in, hlds_goal::in,
-	type_info_varmap::in, typeclass_info_varmap::in,
+	determinism::in, hlds_goal::in, rtti_varmaps::in,
 	is_address_taken::in, proc_info::out) is det.
 
 :- pred proc_info_create(prog_context::in, prog_varset::in, vartypes::in,
 	list(prog_var)::in, inst_varset::in, list(mode)::in,
 	maybe(determinism)::in, determinism::in, hlds_goal::in,
-	type_info_varmap::in, typeclass_info_varmap::in,
-	is_address_taken::in, proc_info::out) is det.
+	rtti_varmaps::in, is_address_taken::in, proc_info::out) is det.
 
 :- pred proc_info_set_body(prog_varset::in, vartypes::in,
-	list(prog_var)::in, hlds_goal::in, type_info_varmap::in,
-	typeclass_info_varmap::in, proc_info::in, proc_info::out) is det.
+	list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
+	proc_info::in, proc_info::out) is det.
 
 	% Predicates to get fields of proc_infos.
 
@@ -2056,9 +2446,7 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_inferred_determinism(proc_info::in, determinism::out) is det.
 :- pred proc_info_goal(proc_info::in, hlds_goal::out) is det.
 :- pred proc_info_can_process(proc_info::in, bool::out) is det.
-:- pred proc_info_typeinfo_varmap(proc_info::in, type_info_varmap::out) is det.
-:- pred proc_info_typeclass_info_varmap(proc_info::in,
-	typeclass_info_varmap::out) is det.
+:- pred proc_info_rtti_varmaps(proc_info::in, rtti_varmaps::out) is det.
 :- pred proc_info_eval_method(proc_info::in, eval_method::out) is det.
 :- pred proc_info_get_maybe_arg_size_info(proc_info::in,
 	maybe(arg_size_info)::out) is det.
@@ -2102,9 +2490,7 @@ attribute_list_to_attributes(Attributes, Attributes).
 	proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_can_process(bool::in,
 	proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_typeinfo_varmap(type_info_varmap::in,
-	proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_typeclass_info_varmap(typeclass_info_varmap::in,
+:- pred proc_info_set_rtti_varmaps(rtti_varmaps::in,
 	proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_eval_method(eval_method::in,
 	proc_info::in, proc_info::out) is det.
@@ -2171,10 +2557,10 @@ attribute_list_to_attributes(Attributes, Attributes).
 	% their typeinfos stay live too.
 
 :- pred proc_info_get_typeinfo_vars(set(prog_var)::in, vartypes::in,
-	type_info_varmap::in, set(prog_var)::out) is det.
+	rtti_varmaps::in, set(prog_var)::out) is det.
 
 :- pred proc_info_maybe_complete_with_typeinfo_vars(set(prog_var)::in, bool::in,
-	vartypes::in, type_info_varmap::in, set(prog_var)::out) is det.
+	vartypes::in, rtti_varmaps::in, set(prog_var)::out) is det.
 
 :- pred proc_info_ensure_unique_names(proc_info::in, proc_info::out) is det.
 
@@ -2313,11 +2699,9 @@ attribute_list_to_attributes(Attributes, Attributes).
 					% modes of unification procs until
 					% the end of the unique_modes pass.)
 		mode_errors		:: list(mode_error_info),
-		proc_type_info_varmap	:: type_info_varmap,
-					% typeinfo vars for type parameters
-		proc_typeclass_info_varmap :: typeclass_info_varmap,
-					% typeclass_info vars for class
-					% constraints
+		proc_rtti_varmaps	:: rtti_varmaps,
+					% Information about type_infos and
+					% typeclass_infos.
 		eval_method		:: eval_method,
 					% how should the proc be evaluated
 
@@ -2452,39 +2836,38 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
 	goal_info_init(GoalInfo),
 	ClauseBody = conj([]) - GoalInfo,
 	CanProcess = yes,
-	map__init(TVarsMap),
-	map__init(TCVarsMap),
+	rtti_varmaps_init(RttiVarMaps),
 	Term2Info = term_constr_main__term2_info_init,
 	NewProc = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars,
 		InstVarSet, DeclaredModes, Modes, no, MaybeArgLives,
 		MaybeDet, InferredDet, ClauseBody, CanProcess, ModeErrors,
-		TVarsMap, TCVarsMap, eval_normal,
+		RttiVarMaps, eval_normal,
 		proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
 		ArgInfo, InitialLiveness, no, no, no, no, no)).
 
 proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
 		HeadLives, DeclaredDetism, InferredDetism, Goal, CanProcess,
-		TVarMap, TCVarsMap, ArgSizes, Termination, Termination2,
+		RttiVarMaps, ArgSizes, Termination, Termination2,
 		IsAddressTaken, StackSlots, ArgInfo, Liveness, ProcInfo) :-
 	ModeErrors = [],
 	ProcInfo = proc_info(Context, BodyVarSet, BodyTypes, HeadVars,
 		InstVarSet, no, HeadModes, no, HeadLives,
 		DeclaredDetism, InferredDetism, Goal, CanProcess, ModeErrors,
-		TVarMap, TCVarsMap, eval_normal,
+		RttiVarMaps, eval_normal,
 		proc_sub_info(ArgSizes, Termination, Termination2,
 		IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no,
 			no, no)).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
-		HeadModes, Detism, Goal, TVarMap, TCVarsMap,
-		IsAddressTaken, ProcInfo) :-
+		HeadModes, Detism, Goal, RttiVarMaps, IsAddressTaken,
+		ProcInfo) :-
 	proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
-		HeadModes, yes(Detism), Detism, Goal, TVarMap, TCVarsMap,
+		HeadModes, yes(Detism), Detism, Goal, RttiVarMaps,
 		IsAddressTaken, ProcInfo).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
-		MaybeDeclaredDetism, Detism, Goal, TVarMap, TCVarsMap,
-		IsAddressTaken, ProcInfo) :-
+		MaybeDeclaredDetism, Detism, Goal, RttiVarMaps, IsAddressTaken,
+		ProcInfo) :-
 	map__init(StackSlots),
 	set__init(Liveness),
 	MaybeHeadLives = no,
@@ -2493,18 +2876,17 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
 	ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
 		InstVarSet, no, HeadModes, no, MaybeHeadLives,
 		MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
-		TVarMap, TCVarsMap, eval_normal,
+		RttiVarMaps, eval_normal,
 		proc_sub_info(no, no, Term2Info, IsAddressTaken,
 		StackSlots, no, Liveness, no, no, no, no, no)).
 
-proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, TI_VarMap, TCI_VarMap,
+proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps,
 		ProcInfo0, ProcInfo) :-
-	ProcInfo = ((((((ProcInfo0 ^ prog_varset := VarSet)
+	ProcInfo = (((((ProcInfo0 ^ prog_varset := VarSet)
 		^ var_types := VarTypes)
 		^ head_vars := HeadVars)
 		^ body := Goal)
-		^ proc_type_info_varmap := TI_VarMap)
-		^ proc_typeclass_info_varmap := TCI_VarMap).
+		^ proc_rtti_varmaps := RttiVarMaps).
 
 proc_info_context(PI, PI ^ proc_context).
 proc_info_varset(PI, PI ^ prog_varset).
@@ -2518,8 +2900,7 @@ proc_info_declared_determinism(PI, PI ^ declared_detism).
 proc_info_inferred_determinism(PI, PI ^ inferred_detism).
 proc_info_goal(PI, PI ^ body).
 proc_info_can_process(PI, PI ^ can_process).
-proc_info_typeinfo_varmap(PI, PI ^ proc_type_info_varmap).
-proc_info_typeclass_info_varmap(PI, PI ^ proc_typeclass_info_varmap).
+proc_info_rtti_varmaps(PI, PI ^ proc_rtti_varmaps).
 proc_info_eval_method(PI, PI ^ eval_method).
 proc_info_get_maybe_arg_size_info(PI, PI ^ proc_sub_info ^ maybe_arg_sizes).
 proc_info_get_maybe_termination_info(PI,
@@ -2547,9 +2928,7 @@ proc_info_set_maybe_arglives(CL, PI, PI ^ head_var_caller_liveness := CL).
 proc_info_set_inferred_determinism(ID, PI, PI ^ inferred_detism := ID).
 proc_info_set_goal(G, PI, PI ^ body := G).
 proc_info_set_can_process(CP, PI, PI ^ can_process := CP).
-proc_info_set_typeinfo_varmap(TI, PI, PI ^ proc_type_info_varmap := TI).
-proc_info_set_typeclass_info_varmap(TC, PI,
-	PI ^ proc_typeclass_info_varmap := TC).
+proc_info_set_rtti_varmaps(RI, PI, PI ^ proc_rtti_varmaps := RI).
 proc_info_set_eval_method(EM, PI, PI ^ eval_method := EM).
 proc_info_set_maybe_arg_size_info(MAS, PI,
 	PI ^ proc_sub_info ^ maybe_arg_sizes := MAS).
@@ -2653,7 +3032,8 @@ proc_info_set_termination2_info(Termination2Info, !ProcInfo) :-
 	!:ProcInfo = !.ProcInfo ^ proc_sub_info ^ termination2 :=
 		Termination2Info.
 
-proc_info_get_typeinfo_vars(Vars, VarTypes, TVarMap, TypeInfoVars) :-
+proc_info_get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
+	TVarMap = RttiVarMaps ^ ti_varmap,
 	set__to_sorted_list(Vars, VarList),
 	proc_info_get_typeinfo_vars_2(VarList, VarTypes, TVarMap,
 		TypeInfoVarList),
@@ -2699,10 +3079,10 @@ proc_info_get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
 	).
 
 proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
-		VarTypes, TVarMap, Vars) :-
+		VarTypes, RttiVarMaps, Vars) :-
 	(
 		TypeInfoLiveness = yes,
-		proc_info_get_typeinfo_vars(Vars0, VarTypes, TVarMap,
+		proc_info_get_typeinfo_vars(Vars0, VarTypes, RttiVarMaps,
 			TypeInfoVars),
 		set__union(Vars0, TypeInfoVars, Vars)
 	;
@@ -3341,4 +3721,11 @@ eval_method_change_determinism(eval_minimal(_), Detism0) = Detism :-
 	det_conjunction_detism(semidet, Detism0, Detism).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "hlds_pred.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module hlds.hlds_pred.
 %-----------------------------------------------------------------------------%

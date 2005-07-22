@@ -158,7 +158,7 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 
 copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 	ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars,
-		ClausesRep, TI_VarMap, TCI_VarMap, _),
+		ClausesRep, RttiInfo, _),
 	get_clause_list(ClausesRep, Clauses),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
 	get_clause_goals(MatchingClauses, GoalList),
@@ -220,8 +220,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 
 		Goal = disj(GoalList) - GoalInfo
 	),
-	proc_info_set_body(VarSet, VarTypes, HeadVars, Goal,
-		TI_VarMap, TCI_VarMap, !Proc).
+	proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiInfo, !Proc).
 
 :- pred contains_nonpure_goal(list(hlds_goal)::in) is semidet.
 

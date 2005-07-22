@@ -953,7 +953,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 		true
 	),
 	ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars,
-		ClausesRep, TypeInfoMap, TypeClassInfoMap, _),
+		ClausesRep, RttiVarMaps, _),
 	( string__contains_char(Verbose, 'C') ->
 		hlds_out__write_indent(Indent, !IO),
 		io__write_string("% pred id: ", !IO),
@@ -976,10 +976,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 			hlds_out__write_marker_list(MarkerList, !IO),
 			io__write_string("\n", !IO)
 		),
-		hlds_out__write_typeinfo_varmap(Indent, AppendVarNums,
-			TypeInfoMap, VarSet, TVarSet, !IO),
-		hlds_out__write_typeclass_info_varmap(Indent, AppendVarNums,
-			TypeClassInfoMap, VarSet, TVarSet, !IO),
+		hlds_out__write_rtti_varmaps(Indent, AppendVarNums,
+			RttiVarMaps, VarSet, TVarSet, !IO),
 		( map__is_empty(Proofs) ->
 			true
 		;
@@ -3091,25 +3089,27 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, AppendVarNums,
 	hlds_out__write_var_types_2(Vars, Indent, VarSet, AppendVarNums,
 		VarTypes, TypeVarSet, !IO).
 
-:- pred hlds_out__write_typeinfo_varmap(int::in, bool::in,
-	type_info_varmap::in, prog_varset::in, tvarset::in, io::di, io::uo)
-	is det.
+:- pred hlds_out__write_rtti_varmaps(int::in, bool::in, rtti_varmaps::in,
+	prog_varset::in, tvarset::in, io::di, io::uo) is det.
 
-hlds_out__write_typeinfo_varmap(Indent, AppendVarNums, TypeInfoMap, VarSet,
-		TVarSet, !IO) :-
+hlds_out__write_rtti_varmaps(Indent, AppendVarNums,
+		RttiVarMaps, VarSet, TVarSet, !IO) :-
 	hlds_out__write_indent(Indent, !IO),
 	io__write_string("% type_info varmap:\n", !IO),
-	map__keys(TypeInfoMap, TypeVars),
-	hlds_out__write_typeinfo_varmap_2(TypeVars, Indent, AppendVarNums,
-		TypeInfoMap, VarSet, TVarSet, !IO).
+	rtti_varmaps_tvars(RttiVarMaps, TypeVars),
+	list__foldl(write_type_info_locn(Indent, AppendVarNums,
+		RttiVarMaps, VarSet, TVarSet), TypeVars, !IO),
+	hlds_out__write_indent(Indent, !IO),
+	io__write_string("% typeclass_info varmap:\n", !IO),
+	rtti_varmaps_constraints(RttiVarMaps, Constraints),
+	list__foldl(write_typeclass_info_var(Indent, AppendVarNums,
+		RttiVarMaps, VarSet, TVarSet), Constraints, !IO).
 
-:- pred hlds_out__write_typeinfo_varmap_2(list(tvar)::in, int::in, bool::in,
-	type_info_varmap::in, prog_varset::in, tvarset::in,
-	io::di, io::uo) is det.
+:- pred write_type_info_locn(int::in, bool::in, rtti_varmaps::in,
+	prog_varset::in, tvarset::in, tvar::in, io::di, io::uo) is det.
 
-hlds_out__write_typeinfo_varmap_2([], _, _, _, _, _, !IO).
-hlds_out__write_typeinfo_varmap_2([TVar | TVars], Indent, AppendVarNums,
-		TypeInfoMap, VarSet, TVarSet, !IO) :-
+write_type_info_locn(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, TVar,
+		!IO) :-
 	hlds_out__write_indent(Indent, !IO),
 	io__write_string("% ", !IO),
 
@@ -3120,7 +3120,7 @@ hlds_out__write_typeinfo_varmap_2([TVar | TVars], Indent, AppendVarNums,
 	io__write_string(")", !IO),
 
 	io__write_string(" -> ", !IO),
-	map__lookup(TypeInfoMap, TVar, Locn),
+	rtti_lookup_type_info_locn(RttiVarMaps, TVar, Locn),
 	(
 		Locn = type_info(Var),
 		io__write_string("type_info(", !IO),
@@ -3138,32 +3138,19 @@ hlds_out__write_typeinfo_varmap_2([TVar | TVars], Indent, AppendVarNums,
 	term__var_to_int(Var, VarNum),
 	io__write_int(VarNum, !IO),
 	io__write_string(")", !IO),
-	io__write_string("\n", !IO),
+	io__write_string("\n", !IO).
 
-	hlds_out__write_typeinfo_varmap_2(TVars, Indent, AppendVarNums,
-		TypeInfoMap, VarSet, TVarSet, !IO).
+:- pred write_typeclass_info_var(int::in, bool::in, rtti_varmaps::in,
+	prog_varset::in, tvarset::in, prog_constraint::in, io::di, io::uo)
+	is det.
 
-:- pred hlds_out__write_typeclass_info_varmap(int::in, bool::in,
-	typeclass_info_varmap::in, prog_varset::in, tvarset::in,
-	io::di, io::uo) is det.
-
-hlds_out__write_typeclass_info_varmap(Indent, AppendVarNums,
-		TypeClassInfoVarMap, VarSet, TVarSet, !IO) :-
-	hlds_out__write_indent(Indent, !IO),
-	io__write_string("% typeclass_info varmap:\n", !IO),
-	map__foldl(hlds_out__write_typeclass_info_varmap_2(Indent,
-		AppendVarNums, VarSet, TVarSet), TypeClassInfoVarMap, !IO).
-
-:- pred hlds_out__write_typeclass_info_varmap_2(int::in, bool::in,
-	prog_varset::in, tvarset::in, prog_constraint::in, prog_var::in,
-	io::di, io::uo) is det.
-
-hlds_out__write_typeclass_info_varmap_2(Indent, AppendVarNums, VarSet, TVarSet,
-		Constraint, Var, !IO) :-
+write_typeclass_info_var(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet,
+		Constraint, !IO) :-
 	hlds_out__write_indent(Indent, !IO),
 	io__write_string("% ", !IO),
 	mercury_output_constraint(TVarSet, AppendVarNums, Constraint, !IO),
 	io__write_string(" -> ", !IO),
+	rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, Var),
 	mercury_output_var(Var, VarSet, AppendVarNums, !IO),
 	io__nl(!IO).
 
@@ -3708,8 +3695,7 @@ hlds_out__write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
 	proc_info_context(Proc, ModeContext),
 	proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize),
 	proc_info_get_maybe_termination_info(Proc, MaybeTermination),
-	proc_info_typeinfo_varmap(Proc, TypeInfoMap),
-	proc_info_typeclass_info_varmap(Proc, TypeClassInfoMap),
+	proc_info_rtti_varmaps(Proc, RttiVarMaps),
 	proc_info_eval_method(Proc, EvalMethod),
 	proc_info_is_address_taken(Proc, IsAddressTaken),
 	proc_info_get_call_table_tip(Proc, MaybeCallTableTip),
@@ -3749,10 +3735,8 @@ hlds_out__write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
 	hlds_out__write_indent(Indent, !IO),
 	hlds_out__write_var_types(Indent, VarSet, AppendVarNums,
 		VarTypes, TVarSet, !IO),
-	hlds_out__write_typeinfo_varmap(Indent, AppendVarNums, TypeInfoMap,
+	hlds_out__write_rtti_varmaps(Indent, AppendVarNums, RttiVarMaps,
 		VarSet, TVarSet, !IO),
-	hlds_out__write_typeclass_info_varmap(Indent, AppendVarNums,
-		TypeClassInfoMap, VarSet, TVarSet, !IO),
 
 	(
 		IsAddressTaken = address_is_taken,

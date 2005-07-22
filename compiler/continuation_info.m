@@ -793,8 +793,9 @@ continuation_info__build_closure_info([Var | Vars], [Type | Types],
 continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 		TypeInfoDataMap) :-
 	proc_info_varset(ProcInfo, VarSet),
-	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
-	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
+	proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+	list__map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
+		TypeInfoLocns),
 	FindLocn = (pred(TypeInfoLocn::in, Locns::out) is det :-
 		type_info_locn_var(TypeInfoLocn, TypeInfoVar),
 		(
@@ -863,8 +864,9 @@ continuation_info__build_table_arg_info(VarTypes,
 continuation_info__find_typeinfos_for_tvars_table(TypeVars,
 		NumberedVars, ProcInfo, TypeInfoDataMap) :-
 	proc_info_varset(ProcInfo, VarSet),
-	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
-	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
+	proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+	list__map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
+		TypeInfoLocns),
 	FindLocn = (pred(TypeInfoLocn::in, Locn::out) is det :-
 		(
 			(

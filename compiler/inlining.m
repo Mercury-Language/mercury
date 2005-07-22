@@ -102,7 +102,7 @@
 	% inlining__do_inline_call(UnivQVars, Args,
 	%	CalledPredInfo, CalledProcInfo,
 	% 	VarSet0, VarSet, VarTypes0, VarTypes, TVarSet0, TVarSet,
-	%	TypeInfoMap0, TypeInfoMap).
+	%	RttiVarMaps0, RttiVarMaps).
 	%
 	% Given the universally quantified type variables in the caller's
 	% type, the arguments to the call, the pred_info and proc_info
@@ -112,8 +112,7 @@
 :- pred inlining__do_inline_call(list(tvar)::in, list(prog_var)::in,
 	pred_info::in, proc_info::in, prog_varset::in, prog_varset::out,
 	vartypes::in, vartypes::out, tvarset::in, tvarset::out,
-	map(tvar, type_info_locn)::in, map(tvar, type_info_locn)::out,
-	hlds_goal::out) is det.
+	rtti_varmaps::in, rtti_varmaps::out, hlds_goal::out) is det.
 
 	% inlining__get_type_substitution(CalleeArgTypes, CallerArgTypes,
 	%	HeadTypeParams, CalleeExistQTVars, TypeSubn).
@@ -422,10 +421,8 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		prog_varset,		% varset
 		vartypes,		% variable types
 		tvarset,		% type variables
-		map(tvar, type_info_locn),% type_info varset, a mapping from
-					% type variables to variables
-					% where their type_info is
-					% stored.
+		rtti_varmaps,		% information about locations of
+					% type_infos and typeclass_infos
 		bool,			% Did we do any inlining in the proc?
 		bool,			% Does the goal need to be
 					% requantified?
@@ -458,7 +455,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_typeinfo_varmap(ProcInfo0, TypeInfoVarMap0),
+	proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps0),
 
 	DidInlining0 = no,
 	Requantify0 = no,
@@ -467,20 +464,20 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
 
 	InlineInfo0 = inline_info(VarThresh, HighLevelCode, AnyTracing,
 		InlinedProcs, !.ModuleInfo, UnivQTVars, Markers,
-		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
+		VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
 		DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
 	inlining__inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
 	InlineInfo = inline_info(_, _, _, _, _, _, _, VarSet, VarTypes,
-		TypeVarSet, TypeInfoVarMap, DidInlining, Requantify,
+		TypeVarSet, RttiVarMaps, DidInlining, Requantify,
 		DetChanged, PurityChanged),
 
 	pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo1),
 
 	proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1),
 	proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
-	proc_info_set_typeinfo_varmap(TypeInfoVarMap, ProcInfo2, ProcInfo3),
+	proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo2, ProcInfo3),
 	proc_info_set_goal(Goal, ProcInfo3, ProcInfo4),
 
 	(
@@ -602,7 +599,7 @@ inlining__inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 		Context, Sym, Goal, GoalInfo0, GoalInfo, !Info) :-
 	!.Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
-		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
+		VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
 		_DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
 	% should we inline this call?
@@ -626,8 +623,8 @@ inlining__inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 	->
 		inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo,
 			ProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
-			TypeVarSet0, TypeVarSet, TypeInfoVarMap0,
-			TypeInfoVarMap, Goal - GoalInfo),
+			TypeVarSet0, TypeVarSet, RttiVarMaps0, RttiVarMaps,
+			Goal - GoalInfo),
 
 			%
 			% If some of the output variables are not used in
@@ -663,7 +660,7 @@ inlining__inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 		),
 		!:Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
 			InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
-			VarSet, VarTypes, TypeVarSet, TypeInfoVarMap,
+			VarSet, VarTypes, TypeVarSet, RttiVarMaps,
 			DidInlining, Requantify, DetChanged, PurityChanged)
 	;
 		Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
@@ -674,7 +671,7 @@ inlining__inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 
 inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 		VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
-		TypeInfoVarMap0, TypeInfoVarMap, Goal) :-
+		RttiVarMaps0, RttiVarMaps, Goal) :-
 
 	proc_info_goal(ProcInfo, CalledGoal),
 
@@ -684,7 +681,7 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_vartypes(ProcInfo, CalleeVarTypes0),
 	proc_info_varset(ProcInfo, CalleeVarSet),
-	proc_info_typeinfo_varmap(ProcInfo, CalleeTypeInfoVarMap0),
+	proc_info_rtti_varmaps(ProcInfo, CalleeRttiVarMaps0),
 
 	% Substitute the appropriate types into the type
 	% mapping of the called procedure.  For example, if we
@@ -748,16 +745,15 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 		VarSet, VarTypes1, CalleeVarTypes, VarTypes, Subn,
 		CalledGoal, Goal),
 
-	apply_substitutions_to_var_map(CalleeTypeInfoVarMap0,
-		TypeRenaming, TypeSubn, Subn, CalleeTypeInfoVarMap1),
+	apply_substitutions_to_rtti_varmaps(TypeRenaming, TypeSubn, Subn,
+		CalleeRttiVarMaps0, CalleeRttiVarMaps1),
 
 	% Prefer the type_info_locn from the caller.
 	% The type_infos or typeclass_infos passed to the callee may
 	% have been produced by extracting type_infos or typeclass_infos
 	% from typeclass_infos in the caller, so they won't necessarily
 	% be the same.
-	map__overlay(CalleeTypeInfoVarMap1, TypeInfoVarMap0,
-		TypeInfoVarMap).
+	rtti_varmaps_overlay(CalleeRttiVarMaps1, RttiVarMaps0, RttiVarMaps).
 
 inlining__get_type_substitution(HeadTypes, ArgTypes,
 		HeadTypeParams, CalleeExistQVars, TypeSubn) :-

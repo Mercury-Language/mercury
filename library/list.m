@@ -728,6 +728,44 @@
 	di, uo) is cc_multi,
 	in, in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
+	% list__foldl_corresponding(F, As, Bs, !Acc)
+	% Does the same job as list__foldl, but works on two lists in
+	% parallel.  An exception is raised if the list arguments differ
+	% in length.
+	%
+:- pred list__foldl_corresponding(pred(A, B, C, C), list(A), list(B), C, C).
+:- mode list__foldl_corresponding(pred(in, in, in, out) is det,
+	in, in, in, out) is det.
+:- mode list__foldl_corresponding(pred(in, in, in, out) is cc_multi,
+	in, in, in, out) is cc_multi.
+:- mode list__foldl_corresponding(pred(in, in, in, out) is semidet,
+	in, in, in, out) is semidet.
+:- mode list__foldl_corresponding(pred(in, in, in, out) is nondet,
+	in, in, in, out) is nondet.
+:- mode list__foldl_corresponding(pred(in, in, di, uo) is det,
+	in, in, di, uo) is det.
+:- mode list__foldl_corresponding(pred(in, in, di, uo) is cc_multi,
+	in, in, di, uo) is cc_multi.
+
+	% list__foldl2_corresponding(F, As, Bs, !Acc1, !Acc2)
+	% Does the same job as list__foldl_corresponding, but has two
+	% accumulators.
+	%
+:- pred list__foldl2_corresponding(pred(A, B, C, C, D, D), list(A), list(B),
+	C, C, D, D).
+:- mode list__foldl2_corresponding(pred(in, in, in, out, in, out) is det,
+	in, in, in, out, in, out) is det.
+:- mode list__foldl2_corresponding(pred(in, in, in, out, in, out) is cc_multi,
+	in, in, in, out, in, out) is cc_multi.
+:- mode list__foldl2_corresponding(pred(in, in, in, out, in, out) is semidet,
+	in, in, in, out, in, out) is semidet.
+:- mode list__foldl2_corresponding(pred(in, in, in, out, in, out) is nondet,
+	in, in, in, out, in, out) is nondet.
+:- mode list__foldl2_corresponding(pred(in, in, in, out, di, uo) is det,
+	in, in, in, out, di, uo) is det.
+:- mode list__foldl2_corresponding(pred(in, in, in, out, di, uo) is cc_multi,
+	in, in, in, out, di, uo) is cc_multi.
+
 	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
 	% with an accumulator (with the initial value of Start) on
 	% each element of InList (working left-to-right) to transform
@@ -1686,6 +1724,24 @@ list__foldl6(_, [], !A, !B, !C, !D, !E, !F).
 list__foldl6(P, [H | T], !A, !B, !C, !D, !E, !F) :-
 	call(P, H, !A, !B, !C, !D, !E, !F),
 	list__foldl6(P, T, !A, !B, !C, !D, !E, !F).
+
+list__foldl_corresponding(_, [], [], !Acc).
+list__foldl_corresponding(_, [], [_ | _], _, _) :-
+	error("list__foldl_corresponding/5: mismatched list arguments").
+list__foldl_corresponding(_, [_ | _], [], _, _) :-
+	error("list__foldl_corresponding/5: mismatched list arguments").
+list__foldl_corresponding(P, [A | As], [B | Bs], !Acc) :-
+	P(A, B, !Acc),
+	list__foldl_corresponding(P, As, Bs, !Acc).
+
+list__foldl2_corresponding(_, [], [], !Acc1, !Acc2).
+list__foldl2_corresponding(_, [], [_ | _], _, _, _, _) :-
+	error("list__foldl2_corresponding/7: mismatched list arguments").
+list__foldl2_corresponding(_, [_ | _], [], _, _, _, _) :-
+	error("list__foldl2_corresponding/7: mismatched list arguments").
+list__foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
+	P(A, B, !Acc1, !Acc2),
+	list__foldl2_corresponding(P, As, Bs, !Acc1, !Acc2).
 
 list__map_foldl(_, [], [], !A).
 list__map_foldl(P, [H0 | T0], [H | T], !A) :-

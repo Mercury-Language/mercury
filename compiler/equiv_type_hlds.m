@@ -47,6 +47,7 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -348,16 +349,20 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
             VarTypes0, VarTypes, !TVarSet),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
 
-        proc_info_typeclass_info_varmap(!.ProcInfo, TCVarMap0),
-        map__to_assoc_list(TCVarMap0, TCVarAL0),
-        list__map_foldl(
-            (pred((Constraint0 - Locn)::in, (Constraint - Locn)::out,
+        proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+        rtti_varmaps_constraints(RttiVarMaps0, AllConstraints),
+        list__foldl2(
+            (pred(OldConstraint::in, !.CMap::in, !:CMap::out,
                     !.TVarSet::in, !:TVarSet::out) is det :-
                 equiv_type__replace_in_prog_constraint(EqvMap,
-                    Constraint0, Constraint, !TVarSet, no, _)
-            ), TCVarAL0, TCVarAL, !TVarSet),
-        map__from_assoc_list(TCVarAL, TCVarMap),
-        proc_info_set_typeclass_info_varmap(TCVarMap, !ProcInfo),
+                    OldConstraint, NewConstraint, !TVarSet, no, _),
+                svmap__set(OldConstraint, NewConstraint, !CMap)
+            ), AllConstraints, map__init, ConstraintMap, !TVarSet),
+        rtti_varmaps_transform_constraints(
+            (pred(!.Constraint::in, !:Constraint::out) is det :-
+                map__lookup(ConstraintMap, !Constraint)
+            ), RttiVarMaps0, RttiVarMaps),
+        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
         proc_info_goal(!.ProcInfo, Goal0),
         replace_in_goal(EqvMap, Goal0, Goal, Changed,

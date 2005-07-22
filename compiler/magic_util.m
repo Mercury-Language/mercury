@@ -1116,15 +1116,14 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ conj_list_to_goal(Goals, GoalInfo, SuppGoal) },
 	{ varset__init(TVarSet) },
 	{ ClassConstraints = constraints([], []) },
-	{ map__init(TVarMap) },
-	{ map__init(TCVarMap) },
+	{ rtti_varmaps_init(RttiVarMaps) },
 	{ proc_info_varset(ProcInfo, VarSet) },
 	{ unqualify_name(NewName, NewPredName) },
 	{ hlds_pred__define_new_pred(created(aditi_magic_supp), SuppGoal,
 		SuppCall, SuppArgs, ExtraArgs, InstMap, NewPredName, TVarSet,
-		VarTypes, ClassConstraints, TVarMap, TCVarMap, VarSet,
-		InstVarSet, Markers, Owner, address_is_not_taken,
-		ModuleInfo0, ModuleInfo, _) },
+		VarTypes, ClassConstraints, RttiVarMaps, VarSet, InstVarSet,
+		Markers, Owner, address_is_not_taken, ModuleInfo0, ModuleInfo,
+		_) },
 	{ ExtraArgs = [] ->
 		true
 	;
@@ -1305,10 +1304,10 @@ magic_util__check_type(ArgType, Errors, MaybeRtti) -->
 	% Polymorphic types are not allowed.
 	% Errors for type_infos and typeclass_infos are only reported
 	% if there are no other polymorphic arguments.
-	( { polymorphism__type_info_or_ctor_type(ArgType, _) } ->
+	( { polymorphism__type_is_type_info_or_ctor_type(ArgType) } ->
 		{ set__init(Errors) },
 		{ MaybeRtti = yes(type_info) }
-	; { polymorphism__typeclass_info_class_constraint(ArgType, _) } ->
+	; { polymorphism__type_is_typeclass_info(ArgType) } ->
 		{ set__init(Errors) },
 		{ MaybeRtti = yes(typeclass_info) }
 	;

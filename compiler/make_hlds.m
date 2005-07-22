@@ -1698,14 +1698,12 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             do_construct_pred_or_func_call(PredId, PredOrFunc,
                 SymName, Args, GoalInfo, Goal),
             Clause = clause(ProcIds, Goal, mercury, Context),
-            map__init(TI_VarMap),
-            map__init(TCI_VarMap),
+            rtti_varmaps_init(RttiVarMaps),
             map__init(TVarNameMap),
             HasForeignClauses = no,
             set_clause_list([Clause], ClausesRep),
-            Clauses = clauses_info(ArgVarSet, VarTypes0,
-                TVarNameMap, VarTypes0, Args, ClausesRep,
-                TI_VarMap, TCI_VarMap, HasForeignClauses),
+            Clauses = clauses_info(ArgVarSet, VarTypes0, TVarNameMap,
+                VarTypes0, Args, ClausesRep, RttiVarMaps, HasForeignClauses),
             pred_info_get_markers(PredInfo0, Markers0),
             add_marker(calls_are_fully_qualified, Markers0, Markers),
             map__init(Proofs),
@@ -4016,12 +4014,11 @@ add_builtin(PredId, Types, !PredInfo) :-
         %
     map__from_corresponding_lists(HeadVars, Types, VarTypes),
     map__init(TVarNameMap),
-    map__init(TI_VarMap),
-    map__init(TCI_VarMap),
+    rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     set_clause_list([Clause], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses),
+        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
         %
@@ -4953,12 +4950,11 @@ produce_instance_method_clauses(name(InstancePredName), PredOrFunc, PredArity,
 
     map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
     map__init(TVarNameMap),
-    map__init(TI_VarMap),
-    map__init(TCI_VarMap),
+    rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     set_clause_list([IntroducedClause], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses).
+        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
 
     % handle the arbitrary clauses syntax
 produce_instance_method_clauses(clauses(InstanceClauses), PredOrFunc,
@@ -6317,12 +6313,11 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     map__init(VarTypes),
     map__init(TVarNameMap),
     varset__init(VarSet),
-    map__init(TI_VarMap),
-    map__init(TCI_VarMap),
+    rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     set_clause_list([], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses).
+        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
 
@@ -6331,12 +6326,11 @@ clauses_info_init(Arity, ClausesInfo) :-
     map__init(TVarNameMap),
     varset__init(VarSet0),
     make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
-    map__init(TI_VarMap),
-    map__init(TCI_VarMap),
+    rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     set_clause_list([], ClausesRep),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVars, ClausesRep, TI_VarMap, TCI_VarMap, HasForeignClauses).
+        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
 
 :- pred clauses_info_add_clause(list(proc_id)::in,
     prog_varset::in, tvarset::in, list(prog_term)::in, goal::in,
@@ -6351,7 +6345,7 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
         !ClausesInfo, Warnings, !ModuleInfo, !QualInfo, !IO) :-
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes0,
         TVarNameMap0, InferredVarTypes, HeadVars, ClausesRep0,
-        TI_VarMap, TCI_VarMap, HasForeignClauses),
+        RttiVarMaps, HasForeignClauses),
     IsEmpty = clause_list_is_empty(ClausesRep0),
     (
         IsEmpty = yes,
@@ -6415,7 +6409,7 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
         ),
         qual_info_get_var_types(!.QualInfo, ExplicitVarTypes),
         !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-            InferredVarTypes, HeadVars, ClausesRep, TI_VarMap, TCI_VarMap,
+            InferredVarTypes, HeadVars, ClausesRep, RttiVarMaps,
             HasForeignClauses)
     ).
 
@@ -6438,7 +6432,7 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         PredName, Arity, !ClausesInfo, !ModuleInfo, !IO) :-
 
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
-        InferredVarTypes, HeadVars, ClauseRep, TI_VarMap, TCI_VarMap,
+        InferredVarTypes, HeadVars, ClauseRep, RttiVarMaps,
         _HasForeignClauses),
     get_clause_list(ClauseRep, ClauseList),
 
@@ -6534,8 +6528,8 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         HasForeignClauses = yes,
         set_clause_list(NewClauseList, NewClauseRep),
         !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-            InferredVarTypes, HeadVars, NewClauseRep,
-            TI_VarMap, TCI_VarMap, HasForeignClauses)
+            InferredVarTypes, HeadVars, NewClauseRep, RttiVarMaps,
+            HasForeignClauses)
     ).
 
 :- func is_applicable_for_current_backend(backend,

@@ -70,10 +70,10 @@ delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
 	body_should_use_typeinfo_liveness(PredInfo, Globals,
 		BodyTypeinfoLiveness),
 	proc_info_vartypes(!.ProcInfo, VarTypes),
-	proc_info_typeinfo_varmap(!.ProcInfo, TypeInfoVarMap),
+	proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps),
 	proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
 	DelayInfo = delay_construct_info(ModuleInfo, BodyTypeinfoLiveness,
-		VarTypes, TypeInfoVarMap),
+		VarTypes, RttiVarMaps),
 	proc_info_goal(!.ProcInfo, Goal0),
 	delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal),
 	proc_info_set_goal(Goal, !ProcInfo).
@@ -83,7 +83,7 @@ delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
 			module_info		:: module_info,
 			body_typeinfo_liveness	:: bool,
 			vartypes		:: vartypes,
-			type_info_varmap	:: type_info_varmap
+			rtti_varmaps		:: rtti_varmaps
 		).
 
 %-----------------------------------------------------------------------------%
@@ -230,7 +230,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
 		proc_info_maybe_complete_with_typeinfo_vars(NonLocals,
 			DelayInfo ^ body_typeinfo_liveness,
 			DelayInfo ^ vartypes,
-			DelayInfo ^ type_info_varmap, CompletedNonLocals),
+			DelayInfo ^ rtti_varmaps, CompletedNonLocals),
 		set__intersect(CompletedNonLocals, ConstructedVars0,
 			Intersection),
 		set__empty(Intersection),

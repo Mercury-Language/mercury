@@ -273,6 +273,10 @@ recursively_process_requests(!Info, !IO) :-
 					% curried arguments in caller
 		hoa_curry_type_in_caller :: list(type),
 					% curried argument types in caller
+		hoa_curry_rtti_type	:: list(rtti_var_info),
+					% types associated with type_infos
+					% and constraints associated with
+					% typeclass_infos in the arguments
 		hoa_known_curry_args	:: list(higher_order_arg),
 					% higher-order curried arguments
 					% with known values
@@ -835,10 +839,9 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 
 		CallerProcInfo0 = !.Info ^ proc_info,
 		CallerPredInfo0 = !.Info ^ pred_info,
-		proc_info_vartypes(CallerProcInfo0, VarTypes),
-		map__lookup(VarTypes, PredVar, TypeClassInfoType),
-		polymorphism__typeclass_info_class_constraint(
-			TypeClassInfoType, ClassConstraint),
+		proc_info_rtti_varmaps(CallerProcInfo0, CallerRttiVarMaps),
+		rtti_varmaps_var_info(CallerRttiVarMaps, PredVar,
+			typeclass_info_var(ClassConstraint)),
 		ClassConstraint = constraint(ClassName, ClassArgs),
 		list__length(ClassArgs, ClassArity),
 		module_info_instances(ModuleInfo, InstanceTable),
@@ -1239,9 +1242,10 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
 
 	CallerProcInfo0 = !.Info ^ proc_info,
 	proc_info_vartypes(CallerProcInfo0, VarTypes),
+	proc_info_rtti_varmaps(CallerProcInfo0, RttiVarMaps),
 	find_higher_order_args(ModuleInfo0, CalleeStatus, Args0,
-		CalleeArgTypes, VarTypes, !.Info ^ pred_vars, 1, [],
-		HigherOrderArgs0),
+		CalleeArgTypes, VarTypes, RttiVarMaps, !.Info ^ pred_vars, 1,
+		[], HigherOrderArgs0),
 
 	proc(CallerPredId, _) = !.Info ^ pred_proc_id,
 	module_info_type_spec_info(ModuleInfo0,
@@ -1331,15 +1335,15 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
 	% a known value.
 :- pred find_higher_order_args(module_info::in, import_status::in,
 	list(prog_var)::in, list(type)::in, map(prog_var, type)::in,
-	pred_vars::in, int::in, list(higher_order_arg)::in,
+	rtti_varmaps::in, pred_vars::in, int::in, list(higher_order_arg)::in,
 	list(higher_order_arg)::out) is det.
 
-find_higher_order_args(_, _, [], _, _, _, _, !HOArgs).
-find_higher_order_args(_, _, [_|_], [], _, _, _, _, _) :-
+find_higher_order_args(_, _, [], _, _, _, _, _, !HOArgs).
+find_higher_order_args(_, _, [_|_], [], _, _, _, _, _, _) :-
 	error("find_higher_order_args: length mismatch").
 find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
-		[CalleeArgType | CalleeArgTypes], VarTypes, PredVars, ArgNo,
-		!HOArgs) :-
+		[CalleeArgType | CalleeArgTypes], VarTypes, RttiVarMaps,
+		PredVars, ArgNo, !HOArgs) :-
 	NextArg = ArgNo + 1,
 	(
 		% We don't specialize arguments whose declared type is
@@ -1368,6 +1372,8 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 		% Find any known higher-order arguments
 		% in the list of curried arguments.
 		map__apply_to_list(CurriedArgs, VarTypes, CurriedArgTypes),
+		list__map(rtti_varmaps_var_info(RttiVarMaps), CurriedArgs,
+			CurriedArgRttiInfo),
 		( ConsId = pred_const(ShroudedPredProcId, _) ->
 			proc(PredId, _) =
 				unshroud_pred_proc_id(ShroudedPredProcId),
@@ -1377,7 +1383,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 			CurriedCalleeArgTypes = CurriedArgTypes
 		),
 		find_higher_order_args(ModuleInfo, CalleeStatus, CurriedArgs,
-			CurriedCalleeArgTypes, VarTypes,
+			CurriedCalleeArgTypes, VarTypes, RttiVarMaps,
 			PredVars, 1, [], HOCurriedArgs0),
 		list__reverse(HOCurriedArgs0, HOCurriedArgs),
 		list__length(CurriedArgs, NumArgs),
@@ -1385,8 +1391,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 			NumArgs = list__length(HOCurriedArgs),
 			\+ (
 				list__member(HOCurriedArg, HOCurriedArgs),
-				HOCurriedArg = higher_order_arg(_, _, _,
-					_, _, _, no)
+				HOCurriedArg ^ hoa_is_constant = no
 			)
 		->
 			IsConst = yes
@@ -1394,13 +1399,14 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 			IsConst = no
 		),
 		HOArg = higher_order_arg(ConsId, ArgNo, NumArgs,
-			CurriedArgs, CurriedArgTypes, HOCurriedArgs, IsConst),
+			CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
+			HOCurriedArgs, IsConst),
 		!:HOArgs = [HOArg | !.HOArgs]
 	;
 		true
 	),
 	find_higher_order_args(ModuleInfo, CalleeStatus, Args, CalleeArgTypes,
-		VarTypes, PredVars, NextArg, !HOArgs).
+		VarTypes, RttiVarMaps, PredVars, NextArg, !HOArgs).
 
 	% Succeeds if the type substitution for a call makes any of
 	% the class constraints match an instance which was not matched
@@ -1554,7 +1560,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
 :- pred compute_extra_typeinfos(higher_order_info::in,
 	list(prog_var)::in, list(tvar)::out) is det.
 
-compute_extra_typeinfos(Info, Args1, ExtraTypeInfoTVars) :-
+compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
 	% Work out which type variables don't already have type-infos
 	% in the list of argument types.
 	% The list is in the order which the type variables occur
@@ -1566,43 +1572,48 @@ compute_extra_typeinfos(Info, Args1, ExtraTypeInfoTVars) :-
 	% sorted by variable number, which will vary between calls).
 	ProcInfo = Info ^ proc_info,
 	proc_info_vartypes(ProcInfo, VarTypes),
-	map__apply_to_list(Args1, VarTypes, ArgTypes),
+	map__apply_to_list(Args, VarTypes, ArgTypes),
 	term__vars_list(ArgTypes, AllTVars),
 	(
 		AllTVars = [],
 		ExtraTypeInfoTVars = []
 	;
 		AllTVars = [_ | _],
-		list__foldl(arg_type_contains_type_info_for_tvar, ArgTypes,
-			[], TypeInfoTVars),
+		proc_info_rtti_varmaps(Info ^ proc_info, RttiVarMaps),
+		list__foldl(
+			arg_contains_type_info_for_tvar(RttiVarMaps),
+			Args, [], TypeInfoTVars),
 		list__delete_elems(AllTVars, TypeInfoTVars,
 			ExtraTypeInfoTVars0),
 		list__remove_dups(ExtraTypeInfoTVars0, ExtraTypeInfoTVars)
 	).
 
-:- pred arg_type_contains_type_info_for_tvar((type)::in,
+:- pred arg_contains_type_info_for_tvar(rtti_varmaps::in, prog_var::in,
 	list(tvar)::in, list(tvar)::out) is det.
 
-arg_type_contains_type_info_for_tvar(TypeInfoType, TVars0, TVars) :-
+arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
+	rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
 	(
-		polymorphism__type_info_or_ctor_type(TypeInfoType, Type),
-		Type = term__variable(TVar)
-	->
-		TVars = [TVar | TVars0]
+		VarInfo = type_info_var(Type),
+		(
+			prog_type__var(Type, TVar)
+		->
+			!:TVars = [TVar | !.TVars]
+		;
+			true
+		)
 	;
-		polymorphism__typeclass_info_class_constraint(TypeInfoType,
-			Constraint),
-		Constraint = constraint(_ClassName, ClassArgTypes)
-	->
+		VarInfo = typeclass_info_var(Constraint),
+		Constraint = constraint(_ClassName, ClassArgTypes),
 		% Find out which tvars the typeclass-info contains
 		% the type-infos for.
 		list__filter_map(
 			(pred(ClassArgType::in, ClassTVar::out) is semidet :-
-				ClassArgType = term__variable(ClassTVar)
+				prog_type__var(ClassArgType, ClassTVar)
 			), ClassArgTypes, ClassTVars),
-		list__append(ClassTVars, TVars0, TVars)
+		list__append(ClassTVars, !TVars)
 	;
-		TVars = TVars0
+		VarInfo = non_rtti_var
 	).
 
 :- pred construct_extra_type_infos(list(type)::in,
@@ -1726,28 +1737,29 @@ higher_order_args_match(RequestArgs, [], [], yes) :-
 	RequestArgs = [_ | _],
 	\+ (
 		list__member(RequestArg, RequestArgs),
-		RequestArg = higher_order_arg(RequestConsId, _, _, _, _, _, _),
+		RequestConsId = RequestArg ^ hoa_cons_id,
 		RequestConsId = pred_const(_, _)
 	).
 higher_order_args_match([RequestArg | Args1], [VersionArg | Args2],
 		Args, PartialMatch) :-
-	RequestArg = higher_order_arg(ConsId1, ArgNo1, _, _, _, _,
+	RequestArg = higher_order_arg(ConsId1, ArgNo1, _, _, _, _, _,
 		RequestIsConst),
-	VersionArg = higher_order_arg(ConsId2, ArgNo2, _, _, _, _,
+	VersionArg = higher_order_arg(ConsId2, ArgNo2, _, _, _, _, _,
 		VersionIsConst),
 
 	( ArgNo1 = ArgNo2 ->
 		ConsId1 = ConsId2,
 		RequestArg = higher_order_arg(_, _, NumArgs,
-			CurriedArgs, CurriedArgTypes, HOCurriedArgs1, _),
+			CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
+			HOCurriedArgs1, _),
 		VersionArg = higher_order_arg(_, _, NumArgs,
-			_, _, HOCurriedArgs2, _),
+			_, _, _, HOCurriedArgs2, _),
 		higher_order_args_match(HOCurriedArgs1, HOCurriedArgs2,
 			NewHOCurriedArgs, PartialMatch),
 		higher_order_args_match(Args1, Args2, Args3, _),
 		NewRequestArg = higher_order_arg(ConsId1, ArgNo1, NumArgs,
-			CurriedArgs, CurriedArgTypes, NewHOCurriedArgs,
-			RequestIsConst `and` VersionIsConst),
+			CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
+			NewHOCurriedArgs, RequestIsConst `and` VersionIsConst),
 		Args = [NewRequestArg | Args3]
 	;
 		% type-info arguments present in the request may be missing
@@ -1779,7 +1791,7 @@ get_extra_arguments(HOArgs, Args0, ExtraArgs ++ Args) :-
 
 get_extra_arguments_2([], []).
 get_extra_arguments_2([HOArg | HOArgs], Args) :-
-	HOArg = higher_order_arg(_, _, _, CurriedArgs0, _, HOCurriedArgs,
+	HOArg = higher_order_arg(_, _, _, CurriedArgs0, _, _, HOCurriedArgs,
 		IsConst),
 	(
 		IsConst = yes,
@@ -2519,15 +2531,14 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	map__init(EmptyTVarNameMap),
 	map__init(EmptyProofs),
 	map__init(EmptyConstraintMap),
-	map__init(EmptyTIMap),
-	map__init(EmptyTCIMap),
+	rtti_varmaps_init(EmptyRttiVarMaps),
 
 	% This isn't looked at after here, and just clutters up
 	% hlds dumps if it's filled in.
 	set_clause_list([], ClausesRep),
 	ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
 		EmptyTVarNameMap, EmptyVarTypes, [], ClausesRep,
-		EmptyTIMap, EmptyTCIMap, no),
+		EmptyRttiVarMaps, no),
 	Origin = transformed(Transform, OrigOrigin, CallerPredId),
 	pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
 		Status, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
@@ -2593,8 +2604,8 @@ maybe_write_request(yes, ModuleInfo, Msg, SymName, Arity, ActualArity,
 output_higher_order_args(_, _, _, [], !IO).
 output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
 		!IO) :-
-	HOArg = higher_order_arg(ConsId, ArgNo, NumArgs, _, _, CurriedHOArgs,
-		IsConst),
+	HOArg = higher_order_arg(ConsId, ArgNo, NumArgs, _, _, _,
+		CurriedHOArgs, IsConst),
 	io__write_string("% ", !IO),
 	list__duplicate(Indent + 1, "  ", Spaces),
 	list__foldl(io__write_string, Spaces, !IO),
@@ -2766,22 +2777,28 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
 	% Add any extra type-infos or typeclass-infos we've added
 	% to the typeinfo_varmap and typeclass_info_varmap.
 	%
-	proc_info_typeinfo_varmap(!.NewProcInfo, TypeInfoVarMap0),
+	proc_info_rtti_varmaps(!.NewProcInfo, RttiVarMaps0),
 
 	% The variable renaming doesn't rename variables in the callee.
 	map__init(EmptyVarRenaming),
-	apply_substitutions_to_var_map(TypeInfoVarMap0, TypeRenaming,
-		TypeSubn, EmptyVarRenaming, TypeInfoVarMap1),
+
+	apply_substitutions_to_rtti_varmaps(TypeRenaming, TypeSubn,
+		EmptyVarRenaming, RttiVarMaps0, RttiVarMaps1),
+	
+	% XXX see below
 
 	% Add entries in the typeinfo_varmap for the extra type-infos.
-	list__map(
-		(pred(TypeInfoVar::in, type_info(TypeInfoVar)::out) is det),
-		ExtraTypeInfoVars, ExtraTypeInfoLocns),
-	map__from_corresponding_lists(ExtraTypeInfoTVars, ExtraTypeInfoLocns,
-		ExtraTypeInfoMap),
-	map__overlay(TypeInfoVarMap1, ExtraTypeInfoMap, TypeInfoVarMap),
+	list__foldl_corresponding(rtti_det_insert_type_info_type,
+		ExtraTypeInfoVars, ExtraTypeInfoTVarTypes,
+		RttiVarMaps1, RttiVarMaps2),
+	Pred = (pred(TVar::in, Var::in, !.R::in, !:R::out) is det :-
+			Locn = type_info(Var),
+			rtti_set_type_info_locn(TVar, Locn, !R)
+		),
+	list__foldl_corresponding(Pred, ExtraTypeInfoTVars, ExtraTypeInfoVars,
+		RttiVarMaps2, RttiVarMaps),
 
-	proc_info_set_typeinfo_varmap(TypeInfoVarMap, !NewProcInfo),
+	proc_info_set_rtti_varmaps(RttiVarMaps, !NewProcInfo),
 
 	map__from_corresponding_lists(CallArgs, HeadVars0, VarRenaming0),
 
@@ -2791,6 +2808,12 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
 	construct_higher_order_terms(ModuleInfo, HeadVars0, ExtraHeadVars,
 		ArgModes0, ExtraArgModes, HOArgs, !NewProcInfo,
 		VarRenaming0, _, PredVars0, PredVars, ConstGoals),
+
+	% XXX the substitutions used to be applied to the typeclass_info_varmap
+	% here rather than at the XXX above.  Any new entries added in the code
+	% between these two points should therefore be transformed as well?
+	% The new entries come from HOArgs, which have already had TypeSubn
+	% applied, but not TypeRenaming.  Perhaps this is enough?
 
 	%
 	% Record extra information about this version.
@@ -2890,20 +2913,14 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
 	),
 
 	%
-	% Apply the substitutions to the types in the original
-	% typeclass_info_varmap.
-	%
-	proc_info_typeclass_info_varmap(!.NewProcInfo, TCVarMap0),
-	apply_substitutions_to_typeclass_var_map(TCVarMap0, TypeRenaming,
-		TypeSubn, EmptyVarRenaming, TCVarMap),
-	proc_info_set_typeclass_info_varmap(TCVarMap, !NewProcInfo),
-
-	%
 	% Find the new class context by searching the argument types
 	% for typeclass_infos (the corresponding constraint is encoded
 	% in the type of a typeclass_info).
 	%
-	find_class_context(ModuleInfo, ArgTypes, ArgModes, [], [],
+	proc_info_headvars(!.NewProcInfo, ArgVars),
+	proc_info_rtti_varmaps(!.NewProcInfo, NewRttiVarMaps),
+	list__map(rtti_varmaps_var_info(NewRttiVarMaps), ArgVars, ArgVarInfos),
+	find_class_context(ModuleInfo, ArgVarInfos, ArgModes, [], [],
 		ClassContext),
 	pred_info_set_class_context(ClassContext, !NewPredInfo),
 
@@ -2950,7 +2967,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 		NewArgModes, [HOArg | HOArgs], !ProcInfo, !Renaming,
 		!PredVars, ConstGoals) :-
 	HOArg = higher_order_arg(ConsId, Index, NumArgs,
-		CurriedArgs, CurriedArgTypes, CurriedHOArgs, IsConst),
+		CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
+		CurriedHOArgs, IsConst),
 
 	list__index1_det(HeadVars0, Index, LVar),
 	( ConsId = pred_const(ShroudedPredProcId, _) ->
@@ -2981,10 +2999,11 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 
 	proc_info_create_vars_from_types(CurriedArgTypes, CurriedHeadVars1,
 		!ProcInfo),
-	CurriedHeadVarsAndTypes = assoc_list__from_corresponding_lists(
-		CurriedHeadVars1, CurriedArgTypes),
 
-	list__foldl(add_rtti_info, CurriedHeadVarsAndTypes, !ProcInfo),
+	proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+	list__foldl_corresponding(add_rtti_info, CurriedHeadVars1,
+		CurriedArgRttiInfo, RttiVarMaps0, RttiVarMaps),
+	proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
 	(
 		IsConst = no,
@@ -3054,53 +3073,65 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 		NewArgModes),
 	list__append(ConstGoals0, ConstGoals1, ConstGoals).
 
-	% Add any new type-infos or typeclass-infos to the
-	% typeinfo_varmap or typeclass_info_varmap.
-:- pred add_rtti_info(pair(prog_var, (type))::in,
-	proc_info::in, proc_info::out) is det.
+	% Add any new type-infos or typeclass-infos to the rtti_varmaps.
+	%
+:- pred add_rtti_info(prog_var::in, rtti_var_info::in,
+	rtti_varmaps::in, rtti_varmaps::out) is det.
 
-add_rtti_info(Var - VarType, !ProcInfo) :-
+add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
 	(
-		polymorphism__type_info_or_ctor_type(VarType, Type),
-		Type = term__variable(TVar)
-	->
-		maybe_set_typeinfo_locn(TVar, type_info(Var), !ProcInfo)
+		VarInfo = type_info_var(TypeInfoType),
+		rtti_det_insert_type_info_type(Var, TypeInfoType,
+			!RttiVarMaps),
+		(
+			prog_type__var(TypeInfoType, TVar)
+		->
+			maybe_set_typeinfo_locn(TVar, type_info(Var),
+				!RttiVarMaps)
+		;
+			true
+		)
 	;
-		polymorphism__typeclass_info_class_constraint(VarType,
-			Constraint),
-		proc_info_typeclass_info_varmap(!.ProcInfo, TCVarMap0),
-		\+ map__contains(TCVarMap0, Constraint)
-	->
-		map__det_insert(TCVarMap0, Constraint, Var, TCVarMap),
-		proc_info_set_typeclass_info_varmap(TCVarMap, !ProcInfo),
-		Constraint = constraint(_, ConstraintTypes),
-		list__foldl2(update_type_info_locn(Var), ConstraintTypes,
-			1, _, !ProcInfo)
+		VarInfo = typeclass_info_var(Constraint),
+		(
+			\+ rtti_search_typeclass_info_var(!.RttiVarMaps,
+				Constraint, _)
+		->
+			rtti_det_insert_typeclass_info_var(Constraint, Var,
+				!RttiVarMaps),
+			Constraint = constraint(_, ConstraintTypes),
+			list__foldl2(update_type_info_locn(Var),
+				ConstraintTypes, 1, _, !RttiVarMaps)
+		;
+			true
+		)
 	;
-		true
+		VarInfo = non_rtti_var
 	).
 
 :- pred update_type_info_locn(prog_var::in, (type)::in, int::in, int::out,
-	proc_info::in, proc_info::out) is det.
+	rtti_varmaps::in, rtti_varmaps::out) is det.
 
-update_type_info_locn(Var, ConstraintType, Index, Index + 1, !ProcInfo) :-
-	( ConstraintType = term__variable(ConstraintTVar) ->
+update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
+	(
+		prog_type__var(ConstraintType, ConstraintTVar)
+	->
 		maybe_set_typeinfo_locn(ConstraintTVar,
-			typeclass_info(Var, Index), !ProcInfo)
+			typeclass_info(Var, Index), !RttiVarMaps)
 	;
 		true
 	).
 
 :- pred maybe_set_typeinfo_locn(tvar::in, type_info_locn::in,
-	proc_info::in, proc_info::out) is det.
+	rtti_varmaps::in, rtti_varmaps::out) is det.
 
-maybe_set_typeinfo_locn(TVar, Locn, !ProcInfo) :-
-	proc_info_typeinfo_varmap(!.ProcInfo, TVarMap0),
-	( map__contains(TVarMap0, TVar) ->
+maybe_set_typeinfo_locn(TVar, Locn, !RttiVarMaps) :-
+	(
+		rtti_search_type_info_locn(!.RttiVarMaps, TVar, _)
+	->
 		true
 	;
-		map__det_insert(TVarMap0, TVar, Locn, TVarMap),
-		proc_info_set_typeinfo_varmap(TVarMap, !ProcInfo)
+		rtti_det_insert_type_info_locn(TVar, Locn, !RttiVarMaps)
 	).
 
 :- pred remove_const_higher_order_args(int::in, list(T)::in,
@@ -3109,7 +3140,7 @@ maybe_set_typeinfo_locn(TVar, Locn, !ProcInfo) :-
 remove_const_higher_order_args(_, [], _, []).
 remove_const_higher_order_args(Index, [Arg | Args0], HOArgs0, Args) :-
 	( HOArgs0 = [HOArg | HOArgs] ->
-		HOArg = higher_order_arg(_, HOIndex, _, _, _, _, IsConst),
+		HOArg = higher_order_arg(_, HOIndex, _, _, _, _, _, IsConst),
 		( HOIndex = Index ->
 			remove_const_higher_order_args(Index + 1, Args0,
 				HOArgs, Args1),
@@ -3141,13 +3172,27 @@ higher_order_arg_order_version = 1.
 
 substitute_higher_order_arg(Subn, !HOArg) :-
 	CurriedArgTypes0 = !.HOArg ^ hoa_curry_type_in_caller,
+	CurriedRttiTypes0 = !.HOArg ^ hoa_curry_rtti_type,
 	CurriedHOArgs0 = !.HOArg ^ hoa_known_curry_args,
 	term__apply_rec_substitution_to_list(CurriedArgTypes0,
 		Subn, CurriedArgTypes),
+	list__map(substitute_rtti_var_info(Subn), CurriedRttiTypes0,
+		CurriedRttiTypes),
 	list__map(substitute_higher_order_arg(Subn),
 		CurriedHOArgs0, CurriedHOArgs),
-	!:HOArg = (!.HOArg ^ hoa_curry_type_in_caller := CurriedArgTypes)
+	!:HOArg = ((!.HOArg ^ hoa_curry_type_in_caller := CurriedArgTypes)
+		^ hoa_curry_rtti_type := CurriedRttiTypes)
 		^ hoa_known_curry_args := CurriedHOArgs.
+
+:- pred substitute_rtti_var_info(tsubst::in, rtti_var_info::in,
+	rtti_var_info::out) is det.
+
+substitute_rtti_var_info(Subn, type_info_var(Type0), type_info_var(Type)) :-
+	term__apply_rec_substitution(Type0, Subn, Type).
+substitute_rtti_var_info(Subn, typeclass_info_var(Constraint0),
+		typeclass_info_var(Constraint)) :-
+	apply_rec_subst_to_prog_constraint(Subn, Constraint0, Constraint).
+substitute_rtti_var_info(_, non_rtti_var, non_rtti_var).
 
 %-----------------------------------------------------------------------------%
 
@@ -3158,8 +3203,8 @@ higher_order_args_size(Args) =
 
 :- func higher_order_arg_size(higher_order_arg) = int.
 
-higher_order_arg_size(higher_order_arg(_, _, _, _, _, CurriedArgs, _)) =
-	1 + higher_order_args_size(CurriedArgs).
+higher_order_arg_size(HOArg) =
+	1 + higher_order_args_size(HOArg ^ hoa_known_curry_args).
 
 :- func higher_order_args_depth(list(higher_order_arg)) = int.
 
@@ -3168,16 +3213,16 @@ higher_order_args_depth(Args) =
 
 :- func higher_order_arg_depth(higher_order_arg) = int.
 
-higher_order_arg_depth(higher_order_arg(_, _, _, _, _, CurriedArgs, _)) =
-	1 + higher_order_args_size(CurriedArgs).
+higher_order_arg_depth(HOArg) = 
+	1 + higher_order_args_depth(HOArg ^ hoa_known_curry_args).
 
 %-----------------------------------------------------------------------------%
 
 	% Collect the list of prog_constraints from the list of argument
 	% types. The typeclass_info for universal constraints is input,
 	% output for existential constraints.
-:- pred find_class_context(module_info::in, list(type)::in, list(mode)::in,
-	list(prog_constraint)::in, list(prog_constraint)::in,
+:- pred find_class_context(module_info::in, list(rtti_var_info)::in,
+	list(mode)::in, list(prog_constraint)::in, list(prog_constraint)::in,
 	prog_constraints::out) is det.
 
 find_class_context(_, [], [], Univ0, Exist0, Constraints) :-
@@ -3188,9 +3233,11 @@ find_class_context(_, [], [_|_], _, _, _) :-
 	error("higher_order:find_class_context").
 find_class_context(_, [_|_], [], _, _, _) :-
 	error("higher_order:find_class_context").
-find_class_context(ModuleInfo, [Type | Types], [Mode | Modes], !.Univ, !.Exist,
-		Constraints) :-
-	( polymorphism__typeclass_info_class_constraint(Type, Constraint) ->
+find_class_context(ModuleInfo, [VarInfo | VarInfos], [Mode | Modes],
+		!.Univ, !.Exist, Constraints) :-
+	(
+		VarInfo = typeclass_info_var(Constraint)
+	->
 		( mode_is_input(ModuleInfo, Mode) ->
 			maybe_add_constraint(Constraint, !Univ)
 		;
@@ -3199,7 +3246,7 @@ find_class_context(ModuleInfo, [Type | Types], [Mode | Modes], !.Univ, !.Exist,
 	;
 		true
 	),
-	find_class_context(ModuleInfo, Types, Modes, !.Univ, !.Exist,
+	find_class_context(ModuleInfo, VarInfos, Modes, !.Univ, !.Exist,
 		Constraints).
 
 :- pred maybe_add_constraint(prog_constraint::in,

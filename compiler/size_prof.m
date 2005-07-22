@@ -181,7 +181,7 @@
 %
 % The construct_transform field specifies how term sizes are to be measured.
 %
-% The type_info_varmap specifies which program variables hold the type_infos
+% The rtti_varmaps specifies which program variables hold the type_infos
 % of which type variables.
 %
 % The module_info is needed by some utility predicates called by the
@@ -204,7 +204,7 @@
 		varset			:: prog_varset,
 		vartypes		:: vartypes,
 		transform_op		:: construct_transform,
-		type_info_varmap	:: type_info_varmap,
+		rtti_varmaps		:: rtti_varmaps,
 		module_info		:: module_info
 	).
 
@@ -237,7 +237,7 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 	proc_info_varset(!.ProcInfo, VarSet0),
 	proc_info_vartypes(!.ProcInfo, VarTypes0),
 	proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-	proc_info_typeinfo_varmap(!.ProcInfo, TypeInfoVarmap),
+	proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps),
 	% The with_types are needed to avoid a combinatorial explosion
 	% of ambiguity in the type checker.
 	TypeCtorMap0 = map__init `with_type` type_ctor_map,
@@ -248,10 +248,10 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 	KnownSizeMap0 = map__init `with_type` known_size_map,
 	Info0 = size_prof_info(TypeCtorMap0, TypeInfoMap0,
 		RevTypeCtorMap0, RevTypeInfoMap0, TargetTypeInfoMap0,
-		KnownSizeMap0, VarSet0, VarTypes0, Transform, TypeInfoVarmap,
+		KnownSizeMap0, VarSet0, VarTypes0, Transform, RttiVarMaps,
 		!.ModuleInfo),
-	map__to_assoc_list(TypeInfoVarmap, TypeInfoVarAssocList),
-	list__foldl(record_typeinfo_in_type_info_varmap, TypeInfoVarAssocList,
+	rtti_varmaps_tvars(RttiVarMaps, TVars),
+	list__foldl(record_typeinfo_in_type_info_varmap(RttiVarMaps), TVars,
 		Info0, Info1),
 	process_goal(Goal0, Goal1, Info1, Info),
 
@@ -630,14 +630,16 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
 				% with a type substitution such as K=int, it
 				% leaves the type of TypeInfo_for_K as
 				% type_info, not type_ctor_info.
-				record_known_type_ctor_info(Var, M, N, A, !Info)
+				record_known_type_ctor_info(Var, M, N, A,
+					!Info)
 			;
 				error("size_prof__process_construct: "
 					++ "bad type_info")
 			)
 		; VarTypeCtorName = "type_ctor_info" ->
 			( ConsId = type_ctor_info_const(M, N, A) ->
-				record_known_type_ctor_info(Var, M, N, A, !Info)
+				record_known_type_ctor_info(Var, M, N, A,
+					!Info)
 			;
 				error("size_prof__process_construct: "
 					++ "bad type_ctor_info")
@@ -872,7 +874,8 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
 				no, TypeInfoVar, TypeInfoGoals, !Info)
 		)
 	; Type = term__variable(TVar) ->
-		map__lookup(!.Info ^ type_info_varmap, TVar, TVarLocn),
+		rtti_lookup_type_info_locn(!.Info ^ rtti_varmaps, TVar,
+			TVarLocn),
 		(
 			TVarLocn = type_info(TypeInfoVar),
 			TypeInfoGoals = []
@@ -886,9 +889,12 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
 				VarSet1 = VarSet0,
 				VarTypes1 = VarTypes0
 			;
+				RttiVarMaps0 = !.Info ^ rtti_varmaps,
 				polymorphism__new_type_info_var_raw(Type,
 					type_info, TypeInfoVar,
-					VarSet0, VarSet1, VarTypes0, VarTypes1)
+					VarSet0, VarSet1, VarTypes0, VarTypes1,
+					RttiVarMaps0, RttiVarMaps),
+				!:Info = !.Info ^ rtti_varmaps := RttiVarMaps
 			),
 			make_int_const_construction(Slot,
 				yes("TypeClassInfoSlot"), SlotGoal, SlotVar,
@@ -947,6 +953,7 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
 	),
 	VarSet2 = !.Info ^ varset,
 	VarTypes2 = !.Info ^ vartypes,
+	RttiVarMaps0 = !.Info ^ rtti_varmaps,
 	TargetTypeInfoMap = !.Info ^ target_type_info_map,
 	( map__search(TargetTypeInfoMap, Type, PrefTIVar) ->
 		MaybePreferredVar = yes(PrefTIVar)
@@ -955,9 +962,11 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
 	),
 	polymorphism__init_type_info_var(Type, ArgVars,
 		MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
-		VarSet2, VarSet, VarTypes2, VarTypes),
+		VarSet2, VarSet, VarTypes2, VarTypes,
+		RttiVarMaps0, RttiVarMaps),
 	!:Info = !.Info ^ varset := VarSet,
 	!:Info = !.Info ^ vartypes := VarTypes,
+	!:Info = !.Info ^ rtti_varmaps := RttiVarMaps,
 	TypeInfoGoals = list__condense([ArgTypeInfoGoals, FrontGoals,
 		[TypeInfoGoal]]).
 
@@ -985,12 +994,15 @@ make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
 		),
 		VarSet0 = !.Info ^ varset,
 		VarTypes0 = !.Info ^ vartypes,
+		RttiVarMaps0 = !.Info ^ rtti_varmaps,
 		polymorphism__init_const_type_ctor_info_var(Type, TypeCtor,
 			TypeCtorVar, TypeCtorGoal, !.Info ^ module_info,
-			VarSet0, VarSet, VarTypes0, VarTypes),
+			VarSet0, VarSet, VarTypes0, VarTypes,
+			RttiVarMaps0, RttiVarMaps),
 		TypeCtorGoals = [TypeCtorGoal],
 		!:Info = !.Info ^ varset := VarSet,
-		!:Info = !.Info ^ vartypes := VarTypes
+		!:Info = !.Info ^ vartypes := VarTypes,
+		!:Info = !.Info ^ rtti_varmaps := RttiVarMaps
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1086,8 +1098,8 @@ record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
 	( map__search(RevTypeCtorMap0, TypeCtorInfoVar, TypeCtor0) ->
 		RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
 		(
-			list__map(map__search(RevTypeInfoMap0), ArgTypeInfoVars,
-				ArgTypes)
+			list__map(map__search(RevTypeInfoMap0),
+				ArgTypeInfoVars, ArgTypes)
 		->
 			list__length(ArgTypes, Arity),
 			% Just in case TypeCtorInfo0 has fake arity,
@@ -1134,10 +1146,11 @@ record_known_size(Var, KnownSize, !Info) :-
 	map__det_insert(KnownSizeMap0, Var, KnownSize, KnownSizeMap),
 	!:Info = !.Info ^ known_size_map := KnownSizeMap.
 
-:- pred record_typeinfo_in_type_info_varmap(pair(tvar, type_info_locn)::in,
+:- pred record_typeinfo_in_type_info_varmap(rtti_varmaps::in, tvar::in,
 	info::in, info::out) is det.
 
-record_typeinfo_in_type_info_varmap(TVar - TypeInfoLocn, !Info) :-
+record_typeinfo_in_type_info_varmap(RttiVarMaps, TVar, !Info) :-
+	rtti_lookup_type_info_locn(RttiVarMaps, TVar, TypeInfoLocn),
 	Type = term__variable(TVar),
 	(
 		TypeInfoLocn = type_info(TypeInfoVar),

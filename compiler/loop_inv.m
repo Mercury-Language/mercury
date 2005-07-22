@@ -758,8 +758,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     hlds_pred__pred_info_typevarset(PredInfo, TVarSet),
     hlds_pred__proc_info_vartypes(ProcInfo, VarTypes),
     hlds_pred__pred_info_get_class_context(PredInfo, ClassContext),
-    hlds_pred__proc_info_typeinfo_varmap(ProcInfo, TVarMap),
-    hlds_pred__proc_info_typeclass_info_varmap(ProcInfo, TCVarMap),
+    hlds_pred__proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
     hlds_pred__proc_info_varset(ProcInfo, VarSet),
     hlds_pred__proc_info_inst_varset(ProcInfo, InstVarSet),
     hlds_pred__pred_info_get_markers(PredInfo, Markers),
@@ -796,9 +795,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         TVarSet,        % in    - ???
         VarTypes,       % in    - The var -> type mapping for the new aux proc.
         ClassContext,   % in    - Typeclass constraints on the new aux proc.
-        TVarMap,        % in    - The tvar -> type_info_locn map for this proc.
-        TCVarMap,       % in    - The class_constraint -> var map for
-                        %           locating the type class typeclass_info.
+        RttiVarMaps,    % in    - type_info and typeclass_info locations.
         VarSet,         % in    - ???
         InstVarSet,     % in    - ???
         Markers,        % in    - Markers for the new aux proc.
@@ -954,11 +951,10 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
     hlds_pred__proc_info_varset(ProcInfo0, VarSet),
     hlds_pred__proc_info_vartypes(ProcInfo0, VarTypes),
     hlds_pred__proc_info_headvars(ProcInfo0, HeadVars),
-    hlds_pred__proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
-    hlds_pred__proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap),
+    hlds_pred__proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps),
 
     hlds_pred__proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
-        TVarMap, TCVarMap, ProcInfo0, ProcInfo1),
+        RttiVarMaps, ProcInfo0, ProcInfo1),
 
     quantification__requantify_proc(ProcInfo1, ProcInfo2),
     mode_util__recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,

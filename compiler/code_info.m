@@ -3532,9 +3532,9 @@ code_info__compute_forward_live_var_saves(CI, OutArgs, VarLocs) :-
     TypeInfoLiveness = code_info__body_typeinfo_liveness(CI),
     code_info__get_proc_info(CI, ProcInfo),
     proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
-        VarTypes, TVarMap, Vars1),
+        VarTypes, RttiVarMaps, Vars1),
     set__difference(Vars1, OutArgs, Vars),
     set__to_sorted_list(Vars, Variables),
     list__map(code_info__associate_stack_slot(CI), Variables, VarLocs).
