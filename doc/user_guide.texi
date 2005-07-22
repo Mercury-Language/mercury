@@ -4166,6 +4166,9 @@ argument is given then display the current question.
 @item print io @var{n}
 Print the @var{n}th IO action.
 @sp 1
+@item print io @var{n}-@var{m}
+Print the @var{n}th to @var{m}th IO actions (inclusive).
+@sp 1
 @item set @var{param} @var{value}
 Update the given configuration parameter.
 The parameters that can be configured are
