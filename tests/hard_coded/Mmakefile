@@ -176,6 +176,7 @@ ORDINARY_PROGS=	\
 	test_bitset \
 	test_cord \
 	test_imported_no_tag \
+	test_injection \
 	test_promise_impure_implicit \
 	time_test \
 	tim_qual1 \

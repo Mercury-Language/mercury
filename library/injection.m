@@ -236,8 +236,7 @@
 	injection(K, V)::out) is det.
 
 	% Merge the contents of the two injections.  Both sets of keys must
-	% be disjoint, and both sets of values must be disjoint.  Throws an
-	% exception if this condition is not satisfied.
+	% be disjoint, and both sets of values must be disjoint.
 	%
 :- func injection.merge(injection(K, V), injection(K, V)) = injection(K, V).
 :- pred injection.merge(injection(K, V)::in, injection(K, V)::in,
@@ -245,8 +244,7 @@
 
 	% Merge the contents of the two injections.  For keys that occur in
 	% both injections, map them to the value in the second argument.
-	% Both sets of values must be disjoint.  Throws an exception if this
-	% condition is not satisfied.
+	% Both sets of values must be disjoint.
 	%
 :- func injection.overlay(injection(K, V), injection(K, V)) = injection(K, V).
 :- pred injection.overlay(injection(K, V)::in, injection(K, V)::in,
