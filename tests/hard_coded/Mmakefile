@@ -347,7 +347,7 @@ endif
 #     These test cases test some more sophisticated cases of loop invariant
 #     optimization which are current loop_inv pass is not capable of
 #     optimizing.
-#     
+#
 # XXX var_not_found -- mode error in automatically generated unification
 #		predicate.  This test uses partially instantiated modes,
 #		which are not yet fully supported.
@@ -397,14 +397,14 @@ ifeq "$(filter hl% il% java%,$(GRADE))" ""
 	else
 		BACKEND_PROGS_2 =
 	endif
-	
+
 	BACKEND_PROGS = \
 		$(BACKEND_PROGS_2) \
 		closure_arg_comparison \
 		compare_representation \
 		compare_rep_usereq \
 		stable_foreign \
-		type_tables 
+		type_tables
 else
 	BACKEND_PROGS =
 endif
@@ -443,7 +443,7 @@ ifeq "$(filter il% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
 	C_AND_GC_ONLY_PROGS=string_hash
 else
 	C_AND_GC_ONLY_PROGS=
-endif	
+endif
 
 # Static linking doesn't work on Solaris in debug grades
 # ('-ldl' doesn't work with static linking).
@@ -490,7 +490,7 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
 else
   	SPLIT_PROGS =
 endif
-  
+
 #-----------------------------------------------------------------------------#
 
 TESTS = $(PROGS) $(SPLIT_PROGS:%=%.split)
@@ -592,11 +592,11 @@ dst_test.out: dst_test
 		{ grep . $@ /dev/null; exit 1; }
 
 endif
- 
+
 #-----------------------------------------------------------------------------#
 
 clean_local:
-	rm -f target_mlobjs_c.o		
+	rm -f target_mlobjs_c.o
 
 realclean_local:
 	rm -f Mercury.modules
