@@ -4179,7 +4179,7 @@ The @samp{mark} command can only be given from within the interactive
 term browser and asserts that the marked subterm is incorrect.  The 
 declarative debugger uses this information to better direct the bug search.  
 If no argument is given the the current subterm is taken to be incorrect.  
-If a @var{term-path} is given then the subterm at @var{tern-path} relative to
+If a @var{term-path} is given then the subterm at @var{term-path} relative to
 the current subterm will be considered incorrect.
 @sp 1
 @item pd
