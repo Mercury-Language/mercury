@@ -70,6 +70,8 @@
 :- pred prog_out__write_list(list(T)::in,
 	pred(T, io, io)::in(pred(in, di, uo) is det), io::di, io::uo) is det.
 
+:- pred write_string_list(list(string)::in, io::di, io::uo) is det.
+
 :- pred prog_out__write_promise_type(promise_type::in, io::di, io::uo) is det.
 
 :- func prog_out__promise_to_string(promise_type) = string.
@@ -261,6 +263,14 @@ prog_out__write_list([Import], Writer, !IO) :-
 	call(Writer, Import, !IO).
 prog_out__write_list([], _, !IO) :-
 	error("prog_out__write_module_list").
+
+write_string_list([], !IO).
+write_string_list([Name], !IO) :-
+	io__write_string(Name, !IO).
+write_string_list([Name1, Name2 | Names], !IO) :-
+	io__write_string(Name1, !IO),
+	io__write_string(", ", !IO),
+	write_string_list([Name2 | Names], !IO).
 
 prog_out__promise_to_string(true) = "promise".
 prog_out__promise_to_string(exclusive) = "promise_exclusive".

@@ -40,7 +40,6 @@
 :- import_module list.
 :- import_module set.
 
-	%
 	% When the compiler performs structure reuse, using
 	% the ordinary non-locals during code generation
 	% causes variables taken from the reused cell in
@@ -76,6 +75,7 @@
 	vartypes::in, vartypes::out) is det.
 
 	% As above, with `ordinary_nonlocals' passed as the first argument.
+	%
 :- pred implicitly_quantify_clause_body(list(prog_var)::in,
 	list(quant_warning)::out, hlds_goal::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -86,6 +86,7 @@
 	vartypes::in, vartypes::out) is det.
 
 	% As above, with `ordinary_nonlocals' passed as the first argument.
+	%
 :- pred implicitly_quantify_goal(set(prog_var)::in, list(quant_warning)::out,
 	hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
 	vartypes::in, vartypes::out) is det.
@@ -94,6 +95,7 @@
 	proc_info::in, proc_info::out) is det.
 
 	% As above, with `ordinary_nonlocals' passed as the first argument.
+	%
 :- pred requantify_proc(proc_info::in, proc_info::out) is det.
 
 	% We return a list of warnings back to make_hlds.m.
@@ -104,12 +106,13 @@
 	--->	warn_overlap(list(prog_var), prog_context).
 
 	% quantification__goal_vars(Goal, Vars):
-	%	Vars is the set of variables that are free (unquantified)
-	%	in Goal.
+	% Vars is the set of variables that are free (unquantified) in Goal.
+	%
 :- pred quantification__goal_vars(nonlocals_to_recompute::in,
 	hlds_goal::in, set(prog_var)::out) is det.
 
 	% As above, with `ordinary_nonlocals' passed as the first argument.
+	%
 :- pred quantification__goal_vars(hlds_goal::in, set(prog_var)::out) is det.
 
 %-----------------------------------------------------------------------------%

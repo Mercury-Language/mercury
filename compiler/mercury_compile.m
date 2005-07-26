@@ -1671,7 +1671,7 @@ get_linked_target_type(LinkedTargetType, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__pre_hlds_pass(module_imports::in, bool::in,
-    module_info::out, qual_info::out, maybe(module_timestamps)::out,
+    module_info::out, make_hlds_qual_info::out, maybe(module_timestamps)::out,
     bool::out, bool::out, bool::out, io::di, io::uo) is det.
 
 mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1,
@@ -1860,8 +1860,9 @@ mercury_compile__expand_equiv_types(ModuleName, Items0, Verbose, Stats,
     maybe_report_stats(Stats, !IO).
 
 :- pred mercury_compile__make_hlds(module_name::in, item_list::in, mq_info::in,
-    eqv_map::in, bool::in, bool::in, module_info::out, qual_info::out,
-    bool::out, bool::out, bool::out, io::di, io::uo) is det.
+    eqv_map::in, bool::in, bool::in, module_info::out,
+    make_hlds_qual_info::out, bool::out, bool::out, bool::out, io::di, io::uo)
+    is det.
 
 mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
         HLDS, QualInfo, UndefTypes, UndefModes, FoundSemanticError, !IO) :-
@@ -1887,8 +1888,8 @@ mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__frontend_pass(qual_info::in, bool::in, bool::in,
-    bool::in, bool::out, module_info::in, module_info::out,
+:- pred mercury_compile__frontend_pass(make_hlds_qual_info::in,
+    bool::in, bool::in, bool::in, bool::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
 mercury_compile__frontend_pass(QualInfo0, FoundUndefTypeError,
@@ -1911,7 +1912,7 @@ mercury_compile__frontend_pass(QualInfo0, FoundUndefTypeError,
         check_typeclass__check_typeclasses(QualInfo0, QualInfo, !HLDS,
             FoundTypeclassError, !IO),
         mercury_compile__maybe_dump_hlds(!.HLDS, 5, "typeclass", !IO),
-        make_hlds__set_module_recompilation_info(QualInfo, !HLDS),
+        set_module_recomp_info(QualInfo, !HLDS),
 
         %
         % We can't continue after a typeclass error, since typecheck

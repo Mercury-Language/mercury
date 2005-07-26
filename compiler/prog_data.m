@@ -1392,6 +1392,8 @@
 
 :- type type_ctor	==	pair(sym_name, arity).
 
+:- type tvar_name_map	==	map(string, tvar).
+
 	% existq_tvars is used to record the set of type variables which are
 	% existentially quantified
 :- type existq_tvars	==	list(tvar).

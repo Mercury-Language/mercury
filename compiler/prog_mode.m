@@ -19,6 +19,7 @@
 
 	% Construct a mode corresponding to the standard
 	% `in', `out', `uo' or `unused' mode.
+	%
 :- pred in_mode((mode)::out) is det.
 :- func in_mode = (mode).
 :- func in_mode(inst) = (mode).
@@ -39,6 +40,7 @@
 	% Construct the modes used for `aditi__state' arguments.
 	% XXX These should be unique, but are not yet because that
 	% would require alias tracking.
+	%
 :- func aditi_mui_mode = (mode).
 :- func aditi_ui_mode = (mode).
 :- func aditi_di_mode = (mode).
@@ -53,14 +55,15 @@
 	% iff Mode is the mode that results from substituting all
 	% occurrences of Params in Mode0 with the corresponding
 	% value in Args.
-
+	%
 :- pred mode_substitute_arg_list((mode)::in, list(inst_var)::in,
 	list(inst)::in, (mode)::out) is det.
 
 	% inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes):
-	%	Given two lists of corresponding initial and final
-	%	insts, return a list of modes which maps from the
-	%	initial insts to the final insts.
+	%
+	% Given two lists of corresponding initial and final insts, return
+	% a list of modes which maps from the initial insts to the final insts.
+	%
 :- pred inst_lists_to_mode_list(list(inst)::in, list(inst)::in,
 	list(mode)::out) is det.
 
@@ -72,25 +75,25 @@
 	% iff Inst is the inst that results from substituting all
 	% occurrences of Params in Inst0 with the corresponding
 	% value in Args.
-
+	%
 :- pred inst_substitute_arg_list((inst)::in, list(inst_var)::in,
 	list(inst)::in, (inst)::out) is det.
 
 	% inst_list_apply_substitution(Insts0, Subst, Insts) is true
 	% iff Inst is the inst that results from applying Subst to Insts0.
-
+	%
 :- pred inst_list_apply_substitution(list(inst)::in, inst_var_sub::in,
 	list(inst)::out) is det.
 
 	% mode_list_apply_substitution(Modes0, Subst, Modes) is true
 	% iff Mode is the mode that results from applying Subst to Modes0.
-
+	%
 :- pred mode_list_apply_substitution(list(mode)::in, inst_var_sub::in,
 	list(mode)::out) is det.
 
 :- pred rename_apart_inst_vars(inst_varset::in, inst_varset::in,
 	list(mode)::in, list(mode)::out) is det.
-	
+
 	% inst_contains_unconstrained_var(Inst) iff Inst includes an
 	% unconstrained inst variable.
 	%
@@ -101,6 +104,7 @@
 	% Given an expanded inst and a cons_id and its arity, return the
 	% insts of the arguments of the top level functor, failing if the
 	% inst could not be bound to the functor.
+	%
 :- pred get_arg_insts((inst)::in, cons_id::in, arity::in, list(inst)::out)
 	is semidet.
 
@@ -112,7 +116,7 @@
 
 	% Predicates to make error messages more readable by stripping
 	% "builtin:" module qualifiers from modes.
-
+	%
 :- pred strip_builtin_qualifier_from_cons_id(cons_id::in, cons_id::out) is det.
 
 :- pred strip_builtin_qualifiers_from_mode_list(list(mode)::in,
@@ -127,7 +131,7 @@
 
 :- implementation.
 
-:- import_module mdbcomp__prim_data. 
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_util.
 
 :- import_module map.

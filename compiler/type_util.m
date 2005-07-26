@@ -35,19 +35,21 @@
 
 	% Succeed iff type is an "atomic" type - one which can be
 	% unified using a simple_test rather than a complicated_unify.
-
+	%
 :- pred type_is_atomic((type)::in, module_info::in) is semidet.
 
 :- pred type_ctor_is_atomic(type_ctor::in, module_info::in) is semidet.
 
 	% The list of type_ctors which are builtins which do not have a
 	% hlds_type_defn.
+	%
 :- func builtin_type_ctors_with_no_hlds_type_defn = list(type_ctor).
 
 	% Obtain the type definition and type definition body respectively,
 	% if known, for the principal type constructor of the given type.
 	%
 	% Fail if the given type is a type variable.
+	%
 :- pred type_util__type_to_type_defn(module_info::in, (type)::in,
 		hlds_type_defn::out) is semidet.
 
@@ -64,6 +66,7 @@
 	%
 	% If the type is a type variable and thus has no principal type
 	% constructor, fail.
+	%
 :- pred type_has_user_defined_equality_pred(module_info::in, (type)::in,
 	unify_compare::out) is semidet.
 
@@ -75,18 +78,19 @@
 	%
 	% If the type is a type variable and thus has no principal type
 	% constructor, fail.
+	%
 :- pred type_util__type_is_solver_type(module_info::in, (type)::in) is semidet.
 
 :- pred type_util__type_has_solver_type_details(module_info::in, (type)::in,
-		solver_type_details::out) is semidet.
+	solver_type_details::out) is semidet.
 
 :- pred type_util__type_body_has_solver_type_details(module_info::in,
-		hlds_type_body::in, solver_type_details::out) is semidet.
+	hlds_type_body::in, solver_type_details::out) is semidet.
 
 :- pred type_util__is_solver_type(module_info::in, (type)::in) is semidet.
 
 :- pred type_body_is_solver_type(module_info::in, hlds_type_body::in)
-		is semidet.
+	is semidet.
 
 	% Succeeds iff one or more of the type constructors for a given
 	% type is existentially quantified.
@@ -98,6 +102,7 @@
 	% there is no need to actually pass them, and so when
 	% importing or exporting procedures to/from C, we don't
 	% include arguments with these types.
+	%
 :- pred type_util__is_dummy_argument_type((type)::in) is semidet.
 
 :- pred type_util__constructors_are_dummy_argument_type(list(constructor)::in)
@@ -110,6 +115,7 @@
 :- pred type_ctor_is_array(type_ctor::in) is semidet.
 
 	% Remove an `aditi:state' from the given list if one is present.
+	%
 :- pred type_util__remove_aditi_state(list(type)::in, list(T)::in,
 	list(T)::out) is det.
 
@@ -117,7 +123,7 @@
 	% are `lies', i.e. they are not sufficiently accurate for RTTI
 	% structures describing the types. Since the RTTI will be hand defined,
 	% the compiler shouldn't generate RTTI for these types.
-
+	%
 :- pred type_ctor_has_hand_defined_rtti(type_ctor::in, hlds_type_body::in)
 	is semidet.
 
@@ -126,7 +132,7 @@
 	% places.  For example, mode inference never infers unique modes
 	% for these types, since it would not be useful, and since we
 	% want to minimize the number of different modes that we infer.
-
+	%
 :- pred is_introduced_type_info_type((type)::in) is semidet.
 
 :- pred is_introduced_type_info_type_ctor(type_ctor::in) is semidet.
@@ -138,6 +144,7 @@
 	% preceding the non-type_info-related variables (with the relative
 	% order of variables within each group being the same as in the
 	% original list).
+	%
 :- func put_typeinfo_vars_first(list(prog_var), vartypes) = list(prog_var).
 
 	% In the forwards mode, this predicate checks for a "new " prefix
@@ -146,15 +153,18 @@
 	% In the reverse mode, this predicate prepends such a prefix.
 	% (These prefixes are used for construction unifications
 	% with existentially typed functors.)
+	%
 :- pred remove_new_prefix(sym_name, sym_name).
 :- mode remove_new_prefix(in, out) is semidet.
 :- mode remove_new_prefix(out, in) is det.
 
 	% Given a type, determine what category its principal constructor
 	% falls into.
+	%
 :- func classify_type(module_info, type) = type_category.
 
 	% Given a type_ctor, determine what sort it is.
+	%
 :- func classify_type_ctor(module_info, type_ctor) = type_category.
 
 :- type type_category
@@ -190,16 +200,17 @@
 :- func aditi_state_type = (type).
 
 	% Construct type_infos and type_ctor_infos for the given types.
+	%
 :- func type_info_type(type) = (type).
 :- func type_ctor_info_type(type) = (type).
 
 	% Given a constant and an arity, return a type_ctor.
 	% Fails if the constant is not an atom.
-
+	%
 :- pred make_type_ctor(const::in, int::in, type_ctor::out) is semidet.
 
 	% Given a type_ctor, look up its module/name/arity
-
+	%
 :- pred type_util__type_ctor_module(module_info::in, type_ctor::in,
 	module_name::out) is det.
 
@@ -211,6 +222,7 @@
 
 	% If the type is a du type or a tuple type,
 	% return the list of its constructors.
+	%
 :- pred type_constructors((type)::in, module_info::in, list(constructor)::out)
 	is semidet.
 
@@ -221,6 +233,7 @@
 	% float, and switch. One cannot have a switch on an abstract type,
 	% and equivalence types will have been expanded out by the time
 	% we consider switches.)
+	%
 :- pred type_util__switch_type_num_functors(module_info::in, (type)::in,
 	int::out) is semidet.
 
@@ -230,18 +243,21 @@
 	% Note that this will substitute appropriate values for
 	% any type variables in the functor's argument types,
 	% to match their bindings in the functor's type.
+	%
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
 	cons_id::in, list(type)::out) is det.
 
 	% The same as type_util__get_cons_id_arg_types except that it
 	% fails rather than aborting if the functor is existentially
 	% typed.
+	%
 :- pred type_util__get_cons_id_non_existential_arg_types(module_info::in,
 	(type)::in, cons_id::in, list(type)::out) is semidet.
 
 	% The same as type_util__get_cons_id_arg_types except that the
 	% cons_id is output non-deterministically.
 	% The cons_id is not module-qualified.
+	%
 :- pred type_util__cons_id_arg_types(module_info::in, (type)::in,
 	cons_id::out, list(type)::out) is nondet.
 
@@ -251,11 +267,13 @@
 	% functor's argument types; they will be left unbound,
 	% so the caller can find out the original types from the constructor
 	% definition.  The caller must do that sustitution itself if required.
+	%
 :- pred type_util__get_type_and_cons_defn(module_info::in, (type)::in,
 	cons_id::in, hlds_type_defn::out, hlds_cons_defn::out) is det.
 
 	% Like type_util__get_type_and_cons_defn (above), except that it
 	% only returns the definition of the constructor, not the type.
+	%
 :- pred type_util__get_cons_defn(module_info::in, type_ctor::in, cons_id::in,
 	hlds_cons_defn::out) is semidet.
 
@@ -266,6 +284,7 @@
 	% The list(prog_var) is the list of arguments to the cons_id and is just
 	% used for obtaining the arity for typeclass_info and type_info
 	% cons_ids.
+	%
 :- pred qualify_cons_id((type)::in, list(prog_var)::in, cons_id::in,
 	cons_id::out, cons_id::out) is det.
 
@@ -276,6 +295,7 @@
 	% functor's argument types; they will be left unbound,
 	% so the caller can find out the original types from the constructor
 	% definition.  The caller must do that sustitution itself if required.
+	%
 :- pred type_util__get_existq_cons_defn(module_info::in, (type)::in,
 	cons_id::in, ctor_defn::out) is semidet.
 
@@ -285,6 +305,7 @@
 	% This type is used to return information about a constructor
 	% definition, extracted from the hlds_type_defn and hlds_cons_defn
 	% data types.
+	%
 :- type ctor_defn
 	--->	ctor_defn(
 			tvarset,
@@ -298,7 +319,7 @@
 	% (i.e. one with only one constructor, and
 	% whose one constructor has only one argument),
 	% and if so, return its constructor symbol and argument type.
-
+	%
 :- pred type_is_no_tag_type(module_info::in, (type)::in, sym_name::out,
 	(type)::out) is semidet.
 
@@ -312,19 +333,22 @@
 	% (such as turning off no_tag_types).  If you want those checks
 	% you should use type_is_no_tag_type/4, or if you really know
 	% what you are doing, perform the checks yourself.
-
+	%
 :- pred type_constructors_are_no_tag_type(list(constructor)::in, sym_name::out,
 	(type)::out, maybe(string)::out) is semidet.
 
 	% Given a list of constructors for a type, check whether that
 	% type is a private_builtin:type_info/n or similar type.
+	%
 :- pred type_constructors_are_type_info(list(constructor)::in) is semidet.
 
 	% type_constructors_should_be_no_tag(Ctors, ReservedTag, Globals,
 	%	FunctorName, FunctorArgType, MaybeFunctorArgName):
+	%
 	% Check whether some constructors are a no_tag type, and that this
 	% is compatible with the ReservedTag setting for this type and
 	% the grade options set in the globals.
+	%
 :- pred type_constructors_should_be_no_tag(list(constructor)::in, bool::in,
 	globals::in, sym_name::out, (type)::out, maybe(string)::out)
 	is semidet.
@@ -333,7 +357,7 @@
 	% substitution and update the type bindings.
 	% The third argument is a list of type variables which cannot
 	% be bound (i.e. head type variables).
-
+	%
 :- pred type_unify((type)::in, (type)::in, list(tvar)::in, tsubst::in,
 	tsubst::out) is semidet.
 
@@ -366,19 +390,20 @@
 	% arguments of the call. This checks that none
 	% of the existentially quantified type variables of
 	% the callee are bound.
+	%
 :- pred arg_type_list_subsumes(tvarset::in, list(type)::in,
 	tvarset::in, existq_tvars::in, list(type)::in) is semidet.
 
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
-
+	%
 :- pred apply_substitution_to_type_map(map(prog_var, type)::in, tsubst::in,
 	map(prog_var, type)::out) is det.
 
 	% same thing as above, except for a recursive substitution
 	% (i.e. we keep applying the substitution recursively until
 	% there are no more changes).
-
+	%
 :- pred apply_rec_substitution_to_type_map(map(prog_var, type)::in, tsubst::in,
 	map(prog_var, type)::out) is det.
 
@@ -430,16 +455,18 @@
 :- pred apply_variable_renaming_to_constraint_map(map(tvar, tvar)::in,
 	constraint_map::in, constraint_map::out) is det.
 
-% Apply a renaming (partial map) to a list.
-% Useful for applying a variable renaming to a list of variables.
+	% Apply a renaming (partial map) to a list.
+	% Useful for applying a variable renaming to a list of variables.
+	%
 :- pred apply_partial_map_to_list(list(T)::in, map(T, T)::in, list(T)::out)
 	is det.
 
 	% cons_id_adjusted_arity(ModuleInfo, Type, ConsId):
-	%	Returns the number of arguments of specified constructor id,
-	%	adjusted to include the extra typeclassinfo and typeinfo
-	%	arguments inserted by polymorphism.m for existentially
-	%	typed constructors.
+	%
+	% Returns the number of arguments of specified constructor id,
+	% adjusted to include the extra typeclassinfo and typeinfo
+	% arguments inserted by polymorphism.m for existentially
+	% typed constructors.
 	%
 :- func cons_id_adjusted_arity(module_info, type, cons_id) = int.
 
@@ -450,6 +477,7 @@
 	% from the cons_id because the arity in the cons_id will not
 	% include any extra type_info arguments for existentially
 	% quantified types.
+	%
 :- pred maybe_get_cons_id_arg_types(module_info::in, maybe(type)::in,
 	cons_id::in, arity::in, list(maybe(type))::out) is det.
 

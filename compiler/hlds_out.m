@@ -2335,16 +2335,6 @@ hlds_out__write_var_name_list([Var1 - Name1, VarName2 | Vars], !IO) :-
 	io__write_string(", ", !IO),
 	hlds_out__write_var_name_list([VarName2 | Vars], !IO).
 
-:- pred hlds_out__write_string_list(list(string)::in, io::di, io::uo) is det.
-
-hlds_out__write_string_list([], !IO).
-hlds_out__write_string_list([Name], !IO) :-
-	io__write_string(Name, !IO).
-hlds_out__write_string_list([Name1, Name2 | Names], !IO) :-
-	io__write_string(Name1, !IO),
-	io__write_string(", ", !IO),
-	hlds_out__write_string_list([Name2 | Names], !IO).
-
 :- pred hlds_out__write_aditi_builtin(module_info::in, aditi_builtin::in,
 	simple_call_id::in, list(prog_var)::in, prog_varset::in, bool::in,
 	int::in, string::in, io::di, io::uo) is det.

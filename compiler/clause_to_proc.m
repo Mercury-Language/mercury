@@ -27,7 +27,7 @@
 	% of a predicate (e.g. sort).  For each mode of the predicate,
 	% we select the clauses for that mode, disjoin them together,
 	% and save this in the proc_info.
-
+	%
 :- pred copy_module_clauses_to_procs(list(pred_id)::in,
 	module_info::in, module_info::out) is det.
 
@@ -39,7 +39,7 @@
 	% Before copying the clauses to the procs, we need to add
 	% a default mode of `:- mode foo(in, in, ..., in) = out is det.'
 	% for functions that don't have an explicit mode declaration.
-
+	%
 :- pred maybe_add_default_func_modes(list(pred_id)::in,
 	pred_table::in, pred_table::out) is det.
 

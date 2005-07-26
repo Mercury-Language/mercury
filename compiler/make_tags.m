@@ -7,50 +7,50 @@
 % file: make_tags.m.
 % main author: fjh.
 
-	% This module is where we determine the representation for
-	% discriminated union types.  Each d.u. type is represented as
-	% a word.  In the case of functors with arguments, we allocate
-	% the arguments on the heap, and the word contains a pointer to
-	% those arguments.
-	%
-	% For types which are just enumerations (all the constructors
-	% are constants), we just assign a different value for each
-	% constructor.
-	%
-	% For types which have only one functor of arity one, there is
-	% no need to store the functor, and we just store the argument
-	% value directly; construction and deconstruction unifications
-	% on these type are no-ops.
-	%
-	% For other types, we use a couple of bits of the word as a
-	% tag.  We split the constructors into constants and functors,
-	% and assign tag zero to the constants (if any).  If there is
-	% more than one constant, we distinguish between the different
-	% constants by the value of the rest of the word.  Then we
-	% assign one tag bit each to the first few functors.  The
-	% remaining functors all get the last remaining two-bit tag.
-	% These functors are distinguished by a secondary tag which is
-	% the first word of the argument vector for those functors.
-	%
-	% If there are no tag bits available, then we try using reserved
-	% addresses (e.g. NULL, (void *)1, (void *)2, etc.) instead.
-	% We split the constructors into constants and functors,
-	% and assign numerical reserved addresses to the first constants,
-	% up to the limit set by --num-reserved-addresses.
-	% After that, for the MLDS back-end, we assign symbolic reserved
-	% addresses to the remaining constants, up to the limit set by
-	% --num-reserved-objects; these symbolic reserved addresses
-	% are the addresses of global variables that we generate specially
-	% for this purpose.  Finally, the functors and any remaining
-	% constants are distinguished by a secondary tag, if there are more
-	% than one of them.
-
-	% If there is a `pragma reserve_tag' declaration for the type,
-	% or if the `--reserve-tag' option is set,
-	% then we reserve the first primary tag (for representing
-	% unbound variables).  This is used by HAL, for Herbrand constraints
-	% (i.e. Prolog-style logic variables).
-	% This also disables enumerations and no_tag types.
+% This module is where we determine the representation for
+% discriminated union types.  Each d.u. type is represented as
+% a word.  In the case of functors with arguments, we allocate
+% the arguments on the heap, and the word contains a pointer to
+% those arguments.
+%
+% For types which are just enumerations (all the constructors
+% are constants), we just assign a different value for each
+% constructor.
+%
+% For types which have only one functor of arity one, there is
+% no need to store the functor, and we just store the argument
+% value directly; construction and deconstruction unifications
+% on these type are no-ops.
+%
+% For other types, we use a couple of bits of the word as a
+% tag.  We split the constructors into constants and functors,
+% and assign tag zero to the constants (if any).  If there is
+% more than one constant, we distinguish between the different
+% constants by the value of the rest of the word.  Then we
+% assign one tag bit each to the first few functors.  The
+% remaining functors all get the last remaining two-bit tag.
+% These functors are distinguished by a secondary tag which is
+% the first word of the argument vector for those functors.
+%
+% If there are no tag bits available, then we try using reserved
+% addresses (e.g. NULL, (void *)1, (void *)2, etc.) instead.
+% We split the constructors into constants and functors,
+% and assign numerical reserved addresses to the first constants,
+% up to the limit set by --num-reserved-addresses.
+% After that, for the MLDS back-end, we assign symbolic reserved
+% addresses to the remaining constants, up to the limit set by
+% --num-reserved-objects; these symbolic reserved addresses
+% are the addresses of global variables that we generate specially
+% for this purpose.  Finally, the functors and any remaining
+% constants are distinguished by a secondary tag, if there are more
+% than one of them.
+%
+% If there is a `pragma reserve_tag' declaration for the type,
+% or if the `--reserve-tag' option is set,
+% then we reserve the first primary tag (for representing
+% unbound variables).  This is used by HAL, for Herbrand constraints
+% (i.e. Prolog-style logic variables).
+% This also disables enumerations and no_tag types.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -96,8 +96,8 @@
 assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
 		CtorTags, IsEnum) :-
 
-		% work out how many tag bits and reserved addresses
-		% we've got to play with
+		% Work out how many tag bits and reserved addresses
+		% we've got to play with.
 	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
 	globals__lookup_int_option(Globals, num_reserved_addresses,
 		NumReservedAddresses),
@@ -105,8 +105,8 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
 		NumReservedObjects),
 	globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
-		% determine if we need to reserve a tag for use by HAL's
-		% Herbrand constraint solver
+		% Determine if we need to reserve a tag for use by HAL's
+		% Herbrand constraint solver.
 		% (This also disables enumerations and no_tag types.)
 	globals__lookup_bool_option(Globals, reserve_tag, GlobalReserveTag),
 	ReserveTag = GlobalReserveTag `or` ReservedTagPragma,
@@ -143,13 +143,14 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
 		;
 			NumTagBits = 0
 		->
-			( ReserveTag = yes ->
+			(
+				ReserveTag = yes,
 				% XXX Need to fix this.
 				% This occurs for the .NET and Java backends
 				sorry("make_tags",
 					"--reserve-tag with num_tag_bits = 0")
 			;
-				true
+				ReserveTag = no
 			),
 			% assign reserved addresses to the constants,
 			% if possible
@@ -157,13 +158,15 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
 			assign_reserved_numeric_addresses(Constants,
 				LeftOverConstants0, CtorTags0, CtorTags1,
 				0, NumReservedAddresses),
-			( HighLevelCode = yes ->
+			(
+				HighLevelCode = yes,
 				assign_reserved_symbolic_addresses(
 					LeftOverConstants0,
 					LeftOverConstants, TypeCtor,
 					CtorTags1, CtorTags2,
 					0, NumReservedObjects)
 			;
+				HighLevelCode = no,
 				% reserved symbolic addresses are not
 				% supported for the LLDS back-end
 				LeftOverConstants = LeftOverConstants0,
@@ -258,9 +261,11 @@ assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
 	% is more efficient.
 
 assign_constant_tags(Constants, !CtorTags, InitTag, NextTag) :-
-	( Constants = [] ->
+	(
+		Constants = [],
 		NextTag = InitTag
 	;
+		Constants = [_ | _],
 		NextTag = InitTag + 1,
 		assign_shared_local_tags(Constants,
 			InitTag, 0, !CtorTags)
@@ -284,7 +289,7 @@ assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
 		map__set(!.CtorTags, ConsId, Tag, !:CtorTags)
 	% if we're about to run out of unshared tags, start assigning
 	% shared remote tags instead
-	; Val = MaxTag, Rest \= [] ->
+	; Val = MaxTag, Rest = [_ | _] ->
 		assign_shared_remote_tags([Ctor | Rest], MaxTag, 0,
 			ReservedAddresses, !CtorTags)
 	;
@@ -326,11 +331,13 @@ assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal, !CtorTags) :-
 :- func maybe_add_reserved_addresses(list(reserved_address), cons_tag) =
 	cons_tag.
 
-maybe_add_reserved_addresses(ReservedAddresses, Tag) =
-	( ReservedAddresses = [] ->
-		Tag
+maybe_add_reserved_addresses(ReservedAddresses, Tag0) = Tag :-
+	(
+		ReservedAddresses = [],
+		Tag = Tag0
 	;
-		shared_with_reserved_addresses(ReservedAddresses, Tag)
+		ReservedAddresses = [_ | _],
+		Tag = shared_with_reserved_addresses(ReservedAddresses, Tag0)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -359,10 +366,12 @@ separate_out_constants([], [], []).
 separate_out_constants([Ctor | Ctors], Constants, Functors) :-
 	separate_out_constants(Ctors, Constants0, Functors0),
 	Args = Ctor ^ cons_args,
-	( Args = [] ->
+	(
+		Args = [],
 		Constants = [Ctor | Constants0],
 		Functors = Functors0
 	;
+		Args = [_ | _],
 		Constants = Constants0,
 		Functors = [Ctor | Functors0]
 	).

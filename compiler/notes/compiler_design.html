@@ -360,32 +360,114 @@ This simplified data structure is called the High Level Data Structure (HLDS),
 which is defined in the hlds.m package.
 
 <p>
-The last stage of parsing is this conversion to HLDS:
+The last stage of parsing is this conversion to HLDS,
+which is done mostly by the following submodules
+of the make_hlds module in the hlds package.
+<dl>
 
-<ul>
-<li><p> conversion to superhomogeneous form and into HLDS
+<dt>
+make_hlds_passes.m
+<dd>
+This submodule calls the others to perform the conversion, in several passes.
+(We cannot do everything in one pass;
+for example, we need to have seen a predicate's declaration
+before we can process its clauses.)
 
-	<p>
-	make_hlds.m transforms the clauses into superhomogeneous form,
-	and at the same time converts the parse tree into the HLDS.
-	It expands away state variable syntax, universal quantification
-	(using `all [Vs] G' ===&gt; `not (some [Vs] (not G))')
-	and implication (using `A =&gt; B' ===&gt; `not(A, not B)').
-	It converts `pragma import', `pragma c_code' and `pragma fact_table'
-	declarations into clauses with HLDS `pragma_c_code'
-	instructions for bodies.
-	The `pragma fact_table' conversion is done by calling fact_table.m
-	(which is part of the ll_backend.m package); fact_table.m also
-	reads the facts from the declared file and compiles them
-	into a separate C file for which the `pragma_c_code' contains lookup
-	code.
-	make_hlds.m also calls make_tags.m which chooses the data
-	representation for each discriminated union type by
-	assigning tags to each functor.
-	make_hlds.m also performs a number of semantic checks,
-	such as checking for circular insts and modes
-	and warning about singleton variables.
-</ul>
+<dt>
+superhomogeneous.m
+<dd>
+Performs the conversion of unifications into superhomogeneous form.
+
+<dt>
+state_var.m
+<dd>
+Expands away state variable syntax.
+
+<dt>
+field_access.m
+<dd>
+Expands away field access syntax.
+
+<dt>
+add_clause.m
+<dd>
+Converts clauses from parse_tree format to hlds format.
+Handles their addition to procedures,
+which is nontrivial in the presence of mode-specific clauses.
+Eliminates universal quantification
+(using `all [Vs] G' ===&gt; `not (some [Vs] (not G))')
+and implication (using `A =&gt; B' ===&gt; `not(A, not B)').
+
+<dt>
+add_aditi.m
+<dd>
+Expands out references to Aditi builtin operations.
+
+<dt>
+add_pred.m
+<dd>
+Handles type and mode declarations for predicates.
+
+<dt>
+add_type.m
+<dd>
+Handles the declarations of types.
+
+<dt>
+add_mode.m
+<dd>
+Handles the declarations of insts and modes,
+including checking for circular insts and modes.
+
+<dt>
+add_special_pred.m
+<dd>
+Adds unify, compare, and (if needed) index and init predicates
+to the HLDS as necessary.
+
+<dt>
+add_solver.m
+<dd>
+Adds the casting predicates needed by solver types to the HLDS as necessary.
+
+<dt>
+add_class.m
+<dd>
+Handles typeclass and instance declarations.
+
+<dt>
+qual_info.m
+<dd>
+Handles the abstract data types used for module qualication.
+
+<dt>
+make_hlds_warn.m
+<dd>
+Looks for constructs that merit warnings,
+such as singleton variables and variables with overlapping scopes.
+
+<dt>
+make_hlds_error.m
+<dd>
+Error messages used by more than one submodule of make_hlds.m.
+
+<dt>
+add_pragma.m
+<dd>
+Adds most kinds of pragmas to the HLDS,
+including import/export pragmas, tabling pragmas and foreign code.
+
+</dl>
+
+Fact table pragmas are handled by fact_table.m
+(which is part of the ll_backend.m package).
+That module also reads the facts from the declared file
+and compiles them into a separate C file
+used by the foreign_proc body of the relevant predicate.
+
+The conversion of the item list to HLDS also involves make_tags.m,
+which chooses the data representation for each discriminated union type
+by assigning tags to each functor.
 
 <p>
 The HLDS data structure itself is spread over four modules:
@@ -1620,6 +1702,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-07-08 04:22:11 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-07-26 01:56:30 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

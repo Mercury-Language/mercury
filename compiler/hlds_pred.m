@@ -125,6 +125,8 @@
 
 :- type proc_table	==	map(proc_id, proc_info).
 
+:- pred next_mode_id(proc_table::in, proc_id::out) is det.
+
 :- type call_id
 	--->	call(simple_call_id)
 	;	generic_call(generic_call_id).
@@ -699,6 +701,11 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 						% language clauses?
 	).
 
+:- pred clauses_info_init(int::in, clauses_info::out) is det.
+
+:- pred clauses_info_init_for_assertion(prog_vars::in, clauses_info::out)
+    is det.
+
 :- type clauses_rep.
 
 	% Returns yes iff the given clauses_rep represents the empty list of
@@ -724,8 +731,6 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 :- pred set_clause_list(list(clause)::in, clauses_rep::out) is det.
 
 :- type vartypes == map(prog_var, type).
-
-:- type tvar_name_map == map(string, tvar).
 
 :- pred clauses_info_varset(clauses_info::in, prog_varset::out) is det.
 
@@ -796,6 +801,27 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+clauses_info_init(Arity, ClausesInfo) :-
+    map__init(VarTypes),
+    map__init(TVarNameMap),
+    varset__init(VarSet0),
+    make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
+    rtti_varmaps_init(RttiVarMaps),
+    HasForeignClauses = no,
+    set_clause_list([], ClausesRep),
+    ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
+
+clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
+    map__init(VarTypes),
+    map__init(TVarNameMap),
+    varset__init(VarSet),
+    rtti_varmaps_init(RttiVarMaps),
+    HasForeignClauses = no,
+    set_clause_list([], ClausesRep),
+    ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+        HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
 
 clauses_info_varset(CI, CI ^ varset).
 clauses_info_explicit_vartypes(CI, CI ^ explicit_vartypes).
@@ -1590,6 +1616,14 @@ hlds_pred__next_pred_id(PredId, NextPredId) :-
 
 hlds_pred__in_in_unification_proc_id(0).
 
+	% We could store the next available ModeId rather than recomputing
+	% it on demand, but it is probably more efficient this way.
+	%
+next_mode_id(Procs, ModeId) :-
+	map__to_assoc_list(Procs, List),
+	list__length(List, ModeInt),
+	proc_id_to_int(ModeId, ModeInt).
+
 status_is_exported(imported(_),			no).
 status_is_exported(external(_),			no).
 status_is_exported(abstract_imported,		no).
@@ -1793,9 +1827,8 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
 		HeadVars, Clauses, RttiVarMaps, HasForeignClauses),
 
-	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	map__init(Procs0),
-	next_mode_id(Procs0, MaybeDetism, ProcId),
+	next_mode_id(Procs0, ProcId),
 	map__det_insert(Procs0, ProcId, ProcInfo, Procs),
 
 	PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,

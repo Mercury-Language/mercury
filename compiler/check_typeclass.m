@@ -71,8 +71,9 @@
 :- import_module bool.
 :- import_module io.
 
-:- pred check_typeclass__check_typeclasses(qual_info::in, qual_info::out,
-	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+:- pred check_typeclass__check_typeclasses(make_hlds_qual_info::in,
+	make_hlds_qual_info::out, module_info::in, module_info::out,
+	bool::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -147,8 +148,9 @@ check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
 :- type error_message == pair(prog_context, list(format_component)).
 :- type error_messages == list(error_message).
 
-:- pred check_typeclass__check_instance_decls(qual_info::in, qual_info::out,
-	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
+:- pred check_typeclass__check_instance_decls(make_hlds_qual_info::in,
+	make_hlds_qual_info::out, module_info::in, module_info::out,
+	bool::out, io::di, io::uo) is det.
 
 check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 		!IO) :-
@@ -180,7 +182,7 @@ check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 	--->	check_tc_info(
 			error_messages	:: error_messages,
 			module_info	:: module_info,
-			qual_info	:: qual_info
+			qual_info	:: make_hlds_qual_info
 		).
 
 	% Check all the instances of one class.
@@ -269,8 +271,9 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
 	list(pred_id)::in, term__context::in,
 	instance_methods::in, hlds_instance_defn::in, hlds_instance_defn::out,
 	error_messages::in, error_messages::out,
-	module_info::in, module_info::out, qual_info::in, qual_info::out,
-	io::di, io::uo) is det.
+	module_info::in, module_info::out,
+	make_hlds_qual_info::in, make_hlds_qual_info::out, io::di, io::uo)
+	is det.
 
 check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
 		ClassInterface, PredIds, TermContext,
@@ -408,7 +411,7 @@ format_method_name(Method) = MethodName :-
 					% declaration.
 		error_messages,
 		module_info,
-		qual_info
+		make_hlds_qual_info
 	).
 
 	% This structure holds the information about a particular instance
@@ -416,7 +419,7 @@ format_method_name(Method) = MethodName :-
 :- type instance_method_info --->
 	instance_method_info(
 		module_info,
-		qual_info,
+		make_hlds_qual_info,
 		sym_name,				% Name that the
 							% introduced pred
 							% should be given.

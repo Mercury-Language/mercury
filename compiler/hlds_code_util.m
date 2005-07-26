@@ -23,18 +23,18 @@
 :- import_module list.
 
 	% Are equivalence types fully expanded on this backend?
-
+	%
 :- pred are_equivalence_types_expanded(module_info::in) is semidet.
 
 	% Find out how a function symbol (constructor) is represented
 	% in the given type.
-
+	%
 :- func cons_id_to_tag(cons_id, type, module_info) = cons_tag.
 
 	% Given a list of types, mangle the names so into a string which
 	% identifies them. The types must all have their top level functor
 	% bound, with any arguments free variables.
-
+	%
 :- pred make_instance_string(list(type)::in, string::out) is det.
 
 :- implementation.
