@@ -3065,7 +3065,7 @@ at the start of the breakpoint's print list.
 The option @samp{-e} or @samp{--end}, if present,
 causes them to be added at the end.
 @sp 1
-By default, the the specified elements will be printed with format "flat".
+By default, the specified elements will be printed with format "flat".
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose}, if given,
 explicitly specify the format to use.
@@ -4178,7 +4178,7 @@ The parameters that can be configured are
 The @samp{mark} command can only be given from within the interactive
 term browser and asserts that the marked subterm is incorrect.  The 
 declarative debugger uses this information to better direct the bug search.  
-If no argument is given the the current subterm is taken to be incorrect.  
+If no argument is given the current subterm is taken to be incorrect.  
 If a @var{term-path} is given then the subterm at @var{term-path} relative to
 the current subterm will be considered incorrect.
 @sp 1
