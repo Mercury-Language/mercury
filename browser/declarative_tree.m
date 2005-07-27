@@ -823,7 +823,7 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 				% argument number of the closure argument is
 				% prefixed to the term path, since the closure
 				% is itself a term.  This is done because at
-				% the time of the closure call it's not easy
+				% the time of the closure call it is not easy
 				% to decide if the call is higher order or not,
 				% without repeating all the work done in
 				% make_primitive_list, so the original TermPath
