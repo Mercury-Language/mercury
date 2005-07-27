@@ -1088,7 +1088,7 @@ simplify__goal_2(scope(Reason0, Goal1), GoalExpr, SomeInfo, GoalInfo,
             KeepCommon = yes
         ;
             FinalReason = commit(_),
-            KeepCommon = yes
+            KeepCommon = no 
         ;
             FinalReason = from_ground_term(_),
             KeepCommon = yes
