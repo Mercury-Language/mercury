@@ -1,0 +1,861 @@
+      E1:     C1 CALL pred nondet_stack.main/2-0 (cc_multi) nondet_stack.m:NNNN
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> goto 22
+      E2:     C2 SWTC pred nondet_stack.qperm/2-0 (nondet) s2;
+mdb> nondet_stack -f 3
+non 143: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 143
+ succip: unnamed label
+ succfr: non 109
+non 129: temp
+ redoip: label UNKNOWN
+ redofr: non 123
+non 126: temp
+ redoip: unnamed label
+ redofr: non 123
+<more stack frames snipped>
+mdb> nondet_stack
+non 143: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 143
+ succip: unnamed label
+ succfr: non 109
+non 129: temp
+ redoip: label UNKNOWN
+ redofr: non 123
+non 126: temp
+ redoip: unnamed label
+ redofr: non 123
+non 123: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 123
+ succip: unnamed label
+ succfr: non 109
+non 109: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 109
+ succip: unnamed label
+ succfr: non  75
+non  95: temp
+ redoip: label UNKNOWN
+ redofr: non  89
+non  92: temp
+ redoip: unnamed label
+ redofr: non  89
+non  89: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  89
+ succip: unnamed label
+ succfr: non  75
+non  75: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  75
+ succip: unnamed label
+ succfr: non  41
+non  61: temp
+ redoip: label UNKNOWN
+ redofr: non  55
+non  58: temp
+ redoip: unnamed label
+ redofr: non  55
+non  55: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  55
+ succip: unnamed label
+ succfr: non  41
+non  41: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  41
+ succip: unnamed label
+ succfr: non  27
+non  27: ordinary, 13 words
+ redoip: unnamed label
+ redofr: non  27
+ succip: unnamed label
+ succfr: non  10
+non  14: temp
+ redoip: unnamed label
+ redofr: non  10
+ detfr:  det  14
+non  10: ordinary, 6 words
+ redoip: label global_fail
+ redofr: non  10
+ succip: label wrapper_not_reached
+ succfr: non   4
+mdb> stack_regs
+sp = det  14
+curfr = non 143
+maxfr = non 143
+mdb> nondet_stack -d
+non 143: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;>
+ redoip: unnamed label
+ redofr: non 143
+ succip: unnamed label
+ succfr: non 109
+ on main nondet branch non 143
+       HeadVar__1             [4, 5]
+       TypeInfo_for_T         int
+non 129: temp
+ redoip: label UNKNOWN
+ redofr: non 123
+non 126: temp
+ redoip: unnamed label
+ redofr: non 123
+non 123: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 123
+ succip: unnamed label
+ succfr: non 109
+ top frame of a nondet side branch non 123
+       HeadVar__2             [3, 4, 5]
+       TypeInfo_for_T         int
+non 109: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non 109
+ succip: unnamed label
+ succfr: non  75
+ on main nondet branch non 143
+       HeadVar__1             [3, 4, 5]
+       TypeInfo_for_T         int
+       U                      3
+       Z                      [4, 5]
+non  95: temp
+ redoip: label UNKNOWN
+ redofr: non  89
+non  92: temp
+ redoip: unnamed label
+ redofr: non  89
+non  89: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  89
+ succip: unnamed label
+ succfr: non  75
+ top frame of a nondet side branch non  89
+       HeadVar__2             [2, 3, 4, 5]
+       TypeInfo_for_T         int
+non  75: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non  75
+ succip: unnamed label
+ succfr: non  41
+ on main nondet branch non 143
+       HeadVar__1             [2, 3, 4, 5]
+       TypeInfo_for_T         int
+       U                      2
+       Z                      [3, 4, 5]
+non  61: temp
+ redoip: label UNKNOWN
+ redofr: non  55
+non  58: temp
+ redoip: unnamed label
+ redofr: non  55
+non  55: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  55
+ succip: unnamed label
+ succfr: non  41
+ top frame of a nondet side branch non  55
+       HeadVar__2             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
+non  41: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non  41
+ succip: unnamed label
+ succfr: non  27
+ on main nondet branch non 143
+       HeadVar__1             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
+       U                      1
+       Z                      [2, 3, 4, 5]
+non  27: ordinary, 13 words, pred nondet_stack.queen/2-0 (nondet) <c2;>
+ redoip: unnamed label
+ redofr: non  27
+ succip: unnamed label
+ succfr: non  10
+ on main nondet branch non 143
+       Data (arg 1)           [1, 2, 3, 4, 5]
+       TypeCtorInfo_5         int
+non  14: temp
+ redoip: unnamed label
+ redofr: non  10
+ detfr:  det  14
+non  10: ordinary, 6 words
+ redoip: label global_fail
+ redofr: non  10
+ succip: label wrapper_not_reached
+ succfr: non   4
+mdb> goto 39
+      E3:     C3 CALL pred nondet_stack.safe/1-0 (semidet)
+mdb> nondet_stack
+non 229: temp
+ redoip: label UNKNOWN
+ redofr: non  41
+non 226: temp
+ redoip: label UNKNOWN
+ redofr: non  75
+non 223: temp
+ redoip: label UNKNOWN
+ redofr: non 109
+non 220: temp
+ redoip: label UNKNOWN
+ redofr: non 143
+non 217: temp
+ redoip: label UNKNOWN
+ redofr: non 177
+non 214: temp
+ redoip: label UNKNOWN
+ redofr: non 211
+non 211: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 211
+ succip: unnamed label
+ succfr: non 177
+non 197: temp
+ redoip: label UNKNOWN
+ redofr: non 191
+non 194: temp
+ redoip: unnamed label
+ redofr: non 191
+non 191: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 191
+ succip: unnamed label
+ succfr: non 177
+non 177: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 177
+ succip: unnamed label
+ succfr: non 143
+non 163: temp
+ redoip: label UNKNOWN
+ redofr: non 157
+non 160: temp
+ redoip: unnamed label
+ redofr: non 157
+non 157: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 157
+ succip: unnamed label
+ succfr: non 143
+non 143: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 143
+ succip: unnamed label
+ succfr: non 109
+non 129: temp
+ redoip: label UNKNOWN
+ redofr: non 123
+non 126: temp
+ redoip: unnamed label
+ redofr: non 123
+non 123: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 123
+ succip: unnamed label
+ succfr: non 109
+non 109: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 109
+ succip: unnamed label
+ succfr: non  75
+non  95: temp
+ redoip: label UNKNOWN
+ redofr: non  89
+non  92: temp
+ redoip: unnamed label
+ redofr: non  89
+non  89: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  89
+ succip: unnamed label
+ succfr: non  75
+non  75: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  75
+ succip: unnamed label
+ succfr: non  41
+non  61: temp
+ redoip: label UNKNOWN
+ redofr: non  55
+non  58: temp
+ redoip: unnamed label
+ redofr: non  55
+non  55: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  55
+ succip: unnamed label
+ succfr: non  41
+non  41: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  41
+ succip: unnamed label
+ succfr: non  27
+non  27: ordinary, 13 words
+ redoip: unnamed label
+ redofr: non  27
+ succip: unnamed label
+ succfr: non  10
+non  14: temp
+ redoip: unnamed label
+ redofr: non  10
+ detfr:  det  14
+non  10: ordinary, 6 words
+ redoip: label global_fail
+ redofr: non  10
+ succip: label wrapper_not_reached
+ succfr: non   4
+mdb> stack_regs
+sp = det  22
+curfr = non  27
+maxfr = non 229
+mdb> nondet_stack -d
+non 229: temp
+ redoip: label UNKNOWN
+ redofr: non  41
+non 226: temp
+ redoip: label UNKNOWN
+ redofr: non  75
+non 223: temp
+ redoip: label UNKNOWN
+ redofr: non 109
+non 220: temp
+ redoip: label UNKNOWN
+ redofr: non 143
+non 217: temp
+ redoip: label UNKNOWN
+ redofr: non 177
+non 214: temp
+ redoip: label UNKNOWN
+ redofr: non 211
+non 211: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 211
+ succip: unnamed label
+ succfr: non 177
+ top frame of a nondet side branch non 211
+       HeadVar__1             []
+       TypeInfo_for_T         int
+non 197: temp
+ redoip: label UNKNOWN
+ redofr: non 191
+non 194: temp
+ redoip: unnamed label
+ redofr: non 191
+non 191: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 191
+ succip: unnamed label
+ succfr: non 177
+ top frame of a nondet side branch non 191
+       HeadVar__2             [5]
+       TypeInfo_for_T         int
+non 177: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non 177
+ succip: unnamed label
+ succfr: non 143
+ internal frame on nondet side branch non 211
+       HeadVar__1             [5]
+       TypeInfo_for_T         int
+       U                      5
+       Z                      []
+non 163: temp
+ redoip: label UNKNOWN
+ redofr: non 157
+non 160: temp
+ redoip: unnamed label
+ redofr: non 157
+non 157: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 157
+ succip: unnamed label
+ succfr: non 143
+ top frame of a nondet side branch non 157
+       HeadVar__2             [4, 5]
+       TypeInfo_for_T         int
+non 143: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non 143
+ succip: unnamed label
+ succfr: non 109
+ internal frame on nondet side branch non 211
+       HeadVar__1             [4, 5]
+       TypeInfo_for_T         int
+       U                      4
+       Z                      [5]
+non 129: temp
+ redoip: label UNKNOWN
+ redofr: non 123
+non 126: temp
+ redoip: unnamed label
+ redofr: non 123
+non 123: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 123
+ succip: unnamed label
+ succfr: non 109
+ top frame of a nondet side branch non 123
+       HeadVar__2             [3, 4, 5]
+       TypeInfo_for_T         int
+non 109: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non 109
+ succip: unnamed label
+ succfr: non  75
+ internal frame on nondet side branch non 211
+       HeadVar__1             [3, 4, 5]
+       TypeInfo_for_T         int
+       U                      3
+       Z                      [4, 5]
+non  95: temp
+ redoip: label UNKNOWN
+ redofr: non  89
+non  92: temp
+ redoip: unnamed label
+ redofr: non  89
+non  89: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  89
+ succip: unnamed label
+ succfr: non  75
+ top frame of a nondet side branch non  89
+       HeadVar__2             [2, 3, 4, 5]
+       TypeInfo_for_T         int
+non  75: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non  75
+ succip: unnamed label
+ succfr: non  41
+ internal frame on nondet side branch non 211
+       HeadVar__1             [2, 3, 4, 5]
+       TypeInfo_for_T         int
+       U                      2
+       Z                      [3, 4, 5]
+non  61: temp
+ redoip: label UNKNOWN
+ redofr: non  55
+non  58: temp
+ redoip: unnamed label
+ redofr: non  55
+non  55: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  55
+ succip: unnamed label
+ succfr: non  41
+ top frame of a nondet side branch non  55
+       HeadVar__2             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
+non  41: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non  41
+ succip: unnamed label
+ succfr: non  27
+ internal frame on nondet side branch non 211
+       HeadVar__1             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
+       U                      1
+       Z                      [2, 3, 4, 5]
+non  27: ordinary, 13 words, pred nondet_stack.queen/2-0 (nondet) <c3;>
+ redoip: unnamed label
+ redofr: non  27
+ succip: unnamed label
+ succfr: non  10
+ on main nondet branch non  27
+       Data (arg 1)           [1, 2, 3, 4, 5]
+       Out (arg 2)            [1, 2, 3, 4, 5]
+       TypeCtorInfo_5         int
+non  14: temp
+ redoip: unnamed label
+ redofr: non  10
+ detfr:  det  14
+non  10: ordinary, 6 words
+ redoip: label global_fail
+ redofr: non  10
+ succip: label wrapper_not_reached
+ succfr: non   4
+mdb> break nondet_stack__test
+ 0: + stop  interface pred nondet_stack.test/2-0 (nondet)
+mdb> continue
+      E4:     C4 CALL pred nondet_stack.test/2-0 (nondet)
+mdb> nondet_stack
+non 300: ordinary, 13 words
+ redoip: unnamed label
+ redofr: non 300
+ succip: unnamed label
+ succfr: non  10
+non 287: temp
+ redoip: unnamed label
+ redofr: non  10
+ detfr:  det  14
+non 283: temp
+ redoip: label UNKNOWN
+ redofr: non  27
+non 280: temp
+ redoip: label UNKNOWN
+ redofr: non  41
+non 277: temp
+ redoip: label UNKNOWN
+ redofr: non  75
+non 274: temp
+ redoip: label UNKNOWN
+ redofr: non 126
+non 271: temp
+ redoip: label UNKNOWN
+ redofr: non 194
+non 268: temp
+ redoip: label UNKNOWN
+ redofr: non 228
+non 265: temp
+ redoip: label UNKNOWN
+ redofr: non 262
+non 262: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 262
+ succip: unnamed label
+ succfr: non 228
+non 248: temp
+ redoip: label UNKNOWN
+ redofr: non 242
+non 245: temp
+ redoip: unnamed label
+ redofr: non 242
+non 242: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 242
+ succip: unnamed label
+ succfr: non 228
+non 228: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 228
+ succip: unnamed label
+ succfr: non 194
+non 214: temp
+ redoip: label UNKNOWN
+ redofr: non 208
+non 211: temp
+ redoip: unnamed label
+ redofr: non 208
+non 208: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 208
+ succip: unnamed label
+ succfr: non 194
+non 194: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 194
+ succip: unnamed label
+ succfr: non 126
+non 180: temp
+ redoip: label UNKNOWN
+ redofr: non 140
+non 177: temp
+ redoip: label UNKNOWN
+ redofr: non 154
+non 174: temp
+ redoip: label UNKNOWN
+ redofr: non 168
+non 171: temp
+ redoip: unnamed label
+ redofr: non 168
+non 168: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 168
+ succip: unnamed label
+ succfr: non 154
+non 154: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 154
+ succip: unnamed label
+ succfr: non 140
+non 140: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 140
+ succip: unnamed label
+ succfr: non 126
+non 126: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 126
+ succip: unnamed label
+ succfr: non  75
+non 112: temp
+ redoip: label UNKNOWN
+ redofr: non  89
+non 109: temp
+ redoip: label UNKNOWN
+ redofr: non 103
+non 106: temp
+ redoip: unnamed label
+ redofr: non 103
+non 103: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 103
+ succip: unnamed label
+ succfr: non  89
+non  89: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  89
+ succip: unnamed label
+ succfr: non  75
+non  75: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  75
+ succip: unnamed label
+ succfr: non  41
+non  61: temp
+ redoip: label UNKNOWN
+ redofr: non  55
+non  58: temp
+ redoip: unnamed label
+ redofr: non  55
+non  55: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  55
+ succip: unnamed label
+ succfr: non  41
+non  41: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  41
+ succip: unnamed label
+ succfr: non  27
+non  27: ordinary, 13 words
+ redoip: unnamed label
+ redofr: non  27
+ succip: unnamed label
+ succfr: non  10
+non  14: temp
+ redoip: unnamed label
+ redofr: non  10
+ detfr:  det  14
+non  10: ordinary, 6 words
+ redoip: label global_fail
+ redofr: non  10
+ succip: label wrapper_not_reached
+ succfr: non   4
+mdb> stack_regs
+sp = det  14
+curfr = non 300
+maxfr = non 300
+mdb> nondet_stack -d
+non 300: ordinary, 13 words, pred nondet_stack.test/2-0 (nondet) <>
+ redoip: unnamed label
+ redofr: non 300
+ succip: unnamed label
+ succfr: non  10
+ on main nondet branch non 300
+       HeadVar__1             [1, 3, 5, 2, 4]
+non 287: temp
+ redoip: unnamed label
+ redofr: non  10
+ detfr:  det  14
+non 283: temp
+ redoip: label UNKNOWN
+ redofr: non  27
+non 280: temp
+ redoip: label UNKNOWN
+ redofr: non  41
+non 277: temp
+ redoip: label UNKNOWN
+ redofr: non  75
+non 274: temp
+ redoip: label UNKNOWN
+ redofr: non 126
+non 271: temp
+ redoip: label UNKNOWN
+ redofr: non 194
+non 268: temp
+ redoip: label UNKNOWN
+ redofr: non 228
+non 265: temp
+ redoip: label UNKNOWN
+ redofr: non 262
+non 262: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 262
+ succip: unnamed label
+ succfr: non 228
+ top frame of a nondet side branch non 262
+       HeadVar__1             []
+       TypeInfo_for_T         int
+non 248: temp
+ redoip: label UNKNOWN
+ redofr: non 242
+non 245: temp
+ redoip: unnamed label
+ redofr: non 242
+non 242: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 242
+ succip: unnamed label
+ succfr: non 228
+ top frame of a nondet side branch non 242
+       HeadVar__2             [4]
+       TypeInfo_for_T         int
+non 228: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non 228
+ succip: unnamed label
+ succfr: non 194
+ internal frame on nondet side branch non 262
+       HeadVar__1             [4]
+       TypeInfo_for_T         int
+       U                      4
+       Z                      []
+non 214: temp
+ redoip: label UNKNOWN
+ redofr: non 208
+non 211: temp
+ redoip: unnamed label
+ redofr: non 208
+non 208: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 208
+ succip: unnamed label
+ succfr: non 194
+ top frame of a nondet side branch non 208
+       HeadVar__2             [2, 4]
+       TypeInfo_for_T         int
+non 194: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non 194
+ succip: unnamed label
+ succfr: non 126
+ internal frame on nondet side branch non 262
+       HeadVar__1             [2, 4]
+       TypeInfo_for_T         int
+       U                      2
+       Z                      [4]
+non 180: temp
+ redoip: label UNKNOWN
+ redofr: non 140
+non 177: temp
+ redoip: label UNKNOWN
+ redofr: non 154
+non 174: temp
+ redoip: label UNKNOWN
+ redofr: non 168
+non 171: temp
+ redoip: unnamed label
+ redofr: non 168
+non 168: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 168
+ succip: unnamed label
+ succfr: non 154
+ top frame of a nondet side branch non 168
+       HeadVar__2             [5]
+       TypeInfo_for_T         int
+non 154: ordinary, 14 words, pred nondet_stack.qdelete/3-0 (nondet) <c2;d2;c3;>
+ redoip: unnamed label
+ redofr: non 154
+ succip: unnamed label
+ succfr: non 140
+ internal frame on nondet side branch non 168
+       HeadVar__2             [4, 5]
+       A                      4
+       TypeInfo_for_T         int
+       Z                      [5]
+non 140: ordinary, 14 words, pred nondet_stack.qdelete/3-0 (nondet) <c2;d2;c3;>
+ redoip: unnamed label
+ redofr: non 140
+ succip: unnamed label
+ succfr: non 126
+ internal frame on nondet side branch non 168
+       HeadVar__2             [2, 4, 5]
+       A                      2
+       TypeInfo_for_T         int
+       Z                      [4, 5]
+non 126: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non 126
+ succip: unnamed label
+ succfr: non  75
+ internal frame on nondet side branch non 262
+       HeadVar__1             [2, 4, 5]
+       TypeInfo_for_T         int
+       U                      5
+       Z                      [2, 4]
+non 112: temp
+ redoip: label UNKNOWN
+ redofr: non  89
+non 109: temp
+ redoip: label UNKNOWN
+ redofr: non 103
+non 106: temp
+ redoip: unnamed label
+ redofr: non 103
+non 103: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non 103
+ succip: unnamed label
+ succfr: non  89
+ top frame of a nondet side branch non 103
+       HeadVar__2             [3, 4, 5]
+       TypeInfo_for_T         int
+non  89: ordinary, 14 words, pred nondet_stack.qdelete/3-0 (nondet) <c2;d2;c3;>
+ redoip: unnamed label
+ redofr: non  89
+ succip: unnamed label
+ succfr: non  75
+ internal frame on nondet side branch non 103
+       HeadVar__2             [2, 3, 4, 5]
+       A                      2
+       TypeInfo_for_T         int
+       Z                      [3, 4, 5]
+non  75: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non  75
+ succip: unnamed label
+ succfr: non  41
+ internal frame on nondet side branch non 262
+       HeadVar__1             [2, 3, 4, 5]
+       TypeInfo_for_T         int
+       U                      3
+       Z                      [2, 4, 5]
+non  61: temp
+ redoip: label UNKNOWN
+ redofr: non  55
+non  58: temp
+ redoip: unnamed label
+ redofr: non  55
+non  55: ordinary, 14 words
+ redoip: unnamed label
+ redofr: non  55
+ succip: unnamed label
+ succfr: non  41
+ top frame of a nondet side branch non  55
+       HeadVar__2             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
+non  41: ordinary, 14 words, pred nondet_stack.qperm/2-0 (nondet) <s2;c2;>
+ redoip: unnamed label
+ redofr: non  41
+ succip: unnamed label
+ succfr: non  27
+ internal frame on nondet side branch non 262
+       HeadVar__1             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
+       U                      1
+       Z                      [2, 3, 4, 5]
+non  27: ordinary, 13 words, pred nondet_stack.queen/2-0 (nondet) <c2;>
+ redoip: unnamed label
+ redofr: non  27
+ succip: unnamed label
+ succfr: non  10
+ internal frame on nondet side branch non 262
+       Data (arg 1)           [1, 2, 3, 4, 5]
+       TypeCtorInfo_5         int
+non  14: temp
+ redoip: unnamed label
+ redofr: non  10
+ detfr:  det  14
+non  10: ordinary, 6 words
+ redoip: label global_fail
+ redofr: non  10
+ succip: label wrapper_not_reached
+ succfr: non   4
+mdb> continue -S
+[2, 5, 3, 1, 4]
