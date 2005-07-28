@@ -184,6 +184,13 @@ extern	void	MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *proc);
 extern	void	MR_print_pred_id_and_nl(FILE *fp, const MR_Proc_Layout *proc);
 
 /*
+** MR_get_proc_decl_module(proc):
+** 	Return the module name the procedure is declared in.
+*/
+
+extern	MR_ConstString	MR_get_proc_decl_module(const MR_Proc_Layout *proc);
+
+/*
 ** MR_proc_layout_stats(fp):
 **	Prints statistics about the proc layout structures of the program.
 */

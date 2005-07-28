@@ -351,6 +351,7 @@ MR_dump_module_procs(FILE *fp, const char *name)
 {
     const MR_Module_Layout  *module;
     int                     i;
+    MR_ConstString          decl_module;
 
     module = MR_search_module_info_by_unique_name(fp, name);
     if (module == NULL) {
@@ -360,7 +361,13 @@ MR_dump_module_procs(FILE *fp, const char *name)
 
     fprintf(fp, "List of procedures in module `%s'\n\n", name);
     for (i = 0; i < module->MR_ml_proc_count; i++) {
-        MR_print_proc_id_and_nl(fp, module->MR_ml_procs[i]);
+        decl_module = MR_get_proc_decl_module(module->MR_ml_procs[i]);
+        /*
+        ** Only show procs which are declared in the module.
+        */
+        if (MR_streq(decl_module, module->MR_ml_name)) {
+            MR_print_proc_id_and_nl(fp, module->MR_ml_procs[i]);
+        }
     }
 }
 
@@ -1054,6 +1061,16 @@ MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *entry_layout)
 {
     MR_print_proc_id(fp, entry_layout);
     fprintf(fp, "\n");
+}
+
+MR_ConstString	
+MR_get_proc_decl_module(const MR_Proc_Layout *proc)
+{
+    if (MR_PROC_LAYOUT_IS_UCI(proc)) {
+        return (&proc->MR_sle_uci)->MR_uci_type_module;
+    } else {
+        return (&proc->MR_sle_user)->MR_user_decl_module;
+    }
 }
 
 void
