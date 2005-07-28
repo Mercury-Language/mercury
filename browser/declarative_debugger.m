@@ -191,17 +191,12 @@
 	;	ignore(T)
 	
 			% The oracle has deferred answering this question. 
-	;	skip(T)
+	;	skip(T).
 
-			% The oracle has requested that the analyser display
-			% information about the state of the search and
-			% the last question asked.
-	;	show_info(io.output_stream).
-
-	% Answers that are known by the oracle without having to consult the user,
-	% such as answers stored in the knowledge base or answers about trusted
-	% predicates.  mdb.declarative_oracle.answer_known/3 returns answers of
-	% this subtype.
+	% Answers that are known by the oracle without having to consult the
+	% user, such as answers stored in the knowledge base or answers about
+	% trusted predicates.  mdb.declarative_oracle.answer_known/3 returns
+	% answers of this subtype.
 	%
 :- inst known_answer
 	--->	truth_value(ground, ground)
@@ -295,6 +290,10 @@
 
 :- type diagnoser_state(R).
 
+	% diagnoser_state_init(InputStream, OutputStream, Browser,
+	%	HelpSystem, Diagnoser).
+	% Initialise a new diagnoser with the given properties.
+	%
 :- pred diagnoser_state_init(io.input_stream::in,
 	io.output_stream::in, browser_info.browser_persistent_state::in,
 	help.system::in, diagnoser_state(R)::out) is det.
@@ -361,35 +360,34 @@ get_decl_question_atom(unexpected_exception(_, init_decl_atom(Atom), _)) =
 
 :- type diagnoser_state(R)
 	--->	diagnoser(
-			analyser_state	:: analyser_state(edt_node(R)),
-			oracle_state	:: oracle_state
+			analyser_state		:: analyser_state(edt_node(R)),
+			oracle_state		:: oracle_state,
+				
+				% The diagnoser state before the previous
+				% oracle answer (if there oracle has given any
+				% answers yet).
+			previous_diagnoser	:: maybe(diagnoser_state(R))
 		).
-
-:- pred diagnoser_get_analyser(diagnoser_state(R)::in,
-		analyser_state(edt_node(R))::out) is det.
-
-diagnoser_get_analyser(diagnoser(Analyser, _), Analyser).
-
-:- pred diagnoser_set_analyser(analyser_state(edt_node(R))::in, 
-	diagnoser_state(R)::in,	diagnoser_state(R)::out) is det.
-
-diagnoser_set_analyser(Analyser, diagnoser(_, Oracle), 
-	diagnoser(Analyser, Oracle)).
-
-:- pred diagnoser_get_oracle(diagnoser_state(R)::in, oracle_state::out) is det.
-
-diagnoser_get_oracle(diagnoser(_, Oracle), Oracle).
-
-:- pred diagnoser_set_oracle(oracle_state::in, diagnoser_state(R)::in,
-	diagnoser_state(R)::out) is det.
-
-diagnoser_set_oracle(Oracle, diagnoser(Analyser, _), 
-	diagnoser(Analyser, Oracle)).
 
 diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
 	analyser_state_init(Analyser),
 	oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle),
-	Diagnoser = diagnoser(Analyser, Oracle).
+	Diagnoser = diagnoser(Analyser, Oracle, no).
+
+:- pred push_diagnoser(diagnoser_state(R)::in, diagnoser_state(R)::out) is det.
+
+push_diagnoser(!Diagnoser) :-
+	!:Diagnoser = !.Diagnoser ^ previous_diagnoser := yes(!.Diagnoser).
+
+:- pred pop_diagnoser(diagnoser_state(R)::in, diagnoser_state(R)::out) 
+	is semidet.
+
+pop_diagnoser(!Diagnoser) :-
+	LatestOracle = !.Diagnoser ^ oracle_state,
+	!.Diagnoser ^ previous_diagnoser = yes(!:Diagnoser),
+	LastPushedOracle = !.Diagnoser ^ oracle_state,
+	update_revised_knowledge_base(LastPushedOracle, LatestOracle, Oracle),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
 
 diagnosis(Store, AnalysisType, Response, !Diagnoser, !Browser, !IO) :-
 	mdb.declarative_oracle.set_browser_state(!.Browser, !.Diagnoser ^
@@ -421,7 +419,7 @@ diagnosis_2(Store, AnalysisType, Diagnoser0, {Response, Diagnoser}, !IO) :-
 	Analyser0 = Diagnoser0 ^ analyser_state,
 	start_or_resume_analysis(wrap(Store), Diagnoser0 ^ oracle_state, 
 		AnalysisType, AnalyserResponse, Analyser0, Analyser),
-	diagnoser_set_analyser(Analyser, Diagnoser0, Diagnoser1),
+	Diagnoser1 = Diagnoser0 ^ analyser_state := Analyser,
 	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
 		Response, Diagnoser1, Diagnoser, !IO).
@@ -440,7 +438,7 @@ handle_analyser_response(Store, bug_found(Bug, Evidence), _, Response,
 
 handle_analyser_response(Store, oracle_question(Question), MaybeOrigin, 
 		Response, !Diagnoser, !IO) :-
-	diagnoser_get_oracle(!.Diagnoser, Oracle0),
+	Oracle0 = !.Diagnoser ^ oracle_state,
 	debug_origin(Flag, !IO),
 	(
 		MaybeOrigin = yes(Origin),
@@ -452,8 +450,16 @@ handle_analyser_response(Store, oracle_question(Question), MaybeOrigin,
 	;
 		true
 	),
-	query_oracle(Question, OracleResponse, Oracle0, Oracle, !IO),
-	diagnoser_set_oracle(Oracle, !Diagnoser),
+	query_oracle(Question, OracleResponse, FromUser, Oracle0, Oracle, !IO),
+	(
+		FromUser = yes,
+		OracleResponse = oracle_answer(_)
+	->
+		push_diagnoser(!Diagnoser)
+	;
+		true
+	),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
 	handle_oracle_response(Store, OracleResponse, Response, !Diagnoser,
 		!IO).
 
@@ -491,19 +497,35 @@ handle_analyser_response(Store, revise(Question), _, Response, !Diagnoser, !IO)
 
 handle_oracle_response(Store, oracle_answer(Answer), Response, !Diagnoser, 
 		!IO) :-
-	diagnoser_get_analyser(!.Diagnoser, Analyser0),
+	Analyser0 = !.Diagnoser ^ analyser_state,
 	continue_analysis(wrap(Store), !.Diagnoser ^ oracle_state, Answer, 
 		AnalyserResponse, Analyser0, Analyser),
-	diagnoser_set_analyser(Analyser, !Diagnoser),
+	!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
 	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
 		Response, !Diagnoser, !IO).
 
 handle_oracle_response(Store, show_info(OutStream), Response, !Diagnoser, !IO)
 		:-
-	diagnoser_get_analyser(!.Diagnoser, Analyser),
+	Analyser = !.Diagnoser ^ analyser_state,
 	show_info(wrap(Store), OutStream, Analyser, AnalyserResponse, !IO),
 	debug_analyser_state(Analyser, MaybeOrigin),
+	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
+		Response, !Diagnoser, !IO).
+
+handle_oracle_response(Store, undo, Response, !Diagnoser, !IO) :-
+	(
+		pop_diagnoser(!.Diagnoser, PoppedDiagnoser)
+	->
+		!:Diagnoser = PoppedDiagnoser
+	;
+		OutStream = mdb.declarative_oracle.get_user_output_stream(
+			!.Diagnoser ^ oracle_state),
+		io.write_string(OutStream, "Undo stack empty.\n", !IO)
+	),
+	reask_last_question(wrap(Store), !.Diagnoser ^ analyser_state, 
+		AnalyserResponse),
+	debug_analyser_state(!.Diagnoser ^ analyser_state, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
 		Response, !Diagnoser, !IO).
 
@@ -521,9 +543,9 @@ handle_oracle_response(_, abort_diagnosis, no_bug_found, !Diagnoser, !IO) :-
 	<= annotated_trace(S, R).
 
 confirm_bug(Store, Bug, Evidence, Response, !Diagnoser, !IO) :-
-	diagnoser_get_oracle(!.Diagnoser, Oracle0),
+	Oracle0 = !.Diagnoser ^ oracle_state,
 	oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle, !IO),
-	diagnoser_set_oracle(Oracle, !Diagnoser),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
 	(
 		Confirmation = confirm_bug,
 		decl_bug_get_event_number(Bug, Event),
@@ -682,7 +704,7 @@ diagnoser_require_supertree(require_supertree(Event, SeqNo), Event, SeqNo).
 
 :- pragma export(mdb.declarative_debugger.add_trusted_module(in, in, out),
 		"MR_DD_decl_add_trusted_module").
-		
+
 add_trusted_module(ModuleName, Diagnoser0, Diagnoser) :-
 	string_to_sym_name(ModuleName, ".", SymModuleName),
 	add_trusted_module(SymModuleName, Diagnoser0 ^ oracle_state, Oracle),

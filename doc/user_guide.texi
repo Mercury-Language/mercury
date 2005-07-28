@@ -4141,6 +4141,11 @@ will be asked.
 @item skip
 Skip this question and ask a different one if possible.
 @sp 1
+@item undo
+Reset the state of the declarative debugger to what it was before the most
+recent `yes', `no', `inadmissible', `trust', `skip' or `mark' answer that has
+not already been undone.
+@sp 1
 @item browse [--xml] [@var{n}]
 Start the interactive term browser and browse the @var{n}th argument 
 before answering.  If the argument number

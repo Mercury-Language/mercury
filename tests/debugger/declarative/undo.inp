@@ -1,0 +1,26 @@
+register --quiet
+context none
+echo on
+step
+finish
+dd
+no
+undo
+undo
+
+no
+
+undo
+
+no
+no
+pd
+dd -r
+undo
+undo
+undo
+undo
+undo
+undo
+q
+quit -y

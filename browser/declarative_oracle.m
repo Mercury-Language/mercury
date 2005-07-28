@@ -42,6 +42,9 @@
 :- type oracle_response(T)
 	--->	oracle_answer(decl_answer(T))
 	;	show_info(io.output_stream)
+			% Ask the diagnoser to revert to the
+			% last question it asked.
+	;	undo
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
@@ -86,12 +89,15 @@
 	%
 :- pred get_trusted_list(oracle_state::in, bool::in, string::out) is det.
 
+	% query_oracle(Question, Response, AnswerFromUser, !Oracle, !IO).
 	% Query the oracle about the program being debugged.  The first
 	% argument is a node in the evaluation tree, the second argument is the
 	% oracle response.  The oracle state is threaded through so its
 	% contents can be updated after user responses.
+	% If the response came directly from the user then AnswerFromUser
+	% will be yes, otherwise it will be no.
 	%
-:- pred query_oracle(decl_question(T)::in, oracle_response(T)::out,
+:- pred query_oracle(decl_question(T)::in, oracle_response(T)::out, bool::out,
 	oracle_state::in, oracle_state::out, io::di, io::uo) is cc_multi.
 
 	% Confirm that the node found is indeed an e_bug or an i_bug.  If
@@ -108,6 +114,14 @@
 :- pred revise_oracle(decl_question(T)::in, oracle_state::in, oracle_state::out)
 	is det.
 
+	% update_revised_knowledge_base(Oracle1, Oracle2, Oracle3).
+	% Update the revised knowledge base in Oracle1 with the 
+	% current knowledge base from Oracle2 and return the resulting
+	% oracle in Oracle3.
+	%
+:- pred update_revised_knowledge_base(oracle_state::in, oracle_state::in,
+	oracle_state::out) is det.
+
 	% Returns the state of the term browser.
 	%
 :- func get_browser_state(oracle_state) 
@@ -123,6 +137,10 @@
 	%
 :- pred answer_known(oracle_state::in, decl_question(T)::in,
 	decl_answer(T)::out(known_answer)) is semidet.
+
+	% Return the output stream used for interacting with the user.
+	%
+:- func get_user_output_stream(oracle_state) = io.output_stream.
 
 %-----------------------------------------------------------------------------%
 
@@ -144,15 +162,17 @@
 :- import_module set.
 :- import_module std_util.
 
-query_oracle(Question, Response, !Oracle, !IO) :-
+query_oracle(Question, Response, FromUser, !Oracle, !IO) :-
 	(
 		answer_known(!.Oracle, Question, Answer)
 	->
-		Response = oracle_answer(Answer)
+		Response = oracle_answer(Answer),
+		FromUser = no
 	;
 		make_user_question(!.Oracle ^ kb_revised, Question,
 			UserQuestion),
-		query_oracle_user(UserQuestion, Response, !Oracle, !IO)
+		query_oracle_user(UserQuestion, Response, !Oracle, !IO),
+		FromUser = yes
 	).
 
 :- pred make_user_question(oracle_kb::in, decl_question(T)::in,
@@ -207,6 +227,9 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
 	;
 		UserResponse = abort_diagnosis,
 		OracleResponse = abort_diagnosis
+	;
+		UserResponse = undo,
+		OracleResponse = undo
 	),
 	!:Oracle = !.Oracle ^ user_state := User.
 
@@ -236,6 +259,9 @@ revise_oracle(Question, !Oracle) :-
 	;
 		true
 	).
+
+update_revised_knowledge_base(Oracle1, Oracle2, Oracle3) :-
+	Oracle3 = Oracle1 ^ kb_revised := Oracle2 ^ kb_current.
 
 %-----------------------------------------------------------------------------%
 
@@ -494,7 +520,7 @@ answer_known(Oracle, Question, Answer) :-
 		trusted(Atom ^ proc_layout, Oracle)
 	->
 		% We tell the analyser that this node doesn't contain a bug,
-		% however it's children may still contain bugs, since 
+		% however its children may still contain bugs, since 
 		% trusted procs may call untrusted procs (for example
 		% when an untrusted closure is passed to a trusted predicate).
 		Answer = ignore(get_decl_question_node(Question))
@@ -580,8 +606,6 @@ assert_oracle_kb(_, suspicious_subterm(_, _, _), KB, KB).
 assert_oracle_kb(_, ignore(_), KB, KB).
 
 assert_oracle_kb(_, skip(_), KB, KB).
-
-assert_oracle_kb(_, show_info(_), KB, KB).
 
 assert_oracle_kb(wrong_answer(_, _, Atom), truth_value(_, Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),
@@ -704,3 +728,6 @@ set_browser_state(Browser, !Oracle) :-
 	mdb.declarative_user.set_browser_state(Browser, !.Oracle ^ user_state,
 		User),
 	!:Oracle = !.Oracle ^ user_state := User.
+
+get_user_output_stream(Oracle) = mdb.declarative_user.get_user_output_stream(
+	Oracle ^ user_state).

@@ -64,6 +64,7 @@ DECLARATIVE_PROGS=		\
 	tabled_read_decl	\
 	throw			\
 	trust			\
+	undo			\
 	unsafe_cast		
 
 # The following should not be run in `debug' or `mm' grades.
@@ -456,6 +457,10 @@ throw.out: throw throw.inp
 
 trust.out: trust trust.inp
 	$(MDB_STD) ./trust < trust.inp > trust.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+undo.out: undo undo.inp
+	$(MDB_STD) ./undo < undo.inp > undo.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 unsafe_cast.out: unsafe_cast unsafe_cast.inp

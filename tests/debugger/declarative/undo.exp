@@ -1,0 +1,52 @@
+      E1:     C1 CALL pred undo.main/2-0 (det) undo.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> step
+      E2:     C2 CALL pred undo.sum/2-0 (det)
+mdb> finish
+      E3:     C2 EXIT pred undo.sum/2-0 (det)
+mdb> dd
+sum([1, 2, 3, 4, 5, 6], 21)
+Valid? no
+sum([2, 3, 4, 5, 6], 20)
+Valid? undo
+sum([1, 2, 3, 4, 5, 6], 21)
+Valid? [no] undo
+Undo stack empty.
+sum([1, 2, 3, 4, 5, 6], 21)
+Valid? [no] 
+sum([2, 3, 4, 5, 6], 20)
+Valid? no
+sum([3, 4, 5, 6], 18)
+Valid? 
+sum([4, 5, 6], 15)
+Valid? undo
+sum([3, 4, 5, 6], 18)
+Valid? 
+sum([4, 5, 6], 15)
+Valid? no
+sum([5, 6], 11)
+Valid? no
+sum([6], 6)
+Valid? pd
+      E4:     C3 EXIT pred undo.sum/2-0 (det)
+mdb> dd -r
+sum([6], 6)
+Valid? undo
+sum([5, 6], 11)
+Valid? [no] undo
+sum([4, 5, 6], 15)
+Valid? [no] undo
+sum([3, 4, 5, 6], 18)
+Valid? undo
+sum([2, 3, 4, 5, 6], 20)
+Valid? [no] undo
+sum([1, 2, 3, 4, 5, 6], 21)
+Valid? [no] undo
+Undo stack empty.
+sum([1, 2, 3, 4, 5, 6], 21)
+Valid? [no] q
+Diagnosis aborted.
+      E4:     C3 EXIT pred undo.sum/2-0 (det)
+mdb> quit -y

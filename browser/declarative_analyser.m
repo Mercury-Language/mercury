@@ -94,6 +94,12 @@
 	analyser_response(T)::out, analyser_state(T)::in,
 	analyser_state(T)::out) is det <= mercury_edt(S, T).
 
+	% Return a response which will cause the last question to be
+	% re-asked.
+	%
+:- pred reask_last_question(S::in, analyser_state(T)::in, 
+	analyser_response(T)::out) is det <= mercury_edt(S, T).
+
 	% Continue analysis after the oracle has responded with an
 	% answer.
 	%
@@ -368,6 +374,20 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
 		decide_analyser_response(Store, Oracle, Response, !Analyser)
 	).
 
+reask_last_question(Store, Analyser, Response) :-
+	MaybeLastQuestion = Analyser ^ last_search_question,
+	(
+		MaybeLastQuestion = yes(suspect_and_reason(SuspectId, _)),
+		SearchSpace = Analyser ^ search_space,
+		Node = get_edt_node(SearchSpace, SuspectId),
+		edt_question(Store, Node, OracleQuestion),
+		Response = oracle_question(OracleQuestion)
+	;
+		MaybeLastQuestion = no,
+		throw(internal_error("reask_last_question",
+			"no last question"))
+	).
+
 continue_analysis(Store, Oracle, Answer, Response, !Analyser) :-
 	(
 		!.Analyser ^ last_search_question = yes(
@@ -408,12 +428,6 @@ process_answer(_, truth_value(_, erroneous), SuspectId, !Analyser) :-
 	assert_suspect_is_erroneous(SuspectId, !.Analyser ^ search_space, 
 		SearchSpace),
 	!:Analyser = !.Analyser ^ search_space := SearchSpace.
-
-	% process_answer shouldn't be called with a show_info oracle response.
-	%
-process_answer(_, show_info(_), _, _, _) :-
-	throw(internal_error("process_answer", "called with show_info/1")).
-
 
 process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath), SuspectId, 
 		!Analyser) :-

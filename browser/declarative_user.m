@@ -34,6 +34,8 @@
 			% about the state of the search and the current 
 			% question to the given output stream.
 	;	show_info(io.output_stream)
+			% The user wants to undo the last answer they gave.
+	;	undo
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
@@ -64,6 +66,10 @@
 	%
 :- pred set_browser_state(browser_info.browser_persistent_state::in, 
 	user_state::in, user_state::out) is det.
+
+	% Return the output stream used for interacting with the user.
+	%
+:- func get_user_output_stream(user_state) = io.output_stream.
 
 %-----------------------------------------------------------------------------%
 
@@ -242,6 +248,8 @@ handle_command(trust_module, UserQuestion, trust_module(Question),
 	Question = get_decl_question(UserQuestion).
 
 handle_command(info, _, show_info(!.User ^ outstr), !User, !IO).
+
+handle_command(undo, _, undo, !User, !IO).
 
 handle_command(browse_io(ActionNum), UserQuestion, Response, 
 		!User, !IO) :-
@@ -754,6 +762,9 @@ reverse_and_append([A | As], Bs, Cs) :-
 			% Print some information about the current question.
 	;	info
 
+			% Undo the user's last answer.
+	;	undo
+
 			% The user wants the current question re-asked.
 	;	ask
 
@@ -846,6 +857,7 @@ cmd_handler("print",		print_arg_cmd).
 cmd_handler("set",		set_arg_cmd).
 cmd_handler("t",		trust_arg_cmd).
 cmd_handler("trust",		trust_arg_cmd).
+cmd_handler("undo",		one_word_cmd(undo)).
 
 :- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
 	is semidet.
@@ -1189,5 +1201,7 @@ get_browser_state(User) = User ^ browser.
 
 set_browser_state(Browser, !User) :-
 	!:User = !.User ^ browser := Browser.
+
+get_user_output_stream(User) = User ^ outstr.
 
 %-----------------------------------------------------------------------------%
