@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+	<head>
+		<title>Testing &lt;123&gt;</title>
+	</head>
+	<!-- Hi  -  Mom! -->
+	<body><table border="1" cellspacing="0" cellpadding="5">
+			<tr>
+				<td>1</td>
+				<td>&quot;one&quot;</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td>&quot;two&quot;</td>
+			</tr>
+			<tr>
+				<td>3</td>
+				<td>&quot;three&quot;</td>
+			</tr>
+			<tr>
+				<td>4</td>
+				<td>&quot;four&quot;</td>
+			</tr>
+			<tr>
+				<td>5</td>
+				<td>&quot;five&quot;</td>
+			</tr>
+			<tr>
+				<td>6</td>
+				<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=&apos;&quot;</td>
+			</tr>
+		</table><hr />&nbsp;<!-- inline comment --><script type="text/javascript">
+			<![CDATA[document.write('hello');]]>
+		</script></body>
+</html>
+
+<?xml version="1.0"?>
+<html>
+	<head>
+		<title>Testing &lt;123&gt;</title>
+	</head>
+	<!-- Hi  -  Mom! -->
+	<body><table border="1" cellspacing="0" cellpadding="5">
+			<tr>
+				<td>1</td>
+				<td>&quot;one&quot;</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td>&quot;two&quot;</td>
+			</tr>
+			<tr>
+				<td>3</td>
+				<td>&quot;three&quot;</td>
+			</tr>
+			<tr>
+				<td>4</td>
+				<td>&quot;four&quot;</td>
+			</tr>
+			<tr>
+				<td>5</td>
+				<td>&quot;five&quot;</td>
+			</tr>
+			<tr>
+				<td>6</td>
+				<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=&apos;&quot;</td>
+			</tr>
+		</table><hr />&nbsp;<!-- inline comment --><script type="text/javascript">
+			<![CDATA[document.write('hello');]]>
+		</script></body>
+</html>
+
+		<html>
+			<head>
+				<title>Testing &lt;123&gt;</title>
+			</head>
+			<!-- Hi  -  Mom! -->
+			<body><table border="1" cellspacing="0" cellpadding="5">
+					<tr>
+						<td>1</td>
+						<td>&quot;one&quot;</td>
+					</tr>
+					<tr>
+						<td>2</td>
+						<td>&quot;two&quot;</td>
+					</tr>
+					<tr>
+						<td>3</td>
+						<td>&quot;three&quot;</td>
+					</tr>
+					<tr>
+						<td>4</td>
+						<td>&quot;four&quot;</td>
+					</tr>
+					<tr>
+						<td>5</td>
+						<td>&quot;five&quot;</td>
+					</tr>
+					<tr>
+						<td>6</td>
+						<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=&apos;&quot;</td>
+					</tr>
+				</table><hr />&nbsp;<!-- inline comment --><script type="text/javascript">
+					<![CDATA[document.write('hello');]]>
+				</script></body>
+		</html>
+

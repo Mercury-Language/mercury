@@ -201,7 +201,8 @@ ORDINARY_PROGS=	\
 	write \
 	write_reg1 \
 	write_reg2 \
-	write_xml
+	write_xml \
+	xmlable_test
 
 # JAVA_PASS_PROGS lists those tests which will succeed in grade Java.
 

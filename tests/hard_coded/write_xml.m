@@ -57,7 +57,7 @@ p(_, _, _, 1).
 :- type wrap(T) ---> wrap(T).
 
 :- pred p1(type_desc::in, maybe_functor_info::in, string::out, 
-	list(attribute)::out) is det.
+	list(attr_from_source)::out) is det.
 
 p1(_, _, "X", []).
 
