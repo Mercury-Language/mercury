@@ -17,11 +17,19 @@ SIMPLE_NONLOOP_PROGS = \
 	fib_string \
 	loopcheck_no_loop \
 	loopcheck_nondet_no_loop \
-	memo_non \
 	oota \
 	table_foreign_output \
 	test_enum \
 	unused_args
+
+# Tabling of nondet predicates and deep profiling are (currently)
+# incompatible.
+ifeq "$(findstring profdeep,$(GRADE))" ""
+	BROKEN_FOR_PROFDEEP_NONLOOP_PROGS = \
+		memo_non
+else
+	BROKEN_FOR_PROFDEEP_NONLOOP_PROGS = 
+endif
 
 SIMPLE_LOOP_PROGS = \
 	loopcheck \
@@ -61,7 +69,10 @@ MINIMAL_LOOP_PROGS =
 #	semidet_minimal.m
 #	tc_minimal_semidet.m
 
-ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) $(SIMPLE_LOOP_PROGS)
+ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) \
+			$(BROKEN_FOR_PROFDEEP_NONLOOP_PROGS) \
+			$(SIMPLE_LOOP_PROGS)
+
 ALL_MINIMAL_PROGS = $(MINIMAL_NONLOOP_PROGS)
 
 # Tabling does not yet work in .rt grades
