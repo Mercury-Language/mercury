@@ -15,7 +15,7 @@ mdb> dd -d 3 -n 7
 l([4, 5]) = 5
 Valid? pd
       E3:     C2 EXIT func resume.l/1-0 (semidet)
-mdb> dd -d 3 -n 7 -r
+mdb> dd -d 3 -n 7 --resume
 l([4, 5]) = 5
 Valid? y
 l([3, 4, 5]) = 5

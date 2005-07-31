@@ -7,7 +7,7 @@ delete *
 f
 dd -d 3 -n 7
 pd
-dd -d 3 -n 7 -r
+dd -d 3 -n 7 --resume
 y
 pd
 break wrapper

@@ -7127,7 +7127,7 @@ static struct MR_option MR_trace_dd_opts[] =
     { "depth",                      MR_required_argument,   NULL,   'd' },
     { "nodes",                      MR_required_argument,   NULL,   'n' },
     { "search-mode",                MR_required_argument,   NULL,   's' },
-    { "resume",                     MR_required_argument,   NULL,   'r' },
+    { "resume",                     MR_no_argument,         NULL,   'r' },
     { NULL,                         MR_no_argument,         NULL,   0 }
 };
 
