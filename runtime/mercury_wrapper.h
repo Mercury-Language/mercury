@@ -240,6 +240,9 @@ extern	const char	*MR_mdb_err_filename;
 /* should mdb be started in a window */
 extern	MR_bool		MR_mdb_in_window;
 
+/* should the declarative debugger print progress messages */
+extern	MR_bool		MR_mdb_decl_print_progress;
+
 /* should mdb be silent for benchmarking purposes */
 extern	MR_bool		MR_mdb_benchmark_silent;
 

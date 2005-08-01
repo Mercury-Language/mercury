@@ -553,7 +553,7 @@ else
     true
 fi
 
-NEW_MERCURY_OPTIONS="$MERCURY_OPTIONS"
+NEW_MERCURY_OPTIONS="$MERCURY_OPTIONS --mdb-disable-progress"
 
 if $do_bootcheck
 then

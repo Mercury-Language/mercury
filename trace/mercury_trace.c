@@ -207,7 +207,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             if (stop_collecting) {
                 MR_trace_ctrl.MR_trace_cmd = MR_CMD_GOTO;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                        seqno, depth);
+                    seqno, depth);
             }
 #else
             MR_fatal_error("attempt to use external debugger");
@@ -220,7 +220,7 @@ MR_trace_real(const MR_Label_Layout *layout)
             if (MR_trace_event_number >= MR_trace_ctrl.MR_trace_stop_event) {
                 port = (MR_Trace_Port) layout->MR_sll_port;
                 return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port,
-                        seqno, depth);
+                    seqno, depth);
             } else {
                 goto check_stop_print;
             }

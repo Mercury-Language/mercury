@@ -165,6 +165,7 @@ const char	*MR_mdb_out_filename = NULL;
 const char	*MR_mdb_err_filename = NULL;
 MR_bool		MR_mdb_in_window = MR_FALSE;
 
+MR_bool		MR_mdb_decl_print_progress = MR_TRUE;
 MR_bool		MR_mdb_benchmark_silent = MR_FALSE;
 
 /* use readline() in the debugger even if the input stream is not a tty */
@@ -1005,6 +1006,7 @@ enum MR_long_option {
 	MR_MDB_IN,
 	MR_MDB_OUT,
 	MR_MDB_ERR,
+	MR_MDB_DISABLE_PROGRESS,
 	MR_MDB_BENCHMARK_SILENT,
 	MR_MDB_IN_WINDOW,
 	MR_FORCE_READLINE,
@@ -1042,6 +1044,7 @@ struct MR_option MR_long_opts[] = {
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
 	{ "mdb-err", 			1, 0, MR_MDB_ERR },
 	{ "mdb-in-window",		0, 0, MR_MDB_IN_WINDOW },
+	{ "mdb-disable-progress",	0, 0, MR_MDB_DISABLE_PROGRESS },
 	{ "mdb-benchmark-silent",	0, 0, MR_MDB_BENCHMARK_SILENT },
 	{ "force-readline",		0, 0, MR_FORCE_READLINE },
 	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS },
@@ -1252,6 +1255,10 @@ process_options(int argc, char **argv)
 		case 'w':
 		case MR_MDB_IN_WINDOW:
 			MR_mdb_in_window = MR_TRUE;
+			break;
+
+		case MR_MDB_DISABLE_PROGRESS:
+			MR_mdb_decl_print_progress = MR_FALSE;
 			break;
 
 		case MR_MDB_BENCHMARK_SILENT:
