@@ -27,13 +27,13 @@ document_category 400 browsing
 browsing   - Commands that let users explore the state of the computation.
              The browsing commands are `vars', `held_vars', `print', `browse',
              `stack', `up', `down', `level', `current', `view', `hold',
-	     `diff' and `save_to_file'.
+             `diff' and `save_to_file'.
 
 end
 document_category 500 breakpoint
 breakpoint - Commands that let users set and control breakpoints.
              The breakpoint commands are `break', `condition', `disable', 
-	     `enable', `delete', `modules', `procedures' and `register'.
+             `enable', `delete', `modules', `procedures' and `register'.
 
 end
 document_category 600 table_io
@@ -61,14 +61,14 @@ mdb_dd     - mdb commands related to declarative debugging.  These are `dd',
 end
 document_category 860 decl
 decl       - Commands available from within the declarative debugger.  These 
-	     are `yes', `no', `inadmissible', `trust', `skip', `browse',
-	     `print', `set', `help', `info', `ask', `mark', `pd' and `quit'.
+             are `yes', `no', `inadmissible', `trust', `skip', `browse',
+             `print', `set', `help', `info', `ask', `mark', `pd' and `quit'.
 
 end
 document_category 900 misc
 misc       - Commands that are of interest to most users but do not fit into
              other categories. The misc commands are `source', `save' and 
-	     `quit'.
+             `quit'.
 
 end
 document_category 1000 exp
@@ -82,9 +82,8 @@ developer  - Commands that are intended to be of use only to developers
              of the Mercury implementation. The developer commands are
              `flag', `subgoal', `consumer', `gen_stack', `cut_stack,
              `pneg_stack', `mm_stacks', `nondet_stack', `stack_regs',
-             `all_regs', `debug_vars', `proc_stats', `label_stats',
-             `var_name_stats', `print_optionals', `unhide_events', `dd_dd',
-             `table', `type_ctor', `class_decl', `all_type_ctors' and
-             `all_class_decls'.
+             `all_regs', `debug_vars', `stats', `print_optionals',
+             `unhide_events', `dd_dd', `table', `type_ctor', `class_decl',
+             `all_type_ctors' and `all_class_decls'.
 
 end

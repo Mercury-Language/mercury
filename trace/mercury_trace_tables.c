@@ -1154,8 +1154,7 @@ MR_label_layout_stats(FILE *fp)
                 label_num < file_layout->MR_mfl_label_count;
                 label_num++)
             {
-                label_layout = file_layout->
-                    MR_mfl_label_layout[label_num];
+                label_layout = file_layout->MR_mfl_label_layout[label_num];
 
                 total++;
                 if (0 <= label_layout->MR_sll_port &&

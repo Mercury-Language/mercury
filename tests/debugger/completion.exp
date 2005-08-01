@@ -3,44 +3,44 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                    enable               procedures
-P                    exception            query
-alias                excp                 quit
-all_class_decls      f                    r
-all_procedures       finish               register
-all_regs             flag                 retry
-all_type_ctors       forward              return
-b                    g                    s
-break                gen_stack            save
-break_print          goal_paths           save_to_file
-browse               goto                 scope
-c                    h                    scroll
-cc_query             held_vars            set
-class_decl           help                 source
-clear_histogram      histogram_all        stack
-condition            histogram_exp        stack_default_limit
-consumer             hold                 stack_regs
-context              ignore               step
-continue             io_query             subgoal
-current              label_stats          table
-cut_stack            level                table_io
-d                    maxdepth             term_size
-dd                   mindepth             trust
-dd_dd                mm_stacks            trusted
-debug_vars           mmc_options          type_ctor
-delete               modules              unalias
-dice                 next                 unhide_events
-diff                 nondet_stack         untrust
-disable              p                    up
-document             pneg_stack           v
-document_category    print                var_details
-down                 print_optionals      var_name_stats
-e                    printlevel           vars
-echo                 proc_stats           view
+?                    enable               quit
+P                    exception            r
+alias                excp                 register
+all_class_decls      f                    retry
+all_procedures       finish               return
+all_regs             flag                 s
+all_type_ctors       forward              save
+b                    g                    save_to_file
+break                gen_stack            scope
+break_print          goal_paths           scroll
+browse               goto                 set
+c                    h                    source
+cc_query             held_vars            stack
+class_decl           help                 stack_default_limit
+clear_histogram      histogram_all        stack_regs
+condition            histogram_exp        stats
+consumer             hold                 step
+context              ignore               subgoal
+continue             io_query             table
+current              level                table_io
+cut_stack            maxdepth             term_size
+d                    mindepth             trust
+dd                   mm_stacks            trusted
+dd_dd                mmc_options          type_ctor
+debug_vars           modules              unalias
+delete               next                 unhide_events
+dice                 nondet_stack         untrust
+diff                 p                    up
+disable              pneg_stack           v
+document             print                var_details
+document_category    print_optionals      vars
+down                 printlevel           view
+e                    procedures           
+echo                 query                
 h              help           histogram_exp  
 held_vars      histogram_all  hold           
-var_details     var_name_stats  vars            view
-var_details     var_name_stats  vars            
+var_details  vars         view         
+var_details  vars         
  help vars 
 vars
      Prints the names of all the known variables in the current
@@ -55,7 +55,6 @@ stack                stack_default_limit  stack_regs
 stack --detailed 
    0       1       1    1 pred completion.main/2-0 (det) (completion.m:13) (empty)
 mdb> 
-proc_stats  procedures  
 completion            completion.sub2       
 completion.sub1       completion.sub2.sub3  
 completion.sub1       completion.sub2       completion.sub2.sub3

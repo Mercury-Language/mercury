@@ -82,9 +82,7 @@ nondet_stack         xyzzy xyzzy xyzzy xyzzy xyzzy
 stack_regs           xyzzy xyzzy xyzzy xyzzy xyzzy
 all_regs             xyzzy xyzzy xyzzy xyzzy xyzzy
 debug_vars           xyzzy xyzzy xyzzy xyzzy xyzzy
-proc_stats           xyzzy xyzzy xyzzy xyzzy xyzzy
-label_stats          xyzzy xyzzy xyzzy xyzzy xyzzy
-var_name_stats       xyzzy xyzzy xyzzy xyzzy xyzzy
+stats                xyzzy xyzzy xyzzy xyzzy xyzzy
 print_optionals      xyzzy xyzzy xyzzy xyzzy xyzzy
 unhide_events        xyzzy xyzzy xyzzy xyzzy xyzzy
 dd_dd                xyzzy xyzzy xyzzy xyzzy xyzzy

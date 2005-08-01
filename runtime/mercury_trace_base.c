@@ -123,6 +123,11 @@ static  MR_Unsigned MR_standardize_num(MR_Unsigned num,
                         MR_Hash_Table *table_ptr, MR_bool *init_ptr,
                         int *next_ptr);
 
+/**************************************************************************/
+/*
+** This section of this file deals with the actions executed at trace events.
+*/
+
 MR_Code *
 MR_trace(const MR_Label_Layout *layout)
 {
@@ -335,19 +340,16 @@ MR_trace_write_label_exec_counts(FILE *fp)
                     id = &proc->MR_sle_user;
                     if (proc != prev_proc) {
                         fprintf(fp, "proc ");
-                        MR_trace_write_quoted_atom(fp,
-                            id->MR_user_def_module);
+                        MR_trace_write_quoted_atom(fp, id->MR_user_def_module);
                         fprintf(fp, " %c ",
                             ( id->MR_user_pred_or_func == MR_PREDICATE
                                 ? 'p' : 'f'));
                         MR_trace_write_quoted_atom(fp,
                             id->MR_user_decl_module);
                         fputc(' ', fp);
-                        MR_trace_write_quoted_atom(fp,
-                            id->MR_user_name);
+                        MR_trace_write_quoted_atom(fp, id->MR_user_name);
                         fprintf(fp, " %d %d\n",
-                            id->MR_user_arity,
-                            id->MR_user_mode);
+                            id->MR_user_arity, id->MR_user_mode);
                     }
 
                     port = label->MR_sll_port;
@@ -436,6 +438,12 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
 
     fputc('\'', fp);
 }
+
+/**************************************************************************/
+/*
+** This section of this file deals with the actions executed at the start
+** and end of execution.
+*/
 
 #ifdef  MR_TABLE_DEBUG
 MR_bool MR_saved_tabledebug;
@@ -528,6 +536,13 @@ MR_trace_end(void)
     MR_update_trace_func_enabled();
 }
 
+/**************************************************************************/
+/*
+** This section of this file deals with the standardization of event and
+** call sequence numbers. We use standardized event and call numbers to
+** reduce the number of .exp files we need to create for debugger test cases.
+*/
+
 #define MR_STANDARD_HASH_TABLE_SIZE 1024
 
 typedef struct {
@@ -612,6 +627,12 @@ MR_standardize_call_num(MR_Unsigned call_num)
         &MR_init_call_num_hash, &MR_next_std_call_num);
 }
 
+/**************************************************************************/
+/*
+** This section of this file reports on trace events so far, for use
+** in messages about abnormal program termination.
+*/
+
 char    *MR_trace_report_msg = NULL;
 
 void
@@ -686,6 +707,11 @@ MR_trace_report_raw(int fd)
     }
 }
 
+/**************************************************************************/
+/*
+** This section of this file deals with I/O actions.
+*/
+
 MR_bool
 MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
     MR_Word *is_func_ptr, MR_Word *arg_list_ptr)
@@ -750,6 +776,11 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
     return MR_TRUE;
 }
 
+/**************************************************************************/
+/*
+** This section of this file deals with switching debugging on and off.
+*/
+
 void
 MR_turn_off_debug(MR_SavedDebugState *saved_state,
     MR_bool include_counter_vars)
@@ -793,6 +824,11 @@ MR_turn_debug_back_on(MR_SavedDebugState *saved_state)
     }
 }
 
+/**************************************************************************/
+/*
+** This section of this file deals with recording the value of an exception.
+*/
+
 static  MR_Word     MR_trace_exception_value = (MR_Word) NULL;
 
 void
@@ -806,6 +842,12 @@ MR_trace_get_exception_value(void)
 {
     return MR_trace_exception_value;
 }
+
+/**************************************************************************/
+/*
+** This section of this file deals with measuring the distribution of events
+** across depths.
+*/
 
 #ifdef  MR_TRACE_HISTOGRAM
 
@@ -828,7 +870,156 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 
 #endif  /* MR_TRACE_HISTOGRAM */
 
+/**************************************************************************/
 /*
+** This section of this file deals with statistics about which procedures
+** are respondible for what fraction of I/O table entries.
+*/
+
+#define MR_IO_TABLE_STATS_HASH_TABLE_SIZE 1024
+
+typedef struct {
+    const MR_Proc_Layout    *MR_io_tabling_stats_proc;
+    MR_Unsigned             MR_io_tabling_stats_count;
+} MR_IO_Table_Stats_Hash_Record;
+
+static const void *
+MR_get_proc_layout(const void *record)
+{
+    return (const void *)
+        ((MR_IO_Table_Stats_Hash_Record *) record)->MR_io_tabling_stats_proc;
+}
+
+static int
+MR_hash_proc_layout(const void *proc)
+{
+    return (((MR_Unsigned) proc) >> 5) % MR_STANDARD_HASH_TABLE_SIZE;
+}
+
+static MR_bool
+MR_equal_proc_layout(const void *proc1, const void *proc2)
+{
+    return (const MR_Proc_Layout *) proc1 == (const MR_Proc_Layout *) proc2;
+}
+
+static MR_Hash_Table MR_io_tabling_stats_table = {
+    MR_IO_TABLE_STATS_HASH_TABLE_SIZE, NULL,
+    MR_get_proc_layout, MR_hash_proc_layout, MR_equal_proc_layout
+};
+
+static  int                             MR_io_tabling_stats_sort_arena_next;
+static  MR_IO_Table_Stats_Hash_Record   *MR_io_tabling_stats_sort_arena;
+
+static  void    MR_add_to_sort_arena(const void *addr);
+static  int     MR_compare_in_sort_arena(const void *addr1, const void *addr2);
+
+static void
+MR_add_to_sort_arena(const void *addr)
+{
+    const MR_IO_Table_Stats_Hash_Record *record;
+    int                                 next;
+
+    record = (const MR_IO_Table_Stats_Hash_Record *) addr;
+    next = MR_io_tabling_stats_sort_arena_next;
+    MR_io_tabling_stats_sort_arena[next].MR_io_tabling_stats_proc =
+        record->MR_io_tabling_stats_proc;
+    MR_io_tabling_stats_sort_arena[next].MR_io_tabling_stats_count =
+        record->MR_io_tabling_stats_count;
+    MR_io_tabling_stats_sort_arena_next++;
+}
+
+static int
+MR_compare_in_sort_arena(const void *addr1, const void *addr2)
+{
+    const MR_IO_Table_Stats_Hash_Record *record1;
+    const MR_IO_Table_Stats_Hash_Record *record2;
+
+    record1 = (const MR_IO_Table_Stats_Hash_Record *) addr1;
+    record2 = (const MR_IO_Table_Stats_Hash_Record *) addr2;
+    return record2->MR_io_tabling_stats_count - 
+        record1->MR_io_tabling_stats_count;
+}
+
+void
+MR_io_tabling_stats(FILE *fp)
+{
+    const MR_Table_Io_Decl          *table_io_decl;
+    const MR_Proc_Layout            *proc_layout;
+    MR_ConstString                  proc_name;
+    int                             arity;
+    MR_Word                         is_func;
+    int                             hv;
+    MR_TrieNode                     answer_block_trie;
+    MR_Word                         *answer_block;
+    MR_Hash_Table                   hash_table;
+    MR_IO_Table_Stats_Hash_Record   *hash_record;
+    MR_IO_Table_Stats_Hash_Record   *record;
+    int                             num_entries;
+    int                             count;
+    int                             i;
+
+    /*
+    ** Create a fresh new hash table, separate the table created by
+    ** any previous call to this function.
+    */
+    hash_table = MR_io_tabling_stats_table;
+    MR_init_hash_table(hash_table);
+    num_entries = 0;
+
+    for (i = MR_io_tabling_start; i < MR_io_tabling_counter_hwm; i++) {
+        MR_DEBUG_NEW_TABLE_START_INT(answer_block_trie,
+            (MR_TrieNode) &MR_io_tabling_pointer,
+            MR_io_tabling_start, i);
+        answer_block = answer_block_trie->MR_answerblock;
+
+        if (answer_block == NULL) {
+            continue;
+        }
+
+        table_io_decl = (const MR_Table_Io_Decl *) answer_block[0];
+        proc_layout = table_io_decl->MR_table_io_decl_proc;
+
+        hash_record = MR_lookup_hash_table(hash_table, proc_layout);
+        if (hash_record == NULL) {
+            hash_record = MR_GC_NEW(MR_IO_Table_Stats_Hash_Record);
+            hash_record->MR_io_tabling_stats_proc = proc_layout;
+            hash_record->MR_io_tabling_stats_count = 1;
+            (void) MR_insert_hash_table(hash_table, hash_record);
+            num_entries++;
+        } else {
+            hash_record->MR_io_tabling_stats_count++;
+        }
+    }
+
+    MR_io_tabling_stats_sort_arena =
+        MR_GC_NEW_ARRAY(MR_IO_Table_Stats_Hash_Record, num_entries);
+    MR_io_tabling_stats_sort_arena_next = 0;
+    MR_process_all_entries(hash_table, MR_add_to_sort_arena);
+
+    if (MR_io_tabling_stats_sort_arena_next != num_entries) {
+        MR_fatal_error("MR_io_tabling_stats: num_entries mismatch");
+    }
+
+    qsort(MR_io_tabling_stats_sort_arena, num_entries,
+        sizeof(MR_IO_Table_Stats_Hash_Record), MR_compare_in_sort_arena);
+
+    for (i = 0; i < num_entries; i++) {
+        record = &MR_io_tabling_stats_sort_arena[i];
+        proc_layout = record->MR_io_tabling_stats_proc;
+        count = record->MR_io_tabling_stats_count;
+        MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
+            &is_func);
+
+        fprintf(fp, "%8d %4s %s/%d\n", count, (is_func ? "func" : "pred"),
+            proc_name, arity);
+    }
+}
+
+/**************************************************************************/
+/*
+** This section of this file maps proc layouts to materialized procedure
+** body representations.
+**
 ** We record information about procedure representations in a hash table
 ** that is indexed by the proc layout address.
 **
@@ -851,9 +1042,9 @@ static  int                 hash_proc_layout_addr(const void *addr);
 static  MR_bool             equal_proc_layouts(const void *addr1,
                                 const void *addr2);
 
-static  MR_Hash_Table       proc_rep_table = {PROC_REP_TABLE_SIZE, NULL,
+static  MR_Hash_Table       proc_rep_table = { PROC_REP_TABLE_SIZE, NULL,
                                 proc_layout_rep_key, hash_proc_layout_addr,
-                                equal_proc_layouts};
+                                equal_proc_layouts };
 
 static void
 MR_do_init_proc_rep_table(void)
@@ -940,6 +1131,13 @@ equal_proc_layouts(const void *addr1, const void *addr2)
     return ((const MR_Proc_Layout *) addr1) ==
         ((const MR_Proc_Layout *) addr2);
 }
+
+/**************************************************************************/
+/*
+** This section of this file provides the code that generated redo events.
+** Its labels are pointed to by the temp frames pushed onto the nondet stack
+** by model_non procedures when they exit.
+*/
 
 #ifndef MR_HIGHLEVEL_CODE
 

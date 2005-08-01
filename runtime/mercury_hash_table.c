@@ -1,16 +1,16 @@
 /*
-** Copyright (C) 1993-2000, 2004 The University of Melbourne.
+** Copyright (C) 1993-2000, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-**	Hash table handling module.
+** Hash table handling module.
 **
-**	This file supplies data manipulation routines to other modules;
-**	it does not store any data itself. Its routines are generic,
-**	applicable to the storage of any kind of data structure with
-**	a primary key and a hash function on it.
+** This file supplies data manipulation routines to other modules;
+** it does not store any data itself. Its routines are generic,
+** applicable to the storage of any kind of data structure with
+** a primary key and a hash function on it.
 */
 
 #include	"mercury_imp.h" 
@@ -19,10 +19,6 @@
 #include	"mercury_std.h"
 #include	"mercury_dlist.h"
 #include	"mercury_hash_table.h"
-
-/*
-**	Initialize a table.
-*/
 
 void 
 MR_ht_init_table(MR_Hash_Table *table)
@@ -36,12 +32,7 @@ MR_ht_init_table(MR_Hash_Table *table)
 	}
 }
 
-/*
-**	Look up and return the entry corresponding to the key
-**	in a table.
-*/
-
-const void *
+void *
 MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 {
 	MR_Dlist	*ptr;
@@ -61,17 +52,12 @@ MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 		if (MR_tableequal(table)(key,
 			MR_tablekey(table)(MR_dlist_data(ptr))))
 		{
-			return MR_dlist_data(ptr);
+			return (void *) MR_dlist_data(ptr);
 		}
 	}
 
 	return NULL;
 }
-
-/*
-**	Insert a new entry into the table.
-**	Return whether it was there before.
-*/
 
 const void *
 MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
@@ -103,10 +89,6 @@ MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 	return NULL;
 }
 
-/*
-**	Return all table entries in a list.
-*/
-
 MR_Dlist *
 MR_ht_get_all_entries(const MR_Hash_Table *table)
 {
@@ -121,10 +103,6 @@ MR_ht_get_all_entries(const MR_Hash_Table *table)
 	return list;
 }
 
-/*
-**	Process all table entries with the specified function.
-*/
-
 void
 MR_ht_process_all_entries(const MR_Hash_Table *table, void f(const void *))
 {
@@ -137,11 +115,6 @@ MR_ht_process_all_entries(const MR_Hash_Table *table, void f(const void *))
 		}
 	}
 }
-
-/*
-**	Convert a string to a positive int. The return value
-**	mod the table size is a good hash value.
-*/
 
 int 
 MR_ht_str_to_int(const char *cs)

@@ -488,6 +488,8 @@ extern	void	MR_trace_print_histogram(FILE *fp, const char *which,
 
 #endif	/* MR_TRACE_HISTOGRAM */
 
+extern	void	MR_io_tabling_stats(FILE *fp);
+
 /*
 ** These two functions work on a table that maps proc layout structures
 ** to the Mercury terms representing the bodies of those procedures.
@@ -532,6 +534,7 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 ** When using the heap pointer, we need to restore it, in case it is
 ** transient.
 */
+
 #define MR_TRACE_USE_HP(STATEMENTS) do {				\
 		MR_restore_transient_registers();			\
 		STATEMENTS;						\

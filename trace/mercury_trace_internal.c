@@ -507,9 +507,7 @@ static  MR_TraceCmdFunc MR_trace_cmd_stack_regs;
 static  MR_TraceCmdFunc MR_trace_cmd_all_regs;
 static  MR_TraceCmdFunc MR_trace_cmd_debug_vars;
 static  MR_TraceCmdFunc MR_trace_cmd_table_io;
-static  MR_TraceCmdFunc MR_trace_cmd_proc_stats;
-static  MR_TraceCmdFunc MR_trace_cmd_label_stats;
-static  MR_TraceCmdFunc MR_trace_cmd_var_name_stats;
+static  MR_TraceCmdFunc MR_trace_cmd_stats;
 static  MR_TraceCmdFunc MR_trace_cmd_proc_body;
 static  MR_TraceCmdFunc MR_trace_cmd_print_optionals;
 static  MR_TraceCmdFunc MR_trace_cmd_unhide_events;
@@ -606,6 +604,8 @@ static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_bool *search_mode_was_set, MR_bool *new_session,
                         char ***words, int *word_count, const char *cat,
                         const char *item);
+static  MR_bool     MR_trace_options_stats(char **filename, char ***words,
+                        int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_type_ctor(MR_bool *print_rep,
                         MR_bool *print_functors, char ***words,
                         int *word_count, const char *cat, const char *item);
@@ -4375,81 +4375,55 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static MR_Next
-MR_trace_cmd_proc_stats(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+MR_trace_cmd_stats(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_Code **jumpaddr)
 {
-    if (word_count == 1) {
-        MR_proc_layout_stats(MR_mdb_out);
-    } else if (word_count == 2) {
-        FILE    *fp;
+    char    *filename;
+    FILE    *fp;
+    MR_bool should_close;
 
-        fp = fopen(words[1], "w");
+    filename = NULL;
+    if (! MR_trace_options_stats(&filename,
+        &words, &word_count, "developer", "type_ctor"))
+    {
+        /* the usage message has already been printed */
+        return KEEP_INTERACTING;
+    }
+
+    if (word_count != 2) {
+        MR_trace_usage("developer", "stats");
+    }
+
+    if (filename != NULL) {
+        fp = fopen(filename, "w");
         if (fp == NULL) {
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err, "mdb: error opening `%s': %s.\n",
-                words[1], strerror(errno));
+                filename, strerror(errno));
             return KEEP_INTERACTING;
         }
 
+        should_close = MR_TRUE;
+    } else {
+        fp = MR_mdb_out;
+        should_close = MR_FALSE;
+    }
+
+    if (MR_streq(words[1], "procs")) {
         MR_proc_layout_stats(fp);
-        (void) fclose(fp);
-    } else {
-        MR_trace_usage("developer", "proc_stats");
-    }
-
-    return KEEP_INTERACTING;
-}
-
-static MR_Next
-MR_trace_cmd_label_stats(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Event_Details *event_details,
-    MR_Code **jumpaddr)
-{
-    if (word_count == 1) {
-        MR_label_layout_stats(MR_mdb_out);
-    } else if (word_count == 2) {
-        FILE    *fp;
-
-        fp = fopen(words[1], "w");
-        if (fp == NULL) {
-            fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: error opening `%s': %s.\n",
-                words[1], strerror(errno));
-            return KEEP_INTERACTING;
-        }
-
+    } else if (MR_streq(words[1], "labels")) {
         MR_label_layout_stats(fp);
-        (void) fclose(fp);
+    } else if (MR_streq(words[1], "var_names")) {
+        MR_var_name_stats(fp);
+    } else if (MR_streq(words[1], "io_tabling")) {
+        MR_io_tabling_stats(fp);
     } else {
-        MR_trace_usage("developer", "label_stats");
+        MR_trace_usage("developer", "stats");
     }
 
-    return KEEP_INTERACTING;
-}
-
-static MR_Next
-MR_trace_cmd_var_name_stats(char **words, int word_count,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-    MR_Event_Details *event_details, MR_Code **jumpaddr)
-{
-    if (word_count == 1) {
-        MR_var_name_stats(MR_mdb_out);
-    } else if (word_count == 2) {
-        FILE    *fp;
-
-        fp = fopen(words[1], "w");
-        if (fp == NULL) {
-            fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: error opening `%s': %s.\n",
-                words[1], strerror(errno));
-            return KEEP_INTERACTING;
-        }
-
-        MR_var_name_stats(fp);
+    if (should_close) {
         (void) fclose(fp);
-    } else {
-        MR_trace_usage("developer", "var_name_stats");
     }
 
     return KEEP_INTERACTING;
@@ -7273,6 +7247,39 @@ MR_trace_options_dice(char **pass_trace_counts_file,
     return MR_TRUE;
 }
 
+static struct MR_option MR_trace_stats_opts[] =
+{
+    { "file",      MR_required_argument,    NULL,   'f' },
+    { NULL,        MR_no_argument,          NULL,   0 }
+};
+
+static MR_bool
+MR_trace_options_stats(char **filename,
+    char ***words, int *word_count, const char *cat, const char *item)
+{
+    int c;
+
+    MR_optind = 0;
+    while ((c = MR_getopt_long(*word_count, *words, "f:",
+        MR_trace_stats_opts, NULL)) != EOF)
+    {
+        switch (c) {
+
+            case 'f':
+                *filename = MR_optarg;
+                break;
+
+            default:
+                MR_trace_usage(cat, item);
+                return MR_FALSE;
+        }
+    }
+
+    *words = *words + MR_optind - 1;
+    *word_count = *word_count - MR_optind + 1;
+    return MR_TRUE;
+}
+
 static struct MR_option MR_trace_type_ctor_opts[] =
 {
     { "print-rep",      MR_no_argument,     NULL,   'r' },
@@ -8240,6 +8247,9 @@ static const char *const    MR_trace_source_cmd_args[] =
 static const char *const    MR_trace_quit_cmd_args[] =
     { "-y", NULL };
 
+static const char *const    MR_trace_stats_cmd_args[] =
+    { "procs", "labels", "var_names", "io_tabling", NULL };
+
 static const MR_Trace_Command_Info  MR_trace_command_infos[] =
 {
     /*
@@ -8414,12 +8424,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         NULL, MR_trace_null_completer },
     { "developer", "debug_vars", MR_trace_cmd_debug_vars,
         NULL, MR_trace_null_completer },
-    { "developer", "proc_stats", MR_trace_cmd_proc_stats,
-        NULL, MR_trace_filename_completer },
-    { "developer", "label_stats", MR_trace_cmd_label_stats,
-        NULL, MR_trace_filename_completer },
-    { "developer", "var_name_stats", MR_trace_cmd_var_name_stats,
-        NULL, MR_trace_filename_completer },
+    { "developer", "stats", MR_trace_cmd_stats,
+        MR_trace_stats_cmd_args, MR_trace_filename_completer },
     { "developer", "print_optionals", MR_trace_cmd_print_optionals,
         MR_trace_on_off_args, MR_trace_null_completer },
     { "developer", "unhide_events", MR_trace_cmd_unhide_events,
