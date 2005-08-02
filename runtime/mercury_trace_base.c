@@ -960,9 +960,14 @@ MR_io_tabling_stats(FILE *fp)
 
     /*
     ** Create a fresh new hash table, separate the table created by
-    ** any previous call to this function.
+    ** any previous call to this function. We can't use structure assignment,
+    ** as that causes gcc 3.2 to throw a fit.
     */
-    hash_table = MR_io_tabling_stats_table;
+    hash_table.MR_ht_size  = MR_io_tabling_stats_table.MR_ht_size;
+    hash_table.MR_ht_store = NULL;
+    hash_table.MR_ht_key   = MR_io_tabling_stats_table.MR_ht_key;
+    hash_table.MR_ht_hash  = MR_io_tabling_stats_table.MR_ht_hash;
+    hash_table.MR_ht_equal = MR_io_tabling_stats_table.MR_ht_equal;
     MR_init_hash_table(hash_table);
     num_entries = 0;
 
