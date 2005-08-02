@@ -16,11 +16,8 @@ fi
 
 mkdir arena
 
-# copy the source files that make the best benchmark subjects into tha arena
-for module in make_hlds typecheck llds_out modules code_info polymorphism
-do
-	cp compiler/$module.m arena
-done
+# copy all the compiler source files into the arena
+cp compiler/*.m arena
 
 # copy the interface files and possibly optimization files they will need
 for dir in library mdbcomp analysis compiler
