@@ -20,6 +20,7 @@ TRAIL_PROGS= \
 TYPECLASS_PROGS= \
 	abstract_typeclass \
 	constraint_proof_bug \
+	flatten_conj_bug \
 	func_method \
 	instance_superclass \
 	instance_unconstrained_tvar \
