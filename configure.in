@@ -3557,11 +3557,22 @@ PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
 FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
 PARSE_ML_OPTIONS=$top/scripts/parse_ml_options.sh-subr
 CANONICAL_GRADE=$top/scripts/canonical_grade.sh-subr
+
+
+# demangling hangs on cygwin, so don't enable it.
+case "$host" in
+	*-cygwin*)
+		DEMANGLE=false ;;
+	*)
+		DEMANGLE=true ;;
+esac
+
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_ML_OPTIONS)
 AC_SUBST_FILE(CANONICAL_GRADE)
+AC_SUBST(DEMANGLE)
 
 # mercury_config includes configure.help to include the help for configure
 # in its `--help' output and man page.
