@@ -4104,8 +4104,8 @@ string__string(OpsTable, Univ) = String :-
 
 
 
-string__string(NonCanon, OpsTable, Univ, String) :-
-	value_to_revstrings(NonCanon, OpsTable, Univ, [], RevStrings),
+string__string(NonCanon, OpsTable, X, String) :-
+	value_to_revstrings(NonCanon, OpsTable, X, [], RevStrings),
 	String = string__append_list(list__reverse(RevStrings)).
 
 
@@ -4119,9 +4119,9 @@ string__string(NonCanon, OpsTable, Univ, String) :-
 :- mode value_to_revstrings(in, in, in, in, out)
 	is cc_multi.
 
-value_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
+value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 	Priority = ops__max_priority(OpsTable) + 1,
-	value_to_revstrings(NonCanon, OpsTable, Priority, Univ, !Rs).
+	value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs).
 
 
 
@@ -4273,7 +4273,7 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 		add_revstring(" ", !Rs),
 		adjust_priority(OpPriority, OpAssoc, NewPriority),
 		value_to_revstrings(NonCanon, OpsTable, NewPriority,
-			PrefixArg, !Rs),
+			univ_value(PrefixArg), !Rs),
 		maybe_add_revstring(")", Priority, OpPriority, !Rs)
 	;
 		Args = [PostfixArg],
@@ -4283,7 +4283,7 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 		maybe_add_revstring("(", Priority, OpPriority, !Rs),
 		adjust_priority(OpPriority, OpAssoc, NewPriority),
 		value_to_revstrings(NonCanon, OpsTable, NewPriority,
-			PostfixArg, !Rs),
+			univ_value(PostfixArg), !Rs),
 		add_revstring(" ", !Rs),
 		add_revstring(term_io__quoted_atom(Functor), !Rs),
 		maybe_add_revstring(")", Priority, OpPriority, !Rs)
@@ -4294,7 +4294,8 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 	->
 		maybe_add_revstring("(", Priority, OpPriority, !Rs),
 		adjust_priority(OpPriority, LeftAssoc, LeftPriority),
-		value_to_revstrings(NonCanon, OpsTable, LeftPriority, Arg1, !Rs),
+		value_to_revstrings(NonCanon, OpsTable, LeftPriority,
+			univ_value(Arg1), !Rs),
 		( Functor = "," ->
 			add_revstring(", ", !Rs)
 		;
@@ -4304,7 +4305,7 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 		),
 		adjust_priority(OpPriority, RightAssoc, RightPriority),
 		value_to_revstrings(NonCanon, OpsTable, RightPriority,
-			Arg2, !Rs),
+			univ_value(Arg2), !Rs),
 		maybe_add_revstring(")", Priority, OpPriority, !Rs)
 	;
 		Args = [Arg1, Arg2],
@@ -4316,11 +4317,11 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 		add_revstring(" ", !Rs),
 		adjust_priority(OpPriority, FirstAssoc, FirstPriority),
 		value_to_revstrings(NonCanon, OpsTable, FirstPriority,
-			Arg1, !Rs),
+			univ_value(Arg1), !Rs),
 		add_revstring(" ", !Rs),
 		adjust_priority(OpPriority, SecondAssoc, SecondPriority),
 		value_to_revstrings(NonCanon, OpsTable, SecondPriority,
-			Arg2, !Rs),
+			univ_value(Arg2), !Rs),
 		maybe_add_revstring(")", Priority, OpPriority, !Rs)
 	;
 		(
