@@ -41,7 +41,7 @@ case $FULLARCH in
 esac
 mercury_libs=default
 all_libs=default
-demangle=true
+demangle=@DEMANGLE@
 make_shared_lib=false
 leave_shlib_dirs_relative=false
 user_shlib_dirs=""
