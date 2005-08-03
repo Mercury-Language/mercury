@@ -21,6 +21,7 @@ TYPECLASS_PROGS= \
 	abstract_typeclass \
 	complex_constraint \
 	constraint_proof_bug \
+	flatten_conj_bug \
 	func_method \
 	fundeps \
 	instance_superclass \

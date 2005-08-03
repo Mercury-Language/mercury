@@ -697,11 +697,26 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
 :- pred unique_modes__check_conj(list(hlds_goal)::in, list(hlds_goal)::out,
 	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-	% Just process each conjunct in turn.
-	% Note that we don't do any reordering of conjuncts here.
-
+	% Just process each conjunct in turn.  Note that we don't do any
+	% reordering of conjuncts here, although we do flatten conjunctions.
+	%
 unique_modes__check_conj([], [], !ModeInfo, !IO).
-unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals], !ModeInfo, !IO) :-
+unique_modes__check_conj([Goal0 | Goals0], Goals, !ModeInfo, !IO) :-
+	(
+		Goal0 = conj(ConjGoals) - _
+	->
+		list__append(ConjGoals, Goals0, Goals1),
+		unique_modes__check_conj(Goals1, Goals, !ModeInfo, !IO)
+	;
+		unique_modes__check_conj_2(Goal0, Goals0, Goals, !ModeInfo,
+			!IO)
+	).
+
+:- pred unique_modes__check_conj_2(hlds_goal::in, list(hlds_goal)::in,
+	list(hlds_goal)::out, mode_info::in, mode_info::out, io::di, io::uo)
+	is det.
+
+unique_modes__check_conj_2(Goal0, Goals0, [Goal | Goals], !ModeInfo, !IO) :-
 	goal_get_nonlocals(Goal0, NonLocals),
 	mode_info_remove_live_vars(NonLocals, !ModeInfo),
 	unique_modes__check_goal(Goal0, Goal, !ModeInfo, !IO),
