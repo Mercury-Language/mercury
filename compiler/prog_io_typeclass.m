@@ -465,53 +465,52 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 		MaybeClassName),
 	(
 		MaybeClassName = ok(ClassName, TermTypes0),
-			% check that the type in the name of the instance
-			% decl is a functor with vars as args
 		list__map(convert_type, TermTypes0, TermTypes),
-		IsFunctorAndVarArgs = (pred(Type::in) is semidet :-
-				% Is the top level functor an atom?
-			Type = term__functor(term__atom(Functor),
-					Args, _),
-			(
-				(	Functor = ":"
-				;	Functor = "."
-				)
-			->
-				Args = [_Module, Type1],
-					% Is the top level functor an
-					% atom?
-				Type1 = term__functor(term__atom(_), Args1, _),
-					% Are all the args of the
-					% functor variables?
-				list__map((pred(A::in, B::out) is semidet :-
-					prog_type__var(A, B)
-				), Args1, _)
-			;
-					% Are all the args of the
-					% functor variables?
-				list__map((pred(A::in, B::out) is semidet :-
-					prog_type__var(A, B)
-				), Args, _)
-			)
-		),
-		list__filter(IsFunctorAndVarArgs, TermTypes, _,
-			ErroneousTypes),
+
+			% Check that each type in the arguments of the instance
+			% decl is a functor with vars as args.
+			%
 		(
-			ErroneousTypes = [],
+			some [Type] (
+				list__member(Type, TermTypes),
+				\+ type_is_functor_and_vars(Type)
+			)
+		->
+				% We report the error as being in the name
+				% rather than the specific argument, since
+				% the argument types have had their contexts
+				% removed.
+				%
+			Result = error("types in instance declarations" ++
+				" must be functors with distinct variables" ++
+				" as arguments", Name)
+		;
 			Result = ok(instance([], ClassName,
 				TermTypes, abstract, TVarSet, ModuleName))
-		;
-				% XXX We should report an error for _each_
-				% XXX erroneous type
-			ErroneousTypes = [E0|_Es],
-			term__coerce(E0, E),
-			Result = error("expected type in " ++
-				"instance declaration to be " ++
-				"a functor with variables as args", E)
 		)
 	;
 		MaybeClassName = error(String, Term),
 		Result = error(String, Term)
+	).
+
+:- pred type_is_functor_and_vars((type)::in) is semidet.
+
+type_is_functor_and_vars(Type) :-
+		% Is the top level functor an atom?
+	Type = term__functor(term__atom(Functor), Args, _),
+	(
+		(	Functor = ":"
+		;	Functor = "."
+		)
+	->
+		Args = [_Module, Type1],
+		type_is_functor_and_vars(Type1)
+	;
+		% Are all the args of the functor variables?
+		all [Arg] (
+			list__member(Arg, Args) =>
+			prog_type__var(Arg, _)
+		)
 	).
 
 :- pred parse_non_empty_instance(module_name::in, term::in, term::in,
