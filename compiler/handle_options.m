@@ -1042,9 +1042,24 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% don't work with -ansi.
 	option_implies(parallel, ansi_c, bool(no)),
 
-	% `--constant-propagation' effectively inlines builtins.
 	option_neg_implies(inline_builtins, constant_propagation, bool(no)),
-	option_neg_implies(allow_inlining, constant_propagation, bool(no)),
+	
+	% `--optimize-constant-propagation' effectively inlines builtins.
+	%
+	% We want to allow constant propagation in deep profiling grades,
+	% so `--no-allow-inlining' should not cause it to be disabled.
+	% (Other forms of inlining must be disabled for deep profiling.)
+	%
+	% `--no-allow-inlining' should imply
+	% `--no-optimize-constant-propagation' otherwise,
+	% e.g. when tracing is enabled.
+	%
+	( { ProfileDeep = no } ->
+		option_neg_implies(allow_inlining, constant_propagation,
+			bool(no))
+	;
+		[] 
+	),
 
 	% --no-reorder-conj implies --no-deforestation,
 	% --no-constraint-propagation and --no-local-constraint-propagation.
