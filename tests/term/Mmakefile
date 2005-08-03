@@ -109,8 +109,24 @@ MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)
 ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
 
 %.trans_opt_res: %.trans_opt_exp $(trans_opts_subdir)%.trans_opt
-	diff $(DIFF_OPTS) $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt \
-		> $@
+	@echo "Comparing $(trans_opts_subdir)$*.trans_opt with $*.trans_opt_exp2,"
+	@echo " results in $@"
+	@-rm -f $@ $*.trans_opt_res[1-2]
+	@{ diff $(DIFF_OPTS) $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt \
+			> $*.trans_opt_res1 && \
+		echo "Matches $*.trans_opt_exp" && \
+		cp $*.trans_opt_res1 $@; } || \
+	{ diff $(DIFF_OPTS) $*.trans_opt_exp2 $(trans_opts_subdir)$*.trans_opt \
+			> $*.trans_opt_res2 && \
+		echo "Matches $*.trans_opt_exp2" && \
+		cp $*.trans_opt_res2 $@; } || \
+	{ shortest=`wc -l $*.trans_opt_res[1-2] | grep -v total | sort -n | \
+		head -1 | awk '{ print $$2; }' `; \
+		echo "** $*.err did not match the expected error output"; \
+		echo "** (closest match was $$shortest)"; \
+		cp $$shortest $@; \
+		cat $@; \
+		exit 1; }
 
 #-----------------------------------------------------------------------------#
 
@@ -120,4 +136,3 @@ clean_local:
 realclean_local:
 	rm -f *.trans_opt_res
 
-#-----------------------------------------------------------------------------#
