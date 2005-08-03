@@ -126,8 +126,10 @@ MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_c_file_to_mercury_file(MR_mdb_err, &mdb_err);
 
-    ML_BROWSE_browse_term_xml(browser_term, &mdb_out, &mdb_err,
-        MR_trace_browser_persistent_state);
+    MR_TRACE_CALL_MERCURY(
+        ML_BROWSE_browse_term_xml(browser_term, &mdb_out, &mdb_err,
+            MR_trace_browser_persistent_state);
+    );
 }
 
 void
