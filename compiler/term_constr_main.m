@@ -117,7 +117,7 @@
                                 % termination status was read in from a .opt
                                 % or .trans_opt file.
     
-    ;       analysis.           % Termination info. was derived via analysis.           
+    ;       analysis.           % Termination info. was derived via analysis.
 
     % Whether a procedure may be involved in mutual recursion
     % across module boundaries.
