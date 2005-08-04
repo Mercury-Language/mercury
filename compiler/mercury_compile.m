@@ -565,7 +565,7 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
     % (2) If the argument doesn't end in `.m',
     % then we assume it is a module name.
     % (Is it worth checking that the name doesn't
-    % contain directory seperators, and issuing
+    % contain directory separators, and issuing
     % a warning or error in that case?)
     %
     (
@@ -853,7 +853,7 @@ string_to_file_or_module(String) = FileOrModule :-
     ;
         % If it doesn't end in `.m', then we assume it is
         % a module name.  (Is it worth checking that the
-        % name doesn't contain directory seperators, and issuing
+        % name doesn't contain directory separators, and issuing
         % a warning or error in that case?)
         file_name_to_module_name(String, ModuleName),
         FileOrModule = module(ModuleName)
@@ -2235,9 +2235,9 @@ mercury_compile__frontend_pass_by_phases(!HLDS, FoundError, !IO) :-
             FoundStratError, !IO),
         mercury_compile__maybe_dump_hlds(!.HLDS, 60, "stratification", !IO),
 
-        mercury_compile__simplify(yes, no, Verbose, Stats,
+        mercury_compile__simplify(yes, frontend, Verbose, Stats,
             process_all_nonimported_procs, !HLDS, !IO),
-        mercury_compile__maybe_dump_hlds(!.HLDS, 65, "simplify", !IO),
+        mercury_compile__maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !IO),
 
         %
         % work out whether we encountered any errors
@@ -2380,6 +2380,18 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 
     mercury_compile__maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
     mercury_compile__maybe_dump_hlds(!.HLDS, 195, "dead_procs", !IO),
+    
+    % If we are compiling in a deep profiling grade then now rerun 
+    % simplify.  The reason for doing this now is that we want to
+    % take advantage of any opportunities the other optimizations have
+    % provided for constant propagation and we cannot do that once the
+    % term-size profiling/deep profiling transformations have been
+    % applied. 
+    %
+    mercury_compile__simplify(yes, pre_prof_transforms, Verbose, Stats,
+        process_all_nonimported_procs, !HLDS, !IO),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 197,
+        "pre_prof_transform_simplify", !IO),
 
     % The term size profiling transformation should be after all
     % transformations that construct terms of non-zero size. (Deep
@@ -2520,9 +2532,10 @@ mercury_compile__backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !IO) :-
     mercury_compile__maybe_followcode(Verbose, Stats, !HLDS, !IO),
     mercury_compile__maybe_dump_hlds(!.HLDS, 320, "followcode", !IO),
 
-    mercury_compile__simplify(no, yes, Verbose, Stats,
+    mercury_compile__simplify(no, ll_backend, Verbose, Stats,
         process_all_nonimported_nonaditi_procs, !HLDS, !IO),
-    mercury_compile__maybe_dump_hlds(!.HLDS, 325, "simplify2", !IO),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 325,
+        "ll_backend_simplify", !IO),
 
     mercury_compile__compute_liveness(Verbose, Stats, !HLDS, !IO),
     mercury_compile__maybe_dump_hlds(!.HLDS, 330, "liveness", !IO),
@@ -2690,7 +2703,28 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId,
     ;
         true
     ),
-    simplify__find_simplifications(no, Globals, Simplifications),
+    simplify__find_simplifications(no, Globals, Simplifications0),
+
+    globals.lookup_bool_option(Globals, profile_deep, DeepProf),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
+    
+    ProfTrans = bool.or_list([DeepProf, TSWProf, TSCProf]),
+    ( 
+        % Don't run constant propagation if any of the profiling
+        % transformations has been applied.
+        %
+        % NOTE: Any changes here may also need to be made to
+        %       mercury_compile.simplify.
+        %
+        ProfTrans = yes,
+        Simplifications = list.delete_all(Simplifications0,
+            constant_prop)
+    ;
+        ProfTrans = no,
+        Simplifications = Simplifications0
+    ),
+      
     simplify__proc([do_once | Simplifications], PredId, ProcId,
         !HLDS, !ProcInfo, !IO),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
@@ -3018,27 +3052,91 @@ mercury_compile__maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         WarnDead = no
     ).
 
-:- pred mercury_compile__simplify(bool::in, bool::in, bool::in, bool::in,
+    % This type indicates what stage of compilation we are running
+    % the simplification pass at.  The exact simplifications we run
+    % will depend upon this.
+    % 
+:- type simplify_pass
+    --->    frontend
+                % Immediately after the frontend passes.
+
+    ;       post_untuple
+                % After the untupling transformation has been applied. 
+
+    ;       pre_prof_transforms
+                % If deep/term-size profiling is enabled then immediately
+                % before the source-to-source transformations that 
+                % implement them.
+    
+    ;       ml_backend
+                % The first stage of MLDS code generation.
+    
+    ;       ll_backend.
+                % The first stage of LLDS code generation.
+
+:- pred mercury_compile__simplify(bool::in, simplify_pass::in, bool::in, bool::in,
     pred(task, module_info, module_info, io, io)::in(pred(task, in, out,
         di, uo) is det),
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-mercury_compile__simplify(Warn, Once, Verbose, Stats, Process, !HLDS, !IO) :-
-    maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
-    maybe_flush_output(Verbose, !IO),
-    globals__io_get_globals(Globals, !IO),
-    simplify__find_simplifications(Warn, Globals, Simplifications0),
-    (
-        Once = yes,
-        Simplifications = [do_once | Simplifications0]
+mercury_compile__simplify(Warn, SimplifyPass, Verbose, Stats, Process,
+        !HLDS, !IO) :-
+    
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, profile_deep, DeepProf),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
+    %
+    % We run the simplify pass before the profiling transformations,
+    % only if those transformations are being applied - otherwise we
+    % just leave things to the backend simplification passes.
+    %
+    IsProfPass = bool.or_list([DeepProf, TSWProf, TSCProf]),
+    ( SimplifyPass = pre_prof_transforms, IsProfPass = no ->
+        true
     ;
-        Once = no,
-        Simplifications = Simplifications0
-    ),
-    call(Process, update_pred_error(simplify__pred(Simplifications)), !HLDS,
-        !IO),
-    maybe_write_string(Verbose, "% done.\n", !IO),
-    maybe_report_stats(Stats, !IO).
+        some [!Simplifications] (
+            
+            maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
+            maybe_flush_output(Verbose, !IO),
+           
+            simplify.find_simplifications(Warn, Globals, !:Simplifications),
+            (
+                SimplifyPass = frontend
+            ;
+                SimplifyPass = post_untuple,
+                list.cons(do_once, !Simplifications) 
+            ;
+                SimplifyPass = pre_prof_transforms,
+                list.cons(do_once, !Simplifications)
+            ;
+                SimplifyPass = ml_backend,
+                list.cons(do_once, !Simplifications)
+            ;
+                % Don't perform constant propagation if one of the
+                % profiling transformations has been applied.
+                %
+                % NOTE: Any changes made here may also need to be made
+                % to the relevant parts of backend_pass_by_preds_4/12.
+                %
+                SimplifyPass = ll_backend,
+                ( IsProfPass = yes -> 
+                    % XXX Why does find_simplifications return a list of
+                    % them rather than a set?
+                    list.delete_all(!.Simplifications, constant_prop,
+                        !:Simplifications)
+                ;
+                    true
+                ),
+                list.cons(do_once, !Simplifications)
+            ),
+            Process(update_pred_error(simplify.pred(!.Simplifications)), !HLDS,
+                !IO),
+    
+            maybe_write_string(Verbose, "% done.\n", !IO),
+            maybe_report_stats(Stats, !IO)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -3317,7 +3415,7 @@ mercury_compile__maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
         maybe_flush_output(Verbose, !IO),
         untuple_arguments(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
-        mercury_compile__simplify(no, yes, Verbose, Stats,
+        mercury_compile__simplify(no, post_untuple, Verbose, Stats,
             process_all_nonimported_nonaditi_procs, !HLDS, !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -4211,9 +4309,9 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     globals__io_lookup_bool_option(statistics, Stats, !IO),
 
-    mercury_compile__simplify(no, yes, Verbose, Stats,
+    mercury_compile__simplify(no, ml_backend, Verbose, Stats,
         process_all_nonimported_nonaditi_procs, !HLDS, !IO),
-    mercury_compile__maybe_dump_hlds(!.HLDS, 405, "simplify2", !IO),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 405, "ml_backend_simplify", !IO),
 
     mercury_compile__maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO),
     mercury_compile__maybe_dump_hlds(!.HLDS, 410, "add_trail_ops", !IO),
