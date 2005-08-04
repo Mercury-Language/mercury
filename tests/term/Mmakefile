@@ -25,6 +25,7 @@ TERM_PROGS= \
 	existential_error3 \
 	fold \
 	foreign_valid \
+	generic_call \
 	inf_const_bug \
 	my_list \
 	lte \

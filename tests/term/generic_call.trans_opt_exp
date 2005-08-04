@@ -1,0 +1,9 @@
+:- module generic_call.
+:- pragma termination_info(generic_call.alpha((builtin.in), (builtin.in), (builtin.out)), infinite, cannot_loop).
+:- pragma termination_info(generic_call.double_int((builtin.in), (builtin.out)), finite(0, [no, no]), cannot_loop).
+:- pragma termination_info(generic_call.triple_int((builtin.in), (builtin.out)), finite(0, [no, no]), cannot_loop).
+:- pragma termination_info(generic_call.force_deps((builtin.in), (builtin.out)), finite(0, [no, no]), cannot_loop).
+:- pragma termination2_info(generic_call.alpha((builtin.in), (builtin.in), (builtin.out)), constraints([]), not_set, can_loop).
+:- pragma termination2_info(generic_call.double_int((builtin.in), (builtin.out)), constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(generic_call.triple_int((builtin.in), (builtin.out)), constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(generic_call.force_deps((builtin.in), (builtin.out)), constraints([]), not_set, cannot_loop).

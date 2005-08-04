@@ -2070,6 +2070,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
     globals__lookup_bool_option(Globals, termination2, Termination2),
     globals__lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
+    globals__lookup_bool_option(Globals, analyse_closures,
+        ClosureAnalysis),
     (
         MakeOptInt = yes,
         intermod__write_optfile(!HLDS, !IO),
@@ -2088,8 +2090,17 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
             mercury_compile__frontend_pass_by_phases(!HLDS, FoundModeError,
                 !IO),
             ( FoundModeError = no ->
-                mercury_compile.maybe_closure_analysis(Verbose, Stats,
-                    !HLDS, !IO),
+                (
+                    % Closure analysis assumes that lambda expressions have
+                    % been converted into separate predicates.
+                    ClosureAnalysis = yes,
+                    mercury_compile.process_lambdas(Verbose, Stats,
+                        !HLDS, !IO),
+                    mercury_compile.maybe_closure_analysis(Verbose, Stats,
+                        !HLDS, !IO)
+                ;
+                    ClosureAnalysis = no
+                ),
                 (
                     ExceptionAnalysis = yes,
                     mercury_compile__maybe_exception_analysis(Verbose, Stats,
@@ -2161,6 +2172,18 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 mercury_compile__output_trans_opt_file(!.HLDS, !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals__io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
+    %
+    % Closure analysis assumes that lambda expressions have
+    % been converted into separate predicates.
+    %
+    (
+        ClosureAnalysis = yes,
+        mercury_compile__process_lambdas(Verbose, Stats, !HLDS, !IO)
+    ;
+        ClosureAnalysis = no
+    ),
+    mercury_compile__maybe_dump_hlds(!.HLDS, 110, "lambda", !IO),
     mercury_compile__maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
     mercury_compile__maybe_dump_hlds(!.HLDS, 117, "closure_analysis", !IO),
     mercury_compile__maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
