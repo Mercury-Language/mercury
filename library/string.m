@@ -4395,7 +4395,8 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 		Args = [BracedTerm]
 	->
 		add_revstring("{ ", !Rs),
-		value_to_revstrings(NonCanon, OpsTable, BracedTerm, !Rs),
+		value_to_revstrings(NonCanon, OpsTable,
+			univ_value(BracedTerm), !Rs),
 		add_revstring(" }", !Rs)
 	;
 		Functor = "{}",
