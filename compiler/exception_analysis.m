@@ -267,20 +267,23 @@ check_goal_for_exceptions(SCC, ModuleInfo, VarTypes, Goal - GoalInfo,
     ( goal_info_get_determinism(GoalInfo, erroneous) ->
         !:Result = !.Result ^ status := may_throw(user_exception)
     ;
-        check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, !Result)
+        check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, GoalInfo,
+            !Result)
     ).  
 
 :- pred check_goal_for_exceptions_2(scc::in, module_info::in, vartypes::in,
-    hlds_goal_expr::in, proc_result::in, proc_result::out) is det.
+    hlds_goal_expr::in, hlds_goal_info::in, proc_result::in, proc_result::out)
+    is det.
 
-check_goal_for_exceptions_2(_, _, _, unify(_, _, _, Kind, _), !Result) :-
+check_goal_for_exceptions_2(_, _, _, Goal, _, !Result) :-
+    Goal = unify(_, _, _, Kind, _),
     ( Kind = complicated_unify(_, _, _) ->
         unexpected(this_file,
             "complicated unify during exception analysis.") 
     ;
         true
     ).
-check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, !Result) :-
+check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, _, !Result) :-
     Goal = call(CallPredId, CallProcId, CallArgs, _, _, _),
     CallPPId = proc(CallPredId, CallProcId),    
     module_info_pred_info(ModuleInfo, CallPredId, CallPredInfo),
@@ -323,14 +326,76 @@ check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, !Result) :-
         check_nonrecursive_call(ModuleInfo, VarTypes, CallPPId, CallArgs,
             !Result)
     ).
-check_goal_for_exceptions_2(_, _, _, generic_call(_,_,_,_), !Result) :-
-    !:Result = !.Result ^ status := may_throw(user_exception).
-check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, not(Goal), !Result) :-
+check_goal_for_exceptions_2(_, ModuleInfo, VarTypes, Goal, GoalInfo,
+        !Result) :-
+    Goal = generic_call(Details, Args, _ArgModes, _),
+    (
+        Details = higher_order(Var, _, _,  _),
+        ClosureValueMap = goal_info_get_ho_values(GoalInfo),
+        ( ClosureValues = ClosureValueMap ^ elem(Var) ->
+                (
+                    get_conditional_closures(ModuleInfo, ClosureValues,
+                        Conditional)
+                ->
+                    (
+                        Conditional = []
+                        % The possible values of the higher-order variable
+                        % are all procedures that are known not to throw
+                        % exceptions.
+                    ;
+                        Conditional = [_|_],
+                        %
+                        % For 'conditional' procedures we need to make
+                        % sure that if any type variables are bound at
+                        % the generic_call site, then this does not
+                        % cause the closure to throw an exception
+                        % (because of a user-defined equality or
+                        % comparison predicate that throws an
+                        % exception.)
+                        %
+                        % If we can resolve all of the polymorphism at
+                        % this generic_call site, then we can reach a
+                        % definite conclusion about it.
+                        % 
+                        % If we cannot do so, then we propagate the
+                        % 'conditional' status to the current predicate
+                        % if all the type variables involved are
+                        % universally quantified, or mark it as throwing
+                        % an exception if some of them are existentially
+                        % quantified. 
+                        %
+                        % XXX This is too conservative but we don't
+                        % currently perform a fine-grained enough
+                        % analysis of where out-of-line
+                        % unifications/comparisons occur to be able to
+                        % do better.
+                        %
+                        check_vars(ModuleInfo, VarTypes, Args, !Result)
+                    )
+                ;
+                    !:Result = !.Result ^ status := may_throw(user_exception)
+                )
+        ;
+            !:Result = !.Result ^ status := may_throw(user_exception)
+        )
+    ;
+        % XXX We could do better with class methods.
+        Details = class_method(_, _, _, _),
+        !:Result = !.Result ^ status := may_throw(user_exception)
+    ;
+        Details = unsafe_cast
+    ;
+        Details = aditi_builtin(_, _),
+        !:Result = !.Result ^ status := may_throw(user_exception)
+    ).
+check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, not(Goal), _,
+        !Result) :-
     check_goal_for_exceptions(SCC, ModuleInfo, VarTypes, Goal, !Result).
-check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, !Result) :-
+check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, _,
+        !Result) :-
     Goal = scope(_, ScopeGoal),
     check_goal_for_exceptions(SCC, ModuleInfo, VarTypes, ScopeGoal, !Result).
-check_goal_for_exceptions_2(_, _, _, Goal, !Result) :-
+check_goal_for_exceptions_2(_, _, _, Goal, _, !Result) :-
     Goal = foreign_proc(Attributes, _, _, _, _, _),
     ( may_call_mercury(Attributes) = may_call_mercury -> 
         may_throw_exception(Attributes) = MayThrowException,
@@ -346,22 +411,25 @@ check_goal_for_exceptions_2(_, _, _, Goal, !Result) :-
     ;
         true
     ).
-check_goal_for_exceptions_2(_, _, _, shorthand(_), _, _) :-
+check_goal_for_exceptions_2(_, _, _, shorthand(_), _, _, _) :-
     unexpected(this_file,
         "shorthand goal encountered during exception analysis.").
-check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, !Result) :-
+check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, _, !Result) :-
     Goal = switch(_, _, Cases),
     CaseGoals = list.map((func(case(_, CaseGoal)) = CaseGoal), Cases),
     check_goals_for_exceptions(SCC, ModuleInfo, VarTypes, CaseGoals, !Result).
-check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, !Result) :-
+check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, _, !Result) :-
     Goal = if_then_else(_, If, Then, Else),
     check_goals_for_exceptions(SCC, ModuleInfo, VarTypes, [If, Then, Else],
         !Result).   
-check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, disj(Goals), !Result) :-
+check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, disj(Goals), _,
+        !Result) :-
     check_goals_for_exceptions(SCC, ModuleInfo, VarTypes, Goals, !Result).
-check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, par_conj(Goals), !Result) :-
+check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, par_conj(Goals), _,
+        !Result) :-
     check_goals_for_exceptions(SCC, ModuleInfo, VarTypes, Goals, !Result).
-check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, conj(Goals), !Result) :-
+check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, conj(Goals), _,
+        !Result) :-
     check_goals_for_exceptions(SCC, ModuleInfo, VarTypes, Goals, !Result).
 
 :- pred check_goals_for_exceptions(scc::in, module_info::in, vartypes::in,
@@ -380,6 +448,37 @@ check_goals_for_exceptions(SCC, ModuleInfo, VarTypes, [ Goal | Goals ],
       then  true
       else  check_goals_for_exceptions(SCC, ModuleInfo, VarTypes, Goals,
                 !Result)
+    ).
+
+%----------------------------------------------------------------------------%
+%
+% Further code to handle higher-order variables
+% 
+
+    % Given a list of procedure ids extract those whose exception status
+    % has been set to 'conditional'.  Fails if one of the procedures in
+    % the set has an exception status that indicates it may throw an
+    % exception, or if the exception status for a procedure has not yet
+    % been set.
+    %
+:- pred get_conditional_closures(module_info::in, set(pred_proc_id)::in,
+    list(pred_proc_id)::out) is semidet.
+
+get_conditional_closures(ModuleInfo, Closures, Conditionals) :-
+    module_info_exception_info(ModuleInfo, ExceptionInfo),
+    set.fold(get_conditional_closure(ExceptionInfo), Closures,
+        [], Conditionals).
+
+:- pred get_conditional_closure(exception_info::in, pred_proc_id::in,
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is semidet.
+
+get_conditional_closure(ExceptionInfo, PPId, !Conditionals) :-
+    ExceptionInfo ^ elem(PPId) = Status,
+    (
+        Status = conditional,
+        list.cons(PPId, !Conditionals)
+    ;
+        Status = will_not_throw
     ).
 
 %----------------------------------------------------------------------------%
