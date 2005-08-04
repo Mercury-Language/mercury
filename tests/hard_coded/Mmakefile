@@ -23,7 +23,6 @@ ORDINARY_PROGS=	\
 	common_type_cast \
 	compare_spec \
 	comparison \
-	constant_prop_1 \
 	constraint \
 	constraint_order \
 	construct_bug \
@@ -290,11 +289,15 @@ endif
 # would be to pass unrealistic test cases like constant_prop_2, this is not
 # worth doing.
 
+# constant_prop_1 doesn't work in deep profiling grades because constant
+# propagation isn't enabled in those grades.
+
 ifeq "$(findstring hl,$(GRADE))$(findstring prof,$(GRADE))" "hlprof"
 	PROF_PROGS =
 else
   ifeq "$(findstring profdeep,$(GRADE))" ""
 	PROF_PROGS = \
+		constant_prop_1 \
 		constant_prop_2
   else
 	PROF_PROGS =
