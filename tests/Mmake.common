@@ -308,7 +308,7 @@ RM_JFACTOR=
 #
 .PHONY: start_runtests_local
 start_runtests_local:
-	@echo STARTING tests in $(THIS_DIR) $(PARAMS_MSG)
+	@echo STARTING tests in $(THIS_DIR) $(PARAMS_MSG) at `date`
 	@echo cleaning up the directory before the tests
 	+@if ls -lt | head -2 | egrep CLEAN > /dev/null 2>&1; then \
 		rm -f CLEAN > /dev/null 2>&1; \
