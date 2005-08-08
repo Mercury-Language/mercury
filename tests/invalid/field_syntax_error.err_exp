@@ -1,7 +1,9 @@
 field_syntax_error.m:013: In clause for function `field_syntax_error.baz/1':
-field_syntax_error.m:013:   warning: variable `Bar' occurs only once in this scope.
+field_syntax_error.m:013:   warning: variable `Bar' occurs only once in this
+field_syntax_error.m:013:   scope.
 field_syntax_error.m:015: In clause for function `field_syntax_error.baz3/1':
-field_syntax_error.m:015:   warning: variable `Bar' occurs only once in this scope.
+field_syntax_error.m:015:   warning: variable `Bar' occurs only once in this
+field_syntax_error.m:015:   scope.
 field_syntax_error.m:013: In clause for function `field_syntax_error.baz/1':
 field_syntax_error.m:013:   in function result term of clause head:
 field_syntax_error.m:013:   error: invalid use of field selection operator (`^').

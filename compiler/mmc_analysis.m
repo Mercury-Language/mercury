@@ -31,7 +31,6 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_out.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
@@ -62,7 +61,7 @@ module_id_to_module_name(ModuleId) = ModuleName :-
 	string_to_sym_name(ModuleId, ".", ModuleName).
 
 pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) = FuncId :-
-	FuncId0 = hlds_out__simple_call_id_to_string(PredOrFunc
+	FuncId0 = simple_call_id_to_string(PredOrFunc
 		- unqualified(Name)/Arity),
 	proc_id_to_int(ProcId, ProcInt),
 	FuncId = FuncId0 ++ "-" ++ int_to_string(ProcInt).

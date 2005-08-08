@@ -186,7 +186,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             Status \= opt_imported
         ->
             module_info_incr_errors(!ModuleInfo),
-            CallIdString0 = hlds_out__simple_call_id_to_string(
+            CallIdString0 = simple_call_id_to_string(
                 PredOrFunc - PredName/Arity),
             string__append(CallIdString0, ".", CallIdString),
             ErrorPieces0 = [

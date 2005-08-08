@@ -227,7 +227,8 @@ TYPE_SPEC_MODULES = \
 
 #-----------------------------------------------------------------------------#
 
-# These tests test things which only work for back-ends which support the C interface.
+# These tests test things which only work for back-ends which support
+# the C interface.
 ifneq "$(filter java% il%,$(GRADE))" ""
 C_INTERFACE_PROGS=
 else
@@ -241,9 +242,9 @@ else
 RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
 endif
 
-# The java back-end ignores pragma type_spec, so it doesn't diagnose errors in them.
-# (XXX Perhaps the code to ignore them in make_hlds.m should be moved to after the
-# error-checking?)
+# The java back-end ignores pragma type_spec, so it doesn't diagnose errors
+# in them. (XXX Perhaps the code to ignore them in make_hlds.m should be moved
+# to after the error-checking?)
 ifneq "$(filter java%,$(GRADE))" ""
 TYPE_SPEC_PROGS =
 else

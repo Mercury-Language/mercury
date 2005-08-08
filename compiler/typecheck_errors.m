@@ -289,10 +289,9 @@ report_error_undef_pred(Info, PredOrFunc - PredCallId, !IO) :-
 			"a list of variables.\n", !IO)
 	;
 		io__write_string("  error: undefined ", !IO),
-		hlds_out__write_simple_call_id(PredOrFunc - PredCallId, !IO),
+		write_simple_call_id(PredOrFunc - PredCallId, !IO),
 		( PredName = qualified(ModuleQualifier, _) ->
-			maybe_report_missing_import(Info,
-				ModuleQualifier, !IO)
+			maybe_report_missing_import(Info, ModuleQualifier, !IO)
 		;
 			io__write_string(".\n", !IO)
 		)

@@ -9,8 +9,8 @@ record_syntax_errors.m:031:   in DCG field access goal.
 record_syntax_errors.m:048: Error: clause for predicate
 record_syntax_errors.m:048:   `record_syntax_errors.term_type_error/1'
 record_syntax_errors.m:048:   without preceding `pred' declaration.
-record_syntax_errors.m:054: In declaration of
-record_syntax_errors.m:054:   function `record_syntax_errors.field4/1':
+record_syntax_errors.m:054: In declaration of function
+record_syntax_errors.m:054:   `record_syntax_errors.field4/1':
 record_syntax_errors.m:054:   error: a field access function for an exported
 record_syntax_errors.m:054:   field must also be exported.
 record_syntax_errors.m:057: Error: clause for automatically generated field

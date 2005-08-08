@@ -82,6 +82,7 @@
 :- import_module ml_backend__ml_util.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 
 :- import_module int.
 :- import_module list.
@@ -641,7 +642,7 @@ report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
 	(
 		PredLabel = pred(PredOrFunc, _MaybeModule, Name, Arity,
 			_CodeModel, _NonOutputFunc),
-		CallId = hlds_out__simple_call_id_to_string(PredOrFunc -
+		CallId = simple_call_id_to_string(PredOrFunc -
 			unqualified(Name) / Arity),
 		proc_id_to_int(ProcId, ProcNumber0),
 		ProcNumber = ProcNumber0 + 1,
@@ -649,8 +650,7 @@ report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
 		report_warning(mlds__get_prog_context(Context), 0, [
 			words("In mode number"), words(ProcNumberStr),
 			words("of"), fixed(CallId ++ ":"), nl,
-			words("  warning: recursive call " ++
-				"is not tail recursive.")
+			words("warning: recursive call is not tail recursive.")
 		], !IO)
 	;
 		PredLabel = special_pred(_, _, _, _)

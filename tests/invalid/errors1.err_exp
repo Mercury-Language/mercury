@@ -22,7 +22,8 @@ errors1.m:049: Error: constructor `errors1.f/1' for type `errors1.type_with_mult
 errors1.m:038: Error: clause for predicate
 errors1.m:038:   `errors1.clause_without_pred_or_mode_declaration/0'
 errors1.m:038:   without preceding `pred' declaration.
-errors1.m:072: In clause for predicate `errors1.pred_with_unresolved_polymorphism/0':
+errors1.m:072: In clause for predicate
+errors1.m:072:   `errors1.pred_with_unresolved_polymorphism/0':
 errors1.m:072:   warning: variable `Arg' occurs only once in this scope.
 errors1.m:088: In clause for predicate `errors1.pred_with_singleton_vars/1':
 errors1.m:088:   warning: variable `X' occurs only once in this scope.

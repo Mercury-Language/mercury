@@ -955,11 +955,8 @@ check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
     io::di, io::uo) is det.
 
 report_field_status_mismatch(Context, CallId, !IO) :-
-    CallIdString = hlds_out__simple_call_id_to_string(CallId),
     ErrorPieces = [
-        words("In declaration of"),
-        fixed(string__append(CallIdString, ":")),
-        nl,
+        words("In declaration of"), simple_call_id(CallId), suffix(":"), nl,
         words("error: a field access function for an"),
         words("exported field must also be exported.")
     ],

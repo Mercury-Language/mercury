@@ -340,13 +340,11 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             UnmentionedVars = []
         ;
             UnmentionedVars = [_ | _],
-            prog_out__write_context(Context, !IO),
-            io__write_string("In the " ++ LangStr ++ " code for ", !IO),
-            hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
-            io__write_string(":\n", !IO),
-            prog_out__write_context(Context, !IO),
-            write_variable_warning_start(UnmentionedVars, !IO),
-            io__write_string("not occur in the " ++ LangStr ++ " code.\n", !IO)
+            Pieces = [words("In the " ++ LangStr ++ " code for"),
+                simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+                words(variable_warning_start(UnmentionedVars)),
+                words("not occur in the " ++ LangStr ++ " code.")],
+            write_error_pieces(Context, 0, Pieces, !IO)
         )
     ;
         PragmaImpl = nondet(_, _, FirstCode, _, LaterCode, _, _, SharedCode,
@@ -361,17 +359,15 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             \+ list__member(Name, FirstCodeList)
         ),
         solutions(InputFilter, UnmentionedInputVars),
-        ( UnmentionedInputVars = [] ->
-            true
+        (
+            UnmentionedInputVars = []
         ;
-            prog_out__write_context(Context, !IO),
-            io__write_string("In the " ++ LangStr ++ " code for ", !IO),
-            hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
-            io__write_string(":\n", !IO),
-            prog_out__write_context(Context, !IO),
-            write_variable_warning_start(UnmentionedInputVars, !IO),
-            io__write_string("not occur in the first " ++
-                LangStr ++ " code.\n ", !IO)
+            UnmentionedInputVars = [_ | _],
+            Pieces1 = [words("In the " ++ LangStr ++ " code for"),
+                simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+                words(variable_warning_start(UnmentionedInputVars)),
+                words("not occur in the first " ++ LangStr ++ " code.")],
+            write_error_pieces(Context, 0, Pieces1, !IO)
         ),
         FirstOutputFilter = (pred(Name::out) is nondet :-
             list__member(yes(Name - Mode), Args),
@@ -385,14 +381,12 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             UnmentionedFirstOutputVars = []
         ;
             UnmentionedFirstOutputVars = [_ | _],
-            prog_out__write_context(Context, !IO),
-            io__write_string("In the " ++ LangStr ++ " code for ", !IO),
-            hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
-            io__write_string(":\n", !IO),
-            prog_out__write_context(Context, !IO),
-            write_variable_warning_start(UnmentionedFirstOutputVars, !IO),
-            io__write_string("not occur in the first " ++ LangStr ++
-                " code or the shared " ++ LangStr ++ " code.\n ", !IO)
+            Pieces2 = [words("In the " ++ LangStr ++ " code for"),
+                simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+                words(variable_warning_start(UnmentionedFirstOutputVars)),
+                words("not occur in the first " ++ LangStr ++
+                    " code or the shared " ++ LangStr ++ " code.")],
+            write_error_pieces(Context, 0, Pieces2, !IO)
         ),
         LaterOutputFilter = (pred(Name::out) is nondet :-
             list__member(yes(Name - Mode), Args),
@@ -406,30 +400,25 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             UnmentionedLaterOutputVars = []
         ;
             UnmentionedLaterOutputVars = [_ | _],
-            prog_out__write_context(Context, !IO),
-            io__write_string("In the " ++ LangStr ++ " code for ", !IO),
-            hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
-            io__write_string(":\n", !IO),
-            prog_out__write_context(Context, !IO),
-            write_variable_warning_start(UnmentionedLaterOutputVars, !IO),
-            io__write_string("not occur in the retry " ++ LangStr ++
-                " code or the shared " ++ LangStr ++ " code.\n ", !IO)
+            Pieces3 = [words("In the " ++ LangStr ++ " code for"),
+                simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+                words(variable_warning_start(UnmentionedLaterOutputVars)),
+                words("not occur in the retry " ++ LangStr ++
+                " code or the shared " ++ LangStr ++ " code.")],
+            write_error_pieces(Context, 0, Pieces3, !IO)
         )
     ;
         PragmaImpl = import(_, _, _, _)
     ).
 
-:- pred write_variable_warning_start(list(string)::in, io::di, io::uo) is det.
+:- func variable_warning_start(list(string)) = string.
 
-write_variable_warning_start(UnmentionedVars, !IO) :-
-    ( UnmentionedVars = [_] ->
-        io__write_string("  warning: variable `", !IO),
-        write_string_list(UnmentionedVars, !IO),
-        io__write_string("' does ", !IO)
+variable_warning_start(UnmentionedVars) = Str :-
+    ( UnmentionedVars = [Var] ->
+        Str = "warning: variable `" ++ Var ++ "' does"
     ;
-        io__write_string("  warning: variables `", !IO),
-        write_string_list(UnmentionedVars, !IO),
-        io__write_string("' do ", !IO)
+        Str = "warning: variables `" ++
+            string__join_list(", ", UnmentionedVars) ++ "' do"
     ).
 
     % c_code_to_name_list(Code, List) is true iff List is a list of the
@@ -540,20 +529,18 @@ warn_singletons(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet, Context,
     ->
         true
     ;
-        prog_out__write_context(Context, !IO),
-        io__write_string("In clause for ", !IO),
-        hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
-        io__write_string(":\n", !IO),
-        prog_out__write_context(Context, !IO),
+        SingletonVarsStr = mercury_vars_to_string(SingletonVars, VarSet, no),
         ( SingletonVars = [_] ->
-            io__write_string("  warning: variable `", !IO),
-            mercury_output_vars(SingletonVars, VarSet, no, !IO),
-            report_warning("' occurs only once in this scope.\n", !IO)
+            SingletonWarn = "warning: variable `" ++ SingletonVarsStr ++
+                "' occurs only once in this scope."
         ;
-            io__write_string("  warning: variables `", !IO),
-            mercury_output_vars(SingletonVars, VarSet, no, !IO),
-            report_warning("' occur only once in this scope.\n", !IO)
-        )
+            SingletonWarn = "warning: variables `" ++ SingletonVarsStr ++
+                "' occur only once in this scope."
+        ),
+        Pieces1 = [words("In clause for"),
+            simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+            words(SingletonWarn)],
+        report_warning(Context, 0, Pieces1, !IO)
     ),
 
     % Find all the variables in the goal that do occur outside the goal
@@ -565,20 +552,18 @@ warn_singletons(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet, Context,
         MultiVars = []
     ;
         MultiVars = [_ | _],
-        prog_out__write_context(Context, !IO),
-        io__write_string("In clause for ", !IO),
-        hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
-        io__write_string(":\n", !IO),
-        prog_out__write_context(Context, !IO),
+        MultiVarsStr = mercury_vars_to_string(MultiVars, VarSet, no),
         ( MultiVars = [_] ->
-            io__write_string("  warning: variable `", !IO),
-            mercury_output_vars(MultiVars, VarSet, no, !IO),
-            report_warning("' occurs more than once in this scope.\n", !IO)
+            MultiWarn = "warning: variable `" ++ MultiVarsStr ++
+                "' occurs more than once in this scope."
         ;
-            io__write_string("  warning: variables `", !IO),
-            mercury_output_vars(MultiVars, VarSet, no, !IO),
-            report_warning("' occur more than once in this scope.\n", !IO)
-        )
+            MultiWarn = "warning: variables `" ++ MultiVarsStr ++
+                "' occur more than once in this scope."
+        ),
+        Pieces2 = [words("In clause for"),
+            simple_call_id(PredOrFuncCallId), suffix(":"), nl,
+            words(MultiWarn)],
+        report_warning(Context, 0, Pieces2, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

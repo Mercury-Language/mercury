@@ -200,10 +200,9 @@ add_pragma(Pragma, Context, !Status, !ModuleInfo, !IO) :-
         Pragma = unused_args(PredOrFunc, SymName, Arity, ModeNum,
             UnusedArgs),
         ( ImportStatus \= opt_imported ->
-            prog_out__write_context(Context, !IO),
-            io__write_string("Error: illegal use of pragma `unused_args'.\n",
-                !IO),
-            module_info_incr_errors(!ModuleInfo)
+            module_info_incr_errors(!ModuleInfo),
+            Pieces = [words("Error: illegal use of pragma `unused_args'.")],
+            write_error_pieces(Context, 0, Pieces, !IO)
         ;
             add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum,
                 UnusedArgs, Context, !ModuleInfo, !IO)
@@ -211,10 +210,9 @@ add_pragma(Pragma, Context, !Status, !ModuleInfo, !IO) :-
     ;
         Pragma = exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus),
         ( ImportStatus \= opt_imported ->
-            prog_out.write_context(Context, !IO),
-            io.write_string("Error: illegal use of pragma `exceptions'.\n",
-                !IO),
-            module_info_incr_errors(!ModuleInfo)
+            module_info_incr_errors(!ModuleInfo),
+            Pieces = [words("Error: illegal use of pragma `exceptions'.")],
+            write_error_pieces(Context, 0, Pieces, !IO)
         ;
             add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum,
                 ThrowStatus, Context, !ModuleInfo, !IO)
@@ -381,8 +379,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         !IO) :-
     TypeCtor = TypeName - TypeArity,
     module_info_types(!.ModuleInfo, Types0),
-    TypeStr = error_util__describe_sym_name_and_arity(
-        TypeName / TypeArity),
+    TypeStr = error_util__describe_sym_name_and_arity(TypeName / TypeArity),
     ErrorPieces1 = [
         words("In"),
         fixed("`pragma reserve_tag'"),
@@ -402,14 +399,13 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                 )
             )
         ->
-            error_util__write_error_pieces(Context, 0, ErrorPieces1, !IO),
+            write_error_pieces(Context, 0, ErrorPieces1, !IO),
             ErrorPieces2 = [
                 words("error: `reserve_tag' declaration must"),
                 words("have the same visibility as the"),
                 words("type definition.")
             ],
-            error_util__write_error_pieces_not_first_line(Context, 0,
-                ErrorPieces2, !IO),
+            write_error_pieces_not_first_line(Context, 0, ErrorPieces2, !IO),
             io__set_exit_status(1, !IO),
             module_info_incr_errors(!ModuleInfo)
 
@@ -424,14 +420,14 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                 % optimization...
                 TypeStatus \= opt_imported
             ->
-                error_util__write_error_pieces(Context, 0, ErrorPieces1, !IO),
+                write_error_pieces(Context, 0, ErrorPieces1, !IO),
                 ErrorPieces2 = [
                     words("warning: multiple"),
                     fixed("`pragma reserved_tag'"),
                     words("declarations for the same type.")
                 ],
-                error_util__write_error_pieces_not_first_line(Context, 0,
-                    ErrorPieces2, !IO)
+                write_error_pieces_not_first_line(Context, 0, ErrorPieces2,
+                    !IO)
             ;
                 true
             ),
@@ -450,25 +446,23 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
             map__set(Types0, TypeCtor, TypeDefn, Types),
             module_info_set_types(Types, !ModuleInfo)
         ;
-            error_util__write_error_pieces(Context, 0, ErrorPieces1, !IO),
+            write_error_pieces(Context, 0, ErrorPieces1, !IO),
             ErrorPieces2 = [
                 words("error:"),
                 fixed(TypeStr),
                 words("is not a discriminated union type.")
             ],
-            error_util__write_error_pieces_not_first_line(Context, 0,
-                ErrorPieces2, !IO),
+            write_error_pieces_not_first_line(Context, 0, ErrorPieces2, !IO),
             io__set_exit_status(1, !IO),
             module_info_incr_errors(!ModuleInfo)
         )
     ;
-        error_util__write_error_pieces(Context, 0, ErrorPieces1, !IO),
+        write_error_pieces(Context, 0, ErrorPieces1, !IO),
         ErrorPieces2 = [
             words("error: undefined type"),
             fixed(TypeStr ++ ".")
         ],
-        error_util__write_error_pieces_not_first_line(Context, 0, ErrorPieces2,
-            !IO),
+        write_error_pieces_not_first_line(Context, 0, ErrorPieces2, !IO),
         io__set_exit_status(1, !IO),
         module_info_incr_errors(!ModuleInfo)
     ).
@@ -493,10 +487,10 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
             UnusedArgInfo),
         module_info_set_unused_arg_info(UnusedArgInfo, !ModuleInfo)
     ;
-        prog_out__write_context(Context, !IO),
-        io__write_string("Internal compiler error: " ++
-            "unknown predicate in `pragma unused_args'.\n", !IO),
-        module_info_incr_errors(!ModuleInfo)
+        module_info_incr_errors(!ModuleInfo),
+        Pieces = [words("Internal compiler error: "),
+            words("unknown predicate in `pragma unused_args'.")],
+        write_error_pieces(Context, 0, Pieces, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -857,62 +851,52 @@ find_duplicate_list_elements([H | T], Vars) :-
 :- pred report_subst_existq_tvars(pred_info::in, prog_context::in,
     list(tvar)::in, io::di, io::uo) is det.
 
-report_subst_existq_tvars(PredInfo0, Context, SubExistQVars, !IO) :-
-    report_pragma_type_spec(PredInfo0, Context, !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  error: the substitution includes the existentially\n",
-        !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  quantified type ", !IO),
-    pred_info_typevarset(PredInfo0, TVarSet),
-    report_variables(SubExistQVars, TVarSet, !IO),
-    io__write_string(".\n", !IO).
+report_subst_existq_tvars(PredInfo, Context, SubExistQVars, !IO) :-
+    pred_info_typevarset(PredInfo, TVarSet),
+    Pieces = report_pragma_type_spec(PredInfo) ++
+        [words("error: the substitution includes"),
+        words("the existentially quantified type"),
+        words(report_variables(SubExistQVars, TVarSet)), suffix(".")],
+    write_error_pieces(Context, 0, Pieces, !IO).
 
 :- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
     list(tvar)::in, io::di, io::uo) is det.
 
-report_recursive_subst(PredInfo0, Context, TVarSet, RecursiveVars, !IO) :-
-    report_pragma_type_spec(PredInfo0, Context, !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  error: ", !IO),
-    report_variables(RecursiveVars, TVarSet, !IO),
+report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, !IO) :-
     ( RecursiveVars = [_] ->
-        io__write_string(" occurs\n", !IO)
+        Occurs = "occurs"
     ;
-        io__write_string(" occur\n", !IO)
+        Occurs = "occur"
     ),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  on both sides of the substitution.\n", !IO).
+    Pieces = report_pragma_type_spec(PredInfo) ++
+        [words("error:"), words(report_variables(RecursiveVars, TVarSet)),
+        words(Occurs), words("on both sides of the substitution.")],
+    write_error_pieces(Context, 0, Pieces, !IO).
 
 :- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
     tvarset::in, list(tvar)::in, io::di, io::uo) is det.
 
-report_multiple_subst_vars(PredInfo0, Context, TVarSet, MultiSubstVars, !IO) :-
-    report_pragma_type_spec(PredInfo0, Context, !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  error: ", !IO),
-    report_variables(MultiSubstVars, TVarSet, !IO),
+report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, !IO) :-
     ( MultiSubstVars = [_] ->
-        io__write_string(" has ", !IO)
+        Has = "has"
     ;
-        io__write_string(" have ", !IO)
+        Has = "have"
     ),
-    io__write_string("multiple replacement types.\n", !IO).
+    Pieces = report_pragma_type_spec(PredInfo) ++
+        [words("error:"), words(report_variables(MultiSubstVars, TVarSet)),
+        words(Has), words("multiple replacement types.")],
+    write_error_pieces(Context, 0, Pieces, !IO).
 
 :- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
     tvarset::in, list(tvar)::in, io::di, io::uo) is det.
 
-report_unknown_vars_to_subst(PredInfo0, Context, TVarSet, UnknownVars, !IO) :-
-    report_pragma_type_spec(PredInfo0, Context, !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  error: ", !IO),
-    report_variables(UnknownVars, TVarSet, !IO),
+report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, !IO) :-
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ( UnknownVars = [_] ->
-        io__write_string(" does not ", !IO)
+        DoesNot = "does not"
     ;
-        io__write_string(" do not ", !IO)
+        DoesNot = "do not"
     ),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     (
         PredOrFunc = predicate,
         Decl = "`:- pred'"
@@ -920,37 +904,36 @@ report_unknown_vars_to_subst(PredInfo0, Context, TVarSet, UnknownVars, !IO) :-
         PredOrFunc = function,
         Decl = "`:- func'"
     ),
-    io__write_string("occur in the ", !IO),
-    io__write_string(Decl, !IO),
-    io__write_string(" declaration.\n", !IO).
+    Pieces = report_pragma_type_spec(PredInfo) ++
+        [words("error:"), words(report_variables(UnknownVars, TVarSet)),
+        words(DoesNot), words("occur in the"), fixed(Decl),
+        words("declaration.")],
+    write_error_pieces(Context, 0, Pieces, !IO).
 
-:- pred report_pragma_type_spec(pred_info::in, term__context::in,
-    io::di, io::uo) is det.
+:- func report_pragma_type_spec(pred_info) = list(format_component).
 
-report_pragma_type_spec(PredInfo0, Context, !IO) :-
-    Module = pred_info_module(PredInfo0),
-    Name = pred_info_name(PredInfo0),
-    Arity = pred_info_orig_arity(PredInfo0),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
-    prog_out__write_context(Context, !IO),
-    io__write_string("In `:- pragma type_spec' declaration for ", !IO),
-    hlds_out__write_simple_call_id(PredOrFunc,
-        qualified(Module, Name)/Arity, !IO),
-    io__write_string(":\n", !IO).
+report_pragma_type_spec(PredInfo) = Pieces :-
+    Module = pred_info_module(PredInfo),
+    Name = pred_info_name(PredInfo),
+    Arity = pred_info_orig_arity(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    Pieces = [words("In `:- pragma type_spec' declaration for"),
+        simple_call_id(PredOrFunc - qualified(Module, Name)/Arity),
+        suffix(":"), nl].
 
-:- pred report_variables(list(tvar)::in, tvarset::in, io::di, io::uo) is det.
+:- func report_variables(list(tvar), tvarset) = string.
 
-report_variables(SubExistQVars, VarSet, !IO) :-
+report_variables(SubExistQVars, VarSet) = Str :-
+    VarsStr = mercury_vars_to_string(SubExistQVars, VarSet, no),
     ( SubExistQVars = [_] ->
-        io__write_string("variable `", !IO)
+        Str = "variable `" ++ VarsStr ++ "'"
     ;
-        io__write_string("variables `", !IO)
-    ),
-    mercury_output_vars(SubExistQVars, VarSet, no, !IO),
-    io__write_string("'", !IO).
+        Str = "variables `" ++ VarsStr ++ "'"
+    ).
 
     % Check that the mode list for a `:- pragma type_spec' declaration
     % specifies a known procedure.
+    %
 :- pred handle_pragma_type_spec_modes(sym_name::in, arity::in,
     prog_context::in, maybe(list(mode))::in, list(proc_id)::out,
     proc_table::in, proc_table::out, bool::out,
@@ -1030,22 +1013,17 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
-                prog_out__write_context(Context, !IO),
-                io.write_string(
-                    "Error: `:- pragma termination2_info' " ++
-                    "declaration for undeclared mode of ", !IO),
-                hlds_out.write_simple_call_id(PredOrFunc,
-                    SymName/Arity, !IO),
-                io.write_string(".\n", !IO)
+                Pieces = [words("Error: `:- pragma termination2_info'"),
+                    words("declaration for undeclared mode of"),
+                    simple_call_id(PredOrFunc - SymName/Arity), suffix(".")],
+                write_error_pieces(Context, 0, Pieces, !IO)
             )
         ;
-            prog_out.write_context(Context, !IO),
-            io.write_string("Error: ambiguous predicate name ", !IO),
-            hlds_out.write_simple_call_id(PredOrFunc, SymName/Arity, !IO),
-            io.nl(!IO),
-            prog_out.write_context(Context, !IO),
-            io.write_string("  in `pragma termination2_info'.\n", !IO),
-            module_info_incr_errors(!ModuleInfo)
+            module_info_incr_errors(!ModuleInfo),
+            Pieces = [words("Error: ambiguous predicate name"),
+                simple_call_id(PredOrFunc - SymName/Arity),
+                words("in"), fixed("`pragma termination2_info'.")],
+            write_error_pieces(Context, 0, Pieces, !IO)
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
@@ -1093,20 +1071,17 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
-                prog_out__write_context(Context, !IO),
-                io__write_string("Error: `:- pragma termination_info' ", !IO),
-                io__write_string("declaration for undeclared mode of ", !IO),
-                hlds_out__write_simple_call_id(PredOrFunc, SymName/Arity, !IO),
-                io__write_string(".\n", !IO)
+                Pieces = [words("Error: `:- pragma termination_info'"),
+                    words("declaration for undeclared mode of"),
+                    simple_call_id(PredOrFunc - SymName/Arity), suffix(".")],
+                write_error_pieces(Context, 0, Pieces, !IO)
             )
         ;
-            prog_out__write_context(Context, !IO),
-            io__write_string("Error: ambiguous predicate name ", !IO),
-            hlds_out__write_simple_call_id(PredOrFunc, SymName/Arity, !IO),
-            io__nl(!IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  in `pragma termination_info'.\n", !IO),
-            module_info_incr_errors(!ModuleInfo)
+            module_info_incr_errors(!ModuleInfo),
+            Pieces = [words("Error: ambiguous predicate name"),
+                simple_call_id(PredOrFunc - SymName/Arity),
+                words("in"), fixed("`pragma termination_info'.")],
+            write_error_pieces(Context, 0, Pieces, !IO)
         )
     ;
         % XXX This happens in `.trans_opt' files sometimes --
@@ -1127,7 +1102,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
     (
         VeryVerbose = yes,
         io__write_string("% Processing `:- pragma import' for ", !IO),
-        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
+        write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
         io__write_string("...\n", !IO)
     ;
         VeryVerbose = no
@@ -1139,8 +1114,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     (
         predicate_table_search_pf_sym_arity(PredicateTable0,
-            is_fully_qualified, PredOrFunc, PredName,
-            Arity, [PredId0])
+            is_fully_qualified, PredOrFunc, PredName, Arity, [PredId0])
     ->
         PredId = PredId0
     ;
@@ -1162,20 +1136,15 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
     ),
     ( pred_info_is_imported(PredInfo1) ->
         module_info_incr_errors(!ModuleInfo),
-        prog_out__write_context(Context, !IO),
-        io__write_string("Error: `:- pragma import' ", !IO),
-        io__write_string("declaration for imported ", !IO),
-        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io__write_string(".\n", !IO)
+        Pieces = [words("Error: `:- pragma import' declaration for imported"),
+            simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+        write_error_pieces(Context, 0, Pieces, !IO)
     ; pred_info_clause_goal_type(PredInfo1) ->
         module_info_incr_errors(!ModuleInfo),
-        prog_out__write_context(Context, !IO),
-        io__write_string("Error: `:- pragma import' declaration ", !IO),
-        io__write_string("for ", !IO),
-        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io__write_string("\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  with preceding clauses.\n", !IO)
+        Pieces = [words("Error: `:- pragma import' declaration for"),
+            simple_call_id(PredOrFunc - PredName/Arity),
+            words("with preceding clauses.")],
+        write_error_pieces(Context, 0, Pieces, !IO)
     ;
         pred_info_update_goal_type(pragmas, PredInfo1, PredInfo2),
             % Add the pragma declaration to the proc_info for this procedure.
@@ -1193,12 +1162,10 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
             module_info_set_predicate_table(PredicateTable, !ModuleInfo)
         ;
             module_info_incr_errors(!ModuleInfo),
-            prog_out__write_context(Context, !IO),
-            io__write_string("Error: `:- pragma import' ", !IO),
-            io__write_string("declaration for undeclared mode ", !IO),
-            io__write_string("of ", !IO),
-            hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-            io__write_string(".\n", !IO)
+            Pieces = [words("Error: `:- pragma import' declaration"),
+                words("for undeclared mode of"),
+                simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+            write_error_pieces(Context, 0, Pieces, !IO)
         )
     ).
 
@@ -1264,7 +1231,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
     (
         VeryVerbose = yes,
         io__write_string("% Processing `:- pragma foreign_proc' for ", !IO),
-        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
+        write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
         io__write_string("...\n", !IO)
     ;
         VeryVerbose = no
@@ -1337,13 +1304,11 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
             pred_info_is_imported(!.PredInfo)
         ->
             module_info_incr_errors(!ModuleInfo),
-            prog_out__write_context(Context, !IO),
-            io__write_string("Error: `:- pragma foreign_proc' " ++
-                "(or `pragma c_code')\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("declaration for imported ", !IO),
-            hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-            io__write_string(".\n", !IO)
+            Pieces = [words("Error: `:- pragma foreign_proc'"),
+                words("(or `pragma c_code')"),
+                words("declaration for imported"),
+                simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+            write_error_pieces(Context, 0, Pieces, !IO)
         ;
                 % Don't add clauses for foreign languages other
                 % than the ones we can generate code for.
@@ -1378,13 +1343,10 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
                     !.ModuleInfo, !IO)
             ;
                 module_info_incr_errors(!ModuleInfo),
-                prog_out__write_context(Context, !IO),
-                io__write_string("Error: `:- pragma foreign_proc' ", !IO),
-                io__write_string("declaration for undeclared mode ", !IO),
-                io__write_string("of ", !IO),
-                hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity,
-                    !IO),
-                io__write_string(".\n", !IO)
+                Pieces = [words("Error: `:- pragma foreign_proc' declaration"),
+                    words("for undeclared mode of"),
+                    simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+                write_error_pieces(Context, 0, Pieces, !IO)
             )
         )
     ).
@@ -1396,14 +1358,13 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     EvalMethodS = eval_method_to_string(EvalMethod),
 
-    % Find out if we are tabling a predicate or a function
     (
         MaybePredOrFunc = yes(PredOrFunc0),
         PredOrFunc = PredOrFunc0,
 
-            % Lookup the pred declaration in the predicate table.
-            % (If it's not there, print an error message and insert
-            % a dummy declaration for the predicate.)
+        % Lookup the pred declaration in the predicate table.
+        % (If it is not there, print an error message and insert
+        % a dummy declaration for the predicate.)
         (
             predicate_table_search_pf_sym_arity(PredicateTable0,
                 is_fully_qualified, PredOrFunc,
@@ -1414,45 +1375,39 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
             module_info_name(!.ModuleInfo, ModuleName),
             string__format("`:- pragma %s' declaration",
                 [s(EvalMethodS)], Message1),
-
-            preds_add_implicit_report_error(ModuleName, PredOrFunc,
-                PredName, Arity, Status, no, Context,
-                user(PredName), Message1, PredId, !ModuleInfo,
-                !IO),
+            preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
+                Arity, Status, no, Context, user(PredName), Message1, PredId,
+                !ModuleInfo, !IO),
             PredIds = [PredId]
         )
     ;
         MaybePredOrFunc = no,
         (
             predicate_table_search_sym_arity(PredicateTable0,
-                is_fully_qualified, PredName,
-                Arity, PredIds0)
+                is_fully_qualified, PredName, Arity, PredIds0)
         ->
             PredIds = PredIds0
         ;
             module_info_name(!.ModuleInfo, ModuleName),
             string__format("`:- pragma %s' declaration",
                 [s(EvalMethodS)], Message1),
-
-            preds_add_implicit_report_error(ModuleName,
-                predicate, PredName, Arity, Status, no,
-                Context, user(PredName), Message1, PredId,
+            preds_add_implicit_report_error(ModuleName, predicate, PredName,
+                Arity, Status, no, Context, user(PredName), Message1, PredId,
                 !ModuleInfo, !IO),
             PredIds = [PredId]
         )
     ),
-    list__foldl2(module_add_pragma_tabled_2(EvalMethod, PredName,
-        Arity, MaybePredOrFunc, MaybeModes, Context),
+    list__foldl2(
+        module_add_pragma_tabled_2(EvalMethod, PredName, Arity,
+            MaybePredOrFunc, MaybeModes, Context),
         PredIds, !ModuleInfo, !IO).
 
 :- pred module_add_pragma_tabled_2(eval_method::in, sym_name::in, int::in,
     maybe(pred_or_func)::in, maybe(list(mode))::in, prog_context::in,
-    pred_id::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    pred_id::in, module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         MaybeModes, Context, PredId, !ModuleInfo, !IO) :-
-
     ( EvalMethod0 = eval_minimal(_) ->
         globals__io_lookup_bool_option(use_minimal_model_own_stacks,
             OwnStacks, !IO),
@@ -1467,12 +1422,10 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         EvalMethod = EvalMethod0
     ),
 
-        % Lookup the pred_info for this pred,
+    % Lookup the pred_info for this pred.
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
     map__lookup(Preds, PredId, PredInfo0),
-
-    % Find out if we are tabling a predicate or a function
     (
         MaybePredOrFunc = yes(PredOrFunc0),
         PredOrFunc = PredOrFunc0
@@ -1482,38 +1435,33 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     ),
     adjust_func_arity(PredOrFunc, Arity0, Arity),
 
-        % print out a progress message
     EvalMethodS = eval_method_to_string(EvalMethod),
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    ( VeryVerbose = yes ->
+    (
+        VeryVerbose = yes,
         io__write_string("% Processing `:- pragma ", !IO),
         io__write_string(EvalMethodS, !IO),
         io__write_string("' for ", !IO),
-        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
+        write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
         io__write_string("...\n", !IO)
     ;
-        true
+        VeryVerbose = no
     ),
 
     % Issue a warning if this predicate/function has a pragma inline
-    % declaration.  Tabled procedures cannot be inlined.
+    % declaration. Tabled procedures cannot be inlined.
     pred_info_get_markers(PredInfo0, Markers),
     globals.io_lookup_bool_option(warn_table_with_inline, WarnInline, !IO),
     ( check_marker(Markers, inline), WarnInline = yes ->
-        PredNameStr = hlds_out.simple_call_id_to_string(PredOrFunc,
-            PredName/Arity),
-        TablePragmaStr = string.format("`:- pragma %s'",
-            [s(EvalMethodS)]),
+        TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodS)]),
         InlineWarning = [
-            words("Warning: "), fixed(PredNameStr),
-            words("has a"), nl, fixed(TablePragmaStr),
+            words("Warning: "), simple_call_id(PredOrFunc - PredName/Arity),
+            words("has a"), fixed(TablePragmaStr),
             words("declaration but also has a"),
-            fixed("`:- pragma inline'"),
-            words("declaration."), nl,
+            fixed("`:- pragma inline'"), words("declaration."), nl,
             words("This inline pragma will be ignored"),
             words("since tabled predicates cannot be inlined."), nl,
-            words("You can use the"),
-            fixed("`--no-warn-table-with-inline'"),
+            words("You can use the"), fixed("`--no-warn-table-with-inline'"),
             words("option to suppress this warning.")
         ],
         error_util.report_warning(Context, 0, InlineWarning, !IO)
@@ -1522,14 +1470,13 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     ),
     ( pred_info_is_imported(PredInfo0) ->
         module_info_incr_errors(!ModuleInfo),
-        prog_out__write_context(Context, !IO),
-        io__write_string("Error: `:- pragma ", !IO),
-        io__write_string(EvalMethodS, !IO),
-        io__write_string("' declaration for imported ", !IO),
-        hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io__write_string(".\n", !IO)
+        Pieces1 = [words("Error: "),
+            fixed("`:- pragma " ++ EvalMethodS ++ "'"),
+            words("declaration for imported"),
+            simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+        write_error_pieces(Context, 0, Pieces1, !IO)
     ;
-        % do we have to make sure the tabled preds are stratified?
+        % Do we have to make sure the tabled preds are stratified?
         ( eval_method_needs_stratification(EvalMethod) = yes ->
             module_info_stratified_preds(!.ModuleInfo, StratPredIds0),
             set__insert(StratPredIds0, PredId, StratPredIds),
@@ -1538,14 +1485,14 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
             true
         ),
 
-        % add the eval model to the proc_info for this procedure
+        % Add the eval model to the proc_info for this procedure.
         pred_info_procedures(PredInfo0, Procs0),
         map__to_assoc_list(Procs0, ExistingProcs),
         (
             MaybeModes = yes(Modes),
             (
-                get_procedure_matching_argmodes(ExistingProcs,
-                    Modes, !.ModuleInfo, ProcId)
+                get_procedure_matching_argmodes(ExistingProcs, Modes,
+                    !.ModuleInfo, ProcId)
             ->
                 map__lookup(Procs0, ProcId, ProcInfo0),
                 proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
@@ -1554,29 +1501,23 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
-                prog_out__write_context(Context, !IO),
-                io__write_string("Error: `:- pragma ", !IO),
-                io__write_string(EvalMethodS, !IO),
-                io__write_string("' declaration for " ++
-                    "undeclared mode of ", !IO),
-                hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity,
-                    !IO),
-                io__write_string(".\n", !IO)
+                Pieces2 = [words("Error:"),
+                    fixed("`:- pragma " ++ EvalMethodS ++ "'"),
+                    words("declaration for undeclared mode of"),
+                    simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+                write_error_pieces(Context, 0, Pieces2, !IO)
             )
         ;
             MaybeModes = no,
             (
                 ExistingProcs = [],
                 module_info_incr_errors(!ModuleInfo),
-                prog_out__write_context(Context, !IO),
-                io__write_string("Error: `:- pragma ", !IO),
-                io__write_string(EvalMethodS, !IO),
-                io__write_string("' declaration for\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string("  ", !IO),
-                hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity,
-                    !IO),
-                io__write_string(" with no declared modes.\n", !IO)
+                Pieces3 = [words("Error: "),
+                    fixed("`:- pragma " ++ EvalMethodS ++ "'"),
+                    words("declaration for"),
+                    simple_call_id(PredOrFunc - PredName/Arity),
+                    words("with no declared modes.")],
+                write_error_pieces(Context, 0, Pieces3, !IO)
             ;
                 ExistingProcs = [_ | _],
                 set_eval_method_list(ExistingProcs, Context, PredOrFunc,
@@ -1608,7 +1549,7 @@ set_eval_method_list([ProcId - ProcInfo0 | Rest], Context, PredOrFunc,
         % the evaluation method.
         OldEvalMethodStr = eval_method_to_string(OldEvalMethod),
         EvalMethodStr = eval_method_to_string(EvalMethod),
-        Name = hlds_out.simple_call_id_to_string(PredOrFunc, PredNameAndArity),
+        Name = simple_call_id_to_string(PredOrFunc, PredNameAndArity),
         ErrorMsg = [words("Error:"), fixed(Name), words("has both"),
             fixed(OldEvalMethodStr), words("and"), fixed(EvalMethodStr),
             words("pragmas specified."),
@@ -1622,6 +1563,7 @@ set_eval_method_list([ProcId - ProcInfo0 | Rest], Context, PredOrFunc,
     ),
     set_eval_method_list(Rest, Context, PredOrFunc, PredNameAndArity,
         EvalMethod, !Procs, !ModuleInfo, !IO).
+
     % Extract the modes from the list of pragma_vars.
     %
 :- pred pragma_get_modes(list(pragma_var)::in, list(mode)::out) is det.
@@ -1697,13 +1639,10 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
         ;
             PredIDs1 = [_ | _],     % >1 predicate found
             io__set_exit_status(1, !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("In pragma fact_table for `", !IO),
-            prog_out__write_sym_name_and_arity(Pred/Arity, !IO),
-            io__write_string("':\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  error: " ++
-                "ambiguous predicate/function name.\n", !IO)
+            Pieces = [words("In pragma fact_table for"),
+                sym_name_and_arity(Pred/Arity), suffix(":"), nl,
+                words("error: ambiguous predicate/function name.")],
+            write_error_pieces(Context, 0, Pieces, !IO)
         )
     ;
         undefined_pred_or_func_error(Pred, Arity, Context,
@@ -1850,27 +1789,22 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
 
     (
         MultipleArgs = [_ | _],
-        prog_out__write_context(Context, !IO),
-        io__write_string("In `:- pragma foreign_proc' declaration for ", !IO),
+        io__set_exit_status(1, !IO),
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
-        hlds_out__write_simple_call_id(PredOrFunc - PredName/OrigArity, !IO),
-        io__write_string(":\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  error: ", !IO),
+        Pieces1 = [words("In `:- pragma foreign_proc' declaration for"),
+            simple_call_id(PredOrFunc - PredName/OrigArity), suffix(":"), nl],
         (
             MultipleArgs = [MultipleArg],
-            io__write_string("variable `", !IO),
-            mercury_output_var(MultipleArg, PVarSet, no, !IO),
-            io__write_string("' occurs multiple times\n", !IO)
+            Pieces2 = [words("error: variable `" ++
+                mercury_var_to_string(MultipleArg, PVarSet, no) ++
+                "' occurs multiple times in the argument list.")]
         ;
             MultipleArgs = [_, _ | _],
-            io__write_string("variables `", !IO),
-            mercury_output_vars(MultipleArgs, PVarSet, no, !IO),
-            io__write_string("' occur multiple times\n", !IO)
+            Pieces2 = [words("error: variables `" ++
+                mercury_vars_to_string(MultipleArgs, PVarSet, no) ++
+                "' occur multiple times in the argument list.")]
         ),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  in the argument list.\n", !IO),
-        io__set_exit_status(1, !IO)
+        write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO)
     ;
         MultipleArgs = [],
             % build the pragma_c_code
@@ -1878,10 +1812,9 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         goal_info_set_context(GoalInfo0, Context, GoalInfo1),
         % Put the purity in the goal_info in case this foreign code is inlined.
         add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
-        make_foreign_args(HeadVars, ArgInfo, OrigArgTypes,
-            ForeignArgs),
-        HldsGoal0 = foreign_proc(Attributes, PredId, ProcId,
-            ForeignArgs, [], PragmaImpl) - GoalInfo,
+        make_foreign_args(HeadVars, ArgInfo, OrigArgTypes, ForeignArgs),
+        HldsGoal0 = foreign_proc(Attributes, PredId, ProcId, ForeignArgs, [],
+            PragmaImpl) - GoalInfo,
         map__init(EmptyVarTypes),
         implicitly_quantify_clause_body(HeadVars, _Warnings,
             HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _),

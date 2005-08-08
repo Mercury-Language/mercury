@@ -1722,6 +1722,7 @@
 	;	name_arity(sym_name, arity).
 :- type sym_name_and_arity
 	--->	sym_name / arity.
+:- type simple_call_id == pair(pred_or_func, sym_name_and_arity).
 
 :- type module_specifier ==	sym_name.
 :- type arity		==	int.

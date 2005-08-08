@@ -81,20 +81,6 @@
 :- pred hlds_out__write_call_id(call_id::in, io::di, io::uo) is det.
 :- func hlds_out__call_id_to_string(call_id) = string.
 
-:- pred hlds_out__write_simple_call_id(simple_call_id::in, io::di, io::uo)
-	is det.
-:- func hlds_out__simple_call_id_to_string(simple_call_id) = string.
-
-:- pred hlds_out__write_simple_call_id(pred_or_func::in,
-	sym_name_and_arity::in, io::di, io::uo) is det.
-:- func hlds_out__simple_call_id_to_string(pred_or_func, sym_name_and_arity)
-	= string.
-
-:- pred hlds_out__write_simple_call_id(pred_or_func::in, sym_name::in,
-	arity::in, io::di, io::uo) is det.
-:- func hlds_out__simple_call_id_to_string(pred_or_func, sym_name, arity)
-	= string.
-
 	% Write "argument %i of call to pred_or_func `foo/n'".
 	% The pred_markers argument is used to tell if the calling
 	% predicate is a type class method implementation; if so,
@@ -397,7 +383,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
 				prog_out__promise_to_string(PromiseType)
 				++ "' declaration", !IO)
 		;
-			hlds_out__write_simple_call_id(PredOrFunc,
+			write_simple_call_id(PredOrFunc,
 				qualified(Module, Name), Arity, !IO)
 		)
 	;
@@ -416,73 +402,12 @@ hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO) :-
 	proc_id_to_int(ProcId, ModeNum),
 	io__write_int(ModeNum, !IO).
 
-hlds_out__write_simple_call_id(PredOrFunc - Name/Arity, !IO) :-
-	Str = hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity),
-	io__write_string(Str, !IO).
-
-hlds_out__write_simple_call_id(PredOrFunc, Name/Arity, !IO) :-
-	Str = hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity),
-	io__write_string(Str, !IO).
-
-hlds_out__write_simple_call_id(PredOrFunc, Name, Arity, !IO) :-
-	Str = hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity),
-	io__write_string(Str, !IO).
-
-hlds_out__simple_call_id_to_string(PredOrFunc - Name/Arity) =
-	hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity).
-
-hlds_out__simple_call_id_to_string(PredOrFunc, Name/Arity) =
-	hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity).
-
-hlds_out__simple_call_id_to_string(PredOrFunc, Name, Arity) = Str :-
-		% XXX when printed, promises are differentiated from
-		%     predicates or functions by module name, so the module
-		%     names `promise', `promise_exclusive', etc. should be
-		%     reserved, and their dummy predicates should have more
-		%     unusual module names
-	(
-		Name = unqualified(StrName)
-	;
-		Name = qualified(_, StrName)
-	),
-		% is it really a promise?
-	( string__prefix(StrName, "promise__") ->
-		Promise = promise(true)
-	; string__prefix(StrName, "promise_exclusive__") ->
-		Promise = promise(exclusive)
-	; string__prefix(StrName, "promise_exhaustive__") ->
-		Promise = promise(exhaustive)
-	; string__prefix(StrName, "promise_exclusive_exhaustive__") ->
-		Promise = promise(exclusive_exhaustive)
-	;
-		Promise = none	% no, it is really a pred or func
-	),
-	(
-		Promise = promise(PromiseType),
-		PromiseStr = promise_to_string(PromiseType),
-		Str = "`" ++ PromiseStr ++ "' declaration"
-	;
-		Promise = none,
-		PredOrFuncStr = prog_out__pred_or_func_to_full_str(PredOrFunc),
-		hlds_out__simple_call_id_to_sym_name_and_arity(
-			PredOrFunc - Name/Arity, SymArity),
-		SymArityStr = prog_out__sym_name_and_arity_to_string(SymArity),
-		Str = PredOrFuncStr ++ " `" ++ SymArityStr ++ "'"
-	).
-
-:- pred hlds_out__simple_call_id_to_sym_name_and_arity(simple_call_id::in,
-	sym_name_and_arity::out) is det.
-
-hlds_out__simple_call_id_to_sym_name_and_arity(PredOrFunc - SymName/Arity,
-		SymName/OrigArity) :-
-	adjust_func_arity(PredOrFunc, OrigArity, Arity).
-
 hlds_out__write_call_id(CallId, !IO) :-
 	Str = hlds_out__call_id_to_string(CallId),
 	io__write_string(Str, !IO).
 
 hlds_out__call_id_to_string(call(PredCallId)) =
-	hlds_out__simple_call_id_to_string(PredCallId).
+	simple_call_id_to_string(PredCallId).
 hlds_out__call_id_to_string(generic_call(GenericCallId)) =
 	hlds_out__generic_call_id_to_string(GenericCallId).
 
@@ -501,14 +426,12 @@ hlds_out__generic_call_id_to_string(higher_order(Purity, PredOrFunc, _)) =
 		++ prog_out__pred_or_func_to_full_str(PredOrFunc)
 		++ " call".
 hlds_out__generic_call_id_to_string(class_method(_ClassId, MethodId)) =
-	hlds_out__simple_call_id_to_string(MethodId).
-hlds_out__generic_call_id_to_string(unsafe_cast) =
-	"unsafe_cast".
+	simple_call_id_to_string(MethodId).
+hlds_out__generic_call_id_to_string(unsafe_cast) = "unsafe_cast".
 hlds_out__generic_call_id_to_string(aditi_builtin(AditiBuiltin, CallId))
 		= Str :-
 	hlds_out__aditi_builtin_name(AditiBuiltin, Name),
-	Str = "`" ++ Name ++ "' of " ++
-		hlds_out__simple_call_id_to_string(CallId).
+	Str = "`" ++ Name ++ "' of " ++ simple_call_id_to_string(CallId).
 
 hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers, !IO) :-
 	Str = hlds_out__call_arg_id_to_string(CallId, ArgNum, PredMarkers),
@@ -2389,7 +2312,7 @@ hlds_out__write_aditi_builtin(_ModuleInfo, Builtin, CallId,
 	PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
 	io__write_string(PredOrFuncStr, !IO),
 	io__write_string(" ", !IO),
-	hlds_out__simple_call_id_to_sym_name_and_arity(CallId, SymArity),
+	simple_call_id_to_sym_name_and_arity(CallId, SymArity),
 	prog_out__write_sym_name_and_arity(SymArity, !IO),
 	io__write_string(", ", !IO),
 	mercury_output_vars(ArgVars, VarSet, AppendVarNums, !IO),

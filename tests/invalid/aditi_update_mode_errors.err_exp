@@ -1,27 +1,51 @@
-aditi_update_mode_errors.m:062: In clause for predicate `aditi_update_mode_errors.aditi_update_modes4/2':
-aditi_update_mode_errors.m:062:   warning: variables `_X, _Y' occur more than once in this scope.
-aditi_update_mode_errors.m:062: In clause for predicate `aditi_update_mode_errors.aditi_update_modes4/2':
-aditi_update_mode_errors.m:062:   warning: variables `_X, _Y' occur more than once in this scope.
-aditi_update_mode_errors.m:062: In clause for predicate `aditi_update_mode_errors.aditi_update_modes4/2':
-aditi_update_mode_errors.m:062:   warning: variable `X' occurs only once in this scope.
-aditi_update_mode_errors.m:065: In clause for predicate `aditi_update_mode_errors.aditi_update_modes5/2':
-aditi_update_mode_errors.m:065:   warning: variables `_X, _Y' occur more than once in this scope.
-aditi_update_mode_errors.m:065: In clause for predicate `aditi_update_mode_errors.aditi_update_modes5/2':
-aditi_update_mode_errors.m:065:   warning: variables `_X, _Y' occur more than once in this scope.
-aditi_update_mode_errors.m:065: In clause for predicate `aditi_update_mode_errors.aditi_update_modes5/2':
-aditi_update_mode_errors.m:065:   warning: variable `X' occurs only once in this scope.
-aditi_update_mode_errors.m:102: In clause for predicate `aditi_update_mode_errors.aditi_update_modes10/2':
-aditi_update_mode_errors.m:102:   warning: variable `_X0' occurs more than once in this scope.
-aditi_update_mode_errors.m:102: In clause for predicate `aditi_update_mode_errors.aditi_update_modes10/2':
-aditi_update_mode_errors.m:102:   warning: variable `_X0' occurs more than once in this scope.
-aditi_update_mode_errors.m:102: In clause for predicate `aditi_update_mode_errors.aditi_update_modes10/2':
-aditi_update_mode_errors.m:102:   warning: variable `X0' occurs only once in this scope.
-aditi_update_mode_errors.m:105: In clause for predicate `aditi_update_mode_errors.aditi_update_modes11/2':
-aditi_update_mode_errors.m:105:   warning: variable `_X0' occurs more than once in this scope.
-aditi_update_mode_errors.m:105: In clause for predicate `aditi_update_mode_errors.aditi_update_modes11/2':
-aditi_update_mode_errors.m:105:   warning: variable `_X0' occurs more than once in this scope.
-aditi_update_mode_errors.m:105: In clause for predicate `aditi_update_mode_errors.aditi_update_modes11/2':
-aditi_update_mode_errors.m:105:   warning: variable `X0' occurs only once in this scope.
+aditi_update_mode_errors.m:062: In clause for predicate
+aditi_update_mode_errors.m:062:   `aditi_update_mode_errors.aditi_update_modes4/2':
+aditi_update_mode_errors.m:062:   warning: variables `_X, _Y' occur more than
+aditi_update_mode_errors.m:062:   once in this scope.
+aditi_update_mode_errors.m:062: In clause for predicate
+aditi_update_mode_errors.m:062:   `aditi_update_mode_errors.aditi_update_modes4/2':
+aditi_update_mode_errors.m:062:   warning: variables `_X, _Y' occur more than
+aditi_update_mode_errors.m:062:   once in this scope.
+aditi_update_mode_errors.m:062: In clause for predicate
+aditi_update_mode_errors.m:062:   `aditi_update_mode_errors.aditi_update_modes4/2':
+aditi_update_mode_errors.m:062:   warning: variable `X' occurs only once in
+aditi_update_mode_errors.m:062:   this scope.
+aditi_update_mode_errors.m:065: In clause for predicate
+aditi_update_mode_errors.m:065:   `aditi_update_mode_errors.aditi_update_modes5/2':
+aditi_update_mode_errors.m:065:   warning: variables `_X, _Y' occur more than
+aditi_update_mode_errors.m:065:   once in this scope.
+aditi_update_mode_errors.m:065: In clause for predicate
+aditi_update_mode_errors.m:065:   `aditi_update_mode_errors.aditi_update_modes5/2':
+aditi_update_mode_errors.m:065:   warning: variables `_X, _Y' occur more than
+aditi_update_mode_errors.m:065:   once in this scope.
+aditi_update_mode_errors.m:065: In clause for predicate
+aditi_update_mode_errors.m:065:   `aditi_update_mode_errors.aditi_update_modes5/2':
+aditi_update_mode_errors.m:065:   warning: variable `X' occurs only once in
+aditi_update_mode_errors.m:065:   this scope.
+aditi_update_mode_errors.m:102: In clause for predicate
+aditi_update_mode_errors.m:102:   `aditi_update_mode_errors.aditi_update_modes10/2':
+aditi_update_mode_errors.m:102:   warning: variable `_X0' occurs more than once
+aditi_update_mode_errors.m:102:   in this scope.
+aditi_update_mode_errors.m:102: In clause for predicate
+aditi_update_mode_errors.m:102:   `aditi_update_mode_errors.aditi_update_modes10/2':
+aditi_update_mode_errors.m:102:   warning: variable `_X0' occurs more than once
+aditi_update_mode_errors.m:102:   in this scope.
+aditi_update_mode_errors.m:102: In clause for predicate
+aditi_update_mode_errors.m:102:   `aditi_update_mode_errors.aditi_update_modes10/2':
+aditi_update_mode_errors.m:102:   warning: variable `X0' occurs only once in
+aditi_update_mode_errors.m:102:   this scope.
+aditi_update_mode_errors.m:105: In clause for predicate
+aditi_update_mode_errors.m:105:   `aditi_update_mode_errors.aditi_update_modes11/2':
+aditi_update_mode_errors.m:105:   warning: variable `_X0' occurs more than once
+aditi_update_mode_errors.m:105:   in this scope.
+aditi_update_mode_errors.m:105: In clause for predicate
+aditi_update_mode_errors.m:105:   `aditi_update_mode_errors.aditi_update_modes11/2':
+aditi_update_mode_errors.m:105:   warning: variable `_X0' occurs more than once
+aditi_update_mode_errors.m:105:   in this scope.
+aditi_update_mode_errors.m:105: In clause for predicate
+aditi_update_mode_errors.m:105:   `aditi_update_mode_errors.aditi_update_modes11/2':
+aditi_update_mode_errors.m:105:   warning: variable `X0' occurs only once in
+aditi_update_mode_errors.m:105:   this scope.
 aditi_update_mode_errors.m:053: In clause for `aditi_update_modes1((aditi.aditi_di), (aditi.aditi_uo))':
 aditi_update_mode_errors.m:053:   in argument 2 of the inserted tuple of `aditi_insert' of predicate `aditi_update_mode_errors.p/3':
 aditi_update_mode_errors.m:053:   mode error: variable `V_4' has instantiatedness `free',

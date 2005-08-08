@@ -137,8 +137,6 @@
 	;	unsafe_cast
 	;	aditi_builtin(aditi_builtin, simple_call_id).
 
-:- type simple_call_id == pair(pred_or_func, sym_name_and_arity).
-
 :- type pred_proc_list	==	list(pred_proc_id).
 
 :- type prog_var_name == string.

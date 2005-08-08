@@ -53,16 +53,26 @@ aditi_update_errors.m:070:   warning: variable `X' has overlapping scopes.
 aditi_update_errors.m:081: In clause for predicate
 aditi_update_errors.m:081:   `aditi_update_errors.aditi_update_syntax/2':
 aditi_update_errors.m:081:   warning: variable `X' has overlapping scopes.
-aditi_update_errors.m:102: In clause for predicate `aditi_update_errors.aditi_update_types/2':
-aditi_update_errors.m:102:   warning: variable `_Y' occurs more than once in this scope.
-aditi_update_errors.m:102: In clause for predicate `aditi_update_errors.aditi_update_types/2':
-aditi_update_errors.m:102:   warning: variable `_Y' occurs more than once in this scope.
-aditi_update_errors.m:103: In clause for predicate `aditi_update_errors.aditi_update_types/2':
-aditi_update_errors.m:103:   warning: variable `_Y' occurs more than once in this scope.
-aditi_update_errors.m:103: In clause for predicate `aditi_update_errors.aditi_update_types/2':
-aditi_update_errors.m:103:   warning: variable `_Y' occurs more than once in this scope.
-aditi_update_errors.m:166: In clause for predicate `aditi_update_errors.aditi_update_types/2':
-aditi_update_errors.m:166:   warning: variable `DB' occurs only once in this scope.
+aditi_update_errors.m:102: In clause for predicate
+aditi_update_errors.m:102:   `aditi_update_errors.aditi_update_types/2':
+aditi_update_errors.m:102:   warning: variable `_Y' occurs more than once in
+aditi_update_errors.m:102:   this scope.
+aditi_update_errors.m:102: In clause for predicate
+aditi_update_errors.m:102:   `aditi_update_errors.aditi_update_types/2':
+aditi_update_errors.m:102:   warning: variable `_Y' occurs more than once in
+aditi_update_errors.m:102:   this scope.
+aditi_update_errors.m:103: In clause for predicate
+aditi_update_errors.m:103:   `aditi_update_errors.aditi_update_types/2':
+aditi_update_errors.m:103:   warning: variable `_Y' occurs more than once in
+aditi_update_errors.m:103:   this scope.
+aditi_update_errors.m:103: In clause for predicate
+aditi_update_errors.m:103:   `aditi_update_errors.aditi_update_types/2':
+aditi_update_errors.m:103:   warning: variable `_Y' occurs more than once in
+aditi_update_errors.m:103:   this scope.
+aditi_update_errors.m:166: In clause for predicate
+aditi_update_errors.m:166:   `aditi_update_errors.aditi_update_types/2':
+aditi_update_errors.m:166:   warning: variable `DB' occurs only once in this
+aditi_update_errors.m:166:   scope.
 aditi_update_errors.m:007: Error: no clauses for predicate
 aditi_update_errors.m:007:   `aditi_update_syntax/2'.
 aditi_update_errors.m:096: In clause for predicate `aditi_update_errors.aditi_update_types/2':
