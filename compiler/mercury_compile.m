@@ -2388,7 +2388,7 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
     % term-size profiling/deep profiling transformations have been
     % applied. 
     %
-    mercury_compile__simplify(yes, pre_prof_transforms, Verbose, Stats,
+    mercury_compile__simplify(no, pre_prof_transforms, Verbose, Stats,
         process_all_nonimported_procs, !HLDS, !IO),
     mercury_compile__maybe_dump_hlds(!.HLDS, 197,
         "pre_prof_transform_simplify", !IO),
