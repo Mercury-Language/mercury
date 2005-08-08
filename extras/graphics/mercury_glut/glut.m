@@ -165,7 +165,7 @@
 
 :- pragma foreign_proc("C", 
 	glut.init(IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	int argc;
 
@@ -289,7 +289,7 @@ display_mode_to_int(luminance)   = glut_luminance.
 
 :- pragma foreign_proc("C",
 	glut.init_display_string(CtrlStr::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutInitDisplayString((char *) CtrlStr);
 	IO = IO0;
@@ -299,7 +299,7 @@ display_mode_to_int(luminance)   = glut_luminance.
 
 :- pragma foreign_proc("C",
 	glut.init_window_position(X::in, Y::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutInitWindowPosition(X, Y);
 	IO = IO0;
@@ -307,7 +307,7 @@ display_mode_to_int(luminance)   = glut_luminance.
 
 :- pragma foreign_proc("C",
 	glut.init_window_size(W::in, S::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutInitWindowSize(W, S);
 	IO = IO0;
@@ -317,7 +317,7 @@ display_mode_to_int(luminance)   = glut_luminance.
 
 :- pragma foreign_proc("C",
 	glut.main_loop(IO0::di, IO::uo),
-	[may_call_mercury, promise_pure],
+	[may_call_mercury, tabled_for_io, promise_pure],
 "
 	glutMainLoop();
 	IO = IO0;
@@ -340,7 +340,7 @@ glut.get(State, Value, !IO) :-
 :- pred glut.get_2(int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	glut.get_2(State::in, Value::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	Value = (MR_Integer) glutGet((GLenum) State);
 	IO = IO0;
@@ -472,7 +472,7 @@ device_to_int(joystick)  = glut_has_joystick.
 
 :- pragma foreign_proc("C",
 	glut.elapsed_time(Time::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	Time = (MR_Integer) glutGet(GLUT_ELAPSED_TIME);
 	IO = IO0;	
@@ -480,7 +480,7 @@ device_to_int(joystick)  = glut_has_joystick.
 
 :- pragma foreign_proc("C",
 	glut.display_mode_possible(IsPossible::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	if(glutGet(GLUT_DISPLAY_MODE_POSSIBLE)) {
 		IsPossible = MR_YES;

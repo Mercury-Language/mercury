@@ -17,7 +17,7 @@
 
 %----------------------------------------------------------------------------%
 % 
-% Bitmap fonts.
+% Bitmap fonts
 %
 
 :- type bitmap_font
@@ -39,18 +39,16 @@
 	% Return the width of the character in pixels when rendered
 	% using the specified font.
 	%
-:- pred font.bitmap_width(bitmap_font::in, char::in, int::out, io::di,
-	io::uo) is det.
+:- func font.bitmap_width(bitmap_font, char) = int.
 
 	% Return the length of the string in pixels when rendered using
 	% the specified font.
 	%
-:- pred font.bitmap_length(bitmap_font::in, string::in, int::out, io::di,
-	io::uo) is det.
+:- func font.bitmap_length(bitmap_font, string) = int.
 
 %----------------------------------------------------------------------------%
 %
-% Stroke fonts.
+% Stroke fonts
 %
 
 :- type stroke_font
@@ -65,15 +63,12 @@
 	% Return the width of the character in pixels when rendered 
 	% using the specified font.
 	%
-:- pred font.stroke_width(stroke_font::in, char::in, int::out, io::di,
-
-	io::uo) is det.
+:- func font.stroke_width(stroke_font, char) = int.
 
 	% Return the length of the string in pixels when rendered using
 	% the specified font.
 	%
-:- pred font.stroke_length(stroke_font::in, string::in, int::out, io::di,
-	io::uo) is det.
+:- func font.stroke_length(stroke_font, string) = int.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -94,7 +89,7 @@
 
 %----------------------------------------------------------------------------%
 %
-% Bitmap fonts.
+% Bitmap fonts
 %
 
 font.bitmap_character(Font, Char, !IO) :-
@@ -103,35 +98,32 @@ font.bitmap_character(Font, Char, !IO) :-
 :- pred bitmap_character_2(font_ptr::in, char::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	bitmap_character_2(FntPtr::in, C::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutBitmapCharacter(FntPtr, (int) C);
 	IO = IO0;
 ").
 
-font.bitmap_width(Font, Char, Width, !IO) :-
-	bitmap_width_2(bitmap_font_to_ptr(Font), Char, Width, !IO).
+font.bitmap_width(Font, Char) = Width :-
+	bitmap_width_2(bitmap_font_to_ptr(Font), Char, Width).
 
-:- pred bitmap_width_2(font_ptr::in, char::in, int::out, io::di, io::uo) is det.
+:- pred bitmap_width_2(font_ptr::in, char::in, int::out) is det.
 :- pragma foreign_proc("C",
-	bitmap_width_2(FntPtr::in, C::in, Width::out, IO0::di, IO::uo),
+	bitmap_width_2(FntPtr::in, C::in, Width::out),
 	[will_not_call_mercury, promise_pure],
 "
 	Width = (MR_Integer) glutBitmapWidth(FntPtr, (int) C);
-	IO = IO0;
 ").
 
-font.bitmap_length(Font, String, Length, !IO) :-
-	bitmap_length_2(bitmap_font_to_ptr(Font), String, Length, !IO).
+font.bitmap_length(Font, String) = Length :-
+	bitmap_length_2(bitmap_font_to_ptr(Font), String, Length).
 
-:- pred bitmap_length_2(font_ptr::in, string::in, int::out, io::di, io::uo)
-	is det.
+:- pred bitmap_length_2(font_ptr::in, string::in, int::out) is det.
 :- pragma foreign_proc("C",
-	bitmap_length_2(FntPtr::in, Str::in, Length::out, IO0::di, IO::uo),
+	bitmap_length_2(FntPtr::in, Str::in, Length::out),
 	[will_not_call_mercury, promise_pure],
 "
 	Length =  (MR_Integer) glutBitmapLength(FntPtr, Str);
-	IO = IO0;
 ").
 
 :- func bitmap_font_to_ptr(bitmap_font) = font_ptr.
@@ -202,7 +194,7 @@ bitmap_font_to_ptr(helvetica_18)   = helvetica_18_ptr.
 
 %----------------------------------------------------------------------------%
 %
-% Stroke fonts.
+% Stroke fonts
 %
 
 font.stroke_character(Font, Char, !IO) :-
@@ -211,38 +203,32 @@ font.stroke_character(Font, Char, !IO) :-
 :- pred stroke_character_2(font_ptr::in, char::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	stroke_character_2(StrokeFntPtr::in, C::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutStrokeCharacter(StrokeFntPtr, (int) C);
 	IO = IO0;
 ").
 
-font.stroke_width(Font, Char, Width, !IO) :-
-	stroke_width_2(stroke_font_to_ptr(Font), Char, Width, !IO).
+font.stroke_width(Font, Char) = Width :-
+	stroke_width_2(stroke_font_to_ptr(Font), Char, Width).
 
-:- pred stroke_width_2(font_ptr::in, char::in, int::out, io::di,
-	io::uo) is det.
+:- pred stroke_width_2(font_ptr::in, char::in, int::out) is det.
 :- pragma foreign_proc("C", 
-	stroke_width_2(StrokeFntPtr::in, C::in, Width::out, IO0::di,
-		IO::uo),
+	stroke_width_2(StrokeFntPtr::in, C::in, Width::out),
 	[will_not_call_mercury, promise_pure],
 "
 	Width = (MR_Integer) glutStrokeWidth(StrokeFntPtr, (int) C);
-	IO = IO0;
 ").
 
-font.stroke_length(Font, String, Length, !IO) :-
-	stroke_length_2(stroke_font_to_ptr(Font), String, Length, !IO).
+font.stroke_length(Font, String) = Length :-
+	stroke_length_2(stroke_font_to_ptr(Font), String, Length).
 
-:- pred stroke_length_2(font_ptr::in, string::in, int::out,
-	io::di, io::uo) is det.
+:- pred stroke_length_2(font_ptr::in, string::in, int::out) is det.
 :- pragma foreign_proc("C",
-	stroke_length_2(StrokeFntPtr::in, Str::in, Length::out,
-		IO0::di, IO::uo),
+	stroke_length_2(StrokeFntPtr::in, Str::in, Length::out),
 	[will_not_call_mercury, promise_pure],
 "
 	Length = (MR_Integer) glutStrokeLength(StrokeFntPtr, Str);
-	IO = IO0;
 ").
 
 :- func stroke_font_to_ptr(stroke_font) = font_ptr.

@@ -178,7 +178,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Window state.
+% Window state
 %
 
 :- type window.state
@@ -259,7 +259,7 @@ window.create(Name, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.create(Name::in, Win::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 " 
 	Win = (MR_Integer) glutCreateWindow((char *) Name);
 	IO = IO0;
@@ -279,7 +279,7 @@ window.create(Name, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.destroy(Window::in, IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutDestroyWindow(Window);
 	IO = IO0;
@@ -287,7 +287,7 @@ window.create(Name, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.post_redisplay(IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutPostRedisplay();
 	IO = IO0;
@@ -295,7 +295,7 @@ window.create(Name, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.post_redisplay(Id::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutPostWindowRedisplay((int) Id);
 	IO = IO0;
@@ -303,7 +303,7 @@ window.create(Name, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.swap_buffers(IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutSwapBuffers();
 	IO = IO0;
@@ -316,7 +316,7 @@ window.id(MaybeWindow, !IO) :-
 :- pred window.id_2(int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	window.id_2(Win::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	Win = (MR_Integer) glutGetWindow();
 	IO = IO0;
@@ -324,7 +324,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.set(Window::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutSetWindow((int) Window);
 	IO = IO0;
@@ -332,7 +332,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.title(Title::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutSetWindowTitle(Title);
 	IO = IO0;
@@ -340,7 +340,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.icon_title(Title::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutSetIconTitle((char *) Title);
 	IO = IO0;
@@ -348,7 +348,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.position(X::in, Y::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutPositionWindow((int) X, (int) Y);
 	IO = IO0;
@@ -356,7 +356,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.reshape(W::in, H::in, IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutReshapeWindow(W, H);
 	IO = IO0;
@@ -364,7 +364,7 @@ window.id(MaybeWindow, !IO) :-
 
 %:- pragma foreign_proc("C",
 %	window.pop(IO0::di, IO::uo),
-%	[will_not_call_mercury, promise_pure],
+%	[will_not_call_mercury, tabled_for_io, promise_pure],
 %"
 %	glutPopWindow();
 %	IO = IO0;
@@ -372,7 +372,7 @@ window.id(MaybeWindow, !IO) :-
 
 %:- pragma foreign_proc("C",
 %	window.push(IO0::di, IO::uo),
-%	[will_not_call_mercury, promise_pure],
+%	[will_not_call_mercury, tabled_for_io, promise_pure],
 %"
 %	glutPushWindow();
 %	IO = IO0;
@@ -380,7 +380,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.iconify(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutIconifyWindow();
 	IO = IO0;
@@ -388,7 +388,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.show(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutShowWindow();
 	IO = IO0;
@@ -396,7 +396,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.hide(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutHideWindow();
 	IO = IO0;
@@ -404,7 +404,7 @@ window.id(MaybeWindow, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.full_screen(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutFullScreen();
 	IO = IO0;
@@ -594,7 +594,7 @@ window.set_cursor(Cursor, !IO) :-
 :- pred window.set_cursor_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	window.set_cursor_2(Cursor::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutSetCursor((int) Cursor);
 	IO = IO0;
@@ -602,7 +602,7 @@ window.set_cursor(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.warp_pointer(X::in, Y::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutWarpPointer(X, Y);
 	IO = IO0;
@@ -633,7 +633,7 @@ window.set_cursor(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.is_double_buffered(DB::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	if (glutGet(GLUT_WINDOW_DOUBLEBUFFER)) {
 		DB = MR_YES;
@@ -645,7 +645,7 @@ window.set_cursor(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.is_stereo(Stereo::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	if (glutGet(GLUT_WINDOW_STEREO)) {
 		Stereo = MR_YES;
@@ -657,7 +657,7 @@ window.set_cursor(Cursor, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.is_rgba(RGBA::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	if (glutGet(GLUT_WINDOW_RGBA)) {
 		RGBA = MR_YES;
@@ -696,7 +696,7 @@ window.get(State, Value, !IO) :-
 :- pred window.get_2(int::in, int::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	window.get_2(State::in, Value::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	Value = (MR_Integer) glutGet((GLenum) State);
 	IO = IO0;
@@ -834,7 +834,7 @@ window.get(State, Value, !IO) :-
 
 :- pragma foreign_proc("C",
 	window.has_overlay(Result::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	if (glutLayerGet(GLUT_HAS_OVERLAY)) {
 		Result = MR_YES;

@@ -59,7 +59,7 @@
 
 :- pragma foreign_proc("C",
 	color_map.set_color(I::in, R::in, G::in, B::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutSetColor((int) I, (GLfloat) R, (GLfloat) G, (GLfloat) B);
 	IO = IO0;
@@ -71,7 +71,7 @@ color_map.get_color(Index, Component, Value, !IO) :-
 :- pred get_color_2(int::in, int::in, float::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	get_color_2(I::in, C::in, V::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	V = (MR_Float) glutGetColor((int) I, (int) C);
 	IO = IO0;
@@ -108,7 +108,7 @@ component_to_int(blue)  = glut_blue.
 
 :- pragma foreign_proc("C",
 	color_map.copy(WinId::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutCopyColormap((int) WinId);
 	IO = IO0;

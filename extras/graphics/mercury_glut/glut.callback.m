@@ -285,13 +285,13 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Display callbacks.
+% Display callbacks
 %
 
 :- pragma foreign_proc("C",
 	callback.display_func(DisplayFunc::pred(di, uo) is det, IO0::di,
 		IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_display_callback = DisplayFunc;
 	glutDisplayFunc(MGLUT_display_callback);
@@ -314,7 +314,7 @@ do_display_callback(DisplayFunc, !IO) :- DisplayFunc(!IO).
 
 :- pragma foreign_proc("C",
 	disable_display_func(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutDisplayFunc(NULL);
 	IO = IO0;
@@ -322,13 +322,13 @@ do_display_callback(DisplayFunc, !IO) :- DisplayFunc(!IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Reshape callbacks.
+% Reshape callbacks
 %
 
 :- pragma foreign_proc("C",
 	callback.reshape_func(Reshape::pred(in, in, di, uo) is det, IO0::di, 
 		IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_reshape_callback = Reshape;
 	glutReshapeFunc(MGLUT_reshape_callback);
@@ -352,7 +352,7 @@ do_reshape_callback(ReshapeFunc, Width, Height, !IO) :-
 
 :- pragma foreign_proc("C",
 	disable_reshape_func(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutReshapeFunc(NULL);
 	IO = IO0;
@@ -360,13 +360,13 @@ do_reshape_callback(ReshapeFunc, Width, Height, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Keyboard callbacks.
+% Keyboard callbacks
 %
 
 :- pragma foreign_proc("C",
 	keyboard_func(KeyboardFunc::pred(in, in, in, di, uo) is det, IO0::di, 
 		IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_keyboard_callback = KeyboardFunc;
 	glutKeyboardFunc(MGLUT_keyboard_callback);
@@ -393,7 +393,7 @@ do_keyboard_callback(KeyBoardFunc, ScanCode, X, Y, !IO) :-
 
 :- pragma foreign_proc("C",
 	disable_keyboard_func(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutKeyboardFunc(NULL);
 	IO = IO0;
@@ -401,13 +401,13 @@ do_keyboard_callback(KeyBoardFunc, ScanCode, X, Y, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Mouse callbacks.
+% Mouse callbacks
 %
 
 :- pragma foreign_proc("C",
-	mouse_func(MouseFunc::pred(in, in, in, in, di, uo) is det, IO0::di, 
-		IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	mouse_func(MouseFunc::pred(in, in, in, in, di, uo) is det,
+		IO0::di, IO::uo),
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_mouse_callback = MouseFunc;
 	glutMouseFunc(MGLUT_mouse_callback);
@@ -479,12 +479,12 @@ do_mouse_callback(MouseFunc, Button0, State0, X, Y, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Motion callback.
+% Motion callback
 %
 
 :- pragma foreign_proc("C",
 	motion_func(MotionFunc::pred(in, in, di, uo) is det, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_motion_callback = MotionFunc;
 	glutMotionFunc(MGLUT_motion_callback);	
@@ -516,13 +516,13 @@ do_motion_callback(MotionFunc, X, Y, !IO) :- MotionFunc(X, Y, !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Passive motion callbacks.
+% Passive motion callbacks
 %
 
 :- pragma foreign_proc("C",
 	passive_motion_func(PassiveMotionFunc::pred(in, in, di, uo) is det, 
 		IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 " 
 	mglut_passive_motion_callback = PassiveMotionFunc;
 	glutPassiveMotionFunc(MGLUT_passive_motion_callback);
@@ -548,7 +548,7 @@ do_passive_motion_callback(PassiveMotionFunc, X, Y, !IO) :-
 
 :- pragma foreign_proc("C",
 	disable_passive_motion_func(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutPassiveMotionFunc(NULL);
 	IO = IO0;
@@ -558,7 +558,7 @@ do_passive_motion_callback(PassiveMotionFunc, X, Y, !IO) :-
 
 :- pragma foreign_proc("C",
 	entry_func(EntryFunc::pred(in, di, uo) is det, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_entry_callback = EntryFunc;
 	glutEntryFunc(MGLUT_entry_callback);
@@ -585,7 +585,7 @@ do_entry_callback(EntryFunc, State0, !IO) :-
 
 :- pragma foreign_proc("C", 
 	disable_entry_func(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutEntryFunc(NULL);
 	IO = IO0;
@@ -610,7 +610,7 @@ do_entry_callback(EntryFunc, State0, !IO) :-
 :- pragma foreign_proc("C",
 	visibility_func(VisibilityFunc::pred(in, di, uo) is det, IO0::di, 
 		IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io,  promise_pure],
 "
 	mglut_visibility_callback = VisibilityFunc;
 	glutVisibilityFunc(MGLUT_visibility_callback);
@@ -637,7 +637,7 @@ do_visibility_callback(VisibilityFunc, State0, !IO) :-
 
 :- pragma foreign_proc("C",
 	disable_visibility_func(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutVisibilityFunc(NULL);
 	IO = IO0;
@@ -659,12 +659,12 @@ do_visibility_callback(VisibilityFunc, State0, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Idle callback.
+% Idle callback
 %
 
 :- pragma foreign_proc("C",
 	idle_func(Closure::pred(di, uo) is det, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_idle_callback = Closure;
 	glutIdleFunc(MGLUT_idle_callback);	
@@ -686,7 +686,7 @@ do_idle_callback(IdleFunc, !IO) :- IdleFunc(!IO).
 
 :- pragma foreign_proc("C",
 	disable_idle_func(IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutIdleFunc(NULL);
 	IO = IO0;
@@ -694,13 +694,13 @@ do_idle_callback(IdleFunc, !IO) :- IdleFunc(!IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Keyboard up callbacks.
+% Keyboard up callbacks
 %
 
 :- pragma foreign_proc("C",
 	keyboard_up_func(KeyUpFunc::pred(in, in, in, di ,uo) is det, IO0::di,
 		IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_keyboard_up_callback = KeyUpFunc;
 	glutKeyboardUpFunc(MGLUT_keyboard_up_callback);
@@ -726,7 +726,7 @@ do_keyboard_up_callback(KeyBoardUpFunc, ScanCode, X, Y, !IO) :-
 
 :- pragma foreign_proc("C",
 	disable_keyboard_up_func(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	glutKeyboardFunc(NULL);
 	IO = IO0;
@@ -734,7 +734,7 @@ do_keyboard_up_callback(KeyBoardUpFunc, ScanCode, X, Y, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Overlay display callbacks.
+% Overlay display callbacks
 %
 
 :- pragma foreign_proc("C",
@@ -770,13 +770,13 @@ do_overlay_display_callback(OverlayDisplayFunc, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Special keyboard callbacks.
+% Special keyboard callbacks
 %
 
 :- pragma foreign_proc("C",
 	callback.special_func(SpecialFunc::pred(in, in, in, di, uo) is det, 
 		IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_special_callback = SpecialFunc;
 	glutSpecialFunc(MGLUT_special_callback);	
@@ -811,13 +811,13 @@ do_special_callback(Special, Key, X, Y, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Special keyboard up callbacks.
+% Special keyboard up callbacks
 %
 
 :- pragma foreign_proc("C",
 	callback.special_up_func(SpecialFunc::pred(in, in, in, di, uo) is det, 
 		IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, terminates],
+	[will_not_call_mercury, tabled_for_io, promise_pure],
 "
 	mglut_special_up_callback = SpecialFunc;
 	glutSpecialUpFunc(MGLUT_special_up_callback);	
@@ -851,7 +851,7 @@ do_special_up_callback(SpecialUpFunc, Key, X, Y, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Constants for special keyboard callbacks.
+% Constants for special keyboard callbacks
 %
 
 :- func int_to_special_key(int) = special_key.
