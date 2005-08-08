@@ -33,8 +33,6 @@
 :- pred copy_module_clauses_to_procs(list(pred_id)::in,
     module_info::in, module_info::out) is det.
 
-:- pred copy_clauses_to_procs(pred_info::in, pred_info::out) is det.
-
 :- pred copy_clauses_to_proc(proc_id::in, clauses_info::in,
     proc_info::in, proc_info::out) is det.
 
@@ -116,28 +114,34 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
     ).
 
 copy_module_clauses_to_procs(PredIds, !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, Preds0),
-    copy_module_clauses_to_procs_2(PredIds, Preds0, Preds),
-    module_info_set_preds(Preds, !ModuleInfo).
+    module_info_preds(!.ModuleInfo, PredTable0),
+    list__foldl(copy_pred_clauses_to_procs, PredIds, PredTable0, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred copy_module_clauses_to_procs_2(list(pred_id)::in,
+    % For each mode of the given predicate, copy the clauses relevant
+    % to the mode and the current backend to the proc_info.
+    %
+    % This is not the only predicate in the compiler that does this task;
+    % the other is polymorphism__process_proc.
+    %
+:- pred copy_pred_clauses_to_procs(pred_id::in,
     pred_table::in, pred_table::out) is det.
 
-copy_module_clauses_to_procs_2([], Preds, Preds).
-copy_module_clauses_to_procs_2([PredId | PredIds], Preds0, Preds) :-
-    map__lookup(Preds0, PredId, PredInfo0),
+copy_pred_clauses_to_procs(PredId, !PredTable) :-
+    map__lookup(!.PredTable, PredId, PredInfo0),
     (
         % Don't process typeclass methods, because their proc_infos
         % are generated already mode-correct.
         pred_info_get_markers(PredInfo0, PredMarkers),
         check_marker(PredMarkers, class_method)
     ->
-        Preds1 = Preds0
+        true
     ;
         copy_clauses_to_procs(PredInfo0, PredInfo),
-        map__det_update(Preds0, PredId, PredInfo, Preds1)
-    ),
-    copy_module_clauses_to_procs_2(PredIds, Preds1, Preds).
+        map__det_update(!.PredTable, PredId, PredInfo, !:PredTable)
+    ).
+
+:- pred copy_clauses_to_procs(pred_info::in, pred_info::out) is det.
 
 copy_clauses_to_procs(!PredInfo) :-
     pred_info_procedures(!.PredInfo, Procs0),
@@ -149,12 +153,12 @@ copy_clauses_to_procs(!PredInfo) :-
 :- pred copy_clauses_to_procs_2(list(proc_id)::in, clauses_info::in,
     proc_table::in, proc_table::out) is det.
 
-copy_clauses_to_procs_2([], _, Procs, Procs).
-copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
-    map__lookup(Procs0, ProcId, Proc0),
+copy_clauses_to_procs_2([], _, !Procs).
+copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, !Procs) :-
+    map__lookup(!.Procs, ProcId, Proc0),
     copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc),
-    map__det_update(Procs0, ProcId, Proc, Procs1),
-    copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
+    map__det_update(!.Procs, ProcId, Proc, !:Procs),
+    copy_clauses_to_procs_2(ProcIds, ClausesInfo, !Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
     ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars,
