@@ -142,6 +142,11 @@
 	%
 :- func get_user_output_stream(oracle_state) = io.output_stream.
 
+	% Set the testing flag of the user_state in the given oracle.
+	%
+:- pred set_oracle_testing_flag(bool::in, oracle_state::in, oracle_state::out)
+	is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -731,3 +736,8 @@ set_browser_state(Browser, !Oracle) :-
 
 get_user_output_stream(Oracle) = mdb.declarative_user.get_user_output_stream(
 	Oracle ^ user_state).
+
+set_oracle_testing_flag(Testing, !Oracle) :-
+	User0 = !.Oracle ^ user_state,
+	set_user_testing_flag(Testing, User0, User),
+	!:Oracle = !.Oracle ^ user_state := User.

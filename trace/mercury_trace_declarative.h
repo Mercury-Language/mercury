@@ -85,7 +85,7 @@ extern	MR_bool	MR_trace_is_valid_search_mode_string(
 			MR_Decl_Search_Mode *search_mode);
 
 /*
-** Return the default search mode to use when then --search-mode option for the
+** Return the default search mode to use when the --search-mode option for the
 ** `dd' command is not given.
 */
 
@@ -99,6 +99,14 @@ extern MR_Decl_Search_Mode MR_trace_get_default_search_mode(void);
 
 extern	void	MR_decl_print_all_trusted(FILE *fp, 
 			MR_bool mdb_command_format);
+
+/*
+** Set the testing flag of the diagnoser.
+** See the user_state type in browser/declarative_user.m for more details.
+*/
+
+extern	void	MR_trace_decl_set_testing_flag(MR_bool testing);
+
 /*
 ** The following macros are provided to help C code manipulate the
 ** Mercury data structure.  The values here must match the corresponding
@@ -183,11 +191,11 @@ extern	MR_Unsigned	MR_edt_default_depth_limit;
 
 /*
 ** The following variable indicates whether the declarative debugger was 
-** invoked using the dd_dd command.  It is needed so that the declarative
+** invoked with the --debug option.  It is needed so that the declarative
 ** debugger can continue to be debugged after a new portion of the 
 ** annotated trace has been generated.
 */
 
-extern	MR_bool		MR_trace_decl_in_dd_dd_mode;
+extern	MR_bool		MR_trace_decl_debug_debugger_mode;
 
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

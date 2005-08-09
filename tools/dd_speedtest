@@ -1,0 +1,89 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# This script runs the declarative debugger on a given test case.
+# The test program should be compiled in a .decldebug or .debug grade.
+# A simulated debugging session is run where the program is debugged from
+# the top call to main and `no' is answered to all questions until a bug is
+# found.
+# Before compiling the test program the following should be 
+# included in the trace/Mmake.trace.params file in the workspace which will be
+# used to compile the test program:
+# EXTRA_CFLAGS=-DMR_DD_PRINT_EDT_STATS
+#
+# This script is useful for comparing the memory consumption and/or the
+# speed of different versions of the declarative debugger.
+# Typical usage might be:
+# dd_speedtest -c ./myprog -n 10 -d "-s divide_and_query -n 50000"
+# where myprog is a program compiled in a .debug or .decldebug grade that
+# generates lots of events (otherwise the times will be too small).
+#
+# The output of this script is two files: dd.stats which contains 
+# data for each reexecution of the program performed by the declarative 
+# debugger; and dd.stdout which records the output of the debugging session.
+#
+# The script extract_dd_stats in this directory can be used to summarize
+# the data in dd.stats.
+#
+# This script will append data to dd.stats and dd.stdout, so they should be
+# deleted first if this behaviour is not desired.
+#
+
+usage="Usage: dd_speedtest -c cmd [-n num_tests] [-d dd_options]"
+cmd=""
+limit=6
+ddopts="-s divide_and_query -n 50000 -d 1"
+
+while getopts c:n:d: flag; do
+	case $flag in
+	c)  cmd="$OPTARG" ;;
+	d)  ddopts="$OPTARG" ;;
+	n)  limit="$OPTARG" ;;
+	\?) echo $usage; exit 1 ;;
+	*)  echo internal error in getopts; exit 2 ;;
+	esac
+done
+shift `expr "$OPTIND" - 1`
+
+if test "$cmd" == ""; then
+	echo $usage
+	exit 1
+fi
+
+total_runs=`expr $limit + 2`
+
+echo START $ddopts >> dd.stats
+
+count=1
+while test $count -le $total_runs
+do
+	if test $count == 1; then
+		run_name="FIRST"
+	else
+		if test $count == $total_runs; then
+			run_name="FINAL"
+		else
+			during_cnt=`expr $count - 1`
+			run_name="DURING$during_cnt"
+		fi
+	fi
+
+	echo $run_name >> dd.stats
+	echo STARTWCTIME = `date +"%s"` >> dd.stats
+
+mdb $cmd << END1 2>> dd.stats >> dd.stdout
+table_io start
+finish
+dd $ddopts --test
+quit -y
+END1
+
+	echo ENDWCTIME = `date +"%s"` >> dd.stats
+	
+	count=`expr $count + 1`
+done
+echo END >> dd.stats

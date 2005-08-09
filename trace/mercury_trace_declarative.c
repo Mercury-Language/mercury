@@ -469,7 +469,7 @@ MR_bool    MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 MR_Unsigned MR_edt_desired_nodes_in_subtree = MR_TRACE_DESIRED_SUBTREE_NODES;
 MR_Unsigned MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
 
-MR_bool    MR_trace_decl_in_dd_dd_mode = MR_FALSE;
+MR_bool    MR_trace_decl_debug_debugger_mode = MR_FALSE;
 
 /*
 ** We filter out events which are deeper than the limit given by
@@ -1485,6 +1485,16 @@ MR_trace_decl_set_fallback_search_mode(MR_Decl_Search_Mode search_mode)
     );
 }
 
+void
+MR_trace_decl_set_testing_flag(MR_bool testing)
+{
+    MR_trace_decl_ensure_init();
+    MR_TRACE_CALL_MERCURY(
+        MR_DD_decl_set_diagnoser_testing_flag(testing,
+            MR_trace_front_end_state, &MR_trace_front_end_state);
+    );
+}
+
 MR_bool
 MR_trace_is_valid_search_mode_string(const char *search_mode_string,
     MR_Decl_Search_Mode *search_mode)
@@ -1877,7 +1887,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
     }
 
-    if (MR_trace_decl_in_dd_dd_mode) {
+    if (MR_trace_decl_debug_debugger_mode) {
         /*
         ** This is a quick and dirty way to debug the front end.
         */
@@ -2396,8 +2406,8 @@ MR_decl_print_edt_stats()
     fprintf(stderr, "Total CPU time = %.2f\n",
         MR_get_user_cpu_miliseconds() / 1000.0);
     pid = getpid();
-    sprintf(cmdstr, "ps -o pid,rss | grep %i | awk '{print $2}' 1>&2", pid);
-    fprintf(stderr, "RSS = ");
+    sprintf(cmdstr, "ps -p %i -o rss,vsz | tail -1 |"
+    	"awk '{print \"RSS = \" $1 \"\\nVSZ = \" $2}' 1>&2", pid);
     system(cmdstr);
 
     MR_debug_enabled = MR_FALSE;

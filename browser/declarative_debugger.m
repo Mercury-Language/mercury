@@ -580,10 +580,24 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
 	diagnoser_state(trace_node_id)::out) is det.
 
 :- pragma export(diagnoser_state_init_store(in, in, in, in, out),
-		"MR_DD_decl_diagnosis_state_init").
+	"MR_DD_decl_diagnosis_state_init").
 
 diagnoser_state_init_store(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
 	diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser).
+
+	% Set the testing flag of the user_state in the given diagnoser.
+	%
+:- pred set_diagnoser_testing_flag(bool::in,
+	diagnoser_state(trace_node_id)::in,
+	diagnoser_state(trace_node_id)::out) is det.
+
+:- pragma export(set_diagnoser_testing_flag(in, in, out),
+	"MR_DD_decl_set_diagnoser_testing_flag").
+
+set_diagnoser_testing_flag(Testing, !Diagnoser) :-
+	Oracle0 = !.Diagnoser ^ oracle_state,
+	set_oracle_testing_flag(Testing, Oracle0, Oracle),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
 
 :- pred set_fallback_search_mode(
 	mdb.declarative_analyser.search_mode::in,

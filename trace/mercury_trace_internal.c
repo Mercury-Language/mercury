@@ -520,7 +520,6 @@ static  MR_TraceCmdFunc MR_trace_cmd_all_procedures;
 static  MR_TraceCmdFunc MR_trace_cmd_save;
 static  MR_TraceCmdFunc MR_trace_cmd_quit;
 static  MR_TraceCmdFunc MR_trace_cmd_dd;
-static  MR_TraceCmdFunc MR_trace_cmd_dd_dd;
 static  MR_TraceCmdFunc MR_trace_cmd_trust;
 static  MR_TraceCmdFunc MR_trace_cmd_untrust;
 static  MR_TraceCmdFunc MR_trace_cmd_trusted;
@@ -602,6 +601,7 @@ static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_Integer *default_depth, MR_Integer *num_nodes,
                         MR_Decl_Search_Mode *search_mode, 
                         MR_bool *search_mode_was_set, MR_bool *new_session,
+                        MR_bool *testing, MR_bool *debug,
                         char ***words, int *word_count, const char *cat,
                         const char *item);
 static  MR_bool     MR_trace_options_stats(char **filename, char ***words,
@@ -5791,84 +5791,50 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Decl_Search_Mode search_mode;
     MR_bool             search_mode_was_set = MR_FALSE;
     MR_bool             new_session = MR_TRUE;
+    MR_bool             testing = MR_FALSE;
+    MR_bool             debug = MR_FALSE;
+    const char          *filename;
+    MR_Trace_Mode       trace_mode;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
     MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
     search_mode = MR_trace_get_default_search_mode();
-    MR_trace_decl_in_dd_dd_mode = MR_FALSE;
+    MR_trace_decl_debug_debugger_mode = MR_FALSE;
 
     if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
         &MR_edt_default_depth_limit, &MR_edt_desired_nodes_in_subtree,
-        &search_mode, &search_mode_was_set, &new_session,
+        &search_mode, &search_mode_was_set, &new_session, &testing, 
+        &MR_trace_decl_debug_debugger_mode,
         &words, &word_count, "dd", "dd"))
     {
         ; /* the usage message has already been printed */
-    } else if (word_count == 1) {
-        if (MR_trace_have_unhid_events) {
-            fflush(MR_mdb_out);
-            fprintf(MR_mdb_err,
-                "mdb: dd doesn't work after `unhide_events on'.\n");
-            return KEEP_INTERACTING;
-        }
-        if (search_mode_was_set) {
-            MR_trace_decl_set_fallback_search_mode(search_mode);
-        } else if (new_session) {
-            MR_trace_decl_set_fallback_search_mode(search_mode);
-        }
-        if (MR_trace_start_decl_debug(MR_TRACE_DECL_DEBUG,
-            NULL, new_session, cmd, event_info, event_details, jumpaddr))
-        {
-            return STOP_INTERACTING;
-        }
-    } else {
-        MR_trace_usage("dd", "dd");
-    }
-
-    return KEEP_INTERACTING;
-}
-
-static MR_Next
-MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Event_Details *event_details,
-    MR_Code **jumpaddr)
-{
-    MR_Trace_Mode       trace_mode;
-    const char          *filename;
-    MR_Decl_Search_Mode search_mode;
-    MR_bool             search_mode_was_set = MR_FALSE;
-    MR_bool             new_session = MR_TRUE;
-
-    MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
-    MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
-    search_mode = MR_trace_get_default_search_mode();
-    MR_trace_decl_in_dd_dd_mode = MR_TRUE;
-
-    if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-        &MR_edt_default_depth_limit, &MR_edt_desired_nodes_in_subtree, 
-        &search_mode, &search_mode_was_set, &new_session,
-        &words, &word_count, "dd", "dd_dd"))
-    {
-        ; /* the usage message has already been printed */
     } else if (word_count <= 2) {
-        if (word_count == 2) {
+        if (word_count == 2 && MR_trace_decl_debug_debugger_mode) {
             trace_mode = MR_TRACE_DECL_DEBUG_DUMP;
             filename = (const char *) words[1];
         } else {
             trace_mode = MR_TRACE_DECL_DEBUG;
             filename = (const char *) NULL;
         }
+        if (MR_trace_have_unhid_events) {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err,
+                "mdb: dd doesn't work after `unhide_events on'.\n");
+            return KEEP_INTERACTING;
+        }
+        MR_trace_decl_set_testing_flag(testing);
         if (search_mode_was_set) {
             MR_trace_decl_set_fallback_search_mode(search_mode);
         } else if (new_session) {
             MR_trace_decl_set_fallback_search_mode(search_mode);
         }
-        if (MR_trace_start_decl_debug(trace_mode, filename,
-            new_session, cmd, event_info, event_details, jumpaddr))
+        if (MR_trace_start_decl_debug(trace_mode, filename, new_session, cmd,
+            event_info, event_details, jumpaddr))
         {
             return STOP_INTERACTING;
         }
     } else {
-        MR_trace_usage("dd", "dd_dd");
+        MR_trace_usage("dd", "dd");
     }
 
     return KEEP_INTERACTING;
@@ -7098,10 +7064,12 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 static struct MR_option MR_trace_dd_opts[] =
 {
     { "assume-all-io-is-tabled",    MR_no_argument,         NULL,   'a' },
+    { "debug",                      MR_no_argument,         NULL,   'z' },
     { "depth",                      MR_required_argument,   NULL,   'd' },
     { "nodes",                      MR_required_argument,   NULL,   'n' },
-    { "search-mode",                MR_required_argument,   NULL,   's' },
     { "resume",                     MR_no_argument,         NULL,   'r' },
+    { "search-mode",                MR_required_argument,   NULL,   's' },
+    { "test",                       MR_no_argument,         NULL,   't' },
     { NULL,                         MR_no_argument,         NULL,   0 }
 };
 
@@ -7109,13 +7077,13 @@ static MR_bool
 MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
     MR_Integer *default_depth, MR_Integer *num_nodes,
     MR_Decl_Search_Mode *search_mode, MR_bool *search_mode_was_set, 
-    MR_bool *new_session, char ***words, int *word_count, const char *cat, 
-    const char *item)
+    MR_bool *new_session, MR_bool *testing, MR_bool *debug, 
+    char ***words, int *word_count, const char *cat, const char *item)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "ad:n:s:r",
+    while ((c = MR_getopt_long(*word_count, *words, "ad:n:rs:tz",
         MR_trace_dd_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -7138,6 +7106,10 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 }
                 break;
 
+            case 'r':
+                *new_session = MR_FALSE;
+                break;
+
             case 's':
                 if (MR_trace_is_valid_search_mode_string(MR_optarg,
                     search_mode))
@@ -7149,8 +7121,12 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 }
                 break;
 
-            case 'r':
-                *new_session = MR_FALSE;
+            case 't':
+                *testing = MR_TRUE;
+                break;
+
+            case 'z':
+                *debug = MR_TRUE;
                 break;
 
             default:
@@ -8430,8 +8406,6 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         MR_trace_on_off_args, MR_trace_null_completer },
     { "developer", "unhide_events", MR_trace_cmd_unhide_events,
         MR_trace_on_off_args, MR_trace_null_completer },
-    { "developer", "dd_dd", MR_trace_cmd_dd_dd,
-        MR_trace_dd_cmd_args, MR_trace_filename_completer },
     { "developer", "table", MR_trace_cmd_table,
         NULL, MR_trace_null_completer },
     { "developer", "type_ctor", MR_trace_cmd_type_ctor,

@@ -20,6 +20,7 @@
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.help.
 
+:- import_module bool.
 :- import_module io.
 
 :- type user_question(T)
@@ -71,6 +72,11 @@
 	%
 :- func get_user_output_stream(user_state) = io.output_stream.
 
+	% Set the testing flag of the user_state.
+	%
+:- pred set_user_testing_flag(bool::in, user_state::in, user_state::out) 
+	is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -109,33 +115,46 @@
 				% answer the question (such as an `info'
 				% command).
 			display_question	:: bool,
-			help_system		:: help.system
+			help_system		:: help.system,
+
+				% If this following flag is set to yes then
+				% user responses will be simulated and will
+				% always be `no', except when confirming a
+				% bug in which case the response will be `yes'.
+			testing			:: bool
 		).
 
 user_state_init(InStr, OutStr, Browser, HelpSystem, 
-	user(InStr, OutStr, Browser, yes, HelpSystem)).
+	user(InStr, OutStr, Browser, yes, HelpSystem, no)).
 
 %-----------------------------------------------------------------------------%
 
 query_user(UserQuestion, Response, !User, !IO) :-
 	Question = get_decl_question(UserQuestion),
 	(
-		!.User ^ display_question = yes,
-		write_decl_question(Question, !.User, !IO),
-		user_question_prompt(UserQuestion, Prompt),
-		!:User = !.User ^ display_question := no
+		!.User ^ testing = yes,
+		Node = get_decl_question_node(Question),
+		Response = user_answer(Question, truth_value(Node, erroneous))
 	;
-		!.User ^ display_question = no,
-		Prompt = "dd> "
-	),
-	get_command(Prompt, Command, !User, !IO),
-	handle_command(Command, UserQuestion, Response, !User, !IO),
-	(
-		Response \= show_info(_)
-	->
-		!:User = !.User ^ display_question := yes
-	;
-		true
+		!.User ^ testing = no,
+		(
+			!.User ^ display_question = yes,
+			write_decl_question(Question, !.User, !IO),
+			user_question_prompt(UserQuestion, Prompt),
+			!:User = !.User ^ display_question := no
+		;
+			!.User ^ display_question = no,
+			Prompt = "dd> "
+		),
+		get_command(Prompt, Command, !User, !IO),
+		handle_command(Command, UserQuestion, Response, !User, !IO),
+		(
+			Response \= show_info(_)
+		->
+			!:User = !.User ^ display_question := yes
+		;
+			true
+		)
 	).
 
 :- pred handle_command(user_command::in, user_question(T)::in,
@@ -933,40 +952,46 @@ is_dash('-').
 %-----------------------------------------------------------------------------%
 
 user_confirm_bug(Bug, Response, !User, !IO) :-
-	write_decl_bug(Bug, !.User, !IO),
-	get_command("Is this a bug? ", Command, !User, !IO),
 	(
-		Command = yes
-	->
+		!.User ^ testing = yes,
 		Response = confirm_bug
 	;
-		Command = no
-	->
-		Response = overrule_bug
-	;
-		Command = quit
-	->
-		Response = abort_diagnosis
-	;
-		Command = browse_arg(MaybeArgNum)
-	->
-		browse_decl_bug(Bug, MaybeArgNum, !User, !IO),
-		user_confirm_bug(Bug, Response, !User, !IO)
-	;
-		Command = browse_xml_arg(MaybeArgNum)
-	->
-		browse_xml_decl_bug(Bug, MaybeArgNum, !.User, !IO),
-		user_confirm_bug(Bug, Response, !User, !IO)
-	;
-		Command = browse_io(ActionNum)
-	->
-		decl_bug_io_actions(Bug, MaybeIoActions),
-		browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeMark,
-			!User, !IO),
-		user_confirm_bug(Bug, Response, !User, !IO)
-	;
-		user_confirm_bug_help(!.User, !IO),
-		user_confirm_bug(Bug, Response, !User, !IO)
+		!.User ^ testing = no,
+		write_decl_bug(Bug, !.User, !IO),
+		get_command("Is this a bug? ", Command, !User, !IO),
+		(
+			Command = yes
+		->
+			Response = confirm_bug
+		;
+			Command = no
+		->
+			Response = overrule_bug
+		;
+			Command = quit
+		->
+			Response = abort_diagnosis
+		;
+			Command = browse_arg(MaybeArgNum)
+		->
+			browse_decl_bug(Bug, MaybeArgNum, !User, !IO),
+			user_confirm_bug(Bug, Response, !User, !IO)
+		;
+			Command = browse_xml_arg(MaybeArgNum)
+		->
+			browse_xml_decl_bug(Bug, MaybeArgNum, !.User, !IO),
+			user_confirm_bug(Bug, Response, !User, !IO)
+		;
+			Command = browse_io(ActionNum)
+		->
+			decl_bug_io_actions(Bug, MaybeIoActions),
+			browse_chosen_io_action(MaybeIoActions, ActionNum,
+				_MaybeMark, !User, !IO),
+			user_confirm_bug(Bug, Response, !User, !IO)
+		;
+			user_confirm_bug_help(!.User, !IO),
+			user_confirm_bug(Bug, Response, !User, !IO)
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1203,5 +1228,7 @@ set_browser_state(Browser, !User) :-
 	!:User = !.User ^ browser := Browser.
 
 get_user_output_stream(User) = User ^ outstr.
+
+set_user_testing_flag(Testing, User, User ^ testing := Testing).
 
 %-----------------------------------------------------------------------------%
