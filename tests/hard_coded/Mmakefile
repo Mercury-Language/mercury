@@ -9,7 +9,6 @@ ORDINARY_PROGS=	\
 	address_of_builtins \
 	agg \
 	any_free_unify \
-	backend_external \
 	backquoted_qualified_ops \
 	bidirectional \
 	boyer \
@@ -338,7 +337,7 @@ endif
 #
 # XXX loop_inv_test0, loop_inv_test2:
 #     These test cases test some more sophisticated cases of loop invariant
-#     optimization which are current loop_inv pass is not capable of
+#     optimization which our current loop_inv pass is not capable of
 #     optimizing.
 #     
 # XXX var_not_found -- mode error in automatically generated unification
@@ -360,14 +359,15 @@ endif
 # test cases below do.
 
 ifeq "$(findstring profdeep,$(GRADE))" ""
-	EXCEPTION_PROGS = \
+	NON_PROFDEEP_PROGS = \
 		allow_stubs \
+		backend_external \
 		dir_test \
 		test_array2d \
 		user_defined_equality \
 		write_binary
 else
-	EXCEPTION_PROGS =
+	NON_PROFDEEP_PROGS =
 endif
 
 # compare_representation does not work in the MLDS grades (e.g. hlc.gc),
@@ -407,7 +407,7 @@ endif
 # We also don't support nondet C in deep profiling grades.
 # These tests are also not supported in IL and Java grades,
 # since those back-ends don't support the C interface at all.
-# (XXX perhaps we should add analagous tests of the nondet IL, C#, MC++,
+# (XXX perhaps we should add analogous tests of the nondet IL, C#, MC++,
 # and [eventually] Java interfaces?)
 ifneq "$(filter il% java%,$(GRADE))" ""
 	NONDET_C_PROGS =
@@ -441,7 +441,7 @@ endif
 # Static linking doesn't work on Solaris in debug grades
 # ('-ldl' doesn't work with static linking).
 #
-# Static linking (aginst the system libraries) doesn't
+# Static linking (against the system libraries) doesn't
 # work on MacOS X because the static versions of the
 # libraries are not installed by default.
 #
@@ -461,7 +461,7 @@ ifneq "$(findstring java,$(GRADE))" ""
 	PROGS = $(JAVA_PROGS) $(JAVA_PASS_PROGS)
 else
 	PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
-		$(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
+		$(CLOSURE_LAYOUT_PROGS) $(NON_PROFDEEP_PROGS) \
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
 		$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
