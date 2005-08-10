@@ -1282,8 +1282,8 @@ output_aditi_load_function(void)
     printf("\n/*\n** Load the Aditi-RL code for the program into the\n");
     printf("** currently connected database.\n*/\n");
     printf("#include \"mercury_heap.h\"\n");
-    printf("#include \"v2_api_without_engine.h\"\n");
-    printf("#include \"v2_api_misc.h\"\n");
+    printf("#include \"netapi.h\"\n");
+    printf("#include \"netapi_support.h\"\n");
     printf("#include \"AditiStatus.h\"\n");
 
     /*
@@ -1337,14 +1337,14 @@ output_aditi_load_function(void)
 "        */\n"
 "        for (i = 0; i < num_rl_modules; i++) {\n"
 "            if (*rl_data_lengths[i] != 0) {\n"
-"                /* The ADITI_FUNC macro puts a prefix on the function name. */\n"
-"                status = ADITI_FUNC(api_blob_to_string)(*rl_data_lengths[i],\n"
+"                /* The ADITI_API macro puts a prefix on the function name. */\n"
+"                status = ADITI_API(api_blob_to_string)(*rl_data_lengths[i],\n"
 "                                (char *) rl_data[i], &bytecode);\n"
 "                /* The ADITI_ENUM macro puts a prefix on the enum constant. */\n"
 "                if (status != ADITI_ENUM(AditiStatus_OK)) {\n"
 "                    break;\n"
 "                }\n"
-"                status = ADITI_FUNC(module_load)(connection,\n"
+"                status = ADITI_API(module_load)(connection,\n"
 "                        transaction, bytecode);\n"
 "                free(bytecode);\n"
 "                if (status != ADITI_ENUM(AditiStatus_OK)) {\n"
