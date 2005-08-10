@@ -3,40 +3,39 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                    enable               quit
-P                    exception            r
-alias                excp                 register
-all_class_decls      f                    retry
-all_procedures       finish               return
-all_regs             flag                 s
-all_type_ctors       forward              save
-b                    g                    save_to_file
-break                gen_stack            scope
-break_print          goal_paths           scroll
-browse               goto                 set
-c                    h                    source
-cc_query             held_vars            stack
-class_decl           help                 stack_default_limit
-clear_histogram      histogram_all        stack_regs
-condition            histogram_exp        stats
-consumer             hold                 step
-context              ignore               subgoal
-continue             io_query             table
-current              level                table_io
-cut_stack            maxdepth             term_size
-d                    mindepth             trust
-dd                   mm_stacks            trusted
-dd_dd                mmc_options          type_ctor
-debug_vars           modules              unalias
-delete               next                 unhide_events
-dice                 nondet_stack         untrust
-diff                 p                    up
-disable              pneg_stack           v
-document             print                var_details
-document_category    print_optionals      vars
-down                 printlevel           view
-e                    procedures           
-echo                 query                
+?                    enable               query
+P                    exception            quit
+alias                excp                 r
+all_class_decls      f                    register
+all_procedures       finish               retry
+all_regs             flag                 return
+all_type_ctors       forward              s
+b                    g                    save
+break                gen_stack            save_to_file
+break_print          goal_paths           scope
+browse               goto                 scroll
+c                    h                    set
+cc_query             held_vars            source
+class_decl           help                 stack
+clear_histogram      histogram_all        stack_default_limit
+condition            histogram_exp        stack_regs
+consumer             hold                 stats
+context              ignore               step
+continue             io_query             subgoal
+current              level                table
+cut_stack            maxdepth             table_io
+d                    mindepth             term_size
+dd                   mm_stacks            trust
+debug_vars           mmc_options          trusted
+delete               modules              type_ctor
+dice                 next                 unalias
+diff                 nondet_stack         unhide_events
+disable              p                    untrust
+document             pneg_stack           up
+document_category    print                v
+down                 print_optionals      var_details
+e                    printlevel           vars
+echo                 procedures           view
 h              help           histogram_exp  
 held_vars      histogram_all  hold           
 var_details  vars         view         
@@ -88,10 +87,10 @@ completion.sub2.       completion.sub2.sub3.
 b completion.sub2.sub3.zabc3 
  3: + stop  interface func completion.sub2.sub3.zabc3/0-0 (det)
 mdb> 
-2d                  2delete             2document
-2dd                 2dice               2document_category
-2dd_dd              2diff               2down
+2d                  2dice               2document_category
+2dd                 2diff               2down
 2debug_vars         2disable            
+2delete             2document           
 2debug_vars  2delete      
 2delete 
  2: E stop  interface func completion.sub1.z1/0-0 (det)
