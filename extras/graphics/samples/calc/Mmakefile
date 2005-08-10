@@ -1,15 +1,14 @@
+# Specify the location of the `mercury_tcltk' package.
+MERCURY_TCLTK_DIR	= ../../mercury_tcltk
 
 # To use shared libraries under Linux you need to add these:
-MGNUCFLAGS    = --pic-reg
+MGNUCFLAGS    = --pic-reg -I$(MERCURY_TCLTK_DIR) -I/usr/include/tcl8.4
 EXTRA_MLFLAGS = -shared
 
 # This will need to be modified according to the versions of 
 # tk and tcl you are using.
-EXTRA_MLLIBS  = -ltk8.0 -ltcl8.0 -L/usr/X11R6/lib -lX11 -lXmu \
+EXTRA_MLLIBS  = -ltk8.4 -ltcl8.4 -L/usr/X11R6/lib -lX11 \
 			-lXext -lm -ldl
-
-# Specify the location of the `mercury_tcltk' package.
-MERCURY_TCLTK_DIR	= ../../mercury_tcltk
 
 # Tell mmake to use the `mercury_tcltk' library.
 VPATH 		= $(MERCURY_TCLTK_DIR):$(MMAKE_VPATH)
