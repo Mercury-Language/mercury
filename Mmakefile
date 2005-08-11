@@ -118,7 +118,8 @@ compiler/$(deps_subdir)top_level.dep: library/$(deps_subdir)$(STD_LIB_NAME).dep
 
 .PHONY: dep_slice
 dep_slice: slice/$(deps_subdir)mslice.dep \
-	slice/$(deps_subdir)mdice.dep
+	slice/$(deps_subdir)mdice.dep \
+	slice/$(deps_subdir)mtc_union.dep
 
 slice/$(deps_subdir)mslice.dep: \
 		library/$(deps_subdir)$(STD_LIB_NAME).dep \
@@ -129,6 +130,11 @@ slice/$(deps_subdir)mdice.dep: \
 		library/$(deps_subdir)$(STD_LIB_NAME).dep \
 		mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
 	+cd slice && $(SUBDIR_MMAKE) mdice.depend
+
+slice/$(deps_subdir)mtc_union.dep: \
+		library/$(deps_subdir)$(STD_LIB_NAME).dep \
+		mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
+	+cd slice && $(SUBDIR_MMAKE) mtc_union.depend
 
 .PHONY: dep_profiler
 dep_profiler: profiler/$(deps_subdir)mercury_profile.dep

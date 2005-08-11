@@ -22,7 +22,6 @@
 
 :- import_module io.
 :- import_module map.
-:- import_module set.
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%
@@ -56,8 +55,7 @@
     % Read the slice(s) from Source and File.
     %
 :- pred read_slice(slice_source::in, string::in,
-    maybe_error(pair(set(trace_count_file_type), slice))::out,
-    io::di, io::uo) is det.
+    maybe_error(slice)::out, io::di, io::uo) is det.
 
     % read_slice_to_string(File, SortStr, N, Module, SliceStr, Problem, !IO):
     %
@@ -163,6 +161,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
+:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -173,17 +172,13 @@
 % mechanism for reading in dices below.
 
 read_slice(Source, File, Result, !IO) :-
-    read_trace_counts_source(Source, File, ReadResult, !IO),
+    read_trace_counts_source(no, Source, File, ReadResult, !IO),
     (
-        ReadResult = list_ok(AssocList),
-        assoc_list__values(AssocList, TraceCounts),
-        assoc_list__keys(AssocList, FileTypeList),
-        set__list_to_set(FileTypeList, FileTypes),
-        list.foldl(slice_merge_trace_counts, TraceCounts,
-            map.init, SliceProcMap),
-        TotalTests = length(TraceCounts),
-        Slice = slice(TotalTests, SliceProcMap),
-        Result = ok(FileTypes - Slice)
+        ReadResult = list_ok(FileType, TraceCounts),
+        slice_merge_trace_counts(TraceCounts, map.init, SliceProcMap),
+        NumTests = num_tests_for_file_type(FileType),
+        Slice = slice(NumTests, SliceProcMap),
+        Result = ok(Slice)
     ;
         ReadResult = list_error_message(Problem),
         Result = error(Problem)
@@ -197,43 +192,46 @@ read_slice(Source, File, Result, !IO) :-
 slice_merge_trace_counts(TraceCounts, !SliceProcMap) :-
     map.foldl(slice_merge_proc_trace_counts, TraceCounts, !SliceProcMap).
 
-:- pred slice_merge_proc_trace_counts(proc_label::in, proc_trace_counts::in,
-    slice_proc_map::in, slice_proc_map::out) is det.
+:- pred slice_merge_proc_trace_counts(proc_label_and_filename::in, 
+    proc_trace_counts::in, slice_proc_map::in, slice_proc_map::out) is det.
 
-slice_merge_proc_trace_counts(ProcLabel, ProcTraceCounts, !SliceProcMap) :-
+slice_merge_proc_trace_counts(ProcLabelAndFile, ProcTraceCounts, 
+        !SliceProcMap) :-
+    ProcLabelAndFile = proc_label_and_filename(ProcLabel, FileName),
     ( map.search(!.SliceProcMap, ProcLabel, FoundProcSlice) ->
-        map.foldl(slice_merge_path_port, ProcTraceCounts,
+        map.foldl(slice_merge_path_port(FileName), ProcTraceCounts,
             FoundProcSlice, MergedProcSlice),
         svmap.det_update(ProcLabel, MergedProcSlice, !SliceProcMap)
     ;
-        map.foldl(slice_merge_path_port, ProcTraceCounts,
+        map.foldl(slice_merge_path_port(FileName), ProcTraceCounts,
             map.init, MergedProcSlice),
         svmap.det_insert(ProcLabel, MergedProcSlice, !SliceProcMap)
     ).
 
-:- pred slice_merge_path_port(path_port::in, context_and_count::in,
+:- pred slice_merge_path_port(string::in, path_port::in, line_no_and_count::in,
     proc_slice::in, proc_slice::out) is det.
 
-slice_merge_path_port(PathPort, ContextCount, !ProcSlice) :-
+slice_merge_path_port(FileName, PathPort, LineNoAndCount, !ProcSlice) :-
     (
-        map.transform_value(slice_add_trace_count(ContextCount), PathPort,
-            !.ProcSlice, UpdatedProcSlice)
+        map.transform_value(slice_add_trace_count(LineNoAndCount), 
+            PathPort, !.ProcSlice, UpdatedProcSlice)
     ->
         !:ProcSlice = UpdatedProcSlice
     ;
-        ContextCount = context_and_count(FileName, LineNumber, Count),
-        ExecCount = slice_exec_count(FileName, LineNumber, Count, 1),
-        svmap.det_insert(PathPort, ExecCount, !ProcSlice)
+        LineNoAndCount = line_no_and_count(LineNumber, ExecCount, NumTests),
+        SliceExecCount = slice_exec_count(FileName, LineNumber, ExecCount,  
+            NumTests),
+        svmap.det_insert(PathPort, SliceExecCount, !ProcSlice)
     ).
 
-:- pred slice_add_trace_count(context_and_count::in,
+:- pred slice_add_trace_count(line_no_and_count::in,
     slice_exec_count::in, slice_exec_count::out) is det.
 
-slice_add_trace_count(ContextCount, ExecCounts0, ExecCounts) :-
-    ContextCount = context_and_count(_FileName, _LineNumber, Count),
+slice_add_trace_count(LineNoAndCount, ExecCounts0, ExecCounts) :-
+    LineNoAndCount = line_no_and_count(_LineNumber, ExecCount, NumTests),
     ExecCounts0 = slice_exec_count(FileName, LineNumber, Exec, Tests),
-    ExecCounts = slice_exec_count(FileName, LineNumber, Exec + Count,
-        Tests + 1).
+    ExecCounts = slice_exec_count(FileName, LineNumber, Exec + ExecCount, 
+        Tests + NumTests).
 
 %-----------------------------------------------------------------------------%
 %
@@ -241,20 +239,19 @@ slice_add_trace_count(ContextCount, ExecCounts0, ExecCounts) :-
 % mechanism for reading in slices above.
 
 read_dice(PassSource, PassFile, FailSource, FailFile, Result, !IO) :-
-    read_trace_counts_source(PassSource, PassFile, ReadPassResult, !IO),
+    read_trace_counts_source(no, PassSource, PassFile, ReadPassResult, !IO),
     (
-        ReadPassResult = list_ok(PassAssocList),
-        assoc_list__values(PassAssocList, PassTraceCountsList),
-        read_trace_counts_source(FailSource, FailFile, ReadFailResult, !IO),
+        ReadPassResult = list_ok(PassFileType, PassTraceCounts),
+        read_trace_counts_source(no, FailSource, FailFile, ReadFailResult, 
+            !IO),
         (
-            ReadFailResult = list_ok(FailAssocList),
-            assoc_list__values(FailAssocList, FailTraceCountsList),
-            list.foldl(dice_merge_trace_counts(pass), PassTraceCountsList,
-                map.init, PassDiceProcMap),
-            list.foldl(dice_merge_trace_counts(fail), FailTraceCountsList,
+            ReadFailResult = list_ok(FailFileType, FailTraceCounts),
+            dice_merge_trace_counts(pass, PassTraceCounts, map.init,
+                PassDiceProcMap),
+            dice_merge_trace_counts(fail, FailTraceCounts,
                 PassDiceProcMap, DiceProcMap),
-            TotalPassTests = length(PassTraceCountsList),
-            TotalFailTests = length(FailTraceCountsList),
+            TotalPassTests = num_tests_for_file_type(PassFileType),
+            TotalFailTests = num_tests_for_file_type(FailFileType),
             Dice = dice(TotalPassTests, TotalFailTests, DiceProcMap),
             Result = ok(Dice)
         ;
@@ -278,56 +275,61 @@ read_dice(PassSource, PassFile, FailSource, FailFile, Result, !IO) :-
 dice_merge_trace_counts(Kind, TraceCounts, !DiceProcMap) :-
     map.foldl(dice_merge_proc_trace_counts(Kind), TraceCounts, !DiceProcMap).
 
-:- pred dice_merge_proc_trace_counts(trace_counts_kind::in, proc_label::in,
-    proc_trace_counts::in, dice_proc_map::in, dice_proc_map::out) is det.
+:- pred dice_merge_proc_trace_counts(trace_counts_kind::in, 
+    proc_label_and_filename::in, proc_trace_counts::in, dice_proc_map::in,
+    dice_proc_map::out) is det.
 
-dice_merge_proc_trace_counts(Kind, ProcLabel, ProcTraceCounts, !DiceProcMap) :-
+dice_merge_proc_trace_counts(Kind, ProcLabelAndFile, ProcTraceCounts, 
+        !DiceProcMap) :-
+    ProcLabelAndFile = proc_label_and_filename(ProcLabel, FileName),
     ( map.search(!.DiceProcMap, ProcLabel, FoundProcDice) ->
-        map.foldl(dice_merge_path_port(Kind), ProcTraceCounts, FoundProcDice,
-            MergedProcDice),
+        map.foldl(dice_merge_path_port(FileName, Kind), ProcTraceCounts, 
+            FoundProcDice, MergedProcDice),
         svmap.det_update(ProcLabel, MergedProcDice, !DiceProcMap)
     ;
-        map.foldl(dice_merge_path_port(Kind), ProcTraceCounts,
+        map.foldl(dice_merge_path_port(FileName, Kind), ProcTraceCounts,
             map.init, MergedProcDice),
         svmap.det_insert(ProcLabel, MergedProcDice, !DiceProcMap)
     ).
 
-:- pred dice_merge_path_port(trace_counts_kind::in, path_port::in,
-    context_and_count::in, proc_dice::in, proc_dice::out) is det.
+:- pred dice_merge_path_port(string::in, trace_counts_kind::in, path_port::in,
+    line_no_and_count::in, proc_dice::in, proc_dice::out) is det.
 
-dice_merge_path_port(Kind, PathPort, ContextCount, !ProcDice) :-
+dice_merge_path_port(FileName, Kind, PathPort, LineNoAndCount, !ProcDice) :-
     (
-        map.transform_value(dice_add_trace_count(Kind, ContextCount), PathPort,
-            !.ProcDice, UpdatedProcDice)
+        map.transform_value(dice_add_trace_count(Kind, LineNoAndCount), 
+            PathPort, !.ProcDice, UpdatedProcDice)
     ->
         !:ProcDice = UpdatedProcDice
     ;
-        ContextCount = context_and_count(FileName, LineNumber, Count),
+        LineNoAndCount = line_no_and_count(LineNumber, ExecCount, NumTests),
         (
             Kind = pass,
-            InitCount = dice_exec_count(FileName, LineNumber, Count, 1, 0, 0)
+            InitCount = dice_exec_count(FileName, LineNumber, 
+                ExecCount, NumTests, 0, 0)
         ;
             Kind = fail,
-            InitCount = dice_exec_count(FileName, LineNumber, 0, 0, Count, 1)
+            InitCount = dice_exec_count(FileName, LineNumber, 0, 0, 
+                ExecCount, NumTests)
         ),
         svmap.det_insert(PathPort, InitCount, !ProcDice)
     ).
 
-:- pred dice_add_trace_count(trace_counts_kind::in, context_and_count::in,
+:- pred dice_add_trace_count(trace_counts_kind::in, line_no_and_count::in,
     dice_exec_count::in, dice_exec_count::out) is det.
 
-dice_add_trace_count(pass, ContextCount, ExecCounts0, ExecCounts) :-
-    ContextCount = context_and_count(_FileName, _LineNumber, Count),
+dice_add_trace_count(pass, LineNoAndCount, ExecCounts0, ExecCounts) :-
+    LineNoAndCount = line_no_and_count(_LineNumber, ExecCount, NumTests),
+    ExecCounts0 = dice_exec_count(FileName, LineNumber,
+        PassExec, PassTests, FailExec, FailTests),
+    ExecCounts = dice_exec_count(FileName, LineNumber,
+        PassExec + ExecCount, PassTests + NumTests, FailExec, FailTests).
+dice_add_trace_count(fail, LineNoAndCount, ExecCounts0, ExecCounts) :-
+    LineNoAndCount = line_no_and_count(_LineNumber, ExecCount, NumTests),
     ExecCounts0 = dice_exec_count(FileName, LineNumber,
         PassExec, PassTests, FailExec, FailTests),
     ExecCounts  = dice_exec_count(FileName, LineNumber,
-        PassExec + Count, PassTests + 1, FailExec, FailTests).
-dice_add_trace_count(fail, ContextCount, ExecCounts0, ExecCounts) :-
-    ContextCount = context_and_count(_FileName, _LineNumber, Count),
-    ExecCounts0 = dice_exec_count(FileName, LineNumber,
-        PassExec, PassTests, FailExec, FailTests),
-    ExecCounts  = dice_exec_count(FileName, LineNumber,
-        PassExec, PassTests, FailExec + Count, FailTests + 1).
+        PassExec, PassTests, FailExec + ExecCount, FailTests + NumTests).
 
 %-----------------------------------------------------------------------------%
 %
@@ -341,7 +343,7 @@ read_slice_to_string(File, SortStr0, N, Module, SliceStr, Problem, !IO) :-
     ( slice_sort_string_is_valid(SortStr0) ->
         read_slice(try_single_first, File, ReadSliceResult, !IO),
         (
-            ReadSliceResult = ok(_ - Slice),
+            ReadSliceResult = ok(Slice),
             Slice = slice(TotalTests, SliceProcMap),
             LabelCounts = slice_to_label_counts(SliceProcMap),
             ( Module \= "" ->

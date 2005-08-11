@@ -157,13 +157,10 @@ tuple_arguments(!ModuleInfo, !IO) :-
 		report_warning("Warning: --tuple requires " ++
 			"--tuple-trace-counts-file to work.\n", !IO)
 	;
-		read_trace_counts_source(try_single_first, TraceCountsFile,
+		read_trace_counts_source(no, try_single_first, TraceCountsFile,
 			Result, !IO),
 		(
-			Result = list_ok(AssocList),
-			assoc_list__values(AssocList, TraceCountsList),
-			summarize_trace_counts_list(TraceCountsList,
-				TraceCounts),
+			Result = list_ok(_, TraceCounts),
 			tuple_arguments_2(!ModuleInfo, TraceCounts, !IO)
 		;
 			Result = list_error_message(Message),
@@ -965,7 +962,10 @@ count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
 			pred_info_name(PredInfo),
 			pred_info_orig_arity(PredInfo),
 			proc_id_to_int(ProcId)),
-	( get_proc_counts(TraceCounts, ProcLabel, yes(ProcCounts)) ->
+	pred_info_context(PredInfo, Context),
+	Context = context(FileName, _),
+	ProcLabelAndFile = proc_label_and_filename(ProcLabel, FileName),
+	( get_proc_counts(TraceCounts, ProcLabelAndFile, yes(ProcCounts)) ->
 		count_load_stores_in_proc(count_info(PredProcId, ProcInfo,
 			ModuleInfo, ProcCounts, TuningParams, TuplingScheme),
 			ProcLoads, ProcStores),
@@ -1865,11 +1865,11 @@ extract_tupled_args_from_list_2([H | T], Num, Indices, NotSelected) :-
 :- type mdbcomp_goal_path
 	== mdbcomp__program_representation__goal_path.
 
-:- pred get_proc_counts(trace_counts::in, proc_label::in,
+:- pred get_proc_counts(trace_counts::in, proc_label_and_filename::in,
 	maybe(proc_trace_counts)::out) is det.
 
-get_proc_counts(TraceCounts, ProcLabel, MaybeProcCounts) :-
-	( map__search(TraceCounts, ProcLabel, ProcCounts) ->
+get_proc_counts(TraceCounts, ProcLabelAndFile, MaybeProcCounts) :-
+	( map__search(TraceCounts, ProcLabelAndFile, ProcCounts) ->
 		MaybeProcCounts = yes(ProcCounts)
 	;
 		MaybeProcCounts = no
@@ -1954,11 +1954,12 @@ get_switch_total_count(ProcCounts, MdbGoalPath, Total) :-
 		ProcCounts, 0, Total).
 
 :- pred get_switch_total_count_2(mdbcomp_goal_path::in, path_port::in,
-	context_and_count::in, int::in, int::out) is det.
+	line_no_and_count::in, int::in, int::out) is det.
 
-get_switch_total_count_2(SwitchGoalPath, PathPort, ContextCount, !TotalAcc) :-
+get_switch_total_count_2(SwitchGoalPath, PathPort, LineNoAndCount, 
+		!TotalAcc) :-
 	( case_in_switch(SwitchGoalPath, PathPort) ->
-		!:TotalAcc = !.TotalAcc + ContextCount ^ exec_count
+		!:TotalAcc = !.TotalAcc + LineNoAndCount ^ exec_count
 	;
 		true
 	).
