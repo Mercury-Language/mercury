@@ -576,9 +576,9 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 			% us most of what we want w.r.t. solver types.
 		not (
 			inst_is_free(ModuleInfo0, InstOfX),
-			member(InstArg, InstArgs),
+			list.member(InstArg, InstArgs),
 			inst_is_free(ModuleInfo0, InstArg),
-			member(ArgVar, ArgVars0),
+			list.member(ArgVar, ArgVars0),
 			ArgType = VarTypes ^ elem(ArgVar),
 			type_is_solver_type(ModuleInfo0, ArgType)
 		),
