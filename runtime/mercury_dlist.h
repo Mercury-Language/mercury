@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997,2000, 2004 The University of Melbourne.
+** Copyright (C) 1995-1997,2000, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -27,6 +27,84 @@ struct	MR_Dlist_Struct {
 	MR_Dlist	*MR_dlist_prev;
 	MR_Dlist	*MR_dlist_next;
 };
+
+/*
+** Make an empty list.
+*/
+
+extern	MR_Dlist	*MR_dlist_makelist0(void);
+
+/*
+** Make a list with "data" as its only element.
+*/
+
+extern	MR_Dlist	*MR_dlist_makelist(const void *data);
+
+/*
+** Add "data" to the head of "list".
+*/
+
+extern	MR_Dlist	*MR_dlist_addhead(MR_Dlist *list, const void *data);
+
+/*
+** Add "data" to the tail of "list".
+*/
+
+extern	MR_Dlist	*MR_dlist_addtail(MR_Dlist *list, const void *data);
+
+/*
+** Destructively append list2 to list1. Since the header of list2 is not
+** meaningful after the operation, it is freed.
+*/
+
+extern	MR_Dlist	*MR_dlist_addlist(MR_Dlist *list1, MR_Dlist *list2);
+
+/*
+** (Semi-) nondestructively append list2 to list1. The header of list1 is
+** indeed altered, but only the data pointers of list2 are used.
+*/
+
+extern	MR_Dlist	*MR_dlist_addndlist(MR_Dlist *list1, MR_Dlist *list2);
+
+/*
+** Insert "data" into "list" before the element given by "where".
+*/
+
+extern	void		MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where,
+				const void *data);
+
+/*
+** Insert "data" into "list" after the element given by "where".
+*/
+
+extern	void		MR_dlist_insert_after(MR_Dlist *list, MR_Dlist *where,
+				const void *data);
+
+/*
+** Return the length of "list".
+*/
+
+extern	int		MR_dlist_maybe_null_length(const MR_Dlist *list);
+
+/*
+** Delete the node given by "item" from its linked list "list". Free this node,
+** and, if "func" is non-NULL, use it to free the data item in that node.
+*/
+
+extern	void		MR_dlist_delete(MR_Dlist *list, MR_Dlist *item,
+				void (* func)(const void *));
+
+/*
+** Free the whole list, including the header. If func is non-NULL, then use it
+** to free the data items pointed to by the list nodes.
+*/
+
+extern	void		MR_dlist_oldlist(MR_Dlist *list,
+				void (* func)(const void *));
+
+/*
+** Macros to make programming with this module easier.
+*/
 
 #define	MR_dlist_next(ptr)		(ptr)->MR_dlist_next
 #define	MR_dlist_prev(ptr)		(ptr)->MR_dlist_prev
@@ -65,20 +143,5 @@ struct	MR_Dlist_Struct {
 	)
 #define	MR_end_dlist(p, l)						\
 	((p) == (l) || (p) == NULL)
-
-extern	MR_Dlist	*MR_dlist_makelist0(void);
-extern	MR_Dlist	*MR_dlist_makelist(const void *);
-extern	MR_Dlist	*MR_dlist_addhead(MR_Dlist *, const void *);
-extern	MR_Dlist	*MR_dlist_addtail(MR_Dlist *, const void *);
-extern	MR_Dlist	*MR_dlist_addlist(MR_Dlist *, MR_Dlist *);
-extern	MR_Dlist	*MR_dlist_addndlist(MR_Dlist *, MR_Dlist *);
-extern	void		MR_dlist_insert_before(MR_Dlist *, MR_Dlist *,
-				const void *);
-extern	void		MR_dlist_insert_after(MR_Dlist *, MR_Dlist *,
-				const void *);
-extern	int		MR_dlist_maybe_null_length(const MR_Dlist *);
-extern	void		MR_dlist_delete(MR_Dlist *, MR_Dlist *,
-				void (*)(const void *));
-extern	void		MR_dlist_oldlist(MR_Dlist *, void (*)(const void *));
 
 #endif /* not MERCURY_DLIST_H */

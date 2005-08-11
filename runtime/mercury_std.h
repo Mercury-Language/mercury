@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-2004 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -77,7 +77,7 @@ typedef	char		MR_small_bool;
 #define	MR_isalnum(c)		isalnum((unsigned char) (c))
 #define	MR_isdigit(c)		isdigit((unsigned char) (c))
 #define	MR_isspace(c)		isspace((unsigned char) (c))
-#define	MR_isalnumunder(c)	(isalnum((unsigned char) (c)) || c == '_')
+#define	MR_isalnumunder(c)	(isalnum((unsigned char) (c)) || (c) == '_')
 
 #define MR_streq(s1, s2)	(strcmp(s1, s2) == 0)
 #define MR_strdiff(s1, s2)	(strcmp(s1, s2) != 0)

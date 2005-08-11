@@ -1,4 +1,3 @@
-/*---------------------------------------------------------------------------*/
 /*
 ** vim:sw=4 ts=4 expandtab
 */
@@ -24,6 +23,18 @@
 #include    "mercury_conf.h"
 #include    "mercury_std.h"
 #include    "getopt.h"
+#include    "mercury_array_macros.h"
+
+/*
+** mercury_array_macros.h uses the MR_NEW_ARRAY and MR_RESIZE_ARRAY macros.
+*/
+
+#define MR_NEW_ARRAY(type, num) \
+        ((type *) malloc((num) * sizeof(type)))
+
+#define MR_RESIZE_ARRAY(ptr, type, num) \
+        ((type *) realloc((ptr), (num) * sizeof(type)))
+
 
 #include    <stdio.h>
 #include    <stdlib.h>
@@ -66,7 +77,8 @@ typedef enum
     PURPOSE_TYPE_TABLE = 1,
     PURPOSE_DEBUGGER = 2,
     PURPOSE_COMPLEXITY = 3,
-    PURPOSE_PROC_STATIC = 4
+    PURPOSE_PROC_STATIC = 4,
+    PURPOSE_REQ_INIT = 5
 } Purpose;
 
 const char  *main_func_name[] =
@@ -75,7 +87,8 @@ const char  *main_func_name[] =
     "init_modules_type_tables",
     "init_modules_debugger",
     "init_modules_complexity_procs",
-    "write_out_proc_statics"
+    "write_out_proc_statics",
+    "init_modules_required",
 };
 
 const char  *module_suffix[] =
@@ -84,7 +97,8 @@ const char  *module_suffix[] =
     "init_type_tables",
     "init_debugger",
     "init_complexity_procs",
-    "write_out_proc_statics"
+    "write_out_proc_statics",
+    "",
 };
 
 const char  *init_suffix[] =
@@ -102,7 +116,8 @@ const char  *bunch_function_guard[] =
     NULL,
     if_need_to_init,
     if_need_term_size,
-    if_need_deep_prof
+    if_need_deep_prof,
+    NULL
 };
 
 const char  *main_func_guard[] =
@@ -111,7 +126,8 @@ const char  *main_func_guard[] =
     NULL,
     NULL,
     if_need_term_size,
-    if_need_deep_prof
+    if_need_deep_prof,
+    NULL,
 };
 
 const char  *main_func_body_guard[] =
@@ -119,6 +135,7 @@ const char  *main_func_body_guard[] =
     if_need_to_init,
     NULL,
     if_need_to_init,
+    NULL,
     NULL,
     NULL
 };
@@ -129,7 +146,8 @@ const char  *main_func_arg_defn[] =
     "void",
     "void",
     "void",
-    "FILE *fp"
+    "FILE *fp",
+    "void"
 };
 
 const char  *main_func_arg_decl[] =
@@ -138,7 +156,8 @@ const char  *main_func_arg_decl[] =
     "void",
     "void",
     "void",
-    "FILE *"
+    "FILE *",
+    "void"
 };
 
 const char  *main_func_arg[] =
@@ -147,7 +166,8 @@ const char  *main_func_arg[] =
     "",
     "",
     "",
-    "fp"
+    "fp",
+    ""
 };
 
 /* --- macros--- */
@@ -166,8 +186,51 @@ const char  *main_func_arg[] =
 
 static const char *MR_progname = NULL;
 
-    /* List of names of Aditi-RL code constants. */
-static String_List *rl_data = NULL;
+/*
+** List of names of the modules to call all the usual initialization
+** functions for: "init", "init_type_tables", "init_debugger" and (with
+** the right #defines) "init_complexity_procs" and "write_out_proc_statics".
+*/
+
+static const char   **std_modules = NULL;
+static int          std_module_max = 0;
+static int          std_module_next = 0;
+#define MR_INIT_STD_MODULE_SIZE     100
+
+/*
+** List of names of handwritten modules, for which we call a limited set
+** of initialization functions: "init", "init_type_tables" and (with
+** the right #defines) "write_out_proc_statics". We don't call
+** "init_debugger" functions since handwritten modules don't have module
+** layouts, and we don't generate "init_complexity_procs" since they have
+** no Mercury code to measure the complexity of.
+*/
+
+static const char   **special_modules = NULL;
+static int          special_module_max = 0;
+static int          special_module_next = 0;
+#define MR_INIT_SPECIAL_MODULE_SIZE     10
+
+/*
+** The concatenation of std_modules and special_modules; created with the
+** right size (std_module_next + special_module_next).
+*/
+
+static const char   **std_and_special_modules = NULL;
+
+/*
+** List of names of modules that have initialization functions that should
+** always be run. This is currently used to initialize the states of constraint
+** solvers. We call an "init_required" function for each such module.
+*/
+
+static const char   **req_modules = NULL;
+static int          req_module_max = 0;
+static int          req_module_next = 0;
+#define MR_INIT_REQ_MODULE_SIZE     10
+
+/* List of names of Aditi-RL code constants. */
+static String_List  *rl_data = NULL;
 
 /* options and arguments, set by parse_options() */
 static const char   *output_file_name = NULL;
@@ -445,22 +508,22 @@ static  char    *read_line(const char *filename, FILE *fp, int max);
 static  void    output_complexity_proc(const char *procname);
 static  void    output_complexity_experiment_table(const char *filename);
 static  void    output_headers(void);
-static  int     output_sub_init_functions(Purpose purpose);
+static  int     output_sub_init_functions(Purpose purpose,
+                    const char **func_names, int num_func_names);
 static  void    output_main_init_function(Purpose purpose, int num_bunches);
 static  void    output_aditi_load_function(void);
 static  void    output_main(void);
-static  void    process_file(const char *filename, int *num_bunches_ptr,
-                    int *num_calls_in_cur_bunch_ptr, Purpose purpose);
-static  void    process_c_file(const char *filename, int *num_bunches_ptr,
-                    int *num_calls_in_cur_bunch_ptr, Purpose purpose);
-static  void    process_init_file(const char *filename, int *num_bunches_ptr,
-                    int *num_calls_in_cur_bunch_ptr, Purpose purpose);
+static  void    process_file(const char *filename);
+static  void    process_c_file(const char *filename);
+static  void    process_init_file(const char *filename);
 static  void    output_init_function(const char *func_name,
                     int *num_bunches_ptr, int *num_calls_in_cur_bunch_ptr,
-                    Purpose purpose, MR_bool special_module);
+                    Purpose purpose);
 static  void    add_rl_data(char *data);
 static  int     get_line(FILE *file, char *line, int line_max);
 static  void    *checked_malloc(size_t size);
+static  char    *checked_strdup(const char *str);
+static  char    *checked_strdupcat(const char *str, const char *suffix);
 
 /*---------------------------------------------------------------------------*/
 
@@ -496,7 +559,9 @@ strerror(int errnum)
 int
 main(int argc, char **argv)
 {
+    int filenum;
     int num_bunches;
+    int i;
 
     MR_progname = argv[0];
 
@@ -511,20 +576,44 @@ main(int argc, char **argv)
         printf("#define MR_MAY_NEED_INITIALIZATION\n\n");
     }
 
-    num_bunches = output_sub_init_functions(PURPOSE_INIT);
+    for (filenum = 0; filenum < num_files; filenum++) {
+        process_file(files[filenum]);
+    }
+
+    std_and_special_modules = MR_NEW_ARRAY(const char *,
+        std_module_next + special_module_next);
+
+    for (i = 0; i < std_module_next; i++) {
+        std_and_special_modules[i] = std_modules[i];
+    }
+
+    for (i = 0; i < special_module_next; i++) {
+        std_and_special_modules[std_module_next + i] = special_modules[i];
+    }
+
+    num_bunches = output_sub_init_functions(PURPOSE_INIT,
+        std_and_special_modules, std_module_next + special_module_next);
     output_main_init_function(PURPOSE_INIT, num_bunches);
 
-    num_bunches = output_sub_init_functions(PURPOSE_TYPE_TABLE);
+    num_bunches = output_sub_init_functions(PURPOSE_TYPE_TABLE,
+        std_and_special_modules, std_module_next + special_module_next);
     output_main_init_function(PURPOSE_TYPE_TABLE, num_bunches);
 
-    num_bunches = output_sub_init_functions(PURPOSE_DEBUGGER);
+    num_bunches = output_sub_init_functions(PURPOSE_DEBUGGER,
+        std_modules, std_module_next);
     output_main_init_function(PURPOSE_DEBUGGER, num_bunches);
 
-    num_bunches = output_sub_init_functions(PURPOSE_COMPLEXITY);
+    num_bunches = output_sub_init_functions(PURPOSE_COMPLEXITY,
+        std_modules, std_module_next);
     output_main_init_function(PURPOSE_COMPLEXITY, num_bunches);
 
-    num_bunches = output_sub_init_functions(PURPOSE_PROC_STATIC);
+    num_bunches = output_sub_init_functions(PURPOSE_PROC_STATIC,
+        std_and_special_modules, std_module_next + special_module_next);
     output_main_init_function(PURPOSE_PROC_STATIC, num_bunches);
+
+    num_bunches = output_sub_init_functions(PURPOSE_REQ_INIT,
+        req_modules, req_module_next);
+    output_main_init_function(PURPOSE_REQ_INIT, num_bunches);
 
     if (aditi) {
         output_aditi_load_function();
@@ -898,9 +987,10 @@ output_headers(void)
 }
 
 static int
-output_sub_init_functions(Purpose purpose)
+output_sub_init_functions(Purpose purpose, const char **func_names,
+    int num_func_names)
 {
-    int filenum;
+    int funcnum;
     int num_bunches;
     int num_calls_in_cur_bunch;
 
@@ -916,8 +1006,8 @@ output_sub_init_functions(Purpose purpose)
 
     num_bunches = 0;
     num_calls_in_cur_bunch = 0;
-    for (filenum = 0; filenum < num_files; filenum++) {
-        process_file(files[filenum], &num_bunches,
+    for (funcnum = 0; funcnum < num_func_names; funcnum++) {
+        output_init_function(func_names[funcnum], &num_bunches,
             &num_calls_in_cur_bunch, purpose);
     }
 
@@ -1026,23 +1116,19 @@ output_main(void)
 /*---------------------------------------------------------------------------*/
 
 static void
-process_file(const char *filename, int *num_bunches_ptr,
-    int *num_calls_in_cur_bunch_ptr, Purpose purpose)
+process_file(const char *filename)
 {
     int len;
 
     len = strlen(filename);
     if (len >= 2 && strcmp(filename + len - 2, ".c") == 0) {
         if (c_files_contain_extra_inits) {
-            process_init_file(filename, num_bunches_ptr,
-                num_calls_in_cur_bunch_ptr, purpose);
+            process_init_file(filename);
         } else {
-            process_c_file(filename, num_bunches_ptr,
-                num_calls_in_cur_bunch_ptr, purpose);
+            process_c_file(filename);
         }
     } else if (len >= 5 && strcmp(filename + len - 5, ".init") == 0) {
-        process_init_file(filename, num_bunches_ptr,
-            num_calls_in_cur_bunch_ptr, purpose);
+        process_init_file(filename);
     } else {
         fprintf(stderr,
             "%s: filename `%s' must end in `.c' or `.init'\n",
@@ -1052,8 +1138,7 @@ process_file(const char *filename, int *num_bunches_ptr,
 }
 
 static void
-process_c_file(const char *filename, int *num_bunches_ptr,
-    int *num_calls_in_cur_bunch_ptr, Purpose purpose)
+process_c_file(const char *filename)
 {
     char    func_name[1000];
     char    *position;
@@ -1114,8 +1199,9 @@ process_c_file(const char *filename, int *num_bunches_ptr,
     */
     strcat(func_name, "__");
 
-    output_init_function(func_name, num_bunches_ptr,
-        num_calls_in_cur_bunch_ptr, purpose, MR_FALSE);
+    MR_ensure_room_for_next(std_module, const char *, MR_INIT_STD_MODULE_SIZE);
+    std_modules[std_module_next] = checked_strdup(func_name);
+    std_module_next++;
 
     if (aditi) {
         char    *rl_data_name;
@@ -1133,13 +1219,14 @@ process_c_file(const char *filename, int *num_bunches_ptr,
 }
 
 static void
-process_init_file(const char *filename, int *num_bunches_ptr,
-    int *num_calls_in_cur_bunch_ptr, Purpose purpose)
+process_init_file(const char *filename)
 {
     const char * const  init_str = "INIT ";
+    const char * const  reqinit_str = "REQUIRED_INIT ";
     const char * const  endinit_str = "ENDINIT ";
     const char * const  aditi_init_str = "ADITI_DATA ";
     const int           init_strlen = strlen(init_str);
+    const int           reqinit_strlen = strlen(reqinit_str);
     const int           endinit_strlen = strlen(endinit_str);
     const int           aditi_init_strlen = strlen(aditi_init_str);
     char                line[MAXLINE];
@@ -1161,7 +1248,7 @@ process_init_file(const char *filename, int *num_bunches_ptr,
             int     j;
             MR_bool special;
 
-            for (j = init_strlen; MR_isalnum(line[j]) || line[j] == '_'; j++) {
+            for (j = init_strlen; MR_isalnumunder(line[j]); j++) {
                 /* VOID */
             }
             line[j] = '\0';
@@ -1170,22 +1257,37 @@ process_init_file(const char *filename, int *num_bunches_ptr,
             func_name_len = strlen(func_name);
             if (MR_strneq(&func_name[func_name_len - 4], "init", 4)) {
                 func_name[func_name_len - 4] = '\0';
-                special = MR_FALSE;
+                MR_ensure_room_for_next(std_module, const char *,
+                    MR_INIT_STD_MODULE_SIZE);
+                std_modules[std_module_next] = checked_strdup(func_name);
+                std_module_next++;
             } else {
-                special = MR_TRUE;
+                MR_ensure_room_for_next(special_module, const char *,
+                    MR_INIT_SPECIAL_MODULE_SIZE);
+                special_modules[special_module_next] =
+                    checked_strdupcat(func_name, "_");
+                special_module_next++;
             }
+        } else if (strncmp(line, reqinit_str, reqinit_strlen) == 0) {
+            char    *func_name;
+            int     j;
 
-            output_init_function(func_name, num_bunches_ptr,
-                num_calls_in_cur_bunch_ptr, purpose, special);
+            for (j = reqinit_strlen; MR_isalnumunder(line[j]); j++) {
+                /* VOID */
+            }
+            line[j] = '\0';
+
+            func_name = line + reqinit_strlen;
+            MR_ensure_room_for_next(req_module, const char *,
+                MR_INIT_REQ_MODULE_SIZE);
+            req_modules[req_module_next] = checked_strdup(func_name);
+            req_module_next++;
         } else if (aditi &&
             strncmp(line, aditi_init_str, aditi_init_strlen) == 0)
         {
             int j;
 
-            for (j = aditi_init_strlen;
-                MR_isalnum(line[j]) || line[j] == '_';
-                j++)
-            {
+            for (j = aditi_init_strlen; MR_isalnumunder(line[j]); j++) {
                 /* VOID */
             }
             line[j] = '\0';
@@ -1216,30 +1318,8 @@ process_init_file(const char *filename, int *num_bunches_ptr,
 
 static void
 output_init_function(const char *func_name, int *num_bunches_ptr,
-    int *num_calls_in_cur_bunch_ptr, Purpose purpose, MR_bool special_module)
+    int *num_calls_in_cur_bunch_ptr, Purpose purpose)
 {
-    if (purpose == PURPOSE_DEBUGGER) {
-        if (special_module) {
-            /*
-            ** This is a handwritten "module" which doesn't have
-            ** a module layout to register.
-            */
-
-            return;
-        }
-    }
-
-    if (purpose == PURPOSE_COMPLEXITY) {
-        if (special_module) {
-            /*
-            ** This is a handwritten "module" whose code
-            ** cannot participate in complexity experiments.
-            */
-
-            return;
-        }
-    }
-
     if (*num_calls_in_cur_bunch_ptr >= maxcalls) {
         printf("}\n\n");
 
@@ -1253,12 +1333,10 @@ output_init_function(const char *func_name, int *num_bunches_ptr,
 
     (*num_calls_in_cur_bunch_ptr)++;
 
-    printf("\t{ extern void %s%s%s(%s);\n",
-        func_name, special_module ? "_" : "", module_suffix[purpose],
-        main_func_arg_decl[purpose]);
-    printf("\t  %s%s%s(%s); }\n",
-        func_name, special_module ? "_" : "", module_suffix[purpose],
-        main_func_arg[purpose]);
+    printf("\t{ extern void %s%s(%s);\n",
+        func_name, module_suffix[purpose], main_func_arg_decl[purpose]);
+    printf("\t  %s%s(%s); }\n",
+        func_name, module_suffix[purpose], main_func_arg[purpose]);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1405,6 +1483,37 @@ checked_malloc(size_t size)
         fprintf(stderr, "Out of memory\n");
         exit(EXIT_FAILURE);
     }
+    return mem;
+}
+
+static char *
+checked_strdup(const char *str)
+{
+    char    *mem;
+
+    mem = malloc(strlen(str) + 1);
+    if (mem == NULL) {
+        fprintf(stderr, "Out of memory\n");
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(mem, str);
+    return mem;
+}
+
+static char *
+checked_strdupcat(const char *str, const char *suffix)
+{
+    char    *mem;
+
+    mem = malloc(strlen(str) + strlen(suffix) + 1);
+    if (mem == NULL) {
+        fprintf(stderr, "Out of memory\n");
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(mem, str);
+    strcat(mem, suffix);
     return mem;
 }
 

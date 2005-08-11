@@ -1,21 +1,17 @@
 /*
-** Copyright (C) 1995, 1997, 1999-2000, 2004 The University of Melbourne.
+** Copyright (C) 1995, 1997, 1999-2000, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-**	Linked list module.
+** Linked list module.
 */
 
 #include	"mercury_imp.h"
 #include	<stdio.h>
 #include	"mercury_memory.h"
 #include	"mercury_dlist.h"
-
-/*
-**	Make an empty list.
-*/
 
 MR_Dlist *
 MR_dlist_makelist0(void)
@@ -30,10 +26,6 @@ MR_dlist_makelist0(void)
 	return list;
 }
 
-/*
-**	Make a list with the argument is its only element.
-*/
-
 MR_Dlist *
 MR_dlist_makelist(const void *data)
 {
@@ -44,10 +36,6 @@ MR_dlist_makelist(const void *data)
 	MR_dlist_addhead(list, data);
 	return list;
 }
-
-/*
-**	Add some data to the head of a list.
-*/
 
 MR_Dlist *
 MR_dlist_addhead(MR_Dlist *list, const void *data)
@@ -72,10 +60,6 @@ MR_dlist_addhead(MR_Dlist *list, const void *data)
 	return list;
 }
 
-/*
-**	Add some data to the tail of a list.
-*/
-
 MR_Dlist *
 MR_dlist_addtail(MR_Dlist *list, const void *data)
 {
@@ -98,11 +82,6 @@ MR_dlist_addtail(MR_Dlist *list, const void *data)
 
 	return list;
 }
-
-/*
-**	Destructively append list2 to list1. Since the header of
-**	list2 is not meaningful after the operation, it is freed.
-*/
 
 MR_Dlist *
 MR_dlist_addlist(MR_Dlist *list1, MR_Dlist *list2)
@@ -142,12 +121,6 @@ MR_dlist_addlist(MR_Dlist *list1, MR_Dlist *list2)
 	return list1;
 }
 
-/*
-**	(Semi-) nondestructively append list2 to list1.
-**	The header of the first list is indeed altered,
-**	but only the data pointers of the second are used.
-*/
-
 MR_Dlist *
 MR_dlist_addndlist(MR_Dlist *list1, MR_Dlist *list2)
 {
@@ -168,10 +141,6 @@ MR_dlist_addndlist(MR_Dlist *list1, MR_Dlist *list2)
 	return list1;
 }
 
-/*
-**	Insert into a list before a given position.
-*/
-
 void 
 MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where, const void *data)
 {
@@ -188,10 +157,6 @@ MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where, const void *data)
 	MR_dlist_next(MR_dlist_prev(item)) = item;
 	MR_dlist_prev(MR_dlist_next(item)) = item;
 }
-
-/*
-**	Insert into a list after a given position.
-*/
 
 void 
 MR_dlist_insert_after(MR_Dlist *list, MR_Dlist *where, const void *data)
@@ -254,12 +219,6 @@ MR_dlist_delete(MR_Dlist *list, MR_Dlist *item, void (* func)(const void *))
 
 	return;
 }
-
-/*
-**	Free a whole list, including the header and maybe the data
-**	pointed to by the list. Of course, if they were not allocated
-**	by MR_GC_malloc, then all Hell will break loose.
-*/
 
 void 
 MR_dlist_oldlist(MR_Dlist *list, void (* func)(const void *))

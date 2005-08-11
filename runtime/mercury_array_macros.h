@@ -222,8 +222,7 @@
     do {                                                                \
         (element) = (next) - 1;                                         \
         while ((element) >= 0 && (COMPARE) > 0) {                       \
-            MR_assign_structure(items[element + 1],                     \
-                items[element]);                                        \
+            MR_assign_structure(items[element + 1], items[element]);    \
             (element) -= 1;                                             \
         }                                                               \
         (element) += 1;                                                 \
