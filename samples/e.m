@@ -41,15 +41,12 @@ columns = 78.
 %-----------------------------------------------------------------------------%
 
 	% This is a simple implementation of an infinite lazy stream.
-:- type int_stream --->
-		[int | int_stream]
+:- type int_stream
+	--->	[int | int_stream]
 	;	closure((func) = int_stream).
 
 :- inst int_stream =
-	bound(
-			[ground | int_stream]
-		;	closure((func) = is_out is det)
-	).
+	bound([ground | int_stream] ; closure((func) = is_out is det)).
 
 :- mode is_in  :: in(int_stream).
 :- mode is_out :: out(int_stream).
@@ -58,18 +55,20 @@ columns = 78.
 
 	% An infinite stream of ones.
 :- func ones = (int_stream :: is_out) is det.
+
 ones = [1 | closure((func) = ones)].
 
 	% All the digits of e in one stream.
 :- func digits_of_e = (int_stream :: is_out) is det.
+
 digits_of_e = next_digit(ones).
 
-:- func next_digit(int_stream :: is_in) = (int_stream :: is_out) is det.
+:- func next_digit(int_stream::is_in) = (int_stream::is_out) is det.
+
 next_digit(Stream0) = [Digit | closure((func) = next_digit(Stream))] :-
 	scale(2, Digit, Stream0, Stream).
 
-:- pred scale(int, int, int_stream, int_stream).
-:- mode scale(in, out, is_in, is_out) is det.
+:- pred scale(int::in, int::out, int_stream::is_in, int_stream::is_out) is det.
 
 scale(C, Digit, closure(Func), Stream) :-
 	scale(C, Digit, apply(Func), Stream).

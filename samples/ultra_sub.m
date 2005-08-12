@@ -59,7 +59,7 @@ main(!IO) :-
 	io::di, io::uo) is det.
 
 process_args([], _Pattern, _Template, !IO).
-process_args([Str|Strs], Pattern, Template, !IO) :-
+process_args([Str | Strs], Pattern, Template, !IO) :-
 	(
 		string.to_char_list(Str, Chars),
 		map.init(Match0),
@@ -81,7 +81,7 @@ process_args([Str|Strs], Pattern, Template, !IO) :-
 	map(char, list(char))::out) is semidet.
 
 match([], [], Match, Match).
-match([T|Ts], Chars, !Match) :-
+match([T | Ts], Chars, !Match) :-
 	(
 		char.is_upper(T)
 	->
@@ -90,11 +90,11 @@ match([T|Ts], Chars, !Match) :-
 	;
 		T = ('\\') % don't you love ISO compliant syntax :-(
 	->
-		Ts = [T1|Ts1],
-		Chars = [T1|Chars1],
+		Ts = [T1 | Ts1],
+		Chars = [T1 | Chars1],
 		match(Ts1, Chars1, !Match)
 	;
-		Chars = [T|Chars1],
+		Chars = [T | Chars1],
 		match(Ts, Chars1, !Match)
 	).
 
@@ -120,21 +120,21 @@ match_2(X, Chars, Tail, Ts, !Match) :-
 			% If the match failed, then try
 			% binding less of the string to X.
 		remove_last(Chars, Chars1, C),
-		match_2(X, Chars1, [C|Tail], Ts, !Match)
+		match_2(X, Chars1, [C | Tail], Ts, !Match)
 	).
 
 %------------------------------------------------------------------------------%
 
 :- pred remove_last(list(char)::in, list(char)::out, char::out) is semidet.
 
-remove_last([X|Xs], Ys, Z) :-
+remove_last([X | Xs], Ys, Z) :-
 	remove_last_2(X, Xs, Ys, Z).
 
 :- pred remove_last_2(char::in, list(char)::in, list(char)::out, char::out)
 	is det.
 
 remove_last_2(X, [], [], X).
-remove_last_2(X, [Y|Ys], [X|Zs], W) :-
+remove_last_2(X, [Y | Ys], [X | Zs], W) :-
 	remove_last_2(Y, Ys, Zs, W).
 
 
@@ -143,7 +143,7 @@ remove_last_2(X, [Y|Ys], [X|Zs], W) :-
 :- pred sub(list(char)::in, map(char, list(char))::in, list(char)::out) is det.
 
 sub([], _Match, []).
-sub([C|Cs], Match, Result) :-
+sub([C | Cs], Match, Result) :-
 	(
 		char.is_upper(C),
 		map.search(Match, C, Chars)
@@ -154,17 +154,17 @@ sub([C|Cs], Match, Result) :-
 		C = ('\\')
 	->
 		(
-			Cs = [C1|Cs1]
+			Cs = [C1 | Cs1]
 		->
 			sub(Cs1, Match, Result0),
-			Result = [C1|Result0]
+			Result = [C1 | Result0]
 		;
 			sub(Cs, Match, Result0),
 			Result = Result0
 		)
 	;
 		sub(Cs, Match, Result0),
-		Result = [C|Result0]
+		Result = [C | Result0]
 	).
 
 %------------------------------------------------------------------------------%

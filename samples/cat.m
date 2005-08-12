@@ -26,8 +26,7 @@ main(!IO) :-
 	;
 		cat_file_list(Args, !IO)
 	).
-		
-
+ 
 :- pred cat_file_list(list(string)::in, io::di, io::uo) is det.
 
 cat_file_list([], !IO).
@@ -41,7 +40,8 @@ cat_file(File, !IO) :-
 	io.open_input(File, Result, !IO),
 	(
 		Result = ok(Stream),
-		cat_stream(Stream, !IO)
+		cat_stream(Stream, !IO),
+		io.close_input(Stream, !IO)
 	;
 		Result = error(Error),
 		io.progname("cat", Progname, !IO),
@@ -63,11 +63,14 @@ cat_stream(Stream, !IO) :-
 
 cat(!IO) :-
 	io.read_line_as_string(Result, !IO),
-	( Result = ok(Line),
+	(
+		Result = ok(Line),
 		io.write_string(Line, !IO),
 		cat(!IO)
-	; Result = eof
-	; Result = error(Error),
+	;
+		Result = eof
+	;
+		Result = error(Error),
 		io.error_message(Error, Message),
 		io.input_stream_name(StreamName, !IO),
 		io.progname("cat", ProgName, !IO),
