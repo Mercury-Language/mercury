@@ -81,14 +81,17 @@ expand_terms(!IO) :-
 	is det.
 
 expand_terms_2(Result, !IO) :-
-	( Result = term(VarSet0, Term0),
+	(
+		Result = term(VarSet0, Term0),
 		expand_term(Term0, VarSet0, Term, VarSet),
 		term_io.write_term(VarSet, Term, !IO),
 		io.write_string(".\n", !IO),
 		term_io.read_term(NextResult, !IO),
 		expand_terms_2(NextResult, !IO)
-	; Result = eof
-	; Result = error(Message, LineNum),
+	;
+		Result = eof
+	;
+		Result = error(Message, LineNum),
 		io.input_stream_name(StreamName, !IO),
 		string.format("%s:%03d: %s\n", [s(StreamName), i(LineNum),
 			s(Message)], FullMessage),
@@ -112,12 +115,12 @@ expand_term(Term0, VarSet0, Term, VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred term_expansion(term, varset, term, varset).
-:- mode term_expansion(in, in, out, out) is semidet.
-
 % Insert your clauses for term_expansion here.
 % As a trivial example, here is one which replaces
 % `A <=> B' with `A :- B'.
+
+:- pred term_expansion(term, varset, term, varset).
+:- mode term_expansion(in, in, out, out) is semidet.
 
 term_expansion(Term0, VarSet, Term, VarSet) :-
 	Term0 = term.functor(term.atom("<=>"), [A, B], Context),

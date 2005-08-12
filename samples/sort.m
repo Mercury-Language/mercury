@@ -88,7 +88,7 @@ sort_2(Lines0, !IO) :-
 		error(Msg)
 	;
 		Result = eof,
-		sort_output(Lines0, !IO)
+		output_sorted_lines(Lines0, !IO)
 	;
 		Result = ok(Line),
 		insert(Lines0, Line, Lines1),
@@ -107,9 +107,9 @@ insert([H | T], I, L) :-
 		L = [H | NT]
 	).
 
-:- pred sort_output(list(string)::in, io::di, io::uo) is det.
+:- pred output_sorted_lines(list(string)::in, io::di, io::uo) is det.
 
-sort_output([], !IO).
-sort_output([Line | Lines], !IO) :-
+output_sorted_lines([], !IO).
+output_sorted_lines([Line | Lines], !IO) :-
 	io.write_string(Line, !IO),
-	sort_output(Lines, !IO).
+	output_sorted_lines(Lines, !IO).

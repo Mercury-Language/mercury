@@ -23,17 +23,20 @@
 	;       times(expr, expr)
 	;       div(expr, expr).
 
-main(!IO) :- 
+main(!IO) :-
 	io.write_string("calculator> ", !IO),
 	io.flush_output(!IO),
 	io.read_line(Res, !IO),
-	( Res = error(_),
+	(
+		Res = error(_),
 		io.write_string("Error reading from stdin\n", !IO)
-	; Res = eof,
+	;
+		Res = eof,
 		io.write_string("EOF\n", !IO)
-	; Res = ok(Line0),
+	;
+		Res = ok(Line0),
 		list.delete_all(Line0, ' ', Line),
-		( fullexpr(X,Line,[]) ->
+		( fullexpr(X, Line, []) ->
 			Num = evalexpr(X),
 			io.write_int(Num, !IO),
 			io.write_string("\n", !IO)
@@ -44,25 +47,29 @@ main(!IO) :-
 	).
 
 :- func evalexpr(expr) = int.
+
 evalexpr(number(Num)) = Num.
-evalexpr(plus(X,Y)) = evalexpr(X) + evalexpr(Y).
-evalexpr(minus(X,Y)) = evalexpr(X) - evalexpr(Y).
-evalexpr(times(X,Y)) = evalexpr(X) * evalexpr(Y).
-evalexpr(div(X,Y)) = evalexpr(X) // evalexpr(Y).
+evalexpr(plus(X, Y)) = evalexpr(X) + evalexpr(Y).
+evalexpr(minus(X, Y)) = evalexpr(X) - evalexpr(Y).
+evalexpr(times(X, Y)) = evalexpr(X) * evalexpr(Y).
+evalexpr(div(X, Y)) = evalexpr(X) // evalexpr(Y).
 
 % Simple recursive-descent parser.
 
 :- pred fullexpr(expr::out, list(char)::in, list(char)::out) is semidet.
+
 fullexpr(X) -->
 	expr(X),
 	['\n'].
 
 :- pred expr(expr::out, list(char)::in, list(char)::out) is semidet.
+
 expr(Expr) -->
 	factor(Factor),
 	expr2(Factor, Expr).
 
 :- pred expr2(expr::in, expr::out, list(char)::in, list(char)::out) is semidet.
+
 expr2(Factor, Expr) -->
 	( ['+'] -> factor(Factor2), expr2(plus( Factor, Factor2), Expr)
 	; ['-'] -> factor(Factor2), expr2(minus(Factor, Factor2), Expr)
@@ -70,20 +77,23 @@ expr2(Factor, Expr) -->
 	).
 
 :- pred factor(expr::out, list(char)::in, list(char)::out) is semidet.
+
 factor(Factor) -->
 	term(Term),
 	factor2(Term, Factor).
 
 :- pred factor2(expr::in, expr::out, list(char)::in, list(char)::out)
 	is semidet.
+
 factor2(Term, Factor) -->
-	( ['*'] -> term(Term2), factor2(times(Term,Term2), Factor)
-	; ['/'] -> term(Term2), factor2(div(  Term,Term2), Factor)
+	( ['*'] -> term(Term2), factor2(times(Term, Term2), Factor)
+	; ['/'] -> term(Term2), factor2(div(  Term, Term2), Factor)
 	; { Factor = Term }
 	).
 
 :- pred term(expr::out, list(char)::in, list(char)::out) is semidet.
-term(Term)	-->
+
+term(Term) -->
 	( const(Const) ->
 		{ string__from_char_list(Const, ConstString) },
 		{ string__to_int(ConstString, Num) },
@@ -93,6 +103,7 @@ term(Term)	-->
 	).
 
 :- pred const(list(char)::out, list(char)::in, list(char)::out) is semidet.
+
 const([Digit|Rest]) -->
 	digit(Digit),
 	( const(Const) ->
@@ -102,8 +113,7 @@ const([Digit|Rest]) -->
 	).
 
 :- pred digit(char::out, list(char)::in, list(char)::out) is semidet.
+
 digit(Char) -->
 	[Char],
 	{ char__is_digit(Char) }.
-
-
