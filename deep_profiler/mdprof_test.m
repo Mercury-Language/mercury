@@ -58,6 +58,7 @@ main(!IO) :-
         MaybeOptions = ok(Options),
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
+        lookup_bool_option(Options, verify_profile, Verify),
         (
             Help = yes,
             write_help_message(ProgName, !IO)
@@ -74,7 +75,13 @@ main(!IO) :-
             Help = no,
             Version = no
         ->
-            main2(ProgName, Args, Options, !IO)
+            ( 
+                Verify = no,
+                main2(ProgName, Args, Options, !IO)
+            ;
+                Verify = yes,
+                verify_profile(ProgName, Args, Options, !IO)
+            )
         ;
             true
         )
@@ -84,6 +91,8 @@ main(!IO) :-
         io__format("%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO)
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred main2(string::in, list(string)::in, option_table::in,
     io::di, io::uo) is cc_multi.
@@ -125,6 +134,48 @@ main2(ProgName, Args, Options, !IO) :-
         write_help_message(ProgName, !IO)
     ).
 
+
+%-----------------------------------------------------------------------------%
+%
+% Verification mode
+%
+
+% In this mode of operation mdprof_test just checks to see if the deep
+% profiler can read and process a Deep.data file, i.e do everything
+% it needs to up to the point where we normally start querying a profile.
+% This mode does not cause a server to be started.
+
+:- pred verify_profile(string::in, list(string)::in, option_table::in,
+    io::di, io::uo) is det.
+    
+verify_profile(ProgName, Args0, Options, !IO) :-
+    ( 
+        Args0 = [],
+        Args  = ["Deep.data"]
+    ;
+        Args0 = [_|_],
+        Args = Args0
+    ),
+    list.foldl(verify_profile_2(ProgName, Options), Args, !IO).
+
+:- pred verify_profile_2(string::in, option_table::in, string::in,
+    io::di, io::uo) is det.
+
+verify_profile_2(ProgName, Options, FileName, !IO) :-
+    lookup_bool_option(Options, canonical_clique, Canonical),
+    Machine = "dummy_server",      % For verification this doesn't matter.
+    read_and_startup(Machine, [FileName], Canonical, no, [], Res, !IO),
+    (
+        Res = ok(_Deep)
+    ;
+        Res = error(Error),
+        io.set_exit_status(1, !IO),
+        io.format("%s: error reading data file: %s\n",
+            [s(ProgName), s(Error)], !IO)
+    ).    
+
+%-----------------------------------------------------------------------------%
+
 :- pred write_version_message(string::in, io::di, io::uo) is det.
 
 write_version_message(ProgName, !IO) :-
@@ -146,6 +197,11 @@ write_help_message(ProgName) -->
     io__format("--verbose   Generate progress messages during startup.\n", []),
     io__format("--test      Test the deep profiler, generating all\n", []),
     io__format("            possible web pages of the popular types.\n", []),
+    io__format("--verify-profile\n", []),
+    io__format("            Verify that <filename> is a well-formed\n",
+        []),
+    io__format("            deep profiling data file.\n", []),
+    io.nl,
     io__format("You may also specify the following options:.\n", []),
     io__format("--test-dir <dirname>\n", []),
     io__format("            Put the generated web pages into <dirname>.\n",
@@ -234,7 +290,8 @@ write_test_html(DirName, BaseName, Num, HTML, !IO) :-
     ;       test
     ;       test_dir
     ;       verbose
-    ;       version.
+    ;       version
+    ;       verify_profile.
 
 :- type options ---> options.
 :- type option_table == (option_table(option)).
@@ -256,6 +313,7 @@ long("test",                test).
 long("test-dir",            test_dir).
 long("verbose",             verbose).
 long("version",             version).
+long("verify-profile",      verify_profile).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
@@ -266,6 +324,7 @@ defaults(test,              bool(no)).
 defaults(test_dir,          string("deep_test")).
 defaults(verbose,           bool(no)).
 defaults(version,           bool(no)).
+defaults(verify_profile,    bool(no)).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdprof_test.
