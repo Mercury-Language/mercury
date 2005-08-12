@@ -51,6 +51,10 @@
 	% a mode is considered unused if both initial and final insts are free
 :- pred mode_is_unused(module_info::in, (mode)::in) is semidet.
 
+	% Succeeds iff the given mode is undefined.
+	%
+:- pred mode_is_undefined(module_info::in, (mode)::in) is semidet.
+
 	% mode_to_arg_mode converts a mode (and corresponding type) to
 	% an arg_mode.  A mode is a high-level notion, the normal
 	% Mercury language mode.  An `arg_mode' is a low-level notion
@@ -225,6 +229,9 @@ mode_is_unused(ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 	inst_is_free(ModuleInfo, InitialInst),
 	inst_is_free(ModuleInfo, FinalInst).
+
+mode_is_undefined(ModuleInfo, Mode) :-
+	not mode_get_insts_semidet(ModuleInfo, Mode, _, _).	
 
 %-----------------------------------------------------------------------------%
 

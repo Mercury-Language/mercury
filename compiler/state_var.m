@@ -141,11 +141,11 @@
 :- pred prepare_for_body(svar_map::out, prog_varset::in, prog_varset::out,
     svar_info::in, svar_info::out) is det.
 
-    % We have to conjoin the head and body and add unifiers to tie up all
+    % We have to conjoin the goals and add unifiers to tie up all
     % the final values of the state variables to the head variables.
     %
-:- pred finish_head_and_body(prog_context::in, svar_map::in,
-    hlds_goal::in, hlds_goal::in, hlds_goal::out, svar_info::in) is det.
+:- pred finish_goals(prog_context::in, svar_map::in,
+    list(hlds_goal)::in, hlds_goal::out, svar_info::in) is det.
 
     % Add some local state variables.
     %
@@ -446,13 +446,14 @@ prepare_for_body(FinalMap, !VarSet, !SInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-finish_head_and_body(Context, FinalSVarMap, Head, Body, Goal, SInfo) :-
+finish_goals(Context, FinalSVarMap, Goals0, Goal, SInfo) :-
     goal_info_init(Context, GoalInfo),
-    goal_to_conj_list(Head, HeadGoals),
-    goal_to_conj_list(Body, BodyGoals),
+    list.map(goal_to_conj_list, Goals0, GoalsAsConjList),
     Unifiers = svar_unifiers(yes(dont_warn_singleton), Context, FinalSVarMap,
         SInfo ^ dot),
-    conj_list_to_goal(HeadGoals ++ BodyGoals ++ Unifiers, GoalInfo, Goal).
+    Goals1 = list.condense(GoalsAsConjList),
+    Goals  = Goals1 ++ Unifiers,
+    conj_list_to_goal(Goals, GoalInfo, Goal).
 
 :- func svar_unifiers(maybe(goal_feature), prog_context, svar_map, svar_map)
     = hlds_goals.

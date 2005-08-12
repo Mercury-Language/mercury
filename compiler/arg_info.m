@@ -15,6 +15,12 @@
 % argument is input/output/unused, and which register it is supposed to
 % go into.
 
+% The code in this module assumes that none of the modes are undefined.  The
+% predicates for partitioning arguments into input, unused and output should
+% not be used before undefined modes have been detected.  For an example of
+% how this kind of partitioning can be done in the presence of undefined modes,
+% see superhomogeneous.partition_args_and_lambda_vars/8.
+
 %-----------------------------------------------------------------------------%
 
 :- module hlds__arg_info.

@@ -258,7 +258,7 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
         transform_goal(ParsedGoal, Substitution, PredBody,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
-        finish_head_and_body(Context, FinalSVarMap, PredHead, PredBody,
+        finish_goals(Context, FinalSVarMap, [PredHead, PredBody],
             PredGoal0, !.SInfo),
 
         % Quantification will reduce this down to
