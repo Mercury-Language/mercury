@@ -304,7 +304,9 @@ extern	MR_Unsigned	MR_standardize_call_num(MR_Unsigned call_num);
 
 typedef enum {
 	MR_TRACE_INTERNAL,
+#ifdef MR_USE_EXTERNAL_DEBUGGER
 	MR_TRACE_EXTERNAL
+#endif
 } MR_Trace_Type;
 
 extern	MR_Trace_Type	MR_trace_handler;
