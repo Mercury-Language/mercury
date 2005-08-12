@@ -383,7 +383,7 @@ check_goal_for_exceptions_2(_, ModuleInfo, VarTypes, Goal, GoalInfo,
         Details = class_method(_, _, _, _),
         !:Result = !.Result ^ status := may_throw(user_exception)
     ;
-        Details = unsafe_cast
+        Details = cast(_)
     ;
         Details = aditi_builtin(_, _),
         !:Result = !.Result ^ status := may_throw(user_exception)

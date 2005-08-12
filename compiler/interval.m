@@ -289,8 +289,8 @@ build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
 		ArgModes, ArgTypes, InputArgs, _OutputArgs),
 	determinism_to_code_model(Detism, CodeModel),
 
-	% unsafe_casts are generated inline.
-	( GenericCall = unsafe_cast ->
+	% Casts are generated inline.
+	( GenericCall = cast(_) ->
 		require_in_regs(InputArgs, !IntervalInfo),
 		require_access(InputArgs, !IntervalInfo)
 	;
@@ -967,8 +967,8 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
                 MaybeFeature) :-
 	Goal0 = generic_call(GenericCall, _ , _, _) - _,
-	% unsafe_casts are generated inline.
-	( GenericCall = unsafe_cast ->
+	% Casts are generated inline.
+	( GenericCall = cast(_) ->
 		MustHaveMap = no
 	;
 		MustHaveMap = yes

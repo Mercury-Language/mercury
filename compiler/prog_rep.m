@@ -220,14 +220,14 @@ goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
 			vars_to_byte_list(Info, Args) ++
 			AtomicBytes
 	;
-		GenericCall = unsafe_cast,
+		GenericCall = cast(_),
 		( Args = [InputArg, OutputArg] ->
 			Bytes = [goal_type_to_byte(goal_unsafe_cast)] ++
 				var_to_byte_list(Info, OutputArg) ++
 				var_to_byte_list(Info, InputArg) ++
 				AtomicBytes
 		;
-			error("goal_expr_to_byte_list: unsafe_cast arity != 2")
+			error("goal_expr_to_byte_list: cast arity != 2")
 		)
 	;
 		GenericCall = aditi_builtin(_, _),

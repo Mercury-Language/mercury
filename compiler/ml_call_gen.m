@@ -164,7 +164,7 @@ ml_gen_generic_call(class_method(_, _, _, _) @ GenericCall, ArgVars, ArgModes,
 		Determinism, Context, Decls, Statements, !Info) :-
 	ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism,
 		Context, Decls, Statements, !Info).
-ml_gen_generic_call(unsafe_cast, ArgVars, _ArgModes, _Determinism, Context,
+ml_gen_generic_call(cast(_), ArgVars, _ArgModes, _Determinism, Context,
 		Decls, Statements, !Info) :-
 	ml_gen_cast(Context, ArgVars, Decls, Statements, !Info).
 ml_gen_generic_call(aditi_builtin(_, _), _, _, _, _, _, _, !Info) :-
@@ -255,8 +255,8 @@ ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
 		FuncType = mlds__func_type(Params),
 		FuncRval = unop(unbox(FuncType), lval(FuncLval))
 	;
-		GenericCall = unsafe_cast,
-		error("ml_gen_generic_call_2: unsafe_cast")
+		GenericCall = cast(_),
+		error("ml_gen_generic_call_2: cast")
 	;
 		GenericCall = aditi_builtin(_, _),
 		error("ml_gen_generic_call_2: aditi_builtin")

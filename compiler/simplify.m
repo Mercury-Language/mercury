@@ -2546,7 +2546,7 @@ will_flush(generic_call(GenericCall, _, _, _), BeforeAfter) = WillFlush :-
         GenericCall = class_method(_, _, _, _),
 		WillFlush0 = yes
 	;
-        GenericCall = unsafe_cast,
+        GenericCall = cast(_),
 		WillFlush0 = no
 	;
         GenericCall = aditi_builtin(_, _),

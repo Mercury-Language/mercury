@@ -1504,7 +1504,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
         GenericCall = class_method(_, _, _, _),
         error("modecheck_goal_expr: class_method_call")
     ;
-        GenericCall = unsafe_cast,
+        GenericCall = cast(_CastType),
         (
             goal_info_has_feature(GoalInfo0, keep_constant_binding),
             mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -1516,7 +1516,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
                 Mode1 = Mode1Prime,
                 Mode2 = Mode2Prime
             ;
-                error("modecheck_goal_expr: bad unsafe_cast")
+                error("modecheck_goal_expr: bad cast")
             ),
             Mode1 = in_mode,
             Mode2 = out_mode,

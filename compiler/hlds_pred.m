@@ -136,7 +136,7 @@
 :- type generic_call_id
     --->    higher_order(purity, pred_or_func, arity)
     ;       class_method(class_id, simple_call_id)
-    ;       unsafe_cast
+    ;       cast(cast_type)
     ;       aditi_builtin(aditi_builtin, simple_call_id).
 
 :- type pred_proc_list	==	list(pred_proc_id).

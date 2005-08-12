@@ -762,7 +762,8 @@ common__generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
         % since the call to the type cast hides the equivalence of
         % the input and output.
         Modes = [(ToVarInst -> ToVarInst), (free -> ToVarInst)],
-        GoalExpr = generic_call(unsafe_cast, [FromVar, ToVar], Modes, det)
+        GoalExpr = generic_call(cast(unsafe_type_cast), [FromVar, ToVar],
+            Modes, det)
     ),
 
     % `ToVar' may not appear in the original instmap_delta,

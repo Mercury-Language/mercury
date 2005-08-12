@@ -484,7 +484,7 @@ unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
 	;
 		% Casts are introduced by the compiler
 		% and should be mode correct.
-		GenericCall = unsafe_cast,
+		GenericCall = cast(_),
 		ArgOffset = 0
 	;
 		GenericCall = aditi_builtin(_, _),

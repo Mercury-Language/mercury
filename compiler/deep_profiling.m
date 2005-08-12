@@ -1051,7 +1051,7 @@ transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
 		wrap_call(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo),
 		AddedImpurity = yes
 	;
-		GenericCall = unsafe_cast,
+		GenericCall = cast(_),
 		GoalAndInfo = Goal0 - GoalInfo0,
 		AddedImpurity = no
 	;
@@ -1205,8 +1205,8 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
 			]) - PrepareCallGoalInfo,
 			CallSite = method_call(FileName, LineNumber, GoalPath)
 		;
-			Generic = unsafe_cast,
-			error("deep_profiling__wrap_call: unsafe_cast")
+			Generic = cast(_),
+			error("deep_profiling__wrap_call: cast")
 		;
 			Generic = aditi_builtin(_, _),
 			error("deep_profiling__wrap_call: aditi_builtin")

@@ -512,12 +512,12 @@ compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
             ModuleInfo, Name0, Name, PredId0, PredId),
         (
             % Convert any calls to private_builtin.unsafe_type_cast
-            % into unsafe_cast goals.
+            % into unsafe_type_cast generic calls.
             Name = qualified(mercury_private_builtin_module,
                 "unsafe_type_cast"),
             Vars = [InputArg, OutputArg]
         ->
-            Goal = generic_call(unsafe_cast, [InputArg, OutputArg],
+            Goal = generic_call(cast(unsafe_type_cast), [InputArg, OutputArg],
                 [in_mode, out_mode], det)
         ;
             Goal = call(PredId, ProcId, Vars, BIState, UContext, Name)
@@ -541,7 +541,7 @@ compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
         Purity = pure, % XXX this is wrong!
         GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
     ;
-        GenericCall0 = unsafe_cast,
+        GenericCall0 = cast(_),
         Purity = pure,
         GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
     ;

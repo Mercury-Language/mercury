@@ -1236,8 +1236,8 @@ goal_constraints_2(GoalPath, _NonLocals, _Vars, CanSucceed, GoalExpr, GoalExpr,
 			!GCInfo),
 		error("mode_constraints.m: class_method call in clause")
 	;
-		GenericCall = unsafe_cast,
-		error("mode_constraints.m: unsafe_cast call NYI")
+		GenericCall = cast(_),
+		error("mode_constraints.m: type/inst cast call NYI")
 	;
 		GenericCall = aditi_builtin(_, _),
 		error("mode_constraints.m: aditi_builtin call NYI")

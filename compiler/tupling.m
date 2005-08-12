@@ -1046,8 +1046,8 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
 		ArgModes, ArgTypes, InputArgs, OutputArgs),
 	determinism_to_code_model(Detism, CodeModel),
 
-	% unsafe_casts are generated inline.
-	( GenericCall = unsafe_cast ->
+	% Casts are generated inline.
+	( GenericCall = cast(_) ->
 		cls_require_in_regs(CountInfo, InputArgs, !CountState),
 		cls_put_in_regs(OutputArgs, !CountState)
 	;

@@ -427,11 +427,19 @@ hlds_out__generic_call_id_to_string(higher_order(Purity, PredOrFunc, _)) =
 		++ " call".
 hlds_out__generic_call_id_to_string(class_method(_ClassId, MethodId)) =
 	simple_call_id_to_string(MethodId).
-hlds_out__generic_call_id_to_string(unsafe_cast) = "unsafe_cast".
+hlds_out__generic_call_id_to_string(cast(CastType)) =
+	hlds_out__cast_type_to_string(CastType).
 hlds_out__generic_call_id_to_string(aditi_builtin(AditiBuiltin, CallId))
 		= Str :-
 	hlds_out__aditi_builtin_name(AditiBuiltin, Name),
 	Str = "`" ++ Name ++ "' of " ++ simple_call_id_to_string(CallId).
+
+:- func hlds_out__cast_type_to_string(cast_type) = string.
+
+hlds_out__cast_type_to_string(unsafe_type_cast) = "unsafe_type_cast".
+hlds_out__cast_type_to_string(unsafe_type_inst_cast) = "unsafe_type_inst_cast".
+hlds_out__cast_type_to_string(equiv_type_cast) = "equiv_type_cast".
+hlds_out__cast_type_to_string(exists_cast) = "exists_cast".
 
 hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers, !IO) :-
 	Str = hlds_out__call_arg_id_to_string(CallId, ArgNum, PredMarkers),
@@ -516,7 +524,7 @@ hlds_out__arg_number_to_string(generic_call(
 	).
 hlds_out__arg_number_to_string(generic_call(class_method(_, _)), ArgNum) =
 	"argument " ++ int_to_string(ArgNum).
-hlds_out__arg_number_to_string(generic_call(unsafe_cast), ArgNum) =
+hlds_out__arg_number_to_string(generic_call(cast(_)), ArgNum) =
 	"argument " ++ int_to_string(ArgNum).
 hlds_out__arg_number_to_string(generic_call(aditi_builtin(Builtin, CallId)),
 		ArgNum) =
@@ -1768,12 +1776,13 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
 		mercury_output_term(Term, VarSet, AppendVarNums, !IO),
 		io__write_string(Follow, !IO)
 	;
-		GenericCall = unsafe_cast,
+		GenericCall = cast(CastType),
+		CastTypeString = hlds_out__cast_type_to_string(CastType),
 		globals__io_lookup_string_option(dump_hlds_options, Verbose,
 			!IO),
 		( string__contains_char(Verbose, 'l') ->
 			hlds_out__write_indent(Indent, !IO),
-			io__write_string("% unsafe_cast\n", !IO)
+			io__write_strings(["% ", CastTypeString, "\n"], !IO)
 		;
 			true
 		),
@@ -1786,7 +1795,7 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
 		;
 			true
 		),
-		Functor = term__atom("unsafe_cast"),
+		Functor = term__atom(CastTypeString),
 		term__var_list_to_term_list(ArgVars, ArgTerms),
 		term__context_init(Context),
 		Term = term__functor(Functor, ArgTerms, Context),

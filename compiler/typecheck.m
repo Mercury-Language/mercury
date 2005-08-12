@@ -1351,7 +1351,7 @@ typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
         GenericCall0 = class_method(_, _, _, _),
         error("typecheck_goal_2: unexpected class method call")
     ;
-        GenericCall0 = unsafe_cast,
+        GenericCall0 = cast(_),
         % A cast imposes no restrictions on its argument types,
         % so nothing needs to be done here.
         GenericCall = GenericCall0

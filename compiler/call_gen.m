@@ -147,16 +147,16 @@ call_gen__generate_generic_call(OuterCodeModel, GenericCall, Args0,
     % the outputs from the locations that we know the runtime system leaves
     % them in.
 
-    % `unsafe_cast' differs from the other generic call types in
-    % that there is no address. Also, live_vars.m assumes that
-    % unsafe_casts do not require live variables to be saved to the stack.
-    ( GenericCall = unsafe_cast ->
+    % `cast' differs from the other generic call types in that there is no
+    % address. Also, live_vars.m assumes that casts do not require live
+    % variables to be saved to the stack.
+    ( GenericCall = cast(_) ->
         ( Args0 = [InputArg, OutputArg] ->
             call_gen__generate_assign_builtin(OutputArg,
                 leaf(InputArg), Code, !CI)
         ;
             unexpected(this_file,
-                "generate_generic_call: invalid unsafe_cast call")
+                "generate_generic_call: invalid type/inst cast call")
         )
     ;
         call_gen__generate_generic_call_2(OuterCodeModel,
@@ -265,7 +265,7 @@ call_gen__generic_call_info(_, higher_order(PredVar, _, _, _),
 call_gen__generic_call_info(_, class_method(TCVar, _, _, _),
         do_call_class_method, [TCVar - arg_info(1, top_in)], 4).
     % Casts are generated inline.
-call_gen__generic_call_info(_, unsafe_cast, do_not_reached, [], 1).
+call_gen__generic_call_info(_, cast(_), do_not_reached, [], 1).
 call_gen__generic_call_info(_, aditi_builtin(_, _), _, _, _) :-
     % These should have been transformed into normal calls.
     error("call_gen__generic_call_info: aditi_builtin").
@@ -304,11 +304,11 @@ call_gen__generic_call_nonvar_setup(class_method(_, Method, _, _),
         assign(reg(r, 3), const(int_const(NInVars))) -
             "Assign number of immediate input arguments"
     ]).
-call_gen__generic_call_nonvar_setup(unsafe_cast, _, _, _, !CI) :-
-    error("call_gen__generic_call_nonvar_setup: unsafe_cast").
+call_gen__generic_call_nonvar_setup(cast(_), _, _, _, !CI) :-
+    unexpected(this_file, "generic_call_nonvar_setup: cast").
 call_gen__generic_call_nonvar_setup(aditi_builtin(_, _), _, _, _, !CI) :-
     % These should have been transformed into normal calls.
-    error("call_gen__generic_call_info: aditi_builtin").
+    unexpected(this_file, "generic_call_nonvar_setup: aditi_builtin").
 
 %---------------------------------------------------------------------------%
 

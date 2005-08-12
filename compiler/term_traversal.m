@@ -273,7 +273,7 @@ traverse_goal_2(generic_call(Details, Args, ArgModes, _), GoalInfo, Params, !Inf
 		%
 		add_error(Context, method_call, Params, !Info)
 	;
-		Details = unsafe_cast
+		Details = cast(_)
 	;
 		Details = aditi_builtin(_, _),
 		%	

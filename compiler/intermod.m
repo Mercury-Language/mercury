@@ -508,7 +508,7 @@ intermod__traverse_goal(Goal @ generic_call(CallType, _, _, _) - Info,
 		Goal - Info, DoWrite, !Info) :-
 	( CallType = higher_order(_, _, _, _), DoWrite = yes
 	; CallType = class_method(_, _, _, _), DoWrite = no
-	; CallType = unsafe_cast, DoWrite = no
+	; CallType = cast(_), DoWrite = no
 	; CallType = aditi_builtin(_, _), DoWrite = yes
 	).
 intermod__traverse_goal(switch(Var, CanFail, Cases0) - Info,

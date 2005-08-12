@@ -119,7 +119,7 @@ transform_aditi_builtins_in_goal_expr(Goal0, GoalInfo, Goal) -->
 		{ Call = class_method(_, _, _, _) },
 		{ Goal = Goal0 }
 	;
-		{ Call = unsafe_cast },
+		{ Call = cast(_) },
 		{ Goal = Goal0 }
 	;
 		{ Call = aditi_builtin(Builtin0, _) },
@@ -289,7 +289,7 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 				NonCurriedArgModes, CalleeDetism))) },
 	{ CastModes = [(CastInputInst -> CastInputInst),
 			(free_inst -> CastOutputInst)] },
-	{ CastGoal = generic_call(unsafe_cast, [NewVar, Var],
+	{ CastGoal = generic_call(cast(unsafe_type_inst_cast), [NewVar, Var],
 			CastModes, det) - GoalInfo },
 
 	{ Goals = list__condense([ConstArgGoals, TupleGoals,
@@ -419,8 +419,8 @@ transform_aditi_builtin_2(
 	{ instmap_delta_from_assoc_list([CastClosure - CastOutputInst],
 		InstMapDelta) },
 	{ goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo) },
-	{ CastGoal = generic_call(unsafe_cast, [Closure, CastClosure],
-			CastModes, det) - GoalInfo },
+	{ CastGoal = generic_call(cast(unsafe_type_inst_cast),
+		[Closure, CastClosure], CastModes, det) - GoalInfo },
 
 	% Produce the call
 	% aditi_private_builtin__do_bulk_*(RelationName, UpdateProc,

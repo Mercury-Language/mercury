@@ -262,17 +262,16 @@
 	string::in, list(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
-	% Generate an unsafe cast goal.  The input and output insts
-	% are just ground.
+	% Generate a cast goal.  The input and output insts are just ground.
 	%
-:- pred goal_util__generate_unsafe_cast(prog_var::in, prog_var::in,
+:- pred goal_util__generate_cast(cast_type::in, prog_var::in, prog_var::in,
 	prog_context::in, hlds_goal::out) is det.
 
 	% This version takes input and output inst arguments, which may
 	% be necessary when casting, say, solver type values with inst
 	% any, or casting between enumeration types and ints.
 	%
-:- pred goal_util__generate_unsafe_cast(prog_var::in, prog_var::in,
+:- pred goal_util__generate_cast(cast_type::in, prog_var::in, prog_var::in,
 	(inst)::in, (inst)::in, prog_context::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -633,7 +632,7 @@ goal_util__rename_generic_call(higher_order(Var0, Purity, PredOrFunc, Arity),
 goal_util__rename_generic_call(class_method(Var0, Method, ClassId, MethodId),
 		Must, Subn, class_method(Var, Method, ClassId, MethodId)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var).
-goal_util__rename_generic_call(unsafe_cast, _, _, unsafe_cast).
+goal_util__rename_generic_call(cast(CastType), _, _, cast(CastType)).
 goal_util__rename_generic_call(aditi_builtin(Builtin, PredCallId),
 		_Must, _Subn, aditi_builtin(Builtin, PredCallId)).
 
@@ -812,7 +811,7 @@ goal_util__rhs_goal_vars(RHS, !Set) :-
 
 goal_util__generic_call_vars(higher_order(Var, _, _, _), [Var]).
 goal_util__generic_call_vars(class_method(Var, _, _, _), [Var]).
-goal_util__generic_call_vars(unsafe_cast, []).
+goal_util__generic_call_vars(cast(_), []).
 goal_util__generic_call_vars(aditi_builtin(_, _), []).
 
 %-----------------------------------------------------------------------------%
@@ -1483,15 +1482,17 @@ goal_util__generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo,
 	goal_info_add_features(Features, GoalInfo0, GoalInfo),
 	Goal = GoalExpr - GoalInfo.
 
-generate_unsafe_cast(InArg, OutArg, Context, Goal) :-
-	Ground = ground(shared, none),
-	generate_unsafe_cast(InArg, OutArg, Ground, Ground, Context, Goal).
+goal_util__generate_cast(CastType, InArg, OutArg, Context, Goal) :-
+	Ground = ground_inst,
+	goal_util__generate_cast(CastType, InArg, OutArg, Ground, Ground,
+		Context, Goal).
 
-generate_unsafe_cast(InArg, OutArg, InInst, OutInst, Context, Goal) :-
+goal_util__generate_cast(CastType, InArg, OutArg, InInst, OutInst, Context,
+		Goal) :-
 	set__list_to_set([InArg, OutArg], NonLocals),
 	instmap_delta_from_assoc_list([OutArg - OutInst], InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, pure, Context, GoalInfo),
-	Goal = generic_call(unsafe_cast, [InArg, OutArg],
+	Goal = generic_call(cast(CastType), [InArg, OutArg],
 		[in_mode(InInst), out_mode(OutInst)], det) - GoalInfo.
 
 %-----------------------------------------------------------------------------%

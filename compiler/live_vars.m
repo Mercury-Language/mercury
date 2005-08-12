@@ -293,7 +293,7 @@ build_live_sets_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
 build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
 		AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
 	Goal = generic_call(GenericCall, ArgVars, Modes, _Det),
-	( GenericCall = unsafe_cast ->
+	( GenericCall = cast(_) ->
 		GoalInfo = GoalInfo0
 	;
 		ProcInfo = AllocData ^ proc_info,

@@ -225,8 +225,8 @@ find_follow_vars_in_goal_expr(
 		Call @ generic_call(GenericCall, Args, Modes, Det), Call,
 		GoalInfo, GoalInfo, VarTypes, ModuleInfo,
 		!FollowVarsMap, !NextNonReserved) :-
-	% unsafe_casts are generated inline.
-	( GenericCall = unsafe_cast ->
+	% Casts are generated inline.
+	( GenericCall = cast(_) ->
 		true
 	;
 		determinism_to_code_model(Det, CodeModel),

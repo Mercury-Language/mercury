@@ -2249,11 +2249,7 @@ specializeable_special_call(SpecialId, CalledProc) :-
 
 generate_unsafe_type_cast(Context, ToType, Arg, CastArg, Goal, !ProcInfo) :-
 	proc_info_create_var_from_type(ToType, no, CastArg, !ProcInfo),
-	set__list_to_set([Arg, CastArg], NonLocals),
-	instmap_delta_from_assoc_list([CastArg - ground_inst], InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, det, pure, Context, GoalInfo),
-	Goal = generic_call(unsafe_cast, [Arg, CastArg],
-		[in_mode, out_mode], det) - GoalInfo.
+	generate_cast(unsafe_type_cast, Arg, CastArg, Context, Goal).
 
 :- pred unwrap_no_tag_arg((type)::in, prog_context::in, sym_name::in,
 	prog_var::in, prog_var::out, hlds_goal::out,

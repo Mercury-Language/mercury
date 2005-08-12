@@ -378,15 +378,39 @@
 			simple_call_id	% name of the called method
 		)
 
-		% unsafe_cast(Input, Output).
+		% cast(Input, Output).
 		% Assigns `Input' to `Output', performing a type
 		% and/or inst cast.
-	;	unsafe_cast
+	;	cast(cast_type)
 
 	;	aditi_builtin(
 			aditi_builtin,
 			simple_call_id
 		).
+
+	% The various kinds of casts that we can do.
+	%
+:- type cast_type
+	--->	unsafe_type_cast
+			% An unsafe type cast between ground values.
+
+	;	unsafe_type_inst_cast
+			% An unsafe type and inst cast.
+
+	;	equiv_type_cast
+			% A safe type cast between equivalent types, in
+			% either direction.
+
+	;	exists_cast.
+			% A safe cast between an internal type_info or
+			% typeclass_info variable, for which the bindings of
+			% existential type variables are known statically, to
+			% an external type_info or typeclass_info head
+			% variable, for which they are not.  These are used
+			% instead of assignments so that the simplification
+			% pass does not attempt to merge the two variables,
+			% which could lead to inconsistencies in the
+			% rtti_varmaps.
 
 	% Get a description of a generic_call goal.
 	%
@@ -1369,14 +1393,14 @@ hlds_goal__generic_call_id(higher_order(_, Purity, PorF, Arity),
 hlds_goal__generic_call_id(
 		class_method(_, _, ClassId, MethodId),
 		generic_call(class_method(ClassId, MethodId))).
-hlds_goal__generic_call_id(unsafe_cast, generic_call(unsafe_cast)).
+hlds_goal__generic_call_id(cast(CastType), generic_call(cast(CastType))).
 hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 		generic_call(aditi_builtin(Builtin, Name))).
 
 generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
 generic_call_pred_or_func(class_method(_, _, _, CallId)) =
 	simple_call_id_pred_or_func(CallId).
-generic_call_pred_or_func(unsafe_cast) = predicate.
+generic_call_pred_or_func(cast(_)) = predicate.
 generic_call_pred_or_func(aditi_builtin(_, CallId)) =
 	simple_call_id_pred_or_func(CallId).
 
