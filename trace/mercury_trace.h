@@ -63,7 +63,12 @@ typedef struct MR_Event_Details_Struct {
 ** MR_trace_real may be taken in automatically generated <main>_init.c files,
 ** and we do not want to include mercury_trace.h in such files; we don't want
 ** them to refer to the trace directory at all unless debugging is enabled.
+**
+** MR_trace_real_decl is the version of MR_trace_real we use when gathering
+** events for the annotated trace.
 */
+
+extern  MR_Code *MR_trace_real_decl(const MR_Label_Layout *);
 
 /*
 ** Ideally, MR_trace_retry works by resetting the state of the stacks and
@@ -254,6 +259,13 @@ typedef struct {
 				*/
 	MR_FilterFuncPtr	MR_filter_ptr;
 } MR_Trace_Cmd_Info;
+
+/*
+** The data structure that tells MR_trace_real and MR_trace_real_decl
+** what to do. Exported only for use by mercury_trace_declarative.c.
+*/
+
+extern	MR_Trace_Cmd_Info   	MR_trace_ctrl;
 
 #ifdef	MR_TRACE_CHECK_INTEGRITY
   #define MR_init_trace_check_integrity(cmd)	\

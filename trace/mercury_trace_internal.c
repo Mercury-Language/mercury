@@ -276,8 +276,6 @@ static const char   *MR_scope_report_msg[] = {
     "MDB INTERNAL ERROR: scope set to MR_SPY_LINENO",
 };
 
-MR_Trace_Mode MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-
 typedef enum {
     MR_MULTIMATCH_ASK, MR_MULTIMATCH_ALL, MR_MULTIMATCH_ONE
 } MR_MultiMatch;
@@ -774,10 +772,6 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
     if (! interactive) {
         return MR_trace_event_internal_report(cmd, print_list, event_info);
-    }
-
-    if (MR_trace_decl_mode != MR_TRACE_INTERACTIVE) {
-        return MR_trace_decl_debug(cmd, event_info);
     }
 
     /*
@@ -5794,7 +5788,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_bool             testing = MR_FALSE;
     MR_bool             debug = MR_FALSE;
     const char          *filename;
-    MR_Trace_Mode       trace_mode;
+    MR_Decl_Mode        decl_mode;
 
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
     MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
@@ -5810,10 +5804,10 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         ; /* the usage message has already been printed */
     } else if (word_count <= 2) {
         if (word_count == 2 && MR_trace_decl_debug_debugger_mode) {
-            trace_mode = MR_TRACE_DECL_DEBUG_DUMP;
+            decl_mode = MR_DECL_DUMP;
             filename = (const char *) words[1];
         } else {
-            trace_mode = MR_TRACE_DECL_DEBUG;
+            decl_mode = MR_DECL_NODUMP;
             filename = (const char *) NULL;
         }
         if (MR_trace_have_unhid_events) {
@@ -5822,13 +5816,13 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
                 "mdb: dd doesn't work after `unhide_events on'.\n");
             return KEEP_INTERACTING;
         }
+
         MR_trace_decl_set_testing_flag(testing);
-        if (search_mode_was_set) {
-            MR_trace_decl_set_fallback_search_mode(search_mode);
-        } else if (new_session) {
+        if (search_mode_was_set || new_session) {
             MR_trace_decl_set_fallback_search_mode(search_mode);
         }
-        if (MR_trace_start_decl_debug(trace_mode, filename, new_session, cmd,
+
+        if (MR_trace_start_decl_debug(decl_mode, filename, new_session, cmd,
             event_info, event_details, jumpaddr))
         {
             return STOP_INTERACTING;
@@ -5868,23 +5862,20 @@ MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
             matches = MR_search_for_matching_procedures(&spec);
             MR_filter_user_preds(&matches);
             if (matches.match_proc_next == 0) {
-                fprintf(MR_mdb_err, "mdb: there is no such "
-                    "module, predicate or function.\n");
+                fprintf(MR_mdb_err,
+                    "mdb: there is no such module, predicate or function.\n");
             } else if (matches.match_proc_next == 1) {
-                MR_decl_add_trusted_pred_or_func(
-                    matches.match_procs[0]);
+                MR_decl_add_trusted_pred_or_func(matches.match_procs[0]);
                 fprintf(MR_mdb_out, "Trusting ");
-                MR_print_pred_id_and_nl(MR_mdb_out,
-                    matches.match_procs[0]);
+                MR_print_pred_id_and_nl(MR_mdb_out, matches.match_procs[0]);
             } else {
-                int i;
-                char buf[80];
-                char *line2;
+                int     i;
+                char    buf[80];
+                char    *line2;
 
                 fprintf(MR_mdb_out, "Ambiguous predicate or function"
                     " specification. The matches are:\n");
-                for (i = 0; i < matches.match_proc_next; i++)
-                {
+                for (i = 0; i < matches.match_proc_next; i++) {
                     fprintf(MR_mdb_out, "%d: ", i);
                     MR_print_pred_id_and_nl(MR_mdb_out,
                         matches.match_procs[i]);
@@ -5903,7 +5894,7 @@ MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
                         fprintf(MR_mdb_out, "Trusting ");
                         MR_print_pred_id_and_nl(MR_mdb_out,
-                        matches.match_procs[i]);
+                            matches.match_procs[i]);
                     }
                     MR_free(line2);
                 } else if(MR_trace_is_natural_number(line2, &i)) {
@@ -5913,7 +5904,7 @@ MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
                         fprintf(MR_mdb_out, "Trusting ");
                         MR_print_pred_id_and_nl(MR_mdb_out,
-                        matches.match_procs[i]);
+                            matches.match_procs[i]);
                     } else {
                         fprintf(MR_mdb_out, "no such match\n");
                     }
@@ -5933,6 +5924,7 @@ MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     } else {
         MR_trace_usage("dd", "trust");
     }
+
     return KEEP_INTERACTING;
 }
 
@@ -5943,13 +5935,9 @@ MR_trace_cmd_untrust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
     int i;
 
-    if (word_count == 2) {
-        if (MR_trace_is_natural_number(words[1], &i)) {
-            if (!MR_decl_remove_trusted(i)) {
-                fprintf(MR_mdb_err, "mdb: no such trusted object\n");
-            }
-        } else {
-            MR_trace_usage("dd", "untrust");
+    if (word_count == 2 && MR_trace_is_natural_number(words[1], &i)) {
+        if (!MR_decl_remove_trusted(i)) {
+            fprintf(MR_mdb_err, "mdb: no such trusted object\n");
         }
     } else {
         MR_trace_usage("dd", "untrust");

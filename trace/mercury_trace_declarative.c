@@ -108,6 +108,7 @@
 #include "mercury_imp.h"
 #include "mercury_trace_declarative.h"
 
+#include "mercury_init.h"               /* for MR_trace_real */
 #include "mercury_trace.h"
 #include "mercury_trace_browse.h"
 #include "mercury_trace_help.h"
@@ -177,17 +178,17 @@
 
 #ifdef MR_DD_PRINT_EDT_STATS
 
-static    MR_Unsigned    MR_edt_stats_total_constructed_nodes = 0;
-static    MR_Unsigned    MR_edt_stats_constructed_nodes_this_time = 0;
-static    MR_Unsigned    MR_edt_stats_total_reexecutions = 0;
+static  MR_Unsigned         MR_edt_stats_total_constructed_nodes = 0;
+static  MR_Unsigned         MR_edt_stats_constructed_nodes_this_time = 0;
+static  MR_Unsigned         MR_edt_stats_total_reexecutions = 0;
 
-#define   MR_decl_maybe_print_edt_stats() MR_decl_print_edt_stats()
-#define   MR_decl_maybe_inc_constructed_nodes() MR_decl_inc_constructed_nodes()
+#define MR_decl_maybe_print_edt_stats()         MR_decl_print_edt_stats()
+#define MR_decl_maybe_inc_constructed_nodes()   MR_decl_inc_constructed_nodes()
 
 #else /* MR_DD_PRINT_EDT_STATS */
 
-#define    MR_decl_maybe_print_edt_stats()
-#define    MR_decl_maybe_inc_constructed_nodes()
+#define MR_decl_maybe_print_edt_stats()
+#define MR_decl_maybe_inc_constructed_nodes()
 
 #endif /* MR_DD_PRINT_EDT_STATS */
 
@@ -199,6 +200,8 @@ static    MR_Unsigned    MR_edt_stats_total_reexecutions = 0;
 ** take for a particular trace event.
 */
 
+static  MR_Decl_Mode        MR_decl_mode = MR_DECL_NODUMP;
+
 /*
 ** If we are building a subtree then reaching this event will cause the
 ** declarative debugger to continue its analysis.  Reaching this event means
@@ -206,7 +209,7 @@ static    MR_Unsigned    MR_edt_stats_total_reexecutions = 0;
 ** when building a new explicit supertree.
 */
 
-static    MR_Unsigned   MR_edt_last_event;
+static  MR_Unsigned         MR_edt_last_event;
 
 /*
 ** If we are materializing a new subtree then MR_edt_start_seqno is the
@@ -216,7 +219,7 @@ static    MR_Unsigned   MR_edt_last_event;
 ** materialized portion of the annotated trace.
 */
 
-static    MR_Unsigned   MR_edt_start_seqno;
+static  MR_Unsigned         MR_edt_start_seqno;
 
 /*
 ** This tells MR_trace_decl_debug whether it is inside a portion of the
@@ -229,7 +232,7 @@ static    MR_Unsigned   MR_edt_start_seqno;
 ** materialized).
 */
 
-static    MR_bool       MR_edt_inside;
+static  MR_bool             MR_edt_inside;
 
 /*
 ** The initial event at which the `dd' command was given.  This is used when
@@ -237,14 +240,14 @@ static    MR_bool       MR_edt_inside;
 ** the declarative debugging session.
 */
 
-static    MR_Unsigned   MR_edt_initial_event;
+static  MR_Unsigned         MR_edt_initial_event;
 
 /*
 ** This variable indicates whether we are building a supertree above a
 ** given event or a subtree rooted at a given event.
 */
 
-static    MR_bool       MR_edt_building_supertree;
+static  MR_bool             MR_edt_building_supertree;
 
 /*
 ** The node returned to the front end once a subtree or supertree has been
@@ -253,7 +256,7 @@ static    MR_bool       MR_edt_building_supertree;
 ** the root of the new explicit subtree is returned.
 */
 
-static    MR_Trace_Node MR_edt_return_node;
+static  MR_Trace_Node       MR_edt_return_node;
 
 /*
 ** The depth of the EDT is different from the call depth of the events, since
@@ -264,14 +267,14 @@ static    MR_Trace_Node MR_edt_return_node;
 ** for the root of the tree we are materializing.
 */
 
-static    MR_Integer    MR_edt_depth;
+static  MR_Integer          MR_edt_depth;
 
 /*
 ** Events where the value of MR_edt_depth above is greater than the value of
 ** MR_edt_max_depth will not be included in tha annotated trace.
 */
 
-static    MR_Unsigned   MR_edt_max_depth;
+static  MR_Unsigned         MR_edt_max_depth;
 
 /*
 ** The time (in milliseconds since the start of the program) when collection of
@@ -279,29 +282,30 @@ static    MR_Unsigned   MR_edt_max_depth;
 ** started.
 */
 
-static    MR_Unsigned   MR_edt_start_time;
+static  MR_Unsigned         MR_edt_start_time;
 
 /*
 ** This global keeps track of how many ticks have been printed so far in
 ** the progress message.
 */
 
-static    MR_Unsigned   MR_edt_progress_last_tick = 0;
+static  MR_Unsigned         MR_edt_progress_last_tick = 0;
 
 /*
 ** The first event executed during the current re-execution.
 */
-static    MR_Unsigned   MR_edt_first_event;
+
+static  MR_Unsigned         MR_edt_first_event;
 
 /*
-** This global points to an array that records the number of
-** events at different depths in implicit subtrees.  These
-** are used to determine what depth an implicit subtree should
+** MR_edt_implicit_subtree_counters points to an array that records
+** the number of events at different depths in implicit subtrees.
+** These are used to determine what depth an implicit subtree should
 ** be materialized to.
 */
 
-static    MR_Unsigned   *MR_edt_implicit_subtree_counters;
-static    MR_Unsigned   MR_edt_implicit_subtree_num_counters;
+static  MR_Unsigned         *MR_edt_implicit_subtree_counters;
+static  MR_Unsigned         MR_edt_implicit_subtree_num_counters;
 
 /*
 ** The declarative debugger ignores modules that were not compiled with
@@ -311,7 +315,7 @@ static    MR_Unsigned   MR_edt_implicit_subtree_num_counters;
 ** should be printed before calling the front end.
 */
 
-static    MR_bool       MR_edt_compiler_flag_warning;
+static  MR_bool             MR_edt_compiler_flag_warning;
 
 /*
 ** When building a supertree there will be 2 retries.  The first will
@@ -322,7 +326,7 @@ static    MR_bool       MR_edt_compiler_flag_warning;
 ** okay then there's no point asking them again for the second retry.
 */
 
-static    MR_bool       MR_edt_unsafe_retry_already_asked;
+static  MR_bool             MR_edt_unsafe_retry_already_asked;
 
 /*
 ** This is used as the abstract map from node identifiers to nodes
@@ -331,24 +335,23 @@ static    MR_bool       MR_edt_unsafe_retry_already_asked;
 ** updated, before being passed to Mercury code again.
 */
 
-static    MR_Unsigned   MR_trace_node_store;
+static  MR_Unsigned         MR_trace_node_store;
 
 /*
 ** The front end state is stored here in between calls to it.
 ** MR_trace_decl_ensure_init should be called before using the state.
 */
 
-static    MR_Word       MR_trace_front_end_state;
+static  MR_Word             MR_trace_front_end_state;
 
-static    void
-MR_trace_decl_ensure_init(void);
+static  void                MR_trace_decl_ensure_init(void);
 
 /*
 ** MR_trace_current_node always contains the last node allocated,
 ** or NULL if the collection has just started.
 */
 
-static    MR_Trace_Node MR_trace_current_node;
+static  MR_Trace_Node       MR_trace_current_node;
 
 /*
 ** When in test mode, MR_trace_store_file points to an open file to
@@ -357,7 +360,9 @@ static    MR_Trace_Node MR_trace_current_node;
 ** throughout the declarative debugging session.
 */
 
-static    FILE              *MR_trace_store_file;
+static  FILE                *MR_trace_store_file;
+
+/****************************************************************************/
 
 static    MR_Trace_Node     MR_trace_decl_call(MR_Event_Info *event_info,
                                 MR_Trace_Node prev);
@@ -464,7 +469,7 @@ static    void              MR_trace_reset_implicit_subtree_counters(void);
 static    void              MR_trace_free_implicit_subtree_counters(void);
 static    MR_Unsigned       MR_trace_calc_implicit_subtree_ideal_depth(void);
 
-MR_bool    MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
+MR_bool     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 
 MR_Unsigned MR_edt_desired_nodes_in_subtree = MR_TRACE_DESIRED_SUBTREE_NODES;
 MR_Unsigned MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
@@ -476,6 +481,7 @@ MR_bool    MR_trace_decl_debug_debugger_mode = MR_FALSE;
 ** MR_edt_max_depth.  These events are implicitly represented in the structure
 ** being built.
 */
+
 #define MR_TRACE_EVENT_TOO_DEEP(depth) (depth > MR_edt_max_depth)
 
 /*
@@ -485,7 +491,7 @@ MR_bool    MR_trace_decl_debug_debugger_mode = MR_FALSE;
 */
 
 MR_Code *
-MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
+MR_trace_decl_debug(MR_Event_Info *event_info)
 {
     const MR_Proc_Layout    *entry;
     MR_Unsigned             depth;
@@ -547,7 +553,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
         event_details.MR_call_depth = MR_trace_call_depth;
         event_details.MR_event_number = MR_trace_event_number;
 
-        return MR_decl_diagnosis(MR_edt_return_node, cmd,
+        return MR_decl_diagnosis(MR_edt_return_node, &MR_trace_ctrl,
             event_info, &event_details, MR_TRUE);
     }
 
@@ -847,7 +853,7 @@ MR_trace_decl_retry_supertree(MR_Unsigned max_distance,
 
     if (retry_result != MR_RETRY_OK_DIRECT) {
         if (retry_result == MR_RETRY_ERROR) {
-            MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+            MR_selected_trace_func_ptr = MR_trace_real;
             fflush(MR_mdb_out);
             fprintf(MR_mdb_err,
                 "mdb: retry aborted in MR_trace_decl_retry_supertree: %s\n",
@@ -1597,7 +1603,7 @@ MR_decl_print_all_trusted(FILE *fp, MR_bool mdb_command_format)
 }
 
 MR_bool
-MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
+MR_trace_start_decl_debug(MR_Decl_Mode mode, const char *outfile,
     MR_bool new_session, MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
     MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
@@ -1616,7 +1622,8 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
     ** build a new annotated trace.
     */
     if (!new_session && !first_time) {
-        MR_trace_decl_mode = trace_mode;
+        MR_decl_mode = mode;
+        MR_selected_trace_func_ptr = MR_trace_real_decl;
         *jumpaddr = MR_decl_diagnosis((MR_Trace_Node) NULL, cmd,
             event_info, event_details, MR_FALSE);
         return MR_TRUE;
@@ -1671,7 +1678,7 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
         return MR_FALSE;
     }
 
-    if (trace_mode == MR_TRACE_DECL_DEBUG_DUMP) {
+    if (mode == MR_DECL_DUMP) {
         out = fopen(outfile, "w");
         if (out == NULL) {
             fflush(MR_mdb_out);
@@ -1683,7 +1690,8 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
         }
     }
 
-    MR_trace_decl_mode = trace_mode;
+    MR_decl_mode = mode;
+    MR_selected_trace_func_ptr = MR_trace_real_decl;
     MR_trace_decl_ensure_init();
     MR_trace_current_node = (MR_Trace_Node) NULL;
     message = MR_trace_start_collecting(event_info->MR_event_number,
@@ -1703,9 +1711,8 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 }
 
 static MR_Code *
-MR_trace_restart_decl_debug(
-    MR_Trace_Node call_preceding, MR_Unsigned event, MR_Unsigned seqno,
-    MR_bool create_supertree, MR_Unsigned depth_limit,
+MR_trace_restart_decl_debug(MR_Trace_Node call_preceding, MR_Unsigned event,
+    MR_Unsigned seqno, MR_bool create_supertree, MR_Unsigned depth_limit,
     MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
     MR_Event_Details *event_details)
 {
@@ -1726,7 +1733,7 @@ MR_trace_restart_decl_debug(
     if (message != NULL) {
         fflush(MR_mdb_out);
         fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n%s\n", message);
-        MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+        MR_selected_trace_func_ptr = MR_trace_real;
         MR_debug_enabled = MR_TRUE;
         MR_update_trace_func_enabled();
         return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
@@ -1753,6 +1760,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     ** call event number corresponding to seqno.  Since we don't have the
     ** call event number for seqno (`event' is the final event number,
     ** not the call event number), we do a retry if:
+    **
     **    a) The call sequence number of the current call is greater than
     **       or equal to seqno, or
     **    b) The current event number is greater than the final event
@@ -1763,7 +1771,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     ** event is greater than or equal to the call event for seqno and less
     ** than or equal to the final event for seqno.  This means we will do
     ** a retry if the call event for seqno is equal to the current event
-    ** but thats not a problem since the retry will be a no-op.
+    ** but that is not a problem since the retry will be a no-op.
     */
     if (event_info->MR_call_seqno >= seqno ||
         event_info->MR_event_number > event)
@@ -1789,6 +1797,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
                 return "internal error: direct retry impossible";
             }
         }
+
         if (unsafe_retry) {
             MR_edt_unsafe_retry_already_asked = MR_TRUE;
         }
@@ -1869,7 +1878,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
             " the debugging tree.\n");
     }
 
-    if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_DUMP && new_tree) {
+    if (MR_decl_mode == MR_DECL_DUMP && new_tree) {
         MR_mercuryfile_init(MR_trace_store_file, 1, &stream);
 
         MR_TRACE_CALL_MERCURY(
@@ -1877,7 +1886,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         );
 
         fclose(MR_trace_store_file);
-        MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+        MR_selected_trace_func_ptr = MR_trace_real;
         MR_debug_enabled = MR_TRUE;
         MR_update_trace_func_enabled();
         MR_trace_call_seqno = event_details->MR_call_seqno;
@@ -1893,26 +1902,25 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         */
         MR_debug_enabled = MR_TRUE;
         MR_update_trace_func_enabled();
-        MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+        MR_selected_trace_func_ptr = MR_trace_real;
     } else {
         MR_debug_enabled = MR_FALSE;
         MR_update_trace_func_enabled();
-        MR_trace_decl_mode = MR_TRACE_DECL_DEBUG;
+        MR_selected_trace_func_ptr = MR_trace_real_decl;
     }
 
     MR_TRACE_CALL_MERCURY(
-        if (new_tree == MR_TRUE) {
+        if (new_tree) {
             MR_DD_decl_diagnosis_new_tree(MR_trace_node_store,
-                root, &response, MR_trace_front_end_state,
-                &MR_trace_front_end_state,
+                root, &response,
+                MR_trace_front_end_state, &MR_trace_front_end_state,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state
             );
         } else {
-            MR_DD_decl_diagnosis_resume_previous(
-                MR_trace_node_store,
-                &response, MR_trace_front_end_state,
-                &MR_trace_front_end_state,
+            MR_DD_decl_diagnosis_resume_previous(MR_trace_node_store,
+                &response,
+                MR_trace_front_end_state, &MR_trace_front_end_state,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state
             );
@@ -1938,7 +1946,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
     */
     MR_debug_enabled = MR_FALSE;
     MR_update_trace_func_enabled();
-    MR_trace_decl_mode = MR_TRACE_DECL_DEBUG;
+    MR_selected_trace_func_ptr = MR_trace_real_decl;
 
     MR_trace_call_seqno = event_details->MR_call_seqno;
     MR_trace_call_depth = event_details->MR_call_depth;
@@ -2051,7 +2059,7 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
                 }
             }
 
-            MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+            MR_selected_trace_func_ptr = MR_trace_real;
             MR_debug_enabled = MR_TRUE;
             MR_update_trace_func_enabled();
             return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
@@ -2070,7 +2078,7 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
     cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_must_check = MR_FALSE;
-    MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+    MR_selected_trace_func_ptr = MR_trace_real;
     MR_debug_enabled = MR_TRUE;
     MR_update_trace_func_enabled();
     return jumpaddr;

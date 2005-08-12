@@ -16,8 +16,7 @@
 ** MR_trace_decl_debug for each event.  
 */
 
-extern	MR_Code	*MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd,
-			MR_Event_Info *event_info);
+extern	MR_Code	*MR_trace_decl_debug(MR_Event_Info *event_info);
 
 /*
 ** The internal (interactive) debugger calls this function to enter
@@ -26,9 +25,10 @@ extern	MR_Code	*MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd,
 ** being entered.
 */
 
-extern	MR_bool	MR_trace_start_decl_debug(MR_Trace_Mode trace_mode,
-			const char *out, MR_bool new_session,
-			MR_Trace_Cmd_Info *cmd,
+typedef enum { MR_DECL_NODUMP, MR_DECL_DUMP } MR_Decl_Mode;
+
+extern	MR_bool	MR_trace_start_decl_debug(MR_Decl_Mode mode, const char *out,
+			MR_bool new_session, MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
 

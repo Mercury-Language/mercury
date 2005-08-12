@@ -49,13 +49,14 @@
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
 #include "mercury_trace_external.h"
+#include "mercury_trace_declarative.h"
 #include "mercury_trace_spy.h"
 #include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
 
 #include <stdio.h>
 
-static  MR_Trace_Cmd_Info   MR_trace_ctrl = {
+MR_Trace_Cmd_Info   MR_trace_ctrl = {
     MR_CMD_GOTO,
     0,                      /* stop depth */
     0,                      /* stop event */
@@ -119,7 +120,50 @@ static  void        MR_abandon_call_table_array(void);
 ** MR_trace_real() is called via a function pointer from MR_trace()
 ** in runtime/mercury_trace_base.c, which in turn is called from
 ** compiled code whenever an event to be traced occurs.
+**
+** The initial part, MR_TRACE_REAL_SETUP_CODE, is shared by MR_trace_real and
+** MR_trace_real_decl.
 */
+
+#if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) && defined(MR_MINIMAL_MODEL_DEBUG)
+  #define MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC                          \
+        if ((MR_Trace_Port) layout->MR_sll_port == MR_PORT_CALL) {            \
+            MR_subgoal_debug_cur_proc = layout->MR_sll_entry;                 \
+        }
+#else
+  #define MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC
+#endif
+
+#define MR_TRACE_REAL_SETUP_CODE()                                            \
+    do {                                                                      \
+        /* In case MR_sp or MR_curfr is transient. */                         \
+        MR_restore_transient_registers();                                     \
+                                                                              \
+        maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;       \
+        if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {       \
+            if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {      \
+                return NULL;                                                  \
+            }                                                                 \
+                                                                              \
+            seqno = (MR_Unsigned) MR_call_num_stackvar(MR_sp);                \
+            depth = (MR_Unsigned) MR_call_depth_stackvar(MR_sp);              \
+        } else {                                                              \
+            if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {      \
+                return NULL;                                                  \
+            }                                                                 \
+                                                                              \
+            seqno = (MR_Unsigned) MR_call_num_framevar(MR_curfr);             \
+            depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);           \
+        }                                                                     \
+                                                                              \
+        MR_TRACE_SETUP_MAYBE_SAVE_SUBGOAL_CUR_PROC                            \
+                                                                              \
+        if (layout->MR_sll_hidden && !MR_trace_unhide_events) {               \
+            return NULL;                                                      \
+        }                                                                     \
+                                                                              \
+        MR_trace_event_number++;                                              \
+    } while (0)
 
 MR_Code *
 MR_trace_real(const MR_Label_Layout *layout)
@@ -131,37 +175,7 @@ MR_trace_real(const MR_Label_Layout *layout)
     MR_bool             match;
     MR_Trace_Port       port;
 
-    /* in case MR_sp or MR_curfr is transient */
-    MR_restore_transient_registers();
-
-    maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
-    if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
-        if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {
-            return NULL;
-        }
-
-        seqno = (MR_Unsigned) MR_call_num_stackvar(MR_sp);
-        depth = (MR_Unsigned) MR_call_depth_stackvar(MR_sp);
-    } else {
-        if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {
-            return NULL;
-        }
-
-        seqno = (MR_Unsigned) MR_call_num_framevar(MR_curfr);
-        depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
-    }
-
-#if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) && defined(MR_MINIMAL_MODEL_DEBUG)
-    if ((MR_Trace_Port) layout->MR_sll_port == MR_PORT_CALL) {
-        MR_subgoal_debug_cur_proc = layout->MR_sll_entry;
-    }
-#endif
-
-    if (layout->MR_sll_hidden && !MR_trace_unhide_events) {
-        return NULL;
-    }
-
-    MR_trace_event_number++;
+    MR_TRACE_REAL_SETUP_CODE();
 
 #ifdef  MR_TRACE_HISTOGRAM
 
@@ -426,10 +440,9 @@ MR_trace_interrupt(const MR_Label_Layout *layout)
         seqno = (MR_Unsigned) MR_call_num_framevar(MR_curfr);
         depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
     }
+
     port = (MR_Trace_Port) layout->MR_sll_port;
-
     MR_trace_event_number++;
-
     return MR_trace_event(&MR_trace_ctrl, MR_TRUE, layout, port, seqno, depth);
 }
 
@@ -446,25 +459,59 @@ MR_trace_interrupt_handler(void)
     MR_selected_trace_func_ptr = MR_trace_interrupt;
 }
 
+/*
+** The MR_TRACE_EVENT_DECL_AND_SETUP macro is the initial part of
+** MR_trace_event, shared also by MR_trace_real_decl.
+**
+** It must be included in a context that defines layout, port, seqno and depth.
+*/
+
+#define MR_TRACE_EVENT_DECL_AND_SETUP                                         \
+    MR_Code         *jumpaddr;                                                \
+    MR_Event_Info   event_info;                                               \
+    MR_Word         *saved_regs = event_info.MR_saved_regs;                   \
+                                                                              \
+    event_info.MR_event_number = MR_trace_event_number;                       \
+    event_info.MR_call_seqno = seqno;                                         \
+    event_info.MR_call_depth = depth;                                         \
+    event_info.MR_trace_port = port;                                          \
+    event_info.MR_event_sll = layout;                                         \
+    event_info.MR_event_path = MR_label_goal_path(layout);                    \
+                                                                              \
+    MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);                  \
+    /* This also saves the regs in MR_fake_regs. */                           \
+    MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
+
+/*
+** The MR_TRACE_EVENT_TEARDOWN macro is the final part of
+** MR_trace_event, shared also by MR_trace_real_decl.
+**
+** It must be included in a context that defines jumpaddr, saved_regs and
+** event_info.
+**
+** Whenever the debugger changes the flow of control, e.g. by
+** executing a retry command, it also sets up the saved registers
+** to the state that is appropriate for the label at which execution
+** will resume. There may be more registers live at that point than
+** at the point at which MR_trace was called. Therefore max_mr_num
+** should also be set appropriately when executing a retry command.
+**
+** For the treatment of MR_global_hp, see the top of this file.
+*/
+
+#define MR_TRACE_EVENT_TEARDOWN                                               \
+    /* In case MR_global_hp is transient. */                                  \
+    MR_restore_transient_registers();                                         \
+    MR_saved_global_hp_word(saved_regs) = (MR_Word) MR_global_hp;             \
+    MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);         \
+    return jumpaddr;
+
 static MR_Code *
 MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
     const MR_Label_Layout *layout, MR_Trace_Port port,
     MR_Unsigned seqno, MR_Unsigned depth)
 {
-    MR_Code         *jumpaddr;
-    MR_Event_Info   event_info;
-    MR_Word         *saved_regs = event_info.MR_saved_regs;
-
-    event_info.MR_event_number = MR_trace_event_number;
-    event_info.MR_call_seqno = seqno;
-    event_info.MR_call_depth = depth;
-    event_info.MR_trace_port = port;
-    event_info.MR_event_sll = layout;
-    event_info.MR_event_path = MR_label_goal_path(layout);
-
-    MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);
-    /* This also saves the regs in MR_fake_regs. */
-    MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
+    MR_TRACE_EVENT_DECL_AND_SETUP
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
     if (MR_trace_handler == MR_TRACE_EXTERNAL) {
@@ -486,26 +533,36 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
     ** We should get here only if MR_trace_handler == MR_TRACE_INTERNAL.
     ** This is enforced by mercury_wrapper.c.
     */
+    {
+        MR_Spy_Action       action;         /* ignored */
+        MR_Spy_Print_List   print_list;
 
-    jumpaddr = MR_trace_event_internal(cmd, interactive, &event_info);
+        (void) MR_event_matches_spy_point(layout, port, &action, &print_list);
+        jumpaddr = MR_trace_event_internal(cmd, interactive, print_list,
+            &event_info);
+    }
 #endif
 
-    /*
-    ** Whenever the debugger changes the flow of control, e.g. by
-    ** executing a retry command, it also sets up the saved registers
-    ** to the state that is appropriate for the label at which execution
-    ** will resume. There may be more registers live at that point than
-    ** at the point at which MR_trace was called. Therefore max_mr_num
-    ** should also be set appropriately when executing a retry command.
-    **
-    ** For the treatment of MR_global_hp, see the top of this file.
-    */
+    MR_TRACE_EVENT_TEARDOWN
+}
 
-        /* in case MR_global_hp is transient */
-    MR_restore_transient_registers();
-    MR_saved_global_hp_word(saved_regs) = (MR_Word) MR_global_hp;
-    MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);
-    return jumpaddr;
+MR_Code *
+MR_trace_real_decl(const MR_Label_Layout *layout)
+{
+    MR_Integer          maybe_from_full;
+    MR_Unsigned         seqno;
+    MR_Unsigned         depth;
+    MR_Trace_Port       port;
+
+    MR_TRACE_REAL_SETUP_CODE();
+
+    port = (MR_Trace_Port) layout->MR_sll_port;
+
+    {
+        MR_TRACE_EVENT_DECL_AND_SETUP
+        jumpaddr = MR_trace_decl_debug(&event_info);
+        MR_TRACE_EVENT_TEARDOWN
+    }
 }
 
 /*****************************************************************************/
