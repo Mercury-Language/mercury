@@ -8906,7 +8906,7 @@ is linear only in the number of input arguments.
 The tradeoff is that @samp{fast_loose_memo} does not recognize
 calls as duplicates if they involve input arguments that are logically equal
 but are stored at different locations in memory.
-The following declarations call for this variable of tabling.
+The following declarations call for this variant of tabling.
 
 @example
 :- pragma fast_loose_memo(@var{Name}/@var{Arity}).
