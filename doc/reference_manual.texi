@@ -8846,72 +8846,132 @@ space to record answers in the table.
 
 The implementation can optionally also check at runtime for the situation
 where a procedure calls itself recursively with the same arguments,
-which would normally result in a infinite loop; if this situation is
-encountered, it can (at the programmer's option) either throw an
-exception, or avoid the infinite loop by computing solutions
-using the ``minimal model'' semantics.
+which would normally result in a infinite loop;
+if this situation is encountered, it can (at the programmer's option)
+either throw an exception, or avoid the infinite loop
+by computing solutions using the ``minimal model'' semantics.
 
-The current Mercury implementation thus supports three different
-pragmas for tabling, to cover these three cases: @samp{pragma memo}
-does no loop checking, @samp{pragma loop_check} checks for loops
-and throws an exception if a loop is detected, while
-@samp{pragma minimal_model} computes the ``minimal model'' semantics.
-@samp{pragma fast_loose_memo} is a variant of @samp{pragma memo}.
-While @samp{memo} tabling requires time proportional to the size of
-the input arguments to look up the current call in its table,
-@samp{fast_loose_memo} requires constant time.
-The tradeoff is that @samp{fast_loose_memo} does not recognize
-calls as duplicates if they involve input arguments that are logically equal
-but are stored at different locations in memory.
+The current Mercury implementation thus supports
+three different pragmas for tabling, to cover these three cases:
+@samp{pragma memo} does no loop checking,
+@samp{pragma loop_check} checks for loops
+and throws an exception if a loop is detected,
+while @samp{pragma minimal_model} computes the ``minimal model'' semantics.
 
 @c XXX we should fix this bug...
 @cartouche
 @strong{Warning:}
-The current implementation of @samp{pragma minimal_model} is broken:
-the generated code sometimes produces incorrect results.  It should
-not be used.  Also the current implementation of all three pragmas
-is broken for procedures with determinism @samp{nondet} or @samp{multi}.
-The @samp{pragma memo} and @samp{pragma loop_check} declarations
-should not be used on such procedures.
+The current implementation of @samp{pragma memo} declarations
+is not designed to work for procedures
+with determinism @samp{nondet} or @samp{multi}.
 @end cartouche
 
 The syntax for each of these declarations is
 
 @example
 :- pragma memo(@var{Name}/@var{Arity}).
-:- pragma fast_loose_memo(@var{Name}/@var{Arity}).
 :- pragma loop_check(@var{Name}/@var{Arity}).
 :- pragma minimal_model(@var{Name}/@var{Arity}).
 @end example
 
 @noindent
-where @var{Name}/@var{Arity} specifies the predicate or
-function to which the declaration applies.  The declaration
-applies to all modes of the predicate and/or function named.
+where @var{Name}/@var{Arity} specifies
+the predicate or function to which the declaration applies.
+The declaration applies to all modes of the predicate and/or function named.
 At most one of these declarations may be specified
 for any given predicate or function.
 
+Programmers can also request the application of tabling
+only to one particular mode of a predicate or function,
+via declarations such as these:
+
+@example
+:- pragma memo(@var{Name}(in, in, out)).
+:- pragma loop_check(@var{Name}(in, out)).
+:- pragma minimal_model(@var{Name}(in, in, out, out)).
+@end example
+
+We also support two faster variants of @samp{pragma memo}
+that may be applicable in some circumstances.
+The implementation of @samp{pragma memo}
+looks up the value of each input argument in the call table,
+and thus requires time proportional to
+the number of function symbols in the input arguments
+to look up the current call in the call table.
+The @samp{pragma fast_loose_memo} variant
+looks up only the address of each input argument in the call table,
+which means that the time required
+to look up the current call in the call table
+is linear only in the number of input arguments.
+The tradeoff is that @samp{fast_loose_memo} does not recognize
+calls as duplicates if they involve input arguments that are logically equal
+but are stored at different locations in memory.
+The following declarations call for this variable of tabling.
+
+@example
+:- pragma fast_loose_memo(@var{Name}/@var{Arity}).
+:- pragma fast_loose_memo(@var{Name}(in, in, out)).
+@end example
+
+The second variant of @samp{pragma memo} allows programmers to choose
+individually for each input argument whether that argument
+should be looked up in the call table by value or by address,
+or whether it should be looked up at all:
+
+@example
+:- pragma memo(@var{Name}(in, in, in, out),
+	[value, addr, promise_implied, output]).
+@end example
+
+The second argument of this form of @samp{pragma memo} should be a list
+with an element for each argument of the predicate or function concerned
+(if a function, last element is for the return value).
+For output arguments, the list element should be @samp{output};
+For input arguments, the list element may be
+@samp{value}, @samp{addr} or @samp{promise_implied}.
+The first calls for tabling the argument by value,
+the second calls for tabling the argument by address,
+and the third calls for not tabling the argument at all.
+This last course of action promises that any two calls
+that agree on the values of the value-tabled input arguments
+and on the addresses of the address-tabled input arguments
+will behave the same regardless of the values of the untabled input arguments.
+In most cases, this will mean that the values of the untabled arguments
+are implied by the values of the value-tabled arguments
+and the addresses of the address-tabled arguments,
+though the promise can also be fulfilled
+if the table predicate or function does not actually use
+the untabled argument for computing any of its output.
+(It is ok for it to use the untabled argument
+to decide what exception to throw.)
+
+If the tabled predicate or function has only one mode,
+then this declaration can also be specified without giving the argument modes:
+
+@example
+:- pragma memo(@var{Name}/@var{Arity},
+	[value, addr, promise_implied, output]).
+@end example
+
 Note that a @samp{pragma minimal_model} declaration
-changes the declarative semantics of the specified predicate or
-function: instead of using the completion of the clauses
-as the basis for the semantics, as is normally the case
-in Mercury, the declarative semantics that is used is
-the ``minimal model'' semantics.  Anything which is
-true or false in the completion semantics is also true
-or false (respectively) in the minimal model semantics,
+changes the declarative semantics of the specified predicate or function:
+instead of using the completion of the clauses as the basis for the semantics,
+as is normally the case in Mercury,
+the declarative semantics that is used is the ``minimal model'' semantics.
+Anything which is true or false in the completion semantics
+is also true or false (respectively) in the minimal model semantics,
 but there are goals for which the minimal model specifies
-that the result is true or false, whereas the completion semantics
-leaves the result unspecified. 
+that the result is true or false,
+whereas the completion semantics leaves the result unspecified. 
 For these goals, the usual Mercury semantics requires the
 implementation to either loop or report an error message,
-but the minimal model semantics requires a particular
-answer to be returned.
-In particular, the minimal model semantics says that any
-call that is not true in @emph{all} models is false.
+but the minimal model semantics requires a particular answer to be returned.
+In particular, the minimal model semantics says that
+any call that is not true in @emph{all} models is false.
 
-Programmers should therefore use a @samp{pragma minimal_model}
-declaration only in cases where their intended interpretation for a
-procedure coincides with the minimal model for that procedure.
+Programmers should therefore use a @samp{pragma minimal_model} declaration
+only in cases where their intended interpretation for a procedure
+coincides with the minimal model for that procedure.
 Fortunately, however, this is usually what programmers intend.
 
 @c XXX give an example
@@ -8923,34 +8983,28 @@ of Normal Logic Programs.} @xref{[4]}.
 The operational semantics of procedures with a @samp{pragma minimal_model}
 declaration corresponds to what Sagonas calls ``SLGd resolution''.
 
-In the general case, the execution mechanism required by
-minimal model tabling is quite complicated, requiring
-the ability to delay goals and then wake them up again.
-The Mercury implementation uses a technique based on copying
-relevant parts of the stack to the heap when delaying goals,
+In the general case,
+the execution mechanism required by minimal model tabling is quite complicated,
+requiring the ability to delay goals and then wake them up again.
+The Mercury implementation uses a technique based on
+copying relevant parts of the stack to the heap when delaying goals,
 similar to the one described in
 @c XXX this citation doesn't come out properly in DVI format
 @cite{CAT: the copying approach to tabling},
 by B. Demoen and K. Sagonas.  @xref{[5]}.
-This ensures that code which does not use tabling does not pay any
-runtime overheads from the more complicated execution mechanism
+This ensures that code which does not use tabling
+does not pay any runtime overheads
+from the more complicated execution mechanism
 required by (minimal model) tabling.
 
 @cartouche
 @strong{Please note:}
-the current implementation of tabling does not support all the
-possible compilation grades (see the ``Compilation model options''
-section of the Mercury User's Guide) allowed by the Mercury
-implementation.  In particular, minimal model tabling
-is incompatible with high level code, the use of trailing,
-and accurate garbage collection.
-
-@c XXX we should fix this bug...
-@strong{Reminder}: the current implementation of
-@samp{pragma minimal_model} is broken,
-and the current implementation of @samp{pragma memo}
-and @samp{pragma loop_check} is broken for procedures
-with determinism @samp{nondet} or @samp{multi}.
+the current implementation of tabling does not support
+all the possible compilation grades
+(see the ``Compilation model options'' section of the Mercury User's Guide)
+allowed by the Mercury implementation.
+In particular, minimal model tabling is incompatible with
+high level code, the use of trailing, and accurate garbage collection.
 @end cartouche
 
 @node Termination analysis

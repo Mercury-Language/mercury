@@ -323,10 +323,11 @@ typedef struct
 **
 ** The step field specifies what data structure the tabling system uses to
 ** implement the trie nodes at the level of the call table corresponding to
-** the relevant argument. At the moment, we support only three values of this
-** field, MR_TABLE_STEP_INT, MR_TABLE_STEP_FLOAT and MR_TABLE_STEP_STRING;
-** each of those implicitly selects the corresponding alternative in the
-** arg_values union.
+** the relevant argument. At the moment, we support only four values of this
+** field, MR_TABLE_STEP_INT, MR_TABLE_STEP_FLOAT, MR_TABLE_STEP_STRING and
+** MR_TABLE_STEP_PROMISE_IMPLIED. The first three of these implicitly select
+** the corresponding alternative in the arg_values union; the last one
+** indicates the absence of a step.
 **
 ** The start_node field specifies the start node of the relevant trie. For the
 ** first input argument, this will be the tabling pointer variable for the
@@ -388,6 +389,7 @@ typedef union {
 
 typedef struct {
     MR_Table_Trie_Step          MR_cta_step;
+    int                         MR_cta_unfiltered_arg_num;
     MR_TrieNode                 MR_cta_start_node;
     MR_bool                     MR_cta_valid;
     MR_Table_Arg_Values         MR_cta_arg_values;
@@ -673,8 +675,8 @@ static  MR_bool     MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
 
 /* Prints the given subgoal of the given procedure to MR_mdb_out. */
 static  void        MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
-                        int num_inputs, MR_Call_Table_Arg *call_table_args,
-                        MR_TrieNode table);
+                        int filtered_num_inputs,
+                        MR_Call_Table_Arg *call_table_args, MR_TrieNode table);
 
 /* Prints the given subgoal of the given procedure to MR_mdb_out. */
 static  void        MR_trace_print_subgoal(const MR_Proc_Layout *proc,
@@ -4529,7 +4531,9 @@ MR_trace_cmd_table(char **words, int word_count,
     const MR_Table_Gen      *table_gen;
     MR_TrieNode             table_cur;
     int                     num_inputs;
+    int                     filtered_num_inputs;
     int                     cur_arg;
+    int                     filtered_cur_arg;
     int                     num_tips;
 
     if (word_count < 2) {
@@ -4557,6 +4561,7 @@ MR_trace_cmd_table(char **words, int word_count,
         case MR_EVAL_METHOD_LOOP_CHECK:
         case MR_EVAL_METHOD_MEMO_STRICT:
         case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
+        case MR_EVAL_METHOD_MEMO_SPECIFIED:
         case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
         case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
             break;
@@ -4567,10 +4572,6 @@ MR_trace_cmd_table(char **words, int word_count,
         case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
             fprintf(MR_mdb_out,
                 "IO tabled predicates do not have their own tables.\n");
-            return KEEP_INTERACTING;
-
-        default:
-            MR_fatal_error("unrecognized eval method");
             return KEEP_INTERACTING;
     }
 
@@ -4600,23 +4601,38 @@ MR_trace_cmd_table(char **words, int word_count,
     }
 
     table_cur = proc->MR_sle_tabling_pointer;
-    for (cur_arg = 0; cur_arg < num_inputs; cur_arg++) {
+    for (cur_arg = 0, filtered_cur_arg = 0; cur_arg < num_inputs; cur_arg++) {
         switch (table_gen->MR_table_gen_input_steps[cur_arg]) {
             case MR_TABLE_STEP_INT:
             case MR_TABLE_STEP_FLOAT:
             case MR_TABLE_STEP_STRING:
                 /* these are OK */
+                call_table_args[filtered_cur_arg].MR_cta_step =
+                    table_gen->MR_table_gen_input_steps[filtered_cur_arg];
+                call_table_args[filtered_cur_arg].MR_cta_valid = MR_FALSE;
+                call_table_args[filtered_cur_arg].MR_cta_unfiltered_arg_num =
+                    cur_arg;
+                filtered_cur_arg++;
+
+            case MR_TABLE_STEP_PROMISE_IMPLIED:
+                /* this argument doesn't exist in the table */
                 break;
+
             default:
                 fprintf(MR_mdb_out, "Sorry, can handle only "
                     "integer, float and string arguments for now.\n");
                 MR_GC_free(call_table_args);
                 return KEEP_INTERACTING;
         }
+    }
 
-        call_table_args[cur_arg].MR_cta_step =
-            table_gen->MR_table_gen_input_steps[cur_arg];
-        call_table_args[cur_arg].MR_cta_valid = MR_FALSE;
+    filtered_num_inputs = filtered_cur_arg;
+    if (word_count > filtered_num_inputs) {
+        fprintf(MR_mdb_out,
+            "Sorry, this procedure has only %d tabled arguments\n",
+            filtered_num_inputs);
+        MR_GC_free(call_table_args);
+        return KEEP_INTERACTING;
     }
 
     /*
@@ -4624,23 +4640,29 @@ MR_trace_cmd_table(char **words, int word_count,
     ** line, to enable us to print them out in each call table entry.
     */
 
-    for (cur_arg = 0; cur_arg < word_count; cur_arg++) {
+    for (filtered_cur_arg = 0;
+        filtered_cur_arg < word_count;
+        filtered_cur_arg++)
+    {
         MR_bool success;
 
-        switch (call_table_args[cur_arg].MR_cta_step) {
+        switch (call_table_args[filtered_cur_arg].MR_cta_step) {
             case MR_TABLE_STEP_INT:
                 success = MR_trace_fill_in_int_table_arg_slot(&table_cur,
-                    cur_arg + 1, words[cur_arg], &call_table_args[cur_arg]);
+                    filtered_cur_arg + 1, words[filtered_cur_arg],
+                    &call_table_args[filtered_cur_arg]);
                 break;
 
             case MR_TABLE_STEP_FLOAT:
                 success = MR_trace_fill_in_float_table_arg_slot(&table_cur,
-                    cur_arg + 1, words[cur_arg], &call_table_args[cur_arg]);
+                    filtered_cur_arg + 1, words[filtered_cur_arg],
+                    &call_table_args[filtered_cur_arg]);
                 break;
 
             case MR_TABLE_STEP_STRING:
                 success = MR_trace_fill_in_string_table_arg_slot(&table_cur,
-                    cur_arg + 1, words[cur_arg], &call_table_args[cur_arg]);
+                    filtered_cur_arg + 1, words[filtered_cur_arg],
+                    &call_table_args[filtered_cur_arg]);
                 break;
 
             default:
@@ -4654,15 +4676,15 @@ MR_trace_cmd_table(char **words, int word_count,
         }
     }
 
-    if (word_count == num_inputs) {
+    if (word_count == filtered_num_inputs) {
         /*
         ** The user specified values for all the input arguments,
         ** so what we print is a single entry, not a table of entries,
         ** and we don't need to loop over all the entries.
         */
 
-        MR_trace_cmd_table_print_tip(proc, num_inputs, call_table_args,
-            table_cur);
+        MR_trace_cmd_table_print_tip(proc, filtered_num_inputs,
+            call_table_args, table_cur);
         MR_GC_free(call_table_args);
         return KEEP_INTERACTING;
     }
@@ -4681,6 +4703,7 @@ MR_trace_cmd_table(char **words, int word_count,
 
         case MR_EVAL_METHOD_MEMO_STRICT:
         case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
+        case MR_EVAL_METHOD_MEMO_SPECIFIED:
             fprintf(MR_mdb_out, "memo table for ");
             MR_print_proc_id(MR_mdb_out, proc);
             fprintf(MR_mdb_out, ":\n");
@@ -4693,7 +4716,11 @@ MR_trace_cmd_table(char **words, int word_count,
             fprintf(MR_mdb_out, ":\n");
             break;
 
-        default:
+        case MR_EVAL_METHOD_NORMAL:
+        case MR_EVAL_METHOD_TABLE_IO:
+        case MR_EVAL_METHOD_TABLE_IO_DECL:
+        case MR_EVAL_METHOD_TABLE_IO_UNITIZE:
+        case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
             MR_fatal_error("MR_trace_cmd_table: bad eval method");
     }
 
@@ -4723,12 +4750,12 @@ MR_trace_cmd_table(char **words, int word_count,
     ** in the current trie node in the values array of the relevant
     ** argument.
     **
-    ** We number the input arguments from 0 to num_inputs-1. When cur_arg
-    ** becomes equal to num_inputs, this means that we have values for all
-    ** the input arguments, so we print the corresponding call table entry.
-    ** We then initiate backtracking: we decrement cur_arg to get the next
-    ** value of the last argument. We also do this whenever we run out of
-    ** values in any trie.
+    ** We number the input arguments from 0 to filtered_num_inputs-1.
+    ** When cur_arg becomes equal to filtered_num_inputs, this means that
+    ** we have values for all the tabled input arguments, so we print the
+    ** corresponding call table entry. We then initiate backtracking:
+    ** we decrement cur_arg to get the next value of the last argument.
+    ** We also do this whenever we run out of values in any trie.
     **
     ** We stop when we are about to backtrack out of the outermost loop.
     */
@@ -4775,9 +4802,9 @@ MR_trace_cmd_table(char **words, int word_count,
 
             cur_arg++;
 
-            if (cur_arg >= num_inputs) {
-                MR_trace_cmd_table_print_tip(proc, num_inputs, call_table_args,
-                    table_cur);
+            if (cur_arg >= filtered_num_inputs) {
+                MR_trace_cmd_table_print_tip(proc, filtered_num_inputs,
+                    call_table_args, table_cur);
                 num_tips++;
                 start_backtrack = MR_TRUE;
             } else {
@@ -5050,14 +5077,15 @@ MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
 }
 
 static void
-MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
-    MR_Call_Table_Arg *call_table_args, MR_TrieNode table)
+MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
+    int num_filtered_inputs, MR_Call_Table_Arg *call_table_args,
+    MR_TrieNode table)
 {
     int             i;
     MR_EvalMethod   eval_method;
 
     fprintf(MR_mdb_out, "<");
-    for (i = 0; i < num_inputs; i++) {
+    for (i = 0; i < num_filtered_inputs; i++) {
         if (i > 0) {
             fprintf(MR_mdb_out, ", ");
         }
@@ -5118,6 +5146,7 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 
         case MR_EVAL_METHOD_MEMO_STRICT:
         case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
+        case MR_EVAL_METHOD_MEMO_SPECIFIED:
             {
                 MR_Determinism  detism;
 
@@ -8273,7 +8302,7 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         NULL, MR_trace_var_completer },
 
     { "breakpoint", "break", MR_trace_cmd_break,
-        MR_trace_break_cmd_args, MR_trace_breakpoint_completer },
+        MR_trace_break_cmd_args, MR_trace_proc_spec_completer },
     { "breakpoint", "condition", MR_trace_cmd_condition,
         NULL, MR_trace_null_completer },
     { "breakpoint", "ignore", MR_trace_cmd_ignore,
@@ -8338,7 +8367,7 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
     { "dd", "dd", MR_trace_cmd_dd,
         MR_trace_dd_cmd_args, MR_trace_null_completer },
     { "dd", "trust", MR_trace_cmd_trust,
-        NULL, MR_trace_breakpoint_completer },
+        NULL, MR_trace_proc_spec_completer },
     { "dd", "untrust", MR_trace_cmd_untrust,
         NULL, MR_trace_null_completer },
     { "dd", "trusted", MR_trace_cmd_trusted, NULL,
@@ -8395,7 +8424,7 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
     { "developer", "unhide_events", MR_trace_cmd_unhide_events,
         MR_trace_on_off_args, MR_trace_null_completer },
     { "developer", "table", MR_trace_cmd_table,
-        NULL, MR_trace_null_completer },
+        NULL, MR_trace_proc_spec_completer },
     { "developer", "type_ctor", MR_trace_cmd_type_ctor,
         NULL, MR_trace_null_completer },
     { "developer", "class_decl", MR_trace_cmd_class_decl,

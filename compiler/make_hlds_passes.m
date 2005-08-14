@@ -591,7 +591,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             module_info_incr_errors(!ModuleInfo),
             prog_out__write_context(Context, !IO),
             io__write_string("Error: `:- pragma ", !IO),
-            EvalMethodS = eval_method_to_string(Type),
+            EvalMethodS = eval_method_to_one_string(Type),
             io__write_string(EvalMethodS, !IO),
             io__write_string("' declaration requires the type_ctor_layout\n",
                 !IO),

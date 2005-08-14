@@ -103,12 +103,12 @@ typedef struct {
     int     MR_complete_current_proc;
 } MR_Proc_Completer_Data;
 
-static  char    *MR_trace_breakpoint_completer_next(const char *word,
+static  char    *MR_trace_proc_spec_completer_next(const char *word,
                     size_t word_len, MR_Completer_Data *completer_data);
-static  void    MR_trace_breakpoint_completer_init_module(
+static  void    MR_trace_proc_spec_completer_init_module(
                     MR_Proc_Completer_Data *data);
 static  char    *MR_trace_complete_proc(MR_Proc_Completer_Data *data);
-static  char    *MR_format_breakpoint_completion(MR_PredFunc pred_or_func,
+static  char    *MR_format_proc_spec_completion(MR_PredFunc pred_or_func,
                     const char *module, const char *name);
 static  void    MR_free_proc_completer_data(MR_Completer_Data completer_data);
 
@@ -749,7 +749,7 @@ MR_get_module_info_name(int slot)
 }
 
 MR_Completer_List *
-MR_trace_breakpoint_completer(const char *word, size_t word_len)
+MR_trace_proc_spec_completer(const char *word, size_t word_len)
 {
     MR_Proc_Completer_Data  *data;
     int                     slot;
@@ -815,12 +815,12 @@ MR_trace_breakpoint_completer(const char *word, size_t word_len)
         data->MR_unambiguous_matching_module = -1;
     }
 
-    return MR_new_completer_elem(MR_trace_breakpoint_completer_next,
+    return MR_new_completer_elem(MR_trace_proc_spec_completer_next,
         (MR_Completer_Data) data, MR_free_proc_completer_data);
 }
 
 static char *
-MR_trace_breakpoint_completer_next(const char *dont_use_this_word,
+MR_trace_proc_spec_completer_next(const char *dont_use_this_word,
         size_t dont_use_this_len, MR_Completer_Data *completer_data)
 {
     MR_Proc_Completer_Data  *data;
@@ -849,7 +849,7 @@ try_completion:
         if (data->MR_complete_current_module >= MR_module_info_next) {
             return NULL;
         }
-        MR_trace_breakpoint_completer_init_module(data);
+        MR_trace_proc_spec_completer_init_module(data);
 
         /*
         ** Complete on the module name if we aren't finding
@@ -860,7 +860,7 @@ try_completion:
         if (data->MR_complete_word_matches_module == 0 &&
             MR_strneq(name, module_name, name_len))
         {
-            return MR_format_breakpoint_completion(data->MR_complete_pf,
+            return MR_format_proc_spec_completion(data->MR_complete_pf,
                 module_name, "");
         } else {
             goto try_completion;
@@ -883,7 +883,7 @@ try_completion:
 ** Set up the completer data for processing a module.
 */
 static void
-MR_trace_breakpoint_completer_init_module(MR_Proc_Completer_Data *data)
+MR_trace_proc_spec_completer_init_module(MR_Proc_Completer_Data *data)
 {
     char    *name;
     size_t  name_len;
@@ -977,7 +977,7 @@ MR_trace_complete_proc(MR_Proc_Completer_Data *data)
         } else {
             complete_module = NULL;
         }
-        completion = MR_format_breakpoint_completion(data->MR_complete_pf,
+        completion = MR_format_proc_spec_completion(data->MR_complete_pf,
             complete_module, proc_layout->MR_sle_user.MR_user_name);
     } else {
         completion = NULL;
@@ -1005,7 +1005,7 @@ MR_trace_complete_proc(MR_Proc_Completer_Data *data)
 }
 
 static char *
-MR_format_breakpoint_completion(MR_PredFunc pred_or_func,
+MR_format_proc_spec_completion(MR_PredFunc pred_or_func,
     const char *module, const char *name)
 {
     int     size;

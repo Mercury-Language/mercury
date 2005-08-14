@@ -215,7 +215,7 @@ extern	void	MR_var_name_stats(FILE *fp);
 /* A Readline completer for module names. */
 extern  MR_Completer_List *MR_trace_module_completer(const char *, size_t);
 
-/* A Readline completer for breakpoint specifications. */
-extern  MR_Completer_List *MR_trace_breakpoint_completer(const char *, size_t);
+/* A Readline completer for procedure specifications. */
+extern  MR_Completer_List *MR_trace_proc_spec_completer(const char *, size_t);
 
 #endif	/* not MERCURY_TRACE_TABLES_H */

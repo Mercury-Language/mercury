@@ -3823,7 +3823,7 @@ hlds_out__can_fail_to_string(can_fail) = "can_fail".
 hlds_out__can_fail_to_string(cannot_fail) = "cannot_fail".
 
 hlds_out__write_eval_method(EvalMethod, !IO) :-
-	io__write_string(eval_method_to_string(EvalMethod), !IO).
+	io__write_string(eval_method_to_one_string(EvalMethod), !IO).
 
 %-----------------------------------------------------------------------------%
 

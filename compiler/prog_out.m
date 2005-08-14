@@ -27,6 +27,7 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+:- import_module std_util.
 
 :- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
 :- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
@@ -139,9 +140,20 @@
 :- pred write_purity_prefix(purity::in, io::di, io::uo) is det.
 :- func purity_prefix_to_string(purity) = string.
 
-    % Convert an evaluation method to a string.
+    % Convert an eval_method to a string giving the name of the pragma,
+    % and if the eval_method specifies tabling methods for individual
+    % arguments, a description of those argument tabling methods.
     %
-:- func eval_method_to_string(eval_method) = string.
+:- func eval_method_to_string(eval_method) = pair(string, maybe(string)).
+
+    % Convert an eval_method to a single string. This is suitable for use
+    % in error messages, but not for generating valid Mercury code.
+    %
+:- func eval_method_to_one_string(eval_method) = string.
+
+:- func maybe_arg_tabling_method_to_string(maybe(arg_tabling_method)) = string.
+
+:- func arg_tabling_method_to_string(arg_tabling_method) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -153,7 +165,6 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
@@ -389,11 +400,24 @@ purity_name(pure, "pure").
 purity_name((semipure), "semipure").
 purity_name((impure), "impure").
 
-eval_method_to_string(eval_normal) = "normal".
-eval_method_to_string(eval_loop_check) = "loop_check".
-eval_method_to_string(eval_memo(strict)) =  "memo".
-eval_method_to_string(eval_memo(fast_loose)) = "fast_loose_memo".
-eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
+eval_method_to_one_string(EvalMethod) = Str :-
+    BaseStr - MaybeArgsStr = eval_method_to_string(EvalMethod),
+    (
+        MaybeArgsStr = yes(ArgsStr),
+        Str = BaseStr ++ "(" ++ ArgsStr ++ ")"
+    ;
+        MaybeArgsStr = no,
+        Str = BaseStr
+    ).
+
+eval_method_to_string(eval_normal) = "normal" - no.
+eval_method_to_string(eval_loop_check) = "loop_check" - no.
+eval_method_to_string(eval_memo(all_strict)) =  "memo" - no.
+eval_method_to_string(eval_memo(all_fast_loose)) = "fast_loose_memo" - no.
+eval_method_to_string(eval_memo(specified(Args))) = "memo" - yes(ArgsStr) :-
+    ArgStrs = list__map(maybe_arg_tabling_method_to_string, Args),
+    ArgsStr = "[" ++ string__join_list(", ", ArgStrs) ++ "]".
+eval_method_to_string(eval_minimal(MinimalMethod)) = Str - no :-
     (
         MinimalMethod = own_stacks,
         Str = "minimal_model_own_stacks"
@@ -401,7 +425,7 @@ eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
         MinimalMethod = stack_copy,
         Str = "minimal_model_stack_copy"
     ).
-eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
+eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str - no :-
     (
         IsDecl = table_io_decl,
         DeclStr = "decl, "
@@ -417,6 +441,14 @@ eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
         UnitizeStr = "alone"
     ),
     Str = "table_io(" ++ DeclStr ++ UnitizeStr ++ ")".
+
+maybe_arg_tabling_method_to_string(yes(ArgTablingMethod)) =
+    arg_tabling_method_to_string(ArgTablingMethod).
+maybe_arg_tabling_method_to_string(no) = "output".
+
+arg_tabling_method_to_string(arg_value) = "value".
+arg_tabling_method_to_string(arg_addr) = "addr".
+arg_tabling_method_to_string(arg_promise_implied) = "promise_implied".
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

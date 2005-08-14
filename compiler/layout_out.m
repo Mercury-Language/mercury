@@ -990,11 +990,14 @@ eval_method_to_c_string(eval_normal) =	      "MR_EVAL_METHOD_NORMAL".
 eval_method_to_c_string(eval_loop_check) =    "MR_EVAL_METHOD_LOOP_CHECK".
 eval_method_to_c_string(eval_memo(CallStrictness)) =  Str :-
 	(
-		CallStrictness = strict,
+		CallStrictness = all_strict,
 		Str = "MR_EVAL_METHOD_MEMO_STRICT"
 	;
-		CallStrictness = fast_loose,
+		CallStrictness = all_fast_loose,
 		Str = "MR_EVAL_METHOD_MEMO_FAST_LOOSE"
+	;
+		CallStrictness = specified(_),
+		Str = "MR_EVAL_METHOD_MEMO_SPECIFIED"
 	).
 eval_method_to_c_string(eval_minimal(MinimalMethod)) = Str :-
 	(
@@ -1842,6 +1845,10 @@ output_table_gen_steps([Step | Steps], [MaybeEnumParam | MaybeEnumParams],
 	;
 		Step = table_trie_step_typeclassinfo,
 		StepType = "MR_TABLE_STEP_TYPECLASSINFO",
+		MaybeEnumParam = no
+	;
+		Step = table_trie_step_promise_implied,
+		StepType = "MR_TABLE_STEP_PROMISE_IMPLIED",
 		MaybeEnumParam = no
 	),
 	io__write_string(StepType, !IO),

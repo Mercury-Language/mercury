@@ -1356,8 +1356,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
 module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
         MaybeModes, Status, Context, !ModuleInfo, !IO) :-
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    EvalMethodS = eval_method_to_string(EvalMethod),
-
+    EvalMethodStr = eval_method_to_one_string(EvalMethod),
     (
         MaybePredOrFunc = yes(PredOrFunc0),
         PredOrFunc = PredOrFunc0,
@@ -1374,7 +1373,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
         ;
             module_info_name(!.ModuleInfo, ModuleName),
             string__format("`:- pragma %s' declaration",
-                [s(EvalMethodS)], Message1),
+                [s(EvalMethodStr)], Message1),
             preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
                 Arity, Status, no, Context, user(PredName), Message1, PredId,
                 !ModuleInfo, !IO),
@@ -1390,7 +1389,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
         ;
             module_info_name(!.ModuleInfo, ModuleName),
             string__format("`:- pragma %s' declaration",
-                [s(EvalMethodS)], Message1),
+                [s(EvalMethodStr)], Message1),
             preds_add_implicit_report_error(ModuleName, predicate, PredName,
                 Arity, Status, no, Context, user(PredName), Message1, PredId,
                 !ModuleInfo, !IO),
@@ -1435,12 +1434,12 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     ),
     adjust_func_arity(PredOrFunc, Arity0, Arity),
 
-    EvalMethodS = eval_method_to_string(EvalMethod),
+    EvalMethodStr = eval_method_to_one_string(EvalMethod),
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
         io__write_string("% Processing `:- pragma ", !IO),
-        io__write_string(EvalMethodS, !IO),
+        io__write_string(EvalMethodStr, !IO),
         io__write_string("' for ", !IO),
         write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
         io__write_string("...\n", !IO)
@@ -1453,7 +1452,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     pred_info_get_markers(PredInfo0, Markers),
     globals.io_lookup_bool_option(warn_table_with_inline, WarnInline, !IO),
     ( check_marker(Markers, inline), WarnInline = yes ->
-        TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodS)]),
+        TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodStr)]),
         InlineWarning = [
             words("Warning: "), simple_call_id(PredOrFunc - PredName/Arity),
             words("has a"), fixed(TablePragmaStr),
@@ -1471,7 +1470,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     ( pred_info_is_imported(PredInfo0) ->
         module_info_incr_errors(!ModuleInfo),
         Pieces1 = [words("Error: "),
-            fixed("`:- pragma " ++ EvalMethodS ++ "'"),
+            fixed("`:- pragma " ++ EvalMethodStr ++ "'"),
             words("declaration for imported"),
             simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
         write_error_pieces(Context, 0, Pieces1, !IO)
@@ -1486,25 +1485,26 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         ),
 
         % Add the eval model to the proc_info for this procedure.
-        pred_info_procedures(PredInfo0, Procs0),
-        map__to_assoc_list(Procs0, ExistingProcs),
+        pred_info_procedures(PredInfo0, ProcTable0),
+        map__to_assoc_list(ProcTable0, ExistingProcs),
+        SimpleCallId = PredOrFunc - PredName/Arity,
         (
             MaybeModes = yes(Modes),
             (
                 get_procedure_matching_argmodes(ExistingProcs, Modes,
                     !.ModuleInfo, ProcId)
             ->
-                map__lookup(Procs0, ProcId, ProcInfo0),
-                proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
-                map__det_update(Procs0, ProcId, ProcInfo, Procs),
-                pred_info_set_procedures(Procs, PredInfo0, PredInfo),
+                map__lookup(ProcTable0, ProcId, ProcInfo0),
+                set_eval_method(ProcId, ProcInfo0, Context, SimpleCallId,
+                    EvalMethod, ProcTable0, ProcTable, !ModuleInfo, !IO),
+                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
                 Pieces2 = [words("Error:"),
-                    fixed("`:- pragma " ++ EvalMethodS ++ "'"),
+                    fixed("`:- pragma " ++ EvalMethodStr ++ "'"),
                     words("declaration for undeclared mode of"),
-                    simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+                    simple_call_id(SimpleCallId), suffix(".")],
                 write_error_pieces(Context, 0, Pieces2, !IO)
             )
         ;
@@ -1513,30 +1513,39 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
                 ExistingProcs = [],
                 module_info_incr_errors(!ModuleInfo),
                 Pieces3 = [words("Error: "),
-                    fixed("`:- pragma " ++ EvalMethodS ++ "'"),
-                    words("declaration for"),
-                    simple_call_id(PredOrFunc - PredName/Arity),
+                    fixed("`:- pragma " ++ EvalMethodStr ++ "'"),
+                    words("declaration for"), simple_call_id(SimpleCallId),
                     words("with no declared modes.")],
                 write_error_pieces(Context, 0, Pieces3, !IO)
             ;
                 ExistingProcs = [_ | _],
-                set_eval_method_list(ExistingProcs, Context, PredOrFunc,
-                    PredName/Arity, EvalMethod, Procs0, Procs, !ModuleInfo,
-                    !IO),
-                pred_info_set_procedures(Procs, PredInfo0, PredInfo),
+                set_eval_method_list(ExistingProcs, Context, SimpleCallId,
+                    EvalMethod, ProcTable0, ProcTable, !ModuleInfo, !IO),
+                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             )
         )
     ).
 
 :- pred set_eval_method_list(assoc_list(proc_id, proc_info)::in,
-    prog_context::in, pred_or_func::in, sym_name_and_arity::in,
-    eval_method::in, proc_table::in, proc_table::out,
+    prog_context::in, simple_call_id::in, eval_method::in,
+    proc_table::in, proc_table::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+set_eval_method_list([], _, _, _, !ProcTable, !ModuleInfo, !IO).
+set_eval_method_list([ProcId - ProcInfo0 | Rest], Context, SimpleCallId,
+        EvalMethod, !ProcTable, !ModuleInfo, !IO) :-
+    set_eval_method(ProcId, ProcInfo0, Context, SimpleCallId,
+        EvalMethod, !ProcTable, !ModuleInfo, !IO),
+    set_eval_method_list(Rest, Context, SimpleCallId,
+        EvalMethod, !ProcTable, !ModuleInfo, !IO).
+
+:- pred set_eval_method(proc_id::in, proc_info::in, prog_context::in,
+    simple_call_id::in, eval_method::in, proc_table::in, proc_table::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-set_eval_method_list([], _, _, _, _, !Procs, !ModuleInfo, !IO).
-set_eval_method_list([ProcId - ProcInfo0 | Rest], Context, PredOrFunc,
-        PredNameAndArity, EvalMethod, !Procs, !ModuleInfo, !IO) :-
+set_eval_method(ProcId, ProcInfo0, Context, SimpleCallId, EvalMethod,
+        !ProcTable, !ModuleInfo, !IO) :-
     proc_info_eval_method(ProcInfo0, OldEvalMethod),
     % NOTE: We don't bother detecting multiple tabling pragmas
     % of the same type here.
@@ -1544,25 +1553,114 @@ set_eval_method_list([ProcId - ProcInfo0 | Rest], Context, PredOrFunc,
         OldEvalMethod \= eval_normal,
         OldEvalMethod \= EvalMethod
     ->
-        % If there are conflicting tabling pragmas then
-        % emit an error message and do not bother changing
-        % the evaluation method.
-        OldEvalMethodStr = eval_method_to_string(OldEvalMethod),
-        EvalMethodStr = eval_method_to_string(EvalMethod),
-        Name = simple_call_id_to_string(PredOrFunc, PredNameAndArity),
-        ErrorMsg = [words("Error:"), fixed(Name), words("has both"),
-            fixed(OldEvalMethodStr), words("and"), fixed(EvalMethodStr),
-            words("pragmas specified."),
+        % If there are conflicting tabling pragmas then emit an error message
+        % and do not bother changing the evaluation method.
+        OldEvalMethodStr = eval_method_to_one_string(OldEvalMethod),
+        EvalMethodStr = eval_method_to_one_string(EvalMethod),
+        Pieces = [words("Error:"), simple_call_id(SimpleCallId),
+            words("has both"), fixed(OldEvalMethodStr), words("and"),
+            fixed(EvalMethodStr), words("pragmas specified."),
             words("Only one kind of tabling pragma may be applied to it.")
         ],
         module_info_incr_errors(!ModuleInfo),
-        error_util.write_error_pieces(Context, 0, ErrorMsg, !IO)
+        write_error_pieces(Context, 0, Pieces, !IO)
     ;
-        proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
-        map__det_update(!.Procs, ProcId, ProcInfo, !:Procs)
-    ),
-    set_eval_method_list(Rest, Context, PredOrFunc, PredNameAndArity,
-        EvalMethod, !Procs, !ModuleInfo, !IO).
+        proc_info_maybe_declared_argmodes(ProcInfo0, MaybeDeclaredArgModes),
+        (
+            MaybeDeclaredArgModes = no,
+            EvalMethodStr = eval_method_to_one_string(EvalMethod),
+            Pieces = [words("Error:"),
+                fixed("`pragma" ++ EvalMethodStr ++ "'"),
+                words("declaration for"), simple_call_id(SimpleCallId),
+                suffix(","), words("which has no declared modes.")
+            ],
+            module_info_incr_errors(!ModuleInfo),
+            write_error_pieces(Context, 0, Pieces, !IO)
+        ;
+            MaybeDeclaredArgModes = yes(DeclaredArgModes),
+            ( EvalMethod = eval_memo(specified(MaybeArgMethods)) ->
+                check_pred_args_against_tabling_methods(DeclaredArgModes,
+                    MaybeArgMethods, !.ModuleInfo, 1, MaybeError)
+            ;
+                check_pred_args_against_tabling(DeclaredArgModes, !.ModuleInfo,
+                    1, MaybeError)
+            ),
+            (
+                MaybeError = no,
+                proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
+                svmap__det_update(ProcId, ProcInfo, !ProcTable)
+            ;
+                MaybeError = yes(ArgMsg - ErrorMsg),
+                EvalMethodStr = eval_method_to_one_string(EvalMethod),
+                Pieces = [words("Error in"),
+                    fixed("`pragma " ++ EvalMethodStr ++ "'"),
+                    words("declaration for"), simple_call_id(SimpleCallId),
+                    suffix(":"), nl, fixed(ArgMsg), words(ErrorMsg)
+                ],
+                module_info_incr_errors(!ModuleInfo),
+                write_error_pieces(Context, 0, Pieces, !IO)
+            )
+        )
+    ).
+
+:- pred check_pred_args_against_tabling_methods(list(mode)::in,
+    list(maybe(arg_tabling_method))::in, module_info::in, int::in,
+    maybe(pair(string))::out) is det.
+
+check_pred_args_against_tabling_methods([], [], _, _, no).
+check_pred_args_against_tabling_methods([], [_ | _], _, _, MaybeError) :-
+    MaybeError = yes("too many argument tabling methods specified." - "").
+check_pred_args_against_tabling_methods([_ | _], [], _, _, MaybeError) :-
+    MaybeError = yes("not enough argument tabling methods specified." - "").
+check_pred_args_against_tabling_methods([Mode | Modes],
+        [MaybeArgMethod | MaybeArgMethods], ModuleInfo, ArgNum, MaybeError) :-
+    % XXX We should check not just the boundedness of the argument, but also
+    % whether it has any uniqueness annotation: tabling destroys uniqueness.
+    ( mode_is_fully_input(ModuleInfo, Mode) ->
+        (
+            MaybeArgMethod = yes(_),
+            check_pred_args_against_tabling_methods(Modes, MaybeArgMethods,
+                ModuleInfo, ArgNum + 1, MaybeError)
+        ;
+            MaybeArgMethod = no,
+            MaybeError = yes(("argument " ++ int_to_string(ArgNum) ++ ":") -
+                ("argument tabling method `" ++
+                maybe_arg_tabling_method_to_string(MaybeArgMethod) ++
+                "' is not compatible with input modes."))
+        )
+    ; mode_is_fully_output(ModuleInfo, Mode) ->
+        (
+            MaybeArgMethod = yes(_),
+            MaybeError = yes(("argument " ++ int_to_string(ArgNum) ++ ":") -
+                ("argument tabling method `" ++
+                maybe_arg_tabling_method_to_string(MaybeArgMethod) ++
+                "' is not compatible with output modes."))
+        ;
+            MaybeArgMethod = no,
+            check_pred_args_against_tabling_methods(Modes, MaybeArgMethods,
+                ModuleInfo, ArgNum + 1, MaybeError)
+        )
+    ;
+        MaybeError = yes(("argument " ++ int_to_string(ArgNum) ++ ":") -
+            "is neither input or output.")
+    ).
+
+:- pred check_pred_args_against_tabling(list(mode)::in, module_info::in,
+    int::in, maybe(pair(string))::out) is det.
+
+check_pred_args_against_tabling([], _, _, no).
+check_pred_args_against_tabling([Mode | Modes], ModuleInfo, ArgNum,
+        MaybeError) :-
+    ( mode_is_fully_input(ModuleInfo, Mode) ->
+        check_pred_args_against_tabling(Modes, ModuleInfo, ArgNum + 1,
+            MaybeError)
+    ; mode_is_fully_output(ModuleInfo, Mode) ->
+        check_pred_args_against_tabling(Modes, ModuleInfo, ArgNum + 1,
+            MaybeError)
+    ;
+        MaybeError = yes(("argument " ++ int_to_string(ArgNum)) -
+            "is neither input or output.")
+    ).
 
     % Extract the modes from the list of pragma_vars.
     %

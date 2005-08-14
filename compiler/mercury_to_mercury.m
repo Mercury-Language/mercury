@@ -57,8 +57,8 @@
 :- import_module varset.
 
 :- type needs_brackets
-    --->    needs_brackets      % needs brackets, if it is an op
-    ;       does_not_need_brackets. % doesn't need brackets
+    --->    needs_brackets              % needs brackets, if it is an op
+    ;       does_not_need_brackets.     % doesn't need brackets
 
 :- type needs_quotes
     --->    next_to_graphic_token       % needs quotes, if it
@@ -71,6 +71,7 @@
     list(item_and_context)::in, io::di, io::uo) is det.
 
     % Output the specified item, followed by ".\n".
+    %
 :- pred mercury_output_item(item::in, prog_context::in, io::di, io::uo) is det.
 
     % Output a `:- pred' declaration, making sure that the variable
@@ -125,9 +126,9 @@
     mode, maybe(determinism), prog_context) = string.
 
 :- pred mercury_output_pragma_decl(sym_name::in, int::in, pred_or_func::in,
-    string::in, io::di, io::uo) is det.
-:- func mercury_pragma_decl_to_string(sym_name, int, pred_or_func, string)
-    = string.
+    string::in, maybe(string)::in, io::di, io::uo) is det.
+:- func mercury_pragma_decl_to_string(sym_name, int, pred_or_func, string,
+    maybe(string)) = string.
 
 :- pred mercury_output_foreign_language_string(foreign_language::in,
     io::di, io::uo) is det.
@@ -155,9 +156,11 @@
     int::in, mode_num::in, exception_status::in, io::di, io::uo) is det.
 
     % Write an Aditi index specifier.
+    %
 :- pred mercury_output_index_spec(index_spec::in, io::di, io::uo) is det.
 
-    % Output the given foreign_decl declaration
+    % Output the given foreign_decl declaration.
+    %
 :- pred mercury_output_pragma_foreign_decl(foreign_language::in,
     foreign_decl_is_local::in, string::in, io::di, io::uo) is det.
 :- func mercury_pragma_foreign_decl_to_string(foreign_language,
@@ -564,21 +567,23 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context, !IO) :-
             !IO)
     ;
         Pragma = obsolete(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete", no, !IO)
     ;
         Pragma = tabled(Type, Pred, Arity, _PredOrFunc, _Mode),
-        TypeS = eval_method_to_string(Type),
-        mercury_output_pragma_decl(Pred, Arity, predicate, TypeS, !IO)
+        TypeS - MaybeAfter = eval_method_to_string(Type),
+        mercury_output_pragma_decl(Pred, Arity, predicate, TypeS, MaybeAfter,
+            !IO)
     ;
         Pragma = type_spec(_, _, _, _, _, _, _, _),
         AppendVarnums = no,
         mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO)
     ;
         Pragma = inline(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "inline", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "inline", no, !IO)
     ;
         Pragma = no_inline(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "no_inline", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "no_inline", no,
+            !IO)
     ;
         Pragma = unused_args(PredOrFunc, PredName, Arity, ModeNum, UnusedArgs),
         mercury_output_pragma_unused_args(PredOrFunc,
@@ -600,43 +605,46 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context, !IO) :-
         add_string(").\n", !IO)
     ;
         Pragma = aditi(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "aditi", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "aditi", no, !IO)
     ;
         Pragma = base_relation(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate, "base_relation",
-            !IO)
+            no, !IO)
     ;
         Pragma = aditi_index(Pred, Arity, Index),
         mercury_format_pragma_index(Pred, Arity, Index, !IO)
     ;
         Pragma = aditi_memo(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "aditi_memo", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "aditi_memo",
+            no, !IO)
     ;
         Pragma = aditi_no_memo(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate, "aditi_no_memo",
-            !IO)
+            no, !IO)
     ;
         Pragma = supp_magic(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "supp_magic", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "supp_magic",
+            no, !IO)
     ;
         Pragma = context(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "context", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "context", no, !IO)
     ;
         Pragma = owner(Pred, Arity, Owner),
         mercury_format_pragma_owner(Pred, Arity, Owner, !IO)
     ;
         Pragma = naive(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "naive", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "naive", no, !IO)
     ;
         Pragma = psn(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "psn", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "psn", no, !IO)
     ;
         Pragma = promise_pure(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "promise_pure", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "promise_pure", no,
+            !IO)
     ;
         Pragma = promise_semipure(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate, "promise_semipure",
-            !IO)
+            no, !IO)
     ;
         Pragma = termination_info(PredOrFunc, PredName, ModeList,
             MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo),
@@ -650,19 +658,20 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context, !IO) :-
 			MaybeTermination, Context, !IO) 
     ;
         Pragma = terminates(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "terminates", !IO)
+        mercury_output_pragma_decl(Pred, Arity, predicate, "terminates", no,
+            !IO)
     ;
         Pragma = does_not_terminate(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate,
-            "does_not_terminate", !IO)
+            "does_not_terminate", no, !IO)
     ;
         Pragma = check_termination(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate,
-            "check_termination", !IO)
+            "check_termination", no, !IO)
     ;
         Pragma = mode_check_clauses(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate,
-            "mode_check_clauses", !IO)
+            "mode_check_clauses", no, !IO)
     ).
 
 mercury_output_item(_, promise(PromiseType, Goal0, VarSet, UnivVars), _,
@@ -3257,18 +3266,21 @@ mercury_output_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum,
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, !IO) :-
-    mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, !IO).
-
-mercury_pragma_decl_to_string(PredName, Arity, PredOrFunc, PragmaName)
-        = String :-
+mercury_output_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, MaybeAfter,
+        !IO) :-
     mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName,
-        "", String).
+        MaybeAfter, !IO).
+
+mercury_pragma_decl_to_string(PredName, Arity, PredOrFunc, PragmaName,
+        MaybeAfter) = String :-
+    mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName,
+        MaybeAfter, "", String).
 
 :- pred mercury_format_pragma_decl(sym_name::in, int::in, pred_or_func::in,
-    string::in, U::di, U::uo) is det <= output(U).
+    string::in, maybe(string)::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, !U) :-
+mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, MaybeAfter,
+        !U) :-
     (
         PredOrFunc = predicate,
         DeclaredArity = Arity
@@ -3282,6 +3294,13 @@ mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, !U) :-
     mercury_format_bracketed_sym_name(PredName, next_to_graphic_token, !U),
     add_string("/", !U),
     add_int(DeclaredArity, !U),
+    (
+        MaybeAfter = yes(After),
+        add_string(", ", !U),
+        add_string(After, !U)
+    ;
+        MaybeAfter = no
+    ),
     add_string(").\n", !U).
 
 %-----------------------------------------------------------------------------%
@@ -4019,7 +4038,7 @@ output_class_id(class_id(Name, Arity), !Str) :-
 
 output_eval_method(EvalMethod, !Str) :-
     output_string("eval_", !Str),
-    output_string(eval_method_to_string(EvalMethod), !Str).
+    output_string(eval_method_to_one_string(EvalMethod), !Str).
 
 :- pred output_lambda_eval_method(lambda_eval_method::in,
     string::di, string::uo) is det.

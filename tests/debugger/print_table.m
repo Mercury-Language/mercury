@@ -34,6 +34,9 @@ main -->
 	{ solutions(t(1, 2), T12) },
 	{ solutions(t(2, 2), T22) },
 	{ tdone },
+	{ solutions(u(1, 2, 2), U12) },
+	{ solutions(u(2, 2, 2), U22) },
+	{ udone },
 	io__write_int(P55),
 	io__nl,
 	io__write_int(P43),
@@ -71,6 +74,10 @@ main -->
 	io__write(T12),
 	io__nl,
 	io__write(T22),
+	io__nl,
+	io__write(U12),
+	io__nl,
+	io__write(U22),
 	io__nl.
 
 :- pred p(int::in, int::in, int::out) is det.
@@ -137,3 +144,21 @@ t(A, B, C) :-
 :- pred tdone is det.
 
 tdone.
+
+:- pred u(int::in, int::in, int::in, int::out) is nondet.
+:- pragma memo(u/4, [value, value, promise_implied, output]).
+
+u(A, B, Bcopy, C) :-
+	( A = 1 ->
+		(
+			C = (A * 100) + (B * 10)
+		;
+			C = (Bcopy * 100) + (A * 10)
+		)
+	;
+		fail
+	).
+
+:- pred udone is det.
+
+udone.

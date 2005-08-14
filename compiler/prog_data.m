@@ -169,8 +169,8 @@
 		% used for items that should be ignored (for the
 		% purposes of backwards compatibility etc)
 
-	% indicates the type of information the compiler should get from the
-	% declaration's clause
+	% Indicates the type of information the compiler should get from the
+	% declaration's clause.
 :- type promise_type
 		% promise ex declarations
 	--->	exclusive		% each disjunct is mutually exclusive
@@ -600,8 +600,22 @@
 					% minimal model evaluation
 
 :- type call_table_strictness
-	--->	strict
-	;	fast_loose.
+	--->	all_strict
+	;	all_fast_loose
+	;	specified(
+			list(maybe(arg_tabling_method))
+			% This list contains one element for each user-visible
+			% argument of the predicate. Elements that correspond
+			% to output arguments should be "no". Elements that
+			% correspond to input arguments should be "yes",
+			% specifying how to look up that argument in the call
+			% table.
+		).
+
+:- type arg_tabling_method
+	--->	arg_value
+	;	arg_addr
+	;	arg_promise_implied.
 
 :- type table_io_is_decl
 	--->	table_io_decl		% The procedure is tabled for

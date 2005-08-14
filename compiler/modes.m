@@ -3319,7 +3319,7 @@ check_mode_of_main([Di, Uo], ModuleInfo) :-
 report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
     proc_info_eval_method(ProcInfo, EvalMethod),
     proc_info_context(ProcInfo, Context),
-    EvalMethodS = eval_method_to_string(EvalMethod),
+    EvalMethodS = eval_method_to_one_string(EvalMethod),
     globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     Pieces1 = [words("Sorry, not implemented:"),
         fixed("`pragma " ++ EvalMethodS ++ "'"),
@@ -3343,7 +3343,7 @@ report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
 report_eval_method_destroys_uniqueness(ProcInfo, !ModuleInfo, !IO) :-
     proc_info_eval_method(ProcInfo, EvalMethod),
     proc_info_context(ProcInfo, Context),
-    EvalMethodS = eval_method_to_string(EvalMethod),
+    EvalMethodS = eval_method_to_one_string(EvalMethod),
     globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     Pieces1 = [words("Error:"),
         fixed("`pragma " ++ EvalMethodS ++ "'"),

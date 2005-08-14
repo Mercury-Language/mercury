@@ -18,6 +18,7 @@ SIMPLE_NONLOOP_PROGS = \
 	loopcheck_no_loop \
 	loopcheck_nondet_no_loop \
 	oota \
+	specified \
 	table_foreign_output \
 	test_enum \
 	unused_args

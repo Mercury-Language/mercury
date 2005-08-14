@@ -103,4 +103,8 @@ delete 1
 b tdone
 c
 table t
+delete 1
+b udone
+c
+table u
 c -S -n

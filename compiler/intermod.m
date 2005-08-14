@@ -1804,12 +1804,13 @@ intermod__write_pragmas(PredInfo, !IO) :-
 intermod__write_pragmas(_, _, [], _, !IO).
 intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc, !IO) :-
 	intermod__should_output_marker(Marker, ShouldOutput),
-	( ShouldOutput = yes ->
+	(
+		ShouldOutput = yes,
 		hlds_out__marker_name(Marker, Name),
 		mercury_output_pragma_decl(SymName, Arity, PredOrFunc, Name,
-			!IO)
+			no, !IO)
 	;
-		true
+		ShouldOutput = no
 	),
 	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc, !IO).
 

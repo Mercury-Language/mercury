@@ -381,6 +381,19 @@ answer #1: <120>
 answer #2: <210>
 <2, 2>: complete
 end of table (2 entries)
+mdb> delete 1
+ 1: E stop  interface pred print_table.tdone/0-0 (det)
+mdb> b udone
+ 1: + stop  interface pred print_table.udone/0-0 (det)
+mdb> c
+     E33:    C17 CALL pred print_table.udone/0-0 (det)
+mdb> table u
+memo table for pred print_table.u/4-0 (nondet):
+<1, 2>: complete
+answer #1: <120>
+answer #2: <210>
+<2, 2>: complete
+end of table (2 entries)
 mdb> c -S -n
 75
 24
@@ -394,5 +407,7 @@ no
 [3.5xyz2][3.5xyz2][3.5xyz2] 6.50000000000000
 [3.5xyz2][3.5xyz2][3.5xyz2][3.5xyz2] 7.50000000000000
 [9.2def2][9.2def2][9.2def2][9.2def2][9.2def2] 14.2000000000000
+[120, 210]
+[]
 [120, 210]
 []

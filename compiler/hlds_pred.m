@@ -139,7 +139,7 @@
     ;       cast(cast_type)
     ;       aditi_builtin(aditi_builtin, simple_call_id).
 
-:- type pred_proc_list	==	list(pred_proc_id).
+:- type pred_proc_list  ==  list(pred_proc_id).
 
 :- type prog_var_name == string.
 
@@ -2360,7 +2360,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     ;       table_trie_step_poly
     ;       table_trie_step_poly_fast_loose
     ;       table_trie_step_typeinfo
-    ;       table_trie_step_typeclassinfo.
+    ;       table_trie_step_typeclassinfo
+    ;       table_trie_step_promise_implied.
 
 :- type table_arg_infos
     --->    table_arg_infos(

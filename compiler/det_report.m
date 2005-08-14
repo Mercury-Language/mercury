@@ -284,7 +284,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
 		proc_info_context(ProcInfo0, Context),
 		write_error_pieces(Context, 0,
 			[words("Error: `pragma "
-				++ eval_method_to_string(EvalMethod)
+				++ eval_method_to_one_string(EvalMethod)
 				++ "'"),
 			words("declaration not allowed for procedure"),
 			words("with determinism `"
