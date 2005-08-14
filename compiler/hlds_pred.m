@@ -1336,6 +1336,7 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_typevarset(pred_info::in, tvarset::out) is det.
 :- pred pred_info_get_exist_quant_tvars(pred_info::in, existq_tvars::out)
     is det.
+:- pred pred_info_get_existq_tvar_binding(pred_info::in, tsubst::out) is det.
 :- pred pred_info_get_head_type_params(pred_info::in, head_type_params::out)
     is det.
 :- pred pred_info_get_class_context(pred_info::in, prog_constraints::out)
@@ -1363,6 +1364,8 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_set_attributes(pred_attributes::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_typevarset(tvarset::in,
+    pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_existq_tvar_binding(tsubst::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_head_type_params(head_type_params::in,
     pred_info::in, pred_info::out) is det.
@@ -1695,6 +1698,12 @@ calls_are_fully_qualified(Markers) =
                             % The set of existentially quantified type
                             % variables in the predicate's type decl.
 
+        existq_tvar_binding :: tsubst,
+                            % The statically known bindings of existentially
+                            % quantified type variables inside this predicate.
+                            % This field is set at the end of the polymorphism
+                            % stage.
+
         head_type_params    :: head_type_params,
                             % The set of type variables which the body of the
                             % predicate can't bind, and whose type_infos are
@@ -1759,14 +1768,15 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
     term__vars_list(ArgTypes, TVars),
     list__delete_elems(TVars, ExistQVars, HeadTypeParams),
     Attributes = [],
+    map__init(ExistQVarBindings),
     UnprovenBodyConstraints = [],
     set__init(Assertions),
     Indexes = [],
     map__init(Procs),
     PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Context, Origin, Status, GoalType, Markers, Attributes,
-        ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, HeadTypeParams,
-        ClassContext, ClassProofs, ClassConstraintMap,
+        ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, ExistQVarBindings,
+        HeadTypeParams, ClassContext, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [],
         Assertions, User, Indexes, ClausesInfo, Procs).
 
@@ -1783,6 +1793,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     map__init(ClassConstraintMap),
     term__vars_list(ArgTypes, TVars),
     list__delete_elems(TVars, ExistQVars, HeadTypeParams),
+    map__init(ExistQVarBindings),
     UnprovenBodyConstraints = [],
     Indexes = [],
 
@@ -1800,8 +1811,8 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
         Context, Origin, Status, clauses, Markers, Attributes,
-        ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, HeadTypeParams,
-        ClassContext, ClassProofs, ClassConstraintMap,
+        ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, ExistQVarBindings,
+        HeadTypeParams, ClassContext, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [], Assertions,
         User, Indexes, ClausesInfo, Procs).
 
@@ -1911,6 +1922,7 @@ pred_info_get_attributes(PI, PI ^ attributes).
 pred_info_arg_types(PI, PI ^ arg_types).
 pred_info_typevarset(PI, PI ^ typevarset).
 pred_info_get_exist_quant_tvars(PI, PI ^ exist_quant_tvars).
+pred_info_get_existq_tvar_binding(PI, PI ^ existq_tvar_binding).
 pred_info_get_head_type_params(PI, PI ^ head_type_params).
 pred_info_get_class_context(PI, PI ^ class_context).
 pred_info_get_constraint_proofs(PI, PI ^ constraint_proofs).
@@ -1928,6 +1940,7 @@ pred_info_set_goal_type(X, PI, PI ^ goal_type := X).
 pred_info_set_markers(X, PI, PI ^ markers := X).
 pred_info_set_attributes(X, PI, PI ^ attributes := X).
 pred_info_set_typevarset(X, PI, PI ^ typevarset := X).
+pred_info_set_existq_tvar_binding(X, PI, PI ^ existq_tvar_binding := X).
 pred_info_set_head_type_params(X, PI, PI ^ head_type_params := X).
 pred_info_set_class_context(X, PI, PI ^ class_context := X).
 pred_info_set_constraint_proofs(X, PI, PI ^ constraint_proofs := X).

@@ -473,9 +473,11 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 
             (
                 WhatToCheck = check_modes,
-                % Restore the proc_info goals from the
-                % clauses in the pred_info.
-                copy_module_clauses_to_procs(PredIds, !ModuleInfo)
+                % Restore the proc_info goals from the clauses in the
+                % pred_info.  Reintroduce exists_cast goals, since these
+                % do not appear in the clauses.
+                copy_module_clauses_to_procs(PredIds, !ModuleInfo),
+                introduce_exists_casts(PredIds, !ModuleInfo)
             ;
                 WhatToCheck = check_unique_modes,
                 % Restore the proc_info goals from the
