@@ -1,0 +1,27 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+# To compile the Mercury Tcl/Tk binding on Mac OS 10.3 you must first install
+# the Tcl/Tk Aqua framework, available from http://tcltkaqua.sourceforge.net/.
+# On Mac OS 10.4 the Tcl/Tk framework comes preinstalled.
+#
+# Once you have the Tcl/Tk framework installed do:
+# $ mmake -f Mmakefile.MacOSX depend
+# $ mmake -f Mmakefile.MacOSX
+# and to install do:
+# $ mmake -f Mmakefile.MacOSX install
+#
+
+include Mercury.options
+
+MLLIBS = -framework Tcl -framework Tk
+
+EXTRA_CFLAGS = -Wno-uninitialized
+
+MAIN_TARGET = libmercury_tcltk
+
+depend: mercury_tcltk.depend
+
+install: libmercury_tcltk.install

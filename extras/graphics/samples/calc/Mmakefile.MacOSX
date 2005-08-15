@@ -1,0 +1,16 @@
+MAIN_TARGET = calc
+
+# Specify the location of the `mercury_tcltk' package.
+MERCURY_TCLTK_DIR = ../../mercury_tcltk
+
+MGNUCFLAGS = -I$(MERCURY_TCLTK_DIR)
+
+# Tell mmake to use the `mercury_tcltk' library.
+VPATH 		= $(MERCURY_TCLTK_DIR):$(MMAKE_VPATH)
+MCFLAGS 	= -I$(MERCURY_TCLTK_DIR) $(EXTRA_MCFLAGS)
+MLFLAGS 	= -R$(MERCURY_TCLTK_DIR) $(EXTRA_MLFLAGS) \
+          	  -L$(MERCURY_TCLTK_DIR) 
+MLLIBS 		= -lmercury_tcltk $(EXTRA_MLLIBS)
+C2INITARGS 	= $(MERCURY_TCLTK_DIR)/mercury_tcltk.init 
+
+depend : calc.depend
