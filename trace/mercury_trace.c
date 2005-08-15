@@ -593,6 +593,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_bool                 succeeded;
     MR_Word                 *saved_regs;
     MR_bool                 has_io_state;
+    MR_bool                 is_io_state;
     MR_bool                 found_io_action_counter;
     MR_Unsigned             saved_io_action_counter;
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
@@ -661,60 +662,64 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
     arg_max = 0;
 
+    /*
+    ** Check if any of the (non-polymorphic) arguments are of type io.state.
+    ** We check this here and then again for each argument in the for loop
+    ** below, because if the io.state argument is not polymorphic, then it
+    ** would have been removed which means the check in the for loop below
+    ** won't find it.  If the argument is polymorphic, then it won't have been
+    ** removed, however the check here won't pick this up since it only uses
+    ** the static argument types.  The check in the for loop below will pick up
+    ** polymorphic arguments which have type io.state, because it materializes
+    ** the type of each argument before checking it.
+    */
     if (MR_proc_has_io_state_pair(level_layout)) {
         has_io_state = MR_TRUE;
-        found_io_action_counter = MR_find_saved_io_counter(call_label,
-            base_sp, base_curfr, &saved_io_action_counter);
     } else {
         has_io_state = MR_FALSE;
-        /* just to prevent uninitialized variable warnings */
-        found_io_action_counter = MR_FALSE;
-        saved_io_action_counter = 0;
     }
 
     type_params = MR_materialize_type_params_base(return_label_layout, 
         saved_regs, base_sp, base_curfr);
 
     for (i = 0; i < MR_all_desc_var_count(call_label); i++) {
-        arg_value = MR_trace_find_input_arg(return_label_layout,
-            saved_regs, base_sp, base_curfr,
-            call_label->MR_sll_var_nums[i], &succeeded);
+        /*
+        ** Check if the argument is of type io.state.  We check this before
+        ** calling MR_trace_find_input_arg, since MR_trace_find_input_arg may
+        ** or may not find the value of the io.state argument.  We don't care
+        ** if it finds the value of an io.state argument or not, since the
+        ** value is junk and never used.  The safety of the retry is addressed
+        ** by the code handling has_io_state after this for loop.
+        */
+        is_io_state = MR_is_io_state(type_params, MR_var_pti(call_label, i));
+        
+        if (is_io_state) {
+            has_io_state = MR_TRUE;
+        } else {
+            arg_value = MR_trace_find_input_arg(return_label_layout,
+                saved_regs, base_sp, base_curfr,
+                call_label->MR_sll_var_nums[i], &succeeded);
 
-        if (! succeeded) {
-            if (! MR_is_io_state(type_params, MR_var_pti(call_label, i))) {
+            if (! succeeded) {
                 *problem = "Cannot perform retry because the "
                     "values of some input arguments are missing.";
                 goto report_problem;
-            } else if (! has_io_state) {
-                /*
-                ** has_io_state would not have been set to true earlier if the 
-                ** argument is polymorphic.
-                */
-                has_io_state = MR_TRUE;
-                found_io_action_counter = MR_find_saved_io_counter(
-                    call_label, base_sp, base_curfr, &saved_io_action_counter);
             }
 
-            /*
-            ** Since values of the I/O states type are not actually used,
-            ** we can leave arg_value containing garbage. The safety of
-            ** the retry is addressed by the code handling has_io_state below.
-            */
-        }
+            if (i < MR_long_desc_var_count(call_label)) {
+                arg_num = MR_get_register_number_long(
+                    MR_long_desc_var_locn(call_label, i));
+            } else {
+                arg_num = MR_get_register_number_short(
+                    MR_short_desc_var_locn(call_label, i));
+            }
 
-        if (i < MR_long_desc_var_count(call_label)) {
-            arg_num = MR_get_register_number_long(
-                MR_long_desc_var_locn(call_label, i));
-        } else {
-            arg_num = MR_get_register_number_short(
-                MR_short_desc_var_locn(call_label, i));
-        }
-
-        if (arg_num > 0) {
-            MR_ensure_big_enough(arg_num, arg, MR_Word, MR_INIT_ARG_COUNT);
-            args[arg_num] = arg_value;
-        } else {
-            MR_fatal_error("illegal location for input argument");
+            if (arg_num > 0) {
+                MR_ensure_big_enough(arg_num, arg, MR_Word, MR_INIT_ARG_COUNT);
+                args[arg_num] = arg_value;
+            } else {
+                MR_fatal_error("illegal location for input argument");
+            }
         }
     }
 
@@ -723,6 +728,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         MR_Unsigned retry_event_num;
         MR_bool     all_actions_tabled;
 
+        found_io_action_counter = MR_find_saved_io_counter(call_label,
+            base_sp, base_curfr, &saved_io_action_counter);
         cur_event_num = event_info->MR_event_number;
 
         /*
@@ -801,7 +808,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
     result = MR_check_minimal_model_calls(event_info, ancestor_level,
-            base_maxfr, problem);
+        base_maxfr, problem);
 
     switch (result) {
     case MR_RETRY_OK_DIRECT:

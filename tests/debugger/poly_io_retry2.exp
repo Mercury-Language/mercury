@@ -1,0 +1,40 @@
+      E1:     C1 CALL pred poly_io_retry2.main/2-0 (det) poly_io_retry2.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> table_io allow
+mdb> table_io start
+I/O tabling started.
+mdb> break test1
+ 0: + stop  interface pred poly_io_retry2.test1/5-0 (det)
+mdb> c
+      E2:     C2 CALL pred poly_io_retry2.test1/5-0 (det)
+mdb> f
+      E3:     C2 EXIT pred poly_io_retry2.test1/5-0 (det)
+mdb> c
+      E4:     C3 CALL pred poly_io_retry2.test1/5-0 (det)
+mdb> f
+      E5:     C3 EXIT pred poly_io_retry2.test1/5-0 (det)
+mdb> c
+      E6:     C4 CALL pred poly_io_retry2.test1/5-0 (det)
+mdb> f
+      E7:     C4 EXIT pred poly_io_retry2.test1/5-0 (det)
+mdb> p
+test1(2, 7, 16, _, _)
+mdb> retry 3 -a
+      E8:     C5 CALL pred poly_io_retry2.list_foldl2/6-0 (det)
+mdb> c
+      E2:     C2 CALL pred poly_io_retry2.test1/5-0 (det)
+mdb> f
+      E3:     C2 EXIT pred poly_io_retry2.test1/5-0 (det)
+mdb> c
+      E4:     C3 CALL pred poly_io_retry2.test1/5-0 (det)
+mdb> f
+      E5:     C3 EXIT pred poly_io_retry2.test1/5-0 (det)
+mdb> c
+      E6:     C4 CALL pred poly_io_retry2.test1/5-0 (det)
+mdb> f
+      E7:     C4 EXIT pred poly_io_retry2.test1/5-0 (det)
+mdb> p
+test1(2, 7, 16, _, _)
+mdb> quit -y

@@ -48,7 +48,11 @@
 #
 # If you want to track down some low level bug, you can ask this script to
 # execute the Mercury compiler under gdb by setting the environment variable
-# MMC_UNDER_GDB to the string "true".
+# MMC_UNDER_GDB to the string "true".  
+# 
+# You can ask this script to run the Mercury compiler under valgrind by
+# setting MMC_UNDER_VALGRIND to "true".  Valgrind options can be placed in
+# the environment variable MMC_VALGRIND_OPTIONS.
 #
 # If you want to link in the shared versions of the Mercury libraries then set
 # the environment variable MMC_USE_SHARED_LIBS to the extension for shared
@@ -128,6 +132,12 @@ C_FLAGS="--c-include-directory $WORKSPACE/trace --c-include-directory $WORKSPACE
 if test "$MMC_UNDER_GDB" != ""
 then
 	MERCURY_COMPILER="$WORKSPACE/tools/gdbrun $MERCURY_COMPILER"
+	export MERCURY_COMPILER
+fi
+
+if test "$MMC_UNDER_VALGRIND" != ""
+then
+	MERCURY_COMPILER="valgrind $MMC_VALGRIND_OPTIONS $MERCURY_COMPILER"
 	export MERCURY_COMPILER
 fi
 

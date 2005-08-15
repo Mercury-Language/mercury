@@ -39,6 +39,7 @@ NONRETRY_PROGS = \
 	lval_desc_array			\
 	multi_parameter			\
 	poly_io_retry			\
+	poly_io_retry2			\
 	polymorphic_output		\
 	print_goal			\
 	print_table			\
@@ -269,6 +270,10 @@ deeply_nested_typeinfo.out: deeply_nested_typeinfo deeply_nested_typeinfo.inp
 poly_io_retry.out: poly_io_retry poly_io_retry.inp
 	$(MDB_STD) ./poly_io_retry < poly_io_retry.inp \
 		> poly_io_retry.out 2>&1
+
+poly_io_retry2.out: poly_io_retry2 poly_io_retry2.inp
+	$(MDB_STD) ./poly_io_retry2 < poly_io_retry2.inp \
+		> poly_io_retry2.out 2>&1
 
 # The exception_cmd, exception_vars, polymorphic_output and loopcheck tests
 # are supposed to return a non-zero exit status, since they exit by throwing
