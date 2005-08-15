@@ -2023,10 +2023,9 @@ pred_info_arg_types(PredInfo, PredInfo ^ decl_typevarset,
         PredInfo ^ exist_quant_tvars, PredInfo ^ arg_types).
 
 pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !PredInfo) :-
-    !:PredInfo = ((!.PredInfo
-            ^ decl_typevarset := TypeVarSet)
-            ^ exist_quant_tvars := ExistQVars)
-            ^ arg_types := ArgTypes.
+	!:PredInfo = !.PredInfo ^ decl_typevarset := TypeVarSet,
+	!:PredInfo = !.PredInfo ^ exist_quant_tvars := ExistQVars,
+	!:PredInfo = !.PredInfo ^ arg_types := ArgTypes.
 
 pred_info_proc_info(PredInfo, ProcId, ProcInfo) :-
     ProcInfo = map__lookup(PredInfo ^ procedures, ProcId).
@@ -2142,7 +2141,8 @@ pred_info_update_goal_type(GoalType1, !PredInfo) :-
         GoalType0 = clauses_and_pragmas,
         GoalType = GoalType0
     ;
-        GoalType0 = promise(_), error("pred_info_update_goal_type")
+        GoalType0 = promise(_),
+        error("pred_info_update_goal_type")
     ),
     pred_info_set_goal_type(GoalType, !PredInfo).
 
