@@ -1,4 +1,3 @@
-
 This directory contains the package `mercury_tcltk', which is a Mercury
 binding for Tcl/Tk. You will need the Mercury compiler to build
 it (see <http://www.cs.mu.oz.au/mercury> to find out more about Mercury).
@@ -13,8 +12,4 @@ It contains the following modules:
 See HOWTO for details on how to link the package in with your own
 Mercury programs.
 
-	The mercury_tcltk package is free software, but is Copyright
-	(C) 1997-1998 The University of Melbourne. It is distributed
-	under the terms of the GNU Library General Public License.
-	See the file COPYING.LIB for copying permission.
-
+To build the Tcl/Tk binding on MacOSX see Mmakefile.MacOSX.

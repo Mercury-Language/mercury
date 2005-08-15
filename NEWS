@@ -83,6 +83,8 @@ Changes to the Mercury debugger:
 * Users can now save runtime values to files.
 * Users can now tell the declarative debugger to trust entire modules or 
   individual predicates or functions.
+* The declarative debugger can track the origins of subterms.
+* The declarative debugger can now use the divide-and-query search strategy.
 
 Changes to the compiler back-ends:
 * The .NET CLR back-end now bootstraps.
@@ -96,6 +98,7 @@ Changes to the extras distribution:
   simple interactive graphical applications.
 * Major improvements to the OpenGL binding.
 * We've added a binding to GLUT (the GL utility toolkit).
+* The OpenGL, GLUT and Tcl/Tk bindings have been ported to Mac OS X.
 
 DETAILED LISTING
 ================
@@ -437,12 +440,15 @@ Changes to the Mercury debugger:
   We've added a new mdb command, `save_to_file', that saves a specified term
   to a specified file.
 
-* Ability to tell the declarative debugger to trust entire modules or 
-  individual predicates or functions.
+* The declarative debugger can now be told to trust entire modules or 
+  individual predicates or functions using the `trust' mdb command.
 
-  We've added a `trust' command that lets the user tell the declarative 
-  debugger to assume that the code in certain modules and or predicates is
-  correct.
+* The declarative debugger can now also tell you where a value
+  appearing in an atom came from (i.e. the call which constructed the value).
+
+* The declarative debugger also now supports a divide-and-query search mode.
+  You can tell the declarative debugger to use this search mode by invoking
+  it with the command `dd -s divide_and_query'.
 
 * The "pretty" and "raw_pretty" print formats have had their names swapped, so
   the "pretty" format is now prettier than the "raw_pretty" format.

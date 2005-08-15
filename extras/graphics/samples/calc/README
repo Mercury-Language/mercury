@@ -1,0 +1,20 @@
+A simple calculator using the Mercury Tcl/Tk binding.
+
+Before building this example you will need to build
+the Tcl/Tk binding in ../mercury_tcltk.
+
+To compile the example on Linux do:
+mmake depend
+mmake
+
+To compile the example on Mac OS X:
+
+If you built the mercury_tcltk library on Mac OS X, but haven't installed it,
+then do:
+mmake -f Mmakefile.MacOSX depend
+mmake -f Mmakefile.MacOSX
+export DYLD_LIBRARY_PATH=../../mercury_tcltk
+
+If you installed the mercury_tcltk library on Mac OS X, 
+then you will need to use the following command to build the example:
+mmc calc -lmercury_tcltk
