@@ -2099,7 +2099,7 @@ candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
 
 candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
 		% A var/functor unification, which can only be deterministic
-		% if it's a construction.
+		% if it is a construction.
 		%
 	Goal = unify(X, RHS, _, _, _) - _GoalInfo,
 	RHS  = functor(_, _, Args),
@@ -2111,6 +2111,21 @@ candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
 	!:CandidateVars = set__insert_list(!.CandidateVars, Args).
 
 candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
+        % A var/lambda unification, which can only be deterministic
+        % if it is a construction.  The non-locals in the lambda are
+        % *not* candidates for initialisation because that could
+        % permit violations of referential transparency (executing
+        % the lambda could otherwise further constrain a solver
+        % variable that was not supplied as an argument).
+        %
+	Goal = unify(X, RHS, _, _, _) - _GoalInfo,
+	RHS  = lambda_goal(_, _, _, _, _, _, _, _, _),
+		% If this is a construction then X must be free.
+	not set__member(X, !.NonFree),
+		% But X becomes instantiated.
+	!:NonFree = set__insert(!.NonFree, X).
+
+candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
 		% Disjunctions are tricky, because we don't perform
 		% switch analysis until after mode analysis.  So
 		% here we assume that the disjunction is a det switch
@@ -2120,13 +2135,23 @@ candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
 	Goal = disj(_Goals) - _GoalInfo.
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
-		% We ignore the conditions of if-then-else goals,
-		% but proceed on the assumption that the then and else
-		% arms are det.  This isn't very accurate and may
+		% We ignore the condition of an if-then-else goal,
+		% other than to assume that it binds its non-solver-type
+		% non-locals, but proceed on the assumption that the then
+		% and else arms are det.  This isn't very accurate and may
 		% need refinement.
 		%
-	Goal = if_then_else(_LocalVars, _CondGoal, ThenGoal, ElseGoal) -
-			_GoalInfo,
+	Goal = if_then_else(_LocalVars, CondGoal, ThenGoal, ElseGoal) -
+		_GoalInfo,
+
+	CondGoal = _CondGoalExpr - CondGoalInfo,
+	hlds_goal__goal_info_get_nonlocals(CondGoalInfo, NonLocals),
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_var_types(ModeInfo, VarTypes),
+	NonSolverNonLocals =
+	set__filter(non_solver_var(ModuleInfo, VarTypes), NonLocals),
+	!:NonFree = set__union(NonSolverNonLocals, !.NonFree),
+
 	candidate_init_vars_3(ModeInfo, ThenGoal, !.NonFree, NonFreeThen,
 		!CandidateVars),
 	candidate_init_vars_3(ModeInfo, ElseGoal, !.NonFree, NonFreeElse,
@@ -2181,11 +2206,19 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
 	( DeclaredDetism = (det) ; DeclaredDetism = (cc_multidet) ),
 		% Find the argument modes.
 		%
-	proc_info_maybe_declared_argmodes(ProcInfo, yes(ArgModes)),
+	proc_info_argmodes(ProcInfo, ArgModes),
 		% Process the call args.
 		%
 	candidate_init_vars_call(ModeInfo, Args, ArgModes,
 		!NonFree, !CandidateVars).
+
+	% Filter pred succeeding if a variable does not have a solver type.
+	%
+:- pred non_solver_var(module_info::in, vartypes::in, prog_var::in) is semidet.
+
+non_solver_var(ModuleInfo, VarTypes, Var) :-
+	VarType = VarTypes ^ det_elem(Var),
+	not type_util__type_is_solver_type(ModuleInfo, VarType).
 
 	% Update !NonFree and !CandidateVars given the args and modes for
 	% a call.
