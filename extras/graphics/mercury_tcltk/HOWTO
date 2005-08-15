@@ -1,4 +1,3 @@
-
 Using mercury_tcltk is not all that different to using Tcl/Tk itself,
 except that all operations are done in Mercury instead of Tcl.
 See the samples for example code, and the interfaces of
@@ -6,20 +5,7 @@ See the samples for example code, and the interfaces of
 fully documented in any way, but if you know Tcl/Tk, you shouldn't
 have any problems.
 
-The main tricky thing is that it is *CRUCIAL* that you enable recognition
-of interior pointers in the garbage collection library.  The simplest
-way to do this is to set the GC_ALL_INTERIOR_POINTERS environment variable
-before running your program.  Another alternative is to link with a
-version of the garbage collection library (libgc.a or libgc.so) which
-has been compiled with `-DALL_INTERIOR_POINTERS'.  You can create
-this by typing the commands
-
-	make clean
-	make libgc.a libgc.so GC_GRADE=gc EXTRA_CFLAGS=-DALL_INTERIOR_POINTERS
-
-in the boehm_gc directory of the Mercury compiler source distribution.
-
-You also need to add some information to your Mmakefile to tell mmake where
+You may need to add some information to your Mmakefile to tell mmake where
 the mercury_tcltk library is, and to link with the mercury_tcltk, tcl,
 tk and X libraries.
 
@@ -42,10 +28,13 @@ is installed.
 	MLLIBS          = -lmercury_tcltk $(TCLTK_MLLIBS) $(EXTRA_MLLIBS)
 	C2INITFLAGS     = $(MERCURY_TCLTK_DIR)/mercury_tcltk.init 
 
-	# Tell ml to link with our specially-compiled version of
-	# the libgc library instead of the usual one.
-	MLFLAGS	+= -L some/other/directory/boehm_gc
-
 You can then use EXTRA_MCFLAGS, EXTRA_MLFLAGS, etc to set any other
 options you need.
 
+../samples/calc contains an example program.
+
+The Mercury Tcl/Tk binding will work only with a version of the garbage
+collector which has recognition of interior pointers enabled.  This is the
+default.  If you compiled the garbage collector without interior pointer
+recognition, then you must set the GC_ALL_INTERIOR_POINTERS environment
+variable before running your program.

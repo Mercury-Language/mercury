@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998,2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1997-1998,2000, 2003-2005 The University of Melbourne.
 % Copyright (C) 2001 The Rationalizer Intelligent Software AG
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
