@@ -214,9 +214,10 @@ OTHER_PROGS= \
 DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
 
-	# This test requires debugging, which hasn't been
+	# These tests require debugging, which hasn't been
 	# implemented for the MLDS backend.
 LLDS_PROGS= \
+	exists_cast_bug \
 	untuple_bug
 
 # The following programs require that num_tag_bits >= 1

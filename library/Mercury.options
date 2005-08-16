@@ -20,7 +20,6 @@ MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 MCFLAGS-std_util += --no-halt-at-warn
 MCFLAGS-dir += --no-halt-at-warn
 MCFLAGS-exception += --no-halt-at-warn
-MCFLAGS-version_store += -O0
 
 # io.m uses library features that are supported by POSIX but which are not
 # part of ANSI C, such as `struct stat', fileno(), and putenv().

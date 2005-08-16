@@ -40,6 +40,7 @@
 :- implementation.
 
 :- import_module check_hlds__mode_util.
+:- import_module check_hlds__polymorphism.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_out.
@@ -62,16 +63,20 @@
 saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo, !ModuleInfo, !IO) :-
 	write_proc_progress_message("% Minimizing saved vars in ",
 		PredId, ProcId, !.ModuleInfo, !IO),
-	saved_vars_proc_no_io(ProcInfo0, ProcInfo, !ModuleInfo).
+	module_info_globals(!.ModuleInfo, Globals),
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
+	saved_vars_proc_no_io(TypeInfoLiveness, ProcInfo0, ProcInfo,
+		!ModuleInfo).
 
-:- pred saved_vars_proc_no_io(proc_info::in, proc_info::out,
+:- pred saved_vars_proc_no_io(bool::in, proc_info::in, proc_info::out,
 	module_info::in, module_info::out) is det.
 
-saved_vars_proc_no_io(!ProcInfo, !ModuleInfo) :-
+saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
 	proc_info_goal(!.ProcInfo, Goal0),
 	proc_info_varset(!.ProcInfo, Varset0),
 	proc_info_vartypes(!.ProcInfo, VarTypes0),
-	init_slot_info(Varset0, VarTypes0, SlotInfo0),
+	init_slot_info(Varset0, VarTypes0, TypeInfoLiveness, SlotInfo0),
 
 	saved_vars_in_goal(Goal0, Goal1, SlotInfo0, SlotInfo),
 
@@ -173,12 +178,13 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, Goals, !SlotInfo) :-
 	(
 		Goal0 = unify(_, _, _, Unif, _) - GoalInfo,
 		Unif = construct(Var, _, [], _, _, _, _),
-		skip_constant_constructs(Goals0, Constants, Others),
-		Others = [First | _Rest],
-		can_push(Var, First),
 		goal_info_get_features(GoalInfo, Features),
 		( all [Feature] ( set__member(Feature, Features)
-			=> ok_to_duplicate(Feature) = yes ))
+			=> ok_to_duplicate(Feature) = yes )),
+		\+ slot_info_do_not_duplicate_var(!.SlotInfo, Var),
+		skip_constant_constructs(Goals0, Constants, Others),
+		Others = [First | _Rest],
+		can_push(Var, First)
 	->
 		set__is_member(Var, NonLocals, IsNonLocal),
 		saved_vars_delay_goal(Others, Goal0, Var, IsNonLocal,
@@ -503,28 +509,48 @@ saved_vars_in_switch([case(Cons, Goal0) | Cases0],
 :- type slot_info
 	---> slot_info(
 		prog_varset,
-		vartypes
+		vartypes,
+		bool		% TypeInfoLiveness
 	).
 
-:- pred init_slot_info(prog_varset::in, map(prog_var, type)::in,
+:- pred init_slot_info(prog_varset::in, map(prog_var, type)::in, bool::in,
 	slot_info::out) is det.
 
-init_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes)).
+init_slot_info(Varset, VarTypes, TypeInfoLiveness, SlotInfo) :-
+	SlotInfo = slot_info(Varset, VarTypes, TypeInfoLiveness).
 
 :- pred final_slot_info(prog_varset::out, vartypes::out, slot_info::in) is det.
 
-final_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes)).
+final_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes, _)).
 
 :- pred rename_var(prog_var::in, prog_var::out, map(prog_var, prog_var)::out,
 	slot_info::in, slot_info::out) is det.
 
 rename_var(Var, NewVar, Substitution, !SlotInfo) :-
-	!.SlotInfo = slot_info(Varset0, VarTypes0),
+	!.SlotInfo = slot_info(Varset0, VarTypes0, TypeInfoLiveness),
 	varset__new_var(Varset0, NewVar, Varset),
 	map__from_assoc_list([Var - NewVar], Substitution),
 	map__lookup(VarTypes0, Var, Type),
 	map__det_insert(VarTypes0, NewVar, Type, VarTypes),
-	!:SlotInfo = slot_info(Varset, VarTypes).
+	!:SlotInfo = slot_info(Varset, VarTypes, TypeInfoLiveness).
+
+	% Check whether it is ok to duplicate a given variable according
+	% to the information in the slot_info.  If TypeInfoLiveness is set,
+	% it is possible that liveness.m will want to refer to the
+	% rtti_varmaps to calculate which type_infos are live (see the
+	% comments at the top of liveness.m).  If we duplicated any
+	% type_info variables here then this could cause problems because
+	% the rtti_varmaps would not be able to be kept consistent.
+	% Therefore we don't allow type_infos to be duplicated when
+	% TypeInfoLiveness is set.
+	%
+:- pred slot_info_do_not_duplicate_var(slot_info::in, prog_var::in) is semidet.
+
+slot_info_do_not_duplicate_var(SlotInfo, Var) :-
+	SlotInfo = slot_info(_, VarTypes, TypeInfoLiveness),
+	TypeInfoLiveness = yes,
+	map__lookup(VarTypes, Var, Type),
+	polymorphism__type_is_type_info_or_ctor_type(Type).
 
 %-----------------------------------------------------------------------------%
 

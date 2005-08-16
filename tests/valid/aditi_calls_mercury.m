@@ -14,7 +14,7 @@
 :- import_module int.
 :- import_module float.
 
-query(DB,X ++ X) :-
+query(DB, app(X, X)) :-
 	p(DB, X).
 
 :- pred p(aditi__state, list(int)).
@@ -22,3 +22,6 @@ query(DB,X ++ X) :-
 
 :- pragma base_relation(p/2).
 
+:- func app(list(int), list(int)) = list(int).
+
+app(X, Y) = X ++ Y.
