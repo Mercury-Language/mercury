@@ -12,6 +12,7 @@ MCFLAGS-label_layout = --opt-space
 
 MCFLAGS-no_inline_builtins = --no-inline-builtins
 MCFLAGS-poly_io_retry = --trace-table-io-all
+MCFLAGS-poly_io_retry2 = --trace-table-io-all
 MCFLAGS-queens_rep = --trace rep
 MCFLAGS-shallow = --trace shallow
 MCFLAGS-tabled_read = --trace-table-io-all
