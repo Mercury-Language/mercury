@@ -725,11 +725,6 @@ split_complicated_subunifies(Unification0, Unification, ArgVars0, ArgVars,
             Unification = deconstruct(X, ConsId, ArgVars, ArgModes0, Det,
                 CanCGC)
         ;
-/* ### In clause for predicate `check_hlds.modecheck_unify.split_complicated_subunifies/7': */
-/* ###   in argument 1 of call to predicate `unexpected/2': */
-/* ###   error: undefined symbol `this_file/0'. */
-/* ### In clause for predicate `check_hlds.modecheck_unify.split_complicated_subunifies/7': */
-/* ###   error: undefined predicate `unexpected/2'. */
             unexpected(this_file, "split_complicated_subunifies_2 failed")
         )
     ;
@@ -830,11 +825,6 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
             Unification0, Unification, GoalInfo2, GoalInfo),
         Goal = unify(X, Y, Mode, Unification, FinalUnifyContext)
     ;
-/* ### In clause for predicate `check_hlds.modecheck_unify.create_var_var_unification/5': */
-/* ###   in argument 1 of call to predicate `unexpected/2': */
-/* ###   error: undefined symbol `this_file/0'. */
-/* ### In clause for predicate `check_hlds.modecheck_unify.create_var_var_unification/5': */
-/* ###   error: undefined predicate `unexpected/2'. */
         unexpected(this_file, "modecheck_unify__create_var_var_unification")
     ).
 
@@ -873,11 +863,6 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         ; LiveY = dead ->
             Unification = assign(Y, X)
         ;
-/* ### In clause for predicate `check_hlds.modecheck_unify.categorize_unify_var_var/13': */
-/* ###   in argument 1 of call to predicate `unexpected/2': */
-/* ###   error: undefined symbol `this_file/0'. */
-/* ### In clause for predicate `check_hlds.modecheck_unify.categorize_unify_var_var/13': */
-/* ###   error: undefined predicate `unexpected/2'. */
             unexpected(this_file, "categorize_unify_var_var: free-free unify!")
         )
     ;
@@ -959,11 +944,6 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     ( Unification0 = complicated_unify(_, _, UnifyTypeInfoVars0) ->
         UnifyTypeInfoVars = UnifyTypeInfoVars0
     ;
-/* ### In clause for predicate `check_hlds.modecheck_unify.modecheck_complicated_unify/11': */
-/* ###   in argument 1 of call to predicate `unexpected/2': */
-/* ###   error: undefined symbol `this_file/0'. */
-/* ### In clause for predicate `check_hlds.modecheck_unify.modecheck_complicated_unify/11': */
-/* ###   error: undefined predicate `unexpected/2'. */
         unexpected(this_file, "modecheck_complicated_unify")
     ),
     Unification = complicated_unify(UniMode, CanFail, UnifyTypeInfoVars),
@@ -1110,11 +1090,6 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                 RHS = functor(cons(qualified(PredModule, PredName), Arity),
                     no, ArgVars)
             ;
-/* ### In clause for predicate `check_hlds.modecheck_unify.categorize_unify_var_lambda/11': */
-/* ###   in argument 1 of call to predicate `unexpected/2': */
-/* ###   error: undefined symbol `this_file/0'. */
-/* ### In clause for predicate `check_hlds.modecheck_unify.categorize_unify_var_lambda/11': */
-/* ###   error: undefined predicate `unexpected/2'. */
                 unexpected(this_file,
                     "categorize_unify_var_lambda - reintroduced lambda goal")
             )
@@ -1221,7 +1196,8 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
                 true
             )
         ),
-        Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail, no)
+        Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail,
+            cannot_cgc)
     ).
 
     % Check that any type_info or type_class_info variables

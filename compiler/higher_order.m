@@ -2270,7 +2270,7 @@ unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg, Goal,
 	Goal = unify(Arg, functor(ConsId, no, [UnwrappedArg]),
 		in_mode - out_mode,
 		deconstruct(Arg, ConsId, [UnwrappedArg], UniModes,
-			cannot_fail, no),
+			cannot_fail, cannot_cgc),
 		unify_context(explicit, [])) - GoalInfo.
 
 %-------------------------------------------------------------------------------

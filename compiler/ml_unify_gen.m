@@ -182,13 +182,13 @@ ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
 		% unification fails, it is the responsibility of the
 		% structure reuse phase to ensure that this is safe.
 		%
-		CanCGC = yes,
+		CanCGC = can_cgc,
 		ml_gen_var(!.Info, Var, VarLval),
 		Stmt = atomic(delete_object(VarLval)),
 		CGC_Statements = [mlds__statement(Stmt,
 			mlds__make_context(Context)) ]
 	;
-		CanCGC = no,
+		CanCGC = cannot_cgc,
 		CGC_Statements = []
 	),
 	Statements0 = Unif_Statements `list__append`
