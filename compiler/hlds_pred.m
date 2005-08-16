@@ -57,7 +57,6 @@
 :- import_module libs__options.
 
 % Standard library modules.
-:- import_module injection.
 :- import_module int.
 :- import_module require.
 :- import_module string.
@@ -286,13 +285,13 @@
     type_info_locn::out) is semidet.
 
     % Find the prog_var which contains the typeclass_info for a given
-    % constraint.
+    % constraint and which can be reused.
     %
 :- pred rtti_lookup_typeclass_info_var(rtti_varmaps::in, prog_constraint::in,
     prog_var::out) is det.
 
     % Find the prog_var which contains the typeclass_info for a given
-    % constraint, if it is known.
+    % constraint and which can be reused, if it is known.
     %
 :- pred rtti_search_typeclass_info_var(rtti_varmaps::in, prog_constraint::in,
     prog_var::out) is semidet.
@@ -326,10 +325,29 @@
 :- pred rtti_set_typeclass_info_var(prog_constraint::in, prog_var::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
+    % Make the given typeclass_info var available for reuse in later
+    % goals.  Abort if we know nothing about this variable.
+    %
+:- pred rtti_reuse_typeclass_info_var(prog_var::in,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
+
     % For a prog_var which holds a type_info, set the type that the
     % type_info is for.  Abort if such information already exists.
     %
 :- pred rtti_det_insert_type_info_type(prog_var::in, (type)::in,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
+
+    % For a prog_var which holds a type_info, set the type that the
+    % type_info is for, overwriting any previous information.
+    %
+:- pred rtti_set_type_info_type(prog_var::in, (type)::in,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
+
+    % rtti_var_info_duplicate(Var, NewVar, !RttiVarMaps)
+    %
+    % Duplicate the rtti_var_info we have about Var for NewVar.
+    %
+:- pred rtti_var_info_duplicate(prog_var::in, prog_var::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % Returns all of the tvars that we have information about in the
@@ -337,10 +355,22 @@
     %
 :- pred rtti_varmaps_tvars(rtti_varmaps::in, list(tvar)::out) is det.
 
-    % Returns all of the prog_constraints that we have information
-    % about in the rtti_varmaps structure.
+    % Returns all of the types that we have information about in the
+    % rtti_varmaps structure, including those types which appear in the
+    % arguments of constraints.
     %
-:- pred rtti_varmaps_constraints(rtti_varmaps::in, list(prog_constraint)::out)
+:- pred rtti_varmaps_types(rtti_varmaps::in, list(type)::out) is det.
+
+    % Returns all of the prog_constraints which have typeclass_infos
+    % stored in a prog_var we can reuse.
+    %
+:- pred rtti_varmaps_reusable_constraints(rtti_varmaps::in,
+    list(prog_constraint)::out) is det.
+
+    % Returns all of the prog_vars which are known to contain a type_info
+    % or typeclass_info.
+    %
+:-  pred rtti_varmaps_rtti_prog_vars(rtti_varmaps::in, list(prog_var)::out)
     is det.
 
     % apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst,
@@ -354,13 +384,13 @@
     map(prog_var, prog_var)::in, rtti_varmaps::in, rtti_varmaps::out)
     is det.
 
-    % rtti_varmaps_transform_constraints(Pred, !RttiVarMaps)
+    % rtti_varmaps_transform_types(Pred, !RttiVarMaps)
     %
-    % Apply the transformation predicate to every constraint appearing
-    % in the rtti_varmaps structure.
+    % Apply the transformation predicate to every type appearing in the
+    % rtti_varmaps structure, including those in the arguments of constraints.
     %
-:- pred rtti_varmaps_transform_constraints(
-    pred(prog_constraint, prog_constraint)::in(pred(in, out) is det),
+:- pred rtti_varmaps_transform_types(
+    pred((type), (type))::in(pred(in, out) is det),
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % rtti_varmaps_overlay(A, B, C)
@@ -383,18 +413,21 @@ type_info_locn_set_var(Var, typeclass_info(_, Num), typeclass_info(Var, Num)).
 
 :- type rtti_varmaps
     --->    rtti_varmaps(
-                tci_varmap      :: typeclass_info_varmap,
-                ti_varmap       :: type_info_varmap,
-                ti_type_map     :: type_info_type_map
+                tci_varmap          :: typeclass_info_varmap,
+                ti_varmap           :: type_info_varmap,
+                ti_type_map         :: type_info_type_map,
+                tci_constraint_map  :: typeclass_info_constraint_map
             ).
 
     % A typeclass_info_varmap is a map which for each type class constraint
     % records which variable contains the typeclass_info for that
-    % constraint.  The map is reversible in the sense that we can
-    % efficiently look up which constraint, if any, has its
-    % typeclass_info stored in a given prog_var.
+    % constraint.  The constraints covered by this map are those which
+    % are passed in as head arguments and those which are produced as
+    % existential constraints from calls or deconstructions.  These are
+    % the constraints for which it is safe to reuse the variable associated
+    % with the constraint.
     %
-:- type typeclass_info_varmap == injection(prog_constraint, prog_var).
+:- type typeclass_info_varmap == map(prog_constraint, prog_var).
 
     % A type_info_varmap is a map which for each type variable
     % records where the type_info for that type variable is stored.
@@ -413,10 +446,17 @@ type_info_locn_set_var(Var, typeclass_info(_, Num), typeclass_info(Var, Num)).
     %
 :- type type_info_type_map == map(prog_var, type).
 
-rtti_varmaps_init(rtti_varmaps(TCIMap, TIMap, TypeMap)) :-
-    injection__init(TCIMap),
+    % Every program variable which holds a typeclass_info is a key in this
+    % map.  The value associated with a given key is the prog_constraint
+    % that the typeclass_info is for.
+    %
+:- type typeclass_info_constraint_map == map(prog_var, prog_constraint).
+
+rtti_varmaps_init(rtti_varmaps(TCIMap, TIMap, TypeMap, ConstraintMap)) :-
+    map__init(TCIMap),
     map__init(TIMap),
-    map__init(TypeMap).
+    map__init(TypeMap),
+    map__init(ConstraintMap).
 
 rtti_varmaps_no_tvars(VarMaps) :-
     map__is_empty(VarMaps ^ ti_varmap).
@@ -428,15 +468,15 @@ rtti_search_type_info_locn(VarMaps, TVar, Locn) :-
     map__search(VarMaps ^ ti_varmap, TVar, Locn).
 
 rtti_lookup_typeclass_info_var(VarMaps, Constraint, ProgVar) :-
-    injection__lookup(VarMaps ^ tci_varmap, Constraint, ProgVar).
+    map__lookup(VarMaps ^ tci_varmap, Constraint, ProgVar).
 
 rtti_search_typeclass_info_var(VarMaps, Constraint, ProgVar) :-
-    injection__forward_search(VarMaps ^ tci_varmap, Constraint, ProgVar).
+    map__search(VarMaps ^ tci_varmap, Constraint, ProgVar).
 
 rtti_varmaps_var_info(VarMaps, Var, VarInfo) :-
     ( map__search(VarMaps ^ ti_type_map, Var, Type) ->
         VarInfo = type_info_var(Type)
-    ; injection__reverse_search(VarMaps ^ tci_varmap, Constraint, Var) ->
+    ; map__search(VarMaps ^ tci_constraint_map, Var, Constraint) ->
         VarInfo = typeclass_info_var(Constraint)
     ;
         VarInfo = non_rtti_var
@@ -470,25 +510,70 @@ maybe_check_type_info_var(type_info(Var), TVar, !VarMaps) :-
 maybe_check_type_info_var(typeclass_info(_, _), _, !VarMaps).
 
 rtti_det_insert_typeclass_info_var(Constraint, ProgVar, !VarMaps) :-
-    Map0 = !.VarMaps ^ tci_varmap,
-    injection__det_insert(Map0, Constraint, ProgVar, Map),
-    !:VarMaps = !.VarMaps ^ tci_varmap := Map.
+    Map0 = !.VarMaps ^ tci_constraint_map,
+    map__det_insert(Map0, ProgVar, Constraint, Map),
+    !:VarMaps = !.VarMaps ^ tci_constraint_map := Map.
 
 rtti_set_typeclass_info_var(Constraint, ProgVar, !VarMaps) :-
-    Map0 = !.VarMaps ^ tci_varmap,
-    injection__det_set(Map0, Constraint, ProgVar, Map),
-    !:VarMaps = !.VarMaps ^ tci_varmap := Map.
+    Map0 = !.VarMaps ^ tci_constraint_map,
+    map__set(Map0, ProgVar, Constraint, Map),
+    !:VarMaps = !.VarMaps ^ tci_constraint_map := Map.
+
+rtti_reuse_typeclass_info_var(ProgVar, !VarMaps) :-
+    ( map__search(!.VarMaps ^ tci_constraint_map, ProgVar, Constraint) ->
+        Map0 = !.VarMaps ^ tci_varmap,
+        map__set(Map0, Constraint, ProgVar, Map),
+        !:VarMaps = !.VarMaps ^ tci_varmap := Map
+    ;
+        unexpected(this_file, "rtti_reuse_typeclass_info_var: "
+            ++ "variable not known")
+    ).
 
 rtti_det_insert_type_info_type(ProgVar, Type, !VarMaps) :-
     Map0 = !.VarMaps ^ ti_type_map,
     map__det_insert(Map0, ProgVar, Type, Map),
     !:VarMaps = !.VarMaps ^ ti_type_map := Map.
 
+rtti_set_type_info_type(ProgVar, Type, !VarMaps) :-
+    Map0 = !.VarMaps ^ ti_type_map,
+    map__set(Map0, ProgVar, Type, Map),
+    !:VarMaps = !.VarMaps ^ ti_type_map := Map.
+
+rtti_var_info_duplicate(Var, NewVar, !VarMaps) :-
+    rtti_varmaps_var_info(!.VarMaps, Var, VarInfo),
+    (
+        VarInfo = type_info_var(Type),
+        rtti_det_insert_type_info_type(NewVar, Type, !VarMaps)
+    ;
+        VarInfo = typeclass_info_var(Constraint),
+        rtti_det_insert_typeclass_info_var(Constraint, NewVar, !VarMaps)
+    ;
+        VarInfo = non_rtti_var
+    ).
+
 rtti_varmaps_tvars(VarMaps, TVars) :-
     map__keys(VarMaps ^ ti_varmap, TVars).
 
-rtti_varmaps_constraints(VarMaps, Constraints) :-
-    injection__keys(VarMaps ^ tci_varmap, Constraints).
+rtti_varmaps_types(VarMaps, Types) :-
+    solutions(rtti_varmaps_is_known_type(VarMaps), Types).
+
+:- pred rtti_varmaps_is_known_type(rtti_varmaps::in, (type)::out) is nondet.
+
+rtti_varmaps_is_known_type(VarMaps, Type) :-
+    map__values(VarMaps ^ ti_type_map, Types),
+    list__member(Type, Types).
+rtti_varmaps_is_known_type(VarMaps, Type) :-
+    map__values(VarMaps ^ tci_constraint_map, Constraints),
+    list__member(constraint(_, Types), Constraints),
+    list__member(Type, Types).
+
+rtti_varmaps_reusable_constraints(VarMaps, Constraints) :-
+    map__keys(VarMaps ^ tci_varmap, Constraints).
+
+rtti_varmaps_rtti_prog_vars(VarMaps, Vars) :-
+    map__keys(VarMaps ^ ti_type_map, TIVars),
+    map__keys(VarMaps ^ tci_constraint_map, TCIVars),
+    list__append(TIVars, TCIVars, Vars).
 
 apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
     (
@@ -499,82 +584,53 @@ apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
     ->
         true
     ;
-        !.RttiVarMaps = rtti_varmaps(TCIMap0, TIMap0, TypeMap0),
-        apply_substitutions_to_typeclass_var_map(TRenaming, TSubst,
-            Subst, TCIMap0, TCIMap),
-        apply_substitutions_to_var_map(TRenaming, TSubst, Subst,
-            TIMap0, TIMap),
-        apply_substitutions_to_type_map(TRenaming, TSubst, Subst,
-            TypeMap0, TypeMap),
-        !:RttiVarMaps = rtti_varmaps(TCIMap, TIMap, TypeMap)
+        !.RttiVarMaps = rtti_varmaps(TCIMap0, TIMap0, TypeMap0,
+            ConstraintMap0),
+        map__foldl(apply_substs_to_tci_map(TRenaming, TSubst, Subst),
+            TCIMap0, map__init, TCIMap),
+        map__foldl(apply_substs_to_ti_map(TRenaming, TSubst, Subst),
+            TIMap0, map__init, TIMap),
+        map__foldl(apply_substs_to_type_map(TRenaming, TSubst, Subst),
+            TypeMap0, map__init, TypeMap),
+        map__foldl(apply_substs_to_constraint_map(TRenaming, TSubst, Subst),
+            ConstraintMap0, map__init, ConstraintMap),
+        !:RttiVarMaps = rtti_varmaps(TCIMap, TIMap, TypeMap, ConstraintMap)
     ).
 
-    % Update a map from prog_constraint to var, using the type renaming
-    % and substitution to rename tvars and a variable substition to
-    % rename vars. The type renaming is applied before the type
-    % substitution.
-    %
-:- pred apply_substitutions_to_typeclass_var_map(tsubst::in, tsubst::in,
-    map(prog_var, prog_var)::in,
-    typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
+:- pred apply_subst_to_prog_var(map(prog_var, prog_var)::in,
+    prog_var::in, prog_var::out) is det.
 
-apply_substitutions_to_typeclass_var_map(TRenaming, TSubst, Subst, !VarMap) :-
-        % Note that the transformation on keys must be done before
-        % the transformation on values.  If the values are transformed
-        % first then the invariants on the data structure may be
-        % violated.
-    injection.map_keys(
-        apply_substitutions_to_tc_varmap_keys(TRenaming, TSubst), !VarMap),
-    injection.map_values(apply_renaming_to_tc_varmap_values(Subst), !VarMap).
-
-:- pred apply_substitutions_to_tc_varmap_keys(tsubst::in, tsubst::in,
-    prog_var::in, prog_constraint::in, prog_constraint::out) is det.
-
-apply_substitutions_to_tc_varmap_keys(TRenaming, TSubst, _Var, !Constraint) :-
-    apply_subst_to_prog_constraint(TRenaming, !Constraint),
-    apply_rec_subst_to_prog_constraint(TSubst, !Constraint).
-
-:- pred apply_renaming_to_tc_varmap_values(map(prog_var, prog_var)::in,
-    prog_constraint::in, prog_var::in, prog_var::out) is det.
-
-apply_renaming_to_tc_varmap_values(Subst, _Constraint, Var0, Var) :-
+apply_subst_to_prog_var(Subst, Var0, Var) :-
     ( map__search(Subst, Var0, Var1) ->
         Var = Var1
     ;
         Var = Var0
     ).
 
-    % Update a map from tvar to type_info_locn, using the type renaming
-    % and substitution to rename tvars and a variable substitution to
-    % rename vars. The type renaming is applied before the type
-    % substitution.
-    %
-    % If tvar maps to a another type variable, we keep the new
-    % variable, if it maps to a type, we remove it from the map.
-    %
-:- pred apply_substitutions_to_var_map(tsubst::in, tsubst::in,
-    map(prog_var, prog_var)::in,
-    type_info_varmap::in, type_info_varmap::out) is det.
+:- pred apply_substs_to_tci_map(tsubst::in, tsubst::in,
+    map(prog_var, prog_var)::in, prog_constraint::in, prog_var::in,
+    typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
 
-apply_substitutions_to_var_map(TRenaming, TSubst, Subst, VarMap0, VarMap) :-
-    map__foldl(apply_substitutions_to_var_map_2(TRenaming, TSubst, Subst),
-        VarMap0, map__init, VarMap).
+apply_substs_to_tci_map(TRenaming, TSubst, Subst, Constraint0, Var0, !Map) :-
+    apply_subst_to_prog_constraint(TRenaming, Constraint0, Constraint1),
+    apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
+    apply_subst_to_prog_var(Subst, Var0, Var),
+    svmap__set(Constraint, Var, !Map).
 
-:- pred apply_substitutions_to_var_map_2(tsubst::in, tsubst::in,
+    % Update a map entry from tvar to type_info_locn, using the type renaming
+    % and substitution to rename tvars and a variable substitution to rename
+    % vars. The type renaming is applied before the type substitution.
+    %
+    % If tvar maps to a another type variable, we keep the new variable, if
+    % it maps to a type, we remove it from the map.
+    %
+:- pred apply_substs_to_ti_map(tsubst::in, tsubst::in,
     map(prog_var, prog_var)::in, tvar::in, type_info_locn::in,
     type_info_varmap::in, type_info_varmap::out) is det.
 
-apply_substitutions_to_var_map_2(TRenaming, TSubst, Subst, TVar, Locn,
-        !NewVarMap) :-
+apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     type_info_locn_var(Locn, Var),
-    (
-        % Find the new var, if there is one.
-        map__search(Subst, Var, NewVar0)
-    ->
-        NewVar = NewVar0
-    ;
-        NewVar = Var
-    ),
+    apply_subst_to_prog_var(Subst, Var, NewVar),
     type_info_locn_set_var(NewVar, Locn, NewLocn),
     (
         % Find the new tvar, if there is one.
@@ -586,59 +642,108 @@ apply_substitutions_to_var_map_2(TRenaming, TSubst, Subst, TVar, Locn,
         NewTVarType1 = term__variable(TVar)
     ),
     term__apply_rec_substitution(NewTVarType1, TSubst, NewTVarType),
+
     (
-        % If the tvar is still a variable, insert it into the
-        % map with the new var.
+        % If the tvar is still a variable, insert it into the map with the
+        % new var.
         prog_type__var(NewTVarType, NewTVar)
     ->
-        % Don't abort if two old type variables
-        % map to the same new type variable.
-        svmap__set(NewTVar, NewLocn, !NewVarMap)
+        % Don't abort if two old type variables map to the same new type
+        % variable.
+        svmap__set(NewTVar, NewLocn, !Map)
     ;
         true
     ).
 
-:- pred apply_substitutions_to_type_map(tsubst::in, tsubst::in,
-    map(prog_var, prog_var)::in,
-    type_info_type_map::in, type_info_type_map::out) is det.
-
-apply_substitutions_to_type_map(TRenaming, TSubst, Subst, TypeMap0, TypeMap) :-
-    map__foldl(apply_substitutions_to_type_map_2(TRenaming, TSubst, Subst),
-        TypeMap0, map__init, TypeMap).
-
-:- pred apply_substitutions_to_type_map_2(tsubst::in, tsubst::in,
+:- pred apply_substs_to_type_map(tsubst::in, tsubst::in,
     map(prog_var, prog_var)::in, prog_var::in, (type)::in,
     type_info_type_map::in, type_info_type_map::out) is det.
 
-apply_substitutions_to_type_map_2(TRenaming, TSubst, Subst, Var0, Type0,
-        !TypeMap) :-
+apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
     term__apply_substitution(Type0, TRenaming, Type1),
     term__apply_rec_substitution(Type1, TSubst, Type),
-    ( map__search(Subst, Var0, Var1) ->
-        Var = Var1
+    apply_subst_to_prog_var(Subst, Var0, Var),
+    ( map__search(!.Map, Var, ExistingType) ->
+        ( Type = ExistingType ->
+            true
+        ;
+            unexpected(this_file, "inconsistent type_infos")
+        )
     ;
-        Var = Var0
-    ),
-    svmap__set(Var, Type, !TypeMap).
+        svmap__det_insert(Var, Type, !Map)
+    ).
 
-rtti_varmaps_transform_constraints(Pred, !RttiVarMaps) :-
-    Map0 = !.RttiVarMaps ^ tci_varmap,
-    Pred2 = (pred(_::in, !.C::in, !:C::out) is det :- Pred(!C)),
-    injection__map_keys(Pred2, Map0, Map),
-    !:RttiVarMaps = !.RttiVarMaps ^ tci_varmap := Map.
+:- pred apply_substs_to_constraint_map(tsubst::in, tsubst::in,
+    map(prog_var, prog_var)::in, prog_var::in, prog_constraint::in,
+    typeclass_info_constraint_map::in, typeclass_info_constraint_map::out)
+    is det.
+
+apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
+        !Map) :-
+    apply_subst_to_prog_constraint(TRenaming, Constraint0, Constraint1),
+    apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
+    apply_subst_to_prog_var(Subst, Var0, Var),
+    ( map__search(!.Map, Var, ExistingConstraint) ->
+        ( Constraint = ExistingConstraint ->
+            true
+        ;
+            unexpected(this_file, "inconsistent typeclass_infos")
+        )
+    ;
+        svmap__det_insert(Var, Constraint, !Map)
+    ).
+
+rtti_varmaps_transform_types(Pred, !RttiVarMaps) :-
+    TciMap0 = !.RttiVarMaps ^ tci_varmap,
+    TypeMap0 = !.RttiVarMaps ^ ti_type_map,
+    ConstraintMap0 = !.RttiVarMaps ^ tci_constraint_map,
+    map__foldl(apply_constraint_key_transformation(Pred), TciMap0,
+    map__init, TciMap),
+    Pred2 = (pred(_::in, V::in, W::out) is det :-
+            Pred(V, W)
+    ),
+    map__map_values(Pred2, TypeMap0, TypeMap),
+    map__map_values(apply_constraint_value_transformation(Pred),
+        ConstraintMap0, ConstraintMap),
+    !:RttiVarMaps = !.RttiVarMaps ^ tci_varmap := TciMap,
+    !:RttiVarMaps = !.RttiVarMaps ^ ti_type_map := TypeMap,
+    !:RttiVarMaps = !.RttiVarMaps ^ tci_constraint_map := ConstraintMap.
+
+:- pred apply_constraint_key_transformation(
+    pred((type), (type))::in(pred(in, out) is det),
+    prog_constraint::in, prog_var::in,
+    typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
+
+apply_constraint_key_transformation(Pred, Constraint0, Var, !Map) :-
+    Constraint0 = constraint(Name, Args0),
+    list__map(Pred, Args0, Args),
+    Constraint = constraint(Name, Args),
+    svmap__set(Constraint, Var, !Map).
+
+:- pred apply_constraint_value_transformation(
+    pred((type), (type))::in(pred(in, out) is det),
+    prog_var::in, prog_constraint::in, prog_constraint::out) is det.
+
+apply_constraint_value_transformation(Pred, _, Constraint0, Constraint) :-
+    Constraint0 = constraint(Name, Args0),
+    list__map(Pred, Args0, Args),
+    Constraint = constraint(Name, Args).
 
 rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
-    VarMapsA = rtti_varmaps(TCImapA, TImapA, TypeMapA),
-    VarMapsB = rtti_varmaps(TCImapB, TImapB, TypeMapB),
+    VarMapsA = rtti_varmaps(TCImapA, TImapA, TypeMapA, ConstraintMapA),
+    VarMapsB = rtti_varmaps(TCImapB, TImapB, TypeMapB, ConstraintMapB),
 
         % Prefer VarMapsB for this information.
-    injection__overlay(TCImapA, TCImapB, TCImap),
+        %
+    map__overlay(TCImapA, TCImapB, TCImap),
     map__overlay(TImapA, TImapB, TImap),
 
         % On the other hand, we insist that this information is consistent.
+        %
     map__merge(TypeMapA, TypeMapB, TypeMap),
+    map__merge(ConstraintMapA, ConstraintMapB, ConstraintMap),
 
-    VarMaps = rtti_varmaps(TCImap, TImap, TypeMap).
+    VarMaps = rtti_varmaps(TCImap, TImap, TypeMap, ConstraintMap).
 
 %-----------------------------------------------------------------------------%
 

@@ -76,11 +76,13 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
 	proc_info_goal(!.ProcInfo, Goal0),
 	proc_info_varset(!.ProcInfo, Varset0),
 	proc_info_vartypes(!.ProcInfo, VarTypes0),
-	init_slot_info(Varset0, VarTypes0, TypeInfoLiveness, SlotInfo0),
+	proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+	init_slot_info(Varset0, VarTypes0, RttiVarMaps0, TypeInfoLiveness,
+		SlotInfo0),
 
 	saved_vars_in_goal(Goal0, Goal1, SlotInfo0, SlotInfo),
 
-	final_slot_info(Varset1, VarTypes1, SlotInfo),
+	final_slot_info(Varset1, VarTypes1, RttiVarMaps, SlotInfo),
 	proc_info_headvars(!.ProcInfo, HeadVars),
 
 	% hlds_out__write_goal(Goal1, !.ModuleInfo, Varset1, 0, "\n"),
@@ -97,7 +99,8 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
 
 	proc_info_set_goal(Goal, !ProcInfo),
 	proc_info_set_varset(Varset, !ProcInfo),
-	proc_info_set_vartypes(VarTypes, !ProcInfo).
+	proc_info_set_vartypes(VarTypes, !ProcInfo),
+	proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -510,29 +513,35 @@ saved_vars_in_switch([case(Cons, Goal0) | Cases0],
 	---> slot_info(
 		prog_varset,
 		vartypes,
+		rtti_varmaps,
 		bool		% TypeInfoLiveness
 	).
 
-:- pred init_slot_info(prog_varset::in, map(prog_var, type)::in, bool::in,
-	slot_info::out) is det.
+:- pred init_slot_info(prog_varset::in, map(prog_var, type)::in,
+	rtti_varmaps::in, bool::in, slot_info::out) is det.
 
-init_slot_info(Varset, VarTypes, TypeInfoLiveness, SlotInfo) :-
-	SlotInfo = slot_info(Varset, VarTypes, TypeInfoLiveness).
+init_slot_info(Varset, VarTypes, RttiVarMaps, TypeInfoLiveness, SlotInfo) :-
+	SlotInfo = slot_info(Varset, VarTypes, RttiVarMaps, TypeInfoLiveness).
 
-:- pred final_slot_info(prog_varset::out, vartypes::out, slot_info::in) is det.
+:- pred final_slot_info(prog_varset::out, vartypes::out, rtti_varmaps::out,
+	slot_info::in) is det.
 
-final_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes, _)).
+final_slot_info(Varset, VarTypes, RttiVarMaps, SlotInfo) :-
+	SlotInfo = slot_info(Varset, VarTypes, RttiVarMaps, _).
 
 :- pred rename_var(prog_var::in, prog_var::out, map(prog_var, prog_var)::out,
 	slot_info::in, slot_info::out) is det.
 
 rename_var(Var, NewVar, Substitution, !SlotInfo) :-
-	!.SlotInfo = slot_info(Varset0, VarTypes0, TypeInfoLiveness),
+	!.SlotInfo = slot_info(Varset0, VarTypes0, RttiVarMaps0,
+		TypeInfoLiveness),
 	varset__new_var(Varset0, NewVar, Varset),
 	map__from_assoc_list([Var - NewVar], Substitution),
 	map__lookup(VarTypes0, Var, Type),
 	map__det_insert(VarTypes0, NewVar, Type, VarTypes),
-	!:SlotInfo = slot_info(Varset, VarTypes, TypeInfoLiveness).
+	rtti_var_info_duplicate(Var, NewVar, RttiVarMaps0, RttiVarMaps),
+	!:SlotInfo = slot_info(Varset, VarTypes, RttiVarMaps,
+		TypeInfoLiveness).
 
 	% Check whether it is ok to duplicate a given variable according
 	% to the information in the slot_info.  If TypeInfoLiveness is set,
@@ -547,7 +556,7 @@ rename_var(Var, NewVar, Substitution, !SlotInfo) :-
 :- pred slot_info_do_not_duplicate_var(slot_info::in, prog_var::in) is semidet.
 
 slot_info_do_not_duplicate_var(SlotInfo, Var) :-
-	SlotInfo = slot_info(_, VarTypes, TypeInfoLiveness),
+	SlotInfo = slot_info(_, VarTypes, _, TypeInfoLiveness),
 	TypeInfoLiveness = yes,
 	map__lookup(VarTypes, Var, Type),
 	polymorphism__type_is_type_info_or_ctor_type(Type).

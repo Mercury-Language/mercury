@@ -2332,6 +2332,9 @@ simplify_info_get_pred_info(Info, PredInfo) :-
 :- pred simplify_info_set_module_info(module_info::in,
     simplify_info::in, simplify_info::out) is det.
 
+:- pred simplify_info_apply_type_substitution(tsubst::in,
+    simplify_info::in, simplify_info::out) is det.
+
 :- implementation.
 
 simplify_info_set_det_info(Det, Info, Info ^ det_info := Det).
@@ -2378,6 +2381,18 @@ simplify_info_set_module_info(ModuleInfo, !Info) :-
     simplify_info_get_det_info(!.Info, DetInfo0),
     det_info_set_module_info(DetInfo0, ModuleInfo, DetInfo),
     simplify_info_set_det_info(DetInfo, !Info).
+
+simplify_info_apply_type_substitution(TSubst, !Info) :-
+    simplify_info_get_var_types(!.Info, VarTypes0),
+    simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+    ApplyTSubst = (pred(_::in, T0::in, T::out) is det :-
+            T = term__apply_rec_substitution(T0, TSubst)
+        ),
+    map__map_values(ApplyTSubst, VarTypes0, VarTypes),
+    apply_substitutions_to_rtti_varmaps(map__init, TSubst, map__init,
+        RttiVarMaps0, RttiVarMaps),
+    simplify_info_set_var_types(VarTypes, !Info),
+    simplify_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
 :- interface.
 

@@ -912,8 +912,10 @@ goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
 		% that is non-local in the above sense.
 		%
 	solutions_set((pred(Var::out) is nondet :-
-			% Search through all arguments of all constraints.
-			rtti_varmaps_constraints(RttiVarMaps, Constraints),
+			% Search through all arguments of all constraints
+			% that the goal could have used.
+			rtti_varmaps_reusable_constraints(RttiVarMaps,
+				Constraints),
 			list__member(Constraint, Constraints),
 			Constraint = constraint(_Name, ArgTypes),
 			term__contains_var_list(ArgTypes, TypeVar),

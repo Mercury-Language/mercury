@@ -90,6 +90,7 @@
 :- import_module check_hlds__det_util.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
+:- import_module check_hlds__polymorphism.
 :- import_module check_hlds__type_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
@@ -98,6 +99,7 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 :- import_module transform_hlds__pd_cost.
@@ -742,6 +744,7 @@ common__create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs,
     is det.
 
 common__generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
+    apply_induced_tsubst(ToVar, FromVar, !Info),
     simplify_info_get_var_types(!.Info, VarTypes),
     map__lookup(VarTypes, ToVar, ToVarType),
     map__lookup(VarTypes, FromVar, FromVarType),
@@ -794,4 +797,86 @@ common__types_match_exactly_list([Type1 | Types1], [Type2 | Types2]) :-
     common__types_match_exactly_list(Types1, Types2).
 
 %---------------------------------------------------------------------------%
+
+    % Two existentially quantified type variables may become aliased if two
+    % calls or two deconstructions are merged together.  We detect this
+    % situation here and apply the appropriate tsubst to the vartypes and
+    % rtti_varmaps.  This allows us to avoid an unsafe cast, and also may
+    % allow more opportunities for simplification.
+    %
+    % Note that this relies on the assignments for type_infos and
+    % typeclass_infos to be generated before other arguments with these
+    % existential types are processed.  In other words, the arguments of
+    % calls and deconstructions must be processed in left to right order.
+    %
+:- pred apply_induced_tsubst(prog_var::in, prog_var::in, simplify_info::in,
+    simplify_info::out) is det.
+
+apply_induced_tsubst(ToVar, FromVar, !Info) :-
+    simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+    rtti_varmaps_var_info(RttiVarMaps0, FromVar, FromVarRttiInfo),
+    rtti_varmaps_var_info(RttiVarMaps0, ToVar, ToVarRttiInfo),
+    (
+        calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst)
+    ->
+        ( map__is_empty(TSubst) ->
+            true
+        ;
+            simplify_info_apply_type_substitution(TSubst, !Info)
+        )
+    ;
+            % Update the rtti_varmaps with new information if only one of the
+            % variables has rtti_var_info recorded.  This can happen if a new
+            % variable has been introduced, eg in quantification, without
+            % being recorded in the rtti_varmaps.
+            %
+        FromVarRttiInfo = non_rtti_var
+    ->
+        rtti_var_info_duplicate(ToVar, FromVar, RttiVarMaps0, RttiVarMaps),
+        simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
+    ;
+        ToVarRttiInfo = non_rtti_var
+    ->
+        rtti_var_info_duplicate(FromVar, ToVar, RttiVarMaps0, RttiVarMaps),
+        simplify_info_set_rtti_varmaps(RttiVarMaps, !Info)
+    ;
+            % calculate_induced_tsubst failed for a different reason, either
+            % because unification failed or because one variable was a
+            % type_info and the other was a typeclass_info.
+            %
+        unexpected(this_file, "apply_induced_tsubst: inconsistent info")
+    ).
+
+    % Calculate the induced substitution by unifying the types or constraints,
+    % if they exist.  Fail if given non-matching rtti_var_infos.
+    %
+:- pred calculate_induced_tsubst(rtti_var_info::in, rtti_var_info::in,
+    tsubst::out) is semidet.
+
+calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) :-
+    (
+        FromVarRttiInfo = type_info_var(FromVarTypeInfoType),
+        ToVarRttiInfo = type_info_var(ToVarTypeInfoType),
+        type_unify(FromVarTypeInfoType, ToVarTypeInfoType, [],
+                map__init, TSubst)
+    ;
+        FromVarRttiInfo = typeclass_info_var(FromVarConstraint),
+        ToVarRttiInfo = typeclass_info_var(ToVarConstraint),
+        FromVarConstraint = constraint(Name, FromArgs),
+        ToVarConstraint = constraint(Name, ToArgs),
+        type_unify_list(FromArgs, ToArgs, [], map__init, TSubst)
+    ;
+        FromVarRttiInfo = non_rtti_var,
+        ToVarRttiInfo = non_rtti_var,
+        map__init(TSubst)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "common.m".
+
+%---------------------------------------------------------------------------%
+:- end_module check_hlds__common.
 %---------------------------------------------------------------------------%

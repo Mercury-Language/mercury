@@ -2945,18 +2945,23 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, AppendVarNums,
 :- pred hlds_out__write_rtti_varmaps(int::in, bool::in, rtti_varmaps::in,
     prog_varset::in, tvarset::in, io::di, io::uo) is det.
 
-hlds_out__write_rtti_varmaps(Indent, AppendVarNums,
-        RttiVarMaps, VarSet, TVarSet, !IO) :-
+hlds_out__write_rtti_varmaps(Indent, AppendVarNums, RttiVarMaps, VarSet,
+        TVarSet, !IO) :-
     hlds_out__write_indent(Indent, !IO),
     io__write_string("% type_info varmap:\n", !IO),
     rtti_varmaps_tvars(RttiVarMaps, TypeVars),
-    list__foldl(write_type_info_locn(Indent, AppendVarNums,
-        RttiVarMaps, VarSet, TVarSet), TypeVars, !IO),
+    list__foldl(write_type_info_locn(Indent, AppendVarNums, RttiVarMaps,
+        VarSet, TVarSet), TypeVars, !IO),
     hlds_out__write_indent(Indent, !IO),
     io__write_string("% typeclass_info varmap:\n", !IO),
-    rtti_varmaps_constraints(RttiVarMaps, Constraints),
-    list__foldl(write_typeclass_info_var(Indent, AppendVarNums,
-        RttiVarMaps, VarSet, TVarSet), Constraints, !IO).
+    rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
+    list__foldl(write_typeclass_info_var(Indent, AppendVarNums, RttiVarMaps,
+        VarSet, TVarSet), Constraints, !IO),
+    hlds_out__write_indent(Indent, !IO),
+    io__write_string("% rtti_var_info:\n", !IO),
+    rtti_varmaps_rtti_prog_vars(RttiVarMaps, ProgVars),
+    list__foldl(write_rtti_var_info(Indent, AppendVarNums, RttiVarMaps,
+        VarSet, TVarSet), ProgVars, !IO).
 
 :- pred write_type_info_locn(int::in, bool::in, rtti_varmaps::in,
     prog_varset::in, tvarset::in, tvar::in, io::di, io::uo) is det.
@@ -3005,6 +3010,35 @@ write_typeclass_info_var(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet,
     rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, Var),
     mercury_output_var(Var, VarSet, AppendVarNums, !IO),
     io__nl(!IO).
+
+:- pred write_rtti_var_info(int::in, bool::in, rtti_varmaps::in,
+	prog_varset::in, tvarset::in, prog_var::in, io::di, io::uo) is det.
+
+write_rtti_var_info(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, Var,
+		!IO) :-
+	hlds_out__write_indent(Indent, !IO),
+	io__write_string("% ", !IO),
+	mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+	io__write_string(" (number ", !IO),
+	term__var_to_int(Var, VarNum),
+	io__write_int(VarNum, !IO),
+	io__write_string(") ", !IO),
+	io__write_string(" -> ", !IO),
+	rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
+	(
+		VarInfo = type_info_var(Type),
+		io__write_string("type_info for ", !IO),
+		mercury_output_term(Type, TVarSet, AppendVarNums, !IO)
+	;
+		VarInfo = typeclass_info_var(Constraint),
+		io__write_string("typeclass_info for", !IO),
+		mercury_output_constraint(TVarSet, AppendVarNums, Constraint,
+			!IO)
+	;
+		VarInfo = non_rtti_var,
+		unexpected(this_file, "write_rtti_var_info: non rtti var")
+	),
+	io__nl(!IO).
 
 :- pred hlds_out__write_stack_slots(int::in, stack_slots::in, prog_varset::in,
     bool::in, io::di, io::uo) is det.
@@ -4132,4 +4166,11 @@ mercury_expanded_inst_to_string(Inst, VarSet, ModuleInfo) = String :-
         expanded_inst_info(VarSet, ModuleInfo, Expansions), "", String).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "hlds_out.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module hlds__hlds_out.
 %-----------------------------------------------------------------------------%

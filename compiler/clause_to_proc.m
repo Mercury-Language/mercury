@@ -72,6 +72,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -372,7 +373,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     ),
 
     % Add exists_casts for any head vars which are existentially typed,
-    % and for which the type is bound inside the procedure.  Subn
+    % and for which the type is statically bound inside the procedure.  Subn
     % represents which existential types are bound.
     introduce_exists_casts_for_head(ModuleInfo, Subn, OrigArgTypes,
         OrigArgModes, OrigHeadVars1, OrigHeadVars, VarSet0, VarSet1,
@@ -491,11 +492,28 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
         make_new_exist_cast_var(Var0, Var, !VarSet),
         svmap__det_insert(Var, ExternalType, !VarTypes),
         generate_cast(exists_cast, Var0, Var, Context, ExtraGoal),
-        ExtraGoals = [ExtraGoal | ExtraGoals0]
+        ExtraGoals = [ExtraGoal | ExtraGoals0],
 
-        % XXX when rtti_varmaps includes information about
-        % the external view of type_infos and typeclass_infos,
-        % it will need to be updated here.
+            % Update the rtti_varmaps.  The old variable needs to have the
+            % substitution applied to its type/constraint.  The new variable
+            % needs to be associated with the unsubstituted type/constraint.
+            %
+        rtti_varmaps_var_info(!.RttiVarMaps, Var0, VarInfo),
+        (
+            VarInfo = type_info_var(TypeInfoType0),
+            term__apply_rec_substitution(TypeInfoType0, Subn, TypeInfoType),
+            rtti_set_type_info_type(Var0, TypeInfoType, !RttiVarMaps),
+            rtti_det_insert_type_info_type(Var, TypeInfoType0, !RttiVarMaps)
+        ;
+            VarInfo = typeclass_info_var(Constraint0),
+            apply_rec_subst_to_prog_constraint(Subn, Constraint0, Constraint),
+            rtti_set_typeclass_info_var(Constraint, Var0, !RttiVarMaps),
+            rtti_det_insert_typeclass_info_var(Constraint0, Var, !RttiVarMaps)
+        ;
+            VarInfo = non_rtti_var,
+            unexpected(this_file, "introduce_exists_casts_extra: " ++
+                "rtti_varmaps info not found")
+        )
     ;
         Var = Var0,
         ExtraGoals = ExtraGoals0

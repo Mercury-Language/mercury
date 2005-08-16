@@ -324,7 +324,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% expression.
 		% Note currently we only allow lambda expressions
 		% to have universally quantified constraints.
-	rtti_varmaps_constraints(RttiVarMaps, AllConstraints),
+	rtti_varmaps_reusable_constraints(RttiVarMaps, AllConstraints),
 	map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
 	list__map(prog_type__vars, LambdaVarTypes, LambdaTypeVarsList),
 	list__condense(LambdaTypeVarsList, LambdaTypeVars),

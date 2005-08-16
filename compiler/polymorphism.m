@@ -773,9 +773,8 @@ polymorphism__setup_headvars_instance_method(PredInfo,
 	polymorphism__make_typeclass_info_head_vars(InstanceConstraints,
 		InstanceHeadTypeClassInfoVars, !Info),
 	poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-	list__foldl_corresponding(rtti_det_insert_typeclass_info_var,
-		InstanceConstraints, InstanceHeadTypeClassInfoVars,
-		RttiVarMaps0, RttiVarMaps),
+	list__foldl(rtti_reuse_typeclass_info_var,
+		InstanceHeadTypeClassInfoVars, RttiVarMaps0, RttiVarMaps),
 	poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
 	list__append(UnconstrainedInstanceTypeInfoVars,
 		InstanceHeadTypeClassInfoVars, ExtraHeadVars0),
@@ -916,9 +915,8 @@ polymorphism__setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
 			UnconstrainedInstanceTVars,
 			UnconstrainedInstanceTypeLocns, !RttiVarMaps),
 
-		list__foldl_corresponding(rtti_set_typeclass_info_var,
-			UnivConstraints, UnivHeadTypeClassInfoVars,
-			!RttiVarMaps),
+		list__foldl(rtti_reuse_typeclass_info_var,
+			UnivHeadTypeClassInfoVars, !RttiVarMaps),
 
 		poly_info_set_rtti_varmaps(!.RttiVarMaps, !Info)
 	).
@@ -974,8 +972,10 @@ polymorphism__produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
 	polymorphism__make_typeclass_info_vars(ActualExistConstraints,
 		ExistQVarsForCall, Context, ExistTypeClassVars,
 		ExtraTypeClassGoals, !Info),
-	polymorphism__update_typeclass_infos(ActualExistConstraints,
-		ExistTypeClassVars, !Info),
+	poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+	list__foldl(rtti_reuse_typeclass_info_var, ExistTypeClassVars, 
+		RttiVarMaps0, RttiVarMaps),
+	poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
 	polymorphism__assign_var_list(ExistTypeClassInfoHeadVars,
 		ExistTypeClassVars, ExtraTypeClassUnifyGoals),
 
@@ -2019,29 +2019,6 @@ unify_corresponding_types([A | As], [B | Bs], !Subst) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred polymorphism__update_typeclass_infos(list(prog_constraint)::in,
-	list(prog_var)::in, poly_info::in, poly_info::out) is det.
-
-polymorphism__update_typeclass_infos(Constraints, Vars, !Info) :-
-	poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-	insert_typeclass_info_locns(Constraints, Vars, RttiVarMaps0,
-		RttiVarMaps),
-	poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
-
-:- pred insert_typeclass_info_locns(list(prog_constraint)::in,
-	list(prog_var)::in, rtti_varmaps::in, rtti_varmaps::out) is det.
-
-insert_typeclass_info_locns([], [], !RttiVarMaps).
-insert_typeclass_info_locns([C | Cs], [V | Vs], !RttiVarMaps) :-
-	rtti_set_typeclass_info_var(C, V, !RttiVarMaps),
-	insert_typeclass_info_locns(Cs, Vs, !RttiVarMaps).
-insert_typeclass_info_locns([], [_ | _], _, _) :-
-	error("polymorphism:insert_typeclass_info_locns").
-insert_typeclass_info_locns([_ | _], [], _, _) :-
-	error("polymorphism:insert_typeclass_info_locns").
-
-%-----------------------------------------------------------------------------%
-
 :- pred polymorphism__fixup_quantification(list(prog_var)::in,
 	existq_tvars::in, hlds_goal::in, hlds_goal::out,
 	poly_info::in, poly_info::out) is det.
@@ -2200,7 +2177,7 @@ polymorphism__make_typeclass_info_var(Constraint, Seen, ExistQVars,
 		polymorphism__make_typeclass_info_head_var(Constraint,
 			NewVar, !Info),
 		poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-		rtti_det_insert_typeclass_info_var(Constraint, NewVar,
+		rtti_reuse_typeclass_info_var(NewVar,
 			RttiVarMaps0, RttiVarMaps),
 		poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
 		MaybeVar = yes(NewVar)
@@ -2338,20 +2315,16 @@ polymorphism__make_typeclass_info_from_instance(Constraint, Seen,
 polymorphism__make_typeclass_info_from_subclass(Constraint,
 		Seen, ClassId, SubClassConstraint, ExistQVars, Context,
 		MaybeVar, !ExtraGoals, !Info) :-
-	!.Info = poly_info(VarSet0, VarTypes0, TypeVarSet, RttiVarMaps,
-		Proofs, ConstraintMap, PredName, ModuleInfo),
 	ClassId = class_id(ClassName, _ClassArity),
 	% First create a variable to hold the new typeclass_info.
 	unqualify_name(ClassName, ClassNameString),
 	polymorphism__new_typeclass_info_var(Constraint, ClassNameString,
-		Var, VarSet0, VarSet1, VarTypes0, VarTypes1),
+		Var, !Info),
 	MaybeVar = yes(Var),
 	% Then work out where to extract it from
 	SubClassConstraint = constraint(SubClassName, SubClassTypes),
 	list__length(SubClassTypes, SubClassArity),
 	SubClassId = class_id(SubClassName, SubClassArity),
-	!:Info = poly_info(VarSet1, VarTypes1, TypeVarSet, RttiVarMaps,
-		Proofs, ConstraintMap, PredName, ModuleInfo),
 
 	% Make the typeclass_info for the subclass
 	polymorphism__make_typeclass_info_var(SubClassConstraint, Seen,
@@ -2363,6 +2336,7 @@ polymorphism__make_typeclass_info_from_subclass(Constraint,
 	),
 
 	% Look up the definition of the subclass
+	poly_info_get_module_info(!.Info, ModuleInfo),
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, SubClassId, SubClassDefn),
 
@@ -2382,10 +2356,10 @@ polymorphism__make_typeclass_info_from_subclass(Constraint,
 		error("polymorphism.m: constraint not in constraint list")
 	),
 
-	poly_info_get_varset(!.Info, VarSet2),
-	poly_info_get_var_types(!.Info, VarTypes2),
+	poly_info_get_varset(!.Info, VarSet0),
+	poly_info_get_var_types(!.Info, VarTypes0),
 	make_int_const_construction(SuperClassIndex, yes("SuperClassIndex"),
-		IndexGoal, IndexVar, VarTypes2, VarTypes, VarSet2, VarSet),
+		IndexGoal, IndexVar, VarTypes0, VarTypes, VarSet0, VarSet),
 	poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
 
 	% We extract the superclass typeclass_info by inserting a call
@@ -2420,9 +2394,6 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 		SuperClassProofs, ExistQVars, ArgSuperClassVars,
 		SuperClassGoals, !Info),
 
-	poly_info_get_varset(!.Info, VarSet0),
-	poly_info_get_var_types(!.Info, VarTypes0),
-
 		% lay out the argument variables as expected in the
 		% typeclass_info
 	list__append(ArgTypeClassInfoVars, ArgSuperClassVars, ArgVars0),
@@ -2433,7 +2404,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 
 	unqualify_name(ClassName, ClassNameString),
 	polymorphism__new_typeclass_info_var(Constraint, ClassNameString,
-		BaseVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
+		BaseVar, !Info),
 
 	module_info_instances(ModuleInfo, InstanceTable),
 	map__lookup(InstanceTable, ClassId, InstanceList),
@@ -2470,7 +2441,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 
 		% introduce a new variable
 	polymorphism__new_typeclass_info_var(Constraint, ClassNameString,
-		NewVar, VarSet1, VarSet, VarTypes1, VarTypes),
+		NewVar, !Info),
 
 		% create the construction unification to initialize the
 		% variable
@@ -2504,8 +2475,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 
 	TypeClassInfoGoal = Unify - GoalInfo,
 	NewGoals0 = [TypeClassInfoGoal, BaseGoal],
-	list__append(NewGoals0, SuperClassGoals, NewGoals),
-	poly_info_set_varset_and_types(VarSet, VarTypes, !Info).
+	list__append(NewGoals0, SuperClassGoals, NewGoals).
 
 %---------------------------------------------------------------------------%
 
@@ -2575,8 +2545,10 @@ polymorphism__make_existq_typeclass_info_vars(ExistentialConstraints,
 	poly_info_get_rtti_varmaps(!.Info, OldRttiVarMaps),
 	polymorphism__make_typeclass_info_head_vars(ExistentialConstraints,
 		ExtraTypeClassVars, !Info),
-	polymorphism__update_typeclass_infos(ExistentialConstraints,
-		ExtraTypeClassVars, !Info),
+	poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+	list__foldl(rtti_reuse_typeclass_info_var, ExtraTypeClassVars,
+		RttiVarMaps0, RttiVarMaps),
+	poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
 
 	constraint_list_get_tvars(ExistentialConstraints, TVars0),
 	list__sort_and_remove_dups(TVars0, TVars),
@@ -3093,15 +3065,13 @@ polymorphism__make_typeclass_info_head_vars(Constraints, ExtraHeadVars,
 	prog_var::out, poly_info::in, poly_info::out) is det.
 
 polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
-	poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 	(
+		poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 		rtti_search_typeclass_info_var(RttiVarMaps0, Constraint,
 			ExistingVar)
 	->
 		ExtraHeadVar = ExistingVar
 	;
-		poly_info_get_varset(!.Info, VarSet0),
-		poly_info_get_var_types(!.Info, VarTypes0),
 		poly_info_get_module_info(!.Info, ModuleInfo),
 
 		Constraint = constraint(ClassName0, ClassTypes),
@@ -3119,7 +3089,7 @@ polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
 			% Make a new variable to contain the dictionary for
 			% this typeclass constraint.
 		polymorphism__new_typeclass_info_var(Constraint, ClassName,
-			ExtraHeadVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
+			ExtraHeadVar, !Info),
 
 			% Find all the type variables in the constraint, and
 			% remember what index they appear in in the typeclass
@@ -3147,6 +3117,7 @@ polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
 			% code which needs mode reordering and which calls
 			% existentially quantified predicates or
 			% deconstructs existentially quantified terms).
+		poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 		IsNew = (pred(TypeVar0::in) is semidet :-
 				TypeVar0 = TypeVar - _Index,
 				(
@@ -3172,8 +3143,6 @@ polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
 			),
 		list__foldl(MakeEntry, NewClassTypeVars, RttiVarMaps0,
 			RttiVarMaps),
-
-		poly_info_set_varset_and_types(VarSet1, VarTypes1, !Info),
 		poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
 	).
 
@@ -3182,17 +3151,24 @@ polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
 is_pair(_).
 
 :- pred polymorphism__new_typeclass_info_var(prog_constraint::in, string::in,
-	prog_var::out, prog_varset::in, prog_varset::out,
-	map(prog_var, type)::in, map(prog_var, type)::out) is det.
+	prog_var::out, poly_info::in, poly_info::out) is det.
 
-polymorphism__new_typeclass_info_var(Constraint, ClassString, Var,
-		!VarSet, !VarTypes) :-
+polymorphism__new_typeclass_info_var(Constraint, ClassString, Var, !Info) :-
+	poly_info_get_varset(!.Info, VarSet0),
+	poly_info_get_var_types(!.Info, VarTypes0),
+	poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+
 	% introduce new variable
-	varset__new_var(!.VarSet, Var, !:VarSet),
+	varset__new_var(VarSet0, Var, VarSet1),
 	string__append("TypeClassInfo_for_", ClassString, Name),
-	varset__name_var(!.VarSet, Var, Name, !:VarSet),
+	varset__name_var(VarSet1, Var, Name, VarSet),
 	polymorphism__build_typeclass_info_type(Constraint, DictionaryType),
-	map__set(!.VarTypes, Var, DictionaryType, !:VarTypes).
+	map__set(VarTypes0, Var, DictionaryType, VarTypes),
+	rtti_det_insert_typeclass_info_var(Constraint, Var,
+		RttiVarMaps0, RttiVarMaps),
+	
+	poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+	poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
 polymorphism__build_typeclass_info_type(Constraint, DictionaryType) :-
 	Constraint = constraint(SymName, ArgTypes),

@@ -350,17 +350,17 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
         proc_info_set_vartypes(VarTypes, !ProcInfo),
 
         proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
-        rtti_varmaps_constraints(RttiVarMaps0, AllConstraints),
+        rtti_varmaps_types(RttiVarMaps0, AllTypes),
         list__foldl2(
-            (pred(OldConstraint::in, !.CMap::in, !:CMap::out,
+            (pred(OldType::in, !.TMap::in, !:TMap::out,
                     !.TVarSet::in, !:TVarSet::out) is det :-
-                equiv_type__replace_in_prog_constraint(EqvMap,
-                    OldConstraint, NewConstraint, !TVarSet, no, _),
-                svmap__set(OldConstraint, NewConstraint, !CMap)
-            ), AllConstraints, map__init, ConstraintMap, !TVarSet),
-        rtti_varmaps_transform_constraints(
-            (pred(!.Constraint::in, !:Constraint::out) is det :-
-                map__lookup(ConstraintMap, !Constraint)
+                equiv_type__replace_in_type(EqvMap, OldType, NewType, _,
+                    !TVarSet, no, _),
+                svmap__set(OldType, NewType, !TMap)
+            ), AllTypes, map__init, TypeMap, !TVarSet),
+        rtti_varmaps_transform_types(
+            (pred(!.VarMapType::in, !:VarMapType::out) is det :-
+                map__lookup(TypeMap, !VarMapType)
             ), RttiVarMaps0, RttiVarMaps),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
