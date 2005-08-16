@@ -172,8 +172,7 @@ simplify__procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
     (
         !.MaybeMsgs = yes(AnyModeMsgSet0 - AllModeMsgSet0),
         set__union(AnyModeMsgSet0, ProcAnyModeMsgSet, AnyModeMsgSet),
-        set__intersect(AllModeMsgSet0, ProcAllModeMsgSet,
-            AllModeMsgSet),
+        set__intersect(AllModeMsgSet0, ProcAllModeMsgSet, AllModeMsgSet),
         !:MaybeMsgs = yes(AllModeMsgSet - AnyModeMsgSet)
     ;
         !.MaybeMsgs = no,

@@ -2718,8 +2718,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId,
         %       mercury_compile.simplify.
         %
         ProfTrans = yes,
-        Simplifications = list.delete_all(Simplifications0,
-            constant_prop)
+        Simplifications = list.delete_all(Simplifications0, constant_prop)
     ;
         ProfTrans = no,
         Simplifications = Simplifications0
