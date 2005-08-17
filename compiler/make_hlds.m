@@ -155,6 +155,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
+:- import_module svset.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
@@ -6568,7 +6569,7 @@ transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity, GoalType,
         prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
         transform_goal(Body0, Subst, Body, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !IO),
-        finish_head_and_body(Context, FinalSVarMap, HeadGoal, Body, Goal0,
+        finish_goals(Context, FinalSVarMap, [HeadGoal, Body], Goal0,
             !.SInfo),
         VarTypes0 = !.QualInfo ^ vartypes,
         implicitly_quantify_clause_body(HeadVars, Warnings, Goal0, Goal,
@@ -7434,7 +7435,7 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
         transform_goal(ParsedGoal, Substitution, PredBody,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
-        finish_head_and_body(Context, FinalSVarMap, PredHead, PredBody,
+        finish_goals(Context, FinalSVarMap, [PredHead, PredBody],
             PredGoal0, !.SInfo),
 
         % Quantification will reduce this down to
@@ -8366,6 +8367,9 @@ parse_rule_term(Context, RuleTerm, HeadTerm, GoalTerm) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%
+% Code for building lambda expressions
+%
 
 :- pred build_lambda_expression(prog_var::in, purity::in, pred_or_func::in,
     lambda_eval_method::in, list(prog_term)::in, list(mode)::in,
@@ -8379,39 +8383,53 @@ build_lambda_expression(X, Purity, PredOrFunc, EvalMethod, Args0, Modes, Det,
         ParsedGoal, Context, MainContext, SubContext, Goal, !VarSet,
         !ModuleInfo, !QualInfo, !.SInfo, !IO) :-
     %
-    % In the parse tree, the lambda arguments can be any terms.
-    % But in the HLDS, they must be distinct variables.  So we introduce
+    % In the parse tree, the lambda arguments can be any terms, but
+    % in the HLDS they must be distinct variables.  So we introduce
     % fresh variables for the lambda arguments, and add appropriate
     % unifications.
     %
-    % For example, we convert from
-    %   X = (func(f(A, B), c) = D :- G)
-    % to
-    %   X = (func(H1, H2) = H3 :-
-    %       some [A, B] (H1 = f(A, B), H2 = c, H3 = D).
+    % For example, we convert from:
     %
-    % Note that the quantification is important here.
-    % That's why we need to introduce the explicit `some [...]'.
-    % Variables in the argument positions are lambda-quantified,
-    % so when we move them to the body, we need to make them
-    % explicitly existentially quantified, to avoid capturing
-    % any variables of the same name that occur outside this scope.
+    %       X = (func(f(A, B), c) = D :- Body )
     %
-    % For predicates, all variables occuring in the lambda arguments
-    % are locally quantified to the lambda goal.
-    % For functions, we need to be careful because variables in
-    % arguments should similarly be quantified, but variables in
-    % the function return value term (and not in the arguments)
-    % should *not* be locally quantified.
+    % to:
     %
-
+    %       X = (func(H1, H2) = H3 :-
+    %           some [A, B] (
+    %               H1 = f(A, B),
+    %               H2 = c,
+    %               Body,
+    %               H3 = D
+    %       )
     %
-    % Create fresh variables, transform the goal to HLDS,
-    % and add unifications with the fresh variables.
-    % We use varset__new_vars rather than make_fresh_arg_vars,
-    % since for functions we need to ensure that the variable
-    % corresponding to the function result term is a new variable,
-    % to avoid the function result term becoming lambda-quantified.
+    % Note that the quantification is important here.  That's why we
+    % need to introduce the explicit `some [...]'.  Variables in the
+    % argument positions are lambda-quantified, so when we move them to
+    % the body, we need to make them explicitly existentially quantified
+    % to avoid capturing any variables of the same name that occur
+    % outside this scope.
+    %
+    % Also, note that any introduced unifications that construct the
+    % output arguments for the lambda expression, need to occur *after*,
+    % the body of the lambda expression.  This is in case the body of
+    % the lambda expression is impure, in which case the mode analyser
+    % cannot reorder the unifications; this results in a mode error.
+    %
+    % XXX the mode analyser *should* be able to reorder such unifications,
+    %     especially ones that the compiler introduced itself.
+    %
+    % For predicates, all variables occurring in the lambda arguments are
+    % locally quantified to the lambda goal.  For functions, we need to
+    % be careful because variables in arguments should similarly be
+    % quantified, but variables in the function return value term (and
+    % not in the arguments) should *not* be locally quantified.
+    %
+    % Create fresh variables, transform the goal to HLDS, and add
+    % unifications with the fresh variables.  We use varset.new_vars
+    % rather than make_fresh_arg_vars, since for functions we need to
+    % ensure that the variable corresponding to the function result term
+    % is a new variable, to avoid the function result term becoming
+    % lambda-quantified.
     %
     (
         illegal_state_var_func_result(PredOrFunc, Args0, StateVar)
@@ -8429,24 +8447,57 @@ build_lambda_expression(X, Purity, PredOrFunc, EvalMethod, Args0, Modes, Det,
 
         list__length(Args, NumArgs),
         varset__new_vars(!.VarSet, NumArgs, LambdaVars, !:VarSet),
+        %
+        % Partition the arguments (and their corresponding lambda variables)
+        % into two sets: those that are not output, i.e. input and unused,
+        % and those that are output.
+        %
+        (
+            partition_args_and_lambda_vars(!.ModuleInfo, Args, LambdaVars,
+                Modes, NonOutputArgs0, OutputArgs0, NonOutputLambdaVars0,
+                OutputLambdaVars0)
+        ->
+            NonOutputArgs       = NonOutputArgs0,
+            OutputArgs          = OutputArgs0,
+            NonOutputLambdaVars = NonOutputLambdaVars0,
+            OutputLambdaVars    = OutputLambdaVars0
+        ;
+            error("Mismatched lists in build_lambda_expression.")
+        ),
+        
         map__init(Substitution),
-        hlds_goal__true_goal(Head0),
         ArgContext = head(PredOrFunc, NumArgs),
-
-        insert_arg_unifications(LambdaVars, Args, Context, ArgContext,
-            Head0, Head, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
+        %
+        % Create the unifications that need to come before the body of
+        % the lambda expression; those corresponding to args whose mode
+        % is input or unused.
+        %
+        hlds_goal.true_goal(HeadBefore0),
+        insert_arg_unifications(NonOutputLambdaVars, NonOutputArgs,
+            Context, ArgContext, HeadBefore0, HeadBefore, !VarSet,
+            !ModuleInfo, !QualInfo, !SInfo, !IO),
+        %
+        % Create the unifications that need to come after the body of
+        % the lambda expression; those corresponding to args whose mode
+        % is output.
+        %
+        hlds_goal.true_goal(HeadAfter0),
+        insert_arg_unifications(OutputLambdaVars, OutputArgs,
+            Context, ArgContext, HeadAfter0, HeadAfter, !VarSet,
+            !ModuleInfo, !QualInfo, !SInfo, !IO),
 
         prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
 
         transform_goal(ParsedGoal, Substitution,
             Body, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
-
-        finish_head_and_body(Context, FinalSVarMap,
-            Head, Body, HLDS_Goal0, !.SInfo),
-
         %
-        % Now figure out which variables we need to
-        % explicitly existentially quantify.
+        % Fix up any state variable unifications.
+        %
+        finish_goals(Context, FinalSVarMap, [HeadBefore, Body, HeadAfter],
+            HLDS_Goal0, !.SInfo),
+        %
+        % Figure out which variables we need to explicitly existentially
+        % quantify.
         %
         (
             PredOrFunc = predicate,
@@ -8455,27 +8506,70 @@ build_lambda_expression(X, Purity, PredOrFunc, EvalMethod, Args0, Modes, Det,
             PredOrFunc = function,
             pred_args_to_func_args(Args, QuantifiedArgs, _ReturnValTerm)
         ),
-        term__vars_list(QuantifiedArgs, QuantifiedVars0),
-        list__sort_and_remove_dups(QuantifiedVars0, QuantifiedVars),
+        term.vars_list(QuantifiedArgs, QuantifiedVars0),
+        list.sort_and_remove_dups(QuantifiedVars0, QuantifiedVars),
 
         goal_info_init(Context, GoalInfo),
         HLDS_Goal = some(QuantifiedVars, can_remove, HLDS_Goal0) - GoalInfo,
-
         %
-        % We set the lambda nonlocals here to anything that
-        % could possibly be nonlocal.  Quantification will
-        % reduce this down to the proper set of nonlocal arguments.
+        % We set the lambda nonlocals here to anything that could
+        % possibly be nonlocal.  Quantification will reduce this down to
+        % the proper set of nonlocal arguments.
         %
-        goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0),
-        set__delete_list(LambdaGoalVars0, LambdaVars, LambdaGoalVars1),
-        set__delete_list(LambdaGoalVars1, QuantifiedVars, LambdaGoalVars2),
-        set__to_sorted_list(LambdaGoalVars2, LambdaNonLocals),
+        some [!LambdaGoalVars] (
+            goal_util.goal_vars(HLDS_Goal, !:LambdaGoalVars),
+            svset.delete_list(LambdaVars, !LambdaGoalVars),
+            svset.delete_list(QuantifiedVars, !LambdaGoalVars),
+            LambdaNonLocals = set.to_sorted_list(!.LambdaGoalVars)
+        ),
 
         make_atomic_unification(X,
             lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
                 LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
             Context, MainContext, SubContext, Goal, !QualInfo)
     ).
+    
+    % Partition the lists of arguments and variables into lists
+    % of non-output and output arguments and variables.
+    %
+ :- pred partition_args_and_lambda_vars(
+    module_info::in, list(prog_term)::in,
+    list(prog_var)::in, list(mode)::in,
+    list(prog_term)::out, list(prog_term)::out,
+    list(prog_var)::out, list(prog_var)::out) is semidet.
+
+partition_args_and_lambda_vars(_, [], [], [], [], [], [], []).
+partition_args_and_lambda_vars(ModuleInfo, [ Arg | Args ],
+            [ LambdaVar | LambdaVars ],
+            [Mode | Modes], InputArgs, OutputArgs, 
+            InputLambdaVars, OutputLambdaVars) :-
+        partition_args_and_lambda_vars(ModuleInfo, Args, LambdaVars, Modes,
+            InputArgs0, OutputArgs0, InputLambdaVars0, OutputLambdaVars0),
+        %
+        % Calling mode_is_output/2 directly will cause the compiler to
+        % abort if the mode is undefined, so we first check for this.
+        % If the mode is undefined, it doesn't really matter which 
+        % partitions we place the arguements/lambda vars into because
+        % mode analysis will fail anyway.
+        %
+        ( mode_is_undefined(ModuleInfo, Mode) ->
+            InputArgs        = [ Arg | InputArgs0],
+            OutputArgs       = OutputArgs0,
+            InputLambdaVars  = [ LambdaVar | InputLambdaVars0 ],
+            OutputLambdaVars = OutputLambdaVars0
+        ;
+            ( mode_is_output(ModuleInfo, Mode) ->
+                InputArgs        = InputArgs0,
+                OutputArgs       = [Arg | OutputArgs0],
+                InputLambdaVars  = InputLambdaVars0,
+                OutputLambdaVars = [ LambdaVar | OutputLambdaVars0 ]
+            ;
+                InputArgs        = [ Arg | InputArgs0],
+                OutputArgs       = OutputArgs0,
+                InputLambdaVars  = [ LambdaVar | InputLambdaVars0 ],
+                OutputLambdaVars = OutputLambdaVars0
+            )
+        ).
 
 %-----------------------------------------------------------------------------%
 
@@ -9666,19 +9760,20 @@ prepare_for_body(FinalMap, !VarSet, !SInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % We have to conjoin the head and body and add unifiers to tie up all
+    % We have to conjoin the goals and add unifiers to tie up all
     % the final values of the state variables to the head variables.
     %
-:- pred finish_head_and_body(prog_context::in, svar_map::in,
-    hlds_goal::in, hlds_goal::in, hlds_goal::out, svar_info::in) is det.
+:- pred finish_goals(prog_context::in, svar_map::in,
+    list(hlds_goal)::in, hlds_goal::out, svar_info::in) is det.
 
-finish_head_and_body(Context, FinalSVarMap, Head, Body, Goal, SInfo) :-
+finish_goals(Context, FinalSVarMap, Goals0, Goal, SInfo) :-
     goal_info_init(Context, GoalInfo),
-    goal_to_conj_list(Head, HeadGoals),
-    goal_to_conj_list(Body, BodyGoals),
+    list.map(goal_to_conj_list, Goals0, GoalsAsConjList),
     Unifiers = svar_unifiers(yes(dont_warn_singleton), Context, FinalSVarMap,
         SInfo ^ dot),
-    conj_list_to_goal(HeadGoals ++ BodyGoals ++ Unifiers, GoalInfo, Goal).
+    Goals1 = list.condense(GoalsAsConjList),
+    Goals = Goals1 ++ Unifiers,
+    conj_list_to_goal(Goals, GoalInfo, Goal).
 
 :- func svar_unifiers(maybe(goal_feature), prog_context, svar_map, svar_map)
     = hlds_goals.

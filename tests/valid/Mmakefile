@@ -98,6 +98,7 @@ OTHER_PROGS= \
 	ho_unify \
 	id_type_bug \
 	implied_mode \
+	impure_lambda_bug \
 	indexing \
 	inhibit_warn_test \
 	inlining_bug \
