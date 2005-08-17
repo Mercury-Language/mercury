@@ -307,7 +307,8 @@ setup_local_var_usage([PredId | PredIds], UnusedArgInfo, !VarUsage,
 			!PredProcList, !OptProcs, !ModuleInfo, !IO)
 	).
 
-	% setup args for a predicate
+	% Setup args for each mode of a predicate.
+	% 
 :- pred setup_pred_args(pred_id::in, list(proc_id)::in, unused_arg_info::in,
 	var_usage::in, var_usage::out, pred_proc_list::in, pred_proc_list::out,
 	proc_call_info::in, proc_call_info::out,
@@ -364,6 +365,11 @@ setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage, !PredProcs,
 		;
 			pred_info_is_pseudo_imported(PredInfo),
 			hlds_pred__in_in_unification_proc_id(ProcId)
+		;
+			% Unused argument optimization and tabling are
+			% not compatible with each other.
+			proc_info_eval_method(ProcInfo, EvalMethod),
+			EvalMethod \= eval_normal
 		)
 	->
 		true
