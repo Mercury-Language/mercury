@@ -6350,11 +6350,58 @@ with and generating code for the .NET Common Language Runtime.
 @subsection Interfacing with C
 
 @menu
+* Using pragma foreign_type for C 	:: Declaring C types in Mercury
 * Using pragma foreign_proc for C 	:: Calling C code from Mercury
 * Using pragma foreign_decl for C 	:: Including C declarations in Mercury
 * Using pragma foreign_code for C 	:: Including C code in Mercury
-* Using pragma foreign_type for C 	:: Declaring C types in Mercury
 @end menu
+
+@node Using pragma foreign_type for C
+@subsubsection Using pragma foreign_type for C
+
+A C @samp{pragma foreign_type} declaration has the form:
+
+@example
+:- pragma foreign_type("C", @var{MercuryTypeName}, "@var{CForeignType}").
+@end example
+
+For example,
+
+@example
+:- pragma foreign_type("C", long_double, "long double").
+@end example
+
+The @var{CForeignType} can be any C type name that obeys the following
+restrictions.
+Function types, array types, and incomplete types are not allowed.
+The type name must be such that when declaring a variable in C of that
+type, that no part of the type name is required after the variable name.
+(This rule prohibits, for example, function pointer types such as
+@samp{void (*)(void)}.  However, it would be OK to use a typedef name
+which was defined as a function pointer type.)
+
+C preprocessor directives (such as @samp{#if}) may not be used in
+@var{CForeignType}.  (You can however use a typedef name that refers
+to a type defined in a @samp{pragma foreign_decl} declaration, and
+the @samp{pragma foreign_decl} declaration may contain C preprocessor
+directives.)
+
+@strong{With @samp{--gc accurate}, foreign_types which are C pointer types
+must not point to the Mercury heap.}
+
+If the @var{MercuryTypeName} is the type of a parameter of a procedure
+defined using @samp{pragma foreign_proc},
+it will be passed to the foreign_proc's foreign language code
+as @var{CForeignType}.
+
+Furthermore, any Mercury procedure exported with @samp{pragma export}
+will use @var{CForeignType} as the type for any
+parameters whose Mercury type is @var{MercuryTypeName}.
+
+Also see the section on using C pointers (@pxref{Using C pointers}) for
+information on how to use the c_pointer type with the C interface.
+@c XXX we should eventually just move that section to here,
+@c presenting it as an alternative to pragma foreign_type.
 
 @node Using pragma foreign_proc for C
 @subsubsection Using pragma foreign_proc for C
@@ -6478,53 +6525,6 @@ For example,
 @end example
 
 Such code is copied verbatim into the generated C file.
-
-@node Using pragma foreign_type for C
-@subsubsection Using pragma foreign_type for C
-
-A C @samp{pragma foreign_type} declaration has the form:
-
-@example
-:- pragma foreign_type("C", @var{MercuryTypeName}, "@var{CForeignType}").
-@end example
-
-For example,
-
-@example
-:- pragma foreign_type("C", long_double, "long double").
-@end example
-
-The @var{CForeignType} can be any C type name that obeys the following
-restrictions.
-Function types, array types, and incomplete types are not allowed.
-The type name must be such that when declaring a variable in C of that
-type, that no part of the type name is required after the variable name.
-(This rule prohibits, for example, function pointer types such as
-@samp{void (*)(void)}.  However, it would be OK to use a typedef name
-which was defined as a function pointer type.)
-
-C preprocessor directives (such as @samp{#if}) may not be used in
-@var{CForeignType}.  (You can however use a typedef name that refers
-to a type defined in a @samp{pragma foreign_decl} declaration, and
-the @samp{pragma foreign_decl} declaration may contain C preprocessor
-directives.)
-
-@strong{With @samp{--gc accurate}, foreign_types which are C pointer types
-must not point to the Mercury heap.}
-
-If the @var{MercuryTypeName} is the type of a parameter of a procedure
-defined using @samp{pragma foreign_proc},
-it will be passed to the foreign_proc's foreign language code
-as @var{CForeignType}.
-
-Furthermore, any Mercury procedure exported with @samp{pragma export}
-will use @var{CForeignType} as the type for any
-parameters whose Mercury type is @var{MercuryTypeName}.
-
-Also see the section on using C pointers (@pxref{Using C pointers}) for
-information on how to use the c_pointer type with the C interface.
-@c XXX we should eventually just move that section to here,
-@c presenting it as an alternative to pragma foreign_type.
 
 @c ----------------------------------------------------------------------------
 
