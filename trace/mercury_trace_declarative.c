@@ -1523,7 +1523,7 @@ MR_trace_is_valid_search_mode_string(const char *search_mode_string,
 }
 
 MR_Decl_Search_Mode
-MR_trace_get_default_search_mode()
+MR_trace_get_default_search_mode(void)
 {
     MR_Decl_Search_Mode    search_mode;
 
@@ -2173,7 +2173,7 @@ MR_trace_find_prev_contour(MR_Trace_Node node)
 }
 
 static void
-MR_trace_reset_implicit_subtree_counters()
+MR_trace_reset_implicit_subtree_counters(void)
 {
     int i;
 
@@ -2202,13 +2202,13 @@ MR_trace_init_implicit_subtree_counters(MR_Unsigned size)
 }
 
 static void
-MR_trace_free_implicit_subtree_counters()
+MR_trace_free_implicit_subtree_counters(void)
 {
     free(MR_edt_implicit_subtree_counters);
 }
 
 static MR_Unsigned
-MR_trace_calc_implicit_subtree_ideal_depth()
+MR_trace_calc_implicit_subtree_ideal_depth(void)
 {
     MR_Integer  depth;
     MR_Unsigned total;
@@ -2341,7 +2341,7 @@ MR_trace_maybe_show_progress(MR_Unsigned event_number)
 }
 
 static void
-MR_trace_finish_progress()
+MR_trace_finish_progress(void)
 {
     if (MR_mdb_decl_print_progress) {
         fprintf(MR_mdb_out, "\n");
@@ -2385,7 +2385,7 @@ MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node)
 #ifdef MR_DD_PRINT_EDT_STATS
 
 static void
-MR_decl_print_edt_stats()
+MR_decl_print_edt_stats(void)
 {
     MR_Event_Details    event_details;
     MR_bool             debug_enabled_before = MR_debug_enabled;
@@ -2450,7 +2450,7 @@ MR_decl_print_edt_stats()
 }
 
 static void
-MR_decl_inc_constructed_nodes()
+MR_decl_inc_constructed_nodes(void)
 {
     MR_edt_stats_constructed_nodes_this_time++;
 }
