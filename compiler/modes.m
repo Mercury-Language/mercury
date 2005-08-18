@@ -3086,14 +3086,13 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
             mode_info_may_initialise_solver_vars(!.ModeInfo),
             type_util__type_is_solver_type(ModuleInfo0, VarType)
         ->
-            % Create code to initialize the variable to
-            % inst `any', by calling the solver type's
-            % initialisation predicate.
+            % Create code to initialize the variable to inst `any',
+            % by calling the solver type's initialisation predicate.
             insert_extra_initialisation_call(Var, VarType, InitialInst,
                 Context, CallUnifyContext, !ExtraGoals, !ModeInfo)
         ;
-            % If the type is a type variable,
-            % or isn't a solver type then give up.
+            % If the type is a type variable, or isn't a solver type
+            % then give up.
             set__singleton_set(WaitingVars, Var0),
             mode_info_error(WaitingVars,
                 mode_error_implied_mode(Var0, VarInst0, InitialInst),
@@ -3102,7 +3101,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
     ;
         inst_is_bound(ModuleInfo0, InitialInst)
     ->
-        % This is the case we can't handle
+        % This is the case we can't handle.
         Var = Var0,
         set__singleton_set(WaitingVars, Var0),
         mode_info_error(WaitingVars,
@@ -3111,19 +3110,19 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         % This is the simple case of implied modes,
         % where the declared mode was free -> ...
 
-        % Introduce a new variable
+        % Introduce a new variable.
         mode_info_get_varset(!.ModeInfo, VarSet0),
         varset__new_var(VarSet0, Var, VarSet),
         map__set(VarTypes0, Var, VarType, VarTypes),
         mode_info_set_varset(VarSet, !ModeInfo),
         mode_info_set_var_types(VarTypes, !ModeInfo),
 
-        % Construct the code to do the unification
+        % Construct the code to do the unification.
         modecheck_unify__create_var_var_unification(Var0, Var,
             VarType, !.ModeInfo, ExtraGoal),
 
-        % append the goals together in the appropriate order:
-        % ExtraGoals0, then NewUnify
+        % Append the goals together in the appropriate order:
+        % ExtraGoals0, then NewUnify.
         NewUnifyExtraGoal = extra_goals([], [ExtraGoal]),
         append_extra_goals(!.ExtraGoals, NewUnifyExtraGoal, !:ExtraGoals)
     ).

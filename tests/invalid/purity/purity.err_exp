@@ -41,8 +41,8 @@ purity.m:090: In clause for `e6':
 purity.m:090:   in argument 1 of call to predicate `purity.in/1':
 purity.m:090:   mode error: variable `X' has instantiatedness `free',
 purity.m:090:   expected instantiatedness was `ground'.
-purity.m:090:   The goal could not be reordered, because
-purity.m:090:   it was followed by an impure goal.
+purity.m:090:   The goal could not be reordered, becaise it was followed by an
+purity.m:090:   impure goal.
 purity.m:091:   This is the location of the impure goal.
 purity.m:097: In clause for `e7':
 purity.m:097:   in argument 1 of call to predicate `purity.imp1/1':

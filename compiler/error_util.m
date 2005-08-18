@@ -50,6 +50,11 @@
     --->    fixed(string)   % This string should appear in the output
                             % in one piece, as it is.
 
+    ;       prefix(string)  % This string should appear in the output
+                            % in one piece, as it is, inserted directly
+                            % before the next format_component, without
+                            % any intervening space.
+
     ;       suffix(string)  % This string should appear in the output
                             % in one piece, as it is, appended directly
                             % after the previous format_component, without
@@ -77,8 +82,13 @@
     ;       simple_call_id(simple_call_id)
                             % Output the identity of the given call.
 
-    ;       nl.             % Insert a line break if there has been text
+    ;       nl              % Insert a line break if there has been text
                             % output since the last line break.
+
+    ;       nl_indent_delta(int).
+                            % Act as nl, but also add the given integer
+                            % (which should be a small positive or negative
+                            % integer) to the current indent level.
 
 :- type format_components == list(format_component).
 
@@ -157,6 +167,10 @@
     %
 :- func append_punctuation(list(format_component), char) =
     list(format_component).
+
+    % Put `' quotes around the given string.
+    %
+:- func add_quotes(string) = string.
 
     % report_error_num_args(MaybePredOrFunc, Arity, CorrectArities).
     %
@@ -283,7 +297,7 @@ write_error_pieces_maybe_with_context(MaybeContext, Indent, Components, !IO) :-
     io::di, io::uo) is det.
 
 write_error_pieces_maybe_with_context(IsFirst, MaybeContext,
-        Indent, Components, !IO) :-
+        FixedIndent, Components, !IO) :-
     (
             % The fixed characters at the start of the line are:
             % filename
@@ -309,51 +323,34 @@ write_error_pieces_maybe_with_context(IsFirst, MaybeContext,
             MaybeContext = no,
             ContextLength = 0
         ),
-        NotFirstIndent = (IsFirst = yes -> 0 ; 2),
-        Remain = 79 - (ContextLength + Indent + NotFirstIndent),
-        convert_components_to_word_list(Components, [], [], Words),
-        group_words(IsFirst, Words, Remain, Lines)
+        convert_components_to_paragraphs(Components, Paragraphs),
+        FirstIndent = (IsFirst = yes -> 0 ; 1),
+        Remain = 79 - (ContextLength + FixedIndent),
+        group_words(IsFirst, FirstIndent, Paragraphs, Remain, Lines)
     ),
-    (
-        IsFirst = yes,
-        write_lines(Lines, MaybeContext, Indent, !IO)
-    ;
-        IsFirst = no,
-        write_nonfirst_lines(Lines, MaybeContext, Indent + 2, !IO)
-    ).
+    write_lines(Lines, MaybeContext, FixedIndent, !IO).
 
-:- pred write_lines(list(list(string))::in, maybe(prog_context)::in, int::in,
+:- func indent_increment = int.
+
+indent_increment = 2.
+
+:- pred write_lines(list(line)::in, maybe(prog_context)::in, int::in,
     io::di, io::uo) is det.
 
 write_lines([], _, _, !IO).
-write_lines([Line | Lines], MaybeContext, Indent, !IO) :-
+write_lines([Line | Lines], MaybeContext, FixedIndent, !IO) :-
     (
         MaybeContext = yes(Context),
         prog_out__write_context(Context, !IO)
     ;
         MaybeContext = no
     ),
+    Line = line(LineIndent, LineWords),
+    Indent = FixedIndent + LineIndent * indent_increment,
     string__pad_left("", ' ', Indent, IndentStr),
     io__write_string(IndentStr, !IO),
-    write_line(Line, !IO),
-    Indent2 = Indent + 2,
-    write_nonfirst_lines(Lines, MaybeContext, Indent2, !IO).
-
-:- pred write_nonfirst_lines(list(list(string))::in, maybe(prog_context)::in,
-    int::in, io::di, io::uo) is det.
-
-write_nonfirst_lines([], _, _, !IO).
-write_nonfirst_lines([Line | Lines], MaybeContext, Indent, !IO) :-
-    (
-        MaybeContext = yes(Context),
-        prog_out__write_context(Context, !IO)
-    ;
-        MaybeContext = no
-    ),
-    string__pad_left("", ' ', Indent, IndentStr),
-    io__write_string(IndentStr, !IO),
-    write_line(Line, !IO),
-    write_nonfirst_lines(Lines, MaybeContext, Indent, !IO).
+    write_line(LineWords, !IO),
+    write_lines(Lines, MaybeContext, FixedIndent, !IO).
 
 :- pred write_line(list(string)::in, io::di, io::uo) is det.
 
@@ -376,65 +373,87 @@ error_pieces_to_string([Component | Components]) = Str :-
     TailStr = error_pieces_to_string(Components),
     (
         Component = fixed(Word),
-        ( TailStr = "" ->
-            Str = Word
-        ;
-            Str = Word ++ " " ++ TailStr
-        )
+        Str = join_string_and_tail(Word, Components, TailStr)
     ;
-        Component = suffix(Word),
+        Component = prefix(Word),
         Str = Word ++ TailStr
     ;
+        Component = suffix(Word),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
         Component = words(Words),
-        ( TailStr = "" ->
-            Str = Words
-        ;
-            Str = Words ++ " " ++ TailStr
-        )
+        Str = join_string_and_tail(Words, Components, TailStr)
     ;
         Component = sym_name(SymName),
         Word = sym_name_to_word(SymName),
-        ( TailStr = "" ->
-            Str = Word
-        ;
-            Str = Word ++ " " ++ TailStr
-        )
+        Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = sym_name_and_arity(SymNameAndArity),
         Word = sym_name_and_arity_to_word(SymNameAndArity),
-        ( TailStr = "" ->
-            Str = Word
-        ;
-            Str = Word ++ " " ++ TailStr
-        )
+        Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = pred_or_func(PredOrFunc),
-        Str = pred_or_func_to_string(PredOrFunc)
+        Word = pred_or_func_to_string(PredOrFunc),
+        Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = simple_call_id(SimpleCallId),
-        Str = simple_call_id_to_string(SimpleCallId)
+        Word = simple_call_id_to_string(SimpleCallId),
+        Str = join_string_and_tail(Word, Components, TailStr)
     ;
         Component = nl,
         Str = "\n" ++ TailStr
+    ;
+        Component = nl_indent_delta(_),
+        % There is nothing we can do about the indent delta.
+        Str = "\n" ++ TailStr
+    ).
+
+:- func join_string_and_tail(string, list(format_component), string) = string.
+
+join_string_and_tail(Word, Components, TailStr) = Str :-
+    ( TailStr = "" ->
+        Str = Word
+    ; Components = [suffix(_) | _] ->
+        Str = Word ++ TailStr
+    ;
+        Str = Word ++ " " ++ TailStr
     ).
 
 %----------------------------------------------------------------------------%
 
+:- type paragraph
+    --->    paragraph(
+                list(string),   % The list of words to print in the paragraph.
+                                % It should not be empty.
+                int             % The indent delta to apply for the next
+                                % paragraph.
+            ).
+
+:- pred convert_components_to_paragraphs(list(format_component)::in,
+    list(paragraph)::out) is det.
+
+convert_components_to_paragraphs(Components, Paras) :-
+    convert_components_to_paragraphs_acc(Components, [], [], Paras).
+
 :- type word
     --->    word(string)
+    ;       prefix_word(string)
     ;       suffix_word(string).
 
-:- pred convert_components_to_word_list(list(format_component)::in,
-    list(word)::in, list(list(string))::in, list(list(string))::out)
-    is det.
+:- pred convert_components_to_paragraphs_acc(list(format_component)::in,
+    list(word)::in, list(paragraph)::in, list(paragraph)::out) is det.
 
-convert_components_to_word_list([], RevWords0, !Paras) :-
+convert_components_to_paragraphs_acc([], RevWords0, !Paras) :-
     Strings = rev_words_to_strings(RevWords0),
-    list__reverse([Strings | !.Paras], !:Paras).
-convert_components_to_word_list([Component | Components], RevWords0, !Paras) :-
+    list__reverse([paragraph(Strings, 0) | !.Paras], !:Paras).
+convert_components_to_paragraphs_acc([Component | Components], RevWords0,
+        !Paras) :-
     (
         Component = fixed(Word),
         RevWords1 = [word(Word) | RevWords0]
+    ;
+        Component = prefix(Word),
+        RevWords1 = [prefix_word(Word) | RevWords0]
     ;
         Component = suffix(Word),
         RevWords1 = [suffix_word(Word) | RevWords0]
@@ -459,35 +478,76 @@ convert_components_to_word_list([Component | Components], RevWords0, !Paras) :-
     ;
         Component = nl,
         Strings = rev_words_to_strings(RevWords0),
-        list.cons(Strings, !Paras),
+        list.cons(paragraph(Strings, 0), !Paras),
+        RevWords1 = []
+    ;
+        Component = nl_indent_delta(IndentDelta),
+        Strings = rev_words_to_strings(RevWords0),
+        list.cons(paragraph(Strings, IndentDelta), !Paras),
         RevWords1 = []
     ),
-    convert_components_to_word_list(Components, RevWords1, !Paras).
+    convert_components_to_paragraphs_acc(Components, RevWords1, !Paras).
+
+:- type plain_or_prefix
+    --->    plain(string)
+    ;       prefix(string).
 
 :- func rev_words_to_strings(list(word)) = list(string).
 
-rev_words_to_strings(RevWords) =
-    list__reverse(rev_words_to_rev_strings(RevWords)).
+rev_words_to_strings(RevWords) = Strings :-
+    PorPs = list__reverse(rev_words_to_rev_plain_or_prefix(RevWords)),
+    Strings = join_prefixes(PorPs).
 
-:- func rev_words_to_rev_strings(list(word)) = list(string).
+:- func rev_words_to_rev_plain_or_prefix(list(word)) = list(plain_or_prefix).
 
-rev_words_to_rev_strings([]) = [].
-rev_words_to_rev_strings([Word | Words]) = Strings :-
+rev_words_to_rev_plain_or_prefix([]) = [].
+rev_words_to_rev_plain_or_prefix([Word | Words]) = PorPs :-
     (
         Word = word(String),
-        Strings = [String | rev_words_to_rev_strings(Words)]
+        PorPs = [plain(String) | rev_words_to_rev_plain_or_prefix(Words)]
+    ;
+        Word = prefix_word(Prefix),
+        PorPs = [prefix(Prefix) | rev_words_to_rev_plain_or_prefix(Words)]
     ;
         Word = suffix_word(Suffix),
         (
             Words = [],
-            Strings = [Suffix]
+            PorPs = [plain(Suffix)]
         ;
             Words = [word(String) | Tail],
-            Strings = [String ++ Suffix | rev_words_to_rev_strings(Tail)]
+            PorPs = [plain(String ++ Suffix)
+                | rev_words_to_rev_plain_or_prefix(Tail)]
+        ;
+            Words = [prefix_word(Prefix) | Tail],
+            % Convert the prefix/suffix combination into a plain word.
+            % We could convert it into a prefix, but since prefix/suffix
+            % combinations shouldn't come up at all, what we do here probably
+            % doesn't matter.
+            PorPs = [plain(Prefix ++ Suffix)
+                | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
             Words = [suffix_word(MoreSuffix) | Tail],
-            Strings = rev_words_to_rev_strings(
+            PorPs = rev_words_to_rev_plain_or_prefix(
                 [suffix_word(MoreSuffix ++ Suffix) | Tail])
+        )
+    ).
+
+:- func join_prefixes(list(plain_or_prefix)) = list(string).
+
+join_prefixes([]) = [].
+join_prefixes([Head | Tail]) = Strings :-
+    TailStrings = join_prefixes(Tail),
+    (
+        Head = plain(String),
+        Strings = [String | TailStrings]
+    ;
+        Head = prefix(Prefix),
+        (
+            TailStrings = [First | Later],
+            Strings = [Prefix ++ First | Later]
+        ;
+            TailStrings = [],
+            Strings = [Prefix | TailStrings]
         )
     ).
 
@@ -549,72 +609,89 @@ find_word_end(String, Cur, WordEnd) :-
 
 %----------------------------------------------------------------------------%
 
+:- type line
+    --->    line(
+                int,            % Indent level; multiply by indent_increment
+                                % to get number of spaces of indentation.
+                list(string)    % The words on the line.
+            ).
+
     % Groups the given words into lines. The first line can have up to Max
     % characters on it; the later lines (if any) up to Max-2 characters.
-    % The given list of words must be nonempty, since we always return
+    % The given list of paragraphs must be nonempty, since we always return
     % at least one line.
     %
-:- pred group_words(bool::in, list(list(string))::in, int::in,
-    list(list(string))::out) is det.
+:- pred group_words(bool::in, int::in, list(paragraph)::in, int::in,
+    list(line)::out) is det.
 
-group_words(IsFirst, Paras, Max, Lines) :-
+group_words(IsFirst, CurIndent, Paras, Max, Lines) :-
     (
         Paras = [],
         Lines = []
     ;
         Paras = [FirstPara | LaterParas],
+        FirstPara = paragraph(FirstParaWords, FirstIndentDelta),
         (
-            FirstPara = [],
-            group_words(IsFirst, LaterParas, Max, Lines)
+            IsFirst = yes,
+            RestIndent = CurIndent + 1
         ;
-            FirstPara = [FirstWord | LaterWords],
-            get_line_of_words(FirstWord, LaterWords, Max, Line, RestWords),
-            (
-                IsFirst = yes,
-                Max2 = Max - 2
-            ;
-                IsFirst = no,
-                Max2 = Max
-            ),
-            group_nonfirst_line_words(RestWords, Max2, RestLines1),
-            Lines1 = [Line | RestLines1],
-            group_words(no, LaterParas, Max2, RestLines),
-            list__append(Lines1, RestLines, Lines)
+            IsFirst = no,
+            RestIndent = CurIndent
+        ),
+        NextIndent = RestIndent + FirstIndentDelta,
+        (
+            FirstParaWords = [],
+            group_words(IsFirst, NextIndent, LaterParas, Max, Lines)
+        ;
+            FirstParaWords = [FirstWord | LaterWords],
+            get_line_of_words(FirstWord, LaterWords, CurIndent, Max,
+                LineWords, RestWords),
+            CurLine = line(CurIndent, LineWords),
+
+            group_nonfirst_line_words(RestWords, RestIndent, Max,
+                ParaRestLines),
+            ParaLines = [CurLine | ParaRestLines],
+
+            group_words(no, NextIndent, LaterParas, Max, RestLines),
+            Lines = ParaLines ++ RestLines
         )
     ).
 
-:- pred group_nonfirst_line_words(list(string)::in, int::in,
-    list(list(string))::out) is det.
+:- pred group_nonfirst_line_words(list(string)::in, int::in, int::in,
+    list(line)::out) is det.
 
-group_nonfirst_line_words(Words, Max, Lines) :-
+group_nonfirst_line_words(Words, Indent, Max, Lines) :-
     (
         Words = [],
         Lines = []
     ;
         Words = [FirstWord | LaterWords],
-        get_line_of_words(FirstWord, LaterWords, Max, Line, RestWords),
-        group_nonfirst_line_words(RestWords, Max, RestLines),
+        get_line_of_words(FirstWord, LaterWords, Indent, Max,
+            LineWords, RestWords),
+        Line = line(Indent, LineWords),
+        group_nonfirst_line_words(RestWords, Indent, Max, RestLines),
         Lines = [Line | RestLines]
     ).
 
-:- pred get_line_of_words(string::in, list(string)::in, int::in,
+:- pred get_line_of_words(string::in, list(string)::in, int::in, int::in,
     list(string)::out, list(string)::out) is det.
 
-get_line_of_words(FirstWord, LaterWords, MaxLen, Line, RestWords) :-
+get_line_of_words(FirstWord, LaterWords, Indent, Max, Line, RestWords) :-
     string__length(FirstWord, FirstWordLen),
-    get_later_words(LaterWords, FirstWordLen, MaxLen, [FirstWord],
+    Avail = Max - Indent * indent_increment,
+    get_later_words(LaterWords, FirstWordLen, Avail, [FirstWord],
         Line, RestWords).
 
 :- pred get_later_words(list(string)::in, int::in, int::in,
     list(string)::in, list(string)::out, list(string)::out) is det.
 
 get_later_words([], _, _, Line, Line, []).
-get_later_words([Word | Words], OldLen, MaxLen, Line0, Line, RestWords) :-
+get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
     string__length(Word, WordLen),
     NewLen = OldLen + 1 + WordLen,
-    ( NewLen =< MaxLen ->
+    ( NewLen =< Avail ->
         list__append(Line0, [Word], Line1),
-        get_later_words(Words, NewLen, MaxLen, Line1, Line, RestWords)
+        get_later_words(Words, NewLen, Avail, Line1, Line, RestWords)
     ;
         Line = Line0,
         RestWords = [Word | Words]
@@ -644,6 +721,9 @@ append_punctuation([Piece0], Punc) = [Piece] :-
         Piece0 = fixed(String),
         Piece = fixed(string__append(String, char_to_string(Punc)))
     ;
+        Piece0 = prefix(Prefix),
+        Piece = prefix(string__append(Prefix, char_to_string(Punc)))
+    ;
         Piece0 = suffix(Suffix),
         Piece = suffix(string__append(Suffix, char_to_string(Punc)))
     ;
@@ -664,10 +744,17 @@ append_punctuation([Piece0], Punc) = [Piece] :-
         Piece = words(string__append(String, char_to_string(Punc)))
     ;
         Piece0 = nl,
-        error("append_punctutation: appending punctuation after newline")
+        unexpected(this_file,
+            "append_punctutation: appending punctuation after nl")
+    ;
+        Piece0 = nl_indent_delta(_),
+        unexpected(this_file,
+            "append_punctutation: appending punctuation after nl_indent_delta")
     ).
 append_punctuation([Piece1, Piece2 | Pieces], Punc) =
     [Piece1 | append_punctuation([Piece2 | Pieces], Punc)].
+
+add_quotes(Str) = "`" ++ Str ++ "'".
 
 %-----------------------------------------------------------------------------%
 
@@ -740,3 +827,11 @@ report_warning(Stream, Message, !IO) :-
 report_warning(Context, Indent, Components, !IO) :-
     record_warning(!IO),
     write_error_pieces(Context, Indent, Components, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "error_util.m".
+
+%-----------------------------------------------------------------------------%

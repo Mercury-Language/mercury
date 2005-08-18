@@ -1030,8 +1030,7 @@ lambda_args_contain_bang_state_var([Arg | Args], StateVar) :-
 
 report_illegal_state_var_update(Context, VarSet, StateVar, !IO) :-
     Name = varset__lookup_name(VarSet, StateVar),
-    % XXX: why the nl here?
-    Pieces = [nl, words("Error: cannot use"), fixed("!:" ++ Name),
+    Pieces = [words("Error: cannot use"), fixed("!:" ++ Name),
         words("in this context;"), nl,
         words("however"), fixed("!." ++ Name), words("may be used here.")],
     write_error_pieces(Context, 0, Pieces, !IO),

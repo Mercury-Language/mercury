@@ -10,11 +10,14 @@ constrained_poly_insts.m:025:   `constrained_poly_insts.s/1'
 constrained_poly_insts.m:025:   without preceding `func' declaration.
 constrained_poly_insts.m:023: Inferred :- pred q(T1, T1).
 constrained_poly_insts.m:025: Inferred :- func s(T1) = T1.
-constrained_poly_insts.m:006: Error: no mode declaration for exported
-constrained_poly_insts.m:006:   predicate `constrained_poly_insts.p/2'.
+constrained_poly_insts.m:006: Error: no mode declaration for exported predicate
+constrained_poly_insts.m:006:   `constrained_poly_insts.p/2'.
 constrained_poly_insts.m:027: In clause for `t(in((I =< ground)), out((I =< ground)))':
 constrained_poly_insts.m:027:   mode error: argument 2 became too instantiated.
-constrained_poly_insts.m:027:   Final instantiatedness of `HeadVar__2' was `unique(42)',
-constrained_poly_insts.m:027:   expected final instantiatedness was `(I =< ground)'.
-constrained_poly_insts.m:023: Error: no mode declaration for predicate `constrained_poly_insts.q/2'.
+constrained_poly_insts.m:027:   Final instantiatedness of `HeadVar__2' was
+constrained_poly_insts.m:027:   `unique(42)',
+constrained_poly_insts.m:027:   expected final instantiatedness was `(I =<
+constrained_poly_insts.m:027:   ground)'.
+constrained_poly_insts.m:023: Error: no mode declaration for predicate
+constrained_poly_insts.m:023:   `constrained_poly_insts.q/2'.
 For more information, try recompiling with `-E'.

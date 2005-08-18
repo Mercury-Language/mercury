@@ -5,21 +5,23 @@ duplicate_modes.m:001:   should contain at least one declaration other than
 duplicate_modes.m:001:   `:- import_module' in its interface section(s). This
 duplicate_modes.m:001:   would normally be a `:- pred', `:- func', `:- type',
 duplicate_modes.m:001:   `:- inst' or `:- mode' declaration.
-duplicate_modes.m:008: In mode declarations for predicate `duplicate_modes.q/2':
+duplicate_modes.m:008: In mode declarations for predicate
+duplicate_modes.m:008:   `duplicate_modes.q/2':
 duplicate_modes.m:008:   error: duplicate mode declaration.
-duplicate_modes.m:008:   Modes `q(in, out) is det'
-duplicate_modes.m:008:   and `q((ground >> ground), (free >> ground)) is det'
-duplicate_modes.m:008:   are indistinguishable.
+duplicate_modes.m:008:   Modes `q(in, out) is det' and
+duplicate_modes.m:008:   `q((ground >> ground), (free >> ground)) is det' are
+duplicate_modes.m:008:   indistinguishable.
 duplicate_modes.m:009:   Here is the conflicting mode declaration.
-duplicate_modes.m:008: In mode declarations for predicate `duplicate_modes.q/2':
+duplicate_modes.m:008: In mode declarations for predicate
+duplicate_modes.m:008:   `duplicate_modes.q/2':
 duplicate_modes.m:008:   error: duplicate mode declaration.
-duplicate_modes.m:008:   Modes `q(in, out) is det'
-duplicate_modes.m:008:   and `q((ground >> ground), (free >> ground)) is det'
-duplicate_modes.m:008:   are indistinguishable.
+duplicate_modes.m:008:   Modes `q(in, out) is det' and
+duplicate_modes.m:008:   `q((ground >> ground), (free >> ground)) is det' are
+duplicate_modes.m:008:   indistinguishable.
 duplicate_modes.m:010:   Here is the conflicting mode declaration.
-duplicate_modes.m:014: In mode declarations for predicate `duplicate_modes.r/2':
+duplicate_modes.m:014: In mode declarations for predicate
+duplicate_modes.m:014:   `duplicate_modes.r/2':
 duplicate_modes.m:014:   error: duplicate mode declaration.
-duplicate_modes.m:014:   Modes `r(in, in) is semidet'
-duplicate_modes.m:014:   and `r(in, in) is det'
+duplicate_modes.m:014:   Modes `r(in, in) is semidet' and `r(in, in) is det'
 duplicate_modes.m:014:   are indistinguishable.
 duplicate_modes.m:015:   Here is the conflicting mode declaration.

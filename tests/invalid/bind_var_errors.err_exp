@@ -1,5 +1,6 @@
 bind_var_errors.m:033: In clause for `bind_var_in_negation':
-bind_var_errors.m:033:   scope error: attempt to bind a variable inside a negation.
+bind_var_errors.m:033:   scope error: attempt to bind a variable inside a
+bind_var_errors.m:033:   negation.
 bind_var_errors.m:033:   Variable `X' has instantiatedness `free',
 bind_var_errors.m:033:   expected instantiatedness was `unique(42)'.
 bind_var_errors.m:039: In clause for `bind_var_in_ite_cond(in)':
@@ -10,11 +11,12 @@ bind_var_errors.m:039:   expected instantiatedness was `unique(42)'.
 bind_var_errors.m:048: In clause for `bind_var_in_lambda':
 bind_var_errors.m:048:   in argument 1 (i.e. the predicate term) of higher-order predicate call:
 bind_var_errors.m:048:   mode error: variable `Y' has instantiatedness `free',
-bind_var_errors.m:048:   expected instantiatedness for non-local variables
-bind_var_errors.m:048:   of lambda goals is `ground'.
+bind_var_errors.m:048:   expected instantiatedness for non-local variables of
+bind_var_errors.m:048:   lambda goals is `ground'.
 bind_var_errors.m:053: In clause for `share_var_in_lambda(di)':
 bind_var_errors.m:053:   in argument 1 of call to predicate `bind_var_errors.destroy/1':
-bind_var_errors.m:053:   mode error: variable `X' has instantiatedness `ground',
+bind_var_errors.m:053:   mode error: variable `X' has instantiatedness
+bind_var_errors.m:053:   `ground',
 bind_var_errors.m:053:   expected instantiatedness was `unique'.
 bind_var_errors.m:060: In clause for `clobber_var_in_lambda(di)':
 bind_var_errors.m:060:   in argument 1 of call to predicate `bind_var_errors.destroy/1':
