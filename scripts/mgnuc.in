@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 The University of Melbourne.
+# Copyright (C) 1995-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -580,6 +580,20 @@ case "$FULLARCH" in sparc-sun-solaris2*)
 			OVERRIDE_OPTS="$OVERRIDE_OPTS -fPIC" ;;
 		esac ;;
 	esac ;;
+esac
+
+#
+# The -floop-optimize option is incompatible
+# with the global register code we generated on Darwin PowerPC.
+# See the hard_coded/ppc_bug test case for an example
+# program which fails with this optimization.
+#
+case $FULLARCH in powerpc*apple*darwin*) 
+	case $highlevel_code in false)
+		case $global_regs in true) 
+			ARCH_OPTS="$ARCH_OPTS -fno-loop-optimize" ;;
+		esac
+	esac
 esac
 
 case $assemble in true)
