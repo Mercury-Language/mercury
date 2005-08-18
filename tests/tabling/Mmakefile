@@ -18,7 +18,6 @@ SIMPLE_NONLOOP_PROGS = \
 	loopcheck_no_loop \
 	loopcheck_nondet_no_loop \
 	oota \
-	specified \
 	table_foreign_output \
 	test_enum \
 	unused_args
@@ -31,6 +30,15 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 else
 	BROKEN_FOR_PROFDEEP_NONLOOP_PROGS = 
 endif
+
+# The following test uses the '--allow-table-reset' option
+# which is not implemented for the MLDS backend.
+ifeq "$(findstring hl,$(GRADE))" ""
+	LLDS_ONLY_NONLOOP_PROGS = \
+		specified
+else
+	LLDS_ONLY_NONLOOP_PROGS = 
+endif	
 
 SIMPLE_LOOP_PROGS = \
 	loopcheck \
@@ -72,6 +80,7 @@ MINIMAL_LOOP_PROGS =
 
 ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) \
 			$(BROKEN_FOR_PROFDEEP_NONLOOP_PROGS) \
+			$(LLDS_ONLY_NONLOOP_PROGS) \
 			$(SIMPLE_LOOP_PROGS)
 
 ALL_MINIMAL_PROGS = $(MINIMAL_NONLOOP_PROGS)
