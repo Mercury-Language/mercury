@@ -661,24 +661,56 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
 	;
 		WarningOpt = ""
 	),
+	%
+	% The -floop-optimize option is incompatible with the global
+	% register code we generate on Darwin PowerPC.
+	% See the hard_coded/ppc_bug test case for an example
+	% program which fails with this optimization.
+	%
+	globals__io_lookup_string_option(fullarch, FullArch, !IO),
+	(
+		HighLevelCode = no,
+		GCC_Regs = yes,
+		string.prefix(FullArch, "powerpc-apple-darwin")
+	->
+		AppleGCCRegWorkaroundOpt = "-fno-loop-optimize"
+	;
+		AppleGCCRegWorkaroundOpt = ""
+	),
 
 	% Be careful with the order here!  Some options override others,
 	% e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
 	% it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
 	% Also be careful that each option is separated by spaces.
-	string__append_list([CC, " ", SubDirInclOpt, InclOpt,
-		SplitOpt, " ", OptimizeOpt, " ",
-		HighLevelCodeOpt, NestedFunctionsOpt, HighLevelDataOpt,
+	string__append_list([
+		CC, " ", 
+		SubDirInclOpt, InclOpt,
+		SplitOpt, " ", 
+		OptimizeOpt, " ",
+		HighLevelCodeOpt, 
+		NestedFunctionsOpt, 
+		HighLevelDataOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		CFLAGS_FOR_THREADS, " ", CFLAGS_FOR_PIC, " ",
-		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
-		ProfileDeepOpt, RecordTermSizesOpt, PIC_Reg_Opt, TagsOpt,
-		NumTagBitsOpt, Target_DebugOpt, LL_DebugOpt,
-		DeclDebugOpt, ExecTraceOpt,
-		UseTrailOpt, ReserveTagOpt, MinimalModelOpt, TypeLayoutOpt,
-		InlineAllocOpt, " ", AnsiOpt, " ", WarningOpt, " ", CFLAGS,
-		" -c ", C_File, " ", NameObjectFile, O_File], Command),
+		GC_Opt, 
+		ProfileCallsOpt, ProfileTimeOpt, 
+		ProfileMemoryOpt, ProfileDeepOpt, 
+		RecordTermSizesOpt, 
+		PIC_Reg_Opt, 
+		TagsOpt, NumTagBitsOpt, 
+		Target_DebugOpt, LL_DebugOpt, DeclDebugOpt, ExecTraceOpt,
+		UseTrailOpt, 
+		ReserveTagOpt, 
+		MinimalModelOpt, 
+		TypeLayoutOpt,
+		InlineAllocOpt, " ", 
+		AnsiOpt, " ", 
+		AppleGCCRegWorkaroundOpt, " ", 
+		WarningOpt, " ", 
+		CFLAGS, 
+		" -c ", C_File, " ",
+		NameObjectFile, O_File], Command),
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded, !IO).
 
