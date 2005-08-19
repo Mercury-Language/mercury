@@ -382,7 +382,7 @@ pd_util__rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
 	det_info_init(ModuleInfo, VarTypes, PredId, ProcId,
 		Globals, DetInfo),
 	pd_info_get_instmap(!.PDInfo, InstMap),
-	det_infer_goal(Goal0, InstMap, SolnContext, DetInfo, Goal, _, Msgs),
+	det_infer_goal(Goal0, Goal, InstMap, SolnContext, DetInfo, _, Msgs),
 
 	%
 	% Make sure there were no errors.
