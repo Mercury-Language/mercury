@@ -59,21 +59,21 @@ browser> mark
 last([108], t(108))
 Valid? info
 Context of current question : info.m:43 (info.m:45)
-Search mode                 : binary search on path
+Search mode                 : top down             
 Number of suspect events    : 21                   
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate info.last/2 (info.m:43). The path
 to the subterm in the atom is 2.
-dd> y
-last([104, 105, 106, 107, 108], t(108))
+dd> mode binary
+last([105, 106, 107, 108], t(108))
 Valid? info
 Context of current question : info.m:43 (info.m:45)
 Search mode                 : binary search on path
-Number of suspect events    : 18                   
+Number of suspect events    : 21                   
 The current question was chosen because this node divides a path of
-length 6 into two paths of length 3 and 3.
+length 7 into two paths of length 3 and 4.
 dd> n
-last([106, 107, 108], t(108))
+last([107, 108], t(108))
 Valid? info
 Context of current question : info.m:43 (info.m:45)
 Search mode                 : binary search on path
@@ -83,10 +83,10 @@ length 3 into two paths of length 1 and 2.
 dd> b 1
 browser> cd 1
 browser> mark
-last([105, 106, 107, 108], t(108))
+last([106, 107, 108], t(108))
 Valid? info
 Context of current question : info.m:43 (info.m:45)
-Search mode                 : binary search on path
+Search mode                 : top down             
 Number of suspect events    : 6                    
 The current question was chosen because tracking of the marked subterm
 was stopped here, because the binding node lies in a portion of the tree
@@ -110,7 +110,7 @@ browser> mark
 f(0, "lala") = t(t(t("lala")))
 Valid? info
 Context of current question : info.m:51 (info.m:34)
-Search mode                 : binary search on path
+Search mode                 : top down             
 Number of suspect events    : 6                    
 The current question was chosen because the marked subterm was bound by
 the unification inside the function info.f/3 (info.m:52). The path to
@@ -129,7 +129,7 @@ browser> mark
 fproc(1) = 2
 Valid? info
 Context of current question : info.m:57 (info.m:37)
-Search mode                 : binary search on path
+Search mode                 : top down             
 Number of suspect events    : 6                    
 The current question was chosen because the marked subterm was bound by
 the foreign procedure call inside the function info.fproc/2 (info.m:57).

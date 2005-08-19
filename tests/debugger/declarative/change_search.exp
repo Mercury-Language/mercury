@@ -1,0 +1,95 @@
+      E1:     C1 CALL pred change_search.main/2-0 (det) change_search.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> break mylast
+ 0: + stop  interface pred change_search.mylast/2-0 (det)
+mdb> continue
+      E2:     C2 CALL pred change_search.mylast/2-0 (det)
+mdb> finish -n
+      E3:     C2 EXIT pred change_search.mylast/2-0 (det)
+mdb> set format pretty
+mdb> set depth 10
+mdb> dd
+mylast([1, 2, 3, 4, 5, 6, 7, 8, ...], no)
+Valid? info
+Context of current question : change_search.m:20 (change_search.m:14)
+Search mode                 : top down                               
+Number of suspect events    : 4,000                                  
+The current question was chosen because this is the node where the `dd'
+command was issued.
+dd> no
+mylast([2, 3, 4, 5, 6, 7, 8, 9, ...], no)
+Valid? info
+Context of current question : change_search.m:20 (change_search.m:22)
+Search mode                 : top down                               
+Number of suspect events    : 4,000                                  
+The current question was chosen because this is the next node in the
+top-down search.
+dd> mode dq
+mylast([501, 502, 503, 504, 505, 506, 507, 508, ...], no)
+Valid? info
+Context of current question   : change_search.m:20 (change_search.m:22)
+Search mode                   : divide and query                       
+Estimated questions remaining : 12                                     
+Number of suspect events      : 4,000                                  
+The current question was chosen because this node divides the suspect
+area into two regions of 2,000 and 2,000 events each.
+dd> no
+mylast([751, 752, 753, 754, 755, 756, 757, 758, ...], no)
+Valid? info
+Context of current question   : change_search.m:20 (change_search.m:22)
+Search mode                   : divide and query                       
+Estimated questions remaining : 11                                     
+Number of suspect events      : 2,000                                  
+The current question was chosen because this node divides the suspect
+area into two regions of 1,000 and 1,000 events each.
+dd> pd
+      E4:     C3 EXIT pred change_search.mylast/2-0 (det)
+mdb> stack
+   0  751* pred change_search.mylast/2-0 (det)
+ 751       pred change_search.main/2-0 (det)
+mdb> retry 750
+      E2:     C2 CALL pred change_search.mylast/2-0 (det)
+mdb> p
+mylast([1, 2, 3, 4, 5, 6, 7, 8, ...], _)
+mdb> dd -r
+mylast([751, 752, 753, 754, 755, 756, 757, 758, ...], no)
+Valid? browse 2
+browser> mark
+mylast([1000], no)
+Valid? info
+Context of current question   : change_search.m:20 (change_search.m:22)
+Search mode                   : divide and query                       
+Estimated questions remaining : 10                                     
+Number of suspect events      : 1,000                                  
+The current question was chosen because the marked subterm was bound by
+the unification inside the predicate change_search.mylast/2
+(change_search.m:21). The path to the subterm in the atom is 2.
+dd> pd
+      E5:     C4 EXIT pred change_search.mylast/2-0 (det)
+mdb> dd -r
+mylast([1000], no)
+Valid? info
+Context of current question   : change_search.m:20 (change_search.m:22)
+Search mode                   : divide and query                       
+Estimated questions remaining : 10                                     
+Number of suspect events      : 1,000                                  
+The current question was chosen because the marked subterm was bound by
+the unification inside the predicate change_search.mylast/2
+(change_search.m:21). The path to the subterm in the atom is 2.
+dd> mode binary
+mylast([875, 876, 877, 878, 879, 880, 881, 882, ...], no)
+Valid? mode top_down
+mylast([752, 753, 754, 755, 756, 757, 758, 759, ...], no)
+Valid? undo
+mylast([875, 876, 877, 878, 879, 880, 881, 882, ...], no)
+Valid? undo
+dd> mode divide_and_query
+mylast([876, 877, 878, 879, 880, 881, 882, 883, ...], no)
+Valid? n
+mylast([939, 940, 941, 942, 943, 944, 945, 946, ...], no)
+Valid? q
+Diagnosis aborted.
+      E5:     C4 EXIT pred change_search.mylast/2-0 (det)
+mdb> quit -y

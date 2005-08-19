@@ -1,0 +1,35 @@
+register --quiet
+context none
+echo on
+break mylast
+continue
+finish -n
+set format pretty
+set depth 10
+dd
+info
+no
+info
+mode dq
+info
+no
+info
+pd
+stack
+retry 750
+p
+dd -r
+browse 2
+mark
+info
+pd
+dd -r
+info
+mode binary
+mode top_down
+undo
+undo
+mode divide_and_query
+n
+q
+quit -y

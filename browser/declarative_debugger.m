@@ -453,7 +453,7 @@ handle_analyser_response(Store, oracle_question(Question), MaybeOrigin,
 	query_oracle(Question, OracleResponse, FromUser, Oracle0, Oracle, !IO),
 	(
 		FromUser = yes,
-		OracleResponse = oracle_answer(_)
+		oracle_response_undoable(OracleResponse)
 	->
 		push_diagnoser(!Diagnoser)
 	;
@@ -508,7 +508,24 @@ handle_oracle_response(Store, oracle_answer(Answer), Response, !Diagnoser,
 handle_oracle_response(Store, show_info(OutStream), Response, !Diagnoser, !IO)
 		:-
 	Analyser = !.Diagnoser ^ analyser_state,
-	show_info(wrap(Store), OutStream, Analyser, AnalyserResponse, !IO),
+	show_info(wrap(Store), OutStream, Analyser, !IO),
+	( reask_last_question(wrap(Store), Analyser, AnalyserResponse0) ->
+		AnalyserResponse = AnalyserResponse0
+	;
+		throw(internal_error("handle_oracle_response",
+			"no last question when got show_info request"))
+	),
+	debug_analyser_state(Analyser, MaybeOrigin),
+	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
+		Response, !Diagnoser, !IO).
+
+handle_oracle_response(Store, change_search(Mode), Response, !Diagnoser, !IO)
+		:-
+	Analyser0 = !.Diagnoser ^ analyser_state,
+	Oracle = !.Diagnoser ^ oracle_state,
+	change_search_mode(wrap(Store), Oracle, Mode, Analyser0, Analyser, 
+		AnalyserResponse),
+	!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
 	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
 		Response, !Diagnoser, !IO).
@@ -523,8 +540,14 @@ handle_oracle_response(Store, undo, Response, !Diagnoser, !IO) :-
 			!.Diagnoser ^ oracle_state),
 		io.write_string(OutStream, "Undo stack empty.\n", !IO)
 	),
-	reask_last_question(wrap(Store), !.Diagnoser ^ analyser_state, 
-		AnalyserResponse),
+	( reask_last_question(wrap(Store), !.Diagnoser ^ analyser_state,
+		AnalyserResponse0)
+	->
+		AnalyserResponse = AnalyserResponse0
+	;
+		throw(internal_error("handle_oracle_response",
+			"no last question when got undo request"))
+	),
 	debug_analyser_state(!.Diagnoser ^ analyser_state, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
 		Response, !Diagnoser, !IO).

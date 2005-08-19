@@ -29,6 +29,7 @@
 :- import_module mdb.browser_info.
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.declarative_execution.
+:- import_module mdb.declarative_user.
 :- import_module mdb.help.
 :- import_module mdbcomp.prim_data.
 
@@ -42,11 +43,14 @@
 :- type oracle_response(T)
 	--->	oracle_answer(decl_answer(T))
 	;	show_info(io.output_stream)
+	;	change_search(user_search_mode)
 			% Ask the diagnoser to revert to the
 			% last question it asked.
 	;	undo
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
+
+:- pred oracle_response_undoable(oracle_response(T)::in) is semidet.
 
 	% The oracle state.  This is threaded around the declarative
 	% debugger.
@@ -151,7 +155,6 @@
 
 :- implementation.
 
-:- import_module mdb.declarative_user.
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 
@@ -226,6 +229,9 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
 	;
 		UserResponse = show_info(OutStream),
 		OracleResponse = show_info(OutStream)
+	;
+		UserResponse = change_search(Mode),
+		OracleResponse = change_search(Mode)
 	;
 		UserResponse = exit_diagnosis(Node),
 		OracleResponse = exit_diagnosis(Node)
@@ -741,3 +747,12 @@ set_oracle_testing_flag(Testing, !Oracle) :-
 	User0 = !.Oracle ^ user_state,
 	set_user_testing_flag(Testing, User0, User),
 	!:Oracle = !.Oracle ^ user_state := User.
+
+%-----------------------------------------------------------------------------%
+
+oracle_response_undoable(oracle_answer(_)).
+oracle_response_undoable(change_search(_)).
+
+%-----------------------------------------------------------------------------%
+:- end_module mdb.declarative_oracle.
+%-----------------------------------------------------------------------------%

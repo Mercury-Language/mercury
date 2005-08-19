@@ -18,6 +18,7 @@ DECLARATIVE_PROGS=		\
 	closure_dependency	\
 	comp_gen		\
 	confirm_abort		\
+	change_search		\
 	deep_warning		\
 	dependency		\
 	dependency2		\
@@ -234,6 +235,11 @@ comp_gen.out: comp_gen comp_gen.inp
 
 confirm_abort.out: confirm_abort confirm_abort.inp
 	$(MDB) ./confirm_abort < confirm_abort.inp > confirm_abort.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+change_search.out: change_search change_search.inp
+	$(MDB_STD) ./change_search < change_search.inp \
+		> change_search.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 deep_warning.out: deep_warning deep_warning.inp

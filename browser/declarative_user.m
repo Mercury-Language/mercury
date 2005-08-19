@@ -35,10 +35,17 @@
 			% about the state of the search and the current 
 			% question to the given output stream.
 	;	show_info(io.output_stream)
+			% Request that a new search strategy be used.
+	;	change_search(user_search_mode)
 			% The user wants to undo the last answer they gave.
 	;	undo
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
+
+:- type user_search_mode
+	--->	top_down
+	;	divide_and_query
+	;	binary.
 
 :- type user_state.
 
@@ -285,6 +292,8 @@ handle_command(print_io(From, To), UserQuestion, Response,
 	edt_node_io_actions(Question, MaybeIoActions),
 	print_chosen_io_actions(MaybeIoActions, From, To, !.User, !IO),
 	query_user(UserQuestion, Response, !User, !IO).
+
+handle_command(change_search(Mode), _, change_search(Mode), !User, !IO).
 
 handle_command(ask, UserQuestion, Response, !User, !IO) :-
 	!:User = !.User ^ display_question := yes,
@@ -787,6 +796,9 @@ reverse_and_append([A | As], Bs, Cs) :-
 			% The user wants the current question re-asked.
 	;	ask
 
+			% Change the current search strategy.
+	;	change_search(user_search_mode)
+
 			% Abort this diagnosis session.
 	;	quit			
 			
@@ -876,6 +888,8 @@ cmd_handler("print",		print_arg_cmd).
 cmd_handler("set",		set_arg_cmd).
 cmd_handler("t",		trust_arg_cmd).
 cmd_handler("trust",		trust_arg_cmd).
+cmd_handler("mode",		search_mode_cmd).
+cmd_handler("m",		search_mode_cmd).
 cmd_handler("undo",		one_word_cmd(undo)).
 
 :- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
@@ -922,6 +936,17 @@ set_arg_cmd(ArgWords) = set(MaybeOptionTable, Setting) :-
 
 trust_arg_cmd([]) = trust_predicate.
 trust_arg_cmd(["module"]) = trust_module.
+
+:- func search_mode_cmd(list(string)::in) = (user_command::out) is semidet.
+
+search_mode_cmd(["top-down"]) 		= change_search(top_down).
+search_mode_cmd(["top_down"]) 		= change_search(top_down).
+search_mode_cmd(["td"]) 		= change_search(top_down).
+search_mode_cmd(["divide-and-query"])	= change_search(divide_and_query).
+search_mode_cmd(["divide_and_query"])	= change_search(divide_and_query).
+search_mode_cmd(["dq"])			= change_search(divide_and_query).
+search_mode_cmd(["binary"])		= change_search(binary).
+search_mode_cmd(["b"])			= change_search(binary).
 
 :- func help_cmd(list(string)::in) = (user_command::out) is semidet.
 

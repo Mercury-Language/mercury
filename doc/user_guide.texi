@@ -4135,9 +4135,11 @@ will be asked.
 Skip this question and ask a different one if possible.
 @sp 1
 @item undo
-Reset the state of the declarative debugger to what it was before the most
-recent `yes', `no', `inadmissible', `trust', `skip' or `mark' answer that has
-not already been undone.
+Undo the most recent answer or mode change.
+@sp 1
+@item mode [ top-down | divide-and-query | binary ]
+Change the current search mode.  The search modes may be abbreviated to
+@samp{td}, @samp{dq} and @samp{b} respectively.
 @sp 1
 @item browse [--xml] [@var{n}]
 Start the interactive term browser and browse the @var{n}th argument 
@@ -4279,49 +4281,45 @@ they are returned to the event at which the @samp{dd} command was given.
 @node Search Modes
 @subsection Search Modes
 
-Currently the declarative debugger can operate in one of two modes when
-searching for a bug.  The mode to use can be specified as an option to the
-@samp{dd} command.  See @ref{Declarative debugging mdb commands} for
-information on how to do this.
+The declarative debugger can operate in one of several modes when
+searching for a bug.  
+Different search modes will result in different sequences of questions 
+being asked by the declarative debugger.
+The user can specify which mode to use by giving the
+@samp{--search-mode} option to the @samp{dd} command (see
+@ref{Declarative debugging mdb commands}) or with the @samp{mode} declarative
+debugger command (see @ref{Declarative debugging commands}).
 
-@subsubsection Top-down Search
+@subsubsection Top-down Mode
 
 Using this mode the declarative debugger will ask about the children of the
-last atom whose assertion was false.  This makes the search more predictable
+last question the user answered @samp{no} to.  The child calls will be asked
+about in the order they were executed.  This makes the search more predictable
 from the user's point of view as the questions will more or less follow the
 program execution.  The drawback of top-down search is that it may require a
 lot of questions to be answered before a bug is found, especially with deeply
-recursive program runs.
+recursive programs.
 
 This search mode is used by default when no other mode is specified.
 
-@subsubsection Divide and Query Search
+@subsubsection Divide and Query Mode
 
-With this search mode the declarative debugger will attempt to halve the size of
-the search space with each question.  In many cases this will result in the 
+With this search mode the declarative debugger attempts to halve the size
+of the search space with each question.  In many cases this will result in the
 bug being found after O(log(N)) questions where N is the number of events
 between the event where the @samp{dd} command was given and the corresponding
-@samp{CALL} event.  This makes the search feasible for deeply recursive runs
+@samp{CALL} event.  This makes the search feasible for long running programs
 where top-down search would require an unreasonably large number of questions
 to be answered.  However, the questions may appear to come from unrelated parts
 of the program which can make them harder to answer.
 
-@subsubsection When different search modes are used
+@subsubsection Binary Search Mode
 
-If a search mode is given when invoking the declarative debugger then that
-search mode will be used, unless (a) a subterm is marked during the session,
-in which case the subterm is tracked to its origin, or (b) the user 
-hasn't answered @samp{no} to any questions yet,
-in which case top-down search is used until @samp{no} is answered to at least
-one question.
-
-If you do not specify a search mode when giving the @samp{dd} command then the
-behaviour depends on wether the @samp{--resume} option is present.  If it is
-then the previous search mode will be used, otherwise top-down search will
-be used.
-
-You can check the search mode used to find a particular question by issuing
-an @samp{info} command at the question prompt in the declarative debugger.
+The user may ask the declarative debugger to do a binary search along the
+path in the call tree between the current question and the question that the
+user last answered @samp{no} to.  This is useful, for example, when a 
+recursive predicate is producing incorrect output, but the base case is 
+correct.
 
 @node Improving the search
 @subsection Improving the search
@@ -4445,6 +4443,24 @@ Alternatively the user may tell the declarative debugger to trust all the
 predicates and functions in the same module as the predicate or function in the
 current question.  See the @samp{trust} command in 
 @ref{Declarative debugging commands}.
+
+@subsubsection When different search modes are used
+
+If a search mode is given when invoking the declarative debugger then that
+search mode will be used, unless (a) a subterm is marked during the session,
+in which case the subterm is tracked to its origin, or (b) the user 
+has not answered @samp{no} to any questions yet,
+in which case top-down search is used until @samp{no} is answered to at least
+one question.
+
+If no search mode is specified with the @samp{dd} command then
+the search mode depends on if the @samp{--resume} option is
+given.
+If it is then the previous search mode will be used, 
+otherwise top-down search will be used.
+
+You can check the search mode used to find a particular question by issuing
+an @samp{info} command at the question prompt in the declarative debugger.
 
 @c ----------------------------------------------------------------------------
 

@@ -13,27 +13,27 @@ a(yes)
 Valid? b 1
 browser> mark
 silly_even(0, yes)
-Valid? y
-sillier_even(504, yes)
+Valid? mode binary
+sillier_even(502, yes)
 Valid? y
 silly_even(771, yes)
 Valid? n
-sillier_even(657, yes)
+sillier_even(655, yes)
 Valid? n
-silly_even(600, yes)
+sillier_even(600, yes)
 Valid? y
-silly_even(627, yes)
+sillier_even(627, yes)
 Valid? n
-silly_even(616, yes)
-Valid? y
-sillier_even(621, yes)
-Valid? n
-silly_even(618, yes)
+silly_even(614, yes)
 Valid? y
 sillier_even(619, yes)
 Valid? n
+sillier_even(618, yes)
+Valid? y
 silly_even(619, yes)
 Valid? n
+silly_even(618, yes)
+Valid? y
 Found incorrect contour:
 >(619, 0)
 -(619, 1) = 618
@@ -83,7 +83,7 @@ browser> ls
 browser> cd 1
 browser> mark
 add1s([10], [11])
-Valid? y
+Valid? mode binary
 add1s([5, 6, 7, 8, 9, 10], [6, ...])
 Valid? y
 add1s([2, 3, 4, 5, 6, 7, 8, 9, ...], [|]/2)

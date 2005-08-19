@@ -7,17 +7,17 @@ f
 dd -d 3 -n 7
 b 1
 mark
-y
+mode binary
 y
 n
-n
-y
 n
 y
 n
 y
 n
+y
 n
+y
 y
 trust binary_search_1
 break b
@@ -40,7 +40,7 @@ cdr 9 2
 ls
 cd 1
 mark
-y
+mode binary
 y
 n
 y

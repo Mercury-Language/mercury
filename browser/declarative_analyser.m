@@ -21,6 +21,7 @@
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_oracle.
+:- import_module mdb.declarative_user.
 
 :- import_module io.
 :- import_module std_util.
@@ -98,26 +99,34 @@
 	% re-asked.
 	%
 :- pred reask_last_question(S::in, analyser_state(T)::in, 
-	analyser_response(T)::out) is det <= mercury_edt(S, T).
+	analyser_response(T)::out) is semidet <= mercury_edt(S, T).
 
 	% Continue analysis after the oracle has responded with an
 	% answer.
-	%
+ 	%
 :- pred continue_analysis(S::in, oracle_state::in, decl_answer(T)::in,
 	analyser_response(T)::out, analyser_state(T)::in,
 	analyser_state(T)::out) is det <= mercury_edt(S, T).
+
+	% Change the current search mode of the analyser and return the
+	% next question using the new search mode.
+	%
+:- pred change_search_mode(S::in, oracle_state::in, user_search_mode::in,
+	analyser_state(T)::in, analyser_state(T)::out,
+	analyser_response(T)::out) is det <= mercury_edt(S, T).
 
 	% Display information about the current question and the state
 	% of the search to the supplied output stream.
 	%
 :- pred show_info(S::in, io.output_stream::in, analyser_state(T)::in,
-	analyser_response(T)::out, io::di, io::uo) is det <= mercury_edt(S, T).
+	io::di, io::uo) is det <= mercury_edt(S, T).
 
 	% Revise the current analysis.  This is done when a bug determined
 	% by the analyser has been overruled by the oracle.
 	%
-:- pred revise_analysis(S::in, analyser_response(T)::out, analyser_state(T)::in,
-	analyser_state(T)::out) is det <= mercury_edt(S, T).
+:- pred revise_analysis(S::in, analyser_response(T)::out,
+	analyser_state(T)::in, analyser_state(T)::out) is det 
+	<= mercury_edt(S, T).
 
 	% Return information within the analyser state that is intended for
 	% debugging the declarative debugger itself.
@@ -190,7 +199,6 @@
 				% an excluded part of the search tree.
 			maybe(suspect_id)
 		)
-
 			%
 			% Perform a binary search on a path in the search space
 			% between a suspect and an ancestor of the suspect.
@@ -329,7 +337,8 @@ reset_analyser(!Analyser) :-
 
 set_fallback_search_mode(FallBackSearchMode, !Analyser) :-
 	!:Analyser = !.Analyser ^ fallback_search_mode := FallBackSearchMode,
-	!:Analyser = !.Analyser ^ search_mode := FallBackSearchMode.
+	!:Analyser = !.Analyser ^ search_mode := FallBackSearchMode,
+	!:Analyser = !.Analyser ^ last_search_question := no.
 
 debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
@@ -371,22 +380,23 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
 		)
 	;
 		AnalysisType = resume_previous,
-		decide_analyser_response(Store, Oracle, Response, !Analyser)
+		(
+			reask_last_question(Store, !.Analyser, Response0)
+		->
+			Response = Response0
+		;
+			decide_analyser_response(Store, Oracle, Response, 
+				!Analyser)
+		)
 	).
 
 reask_last_question(Store, Analyser, Response) :-
 	MaybeLastQuestion = Analyser ^ last_search_question,
-	(
-		MaybeLastQuestion = yes(suspect_and_reason(SuspectId, _)),
-		SearchSpace = Analyser ^ search_space,
-		Node = get_edt_node(SearchSpace, SuspectId),
-		edt_question(Store, Node, OracleQuestion),
-		Response = oracle_question(OracleQuestion)
-	;
-		MaybeLastQuestion = no,
-		throw(internal_error("reask_last_question",
-			"no last question"))
-	).
+	MaybeLastQuestion = yes(suspect_and_reason(SuspectId, _)),
+	SearchSpace = Analyser ^ search_space,
+	Node = get_edt_node(SearchSpace, SuspectId),
+	edt_question(Store, Node, OracleQuestion),
+	Response = oracle_question(OracleQuestion).
 
 continue_analysis(Store, Oracle, Answer, Response, !Analyser) :-
 	(
@@ -398,7 +408,29 @@ continue_analysis(Store, Oracle, Answer, Response, !Analyser) :-
 		throw(internal_error("continue_analysis", 
 			"received answer to unasked question"))
 	),
-	!:Analyser = !.Analyser ^ last_search_question := no,
+	decide_analyser_response(Store, Oracle, Response, !Analyser).
+
+change_search_mode(Store, Oracle, UserMode, !Analyser, Response) :-
+	(
+		UserMode = top_down,
+		set_fallback_search_mode(top_down, !Analyser)
+	;
+		UserMode = divide_and_query,
+		set_fallback_search_mode(divide_and_query, !Analyser)
+	;
+		UserMode = binary,
+		(
+			!.Analyser ^ last_search_question = 
+				yes(suspect_and_reason(SuspectId, _)),
+			setup_binary_search(!.Analyser ^ search_space, 
+				SuspectId, SearchMode),
+			!:Analyser = !.Analyser ^ search_mode := SearchMode
+		;
+			!.Analyser ^ last_search_question = no,
+			throw(internal_error("change_search_mode", 
+				"binary mode requested, but no last question"))
+		)
+	),
 	decide_analyser_response(Store, Oracle, Response, !Analyser).
 
 :- pred process_answer(S::in, decl_answer(T)::in, suspect_id::in, 
@@ -757,8 +789,7 @@ follow_subterm_end_search(Store, Oracle, !SearchSpace,
 			SearchResponse = question(BindingSuspectId, 
 				binding_node(PrimOpType, FileName, LineNo,
 					MaybePath, ProcLabel, no)),
-			setup_binary_search(!.SearchSpace, BindingSuspectId,
-				NewMode)
+ 			NewMode = FallBackSearchMode
 		;
 			(
 				LastUnknown = yes(Unknown),
@@ -768,8 +799,7 @@ follow_subterm_end_search(Store, Oracle, !SearchSpace,
 					FileName, LineNo, MaybePath, ProcLabel,
 					yes),
 				SearchResponse = question(Unknown, Reason),
-				setup_binary_search(!.SearchSpace, 
-					Unknown, NewMode)
+				NewMode = FallBackSearchMode
 			;
 				search(Store, Oracle, 
 					!SearchSpace, FallBackSearchMode, 
@@ -785,7 +815,7 @@ follow_subterm_end_search(Store, Oracle, !SearchSpace,
 		->
 			SearchResponse = question(Unknown, 
 				subterm_no_proc_rep),
-			setup_binary_search(!.SearchSpace, Unknown, NewMode)
+			NewMode = FallBackSearchMode
 		;
 			search(Store, Oracle, !SearchSpace, 
 				FallBackSearchMode, FallBackSearchMode,
@@ -833,8 +863,7 @@ follow_subterm_end_search(Store, Oracle, !SearchSpace,
 			->
 				SearchResponse = question(Unknown, 
 					binding_node_eliminated),
-				setup_binary_search(!.SearchSpace,
-					Unknown, NewMode)
+				NewMode = FallBackSearchMode
 			;
 				search(Store, Oracle, 
 					!SearchSpace, FallBackSearchMode, 
@@ -857,7 +886,7 @@ follow_subterm_end_search(Store, Oracle, !SearchSpace,
 		)
 	).
 
-	% setup_binary_search(SearchSpace, SuspectId, Response, SearchMode).
+	% setup_binary_search(SearchSpace, SuspectId, SearchMode).
 	% Sets up the search mode to do a binary search between SuspectId
 	% and either the root of the search space if a suspect has 
 	% previously been marked erroneous, or the topmost node if no suspect
@@ -1250,7 +1279,7 @@ reason_to_string(skipped) = "there are no more non-skipped questions "
 reason_to_string(revise) = "this node is being revised, because of "
 	++ "an unsuccessful previous bug search.".
 
-show_info(Store, OutStream, Analyser, Response, !IO) :-
+show_info(Store, OutStream, Analyser, !IO) :-
 	SearchSpace = Analyser ^ search_space,
 	some [!FieldNames, !Data] (
 		!:FieldNames = [], 
@@ -1330,10 +1359,7 @@ show_info(Store, OutStream, Analyser, Response, !IO) :-
 	ReasonSent = "The current question was chosen because " ++ ReasonStr,
 	WrappedReason = string.word_wrap(ReasonSent, 72),
  	io.format(OutStream, "%s\n%s\n", [s(InfoMessage), s(WrappedReason)], 
-		!IO),
-	Node = get_edt_node(SearchSpace, LastId),
-	edt_question(Store, Node, OracleQuestion),
-	Response = oracle_question(OracleQuestion).
+		!IO).
 
 :- func search_mode_to_string(search_mode) = string.
 
