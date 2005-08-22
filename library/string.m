@@ -4234,8 +4234,6 @@ suffix_length_2(I, N, P, S) =
 
 add_revstring(String, RevStrings, [String | RevStrings]).
 
-
-
 % various different versions of univ_to_string.
 
 string__string(Univ) = String :-
@@ -4244,13 +4242,9 @@ string__string(Univ) = String :-
 string__string(OpsTable, Univ) = String :-
 	string__string(canonicalize, OpsTable, Univ, String).
 
-
-
 string__string(NonCanon, OpsTable, X, String) :-
 	value_to_revstrings(NonCanon, OpsTable, X, [], RevStrings),
 	String = string__append_list(list__reverse(RevStrings)).
-
-
 
 :- pred value_to_revstrings(deconstruct__noncanon_handling,
 	ops__table, T, revstrings, revstrings).
@@ -4264,8 +4258,6 @@ string__string(NonCanon, OpsTable, X, String) :-
 value_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 	Priority = ops__max_priority(OpsTable) + 1,
 	value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs).
-
-
 
 :- pred value_to_revstrings(deconstruct__noncanon_handling,
 	ops__table, ops__priority, T, revstrings, revstrings).
@@ -4349,19 +4341,13 @@ value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 			X, !Rs)
 	).
 
-
-
 :- pred same_array_elem_type(array(T), T).
 :- mode same_array_elem_type(unused, unused) is det.
 same_array_elem_type(_, _).
 
-
-
 :- pred same_private_builtin_type(private_builtin__type_info(T), T).
 :- mode same_private_builtin_type(unused, unused) is det.
 same_private_builtin_type(_, _).
-
-
 
 :- pred ordinary_term_to_revstrings(deconstruct__noncanon_handling,
 	ops__table, ops__priority, T, revstrings, revstrings).
@@ -4494,8 +4480,6 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 		)
 	).
 
-
-
 :- pred maybe_add_revstring(string, ops__priority, ops__priority,
 			revstrings, revstrings).
 :- mode maybe_add_revstring(in, in, in, in, out) is det.
@@ -4507,15 +4491,11 @@ maybe_add_revstring(String, Priority, OpPriority, !Rs) :-
 		true
 	).
 
-
-
 :- pred adjust_priority(ops__priority, ops__assoc, ops__priority).
 :- mode adjust_priority(in, in, out) is det.
 
 adjust_priority(Priority, ops__y, Priority).
 adjust_priority(Priority, ops__x, Priority - 1).
-
-
 
 :- pred univ_list_tail_to_revstrings(deconstruct__noncanon_handling,
 	ops__table, univ, revstrings, revstrings).
@@ -4539,8 +4519,6 @@ univ_list_tail_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
 		value_to_revstrings(NonCanon, OpsTable, univ_value(Univ), !Rs)
 	).
 
-
-
 :- pred term_args_to_revstrings(deconstruct__noncanon_handling,
 	ops__table, list(univ), revstrings, revstrings).
 :- mode term_args_to_revstrings(in(do_not_allow), in, in, in, out) is det.
@@ -4556,8 +4534,6 @@ term_args_to_revstrings(NonCanon, OpsTable, [X|Xs], !Rs) :-
 	arg_to_revstrings(NonCanon, OpsTable, X, !Rs),
 	term_args_to_revstrings(NonCanon, OpsTable, Xs, !Rs).
 
-
-
 :- pred arg_to_revstrings(deconstruct__noncanon_handling,
 	ops__table, univ, revstrings, revstrings).
 :- mode arg_to_revstrings(in(do_not_allow), in, in, in, out) is det.
@@ -4568,8 +4544,6 @@ term_args_to_revstrings(NonCanon, OpsTable, [X|Xs], !Rs) :-
 arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 	Priority = comma_priority(OpsTable),
 	value_to_revstrings(NonCanon, OpsTable, Priority, univ_value(X), !Rs).
-
-
 
 :- func comma_priority(ops__table) = ops__priority.
 /*
@@ -4584,13 +4558,9 @@ comma_priority(OpsTable) =
 % hard-code it.
 comma_priority(_OpTable) = 1000.
 
-
-
 :- func c_pointer_to_string(c_pointer) = string.
 
 c_pointer_to_string(_C_Pointer) = "<<c_pointer>>".
-
-
 
 :- pred array_to_revstrings(deconstruct__noncanon_handling,
 	ops__table, array(T), revstrings, revstrings).
@@ -4607,8 +4577,6 @@ array_to_revstrings(NonCanon, OpsTable, Array, !Rs) :-
 		array__to_list(Array) `with_type` list(T), !Rs),
 	add_revstring(")", !Rs).
 
-
-
 :- pred type_desc_to_revstrings(type_desc__type_desc, revstrings, revstrings).
 :- mode type_desc_to_revstrings(in, in, out) is det.
 
@@ -4617,8 +4585,6 @@ type_desc_to_revstrings(TypeDesc, !Rs) :-
 		term_io__quoted_atom(type_desc__type_name(TypeDesc)),
 		!Rs
 	).
-
-
 
 :- pred type_ctor_desc_to_revstrings(type_desc__type_ctor_desc,
 	revstrings, revstrings).
@@ -4644,8 +4610,6 @@ type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
 	),
 	add_revstring(String, !Rs).
 
-
-
 :- pred private_builtin_type_info_to_revstrings(
 		private_builtin__type_info(T), revstrings, revstrings).
 :- mode private_builtin_type_info_to_revstrings(in, in, out) is det.
@@ -4653,8 +4617,6 @@ type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
 private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs) :-
 	TypeDesc = rtti_implementation__unsafe_cast(PrivateBuiltinTypeInfo),
 	type_desc_to_revstrings(TypeDesc, !Rs).
-
-
 
 :- pred det_dynamic_cast(T1, T2).
 :- mode det_dynamic_cast(in, out) is det.
