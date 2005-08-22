@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998, 2000, 2002, 2004 The University of Melbourne. 
+# Copyright (C) 1995-1998, 2000, 2002, 2004-2005 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -26,7 +26,7 @@ MMAKE_SUBDIR=	MMAKE_DIR=`pwd`/../scripts ../scripts/mmake $(PARALLEL)
 
 .PHONY: all
 all:
-	$(MMAKE) MMAKEFLAGS=$(PARALLEL) all 2>&1 | tee make_all.log
+	$(MMAKE) MMAKEFLAGS=$(PARALLEL) all
 
 .PHONY: libmmc
 libmmc:
@@ -34,7 +34,7 @@ libmmc:
 
 .PHONY: install
 install:
-	$(MMAKE) MMAKEFLAGS=$(PARALLEL) install 2>&1 | tee make_install.log
+	$(MMAKE) MMAKEFLAGS=$(PARALLEL) install
 
 # `mmake clean' has a different meaning to the usual GNU standard `make clean':
 # it removes the .c files, which makes bootstrapping impossible unless you
