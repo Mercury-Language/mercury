@@ -224,105 +224,120 @@
 :- import_module varset.
 
 report_mode_error(ModeError, ModeInfo, !IO) :-
+    Specs = mode_error_to_specs(ModeError, ModeInfo),
+    write_error_specs(Specs, !IO).
+
+:- func mode_error_to_specs(mode_error::in, mode_info::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+
+mode_error_to_specs(ModeError, ModeInfo) = Specs :-
     (
         ModeError = mode_error_disj(MergeContext, ErrorList),
-        report_mode_error_disj(ModeInfo, MergeContext, ErrorList, !IO)
+        Specs = mode_error_disj_to_specs(ModeInfo, MergeContext, ErrorList)
     ;
         ModeError = mode_error_par_conj(ErrorList),
-        report_mode_error_par_conj(ModeInfo, ErrorList, !IO)
+        Specs = mode_error_par_conj_to_specs(ModeInfo, ErrorList)
     ;
         ModeError = mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
             Arity),
-        report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var,
-            Inst, Arity, !IO)
+        Specs = mode_error_higher_order_pred_var_to_specs(ModeInfo, PredOrFunc,
+            Var, Inst, Arity)
     ;
         ModeError = mode_error_poly_unify(Var, Inst),
-        report_mode_error_poly_unify(ModeInfo, Var, Inst, !IO)
+        Specs = mode_error_poly_unify_to_specs(ModeInfo, Var, Inst)
     ;
         ModeError = mode_error_var_is_live(Var),
-        report_mode_error_var_is_live(ModeInfo, Var, !IO)
+        Specs = mode_error_var_is_live_to_specs(ModeInfo, Var)
     ;
         ModeError = mode_error_var_has_inst(Var, InstA, InstB),
-        report_mode_error_var_has_inst(ModeInfo, Var, InstA, InstB, !IO)
+        Specs = mode_error_var_has_inst_to_specs(ModeInfo, Var, InstA, InstB)
     ;
         ModeError = mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
-        report_mode_error_unify_pred(ModeInfo, Var, RHS, Type, PredOrFunc, !IO)
+        Specs = mode_error_unify_pred_to_specs(ModeInfo, Var, RHS, Type,
+            PredOrFunc)
     ;
         ModeError = mode_error_implied_mode(Var, InstA, InstB),
-        report_mode_error_implied_mode(ModeInfo, Var, InstA, InstB, !IO)
+        Specs = mode_error_implied_mode_to_specs(ModeInfo, Var, InstA, InstB)
     ;
         ModeError = mode_error_no_mode_decl,
-        report_mode_error_no_mode_decl(ModeInfo, !IO)
+        Specs = mode_error_no_mode_decl_to_specs(ModeInfo)
     ;
         ModeError = mode_error_bind_var(Reason, Var, InstA, InstB),
-        report_mode_error_bind_var(ModeInfo, Reason, Var, InstA, InstB, !IO)
+        Specs = mode_error_bind_var_to_specs(ModeInfo, Reason, Var,
+            InstA, InstB)
     ;
         ModeError = mode_error_non_local_lambda_var(Var, Inst),
-        report_mode_error_non_local_lambda_var(ModeInfo, Var, Inst, !IO)
+        Specs = mode_error_non_local_lambda_var_to_specs(ModeInfo, Var, Inst)
     ;
         ModeError = mode_error_unify_var_var(VarA, VarB, InstA, InstB),
-        report_mode_error_unify_var_var(ModeInfo, VarA, VarB, InstA, InstB,
-            !IO)
+        Specs = mode_error_unify_var_var_to_specs(ModeInfo, VarA, VarB,
+            InstA, InstB)
     ;
         ModeError = mode_error_unify_var_lambda(VarA, InstA, InstB),
-        report_mode_error_unify_var_lambda(ModeInfo, VarA, InstA, InstB, !IO)
+        Specs = mode_error_unify_var_lambda_to_specs(ModeInfo, VarA,
+            InstA, InstB)
     ;
         ModeError = mode_error_unify_var_functor(Var, Name, Args, Inst,
             ArgInsts),
-        report_mode_error_unify_var_functor(ModeInfo, Var, Name, Args, Inst,
-            ArgInsts, !IO)
+        Specs = mode_error_unify_var_functor_to_specs(ModeInfo, Var, Name,
+            Args, Inst, ArgInsts)
     ;
         ModeError = mode_error_conj(Errors, Culprit),
-        report_mode_error_conj(ModeInfo, Errors, Culprit, !IO)
+        Specs = mode_error_conj_to_specs(ModeInfo, Errors, Culprit)
     ;
         ModeError = mode_error_no_matching_mode(Vars, Insts),
-        report_mode_error_no_matching_mode(ModeInfo, Vars, Insts, !IO)
+        Specs = mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts)
     ;
         ModeError = mode_error_in_callee(Vars, Insts,
             CalleePredId, CalleeProcId, CalleeErrors),
-        report_mode_error_in_callee(ModeInfo, Vars, Insts,
-            CalleePredId, CalleeProcId, CalleeErrors, !IO)
+        Specs = mode_error_in_callee_to_specs(ModeInfo, Vars, Insts,
+            CalleePredId, CalleeProcId, CalleeErrors)
     ;
         ModeError = mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
-        report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst,
-            Reason, !IO)
+        Specs = mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst,
+            Inst, Reason)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_conj(mode_info::in, list(delayed_goal)::in,
-    schedule_culprit::in, io::di, io::uo) is det.
+:- func mode_error_conj_to_specs(mode_info::in, list(delayed_goal)::in,
+    schedule_culprit::in) = (list(error_msg_spec)::out(error_msg_specs))
+    is det.
 
-report_mode_error_conj(ModeInfo, Errors, Culprit, !IO) :-
+mode_error_conj_to_specs(ModeInfo, Errors, Culprit) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     list__filter(is_error_important, Errors, ImportantErrors, OtherErrors),
 
     % If there's more than one error, and we have verbose-errors enabled,
     % report them all.
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_globals(ModuleInfo, Globals),
+    globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (
         VerboseErrors = yes,
         Errors = [_, _ | _]
     ->
-        mode_info_write_context(ModeInfo, !IO),
         PiecesA = [words("mode error in conjunction. The next"),
             fixed(int_to_string(list__length(Errors))),
             words("error messages indicate possible causes of this error.")],
-        write_error_pieces_not_first_line(Context, 0, PiecesA, !IO),
-        list__foldl(report_mode_error_conjunct(VarSet, Context, ModeInfo),
-            ImportantErrors ++ OtherErrors, !IO)
+        Specs1Start = [mode_info_context_to_spec(ModeInfo),
+            error_msg_spec(no, Context, 0, PiecesA)],
+        Specs1Rest = list__map(
+            mode_error_conjunct_to_specs(VarSet, Context, ModeInfo),
+            ImportantErrors ++ OtherErrors),
+        Specs1 = Specs1Start ++ list__condense(Specs1Rest)
     ;
         % In the normal case, only report the first error.
         ImportantErrors = [FirstImportantError | _]
     ->
-        report_mode_error_conjunct(VarSet, Context, ModeInfo,
-            FirstImportantError, !IO)
+        Specs1 = mode_error_conjunct_to_specs(VarSet, Context, ModeInfo,
+            FirstImportantError)
     ;
         OtherErrors = [FirstOtherError | _]
     ->
-        report_mode_error_conjunct(VarSet, Context, ModeInfo, FirstOtherError,
-            !IO)
+        Specs1 = mode_error_conjunct_to_specs(VarSet, Context, ModeInfo,
+            FirstOtherError)
     ;
         % There wasn't any error to report!  This can't happen.
         unexpected(this_file, "report_mode_error_conj")
@@ -331,23 +346,25 @@ report_mode_error_conj(ModeInfo, Errors, Culprit, !IO) :-
     % If the goal(s) couldn't be scheduled because we couldn't reorder things
     % past an impure goal, then report that.
     (
-        Culprit = conj_floundered
+        Culprit = conj_floundered,
         % We've already reported everything we can.
+        Specs2 = []
     ;
         Culprit = goal_itself_was_impure,
         Pieces = [words("The goal could not be reordered,"),
             words("because it was impure.")],
-        write_error_pieces_not_first_line(Context, 0, Pieces, !IO)
+        Specs2 = [error_msg_spec(no, Context, 0, Pieces)]
     ;
         Culprit = goals_followed_by_impure_goal(ImpureGoal),
-        Pieces1 = [words("The goal could not be reordered,"),
-            words("becaise it was followed by an impure goal.")],
-        write_error_pieces_not_first_line(Context, 0, Pieces1, !IO),
         ImpureGoal = _ - ImpureGoalInfo,
         goal_info_get_context(ImpureGoalInfo, ImpureGoalContext),
+        Pieces1 = [words("The goal could not be reordered,"),
+            words("becaise it was followed by an impure goal.")],
         Pieces2 = [words("This is the location of the impure goal.")],
-        write_error_pieces_not_first_line(ImpureGoalContext, 0, Pieces2, !IO)
-    ).
+        Specs2 = [error_msg_spec(no, Context, 0, Pieces1),
+            error_msg_spec(no, ImpureGoalContext, 0, Pieces2)]
+    ),
+    Specs = Specs1 ++ Specs2.
 
 :- pred is_error_important(delayed_goal::in) is semidet.
 
@@ -368,72 +385,83 @@ is_error_important(Error) :-
         true
     ).
 
-:- pred report_mode_error_conjunct(prog_varset::in, prog_context::in,
-    mode_info::in, delayed_goal::in, io::di, io::uo) is det.
+:- func mode_error_conjunct_to_specs(prog_varset::in, prog_context::in,
+    mode_info::in, delayed_goal::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_conjunct(VarSet, Context, !.ModeInfo,
-        delayed_goal(Vars, Error, Goal), !IO) :-
-    globals__io_lookup_bool_option(debug_modes, Debug, !IO),
+mode_error_conjunct_to_specs(VarSet, Context, !.ModeInfo, DelayedGoal)
+        = Specs :-
+    DelayedGoal = delayed_goal(Vars, Error, Goal),
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    module_info_globals(ModuleInfo, Globals),
+    globals__lookup_bool_option(Globals, debug_modes, Debug),
     (
         Debug = yes,
-        prog_out__write_context(Context, !IO),
-        io__write_string("Floundered goal, waiting on { ", !IO),
         set__to_sorted_list(Vars, VarList),
-        mercury_output_vars(VarList, VarSet, no, !IO),
-        io__write_string(" } :\n", !IO)
+        Pieces1 = [words("Floundered goal, waiting on { "),
+            words(mercury_vars_to_string(VarList, VarSet, no)),
+            words(" } :"), nl],
+        Specs1 = [error_msg_spec(no, Context, 0, Pieces1)]
     ;
-        Debug = no
+        Debug = no,
+        Specs1 = []
     ),
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals__lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-        io__write_string("\t\t", !IO),
-        hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, 2, ".\n", !IO)
+        Specs2 = [anything(write_indented_goal(Goal, ModuleInfo, VarSet))]
     ;
-        VeryVerbose = no
+        VeryVerbose = no,
+        Specs2 = []
     ),
     Error = mode_error_info(_, ModeError, ErrorContext, ModeContext),
     mode_info_set_context(ErrorContext, !ModeInfo),
     mode_info_set_mode_context(ModeContext, !ModeInfo),
-    report_mode_error(ModeError, !.ModeInfo, !IO).
+    Specs = Specs1 ++ Specs2 ++ mode_error_to_specs(ModeError, !.ModeInfo).
+
+:- pred write_indented_goal(hlds_goal::in, module_info::in, prog_varset::in,
+    io::di, io::uo) is det.
+
+write_indented_goal(Goal, ModuleInfo, VarSet, !IO) :-
+    io__write_string("\t\t", !IO),
+    hlds_out__write_goal(Goal, ModuleInfo, VarSet, no, 2, ".\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_disj(mode_info::in, merge_context::in,
-    merge_errors::in, io::di, io::uo) is det.
+:- func mode_error_disj_to_specs(mode_info::in, merge_context::in,
+    merge_errors::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_disj(ModeInfo, MergeContext, ErrorList, !IO) :-
-    mode_info_write_context(ModeInfo, !IO),
+mode_error_disj_to_specs(ModeInfo, MergeContext, ErrorList) = Specs :-
+    mode_info_get_context(ModeInfo, Context),
     Pieces = [words("mode mismatch in "),
         words(merge_context_to_string(MergeContext)), suffix(".")],
-    mode_info_get_context(ModeInfo, Context),
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO),
-    io__write_list(ErrorList, "", write_merge_error(ModeInfo), !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces) |
+        list__map(merge_error_to_spec(ModeInfo), ErrorList)].
 
-:- pred report_mode_error_par_conj(mode_info::in, merge_errors::in,
-    io::di, io::uo) is det.
+:- func mode_error_par_conj_to_specs(mode_info::in, merge_errors::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_par_conj(ModeInfo, ErrorList, !IO) :-
+mode_error_par_conj_to_specs(ModeInfo, ErrorList) = Specs :-
     mode_info_get_context(ModeInfo, Context),
-    mode_info_write_context(ModeInfo, !IO),
     Pieces = [words("mode error: mutually exclusive bindings"),
         words("in parallel conjunction."),
         words("(The current implementation does not permit"),
         words("parallel conjunctions to fail.)"), nl],
-    write_error_pieces_not_first_line(Context, 1, Pieces, !IO),
-    io__write_list(ErrorList, "", write_merge_error(ModeInfo), !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces) |
+        list__map(merge_error_to_spec(ModeInfo), ErrorList)].
 
-:- pred write_merge_error(mode_info::in, merge_error::in, io::di, io::uo)
-    is det.
+:- func merge_error_to_spec(mode_info::in, merge_error::in)
+    = (error_msg_spec::out(error_msg_spec)) is det.
 
-write_merge_error(ModeInfo, Var - Insts, !IO) :-
+merge_error_to_spec(ModeInfo, Var - Insts) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [words(add_quotes(mercury_var_to_string(Var, VarSet, no))),
         fixed("::"),
         words(inst_list_to_string(ModeInfo, Insts)), suffix("."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Spec = error_msg_spec(no, Context, 0, Pieces).
 
 :- func merge_context_to_string(merge_context) = string.
 
@@ -442,13 +470,13 @@ merge_context_to_string(if_then_else) = "if-then-else".
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_bind_var(mode_info::in, var_lock_reason::in,
-    prog_var::in, (inst)::in, (inst)::in, io::di, io::uo) is det.
+:- func mode_error_bind_var_to_specs(mode_info::in, var_lock_reason::in,
+    prog_var::in, (inst)::in, (inst)::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst, !IO) :-
+mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     (
         Reason = negation,
         ReasonStr = "attempt to bind a variable inside a negation."
@@ -473,7 +501,9 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst, !IO) :-
         words(add_quotes(inst_to_string(ModeInfo, VarInst))), suffix(","), nl,
         words("expected instantiatedness was"),
         words(add_quotes(inst_to_string(ModeInfo, Inst))), suffix("."), nl],
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_globals(ModuleInfo, Globals),
+    globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (
         VerboseErrors = yes,
         (
@@ -502,17 +532,17 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst, !IO) :-
         VerboseErrors = no,
         Pieces2 = []
     ),
-    write_error_pieces_not_first_line(Context, 0, Pieces1 ++ Pieces2, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2)].
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_non_local_lambda_var(mode_info::in, prog_var::in,
-    (inst)::in, io::di, io::uo) is det.
+:- func mode_error_non_local_lambda_var_to_specs(mode_info::in, prog_var::in,
+    (inst)::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_non_local_lambda_var(ModeInfo, Var, VarInst, !IO) :-
+mode_error_non_local_lambda_var_to_specs(ModeInfo, Var, VarInst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     Pieces = [words("mode error: variable"),
         fixed(add_quotes(mercury_var_to_string(Var, VarSet, no))),
         words("has instantiatedness"),
@@ -520,26 +550,27 @@ report_mode_error_non_local_lambda_var(ModeInfo, Var, VarInst, !IO) :-
         suffix(","), nl,
         words("expected instantiatedness for non-local variables"),
         words("of lambda goals is `ground'."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_in_callee(mode_info::in, list(prog_var)::in,
-    list(inst)::in, pred_id::in, proc_id::in, list(mode_error_info)::in,
-    io::di, io::uo) is det.
+:- func mode_error_in_callee_to_specs(mode_info::in, list(prog_var)::in,
+    list(inst)::in, pred_id::in, proc_id::in, list(mode_error_info)::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_in_callee(!.ModeInfo, Vars, Insts,
-        CalleePredId, CalleeProcId, CalleeModeErrors, !IO) :-
+mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
+        CalleePredId, CalleeProcId, CalleeModeErrors) = Specs :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_context(!.ModeInfo, Context),
     mode_info_get_varset(!.ModeInfo, VarSet),
-    mode_info_write_context(!.ModeInfo, !IO),
     Pieces1 = [words("mode error: arguments"),
         words(add_quotes(mercury_vars_to_string(Vars, VarSet, no))),
         words("have the following insts:"), nl_indent_delta(1)] ++
         inst_list_to_sep_lines(!.ModeInfo, Insts) ++
         [words("which does not match any of the valid modes for")],
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    module_info_globals(ModuleInfo, Globals),
+    globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (
         VerboseErrors = yes,
         Pieces2 = [words("the callee"), prefix("(")] ++
@@ -550,7 +581,8 @@ report_mode_error_in_callee(!.ModeInfo, Vars, Insts,
         VerboseErrors = no,
         Pieces2 = [words("the callee, because of the following error."), nl]
     ),
-    write_error_pieces_not_first_line(Context, 0, Pieces1 ++ Pieces2, !IO),
+    InitSpecs = [mode_info_context_to_spec(!.ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2)],
     (
         CalleeModeErrors = [First | _],
         First = mode_error_info(_, CalleeModeError,
@@ -559,17 +591,31 @@ report_mode_error_in_callee(!.ModeInfo, Vars, Insts,
         mode_info_set_procid(CalleeProcId, !ModeInfo),
         mode_info_set_context(CalleeContext, !ModeInfo),
         mode_info_set_mode_context(CalleeModeContext, !ModeInfo),
-        report_mode_error(CalleeModeError, !.ModeInfo, !IO)
+        LaterSpecs0 = mode_error_to_specs(CalleeModeError, !.ModeInfo),
+        (
+            LaterSpecs0 = [],
+            LaterSpecs = []
+        ;
+            LaterSpecs0 = [LaterSpecsHead0 | LaterSpecsTail],
+            (
+                LaterSpecsHead0 = error_msg_spec(_, _, _, _),
+                LaterSpecsHead = LaterSpecsHead0 ^ spec_treat_as_first := yes
+            ;
+                LaterSpecsHead0 = anything(_),
+                LaterSpecsHead = LaterSpecsHead0
+            ),
+            LaterSpecs = [LaterSpecsHead | LaterSpecsTail]
+        ),
+        Specs = InitSpecs ++ LaterSpecs
     ;
         CalleeModeErrors = [],
         error("report_mode_error_in_callee: no error")
     ).
 
-:- pred report_mode_error_no_matching_mode(mode_info::in, list(prog_var)::in,
-    list(inst)::in, io::di, io::uo) is det.
+:- func mode_error_no_matching_mode_to_specs(mode_info::in, list(prog_var)::in,
+    list(inst)::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_no_matching_mode(ModeInfo, Vars, Insts, !IO) :-
-    mode_info_write_context(ModeInfo, !IO),
+mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     mode_info_get_mode_context(ModeInfo, ModeContext),
@@ -585,16 +631,17 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts, !IO) :-
         inst_list_to_sep_lines(ModeInfo, Insts) ++
         [words("which does not match any of the modes for"),
         words(CallIdStr), suffix("."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
-:- pred report_mode_error_higher_order_pred_var(mode_info::in, pred_or_func::in,
-    prog_var::in, (inst)::in, arity::in, io::di, io::uo) is det.
+:- func mode_error_higher_order_pred_var_to_specs(mode_info::in,
+    pred_or_func::in, prog_var::in, (inst)::in, arity::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
-        Arity, !IO) :-
+mode_error_higher_order_pred_var_to_specs(ModeInfo, PredOrFunc, Var, VarInst,
+        Arity) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     (
         PredOrFunc = predicate,
         Expecting = "expecting higher-order pred inst (of arity " ++
@@ -610,22 +657,24 @@ report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
         words(add_quotes(inst_to_string(ModeInfo, VarInst))),
         suffix(","), nl,
         words(Expecting), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
-:- pred report_mode_error_poly_unify(mode_info::in, prog_var::in, (inst)::in,
-    io::di, io::uo) is det.
+:- func mode_error_poly_unify_to_specs(mode_info::in, prog_var::in, (inst)::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_poly_unify(ModeInfo, Var, VarInst, !IO) :-
+mode_error_poly_unify_to_specs(ModeInfo, Var, VarInst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     Pieces1 = [words("in polymorphically-typed unification:"), nl,
         words("mode error: variable"),
         words(add_quotes(mercury_var_to_string(Var, VarSet, no))),
         words("has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, VarInst))), suffix(","), nl,
         words("expected instantiatedness was `ground' or `any'."), nl],
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_globals(ModuleInfo, Globals),
+    globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (
         VerboseErrors = yes,
         Pieces2 = [words("When unifying two variables whose type"),
@@ -637,48 +686,52 @@ report_mode_error_poly_unify(ModeInfo, Var, VarInst, !IO) :-
         VerboseErrors = no,
         Pieces2 = []
     ),
-    write_error_pieces_not_first_line(Context, 0, Pieces1 ++ Pieces2, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2)].
 
-:- pred report_mode_error_var_is_live(mode_info::in, prog_var::in,
-    io::di, io::uo) is det.
+:- func mode_error_var_is_live_to_specs(mode_info::in, prog_var::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_var_is_live(ModeInfo, Var, !IO) :-
+mode_error_var_is_live_to_specs(ModeInfo, Var) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     Pieces = [words("unique-mode error: the called procedure"),
         words("would clobber its argument, but variable"),
         words(add_quotes(mercury_var_to_string(Var, VarSet, no))),
         words("is still live."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
-:- pred report_mode_error_var_has_inst(mode_info::in, prog_var::in,
-    (inst)::in, (inst)::in, io::di, io::uo) is det.
+:- func mode_error_var_has_inst_to_specs(mode_info::in, prog_var::in,
+    (inst)::in, (inst)::in) = (list(error_msg_spec)::out(error_msg_specs))
+    is det.
 
-report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst, !IO) :-
+mode_error_var_has_inst_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     Pieces = [words("mode error: variable"),
         words(add_quotes(mercury_var_to_string(Var, VarSet, no))),
         words("has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, VarInst))), suffix(","), nl,
         words("expected instantiatedness was"),
         words(add_quotes(inst_to_string(ModeInfo, Inst))), suffix("."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
-:- pred report_mode_error_implied_mode(mode_info::in, prog_var::in,
-    (inst)::in, (inst)::in, io::di, io::uo) is det.
+:- func mode_error_implied_mode_to_specs(mode_info::in, prog_var::in,
+    (inst)::in, (inst)::in) = (list(error_msg_spec)::out(error_msg_specs))
+    is det.
 
-report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst, !IO) :-
+mode_error_implied_mode_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
         % This "error" message is really a "sorry, not implemented" message.
         % We only print the message if we will actually generating code.
-    globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly, !IO),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_globals(ModuleInfo, Globals),
+    globals__lookup_bool_option(Globals, errorcheck_only, ErrorcheckOnly),
     (
         ErrorcheckOnly = no,
         mode_info_get_context(ModeInfo, Context),
         mode_info_get_varset(ModeInfo, VarSet),
-        mode_info_write_context(ModeInfo, !IO),
         Pieces = [words("sorry, implied modes not implemented."), nl,
             words("Variable"),
             words(add_quotes(mercury_var_to_string(Var, VarSet, no))),
@@ -688,83 +741,85 @@ report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst, !IO) :-
             words("expected instantiatedness was"),
             words(add_quotes(inst_to_string(ModeInfo, Inst))),
             suffix("."), nl],
-        write_error_pieces_not_first_line(Context, 0, Pieces, !IO)
+        Specs = [mode_info_context_to_spec(ModeInfo),
+            error_msg_spec(no, Context, 0, Pieces)]
     ;
-        ErrorcheckOnly = yes
+        ErrorcheckOnly = yes,
+        Specs = []
     ).
 
-:- pred report_mode_error_no_mode_decl(mode_info::in, io::di, io::uo) is det.
+:- func mode_error_no_mode_decl_to_specs(mode_info::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_no_mode_decl(ModeInfo, !IO) :-
+mode_error_no_mode_decl_to_specs(ModeInfo) = Specs :-
     mode_info_get_context(ModeInfo, Context),
-    mode_info_write_context(ModeInfo, !IO),
     Pieces = [words("no mode declaration for called predicate."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
-:- pred report_mode_error_unify_pred(mode_info::in, prog_var::in,
-    mode_error_unify_rhs::in, (type)::in, pred_or_func::in,
-    io::di, io::uo) is det.
+:- func mode_error_unify_pred_to_specs(mode_info::in, prog_var::in,
+    mode_error_unify_rhs::in, (type)::in, pred_or_func::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
-    { mode_info_get_context(ModeInfo, Context) },
-    { mode_info_get_varset(ModeInfo, VarSet) },
-    { mode_info_get_instvarset(ModeInfo, InstVarSet) },
-    mode_info_write_context(ModeInfo),
-    prog_out__write_context(Context),
-    io__write_string("  In unification of `"),
-    mercury_output_var(X, VarSet, no),
-    io__write_string("' with `"),
+mode_error_unify_pred_to_specs(ModeInfo, X, RHS, Type, PredOrFunc) = Specs :-
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    mode_info_get_instvarset(ModeInfo, InstVarSet),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_globals(ModuleInfo, Globals),
     (
-        { RHS = error_at_var(Y) },
-        mercury_output_var(Y, VarSet, no)
+        RHS = error_at_var(Y),
+        RHSStr = mercury_var_to_string(Y, VarSet, no)
     ;
-        { RHS = error_at_functor(ConsId, ArgVars) },
-        { mode_info_get_module_info(ModeInfo, ModuleInfo) },
-        hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet,
+        RHS = error_at_functor(ConsId, ArgVars),
+        RHSStr = hlds_out__functor_cons_id_to_string(ConsId, ArgVars, VarSet,
             ModuleInfo, no)
     ;
-        { RHS = error_at_lambda(ArgVars, ArgModes) },
-        io__write_string("lambda(["),
-        hlds_out__write_var_modes(ArgVars, ArgModes, VarSet,
-            InstVarSet, no),
-        io__write_string("] ... )")
+        RHS = error_at_lambda(ArgVars, ArgModes),
+        RHSStr = "lambda(["
+            ++ hlds_out__var_modes_to_string(ArgVars, ArgModes, VarSet,
+                InstVarSet, no)
+            ++ "] ... )"
     ),
-    io__write_string("':\n"),
-    prog_out__write_context(Context),
-    io__write_string("  mode error: attempt at higher-order unification.\n"),
-    prog_out__write_context(Context),
-    io__write_string("  Cannot unify two terms of type `"),
-    { varset__init(TypeVarSet) },
-    mercury_output_term(Type, TypeVarSet, no),
-    io__write_string("'.\n"),
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-    ( { VerboseErrors = yes } ->
-        io__write_string("\tYour code is trying to test whether two "),
-        prog_out__write_pred_or_func(PredOrFunc),
-        io__write_string("s are equal,\n"),
-        io__write_string("\tby unifying them.  In the general " ++
-                    "case, testing equivalence\n"),
-        io__write_string("\tof "),
-        prog_out__write_pred_or_func(PredOrFunc),
-        io__write_string("s is an undecidable problem,\n"),
-        io__write_string("\tand so this is not allowed by the Mercury mode system.\n"),
-        io__write_string("\tIn some cases, you can achieve the same effect by\n"),
-        io__write_string("\twriting an explicit universal quantification,\n"),
-        io__write_string("\te.g. `all [X] call(P, X) <=> call(Q, X)',"),
-        io__write_string(" instead of `P = Q'.\n")
+    varset__init(TypeVarSet),
+    Pieces1 = [words("In unification of"),
+        words(add_quotes(mercury_var_to_string(X, VarSet, no))),
+        words("with"), words(add_quotes(RHSStr)), suffix(":"), nl,
+        words("mode error: attempt at higher-order unification."), nl,
+        words("Cannot unify two terms of type"),
+        words(add_quotes(mercury_term_to_string(Type, TypeVarSet, no))),
+        suffix("."), nl],
+    globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+    (
+        VerboseErrors = yes,
+        Pieces2 = [words("Your code is trying to test whether two "),
+            words(prog_out__pred_or_func_to_full_str(PredOrFunc) ++ "s"),
+            words("are equal, by unifying them."),
+            words("In the general case, testing equivalence of"),
+            words(prog_out__pred_or_func_to_full_str(PredOrFunc) ++ "s"),
+            words("is an undecidable problem,"),
+            words("and so this is not allowed by the Mercury mode system."),
+            words("In some cases, you can achieve the same effect by"),
+            words("writing an explicit universal quantification, e.g."),
+            fixed("`all [X] call(P, X) <=> call(Q, X)',"),
+            words("instead of"),
+            fixed("`P = Q'.")]
     ;
-        []
-    ).
+        VerboseErrors = no,
+        Pieces2 = []
+    ),
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2)].
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_var(mode_info::in, prog_var::in,
-    prog_var::in, (inst)::in, (inst)::in, io::di, io::uo) is det.
+:- func mode_error_unify_var_var_to_specs(mode_info::in, prog_var::in,
+    prog_var::in, (inst)::in, (inst)::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY, !IO) :-
+mode_error_unify_var_var_to_specs(ModeInfo, X, Y, InstX, InstY) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     Pieces = [words("mode error in unification of"),
         words(add_quotes(mercury_var_to_string(X, VarSet, no))),
         words("and"),
@@ -778,17 +833,18 @@ report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY, !IO) :-
         words(add_quotes(mercury_var_to_string(Y, VarSet, no))),
         words("has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, InstY))), suffix("."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_lambda(mode_info::in, prog_var::in,
-    (inst)::in, (inst)::in, io::di, io::uo) is det.
+:- func mode_error_unify_var_lambda_to_specs(mode_info::in, prog_var::in,
+    (inst)::in, (inst)::in) = (list(error_msg_spec)::out(error_msg_specs))
+    is det.
 
-report_mode_error_unify_var_lambda(ModeInfo, X, InstX, InstY, !IO) :-
+mode_error_unify_var_lambda_to_specs(ModeInfo, X, InstX, InstY) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     Pieces = [words("mode error in unification of"),
         words(add_quotes(mercury_var_to_string(X, VarSet, no))),
         words("and lambda expression."), nl,
@@ -798,57 +854,55 @@ report_mode_error_unify_var_lambda(ModeInfo, X, InstX, InstY, !IO) :-
         words(add_quotes(inst_to_string(ModeInfo, InstX))), suffix(","), nl,
         words("lambda expression has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, InstY))), suffix("."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_functor(mode_info::in, prog_var::in,
-    cons_id::in, list(prog_var)::in, (inst)::in, list(inst)::in,
-    io::di, io::uo) is det.
+:- func mode_error_unify_var_functor_to_specs(mode_info::in, prog_var::in,
+    cons_id::in, list(prog_var)::in, (inst)::in, list(inst)::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-report_mode_error_unify_var_functor(ModeInfo, X, ConsId, Args, InstX, ArgInsts)
-        -->
-    { mode_info_get_context(ModeInfo, Context) },
-    { mode_info_get_varset(ModeInfo, VarSet) },
-    { mode_info_get_module_info(ModeInfo, ModuleInfo) },
-    mode_info_write_context(ModeInfo),
-    prog_out__write_context(Context),
-    io__write_string("  mode error in unification of `"),
-    mercury_output_var(X, VarSet, no),
-    io__write_string("' and `"),
-    hlds_out__write_functor_cons_id(ConsId, Args, VarSet, ModuleInfo, no),
-    io__write_string("'.\n"),
-    prog_out__write_context(Context),
-    io__write_string("  Variable `"),
-    mercury_output_var(X, VarSet, no),
-    io__write_string("' has instantiatedness `"),
-    output_inst(InstX, ModeInfo),
-    io__write_string("',\n"),
-    prog_out__write_context(Context),
-    io__write_string("  term `"),
-    hlds_out__write_functor_cons_id(ConsId, Args, VarSet, ModuleInfo, no),
+mode_error_unify_var_functor_to_specs(ModeInfo, X, ConsId, Args,
+        InstX, ArgInsts) = Specs :-
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    Pieces1 = [words("mode error in unification of"),
+        words(add_quotes(mercury_var_to_string(X, VarSet, no))),
+        words("and"),
+        words(add_quotes(hlds_out__functor_cons_id_to_string(ConsId, Args,
+            VarSet, ModuleInfo, no))), suffix("."), nl,
+        words("Variable"),
+        words(add_quotes(mercury_var_to_string(X, VarSet, no))),
+        words("has instantiatedness"),
+        words(add_quotes(inst_to_string(ModeInfo, InstX))), suffix(","), nl,
+        words("term"),
+        words(add_quotes(hlds_out__functor_cons_id_to_string(ConsId, Args,
+            VarSet, ModuleInfo, no)))],
     (
-        { Args = [_ | _] },
-        io__write_string("'\n"),
-        prog_out__write_context(Context),
-        io__write_string("  has instantiatedness `"),
-        mercury_output_cons_id(ConsId, does_not_need_brackets),
-        io__write_string("(\n"),
-        output_inst_list_sep_lines(Context, ArgInsts, ModeInfo),
-        prog_out__write_context(Context),
-        io__write_string("  )")
+        Args = [_ | _],
+        Pieces2 = [words("has instantiatedness"),
+            prefix("`"),
+            words(mercury_cons_id_to_string(ConsId, does_not_need_brackets)),
+            suffix("("), nl_indent_delta(1)] ++
+            inst_list_to_sep_lines(ModeInfo, ArgInsts) ++
+            [fixed(")'.")]
     ;
-        { Args = [] },
-        io__write_string("' has instantiatedness `"),
-        mercury_output_cons_id(ConsId, does_not_need_brackets)
+        Args = [],
+        Pieces2 = [words("has instantiatedness"),
+            words(add_quotes(mercury_cons_id_to_string(ConsId,
+                does_not_need_brackets))), suffix("."), nl]
     ),
-    io__write_string("'.\n").
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2)].
 
 %-----------------------------------------------------------------------------%
 
-:- pred mode_info_write_context(mode_info::in, io::di, io::uo) is det.
+:- func mode_info_context_to_spec(mode_info::in)
+    = (error_msg_spec::out(error_msg_spec)) is det.
 
-mode_info_write_context(ModeInfo, !IO) :-
+mode_info_context_to_spec(ModeInfo) = Spec :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_predid(ModeInfo, PredId),
@@ -864,24 +918,43 @@ mode_info_write_context(ModeInfo, !IO) :-
     mode_info_get_instvarset(ModeInfo, InstVarSet),
     MaybeDet = no,
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("In clause for `", !IO),
-    mercury_output_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes,
-        MaybeDet, Context, !IO),
-    io__write_string("':\n", !IO),
+    ModeSubDeclStr = mercury_mode_subdecl_to_string(PredOrFunc, InstVarSet,
+        Name, Modes, MaybeDet, Context),
+    Pieces1 = [words("In clause for"),
+        words(add_quotes(ModeSubDeclStr)), suffix(":"), nl],
     mode_info_get_mode_context(ModeInfo, ModeContext),
-    write_mode_context(ModeContext, Context, PredMarkers, !IO).
+    Pieces2 = mode_context_to_pieces(ModeContext, PredMarkers),
+    Spec = error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_final_inst(mode_info::in, int::in, prog_var::in,
-    (inst)::in, (inst)::in, final_inst_error::in, io::di, io::uo) is det.
+    % XXX some parts of the mode context never get set up
 
-report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst, Reason,
-        !IO) :-
+:- func mode_context_to_pieces(mode_context, pred_markers)
+    = list(format_component).
+
+mode_context_to_pieces(uninitialized, _Markers) = [].
+mode_context_to_pieces(call(CallId, ArgNum), Markers) =
+    [words("in"),
+        words(hlds_out__call_arg_id_to_string(CallId, ArgNum, Markers)),
+        suffix(":"), nl].
+mode_context_to_pieces(unify(UnifyContext, _Side), _Markers) = Pieces :-
+    hlds_out__unify_context_to_pieces(no, _, UnifyContext, [], Pieces).
+
+%-----------------------------------------------------------------------------%
+
+mode_context_init(uninitialized).
+
+%-----------------------------------------------------------------------------%
+
+:- func mode_error_final_inst_to_specs(mode_info::in, int::in, prog_var::in,
+    (inst)::in, (inst)::in, final_inst_error::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+
+mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
+        = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
-    mode_info_write_context(ModeInfo, !IO),
     ( Reason = too_instantiated ->
         Problem = " became too instantiated."
     ; Reason = not_instantiated_enough ->
@@ -899,27 +972,8 @@ report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst, Reason,
         words("expected final instantiatedness was"),
         words(add_quotes(inst_to_string(ModeInfo, Inst))),
         suffix("."), nl],
-    write_error_pieces_not_first_line(Context, 0, Pieces, !IO).
-
-%-----------------------------------------------------------------------------%
-
-mode_context_init(uninitialized).
-
-%-----------------------------------------------------------------------------%
-
-    % XXX some parts of the mode context never get set up
-
-:- pred write_mode_context(mode_context::in, prog_context::in,
-    pred_markers::in, io::di, io::uo) is det.
-
-write_mode_context(uninitialized, _Context, _Markers, !IO).
-write_mode_context(call(CallId, ArgNum), Context, Markers, !IO) :-
-    prog_out__write_context(Context, !IO),
-    io__write_string("  in ", !IO),
-    hlds_out__write_call_arg_id(CallId, ArgNum, Markers, !IO),
-    io__write_string(":\n", !IO).
-write_mode_context(unify(UnifyContext, _Side), Context, _Markers, !IO) :-
-    hlds_out__write_unify_context(UnifyContext, Context, !IO).
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
 
 %-----------------------------------------------------------------------------%
 
@@ -1077,7 +1131,7 @@ report_mode_errors(!ModeInfo, !IO) :-
     mode_info_get_errors(!.ModeInfo, Errors),
     (
         Errors = [FirstError | _],
-        % XXX Why do we only report the first?
+        % XXX Document exactly why we only report the first.
         FirstError = mode_error_info(_, ModeError, Context, ModeContext),
         mode_info_set_context(Context, !ModeInfo),
         mode_info_set_mode_context(ModeContext, !ModeInfo),
@@ -1101,7 +1155,7 @@ report_indistinguishable_modes_error(OldProcId, NewProcId, PredId, PredInfo,
     Pieces1 = [words("In mode declarations for ")] ++
         describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
         ++ [suffix(":"), nl, words("error: duplicate mode declaration."), nl],
-    write_error_pieces(NewContext, 0, Pieces1, !IO),
+    Specs1 = [error_msg_spec(no, NewContext, 0, Pieces1)],
 
     globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
@@ -1111,13 +1165,23 @@ report_indistinguishable_modes_error(OldProcId, NewProcId, PredId, PredInfo,
             words("and"),
             fixed(add_quotes(mode_decl_to_string(NewProcId, PredInfo))),
             words("are indistinguishable.")],
-        write_error_pieces_not_first_line(NewContext, 0, Pieces2, !IO)
+        Specs2 = [error_msg_spec(no, NewContext, 0, Pieces2)]
     ;
-        VerboseErrors = no
+        VerboseErrors = no,
+        Specs2 = []
     ),
 
     Pieces3 = [words("Here is the conflicting mode declaration.")],
-    write_error_pieces_not_first_line(OldContext, 0, Pieces3, !IO).
+    Specs3 = [error_msg_spec(no, OldContext, 0, Pieces3)],
+    write_error_specs(Specs1 `do_append` Specs2 `do_append` Specs3, !IO).
+
+:- func do_append(list(T)::in(list_skel(I =< ground)),
+    list(T)::in(list_skel(I =< ground))) =
+    (list(T)::out(list_skel(I =< ground))) is det.
+
+do_append([], L) = L.
+do_append([H | T], L) = [H | NT] :-
+    do_append(T, L) = NT.
 
 %-----------------------------------------------------------------------------%
 

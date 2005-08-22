@@ -613,11 +613,18 @@ term_io__escaped_string(String) =
 :- func term_io__add_escaped_char(char, string) = string.
 
 term_io__add_escaped_char(Char, String0) = String :-
-	String = string__append(String0, string__char_to_string(Char)).
+	( mercury_escape_special_char(Char, QuoteChar) ->
+		String = String0 ++ from_char_list(['\\', QuoteChar])
+	; is_mercury_source_char(Char) ->
+		String = String0 ++ string__char_to_string(Char)
+	;
+		String = String0 ++ mercury_escape_char(Char)
+	).
 
-	% Note: the code here is similar to code in
-	% compiler/mercury_to_mercury.m; any changes here
-	% may require similar changes there.
+	% Note: the code of add_escaped_char and write_escaped_char should be
+	% kept in sync. The code of both is similar to code in
+	% compiler/mercury_to_mercury.m; any changes here may require
+	% similar changes there.
 
 term_io__write_escaped_char(Char, !IO) :-
 	( mercury_escape_special_char(Char, QuoteChar) ->

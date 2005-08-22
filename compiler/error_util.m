@@ -92,6 +92,10 @@
 
 :- type format_components == list(format_component).
 
+    % Wrap words() around a string.
+    %
+:- func string_to_words_piece(string) = format_component.
+
     % Convert a list of strings into a list of format_components
     % separated by commas, with the last two elements separated by `and'.
     %
@@ -108,6 +112,14 @@
     % separated by commas, with the last two elements separated by `and'.
     %
 :- func component_list_to_pieces(list(format_component)) =
+    list(format_component).
+
+    % Convert a list of lines (each given by a list of format_components
+    % *without* a final nl) into a condensed list of format_components
+    % in which adjacent lines are separated by commas and newlines,
+    % with only a newline (no comma) after the last.
+    %
+:- func component_list_to_line_pieces(list(list(format_component))) =
     list(format_component).
 
     % choose_number(List, Singular, Plural) = Form
@@ -155,6 +167,44 @@
     list(format_component)::in, io::di, io::uo) is det.
 
 :- func error_pieces_to_string(list(format_component)) = string.
+
+    % An error_msg_spec represents a call write_error_pieces. A call to
+    % write_error_specs will invoke write_error_specs for each element of the
+    % list. Each invocation will use the context given in the error_msg_spec.
+    % The first call will use an indent of zero. By default, all later calls
+    % will use the indent that would be required by the not_first_line variant
+    % of write_error_pieces. However, the first of an error_msg_spec can be
+    % treated as a first line if the treat_as_first_call field is set to yes,
+    % and each call to write_error_pieces will be additionally indented
+    % by the number of levels indicated by the extra_indent field.
+    %
+    % The anything alternative allows the caller to specify an arbitrary thing
+    % to be printed at any point in the sequence. Since things printed this way
+    % aren't formatted as error messages should be (context at start etc), this
+    % capability is intended only for messages that help debug the compiler
+    % itself.
+
+:- type error_msg_spec
+    --->    error_msg_spec(
+                spec_treat_as_first     :: bool,
+                spec_context            :: prog_context,
+                spec_extra_indent       :: int,
+                spec_pieces             :: list(format_component)
+            )
+    ;       anything(
+                spec_write_anything     :: pred(io, io)
+            ).
+
+:- inst error_msg_spec ==
+        bound(
+            error_msg_spec(ground, ground, ground, ground)
+        ;
+            anything(pred(di, uo) is det)
+        ).
+:- inst error_msg_specs == list_skel(error_msg_spec).
+
+:- pred write_error_specs(list(error_msg_spec)::in(error_msg_specs),
+    io::di, io::uo) is det.
 
 :- func describe_sym_name(sym_name) = string.
 
@@ -236,6 +286,39 @@
 :- import_module string.
 :- import_module term.
 
+write_error_specs(Specs, !IO) :-
+    write_error_specs_2(Specs, yes, !IO).
+
+:- pred write_error_specs_2(list(error_msg_spec)::in(error_msg_specs),
+    bool::in, io::di, io::uo) is det.
+
+write_error_specs_2([], _First, !IO).
+write_error_specs_2([Spec | Specs], !.First, !IO) :-
+    (
+        Spec = error_msg_spec(TreatAsFirst, Context, ExtraIndent, Pieces),
+        (
+            TreatAsFirst = yes,
+            !:First = yes
+        ;
+            TreatAsFirst = no
+        ),
+        Indent = ExtraIndent * indent_increment,
+        (
+            !.First = yes,
+            write_error_pieces(Context, Indent, Pieces, !IO)
+        ;
+            !.First = no,
+            write_error_pieces_not_first_line(Context, Indent, Pieces, !IO)
+        ),
+        !:First = no
+    ;
+        Spec = anything(Pred),
+        Pred(!IO)
+    ),
+    write_error_specs_2(Specs, !.First, !IO).
+
+string_to_words_piece(Str) = words(Str).
+
 list_to_pieces([]) = [].
 list_to_pieces([Elem]) = [words(Elem)].
 list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
@@ -259,6 +342,12 @@ component_list_to_pieces(
         [Component1, Component2, Component3 | Components]) =
     list__append(append_punctuation([Component1], ','),
         component_list_to_pieces([Component2, Component3 | Components])).
+
+component_list_to_line_pieces([]) = [].
+component_list_to_line_pieces([Components]) = Components ++ [nl].
+component_list_to_line_pieces([Components1, Components2 | ComponentLists]) =
+    list__append(Components1 ++ [suffix(","), nl],
+        component_list_to_line_pieces([Components2 | ComponentLists])).
 
 choose_number([], _Singular, Plural) = Plural.
 choose_number([_], Singular, _Plural) = Singular.

@@ -46,64 +46,93 @@ aditi_update_mode_errors.m:105: In clause for predicate
 aditi_update_mode_errors.m:105:   `aditi_update_mode_errors.aditi_update_modes11/2':
 aditi_update_mode_errors.m:105:   warning: variable `X0' occurs only once in
 aditi_update_mode_errors.m:105:   this scope.
-aditi_update_mode_errors.m:053: In clause for `aditi_update_modes1((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:053:   in argument 2 of the inserted tuple of `aditi_insert' of predicate `aditi_update_mode_errors.p/3':
+aditi_update_mode_errors.m:053: In clause for
+aditi_update_mode_errors.m:053:   `aditi_update_modes1((aditi.aditi_di),
+aditi_update_mode_errors.m:053:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:053:   in argument 2 of the inserted tuple of
+aditi_update_mode_errors.m:053:   `aditi_insert' of predicate
+aditi_update_mode_errors.m:053:   `aditi_update_mode_errors.p/3':
 aditi_update_mode_errors.m:053:   mode error: variable `V_4' has
 aditi_update_mode_errors.m:053:   instantiatedness `free',
 aditi_update_mode_errors.m:053:   expected instantiatedness was `ground'.
-aditi_update_mode_errors.m:056: In clause for `aditi_update_modes2((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:056:   in argument 2 of the inserted tuple of `aditi_insert' of function `aditi_update_mode_errors.q/2':
+aditi_update_mode_errors.m:056: In clause for
+aditi_update_mode_errors.m:056:   `aditi_update_modes2((aditi.aditi_di),
+aditi_update_mode_errors.m:056:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:056:   in argument 2 of the inserted tuple of
+aditi_update_mode_errors.m:056:   `aditi_insert' of function
+aditi_update_mode_errors.m:056:   `aditi_update_mode_errors.q/2':
 aditi_update_mode_errors.m:056:   mode error: variable `V_4' has
 aditi_update_mode_errors.m:056:   instantiatedness `free',
 aditi_update_mode_errors.m:056:   expected instantiatedness was `ground'.
-aditi_update_mode_errors.m:059: In clause for `aditi_update_modes3((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:059:   in argument 2 of `aditi_insert' of predicate `aditi_update_mode_errors.p/3':
+aditi_update_mode_errors.m:059: In clause for
+aditi_update_mode_errors.m:059:   `aditi_update_modes3((aditi.aditi_di),
+aditi_update_mode_errors.m:059:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:059:   in argument 2 of `aditi_insert' of predicate
+aditi_update_mode_errors.m:059:   `aditi_update_mode_errors.p/3':
 aditi_update_mode_errors.m:059:   mode error: variable `V_4' has
 aditi_update_mode_errors.m:059:   instantiatedness `free',
 aditi_update_mode_errors.m:059:   expected instantiatedness was `ground'.
-aditi_update_mode_errors.m:062: In clause for `aditi_update_modes4((aditi.aditi_di), (aditi.aditi_uo))':
+aditi_update_mode_errors.m:062: In clause for
+aditi_update_mode_errors.m:062:   `aditi_update_modes4((aditi.aditi_di),
+aditi_update_mode_errors.m:062:   (aditi.aditi_uo))':
 aditi_update_mode_errors.m:062:   in argument 1 of call to predicate `int.</2':
 aditi_update_mode_errors.m:062:   mode error: variable `X' has instantiatedness
 aditi_update_mode_errors.m:062:   `free',
 aditi_update_mode_errors.m:062:   expected instantiatedness was `ground'.
-aditi_update_mode_errors.m:065: In clause for `aditi_update_modes5((aditi.aditi_di), (aditi.aditi_uo))':
+aditi_update_mode_errors.m:065: In clause for
+aditi_update_mode_errors.m:065:   `aditi_update_modes5((aditi.aditi_di),
+aditi_update_mode_errors.m:065:   (aditi.aditi_uo))':
 aditi_update_mode_errors.m:065:   in argument 1 of call to predicate `int.</2':
 aditi_update_mode_errors.m:065:   mode error: variable `X' has instantiatedness
 aditi_update_mode_errors.m:065:   `free',
 aditi_update_mode_errors.m:065:   expected instantiatedness was `ground'.
-aditi_update_mode_errors.m:072: In clause for `aditi_update_modes6((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:072:   in argument 2 of `aditi_bulk_delete' of predicate `aditi_update_mode_errors.p/3':
+aditi_update_mode_errors.m:072: In clause for
+aditi_update_mode_errors.m:072:   `aditi_update_modes6((aditi.aditi_di),
+aditi_update_mode_errors.m:072:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:072:   in argument 2 of `aditi_bulk_delete' of
+aditi_update_mode_errors.m:072:   predicate `aditi_update_mode_errors.p/3':
 aditi_update_mode_errors.m:072:   mode error: variable `DeleteP' has
 aditi_update_mode_errors.m:072:   instantiatedness `/* unique */(pred((free >>
 aditi_update_mode_errors.m:072:   free), (free >> ground), (ground >> ground))
 aditi_update_mode_errors.m:072:   is nondet)',
 aditi_update_mode_errors.m:072:   expected instantiatedness was `(pred(in, out,
 aditi_update_mode_errors.m:072:   out) is nondet)'.
-aditi_update_mode_errors.m:078: In clause for `aditi_update_modes7((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:078:   in argument 2 of `aditi_bulk_delete' of function `aditi_update_mode_errors.q/2':
+aditi_update_mode_errors.m:078: In clause for
+aditi_update_mode_errors.m:078:   `aditi_update_modes7((aditi.aditi_di),
+aditi_update_mode_errors.m:078:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:078:   in argument 2 of `aditi_bulk_delete' of
+aditi_update_mode_errors.m:078:   function `aditi_update_mode_errors.q/2':
 aditi_update_mode_errors.m:078:   mode error: variable `DeleteQ' has
 aditi_update_mode_errors.m:078:   instantiatedness `/* unique */(func((free >>
 aditi_update_mode_errors.m:078:   free), (free >> ground)) = (ground >> ground)
 aditi_update_mode_errors.m:078:   is nondet)',
 aditi_update_mode_errors.m:078:   expected instantiatedness was `(func(in, out)
 aditi_update_mode_errors.m:078:   = out is nondet)'.
-aditi_update_mode_errors.m:087: In clause for `aditi_update_modes8((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:087:   in argument 2 of `aditi_bulk_insert' of predicate `aditi_update_mode_errors.p/3':
+aditi_update_mode_errors.m:087: In clause for
+aditi_update_mode_errors.m:087:   `aditi_update_modes8((aditi.aditi_di),
+aditi_update_mode_errors.m:087:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:087:   in argument 2 of `aditi_bulk_insert' of
+aditi_update_mode_errors.m:087:   predicate `aditi_update_mode_errors.p/3':
 aditi_update_mode_errors.m:087:   mode error: variable `InsertP' has
 aditi_update_mode_errors.m:087:   instantiatedness `/* unique */(pred((ground
 aditi_update_mode_errors.m:087:   >> ground), (ground >> ground), (free >>
 aditi_update_mode_errors.m:087:   ground)) is nondet)',
 aditi_update_mode_errors.m:087:   expected instantiatedness was `(pred(in, out,
 aditi_update_mode_errors.m:087:   out) is nondet)'.
-aditi_update_mode_errors.m:098: In clause for `aditi_update_modes9((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:098:   in argument 2 of `aditi_bulk_insert' of function `aditi_update_mode_errors.q/2':
+aditi_update_mode_errors.m:098: In clause for
+aditi_update_mode_errors.m:098:   `aditi_update_modes9((aditi.aditi_di),
+aditi_update_mode_errors.m:098:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:098:   in argument 2 of `aditi_bulk_insert' of
+aditi_update_mode_errors.m:098:   function `aditi_update_mode_errors.q/2':
 aditi_update_mode_errors.m:098:   mode error: variable `InsertQ' has
 aditi_update_mode_errors.m:098:   instantiatedness `/* unique */(func((ground
 aditi_update_mode_errors.m:098:   >> ground), (ground >> ground)) = (free >>
 aditi_update_mode_errors.m:098:   ground) is nondet)',
 aditi_update_mode_errors.m:098:   expected instantiatedness was `(func(in, out)
 aditi_update_mode_errors.m:098:   = out is nondet)'.
-aditi_update_mode_errors.m:102: In clause for `aditi_update_modes10((aditi.aditi_di), (aditi.aditi_uo))':
+aditi_update_mode_errors.m:102: In clause for
+aditi_update_mode_errors.m:102:   `aditi_update_modes10((aditi.aditi_di),
+aditi_update_mode_errors.m:102:   (aditi.aditi_uo))':
 aditi_update_mode_errors.m:102:   in call to function `int.+/2':
 aditi_update_mode_errors.m:102:   mode error: arguments `X0, V_12, V_10' have
 aditi_update_mode_errors.m:102:   the following insts:
@@ -112,7 +141,9 @@ aditi_update_mode_errors.m:102:     unique(1),
 aditi_update_mode_errors.m:102:     free
 aditi_update_mode_errors.m:102:   which does not match any of the modes for
 aditi_update_mode_errors.m:102:   function `int.+/2'.
-aditi_update_mode_errors.m:105: In clause for `aditi_update_modes11((aditi.aditi_di), (aditi.aditi_uo))':
+aditi_update_mode_errors.m:105: In clause for
+aditi_update_mode_errors.m:105:   `aditi_update_modes11((aditi.aditi_di),
+aditi_update_mode_errors.m:105:   (aditi.aditi_uo))':
 aditi_update_mode_errors.m:105:   in call to function `int.+/2':
 aditi_update_mode_errors.m:105:   mode error: arguments `X0, V_12, V_10' have
 aditi_update_mode_errors.m:105:   the following insts:
@@ -121,8 +152,11 @@ aditi_update_mode_errors.m:105:     unique(1),
 aditi_update_mode_errors.m:105:     free
 aditi_update_mode_errors.m:105:   which does not match any of the modes for
 aditi_update_mode_errors.m:105:   function `int.+/2'.
-aditi_update_mode_errors.m:115: In clause for `aditi_update_modes12((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:115:   in argument 2 of `aditi_bulk_modify' of predicate `aditi_update_mode_errors.p/3':
+aditi_update_mode_errors.m:115: In clause for
+aditi_update_mode_errors.m:115:   `aditi_update_modes12((aditi.aditi_di),
+aditi_update_mode_errors.m:115:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:115:   in argument 2 of `aditi_bulk_modify' of
+aditi_update_mode_errors.m:115:   predicate `aditi_update_mode_errors.p/3':
 aditi_update_mode_errors.m:115:   mode error: variable `ModifyP' has
 aditi_update_mode_errors.m:115:   instantiatedness `/* unique */(pred((free >>
 aditi_update_mode_errors.m:115:   free), (free >> ground), (free >> ground),
@@ -130,8 +164,11 @@ aditi_update_mode_errors.m:115:   (free >> free), (ground >> ground), (ground
 aditi_update_mode_errors.m:115:   >> ground)) is semidet)',
 aditi_update_mode_errors.m:115:   expected instantiatedness was `(pred(in, out,
 aditi_update_mode_errors.m:115:   out, unused, out, out) is nondet)'.
-aditi_update_mode_errors.m:125: In clause for `aditi_update_modes13((aditi.aditi_di), (aditi.aditi_uo))':
-aditi_update_mode_errors.m:125:   in argument 2 of `aditi_bulk_modify' of function `aditi_update_mode_errors.q/2':
+aditi_update_mode_errors.m:125: In clause for
+aditi_update_mode_errors.m:125:   `aditi_update_modes13((aditi.aditi_di),
+aditi_update_mode_errors.m:125:   (aditi.aditi_uo))':
+aditi_update_mode_errors.m:125:   in argument 2 of `aditi_bulk_modify' of
+aditi_update_mode_errors.m:125:   function `aditi_update_mode_errors.q/2':
 aditi_update_mode_errors.m:125:   mode error: variable `ModifyQ' has
 aditi_update_mode_errors.m:125:   instantiatedness `/* unique */(pred((free >>
 aditi_update_mode_errors.m:125:   free), (ground >> ground), (ground >>
@@ -139,7 +176,8 @@ aditi_update_mode_errors.m:125:   ground), (free >> free), (ground >> ground),
 aditi_update_mode_errors.m:125:   (ground >> ground)) is nondet)',
 aditi_update_mode_errors.m:125:   expected instantiatedness was `(pred(in, out,
 aditi_update_mode_errors.m:125:   out, unused, out, out) is nondet)'.
-aditi_update_mode_errors.m:047: In clause for `anc((aditi.aditi_mui), out, out)':
+aditi_update_mode_errors.m:047: In clause for `anc((aditi.aditi_mui), out,
+aditi_update_mode_errors.m:047:   out)':
 aditi_update_mode_errors.m:047:   in argument 2 of clause head:
 aditi_update_mode_errors.m:047:   mode error in unification of `X' and `X'.
 aditi_update_mode_errors.m:047:   Variable `X' has instantiatedness `free',

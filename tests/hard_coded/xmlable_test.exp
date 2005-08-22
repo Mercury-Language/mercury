@@ -28,7 +28,7 @@
 			</tr>
 			<tr>
 				<td>6</td>
-				<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=&apos;&quot;</td>
+				<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=\&apos;&quot;</td>
 			</tr>
 		</table><hr />&nbsp;<!-- inline comment --><script type="text/javascript">
 			<![CDATA[document.write('hello');]]>
@@ -64,7 +64,7 @@
 			</tr>
 			<tr>
 				<td>6</td>
-				<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=&apos;&quot;</td>
+				<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=\&apos;&quot;</td>
 			</tr>
 		</table><hr />&nbsp;<!-- inline comment --><script type="text/javascript">
 			<![CDATA[document.write('hello');]]>
@@ -99,7 +99,7 @@
 					</tr>
 					<tr>
 						<td>6</td>
-						<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=&apos;&quot;</td>
+						<td>&quot;six &amp;&lt;&gt;!@$%^`&amp;*()-+=\&apos;&quot;</td>
 					</tr>
 				</table><hr />&nbsp;<!-- inline comment --><script type="text/javascript">
 					<![CDATA[document.write('hello');]]>

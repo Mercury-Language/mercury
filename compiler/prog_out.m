@@ -59,6 +59,7 @@
     % enclosing forward/backward-quote pair (`...').
     %
 :- pred write_sym_name(sym_name::in, io::di, io::uo) is det.
+:- func sym_name_to_escaped_string(sym_name) = string.
 
 :- pred write_sym_name_and_arity(sym_name_and_arity::in, io::di, io::uo)
     is det.
@@ -96,6 +97,7 @@
     % Write out a module specifier.
     %
 :- pred write_module_spec(module_specifier::in, io::di, io::uo) is det.
+:- func module_spec_to_escaped_string(module_specifier) = string.
 
 :- pred write_module_list(list(module_name)::in, io::di, io::uo) is det.
 
@@ -240,12 +242,19 @@ context_to_string(Context, ContextMessage) :-
 
 %-----------------------------------------------------------------------------%
 
-write_sym_name(qualified(ModuleSpec,Name), !IO) :-
+write_sym_name(qualified(ModuleSpec, Name), !IO) :-
     write_module_spec(ModuleSpec, !IO),
     io__write_string(".", !IO),
     term_io__write_escaped_string(Name, !IO).
 write_sym_name(unqualified(Name), !IO) :-
     term_io__write_escaped_string(Name, !IO).
+
+sym_name_to_escaped_string(qualified(ModuleSpec, Name)) =
+    module_spec_to_escaped_string(ModuleSpec)
+    ++ "."
+    ++ term_io__escaped_string(Name).
+sym_name_to_escaped_string(unqualified(Name)) =
+    term_io__escaped_string(Name).
 
 write_sym_name_and_arity(Name / Arity, !IO) :-
     write_sym_name(Name, !IO),
@@ -324,6 +333,9 @@ simple_call_id_to_sym_name_and_arity(PredOrFunc - SymName/Arity,
 
 write_module_spec(ModuleSpec, !IO) :-
     write_sym_name(ModuleSpec, !IO).
+
+module_spec_to_escaped_string(ModuleSpec) =
+    sym_name_to_escaped_string(ModuleSpec).
 
 %-----------------------------------------------------------------------------%
 

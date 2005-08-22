@@ -1,10 +1,14 @@
-ho_type_mode_bug.m:025: In clause for `my_foldl2((pred(in, in, out) is det), in, in, out, in, out)':
-ho_type_mode_bug.m:025:   in argument 1 (i.e. the predicate term) of higher-order predicate call:
+ho_type_mode_bug.m:025: In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:025:   in, in, out, in, out)':
+ho_type_mode_bug.m:025:   in argument 1 (i.e. the predicate term) of
+ho_type_mode_bug.m:025:   higher-order predicate call:
 ho_type_mode_bug.m:025:   mode error: variable `P' has instantiatedness
 ho_type_mode_bug.m:025:   `(pred(in, in, out) is det)',
 ho_type_mode_bug.m:025:   expecting higher-order pred inst (of arity 5).
-ho_type_mode_bug.m:025: In clause for `my_foldl2((pred(in, in, out) is det), in, in, out, di, uo)':
-ho_type_mode_bug.m:025:   in argument 1 (i.e. the predicate term) of higher-order predicate call:
+ho_type_mode_bug.m:025: In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:025:   in, in, out, di, uo)':
+ho_type_mode_bug.m:025:   in argument 1 (i.e. the predicate term) of
+ho_type_mode_bug.m:025:   higher-order predicate call:
 ho_type_mode_bug.m:025:   mode error: variable `P' has instantiatedness
 ho_type_mode_bug.m:025:   `(pred(in, in, out) is det)',
 ho_type_mode_bug.m:025:   expecting higher-order pred inst (of arity 5).

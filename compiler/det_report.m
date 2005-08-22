@@ -910,9 +910,9 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     unify_context::in, det_info::in, prog_var::in, unify_rhs::in,
     io::di, io::uo) is det.
 
-det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo,
+det_report_unify_context(!.First, Last, Context, UnifyContext, DetInfo,
         LHS, RHS, !IO) :-
-    hlds_out__write_unify_context(First0, UnifyContext, Context, First, !IO),
+    hlds_out__write_unify_context(!First, UnifyContext, Context, !IO),
     prog_out__write_context(Context, !IO),
     det_get_proc_info(DetInfo, ProcInfo),
     proc_info_varset(ProcInfo, VarSet),
@@ -921,7 +921,7 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo,
         % proc_info, so we'll just make one up....
     varset__init(InstVarSet),
     (
-        First = yes,
+        !.First = yes,
         (
             Last = yes,
             io__write_string("  Unification ", !IO)
@@ -930,7 +930,7 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo,
             io__write_string("  In unification ", !IO)
         )
     ;
-        First = no,
+        !.First = no,
         (
             Last = yes,
             io__write_string("  unification ", !IO)
@@ -1251,7 +1251,7 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
         Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"), nl]
     ;
         GoalContext = unify(UnifyContext),
-        hlds_out__unify_context_to_pieces(UnifyContext, [], Pieces0)
+        hlds_out__unify_context_to_pieces(yes, _, UnifyContext, [], Pieces0)
     ),
     ( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->
         TypeCtorStr = hlds_out__type_ctor_to_string(TypeCtor)

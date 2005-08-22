@@ -273,9 +273,11 @@
 
 :- pred mercury_output_bracketed_sym_name(sym_name::in,
     io::di, io::uo) is det.
+:- func mercury_bracketed_sym_name_to_string(sym_name) = string.
 
 :- pred mercury_output_bracketed_sym_name(sym_name::in, needs_quotes::in,
     io::di, io::uo) is det.
+:- func mercury_bracketed_sym_name_to_string(sym_name, needs_quotes) = string.
 
 :- pred mercury_convert_var_name(string::in, string::out) is det.
 
@@ -3746,8 +3748,14 @@ mercury_output_sym_name(Name, NextToGraphicToken, !IO) :-
 mercury_output_bracketed_sym_name(SymName, !IO) :-
     mercury_output_bracketed_sym_name(SymName, not_next_to_graphic_token, !IO).
 
+mercury_bracketed_sym_name_to_string(Name) =
+    mercury_bracketed_sym_name_to_string(Name, not_next_to_graphic_token).
+
 mercury_output_bracketed_sym_name(Name, NextToGraphicToken, !IO) :-
     mercury_format_bracketed_sym_name(Name, NextToGraphicToken, !IO).
+
+mercury_bracketed_sym_name_to_string(Name, NextToGraphicToken) = Str :-
+    mercury_format_bracketed_sym_name(Name, NextToGraphicToken, "", Str).
 
 :- pred mercury_format_bracketed_sym_name(sym_name::in,
     U::di, U::uo) is det <= output(U).

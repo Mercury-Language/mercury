@@ -73,12 +73,16 @@
     %
 :- pred hlds_out__write_pred_id(module_info::in, pred_id::in, io::di, io::uo)
     is det.
+:- func hlds_out__pred_id_to_string(module_info, pred_id) = string.
 
 :- pred hlds_out__write_pred_proc_id(module_info::in, pred_proc_id::in, io::di,
     io::uo) is det.
+:- func hlds_out__pred_proc_id_to_string(module_info, pred_proc_id) = string.
 
 :- pred hlds_out__write_pred_proc_id(module_info::in, pred_id::in, proc_id::in,
     io::di, io::uo) is det.
+:- func hlds_out__pred_proc_id_to_string(module_info, pred_id, proc_id)
+    = string.
 
 :- pred hlds_out__write_call_id(call_id::in, io::di, io::uo) is det.
 :- func hlds_out__call_id_to_string(call_id) = string.
@@ -99,6 +103,8 @@
     %
 :- pred hlds_out__write_unify_context(unify_context::in, prog_context::in,
     io::di, io::uo) is det.
+:- pred hlds_out__unify_context_to_pieces(unify_context::in,
+    list(format_component)::in, list(format_component)::out) is det.
 
     % hlds_out__write_unify_context_first/6 is the same as above, except that
     % it also takes and returns a bool which specifies whether this is the
@@ -107,13 +113,13 @@
     % a capital letter, e.g.
     %   foo.m:123:   In argument 3 of functor `foo/5':
     %   foo.m:123:   in unification of `X' and `blah':
-    % The bool returned as the fourth argument will be `no' unless nothing
+    % The bool returned as the second argument will be `no' unless nothing
     % was printed out, in which case it will be the same as the first arg.
     %
-:- pred hlds_out__write_unify_context(bool::in, unify_context::in,
-    prog_context::in, bool::out, io::di, io::uo) is det.
-
-:- pred hlds_out__unify_context_to_pieces(unify_context::in,
+:- pred hlds_out__write_unify_context(bool::in, bool::out, unify_context::in,
+    prog_context::in, io::di, io::uo) is det.
+:- pred hlds_out__unify_context_to_pieces(bool::in, bool::out,
+    unify_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
 :- pred hlds_out__write_determinism(determinism::in, io::di, io::uo) is det.
@@ -183,6 +189,8 @@
     %
 :- pred hlds_out__write_functor(const::in, list(prog_var)::in, prog_varset::in,
     bool::in, io::di, io::uo) is det.
+:- func hlds_out__functor_to_string(const, list(prog_var), prog_varset, bool)
+    = string.
 
     % Print out a cons_id and arguments. The module_info and prog_varset
     % give the context. The boolean says whether variables should have
@@ -190,6 +198,8 @@
     %
 :- pred hlds_out__write_functor_cons_id(cons_id::in, list(prog_var)::in,
     prog_varset::in, module_info::in, bool::in, io::di, io::uo) is det.
+:- func hlds_out__functor_cons_id_to_string(cons_id, list(prog_var),
+    prog_varset, module_info, bool) = string.
 
     % Print out the right-hand-side of a unification. The module_info and
     % the varsets give the context of the rhs. The boolean says whether
@@ -207,6 +217,8 @@
     %
 :- pred hlds_out__write_var_modes(list(prog_var)::in, list(mode)::in,
     prog_varset::in, inst_varset::in, bool::in, io::di, io::uo) is det.
+:- func hlds_out__var_modes_to_string(list(prog_var), list(mode),
+    prog_varset, inst_varset, bool) = string.
 
 :- pred hlds_out__write_instmap(instmap::in, prog_varset::in, bool::in,
     int::in, io::di, io::uo) is det.
@@ -354,6 +366,9 @@ hlds_out__cons_id_to_string(table_io_decl(
     % hlds_error_util__describe_one_pred_name. Changes here should be made
     % there as well.
 hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
+    io__write_string(hlds_out__pred_id_to_string(ModuleInfo, PredId), !IO).
+
+hlds_out__pred_id_to_string(ModuleInfo, PredId) = Str :-
     module_info_preds(ModuleInfo, PredTable),
     ( map__search(PredTable, PredId, PredInfo) ->
         Module = pred_info_module(PredInfo),
@@ -365,43 +380,47 @@ hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
             Origin = special_pred(SpecialId - TypeCtor)
         ->
             special_pred_description(SpecialId, Descr),
-            io__write_string(Descr, !IO),
             TypeCtor = _TypeSymName - TypeArity,
             ( TypeArity = 0 ->
-                io__write_string(" for type ", !IO)
+                ForStr = " for type "
             ;
-                io__write_string(" for type constructor ", !IO)
+                ForStr = " for type constructor "
             ),
-            hlds_out__write_type_name(TypeCtor, !IO)
+            Str = Descr ++ ForStr ++ hlds_out__type_name_to_string(TypeCtor)
         ;
             pred_info_get_markers(PredInfo, Markers),
             check_marker(Markers, class_instance_method)
         ->
-            io__write_string("type class method implementation", !IO)
+            Str = "type class method implementation"
         ;
             pred_info_get_goal_type(PredInfo, promise(PromiseType))
         ->
-            io__write_string("`" ++ prog_out__promise_to_string(PromiseType)
-                ++ "' declaration", !IO)
+            Str = "`" ++ prog_out__promise_to_string(PromiseType)
+                ++ "' declaration"
         ;
-            write_simple_call_id(PredOrFunc, qualified(Module, Name), Arity,
-                !IO)
+            Str = simple_call_id_to_string(PredOrFunc, qualified(Module, Name),
+                Arity)
         )
     ;
         % The predicate has been deleted, so we print what we can.
         pred_id_to_int(PredId, PredIdInt),
-        io__write_string("deleted predicate ", !IO),
-        io__write_int(PredIdInt, !IO)
+        Str = "deleted predicate " ++ int_to_string(PredIdInt)
     ).
 
 hlds_out__write_pred_proc_id(ModuleInfo, proc(PredId, ProcId), !IO) :-
     hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO).
 
+hlds_out__pred_proc_id_to_string(ModuleInfo, proc(PredId, ProcId)) =
+    hlds_out__pred_proc_id_to_string(ModuleInfo, PredId, ProcId).
+
 hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO) :-
-    hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
-    io__write_string(" mode ", !IO),
+    io__write_string(
+        hlds_out__pred_proc_id_to_string(ModuleInfo, PredId, ProcId), !IO).
+
+hlds_out__pred_proc_id_to_string(ModuleInfo, PredId, ProcId) = Str :-
     proc_id_to_int(ProcId, ModeNum),
-    io__write_int(ModeNum, !IO).
+    Str = hlds_out__pred_id_to_string(ModuleInfo, PredId)
+        ++ " mode " ++ int_to_string(ModeNum).
 
 hlds_out__write_call_id(CallId, !IO) :-
     Str = hlds_out__call_id_to_string(CallId),
@@ -563,37 +582,39 @@ hlds_out__aditi_builtin_arg_number_to_string(
 %-----------------------------------------------------------------------------%
 
 hlds_out__write_unify_context(UnifyContext, Context, !IO) :-
-    hlds_out__write_unify_context(no, UnifyContext, Context, _, !IO).
-
-hlds_out__write_unify_context(First0, UnifyContext, Context, First, !IO) :-
-    UnifyContext = unify_context(MainContext, RevSubContexts),
-    list__reverse(RevSubContexts, SubContexts),
-    hlds_out__write_unify_main_context(First0, MainContext, Context, First1,
-        !IO),
-    hlds_out__write_unify_sub_contexts(First1, SubContexts, Context, First,
-        !IO).
+    hlds_out__write_unify_context(no, _, UnifyContext, Context, !IO).
 
 hlds_out__unify_context_to_pieces(UnifyContext, !Pieces) :-
+    hlds_out__unify_context_to_pieces(no, _, UnifyContext, !Pieces).
+
+hlds_out__write_unify_context(!First, UnifyContext, Context, !IO) :-
     UnifyContext = unify_context(MainContext, RevSubContexts),
     list__reverse(RevSubContexts, SubContexts),
-    hlds_out__unify_main_context_to_pieces(MainContext, !Pieces),
-    hlds_out__unify_sub_contexts_to_pieces(SubContexts, !Pieces).
+    hlds_out__write_unify_main_context(!First, MainContext, Context, !IO),
+    hlds_out__write_unify_sub_contexts(!First, SubContexts, Context, !IO).
 
-:- pred hlds_out__write_unify_main_context(bool::in, unify_main_context::in,
-    prog_context::in, bool::out, io::di, io::uo) is det.
+hlds_out__unify_context_to_pieces(!First, UnifyContext, !Pieces) :-
+    UnifyContext = unify_context(MainContext, RevSubContexts),
+    list__reverse(RevSubContexts, SubContexts),
+    hlds_out__unify_main_context_to_pieces(!First, MainContext, !Pieces),
+    hlds_out__unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces).
 
-hlds_out__write_unify_main_context(First, explicit, _, First, !IO).
-hlds_out__write_unify_main_context(First, head(ArgNum), Context, no, !IO) :-
-    hlds_out__write_in_argument(First, ArgNum, Context, !IO),
+:- pred hlds_out__write_unify_main_context(bool::in, bool::out,
+    unify_main_context::in, prog_context::in, io::di, io::uo) is det.
+
+hlds_out__write_unify_main_context(!First, explicit, _, !IO).
+hlds_out__write_unify_main_context(!First, head(ArgNum), Context, !IO) :-
+    hlds_out__write_in_argument(!.First, ArgNum, Context, !IO),
+    !:First = no,
     io__write_string(" of clause head:\n", !IO).
-
-hlds_out__write_unify_main_context(First, head_result, Context, no, !IO) :-
-    hlds_out__start_in_message(First, Context, !IO),
+hlds_out__write_unify_main_context(!First, head_result, Context, !IO) :-
+    hlds_out__start_in_message(!.First, Context, !IO),
+    !:First = no,
     io__write_string("function result term of clause head:\n", !IO).
-
-hlds_out__write_unify_main_context(First, call(CallId, ArgNum), Context, no,
+hlds_out__write_unify_main_context(!First, call(CallId, ArgNum), Context,
         !IO) :-
-    hlds_out__start_in_message(First, Context, !IO),
+    hlds_out__start_in_message(!.First, Context, !IO),
+    !:First = no,
     % The markers argument below is used only for type class method
     % implementations defined using the named syntax rather than
     % the clause syntax, and the bodies of such procedures should
@@ -604,24 +625,27 @@ hlds_out__write_unify_main_context(First, call(CallId, ArgNum), Context, no,
     init_markers(Markers),
     hlds_out__write_call_arg_id(CallId, ArgNum, Markers, !IO),
     io__write_string(":\n", !IO).
-
-hlds_out__write_unify_main_context(First, implicit(Source), Context, First,
-        !IO) :-
-    hlds_out__start_in_message(First, Context, !IO),
+hlds_out__write_unify_main_context(!First, implicit(Source), Context, !IO) :-
+    hlds_out__start_in_message(!.First, Context, !IO),
     io__format("implicit %s unification:\n", [s(Source)], !IO).
 
-:- pred hlds_out__unify_main_context_to_pieces(unify_main_context::in,
+:- pred hlds_out__unify_main_context_to_pieces(bool::in, bool::out,
+    unify_main_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-hlds_out__unify_main_context_to_pieces(explicit, !Pieces).
-hlds_out__unify_main_context_to_pieces(head(ArgNum), !Pieces) :-
-    hlds_out__in_argument_to_pieces(ArgNum, !Pieces),
+hlds_out__unify_main_context_to_pieces(!First, explicit, !Pieces).
+hlds_out__unify_main_context_to_pieces(!First, head(ArgNum), !Pieces) :-
+    hlds_out__in_argument_to_pieces(!.First, ArgNum, !Pieces),
+    !:First = no,
     !:Pieces = !.Pieces ++ [words("of clause head:"), nl].
-hlds_out__unify_main_context_to_pieces(head_result, !Pieces) :-
-    hlds_out__start_in_message_to_pieces(!Pieces),
+hlds_out__unify_main_context_to_pieces(!First, head_result, !Pieces) :-
+    hlds_out__start_in_message_to_pieces(!.First, !Pieces),
+    !:First = no,
     !:Pieces = !.Pieces ++ [words("function result term of clause head:"), nl].
-hlds_out__unify_main_context_to_pieces(call(CallId, ArgNum), !Pieces) :-
-    hlds_out__start_in_message_to_pieces(!Pieces),
+hlds_out__unify_main_context_to_pieces(!First, call(CallId, ArgNum),
+        !Pieces) :-
+    hlds_out__start_in_message_to_pieces(!.First, !Pieces),
+    !:First = no,
     % The markers argument below is used only for type class method
     % implementations defined using the named syntax rather than
     % the clause syntax, and the bodies of such procedures should
@@ -632,34 +656,37 @@ hlds_out__unify_main_context_to_pieces(call(CallId, ArgNum), !Pieces) :-
     init_markers(Markers),
     ArgIdStr = hlds_out__call_arg_id_to_string(CallId, ArgNum, Markers),
     !:Pieces = !.Pieces ++ [words(ArgIdStr ++ ":"), nl].
-hlds_out__unify_main_context_to_pieces(implicit(Source), !Pieces) :-
-    hlds_out__start_in_message_to_pieces(!Pieces),
+hlds_out__unify_main_context_to_pieces(!First, implicit(Source), !Pieces) :-
+    hlds_out__start_in_message_to_pieces(!.First, !Pieces),
     string__format("implicit %s unification:\n", [s(Source)], Msg),
-    !:Pieces = !.Pieces ++ [words(Msg)].
+    !:Pieces = !.Pieces ++ [words(Msg), nl].
 
-:- pred hlds_out__write_unify_sub_contexts(bool::in, unify_sub_contexts::in,
-    prog_context::in, bool::out, io::di, io::uo) is det.
+:- pred hlds_out__write_unify_sub_contexts(bool::in, bool::out,
+    unify_sub_contexts::in, prog_context::in, io::di, io::uo) is det.
 
-hlds_out__write_unify_sub_contexts(First, [], _, First, !IO).
-hlds_out__write_unify_sub_contexts(First0, [ConsId - ArgNum | SubContexts],
-        Context, First, !IO) :-
-    hlds_out__write_in_argument(First0, ArgNum, Context, !IO),
+hlds_out__write_unify_sub_contexts(!First, [], _, !IO).
+hlds_out__write_unify_sub_contexts(!First, [ConsId - ArgNum | SubContexts],
+        Context, !IO) :-
+    hlds_out__write_in_argument(!.First, ArgNum, Context, !IO),
+    !:First = no,
     io__write_string(" of functor `", !IO),
     hlds_out__write_cons_id(ConsId, !IO),
     io__write_string("':\n", !IO),
-    hlds_out__write_unify_sub_contexts(no, SubContexts, Context, First, !IO).
+    hlds_out__write_unify_sub_contexts(!First, SubContexts, Context, !IO).
 
-:- pred hlds_out__unify_sub_contexts_to_pieces(unify_sub_contexts::in,
+:- pred hlds_out__unify_sub_contexts_to_pieces(bool::in, bool::out,
+    unify_sub_contexts::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-hlds_out__unify_sub_contexts_to_pieces([], !Pieces).
-hlds_out__unify_sub_contexts_to_pieces([ConsId - ArgNum | SubContexts],
+hlds_out__unify_sub_contexts_to_pieces(!First, [], !Pieces).
+hlds_out__unify_sub_contexts_to_pieces(!First, [ConsId - ArgNum | SubContexts],
         !Pieces) :-
-    hlds_out__in_argument_to_pieces(ArgNum, !Pieces),
+    hlds_out__in_argument_to_pieces(!.First, ArgNum, !Pieces),
+    !:First = no,
     NewPieces = [words("of functor"),
         fixed("`" ++ cons_id_to_string(ConsId) ++ "':"), nl],
     !:Pieces = !.Pieces ++ NewPieces,
-    hlds_out__unify_sub_contexts_to_pieces(SubContexts, !Pieces).
+    hlds_out__unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces).
 
 :- pred hlds_out__write_in_argument(bool::in, int::in, prog_context::in,
     io::di, io::uo) is det.
@@ -669,11 +696,11 @@ hlds_out__write_in_argument(First, ArgNum, Context, !IO) :-
     io__write_string("argument ", !IO),
     io__write_int(ArgNum, !IO).
 
-:- pred hlds_out__in_argument_to_pieces(int::in,
+:- pred hlds_out__in_argument_to_pieces(bool::in, int::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-hlds_out__in_argument_to_pieces(ArgNum, !Pieces) :-
-    hlds_out__start_in_message_to_pieces(!Pieces),
+hlds_out__in_argument_to_pieces(First, ArgNum, !Pieces) :-
+    hlds_out__start_in_message_to_pieces(First, !Pieces),
     ArgNumStr = int_to_string(ArgNum),
     !:Pieces = !.Pieces ++ [words("argument"), words(ArgNumStr)].
 
@@ -682,21 +709,25 @@ hlds_out__in_argument_to_pieces(ArgNum, !Pieces) :-
 
 hlds_out__start_in_message(First, Context, !IO) :-
     prog_out__write_context(Context, !IO),
-    ( First = yes ->
+    (
+        First = yes,
         io__write_string("  In ", !IO)
     ;
+        First = no,
         io__write_string("  in ", !IO)
     ).
 
-:- pred hlds_out__start_in_message_to_pieces(
+:- pred hlds_out__start_in_message_to_pieces(bool::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-hlds_out__start_in_message_to_pieces(!Pieces) :-
+hlds_out__start_in_message_to_pieces(First, !Pieces) :-
     (
-        !.Pieces = [],
+        First = yes,
+        % It is possible for First to be yes and !.Pieces to be nonempty,
+        % since !.Pieces may contain stuff from before the unify context.
         !:Pieces = !.Pieces ++ [words("In")]
     ;
-        !.Pieces = [_ | _],
+        First = no,
         !:Pieces = !.Pieces ++ [words("in")]
     ).
 
@@ -1863,8 +1894,8 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
         )
     ->
         (
-            % don't output bogus info if we haven't been through
-            % mode analysis yet
+            % Don't output bogus info if we haven't been through
+            % mode analysis yet.
             Unification = complicated_unify(Mode, CanFail, TypeInfoVars),
             CanFail = can_fail,
             Mode = (free - free -> free - free),
@@ -2521,8 +2552,8 @@ hlds_out__write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _,
             io__write_string(")", !IO)
         ),
         io__write_string(" = (", !IO),
-        hlds_out__write_var_mode(RetVar, RetMode, VarSet, InstVarSet,
-            AppendVarNums, !IO),
+        hlds_out__write_var_mode(VarSet, InstVarSet, AppendVarNums,
+            RetVar - RetMode, !IO),
         io__write_string(") is ", !IO),
         mercury_output_det(Det, !IO),
         io__write_string(" :-\n", !IO),
@@ -2543,12 +2574,13 @@ hlds_out__write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _,
     ),
     globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
     ( string__contains_char(Verbose, 'n') ->
-        ( NonLocals \= [] ->
+        (
+            NonLocals = [_ | _],
             hlds_out__write_indent(Indent1, !IO),
             io__write_string("% lambda nonlocals: ", !IO),
             mercury_output_vars(NonLocals, VarSet, AppendVarNums, !IO)
         ;
-            true
+            NonLocals = []
         )
     ;
         true
@@ -2573,25 +2605,46 @@ hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarNums, !IO) :-
     hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarNums,
         not_next_to_graphic_token, !IO).
 
+hlds_out__functor_to_string(Functor, ArgVars, VarSet, AppendVarNums) =
+    hlds_out__functor_to_string(Functor, ArgVars, VarSet, AppendVarNums,
+        not_next_to_graphic_token).
+
 :- pred hlds_out__write_functor(const::in, list(prog_var)::in, prog_varset::in,
     bool::in, needs_quotes::in, io::di, io::uo) is det.
 
 hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarNums,
         NextToGraphicToken, !IO) :-
+    io__write_string(hlds_out__functor_to_string(Functor, ArgVars, VarSet,
+        AppendVarNums, NextToGraphicToken), !IO).
+
+:- func hlds_out__functor_to_string(const, list(prog_var), prog_varset,
+    bool, needs_quotes) = string.
+
+hlds_out__functor_to_string(Functor, ArgVars, VarSet, AppendVarNums,
+        NextToGraphicToken) = Str :-
     term__context_init(Context),
     term__var_list_to_term_list(ArgVars, ArgTerms),
     Term = term__functor(Functor, ArgTerms, Context),
-    mercury_output_term(Term, VarSet, AppendVarNums, NextToGraphicToken, !IO).
+    Str = mercury_term_to_string(Term, VarSet, AppendVarNums,
+        NextToGraphicToken).
 
 :- pred hlds_out__write_qualified_functor(module_name::in, const::in,
     list(prog_var)::in, prog_varset::in, bool::in, io::di, io::uo) is det.
 
 hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
         AppendVarNums, !IO) :-
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io__write_string(".", !IO),
-    hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarNums,
-        next_to_graphic_token, !IO).
+    io__write_string(hlds_out__qualified_functor_to_string(ModuleName, Functor,
+        ArgVars, VarSet, AppendVarNums), !IO).
+
+:- func hlds_out__qualified_functor_to_string(module_name, const,
+    list(prog_var), prog_varset, bool) = string.
+
+hlds_out__qualified_functor_to_string(ModuleName, Functor, ArgVars, VarSet,
+        AppendVarNums) = Str :-
+    ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
+    FunctorStr = hlds_out__functor_to_string(Functor, ArgVars, VarSet,
+        AppendVarNums, next_to_graphic_token),
+    Str = ModuleNameStr ++ "." ++ FunctorStr.
 
 :- pred hlds_out__write_qualified_functor_with_term_args(module_name::in,
     const::in, list(prog_term)::in, prog_varset::in, bool::in,
@@ -2599,130 +2652,131 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 
 hlds_out__write_qualified_functor_with_term_args(ModuleName, Functor,
         ArgTerms, VarSet, AppendVarNums, !IO) :-
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io__write_string(".", !IO),
+    io__write_string(
+        hlds_out__qualified_functor_with_term_args_to_string(ModuleName,
+        Functor, ArgTerms, VarSet, AppendVarNums), !IO).
+
+:- func hlds_out__qualified_functor_with_term_args_to_string(module_name,
+    const, list(prog_term), prog_varset, bool) = string.
+
+hlds_out__qualified_functor_with_term_args_to_string(ModuleName, Functor,
+        ArgTerms, VarSet, AppendVarNums) = Str :-
+    ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
     term__context_init(Context),
-    mercury_output_term(term__functor(Functor, ArgTerms, Context), VarSet,
-        AppendVarNums, next_to_graphic_token, !IO).
+    TermStr = mercury_term_to_string(term__functor(Functor, ArgTerms, Context),
+        VarSet, AppendVarNums, next_to_graphic_token),
+    Str = ModuleNameStr ++ "." ++ TermStr.
 
 hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
         AppendVarNums, !IO) :-
+    io__write_string(hlds_out__functor_cons_id_to_string(ConsId, ArgVars,
+        VarSet, ModuleInfo, AppendVarNums), !IO).
+
+hlds_out__functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo,
+        AppendVarNums) = Str :-
     (
         ConsId = cons(SymName, _),
         (
             SymName = qualified(Module, Name),
-            hlds_out__write_qualified_functor(Module, term__atom(Name),
-                ArgVars, VarSet, AppendVarNums, !IO)
+            Str = hlds_out__qualified_functor_to_string(Module,
+                term__atom(Name), ArgVars, VarSet, AppendVarNums)
         ;
             SymName = unqualified(Name),
-            hlds_out__write_functor(term__atom(Name),
-                ArgVars, VarSet, AppendVarNums, next_to_graphic_token, !IO)
+            Str = hlds_out__functor_to_string(term__atom(Name),
+                ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
         )
     ;
         ConsId = int_const(Int),
-        hlds_out__write_functor(term__integer(Int), ArgVars, VarSet,
-            AppendVarNums, !IO)
+        Str = hlds_out__functor_to_string(term__integer(Int), ArgVars,
+            VarSet, AppendVarNums)
     ;
         ConsId = float_const(Float),
-        hlds_out__write_functor(term__float(Float), ArgVars, VarSet,
-            AppendVarNums, !IO)
+        Str = hlds_out__functor_to_string(term__float(Float), ArgVars,
+            VarSet, AppendVarNums)
     ;
-        ConsId = string_const(Str),
-        hlds_out__write_functor(term__string(Str), ArgVars, VarSet,
-            AppendVarNums, !IO)
+        ConsId = string_const(String),
+        Str = hlds_out__functor_to_string(term__string(String), ArgVars,
+            VarSet, AppendVarNums)
     ;
         ConsId = pred_const(ShroudedPredProcId, _),
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         PredModule = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
-        hlds_out__write_functor_cons_id(
+        Str = hlds_out__functor_cons_id_to_string(
             cons(qualified(PredModule, PredName), list__length(ArgVars)),
-            ArgVars, VarSet, ModuleInfo, AppendVarNums, !IO)
+            ArgVars, VarSet, ModuleInfo, AppendVarNums)
     ;
         ConsId = type_ctor_info_const(Module, Name, Arity),
-        io__write_string("type_ctor_info(""", !IO),
-        prog_out__write_sym_name(Module, !IO),
-        io__write_string(""", """, !IO),
-        io__write_string(Name, !IO),
-        io__write_string(""", ", !IO),
-        io__write_int(Arity, !IO),
-        io__write_string(")", !IO)
+        Str = "type_ctor_info("""
+            ++ prog_out__sym_name_to_escaped_string(Module)
+            ++ """, """ ++ Name ++ """, " ++ int_to_string(Arity) ++ ")"
     ;
-        ConsId = base_typeclass_info_const(Module,
-            class_id(Name, Arity), _, Instance),
-        io__write_string("base_typeclass_info(""", !IO),
-        prog_out__write_sym_name(Module, !IO),
-        io__write_string(""", ", !IO),
-        io__write_string("class_id(", !IO),
-        prog_out__write_sym_name(Name, !IO),
-        io__write_string(", ", !IO),
-        io__write_int(Arity, !IO),
-        io__write_string("), ", !IO),
-        io__write_string(Instance, !IO),
-        io__write_string(")", !IO)
+        ConsId = base_typeclass_info_const(Module, class_id(Name, Arity), _,
+            Instance),
+        Str = "base_typeclass_info("""
+            ++ prog_out__sym_name_to_escaped_string(Module) ++ """, "
+            ++ "class_id(" ++ prog_out__sym_name_to_escaped_string(Name)
+            ++ ", " ++ int_to_string(Arity) ++ "), " ++ Instance ++ ")"
     ;
         ConsId = type_info_cell_constructor(_),
-        hlds_out__write_functor(term__atom("type_info_cell_constructor"),
-            ArgVars, VarSet, AppendVarNums, next_to_graphic_token, !IO)
+        Str = hlds_out__functor_to_string(
+            term__atom("type_info_cell_constructor"),
+            ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
     ;
         ConsId = typeclass_info_cell_constructor,
-        hlds_out__write_functor(term__atom("typeclass_info_cell_constructor"),
-            ArgVars, VarSet, AppendVarNums, next_to_graphic_token, !IO)
+        Str = hlds_out__functor_to_string(
+            term__atom("typeclass_info_cell_constructor"),
+            ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
     ;
         ConsId = tabling_pointer_const(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        io__write_string("tabling_pointer_const(", !IO),
-        hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
-        io__write_string(", ", !IO),
         proc_id_to_int(ProcId, ProcIdInt),
-        io__write_int(ProcIdInt, !IO),
-        io__write_string(")", !IO)
+        Str = "tabling_pointer_const("
+            ++ hlds_out__pred_id_to_string(ModuleInfo, PredId)
+            ++ ", " ++ int_to_string(ProcIdInt) ++ ")"
     ;
         ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        io__write_string("deep_profiling_proc_layout(", !IO),
-        hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
         proc_id_to_int(ProcId, ProcIdInt),
-        io__write_string(" (mode ", !IO),
-        io__write_int(ProcIdInt, !IO),
-        io__write_string("))", !IO)
+        Str = "deep_profiling_proc_layout("
+            ++ hlds_out__pred_id_to_string(ModuleInfo, PredId)
+            ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ;
         ConsId = table_io_decl(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        io__write_string("table_io_decl(", !IO),
-        hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
         proc_id_to_int(ProcId, ProcIdInt),
-        io__write_string(" (mode ", !IO),
-        io__write_int(ProcIdInt, !IO),
-        io__write_string("))", !IO)
+        Str = "table_io_decl("
+            ++ hlds_out__pred_id_to_string(ModuleInfo, PredId)
+            ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ).
 
-hlds_out__write_var_modes([], [], _, _, _, !IO).
-hlds_out__write_var_modes([Var | Vars], [Mode | Modes], VarSet, InstVarSet,
-        AppendVarNums, !IO) :-
-    hlds_out__write_var_mode(Var, Mode, VarSet, InstVarSet, AppendVarNums,
-        !IO),
-    (
-        Vars = [_ | _],
-        io__write_string(", ", !IO)
-    ;
-        Vars = []
-    ),
-    hlds_out__write_var_modes(Vars, Modes, VarSet, InstVarSet,
-        AppendVarNums, !IO).
-hlds_out__write_var_modes([], [_ | _], _, _, _, !IO) :-
-    error("hlds_out__write_var_modes: length mis-match").
-hlds_out__write_var_modes([_ | _], [], _, _, _, !IO) :-
-    error("hlds_out__write_var_modes: length mis-match").
+hlds_out__write_var_modes(Vars, Modes, VarSet, InstVarSet, AppendVarNums,
+        !IO) :-
+    io__write_string(hlds_out__var_modes_to_string(Vars, Modes, VarSet,
+        InstVarSet, AppendVarNums), !IO).
 
-:- pred hlds_out__write_var_mode(prog_var::in, (mode)::in, prog_varset::in,
-    inst_varset::in, bool::in, io::di, io::uo) is det.
+hlds_out__var_modes_to_string(Vars, Modes, VarSet, InstVarSet, AppendVarNums)
+        = Str :-
+    assoc_list__from_corresponding_lists(Vars, Modes, VarModes),
+    Strs = list__map(
+        hlds_out__var_mode_to_string(VarSet, InstVarSet, AppendVarNums),
+        VarModes),
+    Str = string__join_list(", ", Strs).
 
-hlds_out__write_var_mode(Var, Mode, VarSet, InstVarSet, AppendVarNums, !IO) :-
-    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
-    io__write_string("::", !IO),
-    mercury_output_mode(Mode, InstVarSet, !IO).
+:- pred hlds_out__write_var_mode(prog_varset::in, inst_varset::in, bool::in,
+    pair(prog_var, (mode))::in, io::di, io::uo) is det.
+
+hlds_out__write_var_mode(VarSet, InstVarSet, AppendVarNums, Var - Mode, !IO) :-
+    io__write_string(hlds_out__var_mode_to_string(VarSet, InstVarSet,
+        AppendVarNums, Var - Mode), !IO).
+
+:- func hlds_out__var_mode_to_string(prog_varset, inst_varset, bool,
+    pair(prog_var, (mode))) = string.
+
+hlds_out__var_mode_to_string(VarSet, InstVarSet, AppendVarNums, Var - Mode) =
+    mercury_var_to_string(Var, VarSet, AppendVarNums)
+    ++ "::" ++ mercury_mode_to_string(Mode, InstVarSet).
 
 :- pred hlds_out__write_conj(hlds_goal::in, list(hlds_goal)::in,
     module_info::in, prog_varset::in, bool::in, int::in, string::in,
@@ -3151,6 +3205,11 @@ hlds_out__write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
 
 hlds_out__write_type_name(Name - _Arity, !IO) :-
     prog_out__write_sym_name(Name, !IO).
+
+:- func hlds_out__type_name_to_string(type_ctor) = string.
+
+hlds_out__type_name_to_string(Name - _Arity) =
+    prog_out__sym_name_to_escaped_string(Name).
 
 :- pred hlds_out__write_type_params(tvarset::in, list(type_param)::in,
     io::di, io::uo) is det.

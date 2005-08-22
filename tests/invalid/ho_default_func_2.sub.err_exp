@@ -1,5 +1,6 @@
 ho_default_func_2.sub.m:014: In clause for `baz(out)':
-ho_default_func_2.sub.m:014:   in argument 1 of call to function `ho_default_func_2.id.mkid/1':
+ho_default_func_2.sub.m:014:   in argument 1 of call to function
+ho_default_func_2.sub.m:014:   `ho_default_func_2.id.mkid/1':
 ho_default_func_2.sub.m:014:   mode error: variable `V_2' has instantiatedness
 ho_default_func_2.sub.m:014:   `/* unique */(func((free >> ground)) = (ground
 ho_default_func_2.sub.m:014:   >> ground) is det)',

@@ -1,20 +1,25 @@
 any_should_not_match_bound.m:021: In clause for `test_any_poly(in(any), out)':
-any_should_not_match_bound.m:021:   in argument 1 of call to predicate `any_should_not_match_bound.p/2':
+any_should_not_match_bound.m:021:   in argument 1 of call to predicate
+any_should_not_match_bound.m:021:   `any_should_not_match_bound.p/2':
 any_should_not_match_bound.m:021:   mode error: variable `X' has
 any_should_not_match_bound.m:021:   instantiatedness `any',
 any_should_not_match_bound.m:021:   expected instantiatedness was `ground'.
 any_should_not_match_bound.m:024: In clause for `test_any_tuple(in(any), out)':
-any_should_not_match_bound.m:024:   in argument 1 of call to predicate `any_should_not_match_bound.p/2':
+any_should_not_match_bound.m:024:   in argument 1 of call to predicate
+any_should_not_match_bound.m:024:   `any_should_not_match_bound.p/2':
 any_should_not_match_bound.m:024:   mode error: variable `X' has
 any_should_not_match_bound.m:024:   instantiatedness `any',
 any_should_not_match_bound.m:024:   expected instantiatedness was `ground'.
 any_should_not_match_bound.m:027: In clause for `test_any_du(in(any), out)':
-any_should_not_match_bound.m:027:   in argument 1 of call to predicate `any_should_not_match_bound.p/2':
+any_should_not_match_bound.m:027:   in argument 1 of call to predicate
+any_should_not_match_bound.m:027:   `any_should_not_match_bound.p/2':
 any_should_not_match_bound.m:027:   mode error: variable `X' has
 any_should_not_match_bound.m:027:   instantiatedness `any',
 any_should_not_match_bound.m:027:   expected instantiatedness was `ground'.
-any_should_not_match_bound.m:030: In clause for `test_any_solver(in(any), out)':
-any_should_not_match_bound.m:030:   in argument 1 of call to predicate `any_should_not_match_bound.p/2':
+any_should_not_match_bound.m:030: In clause for `test_any_solver(in(any),
+any_should_not_match_bound.m:030:   out)':
+any_should_not_match_bound.m:030:   in argument 1 of call to predicate
+any_should_not_match_bound.m:030:   `any_should_not_match_bound.p/2':
 any_should_not_match_bound.m:030:   mode error: variable `X' has
 any_should_not_match_bound.m:030:   instantiatedness `any',
 any_should_not_match_bound.m:030:   expected instantiatedness was `ground'.
