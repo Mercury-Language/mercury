@@ -23,10 +23,10 @@ List = [3, 2, 1], true ;
 fail.
 No (more) solutions.
 ?- qperm([1,2,3], List), List = [2 | _].
-<stdin>:012: In clause for predicate `mdb_query.run/2':
-<stdin>:012:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:014: In clause for predicate `mdb_query.run/2':
 <stdin>:014:   warning: variable `_2' occurs more than once in this scope.
+<stdin>:012: In clause for predicate `mdb_query.run/2':
+<stdin>:012:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:012: In clause for predicate `mdb_query.run/2':
 <stdin>:012:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:015: In clause for predicate `mdb_query.run/2':
@@ -42,10 +42,10 @@ List = [2, 3, 1], _2 = [3, 1], true ;
 fail.
 No (more) solutions.
 ?- qperm([1,2,3], List), List = [4 | _].
-<stdin>:012: In clause for predicate `mdb_query.run/2':
-<stdin>:012:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:014: In clause for predicate `mdb_query.run/2':
 <stdin>:014:   warning: variable `_2' occurs more than once in this scope.
+<stdin>:012: In clause for predicate `mdb_query.run/2':
+<stdin>:012:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:012: In clause for predicate `mdb_query.run/2':
 <stdin>:012:   warning: variable `_2' occurs more than once in this scope.
 <stdin>:015: In clause for predicate `mdb_query.run/2':
