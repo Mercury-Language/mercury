@@ -74,7 +74,7 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
 		SortCompatible = yes,
 		ProcStatics = Deep ^ proc_statics,
 		array__max(ProcStatics, MaxProcStatic),
-		PSIs0 = int_list_from_to(1, MaxProcStatic),
+		PSIs0 = 1 .. MaxProcStatic,
 		deep_lookup_proc_dynamics(Deep, Deep ^ root, RootPD),
 		RootPD ^ pd_proc_static = proc_static_ptr(RootPSI),
 		list__filter(filter_top_procs(Deep, RootPSI, FilterPred),
@@ -115,15 +115,6 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
 				MaybeTopPSIs = ok(TopPSIs)
 			)
 		)
-	).
-
-:- func int_list_from_to(int, int) = list(int).
-
-int_list_from_to(From, To) = List :-
-	( From > To ->
-		List = []
-	;
-		List = [From | int_list_from_to(From + 1, To)]
 	).
 
 %-----------------------------------------------------------------------------%

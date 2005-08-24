@@ -176,7 +176,11 @@
 			pref_contour	:: contour,
 					% whether contour exclusion should be
 					% applied
-			pref_time	:: time_format
+			pref_time	:: time_format,
+			
+			pref_inactive   :: inactive_items
+					% Whether we should show modules/procs
+					% that haven't been called. 
 		).
 
 :- type port_fields
@@ -247,6 +251,14 @@
 	;	scale_by_millions
 	;	scale_by_thousands.
 
+:- type inactive_status ---> hide ; show.
+
+:- type inactive_items
+	---> inactive_items(
+		inactive_procs   :: inactive_status,
+		inactive_modules :: inactive_status
+	).
+
 :- func default_preferences = preferences.
 
 :- func default_fields = fields.
@@ -261,6 +273,7 @@
 :- func default_scope = measurement_scope.
 :- func default_contour = contour.
 :- func default_time_format = time_format.
+:- func default_inactive_items = inactive_items.
 
 :- func query_separator_char = char.
 :- func machine_datafile_cmd_pref_to_url(string, string, cmd, preferences)
@@ -291,7 +304,8 @@ default_preferences =
 		default_summarize,
 		default_order_criteria,
 		default_contour,
-		default_time_format
+		default_time_format,
+		default_inactive_items
 	).
 
 default_fields = fields(port, ticks, no_alloc, memory(words)).
@@ -306,6 +320,7 @@ default_incl_desc = self_and_desc.
 default_scope = overall.
 default_contour = no_contour.
 default_time_format = scale_by_thousands.
+default_inactive_items = inactive_items(show, show).
 
 %-----------------------------------------------------------------------------%
 
@@ -577,7 +592,7 @@ cmd_to_string(Cmd) = CmdStr :-
 
 preferences_to_string(Pref) = PrefStr :-
 	Pref = preferences(Fields, Box, Colour, MaybeAncestorLimit,
-		Summarize, Order, Contour, Time),
+		Summarize, Order, Contour, Time, InactiveItems),
 	(
 		MaybeAncestorLimit = yes(AncestorLimit),
 		MaybeAncestorLimitStr =
@@ -586,7 +601,7 @@ preferences_to_string(Pref) = PrefStr :-
 		MaybeAncestorLimit = no,
 		MaybeAncestorLimitStr = "no"
 	),
-	PrefStr = string__format("%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s",
+	PrefStr = string__format("%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s",
 		[s(fields_to_string(Fields)),
 		c(pref_separator_char), s(box_to_string(Box)),
 		c(pref_separator_char), s(colour_scheme_to_string(Colour)),
@@ -594,7 +609,10 @@ preferences_to_string(Pref) = PrefStr :-
 		c(pref_separator_char), s(summarize_to_string(Summarize)),
 		c(pref_separator_char), s(order_criteria_to_string(Order)),
 		c(pref_separator_char), s(contour_to_string(Contour)),
-		c(pref_separator_char), s(time_format_to_string(Time))]).
+		c(pref_separator_char), s(time_format_to_string(Time)),
+		c(pref_separator_char),
+		s(inactive_items_to_string(InactiveItems))
+	]).
 
 url_component_to_cmd(QueryString, DefaultCmd) = Cmd :-
 	MaybeCmd = url_component_to_maybe_cmd(QueryString),
@@ -702,7 +720,8 @@ url_component_to_maybe_pref(QueryString) = MaybePreferences :-
 	split(QueryString, pref_separator_char, Pieces),
 	(
 		Pieces = [FieldsStr, BoxStr, ColourStr, MaybeAncestorLimitStr,
-			SummarizeStr, OrderStr, ContourStr, TimeStr],
+			SummarizeStr, OrderStr, ContourStr, TimeStr,
+			InactiveItemsStr],
 		string_to_fields(FieldsStr, Fields),
 		string_to_box(BoxStr, Box),
 		string_to_colour_scheme(ColourStr, Colour),
@@ -716,10 +735,12 @@ url_component_to_maybe_pref(QueryString) = MaybePreferences :-
 		string_to_summarize(SummarizeStr, Summarize),
 		string_to_order_criteria(OrderStr, Order),
 		string_to_contour(ContourStr, Contour),
-		string_to_time_format(TimeStr, Time)
+		string_to_time_format(TimeStr, Time),
+		string_to_inactive_items(InactiveItemsStr, InactiveItems)
 	->
 		Preferences = preferences(Fields, Box, Colour,
-			MaybeAncestorLimit, Summarize, Order, Contour, Time),
+			MaybeAncestorLimit, Summarize, Order, Contour, Time,
+			InactiveItems),
 		MaybePreferences = yes(Preferences)
 	;
 		MaybePreferences = no
@@ -729,24 +750,24 @@ url_component_to_maybe_pref(QueryString) = MaybePreferences :-
 
 :- func port_fields_to_string(port_fields) = string.
 
-port_fields_to_string(no_port) = "_".
-port_fields_to_string(port)    = "p".
+port_fields_to_string(PortFields) = String :-
+	string_to_port_fields(String, PortFields).
 
-:- pred string_to_port_fields(string::in, port_fields::out) is semidet.
+:- pred string_to_port_fields(string, port_fields).
+:- mode string_to_port_fields(in, out) is semidet.
+:- mode string_to_port_fields(out, in) is det.
 
 string_to_port_fields("_", no_port).
 string_to_port_fields("p", port).
 
 :- func time_fields_to_string(time_fields) = string.
 
-time_fields_to_string(no_time)                    = "_".
-time_fields_to_string(ticks)                      = "q".
-time_fields_to_string(time)                       = "t".
-time_fields_to_string(ticks_and_time)             = "qt".
-time_fields_to_string(time_and_percall)           = "tp".
-time_fields_to_string(ticks_and_time_and_percall) = "qtp".
+time_fields_to_string(TimeFields) = String :-
+	string_to_time_fields(String, TimeFields).
 
-:- pred string_to_time_fields(string::in, time_fields::out) is semidet.
+:- pred string_to_time_fields(string, time_fields).
+:- mode string_to_time_fields(in, out) is semidet.
+:- mode string_to_time_fields(out, in) is det.
 
 string_to_time_fields("_",   no_time).
 string_to_time_fields("q",   ticks).
@@ -757,11 +778,12 @@ string_to_time_fields("qtp", ticks_and_time_and_percall).
 
 :- func alloc_fields_to_string(alloc_fields) = string.
 
-alloc_fields_to_string(no_alloc)          = "_".
-alloc_fields_to_string(alloc)             = "a".
-alloc_fields_to_string(alloc_and_percall) = "ap".
+alloc_fields_to_string(AllocFields) = String :-
+	string_to_alloc_fields(String, AllocFields).
 
-:- pred string_to_alloc_fields(string::in, alloc_fields::out) is semidet.
+:- pred string_to_alloc_fields(string, alloc_fields).
+:- mode string_to_alloc_fields(in, out) is semidet.
+:- mode string_to_alloc_fields(out, in) is det.
 
 string_to_alloc_fields("_",  no_alloc).
 string_to_alloc_fields("a",  alloc).
@@ -769,13 +791,12 @@ string_to_alloc_fields("ap", alloc_and_percall).
 
 :- func memory_fields_to_string(memory_fields) = string.
 
-memory_fields_to_string(no_memory)                 = "_".
-memory_fields_to_string(memory(bytes))             = "b".
-memory_fields_to_string(memory(words))             = "w".
-memory_fields_to_string(memory_and_percall(bytes)) = "bp".
-memory_fields_to_string(memory_and_percall(words)) = "wp".
+memory_fields_to_string(MemoryFields) = String :-
+	string_to_memory_fields(String, MemoryFields).
 
-:- pred string_to_memory_fields(string::in, memory_fields::out) is semidet.
+:- pred string_to_memory_fields(string, memory_fields).
+:- mode string_to_memory_fields(in, out) is semidet.
+:- mode string_to_memory_fields(out, in) is det.
 
 string_to_memory_fields("_",  no_memory).
 string_to_memory_fields("b",  memory(bytes)).
@@ -812,12 +833,12 @@ string_to_fields(FieldsStr, Fields) :-
 
 :- func caller_groups_to_string(caller_groups) = string.
 
-caller_groups_to_string(group_by_call_site) = "cs".
-caller_groups_to_string(group_by_proc)      = "pr".
-caller_groups_to_string(group_by_module)    = "mo".
-caller_groups_to_string(group_by_clique)    = "cl".
+caller_groups_to_string(CallerGroups) = String :-
+	string_to_caller_groups(String, CallerGroups).
 
-:- pred string_to_caller_groups(string::in, caller_groups::out) is semidet.
+:- pred string_to_caller_groups(string, caller_groups).
+:- mode string_to_caller_groups(in, out) is semidet.
+:- mode string_to_caller_groups(out, in) is det.
 
 string_to_caller_groups("cs", group_by_call_site).
 string_to_caller_groups("pr", group_by_proc).
@@ -826,13 +847,12 @@ string_to_caller_groups("cl", group_by_clique).
 
 :- func cost_kind_to_string(cost_kind) = string.
 
-cost_kind_to_string(calls)  = "calls".
-cost_kind_to_string(redos)  = "redos".
-cost_kind_to_string(time)   = "time".
-cost_kind_to_string(allocs) = "allocs".
-cost_kind_to_string(words)  = "words".
+cost_kind_to_string(CostKind) = String :-
+	string_to_cost_kind(String, CostKind).
 
-:- pred string_to_cost_kind(string::in, cost_kind::out) is semidet.
+:- pred string_to_cost_kind(string, cost_kind).
+:- mode string_to_cost_kind(in, out) is semidet.
+:- mode string_to_cost_kind(out, in) is det.
 
 string_to_cost_kind("calls",  calls).
 string_to_cost_kind("redos",  redos).
@@ -842,10 +862,12 @@ string_to_cost_kind("words",  words).
 
 :- func incl_desc_to_string(include_descendants) = string.
 
-incl_desc_to_string(self) =          "self".
-incl_desc_to_string(self_and_desc) = "both".
+incl_desc_to_string(InclDesc) = String :-
+	string_to_incl_desc(String, InclDesc).
 
-:- pred string_to_incl_desc(string::in, include_descendants::out) is semidet.
+:- pred string_to_incl_desc(string, include_descendants).
+:- mode string_to_incl_desc(in, out) is semidet.
+:- mode string_to_incl_desc(out, in) is det.
 
 string_to_incl_desc("self", self).
 string_to_incl_desc("both", self_and_desc).
@@ -923,20 +945,24 @@ string_to_order_criteria(CriteriaStr, Criteria) :-
 
 :- func scope_to_string(measurement_scope) = string.
 
-scope_to_string(per_call) = "pc".
-scope_to_string(overall)  = "oa".
+scope_to_string(Scope) = String :-
+	string_to_scope(String, Scope).
 
-:- pred string_to_scope(string::in, measurement_scope::out) is semidet.
+:- pred string_to_scope(string, measurement_scope).
+:- mode string_to_scope(in, out) is semidet.
+:- mode string_to_scope(out, in) is det.
 
 string_to_scope("pc", per_call).
 string_to_scope("oa",  overall).
 
 :- func contour_to_string(contour) = string.
 
-contour_to_string(apply_contour) = "ac".
-contour_to_string(no_contour)    = "nc".
+contour_to_string(Contour) = String :-
+	string_to_contour(String, Contour).
 
-:- pred string_to_contour(string::in, contour::out) is semidet.
+:- pred string_to_contour(string, contour).
+:- mode string_to_contour(in, out) is semidet.
+:- mode string_to_contour(out, in) is det.
 
 string_to_contour("ac", apply_contour).
 string_to_contour("nc", no_contour).
@@ -947,30 +973,52 @@ time_format_to_string(no_scale)           = "no".
 time_format_to_string(scale_by_millions)  = "mi".
 time_format_to_string(scale_by_thousands) = "th".
 
-:- pred string_to_time_format(string::in, time_format::out) is semidet.
+:- pred string_to_time_format(string, time_format).
+:- mode string_to_time_format(in, out) is semidet.
+:- mode string_to_time_format(out, in) is det.
 
 string_to_time_format("no", no_scale).
 string_to_time_format("mi", scale_by_millions).
 string_to_time_format("th", scale_by_thousands).
 
-:- pred string_to_colour_scheme(string::in, colour_scheme::out) is semidet.
+:- func inactive_items_to_string(inactive_items) = string.
+
+inactive_items_to_string(Items) = String :-
+	string_to_inactive_items(String, Items).
+
+:- pred string_to_inactive_items(string, inactive_items).
+:- mode string_to_inactive_items(in, out) is semidet.
+:- mode string_to_inactive_items(out, in) is det.
+
+string_to_inactive_items("hh", inactive_items(hide,  hide)).
+string_to_inactive_items("sh", inactive_items(show,  hide)).
+string_to_inactive_items("hs", inactive_items(hide,  show)).
+string_to_inactive_items("ss", inactive_items(show,  show)).
+
+:- func colour_scheme_to_string(colour_scheme) = string.
+
+colour_scheme_to_string(Scheme) = String :-
+	string_to_colour_scheme(String, Scheme).
+
+:- pred string_to_colour_scheme(string, colour_scheme).
+:- mode string_to_colour_scheme(in, out) is semidet.
+:- mode string_to_colour_scheme(out, in) is det.
 
 string_to_colour_scheme("cols", column_groups).
 string_to_colour_scheme("none", none).
 
-:- func colour_scheme_to_string(colour_scheme) = string.
+:- func box_to_string(box) = string.
 
-colour_scheme_to_string(column_groups) = "cols".
-colour_scheme_to_string(none)          = "none".
+box_to_string(Box) = String :-
+	string_to_box(String, Box).	
 
-:- pred string_to_box(string::in, box::out) is semidet.
+:- pred string_to_box(string, box).
+:- mode string_to_box(in, out) is semidet.
+:- mode string_to_box(out, in) is det.
 
 string_to_box("box",   box).
 string_to_box("nobox", nobox).
 
-:- func box_to_string(box) = string.
-
-box_to_string(box)   = "box".
-box_to_string(nobox) = "nobox".
-
+%-----------------------------------------------------------------------------%
+:- end_module interface.
 %-----------------------------------------------------------------------------%

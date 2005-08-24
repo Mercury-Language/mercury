@@ -300,6 +300,18 @@ footer_pref_toggles(Cmd, Pref, Deep) = AllToggles :-
 	;
 		BoxToggle = ""
 	),
+	( list__member(toggle_inactive_modules, RelevantToggles) ->
+		InactiveModuleToggle =
+			footer_inactive_modules_toggle(Cmd, Pref, Deep)
+	;
+		InactiveModuleToggle = ""
+	),
+	( list__member(toggle_inactive_procs, RelevantToggles) ->
+		InactiveProcsToggle = 
+			footer_inactive_procs_toggle(Cmd, Pref, Deep)
+	;
+		InactiveProcsToggle = ""
+	),
 	AllToggles =
 		FieldToggle ++
 		AncestorToggle ++
@@ -308,7 +320,9 @@ footer_pref_toggles(Cmd, Pref, Deep) = AllToggles :-
 		ContourToggle ++
 		TimeFormatToggle ++
 		ColourToggle ++
-		BoxToggle.
+		BoxToggle ++
+		InactiveModuleToggle ++
+		InactiveProcsToggle.
 
 %-----------------------------------------------------------------------------%
 
@@ -320,7 +334,9 @@ footer_pref_toggles(Cmd, Pref, Deep) = AllToggles :-
 	;	toggle_summarize
 	;	toggle_order_criteria
 	;	toggle_contour
-	;	toggle_time_format.
+	;	toggle_time_format
+	;	toggle_inactive_modules
+	;	toggle_inactive_procs.
 
 :- func command_relevant_toggles(cmd) = list(toggle_kind).
 
@@ -341,10 +357,10 @@ command_relevant_toggles(proc_callers(_, _, _)) =
 	toggle_contour, toggle_time_format].
 command_relevant_toggles(modules) =
 	[toggle_fields, toggle_box, toggle_colour, toggle_order_criteria,
-	toggle_time_format].
+	toggle_time_format, toggle_inactive_modules].
 command_relevant_toggles(module(_)) =
 	[toggle_fields, toggle_box, toggle_colour, toggle_order_criteria,
-	toggle_time_format].
+	toggle_time_format, toggle_inactive_procs].
 command_relevant_toggles(top_procs(_, _, _, _)) =
 	[toggle_fields, toggle_box, toggle_colour, toggle_time_format].
 command_relevant_toggles(proc_static(_)) = [].
@@ -765,65 +781,112 @@ toggle_criteria(Criteria, UpdateCriteria, UpdateCostCriteria) = HTML :-
 
 toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
 	( CostKind \= calls ->	
-		Msg1 = "Sort by calls",
-		Toggle1 = string__format("<A HREF=""%s"">%s</A>\n",
+		MsgCalls = "Sort by calls",
+		ToggleCalls = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(UpdateCriteria(calls, InclDesc, Scope)),
-			s(Msg1)])
+			s(MsgCalls)])
 	;
-		Toggle1 = ""
+		ToggleCalls = ""
+	),
+	( CostKind \= redos ->
+		MsgRedos = "Sort by redos",
+		ToggleRedos = string.format("<A HREF=""%s"">%s</A>\n",
+			[s(UpdateCriteria(redos, InclDesc, Scope)),
+			s(MsgRedos)])
+	;
+		ToggleRedos = ""
 	),
 	( CostKind \= time ->	
-		Msg2 = "Sort by time",
-		Toggle2 = string__format("<A HREF=""%s"">%s</A>\n",
+		MsgTime = "Sort by time",
+		ToggleTime = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(UpdateCriteria(time, InclDesc, Scope)),
-			s(Msg2)])
+			s(MsgTime)])
 	;
-		Toggle2 = ""
+		ToggleTime = ""
 	),
 	( CostKind \= allocs ->	
-		Msg3 = "Sort by allocations",
-		Toggle3 = string__format("<A HREF=""%s"">%s</A>\n",
+		MsgAllocs = "Sort by allocations",
+		ToggleAllocs = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(UpdateCriteria(allocs, InclDesc, Scope)),
-			s(Msg3)])
+			s(MsgAllocs)])
 	;
-		Toggle3 = ""
+		ToggleAllocs = ""
 	),
 	( CostKind \= words ->	
-		Msg4 = "Sort by words",
-		Toggle4 = string__format("<A HREF=""%s"">%s</A>\n",
+		MsgWords = "Sort by words",
+		ToggleWords = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(UpdateCriteria(words, InclDesc, Scope)),
-			s(Msg4)])
+			s(MsgWords)])
 	;
-		Toggle4 = ""
+		ToggleWords = ""
 	),
 	(
 		InclDesc = self,
-		Msg5 = "Include descendants",
-		Toggle5 = string__format("<A HREF=""%s"">%s</A>\n",
+		MsgDesc = "Include descendants",
+		ToggleDesc = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(UpdateCriteria(CostKind, self_and_desc, Scope)),
-			s(Msg5)])
+			s(MsgDesc)])
 	;
 		InclDesc = self_and_desc,
-		Msg5 = "Exclude descendants",
-		Toggle5 = string__format("<A HREF=""%s"">%s</A>\n",
+		MsgDesc = "Exclude descendants",
+		ToggleDesc = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(UpdateCriteria(CostKind, self, Scope)),
-			s(Msg5)])
+			s(MsgDesc)])
 	),
 	(
 		Scope = per_call,
-		Msg6 = "Count overall cost",
-		Toggle6 = string__format("<A HREF=""%s"">%s</A>\n",
+		MsgScope = "Count overall cost",
+		ToggleScope = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(UpdateCriteria(CostKind, InclDesc, overall)),
-			s(Msg6)])
+			s(MsgScope)])
 	;
 		Scope = overall,
-		Msg6 = "Count per-call cost",
-		Toggle6 = string__format("<A HREF=""%s"">%s</A>\n",
+		MsgScope = "Count per-call cost",
+		ToggleScope = string__format("<A HREF=""%s"">%s</A>\n",
 			[s(UpdateCriteria(CostKind, InclDesc, per_call)),
-			s(Msg6)])
+			s(MsgScope)])
 	),
-	Toggles = Toggle1 ++ Toggle2 ++ Toggle3 ++ Toggle4
-		++ Toggle5 ++ Toggle6.
+	Toggles = ToggleCalls ++ ToggleRedos ++ ToggleTime ++ ToggleAllocs
+		++ ToggleWords ++ ToggleDesc ++ ToggleScope.
+
+%-----------------------------------------------------------------------------%
+%
+% Toggles to control showing/hiding inactive modules/procedures
+%
+
+:- func footer_inactive_modules_toggle(cmd, preferences, deep) = string.
+
+footer_inactive_modules_toggle(Cmd, Pref0, Deep) = HTML :-
+	Pref0 ^ pref_inactive = inactive_items(Procs, Modules),
+	(
+		Modules = show,
+		Msg  = "Hide inactive modules",
+		Pref = Pref0 ^ pref_inactive := inactive_items(Procs, hide)
+	;
+		Modules = hide,
+		Msg  = "Show inactive modules",
+		Pref = Pref0 ^ pref_inactive := inactive_items(Procs, show)
+	),
+	HTML = string__format("<A HREF=""%s"">%s</A>\n",
+			[s(deep_cmd_pref_to_url(Pref, Deep, Cmd)),
+			s(Msg)]).
+
+:- func footer_inactive_procs_toggle(cmd, preferences, deep) = string.
+
+footer_inactive_procs_toggle(Cmd, Pref0, Deep) = HTML :-
+	Pref0 ^ pref_inactive = inactive_items(Procs, Modules),
+	(
+		Procs = show, 
+		Msg = "Hide inactive procedures",
+		Pref = Pref0 ^ pref_inactive := inactive_items(hide, Modules)
+	;
+		Procs = hide,
+		Msg = "Show inactive procedures",
+		Pref = Pref0 ^ pref_inactive := inactive_items(show, Modules)
+	),
+	HTML = string__format("<A HREF=""%s"">%s</A>\n",
+			[s(deep_cmd_pref_to_url(Pref, Deep, Cmd)),
+			s(Msg)]).
 
 %-----------------------------------------------------------------------------%
 
