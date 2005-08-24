@@ -442,6 +442,13 @@
 :- pred module_info_pred_info(module_info::in, pred_id::in, pred_info::out)
 	is det.
 
+	% Given a pred_proc_id, return the proc_info of the specified procedure.
+	%
+:- pred module_info_proc_info(module_info::in, pred_proc_id::in, proc_info::out)
+	is det.
+:- pred module_info_proc_info(module_info::in, pred_id::in, proc_id::in, 
+	proc_info::out) is det.
+
 	% Given a pred_id and a proc_id, get the pred_info of that predicate
 	% and the proc_info for that mode of that predicate.
 	%
@@ -899,6 +906,12 @@ module_info_pred_info(MI, PredId, PredInfo) :-
 		string__append("cannot find predicate number ", PredStr, Msg),
 		error(Msg)
 	).
+
+module_info_proc_info(MI, PPId, ProcInfo) :-
+	module_info_pred_proc_info(MI, PPId, _, ProcInfo).
+
+module_info_proc_info(MI, PredId, ProcId, ProcInfo) :-
+	module_info_pred_proc_info(MI, PredId, ProcId, _, ProcInfo).
 
 module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo) :-
 	module_info_pred_info(MI, PredId, PredInfo),
