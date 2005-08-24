@@ -82,7 +82,8 @@ extern	void	MR_trace_decl_set_fallback_search_mode(
 
 extern	MR_bool	MR_trace_is_valid_search_mode_string(
 			const char *search_mode_string,
-			MR_Decl_Search_Mode *search_mode);
+			MR_Decl_Search_Mode *search_mode,
+			MR_bool *search_mode_requires_trace_counts);
 
 /*
 ** Return the default search mode to use when the --search-mode option for the
@@ -99,6 +100,20 @@ extern MR_Decl_Search_Mode MR_trace_get_default_search_mode(void);
 
 extern	void	MR_decl_print_all_trusted(FILE *fp, 
 			MR_bool mdb_command_format);
+
+/*
+** Set up the table of suspicions for each label.  This must be done
+** before generation of the annotated trace is started if
+** MR_edt_update_suspicion_accumulator is true.
+** Returns MR_TRUE if the table was successfully set up and MR_FALSE
+** in there was a problem.  A description of the problem is stored at
+** *problem.
+*/
+
+extern	MR_bool	MR_trace_decl_init_suspicion_table(
+			char *pass_trace_counts_file, 
+			char *fail_trace_counts_file,
+			MR_String *problem);
 
 /*
 ** Set the testing flag of the diagnoser.
@@ -126,6 +141,13 @@ typedef MR_Word MR_Trace_Node;
 */
 
 #define MR_TRACE_DECL_INITIAL_DEPTH	5
+
+/*
+** The suspicion of each event is represented as an integer between 0 and
+** MR_TRACE_DECL_MAX_SUSPICION.
+*/
+
+#define	MR_TRACE_DECL_MAX_SUSPICION 	100
 
 /*
 ** The default desired number of nodes to add to the annotated trace when 

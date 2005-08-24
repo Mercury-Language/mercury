@@ -49,6 +49,20 @@ typedef	enum {
 	MR_PORT_NONE
 } MR_Trace_Port;
 
+/*
+** The following array says if a label inside a procedure is 
+** uniquely identifiable by its goal path only, its port only or
+** whether both the port and goal path are necessary.
+*/
+
+typedef enum {
+    PATH_ONLY, PORT_ONLY, PORT_AND_PATH
+} MR_PathPort;
+
+extern	MR_PathPort     MR_named_count_port[MR_PORT_NONE + 1];
+
+extern	void		MR_trace_name_count_port_ensure_init(void);
+
 #define	MR_PORT_NUM_PORTS		((int) MR_PORT_NONE + 1)
 
 extern	const char 			*MR_port_names[];
@@ -459,6 +473,13 @@ extern	void	MR_turn_debug_back_on(MR_SavedDebugState *saved_state);
 
 extern	void	MR_trace_set_exception_value(MR_Word exception);
 extern	MR_Word	MR_trace_get_exception_value(void);
+
+/*
+** Return a pointer to the execution count of a particular label.
+*/
+
+extern	MR_Unsigned *MR_trace_lookup_trace_count(
+	const MR_Label_Layout *label_layout);
 
 /*
 ** If MR_TRACE_HISTOGRAM is defined, MR_trace maintains two arrays of integers,

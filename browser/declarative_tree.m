@@ -52,6 +52,7 @@
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.rtti_access.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -75,7 +76,8 @@
 		pred(edt_is_implicit_root/2) is trace_is_implicit_root,
 		pred(edt_same_nodes/3) is trace_same_event_numbers,
 		pred(edt_topmost_node/2) is trace_topmost_node,
- 		pred(edt_weight/4) is trace_weight,
+ 		pred(edt_number_of_events/4) is trace_number_of_events,
+ 		pred(edt_subtree_suspicion/4) is trace_subtree_suspicion,
  		pred(edt_context/4) is trace_context,
 		func(edt_proc_label/2) is trace_node_proc_label,
 		func(edt_arg_pos_to_user_arg_num/3) is
@@ -116,13 +118,13 @@ call_node_decl_atom(Store, CallId) = DeclAtom :-
 get_edt_node_initial_atom(Store, Ref, Atom) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, CallId, _, _, _, _, _),
+		Node = exit(_, CallId, _, _, _, _, _, _),
 		Atom = call_node_decl_atom(Store, CallId)
 	;
-		Node = fail(_, CallId, _, _, _),
+		Node = fail(_, CallId, _, _, _, _),
 		Atom = call_node_decl_atom(Store, CallId)
 	;
-		Node = excp(_, CallId, _, _, _, _),
+		Node = excp(_, CallId, _, _, _, _, _),
 		Atom = call_node_decl_atom(Store, CallId)
 	).
 
@@ -132,11 +134,11 @@ get_edt_node_initial_atom(Store, Ref, Atom) :-
 get_edt_node_event_number(Store, Ref, Event) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, _, _, _, Event, _, _)
+		Node = exit(_, _, _, _, Event, _, _, _)
 	;
-		Node = fail(_, _, _, Event, _)
+		Node = fail(_, _, _, Event, _, _)
 	;
-		Node = excp(_, _, _, _, Event, _)
+		Node = excp(_, _, _, _, Event, _, _)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -147,17 +149,17 @@ get_edt_node_event_number(Store, Ref, Event) :-
 trace_question(wrap(Store), dynamic(Ref), Root) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = fail(_, CallId, RedoId, _, _),
+		Node = fail(_, CallId, RedoId, _, _, _),
 		DeclAtom = call_node_decl_atom(Store, CallId),
 		get_answers(Store, RedoId, [], Answers),
 		Root = missing_answer(dynamic(Ref), DeclAtom, Answers)
 	;
-		Node = exit(_, CallId, _, _, _, _, _),
+		Node = exit(_, CallId, _, _, _, _, _, _),
 		InitDeclAtom = call_node_decl_atom(Store, CallId),
 		FinalDeclAtom = exit_node_decl_atom(Store, Node),
 		Root = wrong_answer(dynamic(Ref), InitDeclAtom, FinalDeclAtom)
 	;
-		Node = excp(_, CallId, _, Exception, _, _),
+		Node = excp(_, CallId, _, Exception, _, _, _),
 		DeclAtom = call_node_decl_atom(Store, CallId),
 		Root = unexpected_exception(dynamic(Ref), DeclAtom, Exception)
 	).
@@ -168,7 +170,8 @@ trace_question(wrap(Store), dynamic(Ref), Root) :-
 
 get_answers(Store, RedoId, DeclAtoms0, DeclAtoms) :-
 	(
-		maybe_redo_node_from_id(Store, RedoId, redo(_, ExitId, _, _))
+		maybe_redo_node_from_id(Store, RedoId, redo(_, ExitId, _, _,
+			_))
 	->
 		exit_node_from_id(Store, ExitId, ExitNode),
 		NextId = ExitNode ^ exit_prev_redo,
@@ -184,18 +187,18 @@ get_answers(Store, RedoId, DeclAtoms0, DeclAtoms) :-
 trace_get_e_bug(wrap(Store), dynamic(Ref), Bug) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, CallId, _, _, Event, _, _),
+		Node = exit(_, CallId, _, _, Event, _, _, _),
 		InitDeclAtom = call_node_decl_atom(Store, CallId),
 		FinalDeclAtom = exit_node_decl_atom(Store, Node),
 		get_exit_atoms_in_contour(Store, Node, Contour),
 		Bug = incorrect_contour(InitDeclAtom, FinalDeclAtom, Contour, 
 			Event)
 	;
-		Node = fail(_, CallId, _, Event, _),
+		Node = fail(_, CallId, _, Event, _, _),
 		DeclAtom = call_node_decl_atom(Store, CallId),
 		Bug = partially_uncovered_atom(DeclAtom, Event)
 	;
-		Node = excp(_, CallId, _, Exception, Event, _),
+		Node = excp(_, CallId, _, Exception, Event, _, _),
 		DeclAtom = call_node_decl_atom(Store, CallId),
 		Bug = unhandled_exception(DeclAtom, Exception, Event)
 	).
@@ -226,11 +229,11 @@ trace_get_i_bug(wrap(Store), dynamic(BugRef),
 trace_last_parent(wrap(Store), dynamic(Ref), dynamic(Parent)) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = fail(_, CallId, _, _, _)
+		Node = fail(_, CallId, _, _, _, _)
 	;
-		Node = exit(_, CallId, _, _, _, _, _)
+		Node = exit(_, CallId, _, _, _, _, _, _)
 	;
-		Node = excp(_, CallId, _, _, _, _)
+		Node = excp(_, CallId, _, _, _, _, _)
 	),
 	call_node_from_id(Store, CallId, Call),
 	CallPrecId = Call ^ call_preceding,
@@ -244,14 +247,14 @@ trace_same_event_numbers(wrap(Store), dynamic(Ref1), dynamic(Ref2)) :-
 	det_edt_return_node_from_id(Store, Ref1, Node1),
 	det_edt_return_node_from_id(Store, Ref2, Node2),
 	(
-		Node1 = exit(_, _, _, _, Event, _, _),
-		Node2 = exit(_, _, _, _, Event, _, _)
+		Node1 = exit(_, _, _, _, Event, _, _, _),
+		Node2 = exit(_, _, _, _, Event, _, _, _)
 	;
-		Node1 = fail(_, _, _, Event, _),
-		Node2 = fail(_, _, _, Event, _)
+		Node1 = fail(_, _, _, Event, _, _),
+		Node2 = fail(_, _, _, Event, _, _)
 	;
-		Node1 = excp(_, _, _, _, Event, _),
-		Node2 = excp(_, _, _, _, Event, _)
+		Node1 = excp(_, _, _, _, Event, _, _),
+		Node2 = excp(_, _, _, _, Event, _, _)
 	).
 
 :- pred trace_topmost_node(wrap(S)::in, edt_node(R)::in) is semidet
@@ -260,14 +263,14 @@ trace_same_event_numbers(wrap(Store), dynamic(Ref1), dynamic(Ref2)) :-
 trace_topmost_node(wrap(Store), dynamic(Ref)) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, CallId, _, _, _, _, _)
+		Node = exit(_, CallId, _, _, _, _, _, _)
 	;
-		Node = fail(_, CallId, _, _, _)
+		Node = fail(_, CallId, _, _, _, _)
 	;
-		Node = excp(_, CallId, _, _, _, _)
+		Node = excp(_, CallId, _, _, _, _, _)
 	),
 	% The node is topmost of the call sequence number is 1.
-	call_node_from_id(Store, CallId, call(_, _, _, 1, _, _, _, _, _)).
+	call_node_from_id(Store, CallId, call(_, _, _, 1, _, _, _, _, _, _)).
 
 :- pred trace_children(wrap(S)::in, edt_node(R)::in, list(edt_node(R))::out)
 	is semidet <= annotated_trace(S, R).
@@ -275,11 +278,11 @@ trace_topmost_node(wrap(Store), dynamic(Ref)) :-
 trace_children(wrap(Store), dynamic(Ref), Children) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = fail(PrecId, CallId, _, _, _),
+		Node = fail(PrecId, CallId, _, _, _, _),
 		not_at_depth_limit(Store, CallId),
 		stratum_children(Store, PrecId, CallId, [], Children)
 	;
-		Node = exit(PrecId, CallId, _, _, _, _, _),
+		Node = exit(PrecId, CallId, _, _, _, _, _, _),
 		Atom = get_trace_exit_atom(Node),
 		not_at_depth_limit(Store, CallId),
 		(
@@ -292,7 +295,7 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 				[], Children)
 		)
 	;
-		Node = excp(PrecId, CallId, _, _, _, _),
+		Node = excp(PrecId, CallId, _, _, _, _, _),
 		not_at_depth_limit(Store, CallId),
 		contour_children(exception, Store, PrecId, CallId, [],
 			Children)
@@ -310,86 +313,123 @@ trace_implicit_tree_info(wrap(Store), dynamic(Ref), ImplicitTreeInfo) :-
 	call_node_from_id(Store, CallId, CallNode),
 	CallNode ^ call_at_max_depth = yes(ImplicitTreeInfo).
 
-:- pred trace_weight(wrap(S)::in, edt_node(R)::in, int::out, int::out)
+:- pred trace_number_of_events(wrap(S)::in, edt_node(R)::in, int::out,
+	int::out) is det <= annotated_trace(S, R).
+
+trace_number_of_events(Store, NodeId, Events, DuplicatedEvents) :- 
+	trace_weight(number_of_events, Store, NodeId, 0, Events, no, 0, 0, 
+		DuplicatedEvents).
+
+:- pred trace_subtree_suspicion(wrap(S)::in, edt_node(R)::in, int::out,
+	int::out) is det <= annotated_trace(S, R).
+
+trace_subtree_suspicion(Store, NodeId, Suspicion, Excess) :- 
+	trace_weight(suspicion, Store, NodeId, 0, Suspicion, no, 0, 0, Excess).
+
+	% trace_weight(Weighting, Store, Node, PrevWeight, Weight, RecordDups,
+	%	DupFactor, PrevDupWeight, Excess)
+	% Calculate the difference between the value of a field in an EXIT,
+	% FAIL or EXCP node and the same field in the corresponding CALL node
+	% (the field that is used depends on the value of Weighting).  If Node
+	% is a FAIL or EXCP, then sum the differences between the first
+	% CALL and the first EXIT, subsequent REDOs and EXITs and the final
+	% REDO and FAIL/EXCP.  If Node is a FAIL or EXCP then all the previous
+	% EXITS will be included in the EDT and the subtrees rooted at these
+	% EXITS will have common annotated trace nodes.  Excess is the total
+	% weight of all duplicated nodes.  PrevWeight and PrevDupWeight are
+	% accumulators which should initially be zero.  RecordDups keeps track
+	% of whether the final node was a FAIL or EXCP. This should be `no'
+	% initially.  DupFactor keeps track of how many times the nodes before
+	% the last REDO could have been duplicated and should initially be
+	% zero.
+	%
+:- pred trace_weight(weighting_heuristic::in, wrap(S)::in, edt_node(R)::in, 
+	int::in, int::out, bool::in, int::in, int::in, int::out) 
 	is det <= annotated_trace(S, R).
 
-trace_weight(Store, NodeId, Weight, ExcessWeight) :- 
-	node_events(Store, NodeId, 0, Weight, no, 0, 0, ExcessWeight).
-
-	% Conservatively guess the number of events in the descendents of the
-	% call corresponding to the given final event plus the number of
-	% internal body events for the call.  Also return the number of events
-	% that could be duplicated in siblings of the node in the EDT if the 
-	% node is a FAIL event.
-	%
-	% We include all the events between the final event and the last
-	% REDO before the final event, plus all the events between previous
-	% EXITs and REDOs and the initial CALL.  For EXIT events
-	% this is an over approximation, but we can't know which events
-	% will be included in descendent contours when those descendent
-	% events are in unmaterialized portions of the annotated trace.
-	%
-	% node_events(Store, Node, PrevEvents, Events, RecordDups,
-	%	DupFactor, PrevDupEvents, DupEvents)
-	% True iff Events is the (conservative approximation of) the number of
-	% descendent events of Node and DupEvents is the number of events that
-	% could be duplicated in siblings.  PrevEvents and PrevDupEvents are
-	% accumulators which should initially be zero.  RecordDups keeps track
-	% of whether the final node was a FAIL or not - duplicates need only be
-	% recorded for FAIL nodes.  This should be `no' initially.  DupFactor
-	% keeps track of how many times the events before the last REDO could
-	% have been duplicated and should initially be zero.
-	%
-:- pred node_events(wrap(S)::in, edt_node(R)::in, int::in, int::out, bool::in,
-	int::in, int::in, int::out) is det <= annotated_trace(S, R).
-
-node_events(wrap(Store), dynamic(Ref), PrevEvents, Events, RecordDups,
-		DupFactor, PrevDupEvents, DupEvents) :-
+trace_weight(Weighting, wrap(Store), dynamic(Ref), PrevWeight, Weight,
+		RecordDups, DupFactor, PrevDupWeight, Excess) :-
 	det_trace_node_from_id(Store, Ref, Final),
 	(
 		(
-			Final = exit(_, CallId, RedoId, _, FinalEvent, _, _),
+			Final = exit(_, CallId, RedoId, _, FinalEvent, _, _, 
+				FinalSuspicion),
 			NewRecordDups = RecordDups
 		;
-			Final = fail(_, CallId, RedoId, FinalEvent, _),
+			Final = fail(_, CallId, RedoId, FinalEvent, _, 
+				FinalSuspicion),
 			NewRecordDups = yes
 		;
-			Final = excp(_, CallId, RedoId, _, FinalEvent, _),
+			Final = excp(_, CallId, RedoId, _, FinalEvent, _, 
+				FinalSuspicion),
 			NewRecordDups = yes
 		)
 	->
 		(
 			maybe_redo_node_from_id(Store, RedoId, Redo),
-			Redo = redo(_, ExitId, RedoEvent, _)
+			Redo = redo(_, ExitId, RedoEvent, _, RedoSuspicion)
 		->
 			(
 				NewRecordDups = yes,
-				NewPrevDupEvents = PrevDupEvents + DupFactor 
-					* (FinalEvent - RedoEvent + 1)
+				(
+					Weighting = number_of_events,
+					NewPrevDupWeight = PrevDupWeight +
+						DupFactor * (FinalEvent -
+							RedoEvent + 1)
+				;
+					Weighting = suspicion,
+					NewPrevDupWeight = PrevDupWeight +
+						DupFactor * (FinalSuspicion -
+							RedoSuspicion)
+				)
 			;
 				NewRecordDups = no,
-				NewPrevDupEvents = 0
+				NewPrevDupWeight = 0
 			),
-			node_events(wrap(Store), dynamic(ExitId), PrevEvents +
-				FinalEvent - RedoEvent + 1, Events, 
-				NewRecordDups, DupFactor + 1, 
-				NewPrevDupEvents, DupEvents)
+			(
+				Weighting = number_of_events,
+				NewPrevWeight = PrevWeight + FinalEvent 
+					- RedoEvent + 1
+			;
+				Weighting = suspicion,
+				NewPrevWeight = PrevWeight + FinalSuspicion
+					- RedoSuspicion
+			),
+			trace_weight(Weighting, wrap(Store), dynamic(ExitId),
+				NewPrevWeight, Weight, NewRecordDups, 
+				DupFactor + 1, NewPrevDupWeight, Excess)
 		;
 			call_node_from_id(Store, CallId, Call),
 			CallEvent = Call ^ call_event,
-			Events = PrevEvents + FinalEvent - CallEvent + 1,
+			CallSuspicion = Call ^ call_suspicion,
+			(
+				Weighting = number_of_events,
+				Weight = PrevWeight + FinalEvent - 
+					CallEvent + 1
+			;
+				Weighting = suspicion,
+				Weight = PrevWeight + FinalSuspicion -
+					CallSuspicion
+			),
 			(
 				NewRecordDups = yes,
-				DupEvents = PrevDupEvents + DupFactor *
-					(FinalEvent - CallEvent + 1)
+				(
+					Weighting = number_of_events,
+					Excess = PrevDupWeight + DupFactor *
+						(FinalEvent - CallEvent + 1)
+				;
+					Weighting = suspicion,
+					Excess = PrevDupWeight + DupFactor *
+						(FinalSuspicion 
+							- CallSuspicion)
+				)
 			;
 				NewRecordDups = no,
-				DupEvents = 0
+				Excess = 0
 			)
 		)
 	;
-		throw(internal_error("node_events",
-			"not a final event"))
+		throw(internal_error("trace_weight", "not a final event"))
 	).
 
 :- pred trace_context(wrap(S)::in, edt_node(R)::in, pair(string, int)::out,
@@ -399,11 +439,11 @@ trace_context(wrap(Store), dynamic(Ref), FileName - LineNo, MaybeReturnContext)
 		:-
 	det_trace_node_from_id(Store, Ref, Final),
 	(
-		Final = exit(_, CallId, _, _, _, Label, _)
+		Final = exit(_, CallId, _, _, _, Label, _, _)
 	;
-		Final = fail(_, CallId, _, _, Label)
+		Final = fail(_, CallId, _, _, Label, _)
 	;
-		Final = excp(_, CallId, _, _, _, Label)
+		Final = excp(_, CallId, _, _, _, Label, _)
 	),
 	get_context_from_label_layout(Label, FileName, LineNo),
 	call_node_from_id(Store, CallId, Call),
@@ -445,11 +485,11 @@ not_at_depth_limit(Store, Ref) :-
 trace_node_proc_label(wrap(Store), dynamic(Ref)) = ProcLabel :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = fail(_, _, _, _, Label)
+		Node = fail(_, _, _, _, Label, _)
 	;
-		Node = exit(_, _, _, _, _, Label, _)
+		Node = exit(_, _, _, _, _, Label, _, _)
 	;
-		Node = excp(_, _, _, _, _, Label)
+		Node = excp(_, _, _, _, _, Label, _)
 	),
 	ProcLayout = get_proc_layout_from_label_layout(Label),
 	ProcLabel = get_proc_label_from_layout(ProcLayout).
@@ -482,7 +522,7 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
 		( 
-			Node = call(_, _, _, _, _, _, _, _, _)
+			Node = call(_, _, _, _, _, _, _, _, _, _)
 		; 
 			%
 			% A non-failed NEGE could be encountered when gathering
@@ -503,14 +543,14 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 		throw(internal_error("contour_children_2",
 			"unexpected start of contour"))
 	;
-		Node = exit(_, _, _, _, _, _, _)
+		Node = exit(_, _, _, _, _, _, _, _)
 	->
 			%
 			% Add a child for this node.
 			%
 		Ns1 = [dynamic(NodeId) | Ns0]
 	;
-		Node = fail(_, CallId, _, _, _)
+		Node = fail(_, CallId, _, _, _, _)
 	->
 			%
 			% Fail events can be reached here if there
@@ -553,7 +593,7 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 			%
 		stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
 	; 
-		Node = excp(_, CallId, _, _, _, _)
+		Node = excp(_, CallId, _, _, _, _, _)
 	->
 			%
 			% If the contour ends in an exception, then add this
@@ -615,7 +655,7 @@ stratum_children(Store, NodeId, StartId, Ns0, Ns) :-
 stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _, _, _, _)
+		( Node = call(_, _, _, _, _, _, _, _, _, _)
 		; Node = neg(_, _, _)
 		; Node = cond(_, _, failed)
 		)
@@ -623,8 +663,8 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 		throw(internal_error("stratum_children_2",
 			"unexpected start of contour"))
 	;
-		( Node = fail(_, _, _, _, _)
-		; Node = excp(_, _, _, _, _, _)
+		( Node = fail(_, _, _, _, _, _)
+		; Node = excp(_, _, _, _, _, _, _)
 		)
 	->
 			%
@@ -646,7 +686,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 			%
 		stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
 	;
-		Node = exit(_, CallId, _, _, _, _, _)
+		Node = exit(_, CallId, _, _, _, _, _, _)
 	->
 			%
 			% Only include an exit node as a missing answer child
@@ -859,7 +899,7 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, CallId, _, _, _, _, _),
+		Node = exit(_, CallId, _, _, _, _, _, _),
 		ExitAtom = get_trace_exit_atom(Node),
 		call_node_from_id(Store, CallId, CallNode),
 		CallAtom = get_trace_call_atom(CallNode),
@@ -880,7 +920,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 				"unbound wrong answer term"))
 		)
 	;
-		Node = fail(_, CallId, _, _, _),
+		Node = fail(_, CallId, _, _, _, _),
 		call_node_from_id(Store, CallId, CallNode),
 		CallAtom = get_trace_call_atom(CallNode),
 		( trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) ->
@@ -891,7 +931,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 				"unbound missing answer term"))
 		)
 	;
-		Node = excp(_, CallId, _, _, _, _),
+		Node = excp(_, CallId, _, _, _, _, _),
 		call_node_from_id(Store, CallId, CallNode),
 		CallAtom = get_trace_call_atom(CallNode),
 		%
@@ -964,7 +1004,7 @@ parent_proc_rep(Store, CallId, ProcRep) :-
 
 step_left_to_call(Store, NodeId, ParentCallNode) :-
 	trace_node_from_id(Store, NodeId, Node),
-	( Node = call(_, _, _, _, _, _, _, _, _) ->
+	( Node = call(_, _, _, _, _, _, _, _, _, _) ->
 		ParentCallNode = Node
 	;
 		%
@@ -992,7 +1032,7 @@ step_left_to_call(Store, NodeId, ParentCallNode) :-
 	is det <= annotated_trace(S, R).
 
 materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
-	( Node = call(_, _, _, _, _, _, _, _, _) ->
+	( Node = call(_, _, _, _, _, _, _, _, _, _) ->
 		
 		Nodes = Nodes0
 	;
@@ -1039,7 +1079,7 @@ get_exit_atoms_in_contour(Store, ExitNode, ExitAtoms) :-
 	final_decl_atom::out) is semidet <= annotated_trace(S, R).
 
 get_exit_atom(Store, _ - Exit, FinalAtom) :-
-	Exit = exit(_, _, _, _, _, _, _),
+	Exit = exit(_, _, _, _, _, _, _, _),
 	FinalAtom = exit_node_decl_atom(Store, Exit).
 
 :- type primitive_list_and_var(R)
@@ -1138,7 +1178,7 @@ make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
 :- pred contour_at_end_path(assoc_list(R, trace_node(R))::in, 
 	maybe(goal_path)::in) is semidet.
 
-contour_at_end_path([_ - call(_, _, _, _, _, _, MaybeReturnLabel, _, _)], 
+contour_at_end_path([_ - call(_, _, _, _, _, _, MaybeReturnLabel, _, _, _)], 
 		yes(EndPath)) :-
 	CallPathStr = get_goal_path_from_maybe_label(MaybeReturnLabel),
 	path_from_string_det(CallPathStr, CallPath),
@@ -1316,9 +1356,9 @@ remove_leading_exit_fail_events(Contour0, Contour) :-
 	Contour0 = [_ - ContourHeadNode | ContourTail],
 	(
 		(
-			ContourHeadNode = exit(_, _, _, _, _, _, _)
+			ContourHeadNode = exit(_, _, _, _, _, _, _, _)
 		;
-			ContourHeadNode = fail(_, _, _, _, _)
+			ContourHeadNode = fail(_, _, _, _, _, _)
 		)
 	->
 		remove_leading_exit_fail_events(ContourTail, 
@@ -1354,7 +1394,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
 	->
 		(
 			ContourHeadNode = call(_, _, _, _, _, _, 
-				MaybeReturnLabel, _, _),
+				MaybeReturnLabel, _, _, _),
 			Atom = get_trace_call_atom(ContourHeadNode),
 			CallPathStr = get_goal_path_from_maybe_label(
 				MaybeReturnLabel),
@@ -1723,20 +1763,21 @@ find_arg_pos_from_back([HeadVar | HeadVars], Var, Pos, ArgPos) :-
 edt_subtree_details(Store, dynamic(Ref), Event, SeqNo, CallPreceding) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, Call, _, _, Event, _, _)
+		Node = exit(_, Call, _, _, Event, _, _, _)
 	;
-		Node = fail(_, Call, _, Event, _)
+		Node = fail(_, Call, _, Event, _, _)
 	;
-		Node = excp(_, Call, _, _, Event, _)
+		Node = excp(_, Call, _, _, Event, _, _)
 	),
 	call_node_from_id(Store, Call, CallNode),
 	SeqNo = CallNode ^ call_seq,
 	CallPreceding = CallNode ^ call_preceding.
 
 :- inst edt_return_node 
-	--->	exit(ground, ground, ground, ground, ground, ground, ground)
-	;	fail(ground, ground, ground, ground, ground)
-	;	excp(ground, ground, ground, ground, ground, ground).
+	--->	exit(ground, ground, ground, ground, ground, ground, ground,
+			ground)
+	;	fail(ground, ground, ground, ground, ground, ground)
+	;	excp(ground, ground, ground, ground, ground, ground, ground).
 
 :- pred det_edt_return_node_from_id(S::in, R::in,
 	trace_node(R)::out(edt_return_node)) is det <= annotated_trace(S, R).
@@ -1745,11 +1786,11 @@ det_edt_return_node_from_id(Store, Ref, Node) :-
 	(
 		trace_node_from_id(Store, Ref, Node0),
 		(
-			Node0 = exit(_, _, _, _, _, _, _)
+			Node0 = exit(_, _, _, _, _, _, _, _)
 		;
-			Node0 = fail(_, _, _, _, _)
+			Node0 = fail(_, _, _, _, _, _)
 		;
-			Node0 = excp(_, _, _, _, _, _)
+			Node0 = excp(_, _, _, _, _, _, _)
 		)
 	->
 		Node = Node0
@@ -1765,11 +1806,11 @@ get_edt_call_node(Store, Ref, CallId) :-
 	(
 		trace_node_from_id(Store, Ref, Node0),
 		(
-			Node0 = exit(_, CallId0, _, _, _, _, _)
+			Node0 = exit(_, CallId0, _, _, _, _, _, _)
 		;
-			Node0 = fail(_, CallId0, _, _, _)
+			Node0 = fail(_, CallId0, _, _, _, _)
 		;
-			Node0 = excp(_, CallId0, _, _, _, _)
+			Node0 = excp(_, CallId0, _, _, _, _, _)
 		)
 	->
 		CallId = CallId0

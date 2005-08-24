@@ -45,6 +45,7 @@
 :- type user_search_mode
 	--->	top_down
 	;	divide_and_query
+	;	suspicion_divide_and_query
 	;	binary.
 
 :- type user_state.
@@ -98,6 +99,7 @@
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.rtti_access.
 
 :- import_module bool.
 :- import_module char.
@@ -947,6 +949,12 @@ search_mode_cmd(["divide_and_query"])	= change_search(divide_and_query).
 search_mode_cmd(["dq"])			= change_search(divide_and_query).
 search_mode_cmd(["binary"])		= change_search(binary).
 search_mode_cmd(["b"])			= change_search(binary).
+search_mode_cmd(["suspicion-divide-and-query"]) = 
+	change_search(suspicion_divide_and_query).
+search_mode_cmd(["suspicion_divide_and_query"]) = 
+	change_search(suspicion_divide_and_query).
+search_mode_cmd(["sdq"]) = 
+	change_search(suspicion_divide_and_query).
 
 :- func help_cmd(list(string)::in) = (user_command::out) is semidet.
 

@@ -59,6 +59,8 @@
 
 :- func divide_and_query_search_mode = search_mode.
 
+:- func suspicion_divide_and_query_search_mode = search_mode.
+
 :- func top_down_search_mode = search_mode.
 
 :- pred analyser_state_init(analyser_state(T)::out) is det.
@@ -70,8 +72,9 @@
 	% Make the given search mode the fallback search mode
 	% and the current search mode for the analyser.
 	%
-:- pred set_fallback_search_mode(search_mode::in, 
-	analyser_state(T)::in, analyser_state(T)::out) is det.
+:- pred set_fallback_search_mode(S::in, search_mode::in, 
+	analyser_state(T)::in, analyser_state(T)::out) 
+	is det <= mercury_edt(S, T).
 
 :- type analysis_type(T)
 			% Use the given tree to do analysis.  The tree will be
@@ -217,18 +220,14 @@
 		)
 	;
 			% 
-			% An adapted version of the divide and query approach
-			% proposed by Shapiro.  We weight each node with the
-			% number of events executed by descendent children
-			% plus the internal body events of the call.  This is
-			% mainly because it's hard to work out how many
-			% descendents are in unmaterialized portions of the EDT
-			% without using memory proportional to the
-			% unmaterialized portion.
+			% Divide and query using the given weighting
+			% heuristic.
 			%
-		divide_and_query.
+		divide_and_query(weighting_heuristic).
 
-divide_and_query_search_mode = divide_and_query.
+divide_and_query_search_mode = divide_and_query(number_of_events).
+
+suspicion_divide_and_query_search_mode = divide_and_query(suspicion).
 
 top_down_search_mode = top_down.
 
@@ -266,8 +265,15 @@ top_down_search_mode = top_down.
 			binary_reason_split	:: int
 		)
 	;	divide_and_query(
-			old_weight		:: int,
-			choosen_subtree_weight 	:: int
+			dq_weighting			:: weighting_heuristic,
+
+				% The weight of the search space before the
+				% question was asked.
+			dq_old_weight			:: int,
+
+				% The weight the searchspace will be if the
+				% user answers `no' to the current question.
+			dq_chosen_subtree_weight 	:: int
 		)
 	;	skipped
 	;	revise.
@@ -335,10 +341,20 @@ reset_analyser(!Analyser) :-
 	!:Analyser = analyser(empty_search_space, no, FallBack, 
 		FallBack, no, no).
 
-set_fallback_search_mode(FallBackSearchMode, !Analyser) :-
+set_fallback_search_mode(Store, FallBackSearchMode, !Analyser) :-
 	!:Analyser = !.Analyser ^ fallback_search_mode := FallBackSearchMode,
 	!:Analyser = !.Analyser ^ search_mode := FallBackSearchMode,
-	!:Analyser = !.Analyser ^ last_search_question := no.
+	!:Analyser = !.Analyser ^ last_search_question := no,
+	(
+		FallBackSearchMode = divide_and_query(Weighting)
+	->
+		SearchSpace0 = !.Analyser ^ search_space,
+		update_weighting_heuristic(Store, Weighting, SearchSpace0, 
+			SearchSpace),
+		!:Analyser = !.Analyser ^ search_space := SearchSpace
+	;
+		true
+	).
 
 debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
@@ -370,7 +386,10 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
 			% start of a new declarative debugging session.
 			%
 			reset_analyser(!Analyser),
-			initialise_search_space(Store, Node, SearchSpace),
+			MaybeWeighting = get_maybe_weighting_from_search_mode(
+				!.Analyser ^ search_mode),
+			initialise_search_space(Store, MaybeWeighting, Node, 
+				SearchSpace),
 			!:Analyser = !.Analyser ^ search_space := SearchSpace,
 			topmost_det(SearchSpace, TopMostId),
 			!:Analyser = !.Analyser ^ last_search_question := 
@@ -389,6 +408,15 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
 				!Analyser)
 		)
 	).
+
+:- func get_maybe_weighting_from_search_mode(search_mode) =
+	maybe(weighting_heuristic).
+
+get_maybe_weighting_from_search_mode(divide_and_query(Weighting)) =
+	yes(Weighting).
+get_maybe_weighting_from_search_mode(top_down) = no.
+get_maybe_weighting_from_search_mode(binary(_, _, _)) = no.
+get_maybe_weighting_from_search_mode(follow_subterm_end(_, _, _, _)) = no.
 
 reask_last_question(Store, Analyser, Response) :-
 	MaybeLastQuestion = Analyser ^ last_search_question,
@@ -413,10 +441,15 @@ continue_analysis(Store, Oracle, Answer, Response, !Analyser) :-
 change_search_mode(Store, Oracle, UserMode, !Analyser, Response) :-
 	(
 		UserMode = top_down,
-		set_fallback_search_mode(top_down, !Analyser)
+		set_fallback_search_mode(Store, top_down, !Analyser)
 	;
 		UserMode = divide_and_query,
-		set_fallback_search_mode(divide_and_query, !Analyser)
+		set_fallback_search_mode(Store, 
+			divide_and_query(number_of_events), !Analyser)
+	;
+		UserMode = suspicion_divide_and_query,
+		set_fallback_search_mode(Store, divide_and_query(suspicion),
+			!Analyser)
 	;
 		UserMode = binary,
 		(
@@ -646,9 +679,9 @@ search(Store, Oracle, !SearchSpace, SearchMode, FallBackSearchMode, NewMode,
 		LastTested, !SearchSpace, FallBackSearchMode, NewMode,
 		Response).
 
-search(Store, Oracle, !SearchSpace, divide_and_query, _, NewMode, 
+search(Store, Oracle, !SearchSpace, divide_and_query(Weighting), _, NewMode, 
 		Response) :-
-	divide_and_query_search(Store, Oracle, !SearchSpace, 
+	divide_and_query_search(Store, Oracle, Weighting, !SearchSpace, 
 		Response, NewMode).
 
 :- pred top_down_search(S::in, oracle_state::in, 
@@ -1022,11 +1055,12 @@ find_unknown_closest_to_range(SearchSpace, PathArray, OuterTop, OuterBottom,
 	).	
 
 :- pred divide_and_query_search(S::in, oracle_state::in,
-	search_space(T)::in, search_space(T)::out, search_response::out,
+	weighting_heuristic::in, 
+	search_space(T)::in, search_space(T)::out, search_response::out, 
 	search_mode::out) is det <= mercury_edt(S, T).
 
-divide_and_query_search(Store, Oracle, !SearchSpace, Response, 
-		NewMode) :-
+divide_and_query_search(Store, Oracle, Weighting, !SearchSpace, 
+		Response, divide_and_query(Weighting)) :-
 	%
 	% If there's no root yet (because the oracle hasn't asserted any nodes
 	% are erroneous yet), then use top-down search.
@@ -1034,44 +1068,42 @@ divide_and_query_search(Store, Oracle, !SearchSpace, Response,
 	(
 		root(!.SearchSpace, RootId)
 	->
-		NewMode = divide_and_query,
 		(
 			children(Store, Oracle, RootId, 
 				!SearchSpace, Children)
 		->
-			find_middle_weight(Store, Oracle, 
-				Children, RootId, no, !SearchSpace, Response)
+			find_middle_weight(Store, Oracle, Weighting, Children,
+				RootId, no, !SearchSpace, Response)
 		;
 			Response = require_explicit_subtree(RootId)
 		)
 	;
-		top_down_search(Store, Oracle, !SearchSpace, Response),
-		NewMode = divide_and_query
+		top_down_search(Store, Oracle, !SearchSpace, Response)
 	).
 
-	% Call find_middle_weight/8 if we are able to find the children of the
+	% Call find_middle_weight if we are able to find the children of the
 	% given suspect id, otherwise return a require_explicit_subtree
 	% search response in the last argument.
 	%
 :- pred find_middle_weight_if_children(S::in,
-	oracle_state::in, suspect_id::in, suspect_id::in,
-	maybe(suspect_id)::in, search_space(T)::in, search_space(T)::out,
-	search_response::out) is det <= mercury_edt(S, T).
+	oracle_state::in, weighting_heuristic::in, suspect_id::in, 
+	suspect_id::in, maybe(suspect_id)::in, 
+	search_space(T)::in, search_space(T)::out, search_response::out) 
+	is det <= mercury_edt(S, T).
 
-find_middle_weight_if_children(Store, Oracle, SuspectId, TopId, 
+find_middle_weight_if_children(Store, Oracle, Weighting, SuspectId, TopId,
 		MaybeLastUnknown, !SearchSpace, Response) :-
 	(
-		children(Store, Oracle, SuspectId, !SearchSpace, 
-			Children)
+		children(Store, Oracle, SuspectId, !SearchSpace, Children)
 	->
-		find_middle_weight(Store, Oracle, Children, TopId,
+		find_middle_weight(Store, Oracle, Weighting, Children, TopId,
 			MaybeLastUnknown, !SearchSpace, Response)
 	;
 		Response = require_explicit_subtree(SuspectId)
 	).
 
-	% find_middle_weight(Store, Oracle, SuspectIds, TopId, 
-	%	MaybeLastUnknown, !SearchSpace, Response).
+	% find_middle_weight(Store, Oracle, Weighting, SuspectIds, 
+	%	TopId, MaybeLastUnknown, !SearchSpace, Response).
 	% Find the unknown suspect whose weight is closest to half the weight
 	% of TopId, considering only the heaviest suspect in SuspectIds, the
 	% heaviest child of the heaviest suspect in SuspectIds and so on.
@@ -1079,18 +1111,19 @@ find_middle_weight_if_children(Store, Oracle, SuspectId, TopId,
 	% any).  
 	%
 :- pred find_middle_weight(S::in, oracle_state::in, 
-	list(suspect_id)::in, suspect_id::in,
-	maybe(suspect_id)::in, search_space(T)::in, 
-	search_space(T)::out, search_response::out)
+	weighting_heuristic::in, list(suspect_id)::in, suspect_id::in,
+	maybe(suspect_id)::in, 
+	search_space(T)::in, search_space(T)::out, search_response::out)
 	is det <= mercury_edt(S, T).
 
-find_middle_weight(Store, Oracle, [], TopId, MaybeLastUnknown,
-		!SearchSpace, Response) :-
+find_middle_weight(Store, Oracle, Weighting, [], TopId, 
+		MaybeLastUnknown, !SearchSpace, Response) :-
 	(
 		MaybeLastUnknown = yes(LastUnknown),
 		suspect_still_unknown(!.SearchSpace, LastUnknown)
 	->
 		Response = question(LastUnknown, divide_and_query(
+			Weighting,
 			get_weight(!.SearchSpace, TopId), 
 			get_weight(!.SearchSpace, LastUnknown)))
 	;
@@ -1100,7 +1133,7 @@ find_middle_weight(Store, Oracle, [], TopId, MaybeLastUnknown,
 		top_down_search(Store, Oracle, !SearchSpace, 
 			Response)
 	).
-find_middle_weight(Store, Oracle, [SuspectId | SuspectIds], TopId,
+find_middle_weight(Store, Oracle, Weighting, [SuspectId | SuspectIds], TopId,
 		MaybeLastUnknown, !SearchSpace, Response) :-
 	TopWeight = get_weight(!.SearchSpace, TopId),
 	Target = TopWeight // 2,
@@ -1120,7 +1153,7 @@ find_middle_weight(Store, Oracle, [SuspectId | SuspectIds], TopId,
 		;
 			NewMaybeLastUnknown = MaybeLastUnknown
 		),
-		find_middle_weight_if_children(Store, Oracle, 
+		find_middle_weight_if_children(Store, Oracle, Weighting,
 			Heaviest, TopId, NewMaybeLastUnknown, !SearchSpace,
 			Response)
 	;
@@ -1129,7 +1162,7 @@ find_middle_weight(Store, Oracle, [SuspectId | SuspectIds], TopId,
 		->
 			(
 				MaybeLastUnknown = yes(LastUnknown),
-				suspect_still_unknown(!.SearchSpace, 
+				suspect_still_unknown(!.SearchSpace,
 					LastUnknown)
 			->
 				LastUnknownWeight = get_weight(!.SearchSpace, 
@@ -1143,32 +1176,35 @@ find_middle_weight(Store, Oracle, [SuspectId | SuspectIds], TopId,
 						Target - MaxWeight
 				->
 					Response = question(LastUnknown, 
-						divide_and_query(TopWeight,
+						divide_and_query(
+							Weighting, TopWeight,
 							LastUnknownWeight))
 				;					
 					Response = question(Heaviest,
-						divide_and_query(TopWeight,
+						divide_and_query(Weighting, 
+							TopWeight,
 							MaxWeight))
 				)
 			;
 				Response = question(Heaviest, 
-					divide_and_query(TopWeight, MaxWeight))
+					divide_and_query(Weighting, TopWeight, 
+					MaxWeight))
 			)
 		;
 			(
 				MaybeLastUnknown = yes(LastUnknown),
-				suspect_still_unknown(!.SearchSpace, 
+				suspect_still_unknown(!.SearchSpace,
 					LastUnknown)
 			->
 				LastUnknownWeight = get_weight(!.SearchSpace, 
 					LastUnknown),
 				Response = question(LastUnknown,
-					divide_and_query(TopWeight,
+					divide_and_query(Weighting, TopWeight,
 						LastUnknownWeight))
 			;
 				% Look deeper until we find an unknown:
-				find_middle_weight_if_children(
-					Store, Oracle, Heaviest, TopId, no,
+				find_middle_weight_if_children(Store, Oracle,
+					Weighting, Heaviest, TopId, no,
 					!SearchSpace, Response)
 			)
 		)		
@@ -1266,18 +1302,31 @@ reason_to_string(binary(Bottom, Top, Split)) = Str :-
 		++ " into two paths of length " ++
 		SubPath1LengthStr ++ " and " ++ SubPath2LengthStr ++ ".".
 
-reason_to_string(divide_and_query(OldWeight, SubtreeWeight)) = Str :-
-	Weight1Str = int_to_string_thousands(OldWeight - SubtreeWeight),
-	Weight2Str = int_to_string_thousands(SubtreeWeight),
-	Str = "this node divides the suspect area into " ++
-		"two regions of " ++ Weight1Str ++ " and " ++ Weight2Str ++
-		" events each.".
+reason_to_string(divide_and_query(Weighting, OldWeight, SubtreeWeight)) =
+	weighting_to_reason_string(Weighting, OldWeight - SubtreeWeight, 
+		SubtreeWeight).
 
 reason_to_string(skipped) = "there are no more non-skipped questions "
 	++ "left.".
 
-reason_to_string(revise) = "this node is being revised, because of "
+reason_to_string(revise) = "this question is being revisited, because of "
 	++ "an unsuccessful previous bug search.".
+
+:- func weighting_to_reason_string(weighting_heuristic, int, int) = string.
+
+weighting_to_reason_string(number_of_events, Weight1, Weight2) = Str :-
+	Weight1Str = int_to_string_thousands(Weight1),
+	Weight2Str = int_to_string_thousands(Weight2),
+	Str = "this node divides the suspect area into " ++
+		"two regions of " ++ Weight1Str ++ " and " ++ Weight2Str ++
+		" events each.".
+
+weighting_to_reason_string(suspicion, Weight1, Weight2) = Str :-
+	Weight1Str = int_to_string_thousands(Weight1),
+	Weight2Str = int_to_string_thousands(Weight2),
+	Str = "this node divides the suspect area into " ++
+		"two regions of suspicion " ++ Weight1Str ++ " and 
+		" ++ Weight2Str ++ ".".
 
 show_info(Store, OutStream, Analyser, !IO) :-
 	SearchSpace = Analyser ^ search_space,
@@ -1326,31 +1375,40 @@ show_info(Store, OutStream, Analyser, !IO) :-
 		list.append(!.Data, [search_mode_to_string(
 			Analyser ^ search_mode)], !:Data),
 
+		MaybeWeighting = get_current_maybe_weighting(SearchSpace),
 		(
-			Analyser ^ search_mode = divide_and_query
+			MaybeWeighting = yes(number_of_events)
 		->
-			list.append(!.FieldNames, 
-				["Estimated questions remaining"], 
+			(
+				root(SearchSpace, RootId)
+			->
+				StartId = RootId
+			;
+				topmost_det(SearchSpace, StartId)
+			),
+       			Weight = get_weight(SearchSpace, StartId),
+			(
+				Analyser ^ search_mode = 
+					divide_and_query(number_of_events)
+			->
+				list.append(!.FieldNames, 
+					["Estimated questions remaining"], 
+					!:FieldNames),
+				EstimatedQuestions = float.ceiling_to_int(
+					math.log2(float(Weight))),
+				list.append(!.Data, 
+					[int_to_string(EstimatedQuestions)],
+					!:Data)
+			;
+				true
+			),
+			list.append(!.FieldNames, ["Number of suspect events"], 
 				!:FieldNames),
-			EstimatedQuestions = float.ceiling_to_int(
-				math.log2(float(Weight))),
-			list.append(!.Data, 
-				[int_to_string(EstimatedQuestions)], !:Data)
+			list.append(!.Data, [int_to_string_thousands(Weight)],
+				!:Data)
 		;
 			true
 		),
-		
-		list.append(!.FieldNames, ["Number of suspect events"], 
-			!:FieldNames),
-		(
-			root(SearchSpace, RootId)
-		->
-			StartId = RootId
-		;
-			topmost_det(SearchSpace, StartId)
-		),
-		Weight = get_weight(SearchSpace, StartId),
-		list.append(!.Data, [int_to_string_thousands(Weight)], !:Data),
 		
 		InfoMessage = string.format_table([left(!.FieldNames),
 			left(!.Data)], " : ")
@@ -1367,4 +1425,7 @@ search_mode_to_string(top_down) = "top down".
 search_mode_to_string(follow_subterm_end(_, _, _, _)) = 
 	"tracking marked sub-term".
 search_mode_to_string(binary(_, _, _)) = "binary search on path".
-search_mode_to_string(divide_and_query) = "divide and query".
+search_mode_to_string(divide_and_query(number_of_events)) = 
+	"divide and query".
+search_mode_to_string(divide_and_query(suspicion)) = 
+	"suspicion divide and query".

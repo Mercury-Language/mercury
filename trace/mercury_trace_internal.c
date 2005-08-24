@@ -600,10 +600,13 @@ static  MR_bool     MR_trace_options_view(const char **window_cmd,
 static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                         MR_Integer *default_depth, MR_Integer *num_nodes,
                         MR_Decl_Search_Mode *search_mode, 
-                        MR_bool *search_mode_was_set, MR_bool *new_session,
-                        MR_bool *testing, MR_bool *debug,
-                        char ***words, int *word_count, const char *cat,
-                        const char *item);
+                        MR_bool *search_mode_was_set, 
+                        MR_bool *search_mode_requires_trace_counts,
+                        char **pass_trace_counts_file, 
+                        char **fail_trace_counts_file,
+                        MR_bool *new_session, MR_bool *testing, MR_bool *debug,
+                        char ***words, int *word_count, 
+                        const char *cat, const char *item);
 static  MR_bool     MR_trace_options_stats(char **filename, char ***words,
                         int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_type_ctor(MR_bool *print_rep,
@@ -1968,6 +1971,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_bool             assume_all_io_is_tabled;
     MR_bool             unsafe_retry;
 
+    ancestor_level = 0;
     across_io = MR_RETRY_IO_INTERACTIVE;
     assume_all_io_is_tabled = MR_FALSE;
     if (! MR_trace_options_retry(&across_io, &assume_all_io_is_tabled,
@@ -2563,6 +2567,11 @@ MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Word         browser_term;
     const char      *problem = NULL;
     MR_bool         xml = MR_FALSE;
+
+    /* 
+    ** Set this to NULL to avoid uninitialization warnings.
+    */
+    browser_term = (MR_Word) NULL;
 
     if (! MR_trace_options_save_to_file(&xml, &words, &word_count,
         "browsing", "save_to_file"))
@@ -3903,6 +3912,11 @@ MR_trace_cmd_flag(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_bool     found;
     const char  *set_word;
 
+    /* 
+    ** Set this to NULL to avoid uninitialization warnings.
+    */
+    flagptr = NULL;
+    
     if (word_count == 1) {
         for (i = 0; i < MR_MAXFLAG; i++) {
             /*
@@ -5814,6 +5828,10 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Decl_Search_Mode search_mode;
     MR_bool             search_mode_was_set = MR_FALSE;
     MR_bool             new_session = MR_TRUE;
+    MR_bool             search_mode_requires_trace_counts = MR_FALSE;
+    char                *pass_trace_counts_file;
+    char                *fail_trace_counts_file;
+    MR_String           problem;
     MR_bool             testing = MR_FALSE;
     MR_bool             debug = MR_FALSE;
     const char          *filename;
@@ -5822,12 +5840,16 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
     MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
     search_mode = MR_trace_get_default_search_mode();
+    pass_trace_counts_file = MR_dice_pass_trace_counts_file;
+    fail_trace_counts_file = MR_dice_fail_trace_counts_file;
     MR_trace_decl_debug_debugger_mode = MR_FALSE;
 
     if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
         &MR_edt_default_depth_limit, &MR_edt_desired_nodes_in_subtree,
-        &search_mode, &search_mode_was_set, &new_session, &testing, 
-        &MR_trace_decl_debug_debugger_mode,
+        &search_mode, &search_mode_was_set,
+        &search_mode_requires_trace_counts,
+        &pass_trace_counts_file, &fail_trace_counts_file, &new_session,
+        &testing, &MR_trace_decl_debug_debugger_mode,
         &words, &word_count, "dd", "dd"))
     {
         ; /* the usage message has already been printed */
@@ -5845,8 +5867,27 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
                 "mdb: dd doesn't work after `unhide_events on'.\n");
             return KEEP_INTERACTING;
         }
+        if (search_mode_requires_trace_counts && (
+            pass_trace_counts_file == NULL || fail_trace_counts_file == NULL))
+        {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err,
+                "mdb: you need to supply passing and failing trace count "
+                "files\nbefore using the specified search mode.\n");
+            return KEEP_INTERACTING;
+        }
+        if (pass_trace_counts_file != NULL && fail_trace_counts_file != NULL) {
+            if (! MR_trace_decl_init_suspicion_table(pass_trace_counts_file, 
+                fail_trace_counts_file, &problem))
+            {
+                fflush(MR_mdb_out);
+                fprintf(MR_mdb_err, "mdb: %s\n", problem);
+                return KEEP_INTERACTING;
+            }
+        }
 
         MR_trace_decl_set_testing_flag(testing);
+
         if (search_mode_was_set || new_session) {
             MR_trace_decl_set_fallback_search_mode(search_mode);
         }
@@ -7086,6 +7127,11 @@ static struct MR_option MR_trace_dd_opts[] =
     { "nodes",                      MR_required_argument,   NULL,   'n' },
     { "resume",                     MR_no_argument,         NULL,   'r' },
     { "search-mode",                MR_required_argument,   NULL,   's' },
+    { "pass-trace-counts",          MR_required_argument,   NULL,   'p' },
+    { "pass-trace-count",           MR_required_argument,   NULL,   'p' },
+    { "fail-trace-counts",          MR_required_argument,   NULL,   'f' },
+    { "fail-trace-count",           MR_required_argument,   NULL,   'f' },
+    { "resume",                     MR_no_argument,         NULL,   'r' },
     { "test",                       MR_no_argument,         NULL,   't' },
     { NULL,                         MR_no_argument,         NULL,   0 }
 };
@@ -7094,13 +7140,15 @@ static MR_bool
 MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
     MR_Integer *default_depth, MR_Integer *num_nodes,
     MR_Decl_Search_Mode *search_mode, MR_bool *search_mode_was_set, 
-    MR_bool *new_session, MR_bool *testing, MR_bool *debug, 
+    MR_bool *search_mode_requires_trace_counts,
+    char **pass_trace_counts_file, char **fail_trace_counts_file,
+    MR_bool *new_session, MR_bool *testing,  MR_bool *debug,
     char ***words, int *word_count, const char *cat, const char *item)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "ad:n:rs:tz",
+    while ((c = MR_getopt_long(*word_count, *words, "ad:f:n:p:rs:tz",
         MR_trace_dd_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -7116,11 +7164,19 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 }
                 break;
 
+            case 'f':
+                *fail_trace_counts_file = MR_copy_string(MR_optarg);
+                break;
+
             case 'n':
                 if (! MR_trace_is_natural_number(MR_optarg, num_nodes)) {
                     MR_trace_usage(cat, item);
                     return MR_FALSE;
                 }
+                break;
+
+            case 'p':
+                *pass_trace_counts_file = MR_copy_string(MR_optarg);
                 break;
 
             case 'r':
@@ -7129,7 +7185,7 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
 
             case 's':
                 if (MR_trace_is_valid_search_mode_string(MR_optarg,
-                    search_mode))
+                    search_mode, search_mode_requires_trace_counts))
                 {
                     *search_mode_was_set = MR_TRUE;
                 } else {
@@ -8220,7 +8276,8 @@ static const char *const    MR_trace_scope_cmd_args[] =
 static const char *const    MR_trace_dd_cmd_args[] =
     { "-s", "-a", "-d", "-n", "--search-mode",
     "--assume-all-io-is-tabled", "--depth", "--nodes",
-    "top_down", "divide_and_query", NULL };
+    "td", "top_down", "dq" "divide_and_query", "sdq", 
+    "suspicion_divide_and_query", NULL };
 
 /*
 ** "table_io allow" is deliberately not documented as it is developer only

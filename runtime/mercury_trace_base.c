@@ -164,26 +164,19 @@ MR_trace_fake(const MR_Label_Layout *layout)
 MR_Code *
 MR_trace_count(const MR_Label_Layout *label_layout)
 {
-    const MR_Module_Layout  *module_layout;
-    const MR_Proc_Layout    *proc_layout;
-    MR_uint_least16_t       label_number;
+    MR_Unsigned     *exec_count;
 
-    proc_layout = label_layout->MR_sll_entry;
-    if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
-        MR_fatal_error("MR_trace_count: no exec trace");
-    }
-
-    module_layout = proc_layout->MR_sle_module_layout;
-    label_number = label_layout->MR_sll_label_num_in_module;
-    if (label_number >= module_layout->MR_ml_num_label_exec_counts) {
-        MR_fatal_error("MR_trace_count: invalid label number");
-    }
-
+    exec_count = MR_trace_lookup_trace_count(label_layout);
+    
 #ifdef  MR_TRACE_COUNT_DEBUG
     {
         const MR_Label_Layout   *call_label_layout;
         MR_uint_least16_t       call_label_number;
+        const MR_Module_Layout  *module_layout;
+        const MR_Proc_Layout    *proc_layout;
 
+        proc_layout = label_layout->MR_sll_entry;
+        module_layout = proc_layout->MR_sle_module_layout;
         call_label_layout = proc_layout->MR_sle_call_label;
         if (label_layout != call_label_layout) {
             /*
@@ -206,8 +199,29 @@ MR_trace_count(const MR_Label_Layout *label_layout)
     }
 #endif
 
-    ++module_layout->MR_ml_label_exec_count[label_number];
+    *exec_count += 1;
     return NULL;
+}
+
+MR_Unsigned *
+MR_trace_lookup_trace_count(const MR_Label_Layout *label_layout)
+{
+    const MR_Module_Layout  *module_layout;
+    const MR_Proc_Layout    *proc_layout;
+    MR_uint_least16_t       label_number;
+
+    proc_layout = label_layout->MR_sll_entry;
+    if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
+        MR_fatal_error("MR_trace_lookup_trace_count: no exec trace");
+    }
+
+    module_layout = proc_layout->MR_sle_module_layout;
+    label_number = label_layout->MR_sll_label_num_in_module;
+    if (label_number >= module_layout->MR_ml_num_label_exec_counts) {
+        MR_fatal_error("MR_trace_lookup_trace_count: invalid label number");
+    }
+
+    return &(module_layout->MR_ml_label_exec_count[label_number]);
 }
 
 #define INIT_MODULE_TABLE_SIZE  10
@@ -229,14 +243,10 @@ MR_insert_module_info_into_module_table(const MR_Module_Layout *module)
     MR_module_infos[slot] = module;
 }
 
-typedef enum {
-    PATH_ONLY, PORT_ONLY, PORT_AND_PATH
-} MR_PathPort;
-
-static MR_PathPort MR_named_count_port[MR_PORT_NONE + 1];
-
 static  void    MR_trace_write_quoted_atom(FILE *fp, const char *atom);
 static  void    MR_trace_write_label_exec_counts(FILE *fp);
+
+MR_PathPort     MR_named_count_port[MR_PORT_NONE + 1];
 
 #define MERCURY_TRACE_COUNTS_PREFIX  "mercury_trace_counts"
 
@@ -297,18 +307,7 @@ MR_trace_write_label_exec_counts(FILE *fp)
     MR_Unsigned                 exec_count;
     MR_PathPort                 path_port;
 
-    for (port = MR_PORT_CALL; port <= MR_PORT_NONE; port++) {
-        MR_named_count_port[port] = PATH_ONLY;
-    }
-
-    MR_named_count_port[MR_PORT_CALL] = PORT_ONLY;
-    MR_named_count_port[MR_PORT_EXIT] = PORT_ONLY;
-    MR_named_count_port[MR_PORT_REDO] = PORT_ONLY;
-    MR_named_count_port[MR_PORT_FAIL] = PORT_ONLY;
-
-    MR_named_count_port[MR_PORT_NEG_ENTER] = PORT_AND_PATH;
-    MR_named_count_port[MR_PORT_NEG_SUCCESS] = PORT_AND_PATH;
-    MR_named_count_port[MR_PORT_NEG_FAILURE] = PORT_AND_PATH;
+    MR_trace_name_count_port_ensure_init();
 
     fprintf(fp, "%s", MR_TRACE_COUNT_FILE_ID);
     if (MR_coverage_test_enabled) {
@@ -385,6 +384,31 @@ MR_trace_write_label_exec_counts(FILE *fp)
                 }
             }
         }
+    }
+}
+
+void
+MR_trace_name_count_port_ensure_init()
+{
+    static MR_bool  done = MR_FALSE;
+    
+    if (! done) {
+        MR_Trace_Port   port;
+
+        for (port = MR_PORT_CALL; port <= MR_PORT_NONE; port++) {
+            MR_named_count_port[port] = PATH_ONLY;
+        }
+
+        MR_named_count_port[MR_PORT_CALL] = PORT_ONLY;
+        MR_named_count_port[MR_PORT_EXIT] = PORT_ONLY;
+        MR_named_count_port[MR_PORT_REDO] = PORT_ONLY;
+        MR_named_count_port[MR_PORT_FAIL] = PORT_ONLY;
+
+        MR_named_count_port[MR_PORT_NEG_ENTER] = PORT_AND_PATH;
+        MR_named_count_port[MR_PORT_NEG_SUCCESS] = PORT_AND_PATH;
+        MR_named_count_port[MR_PORT_NEG_FAILURE] = PORT_AND_PATH;
+        
+        done = MR_TRUE;
     }
 }
 

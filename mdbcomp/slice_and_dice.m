@@ -122,6 +122,12 @@
 :- pred read_dice(slice_source::in, string::in, slice_source::in, string::in,
     maybe_error(dice)::out, io::di, io::uo) is det.
 
+    % Same as read_dice/7, but with PassSource and FailSource both 
+    % try_single_first.
+    %
+:- pred read_dice_try_single_first(string::in, string::in,
+    maybe_error(dice)::out, io::di, io::uo) is det.
+
     % read_dice_to_string(PassFile, FailFile, SortStr, N, Module, DiceStr,
     %   Problem, !IO):
     %
@@ -148,11 +154,34 @@
 :- pred read_dice_to_string(string::in, string::in, string::in, int::in,
     string::in, string::out, string::out, io::di, io::uo) is det.
 
+    % suspicion_ratio(PassCount, FailCount) = Suspicion.
+    % suspicion_ratio gives an indication of how likely a label is to
+    % be buggy based on how many times it was executed in passing and
+    % failing test runs.
+    %
+:- func suspicion_ratio(int, int) = float.
+
+    % suspicion_ratio_normalised(PassCount, PassTests, FailCount, FailTests) 
+    %   = Suspicion.
+    % suspicion_ratio_normalised gives an indication of how likely a label is
+    % to be buggy based on how many times it was executed in passing and
+    % failing test runs and on how many passing and failing test runs there
+    % were.
+    %
+:- func suspicion_ratio_normalised(int, int, int, int) = float.
+
+    % suspicion_ratio_binary(PassCount, FailCount) = Suspicion.
+    % suspicion_ration_binary returns 1 if PassCount is 0 and FailCount is
+    % > 0 and 0 otherwise.
+    %
+:- func suspicion_ratio_binary(int, int) = float.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.rtti_access.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -262,6 +291,31 @@ read_dice(PassSource, PassFile, FailSource, FailFile, Result, !IO) :-
         ReadPassResult = list_error_message(Problem),
         Result = error(Problem)
     ).
+
+:- pragma export(read_dice_try_single_first(in, in, out, di, uo),
+    "MR_MDB_read_dice_try_single_first").
+
+read_dice_try_single_first(PassFile, FailFile, Result, !IO) :-
+    read_dice(try_single_first, PassFile, try_single_first, FailFile, Result,
+        !IO).
+
+:- pred maybe_dice_error_to_problem_string(maybe_error(dice)::in, string::out) 
+	is det.
+
+:- pragma export(maybe_dice_error_to_problem_string(in, out),
+	"MR_DD_maybe_dice_error_to_problem_string").
+
+maybe_dice_error_to_problem_string(ok(_), "").
+maybe_dice_error_to_problem_string(error(ErrorStr), ErrorStr).
+
+:- pred det_maybe_dice_error_to_dice(maybe_error(dice)::in, dice::out) is det.
+
+:- pragma export(det_maybe_dice_error_to_dice(in, out),
+	"MR_DD_det_maybe_dice_error_to_dice").
+
+det_maybe_dice_error_to_dice(ok(Dice), Dice).
+det_maybe_dice_error_to_dice(error(_), _) :- 
+	error("det_maybe_dice_error_to_dice: result is error").
 
 :- type trace_counts_kind
     --->    pass
@@ -716,16 +770,61 @@ format_dice_exec_count(dice_exec_count(_, _, PassCount, PassTests,
     ++ string.pad_left(int_to_string(FailCount), ' ', 12)
     ++ string.pad_left("(" ++ int_to_string(FailTests) ++ ")", ' ', 8).
 
-    % suspicion_ratio gives an indication of how likely a label is to
-    % be buggy based on how many times it was executed in passing and
-    % failing test runs.
-    %
-:- func suspicion_ratio(int, int) = float.
+suspicion_ratio(PassCount, FailCount) = R1 :-
+    Denominator = PassCount + FailCount,
+    (
+        Denominator \= 0
+    ->
+        R = float(FailCount) / float(Denominator),
+        ( R >= 0.20 ->
+            R1 = R
+          ; R1 = 0.0
+        )
+    ;
+        % The denominator could be zero if user_all trace counts were
+        % provided.
+        R1 = 0.0
+    ).
 
-suspicion_ratio(PassCount, FailCount) =
-    % PassCount + FailCount should never be zero since if a label
-    % isn't executed in any tests then it wouldn't be included in the dice.
-    float(FailCount) / float(PassCount + FailCount).
+suspicion_ratio_normalised(PassCount, PassTests, FailCount, FailTests) = R :-
+    ( FailCount = 0 ->
+        R = 0.0
+    ;
+        ( PassTests = 0 ->
+            PassNorm = 0.0
+        ; 
+            PassNorm = float(PassCount) / float(PassTests)
+        ),
+        FailNorm = float(FailCount) / float(FailTests),
+        R = float.max(FailNorm - PassNorm, 0.0) / FailNorm
+    ).
+
+suspicion_ratio_binary(PassCount, FailCount) = R :-
+    ( FailCount > 0, PassCount = 0 ->
+        R = 1.0
+    ;
+        R = 0.0
+    ).
+
+:- func get_suspicion_for_label_layout(dice, label_layout) = float.
+
+:- pragma export(get_suspicion_for_label_layout(in, in) = out,
+	"MR_DD_get_suspicion_for_label_layout").
+
+get_suspicion_for_label_layout(Dice, LabelLayout) = Suspicion :-
+	ProcLayout = get_proc_layout_from_label_layout(LabelLayout),
+	ProcLabel = get_proc_label_from_layout(ProcLayout),
+	PathPort = get_path_port_from_label_layout(LabelLayout),
+	( map.search(Dice ^ dice_proc_map, ProcLabel, PathPortMap) ->
+		( map.search(PathPortMap, PathPort, ExecCount) ->
+			Suspicion = suspicion_ratio_binary(
+			      ExecCount ^ pass_count, ExecCount ^ fail_count)
+		;
+			Suspicion = 0.0
+		)
+	;
+		Suspicion = 0.0
+	).
 
 %-----------------------------------------------------------------------------%
 %

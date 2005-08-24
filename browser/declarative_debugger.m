@@ -333,11 +333,15 @@
 :- import_module mdb.declarative_oracle.
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.rtti_access.
+:- import_module mdbcomp.slice_and_dice.
+:- import_module mdbcomp.trace_counts.
 
 :- import_module bool.
 :- import_module exception.
 :- import_module int.
 :- import_module map.
+:- import_module require.
 
 unravel_decl_atom(DeclAtom, TraceAtom, MaybeIoActions) :-
 	(
@@ -623,18 +627,19 @@ set_diagnoser_testing_flag(Testing, !Diagnoser) :-
 	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
 
 :- pred set_fallback_search_mode(
+	trace_node_store::in,
 	mdb.declarative_analyser.search_mode::in,
 	diagnoser_state(trace_node_id)::in, 
 	diagnoser_state(trace_node_id)::out) is det.
 
 :- pragma export(
-	mdb.declarative_debugger.set_fallback_search_mode(in, in, out), 
+	mdb.declarative_debugger.set_fallback_search_mode(in, in, in, out), 
 	"MR_DD_decl_set_fallback_search_mode").
 
-set_fallback_search_mode(SearchMode, !Diagnoser) :-
+set_fallback_search_mode(Store, SearchMode, !Diagnoser) :-
 	Analyser0 = !.Diagnoser ^ analyser_state,
-	mdb.declarative_analyser.set_fallback_search_mode(SearchMode,
-		Analyser0, Analyser),
+	mdb.declarative_analyser.set_fallback_search_mode(wrap(Store), 
+		SearchMode, Analyser0, Analyser),
 	!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser.
 
 :- func top_down_search_mode = 
@@ -653,6 +658,16 @@ divide_and_query_search_mode =
 
 :- pragma export(mdb.declarative_debugger.divide_and_query_search_mode = out, 
 	"MR_DD_decl_divide_and_query_search_mode").
+
+:- func suspicion_divide_and_query_search_mode = 
+	mdb.declarative_analyser.search_mode.
+
+suspicion_divide_and_query_search_mode = 
+	mdb.declarative_analyser.suspicion_divide_and_query_search_mode.
+
+:- pragma export(
+	mdb.declarative_debugger.suspicion_divide_and_query_search_mode = out, 
+	"MR_DD_decl_suspicion_divide_and_query_search_mode").
 
 	% Export a monomorphic version of diagnosis/10 that passes a newly
 	% materialized tree for use with the C backend code.

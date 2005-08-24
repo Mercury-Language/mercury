@@ -175,6 +175,11 @@
 
 :- type goal_path == list(goal_path_step).
 
+% This is similar to the type goal_path defined in the module
+% compiler/hlds_goal.m.
+
+:- type goal_path_string == string.
+
 :- type goal_path_step  --->    conj(int)
                         ;       disj(int)
                         ;       switch(int)

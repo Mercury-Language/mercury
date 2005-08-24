@@ -3351,7 +3351,7 @@ The following commands relate to the declarative debugger.  See
 @ref{Declarative debugging} for details.
 @sp 1
 @table @code
-@item dd [-r] [-n@var{nodes}] [-s@var{search-mode}]
+@item dd [-r] [-n@var{nodes}] [-s@var{search-mode}] [-p@var{passfile}] [-f@var{failfile}]
 @c @item dd [--assume-all-io-is-tabled] [-d@var{depth}] [-t] 
 @c       [--debug [filename]]
 @c The --assume-all-io-is-tabled option is for developers only. Specifying it
@@ -3391,10 +3391,10 @@ not have to rerun the program as often.
 @sp 1
 The @samp{-s@var{search-mode}} or @samp{--search-mode @var{search-mode}} 
 option tells the declarative debugger which 
-search mode to use.  Either @samp{top_down} or @samp{divide_and_query}
-may be specified.  See @ref{Search Modes} for a more detailed description of
-the available search modes.  @samp{top_down} is the default when this option is
-not given.
+search mode to use.  Valid search modes are @samp{top_down} (or @samp{td}), 
+@samp{divide_and_query} (or @samp{dq}) and @samp{suspicion_divide_and_query}
+(or @samp{sdq}).
+@samp{top_down} is the default when this option is not given.
 @sp 1
 Use the @samp{-r} or @samp{--resume} option to continue your previous
 declarative debugging session.  If the @samp{--resume} option is given and
@@ -3404,6 +3404,18 @@ The @samp{--search-mode} option may be used with the @samp{--resume} option
 to change the search mode of a previously started declarative debugging
 session.
 @sp 1
+The arguments supplied to the @samp{--pass-trace-counts} (or @samp{-p}) and 
+@samp{--fail-trace-counts} (or @samp{-f}) options are either trace count
+files or files containing a list of trace count files.
+The supplied trace counts are used to assign
+a suspicion to each event based on which parts of program were executed in
+the failing test case(s), but not the passing test case(s).  
+This is used to guide the declarative debugger when
+the suspicion-divide-and-query search mode is used.  If the 
+suspicion-divide-and-query search mode is specified then either both the
+@samp{-p} and @samp{-f} options must be given, or the @samp{fail_trace_counts}
+and @samp{pass_trace_counts} configuration parameters must be set (using
+the @samp{set} command).
 @item trust @var{module-name}|@var{proc-spec}
 @kindex trust (mdb command)
 Tells the declarative debugger to trust the given module, predicate or
@@ -3588,12 +3600,12 @@ and its submodules, if any.
 @kindex lines (mdb command)
 @kindex xml_browser_cmd (mdb command)
 @kindex xml_tmp_filename (mdb command)
-@kindex fail_trace_count (mdb command)
+@kindex fail_trace_counts (mdb command)
 @kindex pass_trace_counts (mdb command)
 Updates the given configuration parameter.
 The parameters that can be configured are
 @samp{format}, @samp{depth}, @samp{size}, @samp{width}, @samp{lines}, 
-@samp{xml_browser_cmd}, @samp{xml_tmp_filename}, @samp{fail_trace_count},
+@samp{xml_browser_cmd}, @samp{xml_tmp_filename}, @samp{fail_trace_counts},
 @samp{pass_trace_counts}.
 @sp 1
 @itemize @bullet
@@ -4312,6 +4324,15 @@ between the event where the @samp{dd} command was given and the corresponding
 where top-down search would require an unreasonably large number of questions
 to be answered.  However, the questions may appear to come from unrelated parts
 of the program which can make them harder to answer.
+
+@subsubsection Suspicion Divide and Query Mode
+
+In this search mode the declarative debugger assigns a suspicion level to
+each event based on which parts of the program were executed in failing
+test cases, but not in passing test cases.  It then attempts to divide the
+search space into two areas of equal suspicion with each question.  This tends
+to result in questions about parts of the program executed in a failing test
+case, but not in passing test cases.
 
 @subsubsection Binary Search Mode
 

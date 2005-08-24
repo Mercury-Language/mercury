@@ -8,6 +8,7 @@
 :- func int + int = int.
 :- func int * int = int.
 :- func int - int = int.
+:- func int // int = int.
 :- func - int = int.
 
 :- func int mod int = int.
@@ -28,6 +29,7 @@
 X + Y = 'int__+'(X, Y).
 X * Y = 'int__*'(X, Y).
 X - Y = 'int__-'(X, Y).
+X // Y = 'int__//'(X, Y).
 - X = 'int__-'(X).
 
 X mod Y = 'int__mod'(X, Y).

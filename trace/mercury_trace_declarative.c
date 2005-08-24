@@ -126,6 +126,7 @@
 
 #include "mdb.declarative_debugger.mh"
 #include "mdb.declarative_execution.mh"
+#include "mdbcomp.slice_and_dice.mh"
 
 #include "benchmarking.mh"
 #include "gc.mh"
@@ -329,6 +330,17 @@ static  MR_bool             MR_edt_compiler_flag_warning;
 static  MR_bool             MR_edt_unsafe_retry_already_asked;
 
 /*
+** If trace counts are provided for failing and passing test cases, then
+** we add the suspicion (an integer between 0 and MR_TRACE_DECL_MAX_SUSPICION)
+** for each event to the accumulator below.  We then store the value of the
+** accumulator at CALL, EXIT, REDO, FAIL and EXCP events, which allows
+** the frontend to easily calculate the suspicion of any subtree in the EDT.
+*/
+
+static  MR_Integer  MR_edt_suspicion_accumulator;
+static  MR_bool     MR_edt_update_suspicion_accumulator = MR_FALSE;
+
+/*
 ** This is used as the abstract map from node identifiers to nodes
 ** in the data structure passed to the front end.  It should be
 ** incremented each time the data structure is destructively
@@ -468,6 +480,8 @@ static    void              MR_trace_init_implicit_subtree_counters(
 static    void              MR_trace_reset_implicit_subtree_counters(void);
 static    void              MR_trace_free_implicit_subtree_counters(void);
 static    MR_Unsigned       MR_trace_calc_implicit_subtree_ideal_depth(void);
+static    void              MR_trace_maybe_update_suspicion_accumulator(
+                                const MR_Label_Layout *label_layout);
 
 MR_bool     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 
@@ -502,6 +516,9 @@ MR_trace_decl_debug(MR_Event_Info *event_info)
 
     entry = event_info->MR_event_sll->MR_sll_entry;
     MR_trace_edt_build_sanity_check(event_info, entry);
+
+    MR_trace_maybe_update_suspicion_accumulator(event_info->MR_event_sll);
+
     MR_trace_maybe_show_progress(event_info->MR_event_number);
 
     if (! MR_trace_include_event(entry, event_info, &jumpaddr)) {
@@ -881,7 +898,6 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
     const MR_Label_Layout       *return_label_layout;
     MR_Stack_Walk_Step_Result   result;
     MR_ConstString              problem;
-    MR_String                   goal_path;
     MR_Word                     *base_sp;
     MR_Word                     *base_curfr;
     MR_Word                     maybe_return_label;
@@ -902,10 +918,6 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
         &base_sp, &base_curfr, &problem);
 
     /*
-    ** We pass goal_path to Mercury code, which expects its type to be
-    ** MR_String, not MR_ConstString, even though it treats the string as
-    ** constant.
-    **
     ** return_label_layout may be NULL even if result is MR_STEP_OK, if
     ** the current event is inside the code of main/2.
     */
@@ -922,7 +934,8 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
             atom_args, (MR_Word) event_info->MR_call_seqno,
             (MR_Word) event_info->MR_event_number,
             (MR_Word) at_depth_limit, maybe_return_label,
-            event_label_layout, MR_io_tabling_counter);
+            event_label_layout, MR_io_tabling_counter,
+            MR_edt_suspicion_accumulator);
     );
 
     return node;
@@ -954,7 +967,7 @@ MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
         node = (MR_Trace_Node) MR_DD_construct_exit_node((MR_Word) prev,
             (MR_Word) call, last_interface, atom_args,
             (MR_Word) event_info->MR_event_number, event_info->MR_event_sll,
-            MR_io_tabling_counter);
+            MR_io_tabling_counter, MR_edt_suspicion_accumulator);
         MR_DD_call_node_set_last_interface((MR_Word) call, (MR_Word) node);
     );
 
@@ -994,7 +1007,7 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
         last_interface = MR_DD_call_node_get_last_interface((MR_Word) call);
         node = (MR_Trace_Node) MR_DD_construct_redo_node((MR_Word) prev,
             last_interface, (MR_Word) event_info->MR_event_number,
-            event_info->MR_event_sll);
+            event_info->MR_event_sll, MR_edt_suspicion_accumulator);
         MR_DD_call_node_set_last_interface((MR_Word) call, (MR_Word) node);
     );
 
@@ -1032,7 +1045,8 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
         redo = MR_DD_call_node_get_last_interface((MR_Word) call);
         node = (MR_Trace_Node) MR_DD_construct_fail_node((MR_Word) prev,
             (MR_Word) call, (MR_Word) redo,
-            (MR_Word) event_info->MR_event_number, event_info->MR_event_sll);
+            (MR_Word) event_info->MR_event_number, event_info->MR_event_sll,
+            MR_edt_suspicion_accumulator);
         MR_DD_call_node_set_last_interface((MR_Word) call, (MR_Word) node);
     );
 
@@ -1061,7 +1075,7 @@ MR_trace_decl_excp(MR_Event_Info *event_info, MR_Trace_Node prev)
         MR_DD_construct_excp_node((MR_Word) prev, (MR_Word) call,
             last_interface, MR_trace_get_exception_value(),
             (MR_Word) event_info->MR_event_number,
-            event_info->MR_event_sll, &node);
+            event_info->MR_event_sll, MR_edt_suspicion_accumulator, &node);
         MR_DD_call_node_set_last_interface((MR_Word) call, (MR_Word) node);
     );
 
@@ -1486,7 +1500,7 @@ MR_trace_decl_set_fallback_search_mode(MR_Decl_Search_Mode search_mode)
 {
     MR_trace_decl_ensure_init();
     MR_TRACE_CALL_MERCURY(
-        MR_DD_decl_set_fallback_search_mode(search_mode,
+        MR_DD_decl_set_fallback_search_mode(MR_trace_node_store, search_mode,
             MR_trace_front_end_state, &MR_trace_front_end_state);
     );
 }
@@ -1503,17 +1517,33 @@ MR_trace_decl_set_testing_flag(MR_bool testing)
 
 MR_bool
 MR_trace_is_valid_search_mode_string(const char *search_mode_string,
-    MR_Decl_Search_Mode *search_mode)
+    MR_Decl_Search_Mode *search_mode, 
+    MR_bool *search_mode_requires_trace_counts)
 {
     MR_bool is_valid;
 
+    *search_mode_requires_trace_counts = MR_FALSE;
+
     MR_TRACE_CALL_MERCURY(
-        if (MR_streq(search_mode_string, "top_down")) {
+        if (MR_streq(search_mode_string, "top_down")
+            || MR_streq(search_mode_string, "top-down")
+            || MR_streq(search_mode_string, "td")) 
+        {
             *search_mode = MR_DD_decl_top_down_search_mode();
             is_valid = MR_TRUE;
-        } else if (MR_streq(search_mode_string, "divide_and_query")) {
+        } else if (MR_streq(search_mode_string, "divide_and_query")
+            || MR_streq(search_mode_string, "divide-and-query")
+            || MR_streq(search_mode_string, "dq")) 
+        {
             *search_mode = MR_DD_decl_divide_and_query_search_mode();
             is_valid = MR_TRUE;
+        } else if (MR_streq(search_mode_string, "suspicion_divide_and_query")
+            || MR_streq(search_mode_string, "suspicion-divide-and-query")
+            || MR_streq(search_mode_string, "sdq"))
+        {
+            *search_mode = MR_DD_decl_suspicion_divide_and_query_search_mode();
+            is_valid = MR_TRUE;
+            *search_mode_requires_trace_counts = MR_TRUE;
         } else {
             is_valid = MR_FALSE;
         }
@@ -1819,6 +1849,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     MR_edt_max_depth = maxdepth;
     MR_edt_inside = MR_FALSE;
     MR_edt_building_supertree = create_supertree;
+    MR_edt_suspicion_accumulator = 0;
     MR_edt_start_time = MR_get_user_cpu_miliseconds();
     MR_edt_first_event = event_details->MR_event_number;
 
@@ -2273,6 +2304,108 @@ MR_trace_maybe_update_implicit_tree_ideal_depth(MR_Unsigned current_depth,
             MR_DD_call_node_update_implicit_tree_info(call, ideal_depth);
         }
     }
+}
+
+static  void
+MR_trace_maybe_update_suspicion_accumulator(
+    const MR_Label_Layout *label_layout)
+{
+    if (MR_edt_update_suspicion_accumulator) {
+        MR_Unsigned *label_suspicion;
+
+        label_suspicion = MR_trace_lookup_trace_count(label_layout);
+        MR_edt_suspicion_accumulator += *label_suspicion;
+    }
+}
+
+MR_bool    
+MR_trace_decl_init_suspicion_table(char *pass_trace_counts_file, 
+    char *fail_trace_counts_file, MR_String *problem)
+{
+    MR_String                   aligned_pass_trace_counts_file;
+    MR_String                   aligned_fail_trace_counts_file;
+    MR_Word                     maybe_dice;
+    MR_Word                     dice;
+    int                         num_modules;
+    int                         module_num;
+    int                         num_files;
+    int                         file_num;
+    int                         num_labels;
+    int                         label_num;
+    int                         label_index;
+    const MR_Module_Layout      *module;
+    const MR_Module_File_Layout *file;
+    const MR_Label_Layout       *label;
+    MR_Unsigned                 *table_cell;
+    MR_Float                    f_suspicion;
+
+    MR_TRACE_USE_HP(
+        MR_make_aligned_string(aligned_pass_trace_counts_file,
+            (MR_String) pass_trace_counts_file);
+        MR_make_aligned_string(aligned_fail_trace_counts_file,
+            (MR_String) fail_trace_counts_file);
+    );
+
+    MR_TRACE_CALL_MERCURY(
+        MR_MDB_read_dice_try_single_first(
+            aligned_pass_trace_counts_file,
+            aligned_fail_trace_counts_file,
+            &maybe_dice);
+        MR_DD_maybe_dice_error_to_problem_string(maybe_dice, 
+            problem);
+    );
+    if (! MR_streq(*problem, "")) {
+        return MR_FALSE;
+    } else {
+        MR_TRACE_CALL_MERCURY(
+            MR_DD_det_maybe_dice_error_to_dice(maybe_dice, &dice);
+        );
+    }
+
+    /*
+    ** We have read in a valid dice, so we can go ahead and set up the
+    ** suspicion table.  We use the execution count table to store the
+    ** suspicions of each label.  This is a good idea because 
+    ** (a) it is quick to look up a value in this table given a label, and
+    ** (b) it is not used for counting events during an interactive mdb
+    ** session.
+    */
+
+    num_modules = MR_module_info_next;
+    for (module_num = 0; module_num < num_modules; module_num++) {
+        module = MR_module_infos[module_num];
+        num_files = module->MR_ml_filename_count;
+
+        for (file_num = 0; file_num < num_files; file_num++) {
+            file = module->MR_ml_module_file_layout[file_num];
+            num_labels = file->MR_mfl_label_count;
+            
+            for (label_num = 0; label_num < num_labels; 
+                label_num++) 
+            {
+                label = file->MR_mfl_label_layout[label_num];
+                label_index = 
+                    label->MR_sll_label_num_in_module;
+                table_cell = &(module->MR_ml_label_exec_count[
+                    label_index]);
+                MR_TRACE_CALL_MERCURY(
+                    f_suspicion = 
+                        MR_DD_get_suspicion_for_label_layout(dice, label);
+                );
+                /*
+                ** Instead of using a ratio between 0 and 1
+                ** we store an integer between 0 and 
+                ** MR_TRACE_DECL_MAX_SUSPICION, since this
+                ** is quicker and requires less storage space.
+                */
+                *table_cell = (MR_Unsigned)
+                    ((MR_Float) MR_TRACE_DECL_MAX_SUSPICION * f_suspicion);
+            }
+        }
+    }
+
+    MR_edt_update_suspicion_accumulator = MR_TRUE;
+    return MR_TRUE;
 }
 
 static void

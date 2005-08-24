@@ -146,12 +146,20 @@
 		%
 	pred edt_topmost_node(S::in, T::in) is semidet,
  
- 		% edt_weight(Store, Node, Weight, ExcessWeight).
-		% Find the weight and excess weight for a node.  See the 
-		% comment at the top of this module for the meaning of 
-		% the weight of a node.
-		%
- 	pred edt_weight(S::in, T::in, int::out, int::out) is det,
+ 		% edt_number_of_events(Store, Node, Events, DuplicateEvents).
+		% Find the number of events in the subtree rooted at Node,
+		% including the CALL and final event of Node.  In
+		% DuplicateEvents return the number of events which will 
+		% be repeated in siblings to the right of Node, times
+		% by the number of repetitions of each event.
+		% 
+ 	pred edt_number_of_events(S::in, T::in, int::out, int::out) is det,
+
+		% edt_subtree_suspicion(Store, Node, Suspicion, Excess).
+		% Find the suspicion of the subtree rooted at Node.
+		% Return any suspicion duplicated in siblings of Node in
+		% Excess.
+	pred edt_subtree_suspicion(S::in, T::in, int::out, int::out) is det,
 
 		% Return the filename and line number of the predicate
 		% associated with the given node.  Also return the parent
@@ -246,8 +254,8 @@
 	% Creates a new search space containing just the one EDT node with 
 	% an initial status of unknown.
 	%
-:- pred initialise_search_space(S::in, T::in, search_space(T)::out) 
-	is det <= mercury_edt(S, T).
+:- pred initialise_search_space(S::in, maybe(weighting_heuristic)::in, T::in, 
+	search_space(T)::out) is det <= mercury_edt(S, T).
 
 	% The root of the search space is the root of the subtree of the EDT
 	% that we think contains a bug, based on information received so far.
@@ -510,6 +518,23 @@
 :- func get_proc_label_for_suspect(S, search_space(T), suspect_id) = proc_label
 	<= mercury_edt(S, T).
 
+:- type weighting_heuristic
+	--->	number_of_events
+	;	suspicion.
+
+	% Recalculate the value of the `weight' fields for all suspects in the
+	% search space if the given weighting heuristic is different from the
+	% previous one.
+	%
+:- pred update_weighting_heuristic(S::in, weighting_heuristic::in, 
+	search_space(T)::in, search_space(T)::out) is det <= mercury_edt(S, T).
+
+	% Return the meaning of the values of the `weight' fields of suspects
+	% in the search space.
+	%
+:- func get_current_maybe_weighting(search_space(T)) = 
+	maybe(weighting_heuristic).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -609,11 +634,15 @@
 				% We use a bimap so we can also find the
 				% implicit root given an explicit root.
 				%
-			implicit_roots_to_explicit_roots	:: bimap(T, T)
+			implicit_roots_to_explicit_roots	:: bimap(T, T),
+
+				% The weighting heuristic (if any) used to
+				% calculate the weights of suspects.
+			maybe_weighting_heuristic :: maybe(weighting_heuristic)
 	).
 
 empty_search_space = search_space(no, no, counter.init(0), counter.init(0), 
-	map.init, bimap.init).
+	map.init, bimap.init, no).
 
 root(SearchSpace, RootId) :- SearchSpace ^ root = yes(RootId).
 
@@ -1152,6 +1181,7 @@ maybe_check_search_space_consistency(Store, SearchSpace, Context) :-
 
 check_search_space_consistency(Store, SearchSpace, Context) :-
 	(
+		SearchSpace ^ maybe_weighting_heuristic = yes(_),
 		find_inconsistency_in_weights(Store, SearchSpace, Message)
 	->
 		throw(internal_error("check_search_space_consistency",
@@ -1178,9 +1208,9 @@ check_search_space_consistency(Store, SearchSpace, Context) :-
 	% zero.  If the node is ignored then the weight is the sum of the
 	% weights of the children plus the sum of the excess weights of the
 	% children.  Otherwise the weight is the original weight of the node
-	% as reported by edt_weight/4 minus the original weights of the
-	% children as reported by edt_weight/4 plus the current weight of
-	% the children plus any excess weight in the children.
+	% as reported by calc_weight/5 minus the original weights of the
+	% children plus the current weight of the children plus any excess
+	% weight in the children.
 	%
 :- pred calc_suspect_weight(S::in, T::in, maybe(list(suspect_id))::in,
 	suspect_status::in, search_space(T)::in, int::out, int::out) 
@@ -1189,39 +1219,50 @@ check_search_space_consistency(Store, SearchSpace, Context) :-
 calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
 		ExcessWeight) :-
 	(
-		( Status = correct
-		; Status = inadmissible
-		)
-	->
-		Weight = 0,
-		ExcessWeight = 0
-	;
-		edt_weight(Store, Node, OriginalWeight, ExcessWeight),
+		SearchSpace ^ maybe_weighting_heuristic = yes(Weighting),
 		(
-			MaybeChildren = no,
-			Weight = OriginalWeight
+			( Status = correct
+			; Status = inadmissible
+			)
+		->
+			Weight = 0,
+			ExcessWeight = 0
 		;
-			MaybeChildren = yes(Children),
-			list.map(lookup_suspect(SearchSpace), Children,
-				ChildrenSuspects),
-			ChildrenNodes = list.map(
-				func(S) = N :- N = S ^ edt_node, 
-				ChildrenSuspects),
-			list.foldl2(add_original_weight(Store), 
-				ChildrenNodes, 0, ChildrenOriginalWeight,
-				0, ChildrenExcess),
-			list.foldl(add_existing_weight, ChildrenSuspects, 0,
-				ChildrenWeight),
+			calc_weight(Weighting, Store, Node, OriginalWeight, 
+				ExcessWeight),
 			(
-				Status = ignored
-			->
-				Weight = ChildrenWeight + ChildrenExcess
+				MaybeChildren = no,
+				Weight = OriginalWeight
 			;
-				Weight = OriginalWeight - 
-					ChildrenOriginalWeight + ChildrenWeight
-					+ ChildrenExcess
+				MaybeChildren = yes(Children),
+				list.map(lookup_suspect(SearchSpace), Children,
+					ChildrenSuspects),
+				ChildrenNodes = list.map(
+					func(S) = N :- N = S ^ edt_node, 
+					ChildrenSuspects),
+				list.foldl2(add_original_weight(Weighting, 
+					Store), 
+					ChildrenNodes, 0,
+					ChildrenOriginalWeight, 0,
+					ChildrenExcess),
+				list.foldl(add_existing_weight,
+					ChildrenSuspects, 0, ChildrenWeight),
+				(
+					Status = ignored
+				->
+					Weight = ChildrenWeight +
+						ChildrenExcess 
+				;
+					Weight = OriginalWeight -
+						ChildrenOriginalWeight +
+						ChildrenWeight + ChildrenExcess
+				)
 			)
 		)
+	;
+		SearchSpace ^ maybe_weighting_heuristic = no,
+		Weight = 0,
+		ExcessWeight = 0
 	).
 
 	% Add the given weight to the ancestors of the given suspect
@@ -1257,12 +1298,12 @@ add_weight_to_ancestors(SuspectId, Weight, !SearchSpace) :-
 		true
 	).
 
-:- pred add_original_weight(S::in, T::in, int::in, int::out, int::in, int::out) 
-	is det <= mercury_edt(S, T).
+:- pred add_original_weight(weighting_heuristic::in, S::in, T::in, int::in, 
+	int::out, int::in, int::out) is det <= mercury_edt(S, T).
 
-add_original_weight(Store, Node, Prev, Prev + Weight, PrevExcess, 
+add_original_weight(Weighting, Store, Node, Prev, Prev + Weight, PrevExcess, 
 		PrevExcess + Excess) :-
-	edt_weight(Store, Node, Weight, Excess).
+	calc_weight(Weighting, Store, Node, Weight, Excess).
 
 :- pred add_existing_weight(suspect(T)::in, int::in, int::out) is det.
 
@@ -1270,8 +1311,8 @@ add_existing_weight(Suspect, Prev, Prev + Suspect ^ weight).
 
 	% recalc_weights_upto_ancestor(Store, Ancestor, Suspects, !SearchSpace)
 	% Recalculate the weights of the suspects in Suspects and all their
-	% ancestors below Ancestor.  Ancestor must be a common ancestor
-	% of all the suspects in Suspects.
+	% ancestors below and including Ancestor.  Ancestor must be a common
+	% ancestor of all the suspects in Suspects.
 	%
 :- pred recalc_weights_upto_ancestor(S::in, suspect_id::in,
 	list(suspect_id)::in, search_space(T)::in, search_space(T)::out) 
@@ -1572,12 +1613,18 @@ adjust_suspect_status_from_oracle(Store, Oracle, SuspectId,
 		true
 	).
 
-initialise_search_space(Store, Node, SearchSpace) :-
-	edt_weight(Store, Node, Weight, _),
+initialise_search_space(Store, MaybeWeighting, Node, SearchSpace) :-
+	(
+		MaybeWeighting = yes(Weighting),
+		calc_weight(Weighting, Store, Node, Weight, _)
+	;
+		MaybeWeighting = no,
+		Weight = 0
+	),
 	map.set(init, 0, suspect(no, Node, unknown, 0, no, Weight), 
 		SuspectStore),
 	SearchSpace = search_space(no, yes(0), counter.init(1), 
-		counter.init(0), SuspectStore, bimap.init).
+		counter.init(0), SuspectStore, bimap.init, MaybeWeighting).
 
 incorporate_explicit_subtree(SuspectId, Node, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
@@ -1994,3 +2041,41 @@ primitive_op_type_to_string(unification) = "unification".
 
 get_proc_label_for_suspect(Store, SearchSpace, SuspectId) = 
 	edt_proc_label(Store, get_edt_node(SearchSpace, SuspectId)).
+
+update_weighting_heuristic(Store, Weighting, !SearchSpace) :-
+	MaybePrevWeighting = !.SearchSpace ^ maybe_weighting_heuristic,
+	(
+		MaybePrevWeighting = yes(PrevWeighting),
+		PrevWeighting = Weighting
+	->
+		true
+	;
+		!:SearchSpace = !.SearchSpace ^ maybe_weighting_heuristic 
+			:= yes(Weighting),
+		(
+			map.is_empty(!.SearchSpace ^ store)
+		->
+			true
+		;
+			%
+			% Recompute the suspect weights from the bottom up.
+			%
+			map.keys(!.SearchSpace ^ store, AllSuspects),
+			list.filter(suspect_is_leaf(!.SearchSpace),
+				AllSuspects, Leaves),
+			topmost_det(!.SearchSpace, TopId),
+			recalc_weights_upto_ancestor(Store, TopId, Leaves, 
+				!SearchSpace)
+		)
+	).
+
+:- pred calc_weight(weighting_heuristic::in,
+	S::in, T::in, int::out, int::out) is det <= mercury_edt(S, T).
+
+calc_weight(number_of_events, Store, Node, Weight, Excess) :-
+	edt_number_of_events(Store, Node, Weight, Excess).
+calc_weight(suspicion, Store, Node, Weight, Excess) :-
+	edt_subtree_suspicion(Store, Node, Weight, Excess).
+
+get_current_maybe_weighting(SearchSpace) = 
+	SearchSpace ^ maybe_weighting_heuristic.

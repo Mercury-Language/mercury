@@ -15,7 +15,6 @@ mylast([1, 2, 3, 4, 5, 6, 7, 8, ...], no)
 Valid? info
 Context of current question : change_search.m:20 (change_search.m:14)
 Search mode                 : top down                               
-Number of suspect events    : 4,000                                  
 The current question was chosen because this is the node where the `dd'
 command was issued.
 dd> no
@@ -23,7 +22,6 @@ mylast([2, 3, 4, 5, 6, 7, 8, 9, ...], no)
 Valid? info
 Context of current question : change_search.m:20 (change_search.m:22)
 Search mode                 : top down                               
-Number of suspect events    : 4,000                                  
 The current question was chosen because this is the next node in the
 top-down search.
 dd> mode dq

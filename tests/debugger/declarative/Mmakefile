@@ -22,6 +22,7 @@ DECLARATIVE_PROGS=		\
 	deep_warning		\
 	dependency		\
 	dependency2		\
+	dice			\
 	divide_and_query1	\
 	empty_command		\
 	exceptions		\
@@ -253,6 +254,19 @@ dependency.out: dependency dependency.inp
 dependency2.out: dependency2 dependency2.inp
 	$(MDB) ./dependency2 < dependency2.inp > dependency2.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
+
+dice.pass: dice
+	/bin/rm -f .mercury_trace_counts.*dice.*
+	MERCURY_OPTIONS=--trace-count ./dice 1 2 3 4 && \
+	mv .mercury_trace_counts.*dice.* dice.pass
+
+dice.fail: dice
+	/bin/rm -f .mercury_trace_counts.*dice.*
+	MERCURY_OPTIONS=--trace-count ./dice 4 1 2 3 && \
+	mv .mercury_trace_counts.*dice.* dice.fail
+
+dice.out: dice dice.inp dice.pass dice.fail
+	$(MDB_STD) ./dice 4 1 2 3 < dice.inp > dice.out 2>&1
 
 divide_and_query1.out: divide_and_query1 divide_and_query1.inp
 	$(MDB_STD) ./divide_and_query1 < divide_and_query1.inp \

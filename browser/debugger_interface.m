@@ -34,6 +34,7 @@
 :- import_module mdb.interactive_query.
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 
 :- import_module bool.
 :- import_module io.

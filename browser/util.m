@@ -18,11 +18,6 @@
 :- func util__is_predicate(pred_or_func) = bool.
 :- func util__is_function(pred_or_func) = bool.
 
-% This is similar to the type goal_path defined in the module
-% compiler/hlds_goal.m.
-
-:- type goal_path_string == string.
-
 :- type line_number == int.
 
 	% Get user input via the same method used by the internal

@@ -1,0 +1,29 @@
+      E1:     C1 CALL pred dice.main/2-0 (det) dice.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> trust library_forwarding
+Trusting module library_forwarding
+mdb> break dice.merge_sort
+ 0: + stop  interface pred dice.merge_sort/2-0 (det)
+mdb> continue
+      E2:     C2 CALL pred dice.merge_sort/2-0 (det)
+mdb> delete *
+ 0: E stop  interface pred dice.merge_sort/2-0 (det)
+mdb> finish
+      E3:     C2 EXIT pred dice.merge_sort/2-0 (det)
+mdb> set format pretty
+mdb> set depth 10
+mdb> dd -s sdq -f dice.fail -p dice.pass
+merge_sort([4, 1, 2, 3], [1, 1, 2, 3])
+Valid? n
+merge([4], [1], [1, 1])
+Valid? n
+merge([], [1], [1])
+Valid? y
+Found incorrect contour:
+merge([], [1], [1])
+merge([4], [1], [1, 1])
+Is this a bug? y
+      E4:     C3 EXIT pred dice.merge/3-0 (det)
+mdb> quit -y

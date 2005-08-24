@@ -1169,7 +1169,7 @@ typedef	struct MR_Proc_Layout_Traversal_Struct {
 ** The MR_ml_label_exec_count field points to an array of integers, with each
 ** integer holding the number of times execution has reached a given label.
 ** Each label's layout structure records the index of that label in this array.
-** To most direct way to go the other way, to find out which label owns a
+** The most direct way to go the other way, to find out which label owns a
 ** particular slot in this array, is to search the label arrays in the file
 ** layout structures, and test their MR_sll_label_num_in_module fields.
 ** (If we needed faster access, we could add another array with elements

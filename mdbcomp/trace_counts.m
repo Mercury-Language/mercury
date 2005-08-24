@@ -63,6 +63,8 @@
                 num_tests   :: int
             ).
 
+:- func make_path_port(goal_path, trace_port) = path_port.
+
 :- pred summarize_trace_counts_list(list(trace_counts)::in, trace_counts::out)
     is det.
 
@@ -597,6 +599,25 @@ string_to_goal_path(String) = Path :-
     string__length(String, Length),
     string__substring(String, 1, Length-2, SubString),
     path_from_string(SubString, Path).
+
+    % This function should be kept in sync with the MR_named_count_port array
+    % in runtime/mercury_trace_base.c.
+    %
+make_path_port(_GoalPath, call) = port_only(call).
+make_path_port(_GoalPath, exit) = port_only(exit).
+make_path_port(_GoalPath, redo) = port_only(redo).
+make_path_port(_GoalPath, fail) = port_only(fail).
+make_path_port(_GoalPath, exception) = port_only(exception).
+make_path_port(GoalPath, ite_cond) = path_only(GoalPath).
+make_path_port(GoalPath, ite_then) = path_only(GoalPath).
+make_path_port(GoalPath, ite_else) = path_only(GoalPath).
+make_path_port(GoalPath, neg_enter) = port_and_path(neg_enter, GoalPath).
+make_path_port(GoalPath, neg_success) = port_and_path(neg_success, GoalPath).
+make_path_port(GoalPath, neg_failure) = port_and_path(neg_failure, GoalPath).
+make_path_port(GoalPath, disj) = path_only(GoalPath).
+make_path_port(GoalPath, switch) = path_only(GoalPath).
+make_path_port(GoalPath, nondet_pragma_first) = path_only(GoalPath).
+make_path_port(GoalPath, nondet_pragma_later) = path_only(GoalPath).
 
 %-----------------------------------------------------------------------------%
 
