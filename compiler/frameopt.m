@@ -93,6 +93,7 @@
 
 :- interface.
 
+:- import_module libs__globals.
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
@@ -101,24 +102,24 @@
 :- import_module list.
 :- import_module set.
 
-    % frameopt_main(ProcLabel, !LabelCounter, !Instrs, AnyChange, NewJumps):
+    % frameopt_main(ProcLabel, !LabelCounter, !Instrs, Globals, AnyChange,
+    %   NewJumps):
     %
     % Attempt to update !Instrs using the one of the transformations
     % described above for procedures that live on the det stack.
     %
-    % ProcLabel should be the ProcLabel of the procedure whose body
-    % !.Instrs implements, and !.LabelCounter that procedure's label
-    % counter. If frameopt_main allocates any labels, !:LabelCounter
-    % will reflect this.
+    % ProcLabel should be the ProcLabel of the procedure whose body !.Instrs
+    % implements, and !.LabelCounter that procedure's label counter.
+    % If frameopt_main allocates any labels, !:LabelCounter will reflect this.
     %
     % AnyChange says whether we performed any modifications.
     % If yes, then we also introduced some extra labels that should be
-    % deleted. NewJumps says whether we introduced any jumps that could
-    % be profitably be short-circuited.
+    % deleted and probably some jumps that could be profitably be
+    % short-circuited.
     %
 :- pred frameopt_main(proc_label::in, counter::in, counter::out,
-    list(instruction)::in, list(instruction)::out,
-    bool::out, bool::out) is det.
+    list(instruction)::in, list(instruction)::out, globals::in, bool::out)
+    is det.
 
     % frameopt_nondet(ProcLabel, LayoutLabels, MayAlterRtti, !LabelCounter,
     %   !Instrs, AnyChange):
@@ -148,10 +149,12 @@
 
 :- implementation.
 
+:- import_module libs__options.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__livemap.
 :- import_module ll_backend__opt_debug.
 :- import_module ll_backend__opt_util.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 
 :- import_module assoc_list.
@@ -166,61 +169,72 @@
 :- import_module svqueue.
 :- import_module svset.
 
-frameopt_main(ProcLabel, !C, Instrs0, Instrs, Mod, Jumps) :-
+frameopt_main(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
     opt_util__get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
     ( frameopt__detstack_setup(Instrs1, FrameSize, Msg, _, _, _) ->
     	some [!BlockMap] (
             map__init(!:BlockMap),
             divide_into_basic_blocks([LabelInstr | Instrs1], ProcLabel,
                 BasicInstrs, !C),
-            build_block_map(BasicInstrs, FrameSize, LabelSeq0,
-                !BlockMap, ProcLabel, !C),
+            build_frame_block_map(BasicInstrs, FrameSize, LabelSeq0, no, no,
+                ProcLabel, !BlockMap, map__init, PredMap, !C),
             analyze_block_map(LabelSeq0, !BlockMap, KeepFrame),
             (
                 KeepFrame = yes(FirstLabel - SecondLabel),
                 CanClobberSuccip = can_clobber_succip(LabelSeq0, !.BlockMap),
-                keep_frame(LabelSeq0, FirstLabel, SecondLabel,
+                keep_frame_transform(LabelSeq0, FirstLabel, SecondLabel,
                     CanClobberSuccip, !BlockMap),
                 LabelSeq = LabelSeq0,
                 NewComment = comment("keeping stack frame") - "",
                 list__append(Comments0, [NewComment], Comments),
                 flatten_block_seq(LabelSeq, !.BlockMap, BodyInstrs),
                 list__append(Comments, BodyInstrs, Instrs),
-                Mod = yes,
-                Jumps = yes
+                Mod = yes
             ;
                 KeepFrame = no,
-                ( can_delay_frame(LabelSeq0, !.BlockMap, yes) ->
-                    delay_frame(LabelSeq0, LabelSeq, FrameSize, Msg, ProcLabel,
-                        !C, !BlockMap),
-                    NewComment = comment("delaying stack frame") - "",
-                    list__append(Comments0, [NewComment], Comments),
+                (
+                    can_delay_frame(LabelSeq0, !.BlockMap),
+                    delay_frame_transform(LabelSeq0, LabelSeq, FrameSize, Msg,
+                        ProcLabel, PredMap, !C, !BlockMap, Globals,
+                        NewComments, CanTransform),
+                    CanTransform = can_transform
+                ->
+                    Comments = Comments0 ++ NewComments,
                     flatten_block_seq(LabelSeq, !.BlockMap, BodyInstrs),
                     list__append(Comments, BodyInstrs, Instrs),
-                    Mod = yes,
-                    Jumps = no
+                    Mod = yes
                 ;
                     Instrs = Instrs0,
-                    Mod = no,
-                    Jumps = no
+                    Mod = no
                 )
             )
         )
     ;
         Instrs = Instrs0,
-        Mod = no,
-        Jumps = no
+        Mod = no
     ).
 
-:- pred flatten_block_seq(list(label)::in, block_map::in,
+:- pred flatten_block_seq(list(label)::in, frame_block_map::in,
     list(instruction)::out) is det.
 
 flatten_block_seq([], _, []).
 flatten_block_seq([Label | Labels], BlockMap, Instrs) :-
     flatten_block_seq(Labels, BlockMap, RestInstrs),
     map__lookup(BlockMap, Label, BlockInfo),
-    BlockInfo = block_info(_, BlockInstrs, _, _, _),
-    list__append(BlockInstrs, RestInstrs, Instrs).
+    BlockInstrs = BlockInfo ^ fb_instrs,
+    (
+        list__split_last(BlockInstrs, MostInstrs, LastInstr),
+        Labels = [NextLabel | _],
+        LastInstr = goto(label(NextLabel)) - _
+    ->
+        % Optimize away the redundant goto, which we probably introduced.
+        % The next invocation of jumpopt would also do this, but doing it here
+        % is cheaper and may let us reach a fixpoint in the optimization
+        % sequence earlier.
+        Instrs = MostInstrs ++ RestInstrs
+    ;
+        Instrs = BlockInstrs ++ RestInstrs
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -313,38 +327,48 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type block_map   ==  map(label, block_info).
+:- type frame_block_map   ==  map(label, frame_block_info).
 
-:- type block_info
-    --->    block_info(
-                label,
-                    % The label of the first instr.
-                list(instruction),
-                    % The code of the block.
-                list(label),
-                    % The labels we can jump to
-                    % (not falling through).
-                maybe(label),
-                    % The label we fall through to
-                    % (if there is one).
-                block_type
+:- type frame_block_info
+    --->    frame_block_info(
+                fb_label        :: label,
+                                % The label of the first instr.
+
+                fb_instrs       :: list(instruction),
+                                % The code of the block.
+
+                fb_fallen_into  :: maybe(label),
+                                % Does the previous block (if any)
+                                % fall through to this block, and if yes,
+                                % what is its label?
+
+                fb_jump_dests   :: list(label),
+                                % The labels we can jump to
+                                % (not falling through).
+
+                fb_fall_dest    :: maybe(label),
+                                % The label we fall through to
+                                % (if there is one).
+
+                fb_type         :: block_type
             ).
 
 :- type block_type
-    --->    setup           % This is a block containing
-                            % only setup instructions.
-    ;       ordinary(bool)  % This block does not contain setup or
-                            % teardown. The bool says whether the code
-                            % in the block needs a stack frame.
-    ;       teardown(
-                            % This block contains stack
-                            % teardown and goto code.
+    --->    setup               % This is a block containing
+                                % only setup instructions.
+
+    ;       ordinary(bool)      % This block does not contain setup or
+                                % teardown. The bool says whether the code
+                                % in the block needs a stack frame.
+
+    ;       teardown(           % This block contains stack teardown
+                                % and goto code.
                 list(instruction),
-                            % the instr that restores succip (if any),
+                                % The instr that restores succip (if any),
                 list(instruction),
-                            % the livevals instr before the goto (if any),
+                                % The livevals instr before the goto (if any),
                 instruction
-                            % the goto instr
+                                % The goto instr.
             ).
 
 %-----------------------------------------------------------------------------%
@@ -356,7 +380,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
     list(instruction)::out, counter::in, counter::out) is det.
 
 divide_into_basic_blocks([], _, [], !C).
-    % Control can fall of the end of a procedure if that procedure
+    % Control can fall off the end of a procedure if that procedure
     % ends with a call to another procedure that cannot succeed.
     % This is the only situation in which the base case can be reached.
 divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, Instrs, !C) :-
@@ -396,30 +420,37 @@ divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, Instrs, !C) :-
     %
     % - teardown blocks that remove an existing stack frame.
     %
-    % For such each block, create a block_info structure that gives the
+    % For such each block, create a frame_block_info structure that gives the
     % label starting the block, the instructions in the block, and its
-    % type. Two of the fields of the block_info structure are filled in
+    % type. Two of the fields of the frame_block_info structure are filled in
     % with dummy values; they will be filled in for real later.
     %
-    % Put these block_info structures into a table indexed by the label,
+    % Put these frame_block_info structures into a table indexed by the label,
     % and return the sequence of labels of the blocks in their original
     % order.
     %
-:- pred build_block_map(list(instruction)::in, int::in, list(label)::out,
-    block_map::in, block_map::out, proc_label::in,
-    counter::in, counter::out) is det.
+:- pred build_frame_block_map(list(instruction)::in, int::in, list(label)::out,
+    maybe(label)::in, maybe(label)::in, proc_label::in,
+    frame_block_map::in, frame_block_map::out,
+    pred_map::in, pred_map::out, counter::in, counter::out) is det.
 
-build_block_map([], _, [], !BlockMap, _, !C).
-build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, !BlockMap,
-        ProcLabel, !C) :-
+build_frame_block_map([], _, [], _, _, _, !BlockMap, !PredMap, !C).
+build_frame_block_map([Instr0 | Instrs0], FrameSize, LabelSeq,
+        MaybePrevLabel, FallInto, ProcLabel, !BlockMap, !PredMap, !C) :-
     ( Instr0 = label(Label) - _ ->
+        (
+            MaybePrevLabel = yes(PrevLabel),
+            svmap__det_insert(Label, PrevLabel, !PredMap)
+        ;
+            MaybePrevLabel = no
+        ),
         (
             frameopt__detstack_setup(Instrs0, _, _, Setup, Others, Remain)
         ->
-            % Create a block with just the Setup instructions
-            % in it.
+            % Create a block with just the Setup instructions in it.
 
-            BlockInfo = block_info(Label, [Instr0 | Setup], [], no, setup),
+            BlockInfo = frame_block_info(Label, [Instr0 | Setup], FallInto,
+                [], no, setup),
             list__append(Others, Remain, Instrs1),
             (
                 Instrs1 = [Instr1 | _],
@@ -432,62 +463,80 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, !BlockMap,
                 NewInstr = label(NewLabel) - "",
                 Instrs2 = [NewInstr | Instrs1]
             ),
-            build_block_map(Instrs2, FrameSize, LabelSeq0, !BlockMap,
-                ProcLabel, !C),
+            build_frame_block_map(Instrs2, FrameSize, LabelSeq0, yes(Label),
+                yes(Label), ProcLabel, !BlockMap, !PredMap, !C),
             svmap__det_insert(Label, BlockInfo, !BlockMap),
             LabelSeq = [Label | LabelSeq0]
         ;
-            frameopt__detstack_teardown(Instrs0, FrameSize, Tail, Succip,
-                Decrsp, Livevals, Goto, Remain)
+            frameopt__detstack_teardown(Instrs0, FrameSize, Extra,
+                SuccipRestore, Decrsp, Livevals, Goto, Remain)
         ->
-            list__append(Livevals, [Goto], Teardown0),
-            list__append(Decrsp, Teardown0, Teardown1),
-            list__append(Succip, Teardown1, Teardown),
+            Teardown = SuccipRestore ++ Decrsp ++ Livevals ++ [Goto],
             (
-                Tail = [],
-                MaybeTailInfo = no,
+                Extra = [],
+                MaybeExtraInfo = no,
                 LabelledBlock = [Instr0 | Teardown],
                 TeardownLabel = Label,
-                TeardownInfo = block_info(TeardownLabel, LabelledBlock, [], no,
-                    teardown(Succip, Livevals, Goto))
+                TeardownInfo = frame_block_info(TeardownLabel, LabelledBlock,
+                    FallInto, [], no, teardown(SuccipRestore, Livevals, Goto)),
+                NextPrevLabel = Label
             ;
-                Tail = [_ | _],
-                block_needs_frame(Tail, Needs),
-                TailInfo = block_info(Label, [Instr0 | Tail], [], no,
-                    ordinary(Needs)),
-                MaybeTailInfo = yes(TailInfo - Label),
+                Extra = [_ | _],
+                block_needs_frame(Extra, Needs),
+                ExtraInfo = frame_block_info(Label, [Instr0 | Extra],
+                    FallInto, [], no, ordinary(Needs)),
+                MaybeExtraInfo = yes(ExtraInfo - Label),
                 counter__allocate(N, !C),
                 NewLabel = internal(N, ProcLabel),
                 NewInstr = label(NewLabel) - "",
                 LabelledBlock = [NewInstr | Teardown],
                 TeardownLabel = NewLabel,
-                TeardownInfo = block_info(TeardownLabel, LabelledBlock, [], no,
-                    teardown(Succip, Livevals, Goto))
+                TeardownInfo = frame_block_info(TeardownLabel, LabelledBlock,
+                    yes(Label), [], no,
+                    teardown(SuccipRestore, Livevals, Goto)),
+                svmap__det_insert(NewLabel, Label, !PredMap),
+                NextPrevLabel = TeardownLabel
             ),
-            build_block_map(Remain, FrameSize, LabelSeq0, !BlockMap,
-                ProcLabel, !C),
+            build_frame_block_map(Remain, FrameSize, LabelSeq0,
+                yes(NextPrevLabel), no, ProcLabel, !BlockMap, !PredMap, !C),
             (
-                MaybeTailInfo = no,
+                MaybeExtraInfo = no,
                 svmap__det_insert(TeardownLabel, TeardownInfo, !BlockMap),
                 LabelSeq = [TeardownLabel | LabelSeq0]
             ;
-                MaybeTailInfo = yes(TailInfo2 - TailLabel2),
+                MaybeExtraInfo = yes(ExtraInfo2 - ExtraLabel2),
                 svmap__det_insert(TeardownLabel, TeardownInfo, !BlockMap),
-                svmap__det_insert(TailLabel2, TailInfo2, !BlockMap),
-                LabelSeq = [TailLabel2, TeardownLabel | LabelSeq0]
+                svmap__det_insert(ExtraLabel2, ExtraInfo2, !BlockMap),
+                LabelSeq = [ExtraLabel2, TeardownLabel | LabelSeq0]
             )
         ;
             opt_util__skip_to_next_label(Instrs0, Block, Instrs1),
             block_needs_frame(Block, Needs),
-            BlockInfo = block_info(Label, [Instr0 | Block], [], no,
-                ordinary(Needs)),
-            build_block_map(Instrs1, FrameSize, LabelSeq0, !BlockMap,
-                ProcLabel, !C),
+            BlockInstrs = [Instr0 | Block],
+            BlockInfo = frame_block_info(Label, BlockInstrs, FallInto,
+                [], no, ordinary(Needs)),
+            ( list__last(BlockInstrs, LastBlockInstr) ->
+                LastBlockInstr = LastBlockUinstr - _,
+                opt_util__can_instr_fall_through(LastBlockUinstr,
+                    NextFallIntoBool),
+                (
+                    NextFallIntoBool = yes,
+                    NextFallInto = yes(Label)
+                ;
+                    NextFallIntoBool = no,
+                    NextFallInto = no
+                )
+            ;
+                NextFallInto = yes(Label)
+            ),
+            build_frame_block_map(Instrs1, FrameSize, LabelSeq0,
+                yes(Label), NextFallInto, ProcLabel, !BlockMap, !PredMap, !C),
             svmap__det_insert(Label, BlockInfo, !BlockMap),
             LabelSeq = [Label | LabelSeq0]
         )
     ;
-        error("block does not start with label")
+        unexpected(this_file,
+            "build_frame_block_map; block does not start with label")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -516,30 +565,28 @@ frameopt__detstack_setup(Instrs0, FrameSize, Msg, Setup, Others, Remain) :-
     instruction::out, list(instruction)::in, list(instruction)::out,
     list(instruction)::out) is semidet.
 
-frameopt__detstack_setup_2([Instr0 | Instrs0], FrameSize, Setup,
-        Others0, Others, Remain) :-
+frameopt__detstack_setup_2([Instr0 | Instrs0], FrameSize, Setup, !Others,
+        Remain) :-
     ( Instr0 = assign(Lval, Rval) - _ ->
         (
             Lval = stackvar(FrameSize),
             Rval = lval(succip)
         ->
-            Others = Others0,
             Setup = Instr0,
             Remain = Instrs0
         ;
             Lval \= succip,
             Lval \= stackvar(FrameSize)
         ->
-            list__append(Others0, [Instr0], Others1),
-            frameopt__detstack_setup_2(Instrs0, FrameSize, Setup,
-                Others1, Others, Remain)
+            !:Others = !.Others ++ [Instr0],
+            frameopt__detstack_setup_2(Instrs0, FrameSize, Setup, !Others,
+                Remain)
         ;
             fail
         )
     ; Instr0 = comment(_) - _ ->
-        list__append(Others0, [Instr0], Others1),
-        frameopt__detstack_setup_2(Instrs0, FrameSize, Setup,
-            Others1, Others, Remain)
+        !:Others = !.Others ++ [Instr0],
+        frameopt__detstack_setup_2(Instrs0, FrameSize, Setup, !Others, Remain)
     ;
         fail
     ).
@@ -682,7 +729,7 @@ block_needs_frame(Instrs, NeedsFrame) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % For each block in the given sequence, whose block_info structures
+    % For each block in the given sequence, whose frame_block_info structures
     % in the given block map have been partially filled in, fill in the
     % remaining two fields. These two fields give the labels the block
     % can branch to on the side (this includes return addresses for calls),
@@ -698,14 +745,14 @@ block_needs_frame(Instrs, NeedsFrame) :-
     % it in tailcalls that avoid the stack teardown, which is the label
     % immediately after the initial stack setup block.
     %
-:- pred analyze_block_map(list(label)::in, block_map::in, block_map::out,
-    maybe(pair(label))::out) is det.
+:- pred analyze_block_map(list(label)::in,
+    frame_block_map::in, frame_block_map::out, maybe(pair(label))::out) is det.
 
 analyze_block_map(LabelSeq, !BlockMap, KeepFrameData) :-
     (
         LabelSeq = [FirstLabel, SecondLabel | _],
         map__search(!.BlockMap, FirstLabel, FirstBlockInfo),
-        FirstBlockInfo = block_info(FirstLabel, _, _, _, setup)
+        FirstBlockInfo = frame_block_info(FirstLabel, _, _, _, _, setup)
     ->
         analyze_block_map_2(LabelSeq, FirstLabel, !BlockMap, no, KeepFrame),
         (
@@ -716,16 +763,17 @@ analyze_block_map(LabelSeq, !BlockMap, KeepFrameData) :-
             KeepFrameData = no
         )
     ;
-        error("bad data in analyze_block_map")
+        unexpected(this_file, "analyze_block_map: bad data")
     ).
 
 :- pred analyze_block_map_2(list(label)::in, label::in,
-    block_map::in, block_map::out, bool::in, bool::out) is det.
+    frame_block_map::in, frame_block_map::out, bool::in, bool::out) is det.
 
 analyze_block_map_2([], _, !BlockMap, !KeepFrame).
 analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap, !KeepFrame) :-
     map__lookup(!.BlockMap, Label, BlockInfo0),
-    BlockInfo0 = block_info(BlockLabel, BlockInstrs, _, _, Type),
+    BlockInfo0 = frame_block_info(BlockLabel, BlockInstrs, FallInto,
+        _, _, Type),
     (
         Label = BlockLabel, % sanity check
         list__last(BlockInstrs, LastInstr)
@@ -749,11 +797,11 @@ analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap, !KeepFrame) :-
             true
         )
     ;
-        error("bad data in analyze_block_map_2")
+        unexpected(this_file, "analyze_block_map_2: mismatch or no last instr")
     ),
-    BlockInfo = block_info(BlockLabel, BlockInstrs, SideLabels,
-        MaybeFallThrough, Type),
-    map__det_update(!.BlockMap, Label, BlockInfo, !:BlockMap),
+    BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
+        SideLabels, MaybeFallThrough, Type),
+    svmap__det_update(Label, BlockInfo, !BlockMap),
     analyze_block_map_2(Labels, FirstLabel, !BlockMap, !KeepFrame).
 
     % The form of a label used in a tailcall may be different from
@@ -785,12 +833,12 @@ matching_entry_type(c_local, c_local).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- func can_clobber_succip(list(label), block_map) = bool.
+:- func can_clobber_succip(list(label), frame_block_map) = bool.
 
 can_clobber_succip([], _BlockMap) = no.
 can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
     map__lookup(BlockMap, Label, BlockInfo),
-    BlockInfo = block_info(_, Instrs, _, _, _),
+    Instrs = BlockInfo ^ fb_instrs,
     (
         list__member(Instr, Instrs),
         Instr = Uinstr - _,
@@ -816,15 +864,15 @@ can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
     % (a form of which appears in existing tailcalls) and the label that
     % should replace it in tailcalls that avoid the stack teardown.
     %
-:- pred keep_frame(list(label)::in, label::in, label::in, bool::in,
-    block_map::in, block_map::out) is det.
+:- pred keep_frame_transform(list(label)::in, label::in, label::in, bool::in,
+    frame_block_map::in, frame_block_map::out) is det.
 
-keep_frame([], _, _, _, !BlockMap).
-keep_frame([Label | Labels], FirstLabel, SecondLabel, CanClobberSuccip,
-        !BlockMap) :-
+keep_frame_transform([], _, _, _, !BlockMap).
+keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
+        CanClobberSuccip, !BlockMap) :-
     map__lookup(!.BlockMap, Label, BlockInfo0),
     (
-        BlockInfo0 = block_info(Label, OrigInstrs, [_], no,
+        BlockInfo0 = frame_block_info(Label, OrigInstrs, FallInto, [_], no,
             teardown(Succip, Livevals, Goto)),
         Goto = goto(label(GotoLabel)) - Comment,
         matching_label_ref(FirstLabel, GotoLabel)
@@ -835,7 +883,8 @@ keep_frame([Label | Labels], FirstLabel, SecondLabel, CanClobberSuccip,
         ->
             OrigLabelInstr = OrigInstr0
         ;
-            error("block does not begin with label")
+            unexpected(this_file,
+                "keep_frame_transform: block does not begin with label")
         ),
         string__append(Comment, " (keeping frame)", NewComment),
         NewGoto = goto(label(SecondLabel)) - NewComment,
@@ -848,18 +897,20 @@ keep_frame([Label | Labels], FirstLabel, SecondLabel, CanClobberSuccip,
             BackInstrs = LivevalsGoto
         ),
         Instrs = [OrigLabelInstr | BackInstrs],
-        BlockInfo = block_info(Label, Instrs, [SecondLabel], no,
-            ordinary(yes)),
+        BlockInfo = frame_block_info(Label, Instrs, FallInto,
+            [SecondLabel], no, ordinary(yes)),
         map__det_update(!.BlockMap, Label, BlockInfo, !:BlockMap)
     ;
         true
     ),
-    keep_frame(Labels, FirstLabel, SecondLabel, CanClobberSuccip, !BlockMap).
+    keep_frame_transform(Labels, FirstLabel, SecondLabel, CanClobberSuccip,
+        !BlockMap).
 
+% list__split_last_det
 :- pred pick_last(list(T)::in, list(T)::out, T::out) is det.
 
 pick_last([], _, _) :-
-    error("empty list in pick_last").
+    unexpected(this_file, "empty list in pick_last").
 pick_last([First | Rest], NonLast, Last) :-
     (
         Rest = [],
@@ -875,128 +926,214 @@ pick_last([First | Rest], NonLast, Last) :-
 %-----------------------------------------------------------------------------%
 
     % Check that we can use the delay_frame transformation. This requires
-    % that only the first block is of the setup type, and that the
-    % second block is of the ordinary type. Since the transformation
-    % is a null operation if the second block needs a stack frame,
-    % we lie a bit and say that the transformation is not applicable
-    % in such cases.
+    % that only the first block is of the setup type.
     %
-:- pred can_delay_frame(list(label)::in, block_map::in, bool::in) is semidet.
+:- pred can_delay_frame(list(label)::in, frame_block_map::in) is semidet.
 
-can_delay_frame([], _, _).
-can_delay_frame([Label | Labels], BlockMap, First) :-
+can_delay_frame([], _).
+can_delay_frame([Label | _Labels], BlockMap) :-
     map__lookup(BlockMap, Label, BlockInfo),
-    BlockInfo = block_info(_, _, _, MaybeFallThrough, BlockType),
-    ( BlockType = setup ->
-        First = yes,
-        MaybeFallThrough = yes(FallThrough),
-        map__lookup(BlockMap, FallThrough, FallThroughBlockInfo),
-        FallThroughBlockInfo = block_info(_, _, _, _, FallThroughType),
-        FallThroughType = ordinary(no)
-    ;
-        can_delay_frame(Labels, BlockMap, no)
-    ).
+    BlockInfo ^ fb_type = setup.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
     % The data structures used in the delaying optimizations.
 
-    % map__search(RevMap, Label, SideLabels) should be true
-    % if the block started by Label can be reached via jump
-    % (i.e. not fallthrough) from the labels in SideLabels.
+    % map__search(RevMap, Label, SideLabels) should be true if the block
+    % started by Label can be reached via jump or fallthrough from the labels
+    % in SideLabels.
     %
 :- type rev_map ==  map(label, list(label)).
 
-    % map__search(ParMap, Label, ParallelLabel) should be true if
-    % Label starts a teardown block and ParallelLabel starts its parallel
-    % (i.e. a copy without the stack teardown code and therefore an
-    % ordinary block).
-    %
-:- type par_map ==  map(label, label).
+    % Given the label L starting a block, map__search(PredMap, L, PrevL)
+    % is true if PrevL starts the block immediately before L.
+    % If L is the first block in the sequence (which should be a setup block),
+    % map__search(PredMap, L, _) fails.
+:- type pred_map == map(label, label).
 
-    % set__member(Label, FallIntoParallel) should be true if
-    % Label starts a teardown block and the immediately previous block
-    % does not have a stack frame and falls through into the teardown
-    % block.
+    % map__search(SetupParMap, L, SetupL) should be true if L starts
+    % an ordinary block that needs a stack frame that can be jumped to by
+    % blocks that do not have a stack frame. In this case, SetupL will be the
+    % label starting a new block that sets up the stack frame before handing
+    % control to L. We put SetupL's block immediately before L's block.
+    % If L cannot be fallen into, this is fine. If it can, we put a goto
+    % around SetupL's block after the previous block. In most cases,
+    % full jump optimization to duplicate code as necessary to optimize away
+    % the goto.
     %
-    % If it is true, then we will put the new ParallelLabel block
-    % immediately before the Label block; if it is false, we will put it
-    % immediately after. (Both teardown blocks and their parallels
-    % end with a goto, so the first block cannot fall through to the
-    % second, nor can the presence of the second block prevent any
-    % fallthrough from the first block to some other block.)
+:- type setup_par_map ---> setup_par_map(map(label, label)).
+
+    % map__search(TeardownParMap, L, ParallelL should be true if L starts
+    % a teardown block and ParallelL starts a copy of L's block from which
+    % the instructions to tear down the stack frame have been deleted.
+    % If the block immediately before L does not have a stack frame,
+    % we put ParallelL before L. If it does, we put ParallelL after L.
+    % since neither L nor ParallelL can fall through, we don't need any gotos
+    % to jump around blocks.
+    %
+:- type teardown_par_map ---> teardown_par_map(map(label, label)).
 
 %-----------------------------------------------------------------------------%
+
+:- type can_transform
+    --->    can_transform
+    ;       cannot_transform.
+
+    % XXX needs updating
 
     % The optimization of delaying the creation of stack frames as long
     % as possible is in three main phases:
     %
-    % - The first phase finds out which ordinary blocks need a
-    %   a stack frame. This naturally includes blocks that access
-    %   stackvars, and blocks that perform calls. It also includes
-    %   blocks that jump to ordinary blocks that need a frame,
-    %   or which are jumped to or fallen through to from ordinary
-    %   blocks that need a stack frame. It does not include blocks
-    %   that fall through to ordinary blocks that need a frame,
-    %   since the frame setup code can be interposed between the
-    %   two blocks.
+    % - The first phase finds out which ordinary blocks need a stack frame.
+    %   This naturally includes blocks that access stackvars, and blocks
+    %   that perform calls. It also includes blocks which are jumped to
+    %   or fallen through to from ordinary blocks that need a stack frame;
+    %   this is done by propagate_frame_requirement_to_successors.   
+    %   A predecessor of a block that needs a frame need not have a frame
+    %   itself, since we can interpose the frame setup code on the jump or
+    %   fallthrough between them. However, if all of a block's successors
+    %   need a frame, then interposing the setup code on *all* those jumps
+    %   and/or fallthroughs is a space cost, and delaying the setup doesn't
+    %   gain any time, so we may as well say that the predecessor itself needs
+    %   a frame. This is done by propagate_frame_requirement_to_predecessors.
+    %   If a propagation step says that a setup block needs a stack frame,
+    %   that implies that all blocks need a frame, and thus we cannot avoid
+    %   setting up a stack frame on any path. In such cases, this predicate
+    %   wil return CanTransform = cannot_transform, which tells our caller
+    %   to leave the procedure's code unmodified.
     %
-    % - The second phase gets rid of the frame setup code in the
-    %   initial setup block, but its main task is to transform
-    %   ordinary blocks that do not need a frame. Such blocks cannot
-    %   directly jump to ordinary blocks that need a frame (if they
-    %   could, they would have been marked as needing a frame too),
-    %   but they can jump to teardown blocks that also assume the
-    %   presence of a frame. Therefore the last instruction in such
-    %   blocks, the only one that can jump out of the block, must be
-    %   modified to jump to non-teardown parallels to these teardown
-    %   blocks. These parallel blocks will be created in the third
-    %   phase, but to make the substitution possible we allocate labels
-    %   for them in this phase.
+    % - The second phase gets rid of the frame setup code in the initial
+    %   setup block, but its main task is to transform ordinary blocks that
+    %   do not need a frame. Every block that is a successor of such a block,
+    %   whether via jump or fallthrough, will be an ordinary block or a
+    %   teardown block.
     %
-    %   We must also correctly process fallthrough from such blocks.
-    %   If the block can fall through to a teardown block, we mark
-    %   the teardown block so that its parallel will be put before it.
-    %   If the block can fall through to an ordinary block that needs
-    %   a frame, then we put stack frame setup code between the two
-    %   blocks.
+    %   - If the successor is an ordinary block that doesn't need a frame,
+    %     the transfer of control remains as before.
     %
-    % - The third phase creates non-teardown parallels to the teardown
-    %   blocks that need them, and puts them in their correct place,
-    %   either just before or just after the original block.
+    %   - If the successor is an ordinary block B that does need a stack frame,
+    %     we need to insert the frame setup code at the transfer between the
+    %     two blocks. In phase 2, we note the need for this insertion by
+    %     allocating a new label SetupB, which will start a new block that will
+    %     create the stack frame and then fall through to B. In the second
+    %     phase, we alter the transfer of control to goto to SetupB instead
+    %     of B; the creation of SetupB's block is left to the third phase.
+    %     The correspondence between B and SetupB is recorded in SetupParMap.
     %
-:- pred delay_frame(list(label)::in, list(label)::out, int::in, string::in,
-    proc_label::in, counter::in, counter::out,
-    block_map::in, block_map::out) is det.
+    %   - If the successor is a teardown block B, then we modify the transfer
+    %     of control to jump a new label ParallelB, whose block has the same
+    %     code as B's block, except for the deletion of the instructions that
+    %     tear down the (nonexistent along this path) stack frame. The
+    %     correspondence between B and ParallelB is recorded in TeardownParMap.
+    %
+    % - The third phase has the job of adding the pieces of code whose
+    %   existence is assumed by the modified code output by the second stage.
+    %
+    %   For every frame-needing ordinary block that can be jumped to from
+    %   someplace that does not have a stack frame (i.e. for every B in
+    %   SetupParMap), we insert before it the SetupB label followed by
+    %   the code to set up the stack frame SetupB's predecessor may need to
+    %   jump around SetupB's block if previously it fell through to B.)
+    %
+    %   For every teardown block that can jumped to from someplace that does
+    %   not have a stack frame (i.e. for every B in TeardownParMap), we create
+    %   a new block that is a clone of B with the stack teardown deleted.
+    %   Whether we put B or ParallelB first depends on whether the immediately
+    %   previous block has a stack frame or not.
+    %
+:- pred delay_frame_transform(list(label)::in, list(label)::out, int::in,
+    string::in, proc_label::in, pred_map::in, counter::in, counter::out,
+    frame_block_map::in, frame_block_map::out, globals::in,
+    list(instruction)::out, can_transform::out) is det.
 
-delay_frame(LabelSeq0, LabelSeq, FrameSize, Msg, ProcLabel, !C, !BlockMap) :-
-    delay_frame_init(LabelSeq0, !.BlockMap, map__init, RevMap,
-        queue__init, Queue1),
-    propagate_framed_labels(Queue1, !.BlockMap, RevMap,
-        set__init, FramedLabels),
-    process_frame_delay(LabelSeq0, FramedLabels, FrameSize, Msg, ProcLabel, !C,
-        LabelSeq1, !BlockMap, map__init, ParMap, set__init, FallIntoParallel),
-    create_parallels(LabelSeq1, LabelSeq, ParMap, FallIntoParallel, !BlockMap).
+delay_frame_transform(!LabelSeq, FrameSize, Msg, ProcLabel, PredMap, !C,
+        !BlockMap, Globals, NewComments, CanTransform) :-
+    some [!OrdNeedsFrame, !CanTransform, !PropagationStepsLeft] (
+        !:OrdNeedsFrame = map__init,
+        !:CanTransform = can_transform,
+        !:PropagationStepsLeft = max_propagation_steps,
+        delay_frame_init(!.LabelSeq, !.BlockMap, map__init, RevMap,
+            queue__init, SuccQueue, !OrdNeedsFrame),
+        propagate_frame_requirement_to_successors(SuccQueue, !.BlockMap,
+            !OrdNeedsFrame, set__init, !PropagationStepsLeft, !CanTransform),
+        map__to_assoc_list(!.OrdNeedsFrame, OrdNeedsFrameList),
+        list__filter_map(key_block_needs_frame, OrdNeedsFrameList, Frontier),
+        queue__list_to_queue(Frontier, PredQueue),
+        propagate_frame_requirement_to_predecessors(PredQueue, !.BlockMap,
+            RevMap, !OrdNeedsFrame, !.PropagationStepsLeft, _, !CanTransform),
+        (
+            !.CanTransform = cannot_transform,
+            % The delay frame optimization is not applicable; our caller will
+            % ignore all the other output arguments.
+            NewComments = []
+        ;
+            !.CanTransform = can_transform,
+            globals__lookup_bool_option(Globals, frameopt_comments,
+                FrameoptComments),
+            (
+                FrameoptComments = no,
+                NewComments = []
+            ;
+                FrameoptComments = yes,
+                FirstComment = comment("delaying stack frame") - "",
+                list__map(describe_block(!.BlockMap, !.OrdNeedsFrame,
+                    PredMap, ProcLabel), !.LabelSeq, BlockComments),
+                NewComments = [FirstComment | BlockComments]
+            ),
+            process_frame_delay(!.LabelSeq, !.OrdNeedsFrame, ProcLabel, !C,
+                !BlockMap, setup_par_map(map__init), SetupParMap,
+                teardown_par_map(map__init), TeardownParMap),
+            create_parallels(!LabelSeq, FrameSize, Msg, ProcLabel, !C,
+                !.OrdNeedsFrame, SetupParMap, TeardownParMap, PredMap,
+                !BlockMap)
+        ),
+        CanTransform = !.CanTransform
+    ).
+
+    % We want to stop the transformation if we need more than this many
+    % propagation steps. For such large predicates (write_ordinary_term
+    % in , any performance benefit
+    % of frameopt is unlikely to be noticeable.
+    %
+:- func max_propagation_steps = int.
+
+max_propagation_steps = 10000.
+
+:- pred key_block_needs_frame(pair(label, bool)::in, label::out) is semidet.
+
+key_block_needs_frame(Label - yes, Label).
 
 %-----------------------------------------------------------------------------%
 
-    % Initialize two data structures for the delaying operation.
-    % The first is a map showing the predecessors of each block,
-    % i.e. the set of blocks that can jump to each other block.
-    % The second is a queue of ordinary blocks that need a stack frame.
+    % Maps the label of each ordinary block to a bool that says whether
+    % the block needs a stack frame or not.
     %
-:- pred delay_frame_init(list(label)::in, block_map::in,
-    rev_map::in, rev_map::out, queue(label)::in, queue(label)::out) is det.
+:- type ord_needs_frame == map(label, bool).
 
-delay_frame_init([], _, !RevMap, !Queue).
-delay_frame_init([Label | Labels], BlockMap, !RevMap, !Queue) :-
+    % Initialize the data structures for the delaying operation.
+    % The first is a map showing the predecessors of each block,
+    % i.e. the set of blocks that can jump to or fall through each other block.
+    % The second is a queue of ordinary blocks that need a stack frame.
+    % The third says, for each ordinary block, whether it needs a stack frame.
+    %
+    % This predicate implements the first part of the first phase of
+    % delay_frame_transform.
+    %
+:- pred delay_frame_init(list(label)::in, frame_block_map::in,
+    rev_map::in, rev_map::out, queue(label)::in, queue(label)::out,
+    ord_needs_frame::in, ord_needs_frame::out) is det.
+
+delay_frame_init([], _, !RevMap, !Queue, !OrdNeedsFrame).
+delay_frame_init([Label | Labels], BlockMap, !RevMap, !Queue,
+        !OrdNeedsFrame) :-
     map__lookup(BlockMap, Label, BlockInfo),
-    BlockInfo = block_info(_, _, SideLabels, _, BlockType),
+    BlockType = BlockInfo ^ fb_type,
     (
         BlockType = setup
     ;
         BlockType = ordinary(NeedsFrame),
+        svmap__det_insert(Label, NeedsFrame, !OrdNeedsFrame),
         (
             NeedsFrame = no
         ;
@@ -1006,8 +1143,8 @@ delay_frame_init([Label | Labels], BlockMap, !RevMap, !Queue) :-
     ;
         BlockType = teardown(_, _, _)
     ),
-    rev_map_side_labels(SideLabels, Label, !RevMap),
-    delay_frame_init(Labels, BlockMap, !RevMap, !Queue).
+    rev_map_side_labels(successors(BlockInfo), Label, !RevMap),
+    delay_frame_init(Labels, BlockMap, !RevMap, !Queue, !OrdNeedsFrame).
 
 :- pred rev_map_side_labels(list(label)::in, label::in,
     rev_map::in, rev_map::out) is det.
@@ -1025,89 +1162,185 @@ rev_map_side_labels([Label | Labels], SourceLabel, !RevMap) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Given !.FramedLabels, a set of labels representing ordinary blocks
-    % that must have a stack frame, propagate the requirement for a stack
-    % frame to labels representing other ordinary blocks that
+    % Given a queue of labels representing ordinary blocks that must have
+    % a stack frame, propagate the requirement for a stack frame to all
+    % other ordinary blocks that are their successors.
     %
-    % - are reachable from a block in FramedLabels0, either by jump or
-    %   by falling through, or
+    % This predicate implements the second part of the first phase of
+    % delay_frame_transform.
     %
-    % - can perform a jump to a block in FramedLabels0.
-    %
-    % The requirement is not propagated to blocks that can fall through
-    % to a block in !.FramedLabels, since on such paths stack frame setup
-    % code can be inserted between the two blocks.
-    %
-:- pred propagate_framed_labels(queue(label)::in, block_map::in, rev_map::in,
-    set(label)::in, set(label)::out) is det.
+:- pred propagate_frame_requirement_to_successors(queue(label)::in,
+    frame_block_map::in, ord_needs_frame::in, ord_needs_frame::out,
+    set(label)::in, int::in, int::out, can_transform::in, can_transform::out)
+    is det.
 
-propagate_framed_labels(!.Queue, BlockMap, RevMap, !FramedLabels) :-
-    ( svqueue__get(Label, !Queue) ->
+propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
+        !.AlreadyProcessed, !PropagationStepsLeft, !CanTransform) :-
+    ( !.CanTransform = cannot_transform ->
+        true
+    ; !.PropagationStepsLeft < 0 ->
+        !:CanTransform = cannot_transform
+    ; svqueue__get(Label, !Queue) ->
+        !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
+        svset__insert(Label, !AlreadyProcessed),
+        map__lookup(BlockMap, Label, BlockInfo),
+        BlockType = BlockInfo ^ fb_type,
         (
-            map__lookup(BlockMap, Label, BlockInfo),
-            BlockInfo = block_info(_, _, SideLabels, MaybeFallThrough,
-                BlockType),
             BlockType = ordinary(_),
-            \+ set__member(Label, !.FramedLabels)
-        ->
-            svset__insert(Label, !FramedLabels),
-            (
-                MaybeFallThrough = no,
-                ReachableLabels = SideLabels
-            ;
-                MaybeFallThrough = yes(FallThrough),
-                ReachableLabels = [FallThrough | SideLabels]
-            ),
-            svqueue__put_list(ReachableLabels, !Queue),
-            ( map__search(RevMap, Label, Sources) ->
-                svqueue__put_list(Sources, !Queue)
-            ;
-                true
-            ),
-            propagate_framed_labels(!.Queue, BlockMap, RevMap, !FramedLabels)
+            svmap__det_update(Label, yes, !OrdNeedsFrame),
+            % Putting an already processed label into the queue could
+            % lead to an infinite loop. However, we cannot decide whether
+            % a label has been processed by checking whether !.OrdNeedsFrame
+            % maps Label to yes, since !.OrdNeedsFrame doesn't mention setup
+            % frames, and we want to set !:CanTransform to no if any successor
+            % is a setup frame. We cannot assume that successors not in
+            % !.OrdNeedsFrame should set !:CanTransform to no either, since
+            % we don't want to do that for teardown frames.
+            list__filter(set__contains(!.AlreadyProcessed),
+                successors(BlockInfo), _, UnprocessedSuccessors),
+            svqueue__put_list(UnprocessedSuccessors, !Queue)
         ;
-            propagate_framed_labels(!.Queue, BlockMap, RevMap, !FramedLabels)
-        )
+            BlockType = setup,
+            !:CanTransform = cannot_transform
+        ;
+            BlockType = teardown(_, _, _)
+            % Teardown frames never *need* stack frames.
+        ),
+        propagate_frame_requirement_to_successors(!.Queue, BlockMap,
+            !OrdNeedsFrame, !.AlreadyProcessed, !PropagationStepsLeft,
+            !CanTransform)
     ;
         true
+    ).
+
+    % This predicate implements the third part of the first phase of
+    % delay_frame_transform; see the documentation there.
+    %
+:- pred propagate_frame_requirement_to_predecessors(queue(label)::in,
+    frame_block_map::in, rev_map::in,
+    ord_needs_frame::in, ord_needs_frame::out, int::in, int::out,
+    can_transform::in, can_transform::out) is det.
+
+propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
+        !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform) :-
+    ( !.CanTransform = cannot_transform ->
+        true
+    ; !.PropagationStepsLeft < 0 ->
+        !:CanTransform = cannot_transform
+    ; svqueue__get(Label, !Queue) ->
+        !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
+        ( map__search(RevMap, Label, PredecessorsPrime) ->
+            Predecessors = PredecessorsPrime
+        ;
+            % We get here if Label cannot be reached by a fallthrough or an
+            % explicit jump, but only by backtracking. In that case, the code
+            % that sets up the resumption point saves the address of Label on
+            % the stack, and thus is already known to need a stack frame.
+            Predecessors = [],
+            svmap__det_update(Label, yes, !OrdNeedsFrame)
+        ),
+        list__filter(all_successors_need_frame(BlockMap, !.OrdNeedsFrame),
+            Predecessors, NowNeedFrameLabels),
+        list__foldl2(record_frame_need(BlockMap), NowNeedFrameLabels,
+            !OrdNeedsFrame, !CanTransform),
+        svqueue__put_list(NowNeedFrameLabels, !Queue),
+        propagate_frame_requirement_to_predecessors(!.Queue, BlockMap,
+            RevMap, !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform)
+    ;
+        true
+    ).
+
+:- pred record_frame_need(frame_block_map::in, label::in,
+    ord_needs_frame::in, ord_needs_frame::out,
+    can_transform::in, can_transform::out) is det.
+
+record_frame_need(BlockMap, Label, !OrdNeedsFrame, !CanTransform) :-
+    map__lookup(BlockMap, Label, BlockInfo),
+    BlockType = BlockInfo ^ fb_type,
+    (
+        BlockType = setup,
+        !:CanTransform = cannot_transform
+    ;
+        BlockType = ordinary(_),
+        svmap__det_update(Label, yes, !OrdNeedsFrame)
+    ;
+        BlockType = teardown(_, _, _),
+        unexpected(this_file, "record_frame_need: teardown")
+    ).
+
+:- pred all_successors_need_frame(frame_block_map::in, ord_needs_frame::in,
+    label::in) is semidet.
+
+all_successors_need_frame(BlockMap, OrdNeedsFrame, Label) :-
+    map__lookup(BlockMap, Label, BlockInfo),
+    Successors = successors(BlockInfo),
+    list__filter(label_needs_frame(OrdNeedsFrame), Successors,
+        _NeedFrameSuccessors, NoNeedFrameSuccessors),
+    NoNeedFrameSuccessors = [].
+
+:- pred label_needs_frame(ord_needs_frame::in, label::in) is semidet.
+
+label_needs_frame(OrdNeedsFrame, Label) :-
+    ( map__search(OrdNeedsFrame, Label, NeedsFrame) ->
+        NeedsFrame = yes
+    ;
+        % If the map__search fails, Label is not an ordinary frame.
+        % Setup blocks and teardown blocks don't need frames.
+        fail
+    ).
+
+    % Returns the set of successors of the given block as a list
+    % (which may contain duplicates).
+    %
+:- func successors(frame_block_info) = list(label).
+
+successors(BlockInfo) = Successors :-
+    SideLabels = BlockInfo ^ fb_jump_dests,
+    MaybeFallThrough = BlockInfo ^ fb_fall_dest,
+    (
+        MaybeFallThrough = no,
+        Successors = SideLabels
+    ;
+        MaybeFallThrough = yes(FallThrough),
+        Successors = [FallThrough | SideLabels]
     ).
 
 %-----------------------------------------------------------------------------%
 
     % The predicates process_frame_delay and transform_ordinary_block
-    % implement the second phase of delay_frame. For documentation,
-    % see the comment at the top of delay_frame.
+    % implement the second phase of delay_frame_transform. For documentation,
+    % see the comment at the top of delay_frame_transform.
     %
-:- pred process_frame_delay(list(label)::in, set(label)::in, int::in,
-    string::in, proc_label::in, counter::in, counter::out,
-    list(label)::out, block_map::in, block_map::out,
-    par_map::in, par_map::out, set(label)::in, set(label)::out) is det.
+:- pred process_frame_delay(list(label)::in, ord_needs_frame::in,
+    proc_label::in, counter::in, counter::out,
+    frame_block_map::in, frame_block_map::out,
+    setup_par_map::in, setup_par_map::out,
+    teardown_par_map::in, teardown_par_map::out) is det.
 
-process_frame_delay([], _, _, _, _, !C, [], !BlockMap, !ParMap,
-        !FallIntoParallel).
-process_frame_delay([Label0 | Labels0], FramedLabels, FrameSize, Msg,
-        ProcLabel, !C, Labels, !BlockMap, !ParMap, !FallIntoParallel) :-
+process_frame_delay([], _, _, !C, !BlockMap,
+        !SetupParMap, !TeardownParMap).
+process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
+        !BlockMap, !SetupParMap, !TeardownParMap) :-
     map__lookup(!.BlockMap, Label0, BlockInfo0),
-    BlockInfo0 = block_info(Label0Copy, Instrs0, SideLabels0,
+    BlockInfo0 = frame_block_info(Label0Copy, Instrs0, FallInto, SideLabels0,
         MaybeFallThrough0, Type),
-    ( Label0 = Label0Copy ->
-        true
-    ;
-        error("label in block_info is not copy")
-    ),
+    require(unify(Label0, Label0Copy),
+        "process_frame_delay: label in frame_block_info is not copy"),
     (
         Type = setup,
         (
-            MaybeFallThrough0 = yes(FallThrough)
+            MaybeFallThrough0 = yes(_FallThrough)
         ;
             MaybeFallThrough0 = no,
-            error("no fallthrough for setup block")
+            unexpected(this_file,
+                "process_frame_delay: no fallthrough for setup block")
         ),
         (
             SideLabels0 = []
         ;
             SideLabels0 = [_ | _],
-            error("nonempty side labels for setup block")
+            unexpected(this_file,
+                "process_frame_delay: nonempty side labels for setup block")
         ),
         (
             Instrs0 = [LabelInstrPrime | _],
@@ -1115,214 +1348,452 @@ process_frame_delay([Label0 | Labels0], FramedLabels, FrameSize, Msg,
         ->
             LabelInstr = LabelInstrPrime
         ;
-            error("setup block does not begin with label")
+            unexpected(this_file,
+                "process_frame_delay: setup block does not begin with label")
         ),
-        ( set__member(FallThrough, FramedLabels) ->
-            % we can't delay the frame setup,
-            % so return everything unchanged
-            Labels = [Label0 | Labels0]
-        ;
-            BlockInfo = block_info(Label0, [LabelInstr],
-                SideLabels0, MaybeFallThrough0, ordinary(no)),
-            svmap__det_update(Label0, BlockInfo, !BlockMap),
-            process_frame_delay(Labels0, FramedLabels, FrameSize, Msg,
-                ProcLabel, !C, Labels1, !BlockMap, !ParMap, !FallIntoParallel),
-            Labels = [Label0 | Labels1]
-        )
+        BlockInfo = frame_block_info(Label0, [LabelInstr], FallInto,
+            SideLabels0, MaybeFallThrough0, ordinary(no)),
+        svmap__det_update(Label0, BlockInfo, !BlockMap),
+        process_frame_delay(Labels0, OrdNeedsFrame,
+            ProcLabel, !C, !BlockMap, !SetupParMap, !TeardownParMap)
     ;
         Type = ordinary(_),
-        ( set__member(Label0, FramedLabels) ->
-            % Every block reachable from this block, whether via
-            % jump or fallthrough, will be an ordinary block also
-            % in FramedLabels, or will be a teardown block.
-            % We already have a stack frame, and all our
-            % successors expect one, so we need not do anything.
-            process_frame_delay(Labels0, FramedLabels, FrameSize, Msg,
-                ProcLabel, !C, Labels1, !BlockMap, !ParMap, !FallIntoParallel),
-            Labels = [Label0 | Labels1]
+        map__lookup(OrdNeedsFrame, Label0, NeedsFrame),
+        (
+            NeedsFrame = yes,
+            % Every block reachable from this block, whether via jump or
+            % fallthrough, will be an ordinary block also mapped to `yes'
+            % by OrdNeedsFrame, or will be a teardown block. We already have
+            % a stack frame, and all our successors expect one, so we need not
+            % do anything.
+            process_frame_delay(Labels0, OrdNeedsFrame, ProcLabel, !C,
+                !BlockMap, !SetupParMap, !TeardownParMap)
         ;
-            % Every block reachable from this block, whether via
-            % jump or fallthrough, will be an ordinary block also
-            % not in FramedLabels, or will be a teardown block.
-            % The ordinary blocks are OK, since we don't have a
-            % stack frame and they don't expect one exither, but
-            % the teardown blocks are a different matter; we must
-            % make sure that we reach their non-teardown parallels
-            % instead.
-            transform_ordinary_block(Label0, Labels0, BlockInfo0, FramedLabels,
-                FrameSize, Msg, ProcLabel, !C, Labels, !BlockMap, !ParMap,
-                !FallIntoParallel)
+            NeedsFrame = no,
+            transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0,
+                OrdNeedsFrame, ProcLabel, !C, !BlockMap,
+                !SetupParMap, !TeardownParMap)
         )
     ;
         Type = teardown(_, _, _),
-        process_frame_delay(Labels0, FramedLabels, FrameSize, Msg, ProcLabel,
-            !C, Labels1, !BlockMap, !ParMap, !FallIntoParallel),
-        Labels = [Label0 | Labels1]
+        process_frame_delay(Labels0, OrdNeedsFrame, ProcLabel, !C,
+            !BlockMap, !SetupParMap, !TeardownParMap)
     ).
 
-:- pred transform_ordinary_block(label::in, list(label)::in, block_info::in,
-    set(label)::in, int::in, string::in, proc_label::in,
-    counter::in, counter::out, list(label)::out,
-    block_map::in, block_map::out, par_map::in, par_map::out,
-    set(label)::in, set(label)::out) is det.
+    % Transform an ordinary block that doesn't have a stack frame.
+    % Every block that is a successor of this block, whether via jump or
+    % fallthrough, will be an ordinary block or a teardown block.
+    %
+    % - If it is an ordinary block that doesn't need a frame, we need not
+    %   do anything.
+    %
+    % - If it is an ordinary block B that does need a stack frame, we need to
+    %   insert the frame setup code at the transfer between the two blocks.
+    %   The label S of the block that contains the setup code and then goes
+    %   to block B will be given by map__lookup(!.SetupParMap, B, S).
+    %   Here, we just allocate the label S; the block will be created later.
+    %
+    % - If it is teardown block B, then we need to jump to a variant of B
+    %   that does no teardown, since there is no stack frame to tear down.
+    %   The label S of the variant block will be given by
+    %   map__lookup(!.TeardownParMap, B, S). Here, we just allocate
+    %   the label S; the block will be created later.
+    %
+:- pred transform_nostack_ordinary_block(label::in, list(label)::in,
+    frame_block_info::in, ord_needs_frame::in,
+    proc_label::in, counter::in, counter::out,
+    frame_block_map::in, frame_block_map::out,
+    setup_par_map::in, setup_par_map::out,
+    teardown_par_map::in, teardown_par_map::out) is det.
 
-transform_ordinary_block(Label0, Labels0, BlockInfo0, FramedLabels, FrameSize,
-        Msg, ProcLabel, !C, Labels, !BlockMap, !ParMap, !FallIntoParallel) :-
-    BlockInfo0 = block_info(_, Instrs0, SideLabels0, MaybeFallThrough0, Type),
-    mark_parallels_for_teardown(SideLabels0, SideLabels, AssocLabelMap,
-        !.BlockMap, ProcLabel, !C, !ParMap),
-    pick_last(Instrs0, PrevInstrs, LastInstr0),
-    map__from_assoc_list(AssocLabelMap, LabelMap),
-    opt_util__replace_labels_instruction(LastInstr0, LabelMap, no, LastInstr),
-    list__append(PrevInstrs, [LastInstr], Instrs),
+transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
+        ProcLabel, !C, !BlockMap, !SetupParMap, !TeardownParMap) :-
+    BlockInfo0 = frame_block_info(_, Instrs0, FallInto,
+        SideLabels0, MaybeFallThrough0, Type),
+    mark_parallels_for_nostack_successors(SideLabels0, SideLabels,
+        SideAssocLabelMap, OrdNeedsFrame, !.BlockMap, ProcLabel, !C,
+        !SetupParMap, !TeardownParMap),
     (
-        MaybeFallThrough0 = yes(FallThrough),
-        map__lookup(!.BlockMap, FallThrough, FallThroughInfo),
-        FallThroughInfo = block_info(_, _, _, _, FallThroughType),
-        (
-            FallThroughType = setup,
-            error("ordinary block falls through to setup")
+        MaybeFallThrough0 = yes(FallThroughLabel0),
+        mark_parallel_for_nostack_successor(FallThroughLabel0,
+            FallThroughLabel, OrdNeedsFrame, !.BlockMap, ProcLabel, !C,
+            !SetupParMap, !TeardownParMap),
+        MaybeFallThrough = yes(FallThroughLabel),
+        require(no_disagreement(SideAssocLabelMap,
+            FallThroughLabel0, FallThroughLabel),
+            "transform_nostack_ordinary_block: disagreement"),
+        AssocLabelMap = [FallThroughLabel0 - FallThroughLabel
+            | SideAssocLabelMap],
+        ( FallThroughLabel = FallThroughLabel0 ->
+            RedirectFallThrough = []
         ;
-            FallThroughType = ordinary(_),
-            ( set__member(FallThrough, FramedLabels) ->
-                % We fall through from a block without a
-                % stack frame to a block which needs a
-                % stack frame, so we must create one.
-
-                counter__allocate(N, !C),
-                NewLabel = internal(N, ProcLabel),
-                MaybeFallThrough = yes(NewLabel),
-                MaybeNewLabel = yes(NewLabel),
-                SetupCode = [
-                    label(NewLabel) - "late setup label",
-                    incr_sp(FrameSize, Msg) - "late setup",
-                    assign(stackvar(FrameSize), lval(succip)) - "late save"
-                ],
-                SetupBlock = block_info(NewLabel, SetupCode, [],
-                    MaybeFallThrough0, setup),
-                svmap__det_insert(NewLabel, SetupBlock, !BlockMap)
-            ;
-                MaybeFallThrough = yes(FallThrough),
-                MaybeNewLabel = no
-            )
-        ;
-            FallThroughType = teardown(_, _, _),
-            MaybeFallThrough = yes(FallThrough),
-            svset__insert(FallThrough, !FallIntoParallel),
-            MaybeNewLabel = no,
-            mark_parallel(FallThrough, _, ProcLabel, !C, !ParMap)
+            RedirectFallThrough = [goto(label(FallThroughLabel))
+                - "redirect fallthrough"]
+            % We can expect this jump to be optimized away in most cases.
         )
     ;
         MaybeFallThrough0 = no,
         MaybeFallThrough = no,
-        MaybeNewLabel = no
+        AssocLabelMap = SideAssocLabelMap,
+        RedirectFallThrough = []
     ),
-    BlockInfo = block_info(Label0, Instrs, SideLabels, MaybeFallThrough, Type),
+    pick_last(Instrs0, PrevInstrs, LastInstr0),
+    map__from_assoc_list(AssocLabelMap, LabelMap),
+    opt_util__replace_labels_instruction(LastInstr0, LabelMap, no, LastInstr),
+    Instrs = PrevInstrs ++ [LastInstr | RedirectFallThrough],
+    BlockInfo = frame_block_info(Label0, Instrs, FallInto,
+        SideLabels, MaybeFallThrough, Type),
     map__set(!.BlockMap, Label0, BlockInfo, !:BlockMap),
-    process_frame_delay(Labels0, FramedLabels, FrameSize, Msg, ProcLabel, !C,
-        Labels1, !BlockMap, !ParMap, !FallIntoParallel),
+    process_frame_delay(Labels0, OrdNeedsFrame, ProcLabel, !C, !BlockMap,
+        !SetupParMap, !TeardownParMap).
+
+:- pred no_disagreement(assoc_list(label, label)::in, label::in, label::in)
+    is semidet.
+
+no_disagreement([], _, _).
+no_disagreement([K - V | KVs], Key, Value) :-
+    ( K = Key => V = Value ),
+    no_disagreement(KVs, Key, Value).
+
+%-----------------------------------------------------------------------------%
+
+    % Invokes mark_parallel_for_nostack_successor on each input label,
+    % and returns both the updated list of labels and the substitution
+    % (represented as an association list) that will have to applied
+    % to the jumping instruction.
+    %
+:- pred mark_parallels_for_nostack_successors(list(label)::in,
+    list(label)::out, assoc_list(label)::out, ord_needs_frame::in,
+    frame_block_map::in, proc_label::in, counter::in, counter::out,
+    setup_par_map::in, setup_par_map::out,
+    teardown_par_map::in, teardown_par_map::out) is det.
+
+mark_parallels_for_nostack_successors([], [], [], _, _, _, !C,
+        !SetupParMap, !TeardownParMap).
+mark_parallels_for_nostack_successors([Label0 | Labels0], [Label | Labels],
+        [Label0 - Label | LabelMap], OrdNeedsFrame, BlockMap, ProcLabel, !C,
+        !SetupParMap, !TeardownParMap) :-
+    mark_parallel_for_nostack_successor(Label0, Label,
+        OrdNeedsFrame, BlockMap, ProcLabel, !C, !SetupParMap, !TeardownParMap),
+    mark_parallels_for_nostack_successors(Labels0, Labels, LabelMap,
+        OrdNeedsFrame, BlockMap, ProcLabel, !C, !SetupParMap, !TeardownParMap).
+
+    % Label0 is a label that is a successor of a block which has no stack
+    % frame.
+    %
+    % If Label0 starts a teardown block, we ensure that it has a non-teardown
+    % parallel Label.
+    %
+    % If Label0 starts an ordinary block that needs a stack frame, we ensure
+    % that it has a parallel Label that allocates a stack frame before handing
+    % control to Label0.
+    %
+:- pred mark_parallel_for_nostack_successor(label::in, label::out,
+    ord_needs_frame::in, frame_block_map::in, proc_label::in,
+    counter::in, counter::out, setup_par_map::in, setup_par_map::out,
+    teardown_par_map::in, teardown_par_map::out) is det.
+
+mark_parallel_for_nostack_successor(Label0, Label, OrdNeedsFrame, BlockMap,
+        ProcLabel, !C, !SetupParMap, !TeardownParMap) :-
+    map__lookup(BlockMap, Label0, BlockInfo),
+    Type = BlockInfo ^ fb_type,
     (
-        MaybeNewLabel = yes(NewLabel2),
-        Labels = [Label0, NewLabel2 | Labels1]
+        Type = setup,
+        unexpected(this_file, "mark_parallels_for_nostack_jump: " ++
+            "reached setup via jump from ordinary block")
     ;
-        MaybeNewLabel = no,
-        Labels = [Label0 | Labels1]
+        Type = ordinary(_),
+        map__lookup(OrdNeedsFrame, Label0, NeedsFrame),
+        (
+            NeedsFrame = yes,
+            ensure_setup_parallel(Label0, Label, ProcLabel, !C, !SetupParMap)
+        ;
+            NeedsFrame = no,
+            Label = Label0
+        )
+    ;
+        Type = teardown(_, _, _),
+        ensure_teardown_parallel(Label0, Label, ProcLabel, !C, !TeardownParMap)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % The input is a list of labels that are jumped to from a frame
-    % which has no stack frame. Therefore if some of those labels start
-    % teardown blocks, we ensure that those blocks have non-teardown
-    % parallels, allocating labels for them if they haven't been allocated
-    % already. We return both the updated list of labels and the
-    % substitution (represented as an association list) that will have
-    % to applied to the jumping instruction.
+    % The third phase of the delay_frame_transform optimization, creating
     %
-:- pred mark_parallels_for_teardown(list(label)::in, list(label)::out,
-    assoc_list(label)::out, block_map::in,
-    proc_label::in, counter::in, counter::out,
-    par_map::in, par_map::out) is det.
+    % - the setup code of ordinary blocks that need frames but (some of)
+    %   whose predecessors don't have one, and
+    %
+    % - the parallels of teardown blocks that can assume there is no frame to
+    %   tear down.
+    %
+:- pred create_parallels(list(label)::in, list(label)::out, int::in,
+    string::in, proc_label::in, counter::in, counter::out, ord_needs_frame::in,
+    setup_par_map::in, teardown_par_map::in, pred_map::in,
+    frame_block_map::in, frame_block_map::out) is det.
 
-mark_parallels_for_teardown([], [], [], _, _, !C, !ParMap).
-mark_parallels_for_teardown([Label0 | Labels0], [Label | Labels],
-        [Label0 - Label | LabelMap], BlockMap, ProcLabel, !C, !ParMap) :-
-    map__lookup(BlockMap, Label0, BlockInfo),
-    BlockInfo = block_info(_, _, _, _, Type),
+create_parallels([], [], _, _, _, !C, _, _, _, _, !BlockMap).
+create_parallels([Label0 | Labels0], Labels, FrameSize, Msg, ProcLabel, !C,
+        OrdNeedsFrame, SetupParMap, TeardownParMap, PredMap, !BlockMap) :-
+    create_parallels(Labels0, Labels1, FrameSize, Msg, ProcLabel, !C,
+        OrdNeedsFrame, SetupParMap, TeardownParMap, PredMap, !BlockMap),
+    map__lookup(!.BlockMap, Label0, BlockInfo0),
+    BlockInfo0 = frame_block_info(Label0Copy, _, FallInto,
+        SideLabels, MaybeFallThrough, Type),
+    require(unify(Label0, Label0Copy),
+        "create_parallels: label in frame_block_info is not copy"),
+    ( search_teardown_par_map(TeardownParMap, Label0, ParallelLabel) ->
+        require(unify(MaybeFallThrough, no),
+            "create_parallels: teardown block with parallel has fall through"),
+        (
+            SideLabels = [],
+            Comments = []
+        ;
+            SideLabels = [_ | _],
+            % This can happen if fulljump optimization has redirected the
+            % return.
+            Comments = [comment("teardown side labels "
+                ++ dump_labels(ProcLabel, SideLabels)) - ""]
+        ),
+        PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
+        ( Type = teardown(_, Livevals, Goto) ->
+            LabelInstr = label(ParallelLabel) - "non-teardown parallel",
+            ReplacementCode = [LabelInstr] ++ Comments ++ Livevals ++ [Goto],
+            (
+                PrevNeedsFrame = no,
+                Labels = [ParallelLabel, Label0 | Labels1],
+                BlockInfo = BlockInfo0 ^ fb_fallen_into := no,
+                svmap__det_update(Label0, BlockInfo, !BlockMap),
+                ParallelBlockFallInto = FallInto
+            ;
+                PrevNeedsFrame = yes,
+                Labels = [Label0, ParallelLabel | Labels1],
+                ParallelBlockFallInto = no
+            ),
+            ParallelBlockInfo = frame_block_info(ParallelLabel,
+                ReplacementCode, ParallelBlockFallInto, SideLabels,
+                no, ordinary(no)),
+            svmap__det_insert(ParallelLabel, ParallelBlockInfo, !BlockMap)
+        ;
+            unexpected(this_file,
+                "block in teardown_par_map is not teardown")
+        )
+    ; search_setup_par_map(SetupParMap, Label0, SetupLabel) ->
+        require(is_ordinary(Type),
+            "create_parallels: block in setup map is not ordinary"),
+        PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
+        (
+            PrevNeedsFrame = yes,
+            counter__allocate(N, !C),
+            JumpAroundLabel = internal(N, ProcLabel),
+            % By not including a label instruction at the start of
+            % JumpAroundCode, we are breaking an invariant of frame_block_maps.
+            % However, we don't execute any code during or after
+            % create_parallels that depends on that invariant, and not
+            % including the label saves memory and reduces the amount of work
+            % labelopt has to do. (The label *would* be optimized away, since
+            % it can't be referred to from anywhere.)
+            JumpAroundCode = [goto(label(Label0)) - "jump around setup"],
+            Labels = [JumpAroundLabel, SetupLabel, Label0 | Labels1],
+            JumpAroundBlockInfo = frame_block_info(JumpAroundLabel,
+                JumpAroundCode, no, [Label0], FallInto, ordinary(yes)),
+            svmap__det_insert(JumpAroundLabel, JumpAroundBlockInfo, !BlockMap),
+            SetupFallInto = yes(JumpAroundLabel),
+            BlockInfo = BlockInfo0 ^ fb_fallen_into := yes(SetupLabel),
+            svmap__det_update(Label0, BlockInfo, !BlockMap)
+        ;
+            PrevNeedsFrame = no,
+            Labels = [SetupLabel, Label0 | Labels1],
+            SetupFallInto = no
+        ),
+        SetupCode = [
+            label(SetupLabel) - "late setup label",
+            incr_sp(FrameSize, Msg) - "late setup",
+            assign(stackvar(FrameSize), lval(succip)) - "late save"
+        ],
+        SetupBlockInfo = frame_block_info(SetupLabel, SetupCode,
+            SetupFallInto, [], yes(Label0), setup),
+        svmap__det_insert(SetupLabel, SetupBlockInfo, !BlockMap)
+    ;
+        Labels = [Label0 | Labels1]
+    ).
+
+:- func prev_block_needs_frame(ord_needs_frame, frame_block_info) = bool.
+
+prev_block_needs_frame(OrdNeedsFrame, BlockInfo) = PrevNeedsFrame :-
+    MaybeFallIntoFrom = BlockInfo ^ fb_fallen_into,
     (
-        Type = setup,
-        error("reached setup via jump from ordinary block")
+        MaybeFallIntoFrom = yes(FallIntoFrom),
+        ( map__search(OrdNeedsFrame, FallIntoFrom, NeedsFrame) ->
+            % FallIntoFrom is an ordinary block that can fall through
+            % to this block.
+            PrevNeedsFrame = NeedsFrame
+        ;
+            % FallIntoFrom is a setup block; teardown blocks cannot fall
+            % through. Setup blocks don't need frames.
+            PrevNeedsFrame = no
+        )
     ;
-        Type = ordinary(_),
-        Label = Label0
-    ;
-        Type = teardown(_, _, _),
-        mark_parallel(Label0, Label, ProcLabel, !C, !ParMap)
-    ),
-    mark_parallels_for_teardown(Labels0, Labels, LabelMap, BlockMap, ProcLabel,
-        !C, !ParMap).
+        MaybeFallIntoFrom = no,
+        % The previous block doesn't care whether the following block
+        % has a frame or not.
+        PrevNeedsFrame = no
+    ).
 
-    % Given the label of a teardown block, allocate a label for its
-    % non-teardown parallel if it doesn't already have one.
+:- pred is_ordinary(block_type::in) is semidet.
+
+is_ordinary(ordinary(_)).
+
+%-----------------------------------------------------------------------------%
+
+    % Given the label of a block, allocate a label for its parallel
+    % in the given setup map if it doesn't already have one.
     %
-:- pred mark_parallel(label::in, label::out, proc_label::in,
-    counter::in, counter::out, par_map::in, par_map::out) is det.
+:- pred ensure_setup_parallel(label::in, label::out, proc_label::in,
+    counter::in, counter::out, setup_par_map::in, setup_par_map::out) is det.
 
-mark_parallel(Label0, Label, ProcLabel, !C, !ParMap) :-
-    ( map__search(!.ParMap, Label0, OldParallel) ->
-        Label = OldParallel
+ensure_setup_parallel(Label, ParallelLabel, ProcLabel, !C, !SetupParMap) :-
+    !.SetupParMap = setup_par_map(ParMap0),
+    ( map__search(ParMap0, Label, OldParallel) ->
+        ParallelLabel = OldParallel
     ;
         counter__allocate(N, !C),
         NewParallel = internal(N, ProcLabel),
-        Label = NewParallel,
-        svmap__det_insert(Label0, NewParallel, !ParMap)
+        ParallelLabel = NewParallel,
+        map__det_insert(ParMap0, Label, NewParallel, ParMap),
+        !:SetupParMap = setup_par_map(ParMap)
+    ).
+
+    % Given the label of a block, allocate a label for its parallel
+    % in the given teardown map if it doesn't already have one.
+    %
+:- pred ensure_teardown_parallel(label::in, label::out, proc_label::in,
+    counter::in, counter::out, teardown_par_map::in, teardown_par_map::out)
+    is det.
+
+ensure_teardown_parallel(Label, ParallelLabel, ProcLabel, !C,
+        !TeardownParMap) :-
+    !.TeardownParMap = teardown_par_map(ParMap0),
+    ( map__search(ParMap0, Label, OldParallel) ->
+        ParallelLabel = OldParallel
+    ;
+        counter__allocate(N, !C),
+        NewParallel = internal(N, ProcLabel),
+        ParallelLabel = NewParallel,
+        map__det_insert(ParMap0, Label, NewParallel, ParMap),
+        !:TeardownParMap = teardown_par_map(ParMap)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % The third phase of the delay_frame optimization, creating
-    % the non-teardown parallel blocks.
+    % This predicate generates a human-readable description of a block
+    % as a comment instruction. This can make it much easier to debug
+    % frameopt.
     %
-:- pred create_parallels(list(label)::in, list(label)::out,
-    par_map::in, set(label)::in, block_map::in, block_map::out) is det.
+:- pred describe_block(frame_block_map::in, ord_needs_frame::in, pred_map::in,
+    proc_label::in, label::in, instruction::out) is det.
 
-create_parallels([], [], _, _, !BlockMap).
-create_parallels([Label0 | Labels0], Labels, ParMap, FallIntoParallel,
-        !BlockMap) :-
-    create_parallels(Labels0, Labels1, ParMap, FallIntoParallel, !BlockMap),
-    ( map__search(ParMap, Label0, ParallelLabel) ->
-        map__lookup(!.BlockMap, Label0, BlockInfo0),
-        BlockInfo0 = block_info(Label0Copy, _, SideLabels, MaybeFallThrough,
-            Type),
-        ( Label0 = Label0Copy ->
-            true
-        ;
-            error("label in block_info is not copy")
-        ),
+describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
+    map__lookup(BlockMap, Label, BlockInfo),
+    BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
+        SideLabels, MaybeFallThrough, Type),
+    require(unify(Label, BlockLabel), "describe_block: label mismatch"),
+    LabelStr = dump_label(ProcLabel, Label),
+    BlockInstrsStr = dump_fullinstrs(ProcLabel, BlockInstrs),
+    Heading = "\nBLOCK " ++ LabelStr ++ "\n\n",
+    ( map__search(PredMap, Label, PredLabel) ->
+        PredStr = "previous label " ++ dump_label(ProcLabel, PredLabel) ++ "\n"
+    ;
+        PredStr = "no previous label\n"
+    ),
+    (
+        FallInto = yes(FallIntoFromLabel),
+        FallIntoStr = "fallen into from "
+            ++ dump_label(ProcLabel, FallIntoFromLabel) ++ "\n"
+    ;
+        FallInto = no,
+        FallIntoStr = "not fallen into\n"
+    ),
+    (
+        SideLabels = [],
+        SideStr = "no side labels\n"
+    ;
+        SideLabels = [_ | _],
+        SideStr = "side labels " ++ dump_labels(ProcLabel, SideLabels) ++ "\n"
+    ),
+    (
+        MaybeFallThrough = yes(FallThroughLabel),
+        FallThroughStr = "falls through to "
+            ++ dump_label(ProcLabel, FallThroughLabel) ++ "\n"
+    ;
+        MaybeFallThrough = no,
+        FallThroughStr = "does not fall through\n"
+    ),
+    (
+        Type = setup,
+        require(unify(SideLabels, []),
+            "describe_block: setup, SideLabels=[_ | _]"),
+        require(is_yes(MaybeFallThrough),
+            "describe_block: setup, MaybeFallThrough=no"),
+        TypeStr = "setup\n",
+        OrdNeedsFrameStr = ""
+    ;
+        Type = ordinary(UsesFrame),
         (
-            MaybeFallThrough = no
+            UsesFrame = yes,
+            TypeStr = "ordinary; uses frame, "
         ;
-            MaybeFallThrough = yes(_),
-            error("block with parallel has fall through")
+            UsesFrame = no,
+            TypeStr = "ordinary; does not use frame, "
         ),
-        ( Type = teardown(_, Livevals, Goto) ->
-            LabelInstr = label(ParallelLabel) - "non-teardown parallel",
-            list__append(Livevals, [Goto], Replacement0),
-            Replacement = [LabelInstr | Replacement0],
-            NewBlockInfo = block_info(ParallelLabel, Replacement, SideLabels,
-                no, ordinary(no)),
-            svmap__det_insert(ParallelLabel, NewBlockInfo, !BlockMap),
-            ( set__member(Label0, FallIntoParallel) ->
-                Labels = [ParallelLabel, Label0 | Labels1]
-            ;
-                Labels = [Label0, ParallelLabel | Labels1]
-            )
+        map__lookup(OrdNeedsFrame, Label, NeedsFrame),
+        (
+            NeedsFrame = no,
+            require(unify(UsesFrame, no),
+                "describe_block: NeedsFrame=no, UsesFrame=yes"),
+            OrdNeedsFrameStr = "does not need frame\n"
         ;
-            error("block with parallel is not teardown")
+            NeedsFrame = yes,
+            OrdNeedsFrameStr = "does need frame\n"
         )
     ;
-        Labels = [Label0 | Labels1]
-    ).
+        Type = teardown(RestoreSuccip, Livevals, Goto),
+        require(unify(MaybeFallThrough, no),
+            "describe_block: teardown, MaybeFallThrough=yes(_)"),
+        TypeStr = "teardown\n"
+            ++ "restore:  "
+            ++ dump_fullinstrs(ProcLabel, RestoreSuccip)
+            ++ "livevals: "
+            ++ dump_fullinstrs(ProcLabel, Livevals)
+            ++ "goto:     "
+            ++ dump_fullinstr(ProcLabel, Goto),
+        OrdNeedsFrameStr = ""
+    ),
+    Comment = Heading ++ PredStr ++ FallIntoStr ++ SideStr ++ FallThroughStr
+        ++ TypeStr ++ OrdNeedsFrameStr ++ "CODE:\n" ++ BlockInstrsStr,
+    Instr = comment(Comment) - "".
+
+:- pred is_yes(maybe(T)::in) is semidet.
+
+is_yes(yes(_)).
 
 %-----------------------------------------------------------------------------%
+
+:- pred search_setup_par_map(setup_par_map::in, label::in, label::out)
+    is semidet.
+
+search_setup_par_map(setup_par_map(ParMap), Label, ParallelLabel) :-
+    map__search(ParMap, Label, ParallelLabel).
+
+:- pred search_teardown_par_map(teardown_par_map::in, label::in, label::out)
+    is semidet.
+
+search_teardown_par_map(teardown_par_map(ParMap), Label, ParallelLabel) :-
+    map__search(ParMap, Label, ParallelLabel).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "frameopt.m".
+
 %-----------------------------------------------------------------------------%

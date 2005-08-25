@@ -112,8 +112,8 @@ use_local_vars__main(Instrs0, Instrs, ProcLabel, NumRealRRegs, AccessThreshold,
 use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
         !BlockMap) :-
     map__lookup(!.BlockMap, Label, BlockInfo0),
-    BlockInfo0 = block_info(BlockLabel, LabelInstr, RestInstrs0, JumpLabels,
-        MaybeFallThrough),
+    BlockInfo0 = block_info(BlockLabel, LabelInstr, RestInstrs0,
+        FallInto, JumpLabels, MaybeFallThrough),
     ( can_branch_to_unknown_label(RestInstrs0) ->
         MaybeEndLiveLvals = no
     ;
@@ -136,8 +136,8 @@ use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
     ( TempCounter = TempCounter0 ->
         true
     ;
-        BlockInfo = block_info(BlockLabel, LabelInstr, RestInstrs, JumpLabels,
-            MaybeFallThrough),
+        BlockInfo = block_info(BlockLabel, LabelInstr, RestInstrs, FallInto,
+            JumpLabels, MaybeFallThrough),
         map__det_update(!.BlockMap, Label, BlockInfo, !:BlockMap)
     ).
 

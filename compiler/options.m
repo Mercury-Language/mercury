@@ -179,6 +179,7 @@
 		;	generate_bytecode
 		;	line_numbers
 		;	auto_comments
+		;	frameopt_comments
 		;	show_dependency_graph
 		;	dump_hlds
 		;	dump_hlds_pred_id
@@ -911,6 +912,7 @@ option_defaults_2(aux_output_option, [
 	generate_bytecode	-	bool(no),
 	line_numbers		-	bool(yes),
 	auto_comments		-	bool(no),
+	frameopt_comments	-	bool(no),
 	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
 	dump_hlds_pred_id	-	int(-1),
@@ -1602,6 +1604,7 @@ long_option("allow-table-reset",	allow_table_reset).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("line-numbers",		line_numbers).
 long_option("auto-comments",		auto_comments).
+long_option("frameopt-comments",	frameopt_comments).
 long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
 long_option("hlds-dump",		dump_hlds).
@@ -3036,6 +3039,10 @@ options_help_aux_output -->
 		"\tor in Mercury (with the option --convert-to-mercury).",
 		"--auto-comments",
 		"\tOutput comments in the `<module>.c' file.",
+% This option is for developers only. Since it can include one C comment inside
+% another, the resulting code is not guaranteed to be valid C.
+%		"--frameopt-comments",
+%		"\tGet frameopt.m to generate comments describing its operation.",
 		"\t(The code may be easier to understand if you also",
 		"\tuse the `--no-llds-optimize' option.)",
 		"--show-dependency-graph",

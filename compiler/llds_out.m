@@ -1268,14 +1268,15 @@ output_foreign_header_include_line(Decl, !IO) :-
 	( Lang = c ->
 		globals__io_lookup_bool_option(auto_comments, PrintComments,
 			!IO),
-		( PrintComments = yes ->
+		(
+			PrintComments = yes,
 			io__write_string("/* ", !IO),
 			prog_out__write_context(Context, !IO),
 			io__write_string(" pragma foreign_decl_code( ", !IO),
 			io__write(Lang, !IO),
 			io__write_string(" */\n", !IO)
 		;
-			true
+			PrintComments = no
 		),
 		output_set_line_num(Context, !IO),
 		io__write_string(Code, !IO),
@@ -1980,7 +1981,7 @@ output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo, !IO) :-
 		;
 			io__write_string("\t\t/* ", !IO),
 			io__write_string(Comment, !IO),
-			io__write_string(" */\n", !IO)
+			io__write_string("*/\n", !IO)
 		)
 	).
 
@@ -2015,13 +2016,13 @@ output_instruction(Instr, !IO) :-
 	io::di, io::uo) is det.
 
 output_instruction(comment(Comment), _, !IO) :-
-	io__write_strings(["/* ", Comment, " */\n"], !IO).
+	io__write_strings(["/*", Comment, "*/\n"], !IO).
 
 output_instruction(livevals(LiveVals), _, !IO) :-
-	io__write_string("/*\n * Live lvalues:\n", !IO),
+	io__write_string("/*\n* Live lvalues:\n", !IO),
 	set__to_sorted_list(LiveVals, LiveValsList),
 	output_livevals(LiveValsList, !IO),
-	io__write_string(" */\n", !IO).
+	io__write_string("*/\n", !IO).
 
 output_instruction(block(TempR, TempF, Instrs), ProfInfo, !IO) :-
 	io__write_string("\t{\n", !IO),
@@ -2557,7 +2558,7 @@ output_reset_trail_reason(gc, !IO) :-
 
 output_livevals([], !IO).
 output_livevals([Lval | Lvals], !IO) :-
-	io__write_string(" *\t", !IO),
+	io__write_string("*\t", !IO),
 	output_lval(Lval, !IO),
 	io__write_string("\n", !IO),
 	output_livevals(Lvals, !IO).
@@ -2566,13 +2567,14 @@ output_livevals([Lval | Lvals], !IO) :-
 
 output_gc_livevals(LiveVals, !IO) :-
 	globals__io_lookup_bool_option(auto_comments, PrintAutoComments, !IO),
-	( PrintAutoComments = yes ->
+	(
+		PrintAutoComments = yes,
 		io__write_string("/*\n", !IO),
-		io__write_string(" * Garbage collection livevals info\n", !IO),
+		io__write_string("* Garbage collection livevals info\n", !IO),
 		output_gc_livevals_2(LiveVals, !IO),
-		io__write_string(" */\n", !IO)
+		io__write_string("*/\n", !IO)
 	;
-		true
+		PrintAutoComments = no
 	).
 
 :- pred output_gc_livevals_2(list(liveinfo)::in, io::di, io::uo) is det.
@@ -2580,7 +2582,7 @@ output_gc_livevals(LiveVals, !IO) :-
 output_gc_livevals_2([], !IO).
 output_gc_livevals_2([LiveInfo | LiveInfos], !IO) :-
 	LiveInfo = live_lvalue(Locn, LiveValueType, TypeParams),
-	io__write_string(" *\t", !IO),
+	io__write_string("*\t", !IO),
 	output_layout_locn(Locn, !IO),
 	io__write_string("\t", !IO),
 	output_live_value_type(LiveValueType, !IO),

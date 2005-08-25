@@ -115,7 +115,7 @@ dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
 dupelim__build_maps([], _, !StdMap, !Fixed).
 dupelim__build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
 	map__lookup(BlockMap, Label, BlockInfo),
-	BlockInfo = block_info(_, _, Instrs, _, MaybeFallThrough),
+	BlockInfo = block_info(_, _, Instrs, _, _, MaybeFallThrough),
 	standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
 	( map__search(!.StdMap, StdInstrs, Cluster) ->
 		map__det_update(!.StdMap, StdInstrs, [Label | Cluster],
@@ -223,13 +223,13 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
 	Cluster = cluster(Exemplar, ElimLabels),
 	map__lookup(!.BlockMap, Exemplar, ExemplarInfo0),
 	ExemplarInfo0 = block_info(ExLabel, ExLabelInstr, ExInstrs0,
-		ExSideLabels, ExMaybeFallThrough),
+		ExFallInto, ExSideLabels, ExMaybeFallThrough),
 	require(unify(Exemplar, ExLabel), "exemplar label mismatch"),
 	process_elim_labels(ElimLabels, ExInstrs0, !LabelSeq, !.BlockMap,
 		Exemplar, !ReplMap, UnifiedInstrs,
 		ExMaybeFallThrough, UnifiedMaybeFallThrough),
 	ExemplarInfo = block_info(ExLabel, ExLabelInstr, UnifiedInstrs,
-		ExSideLabels, UnifiedMaybeFallThrough),
+		ExFallInto, ExSideLabels, UnifiedMaybeFallThrough),
 	map__det_update(!.BlockMap, Exemplar, ExemplarInfo, !:BlockMap),
 	process_clusters(Clusters, !LabelSeq, !BlockMap, !ReplMap).
 
@@ -254,7 +254,7 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
 		Exemplar, !ReplMap, Instrs, !MaybeFallThrough) :-
 	map__lookup(BlockMap, ElimLabel, ElimLabelInfo),
 	ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs,
-		_, ElimMaybeFallThrough),
+		_, _, ElimMaybeFallThrough),
 	require(unify(ElimLabel, ElimLabel2), "elim label mismatch"),
 	(
 		most_specific_block(Instrs0, !.MaybeFallThrough,

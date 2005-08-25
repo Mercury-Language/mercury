@@ -102,22 +102,18 @@ ml_tag_switch__gen_ptag_cases([Case | Cases], Var, CanFail, CodeModel,
 	ml_tag_switch__gen_ptag_cases(Cases, Var, CanFail, CodeModel,
 		PtagCountMap, Context, MLDS_Cases, !Info).
 
-:- pred ml_tag_switch__gen_ptag_case(
-	pair(tag_bits, pair(stag_loc, stag_goal_map))::in,
+:- pred ml_tag_switch__gen_ptag_case(pair(tag_bits, ptag_case)::in,
 	prog_var::in, can_fail::in, code_model::in, ptag_count_map::in,
 	prog_context::in, mlds__switch_case::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_tag_switch__gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap,
 		Context, MLDS_Case, !Info) :-
-	Case = PrimaryTag - (SecTagLocn - GoalMap),
+	Case = PrimaryTag - ptag_case(SecTagLocn, GoalMap),
 	map__lookup(PtagCountMap, PrimaryTag, CountInfo),
 	CountInfo = SecTagLocn1 - MaxSecondary,
-	( SecTagLocn = SecTagLocn1 ->
-		true
-	;
-		error("ml_tag_switch.m: secondary tag locations differ")
-	),
+	require(unify(SecTagLocn, SecTagLocn1),
+		"ml_tag_switch.m: secondary tag locations differ"),
 	map__to_assoc_list(GoalMap, GoalList),
 	( SecTagLocn = none ->
 		% There is no secondary tag, so there is no switch on it
@@ -125,7 +121,7 @@ ml_tag_switch__gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap,
 			GoalList = [],
 			error("no goal for non-shared tag")
 		;
-			GoalList = [_ - Goal],
+			GoalList = [_Stag - stag_goal(_ConsId, Goal)],
 			ml_gen_goal(CodeModel, Goal, Statement, !Info)
 		;
 			GoalList = [_, _ | _],
@@ -145,7 +141,10 @@ ml_tag_switch__gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap,
 		;
 			CaseCanFail = can_fail
 		),
-		( GoalList = [_ - Goal], CaseCanFail = cannot_fail ->
+		(
+			GoalList = [_Stag - stag_goal(_ConsId, Goal)],
+			CaseCanFail = cannot_fail
+		->
 			% There is only one possible matching goal,
 			% so we don't need to switch on it
 			ml_gen_goal(CodeModel, Goal, Statement, !Info)
@@ -207,12 +206,12 @@ ml_tag_switch__gen_stag_cases([Case | Cases], CodeModel,
 	ml_tag_switch__gen_stag_case(Case, CodeModel, MLDS_Case, !Info),
 	ml_tag_switch__gen_stag_cases(Cases, CodeModel, MLDS_Cases, !Info).
 
-:- pred ml_tag_switch__gen_stag_case(pair(tag_bits, hlds_goal)::in,
+:- pred ml_tag_switch__gen_stag_case(pair(tag_bits, stag_goal)::in,
 	code_model::in, mlds__switch_case::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_tag_switch__gen_stag_case(Case, CodeModel, MLDS_Case, !Info) :-
-	Case = Stag - Goal,
+	Case = Stag - stag_goal(_ConsId, Goal),
 	StagRval = const(int_const(Stag)),
 	ml_gen_goal(CodeModel, Goal, Statement, !Info),
 	MLDS_Case = [match_value(StagRval)] - Statement.
