@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1999-2003 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1999-2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,9 +23,9 @@
 
 #include "mercury_stack_layout.h"	/* for MR_Closure_Id etc */
 #include "mercury_type_info.h"		/* for MR_PseudoTypeInfo */
-#include "mercury_types.h"		/* for MR_Closure */
+#include "mercury_types.h"		    /* for MR_Closure */
 #ifndef	MR_HIGHLEVEL_CODE
-  #include "mercury_goto.h"		/* for MR_declare_entry */
+  #include "mercury_goto.h"		    /* for MR_declare_entry */
 #endif
 
 /*
@@ -77,17 +80,16 @@
 */
 
 typedef struct MR_Closure_Layout_Struct {
-	MR_Closure_Id		*MR_closure_id;
-	MR_Type_Param_Locns	*MR_closure_type_params;
-	MR_Integer		MR_closure_num_all_args;
-	MR_PseudoTypeInfo	MR_closure_arg_pseudo_type_info
-					[MR_VARIABLE_SIZED];
+	MR_Closure_Id		    *MR_closure_id;
+	MR_Type_Param_Locns	    *MR_closure_type_params;
+	MR_Integer		        MR_closure_num_all_args;
+	MR_PseudoTypeInfo	    MR_closure_arg_pseudo_type_info[MR_VARIABLE_SIZED];
 } MR_Closure_Layout;
 
 typedef struct MR_Closure_Dyn_Link_Layout_Struct {
-	MR_Closure_Id		*MR_closure_dl_id;
-	MR_Type_Param_Locns	*MR_closure_dl_type_params;
-	MR_Integer		MR_closure_dl_num_all_args;
+	MR_Closure_Id		    *MR_closure_dl_id;
+	MR_Type_Param_Locns	    *MR_closure_dl_type_params;
+	MR_Integer		        MR_closure_dl_num_all_args;
 } MR_Closure_Dyn_Link_Layout;
 
 /*
@@ -110,10 +112,10 @@ typedef struct MR_Closure_Dyn_Link_Layout_Struct {
 */
 
 struct MR_Closure_Struct {
-	MR_Closure_Layout	*MR_closure_layout;
-	MR_Code			*MR_closure_code;
-	MR_Unsigned		MR_closure_num_hidden_args;
-	MR_Word			MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
+	MR_Closure_Layout	    *MR_closure_layout;
+	MR_Code			        *MR_closure_code;
+	MR_Unsigned		        MR_closure_num_hidden_args;
+	MR_Word			        MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
 };
 
 /* in mercury_types.h: typedef struct MR_Closure_Struct MR_Closure; */
