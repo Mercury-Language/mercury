@@ -274,13 +274,13 @@ modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
     ( HowToCheckGoal = check_modes ->
         % This only needs to be done once.
         mode_info_get_types_of_vars(!.ModeInfo, Vars, VarTypes),
-        propagate_types_into_mode_list(VarTypes, ModuleInfo0, Modes0, Modes)
+        propagate_types_into_mode_list(ModuleInfo0, VarTypes, Modes0, Modes)
     ;
         Modes = Modes0
     ),
 
     % Initialize the initial insts of the lambda variables.
-    mode_list_get_initial_insts(Modes, ModuleInfo0, VarInitialInsts),
+    mode_list_get_initial_insts(ModuleInfo0, Modes, VarInitialInsts),
     assoc_list__from_corresponding_lists(Vars, VarInitialInsts, VarInstAL),
     instmap_delta_from_assoc_list(VarInstAL, VarInstMapDelta),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -288,7 +288,7 @@ modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
     mode_info_set_instmap(InstMap1, !ModeInfo),
 
     % Mark the non-clobbered lambda variables as live.
-    get_arg_lives(Modes, ModuleInfo0, ArgLives),
+    get_arg_lives(ModuleInfo0, Modes, ArgLives),
     get_live_vars(Vars, ArgLives, LiveVarsList),
     set__list_to_set(LiveVarsList, LiveVars),
     mode_info_add_live_vars(LiveVars, !ModeInfo),
@@ -346,7 +346,7 @@ modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         ;
             modecheck_goal(Goal0, Goal1, !ModeInfo, !IO)
         ),
-        mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
+        mode_list_get_final_insts(ModuleInfo0, Modes, FinalInsts),
         modecheck_lambda_final_insts(Vars, FinalInsts, Goal1, Goal, !ModeInfo),
         mode_checkpoint(exit, "lambda goal", !ModeInfo, !IO),
 
@@ -377,7 +377,8 @@ modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
             mode_info_error(WaitingVars,
                 mode_error_non_local_lambda_var(BadVar, BadInst), !ModeInfo)
         ;
-            error("modecheck_unification(lambda): very strange var")
+            unexpected(this_file,
+                "modecheck_unification(lambda): very strange var")
         ),
             % Return any old garbage.
         RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
@@ -507,7 +508,6 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     mode_info_var_list_is_live(!.ModeInfo, ArgVars0, LiveArgs),
     InstOfY = bound(unique, [functor(InstConsId, InstArgs)]),
     (
-
         % The occur check: X = f(X) is considered a mode error unless X is
         % ground. (Actually it wouldn't be that hard to generate code for it
         % - it always fails! - but it's most likely to be a programming error,
@@ -531,12 +531,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         Mode = ModeOfX - ModeOfY,
         modecheck_set_var_inst(X, Inst, no, !ModeInfo),
         NoArgInsts = list__duplicate(length(ArgVars0), no),
-        ( bind_args(Inst, ArgVars0, NoArgInsts, !ModeInfo) ->
-            true
-        ;
-            error("bind_args failed")
-        ),
-            % return any old garbage
+        bind_args(Inst, ArgVars0, NoArgInsts, !ModeInfo),
+            % Return any old garbage.
         Unification = Unification0,
         ArgVars = ArgVars0,
         ExtraGoals2 = no_extra_goals
@@ -569,20 +565,19 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         ( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
             ModeArgs = ModeArgs0
         ;
-            error("get_mode_of_args failed")
+            unexpected(this_file, "get_mode_of_args failed")
         ),
         (
             inst_expand_and_remove_constrained_inst_vars(ModuleInfo1,
                 InstOfX, InstOfX1),
             list__length(ArgVars0, Arity),
-            get_arg_insts(InstOfX1, InstConsId, Arity,
-                InstOfXArgs0),
+            get_arg_insts(InstOfX1, InstConsId, Arity, InstOfXArgs0),
             get_mode_of_args(Inst, InstOfXArgs0, ModeOfXArgs0)
         ->
             ModeOfXArgs = ModeOfXArgs0,
             InstOfXArgs = InstOfXArgs0
         ;
-            error("get_(inst/mode)_of_args failed")
+            unexpected(this_file, "get_(inst/mode)_of_args failed")
         ),
         categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ModeArgs,
             X, ConsId, ArgVars0, VarTypes, UnifyContext,
@@ -591,13 +586,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             ArgVars0, ArgVars, ExtraGoals2, !ModeInfo),
         modecheck_set_var_inst(X, Inst, yes(InstOfY), !ModeInfo),
         UnifyArgInsts = list__map(func(I) = yes(I), InstOfXArgs),
-        (
-            bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo)
-        ->
-            true
-        ;
-            error("bind_args failed")
-        )
+        bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo)
     ;
         set__list_to_set([X | ArgVars0], WaitingVars), % conservative
         mode_info_error(WaitingVars,
@@ -614,11 +603,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         Mode = ModeOfX - ModeOfY,
         modecheck_set_var_inst(X, Inst, no, !ModeInfo),
         NoArgInsts = list__duplicate(length(ArgVars0), no),
-        ( bind_args(Inst, ArgVars0, NoArgInsts, !ModeInfo) ->
-            true
-        ;
-            error("bind_args failed")
-        ),
+        bind_args(Inst, ArgVars0, NoArgInsts, !ModeInfo),
             % Return any old garbage.
         Unification = Unification0,
         ArgVars = ArgVars0,
@@ -626,9 +611,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     ),
 
     %
-    % Optimize away construction of unused terms by
-    % replacing the unification with `true'.  Optimize
-    % away unifications which always fail by replacing
+    % Optimize away construction of unused terms by replacing the unification
+    % with `true'. Optimize % away unifications which always fail by replacing
     % them with `fail'.
     %
     (
@@ -645,7 +629,19 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         %
         % Unifying two preds is not erroneous as far as the mode checker
         % is concerned, but a mode _error_.
-        Goal = disj([])
+        Goal = disj([]),
+        InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
+        (
+            InitMayHaveSubtype = yes
+            % Suppress the warning, since the unification may succeed
+            % in another mode in which the initial inst of X,
+            % or of another head variable that is unified with it,
+            % is not so constrained.
+        ;
+            InitMayHaveSubtype = no,
+            Warning = cannot_succeed_var_functor(X, InstOfX, ConsId),
+            mode_info_warning(Warning, !ModeInfo)
+        )
     ;
         Functor = functor(ConsId, IsExistConstruction, ArgVars),
         Unify = unify(X, Functor, Mode, Unification, UnifyContext),
@@ -681,11 +677,13 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 all_arg_vars_are_non_free_or_solver_vars([], [], _, _, []).
 
 all_arg_vars_are_non_free_or_solver_vars([], [_|_], _, _, _) :-
-    error("modecheck_unify.all_arg_vars_are_non_free_or_solver_vars: " ++
+    unexpected(this_file,
+        "modecheck_unify.all_arg_vars_are_non_free_or_solver_vars: " ++
         "mismatch in list lengths").
 
 all_arg_vars_are_non_free_or_solver_vars([_|_], [], _, _, _) :-
-    error("modecheck_unify.all_arg_vars_are_non_free_or_solver_vars: " ++
+    unexpected(this_file,
+        "modecheck_unify.all_arg_vars_are_non_free_or_solver_vars: " ++
         "mismatch in list lengths").
 
 all_arg_vars_are_non_free_or_solver_vars([Arg | Args], [Inst | Insts],
@@ -855,9 +853,9 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         mode_is_unused(ModuleInfo0, ModeOfX),
         mode_is_unused(ModuleInfo0, ModeOfY)
     ->
-        % For free-free unifications, we pretend for a moment that they
-        % are an assignment to the dead variable - they will then.
-        % be optimized away.
+        % For free-free unifications, we pretend for a moment that they are
+        % an assignment to the dead variable - they will then be optimized
+        % away.
         ( LiveX = dead ->
             Unification = assign(X, Y)
         ; LiveY = dead ->
@@ -920,7 +918,21 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         %
         % Unifying two preds is not erroneous as far as the
         % mode checker is concerned, but a mode _error_.
-        Unify = disj([])
+        Unify = disj([]),
+        InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
+        (
+            InitMayHaveSubtype = yes
+            % Suppress the warning, since the unification may succeed
+            % in another mode in which the initial inst of X or Y,
+            % or of another head variable that is unified with one of them,
+            % is not so constrained.
+        ;
+            InitMayHaveSubtype = no,
+            mode_get_insts(ModuleInfo0, ModeOfX, InstOfX, _),
+            mode_get_insts(ModuleInfo0, ModeOfY, InstOfY, _),
+            Warning = cannot_succeed_var_var(X, Y, InstOfX, InstOfY),
+            mode_info_warning(Warning, !ModeInfo)
+        )
     ;
         Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification, UnifyContext)
     ).
@@ -1061,7 +1073,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
         ConsId = cons(unqualified("__LambdaGoal__"), Arity)
     ),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    mode_util__modes_to_uni_modes(ArgModes0, ArgModes0, ModuleInfo, ArgModes),
+    mode_util__modes_to_uni_modes(ModuleInfo, ArgModes0, ArgModes0, ArgModes),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     ( mode_is_output(ModuleInfo, ModeOfX) ->
         (
@@ -1144,8 +1156,8 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
         MaybeSize = no,
         ConsId = NewConsId
     ),
-    mode_util__modes_to_uni_modes(ModeOfXArgs, ArgModes0,
-        ModuleInfo, ArgModes),
+    mode_util__modes_to_uni_modes(ModuleInfo, ModeOfXArgs,
+        ArgModes0, ArgModes),
     ( mode_is_output(ModuleInfo, ModeOfX) ->
         % It's a construction.
         Unification = construct(X, ConsId, ArgVars, ArgModes,
@@ -1229,14 +1241,24 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
 %-----------------------------------------------------------------------------%
 
 :- pred bind_args((inst)::in, list(prog_var)::in, list(maybe(inst))::in,
+    mode_info::in, mode_info::out) is det.
+
+bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) :-
+    ( try_bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) ->
+        true
+    ;
+        unexpected(this_file, "bind_args: try_bind_args failed")
+    ).
+
+:- pred try_bind_args((inst)::in, list(prog_var)::in, list(maybe(inst))::in,
     mode_info::in, mode_info::out) is semidet.
 
-bind_args(not_reached, _, _, !ModeInfo) :-
+try_bind_args(not_reached, _, _, !ModeInfo) :-
     instmap__init_unreachable(InstMap),
     mode_info_set_instmap(InstMap, !ModeInfo).
-bind_args(ground(Uniq, none), Args, UnifyArgInsts, !ModeInfo) :-
+try_bind_args(ground(Uniq, none), Args, UnifyArgInsts, !ModeInfo) :-
     ground_args(Uniq, Args, UnifyArgInsts, !ModeInfo).
-bind_args(bound(_Uniq, List), Args, UnifyArgInsts, !ModeInfo) :-
+try_bind_args(bound(_Uniq, List), Args, UnifyArgInsts, !ModeInfo) :-
     (
         List = [],
         % The code is unreachable.
@@ -1245,27 +1267,27 @@ bind_args(bound(_Uniq, List), Args, UnifyArgInsts, !ModeInfo) :-
     ;
         List = [_ | _],
         List = [functor(_, InstList)],
-        bind_args_2(Args, InstList, UnifyArgInsts, !ModeInfo)
+        try_bind_args_2(Args, InstList, UnifyArgInsts, !ModeInfo)
     ).
-bind_args(constrained_inst_vars(_, Inst), Args, UnifyArgInsts, !ModeInfo) :-
-    bind_args(Inst, Args, UnifyArgInsts, !ModeInfo).
+try_bind_args(constrained_inst_vars(_, Inst), Args, UnifyArgInsts,
+        !ModeInfo) :-
+    try_bind_args(Inst, Args, UnifyArgInsts, !ModeInfo).
 
-:- pred bind_args_2(list(prog_var)::in, list(inst)::in, list(maybe(inst))::in,
-    mode_info::in, mode_info::out) is semidet.
+:- pred try_bind_args_2(list(prog_var)::in, list(inst)::in,
+    list(maybe(inst))::in, mode_info::in, mode_info::out) is semidet.
 
-bind_args_2([], [], [], !ModeInfo).
-bind_args_2([Arg | Args], [Inst | Insts], [UnifyArgInst | UnifyArgInsts],
+try_bind_args_2([], [], [], !ModeInfo).
+try_bind_args_2([Arg | Args], [Inst | Insts], [UnifyArgInst | UnifyArgInsts],
         !ModeInfo) :-
     modecheck_set_var_inst(Arg, Inst, UnifyArgInst, !ModeInfo),
-    bind_args_2(Args, Insts, UnifyArgInsts, !ModeInfo).
+    try_bind_args_2(Args, Insts, UnifyArgInsts, !ModeInfo).
 
 :- pred ground_args(uniqueness::in, list(prog_var)::in, list(maybe(inst))::in,
     mode_info::in, mode_info::out) is semidet.
 
 ground_args(_Uniq, [], [], !ModeInfo).
 ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts], !ModeInfo) :-
-    modecheck_set_var_inst(Arg, ground(Uniq, none), UnifyArgInst,
-        !ModeInfo),
+    modecheck_set_var_inst(Arg, ground(Uniq, none), UnifyArgInst, !ModeInfo),
     ground_args(Uniq, Args, UnifyArgInsts, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1312,6 +1334,19 @@ mode_set_args([], _, []).
 mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-
     Mode = (Inst -> FinalInst),
     mode_set_args(Insts, FinalInst, Modes).
+
+%-----------------------------------------------------------------------------%
+
+:- func init_instmap_may_have_subtype(mode_info) = bool.
+
+init_instmap_may_have_subtype(ModeInfo) = MayHaveSubtype :-
+    mode_info_get_initial_instmap(ModeInfo, InitialInstMap),
+    instmap__to_assoc_list(InitialInstMap, InitVarsInsts),
+    assoc_list__values(InitVarsInsts, InitInsts),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    MayRestrictList =
+        list__map(inst_may_restrict_cons_ids(ModuleInfo), InitInsts),
+    bool__or_list(MayRestrictList, MayHaveSubtype).
 
 %-----------------------------------------------------------------------------%
 

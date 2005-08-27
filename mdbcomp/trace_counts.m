@@ -404,9 +404,6 @@ read_trace_counts_from_cur_stream(ReadResult, !IO) :-
                 error("read_trace_counts_from_cur_stream: " ++
                     "unexpected exception type: " ++ string(Exception))
             )
-        ;
-            Result = failed,
-            error("read_trace_counts_from_cur_stream: try_io failed")
         )
     ;
         ReadResult = syntax_error("no info on trace count file type")

@@ -844,8 +844,8 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 				nondet))) },
 		{ UnifyMode = (free -> LambdaInst) -
 				(LambdaInst -> LambdaInst) },
-		{ mode_util__modes_to_uni_modes(LambdaModes, LambdaModes,
-			ModuleInfo, UniModes) },
+		{ mode_util__modes_to_uni_modes(ModuleInfo, LambdaModes,
+			LambdaModes, UniModes) },
 
 		% Construct the unify_rhs.
 		{ module_info_pred_info(ModuleInfo, SuppPredId, PredInfo) },

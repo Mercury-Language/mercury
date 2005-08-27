@@ -440,8 +440,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		ArgVars = InitialVars,
 		PredId = PredId0,
 		ProcId = ProcId0,
-		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes,
-			ModuleInfo0, UniModes),
+		mode_util__modes_to_uni_modes(ModuleInfo0,
+			CurriedArgModes, CurriedArgModes, UniModes),
 		%
 		% we need to mark the procedure as having had its
 		% address taken
@@ -496,8 +496,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		map__apply_to_list(ArgVars, ArgModesMap1, ArgModes1),
 
 		% Recompute the uni_modes.
-		mode_util__modes_to_uni_modes(ArgModes1, ArgModes1,
-			ModuleInfo1, UniModes),
+		mode_util__modes_to_uni_modes(ModuleInfo1,
+			ArgModes1, ArgModes1, UniModes),
 
 		list__append(ArgModes1, Modes, AllArgModes),
 		map__apply_to_list(AllArgVars, VarTypes, ArgTypes),

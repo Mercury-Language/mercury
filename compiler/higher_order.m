@@ -197,68 +197,86 @@ recursively_process_requests(!Info, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type higher_order_global_info --->
-    higher_order_global_info(
-        requests             :: set(request),
-                             % Requested versions.
-        new_preds            :: new_preds,
-                             % Specialized versions for each predicate
-                             % not changed by traverse_goal.
-        version_info         :: map(pred_proc_id, version_info),
-                             % Extra information about each specialized
-                             % version.
-        module_info          :: module_info,
-        goal_sizes           :: goal_sizes,
-        ho_params            :: ho_params,
-        next_higher_order_id :: counter
-                             % Number identifying a specialized version.
-    ).
+:- type higher_order_global_info
+    --->    higher_order_global_info(
+                requests            :: set(request),
+                                    % Requested versions.
+
+                new_preds           :: new_preds,
+                                    % Specialized versions for each predicate
+                                    % not changed by traverse_goal.
+
+                version_info        :: map(pred_proc_id, version_info),
+                                    % Extra information about each specialized
+                                    % version.
+
+                module_info         :: module_info,
+                goal_sizes          :: goal_sizes,
+                ho_params           :: ho_params,
+
+                next_ho_id          :: counter
+                                    % Number identifying a specialized
+                                    % version.
+            ).
 
     % Used while traversing goals.
     %
-:- type higher_order_info --->
-    higher_order_info(
-        global_info    :: higher_order_global_info,
-        pred_vars      :: pred_vars,
-                       % higher_order variables.
-        pred_proc_id   :: pred_proc_id,
-                       % pred_proc_id of goal being traversed.
-        pred_info      :: pred_info,
-                       % pred_info of goal being traversed.
-        proc_info      :: proc_info,
-                       % proc_info of goal being traversed.
-        changed        :: changed
-    ).
+:- type higher_order_info
+    --->    higher_order_info(
+                global_info         :: higher_order_global_info,
 
-:- type request --->
-    request(
-        rq_caller :: pred_proc_id,
-                  % calling pred
-        rq_callee :: pred_proc_id,
-                  % called pred
-        rq_args   :: list(prog_var),
-                  % call args
-        rq_tvars  :: list(tvar),
-                  % Type variables for which
-                  % extra type-infos must be
-                  % passed from the caller if
-                  % --typeinfo-liveness is set.
-        rq_ho_args      :: list(higher_order_arg),
-        rq_caller_types :: list(type),
-                        % argument types in caller
-        rq_typeinfo_liveness :: bool,
-                             % Should the interface of
-                             % the specialized procedure
-                             % use typeinfo liveness?
-        rq_caller_tvarset    :: tvarset,
-                             % Caller's typevarset.
-        rq_user_req_spec     :: bool,
-                             % Is this a user-requested specialization?
-        rq_call_context      :: context
-                             % Context of the call which
-                             % caused the request to be
-                             % generated.
-    ).
+                pred_vars           :: pred_vars,
+                                    % higher_order variables.
+
+                pred_proc_id        :: pred_proc_id,
+                                    % pred_proc_id of goal being traversed.
+
+                pred_info           :: pred_info,
+                                    % pred_info of goal being traversed.
+
+                proc_info           :: proc_info,
+                                    % proc_info of goal being traversed.
+
+                changed             :: changed
+            ).
+
+:- type request
+    --->    request(
+                rq_caller           :: pred_proc_id,
+                                    % calling pred
+
+                rq_callee           :: pred_proc_id,
+                                    % called pred
+
+                rq_args             :: list(prog_var),
+                                    % call args
+
+                rq_tvars            :: list(tvar),
+                                    % Type variables for which
+                                    % extra type-infos must be
+                                    % passed from the caller if
+                                    % --typeinfo-liveness is set.
+
+                rq_ho_args          :: list(higher_order_arg),
+                rq_caller_types     :: list(type),
+                                    % argument types in caller
+
+                rq_typeinfo_liveness :: bool,
+                                    % Should the interface of
+                                    % the specialized procedure
+                                    % use typeinfo liveness?
+
+                rq_caller_tvarset   :: tvarset,
+                                    % Caller's typevarset.
+
+                rq_user_req_spec    :: bool,
+                                    % Is this a user-requested specialization?
+
+                rq_call_context     :: context
+                                    % Context of the call which
+                                    % caused the request to be
+                                    % generated.
+            ).
 
     % Stores cons_id, index in argument vector, number of
     % curried arguments of a higher order argument, higher-order
@@ -266,28 +284,33 @@ recursively_process_requests(!Info, !IO) :-
     % For cons_ids other than pred_const and `type_info',
     % the arguments must be constants
     %
-:- type higher_order_arg --->
-    higher_order_arg(
-        hoa_cons_id :: cons_id,
-        hoa_index   :: int,
-                    % Index in argument vector.
-        hoa_num_curried_args     :: int,
-                                 % Number of curried args.
-                    
-        hoa_curry_arg_in_caller  :: list(prog_var),
-                                 % Curried arguments in caller.
-        hoa_curry_type_in_caller :: list(type),
-                                 % Curried argument types in caller.
-        hoa_curry_rtti_type      :: list(rtti_var_info),
-                                 % Types associated with type_infos and
-                                 % constraints associated with typeclass_infos
-                                 % in the arguments.
-        hoa_known_curry_args     :: list(higher_order_arg),
-                                 % Higher-order curried arguments
-                                 % with known values.
-        hoa_is_constant          :: bool
-                                 % Is this higher_order_arg a constant?
-    ).
+:- type higher_order_arg
+    --->    higher_order_arg(
+                hoa_cons_id         :: cons_id,
+                hoa_index           :: int,
+                                    % Index in argument vector.
+
+                hoa_num_curried_args :: int,
+                                    % Number of curried args.
+                            
+                hoa_curry_arg_in_caller :: list(prog_var),
+                                    % Curried arguments in caller.
+
+                hoa_curry_type_in_caller :: list(type),
+                                    % Curried argument types in caller.
+
+                hoa_curry_rtti_type :: list(rtti_var_info),
+                                    % Types associated with type_infos and
+                                    % constraints associated with
+                                    % typeclass_infos in the arguments.
+
+                hoa_known_curry_args :: list(higher_order_arg),
+                                    % Higher-order curried arguments
+                                    % with known values.
+
+                hoa_is_constant     :: bool
+                                    % Is this higher_order_arg a constant?
+            ).
 
     % Stores the size of each predicate's goal used in the heuristic
     % to decide which preds are specialized.
@@ -1178,8 +1201,8 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
             ;
                 unexpected(this_file, "maybe_specialize_pred_const")
             ),
-            mode_util.modes_to_uni_modes(CurriedArgModes,
-                CurriedArgModes, ModuleInfo, UniModes),
+            modes_to_uni_modes(ModuleInfo, CurriedArgModes,
+                CurriedArgModes, UniModes),
             %
             % The dummy arguments can't be used anywhere.
             %
@@ -1219,12 +1242,12 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
     ).
 
 :- type specialization_result
-    ---> specialized(
-            list(hlds_goal),    % Goals to construct extra
-                                % type-infos.
-            hlds_goal_expr      % The specialized call.
-        )
-    ;   not_specialized.
+    --->    specialized(
+                list(hlds_goal),    % Goals to construct extra
+                                    % type-infos.
+                hlds_goal_expr      % The specialized call.
+            )
+    ;       not_specialized.
 
 :- pred maybe_specialize_ordinary_call(bool::in, pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, list(prog_var)::in, builtin_state::in,
@@ -1303,13 +1326,10 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             Result = not_specialized,
             (
                 CanRequest = yes,
-                set.insert(!.Info ^ global_info ^ requests,
-                    Request, Requests),
-                update_changed_status(!.Info ^ changed,
-                    request, Changed),
-                !:Info = (!.Info ^ global_info
-                    ^ requests := Requests)
-                    ^ changed := Changed
+                set.insert(!.Info ^ global_info ^ requests, Request, Requests),
+                update_changed_status(!.Info ^ changed, request, Changed),
+                !:Info = !.Info ^ global_info ^ requests := Requests,
+                !:Info = !.Info ^ changed := Changed
             ;
                 CanRequest = no
             )
@@ -1330,7 +1350,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
     list(higher_order_arg)::out) is det.
 
 find_higher_order_args(_, _, [], _, _, _, _, _, !HOArgs).
-find_higher_order_args(_, _, [_|_], [], _, _, _, _, _, _) :-
+find_higher_order_args(_, _, [_ | _], [], _, _, _, _, _, _) :-
     unexpected(this_file, "find_higher_order_args: length mismatch").
 find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
         [CalleeArgType | CalleeArgTypes], VarTypes, RttiVarMaps,
@@ -1409,7 +1429,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
         CallerHeadTypeParams, ArgTypes, CalleeTVarSet,
         CalleeExistQVars, CalleeArgTypes0) :-
-    CalleeUnivConstraints0 \= [],
+    CalleeUnivConstraints0 = [_ | _],
     varset.merge_subst(TVarSet0, CalleeTVarSet, TVarSet, TypeRenaming),
     term.apply_substitution_to_list(CalleeArgTypes0, TypeRenaming,
         CalleeArgTypes1),
@@ -1444,20 +1464,20 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
     ;       request(request)
     ;       no_request.
 
-:- type match --->
-    match(
-        new_pred,
-        
-        maybe(int),
-                    % Was the match partial, if so, how many
-                    % higher_order arguments matched.
+:- type match
+    --->    match(
+                new_pred,
+                
+                maybe(int),
+                            % Was the match partial, if so, how many
+                            % higher_order arguments matched.
 
-        list(prog_var),
-                    % The arguments to the specialised call.
-        list(type)      
-                    % Type variables for which extra type-infos must be
-                    % added to the start of the argument list.
-    ).
+                list(prog_var),
+                            % The arguments to the specialised call.
+                list(type)      
+                            % Type variables for which extra type-infos must be
+                            % added to the start of the argument list.
+            ).
 
     % WARNING - do not filter out higher-order arguments from the
     % request returned by find_matching_version, otherwise some
@@ -1518,8 +1538,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
             UserTypeSpec = yes,
             IsUserSpecProc = yes
         ;
-            module_info_pred_info(ModuleInfo, CalledPred,
-                CalledPredInfo),
+            module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
             \+ pred_info_is_imported(CalledPredInfo),
             (
                 % This handles the predicates introduced by
@@ -1576,11 +1595,9 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     ;
         AllTVars = [_ | _],
         proc_info_rtti_varmaps(Info ^ proc_info, RttiVarMaps),
-        list.foldl(
-            arg_contains_type_info_for_tvar(RttiVarMaps),
+        list.foldl(arg_contains_type_info_for_tvar(RttiVarMaps),
             Args, [], TypeInfoTVars),
-        list.delete_elems(AllTVars, TypeInfoTVars,
-            ExtraTypeInfoTVars0),
+        list.delete_elems(AllTVars, TypeInfoTVars, ExtraTypeInfoTVars0),
         list.remove_dups(ExtraTypeInfoTVars0, ExtraTypeInfoTVars)
     ).
 
@@ -1591,9 +1608,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
     rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
     (
         VarInfo = type_info_var(Type),
-        (
-            prog_type.var(Type, TVar)
-        ->
+        ( prog_type.var(Type, TVar) ->
             !:TVars = [TVar | !.TVars]
         ;
             true
@@ -1847,16 +1862,14 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         map.search(PredVars, TypeClassInfoVar,
             constant(_TypeClassInfoConsId, TypeClassInfoArgs)),
 
-        map.search(PredVars, IndexVar,
-            constant(int_const(Index0), [])),
+        map.search(PredVars, IndexVar, constant(int_const(Index0), [])),
 
         % Extract the number of class constraints on the instance
         % from the base_typeclass_info.
         TypeClassInfoArgs = [BaseTypeClassInfoVar | OtherVars],
 
         map.search(PredVars, BaseTypeClassInfoVar,
-            constant(base_typeclass_info_const(_,
-                ClassId, InstanceNum, _), _))
+            constant(base_typeclass_info_const(_, ClassId, InstanceNum, _), _))
     ->
         module_info_instances(ModuleInfo, Instances),
         map.lookup(Instances, ClassId, InstanceDefns),
@@ -1941,8 +1954,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
         %
         specializeable_special_call(SpecialId, CalledProc),
         type_is_atomic(SpecialPredType, ModuleInfo),
-        \+ type_has_user_defined_equality_pred(ModuleInfo,
-            SpecialPredType, _)
+        \+ type_has_user_defined_equality_pred(ModuleInfo, SpecialPredType, _)
     ->
         (
             SpecialId = unify,
@@ -1960,18 +1972,15 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
         ;
             SpecialId = compare,
             SpecialPredArgs = [ComparisonResult, _, _],
-            find_builtin_type_with_equivalent_compare(
-                ModuleInfo, SpecialPredType, CompareType,
-                NeedIntCast),
-            polymorphism.get_special_proc(CompareType,
-                SpecialId, ModuleInfo, SymName,
-                SpecialPredId, SpecialProcId),
+            find_builtin_type_with_equivalent_compare(ModuleInfo,
+                SpecialPredType, CompareType, NeedIntCast),
+            polymorphism.get_special_proc(CompareType, SpecialId, ModuleInfo,
+                SymName, SpecialPredId, SpecialProcId),
             (
                 NeedIntCast = no,
                 NewCallArgs = [ComparisonResult, Arg1, Arg2],
-                Goal = call(SpecialPredId, SpecialProcId,
-                    NewCallArgs, not_builtin,
-                    MaybeContext, SymName)
+                Goal = call(SpecialPredId, SpecialProcId, NewCallArgs,
+                    not_builtin, MaybeContext, SymName)
             ;
                 NeedIntCast = yes,
                 goal_info_get_context(OrigGoalInfo, Context),
@@ -1983,20 +1992,17 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
                     ProcInfo1, ProcInfo),
                 NewCallArgs = [ComparisonResult,
                     CastArg1, CastArg2],
-                Call = call(SpecialPredId, SpecialProcId,
-                    NewCallArgs, not_builtin,
-                    MaybeContext, SymName),
+                Call = call(SpecialPredId, SpecialProcId, NewCallArgs,
+                    not_builtin, MaybeContext, SymName),
                 set.list_to_set([ComparisonResult,
                     Arg1, Arg2], NonLocals),
                 instmap_delta_from_assoc_list(
-                    [ComparisonResult -
-                        ground(shared,none)],
+                    [ComparisonResult - ground(shared,none)],
                     InstMapDelta),
                 Detism = det,
                 goal_info_init(NonLocals, InstMapDelta,
                     Detism, pure, Context, GoalInfo),
-                Goal = conj([CastGoal1, CastGoal2,
-                        Call - GoalInfo]),
+                Goal = conj([CastGoal1, CastGoal2, Call - GoalInfo]),
                 !:Info = !.Info ^ proc_info := ProcInfo
             )
         )
@@ -2045,14 +2051,12 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
             NonLocals = NonLocals0,
             instmap_delta_init_reachable(InstMapDelta),
             Detism = semidet,
-            SpecialGoal = unify(UnwrappedArg1, var(UnwrappedArg2),
-                (In - In),
+            SpecialGoal = unify(UnwrappedArg1, var(UnwrappedArg2), (In - In),
                 simple_test(UnwrappedArg1, UnwrappedArg2),
                 unify_context(explicit, [])),
             goal_info_init(NonLocals, InstMapDelta, Detism, pure,
                 Context, GoalInfo),
-            Goal = conj([ExtractGoal1, ExtractGoal2,
-                    SpecialGoal - GoalInfo]),
+            Goal = conj([ExtractGoal1, ExtractGoal2, SpecialGoal - GoalInfo]),
             !:Info = !.Info ^ proc_info := ProcInfo2
         ;
             SpecialId = compare,
@@ -2337,8 +2341,7 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
             maybe_write_string(VeryVerbose,
                 "%    not specializing (goal too large).\n", !IO)
         ;
-            higher_order_args_size(HOArgs) >
-                Info ^ ho_params ^ arg_limit
+            higher_order_args_size(HOArgs) > Info ^ ho_params ^ arg_limit
         ->
             % If the arguments are too large, we can end up producing a
             % specialized version with massive numbers of arguments,
@@ -2356,23 +2359,19 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
             %
             VersionInfoMap = Info ^ version_info,
             (
-                map.search(VersionInfoMap, CalledPredProcId,
-                    CalledVersionInfo)
+                map.search(VersionInfoMap, CalledPredProcId, CalledVersionInfo)
             ->
-                CalledVersionInfo = version_info(
-                    OrigPredProcId, _, _, _)
+                CalledVersionInfo = version_info(OrigPredProcId, _, _, _)
             ;
                 OrigPredProcId = CalledPredProcId
             ),
-            map.search(VersionInfoMap, CallingPredProcId,
-                CallingVersionInfo),
-            CallingVersionInfo = version_info(_, _, _,
-                ParentVersions),
+            map.search(VersionInfoMap, CallingPredProcId, CallingVersionInfo),
+            CallingVersionInfo = version_info(_, _, _, ParentVersions),
             ArgDepth = higher_order_args_depth(HOArgs),
             some [ParentVersion] (
                 list.member(ParentVersion, ParentVersions),
-                ParentVersion = parent_version_info(
-                    OrigPredProcId, OldArgDepth),
+                ParentVersion = parent_version_info(OrigPredProcId,
+                    OldArgDepth),
                 ArgDepth >= OldArgDepth
             )
         ->
@@ -2404,8 +2403,7 @@ create_new_preds([Request | Requests], !NewPredList, !PredsToFix, !Info,
             % versions of the current pred.
             \+ (
                 set.member(Version, SpecVersions0),
-                version_matches(!.Info ^ ho_params,
-                    !.Info ^ module_info,
+                version_matches(!.Info ^ ho_params, !.Info ^ module_info,
                     Request, Version, _)
             )
         ->
@@ -2498,9 +2496,9 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     ;
         IsUserTypeSpec = no,
         NewProcId = hlds_pred.initial_proc_id,
-        IdCounter0 = !.Info ^ next_higher_order_id,
+        IdCounter0 = !.Info ^ next_ho_id,
         counter.allocate(Id, IdCounter0, IdCounter),
-        !:Info = !.Info ^ next_higher_order_id := IdCounter,
+        !:Info = !.Info ^ next_ho_id := IdCounter,
         string.int_to_string(Id, IdStr),
         string.append_list([Name0, "__ho", IdStr], PredName),
         SymName = qualified(PredModule, PredName),
@@ -2645,8 +2643,7 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
     ;
         CurriedHOArgs = [_ | _],
         io.write_string(":\n", !IO),
-        output_higher_order_args(ModuleInfo, 0, Indent + 1,
-            CurriedHOArgs, !IO)
+        output_higher_order_args(ModuleInfo, 0, Indent + 1, CurriedHOArgs, !IO)
     ),
     output_higher_order_args(ModuleInfo, NumToDrop, Indent, HOArgs, !IO).
 
@@ -2693,9 +2690,8 @@ fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
 create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     ModuleInfo = !.Info ^ module_info,
 
-    NewPred = new_pred(NewPredProcId, OldPredProcId, CallerPredProcId,
-        _Name, HOArgs0, CallArgs, ExtraTypeInfoTVars0, CallerArgTypes0,
-        _, _, _),
+    NewPred = new_pred(NewPredProcId, OldPredProcId, CallerPredProcId, _Name,
+        HOArgs0, CallArgs, ExtraTypeInfoTVars0, CallerArgTypes0, _, _, _),
 
     proc_info_headvars(!.NewProcInfo, HeadVars0),
     proc_info_argmodes(!.NewProcInfo, ArgModes0),
@@ -2727,8 +2723,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     inlining.get_type_substitution(OriginalArgTypes1, CallerArgTypes0,
         CallerHeadParams, ExistQVars1, TypeSubn),
 
-    term.apply_rec_substitution_to_list(ExistQTypes1, TypeSubn,
-        ExistQTypes),
+    term.apply_rec_substitution_to_list(ExistQTypes1, TypeSubn, ExistQTypes),
     ExistQVars = list.filter_map(
         (func(ExistQType) = ExistQVar is semidet :-
             ExistQType = term.variable(ExistQVar)
@@ -2741,23 +2736,25 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
 
     term.var_list_to_term_list(ExtraTypeInfoTVars0,
         ExtraTypeInfoTVarTypes0),
-    ( (map.is_empty(TypeSubn) ; ExistQVars = []) ->
+    (
+        ( map.is_empty(TypeSubn)
+        ; ExistQVars = []
+        )
+    ->
         HOArgs = HOArgs0,
         ExtraTypeInfoTVarTypes = ExtraTypeInfoTVarTypes0,
         ExtraTypeInfoTVars = ExtraTypeInfoTVars0
     ;
         % If there are existentially quantified variables in the
         % callee we may need to bind type variables in the caller.
-        list.map(substitute_higher_order_arg(TypeSubn),
-            HOArgs0, HOArgs),
+        list.map(substitute_higher_order_arg(TypeSubn), HOArgs0, HOArgs),
 
         term.apply_rec_substitution_to_list(ExtraTypeInfoTVarTypes0,
             TypeSubn, ExtraTypeInfoTVarTypes),
         % The substitution should never bind any of the type variables
         % for which extra type-infos are needed, otherwise it
         % wouldn't be necessary to add them.
-        term.term_list_to_var_list(ExtraTypeInfoTVarTypes,
-            ExtraTypeInfoTVars)
+        term.term_list_to_var_list(ExtraTypeInfoTVarTypes, ExtraTypeInfoTVars)
     ),
 
     % Add in the extra typeinfo vars.
@@ -2841,18 +2838,15 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
 
     remove_const_higher_order_args(1, HeadVars0, HOArgs, HeadVars1),
     remove_const_higher_order_args(1, ArgModes0, HOArgs, ArgModes1),
-    list.condense([ExtraTypeInfoVars, ExtraHeadVars, HeadVars1],
-        HeadVars),
-    list.condense([ExtraTypeInfoModes, ExtraArgModes, ArgModes1],
-        ArgModes),
+    list.condense([ExtraTypeInfoVars, ExtraHeadVars, HeadVars1], HeadVars),
+    list.condense([ExtraTypeInfoModes, ExtraArgModes, ArgModes1], ArgModes),
     proc_info_set_headvars(HeadVars, !NewProcInfo),
     proc_info_set_argmodes(ArgModes, !NewProcInfo),
 
     proc_info_goal(!.NewProcInfo, Goal6),
     Goal6 = _ - GoalInfo6,
     goal_to_conj_list(Goal6, GoalList6),
-    conj_list_to_goal(list.append(ConstGoals, GoalList6),
-        GoalInfo6, Goal),
+    conj_list_to_goal(list.append(ConstGoals, GoalList6), GoalInfo6, Goal),
     proc_info_set_goal(Goal, !NewProcInfo),
 
     proc_info_vartypes(!.NewProcInfo, VarTypes7),
@@ -2861,8 +2855,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
         HOArgs, ModifiedOriginalArgTypes),
     list.condense([ExtraTypeInfoTypes, ExtraHeadVarTypes0,
         ModifiedOriginalArgTypes], ArgTypes),
-    pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
-        !NewPredInfo),
+    pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !NewPredInfo),
     pred_info_set_typevarset(TypeVarSet, !NewPredInfo),
     %
     % The types of the headvars in the vartypes map in the proc_info may
@@ -3030,8 +3023,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         % other constants which include it will be recognized as
         % constant.
         %
-        mode_util.modes_to_uni_modes(CurriedArgModes1,
-            CurriedArgModes1, ModuleInfo, UniModes),
+        modes_to_uni_modes(ModuleInfo, CurriedArgModes1,
+            CurriedArgModes1, UniModes),
         set.list_to_set(CurriedHeadVars1, ConstNonLocals),
         ConstInst = ground(shared, GroundInstInfo),
         instmap_delta_from_assoc_list([LVar - ConstInst],
@@ -3071,24 +3064,20 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
     (
         VarInfo = type_info_var(TypeInfoType),
         rtti_det_insert_type_info_type(Var, TypeInfoType, !RttiVarMaps),
-        (
-            prog_type.var(TypeInfoType, TVar)
-        ->
+        ( prog_type.var(TypeInfoType, TVar) ->
             maybe_set_typeinfo_locn(TVar, type_info(Var), !RttiVarMaps)
         ;
             true
         )
     ;
         VarInfo = typeclass_info_var(Constraint),
-        (
-            \+ rtti_search_typeclass_info_var(!.RttiVarMaps, Constraint, _)
-        ->
+        ( rtti_search_typeclass_info_var(!.RttiVarMaps, Constraint, _) ->
+            true
+        ;
             rtti_det_insert_typeclass_info_var(Constraint, Var, !RttiVarMaps),
             Constraint = constraint(_, ConstraintTypes),
             list.foldl2(update_type_info_locn(Var), ConstraintTypes, 1, _,
                 !RttiVarMaps)
-        ;
-            true
         )
     ;
         VarInfo = non_rtti_var
@@ -3098,9 +3087,7 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
-    (
-        prog_type.var(ConstraintType, ConstraintTVar)
-    ->
+    ( prog_type.var(ConstraintType, ConstraintTVar) ->
         maybe_set_typeinfo_locn(ConstraintTVar,
             typeclass_info(Var, Index), !RttiVarMaps)
     ;
@@ -3111,9 +3098,7 @@ update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 maybe_set_typeinfo_locn(TVar, Locn, !RttiVarMaps) :-
-    (
-        rtti_search_type_info_locn(!.RttiVarMaps, TVar, _)
-    ->
+    ( rtti_search_type_info_locn(!.RttiVarMaps, TVar, _) ->
         true
     ;
         rtti_det_insert_type_info_locn(TVar, Locn, !RttiVarMaps)
@@ -3128,14 +3113,15 @@ remove_const_higher_order_args(Index, [Arg | Args0], HOArgs0, Args) :-
         HOArg = higher_order_arg(_, HOIndex, _, _, _, _, _, IsConst),
         ( HOIndex = Index ->
             remove_const_higher_order_args(Index + 1, Args0, HOArgs, Args1),
-            ( IsConst = yes ->
+            (
+                IsConst = yes,
                 Args = Args1
             ;
+                IsConst = no,
                 Args = [Arg | Args1]
             )
         ; HOIndex > Index ->
-            remove_const_higher_order_args(Index + 1, Args0,
-                HOArgs0, Args1),
+            remove_const_higher_order_args(Index + 1, Args0, HOArgs0, Args1),
             Args = [Arg | Args1]
         ;
             unexpected(this_file, "remove_const_higher_order_args")
@@ -3164,9 +3150,9 @@ substitute_higher_order_arg(Subn, !HOArg) :-
     list.map(substitute_rtti_var_info(Subn), CurriedRttiTypes0,
         CurriedRttiTypes),
     list.map(substitute_higher_order_arg(Subn), CurriedHOArgs0, CurriedHOArgs),
-    !:HOArg = ((!.HOArg ^ hoa_curry_type_in_caller := CurriedArgTypes)
-        ^ hoa_curry_rtti_type := CurriedRttiTypes)
-        ^ hoa_known_curry_args := CurriedHOArgs.
+    !:HOArg = !.HOArg ^ hoa_curry_type_in_caller := CurriedArgTypes,
+    !:HOArg = !.HOArg ^ hoa_curry_rtti_type := CurriedRttiTypes,
+    !:HOArg = !.HOArg ^ hoa_known_curry_args := CurriedHOArgs.
 
 :- pred substitute_rtti_var_info(tsubst::in, rtti_var_info::in,
     rtti_var_info::out) is det.
@@ -3238,13 +3224,11 @@ find_class_context(ModuleInfo, [VarInfo | VarInfos], [Mode | Modes],
     list(prog_constraint)::in, list(prog_constraint)::out) is det.
 
 maybe_add_constraint(Constraint, !Constraints) :-
-    (
-        % Remove duplicates.
-        \+ list.member(Constraint, !.Constraints)
-    ->
-        list.cons(Constraint, !Constraints)
-    ;
+    % Don't create duplicates.
+    ( list.member(Constraint, !.Constraints) ->
         true
+    ;
+        list.cons(Constraint, !Constraints)
     ).
 
 %-----------------------------------------------------------------------------%

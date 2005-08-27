@@ -836,16 +836,16 @@
 :- pred goal_info_get_need_visible_vars(hlds_goal_info::in, set(prog_var)::out)
     is det.
 
-:- pred goal_info_set_occurring_vars(hlds_goal_info::in, set(prog_var)::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_producing_vars(hlds_goal_info::in, set(prog_var)::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_consuming_vars(hlds_goal_info::in, set(prog_var)::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_make_visible_vars(hlds_goal_info::in, set(prog_var)::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_need_visible_vars(hlds_goal_info::in, set(prog_var)::in,
-    hlds_goal_info::out) is det.
+:- pred goal_info_set_occurring_vars(set(prog_var)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_producing_vars(set(prog_var)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_consuming_vars(set(prog_var)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_make_visible_vars(set(prog_var)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_need_visible_vars(set(prog_var)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 
 :- func producing_vars(hlds_goal_info) = set(prog_var).
 :- func 'producing_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
@@ -1616,10 +1616,13 @@ goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals) :-
 goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
     goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo).
 
-goal_info_set_occurring_vars(GoalInfo0, OccurringVars, GoalInfo) :-
-    ( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
+    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    (
+        MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_occurring_vars := OccurringVars
     ;
+        MMCI0 = no,
         set__init(ProducingVars),
         set__init(ConsumingVars),
         set__init(MakeVisibleVars),
@@ -1627,12 +1630,15 @@ goal_info_set_occurring_vars(GoalInfo0, OccurringVars, GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
 
-goal_info_set_producing_vars(GoalInfo0, ProducingVars, GoalInfo) :-
-    ( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+goal_info_set_producing_vars(ProducingVars, !GoalInfo) :-
+    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    (
+        MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_producing_vars := ProducingVars
     ;
+        MMCI0 = no,
         set__init(OccurringVars),
         set__init(ConsumingVars),
         set__init(MakeVisibleVars),
@@ -1640,12 +1646,15 @@ goal_info_set_producing_vars(GoalInfo0, ProducingVars, GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
 
-goal_info_set_consuming_vars(GoalInfo0, ConsumingVars, GoalInfo) :-
-    ( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+goal_info_set_consuming_vars(ConsumingVars, !GoalInfo) :-
+    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    (
+        MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_consuming_vars := ConsumingVars
     ;
+        MMCI0 = no,
         set__init(OccurringVars),
         set__init(ProducingVars),
         set__init(MakeVisibleVars),
@@ -1653,12 +1662,15 @@ goal_info_set_consuming_vars(GoalInfo0, ConsumingVars, GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
 
-goal_info_set_make_visible_vars(GoalInfo0, MakeVisibleVars, GoalInfo) :-
-    ( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo) :-
+    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    (
+        MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_make_visible_vars := MakeVisibleVars
     ;
+        MMCI0 = no,
         set__init(OccurringVars),
         set__init(ProducingVars),
         set__init(ConsumingVars),
@@ -1666,12 +1678,15 @@ goal_info_set_make_visible_vars(GoalInfo0, MakeVisibleVars, GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
 
-goal_info_set_need_visible_vars(GoalInfo0, NeedVisibleVars, GoalInfo) :-
-    ( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
+    MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
+    (
+        MMCI0 = yes(MCI0),
         MCI = MCI0 ^ mci_need_visible_vars := NeedVisibleVars
     ;
+        MMCI0 = no,
         set__init(OccurringVars),
         set__init(ProducingVars),
         set__init(ConsumingVars),
@@ -1679,31 +1694,31 @@ goal_info_set_need_visible_vars(GoalInfo0, NeedVisibleVars, GoalInfo) :-
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+    !:GoalInfo = !.GoalInfo ^ maybe_mode_constraint_info := yes(MCI).
 
 producing_vars(GoalInfo) = ProducingVars :-
     goal_info_get_producing_vars(GoalInfo, ProducingVars).
 
 'producing_vars :='(GoalInfo0, ProducingVars) = GoalInfo :-
-    goal_info_set_producing_vars(GoalInfo0, ProducingVars, GoalInfo).
+    goal_info_set_producing_vars(ProducingVars, GoalInfo0, GoalInfo).
 
 consuming_vars(GoalInfo) = ConsumingVars :-
     goal_info_get_consuming_vars(GoalInfo, ConsumingVars).
 
 'consuming_vars :='(GoalInfo0, ConsumingVars) = GoalInfo :-
-    goal_info_set_consuming_vars(GoalInfo0, ConsumingVars, GoalInfo).
+    goal_info_set_consuming_vars(ConsumingVars, GoalInfo0, GoalInfo).
 
 make_visible_vars(GoalInfo) = MakeVisibleVars :-
     goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars).
 
 'make_visible_vars :='(GoalInfo0, MakeVisibleVars) = GoalInfo :-
-    goal_info_set_make_visible_vars(GoalInfo0, MakeVisibleVars, GoalInfo).
+    goal_info_set_make_visible_vars(MakeVisibleVars, GoalInfo0, GoalInfo).
 
 need_visible_vars(GoalInfo) = NeedVisibleVars :-
     goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars).
 
 'need_visible_vars :='(GoalInfo0, NeedVisibleVars) = GoalInfo :-
-    goal_info_set_need_visible_vars(GoalInfo0, NeedVisibleVars, GoalInfo).
+    goal_info_set_need_visible_vars(NeedVisibleVars, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

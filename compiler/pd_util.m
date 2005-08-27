@@ -911,8 +911,8 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
 			Uniq = unique,
 			inst_is_unique(ModuleInfo, bound(unique, List))
 		),
-		\+ inst_contains_nonstandard_func_mode(bound(shared, List),
-			ModuleInfo),
+		\+ inst_contains_nonstandard_func_mode(ModuleInfo,
+			bound(shared, List)),
 		Inst = ground(Uniq, none)
 	).
 

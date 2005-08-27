@@ -550,7 +550,7 @@ common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 OutputArgs2, PrevContext)
         ->
             simplify_info_get_module_info(!.Info, ModuleInfo),
-            mode_util__modes_to_uni_modes(Modes, Modes, ModuleInfo, UniModes),
+            modes_to_uni_modes(ModuleInfo, Modes, Modes, UniModes),
             common__create_output_unifications(GoalInfo,
                 OutputArgs, OutputArgs2, UniModes, Goals, !Info),
             Goal = conj(Goals),

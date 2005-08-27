@@ -7,6 +7,9 @@ occurs.m:008:   Variable `X' has instantiatedness `free',
 occurs.m:008:   term `occurs.f(X)' has instantiatedness `occurs.f(
 occurs.m:008:     free
 occurs.m:008:   )'.
+occurs.m:013: In clause for `p2':
+occurs.m:013:   warning: unification of `X' and occurs.f cannot succeed
+occurs.m:013:   `X' has instantiatedness `unique((occurs.[]))'.
 occurs.m:018: In clause for `p3':
 occurs.m:018:   mode error in unification of `X' and `occurs.f(X)'.
 occurs.m:018:   Variable `X' has instantiatedness `unique(occurs.f(free))',

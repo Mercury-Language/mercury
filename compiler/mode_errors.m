@@ -156,6 +156,17 @@
                 mode_context        % Where the error occurred.
             ).
 
+:- type mode_warning
+    --->    cannot_succeed_var_var(prog_var, prog_var, inst, inst)
+    ;       cannot_succeed_var_functor(prog_var, inst, cons_id).
+
+:- type mode_warning_info
+    --->    mode_warning_info(
+                mode_warning,       % The nature of the error.
+                prog_context,       % Where the error occurred.
+                mode_context        % Where the error occurred.
+            ).
+
 %-----------------------------------------------------------------------------%
 
     % If there were any errors recorded in the mode_info,
@@ -174,6 +185,17 @@
     %
 :- pred maybe_report_error_no_modes(pred_id::in, pred_info::in,
     module_info::in, io::di, io::uo) is det.
+
+    % If there were any warnings recorded in the mode_info,
+    % report them to the user now.
+    %
+:- pred report_mode_warnings(mode_info::in, mode_info::out,
+    io::di, io::uo) is det.
+
+    % Print a warning message.
+    %
+:- pred report_mode_warning(mode_info::in, mode_warning_info::in,
+    io::di, io::uo) is det.
 
     % Initialize the mode_context.
     %
@@ -226,6 +248,11 @@
 report_mode_error(ModeError, ModeInfo, !IO) :-
     Specs = mode_error_to_specs(ModeError, ModeInfo),
     write_error_specs(Specs, !IO).
+
+report_mode_warning(ModeInfo, Warning, !IO) :-
+    Specs = mode_warning_to_specs(ModeInfo, Warning),
+    write_error_specs(Specs, !IO),
+    record_warning(!IO).
 
 :- func mode_error_to_specs(mode_error::in, mode_info::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
@@ -296,6 +323,23 @@ mode_error_to_specs(ModeError, ModeInfo) = Specs :-
         ModeError = mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
         Specs = mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst,
             Inst, Reason)
+    ).
+
+:- func mode_warning_to_specs(mode_info::in, mode_warning_info::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+
+mode_warning_to_specs(!.ModeInfo, Warning) = Specs :-
+    Warning = mode_warning_info(ModeWarning, Context, ModeContext),
+    mode_info_set_context(Context, !ModeInfo),
+    mode_info_set_mode_context(ModeContext, !ModeInfo),
+    (
+        ModeWarning = cannot_succeed_var_var(VarA, VarB, InstA, InstB),
+        Specs = mode_warning_cannot_succeed_var_var(!.ModeInfo, VarA, VarB,
+            InstA, InstB)
+    ;
+        ModeWarning = cannot_succeed_var_functor(Var, Inst, ConsId),
+        Specs = mode_warning_cannot_succeed_var_functor(!.ModeInfo,
+            Var, Inst, ConsId)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -899,6 +943,47 @@ mode_error_unify_var_functor_to_specs(ModeInfo, X, ConsId, Args,
 
 %-----------------------------------------------------------------------------%
 
+:- func mode_warning_cannot_succeed_var_var(mode_info::in,
+    prog_var::in, prog_var::in, (inst)::in, (inst)::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+
+mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Specs :-
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    Pieces = [words("warning: unification of"),
+        words(add_quotes(mercury_var_to_string(X, VarSet, no))),
+        words("and"),
+        words(add_quotes(mercury_var_to_string(Y, VarSet, no))),
+        words("cannot succeed"), nl,
+        words(add_quotes(mercury_var_to_string(X, VarSet, no))),
+        words("has instantiatedness"),
+        words(add_quotes(inst_to_string(ModeInfo, InstX))), suffix(","), nl,
+        words(add_quotes(mercury_var_to_string(Y, VarSet, no))),
+        words("has instantiatedness"),
+        words(add_quotes(inst_to_string(ModeInfo, InstY))), suffix("."), nl],
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
+
+:- func mode_warning_cannot_succeed_var_functor(mode_info::in,
+    prog_var::in, (inst)::in, cons_id::in)
+    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+
+mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Specs :-
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    Pieces = [words("warning: unification of"),
+        words(add_quotes(mercury_var_to_string(X, VarSet, no))),
+        words("and"),
+        words(mercury_cons_id_to_string(ConsId, does_not_need_brackets)),
+        words("cannot succeed"), nl,
+        words(add_quotes(mercury_var_to_string(X, VarSet, no))),
+        words("has instantiatedness"),
+        words(add_quotes(inst_to_string(ModeInfo, InstX))), suffix("."), nl],
+    Specs = [mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)].
+
+%-----------------------------------------------------------------------------%
+
 :- func mode_info_context_to_spec(mode_info::in)
     = (error_msg_spec::out(error_msg_spec)) is det.
 
@@ -1101,7 +1186,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
             % since they won't be valid anyway -- they are just
             % the results of whatever partial inference we did
             % before detecting the error.
-            mode_list_get_initial_insts(!.ArgModes, ModuleInfo, InitialInsts),
+            mode_list_get_initial_insts(ModuleInfo, !.ArgModes, InitialInsts),
             DummyInst = defined_inst(user_inst(unqualified("..."), [])),
             list__duplicate(PredArity, DummyInst, FinalInsts),
             !:ArgModes = list__map(func(I - F) = (I -> F),
@@ -1139,6 +1224,10 @@ report_mode_errors(!ModeInfo, !IO) :-
     ;
         Errors = []
     ).
+
+report_mode_warnings(!ModeInfo, !IO) :-
+    mode_info_get_warnings(!.ModeInfo, Warnings),
+    list__foldl(report_mode_warning(!.ModeInfo), Warnings, !IO).
 
 %-----------------------------------------------------------------------------%
 

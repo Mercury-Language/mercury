@@ -768,9 +768,8 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
     proc_info_arglives(!.ProcInfo, !.ModuleInfo, ArgLives0),
     proc_info_goal(!.ProcInfo, Body0),
 
-        % We use the context of the first clause, unless
-        % there weren't any clauses at all, in which case
-        % we use the context of the mode declaration.
+    % We use the context of the first clause, unless there weren't any clauses
+    % at all, in which case we use the context of the mode declaration.
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_clauses_info(PredInfo, ClausesInfo),
     clauses_info_clauses_only(ClausesInfo, ClauseList),
@@ -782,15 +781,13 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         proc_info_context(!.ProcInfo, Context)
     ),
 
-    %
     % Modecheck the body. First set the initial instantiation of the head
     % arguments, then modecheck the body, and then check that the final
     % instantiation matches that in the mode declaration.
-    %
 
     some [!ModeInfo] (
             % Construct the initial instmap.
-        mode_list_get_initial_insts(ArgModes0, !.ModuleInfo, ArgInitialInsts),
+        mode_list_get_initial_insts(!.ModuleInfo, ArgModes0, ArgInitialInsts),
         assoc_list__from_corresponding_lists(HeadVars, ArgInitialInsts,
             InstAL),
         instmap__from_assoc_list(InstAL, InstMap0),
@@ -811,7 +808,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         ;
             InferModes = no
         ),
-        mode_list_get_final_insts(ArgModes0, !.ModuleInfo, ArgFinalInsts0),
+        mode_list_get_final_insts(!.ModuleInfo, ArgModes0, ArgFinalInsts0),
 
         (
             InferModes = no,
@@ -915,29 +912,30 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
                 unique_modes__check_goal(Body0, Body1, !ModeInfo, !IO)
             ),
 
-                % Check that final insts match those specified in the
-                % mode declaration.
+            % Check that final insts match those specified in the
+            % mode declaration.
             modecheck_final_insts(HeadVars, InferModes, ArgFinalInsts0,
                 ArgFinalInsts, Body1, Body, !ModeInfo)
         ),
 
         (
             InferModes = yes,
-            % For inferred predicates, we don't report the
-            % error(s) here; instead we just save them in the
-            % proc_info, thus marking that procedure as invalid.
-            % This is sometimes handy for debugging:
+            % For inferred predicates, we don't report the error(s) here;
+            % instead we just save them in the proc_info, thus marking that
+            % procedure as invalid. Uncommenting the next call is sometimes
+            % handy for debugging:
             % report_mode_errors(!ModeInfo),
             mode_info_get_errors(!.ModeInfo, ModeErrors),
             !:ProcInfo = !.ProcInfo ^ mode_errors := ModeErrors,
             NumErrors = 0
         ;
             InferModes = no,
-            % report any errors we found
+            % Report any errors we found.
             report_mode_errors(!ModeInfo, !IO),
-            mode_info_get_num_errors(!.ModeInfo, NumErrors)
+            mode_info_get_num_errors(!.ModeInfo, NumErrors),
+            report_mode_warnings(!ModeInfo, !IO)
         ),
-        % save away the results
+        % Save away the results.
         inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
         mode_info_get_changed_flag(!.ModeInfo, !:Changed),
         mode_info_get_module_info(!.ModeInfo, !:ModuleInfo),
@@ -1094,7 +1092,7 @@ modecheck_final_insts(HeadVars, InferModes, FinalInsts0, FinalInsts,
     map__apply_to_list(HeadVars, VarTypes, ArgTypes),
     (
         InferModes = yes,
-        normalise_insts(VarFinalInsts1, ArgTypes, ModuleInfo, VarFinalInsts2),
+        normalise_insts(ModuleInfo, ArgTypes, VarFinalInsts1, VarFinalInsts2),
         %
         % make sure we set the final insts of any variables which
         % we assumed were dead to `clobbered'.

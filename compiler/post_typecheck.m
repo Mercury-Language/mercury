@@ -881,7 +881,7 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
 		!ErrorProcs, !Procs) :-
 	map__lookup(!.Procs, ProcId, ProcInfo0),
 	proc_info_argmodes(ProcInfo0, ArgModes0),
-	propagate_types_into_mode_list(ArgTypes, ModuleInfo,
+	propagate_types_into_mode_list(ModuleInfo, ArgTypes,
 		ArgModes0, ArgModes),
 
 	%

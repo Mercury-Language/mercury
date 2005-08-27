@@ -547,8 +547,8 @@ inst_matches_initial_4(bound(Uniq, List), abstract_inst(_,_), _, !Info) :-
 	bound_inst_list_is_ground(List, !.Info ^ module_info),
 	bound_inst_list_is_mostly_unique(List, !.Info ^ module_info).
 inst_matches_initial_4(ground(UniqA, GroundInstInfoA), any(UniqB), _, !Info) :-
-	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
-		!.Info ^ module_info),
+	\+ ground_inst_info_is_nonstandard_func_mode(!.Info ^ module_info,
+		GroundInstInfoA),
 	compare_uniqueness(!.Info ^ uniqueness_comparison, UniqA, UniqB).
 inst_matches_initial_4(ground(_Uniq, _PredInst), free, _, !Info).
 inst_matches_initial_4(ground(UniqA, _GII_A), bound(UniqB, ListB), MaybeType,
@@ -746,8 +746,8 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
 	inst_match_info::in, inst_match_info::out) is semidet.
 
 ground_inst_info_matches_initial(GroundInstInfoA, none, _, _, !Info) :-
-	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
-		!.Info ^ module_info).
+	\+ ground_inst_info_is_nonstandard_func_mode(!.Info ^ module_info,
+		GroundInstInfoA).
 ground_inst_info_matches_initial(none, higher_order(PredInstB), _, Type,
 		!Info) :-
 	PredInstB = pred_inst_info(function, ArgModes, _Det),
@@ -1007,13 +1007,13 @@ inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, none), Type,
 	bound_inst_list_matches_uniq(ListA, UniqB, !.Info ^ module_info).
 inst_matches_final_3(ground(UniqA, GroundInstInfoA), any(UniqB), _,
 		!Info) :-
-	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
-		!.Info ^ module_info),
+	\+ ground_inst_info_is_nonstandard_func_mode(!.Info ^ module_info,
+		GroundInstInfoA),
 	unique_matches_final(UniqA, UniqB).
 inst_matches_final_3(ground(UniqA, GroundInstInfoA), bound(UniqB, ListB),
 		MaybeType, !Info) :-
-	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
-		!.Info ^ module_info),
+	\+ ground_inst_info_is_nonstandard_func_mode(!.Info ^ module_info,
+		GroundInstInfoA),
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListB, MaybeType, !.Info ^ module_info),
 	uniq_matches_bound_inst_list(UniqA, ListB, !.Info ^ module_info),
@@ -1057,8 +1057,8 @@ inst_matches_final_3(constrained_inst_vars(InstVarsA, InstA), InstB, MaybeType,
 	inst_match_info::in, inst_match_info::out) is semidet.
 
 ground_inst_info_matches_final(GroundInstInfoA, none, _, !Info) :-
-	\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
-		!.Info ^ module_info).
+	\+ ground_inst_info_is_nonstandard_func_mode(!.Info ^ module_info,
+		GroundInstInfoA).
 ground_inst_info_matches_final(none, higher_order(PredInstB), Type, !Info) :-
 	PredInstB = pred_inst_info(function, ArgModes, _Det),
 	Arity = list__length(ArgModes),
@@ -1986,8 +1986,8 @@ maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, Inst) :-
 	(
 		type_constructors(Type, ModuleInfo, Constructors)
 	->
-		constructors_to_bound_any_insts(Constructors, Uniq,
-			ModuleInfo, BoundInsts0),
+		constructors_to_bound_any_insts(ModuleInfo, Uniq,
+			Constructors, BoundInsts0),
 		list__sort_and_remove_dups(BoundInsts0, BoundInsts),
 		Inst = bound(Uniq, BoundInsts)
 	;

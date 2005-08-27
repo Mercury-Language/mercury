@@ -2449,7 +2449,7 @@ attribute_list_to_attributes(Attributes, Attributes).
                                 % to `yes' after the second. The contents
                                 % of this field govern what will go into
                                 % MR_ProcStatic structures.
-    ).
+            ).
 
 :- type table_arg_info
     --->    table_arg_info(
@@ -3101,7 +3101,7 @@ proc_info_set_head_modes_constraint(HMC, ProcInfo,
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
     proc_info_headvars(ProcInfo, HeadVars),
     proc_info_argmodes(ProcInfo, ArgModes),
-    mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
+    mode_list_get_initial_insts(ModuleInfo, ArgModes, InitialInsts),
     assoc_list__from_corresponding_lists(HeadVars, InitialInsts, InstAL),
     instmap__from_assoc_list(InstAL, InstMap).
 
@@ -3149,7 +3149,7 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
     ;
         MaybeArgLives = no,
         proc_info_argmodes(ProcInfo, Modes),
-        get_arg_lives(Modes, ModuleInfo, ArgLives)
+        get_arg_lives(ModuleInfo, Modes, ArgLives)
     ).
 
 proc_info_is_valid_mode(ProcInfo) :-

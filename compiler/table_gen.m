@@ -434,11 +434,8 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     allocate_slot_numbers(InputVarModeMethods, 0, NumberedInputVars),
     allocate_slot_numbers(OutputVarModeMethods, 0, NumberedOutputVars),
     tabling_via_extra_args(!.ModuleInfo, TablingViaExtraArgs),
+    % The case EvalMethod = eval_normal was caught by the code above.
     (
-        EvalMethod = eval_normal,
-        % This should have been caught by our caller.
-        unexpected(this_file, "table_gen__transform_proc: eval_normal")
-    ;
         EvalMethod = eval_table_io(Decl, Unitize),
         module_info_globals(!.ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, trace_table_io_states,
@@ -919,6 +916,8 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
     set__list_to_set([TableTipVar | HeadVars], InactiveNonLocals),
     OutputVars = list__map(project_var, NumberedOutputVars),
     InactiveInstmapDelta = bind_vars(OutputVars),
+
+    % The case CodeModel = model_non was caught by the code above.
     (
         CodeModel = model_det,
         InactiveGoalExpr = conj([OrigGoal | SaveAnswerGoals]),
@@ -975,9 +974,6 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
             case(cons(qualified(TB, "memo_semi_succeeded"), 0), SucceededGoal),
             case(cons(qualified(TB, "memo_semi_failed"), 0), FailedGoal)
         ]
-    ;
-        CodeModel = model_non,
-        unexpected(this_file, "create_new_memo_goal: model_non")
     ),
 
     SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
