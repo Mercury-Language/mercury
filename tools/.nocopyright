@@ -25,6 +25,7 @@ frame_sizes
 gdbrun
 generate_index_html
 half
+ho_call_stats
 linear
 list.kryten
 list.mercury
