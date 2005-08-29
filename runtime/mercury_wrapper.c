@@ -339,6 +339,7 @@ void	(*MR_address_of_init_modules_complexity)(void);
 #ifdef	MR_DEEP_PROFILING
 void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
+void	(*MR_address_of_init_modules_required)(void);
 
 MR_TypeCtorInfo	MR_type_ctor_info_for_univ;
 MR_TypeInfo	MR_type_info_for_type_info;
@@ -609,6 +610,9 @@ mercury_runtime_init(int argc, char **argv)
 
 	/* initialize the Mercury library */
 	(*MR_library_initializer)();
+
+	/* run any user-defined initialisation predicates */
+	(*MR_address_of_init_modules_required)();
 
 #ifndef MR_HIGHLEVEL_CODE
   #ifndef __LCC__

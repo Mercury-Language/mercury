@@ -334,6 +334,7 @@ collect_mq_info_2(typeclass(_, _, SymName, Params, _, _), !Info) :-
         mq_info_set_classes(Classes, !Info)
     ).
 collect_mq_info_2(instance(_, _, _, _, _, _), !Info).
+collect_mq_info_2(initialise(_), !Info).
 
 :- pred collect_mq_info_qualified_symname(sym_name::in,
     mq_info::in, mq_info::out) is det.
@@ -715,6 +716,11 @@ module_qualify_item(
     qualify_class_name(Id, Name - _, !Info, !IO),
     qualify_type_list(Types0, Types, !Info, !IO),
     qualify_instance_body(Name, Body0, Body).
+
+module_qualify_item(
+        initialise(PredSymName) - Context,
+        initialise(PredSymName) - Context,
+        !Info, yes, !IO).
 
 :- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
     bool::out) is det.

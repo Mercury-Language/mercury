@@ -97,6 +97,7 @@ ORDINARY_PROGS=	\
 	impure_foreign2 \
 	impure_foreign3 \
 	impure_prune \
+	initialise_decl \
 	integer_test \
 	intermod_c_code \
 	intermod_foreign_type \

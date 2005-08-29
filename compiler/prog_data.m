@@ -163,6 +163,9 @@
 			ci_module_containing_instance :: module_name
 		)
 
+		% :- initialise(pred_name).
+	;	initialise(sym_name)
+
 	;	nothing(
 			nothing_maybe_warning	:: maybe(item_warning)
 		).

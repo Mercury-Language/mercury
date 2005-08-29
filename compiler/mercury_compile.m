@@ -4132,7 +4132,7 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
     list(comp_gen_c_var)::in, list(comp_gen_c_data)::in,
     c_file::out, int::out, io::di, io::uo) is det.
 
-mercury_compile__construct_c_file(_Module, C_InterfaceInfo, Procedures,
+mercury_compile__construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures,
         GlobalVars, AllData, CFile, ComponentCount, !IO) :-
     C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
         C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
@@ -4163,8 +4163,10 @@ mercury_compile__construct_c_file(_Module, C_InterfaceInfo, Procedures,
     C_HeaderCode = list__reverse(C_IncludeHeaderCode) ++
         C_LocalHeaderCode ++ [Start | C_ExportedHeaderCode] ++ [End],
 
-    CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode,
-        C_ExportDefns, GlobalVars, AllData, ChunkedModules),
+    module_info_user_init_pred_c_names(ModuleInfo, UserInitPredCNames),
+
+    CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
+            GlobalVars, AllData, ChunkedModules, UserInitPredCNames),
     list__length(C_BodyCode, UserCCodeCount),
     list__length(C_ExportDefns, ExportCount),
     list__length(GlobalVars, CompGenVarCount),

@@ -26,6 +26,8 @@
 :- pred out_mode((mode)::out) is det.
 :- func out_mode = (mode).
 :- func out_mode(inst) = (mode).
+:- pred di_mode((mode)::out) is det.
+:- func di_mode = (mode).
 :- pred uo_mode((mode)::out) is det.
 :- func uo_mode = (mode).
 :- pred unused_mode((mode)::out) is det.
@@ -143,6 +145,7 @@
 
 in_mode(in_mode).
 out_mode(out_mode).
+di_mode(di_mode).
 uo_mode(uo_mode).
 unused_mode(unused_mode).
 
@@ -150,6 +153,7 @@ in_mode = make_std_mode("in", []).
 in_mode(I) = make_std_mode("in", [I]).
 out_mode = make_std_mode("out", []).
 out_mode(I) = make_std_mode("out", [I]).
+di_mode = make_std_mode("di", []).
 uo_mode = make_std_mode("uo", []).
 unused_mode = make_std_mode("unused", []).
 in_any_mode = make_std_mode("in", [any_inst]).

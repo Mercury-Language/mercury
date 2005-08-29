@@ -60,7 +60,7 @@ transform_llds(LLDS0, LLDS, !IO) :-
 :- pred transform_c_file(c_file::in, c_file::out, globals::in) is det.
 
 transform_c_file(CFile0, CFile, Globals) :-
-	CFile0 = c_file(ModuleName, _, _, _, _, _, Modules0),
+	CFile0 = c_file(ModuleName, _, _, _, _, _, Modules0, _),
 	% split up large computed gotos
 	globals__lookup_int_option(Globals, max_jump_table_size, MaxSize),
 	( MaxSize = 0 ->

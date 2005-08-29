@@ -241,7 +241,6 @@ static int          maxcalls = MAXCALLS;
 static int          num_files;
 static char         **files;
 static MR_bool      output_main_func = MR_TRUE;
-static MR_bool      c_files_contain_extra_inits = MR_FALSE;
 static MR_bool      aditi = MR_FALSE;
 static MR_bool      need_initialization_code = MR_FALSE;
 static MR_bool      need_tracing = MR_FALSE;
@@ -378,6 +377,7 @@ static const char mercury_funcs2[] =
     "   MR_address_of_write_out_proc_statics =\n"
     "       write_out_proc_statics;\n"
     "#endif\n"
+    "   MR_address_of_init_modules_required = init_modules_required;\n"
     "#ifdef MR_RECORD_TERM_SIZES\n"
     "   MR_complexity_procs = MR_complexity_proc_table;\n"
     "   MR_num_complexity_procs = %d;\n"
@@ -731,7 +731,7 @@ parse_options(int argc, char *argv[])
             break;
 
         case 'x':
-            c_files_contain_extra_inits = MR_TRUE;
+            /* We always assume this option. */
             break;
 
         case 'X':
@@ -765,7 +765,6 @@ usage(void)
     fputs("  -r word:\tadd word to the flags for the runtime\n", stderr);
     fputs("  -t:\t\tenable execution tracing\n", stderr);
     fputs("  -w entry:\tset the entry point to the egiven label\n", stderr);
-    fputs("  -x:\t\tscan the C files for extra initializations\n", stderr);
     fputs("  -I dir:\tadd dir to the search path for init files\n", stderr);
     exit(EXIT_FAILURE);
 }
@@ -1122,11 +1121,7 @@ process_file(const char *filename)
 
     len = strlen(filename);
     if (len >= 2 && strcmp(filename + len - 2, ".c") == 0) {
-        if (c_files_contain_extra_inits) {
-            process_init_file(filename);
-        } else {
-            process_c_file(filename);
-        }
+        process_init_file(filename);
     } else if (len >= 5 && strcmp(filename + len - 5, ".init") == 0) {
         process_init_file(filename);
     } else {

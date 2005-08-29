@@ -433,6 +433,15 @@
 :- pred module_info_next_aditi_top_down_proc(module_info::in, int::out,
 	module_info::out) is det.
 
+:- pred module_info_new_user_init_pred(sym_name::in, string::out,
+	module_info::in, module_info::out) is det.
+
+:- pred module_info_user_init_pred_c_name(module_info::in, sym_name::in,
+	string::out) is det.
+
+:- pred module_info_user_init_pred_c_names(module_info::in,
+	list(string)::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_preds(module_info::in, pred_table::out) is det.
@@ -550,7 +559,9 @@
 
 :- implementation.
 
+:- import_module assoc_list.
 :- import_module counter.
+:- import_module parse_tree__error_util.
 
 :- pred module_info_get_lambdas_per_context(module_info::in,
 	map(prog_context, counter)::out) is det.
@@ -691,8 +702,13 @@
 						% List of top-down procedures
 						% which could be called from
 						% bottom-up Aditi procedures.
-		aditi_proc_counter		:: counter
-
+		aditi_proc_counter		:: counter,
+		user_init_pred_c_names 		:: assoc_list(sym_name, string)
+						% Exported C names for
+						% preds appearing in
+						% `:- initialise initpred'
+						% directives in this module,
+						% in order of appearance.
 	).
 
 	% A predicate which creates an empty module
@@ -736,7 +752,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 		map.init, counter__init(1), ImportedModules,
 		IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
 		NoTagTypes, no, [], init_analysis_info(mmc),
-		[], counter__init(1)),
+		[], counter__init(1), []),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -828,6 +844,40 @@ module_info_next_aditi_top_down_proc(MI0, Proc, MI) :-
 	Counter0 = MI0 ^ sub_info ^ aditi_proc_counter,
 	counter__allocate(Proc, Counter0, Counter),
 	MI = MI0 ^ sub_info ^ aditi_proc_counter := Counter.
+
+	% XXX There is some debate as to whether duplicate
+	% initialise directives in the same module should
+	% constitute an error.  Currently it is not, but
+	% we may wish to revisit this code.  The reference
+	% manual is therefore deliberately quiet on the
+	% subject.
+	%
+module_info_new_user_init_pred(SymName, CName, MI0, MI) :-
+	InitPredCNames0 = MI0 ^ sub_info ^ user_init_pred_c_names,
+	UserInitPredNo = list__length(InitPredCNames0),
+	module_info_name(MI0, ModuleSymName),
+	ModuleName = prog_foreign__sym_name_mangle(ModuleSymName),
+	CName = string.format("%s__user_init_pred_%d",
+		[s(ModuleName), i(UserInitPredNo)]),
+	InitPredCNames = InitPredCNames0 ++ [SymName - CName],
+	MI = MI0 ^ sub_info ^ user_init_pred_c_names := InitPredCNames.
+
+module_info_user_init_pred_c_name(MI, SymName, CName) :-
+	InitPredCNames = MI ^ sub_info ^ user_init_pred_c_names,
+	(
+		assoc_list__search(InitPredCNames, SymName, CName0)
+	->
+		CName = CName0
+	;
+		module_info_name(MI, ModuleSymName),
+		ModuleName = sym_name_to_string(ModuleSymName),
+		unexpected(ModuleName,
+			"lookup failure in module_info_user_init_pred_c_name")
+	).
+
+module_info_user_init_pred_c_names(MI, CNames) :-
+	InitPredCNames = MI ^ sub_info ^ user_init_pred_c_names,
+	CNames = list__map(snd, InitPredCNames).
 
 %-----------------------------------------------------------------------------%
 

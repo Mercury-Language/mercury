@@ -1422,6 +1422,10 @@ process_decl(ModuleName, VarSet0, "version_numbers",
 		)
 	).
 
+process_decl(ModuleName, VarSet, "initialise", Args, Attributes, Result):-
+	parse_initialise_decl(ModuleName, VarSet, Args, Result0),
+	check_no_attributes(Result0, Attributes, Result).
+
 :- pred parse_decl_attribute(string::in, list(term)::in, decl_attribute::out,
 	term::out) is semidet.
 
@@ -1763,6 +1767,35 @@ parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Result) :-
 	;
 		MaybeDeterminism0 = error(E, T),
 		Result = error(E, T)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred parse_initialise_decl(module_name::in, varset::in, list(term)::in,
+	maybe1(item)::out) is semidet.
+
+parse_initialise_decl(_ModuleName, _VarSet, [Term], Result) :-
+	parse_symbol_name_specifier(Term, MaybeSymNameSpecifier),
+	(
+		MaybeSymNameSpecifier = error(ErrMsg, Trm),
+		Result = error(ErrMsg, Trm)
+	;
+		MaybeSymNameSpecifier = ok(SymNameSpecifier),
+		(
+			SymNameSpecifier = name(SymName),
+			Result = ok(initialise(SymName))
+		;
+			SymNameSpecifier = name_arity(SymName, Arity),
+			(
+				Arity = 2
+			->
+				Result = ok(initialise(SymName))
+			;
+				Result = error("an initialise " ++
+				"declaration can only apply to " ++
+				"an arity 2 predicate", Term)
+			)
+		)
 	).
 
 %-----------------------------------------------------------------------------%

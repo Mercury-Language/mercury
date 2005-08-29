@@ -112,6 +112,7 @@
 :- import_module libs__options.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
@@ -276,6 +277,9 @@ add_item_list_decls_pass_2([Item - Context | Items], Status0, !ModuleInfo,
     % Check that the declarations for field extraction
     % and update functions are sensible.
     %
+    % Check that predicates listed in `:- initialise' declarations
+    % exist and have the right signature.
+    %
 :- pred add_item_list_clauses(item_list::in, import_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
@@ -425,6 +429,9 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     % We add instance declarations on the second pass so that we don't add
     % an instance declaration before its class declaration.
     Item = instance(_, _, _, _, _,_).
+add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
+    % We add initialise declarations on the second pass.
+    Item = initialise(_).
 
 %-----------------------------------------------------------------------------%
 
@@ -497,8 +504,22 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     ),
     module_add_instance_defn(InstanceModuleName, Constraints, Name, Types,
         Body, VarSet, BodyStatus, Context, !ModuleInfo, !IO).
+add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
+    Item = initialise(SymName),
+    % 
+    % To handle a `:- initialise(initpred).' declaration we need to
+    % (1) construct a new C function name, CName, to use to export initpred,
+    % (2) add `:- export(initpred(di, uo), CName).',
+    % (3) record the initpred/cname pair in the ModuleInfo so that
+    % code generation can ensure cname is called during module
+    % initialisation.
+    %
+    module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
+    PragmaExportItem =
+        pragma(export(SymName, predicate, [di_mode, uo_mode], CName)),
+    add_item_decl_pass_2(PragmaExportItem, Context, !Status, !ModuleInfo, !IO).
 
-%------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     Item = clause(VarSet, PredOrFunc, PredName, Args, Body),
@@ -668,9 +689,54 @@ add_item_clause(promise(PromiseType, Goal, VarSet, UnivVars),
         !.Status, !ModuleInfo, !QualInfo, !IO).
 add_item_clause(nothing(_), !Status, _, !ModuleInfo, !QualInfo, !IO).
 add_item_clause(typeclass(_, _, _, _, _, _), !Status, _, !ModuleInfo,
-    !QualInfo, !IO).
+        !QualInfo, !IO).
 add_item_clause(instance(_, _, _, _, _, _), !Status, _, !ModuleInfo, !QualInfo,
-    !IO).
+        !IO).
+add_item_clause(initialise(SymName), !Status, Context, !ModuleInfo, !QualInfo,
+        !IO) :-
+    module_info_get_predicate_table(!.ModuleInfo, PredTable),
+    (
+        predicate_table_search_pred_sym_arity(PredTable,
+            may_be_partially_qualified, SymName, 2 /* Arity */, PredIds)
+    ->
+        (
+            PredIds = [PredId]
+        ->
+            module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+            pred_info_arg_types(PredInfo, ArgTypes),
+            (
+                ArgTypes = [Arg1Type, Arg2Type],
+                type_util__type_is_io_state(Arg1Type),
+                type_util__type_is_io_state(Arg2Type)
+                % XXX We should check the arg modes and detism are correct
+                % here.  For now the arg modes and detism will be checked by
+                % the implicit `:- pragma export(...).' added for this pred.
+            ->
+                module_info_user_init_pred_c_name(!.ModuleInfo, SymName,
+                    CName),
+                PragmaExportItem =
+                    pragma(export(SymName, predicate, [di_mode, uo_mode],
+                    CName)),
+                add_item_clause(PragmaExportItem, !Status, Context,
+                    !ModuleInfo, !QualInfo, !IO)
+            ;
+                write_error_pieces(Context, 0, [sym_name_and_arity(SymName/2),
+                    words(" used in initialise declaration does not have " ++
+                    "signature `pred(io::di, io::uo) is det'")], !IO),
+                module_info_incr_errors(!ModuleInfo)
+            )
+        ;
+            write_error_pieces(Context, 0, [sym_name_and_arity(SymName/2),
+                words(" used in initialise declaration has " ++
+                "multiple pred declarations.")], !IO),
+            module_info_incr_errors(!ModuleInfo)
+        )
+    ;
+        write_error_pieces(Context, 0, [sym_name_and_arity(SymName/2),
+            words(" used in initialise declaration does " ++
+            "not have a corresponding pred declaration.")], !IO),
+        module_info_incr_errors(!ModuleInfo)
+    ).
 
     % If a module_defn updates the import_status, return the new status
     % and whether uses of the following items must be module qualified,

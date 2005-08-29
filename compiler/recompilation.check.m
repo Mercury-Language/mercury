@@ -956,6 +956,7 @@ check_for_ambiguities(_, _, _, pragma(_) - _, !Info).
 check_for_ambiguities(_, _, _, promise(_, _, _, _) - _, !Info).
 check_for_ambiguities(_, _, _, module_defn(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, initialise(_) - _, !Info).
 check_for_ambiguities(_, _, _, nothing(_) - _, !Info).
 
 :- pred item_is_new_or_changed(timestamp::in, item_version_numbers::in,

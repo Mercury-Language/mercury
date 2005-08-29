@@ -760,6 +760,9 @@ mercury_output_item(_, instance(Constraints, ClassName, Types, Body,
         io__write_string("\n]", !IO)
     ),
     io__write_string(".\n", !IO).
+mercury_output_item(_, initialise(PredSymName), _, !IO) :-
+    io__write_string(":- initialise ", !IO),
+    mercury_output_sym_name(PredSymName, !IO).
 
 :- func mercury_to_string_promise_type(promise_type) = string.
 

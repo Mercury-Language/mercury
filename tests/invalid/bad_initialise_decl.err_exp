@@ -1,0 +1,17 @@
+Making Mercury/cs/bad_initialise_decl.c
+Error: file `bad_initialise_decl.m' contains the wrong module.
+Expected module `bad_initialise_decl', found module `initialise_decl'.
+bad_initialise_decl.m:011: Warning: source file `bad_initialise_decl.m' contains module named `initialise_decl': :- module initialise_decl.
+bad_initialise_decl.m:026: `i1'/2 used in initialise declaration does not have
+bad_initialise_decl.m:026:   signature `pred(io::di, io::uo) is det'
+bad_initialise_decl.m:027: Error: `:- pragma export' declaration for `i2'/2
+bad_initialise_decl.m:027:   specifies non-existent mode.
+bad_initialise_decl.m:030: In clause for predicate `initialise_decl.i1/2':
+bad_initialise_decl.m:030:   in argument 2 of call to predicate `io.print/3':
+bad_initialise_decl.m:030:   type error: variable `STATE_VARIABLE_IO_0' has type `(some [T] T)',
+bad_initialise_decl.m:030:   expected type was `(io.state)'.
+bad_initialise_decl.m:030: In clause for predicate `initialise_decl.i1/2':
+bad_initialise_decl.m:030:   in implicit state variable unification:
+bad_initialise_decl.m:030:   type error in unification of variable `STATE_VARIABLE_IO'
+bad_initialise_decl.m:030:   and variable `STATE_VARIABLE_IO_1'.
+** Error making `Mercury/cs/bad_initialise_decl.c'.

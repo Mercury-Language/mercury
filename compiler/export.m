@@ -147,6 +147,18 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%
 	% MR_declare_entry(<label of called proc>); /* or MR_declare_static */
 	%
+	%	/* Start with a declaration to avoid C compiler warnings. */
+	% #if SEMIDET
+	%   MR_bool
+	% #elif FUNCTION
+	%   MR_Word
+	% #else
+	%   void
+	% #endif
+	% <function name>(MR_Word Mercury__Argument1,
+	%			MR_Word *Mercury__Argument2...);
+	%			/* Word for input, Word* for output */
+	%
 	% #if SEMIDET
 	%   MR_bool
 	% #elif FUNCTION
@@ -259,6 +271,9 @@ export__to_c(Preds, [E | ExportedProcs], Module, ExportedProcsCode) :-
 	string__append_list([
 		"\n",
 		DeclareString, "(", ProcLabelString, ");\n",
+		"\n",
+		C_RetType, "\n",
+		C_Function, "(", ArgDecls, ");\n",
 		"\n",
 		C_RetType, "\n",
 		C_Function, "(", ArgDecls, ")\n{\n",

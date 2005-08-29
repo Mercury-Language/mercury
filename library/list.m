@@ -339,6 +339,18 @@
 :- func list__det_index0(list(T), int) = T.
 :- func list__det_index1(list(T), int) = T.
 
+	% list__index*_of_first_occurrence(List, Elem, Position):
+	% 	Computes the least value of Position such that
+	% 	list_index*(List, Position, Elem).  The `det_' funcs
+	% 	call error/1 if Elem is not a member of List.
+	%
+:- pred list__index0_of_first_occurrence(list(T)::in, T::in, int::out)
+	is semidet.
+:- pred list__index1_of_first_occurrence(list(T)::in, T::in, int::out)
+	is semidet.
+:- func list__det_index0_of_first_occurrence(list(T), T) = int.
+:- func list__det_index1_of_first_occurrence(list(T), T) = int.
+
 	% list__zip(ListA, ListB, List):
 	%	List is the result of alternating the elements
 	%	of ListA and ListB, starting with the first element
@@ -1179,6 +1191,39 @@ list__index1(List, N, Elem) :-
 
 list__index1_det(List, N, Elem) :-
 	list__index0_det(List, N - 1, Elem).
+
+%-----------------------------------------------------------------------------%
+
+list__index0_of_first_occurrence(List, Elem, N) :-
+	list__index0_of_first_occurrence_2(List, Elem, 0, N).
+
+
+:- pred list__index0_of_first_occurrence_2(list(T)::in, T::in,
+	int::in, int::out) is semidet.
+
+list__index0_of_first_occurrence_2([X | Xs], Y, N0, N) :-
+	( Y = X -> N = N0
+	        ;  list__index0_of_first_occurrence_2(Xs, Y, N0 + 1, N)
+	).
+
+
+list__index1_of_first_occurrence(List, Elem, N + 1) :-
+	list__index0_of_first_occurrence(List, Elem, N).
+
+
+list__det_index0_of_first_occurrence(List, Elem) = N :-
+	( list__index0_of_first_occurrence(List, Elem, N0) ->
+		N = N0
+	;
+		error("list__det_index0_of_first_occurrence: item not found")
+	).
+
+list__det_index1_of_first_occurrence(List, Elem) = N :-
+	( list__index1_of_first_occurrence(List, Elem, N0) ->
+		N = N0
+	;
+		error("list__det_index1_of_first_occurrence: item not found")
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -7282,6 +7282,7 @@ item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
     ).
 item_needs_imports(instance(_, _, _, _, _, _)) = yes.
 item_needs_imports(promise(_, _, _, _)) = yes.
+item_needs_imports(initialise(_)) = yes.
 item_needs_imports(nothing(_)) = no.
 
 :- pred item_needs_foreign_imports(item::in, foreign_language::out) is nondet.
@@ -7626,6 +7627,7 @@ reorderable_item(clause(_, _, _, _, _)) = no.
 reorderable_item(nothing(_)) = no.
 reorderable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
 reorderable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = no.
+reorderable_item(initialise(_)) = no.
 
 :- pred is_chunkable(item_and_context::in) is semidet.
 
@@ -7710,6 +7712,7 @@ chunkable_item(promise(_, _, _, _)) = yes.
 chunkable_item(typeclass(_, _, _, _, _, _)) = yes.
 chunkable_item(instance(_, _, _, _, _, _)) = yes.
 chunkable_item(clause(_, _, _, _, _)) = yes.
+chunkable_item(initialise(_)) = yes.
 chunkable_item(nothing(_)) = yes.
 
     % Given a list of items for which symname_ordered succeeds, we need to keep

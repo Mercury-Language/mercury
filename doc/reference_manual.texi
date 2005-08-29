@@ -415,98 +415,113 @@ while ``xfy'' indicates a right-associative infix operator.
 
 @example
 
-Operator          Specifier Priority
+Operator                        Specifier         Priority
 
-.                 yfx       10
-@@                 xfx       50
-^                 xfy       99
-^                 fx        100
-`@var{op}`              yfx       120       @footnote{Operator term (@pxref{Terms}).}
-**                xfy       200
--                 fx        200
-\                 fx        200
-*                 yfx       400
-//                yfx       400
-/                 yfx       400
-<<                yfx       400
->>                yfx       400
-div               yfx       400
-mod               xfx       400
-rem               xfx       400
-++                xfy       500
-+                 yfx       500
-+                 fx        500
---                yfx       500
--                 yfx       500
-/\                yfx       500
-\/                yfx       500
-aditi_bottom_up   fx        500
-aditi_top_down    fx        500
-..                xfx       550
-:                 yfx       600
-:=                xfx       650
-=^                xfx       650
-<                 xfx       700
-=..               xfx       700
-=:=               xfx       700
-=<                xfx       700
-==                xfx       700
-=\=               xfx       700
-=                 xfx       700
->=                xfx       700
->                 xfx       700
-@@<                xfx       700
-@@=<               xfx       700
-@@>=               xfx       700
-@@>                xfx       700
-\==               xfx       700
-\=                xfx       700
-~=                xfx       700
-is                xfx       701
-and               xfy       720
-or                xfy       740
-func              fx        800
-impure            fy        800
-pred              fx        800
-semipure          fy        800
-\+                fy        900
-not               fy        900
-when              xfx       900
-~                 fy        900
-<=>               xfy       920
-<=                xfy       920
-=>                xfy       920
-all               fxy       950
-lambda            fxy       950
-some              fxy       950
-,                 xfy       1000
-&                 xfy       1025
-->                xfy       1050
-;                 xfy       1100
-then              xfx       1150
-if                fx        1160
-else              xfy       1170
-::                xfx       1175
-==>               xfx       1175
-where             xfx       1175
---->              xfy       1179
-type              fx        1180
-end_module        fx        1199
-import_module     fx        1199
-include_module    fx        1199
-instance          fx        1199
-inst              fx        1199
-mode              fx        1199
-module            fx        1199
-pragma            fx        1199
-promise           fx        1199
-rule              fx        1199
-typeclass         fx        1199
-use_module        fx        1199
--->               xfx       1200
-:-                xfx       1200
-:-                fx        1200
-?-                fx        1200
+.                               yfx               10
+!                               fx                40
+!.                              fx                40
+!:                              fx                40
+@@                               xfx               90
+^                               xfy               99
+^                               fx                100
+`@var{op}`                      yfx               120       @footnote{Operator term (@pxref{Terms}).}
+**                              xfy               200
+-                               fx                200
+\\                              fx                200
+*                               yfx               400
+/                               yfx               400
+//                              yfx               400
+<<                              yfx               400
+>>                              yfx               400
+div                             yfx               400
+mod                             xfx               400
+rem                             xfx               400
++                               fx                500
++                               yfx               500
+++                              xfy               500
+-                               yfx               500
+--                              yfx               500
+/\\                             yfx               500
+\\/                             yfx               500
+aditi_bottom_up                 fx                500
+aditi_top_down                  fx                500
+..                              xfx               550
+:                               yfx               600
+:=                              xfx               650
+=^                              xfx               650
+<                               xfx               700
+=                               xfx               700
+=..                             xfx               700
+=:=                             xfx               700
+=<                              xfx               700
+==                              xfx               700
+=\\=                            xfx               700
+>                               xfx               700
+>=                              xfx               700
+@@<                              xfx               700
+@@=<                             xfx               700
+@@>                              xfx               700
+@@>=                             xfx               700
+\\=                             xfx               700
+\\==                            xfx               700
+~=                              xfx               700
+is                              xfx               701
+and                             xfy               720
+or                              xfy               740
+func                            fx                800
+impure                          fy                800
+pred                            fx                800
+semipure                        fy                800
+\\+                             fy                900
+not                             fy                900
+when                            xfx               900
+~                               fy                900
+<=                              xfy               920
+<=>                             xfy               920
+=>                              xfy               920
+all                             fxy               950
+lambda                          fxy               950
+promise_equivalent_solutions    fxy               950
+promise_exclusive               fy                950
+promise_exclusive_exhaustive    fy                950
+promise_exhaustive              fy                950
+promise_impure                  fx                950
+promise_impure_implicit         fx                950
+promise_pure                    fx                950
+promise_pure_implicit           fx                950
+promise_semipure                fx                950
+promise_semipure_implicit       fx                950
+some                            fxy               950
+,                               xfy               1000
+&                               xfy               1025
+->                              xfy               1050
+;                               xfy               1100
+then                            xfx               1150
+if                              fx                1160
+else                            xfy               1170
+::                              xfx               1175
+==>                             xfx               1175
+where                           xfx               1175
+--->                            xfy               1179
+type                            fx                1180
+solver                          fy                1181
+end_module                      fx                1199
+import_module                   fx                1199
+include_module                  fx                1199
+initialise                      fx                1199
+inst                            fx                1199
+instance                        fx                1199
+mode                            fx                1199
+module                          fx                1199
+pragma                          fx                1199
+promise                         fx                1199
+rule                            fx                1199
+typeclass                       fx                1199
+use_module                      fx                1199
+-->                             xfx               1200
+:-                              fx                1200
+:-                              xfx               1200
+?-                              fx                1200
 
 @end example
 
@@ -533,6 +548,7 @@ The allowed declarations are:
 
 @example
 :- type
+:- solver type
 :- pred
 :- func
 :- inst
@@ -541,6 +557,7 @@ The allowed declarations are:
 :- instance
 :- pragma
 :- promise
+:- initialise
 :- module
 :- interface
 :- implementation
@@ -4219,6 +4236,7 @@ argument mode is @samp{in}.
 * The module system::
 * An example module::
 * Sub-modules::
+* Optional module initialisation::
 @end menu
 
 @node The module system
@@ -4537,6 +4555,32 @@ doesn't always work correctly if you're using nested sub-modules.
 (The work-around is to use separate sub-modules instead of nested
 sub-modules, i.e.@: to put the sub-modules in separate source files.)
 @end itemize
+
+@node Optional module initialisation
+@section Optional module initialisation
+
+Modules that interact with foreign libraries or services
+may require special initialisation before use.
+Such modules may include any number of @samp{initialise} directives
+in their implementation sections.
+An @samp{initialise} directive takes the following form:
+
+@example
+:- initialise initpredname.
+@end example
+
+where the predicate @samp{initpredname/2} must be declared with the following
+signature:
+
+@example
+:- pred initpredname(io::di, io::uo) is det.
+@end example
+
+The effect of the @samp{initialise} declaration is to ensure that
+@samp{initpredname} is invoked before the program's @samp{main}
+predicate.  Initialisation predicates within a module are executed in the
+order in which they are specified, although no order may be assumed between
+different modules or submodules.
 
 @node Type classes
 @chapter Type classes
@@ -5644,7 +5688,9 @@ must satisfy with respect to completeness.
 
 There is an operational semantics of Mercury programs called the
 @dfn{strict sequential} operational semantics.  In this semantics,
-the program is executed top-down, starting from @samp{main/2},
+the program is executed top-down, starting from @samp{main/2}
+preceded by any module initialisation goals
+(as per @xref{Optional module initialisation}),
 and function calls within a goal, conjunctions and disjunctions are all
 executed in depth-first left-to-right order. 
 Conjunctions and function calls are ``minimally'' reordered as required
