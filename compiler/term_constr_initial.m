@@ -414,7 +414,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
     % predicates.  Leaving it up to the analyser may result in better
     % argument size information anyway.
     %
-    ( SpecialPredId \= initialise ->
+    ( SpecialPredId \= (initialise) ->
         ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
         proc_info_headvars(ProcInfo0, HeadVars),
         proc_info_vartypes(ProcInfo0, VarTypes),

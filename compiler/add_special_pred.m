@@ -217,7 +217,7 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
                 true
             )
         ;
-            SpecialPredId = initialise,
+            SpecialPredId = (initialise),
             ( type_is_solver_type(!.ModuleInfo, Type) ->
                 do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
                     TypeCtor, TypeBody, Context, Status0, !ModuleInfo)
@@ -333,7 +333,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     module_info_name(!.ModuleInfo, ModuleName),
     special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
     Name = special_pred_name(SpecialPredId, TypeCtor),
-    ( SpecialPredId = initialise ->
+    ( SpecialPredId = (initialise) ->
         TypeCtor = TypeSymName - _TypeArity,
         sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
         PredName = qualified(TypeModuleName, Name)

@@ -189,7 +189,7 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
 	(
 		% Always check solver type initialisation
 		% predicates since they are always user-defined.
-		SpecialPredId = initialise
+		SpecialPredId = (initialise)
 	;	
 		get_user_unify_compare(ModuleInfo, TypeBody,
 			UnifyCompare),
@@ -239,7 +239,7 @@ emit_non_term_user_special_warning(Context, SpecialPred, TypeCtor, !IO) :-
 		SpecialPred = compare,
 		SpecialPredStr = "comparison"
 	;
-		SpecialPred = initialise,
+		SpecialPred = (initialise),
 		SpecialPredStr = "initialisation"
 	;
 		SpecialPred = index,

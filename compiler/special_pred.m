@@ -248,13 +248,13 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body) :-
 		type_body_has_user_defined_equality_pred(ModuleInfo, Body,
 			unify_compare(_, UserCmp)), UserCmp = yes(_)
 	;
-		SpecialPredId \= initialise,
+		SpecialPredId \= (initialise),
 		Ctors = Body ^ du_type_ctors,
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQTVars, _, _, _),
 		ExistQTVars \= []
 	;
-		SpecialPredId = initialise,
+		SpecialPredId = (initialise),
 		type_body_is_solver_type(ModuleInfo, Body)
 	).
 

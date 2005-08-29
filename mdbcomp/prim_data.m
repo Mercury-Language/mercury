@@ -100,7 +100,7 @@
 	--->	unify
 	;	index
 	;	compare
-	;	initialise.
+	;	(initialise).
 
 	% special_pred_name_arity(SpecialPredType, GenericPredName, Arity):
 	%	true iff there is a special predicate of category

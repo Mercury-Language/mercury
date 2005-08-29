@@ -644,7 +644,7 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
     ; SpecialPredId = compare, Args = [Res, X, Y] ->
         unify_proc__generate_compare_clauses(ModuleInfo, Type,
             TypeBody, Res, X, Y, Context, Clauses, Info1, Info)
-    ; SpecialPredId = initialise, Args = [X] ->
+    ; SpecialPredId = (initialise), Args = [X] ->
         unify_proc__generate_initialise_clauses(ModuleInfo, Type,
             TypeBody, X, Context, Clauses, Info1, Info)
 
