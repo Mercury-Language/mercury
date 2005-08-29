@@ -455,29 +455,46 @@
 % strings into static data even when they might be updated.
 %:- mode string__unsafe_set_char(in, in, di, uo) is det.
 
-	% string__foldl(Closure, String, Acc0, Acc):
+	% string__foldl(Closure, String, !Acc):
 	% `Closure' is an accumulator predicate which is to be called for each
 	% character of the string `String' in turn. The initial value of the
-	% accumulator is `Acc0' and the final value is `Acc'.
+	% accumulator is `!.Acc' and the final value is `!:Acc'.
 	% (string__foldl is equivalent to
 	% 	string__to_char_list(String, Chars),
-	% 	list__foldl(Closure, Chars, Acc0, Acc)
+	% 	list__foldl(Closure, Chars, !Acc)
 	% but is implemented more efficiently.)
 	%
-:- func string__foldl(func(char, T) = T, string, T) = T.
-:- pred string__foldl(pred(char, T, T), string, T, T).
-:- mode string__foldl(pred(in, in, out) is det, in, in, out) is det.
+:- func string__foldl(func(char, A) = A, string, A) = A.
+:- pred string__foldl(pred(char, A, A), string, A, A).
 :- mode string__foldl(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode string__foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode string__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode string__foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
 :- mode string__foldl(pred(in, in, out) is multi, in, in, out) is multi.
+
+	% string__foldl2(Closure, String, !Acc1, !Acc2):
+	% A variant of string__foldl with two accumulators.
+	%
+:- pred string__foldl2(pred(char, A, A, B, B), string, A, A, B, B).
+:- mode string__foldl2(pred(in, di, uo, di, uo) is det,
+	in, di, uo, di, uo) is det.
+:- mode string__foldl2(pred(in, in, out, di, uo) is det,
+	in, in, out, di, uo) is det.
+:- mode string__foldl2(pred(in, in, out, in, out) is det,
+	in, in, out, in, out) is det.
+:- mode string__foldl2(pred(in, in, out, in, out) is semidet,
+	in, in, out, in, out) is semidet.
+:- mode string__foldl2(pred(in, in, out, in, out) is nondet,
+	in, in, out, in, out) is nondet.
+:- mode string__foldl2(pred(in, in, out, in, out) is multi,
+	in, in, out, in, out) is multi.
 
 	% string__foldl_substring(Closure, String, Start, Count, !Acc)
 	% is equivalent to string__foldl(Closure, SubString, !Acc)
 	% where SubString = string__substring(String, Start, Count).
 	%
-:- func string__foldl_substring(func(char, T) = T, string, int, int, T) = T.
-:- pred string__foldl_substring(pred(char, T, T), string, int, int, T, T).
+:- func string__foldl_substring(func(char, A) = A, string, int, int, A) = A.
+:- pred string__foldl_substring(pred(char, A, A), string, int, int, A, A).
 :- mode string__foldl_substring(pred(in, in, out) is det, in, in, in,
 	in, out) is det.
 :- mode string__foldl_substring(pred(in, di, uo) is det, in, in, in,
@@ -488,6 +505,24 @@
 	in, out) is nondet.
 :- mode string__foldl_substring(pred(in, in, out) is multi, in, in, in,
 	in, out) is multi.
+
+	% string__foldl_substring2(Closure, String, Start, Count, !Acc1, !Acc2)
+	% A variant of string__foldl_substring with two accumulators.
+	%
+:- pred string__foldl2_substring(pred(char, A, A, B, B),
+	string, int, int, A, A, B, B).
+:- mode string__foldl2_substring(pred(in, di, uo, di, uo) is det,
+	in, in, in, di, uo, di, uo) is det.
+:- mode string__foldl2_substring(pred(in, in, out, di, uo) is det,
+	in, in, in, in, out, di, uo) is det.
+:- mode string__foldl2_substring(pred(in, in, out, in, out) is det,
+	in, in, in, in, out, in, out) is det.
+:- mode string__foldl2_substring(pred(in, in, out, in, out) is semidet,
+	in, in, in, in, out, in, out) is semidet.
+:- mode string__foldl2_substring(pred(in, in, out, in, out) is nondet,
+	in, in, in, in, out, in, out) is nondet.
+:- mode string__foldl2_substring(pred(in, in, out, in, out) is multi,
+	in, in, in, in, out, in, out) is multi.
 
 	% string__foldr(Closure, String, !Acc):
 	% As string__foldl/4, except that processing proceeds right-to-left.
@@ -819,20 +854,30 @@ string__set_char_det(Char, Int, String0, String) :-
 		error("string__set_char_det: index out of range")
 	).
 
-string__foldl(Closure, String, Acc0, Acc) :-
+string__foldl(Closure, String, !Acc) :-
 	string__length(String, Length),
-	string__foldl_substring(Closure, String, 0, Length, Acc0, Acc).
+	string__foldl_substring(Closure, String, 0, Length, !Acc).
 
-string__foldl_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
+string__foldl2(Closure, String, !Acc1, !Acc2) :-
+	string__length(String, Length),
+	string__foldl2_substring(Closure, String, 0, Length, !Acc1, !Acc2).
+
+string__foldl_substring(Closure, String, Start0, Count0, !Acc) :-
 	Start = max(0, Start0),
 	Count = min(Count0, length(String) - Start),
-	string__foldl_substring_2(Closure, String,Start, Count, Acc0, Acc).
+	string__foldl_substring_2(Closure, String, Start, Count, !Acc).
 
-:- pred string__foldl_substring_2(pred(char, T, T), string, int, int, T, T).
-:- mode string__foldl_substring_2(pred(in, in, out) is det, in, in, in,
-	in, out) is det.
+string__foldl2_substring(Closure, String, Start0, Count0, !Acc1, !Acc2) :-
+	Start = max(0, Start0),
+	Count = min(Count0, length(String) - Start),
+	string__foldl2_substring_2(Closure, String, Start, Count,
+		!Acc1, !Acc2).
+
+:- pred string__foldl_substring_2(pred(char, A, A), string, int, int, A, A).
 :- mode string__foldl_substring_2(pred(in, di, uo) is det, in, in, in,
 	di, uo) is det.
+:- mode string__foldl_substring_2(pred(in, in, out) is det, in, in, in,
+	in, out) is det.
 :- mode string__foldl_substring_2(pred(in, in, out) is semidet, in, in, in,
 	in, out) is semidet.
 :- mode string__foldl_substring_2(pred(in, in, out) is nondet, in, in, in,
@@ -845,6 +890,30 @@ string__foldl_substring_2(Closure, String, I, Count, !Acc) :-
 		Closure(string__unsafe_index(String, I), !Acc),
 		string__foldl_substring_2(Closure, String, I + 1, Count - 1,
 			!Acc)
+	;
+		true
+	).
+
+:- pred string__foldl2_substring_2(pred(char, A, A, B, B), string, int, int,
+	A, A, B, B).
+:- mode string__foldl2_substring_2(pred(in, di, uo, di, uo) is det,
+	in, in, in, di, uo, di, uo) is det.
+:- mode string__foldl2_substring_2(pred(in, in, out, di, uo) is det,
+	in, in, in, in, out, di, uo) is det.
+:- mode string__foldl2_substring_2(pred(in, in, out, in, out) is det,
+	in, in, in, in, out, in, out) is det.
+:- mode string__foldl2_substring_2(pred(in, in, out, in, out) is semidet,
+	in, in, in, in, out, in, out) is semidet.
+:- mode string__foldl2_substring_2(pred(in, in, out, in, out) is nondet,
+	in, in, in, in, out, in, out) is nondet.
+:- mode string__foldl2_substring_2(pred(in, in, out, in, out) is multi,
+	in, in, in, in, out, in, out) is multi.
+
+string__foldl2_substring_2(Closure, String, I, Count, !Acc1, !Acc2) :-
+	( 0 < Count ->
+		Closure(string__unsafe_index(String, I), !Acc1, !Acc2),
+		string__foldl2_substring_2(Closure, String, I + 1, Count - 1,
+			!Acc1, !Acc2)
 	;
 		true
 	).
@@ -1242,8 +1311,8 @@ string__to_upper(StrIn, StrOut) :-
 
 string__char_list_to_upper([], []).
 string__char_list_to_upper([X | Xs], [Y | Ys]) :-
-	char__to_upper(X,Y),
-	string__char_list_to_upper(Xs,Ys).
+	char__to_upper(X, Y),
+	string__char_list_to_upper(Xs, Ys).
 
 string__to_lower(StrIn, StrOut) :-
 	string__to_char_list(StrIn, List),
@@ -1254,8 +1323,8 @@ string__to_lower(StrIn, StrOut) :-
 
 string__char_list_to_lower([], []).
 string__char_list_to_lower([X | Xs], [Y | Ys]) :-
-	char__to_lower(X,Y),
-	string__char_list_to_lower(Xs,Ys).
+	char__to_lower(X, Y),
+	string__char_list_to_lower(Xs, Ys).
 
 string__capitalize_first(S0, S) :-
 	( string__first_char(S0, C, S1) ->
