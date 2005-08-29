@@ -350,10 +350,10 @@ standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap) :-
 		CodeAddr = do_trace_redo_fail_deep,
 		StdCodeAddr = CodeAddr
 	;
-		CodeAddr = do_call_closure,
+		CodeAddr = do_call_closure(_),
 		StdCodeAddr = CodeAddr
 	;
-		CodeAddr = do_call_class_method,
+		CodeAddr = do_call_class_method(_),
 		StdCodeAddr = CodeAddr
 	;
 		CodeAddr = do_not_reached,

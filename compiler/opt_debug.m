@@ -162,7 +162,7 @@ maybe_dump_instrs(OptDebug, Instrs, !IO) :-
 
 dump_instrs_2([], _PrintComments, !IO).
 dump_instrs_2([Uinstr - Comment | Instrs], PrintComments, !IO) :-
-    output_instruction_and_comment(Uinstr, Comment, PrintComments, !IO),
+    output_debug_instruction_and_comment(Uinstr, Comment, PrintComments, !IO),
     dump_instrs_2(Instrs, PrintComments, !IO).
 
 dump_intlist([]) = "".
@@ -482,29 +482,18 @@ dump_code_addr(do_fail) = "do_fail".
 dump_code_addr(do_trace_redo_fail_shallow) =
     "do_trace_redo_fail_shallow".
 dump_code_addr(do_trace_redo_fail_deep) = "do_trace_redo_fail_deep".
-dump_code_addr(do_call_closure) = "do_nondet_closure".
-dump_code_addr(do_call_class_method) = "do_nondet_class_method".
+dump_code_addr(do_call_closure(Variant)) =
+    "do_call_closure_" ++ ho_call_variant_to_string(Variant).
+dump_code_addr(do_call_class_method(Variant)) =
+    "do_call_class_method_" ++ ho_call_variant_to_string(Variant).
 dump_code_addr(do_not_reached) = "do_not_reached".
 
-dump_code_addr(ProcLabel, label(Label)) = dump_label(ProcLabel, Label).
-dump_code_addr(_, imported(ProcLabel)) = dump_proclabel(ProcLabel).
-dump_code_addr(_, succip) = "succip".
-dump_code_addr(_, do_succeed(Last)) = Str :-
-    (
-        Last = no,
-        Str = "do_succeed"
+dump_code_addr(ProcLabel, CodeAddr) =
+    ( CodeAddr = label(Label) ->
+        dump_label(ProcLabel, Label)
     ;
-        Last = yes,
-        Str = "do_last_succeed"
+        dump_code_addr(CodeAddr)
     ).
-dump_code_addr(_, do_redo) = "do_redo".
-dump_code_addr(_, do_fail) = "do_fail".
-dump_code_addr(_, do_trace_redo_fail_shallow) =
-    "do_trace_redo_fail_shallow".
-dump_code_addr(_, do_trace_redo_fail_deep) = "do_trace_redo_fail_deep".
-dump_code_addr(_, do_call_closure) = "do_nondet_closure".
-dump_code_addr(_, do_call_class_method) = "do_nondet_class_method".
-dump_code_addr(_, do_not_reached) = "do_not_reached".
 
 dump_code_addrs([]) = "".
 dump_code_addrs([Addr | Addrs]) =

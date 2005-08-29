@@ -336,6 +336,10 @@ static  MR_Word MR_compare_closures_representation(MR_Closure *x,
 ** The placement of the extra input arguments into MR_r3, MR_r4 etc is done by
 ** the code generator, as is the movement of the output arguments to their
 ** eventual destinations.
+**
+** Each do_call_closure_N variant is specialized for the case where the number
+** of additional input arguments is N. When calling them, the code generator
+** puts the additional arguments (if any) in MR_r2, MR_r3 etc.
 */
 
     /*
@@ -353,12 +357,89 @@ static  MR_Word MR_compare_closures_representation(MR_Closure *x,
     */
 #define MR_CLASS_METHOD_CALL_INPUTS_COMPACT 3
 
+#ifdef MR_DO_CALL_STATS
+#define MR_MAX_STATS_ARG 100
+
+static unsigned int    MR_explicit_closure_arg_histogram[MR_MAX_STATS_ARG];
+static unsigned int    MR_explicit_method_arg_histogram[MR_MAX_STATS_ARG];
+static unsigned int    MR_hidden_closure_arg_histogram[MR_MAX_STATS_ARG];
+static unsigned int    MR_hidden_method_arg_histogram[MR_MAX_STATS_ARG];
+
+#define MR_maybe_record_closure_histogram(exp, hid)                           \
+    do {                                                                      \
+        if (exp < MR_MAX_STATS_ARG) {                                         \
+            MR_explicit_closure_arg_histogram[exp]++;                         \
+        }                                                                     \
+        if (hid < MR_MAX_STATS_ARG) {                                         \
+            MR_hidden_closure_arg_histogram[hid]++;                           \
+        }                                                                     \
+    } while (0)
+
+#define MR_maybe_record_method_histogram(exp, hid)                            \
+    do {                                                                      \
+        if (exp < MR_MAX_STATS_ARG) {                                         \
+            MR_explicit_method_arg_histogram[exp]++;                          \
+        }                                                                     \
+        if (hid < MR_MAX_STATS_ARG) {                                         \
+            MR_hidden_method_arg_histogram[hid]++;                            \
+        }                                                                     \
+    } while (0)
+
+void
+MR_print_hidden_arg_stats(FILE *fp)
+{
+    int i;
+
+    for (i = 0; i < MR_MAX_STATS_ARG; i++) {
+        if (MR_explicit_closure_arg_histogram[i] > 0) {
+            fprintf(fp, "closure invocations with %d explicit args: %d\n",
+                i, MR_explicit_closure_arg_histogram[i]);
+        }
+    }
+
+    for (i = 0; i < MR_MAX_STATS_ARG; i++) {
+        if (MR_explicit_method_arg_histogram[i] > 0) {
+            fprintf(fp, "method invocations with %d explicit args: %d\n",
+                i, MR_explicit_method_arg_histogram[i]);
+        }
+    }
+
+    for (i = 0; i < MR_MAX_STATS_ARG; i++) {
+        if (MR_hidden_closure_arg_histogram[i] > 0) {
+            fprintf(fp, "closure invocations with %d hidden args: %d\n",
+                i, MR_hidden_closure_arg_histogram[i]);
+        }
+    }
+
+    for (i = 0; i < MR_MAX_STATS_ARG; i++) {
+        if (MR_hidden_method_arg_histogram[i] > 0) {
+            fprintf(fp, "method invocations with %d hidden args: %d\n",
+                i, MR_hidden_method_arg_histogram[i]);
+        }
+    }
+}
+
+#else
+
+#define MR_maybe_record_closure_histogram(exp, hid)     ((void) 0)
+#define MR_maybe_record_method_histogram(exp, hid)      ((void) 0)
+
+#endif
+
 /*
 ** These are the real implementations of higher order calls and method calls.
 */
 
 MR_define_extern_entry(mercury__do_call_closure_compact);
+MR_define_extern_entry(mercury__do_call_closure_0);
+MR_define_extern_entry(mercury__do_call_closure_1);
+MR_define_extern_entry(mercury__do_call_closure_2);
+MR_define_extern_entry(mercury__do_call_closure_3);
 MR_define_extern_entry(mercury__do_call_class_method_compact);
+MR_define_extern_entry(mercury__do_call_class_method_0);
+MR_define_extern_entry(mercury__do_call_class_method_1);
+MR_define_extern_entry(mercury__do_call_class_method_2);
+MR_define_extern_entry(mercury__do_call_class_method_3);
 
 /*
 ** These are the real implementations of unify and compare.
@@ -374,7 +455,15 @@ MR_define_extern_entry(mercury__builtin__compare_representation_3_0);
 
 MR_BEGIN_MODULE(call_module)
     MR_init_entry_an(mercury__do_call_closure_compact);
+    MR_init_entry_an(mercury__do_call_closure_0);
+    MR_init_entry_an(mercury__do_call_closure_1);
+    MR_init_entry_an(mercury__do_call_closure_2);
+    MR_init_entry_an(mercury__do_call_closure_3);
     MR_init_entry_an(mercury__do_call_class_method_compact);
+    MR_init_entry_an(mercury__do_call_class_method_0);
+    MR_init_entry_an(mercury__do_call_class_method_1);
+    MR_init_entry_an(mercury__do_call_class_method_2);
+    MR_init_entry_an(mercury__do_call_class_method_3);
 
     MR_init_entry_an(mercury__builtin__unify_2_0);
     MR_init_entry_an(mercury__builtin__compare_3_0);
@@ -385,39 +474,49 @@ MR_BEGIN_MODULE(call_module)
 MR_BEGIN_CODE
 
 /*
-** Note: this routine gets ignored for profiling.
-** That means it should be called using noprof_call()
-** rather than call().  See comment in output_call in
-** compiler/llds_out for explanation.
+** The following comments apply to all variants of do_call_closure and
+** do_call_class_method.
+**
+** Each of the following routines starts by picking up its input arguments
+** from Mercury abstract machine registers and putting them in local variables.
+** This allows the values of these arguments to be printed in gdb without
+** worrying about which real machine registers, if any, hold them.
+**
+** Also note that in each case, when we invoke the higher order value,
+** we pass MR_prof_ho_caller_proc as the second argument of MR_tailcall
+** instead of the name of the routine itself, so that the call gets recorded
+** as having come from our caller.
+**
+** Each of these routines get ignored for profiling. That means they should be
+** called using noprof_call() rather than call(). See the comment in
+** output_call in compiler/llds_out for the explanation.
+**
+** Any change in one variant probably has to be made in all variants.
 */
+
 MR_define_entry(mercury__do_call_closure_compact);
 {
     MR_Closure  *closure;
-    int         num_extra_args; /* # of args provided by our caller */
+    int         num_input_args; /* # of args provided by our caller */
     int         num_hidden_args;/* # of args hidden in the closure  */
     int         i;
 
-    /*
-    ** These assignments to local variables allow the values
-    ** of the relevant registers to be printed in gdb without
-    ** worrying about which machine registers, if any, hold them.
-    */
-
     closure = (MR_Closure *) MR_r1;
-    num_extra_args = MR_r2;
+    num_input_args = MR_r2;
     num_hidden_args = closure->MR_closure_num_hidden_args;
+    MR_maybe_record_closure_histogram(num_input_args, num_hidden_args);
 
     MR_save_registers();
 
     if (num_hidden_args < MR_HO_CALL_INPUTS_COMPACT) {
         /* copy to the left, from the left */
-        for (i = 1; i <= num_extra_args; i++) {
+        for (i = 1; i <= num_input_args; i++) {
             MR_virtual_reg_assign(i + num_hidden_args,
                 MR_virtual_reg_value(i + MR_HO_CALL_INPUTS_COMPACT));
         }
     } else if (num_hidden_args > MR_HO_CALL_INPUTS_COMPACT) {
         /* copy to the right, from the right */
-        for (i = num_extra_args; i > 0; i--) {
+        for (i = num_input_args; i > 0; i--) {
             MR_virtual_reg_assign(i + num_hidden_args,
                 MR_virtual_reg_value(i + MR_HO_CALL_INPUTS_COMPACT));
         }
@@ -429,75 +528,285 @@ MR_define_entry(mercury__do_call_closure_compact);
 
     MR_restore_registers();
 
-    /*
-    ** Note that we pass MR_prof_ho_caller_proc rather than
-    ** MR_LABEL(mercury__do_call_closure_compact), so that the call
-    ** gets recorded as having come from our caller.
-    */
     MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
 }
 
-/*
-** Note: this routine gets ignored for profiling.
-** That means it should be called using noprof_call()
-** rather than call().  See comment in output_call in
-** compiler/llds_out for explanation.
-*/
+MR_define_entry(mercury__do_call_closure_0);
+{
+    MR_Closure  *closure;
+    int         num_hidden_args;/* # of args hidden in the closure  */
+    int         i;
+
+    closure = (MR_Closure *) MR_r1;
+    num_hidden_args = closure->MR_closure_num_hidden_args;
+    MR_maybe_record_closure_histogram(0, num_hidden_args);
+
+    MR_save_registers();
+
+    for (i = 1; i <= num_hidden_args; i++) {
+        MR_virtual_reg_assign(i, closure->MR_closure_hidden_args(i));
+    }
+
+    MR_restore_registers();
+
+    MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
+}
+
+MR_define_entry(mercury__do_call_closure_1);
+{
+    MR_Closure  *closure;
+    int         num_hidden_args;/* # of args hidden in the closure  */
+    int         i;
+    MR_Word     arg1;
+
+    closure = (MR_Closure *) MR_r1;
+    arg1 = MR_r2;
+    num_hidden_args = closure->MR_closure_num_hidden_args;
+    MR_maybe_record_closure_histogram(1, num_hidden_args);
+
+    MR_save_registers();
+
+    MR_virtual_reg_assign(num_hidden_args + 1, arg1);
+    for (i = 1; i <= num_hidden_args; i++) {
+        MR_virtual_reg_assign(i, closure->MR_closure_hidden_args(i));
+    }
+
+    MR_restore_registers();
+
+    MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
+}
+
+MR_define_entry(mercury__do_call_closure_2);
+{
+    MR_Closure  *closure;
+    int         num_hidden_args;/* # of args hidden in the closure  */
+    int         i;
+    MR_Word     arg1;
+    MR_Word     arg2;
+
+    closure = (MR_Closure *) MR_r1;
+    arg1 = MR_r2;
+    arg2 = MR_r3;
+    num_hidden_args = closure->MR_closure_num_hidden_args;
+    MR_maybe_record_closure_histogram(2, num_hidden_args);
+
+    MR_save_registers();
+
+    MR_virtual_reg_assign(num_hidden_args + 1, arg1);
+    MR_virtual_reg_assign(num_hidden_args + 2, arg2);
+    for (i = 1; i <= num_hidden_args; i++) {
+        MR_virtual_reg_assign(i, closure->MR_closure_hidden_args(i));
+    }
+
+    MR_restore_registers();
+
+    MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
+}
+
+MR_define_entry(mercury__do_call_closure_3);
+{
+    MR_Closure  *closure;
+    int         num_hidden_args;/* # of args hidden in the closure  */
+    int         i;
+    MR_Word     arg1;
+    MR_Word     arg2;
+    MR_Word     arg3;
+
+    closure = (MR_Closure *) MR_r1;
+    arg1 = MR_r2;
+    arg2 = MR_r3;
+    arg3 = MR_r4;
+    num_hidden_args = closure->MR_closure_num_hidden_args;
+    MR_maybe_record_closure_histogram(3, num_hidden_args);
+
+    MR_save_registers();
+
+    MR_virtual_reg_assign(num_hidden_args + 1, arg1);
+    MR_virtual_reg_assign(num_hidden_args + 2, arg2);
+    MR_virtual_reg_assign(num_hidden_args + 3, arg3);
+    for (i = 1; i <= num_hidden_args; i++) {
+        MR_virtual_reg_assign(i, closure->MR_closure_hidden_args(i));
+    }
+
+    MR_restore_registers();
+
+    MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
+}
+
 MR_define_entry(mercury__do_call_class_method_compact);
 {
     MR_Word     type_class_info;
     MR_Integer  method_index;
     MR_Integer  num_input_args;
-    MR_Code     *destination;
-    MR_Integer  num_extra_instance_args;
+    MR_Integer  num_hidden_args;
+    MR_Code     *dest;
     int         i;
-
-    /*
-    ** These assignments to local variables allow the values
-    ** of the relevant registers to be printed in gdb without
-    ** worrying about which machine registers, if any, hold them.
-    */
 
     type_class_info = MR_r1;
     method_index = (MR_Integer) MR_r2;
     num_input_args = MR_r3;
 
-    destination = MR_typeclass_info_class_method(type_class_info,
-        method_index);
-    num_extra_instance_args = (MR_Integer)
+    dest = MR_typeclass_info_class_method(type_class_info, method_index);
+    num_hidden_args = (MR_Integer)
         MR_typeclass_info_num_extra_instance_args(type_class_info);
+    MR_maybe_record_method_histogram(num_input_args, num_hidden_args);
 
     MR_save_registers();
 
-    if (num_extra_instance_args < MR_CLASS_METHOD_CALL_INPUTS_COMPACT) {
+    if (num_hidden_args < MR_CLASS_METHOD_CALL_INPUTS_COMPACT) {
         /* copy to the left, from the left */
         for (i = 1; i <= num_input_args; i++) {
-            MR_virtual_reg_assign(i + num_extra_instance_args,
+            MR_virtual_reg_assign(i + num_hidden_args,
                 MR_virtual_reg_value(i + MR_CLASS_METHOD_CALL_INPUTS_COMPACT));
         }
-    } else if (num_extra_instance_args >
+    } else if (num_hidden_args >
             MR_CLASS_METHOD_CALL_INPUTS_COMPACT)
     {
         /* copy to the right, from the right */
         for (i = num_input_args; i > 0; i--) {
-            MR_virtual_reg_assign(i + num_extra_instance_args,
+            MR_virtual_reg_assign(i + num_hidden_args,
                 MR_virtual_reg_value(i + MR_CLASS_METHOD_CALL_INPUTS_COMPACT));
         }
     } /* else the new args are in the right place */
 
-    for (i = num_extra_instance_args; i > 0; i--) {
+    for (i = num_hidden_args; i > 0; i--) {
         MR_virtual_reg_assign(i,
-            MR_typeclass_info_extra_instance_arg(MR_virtual_reg_value(1), i));
+            MR_typeclass_info_extra_instance_arg(type_class_info, i));
     }
 
     MR_restore_registers();
 
-    /*
-    ** Note that we pass MR_prof_ho_caller_proc rather than
-    ** MR_LABEL(mercury__do_call_class_method_compact), so that
-    ** the call gets recorded as having come from our caller.
-    */
-    MR_tailcall(destination, MR_prof_ho_caller_proc);
+    MR_tailcall(dest, MR_prof_ho_caller_proc);
+}
+
+MR_define_entry(mercury__do_call_class_method_0);
+{
+    MR_Word     type_class_info;
+    MR_Integer  method_index;
+    MR_Integer  num_hidden_args;
+    MR_Code     *dest;
+    int         i;
+
+    type_class_info = MR_r1;
+    method_index = (MR_Integer) MR_r2;
+
+    dest = MR_typeclass_info_class_method(type_class_info, method_index);
+    num_hidden_args = (MR_Integer)
+        MR_typeclass_info_num_extra_instance_args(type_class_info);
+    MR_maybe_record_method_histogram(0, num_hidden_args);
+
+    MR_save_registers();
+
+    for (i = num_hidden_args; i > 0; i--) {
+        MR_virtual_reg_assign(i,
+            MR_typeclass_info_extra_instance_arg(type_class_info, i));
+    }
+
+    MR_restore_registers();
+
+    MR_tailcall(dest, MR_prof_ho_caller_proc);
+}
+
+MR_define_entry(mercury__do_call_class_method_1);
+{
+    MR_Word     type_class_info;
+    MR_Integer  method_index;
+    MR_Integer  num_hidden_args;
+    MR_Code     *dest;
+    int         i;
+    MR_Word     arg1;
+
+    type_class_info = MR_r1;
+    method_index = (MR_Integer) MR_r2;
+    arg1 = MR_r3;
+
+    dest = MR_typeclass_info_class_method(type_class_info, method_index);
+    num_hidden_args = (MR_Integer)
+        MR_typeclass_info_num_extra_instance_args(type_class_info);
+    MR_maybe_record_method_histogram(1, num_hidden_args);
+
+    MR_save_registers();
+
+    MR_virtual_reg_assign(num_hidden_args + 1, arg1);
+    for (i = num_hidden_args; i > 0; i--) {
+        MR_virtual_reg_assign(i,
+            MR_typeclass_info_extra_instance_arg(type_class_info, i));
+    }
+
+    MR_restore_registers();
+
+    MR_tailcall(dest, MR_prof_ho_caller_proc);
+}
+
+MR_define_entry(mercury__do_call_class_method_2);
+{
+    MR_Word     type_class_info;
+    MR_Integer  method_index;
+    MR_Integer  num_hidden_args;
+    MR_Code     *dest;
+    int         i;
+    MR_Word     arg1;
+    MR_Word     arg2;
+
+    type_class_info = MR_r1;
+    method_index = (MR_Integer) MR_r2;
+    arg1 = MR_r3;
+    arg2 = MR_r4;
+
+    dest = MR_typeclass_info_class_method(type_class_info, method_index);
+    num_hidden_args = (MR_Integer)
+        MR_typeclass_info_num_extra_instance_args(type_class_info);
+    MR_maybe_record_method_histogram(2, num_hidden_args);
+
+    MR_save_registers();
+
+    MR_virtual_reg_assign(num_hidden_args + 1, arg1);
+    MR_virtual_reg_assign(num_hidden_args + 2, arg2);
+    for (i = num_hidden_args; i > 0; i--) {
+        MR_virtual_reg_assign(i,
+            MR_typeclass_info_extra_instance_arg(type_class_info, i));
+    }
+
+    MR_restore_registers();
+
+    MR_tailcall(dest, MR_prof_ho_caller_proc);
+}
+
+MR_define_entry(mercury__do_call_class_method_3);
+{
+    MR_Word     type_class_info;
+    MR_Integer  method_index;
+    MR_Integer  num_hidden_args;
+    MR_Code     *dest;
+    int         i;
+    MR_Word     arg1;
+    MR_Word     arg2;
+    MR_Word     arg3;
+
+    type_class_info = MR_r1;
+    method_index = (MR_Integer) MR_r2;
+    arg1 = MR_r3;
+    arg2 = MR_r4;
+    arg3 = MR_r5;
+
+    dest = MR_typeclass_info_class_method(type_class_info, method_index);
+    num_hidden_args = (MR_Integer)
+        MR_typeclass_info_num_extra_instance_args(type_class_info);
+    MR_maybe_record_method_histogram(3, num_hidden_args);
+
+    MR_save_registers();
+
+    MR_virtual_reg_assign(num_hidden_args + 1, arg1);
+    MR_virtual_reg_assign(num_hidden_args + 2, arg2);
+    MR_virtual_reg_assign(num_hidden_args + 3, arg3);
+    for (i = num_hidden_args; i > 0; i--) {
+        MR_virtual_reg_assign(i,
+            MR_typeclass_info_extra_instance_arg(type_class_info, i));
+    }
+
+    MR_restore_registers();
+
+    MR_tailcall(dest, MR_prof_ho_caller_proc);
 }
 
 /*

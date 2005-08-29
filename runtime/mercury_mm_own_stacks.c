@@ -537,7 +537,7 @@ mercury__table_builtin__table_mmos_consume_next_answer_multi_2_p_0(
 #else   /* ! MR_HIGHLEVEL_CODE */
 
 MR_define_extern_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
-MR_define_extern_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
+MR_define_extern_entry(MR_MMOS_RET_ALL_MULTI_ENTRY);
 
 MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1, 
     MR_PREDICATE, table_builtin, table_mmos_consume_next_answer_nondet, 2, 0);

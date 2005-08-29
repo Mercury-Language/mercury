@@ -1325,8 +1325,8 @@ livevals_addr(do_redo, no).
 livevals_addr(do_fail, no).
 livevals_addr(do_trace_redo_fail_shallow, no).
 livevals_addr(do_trace_redo_fail_deep, no).
-livevals_addr(do_call_closure, yes).
-livevals_addr(do_call_class_method, yes).
+livevals_addr(do_call_closure(_), yes).
+livevals_addr(do_call_class_method(_), yes).
 livevals_addr(do_not_reached, no).
 
 count_temps_instr_list([], !R, !F).
@@ -1974,9 +1974,10 @@ replace_labels_code_addr(do_trace_redo_fail_shallow, _,
 	do_trace_redo_fail_shallow).
 replace_labels_code_addr(do_trace_redo_fail_deep, _,
 	do_trace_redo_fail_deep).
-replace_labels_code_addr(do_call_closure, _, do_call_closure).
-replace_labels_code_addr(do_call_class_method, _,
-	do_call_class_method).
+replace_labels_code_addr(do_call_closure(MaybeSpec), _,
+		do_call_closure(MaybeSpec)).
+replace_labels_code_addr(do_call_class_method(MaybeSpec), _,
+		do_call_class_method(MaybeSpec)).
 replace_labels_code_addr(do_not_reached, _, do_not_reached).
 
 :- pred replace_labels_label_list(list(label)::in,

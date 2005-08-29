@@ -279,7 +279,7 @@ build_interval_info_in_goal(scope(_Reason, Goal) - _GoalInfo, !IntervalInfo,
 	build_interval_info_in_goal(Goal, !IntervalInfo, !Acc).
 
 build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
-	Goal = generic_call(GenericCall, ArgVars, ArgModes, Detism),
+	Goal = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
 	goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
 	IntParams = !.IntervalInfo ^ interval_params,
 	VarTypes = IntParams ^ var_types,
@@ -287,15 +287,15 @@ build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
 	ModuleInfo = IntParams ^ module_info,
 	arg_info__compute_in_and_out_vars(ModuleInfo, ArgVars,
 		ArgModes, ArgTypes, InputArgs, _OutputArgs),
-	determinism_to_code_model(Detism, CodeModel),
 
 	% Casts are generated inline.
 	( GenericCall = cast(_) ->
 		require_in_regs(InputArgs, !IntervalInfo),
 		require_access(InputArgs, !IntervalInfo)
 	;
-		call_gen__generic_call_info(CodeModel, GenericCall, _,
-			GenericVarsArgInfos, _),
+		module_info_globals(ModuleInfo, Globals),
+		call_gen__generic_call_info(Globals, GenericCall,
+			length(InputArgs), _, GenericVarsArgInfos, _, _),
 		assoc_list__keys(GenericVarsArgInfos, GenericVars),
 		list__append(GenericVars, InputArgs, Inputs),
 		build_interval_info_at_call(Inputs,

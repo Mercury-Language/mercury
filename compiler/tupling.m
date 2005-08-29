@@ -1036,7 +1036,7 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
 	).
 
 count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
-	Goal = generic_call(GenericCall, ArgVars, ArgModes, Detism),
+	Goal = generic_call(GenericCall, ArgVars, ArgModes, _Detism),
 	ProcInfo = CountInfo ^ count_info_proc,
 	ModuleInfo = CountInfo ^ count_info_module,
 	goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
@@ -1044,15 +1044,15 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
 	list__map(map__lookup(VarTypes), ArgVars, ArgTypes),
 	arg_info__compute_in_and_out_vars(ModuleInfo, ArgVars,
 		ArgModes, ArgTypes, InputArgs, OutputArgs),
-	determinism_to_code_model(Detism, CodeModel),
 
 	% Casts are generated inline.
 	( GenericCall = cast(_) ->
 		cls_require_in_regs(CountInfo, InputArgs, !CountState),
 		cls_put_in_regs(OutputArgs, !CountState)
 	;
-		call_gen__generic_call_info(CodeModel, GenericCall, _,
-			GenericVarsArgInfos, _),
+		module_info_globals(ModuleInfo, Globals),
+		call_gen__generic_call_info(Globals, GenericCall,
+			length(InputArgs), _, GenericVarsArgInfos, _, _),
 		assoc_list__keys(GenericVarsArgInfos, GenericVars),
 		list__append(GenericVars, InputArgs, Inputs),
 		set__list_to_set(OutputArgs, Outputs),

@@ -433,6 +433,8 @@
 		;	num_real_f_temps
 		;	pic
 		;	max_jump_table_size
+		;	max_specialized_do_call_closure
+		;	max_specialized_do_call_class_method
 		;	compare_specialization
 		;	fact_table_max_array_size
 				% maximum number of elements in a single
@@ -1092,6 +1094,14 @@ option_defaults_2(code_gen_option, [
 	pic			-	bool(no),
 	max_jump_table_size	-	int(0),
 					% 0 indicates any size.
+	max_specialized_do_call_closure - int(3),
+					% mercury__do_call_closure_N
+					% exists for N <= option_value;
+					% set to -1 to disable.
+	max_specialized_do_call_class_method - int(-1),
+					% mercury__do_call_class_method_N
+					% exists for N <= option_value;
+					% set to -1 to disable.
 	compare_specialization	-	int(-1),
 					% -1 asks handle_options.m to give
 					% the value, which may be grade
@@ -1768,6 +1778,10 @@ long_option("num-real-r-temps",		num_real_r_temps).
 long_option("num-real-f-temps",		num_real_f_temps).
 long_option("num-real-temps",		num_real_r_temps).	% obsolete
 long_option("max-jump-table-size",	max_jump_table_size).
+% long_option("max-spec-do-call-closure",
+%					max_specialized_do_call_closure).
+% long_option("max-spec-do-call-class-method",
+%					max_specialized_do_call_class_method).
 long_option("compare-specialization",	compare_specialization).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",

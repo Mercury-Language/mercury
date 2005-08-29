@@ -358,8 +358,8 @@ livemap__special_code_addr(do_redo, yes(redoip(lval(maxfr)))).
 livemap__special_code_addr(do_trace_redo_fail_shallow, no).
 livemap__special_code_addr(do_trace_redo_fail_deep, no).
 livemap__special_code_addr(do_fail, no).
-livemap__special_code_addr(do_call_closure, no).
-livemap__special_code_addr(do_call_class_method, no).
+livemap__special_code_addr(do_call_closure(_), no).
+livemap__special_code_addr(do_call_class_method(_), no).
 livemap__special_code_addr(do_not_reached, no).
 
 %-----------------------------------------------------------------------------%

@@ -884,9 +884,23 @@
                                     % then fails. The shallow variety only does
                                     % this if the from_full flag was set on
                                     % entry to the given procedure.
-    ;       do_call_closure
-    ;       do_call_class_method
+    ;       do_call_closure(ho_call_variant)
+    ;       do_call_class_method(ho_call_variant)
+
     ;       do_not_reached.         % We should never jump to this address.
+
+:- type ho_call_variant
+    --->    generic                 % This calls for the use of one of
+                                    % do_call_closure_compact and
+                                    % do_call_class_method_compact,
+                                    % which work for any number of visible
+                                    % input arguments.
+
+    ;       specialized_known(int). % If the integer is N, this calls for
+                                    % the use of do_call_closure_N or
+                                    % do_call_class_method_N. These are
+                                    % specialized to assume N visible
+                                    % input arguments.
 
     % A tag (used in mkword, create and field expressions and in incr_hp
     % instructions) is a small integer.

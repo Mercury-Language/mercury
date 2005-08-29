@@ -1,0 +1,42 @@
+#!/bin/sh
+# vim: ts=4 sw=4 et
+awk '
+$1 == "closure" && $5 == "explicit"     { closure_explicit[$4] += $7;   }
+$1 == "closure" && $5 == "hidden"       { closure_hidden[$4] += $7; }
+$1 == "method" && $5 == "explicit"      { method_explicit[$4] += $7;    }
+$1 == "method" && $5 == "hidden"        { method_hidden[$4] += $7;  }
+    {
+        if ($4 > max) {
+            max = $4;
+        }
+    }
+END {
+        for (i = 0; i <= max; i++) {
+            if (closure_explicit[i]) {
+                printf "closure invocations with %2d explicit args: %10d\n", \
+                    i, closure_explicit[i];
+            }
+        }
+
+        for (i = 0; i <= max; i++) {
+            if (closure_hidden[i]) {
+                printf "closure invocations with %2d hidden args:   %10d\n", \
+                    i, closure_hidden[i];
+            }
+        }
+
+        for (i = 0; i <= max; i++) {
+            if (method_explicit[i]) {
+                printf "method  invocations with %2d explicit args: %10d\n", \
+                    i, method_explicit[i];
+            }
+        }
+
+        for (i = 0; i <= max; i++) {
+            if (method_hidden[i]) {
+                printf "method  invocations with %2d hidden args:   %10d\n", \
+                    i, method_hidden[i];
+            }
+        }
+    }
+' "$@"

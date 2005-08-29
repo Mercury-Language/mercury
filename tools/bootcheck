@@ -1138,6 +1138,11 @@ then
     # Use the new mmake to build stage 3
     MMAKE=$MMAKE_DIR/mmake
 
+    # This setting is ignore unless the stage 2 was compiled with
+    # -DMR_HO_CALL_STATS.
+    HO_CALL_STATS="$root/HO_CALL_STATS"
+    export HO_CALL_STATS
+
     if test "$type_stats" != ""
     then
         # Start collecting statistics from stage 3 with a clean slate,

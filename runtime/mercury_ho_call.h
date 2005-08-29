@@ -26,6 +26,9 @@
 #include "mercury_types.h"		    /* for MR_Closure */
 #ifndef	MR_HIGHLEVEL_CODE
   #include "mercury_goto.h"		    /* for MR_declare_entry */
+  #ifdef MR_DO_CALL_STATS
+    #include  <stdio.h>               /* for FILE */
+  #endif
 #endif
 
 /*
@@ -121,6 +124,12 @@ struct MR_Closure_Struct {
 /* in mercury_types.h: typedef struct MR_Closure_Struct MR_Closure; */
 
 #define	MR_closure_hidden_args(i)	MR_closure_hidden_args_0[(i) - 1]
+
+#ifndef MR_HIGHLEVEL_CODE
+  #ifdef MR_DO_CALL_STATS
+    extern  void            MR_print_hidden_arg_stats(FILE *fp);
+  #endif
+#endif
 
 /*
 ** Build a closure for the given procedure address.

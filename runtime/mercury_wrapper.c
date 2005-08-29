@@ -1738,6 +1738,22 @@ mercury_runtime_main(void)
 	MR_print_register_usage_counts();
 #endif
 
+#ifdef	MR_DO_CALL_STATS
+	{
+		char	*stats_file_name;
+		FILE	*stats_fp;
+
+		stats_file_name = getenv("HO_CALL_STATS");
+		if (stats_file_name != NULL) {
+			stats_fp = fopen(stats_file_name, "a");
+			if (stats_fp != NULL) {
+				MR_print_hidden_arg_stats(stats_fp);
+				(void) fclose(stats_fp);
+			}
+		}
+	}
+#endif
+
         if (use_own_timer) {
 		printf("%8.3fu ",
 			((double) (MR_time_at_finish - MR_time_at_start))

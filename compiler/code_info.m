@@ -3504,8 +3504,7 @@ code_info__unlock_regs(!CI) :-
 
 code_info__clear_all_registers(OkToDeleteAny, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__clobber_all_regs(OkToDeleteAny,
-        VarLocnInfo0, VarLocnInfo),
+    var_locn__clobber_all_regs(OkToDeleteAny, VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 code_info__clobber_regs(Regs, !CI) :-
@@ -3573,10 +3572,8 @@ code_info__max_reg_in_use(CI, Max) :-
 :- implementation.
 
 code_info__generate_call_vn_livevals(CI, InputArgLocs, OutputArgs, LiveVals) :-
-    code_info__generate_call_stack_vn_livevals(CI, OutputArgs,
-        StackLiveVals),
-    code_info__generate_input_var_vn(InputArgLocs, StackLiveVals,
-        LiveVals).
+    code_info__generate_call_stack_vn_livevals(CI, OutputArgs, StackLiveVals),
+    code_info__generate_input_var_vn(InputArgLocs, StackLiveVals, LiveVals).
 
 :- pred code_info__generate_call_stack_vn_livevals(code_info::in,
     set(prog_var)::in, set(lval)::out) is det.
@@ -3641,7 +3638,8 @@ code_info__generate_return_live_lvalues(CI, OutputArgLocs, ReturnInstMap,
 code_info__generate_resume_layout(Label, ResumeMap, !CI) :-
     code_info__get_globals(!.CI, Globals),
     globals__lookup_bool_option(Globals, agc_stack_layout, AgcStackLayout),
-    ( AgcStackLayout = yes ->
+    (
+        AgcStackLayout = yes,
         code_info__get_active_temps_data(!.CI, Temps),
         code_info__get_instmap(!.CI, InstMap),
         code_info__get_proc_info(!.CI, ProcInfo),
@@ -3650,7 +3648,7 @@ code_info__generate_resume_layout(Label, ResumeMap, !CI) :-
             ProcInfo, ModuleInfo, Layout),
         code_info__add_resume_layout_for_label(Label, Layout, !CI)
     ;
-        true
+        AgcStackLayout = no
     ).
 
 %---------------------------------------------------------------------------%

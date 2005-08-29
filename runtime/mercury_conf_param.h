@@ -344,6 +344,11 @@
 ** uses which occur inside debugging routines, so to get an accurate
 ** count you should not also enable low-level debugging.)
 **
+** MR_DO_CALL_STATS
+** Enable this is you want to collect statistics about the number of arguments
+** hidden inside closures. The stats will be appended to the file named by the
+** HO_CALL_STATS environment variable.
+**
 ** MR_MPROF_PROFILE_CALLS
 ** Enables call count profiling for mprof.
 **

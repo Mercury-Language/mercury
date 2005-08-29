@@ -23,6 +23,7 @@
 :- import_module hlds__code_model.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
+:- import_module libs__globals.
 :- import_module ll_backend__code_info.
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
@@ -43,11 +44,16 @@
     list(prog_var)::in, code_tree::out, code_info::in, code_info::out)
     is det.
 
-    % call_gen__generic_call_info(CodeModel, GenericCall,
-    %   CodeAddr, FirstImmediateInputReg).
+:- type known_call_variant
+    --->    known_num
+    ;       unknown.
+
+    % call_gen__generic_call_info(Globals, GenericCall, NumImmediateInputArgs,
+    %   CodeAddr, SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant).
     %
-:- pred call_gen__generic_call_info(code_model::in, generic_call::in,
-    code_addr::out, assoc_list(prog_var, arg_info)::out, int::out) is det.
+:- pred call_gen__generic_call_info(globals::in, generic_call::in, int::in,
+    code_addr::out, assoc_list(prog_var, arg_info)::out, int::out,
+    known_call_variant::out) is det.
 
 :- pred call_gen__input_arg_locs(assoc_list(prog_var, arg_info)::in,
     assoc_list(prog_var, arg_loc)::out) is det.
@@ -70,7 +76,6 @@
 :- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
 :- import_module hlds__instmap.
-:- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
 :- import_module ll_backend__code_util.
@@ -172,22 +177,23 @@ call_gen__generate_generic_call_2(_OuterCodeModel, GenericCall, Args,
         Modes, Det, GoalInfo, Code, !CI) :-
     Types = list__map(code_info__variable_type(!.CI), Args),
 
+    code_info__get_module_info(!.CI, ModuleInfo),
+    arg_info__compute_in_and_out_vars(ModuleInfo, Args, Modes, Types,
+        InVars, OutVars),
+    module_info_globals(ModuleInfo, Globals),
+    call_gen__generic_call_info(Globals, GenericCall, length(InVars),
+        CodeAddr, SpecifierArgInfos, FirstImmInput, HoCallVariant),
     determinism_to_code_model(Det, CodeModel),
-    call_gen__generic_call_info(CodeModel, GenericCall,
-        CodeAddr, SpecifierArgInfos, FirstImmInput),
     ( CodeModel = model_semi ->
         FirstOutput = 2
     ;
         FirstOutput = 1
     ),
 
-    code_info__get_module_info(!.CI, ModuleInfo),
-    arg_info__compute_in_and_out_vars(ModuleInfo, Args, Modes, Types,
-        InVars, OutVars),
-    call_gen__give_vars_consecutive_arg_infos(InVars, FirstImmInput,
-        top_in, InVarArgInfos),
-    call_gen__give_vars_consecutive_arg_infos(OutVars, FirstOutput,
-        top_out, OutArgsInfos),
+    give_vars_consecutive_arg_infos(InVars, FirstImmInput, top_in,
+        InVarArgInfos),
+    give_vars_consecutive_arg_infos(OutVars, FirstOutput, top_out,
+        OutArgsInfos),
     list__append(SpecifierArgInfos, InVarArgInfos, InArgInfos),
     list__append(InArgInfos, OutArgsInfos, ArgInfos),
 
@@ -201,8 +207,8 @@ call_gen__generate_generic_call_2(_OuterCodeModel, GenericCall, Args,
         % registers. Setting up these arguments last results in
         % slightly more efficient code, since we can use their
         % registers when placing the variables.
-    call_gen__generic_call_nonvar_setup(GenericCall, InVars, OutVars,
-        NonVarCode, !CI),
+    call_gen__generic_call_nonvar_setup(GenericCall, HoCallVariant,
+        InVars, OutVars, NonVarCode, !CI),
 
     call_gen__extra_livevals(FirstImmInput, ExtraLiveVals),
     set__insert_list(LiveVals0, ExtraLiveVals, LiveVals),
@@ -260,15 +266,54 @@ call_gen__extra_livevals(Reg, FirstInput, ExtraLiveVals) :-
         ExtraLiveVals = []
     ).
 
-call_gen__generic_call_info(_, higher_order(PredVar, _, _, _),
-        do_call_closure, [PredVar - arg_info(1, top_in)], 3).
-call_gen__generic_call_info(_, class_method(TCVar, _, _, _),
-        do_call_class_method, [TCVar - arg_info(1, top_in)], 4).
-    % Casts are generated inline.
-call_gen__generic_call_info(_, cast(_), do_not_reached, [], 1).
-call_gen__generic_call_info(_, aditi_builtin(_, _), _, _, _) :-
-    % These should have been transformed into normal calls.
-    error("call_gen__generic_call_info: aditi_builtin").
+call_gen__generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
+        SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant) :-
+    (
+        GenericCall = higher_order(PredVar, _, _, _),
+        SpecifierArgInfos = [PredVar - arg_info(1, top_in)],
+        globals__lookup_int_option(Globals,
+            max_specialized_do_call_closure, MaxSpec),
+        (
+            MaxSpec >= 0,
+            NumInputArgs =< MaxSpec
+        ->
+            CodeAddr = do_call_closure(specialized_known(NumInputArgs)),
+            HoCallVariant = known_num,
+            FirstImmediateInputReg = 2
+        ;
+            CodeAddr = do_call_closure(generic),
+            HoCallVariant = unknown,
+            FirstImmediateInputReg = 3
+        )
+    ;
+        GenericCall = class_method(TCVar, _, _, _),
+        SpecifierArgInfos = [TCVar - arg_info(1, top_in)],
+        globals__lookup_int_option(Globals,
+            max_specialized_do_call_class_method, MaxSpec),
+        (
+            MaxSpec >= 0,
+            NumInputArgs =< MaxSpec
+        ->
+            CodeAddr = do_call_class_method(specialized_known(NumInputArgs)),
+            HoCallVariant = known_num,
+            FirstImmediateInputReg = 3
+        ;
+            CodeAddr = do_call_class_method(generic),
+            HoCallVariant = unknown,
+            FirstImmediateInputReg = 4
+        )
+    ;
+        % Casts are generated inline.
+        GenericCall = cast(_),
+        CodeAddr = do_not_reached,
+        SpecifierArgInfos = [],
+        FirstImmediateInputReg = 1,
+        HoCallVariant = unknown     % dummy; not used
+    ;
+        GenericCall = aditi_builtin(_, _),
+        % These should have been transformed into normal calls.
+        unexpected(this_file, "generic_call_info: aditi_builtin")
+    ).
 
     % Some of the values that generic call passes to the dispatch routine
     % to specify what code is being indirectly called come from HLDS
@@ -283,30 +328,46 @@ call_gen__generic_call_info(_, aditi_builtin(_, _), _, _, _) :-
     % indirectly called code's identifier that come from constants.
     %
 :- pred call_gen__generic_call_nonvar_setup(generic_call::in,
-    list(prog_var)::in, list(prog_var)::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+    known_call_variant::in, list(prog_var)::in, list(prog_var)::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
 call_gen__generic_call_nonvar_setup(higher_order(_, _, _, _),
-        InVars, _OutVars, Code, !CI) :-
-    code_info__clobber_regs([reg(r, 2)], !CI),
-    list__length(InVars, NInVars),
-    Code = node([
-        assign(reg(r, 2), const(int_const(NInVars))) -
-            "Assign number of immediate input arguments"
-    ]).
+        HoCallVariant, InVars, _OutVars, Code, !CI) :-
+    (
+        HoCallVariant = known_num,
+        Code = empty
+    ;
+        HoCallVariant = unknown,
+        code_info__clobber_regs([reg(r, 2)], !CI),
+        list__length(InVars, NInVars),
+        Code = node([
+            assign(reg(r, 2), const(int_const(NInVars))) -
+                "Assign number of immediate input arguments"
+        ])
+    ).
 call_gen__generic_call_nonvar_setup(class_method(_, Method, _, _),
-        InVars, _OutVars, Code, !CI) :-
-    code_info__clobber_regs([reg(r, 2), reg(r, 3)], !CI),
-    list__length(InVars, NInVars),
-    Code = node([
-        assign(reg(r, 2), const(int_const(Method))) -
-            "Index of class method in typeclass info",
-        assign(reg(r, 3), const(int_const(NInVars))) -
-            "Assign number of immediate input arguments"
-    ]).
-call_gen__generic_call_nonvar_setup(cast(_), _, _, _, !CI) :-
+        HoCallVariant, InVars, _OutVars, Code, !CI) :-
+    (
+        HoCallVariant = known_num,
+        code_info__clobber_regs([reg(r, 2)], !CI),
+        Code = node([
+            assign(reg(r, 2), const(int_const(Method))) -
+                "Index of class method in typeclass info"
+        ])
+    ;
+        HoCallVariant = unknown,
+        code_info__clobber_regs([reg(r, 2), reg(r, 3)], !CI),
+        list__length(InVars, NInVars),
+        Code = node([
+            assign(reg(r, 2), const(int_const(Method))) -
+                "Index of class method in typeclass info",
+            assign(reg(r, 3), const(int_const(NInVars))) -
+                "Assign number of immediate input arguments"
+        ])
+    ).
+call_gen__generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
     unexpected(this_file, "generic_call_nonvar_setup: cast").
-call_gen__generic_call_nonvar_setup(aditi_builtin(_, _), _, _, _, !CI) :-
+call_gen__generic_call_nonvar_setup(aditi_builtin(_, _), _, _, _, _, !CI) :-
     % These should have been transformed into normal calls.
     unexpected(this_file, "generic_call_nonvar_setup: aditi_builtin").
 
@@ -578,15 +639,15 @@ call_gen__generate_call_vn_livevals(InputArgLocs, OutputArgs, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__give_vars_consecutive_arg_infos(list(prog_var)::in, int::in,
+:- pred give_vars_consecutive_arg_infos(list(prog_var)::in, int::in,
     arg_mode::in, assoc_list(prog_var, arg_info)::out) is det.
 
-call_gen__give_vars_consecutive_arg_infos([], _N, _M, []).
-call_gen__give_vars_consecutive_arg_infos([Var | Vars], N0, ArgMode,
+give_vars_consecutive_arg_infos([], _N, _M, []).
+give_vars_consecutive_arg_infos([Var | Vars], N0, ArgMode,
         [Var - ArgInfo | ArgInfos]) :-
     ArgInfo = arg_info(N0, ArgMode),
     N1 = N0 + 1,
-    call_gen__give_vars_consecutive_arg_infos(Vars, N1, ArgMode, ArgInfos).
+    give_vars_consecutive_arg_infos(Vars, N1, ArgMode, ArgInfos).
 
 %---------------------------------------------------------------------------%
 
