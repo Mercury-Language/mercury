@@ -2000,27 +2000,29 @@ case $ac_cv_prog_gcc in yes)
 		mercury_cv_asm_labels=no
 		mercury_cv_gcc_labels=no
 		;;
-    # On hppa64, ia64 and powerpc64 the test programs appear to work, but
-    # larger programs die with an Illegal Instruction fault.
-    hppa64-*)
+	# On hppa64, ia64 and powerpc64 the test programs appear to work, but
+	# larger programs die with an Illegal Instruction fault.
+	hppa64-*)
 		MERCURY_MSG("gcc labels do not work on HPPA64")
 		mercury_cv_asm_labels=no
 		mercury_cv_gcc_labels=no
 		;;
-    ia64-*)
+	ia64-*)
 		MERCURY_MSG("gcc labels do not work on IA64")
 		mercury_cv_asm_labels=no
 		mercury_cv_gcc_labels=no
 		;;
-    powerpc64-*)
+	powerpc64-*)
 		MERCURY_MSG("gcc labels do not work on PPC64")
 		mercury_cv_asm_labels=no
 		mercury_cv_gcc_labels=no
 		;;
-
-    # On s390 the configure test goes into an infinite loop, so we need
-    # to avoid running it.
-    s390x-ibm-linux-gnu)
+	# On s390 the configure test goes into an infinite loop, so we need
+	# to avoid running it.
+	#
+	# s390 systems can report themselves as s390-ibm-linux-gnu
+	# or s390x-ibm-linux-gnu (and possibly others).
+	s390*)
 		MERCURY_MSG("gcc labels do not work on S/390")
 		mercury_cv_asm_labels=no
 		mercury_cv_gcc_labels=no
