@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -362,6 +362,9 @@ AC_SUBST(TEXI2DVI)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(DVIPS,dvips)
 AC_SUBST(DVIPS)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(PDFTEX, pdftex)
+AC_SUBST(PDFTEX)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(MAKEINFO,makeinfo)
 AC_SUBST(MAKEINFO)

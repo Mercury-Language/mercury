@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2002 The University of Melbourne.
+# Copyright (C) 1996-2002, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -34,6 +34,12 @@ else
 	endif
 endif
 
+ifeq ("$(PDFTEX)","")
+	PDF=warn_no_pdf
+else
+	PDF=pdf
+endif
+
 ifeq ("$(MAKEINFO)","")
 	INFOPAGES=warn_no_info
 	MDB_DOC=warn_no_mdb_doc
@@ -50,13 +56,16 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-.SUFFIXES: .in .texi_pp .texi .dvi .ps .text
+.SUFFIXES: .in .texi_pp .texi .dvi .ps .pdf .text
 
 %.dvi: %.texi_pp
 	$(TEXI2DVI) $< > $*.dvi_log
 
 %.ps: %.dvi
 	$(DVIPS) -f < $< > $@
+
+%.pdf: %.texi_pp
+	$(PDFTEX) $< > $*.pdf_log
 
 %.text: %.texi_pp
 	$(MAKEINFO) --no-headers -o $@ $<
@@ -86,11 +95,12 @@ mercury.info: mercury.info.in
 
 #-----------------------------------------------------------------------------#
 
-	# Currently `mmake all' does not build the PostScript or plain-text
-	# versions of the documentation.  But it might make sense to add them.
+	# Currently `mmake all' does not build the PostScript, PDF or
+	# plain-text versions of the documentation.  But it might make sense to
+	# add them.
 .PHONY: all
 all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC) 
-#all: ps text
+#all: ps pdf text
 
 #-----------------------------------------------------------------------------#
 
@@ -128,6 +138,14 @@ ps: user_guide.ps reference_manual.ps library.ps faq.ps transition_guide.ps
 warn_no_ps: 
 	# Warning: Unable to build .ps files.
 	# This is probably due to a missing `dvips' or `text2dvi'
+
+.PHONY: pdf
+pdf: user_guide.pdf reference_manual.pdf library.pdf faq.pdf transition_guide.pdf
+
+.PHONY: warn_no_pdf
+warn_no_pdf:
+	# Warning: Unable to build .pdf files.
+	# This is probably due to a missing `pdftex'.
 
 .PHONY: text
 text: user_guide.text reference_manual.text library.text faq.text \
@@ -264,6 +282,7 @@ install_dirs:
 	-[ -d $(INSTALL_DVI_DIR) ] || mkdir -p $(INSTALL_DVI_DIR)
 	-[ -d $(INSTALL_TEXT_DIR) ] || mkdir -p $(INSTALL_TEXT_DIR)
 	-[ -d $(INSTALL_PS_DIR) ] || mkdir -p $(INSTALL_PS_DIR)
+	-[ -d $(INSTALL_PDF_DIR) ] || mkdir -p $(INSTALL_PDF_DIR)
 	-[ -d $(INSTALL_MAN_DIR)/man1 ] || \
 		mkdir -p $(INSTALL_MAN_DIR)/man1
 	-[ -d $(INSTALL_MDB_DOC_DIR) ] || mkdir -p $(INSTALL_MDB_DOC_DIR)
@@ -298,6 +317,10 @@ install_text: text install_dirs
 install_ps: $(PS) install_dirs
 	-cp *.ps $(INSTALL_PS_DIR)
 
+.PHONY: install_pdf
+install_pdf: $(PDF) install_dirs
+	-cp *.pdf $(INSTALL_PDF_DIR)
+
 .PHONY: install_manpages
 install_manpages: manpages install_dirs
 	cp *.1 $(INSTALL_MAN_DIR)/man1
@@ -319,8 +342,9 @@ uninstall:
 # INSTALL_WEBPAGE_DIR).
 
 .PHONY: install_webpage
-install_webpage: library-chapters.texi_pp split_html ps install_dirs
+install_webpage: library-chapters.texi_pp split_html ps pdf install_dirs
 	cp *.ps $(INSTALL_WEBPAGE_DIR)
+	cp *.pdf $(INSTALL_WEBPAGE_DIR)
 	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
 		gzip -f -9 $$file ; \
 	done
@@ -345,7 +369,7 @@ realclean_texi:
 	rm -f library*.html user_guide*.html reference_manual*.html
 	rm -f faq*.html transition_guide*.html
 	rm -f mercury.html mercury.info
-	rm -f mercury_*.info* *.dvi *.text *.ps
+	rm -f mercury_*.info* *.dvi *.text *.ps *.pdf
 
 .PHONY: realclean_manpages
 realclean_manpages:
