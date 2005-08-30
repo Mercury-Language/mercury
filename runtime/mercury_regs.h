@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2004 The University of Melbourne.
+** Copyright (C) 1993-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -82,6 +82,8 @@
     #include "machdeps/mips_regs.h"
   #elif defined(__i386__)
     #include "machdeps/i386_regs.h"
+  #elif defined(__x86_64__)
+    #include "machdeps/x86_64_regs.h"
   #elif defined(__sparc__)
     #include "machdeps/sparc_regs.h"
   #elif defined(__alpha__)

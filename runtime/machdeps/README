@@ -34,3 +34,5 @@ To add a definition for a new architecture, you need to
 
 	- Add a new case to the switch on machine type in `../regs.h';
 	  this new case should #include the header file you just added.
+
+	- Add the new header file to the MACHHDRS list in runtime/Mmakefile.
