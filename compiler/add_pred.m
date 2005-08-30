@@ -244,7 +244,7 @@ add_builtin(PredId, Types, !PredInfo) :-
         %
     goal_info_init(Context, GoalInfo0),
     set__list_to_set(HeadVars, NonLocals),
-    goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Goal = Call - GoalInfo,
     Clause = clause([], Goal, mercury, Context),
 

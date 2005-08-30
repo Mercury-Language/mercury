@@ -1187,10 +1187,8 @@ det_report_msg(warn_infinite_recursion(Context), _ModuleInfo, !IO) :-
 det_report_msg(duplicate_call(SeenCall, PrevContext, Context), ModuleInfo,
         !IO) :-
     CallPieces = det_report_seen_call_id(ModuleInfo, SeenCall),
-    CurPieces = [words("Warning: redundant") |
-        append_punctuation(CallPieces, '.')],
-    PrevPieces = [words("Here is the previous") |
-        append_punctuation(CallPieces, '.')],
+    CurPieces = [words("Warning: redundant") | CallPieces] ++ [suffix(".")],
+    PrevPieces = [words("Here is the previous") | CallPieces] ++ [suffix(".")],
     write_error_pieces(Context, 0, CurPieces, !IO),
     write_error_pieces(PrevContext, 0, PrevPieces, !IO).
 det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
@@ -1199,8 +1197,7 @@ det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
     (
         GoalContext = switch,
         VarStr = mercury_var_to_string(Var, VarSet, no),
-        Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"),
-            nl]
+        Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"), nl]
     ;
         GoalContext = unify(UnifyContext),
         hlds_out__unify_context_to_pieces(UnifyContext, [], Pieces0)

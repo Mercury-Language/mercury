@@ -1151,7 +1151,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
 	goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals0),
 	set__list_to_set(HeadVars, HeadVarsSet),
 	set__intersect(HeadVarsSet, NonLocals0, NonLocals),
-	goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+	goal_info_set_code_gen_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 	Goal = GoalExpr - GoalInfo,
 
 	goal_info_get_context(GoalInfo, Context),

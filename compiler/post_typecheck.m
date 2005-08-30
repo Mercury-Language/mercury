@@ -1636,7 +1636,7 @@ create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
 	% Compute the nonlocals of the goal.
 	set__list_to_set(VarsList, NonLocals1),
 	set__intersect(RestrictNonLocals, NonLocals1, NonLocals),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+	goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 	Goal = GoalExpr0 - GoalInfo.
 
 :- pred make_new_vars(list(type)::in, list(prog_var)::out,

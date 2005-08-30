@@ -898,8 +898,8 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             instmap__from_assoc_list(HeadVarFinalInsts, FinalInstMap),
             compute_instmap_delta(InstMap0, FinalInstMap, BodyNonLocals,
                 DeltaInstMap),
-            goal_info_set_instmap_delta(BodyGoalInfo0, DeltaInstMap,
-                BodyGoalInfo),
+            goal_info_set_instmap_delta(DeltaInstMap,
+                BodyGoalInfo0, BodyGoalInfo),
             Body = NewGoalExpr - BodyGoalInfo,
             ArgFinalInsts = ArgFinalInsts0
         ;
@@ -1255,7 +1255,7 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !ModeInfo, !IO) :-
     modecheck_goal_expr(Goal0, GoalInfo0, Goal, !ModeInfo, !IO),
     compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo, !ModeInfo).
 
-compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo, !ModeInfo) :-
+compute_goal_instmap_delta(InstMap0, Goal, !GoalInfo, !ModeInfo) :-
     ( Goal = conj([]) ->
         %
         % When modecheck_unify.m replaces a unification with a
@@ -1268,11 +1268,11 @@ compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo, !ModeInfo) :-
         instmap_delta_init_reachable(DeltaInstMap),
         mode_info_set_instmap(InstMap0, !ModeInfo)
     ;
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        goal_info_get_nonlocals(!.GoalInfo, NonLocals),
         mode_info_get_instmap(!.ModeInfo, InstMap),
         compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap)
     ),
-    goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
+    goal_info_set_instmap_delta(DeltaInstMap, !GoalInfo).
 
 modecheck_goal_expr(conj(List0), GoalInfo0, Goal, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "conj", !ModeInfo, !IO),
@@ -1663,7 +1663,7 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
         set__difference(NewArgVars, OldArgVars, IntroducedVars),
         set__union(NonLocals0, IntroducedVars, OutsideVars),
         set__intersect(OutsideVars, NewArgVars, NonLocals),
-        goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 
         % combine the main goal and the extra goals into a conjunction
         Goal0 = MainGoal - GoalInfo,
@@ -1713,7 +1713,7 @@ handle_extra_goals_contexts([], _Context, []).
 handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
     Goal0 = Expr - GoalInfo0,
     Goal  = Expr - GoalInfo,
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     handle_extra_goals_contexts(Goals0, Context, Goals).
 
 %-----------------------------------------------------------------------------%
@@ -1812,7 +1812,7 @@ append_init_calls_to_goal(InitedVars, InitCalls, Goal0) = Goal :-
     Goal0 = GoalExpr0 - GoalInfo0,
     hlds_goal__goal_info_get_nonlocals(GoalInfo0, NonLocals0),
     NonLocals = set__union(InitedVars, NonLocals0),
-    hlds_goal__goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+    hlds_goal__goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     ( GoalExpr0 = disj(Disjs0) ->
         Disjs = list__map(append_init_calls_to_goal(InitedVars, InitCalls),
                 Disjs0),
@@ -1852,7 +1852,7 @@ solver_var_to_init(ModuleInfo, InstMap, Var) :-
 
 set_vars_to_inst_any([], InstMap) = InstMap.
 set_vars_to_inst_any([Var | Vars], InstMap0) = InstMap :-
-    instmap__set(InstMap0, Var, any_inst, InstMap1),
+    instmap__set(Var, any_inst, InstMap0, InstMap1),
     InstMap = set_vars_to_inst_any(Vars, InstMap1).
 
 %-----------------------------------------------------------------------------%
@@ -2968,7 +2968,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
             % the only thing we can have done is lose uniqueness.
             inst_matches_initial(Inst0, Inst, Type, ModuleInfo)
         ->
-            instmap__set(InstMap0, Var0, Inst, InstMap),
+            instmap__set(Var0, Inst, InstMap0, InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo)
         ;
             % We must have either added some information,
@@ -3001,7 +3001,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
             mode_info_error(WaitingVars,
                 mode_error_bind_var(Reason0, Var0, Inst0, Inst), !ModeInfo)
         ;
-            instmap__set(InstMap0, Var0, Inst, InstMap),
+            instmap__set(Var0, Inst, InstMap0, InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo),
             mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
             delay_info__bind_var(Var0, DelayInfo0, DelayInfo),
@@ -3184,9 +3184,9 @@ build_call(ModuleName, PredName, ArgVars, NonLocals, InstmapDelta, Context,
     polymorphism__create_poly_info_for_new_call(ModuleInfo0, PredInfo0,
         ProcInfo0, VarSet0, VarTypes0, PolyInfo0),
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo1),
-    goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
-    goal_info_set_instmap_delta(GoalInfo2, InstmapDelta, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo1),
+    goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
+    goal_info_set_instmap_delta(InstmapDelta, GoalInfo2, GoalInfo),
     polymorphism__process_new_call(PredId, ProcId, ArgVars, not_builtin,
         CallUnifyContext, qualified(ModuleName, PredName),
         GoalInfo, Goal, PolyInfo0, PolyInfo),

@@ -205,7 +205,7 @@ simplify__proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         ; GoalExpr0 = switch(_, _, _)
         )
     ->
-        goal_info_add_feature(GoalInfo0, mode_check_clauses_goal, GoalInfo1),
+        goal_info_add_feature(mode_check_clauses_goal, GoalInfo0, GoalInfo1),
         Goal1 = GoalExpr0 - GoalInfo1
     ;
         Goal1 = Goal0
@@ -494,15 +494,15 @@ simplify__enforce_invariant(GoalInfo0, GoalInfo, !Info) :-
         instmap_delta_is_reachable(DeltaInstmap0)
     ->
         instmap_delta_init_unreachable(UnreachableInstMapDelta),
-        goal_info_set_instmap_delta(GoalInfo0, UnreachableInstMapDelta,
-            GoalInfo),
+        goal_info_set_instmap_delta(UnreachableInstMapDelta,
+            GoalInfo0, GoalInfo),
         simplify_info_set_rerun_det(!Info)
     ;
         instmap_delta_is_unreachable(DeltaInstmap0),
         NumSolns0 \= at_most_zero
     ->
         determinism_components(Determinism, CanFail0, at_most_zero),
-        goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo),
+        goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
         simplify_info_set_rerun_det(!Info)
     ;
         GoalInfo = GoalInfo0
@@ -516,8 +516,7 @@ simplify__enforce_invariant(GoalInfo0, GoalInfo, !Info) :-
 
 simplify__goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info) :-
     simplify_info_get_instmap(!.Info, InstMap0),
-    simplify__excess_assigns_in_conj(GoalInfo0,
-        Goals0, Goals1, !Info),
+    simplify__excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info),
     simplify__conj(Goals1, [], Goals, GoalInfo0, !Info),
     simplify_info_set_instmap(InstMap0, !Info),
     (
@@ -543,7 +542,7 @@ simplify__goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info) :-
             simplify__contains_multisoln_goal(Goals)
         ->
             determinism_components(InnerDetism, CanFail, at_most_many),
-            goal_info_set_determinism(GoalInfo0, InnerDetism, InnerInfo),
+            goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
             InnerGoal = conj(Goals) - InnerInfo,
             Goal = scope(commit(dont_force_pruning), InnerGoal)
         ;
@@ -597,7 +596,7 @@ simplify__goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info) :-
             merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
                 NewDelta, ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
-            goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+            goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
         )
     ),
     list__length(Disjuncts, DisjunctsLength),
@@ -666,7 +665,7 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
                 merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
                     InstMaps, NewDelta, ModuleInfo1, ModuleInfo2),
                 simplify_info_set_module_info(ModuleInfo2, !Info),
-                goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+                goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
             ;
                 simplify__create_test_unification(Var, ConsId, Arity,
                     UnifyGoal, !Info),
@@ -716,7 +715,7 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
             merge_instmap_deltas(InstMap0, NonLocals, VarTypes, InstMaps,
                 NewDelta, ModuleInfo1, ModuleInfo2),
             simplify_info_set_module_info(ModuleInfo2, !Info),
-            goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo)
+            goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo)
         )
     ),
     list__length(Cases0, Cases0Length),
@@ -929,9 +928,9 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             ;
                 error("simplify__goal_2: cannot get negated determinism")
             ),
-            goal_info_set_determinism(CondInfo0, NegDetism, NegCondInfo0),
-            goal_info_set_instmap_delta(NegCondInfo0, NegInstMapDelta,
-                NegCondInfo),
+            goal_info_set_determinism(NegDetism, CondInfo0, NegCondInfo0),
+            goal_info_set_instmap_delta(NegInstMapDelta,
+                NegCondInfo0, NegCondInfo),
             Cond = not(Cond0) - NegCondInfo
         ),
         goal_to_conj_list(Else0, ElseList),
@@ -977,7 +976,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             [CondThenDelta, ElseDelta], NewDelta,
             ModuleInfo0, ModuleInfo1),
         simplify_info_set_module_info(ModuleInfo1, !Info),
-        goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo1),
+        goal_info_set_instmap_delta(NewDelta, GoalInfo0, GoalInfo1),
         IfThenElse = if_then_else(Vars, Cond, Then, Else),
 
         goal_info_get_determinism(GoalInfo0, IfThenElseDetism0),
@@ -1012,7 +1011,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             ->
                 determinism_components(InnerDetism,
                     IfThenElseCanFail, at_most_many),
-                goal_info_set_determinism(GoalInfo1, InnerDetism, InnerInfo),
+                goal_info_set_determinism(InnerDetism, GoalInfo1, InnerInfo),
                 Goal = scope(commit(dont_force_pruning),
                     IfThenElse - InnerInfo)
             ;
@@ -1178,7 +1177,7 @@ simplify__inequality_goal(TI, X, Y, Inequality, Invert,
         CmpGoal0),
     CmpGoal0 = CmpExpr - CmpInfo0,
     goal_info_get_nonlocals(CmpInfo0, CmpNonLocals0),
-    goal_info_set_nonlocals(CmpInfo0, CmpNonLocals0 `insert` R, CmpInfo),
+    goal_info_set_nonlocals(CmpNonLocals0 `insert` R, CmpInfo0, CmpInfo),
     CmpGoal  = CmpExpr - CmpInfo,
 
         % Construct the unification R = Inequality.
@@ -1192,7 +1191,7 @@ simplify__inequality_goal(TI, X, Y, Inequality, Invert,
                 "replacement of inequality with call to compare/3"), []),
     UfyExpr  = unify(R, RHS, UMode, UKind, UContext),
     goal_info_get_nonlocals(GoalInfo, UfyNonLocals0),
-    goal_info_set_nonlocals(GoalInfo, UfyNonLocals0 `insert` R, UfyInfo),
+    goal_info_set_nonlocals(UfyNonLocals0 `insert` R, GoalInfo, UfyInfo),
     UfyGoal  = UfyExpr - UfyInfo,
 
     (
@@ -1350,8 +1349,8 @@ simplify__call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal,
         simplify_info_get_var_types(!.Info, VarTypes),
         (
             Goal1 = call(_, _, _, _, _, _),
-            const_prop.evaluate_call(PredId, ProcId, Args, GoalInfo0, VarTypes,
-                Instmap0, ModuleInfo2, Goal2, GoalInfo2)
+            const_prop.evaluate_call(PredId, ProcId, Args, VarTypes,
+                Instmap0, ModuleInfo2, Goal2, GoalInfo0, GoalInfo2)
         ->
             Goal = Goal2,
             GoalInfo = GoalInfo2,
@@ -1487,7 +1486,7 @@ simplify__call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
     % add the extra type_info vars to the nonlocals for the call
     goal_info_get_nonlocals(GoalInfo0, NonLocals0),
     set__insert_list(NonLocals0, TypeInfoVars, NonLocals),
-    goal_info_set_nonlocals(GoalInfo0, NonLocals, CallGoalInfo).
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, CallGoalInfo).
 
 :- pred simplify__make_type_info_vars(list(type)::in, list(prog_var)::out,
     list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.
@@ -1800,7 +1799,7 @@ simplify__excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
             renaming_transitive_closure(Subn1, Subn),
             list__reverse(RevGoals, Goals1),
             MustSub = no,
-            goal_util__rename_vars_in_goals(Goals1, MustSub, Subn, Goals),
+            goal_util__rename_vars_in_goals(MustSub, Subn, Goals1, Goals),
             map__keys(Subn0, RemovedVars),
             varset__delete_vars(VarSet0, RemovedVars, VarSet),
             simplify_info_set_varset(VarSet, !Info),
@@ -2145,11 +2144,11 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
         goal_info_get_nonlocals(CondGoalInfo, CondNonLocals),
         goal_info_get_nonlocals(RestGoalInfo, RestNonLocals),
         set__union(CondNonLocals, RestNonLocals, NonLocals),
-        goal_info_set_nonlocals(GoalInfo, NonLocals, NewGoalInfo0),
+        goal_info_set_nonlocals(NonLocals, GoalInfo, NewGoalInfo0),
 
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta0),
-        instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
-        goal_info_set_instmap_delta(NewGoalInfo0, InstMapDelta, NewGoalInfo1),
+        instmap_delta_restrict(NonLocals, InstMapDelta0, InstMapDelta),
+        goal_info_set_instmap_delta(InstMapDelta, NewGoalInfo0, NewGoalInfo1),
 
         goal_info_get_determinism(CondGoalInfo, CondDetism),
         goal_info_get_determinism(RestGoalInfo, RestDetism),
@@ -2163,7 +2162,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
             MaxSoln = MaxSoln0
         ),
         determinism_components(Detism, CanFail, MaxSoln),
-        goal_info_set_determinism(NewGoalInfo1, Detism, NewGoalInfo),
+        goal_info_set_determinism(Detism, NewGoalInfo1, NewGoalInfo),
 
         Goal = if_then_else([], Cond, Then, Rest) - NewGoalInfo
     ).

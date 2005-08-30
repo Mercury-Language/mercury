@@ -454,13 +454,13 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         % Add the body of the introduced pred.
         % First the goal info, ...
         goal_info_init(GoalInfo0),
-        goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+        goal_info_set_context(Context, GoalInfo0, GoalInfo1),
         set__list_to_set(HeadVars, NonLocals),
-        goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
+        goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
         ( check_marker(Markers, (impure)) ->
-            goal_info_add_feature(GoalInfo2, (impure), GoalInfo)
+            goal_info_add_feature((impure), GoalInfo2, GoalInfo)
         ; check_marker(Markers, (semipure)) ->
-            goal_info_add_feature(GoalInfo2, (semipure), GoalInfo)
+            goal_info_add_feature((semipure), GoalInfo2, GoalInfo)
         ;
             GoalInfo = GoalInfo2
         ),

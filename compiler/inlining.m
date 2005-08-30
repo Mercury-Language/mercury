@@ -1,83 +1,85 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % Main author: conway.
+%
+% This module inlines
+%
+%	* (--inline-simple and --inline-simple-threshold N)
+%	  procedures whose size is below the given threshold,
+%	  PLUS
+%	  procedures that are flat (ie contain no branched structures)
+%	  and are composed of inline builtins (eg arithmetic),
+%	  and whose size is less than three times the given threshold
+%	  (XXX shouldn't hard-code 3)
+%
+%	* (--inline-compound-threshold N)
+%	  procedures where the product of the number of calls to them
+%	  and their size is below a given threshold.
+%
+%	* (--inline-single-use)
+%	  procedures which are called only once
+%
+% 	* procedures which have a `:- pragma inline(name/arity).'
+%
+% It will not inline procedures which have a
+% 	`:- pragma no_inline(name/arity).'
+%
+% If inlining a procedure takes the total number of variables over
+% a given threshold (from a command-line option), then the procedure
+% is not inlined - note that this means that some calls to a
+% procedure may inlined while others are not.
+%
+% It builds the call-graph (if necessary) works from the bottom of
+% the call-graph towards the top, first performing inlining on a
+% procedure then deciding if calls to it (higher in the call-graph)
+% should be inlined. SCCs get flattend and processed in the order
+% returned by hlds_dependency_info_get_dependency_ordering.
+%
+% There are a couple of classes of procedure that we clearly want
+% to inline because doing so *reduces* the size of the generated
+% code:
+%
+%	- access predicates that get or set one or more fields
+%	  of a structure (Inlining these is almost always a win
+%	  because the infrastructure for the call to the procedure
+%	  is almost always larger than the code to do the access.
+%	  In the case of `get' accessors, the call usually becomes
+%	  a single `field' expression to get the relevant field of
+%	  the structure. In the case of `set' accessors, it is a bit
+%	  more complicated since the code to copy the fields can be
+%	  quite big if there are lots of fields, however in the case
+%	  where several `set' accessors get called one after the other,
+%	  inlining them enables the code generator to avoid creating
+%	  the intermediate structures which is often a win).
+%
+%	- arithmetic predicates where as above, the cost of the
+%	  call will often outweigh the cost of the arithmetic.
+%
+%	- det or semi pragma C code, where often the C operation is
+%	  very small, inlining avoids a call and allows the C compiler
+%	  to do a better job of optimizing it.
+%
+% The threshold on the size of simple goals (which covers both of the
+% first two cases above), is to prevent the inlining of large goals
+% such as those that construct big terms where the duplication is
+% usually inappropriate (for example in nrev).
+%
+% The threshold on the number of variables in a procedure is to prevent
+% the problem of inlining lots of calls and having a resulting
+% procedure with so many variables that the back end of the compiler
+% gets bogged down (for example in the pseudoknot benchmark).
+%
+% Due to the way in which we generate code for model_non
+% pragma_foreign_code, procedures whose body is such a
+% pragma_foreign_code must NOT be inlined.
 
 :- module transform_hlds__inlining.
-
-	% This module inlines
-	%
-	%	* (--inline-simple and --inline-simple-threshold N)
-	%	  procedures whose size is below the given threshold,
-	%	  PLUS
-	%	  procedures that are flat (ie contain no branched structures)
-	%	  and are composed of inline builtins (eg arithmetic),
-	%	  and whose size is less than three times the given threshold
-	%	  (XXX shouldn't hard-code 3)
-	%
-	%	* (--inline-compound-threshold N)
-	%	  procedures where the product of the number of calls to them
-	%	  and their size is below a given threshold.
-	%
-	%	* (--inline-single-use)
-	%	  procedures which are called only once
-	%
-	% 	* procedures which have a `:- pragma inline(name/arity).'
-	%
-	% It will not inline procedures which have a
-	% 	`:- pragma no_inline(name/arity).'
-	%
-	% If inlining a procedure takes the total number of variables over
-	% a given threshold (from a command-line option), then the procedure
-	% is not inlined - note that this means that some calls to a
-	% procedure may inlined while others are not.
-	%
-	% It builds the call-graph (if necessary) works from the bottom of
-	% the call-graph towards the top, first performing inlining on a
-	% procedure then deciding if calls to it (higher in the call-graph)
-	% should be inlined. SCCs get flattend and processed in the order
-	% returned by hlds_dependency_info_get_dependency_ordering.
-	%
-	% There are a couple of classes of procedure that we clearly want
-	% to inline because doing so *reduces* the size of the generated
-	% code:
-	%
-	%	- access predicates that get or set one or more fields
-	%	  of a structure (Inlining these is almost always a win
-	%	  because the infrastructure for the call to the procedure
-	%	  is almost always larger than the code to do the access.
-	%	  In the case of `get' accessors, the call usually becomes
-	%	  a single `field' expression to get the relevant field of
-	%	  the structure. In the case of `set' accessors, it is a bit
-	%	  more complicated since the code to copy the fields can be
-	%	  quite big if there are lots of fields, however in the case
-	%	  where several `set' accessors get called one after the other,
-	%	  inlining them enables the code generator to avoid creating
-	%	  the intermediate structures which is often a win).
-	%
-	%	- arithmetic predicates where as above, the cost of the
-	%	  call will often outweigh the cost of the arithmetic.
-	%
-	%	- det or semi pragma C code, where often the C operation is
-	%	  very small, inlining avoids a call and allows the C compiler
-	%	  to do a better job of optimizing it.
-	%
-	% The threshold on the size of simple goals (which covers both of the
-	% first two cases above), is to prevent the inlining of large goals
-	% such as those that construct big terms where the duplication is
-	% usually inappropriate (for example in nrev).
-	%
-	% The threshold on the number of variables in a procedure is to prevent
-	% the problem of inlining lots of calls and having a resulting
-	% procedure with so many variables that the back end of the compiler
-	% gets bogged down (for example in the pseudoknot benchmark).
-	%
-	% Due to the way in which we generate code for model_non
-	% pragma_foreign_code, procedures whose body is such a
-	% pragma_foreign_code must NOT be inlined.
 
 %-----------------------------------------------------------------------------%
 
@@ -95,6 +97,8 @@
 
 :- pred inlining(module_info::in, module_info::out, io::di, io::uo) is det.
 
+	% This heuristic is used for both local and intermodule inlining.
+    %
 :- pred inlining__is_simple_clause_list(list(clause)::in, int::in) is semidet.
 
 :- pred inlining__is_simple_goal(hlds_goal::in, int::in) is semidet.
@@ -109,6 +113,7 @@
 	% for the called goal and various information about the variables
 	% and types in the procedure currently being analysed, rename the
 	% goal for the called procedure so that it can be inlined.
+    %
 :- pred inlining__do_inline_call(list(tvar)::in, list(prog_var)::in,
 	pred_info::in, proc_info::in, prog_varset::in, prog_varset::out,
 	vartypes::in, vartypes::out, tvarset::in, tvarset::out,
@@ -119,6 +124,7 @@
 	%
 	% Work out a type substitution to map the callee's argument
 	% types into the caller's.
+    %
 :- pred inlining__get_type_substitution(list(type)::in, list(type)::in,
 	head_type_params::in, list(tvar)::in, map(tvar, type)::out) is det.
 
@@ -126,6 +132,7 @@
 	%	CallerVarSet0, CalleeVarSet, CallerVarSet,
 	%	CallerVarTypes0, CalleeVarTypes, CallerVarTypes,
 	%	VarRenaming, CalledGoal, RenamedGoal).
+    %
 :- pred inlining__rename_goal(list(prog_var)::in, list(prog_var)::in,
 	prog_varset::in, prog_varset::in, prog_varset::out,
 	vartypes::in, vartypes::in, vartypes::out,
@@ -135,6 +142,7 @@
 	% 	InlinePromisedPure, CallingPredMarkers, ModuleInfo).
 	%
 	% Determine whether a predicate can be inlined.
+    %
 :- pred inlining__can_inline_proc(pred_id::in, proc_id::in, builtin_state::in,
 	bool::in, pred_markers::in, module_info::in) is semidet.
 
@@ -181,34 +189,34 @@
 	% this structure holds option values, extracted from the globals
 :- type inline_params
 	--->	params(
-			simple			:: bool,
-			single_use		:: bool,
-			size_threshold		:: int,
-			simple_goal_threshold	:: int,
-			var_threshold		:: int,
-			highlevel_code		:: bool,
-			any_tracing		:: bool
-						% Is any procedure being traced
-						% in the module?
+                simple			        :: bool,
+                single_use		        :: bool,
+                size_threshold		    :: int,
+                simple_goal_threshold	:: int,
+                var_threshold		    :: int,
+                highlevel_code		    :: bool,
+                any_tracing		        :: bool
+                                        % Is any procedure being traced
+                                        % in the module?
 
 		).
 
 inlining(!ModuleInfo, !IO) :-
-		%
-		% Package up all the inlining options
-		% - whether to inline simple conj's of builtins
-		% - whether to inline predicates that are
-		%   only called once
-		% - the threshold for determining whether to
-		%   inline more complicated goals
-		% - the threshold for determining whether to
-		%   inline the simple conj's
-		% - the upper limit on the number of variables
-		%   we want in procedures - if inlining a procedure
-		%   would cause the number of variables to exceed
-		%   this threshold then we don't inline it.
-		% - whether we're in an MLDS grade
-		%
+    %
+    % Package up all the inlining options
+    % - whether to inline simple conj's of builtins
+    % - whether to inline predicates that are
+    %   only called once
+    % - the threshold for determining whether to
+    %   inline more complicated goals
+    % - the threshold for determining whether to
+    %   inline the simple conj's
+    % - the upper limit on the number of variables
+    %   we want in procedures - if inlining a procedure
+    %   would cause the number of variables to exceed
+    %   this threshold then we don't inline it.
+    % - whether we're in an MLDS grade
+    %
 	globals__io_get_globals(Globals, !IO),
 	globals__lookup_bool_option(Globals, inline_simple, Simple),
 	globals__lookup_bool_option(Globals, inline_single_use, SingleUse),
@@ -216,19 +224,18 @@ inlining(!ModuleInfo, !IO) :-
 		CompoundThreshold),
 	globals__lookup_int_option(Globals, inline_simple_threshold,
 		SimpleThreshold),
-	globals__lookup_int_option(Globals, inline_vars_threshold,
-		VarThreshold),
+	globals__lookup_int_option(Globals, inline_vars_threshold, VarThreshold),
 	globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 	globals__io_get_trace_level(TraceLevel, !IO),
 	AnyTracing = bool__not(given_trace_level_is_none(TraceLevel)),
 	Params = params(Simple, SingleUse, CompoundThreshold,
 		SimpleThreshold, VarThreshold, HighLevelCode, AnyTracing),
 
-		%
-		% Get the usage counts for predicates
-		% (but only if needed, i.e. only if --inline-single-use
-		% or --inline-compound-threshold has been specified)
-		%
+    %
+    % Get the usage counts for predicates
+    % (but only if needed, i.e. only if --inline-single-use
+    % or --inline-compound-threshold has been specified)
+    %
 	(
 		( SingleUse = yes
 		; CompoundThreshold > 0
@@ -239,17 +246,15 @@ inlining(!ModuleInfo, !IO) :-
 		map__init(NeededMap)
 	),
 
-		% build the call graph and extract the topological sort
-		% Note: the topological sort returns a list of SCCs.
-		% Clearly, we want to process the SCCs bottom to top
-		% (which is the order that they are returned), but it
-		% is not easy to guess the best way to flatten each SCC
-		% to achieve the best result. The current implementation
-		% just uses the ordering of the list returned by the
-		% topological sort. A more sophisticated approach would be
-		% to break the cycle so that the procedure(s) that are called
-		% by higher SCCs are processed last, but we do not implement
-		% that yet.
+    % Build the call graph and extract the topological sort.
+    % Note: the topological sort returns a list of SCCs. Clearly, we want to
+    % process the SCCs bottom to top (which is the order that they are
+    % returned), but it is not easy to guess the best way to flatten each SCC
+    % to achieve the best result. The current implementation just uses the
+    % ordering of the list returned by the topological sort. A more
+    % sophisticated approach would be to break the cycle so that
+    % the procedure(s) that are called by higher SCCs are processed last,
+    % but we do not implement that yet.
 	module_info_ensure_dependency_info(!ModuleInfo),
 	module_info_dependency_info(!.ModuleInfo, DepInfo),
 	hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
@@ -258,8 +263,7 @@ inlining(!ModuleInfo, !IO) :-
 	inlining__do_inlining(PredProcs, NeededMap, Params, InlinedProcs0,
 		!ModuleInfo, !IO),
 
-		% The dependency graph is now out of date and
-		% needs to be rebuilt.
+    % The dependency graph is now out of date and needs to be rebuilt.
 	module_info_clobber_dependency_info(!ModuleInfo).
 
 :- pred inlining__do_inlining(list(pred_proc_id)::in, needed_map::in,
@@ -273,14 +277,12 @@ inlining__do_inlining([PPId | PPIds], Needed, Params, !.Inlined, !Module,
 	inlining__mark_predproc(PPId, Needed, Params, !.Module, !Inlined, !IO),
 	inlining__do_inlining(PPIds, Needed, Params, !.Inlined, !Module, !IO).
 
+    % This predicate effectively adds implicit `pragma inline' directives
+    % for procedures that match its heuristic.
+    %
 :- pred inlining__mark_predproc(pred_proc_id::in, needed_map::in,
 	inline_params::in, module_info::in,
 	set(pred_proc_id)::in, set(pred_proc_id)::out, io::di, io::uo) is det.
-
-%
-% This predicate effectively adds implicit `pragma inline'
-% directives for procedures that match its heuristic.
-%
 
 inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		!InlinedProcs, !IO) :-
@@ -302,8 +304,7 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		%
 		(
 			Simple = yes,
-			inlining__is_simple_goal(CalledGoal,
-				SimpleThreshold)
+			inlining__is_simple_goal(CalledGoal, SimpleThreshold)
 		;
 			CompoundThreshold > 0,
 			map__search(NeededMap, Entity, Needed),
@@ -316,8 +317,7 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 			Needed = yes(NumUses),
 			NumUses = 1
 		),
-		% Don't inline recursive predicates
-		% (unless explicitly requested)
+		% Don't inline recursive predicates (unless explicitly requested).
 		\+ goal_calls(CalledGoal, PredProcId)
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
@@ -325,8 +325,6 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 	;
 		true
 	).
-
-	% this heuristic is used for both local and intermodule inlining
 
 inlining__is_simple_clause_list(Clauses, SimpleThreshold) :-
 	clause_list_size(Clauses, Size),
@@ -403,34 +401,54 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		% updated.
 
 :- type inline_info
-	---> inline_info(
-		int,			% variable threshold for inlining
-		bool,			% highlevel_code option
-		bool,			% is executing tracing enabled
-		set(pred_proc_id),	% inlined procs
-		module_info,		% module_info
-		list(tvar),		% universally quantified type vars
-					% occurring in the argument types
-					% for this predicate (the caller,
-					% not the callee).  These are the
-					% ones that must not be bound.
-		pred_markers,		% markers for the current predicate
+	--->    inline_info(
+                i_var_threshold     :: int,
+                                    % variable threshold for inlining
 
-			% the following fields are updated as a result
-			% of inlining
-		prog_varset,		% varset
-		vartypes,		% variable types
-		tvarset,		% type variables
-		rtti_varmaps,		% information about locations of
-					% type_infos and typeclass_infos
-		bool,			% Did we do any inlining in the proc?
-		bool,			% Does the goal need to be
-					% requantified?
-		bool,			% Did we change the determinism
-					% of any subgoal?
-		bool			% Did we change the purity of
-					% any subgoal.
-	).
+                i_highlevel_code    :: bool,
+                                    % highlevel_code option
+
+                i_exec_trace        :: bool,
+                                    % is executing tracing enabled
+
+                i_inlined_procs     :: set(pred_proc_id),
+
+                i_module_info       :: module_info,
+
+                i_univ_caller_tvars :: list(tvar),
+                                    % Universally quantified type vars
+                                    % occurring in the argument types
+                                    % for this predicate (the caller,
+                                    % not the callee). These are the
+                                    % ones that must not be bound.
+
+                i_pred_markers      :: pred_markers,
+                                    % markers for the current predicate
+
+                % All the following fields are updated as a result of inlining.
+
+                i_prog_varset 		:: prog_varset,
+                i_vartypes          :: vartypes,
+                i_tvarset           :: tvarset,
+
+                i_rtti_varmaps      :: rtti_varmaps,
+                                    % information about locations of
+                                    % type_infos and typeclass_infos
+
+                i_done_any_inlining :: bool,
+                                    % Did we do any inlining in the proc?
+
+                i_need_requant      :: bool,
+                                    % Does the goal need to be requantified?
+
+                i_changed_detism    :: bool,
+                                    % Did we change the determinism
+                                    % of any subgoal?
+
+                i_changed_purity    :: bool
+                                    % Did we change the purity of
+                                    % any subgoal.
+            ).
 
 :- pred inlining__in_predproc(pred_proc_id::in, set(pred_proc_id)::in,
 	inline_params::in, module_info::in, module_info::out,
@@ -797,7 +815,7 @@ inlining__rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet,
 	goal_util__create_variables(CalleeListOfVars,
 		CalleeVarSet, CalleeVarTypes,
 		VarSet0, VarSet, VarTypes1, VarTypes, Subn0, Subn),
-	goal_util__must_rename_vars_in_goal(CalledGoal, Subn, Goal).
+	goal_util__must_rename_vars_in_goal(Subn, CalledGoal, Goal).
 
 %-----------------------------------------------------------------------------%
 

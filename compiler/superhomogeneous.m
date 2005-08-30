@@ -149,7 +149,7 @@ insert_arg_unifications(HeadVars, Args0, Context, ArgContext,
         substitute_state_var_mappings(Args0, Args, !VarSet, !SInfo, !IO),
         insert_arg_unifications_2(HeadVars, Args, Context, ArgContext,
             0, Goals0, Goals, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
-        goal_info_set_context(GoalInfo0, Context, GoalInfo),
+        goal_info_set_context(Context, GoalInfo0, GoalInfo),
         conj_list_to_goal(Goals, GoalInfo, !:Goal)
     ).
 
@@ -186,8 +186,7 @@ insert_arg_unifications_2([Var | Vars], [Arg | Args], Context, ArgContext,
     ).
 
 insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0, ArgContexts,
-        Context, !Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo,
-        !IO) :-
+        Context, !Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     (
         ArgVars = []
     ;
@@ -199,7 +198,7 @@ insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0, ArgContexts,
         insert_arg_unifications_with_supplied_contexts_2(ArgVars, ArgTerms,
             ArgContexts, Context, GoalList0, GoalList, !VarSet,
             !ModuleInfo, !QualInfo, !SInfo, !IO),
-        goal_info_set_context(GoalInfo0, Context, GoalInfo),
+        goal_info_set_context(Context, GoalInfo0, GoalInfo),
         conj_list_to_goal(GoalList, GoalInfo, !:Goal)
     ).
 
@@ -511,7 +510,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
             Vars1, Modes, Det, ParsedGoal, Context, MainContext, SubContext,
             Goal0, !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !IO),
         Goal0 = GoalExpr - GoalInfo0,
-        add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo),
+        add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo
     ;
         % handle if-then-else expressions
@@ -620,7 +619,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
             make_atomic_unification(X, functor(ConsId, no, []), Context,
                 MainContext, SubContext, Goal0, !QualInfo),
             Goal0 = GoalExpr - GoalInfo0,
-            add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo),
+            add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
             % We could attach the from_ground_term feature to Goal,
             % but there would be no gain from doing so, whereas the
             % increase would lead to a slight increase in memory and time
@@ -644,7 +643,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
                     !ModuleInfo, !QualInfo, !SInfo, !IO)
             ;
                 Goal0 = GoalExpr0 - GoalInfo0,
-                add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo1),
+                add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo1),
                 Goal1 = GoalExpr0 - GoalInfo1,
                 insert_arg_unifications(HeadVars, FunctorArgs, FunctorContext,
                     ArgContext, Goal1, Goal2, !VarSet,

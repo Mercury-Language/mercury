@@ -108,7 +108,7 @@ modecheck_unification(X, var(Y), Unification0, UnifyContext,
         modes__construct_initialisation_call(X, VarType, any_inst,
             context_init, no, InitXGoal, !ModeInfo),
         MaybeInitX = yes(InitXGoal),
-        instmap__set(InstMap0, X, any_inst, InstMap),
+        instmap__set(X, any_inst, InstMap0, InstMap),
         InstOfX    = any_inst,
         InstOfY    = InstOfY0
     ;
@@ -329,8 +329,8 @@ modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
     ->
         make_shared_inst_list(NonLocalInsts, SharedNonLocalInsts,
             ModuleInfo2, ModuleInfo3),
-        instmap__set_vars(InstMap1, NonLocalsList, SharedNonLocalInsts,
-            InstMap2),
+        instmap__set_vars(NonLocalsList, SharedNonLocalInsts,
+            InstMap1, InstMap2),
         mode_info_set_module_info(ModuleInfo3, !ModeInfo),
         mode_info_set_instmap(InstMap2, !ModeInfo),
 
@@ -356,8 +356,8 @@ modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         % Ensure that the non-local vars are shared OUTSIDE the
         % lambda unification as well as inside.
 
-        instmap__set_vars(InstMap0, NonLocalsList, SharedNonLocalInsts,
-            InstMap11),
+        instmap__set_vars(NonLocalsList, SharedNonLocalInsts,
+            InstMap0, InstMap11),
         mode_info_set_instmap(InstMap11, !ModeInfo),
 
         % Now modecheck the unification of X with the lambda-expression.
@@ -797,8 +797,8 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
     % but that shouldn't cause any problems.
     %
     set__list_to_set([Var0, Var], NonLocals),
-    goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
-    goal_info_set_context(GoalInfo1, Context, GoalInfo2),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
+    goal_info_set_context(Context, GoalInfo1, GoalInfo2),
 
     %
     % Look up the map(tvar, type_info_locn) in the proc_info,

@@ -884,7 +884,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
             Context, explicit, [], Goal0),
         Goal0 = GoalExpr - GoalInfo0,
         set__list_to_set(HeadVars, NonLocals),
-        goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo,
         ProcIds = [], % the clause applies to all procedures.
         Clause = clause(ProcIds, Goal, mercury, Context),
@@ -933,9 +933,8 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
             VarSet0, VarSet, map__init, Subst, [], RevConj),
 
         goal_info_get_nonlocals(GoalInfo0, NonLocals0),
-        goal_util__rename_vars_in_var_set(NonLocals0, no,
-            Subst, NonLocals),
-        goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+        goal_util__rename_vars_in_var_set(no, Subst, NonLocals0, NonLocals),
+        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         conj_list_to_goal(list__reverse(RevConj), GoalInfo, Goal),
 
         apply_partial_map_to_list(HeadVars0, Subst, HeadVars),
@@ -1270,7 +1269,7 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info, !IO) :-
     term__context_init(EmptyContext),
     ( Context = EmptyContext ->
         typecheck_info_get_context(!.Info, EnclosingContext),
-        goal_info_set_context(GoalInfo0, EnclosingContext, GoalInfo)
+        goal_info_set_context(EnclosingContext, GoalInfo0, GoalInfo)
     ;
         GoalInfo = GoalInfo0,
         typecheck_info_set_context(Context, !Info)

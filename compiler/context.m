@@ -346,7 +346,7 @@ context__transform_rule(PredProcId, exit(CallList0, AfterGoals0) - GoalInfo,
 	context__create_magic_call(MagicCall, yes, Subn, _),
 	{ context__rename_vars_in_call_list(CallList0,
 		Subn, CallList) },
-	{ goal_util__rename_vars_in_goals(AfterGoals0, no, Subn, AfterGoals) },
+	{ goal_util__rename_vars_in_goals(no, Subn, AfterGoals0, AfterGoals) },
 	magic_info_get_magic_vars(Vars),
 	{ list__condense([Vars, Inputs, Outputs], NonLocals0) },
 	{ set__list_to_set(NonLocals0, NonLocals) },
@@ -526,8 +526,7 @@ context__factor_goal_list(PredProcId, FirstCall,
 		magic_info_set_proc_info(ProcInfo),
 		{ goal_info_get_nonlocals(GoalInfo1, GoalNonLocals1) },
 		magic_util__restrict_nonlocals(GoalNonLocals1, GoalNonLocals),
-		{ goal_info_set_nonlocals(GoalInfo1,
-			GoalNonLocals, GoalInfo) },
+		{ goal_info_set_nonlocals(GoalNonLocals, GoalInfo1,GoalInfo) },
 		magic_info_get_pred_info(PredInfo),
 		{ PredModule = pred_info_module(PredInfo) },
 		{ PredName = pred_info_name(PredInfo) },
@@ -589,7 +588,7 @@ context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 context__rename_vars_in_call_list([], _, []).
 context__rename_vars_in_call_list([Goals0 - Call0 | Calls0],
 		Subn, [Goals - Call | Calls]) :-
-	goal_util__rename_vars_in_goals(Goals0, no, Subn, Goals),
+	goal_util__rename_vars_in_goals(no, Subn, Goals0, Goals),
 	magic_util__rename_vars_in_db_call(Call0, Subn, Call),
 	context__rename_vars_in_call_list(Calls0, Subn, Calls).
 

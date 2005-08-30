@@ -486,7 +486,7 @@ svar_unification(MaybeFeature, Context, SVar, Var) = Unification :-
         Unification = Unification0
     ;
         MaybeFeature = yes(Feature),
-        goal_add_feature(Unification0, Feature, Unification)
+        goal_add_feature(Feature, Unification0, Unification)
     ).
 
 %-----------------------------------------------------------------------------%

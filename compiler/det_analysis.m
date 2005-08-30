@@ -417,7 +417,7 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         Solns = InternalSolns
     ),
     determinism_components(Detism, InternalCanFail, Solns),
-    goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
+    goal_info_set_determinism(Detism, GoalInfo0, GoalInfo),
 
     % The code generators assume that conjunctions containing multi or nondet
     % goals and if-then-elses containing multi or nondet conditions can only
@@ -474,7 +474,7 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
     ->
         % A commit is needed - we must introduce an explicit `commit' so that
         % the code generator knows to insert the appropriate code for pruning.
-        goal_info_set_determinism(GoalInfo0, FinalInternalDetism, InnerInfo),
+        goal_info_set_determinism(FinalInternalDetism, GoalInfo0, InnerInfo),
         Goal = scope(commit(dont_force_pruning), Goal1 - InnerInfo)
     ;
         % Either no commit is needed, or a `scope' is already present.

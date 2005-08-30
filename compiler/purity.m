@@ -6,12 +6,11 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File      : purity.m
-% Authors   : scachte (Peter Schachte)
-%       (main author and designer of purity system)
-%         trd (modifications for impure functions)
-% Purpose   : handle `impure' and `promise_pure' declarations;
-%         finish off type checking.
+% File:     purity.m
+% Authors:  scachte (Peter Schachte, main author and designer of purity system)
+%           trd (modifications for impure functions)
+% Purpose:  handle `impure' and `promise_pure' declarations;
+%           finish off type checking.
 %
 % The main purpose of this module is check the consistency of the
 % `impure' and `promise_pure' (etc.) declarations, and to thus report
@@ -249,16 +248,15 @@ best_purity((impure), (impure)) = (impure).
 %-----------------------------------------------------------------------------%
 
     % Purity-check the code for all the predicates in a module.
-
+    %
 :- pred check_preds_purity(bool::in, bool::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 check_preds_purity(FoundTypeError, PostTypecheckError, !ModuleInfo, !IO) :-
     module_info_predids(!.ModuleInfo, PredIds),
 
-    % Only report error messages for unbound type variables
-    % if we didn't get any type errors already; this avoids
-    % a lot of spurious diagnostics.
+    % Only report error messages for unbound type variables if we didn't get
+    % any type errors already; this avoids a lot of spurious diagnostics.
     ReportTypeErrors = bool__not(FoundTypeError),
     post_typecheck__finish_preds(PredIds, ReportTypeErrors, NumErrors1,
         PostTypecheckError, !ModuleInfo, !IO),
@@ -290,7 +288,7 @@ check_preds_purity_2([PredId | PredIds], !ModuleInfo, !NumErrors, !IO) :-
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ),
 
-        % Finish processing of promise declarations.
+    % Finish processing of promise declarations.
     pred_info_get_goal_type(PredInfo, GoalType),
     ( GoalType = promise(PromiseType) ->
         post_typecheck__finish_promise(PromiseType, PredId, !ModuleInfo, !IO)
@@ -298,8 +296,6 @@ check_preds_purity_2([PredId | PredIds], !ModuleInfo, !NumErrors, !IO) :-
         true
     ),
     check_preds_purity_2(PredIds, !ModuleInfo, !NumErrors, !IO).
-
-    % Purity-check the code for single predicate, reporting any errors.
 
 %-----------------------------------------------------------------------------%
 %
@@ -446,15 +442,15 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
         true
     ).
 
-% Infer the purity of a single (non-pragma c_code) predicate
-
+    % Infer the purity of a single (non-pragma c_code) predicate.
+    %
 :- pred compute_purity(goal_type::in, list(clause)::in, list(clause)::out,
     list(proc_id)::in, purity::in, purity::out,
     purity_info::in, purity_info::out) is det.
 
-compute_purity(_, [], [], _, Purity, Purity, !Info).
+compute_purity(_, [], [], _, !Purity, !Info).
 compute_purity(GoalType, [Clause0 | Clauses0], [Clause | Clauses], ProcIds,
-        Purity0, Purity, !Info) :-
+        !Purity, !Info) :-
     Clause0 = clause(Ids, Body0 - Info0, Lang, Context),
     compute_expr_purity(Body0, Body, Info0, Bodypurity0, !Info),
     % If this clause doesn't apply to all modes of this procedure,
@@ -473,11 +469,10 @@ compute_purity(GoalType, [Clause0 | Clauses0], [Clause | Clauses], ProcIds,
         Clausepurity = (impure)
     ),
     worst_purity(Bodypurity0, Clausepurity) = Bodypurity,
-    add_goal_info_purity_feature(Info0, Bodypurity, Info),
-    worst_purity(Purity0, Bodypurity) = Purity1,
+    add_goal_info_purity_feature(Bodypurity, Info0, Info),
+    !:Purity = worst_purity(!.Purity, Bodypurity),
     Clause = clause(Ids, Body - Info, Lang, Context),
-    compute_purity(GoalType, Clauses0, Clauses, ProcIds, Purity1, Purity,
-        !Info).
+    compute_purity(GoalType, Clauses0, Clauses, ProcIds, !Purity, !Info).
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
 
@@ -713,7 +708,7 @@ compute_expr_purity(ForeignProc0, ForeignProc, _, Purity, !Info) :-
     ).
 
 compute_expr_purity(shorthand(_), _, _, _, !Info) :-
-    % these should have been expanded out by now
+    % These should have been expanded out by now.
     error("compute_expr_purity: unexpected shorthand").
 
 :- pred check_higher_order_purity(hlds_goal_info::in, cons_id::in,
@@ -740,20 +735,16 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         CallerPredInfo = !.Info ^ pred_info,
         pred_info_get_markers(CallerPredInfo, CallerMarkers),
         (
-            get_pred_id(calls_are_fully_qualified(CallerMarkers),
-                PName, PredOrFunc, TVarSet, PredArgTypes,
-                ModuleInfo, CalleePredId)
+            get_pred_id(calls_are_fully_qualified(CallerMarkers), PName,
+                PredOrFunc, TVarSet, PredArgTypes, ModuleInfo, CalleePredId)
         ->
-            module_info_pred_info(ModuleInfo,
-                CalleePredId, CalleePredInfo),
+            module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_get_purity(CalleePredInfo, CalleePurity),
-            check_closure_purity(GoalInfo, TypePurity,
-                CalleePurity, !Info)
+            check_closure_purity(GoalInfo, TypePurity, CalleePurity, !Info)
         ;
-            % If we can't find the type of the function,
-            % it's because typecheck couldn't give it one.
-            % Typechecking gives an error in this case, we
-            % just keep silent.
+            % If we can't find the type of the function, it's because
+            % typecheck couldn't give it one. Typechecking gives an error
+            % in this case, we just keep silent.
             true
         )
     ;
@@ -764,7 +755,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     % even if it is a unification with an impure higher-order term.
     ActualPurity = pure,
 
-    % Check for a bogus purity annotation on the unification
+    % Check for a bogus purity annotation on the unification.
     infer_goal_info_purity(GoalInfo, DeclaredPurity),
     (
         DeclaredPurity \= pure,
@@ -777,7 +768,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         true
     ).
 
-    % the possible results of a purity check
+    % The possible results of a purity check.
 :- type purity_check_result
     --->    no_worries                  % All is well.
     ;       insufficient_decl           % Purity decl is less than
@@ -810,10 +801,9 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
     ->
         PurityCheckResult = inconsistent_promise
     ;
-        % You shouldn't promise pure unnecessarily.
-        % It's OK in the case of foreign_procs though.
-        % There is also no point in warning about compiler-generated
-        % predicates.
+        % You shouldn't promise pure unnecessarily. It's OK in the case
+        % of foreign_procs though. There is also no point in warning about
+        % compiler-generated predicates.
         PromisedPurity \= (impure),
         ActualPurity = PromisedPurity,
         not pred_info_pragma_goal_type(PredInfo),
@@ -835,19 +825,16 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
             PurityCheckResult = no_worries
         )
     ;
-        % We don't warn about exaggerated impurity decls in
-        % class methods or instance methods --- it just
-        % means that the predicate provided as an
-        % implementation was more pure than necessary.
+        % We don't warn about exaggerated impurity decls in class methods
+        % or instance methods --- it just means that the predicate provided
+        % as an implementation was more pure than necessary.
         %
-        % We don't warn about exaggerated impurity
-        % decls in c_code -- this is just because we
-        % assume they are pure, but you can declare them
+        % We don't warn about exaggerated impurity decls in c_code -- this is
+        % just because we assume they are pure, but you can declare them
         % to be impure.
         %
-        % We don't warn about exaggerated impurity declarations
-        % for "stub" procedures, i.e. procedures which
-        % originally had no clauses.
+        % We don't warn about exaggerated impurity declarations for "stub"
+        % procedures, i.e. procedures which originally had no clauses.
 
         pred_info_get_markers(PredInfo, Markers),
         pred_info_get_goal_type(PredInfo, GoalType),
@@ -873,6 +860,7 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
     %
     % ActualPurity: The inferred purity of the goal
     % DeclaredPurity: The declared purity of the goal
+    %
 :- pred perform_goal_purity_checks(prog_context::in, pred_id::in, purity::in,
     purity::out, purity_info::in, purity_info::out) is det.
 
@@ -891,7 +879,7 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
         true
     ;
         % The purity of the callee should match the
-        % purity declared at the call
+        % purity declared at the call.
         ActualPurity = DeclaredPurity
     ->
         true
@@ -907,10 +895,9 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
         purity_info_add_message(
             error(missing_body_impurity_error(Context, PredId)), !Info)
     ;
-        % We don't warn about exaggerated impurity decls in
-        % class methods or instance methods --- it just
-        % means that the predicate provided as an
-        % implementation was more pure than necessary.
+        % We don't warn about exaggerated impurity decls in class methods
+        % or instance methods --- it just means that the predicate provided
+        % as an implementation was more pure than necessary.
 
         pred_info_get_markers(PredInfo, Markers),
         (
@@ -932,12 +919,12 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
 
 compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity, !Info) :-
     compute_expr_purity(Goal0, Goal, GoalInfo0, Purity, !Info),
-    add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo).
+    add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo).
 
     % Compute the purity of a list of hlds_goals.  Since the purity of a
     % disjunction is computed the same way as the purity of a conjunction,
     % we use the same code for both
-
+    %
 :- pred compute_goals_purity(list(hlds_goal)::in, list(hlds_goal)::out,
     purity::in, purity::out, purity_info::in, purity_info::out) is det.
 
@@ -959,6 +946,7 @@ compute_cases_purity([case(Ctor, Goal0) | Cases0], [case(Ctor, Goal) | Cases],
 
     % Make sure lambda expressions introduced by the compiler
     % have the correct mode for their `aditi__state' arguments.
+    %
 :- pred fix_aditi_state_modes(bool::in, (mode)::in, list(type)::in,
     list(mode)::in, list(mode)::out) is det.
 
@@ -972,11 +960,9 @@ fix_aditi_state_modes(SeenState0, AditiStateMode, [Type | Types],
     ( type_is_aditi_state(Type) ->
         (
             SeenState0 = yes,
-            % The only Aditi builtin which takes a closure
-            % with two `aditi__state' arguments is
-            % `aditi_bulk_modify'.
-            % The second `aditi__state' argument has mode
-            % unused.
+            % The only Aditi builtin which takes a closure with two
+            % `aditi__state' arguments is `aditi_bulk_modify'.
+            % The second `aditi__state' argument has mode unused.
             unused_mode(ArgMode)
         ;
             SeenState0 = no,

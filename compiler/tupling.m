@@ -713,7 +713,7 @@ make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
 	insert_proc_start_deconstruction(Goal1, Goal2,
 		VarSet1, VarSet, VarTypes1, VarTypes,
 		RenameMapB, ProcStartInsert),
-	rename_vars_in_goal(Goal2, RenameMapB, Goal3),
+	rename_vars_in_goal(RenameMapB, Goal2, Goal3),
 
 	map__merge(RenameMapA, RenameMapB, RenameMap),
 	apply_headvar_correction(set__from_list(HeadVars), RenameMap,

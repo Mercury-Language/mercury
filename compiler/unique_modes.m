@@ -271,7 +271,7 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
 	->
 		make_mostly_uniq_inst(Inst0, Inst, ModuleInfo0, ModuleInfo),
 		mode_info_set_module_info(ModuleInfo, !ModeInfo),
-		instmap__set(InstMap0, Var, Inst, InstMap),
+		instmap__set(Var, Inst, InstMap0, InstMap),
 		mode_info_set_instmap(InstMap, !ModeInfo)
 	;
 		true
@@ -782,7 +782,7 @@ unique_modes__check_par_conj_0(NonLocalVarsBag, !ModeInfo) :-
 	make_shared_inst_list(VarInsts, SharedVarInsts,
 		ModuleInfo0, ModuleInfo1),
 	mode_info_set_module_info(ModuleInfo1, !ModeInfo),
-	instmap__set_vars(InstMap0, SharedList, SharedVarInsts, InstMap1),
+	instmap__set_vars(SharedList, SharedVarInsts, InstMap0, InstMap1),
 	mode_info_set_instmap(InstMap1, !ModeInfo).
 
 	% Just process each conjunct in turn.

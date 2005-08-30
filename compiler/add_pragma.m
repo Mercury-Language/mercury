@@ -608,8 +608,8 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             map__init(VarTypes0),
             goal_info_init(GoalInfo0),
             set__list_to_set(Args, NonLocals),
-            goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
-            goal_info_set_context(GoalInfo1, Context, GoalInfo),
+            goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
+            goal_info_set_context(Context, GoalInfo1, GoalInfo),
 
             %
             % We don't record the called predicate as used -- it
@@ -1905,11 +1905,11 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO)
     ;
         MultipleArgs = [],
-            % build the pragma_c_code
+        % Build the foreign_proc.
         goal_info_init(GoalInfo0),
-        goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+        goal_info_set_context(Context, GoalInfo0, GoalInfo1),
         % Put the purity in the goal_info in case this foreign code is inlined.
-        add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
+        add_goal_info_purity_feature(Purity, GoalInfo1, GoalInfo),
         make_foreign_args(HeadVars, ArgInfo, OrigArgTypes, ForeignArgs),
         HldsGoal0 = foreign_proc(Attributes, PredId, ProcId, ForeignArgs, [],
             PragmaImpl) - GoalInfo,

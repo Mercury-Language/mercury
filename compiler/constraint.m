@@ -104,8 +104,8 @@ propagate_goal(Goal0, Constraints, Goal, !Info) :-
     goal_list_determinism(Goals, ConjDetism),
     goal_list_purity(Goals, Purity),
     goal_info_init(NonLocals, Delta, ConjDetism, pure, Context, GoalInfo1),
-    goal_info_set_features(GoalInfo1, Features0, GoalInfo2),
-    add_goal_info_purity_feature(GoalInfo2, Purity, GoalInfo),
+    goal_info_set_features(Features0, GoalInfo1, GoalInfo2),
+    add_goal_info_purity_feature(Purity, GoalInfo2, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, Goal).
 
 :- pred propagate_conj_sub_goal(hlds_goal::in,
@@ -536,7 +536,7 @@ attach_constraints(Goal, Constraints0) = Goal - Constraints :-
 :- func add_constraint_feature(hlds_goal) = hlds_goal.
 
 add_constraint_feature(Goal - GoalInfo0) = Goal - GoalInfo :-
-    goal_info_add_feature(GoalInfo0, constraint, GoalInfo).
+    goal_info_add_feature(constraint, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -564,10 +564,9 @@ add_constant_construction(ConstructVar, Construct0,
         !:Info = !.Info ^ varset := VarSet,
         !:Info = !.Info ^ vartypes := VarTypes,
         map__from_assoc_list([ConstructVar - NewVar], Subn),
-        goal_util__rename_vars_in_goal(Construct0, Subn, Construct),
+        rename_vars_in_goal(Subn, Construct0, Construct),
         Constructs = [Construct | Constructs0],
-        goal_util__rename_vars_in_goal(ConstraintGoal0, Subn,
-            ConstraintGoal),
+        rename_vars_in_goal(Subn, ConstraintGoal0, ConstraintGoal),
         Constraint = constraint(ConstraintGoal, ChangedVars,
             IncompatibleInstVars, Constructs)
     ;
@@ -812,7 +811,7 @@ constraint_info_update_changed(Constraints, !Info) :-
 strip_constraint_markers(Goal - GoalInfo0) =
         strip_constraint_markers_expr(Goal) - GoalInfo :-
     ( goal_info_has_feature(GoalInfo0, constraint) ->
-        goal_info_remove_feature(GoalInfo0, constraint, GoalInfo)
+        goal_info_remove_feature(constraint, GoalInfo0, GoalInfo)
     ;
         GoalInfo = GoalInfo0
     ).

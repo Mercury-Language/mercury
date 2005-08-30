@@ -814,7 +814,7 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 	{ instmap_delta_from_mode_list(HeadVars, ArgModes,
 		ModuleInfo0, InstMapDelta) },
 	{ proc_info_goal(ProcInfo1, Goal0 - GoalInfo0) },
-	{ goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) },
+	{ goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo) },
 	{ proc_info_set_goal(Goal0 - GoalInfo, ProcInfo1, ProcInfo2) },
 
 	% All Aditi procedures are considered nondet. The C interface
@@ -1432,8 +1432,8 @@ magic__preprocess_goal_2(Goal0, Goals, HOMap, HOMap) -->
 			[], IntroducedArgs, [], ExtraGoals),
 		{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 		{ set__insert_list(NonLocals, IntroducedArgs, NewNonLocals) },
-		{ goal_info_set_nonlocals(GoalInfo,
-			NewNonLocals, NewGoalInfo) },
+		{ goal_info_set_nonlocals(NewNonLocals,
+			GoalInfo, NewGoalInfo) },
 		{ NewCall = call(PredId, B, NewArgs, C, D, E) - NewGoalInfo },
 		{ list__append(ExtraGoals, [NewCall], Goals) }
 	;
@@ -1648,9 +1648,9 @@ magic__rename_and_generate_closures([Arg | Args], ExtraGoals,
 		magic_info_set_proc_info(ProcInfo),
 		{ map__init(Subn0) },
 		{ map__det_insert(Subn0, Arg, NewArg, Subn) },
-		{ goal_util__rename_vars_in_goal(ClosureGoal0,
-			Subn, ClosureGoal) },
-		{ goal_util__rename_vars_in_goal(Goal1, Subn, Goal) },
+		{ goal_util__rename_vars_in_goal(Subn,
+			ClosureGoal0,ClosureGoal) },
+		{ goal_util__rename_vars_in_goal(Subn, Goal1, Goal) },
 		{ ExtraGoals = [ClosureGoal | ExtraGoals1] }
 	;
 		{ ExtraGoals = ExtraGoals1 },

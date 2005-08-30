@@ -1443,24 +1443,18 @@ recompile_reason_message(module_changed(FileName), no,
 recompile_reason_message(item_ambiguity(Item, AmbiguousItems), no, Pieces) :-
 	AmbiguousItemPieces = component_lists_to_pieces(
 		list__map(describe_item, AmbiguousItems)),
-	Pieces = append_punctuation(
-		list__condense([
-			[words("addition of ") | describe_item(Item)],
-			[words("could cause an ambiguity with")],
-			AmbiguousItemPieces]),
-		'.').
+	Pieces = [words("addition of ") | describe_item(Item)]
+		++ [words("could cause an ambiguity with")]
+		++ AmbiguousItemPieces ++ [suffix(".")].
 recompile_reason_message(functor_ambiguity(SymName, Arity,
 		Functor, AmbiguousFunctors), no, Pieces) :-
 	FunctorPieces = describe_functor(SymName, Arity, Functor),
 	AmbiguousFunctorPieces = component_lists_to_pieces(
 		list__map(describe_functor(SymName, Arity),
 		AmbiguousFunctors)),
-	Pieces = append_punctuation(
-		list__condense([
-			[words("addition of ") | FunctorPieces],
-			[words("could cause an ambiguity with")],
-			AmbiguousFunctorPieces]),
-		'.').
+	Pieces = [words("addition of ") | FunctorPieces]
+		++ [words("could cause an ambiguity with")]
+		++ AmbiguousFunctorPieces ++ [suffix(".")].
 recompile_reason_message(changed_item(Item), no,
 		list__append(describe_item(Item), [words("was modified.")])).
 recompile_reason_message(removed_item(Item), no,

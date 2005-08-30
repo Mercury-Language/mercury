@@ -68,6 +68,7 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 
 module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
@@ -668,7 +669,7 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
     ;
         QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1]
     ),
-    map__set(!.Ctors, QualifiedConsId, QualifiedConsDefns, !:Ctors),
+    svmap__set(QualifiedConsId, QualifiedConsDefns, !Ctors),
 
     ( QualifiedConsId = cons(qualified(Module, ConsName), Arity) ->
         % Add unqualified version of the cons_id to the

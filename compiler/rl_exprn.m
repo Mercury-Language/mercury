@@ -1088,8 +1088,8 @@ rl_exprn__build_top_down_procedure(InputArgs, OutputArgs,
 			[functor(OutputTupleConsId, FinalOutputInsts)]) },
 
 	{ instmap__init_reachable(InitialInstMap0) },
-	{ instmap__set(InitialInstMap0, InputTupleVar, InputTupleInst,
-		InitialInstMap) },
+	{ instmap__set(InputTupleVar, InputTupleInst,
+		InitialInstMap0, InitialInstMap) },
 
 	{ instmap_delta_from_assoc_list([OutputTupleVar - OutputTupleInst],
 		GoalInstMapDelta) },

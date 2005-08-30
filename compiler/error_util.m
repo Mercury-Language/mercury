@@ -41,7 +41,6 @@
 :- import_module parse_tree__prog_data.
 
 :- import_module bool.
-:- import_module char.
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
@@ -212,12 +211,6 @@
 
 :- func pred_or_func_to_string(pred_or_func) = string.
 
-    % Append a punctuation character to a message, avoiding unwanted
-    % line splitting between the message and the punctuation.
-    %
-:- func append_punctuation(list(format_component), char) =
-    list(format_component).
-
     % Put `' quotes around the given string.
     %
 :- func add_quotes(string) = string.
@@ -326,28 +319,25 @@ list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
     [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
 
 component_lists_to_pieces([]) = [].
-component_lists_to_pieces([Components]) = Components.
-component_lists_to_pieces([Components1, Components2]) =
-        list__condense([Components1, [words("and")], Components2]).
-component_lists_to_pieces(
-        [Components1, Components2, Components3 | Components]) =
-    list__append(append_punctuation(Components1, ','),
-        component_lists_to_pieces([Components2, Components3 | Components])).
+component_lists_to_pieces([Comps]) = Comps.
+component_lists_to_pieces([Comps1, Comps2]) =
+    Comps1 ++ [words("and")] ++ Comps2.
+component_lists_to_pieces([Comps1, Comps2, Comps3 | Comps]) =
+    Comps1 ++ [suffix(",")]
+    ++ component_lists_to_pieces([Comps2, Comps3 | Comps]).
 
 component_list_to_pieces([]) = [].
-component_list_to_pieces([Component]) = [Component].
-component_list_to_pieces([Component1, Component2]) =
-        [Component1, words("and"), Component2].
-component_list_to_pieces(
-        [Component1, Component2, Component3 | Components]) =
-    list__append(append_punctuation([Component1], ','),
-        component_list_to_pieces([Component2, Component3 | Components])).
+component_list_to_pieces([Comp]) = [Comp].
+component_list_to_pieces([Comp1, Comp2]) = [Comp1, words("and"), Comp2].
+component_list_to_pieces([Comp1, Comp2, Comp3 | Comps]) =
+    [Comp1, suffix(",")]
+    ++ component_list_to_pieces([Comp2, Comp3 | Comps]).
 
 component_list_to_line_pieces([]) = [].
-component_list_to_line_pieces([Components]) = Components ++ [nl].
-component_list_to_line_pieces([Components1, Components2 | ComponentLists]) =
-    list__append(Components1 ++ [suffix(","), nl],
-        component_list_to_line_pieces([Components2 | ComponentLists])).
+component_list_to_line_pieces([Comps]) = Comps ++ [nl].
+component_list_to_line_pieces([Comps1, Comps2 | CompLists]) =
+    Comps1 ++ [suffix(","), nl]
+    ++ component_list_to_line_pieces([Comps2 | CompLists]).
 
 choose_number([], _Singular, Plural) = Plural.
 choose_number([_], Singular, _Plural) = Singular.
@@ -648,9 +638,8 @@ sym_name_to_word(SymName) = "`" ++ SymStr ++ "'" :-
 :- func sym_name_and_arity_to_word(sym_name_and_arity) = string.
 
 sym_name_and_arity_to_word(SymName / Arity) =
-        "`" ++ SymStr ++ "'/" ++ ArityStr :-
-    sym_name_to_string(SymName, SymStr),
-    string__int_to_string(Arity, ArityStr).
+        "`" ++ sym_name_to_string(SymName) ++ "'"
+        ++ "/" ++ int_to_string(Arity).
 
 :- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
 
@@ -798,50 +787,6 @@ describe_sym_name(SymName) = string__append_list(["`", SymNameString, "'"]) :-
 
 pred_or_func_to_string(predicate) = "predicate".
 pred_or_func_to_string(function) = "function".
-
-append_punctuation([], _) = _ :-
-    error("append_punctuation: appending punctuation after nothing").
-append_punctuation([Piece0], Punc) = [Piece] :-
-    % Avoid unwanted line splitting between the message and the punctuation.
-    (
-        Piece0 = words(String),
-        Piece = words(string__append(String, char_to_string(Punc)))
-    ;
-        Piece0 = fixed(String),
-        Piece = fixed(string__append(String, char_to_string(Punc)))
-    ;
-        Piece0 = prefix(Prefix),
-        Piece = prefix(string__append(Prefix, char_to_string(Punc)))
-    ;
-        Piece0 = suffix(Suffix),
-        Piece = suffix(string__append(Suffix, char_to_string(Punc)))
-    ;
-        Piece0 = sym_name(SymName),
-        String = sym_name_to_word(SymName),
-        Piece = fixed(string__append(String, char_to_string(Punc)))
-    ;
-        Piece0 = sym_name_and_arity(SymNameAndArity),
-        String = sym_name_and_arity_to_word(SymNameAndArity),
-        Piece = fixed(string__append(String, char_to_string(Punc)))
-    ;
-        Piece0 = pred_or_func(PredOrFunc),
-        String = pred_or_func_to_string(PredOrFunc),
-        Piece = fixed(string__append(String, char_to_string(Punc)))
-    ;
-        Piece0 = simple_call_id(SimpleCallId),
-        String = simple_call_id_to_string(SimpleCallId),
-        Piece = words(string__append(String, char_to_string(Punc)))
-    ;
-        Piece0 = nl,
-        unexpected(this_file,
-            "append_punctutation: appending punctuation after nl")
-    ;
-        Piece0 = nl_indent_delta(_),
-        unexpected(this_file,
-            "append_punctutation: appending punctuation after nl_indent_delta")
-    ).
-append_punctuation([Piece1, Piece2 | Pieces], Punc) =
-    [Piece1 | append_punctuation([Piece2 | Pieces], Punc)].
 
 add_quotes(Str) = "`" ++ Str ++ "'".
 

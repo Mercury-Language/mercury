@@ -224,13 +224,13 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         ;
             proc_info_context(!.Proc, Context)
         ),
-        goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+        goal_info_set_context(Context, GoalInfo0, GoalInfo1),
 
         %
         % The non-local vars are just the head variables.
         %
         set__list_to_set(HeadVars, NonLocalVars),
-        goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo2),
+        goal_info_set_nonlocals(NonLocalVars, GoalInfo1, GoalInfo2),
 
         %
         % The disjunction is impure/semipure if any of the disjuncts
@@ -239,7 +239,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         ( contains_nonpure_goal(GoalList) ->
             list__map(get_purity, GoalList, PurityList),
             Purity = list__foldl(worst_purity, PurityList, (pure)),
-            add_goal_info_purity_feature(GoalInfo2, Purity, GoalInfo)
+            add_goal_info_purity_feature(Purity, GoalInfo2, GoalInfo)
         ;
             GoalInfo2 = GoalInfo
         ),
@@ -397,7 +397,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     Goals = Goals0 ++ ExistsCastHeadGoals ++ ExistsCastExtraGoals,
     HeadVars = ExtraHeadVars ++ OrigHeadVars,
     set__list_to_set(HeadVars, NonLocals),
-    goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Body = conj(Goals) - GoalInfo,
     proc_info_set_body(VarSet, VarTypes, HeadVars, Body, RttiVarMaps,
         !ProcInfo).

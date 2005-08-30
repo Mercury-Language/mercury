@@ -522,7 +522,7 @@ transform_goal(Goal0 - Context, Subst, Goal - GoalInfo, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     transform_goal_2(Goal0, Context, Subst, Goal - GoalInfo1,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
-    goal_info_set_context(GoalInfo1, Context, GoalInfo).
+    goal_info_set_context(Context, GoalInfo1, GoalInfo).
 
 :- pred transform_goal_2(goal_expr::in, prog_context::in,
     prog_substitution::in, hlds_goal::out,
@@ -737,7 +737,7 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
             CallId = call(predicate - Name/Arity)
         ),
         goal_info_init(Context, GoalInfo0),
-        add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo),
+        add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
         Goal0 = Call - GoalInfo,
 
         record_called_pred_or_func(predicate, Name, Arity, !QualInfo),

@@ -952,8 +952,8 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
     (
         RecomputeAtomic = no,
         goal_is_atomic(Goal0),
-        Goal0 \= unify(_,lambda_goal(_,_,_,_,_,_,_,_,_),_,_,_)
-            % Lambda expressions always need to be processed.
+        Goal0 \= unify(_, lambda_goal(_,_,_,_,_,_,_,_,_), _, _, _)
+        % Lambda expressions always need to be processed.
     ->
         Goal = Goal0,
         GoalInfo1 = GoalInfo0
@@ -961,15 +961,15 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
         recompute_instmap_delta_2(RecomputeAtomic, Goal0, GoalInfo0,
             Goal, VarTypes, InstMap0, InstMapDelta0, !RI),
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta1),
-        goal_info_set_instmap_delta(GoalInfo0, InstMapDelta1, GoalInfo1)
+        instmap_delta_restrict(NonLocals, InstMapDelta0, InstMapDelta1),
+        goal_info_set_instmap_delta(InstMapDelta1, GoalInfo0, GoalInfo1)
     ),
 
     % If the initial instmap is unreachable so is the final instmap.
     ( instmap__is_unreachable(InstMap0) ->
         instmap_delta_init_unreachable(UnreachableInstMapDelta),
-        goal_info_set_instmap_delta(GoalInfo1,
-            UnreachableInstMapDelta, GoalInfo)
+        goal_info_set_instmap_delta(UnreachableInstMapDelta,
+            GoalInfo1, GoalInfo)
     ;
         GoalInfo = GoalInfo1
     ),
@@ -1113,8 +1113,8 @@ recompute_instmap_delta_2(_,
         ExtraArgs = [_ | _],
         goal_info_get_instmap_delta(GoalInfo, OldInstMapDelta),
         ExtraArgVars = list__map(foreign_arg_var, ExtraArgs),
-        instmap_delta_restrict(OldInstMapDelta,
-            set__list_to_set(ExtraArgVars), ExtraArgsInstMapDelta),
+        instmap_delta_restrict(set__list_to_set(ExtraArgVars),
+            OldInstMapDelta, ExtraArgsInstMapDelta),
         instmap_delta_apply_instmap_delta(InstMapDelta0,
             ExtraArgsInstMapDelta, large_base, InstMapDelta)
     ).
@@ -1439,8 +1439,8 @@ fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
     ( Inst = Inst0 ->
         GoalInfo = GoalInfo0
     ;
-        instmap_delta_set(InstMapDelta0, Var, Inst, InstMapDelta),
-        goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo)
+        instmap_delta_set(Var, Inst, InstMapDelta0, InstMapDelta),
+        goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo)
     ),
     Goal = GoalExpr - GoalInfo.
 

@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1996, 1998-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -65,15 +67,15 @@
 :- import_module bool.
 :- import_module list.
 
-% assign_constructor_tags(Constructors, TypeCtor, ReservedTagPragma, Globals,
-%		TagValues, IsEnum):
-%	Assign a constructor tag to each constructor for a discriminated
-%	union type, and determine whether the type is an enumeration
-%	type or not.  (`Globals' is passed because exact way in which
-%	this is done is dependent on a compilation option.)
-
+    % assign_constructor_tags(Constructors, TypeCtor, ReservedTagPragma,
+    %   Globals, TagValues, IsEnum):
+    % Assign a constructor tag to each constructor for a discriminated union
+    % type, and determine whether the type is an enumeration type or not.
+    % (`Globals' is passed because exact way in which this is done is
+    % dependent on a compilation option.)
+    %
 :- pred assign_constructor_tags(list(constructor)::in, type_ctor::in, bool::in,
-	globals::in, cons_tag_values::out, bool::out) is det.
+    globals::in, cons_tag_values::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -90,262 +92,261 @@
 :- import_module map.
 :- import_module require.
 :- import_module std_util.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
 assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
-		CtorTags, IsEnum) :-
+        CtorTags, IsEnum) :-
 
-		% Work out how many tag bits and reserved addresses
-		% we've got to play with.
-	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
-	globals__lookup_int_option(Globals, num_reserved_addresses,
-		NumReservedAddresses),
-	globals__lookup_int_option(Globals, num_reserved_objects,
-		NumReservedObjects),
-	globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    % Work out how many tag bits and reserved addresses we've got to play with.
+    globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
+    globals__lookup_int_option(Globals, num_reserved_addresses,
+        NumReservedAddresses),
+    globals__lookup_int_option(Globals, num_reserved_objects,
+        NumReservedObjects),
+    globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
-		% Determine if we need to reserve a tag for use by HAL's
-		% Herbrand constraint solver.
-		% (This also disables enumerations and no_tag types.)
-	globals__lookup_bool_option(Globals, reserve_tag, GlobalReserveTag),
-	ReserveTag = GlobalReserveTag `or` ReservedTagPragma,
+    % Determine if we need to reserve a tag for use by HAL's Herbrand
+    % constraint solver. (This also disables enumerations and no_tag types.)
+    globals__lookup_bool_option(Globals, reserve_tag, GlobalReserveTag),
+    ReserveTag = GlobalReserveTag `or` ReservedTagPragma,
 
-	( ReserveTag = yes ->
-		InitTag = 1
-	;
-		InitTag = 0
-	),
+    (
+        ReserveTag = yes,
+        InitTag = 1
+    ;
+        ReserveTag = no,
+        InitTag = 0
+    ),
 
-		% now assign them
-	map__init(CtorTags0),
-	(
-			% Try representing the type as an enumeration:
-			% all the constructors must be constant, and we
-			% must be allowed to make unboxed enums.
-		globals__lookup_bool_option(Globals, unboxed_enums, yes),
-		ctors_are_all_constants(Ctors),
-		ReserveTag = no
-	->
-		IsEnum = yes,
-		assign_enum_constants(Ctors, InitTag, CtorTags0, CtorTags)
-	;
-		IsEnum = no,
-		(
-				% Try representing it as a no-tag type
-			type_constructors_should_be_no_tag(Ctors,
-				ReserveTag, Globals,
-				SingleFunc, SingleArg, _)
-		->
-			SingleConsId = make_cons_id_from_qualified_sym_name(
-				SingleFunc, [SingleArg]),
-			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
-		;
-			NumTagBits = 0
-		->
-			(
-				ReserveTag = yes,
-				% XXX Need to fix this.
-				% This occurs for the .NET and Java backends
-				sorry("make_tags",
-					"--reserve-tag with num_tag_bits = 0")
-			;
-				ReserveTag = no
-			),
-			% assign reserved addresses to the constants,
-			% if possible
-			separate_out_constants(Ctors, Constants, Functors),
-			assign_reserved_numeric_addresses(Constants,
-				LeftOverConstants0, CtorTags0, CtorTags1,
-				0, NumReservedAddresses),
-			(
-				HighLevelCode = yes,
-				assign_reserved_symbolic_addresses(
-					LeftOverConstants0,
-					LeftOverConstants, TypeCtor,
-					CtorTags1, CtorTags2,
-					0, NumReservedObjects)
-			;
-				HighLevelCode = no,
-				% reserved symbolic addresses are not
-				% supported for the LLDS back-end
-				LeftOverConstants = LeftOverConstants0,
-				CtorTags2 = CtorTags1
-			),
-			% assign shared_with_reserved_address(...)
-			% representations for the remaining constructors
-			RemainingCtors = LeftOverConstants ++ Functors,
-			ReservedAddresses = list__filter_map(
-				(func(reserved_address(RA)) = RA is semidet),
-				map__values(CtorTags2)),
-			assign_unshared_tags(RemainingCtors, 0, 0,
-				ReservedAddresses, CtorTags2, CtorTags)
-		;
-			MaxTag = max_num_tags(NumTagBits) - 1,
-			separate_out_constants(Ctors, Constants, Functors),
-			assign_constant_tags(Constants, CtorTags0,
-				CtorTags1, InitTag, NextTag),
-			assign_unshared_tags(Functors, NextTag, MaxTag, [],
-				CtorTags1, CtorTags)
-		)
-	).
+    % Now assign them.
+    map__init(CtorTags0),
+    (
+        % Try representing the type as an enumeration: all the constructors
+        % must be constant, and we must be allowed to make unboxed enums.
+        globals__lookup_bool_option(Globals, unboxed_enums, yes),
+        ctors_are_all_constants(Ctors),
+        ReserveTag = no
+    ->
+        IsEnum = yes,
+        assign_enum_constants(Ctors, InitTag, CtorTags0, CtorTags)
+    ;
+        IsEnum = no,
+        (
+            % Try representing it as a no-tag type.
+            type_constructors_should_be_no_tag(Ctors, ReserveTag, Globals,
+                SingleFunc, SingleArg, _)
+        ->
+            SingleConsId = make_cons_id_from_qualified_sym_name(SingleFunc,
+                [SingleArg]),
+            map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
+        ;
+            NumTagBits = 0
+        ->
+            (
+                ReserveTag = yes,
+                % XXX Need to fix this.
+                % This occurs for the .NET and Java backends.
+                sorry("make_tags", "--reserve-tag with num_tag_bits = 0")
+            ;
+                ReserveTag = no
+            ),
+            % Assign reserved addresses to the constants, if possible.
+            separate_out_constants(Ctors, Constants, Functors),
+            assign_reserved_numeric_addresses(Constants, LeftOverConstants0,
+                CtorTags0, CtorTags1, 0, NumReservedAddresses),
+            (
+                HighLevelCode = yes,
+                assign_reserved_symbolic_addresses(
+                    LeftOverConstants0, LeftOverConstants, TypeCtor,
+                    CtorTags1, CtorTags2, 0, NumReservedObjects)
+            ;
+                HighLevelCode = no,
+                % reserved symbolic addresses are not
+                % supported for the LLDS back-end
+                LeftOverConstants = LeftOverConstants0,
+                CtorTags2 = CtorTags1
+            ),
+            % Assign shared_with_reserved_address(...) representations
+            % for the remaining constructors.
+            RemainingCtors = LeftOverConstants ++ Functors,
+            ReservedAddresses = list__filter_map(
+                (func(reserved_address(RA)) = RA is semidet),
+                map__values(CtorTags2)),
+            assign_unshared_tags(RemainingCtors, 0, 0, ReservedAddresses,
+                CtorTags2, CtorTags)
+        ;
+            MaxTag = max_num_tags(NumTagBits) - 1,
+            separate_out_constants(Ctors, Constants, Functors),
+            assign_constant_tags(Constants, CtorTags0, CtorTags1,
+                InitTag, NextTag),
+            assign_unshared_tags(Functors, NextTag, MaxTag, [],
+                CtorTags1, CtorTags)
+        )
+    ).
 
 :- pred assign_enum_constants(list(constructor)::in, int::in,
-	cons_tag_values::in, cons_tag_values::out) is det.
+    cons_tag_values::in, cons_tag_values::out) is det.
 
 assign_enum_constants([], _, !CtorTags).
 assign_enum_constants([Ctor | Rest], Val, !CtorTags) :-
-	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-	Tag = int_constant(Val),
-	map__set(!.CtorTags, ConsId, Tag, !:CtorTags),
-	assign_enum_constants(Rest, Val + 1, !CtorTags).
+    Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
+    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+    Tag = int_constant(Val),
+    svmap__set(ConsId, Tag, !CtorTags),
+    assign_enum_constants(Rest, Val + 1, !CtorTags).
 
-	% assign the representations null_pointer, small_pointer(1),
-	% small_pointer(2), ..., small_pointer(N) to the constructors,
-	% until N >= NumReservedAddresses.
+    % Assign the representations null_pointer, small_pointer(1),
+    % small_pointer(2), ..., small_pointer(N) to the constructors,
+    % until N >= NumReservedAddresses.
+    %
 :- pred assign_reserved_numeric_addresses(
-	list(constructor)::in, list(constructor)::out,
-	cons_tag_values::in, cons_tag_values::out, int::in, int::in) is det.
+    list(constructor)::in, list(constructor)::out,
+    cons_tag_values::in, cons_tag_values::out, int::in, int::in) is det.
 
 assign_reserved_numeric_addresses([], [], !CtorTags, _, _).
 assign_reserved_numeric_addresses([Ctor | Rest], LeftOverConstants,
-		!CtorTags, Address, NumReservedAddresses) :-
-	( Address >= NumReservedAddresses ->
-		LeftOverConstants = [Ctor | Rest]
-	;
-		Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-		ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-		( Address = 0 ->
-			Tag = reserved_address(null_pointer)
-		;
-			Tag = reserved_address(small_pointer(Address))
-		),
-		map__set(!.CtorTags, ConsId, Tag, !:CtorTags),
-		assign_reserved_numeric_addresses(Rest, LeftOverConstants,
-			!CtorTags, Address + 1, NumReservedAddresses)
-	).
+        !CtorTags, Address, NumReservedAddresses) :-
+    ( Address >= NumReservedAddresses ->
+        LeftOverConstants = [Ctor | Rest]
+    ;
+        Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
+        ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+        ( Address = 0 ->
+            Tag = reserved_address(null_pointer)
+        ;
+            Tag = reserved_address(small_pointer(Address))
+        ),
+        svmap__set(ConsId, Tag, !CtorTags),
+        assign_reserved_numeric_addresses(Rest, LeftOverConstants,
+            !CtorTags, Address + 1, NumReservedAddresses)
+    ).
 
-	% assign reserved_object(CtorName, CtorArity) representations
-	% to the specified constructors
+    % Assign reserved_object(CtorName, CtorArity) representations
+    % to the specified constructors.
+    %
 :- pred assign_reserved_symbolic_addresses(
-	list(constructor)::in, list(constructor)::out, type_ctor::in,
-	cons_tag_values::in, cons_tag_values::out, int::in, int::in) is det.
+    list(constructor)::in, list(constructor)::out, type_ctor::in,
+    cons_tag_values::in, cons_tag_values::out, int::in, int::in) is det.
 
 assign_reserved_symbolic_addresses([], [], _, !CtorTags, _, _).
 assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
-		!CtorTags, Num, Max) :-
-	( Num >= Max ->
-		LeftOverConstants = [Ctor | Ctors]
-	;
-		Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-		Arity = list__length(Args),
-		Tag = reserved_address(reserved_object(TypeCtor, Name, Arity)),
-		ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-		map__set(!.CtorTags, ConsId, Tag, !:CtorTags),
-		assign_reserved_symbolic_addresses(Ctors, LeftOverConstants,
-			TypeCtor, !CtorTags, Num + 1, Max)
-	).
+        !CtorTags, Num, Max) :-
+    ( Num >= Max ->
+        LeftOverConstants = [Ctor | Ctors]
+    ;
+        Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
+        Arity = list__length(Args),
+        Tag = reserved_address(reserved_object(TypeCtor, Name, Arity)),
+        ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+        svmap__set(ConsId, Tag, !CtorTags),
+        assign_reserved_symbolic_addresses(Ctors, LeftOverConstants,
+            TypeCtor, !CtorTags, Num + 1, Max)
+    ).
 
 :- pred assign_constant_tags(list(constructor)::in, cons_tag_values::in,
-	cons_tag_values::out, int::in, int::out) is det.
+    cons_tag_values::out, int::in, int::out) is det.
 
-	% If there's no constants, don't do anything.  Otherwise,
-	% allocate the first tag for the constants, and give
-	% them all shared local tags with that tag as the
-	% primary tag, and different secondary tags starting from
-	% zero.
-	% Note that if there's a single constant, we still give it a
-	% shared_local_tag rather than a unshared_tag.  That's
-	% because deconstruction of the shared_local_tag
-	% is more efficient.
-
+    % If there's no constants, don't do anything. Otherwise, allocate the
+    % first tag for the constants, and give them all shared local tags
+    % with that tag as the primary tag, and different secondary tags
+    % starting from zero.
+    %
+    % Note that if there's a single constant, we still give it a
+    % shared_local_tag rather than a unshared_tag. That's because
+    % deconstruction of the shared_local_tag is more efficient.
+    %
 assign_constant_tags(Constants, !CtorTags, InitTag, NextTag) :-
-	(
-		Constants = [],
-		NextTag = InitTag
-	;
-		Constants = [_ | _],
-		NextTag = InitTag + 1,
-		assign_shared_local_tags(Constants,
-			InitTag, 0, !CtorTags)
-	).
+    (
+        Constants = [],
+        NextTag = InitTag
+    ;
+        Constants = [_ | _],
+        NextTag = InitTag + 1,
+        assign_shared_local_tags(Constants, InitTag, 0, !CtorTags)
+    ).
 
 :- pred assign_unshared_tags(list(constructor)::in, int::in, int::in,
-	list(reserved_address)::in, cons_tag_values::in, cons_tag_values::out)
-	is det.
+    list(reserved_address)::in, cons_tag_values::in, cons_tag_values::out)
+    is det.
 
 assign_unshared_tags([], _, _, _, !CtorTags).
 assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
-		!CtorTags) :-
-	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-	% If there's only one functor,
-	% give it the "single_functor" (untagged)
-	% representation, rather than giving it unshared_tag(0).
-	( Val = 0, Rest = [] ->
-		Tag = maybe_add_reserved_addresses(ReservedAddresses,
-			single_functor),
-		map__set(!.CtorTags, ConsId, Tag, !:CtorTags)
-	% if we're about to run out of unshared tags, start assigning
-	% shared remote tags instead
-	; Val = MaxTag, Rest = [_ | _] ->
-		assign_shared_remote_tags([Ctor | Rest], MaxTag, 0,
-			ReservedAddresses, !CtorTags)
-	;
-		Tag = maybe_add_reserved_addresses(ReservedAddresses,
-			unshared_tag(Val)),
-		map__set(!.CtorTags, ConsId, Tag, !:CtorTags),
-		assign_unshared_tags(Rest, Val + 1, MaxTag,
-			ReservedAddresses, !CtorTags)
-	).
+        !CtorTags) :-
+    Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
+    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+    % If there's only one functor,
+    % give it the "single_functor" (untagged)
+    % representation, rather than giving it unshared_tag(0).
+    (
+        Val = 0,
+        Rest = []
+    ->
+        Tag = maybe_add_reserved_addresses(ReservedAddresses, single_functor),
+        svmap__set(ConsId, Tag, !CtorTags)
+    ;
+        % If we're about to run out of unshared tags, start assigning
+        % shared remote tags instead.
+        Val = MaxTag,
+        Rest = [_ | _]
+    ->
+        assign_shared_remote_tags([Ctor | Rest], MaxTag, 0, ReservedAddresses,
+            !CtorTags)
+    ;
+        Tag = maybe_add_reserved_addresses(ReservedAddresses,
+            unshared_tag(Val)),
+        svmap__set(ConsId, Tag, !CtorTags),
+        assign_unshared_tags(Rest, Val + 1, MaxTag, ReservedAddresses,
+            !CtorTags)
+    ).
 
 :- pred assign_shared_remote_tags(list(constructor)::in, int::in, int::in,
-	list(reserved_address)::in, cons_tag_values::in, cons_tag_values::out)
-	is det.
+    list(reserved_address)::in, cons_tag_values::in, cons_tag_values::out)
+    is det.
 
 assign_shared_remote_tags([], _, _, _, !CtorTags).
 assign_shared_remote_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
-		ReservedAddresses, !CtorTags) :-
-	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-	Tag = maybe_add_reserved_addresses(ReservedAddresses,
-		shared_remote_tag(PrimaryVal, SecondaryVal)),
-	map__set(!.CtorTags, ConsId, Tag, !:CtorTags),
-	SecondaryVal1 = SecondaryVal + 1,
-	assign_shared_remote_tags(Rest, PrimaryVal, SecondaryVal1,
-		ReservedAddresses, !CtorTags).
+        ReservedAddresses, !CtorTags) :-
+    Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
+    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+    Tag = maybe_add_reserved_addresses(ReservedAddresses,
+        shared_remote_tag(PrimaryVal, SecondaryVal)),
+    svmap__set(ConsId, Tag, !CtorTags),
+    SecondaryVal1 = SecondaryVal + 1,
+    assign_shared_remote_tags(Rest, PrimaryVal, SecondaryVal1,
+        ReservedAddresses, !CtorTags).
 
 :- pred assign_shared_local_tags(list(constructor)::in, int::in, int::in,
-	cons_tag_values::in, cons_tag_values::out) is det.
+    cons_tag_values::in, cons_tag_values::out) is det.
 
 assign_shared_local_tags([], _, _, !CtorTags).
 assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal, !CtorTags) :-
-	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-	Tag = shared_local_tag(PrimaryVal, SecondaryVal),
-	map__set(!.CtorTags, ConsId, Tag, !:CtorTags),
-	SecondaryVal1 = SecondaryVal + 1,
-	assign_shared_local_tags(Rest, PrimaryVal, SecondaryVal1, !CtorTags).
+    Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
+    ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+    Tag = shared_local_tag(PrimaryVal, SecondaryVal),
+    svmap__set(ConsId, Tag, !CtorTags),
+    SecondaryVal1 = SecondaryVal + 1,
+    assign_shared_local_tags(Rest, PrimaryVal, SecondaryVal1, !CtorTags).
 
 :- func maybe_add_reserved_addresses(list(reserved_address), cons_tag) =
-	cons_tag.
+    cons_tag.
 
 maybe_add_reserved_addresses(ReservedAddresses, Tag0) = Tag :-
-	(
-		ReservedAddresses = [],
-		Tag = Tag0
-	;
-		ReservedAddresses = [_ | _],
-		Tag = shared_with_reserved_addresses(ReservedAddresses, Tag0)
-	).
+    (
+        ReservedAddresses = [],
+        Tag = Tag0
+    ;
+        ReservedAddresses = [_ | _],
+        Tag = shared_with_reserved_addresses(ReservedAddresses, Tag0)
+    ).
 
 %-----------------------------------------------------------------------------%
 
 :- func max_num_tags(int) = int.
 
 max_num_tags(NumTagBits) = MaxTags :-
-	int__pow(2, NumTagBits, MaxTags).
+    int__pow(2, NumTagBits, MaxTags).
 
 %-----------------------------------------------------------------------------%
 
@@ -353,28 +354,28 @@ max_num_tags(NumTagBits) = MaxTags :-
 
 ctors_are_all_constants([]).
 ctors_are_all_constants([Ctor | Rest]) :-
-	Ctor = ctor(_ExistQVars, _Constraints, _Name, Args),
-	Args = [],
-	ctors_are_all_constants(Rest).
+    Ctor = ctor(_ExistQVars, _Constraints, _Name, Args),
+    Args = [],
+    ctors_are_all_constants(Rest).
 
 %-----------------------------------------------------------------------------%
 
 :- pred separate_out_constants(list(constructor)::in,
-	list(constructor)::out, list(constructor)::out) is det.
+    list(constructor)::out, list(constructor)::out) is det.
 
 separate_out_constants([], [], []).
 separate_out_constants([Ctor | Ctors], Constants, Functors) :-
-	separate_out_constants(Ctors, Constants0, Functors0),
-	Args = Ctor ^ cons_args,
-	(
-		Args = [],
-		Constants = [Ctor | Constants0],
-		Functors = Functors0
-	;
-		Args = [_ | _],
-		Constants = Constants0,
-		Functors = [Ctor | Functors0]
-	).
+    separate_out_constants(Ctors, Constants0, Functors0),
+    Args = Ctor ^ cons_args,
+    (
+        Args = [],
+        Constants = [Ctor | Constants0],
+        Functors = Functors0
+    ;
+        Args = [_ | _],
+        Constants = Constants0,
+        Functors = [Ctor | Functors0]
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1162,10 +1162,12 @@ rl_block_opt__conjoin_goals(ModuleInfo, RLGoal1, RLGoal2, RLGoal) :-
 		VarSet1, VarSet2, VarSet, VarTypes1, VarTypes2, VarTypes,
 		Subn, conj(Goals2) - DummyGoalInfo, RenamedGoal),
 
-	( Outputs2 = yes(OutputArgs2) ->
-		goal_util__rename_var_list(OutputArgs2, yes, Subn, OutputArgs),
+	(
+		Outputs2 = yes(OutputArgs2),
+		goal_util__rename_var_list(yes, Subn, OutputArgs2, OutputArgs),
 		Outputs = yes(OutputArgs)
 	;
+		Outputs2 = no,
 		Outputs = no
 	),
 

@@ -906,7 +906,7 @@ generate_unify_clauses_eqv_type(EqvType, H1, H2, Context, Clauses, !Info) :-
         explicit, [], UnifyGoal),
 
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal([Cast1Goal, Cast2Goal, UnifyGoal], GoalInfo, Goal),
     unify_proc__quantify_clauses_body([H1, H2], Goal, Context, Clauses, !Info).
 
@@ -999,7 +999,7 @@ unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
                     [Res, CastVar1, CastVar2], Context, CompareGoal, !Info),
 
                 goal_info_init(GoalInfo0),
-                goal_info_set_context(GoalInfo0, Context, GoalInfo),
+                goal_info_set_context(Context, GoalInfo0, GoalInfo),
                 conj_list_to_goal([Cast1Goal, Cast2Goal,
                     CompareGoal], GoalInfo, Goal),
                 unify_proc__quantify_clauses_body([Res, H1, H2], Goal,
@@ -1145,7 +1145,7 @@ generate_compare_clauses_eqv_type(EqvType, Res, H1, H2, Context, Clauses,
         Context, CompareGoal, !Info),
 
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal([Cast1Goal, Cast2Goal, CompareGoal], GoalInfo, Goal),
     unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context, Clauses,
         !Info).
@@ -1241,8 +1241,8 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], X, Y, Context,
         unify_proc__info_new_named_var(int_type, "CastY", CastY, !Info),
         generate_cast(unsafe_type_cast, X, CastX, Context, CastXGoal0),
         generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal0),
-        goal_add_feature(CastXGoal0, keep_constant_binding, CastXGoal),
-        goal_add_feature(CastYGoal0, keep_constant_binding, CastYGoal),
+        goal_add_feature(keep_constant_binding, CastXGoal0, CastXGoal),
+        goal_add_feature(keep_constant_binding, CastYGoal0, CastYGoal),
         create_atomic_unification(CastY, var(CastX), Context,
             explicit, [], UnifyY_Goal),
         GoalList = [UnifyX_Goal, CastXGoal, CastYGoal, UnifyY_Goal]
@@ -1258,7 +1258,7 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], X, Y, Context,
         GoalList = [UnifyX_Goal, UnifyY_Goal | UnifyArgs_Goals]
     ),
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal(GoalList, GoalInfo, Goal),
     unify_proc__quantify_clause_body([X, Y], Goal, Context, Clause, !Info),
     unify_proc__generate_du_unify_clauses(Ctors, X, Y, Context, Clauses,
@@ -1313,7 +1313,7 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
         Context, explicit, [], UnifyIndex_Goal),
     GoalList = [UnifyX_Goal, UnifyIndex_Goal],
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal(GoalList, GoalInfo, Goal),
     unify_proc__quantify_clause_body([X, Index], Goal, Context, Clause, !Info),
     unify_proc__generate_du_index_clauses(Ctors, X, Index, Context, N + 1,
@@ -1414,7 +1414,7 @@ unify_proc__generate_du_quad_compare_clauses(Ctors, R, X, Y, Context,
     unify_proc__generate_du_quad_compare_clauses_1(Ctors, Ctors, R, X, Y,
         Context, [], Cases, !Info),
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     disj_list_to_goal(Cases, GoalInfo, Goal),
     HeadVars = [R, X, Y],
     unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses, !Info).
@@ -1526,7 +1526,7 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
     unify_proc__info_new_var(comparison_result_type, R, !Info),
 
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
 
     instmap_delta_from_assoc_list([X_Index - ground(shared, none)],
         X_InstmapDelta),
@@ -1645,7 +1645,7 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Kind, Case, !Info) :-
         GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal]
     ),
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal(GoalList, GoalInfo, Case).
 
 :- pred unify_proc__generate_asymmetric_compare_case(constructor::in,
@@ -1672,7 +1672,7 @@ unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y,
         Context, explicit, [], ReturnResult),
     GoalList = [UnifyX_Goal, UnifyY_Goal, ReturnResult],
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     conj_list_to_goal(GoalList, GoalInfo, Case).
 
     % unify_proc__compare_args: for a constructor such as
@@ -1723,7 +1723,7 @@ unify_proc__compare_args_2([], _, [], [], R, Context, Return_Equal, !Info) :-
 unify_proc__compare_args_2([_Name - Type | ArgTypes], ExistQTVars,
         [X | Xs], [Y | Ys], R, Context, Goal, !Info) :-
     goal_info_init(GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     %
     % When comparing existentially typed arguments, the arguments may
     % have different types; in that case, rather than just comparing them,
@@ -1808,7 +1808,7 @@ unify_proc__build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta,
         GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, PredName),
         set__list_to_set(ArgVars, NonLocals),
         goal_info_init(NonLocals, InstmapDelta, Detism, pure, GoalInfo0),
-        goal_info_set_context(GoalInfo0, Context, GoalInfo),
+        goal_info_set_context(Context, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo
     ;
         % unify_proc__build_specific_call is only ever used to build calls

@@ -1187,7 +1187,7 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 			ArgVars, LambdaVars, Modes, Det, LambdaGoal),
                 goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 		set__union(NonLocals0, NonLocalTypeInfos, NonLocals),
-		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+		goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 
 		%
 		% Complicated (in-in) argument unifications are impossible
@@ -1244,7 +1244,7 @@ polymorphism__add_unification_typeinfos(TypeInfoLocns, !Unification,
 	%
 	goal_info_get_nonlocals(!.GoalInfo, NonLocals0),
 	set__insert_list(NonLocals0, TypeInfoVars, NonLocals),
-	goal_info_set_nonlocals(!.GoalInfo, NonLocals, !:GoalInfo),
+	goal_info_set_nonlocals(NonLocals, !GoalInfo),
 
 	%
 	% Also save those type_info vars into a field in the complicated_unify,
@@ -1362,7 +1362,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		list__append(ExtraVars, ArgVars0, ArgVars),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 		set__insert_list(NonLocals0, ExtraVars, NonLocals),
-		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
+		goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
 
 		%
 		% Some of the argument unifications may be complicated
@@ -1425,13 +1425,13 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
 	set__intersect(OutsideVars, InsideVars, LambdaNonLocals),
 	goal_info_get_goal_path(GoalInfo0, GoalPath),
 	goal_info_init(LambdaGoalInfo0),
-	goal_info_set_context(LambdaGoalInfo0, Context,
-		LambdaGoalInfo1),
-	goal_info_set_nonlocals(LambdaGoalInfo1, LambdaNonLocals,
-		LambdaGoalInfo2),
-	add_goal_info_purity_feature(LambdaGoalInfo2, Purity,
-		LambdaGoalInfo3),
-	goal_info_set_goal_path(LambdaGoalInfo3, GoalPath, LambdaGoalInfo),
+	goal_info_set_context(Context,
+		LambdaGoalInfo0, LambdaGoalInfo1),
+	goal_info_set_nonlocals(LambdaNonLocals,
+		LambdaGoalInfo1, LambdaGoalInfo2),
+	add_goal_info_purity_feature(Purity,
+		LambdaGoalInfo2, LambdaGoalInfo3),
+	goal_info_set_goal_path(GoalPath, LambdaGoalInfo3, LambdaGoalInfo),
 	LambdaGoal = LambdaGoalExpr - LambdaGoalInfo,
 
 	%
@@ -1447,9 +1447,11 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
 		error("convert_pred_to_lambda_goal: list__drop failed")
 	),
 	proc_info_declared_determinism(ProcInfo, MaybeDet),
-	( MaybeDet = yes(Det) ->
+	(
+		MaybeDet = yes(Det),
 		LambdaDet = Det
 	;
+		MaybeDet = no,
 		error("Sorry, not implemented: determinism inference " ++
 			"for higher-order predicate terms")
 	),
@@ -1912,7 +1914,7 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 		%
 		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 		set__insert_list(NonLocals0, ExtraVars, NonLocals),
-		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo)
+		goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1972,7 +1974,7 @@ polymorphism__process_new_call(PredId, ProcId, CallArgs0, BuiltinState,
 	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 	NonLocals1 = set__list_to_set(ExtraArgs),
 	NonLocals = set__union(NonLocals0, NonLocals1),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+	goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
 	CallGoalExpr = call(PredId, ProcId, CallArgs, BuiltinState,
 		MaybeCallUnifyContext, SymName),
 	CallGoal = CallGoalExpr - GoalInfo,
@@ -2461,7 +2463,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	% create a goal_info for the unification
 	goal_info_init(GoalInfo0),
 	set__list_to_set([NewVar | NewArgVars], TheNonLocals),
-	goal_info_set_nonlocals(GoalInfo0, TheNonLocals, GoalInfo1),
+	goal_info_set_nonlocals(TheNonLocals, GoalInfo0, GoalInfo1),
 	list__duplicate(NumArgVars, ground(shared, none), ArgInsts),
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
@@ -2470,8 +2472,8 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	instmap_delta_from_assoc_list(
 		[NewVar - bound(unique, [functor(InstConsId, ArgInsts)])],
 		InstMapDelta),
-	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo2),
-	goal_info_set_determinism(GoalInfo2, det, GoalInfo),
+	goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
+	goal_info_set_determinism(det, GoalInfo2, GoalInfo),
 
 	TypeClassInfoGoal = Unify - GoalInfo,
 	NewGoals0 = [TypeClassInfoGoal, BaseGoal],

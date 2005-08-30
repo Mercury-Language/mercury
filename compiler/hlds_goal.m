@@ -806,22 +806,22 @@
     hlds_goal_code_gen_info::out) is det.
 :- func goal_info_get_extra_info(hlds_goal_info) = hlds_goal_extra_info.
 
-:- pred goal_info_set_determinism(hlds_goal_info::in, determinism::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_instmap_delta(hlds_goal_info::in, instmap_delta::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_context(hlds_goal_info::in, prog_context::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_nonlocals(hlds_goal_info::in, set(prog_var)::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_code_gen_nonlocals(hlds_goal_info::in, set(prog_var)::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_features(hlds_goal_info::in, set(goal_feature)::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_goal_path(hlds_goal_info::in, goal_path::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_set_code_gen_info(hlds_goal_info::in,
-    hlds_goal_code_gen_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_determinism(determinism::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_instmap_delta(instmap_delta::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_context(prog_context::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_nonlocals(set(prog_var)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_code_gen_nonlocals(set(prog_var)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_features(set(goal_feature)::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_goal_path(goal_path::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_code_gen_info(hlds_goal_code_gen_info::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_extra_info(hlds_goal_extra_info::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
 
@@ -861,27 +861,22 @@
 
 :- pred goal_get_nonlocals(hlds_goal::in, set(prog_var)::out) is det.
 
-:- pred goal_info_add_features(list(goal_feature)::in,
+:- pred goal_info_add_feature(goal_feature::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_remove_features(list(goal_feature)::in,
+:- pred goal_info_remove_feature(goal_feature::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-
-:- pred goal_info_add_feature(hlds_goal_info::in, goal_feature::in,
-    hlds_goal_info::out) is det.
-:- pred goal_info_remove_feature(hlds_goal_info::in, goal_feature::in,
-    hlds_goal_info::out) is det.
 :- pred goal_info_has_feature(hlds_goal_info::in, goal_feature::in) is semidet.
 
-:- pred goal_add_feature(hlds_goal::in, goal_feature::in, hlds_goal::out)
+:- pred goal_add_feature(goal_feature::in, hlds_goal::in, hlds_goal::out)
     is det.
-:- pred goal_remove_feature(hlds_goal::in, goal_feature::in, hlds_goal::out)
+:- pred goal_remove_feature(goal_feature::in, hlds_goal::in, hlds_goal::out)
     is det.
 :- pred goal_has_feature(hlds_goal::in, goal_feature::in) is semidet.
 
     % Update a goal info to reflect the specified purity.
     %
-:- pred add_goal_info_purity_feature(hlds_goal_info::in, purity::in,
-    hlds_goal_info::out) is det.
+:- pred add_goal_info_purity_feature(purity::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 
     % Determine the purity of a goal from its hlds_goal_info.
     %
@@ -1592,18 +1587,18 @@ goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars) :-
         NeedVisibleVars = set__init
     ).
 
-goal_info_set_determinism(GoalInfo0, Determinism,
-        GoalInfo0 ^ determinism := Determinism).
-goal_info_set_instmap_delta(GoalInfo0, InstMapDelta,
-        GoalInfo0 ^ instmap_delta := InstMapDelta).
-goal_info_set_context(GoalInfo0, Context, GoalInfo0 ^ context := Context).
-goal_info_set_nonlocals(GoalInfo0, NonLocals,
-        GoalInfo0 ^ nonlocals := NonLocals).
-goal_info_set_features(GoalInfo0, Features, GoalInfo0 ^ features := Features).
-goal_info_set_goal_path(GoalInfo0, GoalPath,
-        GoalInfo0 ^ goal_path := GoalPath).
-goal_info_set_code_gen_info(GoalInfo0, CodeGenInfo,
-        GoalInfo0 ^ code_gen_info := CodeGenInfo).
+goal_info_set_determinism(Determinism, GoalInfo,
+        GoalInfo ^ determinism := Determinism).
+goal_info_set_instmap_delta(InstMapDelta, GoalInfo,
+        GoalInfo ^ instmap_delta := InstMapDelta).
+goal_info_set_context(Context, GoalInfo, GoalInfo ^ context := Context).
+goal_info_set_nonlocals(NonLocals, GoalInfo,
+        GoalInfo ^ nonlocals := NonLocals).
+goal_info_set_features(Features, GoalInfo, GoalInfo ^ features := Features).
+goal_info_set_goal_path(GoalPath, GoalInfo,
+        GoalInfo ^ goal_path := GoalPath).
+goal_info_set_code_gen_info(CodeGenInfo, GoalInfo,
+        GoalInfo ^ code_gen_info := CodeGenInfo).
 goal_info_set_extra_info(ExtraInfo, GoalInfo,
     GoalInfo ^ extra_goal_info := ExtraInfo).
 
@@ -1613,8 +1608,8 @@ goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals).
     % The code-gen non-locals are always the same as the
     % non-locals when structure reuse is not being performed.
-goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-    goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo).
+goal_info_set_code_gen_nonlocals(NonLocals, !GoalInfo) :-
+    goal_info_set_nonlocals(NonLocals, !GoalInfo).
 
 goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
     MMCI0 = !.GoalInfo ^ maybe_mode_constraint_info,
@@ -1722,16 +1717,16 @@ need_visible_vars(GoalInfo) = NeedVisibleVars :-
 
 %-----------------------------------------------------------------------------%
 
-add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo) :-
-    infer_goal_info_purity(GoalInfo0, Purity0),
+add_goal_info_purity_feature(Purity, !GoalInfo) :-
+    infer_goal_info_purity(!.GoalInfo, Purity0),
     ( Purity = Purity0 ->
-        GoalInfo = GoalInfo0
+        true
     ;
         purity_features(Purity, FeaturesToRemove, FeaturesToAdd),
-        goal_info_get_features(GoalInfo0, Features0),
+        goal_info_get_features(!.GoalInfo, Features0),
         Features = set__union(list_to_set(FeaturesToAdd),
             set__difference(Features0, list_to_set(FeaturesToRemove))),
-        goal_info_set_features(GoalInfo0, Features, GoalInfo)
+        goal_info_set_features(Features, !GoalInfo)
     ).
 
 :- pred purity_features(purity::in, list(goal_feature)::out,
@@ -1759,25 +1754,15 @@ goal_info_is_impure(GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_info_add_features([], GoalInfo, GoalInfo).
-goal_info_add_features([Feature | Features], GoalInfo0, GoalInfo) :-
-    goal_info_add_feature(GoalInfo0, Feature, GoalInfo1),
-    goal_info_add_features(Features, GoalInfo1, GoalInfo).
-
-goal_info_remove_features([], GoalInfo, GoalInfo).
-goal_info_remove_features([Feature | Features], GoalInfo0, GoalInfo) :-
-    goal_info_remove_feature(GoalInfo0, Feature, GoalInfo1),
-    goal_info_remove_features(Features, GoalInfo1, GoalInfo).
-
-goal_info_add_feature(GoalInfo0, Feature, GoalInfo) :-
-    goal_info_get_features(GoalInfo0, Features0),
+goal_info_add_feature(Feature, !GoalInfo) :-
+    goal_info_get_features(!.GoalInfo, Features0),
     set__insert(Features0, Feature, Features),
-    goal_info_set_features(GoalInfo0, Features, GoalInfo).
+    goal_info_set_features(Features, !GoalInfo).
 
-goal_info_remove_feature(GoalInfo0, Feature, GoalInfo) :-
-    goal_info_get_features(GoalInfo0, Features0),
+goal_info_remove_feature(Feature, !GoalInfo) :-
+    goal_info_get_features(!.GoalInfo, Features0),
     set__delete(Features0, Feature, Features),
-    goal_info_set_features(GoalInfo0, Features, GoalInfo).
+    goal_info_set_features(Features, !GoalInfo).
 
 goal_info_has_feature(GoalInfo, Feature) :-
     goal_info_get_features(GoalInfo, Features),
@@ -1788,11 +1773,11 @@ goal_info_has_feature(GoalInfo, Feature) :-
 goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals).
 
-goal_add_feature(Goal - GoalInfo0, Feature, Goal - GoalInfo) :-
-    goal_info_add_feature(GoalInfo0, Feature, GoalInfo).
+goal_add_feature(Feature, Goal - GoalInfo0, Goal - GoalInfo) :-
+    goal_info_add_feature(Feature, GoalInfo0, GoalInfo).
 
-goal_remove_feature(Goal - GoalInfo0, Feature, Goal - GoalInfo) :-
-    goal_info_remove_feature(GoalInfo0, Feature, GoalInfo).
+goal_remove_feature(Feature, Goal - GoalInfo0, Goal - GoalInfo) :-
+    goal_info_remove_feature(Feature, GoalInfo0, GoalInfo).
 
 goal_has_feature(_Goal - GoalInfo, Feature) :-
     goal_info_has_feature(GoalInfo, Feature).
@@ -2033,7 +2018,7 @@ true_goal(conj([]) - GoalInfo) :-
 
 true_goal(Context, Goal - GoalInfo) :-
     true_goal(Goal - GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo).
+    goal_info_set_context(Context, GoalInfo0, GoalInfo).
 
 fail_goal(disj([]) - GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
@@ -2041,7 +2026,7 @@ fail_goal(disj([]) - GoalInfo) :-
 
 fail_goal(Context, Goal - GoalInfo) :-
     fail_goal(Goal - GoalInfo0),
-    goal_info_set_context(GoalInfo0, Context, GoalInfo).
+    goal_info_set_context(Context, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2081,7 +2066,7 @@ goal_list_purity(Goals, Purity) :-
 %-----------------------------------------------------------------------------%
 
 set_goal_contexts(Context, Goal0 - GoalInfo0, Goal - GoalInfo) :-
-    goal_info_set_context(GoalInfo0, Context, GoalInfo),
+    goal_info_set_context(Context, GoalInfo0, GoalInfo),
     set_goal_contexts_2(Context, Goal0, Goal).
 
 :- pred set_goal_contexts_2(prog_context::in, hlds_goal_expr::in,
@@ -2214,7 +2199,7 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
     Goal = unify(Var, RHS, Mode, Unification, Context),
     set__singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(InstMapDelta0),
-    instmap_delta_insert(InstMapDelta0, Var, Inst, InstMapDelta),
+    instmap_delta_insert(Var, Inst, InstMapDelta0, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo).
 
 construct_functor(Var, ConsId, Args, Goal) :-

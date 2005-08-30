@@ -194,7 +194,7 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             % The pre_goal_update sanity check insists on
             % no_resume_point, to make sure that all resume
             % points have been handled by surrounding code.
-        goal_info_set_resume_point(GoalInfo0, no_resume_point, GoalInfo),
+        goal_info_set_resume_point(no_resume_point, GoalInfo0, GoalInfo),
         Goal = GoalExpr0 - GoalInfo,
 
             % Save hp if it needs to be saved and hasn't been

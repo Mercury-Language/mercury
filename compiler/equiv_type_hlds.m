@@ -637,7 +637,7 @@ replace_in_goal(EqvMap, Goal0 @ (GoalExpr0 - GoalInfo0), Goal,
     (
         Changed = yes,
         !:Info = (!.Info ^ tvarset := TVarSet) ^ inst_cache := Cache,
-        goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo),
+        goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo
     ;
         Changed = no,
@@ -768,8 +768,8 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
             ^ module_info := ModuleInfo)
             ^ tvarset := TVarSet,
 
-        goal_util__rename_vars_in_goals(Goals0, no,
-            map__from_assoc_list([TypeInfoVar - Var]), Goals),
+        goal_util__rename_vars_in_goals(no,
+            map__from_assoc_list([TypeInfoVar - Var]), Goals0, Goals),
         ( Goals = [Goal1 - _] ->
             Goal = Goal1
         ;

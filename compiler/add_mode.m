@@ -202,14 +202,12 @@ report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context, !IO) :-
         % where <kind> is either "inst" or "mode".
         %
         Kinds = (if Expansions = [_] then Kind else Kind ++ "s"),
-        Pieces0 = list__map(
+        ExpansionPieces = list__map(
             (func(SymName - Arity) =
-                error_util__describe_sym_name_and_arity(
-                    SymName / Arity)),
+                sym_name_and_arity(SymName / Arity)),
             Expansions),
-        Pieces1 = error_util__list_to_pieces(Pieces0),
-        Pieces = append_punctuation([words("Error: circular equivalence"),
-            fixed(Kinds) | Pieces1], '.'),
+        Pieces = [words("Error: circular equivalence"), fixed(Kinds)]
+            ++ component_list_to_pieces(ExpansionPieces) ++ [suffix(".")],
         error_util__write_error_pieces(Context, 0, Pieces, !IO),
         io__set_exit_status(1, !IO)
     ;

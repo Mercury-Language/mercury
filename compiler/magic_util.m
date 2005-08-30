@@ -152,18 +152,22 @@
 magic_util__db_call_nonlocals(
 		db_call(MaybeClosures, Call, _, _, _, _, MaybeNegGoals),
 		NonLocals) :-
-	( MaybeClosures = yes(Closures) ->
+	(
+		MaybeClosures = yes(Closures),
 		goal_list_nonlocals(Closures, NonLocals0)
 	;
+		MaybeClosures = no,
 		set__init(NonLocals0)
 	),
 	Call = _ - CallInfo,
 	goal_info_get_nonlocals(CallInfo, NonLocals1),
 	set__union(NonLocals0, NonLocals1, NonLocals2),
-	( MaybeNegGoals = yes(_ - NegGoalInfo) ->
+	(
+		MaybeNegGoals = yes(_ - NegGoalInfo),
 		goal_info_get_nonlocals(NegGoalInfo, NonLocals3),
 		set__union(NonLocals2, NonLocals3, NonLocals)
 	;
+		MaybeNegGoals = no,
 		NonLocals = NonLocals2
 	).
 
@@ -179,21 +183,21 @@ magic_util__rename_vars_in_db_call(Call0, Subn, Call) :-
 		Inputs0, Outputs0, MaybeNegGoals0),
 	(
 		MaybeClosures0 = yes(Closures0),
-		goal_util__rename_vars_in_goals(Closures0, no, Subn, Closures),
+		goal_util__rename_vars_in_goals(no, Subn, Closures0, Closures),
 		MaybeClosures = yes(Closures)
 	;
 		MaybeClosures0 = no,
 		MaybeClosures = no
 	),
-	goal_util__rename_vars_in_goal(Goal0, Subn, Goal),
-	goal_util__rename_var_list(Args0, no, Subn, Args),
-	goal_util__rename_var_list(Inputs0, no, Subn, Inputs),
-	goal_util__rename_var_list(Outputs0, no, Subn, Outputs),
+	goal_util__rename_vars_in_goal(Subn, Goal0, Goal),
+	goal_util__rename_var_list(no, Subn, Args0, Args),
+	goal_util__rename_var_list(no, Subn, Inputs0, Inputs),
+	goal_util__rename_var_list(no, Subn, Outputs0, Outputs),
 	(
 		MaybeNegGoals0 = yes(NegGoals0 - NegGoalInfo0),
-		goal_util__rename_vars_in_goals(NegGoals0, no, Subn, NegGoals),
-		goal_util__rename_vars_in_goal(conj([]) - NegGoalInfo0,
-			Subn, _ - NegGoalInfo),
+		goal_util__rename_vars_in_goals(no, Subn, NegGoals0, NegGoals),
+		goal_util__rename_vars_in_goal(Subn,
+			conj([]) - NegGoalInfo0, _ - NegGoalInfo),
 		MaybeNegGoals = yes(NegGoals - NegGoalInfo)
 	;
 		MaybeNegGoals0 = no,
@@ -414,8 +418,8 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 				CallNonLocals1) },
 			magic_util__restrict_nonlocals(CallNonLocals1,
 				CallNonLocals),
-			{ goal_info_set_nonlocals(CallGoalInfo1, CallNonLocals,
-				CallGoalInfo) },
+			{ goal_info_set_nonlocals(CallNonLocals,
+				CallGoalInfo1, CallGoalInfo) },
 			{ CallGoal = call(PredId, ProcId, NewArgs,
 				not_builtin, no, Name) - CallGoalInfo }
 		;
@@ -440,8 +444,8 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 		magic_util__restrict_nonlocals(InnerNonLocals1,
 			InnerNonLocals),
 		{ goal_list_instmap_delta(NegGoals, InnerDelta0) },
-		{ instmap_delta_restrict(InnerDelta0,
-			InnerNonLocals, InnerDelta) },
+		{ instmap_delta_restrict(InnerNonLocals,
+			InnerDelta0, InnerDelta) },
 		{ goal_list_determinism(NegGoals, InnerDet) },
 		{ goal_info_init(InnerNonLocals, InnerDelta,
 			InnerDet, pure, InnerInfo) },
@@ -562,8 +566,7 @@ magic_util__handle_input_args(PredProcId0, PredProcId, PrevGoals, NonLocals,
 	magic_info_set_proc_info(ProcInfo),
 
 	% All database predicates are considered nondet after this.
-	{ goal_info_set_determinism(GoalInfo1,
-		nondet, GoalInfo) },
+	{ goal_info_set_determinism(nondet, GoalInfo1, GoalInfo) },
 
 	magic_info_get_scc(SCC),
 	( { list__member(PredProcId0, SCC) } ->
@@ -685,9 +688,9 @@ magic_util__create_input_test_unification(ModuleInfo, Var, Mode, OutputVar,
 	set__delete(CallNonLocals0, Var, CallNonLocals1),
 	set__insert(CallNonLocals1, OutputVar, CallNonLocals),
 	goal_info_get_instmap_delta(CallInfo0, CallDelta0),
-	instmap_delta_insert(CallDelta0, OutputVar, FinalInst, CallDelta),
-	goal_info_set_nonlocals(CallInfo0, CallNonLocals, CallInfo1),
-	goal_info_set_instmap_delta(CallInfo1, CallDelta, CallInfo).
+	instmap_delta_insert(OutputVar, FinalInst, CallDelta0, CallDelta),
+	goal_info_set_nonlocals(CallNonLocals, CallInfo0, CallInfo1),
+	goal_info_set_instmap_delta(CallDelta, CallInfo1, CallInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -867,8 +870,8 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 		% Construct a goal_info.
 		{ set__list_to_set([InputVar | LambdaInputs], NonLocals) },
 		{ instmap_delta_init_reachable(InstMapDelta0) },
-		{ instmap_delta_insert(InstMapDelta0, InputVar, LambdaInst,
-			InstMapDelta) },
+		{ instmap_delta_insert(InputVar, LambdaInst,
+			InstMapDelta0, InstMapDelta) },
 		{ goal_info_init(NonLocals, InstMapDelta,
 			det, pure, GoalInfo) },
 
@@ -912,12 +915,12 @@ magic_util__project_supp_call(SuppCall, UnrenamedInputVars,
 		NewArgs, !ProcInfo) },
 	{ map__from_corresponding_lists(SuppOutputArgs, NewArgs, Subn) },
 	{ map__apply_to_list(UnrenamedInputVars, Subn, LambdaVars) },
-	{ goal_util__rename_vars_in_goal(SuppCall, Subn, LambdaGoal0) },
+	{ goal_util__rename_vars_in_goal(Subn, SuppCall, LambdaGoal0) },
 	{ LambdaGoal0 = LambdaExpr - LambdaInfo0 },
 
 	{ list__append(SuppInputArgs, LambdaVars, LambdaNonLocals0) },
 	{ set__list_to_set(LambdaNonLocals0, LambdaNonLocals) },
-	{ goal_info_set_nonlocals(LambdaInfo0, LambdaNonLocals, LambdaInfo) },
+	{ goal_info_set_nonlocals(LambdaNonLocals, LambdaInfo0, LambdaInfo) },
 	{ LambdaGoal = LambdaExpr - LambdaInfo }.
 
 %-----------------------------------------------------------------------------%
@@ -952,9 +955,9 @@ magic_util__add_to_magic_predicate(PredProcId, Rule, RuleArgs) -->
 		Subn0, Subn) },
 	{ Rule = RuleExpr - RuleInfo0 },
 	{ set__list_to_set(RuleArgs, RuleArgSet) },
-	{ goal_info_set_nonlocals(RuleInfo0, RuleArgSet, RuleInfo) },
-	{ goal_util__must_rename_vars_in_goal(RuleExpr - RuleInfo,
-		Subn, ExtraDisjunct) },
+	{ goal_info_set_nonlocals(RuleArgSet, RuleInfo0, RuleInfo) },
+	{ goal_util__must_rename_vars_in_goal(Subn, RuleExpr - RuleInfo,
+		ExtraDisjunct) },
 
 	%
 	% Add in the new disjunct.
@@ -1070,7 +1073,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	%
 	{ goal_list_instmap_delta(Goals, Delta0) },
 	{ set__list_to_set(SuppArgs, SuppArgSet) },
-	{ instmap_delta_restrict(Delta0, SuppArgSet, Delta) },
+	{ instmap_delta_restrict(SuppArgSet, Delta0, Delta) },
 	{ goal_info_init(SuppArgSet, Delta, nondet, pure, GoalInfo) },
 
 	%
