@@ -91,7 +91,7 @@ Changes to the Mercury debugger:
 
 Changes to the compiler back-ends:
 * The .NET CLR back-end now bootstraps.
-* Major improvements to the Java back-end.
+* Improvements to the Java back-end.
 * The cost in disk space of enabling debugging is now much smaller.
 
 Numerous minor improvements to the Mercury standard library.
@@ -465,11 +465,11 @@ Changes to the compiler back-ends:
   we also now pass more than 90% of the applicable tests in the
   Mercury test suite.  See README.DotNet for details.
 
-* Major improvements to the Java back-end.
+* Improvements to the Java back-end.
 
-  The Java back-end is now enabled by default.  We've fixed a lot of
-  bugs, and implemented a lot more of the Mercury standard library.
-  See README.Java for details.
+  We've fixed a lot of bugs, and implemented a lot more of the Mercury
+  standard library.  See README.Java for further details on the status
+  of this backend.
 
 NEWS for Mercury 0.11
 ---------------------
