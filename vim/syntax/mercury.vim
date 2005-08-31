@@ -34,6 +34,7 @@ else
 endif
 syn keyword mercuryKeyword      module use_module import_module
 syn keyword mercuryKeyword      include_module end_module
+syn keyword mercuryKeyword      initialise
 syn keyword mercuryKeyword      interface implementation
 syn keyword mercuryKeyword      pred mode func type inst solver 
 syn keyword mercuryKeyword      is semidet det nondet multi erroneous failure

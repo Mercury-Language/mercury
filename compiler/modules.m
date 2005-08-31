@@ -1964,12 +1964,16 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
     ).
 
     % strip_clauses_from_interface is the same as
-    % check_for_clauses_in_interface except that it doesn't issue any warnings,
-    % and that it also strips out the `:- interface' and `:- implementation'
-    % declarations.
+    % check_for_clauses_in_interface except that it doesn't issue any
+    % warnings, and that it also strips out the `:- interface' and `:-
+    % implementation' declarations.
     %
-    % This is used when creating the private interface (`.int0') files
-    % for packages with sub-modules.
+    % This is used when creating the private interface (`.int0') files for
+    % packages with sub-modules.
+    %
+    % We treat initialise declarations as a special kind of clause, since they
+    % should always be grouped together with the clauses and should not appear
+    % in private interfaces.
     %
 :- pred strip_clauses_from_interface(item_list::in, item_list::out) is det.
 
@@ -1995,6 +1999,8 @@ split_clauses_and_decls([ItemAndContext0 | Items0], ClauseItems,
         ;
             Item0 = pragma(Pragma),
             pragma_allowed_in_interface(Pragma, no)
+        ;
+            Item0 = initialise(_)
         )
     ->
         split_clauses_and_decls(Items0, ClauseItems1, InterfaceItems),
