@@ -5690,7 +5690,7 @@ There is an operational semantics of Mercury programs called the
 @dfn{strict sequential} operational semantics.  In this semantics,
 the program is executed top-down, starting from @samp{main/2}
 preceded by any module initialisation goals
-(as per @xref{Optional module initialisation}),
+(as per @ref{Optional module initialisation}),
 and function calls within a goal, conjunctions and disjunctions are all
 executed in depth-first left-to-right order. 
 Conjunctions and function calls are ``minimally'' reordered as required
