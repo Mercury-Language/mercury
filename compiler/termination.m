@@ -563,7 +563,7 @@ is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_get_origin(PredInfo, PredOrigin),
 	PredOrigin = special_pred(SpecialPredId - _),
-	SpecialPredId = initialise.
+	SpecialPredId = (initialise).
 
 %----------------------------------------------------------------------------%
 
@@ -708,7 +708,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
 	% predicates.  Leaving it up to the analyser may result in better
 	% argument size information anyway.
 	% 
-	( SpecialPredId \= initialise -> 
+	( SpecialPredId \= (initialise) -> 
 		map__lookup(!.ProcTable, ProcId, ProcInfo0),
 		proc_info_headvars(ProcInfo0, HeadVars),
 		special_pred_id_to_termination(SpecialPredId, HeadVars,

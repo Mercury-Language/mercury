@@ -59,6 +59,12 @@
 
 :- func own_to_string(own_prof_info) = string.
 
+	% Tests if this profiling information represents an entity in the
+	% program that was inactive during the profiling run, e.g. a module
+	% or procedure that has had no calls made to it.
+	%
+:- pred is_inactive(own_prof_info::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -72,7 +78,7 @@
 :- type own_prof_info
 	--->	all(int, int, int, int, int, int, int)
 			% exits, fails, redos, excps, quanta, allocs, words
-			% implicit calls = exits + fails - redos
+			% implicit calls = exits + fails + excps - redos
 	;	det(int, int, int, int)
 			% exits, quanta, allocs, words;
 			% implicit fails == redos == excps == 0
@@ -318,6 +324,11 @@ own_to_string(fast_nomem_semi(Exits, Fails)) =
 	string__int_to_string(Exits) ++ ", " ++
 	string__int_to_string(Fails) ++
 	")".
+
+is_inactive(all(0, 0, 0, 0, _, _, _)).
+is_inactive(det(0, _, _, _)).
+is_inactive(fast_det(0, _, _)).
+is_inactive(fast_nomem_semi(0, 0)).
 
 %----------------------------------------------------------------------------%
 :- end_module measurements.

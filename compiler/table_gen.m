@@ -912,6 +912,7 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 
 	set__list_to_set([TableTipVar | HeadVars], InactiveNonLocals),
 	InactiveInstmapDelta = bind_vars(OutputVars),
+	% The Case EvalMethod = model_non was caught by the code above.
 	(
 		CodeModel = model_det,
 		InactiveGoalExpr = conj([OrigGoal | SaveAnswerGoals]),
@@ -977,9 +978,6 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 			case(cons(qualified(TB, "memo_semi_failed"), 0),
 				FailedGoal)
 		]
-	;
-		CodeModel = model_non,
-		error("create_new_memo_goal: model_non")
 	),
 
 	SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),

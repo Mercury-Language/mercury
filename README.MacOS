@@ -1,32 +1,117 @@
-This file documents the port of Mercury to PowerPC Macs running MacOS X,
-i.e. the "powerpc-apple-darwin" configuration.
+This file documents the port of Mercury to PowerPC Macs running Mac OS X,
+i.e. the "powerpc-apple-darwin" configuration. 
 
-The latest version of the Mercury compiler (as at 19 May 2004) doesn't compile
-with gcc 2.95.2 on MacOS 10.3.3, however it does with gcc 3.3 and greater.
+-----------------------------
+Supported version of Mac OS X
+-----------------------------
 
-The version of tar in /usr/bin/tar on some older versions of MacOS
-(e.g. 10.1) doesn't work properly -- it truncates long path names.
-Make sure you use GNU tar, which is available in /sw/bin/gtar,
-when unpacking the Mercury source or binary distributions.
-(Also, make sure to use GNU tar if/when *building* such distributions!)
-The version of tar that comes with MacOS 10.3.3 doesn't have this problem.
+Mercury has been heavily tested on Mac OS X 10.3 and should build
+"out-of-the-box".  Mercury also works with Mac OS X 10.4 subject to the caveat
+below regarding which version of gcc to use.
 
-Apple's version of gcc includes support for precompiled headers.
-Unfortunately this support seems to be somewhat buggy, causing it
-to sometimes crash with mysterious errors when building Mercury.
-Furthermore, for the kinds of C code that the Mercury compiler generates,
-it results in a very big slow-down, rather than any speedup.
-Fortunately this can be disabled by using the --traditional-cpp option.
-The Mercury configure script should enable this option automatically
-if it is needed.
+There may be problems with building Mercury on versions of Mac OS X less than
+10.3.0.  In particular there may be problems with building and using shared
+libraries.  On these systems you will need to pass the
+`--enable-darwin-flat-namespace' option to configure.
 
-The configure script will by default choose grade reg.gc.
-You can get better performance by using the hlc.gc grade.
-The fast.gc and asm_fast.gc grades are not supported on PowerPC.
+---------------------------
+C compilers and other tools
+---------------------------
 
-The following features are not yet supported on MacOS:
+Assuming that you have installed the Developer Tools, a typical Mac OS X
+installation will provide several different versions of gcc.  These will be
+from the Apple branch of gcc development rather than mainline branch (although
+the differences are relatively minor as far as Mercury is concerned).
+
+Apple gcc 2.95 does not work with Mercury because it cannot handle the length
+of some of the identifier names that the Mercury compiler generates.
+
+Apple gcc 3.3 works with Mercury and there are no known issues (other than the
+problem with gcc's powerpc backend described below).  We recommend that users
+of Mac OS X 10.3 and 10.4 use this version.
+
+Apple gcc 4.0 does not work with Mercury.  Users of Mac OS X 10.4 should
+note that this version of gcc is the default one on their systems.
+
+You can use the gcc_select command to select which version of the gcc
+is the default gcc.  Alternatively it is probably easier to point Mercury to
+the actual correct version via the `--with-cc' option to configure.  e.g.
+
+	./configure --with-cc=/usr/bin/gcc-3.3  
+
+(/usr/bin/gcc is a symbolic link to the actual version; gcc_select just
+changes what the link currently points to.)
+
+Also, Apple's version of gcc includes support for precompiled headers.
+Unfortunately this support seems to be somewhat buggy, causing it to sometimes
+crash with mysterious errors when building Mercury.  Furthermore, for the
+kinds of C code that the Mercury compiler generates, it results in a very big
+slow-down, rather than any speedup.  Fortunately this can be disabled by using
+the `--traditional-cpp' option.  The Mercury configure script should enable
+this option automatically if it is needed.
+
+Mainline gcc 3.3.X and 3.4.X are known to work with Mercury.
+Mainline gcc 4.0.X does not.
+
+The version of tar in /usr/bin/tar on some older versions of Mac OS X (e.g.
+10.1) doesn't work properly -- it truncates long path names.  Make sure you
+use GNU tar, which is available in /sw/bin/gtar, when unpacking the Mercury
+source or binary distributions.  (Also, make sure to use GNU tar if/when
+*building* such distributions!) The version of tar that comes with Mac OS X
+10.3.3 doesn't have this problem.
+
+The linker on OS X may also have problems linking large executables in debug
+grades.  This affects all versions of ld that we have tested and there is
+currently no known workaround.
+
+-----------------------------------
+Known bugs and unsupported features
+-----------------------------------
+
+The following features are not supported on Mac OS X:
 	- interactive queries in mdb
-	- the `--split-c-files' option to mmc
+	- the '--split-c-files' option to mmc
 
-Linking to shared versions of the Mercury libraries works on Mac OS 10.3, but
-hasn't been tested on previous versions of Mac OS X (although it should work).
+The 'asm_fast' grades will not work on powerpc-darwin machines, primarily
+because of a (long-standing) bug in gcc's powerpc backend (GCC bug #10901).
+By default the configure script will choose 'reg' as the default base grade.
+If you do not intend to use debugging (e.g. with production code), then you
+will probably get better performance by using the hlc.gc grade.
+
+Executables created by the Mercury compiler cannot be statically linked
+against the system libraries, on Mac OS X.  Setting `MLFLAGS=-static' will
+result in an error message like the following from the linker:
+	
+	ld: can't locate file for: -lcrt0.o
+ 
+The reason that this does not work is that static version of the system
+libraries are not installed on OS X systems by default.  (See Technical Q&A
+QA118 <http://developer.apple.com/qa/qa2001/qa1118.html> for further details.)
+
+This restriction only applies to system libraries.  Statically linking against
+Mercury libraries is fine.
+
+--------------------------
+Deep profiling on Mac OS X
+--------------------------
+
+The following discussion assumes a standard installation of Mac OS X.  By
+default Apache should have been installed as the default webserver.
+
+In order to use the deep profiler you need to ensure that the deep profiling
+CGI "script" is installed and that the webserver is running.
+
+The deep profiling CGI script, mdprof_cgi, should be installed in the
+directory /Library/WebServer/CGI-Executables.  Mercury's normal installation
+process should take care of this if deep profiling is enabled.
+
+To ensure the webserver is running:
+
+- Open the Apple Menu and open the System Preferences window.
+- In the `System Preferences' window, click on the icon labeled `Sharing'.
+- Make sure that `Personal Web Sharing' is enabled.  If it is then
+  the webserver should be running.
+
+The remaining instructions for using the deep profiler are the same as those
+in the user guide.  We recommend against using Safari 1.5 as it has been found
+to be somewhat unstable with the deep profiler.  (Safari 2 is fine however.)

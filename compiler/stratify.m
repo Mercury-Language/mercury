@@ -276,7 +276,7 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
 	globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
 	Error = no,
 	(
-		( Error = yes ; Warn = yes ),
+		Warn = yes,
 		map__search(HOInfo, PredProcId, HigherOrderInfo)
 	->
 		HigherOrderInfo = info(HOCalls, _),

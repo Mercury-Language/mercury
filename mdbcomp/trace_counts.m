@@ -77,9 +77,6 @@ read_trace_counts_2(ReadResult, !IO) :-
 		;
 			error("read_trace_counts_2: unexpected exception type")
 		)
-	;
-		Result = failed,
-		error("read_trace_counts_2: IO failure")
 	).
 
 :- pred read_trace_counts_3(trace_counts::in, trace_counts::out,

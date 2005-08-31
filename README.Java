@@ -28,6 +28,10 @@ In order to try this system you will need
 	  If you're reading this file from somewhere other than the
 	  Mercury distribution, try the Mercury homepage at
 	  	<http://www.cs.mu.oz.au/mercury/>
+WARNING
+
+Please note that the Java backend is still an experimental feature.  It
+is still quite buggy in places and is sometimes completely broken. 
 
 -----------------------------------------------------------------------------
 

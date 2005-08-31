@@ -598,7 +598,7 @@ generate_top_procs_page(Cmd, Limit, CostKind, InclDesc0, Scope0, Pref, Deep)
 				ToggleCostHTML ++
 				page_footer(Cmd, Pref, Deep)
 		;
-			TopProcs = list__map(
+			TopProcs = list.filter_map(
 				lookup_proc_total_to_html(Pref, Deep, no, ""),
 				list__map(wrap_proc_static_ptr, TopPSIs)),
 			RankedTopProcs = add_ranks(TopProcs),
@@ -630,7 +630,7 @@ generate_top_procs_page(Cmd, Limit, CostKind, InclDesc0, Scope0, Pref, Deep)
 modules_to_html(Pref, Deep) = HTML :-
 	map__to_assoc_list(Deep ^ module_data, ModulePairs0),
 	list__filter(not_mercury_runtime, ModulePairs0, ModulePairs),
-	ModuleLines = list__map(module_summary_to_html(Pref, Deep),
+	ModuleLines = list.filter_map(module_summary_to_html(Pref, Deep),
 		ModulePairs),
 	SortedModuleLines = sort_line_groups(Pref ^ pref_criteria,
 		ModuleLines),
@@ -648,18 +648,19 @@ not_mercury_runtime(ModuleName - _) :-
 	ModuleName \= "Mercury runtime".
 
 :- func module_summary_to_html(preferences, deep, pair(string, module_data))
-	= one_id_line.
+	= one_id_line is semidet.
 
 module_summary_to_html(Pref, Deep, ModuleName - ModuleData) = LineGroup :-
-	Own = ModuleData ^ module_own,
-	Desc = ModuleData ^ module_desc,
-	HTML =
-		string__format("<TD><A HREF=""%s"">%s</A></TD>\n",
-			[s(deep_cmd_pref_to_url(Pref, Deep,
-				module(ModuleName))),
+	ModuleData = module_data(Own, Desc, _),
+	not (
+		Pref ^ pref_inactive ^ inactive_modules = hide,
+		is_inactive(Own)
+	),
+	HTML = string.format("<TD><A HREF=""%s"">%s</A></TD>\n",
+		[s(deep_cmd_pref_to_url(Pref, Deep, module(ModuleName))),
 			s(ModuleName)]),
-	LineGroup = line_group(ModuleName, 0, ModuleName, Own, Desc, HTML,
-		unit).
+	LineGroup = line_group(ModuleName, 0, ModuleName, Own, Desc,
+		HTML, unit).
 
 %-----------------------------------------------------------------------------%
 
@@ -668,8 +669,8 @@ module_summary_to_html(Pref, Deep, ModuleName - ModuleData) = LineGroup :-
 
 module_to_html(Pref, Deep, _ModuleName, ModuleData, IdHeaders, HTML) :-
 	ModuleData = module_data(_Own, _Desc, PSPtrs),
-	ProcLines = list__map(lookup_proc_total_to_html(Pref, Deep, yes, ""),
-		PSPtrs),
+	ProcLines = list.filter_map(
+		lookup_proc_total_to_html(Pref, Deep, yes, ""), PSPtrs),
 	Criteria = Pref ^ pref_criteria,
 	SortedProcLines = sort_line_groups(Criteria, ProcLines),
 	( Criteria = by_cost(_, _, _) ->
@@ -895,11 +896,18 @@ child_call_sites(ProcDynamics, ProcStatics, PDPtr, PairedSlots) :-
 
 %-----------------------------------------------------------------------------%
 
+	% Fails if the procedure is inactive and the preferences say to
+	% hide inactive procedures.
+	%
 :- func lookup_proc_total_to_html(preferences, deep, bool, string,
-	proc_static_ptr) = one_id_line.
+	proc_static_ptr) = one_id_line is semidet.
 
 lookup_proc_total_to_html(Pref, Deep, Bold, Prefix, PSPtr) = LineGroup :-
 	deep_lookup_ps_own(Deep, PSPtr, Own),
+	not (
+		Pref ^ pref_inactive ^ inactive_procs = hide,
+		is_inactive(Own)
+	),
 	deep_lookup_ps_desc(Deep, PSPtr, Desc),
 	LineGroup = proc_total_to_html(Pref, Deep, Bold, Prefix,
 		PSPtr, Own, Desc).

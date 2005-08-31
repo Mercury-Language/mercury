@@ -172,7 +172,7 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 				SpecialPred = index,
 				EffTraceLevel = none
 			;
-				SpecialPred = initialise,
+				SpecialPred = (initialise),
 				EffTraceLevel = TraceLevel
 			)
 		;
