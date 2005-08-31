@@ -3118,7 +3118,7 @@ ERROR_UNDEFINED=""
 DEFAULT_LINKAGE="shared"
 
 case "$host" in
-	i*86-*-linux|i*86-*-linux-gnu|x86_64-*-linux|x86_64-*-linux-gnu)
+	i*86-*-linux|i*86-*-linux-gnu)
 		case $ac_cv_prog_gcc in
 		yes)
 			AC_MSG_RESULT(yes)
