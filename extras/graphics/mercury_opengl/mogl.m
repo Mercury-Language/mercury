@@ -1193,6 +1193,7 @@ get_error(Err, !IO) :-
 	GLenum err;
 	MR_Integer i;
 
+	Err = 0;
 	err = glGetError();
 
 	for (i=0; i < 7; i++) {
@@ -3143,7 +3144,9 @@ get_fog_mode(Mode, !IO) :-
 	get_fog_mode_2(Mode::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	glGetIntegerv(GL_FOG_MODE, &Mode);
+	GLint v;
+	glGetIntegerv(GL_FOG_MODE, &v);
+	Mode = (MR_Integer) v;
 	IO = IO0;
 ").
 
@@ -4366,7 +4369,9 @@ get_hint(Target0, Mode, !IO) :-
 	get_hint_2(Target::in, Mode::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	glGetIntegerv(hint_target_flags[Target], &Mode);
+	GLint v;
+	glGetIntegerv(hint_target_flags[Target], &v);
+	Mode = (MR_Integer) v;
 	IO = IO0;
 ").
 
@@ -5062,15 +5067,12 @@ client_attrib_group_to_int(pixel_store) = 1.
 	[will_not_call_mercury, promise_pure],
 "
 	/*
- 	** XXX Apple's OpenGL implementation is broken.
-	** It doesn't define GL_ALL_CLIENT_ATTRIB_BITS.
+	** Some OpenGL implementation do not define
+	** GL_ALL_CLINET_ATTRIB_BITS so we fake its 
+	** effect here.
 	*/
-	#if defined(__APPLE__) && defined(__MACH__)
-		glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
-		glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
-	#else
-		glPushClientAttrib(GL_ALL_CLIENT_ATTRIB_BITS);
-	#endif
+	glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+	glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
 	IO = IO0;
 ").
 
