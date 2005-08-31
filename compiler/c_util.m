@@ -209,9 +209,6 @@ c_util__reset_line_num(!IO) :-
 %
 % String and character handling.
 %
-% XXX we should check to ensure that we don't accidentally generate
-%     trigraph sequences in string literals.
-%
 
 c_util__output_quoted_string(S0, !IO) :-
 	c_util__output_quoted_multi_string(string__length(S0), S0, !IO).
@@ -239,6 +236,30 @@ c_util__output_quoted_multi_string_2(Cur, Len, S, !IO) :-
 			% to access chars beyond the first NUL
 		string__unsafe_index(S, Cur, Char),
 		c_util__output_quoted_char(Char, !IO),
+		
+		%
+		% Check for trigraph sequences in string literals.
+		% We break the trigraph by breaking the string into 
+		% multiple chunks.  For example "??-" gets converted to
+		% "?" "?-".
+		%
+		(
+			Char = '?',
+			Cur < Len + 2
+		->
+			(
+				string__unsafe_index(S, Cur + 1, '?'),
+				string__unsafe_index(S, Cur + 2, ThirdChar),
+				is_trigraph_char(ThirdChar)
+			->
+				io__write_string("\" \"", !IO)
+			;
+				true
+			)
+		;
+			true
+		),
+
 		output_quoted_multi_string_2(Cur + 1, Len, S, !IO)
 	;
 		true
@@ -283,6 +304,20 @@ c_util__escape_special_char('\a', 'a').
 c_util__escape_special_char('\v', 'v').
 c_util__escape_special_char('\r', 'r').
 c_util__escape_special_char('\f', 'f').
+
+	% Succeed if the given character, prefixed with "??", is a trigraph.
+	%
+:- pred is_trigraph_char(char::in) is semidet.
+
+is_trigraph_char('(').
+is_trigraph_char(')').
+is_trigraph_char('<').
+is_trigraph_char('>').
+is_trigraph_char('=').
+is_trigraph_char('/').
+is_trigraph_char('\'').
+is_trigraph_char('!').
+is_trigraph_char('-').
 
 	% This succeeds iff the specified character is allowed as an (unescaped)
 	% character in standard-conforming C source code.

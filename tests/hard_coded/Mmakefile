@@ -182,6 +182,7 @@ ORDINARY_PROGS=	\
 	transform_value \
 	trans_intermod_user_equality \
 	transitive_inst_type \
+	trigraphs \
 	tuple_test \
 	tuple_test \
 	type_ctor_desc \
