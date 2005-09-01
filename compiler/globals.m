@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -32,77 +34,77 @@
 :- type globals.
 
 :- type compilation_target
-	--->	c	% Generate C code (including GNU C)
-	;	il	% Generate IL assembler code
-			% IL is the Microsoft .NET Intermediate Language
-	;	java	% Generate Java
-			% (Work in progress)
-	;	asm. 	% Compile directly to assembler via the GCC back-end.
-			% Do not go via C, instead generate GCC's internal
-			% `tree' data structure.
-			% (Work in progress.)
+    --->    c       % Generate C code (including GNU C)
+    ;       il      % Generate IL assembler code
+                    % IL is the Microsoft .NET Intermediate Language
+    ;       java    % Generate Java
+                    % (Work in progress)
+    ;       asm.    % Compile directly to assembler via the GCC back-end.
+                    % Do not go via C, instead generate GCC's internal
+                    % `tree' data structure. (Work in progress.)
 
 :- type foreign_language
-	--->	c
-% 	;	cplusplus
- 	;	csharp
- 	;	managed_cplusplus
- 	;	java
- 	;	il.
+    --->    c
+%   ;       cplusplus
+    ;       csharp
+    ;       managed_cplusplus
+    ;       java
+    ;       il.
 
-	% A string representation of the foreign language suitable
-	% for use in human-readable error messages
+    % A string representation of the foreign language suitable
+    % for use in human-readable error messages.
+    %
 :- func foreign_language_string(foreign_language) = string.
 
-	% A string representation of the foreign language suitable
-	% for use in machine-readable name mangling.
+    % A string representation of the foreign language suitable
+    % for use in machine-readable name mangling.
+    %
 :- func simple_foreign_language_string(foreign_language) = string.
 
-	% The GC method specifies how we do garbage collection.
-	% The last four alternatives are for the C and asm back-ends;
-	% the first alternative is for compiling to IL or Java,
-	% where the target language implementation handles garbage
-	% collection automatically.
-	%
+    % The GC method specifies how we do garbage collection.
+    % The last four alternatives are for the C and asm back-ends;
+    % the first alternative is for compiling to IL or Java,
+    % where the target language implementation handles garbage
+    % collection automatically.
+    %
 :- type gc_method
-	--->	automatic % It is the responsibility of the target language
-			  % that we are compiling to to handle GC.
+    --->    automatic   % It is the responsibility of the target language
+                        % that we are compiling to to handle GC.
 
-	;	none	% No garbage collection.
-			% But memory may be recovered on backtracking,
-			% if the --reclaim-heap-on-*failure options are set.
+    ;       none        % No garbage collection.
+                        % But memory may be recovered on backtracking,
+                        % if the --reclaim-heap-on-*failure options are set.
 
-	;	boehm	% The Boehm et al conservative collector.
+    ;       boehm       % The Boehm et al conservative collector.
 
-	;	mps	% A different conservative collector, based on
-			% Ravenbrook Limited's MPS (Memory Pool System) kit.
-			% Benchmarking indicated that this one performed worse
-			% than the Boehm collector, so we don't really
-			% support this option anymore.
+    ;       mps         % A different conservative collector, based on
+                        % Ravenbrook Limited's MPS (Memory Pool System) kit.
+                        % Benchmarking indicated that this one performed worse
+                        % than the Boehm collector, so we don't really
+                        % support this option anymore.
 
-	;	accurate.
-			% Our own home-grown copying collector.
-			% See runtime/mercury_accurate_gc.c
-			% and compiler/ml_elim_nested.m.
+    ;       accurate.   % Our own home-grown copying collector.
+                        % See runtime/mercury_accurate_gc.c
+                        % and compiler/ml_elim_nested.m.
 
-	% Returns yes if the GC method is conservative,
-	% i.e. if it is `boehm' or `mps'.
-	% Conservative GC methods don't support heap
-	% reclamation on failure.
+    % Returns yes if the GC method is conservative, i.e. if it is `boehm'
+    % or `mps'. Conservative GC methods don't support heap reclamation
+    % on failure.
+    %
 :- func gc_is_conservative(gc_method) = bool.
 
 :- type tags_method
-	--->	none
-	;	low
-	;	high.
+    --->    none
+    ;       low
+    ;       high.
 
 :- type termination_norm
-	--->	simple
-	;	total
-	;	num_data_elems
-	;	size_data_elems.
+    --->    simple
+    ;       total
+    ;       num_data_elems
+    ;       size_data_elems.
 
-	% Map from module name to file name.
+    % Map from module name to file name.
 :- type source_file_map == map(module_name, string).
 
 :- type maybe_thread_safe == bool.
@@ -113,119 +115,121 @@
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
 :- pred convert_maybe_thread_safe(string::in, maybe_thread_safe::out)
-	is semidet.
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 
-	% Access predicates for the `globals' structure.
+    % Access predicates for the `globals' structure.
 
 :- pred globals__init(option_table::di, compilation_target::di, gc_method::di,
-	tags_method::di, termination_norm::di, termination_norm::di,
-	trace_level::di, trace_suppress_items::di, 
-	maybe_thread_safe::di, globals::uo) is det.
+    tags_method::di, termination_norm::di, termination_norm::di,
+    trace_level::di, trace_suppress_items::di, 
+    maybe_thread_safe::di, globals::uo) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 :- pred globals__get_target(globals::in, compilation_target::out) is det.
 :- pred globals__get_backend_foreign_languages(globals::in,
-	list(foreign_language)::out) is det.
+    list(foreign_language)::out) is det.
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
 :- pred globals__get_tags_method(globals::in, tags_method::out) is det.
 :- pred globals__get_termination_norm(globals::in, termination_norm::out)
-	is det.
+    is det.
 :- pred globals__get_termination2_norm(globals::in, termination_norm::out)
-	is det.
+    is det.
 :- pred globals__get_trace_level(globals::in, trace_level::out) is det.
 :- pred globals__get_trace_suppress(globals::in, trace_suppress_items::out)
-	is det.
+    is det.
 :- pred globals__get_source_file_map(globals::in, maybe(source_file_map)::out)
-	is det.
+    is det.
 :- pred globals__get_maybe_thread_safe(globals::in, maybe_thread_safe::out)
-	is det.
+    is det.
 
+:- pred globals__set_option(option::in, option_data::in,
+    globals::in, globals::out) is det.
 :- pred globals__set_options(option_table::in, globals::in, globals::out)
-	is det.
+    is det.
 :- pred globals__set_gc_method(gc_method::in, globals::in, globals::out)
-	is det.
+    is det.
 :- pred globals__set_tags_method(tags_method::in, globals::in, globals::out)
-	is det.
+    is det.
 :- pred globals__set_trace_level(trace_level::in, globals::in, globals::out)
-	is det.
+    is det.
 :- pred globals__set_trace_level_none(globals::in, globals::out) is det.
 :- pred globals__set_source_file_map(maybe(source_file_map)::in,
-	globals::in, globals::out) is det.
+    globals::in, globals::out) is det.
 
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
-	is det.
+    is det.
 
 :- pred globals__lookup_bool_option(globals, option, bool).
 :- mode globals__lookup_bool_option(in, in, out) is det.
 :- mode globals__lookup_bool_option(in, in, in) is semidet. % implied
 :- pred globals__lookup_int_option(globals::in, option::in, int::out) is det.
 :- pred globals__lookup_string_option(globals::in, option::in, string::out)
-	is det.
+    is det.
 :- pred globals__lookup_maybe_string_option(globals::in, option::in,
-	maybe(string)::out) is det.
+    maybe(string)::out) is det.
 :- pred globals__lookup_accumulating_option(globals::in, option::in,
-	list(string)::out) is det.
+    list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-	% More complex options
+    % More complex options
 
-	% Check if static code addresses are available in the
-	% current grade of compilation.
-
+    % Check if static code addresses are available in the
+    % current grade of compilation.
+    %
 :- pred globals__have_static_code_addresses(globals::in, bool::out) is det.
 
-	% Check if we should include variable information in the layout
-	% structures of call return sites.
-
+    % Check if we should include variable information in the layout
+    % structures of call return sites.
+    %
 :- pred globals__want_return_var_layouts(globals::in, bool::out) is det.
 
-	% globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst)
-	% figures out whether an imported label address is a constant.
-	% This depends on how we treat labels.
-
+    % globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst)
+    % figures out whether an imported label address is a constant.
+    % This depends on how we treat labels.
+    %
 :- pred globals__imported_is_constant(bool::in, bool::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-	% Access predicates for storing a `globals' structure in the
-	% io__state using io__set_globals and io__get_globals.
+    % Access predicates for storing a `globals' structure in the
+    % io__state using io__set_globals and io__get_globals.
 
 :- pred globals__io_init(option_table::di, compilation_target::in,
-	gc_method::in, tags_method::in, termination_norm::in,
-	termination_norm::in, trace_level::in, trace_suppress_items::in,
-	maybe_thread_safe::in, io::di, io::uo) is det.
+    gc_method::in, tags_method::in, termination_norm::in,
+    termination_norm::in, trace_level::in, trace_suppress_items::in,
+    maybe_thread_safe::in, io::di, io::uo) is det.
 
 :- pred globals__io_get_target(compilation_target::out, io::di, io::uo) is det.
 :- pred globals__io_get_backend_foreign_languages(list(foreign_language)::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_lookup_foreign_language_option(option::in,
-	foreign_language::out, io::di, io::uo) is det.
+    foreign_language::out, io::di, io::uo) is det.
 
 :- pred globals__io_get_gc_method(gc_method::out, io::di, io::uo) is det.
 :- pred globals__io_get_tags_method(tags_method::out, io::di, io::uo) is det.
 :- pred globals__io_get_termination_norm(termination_norm::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_get_termination2_norm(termination_norm::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_get_trace_level(trace_level::out, io::di, io::uo) is det.
 
 :- pred globals__io_get_trace_suppress(trace_suppress_items::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- pred globals__io_get_maybe_thread_safe(maybe_thread_safe::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_get_globals(globals::out, io::di, io::uo) is det.
 
 :- pred globals__io_set_globals(globals::di, io::di, io::uo) is det.
 
 :- pred globals__io_set_option(option::in, option_data::in,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_set_gc_method(gc_method::in, io::di, io::uo) is det.
 :- pred globals__io_set_tags_method(tags_method::in, io::di, io::uo) is det.
@@ -233,22 +237,22 @@
 :- pred globals__io_set_trace_level_none(io::di, io::uo) is det.
 
 :- pred globals__io_lookup_option(option::in, option_data::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_lookup_bool_option(option::in, bool::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_lookup_int_option(option::in, int::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_lookup_string_option(option::in, string::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_lookup_maybe_string_option(option::in, maybe(string)::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_lookup_accumulating_option(option::in, list(string)::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred globals__io_printing_usage(bool::out, io::di, io::uo) is det.
 
@@ -263,7 +267,7 @@
 :- import_module string.
 
 convert_target(String, Target) :-
-	convert_target_2(string__to_lower(String), Target).
+    convert_target_2(string__to_lower(String), Target).
 
 :- pred convert_target_2(string::in, compilation_target::out) is semidet.
 
@@ -273,10 +277,10 @@ convert_target_2("il", il).
 convert_target_2("c", c).
 
 convert_foreign_language(String, ForeignLanguage) :-
-	convert_foreign_language_2(string__to_lower(String), ForeignLanguage).
+    convert_foreign_language_2(string__to_lower(String), ForeignLanguage).
 
 :- pred convert_foreign_language_2(string::in, foreign_language::out)
-	is semidet.
+    is semidet.
 
 convert_foreign_language_2("c", c).
 convert_foreign_language_2("mc++", managed_cplusplus).
@@ -328,26 +332,26 @@ gc_is_conservative(automatic) = no.
 %-----------------------------------------------------------------------------%
 
 :- type globals
-	--->	globals(
-			options 		:: option_table,
-			target 			:: compilation_target,
-			gc_method 		:: gc_method,
-			tags_method 		:: tags_method,
-			termination_norm 	:: termination_norm,
-			termination2_norm	:: termination_norm,
-			trace_level 		:: trace_level,
-			trace_suppress_items	:: trace_suppress_items,
-			source_file_map		:: maybe(source_file_map),
-			have_printed_usage	:: bool,
-			maybe_thread_safe	:: bool
-		).
+    --->    globals(
+                options                 :: option_table,
+                target                  :: compilation_target,
+                gc_method               :: gc_method,
+                tags_method             :: tags_method,
+                termination_norm        :: termination_norm,
+                termination2_norm       :: termination_norm,
+                trace_level             :: trace_level,
+                trace_suppress_items    :: trace_suppress_items,
+                source_file_map         :: maybe(source_file_map),
+                have_printed_usage      :: bool,
+                maybe_thread_safe       :: bool
+            ).
 
 globals__init(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-		MaybeThreadSafe,
-	globals(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress, 
-		no, no, MaybeThreadSafe)).
+        TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
+        MaybeThreadSafe,
+    globals(Options, Target, GC_Method, TagsMethod,
+        TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress, 
+        no, no, MaybeThreadSafe)).
 
 globals__get_options(Globals, Globals ^ options).
 globals__get_target(Globals, Globals ^ target).
@@ -361,288 +365,289 @@ globals__get_source_file_map(Globals, Globals ^ source_file_map).
 globals__get_maybe_thread_safe(Globals, Globals ^ maybe_thread_safe).
 
 globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
-	globals__lookup_accumulating_option(Globals, backend_foreign_languages,
-		LangStrs),
-	ForeignLangs = list__map(func(String) = ForeignLang :-
-		( convert_foreign_language(String, ForeignLang0) ->
-			ForeignLang = ForeignLang0
-		;
-			error("globals__io_get_backend_foreign_languages: " ++
-				"invalid foreign_language string")
-		), LangStrs).
+    globals__lookup_accumulating_option(Globals, backend_foreign_languages,
+        LangStrs),
+    ForeignLangs = list__map(func(String) = ForeignLang :-
+        ( convert_foreign_language(String, ForeignLang0) ->
+            ForeignLang = ForeignLang0
+        ;
+            error("globals__io_get_backend_foreign_languages: " ++
+                "invalid foreign_language string")
+        ), LangStrs).
 
 globals__set_options(Options, Globals, Globals ^ options := Options).
+
+globals__set_option(Option, OptionData, !Globals) :-
+    globals__get_options(!.Globals, OptionTable0),
+    map__set(OptionTable0, Option, OptionData, OptionTable),
+    globals__set_options(OptionTable, !Globals).
 
 globals__set_gc_method(GC_Method, Globals, Globals ^ gc_method := GC_Method).
 
 globals__set_tags_method(Tags_Method, Globals,
-	Globals ^ tags_method := Tags_Method).
+    Globals ^ tags_method := Tags_Method).
 
 globals__set_trace_level(TraceLevel, Globals,
-	Globals ^ trace_level := TraceLevel).
+    Globals ^ trace_level := TraceLevel).
 globals__set_trace_level_none(Globals,
-	Globals ^ trace_level := trace_level_none).
+    Globals ^ trace_level := trace_level_none).
 
 globals__set_source_file_map(SourceFileMap, Globals,
-	Globals ^ source_file_map := SourceFileMap).
+    Globals ^ source_file_map := SourceFileMap).
 
 globals__lookup_option(Globals, Option, OptionData) :-
-	globals__get_options(Globals, OptionTable),
-	map__lookup(OptionTable, Option, OptionData).
+    globals__get_options(Globals, OptionTable),
+    map__lookup(OptionTable, Option, OptionData).
 
 %-----------------------------------------------------------------------------%
 
 globals__lookup_bool_option(Globals, Option, Value) :-
-	globals__lookup_option(Globals, Option, OptionData),
-	( OptionData = bool(Bool) ->
-		Value = Bool
-	;
-		error("globals__lookup_bool_option: invalid bool option")
-	).
+    globals__lookup_option(Globals, Option, OptionData),
+    ( OptionData = bool(Bool) ->
+        Value = Bool
+    ;
+        error("globals__lookup_bool_option: invalid bool option")
+    ).
 
 globals__lookup_string_option(Globals, Option, Value) :-
-	globals__lookup_option(Globals, Option, OptionData),
-	( OptionData = string(String) ->
-		Value = String
-	;
-		error("globals__lookup_string_option: invalid string option")
-	).
+    globals__lookup_option(Globals, Option, OptionData),
+    ( OptionData = string(String) ->
+        Value = String
+    ;
+        error("globals__lookup_string_option: invalid string option")
+    ).
 
 globals__lookup_int_option(Globals, Option, Value) :-
-	globals__lookup_option(Globals, Option, OptionData),
-	( OptionData = int(Int) ->
-		Value = Int
-	;
-		error("globals__lookup_int_option: invalid int option")
-	).
+    globals__lookup_option(Globals, Option, OptionData),
+    ( OptionData = int(Int) ->
+        Value = Int
+    ;
+        error("globals__lookup_int_option: invalid int option")
+    ).
 
 globals__lookup_maybe_string_option(Globals, Option, Value) :-
-	globals__lookup_option(Globals, Option, OptionData),
-	( OptionData = maybe_string(MaybeString) ->
-		Value = MaybeString
-	;
-		error(
-		"globals__lookup_string_option: invalid maybe_string option")
-	).
+    globals__lookup_option(Globals, Option, OptionData),
+    ( OptionData = maybe_string(MaybeString) ->
+        Value = MaybeString
+    ;
+        error(
+        "globals__lookup_string_option: invalid maybe_string option")
+    ).
 
 globals__lookup_accumulating_option(Globals, Option, Value) :-
-	globals__lookup_option(Globals, Option, OptionData),
-	( OptionData = accumulating(Accumulating) ->
-		Value = Accumulating
-	;
-		error("globals__lookup_accumulating_option: "
-			++ "invalid accumulating option")
-	).
+    globals__lookup_option(Globals, Option, OptionData),
+    ( OptionData = accumulating(Accumulating) ->
+        Value = Accumulating
+    ;
+        error("globals__lookup_accumulating_option: "
+            ++ "invalid accumulating option")
+    ).
 
 %-----------------------------------------------------------------------------%
 
 globals__have_static_code_addresses(Globals, IsConst) :-
-	globals__get_options(Globals, OptionTable),
-	globals__have_static_code_addresses_2(OptionTable, IsConst).
+    globals__get_options(Globals, OptionTable),
+    globals__have_static_code_addresses_2(OptionTable, IsConst).
 
 :- pred globals__have_static_code_addresses_2(option_table::in,
-	bool::out) is det.
+    bool::out) is det.
 
 globals__have_static_code_addresses_2(OptionTable, IsConst) :-
-	getopt_io__lookup_bool_option(OptionTable, gcc_non_local_gotos,
-		NonLocalGotos),
-	getopt_io__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
-	globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+    getopt_io__lookup_bool_option(OptionTable, gcc_non_local_gotos,
+        NonLocalGotos),
+    getopt_io__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
+    globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 
 globals__want_return_var_layouts(Globals, WantReturnLayouts) :-
-	% We need to generate layout info for call return labels
-	% if we are using accurate gc or if the user wants uplevel printing.
-	(
-		(
-			globals__get_gc_method(Globals, GC_Method),
-			GC_Method = accurate
-		;
-			globals__get_trace_level(Globals, TraceLevel),
-			globals__get_trace_suppress(Globals, TraceSuppress),
-			trace_needs_return_info(TraceLevel, TraceSuppress)
-				= yes
-		)
-	->
-		WantReturnLayouts = yes
-	;
-		WantReturnLayouts = no
-	).
+    % We need to generate layout info for call return labels
+    % if we are using accurate gc or if the user wants uplevel printing.
+    (
+        (
+            globals__get_gc_method(Globals, GC_Method),
+            GC_Method = accurate
+        ;
+            globals__get_trace_level(Globals, TraceLevel),
+            globals__get_trace_suppress(Globals, TraceSuppress),
+            trace_needs_return_info(TraceLevel, TraceSuppress) = yes
+        )
+    ->
+        WantReturnLayouts = yes
+    ;
+        WantReturnLayouts = no
+    ).
 
-	% The logic of this function and how it is used to select the default
-	% type_info method must agree with the code in runtime/typeinfo.h.
+    % The logic of this function and how it is used to select the default
+    % type_info method must agree with the code in runtime/typeinfo.h.
 
 globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
-	(
-		NonLocalGotos = yes,
-		AsmLabels = no
-	->
-		%
-		% with non-local gotos but no asm labels, jumps to code
-		% addresses in different c_modules must be done via global
-		% variables; the value of these global variables is not
-		% constant (i.e. not computable at load time), since they
-		% can't be initialized until we call init_modules().
-		%
-		IsConst = no
-	;
-		IsConst = yes
-	).
+    (
+        NonLocalGotos = yes,
+        AsmLabels = no
+    ->
+        %
+        % With non-local gotos but no asm labels, jumps to code addresses
+        % in different c_modules must be done via global variables; the value
+        % of these global variables is not constant (i.e. not computable at
+        % load time), since they can't be initialized until we call
+        % init_modules().
+        %
+        IsConst = no
+    ;
+        IsConst = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 globals__io_init(Options, Target, GC_Method, TagsMethod, TerminationNorm,
-		Termination2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-		!IO) :-
-	copy(Target, Target1),
-	copy(GC_Method, GC_Method1),
-	copy(TagsMethod, TagsMethod1),
-	copy(TerminationNorm, TerminationNorm1),
-	copy(Termination2Norm, Termination2Norm1),
-	copy(TraceLevel, TraceLevel1),
-	copy(TraceSuppress, TraceSuppress1),
-	copy(MaybeThreadSafe, MaybeThreadSafe1),
-	globals__init(Options, Target1, GC_Method1, TagsMethod1,
-		TerminationNorm1, Termination2Norm1, TraceLevel1,
-		TraceSuppress1, MaybeThreadSafe1, Globals),
-	globals__io_set_globals(Globals, !IO).
+        Termination2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe, !IO) :-
+    copy(Target, Target1),
+    copy(GC_Method, GC_Method1),
+    copy(TagsMethod, TagsMethod1),
+    copy(TerminationNorm, TerminationNorm1),
+    copy(Termination2Norm, Termination2Norm1),
+    copy(TraceLevel, TraceLevel1),
+    copy(TraceSuppress, TraceSuppress1),
+    copy(MaybeThreadSafe, MaybeThreadSafe1),
+    globals__init(Options, Target1, GC_Method1, TagsMethod1,
+        TerminationNorm1, Termination2Norm1, TraceLevel1,
+        TraceSuppress1, MaybeThreadSafe1, Globals),
+    globals__io_set_globals(Globals, !IO).
 
-globals__io_get_target(Target) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_target(Globals, Target) }.
+globals__io_get_target(Target, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_target(Globals, Target).
 
-globals__io_get_gc_method(GC_Method) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_gc_method(Globals, GC_Method) }.
+globals__io_get_gc_method(GC_Method, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_gc_method(Globals, GC_Method).
 
-globals__io_get_tags_method(Tags_Method) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_tags_method(Globals, Tags_Method) }.
+globals__io_get_tags_method(Tags_Method, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_tags_method(Globals, Tags_Method).
 
-globals__io_get_termination_norm(TerminationNorm) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_termination_norm(Globals, TerminationNorm) }.
+globals__io_get_termination_norm(TerminationNorm, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_termination_norm(Globals, TerminationNorm).
 
 globals__io_get_termination2_norm(Termination2Norm, !IO) :-
-	globals__io_get_globals(Globals, !IO),
-	globals__get_termination2_norm(Globals, Termination2Norm).
+    globals__io_get_globals(Globals, !IO),
+    globals__get_termination2_norm(Globals, Termination2Norm).
 
-globals__io_get_trace_level(TraceLevel) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_trace_level(Globals, TraceLevel) }.
+globals__io_get_trace_level(TraceLevel, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_trace_level(Globals, TraceLevel).
 
-globals__io_get_trace_suppress(TraceSuppress) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_trace_suppress(Globals, TraceSuppress) }.
+globals__io_get_trace_suppress(TraceSuppress, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_trace_suppress(Globals, TraceSuppress).
 
 globals__io_get_maybe_thread_safe(MaybeThreadSafe, !IO) :-
-	globals__io_get_globals(Globals, !IO),
-	globals__get_maybe_thread_safe(Globals, MaybeThreadSafe).
+    globals__io_get_globals(Globals, !IO),
+    globals__get_maybe_thread_safe(Globals, MaybeThreadSafe).
 
-globals__io_get_globals(Globals) -->
-	io__get_globals(UnivGlobals),
-	{
-		univ_to_type(UnivGlobals, Globals0)
-	->
-		Globals = Globals0
-	;
-		error("globals__io_get_globals: univ_to_type failed")
-	}.
+globals__io_get_globals(Globals, !IO) :-
+    io__get_globals(UnivGlobals, !IO),
+    ( univ_to_type(UnivGlobals, Globals0) ->
+        Globals = Globals0
+    ;
+        error("globals__io_get_globals: univ_to_type failed")
+    ).
 
-globals__io_set_globals(Globals) -->
-	{ type_to_univ(Globals, UnivGlobals) },
-	io__set_globals(UnivGlobals).
+globals__io_set_globals(Globals, !IO) :-
+    type_to_univ(Globals, UnivGlobals),
+    io__set_globals(UnivGlobals, !IO).
 
 %-----------------------------------------------------------------------------%
 
-globals__io_lookup_option(Option, OptionData) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_options(Globals, OptionTable) },
-	{ map__lookup(OptionTable, Option, OptionData) }.
+globals__io_lookup_option(Option, OptionData, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_options(Globals, OptionTable),
+    map__lookup(OptionTable, Option, OptionData).
 
-globals__io_set_option(Option, OptionData) -->
-	globals__io_get_globals(Globals0),
-	{ globals__get_options(Globals0, OptionTable0) },
-	{ map__set(OptionTable0, Option, OptionData, OptionTable) },
-	{ globals__set_options(OptionTable, Globals0, Globals1) },
-		% XXX there is a bit of a design flaw with regard to
-		% uniqueness and io__set_globals
-	{ unsafe_promise_unique(Globals1, Globals) },
-	globals__io_set_globals(Globals).
+globals__io_set_option(Option, OptionData, !IO) :-
+    globals__io_get_globals(Globals0, !IO),
+    globals__get_options(Globals0, OptionTable0),
+    map__set(OptionTable0, Option, OptionData, OptionTable),
+    globals__set_options(OptionTable, Globals0, Globals1),
+        % XXX there is a bit of a design flaw with regard to
+        % uniqueness and io__set_globals
+    unsafe_promise_unique(Globals1, Globals),
+    globals__io_set_globals(Globals, !IO).
 
-globals__io_set_gc_method(GC_Method) -->
-	globals__io_get_globals(Globals0),
-	{ globals__set_gc_method(GC_Method, Globals0, Globals1) },
-	{ unsafe_promise_unique(Globals1, Globals) },
-		% XXX there is a bit of a design flaw with regard to
-		% uniqueness and io__set_globals
-	globals__io_set_globals(Globals).
+globals__io_set_gc_method(GC_Method, !IO) :-
+    globals__io_get_globals(Globals0, !IO),
+    globals__set_gc_method(GC_Method, Globals0, Globals1),
+    unsafe_promise_unique(Globals1, Globals),
+        % XXX there is a bit of a design flaw with regard to
+        % uniqueness and io__set_globals
+    globals__io_set_globals(Globals, !IO).
 
-globals__io_set_tags_method(Tags_Method) -->
-	globals__io_get_globals(Globals0),
-	{ globals__set_tags_method(Tags_Method, Globals0, Globals1) },
-	{ unsafe_promise_unique(Globals1, Globals) },
-		% XXX there is a bit of a design flaw with regard to
-		% uniqueness and io__set_globals
-	globals__io_set_globals(Globals).
+globals__io_set_tags_method(Tags_Method, !IO) :-
+    globals__io_get_globals(Globals0, !IO),
+    globals__set_tags_method(Tags_Method, Globals0, Globals1),
+    unsafe_promise_unique(Globals1, Globals),
+        % XXX there is a bit of a design flaw with regard to
+        % uniqueness and io__set_globals
+    globals__io_set_globals(Globals, !IO).
 
-globals__io_set_trace_level(TraceLevel) -->
-	globals__io_get_globals(Globals0),
-	{ globals__set_trace_level(TraceLevel, Globals0, Globals1) },
-	{ unsafe_promise_unique(Globals1, Globals) },
-		% XXX there is a bit of a design flaw with regard to
-		% uniqueness and io__set_globals
-	globals__io_set_globals(Globals).
+globals__io_set_trace_level(TraceLevel, !IO) :-
+    globals__io_get_globals(Globals0, !IO),
+    globals__set_trace_level(TraceLevel, Globals0, Globals1),
+    unsafe_promise_unique(Globals1, Globals),
+        % XXX there is a bit of a design flaw with regard to
+        % uniqueness and io__set_globals
+    globals__io_set_globals(Globals, !IO).
 
-	% This predicate is needed because mercury_compile.m doesn't know
-	% anything about type trace_level.
-globals__io_set_trace_level_none -->
-	globals__io_set_trace_level(trace_level_none).
+    % This predicate is needed because mercury_compile.m doesn't know
+    % anything about type trace_level.
+globals__io_set_trace_level_none(!IO) :-
+    globals__io_set_trace_level(trace_level_none, !IO).
 
 %-----------------------------------------------------------------------------%
 
-globals__io_lookup_foreign_language_option(Option, ForeignLang) -->
-	globals__io_lookup_string_option(Option, String),
-	{ convert_foreign_language(String, ForeignLang0) ->
-		ForeignLang = ForeignLang0
-	;
-		error("globals__io_lookup_foreign_language_option: "
-			++ "invalid foreign_language option")
-	}.
+globals__io_lookup_foreign_language_option(Option, ForeignLang, !IO) :-
+    globals__io_lookup_string_option(Option, String, !IO),
+    ( convert_foreign_language(String, ForeignLang0) ->
+        ForeignLang = ForeignLang0
+    ;
+        error("globals__io_lookup_foreign_language_option: "
+            ++ "invalid foreign_language option")
+    ).
 
-globals__io_get_backend_foreign_languages(ForeignLangs) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_backend_foreign_languages(Globals, ForeignLangs) }.
+globals__io_get_backend_foreign_languages(ForeignLangs, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_backend_foreign_languages(Globals, ForeignLangs).
 
-globals__io_lookup_bool_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, Option, Value) }.
+globals__io_lookup_bool_option(Option, Value, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__lookup_bool_option(Globals, Option, Value).
 
-globals__io_lookup_int_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_int_option(Globals, Option, Value) }.
+globals__io_lookup_int_option(Option, Value, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__lookup_int_option(Globals, Option, Value).
 
-globals__io_lookup_string_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_string_option(Globals, Option, Value) }.
+globals__io_lookup_string_option(Option, Value, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__lookup_string_option(Globals, Option, Value).
 
-globals__io_lookup_maybe_string_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_maybe_string_option(Globals, Option, Value) }.
+globals__io_lookup_maybe_string_option(Option, Value, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__lookup_maybe_string_option(Globals, Option, Value).
 
-globals__io_lookup_accumulating_option(Option, Value) -->
-	globals__io_get_globals(Globals),
-	{ globals__lookup_accumulating_option(Globals, Option, Value) }.
+globals__io_lookup_accumulating_option(Option, Value, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__lookup_accumulating_option(Globals, Option, Value).
 
 %-----------------------------------------------------------------------------%
 
 globals__io_printing_usage(AlreadyPrinted, !IO) :-
-	globals__io_get_globals(Globals0, !IO),
-	AlreadyPrinted = Globals0 ^ have_printed_usage,
-	Globals1 = Globals0 ^ have_printed_usage := yes,
-	unsafe_promise_unique(Globals1, Globals),
-		% XXX there is a bit of a design flaw with regard to
-		% uniqueness and io__set_globals
-	globals__io_set_globals(Globals, !IO).
+    globals__io_get_globals(Globals0, !IO),
+    AlreadyPrinted = Globals0 ^ have_printed_usage,
+    Globals1 = Globals0 ^ have_printed_usage := yes,
+    unsafe_promise_unique(Globals1, Globals),
+        % XXX there is a bit of a design flaw with regard to
+        % uniqueness and io__set_globals
+    globals__io_set_globals(Globals, !IO).
 
 %-----------------------------------------------------------------------------%
