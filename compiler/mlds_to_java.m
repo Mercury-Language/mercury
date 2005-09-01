@@ -417,7 +417,7 @@ output_java_src_file(Indent, MLDS, !IO) :-
 	%
 	% Run further transformations on the MLDS.
 	%
-	MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0),
+	MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0, _InitPreds),
 	MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 	%
 	% Find and build list of all methods which would have their addresses

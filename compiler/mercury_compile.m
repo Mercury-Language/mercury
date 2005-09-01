@@ -1649,7 +1649,7 @@ mercury_compile_asm_c_code(ModuleName, !IO) :-
 
 mercury_compile__mlds_has_main(MLDS) =
     (
-        MLDS = mlds(_, _, _, Defns),
+        MLDS = mlds(_, _, _, Defns, _),
         defns_contain_main(Defns)
     ->
         has_main
@@ -4479,9 +4479,9 @@ mercury_compile__mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
     list__condense([TypeCtorRtti, TypeClassInfoRtti,
         NewTypeClassInfoRttiData, AditiProcInfoRtti], RttiData),
     RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
-    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0),
+    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds),
     list__append(RttiDefns, Defns0, Defns),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns).
+    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds).
 
 % The `--high-level-C' MLDS output pass
 

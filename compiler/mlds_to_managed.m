@@ -72,7 +72,7 @@
 :- import_module term.
 
 output_managed_code(Lang, MLDS, !IO) :-
-	MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns),
+	MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns, _InitPred),
 	output_src_start(ModuleName, !IO),
 	io__nl(!IO),
 	generate_code(Lang, MLDS, !IO),
@@ -104,7 +104,7 @@ output_src_end(ModuleName, !IO) :-
 	io::di, io::uo) is det.
 
 generate_code(Lang, MLDS, !IO) :-
-	MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns),
+	MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns, _InitPreds),
 	ClassName = class_name(mercury_module_name_to_mlds(ModuleName),
 		wrapper_class_name),
 	io__nl(!IO),

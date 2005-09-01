@@ -370,7 +370,12 @@
 		toplevel_imports :: mlds__imports,
 
 			% Definitions of code and data
-		defns		:: mlds__defns
+		defns		:: mlds__defns,
+	
+			% The names of init preds.
+			% XXX This only works for the C backend, because
+			% pragma export doesn't work for the other backends.
+		init_preds :: list(string)
 	).
 
 :- func mlds__get_module_name(mlds) = mercury_module_name.
@@ -1755,7 +1760,7 @@ XXX Full exception handling support is not yet implemented.
 
 %-----------------------------------------------------------------------------%
 
-mlds__get_module_name(mlds(ModuleName, _, _, _)) = ModuleName.
+mlds__get_module_name(mlds(ModuleName, _, _, _, _)) = ModuleName.
 
 %-----------------------------------------------------------------------------%
 

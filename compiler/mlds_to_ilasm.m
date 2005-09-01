@@ -123,7 +123,7 @@ handle_foreign_lang(java, _) :-
 	io::di, io::uo) is det.
 
 output_assembler(MLDS, ForeignLangs, !IO) :-
-	MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns),
+	MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns, _InitPreds),
 	output_src_start(ModuleName, !IO),
 	io__nl(!IO),
 
