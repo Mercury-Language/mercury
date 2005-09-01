@@ -421,7 +421,8 @@ The most useful of these are the options that set the size of the stacks.
 @c XXX FIXME This is wrong for the case when --high-level-code is enabled.
 The det stack and the nondet stack
 are allocated fixed sizes at program start-up.
-The default size is 4096k for the det stack and 128k for the nondet stack,
+The default size is 1024k times the word size for the det stack
+and 64k times the word size for the nondet stack,
 but these can be overridden with the
 @samp{--detstack-size} and @samp{--nondetstack-size} options,
 @findex --detstack-size
@@ -439,7 +440,7 @@ the heap will start out with a zero size,
 and will be dynamically expanded as needed,
 When not using conservative garbage collection,
 the heap has a fixed size like the stacks.
-The default size is 4 Mb, but this can be overridden
+The default size is 8Mb times the word size, but this can be overridden
 with the @samp{--heap-size} option.
 @cindex Heap size
 @cindex Heap overflow
@@ -8079,9 +8080,20 @@ so on Windows you must explicitly specify @samp{-Tr}.
 Sets the size of the heap to @var{size} kilobytes.
 
 @sp 1
+@item --heap-size-kwords @var{size}
+@findex --heap-size-kwords (runtime option)
+Sets the size of the heap to @var{size} kilobytes multiplied by the word size.
+
+@sp 1
 @item --detstack-size @var{size}
 @findex --detstack-size (runtime option)
 Sets the size of the det stack to @var{size} kilobytes.
+
+@sp 1
+@item --detstack-size-kwords @var{size}
+@findex --detstack-size-kwords (runtime option)
+Sets the size of the det stack to @var{size} kilobytes
+multiplied by the word size.
 
 @sp 1
 @item --nondetstack-size @var{size}
@@ -8089,9 +8101,21 @@ Sets the size of the det stack to @var{size} kilobytes.
 Sets the size of the nondet stack to @var{size} kilobytes.
 
 @sp 1
+@item --nondetstack-size-kwords @var{size}
+@findex --nondetstack-size-kwords (runtime option)
+Sets the size of the nondet stack to @var{size} kilobytes
+multiplied by the word size.
+
+@sp 1
 @item --solutions-heap-size @var{size}
 @findex --solutions-heap-size (runtime option)
 Sets the size of the solutions heap to @var{size} kilobytes.
+
+@sp 1
+@item --solutions-heap-size-kwords @var{size}
+@findex --solutions-heap-size-kwords (runtime option)
+Sets the size of the solutions heap to @var{size} kilobytes
+multiplied by the word size.
 
 @sp 1
 @item --trail-size @var{size}
@@ -8100,10 +8124,24 @@ Sets the size of the solutions heap to @var{size} kilobytes.
 Sets the size of the trail to @var{size} kilobytes.
 
 @sp 1
+@item --trail-size-kwords @var{size}
+@findex --trail-size-kwords
+@cindex Trail size
+Sets the size of the trail to @var{size} kilobytes
+multiplied by the word size.
+
+@sp 1
 @item --genstack-size @var{size}
 @findex --genstack-size
 @cindex Generator stack size
 Sets the size of the generator stack to @var{size} kilobytes.
+
+@sp 1
+@item --genstack-size-kwords @var{size}
+@findex --genstack-size-kwords
+@cindex Generator stack size
+Sets the size of the generator stack to @var{size} kilobytes
+multiplied by the word size.
 
 @sp 1
 @item --cutstack-size @var{size}
@@ -8112,10 +8150,24 @@ Sets the size of the generator stack to @var{size} kilobytes.
 Sets the size of the cut stack to @var{size} kilobytes.
 
 @sp 1
+@item --cutstack-size-kwords @var{size}
+@findex --cutstack-size-kwords
+@cindex Cut stack size
+Sets the size of the cut stack to @var{size} kilobytes
+multiplied by the word size.
+
+@sp 1
 @item --pnegstack-size @var{size}
 @findex --pnegstack-size
 @cindex Pneg stack size
 Sets the size of the pneg stack to @var{size} kilobytes.
+
+@sp 1
+@item --pnegstack-size-kwords @var{size}
+@findex --pnegstack-size-kwords
+@cindex Pneg stack size
+Sets the size of the pneg stack to @var{size} kilobytes
+multiplied by the word size.
 
 @c @sp 1
 @c @item --heap-redzone-size @var{size}
@@ -8123,9 +8175,21 @@ Sets the size of the pneg stack to @var{size} kilobytes.
 @c Sets the size of the redzone on the heap to @var{size} kilobytes.
 
 @c @sp 1
+@c @item --heap-redzone-size-kwords @var{size}
+@c @findex --heap-redzone-size-kwords (runtime option)
+@c Sets the size of the redzone on the heap to @var{size} kilobytes
+@c multiplied by the word size.
+
+@c @sp 1
 @c @item --detstack-redzone-size @var{size}
 @c @findex --detstack-redzone-size (runtime option)
 @c Sets the size of the redzone on the det stack to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --detstack-redzone-size-kwords @var{size}
+@c @findex --detstack-redzone-size-kwords (runtime option)
+@c Sets the size of the redzone on the det stack to @var{size} kilobytes
+@c multiplied by the word size.
 
 @c @sp 1
 @c @item --nondetstack-redzone-size @var{size}
@@ -8133,9 +8197,21 @@ Sets the size of the pneg stack to @var{size} kilobytes.
 @c Sets the size of the redzone on the nondet stack to @var{size} kilobytes.
 
 @c @sp 1
+@c @item --nondetstack-redzone-size-kwords @var{size}
+@c @findex --nondetstack-redzone-size-kwords (runtime option)
+@c Sets the size of the redzone on the nondet stack to @var{size} kilobytes
+@c multiplied by the word size.
+
+@c @sp 1
 @c @item --trail-redzone-size @var{size}
 @c @findex --trail-redzone-size (runtime option)
 @c Sets the size of the redzone on the trail to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --trail-redzone-size-kwords @var{size}
+@c @findex --trail-redzone-size-kwords (runtime option)
+@c Sets the size of the redzone on the trail to @var{size} kilobytes
+@c multiplied by the word size.
 
 @sp 1
 @item -i @var{filename}

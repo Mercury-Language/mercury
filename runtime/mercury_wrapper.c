@@ -77,35 +77,37 @@ ENDINIT
 ** that we use will be twice the heap size specified here,
 ** since it is a two-space collector.
 **
-** Changes to MR_heap_size may also require changing MR_heap_zone_size
-** and/or the MR_heap_margin_size, which are defined below.
+** Changes to MR_heap_size, MR_detstack_size or MR_nondstack_size should
+** be reflected in the user guide.  Changes to MR_heap_size may also require
+** changing MR_heap_zone_size and/or the MR_heap_margin_size, which are
+** defined below.
 */
 #ifdef MR_DEBUG_AGC_SMALL_HEAP
-  size_t	MR_heap_size =			  52;
+  size_t	MR_heap_size =			  13 * sizeof(MR_Word);
 #else
-  size_t	MR_heap_size =		       32768; /* 32 Mb */
+  size_t	MR_heap_size =		        8192 * sizeof(MR_Word);
 #endif
-size_t		MR_detstack_size =		4096;
-size_t		MR_nondstack_size =	 	 256;
-size_t		MR_solutions_heap_size =	1024;
-size_t		MR_global_heap_size =		1024;
-size_t		MR_trail_size =			 128;
-size_t		MR_debug_heap_size =		4096;
-size_t		MR_genstack_size =		  32;
-size_t		MR_cutstack_size =		  32;
-size_t		MR_pnegstack_size =		  32;
-size_t		MR_gen_detstack_size =		  64;
-size_t		MR_gen_nonstack_size =		  64;
+size_t		MR_detstack_size =		1024 * sizeof(MR_Word);
+size_t		MR_nondstack_size =	 	  64 * sizeof(MR_Word);
+size_t		MR_solutions_heap_size =	 256 * sizeof(MR_Word);
+size_t		MR_global_heap_size =		 256 * sizeof(MR_Word);
+size_t		MR_trail_size =			  32 * sizeof(MR_Word);
+size_t		MR_debug_heap_size =		1024 * sizeof(MR_Word);
+size_t		MR_genstack_size =		   8 * sizeof(MR_Word);
+size_t		MR_cutstack_size =		   8 * sizeof(MR_Word);
+size_t		MR_pnegstack_size =		   8 * sizeof(MR_Word);
+size_t		MR_gen_detstack_size =		  16 * sizeof(MR_Word);
+size_t		MR_gen_nonstack_size =		  16 * sizeof(MR_Word);
 
 /*
 ** size of the redzones at the end of data areas, in kilobytes
 **
-** For accurate GC, although we start out with a big heap (32 Mb -- see above),
-** we don't want to touch all of it unless we really need to.
-** So with accurate GC in LLDS grades, we start out with a 28 Mb redzone,
-** leaving an active heap size of 4Mb.
-** The collector should (XXX it currently doesn't) resize this redzone
-** automatically at the end of each collection.
+** For accurate GC, although we start out with a big heap (32 Mb on 32-bit
+** architectures -- see above), we don't want to touch all of it unless we
+** really need to.  So with accurate GC in LLDS grades, we start out with
+** a 28 Mb redzone, leaving an active heap size of 4Mb.  The collector
+** should (XXX it currently doesn't) resize this redzone automatically at
+** the end of each collection.
 **
 ** For MLDS grades, we don't use redzones to schedule GC;
 ** instead GCs are scheduled, based on MR_heap_margin_size (see below),
@@ -113,24 +115,24 @@ size_t		MR_gen_nonstack_size =		  64;
 */
 #if defined(MR_NATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
   #ifdef MR_DEBUG_AGC_SMALL_HEAP
-    size_t		MR_heap_zone_size =	  32;
+    size_t		MR_heap_zone_size =	   8 * sizeof(MR_Word);
   #else
-    size_t		MR_heap_zone_size =	  16 + 28 * 1024;
+    size_t		MR_heap_zone_size =   (4 + 7 * 1024) * sizeof(MR_Word);
   #endif
 #else
-  size_t		MR_heap_zone_size =	  16;
+  size_t		MR_heap_zone_size =	   4 * sizeof(MR_Word);
 #endif
-size_t		MR_detstack_zone_size =		  16;
-size_t		MR_nondstack_zone_size =	  16;
-size_t		MR_solutions_heap_zone_size =	  16;
-size_t		MR_global_heap_zone_size =	  16;
-size_t		MR_trail_zone_size =		  16;
-size_t		MR_debug_heap_zone_size =	  16;
-size_t		MR_genstack_zone_size =		  16;
-size_t		MR_cutstack_zone_size =		  16;
-size_t		MR_pnegstack_zone_size =	  16;
-size_t		MR_gen_detstack_zone_size =	  16;
-size_t		MR_gen_nonstack_zone_size =	  16;
+size_t		MR_detstack_zone_size =		   4 * sizeof(MR_Word);
+size_t		MR_nondstack_zone_size =	   4 * sizeof(MR_Word);
+size_t		MR_solutions_heap_zone_size =	   4 * sizeof(MR_Word);
+size_t		MR_global_heap_zone_size =	   4 * sizeof(MR_Word);
+size_t		MR_trail_zone_size =		   4 * sizeof(MR_Word);
+size_t		MR_debug_heap_zone_size =	   4 * sizeof(MR_Word);
+size_t		MR_genstack_zone_size =		   4 * sizeof(MR_Word);
+size_t		MR_cutstack_zone_size =		   4 * sizeof(MR_Word);
+size_t		MR_pnegstack_zone_size =	   4 * sizeof(MR_Word);
+size_t		MR_gen_detstack_zone_size =	   4 * sizeof(MR_Word);
+size_t		MR_gen_nonstack_zone_size =	   4 * sizeof(MR_Word);
 
 /*
 ** MR_heap_margin_size is used for accurate GC with the MLDS->C back-end.
@@ -149,9 +151,9 @@ size_t		MR_gen_nonstack_zone_size =	  16;
 ** (but we later multiply by 1024 to convert to bytes).
 */
 #ifdef MR_DEBUG_AGC_SMALL_HEAP
-  size_t	MR_heap_margin_size =		  16;
+  size_t	MR_heap_margin_size =		   4 * sizeof(MR_Word);
 #else
-  size_t	MR_heap_margin_size =		  28 * 1024;
+  size_t	MR_heap_margin_size =		   7 * 1024 * sizeof(MR_Word);
 #endif
 
 double MR_heap_expansion_factor = 2.0;
@@ -988,24 +990,42 @@ process_environment_options(void)
 
 enum MR_long_option {
 	MR_HEAP_SIZE,
+	MR_HEAP_SIZE_KWORDS,
 	MR_DETSTACK_SIZE,
+	MR_DETSTACK_SIZE_KWORDS,
 	MR_NONDETSTACK_SIZE,
+	MR_NONDETSTACK_SIZE_KWORDS,
 	MR_SOLUTIONS_HEAP_SIZE,
+	MR_SOLUTIONS_HEAP_SIZE_KWORDS,
 	MR_TRAIL_SIZE,
+	MR_TRAIL_SIZE_KWORDS,
 	MR_HEAP_REDZONE_SIZE,
+	MR_HEAP_REDZONE_SIZE_KWORDS,
 	MR_DETSTACK_REDZONE_SIZE,
+	MR_DETSTACK_REDZONE_SIZE_KWORDS,
 	MR_NONDETSTACK_REDZONE_SIZE,
+	MR_NONDETSTACK_REDZONE_SIZE_KWORDS,
 	MR_SOLUTIONS_HEAP_REDZONE_SIZE,
+	MR_SOLUTIONS_HEAP_REDZONE_SIZE_KWORDS,
 	MR_TRAIL_REDZONE_SIZE,
+	MR_TRAIL_REDZONE_SIZE_KWORDS,
 	MR_HEAP_MARGIN_SIZE,
+	MR_HEAP_MARGIN_SIZE_KWORDS,
 	MR_HEAP_EXPANSION_FACTOR,
 	MR_GENSTACK_SIZE,
+	MR_GENSTACK_SIZE_KWORDS,
 	MR_CUTSTACK_SIZE,
+	MR_CUTSTACK_SIZE_KWORDS,
 	MR_PNEGSTACK_SIZE,
+	MR_PNEGSTACK_SIZE_KWORDS,
 	MR_GEN_DETSTACK_SIZE,
+	MR_GEN_DETSTACK_SIZE_KWORDS,
 	MR_GEN_NONSTACK_SIZE,
+	MR_GEN_NONSTACK_SIZE_KWORDS,
 	MR_GEN_DETSTACK_REDZONE_SIZE,
+	MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS,
 	MR_GEN_NONSTACK_REDZONE_SIZE,
+	MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS,
 	MR_MDB_TTY,
 	MR_MDB_IN,
 	MR_MDB_OUT,
@@ -1025,24 +1045,47 @@ enum MR_long_option {
 
 struct MR_option MR_long_opts[] = {
 	{ "heap-size", 			1, 0, MR_HEAP_SIZE },
+	{ "heap-size-kwords",		1, 0, MR_HEAP_SIZE_KWORDS },
 	{ "detstack-size", 		1, 0, MR_DETSTACK_SIZE },
+	{ "detstack-size-kwords", 	1, 0, MR_DETSTACK_SIZE_KWORDS },
 	{ "nondetstack-size", 		1, 0, MR_NONDETSTACK_SIZE },
+	{ "nondetstack-size-kwords",	1, 0, MR_NONDETSTACK_SIZE_KWORDS },
 	{ "solutions-heap-size", 	1, 0, MR_SOLUTIONS_HEAP_SIZE },
+	{ "solutions-heap-size-kwords",	1, 0, MR_SOLUTIONS_HEAP_SIZE_KWORDS },
 	{ "trail-size", 		1, 0, MR_TRAIL_SIZE },
+	{ "trail-size-kwords", 		1, 0, MR_TRAIL_SIZE_KWORDS },
 	{ "heap-redzone-size", 		1, 0, MR_HEAP_REDZONE_SIZE },
+	{ "heap-redzone-size-kwords", 	1, 0, MR_HEAP_REDZONE_SIZE_KWORDS },
 	{ "detstack-redzone-size", 	1, 0, MR_DETSTACK_REDZONE_SIZE },
+	{ "detstack-redzone-size-kwords",
+			1, 0, MR_DETSTACK_REDZONE_SIZE_KWORDS },
 	{ "nondetstack-redzone-size", 	1, 0, MR_NONDETSTACK_REDZONE_SIZE },
+	{ "nondetstack-redzone-size-kwords",
+			1, 0, MR_NONDETSTACK_REDZONE_SIZE_KWORDS },
 	{ "solutions-heap-redzone-size",1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE },
+	{ "solutions-heap-redzone-size-kwords",
+			1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE_KWORDS },
 	{ "trail-redzone-size", 	1, 0, MR_TRAIL_REDZONE_SIZE },
+	{ "trail-redzone-size-kwords", 	1, 0, MR_TRAIL_REDZONE_SIZE_KWORDS },
 	{ "heap-margin-size", 		1, 0, MR_HEAP_MARGIN_SIZE },
+	{ "heap-margin-size-kwords", 	1, 0, MR_HEAP_MARGIN_SIZE_KWORDS },
 	{ "heap-expansion-factor", 	1, 0, MR_HEAP_EXPANSION_FACTOR },
 	{ "genstack-size", 		1, 0, MR_GENSTACK_SIZE },
+	{ "genstack-size-kwords", 	1, 0, MR_GENSTACK_SIZE_KWORDS },
 	{ "cutstack-size", 		1, 0, MR_CUTSTACK_SIZE },
+	{ "cutstack-size-kwords", 	1, 0, MR_CUTSTACK_SIZE_KWORDS },
 	{ "pnegstack-size", 		1, 0, MR_PNEGSTACK_SIZE },
+	{ "pnegstack-size-kwords", 	1, 0, MR_PNEGSTACK_SIZE_KWORDS },
 	{ "gen-detstack-size", 		1, 0, MR_GEN_DETSTACK_SIZE },
+	{ "gen-detstack-size-kwords", 	1, 0, MR_GEN_DETSTACK_SIZE_KWORDS },
 	{ "gen-nonstack-size", 		1, 0, MR_GEN_NONSTACK_SIZE },
+	{ "gen-nonstack-size-kwords", 	1, 0, MR_GEN_NONSTACK_SIZE_KWORDS },
 	{ "gen-detstack-zone-size", 	1, 0, MR_GEN_DETSTACK_REDZONE_SIZE },
+	{ "gen-detstack-zone-size-kwords",
+			1, 0, MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS },
 	{ "gen-nonstack-zone-size", 	1, 0, MR_GEN_NONSTACK_REDZONE_SIZE },
+	{ "gen-nonstack-zone-size-kwords",
+			1, 0, MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS },
 	{ "mdb-tty", 			1, 0, MR_MDB_TTY },
 	{ "mdb-in", 			1, 0, MR_MDB_IN },
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
@@ -1081,12 +1124,28 @@ process_options(int argc, char **argv)
 			MR_heap_size = size;
 			break;
 
+		case MR_HEAP_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_heap_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_DETSTACK_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
 			}
 
 			MR_detstack_size = size;
+			break;
+
+		case MR_DETSTACK_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_detstack_size = size * sizeof(MR_Word);
 			break;
 
 		case MR_NONDETSTACK_SIZE:
@@ -1097,12 +1156,28 @@ process_options(int argc, char **argv)
 			MR_nondstack_size = size;
 			break;
 
+		case MR_NONDETSTACK_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_nondstack_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_SOLUTIONS_HEAP_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
 			}
 
 			MR_solutions_heap_size = size;
+			break;
+
+		case MR_SOLUTIONS_HEAP_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_solutions_heap_size = size * sizeof(MR_Word);
 			break;
 
 		case MR_TRAIL_SIZE:
@@ -1113,12 +1188,28 @@ process_options(int argc, char **argv)
 			MR_trail_size = size;
 			break;
 
+		case MR_TRAIL_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_trail_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_HEAP_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
 			}
 
 			MR_heap_zone_size = size;
+			break;
+
+		case MR_HEAP_REDZONE_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_heap_zone_size = size * sizeof(MR_Word);
 			break;
 
 		case MR_DETSTACK_REDZONE_SIZE:
@@ -1129,12 +1220,28 @@ process_options(int argc, char **argv)
 			MR_detstack_zone_size = size;
 			break;
 
+		case MR_DETSTACK_REDZONE_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_detstack_zone_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_NONDETSTACK_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
 			}
 
 			MR_nondstack_zone_size = size;
+			break;
+
+		case MR_NONDETSTACK_REDZONE_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_nondstack_zone_size = size * sizeof(MR_Word);
 			break;
 
 		case MR_SOLUTIONS_HEAP_REDZONE_SIZE:
@@ -1145,6 +1252,14 @@ process_options(int argc, char **argv)
 			MR_solutions_heap_zone_size = size;
 			break;
 
+		case MR_SOLUTIONS_HEAP_REDZONE_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_solutions_heap_zone_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_TRAIL_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
@@ -1153,12 +1268,28 @@ process_options(int argc, char **argv)
 			MR_trail_zone_size = size;
 			break;
 
+		case MR_TRAIL_REDZONE_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_trail_zone_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_HEAP_MARGIN_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
 			}
 
 			MR_heap_margin_size = size;
+			break;
+
+		case MR_HEAP_MARGIN_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_heap_margin_size = size * sizeof(MR_Word);
 			break;
 
 		case MR_HEAP_EXPANSION_FACTOR:
@@ -1177,12 +1308,28 @@ process_options(int argc, char **argv)
 			MR_genstack_size = size;
 			break;
 
+		case MR_GENSTACK_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_genstack_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_CUTSTACK_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
 			}
 
 			MR_cutstack_size = size;
+			break;
+
+		case MR_CUTSTACK_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_cutstack_size = size * sizeof(MR_Word);
 			break;
 
 		case MR_PNEGSTACK_SIZE:
@@ -1193,12 +1340,28 @@ process_options(int argc, char **argv)
 			MR_pnegstack_size = size;
 			break;
 
+		case MR_PNEGSTACK_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_pnegstack_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_GEN_DETSTACK_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
 			}
 
 			MR_gen_detstack_size = size;
+			break;
+
+		case MR_GEN_DETSTACK_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_gen_detstack_size = size * sizeof(MR_Word);
 			break;
 
 		case MR_GEN_NONSTACK_SIZE:
@@ -1209,6 +1372,14 @@ process_options(int argc, char **argv)
 			MR_gen_nonstack_size = size;
 			break;
 
+		case MR_GEN_NONSTACK_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_gen_nonstack_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_GEN_DETSTACK_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
@@ -1217,12 +1388,28 @@ process_options(int argc, char **argv)
 			MR_gen_detstack_zone_size = size;
 			break;
 
+		case MR_GEN_DETSTACK_REDZONE_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_gen_detstack_zone_size = size * sizeof(MR_Word);
+			break;
+
 		case MR_GEN_NONSTACK_REDZONE_SIZE:
 			if (sscanf(MR_optarg, "%lu", &size) != 1) {
 				usage();
 			}
 
 			MR_gen_nonstack_zone_size = size;
+			break;
+
+		case MR_GEN_NONSTACK_REDZONE_SIZE_KWORDS:
+			if (sscanf(MR_optarg, "%lu", &size) != 1) {
+				usage();
+			}
+
+			MR_gen_nonstack_zone_size = size * sizeof(MR_Word);
 			break;
 
 		case 'i':
