@@ -48,6 +48,25 @@ MR_trace_is_natural_number(const char *word, int *value)
 }
 
 MR_bool
+MR_trace_is_unsigned(const char *word, MR_Unsigned *value)
+{
+    if (word != NULL && MR_isdigit(*word)) {
+        *value = *word - '0';
+        word++;
+        while (MR_isdigit(*word)) {
+            *value = (*value * 10) + *word - '0';
+            word++;
+        }
+
+        if (*word == '\0') {
+            return MR_TRUE;
+        }
+    }
+
+    return MR_FALSE;
+}
+
+MR_bool
 MR_trace_is_integer(const char *word, MR_Integer *value)
 {
     int sign;
@@ -158,14 +177,14 @@ MR_print_debug_vars(FILE *fp, MR_Event_Details *event_details)
 {
 #ifndef MR_HIGHLEVEL_CODE
     fprintf(fp, "from event details:\n");
-    fprintf(fp, "call event %d, call seq %d, depth %d\n",
-        event_details->MR_event_number,
-        event_details->MR_call_seqno,
-        event_details->MR_call_depth);
+    fprintf(fp, "call event %ld, call seq %ld, depth %ld\n",
+        (long) event_details->MR_event_number,
+        (long) event_details->MR_call_seqno,
+        (long) event_details->MR_call_depth);
     fprintf(fp, "from global vars:\n");
-    fprintf(fp, "call event %d, call seq %d, depth %d\n",
-        MR_trace_event_number,
-        MR_trace_call_seqno,
-        MR_trace_call_depth);
+    fprintf(fp, "call event %ld, call seq %ld, depth %ld\n",
+        (long) MR_trace_event_number,
+        (long) MR_trace_call_seqno,
+        (long) MR_trace_call_depth);
 #endif
 }

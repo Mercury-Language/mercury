@@ -598,7 +598,7 @@ static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         MR_bool *split, MR_bool *close_window, char ***words,
                         int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
-                        MR_Integer *default_depth, MR_Integer *num_nodes,
+                        MR_Unsigned *default_depth, MR_Unsigned *num_nodes,
                         MR_Decl_Search_Mode *search_mode, 
                         MR_bool *search_mode_was_set, 
                         MR_bool *search_mode_requires_trace_counts,
@@ -1628,7 +1628,7 @@ MR_trace_cmd_goto(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_Code **jumpaddr)
 {
-    int n;
+    MR_Unsigned n;
 
     cmd->MR_trace_strict = MR_TRUE;
     cmd->MR_trace_print_level = MR_default_print_level;
@@ -1637,7 +1637,7 @@ MR_trace_cmd_goto(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         "forward", "goto"))
     {
         ; /* the usage message has already been printed */
-    } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
+    } else if (word_count == 2 && MR_trace_is_unsigned(words[1], &n))
     {
         if (MR_trace_event_number < n) {
             cmd->MR_trace_cmd = MR_CMD_GOTO;
@@ -4859,8 +4859,8 @@ MR_trace_fill_in_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
     table_next = MR_int_hash_lookup(*table_cur_ptr, n);
     if (table_next == NULL) {
         fprintf(MR_mdb_out,
-            "call table does not contain %d in argument position %d.\n",
-            n, arg_num);
+            "call table does not contain %" MR_INTEGER_LENGTH_MODIFIER "d"
+            " in argument position %d.\n", n, arg_num);
         return MR_FALSE;
     }
 
@@ -5106,7 +5106,7 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
 
         switch (call_table_args[i].MR_cta_step) {
             case MR_TABLE_STEP_INT:
-                fprintf(MR_mdb_out, "%d",
+                fprintf(MR_mdb_out, "%" MR_INTEGER_LENGTH_MODIFIER "d",
                     call_table_args[i].MR_cta_int_cur_value);
                 break;
 
@@ -5514,7 +5514,7 @@ MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
     fprintf(fp, "type constructor %s.%s/%d",
         type_ctor_info->MR_type_ctor_module_name,
         type_ctor_info->MR_type_ctor_name,
-        type_ctor_info->MR_type_ctor_arity);
+        (int) type_ctor_info->MR_type_ctor_arity);
 
     rep = MR_type_ctor_rep(type_ctor_info);
     if (print_rep) {
@@ -5562,7 +5562,7 @@ MR_print_type_ctor_info(FILE *fp, MR_TypeCtorInfo type_ctor_info,
                         fprintf(fp, ", ");
                     }
                     fprintf(fp, "%s/%d", maybe_res_functor->MR_maybe_res_name,
-                        maybe_res_functor-> MR_maybe_res_arity);
+                        (int) maybe_res_functor-> MR_maybe_res_arity);
                 }
                 fprintf(fp, "\n");
                 break;
@@ -5655,13 +5655,13 @@ MR_print_pseudo_type_info(FILE *fp, MR_PseudoTypeInfo pseudo)
 {
     MR_TypeCtorInfo     type_ctor_info;
     MR_PseudoTypeInfo   *pseudo_args;
-    int                 tvar_num;
+    MR_Integer          tvar_num;
     int                 arity;
     int                 i;
 
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo)) {
-        tvar_num = (int) pseudo;
-        fprintf(fp, "T%d", tvar_num);
+        tvar_num = (MR_Integer) pseudo;
+        fprintf(fp, "T%d", (int) tvar_num);
     } else {
         type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo);
         fprintf(fp, "%s.%s",
@@ -7138,7 +7138,7 @@ static struct MR_option MR_trace_dd_opts[] =
 
 static MR_bool
 MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
-    MR_Integer *default_depth, MR_Integer *num_nodes,
+    MR_Unsigned *default_depth, MR_Unsigned *num_nodes,
     MR_Decl_Search_Mode *search_mode, MR_bool *search_mode_was_set, 
     MR_bool *search_mode_requires_trace_counts,
     char **pass_trace_counts_file, char **fail_trace_counts_file,
@@ -7158,7 +7158,7 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 break;
 
             case 'd':
-                if (! MR_trace_is_natural_number(MR_optarg, default_depth)) {
+                if (! MR_trace_is_unsigned(MR_optarg, default_depth)) {
                     MR_trace_usage(cat, item);
                     return MR_FALSE;
                 }
@@ -7169,7 +7169,7 @@ MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
                 break;
 
             case 'n':
-                if (! MR_trace_is_natural_number(MR_optarg, num_nodes)) {
+                if (! MR_trace_is_unsigned(MR_optarg, num_nodes)) {
                     MR_trace_usage(cat, item);
                     return MR_FALSE;
                 }
@@ -8543,9 +8543,9 @@ static char *
 MR_trace_command_completer_next(const char *word, size_t word_len,
     MR_Completer_Data *data)
 {
-    int command_index;
+    MR_Integer command_index;
 
-    command_index = (int) *data;
+    command_index = (MR_Integer) *data;
     while (1) {
         const char *command;
         const char *category;

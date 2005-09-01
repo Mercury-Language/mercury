@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995, 2001-2004 Peter Schachte and The University of Melbourne.
+** Copyright (C) 1995, 2001-2005 Peter Schachte and The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -63,6 +63,7 @@
 #endif
 
 /* number of bits in an unsigned long, and the log (base 2) of that */
+/* XXX this is wrong for 64-bit architectures */
 #define MR_ROBDD_BITS_PER_WORD 32
 #define MR_ROBDD_LOG_BITS_PER_WORD 5
 

@@ -690,7 +690,7 @@ MR_trace_list_var_details(FILE *out)
             details->MR_var_fullname, details->MR_var_basename,
             details->MR_var_num_suffix,
             details->MR_var_has_suffix ? "yes" : "no");
-        fprintf(out, "typeinfo %p, value %x\n",
+        fprintf(out, "typeinfo %p, value %" MR_INTEGER_LENGTH_MODIFIER "x\n",
             details->MR_var_type, details->MR_var_value);
     }
 
@@ -1508,10 +1508,10 @@ static char *
 MR_trace_var_completer_next(const char *word, size_t word_len,
     MR_Completer_Data *data)
 {
-    int slot;
+    MR_Integer slot;
     const char *var_name;
 
-    slot = (int) *data;
+    slot = (MR_Integer) *data;
     while (slot < MR_point.MR_point_var_count) {
         var_name = MR_point.MR_point_vars[slot].MR_var_fullname;
         slot++;

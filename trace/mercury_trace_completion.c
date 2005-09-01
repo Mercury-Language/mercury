@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -426,10 +426,10 @@ MR_trace_filename_completer_next(const char *word, size_t word_len,
 #ifdef MR_NO_USE_READLINE
 	return NULL;
 #else
-	int state;
-	state = (int) *data;
+	MR_Integer state;
+	state = (MR_Integer) *data;
 	*data = (MR_Completer_Data) 1;
-	return filename_completion_function((char *) word, state);
+	return filename_completion_function((char *) word, (int) state);
 #endif /* ! MR_NO_USE_READLINE */
 }
 

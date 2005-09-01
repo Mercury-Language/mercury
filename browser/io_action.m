@@ -89,7 +89,7 @@ io_action_to_browser_term(IoAction) = Term :-
 "{
 	const char	*problem;
 	const char	*proc_name;
-	MR_bool		is_func;
+	MR_Bool		is_func;
 	MR_Word		args;
 	MR_bool		io_action_tabled;
 	MR_String	ProcName;

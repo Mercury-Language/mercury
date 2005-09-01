@@ -39,8 +39,10 @@ extern	void	MR_trace_save_term_xml(const char *filename,
 			MR_Word browser_term);
 
 /*
-** The following types must correspond with browse_caller_type and
-** portray_format in browser/browser_info.m.
+** The constants defined by the following enums must correspond with the
+** values in the representation of browse_caller_type and portray_format in
+** browser/browser_info.m, so that it is possible to cast to/from MR_Word
+** in order to interface with Mercury code.
 */
 typedef enum {
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_CALLER_PRINT),
@@ -98,7 +100,12 @@ extern	MR_bool	MR_trace_set_browser_param(MR_Word print, MR_Word browse,
 ** Invoke an interactive query.
 */
 
-/* This must kept in sync with query_type in browser/interactive.m. */
+/*
+** The constants defined by the following enum must correspond with the
+** values in the representation of query_type in browser/interactive.m, so
+** that it is possible to cast to/from MR_Word in order to interface with
+** Mercury code.
+*/
 typedef enum { 
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_NORMAL_QUERY), 
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_CC_QUERY), 

@@ -32,10 +32,14 @@ extern	void	MR_c_file_to_mercury_file(FILE *c_file,
 /*
 ** MR_trace_is_natural_number checks whether the given word contains a natural
 ** number, i.e. a sequence of digits. If yes, it puts the value of the number
-** in *value and returns MR_TRUE, otherwise it returns MR_FALSE.
+** in *value (an int) and returns MR_TRUE, otherwise it returns MR_FALSE.
+**
+** MR_trace_is_unsigned is similar, but puts the value of the number in a
+** location of type MR_Unsigned.
 **
 ** MR_trace_is_integer is similar, but it also allows an initial minus sign
-** to denote a negative number.
+** to denote a negative number.  It puts the value of the number in a location
+** of type MR_Integer.
 **
 ** MR_trace_is_float is similar again, but it also allows an optional
 ** fractional part.
@@ -45,6 +49,8 @@ extern	void	MR_c_file_to_mercury_file(FILE *c_file,
 */
 
 extern	MR_bool	MR_trace_is_natural_number(const char *word, int *value);
+
+extern	MR_bool	MR_trace_is_unsigned(const char *word, MR_Unsigned *value);
 
 extern	MR_bool	MR_trace_is_integer(const char *word, MR_Integer *value);
 

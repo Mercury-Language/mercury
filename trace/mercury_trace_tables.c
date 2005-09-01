@@ -1021,6 +1021,8 @@ MR_format_proc_spec_completion(MR_PredFunc pred_or_func,
         /* +1 for the '.' */
         module_len = strlen(module);
         size += module_len + 1;
+    } else {
+        module_len = 0;     /* avoid a warning */
     }
     completion = MR_malloc(size + 1);
 

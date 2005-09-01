@@ -904,7 +904,7 @@ typedef	struct MR_Proc_Layout_Traversal_Struct {
 } MR_Proc_Layout_Traversal;
 
 #define	MR_PROC_LAYOUT_HAS_PROC_ID(entry)			\
-		((MR_Word) entry->MR_sle_user.MR_user_pred_or_func != -1)
+		(MR_PROC_ID_EXISTS(entry->MR_sle_proc_id))
 
 #define	MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)			\
 		(MR_PROC_LAYOUT_HAS_PROC_ID(entry)		\

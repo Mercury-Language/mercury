@@ -534,7 +534,12 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                     break;
 
                 case MR_SECTAG_VARIABLE:
+                    new_data = (MR_Word) 0;     /* avoid a warning */
                     MR_fatal_error(""construct(): cannot construct variable"");
+
+                default:
+                    new_data = (MR_Word) 0;     /* avoid a warning */
+                    MR_fatal_error(""construct(): unrecognised sectag locn"");
                 }
 
                 if (! MR_list_is_empty(arg_list)) {
@@ -585,6 +590,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
             break;
 
         default:
+            new_data = (MR_Word) 0;     /* avoid a warning */
             MR_fatal_error(""bad type_ctor_rep in construct:construct"");
         }
 

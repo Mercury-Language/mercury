@@ -548,17 +548,17 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr,
                     fprintf(fp, "call event ");
                     MR_print_nondstackptr(fp,
                         &MR_event_num_framevar(base_maxfr));
-                    fprintf(fp, " => %d, ",
+                    fprintf(fp, " => %" MR_INTEGER_LENGTH_MODIFIER "d, ",
                         MR_event_num_framevar(base_maxfr) + 1);
                     fprintf(fp, "call seq ");
                     MR_print_nondstackptr(fp,
                         &MR_call_num_framevar(base_maxfr));
-                    fprintf(fp, " => %d, ",
+                    fprintf(fp, " => %" MR_INTEGER_LENGTH_MODIFIER "d, ",
                         MR_call_num_framevar(base_maxfr)),
                     fprintf(fp, "depth ");
                     MR_print_nondstackptr(fp,
                         &MR_call_depth_framevar(base_maxfr));
-                    fprintf(fp, " => %d\n",
+                    fprintf(fp, " => %" MR_INTEGER_LENGTH_MODIFIER "d\n",
                         MR_call_depth_framevar(base_maxfr));
 
                     lines_dumped_so_far += 1;

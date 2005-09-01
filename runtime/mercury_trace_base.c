@@ -357,17 +357,19 @@ MR_trace_write_label_exec_counts(FILE *fp)
                     switch (path_port) {
 
                         case PORT_ONLY:
-                            fprintf(fp, "%s %u",
+                            fprintf(fp, "%s %" MR_INTEGER_LENGTH_MODIFIER "u",
                                 MR_port_names[port], exec_count);
                             break;
 
                         case PATH_ONLY:
-                            fprintf(fp, "<%s> %u",
+                            fprintf(fp,
+                                "<%s> %" MR_INTEGER_LENGTH_MODIFIER "u",
                                 MR_label_goal_path(label), exec_count);
                             break;
 
                         case PORT_AND_PATH:
-                            fprintf(fp, "%s <%s> %u",
+                            fprintf(fp,
+                                "%s <%s> %" MR_INTEGER_LENGTH_MODIFIER "u",
                                 MR_port_names[port], MR_label_goal_path(label),
                                 exec_count);
                             break;

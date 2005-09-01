@@ -216,6 +216,7 @@ typedef struct MR_Type_Param_Locns_Struct       MR_Type_Param_Locns;
 
 typedef struct MR_User_Proc_Id_Struct           MR_User_Proc_Id;
 typedef struct MR_UCI_Proc_Id_Struct            MR_UCI_Proc_Id;
+typedef struct MR_No_Proc_Id_Struct             MR_No_Proc_Id;
 typedef union  MR_Proc_Id_Union                 MR_Proc_Id;
 
 typedef struct MR_CallSiteStatic_Struct         MR_CallSiteStatic;

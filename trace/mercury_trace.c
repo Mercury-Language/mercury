@@ -802,6 +802,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
             *unsafe_retry = MR_FALSE;
         }
     } else {
+        found_io_action_counter = MR_FALSE;     /* avoid a warning */
         *unsafe_retry = MR_FALSE;
     }
 

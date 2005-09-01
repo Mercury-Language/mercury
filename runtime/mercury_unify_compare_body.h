@@ -218,8 +218,13 @@ start_label:
                             sectag = 0;                                       \
                             break;                                            \
                         case MR_SECTAG_VARIABLE:                              \
+                            sectag = 0;     /* avoid a warning */             \
                             MR_fatal_error("find_du_functor_desc(): "         \
                                 "attempt get functor desc of variable");      \
+                        default:                                              \
+                            sectag = 0;     /* avoid a warning */             \
+                            MR_fatal_error("find_du_functor_desc(): "         \
+                                "unrecognised sectag locn");                  \
                     }                                                         \
                                                                               \
                     functor_desc = ptaglayout->MR_sectag_alternatives[sectag];\

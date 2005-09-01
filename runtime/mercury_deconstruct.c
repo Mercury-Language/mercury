@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2004 The University of Melbourne.
+** Copyright (C) 2002-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -332,7 +332,7 @@ MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
     sprintf(str, wrap? "<<%s.%s/%d>>" : "%s.%s/%d",
         tci->MR_type_ctor_module_name,
         tci->MR_type_ctor_name,
-        tci->MR_type_ctor_arity);
+        (int) tci->MR_type_ctor_arity);
 
     return (MR_ConstString) str;
 }

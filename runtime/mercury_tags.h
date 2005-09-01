@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2001, 2003-2004 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -296,7 +296,11 @@
 ** values to the enumeration constants as Mercury's tag allocation scheme
 ** assigns. (This is necessary because in .rt grades Mercury enumerations are
 ** not assigned the same values as 'normal' C enumerations).
-** 
+**
+** Note that enums have the same size as ints, but not necessarily the same
+** size as MR_Words.  Types that are defined this way should not be used by
+** Mercury code directly; instead a separate type with the correct size should
+** be defined.
 */
 
 #ifdef MR_RESERVE_TAG

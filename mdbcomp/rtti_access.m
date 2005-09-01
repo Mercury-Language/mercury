@@ -80,8 +80,10 @@ get_goal_path_from_maybe_label(no) = "".
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	const char	*filename;
+	int		line_no;
 	
-	SUCCESS_INDICATOR = MR_find_context(Label, &filename, &LineNo);
+	SUCCESS_INDICATOR = MR_find_context(Label, &filename, &line_no);
+	LineNo = (MR_Integer) line_no;
 	MR_TRACE_USE_HP(
 		MR_make_aligned_string(FileName, (MR_String) filename);
 	);

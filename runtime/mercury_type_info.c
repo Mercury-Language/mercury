@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2004 The University of Melbourne.
+** Copyright (C) 1995-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -281,9 +281,9 @@ MR_compare_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti1) &&
         MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti2))
     {
-        if ((int) pti1 < (int) pti2) {
+        if ((MR_Integer) pti1 < (MR_Integer) pti2) {
             return MR_COMPARE_LESS;
-        } else if ((int) pti1 > (int) pti2) {
+        } else if ((MR_Integer) pti1 > (MR_Integer) pti2) {
             return MR_COMPARE_GREATER;
         } else {
             return MR_COMPARE_EQUAL;
@@ -393,7 +393,7 @@ MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1, MR_PseudoTypeInfo pti2)
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti1) &&
         MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti2))
     {
-        if ((int) pti1 != (int) pti2) {
+        if ((MR_Integer) pti1 != (MR_Integer) pti2) {
             return MR_FALSE;
         } else {
             return MR_TRUE;
@@ -876,15 +876,20 @@ MR_pseudo_type_info_vector_to_pseudo_type_info_list(int arity,
 MR_Word
 MR_typeclass_ref_error(MR_Word tci, int n, const char *msg)
 {
-    fprintf(stderr, "n1: # of extra instance args:   %d\n",
+    fprintf(stderr,
+        "n1: # of extra instance args:   %" MR_INTEGER_LENGTH_MODIFIER "d\n",
         MR_typeclass_info_num_extra_instance_args(tci));
-    fprintf(stderr, "n1-n2: # of instance type vars: %d\n",
+    fprintf(stderr,
+        "n1-n2: # of instance type vars: %" MR_INTEGER_LENGTH_MODIFIER "d\n",
         MR_typeclass_info_num_instance_type_vars(tci));
-    fprintf(stderr, "n2: # of instance constraints:  %d\n",
+    fprintf(stderr,
+        "n2: # of instance constraints:  %" MR_INTEGER_LENGTH_MODIFIER "d\n",
         MR_typeclass_info_num_instance_constraints(tci));
-    fprintf(stderr, "n3: # of superclasses:          %d\n",
+    fprintf(stderr,
+        "n3: # of superclasses:          %" MR_INTEGER_LENGTH_MODIFIER "d\n",
         MR_typeclass_info_num_superclasses(tci));
-    fprintf(stderr, "n4: # of parameters:            %d\n",
+    fprintf(stderr,
+        "n4: # of parameters:            %" MR_INTEGER_LENGTH_MODIFIER "d\n",
         MR_typeclass_info_num_params(tci));
     fprintf(stderr, "access parameters: %s, %d\n", msg, n);
     MR_fatal_error("typeclass_info reference error");
