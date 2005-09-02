@@ -36,6 +36,7 @@
 :- import_module hlds__quantification.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__equiv_type.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_type.
 :- import_module recompilation.
@@ -735,6 +736,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         Changed, !Info) :-
     module_info_types(!.Info ^ module_info, Types),
     proc_info_vartypes(!.Info ^ proc_info, VarTypes),
+    proc_info_rtti_varmaps(!.Info ^ proc_info, RttiVarMaps),
     map__lookup(VarTypes, Var, VarType),
     classify_type(!.Info ^ module_info, VarType) = TypeCat,
     (
@@ -749,16 +751,20 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         TypeCat = type_info_type,
         map__search(Types, TypeCtor, TypeDefn),
         hlds_data__get_type_defn_body(TypeDefn, Body),
-        Body = eqv_type(_),
-        type_to_ctor_and_args(VarType, _TypeInfoCtor,
-            [TypeInfoArgType])
+        Body = eqv_type(_)
     ->
         Changed = yes,
         pred_info_set_typevarset(!.Info ^ tvarset, !.Info ^ pred_info,
             PredInfo0),
         create_poly_info(!.Info ^ module_info, PredInfo0, !.Info ^ proc_info,
             PolyInfo0),
-        polymorphism__make_type_info_var(TypeInfoArgType,
+        rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
+        ( VarInfo = type_info_var(TypeInfoType0) ->
+            TypeInfoType = TypeInfoType0
+        ;
+            unexpected(this_file, "replace_in_goal_expr: info not found")
+        ),
+        polymorphism__make_type_info_var(TypeInfoType,
             term__context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
         poly_info_extract(PolyInfo, PredInfo0, PredInfo,
             !.Info ^ proc_info, ProcInfo, ModuleInfo),
@@ -914,4 +920,11 @@ replace_in_foreign_arg_list(EqvMap, List0 @ [A0 | As0], List,
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "equiv_type_hlds.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module transform_hlds__equiv_type_hlds.
 %-----------------------------------------------------------------------------%

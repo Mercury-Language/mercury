@@ -1496,35 +1496,48 @@ simplify__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     simplify_info_get_det_info(!.Info, DetInfo0),
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
+    simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     det_info_get_module_info(DetInfo0, ModuleInfo0),
     det_info_get_pred_id(DetInfo0, PredId),
     det_info_get_proc_id(DetInfo0, ProcId),
 
-    % Put the varset and vartypes from the simplify_info back in the proc_info.
-    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-        PredInfo0, ProcInfo0),
-    proc_info_set_vartypes(VarTypes0, ProcInfo0, ProcInfo1),
-    proc_info_set_varset(VarSet0, ProcInfo1, ProcInfo2),
+    some [!PredInfo, !ProcInfo, !PolyInfo] (
+        % The varset, vartypes and rtti_varmaps get updated by the call to
+        % polymorphism.m, below.  That module will work on the poly_info,
+        % however, which is derived from the information in the proc_info.
+        % Therefore we:
+        %   - copy the info from the simplify_info to the proc_info,
+        %   - create a poly_info from the proc_info,
+        %   - do the polymorphism transformation,
+        %   - extract info from the poly_info and put it in the proc_info,
+        %   - copy the information from the proc_info back into the
+        %     simplify_info.
+ 
+        module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+            !:PredInfo, !:ProcInfo),
+        proc_info_set_vartypes(VarTypes0, !ProcInfo),
+        proc_info_set_varset(VarSet0, !ProcInfo),
+        proc_info_set_rtti_varmaps(RttiVarMaps0, !ProcInfo),
 
-    % Call polymorphism.m to create the type_infos.
-    create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
-    term__context_init(Context),
-    polymorphism__make_type_info_vars(Types, Context,
-        TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PredInfo0, PredInfo,
-        ProcInfo0, ProcInfo, ModuleInfo1),
+        % Call polymorphism.m to create the type_infos.
+        create_poly_info(ModuleInfo0, !.PredInfo, !.ProcInfo, !:PolyInfo),
+        term__context_init(Context),
+        polymorphism__make_type_info_vars(Types, Context,
+            TypeInfoVars, TypeInfoGoals, !PolyInfo),
+        poly_info_extract(!.PolyInfo, !PredInfo, !ProcInfo, ModuleInfo1),
 
-    % Get the new varset and vartypes from the proc_info
-    % and put them back in the simplify_info.
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_varset(ProcInfo, VarSet),
-    simplify_info_set_var_types(VarTypes, !Info),
-    simplify_info_set_varset(VarSet, !Info),
+        proc_info_vartypes(!.ProcInfo, VarTypes),
+        proc_info_varset(!.ProcInfo, VarSet),
+        proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps),
+        simplify_info_set_var_types(VarTypes, !Info),
+        simplify_info_set_varset(VarSet, !Info),
+        simplify_info_set_rtti_varmaps(RttiVarMaps, !Info),
 
-    % Put the new proc_info and pred_info back in the module_info
-    % and put the new module_info back in the simplify_info.
-    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-        ModuleInfo1, ModuleInfo),
+        % Put the new proc_info and pred_info back in the module_info
+        % and put the new module_info back in the simplify_info.
+        module_info_set_pred_proc_info(PredId, ProcId, !.PredInfo, !.ProcInfo,
+            ModuleInfo1, ModuleInfo)
+    ),
     simplify_info_set_module_info(ModuleInfo, !Info).
 
 :- pred simplify__type_info_locn(tvar::in, prog_var::out, list(hlds_goal)::out,
