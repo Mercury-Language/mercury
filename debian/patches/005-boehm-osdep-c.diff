@@ -1,0 +1,57 @@
+--- mercury/boehm_gc/os_dep.c	2003-11-04 17:34:59.000000000 +1100
++++ mercury/boehm_gc/os_dep.c	2005-08-26 15:36:37.941606021 +1000
+@@ -2251,7 +2251,7 @@
+ #   if defined(ALPHA) || defined(M68K)
+       typedef void (* REAL_SIG_PF)(int, int, s_c *);
+ #   else
+-#     if defined(IA64) || defined(HP_PA)
++#     if defined(IA64) || defined(HP_PA) || defined(X86_64)
+         typedef void (* REAL_SIG_PF)(int, siginfo_t *, s_c *);
+ #     else
+         typedef void (* REAL_SIG_PF)(int, s_c);
+@@ -2365,7 +2365,7 @@
+ #   if defined(ALPHA) || defined(M68K)
+       void GC_write_fault_handler(int sig, int code, s_c * sc)
+ #   else
+-#     if defined(IA64) || defined(HP_PA)
++#     if defined(IA64) || defined(HP_PA) || defined(X86_64)
+         void GC_write_fault_handler(int sig, siginfo_t * si, s_c * scp)
+ #     else
+ #       if defined(ARM32)
+@@ -2426,7 +2426,7 @@
+ 	char * addr = (char *) (scp -> si_addr);
+ #   endif
+ #   ifdef LINUX
+-#     if defined(I386) || defined (X86_64)
++#     if defined(I386)
+ 	char * addr = (char *) (sc.cr2);
+ #     else
+ #	if defined(M68K)
+@@ -2461,7 +2461,7 @@
+ #	  ifdef ALPHA
+             char * addr = get_fault_addr(sc);
+ #	  else
+-#	    if defined(IA64) || defined(HP_PA)
++#	    if defined(IA64) || defined(HP_PA) || defined(X86_64)
+ 	      char * addr = si -> si_addr;
+ 	      /* I believe this is claimed to work on all platforms for	*/
+ 	      /* Linux 2.3.47 and later.  Hopefully we don't have to	*/
+@@ -2532,7 +2532,7 @@
+ #		    if defined(ALPHA) || defined(M68K)
+ 		        (*(REAL_SIG_PF)old_handler) (sig, code, sc);
+ #		    else 
+-#		      if defined(IA64) || defined(HP_PA)
++#		      if defined(IA64) || defined(HP_PA) || defined(X86_64)
+ 		        (*(REAL_SIG_PF)old_handler) (sig, si, scp);
+ #		      else
+ 		        (*(REAL_SIG_PF)old_handler) (sig, sc);
+@@ -2626,7 +2626,8 @@
+       struct sigaction	act, oldact;
+       /* We should probably specify SA_SIGINFO for Linux, and handle 	*/
+       /* the different architectures more uniformly.			*/
+-#     if defined(IRIX5) || defined(LINUX) || defined(OSF1) || defined(HURD)
++#     if defined(IRIX5) || defined(LINUX) && !defined(X86_64) \
++      	|| defined(OSF1) || defined(HURD)
+     	act.sa_flags	= SA_RESTART;
+         act.sa_handler  = (SIG_PF)GC_write_fault_handler;
+ #     else

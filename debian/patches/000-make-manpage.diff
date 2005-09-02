@@ -1,0 +1,21 @@
+--- mercury/doc/make_manpage	Thu Oct 10 20:43:32 2002
++++ mercury/doc/make_manpage	Mon Jun  7 20:38:01 2004
+@@ -65,6 +65,8 @@
+ rm -f /tmp/make_manpage$$
+ uppername="$name"
+ 
++summary="`echo \"$manpage\" | head -n 1 | cut -d ',' -f 1`"
++
+ if echo "$manpage" | grep '^.SH "ARGUMENTS' > /dev/null; then
+ 	first_half="`echo \"$manpage\" | sed '/^.SH \"ARGUMENTS *\"/,$d'`"
+ 	last_half="`echo \"$manpage\" | sed -n '/^.SH \"ARGUMENTS *\"/,$p'`"
+@@ -83,6 +85,9 @@
+ .fi
+ ..
+ .TH $uppername 1 "`date`" "" "Mercury Programmer's Manual"
++.SH NAME
++$uppername \- $summary
++.SH VERSION
+ .AT 3
+ .Vb 2
+ $first_half
