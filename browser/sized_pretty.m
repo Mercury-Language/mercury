@@ -803,7 +803,7 @@ char_count_split(BrowserDb, BrowserTerm, Params, char_count(Limit), Arity,
     % measured by number of lines or number of characters.
 
 :- type size_count
-    --->    line_count(int)     % no of lines
+    --->    line_count(int)         % no of lines
     ;       character_count(int).   % no of characters
 
 :- func add_size_count(size_count, size_count, measure_params) = size_count.

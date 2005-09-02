@@ -169,6 +169,7 @@ ORDINARY_PROGS=	\
 	string_string \
 	string_strip \
 	string_suffix_bug \
+	switch_detect \
 	system_sort \
 	target_mlobjs \
 	term_io_test \
