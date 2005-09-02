@@ -1,4 +1,0 @@
-#!/bin/sh -e
-
-install-info --quiet --section "Development" "Development" \
-             --description="The Mercury User's Guide." /usr/info/mercury.info
