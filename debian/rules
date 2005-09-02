@@ -1,0 +1,177 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# debian/rules for the Mercury compiler
+# GNU copyright 1997 to 1999 by Joey Hess.
+# Changes: Peter Hawkins (public domain)
+#
+#
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+export DH_COMPAT=3
+
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+
+CFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+	INSTALL_PROGRAM += -s
+endif
+
+# We really need this to be 'gcc', not 'cc'
+CC=gcc
+MACHINE=`$(CC) -dumpmachine`
+
+GRADES_COMMON=hlc.gc
+ifneq ($(findstring $(DEB_HOST_ARCH),i386 amd64 powerpc alpha m68k mips sparc),)
+	ifneq ($(findstring $(DEB_HOST_ARCH),powerpc),)
+		# For some reason asm_fast.gc.prof.tr doesn't build correctly
+		# on powerpc
+		GRADES=$(GRADES_COMMON),asm_fast.gc,asm_fast.gc.prof,asm_fast.gc.memprof,asm_fast.gc.tr,asm_fast.gc.tr.debug,hlc.gc.prof.tr
+	else
+		GRADES=$(GRADES_COMMON),asm_fast.gc,asm_fast.gc.prof,asm_fast.gc.memprof,asm_fast.gc.tr,asm_fast.gc.tr.debug,asm_fast.gc.prof.tr,asm_fast.gc.profdeep,asm_fast.gc.profdeep.tr,hlc.gc.tr,hlc.gc.prof.tr
+	endif
+else
+	ifneq ($(findstring $(DEB_HOST_ARCH),ia64 hppa),)
+		GRADES+=$(GRADES_COMMON),reg.gc,reg.gc.prof,reg.gc.memprof,reg.gc.tr,reg.gc.tr.debug,reg.gc.prof.tr
+	else
+		# arm, mipsel, s390
+		GRADES+=$(GRADES_COMMON),none.gc,hlc.gc.prof,hlc.gc.memprof,hlc.gc.tr,none.gc.tr.debug,hlc.gc.prof.tr
+	endif
+endif
+	
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+
+	(cd build ; \
+	tar zxvf ../upstream/mercury-compiler-*.tar.gz ; \
+	mv mercury-compiler-* mercury ; \
+	)
+	cp /usr/share/misc/config.sub /usr/share/misc/config.guess build/mercury/
+
+	# Apply Debian specific patches
+	if test ! -f patch-stamp; then \
+            for patch in $(CURDIR)/debian/patches/*.diff ; do\
+            	echo APPLYING PATCH\: $${patch##*/};\
+                (cd build ; patch -p0 < $$patch) ;\
+            done ;\
+            touch patch-stamp ;\
+    fi
+	echo "Building grades: $(GRADES)"
+
+	# Create the cgi-bin directory or the configure script barfs.
+	mkdir -p debian/tmp/usr/lib/cgi-bin
+
+	cd build/mercury && \
+	CC="$(CC)" BOOTSTRAP_MC="/nonexistent" ./configure --host=$(MACHINE) --prefix=/usr --enable-deep-profiler=$(CURDIR)/debian/tmp/usr/lib/cgi-bin --enable-libgrades=$(GRADES)
+	
+	touch configure-stamp
+
+
+#Architecture 
+build: build-stamp
+build-stamp: configure-stamp 
+
+	(cd build/mercury ; $(MAKE) $(PMAKEFLAGS) )
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp install-stamp patch-stamp
+
+	rm -rf build/*
+
+	dh_clean 
+
+install: install-stamp
+
+install-stamp:
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs -A
+
+	cd build/mercury && \
+	  CC="$(CC)" \
+	  MERCURY_COMPILER="$(CURDIR)/debian/tmp/usr/lib/mercury/bin/`grep ^FULLARCH tmp_dir/scripts/Mmake.vars | sed -e 's/.*= //'`/mercury_compile" \
+	  $(MAKE) install INSTALL_PREFIX=$(CURDIR)/debian/tmp/usr $(MAKEFLAGS) 
+
+	cp build/mercury/README build/mercury/README.DotNet \
+	   build/mercury/README.Java build/mercury/README.Linux* \
+	   build/mercury/README.gcc-backend build/mercury/RELEASE_NOTES \
+	   build/mercury/BUGS build/mercury/HISTORY \
+	   build/mercury/LIMITATIONS \
+	   build/mercury/NEWS build/mercury/TODO \
+	   build/mercury/WORK_IN_PROGRESS debian/mercury/usr/share/doc/mercury/
+
+	touch install-stamp
+	
+# Build architecture independant packages using the common target.
+binary-indep: build install
+	dh_testdir
+	dh_testroot 
+	dh_installchangelogs -i
+	dh_installdocs -i
+	dh_installexamples -i
+	dh_install -i
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate	
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+	dh_installinfo -i
+	dh_installman -i
+	dh_link -i
+	dh_compress  -i
+	dh_fixperms -i
+#	dh_perl
+#	dh_python
+	dh_makeshlibs -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
+
+# Build architecture dependent packages using the common target.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs -a
+	dh_installdocs -a
+	dh_installexamples -a
+	dh_install -a
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate	
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+	dh_installinfo -a
+	dh_installman -a
+	dh_link -a
+	dh_strip -a
+	dh_compress -a 
+	dh_fixperms -a
+#	dh_perl
+#	dh_python
+	dh_makeshlibs -a
+	dh_installdeb -a
+	dh_shlibdeps -a
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
+
+binary: binary-arch binary-indep
+.PHONY: build clean binary binary install configure

@@ -1,0 +1,67 @@
+This package was debianized by Peter Hawkins <peter@hawkins.emu.id.au> on
+Mon,  5 Apr 2004 19:51:58 +1000.
+
+It was downloaded from http://www.cs.mu.oz.au/mercury/
+
+Upstream Authors: Mercury research group, University of Melbourne. 
+
+Copyright:
+
+This directory contains the source distribution for the University of Melbourne
+Mercury compiler, version rotd-2004-03-23.
+
+        The Mercury implementation is free software, but it is Copyright
+        (C) 1993-2003 The University of Melbourne.  It is distributed
+        under the terms of the GNU General Public License.  See the file
+        COPYING for copying permission.
+
+        The Mercury library and runtime (the files in the library and
+        runtime subdirectories) are distributed under the terms of the
+        GNU Library General Public License.  
+        
+        On Debian GNU/Linux systems, the complete text of the GNU Library
+        General Public License can be found in
+        `/usr/share/common-licenses/LGPL'.
+
+        If those licencing arrangements are not satisfactory, please
+        contact us!  We are willing to offer alternative arrangements,
+        if the need should arise.
+
+The subdirectory `boehm_gc' contains a slightly modified copy of
+the conservative garbage collector distributed by Hans Boehm:
+
+        Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
+        Copyright (c) 1991-1995 by Xerox Corporation.  All rights reserved.
+        Copyright (c) 1996-1999 by Silicon Graphics.  All rights reserved.
+        Copyright (c) 1999 by Hewlett-Packard Company. All rights reserved.
+
+        THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
+        EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
+
+        Permission is hereby granted to use or copy this program for any
+        purpose, provided the above notices are retained on all copies.
+        Permission to modify the code and to distribute modified code is
+        granted, provided the above notices are retained, and a notice
+        that the code was modified is included with the above copyright
+        notice.
+
+A few files (config.guess, config.sub) are derived from code that is
+copyright by the Free Software Foundation, Inc, and are distributed
+under the GNU General Public License version 2.
+
+On Debian GNU/Linux systems, the complete text of the GNU General
+Public License version 2 can be found in `/usr/share/common-licenses/GPL'.
+
+The program `texi2html' in the `doc' directory is copyright by CERN
+and is distributed under the GNU General Public
+License version 2:
+
+        This program is the intellectual property of the European
+        Laboratory for Particle Physics (known as CERN).  No guarantee
+        whatsoever is provided by CERN.  No liability whatsoever is
+        accepted for any loss or damage of any kind resulting from any
+        defect or inaccuracy in this information or code.
+
+The files in the `samples' directory are either public domain, or
+distributed under the GNU General Public License.
+

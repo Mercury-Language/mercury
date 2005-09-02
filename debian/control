@@ -1,0 +1,37 @@
+Source: mercury
+Section: devel
+Priority: optional
+Maintainer: Peter Hawkins <peterh@debian.org>
+Build-Depends: debhelper (>= 4.0.0), autotools-dev, libreadline5-dev
+Standards-Version: 3.6.1
+
+Package: mercury
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, make
+Conflicts: mmake
+Description: A new logic/functional programming language 
+ Mercury is a new logic/functional programming language, which combines
+ the clarity and expressiveness of declarative programming with advanced
+ static analysis and error detection features.  Its highly optimized
+ execution algorithm delivers efficiency far in excess of existing logic
+ programming systems, and close to conventional programming
+ systems. Mercury addresses the problems of large-scale program
+ development, allowing modularity, separate compilation, and numerous
+ optimization/time trade-offs.
+ .
+ This package contains all the files required for developing programs
+ in the Mercury language.
+
+Package: mercury-doc
+Architecture: all
+Description: Documentation for mercury
+ Mercury is a new logic/functional programming language, which combines
+ the clarity and expressiveness of declarative programming with advanced
+ static analysis and error detection features.  Its highly optimized
+ execution algorithm delivers efficiency far in excess of existing logic
+ programming systems, and close to conventional programming
+ systems. Mercury addresses the problems of large-scale program
+ development, allowing modularity, separate compilation, and numerous
+ optimization/time trade-offs.
+ .
+ This package contains the documentation for the Mercury compiler.
