@@ -833,7 +833,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 !Globals)
         ;
             true
-        ),
+        ), 
+
+        option_implies(prop_mode_constraints, mode_constraints, bool(yes),
+            !Globals),
 
         % --split-c-files is not supported by the high-level C code generator.
         option_implies(highlevel_code, split_c_files, bool(no), !Globals),
