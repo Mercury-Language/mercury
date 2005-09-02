@@ -26,9 +26,11 @@ main(!IO) :-
 	[will_not_call_mercury, promise_pure, high_level_backend],
 "
 #ifdef MR_HIGHLEVEL_CODE
-	printf(""p(%d): expected highlevel, found highlevel, OK\\n"", N);
+	printf(""p(%"" MR_INTEGER_LENGTH_MODIFIER ""d): "", N);
+	printf(""expected highlevel, found highlevel, OK\\n"");
 #else
-	printf(""p(%d): expected highlevel, found lowlevel, BUG\\n"", N);
+	printf(""p(%"" MR_INTEGER_LENGTH_MODIFIER ""d): "", N);
+	printf(""expected highlevel, found lowlevel, BUG\\n"");
 #endif
 
 	IO = IO0;
@@ -39,9 +41,11 @@ main(!IO) :-
 	[will_not_call_mercury, promise_pure, low_level_backend],
 "
 #ifdef MR_HIGHLEVEL_CODE
-	printf(""q(%d): expected lowlevel, found highlevel, BUG\\n"", N);
+	printf(""q(%"" MR_INTEGER_LENGTH_MODIFIER ""d): "", N);
+	printf(""expected lowlevel, found highlevel, BUG\\n"");
 #else
-	printf(""q(%d): expected lowlevel, found lowlevel, OK\\n"", N);
+	printf(""q(%"" MR_INTEGER_LENGTH_MODIFIER ""d): "", N);
+	printf(""expected lowlevel, found lowlevel, OK\\n"");
 #endif
 
 	IO = IO0;
@@ -54,7 +58,8 @@ main(!IO) :-
 void MR_CALL
 backend_external__q_3_p_0(MR_Integer n)
 {
-	printf(""q(%d): expected highlevel, found highlevel, OK\\n"", n);
+	printf(""q(%"" MR_INTEGER_LENGTH_MODIFIER ""d): "", n);
+	printf(""expected highlevel, found highlevel, OK\\n"");
 }
 
 #else
@@ -65,9 +70,11 @@ MR_BEGIN_MODULE(backend_external_module)
 	MR_init_entry(mercury__backend_external__p_3_0);
 MR_BEGIN_CODE
 MR_define_entry(mercury__backend_external__p_3_0);
-	printf(""p(%d): expected lowlevel, found lowlevel, OK\\n"", MR_r1);
+	printf(""p(%"" MR_INTEGER_LENGTH_MODIFIER ""d): "", MR_r1);
+	printf(""expected lowlevel, found lowlevel, OK\\n"");
 	MR_proceed();
 MR_END_MODULE
+#endif
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
@@ -92,15 +99,13 @@ mercury_sys_init_backend_external_module_init(void)
 }
 
 void
-mercury_sys_init_backend_external_module_init_type_tables(void)
-{
-	/* no types to register */
-}
-
-void
 mercury_sys_init_backend_external_module_write_out_proc_statics(FILE *fp)
 {
 }
 
-#endif
+void
+mercury_sys_init_backend_external_module_init_type_tables(void)
+{
+	/* no types to register */
+}
 ").
