@@ -342,7 +342,7 @@
     pred add_escaped_string(string::in, U::di, U::uo) is det,
     pred add_format(string::in, list(io__poly_type)::in, U::di, U::uo) is det,
     pred add_list(list(T)::in, string::in,
-        pred(T, U, U)::pred(in, di, uo) is det, U::di, U::uo) is det
+        pred(T, U, U)::in(pred(in, di, uo) is det), U::di, U::uo) is det
 ].
 
 :- instance output(io__state).
@@ -4074,7 +4074,7 @@ output_format(Format, Items, Str0, Str) :-
     string__append(Str0, S, Str).
 
 :- pred output_list(list(T)::in, string::in,
-    pred(T, string, string)::pred(in, di, uo) is det,
+    pred(T, string, string)::in(pred(in, di, uo) is det),
     string::di, string::uo) is det.
 
 output_list([], _, _, !Str).
