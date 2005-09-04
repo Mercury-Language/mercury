@@ -4,7 +4,7 @@
 # include "private/gc_priv.h"
 
 # if defined(GC_PTHREADS) && !defined(GC_SOLARIS_THREADS) \
-     && !defined(GC_WIN32_THREADS)
+     && !defined(GC_IRIX_THREADS) && !defined(GC_WIN32_THREADS)
      
 #if defined(GC_DARWIN_THREADS)
 # include "private/darwin_stop_world.h"
@@ -92,11 +92,6 @@ extern GC_bool GC_thr_initialized;
 GC_thread GC_lookup_thread(pthread_t id);
 
 void GC_stop_init();
-
-extern GC_bool GC_in_thread_creation;
-	/* We may currently be in thread creation or destruction.	*/
-	/* Only set to TRUE while allocation lock is held.		*/
-	/* When set, it is OK to run GC from unknown thread.		*/
 
 #endif /* GC_PTHREADS && !GC_SOLARIS_THREADS.... etc */
 #endif /* GC_PTHREAD_SUPPORT_H */
