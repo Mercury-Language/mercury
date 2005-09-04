@@ -80,6 +80,11 @@
 #   define l_name	lm_name
 #endif
 
+#if defined(NETBSD)
+#   include <machine/elf_machdep.h>
+#   define ELFSIZE ARCH_ELFSIZE
+#endif
+
 #if defined(LINUX) && defined(__ELF__) || defined(SCO_ELF) || \
     (defined(FREEBSD) && defined(__ELF__)) || defined(DGUX) || \
     (defined(NETBSD) && defined(__ELF__)) || defined(HURD)
@@ -91,10 +96,26 @@
 /* Newer versions of GNU/Linux define this macro.  We
  * define it similarly for any ELF systems that don't.  */
 #  ifndef ElfW
-#    if !defined(ELF_CLASS) || ELF_CLASS == ELFCLASS32
-#      define ElfW(type) Elf32_##type
+#    if defined(FREEBSD)
+#      if __ELF_WORD_SIZE == 32
+#        define ElfW(type) Elf32_##type
+#      else
+#        define ElfW(type) Elf64_##type
+#      endif
 #    else
-#      define ElfW(type) Elf64_##type
+#      ifdef NETBSD
+#        if ELFSIZE == 32
+#          define ElfW(type) Elf32_##type
+#        else
+#          define ElfW(type) Elf64_##type
+#        endif
+#      else
+#        if !defined(ELF_CLASS) || ELF_CLASS == ELFCLASS32
+#          define ElfW(type) Elf32_##type
+#        else
+#          define ElfW(type) Elf64_##type
+#	 endif
+#      endif
 #    endif
 #  endif
 
@@ -472,7 +493,6 @@ static struct link_map *
 GC_FirstDLOpenedLinkMap()
 {
     ElfW(Dyn) *dp;
-    struct r_debug *r;
     static struct link_map *cachedResult = 0;
 
     if( _DYNAMIC == 0) {
@@ -481,6 +501,12 @@ GC_FirstDLOpenedLinkMap()
     if( cachedResult == 0 ) {
         int tag;
         for( dp = _DYNAMIC; (tag = dp->d_tag) != 0; dp++ ) {
+	    /* FIXME: The DT_DEBUG header is not mandated by the	*/
+	    /* ELF spec.  This code appears to be dependent on		*/
+	    /* idiosynchracies of older GNU tool chains.  If this code	*/
+	    /* fails for you, the real problem is probably that it is	*/
+	    /* being used at all.  You should be getting the 		*/
+	    /* dl_iterate_phdr version.					*/
             if( tag == DT_DEBUG ) {
                 struct link_map *lm
                         = ((struct r_debug *)(dp->d_un.d_ptr))->r_map;
@@ -605,7 +631,8 @@ void GC_register_dynamic_libraries()
     }
     for (i = 0; i < needed_sz; i++) {
         flags = addr_map[i].pr_mflags;
-        if ((flags & (MA_BREAK | MA_STACK | MA_PHYS)) != 0) goto irrelevant;
+        if ((flags & (MA_BREAK | MA_STACK | MA_PHYS
+		      | MA_FETCHOP | MA_NOTCACHED)) != 0) goto irrelevant;
         if ((flags & (MA_READ | MA_WRITE)) != (MA_READ | MA_WRITE))
             goto irrelevant;
           /* The latter test is empirically useless in very old Irix	*/
@@ -727,43 +754,95 @@ void GC_register_dynamic_libraries()
   
 # define HAVE_REGISTER_MAIN_STATIC_DATA
 
+  /* The frame buffer testing code is dead in this version.	*/
+  /* We leave it here temporarily in case the switch to just 	*/
+  /* testing for MEM_IMAGE sections causes un expected 		*/
+  /* problems.							*/
+  GC_bool GC_warn_fb = TRUE;	/* Warn about traced likely 	*/
+  				/* graphics memory.		*/
+  GC_bool GC_disallow_ignore_fb = FALSE;
+  int GC_ignore_fb_mb;	/* Ignore mappings bigger than the 	*/
+  			/* specified number of MB.		*/
+  GC_bool GC_ignore_fb = FALSE; /* Enable frame buffer 	*/
+  				/* checking.		*/
+  
+  /* Issue warning if tracing apparent framebuffer. 		*/
+  /* This limits us to one warning, and it's a back door to	*/
+  /* disable that.						*/
+ 
   /* Should [start, start+len) be treated as a frame buffer	*/
   /* and ignored?						*/
-  /* Unfortunately, we currently have no real way to tell	*/
-  /* automatically, and rely largely on user input.		*/
-  /* FIXME: If we had more data on this phenomenon (e.g.	*/
-  /* is start aligned to a MB multiple?) we should be able to	*/
-  /* do better.							*/
-  static GC_bool is_frame_buffer(ptr_t start, size_t len)
+  /* Unfortunately, we currently are not quite sure how to tell	*/
+  /* this automatically, and rely largely on user input.	*/
+  /* We expect that any mapping with type MEM_MAPPED (which 	*/
+  /* apparently excludes library data sections) can be safely	*/
+  /* ignored.  But we're too chicken to do that in this 	*/
+  /* version.							*/
+  /* Based on a very limited sample, it appears that:		*/
+  /* 	- Frame buffer mappings appear as mappings of large	*/
+  /*	  length, usually a bit less than a power of two.	*/
+  /*	- The definition of "a bit less" in the above cannot	*/
+  /*	  be made more precise.					*/
+  /*	- Have a starting address at best 64K aligned.		*/
+  /*	- Have type == MEM_MAPPED.				*/
+  static GC_bool is_frame_buffer(ptr_t start, size_t len, DWORD tp)
   {
     static GC_bool initialized = FALSE;
-    static GC_bool ignore_fb;
 #   define MB (1024*1024)
+#   define DEFAULT_FB_MB 15
+#   define MIN_FB_MB 3
 
-    switch(len) {
-      case 16*MB:
-      case 32*MB:
-      case 48*MB:
-      case 64*MB:
-      case 128*MB:
-      case 256*MB:
-      case 512*MB:
-      case 1024*MB:
- 	break;
-      default:
-	return FALSE;
-    }
+    if (GC_disallow_ignore_fb || tp != MEM_MAPPED) return FALSE;
     if (!initialized) {
-      ignore_fb = (0 != GETENV("GC_IGNORE_FB"));
-      if (!ignore_fb) {
-	WARN("Possible frame buffer mapping at 0x%lx: \n"
-	     "\tConsider setting GC_IGNORE_FB to improve performance.\n",
-	     start);
+      char * ignore_fb_string =  GETENV("GC_IGNORE_FB");
+
+      if (0 != ignore_fb_string) {
+	while (*ignore_fb_string == ' ' || *ignore_fb_string == '\t')
+	  ++ignore_fb_string;
+	if (*ignore_fb_string == '\0') {
+	  GC_ignore_fb_mb = DEFAULT_FB_MB;
+	} else {
+	  GC_ignore_fb_mb = atoi(ignore_fb_string);
+	  if (GC_ignore_fb_mb < MIN_FB_MB) {
+	    WARN("Bad GC_IGNORE_FB value.  Using %ld\n", DEFAULT_FB_MB);
+	    GC_ignore_fb_mb = DEFAULT_FB_MB;
+	  }
+	}
+	GC_ignore_fb = TRUE;
+      } else {
+	GC_ignore_fb_mb = DEFAULT_FB_MB;  /* For warning */
       }
       initialized = TRUE;
     }
-    return ignore_fb;
+    if (len >= ((size_t)GC_ignore_fb_mb << 20)) {
+      if (GC_ignore_fb) {
+	return TRUE;
+      } else {
+	if (GC_warn_fb) {
+	  WARN("Possible frame buffer mapping at 0x%lx: \n"
+	       "\tConsider setting GC_IGNORE_FB to improve performance.\n",
+	       start);
+	  GC_warn_fb = FALSE;
+	}
+	return FALSE;
+      }
+    } else {
+      return FALSE;
+    }
   }
+
+# ifdef DEBUG_VIRTUALQUERY
+  void GC_dump_meminfo(MEMORY_BASIC_INFORMATION *buf)
+  {
+    GC_printf4("BaseAddress = %lx, AllocationBase = %lx, RegionSize = %lx(%lu)\n",
+	       buf -> BaseAddress, buf -> AllocationBase, buf -> RegionSize,
+	       buf -> RegionSize);
+    GC_printf4("\tAllocationProtect = %lx, State = %lx, Protect = %lx, "
+	       "Type = %lx\n",
+	       buf -> AllocationProtect, buf -> State, buf -> Protect,
+	       buf -> Type);
+  }
+# endif /* DEBUG_VIRTUALQUERY */
 
   void GC_register_dynamic_libraries()
   {
@@ -802,7 +881,14 @@ void GC_register_dynamic_libraries()
 		&& (protect == PAGE_EXECUTE_READWRITE
 		    || protect == PAGE_READWRITE)
 		&& !GC_is_heap_base(buf.AllocationBase)
-		&& !is_frame_buffer(p, buf.RegionSize)) {  
+		/* This used to check for
+		 * !is_frame_buffer(p, buf.RegionSize, buf.Type)
+		 * instead of just checking for MEM_IMAGE.
+		 * If something breaks, change it back. */
+		&& buf.Type == MEM_IMAGE) {  
+#	        ifdef DEBUG_VIRTUALQUERY
+	          GC_dump_meminfo(&buf);
+#	        endif
 		if ((char *)p != limit) {
 		    GC_cond_add_roots(base, limit);
 		    base = p;
@@ -1020,6 +1106,7 @@ void GC_register_dynamic_libraries()
 
 #ifdef DARWIN
 
+/* __private_extern__ hack required for pre-3.4 gcc versions.	*/
 #ifndef __private_extern__
 # define __private_extern__ extern
 # include <mach-o/dyld.h>

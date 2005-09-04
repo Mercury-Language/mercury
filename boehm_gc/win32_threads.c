@@ -1,6 +1,7 @@
+#include "private/gc_priv.h"
+
 #if defined(GC_WIN32_THREADS) 
 
-#include "private/gc_priv.h"
 #include <windows.h>
 
 #ifdef CYGWIN32
@@ -10,6 +11,7 @@
 # undef pthread_create 
 # undef pthread_sigmask 
 # undef pthread_join 
+# undef pthread_detach
 # undef dlopen 
 
 # define DEBUG_CYGWIN_THREADS 0
@@ -130,7 +132,7 @@ static GC_thread GC_new_thread(void) {
 	ABORT("DuplicateHandle failed");
   }
   thread_table[i].stack_base = GC_get_stack_base();
-  /* Up until this point, GC_psuh_all_stacks considers this thread	*/
+  /* Up until this point, GC_push_all_stacks considers this thread	*/
   /* invalid.								*/
   if (thread_table[i].stack_base == NULL) 
     ABORT("Failed to find stack base in GC_new_thread");
@@ -184,7 +186,7 @@ static void GC_delete_thread(DWORD thread_id) {
        /* Must still be in_use, since nobody else can store our thread_id. */
        i++) {}
   if (i > my_max) {
-    WARN("Removing nonexisiting thread %ld\n", (GC_word)thread_id);
+    WARN("Removing nonexistent thread %ld\n", (GC_word)thread_id);
   } else {
     GC_delete_gc_thread(thread_table+i);
   }
