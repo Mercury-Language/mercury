@@ -3168,30 +3168,57 @@ construct_initialisation_call(Var, VarType, Inst, Context,
     maybe(call_unify_context)::in, hlds_goal::out,
     mode_info::in, mode_info::out) is semidet.
 
-build_call(ModuleName, PredName, ArgVars, NonLocals, InstmapDelta, Context,
-        CallUnifyContext, Goal, !ModeInfo) :-
+build_call(CalleeModuleName, CalleePredName, ArgVars, NonLocals, InstmapDelta,
+        Context, CallUnifyContext, Goal, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+
+        % Get the pred_info and proc_info for the procedure we are calling.
+        %
     module_info_get_predicate_table(ModuleInfo0, PredicateTable),
     list__length(ArgVars, Arity),
     predicate_table_search_pred_m_n_a(PredicateTable, is_fully_qualified,
-        ModuleName, PredName, Arity, [PredId]),
-    ProcNo = 0, % first mode
-    hlds_pred__proc_id_to_int(ProcId, ProcNo),
+        CalleeModuleName, CalleePredName, Arity, [CalleePredId]),
+    CalleeProcNo = 0, % first mode
+    hlds_pred__proc_id_to_int(CalleeProcId, CalleeProcNo),
+    module_info_pred_proc_info(ModuleInfo0, CalleePredId, CalleeProcId,
+        CalleePredInfo, CalleeProcInfo),
+
+        % Get the relevant information for the procedure we are transforming
+        % (i.e., the caller).
+        %
+    mode_info_get_predid(!.ModeInfo, PredId),
+    mode_info_get_procid(!.ModeInfo, ProcId),
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
         ProcInfo0),
-    mode_info_get_varset(!.ModeInfo, VarSet0),
-    mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    polymorphism__create_poly_info_for_new_call(ModuleInfo0, PredInfo0,
-        ProcInfo0, VarSet0, VarTypes0, PolyInfo0),
+
+        % Create a poly_info for the caller.
+        %
+    polymorphism__create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0,
+        PolyInfo0),
+
+        % Create a goal_info for the call.
+        %
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo1),
     goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
     goal_info_set_instmap_delta(InstmapDelta, GoalInfo2, GoalInfo),
-    polymorphism__process_new_call(PredId, ProcId, ArgVars, not_builtin,
-        CallUnifyContext, qualified(ModuleName, PredName),
-        GoalInfo, Goal, PolyInfo0, PolyInfo),
-    polymorphism__poly_info_extract(PolyInfo, PredInfo0, _PredInfo,
-        ProcInfo0, ProcInfo, ModuleInfo),
+
+        % Do the transformation for this call goal.
+        %
+    SymName = qualified(CalleeModuleName, CalleePredName),
+    polymorphism__process_new_call(CalleePredInfo, CalleeProcInfo,
+        CalleePredId, CalleeProcId, ArgVars, not_builtin, CallUnifyContext,
+        SymName, GoalInfo, Goal, PolyInfo0, PolyInfo),
+
+        % Update the information in the predicate table.
+        %
+    polymorphism__poly_info_extract(PolyInfo, PredInfo0, PredInfo,
+        ProcInfo0, ProcInfo, ModuleInfo1),
+    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+        ModuleInfo1, ModuleInfo),
+
+        % Update the information in the mode_info.
+        %
     proc_info_varset(ProcInfo, VarSet),
     proc_info_vartypes(ProcInfo, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),
