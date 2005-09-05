@@ -13,7 +13,6 @@
 
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
@@ -21,6 +20,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
     % Warn about variables which occur only once but don't start with
     % an underscore, or about variables which do start with an underscore
@@ -47,10 +48,8 @@
 :- pred check_promise_ex_decl(prog_vars::in, promise_type::in, goal::in,
     prog_context::in, io::di, io::uo) is det.
 
-    % Check that clauses are not exported.
-    %
-:- pred check_not_exported(import_status::in, prog_context::in, string::in,
-    io::di, io::uo) is det.
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -67,6 +66,8 @@
 :- import_module set.
 :- import_module string.
 :- import_module varset.
+
+%----------------------------------------------------------------------------%
 
 maybe_warn_overlap(Warnings, VarSet, PredCallId, !IO) :-
     globals__io_lookup_bool_option(warn_overlapping_scopes,
@@ -702,14 +703,6 @@ promise_ex_error(PromiseType, Context, Message, !IO) :-
     ],
     error_util__write_error_pieces(Context, 0, ErrorPieces, !IO).
 
-check_not_exported(Status, Context, Message, !IO) :-
-    ( Status = exported ->
-        prog_out__write_context(Context, !IO),
-        string__append_list(["Warning: ", Message, " in module interface.\n"],
-            WarningMessage),
-        report_warning(WarningMessage, !IO)
-    ;
-        true
-    ).
-
+%-----------------------------------------------------------------------------%
+:- end_module make_hlds_warn.
 %-----------------------------------------------------------------------------%

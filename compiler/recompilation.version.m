@@ -369,7 +369,7 @@ recompilation__version__gather_items_2(ItemAndContext, !Section, !Info) :-
 			GatheredItems0, GatheredItems),
 		!:Info = !.Info ^ gathered_items := GatheredItems
 	;
-		Item = pragma(PragmaType),
+		Item = pragma(_, PragmaType),
 		is_pred_pragma(PragmaType, yes(PredOrFuncId))
 	->
 		PragmaItems = !.Info ^ pragma_items,
@@ -566,7 +566,7 @@ item_to_item_id_2(Item, ItemId) :-
 
 	% We need to handle these separately because some pragmas
 	% may affect a predicate and a function.
-item_to_item_id_2(pragma(_), no).
+item_to_item_id_2(pragma(_, _), no).
 item_to_item_id_2(promise(_, _, _, _), no).
 item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	Item = typeclass(_, _, ClassName, ClassVars, _, _),
@@ -704,8 +704,8 @@ item_is_unchanged(promise(PromiseType, Goal, _, UnivVars), Item2) =
 	% declarations because the names of the variables are used
 	% to find the corresponding variables in the predicate or
 	% function type declaration.
-item_is_unchanged(pragma(PragmaType1), Item2) = Result :-
-	( Item2 = pragma(PragmaType2) ->
+item_is_unchanged(pragma(_, PragmaType1), Item2) = Result :-
+	( Item2 = pragma(_, PragmaType2) ->
 		(
 			PragmaType1 = type_spec(Name, SpecName, Arity,
 				MaybePredOrFunc, MaybeModes, TypeSubst1,

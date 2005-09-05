@@ -1315,7 +1315,8 @@ intermod__write_type(TypeCtor - TypeDefn, !IO) :-
         ReservedTag = Body ^ du_type_reserved_tag,
         ReservedTag = yes
     ->
-        mercury_output_item(pragma(reserve_tag(Name, Arity)), Context, !IO)
+        % The pragma_origin doesn't matter here.
+        mercury_output_item(pragma(user, reserve_tag(Name, Arity)), Context, !IO)
     ;
         true
     ).
@@ -2190,7 +2191,7 @@ intermod__grab_optfiles(!Module, FoundError, !IO) :-
         read_optimization_interfaces(no, ModuleName, [ModuleName],
             set__init, [], LocalItems, no, UAError, !IO),
         IsPragmaUnusedArgs = (pred(Item::in) is semidet :-
-            Item = pragma(PragmaType) - _,
+            Item = pragma(_, PragmaType) - _,
             PragmaType = unused_args(_,_,_,_,_)
         ),
         list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems),

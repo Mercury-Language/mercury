@@ -48,6 +48,12 @@
 			item_list
 		).
 
+	% Did an item originate in user code or was it added by the
+	% compiler as part of a source-to-source transformation, e.g.
+	% the initialise declarations.
+	% 
+:- type item_origin ---> user ; compiler.
+
 :- type item_list	==	list(item_and_context).
 
 :- type item_and_context ==	pair(item, prog_context).
@@ -135,6 +141,7 @@
 		%	equiv_type.m. equiv_type.m will set the field to `no'.
 
 	;	pragma(
+			pragma_origin		:: item_origin,
 			pragma_type		:: pragma_type
 		)
 

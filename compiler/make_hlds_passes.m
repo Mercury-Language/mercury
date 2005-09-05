@@ -354,7 +354,7 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
             "no pred_or_func on mode declaration")
     ).
 add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
-    Item = pragma(_).
+    Item = pragma(_, _).
 add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     Item = promise(_, _, _, _).
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
@@ -481,8 +481,8 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     module_add_type_defn(VarSet, Name, Args, TypeDefn, Cond, Context,
         !.Status, !ModuleInfo, !IO).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
-    Item = pragma(Pragma),
-    add_pragma(Pragma, Context, !Status, !ModuleInfo, !IO).
+    Item = pragma(Origin, Pragma),
+    add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO).
 add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
     Item = pred_or_func(_TypeVarSet, _InstVarSet, _ExistQVars,
         PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
@@ -506,7 +506,7 @@ add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
             predicate_table_set_preds(Preds, PredTable0, PredTable),
             module_info_set_predicate_table(PredTable, !ModuleInfo)
         ;
-            error("make_hlds.m: can't find func declaration")
+            error("make_hlds_passes.m: can't find func declaration")
         )
     ).
 add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !IO) :-
@@ -536,24 +536,32 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         Body, VarSet, BodyStatus, Context, !ModuleInfo, !IO).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     Item = initialise(SymName),
+    !.Status = item_status(ImportStatus, _),
+    ( ImportStatus = exported ->
+        error_is_exported(Context, "`initialise' declaration", !IO),
+        module_info_incr_errors(!ModuleInfo)
+    ;
+        true
+    ),
     % 
-    % To handle a `:- initialise(initpred).' declaration we need to
+    % To handle a `:- initialise initpred.' declaration we need to
     % (1) construct a new C function name, CName, to use to export initpred,
-    % (2) add `:- export(initpred(di, uo), CName).',
+    % (2) add `:- pragma export(initpred(di, uo), CName).',
     % (3) record the initpred/cname pair in the ModuleInfo so that
     % code generation can ensure cname is called during module
     % initialisation.
     %
     module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
     PragmaExportItem =
-        pragma(export(SymName, predicate, [di_mode, uo_mode], CName)),
+        pragma(compiler,
+            export(SymName, predicate, [di_mode, uo_mode], CName)),
     add_item_decl_pass_2(PragmaExportItem, Context, !Status, !ModuleInfo, !IO).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     Item = mutable(Name, _Type, _InitTerm, _Inst, _MutAttrs),
     module_info_name(!.ModuleInfo, ModuleName),
     InitDecl = initialise(mutable_init_pred_sym_name(ModuleName, Name)),
     add_item_decl_pass_2(InitDecl, Context, !Status, !ModuleInfo, !IO),
-    ForeignDecl = pragma(foreign_decl(c, foreign_decl_is_local,
+    ForeignDecl = pragma(compiler, foreign_decl(c, foreign_decl_is_local,
         "MR_Word " ++ mutable_c_var_name(Name) ++ ";")),
     add_item_decl_pass_2(ForeignDecl, Context, !Status, !ModuleInfo, !IO).
 
@@ -583,7 +591,20 @@ mutable_c_var_name(Name) = "mutable_variable_" ++ Name.
 
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     Item = clause(VarSet, PredOrFunc, PredName, Args, Body),
-    check_not_exported(!.Status, Context, "clause", !IO),
+    ( !.Status = exported ->
+        list.length(Args, Arity),
+        %
+        % There is no point printing out the qualified name since that
+        % information is already in the context.
+        %
+        unqualify_name(PredName, UnqualifiedPredName),
+        ClauseId = simple_call_id_to_string(PredOrFunc,
+            unqualified(UnqualifiedPredName) / Arity), 
+        error_is_exported(Context, "clause for " ++ ClauseId, !IO),
+        module_info_incr_errors(!ModuleInfo)
+    ;
+        true
+    ),
     GoalType = none,
     % at this stage we only need know that it's not a promise declaration
     module_add_clause(VarSet, PredOrFunc, PredName, Args, Body, !.Status,
@@ -641,7 +662,7 @@ add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !IO) :-
         true
     ).
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
-    Item = pragma(Pragma),
+    Item = pragma(Origin, Pragma),
     (
         Pragma = foreign_proc(Attributes, Pred, PredOrFunc,
             Vars, VarSet, PragmaImpl)
@@ -718,7 +739,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     ;
         Pragma = export(Name, PredOrFunc, Modes, C_Function)
     ->
-        add_pragma_export(Name, PredOrFunc, Modes, C_Function,
+        add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function,
             Context, !ModuleInfo, !IO)
     ;
         % Don't worry about any pragma declarations other than the
@@ -764,35 +785,44 @@ add_item_clause(initialise(SymName), !Status, Context, !ModuleInfo, !QualInfo,
         ->
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_arg_types(PredInfo, ArgTypes),
+            pred_info_procedures(PredInfo, ProcTable),
+            ProcInfos = map.values(ProcTable),
             (
                 ArgTypes = [Arg1Type, Arg2Type],
                 type_util__type_is_io_state(Arg1Type),
-                type_util__type_is_io_state(Arg2Type)
-                % XXX We should check the arg modes and detism are correct
-                % here.  For now the arg modes and detism will be checked by
-                % the implicit `:- pragma export(...).' added for this pred.
+                type_util__type_is_io_state(Arg2Type),
+                list.member(ProcInfo, ProcInfos),
+                proc_info_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+                MaybeHeadModes = yes(HeadModes),
+                HeadModes = [ di_mode, uo_mode ],
+                proc_info_declared_determinism(ProcInfo, MaybeDetism),
+                MaybeDetism = yes(Detism),
+                ( Detism = det ; Detism = cc_multidet )
             ->
                 module_info_user_init_pred_c_name(!.ModuleInfo, SymName,
                     CName),
                 PragmaExportItem =
-                    pragma(export(SymName, predicate, [di_mode, uo_mode],
-                    CName)),
+                    pragma(compiler,
+                        export(SymName, predicate, [di_mode, uo_mode], CName)),
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !IO)
             ;
-                write_error_pieces(Context, 0, [sym_name_and_arity(SymName/2),
+                write_error_pieces(Context, 0, [words("Error:"),
+                    sym_name_and_arity(SymName/2),
                     words(" used in initialise declaration does not have " ++
                     "signature `pred(io::di, io::uo) is det'")], !IO),
                 module_info_incr_errors(!ModuleInfo)
             )
         ;
-            write_error_pieces(Context, 0, [sym_name_and_arity(SymName/2),
+            write_error_pieces(Context, 0, [words("Error:"),
+                sym_name_and_arity(SymName/2),
                 words(" used in initialise declaration has " ++
                 "multiple pred declarations.")], !IO),
             module_info_incr_errors(!ModuleInfo)
         )
     ;
-        write_error_pieces(Context, 0, [sym_name_and_arity(SymName/2),
+        write_error_pieces(Context, 0, [words("Error:"),
+            sym_name_and_arity(SymName/2),
             words(" used in initialise declaration does " ++
             "not have a corresponding pred declaration.")], !IO),
         module_info_incr_errors(!ModuleInfo)
@@ -821,7 +851,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         ) - Context),
     add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo, !IO),
     set_purity((semipure), Attrs, GetAttrs),
-    GetClause = pragma(foreign_proc(GetAttrs,
+    GetClause = pragma(compiler, foreign_proc(GetAttrs,
         mutable_get_pred_sym_name(ModuleName, Name), predicate,
         [pragma_var(X, "X", out_mode(Inst))], VarSet,
         ordinary("X = " ++ mutable_c_var_name(Name) ++ ";",
@@ -835,7 +865,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         TrailCode =
             "MR_trail_current_value(&" ++ mutable_c_var_name(Name) ++ ");\n"
     ),
-    SetClause = pragma(foreign_proc(Attrs,
+    SetClause = pragma(compiler, foreign_proc(Attrs,
         mutable_set_pred_sym_name(ModuleName, Name), predicate,
         [pragma_var(X, "X", in_mode(Inst))], VarSet,
         ordinary(TrailCode ++ mutable_c_var_name(Name) ++ " = X;",

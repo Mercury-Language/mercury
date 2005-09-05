@@ -114,7 +114,7 @@ parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
         (
             SourceFileTerm = term__functor(term__string(SourceFile), [], _)
         ->
-            Result = ok(pragma(source_file(SourceFile)))
+            Result = ok(pragma(user, source_file(SourceFile)))
         ;
             Result = error("string expected in `:- pragma " ++
                 "source_file' declaration", SourceFileTerm)
@@ -247,7 +247,7 @@ parse_pragma_type(_ModuleName, "c_import_module", PragmaTerms, ErrorTerm,
         PragmaTerms = [ImportTerm],
         sym_name_and_args(ImportTerm, Import, [])
     ->
-        Result = ok(pragma(foreign_import_module(c, Import)))
+        Result = ok(pragma(user, foreign_import_module(c, Import)))
     ;
         Result = error("wrong number of arguments or invalid " ++
             "module name in `:- pragma c_import_module' " ++
@@ -261,7 +261,7 @@ parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms, ErrorTerm,
         sym_name_and_args(ImportTerm, Import, [])
     ->
         ( parse_foreign_language(LangTerm, Language) ->
-            Result = ok(pragma(
+            Result = ok(pragma(user,
                 foreign_import_module(Language, Import)))
         ;
             Result = error("invalid foreign language in " ++
@@ -452,7 +452,7 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
         ( parse_foreign_language(LangTerm, ForeignLanguage) ->
             ( HeaderTerm = term__functor(term__string( HeaderCode), [], _) ->
                 DeclCode = foreign_decl(ForeignLanguage, IsLocal, HeaderCode),
-                Result = ok(pragma(DeclCode))
+                Result = ok(pragma(user, DeclCode))
             ;
                 ErrMsg = "-- expected string for foreign declaration code",
                 Result = error(string__append(InvalidDeclStr, ErrMsg),
@@ -482,7 +482,7 @@ parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
     Check1 = (func(PTerms1, ForeignLanguage) = Res is semidet :-
         PTerms1 = [Just_Code_Term],
         ( Just_Code_Term = term__functor(term__string(Just_Code), [], _) ->
-            Res = ok(pragma(foreign_code(ForeignLanguage, Just_Code)))
+            Res = ok(pragma(user, foreign_code(ForeignLanguage, Just_Code)))
         ;
             ErrMsg = "-- expected string for foreign code",
             Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
@@ -744,7 +744,7 @@ parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, _VarSet,
                 PredAndArgModesResult = ok(PredName - PredOrFunc, ArgModes),
                 (
                     FlagsResult = ok(Attributes),
-                    Result = ok(pragma(import(PredName, PredOrFunc,
+                    Result = ok(pragma(user, import(PredName, PredOrFunc,
                         ArgModes, Attributes, Function)))
                 ;
                     FlagsResult = error(Msg, Term),
@@ -773,7 +773,7 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm, _VarSet,
                 PredAndModesResult),
             (
                 PredAndModesResult = ok(PredName - PredOrFunc, Modes),
-                Result = ok(pragma(export(PredName, PredOrFunc, Modes,
+                Result = ok(pragma(user, export(PredName, PredOrFunc, Modes,
                     Function)))
             ;
                 PredAndModesResult = error(Msg, Term),
@@ -858,7 +858,7 @@ parse_pragma_type(ModuleName, "unused_args", PragmaTerms, ErrorTerm, _VarSet,
         convert_int_list(UnusedArgsTerm, UnusedArgsResult),
         UnusedArgsResult = ok(UnusedArgs)
     ->
-        Result = ok(pragma(unused_args(PredOrFunc, PredName, Arity, ModeNum,
+        Result = ok(pragma(user, unused_args(PredOrFunc, PredName, Arity, ModeNum,
             UnusedArgs)))
     ;
         Result = error("error in `:- pragma unused_args'", ErrorTerm)
@@ -905,9 +905,10 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, VarSet0,
                         UnqualName, type_subst(TVarSet, TypeSubn),
                         SpecializedName)
                 ),
-                Result = ok(pragma(type_spec(PredName, SpecializedName, Arity,
+                TypeSpecPragma = type_spec(PredName, SpecializedName, Arity,
                     MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet,
-                    set__init)))
+                    set__init),
+                Result = ok(pragma(user, TypeSpecPragma))
             ;
                 Result = error("expected type substitution in " ++
                     "`:- pragma type_spec' declaration", TypeSubnTerm)
@@ -936,7 +937,8 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm, _VarSet,
         (
             NameArityResult = ok(PredName, Arity),
             ( FileNameTerm = term__functor(term__string(FileName), [], _) ->
-                Result = ok(pragma(fact_table(PredName, Arity, FileName)))
+                Result = ok(pragma(user,
+                    fact_table(PredName, Arity, FileName)))
             ;
                 Result = error("expected string for fact table filename",
                     FileNameTerm)
@@ -983,7 +985,7 @@ parse_pragma_type(ModuleName, "aditi_index", PragmaTerms, ErrorTerm, _,
                 convert_int_list(AttributesTerm, AttributeResult),
                 (
                     AttributeResult = ok(Attributes),
-                    Result = ok(pragma(aditi_index(PredName, PredArity,
+                    Result = ok(pragma(user, aditi_index(PredName, PredArity,
                         index_spec(IndexType, Attributes))))
                 ;
                     AttributeResult = error(_, AttrErrorTerm),
@@ -1108,7 +1110,7 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
             TerminationTerm = term__functor(term__atom("cannot_loop"), [], _),
             MaybeTerminationInfo = yes(cannot_loop(unit))
         ),
-        Result0 = ok(pragma(termination_info(PredOrFunc, PredName,
+        Result0 = ok(pragma(user, termination_info(PredOrFunc, PredName,
             ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
     ->
         Result = Result0
@@ -1144,7 +1146,7 @@ parse_pragma_type(ModuleName, "termination2_info", PragmaTerms, ErrorTerm,
             TerminationTerm = term__functor(term__atom("cannot_loop"), [], _),
             MaybeTerminationInfo = yes(cannot_loop(unit))
         ),
-        Result0 = ok(pragma(termination2_info(PredOrFunc, PredName,
+        Result0 = ok(pragma(user, termination2_info(PredOrFunc, PredName,
             ModeList, SuccessArgSizeInfo, FailureArgSizeInfo,
             MaybeTerminationInfo)))
     ->
@@ -1218,7 +1220,7 @@ parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
             ThrowStatus = conditional
         )
     ->
-        Result = ok(pragma(exceptions(PredOrFunc, PredName,
+        Result = ok(pragma(user, exceptions(PredOrFunc, PredName,
             Arity, ModeNum, ThrowStatus)))
     ;
         Result = error("error in `:- pragma exceptions'", ErrorTerm)
@@ -1267,7 +1269,7 @@ parse_simple_pragma_base(ModuleName, PragmaType, NameKind, MakePragma,
         (
             NameArityResult = ok(PredName, Arity),
             call(MakePragma, PredName, Arity, Pragma),
-            Result = ok(pragma(Pragma))
+            Result = ok(pragma(user, Pragma))
         ;
             NameArityResult = error(ErrorMsg, _),
             Result = error(ErrorMsg, PredAndArityTerm)
@@ -1592,7 +1594,7 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
         (
             Error = no,
             varset__coerce(VarSet0, VarSet),
-            Result = ok(pragma(foreign_proc(Flags, PredName, PredOrFunc,
+            Result = ok(pragma(user, foreign_proc(Flags, PredName, PredOrFunc,
                 PragmaVars, VarSet, PragmaImpl)))
         ;
             Error = yes(ErrorMessage),
@@ -1666,7 +1668,8 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                     "expected argument tabling method", MaybeArgMethods),
                 (
                     MaybeArgMethods = ok(ArgMethods),
-                    Result = ok(pragma(tabled(eval_memo(specified(ArgMethods)),
+                    Result = ok(pragma(user,
+                        tabled(eval_memo(specified(ArgMethods)),
                         PredName, Arity, MaybePredOrFunc, MaybeModes)))
                 ;
                     MaybeArgMethods = error(Msg, Term),
@@ -1674,7 +1677,8 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                 )
             ;
                 MaybeSpec = no,
-                Result = ok(pragma(tabled(TablingType, PredName, Arity,
+                Result = ok(pragma(user,
+                    tabled(TablingType, PredName, Arity,
                     MaybePredOrFunc, MaybeModes)))
             )
         ;

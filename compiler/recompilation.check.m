@@ -952,7 +952,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 		VersionNumbers, PredOrFunc, Name, Args, WithType, !Info).
 check_for_ambiguities(_, _, _,
 		pred_or_func_mode(_, _, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, pragma(_) - _, !Info).
+check_for_ambiguities(_, _, _, pragma(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, promise(_, _, _, _) - _, !Info).
 check_for_ambiguities(_, _, _, module_defn(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _, !Info).

@@ -539,7 +539,7 @@ mercury_output_item(UnqualifiedItemNames,
             Context, !IO)
     ),
     io__write_string(".\n", !IO).
-mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context, !IO) :-
+mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
     maybe_output_line_number(Context, !IO),
     (
         Pragma = source_file(SourceFile),

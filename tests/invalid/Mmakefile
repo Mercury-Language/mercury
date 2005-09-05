@@ -125,6 +125,7 @@ SINGLEMODULE= \
 	nested_impl_in_int \
 	no_exports \
 	not_a_switch \
+	not_in_interface \
 	nullary_ho_func_error \
 	occurs \
 	overloading \

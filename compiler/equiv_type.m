@@ -387,10 +387,10 @@ equiv_type__replace_in_item(ModuleName,
         item_id(typeclass, ClassName - Arity), UsedTypeCtors, !Info).
 
 equiv_type__replace_in_item(ModuleName,
-        pragma(type_spec(PredName, B, Arity, D, E,
+        pragma(Origin, type_spec(PredName, B, Arity, D, E,
             Subst0, VarSet0, ItemIds0)),
         _Context, EqvMap, _EqvInstMap,
-        pragma(type_spec(PredName, B, Arity, D, E,
+        pragma(Origin, type_spec(PredName, B, Arity, D, E,
             Subst, VarSet, ItemIds)),
         [], !Info) :-
     (

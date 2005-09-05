@@ -711,7 +711,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 		% file name
 		%
 		MaybeFirstItem = ok(FirstItem, _),
-		FirstItem = pragma(source_file(NewSourceFileName))
+		FirstItem = pragma(_, source_file(NewSourceFileName))
 	->
 		read_first_item(DefaultModuleName, NewSourceFileName,
 			ModuleName, Messages, Items, MaybeSecondTerm, Error,
@@ -898,7 +898,7 @@ read_items_loop_2(ok(Item0, Context), ModuleName0, SourceFileName0,
 	% parsing context according.  Next, unless the item is a
 	% `pragma source_file' declaration, insert it into the item list.
 	% Then continue looping.
-	( Item = pragma(source_file(NewSourceFileName)) ->
+	( Item = pragma(_, source_file(NewSourceFileName)) ->
 		SourceFileName = NewSourceFileName,
 		ModuleName = ModuleName0
 	; Item = module_defn(_VarSet, module(NestedModuleName)) ->

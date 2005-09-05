@@ -303,7 +303,7 @@ collect_mq_info_2(module_defn(_, ModuleDefn), !Info) :-
     process_module_defn(ModuleDefn, !Info).
 collect_mq_info_2(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _), !Info).
 collect_mq_info_2(pred_or_func_mode(_, _, _, _, _, _, _), !Info).
-collect_mq_info_2(pragma(_), !Info).
+collect_mq_info_2(pragma(_, _), !Info).
 collect_mq_info_2(promise(_PromiseType, Goal, _ProgVarSet, _UnivVars),
         !Info) :-
     process_assert(Goal, SymNames, Success),
@@ -674,11 +674,11 @@ module_qualify_item(
         !Info),
     qualify_mode_list(Modes0, Modes, !Info, !IO),
     map_fold2_maybe(qualify_inst, WithInst0, WithInst, !Info, !IO).
-
-module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
-        !Info, yes, !IO) :-
+module_qualify_item(Item0, Item, !Info, yes, !IO) :-
+    Item0 = pragma(Origin, Pragma0) - Context,
     mq_info_set_error_context((pragma) - Context, !Info),
-    qualify_pragma(Pragma0, Pragma, !Info, !IO).
+    qualify_pragma(Pragma0, Pragma, !Info, !IO),
+    Item  = pragma(Origin, Pragma)  - Context.
 module_qualify_item(promise(T, G, V, U) - Context,
         promise(T, G, V, U) - Context, !Info, yes, !IO).
 module_qualify_item(nothing(A) - Context, nothing(A) - Context,

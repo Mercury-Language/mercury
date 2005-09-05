@@ -23,13 +23,15 @@
 :- import_module std_util.
 :- import_module term.
 
-:- pred add_pragma(pragma_type::in, prog_context::in, item_status::in,
-    item_status::out, module_info::in, module_info::out, io::di, io::uo)
-    is det.
+%-----------------------------------------------------------------------------%
 
-:- pred add_pragma_export(sym_name::in, pred_or_func::in, list(mode)::in,
-    string::in, prog_context::in, module_info::in, module_info::out,
+:- pred add_pragma(item_origin::in, pragma_type::in, prog_context::in,
+    item_status::in, item_status::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
+
+:- pred add_pragma_export(item_origin::in, sym_name::in, pred_or_func::in,
+    list(mode)::in, string::in, prog_context::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred add_pragma_reserve_tag(sym_name::in, arity::in, import_status::in,
     prog_context::in, module_info::in, module_info::out,
@@ -98,6 +100,9 @@
 :- pred get_procedure_matching_declmodes(assoc_list(proc_id, proc_info)::in,
     list(mode)::in, module_info::in, proc_id::out) is semidet.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.
@@ -143,7 +148,9 @@
 :- import_module svmap.
 :- import_module varset.
 
-add_pragma(Pragma, Context, !Status, !ModuleInfo, !IO) :-
+%-----------------------------------------------------------------------------%
+
+add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
     %
     % check for invalid pragmas in the `interface' section
     %
@@ -151,7 +158,16 @@ add_pragma(Pragma, Context, !Status, !ModuleInfo, !IO) :-
     pragma_allowed_in_interface(Pragma, Allowed),
     (
         Allowed = no,
-        check_not_exported(ImportStatus, Context, "`pragma' declaration", !IO)
+        (
+            Origin = user,
+            error_if_exported(ImportStatus, Context, "`pragma' declaration",
+                !IO)
+        ;
+            % We don't report this as an error as it just clutters up
+            % the compiler output - the *real* error is whatever caused
+            % the compiler to create this pragma.
+            Origin = compiler
+        )
     ;
         Allowed = yes
     ),
@@ -320,8 +336,8 @@ add_pragma(Pragma, Context, !Status, !ModuleInfo, !IO) :-
             Context, no_inline, [inline], !ModuleInfo, !IO)
     ).
 
-add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context, !ModuleInfo,
-        !IO) :-
+add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
+        !ModuleInfo, !IO) :-
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     list__length(Modes, Arity),
     (
@@ -363,14 +379,25 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context, !ModuleInfo,
                     !ModuleInfo)
             )
         ;
-            undefined_mode_error(Name, Arity, Context,
+            % We warn about errors in export pragmas created by the compiler
+            % as part of a source-to-source transformation.
+            (
+                Origin = user,
+                undefined_mode_error(Name, Arity, Context,
+                    "`:- pragma export' declaration", !IO),
+                module_info_incr_errors(!ModuleInfo)
+            ;
+                Origin = compiler
+            )
+        )
+    ;   ( 
+            Origin = user,
+            undefined_pred_or_func_error(Name, Arity, Context,
                 "`:- pragma export' declaration", !IO),
             module_info_incr_errors(!ModuleInfo)
+        ;
+            Origin = compiler
         )
-    ;
-        undefined_pred_or_func_error(Name, Arity, Context,
-            "`:- pragma export' declaration", !IO),
-        module_info_incr_errors(!ModuleInfo)
     ).
 
 %-----------------------------------------------------------------------------%

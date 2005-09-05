@@ -12,6 +12,8 @@
 % messages that are needed by more than one submodule.
 %
 
+%-----------------------------------------------------------------------------%
+
 :- module hlds__make_hlds__make_hlds_error.
 :- interface.
 
@@ -23,6 +25,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- pred multiple_def_error(import_status::in, sym_name::in, int::in,
     string::in, prog_context::in, prog_context::in, bool::out,
@@ -48,6 +52,21 @@
 :- pred maybe_undefined_pred_error(sym_name::in, int::in, pred_or_func::in,
     import_status::in, bool::in, prog_context::in, string::in,
     io::di, io::uo) is det.
+    
+    % Emit an error if something is exported.  (Used to check for
+    % when things shouldn't be exported.)
+    %
+:- pred error_if_exported(import_status::in, prog_context::in, string::in,
+    io::di, io::uo) is det.
+
+    % Emit an error reporting that something should not have occurred in
+    % a module interface.
+    %
+:- pred error_is_exported(prog_context::in, string::in, io::di, io::uo)
+    is det.
+
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -209,3 +228,21 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
 %         suffix(".")],
 %     write_error_pieces(Context, 0, Pieces, !IO),
 %     io__set_exit_status(1, !IO).
+
+error_is_exported(Context, Message, !IO) :-
+    Error = [   words("Error:"),
+                fixed(Message), 
+                words("in module interface.")],
+    write_error_pieces(Context, 0, Error, !IO),
+    io.set_exit_status(1, !IO).
+
+error_if_exported(Status, Context, Message, !IO) :-
+    ( Status = exported ->
+        error_is_exported(Context, Message, !IO)
+    ;
+        true
+    ).
+
+%----------------------------------------------------------------------------%
+:- end_module make_hlds_error.
+%----------------------------------------------------------------------------%
