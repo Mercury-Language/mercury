@@ -59,7 +59,7 @@ static int extract_conv_spec(CORD_pos source, char *buf,
     register int result = 0;
     register int current_number = 0;
     register int saw_period = 0;
-    register int saw_number;
+    register int saw_number = 0;
     register int chars_so_far = 0;
     register char current;
     
@@ -243,7 +243,7 @@ int CORD_vsprintf(CORD * out, CORD format, va_list args)
 			    char * str = va_arg(args, char *);
 			    register char c;
 
-			    while (c = *str++) {
+			    while ((c = *str++)) {
 			        CORD_ec_append(result, c);
 			    }
 			    goto done;
@@ -261,7 +261,7 @@ int CORD_vsprintf(CORD * out, CORD format, va_list args)
 #		    ifdef __va_copy
                       __va_copy(vsprintf_args, args);
 #		    else
-#		      if defined(__GNUC__) /* and probably in other cases */
+#		      if defined(__GNUC__) && !defined(__DJGPP__) /* and probably in other cases */
                         va_copy(vsprintf_args, args);
 #		      else
 			vsprintf_args = args;
@@ -320,7 +320,7 @@ int CORD_vsprintf(CORD * out, CORD format, va_list args)
             	    if (buf != result[0].ec_bufptr) {
             	        register char c;
 
-			while (c = *buf++) {
+			while ((c = *buf++)) {
 			    CORD_ec_append(result, c);
 		        }
 		    } else {

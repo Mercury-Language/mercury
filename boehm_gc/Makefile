@@ -76,7 +76,7 @@ VPATH= $(srcdir)
 # -DGC_LINUX_THREADS -DPARALLEL_MARK -DTHREAD_LOCAL_ALLOC
 # To build the parallel collector in a static library on HP/UX,
 # add to the above:
-# -DGC_HPUX_THREADS -DPARALLEL_MARK -DTHREAD_LOCAL_ALLOC -DUSE_HPUX_TLS -D_POSIX_C_SOURCE=199506L
+# -DGC_HPUX_THREADS -DPARALLEL_MARK -DTHREAD_LOCAL_ALLOC -D_POSIX_C_SOURCE=199506L -mt
 # To build the thread-safe collector on Tru64, add to the above:
 # -pthread -DGC_OSF1_THREADS
 
@@ -118,10 +118,11 @@ HOSTCFLAGS=$(CFLAGS)
 #   Also requires -D_REENTRANT or -D_POSIX_C_SOURCE=199506L. See README.hp.
 # -DGC_LINUX_THREADS enables support for Xavier Leroy's Linux threads.
 #   see README.linux.  -D_REENTRANT may also be required.
-# -DGC_OSF1_THREADS enables support for Tru64 pthreads.  Untested.
-# -DGC_FREEBSD_THREADS enables support for FreeBSD pthreads.  Untested.
+# -DGC_OSF1_THREADS enables support for Tru64 pthreads.
+# -DGC_FREEBSD_THREADS enables support for FreeBSD pthreads.
 #   Appeared to run into some underlying thread problems.
-# -DGC_DARWIN_THREADS enables support for Mac OS X pthreads.  Untested.
+# -DGC_DARWIN_THREADS enables support for Mac OS X pthreads.
+# -DGC_AIX_THREADS enables support for IBM AIX threads.
 # -DGC_DGUX386_THREADS enables support for DB/UX on I386 threads.
 #   See README.DGUX386.
 # -DGC_WIN32_THREADS enables support for win32 threads.  That makes sense
@@ -230,7 +231,7 @@ HOSTCFLAGS=$(CFLAGS)
 #   this facility is only used in a few places.  It is intended primarily
 #   for debugging of the garbage collector itself, but could also
 # -DDBG_HDRS_ALL Make sure that all objects have debug headers.  Increases
-#   the reliability (from 99.9999% to 100%) of some of the debugging
+#   the reliability (from 99.9999% to 100% mod. bugs) of some of the debugging
 #   code (especially KEEP_BACK_PTRS).  Makes -DSHORT_DBG_HDRS possible.
 #   Assumes that all client allocation is done through debugging
 #   allocators.
@@ -281,8 +282,12 @@ HOSTCFLAGS=$(CFLAGS)
 # -DTHREAD_LOCAL_ALLOC defines GC_local_malloc(), GC_local_malloc_atomic()
 #   and GC_local_gcj_malloc().  Needed for gc_gcj.h interface.  These allocate
 #   in a way that usually does not involve acquisition of a global lock.
-#   Currently requires -DGC_LINUX_THREADS, but should be easy to port to
-#   other pthreads environments.  Recommended for multiprocessors.
+#   Currently works only on platforms such as Linux which use pthread_support.c.
+#   Recommended for multiprocessors.
+# -DUSE_COMPILER_TLS causes thread local allocation to use compiler-supported
+#   "__thread" thread-local variables.  This is the default in HP/UX.  It
+#   may help performance on recent Linux installations.  (It failed for
+#   me on RedHat 8, but appears to work on RedHat 9.)
 # -DPARALLEL_MARK allows the marker to run in multiple threads.  Recommended
 #   for multiprocessors.  Currently requires Linux on X86 or IA64, though
 #   support for other Posix platforms should be fairly easy to add,
@@ -320,6 +325,10 @@ HOSTCFLAGS=$(CFLAGS)
 # -DPOINTER_SHIFT=n causes the collector to left shift candidate pointers
 #   by the indicated amount before trying to interpret them.  Applied
 #   after POINTER_MASK. EXPERIMENTAL.  See also the preceding macro.
+# -DDARWIN_DONT_PARSE_STACK Causes the Darwin port to discover thread
+#   stack bounds in the same way as other pthread ports, without trying to
+#   walk the frames onthe stack.  This is recommended only as a fallback
+#   for applications that don't support proper stack unwinding.
 #
 
 CXXFLAGS= $(CFLAGS) 
@@ -327,9 +336,9 @@ AR= ar
 RANLIB= ranlib
 
 
-OBJS= alloc.o reclaim.o allchblk.o misc.o mach_dep.o os_dep.o mark_rts.o headers.o mark.o obj_map.o blacklst.o finalize.o new_hblk.o dbg_mlc.o malloc.o stubborn.o checksums.o solaris_threads.o aix_irix_threads.o pthread_support.o pthread_stop_world.o darwin_stop_world.o typd_mlc.o ptr_chck.o mallocx.o solaris_pthreads.o gcj_mlc.o specific.o gc_dlopen.o backgraph.o win32_threads.o
+OBJS= alloc.o reclaim.o allchblk.o misc.o mach_dep.o os_dep.o mark_rts.o headers.o mark.o obj_map.o blacklst.o finalize.o new_hblk.o dbg_mlc.o malloc.o stubborn.o checksums.o solaris_threads.o pthread_support.o pthread_stop_world.o darwin_stop_world.o typd_mlc.o ptr_chck.o mallocx.o solaris_pthreads.o gcj_mlc.o specific.o gc_dlopen.o backgraph.o win32_threads.o
 
-CSRCS= reclaim.c allchblk.c misc.c alloc.c mach_dep.c os_dep.c mark_rts.c headers.c mark.c obj_map.c pcr_interface.c blacklst.c finalize.c new_hblk.c real_malloc.c dyn_load.c dbg_mlc.c malloc.c stubborn.c checksums.c solaris_threads.c aix_irix_threads.c pthread_support.c pthread_stop_world.c darwin_stop_world.c typd_mlc.c ptr_chck.c mallocx.c solaris_pthreads.c gcj_mlc.c specific.c gc_dlopen.c backgraph.c win32_threads.c
+CSRCS= reclaim.c allchblk.c misc.c alloc.c mach_dep.c os_dep.c mark_rts.c headers.c mark.c obj_map.c pcr_interface.c blacklst.c finalize.c new_hblk.c real_malloc.c dyn_load.c dbg_mlc.c malloc.c stubborn.c checksums.c solaris_threads.c pthread_support.c pthread_stop_world.c darwin_stop_world.c typd_mlc.c ptr_chck.c mallocx.c solaris_pthreads.c gcj_mlc.c specific.c gc_dlopen.c backgraph.c win32_threads.c
 
 CORD_SRCS=  cord/cordbscs.c cord/cordxtra.c cord/cordprnt.c cord/de.c cord/cordtest.c include/cord.h include/ec.h include/private/cord_pos.h cord/de_win.c cord/de_win.h cord/de_cmds.h cord/de_win.ICO cord/de_win.RC
 
@@ -364,14 +373,15 @@ DOC_FILES= README.QUICK doc/README.Mac doc/README.MacOSX doc/README.OS2 \
 	doc/README.environment doc/tree.html doc/gcdescr.html \
 	doc/README.autoconf doc/README.macros doc/README.ews4800 \
 	doc/README.DGUX386 doc/README.arm.cross doc/leak.html \
-	doc/scale.html doc/gcinterface.html doc/README.darwin
+	doc/scale.html doc/gcinterface.html doc/README.darwin \
+	doc/simple_example.html
 
 TESTS= tests/test.c tests/test_cpp.cc tests/trace_test.c \
-	tests/leak_test.c tests/thread_leak_test.c
+	tests/leak_test.c tests/thread_leak_test.c tests/middle.c
 
 GNU_BUILD_FILES= configure.in Makefile.am configure acinclude.m4 \
 		 libtool.m4 install-sh configure.host Makefile.in \
-		 ltconfig aclocal.m4 config.sub config.guess \
+		 aclocal.m4 config.sub config.guess \
 		 include/Makefile.am include/Makefile.in \
 		 doc/Makefile.am doc/Makefile.in \
 		 ltmain.sh mkinstalldirs depcomp missing
@@ -379,7 +389,7 @@ GNU_BUILD_FILES= configure.in Makefile.am configure acinclude.m4 \
 OTHER_MAKEFILES= OS2_MAKEFILE NT_MAKEFILE NT_THREADS_MAKEFILE gc.mak \
 		 BCC_MAKEFILE EMX_MAKEFILE WCC_MAKEFILE Makefile.dj \
 		 PCR-Makefile SMakefile.amiga Makefile.DLLs \
-		 digimars.mak Makefile.direct
+		 digimars.mak Makefile.direct NT_STATIC_THREADS_MAKEFILE
 #	Makefile and Makefile.direct are copies of each other.
 
 OTHER_FILES= Makefile setjmp_t.c callprocs pc_excludes \
@@ -411,16 +421,23 @@ SPECIALCFLAGS = -I$(srcdir)/include $(CFLAGS_FOR_PIC)
 
 all: gc.a gctest
 
-BSD-pkg-all: bsd-libgc.a
+LEAKFLAGS=$(CFLAGS) -DFIND_LEAK
+
+BSD-pkg-all: bsd-libgc.a bsd-libleak.a
 
 bsd-libgc.a:
 	$(MAKE) CFLAGS="$(CFLAGS)" clean c++-t
 	mv gc.a bsd-libgc.a
 
+bsd-libleak.a:
+	$(MAKE) -f Makefile.direct CFLAGS="$(LEAKFLAGS)" clean c++-nt
+	mv gc.a bsd-libleak.a
+
 BSD-pkg-install: BSD-pkg-all
 	${CP} bsd-libgc.a libgc.a
 	${INSTALL_DATA} libgc.a ${PREFIX}/lib
 	${INSTALL_DATA} gc.h gc_cpp.h ${PREFIX}/include
+	${INSTALL_MAN} doc/gc.man ${PREFIX}/man/man3/gc.3
 
 pcr: PCR-Makefile include/private/gc_private.h include/private/gc_hdrs.h \
 include/private/gc_locks.h include/gc.h include/private/gcconfig.h \

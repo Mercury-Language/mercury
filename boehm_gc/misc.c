@@ -128,6 +128,11 @@ GC_bool GC_print_back_height = 0;
   GC_bool GC_dump_regularly = 0;  /* Generate regular debugging dumps. */
 #endif
 
+#ifdef KEEP_BACK_PTRS
+  long GC_backtraces = 0;	/* Number of random backtraces to 	*/
+  				/* generate for each GC.		*/
+#endif
+
 #ifdef FIND_LEAK
   int GC_find_leak = 1;
 #else
@@ -253,7 +258,7 @@ void *arg2;
     	byte_sz = WORDS_TO_BYTES(word_sz);
 	if (GC_all_interior_pointers) {
 	    /* We need one extra byte; don't fill in GC_size_map[byte_sz] */
-	    byte_sz--;
+	    byte_sz -= EXTRA_BYTES;
 	}
 
     	for (j = low_limit; j <= byte_sz; j++) GC_size_map[j] = word_sz;  
@@ -484,11 +489,15 @@ void GC_init()
 
 #if defined(GC_WIN32_THREADS) && !defined(GC_PTHREADS)
     if (!GC_is_initialized) {
-#     if (_WIN32_WINNT >= 0x0403)
-	InitializeCriticalSectionAndSpinCount (&GC_allocate_ml, 4000)
-#     else
-	InitializeCriticalSection (&GC_allocate_ml);
-#     endif
+      BOOL (WINAPI *pfn) (LPCRITICAL_SECTION, DWORD) = NULL;
+      HMODULE hK32 = GetModuleHandle("kernel32.dll");
+      if (hK32)
+          (FARPROC) pfn = GetProcAddress(hK32,
+			  "InitializeCriticalSectionAndSpinCount");
+      if (pfn)
+          pfn(&GC_allocate_ml, 4000);
+      else
+	  InitializeCriticalSection (&GC_allocate_ml);
     }
 #endif /* MSWIN32 */
 
@@ -556,7 +565,7 @@ int sig;
 
 static GC_bool installed_looping_handler = FALSE;
 
-void maybe_install_looping_handler()
+static void maybe_install_looping_handler()
 {
     /* Install looping handler before the write fault handler, so we	*/
     /* handle write faults correctly.					*/
@@ -592,6 +601,15 @@ void GC_init_inner()
 #   ifndef NO_DEBUGGING
       if (0 != GETENV("GC_DUMP_REGULARLY")) {
         GC_dump_regularly = 1;
+      }
+#   endif
+#   ifdef KEEP_BACK_PTRS
+      {
+        char * backtraces_string = GETENV("GC_BACKTRACES");
+        if (0 != backtraces_string) {
+          GC_backtraces = atol(backtraces_string);
+	  if (backtraces_string[0] == '\0') GC_backtraces = 1;
+        }
       }
 #   endif
     if (0 != GETENV("GC_FIND_LEAK")) {
@@ -773,7 +791,7 @@ void GC_init_inner()
       }
 #   endif /* !SMALL_CONFIG */
     COND_DUMP;
-    /* Get black list set up and/or incrmental GC started */
+    /* Get black list set up and/or incremental GC started */
       if (!GC_dont_precollect || GC_incremental) GC_gcollect_inner();
     GC_is_initialized = TRUE;
 #   ifdef STUBBORN_ALLOC
@@ -799,7 +817,10 @@ void GC_init_inner()
 
 void GC_enable_incremental GC_PROTO(())
 {
-# if !defined(SMALL_CONFIG)
+# if !defined(SMALL_CONFIG) && !defined(KEEP_BACK_PTRS)
+  /* If we are keeping back pointers, the GC itself dirties all	*/
+  /* pages on which objects have been marked, making 		*/
+  /* incremental GC pointless.					*/
   if (!GC_find_leak) {
     DCL_LOCK_STATE;
     
@@ -1059,7 +1080,7 @@ GC_CONST char * msg;
 	    /* about threads.						*/
 	    for(;;) {}
     }
-#   ifdef MSWIN32
+#   if defined(MSWIN32) || defined(MSWINCE)
 	DebugBreak();
 #   else
         (void) abort();
@@ -1080,6 +1101,75 @@ void GC_disable()
     GC_dont_gc++;
     UNLOCK();
 }
+
+/* Helper procedures for new kind creation.	*/
+void ** GC_new_free_list_inner()
+{
+    void *result = GC_INTERNAL_MALLOC((MAXOBJSZ+1)*sizeof(ptr_t), PTRFREE);
+    if (result == 0) ABORT("Failed to allocate freelist for new kind");
+    BZERO(result, (MAXOBJSZ+1)*sizeof(ptr_t));
+    return result;
+}
+
+void ** GC_new_free_list()
+{
+    void *result;
+    LOCK(); DISABLE_SIGNALS();
+    result = GC_new_free_list_inner();
+    UNLOCK(); ENABLE_SIGNALS();
+    return result;
+}
+
+int GC_new_kind_inner(fl, descr, adjust, clear)
+void **fl;
+GC_word descr;
+int adjust;
+int clear;
+{
+    int result = GC_n_kinds++;
+
+    if (GC_n_kinds > MAXOBJKINDS) ABORT("Too many kinds");
+    GC_obj_kinds[result].ok_freelist = (ptr_t *)fl;
+    GC_obj_kinds[result].ok_reclaim_list = 0;
+    GC_obj_kinds[result].ok_descriptor = descr;
+    GC_obj_kinds[result].ok_relocate_descr = adjust;
+    GC_obj_kinds[result].ok_init = clear;
+    return result;
+}
+
+int GC_new_kind(fl, descr, adjust, clear)
+void **fl;
+GC_word descr;
+int adjust;
+int clear;
+{
+    int result;
+    LOCK(); DISABLE_SIGNALS();
+    result = GC_new_kind_inner(fl, descr, adjust, clear);
+    UNLOCK(); ENABLE_SIGNALS();
+    return result;
+}
+
+int GC_new_proc_inner(proc)
+GC_mark_proc proc;
+{
+    int result = GC_n_mark_procs++;
+
+    if (GC_n_mark_procs > MAX_MARK_PROCS) ABORT("Too many mark procedures");
+    GC_mark_procs[result] = proc;
+    return result;
+}
+
+int GC_new_proc(proc)
+GC_mark_proc proc;
+{
+    int result;
+    LOCK(); DISABLE_SIGNALS();
+    result = GC_new_proc_inner(proc);
+    UNLOCK(); ENABLE_SIGNALS();
+    return result;
+}
+
 
 #if !defined(NO_DEBUGGING)
 

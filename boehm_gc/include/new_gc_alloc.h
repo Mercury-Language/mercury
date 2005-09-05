@@ -109,7 +109,7 @@ enum { GC_byte_alignment = 8 };
 enum { GC_word_alignment = GC_byte_alignment/GC_bytes_per_word };
 
 inline void * &GC_obj_link(void * p)
-{   return *(void **)p;  }
+{   return *reinterpret_cast<void **>(p);  }
 
 // Compute a number of words >= n+1 bytes.
 // The +1 allows for pointers one past the end.
@@ -228,7 +228,7 @@ class single_client_gc_alloc_template {
 	    } else {
 	        flh = GC_objfreelist_ptr + nwords;
 	        GC_obj_link(p) = *flh;
-		memset((char *)p + GC_bytes_per_word, 0,
+		memset(reinterpret_cast<char *>(p) + GC_bytes_per_word, 0,
 		       GC_bytes_per_word * (nwords - 1));
 	        *flh = p;
 	        GC_aux::GC_mem_recently_freed += nwords;
@@ -352,9 +352,9 @@ class simple_alloc<T, alloc> { \
 public: \
     static T *allocate(size_t n) \
 	{ return 0 == n? 0 : \
-			 (T*) alloc::ptr_free_allocate(n * sizeof (T)); } \
+			 reinterpret_cast<T*>(alloc::ptr_free_allocate(n * sizeof (T))); } \
     static T *allocate(void) \
-	{ return (T*) alloc::ptr_free_allocate(sizeof (T)); } \
+	{ return reinterpret_cast<T*>(alloc::ptr_free_allocate(sizeof (T))); } \
     static void deallocate(T *p, size_t n) \
 	{ if (0 != n) alloc::ptr_free_deallocate(p, n * sizeof (T)); } \
     static void deallocate(T *p) \
@@ -393,12 +393,12 @@ __STL_END_NAMESPACE
 
 __STL_BEGIN_NAMESPACE
 
-template <class _T>
-struct _Alloc_traits<_T, gc_alloc >
+template <class _Tp>
+struct _Alloc_traits<_Tp, gc_alloc >
 {
   static const bool _S_instanceless = true;
-  typedef simple_alloc<_T, gc_alloc > _Alloc_type;
-  typedef __allocator<_T, gc_alloc > allocator_type;
+  typedef simple_alloc<_Tp, gc_alloc > _Alloc_type;
+  typedef __allocator<_Tp, gc_alloc > allocator_type;
 };
 
 inline bool operator==(const gc_alloc&,
@@ -413,12 +413,12 @@ inline bool operator!=(const gc_alloc&,
   return false;
 }
 
-template <class _T>
-struct _Alloc_traits<_T, single_client_gc_alloc >
+template <class _Tp>
+struct _Alloc_traits<_Tp, single_client_gc_alloc >
 {
   static const bool _S_instanceless = true;
-  typedef simple_alloc<_T, single_client_gc_alloc > _Alloc_type;
-  typedef __allocator<_T, single_client_gc_alloc > allocator_type;
+  typedef simple_alloc<_Tp, single_client_gc_alloc > _Alloc_type;
+  typedef __allocator<_Tp, single_client_gc_alloc > allocator_type;
 };
 
 inline bool operator==(const single_client_gc_alloc&,
@@ -433,12 +433,12 @@ inline bool operator!=(const single_client_gc_alloc&,
   return false;
 }
 
-template <class _T>
-struct _Alloc_traits<_T, traceable_alloc >
+template <class _Tp>
+struct _Alloc_traits<_Tp, traceable_alloc >
 {
   static const bool _S_instanceless = true;
-  typedef simple_alloc<_T, traceable_alloc > _Alloc_type;
-  typedef __allocator<_T, traceable_alloc > allocator_type;
+  typedef simple_alloc<_Tp, traceable_alloc > _Alloc_type;
+  typedef __allocator<_Tp, traceable_alloc > allocator_type;
 };
 
 inline bool operator==(const traceable_alloc&,
@@ -453,12 +453,12 @@ inline bool operator!=(const traceable_alloc&,
   return false;
 }
 
-template <class _T>
-struct _Alloc_traits<_T, single_client_traceable_alloc >
+template <class _Tp>
+struct _Alloc_traits<_Tp, single_client_traceable_alloc >
 {
   static const bool _S_instanceless = true;
-  typedef simple_alloc<_T, single_client_traceable_alloc > _Alloc_type;
-  typedef __allocator<_T, single_client_traceable_alloc > allocator_type;
+  typedef simple_alloc<_Tp, single_client_traceable_alloc > _Alloc_type;
+  typedef __allocator<_Tp, single_client_traceable_alloc > allocator_type;
 };
 
 inline bool operator==(const single_client_traceable_alloc&,
