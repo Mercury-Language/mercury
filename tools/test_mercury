@@ -23,6 +23,7 @@ if [ -d /home/mercury/public/. ]; then
 	PATH="$TOPDIR/autoconf-2.13/$FULLARCH/bin:$PATH"
 	PATH="$TOPDIR/autoconf-2.52/$FULLARCH/bin:$PATH"
 	PATH="$TOPDIR/$FULLARCH:$PATH"
+	PATH="$TOPDIR/$FULLARCH/bin:$PATH"
 	PATH="$TOPDIR/$HOST:$PATH"
 	# generate_index_html needs to be in our PATH too
 	PATH="$TOPDIR/test_mercury/scripts:$PATH"
@@ -32,6 +33,11 @@ else
 	PATH="$TOPDIR/$FULLARCH:$PATH"
 	PATH="$TOPDIR/$HOST:$PATH"
 fi
+case $HOST in mundroo*)
+	PATH="/usr/local/apps/ssh-1.2.32/bin:$PATH"
+	;;
+esac
+PATH="/home/staff/zs/mer/mundroo_arena/bin:$PATH"
 export PATH
 
 # Use NFS if we can, otherwise use anonymous cvs (pserver).
@@ -181,20 +187,6 @@ case $BRANCH in
 		#RELEASE_VERSION=0.11.0
 		#RELEASE_VERSION_PATTERN=0.11.0*
 		;;
-	0.10)
-		CHECKOUT_OPTS=-rversion-0_10_y
-		FTP_DIR_NAME=0.10.2-beta
-		BASE_TAG_NAME=version-0_10_y
-		RELEASE_VERSION=0.10.2-beta-$DATE
-		RELEASE_VERSION_PATTERN=0.10.2-beta-*
-
-		# This is for release 0.10.2 itself
-		# (as opposed to beta releases).
-		#CHECKOUT_OPTS=-rversion-0_10_2
-		#BASE_TAG_NAME=version-0_10_y
-		#RELEASE_VERSION=0.10.2
-		#RELEASE_VERSION_PATTERN=0.10.2
-		;;
 esac
 case "$C_COMPILER" in
 	gcc)	TEST_ID=$BRANCH.$HOST
@@ -214,48 +206,19 @@ use_cp_opt=""
 case $HOST in
 	# test things at different optimization levels...
 
-	$ROTD_HOST|earth|jupiter)	
-			case $BRANCH in
-			    latest)
-				OPTIMIZE="-O5 --intermodule-optimization --constraint-propagation"
-				;;
-
-			    0.10)
-				# There are some performance problems with
-				# deforestation on the 0.10 branch.
-				# The compiler takes forever to compile
-				# module_qual__process_assert with
-				# `--intermodule-optimization'
-				# and `--deforestation'.
-				# `--constraint-propagation' does not
-				# work on the release branch.
-				OPTIMIZE="-O5 --intermodule-optimization --no-deforestation"
-				;;
-			esac
+	$ROTD_HOST|earth|jupiter)
+			OPTIMIZE="-O5 --intermodule-optimization --constraint-propagation"
 			;;
-
-	murlibobo)	OPTIMIZE=-O5 ;;
-	taifun) 	OPTIMIZE=-O1 ;;
+	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
+	swordfish)	OPTIMIZE=-O5 ;;
 	mundroo) 	OPTIMIZE=-O2; use_cp_opt="--use-cp" ;;
 			# On mundroo, "mkdir -p scripts" aborts
 			# if scripts is a symbolic link to a directory.
-	quicksilver) 	OPTIMIZE=-O0 ;;
-	hg) 		OPTIMIZE=-O4 ;;
-	roy) 		OPTIMIZE=-O4 ;;	# hlc
-	hydra)		OPTIMIZE=-O2 ;;
 	ender)		OPTIMIZE=-O3 ;;
 	aral)		OPTIMIZE=-O5 ;;
-	venus) 		case "$C_COMPILER" in
-				gcc)	OPTIMIZE=-O5 ;;
-				*)	OPTIMIZE=-O2 ;;
-			esac ;;
-	mars)		case "$C_COMPILER" in
-				gcc)	OPTIMIZE=-O5 ;;
-				*)	OPTIMIZE=-O2 ;;
-			esac ;;
 	ceres)		OPTIMIZE=-O5 ;;	# hlc
-	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
-	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
+	hg) 		OPTIMIZE=-O4 ;; # currently not used
+	roy) 		OPTIMIZE=-O4 ;;	# currently not used
 esac
 
 # on some systems, the file system we're using does not support links
@@ -296,21 +259,22 @@ case $FULLARCH in
 		;;
 	*)
 		# On other platforms shared libraries is the default
+		# XXX Are shared libraries going to be the default on x86_64?
 		;;
 esac
 
-case $HOST in hg)
-	INSTALL_MGNUCFLAGS="$INSTALL_MGNUCFLAGS --c-debug"
-	INSTALL_MLFLAGS="$INSTALL_MLFLAGS --c-debug"
-	;;   
-esac
+#case $HOST in hg)
+#	INSTALL_MGNUCFLAGS="$INSTALL_MGNUCFLAGS --c-debug"
+#	INSTALL_MLFLAGS="$INSTALL_MLFLAGS --c-debug"
+#	;;   
+#esac
 
 # This list of hosts for which we install into /home/$HOST rather than
 # /home/mercury should match the corresponding list in run_all_tests_from_cron.
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-	hg|ender|roy|venus|earth|mars|ceres|aral|jupiter)
+	hg|ender|roy|earth|ceres|aral|jupiter|swordfish|saturn)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -328,51 +292,22 @@ BETA_WEBDIR=$BETA_WEBDIR_TOP/beta-releases/$FTP_DIR_NAME
 STABLE=$HOSTDIR/$INSTALL_DIR_NAME-stable
 UNSTABLE=$HOSTDIR/$INSTALL_DIR_NAME-unstable
 
-# XXX This probably isn't needed anymore. -fjh.
-case $ARCH in
-	alpha)
-		# due to a bug in the DEC loader, INSTALL_DIR should be
-		# as short as possible, to avoid overflow of fixed length
-		# buffers for -rpath options. The above definition is too long.
-		case $BRANCH in
-		latest) INSTALL_DIR=$TOPDIR/.a ;;
-		0.8)	INSTALL_DIR=$TOPDIR/.b ;;
-		0.9)	INSTALL_DIR=$TOPDIR/.c ;;
-		0.10)	INSTALL_DIR=$TOPDIR/.d ;;
-		*)
-			echo "unknown BRANCH \`$BRANCH'!"
-			exit 1
-			;;
-		esac
-		;;
-esac
-
 PATH="$INSTALL_DIR/bin:$PATH"
 
 # $PARALLEL: flag to pass to GNU make for parallel make
 PARALLEL=
 case $HOST in
-	kryten) 	PARALLEL=-j2 ;; # out of three CPUs
-	rimmer) 	PARALLEL=-j2 ;; # out of two CPUs
-	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
-	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
-	hydra)		PARALLEL=-j2 ;; # out of two CPUs
-	quicksilver) 	PARALLEL= ;; 	# one CPU
-	hg) 		PARALLEL= ;; 	# one CPU
-	ender) 		PARALLEL= ;; 	# one CPU
-	roy) 		PARALLEL= ;; 	# one CPU
-	venus) 		PARALLEL= ;; 	# one CPU
-	earth) 		PARALLEL= ;; 	# one CPU
-	mars) 		PARALLEL= ;; 	# one CPU
-	ceres) 		PARALLEL= ;; 	# one CPU
-	aral) 		PARALLEL= ;; 	# one CPU
+	saturn)		PARALLEL=-j2 ;; # out of two CPUs
 	*)		PARALLEL= ;;
 esac
 
 # Version of the mercury compiler to use for bootstrapping
 # Normally we use the compiler from same location that we will install in.
-# But occaisionally this setting will get overridden below.
-BOOTSTRAP_MERCURY_COMPILER=$INSTALL_DIR/lib/mercury/bin/$FULLARCH/mercury_compile
+# But occasionally this setting will get overridden below.
+if test -x $INSTALL_DIR/lib/mercury/bin/$FULLARCH/mercury_compile
+then
+	BOOTSTRAP_MERCURY_COMPILER=$INSTALL_DIR/lib/mercury/bin/$FULLARCH/mercury_compile
+fi
 
 # The following can be edited and uncommented if you need to use
 # a different bootstrap compiler to re-bootstrap a host which
@@ -382,10 +317,23 @@ BOOTSTRAP_MERCURY_COMPILER=$INSTALL_DIR/lib/mercury/bin/$FULLARCH/mercury_compil
 #		;;
 #esac
 
+# For bootstrapping the 0.12 branch on mundroo - since there isn't a 0.12
+# compiler currently installed.
+case $HOST in mundroo)
+	PATH=/home/mercury/public/mercury-latest/i386-pc-solaris2.8/bin:$PATH
+	;;
+esac
+
+# for bootstrapping only
+#case $HOST in aral)
+#	PATH=/home/jupiter/public/mercury-latest/i686-pc-linux-gnu/bin:$PATH
+#	;;
+#esac
+
 # df (disk free) command
 DF=df
 case $HOST in
-	kryten|taifun|mundroo|rimmer)	DF="df -k" ;;
+	mundroo) DF="df -k" ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -430,13 +378,11 @@ status=0
 
 #-----------------------------------------------------------------------------#
 
+# NOTE: in order to make all of the machines useful for day-to-day work
+# the set of grades installed should include asm_fast.gc, hlc.gc and
+# a debugging grade.
+
 case $HOST in
-	murlibobo)
-		CONFIG_OPTS="--enable-inefficient-grades" ;;
-	kryten|taifun)		
-		# On kryten & taifun, there is a bug in readline which causes
-		# it to go into an infinite loop when reading from a file.
-		CONFIG_OPTS="--without-readline" ;;
 	ender)
 		# Test out these options, to make sure they continue
 		# to work
@@ -447,28 +393,17 @@ case $HOST in
 		# bootstrap the compiler in hlc.gc,
 		# use hlc.gc as the default grade,
 		# and install & test various other hlc-related grades.
-		# Also test the asm_fast.gc.tr.rt grade.
 		CONFIG_OPTS=""
 		DEFAULT_GRADE="hlc.gc"
 		export DEFAULT_GRADE
 		INSTALL_GRADE="hlc.gc"
-		INSTALL_LIBGRADES="hlc.gc.prof hlc.gc.memprof \
-			hlc.gc.tr hlc.par.gc asm_fast.gc asm_fast.gc.tr.debug"
-		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
-		# since the asm_fast.gc.tr.rt grade is not yet implemented
-		# in the 0.10 branch.
-		# Likewise for `hlc' and `hlc.agc'
-		#	
-		# The hl.* grades don't work on the 0.10 branch because
-		# we can only install the header files for one grade, and the 
-		# headers for hl.gc and hlc.gc are different. This has been
-		# fixed on the main branch.
-		case $BRANCH in
-			0.10)	;;
-			*)	INSTALL_LIBGRADES="hlc hlc.agc $INSTALL_LIBGRADES \
-					asm_fast.gc.tr.rt hl.gc hl.gc.prof \
-					hl.gc.memprof hl.gc.tr hl.par.gc" ;;
-		esac
+		INSTALL_LIBGRADES="hlc.gc.prof 		\
+					hlc.gc.memprof 	\
+					hlc.gc.tr 	\
+					hlc.par.gc	\
+					asm_fast.gc	\
+					asm_fast.gc.tr	\
+					asm_fast.gc.tr.debug"
 		;;
 	hg)
 		CONFIG_OPTS=""
@@ -479,44 +414,22 @@ case $HOST in
 			;;
 		esac
 		;;
-	venus)
-		CONFIG_OPTS=""
-		case "$C_COMPILER" in lcc)
-			# For grade none.gc.tr.debug, lcc 4.1 gets an
-			# internal error when compiling library/hash_table.c.
-			# So we need to disable that grade.
-			INSTALL_LIBGRADES="none  \
-				none.gc.prof none.prof none.gc.memprof \
-				none.gc.tr \
-				hlc.gc hlc.par.gc"
-			;;
-		esac
-		;;
-	mars)
-		# Portable .NET is installed on mars, and the
-		# test in configure.in doesn't test whether the
-		# ilasm it finds is suitable for use with Mercury.
-		CONFIG_OPTS="--disable-dotnet-grades"
-
-		# Test --use-subdirs
-		MMAKE_USE_SUBDIRS=yes
-		export MMAKE_USE_SUBDIRS
-
-		case "$C_COMPILER" in lcc)
-			# For grade none.gc.tr.debug, lcc 4.1 gets an
-			# internal error when compiling library/hash_table.c.
-			# So we need to disable that grade.
-			INSTALL_LIBGRADES="none  \
-				none.gc.prof none.prof none.gc.memprof \
-				none.gc.tr \
-				hlc.gc hlc.par.gc"
-			;;
-		esac
-		;;
-	earth|jupiter)
-		# ensure that the nogc grades get installed and tested
+	jupiter)
+		# Ensure that the nogc grades get installed and tested
 		# on at least one host
-		CONFIG_OPTS="--enable-nogc-grades"
+		CONFIG_OPTS="--disable-java-grade --enable-nogc-grades"
+		;;
+	earth)
+		# earth has several versions of gcc installed (in /home/earth/public/gcc),
+		# we test with gcc 3.4.1 rather than the default one, gcc 3.2.
+		CONFIG_OPTS="--disable-java-grade --with-cc=/home/earth/public/gcc/gcc-3.4.1/bin/gcc-3.4.1"
+		INSTALL_LIBGRADES="asm_fast.gc		\
+				asm_fast.gc.debug.tr 	\
+				asm_fast.gc.prof 	\
+				asm_fast.gc.profdeep 	\
+				asm_fast.gc.tsc 	\
+				hlc.gc 			\
+				asm_fast.gc.tr.decldebug"
 		;;
 	aral)
 		#
@@ -524,11 +437,29 @@ case $HOST in
 		# on grades not needed by its primary user (zs) helps to
 		# conserve it.
 		#
-		INSTALL_LIBGRADES="asm_fast.gc asm_fast.gc.debug.tr \
-			asm_fast.gc.mmsc asm_fast.gc.mm.debug \
-			asm_fast.gc.profdeep hlc.gc"
 		CONFIG_OPTS="--enable-deep-profiler=/var/www/cgi-bin"
+		INSTALL_LIBGRADES="asm_fast.gc			\
+					asm_fast.gc.debug.tr	\
+					asm_fast.gc.mmsc	\
+					asm_fast.gc.mm.debug	\
+					asm_fast.gc.profdeep	\
+					hlc.gc"
 		;;
+	swordfish)
+		# swordfish is being used by the G12 group at the moment, so
+		# it requires trailing versions of most of the grades.
+		# XXX Most of this should be moved to saturn when it is ready.
+		CONFIG_OPTS="--disable-java-grade"
+		INSTALL_LIBGRADES="asm_fast.gc				\
+					hlc.gc.tr			\
+					hlc.gc.tr.prof 			\
+					asm_fast.gc.tr			\
+					asm_fast.gc.tr.prof 		\
+					asm_fast.gc.tr.memprof 		\
+					asm_fast.gc.tr.profdeep		\
+					asm_fast.gc.tr.decldebug	\
+					hlc.gc"
+		;; 
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -548,8 +479,17 @@ esac
 
 # Sometimes, bootstrapping problems mean that we need to install
 # even if the bootstrap check failed.
+# In such cases, set install_anyway to true,
+# and if the install should be done from the stage 1 directory,
+# also set install_anyway_stage1 to true.
+#
+# XXX there are currently some bugs with installing from the stage 1 directory:
+#     if the compilation options are not the same for stage 1 and stage 2,
+#     it installs from stage 1 using stage 2 compilation options,
+#     but does not remake the dependencies properly.
 
 install_anyway=false
+install_anyway_stage1=false
 
 #-----------------------------------------------------------------------------#
 
@@ -650,8 +590,12 @@ sed	"s/VERSION=.*/VERSION=$RELEASE_VERSION/" \
 mv mercury/VERSION.new mercury/VERSION
 
 : bootstrap the compiler up to stage 3 and check that the results match
-MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
-export MERCURY_COMPILER
+case "$BOOTSTRAP_MERCURY_COMPILER" in
+	"")	;;
+	*)	MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
+		export MERCURY_COMPILER
+		;;
+esac
 cd mercury || { false; exit 1; }
 
 # if [ -s tools/list.$HOST ]; then
@@ -720,7 +664,7 @@ echo "test_mercury starting installation at `date`" 1>&2
 echo "current directory `pwd`" 1>&2
 
 case $status in 0)
-    case $install_anyway in
+    case $install_anyway_stage1 in
         false)	cd mercury/stage2 || { false; exit 1; }
 		# we need to use the stage1 compiler to do the install
 		MERCURY_COMPILER=$DIR/mercury/compiler/mercury_compile
@@ -732,8 +676,9 @@ case $status in 0)
     # Make a backup copy of the current installation which we will restore
     # if the new installation fails.
 
-    mkdir -p $INSTALL_DIR/../mercury_install_backup
-    cp -rf $INSTALL_DIR/* $INSTALL_DIR/../mercury_install_backup
+    BACKUP_DIR=`dirname $INSTALL_DIR`/mercury_install_backup
+    mv $INSTALL_DIR $BACKUP_DIR
+    mkdir -p $INSTALL_DIR
 
     # Previously we had lots of special case code here for installing on
     # IRIX systems.   We don't currently have any IRIX boxes, and this 
@@ -769,7 +714,7 @@ case $status in 0)
 		;;
     esac
 
-    case $install_anyway in
+    case $install_anyway_stage1 in
         false)	cd ../.. || set_status "cd ../.." ;;
         true)	cd .. || set_status "cd .." ;;
     esac
@@ -783,7 +728,8 @@ case $status in 0)
         *)
 	    date >> $TESTDIR/logs/install-failed."$TEST_ID"
 	    # restore the previous installation
-	    cp -rf $INSTALL_DIR/../mercury_install_backup/* $INSTALL_DIR
+	    rm -rf $INSTALL_DIR
+	    mv $BACKUP_DIR $INSTALL_DIR
 	    ;;
     esac
 esac
@@ -918,14 +864,6 @@ esac
 
 cd tests || { false; exit 1; }
 
-# We don't do this anymore, because we are phasing out the Prolog supprt.
-#
-# rebuild the `.exp' files on kryten only
-# case $HOST in
-# 	kryten) ./generate_exp ;;
-# 	*) ;;
-# esac
-
 echo "test_mercury running tests in grades $GRADES" 1>&2
 for grade in $GRADES
 do
@@ -933,11 +871,6 @@ do
 	MERCURY_SUPPRESS_STACK_TRACE=yes
 	export MERCURY_SUPPRESS_STACK_TRACE
 	case $BRANCH in
-	    0.10)
-		./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
-		       -m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
-		       $PARALLEL || set_status "tests in grade $grade"
-		;;
 	    *)
 #	        echo "testing grade $grade, MCFLAGS=$TEST_MCFLAGS" \
 #			>> $TEST_ERROR_FILE
@@ -1092,13 +1025,10 @@ case $HOST in
 	hg)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4
 		;;
-	venus)	
-		fullname=i686-pc-linux-libc2.2-gnu-O5
-		;;
 	earth|jupiter)	
 		fullname=i686-pc-linux-libc2.2-gnu-O5-intermod
 		;;
-	mars)	
+	swordfish)
 		fullname=i686-pc-linux-libc2.2-gnu-O5
 		;;
 	ceres)	
@@ -1110,29 +1040,11 @@ case $HOST in
 	roy)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
 		;;
-	quicksilver)	
-		fullname=i586-pc-linux-libc2.1-gnu-O0
-		;;
-	hydra)	
-		fullname=i686-pc-linux-libc2.1-gnu-O2
-		;;
 	ender)	
 		fullname=i686-pc-linux-libc2.1-gnu-O3
 		;;
 	*)
 		fullname=$fullarch
-		;;
-esac
-
-# For alphas, we don't care about the differences between
-# different processor revisions, since the generated
-# binaries work on all of them.
-case $fullname in
-	alpha*-dec-osf3.2)
-		fullname=alpha-dec-osf3.2
-		;;
-	alpha*-dec-osf5.1)
-		fullname=alpha-dec-osf5.1
 		;;
 esac
 
