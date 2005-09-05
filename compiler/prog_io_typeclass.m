@@ -270,18 +270,6 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 		Result = error("expected list of class methods", Methods)
 	).
 
-:- pred list_term_to_term_list(term::in, list(term)::out) is semidet.
-
-list_term_to_term_list(Methods, MethodList) :-
-	(
-		Methods = term__functor(term__atom("[|]"), [Head, Tail0], _),
-		list_term_to_term_list(Tail0, Tail),
-		MethodList = [Head|Tail]
-	;
-		Methods = term__functor(term__atom("[]"), [], _),
-		MethodList = []
-	).
-
 
 :- pred item_to_class_method(maybe2(item, prog_context)::in, term::in,
 	maybe1(class_method)::out) is det.

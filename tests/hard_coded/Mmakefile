@@ -252,6 +252,14 @@ JAVA_PASS_PROGS= \
 	target_mlobjs \
 	time_test
 
+# Some tests only link in trailing grades.
+ifeq "$(filter tr%,$(GRADE))" ""
+	TRAILED_PROGS =
+else
+	TRAILED_PROGS = \
+		mutable_decl
+endif
+
 # Tests of the C#, MC++, and IL foreign language interfaces only
 # work in IL grades
 ifeq "$(filter il%,$(GRADE))" ""
@@ -482,7 +490,7 @@ else
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
 		$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
-		$(DOTNET_PROGS) $(JAVA_PROGS)
+		$(DOTNET_PROGS) $(JAVA_PROGS) $(TRAILED_PROGS)
 endif
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),

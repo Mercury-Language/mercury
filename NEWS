@@ -8,6 +8,9 @@ Changes to the Mercury language:
 * We have added support for optional module initialisation.  See the 
   "Optional module initialisation" section of the Mercury Language Refence
   Manual for details.
+* We have added support for impure module-local mutable variables.
+  See the "Module-local mutable variables" section of the Mercury Language
+  Refence Manual for details.
 
 Changes to the Mercury standard library:
 * We have added an `injection' module, for reversible maps that are injective.

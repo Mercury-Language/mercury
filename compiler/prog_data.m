@@ -166,11 +166,27 @@
 		% :- initialise(pred_name).
 	;	initialise(sym_name)
 
+		% :- mutable(var_name, type, inst, value, attrs).
+	;	mutable(
+			mut_name		:: string,
+			mut_type		:: (type),
+			mut_init_value		:: prog_term,
+			mut_inst		:: (inst),
+			mut_attrs		:: list(mutable_attr)
+		)
+
 	;	nothing(
 			nothing_maybe_warning	:: maybe(item_warning)
 		).
 		% used for items that should be ignored (for the
 		% purposes of backwards compatibility etc)
+
+	% Attributes that a mutable can have (part of the `:- mutable'
+	% declaration).
+	%
+:- type mutable_attr
+	--->	untrailed		% Updates are not trailed.
+	;	thread_safe.		% Access is considered thread safe.
 
 	% Indicates the type of information the compiler should get from the
 	% declaration's clause.

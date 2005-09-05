@@ -558,6 +558,7 @@ The allowed declarations are:
 :- pragma
 :- promise
 :- initialise
+:- mutable
 :- module
 :- interface
 :- implementation
@@ -4237,6 +4238,7 @@ argument mode is @samp{in}.
 * An example module::
 * Sub-modules::
 * Optional module initialisation::
+* Module-local mutable variables::
 @end menu
 
 @node The module system
@@ -4581,6 +4583,46 @@ The effect of the @samp{initialise} declaration is to ensure that
 predicate.  Initialisation predicates within a module are executed in the
 order in which they are specified, although no order may be assumed between
 different modules or submodules.
+
+@node Module-local mutable variables
+@section Module-local mutable variables
+
+Certain special cases require a module to have one or more mutable (i.e.
+destructively updatable) variables, for example to hold the constraint
+store for a solver type.
+
+A mutable variable is declared using the @samp{mutable} directive:
+
+@example
+:- mutable(varname, vartype, initial_value, varinst, [attribute, ...]).
+@end example
+
+This constructs a new mutable variable with access predicates that have the
+following signatures.
+
+@example
+:- semipure get_varname(vartype::out(varinst)) is det.
+:- impure   set_varname(vartype::in(varinst)) is det.
+@end example
+
+The initial value of @samp{varname} is @samp{initial_value}, which is set
+before the program's @samp{main/2} predicate is executed.  The type
+@samp{vartype} is not allowed to contain any type variables and the inst
+@samp{varinst} is not allowed to contain any inst variables or have any type
+class constraints; @samp{initial_value} can be any Mercury expression with
+type @samp{vartype} and inst @samp{varinst}.
+
+The possible @samp{attributes} are @samp{thread_safe}, meaning that access to
+the mutable need not be protected in parallel grades (see
+@ref{Foreign code attributes}), and @samp{untrailed}, meaning that the effects
+of calls to @samp{set_varname/1} should not be undone on backtracking.
+
+Note that it is an error for a @samp{mutable} directive to appear in the
+interface section of a module.
+
+Foreign code in the same module can access the mutable variable using the name
+@samp{mutable_variable_varname}, which is a global variable of type
+@samp{MR_Word}.
 
 @node Type classes
 @chapter Type classes

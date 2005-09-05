@@ -577,6 +577,7 @@ item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	% the class, not the module containing the instance).
 item_to_item_id_2(instance(_, _, _, _, _, _), no).
 item_to_item_id_2(initialise(_), no).
+item_to_item_id_2(mutable(_, _, _, _, _), no).
 item_to_item_id_2(nothing(_), no).
 
 :- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_and_arity).
@@ -736,6 +737,8 @@ item_is_unchanged(pragma(PragmaType1), Item2) = Result :-
 item_is_unchanged(nothing(A), Item2) = ( Item2 = nothing(A) -> yes ; no ).
 item_is_unchanged(initialise(A), Item2) =
 	( Item2 = initialise(A) -> yes ; no ).
+item_is_unchanged(mutable(A, B, C, D, E), Item2) =
+	( Item2 = mutable(A, B, C, D, E) -> yes ; no ).
 
 item_is_unchanged(Item1, Item2) = Result :-
 	Item1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,

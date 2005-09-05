@@ -153,6 +153,8 @@
 :- pred map_parser(parser(T)::parser, list(term)::in, maybe1(list(T))::out)
 	is det.
 
+:- pred list_term_to_term_list(term::in, list(term)::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -614,6 +616,18 @@ parse_vars_and_state_vars(functor(atom("[|]"), [H, T], _), !:Os, !:Ds, !:Cs) :-
 	;
 		H = variable(V),
 		!:Os = [V | !.Os]
+	).
+
+%-----------------------------------------------------------------------------%
+
+list_term_to_term_list(Methods, MethodList) :-
+	(
+		Methods = term__functor(term__atom("[|]"), [Head, Tail0], _),
+		list_term_to_term_list(Tail0, Tail),
+		MethodList = [Head|Tail]
+	;
+		Methods = term__functor(term__atom("[]"), [], _),
+		MethodList = []
 	).
 
 %-----------------------------------------------------------------------------%

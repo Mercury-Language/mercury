@@ -432,6 +432,36 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
 add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     % We add initialise declarations on the second pass.
     Item = initialise(_).
+add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
+    % We add the initialise decl and the foreign_decl on the second pass and
+    % the foreign_code clauses on the third pass.
+    Item = mutable(Name, Type, _InitValue, Inst, _Attrs),
+    module_info_name(!.ModuleInfo, ModuleName),
+    VarSet = varset__init,
+    InstVarSet = varset__init,
+    ExistQVars = [],
+    Constraints = constraints([], []),
+    IOType = term__functor(term__atom("."), [
+        term__functor(term__atom("io"), [], Context),
+        term__functor(term__atom("state"), [], Context)], Context),
+    GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+        mutable_get_pred_sym_name(ModuleName, Name),
+        [type_and_mode(Type, out_mode(Inst))],
+        no /* with_type */, no /* with_inst */, yes(det),
+        true /* condition */, (semipure), Constraints),
+    add_item_decl_pass_1(GetPredDecl, Context, !Status, !ModuleInfo, _, !IO),
+    SetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+        mutable_set_pred_sym_name(ModuleName, Name),
+        [type_and_mode(Type, in_mode(Inst))],
+        no /* with_type */, no /* with_inst */, yes(det),
+        true /* condition */, (impure), Constraints),
+    add_item_decl_pass_1(SetPredDecl, Context, !Status, !ModuleInfo, _, !IO),
+    InitPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+        mutable_init_pred_sym_name(ModuleName, Name),
+        [type_and_mode(IOType, di_mode), type_and_mode(IOType, uo_mode)],
+        no /* with_type */, no /* with_inst */, yes(det),
+        true /* condition */, (pure), Constraints),
+    add_item_decl_pass_1(InitPredDecl, Context, !Status, !ModuleInfo, _, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -518,6 +548,36 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     PragmaExportItem =
         pragma(export(SymName, predicate, [di_mode, uo_mode], CName)),
     add_item_decl_pass_2(PragmaExportItem, Context, !Status, !ModuleInfo, !IO).
+add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
+    Item = mutable(Name, _Type, _InitTerm, _Inst, _MutAttrs),
+    module_info_name(!.ModuleInfo, ModuleName),
+    InitDecl = initialise(mutable_init_pred_sym_name(ModuleName, Name)),
+    add_item_decl_pass_2(InitDecl, Context, !Status, !ModuleInfo, !IO),
+    ForeignDecl = pragma(foreign_decl(c, foreign_decl_is_local,
+        "MR_Word " ++ mutable_c_var_name(Name) ++ ";")),
+    add_item_decl_pass_2(ForeignDecl, Context, !Status, !ModuleInfo, !IO).
+
+
+    % XXX We should probably mangle Name for safety...
+    %
+:- func mutable_get_pred_sym_name(sym_name, string) = sym_name.
+
+mutable_get_pred_sym_name(ModuleName, Name) = 
+    qualified(ModuleName, "get_" ++ Name).
+
+:- func mutable_set_pred_sym_name(sym_name, string) = sym_name.
+
+mutable_set_pred_sym_name(ModuleName, Name) = 
+    qualified(ModuleName, "set_" ++ Name).
+
+:- func mutable_init_pred_sym_name(sym_name, string) = sym_name.
+
+mutable_init_pred_sym_name(ModuleName, Name) =
+    qualified(ModuleName, "initialise_mutable_" ++ Name).
+
+:- func mutable_c_var_name(string) = string.
+
+mutable_c_var_name(Name) = "mutable_variable_" ++ Name.
 
 %-----------------------------------------------------------------------------%
 
@@ -737,6 +797,51 @@ add_item_clause(initialise(SymName), !Status, Context, !ModuleInfo, !QualInfo,
             "not have a corresponding pred declaration.")], !IO),
         module_info_incr_errors(!ModuleInfo)
     ).
+add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
+    Item = mutable(Name, _Type, InitTerm, Inst, MutAttrs),
+    module_info_name(!.ModuleInfo, ModuleName),
+    varset__new_named_var(varset__init, "X", X, VarSet),
+    Attrs0 = default_attributes(c),
+    set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
+    (
+        list__member(thread_safe, MutAttrs)
+    ->
+        set_thread_safe(thread_safe, Attrs1, Attrs)
+    ;
+        Attrs = Attrs1
+    ),
+    add_item_clause(initialise(mutable_init_pred_sym_name(ModuleName, Name)),
+        !Status, Context, !ModuleInfo, !QualInfo, !IO),
+    InitClause = clause(VarSet, predicate,
+        mutable_init_pred_sym_name(ModuleName, Name),
+        [term__variable(X), term__variable(X)],
+        promise_purity(dont_make_implicit_promises, (pure),
+            call(mutable_set_pred_sym_name(ModuleName, Name),
+            [InitTerm], (impure)) - Context
+        ) - Context),
+    add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo, !IO),
+    set_purity((semipure), Attrs, GetAttrs),
+    GetClause = pragma(foreign_proc(GetAttrs,
+        mutable_get_pred_sym_name(ModuleName, Name), predicate,
+        [pragma_var(X, "X", out_mode(Inst))], VarSet,
+        ordinary("X = " ++ mutable_c_var_name(Name) ++ ";",
+            yes(Context)))),
+    add_item_clause(GetClause, !Status, Context, !ModuleInfo, !QualInfo, !IO),
+    (
+        list__member(untrailed, MutAttrs)
+    ->
+        TrailCode = ""
+    ;
+        TrailCode =
+            "MR_trail_current_value(&" ++ mutable_c_var_name(Name) ++ ");\n"
+    ),
+    SetClause = pragma(foreign_proc(Attrs,
+        mutable_set_pred_sym_name(ModuleName, Name), predicate,
+        [pragma_var(X, "X", in_mode(Inst))], VarSet,
+        ordinary(TrailCode ++ mutable_c_var_name(Name) ++ " = X;",
+            yes(Context)))),
+    add_item_clause(SetClause, !Status, Context, !ModuleInfo, !QualInfo, !IO).
+
 
     % If a module_defn updates the import_status, return the new status
     % and whether uses of the following items must be module qualified,

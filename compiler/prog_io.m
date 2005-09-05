@@ -1422,8 +1422,12 @@ process_decl(ModuleName, VarSet0, "version_numbers",
 		)
 	).
 
-process_decl(ModuleName, VarSet, "initialise", Args, Attributes, Result):-
+process_decl(ModuleName, VarSet, "initialise", Args, Attributes, Result) :-
 	parse_initialise_decl(ModuleName, VarSet, Args, Result0),
+	check_no_attributes(Result0, Attributes, Result).
+
+process_decl(ModuleName, VarSet, "mutable", Args, Attributes, Result) :-
+	parse_mutable_decl(ModuleName, VarSet, Args, Result0),
 	check_no_attributes(Result0, Attributes, Result).
 
 :- pred parse_decl_attribute(string::in, list(term)::in, decl_attribute::out,
@@ -1796,6 +1800,162 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Result) :-
 				"an arity 2 predicate", Term)
 			)
 		)
+	).
+
+%-----------------------------------------------------------------------------%
+
+% Mutable declaration syntax:
+%
+% :- mutable(name, type, value, inst, [untrailed, promise_thread_safe]).
+% (The list of attributes at the end is optional.)
+%
+% E.g.:
+% :- mutable(counter, int, 0, ground, [promise_thread_safe]).
+%
+% This is converted into the following:
+%
+% :- semipure pred get_counter(int::out(ground)) is det.
+% :- pragma foreign_proc("C",
+% 	get_counter(X::out(ground)),
+% 	[promise_semipure, will_not_call_mercury, thread_safe],
+% 	"X = mutable_counter;").
+%
+% :- impure pred set_counter(int::in(ground)) is det.
+% :- pragma foreign_proc("C",
+% 	set_counter(X::in(ground)),
+% 	[will_not_call_mercury, thread_safe],
+% 	"MR_trail_current_value(&mutable_counter);
+% 	 mutable_counter = X;").
+%
+% :- pragma foreign_decl("C", "MR_Word mutable_counter;").
+%
+% :- import_module io.
+% :- initialise initialise_counter.
+% :- impure pred initialise_mutable_counter(io::di, io::uo) is det.
+% initialise_mutable_counter(!IO) :-
+% 	impure set_counter(0).
+%
+% The `thread_safe' attributes are omitted if it is not listed in
+% the mutable declaration attributes.  Similarly, MR_trail_current_value() 
+% does not appear if `untrailed' appears in the mutable declaration
+% attributes.
+
+:- pred parse_mutable_decl(module_name::in, varset::in, list(term)::in,
+	maybe1(item)::out) is semidet.
+
+parse_mutable_decl(_ModuleName, _VarSet, Terms, Result) :-
+	Terms = [NameTerm, TypeTerm, ValueTerm, InstTerm | OptMutAttrsTerm],
+	parse_mutable_name(NameTerm, NameResult),
+	parse_mutable_type(TypeTerm, TypeResult),
+	term__coerce(ValueTerm, Value),
+	parse_mutable_inst(InstTerm, InstResult),
+	(
+		OptMutAttrsTerm = [],
+		MutAttrsResult = ok([])
+	;
+		OptMutAttrsTerm = [MutAttrsTerm],
+		parse_mutable_attrs(MutAttrsTerm, MutAttrsResult)
+	),
+	(
+		NameResult = ok(Name),
+		TypeResult = ok(Type),
+		InstResult = ok(Inst),
+		MutAttrsResult = ok(MutAttrs)
+	->
+		Result = ok(mutable(Name, Type, Value, Inst, MutAttrs))
+	;
+		NameResult = error(Msg, Term)
+	->
+		Result = error(Msg, Term)
+	;
+		TypeResult = error(Msg, Term)
+	->
+		Result = error(Msg, Term)
+	;
+		InstResult = error(Msg, Term)
+	->
+		Result = error(Msg, Term)
+	;
+		MutAttrsResult = error(Msg, Term)
+	->
+		Result = error(Msg, Term)
+	;
+		error("prog_io.parse_mutable_decl: shouldn't be here!")
+	).
+
+
+:- pred parse_mutable_name(term::in, maybe1(string)::out) is det.
+
+parse_mutable_name(NameTerm, NameResult) :-
+	(
+		NameTerm = term__functor(atom(Name), [], _)
+	->
+		NameResult = ok(Name)
+	;
+		NameResult = error("invalid mutable name", NameTerm)
+	).
+
+
+:- pred parse_mutable_type(term::in, maybe1(type)::out) is det.
+
+parse_mutable_type(TypeTerm, TypeResult) :-
+	(
+		term__contains_var(TypeTerm, _)
+	->
+		TypeResult = error("the type in a mutable declaration " ++
+		"cannot contain variables", TypeTerm)
+	;
+		parse_type(TypeTerm, TypeResult)
+	).
+
+
+:- pred parse_mutable_inst(term::in, maybe1(inst)::out) is det.
+
+parse_mutable_inst(InstTerm, InstResult) :-
+	(
+		term__contains_var(InstTerm, _)
+	->
+		InstResult = error("the inst in a mutable declaration " ++
+		"cannot contain variables", InstTerm)
+	;
+		convert_inst(no_allow_constrained_inst_var, InstTerm, Inst)
+	->
+		InstResult = ok(Inst)
+	;
+		InstResult = error("invalid inst in mutable declaration",
+		InstTerm)
+	).
+
+
+:- pred parse_mutable_attrs(term::in, maybe1(list(mutable_attr))::out) is det.
+
+parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
+	(
+		list_term_to_term_list(MutAttrsTerm, MutAttrTerms)
+	->
+		map_parser(parse_mutable_attr, MutAttrTerms, MutAttrsResult)
+	;
+		MutAttrsResult = error("malformed attribute list in " ++
+		"mutable declaration", MutAttrsTerm)
+	).
+
+:- pred parse_mutable_attr(term::in, maybe1(mutable_attr)::out) is det.
+
+parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
+	(
+		MutAttrTerm = term__functor(term__atom(String), [], _),
+		(
+			String  = "untrailed",
+			MutAttr = untrailed
+		;
+			String  = "thread_safe",
+			MutAttr = thread_safe
+		)
+	->
+		MutAttrResult = ok(MutAttr)
+	;
+		MutAttrResult = error("unrecognised attribute in mutable " ++
+		"declaration", MutAttrTerm)
 	).
 
 %-----------------------------------------------------------------------------%

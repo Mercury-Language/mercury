@@ -762,7 +762,20 @@ mercury_output_item(_, instance(Constraints, ClassName, Types, Body,
     io__write_string(".\n", !IO).
 mercury_output_item(_, initialise(PredSymName), _, !IO) :-
     io__write_string(":- initialise ", !IO),
-    mercury_output_sym_name(PredSymName, !IO).
+    mercury_output_sym_name(PredSymName, !IO),
+    io__write_string(".\n", !IO).
+mercury_output_item(_, mutable(Name, Type, InitTerm, Inst, Attrs), _, !IO) :-
+    io__write_string(":- mutable(", !IO),
+    io__write_string(Name, !IO),
+    io__write_string(", ", !IO),
+    mercury_output_term(Type, varset__init, no, !IO),
+    io__write_string(", ", !IO),
+    mercury_output_term(InitTerm, varset__init, no, !IO),
+    io__write_string(", ", !IO),
+    mercury_output_inst(Inst, varset__init, !IO),
+    io__write_string(", ", !IO),
+    io__print(Attrs, !IO),
+    io__write_string(").\n", !IO).
 
 :- func mercury_to_string_promise_type(promise_type) = string.
 
