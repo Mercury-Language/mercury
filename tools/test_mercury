@@ -295,9 +295,12 @@ UNSTABLE=$HOSTDIR/$INSTALL_DIR_NAME-unstable
 PATH="$INSTALL_DIR/bin:$PATH"
 
 # $PARALLEL: flag to pass to GNU make for parallel make
+#
+# XXX we should be able to do parallel builds on saturn
+# but support for parallel builds seems to be broken 
+# at the moment.
 PARALLEL=
 case $HOST in
-	saturn)		PARALLEL=-j2 ;; # out of two CPUs
 	*)		PARALLEL= ;;
 esac
 
