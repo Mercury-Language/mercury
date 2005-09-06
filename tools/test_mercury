@@ -1037,6 +1037,9 @@ case $HOST in
 	aral)	
 		fullname=i686-pc-linux-libc2.3-gnu-O5
 		;;
+	saturn)
+		fullname=x86_64-unknown-linux-gnu-libc2.3
+		;;
 	roy)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
 		;;
