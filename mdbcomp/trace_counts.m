@@ -281,8 +281,8 @@ read_trace_counts_list_stream(ShowProgress, FileType0, TraceCounts0,
     io.read_line_as_string(Stream, ReadResult, !IO),
     (
         ReadResult = ok(Line),
-        % Remove the trailing newline:
-        FileName = string.left(Line, string.length(Line) - 1),
+        % Remove trailing whitespace:
+        FileName = string.rstrip(Line),
         (
             % Ignore blank lines.
             FileName = ""
@@ -355,7 +355,7 @@ read_trace_counts(FileName, ReadResult, !IO) :-
         io__read_line_as_string(IdReadResult, !IO),
         (
             IdReadResult = ok(FirstLine),
-            FirstLine = trace_count_file_id
+            string.rstrip(FirstLine) = trace_count_file_id
         ->
             promise_only_solution_io(read_trace_counts_from_cur_stream,
                 ReadResult, !IO)
@@ -376,7 +376,7 @@ read_trace_counts(FileName, ReadResult, !IO) :-
 
 :- func trace_count_file_id = string.
 
-trace_count_file_id = "Mercury trace counts file\n".
+trace_count_file_id = "Mercury trace counts file".
 
 :- pred read_trace_counts_from_cur_stream(read_trace_counts_result::out,
     io::di, io::uo) is cc_multi.
@@ -385,7 +385,7 @@ read_trace_counts_from_cur_stream(ReadResult, !IO) :-
     io__read_line_as_string(IdResult, !IO),
     (
         IdResult = ok(IdStr),
-        string.append(IdStrNoNL, "\n", IdStr),
+        IdStrNoNL = string.rstrip(IdStr),
         string_to_file_type(IdStrNoNL, FileType)
     ->
         try_io(read_trace_counts_setup(map__init), Result, !IO),
@@ -625,6 +625,7 @@ write_trace_counts_to_file(FileType, TraceCounts, FileName, Res, !IO) :-
         Res = ok,
         io.set_output_stream(FileStream, OldOutputStream, !IO),
         io.write_string(trace_count_file_id, !IO),
+        io.nl(!IO),
         write_trace_counts(FileType, TraceCounts, !IO),
         io.set_output_stream(OldOutputStream, _, !IO),
         io.close_output(FileStream, !IO)

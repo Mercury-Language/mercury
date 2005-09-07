@@ -722,11 +722,7 @@ process_stdin_arg_list(OptionVariables, OptionArgs, !Modules,
     io__read_line_as_string(FileResult, !IO),
     (
         FileResult = ok(Line),
-        ( string__remove_suffix(Line, "\n", Arg0) ->
-            Arg = Arg0
-        ;
-            Arg = Line
-        ),
+        Arg = string.rstrip(Line),
         process_arg(OptionVariables, OptionArgs, Arg, Module,
             FactTableObjFileList, !IO),
         list__append(Module, !Modules),

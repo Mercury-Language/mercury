@@ -172,28 +172,6 @@
             % Output the command line with `--verbose-commands'. This should be
             % used for commands that may be of interest to the user.
 
-    % invoke_shell_command(ErrorStream, Verbosity, Command, Succeeded)
-    %
-    % Invoke a shell script. Both standard and error output will go to the
-    % specified output stream.
-    % XXX Use of this predicate should be avoided -- it requires a Unix shell
-    % to be present, so it won't work properly with native Windows.
-    %
-:- pred invoke_shell_command(io__output_stream::in,
-    command_verbosity::in, string::in, bool::out, io::di, io::uo) is det.
-
-    % invoke_shell_command(ErrorStream, Verbosity, Command,
-    %   ProcessOutput, Succeeded)
-    %
-    % Invoke a shell script. Both standard and error output will go to the
-    % specified output stream after being piped through `ProcessOutput'.
-    % XXX Use of this predicate should be avoided -- it requires a Unix shell
-    % to be present, so it won't work properly with native Windows.
-    %
-:- pred invoke_shell_command(io__output_stream::in,
-    command_verbosity::in, string::in, maybe(string)::in, bool::out,
-    io::di, io::uo) is det.
-
     % invoke_system_command(ErrorStream, Verbosity, Command, Succeeded)
     %
     % Invoke an executable. Both standard and error output will go to the
@@ -419,15 +397,6 @@ passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO) :-
 maybe_set_exit_status(yes, !IO).
 maybe_set_exit_status(no, !IO) :- io__set_exit_status(1, !IO).
 
-invoke_shell_command(ErrorStream, Verbosity, Command0, Succeeded, !IO) :-
-    invoke_shell_command(ErrorStream, Verbosity, Command0, no, Succeeded, !IO).
-
-invoke_shell_command(ErrorStream, Verbosity, Command0,
-        ProcessOutput, Succeeded, !IO) :-
-    make_command_string(Command0, forward, Command),
-    invoke_system_command(ErrorStream, Verbosity, Command,
-        ProcessOutput, Succeeded, !IO).
-
 invoke_system_command(ErrorStream, Verbosity, Command, Succeeded, !IO) :-
     invoke_system_command(ErrorStream, Verbosity, Command, no, Succeeded, !IO).
 
@@ -464,6 +433,10 @@ invoke_system_command(ErrorStream, Verbosity, Command,
         % XXX can't use Bourne shell syntax to redirect on .NET
         % XXX the output will go to the wrong place!
         CommandRedirected = Command
+    ; use_win32 ->
+        % On windows we can't in general redirect standard error in the
+        % shell.
+        CommandRedirected = Command ++ " > " ++ TmpFile
     ;
         CommandRedirected =
             string__append_list([Command, " > ", TmpFile, " 2>&1"])
@@ -493,11 +466,24 @@ invoke_system_command(ErrorStream, Verbosity, Command,
     ),
 
     (
-        MaybeProcessOutput = yes(ProcessOutput),
+        % We can't do bash style redirection on .NET.
+        not use_dotnet,
+        MaybeProcessOutput = yes(ProcessOutput)
+    ->
         io__make_temp(ProcessedTmpFile, !IO),
-        io__call_system_return_signal(
-            string__append_list([ProcessOutput, " < ", TmpFile,
-                " > ", ProcessedTmpFile, " 2>&1"]),
+        
+        ( use_win32 ->
+            % On windows we can't in general redirect standard
+            % error in the shell.
+            ProcessOutputRedirected = string__append_list(
+                [ProcessOutput, " < ", TmpFile, " > ",
+                    ProcessedTmpFile])
+        ;
+            ProcessOutputRedirected = string__append_list(
+                [ProcessOutput, " < ", TmpFile, " > ",
+                    ProcessedTmpFile, " 2>&1"])
+        ),
+        io__call_system_return_signal(ProcessOutputRedirected,
                 ProcessOutputResult, !IO),
         io__remove_file(TmpFile, _, !IO),
         (
@@ -526,7 +512,6 @@ invoke_system_command(ErrorStream, Verbosity, Command,
             ProcessOutputSucceeded = no
         )
     ;
-        MaybeProcessOutput = no,
         ProcessOutputSucceeded = yes,
         ProcessedTmpFile = TmpFile
     ),
