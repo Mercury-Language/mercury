@@ -496,10 +496,10 @@ exprn_aux__substitute_lval_in_component(OldLval, NewLval,
 		Component0 = pragma_c_user_code(_, _),
 		Component = Component0
 	;
-		Component0 = pragma_c_raw_code(Code, LvalSet0),
+		Component0 = pragma_c_raw_code(Code, CanBranchAway, LvalSet0),
 		exprn_aux__substitute_lval_in_live_lval_info(OldLval, NewLval,
 			LvalSet0, LvalSet, !N),
-		Component = pragma_c_raw_code(Code, LvalSet)
+		Component = pragma_c_raw_code(Code, CanBranchAway, LvalSet)
 	;
 		Component0 = pragma_c_fail_to(_),
 		Component = Component0

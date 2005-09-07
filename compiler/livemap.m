@@ -299,7 +299,7 @@ livemap__build_livemap_pragma_components([Component | Components],
         Component = pragma_c_user_code(_, _),
         !:ContainsUserCode = yes
     ;
-        Component = pragma_c_raw_code(_, LiveLvalInfo),
+        Component = pragma_c_raw_code(_, _, LiveLvalInfo),
         livemap__build_live_lval_info(LiveLvalInfo,
             !Livevals, !ContainsUserCode)
     ;

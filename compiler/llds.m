@@ -529,9 +529,13 @@
     --->    pragma_c_inputs(list(pragma_c_input))
     ;       pragma_c_outputs(list(pragma_c_output))
     ;       pragma_c_user_code(maybe(prog_context), string)
-    ;       pragma_c_raw_code(string, c_code_live_lvals)
+    ;       pragma_c_raw_code(string, can_branch_away, c_code_live_lvals)
     ;       pragma_c_fail_to(label)
     ;       pragma_c_noop.
+
+:- type can_branch_away
+    --->    can_branch_away
+    ;       cannot_branch_away.
 
     % A pragma_c_input represents the code that initializes one
     % of the input variables for a pragma_c instruction.

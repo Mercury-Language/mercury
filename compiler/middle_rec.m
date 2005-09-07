@@ -467,7 +467,7 @@ middle_rec__find_used_registers_component(pragma_c_inputs(In), !Used) :-
 middle_rec__find_used_registers_component(pragma_c_outputs(Out), !Used) :-
 	insert_pragma_c_output_registers(Out, !Used).
 middle_rec__find_used_registers_component(pragma_c_user_code(_, _), !Used).
-middle_rec__find_used_registers_component(pragma_c_raw_code(_, _), !Used).
+middle_rec__find_used_registers_component(pragma_c_raw_code(_, _, _), !Used).
 middle_rec__find_used_registers_component(pragma_c_fail_to(_), !Used).
 middle_rec__find_used_registers_component(pragma_c_noop, !Used).
 

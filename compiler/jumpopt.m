@@ -1091,31 +1091,26 @@ jumpopt__short_labels_lval(_, lvar(_), _) :-
     pragma_c_component::in, pragma_c_component::out,
     bool::in, bool::out) is det.
 
-short_pragma_component(Instrmap, Component0, Component, !Redirect) :-
+short_pragma_component(Instrmap, !Component, !Redirect) :-
     (
-        Component0 = pragma_c_inputs(_),
-        Component = Component0
+        !.Component = pragma_c_inputs(_)
     ;
-        Component0 = pragma_c_outputs(_),
-        Component = Component0
+        !.Component = pragma_c_outputs(_)
     ;
-        Component0 = pragma_c_user_code(_, _),
-        Component = Component0
+        !.Component = pragma_c_user_code(_, _)
     ;
-        Component0 = pragma_c_raw_code(_, _),
-        Component = Component0
+        !.Component = pragma_c_raw_code(_, _, _)
     ;
-        Component0 = pragma_c_fail_to(Label0),
+        !.Component = pragma_c_fail_to(Label0),
         short_label(Instrmap, Label0, Label),
-        Component = pragma_c_fail_to(Label),
+        !:Component = pragma_c_fail_to(Label),
         ( Label = Label0 ->
             true
         ;
             !:Redirect = yes
         )
     ;
-        Component0 = pragma_c_noop,
-        Component = Component0
+        !.Component = pragma_c_noop
     ).
 
 %-----------------------------------------------------------------------------%

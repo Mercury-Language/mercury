@@ -1872,7 +1872,7 @@ output_pragma_c_component_decls(pragma_c_inputs(Inputs), !DeclSet, !IO) :-
     output_pragma_input_rval_decls(Inputs, !DeclSet, !IO).
 output_pragma_c_component_decls(pragma_c_outputs(Outputs), !DeclSet, !IO) :-
     output_pragma_output_lval_decls(Outputs, !DeclSet, !IO).
-output_pragma_c_component_decls(pragma_c_raw_code(_, _), !DeclSet, !IO).
+output_pragma_c_component_decls(pragma_c_raw_code(_, _, _), !DeclSet, !IO).
 output_pragma_c_component_decls(pragma_c_user_code(_, _), !DeclSet, !IO).
 output_pragma_c_component_decls(pragma_c_fail_to(_), !DeclSet, !IO).
 output_pragma_c_component_decls(pragma_c_noop, !DeclSet, !IO).
@@ -2333,7 +2333,7 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code), !IO) :-
             io__write_string(";}\n", !IO)
         )
     ).
-output_pragma_c_component(pragma_c_raw_code(C_Code, _), !IO) :-
+output_pragma_c_component(pragma_c_raw_code(C_Code, _, _), !IO) :-
     io__write_string(C_Code, !IO).
 output_pragma_c_component(pragma_c_fail_to(Label), !IO) :-
     io__write_string("if (!" ++ pragma_succ_ind_name ++ ") MR_GOTO_LAB(", !IO),

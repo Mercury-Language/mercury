@@ -56,7 +56,9 @@
 :- import_module parse_tree__prog_out.
 
 :- import_module bool.
+:- import_module char.
 :- import_module counter.
+:- import_module dir.
 :- import_module int.
 :- import_module map.
 :- import_module require.
@@ -71,7 +73,7 @@ optimize__proc(GlobalData, CProc0, CProc, !IO) :-
     some [!OptDebugInfo, !C, !Instrs] (
         CProc0 = c_procedure(Name, Arity, PredProcId, !:Instrs,
             ProcLabel, !:C, MayAlterRtti),
-        optimize__init_opt_debug_info(Name, Arity, PredProcId,
+        optimize__init_opt_debug_info(Name, Arity, PredProcId, ProcLabel,
             !.Instrs, !.C, !:OptDebugInfo, !IO),
         globals__io_lookup_int_option(optimize_repeat, Repeat, !IO),
         (
@@ -92,7 +94,8 @@ optimize__proc(GlobalData, CProc0, CProc, !IO) :-
             !OptDebugInfo, !Instrs, !IO),
         optimize__middle(yes, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
             !OptDebugInfo, !Instrs, !IO),
-        optimize__last(LayoutLabelSet, !.C, !.OptDebugInfo, !Instrs, !IO),
+        optimize__last(LayoutLabelSet, ProcLabel, !.C, !.OptDebugInfo, !Instrs,
+            !IO),
         CProc = c_procedure(Name, Arity, PredProcId, !.Instrs, ProcLabel,
             !.C, MayAlterRtti)
     ).
@@ -105,17 +108,22 @@ make_internal_label(ProcLabel, LabelNum) = internal(LabelNum, ProcLabel).
 
 :- type opt_debug_info
     --->    opt_debug_info(
-                string,         % base file name
-                int             % last file number written
+                string,         % Base file name for the dump files.
+                int,            % The number of the last dump file written.
+                int,            % The number of the last dump file written
+                                % that has the instruction sequence in it.
+                list(instruction)
+                                % The instruction sequence at the time the
+                                % last dump file was written.
             )
     ;       no_opt_debug_info.
 
 :- pred optimize__init_opt_debug_info(string::in, int::in, pred_proc_id::in,
-    list(instruction)::in, counter::in, opt_debug_info::out,
+    proc_label::in, list(instruction)::in, counter::in, opt_debug_info::out,
     io::di, io::uo) is det.
 
-optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, Counter,
-        OptDebugInfo, !IO) :-
+optimize__init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0,
+        Counter, OptDebugInfo, !IO) :-
     globals__io_lookup_bool_option(debug_opt, DebugOpt, !IO),
     globals__io_lookup_int_option(debug_opt_pred_id, DebugOptPredId, !IO),
     PredProcId = proc(PredId, ProcId),
@@ -125,43 +133,56 @@ optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, Counter,
         DebugOpt = yes,
         ( DebugOptPredId >= 0 => DebugOptPredId = PredIdInt )
     ->
-        MangledName = name_mangle(Name),
-        string__int_to_string(Arity, ArityStr),
-        string__int_to_string(PredIdInt, PredIdStr),
-        string__int_to_string(ProcIdInt, ProcIdStr),
-        BaseName = MangledName ++ "_" ++ ArityStr ++ ".pred" ++ PredIdStr
-            ++ ".proc" ++ ProcIdStr,
-        OptDebugInfo = opt_debug_info(BaseName, 0),
+        BaseName = opt_subdir_name ++ "/"
+            ++ mangle_name_as_filename(Name) ++ "_" ++ int_to_string(Arity)
+            ++ ".pred" ++ int_to_string(PredIdInt)
+            ++ ".proc" ++ int_to_string(ProcIdInt),
+        OptDebugInfo = opt_debug_info(BaseName, 0, 0, Instrs0),
 
-        string__append_list([BaseName, ".opt0"], FileName),
+        io__call_system("mkdir -p " ++ opt_subdir_name, MkdirRes, !IO),
+        ( MkdirRes = ok(0) ->
+            true
+        ;
+            error("cannot make " ++ opt_subdir_name)
+        ),
+        FileName = BaseName ++ ".opt0",
         io__open_output(FileName, Res, !IO),
         ( Res = ok(FileStream) ->
             io__set_output_stream(FileStream, OutputStream, !IO),
             counter__allocate(NextLabel, Counter, _),
             opt_debug__msg(yes, NextLabel, "before optimization", !IO),
-            opt_debug__maybe_dump_instrs(yes, Instrs0, !IO),
+            opt_debug__maybe_dump_instrs(yes, ProcLabel, Instrs0, !IO),
             io__set_output_stream(OutputStream, _, !IO),
             io__close_output(FileStream, !IO)
         ;
-            string__append("cannot open ", FileName, ErrorMsg),
-            error(ErrorMsg)
+            error("cannot open " ++ FileName)
         )
     ;
         OptDebugInfo = no_opt_debug_info
     ).
 
-:- pred optimize__maybe_opt_debug(list(instruction)::in, counter::in,
-    string::in, opt_debug_info::in, opt_debug_info::out, io::di, io::uo)
-    is det.
+:- func opt_subdir_name = string.
 
-optimize__maybe_opt_debug(Instrs, Counter, Msg, OptDebugInfo0, OptDebugInfo,
+opt_subdir_name = "OptSubdir".
+
+:- pred optimize__maybe_opt_debug(list(instruction)::in, counter::in,
+    string::in, proc_label::in, opt_debug_info::in, opt_debug_info::out,
+    io::di, io::uo) is det.
+
+optimize__maybe_opt_debug(Instrs, Counter, Msg, ProcLabel, !OptDebugInfo,
         !IO) :-
     (
-        OptDebugInfo0 = opt_debug_info(BaseName, OptNum0),
+        !.OptDebugInfo = opt_debug_info(BaseName, OptNum0, PrevNum,
+            PrevInstrs),
+        ( Instrs = PrevInstrs ->
+            Same = yes
+        ;
+            Same = no
+        ),
         OptNum = OptNum0 + 1,
-        string__int_to_string(OptNum0, OptNum0Str),
+        string__int_to_string(PrevNum, PrevNumStr),
         string__int_to_string(OptNum, OptNumStr),
-        OptFileName0 = BaseName ++ ".opt" ++ OptNum0Str,
+        PrevFileName = BaseName ++ ".opt" ++ PrevNumStr,
         OptFileName = BaseName ++ ".opt" ++ OptNumStr,
         DiffFileName = BaseName ++ ".diff" ++ OptNumStr,
         io__open_output(OptFileName, Res, !IO),
@@ -169,23 +190,34 @@ optimize__maybe_opt_debug(Instrs, Counter, Msg, OptDebugInfo0, OptDebugInfo,
             io__set_output_stream(FileStream, OutputStream, !IO),
             counter__allocate(NextLabel, Counter, _),
             opt_debug__msg(yes, NextLabel, Msg, !IO),
-            opt_debug__maybe_dump_instrs(yes, Instrs, !IO),
+            (
+                Same = yes,
+                io__write_string("same as previous version\n", !IO)
+            ;
+                Same = no,
+                opt_debug__maybe_dump_instrs(yes, ProcLabel, Instrs, !IO)
+            ),
             io__set_output_stream(OutputStream, _, !IO),
             io__close_output(FileStream, !IO)
         ;
             ErrorMsg = "cannot open " ++ OptFileName,
             error(ErrorMsg)
         ),
-        % Although the -u is not fully portable, it is available
-        % on all the systems we intend to use it on, and the main user
-        % of --debug-opt (zs) strongly prefers -u to -c.
-        DiffCommand = "diff -u " ++ OptFileName0 ++ " " ++ OptFileName
-            ++ " > " ++ DiffFileName,
-        io__call_system(DiffCommand, _, !IO),
-        OptDebugInfo = opt_debug_info(BaseName, OptNum)
+        (
+            Same = yes,
+            !:OptDebugInfo = opt_debug_info(BaseName, OptNum, PrevNum, Instrs)
+        ;
+            Same = no,
+            % Although the -u is not fully portable, it is available
+            % on all the systems we intend to use it on, and the main user
+            % of --debug-opt (zs) strongly prefers -u to -c.
+            DiffCommand = "diff -u '" ++ PrevFileName ++ "' '" ++ OptFileName
+                ++ "' > '" ++ DiffFileName ++ "'",
+            io__call_system(DiffCommand, _, !IO),
+            !:OptDebugInfo = opt_debug_info(BaseName, OptNum, OptNum, Instrs)
+        )
     ;
-        OptDebugInfo0 = no_opt_debug_info,
-        OptDebugInfo = no_opt_debug_info
+        !.OptDebugInfo = no_opt_debug_info
     ).
 
 %-----------------------------------------------------------------------------%
@@ -197,8 +229,7 @@ optimize__maybe_opt_debug(Instrs, Counter, Msg, OptDebugInfo0, OptDebugInfo,
 optimize__initial(LayoutLabelSet, ProcLabel, MayAlterRtti, !C, !OptDebugInfo,
         !Instrs, !IO) :-
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    opt_util__find_first_label(!.Instrs, Label),
-    opt_util__format_label(Label, LabelStr),
+    LabelStr = opt_util__format_proc_label(ProcLabel),
 
     globals__io_lookup_bool_option(optimize_frames, FrameOpt, !IO),
     (
@@ -214,7 +245,7 @@ optimize__initial(LayoutLabelSet, ProcLabel, MayAlterRtti, !C, !OptDebugInfo,
         frameopt_nondet(ProcLabel, LayoutLabelSet, MayAlterRtti, !C, !Instrs,
             _Mod),
         optimize__maybe_opt_debug(!.Instrs, !.C, "after nondet frame opt",
-            !OptDebugInfo, !IO)
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         FrameOpt = no
     ).
@@ -260,8 +291,7 @@ optimize__repeat(CurIter, LayoutLabelSet, ProcLabel, MayAlterRtti,
 optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         !C, !OptDebugInfo, !Instrs, Mod, !IO) :-
     InstrsAtStart = !.Instrs,
-    opt_util__find_first_label(!.Instrs, Label),
-    proc_label_to_c_string(get_proc_label(Label), no) = LabelStr,
+    LabelStr = opt_util__format_proc_label(ProcLabel),
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     globals__io_lookup_bool_option(optimize_jumps, Jumpopt, !IO),
     globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt, !IO),
@@ -283,7 +313,7 @@ optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             Final, PessimizeTailCalls, CheckedNondetTailCalls, !C, !Instrs,
             Mod1),
         optimize__maybe_opt_debug(!.Instrs, !.C, "after jump opt",
-            !OptDebugInfo, !IO)
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         Jumpopt = no,
         Mod1 = no
@@ -302,7 +332,7 @@ optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         globals__io_get_gc_method(GC_Method, !IO),
         peephole__optimize(GC_Method, !Instrs, Mod2),
         optimize__maybe_opt_debug(!.Instrs, !.C, "after peephole",
-            !OptDebugInfo, !IO)
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         Peephole = no,
         Mod2 = no
@@ -320,7 +350,7 @@ optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         ),
         labelopt_main(Final, LayoutLabelSet, !Instrs, Mod3),
         optimize__maybe_opt_debug(!.Instrs, !.C, "after label opt",
-            !OptDebugInfo, !IO)
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         LabelElim = no,
         Mod3 = no
@@ -338,7 +368,7 @@ optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         ),
         dupelim_main(ProcLabel, !C, !Instrs),
         optimize__maybe_opt_debug(!.Instrs, !.C, "after duplicates",
-            !OptDebugInfo, !IO)
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         DupElim = no
     ),
@@ -358,8 +388,7 @@ optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
 optimize__middle(Final, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
         !OptDebugInfo, !Instrs, !IO) :-
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    opt_util__find_first_label(!.Instrs, Label),
-    opt_util__format_label(Label, LabelStr),
+    LabelStr = opt_util__format_proc_label(ProcLabel),
 
     globals__io_lookup_bool_option(optimize_frames, FrameOpt, !IO),
     (
@@ -375,7 +404,7 @@ optimize__middle(Final, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
         globals__io_get_globals(Globals, !IO),
         frameopt_main(ProcLabel, !C, !Instrs, Globals, Mod1),
         optimize__maybe_opt_debug(!.Instrs, !.C, "after frame opt",
-            !OptDebugInfo, !IO),
+            ProcLabel, !OptDebugInfo, !IO),
         globals__io_lookup_bool_option(optimize_fulljumps, FullJumpopt, !IO),
         globals__io_lookup_bool_option(pessimize_tailcalls,
             PessimizeTailCalls, !IO),
@@ -398,7 +427,7 @@ optimize__middle(Final, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
                 Final, PessimizeTailCalls, CheckedNondetTailCalls, !C, !Instrs,
                 _Mod2),
             optimize__maybe_opt_debug(!.Instrs, !.C, "after jumps",
-                !OptDebugInfo, !IO)
+                ProcLabel, !OptDebugInfo, !IO)
         ;
             true
         ),
@@ -414,7 +443,7 @@ optimize__middle(Final, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
             ),
             labelopt_main(Final, LayoutLabelSet, !Instrs, _Mod3),
             optimize__maybe_opt_debug(!.Instrs, !.C, "after labels",
-                !OptDebugInfo, !IO)
+                ProcLabel, !OptDebugInfo, !IO)
         ;
             Mod1 = no
         )
@@ -435,21 +464,22 @@ optimize__middle(Final, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
         globals__io_lookup_int_option(num_real_r_regs, NumRealRRegs, !IO),
         globals__io_lookup_int_option(local_var_access_threshold,
             AccessThreshold, !IO),
-        use_local_vars__main(!Instrs, ProcLabel, NumRealRRegs,
-            AccessThreshold, !C),
-        optimize__maybe_opt_debug(!.Instrs, !.C,
-            "after use_local_vars", !OptDebugInfo, !IO)
+        globals__io_lookup_bool_option(auto_comments, AutoComments, !IO),
+        use_local_vars__main(!Instrs, NumRealRRegs, AccessThreshold,
+            AutoComments, ProcLabel, !C),
+        optimize__maybe_opt_debug(!.Instrs, !.C, "after use_local_vars",
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         UseLocalVars = no
     ).
 
-:- pred optimize__last(set(label)::in, counter::in, opt_debug_info::in,
-    list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
+:- pred optimize__last(set(label)::in, proc_label::in, counter::in,
+    opt_debug_info::in, list(instruction)::in, list(instruction)::out,
+    io::di, io::uo) is det.
 
-optimize__last(LayoutLabelSet, C, !.OptDebugInfo, !Instrs, !IO) :-
+optimize__last(LayoutLabelSet, ProcLabel, C, !.OptDebugInfo, !Instrs, !IO) :-
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    opt_util__find_first_label(!.Instrs, Label),
-    opt_util__format_label(Label, LabelStr),
+    LabelStr = opt_util__format_proc_label(ProcLabel),
 
     globals__io_lookup_bool_option(optimize_reassign, Reassign, !IO),
     globals__io_lookup_bool_option(optimize_delay_slot, DelaySlot, !IO),
@@ -472,7 +502,7 @@ optimize__last(LayoutLabelSet, C, !.OptDebugInfo, !Instrs, !IO) :-
         ),
         labelopt_main(no, LayoutLabelSet, !Instrs, _Mod1),
         optimize__maybe_opt_debug(!.Instrs, C, "after label opt",
-            !OptDebugInfo, !IO)
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         true
     ),
@@ -488,7 +518,7 @@ optimize__last(LayoutLabelSet, C, !.OptDebugInfo, !Instrs, !IO) :-
         ),
         remove_reassign(!Instrs),
         optimize__maybe_opt_debug(!.Instrs, C, "after reassign",
-            !OptDebugInfo, !IO)
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         Reassign = no
     ),
@@ -504,7 +534,7 @@ optimize__last(LayoutLabelSet, C, !.OptDebugInfo, !Instrs, !IO) :-
         ),
         fill_branch_delay_slot(!Instrs),
         optimize__maybe_opt_debug(!.Instrs, C, "after delay slots",
-            !OptDebugInfo, !IO)
+            ProcLabel, !OptDebugInfo, !IO)
     ;
         DelaySlot = no
     ),
@@ -520,7 +550,28 @@ optimize__last(LayoutLabelSet, C, !.OptDebugInfo, !Instrs, !IO) :-
         ),
         wrap_blocks(!Instrs),
         optimize__maybe_opt_debug(!.Instrs, C, "after wrap blocks",
-            !.OptDebugInfo, _OptDebugInfo, !IO)
+            ProcLabel, !.OptDebugInfo, _OptDebugInfo, !IO)
     ;
         UseLocalVars = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+    % Mangle the given name just sufficiently to make it acceptable as a
+    % filename.
+    %
+:- func mangle_name_as_filename(string) = string.
+
+mangle_name_as_filename(Str0) = Str :-
+    string__foldl(escape_dir_char, Str0, "", Str).
+
+:- pred escape_dir_char(char::in, string::in, string::out) is det.
+
+escape_dir_char(Char, !Str) :-
+    ( dir__is_directory_separator(Char) ->
+        !:Str = !.Str ++ "_slash_"
+    ;
+        !:Str = !.Str ++ char_to_string(Char)
+    ).
+
+%-----------------------------------------------------------------------------%

@@ -32,14 +32,18 @@
 
 :- pred msg(bool::in, int::in, string::in, io::di, io::uo) is det.
 
-:- pred maybe_dump_instrs(bool::in, list(instruction)::in, io::di, io::uo)
-    is det.
+:- pred maybe_dump_instrs(bool::in, proc_label::in, list(instruction)::in,
+    io::di, io::uo) is det.
 
 :- func dump_intlist(list(int)) = string.
 
 :- func dump_livemap(livemap) = string.
 
+:- func dump_livemap(proc_label, livemap) = string.
+
 :- func dump_livemaplist(assoc_list(label, lvalset)) = string.
+
+:- func dump_livemaplist(proc_label, assoc_list(label, lvalset)) = string.
 
 :- func dump_livevals(lvalset) = string.
 
@@ -101,11 +105,11 @@
 
 :- func dump_bool(bool) = string.
 
-:- func dump_instr(proc_label, instr) = string.
+:- func dump_instr(proc_label, bool, instr) = string.
 
-:- func dump_fullinstr(proc_label, instruction) = string.
+:- func dump_fullinstr(proc_label, bool, instruction) = string.
 
-:- func dump_fullinstrs(proc_label, list(instruction)) = string.
+:- func dump_fullinstrs(proc_label, bool, list(instruction)) = string.
 
 :- func dump_code_model(code_model) = string.
 
@@ -126,6 +130,7 @@
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 
+:- import_module char.
 :- import_module int.
 :- import_module map.
 :- import_module set.
@@ -147,23 +152,49 @@ msg(OptDebug, LabelNo, Msg, !IO) :-
         OptDebug = no
     ).
 
-maybe_dump_instrs(OptDebug, Instrs, !IO) :-
+maybe_dump_instrs(OptDebug, ProcLabel, Instrs, !IO) :-
     (
         OptDebug = yes,
         globals__io_lookup_bool_option(auto_comments, PrintComments,
             !IO),
-        dump_instrs_2(Instrs, PrintComments, !IO)
+        dump_instrs_2(Instrs, ProcLabel, PrintComments, !IO)
     ;
         OptDebug = no
     ).
 
-:- pred dump_instrs_2(list(instruction)::in, bool::in,
+:- pred dump_instrs_2(list(instruction)::in, proc_label::in, bool::in,
     io::di, io::uo) is det.
 
-dump_instrs_2([], _PrintComments, !IO).
-dump_instrs_2([Uinstr - Comment | Instrs], PrintComments, !IO) :-
-    output_debug_instruction_and_comment(Uinstr, Comment, PrintComments, !IO),
-    dump_instrs_2(Instrs, PrintComments, !IO).
+dump_instrs_2([], _ProcLabel, _PrintComments, !IO).
+dump_instrs_2([Uinstr - Comment | Instrs], ProcLabel, PrintComments, !IO) :-
+    ( Uinstr = label(_) ->
+        io__write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
+    ; Uinstr = comment(InstrComment) ->
+        io__write_string("\t% ", !IO),
+        string__foldl(print_comment_char, InstrComment, !IO)
+    ;
+        io__write_string("\t", !IO),
+        io__write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
+    ),
+    (
+        PrintComments = yes,
+        Comment \= ""
+    ->
+        io__write_string("\n\t\t" ++ Comment, !IO)
+    ;
+        true
+    ),
+    io__nl(!IO),
+    dump_instrs_2(Instrs, ProcLabel, PrintComments, !IO).
+
+:- pred print_comment_char(char::in, io::di, io::uo) is det.
+
+print_comment_char(C, !IO) :-
+    ( C = '\n' ->
+        io__write_string("\n\t% ", !IO)
+    ;
+        io__write_char(C, !IO)
+    ).
 
 dump_intlist([]) = "".
 dump_intlist([H | T]) =
@@ -172,29 +203,42 @@ dump_intlist([H | T]) =
 dump_livemap(Livemap) =
     dump_livemaplist(map__to_assoc_list(Livemap)).
 
+dump_livemap(ProcLabel, Livemap) =
+    dump_livemaplist(ProcLabel, map__to_assoc_list(Livemap)).
+
 dump_livemaplist([]) = "".
 dump_livemaplist([Label - Lvalset | Livemaplist]) =
     dump_label(Label) ++ " ->" ++ dump_livevals(Lvalset) ++ "\n"
         ++ dump_livemaplist(Livemaplist).
 
+dump_livemaplist(_ProcLabel, []) = "".
+dump_livemaplist(ProcLabel, [Label - Lvalset | Livemaplist]) =
+    dump_label(ProcLabel, Label) ++ " ->" ++ dump_livevals(Lvalset) ++ "\n"
+        ++ dump_livemaplist(ProcLabel, Livemaplist).
+
 dump_livevals(Lvalset) =
     dump_livelist(set__to_sorted_list(Lvalset)).
 
-dump_livelist([]) = "".
-dump_livelist([Lval | Lvallist]) =
-    " " ++ dump_lval(Lval) ++ dump_livelist(Lvallist).
+dump_livelist(Lvals) =
+    dump_livelist_2(Lvals, "").
+
+:- func dump_livelist_2(list(lval), string) = string.
+
+dump_livelist_2([], _) = "".
+dump_livelist_2([Lval | Lvallist], Prefix) =
+    Prefix ++ dump_lval(Lval) ++ dump_livelist_2(Lvallist, " ").
 
 dump_reg(r, N) =
-    "r(" ++ int_to_string(N) ++ ")".
+    "r" ++ int_to_string(N).
 dump_reg(f, N) =
-    "f(" ++ int_to_string(N) ++ ")".
+    "f" ++ int_to_string(N).
 
 dump_lval(reg(Type, Num)) =
-    "reg(" ++ dump_reg(Type, Num) ++ ")".
+    dump_reg(Type, Num).
 dump_lval(stackvar(N)) =
-    "stackvar(" ++ int_to_string(N) ++ ")".
+    "sv" ++ int_to_string(N).
 dump_lval(framevar(N)) =
-    "framevar(" ++ int_to_string(N) ++ ")".
+    "fv" ++ int_to_string(N).
 dump_lval(succip) = "succip".
 dump_lval(maxfr) = "maxfr".
 dump_lval(curfr) = "curfr".
@@ -222,23 +266,31 @@ dump_lval(field(MT, N, F)) = Str :-
         ++ dump_rval(F) ++ ")".
 dump_lval(lvar(_)) = "lvar(_)".
 dump_lval(temp(Type, Num)) =
-    "temp(" ++ dump_reg(Type, Num) ++ ")".
+    "temp_" ++ dump_reg(Type, Num).
 dump_lval(mem_ref(R)) =
     "mem_ref(" ++ dump_rval(R) ++ ")".
 
 dump_rval(lval(Lval)) =
-    "lval(" ++ dump_lval(Lval) ++ ")".
+    dump_lval(Lval).
 dump_rval(var(_)) =
     "var(_)".
 dump_rval(mkword(T, N)) =
     "mkword(" ++ int_to_string(T) ++ ", " ++ dump_rval(N) ++ ")".
 dump_rval(const(C)) =
-    "const(" ++ dump_const(C) ++ ")".
+    dump_const(C).
 dump_rval(unop(O, N)) =
-    "unop(" ++ dump_unop(O) ++ ", " ++ dump_rval(N) ++ ")".
+    dump_unop(O) ++ "(" ++ dump_rval(N) ++ ")".
 dump_rval(binop(O, N1, N2)) =
-    "binop(" ++ dump_binop(O) ++ ", "
-        ++ dump_rval(N1) ++ ", " ++ dump_rval(N2) ++ ")".
+    (
+        ( N1 = binop(_, _, _)
+        ; N2 = binop(_, _, _)
+        )
+    ->
+        "binop(" ++ dump_binop(O) ++ ", "
+            ++ dump_rval(N1) ++ ", " ++ dump_rval(N2) ++ ")"
+    ;
+        dump_rval(N1) ++ " " ++ dump_binop(O) ++ " " ++ dump_rval(N2)
+    ).
 dump_rval(mem_addr(M)) =
     "mem_addr(" ++ dump_mem_ref(M) ++ ")".
 
@@ -505,7 +557,7 @@ dump_code_addrs(ProcLabel, [Addr | Addrs]) =
         ++ dump_code_addrs(ProcLabel, Addrs).
 
 dump_label(internal(N, ProcLabel)) =
-    dump_proclabel(ProcLabel) ++ "_" ++ int_to_string(N).
+    dump_proclabel(ProcLabel) ++ "_i" ++ int_to_string(N).
 dump_label(entry(_, ProcLabel)) =
     dump_proclabel(ProcLabel).
 
@@ -570,7 +622,7 @@ dump_code_model(model_det) = "model_det".
 dump_code_model(model_semi) = "model_semi".
 dump_code_model(model_non) = "model_non".
 
-dump_instr(ProcLabel, Instr) = Str :-
+dump_instr(ProcLabel, PrintComments, Instr) = Str :-
     (
         Instr = comment(Comment),
         Str = "comment(" ++ Comment ++ ")"
@@ -578,12 +630,14 @@ dump_instr(ProcLabel, Instr) = Str :-
         Instr = livevals(Livevals),
         Str = "livevals(" ++ dump_livevals(Livevals) ++ ")"
     ;
-        Instr = block(RTemps, FTemps, _),
+        Instr = block(RTemps, FTemps, Instrs),
         Str = "block(" ++ int_to_string(RTemps) ++ ", "
-            ++ int_to_string(FTemps) ++ ", ...)"
+            ++ int_to_string(FTemps) ++ ",\n"
+            ++ dump_fullinstrs(ProcLabel, PrintComments, Instrs)
+            ++ ")"
     ;
         Instr = assign(Lval, Rval),
-        Str = "assign(" ++ dump_lval(Lval) ++ ", " ++ dump_rval(Rval) ++ ")"
+        Str = dump_lval(Lval) ++ " := " ++ dump_rval(Rval)
     ;
         Instr = call(Callee, ReturnLabel, _, _, _, _),
         Str = "call(" ++ dump_code_addr(ProcLabel, Callee) ++ ", "
@@ -620,21 +674,21 @@ dump_instr(ProcLabel, Instr) = Str :-
         )
     ;
         Instr = label(Label),
-        Str = "label(" ++ dump_label(ProcLabel, Label) ++ ")"
+        Str = dump_label(ProcLabel, Label) ++ ":"
     ;
         Instr = goto(CodeAddr),
-        Str = "goto(" ++ dump_code_addr(ProcLabel, CodeAddr) ++ ")"
+        Str = "goto " ++ dump_code_addr(ProcLabel, CodeAddr)
     ;
         Instr = computed_goto(Rval, Labels),
-        Str = "computed_goto(" ++ dump_rval(Rval) ++ ", "
-            ++ dump_labels(ProcLabel, Labels) ++ ")"
+        Str = "computed_goto " ++ dump_rval(Rval) ++ ":"
+            ++ dump_labels(ProcLabel, Labels)
     ;
         Instr = c_code(Code, _),
         Str = "c_code(" ++ Code ++ ")"
     ;
         Instr = if_val(Rval, CodeAddr),
-        Str = "if_val(" ++ dump_rval(Rval) ++ ", "
-            ++ dump_code_addr(ProcLabel, CodeAddr) ++ ")"
+        Str = "if (" ++ dump_rval(Rval) ++ ") goto "
+            ++ dump_code_addr(ProcLabel, CodeAddr)
     ;
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _),
         (
@@ -719,14 +773,22 @@ dump_components(ProcLabel, [Comp | Comps]) =
 dump_component(_, pragma_c_inputs(_)) = "".
 dump_component(_, pragma_c_outputs(_)) = "".
 dump_component(_, pragma_c_user_code(_, Code)) = Code.
-dump_component(_, pragma_c_raw_code(Code, _)) = Code.
+dump_component(_, pragma_c_raw_code(Code, _, _)) = Code.
 dump_component(ProcLabel, pragma_c_fail_to(Label)) =
     "fail to " ++ dump_label(ProcLabel, Label).
 dump_component(_, pragma_c_noop) = "".
 
-dump_fullinstr(ProcLabel, Uinstr - Comment) =
-    dump_instr(ProcLabel, Uinstr) ++ " - " ++ Comment ++ "\n".
+dump_fullinstr(ProcLabel, PrintComments, Uinstr - Comment) = Str :-
+    (
+        PrintComments = no,
+        Str = dump_instr(ProcLabel, PrintComments, Uinstr) ++ "\n"
+    ;
+        PrintComments = yes,
+        Str = dump_instr(ProcLabel, PrintComments, Uinstr) ++
+            " - " ++ Comment ++ "\n"
+    ).
 
-dump_fullinstrs(_ProcLabel, []) = "".
-dump_fullinstrs(ProcLabel, [Instr | Instrs]) =
-    dump_fullinstr(ProcLabel, Instr) ++ dump_fullinstrs(ProcLabel, Instrs).
+dump_fullinstrs(_ProcLabel, _PrintComments, []) = "".
+dump_fullinstrs(ProcLabel, PrintComments, [Instr | Instrs]) =
+    dump_fullinstr(ProcLabel, PrintComments, Instr)
+    ++ dump_fullinstrs(ProcLabel, PrintComments, Instrs).

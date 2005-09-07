@@ -408,17 +408,17 @@ make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode, PNegElseCode)
         PNegCondComponents = [
             pragma_c_raw_code(
                 wrap_transient("\t\tMR_pneg_enter_cond();\n"),
-                live_lvals_info(set__init))
+                cannot_branch_away, live_lvals_info(set__init))
         ],
         PNegThenComponents = [
             pragma_c_raw_code(
                 wrap_transient("\t\tMR_pneg_enter_then();\n"),
-                live_lvals_info(set__init))
+                cannot_branch_away, live_lvals_info(set__init))
         ],
         PNegElseComponents = [
             pragma_c_raw_code(
                 wrap_transient("\t\tMR_pneg_enter_else();\n"),
-                live_lvals_info(set__init))
+                cannot_branch_away, live_lvals_info(set__init))
         ],
         PNegCondCode = node([
             pragma_c([], PNegCondComponents, will_not_call_mercury,

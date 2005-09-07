@@ -596,20 +596,19 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         MaybeFromFullSlot = yes(CallFromFullSlot),
         trace__stackref_to_string(CallFromFullSlot,
             CallFromFullSlotStr),
-        string__append_list([
-            "\t\t", CallFromFullSlotStr, " = MR_trace_from_full;\n",
-            "\t\tif (MR_trace_from_full) {\n",
-            FillSlotsUptoTrail,
-            "\t\t} else {\n",
-            "\t\t\t", CallDepthStr, " = MR_trace_call_depth;\n",
+        TraceStmt1 =
+            "\t\t" ++ CallFromFullSlotStr ++ " = MR_trace_from_full;\n" ++
+            "\t\tif (MR_trace_from_full) {\n" ++
+            FillSlotsUptoTrail ++
+            "\t\t} else {\n" ++
+            "\t\t\t" ++ CallDepthStr ++ " = MR_trace_call_depth;\n" ++
             "\t\t}\n"
-        ], TraceStmt1)
     ;
         MaybeFromFullSlot = no,
         TraceStmt1 = FillSlotsUptoTrail
     ),
     TraceCode1 = node([
-        pragma_c([], [pragma_c_raw_code(TraceStmt1,
+        pragma_c([], [pragma_c_raw_code(TraceStmt1, cannot_branch_away,
             live_lvals_info(set__init))], will_not_call_mercury,
             no, no, MaybeLayoutLabel, no, yes, no)
             - ""
@@ -628,10 +627,9 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         trace__stackref_to_string(CallTableLval, CallTableLvalStr),
         TraceStmt3 = "\t\t" ++ CallTableLvalStr ++ " = 0;\n",
         TraceCode3 = node([
-            pragma_c([], [pragma_c_raw_code(TraceStmt3,
+            pragma_c([], [pragma_c_raw_code(TraceStmt3, cannot_branch_away,
                 live_lvals_info(set__init))],
-                will_not_call_mercury, no, no, no, no, yes, no)
-                - ""
+                will_not_call_mercury, no, no, no, no, yes, no) - ""
         ])
     ;
         MaybeCallTableLval = no,
@@ -656,8 +654,7 @@ trace__prepare_for_call(CI, TraceCode) :-
         ),
         ResetStmt = MacroStr ++ "(" ++ CallDepthStr ++ ");\n",
         TraceCode = node([
-            c_code(ResetStmt, live_lvals_info(set__init))
-                - ""
+            c_code(ResetStmt, live_lvals_info(set__init)) - ""
         ])
     ;
         MaybeTraceInfo = no,
@@ -883,11 +880,9 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
                 % because sometimes this pair is preceded
                 % by another label, and this way we can
                 % eliminate this other label.
-            pragma_c([], [pragma_c_raw_code(TraceStmt,
+            pragma_c([], [pragma_c_raw_code(TraceStmt, cannot_branch_away,
                 live_lvals_info(LiveLvalSet))],
-                may_call_mercury, no, no, yes(Label), no, yes,
-                no)
-                - ""
+                may_call_mercury, no, no, yes(Label), no, yes, no) - ""
         ]),
     Code = tree(ProduceCode, TraceCode).
 

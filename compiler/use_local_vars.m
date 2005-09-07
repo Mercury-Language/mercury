@@ -66,11 +66,13 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
+:- import_module bool.
 :- import_module counter.
 :- import_module list.
 
 :- pred use_local_vars__main(list(instruction)::in, list(instruction)::out,
-    proc_label::in, int::in, int::in, counter::in, counter::out) is det.
+    int::in, int::in, bool::in, proc_label::in, counter::in, counter::out)
+    is det.
 
 :- implementation.
 
@@ -78,20 +80,24 @@
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__exprn_aux.
 :- import_module ll_backend__livemap.
+:- import_module ll_backend__opt_debug.
 :- import_module ll_backend__opt_util.
+:- import_module parse_tree__error_util.
 
 :- import_module int.
 :- import_module map.
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-use_local_vars__main(Instrs0, Instrs, ProcLabel, NumRealRRegs, AccessThreshold,
-        !C) :-
-    create_basic_blocks(Instrs0, Comments, ProcLabel, !C, LabelSeq, BlockMap0),
+use_local_vars__main(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
+        AutoComments, ProcLabel, !C) :-
+    create_basic_blocks(Instrs0, Comments0, ProcLabel, !C, NewLabels,
+        LabelSeq, BlockMap0),
     flatten_basic_blocks(LabelSeq, BlockMap0, TentativeInstrs),
     livemap__build(TentativeInstrs, MaybeLiveMap),
     (
@@ -100,10 +106,20 @@ use_local_vars__main(Instrs0, Instrs, ProcLabel, NumRealRRegs, AccessThreshold,
         Instrs = Instrs0
     ;
         MaybeLiveMap = yes(LiveMap),
+        extend_basic_blocks(LabelSeq, EBBLabelSeq, BlockMap0, EBBBlockMap0,
+            NewLabels),
         list__foldl(use_local_vars_block(LiveMap, NumRealRRegs,
-            AccessThreshold), LabelSeq, BlockMap0, BlockMap),
-        flatten_basic_blocks(LabelSeq, BlockMap, Instrs1),
-        list__append(Comments, Instrs1, Instrs)
+            AccessThreshold), EBBLabelSeq, EBBBlockMap0, EBBBlockMap),
+        flatten_basic_blocks(EBBLabelSeq, EBBBlockMap, Instrs1),
+        (
+            AutoComments = yes,
+            NewComment = comment("\n" ++ dump_livemap(LiveMap)) - "",
+            Comments = Comments0 ++ [NewComment]
+        ;
+            AutoComments = no,
+            Comments = Comments0
+        ),
+        Instrs = Comments ++ Instrs1
     ).
 
 :- pred use_local_vars_block(livemap::in, int::in, int::in, label::in,
@@ -114,25 +130,9 @@ use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
     map__lookup(!.BlockMap, Label, BlockInfo0),
     BlockInfo0 = block_info(BlockLabel, LabelInstr, RestInstrs0,
         FallInto, JumpLabels, MaybeFallThrough),
-    ( can_branch_to_unknown_label(RestInstrs0) ->
-        MaybeEndLiveLvals = no
-    ;
-        (
-            MaybeFallThrough = yes(FallThrough),
-            EndLabels = [FallThrough | JumpLabels]
-        ;
-            MaybeFallThrough = no,
-            EndLabels = JumpLabels
-        ),
-        list__foldl(find_live_lvals_at_end_labels(LiveMap), EndLabels,
-            set__init, EndLiveLvals0),
-        list__foldl(find_live_lvals_in_annotations, RestInstrs0,
-            EndLiveLvals0, EndLiveLvals),
-        MaybeEndLiveLvals = yes(EndLiveLvals)
-    ),
     counter__init(1, TempCounter0),
     use_local_vars_instrs(RestInstrs0, RestInstrs, TempCounter0, TempCounter,
-        NumRealRRegs, AccessThreshold, MaybeEndLiveLvals),
+        NumRealRRegs, AccessThreshold, LiveMap, MaybeFallThrough),
     ( TempCounter = TempCounter0 ->
         true
     ;
@@ -141,60 +141,16 @@ use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
         map__det_update(!.BlockMap, Label, BlockInfo, !:BlockMap)
     ).
 
-:- pred can_branch_to_unknown_label(list(instruction)::in) is semidet.
-
-can_branch_to_unknown_label([Uinstr - _ | Instrs]) :-
-    (
-        opt_util__instr_labels(Uinstr, _, CodeAddrs),
-        some_code_addr_is_not_label(CodeAddrs)
-    ;
-        can_branch_to_unknown_label(Instrs)
-    ).
-
-:- pred some_code_addr_is_not_label(list(code_addr)::in) is semidet.
-
-some_code_addr_is_not_label([CodeAddr | CodeAddrs]) :-
-    (
-        CodeAddr \= label(_Label)
-    ;
-        some_code_addr_is_not_label(CodeAddrs)
-    ).
-
-:- pred find_live_lvals_at_end_labels(livemap::in, label::in,
-    lvalset::in, lvalset::out) is det.
-
-find_live_lvals_at_end_labels(LiveMap, Label, !LiveLvals) :-
-    ( map__search(LiveMap, Label, LabelLiveLvals) ->
-        set__union(LabelLiveLvals, !LiveLvals)
-    ; Label = internal(_, _) ->
-        error("find_live_lvals_at_end_labels: local label not found")
-    ;
-        % Non-local labels can be found only through call instructions,
-        % which must be preceded by livevals instructions. The
-        % variables live at the label will be included when we process
-        % the livevals instruction.
-        true
-    ).
-
-:- pred find_live_lvals_in_annotations(instruction::in,
-    lvalset::in, lvalset::out) is det.
-
-find_live_lvals_in_annotations(Uinstr - _, !LiveLvals) :-
-    ( Uinstr = livevals(InstrLiveLvals) ->
-        set__union(InstrLiveLvals, !LiveLvals)
-    ;
-        true
-    ).
-
 %-----------------------------------------------------------------------------%
 
 :- pred use_local_vars_instrs(list(instruction)::in, list(instruction)::out,
-    counter::in, counter::out, int::in, int::in, maybe(lvalset)::in)
+    counter::in, counter::out, int::in, int::in, livemap::in, maybe(label)::in)
     is det.
 
 use_local_vars_instrs(!RestInstrs, !TempCounter,
-        NumRealRRegs, AccessThreshold, MaybeEndLiveLvals) :-
-    opt_assign(!RestInstrs, !TempCounter, NumRealRRegs, MaybeEndLiveLvals),
+        NumRealRRegs, AccessThreshold, LiveMap, MaybeFallThrough) :-
+    opt_assign(!RestInstrs, !TempCounter, NumRealRRegs, LiveMap,
+        MaybeFallThrough),
     ( AccessThreshold >= 1 ->
         opt_access(!RestInstrs, !TempCounter, NumRealRRegs,
             set__init, AccessThreshold)
@@ -205,11 +161,11 @@ use_local_vars_instrs(!RestInstrs, !TempCounter,
 %-----------------------------------------------------------------------------%
 
 :- pred opt_assign(list(instruction)::in, list(instruction)::out,
-    counter::in, counter::out, int::in, maybe(lvalset)::in) is det.
+    counter::in, counter::out, int::in, livemap::in, maybe(label)::in) is det.
 
-opt_assign([], [], !TempCounter, _, _).
+opt_assign([], [], !TempCounter, _, _, _).
 opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
-        MaybeEndLiveLvals) :-
+        LiveMap, MaybeFallThrough) :-
     Instr0 = Uinstr0 - _Comment0,
     (
         ( Uinstr0 = assign(ToLval, _FromRval)
@@ -217,21 +173,25 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
         ),
         base_lval_worth_replacing(NumRealRRegs, ToLval)
     ->
-        counter__allocate(TempNum, !TempCounter),
-        NewLval = temp(r, TempNum),
         (
             ToLval = reg(_, _),
-            MaybeEndLiveLvals = yes(EndLiveLvals),
-            not set__member(ToLval, EndLiveLvals)
+            find_compulsory_lvals(TailInstrs0, LiveMap, MaybeFallThrough,
+                no, MaybeCompulsoryLvals),
+            MaybeCompulsoryLvals = known(CompulsoryLvals),
+            not set__member(ToLval, CompulsoryLvals)
         ->
+            counter__allocate(TempNum, !TempCounter),
+            NewLval = temp(r, TempNum),
             substitute_lval_in_defn(ToLval, NewLval, Instr0, Instr),
             list__map_foldl(
                 exprn_aux__substitute_lval_in_instr(ToLval, NewLval),
                 TailInstrs0, TailInstrs1, 0, _),
             opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
-                MaybeEndLiveLvals),
+                LiveMap, MaybeFallThrough),
             Instrs = [Instr | TailInstrs]
         ;
+            counter__allocate(TempNum, !TempCounter),
+            NewLval = temp(r, TempNum),
             substitute_lval_in_instr_until_defn(ToLval, NewLval,
                 TailInstrs0, TailInstrs1, 0, NumSubst),
             NumSubst > 1
@@ -239,17 +199,96 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             substitute_lval_in_defn(ToLval, NewLval, Instr0, Instr),
             CopyInstr = assign(ToLval, lval(NewLval)) - "",
             opt_assign(TailInstrs1, TailInstrs, !TempCounter, NumRealRRegs,
-                MaybeEndLiveLvals),
+                LiveMap, MaybeFallThrough),
             Instrs = [Instr, CopyInstr | TailInstrs]
         ;
             opt_assign(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
-                MaybeEndLiveLvals),
+                LiveMap, MaybeFallThrough),
             Instrs = [Instr0 | TailInstrs]
         )
     ;
         opt_assign(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
-            MaybeEndLiveLvals),
+            LiveMap, MaybeFallThrough),
         Instrs = [Instr0 | TailInstrs]
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- type maybe_compulsory_lvals
+    --->    known(lvalset)
+    ;       unknown_must_assume_all.
+
+:- pred find_compulsory_lvals(list(instruction)::in, livemap::in,
+    maybe(label)::in, bool::in, maybe_compulsory_lvals::out) is det.
+
+find_compulsory_lvals([], LiveMap, MaybeFallThrough, _PrevLivevals,
+        MaybeCompulsoryLvals) :-
+    (
+        MaybeFallThrough = yes(FallThrough),
+        map__lookup(LiveMap, FallThrough, CompulsoryLvals),
+        MaybeCompulsoryLvals = known(CompulsoryLvals)
+    ;
+        MaybeFallThrough = no,
+        MaybeCompulsoryLvals = unknown_must_assume_all
+    ).
+find_compulsory_lvals([Instr | Instrs], LiveMap, MaybeFallThrough,
+        PrevLivevals, !:MaybeCompulsoryLvals) :-
+    Instr = Uinstr - _,
+    (
+        Uinstr = livevals(LiveLvals)
+    ->
+        find_compulsory_lvals(Instrs, LiveMap, MaybeFallThrough,
+            yes, !:MaybeCompulsoryLvals),
+        union_maybe_compulsory_lvals(LiveLvals, !MaybeCompulsoryLvals)
+    ;
+        Uinstr = call(_, _, _, _, _, _)
+    ->
+        require(unify(PrevLivevals, yes),
+            "find_compulsory_lvals: call without livevals"),
+        % The livevals instruction will include all the live lvals
+        % in MaybeCompulsoryLvals after we return.
+        !:MaybeCompulsoryLvals = known(set__init)
+    ;
+        Uinstr = goto(_Target),
+        PrevLivevals = yes
+    ->
+        % The livevals instruction will include all the live lvals
+        % in MaybeCompulsoryLvals after we return.
+        !:MaybeCompulsoryLvals = known(set__init)
+    ;
+        possible_targets(Uinstr, Labels, NonLabelCodeAddrs),
+        (
+            NonLabelCodeAddrs = [],
+            (
+                Labels = [],
+                % Optimize the common case
+                find_compulsory_lvals(Instrs, LiveMap, MaybeFallThrough,
+                    no, !:MaybeCompulsoryLvals)
+            ;
+                Labels = [_ | _],
+                list__map(map__lookup(LiveMap), Labels, LabelsLiveLvals),
+                AllLabelsLiveLvals = set__union_list(LabelsLiveLvals),
+                find_compulsory_lvals(Instrs, LiveMap, MaybeFallThrough,
+                    no, !:MaybeCompulsoryLvals),
+                union_maybe_compulsory_lvals(AllLabelsLiveLvals,
+                    !MaybeCompulsoryLvals)
+            )
+        ;
+            NonLabelCodeAddrs = [_ | _],
+            !:MaybeCompulsoryLvals = unknown_must_assume_all
+        )
+    ).
+
+:- pred union_maybe_compulsory_lvals(lvalset::in,
+    maybe_compulsory_lvals::in, maybe_compulsory_lvals::out) is det.
+
+union_maybe_compulsory_lvals(New, !MaybeCompulsoryLvals) :-
+    (
+        !.MaybeCompulsoryLvals = known(OldCompulsoryLvals),
+        set__union(New, OldCompulsoryLvals, AllCompulsoryLvals),
+        !:MaybeCompulsoryLvals = known(AllCompulsoryLvals)
+    ;
+        !.MaybeCompulsoryLvals = unknown_must_assume_all
     ).
 
 %-----------------------------------------------------------------------------%
@@ -271,6 +310,7 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             SubLvals, ReplaceableSubLvals),
         ReplaceableSubLvals = [ChosenLval | ChooseableRvals]
     ->
+        OrigTempCounter = !.TempCounter,
         counter__allocate(TempNum, !TempCounter),
         TempLval = temp(r, TempNum),
         lvals_in_lval(ChosenLval, SubChosenLvals),
@@ -286,9 +326,11 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             opt_access(Instrs2, Instrs, !TempCounter, NumRealRRegs,
                 AlreadyTried1, AccessThreshold)
         ; ChooseableRvals = [_ | _] ->
+            !:TempCounter = OrigTempCounter,
             opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter,
                 NumRealRRegs, AlreadyTried1, AccessThreshold)
         ;
+            !:TempCounter = OrigTempCounter,
             opt_access(TailInstrs0, TailInstrs, !TempCounter, NumRealRRegs,
                 set__init, AccessThreshold),
             Instrs = [Instr0 | TailInstrs]
@@ -478,3 +520,9 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     ;
         Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "use_local_vars.m".

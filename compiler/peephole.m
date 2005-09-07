@@ -225,6 +225,13 @@ peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
     % These two classes of patterns are mutually exclusive because if_val
     % is not straight-line code.
     %
+    % We also look for the following pattern, which can happen when predicates
+    % that are actually semidet are declared to be nondet:
+    %
+    %   mkframe(NFI, dofail)
+    %   <straight,nostack instrs>   =>  <straight,nostack instrs>
+    %   succeed                         proceed
+    %
 peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
         Instrs0, Instrs) :-
     (
@@ -239,7 +246,7 @@ peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
             Skipped, Rest),
         opt_util__touches_nondet_ctrl(Skipped, no)
     ->
-        list__append(Skipped, Rest, Instrs1),
+        Instrs1 = Skipped ++ Rest,
         Instrs = [mkframe(NondetFrameInfo, yes(Redoip2)) - Comment | Instrs1]
     ;
         opt_util__skip_comments_livevals(Instrs0, Instrs1),
@@ -249,7 +256,7 @@ peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
             Redoip1 = do_fail,
             ( Target = do_redo ; Target = do_fail)
         ->
-            Instrs = [
+            InstrsPrime = [
                 if_val(Test, do_redo) - Comment2,
                 mkframe(NondetFrameInfo, yes(do_fail)) - Comment
                 | Instrs2
@@ -260,7 +267,7 @@ peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
             (
                 Target = do_fail
             ->
-                Instrs = [
+                InstrsPrime = [
                     if_val(Test, do_redo) - Comment2,
                     mkframe(NondetFrameInfo, yes(Redoip1)) - Comment
                     | Instrs2
@@ -268,7 +275,7 @@ peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
             ;
                 Target = do_redo
             ->
-                Instrs = [
+                InstrsPrime = [
                     mkframe(NondetFrameInfo, yes(Redoip1)) - Comment,
                     if_val(Test, Redoip1) - Comment2
                     | Instrs2
@@ -279,6 +286,18 @@ peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
         ;
             fail
         )
+    ->
+        Instrs = InstrsPrime
+    ;
+        Redoip1 = do_fail,
+        no_stack_straight_line(Instrs0, Straight, Instrs1),
+        Instrs1 = [Instr1 | Instrs2],
+        Instr1 = goto(do_succeed(_)) - _
+    ->
+        GotoSuccip = goto(succip) - "return from optimized away mkframe",
+        Instrs = Straight ++ [GotoSuccip | Instrs2]
+    ;
+        fail
     ).
 
     % If a `store_ticket' is followed by a `reset_ticket',
@@ -314,7 +333,7 @@ peephole__match(assign(redoip(lval(Base)), Redoip), Comment, _,
             Skipped, Rest),
         opt_util__touches_nondet_ctrl(Skipped, no)
     ->
-        list__append(Skipped, Rest, Instrs1),
+        Instrs1 = Skipped ++ Rest,
         Instrs = [assign(redoip(lval(Base)),
             const(code_addr_const(Redoip2))) - Comment | Instrs1]
     ;
@@ -346,7 +365,7 @@ peephole__match(assign(redoip(lval(Base)), Redoip), Comment, _,
 peephole__match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
     \+ list__member(incr_sp, InvalidPatterns),
     ( opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) ->
-        list__append(Between, Remain, Instrs)
+        Instrs = Between ++ Remain
     ;
         fail
     ).

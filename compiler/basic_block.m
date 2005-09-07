@@ -26,6 +26,7 @@
 :- import_module counter.
 :- import_module list.
 :- import_module map.
+:- import_module set.
 :- import_module std_util.
 
 :- type block_map   ==  map(label, block_info).
@@ -55,10 +56,40 @@
                                     % (if there is one).
             ).
 
+    % create_basic_blocks(ProcInstrs, Comments, ProcLabel, !C, NewLabels,
+    %   LabelSeq, BlockMap):
+    %
+    % Given ProcInstrs, the instruction sequence of the procedure given by
+    % ProcLabel and whose label counter is currently !.C, create_basic_blocks
+    % will divide up ProcInstrs into a sequence of basic blocks, each
+    % identified by a label. The info on each basic block is returned in
+    % BlockMap, and the sequence of basic blocks is returned in LabelSeq.
+    % In the process, create_basic_blocks creates new labels for basic blocks
+    % that can be reached only by falling through. The set of these new labels
+    % is returned in NewLabels. Any initial comments are returned in Comments.
+    %
 :- pred create_basic_blocks(list(instruction)::in, list(instruction)::out,
     proc_label::in, counter::in, counter::out,
-    list(label)::out, block_map::out) is det.
+    set(label)::out, list(label)::out, block_map::out) is det.
 
+    % extend_basic_blocks(!LabelSeq, !BlockMap, NewLabels):
+    %
+    % Given !.LabelSeq, a sequence of labels each referring to a basic block in
+    % !.BlockMap, and the set of labels NewLabels that are not the targets of
+    % gotos (e.g. because they were freshly created by create_basic_blocks),
+    % delete from !.LabelSeq each label in NewLabels, merging its basic block
+    % with the immediately previous basic block. As a result, in block in
+    % !:BlockMap is an extended basic block.
+    %
+:- pred extend_basic_blocks(list(label)::in, list(label)::out,
+    block_map::in, block_map::out, set(label)::in) is det.
+
+    % flatten_basic_blocks(LabelSeq, BlockMap, Instrs):
+    %
+    % Given LabelSeq, a sequence of labels each referring to a block in
+    % BlockMap, return the concatenation of the basic blocks referred to by
+    % the labels in LabelSeq.
+    %
 :- pred flatten_basic_blocks(list(label)::in, block_map::in,
     list(instruction)::out) is det.
 
@@ -70,11 +101,15 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module svmap.
+:- import_module svset.
 
-create_basic_blocks(Instrs0, Comments, ProcLabel, !C, LabelSeq, BlockMap) :-
+create_basic_blocks(Instrs0, Comments, ProcLabel, !C, NewLabels, LabelSeq,
+        BlockMap) :-
     opt_util__get_prologue(Instrs0, LabelInstr, Comments, AfterLabelInstrs),
     Instrs1 = [LabelInstr | AfterLabelInstrs],
-    build_block_map(Instrs1, LabelSeq, ProcLabel, no, map__init, BlockMap, !C).
+    build_block_map(Instrs1, LabelSeq, ProcLabel, no, map__init, BlockMap,
+        set__init, NewLabels, !C).
 
 %-----------------------------------------------------------------------------%
 
@@ -83,11 +118,11 @@ create_basic_blocks(Instrs0, Comments, ProcLabel, !C, LabelSeq, BlockMap) :-
     %
 :- pred build_block_map(list(instruction)::in, list(label)::out,
     proc_label::in, bool::in, block_map::in, block_map::out,
-    counter::in, counter::out) is det.
+    set(label)::in, set(label)::out, counter::in, counter::out) is det.
 
-build_block_map([], [], _, _, !BlockMap, !C).
+build_block_map([], [], _, _, !BlockMap, !NewLabels, !C).
 build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
-        !BlockMap, !C) :-
+        !BlockMap, !NewLabels, !C) :-
     ( OrigInstr0 = label(OrigLabel) - _ ->
         Label = OrigLabel,
         LabelInstr = OrigInstr0,
@@ -95,16 +130,17 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
     ;
         counter__allocate(N, !C),
         Label = internal(N, ProcLabel),
+        svset__insert(Label, !NewLabels),
         LabelInstr = label(Label) - "",
         RestInstrs = [OrigInstr0 | OrigInstrs0]
     ),
     (
         take_until_end_of_block(RestInstrs, BlockInstrs, Instrs1),
         build_block_map(Instrs1, LabelSeq1, ProcLabel, NextFallInto, !BlockMap,
-            !C),
+            !NewLabels, !C),
         ( list__last(BlockInstrs, LastInstr) ->
             LastInstr = LastUinstr - _,
-            opt_util__possible_targets(LastUinstr, SideLabels),
+            opt_util__possible_targets(LastUinstr, SideLabels, _SideCodeAddrs),
             opt_util__can_instr_fall_through(LastUinstr, NextFallInto)
         ;
             SideLabels = [],
@@ -151,6 +187,40 @@ get_fallthrough_from_seq(LabelSeq, MaybeFallThrough) :-
         MaybeFallThrough = yes(NextLabel)
     ;
         MaybeFallThrough = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
+extend_basic_blocks([], [], !BlockMap, _NewLabels).
+extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
+    (
+        Labels = [NextLabel | RestLabels],
+        set__member(NextLabel, NewLabels)
+    ->
+        map__lookup(!.BlockMap, Label, BlockInfo),
+        map__lookup(!.BlockMap, NextLabel, NextBlockInfo),
+        BlockInfo = block_info(BlockLabel, BlockLabelInstr, BlockInstrs,
+            BlockFallInto, BlockSideLabels, BlockMaybeFallThrough),
+        NextBlockInfo = block_info(NextBlockLabel, _, NextBlockInstrs,
+            NextBlockFallInto, NextBlockSideLabels, NextBlockMaybeFallThrough),
+        require(unify(BlockLabel, Label),
+            "extend_basic_blocks: block label mismatch"),
+        require(unify(NextBlockLabel, NextLabel),
+            "extend_basic_blocks: next block label mismatch"),
+        require(unify(BlockMaybeFallThrough, yes(NextLabel)),
+            "extend_basic_blocks: fall through mismatch"),
+        require(unify(NextBlockFallInto, yes),
+            "extend_basic_blocks: fall into mismatch"),
+        NewBlockInfo = block_info(BlockLabel, BlockLabelInstr,
+            BlockInstrs ++ NextBlockInstrs, BlockFallInto,
+            BlockSideLabels ++ NextBlockSideLabels, NextBlockMaybeFallThrough),
+        svmap__det_update(Label, NewBlockInfo, !BlockMap),
+        svmap__delete(NextLabel, !BlockMap),
+        extend_basic_blocks([Label | RestLabels], LabelSeq, !BlockMap,
+            NewLabels)
+    ;
+        extend_basic_blocks(Labels, LabelSeqTail, !BlockMap, NewLabels),
+        LabelSeq = [Label | LabelSeqTail]
     ).
 
 %-----------------------------------------------------------------------------%

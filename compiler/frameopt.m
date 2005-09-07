@@ -779,7 +779,7 @@ analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap, !KeepFrame) :-
         list__last(BlockInstrs, LastInstr)
     ->
         LastInstr = LastUinstr - _,
-        possible_targets(LastUinstr, SideLabels),
+        possible_targets(LastUinstr, SideLabels, _SideCodeAddrs),
         (
             opt_util__can_instr_fall_through(LastUinstr, yes),
             Labels = [NextLabel | _]
@@ -1698,7 +1698,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
         SideLabels, MaybeFallThrough, Type),
     require(unify(Label, BlockLabel), "describe_block: label mismatch"),
     LabelStr = dump_label(ProcLabel, Label),
-    BlockInstrsStr = dump_fullinstrs(ProcLabel, BlockInstrs),
+    BlockInstrsStr = dump_fullinstrs(ProcLabel, yes, BlockInstrs),
     Heading = "\nBLOCK " ++ LabelStr ++ "\n\n",
     ( map__search(PredMap, Label, PredLabel) ->
         PredStr = "previous label " ++ dump_label(ProcLabel, PredLabel) ++ "\n"
@@ -1761,11 +1761,11 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
             "describe_block: teardown, MaybeFallThrough=yes(_)"),
         TypeStr = "teardown\n"
             ++ "restore:  "
-            ++ dump_fullinstrs(ProcLabel, RestoreSuccip)
+            ++ dump_fullinstrs(ProcLabel, yes, RestoreSuccip)
             ++ "livevals: "
-            ++ dump_fullinstrs(ProcLabel, Livevals)
+            ++ dump_fullinstrs(ProcLabel, yes, Livevals)
             ++ "goto:     "
-            ++ dump_fullinstr(ProcLabel, Goto),
+            ++ dump_fullinstr(ProcLabel, yes, Goto),
         OrdNeedsFrameStr = ""
     ),
     Comment = Heading ++ PredStr ++ FallIntoStr ++ SideStr ++ FallThroughStr
