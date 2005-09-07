@@ -317,7 +317,7 @@ lexer__get_token(Token, Context, !IO) :-
 		Token = eof
 	;
 		Result = ok(Char),
-		( ( Char = ' ' ; Char = '\t' ; Char = '\n' ) ->
+		( char__is_whitespace(Char) ->
 			lexer__get_token_2(Token, Context, !IO)
 		; ( char__is_upper(Char) ; Char = '_' ) ->
 			lexer__get_context(Context, !IO),
@@ -368,7 +368,7 @@ lexer__get_token(Token, Context, !IO) :-
 lexer__string_get_token(String, Len, Token, Context, !Posn) :-
 	Posn0 = !.Posn,
 	( lexer__string_read_char(String, Len, Char, !Posn) ->
-		( ( Char = ' ' ; Char = '\t' ; Char = '\n' ) ->
+		( char__is_whitespace(Char) ->
 			lexer__string_get_token_2(String, Len, Token, Context,
 				!Posn)
 		; ( char__is_upper(Char) ; Char = '_' ) ->
@@ -441,7 +441,7 @@ lexer__get_token_2(Token, Context, !IO) :-
 		Token = eof
 	;
 		Result = ok(Char),
-		( ( Char = ' ' ; Char = '\t' ; Char = '\n' ) ->
+		( char__is_whitespace(Char) ->
 			lexer__get_token_2(Token, Context, !IO)
 		; ( char__is_upper(Char) ; Char = '_' ) ->
 			lexer__get_context(Context, !IO),
@@ -488,7 +488,7 @@ lexer__get_token_2(Token, Context, !IO) :-
 lexer__string_get_token_2(String, Len, Token, Context, !Posn) :-
 	Posn0 = !.Posn,
 	( lexer__string_read_char(String, Len, Char, !Posn) ->
-		( ( Char = ' ' ; Char = '\t' ; Char = '\n' ) ->
+		( char__is_whitespace(Char) ->
 			lexer__string_get_token_2(String, Len, Token, Context,
 				!Posn)
 		; ( char__is_upper(Char) ; Char = '_' ) ->
@@ -619,10 +619,10 @@ lexer__string_get_dot(String, Len, Posn0, Token, Context, !Posn) :-
 
 :- pred lexer__whitespace_after_dot(char::in) is semidet.
 
-lexer__whitespace_after_dot(' ').
-lexer__whitespace_after_dot('\t').
-lexer__whitespace_after_dot('\n').
-lexer__whitespace_after_dot('%').
+lexer__whitespace_after_dot(Char) :-
+	( char__is_whitespace(Char) 
+	; Char = '%'
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -921,6 +921,11 @@ lexer__get_quoted_name_escape(QuoteChar, Chars, Token, !IO) :-
 		Result = ok(Char),
 		( Char = '\n' ->
 			lexer__get_quoted_name(QuoteChar, Chars, Token, !IO)
+		; Char = '\r' ->
+			% Files created on Windows may have an extra
+			% return character.
+			lexer__get_quoted_name_escape(QuoteChar, Chars, Token, 
+				!IO)
 		; lexer__escape_char(Char, EscapedChar) ->
 			Chars1 = [EscapedChar | Chars],
 			lexer__get_quoted_name(QuoteChar, Chars1, Token, !IO)
@@ -944,6 +949,11 @@ lexer__string_get_quoted_name_escape(String, Len, QuoteChar, Chars, Posn0,
 		( Char = '\n' ->
 			lexer__string_get_quoted_name(String, Len, QuoteChar,
 				Chars, Posn0, Token, Context, !Posn)
+		; Char = '\r' -> 
+			% Files created on Windows may have an extra
+			% return character.
+			lexer__string_get_quoted_name_escape(String, Len, 
+				QuoteChar, Chars, Posn0, Token, Context, !Posn)
 		; lexer__escape_char(Char, EscapedChar) ->
 			Chars1 = [EscapedChar | Chars],
 			lexer__string_get_quoted_name(String, Len, QuoteChar,

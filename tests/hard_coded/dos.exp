@@ -1,0 +1,4 @@
+multi
+                line string
+should be all on one line
+'escaped functor'
