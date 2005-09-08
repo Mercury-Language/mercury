@@ -760,9 +760,18 @@ AC_SUBST(CYGPATH)
 AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
 
 #-----------------------------------------------------------------------------#
-# If we're compiling the compiler with MS Visual C++ or `gcc -mno-cygwin',
-# don't use symlinks when installing -- the generated compiler executable
-# will not be able to follow them.
+enable_symlinks_opt=no
+AC_ARG_ENABLE(symlinks,
+[  --enable-symlinks       enable symbolic links.  This is the default on all
+			  systems except Windows.  On Windows you can force
+			  symbolic links to be used by giving this option.
+			  Note that symbolic links will only work on Windows if
+			  you are using the Cygwin version of GCC.],
+[ enable_symlinks_opt=yes ])
+
+# If we're compiling the compiler on Windows,
+# don't use symlinks when installing unless the --enable-symlinks option
+# is given.
 #
 # When cross-compiling from Cygwin to Mingw (and perhaps also on
 # native Mingw?), `-lm' exists, but it is not needed and in fact we must
@@ -771,14 +780,12 @@ MMC_USE_SYMLINKS_OPT=
 LN_S="ln -s"
 case "$host" in
     *cygwin*)
-	case "$CC" in
-	    # cl is the Microsoft C compiler
-	    *gcc*-mno-cygwin* | *cl* | *CL*)
+	MATH_LIB=
+	if test "$enable_symlinks_opt" != "yes"; then
 		MMC_USE_SYMLINKS_OPT=--no-use-symlinks
-		MATH_LIB=
 		LN_S=false
-		;;
-	esac ;;
+	fi
+	;;
 esac
 
 AC_SUBST(LN_S)
