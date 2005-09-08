@@ -238,7 +238,7 @@ do
 		fi
 	fi
 
-	if test "$objects" = "-k"
+	if test "$objects" = "-k" -a "$save_stage2" = "false"
 	then
 		echo saving object files
 		mkdir -p batch/objs/$batch.library.$visn
