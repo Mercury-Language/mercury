@@ -139,20 +139,36 @@
 % The argument passing convention is that the new parameters
 % introduced by this pass are placed in the following order:
 %
-%	First the UnivTypeInfos (for universally quantified type variables)
-% 	then the ExistTypeInfos (for existentially quantified type variables)
-%	then the UnivTypeClassInfos (for universally quantified constraints)
-%	then the ExistTypeClassInfos (for existentially quantified constraints)
+%	First the UnivTypeInfos for universally quantified type variables,
+%	in the order that the type variables first appear in the argument
+%	types;
+%
+% 	then the ExistTypeInfos for existentially quantified type variables,
+% 	in the order that the type variables first appear in the argument
+% 	types;
+%
+%	then the UnivTypeClassInfos for universally quantified constraints,
+%	in the order that the constraints appear in the class context;
+%
+%	then the ExistTypeClassInfos for existentially quantified constraints,
+%	in the order that the constraints appear in the class context;
+%
 %	and finally the original arguments of the predicate.
+%
+% Bear in mind that for the purposes of this (and most other) calucaltions,
+% the return parameter of a function counts as the _last_ argument.
 %
 % The convention for class method implementations is slightly different
 % to match the order that the type_infos and typeclass_infos are passed
 % in by do_call_class_method (in runtime/mercury_ho_call.c):
 %
-%	First the type_infos for the unconstrained type variables in
-% 		the instance declaration
-%	then the typeclass_infos for the class constraints on the
-%		instance declaration
+%	First the type_infos for the unconstrained type variables in the
+%	instance declaration, in the order that they first appear in the
+%	instance arguments;
+%
+%	then the typeclass_infos for the class constraints on the instance
+%	declaration, in the order that they appear in the declaration;
+%
 % 	then the remainder of the type_infos and typeclass_infos as above.
 %
 %-----------------------------------------------------------------------------%
@@ -793,16 +809,18 @@ polymorphism__setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
 		HeadVars, ExtraArgModes, HeadTypeVars, AllUnconstrainedTVars,
 		AllExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars, !Info) :-
 	%
-	% grab the appropriate fields from the pred_info
+	% Grab the appropriate fields from the pred_info.
 	%
 	pred_info_arg_types(PredInfo, ArgTypeVarSet, ExistQVars, ArgTypes),
 
 	%
-	% Insert extra head variables to hold the address of the
-	% type_infos and typeclass_infos.
-	% We insert one variable for each unconstrained type variable
-	% (for the type_info) and one variable for each constraint (for
-	% the typeclass_info).
+	% Insert extra head variables to hold the address of the type_infos
+	% and typeclass_infos.  We insert one variable for each unconstrained
+	% type variable (for the type_info) and one variable for each
+	% constraint (for the typeclass_info).
+	%
+	% The order of these variables is important, and must match the order
+	% specified at the top of this file.
 	%
 
 		% Make a fresh variable for each class constraint, returning
@@ -1773,6 +1791,11 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 	poly_info_get_typevarset(!.Info, TypeVarSet0),
 	poly_info_get_module_info(!.Info, ModuleInfo),
 
+	%
+	% The order of the added variables is important, and must match the
+	% order specified at the top of this file.
+	%
+
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
 		PredArgTypes),
@@ -1794,7 +1817,7 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 		map__init(PredToParentTypeSubst),
 		TypeVarSet = TypeVarSet0,
 		ParentArgTypes = PredArgTypes,
-		ParentTypeVars = [],
+		ParentTVars = [],
 		ParentExistQVarTerms = []
 	;
 		% (this merge might be a performance bottleneck?)
@@ -1802,7 +1825,7 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 			PredToParentTypeSubst),
 		term__apply_substitution_to_list(PredArgTypes,
 			PredToParentTypeSubst, ParentArgTypes),
-		term__vars_list(ParentArgTypes, ParentTypeVars),
+		term__vars_list(ParentArgTypes, ParentTVars),
 		term__var_list_to_term_list(PredExistQVars,
 			PredExistQVarTerms),
 		term__apply_substitution_to_list(PredExistQVarTerms,
@@ -1816,7 +1839,7 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 		(
 			% Optimize for the common case of non-polymorphic call
 			% with no constraints.
-			ParentTypeVars = [],
+			ParentTVars = [],
 			PredClassContext = constraints([], [])
 		;
 			% Some builtins don't need or want the type_info.
@@ -1847,16 +1870,27 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 			ParentExistConstrainedTVars),
 
 			% Calculate the set of unconstrained type vars.
-		list__remove_dups(ParentTypeVars,
-			ParentUnconstrainedTypeVars0),
-		list__delete_elems(ParentUnconstrainedTypeVars0,
+			% Split these into existential and universal type
+			% vars.
+		list__remove_dups(ParentTVars,
+			ParentUnconstrainedTVars0),
+		list__delete_elems(ParentUnconstrainedTVars0,
 			ParentUnivConstrainedTVars,
-			ParentUnconstrainedTypeVars1),
-		list__delete_elems(ParentUnconstrainedTypeVars1,
+			ParentUnconstrainedTVars1),
+		list__delete_elems(ParentUnconstrainedTVars1,
 			ParentExistConstrainedTVars,
-			ParentUnconstrainedTypeVars),
-		term__var_list_to_term_list(ParentUnconstrainedTypeVars,
-			ParentUnconstrainedTypes),
+			ParentUnconstrainedTVars),
+		term__term_list_to_var_list(ParentExistQVarTerms,
+			ParentExistQVars),
+		list__delete_elems(ParentUnconstrainedTVars, ParentExistQVars,
+			ParentUnconstrainedUnivTVars),
+		list__delete_elems(ParentUnconstrainedTVars,
+			ParentUnconstrainedUnivTVars,
+			ParentUnconstrainedExistTVars),
+		term__var_list_to_term_list(ParentUnconstrainedUnivTVars,
+			ParentUnconstrainedUnivTypes),
+		term__var_list_to_term_list(ParentUnconstrainedExistTVars,
+			ParentUnconstrainedExistTypes),
 
 			% Calculate the "parent to actual" binding.
 		map__apply_to_list(ArgVars0, VarTypes, ActualArgTypes),
@@ -1889,18 +1923,30 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 			ActualExistConstraints, ExtraExistClassVars,
 			ExtraExistClassGoals, !Info),
 
-			% Make variables to hold typeinfos for any remaining
-			% (that is, unconstrained) type vars.
-		term__apply_rec_substitution_to_list(ParentUnconstrainedTypes,
-			ParentToActualTypeSubst, ActualUnconstrainedTypes),
-		polymorphism__make_type_info_vars(ActualUnconstrainedTypes,
-			Context, ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
+			% Make variables to hold typeinfos for unconstrained
+			% universal type vars.
+		term__apply_rec_substitution_to_list(
+			ParentUnconstrainedUnivTypes, ParentToActualTypeSubst,
+			ActualUnconstrainedUnivTypes),
+		polymorphism__make_type_info_vars(ActualUnconstrainedUnivTypes,
+			Context, ExtraUnivTypeInfoVars, ExtraUnivTypeInfoGoals,
+			!Info),
+
+			% Make variables to hold typeinfos for unconstrained
+			% existential type vars.
+		term__apply_rec_substitution_to_list(
+			ParentUnconstrainedExistTypes, ParentToActualTypeSubst,
+			ActualUnconstrainedExistTypes),
+		polymorphism__make_type_info_vars(
+			ActualUnconstrainedExistTypes, Context,
+			ExtraExistTypeInfoVars, ExtraExistTypeInfoGoals,
+			!Info),
 
 			% Add up the extra vars and goals.
 		ExtraGoals = ExtraUnivClassGoals ++ ExtraExistClassGoals
-			++ ExtraTypeInfoGoals,
-		ExtraVars = ExtraTypeInfoVars ++ ExtraUnivClassVars
-			++ ExtraExistClassVars,
+			++ ExtraUnivTypeInfoGoals ++ ExtraExistTypeInfoGoals,
+		ExtraVars = ExtraUnivTypeInfoVars ++ ExtraExistTypeInfoVars
+			++ ExtraUnivClassVars ++ ExtraExistClassVars,
 
 		%
 		% update the non-locals
