@@ -146,14 +146,7 @@ Solaris 8 (x86), MacOS X (PowerPC), and Windows (x86).
 For Windows, we have have tested this release only on Windows XP Pro
 but it should also run fine on Windows 95, 98, ME, NT, and 2000.
 
-
-The current Mercury system has been tested on Linux (x86),
-Linux (Alpha), Solaris 2.7 (SPARC), Solaris 2.8 (x86),
-Compaq Tru64 Unix (Alpha), MacOS X (PowerPC), and Windows (x86).
-For Windows, we have tested this release only on Windows 2000,
-but it should also run fine on Windows 95, 98, ME, NT, and XP.
-
-In the past Mercury has been known to run on: Digital Unix,
+In the past Mercury has also been known to run on: Digital Unix,
 OSF1, IRIX 5.x, Ultrix 4.3, BSDI 1.1, AIX, HPUX, Linux (Alpha),
 Compaq Tru64 Unix (Alpha), Solaris 2.7 (SPARC)
 
