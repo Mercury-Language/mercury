@@ -357,8 +357,9 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
     --->    setup               % This is a block containing
                                 % only setup instructions.
 
-    ;       ordinary(bool)      % This block does not contain setup or
-                                % teardown. The bool says whether the code
+    ;       ordinary(block_needs_frame)
+                                % This block does not contain setup or
+                                % teardown. The arg says whether the code
                                 % in the block needs a stack frame.
 
     ;       teardown(           % This block contains stack teardown
@@ -370,6 +371,10 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
                 instruction
                                 % The goto instr.
             ).
+
+:- type block_needs_frame
+    --->    block_needs_frame
+    ;       block_doesnt_need_frame.
 
 %-----------------------------------------------------------------------------%
 
@@ -482,9 +487,9 @@ build_frame_block_map([Instr0 | Instrs0], FrameSize, LabelSeq,
                 NextPrevLabel = Label
             ;
                 Extra = [_ | _],
-                block_needs_frame(Extra, Needs),
+                block_needs_frame(Extra, NeedsFrame),
                 ExtraInfo = frame_block_info(Label, [Instr0 | Extra],
-                    FallInto, [], no, ordinary(Needs)),
+                    FallInto, [], no, ordinary(NeedsFrame)),
                 MaybeExtraInfo = yes(ExtraInfo - Label),
                 counter__allocate(N, !C),
                 NewLabel = internal(N, ProcLabel),
@@ -511,10 +516,10 @@ build_frame_block_map([Instr0 | Instrs0], FrameSize, LabelSeq,
             )
         ;
             opt_util__skip_to_next_label(Instrs0, Block, Instrs1),
-            block_needs_frame(Block, Needs),
+            block_needs_frame(Block, NeedsFrame),
             BlockInstrs = [Instr0 | Block],
             BlockInfo = frame_block_info(Label, BlockInstrs, FallInto,
-                [], no, ordinary(Needs)),
+                [], no, ordinary(NeedsFrame)),
             ( list__last(BlockInstrs, LastBlockInstr) ->
                 LastBlockInstr = LastBlockUinstr - _,
                 opt_util__can_instr_fall_through(LastBlockUinstr,
@@ -688,13 +693,13 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 
     % Does an ordinary block with the given content need a stack frame?
     %
-:- pred block_needs_frame(list(instruction)::in, bool::out) is det.
+:- pred block_needs_frame(list(instruction)::in, block_needs_frame::out) is det.
 
 block_needs_frame(Instrs, NeedsFrame) :-
     opt_util__block_refers_stackvars(Instrs, ReferStackVars),
     (
         ReferStackVars = yes,
-        NeedsFrame = yes
+        NeedsFrame = block_needs_frame
     ;
         ReferStackVars = no,
         (
@@ -720,9 +725,9 @@ block_needs_frame(Instrs, NeedsFrame) :-
                 )
             )
         ->
-            NeedsFrame = yes
+            NeedsFrame = block_needs_frame
         ;
-            NeedsFrame = no
+            NeedsFrame = block_doesnt_need_frame
         )
     ).
 
@@ -754,12 +759,17 @@ analyze_block_map(LabelSeq, !BlockMap, KeepFrameData) :-
         map__search(!.BlockMap, FirstLabel, FirstBlockInfo),
         FirstBlockInfo = frame_block_info(FirstLabel, _, _, _, _, setup)
     ->
-        analyze_block_map_2(LabelSeq, FirstLabel, !BlockMap, no, KeepFrame),
+        analyze_block_map_2(LabelSeq, FirstLabel, !BlockMap,
+            block_doesnt_need_frame, AnyBlockNeedsFrame, no, JumpToStart),
+        % We want to apply the transformation to keep the stack frame only if
+        % (a) some block actually needs the stack frame, and (b) there is at
+        % least one block that jumps back to the start of the procedure.
         (
-            KeepFrame = yes,
+            AnyBlockNeedsFrame = block_needs_frame,
+            JumpToStart = yes
+        ->
             KeepFrameData = yes(FirstLabel - SecondLabel)
         ;
-            KeepFrame = no,
             KeepFrameData = no
         )
     ;
@@ -767,13 +777,20 @@ analyze_block_map(LabelSeq, !BlockMap, KeepFrameData) :-
     ).
 
 :- pred analyze_block_map_2(list(label)::in, label::in,
-    frame_block_map::in, frame_block_map::out, bool::in, bool::out) is det.
+    frame_block_map::in, frame_block_map::out,
+    block_needs_frame::in, block_needs_frame::out, bool::in, bool::out) is det.
 
-analyze_block_map_2([], _, !BlockMap, !KeepFrame).
-analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap, !KeepFrame) :-
+analyze_block_map_2([], _, !BlockMap, !AnyBlockNeedsFrame, !KeepFrame).
+analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap,
+        !AnyBlockNeedsFrame, !JumpToStart) :-
     map__lookup(!.BlockMap, Label, BlockInfo0),
     BlockInfo0 = frame_block_info(BlockLabel, BlockInstrs, FallInto,
         _, _, Type),
+    ( Type = ordinary(block_needs_frame) ->
+        !:AnyBlockNeedsFrame = block_needs_frame
+    ;
+        true
+    ),
     (
         Label = BlockLabel, % sanity check
         list__last(BlockInstrs, LastInstr)
@@ -792,7 +809,7 @@ analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap, !KeepFrame) :-
             LastUinstr = goto(label(GotoLabel)),
             matching_label_ref(FirstLabel, GotoLabel)
         ->
-            !:KeepFrame = yes
+            !:JumpToStart = yes
         ;
             true
         )
@@ -802,7 +819,8 @@ analyze_block_map_2([Label | Labels], FirstLabel, !BlockMap, !KeepFrame) :-
     BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
         SideLabels, MaybeFallThrough, Type),
     svmap__det_update(Label, BlockInfo, !BlockMap),
-    analyze_block_map_2(Labels, FirstLabel, !BlockMap, !KeepFrame).
+    analyze_block_map_2(Labels, FirstLabel, !BlockMap, !AnyBlockNeedsFrame,
+        !JumpToStart).
 
     % The form of a label used in a tailcall may be different from
     % the form used in the initial label. The initial label may be
@@ -898,7 +916,7 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
         ),
         Instrs = [OrigLabelInstr | BackInstrs],
         BlockInfo = frame_block_info(Label, Instrs, FallInto,
-            [SecondLabel], no, ordinary(yes)),
+            [SecondLabel], no, ordinary(block_needs_frame)),
         map__det_update(!.BlockMap, Label, BlockInfo, !:BlockMap)
     ;
         true
@@ -1100,16 +1118,17 @@ delay_frame_transform(!LabelSeq, FrameSize, Msg, ProcLabel, PredMap, !C,
 
 max_propagation_steps = 10000.
 
-:- pred key_block_needs_frame(pair(label, bool)::in, label::out) is semidet.
+:- pred key_block_needs_frame(pair(label, block_needs_frame)::in, label::out)
+    is semidet.
 
-key_block_needs_frame(Label - yes, Label).
+key_block_needs_frame(Label - block_needs_frame, Label).
 
 %-----------------------------------------------------------------------------%
 
     % Maps the label of each ordinary block to a bool that says whether
     % the block needs a stack frame or not.
     %
-:- type ord_needs_frame == map(label, bool).
+:- type ord_needs_frame == map(label, block_needs_frame).
 
     % Initialize the data structures for the delaying operation.
     % The first is a map showing the predecessors of each block,
@@ -1135,9 +1154,9 @@ delay_frame_init([Label | Labels], BlockMap, !RevMap, !Queue,
         BlockType = ordinary(NeedsFrame),
         svmap__det_insert(Label, NeedsFrame, !OrdNeedsFrame),
         (
-            NeedsFrame = no
+            NeedsFrame = block_doesnt_need_frame
         ;
-            NeedsFrame = yes,
+            NeedsFrame = block_needs_frame,
             svqueue__put(Label, !Queue)
         )
     ;
@@ -1187,7 +1206,7 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
         BlockType = BlockInfo ^ fb_type,
         (
             BlockType = ordinary(_),
-            svmap__det_update(Label, yes, !OrdNeedsFrame),
+            svmap__det_update(Label, block_needs_frame, !OrdNeedsFrame),
             % Putting an already processed label into the queue could
             % lead to an infinite loop. However, we cannot decide whether
             % a label has been processed by checking whether !.OrdNeedsFrame
@@ -1237,7 +1256,7 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
             % that sets up the resumption point saves the address of Label on
             % the stack, and thus is already known to need a stack frame.
             Predecessors = [],
-            svmap__det_update(Label, yes, !OrdNeedsFrame)
+            svmap__det_update(Label, block_needs_frame, !OrdNeedsFrame)
         ),
         list__filter(all_successors_need_frame(BlockMap, !.OrdNeedsFrame),
             Predecessors, NowNeedFrameLabels),
@@ -1262,7 +1281,7 @@ record_frame_need(BlockMap, Label, !OrdNeedsFrame, !CanTransform) :-
         !:CanTransform = cannot_transform
     ;
         BlockType = ordinary(_),
-        svmap__det_update(Label, yes, !OrdNeedsFrame)
+        svmap__det_update(Label, block_needs_frame, !OrdNeedsFrame)
     ;
         BlockType = teardown(_, _, _),
         unexpected(this_file, "record_frame_need: teardown")
@@ -1282,7 +1301,7 @@ all_successors_need_frame(BlockMap, OrdNeedsFrame, Label) :-
 
 label_needs_frame(OrdNeedsFrame, Label) :-
     ( map__search(OrdNeedsFrame, Label, NeedsFrame) ->
-        NeedsFrame = yes
+        NeedsFrame = block_needs_frame
     ;
         % If the map__search fails, Label is not an ordinary frame.
         % Setup blocks and teardown blocks don't need frames.
@@ -1352,7 +1371,7 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
                 "process_frame_delay: setup block does not begin with label")
         ),
         BlockInfo = frame_block_info(Label0, [LabelInstr], FallInto,
-            SideLabels0, MaybeFallThrough0, ordinary(no)),
+            SideLabels0, MaybeFallThrough0, ordinary(block_doesnt_need_frame)),
         svmap__det_update(Label0, BlockInfo, !BlockMap),
         process_frame_delay(Labels0, OrdNeedsFrame,
             ProcLabel, !C, !BlockMap, !SetupParMap, !TeardownParMap)
@@ -1360,7 +1379,7 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
         Type = ordinary(_),
         map__lookup(OrdNeedsFrame, Label0, NeedsFrame),
         (
-            NeedsFrame = yes,
+            NeedsFrame = block_needs_frame,
             % Every block reachable from this block, whether via jump or
             % fallthrough, will be an ordinary block also mapped to `yes'
             % by OrdNeedsFrame, or will be a teardown block. We already have
@@ -1369,7 +1388,7 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
             process_frame_delay(Labels0, OrdNeedsFrame, ProcLabel, !C,
                 !BlockMap, !SetupParMap, !TeardownParMap)
         ;
-            NeedsFrame = no,
+            NeedsFrame = block_doesnt_need_frame,
             transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0,
                 OrdNeedsFrame, ProcLabel, !C, !BlockMap,
                 !SetupParMap, !TeardownParMap)
@@ -1505,10 +1524,10 @@ mark_parallel_for_nostack_successor(Label0, Label, OrdNeedsFrame, BlockMap,
         Type = ordinary(_),
         map__lookup(OrdNeedsFrame, Label0, NeedsFrame),
         (
-            NeedsFrame = yes,
+            NeedsFrame = block_needs_frame,
             ensure_setup_parallel(Label0, Label, ProcLabel, !C, !SetupParMap)
         ;
-            NeedsFrame = no,
+            NeedsFrame = block_doesnt_need_frame,
             Label = Label0
         )
     ;
@@ -1559,19 +1578,19 @@ create_parallels([Label0 | Labels0], Labels, FrameSize, Msg, ProcLabel, !C,
             LabelInstr = label(ParallelLabel) - "non-teardown parallel",
             ReplacementCode = [LabelInstr] ++ Comments ++ Livevals ++ [Goto],
             (
-                PrevNeedsFrame = no,
+                PrevNeedsFrame = block_doesnt_need_frame,
                 Labels = [ParallelLabel, Label0 | Labels1],
                 BlockInfo = BlockInfo0 ^ fb_fallen_into := no,
                 svmap__det_update(Label0, BlockInfo, !BlockMap),
                 ParallelBlockFallInto = FallInto
             ;
-                PrevNeedsFrame = yes,
+                PrevNeedsFrame = block_needs_frame,
                 Labels = [Label0, ParallelLabel | Labels1],
                 ParallelBlockFallInto = no
             ),
             ParallelBlockInfo = frame_block_info(ParallelLabel,
                 ReplacementCode, ParallelBlockFallInto, SideLabels,
-                no, ordinary(no)),
+                no, ordinary(block_doesnt_need_frame)),
             svmap__det_insert(ParallelLabel, ParallelBlockInfo, !BlockMap)
         ;
             unexpected(this_file,
@@ -1582,7 +1601,7 @@ create_parallels([Label0 | Labels0], Labels, FrameSize, Msg, ProcLabel, !C,
             "create_parallels: block in setup map is not ordinary"),
         PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
         (
-            PrevNeedsFrame = yes,
+            PrevNeedsFrame = block_needs_frame,
             counter__allocate(N, !C),
             JumpAroundLabel = internal(N, ProcLabel),
             % By not including a label instruction at the start of
@@ -1595,13 +1614,14 @@ create_parallels([Label0 | Labels0], Labels, FrameSize, Msg, ProcLabel, !C,
             JumpAroundCode = [goto(label(Label0)) - "jump around setup"],
             Labels = [JumpAroundLabel, SetupLabel, Label0 | Labels1],
             JumpAroundBlockInfo = frame_block_info(JumpAroundLabel,
-                JumpAroundCode, no, [Label0], FallInto, ordinary(yes)),
+                JumpAroundCode, no, [Label0], FallInto,
+                ordinary(block_needs_frame)),
             svmap__det_insert(JumpAroundLabel, JumpAroundBlockInfo, !BlockMap),
             SetupFallInto = yes(JumpAroundLabel),
             BlockInfo = BlockInfo0 ^ fb_fallen_into := yes(SetupLabel),
             svmap__det_update(Label0, BlockInfo, !BlockMap)
         ;
-            PrevNeedsFrame = no,
+            PrevNeedsFrame = block_doesnt_need_frame,
             Labels = [SetupLabel, Label0 | Labels1],
             SetupFallInto = no
         ),
@@ -1617,7 +1637,8 @@ create_parallels([Label0 | Labels0], Labels, FrameSize, Msg, ProcLabel, !C,
         Labels = [Label0 | Labels1]
     ).
 
-:- func prev_block_needs_frame(ord_needs_frame, frame_block_info) = bool.
+:- func prev_block_needs_frame(ord_needs_frame, frame_block_info) =
+    block_needs_frame.
 
 prev_block_needs_frame(OrdNeedsFrame, BlockInfo) = PrevNeedsFrame :-
     MaybeFallIntoFrom = BlockInfo ^ fb_fallen_into,
@@ -1630,13 +1651,13 @@ prev_block_needs_frame(OrdNeedsFrame, BlockInfo) = PrevNeedsFrame :-
         ;
             % FallIntoFrom is a setup block; teardown blocks cannot fall
             % through. Setup blocks don't need frames.
-            PrevNeedsFrame = no
+            PrevNeedsFrame = block_doesnt_need_frame
         )
     ;
         MaybeFallIntoFrom = no,
         % The previous block doesn't care whether the following block
         % has a frame or not.
-        PrevNeedsFrame = no
+        PrevNeedsFrame = block_doesnt_need_frame
     ).
 
 :- pred is_ordinary(block_type::in) is semidet.
@@ -1739,20 +1760,22 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     ;
         Type = ordinary(UsesFrame),
         (
-            UsesFrame = yes,
+            UsesFrame = block_needs_frame,
             TypeStr = "ordinary; uses frame, "
         ;
-            UsesFrame = no,
+            UsesFrame = block_doesnt_need_frame,
             TypeStr = "ordinary; does not use frame, "
         ),
         map__lookup(OrdNeedsFrame, Label, NeedsFrame),
         (
-            NeedsFrame = no,
-            require(unify(UsesFrame, no),
-                "describe_block: NeedsFrame=no, UsesFrame=yes"),
+            NeedsFrame = block_doesnt_need_frame,
+            require(unify(UsesFrame, block_doesnt_need_frame),
+                "describe_block: "
+                ++ "NeedsFrame=block_doesnt_need_frame, "
+                ++ "UsesFrame=block_needs_frame"),
             OrdNeedsFrameStr = "does not need frame\n"
         ;
-            NeedsFrame = yes,
+            NeedsFrame = block_needs_frame,
             OrdNeedsFrameStr = "does need frame\n"
         )
     ;
