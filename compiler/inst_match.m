@@ -1358,7 +1358,11 @@ inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
 	( set__member(Inst, !.Expansions) ->
 		true
 	;
-		svset__insert(Inst, !Expansions),
+		( Inst \= any(_) ->
+			svset__insert(Inst, !Expansions)
+		;
+			true
+		),
 		inst_is_ground_2(ModuleInfo, MaybeType, Inst,
 			!Expansions)
 	).
