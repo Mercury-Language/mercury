@@ -132,7 +132,6 @@ touch $TMPDIR/bindist/bindist.Makefile.in || exit 1
 mkdir $TMPDIR/tools || exit 1
 touch $TMPDIR/tools/lmc.in || exit 1
 touch $TMPDIR/tools/dotime.in || exit 1
-mkdir $TMPDIR/runtime || exit 1
 touch $TMPDIR/runtime/mercury_dotnet.cs.in || exit 1
 mkdir $TMPDIR/java || exit 1
 mkdir $TMPDIR/java/runtime || exit 1
