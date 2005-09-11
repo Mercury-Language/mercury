@@ -177,6 +177,7 @@ ORDINARY_PROGS=	\
 	tuple_test \
 	type_ctor_desc \
 	type_ctor_desc_manip \
+	type_info_order \
 	type_qual \
 	type_spec_ho_term \
 	type_spec_modes \
