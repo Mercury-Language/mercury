@@ -184,7 +184,8 @@
     --->    params(
                 simple                  :: bool,
                 single_use              :: bool,
-                size_threshold          :: int,
+                call_cost               :: int,
+                compound_size_threshold :: int,
                 simple_goal_threshold   :: int,
                 var_threshold           :: int,
                 highlevel_code          :: bool,
@@ -209,6 +210,7 @@ inlining(!ModuleInfo, !IO) :-
     globals__io_get_globals(Globals, !IO),
     globals__lookup_bool_option(Globals, inline_simple, Simple),
     globals__lookup_bool_option(Globals, inline_single_use, SingleUse),
+    globals__lookup_int_option(Globals, inline_call_cost, CallCost),
     globals__lookup_int_option(Globals, inline_compound_threshold,
         CompoundThreshold),
     globals__lookup_int_option(Globals, inline_simple_threshold,
@@ -217,7 +219,7 @@ inlining(!ModuleInfo, !IO) :-
     globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals__io_get_trace_level(TraceLevel, !IO),
     AnyTracing = bool__not(given_trace_level_is_none(TraceLevel)),
-    Params = params(Simple, SingleUse, CompoundThreshold,
+    Params = params(Simple, SingleUse, CallCost, CompoundThreshold,
         SimpleThreshold, VarThreshold, HighLevelCode, AnyTracing),
 
     %
@@ -279,7 +281,8 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
     (
         Simple = Params ^ simple,
         SingleUse = Params ^ single_use,
-        CompoundThreshold = Params ^ size_threshold,
+        CallCost = Params ^ call_cost,
+        CompoundThreshold = Params ^ compound_size_threshold,
         SimpleThreshold = Params ^ simple_goal_threshold,
         PredProcId = proc(PredId, ProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -297,7 +300,11 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
             map__search(NeededMap, Entity, Needed),
             Needed = yes(NumUses),
             goal_size(CalledGoal, Size),
-            Size * NumUses =< CompoundThreshold
+            % The size increase due to inlining at a call site is not Size,
+            % but the difference between Size and the size of the call.
+            % CallCost is the user-provided approximation of the size of the
+            % call.
+            (Size - CallCost) * NumUses =< CompoundThreshold
         ;
             SingleUse = yes,
             map__search(NeededMap, Entity, Needed),
@@ -602,23 +609,27 @@ inlining__inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
         _DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+        PredInfo, ProcInfo),
     % Should we inline this call?
     (
         inlining__should_inline_proc(PredId, ProcId, Builtin, HighLevelCode,
-            AnyTracing, InlinedProcs, Markers, ModuleInfo),
+            AnyTracing, InlinedProcs, Markers, ModuleInfo, UserReq),
+        (
+            UserReq = yes
+        ;
+            UserReq = no,
+            % Okay, but will we exceed the number-of-variables threshold?
+            varset__vars(VarSet0, ListOfVars),
+            list__length(ListOfVars, ThisMany),
 
-        % Okay, but will we exceed the number-of-variables threshold?
-        varset__vars(VarSet0, ListOfVars),
-        list__length(ListOfVars, ThisMany),
-
-        % We need to find out how many variables the Callee has.
-        module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-            PredInfo, ProcInfo),
-        proc_info_varset(ProcInfo, CalleeVarSet),
-        varset__vars(CalleeVarSet, CalleeListOfVars),
-        list__length(CalleeListOfVars, CalleeThisMany),
-        TotalVars = ThisMany + CalleeThisMany,
-        TotalVars =< VarThresh
+            % We need to find out how many variables the Callee has.
+            proc_info_varset(ProcInfo, CalleeVarSet),
+            varset__vars(CalleeVarSet, CalleeListOfVars),
+            list__length(CalleeListOfVars, CalleeThisMany),
+            TotalVars = ThisMany + CalleeThisMany,
+            TotalVars =< VarThresh
+        )
     ->
         inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
             VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
@@ -835,34 +846,41 @@ inlining__inlining_in_conj([Goal0 | Goals0], Goals, !Info) :-
     %
 :- pred inlining__should_inline_proc(pred_id::in, proc_id::in,
     builtin_state::in, bool::in, bool::in, set(pred_proc_id)::in,
-    pred_markers::in, module_info::in) is semidet.
+    pred_markers::in, module_info::in, bool::out) is semidet.
 
 inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
-        _Tracing, InlinedProcs, CallingPredMarkers, ModuleInfo) :-
+        _Tracing, InlinedProcs, CallingPredMarkers, ModuleInfo, UserReq) :-
     InlinePromisedPure = yes,
-    inlining__can_inline_proc(PredId, ProcId, BuiltinState,
-        HighLevelCode, InlinePromisedPure,
-        CallingPredMarkers, ModuleInfo),
+    inlining__can_inline_proc_2(PredId, ProcId, BuiltinState,
+        HighLevelCode, InlinePromisedPure, CallingPredMarkers, ModuleInfo),
     % OK, we could inline it - but should we?  Apply our heuristic.
-    (
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_requested_inlining(PredInfo)
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_markers(PredInfo, Markers),
+    ( check_marker(Markers, user_marked_inline) ->
+        UserReq = yes
     ;
-        set__member(proc(PredId, ProcId), InlinedProcs)
+        ( check_marker(Markers, heuristic_inline)
+        ; set__member(proc(PredId, ProcId), InlinedProcs)
+        )
+    ->
+        UserReq = no
+    ;
+        fail
     ).
 
 inlining__can_inline_proc(PredId, ProcId, BuiltinState, InlinePromisedPure,
         CallingPredMarkers, ModuleInfo) :-
     module_info_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    inlining__can_inline_proc(PredId, ProcId, BuiltinState,
+    inlining__can_inline_proc_2(PredId, ProcId, BuiltinState,
         HighLevelCode, InlinePromisedPure,
         CallingPredMarkers, ModuleInfo).
 
-:- pred inlining__can_inline_proc(pred_id::in, proc_id::in, builtin_state::in,
-    bool::in, bool::in, pred_markers::in, module_info::in) is semidet.
+:- pred inlining__can_inline_proc_2(pred_id::in, proc_id::in,
+    builtin_state::in, bool::in, bool::in, pred_markers::in, module_info::in)
+    is semidet.
 
-inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
+inlining__can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         InlinePromisedPure, CallingPredMarkers, ModuleInfo) :-
 
     % Don't inline builtins, the code generator will handle them.

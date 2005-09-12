@@ -193,11 +193,11 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
     ;
         Pragma = inline(Name, Arity),
         add_pred_marker("inline", Name, Arity, ImportStatus, Context,
-            inline, [no_inline], !ModuleInfo, !IO)
+            user_marked_inline, [user_marked_no_inline], !ModuleInfo, !IO)
     ;
         Pragma = no_inline(Name, Arity),
         add_pred_marker("no_inline", Name, Arity, ImportStatus, Context,
-            no_inline, [inline], !ModuleInfo, !IO)
+            user_marked_no_inline, [user_marked_inline], !ModuleInfo, !IO)
     ;
         Pragma = obsolete(Name, Arity),
         add_pred_marker("obsolete", Name, Arity, ImportStatus,
@@ -333,7 +333,8 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         % which would invalidate the instmap_deltas that the mode_check_clauses
         % feature prevents the recomputation of.
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
-            Context, no_inline, [inline], !ModuleInfo, !IO)
+            Context, user_marked_no_inline, [user_marked_inline], !ModuleInfo,
+            !IO)
     ).
 
 add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
@@ -1499,7 +1500,10 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     % declaration. Tabled procedures cannot be inlined.
     pred_info_get_markers(PredInfo0, Markers),
     globals.io_lookup_bool_option(warn_table_with_inline, WarnInline, !IO),
-    ( check_marker(Markers, inline), WarnInline = yes ->
+    (
+        check_marker(Markers, user_marked_inline),
+        WarnInline = yes
+    ->
         TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodStr)]),
         InlineWarning = [
             words("Warning: "), simple_call_id(PredOrFunc - PredName/Arity),
@@ -1855,7 +1859,7 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     % So we must disable inlining for fact_table procedures.
     %
     add_pred_marker("fact_table", SymName, Arity, Status, Context,
-        no_inline, [], !ModuleInfo, !IO).
+        user_marked_no_inline, [], !ModuleInfo, !IO).
 
     % Create a list(pragma_var) that looks like the ones that are created
     % for foreign_proc in prog_io.m.

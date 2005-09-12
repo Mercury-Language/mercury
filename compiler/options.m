@@ -466,6 +466,7 @@
 		;	inline_simple
 		;	inline_builtins
 		;	inline_single_use
+		;	inline_call_cost
 		;	inline_compound_threshold
 		;	inline_simple_threshold
 		;	inline_vars_threshold
@@ -1164,6 +1165,7 @@ option_defaults_2(optimization_option, [
 	inline_simple		-	bool(no),
 	inline_builtins		-	bool(yes),
 	inline_single_use	-	bool(no),
+	inline_call_cost 	-	int(0),
 	inline_compound_threshold -	int(0),
 	inline_simple_threshold	-	int(5),	% has no effect until
 						% --inline-simple is enabled
@@ -1825,6 +1827,7 @@ long_option("inlining", 		inlining).
 long_option("inline-simple",		inline_simple).
 long_option("inline-builtins",		inline_builtins).
 long_option("inline-single-use",	inline_single_use).
+long_option("inline-call-cost",		inline_call_cost).
 long_option("inline-compound-threshold",	inline_compound_threshold).
 long_option("inline-simple-threshold",		inline_simple_threshold).
 long_option("intermod-inline-simple-threshold",
@@ -3833,11 +3836,15 @@ options_help_hlds_hlds_optimization -->
 		"\tbuiltins is not traced.",
 		"--no-inline-single-use",
 		"\tDisable the inlining of procedures called only once.",
+		"--inline-call-cost <cost>",
+		"\tAssume that the cost of a call is the given parameter.",
+		"\tUsed only in conjunction with --inline-compound-threshold.",
+		"\tmultiplied by the number of times it is called,",
 		"--inline-compound-threshold <threshold>",
 		"\tInline a procedure if its size (measured roughly",
-		"\tin terms of the number of connectives in its internal form),",
-		"\tmultiplied by the number of times it is called,",
-		"\tis below the given threshold.",
+		"\tin terms of the number of connectives in its internal form)",
+		"\tless the assumed call cost, multiplied by the number of times",
+		"\tit is called is below the given threshold.",
 		"--inline-simple-threshold <threshold>",
 		"\tInline a procedure if its size is less than the",
 		"\tgiven threshold.",

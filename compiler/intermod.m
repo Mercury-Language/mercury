@@ -354,7 +354,7 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
         (
             inlining__is_simple_clause_list(Clauses, InlineThreshold + Arity),
             pred_info_get_markers(PredInfo, Markers),
-            \+ check_marker(Markers, no_inline)
+            \+ check_marker(Markers, user_marked_no_inline)
         ;
             pred_info_requested_inlining(PredInfo)
         ;
@@ -1784,8 +1784,9 @@ intermod__should_output_marker(named_class_instance_method, no).
     % The warning for calls to local obsolete predicates should appear
     % once in the defining module, not in importing modules.
 intermod__should_output_marker(obsolete, no).
-intermod__should_output_marker(inline, yes).
-intermod__should_output_marker(no_inline, yes).
+intermod__should_output_marker(user_marked_inline, yes).
+intermod__should_output_marker(user_marked_no_inline, yes).
+intermod__should_output_marker(heuristic_inline, no).
 intermod__should_output_marker(dnf, yes).
 intermod__should_output_marker(aditi, yes).
 intermod__should_output_marker(base_relation, yes).

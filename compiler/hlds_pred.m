@@ -1154,12 +1154,22 @@ add_clause(Clause, !ClausesRep) :-
     ;       obsolete    % Requests warnings if this predicate is used.
                         % Used for pragma(obsolete).
 
-    ;       inline      % Requests that this predicate be inlined.
-                        % Used for pragma(inline).
 
-    ;       no_inline   % Requests that this be predicate not be inlined.
-                        % Used for pragma(no_inline). Conflicts with `inline'
-                        % marker.
+    ;       user_marked_inline
+                        % The user requests that this be predicate should
+                        % be inlined, even if it exceeds the usual size limits.
+                        % Used for pragma(inline).
+                        % Mutually exclusive with user_marked_no_inline.
+
+    ;       user_marked_no_inline
+                        % The user requests that this be predicate should
+                        % not be inlined. Used for pragma(no_inline).
+                        % Mutually exclusive with user_marked_inline.
+
+    ;       heuristic_inline     
+                        % The compiler (meaning probably inlining.m) requests
+                        % that this predicate be inlined. Does not override
+                        % user_marked_no_inline.
 
     % The default flags for Aditi predicates are
     % aditi, dnf, supp_magic, psn and memo.
@@ -2262,11 +2272,15 @@ pred_info_update_goal_type(GoalType1, !PredInfo) :-
 
 pred_info_requested_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
-    check_marker(Markers, inline).
+    (
+        check_marker(Markers, user_marked_inline)
+    ;
+        check_marker(Markers, heuristic_inline)
+    ).
 
 pred_info_requested_no_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
-    check_marker(Markers, no_inline).
+    check_marker(Markers, user_marked_no_inline).
 
 pred_info_get_purity(PredInfo0, Purity) :-
     pred_info_get_markers(PredInfo0, Markers),

@@ -271,7 +271,7 @@ add_builtin(PredId, Types, !PredInfo) :-
         % inline code for calls to these predicates.
         %
     pred_info_get_markers(!.PredInfo, Markers0),
-    add_marker(no_inline, Markers0, Markers),
+    add_marker(user_marked_no_inline, Markers0, Markers),
     pred_info_set_markers(Markers, !PredInfo).
 
 %-----------------------------------------------------------------------------%

@@ -1074,8 +1074,9 @@ hlds_out__write_marker_list(Markers, !IO) :-
 hlds_out__marker_name(stub, "stub").
 hlds_out__marker_name(infer_type, "infer_type").
 hlds_out__marker_name(infer_modes, "infer_modes").
-hlds_out__marker_name(inline, "inline").
-hlds_out__marker_name(no_inline, "no_inline").
+hlds_out__marker_name(user_marked_inline, "inline").
+hlds_out__marker_name(user_marked_no_inline, "no_inline").
+hlds_out__marker_name(heuristic_inline, "heuristic_inline").
 hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(obsolete, "obsolete").
 hlds_out__marker_name(class_method, "class_method").
