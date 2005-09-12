@@ -69,6 +69,10 @@ quickcheck	An autotesting tool similar to Haskell's QuickCheck.
 references	A library package containing modules for manipulating
 		ML-style references (mutable state).
 
+solver_types	Contains versions of some standard library modules
+		adapted to make them suitable for use with solver
+		types.
+
 stream		Generic IO interface using typeclasses.
 
 trailed_update	Some library modules that make use of backtrackable

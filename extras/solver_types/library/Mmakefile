@@ -1,0 +1,21 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+
+-include ../Mmake.params
+
+MAIN_TARGET = all
+
+all:	libany
+
+depend:	any.depend
+
+install: libany.install
+
+.PHONY: check
+check:
+	true
