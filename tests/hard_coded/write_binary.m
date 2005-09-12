@@ -61,10 +61,10 @@ main -->
 test_ops -->
 	io__write_string("TESTING TERMS WITH OPERATORS\n"),
 	do_test(var("X") + int(3) * var("X^2") ; (type)),
-	do_test(write_binary:{type}),
-	do_test(write_binary:{:-}),
+	do_test(write_binary.{type}),
+	do_test(write_binary.{:-}),
 	do_test((:-)),
-	do_test(write_binary:{blah}),
+	do_test(write_binary.{blah}),
 	do_test((blah ; (type), (type) * blah ; (type))),
 	do_test(((blah ; blah), blah) * blah ; blah),
 	do_test((type) * blah ; (type)).

@@ -4,7 +4,7 @@
 
 :- import_module imported_no_tag, io.
 
-:- pred main(io:state, io:state).
+:- pred main(io.state, io.state).
 :- mode main(di, uo) is det.
 
 :- implementation.

@@ -58,10 +58,10 @@ main -->
 
 test_ops -->
 	io__write(var("X") + int(3) * var("X^2") ; (type)), newline,
-	io__write(write:{type}), newline,
-	io__write(write:{:-}), newline,
+	io__write(write.{type}), newline,
+	io__write(write.{:-}), newline,
 	io__write((:-)), newline,
-	io__write(write:{blah}), newline,
+	io__write(write.{blah}), newline,
 	io__write((blah ; (type), (type) * blah ; (type))), newline,
 	io__write(((blah ; blah), blah) * blah ; blah), newline,
 	io__write((type) * blah ; (type)), newline.

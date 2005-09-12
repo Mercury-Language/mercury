@@ -1,20 +1,9 @@
 %
 % This is a test of the mode syntax.
 %
-% The official new syntax is:
+% The only syntax is:
 %
 % 	:- mode foo == bar >> baz.
-%
-% We also accept:
-%
-% 	:- mode foo :: bar -> baz.
-%
-% which is the old syntax.
-%
-% And finally we accept mixing them up:
-% 		
-% 	:- mode foo == (bar -> baz).
-% 	:- mode foo :: bar >> baz.
 %
 % You can also use `bar >> baz' inline after a mode qualifier.
 %
@@ -25,9 +14,9 @@
 :- import_module list.
 
 :- mode my_input_list_skel == list_skel >> list_skel.
-:- mode my_output_list_skel :: free >> list_skel.
-:- mode my_list_skel_output == (list_skel -> ground).
-:- mode another_mode :: list_skel -> list_skel.
+:- mode my_output_list_skel == free >> list_skel.
+:- mode my_list_skel_output == (list_skel >> ground).
+:- mode another_mode == list_skel >> list_skel.
 
 :- pred p is semidet.
 

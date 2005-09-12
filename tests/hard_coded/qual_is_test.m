@@ -6,10 +6,10 @@
 
 :- import_module qual_is_test_imported, io, list, string.
 
-:- pred qual_is_test:main(io__state::di, io__state::uo) is det.
+:- pred qual_is_test.main(io.state::di, io.state::uo) is det.
 
 :- implementation.
 
-qual_is_test:main -->
-	io__write_string(W),
+qual_is_test.main -->
+	io.write_string(W),
 	{ is("Hi!.\n", W) }.
