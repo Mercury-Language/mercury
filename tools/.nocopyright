@@ -35,6 +35,8 @@ list.muse
 lmc.in
 make_arena
 makebatch
+make_spec_ho_call
+make_spec_method_call
 next_param
 not
 optstages

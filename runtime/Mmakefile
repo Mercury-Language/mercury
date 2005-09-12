@@ -287,6 +287,33 @@ mercury_profiling_builtin.h:	mercury_deep_call_port_body.h \
 				../tools/make_port_code
 	../tools/make_port_code
 
+mercury_ho_call.$(O):				mercury_ho_call_codes.i
+mercury_ho_call.$(O):				mercury_ho_call_declares.i
+mercury_ho_call.$(O):				mercury_ho_call_inits.i
+mercury_ho_call.$(O):				mercury_method_call_codes.i
+mercury_ho_call.$(O):				mercury_method_call_declares.i
+mercury_ho_call.$(O):				mercury_method_call_inits.i
+mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_ho_call_codes.i
+mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_ho_call_declares.i
+mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_ho_call_inits.i
+mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_method_call_codes.i
+mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_method_call_declares.i
+mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_method_call_inits.i
+
+# ../tools/make_spec_ho_call generates mercury_ho_call_declares.i
+# and mercury_ho_call_inits.i as side-effects.
+mercury_ho_call_codes.i \
+mercury_ho_call_declares.i \
+mercury_ho_call_inits.i: ../tools/make_spec_ho_call
+	../tools/make_spec_ho_call > mercury_ho_call_codes.i
+
+# ../tools/make_spec_method_call generates mercury_method_call_declares.i
+# and mercury_method_call_inits.i as side-effects.
+mercury_method_call_codes.i \
+mercury_method_call_declares.i \
+mercury_method_call_inits.i: ../tools/make_spec_method_call
+	../tools/make_spec_method_call > mercury_method_call_codes.i
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: all

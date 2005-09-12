@@ -1094,14 +1094,20 @@ option_defaults_2(code_gen_option, [
 	pic			-	bool(no),
 	max_jump_table_size	-	int(0),
 					% 0 indicates any size.
-	max_specialized_do_call_closure - int(3),
+	max_specialized_do_call_closure - int(5),
 					% mercury__do_call_closure_N
 					% exists for N <= option_value;
 					% set to -1 to disable.
-	max_specialized_do_call_class_method - int(-1),
+					% Should be less than or equal to
+					% max_spec_explicit_arg
+					% in tools/make_spec_ho_call.
+	max_specialized_do_call_class_method - int(6),
 					% mercury__do_call_class_method_N
 					% exists for N <= option_value;
 					% set to -1 to disable.
+					% Should be less than or equal to
+					% max_spec_explicit_arg
+					% in tools/make_spec_method_call.
 	compare_specialization	-	int(-1),
 					% -1 asks handle_options.m to give
 					% the value, which may be grade

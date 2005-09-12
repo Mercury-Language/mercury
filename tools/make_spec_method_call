@@ -1,0 +1,138 @@
+#!/bin/sh
+# vim: ts=4 sw=4 et
+
+# If you change max_spec_explicit_arg, you should consider changing
+# the value of the max_specialized_do_call_class_method option in
+# compiler/options.m.
+max_spec_explicit_arg=6
+max_spec_hidden_arg=1
+
+> mercury_method_call_declares.i
+> mercury_method_call_inits.i
+
+spec_explicit_arg=-1
+while test $spec_explicit_arg -le $max_spec_explicit_arg
+do
+    if test $spec_explicit_arg -lt 0
+    then
+        variant="compact"
+    else
+        variant="$spec_explicit_arg"
+    fi
+
+    echo "MR_define_entry(mercury__do_call_class_method_$variant);"
+    echo "{"
+    echo "    MR_Word       type_class_info;"
+    echo "    MR_Integer    method_index;"
+    echo "    MR_Code       *dest;"
+    echo "    int           num_explicit_args;"
+    echo "    int           num_hidden_args;"
+    echo "    int           i;"
+
+    i=1;
+    while test $i -le $spec_explicit_arg
+    do
+        echo "    MR_Word       arg$i;"
+        i=`expr $i + 1`
+    done
+
+    echo
+    echo "    type_class_info = MR_r1;"
+    echo "    method_index = MR_r2;"
+    echo "    dest = MR_typeclass_info_class_method(type_class_info, method_index);"
+    echo "    num_hidden_args ="
+    echo "        MR_typeclass_info_num_extra_instance_args(type_class_info);"
+
+    if test $spec_explicit_arg -lt 0
+    then
+        echo "    num_explicit_args = MR_r3;"
+        num_explicit_args="num_explicit_args"
+    else
+        i=1;
+        while test $i -le $spec_explicit_arg
+        do
+            j=`expr $i + 2`
+            echo "    arg$i = MR_r$j;"
+            i=`expr $i + 1`
+        done
+        num_explicit_args="$spec_explicit_arg"
+    fi
+    echo
+    echo "    MR_maybe_record_method_histogram($num_explicit_args, num_hidden_args);"
+    echo
+
+    if test $max_spec_hidden_arg -ge 0 -a $spec_explicit_arg -ge 0
+    then
+        echo "    switch (num_hidden_args) {"
+        spec_hidden_arg=0
+        while test $spec_hidden_arg -le $max_spec_hidden_arg
+        do
+            echo "        case $spec_hidden_arg:"
+            i=1;
+            while test $i -le $spec_hidden_arg
+            do
+                echo "            MR_r$i = MR_typeclass_info_extra_instance_arg(type_class_info, $i);"
+                i=`expr $i + 1`
+            done
+            j=1
+            while test $j -le $spec_explicit_arg
+            do
+                echo "            MR_r$i = arg$j;"
+                i=`expr $i + 1`
+                j=`expr $j + 1`
+            done
+
+            echo "            MR_tailcall(dest, MR_prof_ho_caller_proc);"
+            echo "            break;"
+            echo
+            spec_hidden_arg=`expr $spec_hidden_arg + 1`
+        done
+        echo "        default:"
+        echo "            /* fall through to the general case below */"
+        echo "            break;"
+        echo "    }"
+        echo
+    fi
+
+    echo "    MR_save_registers();"
+    if test $spec_explicit_arg -lt 0
+    then
+        echo "    if (num_hidden_args < MR_CLASS_METHOD_CALL_INPUTS_COMPACT) {"
+        echo "        /* copy the explicit args to the left, from the left */"
+        echo "        for (i = 1; i <= num_explicit_args; i++) {"
+        echo "            MR_virtual_reg_assign(i + num_hidden_args,"
+        echo "                MR_virtual_reg_value(i + MR_CLASS_METHOD_CALL_INPUTS_COMPACT));"
+        echo "        }"
+        echo "    } else if (num_hidden_args > MR_CLASS_METHOD_CALL_INPUTS_COMPACT) {"
+        echo "        /* copy the explicit args to the right, from the right */"
+        echo "        for (i = num_explicit_args; i > 0 ; i--) {"
+        echo "            MR_virtual_reg_assign(i + num_hidden_args,"
+        echo "                MR_virtual_reg_value(i + MR_CLASS_METHOD_CALL_INPUTS_COMPACT));"
+        echo "        }"
+        echo "    } /* else the explicit args are in the right place */"
+    else
+        i=1
+        while test $i -le $spec_explicit_arg
+        do
+            echo "    MR_virtual_reg_assign(num_hidden_args + $i, arg$i);"
+            i=`expr $i + 1`
+        done
+
+    fi
+    echo
+
+    echo "    for (i = 1; i <= num_hidden_args; i++) {"
+    echo "        MR_virtual_reg_assign(i,"
+    echo "            MR_typeclass_info_extra_instance_arg(type_class_info, i));"
+    echo "    }"
+    echo "    MR_restore_registers();"
+    echo
+    echo "    MR_tailcall(dest, MR_prof_ho_caller_proc);"
+    echo "}"
+    echo
+
+    echo "MR_define_extern_entry(mercury__do_call_class_method_$variant);" >> mercury_method_call_declares.i
+    echo "    MR_init_entry_an(mercury__do_call_class_method_$variant);" >> mercury_method_call_inits.i
+
+    spec_explicit_arg=`expr $spec_explicit_arg + 1`
+done
