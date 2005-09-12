@@ -20,7 +20,7 @@
 :- import_module bool, char, int, float, require, std_util.
 
 format_func(FString, PolyList) = String :-
-	qual_strung:format(FString, PolyList, String).
+	qual_strung.format(FString, PolyList, String).
 
 format( Fstring, Poly_list, Ostring ) :-
 	to_char_list(Fstring, Clist),
@@ -356,7 +356,7 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 :- pred do_conversion_fail(char).
 :- mode do_conversion_fail(in) is erroneous.
 do_conversion_fail(Conv_c) :-
-	qual_strung:format("%s `%%%c', without a correct poly-variable.", 
+	qual_strung.format("%s `%%%c', without a correct poly-variable.", 
 		[s("format: statement has used type"), c(Conv_c)],
 		Error_message),
 	error(Error_message).
