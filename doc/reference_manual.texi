@@ -2469,10 +2469,6 @@ or to give them a name using declarations such as
 :- mode m == inst1 >> inst2.
 @end example
 
-It is also possible to write mode declarations using @code{::}
-and @code{->} instead of @code{==} and @code{>>} respectively,
-however this syntax is deprecated and may not be supported in future.
-
 Two standard shorthand modes are provided,
 corresponding to the standard notions of inputs and outputs:
 
@@ -4302,13 +4298,8 @@ This is useful both for readability and for resolving name conflicts.
 Uses of entities imported using @code{use_module} declarations
 @emph{must} be explicitly module qualified.
 
-Currently we also support @samp{__} and @samp{:} as alternative
-module qualifiers,
-so you can write @code{module__name} or @code{module:name} instead
-of @code{module.name}.
-We intend to change the use of @samp{:} to being a type
-qualifier instead in a future version, its use as a module qualifier
-is therefore deprecated.
+Currently we also support @samp{__} as an alternative module qualifier,
+so you can write @code{module__name} instead of @code{module.name}.
 
 Certain optimizations require information or source code for predicates
 defined in other modules to be as effective as possible.  At the moment,
