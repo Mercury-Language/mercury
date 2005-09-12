@@ -54,7 +54,6 @@
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
     (
-        % new syntax: `:- pragma foo(...).'
         PragmaTerms = [SinglePragmaTerm0],
         parse_type_decl_where_part_if_present(non_solver_type, ModuleName,
             SinglePragmaTerm0, SinglePragmaTerm, WherePartResult),
@@ -64,13 +63,11 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
             VarSet, Result0)
     ->
         (
-                % The code to process `where' attributes will
-                % return an error result if solver attributes
-                % are given for a non-solver type.  Because
-                % this is a non-solver type, if the
-                % unification with WhereResult succeeds then
-                % _NoSolverTypeDetails is guaranteed to be
-                % `no'.
+            % The code to process `where' attributes will return an error
+            % result if solver attributes are given for a non-solver type.
+            % Because this is a non-solver type, if the unification with
+            % WhereResult succeeds then _NoSolverTypeDetails is guaranteed to
+            % be `no'.
             WherePartResult = ok(_NoSolverTypeDetails, MaybeUserEqComp),
             (
                 MaybeUserEqComp = yes(_),
@@ -93,15 +90,6 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
             WherePartResult = error(String, Term),
             Result          = error(String, Term)
         )
-    ;
-        % old syntax: `:- pragma(foo, ...).'
-        % XXX we should issue a warning; this syntax is deprecated.
-        PragmaTerms = [PragmaTypeTerm | PragmaArgs2],
-        PragmaTypeTerm = term__functor(term__atom(PragmaType), [], _),
-        parse_pragma_type(ModuleName, PragmaType, PragmaArgs2,
-            PragmaTypeTerm, VarSet, Result1)
-    ->
-        Result = Result1
     ;
         fail
     ).

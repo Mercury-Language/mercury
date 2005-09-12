@@ -1751,9 +1751,10 @@ parse_type_decl_func(ModuleName, VarSet, Func, Attributes, R) :-
 %-----------------------------------------------------------------------------%
 
 	% parse_mode_decl_pred(ModuleName, Pred, Condition, Result) succeeds
-	% if Pred is a predicate mode declaration, and binds Condition
-	% to the condition for that declaration (if any), and Result to
-	% a representation of the declaration.
+	% if Pred is a predicate mode declaration, and binds Condition to the
+	% condition for that declaration (if any), and Result to a
+	% representation of the declaration.
+	%
 :- pred parse_mode_decl_pred(module_name::in, varset::in, term::in,
 	decl_attrs::in, maybe1(item)::out) is det.
 
@@ -3187,7 +3188,7 @@ desugar_field_access(Term) =
 %-----------------------------------------------------------------------------%
 
 	% parse a `:- mode p(...)' declaration
-
+	%
 :- pred process_mode(module_name::in, varset::in, term::in, condition::in,
 	decl_attrs::in, maybe(inst)::in, maybe(determinism)::in,
 	maybe1(item)::out) is det.
@@ -3462,17 +3463,13 @@ inst_var_constraints_are_consistent_in_inst(
 
 	% Parse a `:- inst <InstDefn>.' declaration.
 	%
-	% `==' is the correct operator to use, although we accept
-	% `=' as well.  Since `=' was once the standard operator, make
-	% sure warnings are given before it is phased out.
-	%
 :- pred parse_inst_decl(module_name::in, varset::in, term::in,
 	maybe1(item)::out) is det.
 
 parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
 	(
 		InstDefn = term__functor(term__atom(Op), [H, B], _Context),
-		( Op = "=" ; Op = "==" )
+		Op = "==" 
 	->
 		get_condition(B, Body, Condition),
 		convert_inst_defn(ModuleName, H, Body, R),
@@ -3617,8 +3614,8 @@ make_inst_defn(VarSet0, Cond, processed_inst_body(Name, Params, InstDefn),
 
 %-----------------------------------------------------------------------------%
 
-	% parse a `:- mode foo :: ...' or `:- mode foo = ...' definition.
-
+	% Parse a `:- mode foo == ...' definition.
+	%
 :- pred parse_mode_decl(module_name::in, varset::in, term::in, decl_attrs::in,
 	maybe1(item)::out) is det.
 
@@ -3634,31 +3631,10 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Attributes, Result) :-
 			Result)
 	).
 
-	% People never seemed to remember what the right operator to use
-	% in a `:- mode' declaration is, so the syntax is accepted both
-	% `::' and `==', with `::' formerly the standard operator.
-	%
-	%	% Old syntax
-	% :- mode foo :: someinst -> someotherinst.
-	%
-	% But using `==' was a pain, because the precedence of `->' was
-	% too high.  We now accept `>>' as an alternative to `->', and
-	% `==' is now the standard operator to use in a `:- mode'
-	% declaration.  This is part of a long term plan to free up
-	% `::' as an operator so we can use it for mode qualification.
-	%
-	%	% New syntax
-	% :- mode foo == someinst >> someotherinst.
-	%
-	% We still support `::' in mode declarations for backwards
-	% compatibility, but it might be removed one day.
-	% Before phasing it out, a deprecated syntax warning should be
-	% given for a version or two.
-	%
 :- pred mode_op(term::in, term::out, term::out) is semidet.
 
 mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
-	( Op = "==" ; Op = "::" ).
+	Op = "==".
 
 :- type processed_mode_body
 	--->	processed_mode_body(
@@ -4249,7 +4225,9 @@ parse_implicitly_qualified_term(DefaultModName, Term, ContainingTerm, Msg,
 			\+ match_sym_name(ModName, DefaultModName)
 		->
 			term__coerce(Term, ErrorTerm),
-			Result = error("module qualifier in definition does not match preceding `:- module' declaration", ErrorTerm)
+			Result = error("module qualifier in definition " ++ 
+				"does not match preceding " ++ "
+				`:- module' declaration", ErrorTerm)
 		;
 			unqualify_name(SymName, UnqualName),
 			Result = ok(qualified(DefaultModName, UnqualName), Args)
@@ -4262,9 +4240,7 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
 	(
 		Term = term__functor(term__atom(FunctorName),
 			[ModuleTerm, NameArgsTerm], _),
-		(	FunctorName = "."
-		;	FunctorName = ":"
-		)
+		FunctorName = "."
 	->
 		(
 			NameArgsTerm = term__functor(term__atom(Name), Args, _)
@@ -4277,12 +4253,12 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
 				ModuleResult = error(_, _),
 				term__coerce(Term, ErrorTerm),
 				Result = error("module name identifier " ++
-					"expected before ':' in " ++
+					"expected before '.' in " ++
 					"qualified symbol name", ErrorTerm)
 			)
 		;
 			term__coerce(Term, ErrorTerm),
-			Result = error("identifier expected after ':' " ++
+			Result = error("identifier expected after '.' " ++
 				"in qualified symbol name", ErrorTerm)
 		)
 	;

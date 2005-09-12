@@ -80,7 +80,7 @@
 
 :- pred rl_info_get_io_state(io__state, rl_info, rl_info).
 :- mode rl_info_get_io_state(uo, rl_info_get_io_state,
-		(free -> rl_info_no_io)) is det.
+		(free >> rl_info_no_io)) is det.
 
 :- pred rl_info_set_io_state(io__state, rl_info, rl_info).
 :- mode rl_info_set_io_state(di, rl_info_set_io_state, rl_info_uo) is det.

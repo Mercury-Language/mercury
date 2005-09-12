@@ -88,9 +88,9 @@
 	--->	predicate
 	;	function.
 
-:- pred is_simple_item_type(item_type::(ground->simple_item)) is semidet.
+:- pred is_simple_item_type(item_type::(ground >> simple_item)) is semidet.
 
-:- pred is_pred_or_func_item_type(item_type::(ground->pred_or_func)) is semidet.
+:- pred is_pred_or_func_item_type(item_type::(ground >> pred_or_func)) is semidet.
 
 :- pred string_to_item_type(string, item_type).
 :- mode string_to_item_type(in, out) is semidet.

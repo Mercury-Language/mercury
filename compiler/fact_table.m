@@ -1463,7 +1463,7 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
 		(
 			MaybeFirstFact = yes(FirstFact),
 			build_hash_table(0, 0, HashTableName, StructName, 0,
-				ArgModes, ModuleInfo, FactArgInfos, bool:no,
+				ArgModes, ModuleInfo, FactArgInfos, bool.no,
 				OutputStream, FirstFact, no, no, FactMap, _,
 				!IO),
 			io__seen(!IO),
