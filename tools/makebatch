@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ts=4 sw=4 expandtab
 #
 # A program to prepare batches of versions of the compiler.
 #
@@ -41,268 +42,273 @@ failed="continue"
 
 while test $# -gt 0
 do
-	case $1 in
+    case $1 in
 
-	-c|--c-files)
-		cfiles="true" ;;
+    -c|--c-files)
+        cfiles="true" ;;
 
-	-d|--save-stage2-dirs)
-		save_stage2="true" ;;
+    -d|--save-stage2-dirs)
+        save_stage2="true" ;;
 
-	-e|--err-files)
-		errfiles="true" ;;
+    -e|--err-files)
+        errfiles="true" ;;
 
-	-j|--jobs)
-		jfactor="-j$2" ; shift ;;
-	-j*)
-		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
-	--jobs*)
-		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+    -j|--jobs)
+        jfactor="-j$2" ; shift ;;
+    -j*)
+        jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
+    --jobs*)
+        jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
 
-	-o|--object-files)
-		objects="-k" ;;
+    -o|--object-files)
+        objects="-k" ;;
 
-	--save-stage2-on-error)
-		save_stage2_on_error="true" ;;
+    --save-stage2-on-error)
+        save_stage2_on_error="true" ;;
 
-	--save-stage2-on-no-compiler)
-		save_stage2_on_no_compiler="true" ;;
+    --save-stage2-on-no-compiler)
+        save_stage2_on_no_compiler="true" ;;
 
-	-s|--stop-at-failure)
-		failed="stop" ;;
+    -s|--stop-at-failure)
+        failed="stop" ;;
 
-	-t-|--no-test-suite)
-		runtests="-t-" ;;
+    -t-|--no-test-suite)
+        runtests="-t-" ;;
 
-	--compile-times)
-		compile_times="--compile-times" ;;
+    --compile-times)
+        compile_times="--compile-times" ;;
 
-	--test-params)
-		test_params="--test-params" ;;
+    --test-params)
+        test_params="--test-params" ;;
 
-	-*)	echo "$0: unknown option \`$1'" 2>&1
-		echo $usage
-		exit 1 ;;
+    -*) echo "$0: unknown option \`$1'" 2>&1
+        echo $usage
+        exit 1 ;;
 
-	*)	break ;;
+    *)  break ;;
 
-	esac
-	shift
+    esac
+    shift
 done
 
 if test $# != 1
 then
-	echo $usage
-	exit 1
+    echo $usage
+    exit 1
 fi
 
 batch=$1
 
 if test ! -r batch/$batch.MCFLAGS
 then
-	echo "batch/$batch.MCFLAGS does not exist or is not readable"
-	exit 1
+    echo "batch/$batch.MCFLAGS does not exist or is not readable"
+    exit 1
 fi
 
 if test -r batch/$batch.MGNUCFLAGS
 then
-	needmgnucflags=true
+    needmgnucflags=true
 else
-	needmgnucflags=false
+    needmgnucflags=false
 fi
 
 if test -r batch/$batch.CFLAGS
 then
-	needcflags=true
+    needcflags=true
 else
-	needcflags=false
+    needcflags=false
 fi
 
 if test -r batch/$batch.MLFLAGS
 then
-	needmlflags=true
+    needmlflags=true
 else
-	needmlflags=false
+    needmlflags=false
 fi
 
 if test -r batch/$batch.GRADE
 then
-	needgrade=true
+    needgrade=true
 else
-	needgrade=false
+    needgrade=false
 fi
 
 if test -r batch/$batch.MMAKE
 then
-	needmmake=true
+    needmmake=true
 else
-	needmmake=false
+    needmmake=false
 fi
 
 if test -f Mmake.stage.params
 then
-	echo moving Mmake.stage.params to Mmake.stage.params.$$
-	mv Mmake.stage.params Mmake.stage.params.$$
+    echo moving Mmake.stage.params to Mmake.stage.params.$$
+    mv Mmake.stage.params Mmake.stage.params.$$
 fi
 
 if test -r batch/$batch.checkpoint
 then
-	n=`cat batch/$batch.checkpoint`
+    n=`cat batch/$batch.checkpoint`
 else
-	n=1
-	cat /dev/null > batch/$batch.sizes
+    n=1
+    cat /dev/null > batch/$batch.sizes
 fi
 
 maxn=`wc -l < batch/$batch.MCFLAGS`
 
 while test $n -le $maxn
 do
-	echo $n > batch/$batch.checkpoint
-	if $needmmake
-	then
-		cp batch/$batch.MMAKE Mmake.stage.params
-	else
-		cat < /dev/null > Mmake.stage.params
-	fi
+    echo $n > batch/$batch.checkpoint
+    if $needmmake
+    then
+        cp batch/$batch.MMAKE Mmake.stage.params
+    else
+        cat < /dev/null > Mmake.stage.params
+    fi
 
-	mcflags=`awk "NR == $n" batch/$batch.MCFLAGS`
-	echo "EXTRA_MCFLAGS = $mcflags" >> Mmake.stage.params
+    mcflags=`awk "NR == $n" batch/$batch.MCFLAGS`
+    echo "EXTRA_MCFLAGS = $mcflags" >> Mmake.stage.params
 
-	if $needcflags
-	then
-		cflags=`awk "NR == $n" batch/$batch.CFLAGS`
-		echo "EXTRA_CFLAGS = $cflags" >> Mmake.stage.params
-	fi
+    if $needcflags
+    then
+        cflags=`awk "NR == $n" batch/$batch.CFLAGS`
+        echo "EXTRA_CFLAGS = $cflags" >> Mmake.stage.params
+    fi
 
-	if $needmgnucflags
-	then
-		mgnucflags=`awk "NR == $n" batch/$batch.MGNUCFLAGS`
-		echo "EXTRA_MGNUCFLAGS = $mgnucflags" >> Mmake.stage.params
-	fi
+    if $needmgnucflags
+    then
+        mgnucflags=`awk "NR == $n" batch/$batch.MGNUCFLAGS`
+        echo "EXTRA_MGNUCFLAGS = $mgnucflags" >> Mmake.stage.params
+    fi
 
-	if $needmlflags
-	then
-		mlflags=`awk "NR == $n" batch/$batch.MLFLAGS`
-		echo "EXTRA_MLFLAGS = $mlflags" >> Mmake.stage.params
-	fi
+    if $needmlflags
+    then
+        mlflags=`awk "NR == $n" batch/$batch.MLFLAGS`
+        echo "EXTRA_MLFLAGS = $mlflags" >> Mmake.stage.params
+    fi
 
-	if $needgrade
-	then
-		grade=`awk "NR == $n" batch/$batch.GRADE`
-		gradeopt="--grade $grade"
-	else
-		gradeopt=""
-	fi
+    if $needgrade
+    then
+        grade=`awk "NR == $n" batch/$batch.GRADE`
+        gradeopt="--grade $grade"
+    else
+        gradeopt=""
+    fi
 
-	if test $n -lt 10
-	then
-		visn="0$n"
-	else
-		visn="$n"
-	fi
+    if test $n -lt 10
+    then
+        visn="0$n"
+    else
+        visn="$n"
+    fi
 
-	cp Mmake.stage.params batch/$batch.params.$visn
-	if $needgrade
-	then
-		echo "GRADE = $grade" >> batch/$batch.params.$visn
-	fi
+    cp Mmake.stage.params batch/$batch.params.$visn
+    if $needgrade
+    then
+        echo "GRADE = $grade" >> batch/$batch.params.$visn
+    fi
 
-	echo starting bootcheck of version $visn
-	succeeded=false
-	created_compiler=false
-	if tools/bootcheck $gradeopt --copy-runtime $jfactor $runtests \
-	   $objects $compile_times $testparams > batch/$batch.out.$visn 2>&1
-	then
-		succeeded=true
-		created_compiler=true
-		echo bootcheck of version $visn succeeded
-		cp stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
-		size batch/$batch.mercury_compile.$visn | tail -1 | sed -e 's/mercury_compile.//' | sed -e 's/batch\///' >> batch/$batch.sizes
-		/bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
-		gzip batch/$batch.mercury_compile.$visn
-	elif test "$failed" = "stop"
-	then
-		echo bootcheck of version $visn failed
-		exit 1
-	else
-		if test -x stage2/compiler/mercury_compile
-		then
-			created_compiler=true
-			echo bootcheck of version $visn failed but produced compiler
-			cp stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
-			size batch/$batch.mercury_compile.$visn | tail -1 | sed -e 's/mercury_compile.//' | sed -e 's/batch\///' >> batch/$batch.sizes
-			/bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
-			gzip batch/$batch.mercury_compile.$visn
-		else
-			echo bootcheck of version $visn failed and did not produce compiler
-		fi
-	fi
+    echo starting bootcheck of version $visn
+    succeeded=false
+    created_compiler=false
+    if tools/bootcheck $gradeopt --copy-runtime $jfactor $runtests \
+        $objects $compile_times $testparams > batch/$batch.out.$visn 2>&1
+    then
+        succeeded=true
+        created_compiler=true
+        echo bootcheck of version $visn succeeded
+        cp stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
+        size batch/$batch.mercury_compile.$visn | tail -1 | \
+            sed -e 's/mercury_compile.//' | sed -e 's/batch\///' \
+            >> batch/$batch.sizes
+        /bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
+        gzip batch/$batch.mercury_compile.$visn
+    elif test "$failed" = "stop"
+    then
+        echo bootcheck of version $visn failed
+        exit 1
+    else
+        if test -x stage2/compiler/mercury_compile
+        then
+            created_compiler=true
+            echo bootcheck of version $visn failed but produced compiler
+            cp stage2/compiler/mercury_compile \
+                batch/$batch.mercury_compile.$visn
+            size batch/$batch.mercury_compile.$visn | tail -1 | \
+                sed -e 's/mercury_compile.//' | sed -e 's/batch\///' \
+                >> batch/$batch.sizes
+            /bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
+            gzip batch/$batch.mercury_compile.$visn
+        else
+            echo bootcheck of version $visn failed and did not produce compiler
+        fi
+    fi
 
-	if test "$objects" = "-k" -a "$save_stage2" = "false"
-	then
-		echo saving object files
-		mkdir -p batch/objs/$batch.library.$visn
-		/bin/rm -fr batch/objs/$batch.library.$visn/*
-		cp stage2/library/*.o batch/objs/$batch.library.$visn
-		gzip batch/objs/$batch.library.$visn/*
-		mkdir -p batch/objs/$batch.compiler.$visn
-		/bin/rm -fr batch/objs/$batch.compiler.$visn/*
-		cp stage2/compiler/*.o batch/objs/$batch.compiler.$visn
-		gzip batch/objs/$batch.compiler.$visn/*
-	fi
+    if test "$objects" = "-k" -a "$save_stage2" = "false"
+    then
+        echo saving object files
+        mkdir -p batch/objs/$batch.library.$visn
+        /bin/rm -fr batch/objs/$batch.library.$visn/*
+        cp stage2/library/*.o batch/objs/$batch.library.$visn
+        gzip batch/objs/$batch.library.$visn/*
+        mkdir -p batch/objs/$batch.compiler.$visn
+        /bin/rm -fr batch/objs/$batch.compiler.$visn/*
+        cp stage2/compiler/*.o batch/objs/$batch.compiler.$visn
+        gzip batch/objs/$batch.compiler.$visn/*
+    fi
 
-	if "$cfiles"
-	then
-		echo saving c files
-		mkdir -p batch/cfiles/$batch.library.$visn
-		/bin/rm -fr batch/cfiles/$batch.library.$visn/* > /dev/null
-		gzip stage2/library/*.c > /dev/null
-		cp stage2/library/*.c.gz batch/cfiles/$batch.library.$visn > /dev/null
-		mkdir -p batch/cfiles/$batch.compiler.$visn
-		/bin/rm -fr batch/cfiles/$batch.compiler.$visn/* > /dev/null
-		gzip stage2/ccompiler*.c > /dev/null
-		cp stage2/compiler/*.c.gz batch/cfiles/$batch.compiler.$visn > /dev/null
-	fi
+    if "$cfiles"
+    then
+        echo saving c files
+        mkdir -p batch/cfiles/$batch.library.$visn
+        /bin/rm -fr batch/cfiles/$batch.library.$visn/* > /dev/null
+        gzip stage2/library/*.c > /dev/null
+        cp stage2/library/*.c.gz batch/cfiles/$batch.library.$visn > /dev/null
+        mkdir -p batch/cfiles/$batch.compiler.$visn
+        /bin/rm -fr batch/cfiles/$batch.compiler.$visn/* > /dev/null
+        gzip stage2/compiler*.c > /dev/null
+        cp stage2/compiler/*.c.gz batch/cfiles/$batch.compiler.$visn > /dev/null
+    fi
 
-	if "$errfiles"
-	then
-		echo saving err files
-		mkdir -p batch/errfiles/$batch.library.$visn
-		/bin/rm -fr batch/errfiles/$batch.library.$visn/*
-		cp stage2/library/*.err batch/errfiles/$batch.library.$visn
-		# gzip batch/errfiles/$batch.library.$visn/*
-		mkdir -p batch/errfiles/$batch.compiler.$visn
-		/bin/rm -fr batch/errfiles/$batch.compiler.$visn/*
-		cp stage2/compiler/*.err batch/errfiles/$batch.compiler.$visn
-		# gzip batch/errfiles/$batch.compiler.$visn/*
-	fi
+    if "$errfiles"
+    then
+        echo saving err files
+        mkdir -p batch/errfiles/$batch.library.$visn
+        /bin/rm -fr batch/errfiles/$batch.library.$visn/*
+        cp stage2/library/*.err batch/errfiles/$batch.library.$visn
+        # gzip batch/errfiles/$batch.library.$visn/*
+        mkdir -p batch/errfiles/$batch.compiler.$visn
+        /bin/rm -fr batch/errfiles/$batch.compiler.$visn/*
+        cp stage2/compiler/*.err batch/errfiles/$batch.compiler.$visn
+        # gzip batch/errfiles/$batch.compiler.$visn/*
+    fi
 
-	if $save_stage2
-	then
-		# If a directory with this name already exists,
-		# it probably came from a previous invocation of this script.
-		# This invocation supersedes earlier ones.
-		/bin/rm -fr stage2.batch.$visn > /dev/null
-		mv stage2 stage2.batch.$visn
-	elif $save_stage2_on_error && test $succeeded = false
-	then
-		/bin/rm -fr stage2.batch.$visn > /dev/null
-		mv stage2 stage2.batch.$visn
-	elif $save_stage2_on_no_compiler && test $created_compiler = false
-	then
-		/bin/rm -fr stage2.batch.$visn > /dev/null
-		mv stage2 stage2.batch.$visn
-	fi
+    if $save_stage2
+    then
+        # If a directory with this name already exists,
+        # it probably came from a previous invocation of this script.
+        # This invocation supersedes earlier ones.
+        /bin/rm -fr stage2.batch.$visn > /dev/null
+        mv stage2 stage2.batch.$visn
+    elif $save_stage2_on_error && test $succeeded = false
+    then
+        /bin/rm -fr stage2.batch.$visn > /dev/null
+        mv stage2 stage2.batch.$visn
+    elif $save_stage2_on_no_compiler && test $created_compiler = false
+    then
+        /bin/rm -fr stage2.batch.$visn > /dev/null
+        mv stage2 stage2.batch.$visn
+    fi
 
-	n=`expr $n + 1`
+    n=`expr $n + 1`
 done
 
 /bin/rm -f batch/$batch.checkpoint
 
 if test -f Mmake.stage.params.$$
 then
-	echo moving Mmake.stage.params.$$ to Mmake.stage.params
-	mv Mmake.stage.params.$$ Mmake.stage.params
+    echo moving Mmake.stage.params.$$ to Mmake.stage.params
+    mv Mmake.stage.params.$$ Mmake.stage.params
 fi
 
 exit 0
