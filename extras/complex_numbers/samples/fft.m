@@ -25,23 +25,26 @@
 %------------------------------------------------------------------------------%
 :- interface.
 
-:- import_module io, list, complex_numbers, complex_numbers.complex.
+:- import_module io.
 
 :- pred main(io::di, io::uo) is det.
-
-:- pred fft(list(complex), list(complex)).
-:- mode fft(in, out) is det.
 
 %------------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module float, int, math, require.
+:- import_module float, int, list, math, require.
+:- import_module complex_numbers, complex_numbers.complex.
+:- import_module complex_numbers.float_imag, complex_numbers.imag.
 
 main(!IO) :-
-	fft([cmplx(1.0, 0.0), cmplx(0.0, 0.0), cmplx(1.0, 0.0), 
-		cmplx(0.0, 0.0)], T),
+	Zero = 0.0 + 0.0*i,
+	One  = 1.0 + 0.0*i,
+	fft([One, Zero, One, Zero], T),
 	io.write(T, !IO),
 	io.nl(!IO).
+
+:- pred fft(list(complex), list(complex)).
+:- mode fft(in, out) is det.
 
 fft(Ins, Outs) :-
 		% First put the list into bit-reversed order.
