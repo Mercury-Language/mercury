@@ -496,7 +496,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
 produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         !ModuleInfo, !QualInfo, !ClausesInfo, !IO) :-
     (
-        InstanceClause = clause(CVarSet, PredOrFunc, PredName,
+        InstanceClause = clause(_Origin, CVarSet, PredOrFunc, PredName,
             HeadTerms0, Body)
     ->
         ( illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) ->

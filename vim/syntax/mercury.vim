@@ -34,7 +34,7 @@ else
 endif
 syn keyword mercuryKeyword      module use_module import_module
 syn keyword mercuryKeyword      include_module end_module
-syn keyword mercuryKeyword      initialise
+syn keyword mercuryKeyword      initialise mutable
 syn keyword mercuryKeyword      interface implementation
 syn keyword mercuryKeyword      pred mode func type inst solver 
 syn keyword mercuryKeyword      is semidet det nondet multi erroneous failure
@@ -51,7 +51,7 @@ syn keyword mercuryCInterface   foreign_type foreign_import_module
 syn keyword mercuryCInterface   may_call_mercury will_not_call_mercury
 syn keyword mercuryCInterface   thread_safe not_thread_safe maybe_thread_safe
 syn keyword mercuryCInterface   promise_pure promise_semipure
-syn keyword mercuryCInterface   tabled_for_io local
+syn keyword mercuryCInterface   tabled_for_io local untrailed
 syn keyword mercuryCInterface   can_pass_as_mercury_type stable
 syn keyword mercuryCInterface   will_not_throw_exception
 syn keyword mercuryCInterface   export import

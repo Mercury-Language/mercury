@@ -522,7 +522,7 @@ item_to_item_id(Item, ItemId) :-
 
 :- pred item_to_item_id_2(item::in, maybe(item_id)::out) is det.
 
-item_to_item_id_2(clause(_, _, _, _, _), no).
+item_to_item_id_2(clause(_, _, _, _, _, _), no).
 item_to_item_id_2(type_defn(_, Name, Params, _, _),
 		yes(item_id((type), Name - Arity))) :-
 	list__length(Params, Arity).
@@ -576,7 +576,7 @@ item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	% qualifier on an instance declaration is the module containing
 	% the class, not the module containing the instance).
 item_to_item_id_2(instance(_, _, _, _, _, _), no).
-item_to_item_id_2(initialise(_), no).
+item_to_item_id_2(initialise(_, _), no).
 item_to_item_id_2(mutable(_, _, _, _, _), no).
 item_to_item_id_2(nothing(_), no).
 
@@ -695,8 +695,8 @@ item_is_unchanged(instance(Constraints, Name, Types, Body, _VarSet, Module),
 	% XXX Need to compare the goals properly in clauses and assertions.
 	% That's not necessary at the moment because smart recompilation
 	% doesn't work with inter-module optimization yet.
-item_is_unchanged(clause(_VarSet, PorF, SymName, Args, Goal), Item2) =
-		( Item2 = clause(_, PorF, SymName, Args, Goal) -> yes ; no ).
+item_is_unchanged(clause(_, _VarSet, PorF, SymName, Args, Goal), Item2) =
+		( Item2 = clause(_, _, PorF, SymName, Args, Goal) -> yes ; no ).
 item_is_unchanged(promise(PromiseType, Goal, _, UnivVars), Item2) =
 		( Item2 = promise(PromiseType, Goal, _, UnivVars) -> yes ; no ).
 
@@ -735,8 +735,8 @@ item_is_unchanged(pragma(_, PragmaType1), Item2) = Result :-
 		Result = no
 	).
 item_is_unchanged(nothing(A), Item2) = ( Item2 = nothing(A) -> yes ; no ).
-item_is_unchanged(initialise(A), Item2) =
-	( Item2 = initialise(A) -> yes ; no ).
+item_is_unchanged(initialise(O, A), Item2) =
+	( Item2 = initialise(O, A) -> yes ; no ).
 item_is_unchanged(mutable(A, B, C, D, E), Item2) =
 	( Item2 = mutable(A, B, C, D, E) -> yes ; no ).
 

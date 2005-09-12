@@ -805,7 +805,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 		parse_item(DefaultModuleName, VarSet, MethodTerm, Result0),
 		(
 			Result0 = ok(Item, Context),
-			Item = clause(_VarNames, PredOrFunc,
+			Item = clause(_Origin, _VarNames, PredOrFunc,
 				ClassMethodName, HeadArgs,
 				_ClauseBody)
 		->

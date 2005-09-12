@@ -1055,7 +1055,7 @@ parse_item(ModuleName, VarSet, Term, Result) :-
 	maybe1(item)::out) is det.
 
 process_pred_clause(ok(Name, Args0), VarSet, Body,
-		ok(clause(VarSet, predicate, Name, Args, Body))) :-
+		ok(clause(user, VarSet, predicate, Name, Args, Body))) :-
 	list__map(term__coerce, Args0, Args).
 process_pred_clause(error(ErrMessage, Term0), _, _, error(ErrMessage, Term)) :-
 	term__coerce(Term0, Term).
@@ -1064,7 +1064,7 @@ process_pred_clause(error(ErrMessage, Term0), _, _, error(ErrMessage, Term)) :-
 	goal::in, maybe1(item)::out) is det.
 
 process_func_clause(ok(Name, Args0), Result0, VarSet, Body,
-		ok(clause(VarSet, function, Name, Args, Body))) :-
+		ok(clause(user, VarSet, function, Name, Args, Body))) :-
 	list__append(Args0, [Result0], Args1),
 	list__map(term__coerce, Args1, Args).
 process_func_clause(error(ErrMessage, Term0), _, _, _,
@@ -1787,13 +1787,13 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Result) :-
 		MaybeSymNameSpecifier = ok(SymNameSpecifier),
 		(
 			SymNameSpecifier = name(SymName),
-			Result = ok(initialise(SymName))
+			Result = ok(initialise(user, SymName))
 		;
 			SymNameSpecifier = name_arity(SymName, Arity),
 			(
 				Arity = 2
 			->
-				Result = ok(initialise(SymName))
+				Result = ok(initialise(user, SymName))
 			;
 				Result = error("an initialise " ++
 				"declaration can only apply to " ++

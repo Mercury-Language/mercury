@@ -793,8 +793,9 @@
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_type.
+:- import_module parse_tree__prog_util.
 :- import_module parse_tree__source_file_map.
 :- import_module recompilation__version.
 
@@ -1280,6 +1281,10 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
                 % Write out the `.int0' file.
                 %
             strip_imported_items(Items2, [], Items3),
+            %
+            % We need to pass in ModuleName because mutable declarations
+            % get converted into declarations for their access predicates.
+            %
             strip_clauses_from_interface(Items3, Items4),
             MakeAbs = (pred(Item0::in, Item::out) is det :-
                 Item0 = Item1 - Context,
@@ -1946,7 +1951,7 @@ check_for_clauses_in_interface([], [], !IO).
 check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
     ItemAndContext0 = Item0 - Context,
     (
-        Item0 = clause(_, _, _, _, _)
+        Item0 = clause(_, _, _, _, _, _)
     ->
         prog_out__write_context(Context, !IO),
         report_warning("Warning: clause in module interface.\n", !IO),
@@ -1975,17 +1980,21 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
     % should always be grouped together with the clauses and should not appear
     % in private interfaces.
     %
+    % XXX The current treatment of mutable variables is to allow them in
+    % private interfaces.  It may be better to just put the predicate and mode
+    % declarations for the access predicates in private interfaces.
+    %
 :- pred strip_clauses_from_interface(item_list::in, item_list::out) is det.
 
 strip_clauses_from_interface(Items0, Items) :-
     split_clauses_and_decls(Items0, _Clauses, Items).
 
-:- pred split_clauses_and_decls(item_list::in, item_list::out, item_list::out)
-    is det.
+:- pred split_clauses_and_decls(item_list::in,
+    item_list::out, item_list::out) is det.
 
 split_clauses_and_decls([], [], []).
-split_clauses_and_decls([ItemAndContext0 | Items0], ClauseItems,
-        InterfaceItems) :-
+split_clauses_and_decls([ItemAndContext0 | Items0],
+        ClauseItems, InterfaceItems) :-
     ItemAndContext0 = Item0 - _Context,
     (
         ( Item0 = module_defn(_, interface)
@@ -1995,16 +2004,16 @@ split_clauses_and_decls([ItemAndContext0 | Items0], ClauseItems,
         split_clauses_and_decls(Items0, ClauseItems, InterfaceItems)
     ;
         (
-            Item0 = clause(_,_,_,_,_)
+            Item0 = clause(_,_,_,_,_,_)
         ;
             Item0 = pragma(_, Pragma),
             pragma_allowed_in_interface(Pragma, no)
         ;
-            Item0 = initialise(_)
+            Item0 = initialise(_, _)
         )
-    ->
-        split_clauses_and_decls(Items0, ClauseItems1, InterfaceItems),
-        ClauseItems = [ItemAndContext0 | ClauseItems1]
+     ->
+         split_clauses_and_decls( Items0, ClauseItems1, InterfaceItems),
+         ClauseItems = [ItemAndContext0 | ClauseItems1]
     ;
         split_clauses_and_decls(Items0, ClauseItems, InterfaceItems1),
         InterfaceItems = [ItemAndContext0 | InterfaceItems1]
@@ -7116,10 +7125,13 @@ get_interface_and_implementation(ModuleName, IncludeImplTypes,
 
 maybe_add_foreign_import_module(ModuleName, Items0, Items) :-
     get_foreign_self_imports(Items0, Langs),
-    Imports = list__map(
-        (func(Lang) = pragma(compiler, foreign_import_module(Lang, ModuleName))
-            - term__context_init),
-        Langs),
+    MakeForeignImport = (func(Lang) = ImportItem :-
+            Origin     = compiler(foreign_imports),
+            Pragma     = foreign_import_module(Lang, ModuleName),
+            Context    = term.context_init,
+            ImportItem = pragma(Origin, Pragma) - Context
+    ),
+    Imports = list.map(MakeForeignImport, Langs),
     Items = Imports ++ Items0.
 
 :- pred get_foreign_self_imports(item_list::in, list(foreign_language)::out)
@@ -7263,7 +7275,7 @@ include_in_short_interface(pragma(_, foreign_import_module(_, _))).
     % Could this item use items from imported modules.
 :- func item_needs_imports(item) = bool.
 
-item_needs_imports(clause(_, _, _, _, _)) = yes.
+item_needs_imports(clause(_, _, _, _, _, _)) = yes.
 item_needs_imports(Item @ type_defn(_, _, _, _, _)) =
         ( Item ^ td_ctor_defn = abstract_type(_) -> no ; yes ).
 item_needs_imports(inst_defn(_, _, _, _, _)) = yes.
@@ -7288,7 +7300,7 @@ item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
     ).
 item_needs_imports(instance(_, _, _, _, _, _)) = yes.
 item_needs_imports(promise(_, _, _, _)) = yes.
-item_needs_imports(initialise(_)) = yes.
+item_needs_imports(initialise(_, _)) = yes.
 item_needs_imports(mutable(_, _, _, _, _)) = yes.
 item_needs_imports(nothing(_)) = no.
 
@@ -7630,11 +7642,11 @@ reorderable_item(mode_defn(_, _, _, _, _)) = yes.
 reorderable_item(promise(_, _, _, _)) = yes.
 reorderable_item(typeclass(_, _, _, _, _, _)) = yes.
 reorderable_item(instance(_, _, _, _, _, _)) = yes.
-reorderable_item(clause(_, _, _, _, _)) = no.
+reorderable_item(clause(_, _, _, _, _, _)) = no.
 reorderable_item(nothing(_)) = no.
 reorderable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
 reorderable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = no.
-reorderable_item(initialise(_)) = no.
+reorderable_item(initialise(_, _)) = no.
 reorderable_item(mutable(_, _, _, _, _)) = no.
 
 :- pred is_chunkable(item_and_context::in) is semidet.
@@ -7719,8 +7731,8 @@ chunkable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
 chunkable_item(promise(_, _, _, _)) = yes.
 chunkable_item(typeclass(_, _, _, _, _, _)) = yes.
 chunkable_item(instance(_, _, _, _, _, _)) = yes.
-chunkable_item(clause(_, _, _, _, _)) = yes.
-chunkable_item(initialise(_)) = yes.
+chunkable_item(clause(_, _, _, _, _, _)) = yes.
+chunkable_item(initialise(_, _)) = yes.
 chunkable_item(mutable(_, _, _, _, _)) = no.
 chunkable_item(nothing(_)) = yes.
 

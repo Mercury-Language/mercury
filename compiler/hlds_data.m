@@ -240,7 +240,7 @@
 	;	base_typeclass_info_constant(module_name, class_id, string)
 			% This is how we refer to base_typeclass_info structures
 			% represented as global data. The first argument is the
-			% name of the module containing the instance declration,
+			% name of the module containing the instance declaration,
 			% the second is the class name and arity, while the
 			% third is the string which uniquely identifies the
 			% instance declaration (it is made from the type of

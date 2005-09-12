@@ -207,7 +207,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             VarSet,
             Impl
         ),
-    ToGroundRepnItem = pragma(compiler, ToGroundRepnForeignProc),
+    ToGroundRepnItem = pragma(compiler(solver_type), ToGroundRepnForeignProc),
     add_item_clause(ToGroundRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
         !IO),
 
@@ -225,7 +225,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             VarSet,
             Impl
         ),
-    ToAnyRepnItem = pragma(compiler, ToAnyRepnForeignProc),
+    ToAnyRepnItem = pragma(compiler(solver_type), ToAnyRepnForeignProc),
     add_item_clause(ToAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
         !IO),
 
@@ -243,7 +243,8 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             VarSet,
             Impl
         ),
-    FromGroundRepnItem = pragma(compiler, FromGroundRepnForeignProc),
+    FromGroundRepnItem = pragma(compiler(solver_type),
+        FromGroundRepnForeignProc),
     add_item_clause(FromGroundRepnItem, !Status, Context, !ModuleInfo,
         !QualInfo, !IO),
 
@@ -261,6 +262,6 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             VarSet,
             Impl
         ),
-    FromAnyRepnItem = pragma(compiler, FromAnyRepnForeignProc),
+    FromAnyRepnItem = pragma(compiler(solver_type), FromAnyRepnForeignProc),
     add_item_clause(FromAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
         !IO).

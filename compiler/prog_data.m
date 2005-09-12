@@ -52,14 +52,38 @@
 	% compiler as part of a source-to-source transformation, e.g.
 	% the initialise declarations.
 	% 
-:- type item_origin ---> user ; compiler.
+:- type item_origin ---> user ; compiler(item_compiler_origin).
 
-:- type item_list	==	list(item_and_context).
+	% For items introduced by the compiler, why were they
+	% introduced?
+	%
+:- type item_compiler_origin
+	--->	initialise_decl
+			% The item was introduced by the transformation
+			% for `:- initialise' decls.  This should only
+			% apply to export pragms.
+	
+	;	mutable_decl
+			% The item was introduced by the transformation
+			% for `:- mutable' decls.  This should only apply
+			% to `:- initialise' decls and export pragmas.
+	
+	;	solver_type
+			% Solver types cause the compiler to create 
+			% foreign procs for the init and representation
+			% functions.
+	
+	;	foreign_imports.
+			% The compiler sometimes needs to insert additional
+			% foreign_import pragmas. XXX Why?
 
-:- type item_and_context ==	pair(item, prog_context).
+:- type item_list == list(item_and_context).
+
+:- type item_and_context == pair(item, prog_context).
 
 :- type item
 	--->	clause(
+			cl_origin		:: item_origin,
 			cl_varset		:: prog_varset,
 			cl_pred_or_func		:: pred_or_func,
 			cl_predname		:: sym_name,
@@ -171,7 +195,7 @@
 		)
 
 		% :- initialise(pred_name).
-	;	initialise(sym_name)
+	;	initialise(item_origin, sym_name)
 
 		% :- mutable(var_name, type, inst, value, attrs).
 	;	mutable(

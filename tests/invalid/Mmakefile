@@ -37,6 +37,7 @@ SINGLEMODULE= \
 	any_mode \
 	any_should_not_match_bound \
 	assert_in_interface \
+	bad_mutable \
 	bad_initialise_decl \
 	bad_instance \
 	bigtest \

@@ -892,7 +892,7 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
 	item_version_numbers::in, item_and_context::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_ambiguities(_, _, _, clause(_, _, _, _, _) - _, !Info) :-
+check_for_ambiguities(_, _, _, clause(_, _, _, _, _, _) - _, !Info) :-
 	error("check_for_ambiguities: clause").
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 		type_defn(_, Name, Params, Body, _) - _, !Info) :-
@@ -956,7 +956,7 @@ check_for_ambiguities(_, _, _, pragma(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, promise(_, _, _, _) - _, !Info).
 check_for_ambiguities(_, _, _, module_defn(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, initialise(_) - _, !Info).
+check_for_ambiguities(_, _, _, initialise(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, mutable(_, _, _, _, _) - _, !Info).
 check_for_ambiguities(_, _, _, nothing(_) - _, !Info).
 

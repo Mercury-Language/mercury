@@ -970,7 +970,7 @@ expand_method_bsvs(IM0) = IM :-
     Cs  = list__map(expand_item_bsvs, Cs0),
         % Note that the condition should always succeed...
         %
-    ( Cs = [clause(_, _, _, Args, _) | _] ->
+    ( Cs = [clause(_, _, _, _, Args, _) | _] ->
         adjust_func_arity(PredOrFunc, Arity, list__length(Args))
     ;
         Arity = Arity0
@@ -982,9 +982,9 @@ expand_method_bsvs(IM0) = IM :-
 :- func expand_item_bsvs(item) = item.
 
 expand_item_bsvs(Item) =
-    ( Item = clause(VarSet, PredOrFunc, SymName, Args, Body) ->
-        clause(VarSet, PredOrFunc, SymName, expand_bang_state_var_args(Args),
-            Body)
+    ( Item = clause(Origin, VarSet, PredOrFunc, SymName, Args, Body) ->
+        clause(Origin, VarSet, PredOrFunc, SymName,
+            expand_bang_state_var_args(Args), Body)
     ;
         Item
     ).

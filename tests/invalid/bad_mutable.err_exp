@@ -1,0 +1,8 @@
+bad_mutable.m:015: Error: unrecognised attribute in mutable declaration: bad_attrib.
+bad_mutable.m:017: Error: the type in a mutable declaration cannot contain variables: list(_1).
+bad_mutable.m:011: In declaration for mutable `not_a_type':
+bad_mutable.m:011:   error: undefined type `no_type'/0.
+bad_mutable.m:013: In declaration for mutable `not_an_inst':
+bad_mutable.m:013:   error: undefined inst `special_ground'/0.
+bad_mutable.m:005: Error: `mutable' declaration in module interface.
+For more information, try recompiling with `-E'.

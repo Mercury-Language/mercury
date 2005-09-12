@@ -526,7 +526,7 @@ mercury_output_item(_, module_defn(VarSet, ModuleDefn), Context, !IO) :-
     maybe_output_line_number(Context, !IO),
     mercury_output_module_defn(VarSet, ModuleDefn, Context, !IO).
 mercury_output_item(UnqualifiedItemNames,
-        clause(VarSet, PredOrFunc, PredName0, Args, Body), Context, !IO) :-
+        clause(_, VarSet, PredOrFunc, PredName0, Args, Body), Context, !IO) :-
     maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
     maybe_output_line_number(Context, !IO),
     (
@@ -760,7 +760,7 @@ mercury_output_item(_, instance(Constraints, ClassName, Types, Body,
         io__write_string("\n]", !IO)
     ),
     io__write_string(".\n", !IO).
-mercury_output_item(_, initialise(PredSymName), _, !IO) :-
+mercury_output_item(_, initialise(_, PredSymName), _, !IO) :-
     io__write_string(":- initialise ", !IO),
     mercury_output_sym_name(PredSymName, !IO),
     io__write_string(".\n", !IO).
@@ -879,7 +879,7 @@ output_instance_method(Method, !IO) :-
     io::di, io::uo) is det.
 
 output_instance_method_clause(Name1, Context, Item, !IO) :-
-    ( Item = clause(VarSet, PredOrFunc, _PredName, HeadTerms, Body) ->
+    ( Item = clause(_, VarSet, PredOrFunc, _PredName, HeadTerms, Body) ->
         (
             PredOrFunc = predicate,
             mercury_output_pred_clause(VarSet, Name1, HeadTerms, Body, Context,

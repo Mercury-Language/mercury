@@ -261,7 +261,7 @@ collect_mq_info([Item - _ | Items], !Info) :-
 
 :- pred collect_mq_info_2(item::in, mq_info::in, mq_info::out) is det.
 
-collect_mq_info_2(clause(_, _, _, _, _), !Info).
+collect_mq_info_2(clause(_, _, _, _, _, _), !Info).
 collect_mq_info_2(type_defn(_, SymName, Params, _, _), !Info) :-
     % This item is not visible in the current module.
     ( mq_info_get_import_status(!.Info, abstract_imported) ->
@@ -334,7 +334,7 @@ collect_mq_info_2(typeclass(_, _, SymName, Params, _, _), !Info) :-
         mq_info_set_classes(Classes, !Info)
     ).
 collect_mq_info_2(instance(_, _, _, _, _, _), !Info).
-collect_mq_info_2(initialise(_), !Info).
+collect_mq_info_2(initialise(_, _), !Info).
 collect_mq_info_2(mutable(_, _, _, _, _), !Info).
 
 :- pred collect_mq_info_qualified_symname(sym_name::in,
@@ -620,7 +620,8 @@ do_module_qualify_items([Item0 | Items0], [Item | Items], !Info, !IO) :-
 :- pred module_qualify_item(item_and_context::in, item_and_context::out,
     mq_info::in, mq_info::out, bool::out, io::di, io::uo) is det.
 
-module_qualify_item(Clause @ (clause(_,_,_,_,_) - _), Clause, !Info, yes, !IO).
+module_qualify_item(Clause @ (clause(_,_,_,_,_,_) - _), Clause, !Info, yes,
+    !IO).
 
 module_qualify_item(
         type_defn(TVarSet, SymName, Params, TypeDefn0, C) - Context,
@@ -719,14 +720,15 @@ module_qualify_item(
     qualify_instance_body(Name, Body0, Body).
 
 module_qualify_item(
-        initialise(PredSymName) - Context,
-        initialise(PredSymName) - Context,
+        initialise(Origin, PredSymName) - Context,
+        initialise(Origin, PredSymName) - Context,
         !Info, yes, !IO).
 
 module_qualify_item(
         mutable(Name, Type0, InitTerm, Inst0, Attrs) - Context,
         mutable(Name, Type, InitTerm, Inst, Attrs) - Context,
         !Info, yes, !IO) :-
+    mq_info_set_error_context(mutable(Name) - Context, !Info),
     qualify_type(Type0, Type, !Info, !IO),
     qualify_inst(Inst0, Inst, !Info, !IO).
 
@@ -1357,7 +1359,8 @@ convert_simple_item_type(class_id) = (typeclass).
     ;       clause_mode_annotation
     ;       type_qual
     ;       class(id)
-    ;       instance(id).
+    ;       instance(id)
+    ;       mutable(string).
 
 :- func id_to_sym_name_and_arity(id) = sym_name_and_arity.
 
@@ -1479,6 +1482,13 @@ mq_error_context_to_pieces(class(Id)) =
     [words("declaration of typeclass"), wrap_id(Id)].
 mq_error_context_to_pieces(instance(Id)) =
     [words("declaration of instance of typeclass"), wrap_id(Id)].
+mq_error_context_to_pieces(mutable(Name)) = 
+    [
+        words("declaration for mutable "),
+        prefix("`"),
+        words(Name),
+        suffix("'")
+    ].
 
 :- pred id_type_to_string(id_type::in, string::out) is det.
 

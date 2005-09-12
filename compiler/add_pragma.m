@@ -166,7 +166,7 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
             % We don't report this as an error as it just clutters up
             % the compiler output - the *real* error is whatever caused
             % the compiler to create this pragma.
-            Origin = compiler
+            Origin = compiler(_)
         )
     ;
         Allowed = yes
@@ -387,7 +387,13 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
                     "`:- pragma export' declaration", !IO),
                 module_info_incr_errors(!ModuleInfo)
             ;
-                Origin = compiler
+                Origin = compiler(Details),
+                (
+                    ( Details = initialise_decl ; Details = mutable_decl )
+                ;
+                    ( Details = solver_type ; Details = foreign_imports ),
+                    unexpected(this_file, "Bad introduced export pragma.")
+                )
             )
         )
     ;   ( 
@@ -396,7 +402,13 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
                 "`:- pragma export' declaration", !IO),
             module_info_incr_errors(!ModuleInfo)
         ;
-            Origin = compiler
+            Origin = compiler(Details),
+            (
+                ( Details = initialise_decl ; Details = mutable_decl )
+            ;
+                ( Details = solver_type ; Details = foreign_imports ),
+                unexpected(this_file, "Bad introduced export pragma.")
+            )
         )
     ).
 
@@ -2098,3 +2110,13 @@ mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-
     mode_get_insts_semidet(ModuleInfo, Mode1, Inst1, Inst2),
     mode_get_insts_semidet(ModuleInfo, Mode2, Inst1, Inst2),
     mode_list_matches(Modes1, Modes2, ModuleInfo).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file =  "add_pragma.m".
+
+%----------------------------------------------------------------------------%
+:- end_module add_pragma.
+%----------------------------------------------------------------------------%
