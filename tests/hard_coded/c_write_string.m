@@ -10,10 +10,16 @@
 :- pred c_write_string(string, io__state, io__state).
 :- mode c_write_string(in, di, uo) is det.
 
-:- pragma(c_header_code, "#include <stdio.h>").
+:- pragma foreign_decl("C", "#include <stdio.h>").
 
-:- pragma(c_code, c_write_string(Str::in, IO0::di, IO::uo),
-	"fputs(Str, stdout); IO = IO0;").
+:- pragma foreign_proc("C",
+	c_write_string(Str::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	fputs(Str, stdout);
+	IO = IO0;
+").
+
 c_write_string(Str) -->
 	io__write_string(Str).
 

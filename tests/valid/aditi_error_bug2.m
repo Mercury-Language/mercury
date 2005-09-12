@@ -7,20 +7,20 @@
 :- import_module aditi.
 :- import_module aditi_error_bug3.
 
-:- pred murders(aditi:state,city,us_state,year,count).
-:- mode murders(aditi:aditi_mui,out,out,out,out) is nondet.
+:- pred murders(aditi.state,city,us_state,year,count).
+:- mode murders(aditi.aditi_mui,out,out,out,out) is nondet.
 :- pragma aditi(assaults/5).
 
-:- pred assaults(aditi:state,city,us_state,year,count).
-:- mode assaults(aditi:aditi_mui,out,out,out,out) is nondet.
+:- pred assaults(aditi.state,city,us_state,year,count).
+:- mode assaults(aditi.aditi_mui,out,out,out,out) is nondet.
 :- pragma aditi(murders/5).
 
-:- pred crime(aditi:state,crime_type,city,us_state,year,count).
-:- mode crime(aditi:aditi_mui,out,out,out,out,out) is nondet.
+:- pred crime(aditi.state,crime_type,city,us_state,year,count).
+:- mode crime(aditi.aditi_mui,out,out,out,out,out) is nondet.
 :- pragma aditi(crime/6).
 
 :- pred crimes(
-        aditi:state::aditi:aditi_mui,
+        aditi.state::aditi.aditi_mui,
         city::out,      % city name
         us_state::out,  % state name
         year::out,      % year

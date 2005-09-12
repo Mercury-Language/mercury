@@ -8,6 +8,6 @@
 
 :- pred p(int::out) is det.
 
-:- pragma(export, p(out), "p").
+:- pragma export(p(out), "p").
 
 p(42).

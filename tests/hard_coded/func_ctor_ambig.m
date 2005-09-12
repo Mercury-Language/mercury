@@ -10,7 +10,7 @@
 :- func bar2 = int.
 :- func baz2 = t.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io.state::di, io.state::uo) is det.
 
 :- implementation.
 
@@ -29,7 +29,7 @@ bar = ambig.
 
 baz = ambig.
 
-bar2 = func_ctor_ambig:ambig.
+bar2 = func_ctor_ambig.ambig.
 
-baz2 = func_ctor_ambig:ambig.
+baz2 = func_ctor_ambig.ambig.
 
