@@ -2610,11 +2610,10 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], !HLDS,
             PredArity = pred_info_orig_arity(PredInfo),
             no_type_info_builtin(PredModule, PredName, PredArity)
         ->
-                % These predicates should never be traced,
-                % since they do not obey typeinfo_liveness.
-                % Since they may be opt_imported into other
-                % modules, we must switch off the tracing
-                % of such preds on a pred-by-pred basis.
+            % These predicates should never be traced, since they do not obey
+            % typeinfo_liveness. Since they may be opt_imported into other
+            % modules, we must switch off the tracing of such preds on a
+            % pred-by-pred basis; module-by-module wouldn't work.
             module_info_globals(!.HLDS, Globals0),
             globals__get_trace_level(Globals0, TraceLevel),
             globals__set_trace_level_none(Globals0, Globals1),
