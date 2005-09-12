@@ -70,6 +70,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__dependency_graph.
 :- import_module transform_hlds__inlining.
@@ -1217,10 +1218,10 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
     pred_info_typevarset(PredInfo0, TVarSet0),
 
     % Rename the argument types using the current pred's tvarset.
-    varset__merge_subst(TVarSet0, CalledTVarSet, TVarSet, TypeRenaming),
+    tvarset_merge_renaming(TVarSet0, CalledTVarSet, TVarSet, TypeRenaming),
     pred_info_set_typevarset(TVarSet, PredInfo0, PredInfo),
     pd_info_set_pred_info(PredInfo, !PDInfo),
-    term__apply_substitution_to_list(ArgTypes0, TypeRenaming, ArgTypes1),
+    apply_variable_renaming_to_type_list(TypeRenaming, ArgTypes0, ArgTypes1),
 
     deforest__create_deforest_call_args(OldArgs, ArgTypes1, Renaming,
         TypeSubn, Args, VarSet0, VarSet, VarTypes0, VarTypes),
@@ -1258,7 +1259,7 @@ deforest__create_deforest_call_args([OldArg | OldArgs], [ArgType | ArgTypes],
     ;
         % The variable is local to the call. Create a fresh variable.
         varset__new_var(!.VarSet, Arg, !:VarSet),
-        term__apply_substitution(ArgType, TypeSubn, SubnArgType),
+        apply_subst_to_type(TypeSubn, ArgType, SubnArgType),
         map__det_insert(!.VarTypes, Arg, SubnArgType, !:VarTypes)
     ),
     deforest__create_deforest_call_args(OldArgs, ArgTypes, Renaming,

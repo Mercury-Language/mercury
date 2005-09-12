@@ -19,7 +19,6 @@
 :- import_module parse_tree__prog_data.
 
 :- import_module list.
-:- import_module map.
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
@@ -247,7 +246,7 @@
     %
 :- pred get_new_tvars(list(tvar)::in, tvarset::in, tvarset::in, tvarset::out,
     tvar_name_map::in, tvar_name_map::out,
-    map(tvar, tvar)::in, map(tvar, tvar)::out) is det.
+    tvar_renaming::in, tvar_renaming::out) is det.
 
     % substitute_vars(Vars0, Subst, Vars):
     %
@@ -275,9 +274,10 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module svmap.
+:- import_module map.
 :- import_module require.
 :- import_module string.
+:- import_module svmap.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -508,7 +508,7 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         SubstToString = (pred(SubstElem::in, SubstStr::out) is det :-
             SubstElem = Var - Type,
             varset__lookup_name(VarSet, Var, VarName),
-            TypeString = mercury_type_to_string(VarSet, Type),
+            TypeString = mercury_type_to_string(VarSet, no, Type),
             string__append_list([VarName, " = ", TypeString], SubstStr)
         ),
         list_to_string(SubstToString, TypeSubst, PredIdStr)

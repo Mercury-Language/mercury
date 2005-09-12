@@ -121,7 +121,7 @@ base_typeclass_info__gen_body(no, _, _, _, _, _) :-
 	error("pred_proc_ids should have been filled in by check_typeclass.m").
 base_typeclass_info__gen_body(yes(PredProcIds0), Types, Constraints,
 		ModuleInfo, ClassId, BaseTypeClassInfo) :-
-	term__vars_list(Types, TypeVars),
+	prog_type__vars_list(Types, TypeVars),
 	get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
 	list__length(Constraints, NumConstraints),
 	list__length(Unconstrained, NumUnconstrained),

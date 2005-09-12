@@ -456,17 +456,20 @@ parse_arbitrary_constraint(ConstraintTerm, Result) :-
 		parse_qualified_term(ConstraintTerm, ConstraintTerm,
 			"class constraint", ok(ClassName, Args0))
 	->
-		% we need to enforce the invariant that types in type class
-		% constraints do not contain any info in their prog_context
-		% fields
-		list__map(convert_type, Args0, Args),
-		Constraint = constraint(ClassName, Args),
+		parse_types(Args0, ArgsResult),
 		(
-			constraint_is_not_simple(Constraint)
-		->
-			Result = ok(non_simple(Constraint))
+			ArgsResult = ok(Args),
+			Constraint = constraint(ClassName, Args),
+			(
+				constraint_is_not_simple(Constraint)
+			->
+				Result = ok(non_simple(Constraint))
+			;
+				Result = ok(simple(Constraint))
+			)
 		;
-			Result = ok(simple(Constraint))
+			ArgsResult = error(Msg, ErrorTerm),
+			Result = error(Msg, ErrorTerm)
 		)
 	;
 		Result = error("expected atom as class name or inst constraint",
@@ -508,8 +511,8 @@ parse_fundep_2(Term, TVars) :-
 constraint_is_not_simple(constraint(_Name, Types)) :-
 	some [Type] (
 		list__member(Type, Types),
-		\+ prog_type__var(Type, _),
-		\+ term__is_ground(Type)
+		type_is_nonvar(Type),
+		type_is_nonground(Type)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -588,57 +591,70 @@ parse_instance_constraints(ModuleName, Constraints, Result) :-
 parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 		% We don't give a default module name here since the instance
 		% declaration could well be for a typeclass defined in another
-		% module
+		% module.
 	parse_qualified_term(Name, Name, "instance declaration",
 		MaybeClassName),
 	(
-		MaybeClassName = ok(ClassName, TermTypes0),
-		list__map(convert_type, TermTypes0, TermTypes),
-
-			% Check that each type in the arguments of the instance
-			% decl is a functor with vars as args.
-			%
-		(
-			some [Type] (
-				list__member(Type, TermTypes),
-				\+ type_is_functor_and_vars(Type)
-			)
-		->
-				% We report the error as being in the name
-				% rather than the specific argument, since
-				% the argument types have had their contexts
-				% removed.
-				%
-			Result = error("types in instance declarations" ++
-				" must be functors with distinct variables" ++
-				" as arguments", Name)
-		;
-			Result = ok(instance([], ClassName,
-				TermTypes, abstract, TVarSet, ModuleName))
-		)
+		MaybeClassName = ok(ClassName, TermTypes),
+		parse_types(TermTypes, TypesResult),
+		parse_underived_instance_2(Name, ClassName, TypesResult,
+			TVarSet, ModuleName, Result)
 	;
 		MaybeClassName = error(String, Term),
 		Result = error(String, Term)
 	).
 
-:- pred type_is_functor_and_vars((type)::in) is semidet.
+:- pred parse_underived_instance_2(term::in, class_name::in,
+	maybe1(list(type))::in, tvarset::in, module_name::in,
+	maybe1(item)::out) is det.
 
-type_is_functor_and_vars(Type) :-
-		% Is the top level functor an atom?
-	Type = term__functor(term__atom(Functor), Args, _),
+parse_underived_instance_2(_, _, error(Msg, Term), _, _, error(Msg, Term)).
+parse_underived_instance_2(ErrorTerm, ClassName, ok(Types), TVarSet,
+		ModuleName, Result) :-
 	(
-		(	Functor = ":"
-		;	Functor = "."
+		% Check that each type in the arguments of the instance decl
+		% is a functor with vars as args.
+		%
+		some [Type] (
+			list__member(Type, Types),
+			\+ type_is_functor_and_vars(Type)
 		)
 	->
-		Args = [_Module, Type1],
-		type_is_functor_and_vars(Type1)
+		Result = error("types in instance declarations must be" ++
+			" functors with distinct variables as arguments",
+			ErrorTerm)
 	;
-		% Are all the args of the functor variables?
-		all [Arg] (
-			list__member(Arg, Args) =>
-			prog_type__var(Arg, _)
-		)
+		Result = ok(instance([], ClassName, Types, abstract, TVarSet,
+			ModuleName))
+	).
+
+:- pred type_is_functor_and_vars((type)::in) is semidet.
+
+type_is_functor_and_vars(defined(_, Args, _)) :-
+	functor_args_are_variables(Args).
+type_is_functor_and_vars(builtin(_)).
+type_is_functor_and_vars(higher_order(Args, MaybeRet, Purity, EvalMethod)) :-
+	% XXX We currently allow pred types to be instance arguments, but not
+	% func types.  Even then, the pred type must be pure and have a
+	% lambda_eval_method of normal.  We keep this behaviour basically
+	% for backwards compatibility -- there is little point fixing this
+	% now without fixing the more general problem of having these
+	% restrictions in the first place.
+	MaybeRet = no,
+	Purity = (pure),
+	EvalMethod = normal,
+	functor_args_are_variables(Args).
+type_is_functor_and_vars(tuple(Args, _)) :-
+	functor_args_are_variables(Args).
+type_is_functor_and_vars(kinded(Type, _)) :-
+	type_is_functor_and_vars(Type).
+
+:- pred functor_args_are_variables(list(type)::in) is semidet.
+
+functor_args_are_variables(Args) :-
+	all [Arg] (
+		list__member(Arg, Args)
+		=> type_is_var(Arg)
 	).
 
 :- pred parse_non_empty_instance(module_name::in, term::in, term::in,
@@ -690,7 +706,7 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
 			prog_type__constraint_list_get_tvars(Constraints,
 				TVars),
 			list__member(TVar, TVars),
-			\+ term__contains_var_list(Types, TVar)
+			\+ type_list_contains_var(Types, TVar)
 		->
 			Result = error("unbound type variable(s) " ++
 				"in constraints on instance declaration",

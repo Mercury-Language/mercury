@@ -116,6 +116,7 @@
 :- import_module hlds__make_hlds__field_access.
 :- import_module hlds__make_hlds__qual_info.
 :- import_module parse_tree__error_util.
+:- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_goal.
@@ -400,13 +401,31 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         F = term__atom("with_type"),
         Args = [RVal, DeclType0]
     ->
-        convert_type(DeclType0, DeclType),
-        varset__coerce(!.VarSet, DeclVarSet),
-        process_type_qualification(X, DeclType, DeclVarSet,
-            Context, !ModuleInfo, !QualInfo, !IO),
-        unravel_unification(term__variable(X), RVal, Context,
-            MainContext, SubContext, Purity, Goal,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO)
+        % DeclType0 is a prog_term, but it is really a type so we coerce it
+        % to a generic term before parsing it.
+        term__coerce(DeclType0, DeclType1),
+        parse_type(DeclType1, DeclTypeResult),
+        (
+            DeclTypeResult = ok(DeclType),
+            varset__coerce(!.VarSet, DeclVarSet),
+            process_type_qualification(X, DeclType, DeclVarSet,
+                Context, !ModuleInfo, !QualInfo, !IO)
+        ;
+            DeclTypeResult = error(Msg, ErrorTerm),
+            % The varset is a prog_varset even though it contains the names
+            % of type variables in ErrorTerm, which is a generic term.
+            GenericVarSet = varset__coerce(!.VarSet),
+            TermStr = mercury_term_to_string(ErrorTerm, GenericVarSet, no),
+            Pieces = [words("In explicit type qualification:"),
+                    words(Msg),
+                    suffix(":"),
+                    fixed("`" ++ TermStr ++ "'.")],
+            write_error_pieces(Context, 0, Pieces, !IO),
+            io.set_exit_status(1, !IO)
+        ),
+        unravel_unification(term__variable(X), RVal, Context, MainContext,
+            SubContext, Purity, Goal, !VarSet, !ModuleInfo, !QualInfo,
+            !SInfo, !IO)
     ;
         % Handle unification expressions.
         F = term__atom("@"),

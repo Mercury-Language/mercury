@@ -3159,7 +3159,7 @@ mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval),
 		FieldType, _ClassType), !IO) :-
 	(
 		( FieldType = mlds__generic_type
-		; FieldType = mlds__mercury_type(term__variable(_), _, _)
+		; FieldType = mlds__mercury_type(variable(_, _), _, _)
 		)
 	->
 		io__write_string("(", !IO)
@@ -3379,8 +3379,7 @@ mlds_output_boxed_rval(Type, Exprn, !IO) :-
 		% casts from pointers to integers in static initializers.
 		mlds_output_boxed_rval(Type, InnerExprn, !IO)
 	;
-		( Type = mlds__mercury_type(
-			term__functor(term__atom("float"), [], _), _, _)
+		( Type = mlds__mercury_type(builtin(float), _, _)
 		; Type = mlds__native_float_type
 		)
 	->
@@ -3388,8 +3387,7 @@ mlds_output_boxed_rval(Type, Exprn, !IO) :-
 		mlds_output_rval(Exprn, !IO),
 		io__write_string(")", !IO)
 	;
-		( Type = mlds__mercury_type(term__functor(
-				term__atom("character"), [], _), _, _)
+		( Type = mlds__mercury_type(builtin(character), _, _)
 		; Type = mlds__native_char_type
 		; Type = mlds__native_bool_type
 		; Type = mlds__native_int_type
@@ -3425,8 +3423,7 @@ is_an_address(const(data_addr_const(_))).
 
 mlds_output_unboxed_rval(Type, Exprn, !IO) :-
 	(
-		( Type = mlds__mercury_type(term__functor(term__atom("float"),
-			[], _), _, _)
+		( Type = mlds__mercury_type(builtin(float), _, _)
 		; Type = mlds__native_float_type
 		)
 	->
@@ -3434,8 +3431,7 @@ mlds_output_unboxed_rval(Type, Exprn, !IO) :-
 		mlds_output_rval(Exprn, !IO),
 		io__write_string(")", !IO)
 	;
-		( Type = mlds__mercury_type(term__functor(
-			term__atom("character"), [], _), _, _)
+		( Type = mlds__mercury_type(builtin(character), _, _)
 		; Type = mlds__native_char_type
 		; Type = mlds__native_bool_type
 		; Type = mlds__native_int_type

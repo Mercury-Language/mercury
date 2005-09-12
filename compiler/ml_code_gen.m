@@ -3130,7 +3130,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
 			% Except for MC++, where polymorphic types are MR_Box,
 			% but we get here only if Lang is c or java.
 			(
-				prog_type__var(OrigType, _)
+				OrigType = variable(_, _)
 			->
 				Cast = "(MR_Word) "
 			;
@@ -3338,7 +3338,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, Context,
 			% `Word' in the C interface but `MR_Box' in the
 			% MLDS back-end.
 			(
-				( prog_type__var(OrigType, _)
+				( OrigType = variable(_, _)
 				; Cast = yes
 				)
 			->

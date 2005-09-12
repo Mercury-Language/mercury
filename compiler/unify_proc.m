@@ -502,7 +502,8 @@ unify_proc__add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         % be used by unify_proc__generate_clause_info.
         varset__init(TVarSet0),
         varset__new_vars(TVarSet0, TupleArity, TupleArgTVars, TVarSet),
-        term__var_list_to_term_list(TupleArgTVars, TupleArgTypes),
+        prog_type.var_list_to_type_list(map__init, TupleArgTVars,
+            TupleArgTypes),
 
         % Tuple constructors can't be existentially quantified.
         ExistQVars = [],
@@ -619,13 +620,15 @@ unify_proc__collect_type_defn(ModuleInfo, TypeCtor, Type,
     map__lookup(Types, TypeCtor, TypeDefn),
     hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+    hlds_data__get_type_defn_kind_map(TypeDefn, KindMap),
     hlds_data__get_type_defn_body(TypeDefn, TypeBody),
     hlds_data__get_type_defn_status(TypeDefn, TypeStatus),
     hlds_data__get_type_defn_context(TypeDefn, Context),
 
     require(special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody,
         TypeStatus), "unify_proc__add_lazily_generated_unify_pred"),
-    construct_type(TypeCtor, TypeParams, Type).
+    prog_type.var_list_to_type_list(KindMap, TypeParams, TypeArgs),
+    construct_type(TypeCtor, TypeArgs, Type).
 
 %-----------------------------------------------------------------------------%
 
@@ -1733,7 +1736,7 @@ unify_proc__compare_args_2([_Name - Type | ArgTypes], ExistQTVars,
     %
     (
         list__member(ExistQTVar, ExistQTVars),
-        term__contains_var(Type, ExistQTVar)
+        type_contains_var(Type, ExistQTVar)
     ->
         ComparePred = "typed_compare"
     ;
@@ -1906,7 +1909,7 @@ unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
     %
     (
         list__member(ExistQTVar, ExistQTVars),
-        term__contains_var(Type, ExistQTVar)
+        type_contains_var(Type, ExistQTVar)
     ->
         unify_proc__build_call("typed_unify", [Var1, Var2], Context, Goal,
             !Info)

@@ -42,6 +42,7 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_out.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_type.
@@ -715,9 +716,14 @@ item_is_unchanged(pragma(_, PragmaType1), Item2) = Result :-
 				TVarSet2, _)
 		->
 			assoc_list__keys_and_values(TypeSubst1, TVars1, Types1),
-			var_list_to_term_list(TVars1, TVarTypes1),
 			assoc_list__keys_and_values(TypeSubst2, TVars2, Types2),
-			var_list_to_term_list(TVars2, TVarTypes2),
+			% XXX kind inference:
+			% we assume vars have kind `star'.
+			KindMap = map__init,
+			prog_type__var_list_to_type_list(KindMap, TVars1,
+				TVarTypes1),
+			prog_type__var_list_to_type_list(KindMap, TVars2,
+				TVarTypes2),
 			(
 				type_list_is_unchanged(
 					TVarSet1, TVarTypes1 ++ Types1,
@@ -850,24 +856,34 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
 	),
 
 	type_list_is_unchanged(TVarSet1, AllTypes1, TVarSet2, AllTypes2,
-		_TVarSet, RenameSubst, Types2ToTypes1Subst),
+		_TVarSet, Renaming, Types2ToTypes1Subst),
 
 	%
 	% Check that the existentially quantified variables are equivalent.
 	%
-	SubstExistQVars2 =
-		term_list_to_var_list(
-			term__apply_rec_substitution_to_list(
-				apply_substitution_to_list(
-					var_list_to_term_list(ExistQVars2),
-					RenameSubst),
-				Types2ToTypes1Subst)),
-	ExistQVars1 = SubstExistQVars2,
+	% XXX kind inference:
+	% we assume all tvars have kind `star'.
+	map__init(KindMap2),
+	apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap2,
+		RenamedKindMap2),
+	apply_variable_renaming_to_tvar_list(Renaming, ExistQVars2,
+		RenamedExistQVars2),
+	apply_rec_subst_to_tvar_list(RenamedKindMap2, Types2ToTypes1Subst,
+		RenamedExistQVars2, SubstExistQTypes2),
+	(
+		prog_type__type_list_to_var_list(SubstExistQTypes2,
+			SubstExistQVars2)
+	->
+		ExistQVars1 = SubstExistQVars2
+	;
+		unexpected(this_file,
+			"pred_or_func_type_is_unchanged: non-var")
+	),
 
 	%
 	% Check that the class constraints are identical.
 	%
-	apply_subst_to_prog_constraints(RenameSubst,
+	apply_variable_renaming_to_prog_constraints(Renaming,
 		Constraints2, RenamedConstraints2),
 	apply_rec_subst_to_prog_constraints(Types2ToTypes1Subst,
 		RenamedConstraints2, SubstConstraints2),
@@ -875,15 +891,15 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
 
 :- pred type_list_is_unchanged(tvarset::in, list(type)::in,
 	tvarset::in, list(type)::in, tvarset::out,
-	tsubst::out, tsubst::out) is semidet.
+	tvar_renaming::out, tsubst::out) is semidet.
 
 type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
-		TVarSet, RenameSubst, Types2ToTypes1Subst) :-
-	varset__merge_subst(TVarSet1, TVarSet2, TVarSet, RenameSubst),
-	term__apply_substitution_to_list(Types2, RenameSubst, SubstTypes2),
+		TVarSet, Renaming, Types2ToTypes1Subst) :-
+	tvarset_merge_renaming(TVarSet1, TVarSet2, TVarSet, Renaming),
+	apply_variable_renaming_to_type_list(Renaming, Types2, SubstTypes2),
 
 	%
-	% Check that the types are equivalent
+	% Check that the types are equivalent.
 	%
 	type_list_subsumes(SubstTypes2, Types1, Types2ToTypes1Subst),
 	type_list_subsumes(Types1, SubstTypes2, _),
@@ -899,16 +915,9 @@ type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
 	( all [VarInItem1, VarInItem2]
 		(
 			map__member(Types2ToTypes1Subst, VarInItem2, SubstTerm),
-			(
-				SubstTerm = term__variable(VarInItem1)
-			;
-				% The reverse subsumption test above should
-				% ensure that the substitutions are all
-				% var->var.
-				SubstTerm = term__functor(_, _, _),
-				error("pred_or_func_type_matches: " ++
-					"invalid subst")
-			)
+			% Note that since the type comes from a substitution,
+			% it will not contain a kind annotation.
+			SubstTerm = variable(VarInItem1, _)
 		)
 	=>
 		(
@@ -953,18 +962,16 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
 	varset__merge_subst(VarSet1, VarSet2, _, InstSubst),
 
 	%
-	% Treat modes as types here to use type_list_subsumes, which
-	% does just what we want here. (XXX shouldn't type_list_subsumes
-	% be in term.m and apply to generic terms anyway?).
+	% Treat modes as terms here to use term__list_subsumes, which
+	% does just what we want here.
 	%
-	ModeToTerm = (func(Mode) = term__coerce(mode_to_term(Mode))),
-	ModeTerms1 = list__map(ModeToTerm, Modes1),
-	ModeTerms2 = list__map(ModeToTerm, Modes2),
+	ModeTerms1 = list__map(mode_to_term, Modes1),
+	ModeTerms2 = list__map(mode_to_term, Modes2),
 	(
 		MaybeWithInst1 = yes(Inst1),
 		MaybeWithInst2 = yes(Inst2),
-		WithInstTerm1 = term__coerce(mode_to_term(free -> Inst1)),
-		WithInstTerm2 = term__coerce(mode_to_term(free -> Inst2)),
+		WithInstTerm1 = mode_to_term(free -> Inst1),
+		WithInstTerm2 = mode_to_term(free -> Inst2),
 		AllModeTerms1 = [WithInstTerm1 | ModeTerms1],
 		AllModeTerms2 = [WithInstTerm2 | ModeTerms2]
 	;
@@ -976,8 +983,8 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
 
 	term__apply_substitution_to_list(AllModeTerms2,
 		InstSubst, SubstAllModeTerms2),
-	type_list_subsumes(AllModeTerms1, SubstAllModeTerms2, _),
-	type_list_subsumes(SubstAllModeTerms2, AllModeTerms1, _).
+	term__list_subsumes(AllModeTerms1, SubstAllModeTerms2, _),
+	term__list_subsumes(SubstAllModeTerms2, AllModeTerms1, _).
 
 	%
 	% Combined typeclass method type and mode declarations are split
@@ -1194,4 +1201,12 @@ parse_item_version_number(ParseName, Term, Result) :-
 		Result = error("error in item version number", Term)
 	).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "recompilation.version.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module recompilation__version.
 %-----------------------------------------------------------------------------%

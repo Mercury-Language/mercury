@@ -3435,7 +3435,7 @@ make_generator_c_attributes = Attrs :-
 dummy_type_var = Type :-
     varset__init(DummyTVarSet0),
     varset__new_var(DummyTVarSet0, DummyTVar, _),
-    Type = term__variable(DummyTVar).
+    Type = variable(DummyTVar, star).
 
 %-----------------------------------------------------------------------------%
 

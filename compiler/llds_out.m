@@ -2434,10 +2434,10 @@ output_pragma_input(Input, !IO) :-
         MaybeForeignTypeInfo = no,
         io__write_string(VarName, !IO),
         io__write_string(" = ", !IO),
-        ( OrigType = term__functor(term__atom("string"), [], _) ->
+        ( OrigType = builtin(string) ->
             output_llds_type_cast(string, !IO),
             output_rval_as_type(Rval, word, !IO)
-        ; OrigType = term__functor(term__atom("float"), [], _) ->
+        ; OrigType = builtin(float) ->
             output_rval_as_type(Rval, float, !IO)
         ;
             output_rval_as_type(Rval, word, !IO)
@@ -2504,12 +2504,12 @@ output_pragma_output(Output, !IO) :-
         output_lval_as_word(Lval, !IO),
         io__write_string(" = ", !IO),
         (
-            OrigType = term__functor(term__atom("string"), [], _)
+            OrigType = builtin(string)
         ->
             output_llds_type_cast(word, !IO),
             io__write_string(VarName, !IO)
         ;
-            OrigType = term__functor(term__atom("float"), [], _)
+            OrigType = builtin(float)
         ->
             io__write_string("MR_float_to_word(", !IO),
             io__write_string(VarName, !IO),
@@ -2643,7 +2643,7 @@ output_live_value_type(var(Var, Name, Type, LldsInst), !IO) :-
     io__write_string(", ", !IO),
         % XXX Fake type varset
     varset__init(NewTVarset),
-    mercury_output_term(Type, NewTVarset, no, !IO),
+    mercury_output_type(NewTVarset, no, Type, !IO),
     io__write_string(", ", !IO),
     (
         LldsInst = ground,

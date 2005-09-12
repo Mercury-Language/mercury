@@ -1,6 +1,6 @@
 tc_err1.m:025: Error: no determinism declaration for type class method
 tc_err1.m:025:   predicate `tc_err1.handle_typedefs'/3.
-tc_err1.m:032: In instance declaration for `tc_err1.actions(tc_err1.pstate)':
+tc_err1.m:032: In instance declaration for `tc_err1.actions((tc_err1.pstate))':
 tc_err1.m:032:   no implementation for type class predicate method
 tc_err1.m:032:   `tc_err1.handle_typedefs'/3.
 tc_err1.m:032: In instance declaration for `tc_err1.actions'/1: incorrect

@@ -423,14 +423,35 @@ find_var_with_type(Var0, Type, InstGraph, VarTypes, BaseVars, Var) :-
 
 :- pred same_type((type)::in, (type)::in) is semidet.
 
-same_type(term__variable(_), term__variable(_)).
-same_type(term__functor(Const, ArgsA, _), term__functor(Const, ArgsB, _)) :-
-	list__same_length(ArgsA, ArgsB),
-	all [A, B] (
-		corresponding_members(ArgsA, ArgsB, A, B)
-	=>
-		same_type(A, B)
-	).
+same_type(A0, B0) :-
+	A = strip_kind_annotation(A0),
+	B = strip_kind_annotation(B0),
+	same_type_2(A, B).
+
+:- pred same_type_2((type)::in, (type)::in) is semidet.
+
+same_type_2(variable(_, _), variable(_, _)).
+same_type_2(defined(Name, ArgsA, _), defined(Name, ArgsB, _)) :-
+	same_type_list(ArgsA, ArgsB).
+same_type_2(builtin(BuiltinType), builtin(BuiltinType)).
+same_type_2(higher_order(ArgsA, no, Purity, EvalMethod),
+		higher_order(ArgsB, no, Purity, EvalMethod)) :-
+	same_type_list(ArgsA, ArgsB).
+same_type_2(higher_order(ArgsA, yes(RetA), Purity, EvalMethod),
+		higher_order(ArgsB, yes(RetB), Purity, EvalMethod)) :-
+	same_type_list(ArgsA, ArgsB),
+	same_type(RetA, RetB).
+same_type_2(tuple(ArgsA, _), tuple(ArgsB, _)) :-
+	same_type_list(ArgsA, ArgsB).
+same_type_2(apply_n(_, ArgsA, _), apply_n(_, ArgsB, _)) :-
+	same_type_list(ArgsA, ArgsB).
+
+:- pred same_type_list(list(type)::in, list(type)::in) is semidet.
+
+same_type_list([], []).
+same_type_list([A | As], [B | Bs]) :-
+	same_type(A, B),
+	same_type_list(As, Bs).
 
 %------------------------------------------------------------------------%
 

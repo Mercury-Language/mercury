@@ -398,7 +398,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                     % to indicate that all the existentially quantified tvars
                     % in the head of this pred are indeed bound by this
                     % predicate.
-                term__vars_list(ArgTypes0, HeadVarsIncludingExistentials),
+                prog_type__vars_list(ArgTypes0, HeadVarsIncludingExistentials),
                 pred_info_set_head_type_params(HeadVarsIncludingExistentials,
                     !PredInfo),
                 Error = no,
@@ -433,7 +433,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 Inferring = no,
                 write_pred_progress_message("% Type-checking ", PredId,
                     !.ModuleInfo, !IO),
-                term__vars_list(ArgTypes0, !:HeadTypeParams),
+                prog_type__vars_list(ArgTypes0, !:HeadTypeParams),
                 pred_info_get_class_context(!.PredInfo, PredConstraints),
                 constraint_list_get_tvars(PredConstraints ^ univ_constraints,
                     UnivTVars),
@@ -498,7 +498,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
             % apply to type variables which occur only in the body.
             %
             map__apply_to_list(HeadVars, InferredVarTypes, ArgTypes),
-            term__vars_list(ArgTypes, ArgTypeVars),
+            prog_type__vars_list(ArgTypes, ArgTypeVars),
             restrict_to_head_vars(InferredTypeConstraints0, ArgTypeVars,
                 InferredTypeConstraints, UnprovenBodyConstraints),
 
@@ -536,11 +536,11 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 % Check if anything changed
                 %
                 (
-                    % If the argument types and the type
-                    % constraints are identical up to renaming,
-                    % then nothing has changed.
-                    argtypes_identical_up_to_renaming(ExistQVars0, ArgTypes0,
-                        OldTypeConstraints, ExistQVars, ArgTypes,
+                    % If the argument types and the type constraints are
+                    % identical up to renaming, then nothing has changed.
+                    pred_info_tvar_kinds(!.PredInfo, TVarKinds),
+                    argtypes_identical_up_to_renaming(TVarKinds, ExistQVars0,
+                        ArgTypes0, OldTypeConstraints, ExistQVars, ArgTypes,
                         InferredTypeConstraints)
                 ->
                     Changed = no
@@ -575,8 +575,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                     ExistQVars0 = [_ | _],
                     apply_var_renaming_to_var_list(ExistQVars0,
                         ExistTypeRenaming, ExistQVars1),
-                    term__apply_variable_renaming_to_list(
-                        ArgTypes0, ExistTypeRenaming, ArgTypes1),
+                    apply_variable_renaming_to_type_list(ExistTypeRenaming,
+                        ArgTypes0, ArgTypes1),
                     apply_variable_renaming_to_prog_constraints(
                         ExistTypeRenaming, PredConstraints, PredConstraints1),
                     rename_instance_method_constraints(ExistTypeRenaming,
@@ -586,8 +586,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 % rename them all to match the new typevarset
                 apply_var_renaming_to_var_list(ExistQVars1,
                     TVarRenaming, ExistQVars),
-                term__apply_variable_renaming_to_list(ArgTypes1,
-                    TVarRenaming, RenamedOldArgTypes),
+                apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes1,
+                    RenamedOldArgTypes),
                 apply_variable_renaming_to_prog_constraints(TVarRenaming,
                     PredConstraints1, RenamedOldConstraints),
                 rename_instance_method_constraints(TVarRenaming,
@@ -657,15 +657,15 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     Body = conj([UnifyGoal, CallGoal]) - GoalInfo,
     StubClause = clause([], Body, mercury, Context).
 
-:- pred rename_instance_method_constraints(map(tvar, tvar)::in,
+:- pred rename_instance_method_constraints(tvar_renaming::in,
     pred_origin::in, pred_origin::out) is det.
 
 rename_instance_method_constraints(Renaming, Origin0, Origin) :-
     ( Origin0 = instance_method(Constraints0) ->
         Constraints0 = instance_method_constraints(ClassId, InstanceTypes0,
             InstanceConstraints0, ClassMethodClassContext0),
-        term__apply_variable_renaming_to_list(InstanceTypes0,
-            Renaming, InstanceTypes),
+        apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
+            InstanceTypes),
         apply_variable_renaming_to_prog_constraint_list(Renaming,
             InstanceConstraints0, InstanceConstraints),
         apply_variable_renaming_to_prog_constraints(Renaming,
@@ -745,7 +745,7 @@ restrict_to_head_vars_2(ClassConstraints, HeadTypeVars, HeadClassConstraints,
 
 is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
     all [TVar] (
-            term__contains_var_list(Types, TVar)
+            prog_type__type_list_contains_var(Types, TVar)
         =>
             list__member(TVar, HeadTypeVars)
     ).
@@ -759,19 +759,19 @@ is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
     % to append all the relevant types into one big type list and
     % then compare them in a single call to identical_up_to_renaming.
     %
-:- pred argtypes_identical_up_to_renaming(
+:- pred argtypes_identical_up_to_renaming(tvar_kind_map::in,
     existq_tvars::in, list(type)::in, prog_constraints::in,
     existq_tvars::in, list(type)::in, prog_constraints::in) is semidet.
 
-argtypes_identical_up_to_renaming(ExistQVarsA, ArgTypesA, TypeConstraintsA,
-        ExistQVarsB, ArgTypesB, TypeConstraintsB) :-
+argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
+        TypeConstraintsA, ExistQVarsB, ArgTypesB, TypeConstraintsB) :-
     same_structure(TypeConstraintsA, TypeConstraintsB,
         ConstrainedTypesA, ConstrainedTypesB),
-    term__var_list_to_term_list(ExistQVarsA, ExistQVarTermsA),
-    term__var_list_to_term_list(ExistQVarsB, ExistQVarTermsB),
-    list__condense([ExistQVarTermsA, ArgTypesA, ConstrainedTypesA],
+    prog_type__var_list_to_type_list(KindMap, ExistQVarsA, ExistQVarTypesA),
+    prog_type__var_list_to_type_list(KindMap, ExistQVarsB, ExistQVarTypesB),
+    list__condense([ExistQVarTypesA, ArgTypesA, ConstrainedTypesA],
         TypesListA),
-    list__condense([ExistQVarTermsB, ArgTypesB, ConstrainedTypesB],
+    list__condense([ExistQVarTypesB, ArgTypesB, ConstrainedTypesB],
         TypesListB),
     identical_up_to_renaming(TypesListA, TypesListB).
 
@@ -1238,9 +1238,9 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info, !IO) :-
                 type_assign_get_type_bindings(TypeAssign2, TypeBindings2),
                 map__apply_to_list(HeadVars, VarTypes1, HeadTypes1),
                 map__apply_to_list(HeadVars, VarTypes2, HeadTypes2),
-                term__apply_rec_substitution_to_list(HeadTypes1, TypeBindings1,
+                apply_rec_subst_to_type_list(TypeBindings1, HeadTypes1,
                     FinalHeadTypes1),
-                term__apply_rec_substitution_to_list(HeadTypes2, TypeBindings2,
+                apply_rec_subst_to_type_list(TypeBindings2, HeadTypes2,
                     FinalHeadTypes2),
                 identical_up_to_renaming(FinalHeadTypes1, FinalHeadTypes2)
             )
@@ -1424,12 +1424,13 @@ ensure_vars_have_a_type(Vars, !Info, !IO) :-
         Vars = []
     ;
         Vars = [_ | _],
-            % Invent some new type variables to use as
-            % the types of these variables.
+            % Invent some new type variables to use as the types of these
+            % variables.  Since each type is the type of a program variable,
+            % each must have kind `star'.
         list__length(Vars, NumVars),
         varset__init(TypeVarSet0),
         varset__new_vars(TypeVarSet0, NumVars, TypeVars, TypeVarSet),
-        term__var_list_to_term_list(TypeVars, Types),
+        prog_type__var_list_to_type_list(map__init, TypeVars, Types),
         empty_hlds_constraints(EmptyConstraints),
         typecheck_var_has_polymorphic_type_list(Vars, TypeVarSet, [],
             Types, EmptyConstraints, !Info, !IO)
@@ -1465,7 +1466,8 @@ higher_order_pred_type(Purity, Arity, EvalMethod, TypeVarSet, PredType,
         ArgTypes) :-
     varset__init(TypeVarSet0),
     varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet),
-    term__var_list_to_term_list(ArgTypeVars, ArgTypes),
+    % Argument types always have kind `star'.
+    prog_type__var_list_to_type_list(map__init, ArgTypeVars, ArgTypes),
     construct_higher_order_type(Purity, predicate, EvalMethod, ArgTypes,
         PredType).
 
@@ -1484,10 +1486,11 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
     varset__init(TypeVarSet0),
     varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet1),
     varset__new_var(TypeVarSet1, RetTypeVar, TypeVarSet),
-    term__var_list_to_term_list(ArgTypeVars, ArgTypes),
-    RetType = term__variable(RetTypeVar),
-    construct_higher_order_func_type(Purity, EvalMethod,
-        ArgTypes, RetType, FuncType).
+    % Argument and return types always have kind `star'.
+    prog_type__var_list_to_type_list(map__init, ArgTypeVars, ArgTypes),
+    RetType = variable(RetTypeVar, star),
+    construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
+        FuncType).
 
 %-----------------------------------------------------------------------------%
 
@@ -1824,9 +1827,10 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_arg_types(PredInfo, PredTVarSet, PredExistQVars0,
             PredArgTypes0),
+        pred_info_tvar_kinds(PredInfo, PredKindMap),
 
-        arg_type_list_subsumes(TVarSet, ArgTypes,
-            PredTVarSet, PredExistQVars0, PredArgTypes0)
+        arg_type_list_subsumes(TVarSet, ArgTypes, PredTVarSet, PredKindMap,
+            PredExistQVars0, PredArgTypes0)
     ->
         %
         % We've found a matching predicate.
@@ -1886,9 +1890,11 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars,
     % rename everything apart
     %
     type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
-        TypeAssign1, ParentArgTypes, Subst),
-    apply_substitution_to_var_list(PredExistQVars, Subst, ParentExistQVars),
-    apply_subst_to_constraints(Subst, PredConstraints, ParentConstraints),
+        TypeAssign1, ParentArgTypes, Renaming),
+    apply_variable_renaming_to_tvar_list(Renaming, PredExistQVars,
+        ParentExistQVars),
+    apply_variable_renaming_to_constraints(Renaming, PredConstraints,
+        ParentConstraints),
 
     %
     % insert the existentially quantified type variables for the called
@@ -1897,8 +1903,7 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars,
     %
     type_assign_get_head_type_params(TypeAssign1, HeadTypeParams0),
     list__append(ParentExistQVars, HeadTypeParams0, HeadTypeParams),
-    type_assign_set_head_type_params(HeadTypeParams,
-        TypeAssign1, TypeAssign),
+    type_assign_set_head_type_params(HeadTypeParams, TypeAssign1, TypeAssign),
     %
     % save the results and recurse
     %
@@ -1908,13 +1913,14 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars,
         PredArgTypes, PredConstraints, !ArgTypeAssigns).
 
 :- pred type_assign_rename_apart(type_assign::in, tvarset::in, list(type)::in,
-    type_assign::out, list(type)::out, tsubst::out) is det.
+    type_assign::out, list(type)::out, tvar_renaming::out) is det.
 
 type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
-        TypeAssign, ParentArgTypes, Subst) :-
+        TypeAssign, ParentArgTypes, Renaming) :-
     type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-    varset__merge_subst(TypeVarSet0, PredTypeVarSet, TypeVarSet, Subst),
-    term__apply_substitution_to_list(PredArgTypes, Subst, ParentArgTypes),
+    tvarset_merge_renaming(TypeVarSet0, PredTypeVarSet, TypeVarSet, Renaming),
+    apply_variable_renaming_to_type_list(Renaming, PredArgTypes,
+        ParentArgTypes),
     type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign).
 
 %-----------------------------------------------------------------------------%
@@ -2383,8 +2389,7 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
     ( map__search(VarTypes0, X, TypeX) ->
         ( map__search(VarTypes0, Y, TypeY) ->
-            % both X and Y already have types - just
-            % unify their types
+            % Both X and Y already have types - just unify their types.
             (
                 type_assign_unify_type(TypeAssign0, TypeX, TypeY, TypeAssign3)
             ->
@@ -2394,28 +2399,24 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
                 !:TypeAssignSet = !.TypeAssignSet
             )
         ;
-            % Y is a fresh variable which hasn't been
-            % assigned a type yet
+            % Y is a fresh variable which hasn't been assigned a type yet.
             map__det_insert(VarTypes0, Y, TypeX, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         )
     ;
         ( map__search(VarTypes0, Y, TypeY) ->
-            % X is a fresh variable which hasn't been
-            % assigned a type yet
+            % X is a fresh variable which hasn't been assigned a type yet.
             map__det_insert(VarTypes0, X, TypeY, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         ;
-            % both X and Y are fresh variables -
-            % introduce a fresh type variable to represent
-            % their type
+            % Both X and Y are fresh variables - introduce a fresh type
+            % variable with kind `star' to represent their type.
             type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
             varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
-            type_assign_set_typevarset(TypeVarSet,
-                TypeAssign0, TypeAssign1),
-            Type = term__variable(TypeVar),
+            type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign1),
+            Type = variable(TypeVar, star),
             map__det_insert(VarTypes0, X, Type, VarTypes1),
             ( X \= Y ->
                 map__det_insert(VarTypes1, Y, Type, VarTypes)
@@ -2492,12 +2493,12 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
         ConstraintsToAdd = ClassConstraints0
     ;
         type_assign_rename_apart(TypeAssign0, ConsTypeVarSet,
-            [ConsType0 | ArgTypes0],
-            TypeAssign1, [ConsType1 | ArgTypes1], Subst)
+            [ConsType0 | ArgTypes0], TypeAssign1, [ConsType1 | ArgTypes1],
+            Renaming)
     ->
-        apply_substitution_to_var_list(ConsExistQVars0, Subst,
+        apply_variable_renaming_to_tvar_list(Renaming, ConsExistQVars0,
             ConsExistQVars),
-        apply_subst_to_constraints(Subst, ClassConstraints0,
+        apply_variable_renaming_to_constraints(Renaming, ClassConstraints0,
             ConstraintsToAdd),
         type_assign_get_head_type_params(TypeAssign1, HeadTypeParams0),
         list__append(ConsExistQVars, HeadTypeParams0, HeadTypeParams),
@@ -2593,22 +2594,22 @@ typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0], Purity,
 
 type_assign_get_types_of_vars([], [], !TypeAssign).
 type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
-    % check whether the variable already has a type
+    % Check whether the variable already has a type.
     type_assign_get_var_types(!.TypeAssign, VarTypes0),
     ( map__search(VarTypes0, Var, VarType) ->
-        % if so, use that type
+        % If so, use that type.
         Type = VarType
     ;
-        % otherwise, introduce a fresh type variable to
-        % use as the type of that variable
+        % Otherwise, introduce a fresh type variable with kind `star' to use
+        % as the type of that variable.
         type_assign_get_typevarset(!.TypeAssign, TypeVarSet0),
         varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
         type_assign_set_typevarset(TypeVarSet, !TypeAssign),
-        Type = term__variable(TypeVar),
+        Type = variable(TypeVar, star),
         map__det_insert(VarTypes0, Var, Type, VarTypes1),
         type_assign_set_var_types(VarTypes1, !TypeAssign)
     ),
-    % recursively process the rest of the variables.
+    % Recursively process the rest of the variables.
     type_assign_get_types_of_vars(Vars, Types, !TypeAssign).
 
 %-----------------------------------------------------------------------------%
@@ -2942,7 +2943,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         %   Pair0 = 1 - 'a',
         %   Pair = Pair0 ^ snd := 2.
         %
-        term__vars(FieldType, TVarsInField),
+        prog_type__vars(FieldType, TVarsInField),
         (
             TVarsInField = [],
             TVarSet = TVarSet0,
@@ -2980,7 +2981,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
             %
             list__replace_nth_det(ConsArgTypes, FieldNumber, int_type,
                 ArgTypesWithoutField),
-            term__vars_list(ArgTypesWithoutField, TVarsInOtherArgs),
+            prog_type__vars_list(ArgTypesWithoutField, TVarsInOtherArgs),
             set__intersect(
                 set__list_to_set(TVarsInField),
                 set__intersect(
@@ -3003,10 +3004,10 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                 varset__new_vars(TVarSet0, NumNewTVars, NewTVars, TVarSet),
                 map__from_corresponding_lists(TVarsOnlyInField,
                     NewTVars, TVarRenaming),
-                term__apply_variable_renaming(FieldType,
-                    TVarRenaming, RenamedFieldType),
-                term__apply_variable_renaming(FunctorType,
-                    TVarRenaming, OutputFunctorType),
+                apply_variable_renaming_to_type(TVarRenaming, FieldType,
+                    RenamedFieldType),
+                apply_variable_renaming_to_type(TVarRenaming, FunctorType,
+                    OutputFunctorType),
 
                 %
                 % Rename the class constraints, projecting
@@ -3015,7 +3016,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                 % the call to `'field :='/2'.  Note that we
                 % have already flipped the constraints.
                 %
-                term__vars_list([FunctorType, FieldType], CallTVars0),
+                prog_type__vars_list([FunctorType, FieldType], CallTVars0),
                 set__list_to_set(CallTVars0, CallTVars),
                 project_and_rename_constraints(ClassTable, TVarSet, CallTVars,
                     TVarRenaming, Constraints0, Constraints),
@@ -3046,7 +3047,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
     % of the type variables are supplied by the caller.
     %
 :- pred project_and_rename_constraints(class_table::in, tvarset::in,
-    set(tvar)::in, map(tvar, tvar)::in,
+    set(tvar)::in, tvar_renaming::in,
     hlds_constraints::in, hlds_constraints::out) is det.
 
 project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
@@ -3081,21 +3082,21 @@ project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
 
 project_constraint(CallTVars, Constraint) :-
     Constraint = constraint(_, _, TypesToCheck),
-    term__vars_list(TypesToCheck, TVarsToCheck0),
+    prog_type__vars_list(TypesToCheck, TVarsToCheck0),
     set__list_to_set(TVarsToCheck0, TVarsToCheck),
     set__intersect(TVarsToCheck, CallTVars, RelevantTVars),
     \+ set__empty(RelevantTVars).
 
-:- pred rename_constraint(map(tvar, tvar)::in, hlds_constraint::in,
+:- pred rename_constraint(tvar_renaming::in, hlds_constraint::in,
     hlds_constraint::out) is semidet.
 
 rename_constraint(TVarRenaming, Constraint0, Constraint) :-
     Constraint0 = constraint(Ids, Name, Types0),
     some [Var] (
-        term__contains_var_list(Types0, Var),
+        type_list_contains_var(Types0, Var),
         map__contains(TVarRenaming, Var)
     ),
-    term__apply_variable_renaming_to_list(Types0, TVarRenaming, Types),
+    apply_variable_renaming_to_type_list(TVarRenaming, Types0, Types),
     Constraint = constraint(Ids, Name, Types).
 
 %-----------------------------------------------------------------------------%
@@ -3235,12 +3236,15 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
         Functor = cons(unqualified("{}"), TupleArity)
     ->
         %
-        % Make some fresh type variables for the argument types.
+        % Make some fresh type variables for the argument types.  These have
+        % kind `star' since there are values (namely the arguments of the
+        % tuplpe constructor) which have these types.
         %
         varset__init(TupleConsTypeVarSet0),
-        varset__new_vars(TupleConsTypeVarSet0, TupleArity,
-            TupleArgTVars, TupleConsTypeVarSet),
-        term__var_list_to_term_list(TupleArgTVars, TupleArgTypes),
+        varset__new_vars(TupleConsTypeVarSet0, TupleArity, TupleArgTVars,
+            TupleConsTypeVarSet),
+        prog_type__var_list_to_type_list(map__init, TupleArgTVars,
+            TupleArgTypes),
 
         construct_type(unqualified("{}") - TupleArity, TupleArgTypes,
             TupleConsType),
@@ -3321,6 +3325,7 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     map__lookup(Types, TypeCtor, TypeDefn),
     hlds_data__get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),
     hlds_data__get_type_defn_tparams(TypeDefn, ConsTypeParams),
+    hlds_data__get_type_defn_kind_map(TypeDefn, ConsTypeKinds),
     hlds_data__get_type_defn_body(TypeDefn, Body),
 
     %
@@ -3371,7 +3376,9 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         % Do not allow 'new' constructors except on existential types.
         ConsTypeInfo = error(new_on_non_existential_type(TypeCtor))
     ;
-        construct_type(TypeCtor, ConsTypeParams, ConsType),
+        prog_type.var_list_to_type_list(ConsTypeKinds, ConsTypeParams,
+            ConsTypeArgs),
+        construct_type(TypeCtor, ConsTypeArgs, ConsType),
         UnivProgConstraints = [],
         (
             Action = do_not_flip_constraints

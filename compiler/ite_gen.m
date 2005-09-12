@@ -254,9 +254,9 @@ ite_gen__generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
         code_info__produce_variable(L, CodeL, ValL, !CI),
         code_info__produce_variable(R, CodeR, ValR, !CI),
         Type = code_info__variable_type(!.CI, L),
-        ( Type = term__functor(term__atom("string"), [], _) ->
+        ( Type = builtin(string) ->
             Op = str_eq
-        ; Type = term__functor(term__atom("float"), [], _) ->
+        ; Type = builtin(float) ->
             Op = float_eq
         ;
             Op = eq

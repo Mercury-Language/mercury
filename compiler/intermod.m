@@ -1391,7 +1391,8 @@ intermod__write_classes(ModuleInfo, !IO) :-
 
 intermod__write_class(ModuleName, ClassId, ClassDefn, !IO) :-
     ClassDefn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
-        _Ancestors, TVars, Interface, _HLDSClassInterface, TVarSet, Context),
+        _Ancestors, TVars, _Kinds, Interface, _HLDSClassInterface, TVarSet,
+        Context),
     ClassId = class_id(QualifiedClassName, _),
     (
         QualifiedClassName = qualified(ModuleName, _),

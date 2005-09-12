@@ -113,6 +113,10 @@
 :- mode promise_to_string(out) = in is semidet.
 :- mode promise_to_string(out) = out is multi.
 
+:- pred builtin_type_to_string(builtin_type, string).
+:- mode builtin_type_to_string(in, out) is det.
+:- mode builtin_type_to_string(out, in) is semidet.
+
     % Print "predicate" or "function" depending on the given value.
     %
 :- pred write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
@@ -375,6 +379,11 @@ promise_to_string(exclusive) = "promise_exclusive".
 promise_to_string(exhaustive) =  "promise_exhaustive".
 promise_to_string(exclusive_exhaustive) =
         "promise_exclusive_exhaustive".
+
+builtin_type_to_string(int, "int").
+builtin_type_to_string(float, "float").
+builtin_type_to_string(string, "string").
+builtin_type_to_string(character, "character").
 
 write_promise_type(PromiseType, !IO) :-
     io__write_string(promise_to_string(PromiseType), !IO).

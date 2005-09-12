@@ -269,6 +269,7 @@
 
 % Parse tree modules.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
@@ -2028,7 +2029,7 @@ hlds_out__write_foreign_args([Arg | Args], VarSet, TVarSet, AppendVarNums,
         MaybeNameMode = no
     ),
     io__write_string("@", !IO),
-    mercury_output_term(Type, TVarSet, AppendVarNums, !IO),
+    mercury_output_type(TVarSet, AppendVarNums, Type, !IO),
     (
         Args = []
     ;
@@ -2497,7 +2498,7 @@ hlds_out__write_unify_rhs_3(functor(ConsId0, IsExistConstruct, ArgVars),
         TypeQual = yes(TVarSet, _)
     ->
         io__write_string(" `with_type` ", !IO),
-        mercury_output_term(Type, TVarSet, no, next_to_graphic_token, !IO)
+        mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
     ;
         true
     ).
@@ -2567,8 +2568,7 @@ hlds_out__write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _,
         TypeQual = yes(TVarSet, _)
     ->
         io__write_string(" `with_type` ", !IO),
-        mercury_output_term(Type, TVarSet, AppendVarNums,
-            next_to_graphic_token, !IO)
+        mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
     ;
         true
     ),
@@ -2955,13 +2955,13 @@ hlds_out__import_status_to_string(exported_to_submodules) =
     io::di, io::uo) is det.
 
 hlds_out__write_type_list(Types, TypeVarSet, AppendVarNums, !IO) :-
-    list__foldl(output_term_and_comma(TypeVarSet, AppendVarNums), Types, !IO).
+    list__foldl(output_type_and_comma(TypeVarSet, AppendVarNums), Types, !IO).
 
-:- pred output_term_and_comma(tvarset::in, bool::in, (type)::in,
+:- pred output_type_and_comma(tvarset::in, bool::in, (type)::in,
     io::di, io::uo) is det.
 
-output_term_and_comma(TypeVarSet, AppendVarNums, Type, !IO) :-
-    mercury_output_term(Type, TypeVarSet, AppendVarNums, !IO),
+output_type_and_comma(TypeVarSet, AppendVarNums, Type, !IO) :-
+    mercury_output_type(TypeVarSet, AppendVarNums, Type, !IO),
     io__write_string(", ", !IO).
 
 :- pred hlds_out__write_var_types(int::in, prog_varset::in, bool::in,
@@ -2991,7 +2991,7 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, AppendVarNums,
     io__write_int(VarNum, !IO),
     io__write_string(")", !IO),
     io__write_string(": ", !IO),
-    mercury_output_term(Type, TypeVarSet, AppendVarNums, !IO),
+    mercury_output_type(TypeVarSet, AppendVarNums, Type, !IO),
     io__write_string("\n", !IO),
     hlds_out__write_var_types_2(Vars, Indent, VarSet, AppendVarNums,
         VarTypes, TypeVarSet, !IO).
@@ -3082,7 +3082,7 @@ write_rtti_var_info(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, Var,
 	(
 		VarInfo = type_info_var(Type),
 		io__write_string("type_info for ", !IO),
-		mercury_output_term(Type, TVarSet, AppendVarNums, !IO)
+		mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
 	;
 		VarInfo = typeclass_info_var(Constraint),
 		io__write_string("typeclass_info for", !IO),
@@ -3217,12 +3217,12 @@ hlds_out__type_name_to_string(Name - _Arity) =
 hlds_out__write_type_params(_TVarSet, [], !IO).
 hlds_out__write_type_params(TVarSet, [P], !IO) :-
     io__write_string("(", !IO),
-    term_io__write_term(TVarSet, P, !IO),
+    mercury_output_var(P, TVarSet, no, !IO),
     io__write_string(")", !IO).
 hlds_out__write_type_params(TVarSet, [P | Ps], !IO) :-
     Ps = [_ | _],
     io__write_string("(", !IO),
-    term_io__write_term(TVarSet, P, !IO),
+    mercury_output_var(P, TVarSet, no, !IO),
     hlds_out__write_type_params_2(TVarSet, Ps, !IO).
 
 :- pred hlds_out__write_type_params_2(tvarset::in, list(type_param)::in,
@@ -3232,7 +3232,7 @@ hlds_out__write_type_params_2(_TVarSet, [], !IO) :-
     io__write_string(")", !IO).
 hlds_out__write_type_params_2(TVarSet, [P | Ps], !IO) :-
     io__write_string(", ", !IO),
-    term_io__write_term(TVarSet, P, !IO),
+    mercury_output_var(P, TVarSet, no, !IO),
     hlds_out__write_type_params_2(TVarSet, Ps, !IO).
 
 :- pred hlds_out__write_type_body(int::in, tvarset::in, hlds_type_body::in,
@@ -3268,7 +3268,7 @@ hlds_out__write_type_body(Indent, TVarSet, du_type(Ctors, Tags, Enum,
 
 hlds_out__write_type_body(_Indent, TVarSet, eqv_type(Type), !IO) :-
     io__write_string(" == ", !IO),
-    term_io__write_term(TVarSet, Type, !IO),
+    mercury_output_type(TVarSet, no, Type, !IO),
     io__write_string(".\n", !IO).
 
 hlds_out__write_type_body(_Indent, _TVarSet, abstract_type(_IsSolverType),
@@ -3355,7 +3355,7 @@ hlds_out__write_class_defn(Indent, ClassId - ClassDefn, !IO) :-
     hlds_out__write_class_id(ClassId, !IO),
     io__write_string(":\n", !IO),
 
-    ClassDefn = hlds_class_defn(_, Constraints, FunDeps, _, Vars, _,
+    ClassDefn = hlds_class_defn(_, Constraints, FunDeps, _, Vars, _, _,
         Interface, VarSet, Context),
 
     term__context_file(Context, FileName),
@@ -3472,7 +3472,7 @@ hlds_out__write_subclass_details(Indent, SuperClassId, SubClassDetails, !IO) :-
     SuperClassId = class_id(SuperSymName, _SuperArity),
     prog_out__write_sym_name(SuperSymName, !IO),
     io__write_char('(', !IO),
-    io__write_list(SuperClassVars, ", ", term_io__write_term(VarSet), !IO),
+    io__write_list(SuperClassVars, ", ", mercury_output_type(VarSet, no), !IO),
     io__write_char(')', !IO).
 
 %-----------------------------------------------------------------------------%
@@ -3528,8 +3528,7 @@ hlds_out__write_instance_defn(Indent, InstanceDefn, !IO) :-
 
         % curry the varset for term_io__write_variable/4
     PrintTerm = (pred(TypeName::in, IO0::di, IO::uo) is det :-
-        mercury_output_term(TypeName, VarSet,
-            AppendVarNums, IO0, IO)
+        mercury_output_type(VarSet, AppendVarNums, TypeName, IO0, IO)
     ),
     hlds_out__write_indent(Indent, !IO),
     io__write_string("% Types: ", !IO),
@@ -3997,8 +3996,10 @@ inst_to_term(any(Uniq), Context) =
     make_atom(any_inst_uniqueness(Uniq), Context).
 inst_to_term(free, Context) =
     make_atom("free", Context).
-inst_to_term(free(Type), Context) =
-    term__functor(term__atom("free"), [term__coerce(Type)], Context).
+inst_to_term(free(Type), Context) = Term :-
+    unparse_type(Type, Term0),
+    Term1 = term__coerce(Term0),
+    Term = term__functor(term__atom("free"), [Term1], Context).
 inst_to_term(bound(Uniq, BoundInsts), Context) = Term :-
     construct_qualified_term(unqualified(inst_uniqueness(Uniq, "bound")),
         [bound_insts_to_term(BoundInsts, Context)], Context, Term).
@@ -4081,13 +4082,15 @@ inst_name_to_term(any_inst(InstName, IsLive, Uniq, Real), Context) = Term :-
         make_atom((Real = real_unify -> "real" ; "fake"), Context)],
         Context, Term).
 inst_name_to_term(typed_ground(Uniq, Type), Context) = Term :-
+    unparse_type(Type, Term0),
     construct_qualified_term(unqualified("$typed_ground"),
         [make_atom(inst_uniqueness(Uniq, "shared"), Context),
-        term__coerce(Type)],
+        term__coerce(Term0)],
         Context, Term).
 inst_name_to_term(typed_inst(Type, InstName), Context) = Term :-
+    unparse_type(Type, Term0),
     construct_qualified_term(unqualified("$typed_inst"),
-        [term__coerce(Type),
+        [term__coerce(Term0),
         inst_name_to_term(InstName, Context)],
         Context, Term).
 

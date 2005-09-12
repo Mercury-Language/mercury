@@ -778,25 +778,25 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     % merged.
     %
     list__foldl(find_merged_tvars(RttiVarMaps0, LaterOldNewMap, NewTvarMap),
-        TvarsList, map__init, TSubst),
+        TvarsList, map__init, Renaming),
 
     % Apply the full old->new map and the type substitution to the
     % rtti_varmaps, and apply the type substitution to the vartypes.
     %
     list__append(FirstOldNew, LaterOldNew, OldNew),
     map__from_assoc_list(OldNew, OldNewMap),
-    apply_substitutions_to_rtti_varmaps(TSubst, map__init, OldNewMap,
+    apply_substitutions_to_rtti_varmaps(Renaming, map__init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
-    map__map_values(apply_tvar_rename(TSubst), VarTypes0, VarTypes),
+    map__map_values(apply_tvar_rename(Renaming), VarTypes0, VarTypes),
 
     !:CseInfo = !.CseInfo ^ rtti_varmaps := RttiVarMaps,
     !:CseInfo = !.CseInfo ^ vartypes := VarTypes.
 
-:- pred apply_tvar_rename(tsubst::in, prog_var::in, (type)::in, (type)::out)
-    is det.
+:- pred apply_tvar_rename(tvar_renaming::in, prog_var::in,
+    (type)::in, (type)::out) is det.
 
-apply_tvar_rename(TSubst, _Var, Type0, Type) :-
-    Type = term__apply_substitution(Type0, TSubst).
+apply_tvar_rename(Renaming, _Var, Type0, Type) :-
+    apply_variable_renaming_to_type(Renaming, Type0, Type).
 
 :- pred find_type_info_locn_tvar_map(rtti_varmaps::in,
     map(prog_var, prog_var)::in, tvar::in,
@@ -813,10 +813,10 @@ find_type_info_locn_tvar_map(RttiVarMaps, FirstOldNewMap, Tvar, !NewTvarMap) :-
     ).
 
 :- pred find_merged_tvars(rtti_varmaps::in, map(prog_var, prog_var)::in,
-    map(type_info_locn, tvar)::in, tvar::in, tsubst::in, tsubst::out)
-    is det.
+    map(type_info_locn, tvar)::in, tvar::in,
+    tvar_renaming::in, tvar_renaming::out) is det.
 
-find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !TSubst) :-
+find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
     rtti_lookup_type_info_locn(RttiVarMaps, Tvar, TypeInfoLocn0),
     type_info_locn_var(TypeInfoLocn0, Old),
     ( map__search(LaterOldNewMap, Old, New) ->
@@ -825,7 +825,7 @@ find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !TSubst) :-
         ( NewTvar = Tvar ->
             true
         ;
-            svmap__det_insert(Tvar, term__variable(NewTvar), !TSubst)
+            svmap__det_insert(Tvar, NewTvar, !Renaming)
         )
     ;
         true

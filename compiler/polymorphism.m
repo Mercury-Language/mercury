@@ -244,21 +244,21 @@
 	term__context::in, prog_var::out, list(hlds_goal)::out,
 	poly_info::in, poly_info::out) is det.
 
-	% polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
-	%		ModuleInfo, Goals, TypeInfoVar, ...):
+	% polymorphism__gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar,
+	% 		Index, ModuleInfo, Goals, TypeInfoVar, ...):
 	%
 	%	Generate code to extract a type_info variable from a
 	%	given slot of a typeclass_info variable, by calling
-	%	private_builtin:type_info_from_typeclass_info.
-	%	TypeVar is the type variable to which this type_info
-	%	variable corresponds.  TypeClassInfoVar is the variable
-	%	holding the type_class_info.  Index specifies which
-	%	slot it is.  The procedure returns TypeInfoVar, which
-	%	is a fresh variable holding the type_info, and Goals,
-	%	which is the code generated to initialize TypeInfoVar.
+	%	private_builtin.type_info_from_typeclass_info.  TypeVar is the
+	%	type variable to which this type_info variable corresponds.
+	%	Kind is the kind of the type variable.  TypeClassInfoVar is
+	%	the variable holding the type_class_info.  Index specifies
+	%	which slot it is.  The procedure returns TypeInfoVar, which is
+	%	a fresh variable holding the type_info, and Goals, which is
+	%	the code generated to initialize TypeInfoVar.
 	%
-:- pred polymorphism__gen_extract_type_info(tvar::in, prog_var::in, int::in,
-	module_info::in, list(hlds_goal)::out, prog_var::out,
+:- pred polymorphism__gen_extract_type_info(tvar::in, kind::in, prog_var::in,
+	int::in, module_info::in, list(hlds_goal)::out, prog_var::out,
 	prog_varset::in, prog_varset::out,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	rtti_varmaps::in, rtti_varmaps::out) is det.
@@ -543,8 +543,8 @@ introduce_exists_casts_pred(ModuleInfo, Subn, ExtraHeadVars, !PredInfo) :-
 	list__foldl(
 		(pred(HeadVar::in, Types0::in, Types::out) is det :-
 			map__lookup(Types0, HeadVar, HeadVarType0),
-			term__apply_rec_substitution(HeadVarType0,
-				Subn, HeadVarType),
+			apply_rec_subst_to_type(Subn, HeadVarType0,
+				HeadVarType),
 			map__set(Types0, HeadVar, HeadVarType, Types)
 		), ExtraHeadVars, VarTypes0, VarTypes),
 	clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
@@ -773,7 +773,7 @@ polymorphism__setup_headvars_instance_method(PredInfo,
 	InstanceMethodConstraints = instance_method_constraints(_,
 		InstanceTypes, InstanceConstraints, ClassContext),
 
-	term__vars_list(InstanceTypes, InstanceTVars),
+	prog_type__vars_list(InstanceTypes, InstanceTVars),
 	get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
 		UnconstrainedInstanceTVars),
 	pred_info_arg_types(PredInfo, ArgTypeVarSet, _, _),
@@ -838,7 +838,7 @@ polymorphism__setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
 	list__append(UnivHeadTypeClassInfoVars, ExistHeadTypeClassInfoVars,
 		ExtraHeadTypeClassInfoVars),
 
-	term__vars_list(ArgTypes, HeadTypeVars),
+	prog_type__vars_list(ArgTypes, HeadTypeVars),
 	list__delete_elems(HeadTypeVars, UnivConstrainedTVars,
 		UnconstrainedTVars0),
 	list__delete_elems(UnconstrainedTVars0, ExistConstrainedTVars,
@@ -864,8 +864,8 @@ polymorphism__setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
 			ArgTypeVarSet, ExistHeadTypeInfoVars, !Info)
 	),
 
-	polymorphism__make_head_vars(UnconstrainedUnivTVars,
-		ArgTypeVarSet, UnivHeadTypeInfoVars, !Info),
+	polymorphism__make_head_vars(UnconstrainedUnivTVars, ArgTypeVarSet,
+		UnivHeadTypeInfoVars, !Info),
 	list__append(UnivHeadTypeInfoVars, ExistHeadTypeInfoVars,
 		ExtraHeadTypeInfoVars),
 
@@ -949,6 +949,7 @@ polymorphism__produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
 		!Info) :-
 	poly_info_get_var_types(!.Info, VarTypes0),
 	pred_info_arg_types(PredInfo, ArgTypes),
+	pred_info_tvar_kinds(PredInfo, KindMap),
 	pred_info_get_class_context(PredInfo, PredClassContext),
 
 	%
@@ -995,10 +996,8 @@ polymorphism__produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
 	% to give the actual types, and then generate code
 	% to initialize the type_infos for those types
 	%
-	term__var_list_to_term_list(UnconstrainedTVars,
-		UnconstrainedTVarTerms),
-	term__apply_substitution_to_list(UnconstrainedTVarTerms,
-		PredToActualTypeSubst, ActualTypes),
+	apply_subst_to_tvar_list(KindMap, PredToActualTypeSubst,
+		UnconstrainedTVars, ActualTypes),
 	polymorphism__make_type_info_vars(ActualTypes, Context,
 		TypeInfoVars, ExtraTypeInfoGoals, !Info),
 	polymorphism__assign_var_list(TypeInfoHeadVars, TypeInfoVars,
@@ -1498,23 +1497,24 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 		ActualArgTypes, ActualRetType, Context,
 		ExtraVars, ExtraGoals, !Info) :-
 
-	CtorDefn = ctor_defn(CtorTypeVarSet, CtorExistQVars,
+	CtorDefn = ctor_defn(CtorTypeVarSet, CtorExistQVars, CtorKindMap,
 		CtorExistentialConstraints, CtorArgTypes, CtorRetType),
 
 	%
 	% rename apart the type variables in the constructor definition
 	%
 	poly_info_get_typevarset(!.Info, TypeVarSet0),
-	varset__merge_subst(TypeVarSet0, CtorTypeVarSet, TypeVarSet,
-		CtorToParentSubst),
-	term__var_list_to_term_list(CtorExistQVars, CtorExistQVarTerms),
-	term__apply_substitution_to_list(CtorExistQVarTerms, CtorToParentSubst,
-		ParentExistQVarsTerms),
-	apply_subst_to_prog_constraint_list(CtorToParentSubst,
+	tvarset_merge_renaming(TypeVarSet0, CtorTypeVarSet, TypeVarSet,
+		CtorToParentRenaming),
+	apply_variable_renaming_to_tvar_list(CtorToParentRenaming,
+		CtorExistQVars, ParentExistQVars),
+	apply_variable_renaming_to_tvar_kind_map(CtorToParentRenaming,
+		CtorKindMap, ParentKindMap),
+	apply_variable_renaming_to_prog_constraint_list(CtorToParentRenaming,
 		CtorExistentialConstraints, ParentExistentialConstraints),
-	term__apply_substitution_to_list(CtorArgTypes, CtorToParentSubst,
-		ParentArgTypes),
-	term__apply_substitution(CtorRetType, CtorToParentSubst,
+	apply_variable_renaming_to_type_list(CtorToParentRenaming,
+		CtorArgTypes, ParentArgTypes),
+	apply_variable_renaming_to_type(CtorToParentRenaming, CtorRetType,
 		ParentRetType),
 	poly_info_set_typevarset(TypeVarSet, !Info),
 
@@ -1559,13 +1559,10 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 	%
 	constraint_list_get_tvars(ParentExistentialConstraints,
 		ParentExistConstrainedTVars),
-	term__var_list_to_term_list(ParentExistConstrainedTVars,
-		ParentExistConstrainedTVarTerms),
-	list__delete_elems(ParentExistQVarsTerms,
-		ParentExistConstrainedTVarTerms,
-		ParentUnconstrainedExistQVarTerms),
-	term__apply_rec_substitution_to_list(ParentUnconstrainedExistQVarTerms,
-		ParentToActualTypeSubst, ActualExistentialTypes),
+	list__delete_elems(ParentExistQVars, ParentExistConstrainedTVars,
+		ParentUnconstrainedExistQVars),
+	apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
+		ParentUnconstrainedExistQVars, ActualExistentialTypes),
 
 	%
 	% create type_info variables for the _unconstrained_
@@ -1642,7 +1639,7 @@ polymorphism__process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 	ExistVars0 = list__map(get_constrained_vars, ExistCs),
 	list__condense(ExistVars0, ExistConstrainedVars),
 
-	term__vars_list(PredArgTypes, PredTypeVars0),
+	prog_type__vars_list(PredArgTypes, PredTypeVars0),
 	list__remove_dups(PredTypeVars0, PredTypeVars1),
 	list__delete_elems(PredTypeVars1, UnivConstrainedVars, PredTypeVars2),
 	list__delete_elems(PredTypeVars2, ExistConstrainedVars, PredTypeVars),
@@ -1678,9 +1675,7 @@ polymorphism__process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 	% insert type_info/typeclass_info types for all the inserted
 	% type_info/typeclass_info vars into the arg-types list
 	%
-	term__var_list_to_term_list(PredTypeVars, PredTypeVarTypes),
-	list__map(polymorphism__build_type_info_type, PredTypeVarTypes,
-		TypeInfoTypes),
+	TypeInfoTypes = list__map((func(_) = type_info_type), PredTypeVars),
 	list__map(polymorphism__build_typeclass_info_type, UnivCs, UnivTypes),
 	list__map(polymorphism__build_typeclass_info_type, ExistCs, ExistTypes),
 	OrigArgTypes = TypeInfoTypes ++ UnivTypes ++ ExistTypes,
@@ -1695,7 +1690,7 @@ polymorphism__foreign_proc_add_typeclass_info(Mode, Impl, TypeVarSet,
 		Constraint, MaybeArgName) :-
 	Constraint = constraint(Name0, Types),
 	mdbcomp__prim_data__sym_name_to_string(Name0, "__", Name),
-	term__vars_list(Types, TypeVars),
+	prog_type__vars_list(Types, TypeVars),
 	TypeVarNames =
 		list__map(underscore_and_tvar_name(TypeVarSet), TypeVars),
 	string__append_list(["TypeClassInfo_for_", Name | TypeVarNames],
@@ -1799,37 +1794,39 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
 		PredArgTypes),
+	pred_info_tvar_kinds(PredInfo, PredKindMap),
 	pred_info_get_class_context(PredInfo, PredClassContext),
 
 		% VarTypes, TypeVarSet* etc come from the caller.
-		% PredTypeVarSet, PredArgTypes, PredExistQVarTerms, etc come
+		% PredTypeVarSet, PredArgTypes, PredExistQVars, etc come
 		% directly from the callee.
-		% ParentArgTypes, ParentExistQVarTerms etc come from a version
+		% ParentArgTypes, ParentExistQVars etc come from a version
 		% of the callee that has been renamed apart from the caller.
 		%
 		% The difference between e.g. PredArgTypes and ParentArgTypes
-		% is the application of PredToParentTypeSubst, which maps the
-		% type variables in the callee to new type variables in the
-		% caller. Adding the new type variables to TypeVarSet0 yields
-		% TypeVarSet.
+		% is the application of PredToParentTypeRenaming, which maps
+		% the type variables in the callee to new type variables in
+		% the caller. Adding the new type variables to TypeVarSet0
+		% yields TypeVarSet.
 	( varset__is_empty(PredTypeVarSet) ->
 		% optimize a common case
-		map__init(PredToParentTypeSubst),
+		map__init(PredToParentTypeRenaming),
 		TypeVarSet = TypeVarSet0,
 		ParentArgTypes = PredArgTypes,
+		ParentKindMap = PredKindMap,
 		ParentTVars = [],
-		ParentExistQVarTerms = []
+		ParentExistQVars = []
 	;
 		% (this merge might be a performance bottleneck?)
-		varset__merge_subst(TypeVarSet0, PredTypeVarSet, TypeVarSet,
-			PredToParentTypeSubst),
-		term__apply_substitution_to_list(PredArgTypes,
-			PredToParentTypeSubst, ParentArgTypes),
-		term__vars_list(ParentArgTypes, ParentTVars),
-		term__var_list_to_term_list(PredExistQVars,
-			PredExistQVarTerms),
-		term__apply_substitution_to_list(PredExistQVarTerms,
-			PredToParentTypeSubst, ParentExistQVarTerms)
+		tvarset_merge_renaming(TypeVarSet0, PredTypeVarSet, TypeVarSet,
+			PredToParentTypeRenaming),
+		apply_variable_renaming_to_type_list(PredToParentTypeRenaming,
+			PredArgTypes, ParentArgTypes),
+		prog_type__vars_list(ParentArgTypes, ParentTVars),
+		apply_variable_renaming_to_tvar_kind_map(
+			PredToParentTypeRenaming, PredKindMap, ParentKindMap),
+		apply_variable_renaming_to_tvar_list(PredToParentTypeRenaming,
+			PredExistQVars, ParentExistQVars)
 	),
 
 	PredModule = pred_info_module(PredInfo),
@@ -1860,8 +1857,9 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
 			% Compute which "parent" type variables are constrained
 			% by the type class constraints.
-		apply_subst_to_prog_constraints(PredToParentTypeSubst,
-			PredClassContext, ParentClassContext),
+		apply_variable_renaming_to_prog_constraints(
+			PredToParentTypeRenaming, PredClassContext,
+			ParentClassContext),
 		ParentClassContext = constraints(ParentUnivConstraints,
 			ParentExistConstraints),
 		constraint_list_get_tvars(ParentUnivConstraints,
@@ -1880,17 +1878,11 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 		list__delete_elems(ParentUnconstrainedTVars1,
 			ParentExistConstrainedTVars,
 			ParentUnconstrainedTVars),
-		term__term_list_to_var_list(ParentExistQVarTerms,
-			ParentExistQVars),
 		list__delete_elems(ParentUnconstrainedTVars, ParentExistQVars,
 			ParentUnconstrainedUnivTVars),
 		list__delete_elems(ParentUnconstrainedTVars,
 			ParentUnconstrainedUnivTVars,
 			ParentUnconstrainedExistTVars),
-		term__var_list_to_term_list(ParentUnconstrainedUnivTVars,
-			ParentUnconstrainedUnivTypes),
-		term__var_list_to_term_list(ParentUnconstrainedExistTVars,
-			ParentUnconstrainedExistTypes),
 
 			% Calculate the "parent to actual" binding.
 		map__apply_to_list(ArgVars0, VarTypes, ActualArgTypes),
@@ -1904,10 +1896,17 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 		list__length(ParentUnivConstraints, NumUnivConstraints),
 		lookup_hlds_constraint_list(ConstraintMap, unproven, GoalPath,
 			NumUnivConstraints, ActualUnivConstraints),
-		term__apply_rec_substitution_to_list(ParentExistQVarTerms,
-			ParentToActualTypeSubst, ActualExistQVarTerms),
-		term__term_list_to_var_list(ActualExistQVarTerms,
-			ActualExistQVars),
+		apply_rec_subst_to_tvar_list(ParentKindMap,
+			ParentToActualTypeSubst, ParentExistQVars,
+			ActualExistQVarTypes),
+		(
+			prog_type__type_list_to_var_list(ActualExistQVarTypes,
+				ActualExistQVars0)
+		->
+			ActualExistQVars = ActualExistQVars0
+		;
+			unexpected(this_file, "existq_tvar bound")
+		),
 		goal_info_get_context(GoalInfo0, Context),
 		polymorphism__make_typeclass_info_vars(
 			ActualUnivConstraints, ActualExistQVars, Context,
@@ -1925,8 +1924,8 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
 			% Make variables to hold typeinfos for unconstrained
 			% universal type vars.
-		term__apply_rec_substitution_to_list(
-			ParentUnconstrainedUnivTypes, ParentToActualTypeSubst,
+		apply_rec_subst_to_tvar_list(ParentKindMap,
+			ParentToActualTypeSubst, ParentUnconstrainedUnivTVars,
 			ActualUnconstrainedUnivTypes),
 		polymorphism__make_type_info_vars(ActualUnconstrainedUnivTypes,
 			Context, ExtraUnivTypeInfoVars, ExtraUnivTypeInfoGoals,
@@ -1934,8 +1933,8 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
 			% Make variables to hold typeinfos for unconstrained
 			% existential type vars.
-		term__apply_rec_substitution_to_list(
-			ParentUnconstrainedExistTypes, ParentToActualTypeSubst,
+		apply_rec_subst_to_tvar_list(ParentKindMap,
+			ParentToActualTypeSubst, ParentUnconstrainedExistTVars,
 			ActualUnconstrainedExistTypes),
 		polymorphism__make_type_info_vars(
 			ActualUnconstrainedExistTypes, Context,
@@ -1989,10 +1988,10 @@ polymorphism__process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
 
 		% Work out the bindings of type variables in the call.
 		%
-	varset__merge_subst(TVarSet0, PredTVarSet, TVarSet,
-		PredToParentTSubst),
-	term__apply_substitution_to_list(OrigPredArgTypes, PredToParentTSubst,
-		OrigParentArgTypes),
+	tvarset_merge_renaming(TVarSet0, PredTVarSet, TVarSet,
+		PredToParentRenaming),
+	apply_variable_renaming_to_type_list(PredToParentRenaming,
+		OrigPredArgTypes, OrigParentArgTypes),
 	type_list_subsumes_det(OrigParentArgTypes, ActualArgTypes0,
 		ParentToActualTSubst),
 	poly_info_set_typevarset(TVarSet, !Info),
@@ -2017,10 +2016,10 @@ polymorphism__process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
 			)
 		),
 	list__map(GetTypeInfoTypes, CalleeExtraHeadVars, PredTypeInfoTypes),
-	term__apply_substitution_to_list(PredTypeInfoTypes, PredToParentTSubst,
-		ParentTypeInfoTypes),
-	term__apply_rec_substitution_to_list(ParentTypeInfoTypes,
-		ParentToActualTSubst, ActualTypeInfoTypes),
+	apply_variable_renaming_to_type_list(PredToParentRenaming,
+		PredTypeInfoTypes, ParentTypeInfoTypes),
+	apply_rec_subst_to_type_list(ParentToActualTSubst, ParentTypeInfoTypes,
+		ActualTypeInfoTypes),
 
 		% Construct goals to make the required type_infos.
 		%
@@ -2036,26 +2035,6 @@ polymorphism__process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId,
 		MaybeCallUnifyContext, SymName),
 	CallGoal = CallGoalExpr - GoalInfo,
 	conj_list_to_goal(ExtraGoals ++ [CallGoal], GoalInfo, Goal).
-
-:- pred unify_corresponding_types(list(type)::in, list(type)::in, 
-		tsubst::in, tsubst::out) is det.
-
-unify_corresponding_types([], [], !Subst).
-unify_corresponding_types([], [_ | _], !Subst) :-
-	error("polymorphism__unify_corresponding_types: " ++
-		"differing list lengths").
-unify_corresponding_types([_ | _], [], !Subst) :-
-	error("polymorphism__unify_corresponding_types: " ++
-		"differing list lengths").
-unify_corresponding_types([A | As], [B | Bs], !Subst) :-
-	(
-		term__unify(A, B, !Subst)
-	->
-		unify_corresponding_types(As, Bs, !Subst)
-	;
-		error("polymorphism__unify_corresponding_types: " ++
-			"term__unify failed")
-	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2261,8 +2240,9 @@ polymorphism__make_typeclass_info_from_instance(Constraint, Seen,
 		ClassId, InstanceNum, ExistQVars, Context, MaybeVar,
 		!ExtraGoals, !Info) :-
 	Constraint = constraint(_ClassName, ConstrainedTypes),
-	!.Info = poly_info(_VarSet0, _VarTypes0, TypeVarSet, _RttiVarMaps0,
-		Proofs, _ConstraintMap, _PredName, ModuleInfo),
+	TypeVarSet = !.Info ^ typevarset,
+	Proofs = !.Info ^ proof_map,
+	ModuleInfo = !.Info ^ module_info,
 
 	module_info_instances(ModuleInfo, InstanceTable),
 	map__lookup(InstanceTable, ClassId, InstanceList),
@@ -2270,8 +2250,12 @@ polymorphism__make_typeclass_info_from_instance(Constraint, Seen,
 
 	ProofInstanceDefn = hlds_instance_defn(_, _, _, InstanceConstraints0,
 		InstanceTypes0, _, _, InstanceTVarset, SuperClassProofs0),
+	
+	% XXX kind inference:
+	% we assume all tvars have kind `star'.
+	map__init(KindMap),
 
-	term__vars_list(InstanceTypes0, InstanceTvars),
+	prog_type__vars_list(InstanceTypes0, InstanceTvars),
 	get_unconstrained_tvars(InstanceTvars,
 		InstanceConstraints0, UnconstrainedTvars0),
 
@@ -2280,27 +2264,28 @@ polymorphism__make_typeclass_info_from_instance(Constraint, Seen,
 		% when we call type_list_subsumes then apply
 		% the resulting bindings.
 		% XXX expand comment
-	varset__merge_subst(TypeVarSet, InstanceTVarset,
-		_NewTVarset, RenameSubst),
-	term__apply_substitution_to_list(InstanceTypes0,
-		RenameSubst, InstanceTypes),
+	tvarset_merge_renaming(TypeVarSet, InstanceTVarset,
+		_NewTVarset, Renaming),
+	apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
+		InstanceTypes),
 	type_list_subsumes_det(InstanceTypes, ConstrainedTypes, InstanceSubst),
-	apply_subst_to_prog_constraint_list(RenameSubst,
+	apply_variable_renaming_to_prog_constraint_list(Renaming,
 		InstanceConstraints0, InstanceConstraints1),
 	apply_rec_subst_to_prog_constraint_list(InstanceSubst,
 		InstanceConstraints1, InstanceConstraints2),
 	% XXX document diamond as guess
 	InstanceConstraints = InstanceConstraints2 `list__delete_elems` Seen,
-	apply_subst_to_constraint_proofs(RenameSubst,
+	apply_variable_renaming_to_constraint_proofs(Renaming,
 		SuperClassProofs0, SuperClassProofs1),
 	apply_rec_subst_to_constraint_proofs(InstanceSubst,
 		SuperClassProofs1, SuperClassProofs2),
 
-	term__var_list_to_term_list(UnconstrainedTvars0, UnconstrainedTypes0),
-	term__apply_substitution_to_list(UnconstrainedTypes0, RenameSubst,
-		UnconstrainedTypes1),
-	term__apply_rec_substitution_to_list(UnconstrainedTypes1,
-		InstanceSubst, UnconstrainedTypes),
+	apply_variable_renaming_to_tvar_list(Renaming, UnconstrainedTvars0,
+		UnconstrainedTvars1),
+	apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap,
+		RenamedKindMap),
+	apply_rec_subst_to_tvar_list(RenamedKindMap, InstanceSubst,
+		UnconstrainedTvars1, UnconstrainedTypes),
 
 		% XXX why name of output?
 	map__overlay(Proofs, SuperClassProofs2, SuperClassProofs),
@@ -2533,15 +2518,14 @@ polymorphism__get_arg_superclass_vars(ClassDefn, InstanceTypes,
 	SuperClasses0 = ClassDefn ^ class_supers,
 	ClassVars0 = ClassDefn ^ class_vars,
 	ClassTVarSet = ClassDefn ^ class_tvarset,
-	varset__merge_subst(TVarSet0, ClassTVarSet, TVarSet1, Subst),
+	tvarset_merge_renaming(TVarSet0, ClassTVarSet, TVarSet1, Renaming),
 	poly_info_set_typevarset(TVarSet1, !Info),
 
-	map__apply_to_list(ClassVars0, Subst, ClassVars1),
-	term__vars_list(ClassVars1, ClassVars),
+	apply_variable_renaming_to_tvar_list(Renaming, ClassVars0, ClassVars),
 	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
 
-	apply_subst_to_prog_constraint_list(Subst, SuperClasses0,
-		SuperClasses1),
+	apply_variable_renaming_to_prog_constraint_list(Renaming,
+		SuperClasses0, SuperClasses1),
 	apply_rec_subst_to_prog_constraint_list(TypeSubst, SuperClasses1,
 		SuperClasses),
 
@@ -2675,7 +2659,7 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
 	% Now handle the cases of types which are not known statically
 	% (i.e. type variables)
 	%
-		Type = term__variable(TypeVar)
+		Type = variable(TypeVar, _)
 	->
 		get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
 		get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var, !Info)
@@ -2683,8 +2667,8 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals, !Info) :-
 		error("polymorphism__make_var: unknown type")
 	).
 
-:- pred get_type_info_locn(tvar::in, type_info_locn::out,
-	poly_info::in, poly_info::out) is det.
+:- pred get_type_info_locn(tvar::in, type_info_locn::out, poly_info::in,
+	poly_info::out) is det.
 
 get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
 	%
@@ -2711,7 +2695,8 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
 		% not in a type_info variable.  maybe_extract_type_info
 		% will fix this up when the typeclass_info is created.
 		%
-		prog_type__var(Type, TypeVar),
+		get_tvar_kind(!.Info ^ tvar_kinds, TypeVar, Kind),
+		Type = variable(TypeVar, Kind),
 		polymorphism__new_type_info_var(Type, type_info, Var, !Info),
 		TypeInfoLocn = type_info(Var),
 		poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
@@ -2815,7 +2800,7 @@ polymorphism__maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity,
 			% a type_info, we need to adjust its type.
 			% Since type_ctor_info_const cons_ids are handled
 			% specially, this should not cause problems.
-			polymorphism__build_type_info_type(type_info, Type,
+			polymorphism__build_type_info_type_2(type_info,
 				TypeInfoType),
 			map__det_update(!.VarTypes, TypeCtorVar, TypeInfoType,
 				!:VarTypes),
@@ -2979,7 +2964,8 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
 polymorphism__make_head_vars([], _, [], !Info).
 polymorphism__make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars,
 		!Info) :-
-	Type = term__variable(TypeVar),
+	get_tvar_kind(!.Info ^ tvar_kinds, TypeVar, Kind),
+	Type = variable(TypeVar, Kind),
 	polymorphism__new_type_info_var(Type, type_info, Var, !Info),
 	( varset__search_name(TypeVarSet, TypeVar, TypeVarName) ->
 		poly_info_get_varset(!.Info, VarSet0),
@@ -3025,7 +3011,7 @@ polymorphism__new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes,
 	),
 	string__append(Prefix, VarNumStr, Name),
 	varset__name_var(!.VarSet, Var, Name, !:VarSet),
-	polymorphism__build_type_info_type(Kind, Type, TypeInfoType),
+	polymorphism__build_type_info_type_2(Kind, TypeInfoType),
 	map__set(!.VarTypes, Var, TypeInfoType, !:VarTypes).
 
 :- func typeinfo_prefix = string.
@@ -3068,19 +3054,22 @@ extract_type_info(TypeVar, TypeClassInfoVar, Index, Goals, TypeInfoVar,
 	poly_info_get_var_types(!.Info, VarTypes0),
 	poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 	poly_info_get_module_info(!.Info, ModuleInfo),
-	polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
-		ModuleInfo, Goals, TypeInfoVar, VarSet0, VarSet,
+	poly_info_get_tvar_kinds(!.Info, TVarKinds),
+	get_tvar_kind(TVarKinds, TypeVar, Kind),
+	polymorphism__gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar,
+		Index, ModuleInfo, Goals, TypeInfoVar, VarSet0, VarSet,
 		VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
 	poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
 	poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
-polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
+polymorphism__gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index,
 		ModuleInfo, Goals, TypeInfoVar, !VarSet, !VarTypes,
 		!RttiVarMaps) :-
 	make_int_const_construction(Index, yes("TypeInfoIndex"),
 		IndexGoal, IndexVar, !VarTypes, !VarSet),
-	polymorphism__new_type_info_var_raw(term__variable(TypeVar), type_info,
-		TypeInfoVar, !VarSet, !VarTypes, !RttiVarMaps),
+	Type = variable(TypeVar, Kind),
+	polymorphism__new_type_info_var_raw(Type, type_info, TypeInfoVar,
+		!VarSet, !VarTypes, !RttiVarMaps),
 	goal_util__generate_simple_call(mercury_private_builtin_module,
 		"type_info_from_typeclass_info", predicate, only_mode, det,
 		[TypeClassInfoVar, IndexVar, TypeInfoVar], [],
@@ -3138,7 +3127,7 @@ polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
 			% The first type_info will be just after the superclass
 			% infos.
 		First = NumSuperClasses + 1,
-		term__vars_list(ClassTypes, ClassTypeVars0),
+		prog_type__vars_list(ClassTypes, ClassTypeVars0),
 		MakeIndex = (pred(Elem0::in, Elem::out,
 					Index0::in, Index::out) is det :-
 				Elem = Elem0 - Index0,
@@ -3210,18 +3199,12 @@ polymorphism__new_typeclass_info_var(Constraint, ClassString, Var, !Info) :-
 	poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
 	poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
-polymorphism__build_typeclass_info_type(Constraint, DictionaryType) :-
-	Constraint = constraint(SymName, ArgTypes),
-
-	% `constraint/n' is not really a type - it is a representation of a
-	% class constraint about which a typeclass_info holds information.
-	% `type_util:type_to_ctor_and_args' treats it as a type variable.
-	construct_qualified_term(SymName, [], ClassNameTerm),
+polymorphism__build_typeclass_info_type(_Constraint, DictionaryType) :-
+	% Note: we no longer store meaningful information in the argument
+	% of typeclass_info/1.
 	PrivateBuiltin = mercury_private_builtin_module,
-	construct_qualified_term(qualified(PrivateBuiltin, "constraint"),
-		[ClassNameTerm | ArgTypes], ConstraintTerm),
-	construct_type(qualified(PrivateBuiltin, "typeclass_info") - 1,
-		[ConstraintTerm], DictionaryType).
+	TypeclassInfoTypeName = qualified(PrivateBuiltin, "typeclass_info"),
+	DictionaryType = defined(TypeclassInfoTypeName, [void_type], star).
 
 %---------------------------------------------------------------------------%
 
@@ -3256,18 +3239,18 @@ polymorphism__build_type_info_type(Type, TypeInfoType) :-
 		% of the current predicate won't treat it as such.
 		Kind = type_info
 	),
-	polymorphism__build_type_info_type(Kind, Type, TypeInfoType).
+	polymorphism__build_type_info_type_2(Kind, TypeInfoType).
 
-:- pred polymorphism__build_type_info_type(type_info_kind::in,
-	(type)::in, (type)::out) is det.
+:- pred polymorphism__build_type_info_type_2(type_info_kind::in, (type)::out)
+	is det.
 
-polymorphism__build_type_info_type(Kind, Type, TypeInfoType) :-
+polymorphism__build_type_info_type_2(Kind, TypeInfoType) :-
 	(
 		Kind = type_info,
-		TypeInfoType = type_info_type(Type)
+		TypeInfoType = type_info_type
 	;
 		Kind = type_ctor_info,
-		TypeInfoType = type_ctor_info_type(Type)
+		TypeInfoType = type_ctor_info_type
 	).
 
 %---------------------------------------------------------------------------%
@@ -3437,17 +3420,21 @@ delete_nth([X | Xs], N0, Result) :-
 
 get_constrained_vars(Constraint) = CVars :-
 	Constraint = constraint(_, CTypes),
-	term__vars_list(CTypes, CVars).
+	prog_type__vars_list(CTypes, CVars).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- type poly_info --->
 	poly_info(
-		% the first three fields are from the proc_info
+		% The first two fields are from the proc_info.
 		varset			:: prog_varset,
 		vartypes		:: vartypes,
+
+		% The next two fields from the pred_info.
 		typevarset		:: tvarset,
+		tvar_kinds		:: tvar_kind_map,
+
 		rtti_varmaps		:: rtti_varmaps,
 					% Gives information about the locations
 					% of type_infos and typeclass_infos.
@@ -3485,39 +3472,44 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
 	clauses_info_varset(ClausesInfo, VarSet),
 	clauses_info_vartypes(ClausesInfo, VarTypes),
 	pred_info_typevarset(PredInfo, TypeVarSet),
+	pred_info_tvar_kinds(PredInfo, TypeVarKinds),
 	pred_info_get_constraint_proofs(PredInfo, Proofs),
 	pred_info_get_constraint_map(PredInfo, ConstraintMap),
 	rtti_varmaps_init(RttiVarMaps),
-	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, RttiVarMaps,
-		Proofs, ConstraintMap, PredInfo, ModuleInfo).
+	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
+		RttiVarMaps, Proofs, ConstraintMap, PredInfo, ModuleInfo).
 
 	% create_poly_info creates a poly_info for an existing procedure.
 	% (See also init_poly_info.)
 create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
 	pred_info_typevarset(PredInfo, TypeVarSet),
+	pred_info_tvar_kinds(PredInfo, TypeVarKinds),
 	pred_info_get_constraint_proofs(PredInfo, Proofs),
 	pred_info_get_constraint_map(PredInfo, ConstraintMap),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, RttiVarMaps,
-		Proofs, ConstraintMap, PredInfo, ModuleInfo).
+	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
+		RttiVarMaps, Proofs, ConstraintMap, PredInfo, ModuleInfo).
 
 poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
-	Info = poly_info(VarSet, VarTypes, TypeVarSet, RttiVarMaps, _Proofs,
-		_ConstraintMap, _OldPredInfo, ModuleInfo),
+	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
+		RttiVarMaps, _Proofs, _ConstraintMap, _OldPredInfo,
+		ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_varset(VarSet, !ProcInfo),
 	proc_info_set_vartypes(VarTypes, !ProcInfo),
 	proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-	pred_info_set_typevarset(TypeVarSet, !PredInfo).
+	pred_info_set_typevarset(TypeVarSet, !PredInfo),
+	pred_info_set_tvar_kinds(TypeVarKinds, !PredInfo).
 
 %---------------------------------------------------------------------------%
 
 :- pred poly_info_get_varset(poly_info::in, prog_varset::out) is det.
 :- pred poly_info_get_var_types(poly_info::in, vartypes::out) is det.
 :- pred poly_info_get_typevarset(poly_info::in, tvarset::out) is det.
+:- pred poly_info_get_tvar_kinds(poly_info::in, tvar_kind_map::out) is det.
 :- pred poly_info_get_rtti_varmaps(poly_info::in, rtti_varmaps::out) is det.
 :- pred poly_info_get_proofs(poly_info::in, constraint_proof_map::out) is det.
 :- pred poly_info_get_constraint_map(poly_info::in, constraint_map::out)
@@ -3528,6 +3520,7 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, ModuleInfo) :-
 poly_info_get_varset(PolyInfo, PolyInfo ^ varset).
 poly_info_get_var_types(PolyInfo, PolyInfo ^ vartypes).
 poly_info_get_typevarset(PolyInfo, PolyInfo ^ typevarset).
+poly_info_get_tvar_kinds(PolyInfo, PolyInfo ^ tvar_kinds).
 poly_info_get_rtti_varmaps(PolyInfo, PolyInfo ^ rtti_varmaps).
 poly_info_get_proofs(PolyInfo, PolyInfo ^ proof_map).
 poly_info_get_constraint_map(PolyInfo, PolyInfo ^ constraint_map).
@@ -3539,6 +3532,8 @@ poly_info_get_module_info(PolyInfo, PolyInfo ^ module_info).
 :- pred poly_info_set_varset_and_types(prog_varset::in, vartypes::in,
 	poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_typevarset(tvarset::in, poly_info::in,
+	poly_info::out) is det.
+:- pred poly_info_set_tvar_kinds(tvar_kind_map::in, poly_info::in,
 	poly_info::out) is det.
 :- pred poly_info_set_rtti_varmaps(rtti_varmaps::in,
 	poly_info::in, poly_info::out) is det.
@@ -3553,6 +3548,7 @@ poly_info_set_varset(VarSet, PI, PI ^ varset := VarSet).
 poly_info_set_varset_and_types(VarSet, VarTypes, PI,
 	(PI ^ varset := VarSet) ^ vartypes := VarTypes).
 poly_info_set_typevarset(TVarSet, PI, PI ^ typevarset := TVarSet).
+poly_info_set_tvar_kinds(TVarKinds, PI, PI ^ tvar_kinds := TVarKinds).
 poly_info_set_rtti_varmaps(RttiVarMaps, PI, PI ^ rtti_varmaps := RttiVarMaps).
 poly_info_set_proofs(Proofs, PI, PI ^ proof_map := Proofs).
 poly_info_set_constraint_map(ConstraintMap, PI,

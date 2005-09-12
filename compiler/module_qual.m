@@ -985,64 +985,60 @@ qualify_type_list([Type0 | Types0], [Type | Types], !Info, !IO) :-
     qualify_type(Type0, Type, !Info, !IO),
     qualify_type_list(Types0, Types, !Info, !IO).
 
+:- pred qualify_maybe_type(maybe(type)::in, maybe(type)::out,
+    mq_info::in, mq_info::out, io::di, io::uo) is det.
+
+qualify_maybe_type(no, no, !Info, !IO).
+qualify_maybe_type(yes(Type0), yes(Type), !Info, !IO) :-
+    qualify_type(Type0, Type, !Info, !IO).
+
     % Qualify a type and its argument types.
     %
 :- pred qualify_type((type)::in, (type)::out, mq_info::in, mq_info::out,
     io::di, io::uo) is det.
 
-qualify_type(term.variable(Var), term.variable(Var), !Info, !IO).
-qualify_type(Type0, Type, !Info, !IO) :-
-    Type0 = term.functor(_, _, _),
-    ( type_to_ctor_and_args(Type0, TypeCtor0, Args0) ->
-        ( is_builtin_atomic_type(TypeCtor0) ->
-            TypeCtor = TypeCtor0
-        ; type_ctor_is_higher_order(TypeCtor0, _, _, _) ->
-            TypeCtor = TypeCtor0
-        ; type_ctor_is_tuple(TypeCtor0) ->
-            TypeCtor = TypeCtor0
-        ; type_ctor_is_variable(TypeCtor0) ->
-            TypeCtor = TypeCtor0,
-            % This is an error until we support higher-kinded
-            % types.
-            mq_info_get_error_context(!.Info, ErrorContext),
-            report_invalid_type(Type0, ErrorContext, !IO),
-            mq_info_set_error_flag(type_id, !Info),
-            mq_info_incr_errors(!Info)
-        ;
-            mq_info_get_types(!.Info, Types),
-            find_unique_match(TypeCtor0, TypeCtor, Types,
-                type_id, !Info, !IO)
-        ),
-        qualify_type_list(Args0, Args, !Info, !IO),
-        construct_type(TypeCtor, Args, Type)
-    ;
-        mq_info_get_error_context(!.Info, ErrorContext),
-        report_invalid_type(Type0, ErrorContext, !IO),
-        mq_info_set_error_flag(type_id, !Info),
-        mq_info_incr_errors(!Info),
-        Type = Type0
-    ),
+qualify_type(variable(Var, Kind), variable(Var, Kind), !Info, !IO).
+qualify_type(defined(SymName0, Args0, Kind), defined(SymName, Args, Kind),
+        !Info, !IO) :-
+    Arity = list.length(Args0),
+    TypeCtor0 = SymName0 - Arity,
+    mq_info_get_types(!.Info, Types),
+    find_unique_match(TypeCtor0, TypeCtor, Types, type_id, !Info, !IO),
+    TypeCtor = SymName - _,
+    qualify_type_list(Args0, Args, !Info, !IO).
+qualify_type(builtin(BuiltinType), builtin(BuiltinType), !Info, !IO) :-
     %
-    % The types `int', `float', and `string' are builtin types,
-    % defined by the compiler, but arguably they ought to be
-    % defined in int.m, float.m, and string.m, and so if someone
-    % uses the type `int' in the interface, then we don't want
-    % to warn about `import_module int' in the interface.
+    % The types `int', `float', and `string' are builtin types, defined by
+    % the compiler, but arguably they ought to be defined in int.m, float.m,
+    % and string.m, and so if someone uses the type `int' in the interface,
+    % then we don't want to warn about `import_module int' in the interface.
+    % We don't do the same for `character', since the corresponding library
+    % module `char' will be flagged as used in the interface if the type
+    % `char' is used.
     %
     (
-        Type = term.functor(term.atom(Typename), [], _),
-        ( Typename = "int"
-        ; Typename = "string"
-        ; Typename = "float"
-        )
-    ->
-        % -- not yet:
-        % StdLibraryModule = qualified(unqualified("std"), Typename),
-        StdLibraryModule = unqualified(Typename),
-        mq_info_set_module_used(StdLibraryModule, !Info)
+        BuiltinType = int,
+        mq_info_set_module_used(unqualified("int"), !Info)
     ;
-        true
+        BuiltinType = float,
+        mq_info_set_module_used(unqualified("float"), !Info)
+    ;
+        BuiltinType = string,
+        mq_info_set_module_used(unqualified("string"), !Info)
+    ;
+        BuiltinType = character
     ).
+qualify_type(higher_order(Args0, MaybeRet0, Purity, EvalMethod),
+        higher_order(Args, MaybeRet, Purity, EvalMethod), !Info, !IO) :-
+    qualify_type_list(Args0, Args, !Info, !IO),
+    qualify_maybe_type(MaybeRet0, MaybeRet, !Info, !IO).
+qualify_type(tuple(Args0, Kind), tuple(Args, Kind), !Info, !IO) :-
+    qualify_type_list(Args0, Args, !Info, !IO).
+qualify_type(apply_n(Var, Args0, Kind), apply_n(Var, Args, Kind), !Info,
+        !IO) :-
+    qualify_type_list(Args0, Args, !Info, !IO).
+qualify_type(kinded(Type0, Kind), kinded(Type, Kind), !Info, !IO) :-
+    qualify_type(Type0, Type, !Info, !IO).
 
     % Qualify the modes in a pragma c_code(...) decl.
     %
@@ -1544,21 +1540,6 @@ wrap_id(Name - Arity) = sym_name_and_arity(Name / Arity).
 is_or_are([], "") :- unexpected(this_file, "module_qual:is_or_are").
 is_or_are([_], "is").
 is_or_are([_, _ | _], "are").
-
-    % Output an error message about an ill-formed type.
-    %
-:- pred report_invalid_type((type)::in, error_context::in,
-    io::di, io::uo) is det.
-
-report_invalid_type(Type, ErrorContext - Context, !IO) :-
-    ContextPieces = mq_error_context_to_pieces(ErrorContext),
-    varset.init(VarSet),
-    Pieces = [words("In")] ++ ContextPieces ++
-        [suffix(":"), nl, words("error: ill-formed type"),
-        fixed("`" ++ mercury_term_to_string(Type, VarSet, no) ++
-            "'.")],
-    write_error_pieces(Context, 0, Pieces, !IO),
-    io.set_exit_status(1, !IO).
 
     % Output an error message about an ill-formed user_inst.
     %

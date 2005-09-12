@@ -91,7 +91,7 @@ cons_id_to_tag(table_io_decl(ShroudedPredProcId), _, _) =
 cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
 	(
 			% handle the `character' type specially
-		Type = term__functor(term__atom("character"), [], _),
+		Type = builtin(character),
 		Name = unqualified(ConsName),
 	 	string__char_to_string(Char, ConsName)
 	->
@@ -142,10 +142,10 @@ make_instance_string(InstanceTypes, InstanceString) :-
 :- pred type_to_string((type)::in, string::out) is det.
 
 type_to_string(Type, String) :-
-	( sym_name_and_args(Type, TypeName, TypeArgs) ->
+	( type_to_ctor_and_args(Type, TypeCtor, _) ->
+		TypeCtor = TypeName - TypeArity,
 		mdbcomp__prim_data__sym_name_to_string(TypeName, "__", 
 			TypeNameString),
-		list__length(TypeArgs, TypeArity),
 		string__int_to_string(TypeArity, TypeArityString),
 		string__append_list(
 			[TypeNameString, "__arity", TypeArityString, "__"],

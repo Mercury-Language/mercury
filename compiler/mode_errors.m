@@ -831,7 +831,7 @@ mode_error_unify_pred_to_specs(ModeInfo, X, RHS, Type, PredOrFunc) = Specs :-
         words("with"), words(add_quotes(RHSStr)), suffix(":"), nl,
         words("mode error: attempt at higher-order unification."), nl,
         words("Cannot unify two terms of type"),
-        words(add_quotes(mercury_term_to_string(Type, TypeVarSet, no))),
+        words(add_quotes(mercury_type_to_string(TypeVarSet, no, Type))),
         suffix("."), nl],
     globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (

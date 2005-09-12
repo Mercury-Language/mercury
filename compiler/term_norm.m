@@ -227,8 +227,9 @@ find_and_count_nonrec_args([Arg | Args], Id, Params, NonRecArgs, ArgInfo) :-
 
 is_arg_recursive(Arg, TypeCtor, Params) :-
 	Arg = _Name - ArgType,
-	type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeParams),
+	type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeArgs),
 	TypeCtor = ArgTypeCtor,
+	prog_type.type_list_to_var_list(ArgTypeArgs, ArgTypeParams),
 	list__perm(Params, ArgTypeParams).
 
 :- pred search_weight_table(weight_table::in, type_ctor::in, cons_id::in,

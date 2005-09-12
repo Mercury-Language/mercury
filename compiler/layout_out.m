@@ -1234,7 +1234,7 @@ pred_transform_name(dnf(N)) = "dnf_" ++ int_to_string(N).
 
 subst_to_name(TVar - Type) =
 	string__format("%d/%s",
-		[i(TVar), s(mercury_term_to_string(Type, varset__init, no))]).
+		[i(TVar), s(mercury_type_to_string(varset__init, no, Type))]).
 
 %-----------------------------------------------------------------------------%
 

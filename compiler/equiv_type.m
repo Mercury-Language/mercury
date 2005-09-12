@@ -627,61 +627,133 @@ equiv_type__replace_in_type(EqvMap, Type0, Type, Changed, !VarSet, !Info) :-
     tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out)
     is det.
 
-equiv_type__replace_in_type_2(_EqvMap, _Seen,
-        term__variable(V), term__variable(V), no, no, !VarSet, !Info).
 equiv_type__replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
         Changed, Circ, !VarSet, !Info) :-
-    Type0 = term__functor(_, _, _),
-    ( type_to_ctor_and_args(Type0, EqvTypeCtor, TArgs0) ->
-        equiv_type__replace_in_type_list_2(EqvMap,
-            TypeCtorsAlreadyExpanded, TArgs0, TArgs1,
-            ArgsChanged, no, Circ0, !VarSet, !Info),
-
-        ( list__member(EqvTypeCtor, TypeCtorsAlreadyExpanded) ->
-            Circ1 = yes
+    (
+        Type0 = variable(Var, Kind),
+        Type = variable(Var, Kind),
+        Changed = no,
+        Circ = no
+    ;
+        Type0 = defined(SymName, TArgs0, Kind),
+        equiv_type__replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
+            TArgs0, TArgs, ArgsChanged, no, Circ0, !VarSet, !Info),
+        Arity = list__length(TArgs),
+        TypeCtor = SymName - Arity,
+        equiv_type__replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded,
+            Type0, TypeCtor, TArgs, Kind, Type, ArgsChanged, Changed,
+            Circ0, Circ, !VarSet, !Info)
+    ;
+        Type0 = builtin(_),
+        Type = Type0,
+        Changed = no,
+        Circ = no
+    ;
+        Type0 = higher_order(Args0, MaybeRet0, Purity, EvalMethod),
+        equiv_type__replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
+            Args0, Args, ArgsChanged, no, ArgsCirc, !VarSet, !Info),
+        (
+            MaybeRet0 = yes(Ret0),
+            equiv_type__replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
+                Ret0, Ret, RetChanged, RetCirc, !VarSet, !Info),
+            MaybeRet = yes(Ret),
+            Changed = bool__or(ArgsChanged, RetChanged),
+            Circ = bool__or(ArgsCirc, RetCirc)
         ;
-            Circ1 = no
+            MaybeRet0 = no,
+            MaybeRet = no,
+            Changed = ArgsChanged,
+            Circ = ArgsCirc
         ),
         (
-            map__search(EqvMap, EqvTypeCtor,
-                eqv_type_body(EqvVarSet, Args0, Body0)),
-            %
-            % Don't merge in the variable names from the type declaration
-            % to avoid creating multiple variables with the same name so that
-            % `varset__create_name_var_map' can be used on the resulting
-            % tvarset. make_hlds uses `varset__create_name_var_map' to match up
-            % type variables in `:- pragma type_spec' declarations and explicit
-            % type qualifications with the type variables in the predicate's
-            % declaration.
-            %
-            varset__merge_without_names(!.VarSet, EqvVarSet,
-                [Body0 | Args0], !:VarSet, [Body | Args]),
-            Circ0 = no,
-            Circ1 = no
-        ->
             Changed = yes,
-            equiv_type__record_expanded_item(item_id(type, EqvTypeCtor),
-                !Info),
-            term__term_list_to_var_list(Args, ArgVars),
-            term__substitute_corresponding(ArgVars, TArgs1, Body, Type1),
-            equiv_type__replace_in_type_2(EqvMap,
-                [EqvTypeCtor | TypeCtorsAlreadyExpanded],
-                Type1, Type, _, Circ, !VarSet, !Info)
-        ;
-            ArgsChanged = yes
-        ->
-            Changed = yes,
-            construct_type(EqvTypeCtor, TArgs1, Type),
-            bool__or(Circ0, Circ1, Circ)
+            Type = higher_order(Args, MaybeRet, Purity, EvalMethod)
         ;
             Changed = no,
-            Type = Type0,
-            bool__or(Circ0, Circ1, Circ)
+            Type = Type0
         )
     ;
-        Changed = no,
-        Type = Type0,
-        Circ = no
+        Type0 = tuple(Args0, Kind),
+        equiv_type__replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
+            Args0, Args, Changed, no, Circ, !VarSet, !Info),
+        (
+            Changed = yes,
+            Type = tuple(Args, Kind)
+        ;
+            Changed = no,
+            Type = Type0
+        )
+    ;
+        Type0 = apply_n(Var, Args0, Kind),
+        equiv_type__replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
+            Args0, Args, Changed, no, Circ, !VarSet, !Info),
+        (
+            Changed = yes,
+            Type = apply_n(Var, Args, Kind)
+        ;
+            Changed = no,
+            Type = Type0
+        )
+    ;
+        Type0 = kinded(RawType0, Kind),
+        equiv_type__replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
+            RawType0, RawType, Changed, Circ, !VarSet, !Info),
+        (
+            Changed = yes,
+            Type = kinded(RawType, Kind)
+        ;
+            Changed = no,
+            Type = Type0
+        )
+    ).
+
+:- pred equiv_type__replace_type_ctor(eqv_map::in, list(type_ctor)::in,
+    (type)::in, type_ctor::in, list(type)::in, kind::in, (type)::out,
+    bool::in, bool::out, bool::in, bool::out, tvarset::in, tvarset::out,
+    equiv_type_info::in, equiv_type_info::out) is det.
+
+equiv_type__replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded, Type0,
+        TypeCtor, TArgs, Kind, Type, !Changed, !Circ, !VarSet, !Info) :-
+    ( list__member(TypeCtor, TypeCtorsAlreadyExpanded) ->
+        AlreadyExpanded = yes
+    ;
+        AlreadyExpanded = no
+    ),
+    (
+        map__search(EqvMap, TypeCtor, eqv_type_body(EqvVarSet, Args0, Body0)),
+            %
+            % Don't merge in the variable names from the type declaration to
+            % avoid creating multiple variables with the same name so that
+            % `varset__create_name_var_map' can be used on the resulting
+            % tvarset.  make_hlds uses `varset__create_name_var_map' to match
+            % up type variables in `:- pragma type_spec' declarations and
+            % explicit type qualifications with the type variables in the
+            % predicate's declaration.
+            %
+        tvarset_merge_renaming_without_names(!.VarSet, EqvVarSet, !:VarSet,
+            Renaming),
+        !.Circ = no,
+        AlreadyExpanded = no
+    ->
+        !:Changed = yes,
+        map__apply_to_list(Args0, Renaming, Args),
+        apply_variable_renaming_to_type(Renaming, Body0, Body1),
+        equiv_type__record_expanded_item(item_id(type, TypeCtor), !Info),
+        map__from_corresponding_lists(Args, TArgs, Subst),
+        apply_subst_to_type(Subst, Body1, Body),
+        equiv_type__replace_in_type_2(EqvMap,
+            [TypeCtor | TypeCtorsAlreadyExpanded], Body, Type, _, !:Circ,
+            !VarSet, !Info)
+    ;
+        (
+            !.Changed = yes,
+            TypeCtor = SymName - _Arity,
+            Type = defined(SymName, TArgs, Kind)
+        ;
+            !.Changed = no,
+            Type = Type0
+        ),
+        bool__or(AlreadyExpanded, !Circ)
     ).
 
 :- pred equiv_type__replace_in_inst((inst)::in, eqv_inst_map::in, (inst)::out,

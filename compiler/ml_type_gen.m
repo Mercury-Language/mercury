@@ -909,7 +909,11 @@ ml_gen_typeclass_info_member(ModuleInfo, Context, Constraint, MLDS_Defn,
 
 ml_gen_type_info_member(ModuleInfo, Context, TypeVar, MLDS_Defn,
 		ArgNum0, ArgNum) :-
-	polymorphism__build_type_info_type(term__variable(TypeVar), Type),
+	% We don't have access to the correct kind here.  This won't
+	% matter though, since the type will only be checked to see that it
+	% is a variable, and won't be used in any other way.
+	Kind = star,
+	polymorphism__build_type_info_type(variable(TypeVar, Kind), Type),
 	ml_gen_field(ModuleInfo, Context, no, Type, MLDS_Defn, ArgNum0, ArgNum).
 
 :- pred ml_gen_du_ctor_field(module_info::in, prog_context::in,

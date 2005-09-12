@@ -54,9 +54,11 @@
 :- import_module hlds__make_hlds__add_pred.
 :- import_module libs__globals.
 :- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
 :- import_module bool.
+:- import_module map.
 :- import_module require.
 :- import_module string.
 :- import_module std_util.
@@ -65,8 +67,11 @@
 add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
         SolverTypeDetails, Context, !Status, !ModuleInfo, !IO) :-
 
-    SolverType        = sym_name_and_args_to_term(TypeSymName, TypeParams,
-                            Context),
+    % XXX kind inference:
+    % We set the kinds to `star'.  This will be different when we have a
+    % kind system.
+    prog_type.var_list_to_type_list(map__init, TypeParams, Args),
+    SolverType        = defined(TypeSymName, Args, star),
     Arity             = length(TypeParams),
 
     RepnType          = SolverTypeDetails ^ representation_type,

@@ -75,7 +75,7 @@
 
 pseudo_type_info__construct_maybe_pseudo_type_info(Type, NumUnivQTvars,
 		ExistQTvars, MaybePseudoTypeInfo) :-
-	( term__is_ground(Type) ->
+	( type_is_ground(Type) ->
 		pseudo_type_info__construct_type_info(Type, TypeInfo),
 		MaybePseudoTypeInfo = plain(TypeInfo)
 	;
@@ -118,7 +118,7 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 					PseudoArgs)
 			)
 		)
-	; prog_type__var(Type, Var) ->
+	; Type = variable(Var, _) ->
 		% In the case of a type variable, we need to assign a
 		% variable number *for this constructor*, i.e. taking
 		% only the existentially quantified variables of
@@ -224,7 +224,7 @@ pseudo_type_info__generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
 
 pseudo_type_info__generate_pseudo_arg(NumUnivQTvars, ExistQTvars,
 		TypeArg, MaybePseudoArg) :-
-	( term__is_ground(TypeArg) ->
+	( type_is_ground(TypeArg) ->
 		pseudo_type_info__construct_type_info(TypeArg, PseudoArg),
 		MaybePseudoArg = plain(PseudoArg)
 	;

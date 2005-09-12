@@ -70,6 +70,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
 :- import_module map.
@@ -410,7 +411,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
         Status, Context, Origin, PredOrFunc, PredId, !PredicateTable) :-
     varset__init(TVarSet0),
     make_n_fresh_vars("T", Arity, TypeVars, TVarSet0, TVarSet),
-    term__var_list_to_term_list(TypeVars, Types),
+    prog_type.var_list_to_type_list(map__init, TypeVars, Types),
     map__init(Proofs),
     map__init(ConstraintMap),
         % The class context is empty since this is an implicit

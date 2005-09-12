@@ -645,14 +645,20 @@ to_type_string(java, foreign(ForeignType, _)) = Result :-
 
 	% XXX does this do the right thing for high level data?
 to_type_string(c, mercury(Type)) = Result :-
-	( Type = term__functor(term__atom("int"), [], _) ->
-		Result = "MR_Integer"
-	; Type = term__functor(term__atom("float"), [], _) ->
-		Result = "MR_Float"
-	; Type = term__functor(term__atom("string"), [], _) ->
-		Result = "MR_String"
-	; Type = term__functor(term__atom("character"), [], _) ->
-		Result = "MR_Char"
+	( Type = builtin(BuiltinType) ->
+		(
+			BuiltinType = int,
+			Result = "MR_Integer"
+		;
+			BuiltinType = float,
+			Result = "MR_Float"
+		;
+			BuiltinType = string,
+			Result = "MR_String"
+		;
+			BuiltinType = character,
+			Result = "MR_Char"
+		)
 	;
 		Result = "MR_Word"
 	).
@@ -660,7 +666,7 @@ to_type_string(csharp, mercury(_Type)) = _ :-
 	sorry(this_file, "to_type_string for csharp").
 to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
 	(
-		prog_type__var(Type, _)
+		Type = variable(_, _)
 	->
 		TypeString = "MR_Box"
 	;
@@ -669,14 +675,20 @@ to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
 to_type_string(il, mercury(_Type)) = _ :-
 	sorry(this_file, "to_type_string for il").
 to_type_string(java, mercury(Type)) = Result :-
-	( Type = term__functor(term__atom("int"), [], _) ->
-		Result = "int"
-	; Type = term__functor(term__atom("float"), [], _) ->
-		Result = "double"
-	; Type = term__functor(term__atom("string"), [], _) ->
-		Result = "java.lang.String"
-	; Type = term__functor(term__atom("character"), [], _) ->
-		Result = "char"
+	( Type = builtin(BuiltinType) ->
+		(
+			BuiltinType = int,
+			Result = "int"
+		;
+			BuiltinType = float,
+			Result = "double"
+		;
+			BuiltinType = string,
+			Result = "java.lang.String"
+		;
+			BuiltinType = character,
+			Result = "char"
+		)
 	;
 		Result = "java.lang.Object"
 	).

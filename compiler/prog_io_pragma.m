@@ -146,9 +146,8 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
                 parse_type_defn_head(ModuleName, MercuryTypeTerm, ErrorTerm,
                     MaybeTypeDefnHead),
                 (
-                    MaybeTypeDefnHead = ok(MercuryTypeSymName, MercuryArgs0),
+                    MaybeTypeDefnHead = ok(MercuryTypeSymName, MercuryParams),
                     varset__coerce(VarSet, TVarSet),
-                    MercuryArgs = list__map(term__coerce, MercuryArgs0),
                     (
                         parse_maybe_foreign_type_assertions(MaybeAssertionTerm,
                             Assertions)
@@ -156,7 +155,7 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
                             % rafe: XXX I'm not sure that `no' here is right
                             % - we might need some more parsing...
                         Result = ok(type_defn(TVarSet, MercuryTypeSymName,
-                            MercuryArgs,
+                            MercuryParams,
                             foreign_type( ForeignType, no, Assertions),
                             true))
                     ;
@@ -1861,7 +1860,7 @@ convert_type_spec_pair(Term, TypeSpec) :-
     Term = term__functor(term__atom("="), [TypeVarTerm, SpecTypeTerm0], _),
     TypeVarTerm = term__variable(TypeVar0),
     term__coerce_var(TypeVar0, TypeVar),
-    convert_type(SpecTypeTerm0, SpecType),
+    parse_type(SpecTypeTerm0, ok(SpecType)),
     TypeSpec = TypeVar - SpecType.
 
 %------------------------------------------------------------------------------%%

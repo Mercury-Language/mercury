@@ -141,9 +141,9 @@ ml_gen_unification(simple_test(Var1, Var2), CodeModel, Context,
 	require(unify(CodeModel, model_semi),
 		"ml_code_gen: simple_test not semidet"),
 	ml_variable_type(!.Info, Var1, Type),
-	( Type = term__functor(term__atom("string"), [], _) ->
+	( Type = builtin(string) ->
 		EqualityOp = str_eq
-	; Type = term__functor(term__atom("float"), [], _) ->
+	; Type = builtin(float) ->
 		EqualityOp = float_eq
 	;
 		EqualityOp = eq
@@ -944,7 +944,8 @@ ml_type_as_field(FieldType, ModuleInfo, HighLevelData, BoxedFieldType) :-
 	->
 		varset__init(TypeVarSet0),
 		varset__new_var(TypeVarSet0, TypeVar, _TypeVarSet),
-		prog_type__var(BoxedFieldType, TypeVar)
+		% The kind is `star' since there are values with this type.
+		BoxedFieldType = variable(TypeVar, star)
 	;
 		BoxedFieldType = FieldType
 	).
@@ -1051,7 +1052,7 @@ ml_gen_box_or_unbox_const_rval_list(ArgTypes, FieldTypes, ArgRvals,
 			% Handle the case where the field type is a boxed
 			% type -- in that case, we can just box the argument
 			% type.
-			FieldType = term__variable(_)
+			FieldType = variable(_, _)
 		->
 			ml_gen_type(!.Info, ArgType, MLDS_ArgType),
 			ml_gen_box_const_rval(MLDS_ArgType, ArgRval, Context,
@@ -1097,7 +1098,7 @@ ml_gen_box_const_rval_list([_|_], [], _, _, _, !Info) :-
 
 ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval, !Info) :-
 	(
-		( Type = mercury_type(term__variable(_), _, _)
+		( Type = mercury_type(variable(_, _), _, _)
 		; Type = mlds__generic_type
 		)
 	->
@@ -1117,8 +1118,7 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval, !Info) :-
 		% since currently we don't support static
 		% ground term optimization for those back-ends.]
 		%
-		( Type = mercury_type(term__functor(term__atom("float"),
-				[], _), _, _)
+		( Type = mercury_type(builtin(float), _, _)
 		; Type = mlds__native_float_type
 		)
 	->

@@ -990,14 +990,14 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         % [Actually we also allow `any' insts, since the (in, in)
         % mode of unification for types which have `any' insts must
         % also be able to handle (in(any), in(any)) unifications.]
-        Type = term__variable(_),
+        Type = variable(_, _),
         \+ inst_is_ground_or_any(ModuleInfo3, InitialInstX)
     ->
         set__singleton_set(WaitingVars, X),
         mode_info_error(WaitingVars, mode_error_poly_unify(X, InitialInstX),
             !ModeInfo)
     ;
-        Type = term__variable(_),
+        Type = variable(_, _),
         \+ inst_is_ground_or_any(ModuleInfo3, InitialInstY)
     ->
         set__singleton_set(WaitingVars, Y),

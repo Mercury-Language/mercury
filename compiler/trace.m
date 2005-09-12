@@ -240,6 +240,7 @@
 :- import_module ll_backend__llds_out.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__error_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module bool.
 :- import_module int.
@@ -965,7 +966,7 @@ trace__produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
     ),
     LiveType = var(Var, Name, Type, LldsInst),
     VarInfo = layout_var_info(direct(Lval), LiveType, "trace"),
-    type_util__real_vars(Type, TypeVars),
+    prog_type__vars(Type, TypeVars),
     set__insert_list(!.Tvars, TypeVars, !:Tvars).
 
 %-----------------------------------------------------------------------------%

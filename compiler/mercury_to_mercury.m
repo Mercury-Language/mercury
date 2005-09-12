@@ -262,11 +262,12 @@
 :- func mercury_term_to_string(term(T), varset(T), bool, needs_quotes)
     = string.
 
-    % XXX Even though types are defined to be terms, these two functions
-    % format types not as mercury_term_to_string does but in a simplified
-    % manner.
-    %
-:- func mercury_type_to_string(tvarset, type) = string.
+:- pred mercury_output_type(tvarset::in, bool::in, (type)::in, io::di, io::uo)
+    is det.
+:- func mercury_type_to_string(tvarset, bool, type) = string.
+:- pred mercury_format_type(tvarset::in, bool::in, (type)::in, U::di, U::uo)
+    is det <= output(U).
+
 :- func mercury_type_list_to_string(tvarset, list(type)) = string.
 
 :- pred mercury_output_newline(int::in, io::di, io::uo) is det.
@@ -745,7 +746,7 @@ mercury_output_item(_, instance(Constraints, ClassName, Types, Body,
     io__write_char('(', !IO),
     mercury_output_sym_name(ClassName, !IO),
     io__write_char('(', !IO),
-    io__write_list(Types, ", ", term_io__write_term(VarSet), !IO),
+    io__write_list(Types, ", ", mercury_output_type(VarSet, no), !IO),
     io__write_char(')', !IO),
     io__write_char(')', !IO),
     AppendVarnums = no,
@@ -768,7 +769,7 @@ mercury_output_item(_, mutable(Name, Type, InitTerm, Inst, Attrs), _, !IO) :-
     io__write_string(":- mutable(", !IO),
     io__write_string(Name, !IO),
     io__write_string(", ", !IO),
-    mercury_output_term(Type, varset__init, no, !IO),
+    mercury_output_type(varset__init, no, Type, !IO),
     io__write_string(", ", !IO),
     mercury_output_term(InitTerm, varset__init, no, !IO),
     io__write_string(", ", !IO),
@@ -1084,7 +1085,7 @@ mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet,
     ).
 mercury_format_structured_inst(inst_var(Var), Indent, VarSet, !U) :-
     mercury_format_tabs(Indent, !U),
-    mercury_format_var(Var, VarSet, no, !U),
+    mercury_format_var(VarSet, no, Var, !U),
     add_string("\n", !U).
 mercury_format_structured_inst(constrained_inst_vars(Vars, Inst), Indent,
         VarSet, !U) :-
@@ -1172,7 +1173,7 @@ mercury_format_inst(ground(Uniq, GroundInstInfo), InstInfo, !U) :-
         mercury_format_uniqueness(Uniq, "ground", !U)
     ).
 mercury_format_inst(inst_var(Var), InstInfo, !U) :-
-    mercury_format_var(Var, InstInfo ^ instvarset, no, !U).
+    mercury_format_var(InstInfo ^ instvarset, no, Var, !U).
 mercury_format_inst(constrained_inst_vars(Vars, Inst), InstInfo, !U) :-
     mercury_format_constrained_inst_vars(Vars, Inst, InstInfo, !U).
 mercury_format_inst(abstract_inst(Name, Args), InstInfo, !U) :-
@@ -1297,14 +1298,14 @@ mercury_format_structured_inst_name(typed_ground(Uniqueness, Type),
     mercury_format_uniqueness(Uniqueness, "shared", !U),
     add_string(", ", !U),
     varset__init(TypeVarSet),
-    mercury_format_term(Type, TypeVarSet, no, !U),
+    mercury_format_type(TypeVarSet, no, Type, !U),
     add_string(")\n", !U).
 mercury_format_structured_inst_name(typed_inst(Type, InstName),
         Indent, VarSet, !U) :-
     mercury_format_tabs(Indent, !U),
     add_string("$typed_inst(", !U),
     varset__init(TypeVarSet),
-    mercury_format_term(Type, TypeVarSet, no, !U),
+    mercury_format_type(TypeVarSet, no, Type, !U),
     add_string(",\n", !U),
     mercury_format_structured_inst_name(InstName, Indent + 1, VarSet, !U),
     mercury_format_tabs(Indent, !U),
@@ -1363,12 +1364,12 @@ mercury_format_inst_name(typed_ground(Uniqueness, Type), _InstInfo, !U) :-
     mercury_format_uniqueness(Uniqueness, "shared", !U),
     add_string(", ", !U),
     varset__init(TypeVarSet),
-    mercury_format_term(Type, TypeVarSet, no, !U),
+    mercury_format_type(TypeVarSet, no, Type, !U),
     add_string(")", !U).
 mercury_format_inst_name(typed_inst(Type, InstName), InstInfo, !U) :-
     add_string("$typed_inst(", !U),
     varset__init(TypeVarSet),
-    mercury_format_term(Type, TypeVarSet, no, !U),
+    mercury_format_type(TypeVarSet, no, Type, !U),
     add_string(", ", !U),
     mercury_format_inst_name(InstName, InstInfo, !U),
     add_string(")", !U).
@@ -1526,7 +1527,7 @@ mercury_format_cons_id(table_io_decl(_), _, !U) :-
 mercury_format_constrained_inst_vars(Vars0, Inst, InstInfo, !U) :-
     ( set__remove_least(Vars0, Var, Vars1) ->
         add_string("(", !U),
-        mercury_format_var(Var, InstInfo ^ instvarset, no, !U),
+        mercury_format_var(InstInfo ^ instvarset, no, Var, !U),
         add_string(" =< ", !U),
         mercury_format_constrained_inst_vars(Vars1, Inst, InstInfo, !U),
         add_string(")", !U)
@@ -1609,24 +1610,28 @@ mercury_format_mode(user_defined_mode(Name, Args), InstInfo, !U) :-
     list(type_param)::in, type_defn::in, prog_context::in, io::di, io::uo)
     is det.
 
-mercury_output_type_defn(TVarSet, Name, Args,
+mercury_output_type_defn(TVarSet, Name, TParams,
         abstract_type(IsSolverType), Context, !IO) :-
     mercury_output_begin_type_decl(IsSolverType, !IO),
+    Args = list__map((func(V) = term__variable(V)), TParams),
     construct_qualified_term(Name, Args, Context, TypeTerm),
     mercury_output_term(TypeTerm, TVarSet, no, next_to_graphic_token, !IO),
     io__write_string(".\n", !IO).
 
-mercury_output_type_defn(TVarSet, Name, Args, eqv_type(Body), Context, !IO) :-
+mercury_output_type_defn(TVarSet, Name, TParams, eqv_type(Body), Context,
+        !IO) :-
     mercury_output_begin_type_decl(non_solver_type, !IO),
+    Args = list__map((func(V) = term__variable(V)), TParams),
     construct_qualified_term(Name, Args, Context, TypeTerm),
     mercury_output_term(TypeTerm, TVarSet, no, !IO),
     io__write_string(" == ", !IO),
-    mercury_output_term(Body, TVarSet, no, next_to_graphic_token, !IO),
+    mercury_output_type(TVarSet, no, Body, !IO),
     io__write_string(".\n", !IO).
 
-mercury_output_type_defn(TVarSet, Name, Args,
+mercury_output_type_defn(TVarSet, Name, TParams,
         du_type(Ctors, MaybeUserEqComp), Context, !IO) :-
     mercury_output_begin_type_decl(non_solver_type, !IO),
+    Args = list__map((func(V) = term__variable(V)), TParams),
     construct_qualified_term(Name, Args, Context, TypeTerm),
     mercury_output_term(TypeTerm, TVarSet, no, !IO),
     io__write_string("\n\t--->\t", !IO),
@@ -1634,16 +1639,17 @@ mercury_output_type_defn(TVarSet, Name, Args,
     mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
     io__write_string(".\n", !IO).
 
-mercury_output_type_defn(TVarSet, Name, Args,
+mercury_output_type_defn(TVarSet, Name, TParams,
         solver_type(SolverTypeDetails, MaybeUserEqComp), Context, !IO) :-
     mercury_output_begin_type_decl(solver_type, !IO),
+    Args = list__map((func(V) = term__variable(V)), TParams),
     construct_qualified_term(Name, Args, Context, TypeTerm),
     mercury_output_term(TypeTerm, TVarSet, no, !IO),
     mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
         MaybeUserEqComp, !IO),
     io__write_string(".\n", !IO).
 
-mercury_output_type_defn(TVarSet, Name, Args,
+mercury_output_type_defn(TVarSet, Name, TParams,
         foreign_type(ForeignType, MaybeUserEqComp, Assertions), _Context,
         !IO) :-
     io__write_string(":- pragma foreign_type(", !IO),
@@ -1657,6 +1663,7 @@ mercury_output_type_defn(TVarSet, Name, Args,
         ForeignType = java(_),
         io__write_string("java, ", !IO)
     ),
+    Args = list__map((func(V) = term__variable(V)), TParams),
     construct_qualified_term(Name, Args, MercuryType),
     mercury_output_term(MercuryType, TVarSet, no, !IO),
     io__write_string(", \"", !IO),
@@ -1775,7 +1782,7 @@ mercury_output_solver_type_details(TVarSet,
         solver_type_details(RepresentationType, InitPred, GroundInst, AnyInst),
         !IO) :-
     io__write_string("representation is ", !IO),
-    mercury_output_term(RepresentationType, TVarSet, no, !IO),
+    mercury_output_type(TVarSet, no, RepresentationType, !IO),
     io__write_string(",\n\t\tinitialisation is ", !IO),
     mercury_output_bracketed_sym_name(InitPred, !IO),
     varset__init(EmptyInstVarSet),
@@ -1865,13 +1872,13 @@ mercury_output_ctor(Ctor, VarSet, !IO) :-
 
 mercury_output_ctor_arg(Varset, N - T, !IO) :-
     mercury_output_ctor_arg_name_prefix(N, !IO),
-    mercury_output_term(T, Varset, no, !IO).
+    mercury_output_type(Varset, no, T, !IO).
 
 mercury_output_remaining_ctor_args(_Varset, [], !IO).
 mercury_output_remaining_ctor_args(Varset, [N - T | As], !IO) :-
     io__write_string(", ", !IO),
     mercury_output_ctor_arg_name_prefix(N, !IO),
-    mercury_output_term(T, Varset, no, !IO),
+    mercury_output_type(Varset, no, T, !IO),
     mercury_output_remaining_ctor_args(Varset, As, !IO).
 
 :- pred mercury_output_ctor_arg_name_prefix(maybe(ctor_field_name)::in,
@@ -1961,11 +1968,10 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
     add_string(PredOrFuncStr, !U),
     add_string(" ", !U),
     (
-        Types = [Type | Rest],
+        Types = [_ | _],
         mercury_format_sym_name(PredName, !U),
         add_string("(", !U),
-        mercury_format_term(Type, VarSet, AppendVarnums, !U),
-        mercury_format_remaining_terms(Rest, VarSet, AppendVarnums, !U),
+        add_list(Types, ", ", mercury_format_type(VarSet, AppendVarnums), !U),
         add_string(")", !U)
     ;
         Types = [],
@@ -1974,7 +1980,7 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
     (
         MaybeWithType = yes(WithType),
         add_string(" `with_type` (", !U),
-        mercury_format_term(WithType, VarSet, AppendVarnums, !U),
+        mercury_format_type(VarSet, AppendVarnums, WithType, !U),
         add_string(")", !U)
     ;
         MaybeWithType = no
@@ -2081,19 +2087,17 @@ mercury_format_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
     add_purity_prefix(Purity, !U),
     add_string("func ", !U),
     (
-        Types = [Type | Rest],
+        Types = [_ | _],
         mercury_format_sym_name(FuncName, !U),
         add_string("(", !U),
-        mercury_format_term(Type, VarSet, AppendVarnums, !U),
-        mercury_format_remaining_terms(Rest, VarSet, AppendVarnums, !U),
+        add_list(Types, ", ", mercury_format_type(VarSet, AppendVarnums), !U),
         add_string(")", !U)
     ;
         Types = [],
         mercury_format_bracketed_sym_name(FuncName, !U)
     ),
     add_string(" = ", !U),
-    mercury_format_term(RetType, VarSet, AppendVarnums, next_to_graphic_token,
-        !U),
+    mercury_format_type(VarSet, AppendVarnums, RetType, !U),
     mercury_format_class_context(ClassContext, ExistQVars, VarSet,
         AppendVarnums, !U),
     mercury_format_det_annotation(MaybeDet, !U),
@@ -2155,32 +2159,42 @@ mercury_format_class_context(ClassContext, ExistQVars, VarSet,
     <= output(U).
 
 mercury_format_fundeps_and_prog_constraint_list(FunDeps, Constraints, VarSet,
-        AppendVarnums, !U) :-
-    list.map(make_fundep_constraint, FunDeps, FunDepConstraints),
-    AllConstraints = FunDepConstraints ++ Constraints,
-    mercury_format_prog_constraint_list(AllConstraints, VarSet, "<=",
-        AppendVarnums, !U).
-
-:- pred make_fundep_constraint(prog_fundep::in, prog_constraint::out) is det.
-
-make_fundep_constraint(fundep(Domain, Range), Constraint) :-
-    make_fundep_constraint_arg(Domain, DomainArg),
-    make_fundep_constraint_arg(Range, RangeArg),
-    Constraint = constraint(unqualified("->"), [DomainArg, RangeArg]).
-
-:- pred make_fundep_constraint_arg(list(tvar)::in, (type)::out) is det.
-
-make_fundep_constraint_arg(TVars, Arg) :-
-    var_list_to_term_list(TVars, TVarTerms),
+        AppendVarNums, !U) :-
     (
-        TVarTerms = [],
-        unexpected(this_file, "make_fundep_constraint_arg: empty list")
+        FunDeps = [],
+        Constraints = []
+    ->
+        true
     ;
-        TVarTerms = [First | Rest],
-        term.context_init(Context),
-        list_to_conjunction(Context, First, Rest, Arg)
+        add_string(" <= (", !U),
+        add_list(FunDeps, ", ", mercury_format_fundep(VarSet, AppendVarNums),
+            !U),
+        (
+            Constraints = []
+        ;
+            Constraints = [_ | _],
+            (
+                FunDeps = []
+            ;
+                FunDeps = [_ | _],
+                add_string(", ", !U)
+            ),
+            add_list(Constraints, ", ",
+                mercury_format_constraint(VarSet, AppendVarNums), !U)
+        ),
+        add_string(")", !U)
     ).
 
+:- pred mercury_format_fundep(tvarset::in, bool::in, prog_fundep::in,
+    U::di, U::uo) is det <= output(U).
+
+mercury_format_fundep(VarSet, AppendVarNums, fundep(Domain, Range), !U) :-
+    add_string("(", !U),
+    add_list(Domain, ", ", mercury_format_var(VarSet, AppendVarNums), !U),
+    add_string(" -> ", !U),
+    add_list(Range, ", ", mercury_format_var(VarSet, AppendVarNums), !U),
+    add_string(")", !U).
+        
 :- pred mercury_format_prog_constraint_list(list(prog_constraint)::in,
     tvarset::in, string::in, bool::in, U::di, U::uo) is det <= output(U).
 
@@ -2208,18 +2222,12 @@ mercury_constraint_to_string(VarSet, Constraint) = String :-
 mercury_format_constraint(VarSet, AppendVarnums, constraint(Name, Types), !U) :-
     mercury_format_sym_name(Name, !U),
     add_string("(", !U),
-    add_list(Types, ", ", format_type(VarSet, AppendVarnums), !U),
+    add_list(Types, ", ", mercury_format_type(VarSet, AppendVarnums), !U),
     add_string(")", !U).
-
-:- pred format_type(tvarset::in, bool::in, (type)::in, U::di, U::uo) is det
-    <= output(U).
-
-format_type(VarSet, AppendVarnums, Type, !U) :-
-    mercury_format_term(Type, VarSet, AppendVarnums, !U).
 
 mercury_type_list_to_string(_, []) = "".
 mercury_type_list_to_string(VarSet, [T | Ts]) = String :-
-    String0 = mercury_type_to_string(VarSet, T),
+    String0 = mercury_type_to_string(VarSet, no, T),
     String1 = mercury_type_list_to_string_2(VarSet, Ts),
     string__append(String0, String1, String).
 
@@ -2227,47 +2235,25 @@ mercury_type_list_to_string(VarSet, [T | Ts]) = String :-
 
 mercury_type_list_to_string_2(_, []) = "".
 mercury_type_list_to_string_2(VarSet, [T | Ts]) = String :-
-    String0 = mercury_type_to_string(VarSet, T),
+    String0 = mercury_type_to_string(VarSet, no, T),
     String1 = mercury_type_list_to_string_2(VarSet, Ts),
     string__append_list([", ", String0, String1], String).
 
-    % XXX this should probably be a little cleverer, like
-    % mercury_output_term.
-mercury_type_to_string(VarSet, term__variable(Var)) = String :-
-    varset__lookup_name(VarSet, Var, String).
-mercury_type_to_string(VarSet, term__functor(Functor, Args, _)) = String :-
-    (
-        Functor = term__atom(FunctorName),
-        (   FunctorName = "."
-        ;   FunctorName = ":"
-        ),
-        Args = [Arg1, Arg2]
-    ->
-        String1 = mercury_type_to_string(VarSet, Arg1),
-        String2 = mercury_type_to_string(VarSet, Arg2),
-        string__append_list([String1, ".", String2], String)
-    ;
-        (
-            Functor = term__atom(String0)
-        ;
-            Functor = term__string(String0)
-        ;
-            Functor = term__integer(Int),
-            string__int_to_string(Int, String0)
-        ;
-            Functor = term__float(Float),
-            string__float_to_string(Float, String0)
-        ),
-        (
-            Args = []
-        ->
-            String = String0
-        ;
-            ArgsString = mercury_type_list_to_string(VarSet, Args),
-            string__append_list([String0, "(", ArgsString, ")"],
-                String)
-        )
-    ).
+mercury_output_type(VarSet, AppendVarNums, Type, !IO) :-
+    mercury_format_type(VarSet, AppendVarNums, Type, !IO).
+
+mercury_type_to_string(VarSet, AppendVarNums, Type) = String :-
+    mercury_format_type(VarSet, AppendVarNums, Type, "", String).
+
+    % We convert to a term and then use mercury_format_term.  The reason
+    % for this is that we have to be very careful about handling operators
+    % and precedence properly, and it is better to have the code to manage
+    % that in one place, rather than duplicated here.
+    %
+mercury_format_type(TVarSet, AppendVarNums, Type, !U) :-
+    unparse_type(Type, Term),
+    VarSet = varset__coerce(TVarSet),
+    mercury_format_term(Term, VarSet, AppendVarNums, !U).
 
 %-----------------------------------------------------------------------------%
 
@@ -2751,7 +2737,7 @@ mercury_output_state_vars_using_prefix([], _BangPrefix, _VarSet,
 mercury_output_state_vars_using_prefix([SVar | SVars], BangPrefix, VarSet,
         AppendVarnums, !IO) :-
     io__write_string(BangPrefix, !IO),
-    mercury_format_var(SVar, VarSet, AppendVarnums, !IO),
+    mercury_format_var(VarSet, AppendVarnums, SVar, !IO),
     (
         SVars \= []
     ->
@@ -3215,7 +3201,7 @@ mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO) :-
 mercury_output_type_subst(VarSet, AppendVarnums, Var - Type, !IO) :-
     mercury_output_var(Var, VarSet, AppendVarnums, !IO),
     io__write_string(" = ", !IO),
-    mercury_output_term(Type, VarSet, AppendVarnums, !IO).
+    mercury_output_type(VarSet, AppendVarnums, Type, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -3491,7 +3477,7 @@ mercury_format_term(Term, VarSet, AppendVarnums, !U) :-
     needs_quotes::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_term(term__variable(Var), VarSet, AppendVarnums, _, !U) :-
-    mercury_format_var(Var, VarSet, AppendVarnums, !U).
+    mercury_format_var(VarSet, AppendVarnums, Var, !U).
 mercury_format_term(term__functor(Functor, Args, _), VarSet, AppendVarnums,
         NextToGraphicToken, !U) :-
     (
@@ -3655,19 +3641,8 @@ mercury_vars_to_string(Vars, VarSet, AppendVarnum) = String :-
 :- pred mercury_format_vars(list(var(T))::in, varset(T)::in,
     bool::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_vars([], _VarSet, _AppendVarnum, !U).
-mercury_format_vars([Var | Vars], VarSet, AppendVarnum, !U) :-
-    mercury_format_var(Var, VarSet, AppendVarnum, !U),
-    mercury_format_vars_2(Vars, VarSet, AppendVarnum, !U).
-
-:- pred mercury_format_vars_2(list(var(T))::in, varset(T)::in,
-    bool::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_vars_2([], _VarSet, _AppendVarnum, !U).
-mercury_format_vars_2([Var | Vars], VarSet, AppendVarnum, !U) :-
-    add_string(", ", !U),
-    mercury_format_var(Var, VarSet, AppendVarnum, !U),
-    mercury_format_vars_2(Vars, VarSet, AppendVarnum, !U).
+mercury_format_vars(Vars, VarSet, AppendVarnum, !U) :-
+    add_list(Vars, ", ", mercury_format_var(VarSet, AppendVarnum), !U).
 
     % Output a single variable.
     % Variables that didn't have names are given the name "V_<n>"
@@ -3676,15 +3651,15 @@ mercury_format_vars_2([Var | Vars], VarSet, AppendVarnum, !U) :-
     % name changed to start with `V__' to avoid name clashes.
 
 mercury_output_var(Var, VarSet, AppendVarnum, !IO) :-
-    mercury_format_var(Var, VarSet, AppendVarnum, !IO).
+    mercury_format_var(VarSet, AppendVarnum, Var, !IO).
 
 mercury_var_to_string(Var, VarSet, AppendVarnum) = String :-
-    mercury_format_var(Var, VarSet, AppendVarnum, "", String).
+    mercury_format_var(VarSet, AppendVarnum, Var, "", String).
 
-:- pred mercury_format_var(var(T)::in, varset(T)::in,
-    bool::in, U::di, U::uo) is det <= output(U).
+:- pred mercury_format_var(varset(T)::in, bool::in, var(T)::in, U::di, U::uo)
+    is det <= output(U).
 
-mercury_format_var(Var, VarSet, AppendVarnum, !U) :-
+mercury_format_var(VarSet, AppendVarnum, Var, !U) :-
     (
         varset__search_name(VarSet, Var, Name)
     ->

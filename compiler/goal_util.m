@@ -308,6 +308,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
 :- import_module int.
@@ -914,7 +915,7 @@ goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         %
     set__to_sorted_list(NonLocals, NonLocalsList),
     map__apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
-    term__vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
+    prog_type__vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
     list__append(ExistQVars, NonLocalTypeVarsList0, NonLocalTypeVarsList),
     set__list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
 
@@ -938,7 +939,7 @@ goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
             rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
             list__member(Constraint, Constraints),
             Constraint = constraint(_Name, ArgTypes),
-            term__contains_var_list(ArgTypes, TypeVar),
+            type_list_contains_var(ArgTypes, TypeVar),
             set__member(TypeVar, NonLocalTypeVars),
 
             % We found a constraint that is non-local.  Include

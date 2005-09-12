@@ -107,7 +107,13 @@
 :- pred parse_pred_or_func_and_args(term(_T)::in, pred_or_func::out,
 	sym_name::out, list(term(_T))::out) is semidet.
 
-:- pred convert_type(term(T)::in, (type)::out) is det.
+:- pred parse_type(term::in, maybe1(type)::out) is det.
+
+:- pred parse_types(list(term)::in, maybe1(list(type))::out) is det.
+
+:- pred unparse_type((type)::in, term::out) is det.
+
+:- pred parse_purity_annotation(term(T)::in, purity::out, term(T)::out) is det.
 
 :- type allow_constrained_inst_var
 	--->	allow_constrained_inst_var
@@ -161,8 +167,10 @@
 
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
 :- import_module bool.
@@ -247,24 +255,197 @@ parse_list_of_vars(term__functor(term__atom("[|]"),
 	Head = term__variable(V),
 	parse_list_of_vars(Tail, Vs).
 
-convert_type(T0, T) :-
-	term__coerce(strip_prog_context(T0), T).
-
-	% Strip out the prog_context fields, replacing them with empty
-	% prog_context (as obtained by term__context_init/1)
-	% in a type or list of types.
+	% XXX kind inference:
+	% We currently give all types kind `star'.  This will be different
+	% when we have a kind system.
 	%
-	% This is necessary to allow maps indexed by class constraints.
-	% Also, the version number computation for smart recompilation
-	% relies on being able to unify program items, which won't
-	% work if the types in the items contain context information.
-:- func strip_prog_context(term(T)) = term(T).
+parse_type(Term, Result) :-
+	(
+		Term = term__variable(Var0)
+	->
+		term__coerce_var(Var0, Var),
+		Result = ok(variable(Var, star))
+	;
+		parse_builtin_type(Term, BuiltinType)
+	->
+		Result = ok(builtin(BuiltinType))
+	;
+		parse_higher_order_type(Term, HOArgs, MaybeRet, Purity,
+			EvalMethod)
+	->
+		Result = ok(higher_order(HOArgs, MaybeRet, Purity, EvalMethod))
+	;
+		Term = term__functor(term__atom("{}"), Args, _)
+	->
+		parse_types(Args, ArgsResult),
+		(
+			ArgsResult = ok(ArgTypes),
+			Result = ok(tuple(ArgTypes, star))
+		;
+			ArgsResult = error(Msg, ErrorTerm),
+			Result = error(Msg, ErrorTerm)
+		)
+	;
+		%
+		% We don't support apply/N types yet, so we just detect them
+		% and report an error message.
+		%
+		Term = term__functor(term__atom(""), _, _)
+	->
+		Result = error("ill-formed type", Term)
+	;
+		%
+		% We don't support kind annotations yet, and we don't report
+		% an error either.  Perhaps we should?
+		%
 
-strip_prog_context(term__variable(V)) = term__variable(V).
-strip_prog_context(term__functor(F, As, _)) =
-	term__functor(F,
-		list__map(strip_prog_context, As),
-		term__context_init).
+		parse_qualified_term(Term, Term, "type", NameResult),
+		(
+			NameResult = ok(SymName, ArgTerms),
+			parse_types(ArgTerms, ArgsResult),
+			(
+				ArgsResult = ok(ArgTypes),
+				Result = ok(defined(SymName, ArgTypes, star))
+			;
+				ArgsResult = error(Msg, ErrorTerm),
+				Result = error(Msg, ErrorTerm)
+			)
+		;
+			NameResult = error(Msg, ErrorTerm),
+			Result = error(Msg, ErrorTerm)
+		)
+	).
+
+parse_types(Terms, Result) :-
+	parse_types_2(Terms, [], Result).
+
+:- pred parse_types_2(list(term)::in, list(type)::in, maybe1(list(type))::out)
+	is det.
+
+parse_types_2([], RevTypes, ok(Types)) :-
+	list__reverse(RevTypes, Types).
+parse_types_2([Term | Terms], RevTypes, Result) :-
+	parse_type(Term, Result0),
+	(
+		Result0 = ok(Type),
+		parse_types_2(Terms, [Type | RevTypes], Result)
+	;
+		Result0 = error(Msg, ErrorTerm),
+		Result = error(Msg, ErrorTerm)
+	).
+
+:- pred parse_builtin_type(term::in, builtin_type::out) is semidet.
+
+parse_builtin_type(Term, BuiltinType) :-
+	Term = term__functor(term__atom(Name), [], _),
+	builtin_type_to_string(BuiltinType, Name).
+
+	% If there are any ill-formed types in the argument then we just
+	% fail.  The predicate parse_type will then try to parse the term
+	% as an ordinary defined type and will produce the required error
+	% message.
+	%
+:- pred parse_higher_order_type(term::in, list(type)::out, maybe(type)::out,
+	purity::out, lambda_eval_method::out) is semidet.
+
+parse_higher_order_type(Term0, ArgTypes, MaybeRet, Purity, EvalMethod) :-
+	parse_purity_annotation(Term0, Purity, Term1),
+	( Term1 = term__functor(term__atom("="), [FuncAndArgs0, Ret], _) ->
+		parse_lambda_eval_method(FuncAndArgs0, EvalMethod,
+			FuncAndArgs),
+		FuncAndArgs = term__functor(term__atom("func"), Args, _),
+		parse_type(Ret, ok(RetType)),
+		MaybeRet = yes(RetType)
+	;
+		parse_lambda_eval_method(Term1, EvalMethod, PredTerm),
+		PredTerm = term__functor(term__atom("pred"), Args, _),
+		MaybeRet = no
+	),
+	parse_types(Args, ok(ArgTypes)).
+
+parse_purity_annotation(Term0, Purity, Term) :-
+    (
+        Term0 = term__functor(term__atom(PurityName), [Term1], _),
+        purity_name(Purity0, PurityName)
+    ->
+        Purity = Purity0,
+        Term = Term1
+    ;
+        Purity = (pure),
+        Term = Term0
+    ).
+
+unparse_type(variable(TVar, _), term__variable(Var)) :-
+	Var = term__coerce_var(TVar).
+unparse_type(defined(SymName, Args, _), Term) :-
+	unparse_type_list(Args, ArgTerms),
+	unparse_qualified_term(SymName, ArgTerms, Term).
+unparse_type(builtin(BuiltinType), Term) :-
+	Context = term__context_init,
+	builtin_type_to_string(BuiltinType, Name),
+	Term = term__functor(term__atom(Name), [], Context).
+unparse_type(higher_order(Args, MaybeRet, Purity, EvalMethod), Term) :-
+	Context = term__context_init,
+	unparse_type_list(Args, ArgTerms),
+	(
+		MaybeRet = yes(Ret),
+		Term0 = term__functor(term__atom("func"), ArgTerms, Context),
+		maybe_add_lambda_eval_method(EvalMethod, Term0, Term1),
+		unparse_type(Ret, RetTerm),
+		Term2 = term__functor(term__atom("="), [Term1, RetTerm],
+			Context)
+	;
+		MaybeRet = no,
+		Term0 = term__functor(term__atom("pred"), ArgTerms, Context),
+		maybe_add_lambda_eval_method(EvalMethod, Term0, Term2)
+	),
+	maybe_add_purity_annotation(Purity, Term2, Term).
+unparse_type(tuple(Args, _), Term) :-
+	Context = term__context_init,
+	unparse_type_list(Args, ArgTerms),
+	Term = term__functor(term__atom("{}"), ArgTerms, Context).
+unparse_type(apply_n(TVar, Args, _), Term) :-
+	Context = term__context_init,
+	Var = term__coerce_var(TVar),
+	unparse_type_list(Args, ArgTerms),
+	Term = term__functor(term__atom(""), [term__variable(Var) | ArgTerms],
+		Context).
+unparse_type(kinded(_, _), _) :-
+	unexpected(this_file, "prog_io_util: kind annotation").
+
+:- pred unparse_type_list(list(type)::in, list(term)::out) is det.
+
+unparse_type_list(Types, Terms) :-
+	list__map(unparse_type, Types, Terms).
+
+:- pred unparse_qualified_term(sym_name::in, list(term)::in, term::out) is det.
+
+unparse_qualified_term(unqualified(Name), Args, Term) :-
+	Context = term__context_init,
+	Term = term__functor(term__atom(Name), Args, Context).
+unparse_qualified_term(qualified(Qualifier, Name), Args, Term) :-
+	Context = term__context_init,
+	unparse_qualified_term(Qualifier, [], QualTerm),
+	Term0 = term__functor(term__atom(Name), Args, Context),
+	Term = term__functor(term__atom("."), [QualTerm, Term0], Context).
+
+:- pred maybe_add_lambda_eval_method(lambda_eval_method::in, term::in,
+	term::out) is det.
+
+maybe_add_lambda_eval_method(normal, Term, Term).
+maybe_add_lambda_eval_method((aditi_bottom_up), Term0, Term) :-
+	Context = term__context_init,
+	Term = term__functor(term__atom("aditi_bottom_up"), [Term0], Context).
+
+:- pred maybe_add_purity_annotation(purity::in, term::in, term::out) is det.
+
+maybe_add_purity_annotation(pure, Term, Term).
+maybe_add_purity_annotation((semipure), Term0, Term) :-
+	Context = term__context_init,
+	Term = term__functor(term__atom("semipure"), [Term0], Context).
+maybe_add_purity_annotation((impure), Term0, Term) :-
+	Context = term__context_init,
+	Term = term__functor(term__atom("impure"), [Term0], Context).
 
 convert_mode_list(_, [], []).
 convert_mode_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
@@ -631,4 +812,11 @@ list_term_to_term_list(Methods, MethodList) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_io_util.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module parse_tree__prog_io_util.
 %-----------------------------------------------------------------------------%

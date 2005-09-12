@@ -85,6 +85,7 @@
 
 :- import_module hlds__hlds_data.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
 :- import_module std_util.
@@ -100,7 +101,7 @@
                 tvarset             :: tvarset,
                                     % All type variables for predicate.
 
-                tvar_renaming       :: map(tvar, tvar),
+                tvar_renaming       :: tvar_renaming,
                                     % Map from clause type variable to
                                     % actual type variable in tvarset.
 
@@ -183,13 +184,13 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
 
     % Find any new type variables introduced by this type, and
     % add them to the var-name index and the variable renaming.
-    term__vars(Type1, TVars),
+    prog_type__vars(Type1, TVars),
     get_new_tvars(TVars, VarSet, TVarSet0, TVarSet1,
         TVarNameMap0, TVarNameMap, TVarRenaming0, TVarRenaming),
 
     % Apply the updated renaming to convert type variables in
     % the clause to type variables in the tvarset.
-    term__apply_variable_renaming(Type1, TVarRenaming, Type2),
+    apply_variable_renaming_to_type(TVarRenaming, Type1, Type2),
 
     % Expand equivalence types.
     % We don't need to record the expanded types for smart recompilation

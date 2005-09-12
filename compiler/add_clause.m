@@ -20,7 +20,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module term.
 
 :- pred module_add_clause(prog_varset::in, pred_or_func::in, sym_name::in,
     list(prog_term)::in, goal::in, import_status::in, prog_context::in,
@@ -46,8 +45,6 @@
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     svar_info::in, svar_info::out, io::di, io::uo) is det.
-
-:- pred parse_purity_annotation(term(T)::in, purity::out, term(T)::out) is det.
 
 :- pred qualify_lambda_mode_list(list(mode)::in, list(mode)::out,
     prog_context::in, qual_info::in, qual_info::out, io::di, io::uo) is det.
@@ -937,18 +934,6 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
         )
     ;
         error("make_hlds__do_transform_dcg_record_syntax")
-    ).
-
-parse_purity_annotation(Term0, Purity, Term) :-
-    (
-        Term0 = term__functor(term__atom(PurityName), [Term1], _),
-        purity_name(Purity0, PurityName)
-    ->
-        Purity = Purity0,
-        Term = Term1
-    ;
-        Purity = (pure),
-        Term = Term0
     ).
 
 qualify_lambda_mode_list(Modes0, Modes, Context, !QualInfo, !IO) :-

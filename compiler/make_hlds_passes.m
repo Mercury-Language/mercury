@@ -455,9 +455,7 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
         InstVarSet = varset__init,
         ExistQVars = [],
         Constraints = constraints([], []),
-        IOType = term__functor(term__atom("."), [
-            term__functor(term__atom("io"), [], Context),
-            term__functor(term__atom("state"), [], Context)], Context),
+        IOType = defined(qualified(unqualified("io"), "state"),[], star),
         GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
             mutable_get_pred_sym_name(ModuleName, Name),
             [type_and_mode(Type, out_mode(Inst))],

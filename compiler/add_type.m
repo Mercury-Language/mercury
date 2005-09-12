@@ -125,8 +125,12 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         Status = Status1,
         Body = Body0
     ),
-    hlds_data__set_type_defn(TVarSet, Args, Body, Status, no, NeedQual,
-        Context, T),
+    % XXX kind inference:
+    % We set the kinds to `star'.  This will be different when we have a
+    % kind system.
+    map__init(KindMap),
+    hlds_data__set_type_defn(TVarSet, Args, KindMap, Body, Status, no,
+        NeedQual, Context, T),
     (
         MaybeOldDefn = no,
         Body = foreign_type(_)
@@ -161,6 +165,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         MaybeOldDefn = yes(T2),
         hlds_data__get_type_defn_tvarset(T2, TVarSet_2),
         hlds_data__get_type_defn_tparams(T2, Params_2),
+        hlds_data__get_type_defn_kind_map(T2, KindMap_2),
         hlds_data__get_type_defn_body(T2, Body_2),
         hlds_data__get_type_defn_context(T2, OrigContext),
         hlds_data__get_type_defn_status(T2, OrigStatus),
@@ -184,8 +189,9 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             ( Status = OrigStatus ->
                 true
             ;
-                hlds_data__set_type_defn(TVarSet_2, Params_2, Body_2, Status,
-                    OrigInExportedEqv, OrigNeedQual, OrigContext, T3),
+                hlds_data__set_type_defn(TVarSet_2, Params_2, KindMap_2,
+                    Body_2, Status, OrigInExportedEqv, OrigNeedQual,
+                    OrigContext, T3),
                 map__det_update(Types0, TypeCtor, T3, Types),
                 module_info_set_types(Types, !ModuleInfo)
             )
@@ -194,8 +200,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 NewBody)
         ->
             ( check_foreign_type_visibility(OrigStatus, Status1) ->
-                hlds_data__set_type_defn(TVarSet_2, Params_2, NewBody, Status,
-                    OrigInExportedEqv, NeedQual, Context, T3),
+                hlds_data__set_type_defn(TVarSet_2, Params_2, KindMap_2,
+                    NewBody, Status, OrigInExportedEqv, NeedQual, Context, T3),
                 map__det_update(Types0, TypeCtor, T3, Types),
                 module_info_set_types(Types, !ModuleInfo)
             ;
@@ -231,8 +237,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             % but the callee expects no type_infos
             Body = eqv_type(EqvType),
             Status = abstract_exported,
-            term__contains_var_list(Args, Var),
-            \+ term__contains_var(EqvType, Var)
+            list__member(Var, Args),
+            \+ type_contains_var(EqvType, Var)
         ->
             Pieces = [words("Sorry, not implemented:"),
                 words("polymorphic equivalence type,"),
@@ -378,7 +384,11 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
     ->
         true
     ;
-        construct_type(TypeCtor, Args, Type),
+        % XXX kind inference:
+        % We set the kinds to `star'.  This will be different when we have
+        % a kind system.
+        prog_type.var_list_to_type_list(map__init, Args, ArgTypes),
+        construct_type(TypeCtor, ArgTypes, Type),
         add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
             !ModuleInfo)
     ).

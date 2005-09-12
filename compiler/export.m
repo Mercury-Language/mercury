@@ -592,32 +592,36 @@ argloc_to_string(RegNum, RegName) :-
 
 convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 	(
-		Type = term__functor(term__atom("string"), [], _)
+		Type = builtin(BuiltinType)
 	->
-		string__append("(MR_Word) ", Rval, ConvertedRval)
-	;
-		Type = term__functor(term__atom("float"), [], _)
-	->
-		string__append_list(["MR_float_to_word(", Rval, ")" ],
-			ConvertedRval)
-	;
-		Type = term__functor(term__atom("character"), [], _)
-	->
-		% We need to explicitly cast to UnsignedChar
-		% to avoid problems with C compilers for which `char'
-		% is signed.
-		string__append("(UnsignedChar) ", Rval, ConvertedRval)
+		(
+			BuiltinType = string,
+			string__append("(MR_Word) ", Rval, ConvertedRval)
+		;
+			BuiltinType = float,
+			string__append_list(["MR_float_to_word(", Rval, ")" ],
+				ConvertedRval)
+		;
+			BuiltinType = character,
+			% We need to explicitly cast to UnsignedChar
+			% to avoid problems with C compilers for which `char'
+			% is signed.
+			string__append("(UnsignedChar) ", Rval, ConvertedRval)
+		;
+			BuiltinType = int,
+			ConvertedRval = Rval
+		)
 	;
 		ConvertedRval = Rval
 	).
 
 convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	(
-		Type = term__functor(term__atom("string"), [], _)
+		Type = builtin(string)
 	->
 		string__append("(MR_String) ", Rval, ConvertedRval)
 	;
-		Type = term__functor(term__atom("float"), [], _)
+		Type = builtin(float)
 	->
 		string__append_list(["MR_word_to_float(", Rval, ")" ],
 			ConvertedRval)

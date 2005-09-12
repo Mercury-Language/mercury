@@ -792,11 +792,10 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
         TypeCtor = qualified(TypeModule, _) - _,
         module_info_types(ModuleInfo, TypeTable),
         map__search(TypeTable, TypeCtor, TypeDefn),
-        hlds_data__get_type_defn_tparams(TypeDefn, TypeParams0),
+        hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data__get_type_defn_body(TypeDefn, TypeBody),
         Constructors = TypeBody ^ du_type_ctors
     ->
-        term__term_list_to_var_list(TypeParams0, TypeParams),
         map__from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
         propagate_ctor_info_3(ModuleInfo, ArgSubst, TypeModule, Constructors,
             BoundInsts0, BoundInsts1),
@@ -876,7 +875,7 @@ apply_type_subst(Type0, Subst, Type) :-
     ( map__is_empty(Subst) ->
         Type = Type0
     ;
-        term__apply_substitution(Type0, Subst, Type)
+        apply_subst_to_type(Subst, Type0, Type)
     ).
 
 %-----------------------------------------------------------------------------%

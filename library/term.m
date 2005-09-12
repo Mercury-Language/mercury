@@ -172,6 +172,34 @@
 :- pred term__unify(term(T)::in, term(T)::in, substitution(T)::in,
 	substitution(T)::out) is semidet.
 
+	% As above, but unify the corresponding elements of two lists of
+	% terms.  Fails if the lists are not of equal length.
+	%
+:- pred term__unify_list(list(term(T))::in, list(term(T))::in,
+	substitution(T)::in, substitution(T)::out) is semidet.
+
+	% term__unify(Term1, Term2, BoundVars, Bindings0, Bindings):
+	% Unify (with occur check) two terms with respect to a set of bindings
+	% and possibly update the set of bindings.  Fails if any of the
+	% variables in BoundVars would become bound by the unification.
+	%
+:- pred term__unify(term(T)::in, term(T)::in, list(var(T))::in,
+	substitution(T)::in, substitution(T)::out) is semidet.
+
+	% As above, but unify the corresponding elements of two lists of
+	% terms.  Fails if the lists are not of equal length.
+	%
+:- pred term__unify_list(list(term(T))::in, list(term(T))::in,
+	list(var(T))::in, substitution(T)::in, substitution(T)::out)
+	is semidet.
+	
+	% term__list_subsumes(Terms1, Terms2, Subst) succeeds iff the list
+	% Terms1 subsumes (is more general than) Terms2, producing a
+	% substitution which when applied to Terms1 will give Terms2.
+	%
+:- pred term__list_subsumes(list(term(T))::in, list(term(T))::in,
+	substitution(T)::out) is semidet.
+
 	% term__substitute(Term0, Var, Replacement, Term):
 	% Replace all occurrences of Var in Term0 with Replacement,
 	% and return the result in Term.
@@ -439,6 +467,7 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -911,13 +940,129 @@ term__unify(term__functor(F, As, C), term__variable(X), !Bindings) :-
 term__unify(term__functor(F, AsX, _), term__functor(F, AsY, _), !Bindings) :-
 	term__unify_list(AsX, AsY, !Bindings).
 
-:- pred term__unify_list(list(term(T))::in, list(term(T))::in,
-	substitution(T)::in, substitution(T)::out) is semidet.
-
 term__unify_list([], [], !Bindings).
 term__unify_list([X | Xs], [Y | Ys], !Bindings) :-
 	term__unify(X, Y, !Bindings),
 	term__unify_list(Xs, Ys, !Bindings).
+
+term__unify(term__variable(X), term__variable(Y), BoundVars, !Bindings) :-
+	( list__member(Y, BoundVars) ->
+		unify_bound_var(X, Y, BoundVars, !Bindings)
+	; list__member(X, BoundVars) ->
+		unify_bound_var(Y, X, BoundVars, !Bindings)
+	; map__search(!.Bindings, X, BindingOfX) ->
+		( map__search(!.Bindings, Y, BindingOfY) ->
+			% Both X and Y already have bindings - just unify the
+			% terms they are bound to.
+			term__unify(BindingOfX, BindingOfY, BoundVars,
+				!Bindings)
+		;
+			term__apply_rec_substitution(BindingOfX, !.Bindings,
+				SubstBindingOfX),
+			% Y is a variable which hasn't been bound yet.
+			( SubstBindingOfX = term__variable(Y) ->
+				true
+			;
+				\+ term__occurs(SubstBindingOfX, Y,
+					!.Bindings),
+				svmap__det_insert(Y, SubstBindingOfX,
+					!Bindings)
+			)
+		)
+	;
+		( map__search(!.Bindings, Y, BindingOfY) ->
+			term__apply_rec_substitution(BindingOfY, !.Bindings,
+				SubstBindingOfY),
+			% X is a variable which hasn't been bound yet.
+			( SubstBindingOfY = term__variable(X) ->
+				true
+			;
+				\+ term__occurs(SubstBindingOfY, X,
+					!.Bindings),
+				svmap__det_insert(X, SubstBindingOfY,
+					!Bindings)
+			)
+		;
+			% Both X and Y are unbound variables - bind one to the
+			% other.
+			( X = Y ->
+				true
+			;
+				svmap__det_insert(X, term__variable(Y),
+					!Bindings)
+			)
+		)
+	).
+
+term__unify(term__variable(X), term__functor(F, As, C), BoundVars,
+		!Bindings) :-
+	(
+		map__search(!.Bindings, X, BindingOfX)
+	->
+		term__unify(BindingOfX, term__functor(F, As, C), BoundVars,
+			!Bindings)
+	;
+		\+ term__occurs_list(As, X, !.Bindings),
+		\+ list__member(X, BoundVars),
+		svmap__det_insert(X, term__functor(F, As, C), !Bindings)
+	).
+
+term__unify(term__functor(F, As, C), term__variable(X), BoundVars,
+		!Bindings) :-
+	(
+		map__search(!.Bindings, X, BindingOfX)
+	->
+		term__unify(term__functor(F, As, C), BindingOfX, BoundVars,
+			!Bindings)
+	;
+		\+ term__occurs_list(As, X, !.Bindings),
+		\+ list__member(X, BoundVars),
+		svmap__det_insert(X, term__functor(F, As, C), !Bindings)
+	).
+
+term__unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
+		BoundVars, !Bindings) :-
+	list__length(AsX, ArityX),
+	list__length(AsY, ArityY),
+	(
+		FX = FY,
+		ArityX = ArityY
+	->
+		term__unify_list(AsX, AsY, BoundVars, !Bindings)
+	;
+		fail
+	).
+
+term__unify_list([], [], _, !Bindings).
+term__unify_list([X | Xs], [Y | Ys], BoundVars, !Bindings) :-
+	term__unify(X, Y, BoundVars, !Bindings),
+	term__unify_list(Xs, Ys, BoundVars, !Bindings).
+
+:- pred unify_bound_var(var(T)::in, var(T)::in, list(var(T))::in,
+	substitution(T)::in, substitution(T)::out) is semidet.
+
+unify_bound_var(Var, BoundVar, BoundVars, !Bindings) :-
+	( map__search(!.Bindings, Var, BindingOfVar) ->
+		BindingOfVar = term__variable(Var2),
+		unify_bound_var(Var2, BoundVar, BoundVars, !Bindings)
+	;
+		( Var = BoundVar ->
+			true
+		;
+			\+ list__member(Var, BoundVars),
+			svmap__det_insert(Var, term__variable(BoundVar),
+				!Bindings)
+		)
+	).
+
+term__list_subsumes(Terms1, Terms2, Subst) :-
+	%
+	% Terms1 subsumes Terms2 iff Terms1 can be unified with Terms2
+	% without binding any of the variables in Terms2.
+	%
+	term__vars_list(Terms2, Terms2Vars),
+	map__init(Subst0),
+	term__unify_list(Terms1, Terms2, Terms2Vars, Subst0, Subst).
 
 %-----------------------------------------------------------------------------%
 

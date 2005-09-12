@@ -180,7 +180,7 @@
 	%
 	% Check the head of a type definition for errors.
 :- pred parse_type_defn_head(module_name::in, term::in, term::in,
-	maybe_functor::out) is det.
+	maybe2(sym_name, list(type_param))::out) is det.
 
 	% parse_type_decl_where_part_if_present(TypeSymName, Arity,
 	%		IsSolverType, Inst, ModuleName,	Term0, Term, Result):
@@ -1669,10 +1669,16 @@ parse_type_decl_pred(ModuleName, VarSet, Pred, Attributes, R) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
 	get_with_inst(Body2, Body3, WithInst),
-	get_with_type(Body3, Body4, WithType),
-	process_type_decl_pred_or_func(predicate, ModuleName,
-		WithType, WithInst, MaybeDeterminism, VarSet, Body4,
-		Condition, Attributes, R).
+	get_with_type(Body3, Body4, WithTypeResult),
+	(
+		WithTypeResult = ok(WithType),
+		process_type_decl_pred_or_func(predicate, ModuleName,
+			WithType, WithInst, MaybeDeterminism, VarSet, Body4,
+			Condition, Attributes, R)
+	;
+		WithTypeResult = error(Msg, ErrorTerm),
+		R = error(Msg, ErrorTerm)
+	).
 
 :- pred process_type_decl_pred_or_func(pred_or_func::in, module_name::in,
 	maybe(type)::in, maybe1(maybe(inst))::in,
@@ -1731,10 +1737,16 @@ parse_type_decl_func(ModuleName, VarSet, Func, Attributes, R) :-
 	get_condition(Func, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
 	get_with_inst(Body2, Body3, WithInst),
-	get_with_type(Body3, Body4, WithType),
-	process_type_decl_pred_or_func(function, ModuleName,
-		WithType, WithInst, MaybeDeterminism, VarSet, Body4,
-		Condition, Attributes, R).
+	get_with_type(Body3, Body4, WithTypeResult),
+	(
+		WithTypeResult = ok(WithType),
+		process_type_decl_pred_or_func(function, ModuleName,
+			WithType, WithInst, MaybeDeterminism, VarSet, Body4,
+			Condition, Attributes, R)
+	;
+		WithTypeResult = error(Msg, ErrorTerm),
+		R = error(Msg, ErrorTerm)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2156,8 +2168,8 @@ parse_where_inst_is(_ModuleName, Term) =
 
 :- func parse_where_type_is(module_name, term) = maybe1(type).
 
-parse_where_type_is(_ModuleName, Term) = ok(Type) :-
-	prog_io_util__convert_type(Term, Type).
+parse_where_type_is(_ModuleName, Term) = Result :-
+	prog_io_util__parse_type(Term, Result).
 
 :- pred parse_where_end(maybe(term)::in, maybe1(maybe(unit))::out) is det.
 
@@ -2361,19 +2373,25 @@ get_with_inst(Body0, Body, WithInst) :-
 		WithInst = ok(no)
 	).
 
-:- pred get_with_type(term::in, term::out, maybe(type)::out) is det.
+:- pred get_with_type(term::in, term::out, maybe1(maybe(type))::out) is det.
 
-get_with_type(Body0, Body, WithType) :-
+get_with_type(Body0, Body, Result) :-
 	(
 		Body0 = term__functor(term__atom("with_type"),
 			[Body1, Type1], _)
 	->
 		Body = Body1,
-		convert_type(Type1, Type),
-		WithType = yes(Type)
+		parse_type(Type1, Result0),
+		(
+			Result0 = ok(Type),
+			Result = ok(yes(Type))
+		;
+			Result0 = error(Msg, ErrorTerm),
+			Result = error(Msg, ErrorTerm)
+		)
 	;
 		Body = Body0,
-		WithType = no
+		Result = ok(no)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2436,19 +2454,17 @@ process_solver_type(ModuleName, Head, MaybeSolverTypeDetails, MaybeUserEqComp,
 			Result0 = error(String, Term),
 			Result  = error(String, Term)
 		;
-			Result0 = ok(Name, Args0),
+			Result0 = ok(Name, Params),
 			(
 				RepnType = SolverTypeDetails ^
 					representation_type,
-				term__contains_var(RepnType, Var),
-				not term__contains_var_list(Args0,
-					term__coerce_var(Var))
+				type_contains_var(RepnType, Var),
+				not list__member(Var, Params)
 			->
 				Result = error("free type variable in " ++
 					"representation type", Head)
 			;
-				list__map(term__coerce, Args0, Args),
-				Result = ok(processed_type_body(Name, Args,
+				Result = ok(processed_type_body(Name, Params,
 					solver_type(SolverTypeDetails,
 						MaybeUserEqComp)))
 			)
@@ -2468,24 +2484,31 @@ process_eqv_type(ModuleName, Head, Body, Result) :-
 	parse_type_defn_head(ModuleName, Head, Body, Result0),
 	process_eqv_type_2(Result0, Body, Result).
 
-:- pred process_eqv_type_2(maybe_functor::in, term::in,
+:- pred process_eqv_type_2(maybe2(sym_name, list(type_param))::in, term::in,
 	maybe1(processed_type_body)::out) is det.
 
 process_eqv_type_2(error(Error, Term), _, error(Error, Term)).
-process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
-	% check that all the variables in the body occur in the head
+process_eqv_type_2(ok(Name, Params), Body0, Result) :-
+	% Check that all the variables in the body occur in the head.
 	(
 		(
-			term__contains_var(Body0, Var2),
-			\+ term__contains_var_list(Args0, Var2)
+			term__contains_var(Body0, Var),
+			term__coerce_var(Var, TVar),
+			\+ list__member(TVar, Params)
 		)
 	->
 		Result = error("free type parameter in RHS of " ++
 			"type definition", Body0)
 	;
-		list__map(term__coerce, Args0, Args),
-		convert_type(Body0, Body),
-		Result = ok(processed_type_body(Name, Args, eqv_type(Body)))
+		parse_type(Body0, BodyResult),
+		(
+			BodyResult = ok(Body),
+			Result = ok(processed_type_body(Name, Params,
+				eqv_type(Body)))
+		;
+			BodyResult = error(Msg, ErrorTerm),
+			Result = error(Msg, ErrorTerm)
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2507,56 +2530,52 @@ process_du_type(ModuleName, Head, Body, Ctors, MaybeUserEqComp, Result) :-
 		Result0 = error(String, Term),
 		Result  = error(String, Term)
 	;
-		Result0 = ok(Functor, Args),
-		process_du_type_2(Functor, Args, Body, Ctors,
+		Result0 = ok(Functor, Params),
+		process_du_type_2(Functor, Params, Body, Ctors,
 			MaybeUserEqComp, Result)
 	).
 
-:- pred process_du_type_2(sym_name::in, list(term)::in, term::in,
+:- pred process_du_type_2(sym_name::in, list(type_param)::in, term::in,
 	list(constructor)::in, maybe(unify_compare)::in,
 	maybe1(processed_type_body)::out) is det.
 
-process_du_type_2(Functor, Args0, Body, Ctors, MaybeUserEqComp, Result) :-
+process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
 
-	% check that body is a disjunction of constructors
-	list__map(term__coerce, Args0, Args),
-
-	% check that all type variables in the body
-	% are either explicitly existentially quantified
-	% or occur in the head.
+	% Check that all type variables in the body are either explicitly
+	% existentially quantified or occur in the head.
 	(
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQVars, _Constraints, _CtorName, CtorArgs),
 		assoc_list__values(CtorArgs, CtorArgTypes),
-		term__contains_var_list(CtorArgTypes, Var),
+		type_list_contains_var(CtorArgTypes, Var),
 		\+ list__member(Var, ExistQVars),
-		\+ term__contains_var_list(Args, Var)
+		\+ list__member(Var, Params)
 	->
 		Result = error("free type parameter in RHS of " ++
 			"type definition", Body)
 
-	% check that all type variables in existential quantifiers
-	% do not occur in the head
-	% (maybe this should just be a warning, not an error?
-	% If we were to allow it, we would need to rename them apart.)
+	% Check that all type variables in existential quantifiers do not
+	% occur in the head (maybe this should just be a warning, not an
+	% error?  If we were to allow it, we would need to rename them
+	% apart.)
 	;
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQVars, _Constraints, _CtorName, _CtorArgs),
 		list__member(Var, ExistQVars),
-		term__contains_var_list(Args, Var)
+		list__member(Var, Params)
 	->
 		Result = error("type variable has overlapping " ++
 			"scopes (explicit type quantifier " ++
 			"shadows argument type)", Body)
 
-	% check that all type variables in existential quantifiers
-	% occur somewhere in the constructor argument types or constraints.
+	% Check that all type variables in existential quantifiers occur
+	% somewhere in the constructor argument types or constraints.
 	;
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs),
 		list__member(Var, ExistQVars),
 		assoc_list__values(CtorArgs, CtorArgTypes),
-		\+ term__contains_var_list(CtorArgTypes, Var),
+		\+ type_list_contains_var(CtorArgTypes, Var),
 		constraint_list_get_tvars(Constraints, ConstraintTVars),
 		\+ list__member(Var, ConstraintTVars)
 	->
@@ -2564,14 +2583,14 @@ process_du_type_2(Functor, Args0, Body, Ctors, MaybeUserEqComp, Result) :-
 			"quantifier does not occur in " ++
 			"arguments or constraints of constructor", Body)
 
-	% check that all type variables in existential constraints
-	% occur in the existential quantifiers
+	% Check that all type variables in existential constraints occur in
+	% the existential quantifiers.
 	;
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQVars, Constraints, _CtorName, _CtorArgs),
 		list__member(Constraint, Constraints),
 		Constraint = constraint(_Name, ConstraintArgs),
-		term__contains_var_list(ConstraintArgs, Var),
+		type_list_contains_var(ConstraintArgs, Var),
 		\+ list__member(Var, ExistQVars)
 	->
 		Result = error("type variables in class " ++
@@ -2580,7 +2599,7 @@ process_du_type_2(Functor, Args0, Body, Ctors, MaybeUserEqComp, Result) :-
 			"existentially quantified " ++
 			"using `some'", Body)
 	;
-		Result = ok(processed_type_body(Functor, Args,
+		Result = ok(processed_type_body(Functor, Params,
 			du_type(Ctors, MaybeUserEqComp)))
 	).
 
@@ -2601,14 +2620,13 @@ process_abstract_type(ModuleName, Head, Attributes0, Result) :-
 	process_abstract_type_2(Result0, IsSolverType, Result1),
 	check_no_attributes(Result1, Attributes, Result).
 
-:- pred process_abstract_type_2(maybe_functor::in, is_solver_type::in,
-	maybe1(processed_type_body)::out) is det.
+:- pred process_abstract_type_2(maybe2(sym_name, list(type_param))::in,
+	is_solver_type::in, maybe1(processed_type_body)::out) is det.
 
 process_abstract_type_2(error(Error, Term), _, error(Error, Term)).
-process_abstract_type_2(ok(Functor, Args0), IsSolverType,
-		ok(processed_type_body(Functor, Args,
-			abstract_type(IsSolverType)))) :-
-	list__map(term__coerce, Args0, Args).
+process_abstract_type_2(ok(Functor, Params), IsSolverType, Result) :-
+	Result = ok(processed_type_body(Functor, Params,
+		abstract_type(IsSolverType))).
 
 %-----------------------------------------------------------------------------%
 
@@ -2630,37 +2648,37 @@ parse_type_defn_head(ModuleName, Head, Body, Result) :-
 		parse_type_defn_head_2(R, Head, Result)
 	).
 
-:- pred parse_type_defn_head_2(maybe_functor::in, term::in, maybe_functor::out)
-	is det.
+:- pred parse_type_defn_head_2(maybe_functor::in, term::in,
+	maybe2(sym_name, list(tvar))::out) is det.
 
 parse_type_defn_head_2(error(Msg, Term), _, error(Msg, Term)).
 parse_type_defn_head_2(ok(Name, Args), Head, Result) :-
 	parse_type_defn_head_3(Name, Args, Head, Result).
 
 :- pred parse_type_defn_head_3(sym_name::in, list(term)::in, term::in,
-	maybe_functor::out) is det.
+	maybe2(sym_name, list(tvar))::out) is det.
 
 parse_type_defn_head_3(Name, Args, Head, Result) :-
-	% check that all the head args are variables
-	( %%%	some [Arg]
-		(
-			list__member(Arg, Args),
-			Arg \= term__variable(_)
-		)
+	% Check that all the head args are variables.
+	(
+		var_list_to_term_list(Params0, Args)
 	->
+		% Check that all the head arg variables are distinct.
+		( some [Param, OtherParams]
+			(
+				list__member(_, Params0,
+					[Param | OtherParams]),
+				list__member(Param, OtherParams)
+			)
+		->
+			Result = error("repeated type parameters "
+				++ "in LHS of type defn", Head)
+		;
+			list__map(term__coerce_var, Params0, Params),
+			Result = ok(Name, Params)
+		)
+	;
 		Result = error("type parameters must be variables", Head)
-	;
-	% check that all the head arg variables are distinct
-	%%%	some [Arg2, OtherArgs]
-		(
-			list__member(Arg2, Args, [Arg2|OtherArgs]),
-			list__member(Arg2, OtherArgs)
-		)
-	->
-		Result = error("repeated type parameters in LHS of type defn",
-			Head)
-	;
-		Result = ok(Name, Args)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -3720,12 +3738,12 @@ convert_type_and_mode(InstConstraints, Term, Result) :-
 		Term = term__functor(term__atom("::"), [TypeTerm, ModeTerm],
 				_Context)
 	->
-		convert_type(TypeTerm, Type),
+		parse_type(TypeTerm, ok(Type)),
 		convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
 		constrain_inst_vars_in_mode(InstConstraints, Mode0, Mode),
 		Result = type_and_mode(Type, Mode)
 	;
-		convert_type(Term, Type),
+		parse_type(Term, ok(Type)),
 		Result = type_only(Type)
 	).
 
@@ -4002,12 +4020,18 @@ parse_predicate_specifier(Term, Result) :-
 :- pred process_typed_predicate_specifier(maybe_functor::in,
 	maybe1(pred_specifier)::out) is det.
 
-process_typed_predicate_specifier(ok(Name, Args0), ok(Result)) :-
+process_typed_predicate_specifier(ok(Name, Args0), Result) :-
 	( Args0 = [] ->
-		Result = sym(name(Name))
+		Result = ok(sym(name(Name)))
 	;
-		list__map(term__coerce, Args0, Args),
-		Result = name_args(Name, Args)
+		parse_types(Args0, ArgsResult),
+		(
+			ArgsResult = ok(Args),
+			Result = ok(name_args(Name, Args))
+		;
+			ArgsResult = error(Msg, ErrorTerm),
+			Result = error(Msg, ErrorTerm)
+		)
 	).
 process_typed_predicate_specifier(error(Msg, Term), error(Msg, Term)).
 
@@ -4340,13 +4364,6 @@ make_op_specifier(X, sym(X)).
 
 %-----------------------------------------------------------------------------%
 
-	% types are represented just as ordinary terms
-
-:- pred parse_type(term::in, maybe1(type)::out) is det.
-
-parse_type(T0, ok(T)) :-
-	convert_type(T0, T).
-
 :- func convert_constructor_arg_list(module_name, list(term)) =
 	maybe1(list(constructor_arg)).
 
@@ -4383,15 +4400,21 @@ convert_constructor_arg_list( ModuleName, [Term | Terms]) = Result :-
 
 convert_constructor_arg_list_2(ModuleName, MaybeFieldName, TypeTerm, Terms) =
 		Result :-
-	convert_type(TypeTerm, Type),
-	Arg = MaybeFieldName - Type,
-	Result0 = convert_constructor_arg_list(ModuleName, Terms),
+	parse_type(TypeTerm, TypeResult),
 	(
-		Result0 = error(String, Term),
-		Result  = error(String, Term)
+		TypeResult = ok(Type),
+		Arg = MaybeFieldName - Type,
+		Result0 = convert_constructor_arg_list(ModuleName, Terms),
+		(
+			Result0 = error(String, Term),
+			Result  = error(String, Term)
+		;
+			Result0 = ok(Args),
+			Result  = ok([Arg | Args])
+		)
 	;
-		Result0 = ok(Args),
-		Result  = ok([Arg | Args])
+		TypeResult = error(String, Term),
+		Result = error(String, Term)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -161,9 +161,9 @@ unify_gen__generate_test(VarA, VarB, Code, !CI) :-
     code_info__produce_variable(VarB, CodeB, ValB, !CI),
     CodeAB = tree(CodeA, CodeB),
     Type = code_info__variable_type(!.CI, VarA),
-    ( Type = term__functor(term__atom("string"), [], _) ->
+    ( Type = builtin(string) ->
         Op = str_eq
-    ; Type = term__functor(term__atom("float"), [], _) ->
+    ; Type = builtin(float) ->
         Op = float_eq
     ;
         Op = eq

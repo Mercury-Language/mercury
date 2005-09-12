@@ -19,9 +19,25 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module map.
 
 %-----------------------------------------------------------------------------%
+%
+% Simple tests for certain properties of types.  These tests work modulo any
+% kind annotations, so in the early stages of the compiler (i.e., before type
+% checking) these should be used rather than direct tests.  Once we reach
+% type checking all kind annotations should have been removed, so it would
+% be preferable to switch on the top functor rather than use these predicates
+% in an if-then-else expression, since switches will give better error
+% detection.
+%
+
+	% Succeeds iff the given type is a variable.
+	%
+:- pred type_is_var((type)::in) is semidet.
+
+	% Succeeds iff the given type is not a variable.
+	%
+:- pred type_is_nonvar((type)::in) is semidet.
 
 	% Succeeds iff the given type is a higher-order predicate or function
 	% type.
@@ -41,7 +57,32 @@
 	% the argument types.
 	%
 :- pred type_is_tuple((type)::in, list(type)::out) is semidet.
+
+	% Remove the kind annotation at the top-level if there is one,
+	% otherwise return the type unchanged.
+	%
+:- func strip_kind_annotation(type) = (type).
 	
+%-----------------------------------------------------------------------------%
+
+	% Succeeds iff the given type is ground (that is, contains no type
+	% variables).
+	%
+:- pred type_is_ground((type)::in) is semidet.
+
+	% Succeeds iff the given type is not ground.
+	%
+:- pred type_is_nonground((type)::in) is semidet.
+
+	% Succeeds iff the given type with the substitution applied is ground.
+	%
+:- pred type_is_ground((type)::in, tsubst::in) is semidet.
+
+	% Succeeds iff the given type with the substitution applied is not
+	% ground.
+	%
+:- pred type_is_nonground((type)::in, tsubst::in) is semidet.
+
 	% type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs)
 	% Check if the principal type constructor of Type is of variable arity.
 	% If yes, return the type constructor as TypeCtor and its args as
@@ -68,17 +109,36 @@
 	% type_ctor_is_variable(TypeCtor) succeeds iff TypeCtor is a variable.
 	%
 :- pred type_ctor_is_variable(type_ctor::in) is semidet.
-	
-	% Given a variable type, return its type variable.
+
+	% Convert a list of types to a list of vars.  Fail if any of them are
+	% not variables.
 	%
-:- pred prog_type.var(type, tvar).
-:- mode prog_type.var(in, out) is semidet.
-:- mode prog_type.var(out, in) is det.
-	
-	% Return a list of the type variables of a type.
+:- pred prog_type.type_list_to_var_list(list(type)::in, list(tvar)::out)
+	is semidet.
+
+	% Convert a list of vars into a list of variable types.
+	%
+:- pred prog_type.var_list_to_type_list(tvar_kind_map::in, list(tvar)::in,
+	list(type)::out) is det.
+
+	% Return a list of the type variables of a type, in order of their
+	% first occurrence in a depth-first, left-right traversal.
 	%
 :- pred prog_type.vars((type)::in, list(tvar)::out) is det.
-	
+
+	% Return a list of the type variables of a list of types, in order
+	% of their first occurrence in a depth-first, left-right traversal.
+	%
+:- pred prog_type.vars_list(list(type)::in, list(tvar)::out) is det.
+
+	% Nondeterministically return the variables in a type.
+	%
+:- pred type_contains_var((type)::in, tvar::out) is nondet.
+
+	% Nondeterministically return the variables in a list of types.
+	%
+:- pred type_list_contains_var(list(type)::in, tvar::out) is nondet.
+
 	% Given a type_ctor and a list of argument types,
 	% construct a type.
 	%
@@ -103,6 +163,48 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Type substitutions.
+%
+
+:- pred apply_rec_subst_to_type(tsubst::in, (type)::in, (type)::out) is det.
+
+:- pred apply_rec_subst_to_type_list(tsubst::in, list(type)::in,
+	list(type)::out) is det.
+
+:- pred apply_rec_subst_to_tvar(tvar_kind_map::in, tsubst::in,
+	tvar::in, (type)::out) is det.
+
+:- pred apply_rec_subst_to_tvar_list(tvar_kind_map::in, tsubst::in,
+	list(tvar)::in, list(type)::out) is det.
+
+:- pred apply_subst_to_type(tsubst::in, (type)::in, (type)::out) is det.
+
+:- pred apply_subst_to_type_list(tsubst::in, list(type)::in, list(type)::out)
+	is det.
+
+:- pred apply_subst_to_tvar(tvar_kind_map::in, tsubst::in,
+	tvar::in, (type)::out) is det.
+
+:- pred apply_subst_to_tvar_list(tvar_kind_map::in, tsubst::in,
+	list(tvar)::in, list(type)::out) is det.
+
+:- pred apply_variable_renaming_to_type(tvar_renaming::in, (type)::in,
+	(type)::out) is det.
+
+:- pred apply_variable_renaming_to_type_list(tvar_renaming::in, list(type)::in,
+	list(type)::out) is det.
+
+:- pred apply_variable_renaming_to_tvar(tvar_renaming::in, tvar::in, tvar::out)
+	is det.
+
+:- pred apply_variable_renaming_to_tvar_list(tvar_renaming::in, list(tvar)::in,
+	list(tvar)::out) is det.
+
+:- pred apply_variable_renaming_to_tvar_kind_map(tvar_renaming::in,
+	tvar_kind_map::in, tvar_kind_map::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
 % Utility predicates dealing with typeclass constraints.
 %
 
@@ -124,13 +226,13 @@
 :- pred apply_subst_to_prog_constraint(tsubst::in, prog_constraint::in,
 	prog_constraint::out) is det.
 
-:- pred apply_variable_renaming_to_prog_constraints(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_prog_constraints(tvar_renaming::in,
 	prog_constraints::in, prog_constraints::out) is det.
 
-:- pred apply_variable_renaming_to_prog_constraint_list(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_prog_constraint_list(tvar_renaming::in,
 	list(prog_constraint)::in, list(prog_constraint)::out) is det.
 
-:- pred apply_variable_renaming_to_prog_constraint(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_prog_constraint(tvar_renaming::in,
 	prog_constraint::in, prog_constraint::out) is det.
 
 	% constraint_list_get_tvars(Constraints, TVars):
@@ -153,68 +255,66 @@
 
 :- implementation.
 
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
+:- import_module map.
 :- import_module std_util.
-:- import_module term.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
-type_is_higher_order(Type) :- type_is_higher_order(Type, _, _, _, _).
+type_is_var(Type) :-
+	strip_kind_annotation(Type) = variable(_, _).
 
-type_is_higher_order(Type, Purity, PredOrFunc, EvalMethod, PredArgTypes) :-
+type_is_nonvar(Type) :-
+	\+ type_is_var(Type).
+
+type_is_higher_order(Type) :-
+	strip_kind_annotation(Type) = higher_order(_, _, _, _).
+
+type_is_higher_order(Type0, Purity, PredOrFunc, EvalMethod, PredArgTypes) :-
+	Type = strip_kind_annotation(Type0),
+	Type = higher_order(ArgTypes, MaybeRetType, Purity, EvalMethod),
 	(
-		Type = term.functor(term.atom(PurityName), [BaseType], _),
-		purity_name(Purity0, PurityName),
-		type_is_higher_order_2(BaseType,
-			PredOrFunc0, EvalMethod0, PredArgTypes0)
-	->
-		Purity = Purity0,
-		PredOrFunc = PredOrFunc0,
-		EvalMethod = EvalMethod0,
-		PredArgTypes = PredArgTypes0
+		MaybeRetType = yes(RetType),
+		PredOrFunc = function,
+		PredArgTypes = list.append(ArgTypes, [RetType])
 	;
-		Purity = (pure),
-		type_is_higher_order_2(Type,
-			PredOrFunc, EvalMethod, PredArgTypes)
+		MaybeRetType = no,
+		PredOrFunc = predicate,
+		PredArgTypes = ArgTypes
 	).
 
-% This parses a higher-order type without any purity indicator.
-:- pred type_is_higher_order_2((type)::in, pred_or_func::out,
-	lambda_eval_method::out, list(type)::out) is semidet.
+type_is_tuple(Type, ArgTypes) :-
+	strip_kind_annotation(Type) = tuple(ArgTypes, _).
 
-type_is_higher_order_2(Type, PredOrFunc, EvalMethod, PredArgTypes) :-
-	(
-		Type = term.functor(term.atom("="),
-			[FuncEvalAndArgs, FuncRetType], _)
-	->
-		get_lambda_eval_method_and_args("func", FuncEvalAndArgs,
-			EvalMethod, FuncArgTypes),
-		list.append(FuncArgTypes, [FuncRetType], PredArgTypes),
-		PredOrFunc = function
+strip_kind_annotation(Type0) = Type :-
+	( Type0 = kinded(Type1, _) ->
+		Type = strip_kind_annotation(Type1)
 	;
-		get_lambda_eval_method_and_args("pred",
-			Type, EvalMethod, PredArgTypes),
-		PredOrFunc = predicate
+		Type = Type0
 	).
 
-	% From the type of a lambda expression, work out how it should
-	% be evaluated and extract the argument types.
-:- pred get_lambda_eval_method_and_args(string::in, (type)::in,
-	lambda_eval_method::out, list(type)::out) is semidet.
+%-----------------------------------------------------------------------------%
 
-get_lambda_eval_method_and_args(PorFStr, Type0, EvalMethod, ArgTypes) :-
-	Type0 = term.functor(term.atom(Functor), Args, _),
-	( Functor = PorFStr ->
-		EvalMethod = normal,
-		ArgTypes = Args
+type_is_ground(Type) :-
+	\+ type_contains_var(Type, _).
+
+type_is_nonground(Type) :-
+	type_contains_var(Type, _).
+
+type_is_ground(Type, TSubst) :-
+	\+ type_is_nonground(Type, TSubst).
+
+type_is_nonground(Type, TSubst) :-
+	type_contains_var(Type, TVar),
+	( map.search(TSubst, TVar, Binding) ->
+		type_is_nonground(Binding, TSubst)
 	;
-		Args = [Type1],
-		Type1 = term.functor(term.atom(PorFStr), ArgTypes, _),
-		Functor = "aditi_bottom_up",
-		EvalMethod = (aditi_bottom_up)
+		true
 	).
 
 type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
@@ -229,67 +329,53 @@ type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
 		type_is_tuple(Type, TypeArgs1)
 	->
 		TypeArgs = TypeArgs1,
+		% XXX why tuple/0 and not {}/N ?
 		TypeCtor = unqualified("tuple") - 0
 	;
 		fail
 	).
 
-type_to_ctor_and_args(Type, SymName - Arity, Args) :-
-	Type \= term.variable(_),
-
-	% higher order types may have representations where
-	% their arguments don't directly correspond to the
-	% arguments of the term.
+type_to_ctor_and_args(defined(SymName, Args, _), SymName - Arity, Args) :-
+	Arity = list.length(Args).
+type_to_ctor_and_args(builtin(BuiltinType), SymName - 0, []) :-
+	builtin_type_to_string(BuiltinType, Name),
+	SymName = unqualified(Name).
+type_to_ctor_and_args(higher_order(Args0, MaybeRet, Purity, EvalMethod), 
+		SymName - Arity, Args) :-
+	Arity = list.length(Args0),
 	(
-		type_is_higher_order(Type, Purity, PredOrFunc,
-			EvalMethod, PredArgTypes)
-	->
-		Args = PredArgTypes,
-		list.length(Args, Arity0),
-		adjust_func_arity(PredOrFunc, Arity, Arity0),
-		(
-			PredOrFunc = predicate,
-			PorFStr = "pred"
-		;
-			PredOrFunc = function,
-			PorFStr = "func"
-		),
-		SymName0 = unqualified(PorFStr),
-		(
-			EvalMethod = (aditi_bottom_up),
-			insert_module_qualifier("aditi_bottom_up", SymName0,
-				SymName1)
-		;
-			EvalMethod = normal,
-			SymName1 = SymName0
-		),
-		(
-			Purity = (pure),
-			SymName = SymName1
-		;
-			Purity = (semipure),
-			insert_module_qualifier("semipure", SymName1, SymName)
-		;
-			Purity = (impure),
-			insert_module_qualifier("impure", SymName1, SymName)
-		)
+		MaybeRet = yes(Ret),
+		PorFStr = "func",
+		Args = list.append(Args0, [Ret])
 	;
-		sym_name_and_args(Type, SymName, Args),
-
-		% `private_builtin:constraint' is introduced by polymorphism,
-		% and should only appear as the argument of a
-		% `typeclass:info/1' type.
-		% It behaves sort of like a type variable, so according to the
-		% specification of `type_to_ctor_and_args', it should
-		% cause failure. There isn't a definition in the type table.
-		\+ (
-			SymName = qualified(ModuleName, UnqualName),
-			UnqualName = "constraint",
-			mercury_private_builtin_module(PrivateBuiltin),
-			ModuleName = PrivateBuiltin
-		),
-		list.length(Args, Arity)
+		MaybeRet = no,
+		PorFStr = "pred",
+		Args = Args0
+	),
+	SymName0 = unqualified(PorFStr),
+	(
+		EvalMethod = (aditi_bottom_up),
+		insert_module_qualifier("aditi_bottom_up", SymName0, SymName1)
+	;
+		EvalMethod = normal,
+		SymName1 = SymName0
+	),
+	(
+		Purity = (pure),
+		SymName = SymName1
+	;
+		Purity = (semipure),
+		insert_module_qualifier("semipure", SymName1, SymName)
+	;
+		Purity = (impure),
+		insert_module_qualifier("impure", SymName1, SymName)
 	).
+type_to_ctor_and_args(tuple(Args, _), unqualified("{}") - Arity, Args) :-
+	Arity = list.length(Args).
+type_to_ctor_and_args(apply_n(_, _, _), _, _) :-
+	sorry(this_file, "apply/N types").
+type_to_ctor_and_args(kinded(Type, _), TypeCtor, Args) :-
+	type_to_ctor_and_args(Type, TypeCtor, Args).
 
 type_ctor_is_higher_order(SymName - _Arity, Purity, PredOrFunc, EvalMethod) :-
 	get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr),
@@ -326,30 +412,104 @@ get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
 		Purity = (pure)
 	).
 
-
-type_is_tuple(Type, ArgTypes) :-
-	type_to_ctor_and_args(Type, TypeCtor, ArgTypes),
-	type_ctor_is_tuple(TypeCtor).
-
 type_ctor_is_tuple(unqualified("{}") - _).
 
 type_ctor_is_variable(unqualified("") - _).
 
-prog_type.var(term.variable(Var), Var).
+prog_type.type_list_to_var_list([], []).
+prog_type.type_list_to_var_list([Type | Types], [Var | Vars]) :-
+	Type = variable(Var, _),
+	prog_type.type_list_to_var_list(Types, Vars).
 
-prog_type.vars(Type, Tvars) :-
-	term.vars(Type, Tvars).
+prog_type.var_list_to_type_list(_, [], []).
+prog_type.var_list_to_type_list(KindMap, [Var | Vars], [Type | Types]) :-
+	get_tvar_kind(KindMap, Var, Kind),
+	Type = variable(Var, Kind),
+	prog_type.var_list_to_type_list(KindMap, Vars, Types).
+
+prog_type.vars(Type, TVars) :-
+	prog_type.vars_2(Type, [], RevTVars),
+	list.reverse(RevTVars, TVarsDups),
+	list.remove_dups(TVarsDups, TVars).
+
+:- pred prog_type.vars_2((type)::in, list(tvar)::in, list(tvar)::out) is det.
+
+prog_type.vars_2(variable(Var, _), Vs, [Var | Vs]).
+prog_type.vars_2(defined(_, Args, _), !V) :-
+	prog_type.vars_list_2(Args, !V).
+prog_type.vars_2(builtin(_), !V).
+prog_type.vars_2(higher_order(Args, MaybeRet, _, _), !V) :-
+	prog_type.vars_list_2(Args, !V),
+	(
+		MaybeRet = yes(Ret),
+		prog_type.vars_2(Ret, !V)
+	;
+		MaybeRet = no
+	).
+prog_type.vars_2(tuple(Args, _), !V) :-
+	prog_type.vars_list_2(Args, !V).
+prog_type.vars_2(apply_n(Var, Args, _), !V) :-
+	!:V = [Var | !.V],
+	prog_type.vars_list_2(Args, !V).
+prog_type.vars_2(kinded(Type, _), !V) :-
+	prog_type.vars_2(Type, !V).
+
+prog_type.vars_list(Types, TVars) :-
+	prog_type.vars_list_2(Types, [], RevTVars),
+	list.reverse(RevTVars, TVarsDups),
+	list.remove_dups(TVarsDups, TVars).
+
+:- pred prog_type.vars_list_2(list(type)::in, list(tvar)::in, list(tvar)::out)
+	is det.
+
+prog_type.vars_list_2([], !V).
+prog_type.vars_list_2([Type | Types], !V) :-
+	prog_type.vars_2(Type, !V),
+	prog_type.vars_list_2(Types, !V).
+
+type_contains_var(variable(Var, _), Var).
+type_contains_var(defined(_, Args, _), Var) :-
+	type_list_contains_var(Args, Var).
+type_contains_var(higher_order(Args, _, _, _), Var) :-
+	type_list_contains_var(Args, Var).
+type_contains_var(higher_order(_, yes(Ret), _, _), Var) :-
+	type_contains_var(Ret, Var).
+type_contains_var(tuple(Args, _), Var) :-
+	type_list_contains_var(Args, Var).
+type_contains_var(apply_n(Var, _, _), Var).
+type_contains_var(apply_n(_, Args, _), Var) :-
+	type_list_contains_var(Args, Var).
+type_contains_var(kinded(Type, _), Var) :-
+	type_contains_var(Type, Var).
+
+type_list_contains_var([Type | _], Var) :-
+	type_contains_var(Type, Var).
+type_list_contains_var([_ | Types], Var) :-
+	type_list_contains_var(Types, Var).
 
 construct_type(TypeCtor, Args, Type) :-
 	(
+		TypeCtor = unqualified(Name) - 0,
+		builtin_type_to_string(BuiltinType, Name)
+	->
+		Type = builtin(BuiltinType)
+	;
 		type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc,
 			EvalMethod)
 	->
 		construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
 			Args, Type)
 	;
+		type_ctor_is_tuple(TypeCtor)
+	->
+		% XXX kind inference:
+		% we assume the kind is star.
+		Type = tuple(Args, star)
+	;
 		TypeCtor = SymName - _,
-		construct_qualified_term(SymName, Args, Type)
+		% XXX kind inference:
+		% we assume the kind is star.
+		Type = defined(SymName, Args, star)
 	).
 
 construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes, Type) :-
@@ -365,61 +525,247 @@ construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes, Type) :-
 	).
 
 construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, Type) :-
-	construct_qualified_term(unqualified("pred"),
-		ArgTypes, Type0),
-	qualify_higher_order_type(EvalMethod, Type0, Type1),
-	Type = add_purity_annotation(Purity, Type1).
+	Type = higher_order(ArgTypes, no, Purity, EvalMethod).
 
 construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType, Type) :-
-	construct_qualified_term(unqualified("func"), ArgTypes, Type0),
-	qualify_higher_order_type(EvalMethod, Type0, Type1),
-	Type2 = term.functor(term.atom("="), [Type1, RetType],
-			term.context_init),
-	Type = add_purity_annotation(Purity, Type2).
+	Type = higher_order(ArgTypes, yes(RetType), Purity, EvalMethod).
 
-:- func add_purity_annotation(purity, (type)) = (type).
-
-add_purity_annotation(Purity, Type0) = Type :-
+strip_builtin_qualifiers_from_type(variable(Var, Kind), variable(Var, Kind)).
+strip_builtin_qualifiers_from_type(defined(Name0, Args0, Kind),
+		defined(Name, Args, Kind)) :-
 	(
-		Purity = (pure),
-		Type = Type0
+		Name0 = qualified(Module, Name1),
+		mercury_public_builtin_module(Module)
+	->
+		Name = unqualified(Name1)
 	;
-		Purity = (semipure),
-		Type = term.functor(term.atom("semipure"), [Type0],
-			term.context_init)
+		Name = Name0
+	),
+	strip_builtin_qualifiers_from_type_list(Args0, Args).
+strip_builtin_qualifiers_from_type(builtin(BuiltinType), builtin(BuiltinType)).
+strip_builtin_qualifiers_from_type(
+		higher_order(Args0, MaybeRet0, Purity, EvalMethod),
+		higher_order(Args, MaybeRet, Purity, EvalMethod)) :-
+	strip_builtin_qualifiers_from_type_list(Args0, Args),
+	(
+		MaybeRet0 = yes(Ret0),
+		strip_builtin_qualifiers_from_type(Ret0, Ret),
+		MaybeRet = yes(Ret)
 	;
-		Purity = (impure),
-		Type = term.functor(term.atom("impure"), [Type0],
-			term.context_init)
+		MaybeRet0 = no,
+		MaybeRet = no
 	).
-
-:- pred qualify_higher_order_type(lambda_eval_method::in, (type)::in,
-	(type)::out) is det.
-
-qualify_higher_order_type(normal, Type, Type).
-qualify_higher_order_type((aditi_bottom_up), Type0,
-	term.functor(term.atom("aditi_bottom_up"), [Type0], Context)) :-
-	term.context_init(Context).
-
-strip_builtin_qualifiers_from_type(Type0, Type) :-
-	( type_to_ctor_and_args(Type0, TypeCtor0, Args0) ->
-		strip_builtin_qualifiers_from_type_list(Args0, Args),
-		TypeCtor0 = SymName0 - Arity,
-		(
-			SymName0 = qualified(Module, Name),
-			mercury_public_builtin_module(Module)
-		->
-			SymName = unqualified(Name)
-		;
-			SymName = SymName0
-		),
-		construct_type(SymName - Arity, Args, Type)
-	;
-		Type = Type0
-	).
+strip_builtin_qualifiers_from_type(tuple(Args0, Kind), tuple(Args, Kind)) :-
+	strip_builtin_qualifiers_from_type_list(Args0, Args).
+strip_builtin_qualifiers_from_type(apply_n(Var, Args0, Kind),
+		apply_n(Var, Args, Kind)) :-
+	strip_builtin_qualifiers_from_type_list(Args0, Args).
+strip_builtin_qualifiers_from_type(kinded(Type0, Kind), kinded(Type, Kind)) :-
+	strip_builtin_qualifiers_from_type(Type0, Type).
 
 strip_builtin_qualifiers_from_type_list(Types0, Types) :-
 	list__map(strip_builtin_qualifiers_from_type, Types0, Types).
+
+%-----------------------------------------------------------------------------%
+
+apply_rec_subst_to_type(Subst, Type0 @ variable(TVar, Kind), Type) :-
+	( map__search(Subst, TVar, Type1) ->
+		ensure_type_has_kind(Kind, Type1, Type2),
+		apply_rec_subst_to_type(Subst, Type2, Type)
+	;
+		Type = Type0
+	).
+apply_rec_subst_to_type(Subst, defined(Name, Args0, Kind),
+		defined(Name, Args, Kind)) :-
+	apply_rec_subst_to_type_list(Subst, Args0, Args).
+apply_rec_subst_to_type(_Subst, Type @ builtin(_), Type).
+apply_rec_subst_to_type(Subst,
+		higher_order(Args0, MaybeReturn0, Purity, EvalMethod),
+		higher_order(Args, MaybeReturn, Purity, EvalMethod)) :-
+	apply_rec_subst_to_type_list(Subst, Args0, Args),
+	(
+		MaybeReturn0 = yes(Return0),
+		apply_rec_subst_to_type(Subst, Return0, Return),
+		MaybeReturn = yes(Return)
+	;
+		MaybeReturn0 = no,
+		MaybeReturn = no
+	).
+apply_rec_subst_to_type(Subst, tuple(Args0, Kind), tuple(Args, Kind)) :-
+	apply_rec_subst_to_type_list(Subst, Args0, Args).
+apply_rec_subst_to_type(Subst, apply_n(TVar, Args0, Kind), Type) :-
+	apply_rec_subst_to_type_list(Subst, Args0, Args),
+	( map__search(Subst, TVar, AppliedType0) ->
+		apply_rec_subst_to_type(Subst, AppliedType0, AppliedType),
+		apply_type_args(AppliedType, Args, Type)
+	;
+		Type = apply_n(TVar, Args, Kind)
+	).
+apply_rec_subst_to_type(Subst, kinded(Type0, Kind), kinded(Type, Kind)) :-
+	apply_rec_subst_to_type(Subst, Type0, Type).
+
+apply_rec_subst_to_type_list(Subst, Types0, Types) :-
+	list__map(apply_rec_subst_to_type(Subst), Types0, Types).
+
+apply_rec_subst_to_tvar(KindMap, Subst, TVar, Type) :-
+	( map__search(Subst, TVar, Type0) ->
+		apply_rec_subst_to_type(Subst, Type0, Type)
+	;
+		get_tvar_kind(KindMap, TVar, Kind),
+		Type = variable(TVar, Kind)
+	).
+
+apply_rec_subst_to_tvar_list(KindMap, Subst, TVars, Types) :-
+	list__map(apply_rec_subst_to_tvar(KindMap, Subst), TVars, Types).
+
+apply_subst_to_type(Subst, Type0 @ variable(TVar, Kind), Type) :-
+	( map__search(Subst, TVar, Type1) ->
+		ensure_type_has_kind(Kind, Type1, Type)
+	;
+		Type = Type0
+	).
+apply_subst_to_type(Subst, defined(Name, Args0, Kind),
+		defined(Name, Args, Kind)) :-
+	apply_subst_to_type_list(Subst, Args0, Args).
+apply_subst_to_type(_Subst, Type @ builtin(_), Type).
+apply_subst_to_type(Subst,
+		higher_order(Args0, MaybeReturn0, Purity, EvalMethod),
+		higher_order(Args, MaybeReturn, Purity, EvalMethod)) :-
+	apply_subst_to_type_list(Subst, Args0, Args),
+	(
+		MaybeReturn0 = yes(Return0),
+		apply_subst_to_type(Subst, Return0, Return),
+		MaybeReturn = yes(Return)
+	;
+		MaybeReturn0 = no,
+		MaybeReturn = no
+	).
+apply_subst_to_type(Subst, tuple(Args0, Kind), tuple(Args, Kind)) :-
+	apply_subst_to_type_list(Subst, Args0, Args).
+apply_subst_to_type(Subst, apply_n(TVar, Args0, Kind), Type) :-
+	apply_subst_to_type_list(Subst, Args0, Args),
+	( map__search(Subst, TVar, AppliedType) ->
+		apply_type_args(AppliedType, Args, Type)
+	;
+		Type = apply_n(TVar, Args, Kind)
+	).
+apply_subst_to_type(Subst, kinded(Type0, Kind), kinded(Type, Kind)) :-
+	apply_subst_to_type(Subst, Type0, Type).
+
+apply_subst_to_type_list(Subst, Types0, Types) :-
+	list__map(apply_subst_to_type(Subst), Types0, Types).
+
+apply_subst_to_tvar(KindMap, Subst, TVar, Type) :-
+	( map__search(Subst, TVar, Type0) ->
+		apply_subst_to_type(Subst, Type0, Type)
+	;
+		get_tvar_kind(KindMap, TVar, Kind),
+		Type = variable(TVar, Kind)
+	).
+
+apply_subst_to_tvar_list(KindMap, Subst, TVars, Types) :-
+	list__map(apply_subst_to_tvar(KindMap, Subst), TVars, Types).
+
+apply_variable_renaming_to_type(Renaming, variable(TVar0, Kind),
+		variable(TVar, Kind)) :-
+	apply_variable_renaming_to_tvar(Renaming, TVar0, TVar).
+apply_variable_renaming_to_type(Renaming, defined(Name, Args0, Kind),
+		defined(Name, Args, Kind)) :-
+	apply_variable_renaming_to_type_list(Renaming, Args0, Args).
+apply_variable_renaming_to_type(_Renaming, Type @ builtin(_), Type).
+apply_variable_renaming_to_type(Renaming,
+		higher_order(Args0, MaybeReturn0, Purity, EvalMethod),
+		higher_order(Args, MaybeReturn, Purity, EvalMethod)) :-
+	apply_variable_renaming_to_type_list(Renaming, Args0, Args),
+	(
+		MaybeReturn0 = yes(Return0),
+		apply_variable_renaming_to_type(Renaming, Return0, Return),
+		MaybeReturn = yes(Return)
+	;
+		MaybeReturn0 = no,
+		MaybeReturn = no
+	).
+apply_variable_renaming_to_type(Renaming, tuple(Args0, Kind),
+		tuple(Args, Kind)) :-
+	apply_variable_renaming_to_type_list(Renaming, Args0, Args).
+apply_variable_renaming_to_type(Renaming, apply_n(TVar0, Args0, Kind),
+		apply_n(TVar, Args, Kind)) :-
+	apply_variable_renaming_to_type_list(Renaming, Args0, Args),
+	apply_variable_renaming_to_tvar(Renaming, TVar0, TVar).
+apply_variable_renaming_to_type(Renaming, kinded(Type0, Kind),
+		kinded(Type, Kind)) :-
+	apply_variable_renaming_to_type(Renaming, Type0, Type).
+
+apply_variable_renaming_to_type_list(Renaming, Types0, Types) :-
+	list__map(apply_variable_renaming_to_type(Renaming), Types0, Types).
+
+apply_variable_renaming_to_tvar(Renaming, TVar0, TVar) :-
+	( map__search(Renaming, TVar0, TVar1) ->
+		TVar = TVar1
+	;
+		TVar = TVar0
+	).
+
+apply_variable_renaming_to_tvar_list(Renaming, TVars0, TVars) :-
+	list__map(apply_variable_renaming_to_tvar(Renaming), TVars0, TVars).
+
+apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap0, KindMap) :-
+	map__foldl(apply_variable_renaming_to_tvar_kind_map_2(Renaming),
+		KindMap0, map__init, KindMap).
+
+:- pred apply_variable_renaming_to_tvar_kind_map_2(tvar_renaming::in, tvar::in,
+	kind::in, tvar_kind_map::in, tvar_kind_map::out) is det.
+
+apply_variable_renaming_to_tvar_kind_map_2(Renaming, TVar0, Kind, !KindMap) :-
+	apply_variable_renaming_to_tvar(Renaming, TVar0, TVar),
+	svmap__det_insert(TVar, Kind, !KindMap).
+
+:- pred apply_type_args((type)::in, list(type)::in, (type)::out) is det.
+
+apply_type_args(variable(TVar, Kind0), Args, apply_n(TVar, Args, Kind)) :-
+	apply_type_args_to_kind(Kind0, Args, Kind).
+apply_type_args(defined(Name, Args0, Kind0), Args,
+		defined(Name, Args0 ++ Args, Kind)) :-
+	apply_type_args_to_kind(Kind0, Args, Kind).
+apply_type_args(Type @ builtin(_), [], Type).
+apply_type_args(builtin(_), [_ | _], _) :-
+	unexpected(this_file, "applied type args to builtin").
+apply_type_args(Type @ higher_order(_, _, _, _), [], Type).
+apply_type_args(higher_order(_, _, _, _), [_ | _], _) :-
+	unexpected(this_file, "applied type args to higher_order").
+apply_type_args(tuple(Args0, Kind0), Args, tuple(Args0 ++ Args, Kind)) :-
+	apply_type_args_to_kind(Kind0, Args, Kind).
+apply_type_args(apply_n(TVar, Args0, Kind0), Args,
+		apply_n(TVar, Args0 ++ Args, Kind)) :-
+	apply_type_args_to_kind(Kind0, Args, Kind).
+apply_type_args(kinded(Type0, _), Args, Type) :-
+	% We drop the explicit kind annotation, since:
+	% 	- it will already have been used by kind inference, and
+	% 	- it no longer corresponds to any explicit annotation given.
+	apply_type_args(Type0, Args, Type).
+
+:- pred apply_type_args_to_kind(kind::in, list(type)::in, kind::out) is det.
+
+apply_type_args_to_kind(Kind, [], Kind).
+apply_type_args_to_kind(star, [_ | _], _) :-
+	unexpected(this_file, "too many args in apply_n").
+apply_type_args_to_kind(arrow(Kind0, Kind1), [ArgType | ArgTypes], Kind) :-
+	( get_type_kind(ArgType) = Kind0 ->
+		apply_type_args_to_kind(Kind1, ArgTypes, Kind)
+	;
+		unexpected(this_file, "kind error in apply_n")
+	).
+apply_type_args_to_kind(variable(_), [_ | _], _) :-
+	unexpected(this_file, "unbound kind variable").
+
+:- pred ensure_type_has_kind(kind::in, (type)::in, (type)::out) is det.
+
+ensure_type_has_kind(Kind, Type0, Type) :-
+	( get_type_kind(Type0) = Kind ->
+		Type = Type0
+	;
+		unexpected(this_file, "substitution not kind preserving")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -434,7 +780,7 @@ apply_rec_subst_to_prog_constraint_list(Subst, !Constraints) :-
 
 apply_rec_subst_to_prog_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
-	term__apply_rec_substitution_to_list(Types0, Subst, Types),
+	apply_rec_subst_to_type_list(Subst, Types0, Types),
 	Constraint  = constraint(ClassName, Types).
 
 apply_subst_to_prog_constraints(Subst,
@@ -449,7 +795,7 @@ apply_subst_to_prog_constraint_list(Subst, !Constraints) :-
 
 apply_subst_to_prog_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
-	term__apply_substitution_to_list(Types0, Subst, Types),
+	apply_subst_to_type_list(Subst, Types0, Types),
 	Constraint  = constraint(ClassName, Types).
 
 apply_variable_renaming_to_prog_constraints(Renaming, Constraints0,
@@ -467,7 +813,7 @@ apply_variable_renaming_to_prog_constraint_list(Renaming, !Constraints) :-
 
 apply_variable_renaming_to_prog_constraint(Renaming, !Constraint) :-
 	!.Constraint = constraint(ClassName, ClassArgTypes0),
-	term.apply_variable_renaming_to_list(ClassArgTypes0, Renaming,
+	apply_variable_renaming_to_type_list(Renaming, ClassArgTypes0,
 		ClassArgTypes),
 	!:Constraint = constraint(ClassName, ClassArgTypes).
 
@@ -476,12 +822,18 @@ constraint_list_get_tvars(Constraints, TVars) :-
 	list.condense(TVarsList, TVars).
 
 constraint_get_tvars(constraint(_Name, Args), TVars) :-
-	term.vars_list(Args, TVars).
+	prog_type.vars_list(Args, TVars).
 
 get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 	constraint_list_get_tvars(Constraints, ConstrainedTvars),
 	list.delete_elems(Tvars, ConstrainedTvars, Unconstrained0),
 	list.remove_dups(Unconstrained0, Unconstrained).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_type.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module prog_type.

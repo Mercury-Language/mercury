@@ -7291,7 +7291,7 @@ item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
             list__member(Constraint, Item ^ tc_constraints),
             Constraint = constraint(_, ConstraintArgs),
             list__member(ConstraintArg, ConstraintArgs),
-            ConstraintArg \= term__variable(_)
+            type_is_nonvar(ConstraintArg)
         )
     ->
         no

@@ -202,8 +202,11 @@ typeclasses__reduce_context_by_rule_application_2(ClassTable, InstanceTable,
 		EliminatedAssumed),
 	apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
 		!ConstraintMap, !Seen, !Constraints, AppliedInstanceRule),
-	apply_class_rules(SuperClassTable, !.TVarSet, !Proofs, !ConstraintMap,
-		!Constraints, AppliedClassRule),
+	% XXX kind inference:
+	% We assume that all tvars have kind `star'.
+	map__init(KindMap),
+	apply_class_rules(SuperClassTable, !.TVarSet, KindMap, !Proofs,
+		!ConstraintMap, !Constraints, AppliedClassRule),
 	(
 		AppliedImprovementRule = no,
 		EliminatedAssumed = no,
@@ -453,9 +456,9 @@ do_instance_improvement_3(Constraints, FunDeps, HeadTypeParams, InstanceDefn,
 		!TVarSet, !Bindings, !Changed) :-
 	InstanceTVarSet = InstanceDefn ^ instance_tvarset,
 	InstanceTypes0 = InstanceDefn ^ instance_types,
-	varset__merge_subst(!.TVarSet, InstanceTVarSet, NewTVarSet,
-		RenameSubst),
-	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
+	tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet,
+		Renaming),
+	apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
 		InstanceTypes),
 	list__foldl2(
 		do_instance_improvement_4(FunDeps, InstanceTypes,
@@ -496,7 +499,7 @@ do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
 			%
 		subsumes_on_elements(Domain, InstanceTypes0, ConstraintTypes,
 			Subst),
-		term__apply_rec_substitution_to_list(InstanceTypes0, Subst,
+		apply_rec_subst_to_type_list(Subst, InstanceTypes0,
 			InstanceTypes),
 		\+ lists_match_on_elements(Range, InstanceTypes,
 			ConstraintTypes),
@@ -547,7 +550,7 @@ unify_on_elements(Elements, TypesA, TypesB, HeadTypeParams, !Bindings) :-
 subsumes_on_elements(Elements, TypesA, TypesB, Subst) :-
 	RTypesA = restrict_list_elements(Elements, TypesA),
 	RTypesB = restrict_list_elements(Elements, TypesB),
-	term__vars_list(RTypesB, RTypesBVars),
+	prog_type__vars_list(RTypesB, RTypesBVars),
 	map__init(Subst0),
 	type_unify_list(RTypesA, RTypesB, RTypesBVars, Subst0, Subst).
 
@@ -684,15 +687,15 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
 	ProgConstraints0 = Instance ^ instance_constraints,
 	InstanceTypes0 = Instance ^ instance_types,
 	InstanceTVarSet = Instance ^ instance_tvarset,
-	varset__merge_subst(!.TVarSet, InstanceTVarSet, NewTVarSet,
-		RenameSubst),
-	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
+	tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet,
+		Renaming),
+	apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
 		InstanceTypes),
 	(
 		type_list_subsumes(InstanceTypes, Types, Subst)
 	->
 		!:TVarSet = NewTVarSet,
-		apply_subst_to_prog_constraint_list(RenameSubst,
+		apply_variable_renaming_to_prog_constraint_list(Renaming,
 			ProgConstraints0, ProgConstraints1),
 		apply_rec_subst_to_prog_constraint_list(Subst,
 			ProgConstraints1, ProgConstraints),
@@ -711,28 +714,28 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
 	% superclass relation to find a path from the inferred constraint to
 	% another (declared or inferred) constraint.
 	%
-:- pred apply_class_rules(superclass_table::in, tvarset::in,
+:- pred apply_class_rules(superclass_table::in, tvarset::in, tvar_kind_map::in,
 	constraint_proof_map::in, constraint_proof_map::out,
 	constraint_map::in, constraint_map::out,
 	hlds_constraints::in, hlds_constraints::out, bool::out) is det.
 
-apply_class_rules(SuperClassTable, TVarSet, !Proofs, !ConstraintMap,
+apply_class_rules(SuperClassTable, TVarSet, KindMap, !Proofs, !ConstraintMap,
 		!Constraints, Changed) :-
 	!.Constraints = constraints(Unproven0, Assumed, _),
-	apply_class_rules_2(Assumed, SuperClassTable, TVarSet, !Proofs,
-		!ConstraintMap, Unproven0, Unproven, Changed),
+	apply_class_rules_2(Assumed, SuperClassTable, TVarSet, KindMap,
+		!Proofs, !ConstraintMap, Unproven0, Unproven, Changed),
 	!:Constraints = !.Constraints ^ unproven := Unproven.
 
 :- pred apply_class_rules_2(list(hlds_constraint)::in, superclass_table::in,
-	tvarset::in, constraint_proof_map::in, constraint_proof_map::out,
-	constraint_map::in, constraint_map::out,
+	tvarset::in, tvar_kind_map::in, constraint_proof_map::in,
+	constraint_proof_map::out, constraint_map::in, constraint_map::out,
 	list(hlds_constraint)::in, list(hlds_constraint)::out,
 	bool::out) is det.
 
-apply_class_rules_2(_, _, _, !Proofs, !ConstraintMap, [], [], no).
-apply_class_rules_2(AssumedConstraints, SuperClassTable, TVarSet, !Proofs,
-		!ConstraintMap, [Constraint0 | Constraints0], Constraints,
-		Changed) :-
+apply_class_rules_2(_, _, _, _, !Proofs, !ConstraintMap, [], [], no).
+apply_class_rules_2(AssumedConstraints, SuperClassTable, TVarSet, KindMap,
+		!Proofs, !ConstraintMap, [Constraint0 | Constraints0],
+		Constraints, Changed) :-
 	Parents = [],
 	retrieve_prog_constraint(Constraint0, ProgConstraint0),
 
@@ -745,16 +748,16 @@ apply_class_rules_2(AssumedConstraints, SuperClassTable, TVarSet, !Proofs,
 	(
 		eliminate_constraint_by_class_rules(ProgConstraint0, _, _,
 			AssumedConstraints, SuperClassTable, HeadTypeParams,
-			TVarSet, Parents, !Proofs)
+			TVarSet, KindMap, Parents, !Proofs)
 	->
 		update_constraint_map(Constraint0, !ConstraintMap),
 		apply_class_rules_2(AssumedConstraints, SuperClassTable,
-			TVarSet, !Proofs, !ConstraintMap,
+			TVarSet, KindMap, !Proofs, !ConstraintMap,
 			Constraints0, Constraints, _),
 		Changed = yes
 	;
 		apply_class_rules_2(AssumedConstraints, SuperClassTable,
-			TVarSet, !Proofs, !ConstraintMap,
+			TVarSet, KindMap, !Proofs, !ConstraintMap,
 			Constraints0, TailConstraints, Changed),
 		Constraints = [Constraint0 | TailConstraints]
 	).
@@ -768,12 +771,12 @@ apply_class_rules_2(AssumedConstraints, SuperClassTable, TVarSet, !Proofs,
 :- pred eliminate_constraint_by_class_rules(prog_constraint::in,
 	prog_constraint::out, tsubst::out, list(hlds_constraint)::in,
 	superclass_table::in, head_type_params::in, tvarset::in,
-	list(prog_constraint)::in,
+	tvar_kind_map::in, list(prog_constraint)::in,
 	constraint_proof_map::in, constraint_proof_map::out) is semidet.
 
 eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst,
 		AssumedConstraints, SuperClassTable, HeadTypeParams, TVarSet,
-		ParentConstraints, Proofs0, Proofs) :-
+		KindMap, ParentConstraints, Proofs0, Proofs) :-
 
 		% Make sure we aren't in a cycle in the
 		% superclass relation
@@ -792,7 +795,8 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst,
 		% cannot contribute to proving the constraint we are trying to
 		% prove.
 	list__filter_map(
-		subclass_details_to_constraint(TVarSet, SuperClassTypes),
+		subclass_details_to_constraint(TVarSet, KindMap,
+			SuperClassTypes),
 		SubClasses, SubClassConstraints),
 	(
 			% Do the first level of search. We search for
@@ -817,8 +821,8 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst,
 			eliminate_constraint_by_class_rules(Constraint,
 				SubstConstraint, SubClassSubst0,
 				AssumedConstraints, SuperClassTable,
-				HeadTypeParams, TVarSet, NewParentConstraints,
-				Proofs0, SubProofs),
+				HeadTypeParams, TVarSet, KindMap,
+				NewParentConstraints, Proofs0, SubProofs),
 			CnstrtAndProof = {SubstConstraint, SubClassSubst0,
 				SubProofs}
 		),
@@ -858,26 +862,27 @@ match_assumed_constraint_2(HeadTypeParams, AssumedConstraint,
 	% subclass_details_to_constraint will fail iff the call to
 	% type_unify_list fails.
 	%
-:- pred subclass_details_to_constraint(tvarset::in, list(type)::in,
-	subclass_details::in, prog_constraint::out) is semidet.
+:- pred subclass_details_to_constraint(tvarset::in, tvar_kind_map::in,
+	list(type)::in, subclass_details::in, prog_constraint::out) is semidet.
 
-subclass_details_to_constraint(TVarSet, SuperClassTypes, SubClassDetails,
-		SubC) :-
+subclass_details_to_constraint(TVarSet, KindMap0, SuperClassTypes,
+		SubClassDetails, SubC) :-
 	SubClassDetails = subclass_details(SuperVars0, SubID, SubVars0,
 		SuperVarSet),
 
 		% Rename the variables from the typeclass
-		% declaration into those of the current pred
-	varset__merge_subst(TVarSet, SuperVarSet, _NewTVarSet, RenameSubst),
-	term__var_list_to_term_list(SubVars0, SubVars1),
-	term__apply_substitution_to_list(SubVars1, RenameSubst, SubVars),
-	term__apply_substitution_to_list(SuperVars0, RenameSubst, SuperVars),
+		% declaration into those of the current pred.
+	tvarset_merge_renaming(TVarSet, SuperVarSet, _NewTVarSet, Renaming),
+	apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap0, KindMap),
+	apply_variable_renaming_to_tvar_list(Renaming, SubVars0, SubVars),
+	apply_variable_renaming_to_type_list(Renaming, SuperVars0, SuperVars),
 
 		% Work out what the (renamed) vars from the
 		% typeclass declaration are bound to here.
 	type_unify_list(SuperVars, SuperClassTypes, [], map__init, Bindings),
 	SubID = class_id(SubName, _SubArity),
-	term__apply_substitution_to_list(SubVars, Bindings, SubClassTypes),
+	apply_rec_subst_to_tvar_list(KindMap, Bindings, SubVars,
+		SubClassTypes),
 	SubC = constraint(SubName, SubClassTypes).
 
 	% check_satisfiability(Constraints, HeadTypeParams):
@@ -922,7 +927,7 @@ check_satisfiability(Constraints, HeadTypeParams) :-
 	=>
 		(
 			Constraint = constraint(_Ids, _ClassName, Types),
-			term__contains_var_list(Types, TVar),
+			type_list_contains_var(Types, TVar),
 			not list__member(TVar, HeadTypeParams)
 		)
 	).

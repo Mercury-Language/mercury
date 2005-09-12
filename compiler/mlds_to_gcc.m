@@ -3223,7 +3223,7 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	% sanity check (copied from mlds_to_c.m)
 	(
 		{ FieldType = mlds__generic_type
-		; FieldType = mlds__mercury_type(term__variable(_), _, _)
+		; FieldType = mlds__mercury_type(variable(_, _), _, _)
 		}
 	->
 		[]
@@ -3443,8 +3443,7 @@ build_unop(std_unop(Unop), Exprn, DefnInfo, GCC_Expr) -->
 
 :- pred type_is_float(mlds__type::in) is semidet.
 type_is_float(Type) :-
-	( Type = mlds__mercury_type(term__functor(term__atom("float"),
-			[], _), _, _)
+	( Type = mlds__mercury_type(builtin(float), _, _)
 	; Type = mlds__native_float_type
 	).
 

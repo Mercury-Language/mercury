@@ -105,6 +105,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
+:- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -647,17 +648,17 @@ find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
 
 substitute_types_check_match(ExpType, TypeStuff, TypeMismatch) :-
 	TypeStuff = type_stuff(ArgType, TVarSet, TypeBindings, HeadTypeParams),
-	term__apply_rec_substitution(ArgType, TypeBindings, FullArgType),
-	term__apply_rec_substitution(ExpType, TypeBindings, FullExpType),
+	apply_rec_subst_to_type(TypeBindings, ArgType, FullArgType),
+	apply_rec_subst_to_type(TypeBindings, ExpType, FullExpType),
 	(
 		(
-			% there is no mismatch if the actual type of the
-			% argument is the same as the expected type
+			% There is no mismatch if the actual type of the
+			% argument is the same as the expected type.
 			identical_types(FullArgType, FullExpType)
 		;
-			% there is no mismatch if the actual type of the
-			% argument has no constraints on it
-			FullArgType = term__functor(term__atom("<any>"), [], _)
+			% There is no mismatch if the actual type of the
+			% argument has no constraints on it.
+			FullArgType = defined(unqualified("<any>"), [], _)
 		)
 	->
 		fail
@@ -1167,8 +1168,8 @@ report_ambiguity_error_2([V | Vs], VarSet, Info, TypeAssign1,
 	(
 		map__search(VarTypes1, V, Type1),
 		map__search(VarTypes2, V, Type2),
-		term__apply_rec_substitution(Type1, TypeBindings1, T1),
-		term__apply_rec_substitution(Type2, TypeBindings2, T2),
+		apply_rec_subst_to_type(TypeBindings1, Type1, T1),
+		apply_rec_subst_to_type(TypeBindings2, Type2, T2),
 		\+ identical_types(T1, T2)
 	->
 		typecheck_info_get_context(Info, Context),
@@ -1331,8 +1332,11 @@ write_cons_type(cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _),
 		Functor, _, !IO) :-
 	(
 		ArgTypes = [_ | _],
-		( cons_id_and_args_to_term(Functor, ArgTypes, Term) ->
-			output_type(Term, TVarSet, ExistQVars, !IO)
+		(
+			Functor = cons(SymName, _Arity)
+		->
+			Type = defined(SymName, ArgTypes, star),
+			output_type(Type, TVarSet, ExistQVars, !IO)
 		;
 			error("typecheck.write_cons_type: invalid cons_id")
 		),
@@ -1404,9 +1408,12 @@ write_args_type_assign_set_msg(ArgTypeAssignSet, VarSet, !IO) :-
 	io::di, io::uo) is det.
 
 output_type(Type0, TVarSet, HeadTypeParams, !IO) :-
-	strip_builtin_qualifiers_from_type(Type0, Type1),
-	Type = maybe_add_existential_quantifier(HeadTypeParams, Type1),
-	mercury_output_term(Type, TVarSet, no, !IO).
+	strip_builtin_qualifiers_from_type(Type0, Type),
+	unparse_type(Type, Term0),
+	list__map(term__coerce_var, HeadTypeParams, ExistQVars),
+	maybe_add_existential_quantifier(ExistQVars, Term0, Term),
+	varset__coerce(TVarSet, VarSet),
+	mercury_output_term(Term, VarSet, no, !IO).
 
 :- pred write_types_list(prog_context::in, list(string)::in,
 	io::di, io::uo) is det.
@@ -1456,8 +1463,8 @@ write_var_type_stuff(Context, Type, VarTypeStuff, !IO) :-
 	io::di, io::uo) is det.
 
 write_type_b(Type0, TypeVarSet, TypeBindings, HeadTypeParams, !IO) :-
-	Type = maybe_add_existential_quantifier(HeadTypeParams, Type0),
-	write_type_with_bindings(Type, TypeVarSet, TypeBindings, !IO).
+	apply_rec_subst_to_type(TypeBindings, Type0, Type),
+	output_type(Type, TypeVarSet, HeadTypeParams, !IO).
 
 :- pred write_arg_type_stuff_list(prog_context::in, list(arg_type_stuff)::in,
 	io::di, io::uo) is det.
@@ -1636,8 +1643,7 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
 		% This shouldn't happen - how can a variable which has
 		% not yet been assigned a type variable fail to have
 		% the correct type?
-		term__context_init(Context),
-		Type = term__functor(term__atom("<any>"), [], Context)
+		Type = defined(unqualified("<any>"), [], star)
 	),
 	TypeStuff = type_stuff(Type, TVarSet, TypeBindings, HeadTypeParams),
 	( list__member(TypeStuff, TailTypeStuffs) ->
@@ -1651,10 +1657,13 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
 typestuff_to_typestr(TypeStuff) = TypeStr :-
 	TypeStuff = type_stuff(Type0, TypeVarSet, TypeBindings,
 		HeadTypeParams),
-	term__apply_rec_substitution(Type0, TypeBindings, Type1),
-	strip_builtin_qualifiers_from_type(Type1, Type2),
-	Type = maybe_add_existential_quantifier(HeadTypeParams, Type2),
-	TypeStr = mercury_term_to_string(Type, TypeVarSet, no).
+	apply_rec_subst_to_type(TypeBindings, Type0, Type1),
+	strip_builtin_qualifiers_from_type(Type1, Type),
+	unparse_type(Type, Term0),
+	list__map(term__coerce_var, HeadTypeParams, ExistQVars),
+	maybe_add_existential_quantifier(ExistQVars, Term0, Term),
+	varset__coerce(TypeVarSet, VarSet),
+	TypeStr = mercury_term_to_string(Term, VarSet, no).
 
 	% Given an arg type assignment set and a variable id,
 	% return the list of possible different types for the argument
@@ -1680,12 +1689,11 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
 		% This shouldn't happen - how can a variable which has
 		% not yet been assigned a type variable fail to have
 		% the correct type?
-		term__context_init(Context),
-		VarType = term__functor(term__atom("<any>"), [], Context)
+		VarType = defined(unqualified("<any>"), [], star)
 	),
 	list__index0_det(ArgTypes, 0, ArgType),
-	term__apply_rec_substitution(ArgType, TypeBindings, ArgType2),
-	term__apply_rec_substitution(VarType, TypeBindings, VarType2),
+	apply_rec_subst_to_type(TypeBindings, ArgType, ArgType2),
+	apply_rec_subst_to_type(TypeBindings, VarType, VarType2),
 	ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet,
 		HeadTypeParams),
 	( list__member(ArgTypeStuff, TailArgTypeStuffs) ->
@@ -1694,27 +1702,28 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
 		ArgTypeStuffs = [ArgTypeStuff | TailArgTypeStuffs]
 	).
 
-	% Check if any of the type variables in the type are existentially
-	% quantified (occur in HeadTypeParams), and if so, add an
-	% appropriate existential quantifier at the front of the type.
+	% Check if any of the variables in the term are existentially
+	% quantified (occur in the first argument), and if so, add the
+	% appropriate quantification to the term.  Otherwise return the term
+	% unchanged.
 	%
-:- func maybe_add_existential_quantifier(head_type_params, (type)) = (type).
+:- pred maybe_add_existential_quantifier(list(var)::in, term::in, term::out)
+	is det.
 
-maybe_add_existential_quantifier(HeadTypeParams, Type0) = Type :-
-	prog_type__vars(Type0, TVars),
-	ExistQuantTVars = set__to_sorted_list(set__intersect(
-		set__list_to_set(HeadTypeParams), set__list_to_set(TVars))),
+maybe_add_existential_quantifier(HeadTypeParams, !Term) :-
+	term__vars(!.Term, Vars),
+	ExistQVars = set__to_sorted_list(set__intersect(
+		set__list_to_set(HeadTypeParams), set__list_to_set(Vars))),
 	(
-		ExistQuantTVars = [],
-		Type = Type0
+		ExistQVars = []
 	;
-		ExistQuantTVars = [_ | _],
-		Type = term__functor(term__atom("some"),
-			[make_list_term(ExistQuantTVars), Type0],
+		ExistQVars = [_ | _],
+		QTerm = make_list_term(ExistQVars),
+		!:Term = term__functor(term__atom("some"), [QTerm, !.Term],
 			term__context_init)
 	).
 
-:- func make_list_term(list(tvar)) = (type).
+:- func make_list_term(list(var)) = term.
 
 make_list_term([]) = term__functor(term__atom("[]"), [], term__context_init).
 make_list_term([Var | Vars]) = term__functor(term__atom("[|]"),

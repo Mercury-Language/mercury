@@ -142,10 +142,11 @@
 	%
 :- func ml_string_type = mlds__type.
 
-	% Allocate some fresh type variables to use as the Mercury types
-	% of boxed objects (e.g. to get the argument types for tuple
-	% constructors or closure constructors).  Note that this should
-	% only be used in cases where the tvarset doesn't matter.
+	% Allocate some fresh type variables, with kind `star',  to use as
+	% the Mercury types of boxed objects (e.g. to get the argument types
+	% for tuple constructors or closure constructors).  Note that this
+	% should only be used in cases where the tvarset doesn't matter.
+	%
 :- func ml_make_boxed_types(arity) = list(prog_type).
 
 %-----------------------------------------------------------------------------%
@@ -1049,7 +1050,7 @@ ml_string_type = mercury_type(string_type, str_type,
 ml_make_boxed_types(Arity) = BoxedTypes :-
 	varset__init(TypeVarSet0),
 	varset__new_vars(TypeVarSet0, Arity, BoxedTypeVars, _TypeVarSet),
-	term__var_list_to_term_list(BoxedTypeVars, BoxedTypes).
+	prog_type.var_list_to_type_list(map__init, BoxedTypeVars, BoxedTypes).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2175,7 +2176,7 @@ ml_type_category_might_contain_pointers(user_ctor_type) = yes.
 :- pred trace_type_info_type(prog_type::in, prog_type::out) is semidet.
 
 trace_type_info_type(Type, RealType) :-
-	sym_name_and_args(Type, TypeName, _),
+	Type = defined(TypeName, _, _),
 	TypeName = qualified(PrivateBuiltin, Name),
 	mercury_private_builtin_module(PrivateBuiltin),
 	( Name = "type_info", RealType = sample_type_info_type

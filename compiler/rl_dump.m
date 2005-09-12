@@ -105,9 +105,8 @@ rl_dump__declare_relation(ModuleInfo, RelationInfos, RelId) -->
 		io__write_string(")")
 	),
 	{ varset__init(TVarSet) },
-	io__write_string(" "),
-	rl_dump__write_list(term_io__write_term(TVarSet), Types),
-	io__write_string(" : "),
+	{ TypesStr = mercury_type_list_to_string(TVarSet, Types) },
+	io__write_strings([" [", TypesStr, "] : "]),
 	io__write_list(Index, " ", mercury_output_index_spec),
 	io__write_string(".\n").
 

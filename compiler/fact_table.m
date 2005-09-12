@@ -503,18 +503,19 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
 		% the right type for this argument.
 		(
 			Functor = term__string(_),
-			RequiredType = "string"
+			RequiredType = yes(string)
 		;
 			Functor = term__integer(_),
-			RequiredType = "int"
+			RequiredType = yes(int)
 		;
 			Functor = term__float(_),
-			RequiredType = "float"
+			RequiredType = yes(float)
 		;
 			Functor = term__atom(_),
-			RequiredType = ""
+			RequiredType = no
 		),
-		( RequiredType = "" ->
+		(
+			RequiredType = no,
 			(
 				Items = [_ | _],
 				Msg = "Error: compound types are not " ++
@@ -527,11 +528,10 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
 			add_error_report(Context, [words(Msg)], !Errors),
 			Result = error
 		;
+			RequiredType = yes(BuiltinType),
 			(
 				Types0 = [Type | Types],
-				Type = term__functor(term__atom(TypeName),
-					[], _),
-				TypeName = RequiredType
+				Type = builtin(BuiltinType)
 			->
 				check_fact_type_and_mode(Types, Terms, ArgNum,
 					PredOrFunc, Context0, Result, !Errors)
@@ -694,13 +694,13 @@ create_fact_table_struct([Info | Infos], I, Context, StructContents,
 	Info = fact_arg_info(Type, _IsInput, IsOutput),
 	(
 		(
-			Type = term__functor(term__atom("string"), [], _),
+			Type = builtin(string),
 			TypeStr = "MR_ConstString"
 		;
-			Type = term__functor(term__atom("int"), [], _),
+			Type = builtin(int),
 			TypeStr = "MR_Integer"
 		;
-			Type = term__functor(term__atom("float"), [], _),
+			Type = builtin(float),
 			TypeStr = "MR_Float"
 		)
 	->
@@ -1881,20 +1881,20 @@ get_output_args_list([Info | Infos], ArgStrings0, Args) :-
 	is det.
 
 convert_key_string_to_arg(ArgString, Type, Arg) :-
-	( Type = term__functor(term__atom("int"), [], _) ->
+	( Type = builtin(int) ->
 		( string__base_string_to_int(36, ArgString, I) ->
 			Arg = term__integer(I)
 		;
 			error("convert_key_string_to_arg: " ++
 				"could not convert string to int")
 		)
-	; Type = term__functor(term__atom("string"), [], _) ->
+	; Type = builtin(string) ->
 		string__to_char_list(ArgString, Cs0),
 		remove_sort_file_escapes(Cs0, [], Cs1),
 		list__reverse(Cs1, Cs),
 		string__from_char_list(Cs, S),
 		Arg = term__string(S)
-	; Type = term__functor(term__atom("float"), [], _) ->
+	; Type = builtin(float) ->
 		( string__to_float(ArgString, F) ->
 			Arg = term__float(F)
 		;
@@ -2603,15 +2603,15 @@ generate_hash_code([pragma_var(_, Name, Mode) | PragmaVars], [Type | Types],
 		FactTableSize, C_Code) :-
 	NextArgNum = ArgNum + 1,
 	( mode_is_fully_input(ModuleInfo, Mode) ->
-		( Type = term__functor(term__atom("int"), [], _) ->
+		( Type = builtin(int) ->
 			generate_hash_int_code(Name, LabelName, LabelNum,
 				PredName, PragmaVars, Types, ModuleInfo,
 				NextArgNum, FactTableSize, C_Code0)
-		; Type = term__functor(term__atom("float"), [], _) ->
+		; Type = builtin(float) ->
 			generate_hash_float_code(Name, LabelName, LabelNum,
 				PredName, PragmaVars, Types, ModuleInfo,
 				NextArgNum, FactTableSize, C_Code0)
-		; Type = term__functor(term__atom("string"), [], _) ->
+		; Type = builtin(string) ->
 			generate_hash_string_code(Name, LabelName, LabelNum,
 				PredName, PragmaVars, Types, ModuleInfo,
 				NextArgNum, FactTableSize, C_Code0)
@@ -2804,7 +2804,7 @@ generate_fact_lookup_code(PredName,
 		string__format(TableEntryTemplate, [s(PredName),
 			i(FactTableSize), i(FactTableSize), i(ArgNum)],
 			TableEntry),
-		( Type = term__functor(term__atom("string"), [], _) ->
+		( Type = builtin(string) ->
 			mode_get_insts(ModuleInfo, Mode, _, FinalInst),
 			( inst_is_not_partly_unique(ModuleInfo, FinalInst) ->
 				% Cast MR_ConstString -> MR_Word -> MR_String
@@ -3114,7 +3114,7 @@ generate_test_condition_code(FactTableName, [PragmaVar | PragmaVars],
 		FactTableSize, CondCode) :-
 	PragmaVar = pragma_var(_, Name, Mode),
 	( mode_is_fully_input(ModuleInfo, Mode) ->
-		( Type = term__functor(term__atom("string"), [], _) ->
+		( Type = builtin(string) ->
 			Template =
 				"strcmp(%s[ind/%d][ind%%%d].V_%d, %s) != 0\n"
 		;

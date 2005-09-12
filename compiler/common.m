@@ -780,13 +780,27 @@ common__generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
 
 :- pred common__types_match_exactly((type)::in, (type)::in) is semidet.
 
-common__types_match_exactly(term__variable(Var), term__variable(Var)).
-common__types_match_exactly(Type1, Type2) :-
-    % XXX should succeed for embedded constraints
-    type_to_ctor_and_args(Type1, TypeCtor1, Args1),
-    type_to_ctor_and_args(Type2, TypeCtor2, Args2),
-    TypeCtor1 = TypeCtor2,
-    common__types_match_exactly_list(Args1, Args2).
+common__types_match_exactly(variable(TVar, _), variable(TVar, _)).
+common__types_match_exactly(defined(Name, As, _), defined(Name, Bs, _)) :-
+    common__types_match_exactly_list(As, Bs).
+common__types_match_exactly(builtin(BuiltinType), builtin(BuiltinType)).
+common__types_match_exactly(higher_order(As, AR, P, E),
+        higher_order(Bs, BR, P, E)) :-
+    common__types_match_exactly_list(As, Bs),
+    (
+        AR = yes(A),
+        BR = yes(B),
+        common__types_match_exactly(A, B)
+    ;
+        AR = no,
+        BR = no
+    ).
+common__types_match_exactly(tuple(As, _), tuple(Bs, _)) :-
+    common__types_match_exactly_list(As, Bs).
+common__types_match_exactly(apply_n(TVar, As, _), apply_n(TVar, Bs, _)) :-
+    common__types_match_exactly_list(As, Bs).
+common__types_match_exactly(kinded(_, _), _) :-
+    unexpected(this_file, "kind annotation").
 
 :- pred common__types_match_exactly_list(list(type)::in, list(type)::in)
     is semidet.

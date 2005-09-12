@@ -692,9 +692,9 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     % any new type variables, but any unbound type variables in the callee
     % will not be substituted away)
 
-    varset__merge_subst(TypeVarSet0, CalleeTypeVarSet,
-        TypeVarSet, TypeRenaming),
-    apply_substitution_to_type_map(CalleeVarTypes0, TypeRenaming,
+    tvarset_merge_renaming(TypeVarSet0, CalleeTypeVarSet, TypeVarSet,
+        TypeRenaming),
+    apply_variable_renaming_to_type_map(TypeRenaming, CalleeVarTypes0,
         CalleeVarTypes1),
 
     % next, compute the type substitution and then apply it
@@ -719,16 +719,13 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     % since we can do things more efficiently in that case
     ( CalleeExistQVars = [] ->
         % update types in callee only
-        apply_rec_substitution_to_type_map(CalleeVarTypes1,
-            TypeSubn, CalleeVarTypes),
+        apply_rec_subst_to_type_map(TypeSubn, CalleeVarTypes1, CalleeVarTypes),
         VarTypes1 = VarTypes0
     ;
         % update types in callee
-        apply_rec_substitution_to_type_map(CalleeVarTypes1,
-            TypeSubn, CalleeVarTypes),
+        apply_rec_subst_to_type_map(TypeSubn, CalleeVarTypes1, CalleeVarTypes),
         % update types in caller
-        apply_rec_substitution_to_type_map(VarTypes0,
-            TypeSubn, VarTypes1)
+        apply_rec_subst_to_type_map(TypeSubn, VarTypes0, VarTypes1)
     ),
 
     % Now rename apart the variables in the called goal.

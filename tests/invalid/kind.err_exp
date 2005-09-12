@@ -1,7 +1,5 @@
-kind.m:004: In definition of type `kind.t'/1:
-kind.m:004:   error: ill-formed type `V_1(int)'.
-kind.m:006: In declaration of typeclass `kind.tc'/1:
-kind.m:006:   error: ill-formed type `V_1(string)'.
+kind.m:004: Error: ill-formed type: _1(int).
+kind.m:007: Error: syntax error in arguments of `:- func' declaration: f(_1(string)).
 kind.m:011: In definition of inst `kind.i'/1:
 kind.m:011:   error: variable used as inst constructor.
 kind.m:012: In definition of mode `kind.m'/1:

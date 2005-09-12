@@ -1377,7 +1377,7 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_var_types(!.Info, VarTypes),
     map__lookup(VarTypes, XVar, Type),
-    ( Type = term__variable(TypeVar) ->
+    ( Type = variable(TypeVar, Kind) ->
         %
         % Convert polymorphic unifications into calls to `unify/2',
         % the general unification predicate, passing the appropriate type_info:
@@ -1385,7 +1385,8 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
         % where TypeInfoVar is the type_info variable associated with
         % the type of the variables that are being unified.
         %
-        simplify__type_info_locn(TypeVar, TypeInfoVar, ExtraGoals, !Info),
+        simplify__type_info_locn(TypeVar, Kind, TypeInfoVar, ExtraGoals,
+            !Info),
         simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo,
             !.Info, Context, GoalInfo0, Call)
 
@@ -1540,10 +1541,10 @@ simplify__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     ),
     simplify_info_set_module_info(ModuleInfo, !Info).
 
-:- pred simplify__type_info_locn(tvar::in, prog_var::out, list(hlds_goal)::out,
-    simplify_info::in, simplify_info::out) is det.
+:- pred simplify__type_info_locn(tvar::in, kind::in, prog_var::out,
+    list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.
 
-simplify__type_info_locn(TypeVar, TypeInfoVar, Goals, !Info) :-
+simplify__type_info_locn(TypeVar, Kind, TypeInfoVar, Goals, !Info) :-
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps),
     rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, TypeInfoLocn),
     (
@@ -1553,22 +1554,22 @@ simplify__type_info_locn(TypeVar, TypeInfoVar, Goals, !Info) :-
     ;
         % If the typeinfo is in a typeclass_info then we need to extract it.
         TypeInfoLocn = typeclass_info(TypeClassInfoVar, Index),
-        simplify__extract_type_info(TypeVar, TypeClassInfoVar, Index,
+        simplify__extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index,
             Goals, TypeInfoVar, !Info)
     ).
 
-:- pred simplify__extract_type_info(tvar::in, prog_var::in, int::in,
+:- pred simplify__extract_type_info(tvar::in, kind::in, prog_var::in, int::in,
     list(hlds_goal)::out, prog_var::out,
     simplify_info::in, simplify_info::out) is det.
 
-simplify__extract_type_info(TypeVar, TypeClassInfoVar, Index,
+simplify__extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index,
         Goals, TypeInfoVar, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 
-    polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
+    polymorphism__gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index,
         ModuleInfo, Goals, TypeInfoVar, VarSet0, VarSet, VarTypes0, VarTypes,
         RttiVarMaps0, RttiVarMaps),
 
@@ -2398,7 +2399,7 @@ simplify_info_apply_type_substitution(TSubst, !Info) :-
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     ApplyTSubst = (pred(_::in, T0::in, T::out) is det :-
-            T = term__apply_rec_substitution(T0, TSubst)
+            apply_rec_subst_to_type(TSubst, T0, T)
         ),
     map__map_values(ApplyTSubst, VarTypes0, VarTypes),
     apply_substitutions_to_rtti_varmaps(map__init, TSubst, map__init,

@@ -198,8 +198,8 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 
 	map__lookup(ClassTable, ClassId, ClassDefn),
 	ClassDefn = hlds_class_defn(ImportStatus, SuperClasses, _FunDeps,
-		_Ancestors, ClassVars, Interface, ClassInterface, ClassVarSet,
-		TermContext),
+		_Ancestors, ClassVars, _Kinds, Interface, ClassInterface,
+		ClassVarSet, TermContext),
 	(
 		status_defined_in_this_module(ImportStatus, yes),
 		Interface = abstract
@@ -714,30 +714,29 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		ArgModes, Errors, ArgTypeVars0, Status0, PredOrFunc),
 
 		% Rename the instance variables apart from the class variables
-	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
-		RenameSubst),
-	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
+	tvarset_merge_renaming(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
+		Renaming),
+	apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
 		InstanceTypes1),
-	apply_subst_to_prog_constraint_list(RenameSubst, InstanceConstraints0,
-		InstanceConstraints1),
+	apply_variable_renaming_to_prog_constraint_list(Renaming,
+		InstanceConstraints0, InstanceConstraints1),
 
 		% Work out what the type variables are bound to for this
 		% instance, and update the class types appropriately.
 	map__from_corresponding_lists(ClassVars, InstanceTypes1, TypeSubst),
-	term__apply_substitution_to_list(ArgTypes0, TypeSubst, ArgTypes1),
+	apply_subst_to_type_list(TypeSubst, ArgTypes0, ArgTypes1),
 	apply_subst_to_prog_constraints(TypeSubst, ClassMethodClassContext0,
 		ClassMethodClassContext1),
 
 		% Get rid of any unwanted type variables
-	term__vars_list(ArgTypes1, VarsToKeep0),
+	prog_type__vars_list(ArgTypes1, VarsToKeep0),
 	list__sort_and_remove_dups(VarsToKeep0, VarsToKeep),
 	varset__squash(ArgTypeVars1, VarsToKeep, ArgTypeVars, SquashSubst),
-	term__apply_variable_renaming_to_list(ArgTypes1, SquashSubst,
-		ArgTypes),
+	apply_variable_renaming_to_type_list(SquashSubst, ArgTypes1, ArgTypes),
 	apply_variable_renaming_to_prog_constraints(SquashSubst,
 		ClassMethodClassContext1, ClassMethodClassContext),
 	apply_partial_map_to_list(ExistQVars0, SquashSubst, ExistQVars),
-	apply_variable_renaming_to_list(InstanceTypes1, SquashSubst,
+	apply_variable_renaming_to_type_list(SquashSubst, InstanceTypes1,
 		InstanceTypes),
 	apply_variable_renaming_to_prog_constraint_list(SquashSubst,
 		InstanceConstraints1, InstanceConstraints),
@@ -815,14 +814,6 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
 		ArgTypeVars, Status, PredOrFunc).
 
-:- pred apply_substitution_to_var_list(list(var(T))::in,
-	map(var(T), term(T))::in, list(var(T))::out) is det.
-
-apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
-	term__var_list_to_term_list(Vars0, Terms0),
-	term__apply_substitution_to_list(Terms0, RenameSubst, Terms),
-	term__term_list_to_var_list(Terms, Vars).
-
 %---------------------------------------------------------------------------%
 
 	% Make the name of the introduced pred used to check a particular
@@ -876,20 +867,15 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 	InstanceDefn0 = hlds_instance_defn(A, B, Context,
 		InstanceProgConstraints, InstanceTypes, F, G, InstanceVarSet0,
 		Proofs0),
-	varset__merge_subst(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
-		RenameSubst),
+	tvarset_merge_renaming(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
+		Renaming),
 
 		% Make the constraints in terms of the instance variables
-	apply_subst_to_prog_constraint_list(RenameSubst, ProgSuperClasses0,
-		ProgSuperClasses),
+	apply_variable_renaming_to_prog_constraint_list(Renaming,
+		ProgSuperClasses0, ProgSuperClasses),
 
 		% Now handle the class variables
-	map__apply_to_list(ClassVars0, RenameSubst, ClassVarTerms),
-	( term__var_list_to_term_list(ClassVars1, ClassVarTerms) ->
-		ClassVars = ClassVars1
-	;
-		unexpected(this_file, "ClassVarTerms are not vars.")
-	),
+	apply_variable_renaming_to_tvar_list(Renaming, ClassVars0, ClassVars),
 
 		% Calculate the bindings
 	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
@@ -1164,6 +1150,7 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
 		!Cycles) :-
 	ClassDefn0 = map.lookup(!.ClassTable, ClassId),
 	Params = ClassDefn0 ^ class_vars,
+	Kinds = ClassDefn0 ^ class_kinds,
 	( set.member(ClassId, !.Visited) ->
 		(
 			find_cycle(ClassId, Path, [ClassId], Cycle)
@@ -1187,8 +1174,8 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
 		;
 			FunDeps = [_ | _],
 			ClassId = class_id(ClassName, _),
-			term.var_list_to_term_list(Params, ParamTerms),
-			Ancestors0 = [constraint(ClassName, ParamTerms)]
+			prog_type.var_list_to_type_list(Kinds, Params, Args),
+			Ancestors0 = [constraint(ClassName, Args)]
 		),
 		Superclasses = ClassDefn0 ^ class_supers,
 		foldl4(find_cycles_3([ClassId | Path]), Superclasses,
@@ -1329,9 +1316,9 @@ check_range_restrictedness_2(ClassId, InstanceDefn, FunDep, !ModuleInfo,
 	Types = InstanceDefn ^ instance_types,
 	FunDep = fundep(Domain, Range),
 	DomainTypes = restrict_list_elements(Domain, Types),
-	DomainVars = term.vars_list(DomainTypes),
+	prog_type.vars_list(DomainTypes, DomainVars),
 	RangeTypes = restrict_list_elements(Range, Types),
-	RangeVars = term.vars_list(RangeTypes),
+	prog_type.vars_list(RangeTypes, RangeVars),
 	solutions((pred(V::out) is nondet :-
 			list.member(V, RangeVars),
 			\+ list.member(V, DomainVars)
@@ -1416,11 +1403,11 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 		!ModuleInfo, !FoundError, !IO) :-
 	TVarSetA = InstanceA ^ instance_tvarset,
 	TVarSetB = InstanceB ^ instance_tvarset,
-	varset.merge_subst(TVarSetA, TVarSetB, _, RenameSubst),
+	tvarset_merge_renaming(TVarSetA, TVarSetB, _, Renaming),
 
 	TypesA = InstanceA ^ instance_types,
 	TypesB0 = InstanceB ^ instance_types,
-	TypesB = term.apply_substitution_to_list(TypesB0, RenameSubst),
+	apply_variable_renaming_to_type_list(Renaming, TypesB0, TypesB),
 
 	FunDep = fundep(Domain, Range),
 	DomainA = restrict_list_elements(Domain, TypesA),
@@ -1431,8 +1418,8 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 	->
 		RangeA0 = restrict_list_elements(Range, TypesA),
 		RangeB0 = restrict_list_elements(Range, TypesB),
-		term.apply_rec_substitution_to_list(RangeA0, Subst, RangeA),
-		term.apply_rec_substitution_to_list(RangeB0, Subst, RangeB),
+		apply_rec_subst_to_type_list(Subst, RangeA0, RangeA),
+		apply_rec_subst_to_type_list(Subst, RangeB0, RangeB),
 		(
 			RangeA = RangeB
 		->
@@ -1534,7 +1521,7 @@ needs_no_ambiguity_check(pseudo_imported).
 check_pred_type_ambiguities(PredInfo, !ModuleInfo, !FoundError, !IO) :-
 	pred_info_arg_types(PredInfo, ArgTypes),
 	pred_info_get_class_context(PredInfo, Constraints),
-	TVars = term.vars_list(ArgTypes),
+	prog_type.vars_list(ArgTypes, TVars),
 	get_unbound_tvars(TVars, Constraints, !.ModuleInfo, UnboundTVars),
 	(
 		UnboundTVars = []
@@ -1570,7 +1557,7 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo,
 		!FoundError, !IO) :-
 	Ctor = ctor(ExistQVars, Constraints, _, CtorArgs),
 	assoc_list.values(CtorArgs, ArgTypes),
-	ArgTVars = term.vars_list(ArgTypes),
+	prog_type.vars_list(ArgTypes, ArgTVars),
 	list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
 		ArgTVars, ExistQArgTVars),
 	get_unbound_tvars(ExistQArgTVars, constraints([], Constraints),
@@ -1644,7 +1631,8 @@ induced_fundep(Args, fundep(Domain0, Range0), FunDeps)
 
 induced_vars(Args, ArgNum, Vars) = union(Vars, NewVars) :-
 	Arg = list.index1_det(Args, ArgNum),
-	NewVars = set.list_to_set(term.vars(Arg)).
+	prog_type.vars(Arg, ArgVars),
+	NewVars = set.list_to_set(ArgVars).
 
 :- func fundeps_closure(induced_fundeps, set(tvar)) = set(tvar).
 

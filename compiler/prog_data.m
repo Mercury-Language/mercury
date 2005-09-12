@@ -1426,25 +1426,52 @@
 	 % The name of a user-defined comparison predicate.
 :- type comparison_pred	==	sym_name.
 
-	% probably type parameters should be variables not terms.
-:- type type_param	==	term(tvar_type).
+	% Parameters of type definitions.
+:- type type_param	==	tvar.
 
-	% Module qualified types are represented as ':'/2 terms.
-	% Use type_util:type_to_ctor_and_args to convert a type to a qualified
-	% type_ctor and a list of arguments.
-	% type_util:construct_type to construct a type from a type_ctor
-	% and a list of arguments.
+	% Use type_util.type_to_ctor_and_args to convert a type to a qualified
+	% type_ctor and a list of arguments.  Use type_util.construct_type to
+	% construct a type from a type_ctor and a list of arguments.
 	%
-	% The `term__context's of the type terms must be empty (as
-	% returned by term__context_init). prog_io_util__convert_type
-	% ensures this is the case. There are at least two reasons that this
-	% is required:
-	% - Various parts of the code to handle typeclasses create maps
-	%   indexed by `prog_constraint's, which contain types.
-	% - Smart recompilation requires that the items which occur in
-	%   interface files can be unified using the builtin unification
-	%   operation.
-:- type (type)		==	term(tvar_type).
+:- type (type)
+	--->	variable(tvar, kind)
+			% A type variable.
+
+	;	defined(sym_name, list(type), kind)
+			% A user defined type constructor.
+
+	;	builtin(builtin_type)
+			% These are all known to have kind `star'.
+
+	% The above three functors should be kept as the first three, since
+	% they will be the most commonly used and therefore we want them to
+	% get the primary tags on a 32-bit machine.
+
+	;	higher_order(list(type), maybe(type), purity,
+				lambda_eval_method)
+			% A type for higher-order values.  If the second
+			% argument is yes(T) then the values are functions
+			% returning T, otherwise they are predicates.  The
+			% kind is always `star'.
+
+	;	tuple(list(type), kind)
+			% Tuple types.
+
+	;	apply_n(tvar, list(type), kind)
+			% An apply/N expression.  `apply_n(V, [T1, ...], K)'
+			% would be the representation of type `V(T1, ...)'
+			% with kind K.  The list must be non-empty.
+
+	;	kinded((type), kind).
+			% A type expression with an explicit kind annotation.
+			% (These are not yet used.)
+
+:- type builtin_type
+	--->	int
+	;	float
+	;	string
+	;	character.
+
 :- type type_term	==	term(tvar_type).
 
 :- type tvar_type	--->	type_var.
@@ -1453,6 +1480,7 @@
 :- type tvarset		==	varset(tvar_type).
 					% used for sets of type variables
 :- type tsubst		==	map(tvar, type). % used for type substitutions
+:- type tvar_renaming	==	map(tvar, tvar). % type renaming
 
 :- type type_ctor	==	pair(sym_name, arity).
 
@@ -1471,6 +1499,55 @@
 :- type condition
 	--->	true
 	;	where(term).
+
+	% Similar to varset__merge_subst but produces a tvar_renaming
+	% instead of a substitution, which is more suitable for types.
+	%
+:- pred tvarset_merge_renaming(tvarset::in, tvarset::in, tvarset::out,
+	tvar_renaming::out) is det.
+
+	% As above, but behaves like varset__merge_subst_without_names.
+	%
+:- pred tvarset_merge_renaming_without_names(tvarset::in, tvarset::in,
+	tvarset::out, tvar_renaming::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Kinds.
+%
+
+	% Note that we don't support any kind other than `star' at the
+	% moment.  The other kinds are intended for the implementation
+	% of constructor classes.
+	%
+:- type kind
+	--->	star
+			% An ordinary type.
+
+	;	arrow(kind, kind)
+			% A type with kind `A' applied to a type with kind
+			% `arrow(A, B)' will have kind `B'.
+
+	;	variable(kvar).
+			% A kind variable.  These can be used during kind
+			% inference; after kind inference, all remaining
+			% kind variables will be bound to `star'.
+
+:- type kvar_type	--->	kind_var.
+:- type kvar		==	var(kvar_type).
+
+	% The kinds of type variables.  For efficiency, we only have entries
+	% for type variables that have a kind other than `star'.  Any type
+	% variable not appearing in this map, which will usually be the
+	% majority of type variables, can be assumed to have kind `star'.
+	%
+:- type tvar_kind_map	==	map(tvar, kind).
+
+:- pred get_tvar_kind(tvar_kind_map::in, tvar::in, kind::out) is det.
+
+	% Return the kind of a type.
+	%
+:- func get_type_kind(type) = kind.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1802,6 +1879,8 @@
 
 :- implementation.
 
+:- import_module parse_tree.error_util.
+
 :- import_module string.
 
 :- type pragma_foreign_proc_attributes
@@ -1934,6 +2013,46 @@ extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
 extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
 extra_attribute_to_string(max_stack_size(Size)) =
 	"max_stack_size(" ++ string__int_to_string(Size) ++ ")".
+
+%-----------------------------------------------------------------------------%
+
+tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
+	varset__merge_subst(TVarSetA, TVarSetB, TVarSet, Subst),
+	map__map_values(convert_subst_term_to_tvar, Subst, Renaming).
+
+tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
+	varset__merge_subst_without_names(TVarSetA, TVarSetB, TVarSet, Subst),
+	map__map_values(convert_subst_term_to_tvar, Subst, Renaming).
+
+:- pred convert_subst_term_to_tvar(tvar::in, term(tvar_type)::in, tvar::out)
+	is det.
+
+convert_subst_term_to_tvar(_, variable(TVar), TVar).
+convert_subst_term_to_tvar(_, functor(_, _, _), _) :-
+	unexpected(this_file, "non-variable found in renaming").
+
+%-----------------------------------------------------------------------------%
+
+get_tvar_kind(Map, TVar, Kind) :-
+	( map__search(Map, TVar, Kind0) ->
+		Kind = Kind0
+	;
+		Kind = star
+	).
+
+get_type_kind(variable(_, Kind)) = Kind.
+get_type_kind(defined(_, _, Kind)) = Kind.
+get_type_kind(builtin(_)) = star.
+get_type_kind(higher_order(_, _, _, _)) = star.
+get_type_kind(tuple(_, Kind)) = Kind.
+get_type_kind(apply_n(_, _, Kind)) = Kind.
+get_type_kind(kinded(_, Kind)) = Kind.
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_data.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module prog_data.

@@ -1315,9 +1315,8 @@ magic_util__check_type(ArgType, Errors, MaybeRtti) -->
 		{ MaybeRtti = yes(typeclass_info) }
 	;
 		{ MaybeRtti = no },
-		{ map__init(Subn) },
 		{ set__init(Errors0) },
-		{ term__is_ground(ArgType, Subn) ->
+		{ type_is_ground(ArgType) ->
 			Errors1 = Errors0
 		;
 			set__insert(Errors0, polymorphic, Errors1)

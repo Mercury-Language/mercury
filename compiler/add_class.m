@@ -86,8 +86,8 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
         map__search(Classes0, ClassId, OldDefn)
     ->
         OldDefn = hlds_class_defn(OldStatus, OldConstraints, OldFunDeps,
-            _OldAncestors, OldVars, OldInterface, OldMethods, OldVarSet,
-            OldContext),
+            _OldAncestors, OldVars, _OldKinds, OldInterface, OldMethods,
+            OldVarSet, OldContext),
         combine_status(ImportStatus1, OldStatus, ImportStatus),
         (
             OldInterface = concrete(_),
@@ -169,8 +169,13 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
 
         % Ancestors is not set until check_typeclass.
         Ancestors = [],
+        % XXX kind inference:
+        % We set all the kinds to `star' at the moment.  This should be
+        % done differently when we have a proper kind system.
+        Kinds = map.init,
         Defn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
-            Ancestors, Vars, ClassInterface, ClassMethods, VarSet, Context),
+            Ancestors, Vars, Kinds, ClassInterface, ClassMethods, VarSet,
+            Context),
         map__set(Classes0, ClassId, Defn, Classes),
         module_info_set_classes(Classes, !ModuleInfo),
 
@@ -223,10 +228,10 @@ get_list_index([E | Es], N, X) =
 
 superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
         Vars, VarSet, Constraints) :-
-    varset__merge_subst(VarSet, OldVarSet, _, Subst),
-    apply_subst_to_prog_constraint_list(Subst, OldConstraints0,
+    tvarset_merge_renaming(VarSet, OldVarSet, _, Renaming),
+    apply_variable_renaming_to_prog_constraint_list(Renaming, OldConstraints0,
         OldConstraints1),
-    OldVars = term__term_list_to_var_list(map__apply_to_list(OldVars0, Subst)),
+    apply_variable_renaming_to_tvar_list(Renaming, OldVars0,  OldVars),
 
     map__from_corresponding_lists(OldVars, Vars, VarRenaming),
     apply_variable_renaming_to_prog_constraint_list(VarRenaming,
@@ -277,9 +282,12 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
         Method = pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
             PredName, TypesAndModes, _WithType, _WithInst, MaybeDet, _Cond,
             Purity, ClassContext, Context),
-        term__var_list_to_term_list(Vars, VarTerms),
+        % XXX kind inference:
+        % We set the kinds to `star' at the moment.  This will be different
+        % when we have a kind system.
+        prog_type.var_list_to_type_list(map.init, Vars, Args),
         ClassContext = constraints(UnivCnstrs, ExistCnstrs),
-        NewUnivCnstrs = [constraint(Name, VarTerms) | UnivCnstrs],
+        NewUnivCnstrs = [constraint(Name, Args) | UnivCnstrs],
         NewClassContext = constraints(NewUnivCnstrs, ExistCnstrs),
         init_markers(Markers0),
         add_marker(class_method, Markers0, Markers),
@@ -424,7 +432,8 @@ check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId,
         OtherInstanceDefn = hlds_instance_defn(_, _OtherStatus,
             OtherContext, _, OtherTypes, OtherBody, _, OtherVarSet, _),
         OtherBody \= abstract, % XXX
-        varset__merge(VarSet, OtherVarSet, OtherTypes, _NewVarSet,
+        tvarset_merge_renaming(VarSet, OtherVarSet, _NewVarSet, Renaming),
+        apply_variable_renaming_to_type_list(Renaming, OtherTypes,
             NewOtherTypes),
         type_list_subsumes(Types, NewOtherTypes, _)
     ),

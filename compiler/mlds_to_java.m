@@ -2832,7 +2832,7 @@ output_lval(field(_MaybeTag, Rval, offset(OffsetRval), FieldType, _),
 		ModuleName, !IO) :-
 	(
 		( FieldType = mlds__generic_type
-		; FieldType = mlds__mercury_type(term__variable(_), _, _))
+		; FieldType = mlds__mercury_type(variable(_, _), _, _))
 	->
 		true
 	;
@@ -3066,18 +3066,15 @@ output_unboxed_rval(Type, Exprn, ModuleName, !IO) :-
 java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
 	Type = mlds__native_int_type.
 java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
-	Type = mlds__mercury_type(term__functor(term__atom("int"),
-		[], _), _, _).
+	Type = mlds__mercury_type(builtin(int), _, _).
 java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
 	Type = mlds__native_float_type.
 java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
-	Type = mlds__mercury_type(term__functor(term__atom("float"),
-		[], _), _, _).
+	Type = mlds__mercury_type(builtin(float), _, _).
 java_builtin_type(Type, "char", "java.lang.Character", "charValue") :-
 	Type = mlds__native_char_type.
 java_builtin_type(Type, "char", "java.lang.Character", "charValue") :-
-	Type = mlds__mercury_type(term__functor(term__atom("character"),
-		[], _), _, _).
+	Type = mlds__mercury_type(builtin(character), _, _).
 java_builtin_type(Type, "boolean", "java.lang.Boolean", "booleanValue") :-
 	Type = mlds__native_bool_type.
 
@@ -3086,12 +3083,10 @@ java_builtin_type(Type, "boolean", "java.lang.Boolean", "booleanValue") :-
 	% reason they should have the Java type `int'.
 	%
 java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
-	Type = mlds__mercury_type(term__functor(term__atom(":"), _, _), _, _),
-	Type = mlds__mercury_type(MercuryType, _, _),
-	type_util__is_dummy_argument_type(MercuryType).
-java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
-	Type = mlds__mercury_type(term__functor(term__atom("."), _, _), _, _),
-	Type = mlds__mercury_type(MercuryType, _, _),
+	% The test for defined/3 is logically redundant since all dummy
+	% types are defined types, but enables the compiler to infer that
+	% this disjunction is a switch.
+	Type = mlds__mercury_type(MercuryType @ defined(_, _, _), _, _),
 	type_util__is_dummy_argument_type(MercuryType).
 
 :- pred output_std_unop(builtin_ops__unary_op::in, mlds__rval::in,

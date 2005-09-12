@@ -843,7 +843,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
             InstanceDefn = hlds_instance_defn(_, _, _,
                 InstanceConstraints, InstanceTypes0, _,
                 yes(ClassInterface), _, _),
-            term.vars_list(InstanceTypes0, InstanceTvars),
+            prog_type.vars_list(InstanceTypes0, InstanceTvars),
             get_unconstrained_tvars(InstanceTvars,
                 InstanceConstraints, UnconstrainedTVars),
             NumArgsToExtract = list.length(InstanceConstraints)
@@ -954,19 +954,21 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
         TVarSet0, TVarSet) :-
     Instance = hlds_instance_defn(_, _, _, Constraints0,
         InstanceTypes0, _, _, InstanceTVarSet, _),
-    varset.merge_subst(TVarSet0, InstanceTVarSet, TVarSet, RenameSubst),
-    term.apply_substitution_to_list(InstanceTypes0, RenameSubst,
+    tvarset_merge_renaming(TVarSet0, InstanceTVarSet, TVarSet, Renaming),
+    apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes),
-    apply_subst_to_prog_constraint_list(RenameSubst,
-        Constraints0, Constraints1),
-    term.vars_list(InstanceTypes, InstanceTVars),
+    apply_variable_renaming_to_prog_constraint_list(Renaming, Constraints0,
+        Constraints1),
+    prog_type.vars_list(InstanceTypes, InstanceTVars),
     get_unconstrained_tvars(InstanceTVars, Constraints1, UnconstrainedTVars0),
 
     type_list_subsumes(InstanceTypes, ClassTypes, Subst),
     apply_rec_subst_to_prog_constraint_list(Subst, Constraints1, Constraints),
 
-    term.var_list_to_term_list(UnconstrainedTVars0, UnconstrainedTVarTypes0),
-    term.apply_rec_substitution_to_list(UnconstrainedTVarTypes0, Subst,
+    % XXX kind inference:
+    % we assume all tvars have kind `star'.
+    map__init(KindMap),
+    apply_rec_subst_to_tvar_list(KindMap, Subst, UnconstrainedTVars0,
         UnconstrainedTVarTypes).
 
     % Build calls to
@@ -1430,15 +1432,15 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
         CallerHeadTypeParams, ArgTypes, CalleeTVarSet,
         CalleeExistQVars, CalleeArgTypes0) :-
     CalleeUnivConstraints0 = [_ | _],
-    varset.merge_subst(TVarSet0, CalleeTVarSet, TVarSet, TypeRenaming),
-    term.apply_substitution_to_list(CalleeArgTypes0, TypeRenaming,
+    tvarset_merge_renaming(TVarSet0, CalleeTVarSet, TVarSet, TypeRenaming),
+    apply_variable_renaming_to_type_list(TypeRenaming, CalleeArgTypes0,
         CalleeArgTypes1),
     %
     % Substitute the types in the callee's class constraints.
     %
     inlining.get_type_substitution(CalleeArgTypes1, ArgTypes,
         CallerHeadTypeParams, CalleeExistQVars, TypeSubn),
-    apply_subst_to_prog_constraint_list(TypeRenaming,
+    apply_variable_renaming_to_prog_constraint_list(TypeRenaming,
         CalleeUnivConstraints0, CalleeUnivConstraints1),
     apply_rec_subst_to_prog_constraint_list(TypeSubn,
         CalleeUnivConstraints1, CalleeUnivConstraints),
@@ -1588,7 +1590,7 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     ProcInfo = Info ^ proc_info,
     proc_info_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(Args, VarTypes, ArgTypes),
-    term.vars_list(ArgTypes, AllTVars),
+    prog_type.vars_list(ArgTypes, AllTVars),
     (
         AllTVars = [],
         ExtraTypeInfoTVars = []
@@ -1608,7 +1610,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
     rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
     (
         VarInfo = type_info_var(Type),
-        ( prog_type.var(Type, TVar) ->
+        ( Type = variable(TVar, _) ->
             !:TVars = [TVar | !.TVars]
         ;
             true
@@ -1620,7 +1622,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
         % for.
         list.filter_map(
             (pred(ClassArgType::in, ClassTVar::out) is semidet :-
-                prog_type.var(ClassArgType, ClassTVar)
+                ClassArgType = variable(ClassTVar, _)
             ), ClassArgTypes, ClassTVars),
         list.append(ClassTVars, !TVars)
     ;
@@ -1723,19 +1725,22 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
     ),
 
     % Rename apart type variables.
-    varset.merge_subst(RequestTVarSet, VersionTVarSet, _, TVarSubn),
-    term.apply_substitution_to_list(VersionArgTypes0, TVarSubn,
+    tvarset_merge_renaming(RequestTVarSet, VersionTVarSet, _, TVarRenaming),
+    apply_variable_renaming_to_type_list(TVarRenaming, VersionArgTypes0,
         VersionArgTypes),
     type_list_subsumes(VersionArgTypes, CallArgTypes, TypeSubn),
     %
     % Work out the types of the extra type-info variables that
     % need to be passed to the specialized version.
     %
-    term.var_list_to_term_list(VersionExtraTypeInfoTVars,
-        VersionExtraTypeInfoTypes),
-    term.apply_substitution_to_list(VersionExtraTypeInfoTypes,
-        TVarSubn, ExtraTypeInfoTypes0),
-    term.apply_rec_substitution_to_list(ExtraTypeInfoTypes0, TypeSubn,
+    % XXX kind inference:
+    % we assume all tvars have kind `star'
+    map__init(KindMap),
+    apply_variable_renaming_to_tvar_kind_map(TVarRenaming, KindMap,
+        RenamedKindMap),
+    apply_variable_renaming_to_tvar_list(TVarRenaming,
+        VersionExtraTypeInfoTVars, ExtraTypeInfoTVars0),
+    apply_rec_subst_to_tvar_list(RenamedKindMap, TypeSubn, ExtraTypeInfoTVars0,
         ExtraTypeInfoTypes),
     get_extra_arguments(HigherOrderArgs, Args0, Args).
 
@@ -1922,7 +1927,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     special_pred_name_arity(SpecialId, PredName, PredArity),
     special_pred_get_type(SpecialId, Args, Var),
     map.lookup(VarTypes, Var, SpecialPredType),
-    SpecialPredType \= term.variable(_),
+    SpecialPredType \= variable(_, _),
     %
     % Don't specialize tuple types -- the code to unify them only exists
     % in the generic unification routine in the runtime.
@@ -1931,7 +1936,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     % be worth inlining complicated unifications of small tuples (or any
     % other small type).
     %
-    \+ type_is_tuple(SpecialPredType, _),
+    SpecialPredType \= tuple(_, _),
 
     Args = [TypeInfoVar | SpecialPredArgs],
     map.search(PredVars, TypeInfoVar,
@@ -2697,6 +2702,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     proc_info_argmodes(!.NewProcInfo, ArgModes0),
     pred_info_get_exist_quant_tvars(!.NewPredInfo, ExistQVars0),
     pred_info_typevarset(!.NewPredInfo, TypeVarSet0),
+    pred_info_tvar_kinds(!.NewPredInfo, KindMap0),
     pred_info_arg_types(!.NewPredInfo, OriginalArgTypes0),
 
     CallerPredProcId = proc(CallerPredId, _),
@@ -2707,34 +2713,36 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     % Specialize the types of the called procedure as for inlining.
     %
     proc_info_vartypes(!.NewProcInfo, VarTypes0),
-    varset.merge_subst(CallerTypeVarSet, TypeVarSet0,
-        TypeVarSet, TypeRenaming),
-    apply_substitution_to_type_map(VarTypes0, TypeRenaming, VarTypes1),
-    term.apply_substitution_to_list(OriginalArgTypes0,
-        TypeRenaming, OriginalArgTypes1),
+    tvarset_merge_renaming(CallerTypeVarSet, TypeVarSet0, TypeVarSet,
+        TypeRenaming),
+    apply_variable_renaming_to_tvar_kind_map(TypeRenaming, KindMap0, KindMap),
+    apply_variable_renaming_to_type_map(TypeRenaming, VarTypes0, VarTypes1),
+    apply_variable_renaming_to_type_list(TypeRenaming, OriginalArgTypes0,
+        OriginalArgTypes1),
 
     % The real set of existentially quantified variables may be
     % smaller, but this is OK.
     %
-    term.var_list_to_term_list(ExistQVars0, ExistQTypes0),
-    term.apply_substitution_to_list(ExistQTypes0, TypeRenaming, ExistQTypes1),
-    term.term_list_to_var_list(ExistQTypes1, ExistQVars1),
+    apply_variable_renaming_to_tvar_list(TypeRenaming, ExistQVars0,
+        ExistQVars1),
 
     inlining.get_type_substitution(OriginalArgTypes1, CallerArgTypes0,
         CallerHeadParams, ExistQVars1, TypeSubn),
 
-    term.apply_rec_substitution_to_list(ExistQTypes1, TypeSubn, ExistQTypes),
+    apply_rec_subst_to_tvar_list(KindMap, TypeSubn, ExistQVars1, ExistQTypes),
     ExistQVars = list.filter_map(
         (func(ExistQType) = ExistQVar is semidet :-
-            ExistQType = term.variable(ExistQVar)
+            ExistQType = variable(ExistQVar, _)
         ), ExistQTypes),
 
-    apply_rec_substitution_to_type_map(VarTypes1, TypeSubn, VarTypes2),
-    term.apply_rec_substitution_to_list(OriginalArgTypes1, TypeSubn,
+    apply_rec_subst_to_type_map(TypeSubn, VarTypes1, VarTypes2),
+    apply_rec_subst_to_type_list(TypeSubn, OriginalArgTypes1,
         OriginalArgTypes),
     proc_info_set_vartypes(VarTypes2, !NewProcInfo),
 
-    term.var_list_to_term_list(ExtraTypeInfoTVars0,
+    % XXX kind inference:
+    % we assume vars have kind `star'.
+    prog_type.var_list_to_type_list(map.init, ExtraTypeInfoTVars0,
         ExtraTypeInfoTVarTypes0),
     (
         ( map.is_empty(TypeSubn)
@@ -2749,12 +2757,19 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
         % callee we may need to bind type variables in the caller.
         list.map(substitute_higher_order_arg(TypeSubn), HOArgs0, HOArgs),
 
-        term.apply_rec_substitution_to_list(ExtraTypeInfoTVarTypes0,
-            TypeSubn, ExtraTypeInfoTVarTypes),
+        apply_rec_subst_to_type_list(TypeSubn, ExtraTypeInfoTVarTypes0,
+            ExtraTypeInfoTVarTypes),
         % The substitution should never bind any of the type variables
         % for which extra type-infos are needed, otherwise it
         % wouldn't be necessary to add them.
-        term.term_list_to_var_list(ExtraTypeInfoTVarTypes, ExtraTypeInfoTVars)
+        (
+            prog_type.type_list_to_var_list(ExtraTypeInfoTVarTypes,
+                ExtraTypeInfoTVars1)
+        ->
+            ExtraTypeInfoTVars = ExtraTypeInfoTVars1
+        ;
+            unexpected(this_file, "create_new_proc: type var got bound")
+        )
     ),
 
     % Add in the extra typeinfo vars.
@@ -2880,8 +2895,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
             type_list_subsumes(OriginalArgTypes,
                 OriginalHeadTypes, ExistentialSubn)
         ->
-            term.apply_rec_substitution_to_list(ExtraHeadVarTypes0,
-                ExistentialSubn, ExtraHeadVarTypes),
+            apply_rec_subst_to_type_list(ExistentialSubn, ExtraHeadVarTypes0,
+                ExtraHeadVarTypes),
             assoc_list.from_corresponding_lists(ExtraHeadVars,
                 ExtraHeadVarTypes, ExtraHeadVarsAndTypes),
             list.foldl(update_var_types, ExtraHeadVarsAndTypes,
@@ -3064,7 +3079,7 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
     (
         VarInfo = type_info_var(TypeInfoType),
         rtti_det_insert_type_info_type(Var, TypeInfoType, !RttiVarMaps),
-        ( prog_type.var(TypeInfoType, TVar) ->
+        ( TypeInfoType = variable(TVar, _) ->
             maybe_set_typeinfo_locn(TVar, type_info(Var), !RttiVarMaps)
         ;
             true
@@ -3087,7 +3102,7 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
-    ( prog_type.var(ConstraintType, ConstraintTVar) ->
+    ( ConstraintType = variable(ConstraintTVar, _) ->
         maybe_set_typeinfo_locn(ConstraintTVar,
             typeclass_info(Var, Index), !RttiVarMaps)
     ;
@@ -3145,8 +3160,7 @@ substitute_higher_order_arg(Subn, !HOArg) :-
     CurriedArgTypes0 = !.HOArg ^ hoa_curry_type_in_caller,
     CurriedRttiTypes0 = !.HOArg ^ hoa_curry_rtti_type,
     CurriedHOArgs0 = !.HOArg ^ hoa_known_curry_args,
-    term.apply_rec_substitution_to_list(CurriedArgTypes0, Subn,
-        CurriedArgTypes),
+    apply_rec_subst_to_type_list(Subn, CurriedArgTypes0, CurriedArgTypes),
     list.map(substitute_rtti_var_info(Subn), CurriedRttiTypes0,
         CurriedRttiTypes),
     list.map(substitute_higher_order_arg(Subn), CurriedHOArgs0, CurriedHOArgs),
@@ -3158,7 +3172,7 @@ substitute_higher_order_arg(Subn, !HOArg) :-
     rtti_var_info::out) is det.
 
 substitute_rtti_var_info(Subn, type_info_var(Type0), type_info_var(Type)) :-
-    term.apply_rec_substitution(Type0, Subn, Type).
+    apply_rec_subst_to_type(Subn, Type0, Type).
 substitute_rtti_var_info(Subn, typeclass_info_var(Constraint0),
         typeclass_info_var(Constraint)) :-
     apply_rec_subst_to_prog_constraint(Subn, Constraint0, Constraint).

@@ -199,10 +199,10 @@
 :- func comparison_result_type = (type).
 :- func aditi_state_type = (type).
 
-	% Construct type_infos and type_ctor_infos for the given types.
+	% Construct the types of type_infos and type_ctor_infos.
 	%
-:- func type_info_type(type) = (type).
-:- func type_ctor_info_type(type) = (type).
+:- func type_info_type = (type).
+:- func type_ctor_info_type = (type).
 
 	% Given a constant and an arity, return a type_ctor.
 	% Fails if the constant is not an atom.
@@ -310,6 +310,7 @@
 	--->	ctor_defn(
 			tvarset,
 			existq_tvars,
+			tvar_kind_map,	% kinds of existq_tvars
 			list(prog_constraint),	% existential constraints
 			list(type),	% functor argument types
 			(type)		% functor result type
@@ -358,18 +359,15 @@
 	% The third argument is a list of type variables which cannot
 	% be bound (i.e. head type variables).
 	%
+	% No kind checking is done, since it is assumed that kind errors
+	% will be picked up elsewhere.
+	%
 :- pred type_unify((type)::in, (type)::in, list(tvar)::in, tsubst::in,
 	tsubst::out) is semidet.
 
 :- pred type_unify_list(list(type)::in, list(type)::in, list(tvar)::in,
 	tsubst::in, tsubst::out) is semidet.
 	
-	% Return a list of the type variables of a type,
-	% ignoring any type variables if the variable in
-	% question is a type-info
-	%
-:- pred type_util__real_vars((type)::in, list(tvar)::out) is det.
-
 	% type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
 	% TypesA subsumes (is more general than) TypesB, producing a
 	% type substitution which when applied to TypesA will give TypesB.
@@ -392,20 +390,24 @@
 	% the callee are bound.
 	%
 :- pred arg_type_list_subsumes(tvarset::in, list(type)::in,
-	tvarset::in, existq_tvars::in, list(type)::in) is semidet.
+	tvarset::in, tvar_kind_map::in, existq_tvars::in,
+	list(type)::in) is semidet.
 
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
 	%
-:- pred apply_substitution_to_type_map(map(prog_var, type)::in, tsubst::in,
-	map(prog_var, type)::out) is det.
+:- pred apply_subst_to_type_map(tsubst::in, vartypes::in, vartypes::out)
+	is det.
 
 	% same thing as above, except for a recursive substitution
 	% (i.e. we keep applying the substitution recursively until
 	% there are no more changes).
 	%
-:- pred apply_rec_substitution_to_type_map(map(prog_var, type)::in, tsubst::in,
-	map(prog_var, type)::out) is det.
+:- pred apply_rec_subst_to_type_map(tsubst::in, vartypes::in, vartypes::out)
+	is det.
+
+:- pred apply_variable_renaming_to_type_map(tvar_renaming::in,
+	vartypes::in, vartypes::out) is det.
 
 :- pred apply_rec_subst_to_constraints(tsubst::in, hlds_constraints::in,
 	hlds_constraints::out) is det.
@@ -437,22 +439,19 @@
 :- pred apply_rec_subst_to_constraint_map(tsubst::in,
 	constraint_map::in, constraint_map::out) is det.
 
-:- pred apply_variable_renaming_to_type_map(map(tvar, tvar)::in,
-	vartypes::in, vartypes::out) is det.
-
-:- pred apply_variable_renaming_to_constraints(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_constraints(tvar_renaming::in,
 	hlds_constraints::in, hlds_constraints::out) is det.
 
-:- pred apply_variable_renaming_to_constraint_list(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_constraint_list(tvar_renaming::in,
 	list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
-:- pred apply_variable_renaming_to_constraint(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_constraint(tvar_renaming::in,
 	hlds_constraint::in, hlds_constraint::out) is det.
 
-:- pred apply_variable_renaming_to_constraint_proofs(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_constraint_proofs(tvar_renaming::in,
 	constraint_proof_map::in, constraint_proof_map::out) is det.
 
-:- pred apply_variable_renaming_to_constraint_map(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_constraint_map(tvar_renaming::in,
 	constraint_map::in, constraint_map::out) is det.
 
 	% Apply a renaming (partial map) to a list.
@@ -517,6 +516,7 @@
 :- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module svmap.
 :- import_module varset.
 
 type_util__type_ctor_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
@@ -813,63 +813,6 @@ type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	TypeBody ^ du_type_is_enum = yes.
 
-% type_to_ctor_and_args(Type, SymName - Arity, Args) :-
-% 	Type \= term__variable(_),
-% 
-% 	% higher order types may have representations where
-% 	% their arguments don't directly correspond to the
-% 	% arguments of the term.
-% 	(
-% 		type_is_higher_order(Type, Purity, PredOrFunc,
-% 			EvalMethod, PredArgTypes)
-% 	->
-% 		Args = PredArgTypes,
-% 		list__length(Args, Arity0),
-% 		adjust_func_arity(PredOrFunc, Arity, Arity0),
-% 		(
-% 			PredOrFunc = predicate,
-% 			PorFStr = "pred"
-% 		;
-% 			PredOrFunc = function,
-% 			PorFStr = "func"
-% 		),
-% 		SymName0 = unqualified(PorFStr),
-% 		(
-% 			EvalMethod = (aditi_bottom_up),
-% 			insert_module_qualifier("aditi_bottom_up", SymName0,
-% 				SymName1)
-% 		;
-% 			EvalMethod = normal,
-% 			SymName1 = SymName0
-% 		),
-% 		(
-% 			Purity = (pure),
-% 			SymName = SymName1
-% 		;
-% 			Purity = (semipure),
-% 			insert_module_qualifier("semipure", SymName1, SymName)
-% 		;
-% 			Purity = (impure),
-% 			insert_module_qualifier("impure", SymName1, SymName)
-% 		)
-% 	;
-% 		sym_name_and_args(Type, SymName, Args),
-% 
-% 		% `private_builtin:constraint' is introduced by polymorphism,
-% 		% and should only appear as the argument of a
-% 		% `typeclass:info/1' type.
-% 		% It behaves sort of like a type variable, so according to the
-% 		% specification of `type_to_ctor_and_args', it should
-% 		% cause failure. There isn't a definition in the type table.
-% 		\+ (
-% 			SymName = qualified(ModuleName, UnqualName),
-% 			UnqualName = "constraint",
-% 			mercury_private_builtin_module(PrivateBuiltin),
-% 			ModuleName = PrivateBuiltin
-% 		),
-% 		list__length(Args, Arity)
-% 	).
-
 canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs) :-
 	(
 		% The arguments of typeclass_info/base_typeclass_info types
@@ -886,57 +829,47 @@ canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs) :-
 		TypeArgs = TypeArgs0
 	).
 
-int_type = Type :-
-	construct_type(unqualified("int") - 0, [], Type).
+int_type = builtin(int).
 
-string_type = Type :-
-	construct_type(unqualified("string") - 0, [], Type).
+string_type = builtin(string).
 
-float_type = Type :-
-	construct_type(unqualified("float") - 0, [], Type).
+float_type = builtin(float).
 
-char_type = Type :-
-	construct_type(unqualified("character") - 0, [], Type).
+char_type = builtin(character).
 
-void_type = Type :-
-	construct_type(unqualified("void") - 0, [], Type).
+void_type = defined(unqualified("void"), [], star).
 
-c_pointer_type = Type :-
+c_pointer_type = defined(Name, [], star) :-
 	mercury_public_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule, "c_pointer") - 0, [], Type).
+	Name = qualified(BuiltinModule, "c_pointer").
 
-heap_pointer_type = Type :-
+heap_pointer_type = defined(Name, [], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule, "heap_pointer") - 0, [], Type).
+	Name = qualified(BuiltinModule, "heap_pointer").
 
-sample_type_info_type = Type :-
+sample_type_info_type = defined(Name, [], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule,
-		"sample_type_info") - 0, [], Type).
+	Name = qualified(BuiltinModule, "sample_type_info").
 
-sample_typeclass_info_type = Type :-
+sample_typeclass_info_type = defined(Name, [], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule,
-		"sample_typeclass_info") - 0, [], Type).
+	Name = qualified(BuiltinModule, "sample_typeclass_info").
 
-comparison_result_type = Type :-
+comparison_result_type = defined(Name, [], star) :-
 	mercury_public_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule,
-		"comparison_result") - 0, [], Type).
+	Name = qualified(BuiltinModule, "comparison_result").
 
-type_info_type(ForType) = Type :-
+type_info_type = defined(Name, [void_type], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule, "type_info") - 1,
-		[ForType], Type).
+	Name = qualified(BuiltinModule, "type_info").
 
-type_ctor_info_type(ForType) = Type :-
+type_ctor_info_type = defined(Name, [void_type], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule, "type_ctor_info") - 1,
-		[ForType], Type).
+	Name = qualified(BuiltinModule, "type_ctor_info").
 
-aditi_state_type = Type :-
+aditi_state_type = defined(Name, [], star) :-
 	aditi_public_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule, "state") - 0, [], Type).
+	Name = qualified(BuiltinModule, "state").
 
 %-----------------------------------------------------------------------------%
 
@@ -1029,10 +962,7 @@ type_util__get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId,
 				Args, _, _),
 			Args \= []
 		->
-			hlds_data__get_type_defn_tparams(TypeDefn,
-				TypeDefnParams),
-			term__term_list_to_var_list(TypeDefnParams,
-				TypeDefnVars),
+			hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 
 			% XXX handle ExistQVars
 			( ExistQVars0 = [] ->
@@ -1048,11 +978,10 @@ type_util__get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId,
 				)
 			),
 
-			map__from_corresponding_lists(TypeDefnVars, TypeArgs,
+			map__from_corresponding_lists(TypeParams, TypeArgs,
 				TSubst),
 			assoc_list__values(Args, ArgTypes0),
-			term__apply_substitution_to_list(ArgTypes0, TSubst,
-				ArgTypes)
+			apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes)
 		;
 			ArgTypes = []
 		)
@@ -1076,12 +1005,11 @@ type_util__cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	% XXX handle ExistQVars
 	ExistQVars0 = [],
 
-	hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
-	term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
+	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 
-	map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
+	map__from_corresponding_lists(TypeParams, TypeArgs, TSubst),
 	assoc_list__values(Args, ArgTypes0),
-	term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes).
+	apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes).
 
 type_util__is_existq_cons(ModuleInfo, VarType, ConsId) :-
 	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, _).
@@ -1106,10 +1034,12 @@ type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
 	type_to_ctor_and_args(VarType, TypeCtor, _),
 	map__lookup(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeVarSet),
-	hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
+	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+	hlds_data__get_type_defn_kind_map(TypeDefn, KindMap),
+	prog_type.var_list_to_type_list(KindMap, TypeParams, TypeCtorArgs),
 	type_to_ctor_and_args(VarType, TypeCtor, _),
-	construct_type(TypeCtor, TypeDefnParams, RetType),
-	CtorDefn = ctor_defn(TypeVarSet, ExistQVars, Constraints,
+	construct_type(TypeCtor, TypeCtorArgs, RetType),
+	CtorDefn = ctor_defn(TypeVarSet, ExistQVars, KindMap, Constraints,
 		ArgTypes, RetType).
 
 type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
@@ -1179,13 +1109,12 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 	type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
 	module_info_no_tag_types(ModuleInfo, NoTagTypes),
 	map__search(NoTagTypes, TypeCtor, NoTagType),
-	NoTagType = no_tag_type(TypeParams0, Ctor, ArgType0),
-	( TypeParams0 = [] ->
+	NoTagType = no_tag_type(TypeParams, Ctor, ArgType0),
+	( TypeParams = [] ->
 		ArgType = ArgType0
 	;
-		term__term_list_to_var_list(TypeParams0, TypeParams),
 		map__from_corresponding_lists(TypeParams, TypeArgs, Subn),
-		term__apply_substitution(ArgType0, Subn, ArgType)
+		apply_subst_to_type(Subn, ArgType0, ArgType)
 	).
 
 type_constructors_are_no_tag_type(Ctors, Ctor, ArgType, MaybeArgName) :-
@@ -1268,11 +1197,10 @@ type_constructors_should_be_no_tag(Ctors, ReserveTagPragma, Globals,
 :- pred substitute_type_args(list(type_param)::in, list(type)::in,
 	list(constructor)::in, list(constructor)::out) is det.
 
-substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
-	( TypeParams0 = [] ->
+substitute_type_args(TypeParams, TypeArgs, Constructors0, Constructors) :-
+	( TypeParams = [] ->
 		Constructors = Constructors0
 	;
-		term__term_list_to_var_list(TypeParams0, TypeParams),
 		map__from_corresponding_lists(TypeParams, TypeArgs, Subst),
 		substitute_type_args_2(Subst, Constructors0, Constructors)
 	).
@@ -1298,7 +1226,7 @@ substitute_type_args_2(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
 
 substitute_type_args_3(_, [], []).
 substitute_type_args_3(Subst, [Name - Arg0 | Args0], [Name - Arg | Args]) :-
-	term__apply_substitution(Arg0, Subst, Arg),
+	apply_subst_to_type(Subst, Arg0, Arg),
 	substitute_type_args_3(Subst, Args0, Args).
 
 %-----------------------------------------------------------------------------%
@@ -1312,7 +1240,7 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	% TypesA subsumes TypesB iff TypesA can be unified with TypesB
 	% without binding any of the type variables in TypesB.
 	%
-	term__vars_list(TypesB, TypesBVars),
+	prog_type__vars_list(TypesB, TypesBVars),
 	map__init(TypeSubst0),
 	type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
 
@@ -1323,20 +1251,23 @@ type_list_subsumes_det(TypesA, TypesB, TypeSubst) :-
 		error("type_list_subsumes_det: type_list_subsumes failed")
 	).
 
-arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
-		CalleeExistQVars0, CalleeArgTypes0) :-
+arg_type_list_subsumes(TVarSet, ActualArgTypes, CalleeTVarSet, PredKindMap,
+		PredExistQVars, PredArgTypes) :-
 
 	%
-	% rename the type variables in the callee's argument types.
+	% Rename the type variables in the callee's argument types.
 	%
-	varset__merge_subst(TVarSet, CalleeTVarSet, _TVarSet1, Subst),
-	term__apply_substitution_to_list(CalleeArgTypes0, Subst,
-				CalleeArgTypes),
-	map__apply_to_list(CalleeExistQVars0, Subst, CalleeExistQTypes0),
+	tvarset_merge_renaming(TVarSet, CalleeTVarSet, _TVarSet1, Renaming),
+	apply_variable_renaming_to_tvar_kind_map(Renaming, PredKindMap,
+		ParentKindMap),
+	apply_variable_renaming_to_type_list(Renaming, PredArgTypes,
+		ParentArgTypes),
+	apply_variable_renaming_to_tvar_list(Renaming, PredExistQVars,
+		ParentExistQVars),
 
 	%
-	% check that the types of the candidate predicate/function
-	% subsume the actual argument types
+	% Check that the types of the candidate predicate/function
+	% subsume the actual argument types.
 	% [This is the right thing to do even for calls to
 	% existentially typed preds, because we're using the
 	% type variables from the callee's pred decl (obtained
@@ -1345,247 +1276,378 @@ arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
 	% clauses_info and proc_info) -- the latter
 	% might not subsume the actual argument types.]
 	%
-	type_list_subsumes(CalleeArgTypes, ArgTypes, TypeSubst),
+	type_list_subsumes(ParentArgTypes, ActualArgTypes,
+		ParentToActualSubst),
 
 	%
-	% check that the type substitution did not bind any
-	% existentially typed variables to non-ground types
+	% Check that the type substitution did not bind any existentially
+	% typed variables to non-ground types.
 	%
-	( CalleeExistQTypes0 = [] ->
-		% optimize common case
+	( ParentExistQVars = [] ->
+		% Optimize common case.
 		true
 	;
-		term__apply_rec_substitution_to_list(CalleeExistQTypes0,
-			TypeSubst, CalleeExistQTypes),
-		all [T] (list__member(T, CalleeExistQTypes) =>
-				prog_type__var(T, _))
+		apply_rec_subst_to_tvar_list(ParentKindMap,
+			ParentToActualSubst, ParentExistQVars,
+			ActualExistQTypes),
+		all [T] (list__member(T, ActualExistQTypes) =>
+				T = variable(_, _))
 
-		% it might make sense to also check that
-		% the type substitution did not bind any
-		% existentially typed variables to universally
-		% quantified type variables in the caller's
-		% argument types
+		% It might make sense to also check that the type
+		% substitution did not bind any existentially typed
+		% variables to universally quantified type variables in
+		% the caller's argument types.
 	).
 
 %-----------------------------------------------------------------------------%
+%
+% Type unification.
+%
 
-	% Types are represented as terms, but we can't just use term__unify
-	% because we need to avoid binding any of the "head type params"
-	% (the type variables that occur in the head of the clause),
-	% and because one day we might want to handle equivalent types.
-
-type_unify(term__variable(X), term__variable(Y), HeadTypeParams,
-		Bindings0, Bindings) :-
-	( list__member(Y, HeadTypeParams) ->
-		type_unify_head_type_param(X, Y, HeadTypeParams,
-			Bindings0, Bindings)
-	; list__member(X, HeadTypeParams) ->
-		type_unify_head_type_param(Y, X, HeadTypeParams,
-			Bindings0, Bindings)
-	; map__search(Bindings0, X, BindingOfX) ->
-		( map__search(Bindings0, Y, BindingOfY) ->
-			% both X and Y already have bindings - just
-			% unify the types they are bound to
-			type_unify(BindingOfX, BindingOfY, HeadTypeParams,
-					Bindings0, Bindings)
-		;
-			term__apply_rec_substitution(BindingOfX,
-				Bindings0, SubstBindingOfX),
-			% Y is a type variable which hasn't been bound yet
-			( SubstBindingOfX = term__variable(Y) ->
-				Bindings = Bindings0
-			;
-				\+ term__occurs(SubstBindingOfX, Y,
-					Bindings0),
-				map__det_insert(Bindings0, Y, SubstBindingOfX,
-					Bindings)
-			)
-		)
-	;
-		( map__search(Bindings0, Y, BindingOfY) ->
-			term__apply_rec_substitution(BindingOfY,
-				Bindings0, SubstBindingOfY),
-			% X is a type variable which hasn't been bound yet
-			( SubstBindingOfY = term__variable(X) ->
-				Bindings = Bindings0
-			;
-				\+ term__occurs(SubstBindingOfY, X,
-					Bindings0),
-				map__det_insert(Bindings0, X, SubstBindingOfY,
-					Bindings)
-			)
-		;
-			% both X and Y are unbound type variables -
-			% bind one to the other
-			( X = Y ->
-				Bindings = Bindings0
-			;
-				map__det_insert(Bindings0, X,
-					term__variable(Y), Bindings)
-			)
-		)
-	).
-
-type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams,
-		Bindings0, Bindings) :-
+type_unify(X, Y, HeadTypeParams, !Bindings) :-
 	(
-		map__search(Bindings0, X, BindingOfX)
+		X = variable(VarX, _)
 	->
-		type_unify(BindingOfX, term__functor(F, As, C),
-			HeadTypeParams, Bindings0, Bindings)
+		type_unify_var(VarX, Y, HeadTypeParams, !Bindings)
 	;
-		\+ term__occurs_list(As, X, Bindings0),
-		\+ list__member(X, HeadTypeParams),
-		map__det_insert(Bindings0, X, term__functor(F, As, C),
-			Bindings)
+		Y = variable(VarY, _)
+	->
+		type_unify_var(VarY, X, HeadTypeParams, !Bindings)
+	;
+		type_unify_nonvar(X, Y, HeadTypeParams, !Bindings)
+	->
+		true
+	;
+		% Some special cases are not handled above.  We handle them
+		% separately here.
+		type_unify_special(X, Y, HeadTypeParams, !Bindings)
 	).
 
-type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
-		Bindings0, Bindings) :-
-	(
-		map__search(Bindings0, X, BindingOfX)
-	->
-		type_unify(term__functor(F, As, C), BindingOfX,
-			HeadTypeParams, Bindings0, Bindings)
-	;
-		\+ term__occurs_list(As, X, Bindings0),
-		\+ list__member(X, HeadTypeParams),
-		map__det_insert(Bindings0, X, term__functor(F, As, C),
-			Bindings)
-	).
-
-type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
-		HeadTypeParams, Bindings0, Bindings) :-
-	list__length(AsX, ArityX),
-	list__length(AsY, ArityY),
-	(
-		FX = FY,
-		ArityX = ArityY
-	->
-		type_unify_list(AsX, AsY, HeadTypeParams, Bindings0, Bindings)
-	;
-		fail
-	).
-
-	% XXX Instead of just failing if the functors' name/arity is different,
-	% we should check here if these types have been defined
-	% to be equivalent using equivalence types.  But this
-	% is difficult because the relevant variable
-	% TypeTable hasn't been passed in to here.
-
-/*******
-	...
-	;
-		replace_eqv_type(FX, ArityX, AsX, EqvType)
-	->
-		type_unify(EqvType, term__functor(FY, AsY, CY),
-			HeadTypeParams, Bindings0, Bindings)
-	;
-		replace_eqv_type(FY, ArityY, AsY, EqvType)
-	->
-		type_unify(term__functor(FX, AsX, CX), EqvType,
-			HeadTypeParams, Bindings0, Bindings)
-	;
-		fail
-	).
-
-:- pred replace_eqv_type(const::in, int::in, list(type)::in, (type)::out)
-	is semidet.
-
-replace_eqv_type(Functor, Arity, Args, EqvType) :-
-
-	% XXX magically_obtain(TypeTable)
-
-	make_type_ctor(Functor, Arity, TypeCtor),
-	map__search(TypeTable, TypeCtor, TypeDefn),
-	get_type_defn_body(TypeDefn, TypeBody),
-	TypeBody = eqv_type(EqvType0),
-	get_type_defn_tparams(TypeDefn, TypeParams0),
-	type_param_to_var_list(TypeParams0, TypeParams),
-	term__substitute_corresponding(EqvType0, TypeParams, AsX,
-		EqvType).
-
-******/
-
-type_unify_list([], [], _) --> [].
-type_unify_list([X | Xs], [Y | Ys], HeadTypeParams) -->
-	type_unify(X, Y, HeadTypeParams),
-	type_unify_list(Xs, Ys, HeadTypeParams).
-
-:- pred type_unify_head_type_param(tvar::in, tvar::in, list(tvar)::in,
+:- pred type_unify_var(tvar::in, (type)::in, list(tvar)::in,
 	tsubst::in, tsubst::out) is semidet.
 
-type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
-		Bindings) :-
-	( map__search(Bindings0, Var, BindingOfVar) ->
-		BindingOfVar = term__variable(Var2),
-		type_unify_head_type_param(Var2, HeadVar, HeadTypeParams,
-			Bindings0, Bindings)
+type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings) :-
+	(
+		TypeY = variable(VarY, KindY)
+	->
+		type_unify_var_var(VarX, VarY, KindY, HeadTypeParams,
+			!Bindings)
 	;
-		( Var = HeadVar ->
-			Bindings = Bindings0
+		map.search(!.Bindings, VarX, BindingOfX)
+	->
+		% VarX has a binding.  Y is not a variable.
+		type_unify(BindingOfX, TypeY, HeadTypeParams, !Bindings)
+	;
+		% VarX has no binding, so bind it to TypeY.
+		\+ type_occurs(TypeY, VarX, !.Bindings),
+		\+ list.member(VarX, HeadTypeParams),
+		svmap.det_insert(VarX, TypeY, !Bindings)
+	).
+
+:- pred type_unify_var_var(tvar::in, tvar::in, kind::in, list(tvar)::in,
+	tsubst::in, tsubst::out) is semidet.
+
+type_unify_var_var(X, Y, Kind, HeadTypeParams, !Bindings) :-
+	(
+		list.member(Y, HeadTypeParams)
+	->
+		type_unify_head_type_param(X, Y, Kind, HeadTypeParams,
+			!Bindings)
+	;
+		list.member(X, HeadTypeParams)
+	->
+		type_unify_head_type_param(Y, X, Kind, HeadTypeParams,
+			!Bindings)
+	;
+		map.search(!.Bindings, X, BindingOfX)
+	->
+		(
+			map.search(!.Bindings, Y, BindingOfY)
+		->
+			% Both X and Y already have bindings - just unify the
+			% types they are bound to.
+			type_unify(BindingOfX, BindingOfY, HeadTypeParams,
+				!Bindings)
 		;
-			\+ list__member(Var, HeadTypeParams),
-			map__det_insert(Bindings0, Var,
-				term__variable(HeadVar), Bindings)
+			% Y hasn't been bound yet.
+			apply_rec_subst_to_type(!.Bindings, BindingOfX,
+				SubstBindingOfX),
+			(
+				SubstBindingOfX = variable(Y, _)
+			->
+				true
+			;
+				\+ type_occurs(SubstBindingOfX, Y, !.Bindings),
+				svmap.det_insert(Y, SubstBindingOfX, !Bindings)
+			)
+		)
+	;
+		% Neither X nor Y is a head type param.  X had not been
+		% bound yet.
+		(
+			map.search(!.Bindings, Y, BindingOfY)
+		->
+			apply_rec_subst_to_type(!.Bindings, BindingOfY,
+				SubstBindingOfY),
+			(
+				SubstBindingOfY = variable(X, _)
+			->
+				true
+			;
+				\+ type_occurs(SubstBindingOfY, X, !.Bindings),
+				svmap.det_insert(X, SubstBindingOfY, !Bindings)
+			)
+		;
+			% Both X and Y are unbound type variables - bind one
+			% to the other.
+			(
+				X = Y
+			->
+				true
+			;
+				svmap.det_insert(X, variable(Y, Kind),
+					!Bindings)
+			)
 		)
 	).
 
-%-----------------------------------------------------------------------------%
+:- pred type_unify_head_type_param(tvar::in, tvar::in, kind::in,
+	list(tvar)::in, tsubst::in, tsubst::out) is semidet.
 
-type_util__real_vars(Type, Tvars) :-
-	( is_introduced_type_info_type(Type) ->
-		% for these types, we don't add the type parameters
-		Tvars = []
+type_unify_head_type_param(Var, HeadVar, Kind, HeadTypeParams, !Bindings) :-
+	( map.search(!.Bindings, Var, BindingOfVar) ->
+		BindingOfVar = variable(Var2, _),
+		type_unify_head_type_param(Var2, HeadVar, Kind, HeadTypeParams,
+			!Bindings)
 	;
-		prog_type__vars(Type, Tvars)
+		( Var = HeadVar ->
+			true
+		;
+			\+ list.member(Var, HeadTypeParams),
+			svmap.det_insert(Var, variable(HeadVar, Kind),
+				!Bindings)
+		)
+	).
+
+	% Unify two types, neither of which are variables.  Two special cases
+	% which are not handled here are apply_n types and kinded types.
+	% Those are handled below.
+	%
+:- pred type_unify_nonvar((type)::in, (type)::in, list(tvar)::in,
+	tsubst::in, tsubst::out) is semidet.
+
+type_unify_nonvar(defined(SymName, ArgsX, _), defined(SymName, ArgsY, _),
+		HeadTypeParams, !Bindings) :-
+	% Instead of insisting that the names are equal and the arg lists
+	% unify, we should consider attempting to expand equivalence types
+	% first.  That would require the type table to be passed in to the
+	% unification algorithm, though.
+	type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings).
+type_unify_nonvar(builtin(BuiltinType), builtin(BuiltinType), _, !Bindings).
+type_unify_nonvar(higher_order(ArgsX, no, Purity, EvalMethod),
+		higher_order(ArgsY, no, Purity, EvalMethod),
+		HeadTypeParams, !Bindings) :-
+	type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings).
+type_unify_nonvar(higher_order(ArgsX, yes(RetX), Purity, EvalMethod),
+		higher_order(ArgsY, yes(RetY), Purity, EvalMethod),
+		HeadTypeParams, !Bindings) :-
+	type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings),
+	type_unify(RetX, RetY, HeadTypeParams, !Bindings).
+type_unify_nonvar(tuple(ArgsX, _), tuple(ArgsY, _), HeadTypeParams,
+		!Bindings) :-
+	type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings).
+
+	% Handle apply_n types and kinded types.
+	%
+:- pred type_unify_special((type)::in, (type)::in, list(tvar)::in,
+	tsubst::in, tsubst::out) is semidet.
+
+type_unify_special(X, Y, HeadTypeParams, !Bindings) :-
+	(
+		X = apply_n(VarX, ArgsX, _)
+	->
+		type_unify_apply(Y, VarX, ArgsX, HeadTypeParams, !Bindings)
+	;
+		Y = apply_n(VarY, ArgsY, _)
+	->
+		type_unify_apply(X, VarY, ArgsY, HeadTypeParams, !Bindings)
+	;
+		X = kinded(RawX, _)
+	->
+		(
+			Y = kinded(RawY, _)
+		->
+			type_unify(RawX, RawY, HeadTypeParams, !Bindings)
+		;
+			type_unify(RawX, Y, HeadTypeParams, !Bindings)
+		)
+	;
+		Y = kinded(RawY, _)
+	->
+		type_unify(X, RawY, HeadTypeParams, !Bindings)
+	;
+		fail
+	).
+
+	% The idea here is that we try to strip off arguments from Y starting
+	% from the end and unify each with the corresponding argument of X.
+	% If we reach an atomic type before the arguments run out then we
+	% fail.  If we reach a variable before the arguments run out then we
+	% unify it with what remains of the apply_n expression.  If we manage
+	% to unify all of the arguments then we unify the apply_n variable
+	% with what remains of the other expression.
+	%
+	% Note that Y is not a variable, since that case would have been
+	% caught by type_unify.
+	%
+:- pred type_unify_apply((type)::in, tvar::in, list(type)::in, list(tvar)::in,
+	tsubst::in, tsubst::out) is semidet.
+
+type_unify_apply(defined(NameY, ArgsY0, KindY0), VarX, ArgsX, HeadTypeParams,
+		!Bindings) :-
+	type_unify_args(ArgsX, ArgsY0, ArgsY, KindY0, KindY, HeadTypeParams,
+		!Bindings),
+	type_unify_var(VarX, defined(NameY, ArgsY, KindY), HeadTypeParams,
+		!Bindings).
+type_unify_apply(Type @ builtin(_), VarX, [], HeadTypeParams, !Bindings) :-
+	type_unify_var(VarX, Type, HeadTypeParams, !Bindings).
+type_unify_apply(Type @ higher_order(_, _, _, _), VarX, [], HeadTypeParams,
+		!Bindings) :-
+	type_unify_var(VarX, Type, HeadTypeParams, !Bindings).
+type_unify_apply(tuple(ArgsY0, KindY0), VarX, ArgsX, HeadTypeParams,
+		!Bindings) :-
+	type_unify_args(ArgsX, ArgsY0, ArgsY, KindY0, KindY, HeadTypeParams,
+		!Bindings),
+	type_unify_var(VarX, tuple(ArgsY, KindY), HeadTypeParams, !Bindings).
+type_unify_apply(apply_n(VarY, ArgsY0, Kind0), VarX, ArgsX0, HeadTypeParams,
+		!Bindings) :-
+	list.length(ArgsX0, NArgsX0),
+	list.length(ArgsY0, NArgsY0),
+	compare(Result, NArgsX0, NArgsY0),
+	(
+		Result = (<),
+		type_unify_args(ArgsX0, ArgsY0, ArgsY, Kind0, Kind,
+			HeadTypeParams, !Bindings),
+		type_unify_var(VarX, apply_n(VarY, ArgsY, Kind),
+			HeadTypeParams, !Bindings)
+	;
+		Result = (=),
+		% We know here that the list of remaining args will be empty.
+		type_unify_args(ArgsX0, ArgsY0, _, Kind0, Kind, HeadTypeParams,
+			!Bindings),
+		type_unify_var_var(VarX, VarY, Kind, HeadTypeParams, !Bindings)
+	;
+		Result = (>),
+		type_unify_args(ArgsY0, ArgsX0, ArgsX, Kind0, Kind,
+			HeadTypeParams, !Bindings),
+		type_unify_var(VarY, apply_n(VarX, ArgsX, Kind),
+			HeadTypeParams, !Bindings)
+	).
+type_unify_apply(kinded(RawY, _), VarX, ArgsX, HeadTypeParams, !Bindings) :-
+	type_unify_apply(RawY, VarX, ArgsX, HeadTypeParams, !Bindings).
+
+:- pred type_unify_args(list(type)::in, list(type)::in, list(type)::out,
+	kind::in, kind::out, list(tvar)::in, tsubst::in, tsubst::out)
+	is semidet.
+
+type_unify_args(ArgsX, ArgsY0, ArgsY, KindY0, KindY, HeadTypeParams,
+		!Bindings) :-
+	list.reverse(ArgsX, RevArgsX),
+	list.reverse(ArgsY0, RevArgsY0),
+	type_unify_rev_args(RevArgsX, RevArgsY0, RevArgsY, KindY0, KindY,
+		HeadTypeParams, !Bindings),
+	list.reverse(RevArgsY, ArgsY).
+
+:- pred type_unify_rev_args(list(type)::in, list(type)::in, list(type)::out,
+	kind::in, kind::out, list(tvar)::in, tsubst::in, tsubst::out)
+	is semidet.
+
+type_unify_rev_args([], ArgsY, ArgsY, KindY, KindY, _, !Bindings).
+type_unify_rev_args([ArgX | ArgsX], [ArgY0 | ArgsY0], ArgsY, KindY0, KindY,
+		HeadTypeParams, !Bindings) :-
+	type_unify(ArgX, ArgY0, HeadTypeParams, !Bindings),
+	KindY1 = arrow(get_type_kind(ArgY0), KindY0),
+	type_unify_rev_args(ArgsX, ArgsY0, ArgsY, KindY1, KindY,
+		HeadTypeParams, !Bindings).
+
+type_unify_list([], [], _HeadTypeParams, !Bindings).
+type_unify_list([X | Xs], [Y | Ys], HeadTypeParams, !Bindings) :-
+	type_unify(X, Y, HeadTypeParams, !Bindings),
+	type_unify_list(Xs, Ys, HeadTypeParams, !Bindings).
+
+	% type_occurs(Type, Var, Subst) succeeds iff Type contains Var,
+	% perhaps indirectly via the substitution.  (The variable must not
+	% be mapped by the substitution.)
+	%
+:- pred type_occurs((type)::in, tvar::in, tsubst::in) is semidet.
+
+type_occurs(variable(X, _), Y, Bindings) :-
+	( X = Y ->
+		true
+	;
+		map.search(Bindings, X, BindingOfX),
+		type_occurs(BindingOfX, Y, Bindings)
+	).
+type_occurs(defined(_, Args, _), Y, Bindings) :-
+	type_occurs_list(Args, Y, Bindings).
+type_occurs(higher_order(Args, MaybeRet, _, _), Y, Bindings) :-
+	(
+		type_occurs_list(Args, Y, Bindings)
+	;
+		MaybeRet = yes(Ret),
+		type_occurs(Ret, Y, Bindings)
+	).
+type_occurs(tuple(Args, _), Y, Bindings) :-
+	type_occurs_list(Args, Y, Bindings).
+type_occurs(apply_n(X, Args, _), Y, Bindings) :-
+	(
+		X = Y
+	;
+		type_occurs_list(Args, Y, Bindings)
+	;
+		map.search(Bindings, X, BindingOfX),
+		type_occurs(BindingOfX, Y, Bindings)
+	).
+type_occurs(kinded(X, _), Y, Bindings) :-
+	type_occurs(X, Y, Bindings).
+
+:- pred type_occurs_list(list(type)::in, tvar::in, tsubst::in) is semidet.
+
+type_occurs_list([X | Xs], Y,  Bindings) :-
+	(
+		type_occurs(X, Y, Bindings)
+	;
+		type_occurs_list(Xs, Y, Bindings)
 	).
 
 %-----------------------------------------------------------------------------%
 
-apply_substitution_to_type_map(VarTypes0, Subst, VarTypes) :-
-	% optimize the common case of an empty type substitution
-	( map__is_empty(Subst) ->
-		VarTypes = VarTypes0
-	;
-		map__keys(VarTypes0, Vars),
-		apply_substitution_to_type_map_2(Vars, VarTypes0, Subst,
-			VarTypes)
-	).
+apply_subst_to_type_map(Subst, !VarTypes) :-
+	map__map_values(apply_subst_to_type_map_2(Subst), !VarTypes).
 
-:- pred apply_substitution_to_type_map_2(list(prog_var)::in,
-	map(prog_var, type)::in, tsubst::in, map(prog_var, type)::out) is det.
+:- pred apply_subst_to_type_map_2(tsubst::in, prog_var::in,
+	(type)::in, (type)::out) is det.
 
-apply_substitution_to_type_map_2([], VarTypes, _Subst, VarTypes).
-apply_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
-		VarTypes) :-
-	map__lookup(VarTypes0, Var, VarType0),
-	term__apply_substitution(VarType0, Subst, VarType),
-	map__det_update(VarTypes0, Var, VarType, VarTypes1),
-	apply_substitution_to_type_map_2(Vars, VarTypes1, Subst, VarTypes).
+apply_subst_to_type_map_2(Subst, _, !Type) :-
+	apply_subst_to_type(Subst, !Type).
 
-%-----------------------------------------------------------------------------%
+apply_rec_subst_to_type_map(Subst, !VarTypes) :-
+	map__map_values(apply_rec_subst_to_type_map_2(Subst), !VarTypes).
 
-apply_rec_substitution_to_type_map(VarTypes0, Subst, VarTypes) :-
-	% optimize the common case of an empty type substitution
-	( map__is_empty(Subst) ->
-		VarTypes = VarTypes0
-	;
-		map__keys(VarTypes0, Vars),
-		apply_rec_substitution_to_type_map_2(Vars, VarTypes0, Subst,
-			VarTypes)
-	).
+:- pred apply_rec_subst_to_type_map_2(tsubst::in, prog_var::in,
+	(type)::in, (type)::out) is det.
 
-:- pred apply_rec_substitution_to_type_map_2(list(prog_var)::in,
-	map(prog_var, type)::in, tsubst::in, map(prog_var, type)::out) is det.
+apply_rec_subst_to_type_map_2(Subst, _, !Type) :-
+	apply_rec_subst_to_type(Subst, !Type).
 
-apply_rec_substitution_to_type_map_2([], VarTypes, _Subst, VarTypes).
-apply_rec_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
-		VarTypes) :-
-	map__lookup(VarTypes0, Var, VarType0),
-	term__apply_rec_substitution(VarType0, Subst, VarType),
-	map__det_update(VarTypes0, Var, VarType, VarTypes1),
-	apply_rec_substitution_to_type_map_2(Vars, VarTypes1, Subst, VarTypes).
+apply_variable_renaming_to_type_map(Renaming, !Map) :-
+	map__map_values(apply_variable_renaming_to_type_map_2(Renaming), !Map).
+
+:- pred apply_variable_renaming_to_type_map_2(tvar_renaming::in, prog_var::in,
+	(type)::in, (type)::out) is det.
+
+apply_variable_renaming_to_type_map_2(Renaming, _, !Type) :-
+	apply_variable_renaming_to_type(Renaming, !Type).
 
 %-----------------------------------------------------------------------------%
 
@@ -1604,7 +1666,7 @@ apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
 
 apply_rec_subst_to_constraint(Subst, !Constraint) :-
 	!.Constraint = constraint(Ids, Name, Types0),
-	term.apply_rec_substitution_to_list(Types0, Subst, Types),
+	apply_rec_subst_to_type_list(Subst, Types0, Types),
 	!:Constraint = constraint(Ids, Name, Types).
 
 apply_subst_to_constraints(Subst, !Constraints) :-
@@ -1622,7 +1684,7 @@ apply_subst_to_constraint_list(Subst, Constraints0, Constraints) :-
 
 apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(Ids, ClassName, Types0),
-	term__apply_substitution_to_list(Types0, Subst, Types),
+	apply_subst_to_type_list(Subst, Types0, Types),
 	Constraint  = constraint(Ids, ClassName, Types).
 
 apply_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
@@ -1685,12 +1747,6 @@ apply_rec_subst_to_constraint_map(Subst, !ConstraintMap) :-
 apply_rec_subst_to_constraint_map_2(Subst, _Key, !Value) :-
 	apply_rec_subst_to_prog_constraint(Subst, !Value).
 
-apply_variable_renaming_to_type_map(Renaming, Map0, Map) :-
-	map__map_values(
-		(pred(_::in, Type0::in, Type::out) is det :-
-			term__apply_variable_renaming(Type0, Renaming, Type)
-		), Map0, Map).
-
 apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
 	!.Constraints = constraints(Unproven0, Assumed0, Redundant0),
 	apply_variable_renaming_to_constraint_list(Renaming, Unproven0,
@@ -1709,8 +1765,8 @@ apply_variable_renaming_to_constraint_list(Renaming, !Constraints) :-
 
 apply_variable_renaming_to_constraint(Renaming, Constraint0, Constraint) :-
 	Constraint0 = constraint(Ids, ClassName, ClassArgTypes0),
-	term__apply_variable_renaming_to_list(ClassArgTypes0,
-		Renaming, ClassArgTypes),
+	apply_variable_renaming_to_type_list(Renaming, ClassArgTypes0,
+		ClassArgTypes),
 	Constraint = constraint(Ids, ClassName, ClassArgTypes).
 
 apply_variable_renaming_to_constraint_proofs(Renaming, Proofs0, Proofs) :-
@@ -1728,7 +1784,7 @@ apply_variable_renaming_to_constraint_proofs(Renaming, Proofs0, Proofs) :-
 
 	% Apply a type variable renaming to a class constraint proof.
 	%
-:- pred rename_constraint_proof(map(tvar, tvar)::in, constraint_proof::in,
+:- pred rename_constraint_proof(tvar_renaming::in, constraint_proof::in,
 	constraint_proof::out) is det.
 
 rename_constraint_proof(_TSubst, apply_instance(Num), apply_instance(Num)).
@@ -1741,7 +1797,7 @@ apply_variable_renaming_to_constraint_map(Renaming, !ConstraintMap) :-
 	map__map_values(apply_variable_renaming_to_constraint_map_2(Renaming),
 		!ConstraintMap).
 
-:- pred apply_variable_renaming_to_constraint_map_2(map(tvar, tvar)::in,
+:- pred apply_variable_renaming_to_constraint_map_2(tvar_renaming::in,
 	constraint_id::in, prog_constraint::in, prog_constraint::out) is det.
 
 apply_variable_renaming_to_constraint_map_2(Renaming, _Key, !Value) :-
@@ -1769,8 +1825,8 @@ cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
 		type_util__get_existq_cons_defn(ModuleInfo, Type, ConsId,
 			ConsDefn)
 	->
-		ConsDefn = ctor_defn(_TVarSet, ExistQTVars, Constraints,
-				_ArgTypes, _ResultType),
+		ConsDefn = ctor_defn(_TVarSet, ExistQTVars, _KindMap,
+				Constraints, _ArgTypes, _ResultType),
 		list__length(Constraints, NumTypeClassInfos),
 		constraint_list_get_tvars(Constraints, ConstrainedTVars),
 		list__delete_elems(ExistQTVars, ConstrainedTVars,

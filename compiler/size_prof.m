@@ -856,7 +856,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
             construct_type_info(Context, Type, TypeCtor, ArgTypes,
                 no, TypeInfoVar, TypeInfoGoals, !Info)
         )
-    ; Type = term__variable(TVar) ->
+    ; Type = variable(TVar, _) ->
         rtti_lookup_type_info_locn(!.Info ^ rtti_varmaps, TVar, TVarLocn),
         (
             TVarLocn = type_info(TypeInfoVar),
@@ -1126,7 +1126,9 @@ record_known_size(Var, KnownSize, !Info) :-
 
 record_typeinfo_in_type_info_varmap(RttiVarMaps, TVar, !Info) :-
     rtti_lookup_type_info_locn(RttiVarMaps, TVar, TypeInfoLocn),
-    Type = term__variable(TVar),
+    % XXX kind inference:
+    % we assume the kind is `star'.
+    Type = variable(TVar, star),
     (
         TypeInfoLocn = type_info(TypeInfoVar),
         record_type_info_var(Type, TypeInfoVar, !Info)

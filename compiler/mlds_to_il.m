@@ -1165,9 +1165,8 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember,
 			)
 		),
 
-		construct_qualified_term(
-			qualified(unqualified("std_util"), "univ"),
-			[], UnivMercuryType),
+		UnivSymName = qualified(unqualified("std_util"), "univ"),
+		UnivMercuryType = defined(UnivSymName, [], star),
 		UnivMLDSType = mercury_type(UnivMercuryType,
 			user_ctor_type, non_foreign_type(UnivMercuryType)),
 		UnivType = mlds_type_to_ilds_type(DataRep, UnivMLDSType),
@@ -3662,18 +3661,18 @@ rval_const_to_type(code_addr_const(_)) = mlds__func_type(
 		mlds__func_params([], [])).
 rval_const_to_type(int_const(_))
 	= mercury_type(IntType, int_type, non_foreign_type(IntType)) :-
-	IntType = term__functor(term__atom("int"), [], context("", 0)).
+	IntType = builtin(int).
 rval_const_to_type(float_const(_))
 	= mercury_type(FloatType, float_type, non_foreign_type(FloatType)) :-
-	FloatType = term__functor(term__atom("float"), [], context("", 0)).
+	FloatType = builtin(float).
 rval_const_to_type(false) = mlds__native_bool_type.
 rval_const_to_type(true) = mlds__native_bool_type.
 rval_const_to_type(string_const(_))
 	= mercury_type(StrType, str_type, non_foreign_type(StrType)) :-
-	StrType = term__functor(term__atom("string"), [], context("", 0)).
+	StrType = builtin(string).
 rval_const_to_type(multi_string_const(_, _))
 	= mercury_type(StrType, str_type, non_foreign_type(StrType)) :-
-	StrType = term__functor(term__atom("string"), [], context("", 0)).
+	StrType = builtin(string).
 rval_const_to_type(null(MldsType)) = MldsType.
 
 %-----------------------------------------------------------------------------%

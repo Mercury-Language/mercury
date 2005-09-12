@@ -27,6 +27,7 @@
 :- implementation.
 
 :- import_module check_hlds__type_util.
+:- import_module parse_tree__prog_type.
 
 :- import_module int.
 :- import_module svmulti_map.
@@ -121,12 +122,13 @@
 :- type hlds_type_defn.
 
 :- pred hlds_data__set_type_defn(tvarset::in, list(type_param)::in,
-	hlds_type_body::in, import_status::in, bool::in, need_qualifier::in,
-	prog_context::in, hlds_type_defn::out) is det.
+	tvar_kind_map::in, hlds_type_body::in, import_status::in, bool::in,
+	need_qualifier::in, prog_context::in, hlds_type_defn::out) is det.
 
 :- pred get_type_defn_tvarset(hlds_type_defn::in, tvarset::out) is det.
 :- pred get_type_defn_tparams(hlds_type_defn::in, list(type_param)::out)
 	is det.
+:- pred get_type_defn_kind_map(hlds_type_defn::in, tvar_kind_map::out) is det.
 :- pred get_type_defn_body(hlds_type_defn::in, hlds_type_body::out) is det.
 :- pred get_type_defn_status(hlds_type_defn::in, import_status::out) is det.
 :- pred get_type_defn_in_exported_eqv(hlds_type_defn::in, bool::out) is det.
@@ -397,6 +399,8 @@ get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
 					% Names of the type variables, if any.
 		type_defn_params	:: list(type_param),
 					% Formal type parameters.
+		type_defn_kinds		:: tvar_kind_map,
+					% Kinds of the formal parameters.
 		type_defn_body		:: hlds_type_body,
 					% The definition of the type.
 
@@ -439,13 +443,14 @@ get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
 					% source code
 	).
 
-hlds_data__set_type_defn(Tvarset, Params, Body, Status,
-		InExportedEqv, NeedQual, Context, Defn) :-
-	Defn = hlds_type_defn(Tvarset, Params, Body, Status, InExportedEqv,
-		NeedQual, Context).
+hlds_data__set_type_defn(Tvarset, Params, Kinds, Body, Status, InExportedEqv,
+		NeedQual, Context, Defn) :-
+	Defn = hlds_type_defn(Tvarset, Params, Kinds, Body, Status,
+		InExportedEqv, NeedQual, Context).
 
 get_type_defn_tvarset(Defn, Defn ^ type_defn_tvarset).
 get_type_defn_tparams(Defn, Defn ^ type_defn_params).
+get_type_defn_kind_map(Defn, Defn ^ type_defn_kinds).
 get_type_defn_body(Defn, Defn ^ type_defn_body).
 get_type_defn_status(Defn, Defn ^ type_defn_import_status).
 get_type_defn_in_exported_eqv(Defn, Defn ^ type_defn_in_exported_eqv).
@@ -809,6 +814,8 @@ determinism_components(failure,     can_fail,    at_most_zero).
 					% on them.
 		class_vars		:: list(tvar),
 					% ClassVars
+		class_kinds		:: tvar_kind_map,
+					% Kinds of class_vars.
 		class_interface		:: class_interface,
 					% The interface from the
 					% original declaration,
@@ -1210,13 +1217,11 @@ update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
 			% on class declarations can only use variables that
 			% appear in the head of the declaration.)
 			%
-		varset.merge_subst(TVarSet, ClassTVarSet, _, RenameSubst),
-		apply_subst_to_constraint_list(RenameSubst, ClassAncestors,
-			RenamedAncestors),
-		term.var_list_to_term_list(ClassParams, ClassParamTerms),
-		term.apply_substitution_to_list(ClassParamTerms, RenameSubst,
-			RenamedParamTerms),
-		term.term_list_to_var_list(RenamedParamTerms, RenamedParams),
+		tvarset_merge_renaming(TVarSet, ClassTVarSet, _, Renaming),
+		apply_variable_renaming_to_constraint_list(Renaming,
+			ClassAncestors, RenamedAncestors),
+		apply_variable_renaming_to_tvar_list(Renaming, ClassParams,
+			RenamedParams),
 		map.from_corresponding_lists(RenamedParams, Args, Subst),
 		apply_subst_to_constraint_list(Subst, RenamedAncestors,
 			Ancestors),

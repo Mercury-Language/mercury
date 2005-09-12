@@ -305,7 +305,7 @@ post_typecheck__check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs,
 
 check_type_bindings_2([], _, !Errs, !Set).
 check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams, !Errs, !Set) :-
-	term__vars(Type, TVars),
+	prog_type__vars(Type, TVars),
 	set__list_to_set(TVars, TVarsSet0),
 	set__delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
 	( \+ set__empty(TVarsSet1) ->
@@ -319,37 +319,25 @@ check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams, !Errs, !Set) :-
 %
 % bind all the type variables in `UnboundTypeVarsSet' to the type `void' ...
 %
-:- pred bind_type_vars_to_void(set(tvar)::in,
-	map(prog_var, type)::in, map(prog_var, type)::out,
+:- pred bind_type_vars_to_void(set(tvar)::in, vartypes::in, vartypes::out,
 	constraint_proof_map::in, constraint_proof_map::out,
 	constraint_map::in, constraint_map::out) is det.
 
 bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypesMap, !Proofs,
 		!ConstraintMap) :-
 	%
-	% first create a pair of corresponding lists (UnboundTypeVars, Voids)
-	% that map the unbound type variables to void
+	% Create a substitution that maps all of the unbound type variables
+	% to `void'.
 	%
-	set__to_sorted_list(UnboundTypeVarsSet, UnboundTypeVars),
-	list__length(UnboundTypeVars, Length),
-	list__duplicate(Length, void_type, Voids),
+	MapToVoid = (pred(TVar::in, Subst0::in, Subst::out) is det :-
+			map__det_insert(Subst0, TVar, void_type, Subst)
+		),
+	set__fold(MapToVoid, UnboundTypeVarsSet, map__init, VoidSubst),
 
 	%
-	% then create a *substitution* that maps the
-	% unbound type variables to void.
+	% Then apply the substitution we just created to the various maps.
 	%
-	map__from_corresponding_lists(UnboundTypeVars, Voids, VoidSubst),
-
-	%
-	% then apply the substitutions we just created to the variable types
-	% and constraint proofs
-	%
-	map__keys(!.VarTypesMap, Vars),
-	map__values(!.VarTypesMap, Types0),
-	term__substitute_corresponding_list(UnboundTypeVars, Voids,
-		Types0, Types),
-	map__from_corresponding_lists(Vars, Types, !:VarTypesMap),
-
+	apply_subst_to_type_map(VoidSubst, !VarTypesMap),
 	apply_subst_to_constraint_proofs(VoidSubst, !Proofs),
 	apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
 
@@ -436,15 +424,15 @@ report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet) -->
 :- pred write_type_var_list(assoc_list(prog_var, (type))::in, prog_context::in,
 	prog_varset::in, tvarset::in, io::di, io::uo) is det.
 
-write_type_var_list([], _, _, _) --> [].
-write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet) -->
-	prog_out__write_context(Context),
-	io__write_string("      "),
-	mercury_output_var(Var, VarSet, no),
-	io__write_string(": "),
-	mercury_output_term(Type, TVarSet, no),
-	io__write_string("\n"),
-	write_type_var_list(Rest, Context, VarSet, TVarSet).
+write_type_var_list([], _, _, _, !IO).
+write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet, !IO) :-
+	prog_out__write_context(Context, !IO),
+	io__write_string("      ", !IO),
+	mercury_output_var(Var, VarSet, no, !IO),
+	io__write_string(": ", !IO),
+	mercury_output_type(TVarSet, no, Type, !IO),
+	io__nl(!IO),
+	write_type_var_list(Rest, Context, VarSet, TVarSet, !IO).
 
 %-----------------------------------------------------------------------------%
 %			resolve predicate overloading
@@ -1333,10 +1321,11 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
 	module_info_types(ModuleInfo, Types),
 	map__search(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeTVarSet),
+	hlds_data__get_type_defn_kind_map(TypeDefn, TypeKindMap),
 
 	assoc_list__values(ConsArgs, ConsArgTypes),
-	arg_type_list_subsumes(TVarSet, ArgTypes,
-		TypeTVarSet, ConsExistQVars, ConsArgTypes).
+	arg_type_list_subsumes(TVarSet, ArgTypes, TypeTVarSet, TypeKindMap,
+		ConsExistQVars, ConsArgTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1403,8 +1392,8 @@ post_typecheck__translate_get_function(ModuleInfo, !PredInfo,
 			type_list_subsumes([FieldArgType], [FieldType],
 				FieldSubst)
 		->
-			term__apply_rec_substitution_to_list(ArgTypes0,
-				FieldSubst, ArgTypes)
+			apply_rec_subst_to_type_list(FieldSubst, ArgTypes0,
+				ArgTypes)
 		;
 			error("post_typecheck__translate_get_function: " ++
 				"type_list_subsumes failed")
@@ -1529,19 +1518,18 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
 		pred_info_set_typevarset(TVarSet, !PredInfo),
 		map__from_corresponding_lists(ExistQVars, NewExistQVars,
 			TVarSubst),
-		term__apply_variable_renaming_to_list(ArgTypes0, TVarSubst,
+		apply_variable_renaming_to_type_list(TVarSubst, ArgTypes0,
 			ArgTypes1)
 	),
 	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
-	term__term_list_to_var_list(TypeParams, TypeDefnArgs),
 	( type_to_ctor_and_args(TermType, _, TypeArgs) ->
-		map__from_corresponding_lists(TypeDefnArgs, TypeArgs, TSubst)
+		map__from_corresponding_lists(TypeParams, TypeArgs, TSubst)
 	;
 		error("get_cons_id_arg_types_adding_existq_tvars: " ++
 			"type_to_ctor_and_args failed")
 
 	),
-	term__apply_substitution_to_list(ArgTypes1, TSubst, ArgTypes).
+	apply_subst_to_type_list(TSubst, ArgTypes1, ArgTypes).
 
 :- pred split_list_at_index(int::in, list(T)::in, list(T)::out, T::out,
 	list(T)::out) is det.

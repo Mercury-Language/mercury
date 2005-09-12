@@ -78,6 +78,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
 :- import_module assoc_list.
@@ -207,11 +208,12 @@ create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor, TypeModuleName,
 builtin_type_defn = TypeDefn :-
     varset__init(TVarSet),
     Params = [],
+    map__init(Kinds),
     Body = abstract_type(non_solver_type),
     ImportStatus = local,
     NeedQualifier = may_be_unqualified,
     term__context_init(Context),
-    hlds_data__set_type_defn(TVarSet, Params, Body, ImportStatus, no,
+    hlds_data__set_type_defn(TVarSet, Params, Kinds, Body, ImportStatus, no,
         NeedQualifier, Context, TypeDefn).
 
 :- pred type_ctor_info__gen_type_ctor_gen_info(type_ctor::in, string::in,
@@ -809,7 +811,7 @@ type_ctor_info__generate_exist_into(ExistTvars, Constraints, ClassTable,
     list__map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)),
         Constraints, ConstrainedTvars0),
     list__condense(ConstrainedTvars0, ConstrainedTvars1),
-    term__vars_list(ConstrainedTvars1, ConstrainedTvars2),
+    prog_type__vars_list(ConstrainedTvars1, ConstrainedTvars2),
     list__delete_elems(ExistTvars, ConstrainedTvars2, UnconstrainedTvars),
         % We do this to maintain the ordering of the type variables.
     list__delete_elems(ExistTvars, UnconstrainedTvars, ConstrainedTvars),
@@ -852,7 +854,7 @@ first_matching_type_class_info([], _, _, !N, _) :-
 first_matching_type_class_info([C | Cs], Tvar, MatchingConstraint, !N,
         TypeInfoIndex) :-
     C = constraint(_, Ts),
-    term__vars_list(Ts, TVs),
+    prog_type__vars_list(Ts, TVs),
     ( list__nth_member_search(TVs, Tvar, Index) ->
         MatchingConstraint = C,
         TypeInfoIndex = Index

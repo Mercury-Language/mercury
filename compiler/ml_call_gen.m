@@ -811,41 +811,41 @@ ml_gen_mem_addr(Lval) =
 ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval, !Info) :-
 	(
 		%
-		% if converting from polymorphic type to concrete type,
-		% then unbox
+		% If converting from polymorphic type to concrete type,
+		% then unbox.
 		%
-		SourceType = term__variable(_),
-		DestType = term__functor(_, _, _)
+		SourceType = variable(_, _),
+		DestType \= variable(_, _)
 	->
 		ml_gen_type(!.Info, DestType, MLDS_DestType),
 		ArgRval = unop(unbox(MLDS_DestType), VarRval)
 	;
 		%
-		% if converting from concrete type to polymorphic type,
-		% then box
+		% If converting from concrete type to polymorphic type,
+		% then box.
 		%
-		SourceType = term__functor(_, _, _),
-		DestType = term__variable(_)
+		SourceType \= variable(_, _),
+		DestType = variable(_, _)
 	->
 		ml_gen_type(!.Info, SourceType, MLDS_SourceType),
 		ArgRval = unop(box(MLDS_SourceType), VarRval)
 	;
 		%
-		% if converting to float, cast to mlds__generic_type
-		% and then unbox
+		% If converting to float, cast to mlds__generic_type
+		% and then unbox.
 		%
-		DestType = term__functor(term__atom("float"), [], _),
-		SourceType \= term__functor(term__atom("float"), [], _)
+		DestType = builtin(float),
+		SourceType \= builtin(float)
 	->
 		ml_gen_type(!.Info, DestType, MLDS_DestType),
 		ArgRval = unop(unbox(MLDS_DestType),
 			unop(cast(mlds__generic_type), VarRval))
 	;
 		%
-		% if converting from float, box and then cast the result
+		% If converting from float, box and then cast the result.
 		%
-		SourceType = term__functor(term__atom("float"), [], _),
-		DestType \= term__functor(term__atom("float"), [], _)
+		SourceType = builtin(float),
+		DestType \= builtin(float)
 	->
 		ml_gen_type(!.Info, SourceType, MLDS_SourceType),
 		ml_gen_type(!.Info, DestType, MLDS_DestType),
@@ -853,7 +853,7 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval, !Info) :-
 			unop(box(MLDS_SourceType), VarRval))
 	;
 		%
-		% if converting from an array(T) to array(X) where
+		% If converting from an array(T) to array(X) where
 		% X is a concrete instance, we should insert a cast
 		% to the concrete instance.  Also when converting to
 		% array(T) from array(X) we should cast to array(T).
@@ -863,20 +863,18 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval, !Info) :-
 		type_to_ctor_and_args(DestType, DestTypeCtor, DestTypeArgs),
 		(
 			type_ctor_is_array(SourceTypeCtor),
-			SourceTypeArgs = [term__variable(_)]
+			SourceTypeArgs = [variable(_, _)]
 		;
 			type_ctor_is_array(DestTypeCtor),
-			DestTypeArgs = [term__variable(_)]
+			DestTypeArgs = [variable(_, _)]
 		)
 	->
 		ml_gen_type(!.Info, DestType, MLDS_DestType),
 		ArgRval = unop(cast(MLDS_DestType), VarRval)
 	;
 		%
-		% if converting from one concrete type to a different
-		% one, then cast
-		%
-		% This is needed to handle construction/deconstruction
+		% If converting from one concrete type to a different one, then
+		% cast.  This is needed to handle construction/deconstruction
 		% unifications for no_tag types.
 		%
 		\+ type_util__type_unify(SourceType, DestType,
@@ -886,7 +884,7 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval, !Info) :-
 		ArgRval = unop(cast(MLDS_DestType), VarRval)
 	;
 		%
-		% otherwise leave unchanged
+		% Otherwise leave unchanged.
 		%
 		ArgRval = VarRval
 	).
@@ -936,7 +934,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 			% For closure wrappers, the argument type_infos are
 			% stored in the `type_params' local, so we need to
 			% handle the GC tracing code specially
-			( prog_type__var(CallerType, _TypeVar) ->
+			( CallerType = variable(_, _) ->
 				ml_gen_local_for_output_arg(ArgVarName,
 					CalleeType, ArgNum, Context,
 					ArgVarDecl, !Info)
@@ -964,7 +962,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 			ConvOutputStatements = []
 		;
 			%
-			% generate statements to box/unbox the fresh variable
+			% Generate statements to box/unbox the fresh variable
 			% and assign it to/from the output argument whose
 			% address we were passed.
 			%

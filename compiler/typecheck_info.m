@@ -122,7 +122,7 @@
 	existq_tvars::in, vartypes::in, tvarset::out, existq_tvars::out,
 	map(prog_var, type)::out, prog_constraints::out,
 	constraint_proof_map::out, constraint_map::out,
-	map(tvar, tvar)::out, map(tvar, tvar)::out) is det.
+	tvar_renaming::out, tvar_renaming::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -296,14 +296,6 @@
 		).
 
 %-----------------------------------------------------------------------------%
-
-	% write_type_with_bindings writes out a type after applying the
-	% type bindings.
-	%
-:- pred write_type_with_bindings((type)::in, tvarset::in, tsubst::in,
-	io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -315,6 +307,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module std_util.
+:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -416,9 +409,9 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 		% ConstraintProofs too?)
 		%
 		map__values(VarTypes, Types),
-		term__vars_list(Types, TypeVars0),
+		prog_type__vars_list(Types, TypeVars0),
 		map__values(OldExplicitVarTypes, ExplicitTypes),
-		term__vars_list(ExplicitTypes, ExplicitTypeVars0),
+		prog_type__vars_list(ExplicitTypes, ExplicitTypeVars0),
 		map__keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
 		list__delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
 			ExistQVarsToRemain),
@@ -429,14 +422,12 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 		% Next, create a new typevarset with the same number of
 		% variables.
 		%
-		varset__squash(OldTypeVarSet, TypeVars, NewTypeVarSet,
-			TSubst),
+		varset__squash(OldTypeVarSet, TypeVars, NewTypeVarSet, TSubst),
 		%
 		% Finally, rename the types and type class constraints
 		% to use the new typevarset type variables.
 		%
-		term__apply_variable_renaming_to_list(Types, TSubst,
-			NewTypes),
+		apply_variable_renaming_to_type_list(TSubst, Types, NewTypes),
 		map__from_corresponding_lists(Vars, NewTypes, NewVarTypes),
 		map__apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
 		retrieve_prog_constraints(HLDSTypeConstraints,
@@ -462,7 +453,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 expand_types([], _, !VarTypes).
 expand_types([Var | Vars], TypeSubst, !VarTypes) :-
 	map__lookup(!.VarTypes, Var, Type0),
-	term__apply_rec_substitution(Type0, TypeSubst, Type),
+	apply_rec_subst_to_type(TypeSubst, Type0, Type),
 	map__det_update(!.VarTypes, Var, Type, !:VarTypes),
 	expand_types(Vars, TypeSubst, !VarTypes).
 
@@ -471,7 +462,7 @@ expand_types([Var | Vars], TypeSubst, !VarTypes) :-
 	% universally quantified type variables from the head of the predicate.
 	%
 :- pred get_existq_tvar_renaming(list(tvar)::in, existq_tvars::in, tsubst::in,
-	map(tvar, tvar)::out) is det.
+	tvar_renaming::out) is det.
 
 get_existq_tvar_renaming(OldHeadTypeParams, ExistQVars, TypeBindings,
 		ExistTypeRenaming) :-
@@ -480,19 +471,27 @@ get_existq_tvar_renaming(OldHeadTypeParams, ExistQVars, TypeBindings,
 		ExistQVars, map__init, ExistTypeRenaming).
 
 :- pred get_existq_tvar_renaming_2(existq_tvars::in, tsubst::in,
-	tvar::in, map(tvar, tvar)::in, map(tvar, tvar)::out) is det.
+	tvar::in, tvar_renaming::in, tvar_renaming::out) is det.
 
 get_existq_tvar_renaming_2(OldHeadTypeParams, TypeBindings, TVar, !Renaming) :-
-	term__apply_rec_substitution(term__variable(TVar), TypeBindings,
-		Result),
 	(
-		Result = term__variable(NewTVar),
+		tvar_maps_to_tvar(TypeBindings, TVar, NewTVar),
 		NewTVar \= TVar,
 		\+ list__member(NewTVar, OldHeadTypeParams)
 	->
-		map__det_insert(!.Renaming, TVar, NewTVar, !:Renaming)
+		svmap__det_insert(TVar, NewTVar, !Renaming)
 	;
 		true
+	).
+
+:- pred tvar_maps_to_tvar(tsubst::in, tvar::in, tvar::out) is semidet.
+
+tvar_maps_to_tvar(TypeBindings, TVar0, TVar) :-
+	( map__search(TypeBindings, TVar0, Type) ->
+		Type = variable(TVar1, _),
+		tvar_maps_to_tvar(TypeBindings, TVar1, TVar)
+	;
+		TVar = TVar0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -659,10 +658,16 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
 	write_type_assign_constraints(Operator, Constraints, TypeBindings,
 		TypeVarSet, yes, !IO).
 
-write_type_with_bindings(Type, TypeVarSet, TypeBindings, !IO) :-
-	term__apply_rec_substitution(Type, TypeBindings, Type2),
-	strip_builtin_qualifiers_from_type(Type2, Type3),
-	mercury_output_term(Type3, TypeVarSet, varnums, !IO).
+	% write_type_with_bindings writes out a type after applying the
+	% type bindings.
+	%
+:- pred write_type_with_bindings((type)::in, tvarset::in, tsubst::in,
+	io::di, io::uo) is det.
+
+write_type_with_bindings(Type0, TypeVarSet, TypeBindings, !IO) :-
+	apply_rec_subst_to_type(TypeBindings, Type0, Type1),
+	strip_builtin_qualifiers_from_type(Type1, Type),
+	mercury_output_type(TypeVarSet, no, Type, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

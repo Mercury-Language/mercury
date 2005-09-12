@@ -380,7 +380,7 @@
     % to all types first, then TSubst is applied to all types.  Subst
     % is applied to all prog_vars.
     %
-:- pred apply_substitutions_to_rtti_varmaps(tsubst::in, tsubst::in,
+:- pred apply_substitutions_to_rtti_varmaps(tvar_renaming::in, tsubst::in,
     map(prog_var, prog_var)::in, rtti_varmaps::in, rtti_varmaps::out)
     is det.
 
@@ -499,7 +499,7 @@ rtti_set_type_info_locn(TVar, Locn, !VarMaps) :-
 
 maybe_check_type_info_var(type_info(Var), TVar, !VarMaps) :-
     ( map__search(!.VarMaps ^ ti_type_map, Var, Type) ->
-        ( Type = term__variable(TVar) ->
+        ( Type = variable(TVar, _) ->
             true
         ;
             unexpected(this_file, "inconsistent info in rtti_varmaps")
@@ -607,12 +607,13 @@ apply_subst_to_prog_var(Subst, Var0, Var) :-
         Var = Var0
     ).
 
-:- pred apply_substs_to_tci_map(tsubst::in, tsubst::in,
+:- pred apply_substs_to_tci_map(tvar_renaming::in, tsubst::in,
     map(prog_var, prog_var)::in, prog_constraint::in, prog_var::in,
     typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
 
 apply_substs_to_tci_map(TRenaming, TSubst, Subst, Constraint0, Var0, !Map) :-
-    apply_subst_to_prog_constraint(TRenaming, Constraint0, Constraint1),
+    apply_variable_renaming_to_prog_constraint(TRenaming, Constraint0,
+        Constraint1),
     apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
     apply_subst_to_prog_var(Subst, Var0, Var),
     svmap__set(Constraint, Var, !Map).
@@ -624,7 +625,7 @@ apply_substs_to_tci_map(TRenaming, TSubst, Subst, Constraint0, Var0, !Map) :-
     % If tvar maps to a another type variable, we keep the new variable, if
     % it maps to a type, we remove it from the map.
     %
-:- pred apply_substs_to_ti_map(tsubst::in, tsubst::in,
+:- pred apply_substs_to_ti_map(tvar_renaming::in, tsubst::in,
     map(prog_var, prog_var)::in, tvar::in, type_info_locn::in,
     type_info_varmap::in, type_info_varmap::out) is det.
 
@@ -632,21 +633,14 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     type_info_locn_var(Locn, Var),
     apply_subst_to_prog_var(Subst, Var, NewVar),
     type_info_locn_set_var(NewVar, Locn, NewLocn),
-    (
-        % Find the new tvar, if there is one.
-        map__search(TRenaming, TVar, NewTVarType0)
-    ->
-        NewTVarType1 = NewTVarType0
-    ;
-        % The variable wasn't renamed.
-        NewTVarType1 = term__variable(TVar)
-    ),
-    term__apply_rec_substitution(NewTVarType1, TSubst, NewTVarType),
-
+    apply_variable_renaming_to_tvar(TRenaming, TVar, NewTVar1),
+    % We don't use the correct kinds here, but that doesn't matter because
+    % the resulting kind will be thrown away anyway.
+    apply_rec_subst_to_tvar(map__init, TSubst, NewTVar1, NewType),
     (
         % If the tvar is still a variable, insert it into the map with the
         % new var.
-        prog_type__var(NewTVarType, NewTVar)
+        NewType = variable(NewTVar, _)
     ->
         % Don't abort if two old type variables map to the same new type
         % variable.
@@ -655,13 +649,13 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
         true
     ).
 
-:- pred apply_substs_to_type_map(tsubst::in, tsubst::in,
+:- pred apply_substs_to_type_map(tvar_renaming::in, tsubst::in,
     map(prog_var, prog_var)::in, prog_var::in, (type)::in,
     type_info_type_map::in, type_info_type_map::out) is det.
 
 apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
-    term__apply_substitution(Type0, TRenaming, Type1),
-    term__apply_rec_substitution(Type1, TSubst, Type),
+    apply_variable_renaming_to_type(TRenaming, Type0, Type1),
+    apply_rec_subst_to_type(TSubst, Type1, Type),
     apply_subst_to_prog_var(Subst, Var0, Var),
     ( map__search(!.Map, Var, ExistingType) ->
         ( Type = ExistingType ->
@@ -673,14 +667,15 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
         svmap__det_insert(Var, Type, !Map)
     ).
 
-:- pred apply_substs_to_constraint_map(tsubst::in, tsubst::in,
+:- pred apply_substs_to_constraint_map(tvar_renaming::in, tsubst::in,
     map(prog_var, prog_var)::in, prog_var::in, prog_constraint::in,
     typeclass_info_constraint_map::in, typeclass_info_constraint_map::out)
     is det.
 
 apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
         !Map) :-
-    apply_subst_to_prog_constraint(TRenaming, Constraint0, Constraint1),
+    apply_variable_renaming_to_prog_constraint(TRenaming, Constraint0,
+        Constraint1),
     apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
     apply_subst_to_prog_var(Subst, Var0, Var),
     ( map__search(!.Map, Var, ExistingConstraint) ->
@@ -1439,6 +1434,7 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_get_attributes(pred_info::in, pred_attributes::out) is det.
 :- pred pred_info_arg_types(pred_info::in, list(type)::out) is det.
 :- pred pred_info_typevarset(pred_info::in, tvarset::out) is det.
+:- pred pred_info_tvar_kinds(pred_info::in, tvar_kind_map::out) is det.
 :- pred pred_info_get_exist_quant_tvars(pred_info::in, existq_tvars::out)
     is det.
 :- pred pred_info_get_existq_tvar_binding(pred_info::in, tsubst::out) is det.
@@ -1469,6 +1465,8 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_set_attributes(pred_attributes::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_typevarset(tvarset::in,
+    pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_tvar_kinds(tvar_kind_map::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_existq_tvar_binding(tsubst::in,
     pred_info::in, pred_info::out) is det.
@@ -1799,6 +1797,9 @@ calls_are_fully_qualified(Markers) =
                             % Names of type vars in the predicate's type decl
                             % or in the variable type assignments.
 
+        tvar_kinds          :: tvar_kind_map,
+                            % Kinds of the type vars.
+
         exist_quant_tvars   :: existq_tvars,
                             % The set of existentially quantified type
                             % variables in the predicate's type decl.
@@ -1870,9 +1871,12 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
         ClausesInfo, PredInfo) :-
     unqualify_name(SymName, PredName),
     sym_name_get_module_name(SymName, ModuleName, PredModuleName),
-    term__vars_list(ArgTypes, TVars),
+    prog_type__vars_list(ArgTypes, TVars),
     list__delete_elems(TVars, ExistQVars, HeadTypeParams),
     Attributes = [],
+    % XXX kind inference:
+    % we assume all tvars have kind `star'.
+    map__init(Kinds),
     map__init(ExistQVarBindings),
     UnprovenBodyConstraints = [],
     set__init(Assertions),
@@ -1880,7 +1884,7 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
     map__init(Procs),
     PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Context, Origin, Status, GoalType, Markers, Attributes,
-        ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, ExistQVarBindings,
+        ArgTypes, TypeVarSet, TypeVarSet, Kinds, ExistQVars, ExistQVarBindings,
         HeadTypeParams, ClassContext, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [],
         Assertions, User, Indexes, ClausesInfo, Procs).
@@ -1896,8 +1900,11 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     Attributes = [],
     map__init(ClassProofs),
     map__init(ClassConstraintMap),
-    term__vars_list(ArgTypes, TVars),
+    prog_type__vars_list(ArgTypes, TVars),
     list__delete_elems(TVars, ExistQVars, HeadTypeParams),
+    % XXX kind inference:
+    % we assume all tvars have kind `star'.
+    map__init(Kinds),
     map__init(ExistQVarBindings),
     UnprovenBodyConstraints = [],
     Indexes = [],
@@ -1916,7 +1923,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
         Context, Origin, Status, clauses, Markers, Attributes,
-        ArgTypes, TypeVarSet, TypeVarSet, ExistQVars, ExistQVarBindings,
+        ArgTypes, TypeVarSet, TypeVarSet, Kinds, ExistQVars, ExistQVarBindings,
         HeadTypeParams, ClassContext, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [], Assertions,
         User, Indexes, ClausesInfo, Procs).
@@ -2026,6 +2033,7 @@ pred_info_get_markers(PI, PI ^ markers).
 pred_info_get_attributes(PI, PI ^ attributes).
 pred_info_arg_types(PI, PI ^ arg_types).
 pred_info_typevarset(PI, PI ^ typevarset).
+pred_info_tvar_kinds(PI, PI ^ tvar_kinds).
 pred_info_get_exist_quant_tvars(PI, PI ^ exist_quant_tvars).
 pred_info_get_existq_tvar_binding(PI, PI ^ existq_tvar_binding).
 pred_info_get_head_type_params(PI, PI ^ head_type_params).
@@ -2045,6 +2053,7 @@ pred_info_set_goal_type(X, PI, PI ^ goal_type := X).
 pred_info_set_markers(X, PI, PI ^ markers := X).
 pred_info_set_attributes(X, PI, PI ^ attributes := X).
 pred_info_set_typevarset(X, PI, PI ^ typevarset := X).
+pred_info_set_tvar_kinds(X, PI, PI ^ tvar_kinds := X).
 pred_info_set_existq_tvar_binding(X, PI, PI ^ existq_tvar_binding := X).
 pred_info_set_head_type_params(X, PI, PI ^ head_type_params := X).
 pred_info_set_class_context(X, PI, PI ^ class_context := X).
@@ -2293,7 +2302,7 @@ terminates_to_markers(depends_on_mercury_calls, []).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
     pred_info_arg_types(PredInfo, ArgTypes),
-    term__vars_list(ArgTypes, ArgTypeVars0),
+    prog_type__vars_list(ArgTypes, ArgTypeVars0),
     list__sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
     list__delete_elems(ArgTypeVars, ExistQVars, UnivQVars).
@@ -3185,7 +3194,7 @@ proc_info_get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
 proc_info_get_typeinfo_vars_2([], _, _, []).
 proc_info_get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
     ( map__search(VarTypes, Var, Type) ->
-        type_util__real_vars(Type, TypeVars),
+        prog_type__vars(Type, TypeVars),
         (
             % Optimize common case
             TypeVars = []

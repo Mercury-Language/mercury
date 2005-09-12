@@ -439,7 +439,7 @@ introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
 
 introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
         HeadVar0, HeadVar, !VarSet, !VarTypes, !ExtraGoals) :-
-    term__apply_rec_substitution(ExternalType, Subn, InternalType),
+    apply_rec_subst_to_type(Subn, ExternalType, InternalType),
     (
         % Add an exists_cast for the head variable if its type
         % inside the procedure is different from its type at the
@@ -483,7 +483,7 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
             % respective arguments.
             %
         map__lookup(ExternalTypes, Var0, ExternalType),
-        term__apply_rec_substitution(ExternalType, Subn, InternalType),
+        apply_rec_subst_to_type(Subn, ExternalType, InternalType),
         svmap__det_update(Var0, InternalType, !VarTypes),
 
             % Create the exists_cast goal.
@@ -501,7 +501,7 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
         rtti_varmaps_var_info(!.RttiVarMaps, Var0, VarInfo),
         (
             VarInfo = type_info_var(TypeInfoType0),
-            term__apply_rec_substitution(TypeInfoType0, Subn, TypeInfoType),
+            apply_rec_subst_to_type(Subn, TypeInfoType0, TypeInfoType),
             rtti_set_type_info_type(Var0, TypeInfoType, !RttiVarMaps),
             rtti_det_insert_type_info_type(Var, TypeInfoType0, !RttiVarMaps)
         ;
