@@ -171,9 +171,12 @@ taken when releasing a new version of Mercury.
 
 <li> For major releases, move the commitlog file from its current location
      (in $CVSROOT/CVSROOT/commitlog) into a file specific to that release,
-     such as "commitlog-0.12".  Start a new commitlog file, making sure it
-     is readable by everyone and writeable by group mercury.  Email the local
-     mailing list to say that you have done this.
+     such as "commitlog-0.12".  Create a new, empty commitlog file, making
+     sure it is readable by everyone and writeable by group mercury (the
+     commitlog file file is not managed by cvs itself, it is maintained by
+     our own check-in scripts, so you don't need to do anything special to
+     create this file).  Email the local mailing list to say that you have
+     done this.
 
 </ol>
 
@@ -181,6 +184,6 @@ taken when releasing a new version of Mercury.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2005-09-12 09:28:53 $ by $Author: mark $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-09-12 09:35:14 $ by $Author: mark $@cs.mu.oz.au. <br>
 </body>
 </html>
