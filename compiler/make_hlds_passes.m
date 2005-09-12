@@ -569,9 +569,13 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
                 % introduced because of a mutable declaration.
                 Details = mutable_decl
             ;
-                ( Details = initialise_decl
-                ; Details = solver_type 
-                ; Details = foreign_imports),
+                Details = initialise_decl,
+                unexpected(this_file, "Bad introduced intialise declaration.")
+            ;   
+                Details = solver_type, 
+                unexpected(this_file, "Bad introduced intialise declaration.")
+            ;   
+                Details = foreign_imports,
                 unexpected(this_file, "Bad introduced intialise declaration.")
             )
         )
@@ -664,9 +668,14 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             (
                 % Ignore clauses that are introduced as a result of
                 % `intialise' or `mutable' declarations.
-                ( Details = initialise_decl ; Details = mutable_decl )
+                Details = initialise_decl
             ;
-                ( Details = solver_type ; Details = foreign_imports ),
+                Details = mutable_decl
+            ;
+                Details = solver_type,
+                unexpected(this_file, "Bad introduced clauses.")
+            ;
+                Details = foreign_imports,
                 unexpected(this_file, "Bad introduced clauses.")
             )
         )

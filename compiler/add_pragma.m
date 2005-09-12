@@ -389,9 +389,14 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
             ;
                 Origin = compiler(Details),
                 (
-                    ( Details = initialise_decl ; Details = mutable_decl )
+                    Details = initialise_decl
                 ;
-                    ( Details = solver_type ; Details = foreign_imports ),
+                    Details = mutable_decl
+                ;
+                    Details = solver_type,
+                    unexpected(this_file, "Bad introduced export pragma.")
+                ;      
+                    Details = foreign_imports,
                     unexpected(this_file, "Bad introduced export pragma.")
                 )
             )
@@ -404,9 +409,14 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
         ;
             Origin = compiler(Details),
             (
-                ( Details = initialise_decl ; Details = mutable_decl )
+                Details = initialise_decl
+            ;      
+                Details = mutable_decl
             ;
-                ( Details = solver_type ; Details = foreign_imports ),
+                Details = solver_type,
+                unexpected(this_file, "Bad introduced export pragma.")
+            ;       
+                Details = foreign_imports,
                 unexpected(this_file, "Bad introduced export pragma.")
             )
         )
