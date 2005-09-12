@@ -1356,7 +1356,6 @@ output_aditi_load_function(void)
     printf("** currently connected database.\n*/\n");
     printf("#include \"mercury_heap.h\"\n");
     printf("#include \"netapi.h\"\n");
-    printf("#include \"netapi_support.h\"\n");
     printf("#include \"AditiStatus.h\"\n");
 
     /*
