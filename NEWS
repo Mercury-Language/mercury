@@ -1,27 +1,73 @@
 NEWS since Mercury 0.12
 -----------------------
 
+HIGHLIGHTS
+==========
+
 Changes to the Mercury language:
-* We have added support for functional dependencies to the typeclass system.
-  See the "Type classes" section of the Mercury Language Refence Manual for
-  details.
-* We have added support for optional module initialisation.  See the 
-  "Optional module initialisation" section of the Mercury Language Refence
-  Manual for details.
-* We have added support for impure module-local mutable variables.
-  See the "Module-local mutable variables" section of the Mercury Language
-  Refence Manual for details.
+* The Mercury typeclass system now supports functional dependencies.
+* We now have support for optional module initialisation.
+* We now have support for impure module-local mutable variables.
+* Support for the old-style lambda, mode and pragma syntax has been removed.
+* `:' is now longer supported as a module qualifier.
 
 Changes to the Mercury standard library:
 * We have added an `injection' module, for reversible maps that are injective.
-* We have added list.foldl_corresponding/5 and list.foldl2_corresponding/7.
-* We have added string.word_wrap/2.
+
+Changes to the Mercury compiler:
+* None yet.
+
+Portability Improvements:
+* None yet.
 
 Changes to the Mercury debugger:
 * Users can now keep hold of a term, referring to it even when execution has
   left the goal at which the term was available as the value of a program
   variable.
 * Users can now see the set of places where two terms differ from each other.
+
+Changes to the compiler backends:
+* None yet.
+
+Changes to the extras distribution:
+* We've added a library of data structures designed to work with solver types. 
+
+
+DETAILED LISTING
+================
+
+Changes to the Mercury language:
+
+* We have added support for functional dependencies to the typeclass system.
+  See the "Type classes" section of the Mercury Language Reference Manual for
+  details.
+
+* We have added support for optional module initialisation.  See the 
+  "Optional module initialisation" section of the Mercury Language Reference
+  Manual for details.
+
+* We have added support for impure module-local mutable variables.
+  See the "Module-local mutable variables" section of the Mercury Language
+  Reference Manual for details.
+
+
+Changes to the Mercury standard library:
+
+* We have added an `injection' module, for reversible maps that are injective.
+
+* We have added list.foldl_corresponding/5 and list.foldl2_corresponding/7.
+
+* We have added string.word_wrap/2.
+
+
+Changes to the extras distribution:
+
+* We've added a library of data structures designed to work for solver types. 
+
+  The module extras/solver_types contains versions of the the standard
+  library's array, assoc_list, list and map modules that are designed to
+  work with terms that have inst `any'.
+
 
 NEWS for Mercury 0.12
 ---------------------
