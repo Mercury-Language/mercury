@@ -11,7 +11,7 @@
 :- import_module list, int.
 
 main -->  
-	{ list__map(lambda([A::in, B::out] is det, p(A,B)), [1,2], X) }, 
+	{ list__map((pred(A::in, B::out) is det :- p(A,B)), [1,2], X) }, 
 	io__write(X),
 	io__nl.
 

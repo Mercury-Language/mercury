@@ -480,7 +480,6 @@ when                            xfx               900
 <=>                             xfy               920
 =>                              xfy               920
 all                             fxy               950
-lambda                          fxy               950
 promise_equivalent_solutions    fxy               950
 promise_exclusive               fy                950
 promise_exclusive_exhaustive    fy                950
@@ -1403,7 +1402,6 @@ If @var{Goal} takes the form @code{some [X, Y, Z] ...} then the scope of
 A lambda expression is a compound term of one of the following forms
 
 @example
-lambda([Arg1::Mode1, Arg2::Mode2, @dots{}] is Det, Goal)
 pred(Arg1::Mode1, Arg2::Mode2, @dots{}) is Det :- Goal
 pred(Arg1::Mode1, Arg2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
 func(Arg1::Mode1, Arg2::Mode2, @dots{}) = (Result::Mode) is Det :- Goal
@@ -1433,9 +1431,6 @@ variables with the same name that occur outside of the
 lambda expression.  For variables which occur in Result or Goal,
 but not in the arguments, the usual Mercury rules for implicit
 quantification apply (@pxref{Implicit quantification}).
-
-The form of lambda expression using @samp{lambda} as its top level functor
-is deprecated; please use the form using @samp{pred} instead.
 
 The form of lambda expression using @samp{-->} as its top level functor
 is a syntactic abbreviation: an expression of the form
@@ -3868,24 +3863,16 @@ For example, if you have declared a predicate
 @end example
 
 @noindent
-the following three unifications have the same effect:
+the following unifications have the same effect:
 
 @example
-X = lambda([List::in, Length::out] is det, sum(List, Length))
-Y = (pred(List::in, Length::out) is det :- sum(List, Length))
-Z = sum
+X = (pred(List::in, Length::out) is det :- sum(List, Length))
+Y = sum
 @end example
 
-In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
+In the above example, the type of @samp{X}, and @samp{Y} is
 @samp{pred(list(int), int)}, which means a predicate of two
 arguments of types @samp{list(int)} and @samp{int} respectively.
-
-The syntax using @samp{lambda} is deprecated;
-please use the syntax using @samp{pred} instead.
-[The syntax using @samp{lambda} was supported to enable programs to work
-in both Mercury and Prolog, because the syntax using @samp{pred} 
-can't be easily emulated in Prolog.  Now that we have implemented
-better debugging environments for Mercury, there is no need for this.]
 
 Similarly, given
 

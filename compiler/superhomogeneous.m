@@ -443,62 +443,23 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         list__append(ConjList1, ConjList2, ConjList),
         conj_list_to_goal(ConjList, GoalInfo, Goal)
     ;
+        % Handle higher-order pred and func expressions.
+        parse_rule_term(Context, RHS, HeadTerm0, GoalTerm1),
+        term__coerce(HeadTerm0, HeadTerm1),
+        parse_purity_annotation(HeadTerm1, LambdaPurity, HeadTerm),
         (
-            % handle lambda expressions
-            parse_lambda_eval_method(RHS, EvalMethod0, RHS1),
-            RHS1 = term__functor(term__atom("lambda"), Args1, _),
-            Args1 = [LambdaExpressionTerm0, GoalTerm0],
-            term__coerce(LambdaExpressionTerm0, LambdaExpressionTerm),
-            parse_lambda_expression(LambdaExpressionTerm, Vars0, Modes0, Det0)
+            parse_pred_expression(HeadTerm, EvalMethod0, Vars0, Modes0, Det0)
         ->
-            LambdaPurity = (pure),
             PredOrFunc = predicate,
             EvalMethod = EvalMethod0,
             Vars1 = Vars0,
             Modes1 = Modes0,
-            Det1 = Det0,
-            GoalTerm1 = GoalTerm0,
-            WarnDeprecatedLambda = yes
+            Det1 = Det0
         ;
-            % handle higher-order pred and func expressions -
-            % same semantics as lambda expressions, different
-            % syntax (the original lambda expression syntax
-            % is now deprecated)
-            parse_rule_term(Context, RHS, HeadTerm0, GoalTerm1),
-            term__coerce(HeadTerm0, HeadTerm1),
-            parse_purity_annotation(HeadTerm1, LambdaPurity,
-                HeadTerm),
-            (
-                parse_pred_expression(HeadTerm, EvalMethod0,
-                    Vars0, Modes0, Det0)
-            ->
-                PredOrFunc = predicate,
-                EvalMethod = EvalMethod0,
-                Vars1 = Vars0,
-                Modes1 = Modes0,
-                Det1 = Det0
-            ;
-                parse_func_expression(HeadTerm, EvalMethod,
-                    Vars1, Modes1, Det1),
-                PredOrFunc = function
-            ),
-            WarnDeprecatedLambda = no
+            parse_func_expression(HeadTerm, EvalMethod, Vars1, Modes1, Det1),
+            PredOrFunc = function
         )
     ->
-        (
-            WarnDeprecatedLambda = yes,
-            report_warning(Context, 0,
-                [words("Warning:"),
-                words("deprecated lambda expression syntax."),
-                nl,
-                words("Lambda expressions with lambda as the"),
-                words("top-level functor are deprecated;"),
-                words("please use the form"),
-                words("using pred instead.")],
-                !IO)
-        ;
-            WarnDeprecatedLambda = no
-        ),
         check_expr_purity(Purity, Context, !ModuleInfo, !IO),
         add_clause__qualify_lambda_mode_list(Modes1, Modes, Context,
             !QualInfo, !IO),

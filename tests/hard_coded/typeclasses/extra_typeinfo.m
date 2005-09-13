@@ -59,7 +59,7 @@ main -->
 	% extra argument type_infos for the type variables in the types
 	% of the specialised arguments.
 call_foldl(In, Out0, Out) :-
-	Pred = lambda([Int::in] is semidet, Int = 2),
+	Pred = (pred(Int::in) is semidet :- Int = 2),
 	list_foldl(Pred, [2], In, _, Out0, Out).
 
 :- pred list_foldl(pred(V), list(V), T, T, U, U) <= foo(T).
