@@ -2191,6 +2191,9 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 				AditiType, RvalCode),
 			rl_exprn__generate_pop(reg(OutputLoc), Type, PopCode),
 			{ Code = tree(RvalCode, PopCode) }
+		 ;
+		 	{ SimpleCode = ref_assign(_, _) },
+			{ error("rl_exprn__generate_builtin_call: ref_assign") }
 		)
 	;
 		{ mdbcomp__prim_data__sym_name_to_string(PredModule0, 

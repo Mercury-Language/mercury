@@ -88,7 +88,6 @@
 
 % LLDS code generator modules.
 :- import_module ll_backend__call_gen.
-:- import_module ll_backend__code_aux.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__commit_gen.
 :- import_module ll_backend__continuation_info.
@@ -754,7 +753,7 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         EntryCode) :-
     code_info__get_stack_slots(CI, StackSlots),
     code_info__get_varset(CI, VarSet),
-    code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment),
+    SlotsComment = explain_stack_slots(StackSlots, VarSet),
     StartComment = node([
         comment("Start of procedure prologue") - "",
         comment(SlotsComment) - ""

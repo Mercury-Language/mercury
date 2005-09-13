@@ -2442,7 +2442,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 
 		% create the construction unification to initialize the variable
 	BaseUnification = construct(BaseVar, ConsId, [], [],
-		construct_dynamically, cell_is_shared, no),
+		construct_dynamically, cell_is_shared, no_construct_sub_info),
 	BaseUnifyMode = (free -> ground(shared, none)) -
 		(ground(shared, none) -> ground(shared, none)),
 	BaseUnifyContext = unify_context(explicit, []),
@@ -2475,7 +2475,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	list__length(NewArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(NewVar, NewConsId, NewArgVars, UniModes,
-		construct_dynamically, cell_is_unique, no),
+		construct_dynamically, cell_is_unique, no_construct_sub_info),
 	UnifyMode = (free -> ground(shared, none)) -
 		(ground(shared, none) -> ground(shared, none)),
 	UnifyContext = unify_context(explicit, []),
@@ -2903,7 +2903,7 @@ polymorphism__init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar,
 	list__length(ArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes,
-		construct_dynamically, cell_is_unique, no),
+		construct_dynamically, cell_is_unique, no_construct_sub_info),
 	UnifyMode = (free -> ground(shared, none)) -
 		(ground(shared, none) -> ground(shared, none)),
 	UnifyContext = unify_context(explicit, []),
@@ -2940,7 +2940,7 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
 
 	% create the construction unification to initialize the variable
 	Unification = construct(TypeCtorInfoVar, ConsId, [], [],
-		construct_dynamically, cell_is_shared, no),
+		construct_dynamically, cell_is_shared, no_construct_sub_info),
 	UnifyMode = (free -> ground(shared, none)) -
 		(ground(shared, none) -> ground(shared, none)),
 	UnifyContext = unify_context(explicit, []),

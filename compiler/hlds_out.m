@@ -2354,8 +2354,8 @@ hlds_out__write_unification(simple_test(X, Y), _, ProgVarSet, _, AppendVarNums,
     io__write_string("\n", !IO).
 
 hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes,
-        _ConstructHow, Uniqueness, Size), ModuleInfo, ProgVarSet,
-        InstVarSet, AppendVarNums, Indent, !IO) :-
+        _ConstructHow, Uniqueness, SubInfo), ModuleInfo,
+        ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO) :-
     hlds_out__write_indent(Indent, !IO),
     io__write_string("% ", !IO),
     mercury_output_var(Var, ProgVarSet, AppendVarNums, !IO),
@@ -2370,22 +2370,36 @@ hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes,
         Uniqueness = cell_is_shared
     ),
     (
-        Size = yes(SizeSource),
-        hlds_out__write_indent(Indent, !IO),
-        io__write_string("% term size ", !IO),
+        SubInfo = no_construct_sub_info
+    ;
+        SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
         (
-            SizeSource = known_size(KnownSize),
-            io__write_string("const ", !IO),
-            io__write_int(KnownSize, !IO),
+            MaybeTakeAddr = yes(TakeAddressFields),
+            hlds_out__write_indent(Indent, !IO),
+            io__write_string("% take address fields: ", !IO),
+            write_intlist(TakeAddressFields, !IO),
             io__write_string("\n", !IO)
         ;
-            SizeSource = dynamic_size(SizeVar),
-            io__write_string("var ", !IO),
-            mercury_output_var(SizeVar, ProgVarSet, AppendVarNums, !IO),
-            io__write_string("\n", !IO)
+            MaybeTakeAddr = no
+        ),
+        (
+            MaybeSize = yes(SizeSource),
+            hlds_out__write_indent(Indent, !IO),
+            io__write_string("% term size ", !IO),
+            (
+                SizeSource = known_size(KnownSize),
+                io__write_string("const ", !IO),
+                io__write_int(KnownSize, !IO),
+                io__write_string("\n", !IO)
+            ;
+                SizeSource = dynamic_size(SizeVar),
+                io__write_string("var ", !IO),
+                mercury_output_var(SizeVar, ProgVarSet, AppendVarNums, !IO),
+                io__write_string("\n", !IO)
+            )
+        ;
+            MaybeSize = no
         )
-    ;
-        Size = no
     ).
 
 hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
@@ -3861,7 +3875,7 @@ hlds_out__write_intlist(IntList, !IO) :-
         io__write_string("[]", !IO)
     ;
         IntList = [H | T],
-        io__write_string("[ ", !IO),
+        io__write_string("[", !IO),
         hlds_out__write_intlist_2(H, T, !IO),
         io__write_string("]", !IO)
     ).

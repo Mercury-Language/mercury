@@ -290,7 +290,7 @@
             % A barrier says nothing about the determinism of either
             % the inner or the outer goal, or about pruning.
 
-    ;   from_ground_term(prog_var).
+    ;       from_ground_term(prog_var).
             % The goal inside the scope, which should be a conjunction,
             % results from the conversion of one ground term to
             % superhomogeneous form. The variable specifies what the
@@ -466,6 +466,33 @@
     %
 :- type is_existential_construction == bool.
 
+    % This type contains the fields of a construct unification that are needed
+    % only rarely. If a value of this type is bound to no_construct_sub_info,
+    % this means the same as construct_sub_info(no, no), but takes less space.
+    % This matters because a modules have lots of construct unifications.
+:- type construct_sub_info
+    --->    construct_sub_info(
+                take_address_fields     :: maybe(list(int)),
+
+                term_size_slot          :: maybe(term_size_value)
+                                        % The value `yes' tells the code
+                                        % generator to reserve an extra slot,
+                                        % at offset -1, to hold an integer
+                                        % giving the size of the term.
+                                        % The argument specifies the value
+                                        % to be put into this slot, either
+                                        % as an integer constant or as the
+                                        % value of a given variable.
+                                        %
+                                        % The value `no' means there is no
+                                        % extra slot, and is the default.
+                                        %
+                                        % The content of this slot is not
+                                        % meaningful before the size_prof pass
+                                        % has been run.
+            )
+    ;       no_construct_sub_info.
+
 :- type unification
 
     --->    construct(
@@ -511,22 +538,7 @@
                                         % Can the cell be allocated
                                         % in shared data.
 
-                term_size_slot          :: maybe(term_size_value)
-                                        % The value `yes' tells the code
-                                        % generator to reserve an extra slot,
-                                        % at offset -1, to hold an integer
-                                        % giving the size of the term.
-                                        % The argument specifies the value
-                                        % to be put into this slot, either
-                                        % as an integer constant or as the
-                                        % value of a given variable.
-                                        %
-                                        % The value `no' means there is no
-                                        % extra slot, and is the default.
-                                        %
-                                        % The content of this slot is not
-                                        % meaningful before the size_prof pass
-                                        % has been run.
+                construct_sub_info      :: construct_sub_info
             )
 
     ;       deconstruct(
@@ -2194,7 +2206,7 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
     Inst = bound(unique, [functor(ConsId, [])]),
     Mode = (free -> Inst) - (Inst -> Inst),
     Unification = construct(Var, ConsId, [], [],
-        construct_dynamically, cell_is_unique, no),
+        construct_dynamically, cell_is_unique, no_construct_sub_info),
     Context = unify_context(explicit, []),
     Goal = unify(Var, RHS, Mode, Unification, Context),
     set__singleton_set(NonLocals, Var),
@@ -2209,7 +2221,7 @@ construct_functor(Var, ConsId, Args, Goal) :-
     UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst)),
     list__duplicate(Arity, UniMode, UniModes),
     Unification = construct(Var, ConsId, Args, UniModes,
-        construct_dynamically, cell_is_unique, no),
+        construct_dynamically, cell_is_unique, no_construct_sub_info),
     UnifyContext = unify_context(explicit, []),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
     set__list_to_set([Var | Args], NonLocals),

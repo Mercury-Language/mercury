@@ -61,6 +61,7 @@
 :- import_module check_hlds__det_util.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__type_util.
+:- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__instmap.

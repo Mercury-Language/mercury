@@ -1686,7 +1686,8 @@ keep_var(NonLocals, GoalVars, GoalPath, _AtomicGoals, InstGraph, RepVar) :-
 
 get_predicate_sccs(ModuleInfo, SCCs) :-
     % Obtain the SCCs for the module.
-    dependency_graph__build_pred_dependency_graph(ModuleInfo, no, DepInfo),
+    dependency_graph__build_pred_dependency_graph(ModuleInfo,
+        do_not_include_imported, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs0),
 
     % Remove predicates that have mode declarations and place them in

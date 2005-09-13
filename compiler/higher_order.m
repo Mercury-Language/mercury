@@ -1149,7 +1149,12 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
     (
         Goal0 = unify(_, _, UniMode, Unify0, Context),
         Unify0 = construct(LVar, ConsId0, Args0, _,
-            HowToConstruct, CellIsUnique, no),
+            HowToConstruct, CellIsUnique, SubInfo),
+        (
+            SubInfo = no_construct_sub_info
+        ;
+            SubInfo = construct_sub_info(no, no)
+        ),
         ConsId0 = pred_const(ShroudedPredProcId, EvalMethod),
         PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
         proc(PredId, ProcId) = PredProcId,
@@ -1218,7 +1223,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
             NewShroudedPredProcId = shroud_pred_proc_id(NewPredProcId),
             NewConsId = pred_const(NewShroudedPredProcId, EvalMethod),
             Unify = construct(LVar, NewConsId, NewArgs, UniModes,
-                HowToConstruct, CellIsUnique, no),
+                HowToConstruct, CellIsUnique, no_construct_sub_info),
             Goal2 = unify(LVar, functor(NewConsId, no, NewArgs),
                 UniMode, Unify, Context),
             %
@@ -3050,7 +3055,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         UniMode = (free -> ConstInst) - (ConstInst -> ConstInst),
         ConstGoal = unify(LVar, RHS, UniMode,
             construct(LVar, ConsId, CurriedHeadVars1, UniModes,
-                construct_dynamically, cell_is_unique, no),
+                construct_dynamically, cell_is_unique, no_construct_sub_info),
             unify_context(explicit, [])) - ConstGoalInfo,
         ConstGoals0 = CurriedConstGoals ++ [ConstGoal]
     ;

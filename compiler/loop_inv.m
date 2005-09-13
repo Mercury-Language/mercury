@@ -119,7 +119,6 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds__det_util.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
@@ -699,13 +698,6 @@ arg_is_input(InstInfo, Arg) :-
 inst_is_input({ModuleInfo, _InstMap}, Inst) :-
     inst_match__inst_is_ground(ModuleInfo, Inst),
     inst_match__inst_is_not_partly_unique(ModuleInfo, Inst).
-
-%------------------------------------------------------------------------------%
-
-:- func update_inst_info(hlds_goal, inst_info) = inst_info.
-
-update_inst_info(Goal, {ModuleInfo, InstMap0}) = {ModuleInfo, InstMap} :-
-    det_util__update_instmap(Goal, InstMap0, InstMap).
 
 %------------------------------------------------------------------------------%
 

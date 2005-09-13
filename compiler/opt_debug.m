@@ -135,6 +135,7 @@
 :- import_module map.
 :- import_module set.
 :- import_module string.
+:- import_module term.
 
 msg(OptDebug, LabelNo, Msg, !IO) :-
     (
@@ -272,8 +273,8 @@ dump_lval(mem_ref(R)) =
 
 dump_rval(lval(Lval)) =
     dump_lval(Lval).
-dump_rval(var(_)) =
-    "var(_)".
+dump_rval(var(Var)) =
+    "var(" ++ int_to_string(term__var_to_int(Var)) ++ ")".
 dump_rval(mkword(T, N)) =
     "mkword(" ++ int_to_string(T) ++ ", " ++ dump_rval(N) ++ ")".
 dump_rval(const(C)) =

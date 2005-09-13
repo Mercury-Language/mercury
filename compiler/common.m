@@ -235,9 +235,17 @@ common_info_clear_structs(!Info) :-
 common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
         Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
     (
-        Unification0 = construct(Var, ConsId, ArgVars, _, _, _, _),
-        common__optimise_construct(Var, ConsId, ArgVars, Mode,
-            Goal0, Goal, GoalInfo0, GoalInfo, !Info)
+        Unification0 = construct(Var, ConsId, ArgVars, _, _, _, SubInfo),
+        (
+            SubInfo = construct_sub_info(MaybeTakeAddr, _),
+            MaybeTakeAddr = yes(_)
+        ->
+            Goal = Goal0,
+            GoalInfo = GoalInfo0
+        ;
+            common__optimise_construct(Var, ConsId, ArgVars, Mode,
+                Goal0, Goal, GoalInfo0, GoalInfo, !Info)
+        )
     ;
         Unification0 = deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, _),
         common__optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail,

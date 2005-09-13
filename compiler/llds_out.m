@@ -21,9 +21,12 @@
 
 :- import_module aditi_backend__rl_file.
 :- import_module backend_libs__builtin_ops.
+:- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
 :- import_module libs__globals.
 :- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module mdbcomp__prim_data.
 
 :- import_module bool.
@@ -171,6 +174,10 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func explain_stack_slots(stack_slots, prog_varset) = string.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs__c_util.
@@ -192,7 +199,6 @@
 :- import_module ll_backend__rtti_out.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
-:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
@@ -4939,7 +4945,7 @@ output_lval(temp(Type, Num), !IO) :-
         io__write_int(Num, !IO)
     ).
 output_lval(mem_ref(Rval), !IO) :-
-    io__write_string("XXX(", !IO),
+    io__write_string("* (MR_Word *) (", !IO),
     output_rval(Rval, !IO),
     io__write_string(")", !IO).
 
@@ -5029,8 +5035,8 @@ output_lval_for_assign(temp(RegType, Num), Type, !IO) :-
         io__write_string("MR_tempf", !IO),
         io__write_int(Num, !IO)
     ).
-output_lval_for_assign(mem_ref(_), _, !IO) :-
-    error("output_lval_for_assign: mem_ref").
+output_lval_for_assign(mem_ref(MemRef), word, !IO) :-
+    output_lval(mem_ref(MemRef), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -5154,3 +5160,28 @@ gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
     gather_labels_from_instrs(Instrs, Labels1, Labels).
 
 %-----------------------------------------------------------------------------%
+
+explain_stack_slots(StackSlots, VarSet) = Explanation :-
+    map__to_assoc_list(StackSlots, StackSlotsList),
+    explain_stack_slots_2(StackSlotsList, VarSet, "", Explanation1),
+    Explanation = "\nStack slot assignments (if any):\n" ++ Explanation1.
+
+:- pred explain_stack_slots_2(assoc_list(prog_var, stack_slot)::in,
+    prog_varset::in, string::in, string::out) is det.
+
+explain_stack_slots_2([], _, !Explanation).
+explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
+    explain_stack_slots_2(Rest, VarSet, !Explanation),
+    (
+        Slot = det_slot(SlotNum),
+        StackStr = "sv"
+    ;
+        Slot = nondet_slot(SlotNum),
+        StackStr = "fv"
+    ),
+    int_to_string(SlotNum, SlotStr),
+    varset__lookup_name(VarSet, Var, VarName),
+    string__append_list([VarName, "\t ->\t", StackStr, SlotStr, "\n",
+        !.Explanation], !:Explanation).
+
+%---------------------------------------------------------------------------%

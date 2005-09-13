@@ -1050,6 +1050,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 add_error("deep profiling is incompatible " ++
                     "with high level code", !Errors)
             ),
+            globals__set_option(optimize_constructor_last_call,
+                bool(no), !Globals),
             globals__lookup_bool_option(!.Globals,
                 use_lots_of_ho_specialization, LotsOfHOSpec),
             (
@@ -1078,11 +1080,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ;
             ( RecordTermSizesAsWords = yes
             ; RecordTermSizesAsCells = yes
-            ),
-            HighLevel = yes
+            )
         ->
-            add_error("term size profiling is incompatible "
-                ++ "with high level code", !Errors)
+            globals__set_option(optimize_constructor_last_call, bool(no),
+                !Globals),
+            (
+                HighLevel = yes,
+                add_error("term size profiling is incompatible "
+                    ++ "with high level code", !Errors)
+            ;
+                HighLevel = no
+            )
         ;
             true
         ),
@@ -1625,6 +1633,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals__set_option(can_compare_constants_as_ints, bool(no),
                 !Globals)
         ),
+
+        option_implies(highlevel_code, optimize_constructor_last_call,
+            bool(no), !Globals),
 
         (
             HighLevel = no,

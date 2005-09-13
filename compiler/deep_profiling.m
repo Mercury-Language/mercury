@@ -196,8 +196,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         Goal = Goal0,
         Continue = no
     ;
-        GoalExpr0 = call(PredId, ProcId, Args,
-            Builtin, UnifyContext, SymName),
+        GoalExpr0 = call(PredId, ProcId, Args, Builtin, UnifyContext, SymName),
         (
             PredProcId = proc(PredId, ProcId),
             assoc_list__search(ApplyInfo ^ scc_ppids, PredProcId,
@@ -1657,7 +1656,7 @@ generate_unify(ConsId, Var, Goal) :-
     Goal = unify(Var, functor(ConsId, no, []),
         (free -> Ground) - (Ground -> Ground),
         construct(Var, ConsId, [], [], construct_statically([]),
-            cell_is_shared, no),
+            cell_is_shared, no_construct_sub_info),
         unify_context(explicit, [])) - GoalInfo.
 
 :- pred generate_cell_unify(int::in, cons_id::in, list(prog_var)::in,
@@ -1674,7 +1673,7 @@ generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
     Goal = unify(Var, functor(ConsId, no, Args),
         (free -> Ground) - (Ground -> Ground),
         construct(Var, ConsId, Args, ArgModes,
-            construct_statically([]), cell_is_shared, no),
+            construct_statically([]), cell_is_shared, no_construct_sub_info),
         unify_context(explicit, [])) - GoalInfo.
 
 %-----------------------------------------------------------------------------%

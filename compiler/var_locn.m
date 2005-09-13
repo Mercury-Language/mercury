@@ -164,7 +164,7 @@
     var_locn_info::in, var_locn_info::out) is det.
 
     % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, SizeInfo,
-    %   TypeMsg, Code, !StaticCellInfo, !VarLocnInfo):
+    %   TypeMsg, Where, Code, !StaticCellInfo, !VarLocnInfo):
     %
     % Generates code to assign to Var a pointer, tagged by Ptag, to the cell
     % whose contents are given by the other arguments, and updates the state
@@ -174,14 +174,14 @@
     % to use to hold a forwarding pointer. If SizeInfo is yes(SizeVal), then
     % reserve an extra word immediately before the allocated object (regardless
     % of whether it is allocated statically or dynamically), and initialize
-    % this word with the value determined by SizeVal.
-    % NOTE: ReserveWordAtStart and SizeInfo should not both be yes / yes(_),
-    % because that will cause an obvious conflict!
+    % this word with the value determined by SizeVal. (NOTE: ReserveWordAtStart
+    % and SizeInfo should not be yes / yes(_), because that will cause an
+    % obvious conflict.) Where will say where the created cell is.
     %
 :- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
-    list(maybe(rval))::in, maybe(term_size_value)::in,
-    string::in, code_tree::out, static_cell_info::in,
-    static_cell_info::out, var_locn_info::in, var_locn_info::out) is det.
+    list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
+    code_tree::out, static_cell_info::in, static_cell_info::out,
+    var_locn_info::in, var_locn_info::out) is det.
 
     % place_var(Var, Lval, Code, !VarLocnInfo):
     %
@@ -522,7 +522,7 @@ init_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap, !LocVarMap) :-
         true
     ;
         ( map__search(!.VarStateMap, Var, _) ->
-            error("init_state_2: repeated variable")
+            unexpected(this_file, "init_state_2: repeated variable")
         ;
             set__singleton_set(NewLocs, Lval),
             set__init(Using),
@@ -603,7 +603,7 @@ clobber_lval_in_var_state_map(Lval, OkToDeleteVars, OkToDeleteAny, Var,
     ->
         true
     ;
-        error("clobber_lval_in_var_state_map: empty state")
+        unexpected(this_file, "clobber_lval_in_var_state_map: empty state")
     ).
 
     % Try to record in VarStateMap that Var is no longer reachable through
@@ -755,7 +755,7 @@ assign_const_to_var(Var, ConstRval0, !VLI) :-
         map__det_insert(VarStateMap0, Var, State, VarStateMap),
         set_var_state_map(VarStateMap, !VLI)
     ;
-        error("set_var_state_map: supposed constant isn't")
+        unexpected(this_file, "set_var_state_map: supposed constant isn't")
     ).
 
 %----------------------------------------------------------------------------%
@@ -868,9 +868,8 @@ assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeOffset,
         ArgsCode, !VLI),
     Code = tree(CellCode, ArgsCode).
 
-:- pred assign_cell_args(list(maybe(rval))::in,
-    maybe(tag)::in, rval::in, int::in, code_tree::out,
-    var_locn_info::in, var_locn_info::out) is det.
+:- pred assign_cell_args(list(maybe(rval))::in, maybe(tag)::in, rval::in,
+    int::in, code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
 assign_cell_args([], _, _, _, empty, !VLI).
 assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset, Code, !VLI) :-
@@ -894,18 +893,14 @@ assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset, Code, !VLI) :-
                 add_additional_lval_for_var(Var, Target, !VLI),
                 get_var_name(!.VLI, Var, VarName),
                 Comment = "assigning from " ++ VarName,
-                AssignCode = node([
-                    assign(Target, Rval) - Comment
-                ])
+                AssignCode = node([assign(Target, Rval) - Comment])
             )
         ; Rval0 = const(_) ->
             EvalCode = empty,
             Comment = "assigning field from const",
-            AssignCode = node([
-                assign(Target, Rval0) - Comment
-            ])
+            AssignCode = node([assign(Target, Rval0) - Comment])
         ;
-            error("assign_cell_args: unknown rval")
+            unexpected(this_file, "assign_cell_args: unknown rval")
         ),
         ThisCode = tree(EvalCode, AssignCode)
     ;
@@ -963,7 +958,7 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
     ( set__remove(Using0, UsingVar, Using1) ->
         Using = Using1
     ;
-        error("remove_use_refs_2: using ref not present")
+        unexpected(this_file, "remove_use_refs_2: using ref not present")
     ),
     State = state(Lvals, MaybeConstRval, MaybeExprRval, Using, DeadOrAlive),
     map__det_update(VarStateMap0, ContainedVar, State, VarStateMap),
@@ -982,7 +977,7 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
 
 check_and_set_magic_var_location(Var, Lval, !VLI) :-
     ( lval_in_use(!.VLI, Lval) ->
-        error("check_and_set_magic_var_location: in use")
+        unexpected(this_file, "check_and_set_magic_var_location: in use")
     ;
         set_magic_var_location(Var, Lval, !VLI)
     ).
@@ -1007,7 +1002,7 @@ check_var_is_unknown(VLI, Var) :-
     ( map__search(VarStateMap0, Var, _) ->
         get_var_name(VLI, Var, Name),
         Msg = "assign_to_var: existing definition of variable " ++ Name,
-        error(Msg)
+        unexpected(this_file, Msg)
     ;
         true
     ).
@@ -1113,7 +1108,7 @@ place_var(Var, Target, Code, !VLI) :-
 actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
     get_acquired(!.VLI, Acquired),
     ( set__member(Target, Acquired) ->
-        error("actually_place_var: target is acquired reg")
+        unexpected(this_file, "actually_place_var: target is acquired reg")
     ;
         true
     ),
@@ -1145,7 +1140,7 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
             record_clobbering(Target, [Var], !VLI)
         ),
 
-            % Record that Var is now in Target.
+        % Record that Var is now in Target.
         add_additional_lval_for_var(Var, Target, !VLI),
 
         ( Rval = lval(Target) ->
@@ -1165,9 +1160,7 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
             ( is_dummy_argument_type(Type) ->
                 AssignCode = empty
             ;
-                AssignCode = node([
-                    assign(Target, Rval) - Msg
-                ])
+                AssignCode = node([assign(Target, Rval) - Msg])
             )
         ),
         Code = tree(FreeCode, tree(EvalCode, AssignCode))
@@ -1481,10 +1474,11 @@ var_becomes_dead(Var, FirstTime, !VLI) :-
     ( map__search(VarStateMap0, Var, State0) ->
         State0 = state(Lvals, MaybeConstRval, MaybeExprRval, Using,
             DeadOrAlive0),
-        ( DeadOrAlive0 = dead ->
+        (
+            DeadOrAlive0 = dead,
             require(unify(FirstTime, no), "var_becomes_dead: already dead")
         ;
-            true
+            DeadOrAlive0 = alive
         ),
         ( set__empty(Using) ->
             map__det_remove(VarStateMap0, Var, _, VarStateMap),
@@ -1533,7 +1527,7 @@ select_lval(Lvals, Lval) :-
     ; select_cheapest_lval(Lvals, Lval3) ->
         Lval = Lval3
     ;
-        error("select_lval: nothing to select")
+        unexpected(this_file, "select_lval: nothing to select")
     ).
 
     % From the given list of lvals and maybe a constant rval, select the
@@ -1545,7 +1539,7 @@ select_lval_or_rval(Lvals, MaybeConstRval, Rval) :-
     ( maybe_select_lval_or_rval(Lvals, MaybeConstRval, Rval1) ->
         Rval = Rval1
     ;
-        error("select_lval_or_rval: nothing to select")
+        unexpected(this_file, "select_lval_or_rval: nothing to select")
     ).
 
 :- pred maybe_select_lval_or_rval(list(lval)::in, maybe(rval)::in,
@@ -1637,10 +1631,11 @@ select_preferred_reg(VLI, Var, CheckInUse, Avoid, Lval) :-
         (
             PrefLocn = abs_reg(N),
             PrefLval = reg(r, N),
-            ( CheckInUse = yes ->
+            (
+                CheckInUse = yes,
                 \+ lval_in_use(VLI, PrefLval)
             ;
-                true
+                CheckInUse = no
             ),
             \+ list__member(PrefLval, Avoid)
         ->
@@ -1682,10 +1677,11 @@ select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
         (
             PrefLocn = abs_reg(N),
             PrefLval = reg(r, N),
-            ( CheckInUse = yes ->
+            (
+                CheckInUse = yes,
                 \+ lval_in_use(VLI, PrefLval)
             ;
-                true
+                CheckInUse = no
             )
         ->
             Lval = PrefLval
@@ -1697,10 +1693,11 @@ select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
             get_stack_slots(VLI, StackSlots),
             map__search(StackSlots, Var, StackSlotLocn),
             StackSlot = stack_slot_to_lval(StackSlotLocn),
-            ( CheckInUse = yes ->
+            (
+                CheckInUse = yes,
                 \+ lval_in_use(VLI, StackSlot)
             ;
-                true
+                CheckInUse = no
             )
         ->
             Lval = StackSlot
@@ -1787,7 +1784,7 @@ acquire_reg(Lval, !VLI) :-
 
 acquire_reg_require_given(Lval, !VLI) :-
     ( lval_in_use(!.VLI, Lval) ->
-        error("acquire_reg_require_given: lval in use")
+        unexpected(this_file, "acquire_reg_require_given: lval in use")
     ;
         true
     ),
@@ -1823,7 +1820,7 @@ release_reg(Lval, !VLI) :-
         set__delete(Acquired0, Lval, Acquired),
         set_acquired(Acquired, !VLI)
     ;
-        error("release_reg: unacquired reg")
+        unexpected(this_file, "release_reg: unacquired reg")
     ).
 
 %----------------------------------------------------------------------------%
@@ -1863,7 +1860,7 @@ cell_is_constant(VarStateMap, ExprnOpts, [yes(Rval0) | MaybeRvals],
     % Check if Rval0 is a constant rval, after substituting the values of the
     % variables inside it. Returns the substituted, ground rval in Rval.
     % Note that this predicate is similar to code_exprn__expr_is_constant,
-    % but of courses its own version of the variable state data structure.
+    % but it uses its own version of the variable state data structure.
     %
 :- pred expr_is_constant(var_state_map::in, exprn_opts::in,
     rval::in, rval::out) is semidet.
@@ -1954,18 +1951,16 @@ materialize_vars_in_lval(Lval0, Avoid, Lval, Code, !VLI) :-
         Lval = mem_ref(Rval)
     ;
         Lval0 = field(Tag, RvalA0, RvalB0),
-        materialize_vars_in_rval(RvalA0, no, Avoid, RvalA, CodeA,
-            !VLI),
-        materialize_vars_in_rval(RvalB0, no, Avoid, RvalB, CodeB,
-            !VLI),
+        materialize_vars_in_rval(RvalA0, no, Avoid, RvalA, CodeA, !VLI),
+        materialize_vars_in_rval(RvalB0, no, Avoid, RvalB, CodeB, !VLI),
         Lval = field(Tag, RvalA, RvalB),
         Code = tree(CodeA, CodeB)
     ;
         Lval0 = temp(_, _),
-        error("materialize_vars_in_lval: temp")
+        unexpected(this_file, "materialize_vars_in_lval: temp")
     ;
         Lval0 = lvar(_),
-        error("materialize_vars_in_lval: lvar")
+        unexpected(this_file, "materialize_vars_in_lval: lvar")
     ).
 
     % Rval is Rval0 with all variables in Rval0 replaced by their values.
@@ -1999,9 +1994,9 @@ materialize_vars_in_rval(Rval0, MaybePrefer, Avoid, Rval, Code, !VLI) :-
         Rval = Rval0,
         Code = empty
     ;
-        Rval0 = mem_addr(_),
-        Rval = Rval0,
-        Code = empty
+        Rval0 = mem_addr(MemRef0),
+        materialize_vars_in_mem_ref(MemRef0, MemRef, Avoid, Code, !VLI),
+        Rval = mem_addr(MemRef)
     ;
         Rval0 = var(Var),
         find_var_availability(!.VLI, Var, MaybePrefer, Avail),
@@ -2012,6 +2007,27 @@ materialize_vars_in_rval(Rval0, MaybePrefer, Avoid, Rval, Code, !VLI) :-
             Avail = needs_materialization,
             materialize_var(Var, MaybePrefer, yes, Avoid, Rval, Code, !VLI)
         )
+    ).
+
+    % MemRef is MemRef0 with all variables in MemRef replaced by their values.
+    %
+:- pred materialize_vars_in_mem_ref(mem_ref::in, mem_ref::out,
+    list(lval)::in, code_tree::out,
+    var_locn_info::in, var_locn_info::out) is det.
+
+materialize_vars_in_mem_ref(MemRef0, MemRef, Avoid, Code, !VLI) :-
+    (
+        MemRef0 = stackvar_ref(_),
+        MemRef = MemRef0,
+        Code = empty
+    ;
+        MemRef0 = framevar_ref(_),
+        MemRef = MemRef0,
+        Code = empty
+    ;
+        MemRef0 = heap_ref(PtrRval0, Ptag, FieldNum),
+        materialize_vars_in_rval(PtrRval0, no, Avoid, PtrRval, Code, !VLI),
+        MemRef = heap_ref(PtrRval, Ptag, FieldNum)
     ).
 
 :- type var_avail
@@ -2053,7 +2069,7 @@ materialize_var(Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code, !VLI) :-
         MaybeExprRval = yes(ExprRval)
     ;
         MaybeExprRval = no,
-        error("materialize_var: no expr")
+        unexpected(this_file, "materialize_var: no expr")
     ),
     materialize_vars_in_rval(ExprRval, MaybePrefer, Avoid, Rval0, ExprCode,
         !VLI),
@@ -2121,7 +2137,7 @@ make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
             map__det_update(!.LocVarMap, Lval, Vars, !:LocVarMap)
         )
     ;
-        error("make_var_not_depend_on_root_lval: no record")
+        unexpected(this_file, "make_var_not_depend_on_root_lval: no record")
     ).
 
 :- pred is_root_lval(lval::in) is semidet.
@@ -2146,7 +2162,7 @@ lval_does_not_support_lval(Lval1, Lval2) :-
 rval_depends_on_search_lval(lval(Lval), SearchLval) :-
     lval_depends_on_search_lval(Lval, SearchLval).
 rval_depends_on_search_lval(var(_Var), _SearchLval) :-
-    error("rval_depends_on_search_lval: var").
+    unexpected(this_file, "rval_depends_on_search_lval: var").
 rval_depends_on_search_lval(mkword(_Tag, Rval), SearchLval) :-
     rval_depends_on_search_lval(Rval, SearchLval).
 rval_depends_on_search_lval(const(_Const), _SearchLval) :-
@@ -2176,7 +2192,7 @@ lval_depends_on_search_lval(framevar(Num), SearchLval) :-
     SearchLval = specific_reg_or_stack(Lval),
     Lval = framevar(Num).
 lval_depends_on_search_lval(lvar(_Var), _SearchLval) :-
-    error("lval_depends_on_search_lval: lvar").
+    unexpected(this_file, "lval_depends_on_search_lval: lvar").
 lval_depends_on_search_lval(field(_Tag, Rval0, Rval1), SearchLval) :-
     (
         rval_depends_on_search_lval(Rval0, SearchLval)

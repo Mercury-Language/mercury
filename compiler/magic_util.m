@@ -522,7 +522,8 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 			no, InputVars) },
 
 		{ Uni = construct(Var, ConsId, InputVars, Modes,
-			construct_dynamically, cell_is_unique, no) },
+			construct_dynamically, cell_is_unique,
+			no_construct_sub_info) },
 		{ Goal1 = unify(Var, Rhs, UniMode, Uni, Context) - Info },
 
 		{ list__append(InputGoals, [Goal1], InputAndClosure) }
@@ -864,7 +865,7 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 		{ Unify = construct(InputVar,
 			pred_const(ShroudedSuppPredProcId, (aditi_bottom_up)),
 			LambdaInputs, UniModes, construct_dynamically,
-			cell_is_unique, no) },
+			cell_is_unique, no_construct_sub_info) },
 		{ UnifyContext = unify_context(explicit, []) },
 
 		% Construct a goal_info.

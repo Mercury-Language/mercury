@@ -635,7 +635,8 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
         ;
             !:Info = !.Info
         ),
-        Unification = construct(Var, ConsId, Args, ArgModes, How, Unique, no),
+        Unification = construct(Var, ConsId, Args, ArgModes, How, Unique,
+            no_construct_sub_info),
         GoalExpr = unify(LHS, RHS, UniMode, Unification, UnifyContext)
     ;
         ConsId = cons(_Name, _Arity),
@@ -647,7 +648,8 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
         % All ConsIds other than cons/2 with at least one argument
         % construct terms that we consider zero-sized.
         record_known_size(Var, 0, !Info),
-        Unification = construct(Var, ConsId, Args, ArgModes, How, Unique, no),
+        Unification = construct(Var, ConsId, Args, ArgModes, How, Unique,
+            no_construct_sub_info),
         GoalExpr = unify(LHS, RHS, UniMode, Unification, UnifyContext)
     ).
 
@@ -712,14 +714,14 @@ process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type, ConsId,
             true
         ),
         Unification = construct(Var, ConsId, Args, ArgModes, How, Unique,
-            yes(known_size(KnownSize))),
+            construct_sub_info(no, yes(known_size(KnownSize)))),
         GoalExpr = unify(LHS, RHS, UniMode, Unification, UnifyContext)
     ;
         MaybeDynamicSizeVar = yes(SizeVar0),
         generate_size_var(SizeVar0, KnownSize, Context, SizeVar, SizeGoals,
             !Info),
         Unification = construct(Var, ConsId, Args, ArgModes, How, Unique,
-            yes(dynamic_size(SizeVar))),
+            construct_sub_info(no, yes(dynamic_size(SizeVar)))),
         UnifyExpr = unify(LHS, RHS, UniMode, Unification, UnifyContext),
         goal_info_get_nonlocals(GoalInfo0, NonLocals0),
         set__insert(NonLocals0, SizeVar, NonLocals),

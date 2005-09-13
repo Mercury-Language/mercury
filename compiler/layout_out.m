@@ -1227,8 +1227,16 @@ pred_transform_name(accumulator(Posns)) = "acc_" ++
 pred_transform_name(loop_invariant(Proc)) = "inv_" ++ int_to_string(Proc).
 pred_transform_name(tuple(Proc)) = "tup_" ++ int_to_string(Proc).
 pred_transform_name(untuple(Proc)) = "untup_" ++ int_to_string(Proc).
+pred_transform_name(return_via_ptr(ProcId, ArgPos)) =
+	"retptr_" ++ int_to_string(proc_id_to_int(ProcId)) ++ "_args"
+		++ ints_to_string(ArgPos).
 pred_transform_name(table_generator) = "table_gen".
 pred_transform_name(dnf(N)) = "dnf_" ++ int_to_string(N).
+
+:- func ints_to_string(list(int)) = string.
+
+ints_to_string([]) = "".
+ints_to_string([N | Ns]) = "_" ++ int_to_string(N) ++ ints_to_string(Ns).
 
 :- func subst_to_name(pair(int, type)) = string.
 

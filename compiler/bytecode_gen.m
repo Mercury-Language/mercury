@@ -409,8 +409,10 @@ bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo, Code) :-
 			bytecode_gen__map_test(ByteInfo, Test, Code)
 		;
 			SimpleCode = assign(Var, Expr),
-			bytecode_gen__map_assign(ByteInfo, Var, Expr,
-				Code)
+			bytecode_gen__map_assign(ByteInfo, Var, Expr, Code)
+		;
+			SimpleCode = ref_assign(_Var, _Expr),
+			unexpected(this_file, "ref_assign")
 		)
 	;
 		string__append("unknown builtin predicate ", PredName, Msg),

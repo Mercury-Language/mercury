@@ -909,6 +909,17 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
                 Statements = [Statement]
             )
         ;
+            SimpleCode = ref_assign(_, _),
+            % This should arise in only one case, where we are compiling
+            % the code of store_at_ref in private_builtin. In MLDS grades,
+            % we don't use that primitive, and therefore what code we generate
+            % for it shouldn't matter.
+            %
+            % XXX If and when we extend the MLDS code generator to handle
+            % --optimize-constructor-last-call, we will of course have to
+            % emit proper code here.
+            Statements = []
+        ;
             SimpleCode = test(_),
             unexpected(this_file, "malformed det builtin predicate")
         )
@@ -919,6 +930,9 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
             TestRval = ml_gen_simple_expr(SimpleTest),
             ml_gen_set_success(!.Info, TestRval, Context, Statement),
             Statements = [Statement]
+        ;
+            SimpleCode = ref_assign(_, _),
+            unexpected(this_file, "malformed semi builtin predicate")
         ;
             SimpleCode = assign(_, _),
             unexpected(this_file, "malformed semi builtin predicate")

@@ -154,12 +154,19 @@ ml_gen_unification(simple_test(Var1, Var2), CodeModel, Context,
 	ml_gen_set_success(!.Info, Test, Context, Statement).
 
 ml_gen_unification(construct(Var, ConsId, Args, ArgModes,
-		HowToConstruct, _CellIsUnique, MaybeSizeProfInfo),
+		HowToConstruct, _CellIsUnique, SubInfo),
 		CodeModel, Context, Decls, Statements, !Info) :-
 	require(unify(CodeModel, model_det),
 		"ml_code_gen: construct not det"),
-	require(unify(MaybeSizeProfInfo, no),
-		"ml_code_gen: term size profiling not yet supported"),
+	(
+		SubInfo = no_construct_sub_info
+	;
+		SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSizeProfInfo),
+		require(unify(MaybeTakeAddr, no),
+			"ml_code_gen: take field addresses not yet supported"),
+		require(unify(MaybeSizeProfInfo, no),
+			"ml_code_gen: term size profiling not yet supported")
+	),
 	ml_gen_construct(Var, ConsId, Args, ArgModes, HowToConstruct, Context,
 		Decls, Statements, !Info).
 

@@ -71,7 +71,6 @@
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
 :- import_module hlds__instmap.
-:- import_module ll_backend__code_aux.
 :- import_module ll_backend__liveness.
 :- import_module ll_backend__llds.
 

@@ -3112,7 +3112,7 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
     code_info::in, code_info::out) is det.
 
     % code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
-    %   Size, TypeMsg, Code, !CI).
+    %   MaybeSize, TypeMsg, Where, Code, !CI).
     %
 :- pred code_info__assign_cell_to_var(prog_var::in, bool::in, tag::in,
     list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
@@ -3130,7 +3130,7 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 :- pred code_info__produce_variable_in_reg_or_stack(prog_var::in,
     code_tree::out, lval::out, code_info::in, code_info::out) is det.
 
-:- pred code_info__materialize_vars_in_rval(rval::in, rval::out,
+:- pred code_info__materialize_vars_in_lval(lval::in, lval::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred code_info__acquire_reg_for_var(prog_var::in, lval::out,
@@ -3250,12 +3250,12 @@ code_info__assign_expr_to_var(Var, Rval, Code, !CI) :-
     ),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, Size,
+code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeSize,
         TypeMsg, Code, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
     code_info__get_static_cell_info(!.CI, StaticCellInfo0),
     var_locn__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
-        Size, TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
+        MaybeSize, TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     code_info__set_static_cell_info(StaticCellInfo, !CI),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
@@ -3313,19 +3313,10 @@ code_info__produce_variable_in_reg_or_stack(Var, Code, Lval, !CI) :-
         VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__materialize_vars_in_rval(Rval0, Rval, Code, !CI) :-
+code_info__materialize_vars_in_lval(Lval0, Lval, Code, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    ( Rval0 = lval(Lval0) ->
-        var_locn__materialize_vars_in_lval(Lval0, Lval, Code,
-            VarLocnInfo0, VarLocnInfo),
-        Rval = lval(Lval)
-    ; exprn_aux__vars_in_rval(Rval0, []) ->
-        Rval = Rval0,
-        Code = empty,
-        VarLocnInfo = VarLocnInfo0
-    ;
-        error("code_info__materialize_vars_in_rval")
-    ),
+    var_locn__materialize_vars_in_lval(Lval0, Lval, Code,
+        VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 code_info__acquire_reg_for_var(Var, Lval, !CI) :-

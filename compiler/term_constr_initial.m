@@ -541,7 +541,8 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
         proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
         !:TermInfo = !.TermInfo ^ success_constrs := ArgSizeInfo,
         !:TermInfo = !.TermInfo ^ term_status := yes(cannot_loop(builtin)),
-        !:TermInfo = !.TermInfo ^ intermod_status := yes(not_mutually_recursive),
+        !:TermInfo = !.TermInfo ^ intermod_status :=
+            yes(not_mutually_recursive),
         !:TermInfo = !.TermInfo ^ size_var_map := SizeVarMap,
         !:TermInfo = !.TermInfo ^ head_vars := HeadSizeVars,
         proc_info_set_termination2_info(!.TermInfo, ProcInfo0, ProcInfo)
@@ -556,14 +557,28 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
 process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
     ( 
         HeadVars = [HVar1, HVar2], 
-        (PredName  = "unsafe_type_cast" ; PredName = "unsafe_promise_unique")
+        (
+            (
+                PredName = "unsafe_type_cast"
+            ;
+                PredName = "unsafe_promise_unique"
+            )
+        ->
+            SizeVar1 = prog_var_to_size_var(SizeVarMap, HVar1), 
+            SizeVar2 = prog_var_to_size_var(SizeVarMap, HVar2),
+            ConstraintsPrime = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
+        ;
+            PredName = "store_at_ref"
+        ->
+            ConstraintsPrime = []
+        ;
+            fail
+        )
     ->
-        SizeVar1 = prog_var_to_size_var(SizeVarMap, HVar1), 
-        SizeVar2 = prog_var_to_size_var(SizeVarMap, HVar2),
-        Constraints = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
+        Constraints = ConstraintsPrime
     ;
         unexpected(this_file,  
-        "Unrecognised predicate passed to process_special_builtin.")
+            "Unrecognised predicate passed to process_special_builtin.")
     ).
 
 %----------------------------------------------------------------------------%

@@ -1195,29 +1195,29 @@ add_clause(Clause, !ClausesRep) :-
     % `context' and `supp_magic' are mutually exclusive. One of them must be
     % performed on all Aditi predicates. `supp_magic' is the default.
 
-    ;   supp_magic      % Perform the supplementary magic sets transformation
+    ;       supp_magic  % Perform the supplementary magic sets transformation
                         % on this predicate. See magic.m
-    ;   context         % Perform the context transformation on the predicate.
+    ;       context     % Perform the context transformation on the predicate.
                         % See context.m
 
-    ;   generate_inline % Used for small Aditi predicates which
-                % project a relation to be used as input to a
-                % call to an Aditi predicate in a lower SCC.
-                % The goal for the predicate should consist
-                % of fail, true or a single rule.
-                % These relations are never memoed.
-                % The reason for this marker is explained
-                % where it is introduced in
-                % magic_util__create_closure.
+    ;       generate_inline
+                        % Used for small Aditi predicates which project a
+                        % relation to be used as input to a call to an Aditi
+                        % predicate in a lower SCC. The goal for the predicate
+                        % should consist of fail, true or a single rule.
+                        % These relations are never memoed. The reason for this
+                        % marker is explained where it is introduced in
+                        % magic_util__create_closure.
 
-    ;   class_method    % Requests that this predicate be transformed into
+    ;       class_method
+                        % Requests that this predicate be transformed into
                         % the appropriate call to a class method.
 
-    ;   class_instance_method
+    ;       class_instance_method
                         % This predicate was automatically generated for the
                         % implementation of a class method for an instance.
 
-    ;   named_class_instance_method
+    ;       named_class_instance_method
                         % This predicate was automatically generated for the
                         % implementation of a class method for an instance,
                         % and the instance was defined using the named syntax
@@ -1225,22 +1225,23 @@ add_clause(Clause, !ClausesRep) :-
                         % syntax. (For such predicates, we output slightly
                         % different error messages.)
 
-    ;   (impure)        % Requests that no transformation that would be
+    ;       (impure)    % Requests that no transformation that would be
                         % inappropriate for impure code be performed on calls
                         % to this predicate. This includes reordering calls
                         % to it relative to other goals (in both conjunctions
                         % and disjunctions), and removing redundant calls
                         % to it.
 
-    ;   (semipure)      % Requests that no transformation that would be
+    ;       (semipure)  % Requests that no transformation that would be
                         % inappropriate for semipure code be performed on
                         % calls to this predicate. This includes removing
                         % redundant calls to it on different sides of an
                         % impure goal.
-    ;   promised_pure   % Requests that calls to this predicate be transformed
+    ;       promised_pure
+                        % Requests that calls to this predicate be transformed
                         % as usual, despite any impure or semipure markers
                         % present.
-    ;   promised_semipure
+    ;       promised_semipure
                         % Requests that calls to this predicate be treated as
                         % semipure, despite any impure calls in the body.
 
@@ -1248,23 +1249,23 @@ add_clause(Clause, !ClausesRep) :-
     % to ensure that conflicting declarations are not made by the user.
     % Otherwise, the information could be added to the ProcInfos directly.
 
-    ;   terminates      % The user guarantees that this predicate will
+    ;       terminates  % The user guarantees that this predicate will
                         % terminate for all (finite?) input.
-    ;   does_not_terminate
+    ;       does_not_terminate
                         % States that this predicate does not terminate.
                         % This is useful for pragma foreign_code, which the
                         % compiler assumes to be terminating.
-    ;   check_termination
+    ;       check_termination
                         % The user requires the compiler to guarantee
                         % the termination of this predicate. If the compiler
                         % cannot guarantee termination then it must give an
                         % error message.
 
-    ;   calls_are_fully_qualified
+    ;       calls_are_fully_qualified
                         % All calls in this predicate are fully qualified.
                         % This occurs for predicates read from `.opt' files
                         % and compiler-generated predicates.
-    ;   mode_check_clauses.
+    ;       mode_check_clauses.
                         % Each clause of the predicate should be modechecked
                         % separately. Used for predicates defined by lots of
                         % clauses (usually facts) for which the compiler's
@@ -1316,6 +1317,13 @@ add_clause(Clause, !ClausesRep) :-
     ;       untuple(
                 int % The procedure number of the original procedure.
             )
+    ;       return_via_ptr(
+                proc_id,
+                    % The id of the procedure this predicate is derived from.
+                list(int)
+                    % The arguments in these positions are returned via
+                    % pointer.
+            )
     ;       table_generator
     ;       dnf(
                 int % This predicate was originally part of a predicate
@@ -1333,37 +1341,31 @@ add_clause(Clause, !ClausesRep) :-
 
 :- type pred_origin
     --->    special_pred(special_pred)
-                % If the predicate is a unify, compare,
-                % index or initialisation predicate, specify
-                % which one, and for which type constructor.
+                % If the predicate is a unify, compare, index or initialisation
+                % predicate, specify which one, and for which type constructor.
     ;       instance_method(instance_method_constraints)
-                % If this predicate is a class method
-                % implementation, record extra information
-                % about the class context to allow
-                % polymorphism.m to correctly set up the extra
-                % type_info and typeclass_info arguments.
+                % If this predicate is a class method implementation, record
+                % extra information about the class context to allow
+                % polymorphism.m to correctly set up the extra type_info
+                % and typeclass_info arguments.
     ;       transformed(pred_transformation, pred_origin, pred_id)
-                % The predicate is a transformed version of
-                % another predicate, whose origin and identity
-                % are given by the second and third arguments.
+                % The predicate is a transformed version of another predicate,
+                % whose origin and identity are given by the second and third
+                % arguments.
     ;       created(pred_creation)
-                % The predicate was created by the compiler,
-                % and there is no information available on
-                % where it came from. (Mostly because such
-                % relationships are fuzzy in the aditi
-                % backend.)
+                % The predicate was created by the compiler, and there is no
+                % information available on where it came from. (Mostly because
+                % such relationships are fuzzy in the Aditi backend.)
     ;       assertion(string, int)
                 % The predicate represents an assertion.
     ;       lambda(string, int, int)
-                % The predicate is a higher-order manifest
-                % constant. The arguments specify its location
-                % in the source, as a filename/line number
-                % pair, and a sequence number used to
-                % distinguish multiple lambdas on the same
-                % line.
+                % The predicate is a higher-order manifest constant.
+                % The arguments specify its location in the source, as a
+                % filename/line number pair, and a sequence number used to
+                % distinguish multiple lambdas on the same line.
     ;       user(sym_name).
-                % The predicate is a normal user-written
-                % predicate; the string is its name.
+                % The predicate is a normal user-written predicate;
+                % the string is its name.
 
     % pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
     %   Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
@@ -1463,6 +1465,14 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_get_indexes(pred_info::in, list(index_spec)::out) is det.
 :- pred pred_info_clauses_info(pred_info::in, clauses_info::out) is det.
 :- pred pred_info_procedures(pred_info::in, proc_table::out) is det.
+
+    % Setting the name of a pred_info after its creation won't remove its name
+    % from the indexes under its old name or insert into the indexes under its
+    % new name. If is therefore safe to do this only after all the passes that
+    % look up predicates by name.
+    %
+:- pred pred_info_set_name(string::in,
+    pred_info::in, pred_info::out) is det.
 
 :- pred pred_info_set_origin(pred_origin::in,
     pred_info::in, pred_info::out) is det.
@@ -2057,6 +2067,7 @@ pred_info_get_indexes(PI, PI ^ indexes).
 pred_info_clauses_info(PI, PI ^ clauses_info).
 pred_info_procedures(PI, PI ^ procedures).
 
+pred_info_set_name(X, PI, PI ^ name := X).
 pred_info_set_origin(X, PI, PI ^ pred_origin := X).
 pred_info_set_import_status(X, PI, PI ^ import_status := X).
 pred_info_set_goal_type(X, PI, PI ^ goal_type := X).
@@ -3389,6 +3400,7 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
 :- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
     is semidet.
 
+no_type_info_builtin_2(private_builtin, "store_at_ref", 2).
 no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
 no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
 no_type_info_builtin_2(private_builtin, "superclass_from_typeclass_info", 3).

@@ -214,8 +214,11 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             % easier when redefining builtins to use normal Mercury code.
             pred_info_is_builtin(!.PredInfo)
         ->
-            prog_out__write_context(Context, !IO),
-            report_warning("Warning: clause for builtin.\n", !IO)
+            % prog_out__write_context(Context, !IO),
+            % report_warning("Warning: clause for builtin.\n", !IO)
+            % The above code is commented out while store_at_ref is
+            % bootstrapped.
+            true
         ;
             pred_info_clauses_info(!.PredInfo, Clauses0),
             pred_info_typevarset(!.PredInfo, TVarSet0),

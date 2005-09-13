@@ -523,31 +523,43 @@ call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
         SimpleCode = SimpleCode0
     ;
         length(Args, Arity),
-        format("Unknown builtin predicate: %s/%d",
+        format("unknown builtin predicate: %s/%d",
             [s(PredName), i(Arity)], Msg),
-        error(Msg)
+        unexpected(this_file, Msg)
     ),
     (
         CodeModel = model_det,
-        ( SimpleCode = assign(Var, AssignExpr) ->
-            call_gen__generate_assign_builtin(Var,
-                AssignExpr, Code, !CI)
+        (
+            SimpleCode = assign(Var, AssignExpr),
+            call_gen__generate_assign_builtin(Var, AssignExpr, Code, !CI)
         ;
-            error("Malformed det builtin predicate")
+            SimpleCode = ref_assign(AddrVar, ValueVar),
+            produce_variable(AddrVar, AddrVarCode, AddrRval, !CI),
+            produce_variable(ValueVar, ValueVarCode, ValueRval, !CI),
+            StoreCode = node([assign(mem_ref(AddrRval), ValueRval) - ""]),
+            Code = tree_list([AddrVarCode, ValueVarCode, StoreCode])
+        ;
+            SimpleCode = test(_),
+            unexpected(this_file, "malformed det builtin predicate")
         )
     ;
         CodeModel = model_semi,
-        ( SimpleCode = test(TestExpr) ->
+        (
+            SimpleCode = test(TestExpr),
             call_gen__generate_simple_test(TestExpr, Rval,
                 ArgCode, !CI),
             code_info__fail_if_rval_is_false(Rval, TestCode, !CI),
             Code = tree(ArgCode, TestCode)
         ;
-            error("Malformed semi builtin predicate")
+            SimpleCode = assign(_, _),
+            unexpected(this_file, "malformed semi builtin predicate")
+        ;
+            SimpleCode = ref_assign(_, _),
+            unexpected(this_file, "malformed semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        error("Nondet builtin predicate")
+        unexpected(this_file, "nondet builtin predicate")
     ).
 
 :- pred call_gen__generate_assign_builtin(prog_var::in,

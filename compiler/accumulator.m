@@ -225,7 +225,8 @@
     % Attempt to transform a procedure into accumulator recursive form.
     %
 process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(optimize_constructor_last_call, DoLCO, !IO),
+    globals__io_lookup_bool_option(optimize_constructor_last_call_accumulator,
+        DoLCO, !IO),
     globals__io_lookup_bool_option(fully_strict, FullyStrict, !IO),
     (
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),

@@ -51,7 +51,6 @@
 
    :- include_module code_info.
    :- include_module exprn_aux.
-   :- include_module code_aux.
    :- include_module continuation_info.
    :- include_module var_locn.
 

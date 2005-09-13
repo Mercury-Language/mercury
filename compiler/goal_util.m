@@ -30,6 +30,11 @@
 :- import_module set.
 :- import_module term.
 
+    % Given a goal and an initial instmap, compute the final instmap that
+    % results from the initial instmap after execution of the goal.
+    %
+:- pred update_instmap(hlds_goal::in, instmap::in, instmap::out) is det.
+
 :- type prog_var_renaming == map(prog_var, prog_var).
 
     % create_renaming(OutputVars, InstMapDelta, !VarTypes, !VarSet,
@@ -320,6 +325,12 @@
 
 %-----------------------------------------------------------------------------%
 
+update_instmap(_Goal0 - GoalInfo0, !InstMap) :-
+    goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
+    instmap__apply_instmap_delta(!.InstMap, DeltaInstMap, !:InstMap).
+
+%-----------------------------------------------------------------------------%
+
 create_renaming(OrigVars, InstMapDelta, !VarTypes, !VarSet, Unifies, NewVars,
         Renaming) :-
     create_renaming_2(OrigVars, InstMapDelta, !VarTypes, !VarSet,
@@ -596,8 +607,8 @@ goal_util__rename_unify_rhs(Must, Subn,
     unification::in, unification::out) is det.
 
 goal_util__rename_unify(Must, Subn,
-        construct(Var0, ConsId, Vars0, Modes, How0, Uniq, MaybeSize0),
-        construct(Var, ConsId, Vars, Modes, How, Uniq, MaybeSize)) :-
+        construct(Var0, ConsId, Vars0, Modes, How0, Uniq, SubInfo0),
+        construct(Var, ConsId, Vars, Modes, How, Uniq, SubInfo)) :-
     goal_util__rename_var(Must, Subn, Var0, Var),
     goal_util__rename_var_list(Must, Subn, Vars0, Vars),
     (
@@ -612,19 +623,26 @@ goal_util__rename_unify(Must, Subn,
         How = How0
     ),
     (
-        MaybeSize0 = no,
-        MaybeSize = no
-    ;
-        MaybeSize0 = yes(Size0),
+        SubInfo0 = construct_sub_info(MTA, MaybeSize0),
         (
-            Size0 = known_size(_),
-            Size = Size0
+            MaybeSize0 = no,
+            MaybeSize = no
         ;
-            Size0 = dynamic_size(SizeVar0),
-            goal_util__rename_var(Must, Subn, SizeVar0, SizeVar),
-            Size = dynamic_size(SizeVar)
+            MaybeSize0 = yes(Size0),
+            (
+                Size0 = known_size(_),
+                Size = Size0
+            ;
+                Size0 = dynamic_size(SizeVar0),
+                goal_util__rename_var(Must, Subn, SizeVar0, SizeVar),
+                Size = dynamic_size(SizeVar)
+            ),
+            MaybeSize = yes(Size)
         ),
-        MaybeSize = yes(Size)
+        SubInfo = construct_sub_info(MTA, MaybeSize)
+    ;
+        SubInfo0 = no_construct_sub_info,
+        SubInfo = no_construct_sub_info
     ).
 goal_util__rename_unify(Must, Subn,
         deconstruct(Var0, ConsId, Vars0, Modes, Cat, CanCGC),
@@ -1445,8 +1463,7 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 %-----------------------------------------------------------------------------%
 
 goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
-        Detism, Args, Features, InstMap, ModuleInfo, Context,
-        Goal) :-
+        Detism, Args, Features, InstMap, ModuleInfo, Context, Goal) :-
     list__length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
@@ -1455,8 +1472,7 @@ goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
     % this is the "recursive" clause generated for the compiler
     % for each builtin, so an invalid pred_id won't cause problems.
     InvalidPredId = invalid_pred_id,
-    BuiltinState = builtin_state(ModuleInfo, InvalidPredId,
-        PredId, ProcId),
+    BuiltinState = builtin_state(ModuleInfo, InvalidPredId, PredId, ProcId),
 
     GoalExpr = call(PredId, ProcId, Args, BuiltinState, no,
         qualified(ModuleName, ProcName)),

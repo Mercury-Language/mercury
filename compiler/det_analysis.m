@@ -134,6 +134,7 @@
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
 :- import_module hlds__code_model.
+:- import_module hlds__goal_util.
 :- import_module hlds__hlds_out.
 :- import_module hlds__passes_aux.
 :- import_module libs__options.

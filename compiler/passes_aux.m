@@ -335,9 +335,8 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
         !:Task = update_module_cookie(Closure, Cookie1)
     ),
 
-    % If the pass changed the module_info, it may have changed
-    % the pred table or the proc table for this pred_id.  Don't
-    % take any chances.
+    % If the pass changed the module_info, it may have changed the pred table
+    % or the proc table for this pred_id.  Don't take any chances.
 
     module_info_preds(!.ModuleInfo, Preds8),
     map__lookup(Preds8, PredId, Pred8),

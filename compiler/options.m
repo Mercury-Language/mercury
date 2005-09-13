@@ -485,6 +485,7 @@
 		;	type_specialization
 		;	user_guided_type_specialization
 		;	introduce_accumulators
+		;	optimize_constructor_last_call_accumulator
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
 		;	constant_propagation
@@ -1210,6 +1211,7 @@ option_defaults_2(optimization_option, [
 	type_specialization	-	bool(no),
 	user_guided_type_specialization	-	bool(no),
 	introduce_accumulators	-	bool(no),
+	optimize_constructor_last_call_accumulator -	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
 	deforestation		-	bool(no),
@@ -1889,6 +1891,8 @@ long_option("user-guided-type-specialisation",
 long_option("fixed-user-guided-type-specialization",
 					user_guided_type_specialization).
 long_option("introduce-accumulators",	introduce_accumulators).
+long_option("optimise-constructor-last-call-accumulator", optimize_constructor_last_call_accumulator).
+long_option("optimize-constructor-last-call-accumulator", optimize_constructor_last_call_accumulator).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
@@ -3939,6 +3943,9 @@ options_help_hlds_hlds_optimization -->
 		"--introduce-accumulators",
 		"\tAttempt to introduce accumulating variables into",
 		"\tprocedures, so as to make them tail recursive.",
+%		"--optimize-constructor-last-call-accumulator",
+%		"\tEnable the optimization via accumulators of ""last"" calls",
+%		"\tthat are followed by constructor application.",
 		"--optimize-constructor-last-call",
 		"\tEnable the optimization of ""last"" calls that are followed by",
 		"\tconstructor application.",

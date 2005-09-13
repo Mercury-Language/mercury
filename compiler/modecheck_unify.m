@@ -1046,7 +1046,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     % between a variable and a lambda expression is - whether it is a
     % construction unification or a deconstruction. It also works out
     % whether it will be deterministic or semideterministic.
-
+    %
 :- pred categorize_unify_var_lambda((mode)::in, list(mode)::in,
     prog_var::in, list(prog_var)::in, pred_or_func::in,
     unify_rhs::in, unify_rhs::out, unification::in, unification::out,
@@ -1057,19 +1057,26 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
     % If we are re-doing mode analysis, preserve the existing cons_id.
     list__length(ArgVars, Arity),
     (
-        Unification0 = construct(_, ConsId0, _, _, _, _, MaybeSize0)
+        Unification0 = construct(_, ConsId0, _, _, _, _, SubInfo0)
     ->
-        MaybeSize = MaybeSize0,
+        (
+            SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize),
+            require(unify(MaybeTakeAddr, no),
+                "categorize_unify_var_lambda: take_addr")
+        ;
+            SubInfo0 = no_construct_sub_info
+        ),
+        SubInfo = SubInfo0,
         ConsId = ConsId0
     ;
         Unification0 = deconstruct(_, ConsId1, _, _, _, _)
     ->
-        MaybeSize = no,
+        SubInfo = no_construct_sub_info,
         ConsId = ConsId1
     ;
         % The real cons_id will be computed by lambda.m;
         % we just put in a dummy one for now.
-        MaybeSize = no,
+        SubInfo = no_construct_sub_info,
         ConsId = cons(unqualified("__LambdaGoal__"), Arity)
     ),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
@@ -1109,7 +1116,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
             RHS = RHS0
         ),
         Unification = construct(X, ConsId, ArgVars, ArgModes,
-            construct_dynamically, cell_is_unique, MaybeSize)
+            construct_dynamically, cell_is_unique, SubInfo)
     ; instmap__is_reachable(InstMap) ->
         % If it's a deconstruction, it is a mode error.
         % The error message would be incorrect in unreachable code,
@@ -1146,14 +1153,25 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     map__lookup(VarTypes, X, TypeOfX),
     % If we are re-doing mode analysis, preserve the existing cons_id.
-    ( Unification0 = construct(_, ConsId0, _, _, _, _, MaybeSize0) ->
-        MaybeSize = MaybeSize0,
+    (
+        Unification0 = construct(_, ConsId0, _, _, _, _, SubInfo0)
+    ->
+        (
+            SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize0),
+            require(unify(MaybeTakeAddr, no),
+                "categorize_unify_var_functor: take_addr")
+        ;
+            SubInfo0 = no_construct_sub_info
+        ),
+        SubInfo = SubInfo0,
         ConsId = ConsId0
-    ; Unification0 = deconstruct(_, ConsId1, _, _, _, _) ->
-        MaybeSize = no,
+    ;
+        Unification0 = deconstruct(_, ConsId1, _, _, _, _)
+    ->
+        SubInfo = no_construct_sub_info,
         ConsId = ConsId1
     ;
-        MaybeSize = no,
+        SubInfo = no_construct_sub_info,
         ConsId = NewConsId
     ),
     mode_util__modes_to_uni_modes(ModuleInfo, ModeOfXArgs,
@@ -1161,7 +1179,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
     ( mode_is_output(ModuleInfo, ModeOfX) ->
         % It's a construction.
         Unification = construct(X, ConsId, ArgVars, ArgModes,
-            construct_dynamically, cell_is_unique, MaybeSize),
+            construct_dynamically, cell_is_unique, SubInfo),
 
         % For existentially quantified data types, check that any type_info
         % or type_class_info variables in the construction are ground.

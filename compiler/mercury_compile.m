@@ -2568,7 +2568,8 @@ mercury_compile__backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
         MaybeDupProcMap = no
     ;
         ProcDups = yes,
-        dependency_graph__build_pred_dependency_graph(!.HLDS, no, DepInfo),
+        dependency_graph__build_pred_dependency_graph(!.HLDS,
+            do_not_include_imported, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, PredSCCs),
         list__condense(PredSCCs, OrderedPredIds),
         MaybeDupProcMap = yes(map.init)
@@ -3823,8 +3824,7 @@ mercury_compile__maybe_lco(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Looking for LCO modulo constructor application ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_nonaditi_procs(
-            update_proc_io(lco_modulo_constructors), !HLDS, !IO),
+        lco_modulo_constructors(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
