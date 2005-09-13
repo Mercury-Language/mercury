@@ -1592,6 +1592,24 @@ read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Goal) :-
 			read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
 				Info, AtomicGoal, Goal)
 		;
+			GoalType = goal_partial_construct,
+			read_var(VarNumRep, Bytecode, !Pos, Var),
+			read_cons_id(Bytecode, Label, !Pos, ConsId),
+			read_maybe_vars(VarNumRep, Bytecode, !Pos, MaybeVars),
+			AtomicGoal = partial_construct_rep(Var, ConsId,
+				MaybeVars),
+			read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+				Info, AtomicGoal, Goal)
+		;
+			GoalType = goal_partial_deconstruct,
+			read_var(VarNumRep, Bytecode, !Pos, Var),
+			read_cons_id(Bytecode, Label, !Pos, ConsId),
+			read_maybe_vars(VarNumRep, Bytecode, !Pos, MaybeVars),
+			AtomicGoal = partial_deconstruct_rep(Var, ConsId,
+				MaybeVars),
+			read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
+				Info, AtomicGoal, Goal)
+		;
 			GoalType = goal_simple_test,
 			read_var(VarNumRep, Bytecode, !Pos, Var1),
 			read_var(VarNumRep, Bytecode, !Pos, Var2),
@@ -1627,10 +1645,10 @@ read_goal(VarNumRep, Bytecode, Label, !Pos, Info, Goal) :-
 			read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
 				Info, AtomicGoal, Goal)
 		;
-			GoalType = goal_unsafe_cast,
+			GoalType = goal_cast,
 			read_var(VarNumRep, Bytecode, !Pos, OutputVar),
 			read_var(VarNumRep, Bytecode, !Pos, InputVar),
-			AtomicGoal = unsafe_cast_rep(OutputVar, InputVar),
+			AtomicGoal = cast_rep(OutputVar, InputVar),
 			read_atomic_info(VarNumRep, Bytecode, Label, !Pos,
 				Info, AtomicGoal, Goal)
 		;
@@ -1721,6 +1739,33 @@ read_vars_2(VarNumRep, Bytecode, N, !Pos, Vars) :-
 		Vars = [Head | Tail]
 	;
 		Vars = []
+	).
+
+:- pred read_maybe_vars(var_num_rep::in, bytecode::in, int::in, int::out, 
+	list(maybe(var_rep))::out) is det.
+
+read_maybe_vars(VarNumRep, Bytecode, !Pos, MaybeVars) :-
+	read_length(Bytecode, !Pos, Len),
+	read_maybe_vars_2(VarNumRep, Bytecode, Len, !Pos, MaybeVars).
+
+:- pred read_maybe_vars_2(var_num_rep::in, bytecode::in, int::in, int::in, 
+	int::out, list(maybe(var_rep))::out) is det.
+
+read_maybe_vars_2(VarNumRep, Bytecode, N, !Pos, MaybeVars) :-
+	( N > 0 ->
+		read_byte(Bytecode, !Pos, YesOrNo),
+		( YesOrNo = 1 ->
+			read_var(VarNumRep, Bytecode, !Pos, Head),
+			MaybeHead = yes(Head)
+		; YesOrNo = 0 ->
+			MaybeHead = no
+		; throw(internal_error("read_maybe_vars_2",
+			"invalid yes or no flag"))
+		),
+		read_maybe_vars_2(VarNumRep, Bytecode, N - 1, !Pos, Tail),
+		MaybeVars = [MaybeHead | Tail]
+	;
+		MaybeVars = []
 	).
 
 :- pred read_var(var_num_rep::in, bytecode::in, int::in, int::out,

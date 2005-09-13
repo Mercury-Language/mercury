@@ -95,11 +95,39 @@
 			cons_id_rep,
 			list(var_rep)
 		)
+			%
+			% A partial deconstruction of the form
+			% X = f(Y_1, Y_2, ..., Y_n)
+			% where X is more instanciated after the unification
+			% than before.
+			%
+	;	partial_deconstruct_rep(
+			var_rep,		% X
+			cons_id_rep,		% f
+				% The list of Y_i's.  Y_i's which are
+				% input are wrapped in `yes', while the other
+				% Y_i positions are `no'.
+			list(maybe(var_rep))
+		)
+			% 
+			% A partial construction of the form
+			% X = f(Y_1, Y_2, ..., Y_n)
+			% where X is free before the unification and bound,
+			% but not ground, after the unification.
+			%
+	;	partial_construct_rep(
+			var_rep,		% X
+			cons_id_rep,		% f
+				% The list of Y_i's.  Y_i's which are
+				% input are wrapped in `yes', while the other
+				% Y_i positions are `no'.
+			list(maybe(var_rep))
+		)
 	;	unify_assign_rep(
 			var_rep,		% target
 			var_rep			% source
 		)
-	;	unsafe_cast_rep(
+	;	cast_rep(
 			var_rep,		% target
 			var_rep			% source
 		)
@@ -263,8 +291,10 @@
 	;	goal_scope
 	;	goal_construct
 	;	goal_deconstruct
+	;	goal_partial_construct
+	;	goal_partial_deconstruct
 	;	goal_assign
-	;	goal_unsafe_cast
+	;	goal_cast
 	;	goal_simple_test
 	;	goal_foreign
 	;	goal_ho_call
@@ -299,9 +329,11 @@
 
 atomic_goal_generates_event(unify_construct_rep(_, _, _)) = no.
 atomic_goal_generates_event(unify_deconstruct_rep(_, _, _)) = no.
+atomic_goal_generates_event(partial_construct_rep(_, _, _)) = no.
+atomic_goal_generates_event(partial_deconstruct_rep(_, _, _)) = no.
 atomic_goal_generates_event(unify_assign_rep(_, _)) = no.
 atomic_goal_generates_event(unify_simple_test_rep(_, _)) = no.
-atomic_goal_generates_event(unsafe_cast_rep(_, _)) = no.
+atomic_goal_generates_event(cast_rep(_, _)) = no.
 atomic_goal_generates_event(pragma_foreign_code_rep(_)) = no.
 atomic_goal_generates_event(higher_order_call_rep(_, Args)) = yes(Args).
 atomic_goal_generates_event(method_call_rep(_, _, Args)) = yes(Args).
@@ -342,9 +374,11 @@ goal_generates_internal_event(atomic_goal_rep(_, _, _, _, _)) = no.
 
 atomic_goal_identifiable(unify_construct_rep(_, _, _)) = no.
 atomic_goal_identifiable(unify_deconstruct_rep(_, _, _)) = no.
+atomic_goal_identifiable(partial_construct_rep(_, _, _)) = no.
+atomic_goal_identifiable(partial_deconstruct_rep(_, _, _)) = no.
 atomic_goal_identifiable(unify_assign_rep(_, _)) = no.
 atomic_goal_identifiable(unify_simple_test_rep(_, _)) = no.
-atomic_goal_identifiable(unsafe_cast_rep(_, _)) = no.
+atomic_goal_identifiable(cast_rep(_, _)) = no.
 atomic_goal_identifiable(pragma_foreign_code_rep(_)) = no.
 atomic_goal_identifiable(higher_order_call_rep(_, _)) = no.
 atomic_goal_identifiable(method_call_rep(_, _, _)) = no.
@@ -454,14 +488,16 @@ goal_type_byte(5, goal_neg).
 goal_type_byte(6, goal_scope).
 goal_type_byte(7, goal_construct).
 goal_type_byte(8, goal_deconstruct).
-goal_type_byte(9, goal_assign).
-goal_type_byte(10, goal_unsafe_cast).
-goal_type_byte(11, goal_simple_test).
-goal_type_byte(12, goal_foreign).
-goal_type_byte(13, goal_ho_call).
-goal_type_byte(14, goal_method_call).
-goal_type_byte(15, goal_plain_call).
-goal_type_byte(16, goal_builtin_call).
+goal_type_byte(9, goal_partial_construct).
+goal_type_byte(10, goal_partial_deconstruct).
+goal_type_byte(11, goal_assign).
+goal_type_byte(12, goal_cast).
+goal_type_byte(13, goal_simple_test).
+goal_type_byte(14, goal_foreign).
+goal_type_byte(15, goal_ho_call).
+goal_type_byte(16, goal_method_call).
+goal_type_byte(17, goal_plain_call).
+goal_type_byte(18, goal_builtin_call).
 
 %-----------------------------------------------------------------------------%
 

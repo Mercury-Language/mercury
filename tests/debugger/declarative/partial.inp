@@ -1,0 +1,17 @@
+register --quiet
+context none
+echo on
+step
+finish
+dd
+browse 1
+cd 1
+mark
+info
+undo
+browse 1
+cd 2
+mark
+info
+quit
+quit -y

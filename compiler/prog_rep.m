@@ -48,6 +48,8 @@
 :- implementation.
 
 :- import_module backend_libs__bytecode_data.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
 :- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module mdbcomp__prim_data.
@@ -151,7 +153,7 @@ goal_expr_to_byte_list(if_then_else(_, Cond, Then, Else), _, InstMap0, Info,
 goal_expr_to_byte_list(unify(_, _, _, Uni, _), GoalInfo, InstMap0, Info, 
 		!StackInfo, Bytes) :-
 	atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, 
-		AtomicBytes),
+		AtomicBytes, BoundVars),
 	(
 		Uni = assign(Target, Source),
 		Bytes = [goal_type_to_byte(goal_assign)] ++
@@ -159,21 +161,39 @@ goal_expr_to_byte_list(unify(_, _, _, Uni, _), GoalInfo, InstMap0, Info,
 			var_to_byte_list(Info, Source) ++
 			AtomicBytes
 	;
-		Uni = construct(Var, ConsId, Args, _, _, _, _),
+		Uni = construct(Var, ConsId, Args, ArgModes, _, _, _),
 		cons_id_to_byte_list(ConsId, !StackInfo, ConsIdBytes),
-		Bytes = [goal_type_to_byte(goal_construct)] ++
-			var_to_byte_list(Info, Var) ++
-			ConsIdBytes ++
-			vars_to_byte_list(Info, Args) ++
-			AtomicBytes
+		( list.all_true(lhs_final_is_ground(Info), ArgModes) ->
+			Bytes = [goal_type_to_byte(goal_construct)] ++
+				var_to_byte_list(Info, Var) ++
+				ConsIdBytes ++
+				vars_to_byte_list(Info, Args) ++
+				AtomicBytes
+		;
+			filter_input_args(Info, ArgModes, Args, MaybeArgs),
+			Bytes = [goal_type_to_byte(goal_partial_construct)] ++
+				var_to_byte_list(Info, Var) ++
+				ConsIdBytes ++
+				maybe_vars_to_byte_list(Info, MaybeArgs) ++
+				AtomicBytes
+		)
 	;
-		Uni = deconstruct(Var, ConsId, Args, _, _, _),
+		Uni = deconstruct(Var, ConsId, Args, ArgModes, _, _),
 		cons_id_to_byte_list(ConsId, !StackInfo, ConsIdBytes),
-		Bytes = [goal_type_to_byte(goal_deconstruct)] ++
-			var_to_byte_list(Info, Var) ++
-			ConsIdBytes ++
-			vars_to_byte_list(Info, Args) ++
-			AtomicBytes
+		( list.member(Var, BoundVars) ->
+			filter_input_args(Info, ArgModes, Args, MaybeArgs),
+			Bytes = [goal_type_to_byte(goal_partial_deconstruct)]++
+				var_to_byte_list(Info, Var) ++
+				ConsIdBytes ++
+				maybe_vars_to_byte_list(Info, MaybeArgs) ++
+				AtomicBytes
+		;
+			Bytes = [goal_type_to_byte(goal_deconstruct)] ++
+				var_to_byte_list(Info, Var) ++
+				ConsIdBytes ++
+				vars_to_byte_list(Info, Args) ++
+				AtomicBytes
+		)
 	;
 		Uni = simple_test(Var1, Var2),
 		Bytes = [goal_type_to_byte(goal_simple_test)] ++
@@ -205,7 +225,7 @@ goal_expr_to_byte_list(scope(_, Goal), GoalInfo, InstMap0, Info, !StackInfo,
 goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
 		GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
 	atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, 
-		AtomicBytes),
+		AtomicBytes, _),
 	(
 		GenericCall = higher_order(PredVar, _, _, _),
 		Bytes = [goal_type_to_byte(goal_ho_call)] ++
@@ -222,7 +242,7 @@ goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
 	;
 		GenericCall = cast(_),
 		( Args = [InputArg, OutputArg] ->
-			Bytes = [goal_type_to_byte(goal_unsafe_cast)] ++
+			Bytes = [goal_type_to_byte(goal_cast)] ++
 				var_to_byte_list(Info, OutputArg) ++
 				var_to_byte_list(Info, InputArg) ++
 				AtomicBytes
@@ -237,7 +257,7 @@ goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
 goal_expr_to_byte_list(call(PredId, _, Args, Builtin, _, _),
 		GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
 	atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo,
-		AtomicBytes),
+		AtomicBytes, _),
 	module_info_pred_info(Info ^ module_info, PredId, PredInfo),
 	ModuleSymName = pred_info_module(PredInfo),
 	mdbcomp__prim_data__sym_name_to_string(ModuleSymName, ModuleName),
@@ -261,20 +281,47 @@ goal_expr_to_byte_list(foreign_proc(_, _PredId, _, Args, _, _),
 		GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
 	ArgVars = list__map(foreign_arg_var, Args),
 	atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo,
-		AtomicBytes),
+		AtomicBytes, _),
 	Bytes = [goal_type_to_byte(goal_foreign)] ++
 		vars_to_byte_list(Info, ArgVars) ++ AtomicBytes.
 goal_expr_to_byte_list(shorthand(_), _, _, _, !StackInfo, _) :-
 	% these should have been expanded out by now
 	error("goal_expr_to_byte_list: unexpected shorthand").
 
+:- pred lhs_final_is_ground(prog_rep__info::in, uni_mode::in) is semidet.
+
+lhs_final_is_ground(Info, (_ - _) -> (LHSFinalInst - _)) :-
+	inst_is_ground(Info ^ module_info, LHSFinalInst).
+
+:- pred rhs_is_input(prog_rep__info::in, uni_mode::in) is semidet.
+
+rhs_is_input(Info, (_ - RHSInitialInst) -> (_ - RHSFinalInst)) :-
+	mode_is_input(Info ^ module_info, RHSInitialInst -> RHSFinalInst).
+
+:- pred filter_input_args(prog_rep__info::in, list(uni_mode)::in, 
+	list(prog_var)::in, list(maybe(prog_var))::out) is det.
+
+filter_input_args(_, [], [], []).
+filter_input_args(Info, [Mode | Modes], [Var | Vars], [MaybeVar | MaybeVars]) 
+		:-
+	( rhs_is_input(Info, Mode) ->
+		MaybeVar = yes(Var)
+	;
+		MaybeVar = no
+	),
+	filter_input_args(Info, Modes, Vars, MaybeVars).
+filter_input_args(_, [], [_ | _], _) :-
+	error("filter_input_args: more vars than modes").
+filter_input_args(_, [_ | _], [], _) :-
+	error("filter_input_args: more modes than vars").
 %---------------------------------------------------------------------------%
 
 :- pred atomic_goal_info_to_byte_list(hlds_goal_info::in, instmap::in, 
 	prog_rep__info::in, stack_layout_info::in, stack_layout_info::out, 
-	list(int)::out) is det.
+	list(int)::out, list(prog_var)::out) is det.
 
-atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
+atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes,
+		BoundVars) :-
 	goal_info_get_determinism(GoalInfo, Detism),
 	goal_info_get_context(GoalInfo, Context),
 	term__context_file(Context, FileName0),
@@ -288,12 +335,12 @@ atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 	instmap_changed_vars(InstMap0, InstMap, Info ^ vartypes,
 		Info ^ module_info, ChangedVars),
-	set__to_sorted_list(ChangedVars, ChangedVarList),
+	set__to_sorted_list(ChangedVars, BoundVars),
 	string_to_byte_list(FileName, !StackInfo, FileNameBytes),
 	Bytes = [represent_determinism(Detism)] ++
 		FileNameBytes ++
 		lineno_to_byte_list(LineNo) ++
-		vars_to_byte_list(Info, ChangedVarList).
+		vars_to_byte_list(Info, BoundVars).
 
 :- pred cons_id_to_byte_list(cons_id::in, 
 	stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
@@ -398,6 +445,13 @@ vars_to_byte_list(Info, Vars) =
 	length_to_byte_list(Vars) ++
 	list__condense(list__map(var_to_byte_list(Info), Vars)).
 
+:- func maybe_vars_to_byte_list(prog_rep__info, list(maybe(prog_var))) = 
+	list(int).
+
+maybe_vars_to_byte_list(Info, Vars) =
+	length_to_byte_list(Vars) ++
+	list__condense(list__map(maybe_var_to_byte_list(Info), Vars)).
+
 :- func var_to_byte_list(prog_rep__info, prog_var) = list(int).
 
 var_to_byte_list(Info, Var) = Bytes :-
@@ -408,6 +462,22 @@ var_to_byte_list(Info, Var) = Bytes :-
 	;
 		Info ^ var_num_rep = short,
 		short_to_byte_list(VarNum, Bytes)
+	).
+
+:- func maybe_var_to_byte_list(prog_rep__info, maybe(prog_var)) = list(int).
+
+maybe_var_to_byte_list(Info, MaybeVar) = Bytes :-
+	%
+	% This is not the most efficient representation, however
+	% maybe(prog_var)'s are only used for partial unifications
+	% which are rare.
+	%
+	(
+		MaybeVar = yes(Var),
+		Bytes = [1 | var_to_byte_list(Info, Var)]
+	;
+		MaybeVar = no,
+		Bytes = [0]
 	).
 
 :- func length_to_byte_list(list(T)) = list(int).

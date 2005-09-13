@@ -1616,6 +1616,80 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 				Store, ProcRep, Origin)
 		)
 	;
+		AtomicGoal = partial_deconstruct_rep(_, _, MaybeFieldVars),
+		(
+			list.member(Var0, BoundVars),
+			TermPath0 = [TermPathStep0 | TermPath]
+		->
+			list.index1_det(MaybeFieldVars, TermPathStep0,
+				MaybeVar),
+			(
+				MaybeVar = yes(Var),
+				% 
+				% This partial deconstruction bound the
+				% TermPathStep0'th argument of 
+				% Var0.
+				%
+				traverse_primitives(Prims, Var, TermPath,
+					Store, ProcRep, Origin)
+			;
+				MaybeVar = no,
+				%
+				% This partial deconstruction did not
+				% bind the TermPathStep0'th argument,
+				% so continue looking for the 
+				% unification which did.
+				%
+				traverse_primitives(Prims, Var0, TermPath0,
+					Store, ProcRep, Origin)
+			)
+		;
+			traverse_primitives(Prims, Var0, TermPath0,
+				Store, ProcRep, Origin)
+		)
+	;
+		AtomicGoal = partial_construct_rep(_, _, MaybeFieldVars),
+		(
+			list.member(Var0, BoundVars)
+		->
+			(
+				TermPath0 = [],
+				Origin = primitive_op(File, Line, unification)
+			;
+				TermPath0 = [TermPathStep0 | TermPath],
+				list.index1_det(MaybeFieldVars, TermPathStep0,
+					MaybeVar),
+				(
+					MaybeVar = yes(Var),
+					% 
+					% The partial construction bound the
+					% TermPathStep0'th argument of 
+					% Var0.
+					%
+					traverse_primitives(Prims, Var, 
+						TermPath, Store, ProcRep,
+						Origin)
+				;
+					MaybeVar = no,
+					%
+					% We got to the construction
+					% which bound the outer most functor
+					% of Var0 without finding the
+					% unification which bound the 
+					% TermPathStep0'th argument of that
+					% functor.  So something has gone 
+					% wrong.
+					%
+					throw(internal_error(
+						"traverse_primitives",
+						"input argument not found"))
+				)
+			)
+		;
+			traverse_primitives(Prims, Var0, TermPath0,
+				Store, ProcRep, Origin)
+		)
+	;
 		AtomicGoal = unify_assign_rep(ToVar, FromVar),
 		% We handle assigns the same as we handle unsafe casts.
 		( list.member(Var0, BoundVars) ->
@@ -1628,8 +1702,8 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 				Store, ProcRep, Origin)
 		)
 	;
-		AtomicGoal = unsafe_cast_rep(ToVar, FromVar),
-		% We handle unsafe casts the same as we handle assigns.
+		AtomicGoal = cast_rep(ToVar, FromVar),
+		% We handle casts the same as we handle assigns.
 		( list.member(Var0, BoundVars) ->
 			decl_require(unify(Var0, ToVar),
 				"traverse_primitives", "bad unsafe_cast"),
