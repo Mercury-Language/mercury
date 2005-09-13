@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2004 The University of Melbourne.
+# Copyright (C) 1997-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -178,6 +178,11 @@
 	--no-decl-debug)
 		decl_debug=false ;;
 
+	--extend-stacks-when-needed)
+		extend_stacks=true ;;
+	--no-extend-stacks-when-needed)
+		extend_stacks=false ;;
+
 	-s|--grade)
 		shift
 		grade="$1";
@@ -211,6 +216,7 @@
 		pic_reg=false
 		debug=false
 		decl_debug=false
+		extend_stacks=false
 
 		grade_pieces=`echo $grade | tr '.' ' '`
 		for grade_piece in $grade_pieces
@@ -442,6 +448,10 @@
 
 				decldebug)
 					decl_debug=true
+					;;
+
+				exts)
+					extend_stacks=true
 					;;
 
 				*)

@@ -377,9 +377,19 @@
     #endif
 #endif
 
+#if defined(MR_EXTEND_STACKS_WHEN_NEEDED)
+  #define MR_GRADE_PART_15	MR_PASTE2(MR_GRADE_PART_14, _exts)
+  #define MR_GRADE_OPT_PART_15	MR_GRADE_OPT_PART_14 ".exts"
+  #if defined(MR_HIGHLEVEL_CODE)
+    #error "--extend-stacks-when-needed and --high-level-code are not compatible"
+  #endif
+#else
+  #define MR_GRADE_PART_15	MR_GRADE_PART_14
+  #define MR_GRADE_OPT_PART_15	MR_GRADE_OPT_PART_14
+#endif
 
-#define MR_GRADE		MR_GRADE_PART_14
-#define MR_GRADE_OPT		MR_GRADE_OPT_PART_14
+#define MR_GRADE		MR_GRADE_PART_15
+#define MR_GRADE_OPT		MR_GRADE_OPT_PART_15
 
 #define MR_GRADE_VAR		MR_PASTE2(MR_grade_,MR_GRADE)
 #define MR_GRADE_STRING 	MR_STRINGIFY(MR_GRADE)

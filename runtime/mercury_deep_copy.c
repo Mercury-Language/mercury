@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2004 The University of Melbourne.
+** Copyright (C) 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -154,10 +154,10 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 
 	MR_restore_transient_hp();	/* Because we play with MR_hp */
 
-	if (lower_limit < MR_ENGINE(MR_eng_heap_zone)->bottom ||
-			lower_limit > MR_ENGINE(MR_eng_heap_zone)->top)
+	if (lower_limit < MR_ENGINE(MR_eng_heap_zone)->MR_zone_bottom ||
+		lower_limit > MR_ENGINE(MR_eng_heap_zone)->MR_zone_top)
 	{
-		lower_limit = MR_ENGINE(MR_eng_heap_zone)->bottom;
+		lower_limit = MR_ENGINE(MR_eng_heap_zone)->MR_zone_bottom;
 	}
 
 	/* temporarily swap the heap with the global heap */
@@ -168,7 +168,7 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 	/* copy values from the heap to the global heap */
 	MR_save_transient_hp();
 	result = MR_deep_copy(term, type_info, lower_limit,
-			MR_ENGINE(MR_eng_global_heap_zone)->top);
+		MR_ENGINE(MR_eng_global_heap_zone)->MR_zone_top);
 	MR_restore_transient_hp();
 
 	/* swap the heap and global heap back again */

@@ -768,6 +768,14 @@ block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
         rval_refers_stackvars(Rval, Use),
         Need = Use
     ;
+        Uinstr0 = save_maxfr(Lval),
+        lval_refers_stackvars(Lval, Use),
+        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+    ;
+        Uinstr0 = restore_maxfr(Lval),
+        lval_refers_stackvars(Lval, Use),
+        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+    ;
         Uinstr0 = incr_hp(Lval, _, _, Rval, _),
         lval_refers_stackvars(Lval, Use1),
         rval_refers_stackvars(Rval, Use2),
@@ -921,6 +929,8 @@ can_instr_branch_away(goto(_), yes).
 can_instr_branch_away(computed_goto(_, _), yes).
 can_instr_branch_away(c_code(_, _), no).
 can_instr_branch_away(if_val(_, _), yes).
+can_instr_branch_away(save_maxfr(_), no).
+can_instr_branch_away(restore_maxfr(_), no).
 can_instr_branch_away(incr_hp(_, _, _, _, _), no).
 can_instr_branch_away(mark_hp(_), no).
 can_instr_branch_away(restore_hp(_), no).
@@ -995,6 +1005,8 @@ can_instr_fall_through(goto(_), no).
 can_instr_fall_through(computed_goto(_, _), no).
 can_instr_fall_through(c_code(_, _), yes).
 can_instr_fall_through(if_val(_, _), yes).
+can_instr_fall_through(save_maxfr(_), yes).
+can_instr_fall_through(restore_maxfr(_), yes).
 can_instr_fall_through(incr_hp(_, _, _, _, _), yes).
 can_instr_fall_through(mark_hp(_), yes).
 can_instr_fall_through(restore_hp(_), yes).
@@ -1039,6 +1051,8 @@ can_use_livevals(goto(_), yes).
 can_use_livevals(computed_goto(_, _), no).
 can_use_livevals(c_code(_, _), no).
 can_use_livevals(if_val(_, _), yes).
+can_use_livevals(save_maxfr(_), no).
+can_use_livevals(restore_maxfr(_), no).
 can_use_livevals(incr_hp(_, _, _, _, _), no).
 can_use_livevals(mark_hp(_), no).
 can_use_livevals(restore_hp(_), no).
@@ -1100,6 +1114,8 @@ instr_labels_2(goto(Addr), [], [Addr]).
 instr_labels_2(computed_goto(_, Labels), Labels, []).
 instr_labels_2(c_code(_, _), [], []).
 instr_labels_2(if_val(_, Addr), [], [Addr]).
+instr_labels_2(save_maxfr(_), [], []).
+instr_labels_2(restore_maxfr(_), [], []).
 instr_labels_2(incr_hp(_, _, _, _, _), [], []).
 instr_labels_2(mark_hp(_), [], []).
 instr_labels_2(restore_hp(_), [], []).
@@ -1154,6 +1170,8 @@ possible_targets(if_val(_, CodeAddr), Labels, CodeAddrs) :-
         Labels = [],
         CodeAddrs = [CodeAddr]
     ).
+possible_targets(save_maxfr(_), [], []).
+possible_targets(restore_maxfr(_), [], []).
 possible_targets(incr_hp(_, _, _, _, _), [], []).
 possible_targets(mark_hp(_), [], []).
 possible_targets(restore_hp(_), [], []).
@@ -1223,6 +1241,8 @@ instr_rvals_and_lvals(goto(_), [], []).
 instr_rvals_and_lvals(computed_goto(Rval, _), [Rval], []).
 instr_rvals_and_lvals(c_code(_, _), [], []).
 instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
+instr_rvals_and_lvals(save_maxfr(Lval), [], [Lval]).
+instr_rvals_and_lvals(restore_maxfr(Lval), [], [Lval]).
 instr_rvals_and_lvals(incr_hp(Lval, _, _, Rval, _), [Rval], [Lval]).
 instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
 instr_rvals_and_lvals(restore_hp(Rval), [Rval], []).
@@ -1354,6 +1374,10 @@ count_temps_instr(computed_goto(Rval, _), !R, !F) :-
 count_temps_instr(if_val(Rval, _), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
 count_temps_instr(c_code(_, _), !R, !F).
+count_temps_instr(save_maxfr(Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(restore_maxfr(Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
 count_temps_instr(incr_hp(Lval, _, _, Rval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F),
     count_temps_rval(Rval, !R, !F).
@@ -1718,6 +1742,23 @@ replace_labels_instr(if_val(Rval0, Target0), ReplMap, ReplData,
         Rval = Rval0
     ),
     replace_labels_code_addr(Target0, ReplMap, Target).
+replace_labels_instr(save_maxfr(Lval0), ReplMap, ReplData, save_maxfr(Lval)) :-
+    (
+        ReplData = yes,
+        replace_labels_lval(Lval0, ReplMap, Lval)
+    ;
+        ReplData = no,
+        Lval = Lval0
+    ).
+replace_labels_instr(restore_maxfr(Lval0), ReplMap, ReplData,
+        restore_maxfr(Lval)) :-
+    (
+        ReplData = yes,
+        replace_labels_lval(Lval0, ReplMap, Lval)
+    ;
+        ReplData = no,
+        Lval = Lval0
+    ).
 replace_labels_instr(incr_hp(Lval0, MaybeTag, MO, Rval0, Msg),
         ReplMap, ReplData, incr_hp(Lval, MaybeTag, MO, Rval, Msg)) :-
     (

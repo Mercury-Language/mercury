@@ -149,3 +149,8 @@ case $debug,$decl_debug in
 			exit 1
 			;;
 esac
+
+case $extend_stacks in
+	true)		GRADE="$GRADE.exts" ;;
+	*)		;;
+esac

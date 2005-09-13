@@ -271,6 +271,9 @@
 **	Enables low-level debugging messages from the signal handling
 **	functions in the deep profiler.
 **
+** MP_STACK_EXTEND_DEBUG
+**	Enables low-level debugging messages when extending the stacks.
+**
 ** MR_TRACE_CHECK_INTEGRITY
 **	Enables the -i and --integrity options on mdb's forward movement
 **	commands, which cause the debugger to check the integrity of the

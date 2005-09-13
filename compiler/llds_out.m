@@ -1822,6 +1822,10 @@ output_instr_decls(_, computed_goto(Rval, _Labels), !DeclSet, !IO) :-
 output_instr_decls(_, if_val(Rval, Target), !DeclSet, !IO) :-
     output_rval_decls(Rval, !DeclSet, !IO),
     output_code_addr_decls(Target, !DeclSet, !IO).
+output_instr_decls(_, save_maxfr(Lval), !DeclSet, !IO) :-
+    output_lval_decls(Lval, !DeclSet, !IO).
+output_instr_decls(_, restore_maxfr(Lval), !DeclSet, !IO) :-
+    output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, incr_hp(Lval, _Tag, _, Rval, _), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
     output_rval_decls(Rval, !DeclSet, !IO).
@@ -2145,6 +2149,16 @@ output_instruction(if_val(Rval, Target), ProfInfo, !IO) :-
     io__write_string(") {\n\t\t", !IO),
     output_goto(Target, CallerLabel, !IO),
     io__write_string("\t}\n", !IO).
+
+output_instruction(save_maxfr(Lval), _, !IO) :-
+    io__write_string("\tMR_save_maxfr(", !IO),
+    output_lval(Lval, !IO),
+    io__write_string(");\n", !IO).
+
+output_instruction(restore_maxfr(Lval), _, !IO) :-
+    io__write_string("\tMR_restore_maxfr(", !IO),
+    output_lval(Lval, !IO),
+    io__write_string(");\n", !IO).
 
 output_instruction(incr_hp(Lval, MaybeTag, MaybeOffset, Rval, TypeMsg),
         ProfInfo, !IO) :-

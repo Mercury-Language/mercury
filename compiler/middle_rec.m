@@ -460,6 +460,10 @@ middle_rec__find_used_registers_instr(computed_goto(Rval, _), !Used) :-
 middle_rec__find_used_registers_instr(c_code(_, _), !Used).
 middle_rec__find_used_registers_instr(if_val(Rval, _), !Used) :-
     middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(save_maxfr(Lval), !Used) :-
+    middle_rec__find_used_registers_lval(Lval, !Used).
+middle_rec__find_used_registers_instr(restore_maxfr(Lval), !Used) :-
+    middle_rec__find_used_registers_lval(Lval, !Used).
 middle_rec__find_used_registers_instr(incr_hp(Lval, _, _, Rval, _), !Used) :-
     middle_rec__find_used_registers_lval(Lval, !Used),
     middle_rec__find_used_registers_rval(Rval, !Used).

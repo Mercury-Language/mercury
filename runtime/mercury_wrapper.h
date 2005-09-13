@@ -28,18 +28,21 @@
 ** and the Mercury engine's data areas, and then calls io__init_state/2
 ** in the Mercury library to initialize the io__state.
 */
+
 extern	void	mercury_runtime_init(int argc, char **argv);
 
 /*
 ** mercury_runtime_main() basically just calls main/2,
 ** with a bit of debugging scaffolding around it.
 */
+
 extern	void	mercury_runtime_main(void);
 
 /*
 ** mercury_runtime_terminate() does any necessary cleanup,
 ** and then returns mercury_exit_status.
 */
+
 extern	int	mercury_runtime_terminate(void);
 
 /*
@@ -48,11 +51,12 @@ extern	int	mercury_runtime_terminate(void);
 ** will be stored in the context of the given transaction.
 ** The return value is described by aditi2/src/AditiStatus/AditiStatus.h
 ** in the Aditi sources.
-** Aborts if the executable was not compiled for Aditi execution. 
+** Aborts if the executable was not compiled for Aditi execution.
 ** The return value is an Aditi error code.
 ** We use MR_Box here rather than the actual argument types to
 ** avoid dependencies on the Aditi headers.
 */
+
 extern	MR_Box	MR_load_aditi_rl_code(MR_Box connection, MR_Box transaction);
 
 /*
@@ -61,6 +65,7 @@ extern	MR_Box	MR_load_aditi_rl_code(MR_Box connection, MR_Box transaction);
 ** or the MPS (Memory Pool System) kit collector.  This function is normally
 ** called from mercury_runtime_init().
 */
+
 #ifdef MR_CONSERVATIVE_GC
   extern void	MR_init_conservative_GC(void);
 #endif
@@ -124,7 +129,7 @@ extern	MR_Box		(*MR_address_of_do_load_aditi_rl_code)(MR_Box, MR_Box);
 ** MR_trace_getline(const char *, FILE *, FILE *) and
 ** MR_trace_get_command(const char *, FILE *, FILE *) are defined in
 ** trace/mercury_trace_internal.c but are called in browser/util.m.  As
-** we cannot do direct calls from browser/ to trace/, we do indirect 
+** we cannot do direct calls from browser/ to trace/, we do indirect
 ** calls via the following pointers.
 */
 
@@ -145,7 +150,7 @@ extern	const char *	(*MR_address_of_trace_browse_all_on_level)(FILE *,
 				int, MR_bool);
 
 /*
-** MR_trace_init_external() and MR_trace_final_external() are defined 
+** MR_trace_init_external() and MR_trace_final_external() are defined
 ** in trace/mercury_trace_external.c but are called in
 ** runtime/mercury_trace_base.c. As we can not do direct calls from
 ** runtime/ to trace/, we do an indirect call via a function
@@ -169,6 +174,7 @@ extern	MR_Code		*(*MR_exec_trace_func_ptr)(const MR_Label_Layout *);
 ** MR_address_of_trace_interrupt_handler points to
 ** MR_trace_interrupt_handler, otherwise it is NULL.
 */
+
 extern	void		(*MR_address_of_trace_interrupt_handler)(void);
 
 /*
@@ -176,6 +182,7 @@ extern	void		(*MR_address_of_trace_interrupt_handler)(void);
 ** MR_register_module_layout points to MR_register_module_layout_real,
 ** otherwise it is NULL.
 */
+
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
 /*

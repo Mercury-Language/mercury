@@ -217,6 +217,12 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
 		Instr = c_code(_, _),
 		StdInstr = Instr
 	;
+		Instr = save_maxfr(_),
+		StdInstr = Instr
+	;
+		Instr = restore_maxfr(_),
+		StdInstr = Instr
+	;
 		Instr = if_val(Rval, Target),
 		standardize_rval(Rval, StdRval, DupProcMap),
 		standardize_code_addr(Target, StdTarget, DupProcMap),

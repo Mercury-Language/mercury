@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -195,6 +195,7 @@
 **	MR_HAVE_GETPAGESIZE 	we have the getpagesize() system call.
 **	MR_HAVE_MPROTECT    	we have the mprotect() system call.
 **	MR_HAVE_MEMALIGN    	we have the memalign() function.
+**	MR_HAVE_POSIX_MEMALIGN  we have the posix_memalign() function.
 **	MR_HAVE_STRERROR    	we have the strerror() function.
 **	MR_HAVE_SIGINTERRUPT	we have the siginterrupt() function.
 **	MR_HAVE_SETITIMER   	we have the setitimer() function.
@@ -251,6 +252,7 @@
 #undef	MR_HAVE_SIGACTION
 #undef	MR_HAVE_GETPAGESIZE
 #undef	MR_HAVE_MEMALIGN
+#undef	MR_HAVE_POSIX_MEMALIGN
 #undef	MR_HAVE_MPROTECT
 #undef	MR_HAVE_STRERROR
 #undef	MR_HAVE_SIGINTERRUPT

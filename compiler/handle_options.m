@@ -1845,18 +1845,19 @@ long_usage(!IO) :-
     % actually matters is for constructing the pathname for the
     % grade of the library, etc for linking (and installation).
 :- type grade_component
-    --->    gcc_ext     % gcc extensions etc. -- see
-                % grade_component_table
-    ;   par     % parallelism / multithreading
-    ;   gc      % the kind of GC to use
-    ;   prof        % what profiling options to use
-    ;   term_size   % whether or not to record term sizes
-    ;   trail       % whether or not to use trailing
-    ;   tag     % whether or not to reserve a tag
-    ;   minimal_model   % whether we set up for minimal model tabling
-    ;   pic     % Do we need to reserve a register for
-                % PIC (position independent code)?
-    ;   trace.      % tracing/debugging options
+    --->    gcc_ext         % gcc extensions etc. -- see
+                            % grade_component_table
+    ;       par             % parallelism / multithreading
+    ;       gc              % the kind of GC to use
+    ;       prof            % what profiling options to use
+    ;       term_size       % whether or not to record term sizes
+    ;       trail           % whether or not to use trailing
+    ;       tag             % whether or not to reserve a tag
+    ;       minimal_model   % whether we set up for minimal model tabling
+    ;       pic             % Do we need to reserve a register for
+                            % PIC (position independent code)?
+    ;       trace           % tracing/debugging options
+	;	    stack_extend.	% automatic stack extension
 
 convert_grade_option(GradeString, Options0, Options) :-
     reset_grade_options(Options0, Options1),
@@ -1935,51 +1936,53 @@ construct_string([_ - Bit|Bits], Grade) :-
     list(pair(grade_component, string))::out) is det.
 
 compute_grade_components(Options, GradeComponents) :-
-    solutions((pred(CompData::out) is nondet :-
-        grade_component_table(Name, Comp, CompOpts, MaybeTargets,
-            IncludeInGradeString),
-            % For possible component of the grade string
-            % include it in the actual grade string if all
-            % the option setting that it implies are true.
-            % ie
-            %   all [Opt, Value] (
-            %       member(Opt - Value, CompOpts) =>
-            %       map__search(Options, Opt, Value)
-            %   )
-        \+ (
-            list__member(Opt - Value, CompOpts),
-            \+ map__search(Options, Opt, Value)
-        ),
-            % Don't include `.mm' or `.dmm' in grade strings
-            % because they are just synonyms for `.mmsc' and
-            % `.dmmsc' respectively.
-            %
-        IncludeInGradeString = yes,
+	solutions((pred(CompData::out) is nondet :-
+		grade_component_table(Name, Comp, CompOpts, MaybeTargets,
+			IncludeInGradeString),
+			% For possible component of the grade string
+			% include it in the actual grade string if all
+			% the option setting that it implies are true.
+			% ie
+			%	all [Opt, Value] (
+			%	    member(Opt - Value, CompOpts) =>
+			%		map__search(Options, Opt, Value)
+			%	)
+		\+ (
+			list__member(Opt - Value, CompOpts),
+			\+ map__search(Options, Opt, Value)
+		),
+			% Don't include `.mm' or `.dmm' in grade strings
+			% because they are just synonyms for `.mmsc' and
+			% `.dmmsc' respectively.
+			%
+		IncludeInGradeString = yes,
 
-            % When checking gcc_ext there exist grades which
-            % can have more then one possible target, ensure that
-            % the target in the options table matches one of the
-            % possible targets.
-        ( MaybeTargets = yes(Targets) ->
-            list__member(Target, Targets),
-            map__search(Options, target, Target)
-        ;
-            true
-        ),
-        CompData = Comp - Name
-    ), GradeComponents).
+			% When checking gcc_ext there exist grades which
+			% can have more then one possible target, ensure that
+			% the target in the options table matches one of the
+			% possible targets.
+		(
+            MaybeTargets = yes(Targets),
+			list__member(Target, Targets),
+			map__search(Options, target, Target)
+		;
+            MaybeTargets = no
+		),
+		CompData = Comp - Name
+	), GradeComponents).
 
-    % grade_component_table(ComponetStr, Component,
-    %   Options, MaybeTargets, IncludeGradeStr).
-    %
-    % `IncludeGradeStr' is `yes' if the component should
-    % be included in the grade string.  It is `no' for
-    % those components that are just synonyms for other
-    % comments. e.g. .mm and .mmsc
-    %
-    % NOTE: .picreg components are handles separately.
-    % (see compute_grade_components/3).
-    %
+	% grade_component_table(ComponetStr, Component,
+	% 	Options, MaybeTargets, IncludeGradeStr).
+	%
+	% `IncludeGradeStr' is `yes' if the component should
+	% be included in the grade string.  It is `no' for
+	% those components that are just synonyms for other
+	% comments, as .mm is for .mmsc.
+	% 
+	% NOTE: .picreg components are handled separately.
+	% (see compute_grade_components/3). 
+	%  
+
 :- pred grade_component_table(string, grade_component,
     list(pair(option, option_data)), maybe(list(option_data)),
     bool).
@@ -2175,6 +2178,10 @@ grade_component_table("decldebug", trace,
 grade_component_table("debug", trace,
     [exec_trace - bool(yes), decl_debug - bool(no)], no, yes).
 
+	% Stack extension components
+grade_component_table("exts", stack_extend,
+	[extend_stacks_when_needed - bool(yes)], no, yes).
+
 :- pred reset_grade_options(option_table::in, option_table::out) is det.
 
 reset_grade_options(Options0, Options) :-
@@ -2206,6 +2213,7 @@ grade_start_values(minimal_model_debug - bool(no)).
 grade_start_values(pic_reg - bool(no)).
 grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).
+grade_start_values(extend_stacks_when_needed - bool(no)).
 
 :- pred split_grade_string(string::in, list(string)::out) is semidet.
 

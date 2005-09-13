@@ -218,6 +218,14 @@ livemap__build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
             MaybeSpecial = no
         )
     ;
+        Uinstr0 = save_maxfr(Lval),
+        set__delete(!.Livevals, Lval, !:Livevals),
+        opt_util__lval_access_rvals(Lval, Rvals),
+        livemap__make_live_in_rvals(Rvals, !Livevals)
+    ;
+        Uinstr0 = restore_maxfr(Lval),
+        livemap__make_live_in_rval(lval(Lval), !Livevals)
+    ;
         Uinstr0 = incr_hp(Lval, _, _, Rval, _),
 
         % Make dead the variable assigned, but make any variables

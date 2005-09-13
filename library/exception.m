@@ -2208,7 +2208,9 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 		!= MR_ENTRY(MR_exception_handler_do_fail))
 	{
 		MR_curfr_word = MR_succfr_slot_word(MR_curfr);
-		if (MR_curfr < MR_CONTEXT(MR_ctxt_nondetstack_zone)->min) {
+		if (MR_curfr <
+			MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min)
+		{
 			MR_Word save_succip_word;
 			/*
 			** There was no exception handler.
@@ -2561,8 +2563,10 @@ throw_if_near_stack_limits :-
 #else
 	int	slack = 1024;
 
-	if (((MR_maxfr + slack) < MR_CONTEXT(MR_ctxt_nondetstack_zone)->top)
-		&& ((MR_sp + slack) < MR_CONTEXT(MR_ctxt_detstack_zone)->top))
+	if (((MR_maxfr + slack) <
+		MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_top)
+	&& ((MR_sp + slack) <
+		MR_CONTEXT(MR_ctxt_detstack_zone)->MR_zone_top))
 	{
 		SUCCESS_INDICATOR = MR_FALSE;
 	} else {

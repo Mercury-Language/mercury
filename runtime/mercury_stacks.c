@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -111,6 +111,86 @@ MR_print_stack_frame_stats(void)
 }
 
 #endif	/* MR_STACK_FRAME_STATS */
+
+/***************************************************************************/
+
+#ifdef	MR_EXTEND_STACKS_WHEN_NEEDED
+
+static	void	MR_debug_zone_extend(FILE *fp, const char *when,
+			const char *stackname, MR_MemoryZone *zone);
+
+void
+MR_extend_detstack(void)
+{
+	MR_MemoryZone	*zone;
+	MR_Unsigned	old_size;
+	MR_Unsigned	new_size;
+	FILE		*debug_fp;
+
+	zone = MR_CONTEXT(MR_ctxt_detstack_zone);
+	old_size = zone->MR_zone_desired_size;
+	new_size = old_size * 2;
+
+	debug_fp = NULL;
+#ifdef	MR_STACK_EXTEND_DEBUG
+	if (MR_stack_extend_debug) {
+		debug_fp = fopen(".extend_stacks", "a");
+	}
+#endif
+
+	if (debug_fp != NULL) {
+		MR_debug_zone_extend(debug_fp, "before", "detstack", zone);
+	}
+
+	(void) MR_extend_zone(zone, new_size);
+
+	if (debug_fp != NULL) {
+		MR_debug_zone_extend(debug_fp, "after", "detstack", zone);
+	}
+}
+
+void
+MR_extend_nondetstack(void)
+{
+	MR_MemoryZone	*zone;
+	MR_Unsigned	old_size;
+	MR_Unsigned	new_size;
+	MR_Integer	base_incr;
+	FILE		*debug_fp;
+
+	zone = MR_CONTEXT(MR_ctxt_nondetstack_zone);
+	old_size = zone->MR_zone_desired_size;
+	new_size = old_size * 2;
+
+	debug_fp = NULL;
+#ifdef	MR_STACK_EXTEND_DEBUG
+	if (MR_stack_extend_debug) {
+		debug_fp = fopen(".extend_stacks", "a");
+	}
+#endif
+
+	if (debug_fp != NULL) {
+		MR_debug_zone_extend(debug_fp, "before", "nondetstack", zone);
+	}
+
+	base_incr = MR_extend_zone(zone, new_size);
+	/* XXX add code to adjust all the links in the nondet stack */
+
+	if (debug_fp != NULL) {
+		MR_debug_zone_extend(debug_fp, "after", "nondetstack", zone);
+	}
+}
+
+static void
+MR_debug_zone_extend(FILE *fp, const char *when, const char *stackname,
+	MR_MemoryZone *zone)
+{
+	fprintf(fp, "----------------\n");
+	fprintf(fp, "%s extending %s\n\n", when, stackname);
+	MR_debug_memory_zone(fp, zone);
+}
+
+#endif
 
 /***************************************************************************/
 

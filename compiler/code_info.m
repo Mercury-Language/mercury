@@ -1677,6 +1677,7 @@ code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
                 - "soft cut for temp frame ite"
         ]),
         ElseCode = node([
+            % XXX, search /assign(maxfr
             assign(maxfr, lval(prevfr(lval(MaxfrSlot))))
                 - "restore maxfr for temp frame ite"
         ])
@@ -1693,8 +1694,7 @@ code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
                     - "restore redoip for quarter ite hijack"
             ])
         ;
-            % This can happen only if ResumePoint is unreachable
-            % from here.
+            % This can happen only if ResumePoint is unreachable from here.
             ThenCode = empty
         ),
         ElseCode = ThenCode
@@ -1746,8 +1746,7 @@ code_info__enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
         % will not be referenced.
     set__to_sorted_list(ResumeVars, ResumeVarList),
     map__init(ResumeMap0),
-    code_info__make_fake_resume_map(ResumeVarList,
-        ResumeMap0, ResumeMap),
+    code_info__make_fake_resume_map(ResumeVarList, ResumeMap0, ResumeMap),
     ResumePoint = orig_only(ResumeMap, do_redo),
     code_info__effect_resume_point(ResumePoint, model_semi, Code, !CI),
     require(unify(Code, empty), "nonempty code for simple neg"),
@@ -1783,8 +1782,7 @@ code_info__prepare_for_det_commit(DetCommitInfo, Code, !CI) :-
         CurfrMaxfr = may_be_different,
         code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
         SaveMaxfrCode = node([
-            assign(MaxfrSlot, lval(maxfr))
-                - "save the value of maxfr"
+            save_maxfr(MaxfrSlot) - "save the value of maxfr"
         ]),
         MaybeMaxfrSlot = yes(MaxfrSlot)
     ;
@@ -1801,7 +1799,7 @@ code_info__generate_det_commit(DetCommitInfo, Code, !CI) :-
     (
         MaybeMaxfrSlot = yes(MaxfrSlot),
         RestoreMaxfrCode = node([
-            assign(maxfr, lval(MaxfrSlot))
+            restore_maxfr(MaxfrSlot)
                 - "restore the value of maxfr - perform commit"
         ]),
         code_info__release_temp_slot(MaxfrSlot, !CI)
@@ -1866,17 +1864,15 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code, !CI) :-
     ->
         code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
         MaxfrCode = node([
-            assign(MaxfrSlot, lval(maxfr))
+            save_maxfr(MaxfrSlot)
                 - "prepare for temp frame commit"
         ]),
         code_info__create_temp_frame(StackLabel,
             "prepare for temp frame commit", TempFrameCode, !CI),
         code_info__get_globals(!.CI, Globals),
-        globals__lookup_bool_option(Globals,
-            use_minimal_model_stack_copy_cut,
+        globals__lookup_bool_option(Globals, use_minimal_model_stack_copy_cut,
             UseMinimalModelStackCopyCut),
-        HijackInfo = commit_temp_frame(MaxfrSlot,
-            UseMinimalModelStackCopyCut),
+        HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModelStackCopyCut),
         (
             UseMinimalModelStackCopyCut = yes,
             % If the code we are committing across starts but
@@ -1924,8 +1920,8 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code, !CI) :-
         % Here ResumeKnown must be resume_point_unknown or
         % resume_point_known(wont_be_done).
 
-        code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
-            RedoipSlot, !CI),
+        code_info__acquire_temp_slot(lval(redoip(lval(curfr))), RedoipSlot,
+            !CI),
         HijackInfo = commit_half_hijack(RedoipSlot),
         HijackCode = node([
             assign(RedoipSlot, lval(redoip(lval(curfr))))
@@ -1946,7 +1942,7 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code, !CI) :-
                 - "prepare for full commit hijack",
             assign(RedofrSlot, lval(redofr(lval(maxfr))))
                 - "prepare for full commit hijack",
-            assign(MaxfrSlot, lval(maxfr))
+            save_maxfr(MaxfrSlot)
                 - "prepare for full commit hijack",
             assign(redofr(lval(maxfr)), lval(curfr))
                 - "hijack the redofr slot",
@@ -1968,7 +1964,7 @@ code_info__generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     (
         HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel),
         MaxfrCode = node([
-            assign(maxfr, lval(MaxfrSlot))
+            restore_maxfr(MaxfrSlot)
                 - "restore maxfr for temp frame hijack"
         ]),
         (
@@ -2019,7 +2015,7 @@ code_info__generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     ;
         HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         SuccessUndoCode = node([
-            assign(maxfr, lval(MaxfrSlot))
+            restore_maxfr(MaxfrSlot)
                 - "restore maxfr for full commit hijack",
             assign(redoip(lval(maxfr)), lval(RedoipSlot))
                 - "restore redoip for full commit hijack",

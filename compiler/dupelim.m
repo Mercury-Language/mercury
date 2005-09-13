@@ -351,6 +351,14 @@ standardize_instr(Instr1, Instr) :-
         standardize_rval(Rval1, Rval),
         Instr = if_val(Rval, CodeAddr)
     ;
+        Instr1 = save_maxfr(Lval1),
+        standardize_lval(Lval1, Lval),
+        Instr = save_maxfr(Lval)
+    ;
+        Instr1 = restore_maxfr(Lval1),
+        standardize_lval(Lval1, Lval),
+        Instr = restore_maxfr(Lval)
+    ;
         Instr1 = incr_hp(Lval1, MaybeTag, MaybeOffset, Rval1, Msg),
         standardize_lval(Lval1, Lval),
         standardize_rval(Rval1, Rval),
@@ -568,7 +576,7 @@ most_specific_instrs(Instrs1, Instrs2, Instrs) :-
         Instr1 = Uinstr1 - Comment1,
         Instr2 = Uinstr2 - Comment2,
         (
-            most_specific_instr(Uinstr1, Uinstr2, Uinstr)
+            most_specific_instr(Uinstr1, Uinstr2, yes(Uinstr))
         ->
             ( Comment1 = Comment2 ->
                 Comment = Comment1
@@ -611,113 +619,236 @@ most_specific_instrs(Instrs1, Instrs2, Instrs) :-
     % This predicate computes the most specific instruction that
     % generalizes both input instructions.
     %
-:- pred most_specific_instr(instr::in, instr::in, instr::out) is semidet.
+:- pred most_specific_instr(instr::in, instr::in, maybe(instr)::out) is det.
 
-most_specific_instr(Instr1, Instr2, Instr) :-
+most_specific_instr(Instr1, Instr2, MaybeInstr) :-
     (
-        Instr1 = livevals(_),
-        Instr2 = Instr1,
-        Instr = Instr1
-    ;
-        Instr1 = block(_, _, _),
-        Instr2 = Instr1,
-        Instr = Instr1
-    ;
         Instr1 = assign(Lval1, Rval1),
-        Instr2 = assign(Lval2, Rval2),
-        most_specific_lval(Lval1, Lval2, Lval),
-        most_specific_rval(Rval1, Rval2, Rval),
-        Instr = assign(Lval, Rval)
+        (
+            Instr2 = assign(Lval2, Rval2),
+            most_specific_lval(Lval1, Lval2, Lval),
+            most_specific_rval(Rval1, Rval2, Rval)
+        ->
+            MaybeInstr = yes(assign(Lval, Rval))
+        ;
+            MaybeInstr = no
+        )
     ;
-        Instr1 = call(_, _, _, _, _, _),
-        Instr2 = Instr1,
-        Instr = Instr1
+        Instr1 = if_val(Rval1, CodeAddr1),
+        (
+            Instr2 = if_val(Rval2, CodeAddr2),
+            most_specific_rval(Rval1, Rval2, Rval),
+            CodeAddr1 = CodeAddr2
+        ->
+            MaybeInstr = yes(if_val(Rval, CodeAddr1))
+        ;
+            MaybeInstr = no
+        )
     ;
-        Instr1 = mkframe(_, _),
-        Instr2 = Instr1,
-        Instr = Instr1
-    ;
-        Instr1 = label(_),
-        Instr2 = Instr1,
-        Instr = Instr1
-    ;
-        Instr1 = goto(_),
-        Instr2 = Instr1,
-        Instr = Instr1
-    ;
-        Instr1 = computed_goto(_, _),
-        Instr2 = Instr1,
-        Instr = Instr1
-    ;
-        Instr1 = c_code(_, _),
-        Instr2 = Instr1,
-        Instr = Instr1
-    ;
-        Instr1 = if_val(Rval1, CodeAddr),
-        Instr2 = if_val(Rval2, CodeAddr),
-        most_specific_rval(Rval1, Rval2, Rval),
-        Instr = if_val(Rval, CodeAddr)
-    ;
-        Instr1 = incr_hp(Lval1, MaybeTag, MaybeOffset, Rval1, Msg),
-        Instr2 = incr_hp(Lval2, MaybeTag, MaybeOffset, Rval2, Msg),
-        most_specific_lval(Lval1, Lval2, Lval),
-        most_specific_rval(Rval1, Rval2, Rval),
-        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Rval, Msg)
+        Instr1 = incr_hp(Lval1, MaybeTag1, MaybeOffset1, Rval1, Msg1),
+        (
+            Instr2 = incr_hp(Lval2, MaybeTag2, MaybeOffset2, Rval2, Msg2),
+            most_specific_lval(Lval1, Lval2, Lval),
+            most_specific_rval(Rval1, Rval2, Rval),
+            MaybeTag1 = MaybeTag2,
+            MaybeOffset1 = MaybeOffset2,
+            Msg1 = Msg2
+        ->
+            MaybeInstr = yes(incr_hp(Lval, MaybeTag1, MaybeOffset1, Rval,
+                Msg1))
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = mark_hp(Lval1),
-        Instr2 = mark_hp(Lval2),
-        most_specific_lval(Lval1, Lval2, Lval),
-        Instr = mark_hp(Lval)
+        (
+            Instr2 = mark_hp(Lval2),
+            most_specific_lval(Lval1, Lval2, Lval)
+        ->
+            MaybeInstr = yes(mark_hp(Lval))
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = restore_hp(Rval1),
-        Instr2 = restore_hp(Rval2),
-        most_specific_rval(Rval1, Rval2, Rval),
-        Instr = restore_hp(Rval)
+        (
+            Instr2 = restore_hp(Rval2),
+            most_specific_rval(Rval1, Rval2, Rval)
+        ->
+            MaybeInstr = yes(restore_hp(Rval))
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = free_heap(Rval1),
-        Instr2 = free_heap(Rval2),
-        most_specific_rval(Rval1, Rval2, Rval),
-        Instr = free_heap(Rval)
+        (
+            Instr2 = free_heap(Rval2),
+            most_specific_rval(Rval1, Rval2, Rval)
+        ->
+            MaybeInstr = yes(free_heap(Rval))
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = store_ticket(Lval1),
-        Instr2 = store_ticket(Lval2),
-        most_specific_lval(Lval1, Lval2, Lval),
-        Instr = store_ticket(Lval)
+        (
+            Instr2 = store_ticket(Lval2),
+            most_specific_lval(Lval1, Lval2, Lval)
+        ->
+            MaybeInstr = yes(store_ticket(Lval))
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = reset_ticket(Rval1, Reason),
-        Instr2 = reset_ticket(Rval2, Reason),
-        most_specific_rval(Rval1, Rval2, Rval),
-        Instr = reset_ticket(Rval, Reason)
-    ;
-        Instr1 = discard_ticket,
-        Instr2 = Instr1,
-        Instr = Instr1
-    ;
-        Instr1 = prune_ticket,
-        Instr2 = Instr1,
-        Instr = Instr1
+        (
+            Instr2 = reset_ticket(Rval2, Reason),
+            most_specific_rval(Rval1, Rval2, Rval)
+        ->
+            MaybeInstr = yes(reset_ticket(Rval, Reason))
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = mark_ticket_stack(Lval1),
-        Instr2 = mark_ticket_stack(Lval2),
-        most_specific_lval(Lval1, Lval2, Lval),
-        Instr = mark_ticket_stack(Lval)
+        (
+            Instr2 = mark_ticket_stack(Lval2),
+            most_specific_lval(Lval1, Lval2, Lval)
+        ->
+            MaybeInstr = yes(mark_ticket_stack(Lval))
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = prune_tickets_to(Rval1),
-        Instr2 = prune_tickets_to(Rval2),
-        most_specific_rval(Rval1, Rval2, Rval),
-        Instr = prune_tickets_to(Rval)
+        (
+            Instr2 = prune_tickets_to(Rval2),
+            most_specific_rval(Rval1, Rval2, Rval)
+        ->
+            MaybeInstr = yes(prune_tickets_to(Rval))
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = livevals(_),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = block(_, _, _),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = call(_, _, _, _, _, _),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = mkframe(_, _),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = label(_),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = goto(_),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = computed_goto(_, _),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = c_code(_, _),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = save_maxfr(_),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = restore_maxfr(_),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = discard_ticket,
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = prune_ticket,
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = incr_sp(_, _),
-        Instr2 = Instr1,
-        Instr = Instr1
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = decr_sp(_),
-        Instr2 = Instr1,
-        Instr = Instr1
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
     ;
         Instr1 = pragma_c(_, _, _, _, _, _, _, _, _),
-        Instr2 = Instr1,
-        Instr = Instr1
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = comment(_),
+        MaybeInstr = no
+    ;
+        Instr1 = fork(_, _, _),
+        MaybeInstr = no
+    ;
+        Instr1 = init_sync_term(_, _),
+        MaybeInstr = no
+    ;
+        Instr1 = join_and_continue(_, _),
+        MaybeInstr = no
+    ;
+        Instr1 = join_and_terminate(_),
+        MaybeInstr = no
     ).
 
     % This predicate computes the most specific lval that

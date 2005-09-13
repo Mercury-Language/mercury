@@ -691,6 +691,12 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "if (" ++ dump_rval(Rval) ++ ") goto "
             ++ dump_code_addr(ProcLabel, CodeAddr)
     ;
+        Instr = save_maxfr(Lval),
+        Str = "save_maxfr(" ++ dump_lval(Lval) ++ ")"
+    ;
+        Instr = restore_maxfr(Lval),
+        Str = "restore_maxfr(" ++ dump_lval(Lval) ++ ")"
+    ;
         Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _),
         (
             MaybeTag = no,

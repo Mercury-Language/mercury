@@ -268,6 +268,7 @@
 		;	minimal_model_debug
 		;	type_layout
 		;	maybe_thread_safe
+		;	extend_stacks_when_needed
 
 		% Data representation compilation model options
 		;	reserve_tag
@@ -995,6 +996,7 @@ option_defaults_2(compilation_model_option, [
 	parallel		-	bool(no),
 	use_trail		-	bool(no),
 	maybe_thread_safe	-	string("no"),
+	extend_stacks_when_needed	-	bool(no),
 	use_minimal_model_stack_copy	-	bool(no),
 	use_minimal_model_own_stacks	-	bool(no),
 	minimal_model_debug	-	bool(no),
@@ -1706,6 +1708,7 @@ long_option("parallel",			parallel).
 long_option("use-trail",		use_trail).
 long_option("type-layout",		type_layout).
 long_option("maybe-thread-safe",	maybe_thread_safe).
+long_option("extend-stacks-when-needed",	extend_stacks_when_needed).
 long_option("aditi",			aditi).
 long_option("aditi-calls-mercury",	aditi_calls_mercury).
 	% Data representation options
@@ -3431,7 +3434,10 @@ options_help_compilation_model -->
 		"\t`maybe_thread_safe' option is treated as though it has a",
 		"\t`thread_safe' attribute.  `no' means that the foreign",
 		"\tprocedure is treated as though it has a `not_thread_safe'",
-		"\tattribute.  The default is no."
+		"\tattribute.  The default is no.",
+		"--extend-stacks-when-needed",
+		"\tSpecify that code that increments a stack pointer must",
+		"\textend the stack when this is needed."
 	]),
 
 	io__write_string("\n    LLDS back-end compilation model options:\n"),

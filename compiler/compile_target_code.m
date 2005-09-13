@@ -565,6 +565,14 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
 	;
 		ExecTraceOpt = ""
 	),
+	globals__io_lookup_bool_option(extend_stacks_when_needed, Extend, !IO),
+	(
+		Extend = yes,
+		ExtendOpt = "-DMR_EXTEND_STACKS_WHEN_NEEDED "
+	;
+		Extend = no,
+		ExtendOpt = ""
+	),
 	globals__io_lookup_bool_option(target_debug, Target_Debug, !IO),
 	( Target_Debug = yes ->
 		globals__io_lookup_string_option(cflags_for_debug,
@@ -699,6 +707,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
 		RecordTermSizesOpt, 
 		PIC_Reg_Opt, 
 		TagsOpt, NumTagBitsOpt, 
+		ExtendOpt,
 		Target_DebugOpt, LL_DebugOpt, DeclDebugOpt, ExecTraceOpt,
 		UseTrailOpt, 
 		ReserveTagOpt, 

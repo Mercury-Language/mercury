@@ -758,6 +758,14 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         NewInstrs = [Instr0],
         RemainInstrs = Instrs0
     ;
+        Uinstr0 = save_maxfr(_),
+        NewInstrs = [Instr0],
+        RemainInstrs = Instrs0
+    ;
+        Uinstr0 = restore_maxfr(_),
+        NewInstrs = [Instr0],
+        RemainInstrs = Instrs0
+    ;
         Uinstr0 = incr_sp(_, _),
         NewInstrs = [Instr0],
         RemainInstrs = Instrs0

@@ -572,7 +572,7 @@ mercury_runtime_init(int argc, char **argv)
 #endif /* ! MR_HIGHLEVEL_CODE */
 
 	if (MR_memdebug) {
-		MR_debug_memory();
+		MR_debug_memory(stderr);
 	}
 
 	/* initialize profiling */
@@ -684,7 +684,7 @@ MR_init_conservative_GC(void)
   #else /* MR_BOEHM_GC */
 
 	/*
-	** sometimes mercury apps fail the GC_is_visible() test.
+	** Sometimes Mercury apps fail the GC_is_visible() test.
 	** dyn_load.c traverses the entire address space and registers
 	** all segments that could possibly have been written to, which
 	** makes us suspect that &MR_runqueue_head is not in the registered

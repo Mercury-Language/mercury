@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998,2000-2001 The University of Melbourne.
+** Copyright (C) 1995-1998,2000-2001, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -8,8 +8,6 @@
 
 #ifndef MERCURY_OVERFLOW_H
 #define MERCURY_OVERFLOW_H
-
-#define MR_IF(cond, val) ((cond) ? ((val), (void)0) : (void)0)
 
 #ifndef MR_CHECK_FOR_OVERFLOW
 

@@ -290,4 +290,13 @@ typedef	char		MR_small_bool;
 
 /*---------------------------------------------------------------------------*/
 
+/*
+** MR_IF is for writing if-then-elses that must expand to expressions, not
+** statements.
+*/
+
+#define MR_IF(cond, val) ((cond) ? ((val), (void)0) : (void)0)
+
+/*---------------------------------------------------------------------------*/
+
 #endif /* not MERCURY_STD_H */

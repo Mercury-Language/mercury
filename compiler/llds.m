@@ -273,6 +273,16 @@
     ;       if_val(rval, code_addr)
             % If rval is true, then goto code_addr.
 
+    ;       save_maxfr(lval)
+            % Save the current value of maxfr to the given lval. In most
+            % grades, this does a straightforward copy, but in grades in which
+            % stacks can be reallocated, it saves the offset of maxfr from the
+            % start of the nondet stack.
+
+    ;       restore_maxfr(lval)
+            % Restore maxfr from the saved copy in the given lval. Assumes the
+            % lval was saved with save_maxfr.
+
     ;       incr_hp(lval, maybe(tag), maybe(int), rval, string)
             % Get a memory block of a size given by an rval and put its address
             % in the given lval, possibly after incrementing it by N words

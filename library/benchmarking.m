@@ -207,10 +207,12 @@ ML_report_stats(void)
 #ifndef MR_HIGHLEVEL_CODE
 	fprintf(stderr, "" D Stack: %.3fk, ND Stack: %.3fk,"",
 		((char *) MR_sp - (char *)
-			eng->MR_eng_context.MR_ctxt_detstack_zone->min)
+			eng->MR_eng_context.
+				MR_ctxt_detstack_zone->MR_zone_min)
 				/ 1024.0,
 		((char *) MR_maxfr - (char *)
-			eng->MR_eng_context.MR_ctxt_nondetstack_zone->min)
+			eng->MR_eng_context.
+				MR_ctxt_nondetstack_zone->MR_zone_min)
 				/ 1024.0
 	);
 #endif
@@ -228,7 +230,7 @@ ML_report_stats(void)
 	fprintf(stderr,
 		"" Trail: %.3fk,"",
 		((char *) MR_trail_ptr - (char *)
-			MR_trail_zone->min) / 1024.0
+			MR_trail_zone->MR_zone_min) / 1024.0
 	);
 #endif
 
@@ -263,7 +265,8 @@ ML_report_stats(void)
 #else /* !MR_CONSERVATIVE_GC */
 	fprintf(stderr,
 		""\\nHeap: %.3fk"",
-		((char *) MR_hp - (char *) eng->MR_eng_heap_zone->min) / 1024.0
+		((char *) MR_hp -
+			(char *) eng->MR_eng_heap_zone->MR_zone_min) / 1024.0
 	);
 #endif /* !MR_CONSERVATIVE_GC */
 

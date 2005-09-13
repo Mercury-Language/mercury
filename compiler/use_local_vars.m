@@ -475,6 +475,10 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
         Uinstr0 = if_val(_, _),
         exprn_aux__substitute_lval_in_instr(OldLval, NewLval, !Instr, !N)
     ;
+        Uinstr0 = save_maxfr(_)
+    ;
+        Uinstr0 = restore_maxfr(_)
+    ;
         Uinstr0 = incr_hp(Lval, _, _, _, _),
         ( Lval = OldLval ->
             % If we alter any lval that occurs in OldLval, we must stop

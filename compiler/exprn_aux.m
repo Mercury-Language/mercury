@@ -388,6 +388,16 @@ exprn_aux__substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
 			Rval0, Rval, !N),
 		Uinstr = if_val(Rval, CodeAddr)
 	;
+		Uinstr0 = save_maxfr(Lval0),
+		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
+			Lval0, Lval, !N),
+		Uinstr = save_maxfr(Lval)
+	;
+		Uinstr0 = restore_maxfr(Lval0),
+		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
+			Lval0, Lval, !N),
+		Uinstr = restore_maxfr(Lval)
+	;
 		Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
 			Lval0, Lval, !N),

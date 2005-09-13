@@ -65,6 +65,8 @@ Options:
         Otherwise, we use the stage 1 runtime, library etc,
         and trust that these are compatible with the given grade.
         Implies -r -g.
+    --mercury-options <options-string>
+        Set MERCURY_OPTIONS to the given string when doing the bootcheck.
     -g, --copy-boehm-gc
         Copy the boehm_gc directory instead of linking it.
         This is necessary if one wants to bootcheck a grade
@@ -296,6 +298,9 @@ while test $# -gt 0; do
 
     --test-grade)
         test_grade="$2"; shift ;;
+
+    --mercury-options)
+        MERCURY_OPTIONS="$2"; export MERCURY_OPTIONS; shift ;;
 
     --test-split-library)
         test_split_library=true ;;
