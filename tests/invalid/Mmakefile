@@ -35,7 +35,9 @@ SINGLEMODULE= \
 	ambiguous_method \
 	ambiguous_method_2 \
 	any_mode \
+	any_passed_as_ground \
 	any_should_not_match_bound \
+	any_to_ground_in_ite_cond \
 	assert_in_interface \
 	bad_mutable \
 	bad_initialise_decl \
