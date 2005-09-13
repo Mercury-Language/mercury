@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -14,10 +16,10 @@
 %   and a wrapper for the assembler back-end,
 %   each of which convert MLDS to their respective target language.
 %
-% The main part of the assembler back-end, which converts MLDS
-% to GCC's internal abstract syntax trees and then invokes the
-% GCC back-end to convert this to assembler, is in a package of
-% its own, so that this package doesn't depend on the GCC back-end.
+% The main part of the assembler back-end, which converts MLDS to GCC's
+% internal abstract syntax trees and then invokes the GCC back-end to convert
+% this to assembler, is in a package of its own, so that this package doesn't
+% depend on the GCC back-end.
 %
 :- module ml_backend.
 :- interface.
@@ -31,9 +33,9 @@
 :- include_module ml_util.
 
 % Phase 4-ml: MLDS-specific HLDS to HLDS transformations and annotations.
-:- include_module add_heap_ops.
-:- include_module add_trail_ops. % transformations
-:- include_module mark_static_terms. % annotation
+:- include_module add_heap_ops.         % transformation
+:- include_module add_trail_ops.        % transformation
+:- include_module mark_static_terms.    % annotation
 
 % Phase 5-ml: compile HLDS to MLDS
 :- include_module ml_code_gen.
@@ -79,8 +81,8 @@
 
 :- import_module backend_libs.
 :- import_module libs.
-:- import_module check_hlds.	% needed for type_util, mode_util,
-				% and polymorphism.
+:- import_module check_hlds.    % needed for type_util, mode_util,
+                                % and polymorphism.
 :- import_module mdbcomp.
 :- import_module aditi_backend. % need aditi_backend.rl_file
 
