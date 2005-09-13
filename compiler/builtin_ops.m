@@ -190,13 +190,19 @@ builtin_translation("int", "+", 1, [X, Y, Z],
     assign(X, binary((-), leaf(Z), leaf(Y)))).
 builtin_translation("int", "+", 2, [X, Y, Z],
     assign(Y, binary((-), leaf(Z), leaf(X)))).
+builtin_translation("int", "plus", 0, [X, Y, Z],
+    assign(Z, binary((+), leaf(X), leaf(Y)))).
 builtin_translation("int", "-", 0, [X, Y, Z],
     assign(Z, binary((-), leaf(X), leaf(Y)))).
 builtin_translation("int", "-", 1, [X, Y, Z],
     assign(X, binary((+), leaf(Y), leaf(Z)))).
 builtin_translation("int", "-", 2, [X, Y, Z],
     assign(Y, binary((-), leaf(X), leaf(Z)))).
+builtin_translation("int", "minus", 0, [X, Y, Z],
+    assign(Z, binary((-), leaf(X), leaf(Y)))).
 builtin_translation("int", "*", 0, [X, Y, Z],
+    assign(Z, binary((*), leaf(X), leaf(Y)))).
+builtin_translation("int", "times", 0, [X, Y, Z],
     assign(Z, binary((*), leaf(X), leaf(Y)))).
 builtin_translation("int", "unchecked_quotient", 0, [X, Y, Z],
     assign(Z, binary((/), leaf(X), leaf(Y)))).
