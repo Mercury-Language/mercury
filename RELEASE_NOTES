@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 0.11 of the Mercury system.
+We are pleased to announce the release of version 0.12 of the Mercury system.
 
 Mercury is a modern general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -142,23 +142,24 @@ systems known to us.  However, the system does not need these
 extensions, and will work in their absence.
 
 The current Mercury system has been tested on Linux (x86),
-Linux (Alpha), Solaris 2.7 (SPARC), Solaris 2.8 (x86),
-Compaq Tru64 Unix (Alpha), MacOS X (PowerPC), and Windows (x86).
-For Windows, we have tested this release only on Windows 2000,
-but it should also run fine on Windows 95, 98, ME, NT, and XP.
+Solaris 8 (x86), MacOS X (PowerPC), and Windows (x86).
+For Windows, we have have tested this release only on Windows XP Pro
+but it should also run fine on Windows 95, 98, ME, NT, and 2000.
 
-Mercury has in the past been known to run on Digital Unix, OSF1, IRIX 5.x,
-Ultrix 4.3, BSDI 1.1, AIX, and HPUX; it should run without too many
-changes on other Unix variants as well.  If you do encounter any
-problems, please report them to <mercury-bugs@cs.mu.oz.au> (see the
-BUGS file).
+In the past Mercury has also been known to run on: Digital Unix,
+OSF1, IRIX 5.x, Ultrix 4.3, BSDI 1.1, AIX, HPUX, Linux (Alpha),
+Compaq Tru64 Unix (Alpha), Solaris 2.7 (SPARC)
 
-We recommend that you use gcc as the C compiler, preferably gcc
-version 2.95.2 or later.  But do not use gcc version 2.96 or 3.0;
-those versions have bugs which cause trouble for Mercury.
-If you're using gcc, you will need at least
-version 2.7.2 or higher, except on Solaris, where you need version
-2.95 or higher.  You will also need GNU make version 3.69 or higher.
+It should run without too many changes on other Unix variants as well.
+If you do encounter any problems, please report them to
+<mercury-bugs@cs.mu.oz.au> (see the BUGS file).
+
+We recommend that you use gcc as the C compiler, preferably
+gcc version 3.2 or later.  Do not use gcc versions 2.96, 3.0
+or 4.0; those version have bugs that cause trouble for Mercury.
+If you are using gcc, you will need at least version 2.95 or higher,
+except on Mac OS X where you will need version 3.3 or higher.
+You will also need GNU make version 3.69 or higher.
 
 The Mercury distribution is split into three parts.
 The "mercury-compiler" distribution contains:
@@ -169,7 +170,7 @@ The "mercury-compiler" distribution contains:
         and the standard library
      o  the runtime system (written in C)
      o  Hans Boehm's conservative garbage collector for C
-     o  a debugger
+     o  an integrated procedural and declarative debugger
      o  some profilers
      o  some utility programs, including a make front-end for Mercury
 	with automatic dependency recomputation
@@ -191,7 +192,7 @@ The "mercury-extras" distribution contains some extra libraries for:
      o  a set of generic stream type classes
      o	an autotesting tool similar to Haskell's QuickCheck
      o  UIs:
-        -  graphics using Tk and OpenGL
+        -  graphics using Tk, OpenGL/GLUT or Xlib.
         -  text interfaces using curses
         -  processing HTML forms using the CGI interface
      o  interfacing:

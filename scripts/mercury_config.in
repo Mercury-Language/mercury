@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2003 The University of Melbourne.
+# Copyright (C) 2003, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -132,6 +132,11 @@ touch $TMPDIR/bindist/bindist.Makefile.in || exit 1
 mkdir $TMPDIR/tools || exit 1
 touch $TMPDIR/tools/lmc.in || exit 1
 touch $TMPDIR/tools/dotime.in || exit 1
+touch $TMPDIR/runtime/mercury_dotnet.cs.in || exit 1
+mkdir $TMPDIR/java || exit 1
+mkdir $TMPDIR/java/runtime || exit 1
+touch $TMPDIR/java/runtime/Constants.java.in || exit 1
+touch $TMPDIR/java/runtime/Native.java.in || exit 1
 
 cd $TMPDIR
 case $# in
