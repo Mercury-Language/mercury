@@ -4118,7 +4118,14 @@ else
 	fi
 fi
 
-# Any new entries here may need to be handled by scripts/mercury_config.
+# IMPORTANT NOTE
+# --------------
+# Any new entries here may need to be handled by scripts/mercury_config.in.
+# Failing to do this correctly may break the binary distributions
+# This is especially true of files in the runtime or java directories;
+# if you add new .in files to either of those you *must* update
+# scripts/mercury_config.in.
+#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc
 scripts/mercury.bat scripts/mprof scripts/mercury_update_interface
 scripts/mgnuc scripts/parse_ml_options.sh-subr scripts/ml
