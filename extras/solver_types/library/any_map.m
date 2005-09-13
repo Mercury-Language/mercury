@@ -198,14 +198,14 @@
 :- func any_map__to_any_assoc_list(any_map(K, V)::ia) =
         (any_assoc_list(K, V)::oa) is det.
 :- pred any_map__to_any_assoc_list(any_map(K, V)::ia,
-        any_assoc_list(K, V)::out) is det.
+        any_assoc_list(K, V)::oa) is det.
 
     % Convert a map to an association list which is sorted on the keys.
     %
 :- func any_map__to_sorted_any_assoc_list(any_map(K, V)::ia)
         = (any_assoc_list(K, V)::oa) is det.
 :- pred any_map__to_sorted_any_assoc_list(any_map(K, V)::ia,
-        any_assoc_list(K, V)::out) is det.
+        any_assoc_list(K, V)::oa) is det.
 
     % Convert an association list to a map.
     %
