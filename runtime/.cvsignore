@@ -8,3 +8,9 @@ libmer_rt.dylib
 mercury_profiling_builtin.c
 mercury_profiling_builtin.h
 mercury_dotnet.cs
+mercury_ho_call_codes.i
+mercury_ho_call_declares.i
+mercury_ho_call_inits.i
+mercury_method_call_codes.i
+mercury_method_call_declares.i
+mercury_method_call_inits.i
