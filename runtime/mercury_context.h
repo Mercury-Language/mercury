@@ -364,96 +364,102 @@ extern  void        MR_schedule(MR_Context *ctxt);
   #define MR_IF_NOT_HIGHLEVEL_CODE(x)
 #endif
 
-#define MR_load_context(cptr)                                           \
-    do {                                                                \
-        MR_Context  *load_context_c;                                    \
-                                                                        \
-        load_context_c = (cptr);                                        \
-        MR_IF_NOT_HIGHLEVEL_CODE(                                       \
-            MR_succip_word = (MR_Word) load_context_c->MR_ctxt_succip;  \
-            MR_sp_word     = (MR_Word) load_context_c->MR_ctxt_sp;      \
-            MR_maxfr_word  = (MR_Word) load_context_c->MR_ctxt_maxfr;   \
-            MR_curfr_word  = (MR_Word) load_context_c->MR_ctxt_curfr;   \
-            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                         \
-                MR_gen_next = load_context_c->MR_ctxt_gen_next;         \
-                MR_cut_next = load_context_c->MR_ctxt_cut_next;         \
-                MR_pneg_next = load_context_c->MR_ctxt_pneg_next;       \
-            )                                                           \
-        )                                                               \
-        MR_IF_USE_TRAIL(                                                \
-            MR_trail_zone = load_context_c->MR_ctxt_trail_zone;         \
-            MR_trail_ptr = load_context_c->MR_ctxt_trail_ptr;           \
-            MR_ticket_counter = load_context_c->MR_ctxt_ticket_counter; \
+#define MR_load_context(cptr)                                                 \
+    do {                                                                      \
+        MR_Context  *load_context_c;                                          \
+                                                                              \
+        load_context_c = (cptr);                                              \
+        MR_IF_NOT_HIGHLEVEL_CODE(                                             \
+            MR_succip_word = (MR_Word) load_context_c->MR_ctxt_succip;        \
+            MR_sp_word     = (MR_Word) load_context_c->MR_ctxt_sp;            \
+            MR_maxfr_word  = (MR_Word) load_context_c->MR_ctxt_maxfr;         \
+            MR_curfr_word  = (MR_Word) load_context_c->MR_ctxt_curfr;         \
+            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                               \
+                MR_gen_next = load_context_c->MR_ctxt_gen_next;               \
+                MR_cut_next = load_context_c->MR_ctxt_cut_next;               \
+                MR_pneg_next = load_context_c->MR_ctxt_pneg_next;             \
+            )                                                                 \
+        )                                                                     \
+        MR_IF_USE_TRAIL(                                                      \
+            MR_trail_zone = load_context_c->MR_ctxt_trail_zone;               \
+            MR_trail_ptr = load_context_c->MR_ctxt_trail_ptr;                 \
+            MR_ticket_counter = load_context_c->MR_ctxt_ticket_counter;       \
             MR_ticket_high_water = load_context_c->MR_ctxt_ticket_high_water; \
-        )                                                               \
-        MR_IF_NOT_HIGHLEVEL_CODE(                                       \
-            MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone =           \
-                load_context_c->MR_ctxt_detstack_zone;                  \
-            MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone =        \
-                load_context_c->MR_ctxt_nondetstack_zone;               \
-            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                         \
-                MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone =       \
-                    load_context_c->MR_ctxt_genstack_zone;              \
-                MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone =       \
-                    load_context_c->MR_ctxt_cutstack_zone;              \
-                MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone =      \
-                    load_context_c->MR_ctxt_pnegstack_zone;             \
-                MR_gen_stack = (MR_GenStackFrame *)                     \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone->min; \
-                MR_cut_stack = (MR_CutStackFrame *)                     \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone->min; \
-                MR_pneg_stack = (MR_PNegStackFrame *)                   \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->min;\
-             )                                                          \
-        )                                                               \
-        MR_set_min_heap_reclamation_point(load_context_c);              \
+        )                                                                     \
+        MR_IF_NOT_HIGHLEVEL_CODE(                                             \
+            MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone =                 \
+                load_context_c->MR_ctxt_detstack_zone;                        \
+            MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone =              \
+                load_context_c->MR_ctxt_nondetstack_zone;                     \
+            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                               \
+                MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone =             \
+                    load_context_c->MR_ctxt_genstack_zone;                    \
+                MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone =             \
+                    load_context_c->MR_ctxt_cutstack_zone;                    \
+                MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone =            \
+                    load_context_c->MR_ctxt_pnegstack_zone;                   \
+                MR_gen_stack = (MR_GenStackFrame *)                           \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone->         \
+                        MR_zone_min;                                          \
+                MR_cut_stack = (MR_CutStackFrame *)                           \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone->         \
+                        MR_zone_min;                                          \
+                MR_pneg_stack = (MR_PNegStackFrame *)                         \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->        \
+                        MR_zone_min;                                          \
+             )                                                                \
+        )                                                                     \
+        MR_set_min_heap_reclamation_point(load_context_c);                    \
     } while (0)
 
-#define MR_save_context(cptr)                                           \
-    do {                                                                \
-        MR_Context  *save_context_c;                                    \
-                                                                        \
-        save_context_c = (cptr);                                        \
-        MR_IF_NOT_HIGHLEVEL_CODE(                                       \
-            save_context_c->MR_ctxt_succip  = MR_succip;                \
-            save_context_c->MR_ctxt_sp      = MR_sp;                    \
-            save_context_c->MR_ctxt_maxfr   = MR_maxfr;                 \
-            save_context_c->MR_ctxt_curfr   = MR_curfr;                 \
-            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                         \
-                save_context_c->MR_ctxt_gen_next = MR_gen_next;         \
-                save_context_c->MR_ctxt_cut_next = MR_cut_next;         \
-                save_context_c->MR_ctxt_pneg_next = MR_pneg_next;       \
-            )                                                           \
-        )                                                               \
-        MR_IF_USE_TRAIL(                                                \
-            save_context_c->MR_ctxt_trail_zone = MR_trail_zone;         \
-            save_context_c->MR_ctxt_trail_ptr = MR_trail_ptr;           \
-            save_context_c->MR_ctxt_ticket_counter =                    \
-                MR_ticket_counter;                                      \
-            save_context_c->MR_ctxt_ticket_high_water =                 \
-                MR_ticket_high_water;                                   \
-        )                                                               \
-        MR_IF_NOT_HIGHLEVEL_CODE(                                       \
-            save_context_c->MR_ctxt_detstack_zone =                     \
-                MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone;        \
-            save_context_c->MR_ctxt_nondetstack_zone =                  \
-                MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone;     \
-            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                         \
-                save_context_c->MR_ctxt_genstack_zone =                 \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone;    \
-                save_context_c->MR_ctxt_cutstack_zone =                 \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone;    \
-                save_context_c->MR_ctxt_pnegstack_zone =                \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone;   \
-                assert(MR_gen_stack == (MR_GenStackFrame *)             \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone->min); \
-                assert(MR_cut_stack == (MR_CutStackFrame *)             \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone->min); \
-                assert(MR_pneg_stack == (MR_PNegStackFrame *)           \
-                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->min);\
-          )                                                             \
-        )                                                               \
-        MR_save_hp_in_context(save_context_c);                          \
+#define MR_save_context(cptr)                                                 \
+    do {                                                                      \
+        MR_Context  *save_context_c;                                          \
+                                                                              \
+        save_context_c = (cptr);                                              \
+        MR_IF_NOT_HIGHLEVEL_CODE(                                             \
+            save_context_c->MR_ctxt_succip  = MR_succip;                      \
+            save_context_c->MR_ctxt_sp      = MR_sp;                          \
+            save_context_c->MR_ctxt_maxfr   = MR_maxfr;                       \
+            save_context_c->MR_ctxt_curfr   = MR_curfr;                       \
+            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                               \
+                save_context_c->MR_ctxt_gen_next = MR_gen_next;               \
+                save_context_c->MR_ctxt_cut_next = MR_cut_next;               \
+                save_context_c->MR_ctxt_pneg_next = MR_pneg_next;             \
+            )                                                                 \
+        )                                                                     \
+        MR_IF_USE_TRAIL(                                                      \
+            save_context_c->MR_ctxt_trail_zone = MR_trail_zone;               \
+            save_context_c->MR_ctxt_trail_ptr = MR_trail_ptr;                 \
+            save_context_c->MR_ctxt_ticket_counter =                          \
+                MR_ticket_counter;                                            \
+            save_context_c->MR_ctxt_ticket_high_water =                       \
+                MR_ticket_high_water;                                         \
+        )                                                                     \
+        MR_IF_NOT_HIGHLEVEL_CODE(                                             \
+            save_context_c->MR_ctxt_detstack_zone =                           \
+                MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone;              \
+            save_context_c->MR_ctxt_nondetstack_zone =                        \
+                MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone;           \
+            MR_IF_USE_MINIMAL_MODEL_STACK_COPY(                               \
+                save_context_c->MR_ctxt_genstack_zone =                       \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone;          \
+                save_context_c->MR_ctxt_cutstack_zone =                       \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone;          \
+                save_context_c->MR_ctxt_pnegstack_zone =                      \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone;         \
+                assert(MR_gen_stack == (MR_GenStackFrame *)                   \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone->         \
+                        MR_zone_min);                                         \
+                assert(MR_cut_stack == (MR_CutStackFrame *)                   \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone->         \
+                        MR_zone_min);                                         \
+                assert(MR_pneg_stack == (MR_PNegStackFrame *)                 \
+                    MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->        \
+                        MR_zone_min);                                         \
+          )                                                                   \
+        )                                                                     \
+        MR_save_hp_in_context(save_context_c);                                \
     } while (0)
 
 typedef struct MR_Sync_Term_Struct MR_SyncTerm;
