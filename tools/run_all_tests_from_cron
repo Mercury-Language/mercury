@@ -104,14 +104,6 @@ case "$BRANCH" in
 			*)	  BRANCH=$release_branch ;;
 		esac
 		;;
-	   almery|ascolais|swordfish)
-		# On these hosts do the opposite.
-		case $DAY in
-			*[13579]) BRANCH=$release_branch ;;
-			*)	  BRANCH=latest ;;
-		esac
-		;;
-
 	    *)
 	    	# On anything else just test the main branch.
 		BRANCH=latest
