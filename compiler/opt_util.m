@@ -824,6 +824,10 @@ block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
         Uinstr0 = decr_sp(_),
         Need = no
     ;
+        % handled specially
+        Uinstr0 = decr_sp_and_return(_),
+        Need = no
+    ;
         Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _),
         Need = no
     ;
@@ -943,6 +947,7 @@ can_instr_branch_away(mark_ticket_stack(_), no).
 can_instr_branch_away(prune_tickets_to(_), no).
 can_instr_branch_away(incr_sp(_, _), no).
 can_instr_branch_away(decr_sp(_), no).
+can_instr_branch_away(decr_sp_and_return(_), yes).
 can_instr_branch_away(init_sync_term(_, _), no).
 can_instr_branch_away(fork(_, _, _), yes).
 can_instr_branch_away(join_and_terminate(_), no).
@@ -1019,6 +1024,7 @@ can_instr_fall_through(mark_ticket_stack(_), yes).
 can_instr_fall_through(prune_tickets_to(_), yes).
 can_instr_fall_through(incr_sp(_, _), yes).
 can_instr_fall_through(decr_sp(_), yes).
+can_instr_fall_through(decr_sp_and_return(_), no).
 can_instr_fall_through(init_sync_term(_, _), yes).
 can_instr_fall_through(fork(_, _, _), no).
 can_instr_fall_through(join_and_terminate(_), no).
@@ -1065,6 +1071,7 @@ can_use_livevals(mark_ticket_stack(_), no).
 can_use_livevals(prune_tickets_to(_), no).
 can_use_livevals(incr_sp(_, _), no).
 can_use_livevals(decr_sp(_), no).
+can_use_livevals(decr_sp_and_return(_), yes).
 can_use_livevals(init_sync_term(_, _), no).
 can_use_livevals(fork(_, _, _), no).
 can_use_livevals(join_and_terminate(_), no).
@@ -1128,6 +1135,12 @@ instr_labels_2(mark_ticket_stack(_), [], []).
 instr_labels_2(prune_tickets_to(_), [], []).
 instr_labels_2(incr_sp(_, _), [], []).
 instr_labels_2(decr_sp(_), [], []).
+instr_labels_2(decr_sp_and_return(_), [], []) :-
+    % XXX decr_sp_and_return does refer to a code addr, but the code addr it
+    % refers to is the original succip (now in a stack slot), which is not
+    % necessarily the current succip. However, we introduce decr_sp_and_return
+    % so late that this predicate should never be invoked on such instructions.
+    unexpected(this_file, "instr_labels_2: decr_sp_and_return").
 instr_labels_2(init_sync_term(_, _), [], []).
 instr_labels_2(fork(Child, Parent, _), [Child, Parent], []).
 instr_labels_2(join_and_terminate(_), [], []).
@@ -1184,6 +1197,9 @@ possible_targets(mark_ticket_stack(_), [], []).
 possible_targets(prune_tickets_to(_), [], []).
 possible_targets(incr_sp(_, _), [], []).
 possible_targets(decr_sp(_), [], []).
+possible_targets(decr_sp_and_return(_), [], []) :-
+    % See the comment in instr_labels_2.
+    unexpected(this_file, "possible_targets: decr_sp_and_return").
 possible_targets(init_sync_term(_, _), [], []).
 possible_targets(fork(Child, Parent, _), [Child, Parent], []).
 possible_targets(join_and_terminate(_), [], []).
@@ -1255,6 +1271,7 @@ instr_rvals_and_lvals(mark_ticket_stack(Lval), [], [Lval]).
 instr_rvals_and_lvals(prune_tickets_to(Rval), [Rval], []).
 instr_rvals_and_lvals(incr_sp(_, _), [], []).
 instr_rvals_and_lvals(decr_sp(_), [], []).
+instr_rvals_and_lvals(decr_sp_and_return(_), [], []).
 instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(fork(_, _, _), [], []).
 instr_rvals_and_lvals(join_and_terminate(Lval), [], [Lval]).
@@ -1399,6 +1416,7 @@ count_temps_instr(prune_tickets_to(Rval), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
 count_temps_instr(incr_sp(_, _), !R, !F).
 count_temps_instr(decr_sp(_), !R, !F).
+count_temps_instr(decr_sp_and_return(_), !R, !F).
 count_temps_instr(init_sync_term(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(fork(_, _, _), !R, !F).
@@ -1837,6 +1855,7 @@ replace_labels_instr(prune_tickets_to(Rval0), ReplMap, ReplData,
     ).
 replace_labels_instr(incr_sp(Size, Msg), _, _, incr_sp(Size, Msg)).
 replace_labels_instr(decr_sp(Size), _, _, decr_sp(Size)).
+replace_labels_instr(decr_sp_and_return(Size), _, _, decr_sp_and_return(Size)).
 replace_labels_instr(init_sync_term(T, N), _, _,
         init_sync_term(T, N)).
 replace_labels_instr(fork(Child0, Parent0, SlotCount), Replmap, _,

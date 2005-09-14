@@ -274,6 +274,11 @@ livemap__build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
     ;
         Uinstr0 = decr_sp(_)
     ;
+        Uinstr0 = decr_sp_and_return(_),
+        % These instructions should be generated only *after* any optimizations
+        % that need livemaps have been run for the last time.
+        unexpected(this_file, "build_livemap_instr: decr_sp_and_return")
+    ;
         Uinstr0 = init_sync_term(_, _)
     ;
         Uinstr0 = fork(_, _, _)

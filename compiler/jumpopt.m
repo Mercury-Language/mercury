@@ -774,6 +774,10 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         NewInstrs = [Instr0],
         RemainInstrs = Instrs0
     ;
+        Uinstr0 = decr_sp_and_return(_),
+        NewInstrs = [Instr0],
+        RemainInstrs = Instrs0
+    ;
         Uinstr0 = store_ticket(_),
         NewInstrs = [Instr0],
         RemainInstrs = Instrs0

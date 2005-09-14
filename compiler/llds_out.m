@@ -1847,6 +1847,7 @@ output_instr_decls(_, prune_tickets_to(Rval), !DeclSet, !IO) :-
     output_rval_decls(Rval, !DeclSet, !IO).
 output_instr_decls(_, incr_sp(_, _), !DeclSet, !IO).
 output_instr_decls(_, decr_sp(_), !DeclSet, !IO).
+output_instr_decls(_, decr_sp_and_return(_), !DeclSet, !IO).
 output_instr_decls(StackLayoutLabels, pragma_c(_, Comps, _, _,
         MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _), !DeclSet, !IO) :-
     (
@@ -2289,6 +2290,11 @@ output_instruction(incr_sp(N, _Msg), _, !IO) :-
 
 output_instruction(decr_sp(N), _, !IO) :-
     io__write_string("\tMR_decr_sp(", !IO),
+    io__write_int(N, !IO),
+    io__write_string(");\n", !IO).
+
+output_instruction(decr_sp_and_return(N), _, !IO) :-
+    io__write_string("\tMR_decr_sp_and_return(", !IO),
     io__write_int(N, !IO),
     io__write_string(");\n", !IO).
 

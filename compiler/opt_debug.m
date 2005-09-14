@@ -748,6 +748,9 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Instr = decr_sp(Size),
         Str = "decr_sp(" ++ int_to_string(Size) ++ ")"
     ;
+        Instr = decr_sp_and_return(Size),
+        Str = "decr_sp_and_return(" ++ int_to_string(Size) ++ ")"
+    ;
         Instr = init_sync_term(Lval, N),
         Str = "init_sync_term(" ++ dump_lval(Lval) ++ ", "
             ++ int_to_string(N) ++")"

@@ -485,6 +485,7 @@ middle_rec__find_used_registers_instr(prune_tickets_to(Rval), !Used) :-
     middle_rec__find_used_registers_rval(Rval, !Used).
 middle_rec__find_used_registers_instr(incr_sp(_, _), !Used).
 middle_rec__find_used_registers_instr(decr_sp(_), !Used).
+middle_rec__find_used_registers_instr(decr_sp_and_return(_), !Used).
 middle_rec__find_used_registers_instr(pragma_c(_, Components,
         _, _, _, _, _, _, _), !Used) :-
     middle_rec__find_used_registers_components(Components, !Used).

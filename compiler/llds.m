@@ -382,6 +382,10 @@
     ;       decr_sp(int)
             % Decrement the det stack pointer.
 
+    ;       decr_sp_and_return(int)
+            % Pick up the return address from its slot in the stack frame,
+            % decrement the det stack pointer, and jump to the return address.
+
     ;       pragma_c(
                 pragma_c_decls          :: list(pragma_c_decl),
                 pragma_c_components     :: list(pragma_c_component),

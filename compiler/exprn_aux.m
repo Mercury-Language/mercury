@@ -458,6 +458,9 @@ exprn_aux__substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
 		Uinstr0 = decr_sp(_),
 		Uinstr = Uinstr0
 	;
+		Uinstr0 = decr_sp_and_return(_),
+		Uinstr = Uinstr0
+	;
 		Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
 			MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
 			ReferStackSlot, MayDupl),

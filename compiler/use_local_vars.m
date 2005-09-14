@@ -436,8 +436,7 @@ substitute_lval_in_instr_until_defn(OldLval, NewLval,
 
 :- pred substitute_lval_in_instr_until_defn_2(lval::in, lval::in,
     instruction::in, instruction::out,
-    list(instruction)::in, list(instruction)::out,
-    int::in, int::out) is det.
+    list(instruction)::in, list(instruction)::out, int::in, int::out) is det.
 
 substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     !.Instr = Uinstr0 - _,
@@ -512,6 +511,8 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     ;
         Uinstr0 = decr_sp(_)
     ;
+        Uinstr0 = decr_sp_and_return(_)
+    ;
         Uinstr0 = init_sync_term(_, _)
     ;
         Uinstr0 = fork(_, _, _)
@@ -530,3 +531,5 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
 :- func this_file = string.
 
 this_file = "use_local_vars.m".
+
+%-----------------------------------------------------------------------------%

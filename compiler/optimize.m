@@ -539,6 +539,17 @@ optimize__last(LayoutLabelSet, ProcLabel, C, !.OptDebugInfo, !Instrs, !IO) :-
         DelaySlot = no
     ),
     (
+        VeryVerbose = yes,
+        io__write_string("% Optimizing returns for ", !IO),
+        io__write_string(LabelStr, !IO),
+        io__write_string("\n", !IO)
+    ;
+        VeryVerbose = no
+    ),
+    combine_decr_sp(!Instrs),
+    optimize__maybe_opt_debug(!.Instrs, C, "after combine decr_sp",
+        ProcLabel, !OptDebugInfo, !IO),
+    (
         UseLocalVars = yes,
         (
             VeryVerbose = yes,

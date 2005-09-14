@@ -404,6 +404,9 @@ standardize_instr(Instr1, Instr) :-
         Instr1 = decr_sp(_),
         Instr = Instr1
     ;
+        Instr1 = decr_sp_and_return(_),
+        Instr = Instr1
+    ;
         Instr1 = fork(_, _, _),
         Instr = Instr1
     ;
@@ -822,6 +825,13 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
         )
     ;
         Instr1 = decr_sp(_),
+        ( Instr1 = Instr2 ->
+            MaybeInstr = yes(Instr1)
+        ;
+            MaybeInstr = no
+        )
+    ;
+        Instr1 = decr_sp_and_return(_),
         ( Instr1 = Instr2 ->
             MaybeInstr = yes(Instr1)
         ;

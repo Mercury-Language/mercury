@@ -27,6 +27,8 @@
 :- pred peephole__optimize(gc_method::in, list(instruction)::in,
     list(instruction)::out, bool::out) is det.
 
+:- pred combine_decr_sp(list(instruction)::in, list(instruction)::out) is det.
+
 :- implementation.
 
 :- import_module backend_libs__builtin_ops.
@@ -79,10 +81,12 @@ peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
         opt_util__skip_comments(Instrs0, Instrs1),
         peephole__match(Instr0, Comment0, InvalidPatterns, Instrs1, Instrs2)
     ->
-        ( Instrs2 = [Instr2 - Comment2 | Instrs3] ->
+        (
+            Instrs2 = [Instr2 - Comment2 | Instrs3],
             peephole__opt_instr(Instr2, Comment2, InvalidPatterns,
                 Instrs3, Instrs, _)
         ;
+            Instrs2 = [],
             Instrs = Instrs2
         ),
         Mod = yes
@@ -384,3 +388,21 @@ peephole__invalid_opts(GC_Method, InvalidPatterns) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+combine_decr_sp([], []).
+combine_decr_sp([Instr0 | Instrs0], Instrs) :-
+    combine_decr_sp(Instrs0, Instrs1),
+    (
+        Instr0 = assign(succip, lval(stackvar(N))) - _,
+        opt_util__skip_comments_livevals(Instrs1, Instrs2),
+        Instrs2 = [Instr2 | Instrs3],
+        Instr2 = decr_sp(N) - _,
+        opt_util__skip_comments_livevals(Instrs3, Instrs4),
+        Instrs4 = [Instr4 | Instrs5],
+        Instr4 = goto(succip) - Comment
+    ->
+        NewInstr = decr_sp_and_return(N) - Comment,
+        Instrs = [NewInstr | Instrs5]
+    ;
+        Instrs = [Instr0 | Instrs1]
+    ).

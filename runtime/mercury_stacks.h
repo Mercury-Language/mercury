@@ -112,21 +112,33 @@
 #define MR_stackvar(n)                  MR_based_stackvar(MR_sp, (n))
 #define MR_sv(n)                        MR_stackvar(n)
 
-#define MR_incr_sp(n)   (                                                     \
-                MR_debugincrsp(n, MR_sp),                                     \
-                MR_sp_word = (MR_Word) (MR_sp + (n)),                         \
-                MR_detstack_extend_check(),                                   \
-                MR_detstack_overflow_check(),                                 \
-                MR_collect_det_frame_stats(n),                                \
-                (void) 0                                                      \
-            )
+#define MR_incr_sp(n)                                                         \
+    do {                                                                      \
+        MR_debugincrsp(n, MR_sp);                                             \
+        MR_sp_word = (MR_Word) (MR_sp + (n));                                 \
+        MR_detstack_extend_check();                                           \
+        MR_detstack_overflow_check();                                         \
+        MR_collect_det_frame_stats(n);                                        \
+    } while (0)
 
-#define MR_decr_sp(n)   (                                                     \
-                MR_debugdecrsp(n, MR_sp),                                     \
-                MR_sp_word = (MR_Word) (MR_sp - (n)),                         \
-                MR_detstack_underflow_check(),                                \
-                (void) 0                                                      \
-            )
+#define MR_decr_sp(n)                                                         \
+    do {                                                                      \
+        MR_debugdecrsp(n, MR_sp);                                             \
+        MR_sp_word = (MR_Word) (MR_sp - (n));                                 \
+        MR_detstack_underflow_check();                                        \
+    } while (0)
+
+#define MR_decr_sp_and_return(n)                                              \
+    do {                                                                      \
+        MR_Code *return_addr;                                                 \
+                                                                              \
+        return_addr = (MR_Word *) MR_stackvar(n);                             \
+        MR_debugdecrsp(n, MR_sp);                                             \
+        MR_sp_word = (MR_Word) (MR_sp - (n));                                 \
+        MR_detstack_underflow_check();                                        \
+        MR_debugproceed();                                                    \
+        MR_GOTO(return_addr);                                                 \
+    } while (0)
 
 /*
 ** The msg argument of MR_incr_sp_push_msg is not used at runtime. It is

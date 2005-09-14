@@ -264,6 +264,9 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
 		Instr = decr_sp(_),
 		StdInstr = Instr
 	;
+		Instr = decr_sp_and_return(_),
+		StdInstr = Instr
+	;
 		Instr = fork(Child, Parent, NumSlots),
 		standardize_label(Child, StdChild, DupProcMap),
 		standardize_label(Parent, StdParent, DupProcMap),

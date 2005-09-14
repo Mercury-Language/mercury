@@ -109,6 +109,7 @@
 :- implementation.
 
 :- import_module ll_backend__code_util.
+:- import_module parse_tree__error_util.
 
 :- import_module map.
 :- import_module require.
@@ -142,27 +143,24 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
         Uinstr0 = block(_, _, _),
-        error("remove_reassign_loop: block")
+        unexpected(this_file, "remove_reassign_loop: block")
     ;
         Uinstr0 = assign(Target, Source),
         (
             map__search(!.KnownContentsMap, Target, KnownContents),
             KnownContents = Source
         ->
-            % By not including Instr0 in !RevInstrs, we are deleting it.
+            % By not including Instr0 in !:RevInstrs, we are deleting Instr0.
             true
         ;
             !:RevInstrs = [Instr0 | !.RevInstrs],
             clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
             (
-                % For Targets of the following form, the code
-                % generator ensures that the storage location
-                % referred to by Target can only be updated
-                % through the Target lval, and not through
-                % some other lval, unless one uses mem_addr to
-                % explicitly create an alias and mem_ref to
-                % access the memory location via that alias.
-
+                % For Targets of the following form, the code generator ensures
+                % that the storage location referred to by Target can only be
+                % updated through the Target lval, and not through some other
+                % lval, unless one uses mem_addr to explicitly create an alias
+                % and mem_ref to access the memory location via that alias.
                 no_implicit_alias_target(Target)
             ->
                 record_known(Target, Source, !KnownContentsMap, !DepLvalMap)
@@ -173,7 +171,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     ;
         Uinstr0 = call(_, _, _, _, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % The call may clobber any lval.
+        % The call may clobber any lval.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
@@ -184,30 +182,28 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     ;
         Uinstr0 = label(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % We don't know what is stored where at the
-            % instructions that jump here.
+        % We don't know what is stored where at the instructions that
+        % jump here.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
         Uinstr0 = goto(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % The value of KnownContentsMap doesn't really matter
-            % since the next instruction (which must be a label)
-            % will reset it to empty anyway.
+        % The value of !:KnownContentsMap doesn't really matter since the next
+        % instruction (which must be a label) will reset it to empty anyway.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
         Uinstr0 = computed_goto(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % The value of KnownContentsMap doesn't really matter
-            % since the next instruction (which must be a label)
-            % will reset it to empty anyway.
+        % The value of !:KnownContentsMap doesn't really matter since the next
+        % instruction (which must be a label) will reset it to empty anyway.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
         Uinstr0 = c_code(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % The C code may clobber any lval.
+        % The C code may clobber any lval.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
@@ -237,8 +233,8 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     ;
         Uinstr0 = free_heap(_),
         !:RevInstrs = [Instr0 | !.RevInstrs]
-        % There is no need to update KnownContentsMap since
-        % later code should never refer to the freed cell.
+        % There is no need to update KnownContentsMap since later code
+        % should never refer to the freed cell.
     ;
         Uinstr0 = store_ticket(Target),
         !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -246,7 +242,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     ;
         Uinstr0 = reset_ticket(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % The reset operation may modify any lval.
+        % The reset operation may modify any lval.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
@@ -264,29 +260,32 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs]
 %   ;
 %       Uinstr0 = discard_tickets_to(_),
-%       !:RevInstrs = [Instr0 | !.RevInstrs],
-%       !:KnownContentsMap = KnownContentsMap0,
-%       !:DepLvalMap = DepLvalMap0
+%       !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
         Uinstr0 = incr_sp(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % All stackvars now refer to new locations.
-            % Rather than delete only stackvars from
-            % KnownContentsMap0, we delete everything.
+        % All stackvars now refer to new locations. Rather than delete
+        % only stackvars from KnownContentsMap, we delete everything.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
         Uinstr0 = decr_sp(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % All stackvars now refer to new locations.
-            % Rather than delete only stackvars from
-            % KnownContentsMap0, we delete everything.
+        % All stackvars now refer to new locations. Rather than delete
+        % only stackvars from KnownContentsMap, we delete everything.
+        !:KnownContentsMap = map__init,
+        !:DepLvalMap = map__init
+    ;
+        Uinstr0 = decr_sp_and_return(_),
+        !:RevInstrs = [Instr0 | !.RevInstrs],
+        % All stackvars now refer to new locations. Rather than delete
+        % only stackvars from KnownContentsMap, we delete everything.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
         Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % The C code may clobber any lval.
+        % The C code may clobber any lval.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
@@ -296,34 +295,32 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     ;
         Uinstr0 = fork(_, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % Both the parent and the child thread jump to labels
-            % specified by the fork instruction, so the value of
-            % KnownContentsMap doesn't really matter since the
-            % next instruction (which must be a label) will
-            % reset it to empty anyway.
+        % Both the parent and the child thread jump to labels specified
+        % by the fork instruction, so the value of !:KnownContentsMap doesn't
+        % really matter since the next instruction (which must be a label)
+        % will reset it to empty anyway.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
         Uinstr0 = join_and_terminate(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % The value of KnownContentsMap doesn't really matter
-            % since this instruction terminates the execution of
-            % this thread.
+        % The value of KnownContentsMap doesn't really matter since this
+        % instruction terminates the execution of this thread.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ;
         Uinstr0 = join_and_continue(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-            % Other threads may modify any lval.
+        % Other threads may modify any lval.
         !:KnownContentsMap = map__init,
         !:DepLvalMap = map__init
     ),
     remove_reassign_loop(Instrs0, !.KnownContentsMap, !.DepLvalMap,
         !RevInstrs).
 
-    % Succeed iff the lval cannot have an alias created for it without
-    % the use of a mem_ref lval or an instruction with embedded C code,
-    % both of which cause us to clobber the known contents map.
+    % Succeed iff the lval cannot have an alias created for it without the
+    % use of a mem_ref lval or an instruction with embedded C code, both of
+    % which cause us to clobber the known contents map.
     %
 :- pred no_implicit_alias_target(lval::in) is semidet.
 
@@ -342,13 +339,12 @@ clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
     ;
         true
     ),
-        % LLDS code can refer to arbitrary locations on the stack
-        % or in the heap with mem_ref lvals. Since we don't keep track
-        % of which locations have their addresses taken, on any
-        % assignment through a mem_ref lval we throw way the known
-        % contents map. This is a conservative approximation of the
-        % desired behaviour, which would invalidate only the entries
-        % of lvals that may be referred to via this mem_ref.
+    % LLDS code can refer to arbitrary locations on the stack or in the heap
+    % with mem_ref lvals. Since we don't keep track of which locations have
+    % their addresses taken, on any assignment through a mem_ref lval we throw
+    % way the known contents map. This is a conservative approximation of the
+    % desired behaviour, which would invalidate only the entries of lvals
+    % that may be referred to via this mem_ref.
     code_util__lvals_in_rval(lval(Target), SubLvals),
     (
         list__member(SubLval, SubLvals),
@@ -378,8 +374,8 @@ record_known(TargetLval, SourceRval, !KnownContentsMap, !DepLvalMap) :-
         % or its converse.
         true
     ;
-        record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
-            !DepLvalMap),
+        record_known_lval_rval(TargetLval, SourceRval,
+            !KnownContentsMap, !DepLvalMap),
         ( SourceRval = lval(SourceLval) ->
             record_known_lval_rval(SourceLval, lval(TargetLval),
                 !KnownContentsMap, !DepLvalMap)
@@ -434,3 +430,11 @@ make_dependent(Target, SubLval, !DepLvalMap) :-
         DepLvals = set__make_singleton_set(Target),
         svmap__det_insert(SubLval, DepLvals, !DepLvalMap)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "reassign.m".
+
+%-----------------------------------------------------------------------------%
