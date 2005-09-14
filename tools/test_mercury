@@ -680,8 +680,8 @@ case $status in 0)
     # if the new installation fails.
 
     BACKUP_DIR=`dirname $INSTALL_DIR`/mercury_install_backup
-    mv $INSTALL_DIR $BACKUP_DIR
-    mkdir -p $INSTALL_DIR
+    mkdir -p $BACKUP_DIR
+    cp -rf $INSTALL_DIR/* $BACKUP_DIR
 
     # Previously we had lots of special case code here for installing on
     # IRIX systems.   We don't currently have any IRIX boxes, and this 
