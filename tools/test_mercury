@@ -206,19 +206,17 @@ use_cp_opt=""
 case $HOST in
 	# test things at different optimization levels...
 
-	$ROTD_HOST|earth|jupiter)
-			OPTIMIZE="-O5 --intermodule-optimization --constraint-propagation"
+	$ROTD_HOST|jupiter)
+			OPTIMIZE="-O5 --intermodule-optimization"
 			;;
+	earth)		OPTIMIZE="-O2" ;;
 	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
-	swordfish)	OPTIMIZE=-O5 ;;
+	swordfish)	OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation" ;;
 	mundroo) 	OPTIMIZE=-O2; use_cp_opt="--use-cp" ;;
 			# On mundroo, "mkdir -p scripts" aborts
 			# if scripts is a symbolic link to a directory.
-	ender)		OPTIMIZE=-O3 ;;
-	aral)		OPTIMIZE=-O5 ;;
-	ceres)		OPTIMIZE=-O5 ;;	# hlc
-	hg) 		OPTIMIZE=-O4 ;; # currently not used
-	roy) 		OPTIMIZE=-O4 ;;	# currently not used
+	aral)		OPTIMIZE="-O3" ;;
+	ceres)		OPTIMIZE="-O5" ;;	# hlc
 esac
 
 # on some systems, the file system we're using does not support links
