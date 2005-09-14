@@ -190,7 +190,8 @@ MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
             MR_trail_size, MR_next_offset(),
             MR_trail_zone_size, MR_default_handler);
     }
-    c->MR_ctxt_trail_ptr = (MR_TrailEntry *) c->MR_ctxt_trail_zone->min;
+    c->MR_ctxt_trail_ptr =
+        (MR_TrailEntry *) c->MR_ctxt_trail_zone->MR_zone_min;
     c->MR_ctxt_ticket_counter = 1;
     c->MR_ctxt_ticket_high_water = 1;
 #endif
