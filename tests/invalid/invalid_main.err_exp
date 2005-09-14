@@ -4,4 +4,3 @@ invalid_main.m:004:   warning: determinism declaration could be tighter.
 invalid_main.m:004:   Declared `multi', inferred `det'.
 invalid_main.m:004: Error: main/2 must be `det' or `cc_multi'.
 invalid_main.m:004: Error: main/2 must have mode `(di, uo)'.
-For more information, try recompiling with `-E'.

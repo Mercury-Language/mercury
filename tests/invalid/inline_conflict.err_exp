@@ -1,3 +1,2 @@
 inline_conflict.m:016: Error: `:- pragma no_inline' declaration conflicts with
 inline_conflict.m:016:   previous pragma for `inline_conflict.bar'/2.
-For more information, try recompiling with `-E'.

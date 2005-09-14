@@ -11,4 +11,3 @@ multisoln_func.m:030: Error: invalid determinism for `test3(in) = out':
 multisoln_func.m:030:   the primary mode of a function cannot be `nondet'.
 multisoln_func.m:034: Error: invalid determinism for `test3b(in) = out':
 multisoln_func.m:034:   the primary mode of a function cannot be `cc_nondet'.
-For more information, try recompiling with `-E'.

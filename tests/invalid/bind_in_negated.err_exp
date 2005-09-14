@@ -6,4 +6,3 @@ bind_in_negated.m:014:   Variable `A' has instantiatedness
 bind_in_negated.m:014:   `bound(bind_in_negated.f(free, ground))',
 bind_in_negated.m:014:   expected instantiatedness was
 bind_in_negated.m:014:   `bound(bind_in_negated.f(ground, ground))'.
-For more information, try recompiling with `-E'.

@@ -161,7 +161,8 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
             io__write_string(" are the following:\n", !IO),
             list__foldl(output_mode_decl_for_pred_info(PredInfo), ProcIds, !IO)
         ;
-            VerboseErrors = no
+            VerboseErrors = no,
+            globals.io_set_extra_error_info(yes, !IO)
         )
     ).
 

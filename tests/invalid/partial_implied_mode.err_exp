@@ -22,4 +22,3 @@ partial_implied_mode.m:033:     free,
 partial_implied_mode.m:033:     ground,
 partial_implied_mode.m:033:     free
 partial_implied_mode.m:033:   )'.
-For more information, try recompiling with `-E'.

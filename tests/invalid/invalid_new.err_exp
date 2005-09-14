@@ -3,4 +3,3 @@ invalid_new.m:020:   in function result term of clause head:
 invalid_new.m:020:   error: undefined symbol `new c/1'.
 invalid_new.m:020:   Invalid use of `new' on a constructor of type
 invalid_new.m:020:   `invalid_new.c'/1 which is not existentially typed.
-For more information, try recompiling with `-E'.

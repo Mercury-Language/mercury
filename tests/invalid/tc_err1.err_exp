@@ -5,4 +5,3 @@ tc_err1.m:032:   no implementation for type class predicate method
 tc_err1.m:032:   `tc_err1.handle_typedefs'/3.
 tc_err1.m:032: In instance declaration for `tc_err1.actions'/1: incorrect
 tc_err1.m:032:   method name(s): predicate `tc_err1.handle_typedefs'/2.
-For more information, try recompiling with `-E'.

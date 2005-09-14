@@ -285,7 +285,8 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
                     words("the warnings.")],
                 write_error_pieces(Context, 2, Pieces2, !IO)
             ;
-                VerboseErrors = no
+                VerboseErrors = no,
+                globals__io_set_extra_error_info(yes, !IO)
             ),
             globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
             (

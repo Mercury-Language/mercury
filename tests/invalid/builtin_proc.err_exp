@@ -1,3 +1,2 @@
 builtin_proc.m:013: In clause for predicate `builtin_proc.foo/2':
 builtin_proc.m:013:   error: undefined predicate `builtin.no_such_pred/2'.
-For more information, try recompiling with `-E'.

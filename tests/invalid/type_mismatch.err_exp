@@ -30,4 +30,3 @@ type_mismatch.m:035:   Argument 1 (Field1) has type `float',
 type_mismatch.m:035:   expected type was `(some [F4] F4)';
 type_mismatch.m:035:   argument 2 (Field2) has type `float',
 type_mismatch.m:035:   expected type was `int'.
-For more information, try recompiling with `-E'.

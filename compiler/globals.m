@@ -6,8 +6,6 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module libs__globals.
-
 % Main author: fjh.
 
 % This module exports the `globals' type and associated access predicates.
@@ -16,6 +14,8 @@
 % This global data is stored in the io__state.
 
 %-----------------------------------------------------------------------------%
+
+:- module libs__globals.
 
 :- interface.
 
@@ -30,6 +30,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type globals.
 
@@ -105,6 +107,7 @@
     ;       size_data_elems.
 
     % Map from module name to file name.
+    %
 :- type source_file_map == map(module_name, string).
 
 :- type maybe_thread_safe == bool.
@@ -118,8 +121,9 @@
     is semidet.
 
 %-----------------------------------------------------------------------------%
-
-    % Access predicates for the `globals' structure.
+%
+% Access predicates for the `globals' structure
+%
 
 :- pred globals__init(option_table::di, compilation_target::di, gc_method::di,
     tags_method::di, termination_norm::di, termination_norm::di,
@@ -143,6 +147,7 @@
     is det.
 :- pred globals__get_maybe_thread_safe(globals::in, maybe_thread_safe::out)
     is det.
+:- pred globals__get_extra_error_info(globals::in, bool::out) is det.
 
 :- pred globals__set_option(option::in, option_data::in,
     globals::in, globals::out) is det.
@@ -157,6 +162,8 @@
 :- pred globals__set_trace_level_none(globals::in, globals::out) is det.
 :- pred globals__set_source_file_map(maybe(source_file_map)::in,
     globals::in, globals::out) is det.
+:- pred globals__set_extra_error_info(bool::in, globals::in, globals::out)
+    is det.
 
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
     is det.
@@ -173,8 +180,9 @@
     list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
-
-    % More complex options
+%
+% More complex options
+%
 
     % Check if static code addresses are available in the
     % current grade of compilation.
@@ -193,9 +201,10 @@
 :- pred globals__imported_is_constant(bool::in, bool::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
-
-    % Access predicates for storing a `globals' structure in the
-    % io__state using io__set_globals and io__get_globals.
+%
+% Access predicates for storing a `globals' structure in the io.state
+% using io.set_globals and io.get_globals.
+%
 
 :- pred globals__io_init(option_table::di, compilation_target::in,
     gc_method::in, tags_method::in, termination_norm::in,
@@ -224,6 +233,8 @@
 :- pred globals__io_get_maybe_thread_safe(maybe_thread_safe::out,
     io::di, io::uo) is det.
 
+:- pred globals__io_get_extra_error_info(bool::out, io::di, io::uo) is det.
+
 :- pred globals__io_get_globals(globals::out, io::di, io::uo) is det.
 
 :- pred globals__io_set_globals(globals::di, io::di, io::uo) is det.
@@ -235,6 +246,7 @@
 :- pred globals__io_set_tags_method(tags_method::in, io::di, io::uo) is det.
 :- pred globals__io_set_trace_level(trace_level::in, io::di, io::uo) is det.
 :- pred globals__io_set_trace_level_none(io::di, io::uo) is det.
+:- pred globals__io_set_extra_error_info(bool::in, io::di, io::uo) is det.
 
 :- pred globals__io_lookup_option(option::in, option_data::out,
     io::di, io::uo) is det.
@@ -265,6 +277,8 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 convert_target(String, Target) :-
     convert_target_2(string__to_lower(String), Target).
@@ -343,7 +357,12 @@ gc_is_conservative(automatic) = no.
                 trace_suppress_items    :: trace_suppress_items,
                 source_file_map         :: maybe(source_file_map),
                 have_printed_usage      :: bool,
-                maybe_thread_safe       :: bool
+                maybe_thread_safe       :: bool,
+                extra_error_info        :: bool
+                                        % Is there extra information
+                                        % about errors available, that
+                                        % could be printed out if `-E'
+                                        % were enabled.
             ).
 
 globals__init(Options, Target, GC_Method, TagsMethod,
@@ -351,7 +370,7 @@ globals__init(Options, Target, GC_Method, TagsMethod,
         MaybeThreadSafe,
     globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress, 
-        no, no, MaybeThreadSafe)).
+        no, no, MaybeThreadSafe, no)).
 
 globals__get_options(Globals, Globals ^ options).
 globals__get_target(Globals, Globals ^ target).
@@ -363,6 +382,7 @@ globals__get_trace_level(Globals, Globals ^ trace_level).
 globals__get_trace_suppress(Globals, Globals ^ trace_suppress_items).
 globals__get_source_file_map(Globals, Globals ^ source_file_map).
 globals__get_maybe_thread_safe(Globals, Globals ^ maybe_thread_safe).
+globals__get_extra_error_info(Globals, Globals ^ extra_error_info).
 
 globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
     globals__lookup_accumulating_option(Globals, backend_foreign_languages,
@@ -398,6 +418,9 @@ globals__set_source_file_map(SourceFileMap, Globals,
 globals__lookup_option(Globals, Option, OptionData) :-
     globals__get_options(Globals, OptionTable),
     map__lookup(OptionTable, Option, OptionData).
+
+globals__set_extra_error_info(ExtraErrorInfo, Globals,
+    Globals ^ extra_error_info := ExtraErrorInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -546,6 +569,10 @@ globals__io_get_maybe_thread_safe(MaybeThreadSafe, !IO) :-
     globals__io_get_globals(Globals, !IO),
     globals__get_maybe_thread_safe(Globals, MaybeThreadSafe).
 
+globals__io_get_extra_error_info(ExtraErrorInfo, !IO) :-
+    globals__io_get_globals(Globals, !IO),
+    globals__get_extra_error_info(Globals, ExtraErrorInfo).
+
 globals__io_get_globals(Globals, !IO) :-
     io__get_globals(UnivGlobals, !IO),
     ( univ_to_type(UnivGlobals, Globals0) ->
@@ -599,6 +626,16 @@ globals__io_set_trace_level(TraceLevel, !IO) :-
         % uniqueness and io__set_globals
     globals__io_set_globals(Globals, !IO).
 
+globals__io_set_extra_error_info(ExtraErrorInfo, !IO) :-
+    some [!Globals] (
+        globals__io_get_globals(!:Globals, !IO),
+        globals__set_extra_error_info(ExtraErrorInfo, !Globals),
+        unsafe_promise_unique(!Globals),
+        % XXX there is a bit of a design flaw with regard to
+        % uniqueness and io__set_globals
+        globals__io_set_globals(!.Globals, !IO)
+    ).
+
     % This predicate is needed because mercury_compile.m doesn't know
     % anything about type trace_level.
 globals__io_set_trace_level_none(!IO) :-
@@ -650,4 +687,6 @@ globals__io_printing_usage(AlreadyPrinted, !IO) :-
         % uniqueness and io__set_globals
     globals__io_set_globals(Globals, !IO).
 
+%-----------------------------------------------------------------------------%
+:- end_module globals.
 %-----------------------------------------------------------------------------%

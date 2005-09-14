@@ -10,4 +10,3 @@ missing_det_decls.m:004: Error: no clauses for predicate `exp1/0'.
 missing_det_decls.m:007: Error: no clauses for predicate `exp2/1'.
 missing_det_decls.m:012: Error: no clauses for predicate `loc1/0'.
 missing_det_decls.m:015: Error: no clauses for predicate `loc2/1'.
-For more information, try recompiling with `-E'.

@@ -1,3 +1,2 @@
 instance_bug.m:009: Error: non-abstract instance declaration in module
 instance_bug.m:009:   interface.
-For more information, try recompiling with `-E'.

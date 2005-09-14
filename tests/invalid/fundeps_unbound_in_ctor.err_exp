@@ -5,4 +5,3 @@ fundeps_unbound_in_ctor.m:008:   error in type class constraints: type variable
 fundeps_unbound_in_ctor.m:008:   C occurs in the constraints, but is not
 fundeps_unbound_in_ctor.m:008:   determined by the constructor's argument
 fundeps_unbound_in_ctor.m:008:   types.
-For more information, try recompiling with `-E'.

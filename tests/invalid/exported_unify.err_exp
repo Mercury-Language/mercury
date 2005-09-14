@@ -1,3 +1,2 @@
 exported_unify2.int:003: In clause for unification predicate for type exported_unify2.foo:
 exported_unify2.int:003:   error: undefined predicate `exported_unify2.unify_foo/2'.
-For more information, try recompiling with `-E'.

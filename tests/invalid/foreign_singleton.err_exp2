@@ -10,4 +10,3 @@ foreign_singleton.m:030: In clause for `g(out, di, uo)':
 foreign_singleton.m:030:   mode error: argument 1 did not get sufficiently instantiated.
 foreign_singleton.m:030:   Final instantiatedness of `X' was `free',
 foreign_singleton.m:030:   expected final instantiatedness was `ground'.
-For more information, try recompiling with `-E'.

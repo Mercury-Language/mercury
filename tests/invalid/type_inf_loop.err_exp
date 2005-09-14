@@ -8,4 +8,3 @@ You should declare the types explicitly.
 `--type-inference-iteration-limit' option to increase the limit).
 type_inf_loop.m:004: Inferred :- pred loop((pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred T1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))).
 type_inf_loop.m:004: Error: no mode declaration for predicate `type_inf_loop.loop/1'.
-For more information, try recompiling with `-E'.

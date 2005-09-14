@@ -5,4 +5,3 @@ bad_mutable.m:011:   error: undefined type `no_type'/0.
 bad_mutable.m:013: In declaration for mutable `not_an_inst':
 bad_mutable.m:013:   error: undefined inst `special_ground'/0.
 bad_mutable.m:005: Error: `mutable' declaration in module interface.
-For more information, try recompiling with `-E'.

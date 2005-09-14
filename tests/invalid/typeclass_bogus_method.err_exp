@@ -18,4 +18,3 @@ typeclass_bogus_method.m:033: In instance declaration for
 typeclass_bogus_method.m:033:   `typeclass_bogus_method.tc4'/1: incorrect
 typeclass_bogus_method.m:033:   method name(s): function
 typeclass_bogus_method.m:033:   `typeclass_bogus_method.foo5'/2.
-For more information, try recompiling with `-E'.

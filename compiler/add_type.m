@@ -252,7 +252,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 write_error_pieces(Context, 0, abstract_monotype_workaround,
                     !IO)
             ;
-                VerboseErrors = no
+                VerboseErrors = no,
+                globals.io_set_extra_error_info(yes, !IO)
             ),
             io__set_exit_status(1, !IO)
         ;

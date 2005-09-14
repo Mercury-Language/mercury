@@ -3358,6 +3358,7 @@ report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
             words("is not currently implemented.")]
     ;
         VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO),
         Pieces2 = []
     ),
     write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO),

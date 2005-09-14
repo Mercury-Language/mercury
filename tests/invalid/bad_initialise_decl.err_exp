@@ -5,4 +5,3 @@ bad_initialise_decl.m:026: Error: `i1'/2 used in initialise declaration does
 bad_initialise_decl.m:026:   not have signature `pred(io::di, io::uo) is det'
 bad_initialise_decl.m:027: Error: `i3'/2 used in initialise declaration does
 bad_initialise_decl.m:027:   not have a corresponding pred declaration.
-For more information, try recompiling with `-E'.

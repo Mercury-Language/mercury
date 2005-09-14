@@ -8,4 +8,3 @@ unsatisfiable_constraint.m:038:       C: C
 unsatisfiable_constraint.m:038:       B: A
 unsatisfiable_constraint.m:038:   The unbound type variable(s) will be implicitly
 unsatisfiable_constraint.m:038:   bound to the builtin type `void'.
-For more information, try recompiling with `-E'.

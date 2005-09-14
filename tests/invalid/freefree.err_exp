@@ -9,4 +9,3 @@ freefree.m:019: In clause for `p':
 freefree.m:019:   mode error in unification of `X' and `Y'.
 freefree.m:019:   Variable `X' has instantiatedness `free',
 freefree.m:019:   variable `Y' has instantiatedness `free'.
-For more information, try recompiling with `-E'.

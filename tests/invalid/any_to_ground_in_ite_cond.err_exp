@@ -1,5 +1,3 @@
-Making Mercury/int3s/any_to_ground_in_ite_cond.int3
-Making Mercury/cs/any_to_ground_in_ite_cond.c
 any_to_ground_in_ite_cond.m:035: In clause for `main(di, uo)':
 any_to_ground_in_ite_cond.m:035:   in argument 1 of call to predicate
 any_to_ground_in_ite_cond.m:035:   `any_to_ground_in_ite_cond.p/1':
@@ -8,5 +6,3 @@ any_to_ground_in_ite_cond.m:035:   variable inside the condition of an
 any_to_ground_in_ite_cond.m:035:   if-then-else.
 any_to_ground_in_ite_cond.m:035:   Variable `X' has instantiatedness `any',
 any_to_ground_in_ite_cond.m:035:   expected instantiatedness was `ground'.
-For more information, try recompiling with `-E'.
-** Error making `Mercury/cs/any_to_ground_in_ite_cond.c'.

@@ -8,4 +8,3 @@ invalid_typeclass.m:007: Error: no definition for typeclass
 invalid_typeclass.m:007:   `invalid_typeclass.class'/1
 invalid_typeclass.m:009: Error: no definition for typeclass
 invalid_typeclass.m:009:   `invalid_typeclass.class2'/1
-For more information, try recompiling with `-E'.

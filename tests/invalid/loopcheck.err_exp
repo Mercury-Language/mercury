@@ -4,4 +4,3 @@ loopcheck.m:009:   Declared `det', inferred `erroneous'.
 loopcheck.m:016: Error: `pragma loop_check' declaration not allowed for
 loopcheck.m:016:   procedure with determinism `erroneous'.
 loopcheck.m:017: Warning: recursive call will lead to infinite recursion.
-For more information, try recompiling with `-E'.

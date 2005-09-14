@@ -1006,6 +1006,7 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
             words("no impurity declaration.")]
     ;
         VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO),
         Pieces = Pieces1
     ),
     write_error_pieces(Context, 0, Pieces, !IO),
@@ -1059,6 +1060,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity,
         Pieces = PredContextPieces ++ Pieces1 ++ Pieces2
     ;
         VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO),
         Pieces = PredContextPieces ++ Pieces1
     ),
     write_error_pieces(Context, 0, Pieces, !IO),

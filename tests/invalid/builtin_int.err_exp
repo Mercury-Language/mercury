@@ -1,3 +1,2 @@
 builtin_int.m:008: In definition of predicate `builtin_int.foo'/1:
 builtin_int.m:008:   error: undefined type `builtin.ints'/0.
-For more information, try recompiling with `-E'.

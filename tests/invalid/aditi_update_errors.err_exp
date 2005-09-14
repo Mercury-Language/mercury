@@ -191,4 +191,3 @@ aditi_update_errors.m:173:   in argument 2 of `aditi_bulk_modify' of function `q
 aditi_update_errors.m:173:   type error: variable `ModifyQ' has type `((aditi_bottom_up func(V_48, int, int, V_51, int)) = int)',
 aditi_update_errors.m:173:   expected type was `(aditi_bottom_up pred((aditi.state), int, int, (aditi.state), int, int))'.
 aditi_update_errors.m:026: Error: no clauses for predicate `anc/3'.
-For more information, try recompiling with `-E'.

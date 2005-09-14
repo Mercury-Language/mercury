@@ -5,4 +5,3 @@ impure_func_t3.m:017:   which is preceded by `impure' indicator.
 impure_func_t3.m:017: In call to predicate `io.print/3':
 impure_func_t3.m:017:   warning: unnecessary `impure' indicator.
 impure_func_t3.m:017:   No purity indicator is necessary.
-For more information, try recompiling with `-E'.

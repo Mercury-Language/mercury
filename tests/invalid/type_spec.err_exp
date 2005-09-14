@@ -18,4 +18,3 @@ type_spec.m:026:   substitution.
 type_spec.m:028: In `:- pragma type_spec' declaration for predicate
 type_spec.m:028:   `type_spec.type_spec2/1':
 type_spec.m:028:   error: variable `U' has multiple replacement types.
-For more information, try recompiling with `-E'.

@@ -65,4 +65,3 @@ errors2.m:019:   in argument 1 of call to predicate `errors2.bind_type_param/2':
 errors2.m:019:   mode error: variable `Arg' has instantiatedness `free',
 errors2.m:019:   expected instantiatedness was `ground'.
 errors2.m:009: Error: no mode declaration for predicate `errors2.bind_type_param/1'.
-For more information, try recompiling with `-E'.

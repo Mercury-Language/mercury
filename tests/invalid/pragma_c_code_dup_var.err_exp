@@ -3,4 +3,3 @@ pragma_c_code_dup_var.m:019:   function `pragma_c_code_dup_var.bread_impl/6':
 pragma_c_code_dup_var.m:019:   error: variable `Buf' occurs multiple times in
 pragma_c_code_dup_var.m:019:   the argument list.
 pragma_c_code_dup_var.m:014: Error: no clauses for function `bread_impl/7'.
-For more information, try recompiling with `-E'.

@@ -23,4 +23,3 @@ unbound_type_vars.m:034:   the predicate's argument types.
 unbound_type_vars.m:034: In declaration of predicate `unbound_type_vars.p5/1':
 unbound_type_vars.m:034:   type variable T2 is universally constrained, but is
 unbound_type_vars.m:034:   existentially quantified.
-For more information, try recompiling with `-E'.

@@ -19,4 +19,3 @@ occurs.m:018:   )'.
 occurs.m:010: In `p2':
 occurs.m:010:   warning: determinism declaration could be tighter.
 occurs.m:010:   Declared `semidet', inferred `failure'.
-For more information, try recompiling with `-E'.

@@ -1,4 +1,3 @@
 inst_list_dup.m:003: Error: syntax error in inst body: bound(ground - unique ; ground - ground).
 inst_list_dup.m:001: Warning: interface for module `inst_list_dup' does not
 inst_list_dup.m:001:   export anything.
-For more information, try recompiling with `-E'.

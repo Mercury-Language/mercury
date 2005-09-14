@@ -9,4 +9,3 @@ transitive_import_class.m:017:   in argument 1 of functor `transitive_import_cla
 transitive_import_class.m:017:   error: undefined symbol `transitive_import_class3.from_int/1'
 transitive_import_class.m:017:   (the module `transitive_import_class3' has not
 transitive_import_class.m:017:     been imported).
-For more information, try recompiling with `-E'.

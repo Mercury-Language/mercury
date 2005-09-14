@@ -23,4 +23,3 @@ multimode_dcg.m:043: In clause for `test2(out, out, di, uo)':
 multimode_dcg.m:043:   mode mismatch in disjunction.
 multimode_dcg.m:043:   `HeadVar__1' :: free, free, unique(0), unique(0).
 multimode_dcg.m:043:   `HeadVar__2' :: free, unique(0), free, unique(0).
-For more information, try recompiling with `-E'.

@@ -5,4 +5,3 @@ transitive_import.m:016:   (The module `std_util' has not been imported.)
 transitive_import.m:023: In declaration of instance of typeclass `enum.enum'/1:
 transitive_import.m:023:   error: undefined typeclass `enum.enum'/1.
 transitive_import.m:023:   (The module `enum' has not been imported.)
-For more information, try recompiling with `-E'.

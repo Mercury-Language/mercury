@@ -6,4 +6,3 @@ typeclass_test_5.m:022: Subsequent definition appears here.
 typeclass_test_5.m:020: In instance declaration for `typeclass_test_5.c2(int)':
 typeclass_test_5.m:020:   superclass constraint(s) not satisfied:
 typeclass_test_5.m:020:   `typeclass_test_5.c1(int)'.
-For more information, try recompiling with `-E'.

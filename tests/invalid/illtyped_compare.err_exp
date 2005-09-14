@@ -14,4 +14,3 @@ illtyped_compare.m:017: In clause for comparison predicate for type illtyped_com
 illtyped_compare.m:017:   in argument 3 of call to predicate `illtyped_compare.compare_bar/3':
 illtyped_compare.m:017:   type error: variable `HeadVar__3' has type `(illtyped_compare.bar_rep)',
 illtyped_compare.m:017:   expected type was `(illtyped_compare.bar)'.
-For more information, try recompiling with `-E'.

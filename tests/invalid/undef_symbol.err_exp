@@ -6,4 +6,3 @@ undef_symbol.m:019:   (the module `string' has not been imported).
 undef_symbol.m:025: In clause for predicate `undef_symbol.q/2':
 undef_symbol.m:025:   error: undefined symbol `term.context/2'
 undef_symbol.m:025:   (the module `term' has not been imported).
-For more information, try recompiling with `-E'.

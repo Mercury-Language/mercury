@@ -4,4 +4,3 @@ Mercury/ints/exported_unify3.sub.int:003: In clause for unification predicate fo
 Mercury/ints/exported_unify3.sub.int:003:   error: undefined predicate `exported_unify3.sub.not_exported/2'.
 Mercury/int0s/exported_unify3.int0:003: In clause for unification predicate for type exported_unify3.foo:
 Mercury/int0s/exported_unify3.int0:003:   error: undefined predicate `exported_unify3.defined_in_wrong_module/2'.
-For more information, try recompiling with `-E'.

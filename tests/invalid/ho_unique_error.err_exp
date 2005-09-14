@@ -7,4 +7,3 @@ ho_unique_error.m:012:   predicate) of higher-order predicate call:
 ho_unique_error.m:012:   mode error: variable `DCG_0' has instantiatedness
 ho_unique_error.m:012:   `mostly_unique',
 ho_unique_error.m:012:   expected instantiatedness was `unique'.
-For more information, try recompiling with `-E'.

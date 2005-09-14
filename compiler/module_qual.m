@@ -1432,6 +1432,7 @@ report_ambiguous_match(ErrorContext - Context, Id, IdType, Modules, !IO) :-
             words("may be necessary."), nl]
     ;
         Verbose = no,
+        globals.io_set_extra_error_info(yes, !IO),
         Pieces2 = []
     ),
     write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO),

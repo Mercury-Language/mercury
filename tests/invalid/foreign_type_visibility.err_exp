@@ -9,4 +9,3 @@ foreign_type_visibility.m:022: In definition of type
 foreign_type_visibility.m:022:   `foreign_type_visibility.foreign3/0':
 foreign_type_visibility.m:022:   error: all definitions of a type must have the
 foreign_type_visibility.m:022:   same visibility
-For more information, try recompiling with `-E'.

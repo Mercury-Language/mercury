@@ -7,4 +7,3 @@ purity_nonsense2.m:012: Error: clause for predicate `purity_nonsense2.e12/0'
 purity_nonsense2.m:012:   without preceding `pred' declaration.
 purity_nonsense2.m:013: Error: clause for predicate `purity_nonsense2.e13/0'
 purity_nonsense2.m:013:   without preceding `pred' declaration.
-For more information, try recompiling with `-E'.

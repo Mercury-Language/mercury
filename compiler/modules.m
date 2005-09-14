@@ -2130,7 +2130,8 @@ warn_no_exports(ModuleName, !IO) :-
                 fixed("or `:- mode'"),
                 fixed("declaration.")], !IO)
         ;
-            VerboseErrors = no
+            VerboseErrors = no,
+            globals.io_set_extra_error_info(yes, !IO)
         )
     ;
         ExportWarning = no
@@ -2801,7 +2802,8 @@ warn_imported_ancestor(ModuleName, AncestorName, !IO) :-
             words("There is no need to explicitly import them.")],
             !IO)
     ;
-        VerboseErrors = no
+        VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO)
     ).
 
     % This predicate ensures that all every import_module declaration is
@@ -6533,7 +6535,8 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
         io__write_string(SubModule, !IO),
         io__write_string("'.\n", !IO)
     ;
-        VerboseErrors = no
+        VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO)
     ),
     io__set_exit_status(1, !IO).
 

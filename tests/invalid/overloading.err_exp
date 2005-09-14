@@ -26,4 +26,3 @@ overloading.m:050:   variable `SuccMap0' has overloaded type {
 overloading.m:050:     (pred (tree234.tree234(V_V_1, V_V_2))),
 overloading.m:050:     (tree234.tree234(K, V))
 overloading.m:050:   }.
-For more information, try recompiling with `-E'.

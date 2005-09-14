@@ -3,4 +3,3 @@ assert_in_interface.m:005:   error: exported promise refers to predicate
 assert_in_interface.m:005:   `list.last/2' which is defined in the
 assert_in_interface.m:005:   implementation section of module
 assert_in_interface.m:005:   `assert_in_interface'.
-For more information, try recompiling with `-E'.

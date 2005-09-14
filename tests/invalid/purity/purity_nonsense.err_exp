@@ -38,4 +38,3 @@ purity_nonsense.m:013:   in argument 1 of functor `semipure/1':
 purity_nonsense.m:013:   error: undefined symbol `semi/0'.
 purity_nonsense.m:013: In clause for predicate `purity_nonsense.e13/0':
 purity_nonsense.m:013:   error: `semipure' marker in an inappropriate place.
-For more information, try recompiling with `-E'.

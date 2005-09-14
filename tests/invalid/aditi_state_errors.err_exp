@@ -5,4 +5,3 @@ aditi_state_errors.m:010: Error: `:- pragma base_relation' declaration for
 aditi_state_errors.m:010:   predicate `aditi_state_errors.output_aditi_state/3'
 aditi_state_errors.m:010:   without an `aditi__state' argument with mode
 aditi_state_errors.m:010:   `aditi_mui'.
-For more information, try recompiling with `-E'.

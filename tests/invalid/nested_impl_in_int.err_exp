@@ -6,4 +6,3 @@ nested_impl_in_int.m:037: In interface for module `nested_impl_in_int':
 nested_impl_in_int.m:037:   in definition of sub-module `child2':
 nested_impl_in_int.m:037:   error: `:- implementation.' declaration for sub-module
 nested_impl_in_int.m:037:   occurs in interface section of parent module.
-For more information, try recompiling with `-E'.

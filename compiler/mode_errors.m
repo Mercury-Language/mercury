@@ -247,6 +247,10 @@
 
 report_mode_error(ModeError, ModeInfo, !IO) :-
     Specs = mode_error_to_specs(ModeError, ModeInfo),
+    % XXX This module needs some rearrangement for the global extra erro info
+    % flag to be respected properly.  In the meantime we just set it to yes
+    % because that was the original behaviour for this module was.
+    globals.io_set_extra_error_info(yes, !IO),
     write_error_specs(Specs, !IO).
 
 report_mode_warning(ModeInfo, Warning, !IO) :-
@@ -574,6 +578,7 @@ mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
         )
     ;
         VerboseErrors = no,
+        % XXX We need to set the extra error flag here.
         Pieces2 = []
     ),
     Specs = [mode_info_context_to_spec(ModeInfo),

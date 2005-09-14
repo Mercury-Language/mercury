@@ -6,4 +6,3 @@ circ_type2.m:015: Error: circular equivalence type `circ_type2.left/1'.
 circ_type2.m:016: Error: circular equivalence type `circ_type2.right/1'.
 circ_type2.m:018: Error: circular equivalence type `circ_type2.circ_left/1'.
 circ_type2.m:019: Error: circular equivalence type `circ_type2.circ_right/1'.
-For more information, try recompiling with `-E'.

@@ -13,4 +13,3 @@ aditi_errors.m:021:   the type of argument 4 is polymorphic.
 aditi_errors.m:021: In Aditi predicate `aditi_errors.q/4':
 aditi_errors.m:021:   the type of argument 3 contains existentially typed
 aditi_errors.m:021:   constructors.
-For more information, try recompiling with `-E'.

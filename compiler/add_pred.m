@@ -460,7 +460,8 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !IO) :-
             words("of local predicates.)")],
         write_error_pieces(Context, 0, VerbosePieces, !IO)
     ;
-        VerboseErrors = no
+        VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO)
     ).
 
 :- pred unspecified_det_for_method(sym_name::in, arity::in, pred_or_func::in,

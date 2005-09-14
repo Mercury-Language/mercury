@@ -10,4 +10,3 @@ ext_type.m:019:   and functor `q/1'.
 ext_type.m:019:   argument has type `(some [QT] QT)',
 ext_type.m:019:   functor `q/1' has type 
 ext_type.m:019:   `q(int): (some [QT] QT)'.
-For more information, try recompiling with `-E'.

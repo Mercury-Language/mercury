@@ -11,4 +11,3 @@ some.m:013:   error: undefined symbol `junk/0'.
 some.m:013: In clause for predicate `some.p3/1':
 some.m:013:   syntax error in existential quantification: first
 some.m:013:   argument of `some' should be a list of variables.
-For more information, try recompiling with `-E'.

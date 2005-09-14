@@ -1888,11 +1888,11 @@ magic_util__report_argument_error(_Context, abstract, ArgPiece, _, Pieces) :-
 			words("contains abstract types.")].
 magic_util__report_argument_error(_Context, output_aditi_state,
 		ArgPiece, _, Pieces) :-
-	Pieces = [ArgPiece, words("is an output `aditi:state'.")].
+	Pieces = [ArgPiece, words("is an output `aditi.state'.")].
 magic_util__report_argument_error(_Context, embedded_aditi_state,
 		ArgPiece, _, Pieces) :-
 	Pieces = [words("the type of"), ArgPiece,
-		words("contains an embedded `aditi:state'.")].
+		words("contains an embedded `aditi.state'.")].
 
 :- pred magic_util__report_linearity_error(module_info::in, term__context::in,
 	bool::in, linearity_error::in, list(format_component)::out) is det.

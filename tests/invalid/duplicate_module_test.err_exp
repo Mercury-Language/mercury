@@ -16,4 +16,3 @@ duplicate_module.m:050:   a separate sub-module and a nested sub-module.
 duplicate_module.m:052: In module `duplicate_module':
 duplicate_module.m:052:   error: sub-module `child3' declared as both
 duplicate_module.m:052:   a separate sub-module and a nested sub-module.
-For more information, try recompiling with `-E'.

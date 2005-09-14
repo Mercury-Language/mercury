@@ -6,4 +6,3 @@ range_restrict.m:011: In instance for typeclass `range_restrict.foo'/2:
 range_restrict.m:011:   functional dependency not satisfied: type variable Y
 range_restrict.m:011:   occurs in the range of the functional dependency, but
 range_restrict.m:011:   is not in the domain.
-For more information, try recompiling with `-E'.

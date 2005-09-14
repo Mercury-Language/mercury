@@ -898,7 +898,8 @@ emit_message(ThisPredProc, Context, Message, Error, !ModuleInfo, !IO) :-
 		io__write_string("\tcan cause problems for bottom up " ++
 			"evaluation of the predicate/function.\n", !IO)
 	;
-		VerboseErrors = no
+		VerboseErrors = no,
+		globals.io_set_extra_error_info(yes, !IO)
 	).
 
 %-----------------------------------------------------------------------------%

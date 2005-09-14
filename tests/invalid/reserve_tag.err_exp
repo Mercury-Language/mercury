@@ -15,4 +15,3 @@ reserve_tag.m:032:   error: undefined type `reserve_tag.invalid_arity/1'.
 reserve_tag.m:044: In `pragma reserve_tag' declaration for `reserve_tag.foo/0':
 reserve_tag.m:044:   warning: multiple `pragma reserved_tag' declarations for
 reserve_tag.m:044:   the same type.
-For more information, try recompiling with `-E'.

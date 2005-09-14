@@ -2,4 +2,3 @@ make_opt_error.m:014: Error: clause for automatically generated field access
 make_opt_error.m:014:   function `make_opt_error.x/1'.
 make_opt_error.m:015: Error: clause for automatically generated field access
 make_opt_error.m:015:   function `make_opt_error.y/1'.
-For more information, try recompiling with `-E'.

@@ -25,4 +25,3 @@ bind_var_errors.m:060:   in argument 1 of call to predicate
 bind_var_errors.m:060:   `bind_var_errors.destroy/1':
 bind_var_errors.m:060:   unique-mode error: the called procedure would clobber
 bind_var_errors.m:060:   its argument, but variable `X' is still live.
-For more information, try recompiling with `-E'.

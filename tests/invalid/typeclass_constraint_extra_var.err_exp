@@ -4,4 +4,3 @@ typeclass_constraint_extra_var.m:011:   error in type class constraints: type
 typeclass_constraint_extra_var.m:011:   variable U occurs in the constraints,
 typeclass_constraint_extra_var.m:011:   but is not determined by the
 typeclass_constraint_extra_var.m:011:   predicate's argument types.
-For more information, try recompiling with `-E'.

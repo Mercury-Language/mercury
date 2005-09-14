@@ -5,4 +5,3 @@ nullary_ho_func_error.m:022:   type error in unification of argument
 nullary_ho_func_error.m:022:   and constant `pi'.
 nullary_ho_func_error.m:022:   argument has type `((func) = T)',
 nullary_ho_func_error.m:022:   constant `pi' has type `float'.
-For more information, try recompiling with `-E'.

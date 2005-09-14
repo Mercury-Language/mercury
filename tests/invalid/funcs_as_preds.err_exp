@@ -21,4 +21,3 @@ funcs_as_preds.m:030:   Perhaps you forgot to add ` = ...'?)
 funcs_as_preds.m:021: Inferred :- func car((list.list((list.list(T))))) = (list.list(T)).
 funcs_as_preds.m:024: Inferred :- func cdr((list.list(T))) = (list.list(T)).
 funcs_as_preds.m:027: Inferred :- func cons(T, (list.list(T))) = (list.list(T)).
-For more information, try recompiling with `-E'.

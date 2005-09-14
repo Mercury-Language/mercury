@@ -1789,7 +1789,8 @@ maybe_report_unbound_tvars_explanation(Context, !IO) :-
 		],
 		write_error_pieces_not_first_line(Context, 0, Msg, !IO)
 	;
-		VerboseErrors = no
+		VerboseErrors = no,
+		globals.io_set_extra_error_info(yes, !IO)
 	).
 
 %---------------------------------------------------------------------------%

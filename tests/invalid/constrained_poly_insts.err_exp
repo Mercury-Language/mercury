@@ -21,4 +21,3 @@ constrained_poly_insts.m:027:   expected final instantiatedness was `(I =<
 constrained_poly_insts.m:027:   ground)'.
 constrained_poly_insts.m:023: Error: no mode declaration for predicate
 constrained_poly_insts.m:023:   `constrained_poly_insts.q/2'.
-For more information, try recompiling with `-E'.

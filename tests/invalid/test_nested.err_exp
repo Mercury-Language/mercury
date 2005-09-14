@@ -11,4 +11,3 @@ test_nested.m:015: In definition of type `test_nested.foo'/0:
 test_nested.m:015:   error: undefined type `parent.nonexistent_child.foo'/0.
 test_nested.m:015:   (The module `parent.nonexistent_child' has not been
 test_nested.m:015:   imported.)
-For more information, try recompiling with `-E'.

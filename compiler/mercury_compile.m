@@ -437,14 +437,21 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         ;
             % If we found some errors, but the user didn't enable
             % the `-E' (`--verbose-errors') option, give them a
-            % hint about it.
-
+            % hint about it.  Of course, we should only output the
+            % hint when we have further information to give the user.
+            
             globals__lookup_bool_option(Globals, verbose_errors,
                 VerboseErrors),
+            globals__get_extra_error_info(Globals, ExtraErrorInfo), 
             (
                 VerboseErrors = no,
-                io__write_string("For more information, " ++
-                    "try recompiling with `-E'.\n", !IO)
+                (
+                    ExtraErrorInfo = yes,
+                    io__write_string("For more information, " ++
+                        "recompile with `-E'.\n", !IO)
+                ;
+                    ExtraErrorInfo = no
+                )
             ;
                 VerboseErrors = yes
             )

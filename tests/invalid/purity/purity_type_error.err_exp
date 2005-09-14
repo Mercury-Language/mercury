@@ -6,4 +6,3 @@ purity_type_error.m:020:   variable `HeadVar__1' has type `int',
 purity_type_error.m:020:   constant `1.00000000000000' has type `float'.
 purity_type_error.m:009: In predicate `purity_type_error.warn/1':
 purity_type_error.m:009:   warning: declared impure but actually pure.
-For more information, try recompiling with `-E'.

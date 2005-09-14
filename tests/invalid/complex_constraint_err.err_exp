@@ -8,4 +8,3 @@ complex_constraint_err.m:013:   `complex_constraint_err.u/1':
 complex_constraint_err.m:013:   error in type class constraints: type variables
 complex_constraint_err.m:013:   Z and X occur in the constraints, but are not
 complex_constraint_err.m:013:   determined by the predicate's argument types.
-For more information, try recompiling with `-E'.

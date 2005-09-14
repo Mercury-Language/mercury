@@ -6,4 +6,3 @@ fundeps_vars.m:042: In definition of predicate `fundeps_vars.test'/2:
 fundeps_vars.m:042:   error: undefined typeclass `coll'/2.
 fundeps_vars.m:035: Error: instance declaration for `coll'/2 without preceding
 fundeps_vars.m:035:   typeclass declaration.
-For more information, try recompiling with `-E'.

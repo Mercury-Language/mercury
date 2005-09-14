@@ -12,4 +12,3 @@ ho_type_mode_bug.m:025:   higher-order predicate call:
 ho_type_mode_bug.m:025:   mode error: variable `P' has instantiatedness
 ho_type_mode_bug.m:025:   `(pred(in, in, out) is det)',
 ho_type_mode_bug.m:025:   expecting higher-order pred inst (of arity 5).
-For more information, try recompiling with `-E'.

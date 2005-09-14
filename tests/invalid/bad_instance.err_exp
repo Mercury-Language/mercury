@@ -1,3 +1,2 @@
 bad_instance.m:005: Error: types in instance declarations must be functors with distinct variables as arguments: foo(bar(_1), _2).
 bad_instance.m:011: Error: types in instance declarations must be functors with distinct variables as arguments: foo(bar(_1), _1).
-For more information, try recompiling with `-E'.

@@ -284,7 +284,8 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
                 words("for the following determinism(s):") |
                 DetismPieces], !IO)
         ;
-            VerboseErrors = no
+            VerboseErrors = no,
+            globals.io_set_extra_error_info(yes, !IO)
         ),
         module_info_incr_errors(!ModuleInfo)
     ).
@@ -378,7 +379,8 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
             write_error_pieces_not_first_line(FuncContext, 0,
                 [words(ExtMsg)], !IO)
         ;
-            VerboseErrors = no
+            VerboseErrors = no,
+            globals.io_set_extra_error_info(yes, !IO)
         ),
         module_info_incr_errors(!ModuleInfo)
     ;
@@ -1141,6 +1143,7 @@ det_report_msg(goal_cannot_succeed(Context), _, !IO) :-
         Pieces = Pieces0 ++ Pieces1
     ;
         VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO),
         Pieces = Pieces0
     ),
     write_error_pieces(Context, 0, Pieces, !IO).
@@ -1155,7 +1158,8 @@ det_report_msg(det_goal_has_no_outputs(Context), _, !IO) :-
             words("the `--fully-strict' option.")],
         Pieces = Pieces0 ++ Pieces1
     ;
-        VerboseErrors = no,
+        VerboseErrors = no, 
+        globals.io_set_extra_error_info(yes, !IO),
         Pieces = Pieces0
     ),
     write_error_pieces(Context, 0, Pieces, !IO).
@@ -1181,6 +1185,7 @@ det_report_msg(warn_infinite_recursion(Context), _ModuleInfo, !IO) :-
         Pieces = Pieces0 ++ Pieces1
     ;
         VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO),
         Pieces = Pieces0
     ),
     write_error_pieces(Context, 0, Pieces, !IO).
@@ -1237,7 +1242,8 @@ det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
             words("you must do it explicitly.)")],
         write_error_pieces_not_first_line(Context, 0, VerbosePieces, !IO)
     ;
-        VerboseErrors = no
+        VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO)
     ).
 det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
         GoalContext), _ModuleInfo, !IO) :-
@@ -1285,7 +1291,8 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
             words("you must do it explicitly.)")],
         write_error_pieces_not_first_line(Context, 0, VerbosePieces, !IO)
     ;
-        VerboseErrors = no
+        VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO)
     ).
 det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
         ModuleInfo, !IO) :-
@@ -1366,7 +1373,8 @@ det_report_msg(has_io_state_but_not_det(PredId, ProcId), ModuleInfo, !IO) :-
             words("det, cc_multi and erroneous.")],
         write_error_pieces_not_first_line(Context, 0, VerbosePieces, !IO)
     ;
-        VerboseErrors = no
+        VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO)
     ).
 det_report_msg(will_not_throw_with_erroneous(PredId, ProcId), ModuleInfo,
         !IO) :-

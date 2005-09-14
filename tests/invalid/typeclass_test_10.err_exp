@@ -4,4 +4,3 @@ typeclass_test_10.m:012:   `typeclass_test_10.p'/0.
 typeclass_test_10.m:017: In instance declaration for `typeclass_test_10.baz'/1:
 typeclass_test_10.m:017:   incorrect method name(s): predicate
 typeclass_test_10.m:017:   `typeclass_test_10.r'/0.
-For more information, try recompiling with `-E'.

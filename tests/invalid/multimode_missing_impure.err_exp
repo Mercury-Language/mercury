@@ -8,4 +8,3 @@ multimode_missing_impure.m:034:   `multimode_missing_impure.test2/2':
 multimode_missing_impure.m:034:   purity error: predicate is impure.
 multimode_missing_impure.m:034:   It must be declared `impure' or promised
 multimode_missing_impure.m:034:   pure.
-For more information, try recompiling with `-E'.

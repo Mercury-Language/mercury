@@ -2,4 +2,3 @@ inconsistent_instances.m:012: Inconsistent instance declaration for typeclass
 inconsistent_instances.m:012:   `inconsistent_instances.foo'/2 with functional
 inconsistent_instances.m:012:   dependency `(A -> B)'.
 inconsistent_instances.m:011: Here is the conflicting instance.
-For more information, try recompiling with `-E'.

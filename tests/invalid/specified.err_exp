@@ -13,4 +13,3 @@ specified.m:220:   compatible with input modes.
 specified.m:239: Error in `pragma memo([value, value, output, output])'
 specified.m:239:   declaration for predicate `specified.vv_ll_fib/3':
 specified.m:239:   too many argument tabling methods specified.
-For more information, try recompiling with `-E'.

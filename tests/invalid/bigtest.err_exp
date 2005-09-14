@@ -12,4 +12,3 @@ bigtest.m:005:   without preceding `pred' declaration.
 bigtest.m:005: Inferred :- pred fact.
 bigtest.m:010: Error: no mode declaration for predicate `bigtest.p/1'.
 bigtest.m:005: Error: no mode declaration for predicate `bigtest.fact/0'.
-For more information, try recompiling with `-E'.

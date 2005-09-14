@@ -407,7 +407,8 @@ report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet) -->
 	prog_out__write_context(Context),
 	io__write_string("  bound to the builtin type `void'.\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
+	(
+		{ VerboseErrors = yes },
 		io__write_strings([
 "\tThe body of the clause contains a call to a polymorphic predicate,\n",
 "\tbut I can't determine which version should be called,\n",
@@ -418,7 +419,8 @@ report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet) -->
 "\tyou'll have to work it out yourself.  My apologies.)\n"
 			])
 	;
-		[]
+		{ VerboseErrors = no },
+		globals.io_set_extra_error_info(yes)
 	).
 
 :- pred write_type_var_list(assoc_list(prog_var, (type))::in, prog_context::in,

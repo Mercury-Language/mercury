@@ -54,4 +54,3 @@ lambda_syntax_error.m:015:   in function result term of clause head:
 lambda_syntax_error.m:015:   in argument 2 of functor `:-/2':
 lambda_syntax_error.m:015:   error: the language construct =/2 should be
 lambda_syntax_error.m:015:   used as a goal, not as an expression.
-For more information, try recompiling with `-E'.

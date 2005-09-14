@@ -223,7 +223,8 @@ report_error_undef_pred(Info, PredOrFunc - PredCallId, !IO) :-
 			io__write_string(
 				"  Every if-then must have an else.\n", !IO)
 		;
-			VerboseErrors = no
+			VerboseErrors = no,
+			globals__io_set_extra_error_info(yes, !IO)
 		)
 	;
 		PredName = unqualified("else"),
@@ -254,7 +255,8 @@ report_error_undef_pred(Info, PredOrFunc - PredCallId, !IO) :-
 			io__write_string(
 				"  Every if-then must have an `else'.\n", !IO)
 		;
-			VerboseErrors = no
+			VerboseErrors = no,
+			globals__io_set_extra_error_info(yes, !IO)
 		)
 	;
 		PredName = unqualified("apply"),
@@ -277,7 +279,8 @@ report_error_undef_pred(Info, PredOrFunc - PredCallId, !IO) :-
 			io__write_string("  Such markers only belong " ++
 				"before predicate calls.\n", !IO)
 		;
-			VerboseErrors = no
+			VerboseErrors = no,
+			globals__io_set_extra_error_info(yes, !IO)
 		)
 	;
 		PredName = unqualified("some"),
@@ -325,6 +328,7 @@ report_error_apply_instead_of_pred(Info, !IO) :-
 			fixed("`my_apply(Func, X, Y) :- apply(Func, X, Y).'")]
 	;
 		VerboseErrors = no,
+		globals__io_set_extra_error_info(yes, !IO),
 		Pieces2 = []
 	),
 	write_error_pieces_not_first_line(Context, 0, Pieces1 ++ Pieces2, !IO).
@@ -356,6 +360,7 @@ report_warning_too_much_overloading(Info, !IO) :-
 		list__append(SmallWarning, VerboseWarning, Warning)
 	;
 		VerboseErrors = no,
+		globals__io_set_extra_error_info(yes, !IO),
 		Warning = SmallWarning
 	),
 	error_util__report_warning(Context, 0, Warning, !IO).
@@ -1382,7 +1387,8 @@ write_type_assign_set_msg(TypeAssignSet, VarSet, !IO) :-
 		),
 		write_type_assign_set(TypeAssignSet, VarSet, !IO)
 	;
-		VerboseErrors = no
+		VerboseErrors = no,
+		globals__io_set_extra_error_info(yes, !IO)
 	).
 
 :- pred write_args_type_assign_set_msg(args_type_assign_set::in,
@@ -1401,7 +1407,8 @@ write_args_type_assign_set_msg(ArgTypeAssignSet, VarSet, !IO) :-
 		),
 		write_args_type_assign_set(ArgTypeAssignSet, VarSet, !IO)
 	;
-		VerboseErrors = no
+		VerboseErrors = no,
+		globals__io_set_extra_error_info(yes, !IO)
 	).
 
 :- pred output_type((type)::in, tvarset::in, head_type_params::in,

@@ -5,4 +5,3 @@ type_vars.m:006: In declaration for type `type_vars.t1'/0:
 type_vars.m:006:   error in type class constraints: type variable T2 occurs in
 type_vars.m:006:   the constraints, but is not determined by the constructor's
 type_vars.m:006:   argument types.
-For more information, try recompiling with `-E'.

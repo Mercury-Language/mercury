@@ -4,4 +4,3 @@ impure_func_t5.m:018:   type error in unification of argument
 impure_func_t5.m:018:   and constant `get_counter'.
 impure_func_t5.m:018:   argument has type `((func int) = int)',
 impure_func_t5.m:018:   constant `get_counter' has type `(impure ((func int) = int))'.
-For more information, try recompiling with `-E'.

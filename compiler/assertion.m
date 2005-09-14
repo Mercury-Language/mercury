@@ -889,7 +889,8 @@ write_assertion_interface_error(Context, Type, !Module, !IO) :-
             words("implementation section or move "),
             words("the definition into the interface.")], !IO)
     ;
-        VerboseErrors = no
+        VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

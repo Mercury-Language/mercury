@@ -5,4 +5,3 @@ pragma_c_code_no_det.m:005: In `test(out)':
 pragma_c_code_no_det.m:005:   warning: determinism declaration could be
 pragma_c_code_no_det.m:005:   tighter.
 pragma_c_code_no_det.m:005:   Declared `det', inferred `erroneous'.
-For more information, try recompiling with `-E'.

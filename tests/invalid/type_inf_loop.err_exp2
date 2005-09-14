@@ -8,4 +8,3 @@ You should declare the types explicitly.
 (The current limit is 60 iterations.  You can use the
 `--type-inference-iteration-limit' option to increase the limit).
 type_inf_loop.m:004: Inferred :- pred loop((pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred (pred T1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))).
-For more information, try recompiling with `-E'.

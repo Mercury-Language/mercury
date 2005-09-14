@@ -4,4 +4,3 @@ typeclass_test_1.m:017: Syntax error at variable `_': operator or `.' expected.
 typeclass_test_1.m:007: In clause for predicate `typeclass_test_1.main/2':
 typeclass_test_1.m:007:   unsatisfiable typeclass constraint(s):
 typeclass_test_1.m:007:   `typeclass_test_1.numbered_type(int)'.
-For more information, try recompiling with `-E'.

@@ -61,4 +61,3 @@ errors2.m:085:   and variable `Y'.
 errors2.m:085:   `X' has type `{int, string, character}',
 errors2.m:085:   `Y' has type `{string, character, int}'.
 errors2.m:009: Inferred :- pred bind_type_param(int).
-For more information, try recompiling with `-E'.

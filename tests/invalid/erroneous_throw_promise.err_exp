@@ -8,4 +8,3 @@ erroneous_throw_promise.m:005:   foreign clauses that have a
 erroneous_throw_promise.m:005:   `will_not_throw_exception' attribute. This
 erroneous_throw_promise.m:005:   attribute cannot be applied to erroneous
 erroneous_throw_promise.m:005:   procedures.
-For more information, try recompiling with `-E'.

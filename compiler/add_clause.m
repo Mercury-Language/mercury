@@ -206,6 +206,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 list__append(ErrorPieces0, ErrorPieces1, ErrorPieces)
             ;
                 Verbose = no,
+                globals__io_set_extra_error_info(yes, !IO),
                 ErrorPieces = ErrorPieces0
             ),
             error_util__write_error_pieces(Context, 0, ErrorPieces, !IO)

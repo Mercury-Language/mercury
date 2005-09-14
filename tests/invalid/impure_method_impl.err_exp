@@ -12,4 +12,3 @@ impure_method_impl.m:021:   indicator.
 impure_method_impl.m:021: In type class method implementation:
 impure_method_impl.m:021:   purity error: predicate is semipure.
 impure_method_impl.m:021:   It must be declared `semipure' or promised pure.
-For more information, try recompiling with `-E'.

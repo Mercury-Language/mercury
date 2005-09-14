@@ -1,4 +1,3 @@
 circ_inst.m:006: Error: circular equivalence inst `circ_inst.circ'/0.
 circ_inst.m:010: Error: circular equivalence insts `circ_inst.circ1'/0 and
 circ_inst.m:010:   `circ_inst.circ2'/0.
-For more information, try recompiling with `-E'.
