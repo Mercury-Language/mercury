@@ -120,15 +120,15 @@
 :- pred tree234__tree234_to_assoc_list(tree234(K, V)::in,
     assoc_list(K, V)::out) is det.
 
-:- func tree234__foldl(func(K, V, T) = T, tree234(K, V), T) = T.
+:- func tree234__foldl(func(K, V, A) = A, tree234(K, V), A) = A.
 
-:- pred tree234__foldl(pred(K, V, T, T), tree234(K, V), T, T).
+:- pred tree234__foldl(pred(K, V, A, A), tree234(K, V), A, A).
 :- mode tree234__foldl(pred(in, in, in, out) is det, in, in, out) is det.
 :- mode tree234__foldl(pred(in, in, in, out) is semidet, in, in, out)
     is semidet.
 :- mode tree234__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
 
-:- pred tree234__foldl2(pred(K, V, T, T, U, U), tree234(K, V), T, T, U, U).
+:- pred tree234__foldl2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
 :- mode tree234__foldl2(pred(in, in, in, out, in, out) is det, 
     in, in, out, in, out) is det.
 :- mode tree234__foldl2(pred(in, in, in, out, in, out) is semidet, 
@@ -138,8 +138,8 @@
 :- mode tree234__foldl2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
 
-:- pred tree234__foldl3(pred(K, V, T, T, U, U, W, W), tree234(K, V),
-    T, T, U, U, W, W).
+:- pred tree234__foldl3(pred(K, V, A, A, B, B, C, C), tree234(K, V),
+	A, A, B, B, C, C).
 :- mode tree234__foldl3(pred(in, in, in, out, in, out, in, out) is det, 
     in, in, out, in, out, in, out) is det.
 :- mode tree234__foldl3(pred(in, in, in, out, in, out, in, out) is semidet, 
@@ -150,6 +150,23 @@
     in, in, out, di, uo, di, uo) is det.
 :- mode tree234__foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
+
+:- pred tree234__foldl4(pred(K, V, A, A, B, B, C, C, D, D), tree234(K, V),
+	A, A, B, B, C, C, D, D).
+:- mode tree234__foldl4(pred(in, in, in, out, in, out, in, out, in, out)
+	is det,
+	in, in, out, in, out, in, out, in, out) is det.
+:- mode tree234__foldl4(pred(in, in, in, out, in, out, in, out, in, out)
+	is semidet, 
+	in, in, out, in, out, in, out, in, out) is semidet.
+:- mode tree234__foldl4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
+	in, in, out, in, out, in, out, di, uo) is det.
+:- mode tree234__foldl4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
+	in, in, out, in, out, di, uo, di, uo) is det.
+:- mode tree234__foldl4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
+	in, in, out, di, uo, di, uo, di, uo) is det.
+:- mode tree234__foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
+	in, di, uo, di, uo, di, uo, di, uo) is det.
 
 :- func tree234__map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
 
@@ -2466,6 +2483,27 @@ tree234__foldl3(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
     tree234__foldl3(Pred, T2, !A, !B, !C),
     call(Pred, K2, V2, !A, !B, !C),
     tree234__foldl3(Pred, T3, !A, !B, !C).
+
+tree234__foldl4(_Pred, empty, !A, !B, !C, !D).
+tree234__foldl4(Pred, two(K, V, T0, T1), !A, !B, !C, !D) :-
+	tree234__foldl4(Pred, T0, !A, !B, !C, !D),
+	call(Pred, K, V, !A, !B, !C, !D),
+	tree234__foldl4(Pred, T1, !A, !B, !C, !D).
+tree234__foldl4(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C, !D) :-
+	tree234__foldl4(Pred, T0, !A, !B, !C, !D),
+	call(Pred, K0, V0, !A, !B, !C, !D),
+	tree234__foldl4(Pred, T1, !A, !B, !C, !D),
+	call(Pred, K1, V1, !A, !B, !C, !D),
+	tree234__foldl4(Pred, T2, !A, !B, !C, !D).
+tree234__foldl4(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+		!A, !B, !C, !D) :-
+	tree234__foldl4(Pred, T0, !A, !B, !C, !D),
+	call(Pred, K0, V0, !A, !B, !C, !D),
+	tree234__foldl4(Pred, T1, !A, !B, !C, !D),
+	call(Pred, K1, V1, !A, !B, !C, !D),
+	tree234__foldl4(Pred, T2, !A, !B, !C, !D),
+	call(Pred, K2, V2, !A, !B, !C, !D),
+	tree234__foldl4(Pred, T3, !A, !B, !C, !D).
 
 %------------------------------------------------------------------------------%
 
