@@ -266,7 +266,7 @@ do
         cp stage2/library/*.c.gz batch/cfiles/$batch.library.$visn > /dev/null
         mkdir -p batch/cfiles/$batch.compiler.$visn
         /bin/rm -fr batch/cfiles/$batch.compiler.$visn/* > /dev/null
-        gzip stage2/compiler*.c > /dev/null
+        gzip stage2/compiler/*.c > /dev/null
         cp stage2/compiler/*.c.gz batch/cfiles/$batch.compiler.$visn > /dev/null
     fi
 
