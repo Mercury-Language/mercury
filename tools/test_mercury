@@ -677,7 +677,8 @@ case $status in 0)
     esac
 
     # Make a backup copy of the current installation which we will restore
-    # if the new installation fails.
+    # if the new installation fails.  Note that we use `cp' here and not `mv',
+    # since later commands will still want to use the current installation.
 
     BACKUP_DIR=`dirname $INSTALL_DIR`/mercury_install_backup
     mkdir -p $BACKUP_DIR
