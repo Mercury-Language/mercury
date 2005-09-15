@@ -27,7 +27,8 @@ SUB_MODULE_PROGS= \
 	class \
 	nested_intermod_main \
 	initialise_parent \
-	ts
+	ts \
+	mutable_parent
 
 # We currently don't do any testing in grade java on this directory.
 ifneq "$(findstring java,$(GRADE))" ""

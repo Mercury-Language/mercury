@@ -10,6 +10,10 @@
 
 :- initialise bar/2.
 
+:- mutable(hello, int, 42, ground, [untrailed, thread_safe]).
+
+:- initialise bar/2.
+
 :- pred bar(io::di, io::uo) is det.
 
 :- pragma inline(foo/2).

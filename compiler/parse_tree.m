@@ -36,6 +36,7 @@
 % Utility routines.
 :- include_module prog_foreign.
 :- include_module prog_mode.
+:- include_module prog_mutable.
 :- include_module prog_util.
 :- include_module prog_type.
 :- include_module error_util.

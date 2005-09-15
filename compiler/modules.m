@@ -794,6 +794,7 @@
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_mutable.
 :- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__source_file_map.
@@ -1249,10 +1250,14 @@ file_is_arch_or_grade_dependent_2("_init.c").
 file_is_arch_or_grade_dependent_2("_init.$O").
 
 %-----------------------------------------------------------------------------%
+%
+% Private interfaces (.int0 files)
+%
 
-    % Read in the .int3 files that the current module depends on,
-    % and use these to qualify all the declarations
-    % as much as possible. Then write out the .int0 file.
+    % Read in the .int3 files that the current module depends on, and use
+    % these to qualify all the declarations as much as possible. Then write
+    % out the .int0 file.
+    %
 make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
         MaybeTimestamp, Items0, !IO) :-
     grab_unqual_imported_modules(SourceFileName, SourceFileModuleName,
@@ -1277,15 +1282,22 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
             module_name_to_file_name(ModuleName, ".int0", no, FileName, !IO),
             io__write_strings(["`", FileName, "' not written.\n"], !IO)
         ;
-                %
-                % Write out the `.int0' file.
-                %
+            %
+            % Write out the `.int0' file.
+            %
+            % XXX The following sequence of operations relies
+            % on the fact that any reversals done while processing
+            % it are undone by subsequent operations.  Also, we
+            % should sort the contents of the .int0 file as we
+            % do for the other types of interface file.  We don't
+            % do that at the moment because the code for doing
+            % that cannot handle the structure of lists of items
+            % that represent private interfaces.
+            %
             strip_imported_items(Items2, [], Items3),
-            %
-            % We need to pass in ModuleName because mutable declarations
-            % get converted into declarations for their access predicates.
-            %
             strip_clauses_from_interface(Items3, Items4),
+            handle_mutables_in_private_interface(ModuleName,
+                Items4, Items5),
             MakeAbs = (pred(Item0::in, Item::out) is det :-
                 Item0 = Item1 - Context,
                 ( make_abstract_instance(Item1, Item2) ->
@@ -1294,7 +1306,8 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
                     Item = Item0
                 )
             ),
-            list__map(MakeAbs, Items4, Items),
+            list.map(MakeAbs, Items5, Items6),
+            list.reverse(Items6, Items),
             write_interface_file(SourceFileName, ModuleName,
                 ".int0", MaybeTimestamp,
                 [make_pseudo_decl(interface) | Items], !IO),
@@ -1302,9 +1315,38 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
         )
     ).
 
+    % Expand any mutable declarations in the item list into the type and mode
+    % declarations for their access predicates.  Only these components of a
+    % mutable declaration should be written to a private interface file.
+    %
+:- pred handle_mutables_in_private_interface(module_name::in,
+    item_list::in, item_list::out) is det.
+
+ handle_mutables_in_private_interface(ModuleName, !Items) :-
+    list.foldl(handle_mutable_in_private_interface(ModuleName), !.Items, 
+        [], !:Items).
+
+:- pred handle_mutable_in_private_interface(module_name::in,
+    item_and_context::in, item_list::in, item_list::out) is det.
+
+handle_mutable_in_private_interface(ModuleName, Item - Context, !Items) :-
+    ( Item = mutable(MutableName, Type, _Value, Inst, _Attrs) ->
+        GetPredDecl = prog_mutable.get_pred_decl(ModuleName, MutableName,
+            Type, Inst),
+        list.cons(GetPredDecl - Context, !Items),
+        SetPredDecl = prog_mutable.set_pred_decl(ModuleName, MutableName,
+            Type, Inst),
+        list.cons(SetPredDecl - Context, !Items)
+    ;
+        list.cons(Item - Context, !Items) 
+    ).
+
+%-----------------------------------------------------------------------------%
+
     % Read in the .int3 files that the current module depends on,
     % and use these to qualify all items in the interface as much as
     % possible. Then write out the .int and .int2 files.
+    %
 make_interface(SourceFileName, SourceFileModuleName, ModuleName,
         MaybeTimestamp, Items0, !IO) :-
     some [!InterfaceItems] (
@@ -1980,10 +2022,6 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
     % should always be grouped together with the clauses and should not appear
     % in private interfaces.
     %
-    % XXX The current treatment of mutable variables is to allow them in
-    % private interfaces.  It may be better to just put the predicate and mode
-    % declarations for the access predicates in private interfaces.
-    %
 :- pred strip_clauses_from_interface(item_list::in, item_list::out) is det.
 
 strip_clauses_from_interface(Items0, Items) :-
@@ -2012,7 +2050,7 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
             Item0 = initialise(_, _)
         )
      ->
-         split_clauses_and_decls( Items0, ClauseItems1, InterfaceItems),
+         split_clauses_and_decls(Items0, ClauseItems1, InterfaceItems),
          ClauseItems = [ItemAndContext0 | ClauseItems1]
     ;
         split_clauses_and_decls(Items0, ClauseItems, InterfaceItems1),
@@ -2408,12 +2446,13 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
     init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
         Items0, PublicChildren, NestedChildren, FactDeps,
         MaybeTimestamps, !:Module),
-
+    
         % If this module has any separately-compiled sub-modules,
         % then we need to make everything in the implementation
         % of this module exported_to_submodules.  We do that by
         % splitting out the implementation declarations and putting
         % them in a special `:- private_interface' section.
+        %
     get_children(Items0, Children),
     (
         Children = [],
