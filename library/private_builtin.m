@@ -1003,8 +1003,8 @@ trailed_nondet_pragma_foreign_code :-
 #ifdef MR_NATIVE_GC
     *(MR_Word *)Pointer =
         MR_agc_deep_copy(* (MR_Word *) Pointer, (MR_TypeInfo) TypeInfo_for_T,
-            MR_ENGINE(MR_eng_heap_zone2->min),
-            MR_ENGINE(MR_eng_heap_zone2->hardmax));
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
 #else
     MR_fatal_error(""private_builtin__gc_trace/2: ""
         ""called when accurate GC not enabled"");

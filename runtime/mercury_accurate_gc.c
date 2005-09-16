@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2004 The University of Melbourne.
+** Copyright (C) 1998-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -161,7 +161,7 @@ MR_garbage_collect(void)
     ** The new heap pointer starts at the bottom of the new heap.
     */
     swap_heaps();
-    MR_virtual_hp = new_heap->min;
+    MR_virtual_hp = new_heap->MR_zone_min;
 
     /*
     ** Copy any roots on the stack
@@ -213,11 +213,13 @@ traverse_stack(struct MR_StackChain *stack_chain)
 static void
 resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 {
-    /* These counts include some wasted space between ->min and ->bottom. */
+    /* These counts include some wasted space between
+    ** ->MR_zone_min and ->MR_zone_bottom.
+    */
     size_t old_heap_space =
-        (char *) old_heap->gc_threshold - (char *) old_heap->bottom;
+        (char *) old_heap->MR_zone_gc_threshold - (char *) old_heap->MR_zone_bottom;
     size_t new_heap_usage =
-        (char *) MR_virtual_hp - (char *) new_heap->bottom;
+        (char *) MR_virtual_hp - (char *) new_heap->MR_zone_bottom;
     size_t gc_heap_size;
 
     /*
@@ -231,7 +233,8 @@ resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
     if (gc_heap_size < old_heap_space) {
         gc_heap_size = old_heap_space;
     }
-    old_heap->gc_threshold = ((char *) old_heap->bottom + gc_heap_size);
+    old_heap->MR_zone_gc_threshold =
+        ((char *) old_heap->MR_zone_bottom + gc_heap_size);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -919,9 +922,9 @@ notify_gc_start(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap)
         fprintf(stderr, "\nGarbage collection started.\n");
 
         fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
-            (long) old_heap->min, (long) old_heap->hardmax);
+            (long) old_heap->MR_zone_min, (long) old_heap->MR_zone_hardmax);
         fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
-            (long) new_heap->min, (long) new_heap->hardmax);
+            (long) new_heap->MR_zone_min, (long) new_heap->MR_zone_hardmax);
 
         fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
     }
@@ -948,11 +951,11 @@ notify_gc_end(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap,
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
 
         fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
-            (long) ((char *) old_hp - (char *) old_heap->min),
-            (long) ((char *) MR_virtual_hp - (char *) new_heap->min));
+            (long) ((char *) old_hp - (char *) old_heap->MR_zone_min),
+            (long) ((char *) MR_virtual_hp - (char *) new_heap->MR_zone_min));
         fprintf(stderr, "%ld bytes recovered\n", 
-            (long) ((char *) old_hp - (char *) old_heap->min) -
-            ((char *) MR_virtual_hp - (char *) new_heap->min));
+            (long) ((char *) old_hp - (char *) old_heap->MR_zone_min) -
+            ((char *) MR_virtual_hp - (char *) new_heap->MR_zone_min));
 
         fprintf(stderr, "Garbage collection done.\n\n");
     }
@@ -970,7 +973,7 @@ init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
     size_t              num_bytes_for_bitmap;
     static size_t       prev_num_bytes_for_bitmap;
 
-    heap_size_in_words = old_hp - old_heap->min;
+    heap_size_in_words = old_hp - old_heap->MR_zone_min;
     num_words_for_bitmap = (heap_size_in_words + MR_WORDBITS - 1) / MR_WORDBITS;
     num_bytes_for_bitmap = num_words_for_bitmap * sizeof(MR_Word);
     if (MR_has_forwarding_pointer == NULL
@@ -1015,8 +1018,8 @@ traverse_extra_roots(void)
 
     while (current != NULL) {
         *current->root = MR_agc_deep_copy(*current->root, current->type_info,
-            MR_ENGINE(MR_eng_heap_zone2->min), 
-            MR_ENGINE(MR_eng_heap_zone2->hardmax));
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_min), 
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
         current = current->next;
     }
 }
@@ -1032,7 +1035,7 @@ maybe_clear_old_heap(MR_MemoryZone *old_heap, MR_Word *old_hp)
 
     if (MR_agc_debug) {
         fprintf(stderr, "Clearing old heap:\n");
-        for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
+        for (tmp_hp = old_heap->MR_zone_min; tmp_hp <= old_hp; tmp_hp++) {
             *tmp_hp = 0xDEADBEAF;
         }
     }
