@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2004 The University of Melbourne.
+** Copyright (C) 1998-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -66,8 +66,9 @@ MR_agc_dump_roots(MR_RootList roots)
 			MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1,
 				saved_regs);
 
-			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
-			MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+			MR_virtual_hp =
+				MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
 #endif /* !MR_HIGHLEVEL_CODE */
 
 			fflush(NULL);
@@ -291,8 +292,9 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 			** Call Mercury but use the debugging heap.
 			*/
 
-			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
-			MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+			MR_virtual_hp =
+				MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
 
 			if (MR_get_type_and_value_base(label_layout, i,
 					current_regs, stack_pointer,
@@ -323,8 +325,9 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 			** Call Mercury but use the debugging heap.
 			*/
 
-			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
-			MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+			MR_virtual_hp =
+				MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
 
 			if (MR_get_type_and_value_base(label_layout, i,
 					current_regs, stack_pointer,
@@ -417,10 +420,10 @@ dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 			break;
 	}
 	if (have_value) {
-		if (value >= (MR_Word) heap_zone->min &&
-				value < (MR_Word) heap_zone->hardmax) {
+		if (value >= (MR_Word) heap_zone->MR_zone_min &&
+				value < (MR_Word) heap_zone->MR_zone_hardmax) {
 			difference = (MR_Word *) value -
-				(MR_Word *) heap_zone->min;
+				(MR_Word *) heap_zone->MR_zone_min;
 			fprintf(stderr, "\thp[%d]\t(%lx)", difference,
 				(long) value);
 		} else {
@@ -490,9 +493,10 @@ dump_short_value(MR_Short_Lval locn, MR_MemoryZone *heap_zone,
 			break;
 	}
 	if (have_value) {
-		if (value >= (MR_Word) heap_zone->min &&
-				value < (MR_Word) heap_zone->hardmax) {
-			difference = (MR_Word *) value - (MR_Word *) heap_zone->min;
+		if (value >= (MR_Word) heap_zone->MR_zone_min &&
+				value < (MR_Word) heap_zone->MR_zone_hardmax) {
+			difference = (MR_Word *) value -
+				(MR_Word *) heap_zone->MR_zone_min;
 			fprintf(stderr, "\thp[%d]\t(%lx)", difference,
 				(long) value);
 		} else {

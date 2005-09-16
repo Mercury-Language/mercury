@@ -90,7 +90,7 @@ MR_init_thread(MR_when_to_use when_to_use)
     pthread_setspecific(MR_engine_base_key, eng);
     MR_restore_registers();
   #ifdef MR_ENGINE_BASE_REGISTER
-    MR_engine_base = eng;
+    MR_engine_base_word = (MR_Word) eng;
   #endif
 #else
     MR_memcpy(&MR_engine_base, eng, sizeof(MercuryEngine));
@@ -194,7 +194,8 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
 {
     int err;
 
-    fprintf(stderr, "%d waiting on %p (%p)\n", pthread_self(), cond, lock);
+    fprintf(stderr, "%ld waiting on %p (%p)\n", (long) pthread_self(),
+        cond, lock);
     err = pthread_cond_wait(cond, lock);
     assert(err == 0);
 }

@@ -444,7 +444,7 @@ MR_define_entry(mercury__garbage_collect_0_0);
     gc_scheduled = MR_FALSE;
     gc_running = MR_FALSE;
 
-    MR_succip = saved_success;
+    MR_succip_word = (MR_Word) saved_success;
     MR_proceed();
     MR_fatal_error("Unreachable code reached");
 
@@ -486,7 +486,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
     ** The new heap pointer starts at the bottom of the new heap.
     */
     swap_heaps();
-    MR_virtual_hp = new_heap->min;
+    MR_virtual_hp = new_heap->MR_zone_min;
 
     label = MR_lookup_internal_by_addr(success_ip);
     label_layout = label->i_layout;
@@ -505,7 +505,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
         ** easier to reset it than debug the problem at the moment
         */
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-        MR_virtual_hp = new_heap->min;
+        MR_virtual_hp = new_heap->MR_zone_min;
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
     }
 
@@ -770,8 +770,8 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info,
     case MR_LONG_LVAL_TYPE_R:
         if (registers_live) {
             copy = MR_agc_deep_copy(MR_virtual_reg_value(locn_num), type_info,
-                MR_ENGINE(MR_eng_heap_zone2->min),
-                MR_ENGINE(MR_eng_heap_zone2->hardmax));
+                MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
+                MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
             MR_virtual_reg_assign(locn_num, copy);
         }
         break;
@@ -783,16 +783,16 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info,
         MR_based_stackvar(stack_pointer, locn_num) =
             MR_agc_deep_copy(MR_based_stackvar(stack_pointer, locn_num),
                 type_info,
-                MR_ENGINE(MR_eng_heap_zone2->min),
-                MR_ENGINE(MR_eng_heap_zone2->hardmax));
+                MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
+                MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
         break;
 
     case MR_LONG_LVAL_TYPE_FRAMEVAR:
         MR_based_framevar(current_frame, locn_num) =
             MR_agc_deep_copy(MR_based_framevar(current_frame, locn_num),
                 type_info,
-                MR_ENGINE(MR_eng_heap_zone2->min),
-                MR_ENGINE(MR_eng_heap_zone2->hardmax));
+                MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
+                MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
         break;
 
     case MR_LONG_LVAL_TYPE_SUCCIP:
@@ -845,8 +845,8 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
         if (registers_live) {
             locn_num = MR_SHORT_LVAL_NUMBER(locn);
             copy = MR_agc_deep_copy(MR_virtual_reg_value(locn_num), type_info,
-                MR_ENGINE(MR_eng_heap_zone2->min),
-                MR_ENGINE(MR_eng_heap_zone2->hardmax));
+                MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
+                MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
             MR_virtual_reg_assign(locn_num, copy);
         }
         break;
@@ -855,16 +855,16 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
         locn_num = MR_SHORT_LVAL_NUMBER(locn);
         MR_based_stackvar(stack_pointer, locn_num) = MR_agc_deep_copy(
             MR_based_stackvar(stack_pointer, locn_num), type_info,
-            MR_ENGINE(MR_eng_heap_zone2->min),
-            MR_ENGINE(MR_eng_heap_zone2->hardmax));
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
         break;
 
     case MR_SHORT_LVAL_TYPE_FRAMEVAR:
         locn_num = MR_SHORT_LVAL_NUMBER(locn);
         MR_based_framevar(current_frame, locn_num) = MR_agc_deep_copy(
             MR_based_framevar(current_frame, locn_num), type_info,
-            MR_ENGINE(MR_eng_heap_zone2->min),
-            MR_ENGINE(MR_eng_heap_zone2->hardmax));
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
+            MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
         break;
 
     default:
@@ -880,11 +880,14 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
 static void
 resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 {
-    /* These counts include some wasted space between ->min and ->bottom. */
+    /* These counts include some wasted space between
+    ** ->MR_zone_min and ->MR_zone_bottom.
+    */
     size_t old_heap_space =
-        (char *) old_heap->redzone_base - (char *) old_heap->bottom;
+        (char *) old_heap->MR_zone_redzone_base -
+            (char *) old_heap->MR_zone_bottom;
     size_t new_heap_usage =
-        (char *) MR_virtual_hp - (char *) new_heap->bottom;
+        (char *) MR_virtual_hp - (char *) new_heap->MR_zone_bottom;
     size_t gc_heap_size;
 
     /*
@@ -900,8 +903,8 @@ resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
     }
 
     /* Reset the redzone on the new heap */
-    old_heap->redzone_base = (MR_Word *)
-        ((char *) old_heap->bottom + gc_heap_size);
+    old_heap->MR_zone_redzone_base = (MR_Word *)
+        ((char *) old_heap->MR_zone_bottom + gc_heap_size);
     MR_reset_redzone(old_heap);
 }
 
