@@ -1338,7 +1338,7 @@ MR_flag_written_call_site_dynamic(const MR_CallSiteDynamic *csd)
         (const void *) csd);
 }
 
-#define MR_hash_ptr(ptr, table) (((unsigned int) (ptr) >> 2) % (table)->length)
+#define MR_hash_ptr(ptr, table) (((MR_Unsigned) (ptr) >> 2) % (table)->length)
 
 static MR_bool
 MR_hash_table_insert_INTERNAL(MR_ProfilingHashTable *table, const void *ptr,
