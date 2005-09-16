@@ -1,0 +1,55 @@
+      E1:     C1 CALL pred io_tab_goto.main/2-0 (det) io_tab_goto.m:13
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> context none
+Contexts will not be printed.
+mdb> table_io allow
+mdb> table_io
+I/O tabling has not yet started.
+mdb> break io_tab_goto__test
+ 0: + stop  interface pred io_tab_goto.test/5-0 (det)
+mdb> table_io start
+I/O tabling started.
+mdb> continue
+should see this printf
+      E2:     C2 CALL pred io_tab_goto.test/5-0 (det)
+mdb> finish -n
+      E3:     C2 EXIT pred io_tab_goto.test/5-0 (det)
+mdb> print *
+       Stream (arg 1)         	'<<c_pointer>>'
+       SoFar (arg 2)          	0
+       N (arg 3)              	123
+mdb> retry -o -a
+      E2:     C2 CALL pred io_tab_goto.test/5-0 (det)
+mdb> print *
+       Stream (arg 1)         	'<<c_pointer>>'
+       SoFar (arg 2)          	0
+mdb> finish -n
+      E4:     C2 EXIT pred io_tab_goto.test/5-0 (det)
+mdb> print *
+       Stream (arg 1)         	'<<c_pointer>>'
+       SoFar (arg 2)          	0
+       N (arg 3)              	123
+mdb> table_io end
+I/O tabling stopped.
+mdb> continue
+123
+456
+      E5:     C3 CALL pred io_tab_goto.test/5-0 (det)
+mdb> finish -n
+      E6:     C3 EXIT pred io_tab_goto.test/5-0 (det)
+mdb> print *
+       Stream (arg 1)         	'<<c_pointer>>'
+       SoFar (arg 2)          	0
+       N (arg 3)              	789
+mdb> retry -f
+      E5:     C3 CALL pred io_tab_goto.test/5-0 (det)
+mdb> finish -n
+      E7:     C3 EXIT pred io_tab_goto.test/5-0 (det)
+mdb> print *
+       Stream (arg 1)         	'<<c_pointer>>'
+       SoFar (arg 2)          	0
+       N (arg 3)              	42
+mdb> continue -S
+42

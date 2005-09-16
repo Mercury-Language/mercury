@@ -1337,7 +1337,10 @@ add_clause(Clause, !ClausesRep) :-
     ;       aditi_magic_supp
     ;       aditi_join
     ;       aditi_rl_exprn
-    ;       deforestation.
+    ;       deforestation
+                % I/O tabling will create a new predicate if the predicate
+                % to be I/O tabled must not be inlined.
+    ;       io_tabling.
 
 :- type pred_origin
     --->    special_pred(special_pred)
@@ -1772,7 +1775,7 @@ calls_are_fully_qualified(Markers) =
     % polymorphically-typed arguments whose type depends on the
     % values of those type_info-related variables;
     % accurate GC for the MLDS back-end relies on this.
- :- type pred_info --->
+:- type pred_info --->
     pred_info(
         module_name         :: module_name,
                             % Module in which pred occurs.

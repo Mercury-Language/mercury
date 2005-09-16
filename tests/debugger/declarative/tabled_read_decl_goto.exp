@@ -1,0 +1,172 @@
+      E1:     C1 CALL pred tabled_read_decl_goto.main/2-0 (det) tabled_read_decl_goto.m:17
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> context none
+Contexts will not be printed.
+mdb> table_io allow
+mdb> table_io start
+I/O tabling started.
+mdb> break tabled_read_decl_goto__test
+ 0: + stop  interface pred tabled_read_decl_goto.test/4-0 (det)
+mdb> continue
+      E2:     C2 CALL pred tabled_read_decl_goto.test/4-0 (det)
+mdb> finish -n
+      E3:     C2 EXIT pred tabled_read_decl_goto.test/4-0 (det)
+mdb> print
+test('<<c_pointer>>', 1123, _, _)
+mdb> dd -d 3 -n 7 -a
+test('<<c_pointer>>', 1123, _, _)
+4 tabled IO actions:
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+read_char_code('<<c_pointer>>', 51)
+read_char_code('<<c_pointer>>', 10)
+Valid? print 1-2
+'<<c_pointer>>'
+1123
+dd> p io 1-2
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+dd> print io 2-1
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+dd> browse io 4
+browser> print
+read_char_code('<<c_pointer>>', 10)
+browser> set num_io_actions 3
+browser> quit
+dd> browse 1
+browser> set num_io_actions 10
+browser> quit
+dd> no
+test_2('<<c_pointer>>', 1, 1123, _, _)
+4 tabled IO actions:
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+read_char_code('<<c_pointer>>', 51)
+read_char_code('<<c_pointer>>', 10)
+Valid? yes
+Found incorrect contour:
+test_2('<<c_pointer>>', 1, 1123, _, _)
+4 tabled IO actions:
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+read_char_code('<<c_pointer>>', 51)
+read_char_code('<<c_pointer>>', 10)
+test('<<c_pointer>>', 1123, _, _)
+4 tabled IO actions:
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+read_char_code('<<c_pointer>>', 51)
+read_char_code('<<c_pointer>>', 10)
+Is this a bug? yes
+      E3:     C2 EXIT pred tabled_read_decl_goto.test/4-0 (det)
+mdb> break tabled_read_decl_goto.part_2
+ 1: + stop  interface pred tabled_read_decl_goto.part_2/3-0 (det)
+mdb> c
+1123
+1456
+      E4:     C3 CALL pred tabled_read_decl_goto.part_2/3-0 (det)
+mdb> break tabled_read_decl_goto.test
+ 2: + stop  interface pred tabled_read_decl_goto.test/4-0 (det)
+mdb> c
+      E5:     C4 CALL pred tabled_read_decl_goto.test/4-0 (det)
+mdb> delete *
+ 0: E stop  interface pred tabled_read_decl_goto.test/4-0 (det)
+ 1: E stop  interface pred tabled_read_decl_goto.part_2/3-0 (det)
+ 2: E stop  interface pred tabled_read_decl_goto.test/4-0 (det)
+mdb> f
+      E6:     C4 EXIT pred tabled_read_decl_goto.test/4-0 (det)
+mdb> dd -d 3 -n 7 -ad1
+test('<<c_pointer>>', 1789, _, _)
+4 tabled IO actions:
+read_char_code('<<c_pointer>>', 55)
+read_char_code('<<c_pointer>>', 56)
+read_char_code('<<c_pointer>>', 57)
+read_char_code('<<c_pointer>>', 10)
+Valid? y
+1789
+part_2('<<c_pointer>>', _, _)
+5 tabled IO actions:
+read_char_code('<<c_pointer>>', 55)
+read_char_code('<<c_pointer>>', 56)
+read_char_code('<<c_pointer>>', 57)
+read_char_code('<<c_pointer>>', 10)
+write_int(1789)
+Valid? n
+write_int(1789, _, _)
+1 tabled IO action:
+write_int(1789)
+Valid? y
+Found incorrect contour:
+test('<<c_pointer>>', 1789, _, _)
+4 tabled IO actions:
+read_char_code('<<c_pointer>>', 55)
+read_char_code('<<c_pointer>>', 56)
+read_char_code('<<c_pointer>>', 57)
+read_char_code('<<c_pointer>>', 10)
+write_int(1789, _, _)
+1 tabled IO action:
+write_int(1789)
+part_2('<<c_pointer>>', _, _)
+5 tabled IO actions:
+read_char_code('<<c_pointer>>', 55)
+read_char_code('<<c_pointer>>', 56)
+read_char_code('<<c_pointer>>', 57)
+read_char_code('<<c_pointer>>', 10)
+write_int(1789)
+Is this a bug? y
+      E7:     C3 EXIT pred tabled_read_decl_goto.part_2/3-0 (det)
+mdb> break tabled_read_decl_goto.part_3
+ 0: + stop  interface pred tabled_read_decl_goto.part_3/2-0 (det)
+mdb> c
+      E8:     C5 CALL pred tabled_read_decl_goto.part_3/2-0 (det)
+mdb> break tabled_read_decl_goto.fake_io
+ 1: + stop  interface pred tabled_read_decl_goto.fake_io/3-0 (det)
+mdb> c
+      E9:     C6 CALL pred tabled_read_decl_goto.fake_io/3-0 (det)
+mdb> table_io stop
+I/O tabling stopped.
+mdb> delete *
+ 0: E stop  interface pred tabled_read_decl_goto.part_3/2-0 (det)
+ 1: E stop  interface pred tabled_read_decl_goto.fake_io/3-0 (det)
+mdb> f
+     E10:     C6 EXIT pred tabled_read_decl_goto.fake_io/3-0 (det)
+mdb> dd -d 3 -n 7 -ad1
+The declarative debugger needs to perform a retry across
+an area in which IO is not tabled.  This is not always safe.
+To avoid this warning restart mdb and issue a `table_io start'
+command at an event before the suspect area.
+Do you wish to proceed with the retry? y
+fake_io(1, _, _)
+Warning: some IO actions for this atom are not tabled.
+Valid? y
+The declarative debugger needs to perform a retry across
+an area in which IO is not tabled.  This is not always safe.
+To avoid this warning restart mdb and issue a `table_io start'
+command at an event before the suspect area.
+Do you wish to proceed with the retry? y
+1
+part_3(_, _)
+Warning: some IO actions for this atom are not tabled.
+Valid? n
+write_int(1, _, _)
+Warning: some IO actions for this atom are not tabled.
+Valid? y
+Found incorrect contour:
+fake_io(1, _, _)
+Warning: some IO actions for this atom are not tabled.
+write_int(1, _, _)
+Warning: some IO actions for this atom are not tabled.
+part_3(_, _)
+Warning: some IO actions for this atom are not tabled.
+Is this a bug? y
+The declarative debugger needs to perform a retry across
+an area in which IO is not tabled.  This is not always safe.
+To avoid this warning restart mdb and issue a `table_io start'
+command at an event before the suspect area.
+Do you wish to proceed with the retry? y
+1
+     E11:     C5 EXIT pred tabled_read_decl_goto.part_3/2-0 (det)
+mdb> c

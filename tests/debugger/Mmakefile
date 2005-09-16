@@ -7,8 +7,9 @@ THIS_DIR = debugger
 RETRY_PROGS = \
 	all_solutions			\
 	browser_test			\
-	mdb_command_test		\
+	io_tab_goto			\
 	lambda_expr			\
+	mdb_command_test		\
 	queens				\
 	retry				\
 	tabled_read			\
@@ -364,6 +365,9 @@ higher_order.out: higher_order higher_order.inp
 implied_instance.out: implied_instance implied_instance.inp
 	$(MDB) ./implied_instance < implied_instance.inp \
 		> implied_instance.out 2>&1
+
+io_tab_goto.out: io_tab_goto io_tab_goto.inp
+	$(MDB_STD) ./io_tab_goto < io_tab_goto.inp > io_tab_goto.out 2>&1
 
 lambda_expr.out: lambda_expr lambda_expr.inp
 	$(MDB_STD) ./lambda_expr < lambda_expr.inp > lambda_expr.out 2>&1

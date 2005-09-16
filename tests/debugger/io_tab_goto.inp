@@ -1,0 +1,22 @@
+echo on
+register --quiet
+context none
+table_io allow
+table_io
+break io_tab_goto__test
+table_io start
+continue
+finish -n
+print *
+retry -o -a
+print *
+finish -n
+print *
+table_io end
+continue
+finish -n
+print *
+retry -f
+finish -n
+print *
+continue -S

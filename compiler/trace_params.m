@@ -180,6 +180,14 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 				SpecialPred = (initialise),
 				EffTraceLevel = TraceLevel
 			)
+		; Origin = created(io_tabling) ->
+			% Predicates called by a predicate that is I/O
+			% tabled should not be traced.  If such a predicate
+			% were allowed to generate events then the event
+			% numbers of events after the I/O primitive would be
+			% different between the first and subsequent 
+			% (idempotent) executions of the same I/O action.
+			EffTraceLevel = none
 		;
 			pred_info_import_status(PredInfo, Status),
 			(

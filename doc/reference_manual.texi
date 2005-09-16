@@ -6004,6 +6004,16 @@ compiler are as follows:
 
 @table @asis
 
+@item @samp{tabled_for_io}
+This attribute should be attached to foreign procedures that do I/O.  It
+tells the debugger to make calls to the foreign procedure idempotent.
+This allows the debugger to safely retry across such calls and also 
+allows safe declarative debugging of code containing such calls.
+For more information see the I/O tabling section of the Mercury user guide.
+If the foreign procedure contains gotos or static variables then the
+@samp{pragma no_inline} directive should also be given 
+(see @ref{pragma c_code}).
+
 @item @samp{terminates}/@samp{does_not_terminate}
 This attribute specifies the termination properties of the given predicate
 or function definition.  It is equivalent to the corresponding 
@@ -6011,6 +6021,7 @@ or function definition.  It is equivalent to the corresponding
 If omitted, the termination property of the procedure is determined by the
 value of the @samp{may_call_mercury}/@samp{will_not_call_mercury} attribute.
 See @ref{Termination analysis} for more details.
+
 @item @samp{max_stack_size(Size)}
 This attribute declares the maximum stack usage of a particular piece of
 code.  The unit that @samp{Size} is measured in depends upon foreign language
@@ -6018,6 +6029,7 @@ being used.
 Currently this attribute is only used (and is in fact required) by the 
 @samp{IL} foreign language interface, and is measured in units of stack
 items.
+
 @item @samp{will_not_throw_exception}
 This attribute promises that the given predicate or function will not 
 make calls back to Mercury that may result in an exception being thrown.
@@ -6033,10 +6045,12 @@ predicates throw exceptions then unifications or comparisons involving
 these types may also throw exceptions.  As such, we recommend that
 only implementors of the Mercury system use this annotation for
 polymorphic predicates and functions.
+
 @c @item @samp{high_level_backend}
 @c The foreign_proc will apply only on the high level backend.
 @c @item @samp{low_level_backend}
 @c The foreign_proc will apply only on the low level backend.
+
 @end table
 
 @c -----------------------------------------------------------------------
