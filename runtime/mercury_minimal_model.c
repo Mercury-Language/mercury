@@ -441,7 +441,8 @@ MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
     }
 
     fprintf(fp, "\n");
-    fprintf(fp, "answers: %d\n", subgoal->MR_sg_num_ans);
+    fprintf(fp, "answers: %" MR_INTEGER_LENGTH_MODIFIER "d\n",
+        subgoal->MR_sg_num_ans);
 
     if (proc != NULL) {
         answer_list = subgoal->MR_sg_answer_list;
@@ -480,8 +481,9 @@ MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc, MR_Consumer *consumer)
     if (consumer->MR_cns_subgoal != NULL) {
         fprintf(fp, ", of subgoal %s",
             MR_subgoal_addr_name(consumer->MR_cns_subgoal));
-        fprintf(fp, "\nreturned answers %d, remaining answers ptr %p\n",
-            consumer->MR_cns_num_returned_answers,
+        fprintf(fp, "\nreturned answers %" MR_INTEGER_LENGTH_MODIFIER "d,",
+            consumer->MR_cns_num_returned_answers);
+        fprintf(fp, " remaining answers ptr %p\n",
             consumer->MR_cns_remaining_answer_list_ptr);
         print_saved_state(fp, &consumer->MR_cns_saved_state);
     } else {
@@ -1558,13 +1560,16 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
     fprintf(fp, "\nmaxfr:\t");
     MR_print_nondstackptr(fp, saved_state->MR_ss_max_fr);
     fprintf(fp, "\n");
-
-    fprintf(fp,
-        "slots saved: %d non, %d det, %d generator, %d cut, %d pneg\n",
-        saved_state->MR_ss_non_stack_block_size,
-        saved_state->MR_ss_det_stack_block_size,
-        saved_state->MR_ss_gen_stack_block_size,
-        saved_state->MR_ss_cut_next,
+    
+    fprintf(fp, "slots saved: %" MR_INTEGER_LENGTH_MODIFIER "d non,",
+        saved_state->MR_ss_non_stack_block_size);
+    fprintf(fp, " %" MR_INTEGER_LENGTH_MODIFIER "d det,",
+        saved_state->MR_ss_det_stack_block_size);
+    fprintf(fp, " %" MR_INTEGER_LENGTH_MODIFIER "d generator,", 
+        saved_state->MR_ss_gen_stack_block_size);
+    fprintf(fp, " %" MR_INTEGER_LENGTH_MODIFIER "d cut,",
+        saved_state->MR_ss_cut_next);
+    fprintf(fp, " %" MR_INTEGER_LENGTH_MODIFIER "d pneg\n",
         saved_state->MR_ss_pneg_next);
 
     if (saved_state->MR_ss_non_stack_block_size > 0) {
@@ -1610,9 +1615,9 @@ print_saved_state(FILE *fp, MR_SavedState *saved_state)
   #endif /* MR_TABLE_SEGMENT_DEBUG */
 
     if (saved_state->MR_ss_gen_stack_block_size > 0) {
-        fprintf(fp, "gen region from %d",
+        fprintf(fp, "gen region from %" MR_INTEGER_LENGTH_MODIFIER "d",
             saved_state->MR_ss_gen_stack_real_start);
-        fprintf(fp, " to %d",
+        fprintf(fp, " to %" MR_INTEGER_LENGTH_MODIFIER "d",
             saved_state->MR_ss_gen_stack_real_start +
                 saved_state->MR_ss_gen_stack_block_size - 1);
         fprintf(fp, " (both inclusive)\n");
