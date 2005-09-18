@@ -121,7 +121,8 @@ extern  void            MR_print_consumer(FILE *fp,
 extern  MR_ConsumerPtr  MR_table_mmos_setup_consumer(MR_GeneratorPtr generator,
                             MR_ConstString pred_id);
 extern  MR_GeneratorPtr MR_table_mmos_setup_generator(MR_TrieNode trie_node,
-                            int num_input_args, MR_Word genererator_pred,
+                            MR_Integer num_input_args,
+                            MR_Word genererator_pred,
                             MR_ConstString pred_id);
 extern  MR_AnswerBlock  MR_table_mmos_consumer_get_next_answer(
                             MR_ConsumerPtr consumer);

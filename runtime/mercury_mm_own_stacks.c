@@ -383,8 +383,9 @@ MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc, MR_Consumer *consumer)
         } else {
             fprintf(fp, ", in main context\n\n");
         }
-        fprintf(fp, "returned answers %d, remaining answers ptr %p\n",
-            consumer->MR_cons_num_returned_answers,
+        fprintf(fp, "returned answers %" MR_INTEGER_LENGTH_MODIFIER "d,",
+            consumer->MR_cons_num_returned_answers);
+        fprintf(fp, " remaining answers ptr %p\n",
             consumer->MR_cons_remaining_answer_list_ptr);
     }
 }
