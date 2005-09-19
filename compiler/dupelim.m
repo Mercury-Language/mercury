@@ -747,6 +747,7 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
         ; Instr1 = prune_ticket
         ; Instr1 = incr_sp(_, _)
         ; Instr1 = decr_sp(_)
+        ; Instr1 = decr_sp_and_return(_)
         ; Instr1 = pragma_c(_, _, _, _, _, _, _, _, _)
         ),
         ( Instr1 = Instr2 ->
