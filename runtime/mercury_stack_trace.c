@@ -41,17 +41,18 @@ typedef enum {
 } MR_Nondet_Frame_Category;
 
 typedef struct {
-    MR_Traverse_Nondet_Frame_Func *func;
-    void *func_data;
+    MR_Traverse_Nondet_Frame_Func   *func;
+    void                            *func_data;
 } MR_Traverse_Nondet_Frame_Func_Info;
 
-typedef void MR_Dump_Or_Traverse_Nondet_Frame_Func(void *user_data,
-                MR_Nondet_Frame_Category category, MR_Word *top_fr,
-                const MR_Label_Layout *layout, MR_Word *base_sp,
-                MR_Word *base_curfr, int level_number);
+typedef void        MR_Dump_Or_Traverse_Nondet_Frame_Func(void *user_data,
+                        MR_Nondet_Frame_Category category, MR_Word *top_fr,
+                        const MR_Label_Layout *layout, MR_Word *base_sp,
+                        MR_Word *base_curfr, int level_number);
 
 static MR_Dump_Or_Traverse_Nondet_Frame_Func MR_dump_nondet_stack_frame;
 static MR_Dump_Or_Traverse_Nondet_Frame_Func MR_traverse_nondet_stack_frame;
+
 static  const char  *MR_step_over_nondet_frame(
                         MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
                         void *func_data, int level_number, MR_Word *fr);
@@ -145,8 +146,7 @@ const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
     MR_Word *det_stack_pointer, MR_Word *current_frame,
     MR_bool include_trace_data, MR_bool include_contexts,
-    int frame_limit, int line_limit,
-    MR_Print_Stack_Record print_stack_record)
+    int frame_limit, int line_limit, MR_Print_Stack_Record print_stack_record)
 {
     MR_Stack_Walk_Step_Result       result;
     const MR_Proc_Layout            *entry_layout;
@@ -231,8 +231,7 @@ MR_find_nth_ancestor(const MR_Label_Layout *label_layout, int ancestor_level,
     *problem = NULL;
     for (i = 0; i < ancestor_level && label_layout != NULL; i++) {
         result = MR_stack_walk_step(label_layout->MR_sll_entry,
-                        &return_label_layout, stack_trace_sp,
-                        stack_trace_curfr, problem);
+            &return_label_layout, stack_trace_sp, stack_trace_curfr, problem);
 
         if (result != MR_STEP_OK) {
             /* *problem has already been filled in */
@@ -291,12 +290,11 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
         /* succip is always saved in succip_slot */
         assert(location == -1);
         /*
-        ** Note that curfr always points to an ordinary
-        ** procedure frame, never to a temp frame, and
-        ** this property continues to hold while we traverse
-        ** the nondet stack via the succfr slot.  So it is
-        ** safe to access the succip and succfr slots
-        ** without checking what kind of frame it is.
+        ** Note that curfr always points to an ordinary procedure frame,
+        ** never to a temp frame, and this property continues to hold
+        ** while we traverse the nondet stack via the succfr slot.
+        ** So it is safe to access the succip and succfr slots without checking
+        ** what kind of frame it is.
         */
 
         success = MR_succip_slot(*stack_trace_curfr_ptr);
@@ -589,28 +587,28 @@ MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
     FILE *dump_fp = fp;
 
     switch (category) {
-    case MR_INTERNAL_FRAME_ON_SIDE_BRANCH:
-        fprintf(dump_fp, " internal frame on nondet side branch ");
-        MR_printnondstackptr(top_fr);
-        fprintf(dump_fp, "\n");
-        break;
-    case MR_FRAME_ON_MAIN_BRANCH:
-        fprintf(dump_fp, " on main nondet branch ");
-        MR_printnondstackptr(top_fr);
-        fprintf(dump_fp, "\n");
-        break;
-    case MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH:
-        fprintf(dump_fp, " terminal top frame of a nondet side branch ");
-        MR_printnondstackptr(base_curfr);
-        fprintf(dump_fp, "\n");
-        break;
-    case MR_TOP_FRAME_ON_SIDE_BRANCH:
-        fprintf(dump_fp, " top frame of a nondet side branch ");
-        MR_printnondstackptr(base_curfr);
-        fprintf(dump_fp, "\n");
-        break;
-    default:
-        MR_fatal_error("invalid MR_Nondet_Frame_Category");
+        case MR_INTERNAL_FRAME_ON_SIDE_BRANCH:
+            fprintf(dump_fp, " internal frame on nondet side branch ");
+            MR_printnondstackptr(top_fr);
+            fprintf(dump_fp, "\n");
+            break;
+        case MR_FRAME_ON_MAIN_BRANCH:
+            fprintf(dump_fp, " on main nondet branch ");
+            MR_printnondstackptr(top_fr);
+            fprintf(dump_fp, "\n");
+            break;
+        case MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH:
+            fprintf(dump_fp, " terminal top frame of a nondet side branch ");
+            MR_printnondstackptr(base_curfr);
+            fprintf(dump_fp, "\n");
+            break;
+        case MR_TOP_FRAME_ON_SIDE_BRANCH:
+            fprintf(dump_fp, " top frame of a nondet side branch ");
+            MR_printnondstackptr(base_curfr);
+            fprintf(dump_fp, "\n");
+            break;
+        default:
+            MR_fatal_error("invalid MR_Nondet_Frame_Category");
     }
 
     if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
@@ -623,8 +621,8 @@ MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
 
         MR_turn_off_debug(&saved_debug_state, MR_TRUE);
         /* XXX we ignore the return value */
-        (*MR_address_of_trace_browse_all_on_level) (dump_fp, top_layout,
-                base_sp, base_curfr, level_number, MR_TRUE);
+        (void) (*MR_address_of_trace_browse_all_on_level)(dump_fp, top_layout,
+            base_sp, base_curfr, level_number, MR_TRUE);
         MR_turn_debug_back_on(&saved_debug_state);
     }
 }
@@ -668,8 +666,8 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
                 func_info.func = func;
                 func_info.func_data = func_data;
                 problem = MR_step_over_nondet_frame(
-                        MR_traverse_nondet_stack_frame, &func_info,
-                        level_number, base_maxfr);
+                    MR_traverse_nondet_stack_frame, &func_info,
+                    level_number, base_maxfr);
                 if (problem != NULL) {
                     MR_fatal_error(problem);
                 }
@@ -727,7 +725,7 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
 
     if (label_layout != NULL) {
         MR_ensure_room_for_next(MR_nondet_branch_info, MR_Nondet_Branch_Info,
-                MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
+            MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
         MR_nondet_branch_infos[0].branch_sp = stack_pointer;
         MR_nondet_branch_infos[0].branch_curfr = current_frame;
         MR_nondet_branch_infos[0].branch_layout = label_layout;
@@ -766,17 +764,16 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
             category = MR_FRAME_ON_MAIN_BRANCH;
         }
         (*func)(func_data, category, topfr, label_layout, base_sp, base_curfr,
-                level_number);
+            level_number);
         MR_erase_temp_redoip(fr);
         proc_layout = label_layout->MR_sll_entry;
 
         /*
-        ** Step past all other detstack-living
-        ** ancestors on the main branch.
+        ** Step past all other detstack-living ancestors on the main branch.
         */
         while (MR_TRUE) {
             result = MR_stack_walk_step(proc_layout, &label_layout,
-                            &base_sp, &base_curfr, &problem);
+                &base_sp, &base_curfr, &problem);
 
             if (result != MR_STEP_OK) {
                 return problem;
@@ -791,17 +788,15 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
 
             if (! MR_DETISM_DET_STACK(determinism)) {
                 /*
-                ** We will handle this call to a model_non
-                ** procedure when the sweep in
-                ** MR_traverse_nondet_stack_from_layout reaches it.
+                ** We will handle this call to a model_non procedure when the
+                ** sweep in MR_traverse_nondet_stack_from_layout reaches it.
                 ** For now, we only put it into the table.
                 */
                 break;
             } else if (base_sp == NULL) {
                 /*
-                ** We are on a side branch, and we must have
-                ** arrived at the common ancestor of the side
-                ** branch and the main branch.
+                ** We are on a side branch, and we must have arrived at
+                ** the common ancestor of the side branch and the main branch.
                 */
                 return NULL;
             }
@@ -809,7 +804,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
 
         last = MR_nondet_branch_info_next - 1;
         MR_assign_structure(MR_nondet_branch_infos[branch],
-                MR_nondet_branch_infos[last]);
+            MR_nondet_branch_infos[last]);
         MR_nondet_branch_info_next--;
     } else {
         redoip = MR_find_nofail_temp_redoip(fr);
@@ -827,7 +822,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
             base_curfr = MR_succfr_slot(fr);
             topfr = fr;
             result = MR_stack_walk_succip_layout(success, &label_layout,
-                        &problem);
+                &problem);
         } else {
             internal = MR_lookup_internal_by_addr(redoip);
             if (internal == NULL || internal->i_layout == NULL) {
@@ -836,7 +831,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
 
             label_layout = internal->i_layout;
             (*func)(func_data, MR_TOP_FRAME_ON_SIDE_BRANCH, NULL, label_layout,
-                    NULL, fr, level_number);
+                NULL, fr, level_number);
             MR_erase_temp_redoip(fr);
 
             /*
@@ -855,7 +850,7 @@ MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
             proc_layout = label_layout->MR_sll_entry;
             topfr = fr;
             result = MR_stack_walk_step(proc_layout, &label_layout,
-                        &base_sp, &base_curfr, &problem);
+                &base_sp, &base_curfr, &problem);
         }
 
         if (result != MR_STEP_OK) {
