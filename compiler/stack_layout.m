@@ -1426,7 +1426,7 @@ stack_layout__represent_special_live_value_type(SpecialTypeName, Rval) :-
 	% In this case, accessing the type_info requires indirection.
 	% The address of the typeclass_info is given as an lval, and
 	% the location of the typeinfo within the typeclass_info as an index;
-	% private_builtin:type_info_from_typeclass_info interprets the index.
+	% private_builtin.type_info_from_typeclass_info interprets the index.
 	%
 	% This one level of indirection is sufficient, since type_infos
 	% cannot be nested inside typeclass_infos any deeper than this.

@@ -183,9 +183,6 @@
 	;	void_type
 	;	user_ctor_type.
 
-:- pred canonicalize_type_args(type_ctor::in, list(type)::in, list(type)::out)
-	is det.
-
 	% Construct builtin types.
 :- func int_type = (type).
 :- func string_type = (type).
@@ -491,8 +488,6 @@
 
 :- func cell_inst_cons_id(polymorphism_cell, int) = cons_id.
 
-:- func cell_type_name(polymorphism_cell) = string.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -555,11 +550,15 @@ type_category_is_atomic(user_ctor_type) = no.
 type_ctor_is_array(qualified(unqualified("array"), "array") - 1).
 
 type_ctor_has_hand_defined_rtti(Type, Body) :-
-	Type = qualified(mercury_private_builtin_module, Name) - 1,
-	( Name = "type_info"
-	; Name = "type_ctor_info"
-	; Name = "typeclass_info"
-	; Name = "base_typeclass_info"
+	Type = qualified(mercury_private_builtin_module, Name) - Arity,
+	( Name = "type_info", Arity = 1
+	; Name = "type_ctor_info", Arity = 1
+	; Name = "typeclass_info", Arity = 1
+	; Name = "base_typeclass_info", Arity = 1
+	; Name = "zero_type_info", Arity = 0
+	; Name = "zero_type_ctor_info", Arity = 0
+	; Name = "zero_typeclass_info", Arity = 0
+	; Name = "zero_base_typeclass_info", Arity = 0
 	),
 	\+ (	Body = du_type(_, _, _, _, _, yes(_))
 	   ;	Body = foreign_type(_)
@@ -571,12 +570,16 @@ is_introduced_type_info_type(Type) :-
 	is_introduced_type_info_type_ctor(TypeCtor).
 
 is_introduced_type_info_type_ctor(TypeCtor) :-
-	TypeCtor = qualified(PrivateBuiltin, Name) - 1,
+	TypeCtor = qualified(PrivateBuiltin, Name) - Arity,
 	mercury_private_builtin_module(PrivateBuiltin),
-	( Name = "type_info"
-	; Name = "type_ctor_info"
-	; Name = "typeclass_info"
-	; Name = "base_typeclass_info"
+	( Name = "type_info", Arity = 1
+	; Name = "type_ctor_info", Arity = 1
+	; Name = "typeclass_info", Arity = 1
+	; Name = "base_typeclass_info", Arity = 1
+	; Name = "zero_type_info", Arity = 0
+	; Name = "zero_type_ctor_info", Arity = 0
+	; Name = "zero_typeclass_info", Arity = 0
+	; Name = "zero_base_typeclass_info", Arity = 0
 	).
 
 is_introduced_type_info_type_category(int_type) = no.
@@ -636,6 +639,14 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
 	; TypeCtor = qualified(PrivateBuiltin, "typeclass_info") - 1 ->
 		TypeCategory = typeclass_info_type
 	; TypeCtor = qualified(PrivateBuiltin, "base_typeclass_info") - 1 ->
+		TypeCategory = base_typeclass_info_type
+	; TypeCtor = qualified(PrivateBuiltin, "zero_type_info") - 0 ->
+		TypeCategory = type_info_type
+	; TypeCtor = qualified(PrivateBuiltin, "zero_type_ctor_info") - 0 ->
+		TypeCategory = type_ctor_info_type
+	; TypeCtor = qualified(PrivateBuiltin, "zero_typeclass_info") - 0 ->
+		TypeCategory = typeclass_info_type
+	; TypeCtor = qualified(PrivateBuiltin, "zero_base_typeclass_info") - 0 ->
 		TypeCategory = base_typeclass_info_type
 	; type_ctor_is_higher_order(TypeCtor, _, _, _) ->
 		TypeCategory = higher_order_type
@@ -813,22 +824,6 @@ type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	TypeBody ^ du_type_is_enum = yes.
 
-canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs) :-
-	(
-		% The arguments of typeclass_info/base_typeclass_info types
-		% are not a type - they encode class constraints.
-		% The arguments of type_ctor_info types are not types;
-		% they are type constructors.
-		% The arguments of type_info types are not true arguments:
-		% they specify the type the type_info represents.
-		% So we replace all these arguments with type `void'.
-		is_introduced_type_info_type_ctor(TypeCtor)
-	->
-		TypeArgs = [void_type]
-	;
-		TypeArgs = TypeArgs0
-	).
-
 int_type = builtin(int).
 
 string_type = builtin(string).
@@ -859,13 +854,13 @@ comparison_result_type = defined(Name, [], star) :-
 	mercury_public_builtin_module(BuiltinModule),
 	Name = qualified(BuiltinModule, "comparison_result").
 
-type_info_type = defined(Name, [void_type], star) :-
+type_info_type = defined(Name, [], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	Name = qualified(BuiltinModule, "type_info").
+	Name = qualified(BuiltinModule, "zero_type_info").
 
-type_ctor_info_type = defined(Name, [void_type], star) :-
+type_ctor_info_type = defined(Name, [], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	Name = qualified(BuiltinModule, "type_ctor_info").
+	Name = qualified(BuiltinModule, "zero_type_ctor_info").
 
 aditi_state_type = defined(Name, [], star) :-
 	aditi_public_builtin_module(BuiltinModule),
@@ -965,9 +960,10 @@ type_util__get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId,
 			hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 
 			% XXX handle ExistQVars
-			( ExistQVars0 = [] ->
-				true
+			(
+				ExistQVars0 = []
 			;
+				ExistQVars0 = [_ | _],
 				(
 					EQVarAction = abort_on_exist_qvar,
 					error("get_cons_id_arg_types: " ++
@@ -1143,6 +1139,10 @@ name_is_type_info("type_info").
 name_is_type_info("type_ctor_info").
 name_is_type_info("typeclass_info").
 name_is_type_info("base_typeclass_info").
+name_is_type_info("zero_type_info").
+name_is_type_info("zero_type_ctor_info").
+name_is_type_info("zero_typeclass_info").
+name_is_type_info("zero_base_typeclass_info").
 
 	% If the sym_name is in the private_builtin module, unqualify it,
 	% otherwise fail.
@@ -1887,9 +1887,6 @@ cell_inst_cons_id(Which, Arity) = InstConsId :-
 	),
 	PrivateBuiltin = mercury_private_builtin_module,
 	InstConsId = cons(qualified(PrivateBuiltin, Symbol), Arity).
-
-cell_type_name(type_info_cell(_)) = "type_info".
-cell_type_name(typeclass_info_cell) = "typeclass_info".
 
 %-----------------------------------------------------------------------------%
 

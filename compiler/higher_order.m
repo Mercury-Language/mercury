@@ -986,7 +986,7 @@ get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
 
     MakeResultType = polymorphism.build_typeclass_info_type,
     get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
-        "instance_constraint_from_typeclass_info", MakeResultType,
+        "zero_instance_constraint_from_typeclass_info", MakeResultType,
         InstanceConstraints, Index, Goals, Vars, !ProcInfo).
 
     % Build calls to
@@ -1004,7 +1004,7 @@ get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
         UnconstrainedTVarTypes, Index, Goals, Vars, !ProcInfo) :-
     MakeResultType = polymorphism.build_type_info_type,
     get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
-        "unconstrained_type_info_from_typeclass_info",
+        "zero_unconstrained_type_info_from_typeclass_info",
         MakeResultType, UnconstrainedTVarTypes,
         Index, Goals, Vars, !ProcInfo).
 
@@ -1016,8 +1016,7 @@ get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
 get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
         Args, Index, Goals, Vars, !ProcInfo) :-
     lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
-        PredName, predicate, 3, only_mode, ExtractArgPredId,
-        ExtractArgProcId),
+        PredName, predicate, 3, only_mode, ExtractArgPredId, ExtractArgProcId),
     get_typeclass_info_args_2(TypeClassInfoVar, ExtractArgPredId,
         ExtractArgProcId,
         qualified(mercury_private_builtin_module, PredName),
@@ -1030,8 +1029,7 @@ get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
 
 get_typeclass_info_args_2(_, _, _, _, _, [], _, [], [], !ProcInfo).
 get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
-        MakeResultType, [Arg | Args], Index,
-        [IndexGoal, CallGoal | Goals],
+        MakeResultType, [Arg | Args], Index, [IndexGoal, CallGoal | Goals],
         [ResultVar | Vars], !ProcInfo) :-
     MakeResultType(Arg, ResultType),
     proc_info_create_var_from_type(ResultType, no, ResultVar, !ProcInfo),
@@ -1892,8 +1890,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         ;
             Manipulator = superclass_from_typeclass_info,
             list.length(Constraints, NumConstraints),
-            % polymorphism.m adds the number of
-            % type_infos to the index.
+            % Polymorphism.m adds the number of type_infos to the index.
             Index = Index0 + NumConstraints
         ;
             Manipulator = instance_constraint_from_typeclass_info,

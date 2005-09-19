@@ -344,8 +344,8 @@ void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
 void	(*MR_address_of_init_modules_required)(void);
 
 MR_TypeCtorInfo	MR_type_ctor_info_for_univ;
-MR_TypeInfo	MR_type_info_for_type_info;
-MR_TypeInfo	MR_type_info_for_pseudo_type_info;
+MR_TypeCtorInfo	MR_type_info_for_type_info;
+MR_TypeCtorInfo	MR_type_info_for_pseudo_type_info;
 MR_TypeInfo	MR_type_info_for_list_of_univ;
 MR_TypeInfo	MR_type_info_for_list_of_int;
 MR_TypeInfo	MR_type_info_for_list_of_char;

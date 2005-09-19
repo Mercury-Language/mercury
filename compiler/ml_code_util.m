@@ -2003,6 +2003,10 @@ trace_type_info_type(Type, RealType) :-
     ; Name = "type_ctor_info", RealType = c_pointer_type
     ; Name = "typeclass_info", RealType = sample_typeclass_info_type
     ; Name = "base_typeclass_info", RealType = c_pointer_type
+    ; Name = "zero_type_info", RealType = sample_type_info_type
+    ; Name = "zero_type_ctor_info", RealType = c_pointer_type
+    ; Name = "zero_typeclass_info", RealType = sample_typeclass_info_type
+    ; Name = "zero_base_typeclass_info", RealType = c_pointer_type
     ).
 
     % Generate code to call to `private_builtin__gc_trace'

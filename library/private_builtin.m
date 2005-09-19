@@ -281,8 +281,7 @@ typed_compare(R, X, Y) :-
 
     % The actual arities of these two function symbols are variable;
     % they depend on the number of type parameters of the type represented
-    % by the type_info, and how many predicates we associate with each
-    % type.
+    % by the type_info, and how many predicates we associate with each type.
     %
     % Note that, since these types look to the compiler as though they
     % are candidates to become no_tag types, special code is required
@@ -290,6 +289,9 @@ typed_compare(R, X, Y) :-
 
 :- type type_info(T) ---> type_info(type_ctor_info(T) /*, ... */).
 :- type type_ctor_info(T) ---> type_ctor_info(int /*, ... */).
+
+:- type zero_type_info.
+:- type zero_type_ctor_info.
 
     % The type variable in these types isn't really a type variable,
     % it is a place for polymorphism.m to put a representation of the
@@ -302,6 +304,9 @@ typed_compare(R, X, Y) :-
 :- type typeclass_info(T) ---> typeclass_info(base_typeclass_info(T)
                         /*, ... */).
 :- type base_typeclass_info(_) ---> typeclass_info(int /*, ... */).
+
+:- type zero_typeclass_info.
+:- type zero_base_typeclass_info.
 
     % The following types are used by compiler/ml_code_util.m as the types
     % used for copying type_info/1 and typeclass_info/1 types.
@@ -320,6 +325,8 @@ typed_compare(R, X, Y) :-
     %
 :- pred type_info_from_typeclass_info(typeclass_info(_)::in, int::in,
     type_info(T)::out) is det.
+:- pred zero_type_info_from_typeclass_info(zero_typeclass_info::in, int::in,
+    zero_type_info::out) is det.
 
     % unconstrained_type_info_from_typeclass_info(TypeClassInfo, 
     %   Index, TypeInfo):
@@ -329,6 +336,8 @@ typed_compare(R, X, Y) :-
     %
 :- pred unconstrained_type_info_from_typeclass_info(typeclass_info(_)::in,
     int::in, type_info(_)::out) is det.
+:- pred zero_unconstrained_type_info_from_typeclass_info(
+    zero_typeclass_info::in, int::in, zero_type_info::out) is det.
 
     % superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass):
     %
@@ -337,6 +346,8 @@ typed_compare(R, X, Y) :-
     %
 :- pred superclass_from_typeclass_info(typeclass_info(_)::in,
     int::in, typeclass_info(_)::out) is det.
+:- pred zero_superclass_from_typeclass_info(zero_typeclass_info::in,
+    int::in, zero_typeclass_info::out) is det.
 
     % instance_constraint_from_typeclass_info(TypeClassInfo, Index,
     %   InstanceConstraintTypeClassInfo):
@@ -349,6 +360,8 @@ typed_compare(R, X, Y) :-
     %
 :- pred instance_constraint_from_typeclass_info(typeclass_info(_)::in,
     int::in, typeclass_info(_)::out) is det.
+:- pred zero_instance_constraint_from_typeclass_info(zero_typeclass_info::in,
+    int::in, zero_typeclass_info::out) is det.
 
     % N.B. interface continued below.
 
@@ -566,7 +579,23 @@ special__Compare____base_typeclass_info_1_0(
 ").
 
 :- pragma foreign_proc("C",
+    zero_type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+        TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
+").
+
+:- pragma foreign_proc("C",
     unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
+        Index::in, TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
+").
+
+:- pragma foreign_proc("C",
+    zero_unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
         Index::in, TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -583,7 +612,25 @@ special__Compare____base_typeclass_info_1_0(
 ").
 
 :- pragma foreign_proc("C",
+    zero_superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+        TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeClassInfo =
+        MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+").
+
+:- pragma foreign_proc("C",
     instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+        Index::in, TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    TypeClassInfo =
+        MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
+").
+
+:- pragma foreign_proc("C",
+    zero_instance_constraint_from_typeclass_info(TypeClassInfo0::in,
         Index::in, TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -1154,19 +1201,15 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0));
 const MR_TypeCtorInfo ML_type_ctor_info_for_univ =
     &MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0);
 
-const MR_FA_TypeInfo_Struct1 ML_type_info_for_type_info = {
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1),
-    { (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0) }
-};
+const MR_TypeCtorInfo ML_type_info_for_type_info =
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_info, 0);
 
-const MR_FA_TypeInfo_Struct1 ML_type_info_for_pseudo_type_info = {
+const MR_TypeCtorInfo ML_type_info_for_pseudo_type_info =
     /*
     ** For the time being, we handle pseudo_type_infos the same way
     ** as we handle type_infos.
     */
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1),
-    { (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0) }
-};
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_info, 0);
 
 const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_univ = {
     &MR_TYPE_CTOR_INFO_NAME(list, list, 1),
@@ -1343,8 +1386,7 @@ no_clauses(PredName) :-
 "").
 :- pragma foreign_proc(il,  
     semip,
-    [will_not_call_mercury, thread_safe, promise_semipure,
-        max_stack_size(0)],
+    [will_not_call_mercury, thread_safe, promise_semipure, max_stack_size(0)],
 "").
 :- pragma foreign_proc("Java",
     semip,

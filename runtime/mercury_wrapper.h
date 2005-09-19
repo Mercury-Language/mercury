@@ -110,8 +110,8 @@ extern	void		(*MR_address_of_write_out_proc_statics)(FILE *fp);
 extern	void		(*MR_address_of_init_modules_required)(void);
 
 extern	MR_TypeCtorInfo	MR_type_ctor_info_for_univ;
-extern	MR_TypeInfo	MR_type_info_for_type_info;
-extern	MR_TypeInfo	MR_type_info_for_pseudo_type_info;
+extern	MR_TypeCtorInfo	MR_type_info_for_type_info;
+extern	MR_TypeCtorInfo	MR_type_info_for_pseudo_type_info;
 extern	MR_TypeInfo	MR_type_info_for_list_of_univ;
 extern	MR_TypeInfo	MR_type_info_for_list_of_int;
 extern	MR_TypeInfo	MR_type_info_for_list_of_char;

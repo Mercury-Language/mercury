@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2004 The University of Melbourne.
+** Copyright (C) 2002-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -55,6 +55,14 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 	MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 1));
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_ctor_info, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_info, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_typeclass_info, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_base_typeclass_info, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 	MR_TYPE_CTOR_INFO_NAME(type_desc, type_ctor_desc, 0));
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 	MR_TYPE_CTOR_INFO_NAME(type_desc, pseudo_type_desc, 0));
@@ -104,6 +112,14 @@ MR_bool MR_CALL mercury__private_builtin____Unify____typeclass_info_1_0(
 MR_bool MR_CALL mercury__private_builtin____Unify____base_typeclass_info_1_0(
 	MR_Mercury_Type_Info type_info, MR_Mercury_Base_TypeClass_Info x,
 	MR_Mercury_Base_TypeClass_Info y); 
+MR_bool MR_CALL mercury__private_builtin____Unify____zero_type_ctor_info_0_0(
+	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y); 
+MR_bool MR_CALL mercury__private_builtin____Unify____zero_type_info_0_0(
+	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y); 
+MR_bool MR_CALL mercury__private_builtin____Unify____zero_typeclass_info_0_0(
+	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y); 
+MR_bool MR_CALL mercury__private_builtin____Unify____zero_base_typeclass_info_0_0(
+	MR_Mercury_Base_TypeClass_Info x, MR_Mercury_Base_TypeClass_Info y); 
 
 void MR_CALL mercury__builtin____Compare____int_0_0(
 	MR_Comparison_Result *result, MR_Integer x, MR_Integer y);
@@ -147,6 +163,18 @@ void MR_CALL mercury__private_builtin____Compare____typeclass_info_1_0(
 	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y);
 void MR_CALL mercury__private_builtin____Compare____base_typeclass_info_1_0(
 	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Mercury_Base_TypeClass_Info x, MR_Mercury_Base_TypeClass_Info y);
+void MR_CALL mercury__private_builtin____Compare____zero_type_ctor_info_0_0(
+	MR_Comparison_Result *result,
+	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y);
+void MR_CALL mercury__private_builtin____Compare____zero_type_info_0_0(
+	MR_Comparison_Result *result,
+	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y);
+void MR_CALL mercury__private_builtin____Compare____zero_typeclass_info_0_0(
+	MR_Comparison_Result *result,
+	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y);
+void MR_CALL mercury__private_builtin____Compare____zero_base_typeclass_info_0_0(
+	MR_Comparison_Result *result,
 	MR_Mercury_Base_TypeClass_Info x, MR_Mercury_Base_TypeClass_Info y);
 
 /*---------------------------------------------------------------------------*/

@@ -525,8 +525,8 @@ rtti_reuse_typeclass_info_var(ProgVar, !VarMaps) :-
         map__set(Map0, Constraint, ProgVar, Map),
         !:VarMaps = !.VarMaps ^ tci_varmap := Map
     ;
-        unexpected(this_file, "rtti_reuse_typeclass_info_var: "
-            ++ "variable not known")
+        unexpected(this_file,
+            "rtti_reuse_typeclass_info_var: variable not known")
     ).
 
 rtti_det_insert_type_info_type(ProgVar, Type, !VarMaps) :-
@@ -3406,12 +3406,22 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
 no_type_info_builtin_2(private_builtin, "store_at_ref", 2).
 no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
 no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
-no_type_info_builtin_2(private_builtin, "superclass_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin,
-            "instance_constraint_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin, "type_info_from_typeclass_info", 3).
+    "superclass_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin,
-            "unconstrained_type_info_from_typeclass_info", 3).
+    "instance_constraint_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "type_info_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "unconstrained_type_info_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "zero_superclass_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "zero_instance_constraint_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "zero_type_info_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "zero_unconstrained_type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(table_builtin, "table_restore_any_answer", 3).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeinfo", 3).

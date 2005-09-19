@@ -845,8 +845,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
     ; type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes) ->
         construct_type_info(Context, Type, TypeCtor, ArgTypes, yes,
             TypeInfoVar, TypeInfoGoals, !Info)
-    ; type_to_ctor_and_args(Type, TypeCtor, ArgTypes0) ->
-        canonicalize_type_args(TypeCtor, ArgTypes0, ArgTypes),
+    ; type_to_ctor_and_args(Type, TypeCtor, ArgTypes) ->
         (
             ArgTypes = [],
             make_type_ctor_info(TypeCtor, [], TypeCtorVar, TypeCtorGoals,
@@ -874,31 +873,28 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
                 VarTypes1 = VarTypes0
             ;
                 RttiVarMaps0 = !.Info ^ rtti_varmaps,
-                polymorphism__new_type_info_var_raw(Type,
-                    type_info, TypeInfoVar,
-                    VarSet0, VarSet1, VarTypes0, VarTypes1,
+                polymorphism__new_type_info_var_raw(Type, type_info,
+                    TypeInfoVar, VarSet0, VarSet1, VarTypes0, VarTypes1,
                     RttiVarMaps0, RttiVarMaps),
                 !:Info = !.Info ^ rtti_varmaps := RttiVarMaps
             ),
-            make_int_const_construction(Slot,
-                yes("TypeClassInfoSlot"), SlotGoal, SlotVar,
-                VarTypes1, VarTypes, VarSet1, VarSet),
+            make_int_const_construction(Slot, yes("TypeClassInfoSlot"),
+                SlotGoal, SlotVar, VarTypes1, VarTypes, VarSet1, VarSet),
             !:Info = !.Info ^ varset := VarSet,
             !:Info = !.Info ^ vartypes := VarTypes,
             PrivateBuiltin = mercury_private_builtin_module,
             goal_util__generate_simple_call(PrivateBuiltin,
-                "type_info_from_typeclass_info", predicate,
-                only_mode, det,
-                [TypeClassInfoVar, SlotVar, TypeInfoVar], [],
+                "zero_type_info_from_typeclass_info", predicate, only_mode,
+                det, [TypeClassInfoVar, SlotVar, TypeInfoVar], [],
                 [TypeInfoVar - ground(shared, none)],
                 !.Info ^ module_info, Context, ExtractGoal),
             record_type_info_var(Type, TypeInfoVar, !Info),
             TypeInfoGoals = [SlotGoal, ExtractGoal]
         )
     ;
-        % type_to_ctor_and_args can fail only if Type is a type
-        % variable, or acts like one. The tests in our callers should
-        % have filtered out both cases.
+        % Type_to_ctor_and_args can fail only if Type is a type variable,
+        % or acts like one. The tests in our callers should have filtered
+        % out both cases.
         unexpected(this_file, "size_prof__make_type_info: cannot happen")
     ).
 
@@ -1301,6 +1297,10 @@ ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName) :-
     ; VarTypeCtorName = "type_ctor_info"
     ; VarTypeCtorName = "typeclass_info"
     ; VarTypeCtorName = "base_typeclass_info"
+    ; VarTypeCtorName = "zero_type_info"
+    ; VarTypeCtorName = "zero_type_ctor_info"
+    ; VarTypeCtorName = "zero_typeclass_info"
+    ; VarTypeCtorName = "zero_base_typeclass_info"
     ).
 
 %---------------------------------------------------------------------------%

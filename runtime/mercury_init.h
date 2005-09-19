@@ -130,8 +130,8 @@ extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Word);
 
 /* in library/private_builtin.m */
 extern	const MR_TypeCtorInfo		ML_type_ctor_info_for_univ;
-extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_type_info;
-extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_pseudo_type_info;
+extern	const MR_TypeCtorInfo		ML_type_info_for_type_info;
+extern	const MR_TypeCtorInfo		ML_type_info_for_pseudo_type_info;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_univ;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_int;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_char;

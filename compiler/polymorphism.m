@@ -850,12 +850,14 @@ polymorphism__setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
 		UnconstrainedTVars2),
 	list__remove_dups(UnconstrainedTVars2, UnconstrainedTVars),
 
-	( ExistQVars = [] ->
+	(
+		ExistQVars = [],
 		% optimize common case
 		UnconstrainedUnivTVars = UnconstrainedTVars,
 		UnconstrainedExistTVars = [],
 		ExistHeadTypeInfoVars = []
 	;
+		ExistQVars = [_ | _],
 		list__delete_elems(UnconstrainedTVars, ExistQVars,
 			UnconstrainedUnivTVars),
 		list__delete_elems(UnconstrainedTVars, UnconstrainedUnivTVars,
@@ -985,7 +987,7 @@ polymorphism__produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
 		ExistQVarsForCall, Context, ExistTypeClassVars,
 		ExtraTypeClassGoals, !Info),
 	poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-	list__foldl(rtti_reuse_typeclass_info_var, ExistTypeClassVars, 
+	list__foldl(rtti_reuse_typeclass_info_var, ExistTypeClassVars,
 		RttiVarMaps0, RttiVarMaps),
 	poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
 	polymorphism__assign_var_list(ExistTypeClassInfoHeadVars,
@@ -2250,7 +2252,7 @@ polymorphism__make_typeclass_info_from_instance(Constraint, Seen,
 
 	ProofInstanceDefn = hlds_instance_defn(_, _, _, InstanceConstraints0,
 		InstanceTypes0, _, _, InstanceTVarset, SuperClassProofs0),
-	
+
 	% XXX kind inference:
 	% we assume all tvars have kind `star'.
 	map__init(KindMap),
@@ -2389,12 +2391,9 @@ polymorphism__make_typeclass_info_from_subclass(Constraint,
 
 	% We extract the superclass typeclass_info by inserting a call
 	% to superclass_from_typeclass_info in private_builtin.
-	% Note that superclass_from_typeclass_info does not need
-	% extra type_info arguments even though its declaration
-	% is polymorphic.
 	goal_util__generate_simple_call(mercury_private_builtin_module,
-		"superclass_from_typeclass_info", predicate, only_mode, det,
-		[SubClassVar, IndexVar, Var], [], [], ModuleInfo,
+		"zero_superclass_from_typeclass_info", predicate, only_mode,
+		det, [SubClassVar, IndexVar, Var], [], [], ModuleInfo,
 		term__context_init, SuperClassGoal),
 	!:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
 
@@ -2800,8 +2799,7 @@ polymorphism__maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity,
 			% a type_info, we need to adjust its type.
 			% Since type_ctor_info_const cons_ids are handled
 			% specially, this should not cause problems.
-			polymorphism__build_type_info_type_2(type_info,
-				TypeInfoType),
+			TypeInfoType = type_info_type,
 			map__det_update(!.VarTypes, TypeCtorVar, TypeInfoType,
 				!:VarTypes),
 			Var = TypeCtorVar,
@@ -3011,8 +3009,7 @@ polymorphism__new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes,
 	),
 	string__append(Prefix, VarNumStr, Name),
 	varset__name_var(!.VarSet, Var, Name, !:VarSet),
-	polymorphism__build_type_info_type_2(Kind, TypeInfoType),
-	map__set(!.VarTypes, Var, TypeInfoType, !:VarTypes).
+	map__set(!.VarTypes, Var, type_info_type, !:VarTypes).
 
 :- func typeinfo_prefix = string.
 
@@ -3071,8 +3068,8 @@ polymorphism__gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index,
 	polymorphism__new_type_info_var_raw(Type, type_info, TypeInfoVar,
 		!VarSet, !VarTypes, !RttiVarMaps),
 	goal_util__generate_simple_call(mercury_private_builtin_module,
-		"type_info_from_typeclass_info", predicate, only_mode, det,
-		[TypeClassInfoVar, IndexVar, TypeInfoVar], [],
+		"zero_type_info_from_typeclass_info", predicate, only_mode,
+		det, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
 		[TypeInfoVar - ground(shared, none)], ModuleInfo,
 		term__context_init, CallGoal),
 	Goals = [IndexGoal, CallGoal].
@@ -3195,7 +3192,7 @@ polymorphism__new_typeclass_info_var(Constraint, ClassString, Var, !Info) :-
 	map__set(VarTypes0, Var, DictionaryType, VarTypes),
 	rtti_det_insert_typeclass_info_var(Constraint, Var,
 		RttiVarMaps0, RttiVarMaps),
-	
+
 	poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
 	poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
@@ -3203,24 +3200,36 @@ polymorphism__build_typeclass_info_type(_Constraint, DictionaryType) :-
 	% Note: we no longer store meaningful information in the argument
 	% of typeclass_info/1.
 	PrivateBuiltin = mercury_private_builtin_module,
-	TypeclassInfoTypeName = qualified(PrivateBuiltin, "typeclass_info"),
-	DictionaryType = defined(TypeclassInfoTypeName, [void_type], star).
+	TypeclassInfoTypeName =
+		qualified(PrivateBuiltin, "zero_typeclass_info"),
+	DictionaryType = defined(TypeclassInfoTypeName, [], star).
 
 %---------------------------------------------------------------------------%
 
 polymorphism__type_is_typeclass_info(TypeClassInfoType) :-
 	PrivateBuiltin = mercury_private_builtin_module,
-	type_to_ctor_and_args(TypeClassInfoType,
-		qualified(PrivateBuiltin, "typeclass_info") - 1,
-		[_ConstraintTerm]).
+	(
+		type_to_ctor_and_args(TypeClassInfoType,
+			qualified(PrivateBuiltin, "typeclass_info") - 1,
+			[_ConstraintTerm])
+	;
+		type_to_ctor_and_args(TypeClassInfoType,
+			qualified(PrivateBuiltin, "zero_typeclass_info") - 0,
+			[])
+	).
 
 polymorphism__type_is_type_info_or_ctor_type(TypeInfoType) :-
 	type_to_ctor_and_args(TypeInfoType,
-		qualified(mercury_private_builtin_module, TypeName) - 1,
-		[_Type]),
-	( TypeName = "type_info" ; TypeName = "type_ctor_info" ).
+		qualified(mercury_private_builtin_module, TypeName) - Arity,
+		Args),
+	( TypeName = "type_info", Args = [_], Arity = 1
+	; TypeName = "type_ctor_info", Args = [_], Arity = 1
+	; TypeName = "zero_type_info", Args = [], Arity = 0
+	; TypeName = "zero_type_ctor_info", Args = [], Arity = 0
+	).
 
 polymorphism__build_type_info_type(Type, TypeInfoType) :-
+	% XXX TypeInfoType = type_ctor_info_type.
 	( type_has_variable_arity_ctor(Type, _, _) ->
 		% We cannot use a plain type_ctor_info because we need to
 		% record the arity.
@@ -3264,10 +3273,19 @@ polymorphism__is_typeclass_info_manipulator(ModuleInfo, PredId,
 		PredName = "type_info_from_typeclass_info",
 		TypeClassManipulator = type_info_from_typeclass_info
 	;
+		PredName = "zero_type_info_from_typeclass_info",
+		TypeClassManipulator = type_info_from_typeclass_info
+	;
 		PredName = "superclass_from_typeclass_info",
 		TypeClassManipulator = superclass_from_typeclass_info
 	;
+		PredName = "zero_superclass_from_typeclass_info",
+		TypeClassManipulator = superclass_from_typeclass_info
+	;
 		PredName = "instance_constraint_from_typeclass_info",
+		TypeClassManipulator = instance_constraint_from_typeclass_info
+	;
+		PredName = "zero_instance_constraint_from_typeclass_info",
 		TypeClassManipulator = instance_constraint_from_typeclass_info
 	).
 

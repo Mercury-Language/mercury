@@ -96,7 +96,7 @@
 
 %---------------------------------------------------------------------------%
 
-type_ctor_info__generate_hlds(!ModuleInfo) :-
+generate_hlds(!ModuleInfo) :-
     module_info_name(!.ModuleInfo, ModuleName),
     module_info_types(!.ModuleInfo, TypeTable),
     map__keys(TypeTable, TypeCtors0),
@@ -108,22 +108,21 @@ type_ctor_info__generate_hlds(!ModuleInfo) :-
     ;
         TypeCtors = TypeCtors0
     ),
-    type_ctor_info__gen_type_ctor_gen_infos(TypeCtors, TypeTable,
-        ModuleName, !.ModuleInfo, TypeCtorGenInfos),
+    gen_type_ctor_gen_infos(TypeCtors, TypeTable, ModuleName, !.ModuleInfo,
+        TypeCtorGenInfos),
     module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo).
 
     % Given a list of the ids of all the types in the type table, find the
     % types defined in this module, and return a type_ctor_gen_info for each.
     %
-:- pred type_ctor_info__gen_type_ctor_gen_infos(list(type_ctor)::in,
-    type_table::in, module_name::in, module_info::in,
-    list(type_ctor_gen_info)::out) is det.
+:- pred gen_type_ctor_gen_infos(list(type_ctor)::in, type_table::in,
+    module_name::in, module_info::in, list(type_ctor_gen_info)::out) is det.
 
-type_ctor_info__gen_type_ctor_gen_infos([], _, _, _, []).
-type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
-        ModuleName, ModuleInfo, TypeCtorGenInfos) :-
-    type_ctor_info__gen_type_ctor_gen_infos(TypeCtors, TypeTable,
-        ModuleName, ModuleInfo, TypeCtorGenInfos1),
+gen_type_ctor_gen_infos([], _, _, _, []).
+gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable, ModuleName,
+        ModuleInfo, TypeCtorGenInfos) :-
+    gen_type_ctor_gen_infos(TypeCtors, TypeTable, ModuleName, ModuleInfo,
+        TypeCtorGenInfos1),
     TypeCtor = SymName - TypeArity,
     (
         SymName = qualified(TypeModuleName, TypeName),
@@ -132,18 +131,16 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
             create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor,
                 TypeModuleName, TypeName, TypeArity, TypeDefn)
         ->
-            type_ctor_info__gen_type_ctor_gen_info(TypeCtor,
-                TypeName, TypeArity, TypeDefn,
+            gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
                 ModuleName, ModuleInfo, TypeCtorGenInfo),
-            TypeCtorGenInfos =
-                [TypeCtorGenInfo | TypeCtorGenInfos1]
+            TypeCtorGenInfos = [TypeCtorGenInfo | TypeCtorGenInfos1]
         ;
             TypeCtorGenInfos = TypeCtorGenInfos1
         )
     ;
         SymName = unqualified(TypeName),
         Msg = "unqualified type " ++ TypeName ++ "found in type_ctor_info",
-        error(Msg)
+        unexpected(this_file, Msg)
     ).
 
     % Should we create a type_ctor_info for the given type constructor?
@@ -216,12 +213,12 @@ builtin_type_defn = TypeDefn :-
     hlds_data__set_type_defn(TVarSet, Params, Kinds, Body, ImportStatus, no,
         NeedQualifier, Context, TypeDefn).
 
-:- pred type_ctor_info__gen_type_ctor_gen_info(type_ctor::in, string::in,
-    int::in, hlds_type_defn::in, module_name::in, module_info::in,
+:- pred gen_type_ctor_gen_info(type_ctor::in, string::in, int::in,
+    hlds_type_defn::in, module_name::in, module_info::in,
     type_ctor_gen_info::out) is det.
 
-type_ctor_info__gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
-        ModuleName, ModuleInfo, TypeCtorGenInfo) :-
+gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn, ModuleName,
+        ModuleInfo, TypeCtorGenInfo) :-
     hlds_data__get_type_defn_status(TypeDefn, Status),
     module_info_globals(ModuleInfo, Globals),
     module_info_get_special_pred_map(ModuleInfo, SpecMap),
@@ -256,43 +253,38 @@ type_ctor_info__gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
 
 %---------------------------------------------------------------------------%
 
-type_ctor_info__generate_rtti(ModuleInfo, Tables) :-
+generate_rtti(ModuleInfo, Tables) :-
     module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
-    type_ctor_info__construct_type_ctor_infos(TypeCtorGenInfos,
-        ModuleInfo, [], Dynamic, [], Static0),
+    construct_type_ctor_infos(TypeCtorGenInfos, ModuleInfo,
+        [], Dynamic, [], Static0),
     % The same pseudo_type_info may be generated in several places; we need
     % to eliminate duplicates here, to avoid duplicate definition errors
     % in the generated C code.
     Static = list__remove_dups(Static0),
     list__append(Dynamic, Static, Tables).
 
-:- pred type_ctor_info__construct_type_ctor_infos(
-    list(type_ctor_gen_info)::in, module_info::in,
+:- pred construct_type_ctor_infos(list(type_ctor_gen_info)::in,
+    module_info::in,
     list(rtti_data)::in, list(rtti_data)::out,
     list(rtti_data)::in, list(rtti_data)::out) is det.
 
-type_ctor_info__construct_type_ctor_infos([], _ModuleInfo, !Dynamic, !Static).
-type_ctor_info__construct_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
+construct_type_ctor_infos([], _ModuleInfo, !Dynamic, !Static).
+construct_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
         ModuleInfo, !Dynamic, !Static) :-
-    type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
-        TypeCtorCModule),
+    construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, TypeCtorCModule),
     !:Dynamic = [TypeCtorCModule | !.Dynamic],
-    type_ctor_info__construct_type_ctor_infos(TypeCtorGenInfos, ModuleInfo,
-        !Dynamic, !Static).
+    construct_type_ctor_infos(TypeCtorGenInfos, ModuleInfo, !Dynamic, !Static).
 
     % Generate RTTI information for the given type.
     %
-:- pred type_ctor_info__construct_type_ctor_info(type_ctor_gen_info::in,
-    module_info::in, rtti_data::out) is det.
+:- pred construct_type_ctor_info(type_ctor_gen_info::in, module_info::in,
+    rtti_data::out) is det.
 
-type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
-        RttiData) :-
+construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
         TypeArity, _Status, HldsDefn, UnifyPredProcId, ComparePredProcId),
-    type_ctor_info__make_rtti_proc_label(UnifyPredProcId, ModuleInfo,
-        UnifyProcLabel),
-    type_ctor_info__make_rtti_proc_label(ComparePredProcId, ModuleInfo,
-        CompareProcLabel),
+    make_rtti_proc_label(UnifyPredProcId, ModuleInfo, UnifyProcLabel),
+    make_rtti_proc_label(ComparePredProcId, ModuleInfo, CompareProcLabel),
     type_to_univ(UnifyProcLabel, UnifyUniv),
     type_to_univ(CompareProcLabel, CompareUniv),
     module_info_globals(ModuleInfo, Globals),
@@ -305,7 +297,7 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
         TypeBody = abstract_type(_),
         \+ compiler_generated_rtti_for_builtins(ModuleInfo)
     ->
-        error("type_ctor_info__gen_type_ctor_data: abstract_type")
+        unexpected(this_file, "gen_type_ctor_data: abstract_type")
     ;
         true
     ),
@@ -326,13 +318,12 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
     ;
         (
             TypeBody = abstract_type(_),
-            error("type_ctor_info__gen_type_ctor_data: abstract_type")
+            unexpected(this_file, "gen_type_ctor_data: abstract_type")
         ;
             % We treat solver_types as being equivalent to their representation
             % types for RTTI purposes. Which may cause problems with construct,
             % similar to those for abstract types.
-            TypeBody = solver_type(SolverTypeDetails,
-                    _MaybeUserEqComp),
+            TypeBody = solver_type(SolverTypeDetails, _MaybeUserEqComp),
             RepnType = SolverTypeDetails ^ representation_type,
             % There can be no existentially typed args to an equivalence.
             UnivTvars = TypeArity,
@@ -373,19 +364,19 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
             ),
             (
                 Enum = yes,
-                type_ctor_info__make_enum_details(Ctors, ConsTagMap,
-                    ReservedTag, EqualityAxioms, Details)
+                make_enum_details(Ctors, ConsTagMap, ReservedTag,
+                    EqualityAxioms, Details)
             ;
                 Enum = no,
                 (
                     type_constructors_should_be_no_tag(Ctors, ReservedTag,
                         Globals, Name, ArgType, MaybeArgName)
                 ->
-                    type_ctor_info__make_notag_details(TypeArity, Name,
-                        ArgType, MaybeArgName, EqualityAxioms, Details)
+                    make_notag_details(TypeArity, Name, ArgType, MaybeArgName,
+                        EqualityAxioms, Details)
                 ;
-                    type_ctor_info__make_du_details(Ctors, ConsTagMap,
-                        TypeArity, EqualityAxioms, ModuleInfo, Details)
+                    make_du_details(Ctors, ConsTagMap, TypeArity,
+                        EqualityAxioms, ModuleInfo, Details)
                 )
             )
         )
@@ -410,6 +401,10 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
             ; TypeName = "type_ctor_info"
             ; TypeName = "typeclass_info"
             ; TypeName = "base_typeclass_info"
+            ; TypeName = "zero_type_info"
+            ; TypeName = "zero_type_ctor_info"
+            ; TypeName = "zero_typeclass_info"
+            ; TypeName = "zero_base_typeclass_info"
             )
         ->
             svset__insert(typeinfo_fake_arity_flag, !Flags)
@@ -447,6 +442,11 @@ impl_type_ctor("private_builtin", "type_info", 1, type_info).
 impl_type_ctor("private_builtin", "typeclass_info", 1, typeclass_info).
 impl_type_ctor("private_builtin", "base_typeclass_info", 1,
     base_typeclass_info).
+impl_type_ctor("private_builtin", "zero_type_ctor_info", 0, type_ctor_info).
+impl_type_ctor("private_builtin", "zero_type_info", 0, type_info).
+impl_type_ctor("private_builtin", "zero_typeclass_info", 0, typeclass_info).
+impl_type_ctor("private_builtin", "zero_base_typeclass_info", 0,
+    base_typeclass_info).
 impl_type_ctor("private_builtin", "heap_pointer", 0, hp).
 impl_type_ctor("private_builtin", "succip", 0, succip).
 impl_type_ctor("private_builtin", "curfr", 0, curfr).
@@ -456,10 +456,10 @@ impl_type_ctor("private_builtin", "trail_ptr", 0, trail_ptr).
 impl_type_ctor("private_builtin", "ticket", 0, ticket).
 impl_type_ctor("table_builtin", "ml_subgoal", 0, subgoal).
 
-:- pred type_ctor_info__make_rtti_proc_label(pred_proc_id::in, module_info::in,
+:- pred make_rtti_proc_label(pred_proc_id::in, module_info::in,
     rtti_proc_label::out) is det.
 
-type_ctor_info__make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
+make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
     PredProcId = proc(PredId, ProcId),
     ProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId).
 
@@ -481,10 +481,10 @@ type_ctor_info__make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
 
 type_ctor_info_rtti_version = 9.
 
-% Construct an rtti_data for a pseudo_type_info,
-% and also construct rtti_data definitions for all of the pseudo_type_infos
-% that it references and prepend them to the given list of rtti_data tables.
-
+    % Construct an rtti_data for a pseudo_type_info, and also construct
+    % rtti_data definitions for all of the pseudo_type_infos that it references
+    % and prepend them to the given list of rtti_data tables.
+    %
 :- pred make_pseudo_type_info_and_tables((type)::in, int::in, existq_tvars::in,
     rtti_data::out, list(rtti_data)::in, list(rtti_data)::out) is det.
 
@@ -549,11 +549,11 @@ make_maybe_pseudo_type_info_or_self_tables(self, !Tables).
 
 % Make the functor and layout tables for a notag type.
 
-:- pred type_ctor_info__make_notag_details(int::in, sym_name::in, (type)::in,
+:- pred make_notag_details(int::in, sym_name::in, (type)::in,
     maybe(string)::in, equality_axioms::in, type_ctor_details::out) is det.
 
-type_ctor_info__make_notag_details(TypeArity, SymName, ArgType, MaybeArgName,
-        EqualityAxioms, Details) :-
+make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
+        Details) :-
     unqualify_name(SymName, FunctorName),
     NumUnivTvars = TypeArity,
     % There can be no existentially typed args to the functor in a notag type.
@@ -569,22 +569,20 @@ type_ctor_info__make_notag_details(TypeArity, SymName, ArgType, MaybeArgName,
 
     % Make the functor and layout tables for an enum type.
     %
-:- pred type_ctor_info__make_enum_details(list(constructor)::in,
-    cons_tag_values::in, bool::in, equality_axioms::in,
-    type_ctor_details::out) is det.
+:- pred make_enum_details(list(constructor)::in, cons_tag_values::in, bool::in,
+    equality_axioms::in, type_ctor_details::out) is det.
 
-type_ctor_info__make_enum_details(Ctors, ConsTagMap, ReserveTag,
-        EqualityAxioms, Details) :-
+make_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms, Details) :-
     (
         ReserveTag = yes,
-        unexpected("type_ctor_info", "enum with reserved tag")
+        unexpected(this_file, "enum with reserved tag")
     ;
         ReserveTag = no
     ),
-    type_ctor_info__make_enum_functors(Ctors, 0, ConsTagMap, EnumFunctors),
+    make_enum_functors(Ctors, 0, ConsTagMap, EnumFunctors),
     ValueMap0 = map__init,
     NameMap0 = map__init,
-    list__foldl2(type_ctor_info__make_enum_maps, EnumFunctors,
+    list__foldl2(make_enum_maps, EnumFunctors,
         ValueMap0, ValueMap, NameMap0, NameMap),
     Details = enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap).
 
@@ -596,12 +594,12 @@ type_ctor_info__make_enum_details(Ctors, ConsTagMap, ReserveTag,
     % sort this list on functor name, which is how the type functors structure
     % is constructed.
     %
-:- pred type_ctor_info__make_enum_functors(list(constructor)::in,
+:- pred make_enum_functors(list(constructor)::in,
     int::in, cons_tag_values::in, list(enum_functor)::out) is det.
 
-type_ctor_info__make_enum_functors([], _, _, []).
-type_ctor_info__make_enum_functors([Functor | Functors], NextOrdinal0,
-        ConsTagMap, [EnumFunctor | EnumFunctors]) :-
+make_enum_functors([], _, _, []).
+make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
+        [EnumFunctor | EnumFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs),
     require(unify(ExistTvars, []), "existential arguments in functor in enum"),
     require(unify(Constraints, []), "class constraints on functor in enum"),
@@ -613,14 +611,13 @@ type_ctor_info__make_enum_functors([Functor | Functors], NextOrdinal0,
         "mismatch on constant assigned to functor in enum"),
     unqualify_name(SymName, FunctorName),
     EnumFunctor = enum_functor(FunctorName, NextOrdinal0),
-    type_ctor_info__make_enum_functors(Functors, NextOrdinal0 + 1,
-        ConsTagMap, EnumFunctors).
+    make_enum_functors(Functors, NextOrdinal0 + 1, ConsTagMap, EnumFunctors).
 
-:- pred type_ctor_info__make_enum_maps(enum_functor::in,
+:- pred make_enum_maps(enum_functor::in,
     map(int, enum_functor)::in, map(int, enum_functor)::out,
     map(string, enum_functor)::in, map(string, enum_functor)::out) is det.
 
-type_ctor_info__make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
+make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
     EnumFunctor = enum_functor(FunctorName, Ordinal),
     svmap__det_insert(Ordinal, EnumFunctor, !ValueMap),
     svmap__det_insert(FunctorName, EnumFunctor, !NameMap).
@@ -647,27 +644,26 @@ is_reserved_functor(res_func(ResFunctor)) = ResFunctor.
     % Make the functor and layout tables for a du type
     % (including reserved_addr types).
     %
-:- pred type_ctor_info__make_du_details(list(constructor)::in,
-    cons_tag_values::in, int::in, equality_axioms::in, module_info::in,
-    type_ctor_details::out) is det.
+:- pred make_du_details(list(constructor)::in, cons_tag_values::in, int::in,
+    equality_axioms::in, module_info::in, type_ctor_details::out) is det.
 
-type_ctor_info__make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms,
-        ModuleInfo, Details) :-
-    type_ctor_info__make_maybe_res_functors(Ctors, 0, ConsTagMap,
-        TypeArity, ModuleInfo, MaybeResFunctors),
+make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms, ModuleInfo,
+        Details) :-
+    make_maybe_res_functors(Ctors, 0, ConsTagMap, TypeArity, ModuleInfo,
+        MaybeResFunctors),
     DuFunctors = list__filter_map(is_du_functor, MaybeResFunctors),
     ResFunctors = list__filter_map(is_reserved_functor, MaybeResFunctors),
-    list__foldl(type_ctor_info__make_du_ptag_ordered_table, DuFunctors,
+    list__foldl(make_du_ptag_ordered_table, DuFunctors,
         map__init, DuPtagTable),
     (
         ResFunctors = [],
-        list__foldl(type_ctor_info__make_du_name_ordered_table,
-            DuFunctors, map__init, DuNameOrderedMap),
+        list__foldl(make_du_name_ordered_table, DuFunctors,
+            map__init, DuNameOrderedMap),
         Details = du(EqualityAxioms, DuFunctors, DuPtagTable, DuNameOrderedMap)
     ;
         ResFunctors = [_ | _],
-        list__foldl(type_ctor_info__make_res_name_ordered_table,
-            MaybeResFunctors, map__init, ResNameOrderedMap),
+        list__foldl(make_res_name_ordered_table, MaybeResFunctors,
+            map__init, ResNameOrderedMap),
         Details = reserved(EqualityAxioms, MaybeResFunctors,
             ResFunctors, DuPtagTable, ResNameOrderedMap)
     ).
@@ -688,21 +684,20 @@ type_ctor_info__make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms,
     % TagMap groups the rttis into groups depending on their primary tags;
     % this is how the type layout structure is constructed.
     %
-:- pred type_ctor_info__make_maybe_res_functors(list(constructor)::in,
-    int::in, cons_tag_values::in, int::in, module_info::in,
+:- pred make_maybe_res_functors(list(constructor)::in, int::in,
+    cons_tag_values::in, int::in, module_info::in,
     list(maybe_reserved_functor)::out) is det.
 
-type_ctor_info__make_maybe_res_functors([], _, _, _, _, []).
-type_ctor_info__make_maybe_res_functors([Functor | Functors], NextOrdinal,
-        ConsTagMap, TypeArity, ModuleInfo,
-        [MaybeResFunctor | MaybeResFunctors]) :-
+make_maybe_res_functors([], _, _, _, _, []).
+make_maybe_res_functors([Functor | Functors], NextOrdinal, ConsTagMap,
+        TypeArity, ModuleInfo, [MaybeResFunctor | MaybeResFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, ConstructorArgs),
     list__length(ConstructorArgs, Arity),
     unqualify_name(SymName, FunctorName),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, ConstructorArgs),
     map__lookup(ConsTagMap, ConsId, ConsTag),
-    type_ctor_info__process_cons_tag(ConsTag, ConsRep),
-    list__map(type_ctor_info__generate_du_arg_info(TypeArity, ExistTvars),
+    process_cons_tag(ConsTag, ConsRep),
+    list__map(generate_du_arg_info(TypeArity, ExistTvars),
         ConstructorArgs, ArgInfos),
     (
         ExistTvars = [],
@@ -710,8 +705,7 @@ type_ctor_info__make_maybe_res_functors([Functor | Functors], NextOrdinal,
     ;
         ExistTvars = [_ | _],
         module_info_classes(ModuleInfo, ClassTable),
-        type_ctor_info__generate_exist_into(ExistTvars, Constraints,
-            ClassTable, ExistInfo),
+        generate_exist_into(ExistTvars, Constraints, ClassTable, ExistInfo),
         MaybeExistInfo = yes(ExistInfo)
     ),
     (
@@ -730,13 +724,12 @@ type_ctor_info__make_maybe_res_functors([Functor | Functors], NextOrdinal,
         ResFunctor = reserved_functor(FunctorName, NextOrdinal, ResRep),
         MaybeResFunctor = res_func(ResFunctor)
     ),
-    type_ctor_info__make_maybe_res_functors(Functors, NextOrdinal + 1,
-        ConsTagMap, TypeArity, ModuleInfo, MaybeResFunctors).
+    make_maybe_res_functors(Functors, NextOrdinal + 1, ConsTagMap, TypeArity,
+        ModuleInfo, MaybeResFunctors).
 
-:- pred type_ctor_info__process_cons_tag(cons_tag::in, maybe_reserved_rep::out)
-    is det.
+:- pred process_cons_tag(cons_tag::in, maybe_reserved_rep::out) is det.
 
-type_ctor_info__process_cons_tag(ConsTag, ConsRep) :-
+process_cons_tag(ConsTag, ConsRep) :-
     (
         ( ConsTag = single_functor, ConsPtag = 0
         ; ConsTag = unshared_tag(ConsPtag)
@@ -760,16 +753,15 @@ type_ctor_info__process_cons_tag(ConsTag, ConsRep) :-
     ->
         % Here we can just ignore the fact that this cons_tag is
         % shared with reserved addresses.
-        type_ctor_info__process_cons_tag(ThisTag, ConsRep)
+        process_cons_tag(ThisTag, ConsRep)
     ;
         unexpected(this_file, "bad cons_tag for du function symbol")
     ).
 
-:- pred type_ctor_info__generate_du_arg_info(int::in, existq_tvars::in,
-    constructor_arg::in, du_arg_info::out) is det.
+:- pred generate_du_arg_info(int::in, existq_tvars::in, constructor_arg::in,
+    du_arg_info::out) is det.
 
-type_ctor_info__generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg,
-        ArgInfo) :-
+generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
     ConstructorArg = MaybeArgSymName - ArgType,
     (
         MaybeArgSymName = yes(SymName),
@@ -795,19 +787,18 @@ type_ctor_info__generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg,
     % This function gives the size of the MR_du_functor_arg_type_contains_var
     % field of the C type MR_DuFunctorDesc in bits.
     %
-:- func type_ctor_info__contains_var_bit_vector_size = int.
+:- func contains_var_bit_vector_size = int.
 
-type_ctor_info__contains_var_bit_vector_size = 16.
+contains_var_bit_vector_size = 16.
 
     % Construct the RTTI structures that record information about the locations
     % of the typeinfos describing the types of the existentially typed
     % arguments of a functor.
     %
-:- pred type_ctor_info__generate_exist_into(list(tvar)::in,
-    list(prog_constraint)::in, class_table::in, exist_info::out) is det.
+:- pred generate_exist_into(list(tvar)::in, list(prog_constraint)::in,
+    class_table::in, exist_info::out) is det.
 
-type_ctor_info__generate_exist_into(ExistTvars, Constraints, ClassTable,
-        ExistInfo) :-
+generate_exist_into(ExistTvars, Constraints, ClassTable, ExistInfo) :-
     list__map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)),
         Constraints, ConstrainedTvars0),
     list__condense(ConstrainedTvars0, ConstrainedTvars1),
@@ -866,10 +857,10 @@ first_matching_type_class_info([C | Cs], Tvar, MatchingConstraint, !N,
 
 %---------------------------------------------------------------------------%
 
-:- pred type_ctor_info__make_du_ptag_ordered_table(du_functor::in,
-    map(int, sectag_table)::in, map(int, sectag_table)::out) is det.
+:- pred make_du_ptag_ordered_table(du_functor::in, map(int, sectag_table)::in,
+    map(int, sectag_table)::out) is det.
 
-type_ctor_info__make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
+make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
     DuRep = DuFunctor ^ du_rep,
     (
         DuRep = du_ll_rep(Ptag, SectagAndLocn),
@@ -900,14 +891,14 @@ type_ctor_info__make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         )
     ;
         DuRep = du_hl_rep(_),
-        error("type_ctor_info__make_du_ptag_ordered_table: du_hl_rep")
+        unexpected(this_file, "make_du_ptag_ordered_table: du_hl_rep")
     ).
 
-:- pred type_ctor_info__make_du_name_ordered_table(du_functor::in,
+:- pred make_du_name_ordered_table(du_functor::in,
     map(string, map(int, du_functor))::in,
     map(string, map(int, du_functor))::out) is det.
 
-type_ctor_info__make_du_name_ordered_table(DuFunctor, !NameTable) :-
+make_du_name_ordered_table(DuFunctor, !NameTable) :-
     Name = DuFunctor ^ du_name,
     Arity = DuFunctor ^ du_orig_arity,
     ( map__search(!.NameTable, Name, NameMap0) ->
@@ -918,11 +909,11 @@ type_ctor_info__make_du_name_ordered_table(DuFunctor, !NameTable) :-
         svmap__det_insert(Name, NameMap, !NameTable)
     ).
 
-:- pred type_ctor_info__make_res_name_ordered_table(maybe_reserved_functor::in,
+:- pred make_res_name_ordered_table(maybe_reserved_functor::in,
     map(string, map(int, maybe_reserved_functor))::in,
     map(string, map(int, maybe_reserved_functor))::out) is det.
 
-type_ctor_info__make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
+make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
     (
         MaybeResFunctor = du_func(DuFunctor),
         Name = DuFunctor ^ du_name,
