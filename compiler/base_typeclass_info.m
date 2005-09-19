@@ -57,70 +57,64 @@
 
 %---------------------------------------------------------------------------%
 
-base_typeclass_info__generate_rtti(ModuleInfo, RttiDataList) :-
+generate_rtti(ModuleInfo, RttiDataList) :-
 	module_info_name(ModuleInfo, ModuleName),
 	module_info_instances(ModuleInfo, InstanceTable),
 	map__to_assoc_list(InstanceTable, AllInstances),
-	base_typeclass_info__gen_infos_for_classes(AllInstances, ModuleName,
-		ModuleInfo, [], RttiDataList).
+	gen_infos_for_classes(AllInstances, ModuleName, ModuleInfo,
+		[], RttiDataList).
 
-:- pred base_typeclass_info__gen_infos_for_classes(
+:- pred gen_infos_for_classes(
 	assoc_list(class_id, list(hlds_instance_defn))::in, module_name::in,
 	module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
 
-base_typeclass_info__gen_infos_for_classes([], _ModuleName, _ModuleInfo,
-		RttiDataList, RttiDataList).
-base_typeclass_info__gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo,
-		RttiDataList0, RttiDataList) :-
-	base_typeclass_info__gen_infos_for_instance_list(C, ModuleName,
-		ModuleInfo, RttiDataList0, RttiDataList1),
-	base_typeclass_info__gen_infos_for_classes(Cs, ModuleName,
-		ModuleInfo, RttiDataList1, RttiDataList).
+gen_infos_for_classes([], _ModuleName, _ModuleInfo, !RttiDataList).
+gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo, !RttiDataList) :-
+	gen_infos_for_instance_list(C, ModuleName, ModuleInfo, !RttiDataList),
+	gen_infos_for_classes(Cs, ModuleName, ModuleInfo, !RttiDataList).
 
 	% XXX make it use an accumulator
-:- pred base_typeclass_info__gen_infos_for_instance_list(
+:- pred gen_infos_for_instance_list(
 	pair(class_id, list(hlds_instance_defn))::in, module_name::in,
 	module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
 
-base_typeclass_info__gen_infos_for_instance_list(_ - [], _, _,
-		RttiDataList, RttiDataList).
-base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
-		ModuleName, ModuleInfo, RttiDataList0, RttiDataList) :-
-	base_typeclass_info__gen_infos_for_instance_list(ClassId - Is,
-		ModuleName, ModuleInfo, RttiDataList0, RttiDataList1),
+gen_infos_for_instance_list(_ - [], _, _, !RttiDataList).
+gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
+		ModuleInfo, !RttiDataList) :-
+	gen_infos_for_instance_list(ClassId - Is, ModuleName, ModuleInfo,
+		!RttiDataList),
 	InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
 		_TermContext, InstanceConstraints, InstanceTypes, Body,
 		PredProcIds, _Varset, _SuperClassProofs),
 	(
 		Body = concrete(_),
-			% Only make the base_typeclass_info if the instance
-			% declaration originally came from _this_ module.
+		% Only make the base_typeclass_info if the instance
+		% declaration originally came from _this_ module.
 		status_defined_in_this_module(ImportStatus, yes)
 	->
 		make_instance_string(InstanceTypes, InstanceString),
-		base_typeclass_info__gen_body(PredProcIds,
-			InstanceTypes, InstanceConstraints, ModuleInfo,
-			ClassId, BaseTypeClassInfo),
+		gen_body(PredProcIds, InstanceTypes, InstanceConstraints,
+			ModuleInfo, ClassId, BaseTypeClassInfo),
 		TCName = generate_class_name(ClassId),
 		RttiData = base_typeclass_info(TCName, InstanceModule,
 			InstanceString, BaseTypeClassInfo),
-		RttiDataList = [RttiData | RttiDataList1]
+		!:RttiDataList = [RttiData | !.RttiDataList]
 	;
-			% The instance decl is from another module,
-			% or is abstract, so we don't bother including it.
-		RttiDataList = RttiDataList1
+		% The instance decl is from another module,
+		% or is abstract, so we don't bother including it.
+		true
 	).
 
 %----------------------------------------------------------------------------%
 
-:- pred base_typeclass_info__gen_body(maybe(list(hlds_class_proc))::in,
-	list(type)::in, list(prog_constraint)::in, module_info::in,
-	class_id::in, base_typeclass_info::out) is det.
+:- pred gen_body(maybe(list(hlds_class_proc))::in, list(type)::in,
+	list(prog_constraint)::in, module_info::in, class_id::in,
+	base_typeclass_info::out) is det.
 
-base_typeclass_info__gen_body(no, _, _, _, _, _) :-
+gen_body(no, _, _, _, _, _) :-
 	error("pred_proc_ids should have been filled in by check_typeclass.m").
-base_typeclass_info__gen_body(yes(PredProcIds0), Types, Constraints,
-		ModuleInfo, ClassId, BaseTypeClassInfo) :-
+gen_body(yes(PredProcIds0), Types, Constraints, ModuleInfo, ClassId,
+		BaseTypeClassInfo) :-
 	prog_type__vars_list(Types, TypeVars),
 	get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
 	list__length(Constraints, NumConstraints),
@@ -132,31 +126,29 @@ base_typeclass_info__gen_body(yes(PredProcIds0), Types, Constraints,
 			PredProc = proc(PredId, ProcId)
 		)),
 	list__map(ExtractPredProcId, PredProcIds0, PredProcIds),
-	base_typeclass_info__construct_proc_labels(PredProcIds, ModuleInfo,
+	construct_proc_labels(PredProcIds, ModuleInfo,
 		ProcLabels),
-	base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
+	gen_superclass_count(ClassId, ModuleInfo,
 		SuperClassCount, ClassArity),
 	list__length(ProcLabels, NumMethods),
 	BaseTypeClassInfo = base_typeclass_info(NumExtra, NumConstraints,
 		SuperClassCount, ClassArity, NumMethods, ProcLabels).
 
-:- pred base_typeclass_info__construct_proc_labels(list(pred_proc_id)::in,
+:- pred construct_proc_labels(list(pred_proc_id)::in,
 	module_info::in, list(rtti_proc_label)::out) is det.
 
-base_typeclass_info__construct_proc_labels([], _, []).
-base_typeclass_info__construct_proc_labels([proc(PredId, ProcId) | Procs],
-		ModuleInfo, [ProcLabel | ProcLabels]) :-
+construct_proc_labels([], _, []).
+construct_proc_labels([proc(PredId, ProcId) | Procs], ModuleInfo,
+		[ProcLabel | ProcLabels]) :-
 	ProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-	base_typeclass_info__construct_proc_labels(Procs, ModuleInfo,
-		ProcLabels).
+	construct_proc_labels(Procs, ModuleInfo, ProcLabels).
 
 %----------------------------------------------------------------------------%
 
-:- pred base_typeclass_info__gen_superclass_count(class_id::in, module_info::in,
+:- pred gen_superclass_count(class_id::in, module_info::in,
 	int::out, int::out) is det.
 
-base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
-		NumSuperClasses, ClassArity) :-
+gen_superclass_count(ClassId, ModuleInfo, NumSuperClasses, ClassArity) :-
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
 	list__length(ClassDefn ^ class_supers, NumSuperClasses),

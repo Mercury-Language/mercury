@@ -951,7 +951,8 @@ goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         % include all typeclass_infos that constrain a type variable
         % that is non-local in the above sense.
         %
-    solutions_set((pred(Var::out) is nondet :-
+    solutions_set(
+        (pred(Var::out) is nondet :-
             % Search through all arguments of all constraints
             % that the goal could have used.
             rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
@@ -960,8 +961,8 @@ goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
             type_list_contains_var(ArgTypes, TypeVar),
             set__member(TypeVar, NonLocalTypeVars),
 
-            % We found a constraint that is non-local.  Include
-            % the variable holding its typeclass_info.
+            % We found a constraint that is non-local. Include the variable
+            % holding its typeclass_info.
             rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, Var)
         ), NonLocalTypeClassInfoVars),
     NonLocalTypeInfos = set__union(NonLocalTypeInfoVars,
