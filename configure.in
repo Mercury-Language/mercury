@@ -199,6 +199,8 @@ if test "$BOOTSTRAP_MC" != ""; then
         
 		main(!IO) :-
 			return_rtti_version(Version),
+			p(T),
+			q(T, _),
 			(
 				Version >= 8,
 				ac(2) ^ elem(3, 5) = 17,
@@ -207,6 +209,23 @@ if test "$BOOTSTRAP_MC" != ""; then
 				io.print("Hello, world\n", !IO)
 			;
 				io.print("Nope.\n", !IO)
+			).
+
+		:- type t    ---> a ; b ; c(int).
+
+		:- pred p(t::out) is det.
+
+		p(b).
+
+		:- pred q(t::in, int::out) is det.
+
+		q(T, N) :-
+			(
+			 	T = a,
+				N = 0
+			;
+				( T = b ; T = c(_) ),
+				N = 1
 			).
 
 		:- type a    ---> ac(int).
@@ -833,7 +852,7 @@ esac
 
 mercury_check_for_functions \
 		sysconf getpagesize gethostname \
-		mprotect memalign memmove \
+		mprotect memalign posix_memalign memmove \
 		sigaction siginterrupt setitimer \
 		snprintf _snprintf vsnprintf _vsnprintf strerror \
 		open close dup dup2 fdopen fileno fstat stat lstat isatty \
