@@ -1,3 +1,4 @@
 .cvsignore
 .mgnuc_copts
+.mgnuc_opts
 COMP_FLAGS.in

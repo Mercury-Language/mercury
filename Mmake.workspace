@@ -112,8 +112,9 @@ MCFLAGS      += --options-file $(WORKSPACE)/Mercury.options
 endif
 
 # now in FLAGS files
-# MCFLAGS    += --no-mercury-stdlib-dir -I$(LIBRARY_DIR)
-MGNUCFLAGS   += --no-mercury-stdlib-dir
+# MCFLAGS    += -I$(LIBRARY_DIR)
+# no in .mgnuc_opt files
+# MGNUCFLAGS += --no-mercury-stdlib-dir
 C2INITFLAGS  += --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
 		--trace-init-file $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
 C2INITARGS   += $(LIBRARY_DIR)/$(STD_LIB_NAME).init \

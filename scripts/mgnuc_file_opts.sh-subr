@@ -1,0 +1,78 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# mgnuc_file_opts.sh-subr:
+#
+# An `sh' subroutine for processing the mgnuc options that can be set from
+# .mgnuc_opts files. It is included twice in mgnuc. Its implementation is
+# bound tightly to the code of mgnuc.in; all the variables it manipulates
+# come from there.
+#
+# At the moment, this includes only options that do not have arguments.
+# This is because processing options with arguments is hard to do without
+# overriding the argument vector, and there is no simple way to preserve
+# the exact structure of the original argument vector *including* any spaces
+# inside individual arguments. There is no real need (at least right now)
+# for putting such options into .mgnuc_opts files.
+#
+#---------------------------------------------------------------------------#
+
+        -v|--verbose)
+            verbose=true
+            ;;
+        -v-|--no-verbose)
+            verbose=false ;;
+
+        --assemble)
+            assemble=true ;;
+
+        --no-ansi)
+            ANSI_OPTS=
+            DEFINE_OPTS="$DEFINE_OPTS -D__EXTENSIONS__ -D_GNU_SOURCE"
+            ;;
+
+        --no-check)
+            CHECK_OPTS= ;;
+
+        --split-c-files)
+            SPLIT_OPTS=-DMR_SPLIT_C_FILES ;;
+        --no-split-c-files)
+            SPLIT_OPTS= ;;
+
+        --inline-alloc)
+            INLINE_ALLOC_OPTS="-DMR_INLINE_ALLOC -DSILENT" ;;
+        --no-inline-alloc)
+            INLINE_ALLOC_OPTS="" ;;
+
+        -g|--c-debug)
+            c_debug=true ;;
+        -g-|--no-c-debug)
+            c_debug=false ;;
+
+        --c-optimize)
+            c_optimize=true ;;
+        --no-c-optimize)
+            c_optimize=false ;;
+
+        --low-level-debug)
+            low_level_debug=true ;;
+        --no-low-level-debug)
+            low_level_debug=false ;;
+
+        --use-activation-counts)
+            use_activation_counts=true ;;
+        --no-use-activation-counts)
+            use_activation_counts=false ;;
+
+        --preserve-tail-recursion)
+            preserve_tail_recursion=true ;;
+        --no-preserve-tail-recursion)
+            preserve_tail_recursion=false ;;
+
+        --no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
+            unset mercury_stdlib_dir
+            unset mercury_config_dir
+            ;;
