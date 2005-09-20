@@ -1232,7 +1232,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 		MR_save_transient_hp();					\\
 		NewVal = MR_deep_copy(OldVal, (MR_TypeInfo) TypeInfo_for_T,\\
 			(const MR_Word *) SolutionsHeapPtr,		\\
-			MR_ENGINE(MR_eng_solutions_heap_zone)->top);	\\
+			MR_ENGINE(MR_eng_solutions_heap_zone)->MR_zone_top);\\
 		MR_restore_transient_hp();				\\
 	} while (0)
 #endif
