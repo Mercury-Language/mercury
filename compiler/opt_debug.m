@@ -501,8 +501,8 @@ dump_unop(not) = "not".
 dump_unop(hash_string) = "hash_string".
 dump_unop(bitwise_complement) = "bitwise_complement".
 
-dump_binop(Op) = Str :-
-    llds_out__binary_op_to_string(Op, Str).
+dump_binop(Op) =
+    llds_out__binary_op_to_string(Op).
 
 dump_maybe_rvals([], _) = "".
 dump_maybe_rvals([MR | MRs], N) = Str :-

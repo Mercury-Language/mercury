@@ -90,7 +90,7 @@
     % Given a boolean that states whether a data item includes code
     % addresses or not, return a C string that gives its "const-ness".
     %
-:- pred c_data_const_string(globals::in, bool::in, string::out) is det.
+:- func c_data_const_string(globals, bool) = string.
 
     % Return the suffix after do_call_closure_ or do_call_class_method_
     % represented by the given variant.
@@ -99,15 +99,15 @@
 
     % Convert an lval to a string description of that lval.
     %
-:- pred llds_out__lval_to_string(lval::in, string::out) is semidet.
+:- func lval_to_string(lval) = string is semidet.
 
     % Convert a register to a string description of that register.
     %
-:- pred llds_out__reg_to_string(reg_type::in, int::in, string::out) is det.
+:- func reg_to_string(reg_type, int) = string.
 
     % Convert a binary operator to a string description of that operator.
     %
-:- pred llds_out__binary_op_to_string(binary_op::in, string::out) is det.
+:- func binary_op_to_string(binary_op) = string.
 
     % Output an instruction and (if the third arg is yes) the comment.
     % This predicate is provided for debugging use only.
@@ -131,7 +131,7 @@
     % Convert a label to a C string. The boolean controls whether
     % a prefix ("mercury__") is added to the string.
     %
-:- func llds_out__label_to_c_string(label, bool) = string.
+:- func label_to_c_string(label, bool) = string.
 
     % The following are exported to rtti_out. It may be worthwhile
     % to put these in a new module (maybe llds_out_util).
@@ -1251,7 +1251,7 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         io__write_string("\n", !IO),
         output_reset_line_num(!IO)
     ;
-        error("llds_out__output_user_foreign_code: unimplemented: " ++
+        error("output_user_foreign_code: unimplemented: " ++
             "foreign code other than C")
     ).
 
@@ -1283,7 +1283,7 @@ output_foreign_header_include_line(Decl, !IO) :-
         io__write_string("\n", !IO),
         output_reset_line_num(!IO)
     ;
-        error("llds_out__output_user_foreign_code: unexpected: " ++
+        error("output_user_foreign_code: unexpected: " ++
             "foreign code other than C")
     ).
 
@@ -1635,11 +1635,11 @@ output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
         PrintComments = no
     ),
 
-    llds_out__find_caller_label(Instrs, CallerLabel),
-    llds_out__find_cont_labels(Instrs, bintree_set__init, ContLabelSet),
+    find_caller_label(Instrs, CallerLabel),
+    find_cont_labels(Instrs, bintree_set__init, ContLabelSet),
     (
         EmitCLoops = yes,
-        llds_out__find_while_labels(Instrs, bintree_set__init, WhileSet)
+        find_while_labels(Instrs, bintree_set__init, WhileSet)
     ;
         EmitCLoops = no,
         WhileSet = bintree_set__init
@@ -1650,11 +1650,11 @@ output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
     % Find the entry label for the procedure, for use as the profiling
     % "caller label" field in calls within this procedure.
     %
-:- pred llds_out__find_caller_label(list(instruction)::in, label::out) is det.
+:- pred find_caller_label(list(instruction)::in, label::out) is det.
 
-llds_out__find_caller_label([], _) :-
+find_caller_label([], _) :-
     error("cannot find caller label").
-llds_out__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
+find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
     ( Instr0 = label(Label) ->
         (
             Label = internal(_, _),
@@ -1664,17 +1664,17 @@ llds_out__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
             CallerLabel = Label
         )
     ;
-        llds_out__find_caller_label(Instrs, CallerLabel)
+        find_caller_label(Instrs, CallerLabel)
     ).
 
     % Locate all the labels which are the continuation labels for calls,
     % nondet disjunctions, forks or joins, and store them in ContLabelSet.
     %
-:- pred llds_out__find_cont_labels(list(instruction)::in,
+:- pred find_cont_labels(list(instruction)::in,
     bintree_set(label)::in, bintree_set(label)::out) is det.
 
-llds_out__find_cont_labels([], !ContLabelSet).
-llds_out__find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
+find_cont_labels([], !ContLabelSet).
+find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     (
         (
             Instr = call(_, label(ContLabel), _, _, _, _)
@@ -1696,11 +1696,11 @@ llds_out__find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     ;
         Instr = block(_, _, Block)
     ->
-        llds_out__find_cont_labels(Block, !ContLabelSet)
+        find_cont_labels(Block, !ContLabelSet)
     ;
         true
     ),
-    llds_out__find_cont_labels(Instrs, !ContLabelSet).
+    find_cont_labels(Instrs, !ContLabelSet).
 
     % Locate all the labels which can be profitably turned into
     % labels starting while loops. The idea is to do this transform:
@@ -1720,38 +1720,38 @@ llds_out__find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     %
     % The second of these is better if we don't have fast jumps.
     %
-:- pred llds_out__find_while_labels(list(instruction)::in,
+:- pred find_while_labels(list(instruction)::in,
     bintree_set(label)::in, bintree_set(label)::out) is det.
 
-llds_out__find_while_labels([], !WhileSet).
-llds_out__find_while_labels([Instr0 - _ | Instrs0], !WhileSet) :-
+find_while_labels([], !WhileSet).
+find_while_labels([Instr0 - _ | Instrs0], !WhileSet) :-
     (
         Instr0 = label(Label),
-        llds_out__is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
+        is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
         UseCount > 0
     ->
         bintree_set__insert(!.WhileSet, Label, !:WhileSet),
-        llds_out__find_while_labels(Instrs1, !WhileSet)
+        find_while_labels(Instrs1, !WhileSet)
     ;
-        llds_out__find_while_labels(Instrs0, !WhileSet)
+        find_while_labels(Instrs0, !WhileSet)
     ).
 
-:- pred llds_out__is_while_label(label::in,
+:- pred is_while_label(label::in,
     list(instruction)::in, list(instruction)::out, int::in, int::out) is det.
 
-llds_out__is_while_label(_, [], [], !Count).
-llds_out__is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
+is_while_label(_, [], [], !Count).
+is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
         !Count) :-
     ( Instr0 = label(_) ->
         Instrs = [Instr0 - Comment0 | Instrs0]
     ; Instr0 = goto(label(Label)) ->
         !:Count = !.Count + 1,
-        llds_out__is_while_label(Label, Instrs0, Instrs, !Count)
+        is_while_label(Label, Instrs0, Instrs, !Count)
     ; Instr0 = if_val(_, label(Label)) ->
         !:Count = !.Count + 1,
-        llds_out__is_while_label(Label, Instrs0, Instrs, !Count)
+        is_while_label(Label, Instrs0, Instrs, !Count)
     ;
-        llds_out__is_while_label(Label, Instrs0, Instrs, !Count)
+        is_while_label(Label, Instrs0, Instrs, !Count)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2749,7 +2749,7 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
             UnboxedFloat = no,
             StaticGroundTerms = yes
         ->
-            llds_out__float_literal_name(FloatVal, FloatName),
+            float_literal_name(FloatVal, FloatName),
             FloatLabel = float_label(FloatName),
             ( decl_set_is_member(FloatLabel, !.DeclSet) ->
                 true
@@ -2788,7 +2788,7 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
         (
             UnboxFloat = no,
             StaticGroundTerms = yes,
-            llds_out__float_const_binop_expr_name(Op, Rval1, Rval2, FloatName)
+            float_const_binop_expr_name(Op, Rval1, Rval2, FloatName)
         ->
             FloatLabel = float_label(FloatName),
             ( decl_set_is_member(FloatLabel, !.DeclSet) ->
@@ -2856,13 +2856,13 @@ output_mem_ref_decls(heap_ref(Rval, _, _), FirstIndent, LaterIndent,
     % if so, return a name for that rval that is suitable for use in a C
     % identifier. Different rvals must be given different names.
     %
-:- pred llds_out__float_const_expr_name(rval::in, string::out) is semidet.
+:- pred float_const_expr_name(rval::in, string::out) is semidet.
 
-llds_out__float_const_expr_name(Expr, Name) :-
+float_const_expr_name(Expr, Name) :-
     ( Expr = const(float_const(Float)) ->
-        llds_out__float_literal_name(Float, Name)
+        float_literal_name(Float, Name)
     ; Expr = binop(Op, Arg1, Arg2) ->
-        llds_out__float_const_binop_expr_name(Op, Arg1, Arg2, Name)
+        float_const_binop_expr_name(Op, Arg1, Arg2, Name)
     ;
         fail
     ).
@@ -2871,13 +2871,13 @@ llds_out__float_const_expr_name(Expr, Name) :-
     % expression; if so, return a name for that rval that is suitable for use
     % in a C identifier.  Different rvals must be given different names.
     %
-:- pred llds_out__float_const_binop_expr_name(binary_op::in, rval::in, rval::in,
+:- pred float_const_binop_expr_name(binary_op::in, rval::in, rval::in,
     string::out) is semidet.
 
-llds_out__float_const_binop_expr_name(Op, Arg1, Arg2, Name) :-
-    llds_out__float_op_name(Op, OpName),
-    llds_out__float_const_expr_name(Arg1, Arg1Name),
-    llds_out__float_const_expr_name(Arg2, Arg2Name),
+float_const_binop_expr_name(Op, Arg1, Arg2, Name) :-
+    float_op_name(Op, OpName),
+    float_const_expr_name(Arg1, Arg1Name),
+    float_const_expr_name(Arg2, Arg2Name),
     % We use prefix notation (operator, argument, argument) rather than infix,
     % to ensure that different rvals get different names.
     Name = OpName ++ "_" ++ Arg1Name ++ "_" ++ Arg2Name.
@@ -2886,9 +2886,9 @@ llds_out__float_const_binop_expr_name(Op, Arg1, Arg2, Name) :-
     % a name for that rval that is suitable for use in a C identifier.
     % Different rvals must be given different names.
     %
-:- pred llds_out__float_literal_name(float::in, string::out) is det.
+:- pred float_literal_name(float::in, string::out) is det.
 
-llds_out__float_literal_name(Float, FloatName) :-
+float_literal_name(Float, FloatName) :-
     % The name of the variable is based on the value of the float const, with
     % "pt" instead of ".", "plus" instead of "+", and "neg" instead of "-".
     FloatName0 = c_util__make_float_literal(Float),
@@ -2900,12 +2900,12 @@ llds_out__float_literal_name(Float, FloatName) :-
     % type is float; bind the output string to a name for that operator
     % that is suitable for use in a C identifier
     %
-:- pred llds_out__float_op_name(binary_op::in, string::out) is semidet.
+:- pred float_op_name(binary_op::in, string::out) is semidet.
 
-llds_out__float_op_name(float_plus, "plus").
-llds_out__float_op_name(float_minus, "minus").
-llds_out__float_op_name(float_times, "times").
-llds_out__float_op_name(float_divide, "divide").
+float_op_name(float_plus, "plus").
+float_op_name(float_minus, "minus").
+float_op_name(float_times, "times").
+float_op_name(float_divide, "divide").
 
 %-----------------------------------------------------------------------------%
 
@@ -3097,10 +3097,9 @@ output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
     % for boxed floats, the type is data_ptr (i.e. the type of the boxed value)
     % rather than float (the type of the unboxed value).
     %
-:- pred llds_out__rval_type_as_arg(rval::in, llds_type::out, io::di, io::uo)
-    is det.
+:- pred rval_type_as_arg(rval::in, llds_type::out, io::di, io::uo) is det.
 
-llds_out__rval_type_as_arg(Rval, ArgType, !IO) :-
+rval_type_as_arg(Rval, ArgType, !IO) :-
     llds__rval_type(Rval, Type),
     globals__io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
     (
@@ -3564,14 +3563,14 @@ c_data_linkage_string(Globals, DefaultLinkage, StaticEvenIfSplit, BeingDefined)
         LinkageStr = "static "
     ).
 
-c_data_const_string(Globals, InclCodeAddr, ConstStr) :-
+c_data_const_string(Globals, InclCodeAddr) =
     (
         InclCodeAddr = yes,
         globals__have_static_code_addresses(Globals, no)
     ->
-        ConstStr = ""
+        ""
     ;
-        ConstStr = "const "
+        "const "
     ).
 
     % This predicate outputs the storage class, type and name of the variable
@@ -3590,8 +3589,7 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
     io__write_string(LinkageStr, !IO),
 
     InclCodeAddr = data_name_may_include_non_static_code_address(DataVarName),
-    c_data_const_string(Globals, InclCodeAddr, ConstStr),
-    io__write_string(ConstStr, !IO),
+    io__write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
 
     io__write_string("struct ", !IO),
     output_data_addr(ModuleName, DataVarName, !IO),
@@ -4122,7 +4120,7 @@ label_is_external_to_c_module(internal(_, _)) = no.
 :- pred label_as_code_addr_to_string(label::in, string::out) is det.
 
 label_as_code_addr_to_string(Label, Str) :-
-    LabelStr = llds_out__label_to_c_string(Label, no),
+    LabelStr = label_to_c_string(Label, no),
     IsEntry = label_is_external_to_c_module(Label),
     (
         IsEntry = yes,
@@ -4195,16 +4193,16 @@ output_label_defn(internal(Num, ProcLabel), !IO) :-
 % circumstances, leading to better code.
 
 output_label(Label, !IO) :-
-    LabelStr = llds_out__label_to_c_string(Label, yes),
+    LabelStr = label_to_c_string(Label, yes),
     io__write_string(LabelStr, !IO).
 
 output_label(Label, AddPrefix, !IO) :-
-    LabelStr = llds_out__label_to_c_string(Label, AddPrefix),
+    LabelStr = label_to_c_string(Label, AddPrefix),
     io__write_string(LabelStr, !IO).
 
-llds_out__label_to_c_string(entry(_, ProcLabel), AddPrefix) =
+label_to_c_string(entry(_, ProcLabel), AddPrefix) =
     proc_label_to_c_string(ProcLabel, AddPrefix).
-llds_out__label_to_c_string(internal(Num, ProcLabel), AddPrefix) = LabelStr :-
+label_to_c_string(internal(Num, ProcLabel), AddPrefix) = LabelStr :-
     ProcLabelStr = proc_label_to_c_string(ProcLabel, AddPrefix),
     string__int_to_string(Num, NumStr),
     string__append("_i", NumStr, NumSuffix),
@@ -4213,8 +4211,7 @@ llds_out__label_to_c_string(internal(Num, ProcLabel), AddPrefix) = LabelStr :-
 :- pred output_reg(reg_type::in, int::in, io::di, io::uo) is det.
 
 output_reg(r, N, !IO) :-
-    llds_out__reg_to_string(r, N, RegName),
-    io__write_string(RegName, !IO).
+    io__write_string(reg_to_string(r, N), !IO).
 output_reg(f, _, !IO) :-
     error("Floating point registers not implemented").
 
@@ -4339,7 +4336,7 @@ output_float_rval(Rval, IsPtr, !IO) :-
     (
         UnboxFloat = no,
         StaticGroundTerms = yes,
-        llds_out__float_const_expr_name(Rval, FloatName)
+        float_const_expr_name(Rval, FloatName)
     ->
         (
             IsPtr = yes,
@@ -5083,7 +5080,7 @@ output_binary_op(Op, !IO) :-
         error("llds_out.m: invalid binary operator")
     ).
 
-llds_out__binary_op_to_string(Op, Name) :-
+binary_op_to_string(Op) = Name :-
     ( c_util__binary_infix_op(Op, Name0) ->
         Name = Name0
     ;
@@ -5094,32 +5091,23 @@ llds_out__binary_op_to_string(Op, Name) :-
 
 %-----------------------------------------------------------------------------%
 
-llds_out__lval_to_string(framevar(N), Description) :-
-    string__int_to_string(N, N_String),
-    string__append("MR_fv(", N_String, Tmp),
-    string__append(Tmp, ")", Description).
-llds_out__lval_to_string(stackvar(N), Description) :-
-    string__int_to_string(N, N_String),
-    string__append("MR_sv(", N_String, Tmp),
-    string__append(Tmp, ")", Description).
-llds_out__lval_to_string(reg(RegType, RegNum), Description) :-
-    llds_out__reg_to_string(RegType, RegNum, Reg_String),
-    string__append("reg(", Reg_String, Tmp),
-    string__append(Tmp, ")", Description).
+lval_to_string(framevar(N)) =
+    "MR_fv(" ++ int_to_string(N) ++ ")".
+lval_to_string(stackvar(N)) =
+    "MR_sv(" ++ int_to_string(N) ++ ")".
+lval_to_string(reg(RegType, RegNum)) =
+    "reg(" ++ reg_to_string(RegType, RegNum) ++ ")".
 
-llds_out__reg_to_string(r, N, Description) :-
+reg_to_string(r, N) =
     ( N =< max_real_r_reg ->
-        Template = "MR_r%d"
+        "MR_r" ++ int_to_string(N)
     ; N =< max_virtual_r_reg ->
-        Template = "MR_r(%d)"
+        "MR_r(" ++ int_to_string(N) ++ ")"
     ;
-        error("llds_out__reg_to_string: register number too large")
-    ),
-    string__format(Template, [i(N)], Description).
-llds_out__reg_to_string(f, N, Description) :-
-    string__int_to_string(N, N_String),
-    string__append("MR_f(", N_String, Tmp),
-    string__append(Tmp, ")", Description).
+        func_error("reg_to_string: register number too large")
+    ).
+reg_to_string(f, N) =
+    "MR_f(" ++ int_to_string(N) ++ ")".
 
 :- func max_real_r_reg = int.
 :- func max_virtual_r_reg = int.
@@ -5147,10 +5135,10 @@ gather_c_module_labels(Procs, Labels) :-
 :- pred gather_labels_from_c_modules(list(comp_gen_c_module)::in,
     list(label)::in, list(label)::out) is det.
 
-gather_labels_from_c_modules([], Labels, Labels).
-gather_labels_from_c_modules([Module | Modules], Labels0, Labels) :-
-    gather_labels_from_c_module(Module, Labels0, Labels1),
-    gather_labels_from_c_modules(Modules, Labels1, Labels).
+gather_labels_from_c_modules([], !Labels).
+gather_labels_from_c_modules([Module | Modules], !Labels) :-
+    gather_labels_from_c_module(Module, !Labels),
+    gather_labels_from_c_modules(Modules, !Labels).
 
 :- pred gather_labels_from_c_module(comp_gen_c_module::in,
     list(label)::in, list(label)::out) is det.
@@ -5163,21 +5151,21 @@ gather_labels_from_c_module(comp_gen_c_module(_, Procs), Labels0, Labels) :-
 
 gather_labels_from_c_procs([], Labels, Labels).
 gather_labels_from_c_procs([c_procedure(_, _, _, Instrs, _, _, _) | Procs],
-        Labels0, Labels) :-
-    gather_labels_from_instrs(Instrs, Labels0, Labels1),
-    gather_labels_from_c_procs(Procs, Labels1, Labels).
+        !Labels) :-
+    gather_labels_from_instrs(Instrs, !Labels),
+    gather_labels_from_c_procs(Procs, !Labels).
 
 :- pred gather_labels_from_instrs(list(instruction)::in,
     list(label)::in, list(label)::out) is det.
 
-gather_labels_from_instrs([], Labels, Labels).
-gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
+gather_labels_from_instrs([], !Labels).
+gather_labels_from_instrs([Instr | Instrs], !Labels) :-
     ( Instr = label(Label) - _ ->
-        Labels1 = [Label | Labels0]
+        !:Labels = [Label | !.Labels]
     ;
-        Labels1 = Labels0
+        true
     ),
-    gather_labels_from_instrs(Instrs, Labels1, Labels).
+    gather_labels_from_instrs(Instrs, !Labels).
 
 %-----------------------------------------------------------------------------%
 

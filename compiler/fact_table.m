@@ -3079,7 +3079,7 @@ generate_arg_output_code(Name, Type, RegNum, OutputCode) :-
 get_reg_name(RegNum, RegName) :-
 	code_util__arg_loc_to_register(RegNum, Lval),
 	( Lval = reg(RegType, N) ->
-		llds_out__reg_to_string(RegType, N, RegName)
+		RegName = llds_out__reg_to_string(RegType, N)
 	;
 		error("get_reg_name: lval is not a register")
 	).
