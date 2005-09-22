@@ -1229,8 +1229,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
         mode_list_get_initial_insts(ModuleInfo, ArgModes1, InitialInsts),
 
         % Compute the inst_var substitution from the initial insts
-        % of the called procedure and the insts of the argument
-        % variables.
+        % of the called procedure and the insts of the argument variables.
         map__init(InstVarSub0),
         update_module_info(compute_inst_var_sub(Args, VarTypes, InstMap,
             InitialInsts, InstVarSub0), InstVarSub, !RI),
