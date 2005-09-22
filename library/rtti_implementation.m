@@ -2112,9 +2112,9 @@ get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :-
 typeclass_info_type_info(TypeClassInfo, Index) = unsafe_cast(TypeInfo) :-
 	private_builtin__type_info_from_typeclass_info(
 		unsafe_cast(TypeClassInfo)
-			`with_type` private_builtin__typeclass_info(int),
+			`with_type` private_builtin__typeclass_info,
 		Index, TypeInfo
-			`with_type` private_builtin__type_info(int)).
+			`with_type` private_builtin__type_info).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

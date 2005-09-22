@@ -73,14 +73,14 @@ MR_DEFINE_TYPE_CTOR_INFO(builtin, ticket, 0, TICKET);
 MR_DEFINE_TYPE_CTOR_INFO(private_builtin, heap_pointer, 0, HP);
 MR_DEFINE_TYPE_CTOR_INFO(private_builtin, ref, 1, REFERENCE);
 
-MR_DEFINE_TYPE_CTOR_INFO_FLAG(private_builtin, type_ctor_info, 1,
-	TYPECTORINFO, MR_TYPE_CTOR_FLAG_TYPEINFO_FAKE_ARITY);
-MR_DEFINE_TYPE_CTOR_INFO_FLAG(private_builtin, type_info, 1,
-	TYPEINFO, MR_TYPE_CTOR_FLAG_TYPEINFO_FAKE_ARITY);
-MR_DEFINE_TYPE_CTOR_INFO_FLAG(private_builtin, base_typeclass_info, 1,
-	BASETYPECLASSINFO, MR_TYPE_CTOR_FLAG_TYPEINFO_FAKE_ARITY);
-MR_DEFINE_TYPE_CTOR_INFO_FLAG(private_builtin, typeclass_info, 1,
-	TYPECLASSINFO, MR_TYPE_CTOR_FLAG_TYPEINFO_FAKE_ARITY);
+MR_DEFINE_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 0,
+	TYPECTORINFO);
+MR_DEFINE_TYPE_CTOR_INFO(private_builtin, type_info, 0,
+	TYPEINFO);
+MR_DEFINE_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 0,
+	BASETYPECLASSINFO);
+MR_DEFINE_TYPE_CTOR_INFO(private_builtin, typeclass_info, 0,
+	TYPECLASSINFO);
 
 MR_DEFINE_TYPE_CTOR_INFO(private_builtin, zero_type_ctor_info, 0,
 	TYPECTORINFO);
@@ -221,8 +221,7 @@ mercury__type_desc____Unify____type_desc_0_0(MR_Type_Desc x, MR_Type_Desc y)
 }
 
 MR_bool MR_CALL
-mercury__private_builtin____Unify____type_ctor_info_1_0(
-	MR_Mercury_Type_Info type_info,
+mercury__private_builtin____Unify____type_ctor_info_0_0(
 	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y)
 {
 	return MR_unify_type_ctor_info((MR_TypeCtorInfo) x,
@@ -230,16 +229,14 @@ mercury__private_builtin____Unify____type_ctor_info_1_0(
 }
 
 MR_bool MR_CALL
-mercury__private_builtin____Unify____type_info_1_0(
-	MR_Mercury_Type_Info type_info,
+mercury__private_builtin____Unify____type_info_0_0(
 	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y)
 {
 	return MR_unify_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
 }
 
 MR_bool MR_CALL
-mercury__private_builtin____Unify____typeclass_info_1_0(
-	MR_Mercury_Type_Info type_info,
+mercury__private_builtin____Unify____typeclass_info_0_0(
 	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y)
 {
 	MR_fatal_error("called unify/2 for `typeclass_info' type");
@@ -248,8 +245,7 @@ mercury__private_builtin____Unify____typeclass_info_1_0(
 }
 
 MR_bool MR_CALL
-mercury__private_builtin____Unify____base_typeclass_info_1_0(
-	MR_Mercury_Type_Info type_info,
+mercury__private_builtin____Unify____base_typeclass_info_0_0(
 	MR_Mercury_Base_TypeClass_Info x, MR_Mercury_Base_TypeClass_Info y)
 {
 	MR_SORRY("unify for base_typeclass_info");
@@ -415,8 +411,8 @@ mercury__type_desc____Compare____type_desc_0_0(
 }
 
 void MR_CALL
-mercury__private_builtin____Compare____type_ctor_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+mercury__private_builtin____Compare____type_ctor_info_0_0(
+	MR_Comparison_Result *result,
 	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y)
 {
 	*result = MR_compare_type_ctor_info((MR_TypeCtorInfo) x,
@@ -424,24 +420,24 @@ mercury__private_builtin____Compare____type_ctor_info_1_0(
 }
 
 void MR_CALL
-mercury__private_builtin____Compare____type_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+mercury__private_builtin____Compare____type_info_0_0(
+	MR_Comparison_Result *result,
 	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y)
 {
 	*result = MR_compare_type_info((MR_TypeInfo) x, (MR_TypeInfo) y);
 }
 
 void MR_CALL
-mercury__private_builtin____Compare____typeclass_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+mercury__private_builtin____Compare____typeclass_info_0_0(
+	MR_Comparison_Result *result,
 	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y)
 {
 	MR_fatal_error("called compare/3 for `typeclass_info' type");
 }
 
 void MR_CALL
-mercury__private_builtin____Compare____base_typeclass_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+mercury__private_builtin____Compare____base_typeclass_info_0_0(
+	MR_Comparison_Result *result,
 	MR_Mercury_Base_TypeClass_Info x, MR_Mercury_Base_TypeClass_Info y)
 {
 	MR_SORRY("compare for base_typeclass_info");
@@ -590,35 +586,34 @@ mercury__type_desc__do_unify__type_desc_0_0(MR_Box x, MR_Box y)
 }
 
 MR_bool MR_CALL
-mercury__private_builtin__do_unify__type_ctor_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Box x, MR_Box y)
+mercury__private_builtin__do_unify__type_ctor_info_0_0(
+	MR_Box x, MR_Box y)
 {
-	return mercury__private_builtin____Unify____type_ctor_info_1_0(
-		type_info, (MR_Mercury_Type_Ctor_Info) x, (MR_Mercury_Type_Ctor_Info) y);
+	return mercury__private_builtin____Unify____type_ctor_info_0_0(
+		(MR_Mercury_Type_Ctor_Info) x, (MR_Mercury_Type_Ctor_Info) y);
 }
 
 MR_bool MR_CALL
-mercury__private_builtin__do_unify__type_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Box x, MR_Box y)
+mercury__private_builtin__do_unify__type_info_0_0(
+	MR_Box x, MR_Box y)
 {
-	return mercury__private_builtin____Unify____type_info_1_0(
-		type_info, (MR_Mercury_Type_Info) x, (MR_Mercury_Type_Info) y);
+	return mercury__private_builtin____Unify____type_info_0_0(
+		(MR_Mercury_Type_Info) x, (MR_Mercury_Type_Info) y);
 }
 
 MR_bool MR_CALL
-mercury__private_builtin__do_unify__typeclass_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Box x, MR_Box y)
+mercury__private_builtin__do_unify__typeclass_info_0_0(
+	MR_Box x, MR_Box y)
 {
-	return mercury__private_builtin____Unify____typeclass_info_1_0(
-		type_info, (MR_Mercury_TypeClass_Info) x, (MR_Mercury_TypeClass_Info) y);
+	return mercury__private_builtin____Unify____typeclass_info_0_0(
+		(MR_Mercury_TypeClass_Info) x, (MR_Mercury_TypeClass_Info) y);
 }
 
 MR_bool MR_CALL
-mercury__private_builtin__do_unify__base_typeclass_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Box x, MR_Box y)
+mercury__private_builtin__do_unify__base_typeclass_info_0_0(
+	MR_Box x, MR_Box y)
 {
-	return mercury__private_builtin____Unify____base_typeclass_info_1_0(
-		type_info,
+	return mercury__private_builtin____Unify____base_typeclass_info_0_0(
 		(MR_Mercury_Base_TypeClass_Info) x,
 		(MR_Mercury_Base_TypeClass_Info) y);
 }
@@ -773,41 +768,34 @@ mercury__type_desc__do_compare__type_desc_0_0(
 }
 
 void MR_CALL
-mercury__private_builtin__do_compare__type_ctor_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Box x, MR_Box y)
+mercury__private_builtin__do_compare__type_ctor_info_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
-	mercury__private_builtin____Compare____type_ctor_info_1_0(
-		type_info, result,
+	mercury__private_builtin____Compare____type_ctor_info_0_0(result,
 		(MR_Mercury_Type_Ctor_Info) x, (MR_Mercury_Type_Ctor_Info) y);
 }
 
 void MR_CALL
-mercury__private_builtin__do_compare__type_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Box x, MR_Box y)
+mercury__private_builtin__do_compare__type_info_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
-	mercury__private_builtin____Compare____type_info_1_0(
-		type_info, result, (MR_Mercury_Type_Info) x, (MR_Mercury_Type_Info) y);
+	mercury__private_builtin____Compare____type_info_0_0(
+		result, (MR_Mercury_Type_Info) x, (MR_Mercury_Type_Info) y);
 }
 
 void MR_CALL
-mercury__private_builtin__do_compare__typeclass_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Box x, MR_Box y)
+mercury__private_builtin__do_compare__typeclass_info_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
-	mercury__private_builtin____Compare____typeclass_info_1_0(
-		type_info, result,
+	mercury__private_builtin____Compare____typeclass_info_0_0(result,
 		(MR_Mercury_TypeClass_Info) x, (MR_Mercury_TypeClass_Info) y);
 }
 
 void MR_CALL
-mercury__private_builtin__do_compare__base_typeclass_info_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Box x, MR_Box y)
+mercury__private_builtin__do_compare__base_typeclass_info_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
-	mercury__private_builtin____Compare____base_typeclass_info_1_0(
-		type_info, result,
+	mercury__private_builtin____Compare____base_typeclass_info_0_0(result,
 		(MR_Mercury_Base_TypeClass_Info) x,
 		(MR_Mercury_Base_TypeClass_Info) y);
 }
@@ -918,10 +906,10 @@ MR_UNIFY_COMPARE_REP_DECLS(builtin, trailptr, 0)
 MR_UNIFY_COMPARE_REP_DECLS(builtin, ticket, 0)
 MR_UNIFY_COMPARE_REP_DECLS(private_builtin, heap_pointer, 0)
 MR_UNIFY_COMPARE_REP_DECLS(private_builtin, ref, 1)
-MR_UNIFY_COMPARE_REP_DECLS(private_builtin, type_ctor_info, 1)
-MR_UNIFY_COMPARE_REP_DECLS(private_builtin, type_info, 1)
-MR_UNIFY_COMPARE_REP_DECLS(private_builtin, base_typeclass_info, 1)
-MR_UNIFY_COMPARE_REP_DECLS(private_builtin, typeclass_info, 1)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, type_ctor_info, 0)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, type_info, 0)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, base_typeclass_info, 0)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, typeclass_info, 0)
 MR_UNIFY_COMPARE_REP_DECLS(private_builtin, zero_type_ctor_info, 0)
 MR_UNIFY_COMPARE_REP_DECLS(private_builtin, zero_type_info, 0)
 MR_UNIFY_COMPARE_REP_DECLS(private_builtin, zero_base_typeclass_info, 0)
@@ -950,10 +938,10 @@ MR_UNIFY_COMPARE_REP_DEFNS(builtin, trailptr, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, ticket, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, heap_pointer, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, ref, 1)
-MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, type_ctor_info, 1)
-MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, type_info, 1)
-MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, base_typeclass_info, 1)
-MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, typeclass_info, 1)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, type_ctor_info, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, type_info, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, base_typeclass_info, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, typeclass_info, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, zero_type_ctor_info, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, zero_type_info, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, zero_base_typeclass_info, 0)
@@ -1029,10 +1017,10 @@ MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, trailptr, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, ticket, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, heap_pointer, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, ref, 1);
-MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, type_ctor_info, 1);
-MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, type_info, 1);
-MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, base_typeclass_info, 1);
-MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, typeclass_info, 1);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, type_ctor_info, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, type_info, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, base_typeclass_info, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, typeclass_info, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, zero_type_ctor_info, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, zero_type_info, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, zero_base_typeclass_info, 0);
@@ -1064,10 +1052,10 @@ MR_BEGIN_MODULE(mercury_builtin_types)
 	MR_UNIFY_COMPARE_REP_LABELS(builtin, ticket, 0)
 	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, heap_pointer, 0)
 	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, ref, 1)
-	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, type_ctor_info, 1)
-	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, type_info, 1)
-	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, base_typeclass_info, 1)
-	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, typeclass_info, 1)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, type_ctor_info, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, type_info, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, base_typeclass_info, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, typeclass_info, 0)
 	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, zero_type_ctor_info, 0)
 	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, zero_type_info, 0)
 	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, zero_base_typeclass_info, 0)
@@ -1476,7 +1464,7 @@ MR_BEGIN_CODE
 
 #define	module		private_builtin
 #define	type		type_ctor_info
-#define	arity		1
+#define	arity		0
 #define	unify_code	int	comp;					\
 									\
 			MR_save_transient_registers();			\
@@ -1511,7 +1499,7 @@ MR_BEGIN_CODE
 
 #define	module		private_builtin
 #define	type		type_info
-#define	arity		1
+#define	arity		0
 #define	unify_code	int	comp;					\
 									\
 			MR_save_transient_registers();			\
@@ -1546,7 +1534,7 @@ MR_BEGIN_CODE
 
 #define	module		private_builtin
 #define	type		base_typeclass_info
-#define	arity		1
+#define	arity		0
 #define	unify_code	MR_fatal_error("called unify/2 for `base_typeclass_info' type");
 #define	compare_code	MR_fatal_error("called compare/3 for `base_typeclass_info' type");
 
@@ -1567,7 +1555,7 @@ MR_BEGIN_CODE
 
 #define	module		private_builtin
 #define	type		typeclass_info
-#define	arity		1
+#define	arity		0
 #define	unify_code	MR_fatal_error("called unify/2 for `base_typeclass_info' type");
 #define	compare_code	MR_fatal_error("called compare/3 for `base_typeclass_info' type");
 
@@ -1902,10 +1890,10 @@ mercury_sys_init_mercury_builtin_types_init(void)
 #endif
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, heap_pointer, 0);
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, ref, 1);
-	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, type_ctor_info, 1);
-	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, type_info, 1);
-	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, base_typeclass_info, 1);
-	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, typeclass_info, 1);
+	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, type_ctor_info, 0);
+	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, type_info, 0);
+	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, base_typeclass_info, 0);
+	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, typeclass_info, 0);
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, zero_type_ctor_info, 0);
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, zero_type_info, 0);
 	MR_INIT_TYPE_CTOR_INFO_MNA(private_builtin, zero_base_typeclass_info, 0);
@@ -1939,10 +1927,10 @@ mercury_sys_init_mercury_builtin_types_init_type_tables(void)
 #endif
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, heap_pointer, 0);
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, ref, 1);
-	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 1);
-	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, type_info, 1);
-	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 1);
-	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1);
+	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 0);
+	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, type_info, 0);
+	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 0);
+	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, typeclass_info, 0);
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, zero_type_ctor_info, 0);
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, zero_type_info, 0);
 	MR_REGISTER_TYPE_CTOR_INFO(private_builtin, zero_base_typeclass_info, 0);
@@ -1976,13 +1964,13 @@ mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *fp)
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, heap_pointer, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, ref, 1);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin,
-		type_ctor_info, 1);
+		type_ctor_info, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin,
-		type_info, 1);
+		type_info, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin,
-		base_typeclass_info, 1);
+		base_typeclass_info, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin,
-		typeclass_info, 1);
+		typeclass_info, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin,
 		zero_type_ctor_info, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin,

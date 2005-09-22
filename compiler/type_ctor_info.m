@@ -393,24 +393,6 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         ;
             true
         ),
-        (
-            ModuleName = unqualified(ModuleStr2),
-            ModuleStr2 = "private_builtin",
-            TypeArity = 1,
-            ( TypeName = "type_info"
-            ; TypeName = "type_ctor_info"
-            ; TypeName = "typeclass_info"
-            ; TypeName = "base_typeclass_info"
-            ; TypeName = "zero_type_info"
-            ; TypeName = "zero_type_ctor_info"
-            ; TypeName = "zero_typeclass_info"
-            ; TypeName = "zero_base_typeclass_info"
-            )
-        ->
-            svset__insert(typeinfo_fake_arity_flag, !Flags)
-        ;
-            true
-        ),
         TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, TypeArity,
             UnifyUniv, CompareUniv, !.Flags, Details)
     ),
@@ -437,10 +419,10 @@ builtin_type_ctor("type_desc", "type_desc", 0, type_desc).
 :- pred impl_type_ctor(string::in, string::in, int::in, impl_ctor::out)
     is semidet.
 
-impl_type_ctor("private_builtin", "type_ctor_info", 1, type_ctor_info).
-impl_type_ctor("private_builtin", "type_info", 1, type_info).
-impl_type_ctor("private_builtin", "typeclass_info", 1, typeclass_info).
-impl_type_ctor("private_builtin", "base_typeclass_info", 1,
+impl_type_ctor("private_builtin", "type_ctor_info", 0, type_ctor_info).
+impl_type_ctor("private_builtin", "type_info", 0, type_info).
+impl_type_ctor("private_builtin", "typeclass_info", 0, typeclass_info).
+impl_type_ctor("private_builtin", "base_typeclass_info", 0,
     base_typeclass_info).
 impl_type_ctor("private_builtin", "zero_type_ctor_info", 0, type_ctor_info).
 impl_type_ctor("private_builtin", "zero_type_info", 0, type_info).

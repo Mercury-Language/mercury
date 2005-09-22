@@ -279,31 +279,14 @@ typed_compare(R, X, Y) :-
     % This section of the module handles the runtime representation of
     % type information.
 
-    % The actual arities of these two function symbols are variable;
-    % they depend on the number of type parameters of the type represented
-    % by the type_info, and how many predicates we associate with each type.
-    %
-    % Note that, since these types look to the compiler as though they
-    % are candidates to become no_tag types, special code is required
-    % to handle them in type_util:type_is_no_tag_type/3.
-
-:- type type_info(T) ---> type_info(type_ctor_info(T) /*, ... */).
-:- type type_ctor_info(T) ---> type_ctor_info(int /*, ... */).
+:- type type_info.
+:- type type_ctor_info.
 
 :- type zero_type_info.
 :- type zero_type_ctor_info.
 
-    % The type variable in these types isn't really a type variable,
-    % it is a place for polymorphism.m to put a representation of the
-    % class constraint about which the typeclass_info carries information.
-    %
-    % Note that, since these types look to the compiler as though they
-    % are candidates to become no_tag types, special code is required
-    % to handle them in type_util:type_is_no_tag_type/3.
-
-:- type typeclass_info(T) ---> typeclass_info(base_typeclass_info(T)
-                        /*, ... */).
-:- type base_typeclass_info(_) ---> typeclass_info(int /*, ... */).
+:- type typeclass_info.
+:- type base_typeclass_info.
 
 :- type zero_typeclass_info.
 :- type zero_base_typeclass_info.
@@ -312,8 +295,18 @@ typed_compare(R, X, Y) :-
     % used for copying type_info/1 and typeclass_info/1 types.
     % XXX Document me better
     %
-:- type sample_type_info ---> sample_type_info(type_info(int)).
-:- type sample_typeclass_info ---> sample_typeclass_info(typeclass_info(int)).
+:- type sample_type_info
+    ---> sample_type_info(old_type_info(int)).
+:- type sample_typeclass_info
+    ---> sample_typeclass_info(old_typeclass_info(int)).
+:- type old_type_info(T)
+    ---> old_type_info(old_type_ctor_info(T)).
+:- type old_type_ctor_info(T)
+    ---> old_type_ctor_info(int).
+:- type old_typeclass_info(T)
+    ---> old_typeclass_info(old_base_typeclass_info(T)).
+:- type old_base_typeclass_info(_)
+    ---> old_typeclass_info(int).
 
     % type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo):
     %
@@ -323,8 +316,8 @@ typed_compare(R, X, Y) :-
     % Note: Index must be equal to the number of the desired type_info
     % plus the number of superclasses for this class.
     %
-:- pred type_info_from_typeclass_info(typeclass_info(_)::in, int::in,
-    type_info(T)::out) is det.
+:- pred type_info_from_typeclass_info(typeclass_info::in, int::in,
+    type_info::out) is det.
 :- pred zero_type_info_from_typeclass_info(zero_typeclass_info::in, int::in,
     zero_type_info::out) is det.
 
@@ -334,8 +327,8 @@ typed_compare(R, X, Y) :-
     % Extracts the TypeInfo for the Indexth unconstrained type variable
     % from the instance represented by TypeClassInfo.
     %
-:- pred unconstrained_type_info_from_typeclass_info(typeclass_info(_)::in,
-    int::in, type_info(_)::out) is det.
+:- pred unconstrained_type_info_from_typeclass_info(typeclass_info::in,
+    int::in, type_info::out) is det.
 :- pred zero_unconstrained_type_info_from_typeclass_info(
     zero_typeclass_info::in, int::in, zero_type_info::out) is det.
 
@@ -344,8 +337,8 @@ typed_compare(R, X, Y) :-
     % Extracts SuperClass from TypeClassInfo where SuperClass is the
     % Indexth superclass of the class.
     %
-:- pred superclass_from_typeclass_info(typeclass_info(_)::in,
-    int::in, typeclass_info(_)::out) is det.
+:- pred superclass_from_typeclass_info(typeclass_info::in,
+    int::in, typeclass_info::out) is det.
 :- pred zero_superclass_from_typeclass_info(zero_typeclass_info::in,
     int::in, zero_typeclass_info::out) is det.
 
@@ -358,8 +351,8 @@ typed_compare(R, X, Y) :-
     % Note: Index must be equal to the number of the desired constraint
     % plus the number of unconstrained type variables for this instance.
     %
-:- pred instance_constraint_from_typeclass_info(typeclass_info(_)::in,
-    int::in, typeclass_info(_)::out) is det.
+:- pred instance_constraint_from_typeclass_info(typeclass_info::in,
+    int::in, typeclass_info::out) is det.
 :- pred zero_instance_constraint_from_typeclass_info(zero_typeclass_info::in,
     int::in, zero_typeclass_info::out) is det.
 

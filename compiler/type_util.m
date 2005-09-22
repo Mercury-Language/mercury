@@ -550,15 +550,15 @@ type_category_is_atomic(user_ctor_type) = no.
 type_ctor_is_array(qualified(unqualified("array"), "array") - 1).
 
 type_ctor_has_hand_defined_rtti(Type, Body) :-
-	Type = qualified(mercury_private_builtin_module, Name) - Arity,
-	( Name = "type_info", Arity = 1
-	; Name = "type_ctor_info", Arity = 1
-	; Name = "typeclass_info", Arity = 1
-	; Name = "base_typeclass_info", Arity = 1
-	; Name = "zero_type_info", Arity = 0
-	; Name = "zero_type_ctor_info", Arity = 0
-	; Name = "zero_typeclass_info", Arity = 0
-	; Name = "zero_base_typeclass_info", Arity = 0
+	Type = qualified(mercury_private_builtin_module, Name) - 0,
+	( Name = "type_info"
+	; Name = "type_ctor_info"
+	; Name = "typeclass_info"
+	; Name = "base_typeclass_info"
+	; Name = "zero_type_info"
+	; Name = "zero_type_ctor_info"
+	; Name = "zero_typeclass_info"
+	; Name = "zero_base_typeclass_info"
 	),
 	\+ (	Body = du_type(_, _, _, _, _, yes(_))
 	   ;	Body = foreign_type(_)
@@ -570,16 +570,16 @@ is_introduced_type_info_type(Type) :-
 	is_introduced_type_info_type_ctor(TypeCtor).
 
 is_introduced_type_info_type_ctor(TypeCtor) :-
-	TypeCtor = qualified(PrivateBuiltin, Name) - Arity,
+	TypeCtor = qualified(PrivateBuiltin, Name) - 0,
 	mercury_private_builtin_module(PrivateBuiltin),
-	( Name = "type_info", Arity = 1
-	; Name = "type_ctor_info", Arity = 1
-	; Name = "typeclass_info", Arity = 1
-	; Name = "base_typeclass_info", Arity = 1
-	; Name = "zero_type_info", Arity = 0
-	; Name = "zero_type_ctor_info", Arity = 0
-	; Name = "zero_typeclass_info", Arity = 0
-	; Name = "zero_base_typeclass_info", Arity = 0
+	( Name = "type_info"
+	; Name = "type_ctor_info"
+	; Name = "typeclass_info"
+	; Name = "base_typeclass_info"
+	; Name = "zero_type_info"
+	; Name = "zero_type_ctor_info"
+	; Name = "zero_typeclass_info"
+	; Name = "zero_base_typeclass_info"
 	).
 
 is_introduced_type_info_type_category(int_type) = no.
@@ -632,13 +632,13 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
 		TypeCategory = str_type
 	; TypeCtor = unqualified("void") - 0 ->
 		TypeCategory = void_type
-	; TypeCtor = qualified(PrivateBuiltin, "type_info") - 1 ->
+	; TypeCtor = qualified(PrivateBuiltin, "type_info") - 0 ->
 		TypeCategory = type_info_type
-	; TypeCtor = qualified(PrivateBuiltin, "type_ctor_info") - 1 ->
+	; TypeCtor = qualified(PrivateBuiltin, "type_ctor_info") - 0 ->
 		TypeCategory = type_ctor_info_type
-	; TypeCtor = qualified(PrivateBuiltin, "typeclass_info") - 1 ->
+	; TypeCtor = qualified(PrivateBuiltin, "typeclass_info") - 0 ->
 		TypeCategory = typeclass_info_type
-	; TypeCtor = qualified(PrivateBuiltin, "base_typeclass_info") - 1 ->
+	; TypeCtor = qualified(PrivateBuiltin, "base_typeclass_info") - 0 ->
 		TypeCategory = base_typeclass_info_type
 	; TypeCtor = qualified(PrivateBuiltin, "zero_type_info") - 0 ->
 		TypeCategory = type_info_type
@@ -856,11 +856,11 @@ comparison_result_type = defined(Name, [], star) :-
 
 type_info_type = defined(Name, [], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	Name = qualified(BuiltinModule, "zero_type_info").
+	Name = qualified(BuiltinModule, "type_info").
 
 type_ctor_info_type = defined(Name, [], star) :-
 	mercury_private_builtin_module(BuiltinModule),
-	Name = qualified(BuiltinModule, "zero_type_ctor_info").
+	Name = qualified(BuiltinModule, "type_ctor_info").
 
 aditi_state_type = defined(Name, [], star) :-
 	aditi_public_builtin_module(BuiltinModule),

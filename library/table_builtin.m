@@ -1297,12 +1297,12 @@ pretend_to_generate_value(Bogus) :-
 	% Lookup or insert a type_info in the given trie.
 	%
 :- impure pred table_lookup_insert_typeinfo(ml_trie_node::in,
-	private_builtin.type_info(T)::in, ml_trie_node::out) is det.
+	private_builtin.type_info::in, ml_trie_node::out) is det.
 
 	% Lookup or insert a typeclass_info in the given trie.
 	%
 :- impure pred table_lookup_insert_typeclassinfo(ml_trie_node::in,
-	private_builtin.typeclass_info(T)::in, ml_trie_node::out) is det.
+	private_builtin.typeclass_info::in, ml_trie_node::out) is det.
 
 	% Save an integer answer in the given answer block at the given
 	% offset.

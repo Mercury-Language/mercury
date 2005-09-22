@@ -4265,7 +4265,7 @@ value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
 
 same_array_elem_type(_, _).
 
-:- pred same_private_builtin_type(private_builtin__type_info(T)::unused,
+:- pred same_private_builtin_type(private_builtin__type_info::unused,
     T::unused) is det.
 
 same_private_builtin_type(_, _).
@@ -4530,8 +4530,7 @@ type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
     add_revstring(String, !Rs).
 
 :- pred private_builtin_type_info_to_revstrings(
-    private_builtin__type_info(T)::in, revstrings::in, revstrings::out)
-    is det.
+    private_builtin__type_info::in, revstrings::in, revstrings::out) is det.
 
 private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs) :-
     TypeDesc = rtti_implementation__unsafe_cast(PrivateBuiltinTypeInfo),

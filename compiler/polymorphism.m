@@ -2392,7 +2392,7 @@ polymorphism__make_typeclass_info_from_subclass(Constraint,
 	% We extract the superclass typeclass_info by inserting a call
 	% to superclass_from_typeclass_info in private_builtin.
 	goal_util__generate_simple_call(mercury_private_builtin_module,
-		"zero_superclass_from_typeclass_info", predicate, only_mode,
+		"superclass_from_typeclass_info", predicate, only_mode,
 		det, [SubClassVar, IndexVar, Var], [], [], ModuleInfo,
 		term__context_init, SuperClassGoal),
 	!:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
@@ -3068,7 +3068,7 @@ polymorphism__gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index,
 	polymorphism__new_type_info_var_raw(Type, type_info, TypeInfoVar,
 		!VarSet, !VarTypes, !RttiVarMaps),
 	goal_util__generate_simple_call(mercury_private_builtin_module,
-		"zero_type_info_from_typeclass_info", predicate, only_mode,
+		"type_info_from_typeclass_info", predicate, only_mode,
 		det, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
 		[TypeInfoVar - ground(shared, none)], ModuleInfo,
 		term__context_init, CallGoal),
@@ -3200,8 +3200,7 @@ polymorphism__build_typeclass_info_type(_Constraint, DictionaryType) :-
 	% Note: we no longer store meaningful information in the argument
 	% of typeclass_info/1.
 	PrivateBuiltin = mercury_private_builtin_module,
-	TypeclassInfoTypeName =
-		qualified(PrivateBuiltin, "zero_typeclass_info"),
+	TypeclassInfoTypeName = qualified(PrivateBuiltin, "typeclass_info"),
 	DictionaryType = defined(TypeclassInfoTypeName, [], star).
 
 %---------------------------------------------------------------------------%
@@ -3210,7 +3209,7 @@ polymorphism__type_is_typeclass_info(TypeClassInfoType) :-
 	PrivateBuiltin = mercury_private_builtin_module,
 	(
 		type_to_ctor_and_args(TypeClassInfoType,
-			qualified(PrivateBuiltin, "typeclass_info") - 1,
+			qualified(PrivateBuiltin, "typeclass_info") - 0,
 			[_ConstraintTerm])
 	;
 		type_to_ctor_and_args(TypeClassInfoType,
@@ -3220,12 +3219,11 @@ polymorphism__type_is_typeclass_info(TypeClassInfoType) :-
 
 polymorphism__type_is_type_info_or_ctor_type(TypeInfoType) :-
 	type_to_ctor_and_args(TypeInfoType,
-		qualified(mercury_private_builtin_module, TypeName) - Arity,
-		Args),
-	( TypeName = "type_info", Args = [_], Arity = 1
-	; TypeName = "type_ctor_info", Args = [_], Arity = 1
-	; TypeName = "zero_type_info", Args = [], Arity = 0
-	; TypeName = "zero_type_ctor_info", Args = [], Arity = 0
+		qualified(mercury_private_builtin_module, TypeName) - 0, []),
+	( TypeName = "type_info"
+	; TypeName = "type_ctor_info"
+	; TypeName = "zero_type_info"
+	; TypeName = "zero_type_ctor_info"
 	).
 
 polymorphism__build_type_info_type(Type, TypeInfoType) :-

@@ -3983,7 +3983,7 @@ io__do_write_univ(NonCanon, Univ, Priority, !IO) :-
 
 same_array_elem_type(_, _).
 
-:- pred same_private_builtin_type(private_builtin__type_info(T)::unused,
+:- pred same_private_builtin_type(private_builtin__type_info::unused,
     T::unused) is det.
 
 same_private_builtin_type(_, _).
@@ -4221,7 +4221,7 @@ io__write_array(Array, !IO) :-
     io__write(List, !IO),
     io__write_string(")", !IO).
 
-:- pred io__write_private_builtin_type_info(private_builtin__type_info(T)::in,
+:- pred io__write_private_builtin_type_info(private_builtin__type_info::in,
     io::di, io::uo) is det.
 
 io__write_private_builtin_type_info(PrivateBuiltinTypeInfo, !IO) :-

@@ -163,13 +163,13 @@ static  MR_Point        MR_point;
 */
 
 extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1);
+  MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 0);
 extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 1);
+  MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 0);
 extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 1);
+  MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 0);
 extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 1);
+  MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 0);
 extern const struct MR_TypeCtorInfo_Struct
   MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_info, 0);
 extern const struct MR_TypeCtorInfo_Struct
@@ -213,8 +213,8 @@ MR_trace_always_ignored_type_ctors[] =
 {
     /* we ignore these until the browser can handle their varying arity, */
     /* or their definitions are updated. XXX */
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 1),
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 1),
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 0),
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 0),
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_typeclass_info, 0),
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_base_typeclass_info, 0),
 
@@ -241,8 +241,8 @@ MR_trace_maybe_ignored_type_ctors[] =
     ** We can print values of these types (after a fashion),
     ** but users are usually not interested in their values.
     */
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1),
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 1),
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 0),
+    &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 0),
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_info, 0),
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_ctor_info, 0),
     /* dummy member */
