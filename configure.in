@@ -227,19 +227,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 				( T = b ; T = c(_) ),
 				N = 1
 			).
-
-		:- pred s(int::out) is det.
-
-		s(X) :-
-			promise_equivalent_solutions [[X]] (
-				s_2(X)
-			).
-
-		:- pred s_2(int::out) is cc_multi.
-
-		s_2(1).
-		s_2(2).
-
+		
 		:- type a    ---> ac(int).
 
 		:- func a ^ elem(int, int) = int.
