@@ -197,6 +197,7 @@
 :- import_module ll_backend__layout_out.
 :- import_module ll_backend__pragma_c_gen.
 :- import_module ll_backend__rtti_out.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_foreign.
@@ -1740,18 +1741,40 @@ find_while_labels([Instr0 - _ | Instrs0], !WhileSet) :-
     list(instruction)::in, list(instruction)::out, int::in, int::out) is det.
 
 is_while_label(_, [], [], !Count).
-is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
-        !Count) :-
+is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs, !Count) :-
     ( Instr0 = label(_) ->
         Instrs = [Instr0 - Comment0 | Instrs0]
-    ; Instr0 = goto(label(Label)) ->
-        !:Count = !.Count + 1,
-        is_while_label(Label, Instrs0, Instrs, !Count)
-    ; Instr0 = if_val(_, label(Label)) ->
-        !:Count = !.Count + 1,
-        is_while_label(Label, Instrs0, Instrs, !Count)
     ;
+        ( Instr0 = goto(label(Label)) ->
+            !:Count = !.Count + 1
+        ; Instr0 = if_val(_, label(Label)) ->
+            !:Count = !.Count + 1
+        ; Instr0 = block(_, _, BlockInstrs) ->
+            count_while_label_in_block(Label, BlockInstrs, !Count)
+        ;
+            true
+        ),
         is_while_label(Label, Instrs0, Instrs, !Count)
+    ).
+
+:- pred count_while_label_in_block(label::in, list(instruction)::in,
+    int::in, int::out) is det.
+
+count_while_label_in_block(_, [], !Count).
+count_while_label_in_block(Label, [Instr0 - _Comment0 | Instrs0], !Count) :-
+    ( Instr0 = label(_) ->
+        unexpected(this_file, "label in block")
+    ;
+        ( Instr0 = goto(label(Label)) ->
+            !:Count = !.Count + 1
+        ; Instr0 = if_val(_, label(Label)) ->
+            !:Count = !.Count + 1
+        ; Instr0 = block(_, _, _) ->
+            unexpected(this_file, "block in block")
+        ;
+            true
+        ),
+        count_while_label_in_block(Label, Instrs0, !Count)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1906,6 +1929,9 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
         io__write_string("\twhile (1) {\n", !IO),
         output_instruction_list_while(Instrs, Label,
             PrintComments, ProfInfo, WhileSet, !IO)
+        % The matching close brace is printed in output_instruction_list
+        % when before the next label, before a goto that closes the loop,
+        % or when we get to the end of Instrs.
     ;
         output_instruction_list(Instrs, PrintComments, ProfInfo,
             WhileSet, !IO)
@@ -1942,11 +1968,55 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
         ),
         output_instruction_list_while(Instrs, Label,
             PrintComments, ProfInfo, WhileSet, !IO)
+    ; Instr0 = block(TempR, TempF, BlockInstrs) ->
+        output_block_start(TempR, TempF, !IO),
+        output_instruction_list_while_block(BlockInstrs, Label, PrintComments,
+            ProfInfo, !IO),
+        output_block_end(!IO),
+        output_instruction_list_while(Instrs, Label,
+            PrintComments, ProfInfo, WhileSet, !IO)
     ;
         output_instruction_and_comment(Instr0, Comment0,
             PrintComments, ProfInfo, !IO),
         output_instruction_list_while(Instrs, Label,
             PrintComments, ProfInfo, WhileSet, !IO)
+    ).
+
+:- pred output_instruction_list_while_block(list(instruction)::in, label::in,
+    bool::in, pair(label, bintree_set(label))::in, io::di, io::uo) is det.
+
+output_instruction_list_while_block([], _, _, _, !IO).
+output_instruction_list_while_block([Instr0 - Comment0 | Instrs], Label,
+        PrintComments, ProfInfo, !IO) :-
+    ( Instr0 = label(_) ->
+        unexpected(this_file, "label in block")
+    ; Instr0 = goto(label(Label)) ->
+        io__write_string("\tcontinue;\n", !IO),
+        require(unify(Instrs, []),
+            "output_instruction_list_while_block: code after goto")
+    ; Instr0 = if_val(Rval, label(Label)) ->
+        io__write_string("\tif (", !IO),
+        output_test_rval(Rval, !IO),
+        io__write_string(")\n\t\tcontinue;\n", !IO),
+        (
+            PrintComments = yes,
+            Comment0 \= ""
+        ->
+            io__write_string("\t\t/* ", !IO),
+            io__write_string(Comment0, !IO),
+            io__write_string(" */\n", !IO)
+        ;
+            true
+        ),
+        output_instruction_list_while_block(Instrs, Label,
+            PrintComments, ProfInfo, !IO)
+    ; Instr0 = block(_, _, _) ->
+        unexpected(this_file, "block in block")
+    ;
+        output_instruction_and_comment(Instr0, Comment0,
+            PrintComments, ProfInfo, !IO),
+        output_instruction_list_while_block(Instrs, Label,
+            PrintComments, ProfInfo, !IO)
     ).
 
 :- pred output_instruction_and_comment(instr::in, string::in, bool::in,
@@ -2003,19 +2073,9 @@ output_debug_instruction(Instr, !IO) :-
     ProfInfo = entry(local, ProcLabel) - ContLabelSet,
     output_instruction(Instr, ProfInfo, !IO).
 
-:- pred output_instruction(instr::in, pair(label, bintree_set(label))::in,
-    io::di, io::uo) is det.
+:- pred output_block_start(int::in, int::in, io::di, io::uo) is det.
 
-output_instruction(comment(Comment), _, !IO) :-
-    io__write_strings(["/*", Comment, "*/\n"], !IO).
-
-output_instruction(livevals(LiveVals), _, !IO) :-
-    io__write_string("/*\n* Live lvalues:\n", !IO),
-    set__to_sorted_list(LiveVals, LiveValsList),
-    output_livevals(LiveValsList, !IO),
-    io__write_string("*/\n", !IO).
-
-output_instruction(block(TempR, TempF, Instrs), ProfInfo, !IO) :-
+output_block_start(TempR, TempF, !IO) :-
     io__write_string("\t{\n", !IO),
     ( TempR > 0 ->
         io__write_string("\tMR_Word ", !IO),
@@ -2030,11 +2090,31 @@ output_instruction(block(TempR, TempF, Instrs), ProfInfo, !IO) :-
         io__write_string(";\n", !IO)
     ;
         true
-    ),
+    ).
+
+:- pred output_block_end(io::di, io::uo) is det.
+
+output_block_end(!IO) :-
+    io__write_string("\t}\n", !IO).
+
+:- pred output_instruction(instr::in, pair(label, bintree_set(label))::in,
+    io::di, io::uo) is det.
+
+output_instruction(comment(Comment), _, !IO) :-
+    io__write_strings(["/*", Comment, "*/\n"], !IO).
+
+output_instruction(livevals(LiveVals), _, !IO) :-
+    io__write_string("/*\n* Live lvalues:\n", !IO),
+    set__to_sorted_list(LiveVals, LiveValsList),
+    output_livevals(LiveValsList, !IO),
+    io__write_string("*/\n", !IO).
+
+output_instruction(block(TempR, TempF, Instrs), ProfInfo, !IO) :-
+    output_block_start(TempR, TempF, !IO),
     globals__io_lookup_bool_option(auto_comments, PrintComments, !IO),
     output_instruction_list(Instrs, PrintComments, ProfInfo,
         bintree_set__init, !IO),
-    io__write_string("\t}\n", !IO).
+    output_block_end(!IO).
 
 output_instruction(assign(Lval, Rval), _, !IO) :-
     io__write_string("\t", !IO),
@@ -5191,5 +5271,11 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
     varset__lookup_name(VarSet, Var, VarName),
     string__append_list([VarName, "\t ->\t", StackStr, SlotStr, "\n",
         !.Explanation], !:Explanation).
+
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "llds_out.m".
 
 %---------------------------------------------------------------------------%
