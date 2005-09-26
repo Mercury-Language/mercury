@@ -217,10 +217,10 @@ assertion__is_associativity_assertion(AssertId, Module, CallVars,
         P = conj(PCalls) - _PGoalInfo,
         Q = conj(QCalls) - _QGoalInfo
     ),
-
-    AssociativeVars - OutputVar =
-        promise_only_solution(associative(PCalls, QCalls,
-            UniversiallyQuantifiedVars, CallVars)).
+    promise_equivalent_solutions [AssociativeVars, OutputVar] (
+         associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
+            AssociativeVars - OutputVar)
+    ).
 
     % associative(Ps, Qs, Us, R):
     %

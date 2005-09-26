@@ -552,13 +552,12 @@ recompilation__usage__find_all_used_imported_items(ModuleInfo,
 	% causing ambiguity when the interface of the module changes.
 	%
 	map__init(ImportedItems0),
-	ImportedItems2 = promise_only_solution(
-		(pred(ImportedItems1::out) is cc_multi :-
-			std_util__unsorted_aggregate(
-				visible_modules(ModuleInfo),
-				insert_into_imported_items_map,
-				ImportedItems0, ImportedItems1)
-		)),
+	promise_equivalent_solutions [ImportedItems1] (
+		std_util__unsorted_aggregate(
+			visible_modules(ModuleInfo),
+			insert_into_imported_items_map,
+			ImportedItems0, ImportedItems1)
+	),
 
 	queue__init(ItemsToProcess0),
 	map__init(ModuleUsedClasses),
@@ -573,7 +572,7 @@ recompilation__usage__find_all_used_imported_items(ModuleInfo,
 		Classes, ResolvedCtors, ResolvedPreds, ResolvedFuncs),
 
 	Info0 = recompilation_usage_info(ModuleInfo, ItemsToProcess0,
-		ImportedItems2, ModuleUsedClasses, Dependencies,
+		ImportedItems1, ModuleUsedClasses, Dependencies,
 		ResolvedUsedItems0, UsedClasses0),
 
 	recompilation__usage__find_all_used_imported_items_2(UsedItems,

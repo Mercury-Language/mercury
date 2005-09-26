@@ -108,10 +108,10 @@ recompilation__check__should_recompile_2(IsSubModule, FindTargetFiles,
 		MaybeVersionStream = ok(VersionStream0),
 		io__set_input_stream(VersionStream0, OldInputStream, !IO),
 
-		promise_only_solution_io(
+		promise_equivalent_solutions [Result, !:IO] (
 			should_recompile_3_try(IsSubModule,
-				FindTimestampFiles, !.Info),
-			Result, !IO),
+				FindTimestampFiles, !.Info, Result, !IO)
+		),
 		(
 			Result = succeeded(!:Info),
 			Reasons = !.Info ^ recompilation_reasons

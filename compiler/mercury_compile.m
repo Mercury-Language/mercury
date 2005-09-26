@@ -2789,8 +2789,9 @@ maybe_benchmark_modes(Pred, Stage, A0, A, !IO) :-
         BenchmarkModes = yes,
         globals__io_lookup_int_option(benchmark_modes_repeat, Repeats, !IO),
         io__format("%s %d ", [s(Stage), i(Repeats)], !IO),
-        promise_only_solution_io(do_io_benchmark(Pred, Repeats, A0), A - Time,
-            !IO),
+        promise_equivalent_solutions [A, Time, !:IO] (
+            do_io_benchmark(Pred, Repeats, A0, A - Time, !IO)
+        ),
         io__format("%d ms\n", [i(Time)], !IO)
     ;
         BenchmarkModes = no,

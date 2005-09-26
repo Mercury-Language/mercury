@@ -142,67 +142,59 @@ read_args_file(OptionsFile, MaybeMCFlags, !IO) :-
     ).
 
 
-read_options_file(OptionsFile, Variables0, MaybeVariables) -->
-    promise_only_solution_io(
-        (pred(R::out, di, uo) is cc_multi -->
-        try_io(
-                (pred((Variables1)::out, di, uo) is det -->
-            read_options_file(error, no_search, no, OptionsFile,
-                Variables0, Variables1)
-            ), R)
-        ), OptionsFileResult),
+read_options_file(OptionsFile, Variables0, MaybeVariables, !IO) :-
+    promise_equivalent_solutions [OptionsFileResult, !:IO] (
+        try_io((pred((Variables1)::out, !.IO::di, !:IO::uo) is det :-
+                    read_options_file(error, no_search, no, OptionsFile,
+                    Variables0, Variables1, !IO)
+            ),
+            OptionsFileResult, !IO)
+    ),
     (
-        { OptionsFileResult = succeeded(Variables) },
-        { MaybeVariables = yes(Variables) }
+        OptionsFileResult = succeeded(Variables),
+        MaybeVariables = yes(Variables)
     ;
-        { OptionsFileResult = exception(Exception) },
-        { Exception = univ(found_options_file_error) ->
+        OptionsFileResult = exception(Exception),
+        ( Exception = univ(found_options_file_error) ->
             MaybeVariables = no
         ;
             rethrow(OptionsFileResult)
-        }
-    ;
-        { OptionsFileResult = failed },
-        { error("read_options_files") }
+        )
     ).
 
-read_options_files(Variables0, MaybeVariables) -->
-    promise_only_solution_io(
-        (pred(R::out, di, uo) is cc_multi -->
+read_options_files(Variables0, MaybeVariables, !IO) :-
+    promise_equivalent_solutions [OptionsFileResult, !:IO] (
         try_io(
-                (pred((Variables1)::out, di, uo) is det -->
-            globals__io_lookup_accumulating_option(options_files,
-                OptionsFiles),
-            { ReadFile =
+                (pred((Variables1)::out, !.IO::di, !:IO::uo) is det :-
+            globals.io_lookup_accumulating_option(options_files,
+                OptionsFiles, !IO),
+            ReadFile =
                 (pred(OptionsFile::in, Vars0::in, Vars::out,
-                    di, uo) is det -->
-                { OptionsFile = "Mercury.options" ->
+                   !.IO::di, !:IO::uo) is det :-
+                ( OptionsFile = "Mercury.options" ->
                     ErrorIfNotExist = no_error,
                     Search = no_search
                 ;
                     ErrorIfNotExist = error,
                     Search = search
-                },
+                ),
                 read_options_file(ErrorIfNotExist, Search, no,
-                    OptionsFile, Vars0, Vars)
-                ) },
-            list__foldl2(ReadFile, OptionsFiles,
-                Variables0, Variables1)
-            ), R)
-        ), OptionsFileResult),
+                    OptionsFile, Vars0, Vars, !IO)
+                ),
+                list.foldl2(ReadFile, OptionsFiles, Variables0, Variables1,
+                    !IO)
+            ), OptionsFileResult, !IO)
+    ),
     (
-        { OptionsFileResult = succeeded(Variables) },
-        { MaybeVariables = yes(Variables) }
+        OptionsFileResult = succeeded(Variables),
+        MaybeVariables = yes(Variables)
     ;
-        { OptionsFileResult = exception(Exception) },
-        { Exception = univ(found_options_file_error) ->
+        OptionsFileResult = exception(Exception),
+        ( Exception = univ(found_options_file_error) ->
             MaybeVariables = no
         ;
             rethrow(OptionsFileResult)
-        }
-    ;
-        { OptionsFileResult = failed },
-        { error("read_options_files") }
+        )
     ).
 
 :- type error_if_not_exist
@@ -313,8 +305,9 @@ maybe_add_path_name(Dir, File) =
 
 read_options_lines(Dir, !Variables, !IO) :-
     io__get_line_number(LineNumber, !IO),
-    promise_only_solution_io(read_options_lines_2(Dir, !.Variables),
-        LineResult, !IO),
+    promise_equivalent_solutions [LineResult, !:IO] (
+        read_options_lines_2(Dir, !.Variables, LineResult, !IO)
+    ),
     (
         LineResult = succeeded(!:Variables - FoundEOF),
         (
@@ -742,20 +735,15 @@ read_item_or_eof(Pred, MaybeItem, !IO) :-
 :- func checked_split_into_words(list(char)) = maybe_error(list(string)).
 
 checked_split_into_words(Chars) = Result :-
-    TryResult =
-        promise_only_solution(
-        (pred(TResult::out) is cc_multi :-
-            try(
+    promise_equivalent_solutions [TryResult] (    
+        try(
             (pred(Words0::out) is det :-
                 Words0 = split_into_words(Chars)
-            ), TResult)
-        )),
+            ), TryResult)
+    ),
     (
         TryResult = succeeded(Words),
         Result = ok(Words)
-    ;
-        TryResult = failed,
-        error("split_into_words failed")
     ;
         TryResult = exception(Exception),
         ( Exception = univ(options_file_error(Msg)) ->
@@ -1145,6 +1133,12 @@ lookup_variable_chars(Variables, Var, Value, !Undef, !IO) :-
             !:Undef = [Var | !.Undef]
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "options_file.m.".
 
 %-----------------------------------------------------------------------------%
 :- end_module options_file.

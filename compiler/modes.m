@@ -2207,8 +2207,10 @@ modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals, Goals,
                 % Find the set of vars whose instantiation should lead to
                 % a deterministic schedule.
                 %
-            CandidateInitVars = promise_only_solution(
-                candidate_init_vars(!.ModeInfo, Goals0, NonFreeVars0)),
+            promise_equivalent_solutions [CandidateInitVars] (
+                candidate_init_vars(!.ModeInfo, Goals0, NonFreeVars0,
+                    CandidateInitVars)
+            ),
 
                 % And verify that all of these vars are
                 % solver type vars (and can therefore be

@@ -458,12 +458,9 @@ magic__find_used_imported_aditi_preds_2(ModuleInfo,
 			UsedPreds = UsedPreds0
 		)
 	    ),
-
-	Preds = promise_only_solution(
-		(pred(Preds1::out) is cc_multi :-
-			unsorted_aggregate(Generator, Accumulator,
-				Preds0, Preds1)
-		)).
+	promise_equivalent_solutions [Preds] (
+		unsorted_aggregate(Generator, Accumulator, Preds0, Preds)
+	).
 
 	% Convert imported Aditi procedures for the magic sets interface.
 :- pred magic__process_imported_procs(list(pred_id)::in, set(pred_id)::in,

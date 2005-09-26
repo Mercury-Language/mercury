@@ -1502,12 +1502,12 @@ goal_local_vars(Goal) = LocalVars :-
 
 :- func union_of_direct_subgoal_locals(hlds_goal) = set(prog_var).
 
-union_of_direct_subgoal_locals(Goal - _GoalInfo) =
-    promise_only_solution((pred(UnionOfSubGoalLocals::out) is cc_multi :-
+union_of_direct_subgoal_locals(Goal - _GoalInfo) = UnionOfSubGoalLocals :-
+    promise_equivalent_solutions [UnionOfSubGoalLocals] (
         set__init(EmptySet),
         unsorted_aggregate(direct_subgoal(Goal),
             union_subgoal_locals, EmptySet, UnionOfSubGoalLocals)
-    )).
+    ).
 
 :- pred union_subgoal_locals(hlds_goal::in, set(prog_var)::in,
     set(prog_var)::out) is det.

@@ -1461,7 +1461,9 @@ strip_unnecessary_impl_defns(Items0, Items) :-
     % strip_unnecessary_impl_defns_2 is cc_multi because of the call
     % to std_util.unsorted_aggregate. The order in which items are deleted
     % from a multi_map does not matter.
-    Items = promise_only_solution(strip_unnecessary_impl_defns_2(Items0)).
+    promise_equivalent_solutions [Items] (
+        strip_unnecessary_impl_defns_2(Items0, Items)
+    ).
 
 :- pred strip_unnecessary_impl_defns_2(item_list::in, item_list::out)
     is cc_multi.
