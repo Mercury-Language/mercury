@@ -2378,8 +2378,12 @@ get_with_inst(Body0, Body, WithInst) :-
 
 get_with_type(Body0, Body, Result) :-
 	(
-		Body0 = term__functor(term__atom("with_type"),
-			[Body1, Type1], _)
+		Body0 = term__functor(TypeQualifier, [Body1, Type1], _),
+		( 
+			TypeQualifier = term.atom("with_type")
+		;
+			TypeQualifier = term.atom(":")
+		)
 	->
 		Body = Body1,
 		parse_type(Type1, Result0),

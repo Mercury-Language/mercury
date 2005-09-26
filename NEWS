@@ -9,7 +9,7 @@ Changes to the Mercury language:
 * We now have support for optional module initialisation.
 * We now have support for impure module-local mutable variables.
 * Support for the old-style lambda, mode and pragma syntax has been removed.
-* `:' is now longer supported as a module qualifier.
+* ':' is now the type qualification operator, not a module qualifier.
 
 Changes to the Mercury standard library:
 * We have added an `injection' module, for reversible maps that are injective.

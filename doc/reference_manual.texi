@@ -424,6 +424,7 @@ Operator                        Specifier         Priority
 @@                               xfx               90
 ^                               xfy               99
 ^                               fx                100
+:                               yfx               120
 `@var{op}`                      yfx               120       @footnote{Operator term (@pxref{Terms}).}
 **                              xfy               200
 -                               fx                200
@@ -446,7 +447,6 @@ rem                             xfx               400
 aditi_bottom_up                 fx                500
 aditi_top_down                  fx                500
 ..                              xfx               550
-:                               yfx               600
 :=                              xfx               650
 =^                              xfx               650
 <                               xfx               700
@@ -1483,14 +1483,7 @@ or polymorphic types.
 An explicit type qualification expression is a term of the form
 
 @example
-with_type(@var{Term}, @var{Type})
-@end example
-
-@noindent
-or equivalently, as it is more commonly written,
-
-@example
-@var{Term} `with_type` @var{Type}
+@var{Term} : @var{Type}
 @end example
 
 @noindent
@@ -1501,6 +1494,20 @@ An explicit type qualification expression constrains
 the specified term to have the specified type.
 Apart from that, the meaning of an explicit type qualification
 expression is just the same as the specified @var{Term}.
+
+Currently we also support the following alternative syntax for
+type qualification:
+
+@example
+with_type(@var{Term}, @var{Type})
+@end example
+
+@noindent
+or equivalently, as it is more commonly written,
+
+@example
+@var{Term} `with_type` @var{Type}
+@end example
 
 @node Variable scoping
 @section Variable scoping

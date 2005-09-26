@@ -260,7 +260,7 @@ ops__op_table(".", after, yfx, 10).		% Mercury extension
 ops__op_table("/", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("//", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("/\\", after, yfx, 500).		% standard ISO Prolog
-ops__op_table(":", after, yfx, 600).		% `xfy' in ISO Prolog
+ops__op_table(":", after, yfx, 120).		% Mercury extension
 ops__op_table(":-", after, xfx, 1200).		% standard ISO Prolog
 ops__op_table(":-", before, fx, 1200).		% standard ISO Prolog
 ops__op_table("::", after, xfx, 1175).		% Mercury extension

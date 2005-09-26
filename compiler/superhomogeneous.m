@@ -398,7 +398,11 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
     substitute_state_var_mappings(Args1, Args, !VarSet, !SInfo, !IO),
     (
         % Handle explicit type qualification.
-        F = term__atom("with_type"),
+        (
+            F = term__atom("with_type")
+        ;
+            F = term__atom(":")
+        ),
         Args = [RVal, DeclType0]
     ->
         % DeclType0 is a prog_term, but it is really a type so we coerce it
