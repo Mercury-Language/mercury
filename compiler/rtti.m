@@ -120,8 +120,7 @@
 :- type type_ctor_flag
 	--->	reserve_tag_flag
 	;	variable_arity_flag
-	;	kind_of_du_flag
-	;	typeinfo_fake_arity_flag.
+	;	kind_of_du_flag.
 
 	% A type_ctor_details structure contains all the information that the
 	% runtime system needs to know about the data representation scheme
@@ -813,7 +812,6 @@ encode_type_ctor_flags(FlagSet) =
 encode_type_ctor_flag(reserve_tag_flag, N) 		= N + 1.
 encode_type_ctor_flag(variable_arity_flag, N)		= N + 2.
 encode_type_ctor_flag(kind_of_du_flag, N)		= N + 4.
-encode_type_ctor_flag(typeinfo_fake_arity_flag, N)	= N + 8.
 
 rtti_data_to_id(type_ctor_info(TypeCtorData),
 		ctor_rtti_id(RttiTypeCtor, type_ctor_info)) :-

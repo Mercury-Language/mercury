@@ -171,14 +171,6 @@ extern const struct MR_TypeCtorInfo_Struct
 extern const struct MR_TypeCtorInfo_Struct
   MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 0);
 extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_info, 0);
-extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_ctor_info, 0);
-extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_typeclass_info, 0);
-extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_base_typeclass_info, 0);
-extern const struct MR_TypeCtorInfo_Struct
   MR_TYPE_CTOR_INFO_NAME(std_util, type_desc, 0);
 extern const struct MR_TypeCtorInfo_Struct
   MR_TYPE_CTOR_INFO_NAME(std_util, type_ctor_desc, 0);
@@ -215,8 +207,6 @@ MR_trace_always_ignored_type_ctors[] =
     /* or their definitions are updated. XXX */
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 0),
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 0),
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_typeclass_info, 0),
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_base_typeclass_info, 0),
 
     /* we ignore these because they should never be needed */
     &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),
@@ -243,8 +233,6 @@ MR_trace_maybe_ignored_type_ctors[] =
     */
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 0),
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 0),
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_info, 0),
-    &MR_TYPE_CTOR_INFO_NAME(private_builtin, zero_type_ctor_info, 0),
     /* dummy member */
     NULL
 };

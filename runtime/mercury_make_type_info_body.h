@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2000-2004 The University of Melbourne.
+** Copyright (C) 2000-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -86,25 +86,6 @@ exist_func(const params_type params, const MR_PseudoTypeInfo pseudo_type_info,
 #else
         return MR_pseudo_type_info_is_ground(pseudo_type_info);
 #endif
-    }
-
-    if (MR_type_ctor_is_typeinfo_fake_arity(type_ctor_info)) {
-        /*
-        ** These types have to be treated specially, because their
-        ** arity is a lie. They do not actually take a type as an
-        ** argument, and looking for the typeinfo of that nonexistent
-        ** type can lead to core dumps.
-        **
-        ** The proper fix would be to avoid making their arities lie.
-        ** We use void as a space filler until that can be done.
-        */
-
-        ALLOCATE_WORDS(type_info_arena_word, 2);
-        type_info_arena = (MR_Word *) type_info_arena_word;
-        type_info_arena[0] = (MR_Word) type_ctor_info;
-        type_info_arena[1] = (MR_Word)
-            &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0);
-        return (return_type) type_info_arena;
     }
 
     if (MR_type_ctor_has_variable_arity(type_ctor_info)) {

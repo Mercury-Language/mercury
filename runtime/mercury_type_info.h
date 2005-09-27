@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2004 The University of Melbourne.
+** Copyright (C) 1995-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -75,7 +75,7 @@
 ** compiler/type_ctor_info.m and with MR_RTTI_VERSION in mercury_mcpp.h.
 */
 
-#define MR_RTTI_VERSION                 MR_RTTI_VERSION__STABLE_FOREIGN
+#define MR_RTTI_VERSION                 MR_RTTI_VERSION__TYPE_INFO_ZERO
 #define MR_RTTI_VERSION__INITIAL        2
 #define MR_RTTI_VERSION__USEREQ         3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT   4
@@ -84,6 +84,7 @@
 #define MR_RTTI_VERSION__REP            7
 #define MR_RTTI_VERSION__FLAG           8
 #define MR_RTTI_VERSION__STABLE_FOREIGN 9
+#define MR_RTTI_VERSION__TYPE_INFO_ZERO 10
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -91,10 +92,15 @@
 ** number.  The upper bound is the current version number.
 ** If you increase the lower bound you should also increase the binary
 ** compatibility version number in runtime/mercury_grade.h (MR_GRADE_PART_0).
+**
+** Note that the definition of this macro matters only if it used, and (for
+** efficiency) it shouldn't be used except if a period of transition between
+** different versions requires different treatment of RTTI structures generated
+** by different compiler versions.
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__FLAG)
+    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__TYPE_INFO_ZERO)
 
 /*---------------------------------------------------------------------------*/
 
@@ -1220,7 +1226,6 @@ struct MR_TypeCtorInfo_Struct {
 #define MR_TYPE_CTOR_FLAG_RESERVE_TAG           0x1
 #define MR_TYPE_CTOR_FLAG_VARIABLE_ARITY        0x2
 #define MR_TYPE_CTOR_FLAG_KIND_OF_DU            0x4
-#define MR_TYPE_CTOR_FLAG_TYPEINFO_FAKE_ARITY   0x8
 
 #define MR_type_ctor_has_reserve_tag(tci)                                   \
     ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_RESERVE_TAG)
@@ -1228,8 +1233,6 @@ struct MR_TypeCtorInfo_Struct {
     ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_VARIABLE_ARITY)
 #define MR_type_ctor_is_kind_of_du(tci)                                     \
     ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_KIND_OF_DU)
-#define MR_type_ctor_is_typeinfo_fake_arity(tci)                            \
-    ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_TYPEINFO_FAKE_ARITY)
 
 /*---------------------------------------------------------------------------*/
 
