@@ -26,7 +26,7 @@ mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
 mdb> finish -n
-      E4:     C2 EXIT pred io_tab_goto.test/5-0 (det)
+      E3:     C2 EXIT pred io_tab_goto.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
@@ -36,17 +36,17 @@ I/O tabling stopped.
 mdb> continue
 123
 456
-      E5:     C3 CALL pred io_tab_goto.test/5-0 (det)
+      E4:     C3 CALL pred io_tab_goto.test/5-0 (det)
 mdb> finish -n
-      E6:     C3 EXIT pred io_tab_goto.test/5-0 (det)
+      E5:     C3 EXIT pred io_tab_goto.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        N (arg 3)              	789
 mdb> retry -f
-      E5:     C3 CALL pred io_tab_goto.test/5-0 (det)
+      E4:     C3 CALL pred io_tab_goto.test/5-0 (det)
 mdb> finish -n
-      E7:     C3 EXIT pred io_tab_goto.test/5-0 (det)
+      E6:     C3 EXIT pred io_tab_goto.test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
