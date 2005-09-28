@@ -10,6 +10,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module require.
 
 :- type t
@@ -32,7 +33,14 @@ main(!IO) :-
 		Y = f,
 		Num = 42
 	;
-		( Y = g(Num) ; Y = h(Num, _) )
+		Z = Y,
+		(
+			Z = g(Num)
+		;
+			W = Z,
+			W = h(Num0, _),
+			Num = Num0 + 5
+		)
 	),
 	io__write_int(Num, !IO),
 	io__nl(!IO).

@@ -8,6 +8,8 @@ Changes to the Mercury language:
 * The Mercury typeclass system now supports functional dependencies.
 * We now have support for optional module initialisation.
 * We now have support for impure module-local mutable variables.
+* We now have support for recognizing switches in which multiple switch arms
+  have shared code.
 * Support for the old-style lambda, mode and pragma syntax has been removed.
 * ':' is now the type qualification operator, not a module qualifier.
 
@@ -50,6 +52,44 @@ Changes to the Mercury language:
   See the "Module-local mutable variables" section of the Mercury Language
   Reference Manual for details.
 
+* We now have support for recognizing switches in which multiple switch arms
+  have shared code. Where previously programmers had to write code like this
+
+  (
+  	X = a,
+	... code for a ...
+  ;
+  	X = b(...),
+	... code for b ...
+  ;
+  	X = c,
+	... code for c ...
+	... shared code ...
+  ;
+  	X = d(...),
+	... code for d ...
+	... shared code ...
+  )
+
+  to have the disjunction recognized as a switch on X, they can now write
+  code like this:
+
+  (
+  	X = a,
+	... code for a ...
+  ;
+  	X = b(...),
+	... code for b ...
+  ;
+  	(
+		X = c,
+		... code for c ...
+	;
+		X = d(...),
+		... code for d ...
+	),
+	... shared code ...
+  )
 
 Changes to the Mercury standard library:
 

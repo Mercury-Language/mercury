@@ -3280,6 +3280,21 @@ For example, consider the common pattern
 
 If L is input to the disjunction, then the disjunction is a switch on L.
 
+If two variables are unified with each other,
+then whatever function symbol one variable is unified with,
+the other variable is considered to be unified with the same function symbol.
+In the following example, since K is unified with L,
+the second disjunct unifies L as well as K with cons,
+and thus the disjunction is recognized as a switch.
+
+@example
+(
+        L = [], empty(Out)
+;
+        K = L, K = [H|T], nonempty(H, T, Out)
+)
+@end example
+
 A switch can fail
 if the various arms of the switch do not cover
 all the function symbols in the type of the switched-on variable,
@@ -3319,6 +3334,30 @@ disjunct occurs before the test of the switched-on variable.
         empty(Out), L = []
 ;
         L = [H|T], nonempty(H, T, Out)
+)
+@end example
+
+The unification of the switched-on variable with a function symbol
+may occur inside a nested disjunction in a given disjunct,
+provided that unification is preceded only by other unifications,
+both inside the nested disjunction and before the nested disjunction.
+The following example is a switch on X, provided X is bound beforehand.
+
+@example
+(
+        X = f
+	p(Out)
+;
+	Y = X,
+        (
+		Y = g,
+		Intermediate = 42
+	;
+		Z = Y,
+		Z = h(Arg),
+		q(Arg, Intermediate)
+	),
+	r(Intermediate, Out)
 )
 @end example
 
