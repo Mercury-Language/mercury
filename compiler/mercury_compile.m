@@ -1144,7 +1144,16 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 
         globals__io_get_globals(Globals, !IO),
         find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
-        ( any_mercury_builtin_module(ModuleName) ->
+        
+        globals.io_lookup_bool_option(trace_prof, TraceProf, !IO),
+       
+        ( 
+            any_mercury_builtin_module(ModuleName),
+            not (
+                    mercury_profiling_builtin_module(ModuleName),
+                    TraceProf = yes
+            )
+        ->
             % Some predicates in the builtin modules are missing
             % typeinfo arguments, which means that execution
             % tracing will not work on them. Predicates defined

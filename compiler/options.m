@@ -159,6 +159,7 @@
 		;	assume_gmake
 		;	trace
 		;	trace_optimized
+		;	trace_prof
 		;	trace_table_io
 		;	trace_table_io_only_retry
 		;	trace_table_io_states
@@ -903,6 +904,7 @@ option_defaults_2(aux_output_option, [
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
 	trace_optimized		-	bool(no),
+	trace_prof		-	bool(no),
 	trace_table_io		-	bool(no),
 	trace_table_io_only_retry -	bool(no),
 	trace_table_io_states	-	bool(no),
@@ -1612,6 +1614,7 @@ long_option("generate-mmc-deps",	generate_mmc_make_module_dependencies).
 long_option("trace",			trace).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
+long_option("trace-prof",		trace_prof).
 long_option("trace-table-io",		trace_table_io).
 long_option("trace-table-io-only-retry", trace_table_io_only_retry).
 long_option("trace-table-io-states",	trace_table_io_states).
@@ -3021,6 +3024,10 @@ options_help_aux_output -->
 % 		"\tdirectory, even for .debug and .decldebug grades.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
+% "--trace-prof" is not documented because if is only intended for developers
+% of the deep profiler.
+%		"--trace-prof"",
+%		"\tEnable tracing of deep profiling service pedicates.",
 % I/O tabling is deliberately not documented. It is mean to be switched on,
 % with consistent parameters, in debugging grades, and to be consistently
 % switched off in non-debugging grades. Inconsistent use of the options
