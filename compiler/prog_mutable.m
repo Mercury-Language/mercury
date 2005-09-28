@@ -36,13 +36,14 @@
 
 :- func mutable_init_pred_sym_name(sym_name, string) = sym_name.
 
-:- func mutable_c_var_name(string) = string.
+:- func mutable_c_var_name(sym_name, string) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module list.
 :- import_module std_util.
@@ -91,7 +92,10 @@ mutable_set_pred_sym_name(ModuleName, Name) =
 mutable_init_pred_sym_name(ModuleName, Name) =
     qualified(ModuleName, "initialise_mutable_" ++ Name).
 
-mutable_c_var_name(Name) = "mutable_variable_" ++ Name.
+mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
+	RawCVarName       = "mutable_variable_" ++ Name,
+	QualifiedCVarName = qualified(ModuleName, RawCVarName),
+	MangledCVarName   = sym_name_mangle(QualifiedCVarName).
 
 %-----------------------------------------------------------------------------%
 :- end_module prog_mutable.

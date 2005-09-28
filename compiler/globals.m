@@ -53,6 +53,11 @@
     ;       java
     ;       il.
 
+    % A string representation of the compilation target suitable
+    % for use in human-readable error messages.
+    %
+:- func compilation_target_string(compilation_target) = string.
+
     % A string representation of the foreign language suitable
     % for use in human-readable error messages.
     %
@@ -324,6 +329,11 @@ convert_termination_norm("size-data-elems", size_data_elems).
 
 convert_maybe_thread_safe("yes", yes).
 convert_maybe_thread_safe("no",  no).
+
+compilation_target_string(c)    = "C".
+compilation_target_string(il)   = "IL".
+compilation_target_string(java) = "Java".
+compilation_target_string(asm)  = "asm".
 
 foreign_language_string(c) = "C".
 foreign_language_string(managed_cplusplus) = "Managed C++".

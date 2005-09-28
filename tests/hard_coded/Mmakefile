@@ -71,6 +71,7 @@ ORDINARY_PROGS=	\
 	float_rounding_bug \
 	foreign_and_mercury \
 	foreign_import_module \
+	foreign_name_mutable \
 	foreign_type \
 	foreign_type2 \
 	foreign_type3 \
@@ -199,6 +200,7 @@ ORDINARY_PROGS=	\
 	unify_typeinfo_bug \
 	uniq_duplicate_call \
 	unused_float_box_test \
+	unusual_name_mutable \
 	user_compare \
 	user_defined_equality2 \
 	version_array_test \

@@ -203,7 +203,7 @@
 			mut_type		:: (type),
 			mut_init_value		:: prog_term,
 			mut_inst		:: (inst),
-			mut_attrs		:: list(mutable_attr)
+			mut_attrs		:: mutable_var_attributes 
 		)
 
 	;	nothing(
@@ -212,15 +212,9 @@
 		% used for items that should be ignored (for the
 		% purposes of backwards compatibility etc)
 
-	% Attributes that a mutable can have (part of the `:- mutable'
-	% declaration).
-	%
-:- type mutable_attr
-	--->	untrailed		% Updates are not trailed.
-	;	thread_safe.		% Access is considered thread safe.
-
 	% Indicates the type of information the compiler should get from the
 	% declaration's clause.
+	%
 :- type promise_type
 		% promise ex declarations
 	--->	exclusive		% each disjunct is mutually exclusive
@@ -244,6 +238,7 @@
 	% The `determinism' type specifies how many solutions a given
 	% procedure may have.  Procedures for manipulating this type
 	% are defined in det_analysis.m and hlds_data.m.
+	%
 :- type determinism
 	--->	det
 	;	semidet
@@ -257,6 +252,7 @@
 	% The `is_solver_type' type specifies whether a type is a "solver" type,
 	% for which `any' insts are interpreted as "don't know", or a non-solver
 	% type for which `any' is the same as `bound(...)'.
+	%
 :- type is_solver_type
 	--->	non_solver_type
 			% The inst `any' is always `bound' for this type.
@@ -272,6 +268,49 @@
 			string,		% The warning.
 			term		% The term to which it relates.
 		).
+
+%-----------------------------------------------------------------------------%
+%
+% Mutable variables
+%
+
+	% Indicates if  updates to the mutable are trailed or untrailed.
+	%
+:- type trailed ---> trailed ; untrailed.
+
+	% Has the user specified a name for us to use on the target code side
+	% of the FLI?
+	%
+:- type foreign_name
+	---> foreign_name(
+		foreign_name_lang :: foreign_language,
+		foreign_name_name :: string
+	).
+
+	% An abstract type for representing a set of mutable variable
+	% attributes.
+	%
+:- type mutable_var_attributes.
+
+	% Return the default attributes for a mutable variable.
+	%
+:- func default_mutable_attributes = mutable_var_attributes.
+
+	% Access functions for the `mutable_var_attributes' structure.
+	%
+:- func mutable_var_thread_safe(mutable_var_attributes) = thread_safe.
+:- func mutable_var_trailed(mutable_var_attributes) = trailed.
+:- func mutable_var_maybe_foreign_names(mutable_var_attributes)
+	= maybe(list(foreign_name)).
+
+:- pred set_mutable_var_thread_safe(thread_safe::in,
+	mutable_var_attributes::in, mutable_var_attributes::out) is det.
+
+:- pred set_mutable_var_trailed(trailed::in,
+	mutable_var_attributes::in, mutable_var_attributes::out) is det.
+
+:- pred set_mutable_add_foreign_name(foreign_name::in,
+	mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -580,23 +619,21 @@
 			mode_check_clause_arity	:: arity
 		).
 
+%-----------------------------------------------------------------------------%
 %
-% Stuff for the foreign interfacing pragmas.
+% Stuff for the foreign language interface pragmas
 %
 
-	%
 	% A foreign_language_type represents a type that is defined in a
 	% foreign language and accessed in Mercury (most likely through
 	% pragma foreign_type).
 	% Currently we only support foreign_language_types for IL.
 	%
-
-	%
 	% It is important to distinguish between IL value types and
 	% reference types, the compiler may need to generate different code
 	% for each of these cases.
 	%
-
+	%
 :- type foreign_language_type
 	--->	il(il_foreign_type)
 	;	c(c_foreign_type)
@@ -625,6 +662,7 @@
 	--->	reference
 	;	value.
 
+%-----------------------------------------------------------------------------%
 %
 % Stuff for tabling pragmas
 %
@@ -681,6 +719,7 @@
 					% by itself; it can have no Mercury
 					% descendants.
 
+%-----------------------------------------------------------------------------%
 %
 % Stuff for the `aditi_index' pragma
 %
@@ -699,6 +738,7 @@
 	--->	unique_B_tree
 	;	non_unique_B_tree.
 
+%-----------------------------------------------------------------------------%
 %
 % Stuff for the `termination_info' pragma.
 % See term_util.m.
@@ -724,15 +764,20 @@
 :- type pragma_arg_size_info	== generic_arg_size_info(unit).
 :- type pragma_termination_info	== generic_termination_info(unit, unit).
 
+%-----------------------------------------------------------------------------%
 %
-% Stuff for the `termination2_info' pragma.
+% Stuff for the `termination2_info' pragma
 %
-	
+
 	% This is the form in which termination information from other 
 	% modules (imported via `.opt' or `.trans_opt' files) comes.
 	% We convert this to an intermediate form and let the termination
 	% analyser convert it to the correct form.
-
+	% 
+	% NOTE: the reason that we cannot convert it to the correct form
+	% is that we don't have complete information about how many typeinfo
+	% related arguments there are until after the polymoprhism pass.
+	%
 :- type arg_size_constr
 	--->	le(list(arg_size_term), rat)
 	;	eq(list(arg_size_term), rat).
@@ -741,8 +786,9 @@
 
 :- type pragma_constr_arg_size_info == list(arg_size_constr).
 
+%-----------------------------------------------------------------------------%
 %
-% Stuff for the `unused_args' pragma.
+% Stuff for the `unused_args' pragma
 %
 
 	% This `mode_num' type is only used for mode numbers written out in
@@ -753,8 +799,9 @@
 	% (prog_data.m) should not depend on the HLDS.
 :- type mode_num == int.
 
+%-----------------------------------------------------------------------------%
 %
-% Stuff for the `exceptions' pragma.
+% Stuff for the `exceptions' pragma
 %
 
 :- type exception_status 
@@ -766,6 +813,7 @@
 				% This procedure may throw an exception
 				% The exception is classified by the 
 				% `exception_type' type.
+			
 		;	conditional.
 				% Whether the procedure will not throw an
 				% exception depends upon the value of one
@@ -785,17 +833,20 @@
 				% user-defined equality or comparison) or
 				% propagating an exception from them.
 
+%-----------------------------------------------------------------------------%
 %
-% Stuff for the `type_spec' pragma.
+% Stuff for the `type_spec' pragma
 %
 
 	% The type substitution for a `pragma type_spec' declaration.
 	% Elsewhere in the compiler we generally use the `tsubst' type
 	% which is a map rather than an assoc_list.
+	%
 :- type type_subst == assoc_list(tvar, type).
 
+%-----------------------------------------------------------------------------%
 %
-% Stuff for `foreign_code' pragma.
+% Stuff for `foreign_code' pragma
 %
 
 	% This type holds information about the implementation details
@@ -809,8 +860,10 @@
 	% program.
 	% The context is missing if the foreign code was constructed by
 	% the compiler.
-	% Note that nondet pragma foreign definitions might not be
+	%
+	% NOTE: nondet pragma foreign definitions might not be
 	% possible in all foreign languages.
+	%
 :- type pragma_foreign_code_impl
 	--->	ordinary(		% This is a foreign language
 					% definition of a model_det
@@ -1016,11 +1069,12 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Some more stuff for `pragma c_code'.
+% Some more stuff for the foreign language interface
 %
 
-		% an abstract type for representing a set of
-		% `pragma_c_code_attribute's.
+	% An abstract type for representing a set of
+	% `pragma_foreign_proc_attribute's.
+	%
 :- type pragma_foreign_proc_attributes.
 
 :- func default_attributes(foreign_language) = pragma_foreign_proc_attributes.
@@ -1111,6 +1165,7 @@
 
 	% This type specifies the termination property of a procedure
 	% defined using pragma c_code or pragma foreign_proc.
+	%
 :- type terminates
 	--->	terminates
 			% The foreign code will terminate for all input.
@@ -1272,7 +1327,7 @@
 	% designed to be used in only two ways: for translation to their HLDS
 	% equivalents by the unshroud functions in hlds_pred.m, and for
 	% printing for diagnostics.
-
+	%
 :- type shrouded_pred_id	---> shrouded_pred_id(int).
 :- type shrouded_proc_id	---> shrouded_proc_id(int).
 :- type shrouded_pred_proc_id	---> shrouded_pred_proc_id(int, int).
@@ -1513,9 +1568,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Kinds.
+% Kinds
 %
-
 	% Note that we don't support any kind other than `star' at the
 	% moment.  The other kinds are intended for the implementation
 	% of constructor classes.
@@ -1551,14 +1605,14 @@
 
 %-----------------------------------------------------------------------------%
 %
-% insts and modes
+% Insts and modes
 %
 
 	% This is how instantiatednesses and modes are represented.
 	% Note that while we use the normal term data structure to represent
 	% type terms (see above), we need a separate data structure for inst
 	% terms.
-
+	%
 :- type (inst)
 	--->		any(uniqueness)
 	;		free
@@ -1665,7 +1719,7 @@
 	% Note that `typed_ground' is a special case of `typed_inst',
 	% and `ground_inst' and `any_inst' are special cases of `unify_inst'.
 	% The reason for having the special cases is efficiency.
-
+	%
 :- type inst_name
 	--->	user_inst(sym_name, list(inst))
 	;	merge_inst(inst, inst)
@@ -1677,9 +1731,10 @@
 	;	typed_ground(uniqueness, type)
 	;	typed_inst(type, inst_name).
 
-	% Note: `is_live' records liveness in the sense used by
+	% NOTE: `is_live' records liveness in the sense used by
 	% mode analysis.  This is not the same thing as the notion of liveness
 	% used by code generation.  See compiler/notes/glossary.html.
+	%
 :- type is_live		--->	live ; dead.
 
 	% Unifications of insts fall into two categories, "real" and "fake".
@@ -1698,7 +1753,7 @@
 	% But these fake unifications must be allowed to unify with `clobbered'
 	% insts. Hence we pass down a flag to `abstractly_unify_inst' which
 	% specifies whether or not to allow unifications with clobbered values.
-
+	%
 :- type unify_is_real
 	--->	real_unify
 	;	fake_unify.
@@ -1723,7 +1778,7 @@
 
 	% This is how module-system declarations (such as imports
 	% and exports) are represented.
-
+	%
 :- type module_defn
 	--->	module(module_name)
 	;	end_module(module_name)
@@ -1883,6 +1938,11 @@
 
 :- import_module string.
 
+%-----------------------------------------------------------------------------%
+%
+% Some more stuff for the foreign language interface
+%
+
 :- type pragma_foreign_proc_attributes
 	--->	attributes(
 			foreign_language 	:: foreign_language,
@@ -2013,6 +2073,44 @@ extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
 extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
 extra_attribute_to_string(max_stack_size(Size)) =
 	"max_stack_size(" ++ string__int_to_string(Size) ++ ")".
+
+%-----------------------------------------------------------------------------%
+% 
+% Mutable variables
+%
+
+	% Attributes for mutable variables.
+	%
+:- type mutable_var_attributes
+	---> mutable_var_attributes(
+		mutable_trailed       :: trailed,
+		mutable_thread_safe   :: thread_safe,
+		mutable_foreign_names :: maybe(list(foreign_name))
+	).
+
+default_mutable_attributes =
+	mutable_var_attributes(trailed, not_thread_safe, no).
+
+mutable_var_thread_safe(MVarAttrs) = MVarAttrs ^ mutable_thread_safe.
+mutable_var_trailed(MVarAttrs) = MVarAttrs ^ mutable_trailed.
+mutable_var_maybe_foreign_names(MVarAttrs) = MVarAttrs ^ mutable_foreign_names.
+
+set_mutable_var_thread_safe(ThreadSafe, !Attributes) :-
+	!:Attributes = !.Attributes ^ mutable_thread_safe := ThreadSafe.
+set_mutable_var_trailed(Trailed, !Attributes) :-
+	!:Attributes = !.Attributes ^ mutable_trailed := Trailed.
+set_mutable_add_foreign_name(ForeignName, !Attributes) :-
+	MaybeForeignNames0 = !.Attributes ^ mutable_foreign_names,
+	(
+		MaybeForeignNames0 = no,
+		MaybeForeignNames  = yes([ForeignName])
+	;
+		MaybeForeignNames0 = yes(ForeignNames0),
+		ForeignNames = [ ForeignName | ForeignNames0],
+		MaybeForeignNames   = yes(ForeignNames)
+	),
+	!:Attributes =
+		!.Attributes ^ mutable_foreign_names := MaybeForeignNames.
 
 %-----------------------------------------------------------------------------%
 

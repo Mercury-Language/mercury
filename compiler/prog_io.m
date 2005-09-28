@@ -1819,11 +1819,12 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Result) :-
 
 % Mutable declaration syntax:
 %
-% :- mutable(name, type, value, inst, [untrailed, promise_thread_safe]).
+% :- mutable(name, type, value, inst, <attribute_list>).
 % (The list of attributes at the end is optional.)
 %
-% E.g.:
-% :- mutable(counter, int, 0, ground, [promise_thread_safe]).
+% e.g.:
+%
+% :- mutable(counter, int, 0, ground, [thread_safe]).
 %
 % This is converted into the following:
 %
@@ -1840,18 +1841,21 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Result) :-
 % 	"MR_trail_current_value(&mutable_counter);
 % 	 mutable_counter = X;").
 %
-% :- pragma foreign_decl("C", "MR_Word mutable_counter;").
+% :- pragma foreign_decl("C", "extern MR_Word mutable_counter;").
+% :- pragma foreign_code("C", "MR_Word mutable_counter;");
 %
 % :- import_module io.
 % :- initialise initialise_counter.
 % :- impure pred initialise_mutable_counter(io::di, io::uo) is det.
+%
 % initialise_mutable_counter(!IO) :-
 % 	impure set_counter(0).
 %
-% The `thread_safe' attributes are omitted if it is not listed in
-% the mutable declaration attributes.  Similarly, MR_trail_current_value() 
-% does not appear if `untrailed' appears in the mutable declaration
-% attributes.
+% If the `thread_safe' attribute is specified in <attribute_list>
+% then foreign_procs are created that have the thread_safe attribute
+% set.  If the `untrailed' attribute is specified in <attribute_list>
+% then the code for trailing the mutable variable in the set predicate
+% is omitted.
 
 :- pred parse_mutable_decl(module_name::in, varset::in, list(term)::in,
 	maybe1(item)::out) is semidet.
@@ -1864,7 +1868,7 @@ parse_mutable_decl(_ModuleName, _VarSet, Terms, Result) :-
 	parse_mutable_inst(InstTerm, InstResult),
 	(
 		OptMutAttrsTerm = [],
-		MutAttrsResult = ok([])
+		MutAttrsResult = ok(default_mutable_attributes)
 	;
 		OptMutAttrsTerm = [MutAttrsTerm],
 		parse_mutable_attrs(MutAttrsTerm, MutAttrsResult)
@@ -1939,34 +1943,89 @@ parse_mutable_inst(InstTerm, InstResult) :-
 		InstTerm)
 	).
 
+:- type collected_mutable_attribute
+	--->	trailed(trailed)
+	;	thread_safe(thread_safe)
+	;	foreign_name(foreign_name).
 
-:- pred parse_mutable_attrs(term::in, maybe1(list(mutable_attr))::out) is det.
+:- pred parse_mutable_attrs(term::in,
+	maybe1(mutable_var_attributes)::out) is det.
 
 parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
+	Attributes0 = default_mutable_attributes,
+	ConflictingAttributes = [
+		thread_safe(thread_safe) - thread_safe(not_thread_safe),
+		trailed(trailed) - trailed(untrailed)
+	],
 	(
-		list_term_to_term_list(MutAttrsTerm, MutAttrTerms)
+		list_term_to_term_list(MutAttrsTerm, MutAttrTerms),
+		map_parser(parse_mutable_attr, MutAttrTerms, MaybeAttrList),
+		MaybeAttrList = ok(CollectedMutAttrs)
 	->
-		map_parser(parse_mutable_attr, MutAttrTerms, MutAttrsResult)
+		% 
+		% We check for trailed/untrailed and
+		% thread_safe/not_thread_safe conflicts here and deal
+		% with conflicting foreign_name attributes in
+		% make_hlds_passes.m.
+		%
+		(
+			list.member(Conflict1 - Conflict2,
+				ConflictingAttributes),
+			list.member(Conflict1, CollectedMutAttrs),
+			list.member(Conflict2, CollectedMutAttrs)
+		->
+			MutAttrsResult = error("conflicting attributes " ++
+				"in attribute list", MutAttrsTerm)
+		;
+			list.foldl(process_mutable_attribute,
+				CollectedMutAttrs, Attributes0, Attributes),
+			MutAttrsResult = ok(Attributes)
+		)
 	;
 		MutAttrsResult = error("malformed attribute list in " ++
 		"mutable declaration", MutAttrsTerm)
 	).
 
-:- pred parse_mutable_attr(term::in, maybe1(mutable_attr)::out) is det.
+:- pred process_mutable_attribute(collected_mutable_attribute::in,
+	mutable_var_attributes::in, mutable_var_attributes::out) is det.
+
+process_mutable_attribute(thread_safe(ThreadSafe), !Attributes) :-
+	set_mutable_var_thread_safe(ThreadSafe, !Attributes).
+process_mutable_attribute(trailed(Trailed), !Attributes) :-
+	set_mutable_var_trailed(Trailed, !Attributes).
+process_mutable_attribute(foreign_name(ForeignName), !Attributes) :-
+	set_mutable_add_foreign_name(ForeignName, !Attributes).
+
+:- pred parse_mutable_attr(term::in,
+	maybe1(collected_mutable_attribute)::out) is det.
 
 parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
 	(
 		MutAttrTerm = term__functor(term__atom(String), [], _),
 		(
 			String  = "untrailed",
-			MutAttr = untrailed
+			MutAttr = trailed(untrailed)
+		;
+			String = "trailed",
+			MutAttr = trailed(trailed)
 		;
 			String  = "thread_safe",
-			MutAttr = thread_safe
+			MutAttr = thread_safe(thread_safe)
+		;
+			String = "not_thread_safe",
+			MutAttr = thread_safe(not_thread_safe)
 		)
 	->
 		MutAttrResult = ok(MutAttr)
 	;
+		MutAttrTerm = term.functor(term.atom("foreign_name"), Args, _),
+		Args = [LangTerm, ForeignNameTerm],
+		parse_foreign_language(LangTerm, Lang),
+		ForeignNameTerm = term.functor(term.string(ForeignName), [], _)
+	->
+		MutAttr = foreign_name(foreign_name(Lang, ForeignName)),
+		MutAttrResult = ok(MutAttr)
+	;	
 		MutAttrResult = error("unrecognised attribute in mutable " ++
 		"declaration", MutAttrTerm)
 	).

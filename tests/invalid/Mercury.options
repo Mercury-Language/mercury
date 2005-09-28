@@ -69,6 +69,11 @@ MCFLAGS-pragma_c_code_no_det =	--warn-inferred-erroneous
 MCFLAGS-record_syntax_errors =	--verbose-error-messages
 MCFLAGS-sub_c = 	--verbose-error-messages --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+
+# Force this test to be compiled in a non-trailing grade since in this
+# case the error we want to report is the absence of trailing.
+MCFLAGS-trailed_mutable = --no-use-trail
+
 MCFLAGS-test_nested =		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-transitive_import = --no-intermodule-optimization \

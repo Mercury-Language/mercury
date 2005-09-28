@@ -568,7 +568,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         true
     ).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
-    Item = mutable(Name, _Type, _InitTerm, _Inst, _MutAttrs),
+    Item = mutable(Name, _Type, _InitTerm, _Inst, Attrs),
     !.Status = item_status(ImportStatus, _),
     ( ImportStatus = exported ->
         error_is_exported(Context, "`mutable' declaration", !IO),
@@ -582,16 +582,101 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     % duplicating the definition of the global variable in any submodules.
     %
     ( status_defined_in_this_module(ImportStatus, yes) ->
+        mutable_var_maybe_foreign_names(Attrs) = MaybeForeignNames,
+        (
+            MaybeForeignNames = no,
+            TargetMutableName = mutable_c_var_name(ModuleName, Name)
+        ;
+            MaybeForeignNames = yes(ForeignNames),
+            %
+            % Report any errors with the foreign_name attributes during
+            % this pass.
+            %
+            ReportErrors = yes,
+            get_global_name_from_foreign_names(ReportErrors, Context,
+                ModuleName, Name, ForeignNames, TargetMutableName, !IO) 
+        ),
         %
         % XXX We don't currently support languages other than C.
         % 
+        module_info_name(!.ModuleInfo, ModuleName),
         ForeignDecl = pragma(compiler(mutable_decl),
-            foreign_decl(c, foreign_decl_is_local,
-                "MR_Word " ++ mutable_c_var_name(Name) ++ ";")),
-        add_item_decl_pass_2(ForeignDecl, Context, !Status, !ModuleInfo, !IO)
+            foreign_decl(c, foreign_decl_is_exported,
+                "extern MR_Word " ++ TargetMutableName ++ ";")),
+        add_item_decl_pass_2(ForeignDecl, Context, !Status, !ModuleInfo, !IO),
+        ForeignCode = pragma(compiler(mutable_decl),
+            foreign_code(c, "MR_Word " ++ TargetMutableName ++ ";")),
+        add_item_decl_pass_2(ForeignCode, Context, !Status, !ModuleInfo, !IO)
     ;   
         true
     ).
+
+    % Check to see if there is a valid foreign_name attribute for this
+    % backend.  If so, use it as the name of the global variable in
+    % the target code, otherwise take the Mercury name for the mutable
+    % and mangle it into an appropriate variable name.
+    %
+ :- pred get_global_name_from_foreign_names(bool::in, prog_context::in, 
+    module_name::in, string::in, list(foreign_name)::in, string::out,
+    io::di, io::uo) is det.
+
+get_global_name_from_foreign_names(ReportErrors, Context, ModuleName,
+        MercuryMutableName, ForeignNames, TargetMutableName, !IO) :-
+    globals.io_get_target(CompilationTarget, !IO),
+    %
+    % XXX We don't currently support the foreign_name attribute for languages
+    % other than C.
+    %
+    ( CompilationTarget = c ->
+        solutions(get_matching_foreign_name(ForeignNames, c),
+            TargetMutableNames),
+        (
+            TargetMutableNames = [],
+            TargetMutableName = mutable_c_var_name(ModuleName,
+                MercuryMutableName)
+        ;
+            TargetMutableNames = [foreign_name(_, TargetMutableName)]
+            % XXX We should really check that this is a valid identifier
+            % in the target language here.
+        ;
+            TargetMutableNames = [_, _ | _],
+            MultipleNamesError = [
+                words("Error: multiple foreign_name attributes specified"),
+                words("for the"),
+                fixed(compilation_target_string(CompilationTarget)),
+                words("backend.")
+            ],
+            write_error_pieces(Context, 0, MultipleNamesError, !IO),
+            TargetMutableName = mutable_c_var_name(ModuleName,
+                MercuryMutableName)
+        )
+    ;
+        (
+            ReportErrors = yes,
+            NYIError = [
+                words("Error: foreign_name mutable attribute not yet"),
+                words("implemented for the"),
+                fixed(compilation_target_string(CompilationTarget)),
+                words("backend.")
+            ],
+            write_error_pieces(Context, 0, NYIError, !IO)
+        ;
+            ReportErrors = no
+        ),
+        %
+        % This is just a dummy value - we only get here if an error
+        % has occured.
+        % 
+        TargetMutableName = mutable_c_var_name(ModuleName,
+            MercuryMutableName)
+    ).
+
+:- pred get_matching_foreign_name(list(foreign_name)::in,
+    foreign_language::in, foreign_name::out) is nondet.
+
+get_matching_foreign_name(ForeignNames, ForeignLanguage, ForeignName) :-
+    list.member(ForeignName, ForeignNames),
+    ForeignName = foreign_name(ForeignLanguage, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -890,9 +975,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         varset__new_named_var(varset__init, "X", X, VarSet),
         Attrs0 = default_attributes(c),
         set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
-        (
-            list__member(thread_safe, MutAttrs)
-        ->
+        ( mutable_var_thread_safe(MutAttrs) = thread_safe ->
             set_thread_safe(thread_safe, Attrs1, Attrs)
         ;
             Attrs = Attrs1
@@ -906,28 +989,54 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                 [InitTerm], (impure)) - Context),
         add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,
             !IO),
+        mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
+        (
+            MaybeForeignNames = no,
+            TargetMutableName = mutable_c_var_name(ModuleName, Name)
+        ;
+            MaybeForeignNames = yes(ForeignNames),
+            ReportErrors = no,    % We've already reported them during pass 2.
+            get_global_name_from_foreign_names(ReportErrors, Context,
+                    ModuleName, Name, ForeignNames, TargetMutableName, !IO)
+        ),
         set_purity((semipure), Attrs, GetAttrs),
         GetClause = pragma(compiler(mutable_decl), foreign_proc(GetAttrs,
             mutable_get_pred_sym_name(ModuleName, Name), predicate,
             [pragma_var(X, "X", out_mode(Inst))], VarSet,
-            ordinary("X = " ++ mutable_c_var_name(Name) ++ ";",
-                yes(Context)))),
+            ordinary("X = " ++ TargetMutableName ++ ";", yes(Context)))),
         add_item_clause(GetClause, !Status, Context, !ModuleInfo, !QualInfo,
             !IO),
+        TrailMutableUpdates = mutable_var_trailed(MutAttrs),
         (
-            list__member(untrailed, MutAttrs)
-        ->
+            TrailMutableUpdates = untrailed, 
             TrailCode = ""
         ;
-            TrailCode =
-                "MR_trail_current_value(&" ++
-                mutable_c_var_name(Name) ++ 
-                ");\n"
+            TrailMutableUpdates = trailed,
+            %
+            % If we require that the mutable to be trailed then
+            % we need to be compiling in a trailing grade.
+            %
+            globals.io_lookup_bool_option(use_trail, UseTrail, !IO),
+            (
+                UseTrail = yes,
+                TrailCode = "MR_trail_current_value(&" ++
+                    TargetMutableName ++ ");\n"
+            ;
+                UseTrail = no,
+                NonTrailingError = [
+                    words("Error: trailed mutable in non-trailing grade.")
+                ],
+                write_error_pieces(Context, 0, NonTrailingError, !IO),
+                %
+                % This is just a dummy value.
+                %
+                TrailCode = ""
+            )
         ),
         SetClause = pragma(compiler(mutable_decl), foreign_proc(Attrs,
             mutable_set_pred_sym_name(ModuleName, Name), predicate,
             [pragma_var(X, "X", in_mode(Inst))], VarSet,
-            ordinary(TrailCode ++ mutable_c_var_name(Name) ++ " = X;",
+            ordinary(TrailCode ++ TargetMutableName ++ " = X;",
                 yes(Context)))),
         add_item_clause(SetClause, !Status, Context, !ModuleInfo, !QualInfo,
             !IO)

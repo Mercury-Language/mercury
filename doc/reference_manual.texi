@@ -4597,17 +4597,45 @@ before the program's @samp{main/2} predicate is executed.  The type
 class constraints; @samp{initial_value} can be any Mercury expression with
 type @samp{vartype} and inst @samp{varinst}.
 
-The possible @samp{attributes} are @samp{thread_safe}, meaning that access to
-the mutable need not be protected in parallel grades (see
-@ref{Foreign code attributes}), and @samp{untrailed}, meaning that the effects
-of calls to @samp{set_varname/1} should not be undone on backtracking.
+The following @samp{attributes} must be supported:
+
+@table @asis
+
+@item @samp{thread_safe}/@samp{not_thread_safe}
+This attribute declares if it is safe for multiple threads to 
+access the mutable concurrently.  The default, in case none is
+specified, is @samp{not_thread_safe}.  (See @ref{Foreign code attributes}
+for further details.)
+
+@item @samp{trailed}/@samp{untrailed}
+This attribute declares if the implementation should generate code so that
+the effects of @samp{set_varname/1} can be undone on backtracking.  The
+default, in case none is specified, is @samp{trailed}.
+
+@end table
+
+The Melbourne Mercury compiler also supports the following attribute.
+
+@table @asis
+
+@item @samp{foreign_name(Lang, Name)}
+Allow foreign code to access the mutable variable in some implementation
+dependent manner.  @samp{Lang} must be a valid target language for
+this Mercury implementation.  @samp{Name} must be a valid identifier in
+that language.  It is an error to specify more than one foreign name
+attribute for each language.
+
+For the C backends this attribute allows foreign code to access
+the mutable variable as an external variable called @samp{Name}.
+This variable has type @samp{MR_Word}.
+
+This attribute is not currently implemented for the non-C backends.
+
+@end table
 
 Note that it is an error for a @samp{mutable} directive to appear in the
-interface section of a module.
-
-Foreign code in the same module can access the mutable variable using the name
-@samp{mutable_variable_varname}, which is a global variable of type
-@samp{MR_Word}.
+interface section of a module.  The usual visibility rules for sub-modules
+apply to the mutable variable access predicates.
 
 @node Type classes
 @chapter Type classes

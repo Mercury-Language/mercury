@@ -154,6 +154,7 @@ SINGLEMODULE= \
 	state_vars_test5 \
 	tc_err1 \
 	tc_err2 \
+	trailed_mutable \
 	tricky_assert1 \
 	typeclass_bogus_method \
 	typeclass_constraint_extra_var \

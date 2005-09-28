@@ -1,4 +1,4 @@
-bad_mutable.m:015: Error: unrecognised attribute in mutable declaration: bad_attrib.
+bad_mutable.m:015: Error: malformed attribute list in mutable declaration: [untrailed, thread_safe, bad_attrib].
 bad_mutable.m:017: Error: the type in a mutable declaration cannot contain variables: list(_1).
 bad_mutable.m:011: In declaration for mutable `not_a_type':
 bad_mutable.m:011:   error: undefined type `no_type'/0.

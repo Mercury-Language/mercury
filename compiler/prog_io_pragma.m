@@ -15,6 +15,7 @@
 
 :- interface.
 
+:- import_module libs__globals.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
@@ -30,12 +31,15 @@
 :- pred parse_pragma(module_name::in, varset::in, list(term)::in,
     maybe1(item)::out) is semidet.
 
+    % Parse a term that represents a foreign language.
+    %
+:- pred parse_foreign_language(term::in, foreign_language::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs__globals.
 :- import_module libs__lp_rational.
 :- import_module libs__rat.
 :- import_module parse_tree__prog_io.
@@ -275,8 +279,6 @@ parse_foreign_decl_is_local(term__functor(Functor, [], _), IsLocal) :-
         String = "exported",
         IsLocal = foreign_decl_is_exported
     ).
-
-:- pred parse_foreign_language(term::in, foreign_language::out) is semidet.
 
 parse_foreign_language(term__functor(term__string(String), _, _), Lang) :-
     globals__convert_foreign_language(String, Lang).
