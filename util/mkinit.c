@@ -78,7 +78,8 @@ typedef enum
     PURPOSE_DEBUGGER = 2,
     PURPOSE_COMPLEXITY = 3,
     PURPOSE_PROC_STATIC = 4,
-    PURPOSE_REQ_INIT = 5
+    PURPOSE_REQ_INIT = 5,
+    PURPOSE_REQ_FINAL = 6
 } Purpose;
 
 const char  *main_func_name[] =
@@ -89,6 +90,7 @@ const char  *main_func_name[] =
     "init_modules_complexity_procs",
     "write_out_proc_statics",
     "init_modules_required",
+    "final_modules_required"
 };
 
 const char  *module_suffix[] =
@@ -98,6 +100,7 @@ const char  *module_suffix[] =
     "init_debugger",
     "init_complexity_procs",
     "write_out_proc_statics",
+    "",
     "",
 };
 
@@ -117,7 +120,8 @@ const char  *bunch_function_guard[] =
     if_need_to_init,
     if_need_term_size,
     if_need_deep_prof,
-    NULL
+    NULL,
+    NULL,
 };
 
 const char  *main_func_guard[] =
@@ -128,6 +132,7 @@ const char  *main_func_guard[] =
     if_need_term_size,
     if_need_deep_prof,
     NULL,
+    NULL,
 };
 
 const char  *main_func_body_guard[] =
@@ -135,6 +140,7 @@ const char  *main_func_body_guard[] =
     if_need_to_init,
     NULL,
     if_need_to_init,
+    NULL,
     NULL,
     NULL,
     NULL
@@ -147,6 +153,7 @@ const char  *main_func_arg_defn[] =
     "void",
     "void",
     "FILE *fp",
+    "void",
     "void"
 };
 
@@ -157,6 +164,7 @@ const char  *main_func_arg_decl[] =
     "void",
     "void",
     "FILE *",
+    "void",
     "void"
 };
 
@@ -167,6 +175,7 @@ const char  *main_func_arg[] =
     "",
     "",
     "fp",
+    "",
     ""
 };
 
@@ -215,7 +224,6 @@ static int          special_module_next = 0;
 ** The concatenation of std_modules and special_modules; created with the
 ** right size (std_module_next + special_module_next).
 */
-
 static const char   **std_and_special_modules = NULL;
 
 /*
@@ -223,11 +231,19 @@ static const char   **std_and_special_modules = NULL;
 ** always be run. This is currently used to initialize the states of constraint
 ** solvers. We call an "init_required" function for each such module.
 */
-
-static const char   **req_modules = NULL;
-static int          req_module_max = 0;
-static int          req_module_next = 0;
+static const char   **req_init_modules = NULL;
+static int          req_init_module_max = 0;
+static int          req_init_module_next = 0;
 #define MR_INIT_REQ_MODULE_SIZE     10
+
+/*
+** List of names of modules that have finialisation function that should
+** always be run.  We call a "final_required" function for each such module.
+*/
+static const char   **req_final_modules = NULL;
+static int          req_final_module_max = 0;
+static int          req_final_module_next = 0;
+#define MR_FINAL_REQ_MODULE_SIZE    10
 
 /* List of names of Aditi-RL code constants. */
 static String_List  *rl_data = NULL;
@@ -378,6 +394,7 @@ static const char mercury_funcs2[] =
     "       write_out_proc_statics;\n"
     "#endif\n"
     "   MR_address_of_init_modules_required = init_modules_required;\n"
+    "   MR_address_of_final_modules_required = final_modules_required;\n"
     "#ifdef MR_RECORD_TERM_SIZES\n"
     "   MR_complexity_procs = MR_complexity_proc_table;\n"
     "   MR_num_complexity_procs = %d;\n"
@@ -612,9 +629,14 @@ main(int argc, char **argv)
     output_main_init_function(PURPOSE_PROC_STATIC, num_bunches);
 
     num_bunches = output_sub_init_functions(PURPOSE_REQ_INIT,
-        req_modules, req_module_next);
+        req_init_modules, req_init_module_next);
     output_main_init_function(PURPOSE_REQ_INIT, num_bunches);
 
+    num_bunches = output_sub_init_functions(PURPOSE_REQ_FINAL,
+        req_final_modules, req_final_module_next);
+    output_main_init_function(PURPOSE_REQ_FINAL, num_bunches);
+
+    
     if (aditi) {
         output_aditi_load_function();
     }
@@ -1218,10 +1240,12 @@ process_init_file(const char *filename)
 {
     const char * const  init_str = "INIT ";
     const char * const  reqinit_str = "REQUIRED_INIT ";
+    const char * const  reqfinal_str = "REQUIRED_FINAL ";
     const char * const  endinit_str = "ENDINIT ";
     const char * const  aditi_init_str = "ADITI_DATA ";
     const int           init_strlen = strlen(init_str);
     const int           reqinit_strlen = strlen(reqinit_str);
+    const int           reqfinal_strlen = strlen(reqfinal_str);
     const int           endinit_strlen = strlen(endinit_str);
     const int           aditi_init_strlen = strlen(aditi_init_str);
     char                line[MAXLINE];
@@ -1273,10 +1297,24 @@ process_init_file(const char *filename)
             line[j] = '\0';
 
             func_name = line + reqinit_strlen;
-            MR_ensure_room_for_next(req_module, const char *,
+            MR_ensure_room_for_next(req_init_module, const char *,
                 MR_INIT_REQ_MODULE_SIZE);
-            req_modules[req_module_next] = checked_strdup(func_name);
-            req_module_next++;
+            req_init_modules[req_init_module_next] = checked_strdup(func_name);
+            req_init_module_next++;
+        } else if (strncmp(line, reqfinal_str, reqfinal_strlen) == 0) {
+            char    *func_name;
+            int     j;
+
+            for (j = reqfinal_strlen; MR_isalnumunder(line[j]); j++) {
+                /* VOID */
+            }
+            line[j] = '\0';
+
+            func_name = line + reqfinal_strlen;
+            MR_ensure_room_for_next(req_final_module, const char *,
+                MR_FINAL_REQ_MODULE_SIZE);
+            req_final_modules[req_final_module_next] = checked_strdup(func_name);
+            req_final_module_next++;
         } else if (aditi &&
             strncmp(line, aditi_init_str, aditi_init_strlen) == 0)
         {

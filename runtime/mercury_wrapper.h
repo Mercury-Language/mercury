@@ -108,6 +108,7 @@ extern	void		(*MR_address_of_init_modules_complexity)(void);
 extern	void		(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
 extern	void		(*MR_address_of_init_modules_required)(void);
+extern	void		(*MR_address_of_final_modules_required)(void);
 
 extern	MR_TypeCtorInfo	MR_type_ctor_info_for_univ;
 extern	MR_TypeCtorInfo	MR_type_info_for_type_info;
