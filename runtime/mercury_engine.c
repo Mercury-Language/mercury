@@ -395,7 +395,7 @@ call_engine_inner(MR_Code *entry_point)
 	** Allocate some space for local variables in other
 	** procedures. This is done because we may jump into the middle
 	** of a C function, which may assume that space on the stack
-	** has already beened allocated for its variables. Such space
+	** has already been allocated for its variables. Such space
 	** would generally be used for expression temporary variables.
 	** How did we arrive at the correct value of LOCALS_SIZE?
 	** Good question. I think it's more voodoo than science.
