@@ -115,7 +115,7 @@
 :- mode string__char_to_string(in, uo) is det.
 :- mode string__char_to_string(out, in) is semidet.
 
-    % A synonyn for string.int_to_char/1.
+    % A synonym for string.int_to_char/1.
     %
 :- func string__from_char(char::in) = (string::uo) is det.
 
@@ -707,7 +707,7 @@
     % format_table(Columns, Separator) = Table
     % format_table/2 takes a list of columns and a column separator and returns
     % a formatted table, where each field in each column has been aligned
-    % and fields are seperated with Separator. A newline character is inserted
+    % and fields are separated with Separator. A newline character is inserted
     % between each row. If the columns are not all the same length then
     % an exception is thrown.
     %
@@ -739,7 +739,7 @@
     % word_wrap/3 is like word_wrap/2, except that words that need to be broken
     % up over multiple lines have WordSeperator inserted between each piece.
     % If the length of WordSeperator is greater that or equal to N, then
-    % no seperator is used.
+    % no separator is used.
     %
 :- func string__word_wrap(string, int, string) = string.
 
