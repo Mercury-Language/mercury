@@ -1333,8 +1333,7 @@ modecheck_goal_expr(disj(Disjs0), GoalInfo0, Goal, !ModeInfo, !IO) :-
 
         Disjs0 = [_ | _],
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        modecheck_disj_list(Disjs0, Disjs1, InstMapList0,
-            !ModeInfo, !IO),
+        modecheck_disj_list(Disjs0, Disjs1, InstMapList0, !ModeInfo, !IO),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         handle_solver_vars_in_disjs(set__to_sorted_list(NonLocals),
             VarTypes, Disjs1, Disjs2, InstMapList0, InstMapList, !ModeInfo),

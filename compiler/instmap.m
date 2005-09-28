@@ -615,30 +615,35 @@ instmap_delta_delete_vars(Vars,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % instmap__merge(NonLocalVars, InstMaps, MergeContext):
-    % Merge the `InstMaps' resulting from different branches of a disjunction
-    % or if-then-else, and update the instantiatedness of all the nonlocal
-    % variables, checking that it is the same for every branch.
+    % instmap__merge(NonLocals, InstMapList, MergeContext, !ModeInfo):
+    %
+    % Merge the `InstMapList' resulting from different branches of a
+    % disjunction or if-then-else, and update the instantiatedness of all
+    % the nonlocal variables, checking that it is the same for every branch.
     %
 instmap__merge(NonLocals, InstMapList, MergeContext, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     get_reachable_instmaps(InstMapList, InstMappingList),
-    ( InstMappingList = [] ->
-        InstMap = unreachable
-    ; InstMap0 = reachable(InstMapping0) ->
+    (
+        % We can reach the code after the branched control structure only if
+        % (a) we can reach its start, and (b) some branch can reach the end.
+        InstMap0 = reachable(InstMapping0),
+        InstMappingList = [_ | _]
+    ->
         set__to_sorted_list(NonLocals, NonLocalsList),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         instmap__merge_2(NonLocalsList, InstMapList, VarTypes,
             InstMapping0, InstMapping, ModuleInfo0, ModuleInfo, ErrorList),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
-        ( ErrorList = [FirstError | _] ->
+        (
+            ErrorList = [FirstError | _],
             FirstError = Var - _,
             set__singleton_set(WaitingVars, Var),
             mode_info_error(WaitingVars,
                 mode_error_disj(MergeContext, ErrorList), !ModeInfo)
         ;
-            true
+            ErrorList = []
         ),
         InstMap = reachable(InstMapping)
     ;
@@ -646,94 +651,167 @@ instmap__merge(NonLocals, InstMapList, MergeContext, !ModeInfo) :-
     ),
     mode_info_set_instmap(InstMap, !ModeInfo).
 
-:- pred get_reachable_instmaps(list(instmap)::in,
-    list(map(prog_var, inst))::out) is det.
+:- pred get_reachable_instmaps(list(instmap)::in, list(instmapping)::out)
+    is det.
 
 get_reachable_instmaps([], []).
 get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
-    ( InstMap = reachable(InstMapping) ->
-        Reachables = [InstMapping | Reachables1],
-        get_reachable_instmaps(InstMaps, Reachables1)
+    (
+        InstMap = reachable(InstMapping),
+        get_reachable_instmaps(InstMaps, ReachablesTail),
+        Reachables = [InstMapping | ReachablesTail]
     ;
+        InstMap = unreachable,
         get_reachable_instmaps(InstMaps, Reachables)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % instmap__merge_2(Vars, InstMaps, ModuleInfo, ErrorList):
-    % Let `ErrorList' be the list of variables in `Vars' for there are two
-    % instmaps in `InstMaps' for which the inst the variable is incompatible.
+    % instmap__merge_2(Vars, InstMapList, VarTypes, !InstMapping, !ModuleInfo,
+    %   Errors):
+    %
+    % Given Vars, a list of variables, and InstMapList, a list of instmaps
+    % giving the insts of those variables (and possibly others) at the ends of
+    % a branched control structure such as a disjunction or if-then-else,
+    % update !InstMapping, which initially gives the insts of variables at the
+    % start of the branched control structure, to reflect their insts at its
+    % end.
+    %
+    % For variables mentioned in Vars, merge their insts and put the merged
+    % inst into !:InstMapping. For variables not in Vars, leave their insts in
+    % !.InstMapping alone.
+    %
+    % If some variables in Vars have incompatible insts in two or more instmaps
+    % in InstMapList, return them in `Errors'.
     %
 :- pred instmap__merge_2(list(prog_var)::in, list(instmap)::in, vartypes::in,
     instmapping::in, instmapping::out, module_info::in, module_info::out,
     merge_errors::out) is det.
 
 instmap__merge_2([], _, _, !InstMap, !ModuleInfo, []).
-instmap__merge_2([Var | Vars], InstMapList, VarTypes, !InstMap, !ModuleInfo,
-        !:ErrorList) :-
-    instmap__merge_2(Vars, InstMapList, VarTypes, !InstMap, !ModuleInfo,
+instmap__merge_2([Var | Vars], InstMapList, VarTypes, !InstMapping,
+        !ModuleInfo, !:ErrorList) :-
+    instmap__merge_2(Vars, InstMapList, VarTypes, !InstMapping, !ModuleInfo,
         !:ErrorList),
-    instmap__merge_var(InstMapList, Var, VarTypes ^ det_elem(Var),
-        Insts, Inst, !ModuleInfo, Error),
+    map__lookup(VarTypes, Var, VarType),
+    list__map(lookup_var_in_instmap(Var), InstMapList, InstList),
+    instmap__merge_var(InstList, Var, VarType, !ModuleInfo, MaybeInst),
     (
-        Error = yes,
-        !:ErrorList = [Var - Insts | !.ErrorList],
-        svmap__set(Var, not_reached, !InstMap)
+        MaybeInst = no,
+        !:ErrorList = [Var - InstList | !.ErrorList],
+        svmap__set(Var, not_reached, !InstMapping)
     ;
-        Error = no,
-        svmap__set(Var, Inst, !InstMap)
+        MaybeInst = yes(Inst),
+        svmap__set(Var, Inst, !InstMapping)
     ).
 
-    % instmap_merge_var(InstMaps, Var, ModuleInfo, Insts, Error):
-    %
-    % Let `Insts' be the list of the inst of `Var' in the corresponding
-    % `InstMaps'.  Let `Error' be yes iff there are two instmaps
-    % for which the inst of `Var' is incompatible.
-    %
-:- pred instmap__merge_var(list(instmap)::in, prog_var::in, (type)::in,
-    list(inst)::out, (inst)::out, module_info::in, module_info::out,
-    bool::out) is det.
+:- pred lookup_var_in_instmap(prog_var::in, instmap::in, (inst)::out) is det.
 
-instmap__merge_var([], _, _, [], not_reached, !ModuleInfo, no).
-instmap__merge_var([InstMap | InstMaps], Var, Type, InstList, Inst,
-        !ModuleInfo, Error) :-
-    instmap__merge_var(InstMaps, Var, Type, InstList0, Inst0, !ModuleInfo,
-        Error0),
-    instmap__lookup_var(InstMap, Var, VarInst),
-    InstList = [VarInst | InstList0],
-    ( inst_merge(Inst0, VarInst, yes(Type), Inst1, !ModuleInfo) ->
-        Inst = Inst1,
-        Error = Error0
-    ;
+lookup_var_in_instmap(Var, InstMap, Inst) :-
+    instmap__lookup_var(InstMap, Var, Inst).
+
+    % instmap__merge_var(Insts, Var, Type, Inst, !ModuleInfo, !Error):
+    %
+    % Given a list of insts of the given variable that reflect the inst of that
+    % variable at the ends of a branched control structure such as a
+    % disjunction or if-then-else, return the final inst of that variable
+    % after the branched control structure as a whole.
+    %
+    % Set !:Error to yes if two insts of the variable are incompatible.
+    %
+    % We used to use a straightforward algorithm that, given a list of N insts,
+    % merged the tail N-1 insts, and merged the result with the head inst.
+    % While this is simple and efficient for small N, it has very bad
+    % performance for large N. The reason is that its complexity can be N^2,
+    % since in many cases each arm of the branched control structure binds
+    % Var to a different function symbol, and this means that the inst of Var
+    % evolves like this:
+    %
+    %   bound(f)
+    %   bound(f; g)
+    %   bound(f; g; h)
+    %   bound(f; g; h; i)
+    %
+    % Our current algorithm uses a number of passes, each of which divides the
+    % number of insts in half by merging adjacent pairs of insts. The overall
+    % complexity is thus N log N, not N^2.
+    %
+:- pred instmap__merge_var(list(inst)::in, prog_var::in, (type)::in,
+    module_info::in, module_info::out, maybe(inst)::out) is det.
+
+instmap__merge_var(Insts, Var, Type, !ModuleInfo, MaybeMergedInst) :-
+    instmap__merge_var_2(Insts, Var, Type, [], MergedInsts, !ModuleInfo,
+        no, Error),
+    (
         Error = yes,
-        Inst = not_reached
+        MaybeMergedInst = no
+    ;
+        Error = no,
+        (
+            MergedInsts = [],
+            MaybeMergedInst = yes(not_reached)
+        ;
+            MergedInsts = [MergedInst],
+            MaybeMergedInst = yes(MergedInst)
+        ;
+            MergedInsts = [_, _ | _],
+            instmap__merge_var(MergedInsts, Var, Type, !ModuleInfo,
+                MaybeMergedInst)
+        )
+    ).
+
+:- pred instmap__merge_var_2(list(inst)::in, prog_var::in, (type)::in,
+    list(inst)::in, list(inst)::out, module_info::in, module_info::out,
+    bool::in, bool::out) is det.
+
+instmap__merge_var_2([], _, _, !MergedInsts, !ModuleInfo, !Error).
+instmap__merge_var_2([Inst], _Var, _Type, !MergedInsts, !ModuleInfo, !Error) :-
+    !:MergedInsts = [Inst | !.MergedInsts]. 
+instmap__merge_var_2([Inst1, Inst2 | Insts], Var, Type, !MergedInsts,
+        !ModuleInfo, !Error) :-
+    ( inst_merge(Inst1, Inst2, yes(Type), MergedInst, !ModuleInfo) ->
+        !:MergedInsts = [MergedInst | !.MergedInsts],
+        instmap__merge_var_2(Insts, Var, Type, !MergedInsts, !ModuleInfo,
+            !Error)
+    ;
+        !:Error = yes
     ).
 
 %-----------------------------------------------------------------------------%
 
-merge_instmap_deltas(InstMap, NonLocals, VarTypes, InstMapDeltaList,
+    % We use the same technique for merge_instmap_deltas as for merge_var,
+    % and for the same reason.
+merge_instmap_deltas(InstMap, NonLocals, VarTypes, Deltas,
         MergedDelta, !ModuleInfo) :-
+    merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
+        [], MergedDeltas, !ModuleInfo),
     (
-        InstMapDeltaList = [],
+        MergedDeltas = [],
         error("merge_instmap_deltas: empty instmap_delta list.")
     ;
-        InstMapDeltaList = [Delta | Deltas],
-        merge_instmap_deltas(InstMap, NonLocals, VarTypes, Delta,
-            Deltas, MergedDelta, !ModuleInfo)
+        MergedDeltas = [MergedDelta]
+    ;
+        MergedDeltas = [_, _ | _],
+        merge_instmap_deltas(InstMap, NonLocals, VarTypes, MergedDeltas,
+            MergedDelta, !ModuleInfo)
     ).
 
-:- pred merge_instmap_deltas(instmap::in, set(prog_var)::in, vartypes::in,
-    instmap_delta::in, list(instmap_delta)::in, instmap_delta::out,
+:- pred merge_instmap_deltas_2(instmap::in, set(prog_var)::in, vartypes::in,
+    list(instmap_delta)::in, list(instmap_delta)::in, list(instmap_delta)::out,
     module_info::in, module_info::out) is det.
 
-merge_instmap_deltas(_InstMap, _NonLocals, _VarTypes, MergedDelta, [],
-        MergedDelta, !ModuleInfo).
-merge_instmap_deltas(InstMap, NonLocals, VarTypes, MergedDelta0, [Delta|Deltas],
-        MergedDelta, !ModuleInfo) :-
-    merge_instmap_delta(InstMap, NonLocals, VarTypes, MergedDelta0, Delta,
-        MergedDelta1, !ModuleInfo),
-    merge_instmap_deltas(InstMap, NonLocals, VarTypes, MergedDelta1, Deltas,
-        MergedDelta, !ModuleInfo).
+merge_instmap_deltas_2(_InstMap, _NonLocals, _VarTypes, [], !MergedDeltas,
+        !ModuleInfo).
+merge_instmap_deltas_2(_InstMap, _NonLocals, _VarTypes, [Delta], !MergedDeltas,
+        !ModuleInfo) :-
+    !:MergedDeltas = [Delta | !.MergedDeltas].
+merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, [Delta1, Delta2 | Deltas],
+        !MergedDeltas, !ModuleInfo) :-
+    merge_instmap_delta(InstMap, NonLocals, VarTypes, Delta1, Delta2,
+        MergedDelta, !ModuleInfo),
+    !:MergedDeltas = [MergedDelta | !.MergedDeltas],
+    merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, Deltas,
+        !MergedDeltas, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

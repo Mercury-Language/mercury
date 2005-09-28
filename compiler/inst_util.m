@@ -86,7 +86,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % inst_merge(InstA, InstB, InstC):
+    % inst_merge(InstA, InstB, MaybeType, InstC, !ModuleInfo):
     %
     % Combine the insts found in different arms of a disjunction (or
     % if-then-else). The information in InstC is the minimum of the information
@@ -1319,13 +1319,6 @@ allow_unify_bound_any(_) :- true.
 
 %-----------------------------------------------------------------------------%
 
-    % inst_merge(InstA, InstB, InstC):
-    %
-    % Combine the insts found in different arms of a disjunction (or
-    % if-then-else). The information in InstC is the minimum of the information
-    % in InstA and InstB. Where InstA and InstB specify a binding (free
-    % or bound), it must be the same in both.
-    %
 inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
     % Check whether this pair of insts is already in the merge_insts table.
     module_info_insts(!.ModuleInfo, InstTable0),
@@ -1480,9 +1473,8 @@ inst_merge_4(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
         ; pred_inst_matches(PredB, PredA, !.ModuleInfo) ->
             GroundInstInfo = higher_order(PredA)
         ;
-            % If either is a function inst with non-standard
-            % modes, don't allow the higher-order
-            % information to be lost.
+            % If either is a function inst with non-standard modes,
+            % don't allow the higher-order information to be lost.
             \+ pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredA),
             \+ pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredB),
             GroundInstInfo = none
