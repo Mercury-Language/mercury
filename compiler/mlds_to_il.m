@@ -273,7 +273,7 @@ maybe_get_dotnet_library_version(MaybeVersion, !IO) :-
 generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
 
 	% XXX initialise declarations NYI for IL backend
-	mlds(MercuryModuleName, ForeignCode, Imports, Defns, _) =
+	mlds(MercuryModuleName, ForeignCode, Imports, Defns, _, _) =
 		transform_mlds(MLDS),
 
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),

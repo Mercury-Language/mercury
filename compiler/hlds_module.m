@@ -444,6 +444,15 @@
 :- pred module_info_user_init_pred_c_names(module_info::in,
     list(string)::out) is det.
 
+:- pred module_info_new_user_final_pred(sym_name::in, string::out,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_user_final_pred_c_name(module_info::in, sym_name::in,
+    string::out) is det.
+
+:- pred module_info_user_final_pred_c_names(module_info::in,
+    list(string)::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_preds(module_info::in, pred_table::out) is det.
@@ -680,7 +689,12 @@
 
                 % Exported C names for preds appearing in `:- initialise
                 % initpred' directives in this module, in order of appearance.
-                user_init_pred_c_names      :: assoc_list(sym_name, string)
+                user_init_pred_c_names      :: assoc_list(sym_name, string),
+            
+                % Export C names fored pred appearing in `:- finalise 
+                % finalpred' directives in this module, in order of
+                % appearance.
+                user_final_pred_c_names     :: assoc_list(sym_name, string)
             ).
 
 module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
@@ -722,7 +736,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         map.init, counter__init(1), ImportedModules,
         IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
         NoTagTypes, no, [], init_analysis_info(mmc),
-        [], counter__init(1), []),
+        [], counter__init(1), [], []),
     ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -843,7 +857,32 @@ module_info_user_init_pred_c_name(MI, SymName, CName) :-
 
 module_info_user_init_pred_c_names(MI, CNames) :-
     InitPredCNames = MI ^ sub_info ^ user_init_pred_c_names,
-    CNames = list__map(snd, InitPredCNames).
+    CNames = assoc_list.values(InitPredCNames).
+
+module_info_new_user_final_pred(SymName, CName, MI0, MI) :-
+    FinalPredCNames0 = MI0 ^ sub_info ^ user_final_pred_c_names,
+    UserFinalPredNo = list.length(FinalPredCNames0),
+    module_info_name(MI0, ModuleSymName),
+    ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
+    CName = string.format("%s__user_final_pred_%d",
+        [s(ModuleName), i(UserFinalPredNo)]),
+    FinalPredCNames = FinalPredCNames0 ++ [SymName - CName],
+    MI = MI0 ^ sub_info ^ user_final_pred_c_names := FinalPredCNames.
+
+module_info_user_final_pred_c_name(MI, SymName, CName) :-
+    FinalPredCNames = MI ^ sub_info ^ user_final_pred_c_names,
+    ( assoc_list__search(FinalPredCNames, SymName, CName0) ->
+        CName = CName0
+    ;
+        module_info_name(MI, ModuleSymName),
+        ModuleName = sym_name_to_string(ModuleSymName),
+        unexpected(ModuleName,
+            "lookup failure in module_info_user_final_pred_c_name")
+    ).
+
+module_info_user_final_pred_c_names(MI, CNames) :-
+    FinalPredCNames = MI ^ sub_info ^ user_final_pred_c_names,
+    CNames = assoc_list.values(FinalPredCNames).
 
 %-----------------------------------------------------------------------------%
 

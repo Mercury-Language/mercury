@@ -150,7 +150,8 @@ mlds_to_c__output_header_file(MLDS, Suffix, !IO) :-
 :- pred mlds_output_hdr_file(indent::in, mlds::in, io::di, io::uo) is det.
 
 mlds_output_hdr_file(Indent, MLDS, !IO) :-
-	MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns, _InitPreds),
+	MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns, _InitPreds,
+		_FinalPreds),
 	mlds_output_hdr_start(Indent, ModuleName, !IO),
 	io__nl(!IO),
 	mlds_output_hdr_imports(Indent, Imports, !IO),
@@ -255,11 +256,15 @@ mlds_output_src_import(_Indent, Import, !IO) :-
 	io::di, io::uo) is det.
 
 mlds_output_src_file(Indent, MLDS, MaybeRLFile, !IO) :-
-	MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns, InitPreds),
-		% Get the foreign code for C
+	MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns,
+		InitPreds, FinalPreds),
+	%
+	% Get the foreign code for C.
+	%
 	ForeignCode = mlds_get_c_foreign_code(AllForeignCode),
 
-	mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, !IO),
+	mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds,
+		FinalPreds, !IO),
 	io__nl(!IO),
 	mlds_output_src_imports(Indent, Imports, !IO),
 	io__nl(!IO),
@@ -354,9 +359,11 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
 	io__write_string("#include ""mercury.h""\n", !IO).
 
 :- pred mlds_output_src_start(indent::in, mercury_module_name::in,
-	mlds__foreign_code::in, list(string)::in, io::di, io::uo) is det.
+	mlds__foreign_code::in, list(string)::in, list(string)::in,
+	io::di, io::uo) is det.
 
-mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, !IO) :-
+mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds,
+		FinalPreds, !IO) :-
 	mlds_output_auto_gen_comment(ModuleName, !IO),
 	mlds_indent(Indent, !IO),
 	io__write_string("/* :- module ", !IO),
@@ -366,7 +373,8 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, !IO) :-
 	io__write_string("/* :- implementation. */\n", !IO),
 	mlds_output_src_bootstrap_defines(!IO),
 	io__nl(!IO),
-	mlds_output_init_comment(ModuleName, InitPreds, !IO),
+	mlds_output_init_and_final_comments(ModuleName,
+		InitPreds, FinalPreds, !IO),
 
 	mlds_output_src_import(Indent,
 		mercury_import(
@@ -390,26 +398,29 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, !IO) :-
 	% Output a comment to tell mkinit what module initialisation
 	% predicates to call from <module>_init.c.
 	%
-:- pred mlds_output_init_comment(mercury_module_name::in,
-	list(string)::in, io::di, io::uo) is det.
+:- pred mlds_output_init_and_final_comments(mercury_module_name::in,
+	list(string)::in, list(string)::in, io::di, io::uo) is det.
 
-mlds_output_init_comment(ModuleName, UserInitPredCNames, !IO) :-
-	(
-		UserInitPredCNames = [_|_],
-		io__write_string("/*\n", !IO),
-		io__write_string("INIT ", !IO),
-		output_init_name(ModuleName, !IO),
-		io__write_string("init\n", !IO),
-		list__foldl(mlds_output_required_user_init_comment,
-			UserInitPredCNames, !IO),
-		io__write_string("ENDINIT\n", !IO),
-		io__write_string("*/\n\n", !IO)
-	;
+mlds_output_init_and_final_comments(ModuleName,
+		UserInitPredCNames, UserFinalPredCNames, !IO) :-
+	( UserInitPredCNames = [], UserFinalPredCNames = [] ->
+		
 		% There's no point writing out anything if this
-		% module doesn't have any module init preds.
-		UserInitPredCNames = []
+		% module doesn't have any module init or final preds.
+		true
+	;		
+		io.write_string("/*\n", !IO),
+		io.write_string("INIT ", !IO),
+		output_init_name(ModuleName, !IO),
+		io.write_string("init\n", !IO),
+		list.foldl(mlds_output_required_user_init_comment,
+			UserInitPredCNames, !IO),
+		list.foldl(mlds_output_required_user_final_comment,
+			UserFinalPredCNames, !IO),
+		io.write_string("ENDINIT\n", !IO),
+		io.write_string("*/\n\n", !IO)
 	).
-
+	
 :- pred mlds_output_required_user_init_comment(string::in, io::di, io::uo)
 	is det.
 
@@ -417,6 +428,12 @@ mlds_output_required_user_init_comment(CName, !IO) :-
 	io__write_string("REQUIRED_INIT ", !IO),
 	io__write_string(CName, !IO),
 	io__nl(!IO).
+
+:- pred mlds_output_required_user_final_comment(string::in, io::di, io::uo)
+	is det.
+
+mlds_output_required_user_final_comment(CName, !IO) :-
+	io.write_string("REQUIRED_FINAL " ++ CName ++ "\n", !IO).
 	
 	% Output any #defines which are required to bootstrap in the hlc
 	% grade.

@@ -39,6 +39,7 @@ SINGLEMODULE= \
 	any_should_not_match_bound \
 	any_to_ground_in_ite_cond \
 	assert_in_interface \
+	bad_finalise_decl \
 	bad_mutable \
 	bad_initialise_decl \
 	bad_instance \

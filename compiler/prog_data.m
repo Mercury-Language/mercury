@@ -63,6 +63,11 @@
 			% for `:- initialise' decls.  This should only
 			% apply to export pragms.
 	
+	;	finalise_decl
+			% This item was introduced by the transformation
+			% for `:- finalise' decls.  This should only 
+			% apply to export pragmas.
+
 	;	mutable_decl
 			% The item was introduced by the transformation
 			% for `:- mutable' decls.  This should only apply
@@ -194,9 +199,12 @@
 			ci_module_containing_instance :: module_name
 		)
 
-		% :- initialise(pred_name).
+		% :- initialise pred_name.
 	;	initialise(item_origin, sym_name)
-
+	
+		% :- finalise pred_name.
+	;	finalise(item_origin, sym_name)
+	
 		% :- mutable(var_name, type, inst, value, attrs).
 	;	mutable(
 			mut_name		:: string,

@@ -342,7 +342,7 @@ void	(*MR_address_of_init_modules_complexity)(void);
 void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
 void	(*MR_address_of_init_modules_required)(void);
-void 	(*MR_address_of_final_modules_required)(void);
+void	(*MR_address_of_final_modules_required)(void);
 
 MR_TypeCtorInfo	MR_type_ctor_info_for_univ;
 MR_TypeCtorInfo	MR_type_info_for_type_info;
@@ -2259,6 +2259,9 @@ mercury_runtime_terminate(void)
 	*/
 	MR_save_regs_to_mem(c_regs);
 
+	/* run any user-defined finalisation predicates */
+	(*MR_address_of_final_modules_required)();
+	
 	MR_trace_end();
 
 	(*MR_library_finalizer)();

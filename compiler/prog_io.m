@@ -1426,6 +1426,10 @@ process_decl(ModuleName, VarSet, "initialise", Args, Attributes, Result) :-
 	parse_initialise_decl(ModuleName, VarSet, Args, Result0),
 	check_no_attributes(Result0, Attributes, Result).
 
+process_decl(ModuleName, VarSet, "finalise", Args, Attributes, Result) :-
+	parse_finalise_decl(ModuleName, VarSet, Args, Result0),
+	check_no_attributes(Result0, Attributes, Result).
+
 process_decl(ModuleName, VarSet, "mutable", Args, Attributes, Result) :-
 	parse_mutable_decl(ModuleName, VarSet, Args, Result0),
 	check_no_attributes(Result0, Attributes, Result).
@@ -1809,6 +1813,35 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Result) :-
 				Result = ok(initialise(user, SymName))
 			;
 				Result = error("an initialise " ++
+				"declaration can only apply to " ++
+				"an arity 2 predicate", Term)
+			)
+		)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred parse_finalise_decl(module_name::in, varset::in, list(term)::in,
+	maybe1(item)::out) is semidet.
+
+parse_finalise_decl(_ModuleName, _VarSet, [Term], Result) :-
+	parse_symbol_name_specifier(Term, MaybeSymNameSpecifier),
+	(
+		MaybeSymNameSpecifier = error(ErrMsg, Trm),
+		Result = error(ErrMsg, Trm)
+	;
+		MaybeSymNameSpecifier = ok(SymNameSpecifier),
+		(
+			SymNameSpecifier = name(SymName),
+			Result = ok(finalise(user, SymName))
+		;
+			SymNameSpecifier = name_arity(SymName, Arity),
+			(
+				Arity = 2
+			->
+				Result = ok(finalise(user, SymName))
+			;
+				Result = error("a finalise " ++
 				"declaration can only apply to " ++
 				"an arity 2 predicate", Term)
 			)

@@ -6,7 +6,7 @@ HIGHLIGHTS
 
 Changes to the Mercury language:
 * The Mercury typeclass system now supports functional dependencies.
-* We now have support for optional module initialisation.
+* We now have support for optional module initialisation and finalisation.
 * We now have support for impure module-local mutable variables.
 * We now have support for recognizing switches in which multiple switch arms
   have shared code.
@@ -45,7 +45,11 @@ Changes to the Mercury language:
   details.
 
 * We have added support for optional module initialisation.  See the 
-  "Optional module initialisation" section of the Mercury Language Reference
+  "Module initialisation" section of the Mercury Language Reference
+  Manual for details.
+
+* We have added support for optional module finalisation.  See the
+  "Module finalisation" section of the Mercury Language Reference
   Manual for details.
 
 * We have added support for impure module-local mutable variables.

@@ -237,7 +237,7 @@ decl_set_is_member(DeclId, DeclSet) :-
 
 output_llds(C_File, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO) :-
     C_File = c_file(ModuleName, C_HeaderInfo, UserForeignCodes, Exports, Vars,
-        Datas, Modules, UserInitPredCNames),
+        Datas, Modules, UserInitPredCNames, UserFinalPredCNames),
     globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
     (
         SplitFiles = yes,
@@ -246,7 +246,7 @@ output_llds(C_File, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO) :-
 
         output_split_c_file_init(ModuleName, Modules, Datas, Vars,
             ComplexityProcs, StackLayoutLabels, MaybeRLFile,
-            UserInitPredCNames, !IO),
+            UserInitPredCNames, UserFinalPredCNames, !IO),
         output_split_user_foreign_codes(UserForeignCodes, ModuleName,
             C_HeaderInfo, ComplexityProcs, StackLayoutLabels, 1, Num1, !IO),
         output_split_c_exports(Exports, ModuleName,
@@ -283,7 +283,7 @@ output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
         ModuleName, C_HeaderLines, ComplexityProcs, StackLayoutLabels,
         !Num, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, [UserForeignCode],
-        [], [], [], [], []),
+        [], [], [], [], [], []),
     output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
         StackLayoutLabels, no, !IO),
     !:Num = !.Num + 1,
@@ -297,7 +297,7 @@ output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
 output_split_c_exports([], _, _, _, _, !Num, !IO).
 output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
         ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [Export], [], [], [], []),
+    CFile = c_file(ModuleName, C_HeaderLines, [], [Export], [], [], [], [], []),
     output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
         StackLayoutLabels, no, !IO),
     !:Num = !.Num + 1,
@@ -312,7 +312,7 @@ output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 output_split_comp_gen_c_vars([], _, _, _, _, !Num, !IO).
 output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
         ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [], [Var], [], [], []),
+    CFile = c_file(ModuleName, C_HeaderLines, [], [], [Var], [], [], [], []),
     output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
         StackLayoutLabels, no, !IO),
     !:Num = !.Num + 1,
@@ -327,7 +327,7 @@ output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
 output_split_comp_gen_c_datas([], _, _, _, _, !Num, !IO).
 output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
         ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Data], [], []),
+    CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Data], [], [], []),
     output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
         StackLayoutLabels, no, !IO),
     !:Num = !.Num + 1,
@@ -342,7 +342,8 @@ output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 output_split_comp_gen_c_modules([], _, _, _, _, !Num, !IO).
 output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
         ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [], [Module], []),
+    CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [], [Module],
+        [], []),
     output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
         StackLayoutLabels, no, !IO),
     !:Num = !.Num + 1,
@@ -352,10 +353,12 @@ output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
 :- pred output_split_c_file_init(module_name::in, list(comp_gen_c_module)::in,
     list(comp_gen_c_data)::in, list(comp_gen_c_var)::in,
     list(complexity_proc_info)::in, map(label, data_addr)::in,
-    maybe(rl_file)::in, list(string)::in, io::di, io::uo) is det.
+    maybe(rl_file)::in, list(string)::in, list(string)::in,
+    io::di, io::uo) is det.
 
 output_split_c_file_init(ModuleName, Modules, Datas, Vars, ComplexityProcs,
-        StackLayoutLabels, MaybeRLFile, UserInitPredCNames, !IO) :-
+        StackLayoutLabels, MaybeRLFile, UserInitPredCNames,
+        UserFinalPredCNames, !IO) :-
     module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
     module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName, !IO),
 
@@ -365,7 +368,8 @@ output_split_c_file_init(ModuleName, Modules, Datas, Vars, ComplexityProcs,
         library__version(Version),
         io__set_output_stream(FileStream, OutputStream, !IO),
         output_c_file_intro_and_grade(SourceFileName, Version, !IO),
-        output_init_comment(ModuleName, UserInitPredCNames, !IO),
+        output_init_comment(ModuleName, UserInitPredCNames,
+            UserFinalPredCNames, !IO),
         output_c_file_mercury_headers(!IO),
         io__write_string("\n", !IO),
         decl_set_init(DeclSet0),
@@ -419,7 +423,7 @@ output_c_file_mercury_headers(!IO) :-
 
 output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
         MaybeRLFile, !IO) :-
-    CFile = c_file(ModuleName, _, _, _, _, _, _, _),
+    CFile = c_file(ModuleName, _, _, _, _, _, _, _, _),
     (
         SplitFiles = yes(Num),
         module_name_to_split_c_file_name(ModuleName, Num, ".c", FileName, !IO)
@@ -455,7 +459,7 @@ output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
 do_output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
         MaybeRLFile, FileStream, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
-        Vars, Datas, Modules, UserInitPredCNames),
+        Vars, Datas, Modules, UserInitPredCNames, UserFinalPredCNames),
     library__version(Version),
     io__set_output_stream(FileStream, OutputStream, !IO),
     module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
@@ -464,7 +468,8 @@ do_output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
         SplitFiles = yes(_)
     ;
         SplitFiles = no,
-        output_init_comment(ModuleName, UserInitPredCNames, !IO)
+        output_init_comment(ModuleName, UserInitPredCNames,
+            UserFinalPredCNames, !IO)
     ),
     output_c_file_mercury_headers(!IO),
 
@@ -946,12 +951,14 @@ output_init_reset_table(Var, !IO) :-
     output_tabling_pointer_var_name(ProcLabel, !IO),
     io__write_string(".MR_integer = 0;\n", !IO).
 
-    % Output a comment to tell mkinit what functions to
-    % call from <module>_init.c.
+    % Output a comment to tell mkinit what functions to call from
+    % <module>_init.c.
+    %
 :- pred output_init_comment(module_name::in, list(string)::in,
-    io::di, io::uo) is det.
+    list(string)::in, io::di, io::uo) is det.
 
-output_init_comment(ModuleName, UserInitPredCNames, !IO) :-
+output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
+        !IO) :-
     io__write_string("/*\n", !IO),
     io__write_string("INIT ", !IO),
     output_init_name(ModuleName, !IO),
@@ -967,6 +974,7 @@ output_init_comment(ModuleName, UserInitPredCNames, !IO) :-
         Aditi = no
     ),
     list__foldl(output_required_user_init_comment, UserInitPredCNames, !IO),
+    list__foldl(output_required_user_final_comment, UserFinalPredCNames, !IO),
     io__write_string("ENDINIT\n", !IO),
     io__write_string("*/\n\n", !IO).
 
@@ -974,6 +982,13 @@ output_init_comment(ModuleName, UserInitPredCNames, !IO) :-
 
 output_required_user_init_comment(CName, !IO) :-
     io__write_string("REQUIRED_INIT ", !IO),
+    io__write_string(CName, !IO),
+    io__nl(!IO).
+
+:- pred output_required_user_final_comment(string::in, io::di, io::uo) is det.
+
+output_required_user_final_comment(CName, !IO) :-
+    io__write_string("REQUIRED_FINAL ", !IO),
     io__write_string(CName, !IO),
     io__nl(!IO).
 

@@ -2020,9 +2020,9 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
     % This is used when creating the private interface (`.int0') files for
     % packages with sub-modules.
     %
-    % We treat initialise declarations as a special kind of clause, since they
-    % should always be grouped together with the clauses and should not appear
-    % in private interfaces.
+    % We treat initialise and finalise declarations as special kinds of
+    % clause, since they should always be grouped together with the clauses
+    % and should not appear in private interfaces.
     %
 :- pred strip_clauses_from_interface(item_list::in, item_list::out) is det.
 
@@ -2050,6 +2050,8 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
             pragma_allowed_in_interface(Pragma, no)
         ;
             Item0 = initialise(_, _)
+        ;
+            Item0 = finalise(_, _)
         )
      ->
          split_clauses_and_decls(Items0, ClauseItems1, InterfaceItems),
@@ -7346,6 +7348,7 @@ item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
 item_needs_imports(instance(_, _, _, _, _, _)) = yes.
 item_needs_imports(promise(_, _, _, _)) = yes.
 item_needs_imports(initialise(_, _)) = yes.
+item_needs_imports(finalise(_, _)) = yes.
 item_needs_imports(mutable(_, _, _, _, _)) = yes.
 item_needs_imports(nothing(_)) = no.
 
@@ -7692,6 +7695,7 @@ reorderable_item(nothing(_)) = no.
 reorderable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
 reorderable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = no.
 reorderable_item(initialise(_, _)) = no.
+reorderable_item(finalise(_, _)) = no.
 reorderable_item(mutable(_, _, _, _, _)) = no.
 
 :- pred is_chunkable(item_and_context::in) is semidet.
@@ -7778,6 +7782,7 @@ chunkable_item(typeclass(_, _, _, _, _, _)) = yes.
 chunkable_item(instance(_, _, _, _, _, _)) = yes.
 chunkable_item(clause(_, _, _, _, _, _)) = yes.
 chunkable_item(initialise(_, _)) = yes.
+chunkable_item(finalise(_, _)) = yes.
 chunkable_item(mutable(_, _, _, _, _)) = no.
 chunkable_item(nothing(_)) = yes.
 

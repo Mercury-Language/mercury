@@ -72,10 +72,9 @@
 
 optimize(MLDS0, MLDS, !IO) :-
     globals__io_get_globals(Globals, !IO),
-    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds),
-    Defns = optimize_in_defns(Defns0, Globals,
-        mercury_module_name_to_mlds(ModuleName)),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds).
+    Defns = optimize_in_defns(MLDS0 ^ defns, Globals,
+        mercury_module_name_to_mlds(MLDS0 ^ name)),
+    MLDS = MLDS0 ^ defns := Defns.
 
 :- func optimize_in_defns(mlds__defns, globals, mlds_module_name)
     = mlds__defns.

@@ -957,6 +957,7 @@ check_for_ambiguities(_, _, _, promise(_, _, _, _) - _, !Info).
 check_for_ambiguities(_, _, _, module_defn(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _, !Info).
 check_for_ambiguities(_, _, _, initialise(_, _) - _, !Info).
+check_for_ambiguities(_, _, _, finalise(_, _) - _, !Info).
 check_for_ambiguities(_, _, _, mutable(_, _, _, _, _) - _, !Info).
 check_for_ambiguities(_, _, _, nothing(_) - _, !Info).
 

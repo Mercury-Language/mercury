@@ -12,7 +12,7 @@
 % operator precedence tables for use by `parser__read_term_with_op_table'
 % and `term_io__write_term_with_op_table'.
 %
-% It also exports an instance `ops__mercury_op_table' which implements the
+% It also exports an instance `ops__mercury_op_table' that implements the
 % Mercury operator table defined in the Mercury Language Reference Manual.
 %
 % See samples/calculator2.m for an example program.
@@ -311,6 +311,7 @@ ops__op_table("import_module", before, fx, 1199). % Mercury extension
 ops__op_table("include_module", before, fx, 1199). % Mercury extension
 ops__op_table("impure", before, fy, 800).	% Mercury extension
 ops__op_table("initialise", before, fx, 1199).	% Mercury extension
+ops__op_table("finalise", before, fx, 1199).	% Mercury extension
 ops__op_table("inst", before, fx, 1199).	% Mercury extension
 ops__op_table("instance", before, fx, 1199).	% Mercury extension
 ops__op_table("is", after, xfx, 701).		% ISO Prolog says prec 700

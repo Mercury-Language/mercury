@@ -1657,7 +1657,7 @@ mercury_compile_asm_c_code(ModuleName, !IO) :-
 
 mlds_has_main(MLDS) =
     (
-        MLDS = mlds(_, _, _, Defns, _),
+        MLDS = mlds(_, _, _, Defns, _, _),
         defns_contain_main(Defns)
     ->
         has_main
@@ -4124,9 +4124,11 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars, AllData,
         C_LocalHeaderCode ++ [Start | C_ExportedHeaderCode] ++ [End],
 
     module_info_user_init_pred_c_names(ModuleInfo, UserInitPredCNames),
+    module_info_user_final_pred_c_names(ModuleInfo, UserFinalPredCNames),
 
     CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
-            GlobalVars, AllData, ChunkedModules, UserInitPredCNames),
+            GlobalVars, AllData, ChunkedModules, UserInitPredCNames,
+            UserFinalPredCNames),
     list__length(C_BodyCode, UserCCodeCount),
     list__length(C_ExportDefns, ExportCount),
     list__length(GlobalVars, CompGenVarCount),
@@ -4435,9 +4437,10 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
     list__condense([TypeCtorRtti, TypeClassInfoRtti,
         NewTypeClassInfoRttiData, AditiProcInfoRtti], RttiData),
     RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
-    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds),
+    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
+        FinalPreds),
     list__append(RttiDefns, Defns0, Defns),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds).
+    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds, FinalPreds).
 
 % The `--high-level-C' MLDS output pass
 

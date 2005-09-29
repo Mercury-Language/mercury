@@ -335,6 +335,7 @@ collect_mq_info_2(typeclass(_, _, SymName, Params, _, _), !Info) :-
     ).
 collect_mq_info_2(instance(_, _, _, _, _, _), !Info).
 collect_mq_info_2(initialise(_, _), !Info).
+collect_mq_info_2(finalise(_, _), !Info).
 collect_mq_info_2(mutable(_, _, _, _, _), !Info).
 
 :- pred collect_mq_info_qualified_symname(sym_name::in,
@@ -722,6 +723,11 @@ module_qualify_item(
 module_qualify_item(
         initialise(Origin, PredSymName) - Context,
         initialise(Origin, PredSymName) - Context,
+        !Info, yes, !IO).
+
+module_qualify_item(
+        finalise(Origin, PredSymName) - Context,
+        finalise(Origin, PredSymName) - Context,
         !Info, yes, !IO).
 
 module_qualify_item(

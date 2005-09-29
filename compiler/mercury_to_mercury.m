@@ -765,6 +765,10 @@ mercury_output_item(_, initialise(_, PredSymName), _, !IO) :-
     io__write_string(":- initialise ", !IO),
     mercury_output_sym_name(PredSymName, !IO),
     io__write_string(".\n", !IO).
+mercury_output_item(_, finalise(_, PredSymName), _, !IO) :-
+    io.write_string(":- finalise ", !IO),
+    mercury_output_sym_name(PredSymName, !IO),
+    io.write_string(".\n", !IO).
 mercury_output_item(_, mutable(Name, Type, InitTerm, Inst, Attrs), _, !IO) :-
     io__write_string(":- mutable(", !IO),
     io__write_string(Name, !IO),

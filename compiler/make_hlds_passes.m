@@ -442,8 +442,11 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     % an instance declaration before its class declaration.
     Item = instance(_, _, _, _, _,_).
 add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
-    % We add initialise declarations on the second pass.
+    % We add initialise declarations on the third pass.
     Item = initialise(_, _).
+add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
+    % We add finalise declarations on the third pass.
+    Item = finalise(_, _).
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     % We add the initialise decl and the foreign_decl on the second pass and
     % the foreign_proc clauses on the third pass.
@@ -538,7 +541,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     module_add_instance_defn(InstanceModuleName, Constraints, Name, Types,
         Body, VarSet, BodyStatus, Context, !ModuleInfo, !IO).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
-    % These are process properly during pass 3, we just do some
+    % These are processed properly during pass 3, we just do some
     % error checking at this point.
     Item = initialise(Origin, _),
     !.Status = item_status(ImportStatus, _),
@@ -554,15 +557,32 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
                 % introduced because of a mutable declaration.
                 Details = mutable_decl
             ;
-                Details = initialise_decl,
-                unexpected(this_file, "Bad introduced intialise declaration.")
-            ;   
-                Details = solver_type, 
-                unexpected(this_file, "Bad introduced intialise declaration.")
-            ;   
-                Details = foreign_imports,
-                unexpected(this_file, "Bad introduced intialise declaration.")
+                ( Details = initialise_decl
+                ; Details = solver_type 
+                ; Details = foreign_imports
+                ; Details = finalise_decl
+                ),
+                unexpected(this_file, "Bad introduced initialise declaration.")
             )
+        )
+    ;
+        true
+    ).
+add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
+    % There are processed properly during pass 3, we just do some error
+    % checking at this point.
+    Item = finalise(Origin, _),
+    !.Status = item_status(ImportStatus, _),
+    ( ImportStatus = exported ->
+        ( 
+            Origin = user,
+            error_is_exported(Context, "`finalise' declaration", !IO),
+            module_info_incr_errors(!ModuleInfo)
+        ;
+            % There are no source-to-source transformations that introduce
+            % finalise declarations.
+            Origin = compiler(_),
+            unexpected(this_file, "Bad introduced finalise declaration.")
         )
     ;
         true
@@ -699,15 +719,14 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             Origin = compiler(Details),
             (
                 % Ignore clauses that are introduced as a result of
-                % `intialise' or `mutable' declarations.
+                % `intialise', `finalise' or `mutable' declarations.
                 Details = initialise_decl
             ;
                 Details = mutable_decl
             ;
-                Details = solver_type,
-                unexpected(this_file, "Bad introduced clauses.")
+                Details = finalise_decl
             ;
-                Details = foreign_imports,
+                ( Details = solver_type ; Details = foreign_imports ),
                 unexpected(this_file, "Bad introduced clauses.")
             )
         )
@@ -967,6 +986,75 @@ add_item_clause(initialise(compiler(Details), SymName), !Status, Context,
             !ModuleInfo, !QualInfo, !IO)
     ;
         unexpected(this_file, "Bad introduced initialise declaration.")
+    ).
+add_item_clause(finalise(Origin, SymName), !Status, Context, !ModuleInfo,
+        !QualInfo, !IO) :-
+    % 
+    % To handle a `:- finalise finalpred.' declaration we need to:
+    % (1) construct a new C function name, CName, to use to export finalpred,
+    % (2) add `:- pragma export(finalpred(di, uo), CName).',
+    % (3) record the finalpred/cname pair in the ModuleInfo so that
+    % code generation can ensure cname is called during module finalisation.
+    %
+    ( Origin \= user ->
+        unexpected(this_file, "Bad introduced finalise declaration.")
+    ;
+        true
+    ),
+    module_info_get_predicate_table(!.ModuleInfo, PredTable),
+    (
+        predicate_table_search_pred_sym_arity(PredTable,
+            may_be_partially_qualified, SymName, 2 /* Arity */, PredIds)
+    ->
+        (
+            PredIds = [PredId]
+        ->
+            module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+            pred_info_arg_types(PredInfo, ArgTypes),
+            pred_info_procedures(PredInfo, ProcTable),
+            ProcInfos = map.values(ProcTable),
+            (
+                ArgTypes = [Arg1Type, Arg2Type],
+                type_util__type_is_io_state(Arg1Type),
+                type_util__type_is_io_state(Arg2Type),
+                list.member(ProcInfo, ProcInfos),
+                proc_info_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+                MaybeHeadModes = yes(HeadModes),
+                HeadModes = [ di_mode, uo_mode ],
+                proc_info_declared_determinism(ProcInfo, MaybeDetism),
+                MaybeDetism = yes(Detism),
+                ( Detism = det ; Detism = cc_multidet )
+            ->
+                module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
+                PragmaExportItem =
+                    pragma(compiler(finalise_decl),
+                        export(SymName, predicate, [di_mode, uo_mode], CName)),
+                add_item_clause(PragmaExportItem, !Status, Context,
+                    !ModuleInfo, !QualInfo, !IO)
+            ;
+                write_error_pieces(Context, 0,
+                    [
+                        words("Error:"),
+                        sym_name_and_arity(SymName/2),
+                        words("used in finalise declaration does not"),
+                        words("have signature"),
+                        fixed("`pred(io::di, io::uo) is det'")
+                    ], !IO),
+                module_info_incr_errors(!ModuleInfo)
+            )
+        ;
+            write_error_pieces(Context, 0, [words("Error:"),
+                sym_name_and_arity(SymName/2),
+                words(" used in finalise declaration has " ++
+                "multiple pred declarations.")], !IO),
+            module_info_incr_errors(!ModuleInfo)
+        )
+    ;
+        write_error_pieces(Context, 0, [words("Error:"),
+            sym_name_and_arity(SymName/2),
+            words(" used in finalise declaration does " ++
+            "not have a corresponding pred declaration.")], !IO),
+        module_info_incr_errors(!ModuleInfo)
     ).
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     Item = mutable(Name, _Type, InitTerm, Inst, MutAttrs),

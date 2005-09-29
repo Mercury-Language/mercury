@@ -90,9 +90,7 @@
 :- import_module string.
 
 ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
-    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds),
-    Defns = mark_tailcalls_in_defns(Defns0),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds).
+    MLDS = MLDS0 ^ defns := mark_tailcalls_in_defns(MLDS0 ^ defns).
 
 %-----------------------------------------------------------------------------%
 
@@ -525,7 +523,7 @@ ml_warn_tailcalls(MLDS, !IO) :-
 :- pred nontailcall_in_mlds(mlds::in, tailcall_warning::out) is nondet.
 
 nontailcall_in_mlds(MLDS, Warning) :-
-    MLDS = mlds(ModuleName, _ForeignCode, _Imports, Defns, _InitPreds),
+    MLDS = mlds(ModuleName, _ForeignCode, _Imports, Defns, _InitPreds, _),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     nontailcall_in_defns(MLDS_ModuleName, Defns, Warning).
 

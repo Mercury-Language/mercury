@@ -808,7 +808,8 @@ ml_code_gen(ModuleInfo, MLDS, !IO) :-
     ml_gen_imports(ModuleInfo, Imports),
     ml_gen_defns(ModuleInfo, Defns, !IO),
     module_info_user_init_pred_c_names(ModuleInfo, InitPreds),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds).
+    module_info_user_final_pred_c_names(ModuleInfo, FinalPreds),
+    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds, FinalPreds).
 
 :- pred ml_gen_foreign_code(module_info::in,
     map(foreign_language, mlds__foreign_code)::out,

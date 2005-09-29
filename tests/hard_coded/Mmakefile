@@ -65,6 +65,7 @@ ORDINARY_PROGS=	\
 	external_unification_pred \
 	failure_unify \
 	field_syntax \
+	finalise_decl \
 	float_field \
 	float_map \
 	float_reg \

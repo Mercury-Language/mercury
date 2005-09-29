@@ -1,0 +1,7 @@
+bad_finalise_decl.m:016: Error: `finalise' declaration in module interface.
+bad_finalise_decl.m:016: Error: `i2'/2 used in finalise declaration does not
+bad_finalise_decl.m:016:   have signature `pred(io::di, io::uo) is det'
+bad_finalise_decl.m:023: Error: `i1'/2 used in finalise declaration does not
+bad_finalise_decl.m:023:   have signature `pred(io::di, io::uo) is det'
+bad_finalise_decl.m:024: Error: `i3'/2 used in finalise declaration does not
+bad_finalise_decl.m:024:   have a corresponding pred declaration.

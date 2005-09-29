@@ -4266,7 +4266,8 @@ argument mode is @samp{in}.
 * The module system::
 * An example module::
 * Sub-modules::
-* Optional module initialisation::
+* Module initialisation::
+* Module finalisation::
 * Module-local mutable variables::
 @end menu
 
@@ -4582,14 +4583,14 @@ doesn't always work correctly if you're using nested sub-modules.
 sub-modules, i.e.@: to put the sub-modules in separate source files.)
 @end itemize
 
-@node Optional module initialisation
-@section Optional module initialisation
+@node Module initialisation
+@section Module initialisation
 
 Modules that interact with foreign libraries or services
 may require special initialisation before use.
 Such modules may include any number of @samp{initialise} directives
 in their implementation sections.
-An @samp{initialise} directive takes the following form:
+An @samp{initialise} directive has the following form:
 
 @example
 :- initialise initpredname.
@@ -4606,7 +4607,33 @@ The effect of the @samp{initialise} declaration is to ensure that
 @samp{initpredname} is invoked before the program's @samp{main}
 predicate.  Initialisation predicates within a module are executed in the
 order in which they are specified, although no order may be assumed between
-different modules or submodules.
+different modules or sub-modules.
+
+@node Module finalisation
+@section Module finalisation
+
+Modules that require special finalisation at program termination
+may include any number of @samp{finalise} directives in their
+implementation sections.
+
+A @samp{finalise} directive has the following form:
+
+@example
+:- finalise finalpredname.
+@end example
+
+where the predicate @samp{finalpredname/2} must be declared with the following
+signature:
+
+@example
+:- pred finalpredname(io::di, io::uo) is det.
+@end example
+
+The effect of the @samp{finalise} declaration is to ensure that
+@samp{finalpredname} is invoked after the program's @samp{main}
+predicate.  Finalisation predicates within a module are executed in
+the order in which they are specified, although no order may be assumed between
+different modules or sub-modules.
 
 @node Module-local mutable variables
 @section Module-local mutable variables
@@ -5784,7 +5811,8 @@ There is an operational semantics of Mercury programs called the
 @dfn{strict sequential} operational semantics.  In this semantics,
 the program is executed top-down, starting from @samp{main/2}
 preceded by any module initialisation goals
-(as per @ref{Optional module initialisation}),
+(as per @ref{Module initialisation}), followed by any module finalisation
+goals (as per @ref{Module finalisation}),
 and function calls within a goal, conjunctions and disjunctions are all
 executed in depth-first left-to-right order. 
 Conjunctions and function calls are ``minimally'' reordered as required

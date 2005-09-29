@@ -466,7 +466,8 @@
     %
 ml_elim_nested(Action, MLDS0, MLDS, !IO) :-
     globals__io_get_globals(Globals, !IO),
-    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds),
+    MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
+        FinalPreds),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     OuterVars = [],
     DefnsList = list__map(
@@ -479,7 +480,8 @@ ml_elim_nested(Action, MLDS0, MLDS, !IO) :-
     % So we need to check for and eliminate any duplicate definitions
     % of constants.
     Defns = list__remove_dups(Defns1),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds).
+    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds,
+        FinalPreds).
 
     % Either eliminated nested functions:
     % Hoist out any nested function occurring in a single mlds__defn.
