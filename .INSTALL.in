@@ -2,10 +2,10 @@
 #
 # INSTALL - installation instructions and installation script.
 #
-# You need GNU C (version 2.7.2 or later, we recommend version 2.95.x,
-# version 3.0 will not work) and GNU Make (3.69 or later).  Make sure
-# that they are somewhere in your PATH.  It's also helpful if you have
-# GNU Readline installed in one of the standard locations (normally
+# You need GNU C (version 2.7.2 or later, we recommend version 3.4.x,
+# versions 3.0, 3.3.1 and 4.0 will not work) and GNU Make (3.69 or later).  
+# Make sure that they are somewhere in your PATH.  It's also helpful if you
+# have GNU Readline installed in one of the standard locations (normally
 # /usr/local or /usr), but this is not essential.
 #
 # The source distributions for GNU C, GNU Make, and GNU Readline are
