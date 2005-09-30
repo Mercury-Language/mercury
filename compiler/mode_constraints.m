@@ -123,7 +123,7 @@ mode_constraints__process_module(!ModuleInfo, !IO) :-
             map.init, AbstractModeConstraints
         ),
 
-        hlds_module.module_info_name(!.ModuleInfo, ModuleName),
+        hlds_module.module_info_get_name(!.ModuleInfo, ModuleName),
 
         CreateDirectories = yes,
         parse_tree.modules.module_name_to_file_name(ModuleName,

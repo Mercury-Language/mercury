@@ -143,7 +143,7 @@ rl_key__remove_useless_info(ModuleInfo,
 		( TypeCategory = user_ctor_type
 		; TypeCategory = enum_type
 		),
-		module_info_types(ModuleInfo, Types),
+		module_info_get_type_table(ModuleInfo, Types),
 		type_to_ctor_and_args(Type, TypeCtor, _),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
@@ -1044,7 +1044,7 @@ rl_key__choose_cons_id(ModuleInfo, UpperLower, Type,
 		ConsId1 = cons(_, _),
 		ConsId2 = cons(_, _)
 	->
-		module_info_types(ModuleInfo, Types),
+		module_info_get_type_table(ModuleInfo, Types),
 		type_to_ctor_and_args(Type, TypeCtor, _),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),

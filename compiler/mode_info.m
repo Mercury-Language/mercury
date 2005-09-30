@@ -391,7 +391,7 @@
 
 mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
         HowToCheck, MayChangeProc, ModeInfo) :-
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, debug_modes, DebugModes),
     globals__lookup_int_option(Globals, debug_modes_pred_id,
     DebugModesPredId),
@@ -498,10 +498,10 @@ mode_info_get_preds(ModeInfo, Preds) :-
     module_info_preds(ModeInfo ^ module_info, Preds).
 
 mode_info_get_modes(ModeInfo, Modes) :-
-    module_info_modes(ModeInfo ^ module_info, Modes).
+    module_info_get_mode_table(ModeInfo ^ module_info, Modes).
 
 mode_info_get_insts(ModeInfo, Insts) :-
-    module_info_insts(ModeInfo ^ module_info, Insts).
+    module_info_get_inst_table(ModeInfo ^ module_info, Insts).
 
 mode_info_set_call_context(unify(UnifyContext), !MI) :-
     mode_info_set_mode_context(unify(UnifyContext, left), !MI).

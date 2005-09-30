@@ -111,7 +111,7 @@ export__get_foreign_export_decls(HLDS, ForeignExportDecls) :-
 	ForeignDecls = list__reverse(RevForeignDecls),
 
 	module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
-	module_info_globals(HLDS, Globals),
+	module_info_get_globals(HLDS, Globals),
 	export__get_foreign_export_decls_2(Preds, ExportedProcs, Globals,
 		HLDS, C_ExportDecls),
 
@@ -254,7 +254,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E | ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-	module_info_globals(Module, Globals),
+	module_info_get_globals(Module, Globals),
 	get_export_info(Preds, PredId, ProcId, Globals, Module, DeclareString,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),

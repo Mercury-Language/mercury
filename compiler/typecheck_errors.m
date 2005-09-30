@@ -1787,7 +1787,7 @@ write_inference_message(PredInfo, !IO) :-
 
 checkpoint(Msg, !Info, !IO) :-
 	typecheck_info_get_module_info(!.Info, ModuleInfo),
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, debug_types, DoCheckPoint),
 	(
 		DoCheckPoint = yes,

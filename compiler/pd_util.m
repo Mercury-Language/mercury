@@ -219,7 +219,7 @@ pd_util__propagate_constraints(!Goal, !PDInfo, !IO) :-
             pd_util__requantify_goal(NonLocals, !Goal, !PDInfo),
             pd_util__recompute_instmap_delta(!Goal, !PDInfo),
             pd_util__rerun_det_analysis(!Goal, !PDInfo, !IO),
-            module_info_globals(ModuleInfo, Globals),
+            module_info_get_globals(ModuleInfo, Globals),
             simplify__find_simplifications(no, Globals, Simplifications),
             pd_util__simplify_goal(Simplifications, !Goal, !PDInfo)
         ;
@@ -239,7 +239,7 @@ pd_util__propagate_constraints(!Goal, !PDInfo, !IO) :-
 pd_util__simplify_goal(Simplifications, Goal0, Goal, !PDInfo) :-
     % Construct a simplify_info.
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-    module_info_globals(ModuleInfo0, Globals),
+    module_info_get_globals(ModuleInfo0, Globals),
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
     proc_info_vartypes(ProcInfo0, VarTypes0),
     det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId, Globals, DetInfo0),
@@ -370,7 +370,7 @@ pd_util__rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
         ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo),
 
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     proc_info_vartypes(ProcInfo, VarTypes),
     det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
     pd_info_get_instmap(!.PDInfo, InstMap),

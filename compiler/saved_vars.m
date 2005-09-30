@@ -65,7 +65,7 @@
 saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo, !ModuleInfo, !IO) :-
     write_proc_progress_message("% Minimizing saved vars in ",
         PredId, ProcId, !.ModuleInfo, !IO),
-    module_info_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     saved_vars_proc_no_io(TypeInfoLiveness, ProcInfo0, ProcInfo, !ModuleInfo).

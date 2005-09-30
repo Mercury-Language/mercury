@@ -1967,7 +1967,7 @@ hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
     % arguments need to be passed in, not just the ones that are used.
     % Similarly if the address of a procedure of this predicate is taken,
     % so that we can copy the closure.
-    module_info_globals(ModuleInfo0, Globals),
+    module_info_get_globals(ModuleInfo0, Globals),
     ExportStatus = local,
     non_special_interface_should_use_typeinfo_liveness(ExportStatus,
         IsAddressTaken, Globals, TypeInfoLiveness),
@@ -1990,7 +1990,7 @@ hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
     compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
         ArgTypes, ArgModes),
 
-    module_info_name(ModuleInfo0, ModuleName),
+    module_info_get_name(ModuleInfo0, ModuleName),
     SymName = qualified(ModuleName, PredName),
 
         % Remove unneeded variables from the vartypes and varset.
@@ -2215,7 +2215,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
     ;
         pred_info_get_origin(PredInfo, special_pred(SpecialPred)),
         SpecialPred = SpecialId - TypeCtor,
-        module_info_types(ModuleInfo, TypeTable),
+        module_info_get_type_table(ModuleInfo, TypeTable),
         % If the search fails, then TypeCtor must be a builtin type
         % constructor, such as the tuple constructor.
         map__search(TypeTable, TypeCtor, TypeDefn),
@@ -3604,7 +3604,7 @@ is_field_access_function_name(ModuleInfo, FuncName, Arity,
         AccessType = get,
         FieldName = FuncName
     ),
-    module_info_ctor_field_table(ModuleInfo, CtorFieldTable),
+    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     map__contains(CtorFieldTable, FieldName).
 
 pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
@@ -3658,7 +3658,7 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, allow_inlining, AllowInlining),
     globals__lookup_bool_option(Globals, inline_builtins, InlineBuiltins),
     (

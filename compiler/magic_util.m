@@ -1377,7 +1377,7 @@ magic_util__check_type_ctor(Parents, TypeCtor, Errors0, Errors) -->
 		{ set__union(Errors0, TypeErrors, Errors) }
 	;
 		magic_info_get_module_info(ModuleInfo),
-		{ module_info_types(ModuleInfo, Types) },
+		{ module_info_get_type_table(ModuleInfo, Types) },
 		{ map__lookup(Types, TypeCtor, TypeDefn) },
 		{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
 		{ set__init(NewErrors0) },

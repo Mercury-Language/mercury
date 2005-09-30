@@ -169,7 +169,7 @@ generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId, Predicates, !IO) :-
     ->
         Predicates = []
     ;
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
             VeryVerbose = yes,
@@ -251,7 +251,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         map__init(FollowVarsMap),
         FollowVars = abs_follow_vars(FollowVarsMap, 1)
     ),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     continuation_info__basic_stack_layout_for_proc(PredInfo, Globals,
         BasicStackLayout, ForceProcId),
     SaveSuccip = BasicStackLayout,
@@ -414,7 +414,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     module_info::in, module_info::out) is det.
 
 maybe_set_trace_level(PredInfo, !ModuleInfo) :-
-    module_info_globals(!.ModuleInfo, Globals0),
+    module_info_get_globals(!.ModuleInfo, Globals0),
     (
         PredModule = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
@@ -485,7 +485,7 @@ maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
     HasTablingPointer = eval_method_has_per_proc_tabling_pointer(EvalMethod),
     (
         HasTablingPointer = yes,
-        module_info_name(ModuleInfo, ModuleName),
+        module_info_get_name(ModuleInfo, ModuleName),
         Var = tabling_pointer_var(ModuleName, ProcLabel),
         global_data_add_new_proc_var(proc(PredId, ProcId), Var, !GlobalData)
     ;

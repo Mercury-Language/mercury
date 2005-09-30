@@ -154,8 +154,8 @@ check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
 
 check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 		!IO) :-
-	module_info_classes(!.ModuleInfo, ClassTable),
-	module_info_instances(!.ModuleInfo, InstanceTable0),
+	module_info_get_class_table(!.ModuleInfo, ClassTable),
+	module_info_get_instance_table(!.ModuleInfo, InstanceTable0),
 	map__to_assoc_list(InstanceTable0, InstanceList0),
 	list__map_foldl2(check_one_class(ClassTable), InstanceList0,
 		InstanceList, check_tc_info([], !.ModuleInfo, !.QualInfo),
@@ -163,7 +163,7 @@ check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 	(
 		Errors = [],
 		map__from_assoc_list(InstanceList, InstanceTable),
-		module_info_set_instances(InstanceTable, !ModuleInfo),
+		module_info_set_instance_table(InstanceTable, !ModuleInfo),
 		FoundError = no
 	;
 		Errors = [_ | _],
@@ -765,7 +765,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	;
 		Markers = Markers1
 	),
-	module_info_globals(ModuleInfo0, Globals),
+	module_info_get_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
 
 	( status_is_imported(Status0, yes) ->
@@ -880,9 +880,9 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 		% Calculate the bindings
 	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
 
-	module_info_classes(ModuleInfo, ClassTable),
-	module_info_instances(ModuleInfo, InstanceTable),
-	module_info_superclasses(ModuleInfo, SuperClassTable),
+	module_info_get_class_table(ModuleInfo, ClassTable),
+	module_info_get_instance_table(ModuleInfo, InstanceTable),
+	module_info_get_superclass_table(ModuleInfo, SuperClassTable),
 
 		% Build a suitable constraint context for checking the
 		% instance.  To do this, we assume any constraints on the
@@ -966,7 +966,7 @@ constraint_list_to_string_2(VarSet, [C | Cs], String) :-
 	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 check_for_missing_concrete_instances(!ModuleInfo, FoundError, !IO) :-
-	module_info_instances(!.ModuleInfo, InstanceTable),
+	module_info_get_instance_table(!.ModuleInfo, InstanceTable),
 	%
 	% Grab all the abstract instance declarations in the interface
 	% of this module and all the concrete instances defined in the
@@ -1108,7 +1108,7 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
 	io::di, io::uo) is det.
 
 check_for_cyclic_classes(!ModuleInfo, Errors, !IO) :-
-	module_info_classes(!.ModuleInfo, ClassTable0),
+	module_info_get_class_table(!.ModuleInfo, ClassTable0),
 	ClassIds = map__keys(ClassTable0),
 	foldl3(find_cycles([]), ClassIds, ClassTable0, ClassTable, set.init, _,
 		[], Cycles),
@@ -1120,7 +1120,7 @@ check_for_cyclic_classes(!ModuleInfo, Errors, !IO) :-
 		Errors = yes,
 		foldl(report_cyclic_classes(ClassTable), Cycles, !IO)
 	),
-	module_info_set_classes(ClassTable, !ModuleInfo).
+	module_info_set_class_table(ClassTable, !ModuleInfo).
 
 :- type class_path == list(class_id).
 
@@ -1276,7 +1276,7 @@ add_path_element(class_id(Name, Arity), RevPieces0) =
 	bool::out, io::di, io::uo) is det.
 
 check_functional_dependencies(!ModuleInfo, FoundError, !IO) :-
-	module_info_instances(!.ModuleInfo, InstanceTable),
+	module_info_get_instance_table(!.ModuleInfo, InstanceTable),
 	map.keys(InstanceTable, ClassIds),
 	list.foldl3(check_fundeps_class, ClassIds, !ModuleInfo, no, FoundError,
 		!IO).
@@ -1285,9 +1285,9 @@ check_functional_dependencies(!ModuleInfo, FoundError, !IO) :-
 	bool::in, bool::out, io::di, io::uo) is det.
 
 check_fundeps_class(ClassId, !ModuleInfo, !FoundError, !IO) :-
-	module_info_classes(!.ModuleInfo, ClassTable),
+	module_info_get_class_table(!.ModuleInfo, ClassTable),
 	map.lookup(ClassTable, ClassId, ClassDefn),
-	module_info_instances(!.ModuleInfo, InstanceTable),
+	module_info_get_instance_table(!.ModuleInfo, InstanceTable),
 	map.lookup(InstanceTable, ClassId, InstanceDefns),
 	FunDeps = ClassDefn ^ class_fundeps,
 	check_range_restrictedness(ClassId, InstanceDefns, FunDeps,
@@ -1484,7 +1484,7 @@ check_typeclass.check_constraints(!ModuleInfo, FoundError, !IO) :-
 	module_info_predids(!.ModuleInfo, PredIds),
 	list.foldl3(check_pred_constraints, PredIds, !ModuleInfo,
 		no, FoundError0, !IO),
-	module_info_types(!.ModuleInfo, TypeTable),
+	module_info_get_type_table(!.ModuleInfo, TypeTable),
 	map.keys(TypeTable, TypeCtors),
 	list.foldl3(check_ctor_constraints(TypeTable), TypeCtors, !ModuleInfo,
 		FoundError0, FoundError, !IO).
@@ -1577,7 +1577,7 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo,
 	module_info::in, list(tvar)::out) is det.
 
 get_unbound_tvars(TVars, Constraints, ModuleInfo, UnboundTVars) :-
-	module_info_classes(ModuleInfo, ClassTable),
+	module_info_get_class_table(ModuleInfo, ClassTable),
 	InducedFunDeps = induced_fundeps(ClassTable, Constraints),
 	FunDepsClosure = fundeps_closure(InducedFunDeps, list_to_set(TVars)),
 	solutions(constrained_var_not_in_closure(Constraints, FunDepsClosure),

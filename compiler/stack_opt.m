@@ -172,7 +172,7 @@ stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 	simplify__proc([], PredId, ProcId, !ModuleInfo, !ProcInfo, !IO),
 	detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO),
 	initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
-	module_info_globals(!.ModuleInfo, Globals),
+	module_info_get_globals(!.ModuleInfo, Globals),
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
 	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	globals__lookup_bool_option(Globals, opt_no_return_calls,
@@ -232,7 +232,7 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
 	arg_info__partition_proc_args(!.ProcInfo, ModuleInfo,
 		InputArgs, OutputArgs, UnusedArgs),
 	HeadVars = set__union_list([InputArgs, OutputArgs, UnusedArgs]),
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals,
 		optimize_saved_vars_cell_candidate_headvars, CandHeadvars),
 	(
@@ -398,7 +398,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
 		;
 			type_to_ctor_and_args(Type, TypeCtor, _),
 			ModuleInfo = IntParams ^ module_info,
-			module_info_types(ModuleInfo, TypeTable),
+			module_info_get_type_table(ModuleInfo, TypeTable),
 			map__lookup(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			ConsTable = TypeBody ^ du_type_cons_tag_values

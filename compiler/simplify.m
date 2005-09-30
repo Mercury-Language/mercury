@@ -188,7 +188,7 @@ simplify__proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
 
 simplify__proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         !ProcInfo, Msgs) :-
-    module_info_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     proc_info_vartypes(!.ProcInfo, VarTypes0),
     det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, Globals,
         DetInfo0),
@@ -1410,7 +1410,7 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
         determinism_components(Det, CanFail, at_most_one),
         unify_proc__lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det,
             ProcId),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, special_preds, SpecialPreds),
         (
             hlds_pred__in_in_unification_proc_id(ProcId),
@@ -1801,7 +1801,7 @@ simplify__excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
         goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
         map__init(Subn0),
         simplify_info_get_module_info(!.Info, ModuleInfo),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__get_trace_level(Globals, TraceLevel),
         globals__lookup_bool_option(Globals, trace_optimized, TraceOptimized),
         simplify_info_get_varset(!.Info, VarSet0),

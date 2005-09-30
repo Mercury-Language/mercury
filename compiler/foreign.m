@@ -547,7 +547,7 @@ have_foreign_type_for_backend(asm, ForeignTypeBody, Result) :-
 non_foreign_type(Type) = mercury(Type).
 
 to_exported_type(ModuleInfo, Type) = ExportType :-
-	module_info_types(ModuleInfo, Types),
+	module_info_get_type_table(ModuleInfo, Types),
 	(
 		type_to_ctor_and_args(Type, TypeCtor, _),
 		map__search(Types, TypeCtor, TypeDefn)
@@ -574,7 +574,7 @@ foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body) =
 foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
 		MaybeUserEqComp, Assertions) :-
 	ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava),
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
 	(
 		Target = c,

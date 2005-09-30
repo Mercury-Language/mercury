@@ -46,12 +46,12 @@ module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
     %
     % Add the definition of this inst to the HLDS inst table.
     %
-    module_info_insts(!.ModuleInfo, InstTable0),
+    module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_user_insts(InstTable0, Insts0),
     insts_add(VarSet, Name, Args, InstDefn, Cond, Context, Status,
         Insts0, Insts, !IO),
     inst_table_set_user_insts(Insts, InstTable0, InstTable),
-    module_info_set_insts(InstTable, !ModuleInfo),
+    module_info_set_inst_table(InstTable, !ModuleInfo),
     %
     % check if the inst is infinitely recursive (at the top level)
     %
@@ -125,10 +125,10 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
 
 module_add_mode_defn(VarSet, Name, Params, ModeDefn, Cond, Context,
         item_status(Status, _NeedQual), !ModuleInfo, InvalidMode, !IO) :-
-    module_info_modes(!.ModuleInfo, Modes0),
+    module_info_get_mode_table(!.ModuleInfo, Modes0),
     modes_add(VarSet, Name, Params, ModeDefn, Cond, Context, Status,
         Modes0, Modes, InvalidMode, !IO),
-    module_info_set_modes(Modes, !ModuleInfo).
+    module_info_set_mode_table(Modes, !ModuleInfo).
 
 :- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
     mode_defn::in, condition::in, prog_context::in, import_status::in,

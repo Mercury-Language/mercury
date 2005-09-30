@@ -106,7 +106,7 @@ warn_non_term_user_special_preds(ModuleInfo, !IO) :-
 	->
 		module_info_get_special_pred_map(ModuleInfo,
 			SpecialPredMap),
-		module_info_types(ModuleInfo, TypeTable),
+		module_info_get_type_table(ModuleInfo, TypeTable),
 		map.foldl(warn_non_term_user_special_pred(ModuleInfo,
 			TypeTable), SpecialPredMap, !IO)
 	;

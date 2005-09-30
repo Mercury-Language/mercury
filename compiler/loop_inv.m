@@ -742,7 +742,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     AuxHeadVars = HeadVars ++ ComputedInvArgs,
 
-    hlds_module__module_info_name(ModuleInfo0, ModuleName),
+    hlds_module__module_info_get_name(ModuleInfo0, ModuleName),
     hlds_module__module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
             PredInfo, ProcInfo),
 

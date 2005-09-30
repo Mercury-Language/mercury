@@ -608,7 +608,7 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
         ( ErrsInThisPred = 0 ->
             true
         ;
-            module_info_num_errors(!.ModuleInfo, ModNumErrors0),
+            module_info_get_num_errors(!.ModuleInfo, ModNumErrors0),
             ModNumErrors1 = ModNumErrors0 + ErrsInThisPred,
             module_info_set_num_errors(ModNumErrors1, !ModuleInfo),
             module_info_remove_predid(PredId, !ModuleInfo)
@@ -1522,7 +1522,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
             instmap__lookup_var(InstMap, Arg1, Inst1),
             Inst1 = bound(Unique, [functor(ConsId, [])]),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            module_info_types(ModuleInfo, TypeTable),
+            module_info_get_type_table(ModuleInfo, TypeTable),
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             map__lookup(VarTypes, Arg1, ArgType1),
             type_to_ctor_and_args(ArgType1, ArgTypeCtor1, _),
@@ -3150,7 +3150,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
         ;
             TypeCtor = unqualified(_TypeName) - _Arity,
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            hlds_module__module_info_name(ModuleInfo, ModuleName)
+            hlds_module__module_info_get_name(ModuleInfo, ModuleName)
         ),
         NonLocals = set__make_singleton_set(Var),
         InstmapDeltaAL = [Var - Inst],

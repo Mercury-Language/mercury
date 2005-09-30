@@ -482,7 +482,7 @@ magic__process_imported_procs([PredId | PredIds], UsedPreds) -->
 		{
 			% Always preprocess base relations defined in
 			% this module.
-			module_info_name(ModuleInfo, ModuleName),
+			module_info_get_name(ModuleInfo, ModuleName),
 			PredModuleName = pred_info_module(PredInfo),
 			ModuleName = PredModuleName
 		;
@@ -533,7 +533,7 @@ magic__process_base_relation(PredId0, ProcId0) -->
 
 	(
 		{ ModuleName = pred_info_module(PredInfo0) },
-		{ module_info_name(ModuleInfo0, ModuleName) }
+		{ module_info_get_name(ModuleInfo0, ModuleName) }
 	->
 		{ pred_info_context(PredInfo0, Context) },
 		magic_util__check_args(HeadVars0, ArgModes0, ArgTypes0,
@@ -995,13 +995,13 @@ magic__interface_call_args([MagicInput | MagicInputs], MagicTypes, MagicModes,
 
 magic__interface_from_c(EntryPoints, CPredProcId, AditiPredProcId) -->
 	magic_info_get_module_info(ModuleInfo0),
-	{ module_info_globals(ModuleInfo0, Globals) },
+	{ module_info_get_globals(ModuleInfo0, Globals) },
 	{ globals__lookup_bool_option(Globals, aditi_only, AditiOnly) },
 	{ module_info_pred_proc_info(ModuleInfo0,
 		CPredProcId, PredInfo0, ProcInfo0) },
 
 	{ pred_info_get_markers(PredInfo0, Markers) },
-	{ module_info_name(ModuleInfo0, ModuleName) },
+	{ module_info_get_name(ModuleInfo0, ModuleName) },
 	(
 		{ AditiOnly = no },
 		{ check_marker(Markers, base_relation) },

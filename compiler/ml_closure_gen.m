@@ -223,7 +223,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
         Access, Initializer, Context),
     ClosureLayoutDefns = ClosureProcIdDefns ++ TVarDefns ++
         ClosureArgDefns ++ [ClosureLayoutDefn],
-    module_info_name(ModuleInfo, ModuleName),
+    module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ClosureLayoutRval = lval(var(qual(MLDS_ModuleName, module_qual, Name),
         ClosureLayoutType)).
@@ -237,7 +237,7 @@ ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
     InitProcId = init_obj(const(null(ProcIdType))),
     ProcIdType = mlds__generic_type,
     ClosureProcIdDefns = [].
-%   module_info_name(ModuleInfo, ModuleName),
+%   module_info_get_name(ModuleInfo, ModuleName),
 %   term__context_file(Context, FileName),
 %   term__context_line(Context, LineNumber),
 %   % XXX We don't have the GoalInfo here,
@@ -345,7 +345,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
         ;
             % For other types, we need to generate a definition of the
             % pseudo_type_info for that type, in the the current module.
-            module_info_name(ModuleInfo, ModuleName),
+            module_info_get_name(ModuleInfo, ModuleName),
             RttiData = pseudo_type_info(PseudoTypeInfo),
             rtti_data_to_id(RttiData, RttiId),
             RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo, [RttiData]),
@@ -380,7 +380,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
     ;
         % For other types, we need to generate a definition of the type_info
         % for that type, in the the current module.
-        module_info_name(ModuleInfo, ModuleName),
+        module_info_get_name(ModuleInfo, ModuleName),
         RttiData = type_info(TypeInfo),
         rtti_data_to_id(RttiData, RttiId),
         RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo, [RttiData]),
@@ -437,7 +437,7 @@ ml_stack_layout_construct_tvar_vector(ModuleInfo, TvarVectorName, Context,
         Defn = ml_gen_static_const_defn(TvarVectorName, ArrayType,
             Access, Initializer, Context),
         Defns = [Defn],
-        module_info_name(ModuleInfo, ModuleName),
+        module_info_get_name(ModuleInfo, ModuleName),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
         MLDS_Rval = lval(var(
             qual(MLDS_ModuleName, module_qual, TvarVectorName),
@@ -875,7 +875,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 
     % Generate code to declare and initialize the local variables
     % needed for accurate GC.
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     (
         MaybeClosureA = yes({ClosureArgType2, ClosureArgName2}),
         globals__get_gc_method(Globals, accurate)

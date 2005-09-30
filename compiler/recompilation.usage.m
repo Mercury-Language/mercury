@@ -122,7 +122,7 @@ recompilation__usage__write_usage_file(ModuleInfo, NestedSubModules,
 			"% Writing recompilation compilation " ++
 			"dependency information\n", !IO),
 
-		module_info_name(ModuleInfo, ModuleName),
+		module_info_get_name(ModuleInfo, ModuleName),
 		module_name_to_file_name(ModuleName, ".used", yes, FileName,
 			!IO),
 		io__open_output(FileName, FileResult, !IO),
@@ -158,7 +158,7 @@ recompilation__usage__write_usage_file_2(ModuleInfo, NestedSubModules,
 	io__write_int(version_numbers_version_number, !IO),
 	io__write_string(".\n\n", !IO),
 
-	module_info_name(ModuleInfo, ThisModuleName),
+	module_info_get_name(ModuleInfo, ThisModuleName),
 	map__lookup(Timestamps, ThisModuleName,
 		module_timestamp(_, ThisModuleTimestamp, _)),
 	io__write_string("(", !IO),
@@ -523,7 +523,7 @@ usage_file_version_number = 2.
 
 visible_modules(ModuleInfo, VisibleModule) :-
 	visible_module(VisibleModule, ModuleInfo),
-	\+ module_info_name(ModuleInfo, VisibleModule).
+	\+ module_info_get_name(ModuleInfo, VisibleModule).
 
 :- pred insert_into_imported_items_map(module_name::in,
 	imported_items::in, imported_items::out) is det.
@@ -592,7 +592,7 @@ recompilation__usage__find_all_used_imported_items_2(UsedItems, !Info) :-
 	% Find items used by imported instances for local classes.
 	%
 	ModuleInfo = !.Info ^ module_info,
-	module_info_instances(ModuleInfo, Instances),
+	module_info_get_instance_table(ModuleInfo, Instances),
 	map__foldl(find_items_used_by_instances, Instances, !Info),
 
 	Predicates = UsedItems ^ predicates,
@@ -752,7 +752,7 @@ recompilation__usage__find_matching_functors(ModuleInfo, SymName, Arity,
 	%
 	% Is it a constructor.
 	%
-	module_info_ctors(ModuleInfo, Ctors),
+	module_info_get_cons_table(ModuleInfo, Ctors),
 	( map__search(Ctors, cons(SymName, Arity), ConsDefns0) ->
 		ConsDefns1 = ConsDefns0
 	;
@@ -796,7 +796,7 @@ recompilation__usage__find_matching_functors(ModuleInfo, SymName, Arity,
 	(
 		is_field_access_function_name(ModuleInfo, SymName, Arity,
 			_, FieldName),
-		module_info_ctor_field_table(ModuleInfo, CtorFields),
+		module_info_get_ctor_field_table(ModuleInfo, CtorFields),
 		map__search(CtorFields, FieldName, FieldDefns)
 	->
 		MatchingFields = list__map(
@@ -959,7 +959,7 @@ recompilation__usage__record_resolved_item_3(ModuleQualifier, SymName, Arity,
 
 recompilation__usage__find_items_used_by_item((type), TypeCtor, !Info) :-
 	ModuleInfo = !.Info ^ module_info,
-	module_info_types(ModuleInfo, Types),
+	module_info_get_type_table(ModuleInfo, Types),
 	map__lookup(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	( TypeBody = eqv_type(Type) ->
@@ -971,19 +971,19 @@ recompilation__usage__find_items_used_by_item((type), TypeCtor, !Info) :-
 	).
 recompilation__usage__find_items_used_by_item(type_body, TypeCtor, !Info) :-
 	ModuleInfo = !.Info ^ module_info,
-	module_info_types(ModuleInfo, Types),
+	module_info_get_type_table(ModuleInfo, Types),
 	map__lookup(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	recompilation__usage__find_items_used_by_type_body(TypeBody, !Info).
 recompilation__usage__find_items_used_by_item((mode), ModeId, !Info):-
 	ModuleInfo = !.Info ^ module_info,
-	module_info_modes(ModuleInfo, Modes),
+	module_info_get_mode_table(ModuleInfo, Modes),
 	mode_table_get_mode_defns(Modes, ModeDefns),
 	map__lookup(ModeDefns, ModeId, ModeDefn),
 	recompilation__usage__find_items_used_by_mode_defn(ModeDefn, !Info).
 recompilation__usage__find_items_used_by_item((inst), InstId, !Info):-
 	ModuleInfo = !.Info ^ module_info,
-	module_info_insts(ModuleInfo, Insts),
+	module_info_get_inst_table(ModuleInfo, Insts),
 	inst_table_get_user_insts(Insts, UserInsts),
 	user_inst_table_get_inst_defns(UserInsts, UserInstDefns),
 	map__lookup(UserInstDefns, InstId, InstDefn),
@@ -993,7 +993,7 @@ recompilation__usage__find_items_used_by_item((typeclass), ClassItemId,
 	ClassItemId = ClassName - ClassArity,
 	ClassId = class_id(ClassName, ClassArity),
 	ModuleInfo = !.Info ^ module_info,
-	module_info_classes(ModuleInfo, Classes),
+	module_info_get_class_table(ModuleInfo, Classes),
 	map__lookup(Classes, ClassId, ClassDefn),
 	Constraints = ClassDefn ^ class_supers,
 	ClassInterface = ClassDefn ^ class_interface,
@@ -1007,7 +1007,7 @@ recompilation__usage__find_items_used_by_item((typeclass), ClassItemId,
 			recompilation__usage__find_items_used_by_class_method,
 			Methods, !Info)
 	),
-	module_info_instances(ModuleInfo, Instances),
+	module_info_get_instance_table(ModuleInfo, Instances),
 	( map__search(Instances, ClassId, InstanceDefns) ->
 		list__foldl(recompilation__usage__find_items_used_by_instance(
 			ClassItemId), InstanceDefns, !Info)
@@ -1052,7 +1052,7 @@ recompilation__usage__find_items_used_by_instance(ClassId,
 	% --intermodule-optimization, which isn't handled here yet)
 	ModuleInfo = !.Info ^ module_info,
 	(
-		module_info_name(ModuleInfo, InstanceModuleName)
+		module_info_get_name(ModuleInfo, InstanceModuleName)
 	->
 		true
 	;
@@ -1243,7 +1243,7 @@ recompilation__usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
 		%
 		% Record items used by `:- pragma type_spec' declarations.
 		%
-		module_info_type_spec_info(ModuleInfo, TypeSpecInfo),
+		module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
 		TypeSpecInfo = type_spec_info(_, _, _, PragmaMap),
 		( map__search(PragmaMap, PredId, TypeSpecPragmas) ->
 			list__foldl(find_items_used_by_type_spec,
@@ -1569,7 +1569,7 @@ item_is_recorded_used(Info, ItemType, NameArity) :-
 
 item_is_local(Info, NameArity) :-
 	NameArity = qualified(ModuleName, _) - _,
-	module_info_name(Info ^ module_info, ModuleName).
+	module_info_get_name(Info ^ module_info, ModuleName).
 
 :- pred recompilation__usage__record_imported_item(item_type::in,
 	pair(sym_name, arity)::in,

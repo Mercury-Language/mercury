@@ -262,7 +262,7 @@ check_preds_purity(FoundTypeError, PostTypecheckError, !ModuleInfo, !IO) :-
         PostTypecheckError, !ModuleInfo, !IO),
 
     check_preds_purity_2(PredIds, !ModuleInfo, NumErrors1, NumErrors, !IO),
-    module_info_num_errors(!.ModuleInfo, Errs0),
+    module_info_get_num_errors(!.ModuleInfo, Errs0),
     Errs = Errs0 + NumErrors,
     module_info_set_num_errors(Errs, !ModuleInfo).
 

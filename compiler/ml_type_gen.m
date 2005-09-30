@@ -105,7 +105,7 @@ ml_gen_types(ModuleInfo, MLDS_TypeDefns, !IO) :-
     globals__io_get_target(Target, !IO),
     (
         HighLevelData = yes,
-        module_info_types(ModuleInfo, TypeTable),
+        module_info_get_type_table(ModuleInfo, TypeTable),
         map__keys(TypeTable, TypeCtors0),
         list__filter((pred(TypeCtor::in) is semidet :-
                 \+ type_ctor_needs_lowlevel_rep(Target, TypeCtor)
@@ -343,7 +343,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     BaseClassId = mlds__class_type(QualBaseClassName, BaseClassArity,
         mlds__class),
     QualBaseClassName = qual(BaseClassModuleName, QualKind, BaseClassName),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     BaseClassQualifier = mlds__append_class_qualifier(
         BaseClassModuleName, QualKind, Globals,
         BaseClassName, BaseClassArity),
@@ -624,7 +624,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         % Generate a constructor function to initialize the fields, if needed
         % (not all back-ends use constructor functions).
         MaybeSecTagVal = get_secondary_tag(TagVal),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__get_target(Globals, Target),
         ( target_uses_constructors(Target) = yes ->
             ( ml_tag_uses_base_class(TagVal) ->

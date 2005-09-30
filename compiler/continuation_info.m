@@ -385,7 +385,7 @@ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
 		ModuleInfo, !ContInfo) :-
 	PredProcId = proc(PredId, _),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	continuation_info__basic_stack_layout_for_proc(PredInfo, Globals,
 		Layout, _),
 	(

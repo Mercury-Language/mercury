@@ -453,7 +453,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             "generate_construction_2: tabling_pointer constant has args"),
         code_info__get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-        module_info_name(ModuleInfo, ModuleName),
+        module_info_get_name(ModuleInfo, ModuleName),
         DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)),
         code_info__assign_const_to_var(Var,
             const(data_addr_const(DataAddr, no)), !CI),
@@ -569,7 +569,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         ),
         % This optimization distorts deep profiles, so don't perform it
         % in deep profiling grades.
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, profile_deep, Deep),
         Deep = no
     ->
@@ -666,7 +666,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         ),
         continuation_info__generate_closure_layout( ModuleInfo, PredId, ProcId,
             ClosureInfo),
-        module_info_name(ModuleInfo, ModuleName),
+        module_info_get_name(ModuleInfo, ModuleName),
         goal_info_get_context(GoalInfo, Context),
         term__context_file(Context, FileName),
         term__context_line(Context, LineNumber),

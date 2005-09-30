@@ -64,7 +64,7 @@
 :- import_module varset.
 
 apply_deep_profiling_transformation(!ModuleInfo) :-
-    module_info_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, deep_profile_tail_recursion,
         TailRecursion),
     (
@@ -536,7 +536,7 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         svmap__set(TopCSD, CPointerType, !VarTypes),
         svmap__set(MiddleCSD, CPointerType, !VarTypes),
         svmap__set(ProcStaticVar, CPointerType, !VarTypes),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, use_activation_counts,
             UseActivationCounts),
         (
@@ -630,7 +630,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         svmap__set(TopCSD, CPointerType, !VarTypes),
         svmap__set(MiddleCSD, CPointerType, !VarTypes),
         svmap__set(ProcStaticVar, CPointerType, !VarTypes),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, use_activation_counts,
             UseActivationCounts),
         (
@@ -739,7 +739,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         svmap__set(TopCSD, CPointerType, !VarTypes),
         svmap__set(MiddleCSD, CPointerType, !VarTypes),
         svmap__set(ProcStaticVar, CPointerType, !VarTypes),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, use_activation_counts,
             UseActivationCounts),
         (
@@ -1199,7 +1199,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
             unexpected(this_file, "deep_profiling__wrap_call: aditi_builtin")
         ),
         goal_info_get_code_model(GoalInfo0, GoalCodeModel),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals,
             use_zeroing_for_ho_cycles, UseZeroing),
         ( UseZeroing = yes ->

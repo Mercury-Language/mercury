@@ -527,13 +527,13 @@ typecheck_info_set_pred_import_status(Status, Info,
 %-----------------------------------------------------------------------------%
 
 typecheck_info_get_module_name(Info, Name) :-
-	module_info_name(Info ^ module_info, Name).
+	module_info_get_name(Info ^ module_info, Name).
 typecheck_info_get_preds(Info, Preds) :-
 	module_info_get_predicate_table(Info ^ module_info, Preds).
 typecheck_info_get_types(Info, Types) :-
-	module_info_types(Info ^ module_info, Types).
+	module_info_get_type_table(Info ^ module_info, Types).
 typecheck_info_get_ctors(Info, Ctors) :-
-	module_info_ctors(Info ^ module_info, Ctors).
+	module_info_get_cons_table(Info ^ module_info, Ctors).
 
 typecheck_info_get_pred_markers(Info, PredMarkers) :-
 	typecheck_info_get_module_info(Info, ModuleInfo),

@@ -163,7 +163,7 @@ process_imported_preds(PredIds, !ModuleInfo) :-
 process_imported_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
         module_info_preds(!.ModuleInfo, !:PredTable),
-        module_info_type_spec_info(!.ModuleInfo, TypeSpecInfo),
+        module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecPredIds, _, _),
         ( not set.member(PredId, TypeSpecPredIds) ->
             PredInfo0 = !.PredTable  ^ det_elem(PredId),

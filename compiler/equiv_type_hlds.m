@@ -53,23 +53,23 @@
 :- import_module varset.
 
 replace_in_hlds(!ModuleInfo) :-
-    module_info_types(!.ModuleInfo, Types0),
+    module_info_get_type_table(!.ModuleInfo, Types0),
     map__foldl2(add_type_to_eqv_map, Types0, map__init, EqvMap,
         set__init, EqvExportTypes),
     set__fold(mark_eqv_exported_types, EqvExportTypes, Types0, Types1),
 
     module_info_get_maybe_recompilation_info(!.ModuleInfo, MaybeRecompInfo0),
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     map__map_foldl(replace_in_type_defn(ModuleName, EqvMap), Types1, Types,
         MaybeRecompInfo0, MaybeRecompInfo),
-    module_info_set_types(Types, !ModuleInfo),
+    module_info_set_type_table(Types, !ModuleInfo),
     module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
     InstCache0 = map__init,
 
-    module_info_insts(!.ModuleInfo, Insts0),
+    module_info_get_inst_table(!.ModuleInfo, Insts0),
     replace_in_inst_table(EqvMap, Insts0, Insts, InstCache0, InstCache1),
-    module_info_set_insts(Insts, !ModuleInfo),
+    module_info_set_inst_table(Insts, !ModuleInfo),
 
     module_info_predids(!.ModuleInfo, PredIds),
     list__foldl2(replace_in_pred(EqvMap), PredIds, !ModuleInfo, InstCache1, _).
@@ -277,7 +277,7 @@ replace_in_maybe_inst_det(EqvMap, known(Inst0, Det), known(Inst, Det),
 
 replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
     some [!PredInfo, !EquivTypeInfo] (
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
     module_info_get_maybe_recompilation_info(!.ModuleInfo, MaybeRecompInfo0),
 
@@ -734,7 +734,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ generic_call(A, B, Modes0, D), Goal,
     ).
 replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         Changed, !Info) :-
-    module_info_types(!.Info ^ module_info, Types),
+    module_info_get_type_table(!.Info ^ module_info, Types),
     proc_info_vartypes(!.Info ^ proc_info, VarTypes),
     proc_info_rtti_varmaps(!.Info ^ proc_info, RttiVarMaps),
     map__lookup(VarTypes, Var, VarType),

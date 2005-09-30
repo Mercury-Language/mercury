@@ -298,7 +298,7 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
         ),
     list__foldl(NeededEverywhere, NeededVarsList,
         WhereNeededMap0, WhereNeededMap1),
-    module_info_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, reorder_conj, ReorderConj),
     globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
     globals__lookup_int_option(Globals, unneeded_code_copy_limit, Limit),

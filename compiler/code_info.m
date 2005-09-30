@@ -829,7 +829,7 @@ code_info__lookup_type_defn(CI, Type) = TypeDefn :-
     ;
         error("unknown type in code_info__lookup_type_defn")
     ),
-    module_info_types(ModuleInfo, TypeTable),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     map__lookup(TypeTable, TypeCtor, TypeDefn).
 
 code_info__cons_id_to_tag(CI, Var, ConsId) = ConsTag :-

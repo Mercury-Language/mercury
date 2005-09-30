@@ -163,7 +163,7 @@ rl_gen__proc_name(EntryPoints, RLProcId, ProcName) -->
 		{ module_info_pred_info(ModuleInfo,
 			EntryPredId, EntryPredInfo) },
 		{ pred_info_get_aditi_owner(EntryPredInfo, Owner) },
-		{ module_info_name(ModuleInfo, ModuleName0) },
+		{ module_info_get_name(ModuleInfo, ModuleName0) },
 		{ mdbcomp__prim_data__sym_name_to_string(ModuleName0, 
 			ModuleName) },
 		{ string__int_to_string(RLProcId, ProcStr) },

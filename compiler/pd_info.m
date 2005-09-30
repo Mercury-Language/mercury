@@ -616,7 +616,7 @@ pd_info__define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
 	goal_info_get_context(GoalInfo, Context),
 	term__context_line(Context, Line),
 	pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-	module_info_name(ModuleInfo0, ModuleName),
+	module_info_get_name(ModuleInfo0, ModuleName),
 	make_pred_name_with_context(ModuleName, "DeforestationIn",
 		predicate, PredName, Line, Count, SymName),
 	unqualify_name(SymName, Name),

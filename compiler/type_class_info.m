@@ -65,13 +65,13 @@
 % requested to generate all the descriptors we can.
 
 generate_rtti(ModuleInfo, GenerateAll, RttiDatas) :-
-	module_info_classes(ModuleInfo, ClassTable),
+	module_info_get_class_table(ModuleInfo, ClassTable),
 	map__to_assoc_list(ClassTable, Classes),
 	list__foldl(generate_class_decl(ModuleInfo), Classes,
 		[], RttiDatas0),
 	(
 		GenerateAll = yes,
-		module_info_instances(ModuleInfo, InstanceTable),
+		module_info_get_instance_table(ModuleInfo, InstanceTable),
 		map__to_assoc_list(InstanceTable, Instances),
 		list__foldl(generate_instance_decls(ModuleInfo), Instances,
 			RttiDatas0, RttiDatas)

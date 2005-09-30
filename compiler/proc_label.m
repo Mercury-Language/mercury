@@ -127,7 +127,7 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
 		PredModule, PredName, PredArity, ProcIdInt).
 
 make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	( TypeCtor = qualified(TypeModule, TypeName) - Arity ->
 		( hlds_pred__in_in_unification_proc_id(UniModeNum) ->
 			Module = TypeModule

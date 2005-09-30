@@ -142,7 +142,7 @@
 :- pred find_weights(module_info::in, weight_table::out) is det.
 
 find_weights(ModuleInfo, Weights) :-
-	module_info_types(ModuleInfo, TypeTable),
+	module_info_get_type_table(ModuleInfo, TypeTable),
 	map__to_assoc_list(TypeTable, TypeList),
 	map__init(Weights0),
 	list__foldl(find_weights_for_type, TypeList, Weights0, Weights).

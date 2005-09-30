@@ -59,7 +59,7 @@
 %-----------------------------------------------------------------------------%
 
 are_equivalence_types_expanded(ModuleInfo) :-
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
 	HighLevelData = yes,
 	globals__get_target(Globals, Target),
@@ -114,7 +114,7 @@ cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
 		),
 			% Given the type_ctor, lookup up the constructor tag
 			% table for that type
-		module_info_types(ModuleInfo, TypeTable),
+		module_info_get_type_table(ModuleInfo, TypeTable),
 		map__lookup(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 		(

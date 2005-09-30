@@ -288,13 +288,13 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
             unify_proc__search_mode_num(!.ModuleInfo, TypeCtor,
                 UnifyMode, Determinism, _)
         ;
-            module_info_types(!.ModuleInfo, TypeTable),
+            module_info_get_type_table(!.ModuleInfo, TypeTable),
             map__search(TypeTable, TypeCtor, TypeDefn),
             hlds_data__get_type_defn_body(TypeDefn, TypeBody),
             (
                 TypeCtor = TypeName - _TypeArity,
                 TypeName = qualified(TypeModuleName, _),
-                module_info_name(!.ModuleInfo, ModuleName),
+                module_info_get_name(!.ModuleInfo, ModuleName),
                 ModuleName = TypeModuleName,
                 TypeBody = abstract_type(_)
             ;
@@ -616,7 +616,7 @@ unify_proc__add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type,
 
 unify_proc__collect_type_defn(ModuleInfo, TypeCtor, Type,
         TVarSet, TypeBody, Context) :-
-    module_info_types(ModuleInfo, Types),
+    module_info_get_type_table(ModuleInfo, Types),
     map__lookup(Types, TypeCtor, TypeDefn),
     hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
@@ -701,7 +701,7 @@ unify_proc__generate_initialise_clauses(ModuleInfo, _Type, TypeBody,
             error("generate_initialise_clauses: type_to_ctor_and_args failed")
         ),
         PredName = special_pred__special_pred_name(initialise, TypeCtor),
-        hlds_module__module_info_name(ModuleInfo, ModuleName),
+        hlds_module__module_info_get_name(ModuleInfo, ModuleName),
         TypeCtor = TypeSymName - _TypeArity,
         sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
         InitPred = qualified(TypeModuleName, PredName),
@@ -1275,7 +1275,7 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], X, Y, Context,
 
 can_compare_constants_as_ints(Info) = CanCompareAsInt :-
     ModuleInfo = Info ^ module_info,
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     lookup_bool_option(Globals, can_compare_constants_as_ints,
         CanCompareAsInt).
 
@@ -1337,7 +1337,7 @@ unify_proc__generate_du_compare_clauses(Type, Ctors, Res, H1, H2,
     ;
         Ctors = [_ | _],
         unify_proc__info_get_module_info(ModuleInfo, !Info),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_int_option(Globals, compare_specialization,
             CompareSpec),
         list__length(Ctors, NumCtors),

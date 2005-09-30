@@ -426,7 +426,7 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
 add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         !IO) :-
     TypeCtor = TypeName - TypeArity,
-    module_info_types(!.ModuleInfo, Types0),
+    module_info_get_type_table(!.ModuleInfo, Types0),
     TypeStr = error_util__describe_sym_name_and_arity(TypeName / TypeArity),
     ErrorPieces1 = [
         words("In"),
@@ -485,14 +485,14 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
             % and recompute the constructor tags.
             %
             ReservedTag = yes,
-            module_info_globals(!.ModuleInfo, Globals),
+            module_info_get_globals(!.ModuleInfo, Globals),
             assign_constructor_tags(Body, TypeCtor, ReservedTag, Globals,
                 CtorTags, IsEnum),
             TypeBody = du_type(Body, CtorTags, IsEnum, MaybeUserEqComp,
                 ReservedTag, IsForeign),
             hlds_data__set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
             map__set(Types0, TypeCtor, TypeDefn, Types),
-            module_info_set_types(Types, !ModuleInfo)
+            module_info_set_type_table(Types, !ModuleInfo)
         ;
             write_error_pieces(Context, 0, ErrorPieces1, !IO),
             ErrorPieces2 = [
@@ -528,7 +528,7 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
             PredOrFunc, SymName, Arity, [PredId])
     ->
-        module_info_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
+        module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
         % convert the mode number to a proc_id
         proc_id_to_int(ProcId, ModeNum),
         map__set(UnusedArgInfo0, proc(PredId, ProcId), UnusedArgs,
@@ -554,7 +554,7 @@ add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
             PredOrFunc, SymName, Arity, [PredId])
     ->
-        module_info_exception_info(!.ModuleInfo, ExceptionsInfo0),
+        module_info_get_exception_info(!.ModuleInfo, ExceptionsInfo0),
         % convert the mode number to a proc_id
         proc_id_to_int(ProcId, ModeNum),
         map__set(ExceptionsInfo0, proc(PredId, ProcId), ThrowStatus,
@@ -706,7 +706,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             %
             % Record the type specialisation in the module_info.
             %
-            module_info_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
+            module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
             TypeSpecInfo0 = type_spec_info(ProcsToSpec0,
                 ForceVersions0, SpecMap0, PragmaMap0),
             list__map((pred(ProcId::in, PredProcId::out) is det :-
@@ -1142,7 +1142,7 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 
 module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
         Status, Context, !ModuleInfo, !QualInfo, !IO) :-
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     list__length(Modes, Arity),
 
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
@@ -1270,7 +1270,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
     ;
         Attributes = Attributes0
     ),
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     PragmaForeignLanguage = foreign_language(Attributes),
     list__length(PVars, Arity),
         % print out a progress message
@@ -1418,7 +1418,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
         ->
             PredIds = PredIds0
         ;
-            module_info_name(!.ModuleInfo, ModuleName),
+            module_info_get_name(!.ModuleInfo, ModuleName),
             string__format("`:- pragma %s' declaration",
                 [s(EvalMethodStr)], Message1),
             preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
@@ -1434,7 +1434,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
         ->
             PredIds = PredIds0
         ;
-            module_info_name(!.ModuleInfo, ModuleName),
+            module_info_get_name(!.ModuleInfo, ModuleName),
             string__format("`:- pragma %s' declaration",
                 [s(EvalMethodStr)], Message1),
             preds_add_implicit_report_error(ModuleName, predicate, PredName,
@@ -1527,7 +1527,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     ;
         % Do we have to make sure the tabled preds are stratified?
         ( eval_method_needs_stratification(EvalMethod) = yes ->
-            module_info_stratified_preds(!.ModuleInfo, StratPredIds0),
+            module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
             set__insert(StratPredIds0, PredId, StratPredIds),
             module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
         ;

@@ -156,7 +156,7 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
         table_gen__transform_proc_if_possible(EvalMethod, PredId,
             ProcId, ProcInfo0, _, PredInfo0, _, !ModuleInfo, !GenMap, !IO)
     ;
-        module_info_globals(!.ModuleInfo, Globals),
+        module_info_get_globals(!.ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, trace_table_io, yes),
         proc_info_has_io_state_pair(!.ModuleInfo, ProcInfo0,
             _InArgNum, _OutArgNum)
@@ -437,7 +437,7 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     % The case EvalMethod = eval_normal was caught by the code above.
     (
         EvalMethod = eval_table_io(Decl, Unitize),
-        module_info_globals(!.ModuleInfo, Globals),
+        module_info_get_globals(!.ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, trace_table_io_states,
             TableIoStates),
         assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
@@ -2229,7 +2229,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, Prefix,
     ForeignArg = foreign_arg(ArgVar, yes(ArgName - in_mode), Type),
     ( TypeCat = enum_type ->
         ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-            module_info_types(ModuleInfo, TypeDefnTable),
+            module_info_get_type_table(ModuleInfo, TypeDefnTable),
             map__lookup(TypeDefnTable, TypeCtor, TypeDefn),
             hlds_data__get_type_defn_body(TypeDefn, TypeBody),
             (
@@ -3485,7 +3485,7 @@ table_gen__var_is_io_state(VarTypes, Var) :-
 :- pred tabling_via_extra_args(module_info::in, bool::out) is det.
 
 tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs) :-
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, tabling_via_extra_args,
         TablingViaExtraArgs).
 

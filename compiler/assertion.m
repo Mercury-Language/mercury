@@ -454,7 +454,7 @@ predicate_call(Goal, PredId) :-
 %-----------------------------------------------------------------------------%
 
 assertion__goal(AssertId, Module, Goal) :-
-    module_info_assertion_table(Module, AssertTable),
+    module_info_get_assertion_table(Module, AssertTable),
     assertion_table_lookup(AssertTable, AssertId, PredId),
     module_info_pred_info(Module, PredId, PredInfo),
     pred_info_clauses_info(PredInfo, ClausesInfo),
@@ -800,7 +800,7 @@ assertion__in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
     clauses_info_vartypes(ClausesInfo, VarTypes),
     map__lookup(VarTypes, Var, Type),
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        module_info_types(!.Module, Types),
+        module_info_get_type_table(!.Module, Types),
         map__lookup(Types, TypeCtor, TypeDefn),
         hlds_data__get_type_defn_status(TypeDefn, TypeStatus),
         ( is_defined_in_implementation_section(TypeStatus) = yes ->
@@ -864,7 +864,7 @@ is_defined_in_implementation_section(external(Status)) =
 
 write_assertion_interface_error(Context, Type, !Module, !IO) :-
     module_info_incr_errors(!Module),
-    module_info_name(!.Module, ModuleName),
+    module_info_get_name(!.Module, ModuleName),
     ModuleStr = describe_sym_name(ModuleName),
     write_error_pieces(Context, 0,
         [words("In interface for module"), fixed(ModuleStr ++ ":")], !IO),

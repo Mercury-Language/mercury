@@ -140,7 +140,7 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
     proc_info_vartypes(ProcInfo, VarTypes),
     map__lookup(VarTypes, Var, Type),
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        module_info_types(ModuleInfo, TypeTable),
+        module_info_get_type_table(ModuleInfo, TypeTable),
         map__search(TypeTable, TypeCtor, TypeDefn)
     ;
         unexpected(this_file, "det_lookup_var_type")

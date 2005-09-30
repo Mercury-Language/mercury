@@ -45,5 +45,6 @@ restorerevisions
 run_all_tests_from_cron
 speed_summary
 speedtest
+subst
 test_mercury
 type_ctor_stats

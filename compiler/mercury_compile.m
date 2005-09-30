@@ -1504,13 +1504,13 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     io__remove_file(UsageFileName, _, !IO),
 
     % magic sets can report errors.
-    module_info_num_errors(HLDS50, NumErrors),
+    module_info_get_num_errors(HLDS50, NumErrors),
     ( NumErrors = 0 ->
         globals__io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
             !IO),
         (
             IntermodAnalysis = yes,
-            module_info_analysis_info(HLDS50, AnalysisInfo),
+            module_info_get_analysis_info(HLDS50, AnalysisInfo),
             analysis__write_analysis_files(
                 module_name_to_module_id(ModuleName), AnalysisInfo, !IO)
         ;
@@ -1879,7 +1879,7 @@ make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats, HLDS, QualInfo,
     Prog = module(Module, Items),
     parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, QualInfo,
         UndefTypes, UndefModes, !IO),
-    module_info_num_errors(HLDS, NumErrors),
+    module_info_get_num_errors(HLDS, NumErrors),
     io__get_exit_status(Status, !IO),
     (
         ( Status \= 0
@@ -2126,7 +2126,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         ;
             true
         ),
-        module_info_name(!.HLDS, ModuleName),
+        module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".opt", yes, OptName, !IO),
         update_interface(OptName, !IO),
         touch_interface_datestamp(ModuleName, ".optdate", !IO)
@@ -2137,7 +2137,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         ( Intermod = yes ->
             UpdateStatus = yes
         ; UseOptFiles = yes ->
-            module_info_name(!.HLDS, ModuleName),
+            module_info_get_name(!.HLDS, ModuleName),
             module_name_to_search_file_name(ModuleName, ".opt", OptName, !IO),
             search_for_file(IntermodDirs, OptName, Found, !IO),
             ( Found = ok(_) ->
@@ -2445,7 +2445,7 @@ maybe_generate_rl_bytecode(Verbose, MaybeRLFile, !ModuleInfo, !IO) :-
 :- pred generate_aditi_proc_info(module_info::in, list(rtti_data)::out) is det.
 
 generate_aditi_proc_info(HLDS, AditiProcInfoRttiData) :-
-    module_info_aditi_top_down_procs(HLDS, Procs),
+    module_info_get_aditi_top_down_procs(HLDS, Procs),
     AditiProcInfoRttiData = list__map(
         (func(aditi_top_down_proc(proc(PredId, ProcId), _)) =
             rtti__make_aditi_proc_info(HLDS, PredId, ProcId)
@@ -2458,7 +2458,7 @@ generate_aditi_proc_info(HLDS, AditiProcInfoRttiData) :-
     io::di, io::uo) is det.
 
 backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
-    module_info_name(!.HLDS, ModuleName),
+    module_info_get_name(!.HLDS, ModuleName),
     globals__io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
     globals__io_lookup_bool_option(common_data, DoCommonData, !IO),
     StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloat,
@@ -2587,7 +2587,7 @@ backend_pass_by_preds_2([PredId | PredIds], !HLDS,
             % typeinfo_liveness. Since they may be opt_imported into other
             % modules, we must switch off the tracing of such preds on a
             % pred-by-pred basis; module-by-module wouldn't work.
-            module_info_globals(!.HLDS, Globals0),
+            module_info_get_globals(!.HLDS, Globals0),
             globals__get_trace_level(Globals0, TraceLevel),
             globals__set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
@@ -2595,7 +2595,7 @@ backend_pass_by_preds_2([PredId | PredIds], !HLDS,
             globals__io_set_globals(Globals1Unique, !IO),
             backend_pass_by_preds_3(ProcIds, PredId, PredInfo, !HLDS,
                 !GlobalData, IdProcList, !IO),
-            module_info_globals(!.HLDS, Globals2),
+            module_info_get_globals(!.HLDS, Globals2),
             globals__set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS),
             copy(Globals, GlobalsUnique),
@@ -2641,7 +2641,7 @@ backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo, !HLDS,
 
 backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         !GlobalData, ProcCode, !IO) :-
-    module_info_globals(!.HLDS, Globals),
+    module_info_get_globals(!.HLDS, Globals),
     globals__lookup_bool_option(Globals, optimize_saved_vars_const,
         SavedVarsConst),
     (
@@ -2737,9 +2737,9 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
 
 puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
         !IO) :-
-    module_info_num_errors(!.HLDS, NumErrors0),
+    module_info_get_num_errors(!.HLDS, NumErrors0),
     puritycheck(FoundTypeError, FoundPostTypecheckError, !HLDS, !IO),
-    module_info_num_errors(!.HLDS, NumErrors),
+    module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors \= NumErrors0 ->
         maybe_write_string(Verbose,
             "% Program contains purity error(s).\n", !IO),
@@ -2754,13 +2754,13 @@ puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
     bool::out, bool::out, io::di, io::uo) is det.
 
 modecheck(Verbose, Stats, !HLDS, FoundModeError, UnsafeToContinue, !IO) :-
-    module_info_num_errors(!.HLDS, NumErrors0),
+    module_info_get_num_errors(!.HLDS, NumErrors0),
     maybe_benchmark_modes(
         (pred(H0::in, {H,U}::out, di, uo) is det -->
             modecheck(H0, H, U)
         ),
         "modecheck", !.HLDS, {!:HLDS, UnsafeToContinue}, !IO),
-    module_info_num_errors(!.HLDS, NumErrors),
+    module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors \= NumErrors0 ->
         FoundModeError = yes,
         maybe_write_string(Verbose, "% Program contains mode error(s).\n",
@@ -2843,9 +2843,9 @@ detect_cse(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 check_determinism(Verbose, Stats, !HLDS, FoundError, !IO) :-
-    module_info_num_errors(!.HLDS, NumErrors0),
+    module_info_get_num_errors(!.HLDS, NumErrors0),
     determinism_pass(!HLDS, !IO),
-    module_info_num_errors(!.HLDS, NumErrors),
+    module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors \= NumErrors0 ->
         FoundError = yes,
         maybe_write_string(Verbose,
@@ -2935,9 +2935,9 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
 check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
     maybe_write_string(Verbose,
         "% Checking for backtracking over unique modes...\n", !IO),
-    module_info_num_errors(!.HLDS, NumErrors0),
+    module_info_get_num_errors(!.HLDS, NumErrors0),
     unique_modes__check_module(!HLDS, !IO),
-    module_info_num_errors(!.HLDS, NumErrors),
+    module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors \= NumErrors0 ->
         FoundError = yes,
         maybe_write_string(Verbose,
@@ -2954,7 +2954,7 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
 
 check_stratification(Verbose, Stats, !HLDS, FoundError,
         !IO) :-
-    module_info_stratified_preds(!.HLDS, StratifiedPreds),
+    module_info_get_stratified_preds(!.HLDS, StratifiedPreds),
     globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
     (
         ( \+ set__empty(StratifiedPreds)
@@ -3188,7 +3188,7 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
     (
         ShowDepGraph = yes,
         maybe_write_string(Verbose, "% Writing dependency graph...", !IO),
-        module_info_name(!.HLDS, ModuleName),
+        module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".dependency_graph", yes,
             FileName, !IO),
         io__open_output(FileName, Res, !IO),
@@ -3223,7 +3223,7 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Outputing profiling call graph...", !IO),
         maybe_flush_output(Verbose, !IO),
-        module_info_name(!.HLDS, ModuleName),
+        module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".prof", yes, ProfFileName, !IO),
         io__open_output(ProfFileName, Res, !IO),
         ( Res = ok(FileStream) ->
@@ -3414,7 +3414,7 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
     % Always produce the specialized versions for which
     % `:- pragma type_spec' declarations exist, because
     % importing modules might call them.
-    module_info_type_spec_info(!.HLDS, TypeSpecInfo),
+    module_info_get_type_spec_info(!.HLDS, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(TypeSpecPreds, _, _, _),
     (
         ( HigherOrder = yes
@@ -3991,7 +3991,7 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
     foreign_interface_info::out) is det.
 
 get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
-    module_info_name(HLDS, ModuleName),
+    module_info_get_name(HLDS, ModuleName),
     module_info_get_foreign_decl(HLDS, ForeignDecls),
     module_info_get_foreign_import_module(HLDS, ForeignImports),
     module_info_get_foreign_body_code(HLDS, ForeignBodyCode),
@@ -4430,8 +4430,9 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
     base_typeclass_info__generate_rtti(HLDS, TypeClassInfoRtti),
 
     generate_aditi_proc_info(HLDS, AditiProcInfoRtti),
-    module_info_globals(HLDS, Globals),
-    globals__lookup_bool_option(Globals, new_type_class_rtti, NewTypeClassRtti),
+    module_info_get_globals(HLDS, Globals),
+    globals__lookup_bool_option(Globals, new_type_class_rtti,
+        NewTypeClassRtti),
     type_class_info__generate_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
     list__condense([TypeCtorRtti, TypeClassInfoRtti,
@@ -4505,7 +4506,7 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
     globals__io_lookup_accumulating_option(dump_hlds, DumpStages, !IO),
     StageNumStr = stage_num_str(StageNum),
     ( should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) ->
-        module_info_name(HLDS, ModuleName),
+        module_info_get_name(HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".hlds_dump", yes, BaseFileName,
             !IO),
         DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
@@ -4655,7 +4656,7 @@ maybe_dump_rl(Procs, ModuleInfo, _StageNum, StageName, !IO) :-
     globals__io_lookup_bool_option(dump_rl, Dump, !IO),
     (
         Dump = yes,
-        module_info_name(ModuleInfo, ModuleName0),
+        module_info_get_name(ModuleInfo, ModuleName0),
         mdbcomp__prim_data__sym_name_to_string(ModuleName0, ModuleName),
         string__append_list([ModuleName, ".rl_dump", StageName], DumpFile),
         globals__io_lookup_bool_option(verbose, Verbose, !IO),

@@ -490,7 +490,7 @@ annotate_conj_constraints(ModuleInfo,
         % can loop or throw an exception if `--fully-strict' is set.
         %
         \+ goal_cannot_loop_or_throw(ModuleInfo, Goal),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, fully_strict, yes)
     ->
         filter_dependent_constraints(NonLocals,

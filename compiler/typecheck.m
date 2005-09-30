@@ -443,7 +443,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                     !:HeadTypeParams)
             ),
 
-            module_info_classes(!.ModuleInfo, ClassTable),
+            module_info_get_class_table(!.ModuleInfo, ClassTable),
             make_head_hlds_constraints(ClassTable, TypeVarSet0,
                 PredConstraints, Constraints),
             ( pred_info_is_field_access_function(!.ModuleInfo, !.PredInfo) ->
@@ -845,7 +845,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
         % a user-defined equality predicate, or which is existentially
         % typed.
         %
-    module_info_types(ModuleInfo, TypeTable),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     map__lookup(TypeTable, TypeCtor, TypeDefn),
     hlds_data__get_type_defn_body(TypeDefn, Body),
     special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body).
@@ -1707,7 +1707,7 @@ typecheck_call_pred_id(PredId, Args, GoalPath, !Info, !IO) :-
 typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath, AdjustArgTypes,
         !Info, !IO) :-
     typecheck_info_get_module_info(!.Info, ModuleInfo),
-    module_info_classes(ModuleInfo, ClassTable),
+    module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
     map__lookup(Preds, PredId, PredInfo),
@@ -1746,7 +1746,7 @@ typecheck_call_overloaded_pred(PredIdList, Args, GoalPath, AdjustArgTypes,
     % suitable renamed apart.
     %
     typecheck_info_get_module_info(!.Info, ModuleInfo),
-    module_info_classes(ModuleInfo, ClassTable),
+    module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
     typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
@@ -2694,7 +2694,7 @@ make_pred_cons_info_list(Info, [PredId | PredIds], PredTable, Arity,
 make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
         !ConsInfos) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
-    module_info_classes(ModuleInfo, ClassTable),
+    module_info_get_class_table(ModuleInfo, ClassTable),
     map__lookup(PredTable, PredId, PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
     IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -2819,7 +2819,7 @@ builtin_field_access_function_type(Info, GoalPath, Functor, Arity,
     is_field_access_function_name(ModuleInfo, Name, Arity, AccessType,
         FieldName),
 
-    module_info_ctor_field_table(ModuleInfo, CtorFieldTable),
+    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     map__search(CtorFieldTable, FieldName, FieldDefns),
 
     list__filter_map(
@@ -2839,7 +2839,7 @@ make_field_access_function_cons_type_info(Info, GoalPath, FuncName, Arity,
         MaybeFunctorConsTypeInfo),
     (
         MaybeFunctorConsTypeInfo = ok(FunctorConsTypeInfo),
-        module_info_classes(Info ^ module_info, ClassTable),
+        module_info_get_class_table(Info ^ module_info, ClassTable),
         convert_field_access_cons_type_info(ClassTable, AccessType,
             FieldName, FieldDefn, FunctorConsTypeInfo,
             OrigExistTVars, ConsTypeInfo)
@@ -2874,7 +2874,7 @@ get_field_access_constructor(Info, GoalPath, FuncName, Arity, AccessType,
     ;
         Info ^ is_field_access_function = yes
     ),
-    module_info_ctors(ModuleInfo, Ctors),
+    module_info_get_cons_table(ModuleInfo, Ctors),
     map__lookup(Ctors, ConsId, ConsDefns0),
     list__filter(
         (pred(CtorDefn::in) is semidet :-
@@ -3352,7 +3352,7 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     %
     typecheck_info_get_predid(Info, PredId),
     typecheck_info_get_module_info(Info, ModuleInfo),
-    module_info_classes(ModuleInfo, ClassTable),
+    module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     (
         Body ^ du_type_is_foreign_type = yes(_),

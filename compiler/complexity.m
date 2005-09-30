@@ -133,7 +133,7 @@ read_spec_file_lines(Stream, CurLineNum, NumLines, MaybeError, !ProcMap,
 %-----------------------------------------------------------------------------%
 
 complexity_proc_name(ModuleInfo, PredId, ProcId) = FullName :-
-    module_info_name(ModuleInfo, ModuleSymName),
+    module_info_get_name(ModuleInfo, ModuleSymName),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredName = pred_info_name(PredInfo),
     QualifiedName = qualified(ModuleSymName, PredName),

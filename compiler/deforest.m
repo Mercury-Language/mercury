@@ -137,13 +137,13 @@ deforestation(!ModuleInfo, !IO) :-
         % inference on the specialized versions after constraint propagation,
         % because some nondet predicates will have become semidet.
         list__foldl(reset_inferred_proc_determinism, Versions, !ModuleInfo),
-        module_info_num_errors(!.ModuleInfo, Errors5),
+        module_info_get_num_errors(!.ModuleInfo, Errors5),
 
         disable_det_warnings(OptionsToRestore, !IO),
         determinism_pass(!ModuleInfo, !IO),
         restore_det_warnings(OptionsToRestore, !IO),
 
-        module_info_num_errors(!.ModuleInfo, Errors),
+        module_info_get_num_errors(!.ModuleInfo, Errors),
         require(unify(Errors5, Errors),
             "determinism errors after deforestation")
     ;
@@ -1669,7 +1669,7 @@ deforest__push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     Goal2 = GoalExpr - GoalInfo,
 
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     simplify__find_simplifications(no, Globals, Simplifications0),
 
     % Be a bit more aggressive with common structure elimination.
@@ -1900,7 +1900,7 @@ deforest__unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 
         pd_debug__message("Running simplify\n", [], !IO),
         pd_info_get_module_info(!.PDInfo, ModuleInfo),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         simplify__find_simplifications(no, Globals, Simplifications),
         pd_util__simplify_goal(Simplifications, Goal3, Goal4, !PDInfo),
 

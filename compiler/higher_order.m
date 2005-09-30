@@ -106,7 +106,7 @@ specialize_higher_order(!ModuleInfo, !IO) :-
             !.ModuleInfo, GoalSizes0, Params, counter.init(1)),
 
         module_info_predids(!.ModuleInfo, PredIds0),
-        module_info_type_spec_info(!.ModuleInfo, TypeSpecInfo),
+        module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, UserSpecPreds, _, _),
         %
         % Make sure the user requested specializations are processed first,
@@ -839,7 +839,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
                 constant(BaseConsId, _)),
             BaseConsId = base_typeclass_info_const(_, ClassId, Instance, _),
             MaybeMethod = yes(Method),
-            module_info_instances(ModuleInfo, Instances),
+            module_info_get_instance_table(ModuleInfo, Instances),
             map.lookup(Instances, ClassId, InstanceList),
             list.index1_det(InstanceList, Instance, InstanceDefn),
             InstanceDefn = hlds_instance_defn(_, _, _,
@@ -885,7 +885,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
             typeclass_info_var(ClassConstraint)),
         ClassConstraint = constraint(ClassName, ClassArgs),
         list.length(ClassArgs, ClassArity),
-        module_info_instances(ModuleInfo, InstanceTable),
+        module_info_get_instance_table(ModuleInfo, InstanceTable),
         map.lookup(InstanceTable, class_id(ClassName, ClassArity), Instances),
         pred_info_typevarset(CallerPredInfo0, TVarSet0),
         find_matching_instance_method(Instances, Method, ClassArgs,
@@ -1081,7 +1081,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
     ),
     module_info_pred_proc_info(ModuleInfo0, CalledPred, CalledProc,
         CalleePredInfo, CalleeProcInfo),
-    module_info_globals(ModuleInfo0, Globals),
+    module_info_get_globals(ModuleInfo0, Globals),
     globals.lookup_bool_option(Globals, special_preds, HaveSpecialPreds),
     (
         % Look for calls to unify/2 and compare/3 that can be specialized.
@@ -1099,7 +1099,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
     ;
         (
             pred_info_is_imported(CalleePredInfo),
-            module_info_type_spec_info(ModuleInfo0, TypeSpecInfo),
+            module_info_get_type_spec_info(ModuleInfo0, TypeSpecInfo),
             TypeSpecInfo = type_spec_info(TypeSpecProcs, _, _, _),
             \+ set.member(proc(CalledPred, CalledProc), TypeSpecProcs)
         ;
@@ -1275,7 +1275,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         [], HigherOrderArgs0),
 
     proc(CallerPredId, _) = !.Info ^ pred_proc_id,
-    module_info_type_spec_info(ModuleInfo0, TypeSpecInfo),
+    module_info_get_type_spec_info(ModuleInfo0, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, ForceVersions, _, _),
     IsUserSpecProc = ( set.member(CallerPredId, ForceVersions) -> yes ; no ),
     (
@@ -1451,7 +1451,7 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
     CalleeUnivConstraint0 = constraint(ClassName, ConstraintArgs0),
     list.length(ConstraintArgs0, ClassArity),
     CalleeUnivConstraint = constraint(_, ConstraintArgs),
-    module_info_instances(ModuleInfo, InstanceTable),
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.search(InstanceTable, class_id(ClassName, ClassArity), Instances),
     list.member(Instance, Instances),
     instance_matches(ConstraintArgs, Instance, _, _, TVarSet, _),
@@ -1866,7 +1866,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         map.search(PredVars, BaseTypeClassInfoVar,
             constant(base_typeclass_info_const(_, ClassId, InstanceNum, _), _))
     ->
-        module_info_instances(ModuleInfo, Instances),
+        module_info_get_instance_table(ModuleInfo, Instances),
         map.lookup(Instances, ClassId, InstanceDefns),
         list.index1_det(InstanceDefns, InstanceNum, InstanceDefn),
         InstanceDefn = hlds_instance_defn(_,_,_,Constraints,_,_,_,_,_),

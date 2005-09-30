@@ -236,7 +236,7 @@ find_follow_vars_in_goal_expr(
         assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos),
         arg_info__partition_args(ArgsInfos, InVarInfos, _),
         assoc_list__keys(InVarInfos, InVars),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
 		call_gen__generic_call_info(Globals, GenericCall,
 			length(InVars), _, SpecifierArgInfos, FirstInput, _),
         find_follow_vars_from_arginfo(SpecifierArgInfos,

@@ -532,7 +532,7 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 	dag_get_flags(Flags),
 	dag_get_rl_opt_info(RLInfo),
 	{ rl_opt_info_get_module_info(ModuleInfo, RLInfo, _) },
-	{ module_info_globals(ModuleInfo, Globals) },
+	{ module_info_get_globals(ModuleInfo, Globals) },
 	{ globals__lookup_bool_option(Globals,
 		optimize_rl_index, OptimizeIndex) },
 	(

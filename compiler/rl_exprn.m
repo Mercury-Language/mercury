@@ -620,7 +620,7 @@ rl_exprn__generate(RLGoal, Code, NumParams, Mode, Decls,
 	RLGoal = rl_goal(_, VarSet, VarTypes, InstMap,
 		Inputs, MaybeOutputs, Goals, _), 
 	rl_exprn_info_init(ModuleInfo0, InstMap, VarTypes, VarSet, Info0),
-	module_info_globals(ModuleInfo0, Globals),
+	module_info_get_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, aditi_calls_mercury,
 		AditiCallsMercury),
 	(
@@ -1113,7 +1113,7 @@ rl_exprn__build_top_down_procedure(InputArgs, OutputArgs,
 		DataName0) },
 	{ DataName = mercury_data_prefix ++ DataName0 },
 
-	{ module_info_aditi_top_down_procs(ModuleInfo1, Procs0) },
+	{ module_info_get_aditi_top_down_procs(ModuleInfo1, Procs0) },
 	{ module_info_set_aditi_top_down_procs(ModuleInfo1,
 		[aditi_top_down_proc(PredProcId, DataName) | Procs0],
 		ModuleInfo) },
@@ -1126,7 +1126,7 @@ rl_exprn__name_top_down_procedure(ExprnProcId, ProcName) -->
 	rl_exprn_info_get_next_mercury_proc(ModuleProcId, ExprnProcId),
 
 	rl_exprn_info_get_module_info(ModuleInfo0),
-	{ module_info_name(ModuleInfo0, ModuleName) },
+	{ module_info_get_name(ModuleInfo0, ModuleName) },
 	{ ModuleStr = sym_name_mangle(ModuleName) },
 	{ ProcName = string__append_list(
 		[ModuleStr, "__aditi_proc__", int_to_string(ModuleProcId)]) }.

@@ -184,7 +184,7 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
 		; TypeCategory = enum_type
 		; is_introduced_type_info_type_category(TypeCategory) = yes
 		),
-		module_info_types(ModuleInfo, Types),
+		module_info_get_type_table(ModuleInfo, Types),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		hlds_data__get_type_defn_status(TypeDefn, Status),
@@ -220,7 +220,7 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 	(
 		status_defined_in_this_module(Status, no)
 	;
-		module_info_globals(ModuleInfo, Globals),
+		module_info_get_globals(ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, special_preds, no)
 	),
 
@@ -289,7 +289,7 @@ is_builtin_types_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
 	% references to this rtti so the rtti must be defined in the runtime
 	% not the library.
 compiler_generated_rtti_for_builtins(ModuleInfo) :-
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
 	( Target = il ; Target = java ).
 

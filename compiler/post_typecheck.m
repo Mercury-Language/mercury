@@ -691,7 +691,7 @@ post_typecheck__finish_imported_pred(ModuleInfo, PredId, !PredInfo, !IO) :-
 	(
 		check_marker(Markers, base_relation),
 		ModuleName = pred_info_module(!.PredInfo),
-		module_info_name(ModuleInfo, ModuleName)
+		module_info_get_name(ModuleInfo, ModuleName)
 	->
 		check_aditi_state(ModuleInfo, !.PredInfo, !IO)
 	;
@@ -764,7 +764,7 @@ store_promise(PromiseType, PromiseId, !Module, Goal) :-
 		% case for assertions
 		PromiseType = true
 	->
-		module_info_assertion_table(!.Module, AssertTable0),
+		module_info_get_assertion_table(!.Module, AssertTable0),
 		assertion_table_add_assertion(PromiseId, AssertionId,
 			AssertTable0, AssertTable),
 		module_info_set_assertion_table(AssertTable, !Module),
@@ -780,7 +780,7 @@ store_promise(PromiseType, PromiseId, !Module, Goal) :-
 	->
 		promise_ex_goal(PromiseId, !.Module, Goal),
 		predids_from_goal(Goal, PredIds),
-		module_info_exclusive_table(!.Module, Table0),
+		module_info_get_exclusive_table(!.Module, Table0),
 		list__foldl(exclusive_table_add(PromiseId), PredIds,
 			Table0, Table),
 		module_info_set_exclusive_table(Table, !Module)
@@ -1311,7 +1311,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 
 find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
 	type_to_ctor_and_args(Type, TypeCtor, _),
-	module_info_ctors(ModuleInfo, ConsTable),
+	module_info_get_cons_table(ModuleInfo, ConsTable),
 	map__search(ConsTable, ConsId, ConsDefns),
 	list__member(ConsDefn, ConsDefns),
 
@@ -1320,7 +1320,7 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
 			ConsArgs, ConsTypeCtor, _),
 	ConsTypeCtor = TypeCtor,
 
-	module_info_types(ModuleInfo, Types),
+	module_info_get_type_table(ModuleInfo, Types),
 	map__search(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeTVarSet),
 	hlds_data__get_type_defn_kind_map(TypeDefn, TypeKindMap),
@@ -1563,7 +1563,7 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
 		error("get_constructor_containing_field: " ++
 			"type_to_ctor_and_args failed")
 	),
-	module_info_types(ModuleInfo, Types),
+	module_info_get_type_table(ModuleInfo, Types),
 	map__lookup(Types, TermTypeCtor, TermTypeDefn),
 	hlds_data__get_type_defn_body(TermTypeDefn, TermTypeBody),
 	( Ctors = TermTypeBody ^ du_type_ctors ->
@@ -1658,7 +1658,7 @@ make_new_var(Type, Var, !VarTypes, !VarSet) :-
 
 check_for_missing_definitions(ModuleInfo, !NumErrors, !FoundTypeError,
 		!IO) :-
-	module_info_types(ModuleInfo, TypeTable),
+	module_info_get_type_table(ModuleInfo, TypeTable),
 	map.foldl3(check_for_missing_definitions_2, TypeTable,
 		 !NumErrors, !FoundTypeError, !IO).
 

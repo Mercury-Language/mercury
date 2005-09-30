@@ -295,7 +295,7 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 		qualified(ProcLabel ^ proc_module, ProcLabel ^ proc_name)/
 			ProcLabel ^ proc_arity,
 		ProcNameStr),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 			
 	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_proc_id(ModuleInfo, ProcLabel),
@@ -318,7 +318,7 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
 	TCDecl = tc_decl(TCId, Version, Supers),
 	TCId = tc_id(TCName, TVarNames, MethodIds),
 	TCName = tc_name(ModuleSymName, ClassName, Arity),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	TVarNamesRttiId = tc_rtti_id(TCName, type_class_id_var_names),
 	(
 		TVarNames = [],
@@ -439,7 +439,7 @@ gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init, SubDefns) :-
 	InstanceConstrsTCRttiName =
 		type_class_instance_constraints(Types),
 	InstanceConstrsRttiId = tc_rtti_id(TCName, InstanceConstrsTCRttiName),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 
 	TypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Types),
 	gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, TypesInit,
@@ -487,7 +487,7 @@ gen_type_info_defn(ModuleInfo, plain_type_info(RttiTypeCtor, ArgTypes),
 	RealRttiDatas = list__filter(real_rtti_data, ArgRttiDatas),
 	SubDefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	SubDefns = list__condense(SubDefnLists),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
 		gen_init_cast_rtti_datas_array(mlds__type_info_type,
@@ -500,7 +500,7 @@ gen_type_info_defn(ModuleInfo, var_arity_type_info(VarArityId, ArgTypes),
 	SubDefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	SubDefns = list__condense(SubDefnLists),
 	RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
 		gen_init_int(list__length(ArgTypes)),
@@ -519,7 +519,7 @@ gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, RttiId, Init, SubDefns) :-
 	RealRttiDatas = list__filter(real_rtti_data, ArgRttiDatas),
 	SubDefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	SubDefns = list__condense(SubDefnLists),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
 		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
@@ -532,7 +532,7 @@ gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, RttiId, Init, SubDefns) :-
 	SubDefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	SubDefns = list__condense(SubDefnLists),
 	RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
 		gen_init_int(list__length(ArgTypes)),
@@ -550,7 +550,7 @@ gen_pseudo_type_info_defn(_, type_var(_), _, _, _) :-
 
 gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
 		FunctorInit, LayoutInit, Defns) :-
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	(
 		TypeCtorDetails = enum(_, EnumFunctors, EnumByValue,
 			EnumByName),
@@ -676,7 +676,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 	MaybeArgNames = list__map(du_arg_info_name, ArgInfos),
 	ArgNames = list__filter_map(project_yes, MaybeArgNames),
 	ContainsVarBitVector = compute_contains_var_bit_vector(ArgTypes),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	(
 		ArgInfos = [_ | _],
 		ArgTypeDefns = gen_field_types(ModuleInfo, RttiTypeCtor,
@@ -821,7 +821,7 @@ gen_tc_constraint(ModuleInfo, MakeRttiId, Constraint, RttiId, !Counter,
 	counter__allocate(TCNum, !Counter),
 	MakeRttiId(TCNum, Arity, RttiId),
 	TCDeclRttiName = type_class_decl,
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	TypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Types),
 	gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, PTIInits,
 		PTIDefns),
@@ -845,7 +845,7 @@ make_exist_tc_constr_id(RttiTypeCtor, Ordinal, TCNum, Arity, RttiId) :-
 
 gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo) = MLDS_Defns :-
 	ExistInfo = exist_info(Plain, InTci, Constraints, Locns),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	RttiName = exist_info(Ordinal),
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
 	list__length(Constraints, Tci),
@@ -919,7 +919,7 @@ gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, Types) = MLDS_Defns :-
 gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor, EnumByValue)
 		= MLDS_Defn :-
 	map__values(EnumByValue, Functors),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	FunctorRttiNames = list__map(enum_functor_rtti_name, Functors),
  	Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
 		FunctorRttiNames),
@@ -932,7 +932,7 @@ gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor, EnumByValue)
 gen_enum_name_ordered_table(ModuleInfo, RttiTypeCtor, EnumByName)
 		= MLDS_Defn :-
 	map__values(EnumByName, Functors),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	FunctorRttiNames = list__map(enum_functor_rtti_name, Functors),
  	Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
 		FunctorRttiNames),
@@ -943,7 +943,7 @@ gen_enum_name_ordered_table(ModuleInfo, RttiTypeCtor, EnumByName)
 	map(int, sectag_table)) = list(mlds__defn).
 
 gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	map__to_assoc_list(PtagMap, PtagList),
 	SubDefns = list__map(
 		gen_du_stag_ordered_table(ModuleName, RttiTypeCtor), PtagList),
@@ -1019,7 +1019,7 @@ gen_du_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap)
 	map__values(NameArityMap, ArityMaps),
 	list__map(map__values, ArityMaps, FunctorLists),
 	list__condense(FunctorLists, Functors),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	FunctorRttiNames = list__map(du_functor_rtti_name, Functors),
  	Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
 		FunctorRttiNames),
@@ -1036,7 +1036,7 @@ gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor, ResFunctors,
 		NumericResFunctorReps, SymbolicResFunctorReps),
 	list__length(NumericResFunctorReps, NumNumericResFunctorReps),
 	list__length(SymbolicResFunctorReps, NumSymbolicResFunctorReps),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	ResDefns = [gen_res_addr_functor_table(ModuleName, RttiTypeCtor,
 		ResFunctors)],
 	( NumSymbolicResFunctorReps = 0 ->
@@ -1091,7 +1091,7 @@ gen_maybe_res_name_ordered_table(ModuleInfo, RttiTypeCtor, NameArityMap)
 	map__values(NameArityMap, ArityMaps),
 	list__map(map__values, ArityMaps, FunctorLists),
 	list__condense(FunctorLists, Functors),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
  	Init = gen_init_array(
 		gen_maybe_res_name_ordered_table_element(ModuleName,
 			RttiTypeCtor),
@@ -1370,7 +1370,7 @@ gen_pseudo_type_info(ModuleInfo, PTIRttiData, Init, Defns) :-
 	RealRttiDatas = list__filter(real_rtti_data, [PTIRttiData]),
 	DefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	Defns = list__condense(DefnLists),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	Init = gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
 		ModuleName, PTIRttiData).
 
@@ -1381,7 +1381,7 @@ gen_pseudo_type_info_array(ModuleInfo, PTIRttiDatas, Init, Defns) :-
 	RealRttiDatas = list__filter(real_rtti_data, PTIRttiDatas),
 	DefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	Defns = list__condense(DefnLists),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	Init = gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
 		ModuleName, PTIRttiDatas).
 
@@ -1392,7 +1392,7 @@ gen_pseudo_type_info_list(ModuleInfo, PTIRttiDatas, Inits, Defns) :-
 	RealRttiDatas = list__filter(real_rtti_data, PTIRttiDatas),
 	DefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	Defns = list__condense(DefnLists),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	Inits = list__map(
 		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
 			ModuleName),

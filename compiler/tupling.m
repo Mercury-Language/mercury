@@ -150,7 +150,7 @@
 %
 
 tuple_arguments(!ModuleInfo, !IO) :-
-	module_info_globals(!.ModuleInfo, Globals),
+	module_info_get_globals(!.ModuleInfo, Globals),
 	globals__lookup_string_option(Globals,
 		tuple_trace_counts_file, TraceCountsFile),
 	( TraceCountsFile = "" ->
@@ -172,7 +172,7 @@ tuple_arguments(!ModuleInfo, !IO) :-
 	io::di, io::uo) is det.
 
 tuple_arguments_2(!ModuleInfo, TraceCounts0, !IO) :-
-	module_info_globals(!.ModuleInfo, Globals),
+	module_info_get_globals(!.ModuleInfo, Globals),
 	% We use the same cost options as for the stack optimisation.
 	globals__lookup_int_option(Globals,
 		optimize_saved_vars_cell_cv_load_cost, CellVarLoadCost),
@@ -197,7 +197,7 @@ tuple_arguments_2(!ModuleInfo, TraceCounts0, !IO) :-
 		FieldVarLoadCost, FieldVarStoreCost,
 		CostsRatio, MinArgsToTuple),
 
-	module_info_name(!.ModuleInfo, ModuleName),
+	module_info_get_name(!.ModuleInfo, ModuleName),
 	restrict_trace_counts_to_module(ModuleName, TraceCounts0, TraceCounts),
 
 	module_info_ensure_dependency_info(!ModuleInfo),
@@ -253,7 +253,7 @@ maybe_tuple_scc_individual_procs(TraceCounts, TuningParams, DepGraph,
 
 maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
 		!ModuleInfo, !Counter, !TransformMap, !IO) :-
-	module_info_globals(!.ModuleInfo, Globals),
+	module_info_get_globals(!.ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, very_verbose, VeryVerbose),
 	(
 		VeryVerbose = yes,
@@ -754,7 +754,7 @@ insert_proc_start_deconstruction(Goal0, Goal,
 
 create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 		AuxPredProcId, CallAux, ModuleInfo0, ModuleInfo) :-
-	module_info_name(ModuleInfo0, ModuleName),
+	module_info_get_name(ModuleInfo0, ModuleName),
 
 	proc_info_headvars(ProcInfo, AuxHeadVars),
 	proc_info_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
@@ -883,7 +883,7 @@ prepare_proc_for_counting(PredProcId, !ModuleInfo, !IO) :-
 		detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo,
 			!IO),
 		initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
-		module_info_globals(!.ModuleInfo, Globals),
+		module_info_get_globals(!.ModuleInfo, Globals),
 		body_should_use_typeinfo_liveness(PredInfo, Globals,
 			TypeInfoLiveness),
 		globals__lookup_bool_option(Globals,
@@ -1050,7 +1050,7 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
 		cls_require_in_regs(CountInfo, InputArgs, !CountState),
 		cls_put_in_regs(OutputArgs, !CountState)
 	;
-		module_info_globals(ModuleInfo, Globals),
+		module_info_get_globals(ModuleInfo, Globals),
 		call_gen__generic_call_info(Globals, GenericCall,
 			length(InputArgs), _, GenericVarsArgInfos, _, _),
 		assoc_list__keys(GenericVarsArgInfos, GenericVars),

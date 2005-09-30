@@ -104,7 +104,7 @@
 %-----------------------------------------------------------------------------%
 
 rl_out__generate_schema_file(ModuleInfo) -->
-	{ module_info_name(ModuleInfo, ModuleName) },
+	{ module_info_get_name(ModuleInfo, ModuleName) },
 	module_name_to_file_name(ModuleName, ".base_schema", yes, FileName),
 	io__open_output(FileName, Res),
 	( { Res = ok(Stream) } ->
@@ -125,7 +125,7 @@ rl_out__generate_schema_file(ModuleInfo) -->
 rl_out__generate_schema_file_2(ModuleInfo, PredId) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_get_markers(PredInfo, Markers) },
-	{ module_info_name(ModuleInfo, Module) },
+	{ module_info_get_name(ModuleInfo, Module) },
 	{ PredModule = pred_info_module(PredInfo) },
 	(
 		{ Module = PredModule },
@@ -228,7 +228,7 @@ rl_out__get_proc_schema_2(ArgNo, [_ | Args], SchemaList0, SchemaList) :-
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in,
 
 rl_out__generate_rl_bytecode(Procs, MaybeRLFile, ModuleInfo0, ModuleInfo) -->
-	{ module_info_name(ModuleInfo0, ModuleName0) },
+	{ module_info_get_name(ModuleInfo0, ModuleName0) },
 	module_name_to_file_name(ModuleName0, ".rlo", yes, RLOName),
 	module_name_to_file_name(ModuleName0, ".rla", yes, RLAName),
 	globals__io_lookup_bool_option(verbose, Verbose),
@@ -401,7 +401,7 @@ rl_out__generate_rl_bytecode(_, _, MaybeRLFile) -->
 rl_out__generate_update_procs(PredId) -->
 	rl_out_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ module_info_name(ModuleInfo, ModuleName) },
+	{ module_info_get_name(ModuleInfo, ModuleName) },
 	{ PredModule = pred_info_module(PredInfo) },
 	(
 		{ ModuleName = PredModule },
@@ -776,7 +776,7 @@ rl_out__collect_memoed_relations(Owner, ProcName, [Rel | Rels], Counter0,
 	{ list__map(RemoveSlashes, ProcNameList0, ProcNameList) },
 	{ string__from_char_list(ProcNameList, ProcNameStr1) },
 	rl_out_info_get_module_info(ModuleInfo),
-	{ module_info_name(ModuleInfo, ModuleName0) },
+	{ module_info_get_name(ModuleInfo, ModuleName0) },
 	{ mdbcomp__prim_data__sym_name_to_string(ModuleName0, ModuleName) },
 	{ string__format("%s/%s/Memoed__%s__%i", 
 		[s(Owner), s(ModuleName), s(ProcNameStr1), i(Counter0)],

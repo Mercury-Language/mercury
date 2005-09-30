@@ -360,7 +360,7 @@ mode_error_conj_to_specs(ModeInfo, Errors, Culprit) = Specs :-
     % If there's more than one error, and we have verbose-errors enabled,
     % report them all.
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (
         VerboseErrors = yes,
@@ -441,7 +441,7 @@ mode_error_conjunct_to_specs(VarSet, Context, !.ModeInfo, DelayedGoal)
         = Specs :-
     DelayedGoal = delayed_goal(Vars, Error, Goal),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, debug_modes, Debug),
     (
         Debug = yes,
@@ -550,7 +550,7 @@ mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
         words("expected instantiatedness was"),
         words(add_quotes(inst_to_string(ModeInfo, Inst))), suffix("."), nl],
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (
         VerboseErrors = yes,
@@ -618,7 +618,7 @@ mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
         words("have the following insts:"), nl_indent_delta(1)] ++
         inst_list_to_sep_lines(!.ModeInfo, Insts) ++
         [words("which does not match any of the valid modes for")],
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (
         VerboseErrors = yes,
@@ -722,7 +722,7 @@ mode_error_poly_unify_to_specs(ModeInfo, Var, VarInst) = Specs :-
         words(add_quotes(inst_to_string(ModeInfo, VarInst))), suffix(","), nl,
         words("expected instantiatedness was `ground' or `any'."), nl],
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     (
         VerboseErrors = yes,
@@ -775,7 +775,7 @@ mode_error_implied_mode_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
         % This "error" message is really a "sorry, not implemented" message.
         % We only print the message if we will actually generating code.
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, errorcheck_only, ErrorcheckOnly),
     (
         ErrorcheckOnly = no,
@@ -815,7 +815,7 @@ mode_error_unify_pred_to_specs(ModeInfo, X, RHS, Type, PredOrFunc) = Specs :-
     mode_info_get_varset(ModeInfo, VarSet),
     mode_info_get_instvarset(ModeInfo, InstVarSet),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     (
         RHS = error_at_var(Y),
         RHSStr = mercury_var_to_string(Y, VarSet, no)

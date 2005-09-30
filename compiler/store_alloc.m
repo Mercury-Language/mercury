@@ -70,7 +70,7 @@
 %-----------------------------------------------------------------------------%
 
 allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     ( RunType = final_allocation ->
         proc_info_goal(!.ProcInfo, Goal0),
 

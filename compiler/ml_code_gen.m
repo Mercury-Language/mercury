@@ -803,7 +803,7 @@
 %-----------------------------------------------------------------------------%
 
 ml_code_gen(ModuleInfo, MLDS, !IO) :-
-    module_info_name(ModuleInfo, ModuleName),
+    module_info_get_name(ModuleInfo, ModuleName),
     ml_gen_foreign_code(ModuleInfo, ForeignCode, !IO),
     ml_gen_imports(ModuleInfo, Imports),
     ml_gen_defns(ModuleInfo, Defns, !IO),
@@ -864,18 +864,18 @@ ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls, ForeignBodys,
 ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
     % Determine all the mercury imports.
     % XXX This is overly conservative, i.e. we import more than we really need.
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__get_target(Globals, Target),
     module_info_get_all_deps(ModuleInfo, AllImports0),
     % No module needs to import itself.
-    module_info_name(ModuleInfo, ThisModule),
+    module_info_get_name(ModuleInfo, ThisModule),
     AllImports = set__delete(AllImports0, ThisModule),
     P = (func(Name) = mercury_import(compiler_visible_interface,
         mercury_module_name_to_mlds(Name))),
 
     % For every foreign type determine the import needed to find
     % the declaration for that type.
-    module_info_types(ModuleInfo, Types),
+    module_info_get_type_table(ModuleInfo, Types),
     ForeignTypeImports = list__condense(
         list__map(foreign_type_required_imports(Target), map__values(Types))),
 
@@ -1049,7 +1049,7 @@ ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, !Defns) :-
         Initializer = init_obj(const(null(Type))),
         proc_info_context(ProcInfo, Context),
         (
-            module_info_globals(ModuleInfo, Globals),
+            module_info_get_globals(ModuleInfo, Globals),
             globals__get_gc_method(Globals, GC_Method),
             GC_Method = accurate
         ->
@@ -1203,7 +1203,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
 
 ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
     ml_gen_info_get_byref_output_vars(!.Info, OutputVars),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, det_copy_out, DetCopyOut),
     (
         % If --det-copy-out is enabled, all output variables are returned
@@ -1238,7 +1238,7 @@ ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
     (
         NondetCopyOut = yes,
@@ -2162,7 +2162,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         AssignOutputsList
     ]),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__get_target(Globals, Target),
     ( CodeModel = model_non ->
 
@@ -2345,7 +2345,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         OutputVarLvals, ForeignCode),
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_name(ModuleInfo, ModuleName),
+    module_info_get_name(ModuleInfo, ModuleName),
     MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
 
     ml_success_lval(!.Info, SucceededLval),
@@ -2439,7 +2439,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
     % the procedure interface, not from the procedure body
     ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
     ml_gen_info_get_value_output_vars(!.Info, CopiedOutputVars),
-    module_info_name(ModuleInfo, ModuleName),
+    module_info_get_name(ModuleInfo, ModuleName),
     MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
 
     % XXX in the code to marshall parameters, fjh says:
@@ -2740,7 +2740,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
 ml_gen_obtain_release_global_lock(Info, ThreadSafe, PredId,
         ObtainLock, ReleaseLock) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, parallel, Parallel),
     (
         Parallel = yes,
@@ -2918,7 +2918,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
         )
     ->
         % In the usual case, we can just use an assignment and perhaps a cast.
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
         (
             HighLevelData = yes,
@@ -3007,7 +3007,7 @@ ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
         MLDSType = mercury_type_to_mlds_type(ModuleInfo, OrigType),
         % Construct an MLDS lval for the local Java representation
         % of the argument.
-        module_info_name(ModuleInfo, ModuleName),
+        module_info_get_name(ModuleInfo, ModuleName),
         MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
         NonMangledVarName = mlds__var_name(ArgName, no),
         QualLocalVarName = qual(MLDSModuleName, module_qual,
@@ -3109,7 +3109,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, Context,
     ->
         % In the usual case, we can just use an assignment,
         % perhaps with a cast.
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, highlevel_data,
             HighLevelData),
         (

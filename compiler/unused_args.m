@@ -213,7 +213,7 @@ unused_args__process_module(!ModuleInfo, !IO) :-
     globals__io_lookup_bool_option(make_optimization_interface, MakeOpt, !IO),
     (
         MakeOpt = yes,
-        module_info_name(!.ModuleInfo, ModuleName),
+        module_info_get_name(!.ModuleInfo, ModuleName),
         module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
         io__open_append(OptFileName, OptFileRes, !IO),
         (
@@ -289,7 +289,7 @@ init_var_usage(VarUsage, PredProcList, ProcCallInfo, !ModuleInfo, !IO) :-
     map__init(ProcCallInfo0),
     map__init(VarUsage0),
     module_info_predids(!.ModuleInfo, PredIds),
-    module_info_unused_arg_info(!.ModuleInfo, UnusedArgInfo),
+    module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo),
     setup_local_var_usage(PredIds, UnusedArgInfo, VarUsage0, VarUsage,
         [], PredProcList, ProcCallInfo0, ProcCallInfo, !ModuleInfo, !IO).
 
@@ -356,7 +356,7 @@ setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage, !PredProcs,
             PredArity = pred_info_orig_arity(PredInfo),
             FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
                 PredName, PredArity, ProcId),
-            module_info_analysis_info(!.ModuleInfo, AnalysisInfo0),
+            module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
             lookup_best_result(module_name_to_module_id(PredModule),
                 FuncId, unused_args_func_info(PredArity),
                 any_call, MaybeBestResult, AnalysisInfo0, AnalysisInfo, !IO),
@@ -398,7 +398,7 @@ setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage, !PredProcs,
             initialise_vardep(Vars, !VarDep),
             setup_output_args(!.ModuleInfo, ProcInfo, !VarDep),
 
-            module_info_globals(!.ModuleInfo, Globals),
+            module_info_get_globals(!.ModuleInfo, Globals),
             proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId,
                 Globals, TypeInfoLiveness),
             (
@@ -873,7 +873,7 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         globals__io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
         (
             Intermod = yes,
-            module_info_analysis_info(!.ModuleInfo, AnalysisInfo0),
+            module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
             PredOrFunc = pred_info_is_pred_or_func(OrigPredInfo),
             PredArity = pred_info_orig_arity(OrigPredInfo),
             ModuleId = module_name_to_module_id(PredModule),

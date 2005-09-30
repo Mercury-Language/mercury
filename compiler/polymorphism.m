@@ -2246,7 +2246,7 @@ polymorphism__make_typeclass_info_from_instance(Constraint, Seen,
 	Proofs = !.Info ^ proof_map,
 	ModuleInfo = !.Info ^ module_info,
 
-	module_info_instances(ModuleInfo, InstanceTable),
+	module_info_get_instance_table(ModuleInfo, InstanceTable),
 	map__lookup(InstanceTable, ClassId, InstanceList),
 	list__index1_det(InstanceList, InstanceNum, ProofInstanceDefn),
 
@@ -2364,7 +2364,7 @@ polymorphism__make_typeclass_info_from_subclass(Constraint,
 
 	% Look up the definition of the subclass
 	poly_info_get_module_info(!.Info, ModuleInfo),
-	module_info_classes(ModuleInfo, ClassTable),
+	module_info_get_class_table(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, SubClassId, SubClassDefn),
 
 	% Work out which superclass typeclass_info to take.
@@ -2411,7 +2411,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 
 	poly_info_get_module_info(!.Info, ModuleInfo),
 
-	module_info_classes(ModuleInfo, ClassTable),
+	module_info_get_class_table(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
 
 	polymorphism__get_arg_superclass_vars(ClassDefn, InstanceTypes,
@@ -2430,7 +2430,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	polymorphism__new_typeclass_info_var(Constraint, ClassNameString,
 		BaseVar, !Info),
 
-	module_info_instances(ModuleInfo, InstanceTable),
+	module_info_get_instance_table(ModuleInfo, InstanceTable),
 	map__lookup(InstanceTable, ClassId, InstanceList),
 	list__index1_det(InstanceList, InstanceNum, InstanceDefn),
 	InstanceModuleName = InstanceDefn ^ instance_module,
@@ -3105,7 +3105,7 @@ polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
 			% Work out how many superclasses the class has.
 		list__length(ClassTypes, ClassArity),
 		ClassId = class_id(ClassName0, ClassArity),
-		module_info_classes(ModuleInfo, ClassTable),
+		module_info_get_class_table(ModuleInfo, ClassTable),
 		map__lookup(ClassTable, ClassId, ClassDefn),
 		SuperClasses = ClassDefn ^ class_supers,
 		list__length(SuperClasses, NumSuperClasses),
@@ -3301,11 +3301,11 @@ polymorphism__is_typeclass_info_manipulator(ModuleInfo, PredId,
 	module_info::out) is det.
 
 polymorphism__expand_class_method_bodies(!ModuleInfo) :-
-	module_info_classes(!.ModuleInfo, Classes),
-	module_info_name(!.ModuleInfo, ModuleName),
+	module_info_get_class_table(!.ModuleInfo, Classes),
+	module_info_get_name(!.ModuleInfo, ModuleName),
 	map__keys(Classes, ClassIds0),
 
-	module_info_globals(!.ModuleInfo, Globals),
+	module_info_get_globals(!.ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, user_guided_type_specialization,
 		TypeSpec),
 	(

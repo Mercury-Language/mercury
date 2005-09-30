@@ -298,7 +298,7 @@ type_range(enum_type, Type, ModuleInfo, 0, MaxEnum) :-
     ;
         unexpected(this_file, "dense_switch__type_range: invalid enum type?")
     ),
-    module_info_types(ModuleInfo, TypeTable),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     map__lookup(TypeTable, TypeCtor, TypeDefn),
     hlds_data__get_type_defn_body(TypeDefn, TypeBody),
     ( ConsTable = TypeBody ^ du_type_cons_tag_values ->
@@ -319,7 +319,7 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
     ;
         unexpected(this_file, "unknown type in get_ptag_counts")
     ),
-    module_info_types(ModuleInfo, TypeTable),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     map__lookup(TypeTable, TypeCtor, TypeDefn),
     hlds_data__get_type_defn_body(TypeDefn, Body),
     ( ConsTable = Body ^ du_type_cons_tag_values ->

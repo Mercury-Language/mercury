@@ -123,7 +123,7 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
                 Ctors = Body ^ du_type_ctors,
                 Body ^ du_type_is_enum = no,
                 Body ^ du_type_usereq = no,
-                module_info_globals(!.ModuleInfo, Globals),
+                module_info_get_globals(!.ModuleInfo, Globals),
                 globals__lookup_int_option(Globals, compare_specialization,
                     CompareSpec),
                 list__length(Ctors, CtorCount),
@@ -183,7 +183,7 @@ add_special_pred_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
 
 add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
         Status0, !ModuleInfo) :-
-    module_info_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
     (
         GenSpecialPreds = yes,
@@ -315,7 +315,7 @@ add_special_pred_decl_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
 
 add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody,
         Context, Status0, !ModuleInfo) :-
-    module_info_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
     ( GenSpecialPreds = yes ->
         do_add_special_pred_decl_for_real(SpecialPredId,
@@ -330,7 +330,7 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody,
 
 do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         Context, Status0, !ModuleInfo) :-
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
     Name = special_pred_name(SpecialPredId, TypeCtor),
     ( SpecialPredId = (initialise) ->
@@ -351,7 +351,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         % XXX this context might not be empty
     ClassContext = constraints([], []),
     ExistQVars = [],
-    module_info_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals__lookup_string_option(Globals, aditi_user, Owner),
     pred_info_init(ModuleName, PredName, Arity, predicate, Context,
         Origin, Status, none, Markers, ArgTypes, TVarSet, ExistQVars,

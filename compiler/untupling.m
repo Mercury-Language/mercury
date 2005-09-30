@@ -171,7 +171,7 @@ expand_args_in_module(!ModuleInfo, TransformMap) :-
     transform_map::in, transform_map::out, counter::in, counter::out) is det.
 
 expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
-    module_info_types(!.ModuleInfo, TypeTable),
+    module_info_get_type_table(!.ModuleInfo, TypeTable),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     (
         % Only perform the transformation on predicates which
@@ -221,7 +221,7 @@ at_least_one_expandable_type([Type | Types], TypeTable) :-
 
 expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
     some [!ProcInfo] (
-        module_info_types(!.ModuleInfo, TypeTable),
+        module_info_get_type_table(!.ModuleInfo, TypeTable),
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo0, !:ProcInfo),
 
@@ -408,7 +408,7 @@ build_untuple_map([_| _], [], !_) :-
 create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredId, AuxProcId, CallAux, AuxPredInfo, AuxProcInfo,
         !ModuleInfo) :-
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
 
     proc_info_headvars(ProcInfo, AuxHeadVars),
     proc_info_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
@@ -515,7 +515,7 @@ fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes,
         map__search(TransformMap, proc(CalleePredId, CalleeProcId),
             transformed_proc(_, CallAux0 - CallAuxInfo))
     ->
-        module_info_types(ModuleInfo, TypeTable),
+        module_info_get_type_table(ModuleInfo, TypeTable),
         module_info_pred_proc_info(ModuleInfo, CalleePredId,
             CalleeProcId, _CalleePredInfo, CalleeProcInfo),
         proc_info_argmodes(CalleeProcInfo, OrigArgModes),

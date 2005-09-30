@@ -52,7 +52,7 @@
 
 move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
 		!ModuleInfo) :-
-	module_info_globals(!.ModuleInfo, Globals),
+	module_info_get_globals(!.ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, follow_code, FollowCode),
 	globals__lookup_bool_option(Globals, prev_code, PrevCode),
 	Flags = FollowCode - PrevCode,

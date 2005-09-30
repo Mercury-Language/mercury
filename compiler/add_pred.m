@@ -150,7 +150,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     ;
         Status = ItemStatus
     ),
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     list__length(Types, Arity),
     (
         PredName = unqualified(_PName),
@@ -301,7 +301,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     % predicate; it is presumed to be local, and its type
     % will be inferred automatically.
 
-    module_info_name(!.ModuleInfo, ModuleName0),
+    module_info_get_name(!.ModuleInfo, ModuleName0),
     sym_name_get_module_name(PredName, ModuleName0, ModuleName),
     list__length(Modes, Arity),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
@@ -421,7 +421,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
         % Existential types must be declared, they won't be inferred.
     ExistQVars = [],
     init_markers(Markers0),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_string_option(Globals, aditi_user, Owner),
     pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
         Origin, Status, none, Markers0, Types, TVarSet, ExistQVars,

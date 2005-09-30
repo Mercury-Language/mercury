@@ -405,7 +405,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         % different calling conventions.
         proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
         determinism_to_code_model(Detism, CodeModel),
-        module_info_globals(ModuleInfo0, Globals),
+        module_info_get_globals(ModuleInfo0, Globals),
         globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = no,
@@ -451,7 +451,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         ArgVars = put_typeinfo_vars_first(ArgVars1, VarTypes),
         list__append(ArgVars, Vars, AllArgVars),
 
-        module_info_name(ModuleInfo0, ModuleName),
+        module_info_get_name(ModuleInfo0, ModuleName),
         goal_info_get_context(LambdaGoalInfo, OrigContext),
         term__context_file(OrigContext, OrigFile),
         term__context_line(OrigContext, OrigLine),

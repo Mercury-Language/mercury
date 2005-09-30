@@ -737,12 +737,12 @@ hlds_out__start_in_message_to_pieces(First, !Pieces) :-
 hlds_out__write_hlds(Indent, Module, !IO) :-
     module_info_get_imported_module_specifiers(Module, Imports),
     module_info_preds(Module, PredTable),
-    module_info_types(Module, TypeTable),
-    module_info_insts(Module, InstTable),
-    module_info_modes(Module, ModeTable),
-    module_info_classes(Module, ClassTable),
-    module_info_superclasses(Module, SuperClassTable),
-    module_info_instances(Module, InstanceTable),
+    module_info_get_type_table(Module, TypeTable),
+    module_info_get_inst_table(Module, InstTable),
+    module_info_get_mode_table(Module, ModeTable),
+    module_info_get_class_table(Module, ClassTable),
+    module_info_get_superclass_table(Module, SuperClassTable),
+    module_info_get_instance_table(Module, InstanceTable),
     hlds_out__write_header(Indent, Module, !IO),
     globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
     ( string__contains_char(Verbose, 'I') ->
@@ -779,7 +779,7 @@ hlds_out__write_hlds(Indent, Module, !IO) :-
 hlds_out__write_header(Indent, Module, !IO) :-
     hlds_out__write_indent(Indent, !IO),
     io__write_string("% vim: ts=2 sw=2\n\n", !IO),
-    module_info_name(Module, Name),
+    module_info_get_name(Module, Name),
     hlds_out__write_indent(Indent, !IO),
     io__write_string(":- module ", !IO),
     prog_out__write_sym_name(Name, !IO),
@@ -799,7 +799,7 @@ hlds_out__write_imports(Indent, ImportSet, !IO) :-
     is det.
 
 hlds_out__write_footer(Indent, Module, !IO) :-
-    module_info_name(Module, Name),
+    module_info_get_name(Module, Name),
     hlds_out__write_indent(Indent, !IO),
     io__write_string(":- end_module ", !IO),
     prog_out__write_sym_name(Name, !IO),

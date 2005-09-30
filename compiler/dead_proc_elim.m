@@ -142,11 +142,11 @@ dead_proc_elim__initialize(ModuleInfo, !:Queue, !:Needed) :-
     module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
     dead_proc_elim__initialize_pragma_exports(PragmaExports,
         !Queue, !Needed),
-    module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
+    module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
     dead_proc_elim__initialize_base_gen_infos(TypeCtorGenInfos,
         !Queue, !Needed),
-    module_info_classes(ModuleInfo, Classes),
-    module_info_instances(ModuleInfo, Instances),
+    module_info_get_class_table(ModuleInfo, Classes),
+    module_info_get_instance_table(ModuleInfo, Instances),
     dead_proc_elim__initialize_class_methods(Classes, Instances,
         !Queue, !Needed).
 
@@ -311,7 +311,7 @@ dead_proc_elim__examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
 
 dead_proc_elim__examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
         !Queue, !Needed) :-
-    module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
+    module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
     (
         dead_proc_elim__find_base_gen_info(ModuleName, TypeName,
             Arity, TypeCtorGenInfos, Refs)
@@ -504,7 +504,7 @@ dead_proc_elim__eliminate(Pass, !.Needed, !ModuleInfo, !IO) :-
     ElimInfo = elimination_info(!:Needed, !:ModuleInfo, PredTable, Changed),
 
     module_info_set_preds(PredTable, !ModuleInfo),
-    module_info_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos0),
+    module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos0),
     dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, !.Needed,
         TypeCtorGenInfos),
     module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo),
@@ -706,8 +706,8 @@ dead_pred_elim(!ModuleInfo) :-
     % examined because they contain calls to the actual method
     % implementations.
     %
-    module_info_instances(!.ModuleInfo, Instances),
-    module_info_classes(!.ModuleInfo, Classes),
+    module_info_get_instance_table(!.ModuleInfo, Instances),
+    module_info_get_class_table(!.ModuleInfo, Classes),
     dead_proc_elim__initialize_class_methods(Classes, Instances,
         Queue0, _, Needed1, Needed),
     map__keys(Needed, Entities),
@@ -731,7 +731,7 @@ dead_pred_elim(!ModuleInfo) :-
     % make_hlds.m to force type specialization are also not needed.
     % Here we add in those which are needed.
     %
-    module_info_type_spec_info(!.ModuleInfo,
+    module_info_get_type_spec_info(!.ModuleInfo,
         type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
             SpecMap0, PragmaMap0)),
     set__to_sorted_list(NeededPreds2, NeededPredList2),
@@ -795,7 +795,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 % `:- external' or `:- pragma base_relation' declaration.
                 % magic.m will change the import_status to `exported' when it
                 % generates the interface procedure for a base relation.
-                module_info_name(ModuleInfo, PredModule)
+                module_info_get_name(ModuleInfo, PredModule)
             ;
                 % Don't eliminate <foo>_init_any/1 predicates; modes.m may
                 % insert calls to them to initialize variables from inst `free'

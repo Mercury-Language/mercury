@@ -1077,7 +1077,7 @@ ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
 
 ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
         PredOrFunc, CodeModel, FuncParams, !MaybeInfo) :-
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     CopyOut = get_copy_out_option(Globals, CodeModel),
     ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
         CopyOut, FuncArgs0, RetTypes0, !MaybeInfo),
@@ -1892,7 +1892,7 @@ ml_gen_maybe_gc_trace_code_with_typeinfo(VarName, DeclType, TypeInfoRval,
 ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo, Context,
         Maybe_GC_TraceCode, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__get_gc_method(Globals, GC),
     (
         GC = accurate,
@@ -2038,7 +2038,7 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     % type_infos. This is safe because those type_infos will only be used
     % in the immediately following call to gc_trace/1.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_name(ModuleInfo, ModuleName),
+    module_info_get_name(ModuleInfo, ModuleName),
     fixup_newobj(MLDS_TypeInfoStatement0,
         mercury_module_name_to_mlds(ModuleName),
         MLDS_TypeInfoStatement, MLDS_NewobjLocals),
@@ -2441,7 +2441,7 @@ ml_gen_info_get_module_info(Info, Info ^ module_info).
 
 ml_gen_info_get_module_name(Info, ModuleName) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    module_info_name(ModuleInfo, ModuleName).
+    module_info_get_name(ModuleInfo, ModuleName).
 
 ml_gen_info_get_pred_id(Info, Info ^ pred_id).
 ml_gen_info_get_proc_id(Info, Info ^ proc_id).
@@ -2466,7 +2466,7 @@ ml_gen_info_put_commit_in_own_func(Info, PutCommitInNestedFunc) :-
 
 ml_gen_info_get_globals(Info, Globals) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals).
+    module_info_get_globals(ModuleInfo, Globals).
 
 ml_gen_info_new_label(Label, !Info) :-
     Counter0 = !.Info ^ label,

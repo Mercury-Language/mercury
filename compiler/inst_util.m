@@ -155,7 +155,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         !ModuleInfo) :-
     % Check whether this pair of insts is already in the unify_insts table.
     ThisInstPair = unify_inst(Live, InstA, InstB, UnifyIsReal),
-    module_info_insts(!.ModuleInfo, InstTable0),
+    module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_unify_insts(InstTable0, UnifyInsts0),
     ( map__search(UnifyInsts0, ThisInstPair, Result) ->
         ( Result = known(UnifyInst, UnifyDet) ->
@@ -174,7 +174,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         % Insert ThisInstPair into the table with value `unknown'.
         svmap__det_insert(ThisInstPair, unknown, UnifyInsts0, UnifyInsts1),
         inst_table_set_unify_insts(UnifyInsts1, InstTable0, InstTable1),
-        module_info_set_insts(InstTable1, !ModuleInfo),
+        module_info_set_inst_table(InstTable1, !ModuleInfo),
         % Unify the insts.
         inst_expand(!.ModuleInfo, InstA, InstA2),
         inst_expand(!.ModuleInfo, InstB, InstB2),
@@ -190,12 +190,12 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         ),
 
         % Now update the value associated with ThisInstPair.
-        module_info_insts(!.ModuleInfo, InstTable2),
+        module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_unify_insts(InstTable2, UnifyInsts2),
         map__det_update(UnifyInsts2, ThisInstPair, known(Inst1, Det),
             UnifyInsts),
         inst_table_set_unify_insts(UnifyInsts, InstTable2, InstTable),
-        module_info_set_insts(InstTable, !ModuleInfo)
+        module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
     % Avoid expanding recursive insts.
     ( inst_contains_instname(Inst1, !.ModuleInfo, ThisInstPair) ->
@@ -891,7 +891,7 @@ make_ground_inst(abstract_inst(_,_), _, _, _, ground(shared, none),
 make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         !ModuleInfo) :-
     % Check whether the inst name is already in the ground_inst table.
-    module_info_insts(!.ModuleInfo, InstTable0),
+    module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_ground_insts(InstTable0, GroundInsts0),
     GroundInstKey = ground_inst(InstName, IsLive, Uniq, Real),
     (
@@ -914,7 +914,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
             GroundInsts0, GroundInsts1),
         inst_table_set_ground_insts(GroundInsts1,
             InstTable0, InstTable1),
-        module_info_set_insts(InstTable1, !ModuleInfo),
+        module_info_set_inst_table(InstTable1, !ModuleInfo),
 
         % Expand the inst name, and invoke ourself recursively on its
         % expansion.
@@ -925,12 +925,12 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
 
         % Now that we have determined the resulting Inst, store the appropriate
         % value `known(GroundInst, Det)' in the ground_inst table.
-        module_info_insts(!.ModuleInfo, InstTable2),
+        module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_ground_insts(InstTable2, GroundInsts2),
         svmap__det_update(GroundInstKey, known(GroundInst, Det),
             GroundInsts2, GroundInsts),
         inst_table_set_ground_insts(GroundInsts, InstTable2, InstTable),
-        module_info_set_insts(InstTable, !ModuleInfo)
+        module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
     % Avoid expanding recursive insts.
     ( inst_contains_instname(GroundInst, !.ModuleInfo, GroundInstKey) ->
@@ -1000,7 +1000,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         !ModuleInfo) :-
         % check whether the inst name is already in the
         % any_inst table
-    module_info_insts(!.ModuleInfo, InstTable0),
+    module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_any_insts(InstTable0, AnyInsts0),
     AnyInstKey = any_inst(InstName, IsLive, Uniq, Real),
     (
@@ -1021,7 +1021,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         % for the moment.
         svmap__det_insert(AnyInstKey, unknown, AnyInsts0, AnyInsts1),
         inst_table_set_any_insts(AnyInsts1, InstTable0, InstTable1),
-        module_info_set_insts(InstTable1, !ModuleInfo),
+        module_info_set_inst_table(InstTable1, !ModuleInfo),
 
         % Expand the inst name, and invoke ourself recursively on its
         % expansion.
@@ -1032,12 +1032,12 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
 
         % Now that we have determined the resulting Inst, store the appropriate
         % value `known(AnyInst, Det)' in the any_inst table.
-        module_info_insts(!.ModuleInfo, InstTable2),
+        module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_any_insts(InstTable2, AnyInsts2),
         svmap__det_update(AnyInstKey, known(AnyInst, Det),
             AnyInsts2, AnyInsts),
         inst_table_set_any_insts(AnyInsts, InstTable2, InstTable),
-        module_info_set_insts(InstTable, !ModuleInfo)
+        module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
     % Avoid expanding recursive insts.
     ( inst_contains_instname(AnyInst, !.ModuleInfo, AnyInstKey) ->
@@ -1150,7 +1150,7 @@ make_shared_inst(abstract_inst(_,_), _, !ModuleInfo) :-
     error("make_shared_inst(abstract_inst)").
 make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     % Check whether the inst name is already in the shared_inst table.
-    module_info_insts(!.ModuleInfo, InstTable0),
+    module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_shared_insts(InstTable0, SharedInsts0),
     ( map__search(SharedInsts0, InstName, Result) ->
         ( Result = known(SharedInst0) ->
@@ -1163,7 +1163,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         % for the moment.
         svmap__det_insert(InstName, unknown, SharedInsts0, SharedInsts1),
         inst_table_set_shared_insts(SharedInsts1, InstTable0, InstTable1),
-        module_info_set_insts(InstTable1, !ModuleInfo),
+        module_info_set_inst_table(InstTable1, !ModuleInfo),
 
         % Expand the inst name, and invoke ourself recursively on its
         % expansion.
@@ -1173,13 +1173,13 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
 
         % Now that we have determined the resulting Inst, store the appropriate
         % value `known(SharedInst)' in the shared_inst table.
-        module_info_insts(!.ModuleInfo, InstTable2),
+        module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_shared_insts(InstTable2, SharedInsts2),
         svmap__det_update(InstName, known(SharedInst),
             SharedInsts2, SharedInsts),
         inst_table_set_shared_insts(SharedInsts,
             InstTable2, InstTable),
-        module_info_set_insts(InstTable, !ModuleInfo)
+        module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
     % Avoid expanding recursive insts.
     ( inst_contains_instname(SharedInst, !.ModuleInfo, InstName) ->
@@ -1240,7 +1240,7 @@ make_mostly_uniq_inst(abstract_inst(_,_), _, !ModuleInfo) :-
     error("make_mostly_uniq_inst(abstract_inst)").
 make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     % Check whether the inst name is already in the mostly_uniq_inst table.
-    module_info_insts(!.ModuleInfo, InstTable0),
+    module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_mostly_uniq_insts(InstTable0, NondetLiveInsts0),
     ( map__search(NondetLiveInsts0, InstName, Result) ->
         ( Result = known(NondetLiveInst0) ->
@@ -1254,7 +1254,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         map__det_insert(NondetLiveInsts0, InstName, unknown, NondetLiveInsts1),
         inst_table_set_mostly_uniq_insts(NondetLiveInsts1,
             InstTable0, InstTable1),
-        module_info_set_insts(InstTable1, !ModuleInfo),
+        module_info_set_inst_table(InstTable1, !ModuleInfo),
 
         % Expand the inst name, and invoke ourself recursively on its
         % expansion.
@@ -1264,13 +1264,13 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
 
         % Now that we have determined the resulting Inst, store the appropriate
         % value `known(NondetLiveInst)' in the mostly_uniq_inst table.
-        module_info_insts(!.ModuleInfo, InstTable2),
+        module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
         svmap__det_update(InstName, known(NondetLiveInst),
             NondetLiveInsts2, NondetLiveInsts),
         inst_table_set_mostly_uniq_insts(NondetLiveInsts,
             InstTable2, InstTable),
-        module_info_set_insts(InstTable, !ModuleInfo)
+        module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
         % avoid expanding recursive insts
     ( inst_contains_instname(NondetLiveInst, !.ModuleInfo, InstName) ->
@@ -1321,7 +1321,7 @@ allow_unify_bound_any(_) :- true.
 
 inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
     % Check whether this pair of insts is already in the merge_insts table.
-    module_info_insts(!.ModuleInfo, InstTable0),
+    module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_merge_insts(InstTable0, MergeInstTable0),
     ThisInstPair = InstA - InstB,
     ( map__search(MergeInstTable0, ThisInstPair, Result) ->
@@ -1335,18 +1335,18 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         map__det_insert(MergeInstTable0, ThisInstPair, unknown,
             MergeInstTable1),
         inst_table_set_merge_insts(MergeInstTable1, InstTable0, InstTable1),
-        module_info_set_insts(InstTable1, !ModuleInfo),
+        module_info_set_inst_table(InstTable1, !ModuleInfo),
 
         % Merge the insts.
         inst_merge_2(InstA, InstB, MaybeType, Inst0, !ModuleInfo),
 
         % Now update the value associated with ThisInstPair.
-        module_info_insts(!.ModuleInfo, InstTable2),
+        module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_merge_insts(InstTable2, MergeInstTable2),
         map__det_update(MergeInstTable2, ThisInstPair, known(Inst0),
             MergeInstTable3),
         inst_table_set_merge_insts(MergeInstTable3, InstTable2, InstTable3),
-        module_info_set_insts(InstTable3, !ModuleInfo)
+        module_info_set_inst_table(InstTable3, !ModuleInfo)
     ),
     % Avoid expanding recursive insts.
     ( inst_contains_instname(Inst0, !.ModuleInfo, merge_inst(InstA, InstB)) ->

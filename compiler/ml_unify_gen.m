@@ -462,7 +462,7 @@ ml_gen_reserved_address(_, small_pointer(Int), MLDS_Type) =
 ml_gen_reserved_address(ModuleInfo, reserved_object(TypeCtor, QualCtorName,
         CtorArity), _Type) = Rval :-
     ( QualCtorName = qualified(ModuleName, CtorName) ->
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
         TypeCtor = TypeName - TypeArity,
         unqualify_name(TypeName, UnqualTypeName),
@@ -548,7 +548,7 @@ ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, HowToConstruct, Context,
         % secondary tag -- are boxed, and so we need box it here.
 
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
         (
             HighLevelData = no,
@@ -830,7 +830,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
 
 ml_gen_field_type(Info, Type, FieldType) :-
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
     ml_type_as_field(Type, ModuleInfo, HighLevelData, FieldType).
 
@@ -1138,7 +1138,7 @@ ml_gen_cons_args(Lvals, ArgTypes, ConsArgTypes, UniModes, ModuleInfo,
     ->
         % Figure out the type of the field. Note that for the MLDS->C and
         % MLDS->asm back-ends, we need to box floating point fields.
-        module_info_globals(ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
         ml_type_as_field(ConsArgType, ModuleInfo, HighLevelData, BoxedArgType),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
@@ -1435,7 +1435,7 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
         Offset, ArgNum, Tag, Context, !Statements, !Info) :-
     Field = MaybeFieldName - FieldType,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
         % With the low-level data representation, we access all fields
@@ -1646,7 +1646,7 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
         ModuleInfo, Rval),
     SecondaryTagTest = binop(eq, SecondaryTagField,
         const(int_const(SecondaryTagVal))),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
     ( NumTagBits = 0 ->
         % No need to test the primary tag.
@@ -1690,7 +1690,7 @@ ml_gen_tag_test_rval(shared_with_reserved_addresses(ReservedAddrs, ThisTag),
 ml_gen_secondary_tag_rval(PrimaryTagVal, VarType, ModuleInfo, Rval) =
         SecondaryTagField :-
     MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__get_target(Globals, Target),
     globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
@@ -1732,8 +1732,8 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
     % secondary tags. If so, then the secondary tag field is in a class
     % "tag_type" that is derived from the base class for this type,
     % rather than in the base class itself.
-    module_info_globals(ModuleInfo, Globals),
-    module_info_types(ModuleInfo, TypeTable),
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_type_table(ModuleInfo, TypeTable),
     TypeDefn = map__lookup(TypeTable, TypeCtor),
     hlds_data__get_type_defn_body(TypeDefn, TypeDefnBody),
     ( TypeDefnBody = du_type(Ctors, TagValues, _, _, _ReservedTag, _) ->

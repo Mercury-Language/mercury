@@ -870,7 +870,7 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 
 inlining__can_inline_proc(PredId, ProcId, BuiltinState, InlinePromisedPure,
         CallingPredMarkers, ModuleInfo) :-
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     inlining__can_inline_proc_2(PredId, ProcId, BuiltinState,
         HighLevelCode, InlinePromisedPure,
@@ -935,7 +935,7 @@ inlining__can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
 
     % Only inline foreign_code if it is appropriate for
     % the target language.
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals__get_target(Globals, Target),
     (
         (

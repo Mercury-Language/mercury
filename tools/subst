@@ -1,0 +1,18 @@
+#!/bin/sh
+
+mkdir NEW
+
+for file in *.pp
+do
+	echo $file
+	sed -f SUBST $file > NEW/$file
+	rm `basename $file`.m
+done
+
+for file in *.m
+do
+	echo $file
+	sed -f SUBST $file > NEW/$file
+done
+
+exit 0

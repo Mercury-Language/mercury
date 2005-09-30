@@ -255,7 +255,7 @@ goal_cannot_throw_expr(_MaybeModuleInfo, Goal) :-
 goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
     Goal = call(PredId, ProcId, _, _, _, _),
     MaybeModuleInfo = yes(ModuleInfo),
-    module_info_exception_info(ModuleInfo, ExceptionInfo),
+    module_info_get_exception_info(ModuleInfo, ExceptionInfo),
     map.search(ExceptionInfo, proc(PredId, ProcId), will_not_throw).
 goal_cannot_throw_expr(_, unify(_, _, _, Uni, _)) :-
     % Complicated unifies are _non_builtin_

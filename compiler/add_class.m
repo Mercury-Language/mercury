@@ -69,8 +69,8 @@
 
 module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
         Context, Status, !ModuleInfo, !IO) :-
-    module_info_classes(!.ModuleInfo, Classes0),
-    module_info_superclasses(!.ModuleInfo, SuperClasses0),
+    module_info_get_class_table(!.ModuleInfo, Classes0),
+    module_info_get_superclass_table(!.ModuleInfo, SuperClasses0),
     list__length(Vars, ClassArity),
     ClassId = class_id(Name, ClassArity),
     Status = item_status(ImportStatus0, _),
@@ -177,20 +177,20 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
             Ancestors, Vars, Kinds, ClassInterface, ClassMethods, VarSet,
             Context),
         map__set(Classes0, ClassId, Defn, Classes),
-        module_info_set_classes(Classes, !ModuleInfo),
+        module_info_set_class_table(Classes, !ModuleInfo),
 
         (
             IsNewDefn = yes,
             update_superclass_table(ClassId, Vars, VarSet, Constraints,
                 SuperClasses0, SuperClasses),
 
-            module_info_set_superclasses(SuperClasses, !ModuleInfo),
+            module_info_set_superclass_table(SuperClasses, !ModuleInfo),
 
                 % When we find the class declaration, make an
                 % entry for the instances.
-            module_info_instances(!.ModuleInfo, Instances0),
+            module_info_get_instance_table(!.ModuleInfo, Instances0),
             map__det_insert(Instances0, ClassId, [], Instances),
-            module_info_set_instances(Instances, !ModuleInfo)
+            module_info_set_instance_table(Instances, !ModuleInfo)
         ;
             IsNewDefn = no
         )
@@ -397,8 +397,8 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
 
 module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
         Types, Body0, VarSet, Status, Context, !ModuleInfo, !IO) :-
-    module_info_classes(!.ModuleInfo, Classes),
-    module_info_instances(!.ModuleInfo, Instances0),
+    module_info_get_class_table(!.ModuleInfo, Classes),
+    module_info_get_instance_table(!.ModuleInfo, Instances0),
     list__length(Types, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
     Body = expand_bang_state_var_args_in_instance_method_heads(Body0),
@@ -413,7 +413,7 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
             ClassId, !IO),
         map__det_update(Instances0, ClassId,
             [NewInstanceDefn | InstanceDefns], Instances),
-        module_info_set_instances(Instances, !ModuleInfo)
+        module_info_set_instance_table(Instances, !ModuleInfo)
     ;
         undefined_type_class_error(ClassName, ClassArity, Context,
             "instance declaration", !IO)

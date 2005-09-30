@@ -105,7 +105,7 @@
 
 stack_layout__generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
 	global_data_get_all_proc_layouts(!.GlobalData, ProcLayoutList),
-	module_info_globals(ModuleInfo0, Globals),
+	module_info_get_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
 	globals__lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
 	globals__lookup_bool_option(Globals, procid_stack_layout,
@@ -149,7 +149,7 @@ stack_layout__generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
 		Layouts0),
 	(
 		TraceLayout = yes,
-		module_info_name(ModuleInfo0, ModuleName),
+		module_info_get_name(ModuleInfo0, ModuleName),
 		globals__lookup_bool_option(Globals, rtti_line_numbers,
 			LineNumbers),
 		(

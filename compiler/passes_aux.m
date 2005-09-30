@@ -603,9 +603,9 @@ maybe_report_sizes(HLDS, !IO) :-
 report_sizes(ModuleInfo, !IO) :-
     module_info_preds(ModuleInfo, Preds),
     tree_stats("Pred table", Preds, !IO),
-    module_info_types(ModuleInfo, Types),
+    module_info_get_type_table(ModuleInfo, Types),
     tree_stats("Type table", Types, !IO),
-    module_info_ctors(ModuleInfo, Ctors),
+    module_info_get_cons_table(ModuleInfo, Ctors),
     tree_stats("Constructor table", Ctors, !IO).
 
 :- pred tree_stats(string::in, map(_K, _V)::in, io::di, io::uo) is det.

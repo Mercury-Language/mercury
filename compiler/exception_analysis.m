@@ -177,7 +177,7 @@ process_scc(SCC, !ModuleInfo) :-
     %
     % Update the exception info. with information about this SCC.
     %
-    module_info_exception_info(!.ModuleInfo, ExceptionInfo0),
+    module_info_get_exception_info(!.ModuleInfo, ExceptionInfo0),
     Update = (pred(PPId::in, Info0::in, Info::out) is det :-
         Info = Info0 ^ elem(PPId) := Status
     ),
@@ -465,7 +465,7 @@ check_goals_for_exceptions(SCC, ModuleInfo, VarTypes, [ Goal | Goals ],
     list(pred_proc_id)::out) is semidet.
 
 get_conditional_closures(ModuleInfo, Closures, Conditionals) :-
-    module_info_exception_info(ModuleInfo, ExceptionInfo),
+    module_info_get_exception_info(ModuleInfo, ExceptionInfo),
     set.fold(get_conditional_closure(ExceptionInfo), Closures,
         [], Conditionals).
 
@@ -513,7 +513,7 @@ combine_exception_status(conditional, Y @ may_throw(_)) = Y.
     proc_result::out) is det.
 
 check_nonrecursive_call(ModuleInfo, VarTypes, PPId, Args, !Result) :-
-    module_info_exception_info(ModuleInfo, ExceptionInfo),
+    module_info_get_exception_info(ModuleInfo, ExceptionInfo),
     ( map.search(ExceptionInfo, PPId, CalleeExceptionStatus) ->
         (
             CalleeExceptionStatus = will_not_throw
@@ -711,10 +711,11 @@ check_user_type(ModuleInfo, Type) = Status :-
 % Stuff for intermodule optimization.
 % 
 
-:- pred exception_analysis.make_opt_int(module_info::in, io::di, io::uo) is det.
+:- pred exception_analysis.make_opt_int(module_info::in, io::di, io::uo)
+    is det.
 
 exception_analysis.make_opt_int(ModuleInfo, !IO) :-
-    module_info_name(ModuleInfo, ModuleName),
+    module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose,
@@ -726,7 +727,7 @@ exception_analysis.make_opt_int(ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_exception_info(ModuleInfo, ExceptionInfo), 
+        module_info_get_exception_info(ModuleInfo, ExceptionInfo), 
         module_info_predids(ModuleInfo, PredIds),   
         list.foldl(write_pragma_exceptions(ModuleInfo, ExceptionInfo),
             PredIds, !IO),
@@ -750,7 +751,7 @@ write_pragma_exceptions(ModuleInfo, ExceptionInfo, PredId, !IO) :-
         ; ImportStatus = opt_exported 
         ),
         not is_unify_or_compare_pred(PredInfo),
-        module_info_type_spec_info(ModuleInfo, TypeSpecInfo),
+        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
         not set.member(PredId, TypeSpecForcePreds),
         %

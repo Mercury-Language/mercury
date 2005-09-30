@@ -79,7 +79,7 @@ stratify__check_stratification(!ModuleInfo, !IO) :-
 	relation__atsort(DepGraph0, FOSCCs1),
 	dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
 	globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
-	module_info_stratified_preds(!.ModuleInfo, StratifiedPreds),
+	module_info_get_stratified_preds(!.ModuleInfo, StratifiedPreds),
 	first_order_check_sccs(FOSCCs, StratifiedPreds, Warn, !ModuleInfo,
 		!IO).
 

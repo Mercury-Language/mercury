@@ -158,7 +158,7 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
         % doing this may cause a compiler abort.
         (
             InvalidTypes1 = no,
-            module_info_types(!.Module, Types),
+            module_info_get_type_table(!.Module, Types),
             map__foldl3(process_type_defn, Types, no, InvalidTypes2, !Module,
                 !IO)
         ;
@@ -200,7 +200,7 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
         InvalidModes = InvalidModes0 `or` InvalidModes1,
         mq_info_get_num_errors(MQInfo, MQ_NumErrors),
 
-        module_info_num_errors(!.Module, ModuleNumErrors),
+        module_info_get_num_errors(!.Module, ModuleNumErrors),
         NumErrors = ModuleNumErrors + MQ_NumErrors,
         module_info_set_num_errors(NumErrors, !Module),
             % The predid list is constructed in reverse order, for efficiency,
@@ -212,9 +212,9 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
 check_for_errors(P, FoundError, !ModuleInfo, !IO) :-
     io__get_exit_status(BeforeStatus, !IO),
     io__set_exit_status(0, !IO),
-    module_info_num_errors(!.ModuleInfo, BeforeNumErrors),
+    module_info_get_num_errors(!.ModuleInfo, BeforeNumErrors),
     P(!ModuleInfo, !IO),
-    module_info_num_errors(!.ModuleInfo, AfterNumErrors),
+    module_info_get_num_errors(!.ModuleInfo, AfterNumErrors),
     io__get_exit_status(AfterStatus, !IO),
     (
         AfterStatus = 0,
@@ -453,7 +453,7 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     Item = mutable(Name, Type, _InitValue, Inst, _Attrs),
     !.Status = item_status(ImportStatus, _),
     ( status_defined_in_this_module(ImportStatus, yes) ->
-        module_info_name(!.ModuleInfo, ModuleName),
+        module_info_get_name(!.ModuleInfo, ModuleName),
         GetPredDecl = prog_mutable.get_pred_decl(ModuleName, Name,
             Type, Inst),
         add_item_decl_pass_1(GetPredDecl, Context, !Status, !ModuleInfo, _,
@@ -619,7 +619,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         %
         % XXX We don't currently support languages other than C.
         % 
-        module_info_name(!.ModuleInfo, ModuleName),
+        module_info_get_name(!.ModuleInfo, ModuleName),
         ForeignDecl = pragma(compiler(mutable_decl),
             foreign_decl(c, foreign_decl_is_exported,
                 "extern MR_Word " ++ TargetMutableName ++ ";")),
@@ -1059,7 +1059,7 @@ add_item_clause(finalise(Origin, SymName), !Status, Context, !ModuleInfo,
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     Item = mutable(Name, _Type, InitTerm, Inst, MutAttrs),
     ( status_defined_in_this_module(!.Status, yes) ->
-        module_info_name(!.ModuleInfo, ModuleName),
+        module_info_get_name(!.ModuleInfo, ModuleName),
         varset__new_named_var(varset__init, "X", X, VarSet),
         Attrs0 = default_attributes(c),
         set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
@@ -1197,7 +1197,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
         %   ( R = A + B <=> R = B + A ).
         %
     GoalType = promise(PromiseType) ,
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     module_add_clause(VarSet, predicate, qualified(ModuleName, Name),
         HeadVars, Goal, Status, Context, GoalType, !ModuleInfo, !QualInfo, !IO).
 
@@ -1207,7 +1207,7 @@ add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !IO) :-
         predicate_table_search_sym_arity(PredTable0, is_fully_qualified,
             Name, Arity, PredIds)
     ->
-        module_info_stratified_preds(!.ModuleInfo, StratPredIds0),
+        module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
         set__insert_list(StratPredIds0, PredIds, StratPredIds),
         module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
     ;
@@ -1395,7 +1395,7 @@ check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
     % Check that a function applied to an exported type
     % is also exported.
     %
-    module_info_ctor_field_table(Module, CtorFieldTable),
+    module_info_get_ctor_field_table(Module, CtorFieldTable),
     (
         % Abstract types have status `abstract_exported',
         % so errors won't be reported for local field

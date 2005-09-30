@@ -101,7 +101,7 @@
 % declarations.
 
 trans_opt__write_optfile(Module, !IO) :-
-	module_info_name(Module, ModuleName),
+	module_info_get_name(Module, ModuleName),
 	module_name_to_file_name(ModuleName, ".trans_opt.tmp", yes, TmpOptName,
 		!IO),
 	io__open_output(TmpOptName, Result, !IO),
@@ -122,7 +122,7 @@ trans_opt__write_optfile(Module, !IO) :-
 	;
 		Result = ok(Stream),
 		io__set_output_stream(Stream, OldStream, !IO),
-		module_info_name(Module, ModName),
+		module_info_get_name(Module, ModName),
 		io__write_string(":- module ", !IO),
 		mercury_output_bracketed_sym_name(ModName, !IO),
 		io__write_string(".\n", !IO),
@@ -136,7 +136,7 @@ trans_opt__write_optfile(Module, !IO) :-
 		list__foldl(term_constr_main.output_pred_termination2_info(Module),
 			PredIds, !IO),
 		
-		module_info_exception_info(Module, ExceptionInfo),
+		module_info_get_exception_info(Module, ExceptionInfo),
 		list__foldl(
 			exception_analysis__write_pragma_exceptions(Module,
 				ExceptionInfo),

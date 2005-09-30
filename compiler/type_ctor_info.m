@@ -97,8 +97,8 @@
 %---------------------------------------------------------------------------%
 
 generate_hlds(!ModuleInfo) :-
-    module_info_name(!.ModuleInfo, ModuleName),
-    module_info_types(!.ModuleInfo, TypeTable),
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    module_info_get_type_table(!.ModuleInfo, TypeTable),
     map__keys(TypeTable, TypeCtors0),
     (
         ModuleName = mercury_public_builtin_module,
@@ -220,7 +220,7 @@ builtin_type_defn = TypeDefn :-
 gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn, ModuleName,
         ModuleInfo, TypeCtorGenInfo) :-
     hlds_data__get_type_defn_status(TypeDefn, Status),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_special_pred_map(ModuleInfo, SpecMap),
     globals__lookup_bool_option(Globals, special_preds, SpecialPreds),
     (
@@ -254,7 +254,7 @@ gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn, ModuleName,
 %---------------------------------------------------------------------------%
 
 generate_rtti(ModuleInfo, Tables) :-
-    module_info_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
+    module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
     construct_type_ctor_infos(TypeCtorGenInfos, ModuleInfo,
         [], Dynamic, [], Static0),
     % The same pseudo_type_info may be generated in several places; we need
@@ -287,7 +287,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     make_rtti_proc_label(ComparePredProcId, ModuleInfo, CompareProcLabel),
     type_to_univ(UnifyProcLabel, UnifyUniv),
     type_to_univ(CompareProcLabel, CompareUniv),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     hlds_data__get_type_defn_body(HldsDefn, TypeBody),
     Version = type_ctor_info_rtti_version,
 
@@ -686,7 +686,7 @@ make_maybe_res_functors([Functor | Functors], NextOrdinal, ConsTagMap,
         MaybeExistInfo = no
     ;
         ExistTvars = [_ | _],
-        module_info_classes(ModuleInfo, ClassTable),
+        module_info_get_class_table(ModuleInfo, ClassTable),
         generate_exist_into(ExistTvars, Constraints, ClassTable, ExistInfo),
         MaybeExistInfo = yes(ExistInfo)
     ),

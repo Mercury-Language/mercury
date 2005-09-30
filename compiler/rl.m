@@ -699,7 +699,7 @@
 :- import_module string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, detect_rl_streams, Streams),
 	(
 		Streams = yes,
@@ -945,7 +945,7 @@ rl__goal_can_be_removed(ModuleInfo, Goals) :-
 	determinism_components(Detism, cannot_fail, MaxSoln),
 	MaxSoln \= at_most_zero,
 
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
 
 	% I'm not sure whether this test is actually worthwhile --
@@ -1090,7 +1090,7 @@ rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) :-
 rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo, PredName, Arity,
 		ProcName) :-
 	PredProcId = proc(_, ProcId),
-	module_info_name(ModuleInfo, ModuleName),
+	module_info_get_name(ModuleInfo, ModuleName),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	PredModule = pred_info_module(PredInfo),
 	pred_info_get_aditi_owner(PredInfo, Owner),

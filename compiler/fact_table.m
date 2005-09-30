@@ -213,7 +213,7 @@ fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
 	see_input_handle_error(yes(Context), FileName, SeeResult, !IO),
 	(
 		SeeResult = ok,
-		module_info_name(ModuleInfo, ModuleName),
+		module_info_get_name(ModuleInfo, ModuleName),
 		fact_table_file_name(ModuleName, FileName, ".c", yes,
 			OutputFileName, !IO),
 		open_output_handle_error(yes(Context), OutputFileName,

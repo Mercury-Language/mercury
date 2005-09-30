@@ -500,7 +500,7 @@ maybe_make_optimization_interface(ModuleInfo, !IO) :-
 :- pred make_opt_int(list(pred_id)::in, module_info::in, io::di, io::uo) is det.
 
 make_opt_int(PredIds, ModuleInfo, !IO) :-
-  module_info_name(ModuleInfo, ModuleName),
+  module_info_get_name(ModuleInfo, ModuleName),
   module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
   globals.io_lookup_bool_option(verbose, Verbose, !IO),
   maybe_write_string(Verbose, 
@@ -538,7 +538,7 @@ output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
     ( RunningTerm2 = yes ->
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_import_status(PredInfo, ImportStatus),
-        module_info_type_spec_info(ModuleInfo, TypeSpecInfo),
+        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
         ( 
             (ImportStatus = exported

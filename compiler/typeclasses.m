@@ -107,9 +107,9 @@
 perform_context_reduction(OrigTypeAssignSet, !Info, !IO) :-
 	checkpoint("before context reduction", !Info, !IO),
 	typecheck_info_get_module_info(!.Info, ModuleInfo),
-	module_info_classes(ModuleInfo, ClassTable),
-	module_info_superclasses(ModuleInfo, SuperClassTable),
-	module_info_instances(ModuleInfo, InstanceTable),
+	module_info_get_class_table(ModuleInfo, ClassTable),
+	module_info_get_superclass_table(ModuleInfo, SuperClassTable),
+	module_info_get_instance_table(ModuleInfo, InstanceTable),
 	typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
 	list__filter_map(
 		reduce_type_assign_context(ClassTable, SuperClassTable,

@@ -58,8 +58,8 @@
 %---------------------------------------------------------------------------%
 
 generate_rtti(ModuleInfo, RttiDataList) :-
-	module_info_name(ModuleInfo, ModuleName),
-	module_info_instances(ModuleInfo, InstanceTable),
+	module_info_get_name(ModuleInfo, ModuleName),
+	module_info_get_instance_table(ModuleInfo, InstanceTable),
 	map__to_assoc_list(InstanceTable, AllInstances),
 	gen_infos_for_classes(AllInstances, ModuleName, ModuleInfo,
 		[], RttiDataList).
@@ -149,7 +149,7 @@ construct_proc_labels([proc(PredId, ProcId) | Procs], ModuleInfo,
 	int::out, int::out) is det.
 
 gen_superclass_count(ClassId, ModuleInfo, NumSuperClasses, ClassArity) :-
-	module_info_classes(ModuleInfo, ClassTable),
+	module_info_get_class_table(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
 	list__length(ClassDefn ^ class_supers, NumSuperClasses),
 	list__length(ClassDefn ^ class_vars, ClassArity).

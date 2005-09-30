@@ -109,7 +109,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
         % Lookup the pred declaration in the predicate table.
         % (If it's not there, call maybe_undefined_pred_error
         % and insert an implicit declaration for the predicate.)
-    module_info_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     list__length(Args, Arity0),
     Arity = Arity0 + ArityAdjustment,
     some [!PredInfo, !PredicateTable] (

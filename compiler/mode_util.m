@@ -268,16 +268,15 @@ mode_is_undefined(ModuleInfo, Mode) :-
 
 %-----------------------------------------------------------------------------%
 
-modes_to_arg_modes(ModuleInfo, Modes, Types, ArgModes) :-
-    ( Modes = [], Types = [] ->
-        ArgModes = []
-    ; Modes = [Mode | Modes1], Types = [Type | Types1] ->
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-        modes_to_arg_modes(ModuleInfo, Modes1, Types1, ArgModes1),
-        ArgModes = [ArgMode | ArgModes1]
-    ;
-        unexpected(this_file, "modes_to_arg_modes: length mismatch")
-    ).
+modes_to_arg_modes(_ModuleInfo, [], [], []).
+modes_to_arg_modes(_ModuleInfo, [], [_ | _], _) :-
+        unexpected(this_file, "modes_to_arg_modes: length mismatch").
+modes_to_arg_modes(_ModuleInfo, [_ | _], [], _) :-
+        unexpected(this_file, "modes_to_arg_modes: length mismatch").
+modes_to_arg_modes(ModuleInfo, [Mode | Modes], [Type | Types],
+        [ArgMode | ArgModes]) :-
+    mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+    modes_to_arg_modes(ModuleInfo, Modes, Types, ArgModes).
 
 mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
     mode_to_arg_mode_2(ModuleInfo, Mode, Type, [], ArgMode).
@@ -392,7 +391,7 @@ modes_to_uni_modes(ModuleInfo, [X | Xs], [Y | Ys], [A | As]) :-
 inst_lookup(ModuleInfo, InstName, Inst) :-
     (
         InstName = unify_inst(_, _, _, _),
-        module_info_insts(ModuleInfo, InstTable),
+        module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_unify_insts(InstTable, UnifyInstTable),
         map__lookup(UnifyInstTable, InstName, MaybeInst),
         ( MaybeInst = known(Inst0, _) ->
@@ -402,7 +401,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         )
     ;
         InstName = merge_inst(A, B),
-        module_info_insts(ModuleInfo, InstTable),
+        module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_merge_insts(InstTable, MergeInstTable),
         map__lookup(MergeInstTable, A - B, MaybeInst),
         ( MaybeInst = known(Inst0) ->
@@ -412,7 +411,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         )
     ;
         InstName = ground_inst(_, _, _, _),
-        module_info_insts(ModuleInfo, InstTable),
+        module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_ground_insts(InstTable, GroundInstTable),
         map__lookup(GroundInstTable, InstName, MaybeInst),
         ( MaybeInst = known(Inst0, _) ->
@@ -422,7 +421,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         )
     ;
         InstName = any_inst(_, _, _, _),
-        module_info_insts(ModuleInfo, InstTable),
+        module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_any_insts(InstTable, AnyInstTable),
         map__lookup(AnyInstTable, InstName, MaybeInst),
         ( MaybeInst = known(Inst0, _) ->
@@ -432,7 +431,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         )
     ;
         InstName = shared_inst(SharedInstName),
-        module_info_insts(ModuleInfo, InstTable),
+        module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_shared_insts(InstTable, SharedInstTable),
         map__lookup(SharedInstTable, SharedInstName, MaybeInst),
         ( MaybeInst = known(Inst0) ->
@@ -442,7 +441,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         )
     ;
         InstName = mostly_uniq_inst(NondetLiveInstName),
-        module_info_insts(ModuleInfo, InstTable),
+        module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_mostly_uniq_insts(InstTable,
             NondetLiveInstTable),
         map__lookup(NondetLiveInstTable, NondetLiveInstName, MaybeInst),
@@ -453,7 +452,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         )
     ;
         InstName = user_inst(Name, Args),
-        module_info_insts(ModuleInfo, InstTable),
+        module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_user_insts(InstTable, UserInstTable),
         user_inst_table_get_inst_defns(UserInstTable, InstDefns),
         list__length(Args, Arity),
@@ -790,7 +789,7 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
     ;
         type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
         TypeCtor = qualified(TypeModule, _) - _,
-        module_info_types(ModuleInfo, TypeTable),
+        module_info_get_type_table(ModuleInfo, TypeTable),
         map__search(TypeTable, TypeCtor, TypeDefn),
         hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data__get_type_defn_body(TypeDefn, TypeBody),
@@ -898,7 +897,7 @@ mode_get_insts_semidet(_ModuleInfo, (InitialInst -> FinalInst),
 mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
         Initial, Final) :-
     list__length(Args, Arity),
-    module_info_modes(ModuleInfo, Modes),
+    module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefns),
     map__search(ModeDefns, Name - Arity, HLDS_Mode),
     HLDS_Mode = hlds_mode_defn(_VarSet, Params, ModeDefn, _Context, _Status),

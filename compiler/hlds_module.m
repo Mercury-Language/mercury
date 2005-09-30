@@ -107,27 +107,30 @@
     % versions.
 :- type type_spec_info
     --->    type_spec_info(
-                set(pred_proc_id),
-                            % Procedures for which there are
-                            % user-requested type specializations.
-                set(pred_id),
-                            % Set of procedures which need to be
-                            % processed by higher_order.m to
-                            % produce those specialized versions.
-                multi_map(pred_id, pred_id),
-                            % Map from predicates for which the
-                            % user requested a type specialization
-                            % to the list of predicates which must
-                            % be processed by higher_order.m to
-                            % force the production of those
-                            % versions. This is used by
-                            % dead_proc_elim.m to avoid creating
-                            % versions unnecessarily for versions
-                            % in imported modules.
-                multi_map(pred_id, pragma_type)
-                            % Type spec pragmas to be placed in
-                            % the `.opt' file if a predicate
-                            % becomes exported.
+                user_req_procs      :: set(pred_proc_id),
+                                    % Procedures for which there are
+                                    % user-requested type specializations.
+
+                must_process_preds  ::  set(pred_id),
+                                    % Set of predicates which need to be
+                                    % processed by higher_order.m to
+                                    % produce those specialized versions.
+
+                user_to_process_map :: multi_map(pred_id, pred_id),
+                                    % Map from predicates for which the
+                                    % user requested a type specialization
+                                    % to the list of predicates which must
+                                    % be processed by higher_order.m to
+                                    % force the production of those
+                                    % versions. This is used by
+                                    % dead_proc_elim.m to avoid creating
+                                    % versions unnecessarily for versions
+                                    % in imported modules.
+
+                pragma_map          :: multi_map(pred_id, pragma_type)
+                                    % Type spec pragmas to be placed in
+                                    % the `.opt' file if a predicate
+                                    % becomes exported.
             ).
 
     % This field should be set to `do_aditi_compilation' if there
@@ -214,56 +217,57 @@
 :- pred module_info_set_partial_qualifier_info(partial_qualifier_info::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_types(module_info::in, type_table::out) is det.
+:- pred module_info_get_type_table(module_info::in, type_table::out) is det.
 
-:- pred module_info_set_types(type_table::in,
+:- pred module_info_set_type_table(type_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_insts(module_info::in, inst_table::out) is det.
+:- pred module_info_get_inst_table(module_info::in, inst_table::out) is det.
 
-:- pred module_info_set_insts(inst_table::in,
+:- pred module_info_set_inst_table(inst_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_modes(module_info::in, mode_table::out) is det.
+:- pred module_info_get_mode_table(module_info::in, mode_table::out) is det.
 
-:- pred module_info_set_modes(mode_table::in,
+:- pred module_info_set_mode_table(mode_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_ctors(module_info::in, cons_table::out) is det.
+:- pred module_info_get_cons_table(module_info::in, cons_table::out) is det.
 
-:- pred module_info_set_ctors(cons_table::in,
+:- pred module_info_set_cons_table(cons_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_classes(module_info::in, class_table::out) is det.
+:- pred module_info_get_class_table(module_info::in, class_table::out) is det.
 
-:- pred module_info_set_classes(class_table::in,
+:- pred module_info_set_class_table(class_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_instances(module_info::in, instance_table::out) is det.
-
-:- pred module_info_set_instances(instance_table::in,
-    module_info::in, module_info::out) is det.
-
-:- pred module_info_superclasses(module_info::in, superclass_table::out)
+:- pred module_info_get_instance_table(module_info::in, instance_table::out)
     is det.
 
-:- pred module_info_set_superclasses(superclass_table::in,
+:- pred module_info_set_instance_table(instance_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_assertion_table(module_info::in, assertion_table::out)
+:- pred module_info_get_superclass_table(module_info::in,
+    superclass_table::out) is det.
+
+:- pred module_info_set_superclass_table(superclass_table::in,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_get_assertion_table(module_info::in, assertion_table::out)
     is det.
 
 :- pred module_info_set_assertion_table(assertion_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_exclusive_table(module_info::in, exclusive_table::out)
+:- pred module_info_get_exclusive_table(module_info::in, exclusive_table::out)
     is det.
 
 :- pred module_info_set_exclusive_table(exclusive_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_ctor_field_table(module_info::in, ctor_field_table::out)
-    is det.
+:- pred module_info_get_ctor_field_table(module_info::in,
+    ctor_field_table::out) is det.
 
 :- pred module_info_set_ctor_field_table(ctor_field_table::in,
     module_info::in, module_info::out) is det.
@@ -301,9 +305,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_info_name(module_info::in, module_name::out) is det.
+:- pred module_info_get_name(module_info::in, module_name::out) is det.
 
-:- pred module_info_globals(module_info::in, globals::out) is det.
+:- pred module_info_get_globals(module_info::in, globals::out) is det.
 
 :- pred module_info_set_globals(globals::in,
     module_info::in, module_info::out) is det.
@@ -352,12 +356,12 @@
 :- pred module_info_get_maybe_dependency_info(module_info::in,
     maybe(dependency_info)::out) is det.
 
-:- pred module_info_num_errors(module_info::in, int::out) is det.
+:- pred module_info_get_num_errors(module_info::in, int::out) is det.
 
-:- pred module_info_unused_arg_info(module_info::in, unused_arg_info::out)
+:- pred module_info_get_unused_arg_info(module_info::in, unused_arg_info::out)
     is det.
 
-:- pred module_info_exception_info(module_info::in, exception_info::out)
+:- pred module_info_get_exception_info(module_info::in, exception_info::out)
     is det.
 
 :- pred module_info_set_proc_requests(proc_requests::in,
@@ -378,13 +382,13 @@
 :- pred module_info_set_pragma_exported_procs(list(pragma_exported_proc)::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_type_ctor_gen_infos(module_info::in,
+:- pred module_info_get_type_ctor_gen_infos(module_info::in,
     list(type_ctor_gen_info)::out) is det.
 
 :- pred module_info_set_type_ctor_gen_infos(list(type_ctor_gen_info)::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_stratified_preds(module_info::in, set(pred_id)::out)
+:- pred module_info_get_stratified_preds(module_info::in, set(pred_id)::out)
     is det.
 
 :- pred module_info_set_stratified_preds(set(pred_id)::in,
@@ -396,19 +400,20 @@
 :- pred module_info_set_do_aditi_compilation(module_info::in, module_info::out)
     is det.
 
-:- pred module_info_type_spec_info(module_info::in, type_spec_info::out)
+:- pred module_info_get_type_spec_info(module_info::in, type_spec_info::out)
     is det.
 
 :- pred module_info_set_type_spec_info(type_spec_info::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_no_tag_types(module_info::in, no_tag_type_table::out)
+:- pred module_info_get_no_tag_types(module_info::in, no_tag_type_table::out)
     is det.
 
 :- pred module_info_set_no_tag_types(no_tag_type_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_analysis_info(module_info::in, analysis_info::out) is det.
+:- pred module_info_get_analysis_info(module_info::in, analysis_info::out)
+    is det.
 
 :- pred module_info_set_analysis_info(analysis_info::in,
     module_info::in, module_info::out) is det.
@@ -426,7 +431,7 @@
 :- pred module_info_set_complexity_proc_infos(list(complexity_proc_info)::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_aditi_top_down_procs(module_info::in,
+:- pred module_info_get_aditi_top_down_procs(module_info::in,
     list(aditi_top_down_proc)::out) is det.
 
 :- pred module_info_set_aditi_top_down_procs(module_info::in,
@@ -589,7 +594,7 @@
     module_info::in, module_info::out) is det.
 
 :- type module_info
-    --->    module(
+    --->    module_info(
                 sub_info                    :: module_sub_info,
                 predicate_table             :: predicate_table,
                 proc_requests               :: proc_requests,
@@ -609,7 +614,7 @@
             ).
 
 :- type module_sub_info
-    --->    module_sub(
+    --->    module_sub_info(
                 module_name                 :: module_name,
                 globals                     :: globals,
                 contains_foreign_type       :: bool,
@@ -731,13 +736,13 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     map__init(FieldNameTable),
 
     map__init(NoTagTypes),
-    ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], [], no, 0,
+    ModuleSubInfo = module_sub_info(Name, Globals, no, [], [], [], [], no, 0,
         [], [], StratPreds, UnusedArgInfo, ExceptionInfo,
         map.init, counter__init(1), ImportedModules,
         IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
         NoTagTypes, no, [], init_analysis_info(mmc),
         [], counter__init(1), [], []),
-    ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
+    ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, SuperClassTable, InstanceTable, AssertionTable,
         ExclusiveTable, FieldNameTable, RecompInfo).
@@ -750,16 +755,16 @@ module_info_get_predicate_table(MI, MI ^ predicate_table).
 module_info_get_proc_requests(MI, MI ^ proc_requests).
 module_info_get_special_pred_map(MI, MI ^ special_pred_map).
 module_info_get_partial_qualifier_info(MI, MI ^ partial_qualifier_info).
-module_info_types(MI, MI ^ type_table).
-module_info_insts(MI, MI ^ inst_table).
-module_info_modes(MI, MI ^ mode_table).
-module_info_ctors(MI, MI ^ cons_table).
-module_info_classes(MI, MI ^ class_table).
-module_info_instances(MI, MI ^ instance_table).
-module_info_superclasses(MI, MI ^ superclass_table).
-module_info_assertion_table(MI, MI ^ assertion_table).
-module_info_exclusive_table(MI, MI ^ exclusive_table).
-module_info_ctor_field_table(MI, MI ^ ctor_field_table).
+module_info_get_type_table(MI, MI ^ type_table).
+module_info_get_inst_table(MI, MI ^ inst_table).
+module_info_get_mode_table(MI, MI ^ mode_table).
+module_info_get_cons_table(MI, MI ^ cons_table).
+module_info_get_class_table(MI, MI ^ class_table).
+module_info_get_instance_table(MI, MI ^ instance_table).
+module_info_get_superclass_table(MI, MI ^ superclass_table).
+module_info_get_assertion_table(MI, MI ^ assertion_table).
+module_info_get_exclusive_table(MI, MI ^ exclusive_table).
+module_info_get_ctor_field_table(MI, MI ^ ctor_field_table).
 module_info_get_maybe_recompilation_info(MI, MI ^ maybe_recompilation_info).
 
 %-----------------------------------------------------------------------------%
@@ -771,13 +776,13 @@ module_info_set_proc_requests(PR, MI, MI ^ proc_requests := PR).
 module_info_set_special_pred_map(SPM, MI, MI ^ special_pred_map := SPM).
 module_info_set_partial_qualifier_info(PQ, MI,
     MI ^ partial_qualifier_info := PQ).
-module_info_set_types(T, MI, MI ^ type_table := T).
-module_info_set_insts(I, MI, MI ^ inst_table := I).
-module_info_set_modes(M, MI, MI ^ mode_table := M).
-module_info_set_ctors(C, MI, MI ^ cons_table := C).
-module_info_set_classes(C, MI, MI ^ class_table := C).
-module_info_set_instances(I, MI, MI ^ instance_table := I).
-module_info_set_superclasses(S, MI, MI ^ superclass_table := S).
+module_info_set_type_table(T, MI, MI ^ type_table := T).
+module_info_set_inst_table(I, MI, MI ^ inst_table := I).
+module_info_set_mode_table(M, MI, MI ^ mode_table := M).
+module_info_set_cons_table(C, MI, MI ^ cons_table := C).
+module_info_set_class_table(C, MI, MI ^ class_table := C).
+module_info_set_instance_table(I, MI, MI ^ instance_table := I).
+module_info_set_superclass_table(S, MI, MI ^ superclass_table := S).
 module_info_set_assertion_table(A, MI, MI ^ assertion_table := A).
 module_info_set_exclusive_table(PXT, MI, MI ^ exclusive_table := PXT).
 module_info_set_ctor_field_table(CF, MI, MI ^ ctor_field_table := CF).
@@ -789,8 +794,8 @@ module_info_set_maybe_recompilation_info(I, MI,
     % Various predicates which access the module_sub_info data structure
     % via the module_info structure.
 
-module_info_name(MI, MI ^ sub_info ^ module_name).
-module_info_globals(MI, MI ^ sub_info ^ globals).
+module_info_get_name(MI, MI ^ sub_info ^ module_name).
+module_info_get_globals(MI, MI ^ sub_info ^ globals).
 module_info_contains_foreign_type(MI) :-
     MI ^ sub_info ^ contains_foreign_type = yes.
 module_info_get_foreign_decl(MI, MI ^ sub_info ^ foreign_decl_info).
@@ -799,13 +804,13 @@ module_info_get_foreign_import_module(MI,
     MI ^ sub_info ^ foreign_import_module_info).
 module_info_get_maybe_dependency_info(MI,
     MI ^ sub_info ^ maybe_dependency_info).
-module_info_num_errors(MI, MI ^ sub_info ^ num_errors).
+module_info_get_num_errors(MI, MI ^ sub_info ^ num_errors).
 module_info_get_pragma_exported_procs(MI,
     MI ^ sub_info ^ pragma_exported_procs).
-module_info_type_ctor_gen_infos(MI, MI ^ sub_info ^ type_ctor_gen_infos).
-module_info_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
-module_info_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
-module_info_exception_info(MI, MI ^ sub_info ^ exception_info).
+module_info_get_type_ctor_gen_infos(MI, MI ^ sub_info ^ type_ctor_gen_infos).
+module_info_get_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
+module_info_get_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
+module_info_get_exception_info(MI, MI ^ sub_info ^ exception_info).
 module_info_get_lambdas_per_context(MI, MI ^ sub_info ^ lambdas_per_context).
 module_info_get_model_non_pragma_counter(MI,
     MI ^ sub_info ^ model_non_pragma_counter).
@@ -815,14 +820,14 @@ module_info_get_indirectly_imported_module_specifiers(MI,
     MI ^ sub_info ^ indirectly_imported_module_specifiers).
 module_info_get_do_aditi_compilation(MI,
     MI ^ sub_info ^ do_aditi_compilation).
-module_info_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
-module_info_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
-module_info_analysis_info(MI, MI ^ sub_info ^ analysis_info).
+module_info_get_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
+module_info_get_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
+module_info_get_analysis_info(MI, MI ^ sub_info ^ analysis_info).
 module_info_get_maybe_complexity_proc_map(MI,
     MI ^ sub_info ^ maybe_complexity_proc_map).
 module_info_get_complexity_proc_infos(MI,
     MI ^ sub_info ^ complexity_proc_infos).
-module_info_aditi_top_down_procs(MI, MI ^ sub_info ^ aditi_top_down_procs).
+module_info_get_aditi_top_down_procs(MI, MI ^ sub_info ^ aditi_top_down_procs).
 
 module_info_next_aditi_top_down_proc(MI0, Proc, MI) :-
     Counter0 = MI0 ^ sub_info ^ aditi_proc_counter,
@@ -837,7 +842,7 @@ module_info_next_aditi_top_down_proc(MI0, Proc, MI) :-
 module_info_new_user_init_pred(SymName, CName, MI0, MI) :-
     InitPredCNames0 = MI0 ^ sub_info ^ user_init_pred_c_names,
     UserInitPredNo = list__length(InitPredCNames0),
-    module_info_name(MI0, ModuleSymName),
+    module_info_get_name(MI0, ModuleSymName),
     ModuleName = prog_foreign__sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_init_pred_%d",
         [s(ModuleName), i(UserInitPredNo)]),
@@ -849,7 +854,7 @@ module_info_user_init_pred_c_name(MI, SymName, CName) :-
     ( assoc_list__search(InitPredCNames, SymName, CName0) ->
         CName = CName0
     ;
-        module_info_name(MI, ModuleSymName),
+        module_info_get_name(MI, ModuleSymName),
         ModuleName = sym_name_to_string(ModuleSymName),
         unexpected(ModuleName,
             "lookup failure in module_info_user_init_pred_c_name")
@@ -862,7 +867,7 @@ module_info_user_init_pred_c_names(MI, CNames) :-
 module_info_new_user_final_pred(SymName, CName, MI0, MI) :-
     FinalPredCNames0 = MI0 ^ sub_info ^ user_final_pred_c_names,
     UserFinalPredNo = list.length(FinalPredCNames0),
-    module_info_name(MI0, ModuleSymName),
+    module_info_get_name(MI0, ModuleSymName),
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_final_pred_%d",
         [s(ModuleName), i(UserFinalPredNo)]),
@@ -874,7 +879,7 @@ module_info_user_final_pred_c_name(MI, SymName, CName) :-
     ( assoc_list__search(FinalPredCNames, SymName, CName0) ->
         CName = CName0
     ;
-        module_info_name(MI, ModuleSymName),
+        module_info_get_name(MI, ModuleSymName),
         ModuleName = sym_name_to_string(ModuleSymName),
         unexpected(ModuleName,
             "lookup failure in module_info_user_final_pred_c_name")
@@ -1015,20 +1020,20 @@ module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
     module_info_set_pred_info(PredId, PredInfo, !MI).
 
 module_info_typeids(MI, TypeCtors) :-
-    module_info_types(MI, Types),
+    module_info_get_type_table(MI, Types),
     map__keys(Types, TypeCtors).
 
 module_info_instids(MI, InstIds) :-
-    module_info_insts(MI, InstTable),
+    module_info_get_inst_table(MI, InstTable),
     inst_table_get_user_insts(InstTable, UserInstTable),
     user_inst_table_get_inst_ids(UserInstTable, InstIds).
 
 module_info_modeids(MI, ModeIds) :-
-    module_info_modes(MI, Modes),
+    module_info_get_mode_table(MI, Modes),
     mode_table_get_mode_ids(Modes, ModeIds).
 
 module_info_consids(MI, ConsIds) :-
-    module_info_ctors(MI, Ctors),
+    module_info_get_cons_table(MI, Ctors),
     map__keys(Ctors, ConsIds).
 
 module_info_dependency_info(MI, DepInfo) :-
@@ -1060,7 +1065,7 @@ module_info_clobber_dependency_info(!MI) :-
     module_info_set_maybe_dependency_info(no, !MI).
 
 module_info_incr_errors(!MI) :-
-    module_info_num_errors(!.MI, Errs0),
+    module_info_get_num_errors(!.MI, Errs0),
     Errs = Errs0 + 1,
     module_info_set_num_errors(Errs, !MI).
 
@@ -1089,26 +1094,26 @@ module_info_optimize(!ModuleInfo) :-
     predicate_table_optimize(Preds0, Preds),
     module_info_set_predicate_table(Preds, !ModuleInfo),
 
-    module_info_types(!.ModuleInfo, Types0),
+    module_info_get_type_table(!.ModuleInfo, Types0),
     map__optimize(Types0, Types),
-    module_info_set_types(Types, !ModuleInfo),
+    module_info_set_type_table(Types, !ModuleInfo),
 
-    module_info_insts(!.ModuleInfo, InstTable0),
+    module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_user_insts(InstTable0, Insts0),
     user_inst_table_optimize(Insts0, Insts),
     inst_table_set_user_insts(Insts, InstTable0, InstTable),
-    module_info_set_insts(InstTable, !ModuleInfo),
+    module_info_set_inst_table(InstTable, !ModuleInfo),
 
-    module_info_modes(!.ModuleInfo, Modes0),
+    module_info_get_mode_table(!.ModuleInfo, Modes0),
     mode_table_optimize(Modes0, Modes),
-    module_info_set_modes(Modes, !ModuleInfo),
+    module_info_set_mode_table(Modes, !ModuleInfo),
 
-    module_info_ctors(!.ModuleInfo, Ctors0),
+    module_info_get_cons_table(!.ModuleInfo, Ctors0),
     map__optimize(Ctors0, Ctors),
-    module_info_set_ctors(Ctors, !ModuleInfo).
+    module_info_set_cons_table(Ctors, !ModuleInfo).
 
 visible_module(VisibleModule, ModuleInfo) :-
-    module_info_name(ModuleInfo, ThisModule),
+    module_info_get_name(ModuleInfo, ThisModule),
     module_info_get_imported_module_specifiers(ModuleInfo, ImportedModules),
     (
         VisibleModule = ThisModule
@@ -1120,7 +1125,7 @@ visible_module(VisibleModule, ModuleInfo) :-
     ).
 
 module_info_get_all_deps(ModuleInfo, AllImports) :-
-    module_info_name(ModuleInfo, ModuleName),
+    module_info_get_name(ModuleInfo, ModuleName),
     Parents = get_ancestors(ModuleName),
     module_info_get_imported_module_specifiers(ModuleInfo, DirectImports),
     module_info_get_indirectly_imported_module_specifiers(ModuleInfo,

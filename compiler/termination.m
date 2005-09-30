@@ -890,7 +890,7 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 	io::di, io::uo) is det.
 
 termination__make_opt_int(PredIds, Module, !IO) :-
-	module_info_name(Module, ModuleName),
+	module_info_get_name(Module, ModuleName),
 	module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	maybe_write_string(Verbose,
@@ -921,7 +921,7 @@ termination__make_opt_int(PredIds, Module, !IO) :-
 termination__write_pred_termination_info(Module, PredId, !IO) :-
 	module_info_pred_info(Module, PredId, PredInfo),
 	pred_info_import_status(PredInfo, ImportStatus),
-	module_info_type_spec_info(Module, TypeSpecInfo),
+	module_info_get_type_spec_info(Module, TypeSpecInfo),
 	TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
 
 	(

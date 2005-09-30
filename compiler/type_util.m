@@ -664,7 +664,7 @@ type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
 		UserEqComp).
 
 type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
 	(
 		TypeBody = du_type(_, _, _, _, _, _),
@@ -718,7 +718,7 @@ type_util__type_body_has_solver_type_details( ModuleInfo,
 
 
 type_util__type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
-	module_info_types(ModuleInfo, TypeTable),
+	module_info_get_type_table(ModuleInfo, TypeTable),
 	type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
 	map__search(TypeTable, TypeCtor, TypeDefn).
 
@@ -819,7 +819,7 @@ type_util__remove_aditi_state([Type | Types], [Arg | Args0], Args) :-
 :- pred type_ctor_is_enumeration(type_ctor::in, module_info::in) is semidet.
 
 type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
-	module_info_types(ModuleInfo, TypeDefnTable),
+	module_info_get_type_table(ModuleInfo, TypeDefnTable),
 	map__search(TypeDefnTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	TypeBody ^ du_type_is_enum = yes.
@@ -889,7 +889,7 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 		Constructors = [ctor(ExistQVars, ClassConstraints,
 				unqualified("{}"), CtorArgs)]
 	;
-		module_info_types(ModuleInfo, TypeTable),
+		module_info_get_type_table(ModuleInfo, TypeTable),
 		map__search(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
@@ -911,7 +911,7 @@ type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
 	; type_ctor_is_tuple(TypeCtor) ->
 		NumFunctors = 1
 	;
-		module_info_types(ModuleInfo, TypeTable),
+		module_info_get_type_table(ModuleInfo, TypeTable),
 		map__search(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 		map__count(TypeBody ^ du_type_cons_tag_values, NumFunctors)
@@ -987,12 +987,12 @@ type_util__get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId,
 
 type_util__cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	type_to_ctor_and_args(VarType, TypeCtor, TypeArgs),
-	module_info_types(ModuleInfo, Types),
+	module_info_get_type_table(ModuleInfo, Types),
 	map__search(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeDefnBody),
 	map__member(TypeDefnBody ^ du_type_cons_tag_values, ConsId, _),
 
-	module_info_ctors(ModuleInfo, Ctors),
+	module_info_get_cons_table(ModuleInfo, Ctors),
 	map__lookup(Ctors, ConsId, ConsDefns),
 	list__member(ConsDefn, ConsDefns),
 
@@ -1026,7 +1026,7 @@ type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
 	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
 	ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, _, _),
 	assoc_list__values(Args, ArgTypes),
-	module_info_types(ModuleInfo, Types),
+	module_info_get_type_table(ModuleInfo, Types),
 	type_to_ctor_and_args(VarType, TypeCtor, _),
 	map__lookup(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeVarSet),
@@ -1058,11 +1058,11 @@ type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
 type_util__do_get_type_and_cons_defn(ModuleInfo, TypeCtor, ConsId,
 		TypeDefn, ConsDefn) :-
 	type_util__get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-	module_info_types(ModuleInfo, Types),
+	module_info_get_type_table(ModuleInfo, Types),
 	map__lookup(Types, TypeCtor, TypeDefn).
 
 type_util__get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
-	module_info_ctors(ModuleInfo, Ctors),
+	module_info_get_cons_table(ModuleInfo, Ctors),
 	% will fail for builtin cons_ids.
 	map__search(Ctors, ConsId, ConsDefns),
 	MatchingCons = (pred(ThisConsDefn::in) is semidet :-
@@ -1103,7 +1103,7 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
 
 type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 	type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
-	module_info_no_tag_types(ModuleInfo, NoTagTypes),
+	module_info_get_no_tag_types(ModuleInfo, NoTagTypes),
 	map__search(NoTagTypes, TypeCtor, NoTagType),
 	NoTagType = no_tag_type(TypeParams, Ctor, ArgType0),
 	( TypeParams = [] ->

@@ -1793,13 +1793,13 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		MLDSType = mlds__mercury_array_type(MLDSElemType)
 	;
 		type_to_ctor_and_args(Type, TypeCtor, _),
-		module_info_types(ModuleInfo, Types),
+		module_info_get_type_table(ModuleInfo, Types),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		Body = foreign_type(foreign_type_body(MaybeIL, MaybeC,
 				MaybeJava))
 	->
-		module_info_globals(ModuleInfo, Globals),
+		module_info_get_globals(ModuleInfo, Globals),
 		globals__get_target(Globals, Target),
 		(
 			Target = c,

@@ -959,7 +959,7 @@ pseudo_type_info_is_exported(var_arity_pseudo_type_info(_, _))	= no.
 pseudo_type_info_is_exported(type_var(_))			= no.
 
 rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
-	module_info_name(ModuleInfo, ThisModule),
+	module_info_get_name(ModuleInfo, ThisModule),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),

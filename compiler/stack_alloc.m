@@ -69,7 +69,7 @@
 allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 	initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	module_info_globals(ModuleInfo, Globals),
+	module_info_get_globals(ModuleInfo, Globals),
 	globals__get_trace_level(Globals, TraceLevel),
 	(
 		eff_trace_level_needs_input_vars(PredInfo, !.ProcInfo,

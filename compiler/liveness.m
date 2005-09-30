@@ -225,7 +225,7 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     proc_info_varset(!.ProcInfo, VarSet),
     proc_info_vartypes(!.ProcInfo, VarTypes),
     proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps),
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     live_info_init(ModuleInfo, TypeInfoLiveness, VarTypes, RttiVarMaps,
@@ -1532,7 +1532,7 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
         % So we intersect the headvars with the non-locals and
         % (if doing typeinfo liveness calculation) their
         % typeinfo vars.
-    module_info_globals(ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     proc_info_goal(ProcInfo, _Goal - GoalInfo),
     goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

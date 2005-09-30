@@ -1232,7 +1232,7 @@ get_pragma_input_vars([Arg | Args], Inputs, Code, !CI) :-
 
 get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
     code_info__get_module_info(CI, Module),
-    module_info_types(Module, Types),
+    module_info_get_type_table(Module, Types),
     (
         type_to_ctor_and_args(Type, TypeId, _SubTypes),
         map__search(Types, TypeId, Defn),

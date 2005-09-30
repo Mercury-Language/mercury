@@ -77,7 +77,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
     list__length(Args, Arity),
     TypeCtor = Name - Arity,
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
-    module_info_types(!.ModuleInfo, Types0),
+    module_info_get_type_table(!.ModuleInfo, Types0),
     (
         (
             Body0 = abstract_type(_)
@@ -193,7 +193,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                     Body_2, Status, OrigInExportedEqv, OrigNeedQual,
                     OrigContext, T3),
                 map__det_update(Types0, TypeCtor, T3, Types),
-                module_info_set_types(Types, !ModuleInfo)
+                module_info_set_type_table(Types, !ModuleInfo)
             )
         ;
             merge_foreign_type_bodies(Target, MakeOptInt, Body, Body_2,
@@ -203,7 +203,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 hlds_data__set_type_defn(TVarSet_2, Params_2, KindMap_2,
                     NewBody, Status, OrigInExportedEqv, NeedQual, Context, T3),
                 map__det_update(Types0, TypeCtor, T3, Types),
-                module_info_set_types(Types, !ModuleInfo)
+                module_info_set_type_table(Types, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("In definition of type"),
@@ -228,7 +228,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         )
     ;
         map__set(Types0, TypeCtor, T, Types),
-        module_info_set_types(Types, !ModuleInfo),
+        module_info_set_type_table(Types, !ModuleInfo),
         (
             % XXX we can't handle abstract exported
             % polymorphic equivalence types with monomorphic
@@ -334,15 +334,15 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
     (
         ConsList = Body ^ du_type_ctors,
         ReservedTag = Body ^ du_type_reserved_tag,
-        module_info_ctors(!.ModuleInfo, Ctors0),
+        module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         check_for_errors(
             (pred(M0::in, M::out, IO0::di, IO::uo) is det :-
-                module_info_ctor_field_table(M0, CtorFields0),
+                module_info_get_ctor_field_table(M0, CtorFields0),
                 ctors_add(ConsList, TypeCtor, TVarSet, NeedQual, PQInfo,
                     Context, Status, CtorFields0, CtorFields, Ctors0, Ctors,
                     IO0, IO),
-                module_info_set_ctors(Ctors, M0, M1),
+                module_info_set_cons_table(Ctors, M0, M1),
                 module_info_set_ctor_field_table(CtorFields, M1, M)
         ), NewFoundError, !ModuleInfo, !IO),
 
@@ -352,7 +352,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
                 Name, CtorArgType, _)
         ->
             NoTagType = no_tag_type(Args, Name, CtorArgType),
-            module_info_no_tag_types(!.ModuleInfo, NoTagTypes0),
+            module_info_get_no_tag_types(!.ModuleInfo, NoTagTypes0),
             map__set(NoTagTypes0, TypeCtor, NoTagType, NoTagTypes),
             module_info_set_no_tag_types(NoTagTypes, !ModuleInfo)
         ;
@@ -405,7 +405,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
 check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         !IO) :-
     TypeCtor = Name - Arity,
-    module_info_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(!.ModuleInfo, Globals),
     generating_code(GeneratingCode, !IO),
     globals__get_target(Globals, Target),
     ( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
