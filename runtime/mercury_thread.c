@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001, 2003 The University of Melbourne.
+** Copyright (C) 1997-2001, 2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -90,7 +90,7 @@ MR_init_thread(MR_when_to_use when_to_use)
 	pthread_setspecific(MR_engine_base_key, eng);
 	MR_restore_registers();
   #ifdef MR_ENGINE_BASE_REGISTER
-	MR_engine_base = eng;
+	MR_engine_base_word = (MR_Word) eng;
   #endif
 #else
 	MR_memcpy(&MR_engine_base, eng,
@@ -164,7 +164,8 @@ MR_mutex_lock(MercuryLock *lock, const char *from)
 {
 	int err;
 
-	fprintf(stderr, "%d locking on %p (%s)\n", pthread_self(), lock, from);
+	fprintf(stderr, "%ld locking on %p (%s)\n",
+		(long)pthread_self(), lock, from);
 	err = pthread_mutex_lock(lock);
 	assert(err == 0);
 }
@@ -174,8 +175,8 @@ MR_mutex_unlock(MercuryLock *lock, const char *from)
 {
 	int err;
 
-	fprintf(stderr, "%d unlocking on %p (%s)\n",
-		pthread_self(), lock, from);
+	fprintf(stderr, "%ld unlocking on %p (%s)\n",
+		(long)pthread_self(), lock, from);
 	err = pthread_mutex_unlock(lock);
 	assert(err == 0);
 }
@@ -185,7 +186,8 @@ MR_cond_signal(MercuryCond *cond)
 {
 	int err;
 
-	fprintf(stderr, "%d signaling %p\n", pthread_self(), cond);
+	fprintf(stderr, "%ld signaling %p\n",
+		(long)pthread_self(), cond);
 	err = pthread_cond_broadcast(cond);
 	assert(err == 0);
 }
@@ -195,7 +197,8 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
 {
 	int err;
 
-	fprintf(stderr, "%d waiting on %p (%p)\n", pthread_self(), cond, lock);
+	fprintf(stderr, "%ld waiting on %p (%p)\n",
+		(long)pthread_self(), cond, lock);
 	err = pthread_cond_wait(cond, lock);
 	assert(err == 0);
 }

@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2004 The University of Melbourne.
+** Copyright (C) 1998-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -441,7 +441,7 @@ MR_define_entry(mercury__garbage_collect_0_0);
     gc_scheduled = MR_FALSE;
     gc_running = MR_FALSE;
 
-    MR_succip = saved_success;
+    MR_succip_word = (MR_Word) saved_success;
     MR_proceed();
     MR_fatal_error("Unreachable code reached");
 
