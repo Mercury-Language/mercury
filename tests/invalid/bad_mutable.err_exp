@@ -1,7 +1,13 @@
 bad_mutable.m:015: Error: malformed attribute list in mutable declaration: [untrailed, thread_safe, bad_attrib].
 bad_mutable.m:017: Error: the type in a mutable declaration cannot contain variables: list(_1).
+bad_mutable.m:019: Error: conflicting attributes in attribute list: [untrailed, trailed].
+bad_mutable.m:021: Error: conflicting attributes in attribute list: [thread_safe, not_thread_safe].
 bad_mutable.m:011: In declaration for mutable `not_a_type':
 bad_mutable.m:011:   error: undefined type `no_type'/0.
 bad_mutable.m:013: In declaration for mutable `not_an_inst':
 bad_mutable.m:013:   error: undefined inst `special_ground'/0.
 bad_mutable.m:005: Error: `mutable' declaration in module interface.
+bad_mutable.m:023: Error: multiple foreign_name attributes specified for the C
+bad_mutable.m:023:   backend.
+bad_mutable.m:023: Error: multiple foreign_name attributes specified for the C
+bad_mutable.m:023:   backend.
