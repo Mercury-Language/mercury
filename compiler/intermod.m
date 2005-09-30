@@ -37,8 +37,6 @@
 
 :- module transform_hlds__intermod.
 
-%-----------------------------------------------------------------------------%
-
 :- interface.
 
 :- import_module hlds__hlds_module.
@@ -48,6 +46,8 @@
 
 :- import_module bool.
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
     % Open the file "<module-name>.opt.tmp", and write out the declarations
     % and clauses for intermodule optimization. Note that update_interface
@@ -185,7 +185,8 @@ write_optfile(!ModuleInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates to gather stuff to output to .opt file.
+% Predicates to gather stuff to output to .opt file
+%
 
 :- pred gather_preds(list(pred_id)::in, bool::in, int::in, int::in, bool::in,
     intermod_info::in, intermod_info::out) is det.

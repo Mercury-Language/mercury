@@ -669,8 +669,8 @@
     % get_ancestors(ModuleName) =  ParentDeps:
     %
     % ParentDeps is the list of ancestor modules for this module, oldest first;
-    % e.g. if the ModuleName is `foo:bar:baz', then ParentDeps would be
-    % [`foo', `foo:bar'].
+    % e.g. if the ModuleName is `foo.bar.baz', then ParentDeps would be
+    % [`foo', `foo.bar'].
     %
 :- func get_ancestors(module_name) = list(module_name).
 
@@ -748,8 +748,9 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
-
-    % Java command-line tools utilities.
+%
+% Java command-line tools utilities
+%
 
     % Create a shell script with the same name as the given module to invoke
     % Java with the appropriate options on the class of the same name.
@@ -5745,10 +5746,28 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
 :- pred get_item_foreign_code(globals::in, item_and_context::in,
     module_foreign_info::in, module_foreign_info::out) is det.
 
-get_item_foreign_code(Globals, Item, !Info) :-
-    ( Item = pragma(_, Pragma) - Context ->
+get_item_foreign_code(Globals, Item - Context, !Info) :-
+    ( Item = pragma(_, Pragma) ->
         do_get_item_foreign_code(Globals, Pragma, Context, !Info)
-    ;
+    ; Item = mutable(_, _, _, _, _) ->
+        % Mutables introduce foreign_procs, but mutable declarations
+        % won't have been expanded by the time we get here so we need
+        % to handle them separately.
+        % XXX mutables are currently only implemented for the C backends
+        % but we should handle the Java/IL backends here as well.
+        % (See do_get_item_foreign_code for details/5).
+        !:Info = !.Info ^ used_foreign_languages :=
+            set__insert(!.Info ^ used_foreign_languages, c)
+    ; ( Item = initialise(_, _) ; Item = finalise(_, _) ) ->
+        % Intialise/finalise declarations introduce export pragmas, but
+        % again they won't have been expanded by the time we get here.
+        % XXX we don't currently support these on non-C backends. 
+        Lang = c,
+        !:Info = !.Info ^ used_foreign_languages :=
+            set__insert(!.Info ^ used_foreign_languages, Lang),
+        !:Info = !.Info ^ module_contains_foreign_export :=
+            contains_foreign_export
+    ;      
         true
     ).
 
@@ -7366,6 +7385,8 @@ item_needs_foreign_imports(pragma(_, foreign_decl(Lang, _, _)), Lang).
 item_needs_foreign_imports(pragma(_, foreign_code(Lang, _)), Lang).
 item_needs_foreign_imports(pragma(_, foreign_proc(Attrs, _, _, _, _, _)),
         foreign_language(Attrs)).
+item_needs_foreign_imports(mutable(_, _, _, _, _), Lang) :-
+    foreign_language(Lang).
 
 :- pred include_in_int_file_implementation(item::in) is semidet.
 
