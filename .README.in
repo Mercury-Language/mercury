@@ -16,13 +16,13 @@ Mercury compiler, version @VERSION@.
 	if the need should arise.
 	
 The subdirectory `boehm_gc' contains a slightly modified copy of
-version 5.0alpha3 of the conservative garbage collector distributed
+version 6.5 of the conservative garbage collector distributed
 by Hans Boehm:
 
 	Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
 	Copyright (c) 1991-1995 by Xerox Corporation.  All rights reserved.
 	Copyright (c) 1996-1999 by Silicon Graphics.  All rights reserved.
-	Copyright (c) 1999 by Hewlett-Packard Company. All rights reserved.
+	Copyright (c) 1999-2001 by Hewlett-Packard. All rights reserved.
 
 	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 	EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
@@ -127,7 +127,6 @@ from the following locations:
 	    Australia:	ftp://ftp.mercury.cs.mu.oz.au/pub/mercury/
 
 	Mirrors:
-	    Sweden:	ftp://ftp.csd.uu.se/pub/Mercury/
 	    Greece:	ftp://ftp.ntua.gr/pub/lang/mercury/
 
 	Other sites (these may be less complete and/or out-of-date):
