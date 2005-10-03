@@ -5475,6 +5475,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\t-echo $(", MakeVarName, ".ds) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".module_deps) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".all_mhs) | xargs rm -f\n",
+        "\t-echo $(", MakeVarName, ".all_mihs) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".dlls) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".foreign_dlls) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".classes) | xargs rm -f\n",
