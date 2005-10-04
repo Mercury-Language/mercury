@@ -474,6 +474,10 @@ tests:
 lib$(GC_GRADE)$(DLL_DEF_LIB).a: gc.a
 	rm -f lib$(GC_GRADE)$(DLL_DEF_LIB).a
 	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
+	# The sleep is necessary on MinGW, otherwise cp sometimes reports
+	# that it cannot stat gc.a, even though it is there.  Waiting for
+	# a second first seems to help.
+	sleep 1
 	cp gc.a lib$(GC_GRADE)$(DLL_DEF_LIB).a
 
 base_lib gc.a: $(OBJS) dyn_load.o $(UTILS)
@@ -597,13 +601,15 @@ mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_sgi_mach_dep.s \
 	./if_mach IA64 "" $(CC) -c -o mach_dep1.o $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
 	./if_mach IA64 "" ld -r -o mach_dep.o mach_dep1.o ia64_save_regs_in_stack.o
 	-./if_not_there mach_dep.o $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
-	./if_not_there mach_dep.o `cygpath -w /bin/sh` $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
+	-./if_not_there mach_dep.o `cygpath -w /bin/sh` $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
+	./if_not_there mach_dep.o /bin/sh $(CC) -c $(SPECIALCFLAGS) $(srcdir)/mach_dep.c
 
 mark_rts.o: $(srcdir)/mark_rts.c $(UTILS)
 	rm -f mark_rts.o
 	-./if_mach ALPHA OSF1 $(CC) -c $(CFLAGS) -Wo,-notail $(srcdir)/mark_rts.c
 	-./if_not_there mark_rts.o $(CC) -c $(CFLAGS) $(srcdir)/mark_rts.c
-	./if_not_there mark_rts.o `cygpath -w /bin/sh` $(CC) -c $(CFLAGS) $(srcdir)/mark_rts.c
+	-./if_not_there mark_rts.o `cygpath -w /bin/sh` $(CC) -c $(CFLAGS) $(srcdir)/mark_rts.c
+	./if_not_there mark_rts.o /bin/sh $(CC) -c $(CFLAGS) $(srcdir)/mark_rts.c
 #	Work-around for DEC optimizer tail recursion elimination bug.
 #  The ALPHA-specific line should be removed if gcc is used.
 

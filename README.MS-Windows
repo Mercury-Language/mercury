@@ -1,178 +1,27 @@
 -----------------------------------------------------------------------------
 
-INTRODUCTION
+MERCURY ON WINDOWS
 
-Mercury has been ported to Windows using the "Cygwin"
-(formerly also known as "Cygwin32" and "gnu-win32") Unix emulation
-package.  We've tested the port on Windows 2000,
-but it should work on Windows 95/98/ME and Windows NT too.
+Mercury has been ported to MS Windows.
+We've tested the port on Windows XP SP2,
+but it should work on Windows 95, 98, ME 2000 and NT.
+We don't have any plans for a port to Windows 3.1.
 
-This file documents how to install the binary distribution of
-Mercury on Windows and how to build the source distribution
-of Mercury on Windows using Cygwin.  This installation will use the GNU
-C compiler by default.  If you want to use the Microsoft Visual C
-compiler, please see the file README.MS-VisualC.
+The Mercury build process makes use of a number of Unix tools such as
+sh and make.  This means that a Unix emulation environment is required
+to build Mercury on Windows.
 
-(Note: we don't have any plans for a port to Windows 3.1.)
+Two such environments are supported:
 
------------------------------------------------------------------------------
+1. Cygwin (www.cygwin.com).  For instructions on how to install Mercury
+   under Cygwin see README.Cygwin.
 
-PREPARATION
+2. MSYS (www.mingw.org).  For instructions on how to install Mercury 
+   under MSYS see README.MinGW.
 
-To use or build Mercury on Windows, you need to first get Cygwin and
-install it.  Cygwin version 1.3.1 is buggy and should not be used, but
-Cygwin 1.1.* or Cygwin 1.3.2 or later should be OK.  Recent versions of
-Cygwin can be installed directly from:
-
-	http://sources.redhat.com/cygwin/setup.exe
-
-This program will download and install the required components.
-
-If you want more information on Cygwin, see the site:
-
-	http://sources.redhat.com/cygwin/
-
-If you're going to use a binary distribution of Mercury for Windows,
-you need to make sure that you get a version of Cygwin that is
-compatible with the one that the binary distribution was compiled
-with.  This will normally be specified in the filename of the
-Mercury binary distribution.  For example, if the file name is
-mercury-0.9.1.pc-windows-cygwin-1.1.4.tar.gz then you need version
-1.1.4 of Cygwin.  Later versions may work also, however it is always
-possible that compatibility might break at some point.  Cygwin will
-create a file C:\cygwin\setup.txt that lists the versions of every
-package installed.
-
-Before continuing, check that you can run Cygwin and get a command line
-shell, and that `gcc' (the GNU C compiler) works.
-
-For more information on Cygwin, see the Cygwin web site mentioned above.
-
------------------------------------------------------------------------------
-
-UNPACKING THE SOURCES
-
-After installing Cygwin, you should download the Mercury source or
-binary distribution, and unpack it.
-
-You should use Cygwin's tar program to unpack the Mercury distribution.
-From a cygwin command shell, use the `cd' command to change directory
-to the directory where you saved the source or binary distribution that
-you downloaded, and then use `tar zxf <filename>' to unpack it,
-where <filename> is the filename that you downloaded, e.g.
-mercury-compiler-<version>.tar.gz (for the source distribution), or
-mercury-<version>.i686-pc-cygwin-windows.tar.gz (for the binary distribution).
-
-Note that other programs which understand tar.gz files (e.g. WinZip)
-may not be able to unpack them in the correct manner for use with Cygwin.
-
------------------------------------------------------------------------------
-
-RUNNING CONFIGURE
-
-Use the `cd' command to change directory to the directory that you just
-unpacked, and then configure with
-
-	sh configure
-
-as described in the INSTALL file.
-On Windows 2000, it may start up the "Microsoft Management Console"
-program (the autoconfiguration process looks for a program named "mmc").
-If so, just close that application, e.g. by selecting "Exit" from
-the "Console" menu.
-
------------------------------------------------------------------------------
-
-RUNNING MAKE INSTALL
-
-Just type
-
-	make install
-
------------------------------------------------------------------------------
-
-USING MERCURY
-
-Once you've finished installing, you need to add the appropriate
-directory, normally /usr/local/mercury-<VERSION>/bin, to your PATH. 
-If you are familiar with how to set the PATH for command-line programs
-in Windows you can add 
-
-	C:\cygwin\usr\local\mercury-<VERSION>\bin
-
-to that path.
-
-Otherwise you can just set the path in Cygwin by creating a file called
-`.bashrc' in your Cygwin home directory that contains the line: 
-
-	PATH=/usr/local/mercury-<VERSION>/bin:$PATH
-
-You Cygwin home directory can be found in C:\cygwin\home\username\ 
-if using Windows Explorer (Cygwin will call your home directory
-`/home/username' or simply `~').
-
-On Windows 2000, you need to make sure that this directory precedes
-the Windows system directory in the PATH, otherwise `mmc' will invoke the
-Microsoft Management Console rather than the Melbourne Mercury Compiler.
-In this case it might be a good idea to modify your path in your
-.bashrc rather than in the Windows PATH environment variable, so as to
-not confuse any other programs that might be looking for the Microsoft
-Management Console.
-
-You should be able to read the HTML version of the Mercury
-documentation, which by default gets installed in
-C:\cygwin\usr\local\mercury-<VERSION>\lib\mercury\html, using Netscape
-or MS Internet Explorer.  Or you can get a copy of GNU Emacs
-for NT and use it to browse the INFO version.
-
-If you use mmake files named `Mmake' rather than `Mmakefile',
-there can be some problems with case-insensitive filenames
-and the name clash between `mmake' and `Mmake'.  If you run into any
-such problems, rename your `Mmake' file to `Mmakefile'.
-
-To write Mercury programs, simply create a new .m file in your favourite
-editor.  Run `mmc <filename>.m' on the Cygwin command line to compile
-small programs, or use `mmake' to handle larger systems.  See the
-Mercury Users Guide for more information about the command line tools.
-There is currently no GUI for editing and compiling Mercury programs,
-although it is quite likely you can hook up a sophisticated editor to
-run `mmc' and/or `mmake' for you.
-
------------------------------------------------------------------------------
-
-OTHER PACKAGES YOU MIGHT NEED
-
-If you want to use the mtags tool from the Mercury distribution, you'll
-need to install perl.  A binary distribution of Perl is available at the
-Cygwin porting project:
-	http://www.student.uni-koeln.de/cygwin/
-
-If you want to build your own Mercury releases from the CVS sources, you
-will need a previously installed Mercury compiler (for example, one of
-the recent releases of the day).  You will also need GNU autoconf, which
-can be downloaded from 
-	ftp://ftp.gnu.org/pub/gnu/autoconf/
-Autoconf should configure, build and install directly from the source
-package.
-
------------------------------------------------------------------------------
-
-BUILDING WITH MINGW
-
-The above instructions describe how to build/install a version of
-the system that targets Cygwin.  It is also possible to build a version that
-targets Mingw, i.e. where the generated executables do not rely on Cygwin.
-
-- First, install the Cygwin version of Mercury, and put it in your PATH.
-- Second, configure the source distribution of Mercury using
-  --with-cc="gcc -mno-cygwin".
-- Third, run "make" and "make install".
-- Fourth, replace the following files in the installed Mingw Mercury
-  directories with copies of the corresponding file from the installed
-  Cygwin Mercury directories:
-        mercury_compile.exe (in <prefix>/lib/mercury/bin/<config>)
-        mercury_profile.exe (in <prefix>/lib/mercury/bin/<config>)
-        mdemangle.exe (in <prefix>/bin)
-        mkinit.exe (in <prefix>/bin)
+Mercury can also be built using the MS Visual C compiler, although one of
+the above environments is still required for the build process.  See 
+README.MS-VisualC for instructions on how to build Mercury with the 
+MS Visual C compiler.
 
 -----------------------------------------------------------------------------
