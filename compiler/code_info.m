@@ -1527,9 +1527,10 @@ code_info__undo_disj_hijack(HijackInfo, Code, !CI) :-
         stack__top_det(ResumePoints, ResumePoint),
         code_info__pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(code_addr_const(StackLabel)),
+        % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = node([
             assign(redoip(lval(curfr)), LabelConst)
-                - "restore redoip for quarter disj hijack"
+                - "restore redoip for quarter disj hijack (curfr==maxfr)"
         ])
     ;
         HijackInfo = disj_half_hijack(RedoipSlot),
@@ -1537,9 +1538,10 @@ code_info__undo_disj_hijack(HijackInfo, Code, !CI) :-
             "resume point known in disj_half_hijack"),
         require(unify(CurfrMaxfr, must_be_equal),
             "maxfr may differ from curfr in disj_half_hijack"),
+        % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = node([
             assign(redoip(lval(curfr)), lval(RedoipSlot))
-                - "restore redoip for half disj hijack"
+                - "restore redoip for half disj hijack (curfr==maxfr)"
         ])
     ;
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),

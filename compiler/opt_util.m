@@ -567,9 +567,17 @@ straight_alternative(Instrs0, Between, After) :-
 :- pred straight_alternative_2(list(instruction)::in, list(instruction)::in,
     list(instruction)::out, list(instruction)::out) is semidet.
 
-straight_alternative_2([Instr0 | Instrs0], Between0, Between, After) :-
+straight_alternative_2([Instr0 | Instrs0], !Between, After) :-
     Instr0 = Uinstr0 - _,
     (
+        Uinstr0 = label(_)
+    ->
+        fail
+    ;
+        Uinstr0 = goto(do_succeed(no))
+    ->
+        After = Instrs0
+    ;
         (
             can_instr_branch_away(Uinstr0, no),
             touches_nondet_ctrl_instr(Uinstr0, no)
@@ -578,13 +586,8 @@ straight_alternative_2([Instr0 | Instrs0], Between0, Between, After) :-
             ( CodeAddr = do_fail ; CodeAddr = do_redo )
         )
     ->
-        straight_alternative_2(Instrs0, [Instr0 | Between0],
-            Between, After)
-    ;
-        Uinstr0 = goto(do_succeed(no))
-    ->
-        Between = Between0,
-        After = Instrs0
+        !:Between = [Instr0 | !.Between],
+        straight_alternative_2(Instrs0, !Between, After)
     ;
         fail
     ).
@@ -1485,35 +1488,72 @@ has_both_incr_decr_sp_2([Uinstr - _ | Instrs], !HasIncr, !HasDecr) :-
     has_both_incr_decr_sp_2(Instrs, !HasIncr, !HasDecr).
 
 touches_nondet_ctrl([], no).
-touches_nondet_ctrl([Uinstr - _ | Instrs], Touch) :-
-    touches_nondet_ctrl_instr(Uinstr, Touch0),
+touches_nondet_ctrl([Uinstr - _ | Instrs], !:Touch) :-
+    touches_nondet_ctrl_instr(Uinstr, !:Touch),
     (
-        Touch0 = yes,
-        Touch = yes
+        !.Touch = yes
     ;
-        Touch0 = no,
-        touches_nondet_ctrl(Instrs, Touch)
+        !.Touch = no,
+        touches_nondet_ctrl(Instrs, !:Touch)
     ).
 
 :- pred touches_nondet_ctrl_instr(instr::in, bool::out) is det.
 
 touches_nondet_ctrl_instr(Uinstr, Touch) :-
-    ( Uinstr = assign(Lval, Rval) ->
-        touches_nondet_ctrl_lval(Lval, TouchLval),
-        touches_nondet_ctrl_rval(Rval, TouchRval),
-        bool__or(TouchLval, TouchRval, Touch)
-    ; Uinstr = incr_hp(Lval, _, _, Rval, _) ->
-        touches_nondet_ctrl_lval(Lval, TouchLval),
-        touches_nondet_ctrl_rval(Rval, TouchRval),
-        bool__or(TouchLval, TouchRval, Touch)
-    ; Uinstr = mark_hp(Lval) ->
-        touches_nondet_ctrl_lval(Lval, Touch)
-    ; Uinstr = restore_hp(Rval) ->
-        touches_nondet_ctrl_rval(Rval, Touch)
-    ; Uinstr = pragma_c(_, Components, _, _, _, _, _, _, _) ->
-        touches_nondet_ctrl_components(Components, Touch)
+    (
+        ( Uinstr = comment(_)
+        ; Uinstr = livevals(_)
+        ; Uinstr = label(_)
+        ; Uinstr = free_heap(_)
+        ; Uinstr = store_ticket(_)
+        ; Uinstr = reset_ticket(_, _)
+        ; Uinstr = prune_ticket
+        ; Uinstr = discard_ticket
+        ; Uinstr = prune_tickets_to(_)
+        ; Uinstr = mark_ticket_stack(_)
+        ; Uinstr = incr_sp(_, _)
+        ; Uinstr = decr_sp(_)
+        ; Uinstr = decr_sp_and_return(_)
+        ),
+        Touch = no
     ;
+        ( Uinstr = mkframe(_, _)
+        ; Uinstr = goto(_)
+        ; Uinstr = computed_goto(_, _)
+        ; Uinstr = call(_, _, _, _, _, _)   % This is a safe approximation.
+        ; Uinstr = if_val(_, _)
+        ; Uinstr = c_code(_, _)
+        ; Uinstr = save_maxfr(_)
+        ; Uinstr = restore_maxfr(_)
+        ; Uinstr = init_sync_term(_, _)     % This is a safe approximation.
+        ; Uinstr = fork(_, _, _)            % This is a safe approximation.
+        ; Uinstr = join_and_terminate(_)    % This is a safe approximation.
+        ; Uinstr = join_and_continue(_, _)  % This is a safe approximation.
+        ),
         Touch = yes
+    ;
+        Uinstr = block(_, _, _),
+        % Blocks aren't introduced until after the last user of this predicate.
+        unexpected(this_file, "touches_nondet_ctrl_instr: block")
+    ;
+        Uinstr = assign(Lval, Rval),
+        touches_nondet_ctrl_lval(Lval, TouchLval),
+        touches_nondet_ctrl_rval(Rval, TouchRval),
+        bool__or(TouchLval, TouchRval, Touch)
+    ;
+        Uinstr = incr_hp(Lval, _, _, Rval, _),
+        touches_nondet_ctrl_lval(Lval, TouchLval),
+        touches_nondet_ctrl_rval(Rval, TouchRval),
+        bool__or(TouchLval, TouchRval, Touch)
+    ;
+        Uinstr = mark_hp(Lval),
+        touches_nondet_ctrl_lval(Lval, Touch)
+    ;
+        Uinstr = restore_hp(Rval),
+        touches_nondet_ctrl_rval(Rval, Touch)
+    ;
+        Uinstr = pragma_c(_, Components, _, _, _, _, _, _, _),
+        touches_nondet_ctrl_components(Components, Touch)
     ).
 
 :- pred touches_nondet_ctrl_lval(lval::in, bool::out) is det.

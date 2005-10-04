@@ -344,7 +344,8 @@ peephole__match(assign(redoip(lval(Base)), Redoip), Comment, _,
         Base = curfr,
         Redoip = const(code_addr_const(do_fail)),
         opt_util__straight_alternative(Instrs0, Between, After),
-        opt_util__touches_nondet_ctrl(Between, no)
+        opt_util__touches_nondet_ctrl(Between, no),
+        string__sub_string_search(Comment, "curfr==maxfr", _)
     ->
         list__condense([Between,
             [goto(do_succeed(yes)) - "early discard"], After], Instrs)
