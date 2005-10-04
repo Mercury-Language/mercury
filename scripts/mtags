@@ -1,4 +1,6 @@
 
+# vim: ts=4 sw=4 et
+#
 # Leave the first line of this file blank!
 # This is a Perl script; the following two lines allow us to avoid
 # embedding the path of the perl interpreter in the script.
@@ -6,7 +8,7 @@ eval 'exec perl -w -S $0 ${1+"$@"}'
     if $_running_under_some_shell;
 
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-2001, 2003 The University of Melbourne.
+# Copyright (C) 1994-2001, 2003, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -17,118 +19,118 @@ Use \`mtags --help' for help.";
 
 $help = "\
 Usage:
-	mtags [<options>] <source files>
+    mtags [<options>] <source files>
 
 Description:
-	This script creates tags files for Mercury programs that can be
-	used with Vi, Vim, Elvis or Emacs (depending on the options
-	specified). It takes a list of filenames from the command line
-	and produces a tags file for the Mercury declarations in those
-	files.
+    This script creates tags files for Mercury programs that can be
+    used with Vi, Vim, Elvis or Emacs (depending on the options
+    specified). It takes a list of filenames from the command line
+    and produces a tags file for the Mercury declarations in those
+    files.
 
 Options:
-	With no options specified, mtags defaults to creating a vim-style 
-	tags file.  This file format is backwards compatible with vi,
-	but tags contain extra attributes that are used by vim.
-	Duplicate tags are not removed.
+    With no options specified, mtags defaults to creating a vim-style 
+    tags file.  This file format is backwards compatible with vi,
+    but tags contain extra attributes that are used by vim.
+    Duplicate tags are not removed.
 
-	-e, --emacs
-		Produce an emacs-style TAGS file.  If this option is
-		present, all other options are ignored.
+    -e, --emacs
+        Produce an emacs-style TAGS file.  If this option is
+        present, all other options are ignored.
 
-	--vim, --ext
-		This option is the default, but is retained for
-		backwards compatibility.
+    --vim, --ext
+        This option is the default, but is retained for
+        backwards compatibility.
 
-		This option is shorthand for `--keep-duplicates
-		--search-definitions --vim-extended-attributes'.
+        This option is shorthand for `--keep-duplicates
+        --search-definitions --vim-extended-attributes'.
 
-	--elvis
-		Produces an extended tags file in a format that will
-		work with elvis 2.1+.
+    --elvis
+        Produces an extended tags file in a format that will
+        work with elvis 2.1+.
 
-		This option is shorthand for `--keep-duplicates
-		--no-search-definitions --elvis-extended-attributes'.
+        This option is shorthand for `--keep-duplicates
+        --no-search-definitions --elvis-extended-attributes'.
 
-	--traditional-vi
-		Produces a tags file that contains only information
-		useful for traditional vi.  This was the default in
-		previous versions of mtags, but is no longer since
-		vim-style tags files are backwards compatible with vi.
-		You may want to use this option if you only use vi and
-		you want to reduce the size of the tags file.
-		However, we suggest you investigate vim since its
-		tags support is far superior for languages such as
-		Mercury which support overloading.
+    --traditional-vi
+        Produces a tags file that contains only information
+        useful for traditional vi.  This was the default in
+        previous versions of mtags, but is no longer since
+        vim-style tags files are backwards compatible with vi.
+        You may want to use this option if you only use vi and
+        you want to reduce the size of the tags file.
+        However, we suggest you investigate vim since its
+        tags support is far superior for languages such as
+        Mercury which support overloading.
 
-		This option is shorthand for `--no-keep-duplicates
-		--search-definitions --no-extended-attributes'.
+        This option is shorthand for `--no-keep-duplicates
+        --search-definitions --no-extended-attributes'.
 
-	--simple
-		Produce a dumbed-down vi-style tags file that will work 
-		with versions of vim prior to 5.0, and versions of elvis
-		prior to 2.1.  These versions cannot handle multiple
-		commands for a tag.
+    --simple
+        Produce a dumbed-down vi-style tags file that will work 
+        with versions of vim prior to 5.0, and versions of elvis
+        prior to 2.1.  These versions cannot handle multiple
+        commands for a tag.
 
-		This option is shorthand for `--keep-duplicates
-		--no-search-definitions --no-extended-attributes'.
+        This option is shorthand for `--keep-duplicates
+        --no-search-definitions --no-extended-attributes'.
 
-	--keep-duplicates
-		Allow multiple definitions for a tag.
-		This option is the default, but is retained for
-		backwards compatibility.
+    --keep-duplicates
+        Allow multiple definitions for a tag.
+        This option is the default, but is retained for
+        backwards compatibility.
 
-	--no-keep-duplicates.
-		If a tag has multiple definitions, ignore all but the
-		first.  Also ignores typeclass instance tags.
+    --no-keep-duplicates.
+        If a tag has multiple definitions, ignore all but the
+        first.  Also ignores typeclass instance tags.
 
-	--search-definitions
-		This option is on by default.
-		Output extra ex commands which place the tag in
-		the search buffer to allow the definition to be found
-		by pressing `n' after a tag lookup.  For predicate and
-		function declarations this will attempt to find the
-		clauses by searching for occurrences of the tag at the
-		start of a line.  For other declarations, just the tag
-		itself will be placed in the search buffer.
+    --search-definitions
+        This option is on by default.
+        Output extra ex commands which place the tag in
+        the search buffer to allow the definition to be found
+        by pressing `n' after a tag lookup.  For predicate and
+        function declarations this will attempt to find the
+        clauses by searching for occurrences of the tag at the
+        start of a line.  For other declarations, just the tag
+        itself will be placed in the search buffer.
 
-	--no-search-definitions
-		Do not output extra commands to allow searching for
-		definitions.
+    --no-search-definitions
+        Do not output extra commands to allow searching for
+        definitions.
 
-	--no-extended-attributes
-		Do not output the extra tag attributes for vim/elvis.
+    --no-extended-attributes
+        Do not output the extra tag attributes for vim/elvis.
 
-	--extended-attributes, --vim-extended-attributes
-		This option is the default.
-		Output extra attributes for each tag to say whether it
-		is in the implementation or interface of the source file
-		and to describe the kind of tag.  Tag kinds used are:
-		\`pred' for predicate declarations
-		\`func' for function declarations
-		\`type' for type definitions
-		\`cons' for type constructors
-		\`fld'  for field names
-		\`inst' for inst definitions
-		\`mode' for mode definitions
-		\`tc'   for typeclass declarations
-		\`tci'  for typeclass instance declarations
-		\`tcm'  for typeclass methods
-		\`tcim' for typeclass instance methods
+    --extended-attributes, --vim-extended-attributes
+        This option is the default.
+        Output extra attributes for each tag to say whether it
+        is in the implementation or interface of the source file
+        and to describe the kind of tag.  Tag kinds used are:
+        \`pred' for predicate declarations
+        \`func' for function declarations
+        \`type' for type definitions
+        \`cons' for type constructors
+        \`fld'  for field names
+        \`inst' for inst definitions
+        \`mode' for mode definitions
+        \`tc'   for typeclass declarations
+        \`tci'  for typeclass instance declarations
+        \`tcm'  for typeclass methods
+        \`tcim' for typeclass instance methods
 
-		(Vim assumes that the \`kind' attribute has at most 4
-		characters.)
+        (Vim assumes that the \`kind' attribute has at most 4
+        characters.)
 
-	--elvis-extended-attributes
-		Output extra attributes as for `--vim-extended-attributes',
-		but in the format required by elvis.
+    --elvis-extended-attributes
+        Output extra attributes as for `--vim-extended-attributes',
+        but in the format required by elvis.
 
-	-h, --help
-		Display this help message and exit.
+    -h, --help
+        Display this help message and exit.
 
-	--
-		Treat all remaining arguments as source file names.  This is
-		useful if you have file names starting with \`-'.
+    --
+        Treat all remaining arguments as source file names.  This is
+        useful if you have file names starting with \`-'.
 ";
 
 $warnings = 0;
@@ -139,85 +141,85 @@ $search_definitions = 1;
 
 OPTION:
 while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
-	if ($ARGV[0] eq "-e" || $ARGV[0] eq "--emacs") {
-		$emacs = 1;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--ext" || $ARGV[0] eq "--vim") {
-		$extended_attributes = "vim";
-		$keep_dups = 1;
-		$search_definitions = 1;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--elvis") {
-		$extended_attributes = "elvis";
-		$keep_dups = 1;
-		$search_definitions = 0;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--traditional-vi") {
-		$extended_attributes = "none";
-		$keep_dups = 0;
-		$search_definitions = 1;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--simple") {
-		$extended_attributes = "none";
-		$keep_dups = 1;
-		$search_definitions = 0;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--no-keep-duplicates") {
-		$keep_dups = 0;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--keep-duplicates") {
-		$keep_dups = 1;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--no-search-definitions") {
-		$search_definitions = 0;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--search-definitions") {
-		$search_definitions = 1;
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--no-extended-attributes") {
-		$extended_attributes = "none";
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--vim-extended-attributes" ||
-	    $ARGV[0] eq "--extended-attributes") {
-		$extended_attributes = "vim";
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--elvis-extended-attributes") {
-		$extended_attributes = "elvis";
-		shift(@ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "-h" || $ARGV[0] eq "--help") {
-		print "$help";
-		exit(0);
-	}
-	if ($ARGV[0] eq "--") {
-		shift(@ARGV);
-		last;
-	}
-	die "mtags: unrecognized option \`$ARGV[0]'\n" .
-		"Use \`mtags --help' for help.\n";
+    if ($ARGV[0] eq "-e" || $ARGV[0] eq "--emacs") {
+        $emacs = 1;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--ext" || $ARGV[0] eq "--vim") {
+        $extended_attributes = "vim";
+        $keep_dups = 1;
+        $search_definitions = 1;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--elvis") {
+        $extended_attributes = "elvis";
+        $keep_dups = 1;
+        $search_definitions = 0;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--traditional-vi") {
+        $extended_attributes = "none";
+        $keep_dups = 0;
+        $search_definitions = 1;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--simple") {
+        $extended_attributes = "none";
+        $keep_dups = 1;
+        $search_definitions = 0;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--no-keep-duplicates") {
+        $keep_dups = 0;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--keep-duplicates") {
+        $keep_dups = 1;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--no-search-definitions") {
+        $search_definitions = 0;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--search-definitions") {
+        $search_definitions = 1;
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--no-extended-attributes") {
+        $extended_attributes = "none";
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--vim-extended-attributes" ||
+        $ARGV[0] eq "--extended-attributes") {
+        $extended_attributes = "vim";
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "--elvis-extended-attributes") {
+        $extended_attributes = "elvis";
+        shift(@ARGV);
+        next OPTION;
+    }
+    if ($ARGV[0] eq "-h" || $ARGV[0] eq "--help") {
+        print "$help";
+        exit(0);
+    }
+    if ($ARGV[0] eq "--") {
+        shift(@ARGV);
+        last;
+    }
+    die "mtags: unrecognized option \`$ARGV[0]'\n" .
+        "Use \`mtags --help' for help.\n";
 }
 
 die $usage if $#ARGV < 0;
@@ -225,121 +227,118 @@ die $usage if $#ARGV < 0;
 #---------------------------------------------------------------------------#
 
 sub output_name() {
-	# figure out the part of the body that is the name
+    # Figure out the part of the body that is the name.
 
-	$name =~ s/^[ \t]*//;
+    $name =~ s/^[ \t]*//;
 
-	if ($name =~ /^\(/) {
-	    $name =~ s/\(//;
-	    $name =~ s/\).*//;
-	} else {
-	    $name =~ s/\.$//;
-	    $name =~ s/\(.*//;
-	    $name =~ s/ .*//;
-	}
+    if ($name =~ /^\(/) {
+        $name =~ s/\(//;
+        $name =~ s/\).*//;
+    } else {
+        $name =~ s/\.$//;
+        $name =~ s/\(.*//;
+        $name =~ s/ .*//;
+    }
 
-	$match_line = $_;
-	$match_line =~ s|\\|\\\\|g;   # replace `\' with `\\'
-	$match_line =~ s|/|\\/|g;     # replace `/' with `\/'
+    $match_line = $_;
+    $match_line =~ s|\\|\\\\|g;   # replace `\' with `\\'
+    $match_line =~ s|/|\\/|g;     # replace `/' with `\/'
 
-	# $src_name holds the name as it was in the original source
-	$src_name = $name;
-	$name =~ s|\.|__|g;     # replace `.' module qualifiers with `__'
+    # $src_name holds the name as it was in the original source.
+    $src_name = $name;
+    $name =~ s|\.|__|g;     # replace `.' module qualifiers with `__'
 
-	# output a tag for the fully-qualified name
-	if (substr($name, 0, length($module)) ne $module) {
-		$name = "${module}__$name";
-	}
-	output_single_name();
+    # Output a tag for the fully-qualified name.
+    if (substr($name, 0, length($module)) ne $module) {
+        $name = "${module}__$name";
+    }
+    output_single_name();
 
-	# strip off the leading module qualifiers one by one,
-	# and output a tag for each partially qualified
-	# or unqualified name
-	while ($name =~ /__/) {
-		$name =~ s/[^_]*(_[^_]+)*__//;
-		output_single_name();
-	}
+    # Strip off the leading module qualifiers one by one, and output a tag
+    # for each partially qualified or unqualified name.
+    while ($name =~ /__/) {
+        $name =~ s/[^_]*(_[^_]+)*__//;
+        output_single_name();
+    }
 }
 
 sub output_single_name() {
-	# Output tag using `__' as module qualifier.
-	output_single_tag();
+    # Output tag using `__' as module qualifier.
+    output_single_tag();
 
-	# Output tag using `.' as module qualifier.
-	if ($name =~ /__/) {
-		$save_name = $name;
-		$name =~ s/__/./g;
-		output_single_tag();
-		$name = $save_name;
-	}
+    # Output tag using `.' as module qualifier.
+    if ($name =~ /__/) {
+        $save_name = $name;
+        $name =~ s/__/./g;
+        output_single_tag();
+        $name = $save_name;
+    }
 }
 
 sub output_single_tag() {
-	if (!$emacs && !$keep_dups && $seen{$name}) {
-	    if ($warnings &&
-		$file ne $prev_file{$name} &&
-		$. != $prev_line{$name})
-	    {
-	        printf STDOUT "%s:%03d: Warning: ignoring duplicate defn " .
-		    "for `$name'\n", $file, $., $name;
-	        printf STDOUT
-		    "%s:%03d:   (previous definition of `%s' was here).\n",
-		    $prev_file{$name}, $prev_line{$name}, $name;
-	    }
-	} else {
-	    if ($emacs) {
-		printf OUT "%s\177%s\001%d,%d\n",
-		    $_, $name, $., $.;
-	    } else {
-	    	# Output basic tag line for vi/vim/elvis.
-	    	printf OUT "%s\t%s\t/^%s\$/",
-		    $name, $file, $match_line;
+    if (!$emacs && !$keep_dups && $seen{$name}) {
+        if ($warnings &&
+            $file ne $prev_file{$name} &&
+            $. != $prev_line{$name})
+        {
+            printf STDOUT "%s:%03d: Warning: ignoring duplicate defn " .
+                "for `$name'\n", $file, $., $name;
+            printf STDOUT
+                "%s:%03d:   (previous definition of `%s' was here).\n",
+                $prev_file{$name}, $prev_line{$name}, $name;
+        }
+    } else {
+        if ($emacs) {
+            printf OUT "%s\177%s\001%d,%d\n", $_, $name, $., $.;
+        } else {
+            # Output basic tag line for vi/vim/elvis.
+            printf OUT "%s\t%s\t/^%s\$/", $name, $file, $match_line;
 
-		# Output commands to alter the search buffer.
-		if ($search_definitions) {
-		    if ($kind eq "pred" || $kind eq "func") {
-			printf OUT ";kq|/^\\<%s\\>/;'q", $src_name;
-		    } else {
-			printf OUT ";kq|-;/\\<%s\\>/;'q", $name;
-		    }
-		}
+            # Output commands to alter the search buffer.
+            if ($search_definitions) {
+                if ($kind eq "pred" || $kind eq "func") {
+                    printf OUT ";kq|/^\\<%s\\>/;'q", $src_name;
+                } else {
+                    printf OUT ";kq|-;/\\<%s\\>/;'q", $name;
+                }
+            }
 
-		# Output extended attributes for vim and elvis.
-		if ($extended_attributes ne "none") {
-		    if ($context =~ /\bimplementation\b/) {
-			$static = "\tfile:";
-			$sfile = $file;
-		    } else {
-			$static = "";
-			$sfile = "";
-		    }
-		    printf OUT ";\"\tkind:%s%s", $kind, $static;
-		    if ($extended_attributes eq "elvis") {
-		    	printf OUT "%s", $sfile;
-		    }
-		}
+            # Output extended attributes for vim and elvis.
+            if ($extended_attributes ne "none") {
+                if ($context =~ /\bimplementation\b/) {
+                    $static = "\tfile:";
+                    $sfile = $file;
+                } else {
+                    $static = "";
+                    $sfile = "";
+                }
+                printf OUT ";\"\tkind:%s%s", $kind, $static;
+                if ($extended_attributes eq "elvis") {
+                    printf OUT "%s", $sfile;
+                }
+            }
 
-		printf OUT "\n";
-	    }
-	    $seen{$name} = 1;
-	    $prev_file{$name} = $file;
-	    $prev_line{$name} = $.;
-	}
+            printf OUT "\n";
+        }
+        $seen{$name} = 1;
+        $prev_file{$name} = $file;
+        $prev_line{$name} = $.;
+    }
 }
 
 #---------------------------------------------------------------------------#
 
 if ($emacs) {
-	open(OUT, "> TAGS") || die "mtags: error opening TAGS: $!\n";
+    open(OUT, "> TAGS") || die "mtags: error opening TAGS: $!\n";
 } elsif ($keep_dups) {
-	# Vim and elvis expect the tags file to be sorted so they can do
-	# binary search.
-	open(OUT, "| sort > tags") ||
-		die "mtags: error opening pipe: $!\n";
+    # Vim and elvis expect the tags file to be sorted so they can do
+    # binary search.
+    open(OUT, "| sort > tags") ||
+        die "mtags: error opening pipe: $!\n";
 } else {
-	# Remove duplicate tags for vi.
-	open(OUT, "| sort -u +0 -1 > tags") ||
-		die "mtags: error opening pipe: $!\n";
+    # Remove duplicate tags for vi.
+    open(OUT, "| sort -u +0 -1 > tags") ||
+        die "mtags: error opening pipe: $!\n";
 }
 $context = "implementation";
 while ($#ARGV >= 0)
@@ -347,211 +346,214 @@ while ($#ARGV >= 0)
     $file = shift(@ARGV);
     open(SRCFILE, $file) || die "mtags: can't open $file: $!\n";
     if ($emacs) {
-	close(OUT) || die "mtags: error closing TAGS: $!\n";
-	open(OUT, ">> TAGS") || die "mtags: error opening TAGS: $!\n";
-	printf OUT "\f\n%s,%d\n", $file, 0;
-	close(OUT) || die "mtags: error closing TAGS: $!\n";
-	# open(OUT, "| sort -u +0 -1 >> TAGS") ||
-	open(OUT, ">> TAGS") ||
-		die "mtags: error opening pipe: $!\n";
+        close(OUT) || die "mtags: error closing TAGS: $!\n";
+        open(OUT, ">> TAGS") || die "mtags: error opening TAGS: $!\n";
+        printf OUT "\f\n%s,%d\n", $file, 0;
+        close(OUT) || die "mtags: error closing TAGS: $!\n";
+        # open(OUT, "| sort -u +0 -1 >> TAGS") ||
+        open(OUT, ">> TAGS") ||
+            die "mtags: error opening pipe: $!\n";
     }
     
     $module = $file;
-    $module =~ s/.*\///;	# delete the directory name, if any
-    $module =~ s/\.m$//;	# delete the trailing `.m'
-    $module =~ s/\./__/;	# replace `.' module qualifiers with `__'
+    $module =~ s/.*\///;    # Delete the directory name, if any.
+    $module =~ s/\.m$//;    # Delete the trailing `.m'.
+    $module =~ s/\./__/;    # Replace `.' module qualifiers with `__'.
 
     while ($_ = <SRCFILE>)
     {
-	# skip lines which are not declarations
-	next unless ($_ =~ /^:- /);
+        # Skip lines which are not declarations.
+        next unless ($_ =~ /^:- /);
 
-	chop;
+        chop;
 
-	($_cmd, $decl, @rest) = split;
-	$body = join(' ', @rest);
+        ($_cmd, $decl, @rest) = split;
+        $body = join(' ', @rest);
 
-	# Remove `impure' and `semipure' declarations.
-	if ($decl eq "impure" || $decl eq "semipure") {
-		($decl, @rest) = split /\s+/, $body;
-		$body = join(' ', @rest);
-	}
+        # Remove `impure' and `semipure' declarations.
+        if ($decl eq "impure" || $decl eq "semipure") {
+            ($decl, @rest) = split /\s+/, $body;
+            $body = join(' ', @rest);
+        }
 
-	# Is this an "interface" or "implementation" declaration?
-	# If so, change context.
-	if ($decl =~ /\binterface\b/ || $decl =~ /\bimplementation\b/) {
-		$context = $decl;
-	}
+        # Is this an "interface" or "implementation" declaration?
+        # If so, change context.
+        if ($decl =~ /\binterface\b/ || $decl =~ /\bimplementation\b/) {
+            $context = $decl;
+        }
 
-	# Skip lines which are not pred, func, type, inst, mode,
-	# typeclass or instance declarations.
-	# Also skip instance declarations if we're producing a normal vi
-	# tags file since vi doesn't allow duplicate tags and the
-	# typeclass tags are probably more important than the instance
-	# tags.
-	next unless (
-	    $decl eq "pred" ||
-	    $decl eq "func" ||
-	    $decl eq "type" ||
-	    $decl eq "inst" ||
-	    ($decl eq "mode" && ($body =~ /::/ || $body =~ /==/)) ||
-	    $decl eq "typeclass" ||
-	    ($decl eq "instance" && $keep_dups)
-	);
+        # Skip lines which are not pred, func, type, inst, mode,
+        # typeclass or instance declarations.
+        # Also skip instance declarations if we're producing a normal vi
+        # tags file since vi doesn't allow duplicate tags and the
+        # typeclass tags are probably more important than the instance tags.
+        next unless (
+            $decl eq "pred" ||
+            $decl eq "func" ||
+            $decl eq "type" ||
+            $decl eq "inst" ||
+            ($decl eq "mode" && ($body =~ /::/ || $body =~ /==/)) ||
+            $decl eq "typeclass" ||
+            ($decl eq "instance" && $keep_dups)
+        );
 
-	# skip declarations which are not definitions
-	next unless (
-	    # pred, func, and typeclass declarations are always definitions
-	    $decl eq "pred" ||
-	    $decl eq "func" ||
-	    $decl eq "typeclass" ||
+        # Skip declarations which are not definitions.
+        next unless (
+            # Pred, func, and typeclass declarations are always definitions.
+            $decl eq "pred" ||
+            $decl eq "func" ||
+            $decl eq "typeclass" ||
 
-	    # if it doesn't end in a `.' (i.e if it doesn't fit on one line),
-	    # then it's probably a definition
-	    ($body !~ /\.[ \t]*$/ && $body !~ /\.[ \t]*%.*$/) ||
+            # If it doesn't end in a `.' (i.e if it doesn't fit on one line),
+            # then it's probably a definition.
+            ($body !~ /\.[ \t]*$/ && $body !~ /\.[ \t]*%.*$/) ||
 
-	    # if it contains `--->', `=', or `::', it's probably a
-	    # definition.
-	    $body =~ /--->/ ||
-	    $body =~ /=/ ||
-	    $body =~ /::/
-	);
+            # if it contains `--->', `=', or `::', it's probably a
+            # definition.
+            $body =~ /--->/ ||
+            $body =~ /=/ ||
+            $body =~ /::/
+        );
 
-	$name = $body;
-	$kind = $decl;
-	# Shorten $kind for typeclass and instance so they display better in
-	# vim which assumes the kind attribute has at most 4 chars.
-	if ($kind eq "typeclass") { $kind = "tc"; }
-	if ($kind eq "instance") { $kind = "tci"; }
-	output_name();
-	
-	# for everything except type, typeclass and instance declarations,
-	# we're done
-	next unless ($decl eq "type" || $decl eq "typeclass" || 
-			$decl eq "instance");
+        $name = $body;
+        $kind = $decl;
+        # Shorten $kind for typeclass and instance so they display better in
+        # vim which assumes the kind attribute has at most 4 chars.
+        if ($kind eq "typeclass") { $kind = "tc"; }
+        if ($kind eq "instance") { $kind = "tci"; }
+        output_name();
+        
+        # For everything except type, typeclass and instance declarations,
+        # we're done.
+        next unless ($decl eq "type" || $decl eq "typeclass" || 
+            $decl eq "instance");
 
-	if ($decl eq "type") {
-	    # make sure we're at the line with the `--->'
-	    if ($body !~ /--->/) {
-		    next if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
-		    $_ = <SRCFILE>;
-		    chop;
-		    $body = $_;
-	    }
-	    next unless ($body =~ /--->/);
+        if ($decl eq "type") {
+            # Make sure we're at the line with the `--->'.
+            if ($body !~ /--->/) {
+                next if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
+                $_ = <SRCFILE>;
+                chop;
+                $body = $_;
+            }
 
-	    # replace everything up to the `--->' with `;'
-	    $body =~ s/.*--->/;/;
+            next unless ($body =~ /--->/);
 
-	    for(;;) {
-		# if the body starts with `;', we assume it must be the
-		# start of a constructor definition
-		if ($body =~ /^[ \t]*;/) {
+            # Replace everything up to the `--->' with `;'.
+            $body =~ s/.*--->/;/;
 
-		    # delete the leading `;'
-		    $body =~ s/[^;]*;[ \t]*//;
+            for(;;) {
+                # If the body starts with `;', we assume it must be the start
+                # of a constructor definition.
+                if ($body =~ /^[ \t]*;/) {
+                    # delete the leading `;'
+                    $body =~ s/[^;]*;[ \t]*//;
 
-		    # skip blank lines and comments
-		    while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
-			$_ = <SRCFILE> || last;
-			chop;
-			$body = $_;
+                    # Skip blank lines and comments.
+                    while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
+                        $_ = <SRCFILE> || last;
+                        chop;
+                        $body = $_;
 
-		        # delete leading whitespace
-		        $body =~ s/^[ \t]*//;
+                        # delete leading whitespace
+                        $body =~ s/^[ \t]*//;
 
-		        # delete the leading `;', if any
-		        $body =~ s/[^;%]*;[ \t]*//;
-		    }
+                        # delete the leading `;', if any
+                        $body =~ s/[^;%]*;[ \t]*//;
+                    }
 
-		    $name = $body;
-		    $name =~ s/[ \t;.%].*//;
-		    $kind = "cons";
-		    output_name();
+                    $name = $body;
+                    $name =~ s/[ \t;.%].*//;
+                    $kind = "cons";
 
-		    # Look for field names on the same line as the
-		    # constructor name
-		    while ($body =~ /([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
-		    	$name = $1;
-			$kind = "fld";
-			output_name();
-			$body =~ s/^[^:]*:://;
-		    }
+                    output_name();
 
-		    # if there are more constructor definitions on the
-		    # same line, process the next one
-		    if ($body =~ /;/) {
-			    $body =~ s/[^;]*;/;/;
-			    next;
-		    }
-		} else {
-		    # Look for field names that are not on the
-		    # same line as the constructor name
-		    while ($body =~ /([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
-			$name = $1;
-			$kind = "fld";
-			output_name();
-			$body =~ s/^[^:]*:://;
-		   }
-		}
+                    # Look for field names on the same line as the
+                    # constructor name. Don't allow the line to start with
+                    # a colon, because then the assignment
+                    #
+                    # $body =~ s/^[^:]*:://;
+                    #
+                    # below may leave $body unchanged, leading to an infinite
+                    # loop.
+                    while ($body =~ /^[^:].*([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
+                        $name = $1;
+                        $kind = "fld";
+                        output_name();
+                        $body =~ s/^[^:]*:://;
+                    }
 
-		last if $_ =~ /^[^%]*\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
-		$_ = <SRCFILE> || last;
-		chop;
-		$body = $_;
-	    }
-	} elsif ($decl eq "typeclass") {
+                    # If there are more constructor definitions on the
+                    # same line, process the next one.
+                    if ($body =~ /;/) {
+                        $body =~ s/[^;]*;/;/;
+                        next;
+                    }
+                } else {
+                    # Look for field names that are not on the same line
+                    # as the constructor name.
+                    while ($body =~ /([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
+                        $name = $1;
+                        $kind = "fld";
+                        output_name();
+                        $body =~ s/^[^:]*:://;
+                    }
+                }
 
-	    for(;;) {
+                last if $_ =~ /^[^%]*\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
+                $_ = <SRCFILE> || last;
+                chop;
+                $body = $_;
+            }
+        } elsif ($decl eq "typeclass") {
+            for(;;) {
+                # Assume each method declaration starts on a new line.
+                if ($body =~ /^.*\b(pred|func)[ \t]*/) {
+                    $body =~ s/^.*\b(pred|func)[ \t]*//;
 
-		# Assume each method declaration starts on a new line.
-		if ($body =~ /^.*\b(pred|func)[ \t]*/) {
-		    $body =~ s/^.*\b(pred|func)[ \t]*//;
+                    if ($body =~ /^[ \t]*$/) {
+                        $_ = <SRCFILE> || last;
+                        chop;
+                        $body = $_;
+                    }
 
-		    if ($body =~ /^[ \t]*$/) {
-		    	$_ = <SRCFILE> || last;
-		    	chop;
-		    	$body = $_;
-		    }
+                    $name = $body;
+                    $name =~ s/[(,%].*//;
+                    $kind = "tcm";          # tcm == type class method
+                    output_name();
+                }
 
-		    $name = $body;
-		    $name =~ s/[(,%].*//;
-		    $kind = "tcm";	# tcm == type class method
-		    output_name();
-		}
+                last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
 
-		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
+                $_ = <SRCFILE> || last;
+                chop;
+                $body = $_;
+            }
+        } else { # instance declaration
+            for(;;) {
+                # Assume each method declaration starts on a new line.
+                if ($body =~ /^.*\b(pred\(|func\()/) {
+                    $body =~ s/.*\b(pred\(|func\()//;
 
-		$_ = <SRCFILE> || last;
-		chop;
-		$body = $_;
-	    }
-	} else { # instance declaration
-	    for(;;) {
+                    if ($body =~ /^[ \t]*$/) {
+                        $_ = <SRCFILE> || last;
+                        chop;
+                        $body = $_;
+                    }
 
-		# Assume each method declaration starts on a new line.
-		if ($body =~ /^.*\b(pred\(|func\()/) {
-		    $body =~ s/.*\b(pred\(|func\()//;
+                    $name = $body;
+                    $name =~ s/[\/)].*//;
+                    $kind = "tcim"; # tcim == type class instance method
+                    output_name();
+                }
 
-		    if ($body =~ /^[ \t]*$/) {
-		    	$_ = <SRCFILE> || last;
-		    	chop;
-		    	$body = $_;
-		    }
+                last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
 
-		    $name = $body;
-		    $name =~ s/[\/)].*//;
-		    $kind = "tcim";	# tcim == type class instance method
-		    output_name();
-		}
-
-		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
-
-		$_ = <SRCFILE> || last;
-		chop;
-		$body = $_;
-	    }
-	}
+                $_ = <SRCFILE> || last;
+                chop;
+                $body = $_;
+            }
+        }
     }
     close(SRCFILE) || die "mtags: error closing `$file': $!\n";
 }
