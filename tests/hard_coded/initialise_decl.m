@@ -23,8 +23,8 @@
 
 :- implementation.
 
-:- initialise i1.
-:- initialise i2.
+:- initialise i1/2.
+:- initialize i2/2.
 
 :- pred i1(io::di, io::uo) is det.
 i1(!IO) :- io.print("This is the first initialise pred, i1/2.\n", !IO).

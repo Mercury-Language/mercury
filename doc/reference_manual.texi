@@ -508,6 +508,9 @@ end_module                      fx                1199
 import_module                   fx                1199
 include_module                  fx                1199
 initialise                      fx                1199
+initialize			fx		  1199	
+finalise			fx		  1199 
+finalize			fx		  1199
 inst                            fx                1199
 instance                        fx                1199
 mode                            fx                1199
@@ -4593,21 +4596,30 @@ in their implementation sections.
 An @samp{initialise} directive has the following form:
 
 @example
-:- initialise initpredname.
+:- initialise initpredname/arity.
 @end example
 
-where the predicate @samp{initpredname/2} must be declared with the following
-signature:
+where the predicate @samp{initpredname} must be declared with one of the
+following signatures:
 
 @example
-:- pred initpredname(io::di, io::uo) is det.
+:- pred initpredname(io::di, io::uo) is @var{Det}.
+:- impure pred initpredname is @var{Det}.
 @end example
 
+@var{Det} must be either @samp{det} or @samp{cc_multi}.
+
 The effect of the @samp{initialise} declaration is to ensure that
-@samp{initpredname} is invoked before the program's @samp{main}
+@samp{initpredname/arity} is invoked before the program's @samp{main}
 predicate.  Initialisation predicates within a module are executed in the
 order in which they are specified, although no order may be assumed between
-different modules or sub-modules.
+different modules or sub-modules.  Initialisation predicates are only invoked
+after any intialisation required by the Mercury standard library.
+
+@samp{initialize} is also allowed as a synonym for @samp{initialise}.
+
+Note: @samp{initialise} declarations are currently only supported on
+the C backends.
 
 @node Module finalisation
 @section Module finalisation
@@ -4619,21 +4631,31 @@ implementation sections.
 A @samp{finalise} directive has the following form:
 
 @example
-:- finalise finalpredname.
+:- finalise finalpredname/arity.
 @end example
 
-where the predicate @samp{finalpredname/2} must be declared with the following
-signature:
+where the predicate @samp{finalpredname/arity} must be declared with
+one of the following signature:
 
 @example
-:- pred finalpredname(io::di, io::uo) is det.
+:- pred finalpredname(io::di, io::uo) is @var{Det}.
+:- impure pred finalpredname is @var{Det}
 @end example
 
+@var{Det} must be either @samp{det} or @samp{cc_multi}.
+
 The effect of the @samp{finalise} declaration is to ensure that
-@samp{finalpredname} is invoked after the program's @samp{main}
+@samp{finalpredname/arity} is invoked after the program's @samp{main}
 predicate.  Finalisation predicates within a module are executed in
 the order in which they are specified, although no order may be assumed between
-different modules or sub-modules.
+different modules or sub-modules.  Any finalisation required by the Mercury
+standard library will always occur after any finalisation predicates have been
+invoked.
+
+@samp{finalize} is also allowed as a synonym for @samp{finalise}.
+
+Note: @samp{finalise} declarations are currently only supported on
+the C backends.
 
 @node Module-local mutable variables
 @section Module-local mutable variables
@@ -4702,6 +4724,9 @@ This attribute is not currently implemented for the non-C backends.
 Note that it is an error for a @samp{mutable} directive to appear in the
 interface section of a module.  The usual visibility rules for sub-modules
 apply to the mutable variable access predicates.
+
+Note: @samp{mutable} declarations are currently only supported on
+the C backends.
 
 @node Type classes
 @chapter Type classes

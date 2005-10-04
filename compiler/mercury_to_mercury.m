@@ -761,13 +761,17 @@ mercury_output_item(_, instance(Constraints, ClassName, Types, Body,
         io__write_string("\n]", !IO)
     ),
     io__write_string(".\n", !IO).
-mercury_output_item(_, initialise(_, PredSymName), _, !IO) :-
-    io__write_string(":- initialise ", !IO),
+mercury_output_item(_, initialise(_, PredSymName, Arity), _, !IO) :-
+    io.write_string(":- initialise ", !IO),
     mercury_output_sym_name(PredSymName, !IO),
-    io__write_string(".\n", !IO).
-mercury_output_item(_, finalise(_, PredSymName), _, !IO) :-
+    io.write_string("/", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(".\n", !IO).
+mercury_output_item(_, finalise(_, PredSymName, Arity), _, !IO) :-
     io.write_string(":- finalise ", !IO),
     mercury_output_sym_name(PredSymName, !IO),
+    io.write_string("/", !IO),
+    io.write_int(Arity, !IO),
     io.write_string(".\n", !IO).
 mercury_output_item(_, mutable(Name, Type, InitTerm, Inst, Attrs), _, !IO) :-
     io__write_string(":- mutable(", !IO),

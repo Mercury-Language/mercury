@@ -577,8 +577,8 @@ item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	% qualifier on an instance declaration is the module containing
 	% the class, not the module containing the instance).
 item_to_item_id_2(instance(_, _, _, _, _, _), no).
-item_to_item_id_2(initialise(_, _), no).
-item_to_item_id_2(finalise(_, _), no).
+item_to_item_id_2(initialise(_, _, _), no).
+item_to_item_id_2(finalise(_, _, _), no).
 item_to_item_id_2(mutable(_, _, _, _, _), no).
 item_to_item_id_2(nothing(_), no).
 
@@ -742,10 +742,10 @@ item_is_unchanged(pragma(_, PragmaType1), Item2) = Result :-
 		Result = no
 	).
 item_is_unchanged(nothing(A), Item2) = ( Item2 = nothing(A) -> yes ; no ).
-item_is_unchanged(initialise(O, A), Item2) =
-	( Item2 = initialise(O, A) -> yes ; no ).
-item_is_unchanged(finalise(O, A), Item2) = 
-	( Item2 = finalise(O, A) -> yes ; no ).
+item_is_unchanged(initialise(O, A, B), Item2) =
+	( Item2 = initialise(O, A, B) -> yes ; no ).
+item_is_unchanged(finalise(O, A, B), Item2) = 
+	( Item2 = finalise(O, A, B) -> yes ; no ).
 item_is_unchanged(mutable(A, B, C, D, E), Item2) =
 	( Item2 = mutable(A, B, C, D, E) -> yes ; no ).
 

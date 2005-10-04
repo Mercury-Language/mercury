@@ -2050,9 +2050,9 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
             Item0 = pragma(_, Pragma),
             pragma_allowed_in_interface(Pragma, no)
         ;
-            Item0 = initialise(_, _)
+            Item0 = initialise(_, _, _)
         ;
-            Item0 = finalise(_, _)
+            Item0 = finalise(_, _, _)
         )
      ->
          split_clauses_and_decls(Items0, ClauseItems1, InterfaceItems),
@@ -5758,7 +5758,7 @@ get_item_foreign_code(Globals, Item - Context, !Info) :-
         % (See do_get_item_foreign_code for details/5).
         !:Info = !.Info ^ used_foreign_languages :=
             set__insert(!.Info ^ used_foreign_languages, c)
-    ; ( Item = initialise(_, _) ; Item = finalise(_, _) ) ->
+    ; ( Item = initialise(_, _, _) ; Item = finalise(_, _, _) ) ->
         % Intialise/finalise declarations introduce export pragmas, but
         % again they won't have been expanded by the time we get here.
         % XXX we don't currently support these on non-C backends. 
@@ -7366,8 +7366,8 @@ item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
     ).
 item_needs_imports(instance(_, _, _, _, _, _)) = yes.
 item_needs_imports(promise(_, _, _, _)) = yes.
-item_needs_imports(initialise(_, _)) = yes.
-item_needs_imports(finalise(_, _)) = yes.
+item_needs_imports(initialise(_, _, _)) = yes.
+item_needs_imports(finalise(_, _, _)) = yes.
 item_needs_imports(mutable(_, _, _, _, _)) = yes.
 item_needs_imports(nothing(_)) = no.
 
@@ -7715,8 +7715,8 @@ reorderable_item(clause(_, _, _, _, _, _)) = no.
 reorderable_item(nothing(_)) = no.
 reorderable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
 reorderable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = no.
-reorderable_item(initialise(_, _)) = no.
-reorderable_item(finalise(_, _)) = no.
+reorderable_item(initialise(_, _, _)) = no.
+reorderable_item(finalise(_, _, _)) = no.
 reorderable_item(mutable(_, _, _, _, _)) = no.
 
 :- pred is_chunkable(item_and_context::in) is semidet.
@@ -7802,8 +7802,8 @@ chunkable_item(promise(_, _, _, _)) = yes.
 chunkable_item(typeclass(_, _, _, _, _, _)) = yes.
 chunkable_item(instance(_, _, _, _, _, _)) = yes.
 chunkable_item(clause(_, _, _, _, _, _)) = yes.
-chunkable_item(initialise(_, _)) = yes.
-chunkable_item(finalise(_, _)) = yes.
+chunkable_item(initialise(_, _, _)) = yes.
+chunkable_item(finalise(_, _, _)) = yes.
 chunkable_item(mutable(_, _, _, _, _)) = no.
 chunkable_item(nothing(_)) = yes.
 

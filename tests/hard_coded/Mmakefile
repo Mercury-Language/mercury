@@ -99,6 +99,7 @@ ORDINARY_PROGS=	\
 	impure_foreign \
 	impure_foreign2 \
 	impure_foreign3 \
+	impure_init_and_final \
 	impure_prune \
 	initialise_decl \
 	integer_test \

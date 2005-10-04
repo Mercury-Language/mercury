@@ -443,10 +443,10 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     Item = instance(_, _, _, _, _,_).
 add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     % We add initialise declarations on the third pass.
-    Item = initialise(_, _).
+    Item = initialise(_, _, _).
 add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     % We add finalise declarations on the third pass.
-    Item = finalise(_, _).
+    Item = finalise(_, _, _).
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     % We add the initialise decl and the foreign_decl on the second pass and
     % the foreign_proc clauses on the third pass.
@@ -543,7 +543,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     % These are processed properly during pass 3, we just do some
     % error checking at this point.
-    Item = initialise(Origin, _),
+    Item = initialise(Origin, _, _),
     !.Status = item_status(ImportStatus, _),
     ( ImportStatus = exported ->
         ( 
@@ -571,7 +571,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     % There are processed properly during pass 3, we just do some error
     % checking at this point.
-    Item = finalise(Origin, _),
+    Item = finalise(Origin, _, _),
     !.Status = item_status(ImportStatus, _),
     ( ImportStatus = exported ->
         ( 
@@ -720,11 +720,10 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             (
                 % Ignore clauses that are introduced as a result of
                 % `intialise', `finalise' or `mutable' declarations.
-                Details = initialise_decl
-            ;
-                Details = mutable_decl
-            ;
-                Details = finalise_decl
+                ( Details = initialise_decl
+                ; Details = mutable_decl
+                ; Details = finalise_decl
+                )
             ;
                 ( Details = solver_type ; Details = foreign_imports ),
                 unexpected(this_file, "Bad introduced clauses.")
@@ -903,19 +902,19 @@ add_item_clause(typeclass(_, _, _, _, _, _), !Status, _, !ModuleInfo,
         !QualInfo, !IO).
 add_item_clause(instance(_, _, _, _, _, _), !Status, _, !ModuleInfo, !QualInfo,
         !IO).
-add_item_clause(initialise(user, SymName), !Status, Context, !ModuleInfo,
-        !QualInfo, !IO) :-
+add_item_clause(initialise(user, SymName, Arity), !Status, Context,
+        !ModuleInfo, !QualInfo, !IO) :-
     % 
     % To handle a `:- initialise initpred.' declaration we need to:
     % (1) construct a new C function name, CName, to use to export initpred,
-    % (2) add `:- pragma export(initpred(di, uo), CName).',
+    % (2) add the export pragma that does this
     % (3) record the initpred/cname pair in the ModuleInfo so that
     % code generation can ensure cname is called during module initialisation.
     %
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     (
         predicate_table_search_pred_sym_arity(PredTable,
-            may_be_partially_qualified, SymName, 2 /* Arity */, PredIds)
+            may_be_partially_qualified, SymName, Arity, PredIds)
     ->
         (
             PredIds = [PredId]
@@ -926,15 +925,17 @@ add_item_clause(initialise(user, SymName), !Status, Context, !ModuleInfo,
             ProcInfos = map.values(ProcTable),
             (
                 ArgTypes = [Arg1Type, Arg2Type],
-                type_util__type_is_io_state(Arg1Type),
-                type_util__type_is_io_state(Arg2Type),
+                type_util.type_is_io_state(Arg1Type),
+                type_util.type_is_io_state(Arg2Type),
                 list.member(ProcInfo, ProcInfos),
                 proc_info_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
                 MaybeHeadModes = yes(HeadModes),
                 HeadModes = [ di_mode, uo_mode ],
                 proc_info_declared_determinism(ProcInfo, MaybeDetism),
                 MaybeDetism = yes(Detism),
-                ( Detism = det ; Detism = cc_multidet )
+                ( Detism = det ; Detism = cc_multidet ),
+                pred_info_get_purity(PredInfo, Purity),
+                Purity = pure
             ->
                 module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
@@ -943,39 +944,57 @@ add_item_clause(initialise(user, SymName), !Status, Context, !ModuleInfo,
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !IO)
             ;
+                ArgTypes = [],
+                list.member(ProcInfo, ProcInfos),
+                proc_info_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+                MaybeHeadModes = yes(HeadModes),
+                HeadModes = [],
+                proc_info_declared_determinism(ProcInfo, MaybeDetism),
+                MaybeDetism = yes(Detism),
+                ( Detism = det; Detism = cc_multidet ),
+                pred_info_get_purity(PredInfo, Purity),
+                Purity = (impure)
+            ->
+                module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
+                PragmaExportedItem = 
+                    pragma(compiler(initialise_decl),
+                        export(SymName, predicate, [], CName)),
+                add_item_clause(PragmaExportedItem, !Status, Context,
+                    !ModuleInfo, !QualInfo, !IO)
+            ;
                 write_error_pieces(Context, 0,
                     [
                         words("Error:"),
-                        sym_name_and_arity(SymName/2),
-                        words("used in initialise declaration does not"),
-                        words("have signature"),
-                        fixed("`pred(io::di, io::uo) is det'")
+                        sym_name_and_arity(SymName/Arity),
+                        words("used in initialise declaration has"),
+                        words("invalid signature.")
                     ], !IO),
+                %
+                % TODO: provide verbose error information here.
+                %
                 module_info_incr_errors(!ModuleInfo)
             )
         ;
             write_error_pieces(Context, 0, [words("Error:"),
-                sym_name_and_arity(SymName/2),
+                sym_name_and_arity(SymName/Arity),
                 words(" used in initialise declaration has " ++
                 "multiple pred declarations.")], !IO),
             module_info_incr_errors(!ModuleInfo)
         )
     ;
         write_error_pieces(Context, 0, [words("Error:"),
-            sym_name_and_arity(SymName/2),
+            sym_name_and_arity(SymName/Arity),
             words(" used in initialise declaration does " ++
             "not have a corresponding pred declaration.")], !IO),
         module_info_incr_errors(!ModuleInfo)
     ).
-add_item_clause(initialise(compiler(Details), SymName), !Status, Context,
-        !ModuleInfo, !QualInfo, !IO) :-
+add_item_clause(initialise(compiler(Details), SymName, _Arity),
+        !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     %
     % The compiler introduces initialise declarations that call
     % impure predicates as part of the source-to-source transformation
     % for mutable variables.  These predicates *must* be impure in order
-    % to prevent the compiler optimizing them away.  We only allow
-    % the compiler to introduce impure initialisers - it is an error
-    % for the user to do so.
+    % to prevent the compiler optimizing them away.
     %
     ( Details = mutable_decl ->
         module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
@@ -987,8 +1006,8 @@ add_item_clause(initialise(compiler(Details), SymName), !Status, Context,
     ;
         unexpected(this_file, "Bad introduced initialise declaration.")
     ).
-add_item_clause(finalise(Origin, SymName), !Status, Context, !ModuleInfo,
-        !QualInfo, !IO) :-
+add_item_clause(finalise(Origin, SymName, Arity),
+        !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     % 
     % To handle a `:- finalise finalpred.' declaration we need to:
     % (1) construct a new C function name, CName, to use to export finalpred,
@@ -1004,7 +1023,7 @@ add_item_clause(finalise(Origin, SymName), !Status, Context, !ModuleInfo,
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     (
         predicate_table_search_pred_sym_arity(PredTable,
-            may_be_partially_qualified, SymName, 2 /* Arity */, PredIds)
+            may_be_partially_qualified, SymName, Arity, PredIds)
     ->
         (
             PredIds = [PredId]
@@ -1015,15 +1034,17 @@ add_item_clause(finalise(Origin, SymName), !Status, Context, !ModuleInfo,
             ProcInfos = map.values(ProcTable),
             (
                 ArgTypes = [Arg1Type, Arg2Type],
-                type_util__type_is_io_state(Arg1Type),
-                type_util__type_is_io_state(Arg2Type),
+                type_util.type_is_io_state(Arg1Type),
+                type_util.type_is_io_state(Arg2Type),
                 list.member(ProcInfo, ProcInfos),
                 proc_info_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
                 MaybeHeadModes = yes(HeadModes),
                 HeadModes = [ di_mode, uo_mode ],
                 proc_info_declared_determinism(ProcInfo, MaybeDetism),
                 MaybeDetism = yes(Detism),
-                ( Detism = det ; Detism = cc_multidet )
+                ( Detism = det ; Detism = cc_multidet ),
+                pred_info_get_purity(PredInfo, Purity),
+                Purity = pure
             ->
                 module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
@@ -1032,26 +1053,44 @@ add_item_clause(finalise(Origin, SymName), !Status, Context, !ModuleInfo,
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !IO)
             ;
+                ArgTypes = [],
+                list.member(ProcInfo, ProcInfos),
+                proc_info_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
+                MaybeHeadModes = yes(HeadModes),
+                HeadModes = [],
+                proc_info_declared_determinism(ProcInfo, MaybeDetism),
+                MaybeDetism = yes(Detism),
+                ( Detism = det; Detism = cc_multidet ),
+                pred_info_get_purity(PredInfo, Purity),
+                Purity = (impure)
+            ->
+                module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
+                PragmaExportItem =
+                    pragma(compiler(finalise_decl),
+                        export(SymName, predicate, [], CName)),
+                add_item_clause(PragmaExportItem, !Status, Context,
+                    !ModuleInfo, !QualInfo, !IO)
+            ;
+
                 write_error_pieces(Context, 0,
                     [
                         words("Error:"),
-                        sym_name_and_arity(SymName/2),
-                        words("used in finalise declaration does not"),
-                        words("have signature"),
-                        fixed("`pred(io::di, io::uo) is det'")
+                        sym_name_and_arity(SymName/Arity),
+                        words("used in finalise declaration has"),
+                        words("invalid signature.")
                     ], !IO),
                 module_info_incr_errors(!ModuleInfo)
             )
         ;
             write_error_pieces(Context, 0, [words("Error:"),
-                sym_name_and_arity(SymName/2),
+                sym_name_and_arity(SymName/Arity),
                 words(" used in finalise declaration has " ++
                 "multiple pred declarations.")], !IO),
             module_info_incr_errors(!ModuleInfo)
         )
     ;
         write_error_pieces(Context, 0, [words("Error:"),
-            sym_name_and_arity(SymName/2),
+            sym_name_and_arity(SymName/Arity),
             words(" used in finalise declaration does " ++
             "not have a corresponding pred declaration.")], !IO),
         module_info_incr_errors(!ModuleInfo)
@@ -1069,7 +1108,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             Attrs = Attrs1
         ),
         add_item_clause(initialise(compiler(mutable_decl),
-                mutable_init_pred_sym_name(ModuleName, Name)),
+                mutable_init_pred_sym_name(ModuleName, Name), 0 /* Arity */),
             !Status, Context, !ModuleInfo, !QualInfo, !IO),
         InitClause = clause(compiler(mutable_decl), varset.init, predicate,
             mutable_init_pred_sym_name(ModuleName, Name), [],

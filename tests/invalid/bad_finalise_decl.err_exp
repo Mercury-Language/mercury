@@ -1,7 +1,9 @@
+bad_finalise_decl.m:025: Error: `finalise' declaration requires arity: i4.
+bad_finalise_decl.m:026: Error: `finalise' declaration specifies a predicate whose arity is not zero or two: i5 / 6.
 bad_finalise_decl.m:016: Error: `finalise' declaration in module interface.
-bad_finalise_decl.m:016: Error: `i2'/2 used in finalise declaration does not
-bad_finalise_decl.m:016:   have signature `pred(io::di, io::uo) is det'
-bad_finalise_decl.m:023: Error: `i1'/2 used in finalise declaration does not
-bad_finalise_decl.m:023:   have signature `pred(io::di, io::uo) is det'
+bad_finalise_decl.m:016: Error: `i2'/2 used in finalise declaration has invalid
+bad_finalise_decl.m:016:   signature.
+bad_finalise_decl.m:023: Error: `i1'/2 used in finalise declaration has invalid
+bad_finalise_decl.m:023:   signature.
 bad_finalise_decl.m:024: Error: `i3'/2 used in finalise declaration does not
 bad_finalise_decl.m:024:   have a corresponding pred declaration.

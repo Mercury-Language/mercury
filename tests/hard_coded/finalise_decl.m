@@ -18,8 +18,8 @@
 
 :- implementation.
 
-:- finalise i1.
-:- finalise i2.
+:- finalise i1/2.
+:- finalize i2/2.
 
 :- pred i1(io::di, io::uo) is det.
 i1(!IO) :- io.print("This is the first finalise pred, i1/2.\n", !IO).

@@ -14,7 +14,7 @@
 
 :- implementation.
 
-:- finalise parent_final.
+:- finalise parent_final/2.
 
 :- pred parent_final(io::di, io::uo) is det.
 

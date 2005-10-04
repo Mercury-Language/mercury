@@ -6,7 +6,7 @@
 
 :- implementation.
 
-:- initialise child_init.
+:- initialise child_init/2.
 
 :- pred child_init(io::di, io::uo) is det.
 

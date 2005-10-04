@@ -14,7 +14,7 @@
 
 :- implementation.
 
-:- initialise parent_init.
+:- initialise parent_init/2.
 
 :- pred parent_init(io::di, io::uo) is det.
 

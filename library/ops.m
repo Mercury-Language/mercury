@@ -311,7 +311,9 @@ ops__op_table("import_module", before, fx, 1199). % Mercury extension
 ops__op_table("include_module", before, fx, 1199). % Mercury extension
 ops__op_table("impure", before, fy, 800).	% Mercury extension
 ops__op_table("initialise", before, fx, 1199).	% Mercury extension
+ops__op_table("initialize", before, fx, 1199).	% Mercury extension
 ops__op_table("finalise", before, fx, 1199).	% Mercury extension
+ops__op_table("finalize", before, fx, 1199).	% Mercury extension
 ops__op_table("inst", before, fx, 1199).	% Mercury extension
 ops__op_table("instance", before, fx, 1199).	% Mercury extension
 ops__op_table("is", after, xfx, 701).		% ISO Prolog says prec 700

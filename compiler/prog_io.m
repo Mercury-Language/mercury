@@ -1422,11 +1422,13 @@ process_decl(ModuleName, VarSet0, "version_numbers",
 		)
 	).
 
-process_decl(ModuleName, VarSet, "initialise", Args, Attributes, Result) :-
+process_decl(ModuleName, VarSet, InitDecl, Args, Attributes, Result) :-
+	( InitDecl = "initialise" ; InitDecl = "initialize" ),
 	parse_initialise_decl(ModuleName, VarSet, Args, Result0),
 	check_no_attributes(Result0, Attributes, Result).
 
-process_decl(ModuleName, VarSet, "finalise", Args, Attributes, Result) :-
+process_decl(ModuleName, VarSet, FinalDecl, Args, Attributes, Result) :-
+	( FinalDecl = "finalise" ; FinalDecl = "finalize" ),
 	parse_finalise_decl(ModuleName, VarSet, Args, Result0),
 	check_no_attributes(Result0, Attributes, Result).
 
@@ -1801,20 +1803,21 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Result) :-
 		MaybeSymNameSpecifier = error(ErrMsg, Trm),
 		Result = error(ErrMsg, Trm)
 	;
-		MaybeSymNameSpecifier = ok(SymNameSpecifier),
-		(
-			SymNameSpecifier = name(SymName),
-			Result = ok(initialise(user, SymName))
+		MaybeSymNameSpecifier = ok(SymNameSpecifier), 
+		( 
+			SymNameSpecifier = name(_), 
+			Result = error("`initialise' " ++ 
+				"declaration requires arity", Term)
 		;
 			SymNameSpecifier = name_arity(SymName, Arity),
 			(
-				Arity = 2
+				( Arity = 2 ; Arity = 0 )
 			->
-				Result = ok(initialise(user, SymName))
+				Result = ok(initialise(user, SymName, Arity))
 			;
-				Result = error("an initialise " ++
-				"declaration can only apply to " ++
-				"an arity 2 predicate", Term)
+				Result = error("`initialise' " ++
+				"declaration specifies a predicate " ++
+				"whose arity is not zero or two", Term)
 			)
 		)
 	).
@@ -1832,18 +1835,19 @@ parse_finalise_decl(_ModuleName, _VarSet, [Term], Result) :-
 	;
 		MaybeSymNameSpecifier = ok(SymNameSpecifier),
 		(
-			SymNameSpecifier = name(SymName),
-			Result = ok(finalise(user, SymName))
+			SymNameSpecifier = name(_),
+			Result = error("`finalise' " ++
+				"declaration requires arity", Term)
 		;
 			SymNameSpecifier = name_arity(SymName, Arity),
 			(
-				Arity = 2
+				( Arity = 2 ; Arity = 0)
 			->
-				Result = ok(finalise(user, SymName))
+				Result = ok(finalise(user, SymName, Arity))
 			;
-				Result = error("a finalise " ++
-				"declaration can only apply to " ++
-				"an arity 2 predicate", Term)
+				Result = error("`finalise' " ++
+				"declaration specifies a predicate " ++
+				"whose arity is not zero or two", Term)
 			)
 		)
 	).

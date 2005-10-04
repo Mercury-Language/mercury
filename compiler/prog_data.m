@@ -200,10 +200,10 @@
 		)
 
 		% :- initialise pred_name.
-	;	initialise(item_origin, sym_name)
+	;	initialise(item_origin, sym_name, arity)
 	
 		% :- finalise pred_name.
-	;	finalise(item_origin, sym_name)
+	;	finalise(item_origin, sym_name, arity)
 	
 		% :- mutable(var_name, type, inst, value, attrs).
 	;	mutable(

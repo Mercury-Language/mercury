@@ -16,15 +16,17 @@
 
 :- pred main(io::di, io::uo) is det.
 
-:- initialise i2.
+:- initialise i2/2.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- initialise i1.
-:- initialise i3.
+:- initialise i1/2.
+:- initialise i3/2.
+:- initialise i4.
+:- initialise i5/6.
 
 :- pred i1(T::di, T::uo) is det.
 i1(X, X).
