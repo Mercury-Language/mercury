@@ -531,7 +531,6 @@ static  void    output_main_init_function(Purpose purpose, int num_bunches);
 static  void    output_aditi_load_function(void);
 static  void    output_main(void);
 static  void    process_file(const char *filename);
-static  void    process_c_file(const char *filename);
 static  void    process_init_file(const char *filename);
 static  void    output_init_function(const char *func_name,
                     int *num_bunches_ptr, int *num_calls_in_cur_bunch_ptr,
@@ -573,6 +572,10 @@ strerror(int errnum)
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef  CHECK_GET_LINE
+FILE    *check_fp;
+#endif
+
 int
 main(int argc, char **argv)
 {
@@ -583,6 +586,11 @@ main(int argc, char **argv)
     MR_progname = argv[0];
 
     parse_options(argc, argv);
+
+#ifdef  CHECK_GET_LINE
+    check_fp = fopen(".check_get_line", "w");
+    /* If the open fails, we won't write to the file */
+#endif
 
     set_output_file();
 
@@ -1155,93 +1163,21 @@ process_file(const char *filename)
 }
 
 static void
-process_c_file(const char *filename)
-{
-    char    func_name[1000];
-    char    *position;
-    int     i;
-
-    /* remove the directory name, if any */
-    if ((position = strrchr(filename, '/')) != NULL) {
-        filename = position + 1;
-    }
-    /*
-    ** There's not meant to be an `else' here -- we need to handle
-    ** file names that contain both `/' and '\\'.
-    */
-    if ((position = strrchr(filename, '\\')) != NULL) {
-        filename = position + 1;
-    }
-
-    /*
-    ** The func name is "mercury__<modulename>__init",
-    ** where <modulename> is the base filename with
-    ** all `.'s replaced with `__', and with each
-    ** component of the module name mangled according
-    ** to the algorithm in llds_out__name_mangle/2
-    ** in compiler/llds_out.m.
-    **
-    ** XXX We don't handle the full name mangling algorithm here;
-    ** instead we use a simplified version:
-    ** - if there are no special charaters, but the
-    **   name starts with `f_', then replace the leading
-    **   `f_' with `f__'
-    ** - if there are any special characters, give up
-    */
-
-    /* check for special characters */
-    for (i = 0; filename[i] != '\0'; i++) {
-        if (filename[i] != '.' && !MR_isalnumunder(filename[i])) {
-            fprintf(stderr, "mkinit: sorry, file names containing "
-                "special characters are not supported.\n");
-            fprintf(stderr, "File name `%s' contains special "
-                "character `%c'.\n", filename, filename[i]);
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    strcpy(func_name, "mercury");
-    while ((position = strchr(filename, '.')) != NULL) {
-        strcat(func_name, "__");
-        /* replace `f_' with `f__' */
-        if (strncmp(filename, "f_", 2) == 0) {
-            strcat(func_name, "f__");
-            filename += 2;
-        }
-        strncat(func_name, filename, position - filename);
-        filename = position + 1;
-    }
-    /*
-    ** The trailing stuff after the last `.' should just be the `c' suffix.
-    */
-    strcat(func_name, "__");
-
-    MR_ensure_room_for_next(std_module, const char *, MR_INIT_STD_MODULE_SIZE);
-    std_modules[std_module_next] = checked_strdup(func_name);
-    std_module_next++;
-
-    if (aditi) {
-        char    *rl_data_name;
-        int     module_name_size;
-        int     mercury_len;
-
-        mercury_len = strlen("mercury__");
-        module_name_size = strlen(func_name) - mercury_len - strlen("__");
-        rl_data_name = checked_malloc(module_name_size +
-            strlen(aditi_rl_data_str) + 1);
-        strcpy(rl_data_name, aditi_rl_data_str);
-        strncat(rl_data_name, func_name + mercury_len, module_name_size);
-        add_rl_data(rl_data_name);
-    }
-}
-
-static void
 process_init_file(const char *filename)
 {
+    /*
+    ** The strings that are supposed to be followed by other information
+    ** (INIT, REQUIRED_INIT, REQUIRED_FINAL, and ADITI_DATA) should end with
+    ** the space that separates the keyword from the following data.
+    ** The string that is not supposed to be following by other information
+    ** (ENDINIT) should not have a following space, since llds_out.m doesn't
+    ** add that space.
+    */
+
     const char * const  init_str = "INIT ";
     const char * const  reqinit_str = "REQUIRED_INIT ";
     const char * const  reqfinal_str = "REQUIRED_FINAL ";
-    const char * const  endinit_str = "ENDINIT ";
+    const char * const  endinit_str = "ENDINIT";
     const char * const  aditi_init_str = "ADITI_DATA ";
     const int           init_strlen = strlen(init_str);
     const int           reqinit_strlen = strlen(reqinit_str);
@@ -1313,7 +1249,8 @@ process_init_file(const char *filename)
             func_name = line + reqfinal_strlen;
             MR_ensure_room_for_next(req_final_module, const char *,
                 MR_FINAL_REQ_MODULE_SIZE);
-            req_final_modules[req_final_module_next] = checked_strdup(func_name);
+            req_final_modules[req_final_module_next] =
+                checked_strdup(func_name);
             req_final_module_next++;
         } else if (aditi &&
             strncmp(line, aditi_init_str, aditi_init_strlen) == 0)
@@ -1485,7 +1422,9 @@ add_rl_data(char *data)
 static int
 get_line(FILE *file, char *line, int line_max)
 {
-    int c, num_chars, limit;
+    int c;
+    int num_chars;
+    int limit;
 
     num_chars = 0;
     limit = line_max - 2;
@@ -1500,6 +1439,13 @@ get_line(FILE *file, char *line, int line_max)
     }
 
     line[num_chars] = '\0';
+
+#ifdef  CHECK_GET_LINE
+    if (check_fp != NULL) {
+        fprintf(check_fp, "%s", line);
+    }
+#endif
+
     return num_chars;
 }
 
