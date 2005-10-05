@@ -8365,7 +8365,7 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
     { "breakpoint", "ignore", MR_trace_cmd_ignore,
         MR_trace_ignore_cmd_args, MR_trace_null_completer },
     { "breakpoint", "break_print", MR_trace_cmd_break_print,
-        NULL, MR_trace_null_completer },
+        NULL, MR_trace_var_completer },
     { "breakpoint", "enable", MR_trace_cmd_enable,
         NULL, MR_trace_null_completer },
     { "breakpoint", "disable", MR_trace_cmd_disable,
