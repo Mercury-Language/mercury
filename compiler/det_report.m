@@ -861,7 +861,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     % both out. (The latter can happen if there is a determinism error
     % in a function call inside some unification.)
     %
-    ( Origin = special_pred(unify - _) ->
+    ( Origin = special_pred(spec_pred_unify - _) ->
         (
             CallUnifyContext = yes(call_unify_context(LHS, RHS, UC)),
             First = yes, Last = yes,

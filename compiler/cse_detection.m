@@ -621,9 +621,14 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
     map__det_insert(VarTypes0, NFV, Type, VarTypes),
     !:OldNewVar = [OFV - NFV | !.OldNewVar],
     UnifyContext = unify_context(MainCtxt, SubCtxt),
-    create_atomic_unification(OFV, var(NFV),
+    % It is ok to create complicated unifications here, because we rerun
+    % mode analysis on the resulting goal. It would be nicer to generate
+    % the right assignment unification directly, but that would require keeping
+    % track of the inst of OFV.
+    create_atomic_complicated_unification(OFV, var(NFV),
         Context, MainCtxt, SubCtxt, Goal),
-    !:CseInfo = (!.CseInfo ^ varset := VarSet) ^ vartypes := VarTypes.
+    !:CseInfo = !.CseInfo ^ varset := VarSet,
+    !:CseInfo = !.CseInfo ^ vartypes := VarTypes.
 
 %-----------------------------------------------------------------------------%
 
@@ -663,7 +668,11 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
         Replacements = Replacements1
     ;
         UnifyContext = unify_context(MainCtxt, SubCtxt),
-        create_atomic_unification(HoistedVar, var(OldVar),
+        % It is ok to create complicated unifications here, because we rerun
+        % mode analysis on the resulting goal. It would be nicer to generate
+        % the right assignment unification directly, but that would require
+        % keeping track of the inst of OldVar.
+        create_atomic_complicated_unification(HoistedVar, var(OldVar),
             Context, MainCtxt, SubCtxt, Goal),
         Replacements = [Goal | Replacements1]
     ).

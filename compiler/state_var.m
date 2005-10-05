@@ -479,7 +479,7 @@ add_svar_unifier(MaybeFeature, RHSMap, Context, StateVar, Var, Unifiers0)
     = hlds_goal.
 
 svar_unification(MaybeFeature, Context, SVar, Var) = Unification :-
-    hlds_goal__create_atomic_unification(SVar, var(Var), Context,
+    create_atomic_complicated_unification(SVar, var(Var), Context,
         implicit("state variable"), [], Unification0),
     (
         MaybeFeature = no,

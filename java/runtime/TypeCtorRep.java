@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001-2004 The University of Melbourne.
+// Copyright (C) 2001-2005 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -51,7 +51,9 @@ public class TypeCtorRep {
 	public static final int MR_TYPECTOR_REP_REFERENCE = 38;
 	public static final int MR_TYPECTOR_REP_STABLE_C_POINTER = 39;
 	public static final int MR_TYPECTOR_REP_STABLE_FOREIGN = 40;
-	public static final int MR_TYPECTOR_REP_UNKNOWN = 41;
+	public static final int MR_TYPECTOR_REP_PSEUDOTYPEDESC = 41;
+	public static final int MR_TYPECTOR_REP_DUMMY = 42;
+	public static final int MR_TYPECTOR_REP_UNKNOWN = 43;
 	
 	// Instance variable for TypeCtorRep objects.
 	

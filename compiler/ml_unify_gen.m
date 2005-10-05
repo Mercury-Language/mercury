@@ -122,12 +122,12 @@
 
 ml_gen_unification(Unification, CodeModel, Context, [], Statements, !Info) :-
     Unification = assign(Var1, Var2),
-    require(unify(CodeModel, model_det),
-        "ml_code_gen: assign not det"),
+    require(unify(CodeModel, model_det), "ml_code_gen: assign not det"),
     (
         % Skip dummy argument types, since they will not have been declared.
         ml_variable_type(!.Info, Var1, Type),
-        type_util__is_dummy_argument_type(Type)
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        is_dummy_argument_type(ModuleInfo, Type)
     ->
         Statements = []
     ;
@@ -1146,8 +1146,8 @@ ml_gen_cons_args(Lvals, ArgTypes, ConsArgTypes, UniModes, ModuleInfo,
         % Compute the value of the field.
         UniMode = ((_LI - RI) -> (_LF - RF)),
         (
-            ( type_util__is_dummy_argument_type(ArgType)
-            ; type_util__is_dummy_argument_type(ConsArgType)
+            ( is_dummy_argument_type(ModuleInfo, ArgType)
+            ; is_dummy_argument_type(ModuleInfo, ConsArgType)
             )
         ->
             Rval = const(null(MLDS_Type))
@@ -1497,8 +1497,8 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
     mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
     (
         % Skip dummy argument types, since they will not have been declared.
-        ( type_util__is_dummy_argument_type(ArgType)
-        ; type_util__is_dummy_argument_type(FieldType)
+        ( is_dummy_argument_type(ModuleInfo, ArgType)
+        ; is_dummy_argument_type(ModuleInfo, FieldType)
         )
     ->
         true

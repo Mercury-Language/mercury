@@ -1217,7 +1217,14 @@ get_pragma_input_vars([Arg | Args], Inputs, Code, !CI) :-
         VarType = variable_type(!.CI, Var),
         code_info__produce_variable(Var, FirstCode, Rval, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
-        Input = pragma_c_input(Name, VarType, OrigType, Rval, MaybeForeign),
+        code_info__get_module_info(!.CI, ModuleInfo),
+        ( is_dummy_argument_type(ModuleInfo, VarType) ->
+            IsDummy = yes
+        ;
+            IsDummy = no
+        ),
+        Input = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval,
+            MaybeForeign),
         get_pragma_input_vars(Args, Inputs1, RestCode, !CI),
         Inputs = [Input | Inputs1],
         Code = tree(FirstCode, RestCode)
@@ -1286,9 +1293,15 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs, !CI) :-
         code_info__set_var_location(Var, Reg, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
         ( var_is_not_singleton(MaybeName, Name) ->
+            code_info__get_module_info(!.CI, ModuleInfo),
             VarType = variable_type(!.CI, Var),
-            PragmaCOutput = pragma_c_output(Reg, VarType, OrigType, Name,
-                MaybeForeign),
+            ( is_dummy_argument_type(ModuleInfo, VarType) ->
+                IsDummy = yes
+            ;
+                IsDummy = no
+            ),
+            PragmaCOutput = pragma_c_output(Reg, VarType, IsDummy, OrigType,
+                Name, MaybeForeign),
             Outputs = [PragmaCOutput | OutputsTail]
         ;
             Outputs = OutputsTail
@@ -1318,7 +1331,13 @@ input_descs_from_arg_info(CI, [Arg | Args], Inputs) :-
         ArgInfo = arg_info(N, _),
         Reg = reg(r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
-        Input = pragma_c_input(Name, VarType, OrigType, lval(Reg),
+        code_info__get_module_info(CI, ModuleInfo),
+        ( is_dummy_argument_type(ModuleInfo, VarType) ->
+            IsDummy = yes
+        ;
+            IsDummy = no
+        ),
+        Input = pragma_c_input(Name, VarType, IsDummy, OrigType, lval(Reg),
             MaybeForeign),
         Inputs = [Input | InputsTail]
     ;
@@ -1343,7 +1362,14 @@ output_descs_from_arg_info(CI, [Arg | Args], Outputs) :-
         ArgInfo = arg_info(N, _),
         Reg = reg(r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
-        Output = pragma_c_output(Reg, VarType, OrigType, Name, MaybeForeign),
+        code_info__get_module_info(CI, ModuleInfo),
+        ( is_dummy_argument_type(ModuleInfo, VarType) ->
+            IsDummy = yes
+        ;
+            IsDummy = no
+        ),
+        Output = pragma_c_output(Reg, VarType, IsDummy, OrigType, Name,
+            MaybeForeign),
         Outputs = [Output | OutputsTail]
     ;
         Outputs = OutputsTail

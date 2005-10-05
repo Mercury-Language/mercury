@@ -2016,6 +2016,7 @@ type_may_contain_solver_type_2(float_type) = no.
 type_may_contain_solver_type_2(higher_order_type) = no.
 type_may_contain_solver_type_2(tuple_type) = yes.
 type_may_contain_solver_type_2(enum_type) = no.
+type_may_contain_solver_type_2(dummy_type) = no.
 type_may_contain_solver_type_2(variable_type) = yes.
 type_may_contain_solver_type_2(type_info_type) = no.
 type_may_contain_solver_type_2(type_ctor_info_type) = no.

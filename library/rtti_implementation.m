@@ -152,6 +152,7 @@
 	;	stable_c_pointer
 	;	stable_foreign
 	;	pseudo_type_desc
+	;	dummy
 	;	unknown.
 
 	% We keep all the other types abstract.
@@ -200,6 +201,9 @@ num_functors(TypeDesc) = NumFunctors :-
 	;
 		TypeCtorRep = enum_usereq,
 		NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
+	;
+		TypeCtorRep = dummy,
+		NumFunctors = 1
 	;
 		TypeCtorRep = notag,
 		NumFunctors = 1
@@ -358,6 +362,10 @@ get_functor_impl(TypeDesc, FunctorNumber,
 			FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
 	;
 		TypeCtorRep = enum_usereq,
+		get_functor_enum(TypeCtorRep, TypeCtorInfo,
+			FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
+	;
+		TypeCtorRep = dummy,
 		get_functor_enum(TypeCtorRep, TypeCtorInfo,
 			FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
 	;
@@ -1109,6 +1117,14 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		TypeFunctors = type_ctor_functors(TypeCtorInfo),
 		EnumFunctorDesc = enum_functor_desc(TypeCtorRep,
 			unsafe_get_enum_value(Term), TypeFunctors),
+		Functor = enum_functor_name(EnumFunctorDesc),
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = dummy,
+		TypeFunctors = type_ctor_functors(TypeCtorInfo),
+		EnumFunctorDesc = enum_functor_desc(TypeCtorRep,
+			0, TypeFunctors),
 		Functor = enum_functor_name(EnumFunctorDesc),
 		Arity = 0,
 		Arguments = []
@@ -2450,7 +2466,7 @@ unsafe_cast(_) = _ :-
 	"mercury.runtime.NotagFunctorDesc").
 
 :- inst du == bound(du; du_usereq; reserved_addr; reserved_addr_usereq).
-:- inst enum == bound(enum ; enum_usereq).
+:- inst enum == bound(enum ; enum_usereq ; dummy).
 :- inst notag == bound(notag ; notag_usereq ;
 	notag_ground ; notag_ground_usereq).
 

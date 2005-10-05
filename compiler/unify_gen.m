@@ -920,7 +920,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
             Modes = [Mode]
         ->
             VarType = code_info__variable_type(!.CI, Var),
-            ( is_dummy_argument_type(VarType) ->
+            code_info__get_module_info(!.CI, ModuleInfo),
+            ( is_dummy_argument_type(ModuleInfo, VarType) ->
                 % We must handle this case specially. If we didn't, the
                 % generated code would copy the reference to the Var's
                 % current location, which may be stackvar(N) or framevar(N)

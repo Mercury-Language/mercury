@@ -563,6 +563,9 @@
                 % The type of the Mercury variable being passed.
                 in_var_type                 :: (type),
 
+                % Whether in_var_type is a dummy type.
+                in_var_type_is_dummy        :: bool,
+
                 % The type of the argument in original foreign_proc procedure.
                 % If the foreign_proc was inlined in some other procedure,
                 % then the in_var_type can be an instance of in_original_type;
@@ -587,6 +590,9 @@
 
                 % The type of the Mercury variable being passed.
                 out_var_type                :: (type),
+
+                % Whether out_var_type is a dummy type.
+                out_var_type_is_dummy       :: bool,
 
                 % The type of the argument in original foreign_proc procedure;
                 % see in_original_type above.

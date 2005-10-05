@@ -75,7 +75,7 @@
 ** compiler/type_ctor_info.m and with MR_RTTI_VERSION in mercury_mcpp.h.
 */
 
-#define MR_RTTI_VERSION                 MR_RTTI_VERSION__TYPE_INFO_ZERO
+#define MR_RTTI_VERSION                 MR_RTTI_VERSION__DUMMY
 #define MR_RTTI_VERSION__INITIAL        2
 #define MR_RTTI_VERSION__USEREQ         3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT   4
@@ -85,6 +85,7 @@
 #define MR_RTTI_VERSION__FLAG           8
 #define MR_RTTI_VERSION__STABLE_FOREIGN 9
 #define MR_RTTI_VERSION__TYPE_INFO_ZERO 10
+#define MR_RTTI_VERSION__DUMMY          11
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -100,7 +101,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__TYPE_INFO_ZERO)
+    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__DUMMY)
 
 /*---------------------------------------------------------------------------*/
 
@@ -608,14 +609,15 @@ extern  MR_Word MR_typeclass_ref_error(MR_Word tci, int n, const char *msg);
 ** constructor.
 **
 ** Any changes in this definition will also require changes in
-** MR_CTOR_REP_NAMES below, in runtime/mercury_mcpp.{h,cpp}, in
+** MR_CTOR_REP_NAMES below, in runtime/mercury_mcpp.h, in
 ** library/rtti_implementation.m (definitely the list of type_ctor_reps,
-** maybe the bodies of predicates), in library/private_builtin.m,
-** in compiler/mlds_to_gcc.m, and in java/runtime/TypeCtorRep.java.
+** maybe the bodies of predicates), in library/private_builtin.m (in two
+** places), in java/runtime/TypeCtorRep.java, in compiler/mlds_to_gcc.m,
+** and compiler/rtti.m.
 **
-** Additions to the end of this enum can be handled naturally,
-** but changes in the meanings of already assigned values
-** require bootstrapping with RTTI-version-dependent code.
+** Additions to the end of this enum can be handled naturally, but changes
+** in the meanings of already assigned values require bootstrapping
+** with RTTI-version-dependent code.
 */
 
 typedef enum {
@@ -661,6 +663,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STABLE_C_POINTER),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STABLE_FOREIGN),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_PSEUDOTYPEDESC),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_DUMMY),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -704,8 +707,8 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "SUBGOAL",                                  \
     "VOID",                                     \
     "C_POINTER",                                \
-    "TYPEINFO",                                 \
-    "TYPECLASSINFO",                            \
+    "TYPE_INFO",                                \
+    "TYPECLASS_INFO",                           \
     "ARRAY",                                    \
     "SUCCIP",                                   \
     "HP",                                       \
@@ -721,12 +724,16 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "TUPLE",                                    \
     "RESERVED_ADDR",                            \
     "RESERVED_ADDR_USEREQ",                     \
-    "TYPECTORINFO",                             \
-    "BASETYPECLASSINFO",                        \
+    "TYPE_CTOR_INFO",                           \
+    "BASE_TYPECLASS_INFO",                      \
+    "TYPE_DESC",                                \
+    "TYPE_CTOR_DESC",                           \
     "FOREIGN",                                  \
     "REFERENCE",                                \
     "STABLE_C_POINTER",                         \
     "STABLE_FOREIGN",                           \
+    "PSEUDO_TYPE_DESC",                         \
+    "DUMMY",                                    \
     "UNKNOWN"
 
 extern  MR_ConstString  MR_ctor_rep_name[];
@@ -1219,8 +1226,8 @@ struct MR_TypeCtorInfo_Struct {
 ** their representation is specialized (as enumerations, notag types, reserved
 ** address types etc).
 **
-** The typeinfo fake arity flag is set for types whose arity *should* be zero,
-** but whose declared arity is one.
+** The dummy flag must be set for type constructors whose values are not
+** actually passed around.
 */
 
 #define MR_TYPE_CTOR_FLAG_RESERVE_TAG           0x1

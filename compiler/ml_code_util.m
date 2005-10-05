@@ -1091,7 +1091,7 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
             pred_args_to_func_args(HeadModes, _, ResultMode),
             ResultMode = top_out,
             pred_args_to_func_args(HeadTypes, _, ResultType),
-            \+ type_util__is_dummy_argument_type(ResultType)
+            \+ is_dummy_argument_type(ModuleInfo, ResultType)
         ->
             pred_args_to_func_args(FuncArgs0, FuncArgs, RetArg),
             RetArg = mlds__argument(_RetArgName, RetTypePtr, _GC_TraceCode),
@@ -1178,7 +1178,7 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
         (
             % Exclude types such as io__state, etc.
             % Also exclude values with arg_mode `top_unused'.
-            ( type_util__is_dummy_argument_type(Type)
+            ( is_dummy_argument_type(ModuleInfo, Type)
             ; Mode = top_unused
             )
         ->
@@ -1245,7 +1245,7 @@ ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
     pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
 
     RetArgMode = top_out,
-    \+ type_util__is_dummy_argument_type(RetArgType).
+    \+ is_dummy_argument_type(ModuleInfo, RetArgType).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1335,7 +1335,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         ->
             (
                 ThisModule \= TypeModule,
-                SpecialPred = unify,
+                SpecialPred = spec_pred_unify,
                 \+ hlds_pred__in_in_unification_proc_id(ProcId)
             ->
                 % This is a locally-defined instance of a unification procedure
@@ -1416,7 +1416,8 @@ ml_gen_var(Info, Var, Lval) :-
     ).
 
 ml_gen_var_with_type(Info, Var, Type, Lval) :-
-    ( type_util__is_dummy_argument_type(Type) ->
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ( is_dummy_argument_type(ModuleInfo, Type) ->
         % The variable won't have been declared, so we need to generate
         % a dummy lval for this variable.
 
@@ -1586,6 +1587,7 @@ ml_must_box_field_type_category(float_type) = yes.
 ml_must_box_field_type_category(higher_order_type) = no.
 ml_must_box_field_type_category(tuple_type) = no.
 ml_must_box_field_type_category(enum_type) = no.
+ml_must_box_field_type_category(dummy_type) = no.
 ml_must_box_field_type_category(variable_type) = no.
 ml_must_box_field_type_category(type_info_type) = no.
 ml_must_box_field_type_category(type_ctor_info_type) = no.
@@ -1690,8 +1692,9 @@ ml_gen_set_cond_var(Info, CondVar, Value, Context, Statement) :-
 %-----------------------------------------------------------------------------%
 
 ml_initial_cont(Info, OutputVarLvals0, OutputVarTypes0, Cont) :-
+    ml_gen_info_get_module_info(Info, ModuleInfo),
     ml_skip_dummy_argument_types(OutputVarTypes0, OutputVarLvals0,
-        OutputVarTypes, OutputVarLvals),
+        ModuleInfo, OutputVarTypes, OutputVarLvals),
     list__map(ml_gen_type(Info), OutputVarTypes, MLDS_OutputVarTypes),
 
     % We expect OutputVarlvals0 and OutputVarTypes0 to be empty if
@@ -1705,23 +1708,23 @@ ml_initial_cont(Info, OutputVarLvals0, OutputVarTypes0, Cont) :-
         MLDS_OutputVarTypes, OutputVarLvals).
 
 :- pred ml_skip_dummy_argument_types(list(prog_type)::in, list(T)::in,
-    list(prog_type)::out, list(T)::out) is det.
+    module_info::in, list(prog_type)::out, list(T)::out) is det.
 
-ml_skip_dummy_argument_types([], [], [], []).
-ml_skip_dummy_argument_types([Type | Types0], [Var | Vars0],
+ml_skip_dummy_argument_types([], [], _, [], []).
+ml_skip_dummy_argument_types([Type | Types0], [Var | Vars0], ModuleInfo,
         Types, Vars) :-
-    ml_skip_dummy_argument_types(Types0, Vars0, Types1, Vars1),
-    ( type_util__is_dummy_argument_type(Type) ->
+    ml_skip_dummy_argument_types(Types0, Vars0, ModuleInfo, Types1, Vars1),
+    ( is_dummy_argument_type(ModuleInfo, Type) ->
         Types = Types1,
         Vars = Vars1
     ;
         Types = [Type | Types1],
         Vars = [Var | Vars1]
     ).
-ml_skip_dummy_argument_types([_|_], [], _, _) :-
-    error("ml_skip_dummy_argument_types: length mismatch").
-ml_skip_dummy_argument_types([], [_|_], _, _) :-
-    error("ml_skip_dummy_argument_types: length mismatch").
+ml_skip_dummy_argument_types([_ | _], [], _, _, _) :-
+    unexpected(this_file, "ml_skip_dummy_argument_types: length mismatch").
+ml_skip_dummy_argument_types([], [_ | _], _, _, _) :-
+    unexpected(this_file, "ml_skip_dummy_argument_types: length mismatch").
 
 ml_gen_call_current_success_cont(Context, Statement, !Info) :-
     ml_gen_info_current_success_cont(!.Info, SuccCont),
@@ -1985,6 +1988,7 @@ ml_type_category_might_contain_pointers(base_typeclass_info_type) = no.
 ml_type_category_might_contain_pointers(higher_order_type) = yes.
 ml_type_category_might_contain_pointers(tuple_type) = yes.
 ml_type_category_might_contain_pointers(enum_type) = no.
+ml_type_category_might_contain_pointers(dummy_type) = no.
 ml_type_category_might_contain_pointers(variable_type) = yes.
 ml_type_category_might_contain_pointers(user_ctor_type) = yes.
 

@@ -1,6 +1,7 @@
-       1:      1  1 CALL pred field_names.main/2-0 (det) field_names.m:60
+       1:      1  1 CALL pred field_names.main/2-0 (det) field_names.m:63
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> context none
 Contexts will not be printed.
 mdb> step
@@ -346,6 +347,14 @@ t8a
 browser> ^badname
 error: there is no subterm badname
 browser> quit
+mdb> b make_dummy
+ 0: + stop  interface pred field_names.make_dummy/1-0 (det)
+mdb> c
+      20:     11  2 CALL pred field_names.make_dummy/1-0 (det)
+mdb> finish
+      21:     11  2 EXIT pred field_names.make_dummy/1-0 (det)
+mdb> p *
+mdb: there are no live variables.
 mdb> continue -S
 t1f1(41, 42, 43, 44)
 t1f2(51, 52, 53)
@@ -356,3 +365,4 @@ t5f(t1f1(41, 42, 43, 44))
 t6f(0.900000000000000)
 t7f(0.900000000000000, 77)
 t8a
+dummy

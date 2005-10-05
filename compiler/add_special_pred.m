@@ -114,14 +114,14 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
         can_generate_special_pred_clauses_for_type(!.ModuleInfo, TypeCtor,
             Body)
     ->
-        add_special_pred(unify, TVarSet, Type, TypeCtor, Body, Context,
-            Status, !ModuleInfo),
+        add_special_pred(spec_pred_unify, TVarSet, Type, TypeCtor, Body,
+            Context, Status, !ModuleInfo),
         status_defined_in_this_module(Status, ThisModule),
         (
             ThisModule = yes,
             (
                 Ctors = Body ^ du_type_ctors,
-                Body ^ du_type_is_enum = no,
+                Body ^ du_type_is_enum = not_enum_or_dummy,
                 Body ^ du_type_usereq = no,
                 module_info_get_globals(!.ModuleInfo, Globals),
                 globals__lookup_int_option(Globals, compare_specialization,
@@ -129,9 +129,9 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
                 list__length(Ctors, CtorCount),
                 CtorCount > CompareSpec
             ->
-                SpecialPredIds = [index, compare]
+                SpecialPredIds = [spec_pred_index, spec_pred_compare]
             ;
-                SpecialPredIds = [compare]
+                SpecialPredIds = [spec_pred_compare]
             ),
             add_special_pred_list(SpecialPredIds, TVarSet, Type, TypeCtor,
                 Body, Context, Status, !ModuleInfo)
@@ -140,26 +140,27 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
             % Never add clauses for comparison predicates
             % for imported types -- they will never be used.
             module_info_get_special_pred_map(!.ModuleInfo, SpecialPreds),
-            ( map__contains(SpecialPreds, compare - TypeCtor) ->
+            ( map__contains(SpecialPreds, spec_pred_compare - TypeCtor) ->
                 true
             ;
-                add_special_pred_decl(compare, TVarSet, Type, TypeCtor, Body,
-                    Context, Status, !ModuleInfo)
+                add_special_pred_decl(spec_pred_compare, TVarSet, Type,
+                    TypeCtor, Body, Context, Status, !ModuleInfo)
             )
         ),
         (
             type_util__type_body_is_solver_type(!.ModuleInfo, Body)
         ->
-            add_special_pred(initialise, TVarSet, Type, TypeCtor, Body,
+            add_special_pred(spec_pred_init, TVarSet, Type, TypeCtor, Body,
                 Context, Status, !ModuleInfo)
         ;
             true
         )
     ;
         ( type_util__type_body_is_solver_type(!.ModuleInfo, Body) ->
-            SpecialPredIds = [unify, compare, initialise]
+            SpecialPredIds = [spec_pred_unify, spec_pred_compare,
+                spec_pred_init]
         ;
-            SpecialPredIds = [unify, compare]
+            SpecialPredIds = [spec_pred_unify, spec_pred_compare]
         ),
         add_special_pred_decl_list(SpecialPredIds, TVarSet, Type,
             TypeCtor, Body, Context, Status, !ModuleInfo)
@@ -192,14 +193,14 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
     ;
         GenSpecialPreds = no,
         (
-            SpecialPredId = unify,
+            SpecialPredId = spec_pred_unify,
             add_special_pred_unify_status(TypeBody, Status0, Status),
             do_add_special_pred_for_real(SpecialPredId, TVarSet,
                 Type, TypeCtor, TypeBody, Context, Status, !ModuleInfo)
         ;
-            SpecialPredId = index
+            SpecialPredId = spec_pred_index
         ;
-            SpecialPredId = compare,
+            SpecialPredId = spec_pred_compare,
             ( TypeBody ^ du_type_usereq = yes(_) ->
                     % The compiler generated comparison
                     % procedure prints an error message,
@@ -217,7 +218,7 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
                 true
             )
         ;
-            SpecialPredId = (initialise),
+            SpecialPredId = spec_pred_init,
             ( type_is_solver_type(!.ModuleInfo, Type) ->
                 do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
                     TypeCtor, TypeBody, Context, Status0, !ModuleInfo)
@@ -320,7 +321,7 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody,
     ( GenSpecialPreds = yes ->
         do_add_special_pred_decl_for_real(SpecialPredId,
             TVarSet, Type, TypeCtor, Context, Status0, !ModuleInfo)
-    ; SpecialPredId = unify ->
+    ; SpecialPredId = spec_pred_unify ->
         add_special_pred_unify_status(TypeBody, Status0, Status),
         do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
             Type, TypeCtor, Context, Status, !ModuleInfo)
@@ -333,14 +334,14 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     module_info_get_name(!.ModuleInfo, ModuleName),
     special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
     Name = special_pred_name(SpecialPredId, TypeCtor),
-    ( SpecialPredId = (initialise) ->
+    ( SpecialPredId = spec_pred_init ->
         TypeCtor = TypeSymName - _TypeArity,
         sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
         PredName = qualified(TypeModuleName, Name)
     ;
         PredName = unqualified(Name)
     ),
-    special_pred_name_arity(SpecialPredId, _, Arity),
+    Arity = get_special_pred_id_arity(SpecialPredId),
     clauses_info_init(Arity, ClausesInfo0),
     Origin = special_pred(SpecialPredId - TypeCtor),
     adjust_special_pred_status(SpecialPredId, Status0, Status),
@@ -410,7 +411,7 @@ adjust_special_pred_status(SpecialPredId, !Status) :-
 
     % Unification predicates are special - they are
     % "pseudo"-imported/exported (only mode 0 is imported/exported).
-    ( SpecialPredId = unify ->
+    ( SpecialPredId = spec_pred_unify ->
         ( !.Status = imported(_) ->
             !:Status = pseudo_imported
         ; !.Status = exported ->

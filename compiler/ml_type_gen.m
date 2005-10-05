@@ -139,16 +139,22 @@ ml_gen_type_2(eqv_type(_EqvType), _, _, _, !Defns).
     % XXX Fixme!
     % For a description of the problems with equivalence types,
     % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
-ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeUserEqComp,
+ml_gen_type_2(du_type(Ctors, TagValues, EnumDummy, MaybeUserEqComp,
         _ReservedTag, _), ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     % XXX we probably shouldn't ignore _ReservedTag
     ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
     (
-        IsEnum = yes,
+        EnumDummy = is_enum,
         ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
             MaybeEqualityMembers, !Defns)
     ;
-        IsEnum = no,
+        EnumDummy = is_dummy,
+        % XXX We shouldn't have to generate an MLDS type for these types,
+        % but it is not easy to ensure that we never refer to that type.
+        ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
+            MaybeEqualityMembers, !Defns)
+    ;
+        EnumDummy = not_enum_or_dummy,
         ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn,
             Ctors, TagValues, MaybeEqualityMembers, !Defns)
     ).
@@ -161,7 +167,6 @@ ml_gen_type_2(solver_type(_, _), _, _, _, !Defns).
 % Enumeration types.
 %
 
-    %
     % For each enumeration, we generate an MLDS type of the following form:
     %
     %   struct <ClassName> {

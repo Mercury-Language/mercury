@@ -3143,8 +3143,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
         MaybeCallUnifyContext, InitVarGoal, !ModeInfo) :-
     (
         type_to_ctor_and_args(VarType, TypeCtor, _TypeArgs),
-        PredName = special_pred__special_pred_name(initialise,
-            TypeCtor),
+        PredName = special_pred__special_pred_name(spec_pred_init, TypeCtor),
         (
             TypeCtor = qualified(ModuleName, _TypeName) - _Arity
         ;

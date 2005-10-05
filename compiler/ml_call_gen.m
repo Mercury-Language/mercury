@@ -311,7 +311,8 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
         ArgLvals = [SrcLval, DestLval],
         ArgTypes = [SrcType, DestType]
     ->
-        ( type_util__is_dummy_argument_type(DestType) ->
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        ( is_dummy_argument_type(ModuleInfo, DestType) ->
             Statements = []
         ;
             ml_gen_box_or_unbox_rval(SrcType, DestType,
@@ -640,7 +641,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         mode_to_arg_mode(ModuleInfo, Mode, CalleeType, ArgMode),
         (
-            ( type_util__is_dummy_argument_type(CalleeType)
+            ( is_dummy_argument_type(ModuleInfo, CalleeType)
             ; ArgMode = top_unused
             )
         ->
@@ -655,7 +656,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
             ArgMode = top_in
         ->
             % It's an input argument.
-            ( type_util__is_dummy_argument_type(CallerType) ->
+            ( is_dummy_argument_type(ModuleInfo, CallerType) ->
                 % The variable may not have been declared, so we need to
                 % generate a dummy value for it. Using `0' here is more
                 % efficient than using private_builtin__dummy_var, which is
@@ -844,7 +845,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
         % Create the lval for the variable and use it for the argument lval.
         ml_gen_var_lval(!.Info, ArgVarName, MLDS_CalleeType, ArgLval),
 
-        ( type_util__is_dummy_argument_type(CallerType) ->
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        ( is_dummy_argument_type(ModuleInfo, CallerType) ->
             % If it is a dummy argument type (e.g. io__state),
             % then we don't need to bother assigning it.
             ConvInputStatements = [],
@@ -900,7 +902,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
                 % introduced for types such as io__state.
                 Lval = var(_VarName, VarType),
                 VarType = mercury_type(ProgDataType, _, _),
-                type_util__is_dummy_argument_type(ProgDataType)
+                is_dummy_argument_type(ModuleInfo, ProgDataType)
             ->
                 Statements = []
             ;

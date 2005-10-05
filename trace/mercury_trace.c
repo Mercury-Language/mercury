@@ -78,7 +78,6 @@ static  MR_bool     MR_in_traced_region(const MR_Proc_Layout *proc_layout,
                         MR_Word *base_sp, MR_Word *base_curfr);
 static  MR_bool     MR_is_io_state(MR_TypeInfoParams type_params, 
                         MR_PseudoTypeInfo pti);
-static  MR_bool     MR_is_dummy_type(MR_PseudoTypeInfo pti);
 static  MR_bool     MR_find_saved_io_counter(const MR_Label_Layout *call_label,
                         MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Unsigned *saved_io_counter_ptr);
@@ -1024,35 +1023,6 @@ MR_is_io_state(MR_TypeInfoParams type_params, MR_PseudoTypeInfo pti)
     type = MR_type_ctor_name(type_ctor_info);
 
     return (MR_streq(module, "io") && MR_streq(type, "state"));
-}
-
-static MR_bool
-MR_is_dummy_type(MR_PseudoTypeInfo pti)
-{
-    MR_TypeCtorInfo type_ctor_info;
-    MR_ConstString  module;
-    MR_ConstString  type;
-
-    if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
-        return MR_FALSE;
-    }
-
-    type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
-    module = MR_type_ctor_module_name(type_ctor_info);
-    type = MR_type_ctor_name(type_ctor_info);
-
-    /*
-    ** These tests should be kept in sync with is_dummy_argument_type_2
-    ** in compiler/type_util.m.
-    */
-
-    if (MR_streq(module, "io") && MR_streq(type, "state")) {
-            return MR_TRUE;
-    } else if (MR_streq(module, "store") && MR_streq(type, "state")) {
-            return MR_TRUE;
-    }
-
-    return MR_FALSE;
 }
 
 static MR_bool

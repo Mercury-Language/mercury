@@ -787,7 +787,7 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
     mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext),
     UnifyContext = unify_context(MainContext, SubContexts),
 
-    create_atomic_unification(Var0, var(Var), Context,
+    create_atomic_complicated_unification(Var0, var(Var), Context,
         MainContext, SubContexts, Goal0 - GoalInfo0),
 
     %

@@ -1354,7 +1354,7 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
     pred_info_get_origin(PredInfo, Origin),
     ( Origin = special_pred(SpecialId - TypeCtor) ->
         code_gen__find_arg_type_ctor_name(TypeCtor, TypeName),
-        special_pred_name_arity(SpecialId, SpecialPredName, _),
+        SpecialPredName = get_special_pred_id_generic_name(SpecialId),
         FullPredName = SpecialPredName ++ "_for_" ++ TypeName
     ;
         FullPredName = PredName

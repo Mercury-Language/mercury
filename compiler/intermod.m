@@ -1082,9 +1082,10 @@ resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
         yes(unify_compare(MaybeUserEq0, MaybeUserCompare0)),
         yes(unify_compare(MaybeUserEq, MaybeUserCompare)), !Info) :-
     resolve_user_special_pred_overloading(ModuleInfo,
-        unify, TypeCtor, MaybeUserEq0, MaybeUserEq, !Info),
+        spec_pred_unify, TypeCtor, MaybeUserEq0, MaybeUserEq, !Info),
     resolve_user_special_pred_overloading(ModuleInfo,
-        compare, TypeCtor, MaybeUserCompare0, MaybeUserCompare, !Info).
+        spec_pred_compare, TypeCtor, MaybeUserCompare0, MaybeUserCompare,
+        !Info).
 
 :- pred resolve_user_special_pred_overloading(module_info::in,
     special_pred_id::in, type_ctor::in, maybe(sym_name)::in,
@@ -2096,7 +2097,7 @@ set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
     ->
         (
             pred_info_get_origin(PredInfo0, Origin),
-            Origin = special_pred(unify - _)
+            Origin = special_pred(spec_pred_unify - _)
         ->
             NewStatus = pseudo_exported
         ;

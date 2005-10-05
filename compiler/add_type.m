@@ -333,6 +333,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
     hlds_data__get_type_defn_need_qualifier(TypeDefn, NeedQual),
     (
         ConsList = Body ^ du_type_ctors,
+        UserEqCmp = Body ^ du_type_usereq,
         ReservedTag = Body ^ du_type_reserved_tag,
         module_info_get_cons_table(!.ModuleInfo, Ctors0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
@@ -348,8 +349,8 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
 
         globals__io_get_globals(Globals, !IO),
         (
-            type_constructors_should_be_no_tag(ConsList, ReservedTag, Globals,
-                Name, CtorArgType, _)
+            type_with_constructors_should_be_no_tag(Globals, TypeCtor,
+                ReservedTag, ConsList, UserEqCmp, Name, CtorArgType, _)
         ->
             NoTagType = no_tag_type(Args, Name, CtorArgType),
             module_info_get_no_tag_types(!.ModuleInfo, NoTagTypes0),
@@ -612,8 +613,8 @@ convert_type_defn(du_type(Body, MaybeUserEqComp), TypeCtor, Globals,
     % constructor tags by calling assign_constructor_tags again,
     % with ReservedTagPragma = yes, when processing the pragma.)
     ReservedTagPragma = no,
-    assign_constructor_tags(Body, TypeCtor, ReservedTagPragma, Globals,
-        CtorTags, IsEnum),
+    assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor, ReservedTagPragma,
+        Globals, CtorTags, IsEnum),
     IsForeign = no,
     HLDSBody = du_type(Body, CtorTags, IsEnum, MaybeUserEqComp,
         ReservedTagPragma, IsForeign).

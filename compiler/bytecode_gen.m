@@ -552,6 +552,9 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 		TypeCategory = float_type,
 		TestId = float_test
 	;
+		TypeCategory = dummy_type,
+		TestId = dummy_test
+	;
 		TypeCategory = enum_type,
 		TestId = enum_test
 	;

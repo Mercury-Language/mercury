@@ -935,7 +935,8 @@ trace__produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, !CI).
 trace__produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
         !TVars, !VarInfos, tree(VarCode, VarsCode), !CI) :-
     map__lookup(VarTypes, Var, Type),
-    ( is_dummy_argument_type(Type) ->
+    code_info__get_module_info(!.CI, ModuleInfo),
+    ( is_dummy_argument_type(ModuleInfo, Type) ->
         VarCode = empty
     ;
         trace__produce_var(Var, VarSet, InstMap, !TVars,
@@ -985,7 +986,7 @@ trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],
         ArgMode = top_in,
         \+ inst_is_clobbered(ModuleInfo, Inst),
         map__lookup(VarTypes, Var, Type),
-        \+ is_dummy_argument_type(Type)
+        \+ is_dummy_argument_type(ModuleInfo, Type)
     ->
         FailVars = [Var | FailVars0]
     ;

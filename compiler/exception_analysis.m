@@ -309,12 +309,16 @@ check_goal_for_exceptions_2(SCC, ModuleInfo, VarTypes, Goal, _, !Result) :-
             any_mercury_builtin_module(ModuleName),
             Name = pred_info_name(CallPredInfo),
             Arity = pred_info_orig_arity(CallPredInfo),
-            ( SpecialPredId = compare ; SpecialPredId = unify ),
-            special_pred_name_arity(SpecialPredId, Name, Arity)
+            ( SpecialPredId = spec_pred_compare
+            ; SpecialPredId = spec_pred_unify
+            ),
+            special_pred_name_arity(SpecialPredId, Name, _, Arity)
         ;
             pred_info_get_origin(CallPredInfo, Origin),
             Origin = special_pred(SpecialPredId - _),
-            ( SpecialPredId = compare ; SpecialPredId = unify )
+            ( SpecialPredId = spec_pred_compare
+            ; SpecialPredId = spec_pred_unify
+            )
         )   
     ->
         % For unification/comparison the exception status depends
@@ -676,6 +680,7 @@ check_type_2(_, _, type_ctor_info_type) = type_will_not_throw.
 check_type_2(_, _, typeclass_info_type) = type_will_not_throw.
 check_type_2(_, _, base_typeclass_info_type) = type_will_not_throw.
 check_type_2(_, _, void_type) = type_will_not_throw.
+check_type_2(_, _, dummy_type) = type_will_not_throw.
 
 check_type_2(_, _, variable_type) = type_conditional.
 

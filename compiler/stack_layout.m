@@ -1179,7 +1179,8 @@ stack_layout__construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
 		VarNumRval, !Info),
 	(
 		LiveValueType = var(_, _, Type, _),
-		is_dummy_argument_type(Type),
+		stack_layout__get_module_info(!.Info, ModuleInfo),
+		is_dummy_argument_type(ModuleInfo, Type),
 		% We want to preserve I/O states in registers
 		\+ (
 			Locn = direct(reg(_, _))

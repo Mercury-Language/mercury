@@ -430,20 +430,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func get_special_pred_id_name(special_pred_id) = string.
-
-get_special_pred_id_name(unify) = "__Unify__".
-get_special_pred_id_name(index) = "__Index__".
-get_special_pred_id_name(compare) = "__Compare__".
-get_special_pred_id_name(initialise) = "__Initialise__".
-
-:- func get_special_pred_id_arity(special_pred_id) = int.
-
-get_special_pred_id_arity(unify) = 2.
-get_special_pred_id_arity(index) = 2.
-get_special_pred_id_arity(compare) = 3.
-get_special_pred_id_arity(initialise) = 1.
-
 get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
 	(
 		ProcId = proc(Module, PredOrFunc, _, Name, Arity, _)
@@ -451,7 +437,7 @@ get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
 		ProcId = special_proc(Module, SpecialId, _, _, _, _), 
 		PredOrFunc = predicate,
 		Arity = get_special_pred_id_arity(SpecialId),
-		Name = get_special_pred_id_name(SpecialId)
+		Name = get_special_pred_id_target_name(SpecialId)
 	).
 
 %-----------------------------------------------------------------------------%

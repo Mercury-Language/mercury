@@ -621,6 +621,7 @@ typedef struct MR_Table_Io_Decl_Struct {
 */
 
 typedef enum {
+	MR_TABLE_STEP_DUMMY,
 	MR_TABLE_STEP_INT,
 	MR_TABLE_STEP_CHAR,
 	MR_TABLE_STEP_STRING,

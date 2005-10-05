@@ -125,7 +125,7 @@ warn_non_term_user_special_pred(ModuleInfo, TypeTable,
 	%
 	BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
 	(
-		SpecialPredId \= index,
+		SpecialPredId \= spec_pred_index,
 		not list.member(TypeCtor, BuiltinTypeCtors)
 	->
 		map.lookup(TypeTable, TypeCtor, TypeDefn),
@@ -189,7 +189,7 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
 	(
 		% Always check solver type initialisation
 		% predicates since they are always user-defined.
-		SpecialPredId = (initialise)
+		SpecialPredId = spec_pred_init
 	;	
 		get_user_unify_compare(ModuleInfo, TypeBody,
 			UnifyCompare),
@@ -198,10 +198,10 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
 				MaybeCompare),
 			( 
 				MaybeUnify = yes(_),
-				SpecialPredId = unify 
+				SpecialPredId = spec_pred_unify 
 			;
 				MaybeCompare = yes(_),
-				SpecialPredId = compare 
+				SpecialPredId = spec_pred_compare 
 			)
 		;
 			UnifyCompare = abstract_noncanonical_type(_),
@@ -233,16 +233,16 @@ get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
 emit_non_term_user_special_warning(Context, SpecialPred, TypeCtor, !IO) :-
 	TypeCtorString = hlds_out.type_ctor_to_string(TypeCtor),
 	( 
-		SpecialPred = unify,
+		SpecialPred = spec_pred_unify,
 		SpecialPredStr = "equality"
 	;
-		SpecialPred = compare,
+		SpecialPred = spec_pred_compare,
 		SpecialPredStr = "comparison"
 	;
-		SpecialPred = (initialise),
+		SpecialPred = spec_pred_init,
 		SpecialPredStr = "initialisation"
 	;
-		SpecialPred = index,
+		SpecialPred = spec_pred_index,
 		unexpected(this_file, "emit_non_term_user_special_" ++
 			"warning/5 index predicate.")
 	),

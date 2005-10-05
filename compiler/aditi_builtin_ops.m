@@ -626,12 +626,12 @@ generate_const_args([ConstArg | ConstArgs], [ConstArgVar | ConstArgVars],
 	ProcInfo0 =^ proc_info,
 	{
 		ConstArg = int(Int),
-		make_int_const_construction(Int, no, ConstGoal, ConstArgVar,
-			ProcInfo0, ProcInfo)
+		make_int_const_construction_alloc_in_proc(Int, no,
+			ConstGoal, ConstArgVar, ProcInfo0, ProcInfo)
 	;
 		ConstArg = string(String),
-		make_string_const_construction(String, no, ConstGoal,
-			ConstArgVar, ProcInfo0, ProcInfo)
+		make_string_const_construction_alloc_in_proc(String, no,
+			ConstGoal, ConstArgVar, ProcInfo0, ProcInfo)
 	},
 	^ proc_info := ProcInfo,
 	generate_const_args(ConstArgs, ConstArgVars, ConstGoals).

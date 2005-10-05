@@ -770,6 +770,7 @@ MR_UNIFY_COMPARE_REP_DECLS(type_desc, type_ctor_desc, 0);
 MR_UNIFY_COMPARE_REP_DECLS(type_desc, pseudo_type_desc, 0);
 MR_UNIFY_COMPARE_REP_DECLS(type_desc, type_desc, 0);
 MR_UNIFY_COMPARE_REP_DECLS(builtin, user_by_rtti, 0);
+MR_UNIFY_COMPARE_REP_DECLS(builtin, dummy, 0);
 
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, int, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, string, 0)
@@ -798,6 +799,7 @@ MR_UNIFY_COMPARE_REP_DEFNS(type_desc, type_ctor_desc, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(type_desc, pseudo_type_desc, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(type_desc, type_desc, 0)
 MR_UNIFY_COMPARE_REP_DEFNS(builtin, user_by_rtti, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, dummy, 0)
 
   #ifdef MR_DEEP_PROFILING
 
@@ -873,6 +875,7 @@ MR_DEFINE_PROC_STATIC_LAYOUTS(type_desc, type_ctor_desc, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(type_desc, pseudo_type_desc, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(type_desc, type_desc, 0);
 MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, user_by_rtti, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, dummy, 0);
 
 #endif
 
@@ -904,6 +907,7 @@ MR_BEGIN_MODULE(mercury_builtin_types)
 	MR_UNIFY_COMPARE_REP_LABELS(type_desc, pseudo_type_desc, 0)
 	MR_UNIFY_COMPARE_REP_LABELS(type_desc, type_desc, 0)
 	MR_UNIFY_COMPARE_REP_LABELS(builtin, user_by_rtti, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, dummy, 0)
 MR_BEGIN_CODE
 
 /*****************************************************************************/
@@ -1542,6 +1546,31 @@ MR_BEGIN_CODE
 
 /*****************************************************************************/
 
+/*
+** We need a proc_static structure with which to record profiling information
+** about compare_representation when it compares the representations of
+** dummy types. The proc_layout structure which contains the proc_static
+** structure also needs a procedure label. The simplest way to provide one
+** is to define unify, compare and compare_rep procedures, all of which are
+** designed to be unused (if they *are* called, they will abort).
+*/
+
+#define	module		builtin
+#define	type		dummy
+#define	arity		0
+#define	unify_code	MR_fatal_error("called unify/2 for `dummy' type");
+#define	compare_code	MR_fatal_error("called compare/3 for `dummy' type");
+
+#include "mercury_hand_unify_compare_body.h"
+
+#undef	module
+#undef	type
+#undef	arity
+#undef	unify_code
+#undef	compare_code
+
+/*****************************************************************************/
+
 MR_END_MODULE
 
 #endif /* ! MR_HIGHLEVEL_CODE */
@@ -1695,6 +1724,7 @@ mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *fp)
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, pseudo_type_desc, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, type_desc, 0);
 	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, user_by_rtti, 0); 
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, dummy, 0); 
 }
 #endif
 

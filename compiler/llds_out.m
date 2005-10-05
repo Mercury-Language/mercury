@@ -2494,7 +2494,7 @@ output_pragma_decls([Decl | Decls], !IO) :-
 
 output_pragma_input_rval_decls([], !DeclSet, !IO).
 output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
-    Input = pragma_c_input(_VarName, _VarType, _OrigType, Rval, _),
+    Input = pragma_c_input(_VarName, _VarType, _IsDummy, _OrigType, Rval, _),
     output_rval_decls(Rval, "\t", "\t", 0, _N, !DeclSet, !IO),
     output_pragma_input_rval_decls(Inputs, !DeclSet, !IO).
 
@@ -2505,11 +2505,12 @@ output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
 
 output_pragma_inputs([], !IO).
 output_pragma_inputs([Input | Inputs], !IO) :-
-    Input = pragma_c_input(_VarName, VarType, _OrigType, _Rval,
+    Input = pragma_c_input(_VarName, _VarType, IsDummy, _OrigType, _Rval,
         _MaybeForeignTypeInfo),
-    ( is_dummy_argument_type(VarType) ->
-        true
+    (
+        IsDummy = yes
     ;
+        IsDummy = no,
         output_pragma_input(Input, !IO)
     ),
     output_pragma_inputs(Inputs, !IO).
@@ -2520,7 +2521,7 @@ output_pragma_inputs([Input | Inputs], !IO) :-
 :- pred output_pragma_input(pragma_c_input::in, io::di, io::uo) is det.
 
 output_pragma_input(Input, !IO) :-
-    Input = pragma_c_input(VarName, _VarType, OrigType, Rval,
+    Input = pragma_c_input(VarName, _VarType, _IsDummy, OrigType, Rval,
         MaybeForeignTypeInfo),
     io__write_string("\t", !IO),
     (
@@ -2573,7 +2574,7 @@ output_pragma_input(Input, !IO) :-
 
 output_pragma_output_lval_decls([], !DeclSet, !IO).
 output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
-    O = pragma_c_output(Lval, _VarType, _OrigType, _VarName, _),
+    O = pragma_c_output(Lval, _VarType, _IsDummy, _OrigType, _VarName, _),
     output_lval_decls(Lval, "\t", "\t", 0, _N, !DeclSet, !IO),
     output_pragma_output_lval_decls(Outputs, !DeclSet, !IO).
 
@@ -2585,11 +2586,12 @@ output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
 
 output_pragma_outputs([], !IO).
 output_pragma_outputs([Output | Outputs], !IO) :-
-    Output = pragma_c_output(_Lval, VarType, _OrigType, _VarName,
+    Output = pragma_c_output(_Lval, _VarType, IsDummy, _OrigType, _VarName,
         _MaybeForeignType),
-    ( is_dummy_argument_type(VarType) ->
-        true
+    (
+        IsDummy = yes
     ;
+        IsDummy = no,
         output_pragma_output(Output, !IO)
     ),
     output_pragma_outputs(Outputs, !IO).
@@ -2600,7 +2602,7 @@ output_pragma_outputs([Output | Outputs], !IO) :-
 :- pred output_pragma_output(pragma_c_output::in, io::di, io::uo) is det.
 
 output_pragma_output(Output, !IO) :-
-    Output = pragma_c_output(Lval, _VarType, OrigType, VarName,
+    Output = pragma_c_output(Lval, _VarType, _IsDummy, OrigType, VarName,
         MaybeForeignType),
     io__write_string("\t", !IO),
     (

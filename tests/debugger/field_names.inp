@@ -1,4 +1,5 @@
 echo on
+register --quiet
 context none
 step
 finish
@@ -185,4 +186,8 @@ browse 1
 p
 ^badname
 quit
+b make_dummy
+c
+finish
+p *
 continue -S

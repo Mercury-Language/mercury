@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -45,60 +47,65 @@
 :- type trace_level.
 :- type trace_suppress_items.
 
-	% The string should be the value of the --trace-level option;
-	% two bools should be the values of the `--require-tracing' and
-	% `--decl-debug' grade options.
-	%
-	% If the string is an acceptable trace level in the specified kinds of
-	% grades, return yes wrapper around the trace level.
-	%
-	% If the string is an known trace level that happens not to be
-	% acceptable in the specified kinds of grades, return no.
-	%
-	% If the string is not known trace level, fail.
+    % The string should be the value of the --trace-level option;
+    % two bools should be the values of the `--require-tracing' and
+    % `--decl-debug' grade options.
+    %
+    % If the string is an acceptable trace level in the specified kinds of
+    % grades, return yes wrapper around the trace level.
+    %
+    % If the string is an known trace level that happens not to be
+    % acceptable in the specified kinds of grades, return no.
+    %
+    % If the string is not known trace level, fail.
+    %
 :- pred convert_trace_level(string::in, bool::in, bool::in,
-	maybe(trace_level)::out) is semidet.
+    maybe(trace_level)::out) is semidet.
 
 :- pred convert_trace_suppress(string::in, trace_suppress_items::out)
-	is semidet.
+    is semidet.
 :- func default_trace_suppress = trace_suppress_items.
 
-	% These functions check for various properties of the global
-	% trace level.
+    % These functions check for various properties of the global trace level.
+    %
 :- func given_trace_level_is_none(trace_level) = bool.
 :- func trace_level_allows_delay_death(trace_level) = bool.
 :- func trace_needs_return_info(trace_level, trace_suppress_items) = bool.
 
-	% Should optimization passes maintain meaningful
-	% variable names where possible.
+    % Should optimization passes maintain meaningful variable names
+    % where possible.
+    %
 :- func trace_level_needs_meaningful_var_names(trace_level) = bool.
 
-	% These functions check for various properties of the given procedure's
-	% effective trace level.
+    % These functions check for various properties of the given procedure's
+    % effective trace level.
+    %
 :- func eff_trace_level_is_none(pred_info, proc_info, trace_level) = bool.
 :- func eff_trace_level_needs_input_vars(pred_info, proc_info, trace_level)
-	= bool.
+    = bool.
 :- func eff_trace_level_needs_fixed_slots(pred_info, proc_info, trace_level)
-	= bool.
+    = bool.
 :- func eff_trace_level_needs_from_full_slot(pred_info, proc_info, trace_level)
-	= bool.
+    = bool.
 :- func eff_trace_needs_all_var_names(pred_info, proc_info, trace_level,
-	trace_suppress_items) = bool.
+    trace_suppress_items) = bool.
 :- func eff_trace_needs_proc_body_reps(pred_info, proc_info, trace_level,
-	trace_suppress_items) = bool.
+    trace_suppress_items) = bool.
 :- func eff_trace_needs_port(pred_info, proc_info, trace_level,
-	trace_suppress_items, trace_port) = bool.
+    trace_suppress_items, trace_port) = bool.
 
 :- func eff_trace_level(pred_info, proc_info, trace_level) = trace_level.
 
 :- func trace_level_none = trace_level.
 
-	% Given a trace level for a module, return the trace level we should
-	% use for compiler-generated unify, index and compare predicates.
+    % Given a trace level for a module, return the trace level we should
+    % use for compiler-generated unify, index and compare predicates.
+    %
 :- func trace_level_for_unify_compare(trace_level) = trace_level.
 
-	% This is used to represent the trace level in the module layout
-	% and in proc layouts.
+    % This is used to represent the trace level in the module layout
+    % and in proc layouts.
+    %
 :- func trace_level_rep(trace_level) = string.
 
 :- func encode_suppressed_events(trace_suppress_items) = int.
@@ -116,16 +123,16 @@
 :- import_module string.
 
 :- type trace_level
-	--->	none
-	;	shallow
-	;	deep
-	;	decl_rep.
+    --->    none
+    ;       shallow
+    ;       deep
+    ;       decl_rep.
 
 :- type trace_suppress_item
-	--->	port(trace_port)
-	;	return_info
-	;	all_var_names
-	;	proc_body_reps.
+    --->    port(trace_port)
+    ;       return_info
+    ;       all_var_names
+    ;       proc_body_reps.
 
 :- type trace_suppress_items == set(trace_suppress_item).
 
@@ -150,85 +157,79 @@ convert_trace_level("default", yes, no,  yes(deep)).
 convert_trace_level("default", _,   yes, yes(decl_rep)).
 
 eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
-	( TraceLevel = none ->
-		EffTraceLevel = none
-	;
-		pred_info_get_origin(PredInfo, Origin),
-		( Origin = special_pred(SpecialPred - _) ->
-			% Unify and compare predicates can be called from
-			% the generic unify and compare predicates in
-			% builtin.m, so they can be called from outside this
-			% module even if they don't have their address taken.
-			%
-			% Index predicates can never be called from anywhere
-			% except the compare predicate.
-			%
-			% Initialise predicates invoke user-provided code.
-			% Whether that code has debugging enabled or not,
-			% there is no point in generating events in the
-			% initialise predicate itself.
-			(
-				SpecialPred = unify,
-				EffTraceLevel = shallow
-			;
-				SpecialPred = compare,
-				EffTraceLevel = shallow
-			;
-				SpecialPred = index,
-				EffTraceLevel = none
-			;
-				SpecialPred = (initialise),
-				EffTraceLevel = TraceLevel
-			)
-		; Origin = created(io_tabling) ->
-			% Predicates called by a predicate that is I/O
-			% tabled should not be traced.  If such a predicate
-			% were allowed to generate events then the event
-			% numbers of events after the I/O primitive would be
-			% different between the first and subsequent 
-			% (idempotent) executions of the same I/O action.
-			EffTraceLevel = none
-		;
-			pred_info_import_status(PredInfo, Status),
-			(
-				TraceLevel = shallow,
-				status_is_exported(Status, no),
-				proc_info_is_address_taken(ProcInfo,
-					address_is_not_taken)
-			->
-				EffTraceLevel = none
-			;
-				EffTraceLevel = TraceLevel
-			)
-		)
-	).
+    ( TraceLevel = none ->
+        EffTraceLevel = none
+    ;
+        pred_info_get_origin(PredInfo, Origin),
+        ( Origin = special_pred(SpecialPred - _) ->
+            % Unify and compare predicates can be called from the generic
+            % unify and compare predicates in builtin.m, so they can be called
+            % from outside this module even if they don't have their address
+            % taken.
+            %
+            % Index predicates can never be called from anywhere except
+            % the compare predicate.
+            %
+            % Initialise predicates invoke user-provided code. Whether that
+            % code has debugging enabled or not, there is no point in
+            % generating events in the initialise predicate itself.
+            (
+                SpecialPred = spec_pred_unify,
+                EffTraceLevel = shallow
+            ;
+                SpecialPred = spec_pred_compare,
+                EffTraceLevel = shallow
+            ;
+                SpecialPred = spec_pred_index,
+                EffTraceLevel = none
+            ;
+                SpecialPred = spec_pred_init,
+                EffTraceLevel = TraceLevel
+            )
+        ; Origin = created(io_tabling) ->
+            % Predicates called by a predicate that is I/O tabled should not be
+            % traced. If such a predicate were allowed to generate events then
+            % the event numbers of events after the I/O primitive would be
+            % different between the first and subsequent (idempotent)
+            % executions of the same I/O action.
+            EffTraceLevel = none
+        ;
+            pred_info_import_status(PredInfo, Status),
+            (
+                TraceLevel = shallow,
+                status_is_exported(Status, no),
+                proc_info_is_address_taken(ProcInfo, address_is_not_taken)
+            ->
+                EffTraceLevel = none
+            ;
+                EffTraceLevel = TraceLevel
+            )
+        )
+    ).
 
 given_trace_level_is_none(TraceLevel) =
-	trace_level_is_none(TraceLevel).
+    trace_level_is_none(TraceLevel).
 
 eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) =
-	trace_level_is_none(
-		eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
+    trace_level_is_none(eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
 eff_trace_level_needs_input_vars(PredInfo, ProcInfo, TraceLevel) =
-	trace_level_needs_input_vars(
-		eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
+    trace_level_needs_input_vars(
+        eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
 eff_trace_level_needs_fixed_slots(PredInfo, ProcInfo, TraceLevel) =
-	trace_level_needs_fixed_slots(
-		eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
+    trace_level_needs_fixed_slots(
+        eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
 eff_trace_level_needs_from_full_slot(PredInfo, ProcInfo, TraceLevel) =
-	trace_level_needs_from_full_slot(
-		eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
+    trace_level_needs_from_full_slot(
+        eff_trace_level(PredInfo, ProcInfo, TraceLevel)).
 eff_trace_needs_all_var_names(PredInfo, ProcInfo, TraceLevel, SuppressItems) =
-	trace_needs_all_var_names(
-		eff_trace_level(PredInfo, ProcInfo, TraceLevel),
-		SuppressItems).
+    trace_needs_all_var_names(eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+        SuppressItems).
 eff_trace_needs_proc_body_reps(PredInfo, ProcInfo, TraceLevel, SuppressItems) =
-	trace_needs_proc_body_reps(
-		eff_trace_level(PredInfo, ProcInfo, TraceLevel),
-		SuppressItems).
+    trace_needs_proc_body_reps(eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+        SuppressItems).
 eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel, SuppressItems, Port) =
-	trace_needs_port(eff_trace_level(PredInfo, ProcInfo, TraceLevel),
-		SuppressItems, Port).
+    trace_needs_port(eff_trace_level(PredInfo, ProcInfo, TraceLevel),
+        SuppressItems, Port).
 
 :- func trace_level_is_none(trace_level) = bool.
 :- func trace_level_needs_input_vars(trace_level) = bool.
@@ -269,34 +270,34 @@ trace_level_needs_meaningful_var_names(deep) = yes.
 trace_level_needs_meaningful_var_names(decl_rep) = yes.
 
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
-	(
-		trace_level_has_return_info(TraceLevel) = yes,
-		\+ set__member(return_info, TraceSuppressItems)
-	->
-		Need = yes
-	;
-		Need = no
-	).
+    (
+        trace_level_has_return_info(TraceLevel) = yes,
+        \+ set__member(return_info, TraceSuppressItems)
+    ->
+        Need = yes
+    ;
+        Need = no
+    ).
 
 trace_needs_all_var_names(TraceLevel, TraceSuppressItems) = Need :-
-	(
-		trace_level_has_all_var_names(TraceLevel) = yes,
-		\+ set__member(all_var_names, TraceSuppressItems)
-	->
-		Need = yes
-	;
-		Need = no
-	).
+    (
+        trace_level_has_all_var_names(TraceLevel) = yes,
+        \+ set__member(all_var_names, TraceSuppressItems)
+    ->
+        Need = yes
+    ;
+        Need = no
+    ).
 
 trace_needs_proc_body_reps(TraceLevel, TraceSuppressItems) = Need :-
-	(
-		trace_level_has_proc_body_reps(TraceLevel) = yes,
-		\+ set__member(proc_body_reps, TraceSuppressItems)
-	->
-		Need = yes
-	;
-		Need = no
-	).
+    (
+        trace_level_has_proc_body_reps(TraceLevel) = yes,
+        \+ set__member(proc_body_reps, TraceSuppressItems)
+    ->
+        Need = yes
+    ;
+        Need = no
+    ).
 
 :- func trace_level_has_return_info(trace_level) = bool.
 :- func trace_level_has_all_var_names(trace_level) = bool.
@@ -318,10 +319,10 @@ trace_level_has_proc_body_reps(deep) = no.
 trace_level_has_proc_body_reps(decl_rep) = yes.
 
 convert_trace_suppress(SuppressString, SuppressItemSet) :-
-	SuppressWords = string__words(char_is_comma, SuppressString),
-	list__map(convert_item_name, SuppressWords, SuppressItemLists),
-	list__condense(SuppressItemLists, SuppressItems),
-	set__list_to_set(SuppressItems, SuppressItemSet).
+    SuppressWords = string__words(char_is_comma, SuppressString),
+    list__map(convert_item_name, SuppressWords, SuppressItemLists),
+    list__condense(SuppressItemLists, SuppressItems),
+    set__list_to_set(SuppressItems, SuppressItemSet).
 
 :- pred char_is_comma(char::in) is semidet.
 
@@ -331,12 +332,12 @@ default_trace_suppress = set__init.
 
 :- func convert_port_name(string) = trace_port is semidet.
 
-	% The call port cannot be disabled, because its layout structure is
-	% referred to implicitly by the redo command in mdb.
-	%
-	% The exception port cannot be disabled, because it is never put into
-	% compiler-generated code in the first place; such events are created
-	% on the fly by library/exception.m.
+    % The call port cannot be disabled, because its layout structure is
+    % referred to implicitly by the redo command in mdb.
+    %
+    % The exception port cannot be disabled, because it is never put into
+    % compiler-generated code in the first place; such events are created
+    % on the fly by library/exception.m.
 % convert_port_name("call") = call.
 convert_port_name("exit") = exit.
 convert_port_name("fail") = fail.
@@ -366,11 +367,11 @@ convert_port_name("nondet_pragma_later") = nondet_pragma_later.
 :- func convert_port_class_name(string) = list(trace_port) is semidet.
 
 convert_port_class_name("interface") =
-	[call, exit, redo, fail, exception].
+    [call, exit, redo, fail, exception].
 convert_port_class_name("internal") =
-	[ite_then, ite_else, switch, disj].
+    [ite_then, ite_else, switch, disj].
 convert_port_class_name("context") =
-	[ite_cond, neg_enter, neg_success, neg_failure].
+    [ite_cond, neg_enter, neg_success, neg_failure].
 
 :- func convert_other_name(string) = trace_suppress_item is semidet.
 
@@ -382,59 +383,58 @@ convert_other_name("bodies") = proc_body_reps.
 convert_other_name("proc_body_reps") = proc_body_reps.
 
 :- pred convert_item_name(string::in, list(trace_suppress_item)::out)
-	is semidet.
+    is semidet.
 
 convert_item_name(String, Names) :-
-	( convert_port_name(String) = PortName ->
-		Names = [port(PortName)]
-	; convert_port_class_name(String) = PortNames ->
-		list__map(wrap_port, PortNames, Names)
-	; convert_other_name(String) = OtherName ->
-		Names = [OtherName]
-	;
-		fail
-	).
+    ( convert_port_name(String) = PortName ->
+        Names = [port(PortName)]
+    ; convert_port_class_name(String) = PortNames ->
+        list__map(wrap_port, PortNames, Names)
+    ; convert_other_name(String) = OtherName ->
+        Names = [OtherName]
+    ;
+        fail
+    ).
 
 :- pred wrap_port(trace_port::in, trace_suppress_item::out) is det.
 
 wrap_port(Port, port(Port)).
 
-	% If this is modified, then the corresponding code in
-	% runtime/mercury_stack_layout.h needs to be updated.
-trace_level_rep(none)	  = "MR_TRACE_LEVEL_NONE".
+    % If this is modified, then the corresponding code in
+    % runtime/mercury_stack_layout.h needs to be updated.
+trace_level_rep(none)     = "MR_TRACE_LEVEL_NONE".
 trace_level_rep(shallow)  = "MR_TRACE_LEVEL_SHALLOW".
-trace_level_rep(deep)	  = "MR_TRACE_LEVEL_DEEP".
+trace_level_rep(deep)     = "MR_TRACE_LEVEL_DEEP".
 trace_level_rep(decl_rep) = "MR_TRACE_LEVEL_DECL_REP".
 
 %-----------------------------------------------------------------------------%
 
 :- type port_category
-	--->	interface	% The events that describe the interface of a
-				% procedure with its callers.
-	;	internal	% The events inside each procedure that were
-				% present in the initial procedural debugger.
-	;	context.	% The events inside each procedure that we
-				% added because the declarative debugger needs
-				% to know when (potentially) negated contexts
-				% start and end.
+    --->    interface   % The events that describe the interface of a procedure
+                        % with its callers.
+    ;       internal    % The events inside each procedure that were present
+                        % in the initial procedural debugger.
+    ;       context.    % The events inside each procedure that we added
+                        % because the declarative debugger needs to know when
+                        % (potentially) negated contexts start and end.
 
 :- func trace_port_category(trace_port) = port_category.
 
-trace_port_category(call)			= interface.
-trace_port_category(exit)			= interface.
-trace_port_category(fail)			= interface.
-trace_port_category(redo)			= interface.
-trace_port_category(exception)			= interface.
-trace_port_category(ite_cond)			= context.
-trace_port_category(ite_then)			= internal.
-trace_port_category(ite_else)			= internal.
-trace_port_category(neg_enter)			= context.
-trace_port_category(neg_success)		= context.
-trace_port_category(neg_failure)		= context.
-trace_port_category(switch)			= internal.
-trace_port_category(disj)			= internal.
-trace_port_category(nondet_pragma_first)	= internal.
-trace_port_category(nondet_pragma_later)	= internal.
+trace_port_category(call)                   = interface.
+trace_port_category(exit)                   = interface.
+trace_port_category(fail)                   = interface.
+trace_port_category(redo)                   = interface.
+trace_port_category(exception)              = interface.
+trace_port_category(ite_cond)               = context.
+trace_port_category(ite_then)               = internal.
+trace_port_category(ite_else)               = internal.
+trace_port_category(neg_enter)              = context.
+trace_port_category(neg_success)            = context.
+trace_port_category(neg_failure)            = context.
+trace_port_category(switch)                 = internal.
+trace_port_category(disj)                   = internal.
+trace_port_category(nondet_pragma_first)    = internal.
+trace_port_category(nondet_pragma_later)    = internal.
 
 :- func trace_level_port_categories(trace_level) = list(port_category).
 
@@ -445,41 +445,39 @@ trace_level_port_categories(decl_rep) = [interface, internal, context].
 
 :- func trace_level_allows_port_suppression(trace_level) = bool.
 
-trace_level_allows_port_suppression(none) = no.		% no ports exist
+trace_level_allows_port_suppression(none) = no.     % no ports exist
 trace_level_allows_port_suppression(shallow) = yes.
 trace_level_allows_port_suppression(deep) = yes.
 trace_level_allows_port_suppression(decl_rep) = no.
 
 trace_needs_port(TraceLevel, TraceSuppressItems, Port) = NeedsPort :-
-	(
-		trace_port_category(Port) = Category,
-		list__member(Category,
-			trace_level_port_categories(TraceLevel)),
-		\+ (
-			trace_level_allows_port_suppression(TraceLevel) = yes,
-			set__member(port(Port), TraceSuppressItems)
-		)
-	->
-		NeedsPort = yes
-	;
-		NeedsPort = no
-	).
+    (
+        trace_port_category(Port) = Category,
+        list__member(Category, trace_level_port_categories(TraceLevel)),
+        \+ (
+            trace_level_allows_port_suppression(TraceLevel) = yes,
+            set__member(port(Port), TraceSuppressItems)
+        )
+    ->
+        NeedsPort = yes
+    ;
+        NeedsPort = no
+    ).
 
 encode_suppressed_events(SuppressedEvents) = SuppressedEventsInt :-
-	set__fold(maybe_add_suppressed_event, SuppressedEvents,
-		0, SuppressedEventsInt).
+    set__fold(maybe_add_suppressed_event, SuppressedEvents,
+        0, SuppressedEventsInt).
 
 :- pred maybe_add_suppressed_event(trace_suppress_item::in, int::in, int::out)
-	is det.
+    is det.
 
 maybe_add_suppressed_event(SuppressItem, SuppressedEventsInt0,
-		SuppressedEventsInt) :-
-	( SuppressItem = port(Port) ->
-		SuppressedEventsInt = SuppressedEventsInt0 \/
-			(1 << port_number(Port))
-	;
-		SuppressedEventsInt = SuppressedEventsInt0
-	).
+        SuppressedEventsInt) :-
+    ( SuppressItem = port(Port) ->
+        SuppressedEventsInt = SuppressedEventsInt0 \/ (1 << port_number(Port))
+    ;
+        SuppressedEventsInt = SuppressedEventsInt0
+    ).
 
 :- func port_number(trace_port) = int.
 

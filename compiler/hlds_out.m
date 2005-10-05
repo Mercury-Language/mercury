@@ -3253,15 +3253,19 @@ hlds_out__write_type_params_2(TVarSet, [P | Ps], !IO) :-
 :- pred hlds_out__write_type_body(int::in, tvarset::in, hlds_type_body::in,
     io::di, io::uo) is det.
 
-hlds_out__write_type_body(Indent, TVarSet, du_type(Ctors, Tags, Enum,
+hlds_out__write_type_body(Indent, TVarSet, du_type(Ctors, Tags, EnumDummy,
         MaybeUserEqComp, ReservedTag, Foreign), !IO) :-
     io__write_string(" --->\n", !IO),
     (
-        Enum = yes,
+        EnumDummy = is_enum,
         hlds_out__write_indent(Indent, !IO),
         io__write_string("/* enumeration */\n", !IO)
     ;
-        Enum = no
+        EnumDummy = is_dummy,
+        hlds_out__write_indent(Indent, !IO),
+        io__write_string("/* dummy */\n", !IO)
+    ;
+        EnumDummy = not_enum_or_dummy
     ),
     (
         ReservedTag = yes,

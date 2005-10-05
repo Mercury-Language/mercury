@@ -1475,7 +1475,7 @@ simplify__call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
     % create the new call goal
     list__append(TypeInfoVars, [XVar, YVar], ArgVars),
     module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
-    map__lookup(SpecialPredMap, unify - TypeCtor, PredId),
+    map__lookup(SpecialPredMap, spec_pred_unify - TypeCtor, PredId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),

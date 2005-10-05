@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2001-2004 The University of Melbourne.
+** Copyright (C) 2001-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -289,7 +289,17 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_ENUM:
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
-                    MR_layout_enum[*data_word_ptr]->MR_enum_functor_name);
+                MR_layout_enum[*data_word_ptr]->MR_enum_functor_name);
+            handle_zero_arity_args();
+            return;
+
+        case MR_TYPECTOR_REP_DUMMY:
+            /*
+            ** We must not refer to the "value" we are asked to deconstruct,
+            ** *data_word_ptr, since it contains garbage.
+            */
+            handle_functor_name(MR_type_ctor_layout(type_ctor_info).
+                MR_layout_enum[0]->MR_enum_functor_name);
             handle_zero_arity_args();
             return;
 

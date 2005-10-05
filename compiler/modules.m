@@ -785,6 +785,7 @@
 
 :- implementation.
 
+:- import_module check_hlds__type_util.
 :- import_module libs__handle_options.
 :- import_module libs__options.
 :- import_module make.              % XXX undesirable dependency
@@ -1476,11 +1477,12 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
 
         % Work out which module imports in the implementation section of
         % the interface are required by the definitions of equivalence
-        % types in the implementation.
-        get_requirements_of_eqv_types(!.IntTypesMap, !.ImplTypesMap,
-            NecessaryTypeCtors, NecessaryImplImports),
+        % types and dummy types in the implementation.
+        get_requirements_of_impl_exported_types(!.IntTypesMap, !.ImplTypesMap,
+            NecessaryDummyTypeCtors, NecessaryEqvTypeCtors,
+            NecessaryImplImports),
 
-        % If a type in the implementation section doesn't have
+        % If a type in the implementation section isn't dummy and doesn't have
         % foreign type alternatives, make it abstract.
         map__map_values(make_impl_type_abstract, !ImplTypesMap),
 
@@ -1516,7 +1518,9 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
 
         maybe_strip_import_decls(!ImplItems),
         strip_unnecessary_impl_imports(NecessaryImplImports, !ImplItems),
-        strip_unnecessary_impl_types(NecessaryTypeCtors, !ImplItems),
+        set.union(NecessaryDummyTypeCtors, NecessaryEqvTypeCtors,
+            AllNecessaryTypeCtors),
+        strip_unnecessary_impl_types(AllNecessaryTypeCtors, !ImplItems),
         (
             !.ImplItems = [],
             Items = IntItems
@@ -1721,7 +1725,8 @@ insert_type_defn(Context, Item, [Head | Tail], Result) :-
 
 make_impl_type_abstract(_TypeCtor, !TypeDefnPairs) :-
     (
-        !.TypeDefnPairs = [du_type(_, _) - (Item0 - Context)]
+        !.TypeDefnPairs = [du_type(Ctors, MaybeEqCmp) - (Item0 - Context)],
+        not constructor_list_represents_dummy_argument_type(Ctors, MaybeEqCmp)
     ->
         Defn = abstract_type(non_solver_type),
         ( Item = Item0 ^ td_ctor_defn := Defn ->
@@ -1796,7 +1801,7 @@ is_necessary_impl_type(NecessaryTypeCtors, ItemAndContext) :-
         true
     ).
 
-    % get_requirements_of_eqv_types(InterfaceTypeMap, ImplTypeMap,
+    % get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
     %   NecessaryTypeCtors, Modules):
     %
     % Figure out the set of abstract equivalence type constructors
@@ -1814,25 +1819,27 @@ is_necessary_impl_type(NecessaryTypeCtors, ItemAndContext) :-
     % Return in Modules the set of modules that define the type constructors
     % in NecessaryTypeCtors.
     %
-:- pred get_requirements_of_eqv_types(type_defn_map::in, type_defn_map::in,
-    set(type_ctor)::out, set(module_name)::out) is det.
+:- pred get_requirements_of_impl_exported_types(type_defn_map::in,
+    type_defn_map::in, set(type_ctor)::out, set(type_ctor)::out,
+    set(module_name)::out) is det.
 
-get_requirements_of_eqv_types(InterfaceTypeMap, ImplTypeMap,
-        NecessaryTypeCtors, Modules) :-
+get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
+        DummyTypeCtors, EqvTypeCtors, Modules) :-
     multi_map.to_flat_assoc_list(ImplTypeMap, ImplTypes),
-    list.foldl(accumulate_abs_eqv_type_lhs(InterfaceTypeMap), ImplTypes,
-        set.init, AbsEqvLhsTypeCtors),
+    list.foldl2(accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap),
+        ImplTypes, set.init, AbsEqvLhsTypeCtors, set.init, DummyTypeCtors),
     set.fold2(accumulate_abs_eqv_type_rhs(ImplTypeMap), AbsEqvLhsTypeCtors,
         set.init, AbsEqvRhsTypeCtors, set.init, Modules),
-    set.union(AbsEqvLhsTypeCtors, AbsEqvRhsTypeCtors, NecessaryTypeCtors).
+    set.union(AbsEqvLhsTypeCtors, AbsEqvRhsTypeCtors, EqvTypeCtors).
 
-:- pred accumulate_abs_eqv_type_lhs(type_defn_map::in,
+:- pred accumulate_abs_impl_exported_type_lhs(type_defn_map::in,
     pair(type_ctor, pair(type_defn, item_and_context))::in,
+    set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
-accumulate_abs_eqv_type_lhs(InterfaceTypeMap,
-        TypeCtor - (TypeDefn - _ItemAndContext), !AbsEqvLhsTypeCtors) :-
-    %
+accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap,
+        TypeCtor - (TypeDefn - _ItemAndContext), !AbsEqvLhsTypeCtors,
+        !DummyTypeCtors) :-
     % A type may have multiple definitions because it may be defined both
     % as a foreign type and as a Mercury type. We grab any equivalence types
     % that are in there.
@@ -1847,6 +1854,11 @@ accumulate_abs_eqv_type_lhs(InterfaceTypeMap,
         map__search(InterfaceTypeMap, TypeCtor, _)
     ->
         svset.insert(TypeCtor, !AbsEqvLhsTypeCtors)
+    ;
+        TypeDefn = du_type(Ctors, MaybeEqCmp),
+        constructor_list_represents_dummy_argument_type(Ctors, MaybeEqCmp)
+    ->
+        svset.insert(TypeCtor, !DummyTypeCtors)
     ;
         true
     ).
@@ -1949,36 +1961,34 @@ type_to_type_ctor_set(Type, !TypeCtors) :-
 
 gather_type_defns(_, [], IntItems, reverse(IntItems),
         ImplItems, reverse(ImplItems), !IntTypes, !ImplTypes).
-gather_type_defns(InInterface0, [Item - Context | Items0],
+gather_type_defns(!.InInterface, [Item - Context | ItemContexts],
         !IntItems, !ImplItems, !IntTypes, !ImplTypes) :-
     ( Item = module_defn(_, interface) ->
-        InInterface = yes
+        !:InInterface = yes
     ; Item = module_defn(_, implementation) ->
-        InInterface = no
+        !:InInterface = no
     ; Item = type_defn(_, Name, Args, Body, _) ->
         TypeCtor = Name - length(Args),
-        InInterface = InInterface0,
         (
-            InInterface = yes,
+            !.InInterface = yes,
             !:IntItems = [Item - Context | !.IntItems],
             gather_type_defn(TypeCtor, Body, Item - Context, !IntTypes)
         ;
-            InInterface = no,
+            !.InInterface = no,
             % We don't add this to !ImplItems yet --
             % we may be removing this item.
             gather_type_defn(TypeCtor, Body, Item - Context, !ImplTypes)
         )
     ;
-        InInterface = InInterface0,
         (
-            InInterface = yes,
+            !.InInterface = yes,
             !:IntItems = [Item - Context | !.IntItems]
         ;
-            InInterface = no,
+            !.InInterface = no,
             !:ImplItems = [Item - Context | !.ImplItems]
         )
     ),
-    gather_type_defns(InInterface, Items0, !IntItems, !ImplItems,
+    gather_type_defns(!.InInterface, ItemContexts, !IntItems, !ImplItems,
         !IntTypes, !ImplTypes).
 
 :- pred gather_type_defn(type_ctor::in, type_defn::in, item_and_context::in,

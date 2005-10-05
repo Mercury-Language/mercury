@@ -3178,6 +3178,7 @@ mlds_mercury_type_to_ilds_type(_, _, void_type) =  ilds__type([], int32).
 mlds_mercury_type_to_ilds_type(_, _, higher_order_type) = il_object_array_type.
 mlds_mercury_type_to_ilds_type(_, _, tuple_type) = il_object_array_type.
 mlds_mercury_type_to_ilds_type(_, _, enum_type) =  il_object_array_type.
+mlds_mercury_type_to_ilds_type(_, _, dummy_type) =  il_object_array_type.
 mlds_mercury_type_to_ilds_type(_, _, variable_type) = il_generic_type.
 mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_info_type) =
 	mlds_mercury_type_to_ilds_type(DataRep, MercuryType, user_ctor_type).

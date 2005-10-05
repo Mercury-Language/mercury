@@ -387,7 +387,7 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
         ( 
             Name  = pred_info_name(PredInfo),
             Arity = pred_info_orig_arity(PredInfo),
-            special_pred_name_arity(SpecPredId0, Name, Arity),
+            special_pred_name_arity(SpecPredId0, Name, _, Arity),
             ModuleName = pred_info_module(PredInfo),
             any_mercury_builtin_module(ModuleName)
         ->
@@ -414,7 +414,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
     % predicates.  Leaving it up to the analyser may result in better
     % argument size information anyway.
     %
-    ( SpecialPredId \= (initialise) ->
+    ( SpecialPredId \= spec_pred_init ->
         ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
         proc_info_headvars(ProcInfo0, HeadVars),
         proc_info_vartypes(ProcInfo0, VarTypes),
@@ -428,15 +428,13 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
             !:TermInfo = !.TermInfo ^ intermod_status := IntermodStatus,
             !:TermInfo = !.TermInfo ^ size_var_map := VarMap,
             !:TermInfo = !.TermInfo ^ head_vars := HeadSizeVars,
-            proc_info_set_termination2_info(!.TermInfo, ProcInfo0,
-                ProcInfo)
+            proc_info_set_termination2_info(!.TermInfo, ProcInfo0, ProcInfo)
         ),
         svmap.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         true
     ),
-    set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo, 
-        !ProcTable).
+    set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo, !ProcTable).
 
     % Handle the generation of constraints for special predicates.
     % XXX argument size constraints for unify predicates for types
@@ -446,12 +444,12 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
     module_info::in, vartypes::in, constr_arg_size_info::out, 
     constr_termination_info::out, size_var_map::out, size_vars::out) is det.
 
-special_pred_id_to_termination(compare, HeadProgVars, ModuleInfo, VarTypes,
-        ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
+special_pred_id_to_termination(spec_pred_compare, HeadProgVars, ModuleInfo,
+        VarTypes, ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
     make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSizeInfo, Termination,
         SizeVarMap, HeadSizeVars).
-special_pred_id_to_termination(unify, HeadProgVars, ModuleInfo, VarTypes, 
-        ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
+special_pred_id_to_termination(spec_pred_unify, HeadProgVars, ModuleInfo,
+        VarTypes, ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
     make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap), 
     HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadProgVars),
     Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
@@ -475,8 +473,8 @@ special_pred_id_to_termination(unify, HeadProgVars, ModuleInfo, VarTypes,
     Polyhedron  = polyhedron.from_constraints(Constrs),
     ArgSizeInfo = Polyhedron,
     Termination = cannot_loop(builtin).     
-special_pred_id_to_termination(index, HeadProgVars, ModuleInfo, VarTypes,
-        ArgSize, Termination, SizeVarMap, HeadSizeVars) :-
+special_pred_id_to_termination(spec_pred_index, HeadProgVars, ModuleInfo,
+        VarTypes, ArgSize, Termination, SizeVarMap, HeadSizeVars) :-
     NumToDrop = list.length(HeadProgVars) - 2,
     ( list.drop(NumToDrop, HeadProgVars, _ZeroSizeHeadVars) ->
         make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSize,
@@ -485,9 +483,9 @@ special_pred_id_to_termination(index, HeadProgVars, ModuleInfo, VarTypes,
         unexpected(this_file, 
             "Less than two arguments to builtin index.")
     ).
-special_pred_id_to_termination(initialise, _, _, _, _, _, _, _) :-
+special_pred_id_to_termination(spec_pred_init, _, _, _, _, _, _, _) :-
     unexpected(this_file, "special_pred_id_to_termination/8 " ++
-                "initialise predicate").
+        "initialise predicate").
 
     % Sets the termination status and argument size information for
     % those special_preds (compare and index) where the arguments

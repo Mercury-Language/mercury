@@ -595,7 +595,7 @@ middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
 
 insert_pragma_c_input_registers([], !Used).
 insert_pragma_c_input_registers([Input | Inputs], !Used) :-
-    Input = pragma_c_input(_, _, _, Rval, _),
+    Input = pragma_c_input(_, _, _, _, Rval, _),
     middle_rec__find_used_registers_rval(Rval, !Used),
     insert_pragma_c_input_registers(Inputs, !Used).
 
@@ -604,7 +604,7 @@ insert_pragma_c_input_registers([Input | Inputs], !Used) :-
 
 insert_pragma_c_output_registers([], !Used).
 insert_pragma_c_output_registers([Output | Outputs], !Used) :-
-    Output = pragma_c_output(Lval, _, _, _, _),
+    Output = pragma_c_output(Lval, _, _, _, _, _),
     middle_rec__find_used_registers_lval(Lval, !Used),
     insert_pragma_c_output_registers(Outputs, !Used).
 

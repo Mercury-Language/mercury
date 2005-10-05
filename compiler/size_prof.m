@@ -813,7 +813,7 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
     ;
         VarSet0 = !.Info ^ varset,
         VarTypes0 = !.Info ^ vartypes,
-        make_int_const_construction(KnownSize,
+        make_int_const_construction_alloc(KnownSize,
             yes("KnownSize"), KnownSizeGoal, KnownSizeVar,
             VarTypes0, VarTypes1, VarSet0, VarSet1),
         !:Info = !.Info ^ varset := VarSet1,
@@ -878,7 +878,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
                     RttiVarMaps0, RttiVarMaps),
                 !:Info = !.Info ^ rtti_varmaps := RttiVarMaps
             ),
-            make_int_const_construction(Slot, yes("TypeClassInfoSlot"),
+            make_int_const_construction_alloc(Slot, yes("TypeClassInfoSlot"),
                 SlotGoal, SlotVar, VarTypes1, VarTypes, VarSet1, VarSet),
             !:Info = !.Info ^ varset := VarSet,
             !:Info = !.Info ^ vartypes := VarTypes,
@@ -918,7 +918,7 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
         list__length(ArgTypes, Arity),
         VarSet0 = !.Info ^ varset,
         VarTypes0 = !.Info ^ vartypes,
-        make_int_const_construction(Arity, yes("TupleArity"), ArityGoal,
+        make_int_const_construction_alloc(Arity, yes("TupleArity"), ArityGoal,
             ArityVar, VarTypes0, VarTypes1, VarSet0, VarSet1),
         !:Info = !.Info ^ varset := VarSet1,
         !:Info = !.Info ^ vartypes := VarTypes1,
@@ -1297,10 +1297,6 @@ ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName) :-
     ; VarTypeCtorName = "type_ctor_info"
     ; VarTypeCtorName = "typeclass_info"
     ; VarTypeCtorName = "base_typeclass_info"
-    ; VarTypeCtorName = "zero_type_info"
-    ; VarTypeCtorName = "zero_type_ctor_info"
-    ; VarTypeCtorName = "zero_typeclass_info"
-    ; VarTypeCtorName = "zero_base_typeclass_info"
     ).
 
 %---------------------------------------------------------------------------%

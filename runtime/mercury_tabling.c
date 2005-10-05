@@ -796,6 +796,20 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 MR_type_ctor_num_functors(type_ctor_info), data);
             return table;
 
+        case MR_TYPECTOR_REP_DUMMY: 
+            /*
+            ** If we are ever asked to table a value of a dummy type, we treat
+            ** it mostly as an enum, with the exception being that we ignore
+            ** the actual value to be table (since it contains garbage) and
+            ** substitute the constant zero, which ought to be the enum value
+            ** assigned to the type's only function symbol.
+            **
+            ** It would of course be preferable for the compiler to simply
+            ** not insert any arguments of dummy types into tables.
+            */
+            MR_DEBUG_TABLE_ENUM(table, 1, 0);
+            return table;
+
         case MR_TYPECTOR_REP_RESERVED_ADDR: 
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ: 
             {

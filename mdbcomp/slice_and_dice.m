@@ -871,7 +871,7 @@ format_proc_label(ProcLabel) = Str :-
         ProcLabel = special_proc(_, SpecialPredId, SymModule, TypeName,
             _, _),
         Module = sym_name_to_string(SymModule),
-        special_pred_name_arity(SpecialPredId, Name, Arity),
+        special_pred_name_arity(SpecialPredId, Name, _, Arity),
         Str = Name ++ " for " ++ Module ++ "." ++ TypeName ++ "/" ++
             int_to_string(Arity)
     ).

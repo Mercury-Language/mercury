@@ -557,6 +557,17 @@ start_label:
                 (MR_Integer) x == (MR_Integer) y);
 #endif
 
+        case MR_TYPECTOR_REP_DUMMY:
+            /*
+            ** Since dummy types contain only value, all unifies succeed and
+            ** all comparisons return "equal".
+            */
+#ifdef  select_compare_code
+            return_compare_answer(builtin, dummy, 0, MR_COMPARE_EQUAL);
+#else
+            return_unify_answer(builtin, int, 0, MR_TRUE);
+#endif
+
         case MR_TYPECTOR_REP_FLOAT:
             {
                 MR_Float   fx, fy;

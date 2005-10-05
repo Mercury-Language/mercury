@@ -1554,7 +1554,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         ; Target = java ->
             HLDS = HLDS51,
             mlds_backend(HLDS, _, MLDS, !DumpInfo, !IO),
-            mlds_to_java(MLDS, !IO),
+            mlds_to_java(HLDS, MLDS, !IO),
             (
                 TargetCodeOnly = yes
             ;
@@ -4457,14 +4457,14 @@ mlds_to_high_level_c(MLDS, MaybeRLFile, !IO) :-
     maybe_write_string(Verbose, "% Finished converting MLDS to C.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred mlds_to_java(mlds::in, io::di, io::uo) is det.
+:- pred mlds_to_java(module_info::in, mlds::in, io::di, io::uo) is det.
 
-mlds_to_java(MLDS, !IO) :-
+mlds_to_java(ModuleInfo, MLDS, !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     globals__io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_write_string(Verbose, "% Converting MLDS to Java...\n", !IO),
-    mlds_to_java__output_mlds(MLDS, !IO),
+    mlds_to_java__output_mlds(ModuleInfo, MLDS, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

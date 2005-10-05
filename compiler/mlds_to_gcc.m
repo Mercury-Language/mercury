@@ -1919,7 +1919,7 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 			{ GCC_Type = 'MR_Word' }
 		)
 	;
-		{ TypeCategory = enum_type },
+		{ TypeCategory = enum_type ; TypeCategory = dummy_type },
 		% Note that the MLDS -> C back-end uses 'MR_Word' here,
 		% unless --high-level-data is enabled.  But 'MR_Integer'
 		% seems better, I think.  It probably doesn't make any real
@@ -2516,8 +2516,10 @@ rtti_enum_const("MR_TYPECTOR_REP_TYPECTORDESC", 36).
 rtti_enum_const("MR_TYPECTOR_REP_FOREIGN", 37).
 rtti_enum_const("MR_TYPECTOR_REP_REFERENCE", 38).
 rtti_enum_const("MR_TYPECTOR_REP_STABLE_C_POINTER", 39).
-rtti_enum_const("MR_TYPECTOR_REP_PSEUDOTYPEDESC", 40).
-rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 41).
+rtti_enum_const("MR_TYPECTOR_REP_STABLE_FOREIGN", 40).
+rtti_enum_const("MR_TYPECTOR_REP_PSEUDOTYPEDESC", 41).
+rtti_enum_const("MR_TYPECTOR_REP_DUMMY", 42).
+rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 43).
 rtti_enum_const("MR_SECTAG_NONE", 0).
 rtti_enum_const("MR_SECTAG_LOCAL", 1).
 rtti_enum_const("MR_SECTAG_REMOTE", 2).

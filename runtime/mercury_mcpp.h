@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2000-2004 The University of Melbourne.
+// Copyright (C) 2000-2005 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -173,7 +173,9 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_REFERENCE_val			38
 #define MR_TYPECTOR_REP_STABLE_C_POINTER_val		39
 #define MR_TYPECTOR_REP_STABLE_FOREIGN_val		40
-#define MR_TYPECTOR_REP_UNKNOWN_val			41
+#define MR_TYPECTOR_REP_PSEUDOTYPEDESC_val		41
+#define MR_TYPECTOR_REP_DUMMY_val			42
+#define MR_TYPECTOR_REP_UNKNOWN_val			43
 
 // XXX we should integrate this macro in with the version in
 // mercury_typeinfo.h

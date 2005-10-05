@@ -947,7 +947,7 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !IO) :-
 		% the semidet mode.)
 		%
 		pred_info_get_origin(!.PredInfo, Origin),
-		Origin = special_pred(unify - _)
+		Origin = special_pred(spec_pred_unify - _)
 	->
 		true
 	;
@@ -1619,7 +1619,7 @@ create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
 		RestrictNonLocals, VarsList, UnifyContext, Goal) :-
 	goal_info_get_context(OldGoalInfo, Context),
 	UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
-	create_atomic_unification(Var, RHS,
+	create_atomic_complicated_unification(Var, RHS,
 		Context, UnifyMainContext, UnifySubContext, Goal0),
 	Goal0 = GoalExpr0 - GoalInfo0,
 

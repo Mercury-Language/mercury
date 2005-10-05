@@ -1811,6 +1811,10 @@ output_table_gen_steps([], [], !IO).
 output_table_gen_steps([Step | Steps], [MaybeEnumParam | MaybeEnumParams],
 		!IO) :-
 	(
+		Step = table_trie_step_dummy,
+		StepType = "MR_TABLE_STEP_DUMMY",
+		MaybeEnumParam = no
+	;
 		Step = table_trie_step_int,
 		StepType = "MR_TABLE_STEP_INT",
 		MaybeEnumParam = no

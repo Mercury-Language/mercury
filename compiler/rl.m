@@ -1262,6 +1262,10 @@ rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 	ClassifiedType0 = classify_type(ModuleInfo, Type),
 	( ClassifiedType0 = enum_type ->
 		ClassifiedType = user_ctor_type
+	; ClassifiedType0 = dummy_type ->
+		% XXX The correctness of this is extremely suspect, but a
+		% correct solution would probably require changes to to Aditi.
+		ClassifiedType = user_ctor_type
 	;
 		ClassifiedType = ClassifiedType0
 	),
@@ -1269,6 +1273,10 @@ rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 		ClassifiedType = enum_type,
 			% this is converted to user_type above
 		error("rl__gather_type: enum type")
+	;
+		ClassifiedType = dummy_type,
+			% this is converted to user_type above
+		error("rl__gather_type: dummy type")
 	;
 		ClassifiedType = variable_type,
 		error("rl__gather_type: variable type")

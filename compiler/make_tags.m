@@ -66,16 +66,19 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module std_util.
 
-    % assign_constructor_tags(Constructors, TypeCtor, ReservedTagPragma,
-    %   Globals, TagValues, IsEnum):
+    % assign_constructor_tags(Constructors, MaybeUserEq, TypeCtor,
+    %   ReservedTagPragma, Globals, TagValues, IsEnum):
+    %
     % Assign a constructor tag to each constructor for a discriminated union
     % type, and determine whether the type is an enumeration type or not.
     % (`Globals' is passed because exact way in which this is done is
     % dependent on a compilation option.)
     %
-:- pred assign_constructor_tags(list(constructor)::in, type_ctor::in, bool::in,
-    globals::in, cons_tag_values::out, bool::out) is det.
+:- pred assign_constructor_tags(list(constructor)::in,
+    maybe(unify_compare)::in, type_ctor::in, bool::in,
+    globals::in, cons_tag_values::out, enum_or_dummy::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -91,13 +94,12 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module std_util.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
-assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
-        CtorTags, IsEnum) :-
+assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
+        CtorTags, EnumDummy) :-
 
     % Work out how many tag bits and reserved addresses we've got to play with.
     globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
@@ -129,14 +131,18 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
         ctors_are_all_constants(Ctors),
         ReserveTag = no
     ->
-        IsEnum = yes,
+        ( Ctors = [_] ->
+            EnumDummy = is_dummy
+        ;
+            EnumDummy = is_enum
+        ),
         assign_enum_constants(Ctors, InitTag, CtorTags0, CtorTags)
     ;
-        IsEnum = no,
+        EnumDummy = not_enum_or_dummy,
         (
             % Try representing it as a no-tag type.
-            type_constructors_should_be_no_tag(Ctors, ReserveTag, Globals,
-                SingleFunc, SingleArg, _)
+            type_with_constructors_should_be_no_tag(Globals, TypeCtor,
+                ReserveTag, Ctors, UserEqCmp, SingleFunc, SingleArg, _)
         ->
             SingleConsId = make_cons_id_from_qualified_sym_name(SingleFunc,
                 [SingleArg]),
@@ -163,8 +169,8 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
                     CtorTags1, CtorTags2, 0, NumReservedObjects)
             ;
                 HighLevelCode = no,
-                % reserved symbolic addresses are not
-                % supported for the LLDS back-end
+                % Reserved symbolic addresses are not supported for the
+                % LLDS back-end.
                 LeftOverConstants = LeftOverConstants0,
                 CtorTags2 = CtorTags1
             ),

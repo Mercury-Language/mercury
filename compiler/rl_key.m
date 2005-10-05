@@ -694,7 +694,7 @@ rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 		{
 			is_builtin_unify_pred(PredModule, PredName, Arity)
 		;
-			Origin = special_pred(unify - _)
+			Origin = special_pred(spec_pred_unify - _)
 		}
 	->
 		% Find the last two arguments, the rest will be type_infos.
@@ -711,7 +711,7 @@ rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 		->
 			CompareType = CompareTypePrime
 		;
-			Origin = special_pred(compare - _),
+			Origin = special_pred(spec_pred_compare - _),
 			% We could do better here
 			CompareType = unknown
 		}

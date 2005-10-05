@@ -574,27 +574,28 @@ is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_get_origin(PredInfo, PredOrigin),
 	PredOrigin = special_pred(SpecialPredId - _),
-	SpecialPredId = (initialise).
+	SpecialPredId = spec_pred_init.
 
 %----------------------------------------------------------------------------%
 
+	% This predicate processes each predicate and sets the termination
+	% property if possible.  This is done as follows:  Set the termination
+	% to yes if:
+	% - there is a terminates pragma defined for the predicate
+	% - there is a `check_termination' pragma defined for the predicate,
+	%   and it is imported, and the compiler is not currently generating
+	%   the intermodule optimization file.
+	% - the predicate is a builtin predicate or is compiler generated (This
+	%   also sets the termination constant and UsedArgs).
+	%
+	% Set the termination to dont_know if:
+	% - there is a `does_not_terminate' pragma defined for this predicate.
+	% - the predicate is imported and there is no other source of
+	%   information about it (termination_info pragmas, terminates pragmas,
+	%   check_termination pragmas, builtin/compiler generated).
+	%
 :- pred check_preds(list(pred_id)::in, module_info::in, module_info::out,
 	io::di, io::uo) is det.
-
-% This predicate processes each predicate and sets the termination property
-% if possible.  This is done as follows:  Set the termination to yes if:
-% - there is a terminates pragma defined for the predicate
-% - there is a `check_termination' pragma defined for the predicate, and it
-% 	is imported, and the compiler is not currently generating the
-% 	intermodule optimization file.
-% - the predicate is a builtin predicate or is compiler generated (This
-% 	also sets the termination constant and UsedArgs).
-%
-% Set the termination to dont_know if:
-% - there is a `does_not_terminate' pragma defined for this predicate.
-% - the predicate is imported and there is no other source of information
-% 	about it (termination_info pragmas, terminates pragmas,
-% 	check_termination pragmas, builtin/compiler generated).
 
 check_preds([], !Module, !IO).
 check_preds([PredId | PredIds], !Module, !IO) :-
@@ -695,7 +696,7 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module, !ProcTable) :-
 			ModuleName = pred_info_module(PredInfo),
 			Name = pred_info_name(PredInfo),
 			Arity = pred_info_orig_arity(PredInfo),
-			special_pred_name_arity(SpecPredId0, Name, Arity),
+			special_pred_name_arity(SpecPredId0, Name, _, Arity),
 			any_mercury_builtin_module(ModuleName)
 		->
 			SpecialPredId = SpecPredId0
@@ -719,7 +720,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
 	% predicates.  Leaving it up to the analyser may result in better
 	% argument size information anyway.
 	% 
-	( SpecialPredId \= (initialise) -> 
+	( SpecialPredId \= spec_pred_init -> 
 		map__lookup(!.ProcTable, ProcId, ProcInfo0),
 		proc_info_headvars(ProcInfo0, HeadVars),
 		special_pred_id_to_termination(SpecialPredId, HeadVars,
@@ -740,25 +741,28 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
 :- pred special_pred_id_to_termination(special_pred_id::in,
 	list(prog_var)::in, arg_size_info::out, termination_info::out) is det.
 
-special_pred_id_to_termination(compare, HeadVars, ArgSize, Termination) :-
+special_pred_id_to_termination(spec_pred_compare, HeadVars, ArgSize,
+		Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no, no], OutList),
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop(unit).
-special_pred_id_to_termination(unify, HeadVars, ArgSize, Termination) :-
+special_pred_id_to_termination(spec_pred_unify, HeadVars, ArgSize,
+		Termination) :-
 	term_util__make_bool_list(HeadVars, [yes, yes], OutList),
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop(unit).
-special_pred_id_to_termination(index, HeadVars, ArgSize, Termination) :-
+special_pred_id_to_termination(spec_pred_index, HeadVars, ArgSize,
+		Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no], OutList),
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop(unit).
-special_pred_id_to_termination((initialise), _, _, _) :-
+special_pred_id_to_termination(spec_pred_init, _, _, _) :-
 	unexpected(this_file, "special_pred_id_to_termination/4 " ++
 		"initialise predicate").
 
-% The list of proc_ids must refer to builtin predicates.  This predicate
-% sets the termination information of builtin predicates.
-
+	% The list of proc_ids must refer to builtin predicates. This predicate
+	% sets the termination information of builtin predicates.
+	%
 :- pred set_builtin_terminates(list(proc_id)::in, pred_id::in, pred_info::in,
 	module_info::in, proc_table::in, proc_table::out) is det.
 

@@ -2047,6 +2047,9 @@ mlds_output_mercury_type_prefix(Type, TypeCategory, !IO) :-
 		TypeCategory = enum_type,
 		mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
 	;
+		TypeCategory = dummy_type,
+		mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
+	;
 		TypeCategory = user_ctor_type,
 		mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
 	).

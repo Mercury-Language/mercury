@@ -232,13 +232,13 @@ gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn, ModuleName,
             Body ^ du_type_usereq = yes(_UserDefinedEquality)
         )
     ->
-        map__lookup(SpecMap, unify - TypeCtor, UnifyPredId),
-        special_pred_mode_num(unify, UnifyProcInt),
+        map__lookup(SpecMap, spec_pred_unify - TypeCtor, UnifyPredId),
+        special_pred_mode_num(spec_pred_unify, UnifyProcInt),
         proc_id_to_int(UnifyProcId, UnifyProcInt),
         Unify = proc(UnifyPredId, UnifyProcId),
 
-        map__lookup(SpecMap, compare - TypeCtor, ComparePredId),
-        special_pred_mode_num(compare, CompareProcInt),
+        map__lookup(SpecMap, spec_pred_compare - TypeCtor, ComparePredId),
+        special_pred_mode_num(spec_pred_compare, CompareProcInt),
         proc_id_to_int(CompareProcId, CompareProcInt),
         Compare = proc(ComparePredId, CompareProcId)
     ;
@@ -281,7 +281,7 @@ construct_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
     rtti_data::out) is det.
 
 construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
-    TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
+    TypeCtorGenInfo = type_ctor_gen_info(TypeCtor, ModuleName, TypeName,
         TypeArity, _Status, HldsDefn, UnifyPredProcId, ComparePredProcId),
     make_rtti_proc_label(UnifyPredProcId, ModuleInfo, UnifyProcLabel),
     make_rtti_proc_label(ComparePredProcId, ModuleInfo, CompareProcLabel),
@@ -353,7 +353,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 UnivTvars, ExistTvars, MaybePseudoTypeInfo),
             Details = eqv(MaybePseudoTypeInfo)
         ;
-            TypeBody = du_type(Ctors, ConsTagMap, Enum, MaybeUserEqComp,
+            TypeBody = du_type(Ctors, ConsTagMap, EnumDummy, MaybeUserEqComp,
                 ReservedTag, _),
             (
                 MaybeUserEqComp = yes(_),
@@ -363,14 +363,19 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 EqualityAxioms = standard
             ),
             (
-                Enum = yes,
+                EnumDummy = is_enum,
                 make_enum_details(Ctors, ConsTagMap, ReservedTag,
                     EqualityAxioms, Details)
             ;
-                Enum = no,
+                EnumDummy = is_dummy,
+                make_enum_details(Ctors, ConsTagMap, ReservedTag,
+                    EqualityAxioms, Details)
+            ;
+                EnumDummy = not_enum_or_dummy,
                 (
-                    type_constructors_should_be_no_tag(Ctors, ReservedTag,
-                        Globals, Name, ArgType, MaybeArgName)
+                    type_with_constructors_should_be_no_tag(Globals, TypeCtor,
+                        ReservedTag, Ctors, MaybeUserEqComp, Name, ArgType,
+                        MaybeArgName)
                 ->
                     make_notag_details(TypeArity, Name, ArgType, MaybeArgName,
                         EqualityAxioms, Details)
@@ -385,7 +390,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         !:Flags = set__init,
         ( TypeBody = du_type(_, _, _, _, _, _) ->
             svset__insert(kind_of_du_flag, !Flags),
-            ( TypeBody ^ du_type_reserved_tag = yes ->
+            ( TypeBody ^ du_type_reserved_tag = yes -> 
                 svset__insert(reserve_tag_flag, !Flags)
             ;
                 true
@@ -423,11 +428,6 @@ impl_type_ctor("private_builtin", "type_ctor_info", 0, type_ctor_info).
 impl_type_ctor("private_builtin", "type_info", 0, type_info).
 impl_type_ctor("private_builtin", "typeclass_info", 0, typeclass_info).
 impl_type_ctor("private_builtin", "base_typeclass_info", 0,
-    base_typeclass_info).
-impl_type_ctor("private_builtin", "zero_type_ctor_info", 0, type_ctor_info).
-impl_type_ctor("private_builtin", "zero_type_info", 0, type_info).
-impl_type_ctor("private_builtin", "zero_typeclass_info", 0, typeclass_info).
-impl_type_ctor("private_builtin", "zero_base_typeclass_info", 0,
     base_typeclass_info).
 impl_type_ctor("private_builtin", "heap_pointer", 0, hp).
 impl_type_ctor("private_builtin", "succip", 0, succip).
@@ -566,7 +566,12 @@ make_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms, Details) :-
     NameMap0 = map__init,
     list__foldl2(make_enum_maps, EnumFunctors,
         ValueMap0, ValueMap, NameMap0, NameMap),
-    Details = enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap).
+    ( Ctors = [_] ->
+        IsDummy = yes
+    ;
+        IsDummy = no
+    ),
+    Details = enum(EqualityAxioms, EnumFunctors, ValueMap, NameMap, IsDummy).
 
     % Create an enum_functor structure for each functor in an enum type.
     % The functors are given to us in ordinal order (since that's how the HLDS
@@ -713,30 +718,38 @@ make_maybe_res_functors([Functor | Functors], NextOrdinal, ConsTagMap,
 
 process_cons_tag(ConsTag, ConsRep) :-
     (
-        ( ConsTag = single_functor, ConsPtag = 0
-        ; ConsTag = unshared_tag(ConsPtag)
-        )
-    ->
+        ConsTag = single_functor,
+        ConsPtag = 0,
         ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_none))
     ;
-        ConsTag = shared_local_tag(ConsPtag, ConsStag)
-    ->
+        ConsTag = unshared_tag(ConsPtag),
+        ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_none))
+    ;
+        ConsTag = shared_local_tag(ConsPtag, ConsStag),
         ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_local(ConsStag)))
     ;
-        ConsTag = shared_remote_tag(ConsPtag, ConsStag)
-    ->
+        ConsTag = shared_remote_tag(ConsPtag, ConsStag),
         ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_remote(ConsStag)))
     ;
-        ConsTag = reserved_address(ReservedAddr)
-    ->
+        ConsTag = reserved_address(ReservedAddr),
         ConsRep = reserved_rep(ReservedAddr)
     ;
-        ConsTag = shared_with_reserved_addresses(_RAs, ThisTag)
-    ->
+        ConsTag = shared_with_reserved_addresses(_RAs, ThisTag),
         % Here we can just ignore the fact that this cons_tag is
         % shared with reserved addresses.
         process_cons_tag(ThisTag, ConsRep)
     ;
+        ( ConsTag = no_tag
+        ; ConsTag = string_constant(_)
+        ; ConsTag = int_constant(_)
+        ; ConsTag = float_constant(_)
+        ; ConsTag = pred_closure_tag(_, _, _)
+        ; ConsTag = type_ctor_info_constant(_, _, _)
+        ; ConsTag = base_typeclass_info_constant(_, _, _)
+        ; ConsTag = tabling_pointer_constant(_, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = table_io_decl_tag(_, _)
+        ),
         unexpected(this_file, "bad cons_tag for du function symbol")
     ).
 

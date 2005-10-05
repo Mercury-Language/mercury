@@ -677,7 +677,8 @@ output_type_ctor_data_defn(TypeCtorData, !DeclSet, !IO) :-
 output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName, MaybeLayoutName, !DeclSet, !IO) :-
     (
-        TypeCtorDetails = enum(_, EnumFunctors, EnumByRep, EnumByName),
+        TypeCtorDetails = enum(_, EnumFunctors, EnumByRep, EnumByName,
+            _IsDummy),
         list__foldl2(output_enum_functor_defn(RttiTypeCtor), EnumFunctors,
             !DeclSet, !IO),
         output_enum_value_ordered_table(RttiTypeCtor, EnumByRep,

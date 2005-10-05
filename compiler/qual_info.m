@@ -233,7 +233,7 @@ make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
         Rhs = functor(ConsId, _, _),
         record_used_functor(ConsId, !QualInfo)
     ),
-    hlds_goal__create_atomic_unification(Var, Rhs, Context,
+    create_atomic_complicated_unification(Var, Rhs, Context,
         MainContext, SubContext, Goal).
 
 record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
@@ -274,9 +274,9 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         list__length(FuncArgs, Arity),
         ConsId = cons(SymName, Arity),
         goal_info_get_context(GoalInfo, Context),
-        hlds_goal__create_atomic_unification(RetArg,
-            functor(ConsId, no, FuncArgs), Context,
-            explicit, [], GoalExpr - _),
+        create_atomic_complicated_unification(RetArg,
+            functor(ConsId, no, FuncArgs), Context, explicit, [],
+            GoalExpr - _),
         Goal = GoalExpr - GoalInfo
     ).
 

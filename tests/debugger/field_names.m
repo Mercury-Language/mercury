@@ -57,6 +57,9 @@
 :- type t8
 	--->	t8a ; t8b.
 
+:- type dummy
+	--->	dummy.
+
 main -->
 	{ make_t1f1(41, 42, 43, 44, T1F1) },
 	{ make_t1f2(51, 52, 53, T1F2) },
@@ -67,6 +70,7 @@ main -->
 	{ make_t6(0.9, T6) },
 	{ make_t7(0.9, 77, T7) },
 	{ make_t8(T8) },
+	{ make_dummy(Dummy) },
 	io__write(T1F1), nl,
 	io__write(T1F2), nl,
 	io__write(T2), nl,
@@ -75,7 +79,8 @@ main -->
 	io__write(T5), nl,
 	io__write(T6), nl,
 	io__write(T7), nl,
-	io__write(T8), nl.
+	io__write(T8), nl,
+	io__write(Dummy), nl.
 
 :- pred make_t1f1(int::in, int::in, int::in, int::in, t1::out) is det.
 make_t1f1(A, B, C, D, t1f1(A, B, C, D)).
@@ -103,3 +108,6 @@ make_t7(A, B, t7f(A, B)).
 
 :- pred make_t8(t8::out) is det.
 make_t8(t8a).
+
+:- pred make_dummy(dummy::out) is det.
+make_dummy(dummy).

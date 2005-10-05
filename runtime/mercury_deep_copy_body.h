@@ -105,6 +105,13 @@ try_again:
     case MR_TYPECTOR_REP_ENUM_USEREQ:
         return data;    /* just a copy of the actual item */
 
+    case MR_TYPECTOR_REP_DUMMY:
+        /*
+        ** The value we are asked to copy is a dummy, and the return value
+        ** won't be looked at either, so what we return doesn't really matter.
+        */
+        return data;
+
     case MR_TYPECTOR_REP_RESERVED_ADDR:
     case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         {

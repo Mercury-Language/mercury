@@ -1237,7 +1237,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         TableDecl = table_io_decl,
         ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
         TableIoDeclConsId = table_io_decl(ShroudedPredProcId),
-        make_const_construction(TableIoDeclConsId, c_pointer_type,
+        make_const_construction_alloc(TableIoDeclConsId, c_pointer_type,
             yes("TableIoDeclPtr"), TableIoDeclGoal, TableIoDeclPtrVar,
             !VarTypes, !VarSet),
         allocate_plain_slot_numbers(SavedHeadVars, 1, NumberedSavedHeadVars),
@@ -2234,7 +2234,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, Prefix,
             hlds_data__get_type_defn_body(TypeDefn, TypeBody),
             (
                 Ctors = TypeBody ^ du_type_ctors,
-                TypeBody ^ du_type_is_enum = yes,
+                TypeBody ^ du_type_is_enum = is_enum,
                 TypeBody ^ du_type_usereq  = no
             ->
                 list__length(Ctors, EnumRange)
@@ -2260,6 +2260,15 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, Prefix,
             unexpected(this_file,
                 "gen_lookup_call_for_type: unexpected enum type")
         )
+    ; TypeCat = dummy_type ->
+        generate_call("unify", det, [TableVar, NextTableVar],
+            impure_code, BindNextTableVar, ModuleInfo, Context, SetEqualGoal),
+        Goals = [SetEqualGoal],
+        Step = table_trie_step_dummy,
+        PrefixGoals = [],
+        ExtraArgs = [],
+        CodeStr0 = next_table_node_name ++ " = "
+            ++ cur_table_node_name ++ ";\n "
     ;
         lookup_tabling_category(TypeCat, MaybeCatStringStep),
         (
@@ -2309,7 +2318,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, Prefix,
                 ArgName ++ ", " ++ next_table_node_name ++ ");\n"
         ;
             MaybeCatStringStep = yes(CatString - Step),
-            string__append("table_lookup_insert_", CatString, LookupPredName),
+            LookupPredName = "table_lookup_insert_" ++ CatString,
             generate_call(LookupPredName, det,
                 [TableVar, ArgVar, NextTableVar],
                 impure_code, BindNextTableVar, ModuleInfo, Context, Goal),
@@ -2679,8 +2688,7 @@ gen_save_call_for_type(TypeCat, Type, TableVar, Var, Offset, OffsetVar,
             TypeInfoName ++ ", " ++ Name ++ ");\n"
     ;
         type_save_category(TypeCat, CatString),
-        string__append_list(["table_save_", CatString, "_answer"],
-            SavePredName),
+        SavePredName = "table_save_" ++ CatString ++ "_answer",
         generate_call(SavePredName, det, [TableVar, OffsetVar, Var],
             impure_code, [], ModuleInfo, Context, Goal),
         Goals = [Goal],
@@ -2915,8 +2923,7 @@ gen_restore_call_for_type(TypeCat, Type, OrigInstmapDelta, TableVar, Var,
         ArgType = dummy_type_var
     ;
         type_save_category(TypeCat, CatString),
-        string__append_list(["table_restore_", CatString, "_answer"],
-            RestorePredName),
+        RestorePredName = "table_restore_" ++ CatString ++ "_answer",
         ArgType = Type
     ),
     ( instmap_delta_search_var(OrigInstmapDelta, Var, InstPrime) ->
@@ -2955,8 +2962,8 @@ generate_error_goal(TableInfo, Context, Msg, !VarTypes, !VarSet, Goal) :-
     PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
     sym_name_to_string(qualified(Module, Name), NameStr),
     string__int_to_string(Arity, ArityStr),
-    string__append_list([Msg, " in ", PredOrFuncStr, " ", NameStr,
-        "/", ArityStr], Message),
+    Message = Msg ++ " in " ++ PredOrFuncStr ++ " " ++ NameStr
+        ++ "/" ++ ArityStr,
 
     gen_string_construction("Message", Message, !VarTypes, !VarSet,
         MessageVar, MessageStrGoal),
@@ -3047,7 +3054,7 @@ append_fail(Goal, GoalAndThenFail) :-
     prog_var::out, hlds_goal::out) is det.
 
 gen_int_construction(VarName, VarValue, !VarTypes, !VarSet, Var, Goal) :-
-    make_int_const_construction(VarValue, yes(VarName), Goal, Var,
+    make_int_const_construction_alloc(VarValue, yes(VarName), Goal, Var,
         !VarTypes, !VarSet).
 
 :- pred gen_string_construction(string::in, string::in,
@@ -3055,7 +3062,7 @@ gen_int_construction(VarName, VarValue, !VarTypes, !VarSet, Var, Goal) :-
     prog_var::out, hlds_goal::out) is det.
 
 gen_string_construction(VarName, VarValue, !VarTypes, !VarSet, Var, Goal) :-
-    make_string_const_construction(VarValue, yes(VarName), Goal, Var,
+    make_string_const_construction_alloc(VarValue, yes(VarName), Goal, Var,
         !VarTypes, !VarSet).
 
 :- func trie_node_type = (type).
@@ -3327,12 +3334,13 @@ goal_info_init_hide(NonLocals, InstmapDelta, Detism, Purity, Context,
 
 %-----------------------------------------------------------------------------%
 
-% For backward compatibility, we treat type_info_type as user_type. However,
-% this makes the tabling of type_infos more expensive than necessary, since
-% we essentially table the information in the type_info twice, once by tabling
-% the type represented by the type_info (since this is the value of the type
+% For backward compatibility, we treat type_info_type as user_type. This
+% used to make the tabling of type_infos more expensive than necessary, since
+% we essentially tabled the information in the type_info twice, once by tabling
+% the type represented by the type_info (since this was the value of the type
 % argument of the type constructor private_builtin.type_info/1), and then
-% tabling the type_info itself.
+% tabling the type_info itself. However, since we made type_info have arity
+% zero, this overhead should be gone.
 
 :- func builtin_type(type_category) = bool.
 
@@ -3347,6 +3355,7 @@ builtin_type(typeclass_info_type) = yes.
 builtin_type(base_typeclass_info_type) = yes.
 builtin_type(higher_order_type) = no.
 builtin_type(enum_type) = no.
+builtin_type(dummy_type) = no.
 builtin_type(variable_type) = no.
 builtin_type(tuple_type) = no.
 builtin_type(user_ctor_type) = no.
@@ -3363,6 +3372,8 @@ lookup_tabling_category(str_type,   yes("string" - table_trie_step_string)).
 lookup_tabling_category(float_type, yes("float" -  table_trie_step_float)).
 lookup_tabling_category(void_type, _) :-
     unexpected(this_file, "lookup_tabling_category: void").
+lookup_tabling_category(dummy_type, _) :-
+    unexpected(this_file, "lookup_tabling_category: dummy_type").
 lookup_tabling_category(type_info_type,
         yes("typeinfo" - table_trie_step_typeinfo)).
 lookup_tabling_category(type_ctor_info_type,
@@ -3393,6 +3404,8 @@ type_save_category(higher_order_type,   "pred").
 type_save_category(tuple_type,      "any").
 type_save_category(user_ctor_type,  "any").     % could do better
 type_save_category(variable_type,   "any").     % could do better
+type_save_category(dummy_type, _) :-
+    unexpected(this_file, "type_save_category: dummy").
 type_save_category(void_type, _) :-
     unexpected(this_file, "type_save_category: void").
 type_save_category(type_info_type, "any").      % could do better

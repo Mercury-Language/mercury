@@ -1020,13 +1020,13 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
                     CodeModel = model_det,
                     ArgMode = top_out,
                     Types1 = [],
-                    \+ type_util__is_dummy_argument_type( Type)
+                    \+ type_util__is_dummy_argument_type(ModuleInfo, Type)
                 )
             ->
                 % Output arguments are copied out, so we need to generate
                 % a local declaration for them here.
                 Lval = VarLval,
-                ( type_util__is_dummy_argument_type(Type) ->
+                ( is_dummy_argument_type(ModuleInfo, Type) ->
                     CopyOutLvals = CopyOutLvals1,
                     Defns = Defns1
                 ;

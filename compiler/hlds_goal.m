@@ -29,6 +29,7 @@
 :- import_module map.
 :- import_module set.
 :- import_module std_util.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 %
@@ -879,6 +880,9 @@
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_has_feature(hlds_goal_info::in, goal_feature::in) is semidet.
 
+:- pred goal_set_context(term__context::in, hlds_goal::in, hlds_goal::out)
+    is det.
+
 :- pred goal_add_feature(goal_feature::in, hlds_goal::in, hlds_goal::out)
     is det.
 :- pred goal_remove_feature(goal_feature::in, hlds_goal::in, hlds_goal::out)
@@ -1175,17 +1179,29 @@
     is det.
 
     % Create the hlds_goal for a unification, filling in all the as yet
-    % unknown slots with dummy values.
+    % unknown slots with dummy values. The unification is constructed as a
+    % complicated unification; turning it into some other kind of unification,
+    % if appropriate is left to mode analysis. Therefore this predicate
+    % shouldn't be used unless you know mode analysis will be run on its
+    % output.
     %
-:- pred create_atomic_unification(prog_var::in, unify_rhs::in,
+:- pred create_atomic_complicated_unification(prog_var::in, unify_rhs::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
     hlds_goal::out) is det.
 
-    % Produce a goal to construct a given constant.  These
-    % predicates all fill in the non-locals, instmap_delta and
-    % determinism fields of the goal_info of the returned goal.
-    % With alias tracking, the instmap_delta will be correct only if
-    % the variable being assigned to has no aliases.
+    % Create the hlds_goal for a unification that tests the equality of two
+    % values of atomic types. The resulting goal has all its fields filled in.
+    %
+:- pred make_simple_test(prog_var::in, prog_var::in,
+    unify_main_context::in, unify_sub_contexts::in, hlds_goal::out) is det.
+
+    % Produce a goal to construct a given constant. These predicates all
+    % fill in the non-locals, instmap_delta and determinism fields of the
+    % goal_info of the returned goal. With alias tracking, the instmap_delta
+    % will be correct only if the variable being assigned to has no aliases.
+    %
+    % Ths cons_id passed to make_const_construction must be fully module
+    % qualified.
     %
 :- pred make_int_const_construction(prog_var::in, int::in,
     hlds_goal::out) is det.
@@ -1198,32 +1214,37 @@
 :- pred make_const_construction(prog_var::in, cons_id::in,
     hlds_goal::out) is det.
 
-:- pred make_int_const_construction(int::in, maybe(string)::in,
+:- pred make_int_const_construction_alloc(int::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
-:- pred make_string_const_construction(string::in, maybe(string)::in,
+:- pred make_string_const_construction_alloc(string::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
-:- pred make_float_const_construction(float::in, maybe(string)::in,
+:- pred make_float_const_construction_alloc(float::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
-:- pred make_char_const_construction(char::in, maybe(string)::in,
+:- pred make_char_const_construction_alloc(char::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
-:- pred make_const_construction(cons_id::in, (type)::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out,
+:- pred make_const_construction_alloc(cons_id::in, (type)::in,
+    maybe(string)::in, hlds_goal::out, prog_var::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
 
-:- pred make_int_const_construction(int::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
-:- pred make_string_const_construction(string::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
-:- pred make_float_const_construction(float::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
-:- pred make_char_const_construction(char::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
-:- pred make_const_construction(cons_id::in, (type)::in, maybe(string)::in,
-    hlds_goal::out, prog_var::out, proc_info::in, proc_info::out) is det.
+:- pred make_int_const_construction_alloc_in_proc(int::in,
+    maybe(string)::in, hlds_goal::out, prog_var::out,
+    proc_info::in, proc_info::out) is det.
+:- pred make_string_const_construction_alloc_in_proc(string::in,
+    maybe(string)::in, hlds_goal::out, prog_var::out,
+    proc_info::in, proc_info::out) is det.
+:- pred make_float_const_construction_alloc_in_proc(float::in,
+    maybe(string)::in, hlds_goal::out, prog_var::out,
+    proc_info::in, proc_info::out) is det.
+:- pred make_char_const_construction_alloc_in_proc(char::in,
+    maybe(string)::in, hlds_goal::out, prog_var::out,
+    proc_info::in, proc_info::out) is det.
+:- pred make_const_construction_alloc_in_proc(cons_id::in, (type)::in,
+    maybe(string)::in, hlds_goal::out, prog_var::out,
+    proc_info::in, proc_info::out) is det.
 
     % Given the variable info field from a pragma foreign_code, get
     % all the variable names.
@@ -1382,7 +1403,8 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module term.
+:- import_module svmap.
+:- import_module svvarset.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1785,6 +1807,9 @@ goal_info_has_feature(GoalInfo, Feature) :-
 goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals).
 
+goal_set_context(Context, Goal - GoalInfo0, Goal - GoalInfo) :-
+    goal_info_set_context(Context, GoalInfo0, GoalInfo).
+
 goal_add_feature(Feature, Goal - GoalInfo0, Goal - GoalInfo) :-
     goal_info_add_feature(Feature, GoalInfo0, GoalInfo).
 
@@ -2127,65 +2152,81 @@ set_goal_contexts_2_shorthand(Context, bi_implication(LHS0, RHS0),
 
 %-----------------------------------------------------------------------------%
 
-create_atomic_unification(LHS, RHS, Context, UnifyMainContext, UnifySubContext,
-        Goal) :-
+create_atomic_complicated_unification(LHS, RHS, Context,
+        UnifyMainContext, UnifySubContext, Goal) :-
     UMode = ((free - free) -> (free - free)),
     Mode = ((free -> free) - (free -> free)),
-    UnifyInfo = complicated_unify(UMode, can_fail, []),
-    UnifyC = unify_context(UnifyMainContext, UnifySubContext),
+    Unification = complicated_unify(UMode, can_fail, []),
+    UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     goal_info_init(Context, GoalInfo),
-    Goal = unify(LHS, RHS, Mode, UnifyInfo, UnifyC) - GoalInfo.
+    Goal = unify(LHS, RHS, Mode, Unification, UnifyContext) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 
-make_int_const_construction(Int, MaybeName, Goal, Var, !ProcInfo) :-
+make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
+    Ground = ground(shared, none),
+    Mode = ((Ground -> Ground) - (Ground -> Ground)),
+    Unification = simple_test(X, Y),
+    UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
+    instmap_delta_init_reachable(InstMapDelta),
+    goal_info_init(list_to_set([X, Y]), InstMapDelta, semidet, pure, GoalInfo),
+    Goal = unify(X, var(Y), Mode, Unification, UnifyContext) - GoalInfo.
+
+%-----------------------------------------------------------------------------%
+
+make_int_const_construction_alloc_in_proc(Int, MaybeName, Goal, Var,
+        !ProcInfo) :-
     proc_info_create_var_from_type(int_type, MaybeName, Var, !ProcInfo),
     make_int_const_construction(Var, Int, Goal).
 
-make_string_const_construction(String, MaybeName, Goal, Var, !ProcInfo) :-
+make_string_const_construction_alloc_in_proc(String, MaybeName, Goal, Var,
+        !ProcInfo) :-
     proc_info_create_var_from_type(string_type, MaybeName, Var, !ProcInfo),
     make_string_const_construction(Var, String, Goal).
 
-make_float_const_construction(Float, MaybeName, Goal, Var, !ProcInfo) :-
+make_float_const_construction_alloc_in_proc(Float, MaybeName, Goal, Var,
+        !ProcInfo) :-
     proc_info_create_var_from_type(float_type, MaybeName, Var, !ProcInfo),
     make_float_const_construction(Var, Float, Goal).
 
-make_char_const_construction(Char, MaybeName, Goal, Var, !ProcInfo) :-
+make_char_const_construction_alloc_in_proc(Char, MaybeName, Goal, Var,
+        !ProcInfo) :-
     proc_info_create_var_from_type(char_type, MaybeName, Var, !ProcInfo),
     make_char_const_construction(Var, Char, Goal).
 
-make_const_construction(ConsId, Type, MaybeName, Goal, Var, !ProcInfo) :-
+make_const_construction_alloc_in_proc(ConsId, Type, MaybeName, Goal, Var,
+        !ProcInfo) :-
     proc_info_create_var_from_type(Type, MaybeName, Var, !ProcInfo),
     make_const_construction(Var, ConsId, Goal).
 
-make_int_const_construction(Int, MaybeName, Goal, Var, VarTypes0, VarTypes,
-        VarSet0, VarSet) :-
-    varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
-    map__det_insert(VarTypes0, Var, int_type, VarTypes),
+make_int_const_construction_alloc(Int, MaybeName, Goal, Var,
+        !VarTypes, !VarSet) :-
+    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap__det_insert(Var, int_type, !VarTypes),
     make_int_const_construction(Var, Int, Goal).
 
-make_string_const_construction(String, MaybeName, Goal, Var,
-        VarTypes0, VarTypes, VarSet0, VarSet) :-
-    varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
-    map__det_insert(VarTypes0, Var, string_type, VarTypes),
+make_string_const_construction_alloc(String, MaybeName, Goal, Var,
+        !VarTypes, !VarSet) :-
+    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap__det_insert(Var, string_type, !VarTypes),
     make_string_const_construction(Var, String, Goal).
 
-make_float_const_construction(Float, MaybeName, Goal, Var,
-        VarTypes0, VarTypes, VarSet0, VarSet) :-
-    varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
-    map__det_insert(VarTypes0, Var, float_type, VarTypes),
+make_float_const_construction_alloc(Float, MaybeName, Goal, Var,
+        !VarTypes, !VarSet) :-
+    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap__det_insert(Var, float_type, !VarTypes),
     make_float_const_construction(Var, Float, Goal).
 
-make_char_const_construction(Char, MaybeName, Goal, Var,
-        VarTypes0, VarTypes, VarSet0, VarSet) :-
-    varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
-    map__det_insert(VarTypes0, Var, char_type, VarTypes),
+make_char_const_construction_alloc(Char, MaybeName, Goal, Var,
+        !VarTypes, !VarSet) :-
+    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap__det_insert(Var, char_type, !VarTypes),
     make_char_const_construction(Var, Char, Goal).
 
-make_const_construction(ConsId, Type, MaybeName, Goal, Var,
-        VarTypes0, VarTypes, VarSet0, VarSet) :-
-    varset__new_maybe_named_var(VarSet0, MaybeName, Var, VarSet),
-    map__det_insert(VarTypes0, Var, Type, VarTypes),
+make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
+        !VarTypes, !VarSet) :-
+    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap__det_insert(Var, Type, !VarTypes),
     make_const_construction(Var, ConsId, Goal).
 
 make_int_const_construction(Var, Int, Goal) :-

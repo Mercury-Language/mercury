@@ -1034,7 +1034,8 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
     MakeResultType(Arg, ResultType),
     proc_info_create_var_from_type(ResultType, no, ResultVar, !ProcInfo),
     MaybeContext = no,
-    make_int_const_construction(Index, no, IndexGoal, IndexVar, !ProcInfo),
+    make_int_const_construction_alloc_in_proc(Index, no, IndexGoal, IndexVar,
+        !ProcInfo),
     CallArgs = [TypeClassInfoVar, IndexVar, ResultVar],
 
     set.list_to_set(CallArgs, NonLocals),
@@ -1911,9 +1912,10 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     proc_info_vartypes(ProcInfo0, VarTypes),
     module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
     mercury_public_builtin_module = pred_info_module(CalledPredInfo),
+    pred_info_module(CalledPredInfo) = mercury_public_builtin_module,
     PredName = pred_info_name(CalledPredInfo),
     PredArity = pred_info_orig_arity(CalledPredInfo),
-    special_pred_name_arity(SpecialId, PredName, PredArity),
+    special_pred_name_arity(SpecialId, PredName, _, PredArity),
     special_pred_get_type(SpecialId, Args, Var),
     map.lookup(VarTypes, Var, SpecialPredType),
     SpecialPredType \= variable(_, _),
@@ -1924,7 +1926,6 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     % `private_builtin.builtin_compare_tuple/3' always abort. It might be
     % worth inlining complicated unifications of small tuples (or any
     % other small type).
-
     SpecialPredType \= tuple(_, _),
 
     Args = [TypeInfoVar | SpecialPredArgs],
@@ -1937,165 +1938,225 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
         TypeInfoVarArgs = [_TypeCtorInfo | TypeInfoArgs]
     ),
     (
-        % Look for unification or comparison applied directly to a
-        % builtin or atomic type. This needs to be done separately from
-        % the case for user-defined types, for two reasons.  First,
-        % because we want to specialize such calls even if we are not
-        % generating any special preds. Second, because the specialized
-        % code is different in the two cases: here it is a call to a
-        % builtin predicate, perhaps preceded by casts; there it is a
-        % call to a compiler-generated predicate.
-
-        specializeable_special_call(SpecialId, CalledProc),
-        type_is_atomic(SpecialPredType, ModuleInfo),
-        \+ type_has_user_defined_equality_pred(ModuleInfo, SpecialPredType, _)
+        \+ type_has_user_defined_equality_pred(ModuleInfo, SpecialPredType, _),
+        proc_id_to_int(CalledProc, CalledProcInt),
+        CalledProcInt = 0,
+        (
+            SpecialId = spec_pred_unify,
+            SpecialPredArgs = [Arg1, Arg2],
+            MaybeResult = no
+        ;
+            SpecialId = spec_pred_compare,
+            SpecialPredArgs = [Result, Arg1, Arg2],
+            MaybeResult = yes(Result)
+        )
     ->
         (
-            SpecialId = unify,
-            SpecialPredArgs = [Arg1, Arg2]
+            is_dummy_argument_type(ModuleInfo, SpecialPredType)
+        ->
+            specialize_unify_or_compare_pred_for_dummy(MaybeResult, Goal,
+                !Info)
         ;
-            SpecialId = compare,
-            SpecialPredArgs = [_, Arg1, Arg2]
-        ),
-        (
-            SpecialId = unify,
-            in_mode(In),
-            Goal = unify(Arg1, var(Arg2), (In - In),
-                simple_test(Arg1, Arg2), unify_context(explicit, []))
+            % Look for unification or comparison applied directly to a
+            % builtin or atomic type. This needs to be done separately from
+            % the case for user-defined types, for two reasons.
+            %
+            % First, because we want to specialize such calls even if we are
+            % not generating any special preds.
+            %
+            % Second, because the specialized code is different in the two
+            % cases: here it is a call to a builtin predicate, perhaps preceded
+            % by casts; there it is a call to a compiler-generated predicate.
+
+            type_is_atomic(SpecialPredType, ModuleInfo)
+        ->
+            specialize_unify_or_compare_pred_for_atomic(SpecialPredType,
+                MaybeResult, Arg1, Arg2, MaybeContext, OrigGoalInfo, Goal,
+                !Info)
         ;
-            SpecialId = compare,
-            SpecialPredArgs = [ComparisonResult, _, _],
-            find_builtin_type_with_equivalent_compare(ModuleInfo,
-                SpecialPredType, CompareType, NeedIntCast),
-            polymorphism.get_special_proc(CompareType, SpecialId, ModuleInfo,
-                SymName, SpecialPredId, SpecialProcId),
-            (
-                NeedIntCast = no,
-                NewCallArgs = [ComparisonResult, Arg1, Arg2],
-                Goal = call(SpecialPredId, SpecialProcId, NewCallArgs,
-                    not_builtin, MaybeContext, SymName)
-            ;
-                NeedIntCast = yes,
-                goal_info_get_context(OrigGoalInfo, Context),
-                generate_unsafe_type_cast(Context, CompareType, Arg1, CastArg1,
-                    CastGoal1, ProcInfo0, ProcInfo1),
-                generate_unsafe_type_cast(Context, CompareType, Arg2, CastArg2,
-                    CastGoal2, ProcInfo1, ProcInfo),
-                NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
-                Call = call(SpecialPredId, SpecialProcId, NewCallArgs,
-                    not_builtin, MaybeContext, SymName),
-                set.list_to_set([ComparisonResult, Arg1, Arg2], NonLocals),
-                instmap_delta_from_assoc_list(
-                    [ComparisonResult - ground(shared,none)], InstMapDelta),
-                Detism = det,
-                goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
-                    GoalInfo),
-                Goal = conj([CastGoal1, CastGoal2, Call - GoalInfo]),
-                !:Info = !.Info ^ proc_info := ProcInfo
-            )
+            % Look for unification or comparison applied to a no-tag type
+            % wrapping a builtin or atomic type. This needs to be done to
+            % optimize all the map_lookups with keys of type `term.var/1'
+            % in the compiler. (:- type var(T) ---> var(int).)
+            %
+            % This could possibly be better handled by just inlining the
+            % unification code, but the compiler doesn't have the code for
+            % the comparison or in-in unification procedures for imported
+            % types, and unification and comparison may be implemented in
+            % C code in the runtime system.
+
+            type_is_no_tag_type(ModuleInfo, SpecialPredType, Constructor,
+                WrappedType),
+            \+ type_has_user_defined_equality_pred(ModuleInfo, WrappedType, _),
+
+            % This could be done for non-atomic types, but it would be a bit
+            % more complicated because the type-info for the wrapped type
+            % would need to be extracted first.
+            type_is_atomic(WrappedType, ModuleInfo)
+        ->
+            specialize_unify_or_compare_pred_for_no_tag(WrappedType,
+                Constructor, MaybeResult, Arg1, Arg2, MaybeContext,
+                OrigGoalInfo, Goal, !Info)
+        ;
+            call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
+                TypeInfoArgs, SpecialPredArgs, MaybeContext, HaveSpecialPreds,
+                Goal, !Info)
         )
     ;
-        % Look for unification or comparison applied to a no-tag type wrapping
-        % a builtin or atomic type. This needs to be done to optimize all
-        % the map_lookups with keys of type `term.var/1' in the compiler.
-        % (:- type var(T) ---> var(int).) This could possibly be better handled
-        % by just inlining the unification code, but the compiler doesn't have
-        % the code for the comparison or in-in unification procedures for
-        % imported types, and unification and comparison may be implemented
-        % in C code in the runtime system.
+        call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
+            TypeInfoArgs, SpecialPredArgs, MaybeContext, HaveSpecialPreds,
+            Goal, !Info)
+    ).
 
-        specializeable_special_call(SpecialId, CalledProc),
-        type_is_no_tag_type(ModuleInfo, SpecialPredType,
-            Constructor, WrappedType),
-        \+ type_has_user_defined_equality_pred(ModuleInfo, SpecialPredType, _),
-        \+ type_has_user_defined_equality_pred(ModuleInfo, WrappedType, _),
+:- pred call_type_specific_unify_or_compare((type)::in, special_pred_id::in,
+    list(prog_var)::in, list(prog_var)::in,
+    maybe(call_unify_context)::in, bool::in, hlds_goal_expr::out,
+    higher_order_info::in, higher_order_info::out) is semidet.
 
-        % This could be done for non-atomic types, but it would be a bit
-        % more complicated because the type-info for the wrapped type
-        % would need to be extracted first.
+call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
+        TypeInfoArgs, SpecialPredArgs, MaybeContext, HaveSpecialPreds, Goal,
+        !Info) :-
+    % We can only specialize unifications and comparisons to call the
+    % type-specific unify or compare predicate if we are generating
+    % such predicates.
+    HaveSpecialPreds = yes,
+    find_special_proc(SpecialPredType, SpecialId, SymName, SpecialPredId,
+        SpecialProcId, !Info),
+    ( type_is_higher_order(SpecialPredType) ->
+        % Builtin_*_pred are special cases which don't need the type-info
+        % arguments.
+        CallArgs = SpecialPredArgs
+    ;
+        list.append(TypeInfoArgs, SpecialPredArgs, CallArgs)
+    ),
+    Goal = call(SpecialPredId, SpecialProcId, CallArgs, not_builtin,
+        MaybeContext, SymName).
 
-        type_is_atomic(WrappedType, ModuleInfo)
-    ->
+:- pred specialize_unify_or_compare_pred_for_dummy(maybe(prog_var)::in,
+    hlds_goal_expr::out, higher_order_info::in, higher_order_info::out) is det.
+
+specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
+    (
+        MaybeResult = no,
+        GoalExpr = conj([])     % true
+    ;
+        MaybeResult = yes(ComparisonResult),
+        Eq = cons(qualified(mercury_public_builtin_module, "="), 0),
+        make_const_construction(ComparisonResult, Eq, Goal),
+        Goal = GoalExpr - _
+    ).
+
+:- pred specialize_unify_or_compare_pred_for_atomic((type)::in,
+    maybe(prog_var)::in, prog_var::in, prog_var::in,
+    maybe(call_unify_context)::in, hlds_goal_info::in, hlds_goal_expr::out,
+    higher_order_info::in, higher_order_info::out) is det.
+
+specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
+        Arg1, Arg2, MaybeContext, OrigGoalInfo, GoalExpr, !Info) :-
+    ModuleInfo = !.Info ^ global_info ^ module_info,
+    ProcInfo0 = !.Info ^ proc_info,
+    (
+        MaybeResult = no,
+        in_mode(In),
+        GoalExpr = unify(Arg1, var(Arg2), (In - In),
+            simple_test(Arg1, Arg2), unify_context(explicit, []))
+    ;
+        MaybeResult = yes(ComparisonResult),
+        find_builtin_type_with_equivalent_compare(ModuleInfo,
+            SpecialPredType, CompareType, NeedIntCast),
+        polymorphism.get_special_proc_det(CompareType, spec_pred_compare,
+            ModuleInfo, SymName, SpecialPredId, SpecialProcId),
         (
-            SpecialId = unify,
-            SpecialPredArgs = [Arg1, Arg2]
+            NeedIntCast = no,
+            NewCallArgs = [ComparisonResult, Arg1, Arg2],
+            GoalExpr = call(SpecialPredId, SpecialProcId, NewCallArgs,
+                not_builtin, MaybeContext, SymName)
         ;
-            SpecialId = compare,
-            SpecialPredArgs = [_, Arg1, Arg2]
-        ),
-        goal_info_get_context(OrigGoalInfo, Context),
-        unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg1,
-            UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
-        unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg2,
-            UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo2),
-        set.list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
+            NeedIntCast = yes,
+            goal_info_get_context(OrigGoalInfo, Context),
+            generate_unsafe_type_cast(Context, CompareType, Arg1, CastArg1,
+                CastGoal1, ProcInfo0, ProcInfo1),
+            generate_unsafe_type_cast(Context, CompareType, Arg2, CastArg2,
+                CastGoal2, ProcInfo1, ProcInfo),
+            NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
+            Call = call(SpecialPredId, SpecialProcId, NewCallArgs,
+                not_builtin, MaybeContext, SymName),
+            set.list_to_set([ComparisonResult, Arg1, Arg2], NonLocals),
+            instmap_delta_from_assoc_list(
+                [ComparisonResult - ground(shared,none)], InstMapDelta),
+            Detism = det,
+            goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
+                GoalInfo),
+            GoalExpr = conj([CastGoal1, CastGoal2, Call - GoalInfo]),
+            !:Info = !.Info ^ proc_info := ProcInfo
+        )
+    ).
+
+:- pred specialize_unify_or_compare_pred_for_no_tag((type)::in, sym_name::in,
+    maybe(prog_var)::in, prog_var::in, prog_var::in,
+    maybe(call_unify_context)::in, hlds_goal_info::in, hlds_goal_expr::out,
+    higher_order_info::in, higher_order_info::out) is det.
+
+specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
+        MaybeResult, Arg1, Arg2, MaybeContext, OrigGoalInfo, GoalExpr,
+        !Info) :-
+    ModuleInfo = !.Info ^ global_info ^ module_info,
+    ProcInfo0 = !.Info ^ proc_info,
+    goal_info_get_context(OrigGoalInfo, Context),
+    unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg1,
+        UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
+    unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg2,
+        UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo2),
+    set.list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
+    (
+        MaybeResult = no,
+        in_mode(In),
+        NonLocals = NonLocals0,
+        instmap_delta_init_reachable(InstMapDelta),
+        Detism = semidet,
+        SpecialGoal = unify(UnwrappedArg1, var(UnwrappedArg2), (In - In),
+            simple_test(UnwrappedArg1, UnwrappedArg2),
+            unify_context(explicit, [])),
+        goal_info_init(NonLocals, InstMapDelta, Detism, pure,
+            Context, GoalInfo),
+        GoalExpr = conj([ExtractGoal1, ExtractGoal2, SpecialGoal - GoalInfo]),
+        !:Info = !.Info ^ proc_info := ProcInfo2
+    ;
+        MaybeResult = yes(ComparisonResult),
+        set.insert(NonLocals0, ComparisonResult, NonLocals),
+        instmap_delta_from_assoc_list(
+            [ComparisonResult - ground(shared, none)], InstMapDelta),
+        Detism = det,
+        % Build a new call with the unwrapped arguments.
+        find_builtin_type_with_equivalent_compare(ModuleInfo, WrappedType,
+            CompareType, NeedIntCast),
+        polymorphism.get_special_proc_det(CompareType, spec_pred_compare,
+            ModuleInfo, SymName, SpecialPredId, SpecialProcId),
         (
-            SpecialId = unify,
-            in_mode(In),
-            NonLocals = NonLocals0,
-            instmap_delta_init_reachable(InstMapDelta),
-            Detism = semidet,
-            SpecialGoal = unify(UnwrappedArg1, var(UnwrappedArg2), (In - In),
-                simple_test(UnwrappedArg1, UnwrappedArg2),
-                unify_context(explicit, [])),
-            goal_info_init(NonLocals, InstMapDelta, Detism, pure,
-                Context, GoalInfo),
-            Goal = conj([ExtractGoal1, ExtractGoal2, SpecialGoal - GoalInfo]),
+            NeedIntCast = no,
+            NewCallArgs = [ComparisonResult, UnwrappedArg1, UnwrappedArg2],
+            SpecialGoal = call(SpecialPredId, SpecialProcId, NewCallArgs,
+                not_builtin, MaybeContext, SymName),
+            goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
+                GoalInfo),
+            GoalExpr = conj([ExtractGoal1, ExtractGoal2,
+                SpecialGoal - GoalInfo]),
             !:Info = !.Info ^ proc_info := ProcInfo2
         ;
-            SpecialId = compare,
-            SpecialPredArgs = [ComparisonResult, _, _],
-            set.insert(NonLocals0, ComparisonResult, NonLocals),
-            instmap_delta_from_assoc_list(
-                [ComparisonResult - ground(shared, none)], InstMapDelta),
-            Detism = det,
-            % Build a new call with the unwrapped arguments.
-            find_builtin_type_with_equivalent_compare(ModuleInfo, WrappedType,
-                CompareType, NeedIntCast),
-            polymorphism.get_special_proc(CompareType, SpecialId, ModuleInfo,
-                SymName, SpecialPredId, SpecialProcId),
-            (
-                NeedIntCast = no,
-                NewCallArgs = [ComparisonResult, UnwrappedArg1, UnwrappedArg2],
-                SpecialGoal = call(SpecialPredId, SpecialProcId, NewCallArgs,
-                    not_builtin, MaybeContext, SymName),
-                goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
-                    GoalInfo),
-                Goal = conj([ExtractGoal1, ExtractGoal2,
-                    SpecialGoal - GoalInfo]),
-                !:Info = !.Info ^ proc_info := ProcInfo2
-            ;
-                NeedIntCast = yes,
-                generate_unsafe_type_cast(Context, CompareType,
-                    UnwrappedArg1, CastArg1, CastGoal1, ProcInfo2, ProcInfo3),
-                generate_unsafe_type_cast(Context, CompareType,
-                    UnwrappedArg2, CastArg2, CastGoal2, ProcInfo3, ProcInfo4),
-                NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
-                SpecialGoal = call(SpecialPredId, SpecialProcId, NewCallArgs,
-                    not_builtin, MaybeContext, SymName),
-                goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
-                    GoalInfo),
-                Goal = conj([ExtractGoal1, CastGoal1, ExtractGoal2, CastGoal2,
-                    SpecialGoal - GoalInfo]),
-                !:Info = !.Info ^ proc_info := ProcInfo4
-            )
+            NeedIntCast = yes,
+            generate_unsafe_type_cast(Context, CompareType,
+                UnwrappedArg1, CastArg1, CastGoal1, ProcInfo2, ProcInfo3),
+            generate_unsafe_type_cast(Context, CompareType,
+                UnwrappedArg2, CastArg2, CastGoal2, ProcInfo3, ProcInfo4),
+            NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
+            SpecialGoal = call(SpecialPredId, SpecialProcId, NewCallArgs,
+                not_builtin, MaybeContext, SymName),
+            goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
+                GoalInfo),
+            GoalExpr = conj([ExtractGoal1, CastGoal1, ExtractGoal2, CastGoal2,
+                SpecialGoal - GoalInfo]),
+            !:Info = !.Info ^ proc_info := ProcInfo4
         )
-    ;
-        % We can only specialize unifications and comparisons to call
-        % the type-specific unify or compare predicate if we are
-        % generating such predicates.
-        HaveSpecialPreds = yes,
-        find_special_proc(SpecialPredType, SpecialId, SymName, SpecialPredId,
-            SpecialProcId, !Info),
-        ( type_is_higher_order(SpecialPredType) ->
-            % Builtin_*_pred are special cases which don't need the type-info
-            % arguments.
-            CallArgs = SpecialPredArgs
-        ;
-            list.append(TypeInfoArgs, SpecialPredArgs, CallArgs)
-        ),
-        Goal = call(SpecialPredId, SpecialProcId, CallArgs, not_builtin,
-            MaybeContext, SymName)
     ).
 
 :- pred find_special_proc((type)::in, special_pred_id::in, sym_name::out,
@@ -2115,18 +2176,18 @@ find_special_proc(Type, SpecialId, SymName, PredId, ProcId, !Info) :-
         type_to_ctor_and_args(Type, TypeCtor, _),
         special_pred_is_generated_lazily(ModuleInfo, TypeCtor),
         (
-            SpecialId = compare,
+            SpecialId = spec_pred_compare,
             unify_proc.add_lazily_generated_compare_pred_decl(TypeCtor,
                 PredId, ModuleInfo0, ModuleInfo),
             ProcId = hlds_pred.initial_proc_id
         ;
-            SpecialId = index,
+            SpecialId = spec_pred_index,
             % This shouldn't happen. The index predicate should only be called
             % from the compare predicate. If it is called, it shouldn't be
             % generated lazily.
             fail
         ;
-            SpecialId = unify,
+            SpecialId = spec_pred_unify,
 
             % XXX We should only add the declaration, not the body, for the
             % unify pred, but that complicates things if mode analysis is rerun
@@ -2170,6 +2231,10 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         EqvType = Type,
         NeedIntCast = no
     ;
+        TypeCategory = dummy_type,
+        unexpected(this_file,
+            "dummy type in find_builtin_type_with_equivalent_compare")
+    ;
         TypeCategory = void_type,
         unexpected(this_file,
             "void type in find_builtin_type_with_equivalent_compare")
@@ -2209,18 +2274,6 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         TypeCategory = base_typeclass_info_type,
         unexpected(this_file, "base_typeclass_info type in " ++
             "find_builtin_type_with_equivalent_compare")
-    ).
-
-:- pred specializeable_special_call(special_pred_id::in, proc_id::in)
-    is semidet.
-
-specializeable_special_call(SpecialId, CalledProc) :-
-    proc_id_to_int(CalledProc, CalledProcInt),
-    CalledProcInt = 0,
-    (
-        SpecialId = unify
-    ;
-        SpecialId = compare
     ).
 
 :- pred generate_unsafe_type_cast(prog_context::in,

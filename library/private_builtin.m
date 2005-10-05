@@ -471,8 +471,10 @@ public static int MR_TYPECTOR_REP_TYPECTORDESC          =36;
 public static int MR_TYPECTOR_REP_FOREIGN               =37;
 public static int MR_TYPECTOR_REP_REFERENCE             =38;
 public static int MR_TYPECTOR_REP_STABLE_C_POINTER      =39;
-public static int MR_TYPECTOR_REP_PSEUDOTYPEDESC        =40;
-public static int MR_TYPECTOR_REP_UNKNOWN               =41;
+public static int MR_TYPECTOR_REP_STABLE_FOREIGN        =40;
+public static int MR_TYPECTOR_REP_PSEUDOTYPEDESC        =41;
+public static int MR_TYPECTOR_REP_DUMMY                 =42;
+public static int MR_TYPECTOR_REP_UNKNOWN               =43;
 
 public static int MR_SECTAG_NONE                        = 0;
 public static int MR_SECTAG_LOCAL                       = 1;
@@ -1384,8 +1386,10 @@ no_clauses(PredName) :-
     public static final int MR_TYPECTOR_REP_FOREIGN                 = 37;
     public static final int MR_TYPECTOR_REP_REFERENCE               = 38;
     public static final int MR_TYPECTOR_REP_STABLE_C_POINTER        = 39;
-    public static final int MR_TYPECTOR_REP_PSEUDOTYPEDESC          = 40;
-    public static final int MR_TYPECTOR_REP_UNKNOWN                 = 41;
+    public static final int MR_TYPECTOR_REP_STABLE_FOREIGN          = 40;
+    public static final int MR_TYPECTOR_REP_PSEUDOTYPEDESC          = 41;
+    public static final int MR_TYPECTOR_REP_DUMMY                   = 42;
+    public static final int MR_TYPECTOR_REP_UNKNOWN                 = 43;
     
     public static final int MR_SECTAG_NONE      = 0;
     public static final int MR_SECTAG_LOCAL     = 1;

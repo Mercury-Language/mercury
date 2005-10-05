@@ -119,7 +119,8 @@
 	;	char_test
 	;	string_test
 	;	float_test
-	;	enum_test.
+	;	enum_test
+	;	dummy_test.
 
 :- type byte_module_id	==	module_name.
 :- type byte_pred_id	==	string.
@@ -671,6 +672,7 @@ output_test_id(char_test)	--> output_byte(1).
 output_test_id(string_test)	--> output_byte(2).
 output_test_id(float_test) 	--> output_byte(3).
 output_test_id(enum_test) 	--> output_byte(4).
+output_test_id(dummy_test) 	--> output_byte(5).
 
 :- pred debug_test_id(byte_test_id::in, io::di, io::uo) is det.
 
@@ -679,6 +681,7 @@ debug_test_id(char_test)	--> debug_string("char").
 debug_test_id(string_test)	--> debug_string("string").
 debug_test_id(float_test) 	--> debug_string("float").
 debug_test_id(enum_test) 	--> debug_string("enum").
+debug_test_id(dummy_test) 	--> debug_string("dummy").
 
 %---------------------------------------------------------------------------%
 

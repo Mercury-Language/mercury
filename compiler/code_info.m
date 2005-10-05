@@ -3226,7 +3226,8 @@ code_info__assign_var_to_var(Var, AssignedVar, !CI) :-
 code_info__assign_lval_to_var(Var, Lval, Code, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
     code_info__get_static_cell_info(!.CI, StaticCellInfo),
-    var_locn__assign_lval_to_var(Var, Lval, StaticCellInfo, Code,
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__assign_lval_to_var(ModuleInfo, Var, Lval, StaticCellInfo, Code,
         VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3252,15 +3253,18 @@ code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeSize,
         TypeMsg, Code, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
     code_info__get_static_cell_info(!.CI, StaticCellInfo0),
-    var_locn__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
-        MaybeSize, TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
+        Vector, MaybeSize, TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     code_info__set_static_cell_info(StaticCellInfo, !CI),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 code_info__place_var(Var, Lval, Code, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__place_var(Var, Lval, Code, VarLocnInfo0, VarLocnInfo),
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__place_var(ModuleInfo, Var, Lval, Code,
+        VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 :- pred code_info__pick_and_place_vars(assoc_list(prog_var, set(lval))::in,
@@ -3292,28 +3296,35 @@ code_info__pick_var_places([Var - LvalSet | VarLvalSets], VarLvals) :-
 
 code_info__place_vars(VarLocs, Code, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__place_vars(VarLocs, Code, VarLocnInfo0, VarLocnInfo),
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__place_vars(ModuleInfo, VarLocs, Code, VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 code_info__produce_variable(Var, Code, Rval, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__produce_var(Var, Rval, Code, VarLocnInfo0, VarLocnInfo),
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__produce_var(ModuleInfo, Var, Rval, Code,
+        VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 code_info__produce_variable_in_reg(Var, Code, Lval, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__produce_var_in_reg(Var, Lval, Code, VarLocnInfo0, VarLocnInfo),
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__produce_var_in_reg(ModuleInfo, Var, Lval, Code,
+        VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 code_info__produce_variable_in_reg_or_stack(Var, Code, Lval, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__produce_var_in_reg_or_stack(Var, Lval, Code,
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 code_info__materialize_vars_in_lval(Lval0, Lval, Code, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__materialize_vars_in_lval(Lval0, Lval, Code,
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3350,7 +3361,8 @@ code_info__release_reg(Lval, !CI) :-
 
 code_info__reserve_r1(Code, !CI) :-
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__clear_r1(Code, VarLocnInfo0, VarLocnInfo1),
+    code_info__get_module_info(!.CI, ModuleInfo),
+    var_locn__clear_r1(ModuleInfo, Code, VarLocnInfo0, VarLocnInfo1),
     var_locn__acquire_reg_require_given(reg(r, 1), VarLocnInfo1, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3370,6 +3382,7 @@ code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
     set__list_to_set(OutVars, OutVarSet),
     goal_info_get_determinism(GoalInfo, Detism),
     code_info__get_opt_no_return_calls(!.CI, OptNoReturnCalls),
+    code_info__get_module_info(!.CI, ModuleInfo),
     (
         Detism = erroneous,
         OptNoReturnCalls = yes
@@ -3397,23 +3410,24 @@ code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
             StackVarLocs = ForwardVarLocs
         ),
         VarTypes = code_info__get_var_types(!.CI),
-        list__filter(valid_stack_slot(VarTypes), StackVarLocs,
+        list__filter(valid_stack_slot(ModuleInfo, VarTypes), StackVarLocs,
             RealStackVarLocs, DummyStackVarLocs)
     ),
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
     code_info__var_arg_info_to_lval(InArgInfos, InArgLocs),
     list__append(RealStackVarLocs, InArgLocs, AllRealLocs),
-    var_locn__place_vars(DummyStackVarLocs ++ AllRealLocs, Code,
+    var_locn__place_vars(ModuleInfo, DummyStackVarLocs ++ AllRealLocs, Code,
         VarLocnInfo0, VarLocnInfo),
     code_info__set_var_locn_info(VarLocnInfo, !CI),
     assoc_list__values(AllRealLocs, LiveLocList),
     set__list_to_set(LiveLocList, LiveLocs).
 
-:- pred valid_stack_slot(vartypes::in, pair(prog_var, lval)::in) is semidet.
+:- pred valid_stack_slot(module_info::in, vartypes::in,
+    pair(prog_var, lval)::in) is semidet.
 
-valid_stack_slot(VarTypes, Var - Lval) :-
+valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
     map__lookup(VarTypes, Var, Type),
-    ( is_dummy_argument_type(Type) ->
+    ( is_dummy_argument_type(ModuleInfo, Type) ->
         fail
     ;
         (
@@ -3436,8 +3450,10 @@ code_info__setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CI) :-
     list__filter(code_info__call_arg_in_selected_dir(Direction),
         AllArgsInfos, ArgsInfos),
     code_info__var_arg_info_to_lval(ArgsInfos, ArgsLocns),
+    code_info__get_module_info(!.CI, ModuleInfo),
     code_info__get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__place_vars(ArgsLocns, Code, VarLocnInfo0, VarLocnInfo1),
+    var_locn__place_vars(ModuleInfo, ArgsLocns, Code,
+        VarLocnInfo0, VarLocnInfo1),
     code_info__set_var_locn_info(VarLocnInfo1, !CI),
     assoc_list__values(ArgsLocns, LiveLocList),
     set__list_to_set(LiveLocList, LiveLocs),
@@ -3568,8 +3584,9 @@ code_info__generate_call_vn_livevals(CI, InputArgLocs, OutputArgs, LiveVals) :-
 
 code_info__generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
     code_info__get_known_variables(CI, KnownVarList0),
+    code_info__get_module_info(CI, ModuleInfo),
     VarTypes = code_info__get_var_types(CI),
-    list__filter(var_is_of_dummy_type(VarTypes), KnownVarList0,
+    list__filter(var_is_of_dummy_type(ModuleInfo, VarTypes), KnownVarList0,
         _, KnownVarList),
     set__list_to_set(KnownVarList, KnownVars),
     set__difference(KnownVars, OutputArgs, LiveVars),
@@ -3610,12 +3627,12 @@ code_info__generate_return_live_lvalues(CI, OutputArgLocs, ReturnInstMap,
         OkToDeleteAny, LiveLvalues) :-
     code_info__variable_locations(CI, VarLocs),
     code_info__get_known_variables(CI, Vars0),
+    code_info__get_module_info(CI, ModuleInfo),
     VarTypes = code_info__get_var_types(CI),
-    list__filter(var_is_of_dummy_type(VarTypes), Vars0, _, Vars),
+    list__filter(var_is_of_dummy_type(ModuleInfo, VarTypes), Vars0, _, Vars),
     code_info__get_active_temps_data(CI, Temps),
     code_info__get_proc_info(CI, ProcInfo),
     code_info__get_globals(CI, Globals),
-    code_info__get_module_info(CI, ModuleInfo),
     continuation_info__generate_return_live_lvalues(OutputArgLocs,
         ReturnInstMap, Vars, VarLocs, Temps, ProcInfo, ModuleInfo,
         Globals, OkToDeleteAny, LiveLvalues).

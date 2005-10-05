@@ -668,7 +668,7 @@ continuation_info__generate_resume_layout_for_vars([Var - LvalSet | VarLvals],
 		InstMap, VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars) :-
 	(
 		map__lookup(VarTypes, Var, Type),
-		is_dummy_argument_type(Type)
+		is_dummy_argument_type(ModuleInfo, Type)
 	->
 		true
 	;

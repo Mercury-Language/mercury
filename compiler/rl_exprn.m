@@ -1623,7 +1623,7 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 		% Handle unify/2 specially, since it is possibly recursive,
 		% which will cause the code below to fall over. Also, magic.m
 		% doesn't add type_info arguments yet.
-		{ Origin = special_pred(unify - _) },
+		{ Origin = special_pred(spec_pred_unify - _) },
 		{ list__reverse(Args, [Arg1, Arg2 | _]) },
 		{ hlds_pred__in_in_unification_proc_id(ProcId) }
 	->
@@ -1634,7 +1634,7 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 	;
 		% Handle compare/3 specially for the same reason
 		% as unify/2 above.
-		{ Origin = special_pred(compare - _) },
+		{ Origin = special_pred(spec_pred_compare - _) },
 		{ list__reverse(Args, [Arg2, Arg1, Res | _]) }
 	->
 		rl_exprn_info_lookup_var(Arg1, Arg1Loc),

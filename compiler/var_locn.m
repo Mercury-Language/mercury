@@ -22,6 +22,7 @@
 :- interface.
 
 :- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_module.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_pred.
@@ -134,13 +135,14 @@
 :- pred assign_var_to_var(prog_var::in, prog_var::in,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % assign_lval_to_var(Var, Lval, StaticCellInfo, Code, !VarLocnInfo)
+    % assign_lval_to_var(ModuleInfo, Var, Lval, StaticCellInfo, Code,
+    %   !VarLocnInfo);
     %
     % Reflects the effect of the assignment Var := lval(Lval) in the
     % state of !VarLocnInfo; any code required to effect the assignment
     % will be returned in Code.
     %
-:- pred assign_lval_to_var(prog_var::in, lval::in,
+:- pred assign_lval_to_var(module_info::in, prog_var::in, lval::in,
     static_cell_info::in, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
@@ -163,8 +165,8 @@
 :- pred assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, SizeInfo,
-    %   TypeMsg, Where, Code, !StaticCellInfo, !VarLocnInfo):
+    % assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, Vector,
+    %   SizeInfo, TypeMsg, Where, Code, !StaticCellInfo, !VarLocnInfo):
     %
     % Generates code to assign to Var a pointer, tagged by Ptag, to the cell
     % whose contents are given by the other arguments, and updates the state
@@ -178,28 +180,28 @@
     % and SizeInfo should not be yes / yes(_), because that will cause an
     % obvious conflict.) Where will say where the created cell is.
     %
-:- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
+:- pred assign_cell_to_var(module_info::in, prog_var::in, bool::in, tag::in,
     list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
     code_tree::out, static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % place_var(Var, Lval, Code, !VarLocnInfo):
+    % place_var(ModuleInfo, Var, Lval, Code, !VarLocnInfo):
     %
     % Produces Code to place the value of Var in Lval, and update !VarLocnInfo
     % to reflect this.
     %
-:- pred place_var(prog_var::in, lval::in, code_tree::out,
-        var_locn_info::in, var_locn_info::out) is det.
+:- pred place_var(module_info::in, prog_var::in, lval::in, code_tree::out,
+    var_locn_info::in, var_locn_info::out) is det.
 
-    % place_vars(VarLocns, Code, !VarLocnInfo):
+    % place_vars(ModuleInfo, VarLocns, Code, !VarLocnInfo):
     %
     % Produces Code to place the value of each variable mentioned in VarLocns
     % into the corresponding location, and update !VarLocnInfo to reflect this.
     %
-:- pred place_vars(assoc_list(prog_var, lval)::in, code_tree::out,
-    var_locn_info::in, var_locn_info::out) is det.
+:- pred place_vars(module_info::in, assoc_list(prog_var, lval)::in,
+    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
-    % produce_var(Var, Rval, Code, !VarLocnInfo):
+    % produce_var(ModuleInfo, Var, Rval, Code, !VarLocnInfo):
     %
     % Return the preferred way to refer to the value of Var
     % (which may be a const rval, or the value in an lval).
@@ -211,23 +213,24 @@
     % number of operations, from being evaluated several times.) Otherwise,
     % Code will be empty.
     %
-:- pred produce_var(prog_var::in, rval::out, code_tree::out,
+:- pred produce_var(module_info::in, prog_var::in, rval::out, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-    % produce_var_in_reg(Var, Lval, Code, !VarLocnInfo):
+    % produce_var_in_reg(ModuleInfo, Var, Lval, Code, !VarLocnInfo):
     %
     % Produces a code fragment Code to evaluate Var if necessary
     % and provide it as an Lval of the form reg(_).
     %
-:- pred produce_var_in_reg(prog_var::in, lval::out, code_tree::out,
-    var_locn_info::in, var_locn_info::out) is det.
+:- pred produce_var_in_reg(module_info::in, prog_var::in, lval::out,
+    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
-    % produce_var_in_reg_or_stack(Var, FollowVars, Lval, Code, !VarLocnInfo):
+    % produce_var_in_reg_or_stack(ModuleInfo, Var, FollowVars, Lval, Code,
+    %   !VarLocnInfo):
     %
     % Produces a code fragment Code to evaluate Var if necessary and provide it
     % as an Lval of the form reg(_), stackvar(_), or framevar(_).
     %
-:- pred produce_var_in_reg_or_stack(prog_var::in, lval::out,
+:- pred produce_var_in_reg_or_stack(module_info::in, prog_var::in, lval::out,
     code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
     % acquire_reg(Lval, !VarLocnInfo):
@@ -283,14 +286,16 @@
     %
 :- pred unlock_regs(var_locn_info::in, var_locn_info::out) is det.
 
-    % clear_r1(Code):
+    % clear_r1(ModuleInfo, Code, !VarLocnInfo):
     %
     % Produces a code fragment Code to move whatever is in r1 to some other
     % register, if r1 is live. This is used prior to semidet pragma c_codes.
     %
-:- pred clear_r1(code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+:- pred clear_r1(module_info::in, code_tree::out,
+    var_locn_info::in, var_locn_info::out) is det.
 
-    % materialize_vars_in_lval(Lval, FinalLval, Code, !VarLocnInfo):
+    % materialize_vars_in_lval(ModuleInfo, Lval, FinalLval, Code,
+    %   !VarLocnInfo):
     %
     % For every variable in Lval, substitutes the value of the variable and
     % returns it as FinalLval. If we need to save the values of some of the
@@ -298,8 +303,8 @@
     % evaluated again (and again ...), the required code will be returned
     % in Code.
     %
-:- pred materialize_vars_in_lval(lval::in, lval::out, code_tree::out,
-    var_locn_info::in, var_locn_info::out) is det.
+:- pred materialize_vars_in_lval(module_info::in, lval::in, lval::out,
+    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
     % get_var_locations(VarLocnInfo, Locations):
     %
@@ -686,7 +691,7 @@ assign_var_to_var(Var, OldVar, !VLI) :-
 
 %----------------------------------------------------------------------------%
 
-assign_lval_to_var(Var, Lval0, StaticCellInfo, Code, !VLI) :-
+assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
     ( Lval0 = field(yes(Ptag), var(BaseVar), const(int_const(Offset))) ->
         get_var_state_map(!.VLI, VarStateMap0),
@@ -725,7 +730,7 @@ assign_lval_to_var(Var, Lval0, StaticCellInfo, Code, !VLI) :-
         ),
         Code = empty
     ;
-        materialize_vars_in_lval(Lval0, Lval, Code, !VLI),
+        materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code, !VLI),
 
         get_var_state_map(!.VLI, VarStateMap0),
         set__singleton_set(LvalSet, Lval),
@@ -792,8 +797,8 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 
 %----------------------------------------------------------------------------%
 
-assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals0, SizeInfo,
-        TypeMsg, Code, !StaticCellInfo, !VLI) :-
+assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, MaybeRvals0,
+        SizeInfo, TypeMsg, Code, !StaticCellInfo, !VLI) :-
     (
         SizeInfo = yes(SizeSource),
         (
@@ -819,16 +824,16 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals0, SizeInfo,
         assign_const_to_var(Var, CellPtrRval, !VLI),
         Code = empty
     ;
-        assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
-            MaybeOffset, TypeMsg, Code, !VLI)
+        assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
+            MaybeRvals, MaybeOffset, TypeMsg, Code, !VLI)
     ).
 
-:- pred assign_dynamic_cell_to_var(prog_var::in, bool::in, tag::in,
-    list(maybe(rval))::in, maybe(int)::in, string::in,
+:- pred assign_dynamic_cell_to_var(module_info::in, prog_var::in, bool::in,
+    tag::in, list(maybe(rval))::in, maybe(int)::in, string::in,
     code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
-assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeOffset,
-        TypeMsg, Code, !VLI) :-
+assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, Vector,
+        MaybeOffset, TypeMsg, Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
     select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
@@ -864,15 +869,17 @@ assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeOffset,
         MaybeOffset = no,
         StartOffset = 0
     ),
-    assign_cell_args(Vector, yes(Ptag), lval(Lval), StartOffset,
+    assign_cell_args(ModuleInfo, Vector, yes(Ptag), lval(Lval), StartOffset,
         ArgsCode, !VLI),
     Code = tree(CellCode, ArgsCode).
 
-:- pred assign_cell_args(list(maybe(rval))::in, maybe(tag)::in, rval::in,
-    int::in, code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+:- pred assign_cell_args(module_info::in, list(maybe(rval))::in,
+    maybe(tag)::in, rval::in, int::in, code_tree::out,
+    var_locn_info::in, var_locn_info::out) is det.
 
-assign_cell_args([], _, _, _, empty, !VLI).
-assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset, Code, !VLI) :-
+assign_cell_args(_, [], _, _, _, empty, !VLI).
+assign_cell_args(ModuleInfo, [MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
+        Code, !VLI) :-
     (
         MaybeRval0 = yes(Rval0),
         Target = field(Ptag, Base, const(int_const(Offset))),
@@ -883,11 +890,12 @@ assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset, Code, !VLI) :-
                 EvalCode = empty
             ;
                 Avail = needs_materialization,
-                materialize_var(Var, no, no, [], Rval, EvalCode, !VLI)
+                materialize_var(ModuleInfo, Var, no, no, [], Rval, EvalCode,
+                    !VLI)
             ),
             get_vartypes(!.VLI, VarTypes),
             map__lookup(VarTypes, Var, Type),
-            ( is_dummy_argument_type(Type) ->
+            ( is_dummy_argument_type(ModuleInfo, Type) ->
                 AssignCode = empty
             ;
                 add_additional_lval_for_var(Var, Target, !VLI),
@@ -907,7 +915,8 @@ assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset, Code, !VLI) :-
         MaybeRval0 = no,
         ThisCode = empty
     ),
-    assign_cell_args(MaybeRvals0, Ptag, Base, Offset + 1, RestCode, !VLI),
+    assign_cell_args(ModuleInfo, MaybeRvals0, Ptag, Base, Offset + 1, RestCode,
+        !VLI),
     Code = tree(ThisCode, RestCode).
 
 %----------------------------------------------------------------------------%
@@ -1009,7 +1018,7 @@ check_var_is_unknown(VLI, Var) :-
 
 %----------------------------------------------------------------------------%
 
-produce_var(Var, Rval, Code, !VLI) :-
+produce_var(ModuleInfo, Var, Rval, Code, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap),
     map__lookup(VarStateMap, Var, State),
     State = state(Lvals, MaybeConstRval, MaybeExprRval, _, _),
@@ -1032,11 +1041,11 @@ produce_var(Var, Rval, Code, !VLI) :-
         Code = empty
     ;
         select_preferred_reg(!.VLI, Var, Lval),
-        place_var(Var, Lval, Code, !VLI),
+        place_var(ModuleInfo, Var, Lval, Code, !VLI),
         Rval = lval(Lval)
     ).
 
-produce_var_in_reg(Var, Lval, Code, !VLI) :-
+produce_var_in_reg(ModuleInfo, Var, Lval, Code, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap),
     map__lookup(VarStateMap, Var, State),
     State = state(Lvals, _, _, _, _),
@@ -1046,10 +1055,10 @@ produce_var_in_reg(Var, Lval, Code, !VLI) :-
         Code = empty
     ;
         select_preferred_reg(!.VLI, Var, Lval),
-        place_var(Var, Lval, Code, !VLI)
+        place_var(ModuleInfo, Var, Lval, Code, !VLI)
     ).
 
-produce_var_in_reg_or_stack(Var, Lval, Code, !VLI) :-
+produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap),
     map__lookup(VarStateMap, Var, State),
     State = state(Lvals, _, _, _, _),
@@ -1059,13 +1068,13 @@ produce_var_in_reg_or_stack(Var, Lval, Code, !VLI) :-
         Code = empty
     ;
         select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
-        place_var(Var, Lval, Code, !VLI)
+        place_var(ModuleInfo, Var, Lval, Code, !VLI)
     ).
 
 %----------------------------------------------------------------------------%
 
-clear_r1(Code, !VLI) :-
-    free_up_lval(reg(r, 1), [], [], Code, !VLI),
+clear_r1(ModuleInfo, Code, !VLI) :-
+    free_up_lval(ModuleInfo, reg(r, 1), [], [], Code, !VLI),
     get_loc_var_map(!.VLI, LocVarMap0),
     get_var_state_map(!.VLI, VarStateMap0),
     clobber_regs_in_maps([reg(r, 1)], no,
@@ -1073,7 +1082,7 @@ clear_r1(Code, !VLI) :-
     set_loc_var_map(LocVarMap, !VLI),
     set_var_state_map(VarStateMap, !VLI).
 
-place_vars(VarLocns, Code, !VLI) :-
+place_vars(ModuleInfo, VarLocns, Code, !VLI) :-
     % If we are asked to place several variables, then we must make sure that
     % in the process of freeing up an lval for one variable, we do not save its
     % previous contents to a location that VarLocns assigns to another
@@ -1087,25 +1096,26 @@ place_vars(VarLocns, Code, !VLI) :-
     assoc_list__values(VarLocns, Lvals),
     code_util__max_mentioned_reg(Lvals, MaxReg),
     lock_regs(MaxReg, VarLocns, !VLI),
-    actually_place_vars(VarLocns, Code, !VLI),
+    actually_place_vars(ModuleInfo, VarLocns, Code, !VLI),
     unlock_regs(!VLI).
 
-:- pred actually_place_vars(assoc_list(prog_var, lval)::in,
+:- pred actually_place_vars(module_info::in, assoc_list(prog_var, lval)::in,
     code_tree::out, var_locn_info::in, var_locn_info::out) is det.
 
-actually_place_vars([], empty, !VLI).
-actually_place_vars([Var - Lval | Rest], Code, !VLI) :-
-    place_var(Var, Lval, FirstCode, !VLI),
-    actually_place_vars(Rest, RestCode, !VLI),
+actually_place_vars(_, [], empty, !VLI).
+actually_place_vars(ModuleInfo, [Var - Lval | Rest], Code, !VLI) :-
+    place_var(ModuleInfo, Var, Lval, FirstCode, !VLI),
+    actually_place_vars(ModuleInfo, Rest, RestCode, !VLI),
     Code = tree(FirstCode, RestCode).
 
-place_var(Var, Target, Code, !VLI) :-
-    actually_place_var(Var, Target, [], Code, !VLI).
+place_var(ModuleInfo, Var, Target, Code, !VLI) :-
+    actually_place_var(ModuleInfo, Var, Target, [], Code, !VLI).
 
-:- pred actually_place_var(prog_var::in, lval::in, list(lval)::in,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+:- pred actually_place_var(module_info::in, prog_var::in, lval::in,
+    list(lval)::in, code_tree::out, var_locn_info::in, var_locn_info::out)
+    is det.
 
-actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
+actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
     get_acquired(!.VLI, Acquired),
     ( set__member(Target, Acquired) ->
         unexpected(this_file, "actually_place_var: target is acquired reg")
@@ -1118,7 +1128,7 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
     ( set__member(Target, Lvals0) ->
         Code = empty
     ;
-        free_up_lval(Target, [Var], ForbiddenLvals, FreeCode, !VLI),
+        free_up_lval(ModuleInfo, Target, [Var], ForbiddenLvals, FreeCode, !VLI),
 
         % If Var's value is cached, Lvals0 must be empty. However, the cached
         % value may simply be var(Other), and Other may already be in Target.
@@ -1135,8 +1145,8 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
             )
         ;
             Avail = needs_materialization,
-            materialize_var(Var, yes(Target), no, [Target], Rval, EvalCode,
-                !VLI),
+            materialize_var(ModuleInfo, Var, yes(Target), no, [Target], Rval,
+                EvalCode, !VLI),
             record_clobbering(Target, [Var], !VLI)
         ),
 
@@ -1147,9 +1157,11 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
             AssignCode = empty
         ;
             get_var_name(!.VLI, Var, VarName),
-            ( ForbiddenLvals = [] ->
+            (
+                ForbiddenLvals = [],
                 string__append("Placing ", VarName, Msg)
             ;
+                ForbiddenLvals = [_ | _],
                 string__int_to_string(list__length(ForbiddenLvals),
                     LengthStr),
                 string__append_list(["Placing ", VarName,
@@ -1157,7 +1169,7 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
             ),
             get_vartypes(!.VLI, VarTypes),
             map__lookup(VarTypes, Var, Type),
-            ( is_dummy_argument_type(Type) ->
+            ( is_dummy_argument_type(ModuleInfo, Type) ->
                 AssignCode = empty
             ;
                 AssignCode = node([assign(Target, Rval) - Msg])
@@ -1201,10 +1213,11 @@ record_clobbering(Target, Assigns, !VLI) :-
     % the value now in Lval somewhere else, since our caller can simply
     % generate an assignment such as Lval := field(Ptag, Lval, Offset).
     %
-:- pred free_up_lval(lval::in, list(prog_var)::in, list(lval)::in,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+:- pred free_up_lval(module_info::in, lval::in, list(prog_var)::in,
+    list(lval)::in, code_tree::out, var_locn_info::in, var_locn_info::out)
+    is det.
 
-free_up_lval(Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
+free_up_lval(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
     (
         get_loc_var_map(!.VLI, LocVarMap0),
         map__search(LocVarMap0, Lval, AffectedVarSet),
@@ -1214,8 +1227,8 @@ free_up_lval(Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
             try_clobber_lval_in_var_state_map(Lval, ToBeAssignedVars, no),
             AffectedVars, VarStateMap0, _)
     ->
-        free_up_lval_with_copy(Lval, ToBeAssignedVars, ForbiddenLvals,
-            Code, !VLI)
+        free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars,
+            ForbiddenLvals, Code, !VLI)
     ;
         Code = empty
     ).
@@ -1237,11 +1250,12 @@ free_up_lval(Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
     % that it is locked for use by OccupyingVar. If this is so, we first
     % recursively free up Pref, and then move OccupyingVar there.
     %
-:- pred free_up_lval_with_copy(lval::in, list(prog_var)::in,
+:- pred free_up_lval_with_copy(module_info::in, lval::in, list(prog_var)::in,
     list(lval)::in, code_tree::out, var_locn_info::in, var_locn_info::out)
     is det.
 
-free_up_lval_with_copy(Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
+free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
+        Code, !VLI) :-
     (
         get_loc_var_map(!.VLI, LocVarMap0),
         map__search(LocVarMap0, Lval, AffectedVarSet),
@@ -1275,7 +1289,8 @@ free_up_lval_with_copy(Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
             reg_is_not_locked_for_var(!.VLI, RegNum, MovedVar)
         )
     ->
-        actually_place_var(MovedVar, Pref, [Lval | ForbiddenLvals], Code, !VLI)
+        actually_place_var(ModuleInfo, MovedVar, Pref, [Lval | ForbiddenLvals],
+            Code, !VLI)
     ;
         get_spare_reg(!.VLI, Target),
         record_copy(Lval, Target, !VLI),
@@ -1885,14 +1900,14 @@ expr_is_constant(VarStateMap, ExprnOpts, var(Var), Rval) :-
 
 %----------------------------------------------------------------------------%
 
-materialize_vars_in_lval(Lval0, Lval, Code, !VLI) :-
-    materialize_vars_in_lval(Lval0, [], Lval, Code, !VLI).
+materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code, !VLI) :-
+    materialize_vars_in_lval(ModuleInfo, Lval0, [], Lval, Code, !VLI).
 
-:- pred materialize_vars_in_lval(lval::in, list(lval)::in,
+:- pred materialize_vars_in_lval(module_info::in, lval::in, list(lval)::in,
     lval::out, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-materialize_vars_in_lval(Lval0, Avoid, Lval, Code, !VLI) :-
+materialize_vars_in_lval(ModuleInfo, Lval0, Avoid, Lval, Code, !VLI) :-
     (
         Lval0 = reg(_, _),
         Lval = Lval0,
@@ -1927,32 +1942,40 @@ materialize_vars_in_lval(Lval0, Avoid, Lval, Code, !VLI) :-
         Code = empty
     ;
         Lval0 = succip(Rval0),
-        materialize_vars_in_rval(Rval0, no, Avoid, Rval, Code, !VLI),
+        materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
+            !VLI),
         Lval = succip(Rval)
     ;
         Lval0 = redoip(Rval0),
-        materialize_vars_in_rval(Rval0, no, Avoid, Rval, Code, !VLI),
+        materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
+            !VLI),
         Lval = redoip(Rval)
     ;
         Lval0 = succfr(Rval0),
-        materialize_vars_in_rval(Rval0, no, Avoid, Rval, Code, !VLI),
+        materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
+            !VLI),
         Lval = succfr(Rval)
     ;
         Lval0 = redofr(Rval0),
-        materialize_vars_in_rval(Rval0, no, Avoid, Rval, Code, !VLI),
+        materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
+            !VLI),
         Lval = redofr(Rval)
     ;
         Lval0 = prevfr(Rval0),
-        materialize_vars_in_rval(Rval0, no, Avoid, Rval, Code, !VLI),
+        materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
+            !VLI),
         Lval = prevfr(Rval)
     ;
         Lval0 = mem_ref(Rval0),
-        materialize_vars_in_rval(Rval0, no, Avoid, Rval, Code, !VLI),
+        materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
+            !VLI),
         Lval = mem_ref(Rval)
     ;
         Lval0 = field(Tag, RvalA0, RvalB0),
-        materialize_vars_in_rval(RvalA0, no, Avoid, RvalA, CodeA, !VLI),
-        materialize_vars_in_rval(RvalB0, no, Avoid, RvalB, CodeB, !VLI),
+        materialize_vars_in_rval(ModuleInfo, RvalA0, no, Avoid, RvalA, CodeA,
+            !VLI),
+        materialize_vars_in_rval(ModuleInfo, RvalB0, no, Avoid, RvalB, CodeB,
+            !VLI),
         Lval = field(Tag, RvalA, RvalB),
         Code = tree(CodeA, CodeB)
     ;
@@ -1965,28 +1988,32 @@ materialize_vars_in_lval(Lval0, Avoid, Lval, Code, !VLI) :-
 
     % Rval is Rval0 with all variables in Rval0 replaced by their values.
     %
-:- pred materialize_vars_in_rval(rval::in, maybe(lval)::in,
+:- pred materialize_vars_in_rval(module_info::in, rval::in, maybe(lval)::in,
     list(lval)::in, rval::out, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-materialize_vars_in_rval(Rval0, MaybePrefer, Avoid, Rval, Code, !VLI) :-
+materialize_vars_in_rval(ModuleInfo, Rval0, MaybePrefer, Avoid, Rval, Code,
+        !VLI) :-
     (
         Rval0 = lval(Lval0),
-        materialize_vars_in_lval(Lval0, Avoid, Lval, Code, !VLI),
+        materialize_vars_in_lval(ModuleInfo, Lval0, Avoid, Lval, Code, !VLI),
         Rval = lval(Lval)
     ;
         Rval0 = mkword(Tag, SubRval0),
-        materialize_vars_in_rval(SubRval0, no, Avoid, SubRval, Code, !VLI),
+        materialize_vars_in_rval(ModuleInfo, SubRval0, no, Avoid, SubRval,
+            Code, !VLI),
         Rval = mkword(Tag, SubRval)
     ;
         Rval0 = unop(Unop, SubRval0),
-        materialize_vars_in_rval(SubRval0, no, Avoid,
+        materialize_vars_in_rval(ModuleInfo, SubRval0, no, Avoid,
             SubRval, Code, !VLI),
         Rval = unop(Unop, SubRval)
     ;
         Rval0 = binop(Binop, SubRvalA0, SubRvalB0),
-        materialize_vars_in_rval(SubRvalA0, no, Avoid, SubRvalA, CodeA, !VLI),
-        materialize_vars_in_rval(SubRvalB0, no, Avoid, SubRvalB, CodeB, !VLI),
+        materialize_vars_in_rval(ModuleInfo, SubRvalA0, no, Avoid, SubRvalA,
+            CodeA, !VLI),
+        materialize_vars_in_rval(ModuleInfo, SubRvalB0, no, Avoid, SubRvalB,
+            CodeB, !VLI),
         Rval = binop(Binop, SubRvalA, SubRvalB),
         Code = tree(CodeA, CodeB)
     ;
@@ -1995,7 +2022,8 @@ materialize_vars_in_rval(Rval0, MaybePrefer, Avoid, Rval, Code, !VLI) :-
         Code = empty
     ;
         Rval0 = mem_addr(MemRef0),
-        materialize_vars_in_mem_ref(MemRef0, MemRef, Avoid, Code, !VLI),
+        materialize_vars_in_mem_ref(ModuleInfo, MemRef0, MemRef, Avoid, Code,
+            !VLI),
         Rval = mem_addr(MemRef)
     ;
         Rval0 = var(Var),
@@ -2005,17 +2033,18 @@ materialize_vars_in_rval(Rval0, MaybePrefer, Avoid, Rval, Code, !VLI) :-
             Code = empty
         ;
             Avail = needs_materialization,
-            materialize_var(Var, MaybePrefer, yes, Avoid, Rval, Code, !VLI)
+            materialize_var(ModuleInfo, Var, MaybePrefer, yes, Avoid, Rval,
+                Code, !VLI)
         )
     ).
 
     % MemRef is MemRef0 with all variables in MemRef replaced by their values.
     %
-:- pred materialize_vars_in_mem_ref(mem_ref::in, mem_ref::out,
+:- pred materialize_vars_in_mem_ref(module_info::in, mem_ref::in, mem_ref::out,
     list(lval)::in, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-materialize_vars_in_mem_ref(MemRef0, MemRef, Avoid, Code, !VLI) :-
+materialize_vars_in_mem_ref(ModuleInfo, MemRef0, MemRef, Avoid, Code, !VLI) :-
     (
         MemRef0 = stackvar_ref(_),
         MemRef = MemRef0,
@@ -2026,7 +2055,8 @@ materialize_vars_in_mem_ref(MemRef0, MemRef, Avoid, Code, !VLI) :-
         Code = empty
     ;
         MemRef0 = heap_ref(PtrRval0, Ptag, FieldNum),
-        materialize_vars_in_rval(PtrRval0, no, Avoid, PtrRval, Code, !VLI),
+        materialize_vars_in_rval(ModuleInfo, PtrRval0, no, Avoid, PtrRval,
+            Code, !VLI),
         MemRef = heap_ref(PtrRval, Ptag, FieldNum)
     ).
 
@@ -2056,11 +2086,12 @@ find_var_availability(VLI, Var, MaybePrefer, Avail) :-
         Avail = needs_materialization
     ).
 
-:- pred materialize_var(prog_var::in, maybe(lval)::in, bool::in,
-    list(lval)::in, rval::out, code_tree::out,
+:- pred materialize_var(module_info::in, prog_var::in, maybe(lval)::in,
+    bool::in, list(lval)::in, rval::out, code_tree::out,
     var_locn_info::in, var_locn_info::out) is det.
 
-materialize_var(Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code, !VLI) :-
+materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
+        !VLI) :-
     get_var_state_map(!.VLI, VarStateMap),
     map__lookup(VarStateMap, Var, State),
     State = state(_Lvals, _MaybeConstRval, MaybeExprRval, UsingVars,
@@ -2071,15 +2102,15 @@ materialize_var(Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code, !VLI) :-
         MaybeExprRval = no,
         unexpected(this_file, "materialize_var: no expr")
     ),
-    materialize_vars_in_rval(ExprRval, MaybePrefer, Avoid, Rval0, ExprCode,
-        !VLI),
+    materialize_vars_in_rval(ModuleInfo, ExprRval, MaybePrefer, Avoid, Rval0,
+        ExprCode, !VLI),
     (
         StoreIfReq = yes,
         set__count(UsingVars, NumUsingVars),
         NumUsingVars > 1
     ->
         select_preferred_reg_avoid(!.VLI, Var, Avoid, Lval),
-        place_var(Var, Lval, PlaceCode, !VLI),
+        place_var(ModuleInfo, Var, Lval, PlaceCode, !VLI),
         Rval = lval(Lval),
         Code = tree(ExprCode, PlaceCode)
     ;

@@ -2221,15 +2221,15 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         map__search(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_in_exported_eqv(TypeDefn, yes),
         (
-            SpecialId = unify,
+            SpecialId = spec_pred_unify,
             % The other proc_ids are module-specific.
             hlds_pred__in_in_unification_proc_id(ProcId)
         ;
-            SpecialId = compare
+            SpecialId = spec_pred_compare
             % The declared modes are all global, and we don't
             % generate any modes for compare preds dynamically.
         ;
-            SpecialId = index,
+            SpecialId = spec_pred_index,
             % The index predicate is never called from anywhere
             % except the compare predicate.
             fail
@@ -2507,6 +2507,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     ;       table_trie_step_char
     ;       table_trie_step_string
     ;       table_trie_step_float
+    ;       table_trie_step_dummy
     ;       table_trie_step_enum(int)
                 % The int gives the number of alternatives in the enum type,
                 % and thus the size of the corresponding trie node.
@@ -2828,7 +2829,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 
     % Test whether the variable is of a dummy type, based on the vartypes.
     %
-:- pred var_is_of_dummy_type(vartypes::in, prog_var::in) is semidet.
+:- pred var_is_of_dummy_type(module_info::in, vartypes::in, prog_var::in)
+    is semidet.
 
 :- implementation.
 :- import_module check_hlds__mode_errors.
@@ -3414,14 +3416,6 @@ no_type_info_builtin_2(private_builtin,
     "type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin,
     "unconstrained_type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "zero_superclass_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "zero_instance_constraint_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "zero_type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "zero_unconstrained_type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(table_builtin, "table_restore_any_answer", 3).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeinfo", 3).
@@ -3531,9 +3525,9 @@ ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
     ),
     ensure_all_headvars_are_named_2(Vars, SeqNum + 1, !VarSet).
 
-var_is_of_dummy_type(VarTypes, Var) :-
+var_is_of_dummy_type(ModuleInfo, VarTypes, Var) :-
     map__lookup(VarTypes, Var, Type),
-    is_dummy_argument_type(Type).
+    is_dummy_argument_type(ModuleInfo, Type).
 
 %-----------------------------------------------------------------------------%
 

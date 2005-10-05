@@ -879,7 +879,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         PredArity = pred_info_orig_arity(!.PredInfo),
         adjust_func_arity(function, FuncArity, PredArity),
         FuncSymName = qualified(FuncModule, FuncName),
-        create_atomic_unification(FuncRetVal,
+        create_atomic_complicated_unification(FuncRetVal,
             functor(cons(FuncSymName, FuncArity), no, FuncArgs),
             Context, explicit, [], Goal0),
         Goal0 = GoalExpr - GoalInfo0,

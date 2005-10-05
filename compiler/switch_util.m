@@ -246,6 +246,9 @@ next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 %
 
 type_cat_to_switch_cat(enum_type) = atomic_switch.
+type_cat_to_switch_cat(dummy_type) = _ :-
+    % You can't have a switch without at least two arms.
+    unexpected(this_file, "type_cat_to_switch_cat: dummy").
 type_cat_to_switch_cat(int_type) =  atomic_switch.
 type_cat_to_switch_cat(char_type) = atomic_switch.
 type_cat_to_switch_cat(float_type) = other_switch.

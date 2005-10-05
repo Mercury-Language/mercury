@@ -292,10 +292,9 @@ is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
 	(
 		term_norm.zero_size_type(Type, ModuleInfo)
 	;
-		% We don't include the io.state and store.store
-		% in the constraints - they won't tell us anything
-		% useful.
-		type_util.is_dummy_argument_type(Type)
+		% We don't include dummy types in the constraints - they won't tell us
+        % anything useful.
+		is_dummy_argument_type(ModuleInfo, Type)
 	).
 
 add_context_to_constr_termination_info(no, _, no).
