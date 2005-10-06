@@ -20,6 +20,7 @@
 mdprof_test
 mdprof_cgi
 mdprof_server
+mdprof_dump
 Mercury
 .deep.tags
 DEEP_FLAGS
