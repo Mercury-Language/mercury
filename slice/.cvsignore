@@ -9,4 +9,6 @@ mtc_union
 *.err
 *.mh
 *.mih
+*.opt
+*.optdate
 SLICE_FLAGS

@@ -13,6 +13,8 @@
 *.pic_o
 *.dylib
 *.mih
+*.opt
+*.optdate
 mer_mdbcomp.init
 mer_mdbcomp.dv
 mer_mdbcomp.mh
