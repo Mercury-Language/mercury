@@ -14,5 +14,10 @@ MCFLAGS-mdb.dice = --no-warn-nothing-exported
 # exposes.
 MCFLAGS-mdb.declarative_edt = --no-optimize-higher-order
 
+# Bug workarounds for problems introduced in about rotd-2005-10-05.
+#
+MCFLAGS-mdb.declarative_execution = -O0
+MCFLAGS-mdb.declarative_analyser = -O0
+
 EXTRA_LIBRARIES-libmer_browser.so = mer_mdbcomp
 EXTRA_LIBRARIES-libmer_browser.dylib = mer_mdbcomp
