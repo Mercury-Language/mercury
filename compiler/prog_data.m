@@ -235,12 +235,11 @@
     %
 :- type promise_type
             % promise ex declarations
-    --->    exclusive                   % each disjunct is mutually exclusive
-    ;       exhaustive                  % disjunction cannot fail
-    ;       exclusive_exhaustive        % both of the above
-
+    --->    exclusive                   % Each disjunct is mutually exclusive.
+    ;       exhaustive                  % Disjunction cannot fail.
+    ;       exclusive_exhaustive        % Both of the above.
             % assertions
-    ;       true.                       % promise goal is true
+    ;       true.                       % Promise goal is true.
 
 :- type type_and_mode
     --->    type_only(type)
@@ -323,7 +322,8 @@
 :- func mutable_var_thread_safe(mutable_var_attributes) = thread_safe.
 :- func mutable_var_trailed(mutable_var_attributes) = trailed.
 :- func mutable_var_maybe_foreign_names(mutable_var_attributes)
-    = maybe(list(foreign_name)).
+	= maybe(list(foreign_name)).
+:- func mutable_var_attach_to_io_state(mutable_var_attributes) = bool.
 
 :- pred set_mutable_var_thread_safe(thread_safe::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
@@ -333,6 +333,9 @@
 
 :- pred set_mutable_add_foreign_name(foreign_name::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
+
+:- pred set_mutable_var_attach_to_io_state(bool::in,
+	mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2093,33 +2096,39 @@ extra_attribute_to_string(max_stack_size(Size)) =
     %
 :- type mutable_var_attributes
     --->    mutable_var_attributes(
-                mutable_trailed       :: trailed,
-                mutable_thread_safe   :: thread_safe,
-                mutable_foreign_names :: maybe(list(foreign_name))
+                mutable_trailed            :: trailed,
+                mutable_thread_safe        :: thread_safe,
+                mutable_foreign_names      :: maybe(list(foreign_name)),
+                mutable_attach_to_io_state :: bool
             ).
 
 default_mutable_attributes =
-    mutable_var_attributes(trailed, not_thread_safe, no).
+	mutable_var_attributes(trailed, not_thread_safe, no, no).
 
 mutable_var_thread_safe(MVarAttrs) = MVarAttrs ^ mutable_thread_safe.
 mutable_var_trailed(MVarAttrs) = MVarAttrs ^ mutable_trailed.
 mutable_var_maybe_foreign_names(MVarAttrs) = MVarAttrs ^ mutable_foreign_names.
+mutable_var_attach_to_io_state(MVarAttrs) =
+    MVarAttrs ^ mutable_attach_to_io_state.
 
 set_mutable_var_thread_safe(ThreadSafe, !Attributes) :-
     !:Attributes = !.Attributes ^ mutable_thread_safe := ThreadSafe.
 set_mutable_var_trailed(Trailed, !Attributes) :-
     !:Attributes = !.Attributes ^ mutable_trailed := Trailed.
 set_mutable_add_foreign_name(ForeignName, !Attributes) :-
-    MaybeForeignNames0 = !.Attributes ^ mutable_foreign_names,
-    (
-        MaybeForeignNames0 = no,
-        MaybeForeignNames  = yes([ForeignName])
-    ;
-        MaybeForeignNames0 = yes(ForeignNames0),
-        ForeignNames = [ ForeignName | ForeignNames0],
-        MaybeForeignNames   = yes(ForeignNames)
-    ),
-    !:Attributes = !.Attributes ^ mutable_foreign_names := MaybeForeignNames.
+	MaybeForeignNames0 = !.Attributes ^ mutable_foreign_names,
+	(
+		MaybeForeignNames0 = no,
+		MaybeForeignNames  = yes([ForeignName])
+	;
+		MaybeForeignNames0 = yes(ForeignNames0),
+		ForeignNames = [ ForeignName | ForeignNames0],
+		MaybeForeignNames   = yes(ForeignNames)
+	),
+	!:Attributes = !.Attributes ^ mutable_foreign_names := MaybeForeignNames.
+set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes) :-
+	!:Attributes =
+        !.Attributes ^ mutable_attach_to_io_state := AttachToIOState.
 
 %-----------------------------------------------------------------------------%
 

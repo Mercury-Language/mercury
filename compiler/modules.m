@@ -1332,13 +1332,27 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
     item_and_context::in, item_list::in, item_list::out) is det.
 
 handle_mutable_in_private_interface(ModuleName, Item - Context, !Items) :-
-    ( Item = mutable(MutableName, Type, _Value, Inst, _Attrs) ->
-        GetPredDecl = prog_mutable.get_pred_decl(ModuleName, MutableName,
-            Type, Inst),
-        list.cons(GetPredDecl - Context, !Items),
-        SetPredDecl = prog_mutable.set_pred_decl(ModuleName, MutableName,
-            Type, Inst),
-        list.cons(SetPredDecl - Context, !Items)
+    ( Item = mutable(MutableName, Type, _Value, Inst, Attrs) ->
+        NonPureGetPredDecl =
+            prog_mutable.nonpure_get_pred_decl(ModuleName, MutableName,
+                Type, Inst),
+        list.cons(NonPureGetPredDecl - Context, !Items),
+        NonPureSetPredDecl =
+            prog_mutable.nonpure_set_pred_decl(ModuleName, MutableName,
+                Type, Inst),
+        list.cons(NonPureSetPredDecl - Context, !Items),
+        ( mutable_var_attach_to_io_state(Attrs) = yes ->
+            PureGetPredDecl = 
+                prog_mutable.pure_get_pred_decl(ModuleName, MutableName,
+                   Type, Inst),
+            list.cons(PureGetPredDecl - Context, !Items),
+            PureSetPredDecl = 
+                prog_mutable.pure_set_pred_decl(ModuleName, MutableName,
+                    Type, Inst),
+            list.cons(PureSetPredDecl - Context, !Items)
+        ;
+            true
+        )
     ;
         list.cons(Item - Context, !Items) 
     ).

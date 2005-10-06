@@ -1983,7 +1983,8 @@ parse_mutable_inst(InstTerm, InstResult) :-
 :- type collected_mutable_attribute
 	--->	trailed(trailed)
 	;	thread_safe(thread_safe)
-	;	foreign_name(foreign_name).
+	;	foreign_name(foreign_name)
+	;	attach_to_io_state(bool).
 
 :- pred parse_mutable_attrs(term::in,
 	maybe1(mutable_var_attributes)::out) is det.
@@ -2032,6 +2033,8 @@ process_mutable_attribute(trailed(Trailed), !Attributes) :-
 	set_mutable_var_trailed(Trailed, !Attributes).
 process_mutable_attribute(foreign_name(ForeignName), !Attributes) :-
 	set_mutable_add_foreign_name(ForeignName, !Attributes).
+process_mutable_attribute(attach_to_io_state(AttachToIOState), !Attributes) :-
+	set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes).
 
 :- pred parse_mutable_attr(term::in,
 	maybe1(collected_mutable_attribute)::out) is det.
@@ -2045,8 +2048,11 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
 		;
 			String = "trailed",
 			MutAttr = trailed(trailed)
+		;	
+			String  = "attach_to_io_state",
+			MutAttr = attach_to_io_state(yes)
 		;
-			String  = "thread_safe",
+			String = "thread_safe",
 			MutAttr = thread_safe(thread_safe)
 		;
 			String = "not_thread_safe",

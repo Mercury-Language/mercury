@@ -450,18 +450,42 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     % We add the initialise decl and the foreign_decl on the second pass and
     % the foreign_proc clauses on the third pass.
-    Item = mutable(Name, Type, _InitValue, Inst, _Attrs),
+    Item = mutable(Name, Type, _InitValue, Inst, Attrs),
     !.Status = item_status(ImportStatus, _),
     ( status_defined_in_this_module(ImportStatus, yes) ->
         module_info_get_name(!.ModuleInfo, ModuleName),
-        GetPredDecl = prog_mutable.get_pred_decl(ModuleName, Name,
-            Type, Inst),
-        add_item_decl_pass_1(GetPredDecl, Context, !Status, !ModuleInfo, _,
-            !IO),
-        SetPredDecl = prog_mutable.set_pred_decl(ModuleName, Name,
-            Type, Inst),
-        add_item_decl_pass_1(SetPredDecl, Context, !Status, !ModuleInfo, _,
-            !IO),
+        %
+        % Create the non-pure access predicates.  These are always
+        % created, even if the `pure' attribute has been specified.
+        %
+        NonPureGetPredDecl = prog_mutable.nonpure_get_pred_decl(ModuleName,
+            Name, Type, Inst),
+        add_item_decl_pass_1(NonPureGetPredDecl, Context, !Status, !ModuleInfo,
+            _, !IO),
+        NonPureSetPredDecl = prog_mutable.nonpure_set_pred_decl(ModuleName,
+            Name, Type, Inst),
+        add_item_decl_pass_1(NonPureSetPredDecl, Context, !Status, !ModuleInfo,
+            _, !IO),
+        %
+        % If requested, create the pure access predicates as well.
+        %
+        CreatePureInterface = mutable_var_attach_to_io_state(Attrs),
+        (
+            CreatePureInterface = yes,
+            PureGetPredDecl = prog_mutable.pure_get_pred_decl(ModuleName,
+                Name, Type, Inst),
+            add_item_decl_pass_1(PureGetPredDecl, Context, !Status,
+                !ModuleInfo, _, !IO),
+            PureSetPredDecl = prog_mutable.pure_set_pred_decl(ModuleName,
+                Name, Type, Inst),
+            add_item_decl_pass_1(PureSetPredDecl, Context, !Status,
+                !ModuleInfo, _, !IO)
+        ;
+            CreatePureInterface = no
+        ),
+        %
+        % Create the initialisation predicate.
+        %
         InitPredDecl = prog_mutable.init_pred_decl(ModuleName, Name),
         add_item_decl_pass_1(InitPredDecl, Context, !Status, !ModuleInfo, _,
             !IO)
@@ -620,12 +644,9 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         % XXX We don't currently support languages other than C.
         % 
         module_info_get_name(!.ModuleInfo, ModuleName),
-        ForeignDecl = pragma(compiler(mutable_decl),
-            foreign_decl(c, foreign_decl_is_exported,
-                "extern MR_Word " ++ TargetMutableName ++ ";")),
+        ForeignDecl = get_global_foreign_decl(TargetMutableName),
         add_item_decl_pass_2(ForeignDecl, Context, !Status, !ModuleInfo, !IO),
-        ForeignCode = pragma(compiler(mutable_decl),
-            foreign_code(c, "MR_Word " ++ TargetMutableName ++ ";")),
+        ForeignCode = get_global_foreign_defn(TargetMutableName),
         add_item_decl_pass_2(ForeignCode, Context, !Status, !ModuleInfo, !IO)
     ;   
         true
@@ -719,7 +740,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             Origin = compiler(Details),
             (
                 % Ignore clauses that are introduced as a result of
-                % `intialise', `finalise' or `mutable' declarations.
+                % `initialise', `finalise' or `mutable' declarations.
                 ( Details = initialise_decl
                 ; Details = mutable_decl
                 ; Details = finalise_decl
@@ -1099,7 +1120,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     Item = mutable(Name, _Type, InitTerm, Inst, MutAttrs),
     ( status_defined_in_this_module(!.Status, yes) ->
         module_info_get_name(!.ModuleInfo, ModuleName),
-        varset__new_named_var(varset__init, "X", X, VarSet),
+        varset__new_named_var(varset.init, "X", X, VarSet0),
         Attrs0 = default_attributes(c),
         set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
         ( mutable_var_thread_safe(MutAttrs) = thread_safe ->
@@ -1107,6 +1128,10 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         ;
             Attrs = Attrs1
         ),
+        %
+        % Add the `:- intialise' declaration and clause for the
+        % initialise predicate.
+        %
         add_item_clause(initialise(compiler(mutable_decl),
                 mutable_init_pred_sym_name(ModuleName, Name), 0 /* Arity */),
             !Status, Context, !ModuleInfo, !QualInfo, !IO),
@@ -1127,12 +1152,12 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                     ModuleName, Name, ForeignNames, TargetMutableName, !IO)
         ),
         set_purity((semipure), Attrs, GetAttrs),
-        GetClause = pragma(compiler(mutable_decl), foreign_proc(GetAttrs,
+        NonPureGetClause = pragma(compiler(mutable_decl), foreign_proc(GetAttrs,
             mutable_get_pred_sym_name(ModuleName, Name), predicate,
-            [pragma_var(X, "X", out_mode(Inst))], VarSet,
+            [pragma_var(X, "X", out_mode(Inst))], VarSet0,
             ordinary("X = " ++ TargetMutableName ++ ";", yes(Context)))),
-        add_item_clause(GetClause, !Status, Context, !ModuleInfo, !QualInfo,
-            !IO),
+        add_item_clause(NonPureGetClause, !Status, Context, !ModuleInfo,
+            !QualInfo, !IO),
         TrailMutableUpdates = mutable_var_trailed(MutAttrs),
         (
             TrailMutableUpdates = untrailed, 
@@ -1160,13 +1185,63 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                 TrailCode = ""
             )
         ),
-        SetClause = pragma(compiler(mutable_decl), foreign_proc(Attrs,
+        NonPureSetClause = pragma(compiler(mutable_decl), foreign_proc(Attrs,
             mutable_set_pred_sym_name(ModuleName, Name), predicate,
-            [pragma_var(X, "X", in_mode(Inst))], VarSet,
+            [pragma_var(X, "X", in_mode(Inst))], VarSet0,
             ordinary(TrailCode ++ TargetMutableName ++ " = X;",
                 yes(Context)))),
-        add_item_clause(SetClause, !Status, Context, !ModuleInfo, !QualInfo,
-            !IO)
+        add_item_clause(NonPureSetClause, !Status, Context, !ModuleInfo, !QualInfo,
+            !IO),
+        %
+        % Create pure access predicates for the mutable if requested.
+        %
+        % XXX We don't define these directly in terms of the non-pure 
+        % access predicates because I/O tabling doesn't currently work
+        % for impure/semipure predicates.  At the moment we just generate
+        % another pair of foreign_procs.
+        % 
+        ( mutable_var_attach_to_io_state(MutAttrs) = yes ->
+            set_tabled_for_io(tabled_for_io, Attrs0, PureIntAttrs0),
+            set_purity(pure, PureIntAttrs0, PureIntAttrs),
+            varset.new_named_var(VarSet0, "IO0", IO0, VarSet1),
+            varset.new_named_var(VarSet1, "IO",  IO,  VarSet),
+            PureSetClause = pragma(compiler(mutable_decl),
+                foreign_proc(PureIntAttrs,
+                    mutable_set_pred_sym_name(ModuleName, Name), predicate,
+                    [
+                        pragma_var(X,   "X",   in_mode(Inst)),
+                        pragma_var(IO0, "IO0", di_mode),
+                        pragma_var(IO,  "IO",  uo_mode)
+                    ], VarSet,
+                    ordinary(
+                                TargetMutableName ++ " = X; " ++
+                                "IO = IO0;",
+                                yes(Context)
+                    )
+                )
+            ),
+            add_item_clause(PureSetClause, !Status, Context, !ModuleInfo,
+                !QualInfo, !IO),
+            PureGetClause = pragma(compiler(mutable_decl),
+                foreign_proc(PureIntAttrs,
+                    mutable_get_pred_sym_name(ModuleName, Name), predicate,
+                    [
+                        pragma_var(X,   "X",   out_mode(Inst)),
+                        pragma_var(IO0, "IO0", di_mode),
+                        pragma_var(IO,  "IO",  uo_mode)
+                    ], VarSet,
+                    ordinary(
+                                "X = " ++ TargetMutableName ++ ";" ++
+                                "IO = IO0;",
+                                yes(Context)
+                    )
+                )
+            ),
+            add_item_clause(PureGetClause, !Status, Context, !ModuleInfo,
+                !QualInfo, !IO)
+        ;
+            true
+        )
     ;
         true
     ).

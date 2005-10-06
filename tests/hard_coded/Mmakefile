@@ -141,6 +141,7 @@ ORDINARY_PROGS=	\
 	pretty_printing \
 	promise_equivalent_solutions_test \
 	promise_equiv_with_svars \
+	pure_mutable \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \

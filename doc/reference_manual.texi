@@ -4671,7 +4671,7 @@ A mutable variable is declared using the @samp{mutable} directive:
 @end example
 
 This constructs a new mutable variable with access predicates that have the
-following signatures.
+following signatures:
 
 @example
 :- semipure get_varname(vartype::out(varinst)) is det.
@@ -4699,6 +4699,15 @@ for further details.)
 This attribute declares if the implementation should generate code so that
 the effects of @samp{set_varname/1} can be undone on backtracking.  The
 default, in case none is specified, is @samp{trailed}.
+
+@item @samp{attach_to_io_state}
+This attribute causes the compiler to also construct access predicates
+that have the following signatures:
+
+@example
+:- pred get_varname(vartype::out(varinst), io::di, io::uo) is det.
+:- pred set_varname(vartype::in(varinst),  io::di, io::uo) is det.
+@end example
 
 @end table
 
