@@ -10,6 +10,7 @@ MCFLAGS-class_decl = --new-type-class-rtti
 # The label_layout test is for a bug that showed up only with --opt-space.
 MCFLAGS-label_layout = --opt-space
 
+MCFLAGS-io_tab_goto = --trace-table-io-all
 MCFLAGS-no_inline_builtins = --no-inline-builtins
 MCFLAGS-poly_io_retry = --trace-table-io-all
 MCFLAGS-poly_io_retry2 = --trace-table-io-all

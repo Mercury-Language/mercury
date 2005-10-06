@@ -668,7 +668,10 @@
 	;	aditi_magic_supp
 	;	aditi_join
 	;	aditi_rl_exprn
-	;	deforestation.
+	;	deforestation
+			% I/O tabling will create a new predicate if the
+			% predicate to be I/O tabled must not be inlined.
+	;	io_tabling.
 
 :- type pred_origin
 	--->	special_pred(special_pred)

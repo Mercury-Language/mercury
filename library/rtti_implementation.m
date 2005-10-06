@@ -1053,7 +1053,7 @@ type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
 		)
 	).
 
-:- func iterate(int, int, func(int, T)) = list(T).
+:- func iterate(int, int, func(int) = T) = list(T).
 
 iterate(Start, Max, Func) = Results :-
 	( Start =< Max ->

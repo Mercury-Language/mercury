@@ -60,6 +60,7 @@ DECLARATIVE_PROGS=		\
 	special_term_dep	\
 	skip			\
 	tabled_read_decl	\
+	tabled_read_decl_goto	\
 	throw			\
 	trust			\
 	unsafe_cast		
@@ -428,6 +429,11 @@ skip.out: skip skip.inp
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp
 	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp \
 		> tabled_read_decl.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+tabled_read_decl_goto.out: tabled_read_decl_goto tabled_read_decl_goto.inp
+	$(MDB_STD) ./tabled_read_decl_goto < tabled_read_decl_goto.inp \
+		> tabled_read_decl_goto.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on

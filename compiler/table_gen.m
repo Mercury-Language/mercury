@@ -1183,9 +1183,29 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		HeadVars, InputVars, OutputVars, !VarTypes, !VarSet,
 		!TableInfo, Goal, MaybeProcTableInfo) :-
 	OrigGoal = _ - OrigGoalInfo,
+	ModuleInfo0 = !.TableInfo ^ table_module_info,
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
+	pred_info_get_markers(PredInfo, Markers),
+	( check_marker(Markers, no_inline) ->
+		%
+		% If the predicate should not be inlined, then we create a new
+		% predicate with the same body as the original predicate, which
+		% is called wherever the original goal would appear in the
+		% transformed code.  This is necessary when the original goal
+		% is foreign C code that uses labels.  The original goal would
+		% otherwise be duplicated by the transformation, resulting in
+		% duplicate label errors from the C compiler.
+		% 
+		clone_proc_and_create_call(PredInfo, ProcId, CallExpr,
+			ModuleInfo0, ModuleInfo),
+		NewGoal = CallExpr - OrigGoalInfo,
+		!:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo
+	;
+		NewGoal = OrigGoal,
+		ModuleInfo = ModuleInfo0
+	),
 	goal_info_get_nonlocals(OrigGoalInfo, OrigNonLocals),
 	goal_info_get_context(OrigGoalInfo, Context),
-	ModuleInfo = !.TableInfo ^ table_module_info,
 	(
 		TableIoStates = yes,
 		IoStateAssignToVars = [],
@@ -1296,7 +1316,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		SaveAnswerGoals),
 	(
 		Unitize = table_io_alone,
-		CallSaveAnswerGoalList = [OrigGoal, TableIoDeclGoal
+		CallSaveAnswerGoalList = [NewGoal, TableIoDeclGoal
 			| SaveAnswerGoals]
 	;
 		Unitize = table_io_unitize,
@@ -1309,7 +1329,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		generate_call("table_io_right_bracket_unitized_goal", det,
 			[SavedTraceEnabledVar], impure_code, [],
 			ModuleInfo, Context, RightBracketGoal),
-		CallSaveAnswerGoalList = [LeftBracketGoal, OrigGoal,
+		CallSaveAnswerGoalList = [LeftBracketGoal, NewGoal,
 			RightBracketGoal, TableIoDeclGoal | SaveAnswerGoals]
 	),
 	CallSaveAnswerGoalExpr = conj(CallSaveAnswerGoalList),
@@ -1350,7 +1370,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		- CheckAndGenAnswerGoalInfo,
 
 	BodyGoalExpr = if_then_else([], InRangeGoal, CheckAndGenAnswerGoal,
-		OrigGoal),
+		NewGoal),
 	create_instmap_delta([InRangeGoal, CheckAndGenAnswerGoal, OrigGoal],
 		BodyInstMapDelta0),
 	instmap_delta_restrict(BodyInstMapDelta0, OrigNonLocals,
@@ -1754,6 +1774,56 @@ clone_pred_info(OrigPredId, PredInfo0, GeneratorPredId, !TableInfo) :-
 		PredTable0, PredTable),
 	module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
 	!:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo.
+
+	% clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo).
+	% This predicate creates a new procedure with the same body as the
+	% procedure with ProcId in PredInfo.  It then creates a call goal
+	% expression which calls the new procedure with its formal arguments as
+	% the actual arguments.
+	%
+:- pred clone_proc_and_create_call(pred_info::in, proc_id::in, 
+	hlds_goal_expr::out, module_info::in, module_info::out) is det.
+ 
+ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
+	pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+	proc_info_context(ProcInfo, ProcContext),
+	proc_info_varset(ProcInfo, ProcVarSet),
+	proc_info_vartypes(ProcInfo, ProcVarTypes),
+	proc_info_headvars(ProcInfo, ProcHeadVars),
+	proc_info_inst_varset(ProcInfo, ProcInstVarSet),
+	proc_info_argmodes(ProcInfo, ProcHeadModes),
+	proc_info_inferred_determinism(ProcInfo, ProcDetism),
+	proc_info_goal(ProcInfo, ProcGoal),
+	proc_info_typeinfo_varmap(ProcInfo, TypeInfoVarMap),
+	proc_info_typeclass_info_varmap(ProcInfo, TypeClassInfoVarMap),
+	proc_info_create(ProcContext, ProcVarSet, ProcVarTypes, 
+		ProcHeadVars, ProcInstVarSet, ProcHeadModes,
+		ProcDetism, ProcGoal, TypeInfoVarMap, TypeClassInfoVarMap,
+		address_is_not_taken, NewProcInfo),
+	ModuleName = pred_info_module(PredInfo),
+	OrigPredName = pred_info_name(PredInfo),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+	pred_info_context(PredInfo, PredContext),
+	NewPredName = qualified(ModuleName, "OutlinedForIOTablingFrom_" ++ 
+		OrigPredName),
+	pred_info_arg_types(PredInfo, PredArgTypes),
+	pred_info_typevarset(PredInfo, PredTypeVarSet),
+	pred_info_get_exist_quant_tvars(PredInfo, PredExistQVars),
+	pred_info_get_class_context(PredInfo, PredClassContext),
+	pred_info_get_assertions(PredInfo, PredAssertions),
+	pred_info_get_aditi_owner(PredInfo, AditiOwner),
+	pred_info_get_markers(PredInfo, Markers),
+	pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext, 
+		created(io_tabling), local, Markers, PredArgTypes, 
+		PredTypeVarSet, PredExistQVars, PredClassContext,
+		PredAssertions, AditiOwner, NewProcInfo, NewProcId, 
+		NewPredInfo),
+	module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
+		predicate_table_insert(NewPredInfo, NewPredId,
+		PredicateTable0, PredicateTable),
+		module_info_set_predicate_table(PredicateTable, !ModuleInfo),
+	CallExpr = call(NewPredId, NewProcId, ProcHeadVars, not_builtin, no,
+		NewPredName).
 
 :- pred filter_marker(marker::in) is semidet.
 
