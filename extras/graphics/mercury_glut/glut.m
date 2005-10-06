@@ -35,13 +35,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Initialisation.
+% Initialisation
 %
-	% Initialise the GLUT library.
-	% You must call this before calling any other GLUT procedures.
-	% The program will abort if there is an error. 
-	%
-:- pred glut.init(io::di, io::uo) is det.
 
 :- type display_mode
 	--->	rgba
@@ -90,7 +85,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% State retrieval.
+% State retrieval
 %
 
 	% Return the number of milliseconds since GLUT was initialised (or
@@ -161,7 +156,11 @@
 	#endif
 ").
 
+:- initialise glut.init/2.
+
 %-----------------------------------------------------------------------------%
+	
+:- pred glut.init(io::di, io::uo) is det.
 
 :- pragma foreign_proc("C", 
 	glut.init(IO0::di, IO::uo), 

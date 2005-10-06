@@ -63,7 +63,6 @@ main(!IO) :-
 :- pred gears.main_2(int::in, io::di, io::uo) is det.
 
 gears.main_2(Limit, !IO) :-
-	glut.init(!IO),
 	glut.init_display_mode([rgba, depth, double], !IO),
 	glut.window.create("Gears", !IO),
 

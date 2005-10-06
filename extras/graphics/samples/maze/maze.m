@@ -117,7 +117,6 @@ main(!IO) :-
 :- pred maze.main_2(maze::in, io::di, io::uo) is det.
 
 maze.main_2(Maze, !IO) :-
-	glut.init(!IO),
 	glut.init_display_mode([double, rgba], !IO),
 	glut.init_window_size(300, 300, !IO),
 	glut.window.create("Maze", !IO),
