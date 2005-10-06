@@ -391,13 +391,12 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         ->
             (
                 TakeAddr = [], 
-                MaybeSize = no
-            ->
                 Type = code_info__variable_type(!.CI, Arg),
                 generate_sub_unify(ref(Var), ref(Arg), Mode, Type, Code, !CI)
             ;
+                TakeAddr = [_ | _], 
                 unexpected(this_file,
-                    "generate_construction_2: notag: take_addr or maybe_size")
+                    "generate_construction_2: notag: take_addr")
             )
         ;
             unexpected(this_file,
