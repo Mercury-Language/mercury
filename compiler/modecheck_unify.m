@@ -88,8 +88,8 @@
 
 %-----------------------------------------------------------------------------%
 
-modecheck_unification(X, var(Y), Unification0, UnifyContext,
-        UnifyGoalInfo0, Unify, !ModeInfo, !IO) :-
+modecheck_unification(X, var(Y), Unification0, UnifyContext, UnifyGoalInfo0,
+        Unify, !ModeInfo, !IO) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -149,7 +149,8 @@ modecheck_unification(X, var(Y), Unification0, UnifyContext,
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
         categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y,
-            Det, UnifyContext, VarTypes, Unification0, Unify0, !ModeInfo),
+            Det, UnifyContext, UnifyGoalInfo0, VarTypes, Unification0, Unify0,
+            !ModeInfo),
         (
             MaybeInitX = no,
             Unify = Unify0
@@ -834,12 +835,12 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
     %
 :- pred categorize_unify_var_var((mode)::in, (mode)::in,
     is_live::in, is_live::in, prog_var::in,
-    prog_var::in, determinism::in, unify_context::in,
+    prog_var::in, determinism::in, unify_context::in, hlds_goal_info::in,
     map(prog_var, type)::in, unification::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out) is det.
 
 categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
-        UnifyContext, VarTypes, Unification0, Unify, !ModeInfo) :-
+        UnifyContext, GoalInfo, VarTypes, Unification0, Unify, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
         mode_is_output(ModuleInfo0, ModeOfX)
@@ -889,7 +890,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
                 UnifyContext, Unification0, Unification, !ModeInfo)
         )
     ),
-    %
+
     % Optimize away unifications with dead variables and simple tests that
     % cannot fail by replacing them with `true'. (The optimization of simple
     % tests is necessary because otherwise determinism analysis assumes they
@@ -898,17 +899,18 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
     %
     % Optimize away unifications which always fail by replacing them with
     % `fail'.
-    %
     (
         Unification = assign(AssignTarget, _),
         mode_info_var_is_live(!.ModeInfo, AssignTarget, dead)
     ->
-        Unify = conj([])
+        Unify = conj([]),
+        record_optimize_away(GoalInfo, !ModeInfo)
     ;
         Unification = simple_test(_, _),
         Det = det
     ->
-        Unify = conj([])
+        Unify = conj([]),
+        record_optimize_away(GoalInfo, !ModeInfo)
     ;
         Det = failure
     ->
@@ -935,6 +937,16 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         )
     ;
         Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification, UnifyContext)
+    ).
+
+:- pred record_optimize_away(hlds_goal_info::in,
+    mode_info::in, mode_info::out) is det.
+
+record_optimize_away(GoalInfo, !ModeInfo) :-
+    ( goal_info_has_feature(GoalInfo, dont_warn_singleton) ->
+        mode_info_need_to_requantify(!ModeInfo)
+    ;
+        true
     ).
 
     % Modecheck_complicated_unify does some extra checks that are needed

@@ -121,6 +121,7 @@
 :- pred mode_info_get_errors(mode_info::in, list(mode_error_info)::out) is det.
 :- pred mode_info_get_warnings(mode_info::in, list(mode_warning_info)::out)
     is det.
+:- pred mode_info_get_need_to_requantify(mode_info::in, bool::out) is det.
 :- pred mode_info_get_num_errors(mode_info::in, int::out) is det.
 :- pred mode_info_get_liveness(mode_info::in, set(prog_var)::out) is det.
 :- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
@@ -167,6 +168,8 @@
 :- pred mode_info_set_errors(list(mode_error_info)::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_warnings(list(mode_warning_info)::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_need_to_requantify(bool::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_add_live_vars(set(prog_var)::in,
     mode_info::in, mode_info::out) is det.
@@ -240,6 +243,8 @@
 :- pred mode_info_add_warning(mode_warning_info::in,
     mode_info::in, mode_info::out) is det.
 
+:- pred mode_info_need_to_requantify(mode_info::in, mode_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 
     % The mode_info contains a flag indicating whether initialisation calls,
@@ -309,7 +314,11 @@
                 initial_instmap         :: instmap,
 
                 % The mode warnings found.
-                warnings                :: list(mode_warning_info)
+                warnings                :: list(mode_warning_info),
+
+                % Set to `yes' if we need to requantify the procedure body
+                % after mode analysis finishes.
+                need_to_requantify      :: bool
             ).
 
 :- type mode_info
@@ -433,9 +442,10 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
     Changed = no,
     CheckingExtraGoals = no,
     MayInitSolverVars = yes,
+    NeedToRequantify = no,
 
     ModeSubInfo = mode_sub_info(ProcId, VarSet, Unreachable, Changed,
-        CheckingExtraGoals, InstMapping0, WarningList),
+        CheckingExtraGoals, InstMapping0, WarningList, NeedToRequantify),
 
     ModeInfo = mode_info(ModuleInfo, PredId, VarTypes, Debug,
         Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
@@ -457,6 +467,7 @@ mode_info_get_instvarset(ModeInfo, ModeInfo ^ instvarset).
 mode_info_get_locked_vars(MI, MI ^ locked_vars).
 mode_info_get_errors(MI, MI ^ errors).
 mode_info_get_warnings(MI, MI ^ mode_sub_info ^ warnings).
+mode_info_get_need_to_requantify(MI, MI ^ mode_sub_info ^ need_to_requantify).
 mode_info_get_delay_info(MI, MI ^ delay_info).
 mode_info_get_live_vars(MI, MI ^ live_vars).
 mode_info_get_nondet_live_vars(MI, MI ^ nondet_live_vars).
@@ -479,6 +490,8 @@ mode_info_set_locked_vars(LockedVars, MI, MI ^ locked_vars := LockedVars).
 mode_info_set_errors(Errors, MI, MI ^ errors := Errors).
 mode_info_set_warnings(Warnings, MI,
     MI ^ mode_sub_info ^ warnings := Warnings).
+mode_info_set_need_to_requantify(NTRQ, MI,
+    MI ^ mode_sub_info ^ need_to_requantify := NTRQ).
 mode_info_set_delay_info(DelayInfo, MI, MI ^ delay_info := DelayInfo).
 mode_info_set_live_vars(LiveVarsList, MI, MI ^ live_vars := LiveVarsList).
 mode_info_set_nondet_live_vars(NondetLiveVars, MI,
@@ -699,6 +712,9 @@ mode_info_add_warning(ModeWarningInfo, !ModeInfo) :-
     mode_info_get_warnings(!.ModeInfo, Warnings0),
     list__append(Warnings0, [ModeWarningInfo], Warnings),
     mode_info_set_warnings(Warnings, !ModeInfo).
+
+mode_info_need_to_requantify(!ModeInfo) :-
+    mode_info_set_need_to_requantify(yes, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 

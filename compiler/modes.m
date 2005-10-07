@@ -361,6 +361,7 @@
 :- import_module hlds__instmap.
 :- import_module hlds__make_hlds.
 :- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
@@ -943,10 +944,17 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         % VarTypes may be the same as VarTypes0, since mode checking can
         % add new variables (e.g. when handling calls in implied modes).
         mode_info_get_var_types(!.ModeInfo, VarTypes),
+        mode_info_get_need_to_requantify(!.ModeInfo, NeedToRequantify),
         proc_info_set_goal(Body, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
-        proc_info_set_argmodes(ArgModes, !ProcInfo)
+        proc_info_set_argmodes(ArgModes, !ProcInfo),
+        (
+            NeedToRequantify = no
+        ;
+            NeedToRequantify = yes,
+            requantify_proc(!ProcInfo)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
