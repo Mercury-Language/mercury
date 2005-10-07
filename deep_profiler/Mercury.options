@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002 University of Melbourne.
+# Copyright (C) 2002, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -25,8 +25,10 @@
 MCFLAGS-array_util =	--no-optimize-duplicate-calls
 MCFLAGS-callgraph = 	--no-optimize-duplicate-calls
 MCFLAGS-canonical =	--no-optimize-duplicate-calls
-MCFLAGS-cliques = 	--no-optimize-duplicate-calls
-MCFLAGS-dense_bitset = 	--no-optimize-duplicate-calls
+# Compiling at -O0 is a due to an assertion failure in
+# rotd-2005-10-05.  It can be removed when that is fixed.
+MCFLAGS-cliques = 	--no-optimize-duplicate-calls -O0
+MCFLAGS-dense_bitset = 	--no-optimize-duplicate-calls 
 MCFLAGS-exclude = 	--no-optimize-duplicate-calls
 MCFLAGS-html_format = 	--no-optimize-duplicate-calls
 MCFLAGS-measurements = 	--no-optimize-duplicate-calls
