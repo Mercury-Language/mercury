@@ -762,12 +762,6 @@ int__rem_bits_per_int(Int::in) = (Result::out) :-
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 % 	Functional forms added.
 
-int__plus(X, Y) = X + Y.
-
-int__times(X, Y) = X * Y.
-
-int__minus(X, Y) = X - Y.
-
 int__max_int = X :-
 	int__max_int(X).
 

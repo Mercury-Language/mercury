@@ -1219,11 +1219,6 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
 
 :- implementation.
 
-% unsafe_type_cast is a builtin; the compiler generates inline code for it
-
-store_at_ref(_X, _Y) :-
-    true.
-
 unused :-
     ( semidet_succeed ->
         error("attempted use of dead predicate")
