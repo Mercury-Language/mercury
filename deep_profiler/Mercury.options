@@ -27,9 +27,10 @@ MCFLAGS-callgraph = 	--no-optimize-duplicate-calls
 MCFLAGS-canonical =	--no-optimize-duplicate-calls
 # Compiling at -O0 is a due to an assertion failure in
 # rotd-2005-10-05.  It can be removed when that is fixed.
+# Also for exclude.m.
 MCFLAGS-cliques = 	--no-optimize-duplicate-calls -O0
 MCFLAGS-dense_bitset = 	--no-optimize-duplicate-calls 
-MCFLAGS-exclude = 	--no-optimize-duplicate-calls
+MCFLAGS-exclude = 	--no-optimize-duplicate-calls -O0
 MCFLAGS-html_format = 	--no-optimize-duplicate-calls
 MCFLAGS-measurements = 	--no-optimize-duplicate-calls
 MCFLAGS-profile = 	--no-optimize-duplicate-calls
