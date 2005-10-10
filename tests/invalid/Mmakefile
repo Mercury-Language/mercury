@@ -155,7 +155,6 @@ SINGLEMODULE= \
 	state_vars_test5 \
 	tc_err1 \
 	tc_err2 \
-	trailed_mutable \
 	tricky_assert1 \
 	typeclass_bogus_method \
 	typeclass_constraint_extra_var \
@@ -203,11 +202,16 @@ SINGLEMODULE= \
 RESERVE_TAG_MODULES = \
 	reserve_tag
 
+# The following require a trailing grade
+TRAILED_MODULES = \
+	trailed_mutable
+
 # The following require that the back-end support the C interface
 C_INTERFACE_MODULES = \
 	foreign_decl_line_number
 
-# The following require that the compiler not ignore `pragma type_spec' declarations
+# The following require that the compiler not ignore `pragma type_spec'
+# declarations
 TYPE_SPEC_MODULES = \
 	type_spec
 
@@ -238,30 +242,37 @@ TYPE_SPEC_MODULES = \
 # These tests test things which only work for back-ends which support
 # the C interface.
 ifneq "$(filter java% il%,$(GRADE))" ""
-C_INTERFACE_PROGS=
+	C_INTERFACE_PROGS=
 else
-C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
+	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
 endif
 
 # The java and il grades compile with num_tag_bits = 0.
 ifneq "$(filter java% il%,$(GRADE))" ""
-RESERVE_TAG_PROGS =
+	RESERVE_TAG_PROGS =
 else
-RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
+	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
+endif
+
+ifeq "$(filter tr%,$(GRADE))" ""
+	TRAILED_PROGS =
+else
+	TRAILED_PROGS = $(TRAILED_MODULES)
 endif
 
 # The java back-end ignores pragma type_spec, so it doesn't diagnose errors
 # in them. (XXX Perhaps the code to ignore them in make_hlds.m should be moved
 # to after the error-checking?)
 ifneq "$(filter java%,$(GRADE))" ""
-TYPE_SPEC_PROGS =
+	TYPE_SPEC_PROGS =
 else
-TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
+	TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
 endif
 
 SINGLEMODULE_PROGS = $(SINGLEMODULE) \
 	$(C_INTERFACE_PROGS) \
 	$(RESERVE_TAG_PROGS) \
+	$(TRAILED_PROGS) \
 	$(TYPE_SPEC_PROGS)
 
 #-----------------------------------------------------------------------------#
