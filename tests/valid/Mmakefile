@@ -187,6 +187,7 @@ OTHER_PROGS= \
 	stack_opt_simplify \
 	state_var_bug \
 	state_var_mode_bug \
+	state_var_mode_bug2 \
 	static \
 	subtype_switch \
 	switch_detection_bug \

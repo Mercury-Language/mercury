@@ -900,17 +900,17 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
     % Optimize away unifications which always fail by replacing them with
     % `fail'.
     (
-        Unification = assign(AssignTarget, _),
+        Unification = assign(AssignTarget, AssignSource),
         mode_info_var_is_live(!.ModeInfo, AssignTarget, dead)
     ->
         Unify = conj([]),
-        record_optimize_away(GoalInfo, !ModeInfo)
+        record_optimize_away(GoalInfo, AssignTarget, AssignSource, !ModeInfo)
     ;
-        Unification = simple_test(_, _),
+        Unification = simple_test(TestVar1, TestVar2),
         Det = det
     ->
         Unify = conj([]),
-        record_optimize_away(GoalInfo, !ModeInfo)
+        record_optimize_away(GoalInfo, TestVar1, TestVar2, !ModeInfo)
     ;
         Det = failure
     ->
@@ -939,14 +939,26 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification, UnifyContext)
     ).
 
-:- pred record_optimize_away(hlds_goal_info::in,
+    % If we optimize away a singleton variable in a unification in one branch
+    % of e.g. a switch, it is possible that the same variable is a singleton
+    % in another branch, but cannot be optimized away because it is bound in
+    % a call (which cannot be optimized away). In such cases, we must make sure
+    % that we call requantification to delete the variable from the nonlocals
+    % set of the switch, because otherwise, the arms of the switch would
+    % disagree on which nonlocals are bound.
+    %
+:- pred record_optimize_away(hlds_goal_info::in, prog_var::in, prog_var::in,
     mode_info::in, mode_info::out) is det.
 
-record_optimize_away(GoalInfo, !ModeInfo) :-
-    ( goal_info_has_feature(GoalInfo, dont_warn_singleton) ->
-        mode_info_need_to_requantify(!ModeInfo)
-    ;
+record_optimize_away(GoalInfo, Var1, Var2, !ModeInfo) :-
+    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    (
+        set__member(Var1, NonLocals),
+        set__member(Var2, NonLocals)
+    ->
         true
+    ;
+        mode_info_need_to_requantify(!ModeInfo)
     ).
 
     % Modecheck_complicated_unify does some extra checks that are needed
