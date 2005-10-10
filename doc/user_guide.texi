@@ -1825,7 +1825,7 @@ so compiler disables these even if @samp{--trace-optimized} is given.)
 The executables of Mercury programs
 by default do not invoke the Mercury debugger
 even if some or all of their modules were compiled with some form of tracing,
-and even if the grade of the executable is a debugging grade,
+and even if the grade of the executable is a debugging grade.
 This is similar to the behaviour of executables
 created by the implementations of other languages;
 for example the executable of a C program compiled with @samp{-g}
@@ -1845,7 +1845,7 @@ and you want to find the cause of the problem,
 you must execute the command
 
 @example
-mdb @var{prog} @var{arg1} @var{arg2} ...
+mdb [@var{mdb-options}] @var{prog} @var{arg1} @var{arg2} ...
 @end example
 
 because you do not get a chance
@@ -1875,6 +1875,45 @@ You can put your usual aliases and settings here.
 The file named @samp{.mdbrc} in the current working directory.
 You can put program-specific aliases and settings here.
 @end enumerate
+
+mdb accepts the following options from the command line.  The options
+should be given to mdb before the name of the executable to be debugged.
+
+@table @code
+@item -t @var{file-name}, --tty @var{file-name}
+@findex --tty (mdb option)
+Redirect all of the I/O for the debugger to the device
+specified by @var{file-name}.  The I/O for the program
+being debugged will not be redirected.
+This option allows the contents of a file to be piped to the program being
+debugged and not to mdb.  For example on Linux the command
+@samp{mdb -t /dev/tty ./myprog < myinput} will cause the contents of myinput
+to be piped to the program myprog, but mdb will read its input from
+the terminal.
+@sp 1
+@item -w, --window, --mdb-in-window
+@findex --mdb-in-window (mdb option)
+@findex --window (mdb option)
+Run mdb in a new window, with mdb's I/O going to that
+window, but with the program's I/O going to the current
+terminal.  Note that this will not work on all systems.
+@sp 1
+@item --program-in-window
+@findex --program-in-window (mdb option)
+Run the program in a new window, with the program's I/O
+going to that window, but with mdb's I/O going to the
+current terminal.  Note that input and output redirection
+will not work with the @samp{--program-in-window} option.
+@samp{--program-in-window} will work on most UNIX systems
+running the X Window System, even those for which
+@samp{--mdb-in-window} is not supported.
+@sp 1
+@item -c @var{window-command}, --window-command @var{window-command}
+@findex --window-command (mdb option)
+Specify the command used by the @samp{--program-in-window}
+option for executing a command in a new window.
+The default such command is @samp{xterm -e}.
+@end table
 
 @node Mercury debugger concepts
 @section Mercury debugger concepts
