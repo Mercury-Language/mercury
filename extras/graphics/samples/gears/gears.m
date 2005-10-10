@@ -25,7 +25,6 @@
 
 :- implementation.
 
-:- import_module globals.
 :- import_module glut.
 :- import_module glut.callback.
 :- import_module glut.window.
@@ -41,6 +40,27 @@
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
+%
+% Global state
+%
+	% The initial values of these four are dummy values.  We won't 
+	% know the real value until after we've setup the display
+	% and processed the command line arguments.
+	%
+:- mutable(gear_one,   int,   0,    ground, [untrailed, attach_to_io_state]).
+:- mutable(gear_two,   int,   0,    ground, [untrailed, attach_to_io_state]).
+:- mutable(gear_three, int,   0,    ground, [untrailed, attach_to_io_state]).
+:- mutable(limit,      int,   0,    ground, [untrailed, attach_to_io_state]).
+
+:- mutable(angle,      float, 0.0,  ground, [untrailed, attach_to_io_state]).
+:- mutable(count,      int,   0,    ground, [untrailed, attach_to_io_state]).
+:- mutable(frames,     int,   0,    ground, [untrailed, attach_to_io_state]).
+:- mutable(time,       int,   0,    ground, [untrailed, attach_to_io_state]).
+:- mutable(view_rot_x, float, 20.0, ground, [untrailed, attach_to_io_state]).
+:- mutable(view_rot_y, float, 30.0, ground, [untrailed, attach_to_io_state]).
+:- mutable(view_rot_z, float, 0.0,  ground, [untrailed, attach_to_io_state]).
+
+%-----------------------------------------------------------------------------%
 
 main(!IO) :-
 	io.command_line_arguments(Args, !IO),
@@ -53,16 +73,17 @@ main(!IO) :-
 			string.to_int(Limit0, Limit)
 		)
 	->
-		gears.main_2(Limit, !IO)
+		set_limit(Limit, !IO),
+		gears.main_2(!IO)
 	;
 		io.stderr_stream(StdErr, !IO),
 		io.write_string(StdErr, "Usage: gears [<limit>]\n", !IO),
 		io.set_exit_status(1, !IO)
 	).
 
-:- pred gears.main_2(int::in, io::di, io::uo) is det.
+:- pred gears.main_2(io::di, io::uo) is det.
 
-gears.main_2(Limit, !IO) :-
+gears.main_2(!IO) :-
 	glut.init_display_mode([rgba, depth, double], !IO),
 	glut.window.create("Gears", !IO),
 
@@ -85,7 +106,7 @@ gears.main_2(Limit, !IO) :-
 	io.write_string("Available Extensions: ", !IO),
 	write_maybe(ExtensionsResult, !IO),
 
-	gears.init(Limit, !IO),
+	gears.init(!IO),
 
 	glut.callback.display_func(gears.draw, !IO),
 	glut.callback.reshape_func(gears.reshape, !IO),
@@ -269,21 +290,21 @@ gears.draw_inside_radius_cylinder(R0, Width, Teeth, !IO) :-
 :- pred gears.draw(io::di, io::uo) is det.
 
 gears.draw(!IO) :-
-	globals.get("ViewRotX", ViewRotX, !IO),
-	globals.get("ViewRotY", ViewRotY, !IO),
-	globals.get("ViewRotZ", ViewRotZ, !IO),
-	
-	globals.get("Angle", Angle, !IO),
-	globals.get("Count", Count0, !IO),
-	globals.get("Limit", Limit, !IO),
+	get_view_rot_x(ViewRotX, !IO),
+	get_view_rot_y(ViewRotY, !IO),
+	get_view_rot_z(ViewRotZ, !IO),
 
-	globals.get("GearOne", GearOne, !IO),
-	globals.get("GearTwo", GearTwo, !IO),
-	globals.get("GearThree", GearThree, !IO),
-	
-	globals.get("Frames", Frames0, !IO),
-	globals.get("T0", T0, !IO),
+	get_angle(Angle, !IO),
+	get_count(Count0, !IO),
+	get_limit(Limit, !IO),
 
+	get_gear_one(GearOne, !IO),
+	get_gear_two(GearTwo, !IO),
+	get_gear_three(GearThree, !IO),
+
+	get_frames(Frames0, !IO),
+	get_time(T0, !IO),
+	
 	mogl.clear([color, depth], !IO),
 
 	mogl.push_matrix(!IO),
@@ -313,7 +334,7 @@ gears.draw(!IO) :-
 	
 	Count = Count0 + 1,
 	( if Count = Limit then	glut.quit(!IO) else true ),
-	globals.set("Count", Count, !IO),
+	set_count(Count, !IO),
 	
 	glut.window.swap_buffers(!IO),
 	%
@@ -326,17 +347,17 @@ gears.draw(!IO) :-
 		FPS = float(Frames) / Seconds,
 		io.format("%d frames in %f seconds = %6.3f FPS\n",
 			[i(Frames), f(Seconds), f(FPS)], !IO),
-		globals.set("T0", T, !IO),
-		globals.set("Frames", 0, !IO)
+		set_time(T, !IO),
+		set_frames(0, !IO)
 	;
-		globals.set("Frames", Frames, !IO)
+		set_frames(Frames, !IO)	
 	).
 
 :- pred gears.idle(io::di, io::uo) is det.
 
 gears.idle(!IO) :-
-	globals.get("Angle", Angle, !IO),
-	globals.set("Angle", Angle + 2.0, !IO),
+	get_angle(Angle, !IO),
+	set_angle(Angle + 2.0, !IO),
 	glut.window.post_redisplay(!IO).
 
 :- pred gears.key(char::in, int::in, int::in, io::di, io::uo) is det.
@@ -345,27 +366,27 @@ gears.key(Key, _X, _Y, !IO) :-
 	( char.to_int(Key, 27) ->
 		glut.quit(!IO)
 	;
-		globals.get("ViewRotZ", ViewRotZ0, !IO),
+		get_view_rot_z(ViewRotZ0, !IO),
 		( Key = 'z' -> ViewRotZ = ViewRotZ0 + 5.0
 		; Key = 'Z' -> ViewRotZ = ViewRotZ0 - 5.0
 		; ViewRotZ = ViewRotZ0
 		),
-		globals.set("ViewRotZ", ViewRotZ, !IO),
+		set_view_rot_z(ViewRotZ, !IO),
 		glut.window.post_redisplay(!IO)
 	).
 
 :- pred gears.special(special_key::in, int::in, int::in, io::di, io::uo) is det.
 
 gears.special(Key, _, _, !IO) :-
-	globals.get("ViewRotX", ViewRotX0, !IO),
-	globals.get("ViewRotY", ViewRotY0, !IO),
+	get_view_rot_x(ViewRotX0, !IO),
+	get_view_rot_y(ViewRotY0, !IO),
 	( gears.special_2(Key, ViewRotX0, ViewRotX1, ViewRotY0, ViewRotY1) ->
 		ViewRotX = ViewRotX1, ViewRotY = ViewRotY1
 	;
 		ViewRotX = ViewRotX0, ViewRotY = ViewRotY0
 	),
-	globals.set("ViewRotX", ViewRotX, !IO),
-	globals.set("ViewRotY", ViewRotY, !IO),
+	set_view_rot_x(ViewRotX, !IO),
+	set_view_rot_y(ViewRotY, !IO),
 	glut.window.post_redisplay(!IO).
 
 :- pred gears.special_2(special_key::in, float::in, float::out, float::in,
@@ -388,9 +409,9 @@ gears.reshape(Width, Height, !IO) :-
 	mogl.load_identity(!IO),
 	mogl.translate(0.0, 0.0, -40.0, !IO).
 
-:- pred gears.init(int::in, io::di, io::uo) is det.
+:- pred gears.init(io::di, io::uo) is det.
 
-gears.init(Limit, !IO) :-
+gears.init(!IO) :-
 	mogl.light(0, position(5.0, 5.0, 10.0, 0.0), !IO),
 	mogl.enable(cull_face, !IO),
 	mogl.enable(lighting, !IO),
@@ -420,20 +441,11 @@ gears.init(Limit, !IO) :-
 
 	mogl.enable(normalize, !IO),
 	%
-	% Set the initial value of the global state.
+	% Set the remainder of the global state.
 	%
-	globals.init(!IO),
-	globals.set("GearOne", GearOne, !IO),
-	globals.set("GearTwo", GearTwo, !IO),
-	globals.set("GearThree", GearThree, !IO),
-	globals.set("Angle", 0.0, !IO),
-	globals.set("Count", 1, !IO),
-	globals.set("Limit", Limit, !IO),
-	globals.set("Frames", 0, !IO),
-	globals.set("T0", 0, !IO),
-	globals.set("ViewRotX", 20.0, !IO),
-	globals.set("ViewRotY", 30.0, !IO),
-	globals.set("ViewRotZ", 0.0, !IO).
+	set_gear_one(GearOne, !IO),
+	set_gear_two(GearTwo, !IO),
+	set_gear_three(GearThree, !IO).
 
 :- pred gears.visible(visibility::in, io::di, io::uo) is det.
 
