@@ -66,9 +66,14 @@ typedef struct MR_Event_Details_Struct {
 **
 ** MR_trace_real_decl is the version of MR_trace_real we use when gathering
 ** events for the annotated trace.
+**
+** MR_trace_real_decl_implicit_subtree is a specialized version of 
+** MR_trace_real_decl for events which are in implicit subtrees.
 */
 
 extern  MR_Code *MR_trace_real_decl(const MR_Label_Layout *);
+
+extern  MR_Code *MR_trace_real_decl_implicit_subtree(const MR_Label_Layout *);
 
 /*
 ** Ideally, MR_trace_retry works by resetting the state of the stacks and

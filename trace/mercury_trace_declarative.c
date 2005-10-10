@@ -244,13 +244,6 @@ static  MR_bool             MR_edt_inside;
 static  MR_Unsigned         MR_edt_initial_event;
 
 /*
-** This variable indicates whether we are building a supertree above a
-** given event or a subtree rooted at a given event.
-*/
-
-static  MR_bool             MR_edt_building_supertree;
-
-/*
 ** The node returned to the front end once a subtree or supertree has been
 ** generated.  If a supertree is generated then the implicit root in the
 ** new supertree that represents the existing tree is returned, otherwise
@@ -258,24 +251,6 @@ static  MR_bool             MR_edt_building_supertree;
 */
 
 static  MR_Trace_Node       MR_edt_return_node;
-
-/*
-** The depth of the EDT is different from the call depth of the events, since
-** the call depth is not guaranteed to be the same for the children of a call
-** event - see comments in MR_trace_real in trace/mercury_trace.c.  We use the
-** following variable to keep track of the EDT depth.  We only keep track of
-** the depth of the portion of the EDT we are materializing.  MR_edt_depth is 0
-** for the root of the tree we are materializing.
-*/
-
-static  MR_Integer          MR_edt_depth;
-
-/*
-** Events where the value of MR_edt_depth above is greater than the value of
-** MR_edt_max_depth will not be included in tha annotated trace.
-*/
-
-static  MR_Unsigned         MR_edt_max_depth;
 
 /*
 ** The time (in milliseconds since the start of the program) when collection of
@@ -297,16 +272,6 @@ static  MR_Unsigned         MR_edt_progress_last_tick = 0;
 */
 
 static  MR_Unsigned         MR_edt_first_event;
-
-/*
-** MR_edt_implicit_subtree_counters points to an array that records
-** the number of events at different depths in implicit subtrees.
-** These are used to determine what depth an implicit subtree should
-** be materialized to.
-*/
-
-static  MR_Unsigned         *MR_edt_implicit_subtree_counters;
-static  MR_Unsigned         MR_edt_implicit_subtree_num_counters;
 
 /*
 ** The declarative debugger ignores modules that were not compiled with
@@ -472,8 +437,6 @@ static    void              MR_trace_count_event_in_implicit_subtree(
                                 MR_Event_Info *event_info, MR_Unsigned depth);
 static    void              MR_trace_maybe_update_implicit_tree_ideal_depth(
                                 MR_Unsigned depth, MR_Trace_Node call);
-static    void              MR_trace_maybe_show_progress(
-                                MR_Unsigned event_number);
 static    void              MR_trace_finish_progress(void);
 static    void              MR_trace_init_implicit_subtree_counters(
                                 MR_Unsigned size);
@@ -483,20 +446,21 @@ static    MR_Unsigned       MR_trace_calc_implicit_subtree_ideal_depth(void);
 static    void              MR_trace_maybe_update_suspicion_accumulator(
                                 const MR_Label_Layout *label_layout);
 
-MR_bool     MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
+MR_bool         MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 
 MR_Unsigned MR_edt_desired_nodes_in_subtree = MR_TRACE_DESIRED_SUBTREE_NODES;
 MR_Unsigned MR_edt_default_depth_limit = MR_TRACE_DECL_INITIAL_DEPTH;
 
-MR_bool    MR_trace_decl_debug_debugger_mode = MR_FALSE;
+MR_bool         MR_trace_decl_debug_debugger_mode = MR_FALSE;
 
-/*
-** We filter out events which are deeper than the limit given by
-** MR_edt_max_depth.  These events are implicitly represented in the structure
-** being built.
-*/
+MR_Integer      MR_edt_depth;
+MR_Unsigned     MR_edt_max_depth;
+MR_Integer      MR_edt_implicit_subtree_depth;
 
-#define MR_TRACE_EVENT_TOO_DEEP(depth) (depth > MR_edt_max_depth)
+MR_Unsigned     *MR_edt_implicit_subtree_counters;
+MR_Unsigned     MR_edt_implicit_subtree_num_counters;
+
+MR_bool         MR_edt_building_supertree;
 
 /*
 ** This function is called for every traced event when building the
@@ -511,51 +475,51 @@ MR_trace_decl_debug(MR_Event_Info *event_info)
     MR_Unsigned             depth;
     MR_Event_Details        event_details;
     MR_Integer              trace_suppress;
-    MR_Unsigned             event_depth;
+    MR_Unsigned             node_depth;
+    MR_Unsigned             call_seqno;
+    MR_Trace_Port           port;
     MR_Code                 *jumpaddr;
 
+    call_seqno = event_info->MR_call_seqno;
+    port = event_info->MR_trace_port;
     entry = event_info->MR_event_sll->MR_sll_entry;
+
     MR_trace_edt_build_sanity_check(event_info, entry);
 
     MR_trace_maybe_update_suspicion_accumulator(event_info->MR_event_sll);
 
-    MR_trace_maybe_show_progress(event_info->MR_event_number);
+    MR_DECL_MAYBE_UPDATE_PROGRESS(MR_trace_event_number);
 
     if (! MR_trace_include_event(entry, event_info, &jumpaddr)) {
         return jumpaddr;
     }
 
-    event_depth = MR_trace_calculate_event_depth(event_info);
-    MR_trace_count_event_in_implicit_subtree(event_info, event_depth);
+    MR_DD_CALC_NODE_DEPTH(port, node_depth, MR_edt_depth);
 
-    if (MR_TRACE_EVENT_TOO_DEEP(event_depth)) {
-        return NULL;
-    }
-
-    trace_suppress = entry->MR_sle_module_layout->MR_ml_suppressed_events;
-    if (trace_suppress != 0) {
-        /*
-        ** We ignore events from modules that were not compiled
-        ** with the necessary information.  Procedures in those
-        ** modules are effectively assumed correct, so we give
-        ** the user a warning.
-        */
-        MR_edt_compiler_flag_warning = MR_TRUE;
-        return NULL;
+    if (node_depth == MR_edt_max_depth
+            && (port == MR_PORT_CALL || port == MR_PORT_REDO))    
+    {                                                         
+        /*                                                    
+        ** Reset the accumulators, since we are entering the  
+        ** top of an implicit subtree.                        
+        */                                                    
+        MR_trace_reset_implicit_subtree_counters();           
+        MR_edt_implicit_subtree_counters[0]++;
+        MR_edt_implicit_subtree_depth = 0;
+        MR_selected_trace_func_ptr = MR_trace_real_decl_implicit_subtree;
     }
 
     MR_trace_construct_node(event_info);
 
-    if (event_info->MR_call_seqno == MR_edt_start_seqno &&
-        MR_port_is_final(event_info->MR_trace_port))
+    if (call_seqno == MR_edt_start_seqno && MR_port_is_final(port))
     {
         MR_edt_return_node = MR_trace_current_node;
     }
 
     if ((!MR_edt_building_supertree &&
             MR_trace_event_number == MR_edt_last_event)
-        || (MR_edt_building_supertree && event_depth == 0
-            && MR_port_is_final(event_info->MR_trace_port)))
+        || (MR_edt_building_supertree && node_depth == 0
+            && MR_port_is_final(port)))
     {
         MR_trace_free_implicit_subtree_counters();
         MR_decl_maybe_print_edt_stats();
@@ -575,27 +539,6 @@ MR_trace_decl_debug(MR_Event_Info *event_info)
     }
 
     return NULL;
-}
-
-static void
-MR_trace_count_event_in_implicit_subtree(MR_Event_Info *event_info,
-    MR_Unsigned depth)
-{
-    if (depth == MR_edt_max_depth
-        && (event_info->MR_trace_port == MR_PORT_CALL
-        || event_info->MR_trace_port == MR_PORT_REDO))
-    {
-        /*
-        ** Reset the accumulators, since we are entering the
-        ** top of an implicit subtree.
-        */
-        MR_trace_reset_implicit_subtree_counters();
-    }
-    if ((depth >= MR_edt_max_depth) && (depth - MR_edt_max_depth <
-        MR_edt_implicit_subtree_num_counters))
-    {
-        MR_edt_implicit_subtree_counters[depth - MR_edt_max_depth]++;
-    }
 }
 
 static void
@@ -628,6 +571,18 @@ MR_trace_include_event(const MR_Proc_Layout *entry,
     ** Filter out events for compiler generated procedures.
     */
     if (MR_PROC_LAYOUT_IS_UCI(entry)) {
+        *jumpaddr = NULL;
+        return MR_FALSE;
+    }
+
+    if (entry->MR_sle_module_layout->MR_ml_suppressed_events != 0) {
+        /*
+        ** We ignore events from modules that were not compiled
+        ** with the necessary information.  Procedures in those
+        ** modules are effectively assumed correct, so we give
+        ** the user a warning.
+        */
+        MR_edt_compiler_flag_warning = MR_TRUE;
         *jumpaddr = NULL;
         return MR_FALSE;
     }
@@ -730,27 +685,6 @@ MR_trace_include_event(const MR_Proc_Layout *entry,
         }
     }
     return MR_TRUE;
-}
-
-static MR_Unsigned
-MR_trace_calculate_event_depth(MR_Event_Info *event_info)
-{
-    if (event_info->MR_trace_port == MR_PORT_CALL
-        || event_info->MR_trace_port == MR_PORT_REDO)
-    {
-        return ++MR_edt_depth;
-    }
-
-    if (MR_port_is_final(event_info->MR_trace_port)) {
-        /*
-        ** The depth of the EXIT, FAIL or EXCP event is
-        ** MR_edt_depth (not MR_edt_depth-1), however
-        ** we need to adjust MR_edt_depth here for future events.
-        */
-        return MR_edt_depth--;
-    }
-
-    return MR_edt_depth;
 }
 
 static void
@@ -2408,68 +2342,63 @@ MR_trace_decl_init_suspicion_table(char *pass_trace_counts_file,
     return MR_TRUE;
 }
 
-static void
-MR_trace_maybe_show_progress(MR_Unsigned event_number)
+void
+MR_trace_show_progress_subtree(MR_Unsigned event_number)
 {
     MR_Unsigned        current_tick;
 
-    if (MR_mdb_decl_print_progress) {
-        if (! MR_edt_building_supertree) {
-            if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL == 0
-                || event_number == MR_edt_last_event)
+    if (event_number != MR_edt_last_event &&
+        MR_edt_progress_last_tick == 0 &&
+        (MR_edt_start_time + MR_DECL_DISPLAY_PROGRESS_DELAY
+        < MR_get_user_cpu_miliseconds()))
+    {
+        fprintf(MR_mdb_out, MR_DECL_PROGRESS_MESSAGE_SUBTREE);
+        fflush(MR_mdb_out);
+        /*
+        ** We count the initial progress message as the first
+        ** tick.
+        */
+        MR_edt_progress_last_tick = 1;
+    } else if (MR_edt_progress_last_tick > 0) {
+        current_tick = (MR_Unsigned) ((
+            (float) (event_number - MR_edt_first_event)
+                * (float) MR_DECL_PROGRESS_TOTAL)
+            / (float)(MR_edt_last_event - MR_edt_first_event));
+        if (current_tick != MR_edt_progress_last_tick) {
+            for (; MR_edt_progress_last_tick < current_tick;
+                MR_edt_progress_last_tick++)
             {
-                if (MR_edt_progress_last_tick == 0 &&
-                    (MR_edt_start_time + MR_DECL_DISPLAY_PROGRESS_DELAY
-                    < MR_get_user_cpu_miliseconds()))
-                {
-                    fprintf(MR_mdb_out, MR_DECL_PROGRESS_MESSAGE);
-                    fflush(MR_mdb_out);
-                    /*
-                    ** We count the initial progress message as the first
-                    ** tick.
-                    */
-                    MR_edt_progress_last_tick = 1;
-                } else if (MR_edt_progress_last_tick > 0) {
-                    current_tick = (MR_Unsigned) ((
-                        (float) (event_number - MR_edt_first_event)
-                            * (float) MR_DECL_PROGRESS_TOTAL)
-                        / (float)(MR_edt_last_event - MR_edt_first_event));
-                    if (current_tick != MR_edt_progress_last_tick) {
-                        for (; MR_edt_progress_last_tick < current_tick;
-                            MR_edt_progress_last_tick++)
-                        {
-                            fprintf(MR_mdb_out, MR_DECL_PROGRESS_TICK_STRING);
-                            fflush(MR_mdb_out);
-                        }
-                    }
-                }
-            }
-        } else {
-            if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL == 0) {
-                /*
-                ** If we are building a supertree we don't know what the
-                ** final event will be, so we just show a tick every
-                ** MR_DECL_DISPLAY_PROGRESS_DELAY milliseconds, so at least
-                ** the user knows something is happening.
-                */
-                if (MR_edt_progress_last_tick == 0 &&
-                    (MR_edt_start_time + MR_DECL_DISPLAY_PROGRESS_DELAY
-                    < MR_get_user_cpu_miliseconds()))
-                {
-                    fprintf(MR_mdb_out, MR_DECL_PROGRESS_MESSAGE);
-                    fflush(MR_mdb_out);
-                    MR_edt_progress_last_tick = 1;
-                } else if ((MR_edt_start_time
-                    + (MR_edt_progress_last_tick + 1)
-                    * MR_DECL_DISPLAY_PROGRESS_DELAY)
-                    < MR_get_user_cpu_miliseconds())
-                {
-                    MR_edt_progress_last_tick++;
-                    fprintf(MR_mdb_out, MR_DECL_PROGRESS_TICK_STRING);
-                    fflush(MR_mdb_out);
-                }
+                fprintf(MR_mdb_out, MR_DECL_PROGRESS_TICK_STRING);
+                fflush(MR_mdb_out);
             }
         }
+    }
+}
+
+void
+MR_trace_show_progress_supertree(MR_Unsigned event_number)
+{
+    /*
+    ** If we are building a supertree we don't know what the
+    ** final event will be, so we just show a tick every
+    ** MR_DECL_DISPLAY_PROGRESS_DELAY milliseconds, so at least
+    ** the user knows something is happening.
+    */
+    if (MR_edt_progress_last_tick == 0 &&
+        (MR_edt_start_time + MR_DECL_DISPLAY_PROGRESS_DELAY
+        < MR_get_user_cpu_miliseconds()))
+    {
+        fprintf(MR_mdb_out, MR_DECL_PROGRESS_MESSAGE_SUPERTREE);
+        fflush(MR_mdb_out);
+        MR_edt_progress_last_tick = 1;
+    } else if ((MR_edt_start_time
+        + (MR_edt_progress_last_tick + 1)
+        * MR_DECL_DISPLAY_PROGRESS_DELAY)
+        < MR_get_user_cpu_miliseconds())
+    {
+        MR_edt_progress_last_tick++;
+        fprintf(MR_mdb_out, MR_DECL_PROGRESS_TICK_STRING);
+        fflush(MR_mdb_out);
     }
 }
 

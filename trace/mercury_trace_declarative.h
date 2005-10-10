@@ -1,4 +1,7 @@
 /*
+** vim: ts=4 sw=4 expandtab
+*/
+/*
 ** Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -16,7 +19,15 @@
 ** MR_trace_decl_debug for each event.  
 */
 
-extern	MR_Code	*MR_trace_decl_debug(MR_Event_Info *event_info);
+extern  MR_Code     *MR_trace_decl_debug(MR_Event_Info *event_info);
+
+/*
+** The following functions update the progress indicator when building a 
+** subtree or a supertree.
+*/
+
+extern  void        MR_trace_show_progress_subtree(MR_Unsigned event_number);
+extern  void        MR_trace_show_progress_supertree(MR_Unsigned event_number);
 
 /*
 ** The internal (interactive) debugger calls this function to enter
@@ -27,10 +38,11 @@ extern	MR_Code	*MR_trace_decl_debug(MR_Event_Info *event_info);
 
 typedef enum { MR_DECL_NODUMP, MR_DECL_DUMP } MR_Decl_Mode;
 
-extern	MR_bool	MR_trace_start_decl_debug(MR_Decl_Mode mode, const char *out,
-			MR_bool new_session, MR_Trace_Cmd_Info *cmd,
-			MR_Event_Info *event_info,
-			MR_Event_Details *event_details, MR_Code **jumpaddr);
+extern  MR_bool     MR_trace_start_decl_debug(MR_Decl_Mode mode, 
+                        const char *out,
+                        MR_bool new_session, MR_Trace_Cmd_Info *cmd,
+                        MR_Event_Info *event_info,
+                        MR_Event_Details *event_details, MR_Code **jumpaddr);
 
 /*
 ** The declarative debugger may need to perform many retries during one
@@ -48,7 +60,7 @@ extern	MR_bool	MR_trace_start_decl_debug(MR_Decl_Mode mode, const char *out,
 ** initial retry that starts collecting the annotated trace.
 */
 
-extern	MR_bool	MR_trace_decl_assume_all_io_is_tabled;
+extern  MR_bool     MR_trace_decl_assume_all_io_is_tabled;
 
 /*
 ** These functions add(or remove) a module, pred or func to(or from) the set of 
@@ -57,10 +69,11 @@ extern	MR_bool	MR_trace_decl_assume_all_io_is_tabled;
 ** initialised first.
 */
 
-extern	void	MR_decl_add_trusted_module(const char *module_name);
-extern	void	MR_decl_add_trusted_pred_or_func(const MR_Proc_Layout *entry);
-extern	void	MR_decl_trust_standard_library(void);
-extern	MR_bool	MR_decl_remove_trusted(int n);
+extern  void        MR_decl_add_trusted_module(const char *module_name);
+extern  void        MR_decl_add_trusted_pred_or_func(
+                        const MR_Proc_Layout *entry);
+extern  void        MR_decl_trust_standard_library(void);
+extern  MR_bool     MR_decl_remove_trusted(int n);
 
 /*
 ** MR_trace_decl_set_default_search_mode sets the default search mode for 
@@ -69,8 +82,8 @@ extern	MR_bool	MR_decl_remove_trusted(int n);
 
 typedef MR_Word MR_Decl_Search_Mode;
 
-extern	void	MR_trace_decl_set_fallback_search_mode(
-			MR_Decl_Search_Mode search_mode);
+extern  void        MR_trace_decl_set_fallback_search_mode(
+                        MR_Decl_Search_Mode search_mode);
 
 /*
 ** This function checks to see if the supplied string is a valid
@@ -81,9 +94,9 @@ extern	void	MR_trace_decl_set_fallback_search_mode(
 */
 
 extern	MR_bool	MR_trace_is_valid_search_mode_string(
-			const char *search_mode_string,
-			MR_Decl_Search_Mode *search_mode,
-			MR_bool *search_mode_requires_trace_counts);
+                    const char *search_mode_string,
+                    MR_Decl_Search_Mode *search_mode,
+                    MR_bool *search_mode_requires_trace_counts);
 
 /*
 ** Return the default search mode to use when the --search-mode option for the
@@ -98,8 +111,8 @@ extern MR_Decl_Search_Mode MR_trace_get_default_search_mode(void);
 ** prints the list in a format suitable for display.
 */
 
-extern	void	MR_decl_print_all_trusted(FILE *fp, 
-			MR_bool mdb_command_format);
+extern  void        MR_decl_print_all_trusted(FILE *fp, 
+                        MR_bool mdb_command_format);
 
 /*
 ** Set up the table of suspicions for each label.  This must be done
@@ -120,7 +133,79 @@ extern	MR_bool	MR_trace_decl_init_suspicion_table(
 ** See the user_state type in browser/declarative_user.m for more details.
 */
 
-extern	void	MR_trace_decl_set_testing_flag(MR_bool testing);
+extern  void        MR_trace_decl_set_testing_flag(MR_bool testing);
+
+/*
+** The depth of the EDT is different from the call depth of the events, since
+** the call depth is not guaranteed to be increase by one each time
+** -- see comments in MR_trace_real in trace/mercury_trace.c.  We use the
+** following variable to keep track of the EDT depth.  We only keep track of
+** the depth of events in the subtree we are materializing.  
+** MR_edt_depth keeps track of the depth of nodes in the EDT by storing the
+** depth of the next event if it is a final or internal event.  If the next
+** event is a CALL or REDO it will have a depth of MR_edt_depth + 1.
+** The CALL and final events of the root of the subtree being materialized 
+** have depth 0.
+*/
+
+extern  MR_Integer      MR_edt_depth;
+
+/*
+** MR_edt_implicit_subtree_depth performs the same role as MR_edt_depth, 
+** except that it keeps track of the depth of nodes in implicit subtrees of
+** the tree being materialized.
+*/
+
+extern  MR_Integer      MR_edt_implicit_subtree_depth;
+
+/*
+** Events where the value of MR_edt_depth above is greater than the value of
+** MR_edt_max_depth will not be included in tha annotated trace.
+*/
+
+extern  MR_Unsigned     MR_edt_max_depth;
+
+/*
+** MR_edt_implicit_subtree_counters points to an array that records
+** the number of events at different depths in implicit subtrees.
+** These are used to determine what depth an implicit subtree should
+** be materialized to.
+*/
+
+extern  MR_Unsigned     *MR_edt_implicit_subtree_counters;
+extern  MR_Unsigned     MR_edt_implicit_subtree_num_counters;
+
+/*
+** When building a new explicit tree we build it to the maximum depth such
+** that the number of nodes in the explicit tree is less than or equal to
+** MR_edt_desired_nodes_in_subtree.
+*/
+
+extern  MR_Unsigned     MR_edt_desired_nodes_in_subtree;
+
+/*
+** In the event that the ideal depth to build a tree to cannot be calculated,
+** either because it is the initial build of the annotated trace or a supertree
+** is being built, use the value of the following global as the depth limit.
+*/
+
+extern  MR_Unsigned     MR_edt_default_depth_limit;
+
+/*
+** The following variable indicates whether the declarative debugger was 
+** invoked with the --debug option.  It is needed so that the declarative
+** debugger can continue to be debugged after a new portion of the 
+** annotated trace has been generated.
+*/
+
+extern  MR_bool        MR_trace_decl_debug_debugger_mode;
+
+/*
+** This variable indicates whether we are building a supertree above a
+** given event or a subtree rooted at a given event.
+*/
+
+extern  MR_bool        MR_edt_building_supertree;
 
 /*
 ** The following macros are provided to help C code manipulate the
@@ -130,9 +215,9 @@ extern	void	MR_trace_decl_set_testing_flag(MR_bool testing);
 
 typedef MR_Word MR_Trace_Node;
 
-#define MR_TRACE_STATUS_SUCCEEDED	(MR_Word) 0
-#define MR_TRACE_STATUS_FAILED		(MR_Word) 1
-#define MR_TRACE_STATUS_UNDECIDED	(MR_Word) 2
+#define MR_TRACE_STATUS_SUCCEEDED    (MR_Word) 0
+#define MR_TRACE_STATUS_FAILED       (MR_Word) 1
+#define MR_TRACE_STATUS_UNDECIDED    (MR_Word) 2
 
 /*
 ** The initial depth step size.  We want to be quite conservative with this
@@ -140,7 +225,7 @@ typedef MR_Word MR_Trace_Node;
 ** is.
 */
 
-#define MR_TRACE_DECL_INITIAL_DEPTH	5
+#define     MR_TRACE_DECL_INITIAL_DEPTH    5
 
 /*
 ** The suspicion of each event is represented as an integer between 0 and
@@ -154,70 +239,120 @@ typedef MR_Word MR_Trace_Node;
 ** materializing a new subtree.
 */
 
-#define	MR_TRACE_DESIRED_SUBTREE_NODES	10000
+#define     MR_TRACE_DESIRED_SUBTREE_NODES    10000
 
 /*
 ** The message to display when attempting to retry over an untabled area.
 */
 
-#define MR_DECL_UNTABLED_IO_RETRY_MESSAGE \
-	"The declarative debugger needs to perform a retry across\n" \
-	"an area in which IO is not tabled.  This is not always safe.\n" \
-	"To avoid this warning restart mdb and issue a `table_io start'\n" \
-	"command at an event before the suspect area.\n" \
-	"Do you wish to proceed with the retry? "
+#define     MR_DECL_UNTABLED_IO_RETRY_MESSAGE \
+    "The declarative debugger needs to perform a retry across\n" \
+    "an area in which IO is not tabled.  This is not always safe.\n" \
+    "To avoid this warning restart mdb and issue a `table_io start'\n" \
+    "command at an event before the suspect area.\n" \
+    "Do you wish to proceed with the retry? "
 
 /*
 ** How often to update the progress message, expressed in terms of number of
-** events.
+** events.  We define seperate intervals for when we are materializing 
+** nodes and when we are in an implicit subtree, since execution is much
+** faster in implicit subtrees.
 */
 
-#define	MR_DECL_PROGRESS_CHECK_INTERVAL 100000
+#define     MR_DECL_PROGRESS_CHECK_INTERVAL                  100000
+#define     MR_DECL_PROGRESS_CHECK_INTERVAL_IMPLICIT_SUBTREE 1000000
 
 /*
 ** The total number of progress ticks that should be displayed when building of
 ** the current portion of the annotated trace is 100% complete.
 */
 
-#define	MR_DECL_PROGRESS_TOTAL	40
+#define     MR_DECL_PROGRESS_TOTAL    40
 
 /*
 ** The progress message to display and the tick string to repeatedly display
 ** after the initial progress message.
 */
 
-#define	MR_DECL_PROGRESS_MESSAGE	"Generating execution trace.."
-#define	MR_DECL_PROGRESS_TICK_STRING	"."
+#define     MR_DECL_PROGRESS_MESSAGE_SUBTREE        "Generating subtree.."
+#define     MR_DECL_PROGRESS_MESSAGE_SUPERTREE      "Generating supertree.."
+#define     MR_DECL_PROGRESS_TICK_STRING            "."
 
 /*
 ** How many milliseconds to wait before displaying progress.
 */
 
-#define	MR_DECL_DISPLAY_PROGRESS_DELAY	1000 
+#define     MR_DECL_DISPLAY_PROGRESS_DELAY    1000 
 
 /*
-** When building a new explicit tree we build it to the maximum depth such
-** that the number of nodes in the explicit tree is less than or equal to
-** MR_edt_desired_nodes_in_subtree.
+** The following two macros decide when to display progress.
+** We define two version: one for when we are materializing nodes and one
+** for when we are in an implicit subtree, since execution is much faster in
+** implicit subtrees.
+** In the implicit tree version we don't need to check if the event is the
+** last event, since the last event will not be in an implicit subtree.
+** This means we can reorder the if-then-elses to be more efficient in 
+** implicit subtrees.  We also check to see if we should update the progress
+** less often when in an implicit subtree.
+** By defining these checks as macros we only incur the cost of a function call
+** when we need to update the progress.
 */
 
-extern	MR_Unsigned	MR_edt_desired_nodes_in_subtree;
+#define     MR_DECL_MAYBE_UPDATE_PROGRESS(event_number)                       \
+    do {                                                                      \
+        if (MR_mdb_decl_print_progress) {                                     \
+            if(MR_edt_building_supertree) {                                   \
+                if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL == 0) {    \
+                    MR_trace_show_progress_supertree(event_number);           \
+                }                                                             \
+            } else {                                                          \
+                if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL == 0       \
+                    || event_number == MR_edt_last_event)                     \
+                {                                                             \
+                    MR_trace_show_progress_subtree(event_number);             \
+                }                                                             \
+            }                                                                 \
+        }                                                                     \
+    } while(0)
+
+#define     MR_DECL_MAYBE_UPDATE_PROGRESS_IMPLICIT_SUBTREE(event_number)      \
+    do {                                                                      \
+        if (event_number % MR_DECL_PROGRESS_CHECK_INTERVAL_IMPLICIT_SUBTREE   \
+            == 0)                                                             \
+        {                                                                     \
+            if (MR_mdb_decl_print_progress) {                                 \
+                if (MR_edt_building_supertree) {                              \
+                    MR_trace_show_progress_supertree(event_number);           \
+                } else {                                                      \
+                    MR_trace_show_progress_subtree(event_number);             \
+                }                                                             \
+            }                                                                 \
+        }                                                                     \
+    } while (0)
 
 /*
-** In the event that the ideal depth to build a tree to cannot be calculated,
-** either because it is the initial build of the annotated trace or a supertree
-** is being built, use the value of the following global as the depth limit.
+** The following macro works out the depth of a node in the EDT.
+** It also updates next_depth to the depth of the next node if that node is
+** a final or internal event.
+** If the next node is a CALL or REDO it will have a depth of next_depth + 1.
 */
 
-extern	MR_Unsigned	MR_edt_default_depth_limit;
+#define MR_DD_CALC_NODE_DEPTH(port, node_depth, next_depth)                   \
+    do {                                                                      \
+        if (port == MR_PORT_CALL || port == MR_PORT_REDO) {                   \
+            node_depth = ++next_depth;                                        \
+        } else {                                                              \
+            if (MR_port_is_final(port)) {                                     \
+                /*                                                            \
+                ** The depth of the EXIT, FAIL or EXCP event is               \
+                ** next_depth (not next_depth - 1), however                   \
+                ** we need to adjust next_depth here for future events.       \
+                */                                                            \
+                node_depth = next_depth--;                                    \
+            } else {                                                          \
+                node_depth = next_depth;                                      \
+            }                                                                 \
+        }                                                                     \
+    } while(0)
 
-/*
-** The following variable indicates whether the declarative debugger was 
-** invoked with the --debug option.  It is needed so that the declarative
-** debugger can continue to be debugged after a new portion of the 
-** annotated trace has been generated.
-*/
-
-extern	MR_bool		MR_trace_decl_debug_debugger_mode;
-
-#endif	/* MERCURY_TRACE_DECLARATIVE_H */
+#endif    /* MERCURY_TRACE_DECLARATIVE_H */

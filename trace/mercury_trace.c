@@ -120,8 +120,8 @@ static  void        MR_abandon_call_table_array(void);
 ** in runtime/mercury_trace_base.c, which in turn is called from
 ** compiled code whenever an event to be traced occurs.
 **
-** The initial part, MR_TRACE_REAL_SETUP_CODE, is shared by MR_trace_real and
-** MR_trace_real_decl.
+** The initial part, MR_TRACE_REAL_SETUP_CODE, is shared by MR_trace_real,
+** MR_trace_real_decl and MR_trace_real_decl_implicit_subtree.
 */
 
 #if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) && defined(MR_MINIMAL_MODEL_DEBUG)
@@ -460,7 +460,8 @@ MR_trace_interrupt_handler(void)
 
 /*
 ** The MR_TRACE_EVENT_DECL_AND_SETUP macro is the initial part of
-** MR_trace_event, shared also by MR_trace_real_decl.
+** MR_trace_event, shared also by MR_trace_real_decl and
+** MR_trace_real_decl_implicit_subtree.
 **
 ** It must be included in a context that defines layout, port, seqno and depth.
 */
@@ -483,7 +484,8 @@ MR_trace_interrupt_handler(void)
 
 /*
 ** The MR_TRACE_EVENT_TEARDOWN macro is the final part of
-** MR_trace_event, shared also by MR_trace_real_decl.
+** MR_trace_event, shared also by MR_trace_real_decl and 
+** MR_trace_real_decl_implicit_subtree.
 **
 ** It must be included in a context that defines jumpaddr, saved_regs and
 ** event_info.
@@ -562,6 +564,50 @@ MR_trace_real_decl(const MR_Label_Layout *layout)
         jumpaddr = MR_trace_decl_debug(&event_info);
         MR_TRACE_EVENT_TEARDOWN
     }
+}
+
+MR_Code *
+MR_trace_real_decl_implicit_subtree(const MR_Label_Layout *layout)
+{
+    MR_Integer          maybe_from_full;
+    MR_Unsigned         seqno;
+    MR_Unsigned         depth;
+    MR_Trace_Port       port;
+    MR_Unsigned         node_depth;
+
+    MR_TRACE_REAL_SETUP_CODE();
+
+    port = (MR_Trace_Port) layout->MR_sll_port;
+
+    /*
+    ** Note that we do not check for suppressed events or events from
+    ** compiler generated procedures, since we want this function to be as
+    ** fast as possible (since it will be executed the most with large search
+    ** spaces).
+    ** This has minimal impact on the accuracy of the histogram, since
+    ** event suppression is not currently used and compiler generated
+    ** procedures are very likely to be leaf nodes or close to leaf nodes.
+    */
+    MR_DD_CALC_NODE_DEPTH(port, node_depth, MR_edt_implicit_subtree_depth);
+
+    if (node_depth < MR_edt_implicit_subtree_num_counters) {
+        MR_edt_implicit_subtree_counters[node_depth]++;
+        
+        if ((node_depth == 0) && MR_port_is_final(port)) {
+            MR_selected_trace_func_ptr = MR_trace_real_decl;
+            
+            {
+                MR_TRACE_EVENT_DECL_AND_SETUP
+                jumpaddr = MR_trace_decl_debug(&event_info);
+                /* MR_TRACE_EVENT_TEARDOWN returns jumpaddr */
+                MR_TRACE_EVENT_TEARDOWN
+            }
+        }
+    }
+
+    MR_DECL_MAYBE_UPDATE_PROGRESS_IMPLICIT_SUBTREE(MR_trace_event_number);
+
+    return NULL;
 }
 
 /*****************************************************************************/
