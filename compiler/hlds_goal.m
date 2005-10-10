@@ -329,28 +329,25 @@
 % Information for foreign_proc
 %
 
-    % In the usual case, the arguments of a foreign_proc are the
-    % arguments of the call to the predicate whose implementation
-    % is in the foreign language. Each such argument is described
-    % by a foreign_arg.
+    % In the usual case, the arguments of a foreign_proc are the arguments
+    % of the call to the predicate whose implementation is in the foreign
+    % language. Each such argument is described by a foreign_arg.
     %
     % The arg_var field gives the identity of the actual parameter.
     %
-    % The arg_name_mode field gives the foreign variable name and the
-    % original mode declaration for the argument; a no means that the
-    % argument is not used by the foreign code. (In particular, the
-    % type_info variables introduced by polymorphism.m might be
-    % represented in this way).
+    % The arg_name_mode field gives the foreign variable name and the original
+    % mode declaration for the argument; a no means that the argument is not
+    % used by the foreign code. (In particular, the type_info variables
+    % introduced by polymorphism.m might be represented in this way).
     %
     % The arg_type field gives the original types of the arguments.
-    % (With inlining, the actual types may be instances of the original
-    % types.)
+    % (With inlining, the actual type may be an instance of the original type.)
     %
 :- type foreign_arg
     --->    foreign_arg(
-                arg_var     :: prog_var,
+                arg_var         :: prog_var,
                 arg_name_mode   :: maybe(pair(string, mode)),
-                arg_type    :: (type)
+                arg_type        :: (type)
             ).
 
 :- func foreign_arg_var(foreign_arg) = prog_var.
@@ -401,19 +398,16 @@
             % An unsafe type and inst cast.
 
     ;       equiv_type_cast
-            % A safe type cast between equivalent types, in
-            % either direction.
+            % A safe type cast between equivalent types, in either direction.
 
     ;       exists_cast.
-            % A safe cast between an internal type_info or
-            % typeclass_info variable, for which the bindings of
-            % existential type variables are known statically, to
-            % an external type_info or typeclass_info head
-            % variable, for which they are not.  These are used
-            % instead of assignments so that the simplification
-            % pass does not attempt to merge the two variables,
-            % which could lead to inconsistencies in the
-            % rtti_varmaps.
+            % A safe cast between an internal type_info or typeclass_info
+            % variable, for which the bindings of existential type variables
+            % are known statically, to an external type_info or typeclass_info
+            % head variable, for which they are not. These are used instead of
+            % assignments so that the simplification pass does not attempt
+            % to merge the two variables, which could lead to inconsistencies
+            % in the rtti_varmaps.
 
     % Get a description of a generic_call goal.
     %

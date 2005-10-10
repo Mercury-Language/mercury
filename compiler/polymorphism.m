@@ -1507,20 +1507,20 @@ process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
     list__delete_elems(PredTypeVars1, UnivConstrainedVars, PredTypeVars2),
     list__delete_elems(PredTypeVars2, ExistConstrainedVars, PredTypeVars),
 
-%   The argument order is as follows:
-%   first the UnivTypeInfos (for universally quantified type variables)
-%   then the ExistTypeInfos (for existentially quantified type variables)
-%   then the UnivTypeClassInfos (for universally quantified constraints)
-%   then the ExistTypeClassInfos (for existentially quantified constraints)
-%   and finally the original arguments of the predicate.
+    % The argument order is as follows:
+    % first the UnivTypeInfos (for universally quantified type variables)
+    % then the ExistTypeInfos (for existentially quantified type variables)
+    % then the UnivTypeClassInfos (for universally quantified constraints)
+    % then the ExistTypeClassInfos (for existentially quantified constraints)
+    % and finally the original arguments of the predicate.
 
     in_mode(In),
     out_mode(Out),
 
-    list__map(foreign_proc_add_typeclass_info(Out, Impl,
-        PredTypeVarSet), ExistCs, ExistTypeClassArgInfos),
-    list__map(foreign_proc_add_typeclass_info(In, Impl,
-        PredTypeVarSet), UnivCs, UnivTypeClassArgInfos),
+    list__map(foreign_proc_add_typeclass_info(Out, Impl, PredTypeVarSet),
+        ExistCs, ExistTypeClassArgInfos),
+    list__map(foreign_proc_add_typeclass_info(In, Impl, PredTypeVarSet),
+        UnivCs, UnivTypeClassArgInfos),
     TypeClassArgInfos = UnivTypeClassArgInfos ++ ExistTypeClassArgInfos,
 
     list__filter((pred(X::in) is semidet :- list__member(X, ExistQVars)),

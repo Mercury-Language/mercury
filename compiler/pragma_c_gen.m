@@ -1062,9 +1062,9 @@ make_c_arg_list([Arg | ArgTail], [ArgInfo | ArgInfoTail], [CArg | CArgTail]) :-
     ),
     CArg = c_arg(Var, MaybeName, Type, ArgInfo),
     make_c_arg_list(ArgTail, ArgInfoTail, CArgTail).
-make_c_arg_list([], [_|_], _) :-
+make_c_arg_list([], [_ | _], _) :-
     unexpected(this_file, "pragma_c_gen__make_c_arg_list length mismatch").
-make_c_arg_list([_|_], [], _) :-
+make_c_arg_list([_ | _], [], _) :-
     unexpected(this_file, "pragma_c_gen__make_c_arg_list length mismatch").
 
 %---------------------------------------------------------------------------%
