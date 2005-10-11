@@ -1,0 +1,72 @@
+-----------------------------------------------------------------------------
+
+BUILDING WITH MINGW
+
+It is possible to build the Mercury compiler using the MinGW version of GCC.
+The advantage of using MinGW is that the generated executables will run
+natively on Windows without the need for any support environments like Cygwin.
+
+A Unix like environment is however still require to build the Mercury compiler.
+MSYS or Cygwin can be used for this purpose.
+
+-----------------------------------------------------------------------------
+
+BUILDING A MINGW COMPILER UNDER MSYS
+
+To build the source distribution under MSYS follow these steps:
+
+1.  Download and install MinGW and MSYS (available from www.mingw.org).
+    For MinGW install "the minimal set of packages required to build C/C++" and
+    "the full set of utility packages".
+
+2.  Open an MSYS session and unpack the source distribution with a command 
+    like:
+    tar -xvzf mercury-compiler-rotd-2005-09-29-unstable.tar.gz
+
+3.  cd into the new directory and run configure:
+
+    ./configure --prefix=c:/mercury
+
+    It is important to specify the installation prefix as a full windows
+    path with a drive letter (except use `/' instead of `\').  
+    Do not use a path like `/mercury', because that
+    will be interpreted differently by the MSYS shell than by the generated
+    executables, resulting in a broken installation.  
+    On Windows 2000 or XP, you may get a dialog from the
+    "Microsoft Management Console" with the message "The selected file cannot
+    be found.".  This is because configure looks for a program called "mmc".
+    Simply dismiss the dialog by clicking OK.
+
+4.  run: `make' and then `make install'.
+
+Add /c/mercury/bin (or whatever path you installed Mercury to) to the MSYS
+PATH (you cannot add `c:/mercury/bin' to the MSYS PATH because `:' is used to
+separate directories in the MSYS PATH).
+
+NOTE TO DEVELOPERS: The tools/bootcheck script does not work properly
+on MSYS at the moment -- it will build stage 3, but will not run the tests
+correctly.  To run the tests you should first install the compiler and add
+it to the PATH.  Next set the DIFF_OPTS environment variable to "-c -b".  This
+will cause the test scripts to ignore the extra carriage return character that
+gets added to the end of each line under MinGW.  Then run mmake from the tests
+directory.
+
+-----------------------------------------------------------------------------
+
+BUILDING A CYGWIN COMPILER WHICH TARGETS MINGW
+
+To build a compiler which targets MinGW from Cygwin do the following:
+
+- First, install the Cygwin version of Mercury, and put it in your PATH.
+- Second, configure the source distribution of Mercury using
+  --with-cc="gcc -mno-cygwin".
+- Third, run "make" and "make install".
+- Fourth, replace the following files in the installed Mingw Mercury
+  directories with copies of the corresponding file from the installed
+  Cygwin Mercury directories:
+        mercury_compile.exe (in <prefix>/lib/mercury/bin/<config>)
+        mercury_profile.exe (in <prefix>/lib/mercury/bin/<config>)
+        mdemangle.exe (in <prefix>/bin)
+        mkinit.exe (in <prefix>/bin)
+
+-----------------------------------------------------------------------------
