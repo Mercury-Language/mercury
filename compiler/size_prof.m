@@ -237,7 +237,7 @@ process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
 
 process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     Simplifications = [],
-    simplify__proc_return_msgs(Simplifications, PredId, ProcId,
+    simplify_proc_return_msgs(Simplifications, PredId, ProcId,
         !ModuleInfo, !ProcInfo, _Msgs),
 
     proc_info_goal(!.ProcInfo, Goal0),

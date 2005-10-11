@@ -2669,7 +2669,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     ;
         true
     ),
-    simplify__find_simplifications(no, Globals, Simplifications0),
+    find_simplifications(no, Globals, Simplifications0),
 
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
@@ -2690,7 +2690,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         Simplifications = Simplifications0
     ),
       
-    simplify__proc([do_once | Simplifications], PredId, ProcId,
+    simplify_proc([do_once | Simplifications], PredId, ProcId,
         !HLDS, !ProcInfo, !IO),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
         !.HLDS, !IO),
@@ -3094,7 +3094,7 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
                 ),
                 list.cons(do_once, !Simplifications)
             ),
-            Process(update_pred_error(simplify.pred(!.Simplifications)), !HLDS,
+            Process(update_pred_error(simplify_pred(!.Simplifications)), !HLDS,
                 !IO),
     
             maybe_write_string(Verbose, "% done.\n", !IO),

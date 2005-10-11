@@ -222,7 +222,7 @@ magic__process_module(ModuleInfo0, ModuleInfo) -->
 	% nested explicit quantifications.
 	%
 	globals__io_get_globals(Globals),
-	{ simplify__find_simplifications(no, Globals, Simplifications) },
+	{ find_simplifications(no, Globals, Simplifications) },
 	process_matching_nonimported_procs(
 		update_module_io(
 			magic__ite_to_disj_and_simplify(Simplifications)),
@@ -330,8 +330,7 @@ magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
 		true
 	},
 
-	simplify__proc(Simplifications, PredId, ProcId,
-		!ModuleInfo, !ProcInfo),
+	simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo),
 
 	%
 	% Run saved_vars so that constructions of constants are close
