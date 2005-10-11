@@ -33,7 +33,7 @@ To build the source distribution under MSYS follow these steps:
     will be interpreted differently by the MSYS shell than by the generated
     executables, resulting in a broken installation.  
     On Windows 2000 or XP, you may get a dialog from the
-    "Micrsoft Management Console" with the message "The selected file cannot
+    "Microsoft Management Console" with the message "The selected file cannot
     be found.".  This is because configure looks for a program called "mmc".
     Simply dismiss the dialog by clicking OK.
 

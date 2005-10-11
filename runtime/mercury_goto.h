@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001, 2003-2004 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -329,7 +329,7 @@
 
     /*
     ** At each entry point, where we may have been jump to from
-    ** code in a difference C file, we need to set up `ebx'.
+    ** code in a different C file, we need to set up `ebx'.
     ** We do this by pushing the IP register using a `call'
     ** instruction whose target is the very next label.
     ** We then pop this off the stack into `ebx', and

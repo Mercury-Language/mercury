@@ -128,7 +128,7 @@
     %
 :- pred io__read_word(io__result(list(char))::out, io::di, io::uo) is det.
 
-    % Reads a line from the current input stream, returns the the result
+    % Reads a line from the current input stream, returns the result
     % as a list of chars.
     %
 :- pred io__read_line(io__result(list(char))::out, io::di, io::uo) is det.
@@ -1664,7 +1664,7 @@
     % Reads a character from specified stream, and returns the numerical value
     % for that character (as from char__to_int). This may involve converting
     % external character encodings into Mercury's internal character
-    % repesentation and (for text streams) converting OS line indicators,
+    % representation and (for text streams) converting OS line indicators,
     % e.g. CR-LF for Windows, to '\n' characters. Returns -1 if at EOF,
     % -2 if an error occurs.
     %
@@ -5074,7 +5074,7 @@ namespace mercury {
 
         /*
         ** This constructor handles binary files (in or out) but does
-        ** not cover mercury_stdin_binary/mecury_stdout_binary.
+        ** not cover mercury_stdin_binary/mercury_stdout_binary.
         */
         public MR_MercuryFileStruct(java.lang.String file, char mode) {
             id = ML_next_stream_id++;

@@ -203,9 +203,8 @@
 % Nasty performance hacks
 %
 % WARNING: use of these procedures is dangerous!
-% Use them only only as a last resort, only if performance
-% is critical, and only if profiling shows that using the
-% safe versions is a bottleneck.
+% Use them only as a last resort, only if performance is critical, and only if
+% profiling shows that using the safe versions is a bottleneck.
 %
 % These procedures may vanish in some future version of Mercury.
 

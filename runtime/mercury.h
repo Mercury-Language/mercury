@@ -113,7 +113,7 @@ struct MR_StackChain {
 
 /*---------------------------------------------------------------------------*/
 /*
-** Declarations of contants and variables
+** Declarations of constants and variables
 */
 
 #ifdef MR_NATIVE_GC

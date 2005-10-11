@@ -237,7 +237,7 @@ static int          req_init_module_next = 0;
 #define MR_INIT_REQ_MODULE_SIZE     10
 
 /*
-** List of names of modules that have finialisation function that should
+** List of names of modules that have finalisation functions that should
 ** always be run.  We call a "final_required" function for each such module.
 */
 static const char   **req_final_modules = NULL;
@@ -1170,8 +1170,8 @@ process_init_file(const char *filename)
     ** (INIT, REQUIRED_INIT, REQUIRED_FINAL, and ADITI_DATA) should end with
     ** the space that separates the keyword from the following data.
     ** The string that is not supposed to be following by other information
-    ** (ENDINIT) should not have a following space, since llds_out.m doesn't
-    ** add that space.
+    ** (ENDINIT) should not have a following space, since llds_out.m and
+    ** mlds_to_c.m do not add that space.
     */
 
     const char * const  init_str = "INIT ";

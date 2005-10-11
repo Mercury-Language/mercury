@@ -1819,7 +1819,7 @@ mercury_runtime_main(void)
 	**   {
 	**   }
 	**
-	** This type of contruction allows us to retrieve all the information
+	** This type of construction allows us to retrieve all the information
 	** we need (exception type, address, etc) to display a "meaningful"
 	** message to the user.  Using signal() in Win32 is less powerful,
 	** since we can only trap a subset of all possible exceptions, and
@@ -1993,7 +1993,7 @@ MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 		** We can compare pointers instead of using strcmp,
 		** because the pointers in the array come from the
 		** type_ctor_infos themselves, and there is only one
-		** static type_ctor_info for each modulename:typename
+		** static type_ctor_info for each modulename.typename
 		** combination.
 		*/
 
