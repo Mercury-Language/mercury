@@ -5,11 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: options_file.m
 % Main author: stayl
 %
 % Code to deal with options for `mmc --make', including code to parse
 % an Mmakefile equivalent.
+%
 %-----------------------------------------------------------------------------%
 
 :- module make__options_file.
@@ -33,9 +35,9 @@
 :- pred read_options_file(file_name::in, options_variables::in,
     maybe(options_variables)::out, io::di, io::uo) is det.
 
-    % Read a single options file.  No searching will be done.  The result is
+    % Read a single options file. No searching will be done. The result is
     % the value of the variable MCFLAGS obtained from the file, ignoring
-    % settings in the environment.  This is used to pass arguments to child
+    % settings in the environment. This is used to pass arguments to child
     % mmc processes without exceeding command line limits on crappy operating
     % systems.
     %
@@ -53,11 +55,12 @@
     io::di, io::uo) is det.
 
     % Look up all the non-module specific options.
+    %
 :- pred lookup_mmc_options(options_variables::in, maybe(list(string))::out,
     io::di, io::uo) is det.
 
-    % Same as lookup_mmc_module_options, but also adds the
-    % module-specific (MCFLAGS-module) options.
+    % Same as lookup_mmc_module_options, but also adds the module-specific
+    % (MCFLAGS-module) options.
     %
 :- pred lookup_mmc_module_options(options_variables::in, module_name::in,
     maybe(list(string))::out, io::di, io::uo) is det.
@@ -102,10 +105,10 @@
 
 :- type options_variable_value
     --->    options_variable_value(
-            list(char),
-            list(string),   % split into words.
-            variable_source
-        ).
+                list(char),
+                list(string),   % split into words.
+                variable_source
+            ).
 
 :- type variable_source
     --->    options_file
@@ -127,8 +130,8 @@ read_args_file(OptionsFile, MaybeMCFlags, !IO) :-
             MaybeMCFlags = yes(MCFlags)
         ;
             FlagsResult = unset,
-            io__write_string(
-"mercury_compile: internal error: arguments file does not set MCFLAGS.\n", !IO),
+            io__write_string("mercury_compile: internal error: " ++
+                "arguments file does not set MCFLAGS.\n", !IO),
             MaybeMCFlags = no
         ;
             FlagsResult = error(Msg),
@@ -141,11 +144,10 @@ read_args_file(OptionsFile, MaybeMCFlags, !IO) :-
         MaybeMCFlags = no
     ).
 
-
 read_options_file(OptionsFile, Variables0, MaybeVariables, !IO) :-
     promise_equivalent_solutions [OptionsFileResult, !:IO] (
         try_io((pred((Variables1)::out, !.IO::di, !:IO::uo) is det :-
-                    read_options_file(error, no_search, no, OptionsFile,
+                    read_options_file_params(error, no_search, no, OptionsFile,
                     Variables0, Variables1, !IO)
             ),
             OptionsFileResult, !IO)
@@ -164,26 +166,8 @@ read_options_file(OptionsFile, Variables0, MaybeVariables, !IO) :-
 
 read_options_files(Variables0, MaybeVariables, !IO) :-
     promise_equivalent_solutions [OptionsFileResult, !:IO] (
-        try_io(
-                (pred((Variables1)::out, !.IO::di, !:IO::uo) is det :-
-            globals.io_lookup_accumulating_option(options_files,
-                OptionsFiles, !IO),
-            ReadFile =
-                (pred(OptionsFile::in, Vars0::in, Vars::out,
-                   !.IO::di, !:IO::uo) is det :-
-                ( OptionsFile = "Mercury.options" ->
-                    ErrorIfNotExist = no_error,
-                    Search = no_search
-                ;
-                    ErrorIfNotExist = error,
-                    Search = search
-                ),
-                read_options_file(ErrorIfNotExist, Search, no,
-                    OptionsFile, Vars0, Vars, !IO)
-                ),
-                list.foldl2(ReadFile, OptionsFiles, Variables0, Variables1,
-                    !IO)
-            ), OptionsFileResult, !IO)
+        try_io(read_options_file_lookup_params(Variables0), OptionsFileResult,
+            !IO)
     ),
     (
         OptionsFileResult = succeeded(Variables),
@@ -197,6 +181,27 @@ read_options_files(Variables0, MaybeVariables, !IO) :-
         )
     ).
 
+:- pred read_options_file_lookup_params(
+    options_variables::in, options_variables::out, io::di, io::uo) is det.
+
+read_options_file_lookup_params(!Variables, !IO) :-
+    globals.io_lookup_accumulating_option(options_files, OptionsFiles, !IO),
+    list.foldl2(read_options_file_set_params, OptionsFiles, !Variables, !IO).
+
+:- pred read_options_file_set_params(string::in,
+    options_variables::in, options_variables::out, io::di, io::uo) is det.
+
+read_options_file_set_params(OptionsFile, !Vars, !IO) :-
+    ( OptionsFile = "Mercury.options" ->
+        ErrorIfNotExist = no_error,
+        Search = no_search
+    ;
+        ErrorIfNotExist = error,
+        Search = search
+    ),
+    read_options_file_params(ErrorIfNotExist, Search, no, OptionsFile,
+        !Vars, !IO).
+
 :- type error_if_not_exist
     --->    error
     ;       no_error.
@@ -205,100 +210,99 @@ read_options_files(Variables0, MaybeVariables, !IO) :-
     --->    search
     ;       no_search.
 
-    % read_options_file(ErrorIfNotExist, Search, MaybeDirName,
+    % read_options_file_params(ErrorIfNotExist, Search, MaybeDirName,
     %   FileName, Variables0, Variables).
     %
-:- pred read_options_file(error_if_not_exist::in, search::in,
+:- pred read_options_file_params(error_if_not_exist::in, search::in,
     maybe(dir_name)::in, string::in, options_variables::in,
     options_variables::out, io::di, io::uo) is det.
 
-read_options_file(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
-        Variables0, Variables, !IO) :-
+read_options_file_params(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
+        !Variables, !IO) :-
     ( OptionsFile0 = "-" ->
-    % Read from standard input.
-    debug_msg(
-        (pred(di, uo) is det -->
-            io__write_string("Reading options file from stdin...")
-        ), !IO),
-    read_options_lines(dir__this_directory, Variables0, Variables, !IO),
-    debug_msg(
-        (pred(di, uo) is det -->
-            io__write_string("done.\n")
-        ), !IO)
+        % Read from standard input.
+        debug_msg(write_reading_options_file_stdin, !IO),
+        read_options_lines(dir__this_directory, !Variables, !IO),
+        debug_msg(write_done, !IO)
     ;
-    debug_msg(
-        (pred(di, uo) is det -->
-            io__write_string("Reading options file "),
-            io__write_string(OptionsFile0),
-            io__write_string("...")
-        ), !IO),
-    ( Search = search ->
-        globals__io_lookup_accumulating_option(
-            options_search_directories, SearchDirs, !IO)
-    ;
-        SearchDirs = [dir__this_directory]
-    ),
-    ( dir__split_name(OptionsFile0, OptionsDir, OptionsFile) ->
+        debug_msg(write_reading_options_file(OptionsFile0), !IO),
         (
-            dir__path_name_is_absolute(OptionsDir)
-        ->
-            FileToFind = OptionsFile,
-            Dirs = [OptionsDir]
+            Search = search,
+            globals__io_lookup_accumulating_option(options_search_directories,
+                SearchDirs, !IO)
         ;
-            MaybeDirName = yes(DirName)
-        ->
-            FileToFind = OptionsFile,
-            Dirs = [DirName/OptionsDir | SearchDirs]
+            Search = no_search,
+            SearchDirs = [dir__this_directory]
+        ),
+        ( dir__split_name(OptionsFile0, OptionsDir, OptionsFile) ->
+            ( dir__path_name_is_absolute(OptionsDir) ->
+                FileToFind = OptionsFile,
+                Dirs = [OptionsDir]
+            ; MaybeDirName = yes(DirName) ->
+                FileToFind = OptionsFile,
+                Dirs = [DirName/OptionsDir | SearchDirs]
+            ;
+                Dirs = SearchDirs,
+                FileToFind = OptionsFile0
+            )
         ;
             Dirs = SearchDirs,
             FileToFind = OptionsFile0
-        )
-    ;
-        Dirs = SearchDirs,
-        FileToFind = OptionsFile0
-    ),
-    io__input_stream(OldInputStream, !IO),
-    search_for_file_returning_dir(Dirs, FileToFind, MaybeDir, !IO),
-    (
-        MaybeDir = ok(FoundDir),
-        debug_msg(
-            (pred(di, uo) is det -->
-                io__write_string("Reading options file "),
-                io__write_string(FoundDir/FileToFind),
-                io__nl
-            ), !IO),
+        ),
+        io__input_stream(OldInputStream, !IO),
+        search_for_file_returning_dir(Dirs, FileToFind, MaybeDir, !IO),
+        (
+            MaybeDir = ok(FoundDir),
+            debug_msg(write_reading_options_file(FoundDir/FileToFind), !IO),
 
-        read_options_lines(FoundDir, Variables0, Variables, !IO),
-        io__set_input_stream(OldInputStream, OptionsStream, !IO),
-        io__close_input(OptionsStream, !IO)
-    ;
-        MaybeDir = error(_),
-        Variables = Variables0,
-        ( ErrorIfNotExist = error ->
-            ( Dirs = [SingleDir] ->
-                ErrorFile = maybe_add_path_name(SingleDir,
-                        FileToFind)
-            ;
-                ErrorFile = FileToFind
-            ),
-            io__write_string("Error reading options file `", !IO),
-            io__write_string(ErrorFile, !IO),
-            io__write_string("'.\n", !IO),
-            io__set_exit_status(1, !IO)
+            read_options_lines(FoundDir, !Variables, !IO),
+            io__set_input_stream(OldInputStream, OptionsStream, !IO),
+            io__close_input(OptionsStream, !IO)
         ;
-            true
-        )
-    ),
-    debug_msg(
-        (pred(di, uo) is det -->
-            io__write_string("done.\n")
-        ), !IO)
+            MaybeDir = error(_),
+            (
+                ErrorIfNotExist = error,
+                ( Dirs = [SingleDir] ->
+                    ErrorFile = maybe_add_path_name(SingleDir, FileToFind)
+                ;
+                    ErrorFile = FileToFind
+                ),
+                io__write_string("Error reading options file `", !IO),
+                io__write_string(ErrorFile, !IO),
+                io__write_string("'.\n", !IO),
+                io__set_exit_status(1, !IO)
+            ;
+                ErrorIfNotExist = no_error
+            )
+        ),
+        debug_msg(write_done, !IO)
     ).
+
+:- pred write_reading_options_file_stdin(io::di, io::uo) is det.
+
+write_reading_options_file_stdin(!IO) :-
+    io__write_string("Reading options file from stdin...", !IO).
+
+:- pred write_reading_options_file(string::in, io::di, io::uo) is det.
+
+write_reading_options_file(FileName, !IO) :-
+    io__write_string("Reading options file ", !IO),
+    io__write_string(FileName, !IO),
+    io__nl(!IO).
+
+:- pred write_done(io::di, io::uo) is det.
+
+write_done(!IO) :-
+    io__write_string("done.\n", !IO).
 
 :- func maybe_add_path_name(dir_name, file_name) = file_name.
 
 maybe_add_path_name(Dir, File) =
-    ( Dir = dir__this_directory -> File ; dir__make_path_name(Dir, File) ).
+    ( Dir = dir__this_directory ->
+        File
+    ;
+        dir__make_path_name(Dir, File)
+    ).
 
 :- pred read_options_lines(dir_name::in, options_variables::in,
     options_variables::out, io::di, io::uo) is det.
@@ -320,8 +324,8 @@ read_options_lines(Dir, !Variables, !IO) :-
         LineResult = exception(Exception),
         ( Exception = univ(options_file_error(Error)) ->
             io__input_stream_name(FileName, !IO),
-            prog_out__write_context(
-                term__context_init(FileName, LineNumber), !IO),
+            prog_out__write_context(term__context_init(FileName, LineNumber),
+                !IO),
             io__write_string(Error, !IO),
             io__nl(!IO),
 
@@ -356,22 +360,17 @@ read_options_lines_3(Dir, !.Variables, !:Variables - FoundEOF, !IO) :-
         Line0 = [_ | _],
         parse_options_line(Line0, ParsedLine),
         (
-            ParsedLine = define_variable(VarName, AddToValue,
-                Value),
-            update_variable(VarName, AddToValue, Value,
-                !Variables, !IO)
+            ParsedLine = define_variable(VarName, AddToValue, Value),
+            update_variable(VarName, AddToValue, Value, !Variables, !IO)
         ;
             ParsedLine = include_options_files(ErrorIfNotExist,
                 IncludedFilesChars0),
             expand_variables(!.Variables,
-                IncludedFilesChars0,
-                IncludedFilesChars, UndefVars, !IO),
+                IncludedFilesChars0, IncludedFilesChars, UndefVars, !IO),
             report_undefined_variables(UndefVars, !IO),
-            IncludedFileNames =
-                split_into_words(IncludedFilesChars),
+            IncludedFileNames = split_into_words(IncludedFilesChars),
             list__foldl2(
-                read_options_file(ErrorIfNotExist, search,
-                    yes(Dir)),
+                read_options_file_params(ErrorIfNotExist, search, yes(Dir)),
                 IncludedFileNames, !Variables, !IO)
         )
     ).
@@ -435,8 +434,8 @@ update_variable(VarName, AddToValue, NewValue0, !Variables, !IO) :-
     ->
         Value = string__to_char_list(EnvValue),
         Words = split_into_words(Value),
-        OptVarValue = options_variable_value(
-            string__to_char_list(EnvValue), Words, environment),
+        OptVarValue = options_variable_value(string__to_char_list(EnvValue),
+            Words, environment),
         map__set(!.Variables, VarName, OptVarValue, !:Variables)
     ;
         map__search(!.Variables, VarName,
@@ -457,14 +456,12 @@ update_variable(VarName, AddToValue, NewValue0, !Variables, !IO) :-
                 NewValue = NewValue1,
                 Words = Words1
             ),
-            OptVarValue = options_variable_value(NewValue,
-                Words, options_file),
-            map__set(!.Variables, VarName, OptVarValue,
-                !:Variables)
+            OptVarValue = options_variable_value(NewValue, Words,
+                options_file),
+            map__set(!.Variables, VarName, OptVarValue, !:Variables)
         )
     ;
-        OptVarValue = options_variable_value(NewValue1,
-            Words1, options_file),
+        OptVarValue = options_variable_value(NewValue1, Words1, options_file),
         map__set(!.Variables, VarName, OptVarValue, !:Variables)
     ).
 
@@ -472,8 +469,7 @@ update_variable(VarName, AddToValue, NewValue0, !Variables, !IO) :-
     list(char)::out, list(string)::out, io::di, io::uo) is det.
 
 expand_variables(Variables, Chars0, Chars, UndefVars, !IO) :-
-    expand_variables_2(Variables, Chars0, [], RevChars, [], RevUndefVars,
-        !IO),
+    expand_variables_2(Variables, Chars0, [], RevChars, [], RevUndefVars, !IO),
     list__reverse(RevChars, Chars),
     list__reverse(RevUndefVars, UndefVars).
 
@@ -486,39 +482,40 @@ expand_variables_2(Variables, [Char | Chars], !RevChars, !RevUndef, !IO) :-
     ( Char = '$' ->
         (
             Chars = [],
-            throw(options_file_error(
-                "unterminated variable reference"))
+            throw(options_file_error("unterminated variable reference"))
         ;
             Chars = [Char2 | Chars1],
             ( Char2 = '$' ->
                 !:RevChars = ['$' | !.RevChars],
-                expand_variables_2(Variables, Chars1,
-                    !RevChars, !RevUndef, !IO)
+                expand_variables_2(Variables, Chars1, !RevChars, !RevUndef,
+                    !IO)
             ;
                 (
-                    ( Char2 = '(', EndChar = ')'
-                    ; Char2 = '{', EndChar = '}'
+                    (
+                        Char2 = '(',
+                        EndChar = ')'
+                    ;
+                        Char2 = '{',
+                        EndChar = '}'
                     )
                 ->
-                    parse_variable(VarName0,
-                        Chars1, Chars2),
+                    parse_variable(VarName0, Chars1, Chars2),
                     ( Chars2 = [EndChar | Chars3] ->
                         Chars4 = Chars3,
                         VarName = VarName0
                     ;
                         throw(options_file_error(
-                            "unterminated " ++
-                            "variable reference"))
+                            "unterminated variable reference"))
                     )
                 ;
                     Chars4 = Chars1,
                     VarName = string__char_to_string(Char2)
                 ),
-                lookup_variable_chars(Variables, VarName,
-                    VarChars, !RevUndef, !IO),
+                lookup_variable_chars(Variables, VarName, VarChars, !RevUndef,
+                    !IO),
                 !:RevChars = reverse(VarChars) ++ !.RevChars,
-                expand_variables_2(Variables, Chars4,
-                    !RevChars, !RevUndef, !IO)
+                expand_variables_2(Variables, Chars4, !RevChars, !RevUndef,
+                    !IO)
             )
         )
     ;
@@ -534,7 +531,7 @@ report_undefined_variables(Vars, !IO) :-
 :- pred report_undefined_variables_2(list(string)::in, io::di, io::uo) is det.
 
 report_undefined_variables_2([], !IO).
-report_undefined_variables_2([_|Rest] @ UndefVars, !IO) :-
+report_undefined_variables_2([_ | Rest] @ UndefVars, !IO) :-
     globals__io_lookup_bool_option(warn_undefined_options_variables, Warn,
         !IO),
     (
@@ -543,14 +540,12 @@ report_undefined_variables_2([_|Rest] @ UndefVars, !IO) :-
         io__get_line_number(LineNumber, !IO),
         Context = term__context_init(FileName, LineNumber),
 
-        VarList = error_util__list_to_pieces(
-            list__map((func(Var) = "`" ++ Var ++ "'"),
-                list__sort_and_remove_dups(UndefVars))),
+        VarList = list_to_pieces(list__map(add_quotes,
+            list__sort_and_remove_dups(UndefVars))),
         ( Rest = [], Word = "variable", IsOrAre = "is"
         ; Rest = [_ | _], Word = "variables", IsOrAre = "are"
         ),
-        Pieces =
-            [words("Warning: "), words(Word) | VarList]
+        Pieces = [words("Warning: "), words(Word) | VarList]
             ++ [words(IsOrAre), words("undefined.")],
         write_error_pieces(Context, 0, Pieces, !IO),
 
@@ -569,14 +564,14 @@ report_undefined_variables_2([_|Rest] @ UndefVars, !IO) :-
 
 :- type options_file_line
     --->    define_variable(
-            options_variable,
-            bool,       % Add to any existing value?
-            list(char)
-        )
-    ;   include_options_files(
-            error_if_not_exist,
-            list(char)
-        ).
+                options_variable,
+                bool,       % Add to any existing value?
+                list(char)
+            )
+    ;       include_options_files(
+                error_if_not_exist,
+                list(char)
+            ).
 
 :- pred parse_options_line(list(char)::in, options_file_line::out) is det.
 
@@ -592,8 +587,7 @@ parse_options_line(Line0, OptionsFileLine) :-
         list__append(string__to_char_list("include"), Line3, Line2)
     ->
         list__takewhile(char__is_whitespace, Line3, _, Line4),
-        OptionsFileLine = include_options_files(
-            ErrorIfNotExist, Line4)
+        OptionsFileLine = include_options_files(ErrorIfNotExist, Line4)
     ;
         parse_variable(VarName, Line0, Line1),
         list__takewhile(char__is_whitespace, Line1, _, Line2),
@@ -608,8 +602,7 @@ parse_options_line(Line0, OptionsFileLine) :-
             Line4 = Line3
         ;
             throw(options_file_error(
-                "expected `=', `:=' or `+=' after `"
-                ++ VarName ++ "'"))
+                "expected `=', `:=' or `+=' after `" ++ VarName ++ "'"))
         ),
         list__takewhile(char__is_whitespace, Line4, _, VarValue),
         OptionsFileLine = define_variable(VarName, Add, VarValue)
@@ -634,11 +627,9 @@ parse_variable(VarName, Chars0, Chars) :-
     parse_variable_2(yes, [], VarList, Chars0, Chars),
     string__from_rev_char_list(VarList, VarName),
     ( VarName = "" ->
-        list__takewhile(isnt(char__is_whitespace), Chars,
-            FirstWord, _),
-        throw(options_file_error(
-            string__append_list(["expected variable at `",
-                string__from_char_list(FirstWord), "'"])))
+        list__takewhile(isnt(char__is_whitespace), Chars, FirstWord, _),
+        throw(options_file_error("expected variable at `" ++
+            string__from_char_list(FirstWord) ++ "'"))
     ;
         true
     ).
@@ -650,9 +641,11 @@ parse_variable_2(_, Var, Var, [], []).
 parse_variable_2(IsFirst, Var0, Var, [Char | Chars0], Chars) :-
     (
         \+ char__is_whitespace(Char),
-        ( IsFirst = yes ->
+        (
+            IsFirst = yes,
             char__is_alpha(Char)
         ;
+            IsFirst = no,
             ( char__is_alnum_or_underscore(Char)
             ; Char = ('-')
             ; Char = ('.')
@@ -735,7 +728,7 @@ read_item_or_eof(Pred, MaybeItem, !IO) :-
 :- func checked_split_into_words(list(char)) = maybe_error(list(string)).
 
 checked_split_into_words(Chars) = Result :-
-    promise_equivalent_solutions [TryResult] (    
+    promise_equivalent_solutions [TryResult] (
         try(
             (pred(Words0::out) is det :-
                 Words0 = split_into_words(Chars)
@@ -765,7 +758,7 @@ split_into_words_2(Chars0, Words0) = Words :-
         Chars1 = [],
         Words = Words0
     ;
-        Chars1 = [_|_],
+        Chars1 = [_ | _],
         get_word(Word, Chars1, Chars),
         Words = split_into_words_2(Chars, [Word | Words0])
     ).
@@ -794,12 +787,14 @@ get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
             Chars = []
         ;
             Chars0 = [Char2 | Chars1],
-            ( ( Char2 = '"' ; Char2 = ('\\') ) ->
-                get_word_2([Char2 | RevWord0], RevWord,
-                    Chars1, Chars)
+            (
+                ( Char2 = '"'
+                ; Char2 = ('\\')
+                )
+            ->
+                get_word_2([Char2 | RevWord0], RevWord, Chars1, Chars)
             ;
-                get_word_2([Char2, Char | RevWord0], RevWord,
-                    Chars1, Chars)
+                get_word_2([Char2, Char | RevWord0], RevWord, Chars1, Chars)
             )
         )
     ;
@@ -809,8 +804,8 @@ get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
 %-----------------------------------------------------------------------------%
 
 lookup_main_target(Vars, MaybeMainTarget, !IO) :-
-    lookup_variable_words_report_error(Vars, "MAIN_TARGET",
-        MainTargetResult, !IO),
+    lookup_variable_words_report_error(Vars, "MAIN_TARGET", MainTargetResult,
+        !IO),
     (
         MainTargetResult = set(MainTarget),
         MaybeMainTarget = yes(MainTarget)
@@ -826,16 +821,15 @@ lookup_default_options(Vars, Result, !IO) :-
     lookup_mmc_maybe_module_options(Vars, default, Result, !IO).
 
 lookup_mmc_options(Vars, Result, !IO) :-
-    lookup_mmc_maybe_module_options(Vars, non_module_specific, Result,
-        !IO).
+    lookup_mmc_maybe_module_options(Vars, non_module_specific, Result, !IO).
 
 lookup_mmc_module_options(Vars, ModuleName, Result, !IO) :-
-    lookup_mmc_maybe_module_options(Vars,
-        module_specific(ModuleName), Result, !IO).
+    lookup_mmc_maybe_module_options(Vars, module_specific(ModuleName), Result,
+        !IO).
 
 :- pred lookup_mmc_maybe_module_options(options_variables::in,
-    options_variable_class::in, maybe(list(string))::out,
-    io::di, io::uo) is det.
+    options_variable_class::in, maybe(list(string))::out, io::di, io::uo)
+    is det.
 
 lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
     VariableTypes = options_variable_types,
@@ -855,8 +849,8 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
     ->
         assoc_list__from_corresponding_lists(VariableTypes,
             Values, VariableValues),
-        % Default to `-O2', even when mercury_compile
-        % is called directly, not by the mmc script.
+        % Default to `-O2', even when mercury_compile is called directly,
+        % not by the mmc script.
         Result = yes(["-O2" | list__condense(
             list__map(convert_to_mmc_options, VariableValues))])
     ;
@@ -892,13 +886,12 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
 
 :- func options_variable_types = list(options_variable_type).
 
-    % `LIBRARIES' should come before `MLLIBS' (Mercury libraries
-    % depend on C libraries, but C libraries typically do not
-    % depend on Mercury libraries).
+    % `LIBRARIES' should come before `MLLIBS' (Mercury libraries depend on
+    % C libraries, but C libraries typically do not depend on Mercury
+    % libraries).
     % `MERCURY_STDLIB_DIR' and `MERCURY_CONFIG_DIR' should come before
     % `MCFLAGS'. Settings in `MCFLAGS' (e.g. `--no-mercury-stdlib-dir')
-    % should override settings of these MERCURY_STDLIB_DIR
-    % in the environment.
+    % should override settings of these MERCURY_STDLIB_DIR in the environment.
 options_variable_types =
     [grade_flags, linkage, mercury_linkage, lib_grades, stdlib_dir,
     config_dir, mmc_flags, c_flags, java_flags, ilasm_flags,
@@ -952,8 +945,7 @@ options_variable_type_is_target_specific(linkage) = yes.
 options_variable_type_is_target_specific(mercury_linkage) = yes.
 
 :- func convert_to_mmc_options(
-        pair(options_variable_type, maybe(list(string)))) =
-            list(string).
+    pair(options_variable_type, maybe(list(string)))) = list(string).
 
 convert_to_mmc_options(_ - no) = [].
 convert_to_mmc_options(VariableType - yes(VariableValue)) =
@@ -970,23 +962,21 @@ convert_to_mmc_options(VariableType, VariableValue) = OptionsStrings :-
     ;
         MMCOptionType = option(InitialOptions, OptionName),
         OptionsStrings = list__condense([InitialOptions |
-                list__map((func(Word) = [OptionName, Word]),
-                    VariableValue)])
+            list__map((func(Word) = [OptionName, Word]), VariableValue)])
     ).
 
 :- type mmc_option_type
     --->    mmc_flags
             % The options can be passed directly to mmc.
 
-    ;   option(
-            initial_options :: list(string),
-            option_name :: string
-        ).
-            % The options need to be passed as an
-            % argument of an option to mmc.
-            % The `initial_options' will be passed before
-            % the options generated by the variable.
-            % This is useful for clearing an accumulating option.
+    ;       option(
+                initial_options :: list(string),
+                option_name :: string
+            ).
+            % The options need to be passed as an argument of an option to mmc.
+            % The `initial_options' will be passed before the options generated
+            % by the variable. This is useful for clearing an accumulating
+            % option.
 
 :- func mmc_option_type(options_variable_type) = mmc_option_type.
 
@@ -1031,8 +1021,7 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
         FlagsResult = unset,
         ExtraFlagsResult = unset
     ;
-        lookup_variable_words_report_error(Vars, VarName, FlagsResult,
-            !IO),
+        lookup_variable_words_report_error(Vars, VarName, FlagsResult, !IO),
         lookup_variable_words_report_error(Vars, "EXTRA_" ++ VarName,
             ExtraFlagsResult, !IO)
     ),
@@ -1040,16 +1029,15 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
         OptionsVariableClass = module_specific(ModuleName),
         options_variable_type_is_target_specific(FlagsVar) = yes
     ->
-        mdbcomp__prim_data__sym_name_to_string(ModuleName, ".",
-            ModuleFileNameBase),
+        sym_name_to_string(ModuleName, ".", ModuleFileNameBase),
         ModuleVarName = VarName ++ "-" ++ ModuleFileNameBase,
         lookup_variable_words_report_error(Vars, ModuleVarName,
             ModuleFlagsResult, !IO)
     ;
         ModuleFlagsResult = unset
     ),
-    Result = DefaultFlagsResult ++ FlagsResult ++
-        ExtraFlagsResult ++ ModuleFlagsResult.
+    Result = DefaultFlagsResult ++ FlagsResult ++ ExtraFlagsResult
+        ++ ModuleFlagsResult.
 
 :- func variable_result(list(T)) ++ variable_result(list(T)) =
     variable_result(list(T)).
@@ -1094,16 +1082,14 @@ lookup_variable_words(LookupEnv, Vars, VarName, Result, !IO) :-
         MaybeEnvValue = no
     ),
     ( MaybeEnvValue = yes(EnvValue) ->
-        SplitResult = checked_split_into_words(
-            string__to_char_list(EnvValue)),
+        SplitResult = checked_split_into_words(string__to_char_list(EnvValue)),
         (
             SplitResult = ok(EnvWords),
             Result = set(EnvWords)
         ;
             SplitResult = error(Msg),
-            Result = error(string__append_list(
-                ["Error: in environment variable `",
-                VarName, "': ", Msg]))
+            Result = error("Error: in environment variable `"
+                ++ VarName ++ "': " ++ Msg)
         )
     ; map__search(Vars, VarName, MapValue) ->
         MapValue = options_variable_value(_, Words, _),
@@ -1123,10 +1109,7 @@ lookup_variable_chars(Variables, Var, Value, !Undef, !IO) :-
         Value = string__to_char_list(ValueString)
     ;
         MaybeValue = no,
-        (
-            map__search(Variables, Var,
-                options_variable_value(Value0, _, _))
-        ->
+        ( map__search(Variables, Var, options_variable_value(Value0, _, _)) ->
             Value = Value0
         ;
             Value = [],
