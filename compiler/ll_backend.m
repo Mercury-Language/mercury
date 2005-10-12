@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2002,2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -10,7 +12,7 @@
 :- module ll_backend.
 :- interface.
 
-:- import_module aditi_backend.		% XXX for rl_file, used in llds_out.
+:- import_module aditi_backend.     % XXX for rl_file, used in llds_out.
 :- import_module hlds.
 :- import_module mdbcomp.
 :- import_module parse_tree.
@@ -18,15 +20,15 @@
 %-----------------------------------------------------------------------------%
 
 % Pre-passes to transform or annotate the HLDS
-:- include_module deep_profiling.	% transform
-:- include_module saved_vars.		% transform
-:- include_module stack_opt.		% transform
-:- include_module follow_code.		% transform
-:- include_module liveness.		% annotate
-:- include_module stack_alloc.		% annotate
-   :- include_module live_vars.	  	% annotate
-   :- include_module follow_vars. 	% annotate
-:- include_module store_alloc.		% annotate
+:- include_module deep_profiling.   % transform
+:- include_module saved_vars.       % transform
+:- include_module stack_opt.        % transform
+:- include_module follow_code.      % transform
+:- include_module liveness.         % annotate
+:- include_module stack_alloc.      % annotate
+   :- include_module live_vars.     % annotate
+   :- include_module follow_vars.   % annotate
+:- include_module store_alloc.      % annotate
 
 % The llds data structure itself
 :- include_module llds.
@@ -90,7 +92,7 @@
 
 :- implementation.
 
-:- import_module check_hlds. 		% needed for type_util, mode_util etc
+:- import_module check_hlds.        % needed for type_util, mode_util etc
 :- import_module backend_libs.
 :- import_module libs.
 

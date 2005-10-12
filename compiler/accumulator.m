@@ -558,7 +558,7 @@ store(Identifier, Goal, store_info(N, IM0, GS0), store_info(N+1, IM, GS)) :-
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap__apply_instmap_delta(IM0, InstMapDelta, IM),
 
-    goal_store__det_insert(GS0, Identifier - N, Goal - IM0, GS).
+    goal_store__det_insert(Identifier - N, Goal - IM0, GS0, GS).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1226,7 +1226,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
 
     process_assoc_set(Ids, GS, OutPrime, ModuleInfo, !Substs,
         !VarSet, !VarTypes, CS0, Warnings0),
-    goal_store__det_insert(CS0, Id, CSGoal, CS),
+    goal_store__det_insert(Id, CSGoal, CS0, CS),
     list__append(Warnings0, Warning, Warnings).
 
 :- pred has_heuristic(module_name::in, string::in, arity::in) is semidet.
@@ -1793,7 +1793,7 @@ rename(Ids, Subst, From, Initial) = Final :-
         (pred(Id::in, GS0::in, GS::out) is det :-
             goal_store__lookup(From, Id, Goal0 - InstMap),
             goal_util__rename_vars_in_goal(Subst, Goal0, Goal),
-            goal_store__det_insert(GS0, Id, Goal - InstMap, GS)
+            goal_store__det_insert(Id, Goal - InstMap, GS0, GS)
         ), Ids, Initial, Final).
 
     % Return all the goal_ids which belong in the base case.

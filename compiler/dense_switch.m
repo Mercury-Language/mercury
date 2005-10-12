@@ -33,25 +33,24 @@
     % (we may convert locally semidet switches into locally det
     % switches by adding extra cases whose body is just `fail').
     %
-:- pred dense_switch__is_dense_switch(code_info::in, prog_var::in,
-    cases_list::in, can_fail::in, int::in, int::out, int::out,
-    can_fail::out) is semidet.
+:- pred is_dense_switch(code_info::in, prog_var::in, cases_list::in,
+    can_fail::in, int::in, int::out, int::out, can_fail::out) is semidet.
 
     % Generate code for a switch using a dense jump table.
     %
-:- pred dense_switch__generate(cases_list::in, int::in, int::in, prog_var::in,
+:- pred generate_dense_switch(cases_list::in, int::in, int::in, prog_var::in,
     code_model::in, can_fail::in, hlds_goal_info::in, label::in,
     branch_end::in, branch_end::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
     % Also used by lookup_switch.
     %
-:- pred dense_switch__calc_density(int::in, int::in, int::out) is det.
+:- pred calc_density(int::in, int::in, int::out) is det.
 
     % Also used by lookup_switch.
     %
-:- pred dense_switch__type_range(code_info::in, type_category::in, (type)::in,
-    int::out) is semidet.
+:- pred type_range(code_info::in, type_category::in, (type)::in, int::out)
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -72,7 +71,7 @@
 :- import_module require.
 :- import_module std_util.
 
-dense_switch__is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
+is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
         FirstVal, LastVal, CanFail) :-
     list__length(TaggedCases, NumCases),
     NumCases > 2,
@@ -115,7 +114,7 @@ dense_switch__is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
 
     % Calculate the percentage density given the range and the number of cases.
     %
-dense_switch__calc_density(NumCases, Range, Density) :-
+calc_density(NumCases, Range, Density) :-
     N1 = NumCases * 100,
     Density = N1 // Range.
 
@@ -125,14 +124,14 @@ dense_switch__calc_density(NumCases, Range, Density) :-
     % of type that has a range or if the type's range is to big to switch on
     % (e.g. int).
     %
-dense_switch__type_range(CI, TypeCategory, Type, Range) :-
+type_range(CI, TypeCategory, Type, Range) :-
     code_info__get_module_info(CI, ModuleInfo),
     switch_util__type_range(TypeCategory, Type, ModuleInfo, Min, Max),
     Range = Max - Min + 1.
 
 %---------------------------------------------------------------------------%
 
-dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
+generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, MaybeEnd0, MaybeEnd, Code, !CI) :-
     % Evaluate the variable which we are going to be switching on.
     code_info__produce_variable(Var, VarCode, Rval, !CI),
@@ -156,9 +155,8 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
         RangeCheck = empty
     ),
     % Now generate the jump table and the cases.
-    dense_switch__generate_cases(Cases, StartVal, EndVal, CodeModel,
-        SwitchGoalInfo, EndLabel, MaybeEnd0, MaybeEnd, Labels,
-        CasesCode, !CI),
+    generate_cases(Cases, StartVal, EndVal, CodeModel, SwitchGoalInfo,
+        EndLabel, MaybeEnd0, MaybeEnd, Labels, CasesCode, !CI),
 
     % XXX We keep track of the code_info at the end of one of the non-fail
     % cases. We have to do this because generating a `fail' slot last would
@@ -170,13 +168,12 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
     % Assemble the code fragments.
     Code = tree_list([VarCode, RangeCheck, DoJump, CasesCode]).
 
-:- pred dense_switch__generate_cases(cases_list::in, int::in, int::in,
-    code_model::in, hlds_goal_info::in, label::in, branch_end::in,
-    branch_end::out, list(label)::out, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred generate_cases(cases_list::in, int::in, int::in, code_model::in,
+    hlds_goal_info::in, label::in, branch_end::in, branch_end::out,
+    list(label)::out, code_tree::out, code_info::in, code_info::out) is det.
 
-dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel,
-        SwitchGoalInfo, EndLabel, !MaybeEnd, Labels, Code, !CI) :-
+generate_cases(Cases0, NextVal, EndVal, CodeModel, SwitchGoalInfo, EndLabel,
+        !MaybeEnd, Labels, Code, !CI) :-
     ( NextVal > EndVal ->
         Labels = [],
         Code = node([
@@ -184,7 +181,7 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel,
         ])
     ;
         code_info__get_next_label(ThisLabel, !CI),
-        dense_switch__generate_case(Cases0, Cases1, NextVal, CodeModel,
+        generate_case(Cases0, Cases1, NextVal, CodeModel,
             SwitchGoalInfo, !MaybeEnd, ThisCode, Comment, !CI),
         LabelCode = node([
             label(ThisLabel) - Comment
@@ -194,20 +191,20 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel,
         ]),
         % Generate the rest of the cases.
         NextVal1 = NextVal + 1,
-        dense_switch__generate_cases(Cases1, NextVal1, EndVal, CodeModel,
-            SwitchGoalInfo, EndLabel, !MaybeEnd, Labels1, OtherCasesCode, !CI),
+        generate_cases(Cases1, NextVal1, EndVal, CodeModel, SwitchGoalInfo,
+            EndLabel, !MaybeEnd, Labels1, OtherCasesCode, !CI),
         Labels = [ThisLabel | Labels1],
         Code = tree_list([LabelCode, ThisCode, JumpCode, OtherCasesCode])
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred dense_switch__generate_case(cases_list::in, cases_list::out, int::in,
-    code_model::in, hlds_goal_info::in, branch_end::in, branch_end::out,
-    code_tree::out, string::out, code_info::in, code_info::out) is det.
+:- pred generate_case(cases_list::in, cases_list::out, int::in, code_model::in,
+    hlds_goal_info::in, branch_end::in, branch_end::out, code_tree::out,
+    string::out, code_info::in, code_info::out) is det.
 
-dense_switch__generate_case(!Cases, NextVal, CodeModel, SwitchGoalInfo,
-        !MaybeEnd, Code, Comment, !CI) :-
+generate_case(!Cases, NextVal, CodeModel, SwitchGoalInfo, !MaybeEnd, Code,
+        Comment, !CI) :-
     (
         !.Cases = [Case | !:Cases],
         Case = case(_, int_constant(NextVal), _, Goal)

@@ -28,7 +28,7 @@
 
     % Generate intelligent indexing code for tag based switches.
     %
-:- pred tag_switch__generate(list(extended_case)::in, prog_var::in,
+:- pred generate_tag_switch(list(extended_case)::in, prog_var::in,
     code_model::in, can_fail::in, hlds_goal_info::in, label::in,
     branch_end::in, branch_end::out, code_tree::out,
     code_info::in, code_info::out) is det.
@@ -188,8 +188,8 @@
     ;       jump_table
     ;       binary_search.
 
-generate(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel, !MaybeEnd,
-        Code, !CI) :-
+generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
+        !MaybeEnd, Code, !CI) :-
     % Group the cases based on primary tag value and find out how many
     % constructors share each primary tag value.
 

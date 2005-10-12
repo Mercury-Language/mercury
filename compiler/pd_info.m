@@ -1,12 +1,16 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1998-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: pd_info.m
 % Main author: stayl
 %
 % Types for deforestation.
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__pd_info.
@@ -28,28 +32,28 @@
 :- import_module set.
 :- import_module std_util.
 
-:- type pd_info --->
-	pd_info(
-		module_info		:: module_info,
-		maybe_unfold_info	:: maybe(unfold_info),
-		goal_version_index	:: goal_version_index,
-		versions		:: version_index,
-		proc_arg_info		:: pd_arg_info,
-		counter			:: counter,
-		global_term_info	:: global_term_info,
-		parent_versions		:: set(pred_proc_id),
-		depth			:: int,
-		created_versions	:: set(pred_proc_id),
-		useless_versions	:: useless_versions
-	).
+:- type pd_info
+    --->    pd_info(
+                module_info		    :: module_info,
+                maybe_unfold_info	:: maybe(unfold_info),
+                goal_version_index	:: goal_version_index,
+                versions		    :: version_index,
+                proc_arg_info		:: pd_arg_info,
+                counter			    :: counter,
+                global_term_info	:: global_term_info,
+                parent_versions		:: set(pred_proc_id),
+                depth			    :: int,
+                created_versions	:: set(pred_proc_id),
+                useless_versions	:: useless_versions
+            ).
 
-		% map from list of called preds in the
-		% conjunctions to the specialised versions.
+    % Map from list of called preds in the conjunctions
+    % to the specialised versions.
 :- type goal_version_index == map(list(pred_proc_id), list(pred_proc_id)).
 
 :- type useless_versions == set(pair(pred_proc_id)).
 
-		% map from version id to the info about the version.
+    % Map from version id to the info about the version.
 :- type version_index == map(pred_proc_id, version_info).
 
 :- pred pd_info_init(module_info::in, pd_arg_info::in, pd_info::out) is det.
@@ -213,27 +217,28 @@ pd_info_bind_var_to_functor(Var, ConsId, !PDInfo) :-
 	% body for unfolding and deforestation opportunities.
 :- type unfold_info
 	--->	unfold_info(
-			proc_info	:: proc_info,
-			instmap		:: instmap,
-			cost_delta	:: int,
-					% improvement in cost measured while
-					% processing this procedure
-			local_term_info	:: local_term_info,
-					% information used to prevent
-					% infinite unfolding within the
-					% current procedure.
-			pred_info	:: pred_info,
-			parents		:: set(pred_proc_id),
-			pred_proc_id	:: pred_proc_id,
-					% current pred_proc_id
-			changed		:: bool,% has anything changed
-			size_delta	:: int,
-					% increase in size measured while
-					% processing this procedure
-			rerun_det	:: bool
-					% does determinism analysis
-					% need to be rerun.
-		).
+                proc_info	    :: proc_info,
+                instmap		    :: instmap,
+                cost_delta	    :: int,
+                                % improvement in cost measured while
+                                % processing this procedure
+                local_term_info	:: local_term_info,
+                                % information used to prevent
+                                % infinite unfolding within the
+                                % current procedure.
+                pred_info	    :: pred_info,
+                parents		    :: set(pred_proc_id),
+                pred_proc_id	:: pred_proc_id,
+                                % current pred_proc_id
+                changed		    :: bool,
+                                % has anything changed
+                size_delta	    :: int,
+                                % increase in size measured while
+                                % processing this procedure
+                rerun_det	    :: bool
+                                % does determinism analysis
+                                % need to be rerun.
+            ).
 
 	% pd_arg_info records which procedures have arguments for which
 	% it might be worthwhile to attempt deforestation if there
@@ -246,12 +251,12 @@ pd_info_bind_var_to_functor(Var, ConsId, !PDInfo) :-
 
 :- type pd_branch_info(T)
 	--->	pd_branch_info(
-			branch_info_map(T),
-			set(T),		% variables for which we want
-					% extra left context
-			set(T)		% outputs for which we have no
-					% extra information
-		).
+                branch_info_map(T),
+                set(T),		% variables for which we want
+                            % extra left context
+                set(T)		% outputs for which we have no
+                            % extra information
+            ).
 
 	% Vars for which there is extra information at the end
 	% of some branches, and the branches which add the extra
@@ -377,66 +382,71 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
 
 	% Find the deforestation procedure which most closely
 	% matches the given goal.
+    %
 :- pred pd_info__search_version(pd_info::in, hlds_goal::in, maybe_version::out,
 	io::di, io::uo) is det.
 
 	% Create a new predicate for the input goal, returning a
 	% goal which calls the new predicate.
+    %
 :- pred pd_info__define_new_pred(pred_origin::in, hlds_goal::in,
 	pred_proc_id::out, hlds_goal::out, pd_info::in, pd_info::out) is det.
 
 	% Add a version to the table.
+    %
 :- pred pd_info__register_version(pred_proc_id::in, version_info::in,
 	pd_info::in, pd_info::out, io::di, io::uo) is det.
 
 	% Remove a version and make sure it is never recreated.
+    %
 :- pred pd_info__invalidate_version(pred_proc_id::in,
 	pd_info::in, pd_info::out) is det.
 
 	% Remove a version, but allow it to be recreated if it
 	% is used elsewhere.
+    %
 :- pred pd_info__remove_version(pred_proc_id::in,
 	pd_info::in, pd_info::out) is det.
 
 	% The result of looking up a specialised version of a pred.
 :- type maybe_version
 	--->	no_version
-	;	version(
-			mv_is_exact	:: version_is_exact,
-			mv_ppid		:: pred_proc_id,
-			mv_version	:: version_info,
-			mv_renaming	:: map(prog_var, prog_var),
-					% renaming of the version info
-			mv_tsubst	:: tsubst
-					% var types substitution
-		).
+	;	    version(
+                mv_is_exact	        :: version_is_exact,
+                mv_ppid		        :: pred_proc_id,
+                mv_version	        :: version_info,
+                mv_renaming	        :: map(prog_var, prog_var),
+                                    % renaming of the version info
+                mv_tsubst	        :: tsubst
+                                    % var types substitution
+            ).
 
 :- type version_is_exact
 	--->	exact
-	;	more_general.
+	;	    more_general.
 
-:- type version_info --->
-	version_info(
-		version_orig_goal	:: hlds_goal,
-					% goal before unfolding.
-		version_deforest_calls	:: list(pred_proc_id),
-					% calls being deforested.
-		version_arg_vars	:: list(prog_var),
-					% arguments.
-		version_arg_types	:: list(type),
-					% argument types.
-		version_init_insts	:: instmap,
-					% initial insts of the nonlocals.
-		version_orig_cost	:: int,
-					% cost of the original goal.
-		version_cost_improv	:: int,
-					% improvement in cost.
-		version_parents		:: set(pred_proc_id),
-					% parent versions.
-		version_source		:: maybe(pred_proc_id)
-					% the version which was generalised
-					% to produce this version.
-	).
+:- type version_info
+    --->    version_info(
+                version_orig_goal	:: hlds_goal,
+                                    % goal before unfolding.
+                version_deforest_calls	:: list(pred_proc_id),
+                                    % calls being deforested.
+                version_arg_vars	:: list(prog_var),
+                                    % arguments.
+                version_arg_types	:: list(type),
+                                    % argument types.
+                version_init_insts	:: instmap,
+                                    % initial insts of the nonlocals.
+                version_orig_cost	:: int,
+                                    % cost of the original goal.
+                version_cost_improv	:: int,
+                                    % improvement in cost.
+                version_parents		:: set(pred_proc_id),
+                                    % parent versions.
+                version_source		:: maybe(pred_proc_id)
+                                    % the version which was generalised
+                                    % to produce this version.
+            ).
 
 %-----------------------------------------------------------------------------%
 
@@ -475,16 +485,14 @@ pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
 	Version = version_info(OldGoal, _, OldArgs, OldArgTypes,
 		OldInstMap, _, _, _, _),
 	(
-		pd_info__goal_is_more_general(ModuleInfo,
-			OldGoal, OldInstMap, OldArgs, OldArgTypes,
-			ThisGoal, ThisInstMap, VarTypes, VersionId, Version,
+		pd_info__goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
+            OldArgTypes, ThisGoal, ThisInstMap, VarTypes, VersionId, Version,
 			MaybeVersion1)
 	->
 		(
 			MaybeVersion1 = no_version,
-			pd_info__get_matching_version(ModuleInfo,
-				ThisGoal, ThisInstMap, VarTypes, VersionIds,
-				Versions, MaybeVersion)
+			pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
+                VarTypes, VersionIds, Versions, MaybeVersion)
 		;
 			MaybeVersion1 = version(exact, _, _, _, _),
 			MaybeVersion = MaybeVersion1
@@ -495,18 +503,17 @@ pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
 				ThisInstMap, VarTypes, VersionIds,
 				Versions, MaybeVersion2),
 			pd_info__pick_version(ModuleInfo, PredProcId, Renaming,
-				TypeSubn, MoreGeneralVersion, MaybeVersion2,
-				MaybeVersion)
+				TypeSubn, MoreGeneralVersion, MaybeVersion2, MaybeVersion)
 		)
 	;
-		pd_info__get_matching_version(ModuleInfo, ThisGoal,
-			ThisInstMap, VarTypes, VersionIds,
-			Versions, MaybeVersion)
+		pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
+            VarTypes, VersionIds, Versions, MaybeVersion)
 	).
 
 %-----------------------------------------------------------------------------%
 
 	% Choose between two versions.
+    %
 :- pred pd_info__pick_version(module_info::in, pred_proc_id::in,
 	map(prog_var, prog_var)::in, tsubst::in, version_info::in,
 	maybe_version::in, maybe_version::out) is det.
@@ -571,6 +578,7 @@ pd_info__goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
 
 	% Check that all the insts in the old version are at least as
 	% general as the insts in the new version.
+    %
 :- pred pd_info__check_insts(module_info::in, list(prog_var)::in,
 	map(prog_var, prog_var)::in, instmap::in, instmap::in, vartypes::in,
 	version_is_exact::in, version_is_exact::out) is semidet.
@@ -671,8 +679,8 @@ pd_info__invalidate_version(PredProcId, !PDInfo) :-
 		Calls = [FirstCall | _],
 		list__last(Calls, LastCall)
 	->
-			% Make sure we never create another version to
-			% deforest this pair of calls.
+        % Make sure we never create another version to deforest
+        % this pair of calls.
 		pd_info_get_useless_versions(!.PDInfo, Useless0),
 		set__insert(Useless0, FirstCall - LastCall, Useless),
 		pd_info_set_useless_versions(Useless, !PDInfo)

@@ -1,12 +1,30 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % Main author: conway.
 % Extensive modifications by zs.
-
+%
+% The problem attacked by this module is that sometimes the code generator
+% doesn't know where it should put the values of live variables at the end
+% of a branched control structure. All branches must put each live variable
+% into the same lval, so having each branch leave each live variable where it
+% just happens to be is not an option. We currently just put all live variables
+% into its own rN register or stack slot, but often is not where the variable
+% happens to be at the end of any branch, nor is it where the variable is next
+% needed.
+%
+% The idea used by this module to attack this problem is to try to ensure
+% that the branched control structure is followed immediately either by a call
+% or by the end of the procedure body, because both have clear rules about
+% where every live variable must be. If a branched control structure is
+% followed by builtin goals such as unifications, we push those goals into
+% each branch.
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__follow_code.
@@ -20,10 +38,10 @@
 :- import_module list.
 
 :- pred move_follow_code_in_proc(pred_id::in, proc_id::in, pred_info::in,
-	proc_info::in, proc_info::out, module_info::in, module_info::out)
-	is det.
+	proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 	% Split a list of goals into the prefix of builtins and the rest.
+    %
 :- pred move_follow_code_select(list(hlds_goal)::in, list(hlds_goal)::out,
 	list(hlds_goal)::out) is det.
 
@@ -61,16 +79,15 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
 	proc_info_vartypes(!.ProcInfo, VarTypes0),
 	(
 		move_follow_code_in_goal(Goal0, Goal1, Flags, no, Res),
-			% did the goal change?
+        % Did the goal change?
 		Res = yes
 	->
-			% we need to fix up the goal_info by recalculating
-			% the nonlocal vars and the non-atomic instmap deltas.
+        % We need to fix up the goal_info by recalculating the nonlocal vars
+        % and the non-atomic instmap deltas.
 		proc_info_headvars(!.ProcInfo, HeadVars),
-		implicitly_quantify_clause_body(HeadVars, _Warnings,
-			Goal1, Goal2, Varset0, Varset, VarTypes0, VarTypes),
-		proc_info_get_initial_instmap(!.ProcInfo,
-			!.ModuleInfo, InstMap0),
+		implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
+            Varset0, Varset, VarTypes0, VarTypes),
+		proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
 		proc_info_inst_varset(!.ProcInfo, InstVarSet),
 		recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet,
 			InstMap0, !ModuleInfo)
@@ -100,9 +117,8 @@ move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, !R) :-
 move_follow_code_in_goal_2(conj(Goals0), conj(Goals), Flags, !R) :-
 	move_follow_code_in_conj(Goals0, Goals, Flags, !R).
 move_follow_code_in_goal_2(par_conj(Goals0), par_conj(Goals), Flags, !R) :-
-		% move_follow_code_in_disj treats its list of goals as
-		% independent goals, so we can use it to process the
-		% independent parallel conjuncts.
+    % move_follow_code_in_disj treats its list of goals as independent goals,
+    % so we can use it to process the independent parallel conjuncts.
 	move_follow_code_in_disj(Goals0, Goals, Flags, !R).
 move_follow_code_in_goal_2(disj(Goals0), disj(Goals), Flags, !R) :-
 	move_follow_code_in_disj(Goals0, Goals, Flags, !R).
@@ -116,22 +132,22 @@ move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 	move_follow_code_in_goal(Cond0, Cond, Flags, !R),
 	move_follow_code_in_goal(Then0, Then, Flags, !R),
 	move_follow_code_in_goal(Else0, Else, Flags, !R).
-move_follow_code_in_goal_2(scope(Remove, Goal0),
-		scope(Remove, Goal), Flags, !R) :-
+move_follow_code_in_goal_2(scope(Remove, Goal0), scope(Remove, Goal),
+        Flags, !R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, !R).
 move_follow_code_in_goal_2(Goal @ generic_call(_, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(Goal @ call(_, _, _, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(Goal @ unify(_, _, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(shorthand(_), _, _, _, _) :-
-	% these should have been expanded out by now
+	% These should have been expanded out by now.
 	error("move_follow_code_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
 	% move_follow_code_in_disj is used both for disjunction and
 	% parallel conjunction.
-
+    %
 :- pred move_follow_code_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
 	pair(bool)::in, bool::in, bool::out) is det.
 
@@ -146,16 +162,16 @@ move_follow_code_in_disj([Goal0|Goals0], [Goal|Goals], Flags, !R) :-
 	pair(bool)::in, bool::in, bool::out) is det.
 
 move_follow_code_in_cases([], [], _, !R).
-move_follow_code_in_cases([case(Cons, Goal0)|Goals0], [case(Cons, Goal)|Goals],
-		Flags, !R) :-
+move_follow_code_in_cases([case(Cons, Goal0) | Goals0],
+        [case(Cons, Goal) | Goals], Flags, !R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, !R),
 	move_follow_code_in_cases(Goals0, Goals, Flags, !R).
 
 %-----------------------------------------------------------------------------%
 
-	% Find the first branched structure, and split the
-	% conj into those goals before and after it.
-
+	% Find the first branched structure, and split the conj into those goals
+    % before and after it.
+    %
 :- pred move_follow_code_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
 	pair(bool)::in, bool::in, bool::out) is det.
 
@@ -167,15 +183,14 @@ move_follow_code_in_conj(Goals0, Goals, Flags, !R) :-
 	list(hlds_goal)::out, pair(bool)::in, bool::in, bool::out) is det.
 
 move_follow_code_in_conj_2([], !RevPrevGoals, _, !R).
-move_follow_code_in_conj_2([Goal0 | Goals0], !RevPrevGoals,
-		Flags, !R) :-
+move_follow_code_in_conj_2([Goal0 | Goals0], !RevPrevGoals, Flags, !R) :-
 	Flags = PushFollowCode - _PushPrevCode,
 	(
 		PushFollowCode = yes,
 		Goal0 = GoalExpr0 - _,
 		goal_util__goal_is_branched(GoalExpr0),
 		move_follow_code_select(Goals0, FollowGoals, RestGoalsPrime),
-		FollowGoals \= [],
+		FollowGoals = [_ | _],
 		move_follow_code_move_goals(Goal0, FollowGoals, Goal1Prime)
 	->
 		!:R = yes,
@@ -217,10 +232,8 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 		Goal = disj(Goals)
 	;
 		Goal0 = if_then_else(Vars, Cond, Then0, Else0),
-		follow_code__conjoin_goal_and_goal_list(Then0,
-			FollowGoals, Then),
-		follow_code__conjoin_goal_and_goal_list(Else0,
-			FollowGoals, Else),
+		follow_code__conjoin_goal_and_goal_list(Then0, FollowGoals, Then),
+		follow_code__conjoin_goal_and_goal_list(Else0, FollowGoals, Else),
 		Goal = if_then_else(Vars, Cond, Then, Else)
 	).
 
@@ -248,10 +261,10 @@ move_follow_code_move_goals_disj([Goal0|Goals0], FollowGoals, [Goal|Goals]) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Takes a goal and a list of goals, and conjoins them
-	% (with a potentially blank goal_info), checking that the
-	% determinism of the goal is not changed.
-
+	% Takes a goal and a list of goals, and conjoins them (with a potentially
+    % blank goal_info), checking that the determinism of the goal is not
+    % changed.
+    %
 :- pred follow_code__conjoin_goal_and_goal_list(hlds_goal::in,
 	list(hlds_goal)::in, hlds_goal::out) is semidet.
 
@@ -272,9 +285,9 @@ follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
 		Goal = GoalExpr - GoalInfo0
 	).
 
-	% This check is necessary to make sure that follow_code
-	% doesn't change the determinism of the goal.
-
+	% This check is necessary to make sure that follow_code doesn't change
+    % the determinism of the goal.
+    %
 :- pred check_follow_code_detism(list(hlds_goal)::in, determinism::in)
 	is semidet.
 
@@ -295,13 +308,3 @@ move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-:- pred move_prev_code_forbidden_vars(list(hlds_goal)::in, set(prog_var)::out)
-	is det.
-
-move_prev_code_forbidden_vars([], Empty) :-
-	set__init(Empty).
-move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
-	move_prev_code_forbidden_vars(Goals, Varset0),
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	set__union(Varset0, NonLocals, Varset).

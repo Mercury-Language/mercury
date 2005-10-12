@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -26,8 +28,8 @@
 :- func module_name_to_module_id(module_name) = module_id.
 :- func module_id_to_module_name(module_id) = module_name.
 
-:- func pred_or_func_name_arity_to_func_id(pred_or_func,
-	string, arity, proc_id) = func_id.
+:- func pred_or_func_name_arity_to_func_id(pred_or_func, string, arity,
+    proc_id) = func_id.
 
 :- implementation.
 
@@ -41,27 +43,27 @@
 :- import_module string.
 
 :- instance compiler(mmc) where [
-	compiler_name(mmc) = "mmc",
+    compiler_name(mmc) = "mmc",
 
-	analyses(mmc, "unused_args") =
-		'new analysis_type'(
-			unit1 `with_type` unit(unused_args_func_info),
-			unit1 `with_type` unit(any_call),
-			unit1 `with_type` unit(unused_args_answer)),
+    analyses(mmc, "unused_args") =
+        'new analysis_type'(
+            unit1 `with_type` unit(unused_args_func_info),
+            unit1 `with_type` unit(any_call),
+            unit1 `with_type` unit(unused_args_answer)),
 
-	module_id_to_file_name(mmc, ModuleId, Ext, FileName) -->
-		module_name_to_file_name(module_id_to_module_name(ModuleId),
-			Ext, yes, FileName)
+    module_id_to_file_name(mmc, ModuleId, Ext, FileName) -->
+        module_name_to_file_name(module_id_to_module_name(ModuleId),
+            Ext, yes, FileName)
 ].
 
 module_name_to_module_id(ModuleName) = ModuleId :-
-	sym_name_to_string(ModuleName, ModuleId).
+    sym_name_to_string(ModuleName, ModuleId).
 
 module_id_to_module_name(ModuleId) = ModuleName :-
-	string_to_sym_name(ModuleId, ".", ModuleName).
+    string_to_sym_name(ModuleId, ".", ModuleName).
 
 pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) = FuncId :-
-	FuncId0 = simple_call_id_to_string(PredOrFunc
-		- unqualified(Name)/Arity),
-	proc_id_to_int(ProcId, ProcInt),
-	FuncId = FuncId0 ++ "-" ++ int_to_string(ProcInt).
+    FuncId0 = simple_call_id_to_string(PredOrFunc
+        - unqualified(Name)/Arity),
+    proc_id_to_int(ProcId, ProcInt),
+    FuncId = FuncId0 ++ "-" ++ int_to_string(ProcInt).

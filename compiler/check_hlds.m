@@ -1,12 +1,12 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% check_hlds: semantic analysis and error checking
-%	(the "front end" HLDS pass).
-%
+% check_hlds: semantic analysis and error checking (the "front end" HLDS pass).
 
 :- module check_hlds.
 :- interface.
