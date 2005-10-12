@@ -20,7 +20,7 @@
 :- import_module hlds__hlds_module.
 :- import_module io.
 
-:- pred mode_constraints__process_module(module_info::in, module_info::out,
+:- pred process_module(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
 :- implementation.
@@ -88,7 +88,7 @@
     func 'ho_modes :='(T, ho_modes) = T
 ].
 
-mode_constraints__process_module(!ModuleInfo, !IO) :-
+process_module(!ModuleInfo, !IO) :-
     module_info_predids(!.ModuleInfo, PredIds),
     globals__io_lookup_bool_option(simple_mode_constraints, Simple, !IO),
     globals__io_lookup_bool_option(prop_mode_constraints, New, !IO),
@@ -99,7 +99,7 @@ mode_constraints__process_module(!ModuleInfo, !IO) :-
     % Stage 1: Process SCCs bottom-up to determine variable producers.
     (
         New = no,
-        list__foldl3(mode_constraints__process_scc(Simple), SCCs,
+        list__foldl3(process_scc(Simple), SCCs,
             !ModuleInfo, map__init, PredConstraintMap, !IO),
 
         % Stage 2: Process SCCs top-down to determine execution order of
@@ -145,11 +145,11 @@ mode_constraints__process_module(!ModuleInfo, !IO) :-
         )
     ).
 
-:- pred mode_constraints__process_scc(bool::in, list(pred_id)::in,
+:- pred process_scc(bool::in, list(pred_id)::in,
     module_info::in, module_info::out,
     pred_constraint_map::in, pred_constraint_map::out, io::di, io::uo) is det.
 
-mode_constraints__process_scc(Simple, SCC, !ModuleInfo, !PredConstraintMap,
+process_scc(Simple, SCC, !ModuleInfo, !PredConstraintMap,
         !IO) :-
     some [!ModeConstraint, !ModeConstraintInfo] (
         !:ModeConstraint = one,
@@ -158,12 +158,12 @@ mode_constraints__process_scc(Simple, SCC, !ModuleInfo, !PredConstraintMap,
             !ModeConstraintInfo),
 
         save_threshold(Threshold, !ModeConstraintInfo),
-        mode_constraints__process_scc_pass_1(SCC, SCC, !ModuleInfo,
+        process_scc_pass_1(SCC, SCC, !ModuleInfo,
             !ModeConstraint, !ModeConstraintInfo, !IO),
 
         !:ModeConstraint = restrict_threshold(Threshold, !.ModeConstraint),
         !:ModeConstraint = ensure_normalised(!.ModeConstraint),
-        mode_constraints__process_scc_pass_2(SCC, !.ModeConstraint,
+        process_scc_pass_2(SCC, !.ModeConstraint,
             !.ModeConstraintInfo, !ModuleInfo, !IO),
 
         Insert = (pred(PredId::in, PCM0::in, PCM::out) is det :-
@@ -446,40 +446,40 @@ number_robdd_variables_in_cases(InstGraph, NonLocals, Occurring,
         Cases0, Cases, !RInfo),
     Occurring = Occurring0 `set__union` Occurring1.
 
-:- pred mode_constraints__process_scc_pass_1(list(pred_id)::in,
+:- pred process_scc_pass_1(list(pred_id)::in,
     list(pred_id)::in, module_info::in,
     module_info::out, mode_constraint::in, mode_constraint::out,
     mode_constraint_info::in, mode_constraint_info::out,
     io::di, io::uo) is det.
 
-mode_constraints__process_scc_pass_1([], _, !ModuleInfo,
+process_scc_pass_1([], _, !ModuleInfo,
         !ModeConstraint, !ModeConstraintInfo, !IO).
-mode_constraints__process_scc_pass_1([PredId | PredIds], SCC,
+process_scc_pass_1([PredId | PredIds], SCC,
         !ModuleInfo, !ModeConstraint, !ModeConstraintInfo, !IO) :-
     !:ModeConstraintInfo = !.ModeConstraintInfo ^ pred_id := PredId,
-    mode_constraints__process_pred(PredId, SCC, !ModuleInfo,
+    process_pred(PredId, SCC, !ModuleInfo,
         !ModeConstraint, !ModeConstraintInfo, !IO),
-    mode_constraints__process_scc_pass_1(PredIds, SCC, !ModuleInfo,
+    process_scc_pass_1(PredIds, SCC, !ModuleInfo,
         !ModeConstraint, !ModeConstraintInfo, !IO).
 
-:- pred mode_constraints__process_scc_pass_2(list(pred_id)::in,
+:- pred process_scc_pass_2(list(pred_id)::in,
     mode_constraint::in, mode_constraint_info::in, module_info::in,
     module_info::out, io::di, io::uo) is det.
 
-mode_constraints__process_scc_pass_2([], _, _, !ModuleInfo, !IO).
-mode_constraints__process_scc_pass_2([PredId | PredIds], ModeConstraint,
+process_scc_pass_2([], _, _, !ModuleInfo, !IO).
+process_scc_pass_2([PredId | PredIds], ModeConstraint,
         ModeConstraintInfo, !ModuleInfo, !IO) :-
-    mode_constraints__process_pred_2(PredId, ModeConstraint,
+    process_pred_2(PredId, ModeConstraint,
         ModeConstraintInfo ^ pred_id := PredId, !ModuleInfo, !IO),
-    mode_constraints__process_scc_pass_2(PredIds, ModeConstraint,
+    process_scc_pass_2(PredIds, ModeConstraint,
         ModeConstraintInfo, !ModuleInfo, !IO).
 
-:- pred mode_constraints__process_pred(pred_id::in, list(pred_id)::in,
+:- pred process_pred(pred_id::in, list(pred_id)::in,
     module_info::in, module_info::out, mode_constraint::in,
     mode_constraint::out, mode_constraint_info::in,
     mode_constraint_info::out, io::di, io::uo) is det.
 
-mode_constraints__process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
+process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
         !ModeConstraintInfo, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     write_pred_progress_message("% Calculating mode constraints for ",
@@ -499,7 +499,7 @@ mode_constraints__process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
     ;
         ModeDeclInfo0 = mode_decl_info(!.ModeConstraintInfo, HOModes0),
         map__map_foldl2(
-            mode_constraints__mode_decl_to_constraint(!.ModuleInfo,
+            mode_decl_to_constraint(!.ModuleInfo,
                 InstGraph, HeadVars, PredInfo0),
             ProcTable0, ProcTable,
             zero, DeclConstraint, ModeDeclInfo0, ModeDeclInfo),
@@ -521,8 +521,7 @@ mode_constraints__process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
     ( pred_info_is_imported(PredInfo1) ->
         PredInfo = PredInfo1
     ;
-
-        mode_constraints__process_clauses_info(!.ModuleInfo, SCC,
+        process_clauses_info(!.ModuleInfo, SCC,
             ClausesInfo0, ClausesInfo, InstGraph, HOModes,
             !ModeConstraint, !ModeConstraintInfo, !IO),
         pred_info_set_clauses_info(ClausesInfo,
@@ -530,11 +529,11 @@ mode_constraints__process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
     ),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-:- pred mode_constraints__process_pred_2(pred_id::in, mode_constraint::in,
+:- pred process_pred_2(pred_id::in, mode_constraint::in,
     mode_constraint_info::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-mode_constraints__process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
+process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
         !ModuleInfo, !IO) :-
 
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -672,15 +671,15 @@ add_atomic_goal(GoalPath, !GCInfo) :-
 
     % Convert a procedure's arg_modes to a constraint.
     %
-:- pred mode_constraints__mode_decl_to_constraint(module_info::in,
+:- pred mode_decl_to_constraint(module_info::in,
     inst_graph::in, list(prog_var)::in, pred_info::in, proc_id::in,
     proc_info::in, proc_info::out,
     mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
-mode_constraints__mode_decl_to_constraint(ModuleInfo, InstGraph, HeadVars,
+mode_decl_to_constraint(ModuleInfo, InstGraph, HeadVars,
         _PredInfo, _ProcId, !ProcInfo, !Constraint, !Info) :-
-    mode_constraints__process_mode_decl_for_proc(ModuleInfo,
+    process_mode_decl_for_proc(ModuleInfo,
         InstGraph, HeadVars,
         false_var(initial), true_var(initial), yes,
         false_var(final), true_var(final), no,
@@ -696,7 +695,7 @@ mode_constraints__mode_decl_to_constraint(ModuleInfo, InstGraph, HeadVars,
     !:Constraint = !.Constraint + DeclConstraint,
     proc_info_set_head_modes_constraint(DeclConstraint, !ProcInfo).
 
-:- pred mode_constraints__process_mode_decl_for_proc(module_info::in,
+:- pred process_mode_decl_for_proc(module_info::in,
     inst_graph::in, list(prog_var)::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
     bool::in,
@@ -705,35 +704,32 @@ mode_constraints__mode_decl_to_constraint(ModuleInfo, InstGraph, HeadVars,
     proc_info::in, mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
-mode_constraints__process_mode_decl_for_proc(ModuleInfo, InstGraph, HeadVars,
-        InitialFree, InitialBound, InitialHO,
-        FinalFree, FinalBound, FinalHO,
+process_mode_decl_for_proc(ModuleInfo, InstGraph, HeadVars,
+        InitialFree, InitialBound, InitialHO, FinalFree, FinalBound, FinalHO,
         ProcInfo, !Constraint, !MDI) :-
     % proc_info_declared_argmodes(ProcInfo, ArgModes),
     proc_info_argmodes(ProcInfo, ArgModes),
-    mode_constraints__process_mode_decl(ModuleInfo, InstGraph, HeadVars,
-        InitialFree, InitialBound, InitialHO,
-        FinalFree, FinalBound, FinalHO,
+    process_mode_decl(ModuleInfo, InstGraph, HeadVars,
+        InitialFree, InitialBound, InitialHO, FinalFree, FinalBound, FinalHO,
         ArgModes, !Constraint, !MDI).
 
-:- pred mode_constraints__process_mode_decl(module_info::in,
+:- pred process_mode_decl(module_info::in,
     inst_graph::in, list(prog_var)::in, constrain_var::in(constrain_var),
     constrain_var::in(constrain_var), bool::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
     bool::in, list(mode)::in, mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
-mode_constraints__process_mode_decl(ModuleInfo, InstGraph, HeadVars,
+process_mode_decl(ModuleInfo, InstGraph, HeadVars,
         InitialFree, InitialBound, InitialHO,
         FinalFree, FinalBound, FinalHO, ArgModes, !Constraint, !MDI) :-
     assoc_list__from_corresponding_lists(HeadVars, ArgModes, VarModes),
-    list__foldl2(mode_constraints__process_arg_modes(ModuleInfo, InstGraph,
-        InitialFree, InitialBound, InitialHO,
-        FinalFree, FinalBound, FinalHO),
+    list__foldl2(process_arg_modes(ModuleInfo, InstGraph,
+        InitialFree, InitialBound, InitialHO, FinalFree, FinalBound, FinalHO),
         VarModes, one, NewConstraint, !MDI),
     !:Constraint = !.Constraint + NewConstraint.
 
-:- pred mode_constraints__process_arg_modes(module_info::in, inst_graph::in,
+:- pred process_arg_modes(module_info::in, inst_graph::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
     bool::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
@@ -742,15 +738,15 @@ mode_constraints__process_mode_decl(ModuleInfo, InstGraph, HeadVars,
     mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
-mode_constraints__process_arg_modes(ModuleInfo, InstGraph,
+process_arg_modes(ModuleInfo, InstGraph,
         InitialFree, InitialBound, InitialHO,
         FinalFree, FinalBound, FinalHO,
         Var - Mode, !Constraint, !MDI) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-    mode_constraints__process_inst(ModuleInfo, InstGraph,
+    process_inst(ModuleInfo, InstGraph,
         InitialFree, InitialBound, InitialHO, InitialInst,
         set__init, Var, !Constraint, !MDI),
-    mode_constraints__process_inst(ModuleInfo, InstGraph,
+    process_inst(ModuleInfo, InstGraph,
         FinalFree, FinalBound, FinalHO, FinalInst,
         set__init, Var, !Constraint, !MDI).
 
@@ -814,34 +810,34 @@ call_out(Path, Var, C0, C, !MCI) :-
     mode_constraint_info, mode_constraint_info).
 :- inst constrain_var == (pred(in, in, out, in, out) is det).
 
-:- pred mode_constraints__process_inst(module_info::in, inst_graph::in,
+:- pred process_inst(module_info::in, inst_graph::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
     bool::in, (inst)::in, set(prog_var)::in, prog_var::in,
     mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
-mode_constraints__process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO, Inst,
+process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO, Inst,
         Seen, Var, !Constraint, !MDI) :-
     ( Var `set__member` Seen ->
         true
     ;
         ( Inst = defined_inst(InstName) ->
             inst_lookup(ModuleInfo, InstName, Inst1),
-            mode_constraints__process_inst(ModuleInfo, InstGraph,
+            process_inst(ModuleInfo, InstGraph,
                 Free, Bound, DoHO, Inst1, Seen, Var, !Constraint, !MDI)
         ;
-            mode_constraints__do_process_inst(ModuleInfo, InstGraph,
+            do_process_inst(ModuleInfo, InstGraph,
                 Free, Bound, DoHO, Inst, Seen, Var, !Constraint, !MDI)
         )
     ).
 
-:- pred mode_constraints__do_process_inst(module_info::in, inst_graph::in,
+:- pred do_process_inst(module_info::in, inst_graph::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
     bool::in, (inst)::in, set(prog_var)::in, prog_var::in,
     mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
-mode_constraints__do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
+do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
         Inst, Seen, Var, !Constraint, !MDI) :-
     update_mc_info((pred(C::out, S0::in, S::out) is det :-
         (
@@ -872,7 +868,7 @@ mode_constraints__do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
                     Insts, VarInsts),
                 list__foldl2((pred((V - I)::in, C1::in, C2::out,
                         T0::in, T::out) is det :-
-                    mode_constraints__process_inst(ModuleInfo, InstGraph,
+                    process_inst(ModuleInfo, InstGraph,
                         Free, Bound, DoHO, I, Seen `set__insert` Var,
                         V, C1, C2, T0, T)
                     ), VarInsts, C0, C, S0, S)
@@ -882,11 +878,10 @@ mode_constraints__do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
             )
         ;
             list__foldl2(
-                mode_constraints__process_inst(ModuleInfo, InstGraph,
+                process_inst(ModuleInfo, InstGraph,
                     Free, Bound, DoHO, Inst, Seen `set__insert` Var),
                 Vs, C0, C, S0, S)
         )), Functors, !Constraint, !MDI),
-
     (
         DoHO = yes,
         Inst = ground(_, higher_order(pred_inst_info(_, ArgModes, _)))
@@ -899,13 +894,13 @@ mode_constraints__do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
         true
     ).
 
-:- pred mode_constraints__process_clauses_info(module_info::in,
+:- pred process_clauses_info(module_info::in,
     list(pred_id)::in, clauses_info::in, clauses_info::out, inst_graph::in,
     ho_modes::in, mode_constraint::in, mode_constraint::out,
     mode_constraint_info::in, mode_constraint_info::out,
     io::di, io::uo) is det.
 
-mode_constraints__process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
+process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
         InstGraph, HOModes0, !Constraint, !ConstraintInfo, !IO) :-
     clauses_info_varset(!.ClausesInfo, VarSet0),
     globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
@@ -1091,7 +1086,7 @@ goal_constraints_2(GoalPath, NonLocals, _, CanSucceed, conj(Goals0),
 
     Usage = list__foldl(func(G, U0) =
         list__foldl((func(V, U1) = U :-
-                multi_map__set(U1, V, goal_path(G), U)),
+            multi_map__set(U1, V, goal_path(G), U)),
             set__to_sorted_list(vars(G)), U0),
         Goals0, Usage0),
 
@@ -1157,7 +1152,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
             map__values(ProcTable, ProcInfos),
             update_md_info((pred(C::out, S0::in, S::out) is det :-
                 list__foldl2(
-                    mode_constraints__process_mode_decl_for_proc(ModuleInfo,
+                    process_mode_decl_for_proc(ModuleInfo,
                         InstGraph, Args, ignore, call_in(GoalPath), no,
                         false_var(goal_path(GoalPath)), call_out(GoalPath),
                         yes),
@@ -1527,7 +1522,7 @@ unify_constraints(Var, GoalPath, RHS0, RHS, !Constraint, !GCInfo) :-
     ArgModes = list__duplicate(length(NonLocals), in_mode) ++ Modes,
     LambdaHeadVars = NonLocals ++ LambdaVars,
     ModuleInfo = !.GCInfo ^ module_info,
-    update_md_info(mode_constraints__process_mode_decl(ModuleInfo,
+    update_md_info(process_mode_decl(ModuleInfo,
         InstGraph, LambdaHeadVars, false_var(initial),
         true_var(initial), yes, false_var(final), true_var(final), no,
         ArgModes, zero), DeclConstraint, !GCInfo),
@@ -1608,7 +1603,7 @@ higher_order_call_constraints(Constraint0, Constraint, !GCInfo) :-
                 (pred((GoalPath - Args)::in, C0::in, C::out,
                     in, out) is det -->
                     list__foldl2(
-                    mode_constraints__process_mode_decl(
+                    process_mode_decl(
                         ModuleInfo, InstGraph, Args, ignore,
                         call_in(GoalPath), no,
                         false_var(goal_path(GoalPath)),
@@ -1696,7 +1691,7 @@ get_predicate_sccs(ModuleInfo, SCCs) :-
     % the rest of their SCC since the mode declaration can be used in any
     % calls to them.  Such predicates should be processed last to take
     % advantage of mode info inferred from other predicates.
-    extract_mode_decl_preds(ModuleInfo, [], SCCs0, SCCs1),
+    extract_mode_decl_preds(ModuleInfo, SCCs0, [], SCCs1),
 
     % We add imported preds to the end of the SCC list, one SCC per pred.
     % This allows a constraint to be created for each imported pred
@@ -1706,22 +1701,24 @@ get_predicate_sccs(ModuleInfo, SCCs) :-
 :- pred extract_mode_decl_preds(module_info::in, sccs::in, sccs::in, sccs::out)
     is det.
 
-extract_mode_decl_preds(_ModuleInfo, DeclaredPreds, [], DeclaredPreds).
-extract_mode_decl_preds(ModuleInfo, DeclaredPreds0, [SCC0 | SCCs0], SCCs) :-
+extract_mode_decl_preds(_ModuleInfo, [], !DeclaredPreds).
+extract_mode_decl_preds(ModuleInfo, [SCC0 | SCCs0], !DeclaredPreds) :-
     list__filter(pred_has_mode_decl(ModuleInfo), SCC0, Declared, SCC),
-    ( Declared = [] ->
-        DeclaredPreds = DeclaredPreds0
+    (
+        Declared = []
     ;
+        Declared = [_ | _],
         list__foldl(
             (pred(Pred::in, Preds0::in, Preds::out) is det :-
                 Preds = [[Pred] | Preds0]
-            ), Declared, DeclaredPreds0, DeclaredPreds)
+            ), Declared, !DeclaredPreds)
     ),
-    extract_mode_decl_preds(ModuleInfo, DeclaredPreds, SCCs0, SCCs1),
-    ( SCC = [] ->
-        SCCs = SCCs1
+    extract_mode_decl_preds(ModuleInfo, SCCs0, !DeclaredPreds),
+    (
+        SCC = []
     ;
-        SCCs = [SCC | SCCs1]
+        SCC = [_ | _],
+        !:DeclaredPreds = [SCC | !.DeclaredPreds]
     ).
 
 :- pred pred_has_mode_decl(module_info::in, pred_id::in) is semidet.
@@ -1751,8 +1748,7 @@ cons_id_in_bound_insts(ConsId, [functor(ConsId0, Insts0) | BIs], Insts) :-
         cons_id_in_bound_insts(ConsId, BIs, Insts)
     ).
 
-:- pred equivalent_cons_ids(cons_id, cons_id).
-:- mode equivalent_cons_ids(in, in) is semidet.
+:- pred equivalent_cons_ids(cons_id::in, cons_id::in) is semidet.
 
 equivalent_cons_ids(ConsIdA, ConsIdB) :-
     (
@@ -1765,8 +1761,7 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
         ConsIdA = ConsIdB
     ).
 
-:- pred equivalent_sym_names(sym_name, sym_name).
-:- mode equivalent_sym_names(in, in) is semidet.
+:- pred equivalent_sym_names(sym_name::in, sym_name::in) is semidet.
 
 equivalent_sym_names(unqualified(S), unqualified(S)).
 equivalent_sym_names(qualified(_, S), unqualified(S)).

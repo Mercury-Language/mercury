@@ -2313,7 +2313,7 @@ write_unification(simple_test(X, Y), _, ProgVarSet, _, AppendVarNums, Indent,
     mercury_output_var(Y, ProgVarSet, AppendVarNums, !IO),
     io__write_string("\n", !IO).
 
-write_unification(construct(Var, ConsId, ArgVars, ArgModes, _ConstructHow,
+write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
         Uniqueness, SubInfo), ModuleInfo, ProgVarSet, InstVarSet,
         AppendVarNums, Indent, !IO) :-
     write_indent(Indent, !IO),
@@ -2360,6 +2360,22 @@ write_unification(construct(Var, ConsId, ArgVars, ArgModes, _ConstructHow,
         ;
             MaybeSize = no
         )
+    ),
+    (
+        ConstructHow = construct_dynamically
+    ;
+        ConstructHow = construct_statically(StaticConsList),
+        write_indent(Indent, !IO),
+        io__write_string("% construct statically\n", !IO),
+        list__foldl(write_static_cons(Indent, 1, ProgVarSet, AppendVarNums),
+            StaticConsList, !IO)
+    ;
+        ConstructHow = reuse_cell(CellToReuse),
+        CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds, _FieldAssigns),
+        write_indent(Indent, !IO),
+        io__write_string("% reuse cell: ", !IO),
+        mercury_output_var(ReuseVar, ProgVarSet, AppendVarNums, !IO),
+        io__write_string("\n", !IO)
     ).
 
 write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, CanCGC),
@@ -2404,6 +2420,29 @@ write_unification(complicated_unify(Mode, CanFail, TypeInfoVars), _ModuleInfo,
     io__write_string("% type-info vars: ", !IO),
     mercury_output_vars(TypeInfoVars, ProgVarSet, AppendVarNums, !IO),
     io__write_string("\n", !IO).
+
+:- pred write_static_cons(int::in, int::in, prog_varset::in, bool::in,
+    static_cons::in, io::di, io::uo) is det.
+
+write_static_cons(Indent, Depth, VarSet, AppendVarNums, StaticCons, !IO) :-
+    StaticCons = static_cons(ConsId, ArgVars, ArgStaticConstList),
+    write_indent(Indent, !IO),
+    io__write_string("% ", !IO),
+    write_indent(Depth, !IO),
+    mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
+    io__write_string("\n", !IO),
+    (
+        ArgVars = []
+    ;
+        ArgVars = [_ | _],
+        write_indent(Indent, !IO),
+        io__write_string("% ", !IO),
+        write_indent(Depth, !IO),
+        mercury_output_vars(ArgVars, VarSet, AppendVarNums, !IO),
+        io__write_string("\n", !IO)
+    ),
+    list__foldl(write_static_cons(Indent, Depth + 1, VarSet, AppendVarNums),
+        ArgStaticConstList, !IO).
 
 :- pred write_functor_and_submodes(cons_id::in, list(prog_var)::in,
     list(uni_mode)::in, module_info::in, prog_varset::in, inst_varset::in,
