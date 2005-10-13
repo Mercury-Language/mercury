@@ -310,7 +310,7 @@
 :- instance global(gCatalog, catalog).
 
 :- type gDirs		---> gDirs.
-:- type dirs		---> dirs(cat:dirs).
+:- type dirs		---> dirs(cat.dirs).
 :- instance global(gDirs, parse.dirs).
 
 :- type gEncodings	---> gEncodings.
@@ -334,11 +334,11 @@
 :- instance global(gContent, contentStore) where [].
 
 :- type gElements	---> gElements.
-:- type elements	---> elements(name -> dtd:element).
+:- type elements	---> elements(name -> dtd.element).
 :- instance global(gElements, elements) where [].
 
 :- type gAttributes	---> gAttributes.
-:- type attributes	---> attributes(name -> name -> dtd:attribute).
+:- type attributes	---> attributes(name -> name -> dtd.attribute).
 :- instance global(gAttributes, attributes) where [].
 
 :- type gEntities	---> gEntities.
@@ -353,7 +353,7 @@
 :- instance global(gDTD, dtd) where [].
 
 :- type gExtEntities	---> gExtEntities.
-:- type extEntities	---> extEntities(externalId -> dtd:entity).
+:- type extEntities	---> extEntities(externalId -> dtd.entity).
 :- instance global(gExtEntities, extEntities) where [].
 
 document -->
@@ -759,7 +759,7 @@ pubidChar(Q) -->
 %   Character Data
 %   [14]  CharData ::= [^<&]* - ([^<&]* ']]>' [^<&]*)
 
-:- pred charData(pstate(_), pstate(ref(doc:content))).
+:- pred charData(pstate(_), pstate(ref(doc.content))).
 :- mode charData(in, out) is det.
 
 charData -->
@@ -784,7 +784,7 @@ charData -->
 %   Comments
 %   [15]  Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
 
-:- pred comment(pstate(_), pstate(ref(doc:content))).
+:- pred comment(pstate(_), pstate(ref(doc.content))).
 :- mode comment(in, out) is det.
 
 comment -->
@@ -808,7 +808,7 @@ comment -->
 %   Processing Instructions
 %   [16]  PI ::= '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
 
-:- pred pi(pstate(_), pstate(ref(doc:content))).
+:- pred pi(pstate(_), pstate(ref(doc.content))).
 :- mode pi(in, out) is det.
 
 pi -->
@@ -860,7 +860,7 @@ piTarget -->
 %   [20]  CData ::= (Char* - (Char* ']]>' Char*))
 %   [21]  CDEnd ::= ']]>'
 
-:- pred cdSect(pstate(_), pstate(ref(doc:content))).
+:- pred cdSect(pstate(_), pstate(ref(doc.content))).
 :- mode cdSect(in, out) is det.
 
 cdSect -->
@@ -922,7 +922,7 @@ cdSect -->
 %   Prolog
 %   [22]  prolog ::= XMLDecl? Misc* (doctypedecl Misc*)?
 
-:- pred prolog(pstate(_), pstate((dtd, list(ref(doc:content))))).
+:- pred prolog(pstate(_), pstate((dtd, list(ref(doc.content))))).
 :- mode prolog(in, out) is det.
 
 prolog -->
@@ -1031,7 +1031,7 @@ versionNumChar -->
 
 %   [27]  Misc ::= Comment | PI |  S
 
-:- pred misc(pstate(_), pstate(opt(ref(doc:content)))).
+:- pred misc(pstate(_), pstate(opt(ref(doc.content)))).
 :- mode misc(in, out) is det.
 
 misc -->
@@ -1473,13 +1473,13 @@ subcode -->
 %   | STag content ETag [ WFC: Element Type Match ]
 %   [ VC: Element Valid ]
 
-:- pred element(pstate(_), pstate(ref(doc:content))).
+:- pred element(pstate(_), pstate(ref(doc.content))).
 :- mode element(in, out) is det.
 
 element -->
     emptyElemTag or nonEmptyElement.
 
-:- pred nonEmptyElement(pstate(_), pstate(ref(doc:content))).
+:- pred nonEmptyElement(pstate(_), pstate(ref(doc.content))).
 :- mode nonEmptyElement(in, out) is det.
 
 nonEmptyElement -->
@@ -1529,7 +1529,7 @@ nonEmptyElement -->
 %   Start-tag
 %   [40]  STag ::= '<' Name (S Attribute)* S? '>' [ WFC: Unique Att Spec ]
 
-:- pred sTag(pstate(_), pstate((name, list(doc:attribute)))).
+:- pred sTag(pstate(_), pstate((name, list(doc.attribute)))).
 :- mode sTag(in, out) is det.
 
 sTag -->
@@ -1545,7 +1545,7 @@ sTag -->
 %   [ WFC: No External Entity References ]
 %   [ WFC: No < in Attribute Values ]
 
-:- pred attribute(pstate(_), pstate(doc:attribute)).
+:- pred attribute(pstate(_), pstate(doc.attribute)).
 :- mode attribute(in, out) is det.
 
 attribute -->
@@ -1613,7 +1613,7 @@ eTag -->
 %   [43]  content ::= (element | CharData | Reference | CDSect | PI
 %   | Comment)*
 
-:- pred content(pstate(_), pstate(list(ref(doc:content)))).
+:- pred content(pstate(_), pstate(list(ref(doc.content)))).
 :- mode content(in, out) is det.
 
 content -->
@@ -1634,7 +1634,7 @@ content -->
 %   [44]  EmptyElemTag ::= '<' Name (S Attribute)* S? '/>' [ WFC: Unique
 %   Att Spec ]
 
-:- pred emptyElemTag(pstate(_), pstate(ref(doc:content))).
+:- pred emptyElemTag(pstate(_), pstate(ref(doc.content))).
 :- mode emptyElemTag(in, out) is det.
 
 emptyElemTag -->
@@ -1699,7 +1699,7 @@ elementdecl -->
 
 %   [46]  contentspec ::= 'EMPTY' | 'ANY' | Mixed | children
 
-:- pred contentspec(pstate(_), pstate(dtd:content)).
+:- pred contentspec(pstate(_), pstate(dtd.content)).
 :- mode contentspec(in, out) is det.
 
 contentspec -->
@@ -1732,7 +1732,7 @@ contentspec -->
 %   Element-content Models
 %   [47]  children ::= (choice | seq) ('?' | '*' | '+')?
 
-:- pred children(pstate(_), pstate(dtd:content)).
+:- pred children(pstate(_), pstate(dtd.content)).
 :- mode children(in, out) is det.
 
 children -->
@@ -1851,13 +1851,13 @@ seq -->
 %   | '(' S? '#PCDATA' S? ')' [ VC: Proper Group/PE Nesting ]
 %   [ VC: No Duplicate Types ]
 
-:- pred mixed(pstate(_), pstate(dtd:content)).
+:- pred mixed(pstate(_), pstate(dtd.content)).
 :- mode mixed(in, out) is det.
 
 mixed -->
     mixed1 or mixed2.
 
-:- pred mixed1(pstate(_), pstate(dtd:content)).
+:- pred mixed1(pstate(_), pstate(dtd.content)).
 :- mode mixed1(in, out) is det.
 
 mixed1 -->
@@ -1872,7 +1872,7 @@ mixed1 -->
     return(Content)
     )))))).
 
-:- pred mixed2(pstate(_), pstate(dtd:content)).
+:- pred mixed2(pstate(_), pstate(dtd.content)).
 :- mode mixed2(in, out) is det.
 
 mixed2 -->
@@ -1948,7 +1948,7 @@ attlistDecl -->
 
 %   [53]  AttDef ::= S Name S AttType S DefaultDecl
 
-:- pred attDef(pstate(_), pstate(dtd:attribute)).
+:- pred attDef(pstate(_), pstate(dtd.attribute)).
 :- mode attDef(in, out) is det.
 
 attDef -->
@@ -2448,7 +2448,7 @@ entityRef(Parser) -->
     parseEntity(Parser, mkEntity(Entity))
     )).
 
-:- pred entityRef(pstate(_), pstate(dtd:entity)).
+:- pred entityRef(pstate(_), pstate(dtd.entity)).
 :- mode entityRef(in, out) is det.
 
 entityRef -->
@@ -2479,7 +2479,7 @@ pEReference(Parser) -->
     parseEntity(Parser, mkEntity(Entity))
     )).
 
-:- pred pEReference(pstate(_), pstate(dtd:entity)).
+:- pred pEReference(pstate(_), pstate(dtd.entity)).
 :- mode pEReference(in, out) is det.
 
 pEReference -->
@@ -2794,7 +2794,7 @@ textDecl -->
 %   Well-Formed External Parsed Entity
 %   [78]  extParsedEnt ::= TextDecl? content
 
-:- pred extParsedEnt(pstate(_), pstate(list(ref(doc:content)))).
+:- pred extParsedEnt(pstate(_), pstate(list(ref(doc.content)))).
 :- mode extParsedEnt(in, out) is det.
 
 extParsedEnt -->
@@ -3647,12 +3647,12 @@ publicID -->
 %   liability, trademark, document use and software licensing rules
 %   apply.
 
-:- pred add(doc:content, ref(doc:content), pstate(T), pstate(T)).
+:- pred add(doc.content, ref(doc.content), pstate(T), pstate(T)).
 :- mode add(in, out, pdi, puo) is det.
 
 add(Cont, Ref) -->
     get(gContent, Content0),
-    { doc:add(Cont, Ref, Content0, Content) },
+    { doc.add(Cont, Ref, Content0, Content) },
     set(gContent, Content).
 
 %:- pred psp(pstate(T1), pstate(unit)).
@@ -3680,7 +3680,7 @@ pe(P) -->
 
 null --> [].
 
-:- pred getEntity(entityDef, pstate(T1), pstate(dtd:entity)).
+:- pred getEntity(entityDef, pstate(T1), pstate(dtd.entity)).
 :- mode getEntity(in, pdi, puo) is det.
 
 getEntity(internal(Entity)) -->

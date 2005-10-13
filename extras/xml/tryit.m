@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2001, 2004 The University of Melbourne.
+% Copyright (C) 2000, 2001, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -79,7 +79,7 @@ main([File|Files]) -->
 	    (
 	      	{ Res = ok((DTD, Doc)) },
 	    	{ nsTranslate(Doc, NsDoc) }, 
-		{ New = cat:ok((DTD, NsDoc)) },
+		{ New = cat.ok((DTD, NsDoc)) },
 		write(New)
 	    	% if don't want to turn the doc to namespace awared, 
 		% change the above three lines to  
