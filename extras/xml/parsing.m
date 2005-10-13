@@ -154,7 +154,7 @@
 
 :- type parser(T1, T2) == pred(pstate(T1), pstate(T2)).
 
-:- inst parser = (pred(pdi, puo) is det).
+:- inst parser == (pred(pdi, puo) is det).
 
 :- pred and(parser(T1, T2), parser(T2, T3), pstate(T1), pstate((T2, T3))).
 :- mode and(in(parser), in(parser), pdi, puo) is det.
