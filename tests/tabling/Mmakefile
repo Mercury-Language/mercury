@@ -31,14 +31,40 @@ else
 	BROKEN_FOR_PROFDEEP_NONLOOP_PROGS = 
 endif
 
-# The following test uses the '--allow-table-reset' option
-# which is not implemented for the MLDS backend.
+NONLOOP_SPECIFIED_PROGS0 = \
+	specified
+
+# The above test uses the '--allow-table-reset' option which is not
+# implemented for the MLDS backend.
+#
 ifeq "$(findstring hl,$(GRADE))" ""
-	LLDS_ONLY_NONLOOP_PROGS = \
-		specified
+	NONLOOP_SPECIFIED_PROGS1 = $(NONLOOP_SPECIFIED_PROGS0)
 else
-	LLDS_ONLY_NONLOOP_PROGS = 
-endif	
+	NONLOOP_SPECIFIED_PROGS1 = 
+endif
+
+# The overhead caused by profiling causes this test to fail in some of the
+# profiling grades, so we disable it in all of them.
+#
+ifeq "$(findstring prof,$(GRADE))" ""
+	NONLOOP_SPECIFIED_PROGS2 = $(NONLOOP_SPECIFIED_PROGS1)
+else
+	NONLOOP_SPECIFIED_PROGS2 =
+endif
+
+# We also don't enable it in term-size profiling grades.
+#
+ifeq "$(findstring tsc,$(GRADE))" ""
+	NONLOOP_SPECIFIED_PROGS3 = $(NONLOOP_SPECIFIED_PROGS2)
+else
+	NONLOOP_SPECIFIED_PROGS3 = 
+endif
+
+ifeq "$(findstring tsw,$(GRADE))" ""
+	NONLOOP_SPECIFIED_PROGS = $(NONLOOP_SPECIFIED_PROGS3)
+else
+	NONLOOP_SPECIFIED_PROGS = 
+endif
 
 SIMPLE_LOOP_PROGS = \
 	loopcheck \
@@ -80,7 +106,7 @@ MINIMAL_LOOP_PROGS =
 
 ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) \
 			$(BROKEN_FOR_PROFDEEP_NONLOOP_PROGS) \
-			$(LLDS_ONLY_NONLOOP_PROGS) \
+			$(NONLOOP_SPECIFIED_PROGS) \
 			$(SIMPLE_LOOP_PROGS)
 
 ALL_MINIMAL_PROGS = $(MINIMAL_NONLOOP_PROGS)
