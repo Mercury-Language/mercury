@@ -1275,29 +1275,34 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
     io::di, io::uo) is det.
 
 output_foreign_header_include_lines(Decls, !IO) :-
-    list__foldl(output_foreign_header_include_line, Decls, !IO).
+    list__foldl2(output_foreign_header_include_line, Decls, set__init, _, !IO).
 
 :- pred output_foreign_header_include_line(foreign_decl_code::in,
-    io::di, io::uo) is det.
+    set(string)::in, set(string)::out, io::di, io::uo) is det.
 
-output_foreign_header_include_line(Decl, !IO) :-
+output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
     Decl = foreign_decl_code(Lang, _IsLocal, Code, Context),
     ( Lang = c ->
-        globals__io_lookup_bool_option(auto_comments, PrintComments, !IO),
-        (
-            PrintComments = yes,
-            io__write_string("/* ", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string(" pragma foreign_decl_code( ", !IO),
-            io__write(Lang, !IO),
-            io__write_string(" */\n", !IO)
+        ( set__member(Code, !.AlreadyDone) ->
+            true
         ;
-            PrintComments = no
-        ),
-        output_set_line_num(Context, !IO),
-        io__write_string(Code, !IO),
-        io__write_string("\n", !IO),
-        output_reset_line_num(!IO)
+            set__insert(!.AlreadyDone, Code, !:AlreadyDone),
+            globals__io_lookup_bool_option(auto_comments, PrintComments, !IO),
+            (
+                PrintComments = yes,
+                io__write_string("/* ", !IO),
+                prog_out__write_context(Context, !IO),
+                io__write_string(" pragma foreign_decl_code( ", !IO),
+                io__write(Lang, !IO),
+                io__write_string(" */\n", !IO)
+            ;
+                PrintComments = no
+            ),
+            output_set_line_num(Context, !IO),
+            io__write_string(Code, !IO),
+            io__write_string("\n", !IO),
+            output_reset_line_num(!IO)
+        )
     ;
         error("output_user_foreign_code: unexpected: " ++
             "foreign code other than C")
