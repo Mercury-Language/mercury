@@ -646,16 +646,18 @@
 :- pred ml_gen_info_new_const(const_seq::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-    % Set the `const' sequence number corresponding to a given HLDS variable.
+    % Set the `const' variable name corresponding to the given HLDS variable.
     %
-:- pred ml_gen_info_set_const_num(prog_var::in, const_seq::in,
+:- pred ml_gen_info_set_const_var_name(prog_var::in, mlds__var_name::in,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Lookup the `const' sequence number corresponding to a given HLDS
     % variable.
     %
-:- pred ml_gen_info_lookup_const_num(ml_gen_info::in, prog_var::in,
-    const_seq::out) is det.
+:- pred ml_gen_info_lookup_const_var_name(ml_gen_info::in, prog_var::in,
+    mlds__var_name::out) is det.
+:- pred ml_gen_info_search_const_var_name(ml_gen_info::in, prog_var::in,
+    mlds__var_name::out) is semidet.
 
     % A success continuation specifies the (rval for the variable holding
     % the address of the) function that a nondet procedure should call
@@ -2379,7 +2381,7 @@ maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
                 cond_var            :: counter,
                 conv_var            :: counter,
                 const_num           :: counter,
-                const_num_map       :: map(prog_var, const_seq),
+                const_var_name_map  :: map(prog_var, mlds__var_name),
                 success_cont_stack  :: stack(success_cont),
                                     % A partial mapping from vars to lvals,
                                     % used to override the normal lval
@@ -2512,12 +2514,15 @@ ml_gen_info_new_const(ConstVar, !Info) :-
     counter__allocate(ConstVar, Counter0, Counter),
     !:Info = !.Info ^ const_num := Counter.
 
-ml_gen_info_set_const_num(Var, ConstVar, !Info) :-
-    !:Info = !.Info ^ const_num_map :=
-        map__set(!.Info ^ const_num_map, Var, ConstVar).
+ml_gen_info_set_const_var_name(Var, Name, !Info) :-
+    !:Info = !.Info ^ const_var_name_map :=
+        map__set(!.Info ^ const_var_name_map, Var, Name).
 
-ml_gen_info_lookup_const_num(Info, Var, ConstVar) :-
-    ConstVar = map__lookup(Info ^ const_num_map, Var).
+ml_gen_info_lookup_const_var_name(Info, Var, Name) :-
+    Name = map__lookup(Info ^ const_var_name_map, Var).
+
+ml_gen_info_search_const_var_name(Info, Var, Name) :-
+    Name = map__search(Info ^ const_var_name_map, Var).
 
 ml_gen_info_push_success_cont(SuccCont, !Info) :-
     !:Info = !.Info ^ success_cont_stack :=

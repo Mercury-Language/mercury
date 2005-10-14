@@ -1608,7 +1608,7 @@ get_pti_from_arg_types(_::in, _::in) = (42::out) :-
     get_pti_from_arg_types(ArgTypes::in, Index::in) = (ArgTypeInfo::out),
     [will_not_call_mercury, promise_pure],
 "
-    // XXX Should this be something else?
+    // XXX This should be something else.
     TypeInfo_for_T = null;
 
     ArgTypeInfo = ArgTypes[Index];
@@ -1616,7 +1616,11 @@ get_pti_from_arg_types(_::in, _::in) = (42::out) :-
 
 :- pragma foreign_proc("C#",
     get_pti_from_arg_types(ArgTypes::in, Index::in) = (ArgTypeInfo::out),
-    [promise_pure], "
+    [promise_pure],
+"
+    // XXX This should be something else.
+    // TypeInfo_for_T
+
     ArgTypeInfo = ArgTypes[Index];
 ").
 
@@ -1631,6 +1635,9 @@ get_pti_from_type_info(_::in, _::in) = (42::out) :-
     get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out),
     [promise_pure],
 "
+    // XXX This should be something else.
+    TypeInfo_for_T = NULL;
+
     PTI = TypeInfo[Index];
 ").
 
@@ -2202,6 +2209,9 @@ type_ctor_arity(_) = _ :-
     type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
+    // XXX This should be something else.
+    // TypeInfo_for_P
+
     UnifyPred = TypeCtorInfo[
         (int) type_ctor_info_field_nums.type_ctor_unify_pred];
 ").
@@ -2209,7 +2219,12 @@ type_ctor_arity(_) = _ :-
     type_ctor_unify_pred(TypeCtorInfo::in) = (UnifyPred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
+    MR_TypeCtorInfo tci;
+
+    /* XXX This should be something else. */
+    TypeInfo_for_P = 0;
+
+    tci = (MR_TypeCtorInfo) TypeCtorInfo;
     UnifyPred = (MR_Integer) tci->MR_type_ctor_unify_pred;
 ").
 type_ctor_unify_pred(_) = "dummy value" :-
@@ -2222,6 +2237,9 @@ type_ctor_unify_pred(_) = "dummy value" :-
     type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
+    // XXX This should be something else.
+    TypeInfo_for_P = NULL;
+
     UnifyPred = TypeCtorInfo[
         (int) type_ctor_info_field_nums.type_ctor_compare_pred];
 ").
@@ -2230,7 +2248,12 @@ type_ctor_unify_pred(_) = "dummy value" :-
     type_ctor_compare_pred(TypeCtorInfo::in) = (UnifyPred::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
+    MR_TypeCtorInfo tci;
+
+    /* XXX This should be something else. */
+    TypeInfo_for_P = 0;
+
+    tci = (MR_TypeCtorInfo) TypeCtorInfo;
     UnifyPred = (MR_Integer) tci->MR_type_ctor_compare_pred;
 ").
 

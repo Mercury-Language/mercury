@@ -344,26 +344,31 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, GoalInfo, PragmaImpl, Code, !CI) :-
     (
         PragmaImpl = ordinary(C_Code, Context),
+        CanOptAwayUnnamedArgs = yes,
         pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
             PredId, ProcId, Args, ExtraArgs, C_Code, Context, GoalInfo,
-            Code, !CI)
+            CanOptAwayUnnamedArgs, Code, !CI)
     ;
         PragmaImpl = nondet(Fields, FieldsContext, First, FirstContext,
             Later, LaterContext, Treat, Shared, SharedContext),
         require(unify(ExtraArgs, []),
             "generate_pragma_c_code: extra args nondet"),
+        CanOptAwayUnnamedArgs = yes,
         pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
             PredId, ProcId, Args, Fields, FieldsContext,
             First, FirstContext, Later, LaterContext,
-            Treat, Shared, SharedContext, Code, !CI)
+            Treat, Shared, SharedContext, CanOptAwayUnnamedArgs, Code, !CI)
     ;
         PragmaImpl = import(Name, HandleReturn, Vars, Context),
         require(unify(ExtraArgs, []),
             "generate_pragma_c_code: extra args import"),
         C_Code = HandleReturn ++ " " ++ Name ++ "(" ++ Vars ++ ");",
+
+        % The imported function was generated with all arguments present.
+        CanOptAwayUnnamedArgs = no,
         pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
             PredId, ProcId, Args, ExtraArgs, C_Code, Context, GoalInfo,
-            Code, !CI)
+            CanOptAwayUnnamedArgs, Code, !CI)
     ).
 
 %---------------------------------------------------------------------------%
@@ -371,18 +376,18 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 :- pred pragma_c_gen__ordinary_pragma_c_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    maybe(prog_context)::in, hlds_goal_info::in, code_tree::out,
+    maybe(prog_context)::in, hlds_goal_info::in, bool::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
 pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
-        Args, ExtraArgs, C_Code, Context, GoalInfo, Code, !CI) :-
+        Args, ExtraArgs, C_Code, Context, GoalInfo, CanOptAwayUnnamedArgs, 
+        Code, !CI) :-
     % Extract the attributes.
     MayCallMercury = may_call_mercury(Attributes),
     ThreadSafe = thread_safe(Attributes),
-    %
+
     % The maybe_thread_safe attribute should have been changed
     % to the real value by now.
-    %
     (
         ThreadSafe = thread_safe
     ;
@@ -405,16 +410,13 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     set__init(DeadVars0),
     find_dead_input_vars(InCArgs, PostDeaths, DeadVars0, DeadVars),
 
-    %
-    % Generate code to <save live variables on stack>
-    %
+    % Generate code to <save live variables on stack>.
     (
         MayCallMercury = will_not_call_mercury,
         SaveVarsCode = empty
     ;
         MayCallMercury = may_call_mercury,
-        % The C code might call back Mercury code
-        % which clobbers the succip.
+        % The C code might call back Mercury code which clobbers the succip.
         code_info__succip_is_used(!CI),
 
         % The C code might call back Mercury code which clobbers the
@@ -425,42 +427,32 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         code_info__save_variables(OutVarsSet, _, SaveVarsCode, !CI)
     ),
 
-    %
     % Generate the values of input variables.
     % (NB we need to be careful that the rvals generated here
     % remain valid below.)
-    %
-    get_pragma_input_vars(InCArgs, InputDescs, InputVarsCode, !CI),
+    get_pragma_input_vars(InCArgs, InputDescs, CanOptAwayUnnamedArgs,
+        InputVarsCode, !CI),
 
-    %
     % We cannot kill the forward dead input arguments until we have
     % finished generating the code producing the input variables.
     % (The forward dead variables will be dead after the pragma_c_code,
     % but are live during its input phase.)
     code_info__make_vars_forward_dead(DeadVars, !CI),
 
-    %
-    % Generate <declaration of one local variable for each arg>
-    %
-    make_pragma_decls(CArgs, ModuleInfo, Decls),
+    % Generate <declaration of one local variable for each arg>.
+    make_pragma_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
 
-    %
     % Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
-    % and #undef MR_PROC_LABEL
-    %
+    % and #undef MR_PROC_LABEL.
     code_info__get_pred_id(!.CI, CallerPredId),
     code_info__get_proc_id(!.CI, CallerProcId),
     make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
         ProcLabelHashDefine, ProcLabelHashUndef),
 
-    %
     % <assignment of input values from registers to local vars>
-    %
     InputComp = pragma_c_inputs(InputDescs),
 
-    %
     % MR_save_registers(); /* see notes (1) and (2) above */
-    %
     (
         MayCallMercury = will_not_call_mercury,
         SaveRegsComp = pragma_c_raw_code("", cannot_branch_away,
@@ -549,7 +541,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     ;
         MayCallMercury = may_call_mercury,
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-        (instmap_delta_is_reachable(InstMapDelta) ->
+        ( instmap_delta_is_reachable(InstMapDelta) ->
             OkToDelete = no
         ;
             OkToDelete = yes
@@ -559,7 +551,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 
     % <assignment of the output values from local variables to registers>
     pragma_acquire_regs(OutCArgs, Regs, !CI),
-    place_pragma_output_args_in_regs(OutCArgs, Regs, OutputDescs, !CI),
+    place_pragma_output_args_in_regs(OutCArgs, Regs, CanOptAwayUnnamedArgs,
+        OutputDescs, !CI),
     OutputComp = pragma_c_outputs(OutputDescs),
 
     % Join all the components of the pragma_c together.
@@ -643,13 +636,13 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
     string::in, maybe(prog_context)::in,
     string::in, maybe(prog_context)::in,
     string::in, maybe(prog_context)::in, pragma_shared_code_treatment::in,
-    string::in, maybe(prog_context)::in, code_tree::out,
+    string::in, maybe(prog_context)::in, bool::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
 pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         Args, _Fields, _FieldsContext,
-        First, FirstContext, Later, LaterContext, Treat, Shared,
-        SharedContext, Code, !CI) :-
+        First, FirstContext, Later, LaterContext, Treat, Shared, SharedContext,
+        CanOptAwayUnnamedArgs, Code, !CI) :-
     require(unify(CodeModel, model_non),
         "inappropriate code model for nondet pragma C code"),
     % Extract the may_call_mercury attribute.
@@ -672,11 +665,13 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     make_c_arg_list(Args, ArgInfos, CArgs),
     pragma_select_in_args(CArgs, InCArgs),
     pragma_select_out_args(CArgs, OutCArgs),
-    make_pragma_decls(CArgs, ModuleInfo, Decls),
-    make_pragma_decls(OutCArgs, ModuleInfo, OutDecls),
+    make_pragma_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
+    make_pragma_decls(OutCArgs, ModuleInfo, CanOptAwayUnnamedArgs, OutDecls),
 
-    input_descs_from_arg_info(!.CI, InCArgs, InputDescs),
-    output_descs_from_arg_info(!.CI, OutCArgs, OutputDescs),
+    input_descs_from_arg_info(!.CI, InCArgs, CanOptAwayUnnamedArgs,
+        InputDescs),
+    output_descs_from_arg_info(!.CI, OutCArgs, CanOptAwayUnnamedArgs,
+        OutputDescs),
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
@@ -1095,7 +1090,7 @@ make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode)
     ;
         MaybeNameMode = no,
-        error("make_extra_c_arg_list_seq: no name")
+        unexpected(this_file, "make_extra_c_arg_list_seq: no name")
     ),
     NextReg = LastReg + 1,
     % Extra args are always input.
@@ -1148,9 +1143,12 @@ pragma_select_in_args([Arg | Rest], In) :-
 
 %---------------------------------------------------------------------------%
 
-    % var_is_not_singleton determines whether or not a given pragma_c variable
-    % is singleton (i.e. starts with an underscore) or anonymous (in which case
-    % it's singleton anyway, it just doesn't necessarily have a singleton name).
+    % var_should_be_passed determines whether or not a variable with the given
+    % user-defined name (if any) should be passed to the foreign_proc.
+    % 
+    % Named non-singleton variables are always passed. Unnamed or singleton
+    % variables are ignored if we are allowed to optimize them away, but we
+    % aren't, we replace their name with UnnamedArgN.
     %
     % Singleton vars should be ignored when generating the declarations for
     % pragma_c arguments because:
@@ -1158,10 +1156,25 @@ pragma_select_in_args([Arg | Rest], In) :-
     %   - they should not appear in the C code
     %   - they could clash with the system name space
     %
-:- pred var_is_not_singleton(maybe(string)::in, string::out) is semidet.
+:- func var_should_be_passed(bool, prog_var, maybe(string)) = maybe(string).
 
-var_is_not_singleton(yes(Name), Name) :-
-    \+ string__first_char(Name, '_', _).
+var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeName)
+        = MaybeUseName :-
+    (
+        MaybeName = yes(Name),
+        not string__first_char(Name, '_', _)
+    ->
+        MaybeUseName = yes(Name)
+    ;
+        (
+            CanOptAwayUnnamedArgs = yes,
+            MaybeUseName = no
+        ;
+            CanOptAwayUnnamedArgs = no,
+            UseName = "UnnamedArg" ++ int_to_string(term__var_to_int(Var)),
+            MaybeUseName = yes(UseName)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1169,20 +1182,21 @@ var_is_not_singleton(yes(Name), Name) :-
     % data structure in the LLDS. It is essentially a list of pairs of type and
     % variable name, so that declarations of the form "Type Name;" can be made.
     %
-:- pred make_pragma_decls(list(c_arg)::in, module_info::in,
+:- pred make_pragma_decls(list(c_arg)::in, module_info::in, bool::in,
     list(pragma_c_decl)::out) is det.
 
-make_pragma_decls([], _, []).
-make_pragma_decls([Arg | Args], Module, Decls) :-
-    make_pragma_decls(Args, Module, DeclsTail),
-    Arg = c_arg(_Var, ArgName, OrigType, _ArgInfo),
-    ( var_is_not_singleton(ArgName, Name) ->
+make_pragma_decls([], _, _, []).
+make_pragma_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
+    make_pragma_decls(Args, Module, CanOptAwayUnnamedArgs, DeclsTail),
+    Arg = c_arg(Var, MaybeArgName, OrigType, _ArgInfo),
+    MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
+    (
+        MaybeName = yes(Name),
         OrigTypeString = foreign__to_type_string(c, Module, OrigType),
         Decl = pragma_c_arg_decl(OrigType, OrigTypeString, Name),
         Decls = [Decl | DeclsTail]
     ;
-        % if the variable doesn't occur in the ArgNames list,
-        % it can't be used, so we just ignore it
+        MaybeName = no,
         Decls = DeclsTail
     ).
 
@@ -1208,12 +1222,15 @@ find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
     % variables, and the corresponding rvals assigned to those (C) variables.
     %
 :- pred get_pragma_input_vars(list(c_arg)::in, list(pragma_c_input)::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    bool::in, code_tree::out, code_info::in, code_info::out) is det.
 
-get_pragma_input_vars([], [], empty, !CI).
-get_pragma_input_vars([Arg | Args], Inputs, Code, !CI) :-
-    Arg = c_arg(Var, MaybeName, OrigType, _ArgInfo),
-    ( var_is_not_singleton(MaybeName, Name) ->
+get_pragma_input_vars([], [], _, empty, !CI).
+get_pragma_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
+        !CI) :-
+    Arg = c_arg(Var, MaybeArgName, OrigType, _ArgInfo),
+    MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
+    (
+        MaybeName = yes(Name),
         VarType = variable_type(!.CI, Var),
         code_info__produce_variable(Var, FirstCode, Rval, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
@@ -1225,13 +1242,14 @@ get_pragma_input_vars([Arg | Args], Inputs, Code, !CI) :-
         ),
         Input = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval,
             MaybeForeign),
-        get_pragma_input_vars(Args, Inputs1, RestCode, !CI),
+        get_pragma_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs, RestCode,
+            !CI),
         Inputs = [Input | Inputs1],
         Code = tree(FirstCode, RestCode)
     ;
-        % If the variable doesn't occur in the ArgNames list, it can't be used,
-        % so we just ignore it.
-        get_pragma_input_vars(Args, Inputs, Code, !CI)
+        MaybeName = no,
+        % Just ignore the argument.
+        get_pragma_input_vars(Args, Inputs, CanOptAwayUnnamedArgs, Code, !CI)
     ).
 
 :- func get_maybe_foreign_type_info(code_info, (type)) =
@@ -1252,8 +1270,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
             MaybeForeignTypeInfo = yes(pragma_c_foreign_type(Name, Assertions))
         ;
             MaybeC = no,
-            % This is ensured by check_foreign_type in
-            % make_hlds.
+            % This is ensured by check_foreign_type in make_hlds.
             unexpected(this_file,
                 "get_maybe_foreign_type_name: no c foreign type")
         )
@@ -1282,17 +1299,23 @@ pragma_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
     % hold the output value.
     %
 :- pred place_pragma_output_args_in_regs(list(c_arg)::in, list(lval)::in,
-    list(pragma_c_output)::out, code_info::in, code_info::out) is det.
+    bool::in, list(pragma_c_output)::out, code_info::in, code_info::out)
+    is det.
 
-place_pragma_output_args_in_regs([], [], [], !CI).
-place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs, !CI) :-
-    place_pragma_output_args_in_regs(Args, Regs, OutputsTail, !CI),
-    Arg = c_arg(Var, MaybeName, OrigType, _ArgInfo),
+place_pragma_output_args_in_regs([], [], _, [], !CI).
+place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs],
+        CanOptAwayUnnamedArgs, Outputs, !CI) :-
+    place_pragma_output_args_in_regs(Args, Regs, CanOptAwayUnnamedArgs,
+        OutputsTail, !CI),
+    Arg = c_arg(Var, MaybeArgName, OrigType, _ArgInfo),
     code_info__release_reg(Reg, !CI),
     ( code_info__variable_is_forward_live(!.CI, Var) ->
         code_info__set_var_location(Var, Reg, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
-        ( var_is_not_singleton(MaybeName, Name) ->
+        MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var,
+            MaybeArgName),
+        (
+            MaybeName = yes(Name),
             code_info__get_module_info(!.CI, ModuleInfo),
             VarType = variable_type(!.CI, Var),
             ( is_dummy_argument_type(ModuleInfo, VarType) ->
@@ -1304,14 +1327,15 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs, !CI) :-
                 Name, MaybeForeign),
             Outputs = [PragmaCOutput | OutputsTail]
         ;
+            MaybeName = no,
             Outputs = OutputsTail
         )
     ;
         Outputs = OutputsTail
     ).
-place_pragma_output_args_in_regs([_|_], [], _, !CI) :-
+place_pragma_output_args_in_regs([_ | _], [], _, _, !CI) :-
     unexpected(this_file, "place_pragma_output_args_in_regs: length mismatch").
-place_pragma_output_args_in_regs([], [_|_], _, !CI) :-
+place_pragma_output_args_in_regs([], [_ | _], _, _, !CI) :-
     unexpected(this_file, "place_pragma_output_args_in_regs: length mismatch").
 
 %---------------------------------------------------------------------------%
@@ -1320,13 +1344,15 @@ place_pragma_output_args_in_regs([], [_|_], _, !CI) :-
     % are pairs of rvals and (C) variables which receive the input value.
     %
 :- pred input_descs_from_arg_info(code_info::in, list(c_arg)::in,
-    list(pragma_c_input)::out) is det.
+    bool::in, list(pragma_c_input)::out) is det.
 
-input_descs_from_arg_info(_, [], []).
-input_descs_from_arg_info(CI, [Arg | Args], Inputs) :-
-    input_descs_from_arg_info(CI, Args, InputsTail),
-    Arg = c_arg(Var, MaybeName, OrigType, ArgInfo),
-    ( var_is_not_singleton(MaybeName, Name) ->
+input_descs_from_arg_info(_, [], _, []).
+input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
+    input_descs_from_arg_info(CI, Args, CanOptAwayUnnamedArgs, InputsTail),
+    Arg = c_arg(Var, MaybeArgName, OrigType, ArgInfo),
+    MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
+    (
+        MaybeName = yes(Name),
         VarType = variable_type(CI, Var),
         ArgInfo = arg_info(N, _),
         Reg = reg(r, N),
@@ -1341,6 +1367,7 @@ input_descs_from_arg_info(CI, [Arg | Args], Inputs) :-
             MaybeForeign),
         Inputs = [Input | InputsTail]
     ;
+        MaybeName = no,
         Inputs = InputsTail
     ).
 
@@ -1351,13 +1378,15 @@ input_descs_from_arg_info(CI, [Arg | Args], Inputs) :-
     % output value.
     %
 :- pred output_descs_from_arg_info(code_info::in, list(c_arg)::in,
-    list(pragma_c_output)::out) is det.
+    bool::in, list(pragma_c_output)::out) is det.
 
-output_descs_from_arg_info(_, [], []).
-output_descs_from_arg_info(CI, [Arg | Args], Outputs) :-
-    output_descs_from_arg_info(CI, Args, OutputsTail),
-    Arg = c_arg(Var, MaybeName, OrigType, ArgInfo),
-    ( var_is_not_singleton(MaybeName, Name) ->
+output_descs_from_arg_info(_, [], _, []).
+output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
+    output_descs_from_arg_info(CI, Args, CanOptAwayUnnamedArgs, OutputsTail),
+    Arg = c_arg(Var, MaybeArgName, OrigType, ArgInfo),
+    MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
+    (
+        MaybeName = yes(Name),
         VarType = variable_type(CI, Var),
         ArgInfo = arg_info(N, _),
         Reg = reg(r, N),
@@ -1372,6 +1401,7 @@ output_descs_from_arg_info(CI, [Arg | Args], Outputs) :-
             MaybeForeign),
         Outputs = [Output | OutputsTail]
     ;
+        MaybeName = no,
         Outputs = OutputsTail
     ).
 

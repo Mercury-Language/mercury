@@ -1465,33 +1465,44 @@ process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0,
     % Insert the type_info vars into the argname map, so that the foreign_proc
     % can refer to the type_info variable for type T as `TypeInfo_for_T'.
     Goal0 = foreign_proc(Attributes, PredId, ProcId, Args0, ProcExtraArgs,
-        PragmaCode0),
+        Impl0),
     ArgVars0 = list__map(foreign_arg_var, Args0),
     process_call(PredId, ArgVars0, GoalInfo0, GoalInfo, ExtraVars, ExtraGoals,
         !Info),
-    process_foreign_proc_args(PredInfo, PragmaCode0, ExtraVars, ExtraArgs),
+    ( Impl0 = import(_, _, _, _) ->
+        % The reference manual guarantees a one-to-one correspondence between
+        % the arguments of the predicate (as augmented by with type_info and/or
+        % typeclass_info arguments by polymorphism.m) and the arguments of the
+        % imported function.
+        CanOptAwayUnnamed = no
+    ;
+        CanOptAwayUnnamed = yes
+    ),
+    process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl0, ExtraVars,
+        ExtraArgs),
     Args = ExtraArgs ++ Args0,
 
     % Add the type info arguments to the list of variables
     % to call for a pragma import.
-    ( PragmaCode0 = import(Name, HandleReturn, Variables0, MaybeContext) ->
+    ( Impl0 = import(Name, HandleReturn, Variables0, MaybeContext) ->
         Variables = type_info_vars(ModuleInfo, ExtraArgs, Variables0),
-        PragmaCode = import(Name, HandleReturn, Variables, MaybeContext)
+        Impl = import(Name, HandleReturn, Variables, MaybeContext)
     ;
-        PragmaCode = PragmaCode0
+        Impl = Impl0
     ),
 
     % Plug it all back together.
     CallExpr = foreign_proc(Attributes, PredId, ProcId, Args, ProcExtraArgs,
-        PragmaCode),
+        Impl),
     Call = CallExpr - GoalInfo,
     list__append(ExtraGoals, [Call], GoalList),
     conj_list_to_goal(GoalList, GoalInfo0, Goal).
 
-:- pred process_foreign_proc_args(pred_info::in, pragma_foreign_code_impl::in,
-    list(prog_var)::in, list(foreign_arg)::out) is det.
+:- pred process_foreign_proc_args(pred_info::in, bool::in,
+    pragma_foreign_code_impl::in, list(prog_var)::in, list(foreign_arg)::out)
+    is det.
 
-process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
+process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars, Args) :-
     pred_info_arg_types(PredInfo, PredTypeVarSet, ExistQVars, PredArgTypes),
 
     % Find out which variables are constrained (so that we don't add
@@ -1517,19 +1528,19 @@ process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
     in_mode(In),
     out_mode(Out),
 
-    list__map(foreign_proc_add_typeclass_info(Out, Impl, PredTypeVarSet),
-        ExistCs, ExistTypeClassArgInfos),
-    list__map(foreign_proc_add_typeclass_info(In, Impl, PredTypeVarSet),
-        UnivCs, UnivTypeClassArgInfos),
+    list__map(foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Out, Impl,
+        PredTypeVarSet), ExistCs, ExistTypeClassArgInfos),
+    list__map(foreign_proc_add_typeclass_info(CanOptAwayUnnamed, In, Impl,
+        PredTypeVarSet), UnivCs, UnivTypeClassArgInfos),
     TypeClassArgInfos = UnivTypeClassArgInfos ++ ExistTypeClassArgInfos,
 
     list__filter((pred(X::in) is semidet :- list__member(X, ExistQVars)),
         PredTypeVars, ExistUnconstrainedVars, UnivUnconstrainedVars),
 
-    list__map(foreign_proc_add_typeinfo(Out, Impl, PredTypeVarSet),
-        ExistUnconstrainedVars, ExistTypeArgInfos),
-    list__map(foreign_proc_add_typeinfo(In, Impl, PredTypeVarSet),
-        UnivUnconstrainedVars, UnivTypeArgInfos),
+    list__map(foreign_proc_add_typeinfo(CanOptAwayUnnamed, Out, Impl,
+        PredTypeVarSet), ExistUnconstrainedVars, ExistTypeArgInfos),
+    list__map(foreign_proc_add_typeinfo(CanOptAwayUnnamed, In, Impl,
+        PredTypeVarSet), UnivUnconstrainedVars, UnivTypeArgInfos),
     TypeInfoArgInfos = UnivTypeArgInfos ++ ExistTypeArgInfos,
 
     ArgInfos = TypeInfoArgInfos ++ TypeClassArgInfos,
@@ -1544,11 +1555,11 @@ process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 
     make_foreign_args(Vars, ArgInfos, OrigArgTypes, Args).
 
-:- pred foreign_proc_add_typeclass_info((mode)::in,
+:- pred foreign_proc_add_typeclass_info(bool::in, (mode)::in,
     pragma_foreign_code_impl::in, tvarset::in, prog_constraint::in,
     maybe(pair(string, mode))::out) is det.
 
-foreign_proc_add_typeclass_info(Mode, Impl, TypeVarSet,
+foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
         Constraint, MaybeArgName) :-
     Constraint = constraint(Name0, Types),
     mdbcomp__prim_data__sym_name_to_string(Name0, "__", Name),
@@ -1558,21 +1569,29 @@ foreign_proc_add_typeclass_info(Mode, Impl, TypeVarSet,
         ConstraintVarName),
     % If the variable name corresponding to the typeclass_info isn't mentioned
     % in the C code fragment, don't pass the variable to the C code at all.
-    ( foreign_code_does_not_use_variable(Impl, ConstraintVarName) ->
+    (
+        CanOptAwayUnnamed = yes,
+        foreign_code_does_not_use_variable(Impl, ConstraintVarName)
+    ->
         MaybeArgName = no
     ;
         MaybeArgName = yes(ConstraintVarName - Mode)
     ).
 
-:- pred foreign_proc_add_typeinfo((mode)::in, pragma_foreign_code_impl::in,
-    tvarset::in, tvar::in, maybe(pair(string, mode))::out) is det.
+:- pred foreign_proc_add_typeinfo(bool::in, (mode)::in,
+    pragma_foreign_code_impl::in, tvarset::in, tvar::in,
+    maybe(pair(string, mode))::out) is det.
 
-foreign_proc_add_typeinfo(Mode, Impl, TypeVarSet, TVar, MaybeArgName) :-
+foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
+        MaybeArgName) :-
     ( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
         string__append("TypeInfo_for_", TypeVarName, C_VarName),
         % If the variable name corresponding to the type_info isn't mentioned
         % in the C code fragment, don't pass the variable to the C code at all.
-        ( foreign_code_does_not_use_variable(Impl, C_VarName) ->
+        (
+            CanOptAwayUnnamed = yes,
+            foreign_code_does_not_use_variable(Impl, C_VarName)
+        ->
             MaybeArgName = no
         ;
             MaybeArgName = yes(C_VarName - Mode)
@@ -1589,16 +1608,7 @@ foreign_code_does_not_use_variable(Impl, VarName) :-
     % the compiler to abort when compiling declarative_execution.m in stage2,
     % but this is no longer the case.
     % semidet_fail,
-    (
-        Impl = ordinary(ForeignBody, _),
-        \+ string__sub_string_search(ForeignBody, VarName, _)
-    ;
-        Impl = nondet(FB1, _, FB2, _, FB3, _, _, FB4, _),
-        \+ string__sub_string_search(FB1, VarName, _),
-        \+ string__sub_string_search(FB2, VarName, _),
-        \+ string__sub_string_search(FB3, VarName, _),
-        \+ string__sub_string_search(FB4, VarName, _)
-    ).
+    \+ foreign_code_uses_variable(Impl, VarName).
 
 :- func underscore_and_tvar_name(tvarset, tvar) = string.
 

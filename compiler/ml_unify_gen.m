@@ -121,20 +121,34 @@
 %-----------------------------------------------------------------------------%
 
 ml_gen_unification(Unification, CodeModel, Context, [], Statements, !Info) :-
-    Unification = assign(Var1, Var2),
+    Unification = assign(TargetVar, SourceVar),
     require(unify(CodeModel, model_det), "ml_code_gen: assign not det"),
     (
         % Skip dummy argument types, since they will not have been declared.
-        ml_variable_type(!.Info, Var1, Type),
+        ml_variable_type(!.Info, TargetVar, Type),
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         is_dummy_argument_type(ModuleInfo, Type)
     ->
         Statements = []
     ;
-        ml_gen_var(!.Info, Var1, Var1Lval),
-        ml_gen_var(!.Info, Var2, Var2Lval),
-        Statement = ml_gen_assign(Var1Lval, lval(Var2Lval), Context),
+        ml_gen_var(!.Info, TargetVar, TargetLval),
+        ml_gen_var(!.Info, SourceVar, SourceLval),
+        Statement = ml_gen_assign(TargetLval, lval(SourceLval), Context),
         Statements = [Statement]
+    ),
+    ( ml_gen_info_search_const_var_name(!.Info, SourceVar, Name) ->
+        % If the source variable is a constant, so is the target after
+        % this assignment.
+        %
+        % The mark_static_terms assumes that if SourceVar is a constant term,
+        % then after this assignment unification TargetVar is a constant term
+        % also. Therefore later constant terms may contain TargetVar among
+        % their arguments. If we didn't copy the constant info here, the
+        % construction of the later constant could cause a code generator
+        % abort.
+        ml_gen_info_set_const_var_name(TargetVar, Name, !Info)
+    ;
+        true
     ).
 
 ml_gen_unification(Unification, CodeModel, Context, [], [Statement], !Info) :-
@@ -158,8 +172,7 @@ ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         !Info) :-
     Unification = construct(Var, ConsId, Args, ArgModes, HowToConstruct,
         _CellIsUnique, SubInfo),
-    require(unify(CodeModel, model_det),
-        "ml_code_gen: construct not det"),
+    require(unify(CodeModel, model_det), "ml_code_gen: construct not det"),
     (
         SubInfo = no_construct_sub_info
     ;
@@ -659,7 +672,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         UsesBaseClass = (MaybeCtorName = yes(_) -> no ; yes),
         ConstType = get_type_for_cons_id(MLDS_Type, UsesBaseClass,
             MaybeConsId, HighLevelData, Globals),
-        % XXX if the secondary tag is in a base class, then ideally its
+        % XXX If the secondary tag is in a base class, then ideally its
         % initializer should be wrapped in `init_struct([init_obj(X)])'
         % rather than just `init_obj(X)' -- the fact that we don't leads to
         % some warnings from GNU C about missing braces in initializers.
@@ -1067,21 +1080,17 @@ ml_gen_static_const_arg_list([], [_|_], _, !Info) :-
 
 ml_gen_static_const_name(Var, ConstName, !Info) :-
     ml_gen_info_new_const(SequenceNum, !Info),
-    ml_gen_info_set_const_num(Var, SequenceNum, !Info),
     ml_gen_info_get_varset(!.Info, VarSet),
     VarName = ml_gen_var_name(VarSet, Var),
     ml_format_static_const_name(!.Info, ml_var_name_to_string(VarName),
-        SequenceNum, ConstName).
+        SequenceNum, ConstName),
+    ml_gen_info_set_const_var_name(Var, ConstName, !Info).
 
 :- pred ml_lookup_static_const_name(ml_gen_info::in, prog_var::in,
     mlds__var_name::out) is det.
 
 ml_lookup_static_const_name(Info, Var, ConstName) :-
-    ml_gen_info_lookup_const_num(Info, Var, SequenceNum),
-    ml_gen_info_get_varset(Info, VarSet),
-    VarName = ml_gen_var_name(VarSet, Var),
-    ml_format_static_const_name(Info, ml_var_name_to_string(VarName),
-        SequenceNum, ConstName).
+    ml_gen_info_lookup_const_var_name(Info, Var, ConstName).
 
     % Generate an rval containing the address of the local static constant
     % for a given variable.

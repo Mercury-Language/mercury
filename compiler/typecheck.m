@@ -459,8 +459,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 Constraints, Status, Markers, !:Info),
             typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
             get_clause_list(ClausesRep1, Clauses1),
-            typecheck_clause_list(HeadVars, ArgTypes0,
-                Clauses1, Clauses, !Info, !IO),
+            typecheck_clause_list(HeadVars, ArgTypes0, Clauses1, Clauses,
+                !Info, !IO),
             % we need to perform a final pass of context reduction
             % at the end, before checking the typeclass constraints
             perform_context_reduction(OrigTypeAssignSet, !Info, !IO),
@@ -559,6 +559,10 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                     Origin1 = Origin0
                 ;
                     ExistQVars0 = [_ | _],
+                    list__foldl(
+                        check_existq_clause(!.Info, TypeVarSet, ExistQVars0),
+                        Clauses, !IO),
+
                     apply_var_renaming_to_var_list(ExistQVars0,
                         ExistTypeRenaming, ExistQVars1),
                     apply_variable_renaming_to_type_list(ExistTypeRenaming,
@@ -594,6 +598,30 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 :- pred ignore(T::in) is det.
 
 ignore(_).
+
+:- pred check_existq_clause(typecheck_info::in, tvarset::in, existq_tvars::in,
+    clause::in, io::di, io::uo) is det.
+
+check_existq_clause(Info, TypeVarSet, ExistQVars, Clause, !IO) :-
+    Goal = Clause ^ clause_body,
+    ( Goal = foreign_proc(_, _, _, _, _, Impl) - _ ->
+        list__foldl(check_mention_existq_var(Info, TypeVarSet, Impl),
+            ExistQVars, !IO)
+    ;
+        true
+    ).
+
+:- pred check_mention_existq_var(typecheck_info::in, tvarset::in,
+    pragma_foreign_code_impl::in, tvar::in, io::di, io::uo) is det.
+
+check_mention_existq_var(Info, TypeVarSet, Impl, TVar, !IO) :-
+    varset__lookup_name(TypeVarSet, TVar, Name),
+    VarName = "TypeInfo_for_" ++ Name,
+    ( foreign_code_uses_variable(Impl, VarName) ->
+        true
+    ;
+        report_missing_tvar_in_foreign_code(Info, VarName, !IO)
+    ).
 
     % Mark the predicate as a stub, and generate a clause of the form
     %   <p>(...) :-
@@ -1151,7 +1179,8 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info, !IO) :-
         % previous type assignment set (so that it can detect other errors
         % in the same clause).
         TypeAssignSet = [],
-        error("internal error in typechecker: no type-assignment")
+        unexpected(this_file,
+            "internal error in typechecker: no type-assignment")
     ;
         TypeAssignSet = [_SingleTypeAssign]
     ;

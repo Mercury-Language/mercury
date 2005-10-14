@@ -137,9 +137,9 @@ mdb> P
        X (arg 1)              	43
        N (arg 2)              	86
 mdb> continue -a
-     E40:    C21 CALL existential_type_classes.m:82 (from existential_type_classes.m:55)
+     E40:    C21 CALL existential_type_classes.m:86 (from existential_type_classes.m:55)
                          func existential_type_classes.my_univ/1-0 (det)
-     E41:    C21 EXIT existential_type_classes.m:82 (from existential_type_classes.m:55)
+     E41:    C21 EXIT existential_type_classes.m:86 (from existential_type_classes.m:55)
                          func existential_type_classes.my_univ/1-0 (det)
      E42:    C22 CALL existential_type_classes.m:76 (from existential_type_classes.m:55)
                          func existential_type_classes.my_univ_value/1-0 (det)
@@ -174,10 +174,10 @@ mdb> P
        X (arg 1)              	45
        N (arg 2)              	90
 mdb> 
-     E52:    C27 CALL existential_type_classes.m:82 (from existential_type_classes.m:56)
+     E52:    C27 CALL existential_type_classes.m:86 (from existential_type_classes.m:56)
                          func existential_type_classes.my_univ/1-0 (det)
 mdb> 
-     E53:    C27 EXIT existential_type_classes.m:82 (from existential_type_classes.m:56)
+     E53:    C27 EXIT existential_type_classes.m:86 (from existential_type_classes.m:56)
                          func existential_type_classes.my_univ/1-0 (det)
 mdb> 
      E54:    C28 CALL existential_type_classes.m:72 (from existential_type_classes.m:56)

@@ -40,9 +40,9 @@ SINGLEMODULE= \
 	any_to_ground_in_ite_cond \
 	assert_in_interface \
 	bad_finalise_decl \
-	bad_mutable \
 	bad_initialise_decl \
 	bad_instance \
+	bad_mutable \
 	bigtest \
 	bind_in_negated \
 	bind_var_errors \
@@ -75,6 +75,7 @@ SINGLEMODULE= \
 	errors \
 	errors1 \
 	errors2 \
+	exist_foreign_error \
 	exported_mode \
 	external \
 	ext_type \
@@ -86,8 +87,8 @@ SINGLEMODULE= \
 	freefree \
 	func_errors \
 	funcs_as_preds \
-	fundeps_vars \
 	fundeps_unbound_in_ctor \
+	fundeps_vars \
 	ho_default_func_1 \
 	ho_default_func_3 \
 	ho_type_mode_bug \
@@ -96,8 +97,8 @@ SINGLEMODULE= \
 	impure_method_impl \
 	inconsistent_instances \
 	inline_conflict \
-	inst_list_dup \
 	instance_bug \
+	inst_list_dup \
 	invalid_export_detism \
 	invalid_import_detism \
 	invalid_main \

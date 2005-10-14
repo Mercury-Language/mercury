@@ -77,6 +77,9 @@
 :- pred report_unsatisfiable_constraints(type_assign_set::in,
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
+:- pred report_missing_tvar_in_foreign_code(typecheck_info::in, string::in,
+	io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Write out the inferred `pred' or `func' declarations
@@ -1236,6 +1239,20 @@ write_constraints(Context, TypeAssign, !IO) :-
 	io__write_list(UnprovenProgConstraints, "', `",
 		mercury_output_constraint(VarSet, AppendVarnums), !IO),
 	io__write_string("'.\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+report_missing_tvar_in_foreign_code(Info, VarName, !IO) :-
+	typecheck_info_get_module_info(Info, ModuleInfo),
+	typecheck_info_get_context(Info, Context),
+	typecheck_info_get_predid(Info, PredId),
+	Pieces = [words("The foreign language code for") |
+		describe_one_pred_name(ModuleInfo, should_module_qualify,
+			PredId)] ++
+		[words("should define the variable"),
+		fixed(add_quotes(VarName)), suffix(".")],
+	write_error_pieces(Context, 0, Pieces, !IO),
+	io__set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 

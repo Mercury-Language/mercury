@@ -272,12 +272,24 @@ store__new(S) :-
 
 :- some [S] pred store__do_init(store(S)::uo) is det.
 
-:- pragma foreign_proc("C", store__do_init(_S0::uo),
-    [will_not_call_mercury, promise_pure], "").
-:- pragma foreign_proc("C#", store__do_init(_S0::uo),
-    [will_not_call_mercury, promise_pure], "").
-:- pragma foreign_proc("Java", store__do_init(_S0::uo),
-    [will_not_call_mercury, promise_pure], "").
+:- pragma foreign_proc("C",
+    store__do_init(_S0::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    /* TypeInfo_for_S */
+").
+:- pragma foreign_proc("C#",
+    store__do_init(_S0::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    // TypeInfo_for_S
+").
+:- pragma foreign_proc("Java",
+    store__do_init(_S0::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    // TypeInfo_for_S
+").
 
 % Note -- the syntax for the operations on stores
 % might be nicer if we used some new operators, e.g.

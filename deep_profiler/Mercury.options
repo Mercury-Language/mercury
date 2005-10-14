@@ -22,22 +22,19 @@
 #
 # XXX These flags should be deleted when the problem is fixed.
 
-
-# We are temporarily compiling all these modules at -O0
-# because of a bug in rotd-2005-10-05 and later.  The bug
-# triggers an assertion failure in the ll code generator
-# when compiling with -O5 --intermodule-optimization --opt-space.
-# This workaround can be removed when the bug is fixed.
-MCFLAGS-array_util =	--no-optimize-duplicate-calls -O0
-MCFLAGS-callgraph = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-canonical =	--no-optimize-duplicate-calls -O0
+MCFLAGS-array_util =	--no-optimize-duplicate-calls
+MCFLAGS-callgraph = 	--no-optimize-duplicate-calls
+MCFLAGS-canonical =	--no-optimize-duplicate-calls
+# Compiling at -O0 is a due to an assertion failure in
+# rotd-2005-10-05.  It can be removed when that is fixed.
+# Also for exclude.m.
 MCFLAGS-cliques = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-dense_bitset = 	--no-optimize-duplicate-calls -O0
+MCFLAGS-dense_bitset = 	--no-optimize-duplicate-calls 
 MCFLAGS-exclude = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-html_format = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-measurements = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-profile = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-query = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-read_profile = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-startup = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-top_procs = 	--no-optimize-duplicate-calls -O0
+MCFLAGS-html_format = 	--no-optimize-duplicate-calls
+MCFLAGS-measurements = 	--no-optimize-duplicate-calls
+MCFLAGS-profile = 	--no-optimize-duplicate-calls
+MCFLAGS-query = 	--no-optimize-duplicate-calls
+MCFLAGS-read_profile = 	--no-optimize-duplicate-calls
+MCFLAGS-startup = 	--no-optimize-duplicate-calls
+MCFLAGS-top_procs = 	--no-optimize-duplicate-calls

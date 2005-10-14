@@ -73,13 +73,20 @@ call_my_univ_value(Univ) = my_univ_value(Univ).
 
 my_exist_t = 43.
 
-:- pragma c_code(my_univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
+:- pragma c_code(
+	my_univ_value(Univ::in) = (Value::out),
+	[will_not_call_mercury],
+"
+	/* mention TypeInfo_for_T */
 	TypeClassInfo_for_existential_type_classes__fooable_T =
 		MR_field(MR_UNIV_TAG, Univ, 0);
 	Value = MR_field(MR_UNIV_TAG, Univ, 1);
 ").
 
-:- pragma c_code(my_univ(Value::in) = (Univ::out), will_not_call_mercury, "
+:- pragma c_code(
+	my_univ(Value::in) = (Univ::out),
+	[will_not_call_mercury],
+"
 	MR_tag_incr_hp(Univ, MR_UNIV_TAG, 2);
 	MR_field(MR_UNIV_TAG, Univ, 0) =
 		(MR_Word) TypeClassInfo_for_existential_type_classes__fooable_T;

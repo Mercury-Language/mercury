@@ -1155,9 +1155,8 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
         VeryVerbose = no
     ),
 
-        % Lookup the pred declaration in the predicate table. (If it's not
-        % there, print an error message and insert a dummy declaration
-        % for the predicate.)
+    % Lookup the pred declaration in the predicate table. (If it's not there,
+    % print an error message and insert a dummy declaration for the predicate.)
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     (
         predicate_table_search_pf_sym_arity(PredicateTable0,
