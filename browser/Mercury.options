@@ -14,5 +14,10 @@ MCFLAGS-mdb.dice = --no-warn-nothing-exported
 # exposes.
 MCFLAGS-mdb.declarative_edt = --no-optimize-higher-order
 
+# This is for bootstrapping rotd-2005-10-17.
+#
+MCFLAGS-mdb.declarative_analyser = --no-optimize-unused-args
+MCFLAGS-mdb.declarative_execution = --no-optimize-unused-args
+
 EXTRA_LIBRARIES-libmer_browser.so = mer_mdbcomp
 EXTRA_LIBRARIES-libmer_browser.dylib = mer_mdbcomp
