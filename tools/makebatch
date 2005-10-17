@@ -38,6 +38,7 @@ save_stage2_on_no_compiler="false"
 errfiles="false"
 compile_times=""
 testparams=""
+stop_after_stage_2=""
 failed="continue"
 
 while test $# -gt 0
@@ -71,6 +72,9 @@ do
 
     -s|--stop-at-failure)
         failed="stop" ;;
+
+    --stop-after-stage-2)
+        stop_after_stage_2="--stop-after-stage-2" ;;
 
     -t-|--no-test-suite)
         runtests="-t-" ;;
@@ -212,7 +216,8 @@ do
     succeeded=false
     created_compiler=false
     if tools/bootcheck $gradeopt --copy-runtime $jfactor $runtests \
-        $objects $compile_times $testparams > batch/$batch.out.$visn 2>&1
+        $objects $compile_times $stop_after_stage_2 $testparams \
+        > batch/$batch.out.$visn 2>&1
     then
         succeeded=true
         created_compiler=true
