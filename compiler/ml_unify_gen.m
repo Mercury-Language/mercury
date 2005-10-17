@@ -785,6 +785,7 @@ ml_gen_field_take_address_assigns([], _, _, _, _, _, []).
 ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
         CellLval, CellType, MaybeTag, Context, Info, [Assign | Assigns]) :-
     TakeAddrInfo = take_addr_info(AddrVar, Offset, ConsArgType, FieldType),
+    % XXX
     % I am not sure that the types specified here are always the right ones,
     % particularly in cases where the field whose address we are taking has
     % a non-du type such as int or float. However, I can't think of a test case
