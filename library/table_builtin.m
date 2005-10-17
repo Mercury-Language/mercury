@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1998-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -102,36 +104,36 @@
 % The Mercury and IL definitions are placeholders only, required to make
 % this module compile cleanly on the Java and .NET backends respectively.
 
-	% This type represents the interior pointers of both call
-	% tables and answer tables.
-	%
+    % This type represents the interior pointers of both call
+    % tables and answer tables.
+    %
 :- type ml_trie_node.
 
-	% This type represents the blocks we use to store sets of output
-	% arguments.
-	%
+    % This type represents the blocks we use to store sets of output
+    % arguments.
+    %
 :- type ml_answer_block.
 
-	% N.B. interface continued below
+    % N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-	% This type represents the interior pointers of both call
-	% tables and answer tables.
-	%
-:- type ml_trie_node --->	ml_trie_node(c_pointer).
+    % This type represents the interior pointers of both call
+    % tables and answer tables.
+    %
+:- type ml_trie_node --->   ml_trie_node(c_pointer).
 :- pragma foreign_type("C", ml_trie_node, "MR_TrieNode",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type(il,  ml_trie_node, "class [mscorlib]System.Object").
 
-	% This type represents a block of memory that contains one word
-	% for each output argument of a procedure.
-	%
-:- type ml_answer_block --->	ml_answer_block(c_pointer).
+    % This type represents a block of memory that contains one word
+    % for each output argument of a procedure.
+    %
+:- type ml_answer_block --->    ml_answer_block(c_pointer).
 :- pragma foreign_type("C", ml_answer_block, "MR_AnswerBlock",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type(il,  ml_answer_block, "class [mscorlib]System.Object").
 
 %-----------------------------------------------------------------------------%
@@ -142,106 +144,106 @@
 % Predicates that manage loop checking.
 %
 
-	% This type should correspond exactly to the MR_LOOPCHECK_* #defines
-	% in runtime/mercury_tabling.h.
-	%
+    % This type should correspond exactly to the MR_LOOPCHECK_* #defines
+    % in runtime/mercury_tabling.h.
+    %
 :- type loop_status
-	--->	loop_inactive
-	;	loop_active.
+    --->    loop_inactive
+    ;       loop_active.
 
 :- impure pred table_loop_setup(ml_trie_node::in, loop_status::out) is det.
 
 :- impure pred table_loop_setup_shortcut(ml_trie_node::in, ml_trie_node::out,
-	loop_status::out) is det.
+    loop_status::out) is det.
 
-	% Mark the call represented by the given table as currently
-	% not being evaluated.
-	%
+    % Mark the call represented by the given table as currently
+    % not being evaluated.
+    %
 :- impure pred table_loop_mark_as_inactive(ml_trie_node::in) is det.
 
-	% Mark the call represented by the given table as currently
-	% not being evaluated, and fail.
-	%
+    % Mark the call represented by the given table as currently
+    % not being evaluated, and fail.
+    %
 :- impure pred table_loop_mark_as_inactive_and_fail(ml_trie_node::in)
-	is failure.
+    is failure.
 
-	% Mark the call represented by the given table as currently
-	% being evaluated, and fail.
-	%
+    % Mark the call represented by the given table as currently
+    % being evaluated, and fail.
+    %
 :- impure pred table_loop_mark_as_active_and_fail(ml_trie_node::in) is failure.
 
-	% N.B. interface continued below
+    % N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- pragma foreign_proc("C",
-	table_loop_setup(T::in, Status::out),
-	[will_not_call_mercury],
+    table_loop_setup(T::in, Status::out),
+    [will_not_call_mercury],
 "
-	MR_table_loop_setup(T, Status);
+    MR_table_loop_setup(T, Status);
 ").
 
 :- pragma foreign_proc("C",
-	table_loop_setup_shortcut(T0::in, T::out, Status::out),
-	[will_not_call_mercury],
+    table_loop_setup_shortcut(T0::in, T::out, Status::out),
+    [will_not_call_mercury],
 "
-	MR_table_loop_setup_shortcut(T0, T, Status);
+    MR_table_loop_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
-	table_loop_mark_as_inactive(T::in),
-	[will_not_call_mercury],
+    table_loop_mark_as_inactive(T::in),
+    [will_not_call_mercury],
 "
-	MR_table_loop_mark_as_inactive(T);
+    MR_table_loop_mark_as_inactive(T);
 ").
 
 :- pragma foreign_proc("C",
-	table_loop_mark_as_inactive_and_fail(T::in),
-	[will_not_call_mercury],
+    table_loop_mark_as_inactive_and_fail(T::in),
+    [will_not_call_mercury],
 "
-	MR_table_loop_mark_as_inactive_and_fail(T);
+    MR_table_loop_mark_as_inactive_and_fail(T);
 ").
 
 :- pragma foreign_proc("C",
-	table_loop_mark_as_active_and_fail(T::in),
-	[will_not_call_mercury],
+    table_loop_mark_as_active_and_fail(T::in),
+    [will_not_call_mercury],
 "
-	MR_table_loop_mark_as_active_and_fail(T);
+    MR_table_loop_mark_as_active_and_fail(T);
 ").
 
 table_loop_setup(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_loop_setup").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_loop_setup").
 
 table_loop_setup_shortcut(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_loop_setup_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_loop_setup_shortcut").
 
 table_loop_mark_as_inactive(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_loop_mark_as_inactive").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_loop_mark_as_inactive").
 
 table_loop_mark_as_inactive_and_fail(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_loop_mark_as_inactive"),
-	fail.
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_loop_mark_as_inactive"),
+    fail.
 
 table_loop_mark_as_active_and_fail(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_loop_mark_as_active"),
-	fail.
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_loop_mark_as_active"),
+    fail.
 
 %-----------------------------------------------------------------------------%
 
@@ -251,370 +253,370 @@ table_loop_mark_as_active_and_fail(_) :-
 % Predicates that manage memoization.
 %
 
-	% This type should correspond exactly to the MR_MEMO_DET_* #defines
-	% in runtime/mercury_tabling.h.
-	%
+    % This type should correspond exactly to the MR_MEMO_DET_* #defines
+    % in runtime/mercury_tabling.h.
+    %
 :- type memo_det_status
-	--->	memo_det_inactive
-	;	memo_det_active
-	;	memo_det_succeeded.
+    --->    memo_det_inactive
+    ;       memo_det_active
+    ;       memo_det_succeeded.
 
-	% This type should correspond exactly to the MR_MEMO_SEMI_* #defines
-	% in runtime/mercury_tabling.h.
-	%
+    % This type should correspond exactly to the MR_MEMO_SEMI_* #defines
+    % in runtime/mercury_tabling.h.
+    %
 :- type memo_semi_status
-	--->	memo_semi_inactive
-	;	memo_semi_active
-	;	memo_semi_succeeded
-	;	memo_semi_failed.
+    --->    memo_semi_inactive
+    ;       memo_semi_active
+    ;       memo_semi_succeeded
+    ;       memo_semi_failed.
 
-	% This type should correspond exactly to the MR_MemoNonStatus type
-	% in runtime/mercury_tabling.h.
-	%
+    % This type should correspond exactly to the MR_MemoNonStatus type
+    % in runtime/mercury_tabling.h.
+    %
 :- type memo_non_status
-	--->	memo_non_inactive
-	;	memo_non_active
-	;	memo_non_incomplete
-	;	memo_non_complete.
+    --->    memo_non_inactive
+    ;       memo_non_active
+    ;       memo_non_incomplete
+    ;       memo_non_complete.
 
 :- type memo_non_record.
 
 :- impure pred table_memo_det_setup(ml_trie_node::in, memo_det_status::out)
-	is det.
+    is det.
 
 :- impure pred table_memo_det_setup_shortcut(ml_trie_node::in,
-	ml_trie_node::out, memo_det_status::out) is det.
+    ml_trie_node::out, memo_det_status::out) is det.
 
 :- impure pred table_memo_semi_setup(ml_trie_node::in, memo_semi_status::out)
-	is det.
+    is det.
 
 :- impure pred table_memo_semi_setup_shortcut(ml_trie_node::in,
-	ml_trie_node::out, memo_semi_status::out) is det.
+    ml_trie_node::out, memo_semi_status::out) is det.
 
 :- impure pred table_memo_non_setup(ml_trie_node::in,
-	memo_non_record::out, memo_non_status::out) is det.
+    memo_non_record::out, memo_non_status::out) is det.
 
-	% Save the fact that the call has failed in the given table.
-	%
+    % Save the fact that the call has failed in the given table.
+    %
 :- impure pred table_memo_mark_as_failed(ml_trie_node::in) is failure.
 
-	% Save the fact that the call has succeeded in the given table.
-	%
+    % Save the fact that the call has succeeded in the given table.
+    %
 :- impure pred table_memo_mark_as_succeeded(ml_trie_node::in) is det.
 
-	% Set the status of the given call to incomplete.
-	%
+    % Set the status of the given call to incomplete.
+    %
 :- impure pred table_memo_mark_as_incomplete(memo_non_record::in) is det.
 
-	% Set the status of the given call to active, and fail.
-	%
+    % Set the status of the given call to active, and fail.
+    %
 :- impure pred table_memo_mark_as_active_and_fail(memo_non_record::in)
-	is failure.
+    is failure.
 
-	% Set the status of the given call to complete, and fail.
-	%
+    % Set the status of the given call to complete, and fail.
+    %
 :- impure pred table_memo_mark_as_complete_and_fail(memo_non_record::in)
-	is failure.
+    is failure.
 
-	% Create an answer block with the given number of slots and add it
-	% to the given table.
-	%
+    % Create an answer block with the given number of slots and add it
+    % to the given table.
+    %
 :- impure pred table_memo_create_answer_block(ml_trie_node::in, int::in,
-	ml_answer_block::out) is det.
+    ml_answer_block::out) is det.
 :- impure pred table_memo_fill_answer_block_shortcut(ml_trie_node::in) is det.
 
-	% Return the answer block for the given call.
-	%
+    % Return the answer block for the given call.
+    %
 :- semipure pred table_memo_get_answer_block(ml_trie_node::in,
-	ml_answer_block::out) is det.
+    ml_answer_block::out) is det.
 :- semipure pred table_memo_get_answer_block_shortcut(ml_trie_node::in) is det.
 
-	% Return the table of answers already returned to the given nondet
-	% table.
-	%
+    % Return the table of answers already returned to the given nondet
+    % table.
+    %
 :- semipure pred table_memo_non_get_answer_table(memo_non_record::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% If the answer represented by the given answer table
-	% has not been generated before by this subgoal,
-	% succeed and remember the answer as having been generated.
-	% If the answer has been generated before, fail.
-	%
+    % If the answer represented by the given answer table
+    % has not been generated before by this subgoal,
+    % succeed and remember the answer as having been generated.
+    % If the answer has been generated before, fail.
+    %
 :- impure pred table_memo_non_answer_is_not_duplicate(ml_trie_node::in)
-	is semidet.
+    is semidet.
 :- impure pred table_memo_non_answer_is_not_duplicate_shortcut(
-	memo_non_record::in) is semidet.
+    memo_non_record::in) is semidet.
 
-	% Add an answer block to the given table.
-	%
+    % Add an answer block to the given table.
+    %
 :- impure pred table_memo_non_create_answer_block_shortcut(memo_non_record::in)
-	is det.
+    is det.
 
-	% Return all the answer blocks for the given model_non call.
-	%
+    % Return all the answer blocks for the given model_non call.
+    %
 :- semipure pred table_memo_return_all_answers_nondet(memo_non_record::in,
-	ml_answer_block::out) is nondet.
+    ml_answer_block::out) is nondet.
 :- semipure pred table_memo_return_all_answers_multi(memo_non_record::in,
-	ml_answer_block::out) is multi.
+    ml_answer_block::out) is multi.
 :- semipure pred table_memo_non_return_all_shortcut(memo_non_record::in)
-	is det.
+    is det.
 
-	% N.B. interface continued below
+    % N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- type memo_non_record --->		memo_non_record(c_pointer).
+:- type memo_non_record --->        memo_non_record(c_pointer).
 :- pragma foreign_type("C", memo_non_record, "MR_MemoNonRecordPtr",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
-	table_memo_det_setup(T::in, Status::out),
-	[will_not_call_mercury],
+    table_memo_det_setup(T::in, Status::out),
+    [will_not_call_mercury],
 "
-	MR_table_memo_det_setup(T, Status);
+    MR_table_memo_det_setup(T, Status);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_det_setup_shortcut(T0::in, T::out, Status::out),
-	[will_not_call_mercury],
+    table_memo_det_setup_shortcut(T0::in, T::out, Status::out),
+    [will_not_call_mercury],
 "
-	MR_table_memo_det_setup_shortcut(T0, T, Status);
+    MR_table_memo_det_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_semi_setup(T::in, Status::out),
-	[will_not_call_mercury],
+    table_memo_semi_setup(T::in, Status::out),
+    [will_not_call_mercury],
 "
-	MR_table_memo_semi_setup(T, Status);
+    MR_table_memo_semi_setup(T, Status);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_semi_setup_shortcut(T0::in, T::out, Status::out),
-	[will_not_call_mercury],
+    table_memo_semi_setup_shortcut(T0::in, T::out, Status::out),
+    [will_not_call_mercury],
 "
-	MR_table_memo_semi_setup_shortcut(T0, T, Status);
+    MR_table_memo_semi_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_non_setup(T0::in, Record::out, Status::out),
-	[will_not_call_mercury],
+    table_memo_non_setup(T0::in, Record::out, Status::out),
+    [will_not_call_mercury],
 "
-	MR_table_memo_non_setup(T0, Record, Status);
+    MR_table_memo_non_setup(T0, Record, Status);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_mark_as_failed(T::in),
-	[will_not_call_mercury],
+    table_memo_mark_as_failed(T::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_mark_as_failed(T);
+    MR_table_memo_mark_as_failed(T);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_mark_as_succeeded(T::in),
-	[will_not_call_mercury],
+    table_memo_mark_as_succeeded(T::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_mark_as_succeeded(T);
+    MR_table_memo_mark_as_succeeded(T);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_mark_as_incomplete(R::in),
-	[will_not_call_mercury],
+    table_memo_mark_as_incomplete(R::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_mark_as_incomplete(R);
+    MR_table_memo_mark_as_incomplete(R);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_mark_as_active_and_fail(R::in),
-	[will_not_call_mercury],
+    table_memo_mark_as_active_and_fail(R::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_mark_as_active_and_fail(R);
+    MR_table_memo_mark_as_active_and_fail(R);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_mark_as_complete_and_fail(R::in),
-	[will_not_call_mercury],
+    table_memo_mark_as_complete_and_fail(R::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_mark_as_complete_and_fail(R);
+    MR_table_memo_mark_as_complete_and_fail(R);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_create_answer_block(T::in, Size::in, AnswerBlock::out),
-	[will_not_call_mercury],
+    table_memo_create_answer_block(T::in, Size::in, AnswerBlock::out),
+    [will_not_call_mercury],
 "
-	MR_table_memo_create_answer_block(T, Size, AnswerBlock);
+    MR_table_memo_create_answer_block(T, Size, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_fill_answer_block_shortcut(T::in),
-	[will_not_call_mercury],
+    table_memo_fill_answer_block_shortcut(T::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_fill_answer_block_shortcut(T);
+    MR_table_memo_fill_answer_block_shortcut(T);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_get_answer_block(T::in, AnswerBlock::out),
-	[will_not_call_mercury, promise_semipure],
+    table_memo_get_answer_block(T::in, AnswerBlock::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_memo_get_answer_block(T, AnswerBlock);
+    MR_table_memo_get_answer_block(T, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_get_answer_block_shortcut(T::in),
-	[will_not_call_mercury, promise_semipure],
+    table_memo_get_answer_block_shortcut(T::in),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_memo_get_answer_block_shortcut(T);
+    MR_table_memo_get_answer_block_shortcut(T);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_non_get_answer_table(R::in, AT::out),
-	[will_not_call_mercury, promise_semipure],
+    table_memo_non_get_answer_table(R::in, AT::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_memo_non_get_answer_table(R, AT);
+    MR_table_memo_non_get_answer_table(R, AT);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_non_answer_is_not_duplicate(T::in),
-	[will_not_call_mercury],
+    table_memo_non_answer_is_not_duplicate(T::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_non_answer_is_not_duplicate(T, SUCCESS_INDICATOR);
+    MR_table_memo_non_answer_is_not_duplicate(T, SUCCESS_INDICATOR);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_non_answer_is_not_duplicate_shortcut(R::in),
-	[will_not_call_mercury],
+    table_memo_non_answer_is_not_duplicate_shortcut(R::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_non_answer_is_not_duplicate_shortcut(R,
-		SUCCESS_INDICATOR);
+    MR_table_memo_non_answer_is_not_duplicate_shortcut(R,
+        SUCCESS_INDICATOR);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_non_create_answer_block_shortcut(R::in),
-	[will_not_call_mercury],
+    table_memo_non_create_answer_block_shortcut(R::in),
+    [will_not_call_mercury],
 "
-	MR_table_memo_non_create_answer_block_shortcut(R::in);
+    MR_table_memo_non_create_answer_block_shortcut(R::in);
 ").
 
 :- pragma foreign_proc("C",
-	table_memo_non_return_all_shortcut(R::in),
-	[will_not_call_mercury, promise_semipure],
+    table_memo_non_return_all_shortcut(R::in),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_memo_non_return_all_shortcut(R);
+    MR_table_memo_non_return_all_shortcut(R);
 ").
 
 :- external(table_memo_return_all_answers_nondet/2).
 :- external(table_memo_return_all_answers_multi/2).
 
 table_memo_det_setup(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_det_setup").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_det_setup").
 
 table_memo_det_setup_shortcut(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_det_setup_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_det_setup_shortcut").
 
 table_memo_semi_setup(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_semi_setup").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_semi_setup").
 
 table_memo_semi_setup_shortcut(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_semi_setup_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_semi_setup_shortcut").
 
 table_memo_mark_as_failed(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_mark_as_failed"),
-	fail.
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_mark_as_failed"),
+    fail.
 
 table_memo_mark_as_succeeded(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_mark_as_succeeded").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_mark_as_succeeded").
 
 table_memo_mark_as_incomplete(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_mark_as_incomplete").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_mark_as_incomplete").
 
 table_memo_mark_as_active_and_fail(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_mark_as_active_and_fail").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_mark_as_active_and_fail").
 
 table_memo_mark_as_complete_and_fail(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_mark_as_complete_and_fail").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_mark_as_complete_and_fail").
 
 table_memo_create_answer_block(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_create_answer_block").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_create_answer_block").
 
 table_memo_fill_answer_block_shortcut(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_fill_answer_block_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_fill_answer_block_shortcut").
 
 table_memo_get_answer_block(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_memo_get_answer_block").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_memo_get_answer_block").
 
 table_memo_non_return_all_shortcut(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_memo_non_return_all_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_memo_non_return_all_shortcut").
 
 table_memo_get_answer_block_shortcut(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_memo_get_answer_block_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_memo_get_answer_block_shortcut").
 
 table_memo_non_get_answer_table(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_memo_non_get_answer_table").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_memo_non_get_answer_table").
 
 table_memo_non_answer_is_not_duplicate(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_non_answer_is_not_duplicate").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_non_answer_is_not_duplicate").
 
 table_memo_non_answer_is_not_duplicate_shortcut(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry(
-		"table_memo_non_answer_is_not_duplicate_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry(
+        "table_memo_non_answer_is_not_duplicate_shortcut").
 
 table_memo_non_create_answer_block_shortcut(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_memo_non_create_answer_block_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_memo_non_create_answer_block_shortcut").
 
 %-----------------------------------------------------------------------------%
 
@@ -622,55 +624,55 @@ table_memo_non_create_answer_block_shortcut(_) :-
 
 :- import_module io.
 
-	% This procedure should be called exactly once for each I/O action.
-	% If I/O tabling is enabled, this predicate will increment the I/O 
-	% action counter, and will check if this action should be tabled.
-	% If not, it fails. If yes, it succeeds, and binds the output
-	% arguments, which are, in order:
-	%
-	% - The root trie node for all I/O actions. This is similar to
-	%   the per-procedure tabling pointers, but it is shared by all
-	%   I/O actions.
-	% - the I/O action number of this action.
-	% - The I/O action number of the first action in the tabled range.
-	%
-	% After the first tabled action, the root trie node will point to a
-	% (dynamically expandable) array of trie nodes. The trie node for
-	% I/O action number Counter is at offset Counter - Start in this array,
-	% where Start is the I/O action number of the first tabled action.
-	% The three output parameters together specify this location.
-	%
+    % This procedure should be called exactly once for each I/O action.
+    % If I/O tabling is enabled, this predicate will increment the I/O
+    % action counter, and will check if this action should be tabled.
+    % If not, it fails. If yes, it succeeds, and binds the output
+    % arguments, which are, in order:
+    %
+    % - The root trie node for all I/O actions. This is similar to
+    %   the per-procedure tabling pointers, but it is shared by all
+    %   I/O actions.
+    % - the I/O action number of this action.
+    % - The I/O action number of the first action in the tabled range.
+    %
+    % After the first tabled action, the root trie node will point to a
+    % (dynamically expandable) array of trie nodes. The trie node for
+    % I/O action number Counter is at offset Counter - Start in this array,
+    % where Start is the I/O action number of the first tabled action.
+    % The three output parameters together specify this location.
+    %
 :- impure pred table_io_in_range(ml_trie_node::out, int::out, int::out)
-	is semidet.
+    is semidet.
 
-	% This procedure should be called exactly once for each I/O action
-	% for which table_io_in_range returns true. Given the trie node
-	% for a given I/O action number, it returns true iff that action has
-	% been carried out before (i.e. the action is now being reexecuted
-	% after a retry command in the debugger).
-	%
+    % This procedure should be called exactly once for each I/O action
+    % for which table_io_in_range returns true. Given the trie node
+    % for a given I/O action number, it returns true iff that action has
+    % been carried out before (i.e. the action is now being reexecuted
+    % after a retry command in the debugger).
+    %
 :- impure pred table_io_has_occurred(ml_trie_node::in) is semidet.
 
-	% This predicate simply copies the input I/O state to become the output
-	% I/O state. It is used only because it is easier to get the insts
-	% right by calling this procedure than by hand-writing insts for a
-	% unification.
-	%
+    % This predicate simply copies the input I/O state to become the output
+    % I/O state. It is used only because it is easier to get the insts
+    % right by calling this procedure than by hand-writing insts for a
+    % unification.
+    %
 :- pred table_io_copy_io_state(io__state::di, io__state::uo) is det.
 
-	% Calls to these predicates bracket the code of foreign_procs with
-	% the tabled_for_io_unitize annotation. The left bracket procedure
-	% returns the current value of MR_debug_enabled, and then turns off
-	% both MR_debug_enabled and MR_io_tabling_enabled. (We don't need to
-	% save MR_io_tabling_enabled because we only get to this code if it
-	% contains true.) The right bracket code takes the value returned by
-	% the left bracket as input and restores both globals to the values
-	% they had before the call to the left bracket.
-	%
+    % Calls to these predicates bracket the code of foreign_procs with
+    % the tabled_for_io_unitize annotation. The left bracket procedure
+    % returns the current value of MR_debug_enabled, and then turns off
+    % both MR_debug_enabled and MR_io_tabling_enabled. (We don't need to
+    % save MR_io_tabling_enabled because we only get to this code if it
+    % contains true.) The right bracket code takes the value returned by
+    % the left bracket as input and restores both globals to the values
+    % they had before the call to the left bracket.
+    %
 :- impure pred table_io_left_bracket_unitized_goal(int::out) is det.
 :- impure pred table_io_right_bracket_unitized_goal(int::in) is det.
 
-	% N.B. interface continued below
+    % N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
 
@@ -719,62 +721,62 @@ table_memo_non_create_answer_block_shortcut(_) :-
 % program.
 
 :- pragma foreign_decl("C", "
-	#include ""mercury_trace_base.h""	/* for MR_io_tabling_* */
+    #include ""mercury_trace_base.h""   /* for MR_io_tabling_* */
 ").
 
 :- pragma foreign_proc("C",
-	table_io_in_range(T::out, Counter::out, Start::out),
-	[will_not_call_mercury],
+    table_io_in_range(T::out, Counter::out, Start::out),
+    [will_not_call_mercury],
 "
-	MR_table_io_in_range(T, Counter, Start, SUCCESS_INDICATOR);
+    MR_table_io_in_range(T, Counter, Start, SUCCESS_INDICATOR);
 ").
 
 :- pragma foreign_proc("C",
-	table_io_has_occurred(T::in),
-	[will_not_call_mercury],
+    table_io_has_occurred(T::in),
+    [will_not_call_mercury],
 "
-	MR_table_io_has_occurred(T, SUCCESS_INDICATOR);
+    MR_table_io_has_occurred(T, SUCCESS_INDICATOR);
 ").
 
 table_io_copy_io_state(IO, IO).
 
 :- pragma foreign_proc("C",
-	table_io_left_bracket_unitized_goal(TraceEnabled::out),
-	[will_not_call_mercury],
+    table_io_left_bracket_unitized_goal(TraceEnabled::out),
+    [will_not_call_mercury],
 "
-	MR_table_io_left_bracket_unitized_goal(TraceEnabled);
+    MR_table_io_left_bracket_unitized_goal(TraceEnabled);
 ").
 
 :- pragma foreign_proc("C",
-	table_io_right_bracket_unitized_goal(TraceEnabled::in),
-	[will_not_call_mercury],
+    table_io_right_bracket_unitized_goal(TraceEnabled::in),
+    [will_not_call_mercury],
 "
-	MR_table_io_right_bracket_unitized_goal(TraceEnabled);
+    MR_table_io_right_bracket_unitized_goal(TraceEnabled);
 ").
 
 table_io_in_range(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_io_in_range").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_io_in_range").
 
 table_io_has_occurred(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_io_has_occurred").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_io_has_occurred").
 
 table_io_left_bracket_unitized_goal(_TraceEnabled) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_io_left_bracket_unitized_goal").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_io_left_bracket_unitized_goal").
 
 table_io_right_bracket_unitized_goal(_TraceEnabled) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_io_right_bracket_unitized_goal").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_io_right_bracket_unitized_goal").
 
 %-----------------------------------------------------------------------------%
 
@@ -784,191 +786,191 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 % Predicates that manage the stack copy model of minimal model tabling.
 %
 
-	% This type should correspond exactly to the type MR_SubgoalStatus
-	% defined in runtime/mercury_tabling.h.
-	%
+    % This type should correspond exactly to the type MR_SubgoalStatus
+    % defined in runtime/mercury_tabling.h.
+    %
 :- type mm_status
-	--->	mm_inactive
-	;	mm_active
-	;	mm_complete.
+    --->    mm_inactive
+    ;       mm_active
+    ;       mm_complete.
 
-	% This type represents the data structure at the tips of the call table
-	% in the stack copy implementation of minimal model tabling.
-	%
+    % This type represents the data structure at the tips of the call table
+    % in the stack copy implementation of minimal model tabling.
+    %
 :- type ml_subgoal.
 
-	% Check if this minimal_model subgoal has been called before.
-	% If not, return inactive as the old status, set up the subgoal's
-	% structure, and mark it as active, since the caller is about to become
-	% the subgoal's generator. If yes, return the status currently recorded
-	% in the subgoal structure.
-	%
+    % Check if this minimal_model subgoal has been called before.
+    % If not, return inactive as the old status, set up the subgoal's
+    % structure, and mark it as active, since the caller is about to become
+    % the subgoal's generator. If yes, return the status currently recorded
+    % in the subgoal structure.
+    %
 :- impure pred table_mm_setup(ml_trie_node::in, ml_subgoal::out,
-	mm_status::out) is det.
+    mm_status::out) is det.
 
-	% Save the state of the current subgoal and fail. Sometime later,
-	% when the subgoal has some solutions, table_mm_completion will
-	% restore the saved state. At the time, table_mm_suspend_consumer
-	% will succeed, and return an answer block as its second argument.
-	%
+    % Save the state of the current subgoal and fail. Sometime later,
+    % when the subgoal has some solutions, table_mm_completion will
+    % restore the saved state. At the time, table_mm_suspend_consumer
+    % will succeed, and return an answer block as its second argument.
+    %
 :- impure pred table_mm_suspend_consumer(ml_subgoal::in, ml_answer_block::out)
-	is nondet.
+    is nondet.
 
-	% Resume all suspended subgoal calls. This predicate will resume each
-	% of the suspended subgoals that depend on it in turn until it reaches
-	% a fixed point, at which all depended suspended subgoals have had
-	% all available answers returned to them.
-	%
+    % Resume all suspended subgoal calls. This predicate will resume each
+    % of the suspended subgoals that depend on it in turn until it reaches
+    % a fixed point, at which all depended suspended subgoals have had
+    % all available answers returned to them.
+    %
 :- impure pred table_mm_completion(ml_subgoal::in) is det.
 
-	% Return the table of answers already returned to the given nondet
-	% table.
-	%
+    % Return the table of answers already returned to the given nondet
+    % table.
+    %
 :- semipure pred table_mm_get_answer_table(ml_subgoal::in, ml_trie_node::out)
-	is det.
+    is det.
 
-	% If the answer represented by the given answer table
-	% has not been generated before by this subgoal,
-	% succeed and remember the answer as having been generated.
-	% If the answer has been generated before, fail.
-	%
+    % If the answer represented by the given answer table
+    % has not been generated before by this subgoal,
+    % succeed and remember the answer as having been generated.
+    % If the answer has been generated before, fail.
+    %
 :- impure pred table_mm_answer_is_not_duplicate(ml_trie_node::in) is semidet.
 :- impure pred table_mm_answer_is_not_duplicate_shortcut(ml_subgoal::in)
-	is semidet.
+    is semidet.
 
-	% Create a new slot in the answer list of the subgoal, create a new
-	% answer block of the given size, and put the answer block in the new
-	% slot.
-	%
+    % Create a new slot in the answer list of the subgoal, create a new
+    % answer block of the given size, and put the answer block in the new
+    % slot.
+    %
 :- impure pred table_mm_create_answer_block(ml_subgoal::in, int::in,
-	ml_answer_block::out) is det.
+    ml_answer_block::out) is det.
 
 :- impure pred table_mm_fill_answer_block_shortcut(ml_subgoal::in) is det.
 
-	% Return all of the answer blocks stored in the given table.
-	%
+    % Return all of the answer blocks stored in the given table.
+    %
 :- semipure pred table_mm_return_all_nondet(ml_subgoal::in,
-	ml_answer_block::out) is nondet.
+    ml_answer_block::out) is nondet.
 :- semipure pred table_mm_return_all_multi(ml_subgoal::in,
-	ml_answer_block::out) is multi.
+    ml_answer_block::out) is multi.
 :- semipure pred table_mm_return_all_shortcut(ml_answer_block::in) is det.
 
-	% N.B. interface continued below
+    % N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- type ml_subgoal --->		ml_subgoal(c_pointer).
+:- type ml_subgoal --->     ml_subgoal(c_pointer).
 :- pragma foreign_type("C", ml_subgoal, "MR_SubgoalPtr",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type(il,  ml_subgoal, "class [mscorlib]System.Object").
 
-	% This type represents a list of answers of a model_non predicate.
-	%
-:- type ml_answer_list --->	ml_answer_list(c_pointer).
+    % This type represents a list of answers of a model_non predicate.
+    %
+:- type ml_answer_list ---> ml_answer_list(c_pointer).
 :- pragma foreign_type("C", ml_answer_list, "MR_AnswerList",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type(il,  ml_answer_list, "class [mscorlib]System.Object").
 
 :- pragma foreign_proc("C",
-	table_mm_setup(T::in, Subgoal::out, Status::out),
-	[will_not_call_mercury],
+    table_mm_setup(T::in, Subgoal::out, Status::out),
+    [will_not_call_mercury],
 "
-	MR_table_mm_setup(T, Subgoal, Status);
+    MR_table_mm_setup(T, Subgoal, Status);
 ").
 
-	% The definitions of these two predicates are in the runtime system,
-	% in runtime/mercury_minimal_model.c.
-	%
+    % The definitions of these two predicates are in the runtime system,
+    % in runtime/mercury_minimal_model.c.
+    %
 :- external(table_mm_suspend_consumer/2).
 :- external(table_mm_completion/1).
 :- external(table_mm_return_all_nondet/2).
 :- external(table_mm_return_all_multi/2).
 
 :- pragma foreign_proc("C",
-	table_mm_return_all_shortcut(AnswerBlock::in),
-	[will_not_call_mercury, promise_semipure],
+    table_mm_return_all_shortcut(AnswerBlock::in),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_mm_return_all_shortcut(AnswerBlock);
+    MR_table_mm_return_all_shortcut(AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
-	table_mm_get_answer_table(Subgoal::in, AnswerTable::out),
-	[will_not_call_mercury, promise_semipure],
+    table_mm_get_answer_table(Subgoal::in, AnswerTable::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_mm_get_answer_table(Subgoal, AnswerTable);
+    MR_table_mm_get_answer_table(Subgoal, AnswerTable);
 ").
 
 :- pragma foreign_proc("C",
-	table_mm_answer_is_not_duplicate(TrieNode::in),
-	[will_not_call_mercury],
+    table_mm_answer_is_not_duplicate(TrieNode::in),
+    [will_not_call_mercury],
 "
-	MR_table_mm_answer_is_not_duplicate(TrieNode, SUCCESS_INDICATOR);
+    MR_table_mm_answer_is_not_duplicate(TrieNode, SUCCESS_INDICATOR);
 ").
 
 :- pragma foreign_proc("C",
-	table_mm_answer_is_not_duplicate_shortcut(Subgoal::in),
-	[will_not_call_mercury],
+    table_mm_answer_is_not_duplicate_shortcut(Subgoal::in),
+    [will_not_call_mercury],
 "
-	/*
-	** The body of this predicate doesn't matter, because it will never be
-	** referred to. When the compiler creates references to this predicate,
-	** it always overrides the predicate body.
-	*/
-	/* mention Subgoal to shut up the warning */
-	MR_fatal_error(""table_mm_answer_is_not_duplicate_shortcut: direct call"");
+    /*
+    ** The body of this predicate doesn't matter, because it will never be
+    ** referred to. When the compiler creates references to this predicate,
+    ** it always overrides the predicate body.
+    */
+    /* mention Subgoal to shut up the warning */
+    MR_fatal_error(""table_mm_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-	table_mm_create_answer_block(Subgoal::in, Size::in, AnswerBlock::out),
-	[will_not_call_mercury],
+    table_mm_create_answer_block(Subgoal::in, Size::in, AnswerBlock::out),
+    [will_not_call_mercury],
 "
-	MR_table_mm_create_answer_block(Subgoal, Size, AnswerBlock);
+    MR_table_mm_create_answer_block(Subgoal, Size, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
-	table_mm_fill_answer_block_shortcut(Subgoal::in),
-	[will_not_call_mercury],
+    table_mm_fill_answer_block_shortcut(Subgoal::in),
+    [will_not_call_mercury],
 "
-	MR_table_mm_fill_answer_block_shortcut(Subgoal);
+    MR_table_mm_fill_answer_block_shortcut(Subgoal);
 ").
 
 table_mm_return_all_shortcut(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_mm_return_all_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_mm_return_all_shortcut").
 
 table_mm_get_answer_table(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_mm_get_answer_table").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_mm_get_answer_table").
 
 table_mm_answer_is_not_duplicate(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_mm_answer_is_not_duplicate").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_mm_answer_is_not_duplicate").
 
 table_mm_answer_is_not_duplicate_shortcut(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_mm_answer_is_not_duplicate_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_mm_answer_is_not_duplicate_shortcut").
 
 table_mm_create_answer_block(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_mm_create_answer_block").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_mm_create_answer_block").
 
 table_mm_fill_answer_block_shortcut(_) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_mm_fill_answer_block_shortcut").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_mm_fill_answer_block_shortcut").
 
 %-----------------------------------------------------------------------------%
 
@@ -978,252 +980,252 @@ table_mm_fill_answer_block_shortcut(_) :-
 % Predicates that manage the own stack model of minimal model tabling.
 %
 
-	% This type represents the data structure at the tips of the call table
-	% in the own stack implementation of minimal model tabling.
-	%
+    % This type represents the data structure at the tips of the call table
+    % in the own stack implementation of minimal model tabling.
+    %
 :- type ml_consumer.
 
-	% This type represents the generators in the own stack implementation
-	% of minimal model tabling.
-	%
+    % This type represents the generators in the own stack implementation
+    % of minimal model tabling.
+    %
 :- type ml_generator.
 
-	% Save the information that will be needed later about this subgoal
-	% in a temporary data structure in the runtime.
-	%
+    % Save the information that will be needed later about this subgoal
+    % in a temporary data structure in the runtime.
+    %
 :- impure pred table_mmos_save_inputs is det.
 
-	% The given trie node should be at the tip of a call table,
-	% indicating a subgoal. Create a generator for this subgoal if
-	% necessary (if the trie node indicates it has not been called before),
-	% and then register this call as a consumer of the answers of the
-	% generator.
-	%
+    % The given trie node should be at the tip of a call table,
+    % indicating a subgoal. Create a generator for this subgoal if
+    % necessary (if the trie node indicates it has not been called before),
+    % and then register this call as a consumer of the answers of the
+    % generator.
+    %
 :- impure pred table_mmos_setup_consumer(ml_trie_node::in, c_pointer::in,
-	ml_consumer::out) is det.
+    ml_consumer::out) is det.
 
-	% If the answer represented by the given answer table
-	% has not been generated before by this subgoal,
-	% succeed and remember the answer as having been generated.
-	% If the answer has been generated before, fail.
-	%
+    % If the answer represented by the given answer table
+    % has not been generated before by this subgoal,
+    % succeed and remember the answer as having been generated.
+    % If the answer has been generated before, fail.
+    %
 :- impure pred table_mmos_answer_is_not_duplicate(ml_trie_node::in) is semidet.
 
-	% This is a version of table_mmos_answer_is_not_duplicate
-	% in intended for bundling with other operations.
-	%
+    % This is a version of table_mmos_answer_is_not_duplicate
+    % in intended for bundling with other operations.
+    %
 :- impure pred table_mmos_answer_is_not_duplicate_shortcut(ml_generator::in)
-	is semidet.
+    is semidet.
 
-	% This predicate checks whether there is a next answer already listed
-	% for the consumer. If yes, it returns it. If not, it wakes up the
-	% generator to create more answers if possible.
-	%
+    % This predicate checks whether there is a next answer already listed
+    % for the consumer. If yes, it returns it. If not, it wakes up the
+    % generator to create more answers if possible.
+    %
 :- impure pred table_mmos_consume_next_answer_nondet(ml_consumer::in,
-	ml_answer_block::out) is nondet.
+    ml_answer_block::out) is nondet.
 :- impure pred table_mmos_consume_next_answer_multi(ml_consumer::in,
-	ml_answer_block::out) is multi.
+    ml_answer_block::out) is multi.
 
-	% Return all the answers of a consumers, in extra arguments hung
-	% on a foreign_proc invocation of this predicate.
-	%
+    % Return all the answers of a consumers, in extra arguments hung
+    % on a foreign_proc invocation of this predicate.
+    %
 :- semipure pred table_mmos_restore_answers(ml_answer_block::in) is det.
 
-	% Pickup the input arguments of the generator from where the consumer
-	% put them.
-	%
+    % Pickup the input arguments of the generator from where the consumer
+    % put them.
+    %
 :- impure pred table_mmos_pickup_inputs(ml_generator::out) is det.
 
-	% Create an answer block of the given size for a new answer of the
-	% given generator.
-	%
+    % Create an answer block of the given size for a new answer of the
+    % given generator.
+    %
 :- impure pred table_mmos_create_answer_block(ml_generator::in,
-	int::in, ml_answer_block::out) is det.
+    int::in, ml_answer_block::out) is det.
 
-	% Return the base of the answer table trie for the subgoal of the
-	% given generator.
-	%
+    % Return the base of the answer table trie for the subgoal of the
+    % given generator.
+    %
 :- semipure pred table_mmos_get_answer_table(ml_generator::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Return the given answer to the consumer(s) that requested it.
-	%
+    % Return the given answer to the consumer(s) that requested it.
+    %
 :- impure pred table_mmos_return_answer(ml_generator::in, ml_answer_block::in)
-	is det.
+    is det.
 
-	% Resume all suspended subgoal calls. This predicate will resume each
-	% of the suspended subgoals that depend on it in turn until it reaches
-	% a fixed point, at which all depended suspended subgoals have had
-	% all available answers returned to them.
-	%
+    % Resume all suspended subgoal calls. This predicate will resume each
+    % of the suspended subgoals that depend on it in turn until it reaches
+    % a fixed point, at which all depended suspended subgoals have had
+    % all available answers returned to them.
+    %
 :- impure pred table_mmos_completion(ml_generator::in) is det.
 
 :- implementation.
 
-	% This type represents the data structure at the tips of the call table
-	% in the own stack implementation of minimal model tabling.
-	%
-:- type ml_consumer --->	ml_consumer(c_pointer).
+    % This type represents the data structure at the tips of the call table
+    % in the own stack implementation of minimal model tabling.
+    %
+:- type ml_consumer --->    ml_consumer(c_pointer).
 :- pragma foreign_type("C", ml_consumer, "MR_ConsumerPtr",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type(il,  ml_consumer, "class [mscorlib]System.Object").
 
-	% This type represents the generators in the own stack implementation
-	% of minimal model tabling.
-	%
-:- type ml_generator --->	ml_generator(c_pointer).
+    % This type represents the generators in the own stack implementation
+    % of minimal model tabling.
+    %
+:- type ml_generator --->   ml_generator(c_pointer).
 :- pragma foreign_type("C", ml_generator, "MR_GeneratorPtr",
-	[can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type(il,  ml_generator, "class [mscorlib]System.Object").
 
 :- pragma foreign_proc("C",
-	table_mmos_save_inputs,
-	[will_not_call_mercury],
+    table_mmos_save_inputs,
+    [will_not_call_mercury],
 "
-	/*
-	** The body of this predicate doesn't matter, because it will never be
-	** referred to. When the compiler creates references to this predicate,
-	** it always overrides the predicate body.
-	*/
-	MR_fatal_error(""table_mmos_save_inputs: direct call"");
+    /*
+    ** The body of this predicate doesn't matter, because it will never be
+    ** referred to. When the compiler creates references to this predicate,
+    ** it always overrides the predicate body.
+    */
+    MR_fatal_error(""table_mmos_save_inputs: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-	table_mmos_setup_consumer(T::in, GeneratorPred::in, Consumer::out),
-	[will_not_call_mercury],
+    table_mmos_setup_consumer(T::in, GeneratorPred::in, Consumer::out),
+    [will_not_call_mercury],
 "
-	/*
-	** The body of this predicate doesn't matter, because it will never be
-	** referred to. When the compiler creates references to this predicate,
-	** it always overrides the predicate body.
-	*/
-	/* mention T, GeneratorPred, Consumer to shut up the warning */
-	MR_fatal_error(""table_mmos_setup_consumer: direct call"");
+    /*
+    ** The body of this predicate doesn't matter, because it will never be
+    ** referred to. When the compiler creates references to this predicate,
+    ** it always overrides the predicate body.
+    */
+    /* mention T, GeneratorPred, Consumer to shut up the warning */
+    MR_fatal_error(""table_mmos_setup_consumer: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-	table_mmos_answer_is_not_duplicate(T::in),
-	[will_not_call_mercury],
+    table_mmos_answer_is_not_duplicate(T::in),
+    [will_not_call_mercury],
 "
-	/*
-	** The body of this predicate doesn't matter, because it will never be
-	** referred to. When the compiler creates references to this predicate,
-	** it always overrides the predicate body.
-	*/
-	/* mention T to shut up the warning */
-	MR_fatal_error(""table_mmos_answer_is_not_duplicate: direct call"");
+    /*
+    ** The body of this predicate doesn't matter, because it will never be
+    ** referred to. When the compiler creates references to this predicate,
+    ** it always overrides the predicate body.
+    */
+    /* mention T to shut up the warning */
+    MR_fatal_error(""table_mmos_answer_is_not_duplicate: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-	table_mmos_answer_is_not_duplicate_shortcut(G::in),
-	[will_not_call_mercury],
+    table_mmos_answer_is_not_duplicate_shortcut(G::in),
+    [will_not_call_mercury],
 "
-	/*
-	** The body of this predicate doesn't matter, because it will never be
-	** referred to. When the compiler creates references to this predicate,
-	** it always overrides the predicate body.
-	*/
-	/* mention G to shut up the warning */
-	MR_fatal_error(""table_mmos_answer_is_not_duplicate_shortcut: direct call"");
+    /*
+    ** The body of this predicate doesn't matter, because it will never be
+    ** referred to. When the compiler creates references to this predicate,
+    ** it always overrides the predicate body.
+    */
+    /* mention G to shut up the warning */
+    MR_fatal_error(""table_mmos_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
 :- external(table_mmos_consume_next_answer_nondet/2).
 :- external(table_mmos_consume_next_answer_multi/2).
 
 :- pragma foreign_proc("C",
-	table_mmos_restore_answers(AnswerBlock::in),
-	[will_not_call_mercury, promise_semipure],
+    table_mmos_restore_answers(AnswerBlock::in),
+    [will_not_call_mercury, promise_semipure],
 "
-	/*
-	** The body of this predicate doesn't matter, because it will never be
-	** referred to. When the compiler creates references to this predicate,
-	** it always overrides the predicate body.
-	*/
-	/* mention AnswerBlock to shut up the warning */
-	MR_fatal_error(""table_mmos_restore_answers: direct call"");
+    /*
+    ** The body of this predicate doesn't matter, because it will never be
+    ** referred to. When the compiler creates references to this predicate,
+    ** it always overrides the predicate body.
+    */
+    /* mention AnswerBlock to shut up the warning */
+    MR_fatal_error(""table_mmos_restore_answers: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-	table_mmos_get_answer_table(Generator::in, TrieNode::out),
-	[will_not_call_mercury, promise_semipure],
+    table_mmos_get_answer_table(Generator::in, TrieNode::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	/*
-	MR_table_mmos_get_answer_table(Generator, TrieNode);
-	*/
+    /*
+    MR_table_mmos_get_answer_table(Generator, TrieNode);
+    */
 ").
 
 :- pragma foreign_proc("C",
-	table_mmos_pickup_inputs(Generator::out),
-	[will_not_call_mercury],
+    table_mmos_pickup_inputs(Generator::out),
+    [will_not_call_mercury],
 "
-	/*
-	** The body of this predicate doesn't matter, because it will never be
-	** referred to. When the compiler creates references to this predicate,
-	** it always overrides the predicate body.
-	*/
-	/* mention Generator to shut up the warning */
-	MR_fatal_error(""table_mmos_pickup_inputs: direct call"");
+    /*
+    ** The body of this predicate doesn't matter, because it will never be
+    ** referred to. When the compiler creates references to this predicate,
+    ** it always overrides the predicate body.
+    */
+    /* mention Generator to shut up the warning */
+    MR_fatal_error(""table_mmos_pickup_inputs: direct call"");
 ").
 
 :- pragma foreign_proc("C",
-	table_mmos_create_answer_block(Generator::in, BlockSize::in,
-		AnswerBlock::out),
-	[will_not_call_mercury],
+    table_mmos_create_answer_block(Generator::in, BlockSize::in,
+        AnswerBlock::out),
+    [will_not_call_mercury],
 "
-	/*
-	MR_table_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
-	*/
+    /*
+    MR_table_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
+    */
 ").
 
 :- pragma foreign_proc("C",
-	table_mmos_return_answer(Generator::in, AnswerBlock::in),
-	[will_not_call_mercury],
+    table_mmos_return_answer(Generator::in, AnswerBlock::in),
+    [will_not_call_mercury],
 "
-	/*
-	MR_table_mmos_return_answer(Generator, AnswerBlock);
-	*/
+    /*
+    MR_table_mmos_return_answer(Generator, AnswerBlock);
+    */
 ").
 
 :- pragma foreign_proc("C",
-	table_mmos_completion(Generator::in),
-	[will_not_call_mercury],
+    table_mmos_completion(Generator::in),
+    [will_not_call_mercury],
 "
-	/*
-	MR_table_mmos_completion(Generator);
-	*/
+    /*
+    MR_table_mmos_completion(Generator);
+    */
 ").
 
 table_mmos_save_inputs :-
-	impure private_builtin__imp.
+    impure private_builtin__imp.
 
 table_mmos_setup_consumer(_, _, Consumer) :-
-	impure private_builtin__imp,
-	% Required only to avoid warnings; never executed.
-	pretend_to_generate_value(Consumer).
+    impure private_builtin__imp,
+    % Required only to avoid warnings; never executed.
+    pretend_to_generate_value(Consumer).
 
 table_mmos_get_answer_table(_, TrieNode) :-
-	semipure private_builtin__semip,
-	% Required only to avoid warnings; never executed.
-	pretend_to_generate_value(TrieNode).
+    semipure private_builtin__semip,
+    % Required only to avoid warnings; never executed.
+    pretend_to_generate_value(TrieNode).
 
 table_mmos_create_answer_block(_, _, AnswerBlock) :-
-	impure private_builtin__imp,
-	% Required only to avoid warnings; never executed.
-	pretend_to_generate_value(AnswerBlock).
+    impure private_builtin__imp,
+    % Required only to avoid warnings; never executed.
+    pretend_to_generate_value(AnswerBlock).
 
 table_mmos_return_answer(_, _) :-
-	impure private_builtin__imp.
+    impure private_builtin__imp.
 
 table_mmos_completion(_) :-
-	impure private_builtin__imp.
+    impure private_builtin__imp.
 
-	% Required only to avoid warnings; never executed.
-	%
+    % Required only to avoid warnings; never executed.
+    %
 :- pred pretend_to_generate_value(T::out) is det.
 
 pretend_to_generate_value(Bogus) :-
-	% The following code will throw an exception if executed.
-	det_univ_to_type(univ(0), Bogus).
+    % The following code will throw an exception if executed.
+    det_univ_to_type(univ(0), Bogus).
 
 %-----------------------------------------------------------------------------%
 
@@ -1240,146 +1242,146 @@ pretend_to_generate_value(Bogus) :-
 % returned leaf another trie may be connected.
 %
 
-	% Lookup or insert an integer in the given table.
-	%
+    % Lookup or insert an integer in the given table.
+    %
 :- impure pred table_lookup_insert_int(ml_trie_node::in, int::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or insert an integer in the given table.
-	%
+    % Lookup or insert an integer in the given table.
+    %
 :- impure pred table_lookup_insert_start_int(ml_trie_node::in, int::in,
-	int::in, ml_trie_node::out) is det.
+    int::in, ml_trie_node::out) is det.
 
-	% Lookup or insert a character in the given trie.
-	%
+    % Lookup or insert a character in the given trie.
+    %
 :- impure pred table_lookup_insert_char(ml_trie_node::in, character::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or insert a string in the given trie.
-	%
+    % Lookup or insert a string in the given trie.
+    %
 :- impure pred table_lookup_insert_string(ml_trie_node::in, string::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or insert a float in the current trie.
-	%
+    % Lookup or insert a float in the current trie.
+    %
 :- impure pred table_lookup_insert_float(ml_trie_node::in, float::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or inert an enumeration type in the given trie.
-	%
+    % Lookup or inert an enumeration type in the given trie.
+    %
 :- impure pred table_lookup_insert_enum(ml_trie_node::in, int::in, T::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or insert a monomorphic user defined type in the given trie.
-	%
+    % Lookup or insert a monomorphic user defined type in the given trie.
+    %
 :- impure pred table_lookup_insert_user(ml_trie_node::in, T::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or insert a monomorphic user defined type in the given trie,
-	% tabling terms without traversing them. This makes the operation fast,
-	% but if a term was inserted previously, we will catch it only if the
-	% insert was the exact same memory cells. (This is the "loose" part.)
+    % Lookup or insert a monomorphic user defined type in the given trie,
+    % tabling terms without traversing them. This makes the operation fast,
+    % but if a term was inserted previously, we will catch it only if the
+    % insert was the exact same memory cells. (This is the "loose" part.)
 :- impure pred table_lookup_insert_user_fast_loose(ml_trie_node::in, T::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or insert a polymorphic user defined type in the given trie.
-	%
+    % Lookup or insert a polymorphic user defined type in the given trie.
+    %
 :- impure pred table_lookup_insert_poly(ml_trie_node::in, T::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or insert a polymorphic user defined type in the given trie,
-	% tabling terms without traversing them. This makes the operation fast,
-	% but if a term was inserted previously, we will catch it only if the
-	% insert was the exact same memory cells. (This is the "loose" part.)
+    % Lookup or insert a polymorphic user defined type in the given trie,
+    % tabling terms without traversing them. This makes the operation fast,
+    % but if a term was inserted previously, we will catch it only if the
+    % insert was the exact same memory cells. (This is the "loose" part.)
 :- impure pred table_lookup_insert_poly_fast_loose(ml_trie_node::in, T::in,
-	ml_trie_node::out) is det.
+    ml_trie_node::out) is det.
 
-	% Lookup or insert a type_info in the given trie.
-	%
+    % Lookup or insert a type_info in the given trie.
+    %
 :- impure pred table_lookup_insert_typeinfo(ml_trie_node::in,
-	private_builtin.type_info::in, ml_trie_node::out) is det.
+    private_builtin.type_info::in, ml_trie_node::out) is det.
 
-	% Lookup or insert a typeclass_info in the given trie.
-	%
+    % Lookup or insert a typeclass_info in the given trie.
+    %
 :- impure pred table_lookup_insert_typeclassinfo(ml_trie_node::in,
-	private_builtin.typeclass_info::in, ml_trie_node::out) is det.
+    private_builtin.typeclass_info::in, ml_trie_node::out) is det.
 
-	% Save an integer answer in the given answer block at the given
-	% offset.
-	%
+    % Save an integer answer in the given answer block at the given
+    % offset.
+    %
 :- impure pred table_save_int_answer(ml_answer_block::in, int::in, int::in)
-	is det.
+    is det.
 
-	% Save a character answer in the given answer block at the given
-	% offset.
-	%
+    % Save a character answer in the given answer block at the given
+    % offset.
+    %
 :- impure pred table_save_char_answer(ml_answer_block::in, int::in,
-	character::in) is det.
+    character::in) is det.
 
-	% Save a string answer in the given answer block at the given
-	% offset.
-	%
+    % Save a string answer in the given answer block at the given
+    % offset.
+    %
 :- impure pred table_save_string_answer(ml_answer_block::in, int::in,
-	string::in) is det.
+    string::in) is det.
 
-	% Save a float answer in the given answer block at the given
-	% offset.
-	%
+    % Save a float answer in the given answer block at the given
+    % offset.
+    %
 :- impure pred table_save_float_answer(ml_answer_block::in, int::in, float::in)
-	is det.
+    is det.
 
-	% Save an I/O state in the given answer block at the given offset.
-	%
+    % Save an I/O state in the given answer block at the given offset.
+    %
 :- impure pred table_save_io_state_answer(ml_answer_block::in, int::in,
-	io__state::ui) is det.
+    io__state::ui) is det.
 
-	% Save any type of answer in the given answer block at the given
-	% offset.
-	%
+    % Save any type of answer in the given answer block at the given
+    % offset.
+    %
 :- impure pred table_save_any_answer(ml_answer_block::in, int::in, T::in)
-	is det.
+    is det.
 
-	% Restore an integer answer from the given answer block at the
-	% given offset.
-	%
+    % Restore an integer answer from the given answer block at the
+    % given offset.
+    %
 :- semipure pred table_restore_int_answer(ml_answer_block::in, int::in,
-	int::out) is det.
+    int::out) is det.
 
-	% Restore a character answer from the given answer block at the
-	% given offset.
-	%
+    % Restore a character answer from the given answer block at the
+    % given offset.
+    %
 :- semipure pred table_restore_char_answer(ml_answer_block::in, int::in,
-	character::out) is det.
+    character::out) is det.
 
-	% Restore a string answer from the given answer block at the
-	% given offset.
-	%
+    % Restore a string answer from the given answer block at the
+    % given offset.
+    %
 :- semipure pred table_restore_string_answer(ml_answer_block::in, int::in,
-	string::out) is det.
+    string::out) is det.
 
-	% Restore a float answer from the given answer block at the
-	% given offset.
-	%
+    % Restore a float answer from the given answer block at the
+    % given offset.
+    %
 :- semipure pred table_restore_float_answer(ml_answer_block::in, int::in,
-	float::out) is det.
+    float::out) is det.
 
-	% Restore an I/O state from the given answer block at the given offset.
-	%
+    % Restore an I/O state from the given answer block at the given offset.
+    %
 :- semipure pred table_restore_io_state_answer(ml_answer_block::in, int::in,
-	io__state::uo) is det.
+    io__state::uo) is det.
 
-	% Restore any type of answer from the given answer block at the
-	% given offset.
-	%
+    % Restore any type of answer from the given answer block at the
+    % given offset.
+    %
 :- semipure pred table_restore_any_answer(ml_answer_block::in, int::in, T::out)
-	is det.
+    is det.
 
-	% Report an error message.
-	%
+    % Report an error message.
+    %
 :- pred table_error(string::in) is erroneous.
 
-	% Report statistics on the operation of the tabling system to stderr.
-	%
+    % Report statistics on the operation of the tabling system to stderr.
+    %
 :- impure pred table_report_statistics is det.
 
 %-----------------------------------------------------------------------------%
@@ -1391,9 +1393,9 @@ pretend_to_generate_value(Bogus) :-
 
 :- pragma foreign_decl("C", "
 
-#include ""mercury_misc.h""		/* for MR_fatal_error(); */
-#include ""mercury_type_info.h""	/* for MR_TypeCtorInfo_Struct; */
-#include ""mercury_tabling.h""		/* for MR_TrieNode, etc. */
+#include ""mercury_misc.h""     /* for MR_fatal_error(); */
+#include ""mercury_type_info.h""    /* for MR_TypeCtorInfo_Struct; */
+#include ""mercury_tabling.h""      /* for MR_TrieNode, etc. */
 
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
@@ -1402,310 +1404,310 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_int(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_int(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_int(T0, V, T);
+    MR_table_lookup_insert_int(T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_start_int(T0::in, S::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_start_int(T0::in, S::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_start_int(T0, S, V, T);
+    MR_table_lookup_insert_start_int(T0, S, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_char(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_char(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_char(T0, V, T);
+    MR_table_lookup_insert_char(T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_string(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_string(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_string(T0, V, T);
+    MR_table_lookup_insert_string(T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_float(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_float(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_float(T0, V, T);
-").
-
-:- pragma foreign_proc("C", 
-	table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
-	[will_not_call_mercury],
-"
-	MR_table_lookup_insert_enum(T0, R, V, T);
+    MR_table_lookup_insert_float(T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_user(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_user(T0, TypeInfo_for_T, V, T);
+    MR_table_lookup_insert_enum(T0, R, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_user_fast_loose(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_user(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_user_fast_loose(T0, TypeInfo_for_T, V, T);
+    MR_table_lookup_insert_user(T0, TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_poly(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_user_fast_loose(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_poly(T0, TypeInfo_for_T, V, T);
+    MR_table_lookup_insert_user_fast_loose(T0, TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_poly_fast_loose(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_poly(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_poly_fast_loose(T0, TypeInfo_for_T, V, T);
+    MR_table_lookup_insert_poly(T0, TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_typeinfo(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_poly_fast_loose(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_typeinfo(T0, V, T);
+    MR_table_lookup_insert_poly_fast_loose(T0, TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
-	table_lookup_insert_typeclassinfo(T0::in, V::in, T::out),
-	[will_not_call_mercury],
+    table_lookup_insert_typeinfo(T0::in, V::in, T::out),
+    [will_not_call_mercury],
 "
-	MR_table_lookup_insert_typeclassinfo(T0, V, T);
+    MR_table_lookup_insert_typeinfo(T0, V, T);
+").
+
+:- pragma foreign_proc("C",
+    table_lookup_insert_typeclassinfo(T0::in, V::in, T::out),
+    [will_not_call_mercury],
+"
+    MR_table_lookup_insert_typeclassinfo(T0, V, T);
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-	table_save_int_answer(AB::in, Offset::in, V::in),
-	[will_not_call_mercury],
+    table_save_int_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury],
 "
-	MR_table_save_int_answer(AB, Offset, V);
+    MR_table_save_int_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_save_char_answer(AB::in, Offset::in, V::in),
-	[will_not_call_mercury],
+    table_save_char_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury],
 "
-	MR_table_save_char_answer(AB, Offset, V);
+    MR_table_save_char_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_save_string_answer(AB::in, Offset::in, V::in),
-	[will_not_call_mercury],
+    table_save_string_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury],
 "
-	MR_table_save_string_answer(AB, Offset, V);
+    MR_table_save_string_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_save_float_answer(AB::in, Offset::in, V::in),
-	[will_not_call_mercury],
+    table_save_float_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury],
 "
-	MR_table_save_float_answer(AB, Offset, V);
+    MR_table_save_float_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_save_io_state_answer(AB::in, Offset::in, V::ui),
-	[will_not_call_mercury],
+    table_save_io_state_answer(AB::in, Offset::in, V::ui),
+    [will_not_call_mercury],
 "
-	MR_table_save_io_state_answer(AB, Offset, V);
-").
-
-:- pragma foreign_proc("C", 
-	table_save_any_answer(AB::in, Offset::in, V::in),
-	[will_not_call_mercury],
-"
-	MR_table_save_any_answer(AB, Offset, TypeInfo_for_T, V);
+    MR_table_save_io_state_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_int_answer(AB::in, Offset::in, V::out),
-	[will_not_call_mercury, promise_semipure],
+    table_save_any_answer(AB::in, Offset::in, V::in),
+    [will_not_call_mercury],
 "
-	MR_table_restore_int_answer(AB, Offset, V);
+    MR_table_save_any_answer(AB, Offset, TypeInfo_for_T, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_char_answer(AB::in, Offset::in, V::out),
-	[will_not_call_mercury, promise_semipure],
+    table_restore_int_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_restore_char_answer(AB, Offset, V);
+    MR_table_restore_int_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_string_answer(AB::in, Offset::in, V::out),
-	[will_not_call_mercury, promise_semipure],
+    table_restore_char_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_restore_string_answer(AB, Offset, V);
+    MR_table_restore_char_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_float_answer(AB::in, Offset::in, V::out),
-	[will_not_call_mercury, promise_semipure],
+    table_restore_string_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_restore_float_answer(AB, Offset, V);
+    MR_table_restore_string_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_io_state_answer(AB::in, Offset::in, V::uo),
-	[will_not_call_mercury, promise_semipure],
+    table_restore_float_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_restore_io_state_answer(AB, Offset, V);
+    MR_table_restore_float_answer(AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
-	table_restore_any_answer(AB::in, Offset::in, V::out),
-	[will_not_call_mercury, promise_semipure],
+    table_restore_io_state_answer(AB::in, Offset::in, V::uo),
+    [will_not_call_mercury, promise_semipure],
 "
-	MR_table_restore_any_answer(AB, Offset, V);
+    MR_table_restore_io_state_answer(AB, Offset, V);
+").
+
+:- pragma foreign_proc("C",
+    table_restore_any_answer(AB::in, Offset::in, V::out),
+    [will_not_call_mercury, promise_semipure],
+"
+    MR_table_restore_any_answer(AB, Offset, V);
 ").
 
 table_error(Message) :-
-	error(Message).
+    error(Message).
 
 :- pragma foreign_proc("C",
-	table_report_statistics,
-	[will_not_call_mercury],
+    table_report_statistics,
+    [will_not_call_mercury],
 "
-	MR_table_report_statistics(stderr);
+    MR_table_report_statistics(stderr);
 ").
 
 table_lookup_insert_int(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_lookup_insert_int").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_lookup_insert_int").
 
 table_lookup_insert_start_int(_, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_lookup_insert_start_int").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_lookup_insert_start_int").
 
 table_lookup_insert_char(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_lookup_insert_char").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_lookup_insert_char").
 
 table_lookup_insert_string(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_lookup_insert_string").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_lookup_insert_string").
 
 table_lookup_insert_float(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_lookup_insert_float").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_lookup_insert_float").
 
 table_lookup_insert_enum(_, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_lookup_insert_enum").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_lookup_insert_enum").
 
 table_lookup_insert_user(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_lookup_insert_user").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_lookup_insert_user").
 
 table_lookup_insert_poly(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_lookup_insert_poly").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_lookup_insert_poly").
 
 table_save_int_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_save_int_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_save_int_answer").
 
 table_save_char_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_save_char_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_save_char_answer").
 
 table_save_string_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_save_string_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_save_string_answer").
 
 table_save_float_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_save_float_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_save_float_answer").
 
 table_save_io_state_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_save_io_state_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_save_io_state_answer").
 
 table_save_any_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_save_any_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_save_any_answer").
 
 table_restore_int_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_restore_int_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_restore_int_answer").
 
 table_restore_char_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_restore_char_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_restore_char_answer").
 
 table_restore_string_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_restore_string_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_restore_string_answer").
 
 table_restore_float_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_restore_float_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_restore_float_answer").
 
 table_restore_io_state_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_restore_io_state_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_restore_io_state_answer").
 
 table_restore_any_answer(_, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	semipure private_builtin__semip,
-	private_builtin__sorry("table_restore_any_answer").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    semipure private_builtin__semip,
+    private_builtin__sorry("table_restore_any_answer").
 
 table_report_statistics :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	impure private_builtin__imp,
-	private_builtin__sorry("table_report_statistics").
+    % This version is only used for back-ends for which there is no
+    % matching foreign_proc version.
+    impure private_builtin__imp,
+    private_builtin__sorry("table_report_statistics").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

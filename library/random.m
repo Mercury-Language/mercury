@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998,2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -121,7 +123,8 @@
 :- import_module array.
 :- import_module int.
 
-:- type random__supply ---> rs(int). % I(j)
+:- type random__supply
+    ---> rs(int). % I(j)
 
 :- pred random__params(int::out, int::out, int::out) is det.	% a, c, m
 
@@ -206,9 +209,7 @@ random__test(Seed, N, Nums, Max) :-
 :- mode random__test_2(in, out, in, out) is det.
 
 random__test_2(N, Is, RS0, RS) :-
-	(
-		N > 0
-	->
+	( N > 0 ->
 		N1 = N - 1,
 		random__random(I, RS0, RS1),
 		random__test_2(N1, Is0, RS1, RS),

@@ -187,7 +187,7 @@ set(I, J, X, A, A ^ elem(I, J) := X).
 
 %-----------------------------------------------------------------------------%
 
-( array2d(M, N, A) ^ unsafe_elem(I, J) := X ) = 
+( array2d(M, N, A) ^ unsafe_elem(I, J) := X ) =
     array2d(M, N, A ^ elem(I * N + J) := X).
 
 unsafe_set(I, J, X, A, A ^ unsafe_elem(I, J) := X).

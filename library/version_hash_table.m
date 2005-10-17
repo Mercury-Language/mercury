@@ -155,7 +155,7 @@
 :- import_module std_util.
 :- import_module version_array.
 
-:- type version_hash_table(K, V) 
+:- type version_hash_table(K, V)
     --->    ht(
                 num_buckets             :: int,
                 num_occupants           :: int,

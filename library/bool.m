@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-1997,2000,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -22,12 +24,13 @@
 
 %-----------------------------------------------------------------------------%
 
-% The boolean type.
-% Unlike most languages, we use `yes' and `no' as boolean constants
-% rather than `true' and `false'.  This is to avoid confusion
-% with the predicates `true' and `fail'.
-
-:- type bool ---> no ; yes.
+    % The boolean type.
+    % Unlike most languages, we use `yes' and `no' as boolean constants
+    % rather than `true' and `false'.  This is to avoid confusion
+    % with the predicates `true' and `fail'.
+:- type bool
+    --->    no
+    ;       yes.
 
 :- instance enum(bool).
 
@@ -48,8 +51,8 @@
 
 :- func bool__xor(bool, bool) = bool.
 
-	% pred_to_bool(P) = (if P then yes else no).
-	%
+    % pred_to_bool(P) = (if P then yes else no).
+    %
 :- func pred_to_bool((pred)::((pred) is semidet)) = (bool::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -57,15 +60,13 @@
 
 :- implementation.
 
-% 
 % Important:
 % The representation of bool values should correspond with the definitions of
 % MR_TRUE and MR_FALSE in runtime/mercury_std.h.
-%
 
 :- instance enum(bool) where [
-	to_int(Bool) = bool_to_int(Bool),
-	from_int(bool_to_int(Bool)) = Bool
+    to_int(Bool) = bool_to_int(Bool),
+    from_int(bool_to_int(Bool)) = Bool
 ].
 
 :- func bool_to_int(bool) = int.
@@ -84,11 +85,13 @@ bool__or_list(List) = Result :- bool__or_list(List, Result).
 
 bool__or_list([], no).
 bool__or_list([Bool | Bools], Result) :-
-	( Bool = yes ->
-		Result = yes
-	;
-		bool__or_list(Bools, Result)
-	).
+    (
+        Bool = yes,
+        Result = yes
+    ;
+        Bool = no,
+        bool__or_list(Bools, Result)
+    ).
 
 bool__and(X, Y) = Result :- bool__and(X, Y, Result).
 
@@ -99,11 +102,13 @@ bool__and_list(List) = Result :- bool__and_list(List, Result).
 
 bool__and_list([], yes).
 bool__and_list([Bool | Bools], Result) :-
-	( Bool = no ->
-		Result = no
-	;
-		bool__and_list(Bools, Result)
-	).
+    (
+        Bool = no,
+        Result = no
+    ;
+        Bool = yes,
+        bool__and_list(Bools, Result)
+    ).
 
 bool__not(X) = Result :- bool__not(X, Result).
 

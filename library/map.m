@@ -56,7 +56,7 @@
 :- func map__search(map(K, V), K) = V is semidet.
 
     % Search map for key, but abort if search fails.
-    %   
+    %
 :- pred map__lookup(map(K, V)::in, K::in, V::out) is det.
 :- func map__lookup(map(K, V), K) = V.
 
@@ -148,17 +148,17 @@
 :- pred map__det_update(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 :- func map__det_update(map(K, V), K, V) = map(K, V).
 
-    % Update the value at the given key by applying the supplied 
+    % Update the value at the given key by applying the supplied
     % transformation to it.  Fails if the key is not found.  This is faster
     % than first searching for the value and then updating it.
     %
-:- pred map__transform_value(pred(V, V)::in(pred(in, out) is det), K::in, 
+:- pred map__transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     map(K, V)::in, map(K, V)::out) is semidet.
 
     % Same as transform_value/4, but aborts instead of failing if the
     % key is not found.
     %
-:- pred map__det_transform_value(pred(V, V)::in(pred(in, out) is det), K::in, 
+:- pred map__det_transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     map(K, V)::in, map(K, V)::out) is det.
 :- func map__det_transform_value(func(V) = V, K, map(K, V)) = map(K, V).
 
@@ -370,7 +370,7 @@
 :- mode map__map_foldl2(pred(in, in, out, in, out, in, out) is det,
     in, out, in, out, in, out) is det.
 :- mode map__map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
-    in, out, in, out, in, out) is semidet. 
+    in, out, in, out, in, out) is semidet.
 
     % Given two maps M1 and M2, create a third map M3 that has only the
     % keys that occur in both M1 and M2. For keys that occur in both M1
@@ -658,7 +658,7 @@ map__det_transform_value(P, K, !Map) :-
     ).
 
 map__det_transform_value(F, K, Map0) = Map :-
-    map__det_transform_value(pred(V0::in, V::out) is det :- V = F(V0), K, 
+    map__det_transform_value(pred(V0::in, V::out) is det :- V = F(V0), K,
         Map0, Map).
 
 map__set(Map0, K, V, Map) :-

@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995, 1997-1999, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -41,7 +43,7 @@
 :- pred stack__push(stack(T)::in, T::in, stack(T)::out) is det.
 :- func stack__push(stack(T), T) = stack(T).
 
-	% `stack__push_list(Stack0, Elems, Stack)' is true iff `Stack' 
+	% `stack__push_list(Stack0, Elems, Stack)' is true iff `Stack'
 	% is the stack which results from pushing the elements of the
 	% list `Elems' onto the top of `Stack0'.
 	%
@@ -105,19 +107,20 @@ stack__push_list(Stack0, [Elem | Elems], Stack1) :-
 stack__top([Elem | _], Elem).
 
 stack__top_det(Stack, Elem) :-
-	( Stack = [Elem1 | _] ->
-		Elem = Elem1
+	(
+        Stack = [Elem | _]
 	;
+        Stack = [],
 		error("stack__top_det: top of empty stack")
 	).
 
 stack__pop([Elem | Stack], Elem, Stack).
 
 stack__pop_det(Stack0, Elem, Stack) :-
-	( Stack0 = [Elem1 | Stack1] ->
-		Elem = Elem1,
-		Stack = Stack1
+	(
+        Stack0 = [Elem | Stack]
 	;
+        Stack0 = [],
 		error("stack__pop_det: pop from empty stack")
 	).
 
@@ -149,5 +152,3 @@ stack__det_top(S) = X :-
 
 stack__depth(S) = N :-
 	stack__depth(S, N).
-
-

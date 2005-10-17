@@ -540,7 +540,7 @@ relation__to_key_assoc_list_2(Fwd, [Key | Keys], !AssocList) :-
     sparse_bitset__foldr(accumulate_with_key(relation_key(Key)), Set,
         !AssocList).
 
-:- pred accumulate_with_key(relation_key::in, relation_key::in, 
+:- pred accumulate_with_key(relation_key::in, relation_key::in,
     assoc_list(relation_key, relation_key)::in,
     assoc_list(relation_key, relation_key)::out) is det.
 

@@ -34,7 +34,7 @@
 :- pred eqvclass__is_member(eqvclass(T)::in, T::in) is semidet.
 
     % If this item is known to the equivalence class, return the id of its
-    % partition. The only use that the caller can make of the partition id 
+    % partition. The only use that the caller can make of the partition id
     % is to check whether two items in the same equivalence calls have the
     % same partition id; that test will succeed if and only if the two
     % items are in the same partition. Partition ids are not guaranteed
@@ -355,7 +355,7 @@ eqvclass__same_eqvclass_list(EqvClass, [Element | Elements]) :-
     map__search(ElementMap, Element, Id),
     eqvclass__same_eqvclass_list_2(ElementMap, Elements, Id).
 
-:- pred eqvclass__same_eqvclass_list_2(map(T, partition_id)::in, 
+:- pred eqvclass__same_eqvclass_list_2(map(T, partition_id)::in,
     list(T)::in, partition_id::in) is semidet.
 
 eqvclass__same_eqvclass_list_2(_, [], _).

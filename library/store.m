@@ -67,12 +67,12 @@
     % copy_mutvar(OldMutvar, NewMutvar, S0, S) is equivalent to the sequence
     %   get_mutvar(OldMutvar, Value, S0, S1),
     %   new_mutvar(NewMutvar, Value, S1, S )
-    %   
+    %
 :- pred store__copy_mutvar(generic_mutvar(T, S)::in, generic_mutvar(T, S)::out,
     S::di, S::uo) is det <= store(S).
 
     % Lookup the value stored in a given mutable variable.
-    % 
+    %
 :- pred store__get_mutvar(generic_mutvar(T, S)::in, T::out,
     S::di, S::uo) is det <= store(S).
 
@@ -293,17 +293,17 @@ store__new(S) :-
 
 % Note -- the syntax for the operations on stores
 % might be nicer if we used some new operators, e.g.
-% 
+%
 %   :- op(.., xfx, ('<-')).
 %   :- op(.., fy, ('!')).
 %   :- op(.., xfx, (':=')).
-% 
+%
 % Then we could do something like this:
-% 
+%
 %   Ptr <- new(Val)   -->   new_mutvar(Val, Ptr).
 %   Val <- !Ptr       -->   get_mutvar(Ptr, Val).
 %   !Ptr := Val   -->   set_mutvar(Ptr, Val).
-% 
+%
 % I wonder whether it is worth it?  Hmm, probably not.
 
 :- pragma foreign_proc("C",

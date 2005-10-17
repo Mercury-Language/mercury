@@ -121,7 +121,7 @@
 
     % `contains(Set, X)' is true iff `X' is a member of `Set'.
     % Takes O(rep_size(Set)) time.
-    % 
+    %
 :- pred contains(sparse_bitset(T)::in, T::in) is semidet <= enum(T).
 
     % `member(Set, X)' is true iff `X' is a member of `Set'.
@@ -579,12 +579,12 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
     ;
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
-        
+
         % Extract the low-order half of the bits.
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize), 
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
 
         (
             Dir = low_to_high,
@@ -632,12 +632,12 @@ fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
     ;
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
-        
+
         % Extract the low-order half of the bits.
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize), 
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
 
         (
             Dir = low_to_high,
@@ -672,7 +672,7 @@ insert(sparse_bitset(Set), Elem) =
 :- func insert_2(bitset_impl, int) = bitset_impl.
 
 insert_2([], Index) = [make_bitset_elem(Offset, Bits)] :-
-    bits_for_index(Index, Offset, Bits).    
+    bits_for_index(Index, Offset, Bits).
 insert_2(Set0, Index) = Set :-
     Set0 = [Data0 | Rest],
     Offset0 = Data0 ^ offset,
@@ -788,7 +788,7 @@ find_least_bit(Bits0) = BitNum :-
     Size = bits_per_int,
     BitNum0 = 0,
     BitNum = find_least_bit_2(Bits0, Size, BitNum0).
-    
+
 :- func find_least_bit_2(int, int, int) = int.
 
 find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
@@ -798,7 +798,7 @@ find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
     ;
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
-        
+
         LowBits = Bits0 /\ Mask,
         ( LowBits \= 0 ->
             BitNum = find_least_bit_2(LowBits, HalfSize, BitNum0)
@@ -834,7 +834,7 @@ list_to_set_2([H | T], List0) = List :-
     list(T)::in, list(T)::out) is det <= enum(T).
 :- pragma type_spec(list_to_set_3/6, T = var(_)).
 :- pragma type_spec(list_to_set_3/6, T = int).
-        
+
 list_to_set_3([], _, !Bits, !Rest).
 list_to_set_3([H | T], Offset, !Bits, !Rest) :-
     BitToSet = enum__to_int(H) - Offset,
@@ -912,7 +912,7 @@ contains_2([Data | Rest], Index) :-
     Index >= Offset,
     ( Index < Offset + bits_per_int ->
         get_bit(Data ^ bits, Index - Offset) \= 0
-    ;       
+    ;
         contains_2(Rest, Index)
     ).
 
@@ -925,7 +925,7 @@ member(Elem::in, Set::in) :-
 member(Elem::out, sparse_bitset(Set)::in) :-
     member_2(Index, Set),
     ( Elem0 = from_int(Index) ->
-        Elem = Elem0    
+        Elem = Elem0
     ;
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
@@ -949,12 +949,12 @@ member_3(Index, Offset, Size, Bits) :-
     ;
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
-        
+
         % Extract the low-order half of the bits.
         LowBits = Mask /\ Bits,
 
         % Extract the high-order half of the bits.
-        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize), 
+        HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize),
 
         ( member_3(Index, Offset, HalfSize, LowBits)
         ; member_3(Index, Offset + HalfSize, HalfSize, HighBits)

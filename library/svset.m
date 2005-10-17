@@ -1,3 +1,5 @@
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -21,49 +23,49 @@
 :- import_module list.
 :- import_module set.
 
-	% `svset__insert(X, Set0, Set)' is true iff `Set' is the union of
-	% `Set0' and the set containing only `X'.
-	%
+    % `svset__insert(X, Set0, Set)' is true iff `Set' is the union of
+    % `Set0' and the set containing only `X'.
+    %
 :- pred svset__insert(T::in, set(T)::in, set(T)::out) is det.
 
-	% `svset__insert_list(Xs, Set0, Set)' is true iff `Set' is the union of
-	% `Set0' and the set containing only the members of `Xs'.
-	%
+    % `svset__insert_list(Xs, Set0, Set)' is true iff `Set' is the union of
+    % `Set0' and the set containing only the members of `Xs'.
+    %
 :- pred svset__insert_list(list(T)::in, set(T)::in, set(T)::out) is det.
 
-	% `svset__delete(X, Set0, Set)' is true iff `Set' is the relative
-	% complement of `Set0' and the set containing only `X', i.e.
-	% if `Set' is the set which contains all the elements of `Set0'
-	% except `X'.
-	%
+    % `svset__delete(X, Set0, Set)' is true iff `Set' is the relative
+    % complement of `Set0' and the set containing only `X', i.e.
+    % if `Set' is the set which contains all the elements of `Set0'
+    % except `X'.
+    %
 :- pred svset__delete(T::in, set(T)::in, set(T)::out) is det.
 
-	% `svset__delete_list(Xs, Set0, Set)' is true iff `Set' is the relative
-	% complement of `Set0' and the set containing only the members of
-	% `Xs'.
-	%
+    % `svset__delete_list(Xs, Set0, Set)' is true iff `Set' is the relative
+    % complement of `Set0' and the set containing only the members of
+    % `Xs'.
+    %
 :- pred svset__delete_list(list(T)::in, set(T)::in, set(T)::out) is det.
 
-	% `svset__remove(X, Set0, Set)' is true iff `Set0' contains `X',
-	% and `Set' is the relative complement of `Set0' and the set
-	% containing only `X', i.e.  if `Set' is the set which contains
-	% all the elements of `Set0' except `X'.
-	%
+    % `svset__remove(X, Set0, Set)' is true iff `Set0' contains `X',
+    % and `Set' is the relative complement of `Set0' and the set
+    % containing only `X', i.e.  if `Set' is the set which contains
+    % all the elements of `Set0' except `X'.
+    %
 :- pred svset__remove(T::in, set(T)::in, set(T)::out) is semidet.
 
-	% `svset__remove_list(Xs, Set0, Set)' is true iff `Xs' does not
-	% contain any duplicates, `Set0' contains every member of `Xs',
-	% and `Set' is the relative complement of `Set0' and the set
-	% containing only the members of `Xs'.
-	%
+    % `svset__remove_list(Xs, Set0, Set)' is true iff `Xs' does not
+    % contain any duplicates, `Set0' contains every member of `Xs',
+    % and `Set' is the relative complement of `Set0' and the set
+    % containing only the members of `Xs'.
+    %
 :- pred svset__remove_list(list(T)::in, set(T)::in, set(T)::out) is semidet.
 
-	% `svset__remove_least(Elem, Set0, Set)' is true iff
-	% `Set0' is not empty, `Elem' is the smallest element in `Set0'
-	% (with elements ordered using the standard ordering given
-	% by compare/3), and `Set' is the set containing all the
-	% elements of `Set0' except `Elem'.
-	%
+    % `svset__remove_least(Elem, Set0, Set)' is true iff
+    % `Set0' is not empty, `Elem' is the smallest element in `Set0'
+    % (with elements ordered using the standard ordering given
+    % by compare/3), and `Set' is the set containing all the
+    % elements of `Set0' except `Elem'.
+    %
 :- pred svset__remove_least(T::out, set(T)::in, set(T)::out) is semidet.
 
 %--------------------------------------------------------------------------%
@@ -76,7 +78,7 @@
 
 :- interface.
 
-:- import_module term.	% for var/1.
+:- import_module term.  % for var/1.
 
 :- pragma type_spec(svset__insert/3, T = var(_)).
 
@@ -87,22 +89,22 @@
 :- implementation.
 
 svset__insert(X, Set0, Set) :-
-	set__insert(Set0, X, Set).
+    set__insert(Set0, X, Set).
 
 svset__insert_list(X, Set0, Set) :-
-	set__insert_list(Set0, X, Set).
+    set__insert_list(Set0, X, Set).
 
 svset__delete(X, Set0, Set) :-
-	set__delete(Set0, X, Set).
+    set__delete(Set0, X, Set).
 
 svset__delete_list(X, Set0, Set) :-
-	set__delete_list(Set0, X, Set).
+    set__delete_list(Set0, X, Set).
 
 svset__remove(X, Set0, Set) :-
-	set__remove(Set0, X, Set).
+    set__remove(Set0, X, Set).
 
 svset__remove_list(X, Set0, Set) :-
-	set__remove_list(Set0, X, Set).
+    set__remove_list(Set0, X, Set).
 
 svset__remove_least(X, Set0, Set) :-
-	set__remove_least(Set0, X, Set).
+    set__remove_least(Set0, X, Set).

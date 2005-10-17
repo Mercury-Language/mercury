@@ -1,5 +1,7 @@
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,10 +25,10 @@
 %-----------------------------------------------------------------------------%
 
 :- pred svbimap__insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
-	is semidet.
+    is semidet.
 
 :- pred svbimap__det_insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
-	is det.
+    is det.
 
 :- pred svbimap__set(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out) is det.
 
@@ -35,10 +37,10 @@
 :- implementation.
 
 svbimap__insert(K, V, Bimap0, Bimap) :-
-	bimap__insert(Bimap0, K, V, Bimap).
+    bimap__insert(Bimap0, K, V, Bimap).
 
 svbimap__det_insert(K, V, Bimap0, Bimap) :-
-	bimap__det_insert(Bimap0, K, V, Bimap).
+    bimap__det_insert(Bimap0, K, V, Bimap).
 
 svbimap__set(K, V, Bimap0, Bimap) :-
-	bimap__set(Bimap0, K, V, Bimap).
+    bimap__set(Bimap0, K, V, Bimap).

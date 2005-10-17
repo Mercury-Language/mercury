@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995, 1997-1999, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -24,98 +26,93 @@
 
 :- type queue(T).
 
-	% `queue__init(Queue)' is true iff `Queue' is an empty queue.
-	%
+    % `queue__init(Queue)' is true iff `Queue' is an empty queue.
+    %
 :- pred queue__init(queue(T)::out) is det.
 :- func queue__init = queue(T).
 
-	% 'queue_equal(Q1, Q2)' is true iff Q1 and Q2 contain the same
-	% elements in the same order.
-	%
+    % 'queue_equal(Q1, Q2)' is true iff Q1 and Q2 contain the same
+    % elements in the same order.
+    %
 :- pred queue__equal(queue(T)::in, queue(T)::in) is semidet.
 
-	% `queue__is_empty(Queue)' is true iff `Queue' is an empty queue.
-	%
+    % `queue__is_empty(Queue)' is true iff `Queue' is an empty queue.
+    %
 :- pred queue__is_empty(queue(T)::in) is semidet.
 
-	% `queue__is_full(Queue)' is intended to be true iff `Queue'
-	% is a queue whose capacity is exhausted.  This
-	% implementation allows arbitrary-sized queues, so queue__is_full
-	% always fails.
-	%
+    % `queue__is_full(Queue)' is intended to be true iff `Queue' is a queue
+    % whose capacity is exhausted. This implementation allows arbitrary-sized
+    % queues, so queue__is_full always fails.
+    %
 :- pred queue__is_full(queue(T)::in) is semidet.
 
-	% `queue__put(Queue0, Elem, Queue)' is true iff `Queue' is
-	% the queue which results from appending `Elem' onto the end
-	% of `Queue0'.
-	%
+    % `queue__put(Queue0, Elem, Queue)' is true iff `Queue' is the queue
+    % which results from appending `Elem' onto the end of `Queue0'.
+    %
 :- pred queue__put(queue(T)::in, T::in, queue(T)::out) is det.
 :- func queue__put(queue(T), T) = queue(T).
 
-	% `queue__put_list(Queue0, Elems, Queue)' is true iff `Queue'
-	% is the queue which results from inserting the items in the
-	% list `Elems' into `Queue0'.
-	%
+    % `queue__put_list(Queue0, Elems, Queue)' is true iff `Queue' is the queue
+    % which results from inserting the items in the list `Elems' into `Queue0'.
+    %
 :- pred queue__put_list(queue(T)::in, list(T)::in, queue(T)::out) is det.
 :- func queue__put_list(queue(T), list(T)) = queue(T).
 
-	% `queue__first(Queue, Elem)' is true iff `Queue' is a non-empty
-	% queue whose first element is `Elem'.
-	%
+    % `queue__first(Queue, Elem)' is true iff `Queue' is a non-empty queue
+    % whose first element is `Elem'.
+    %
 :- pred queue__first(queue(T)::in, T::out) is semidet.
 
-	% `queue__get(Queue0, Elem, Queue)' is true iff `Queue0' is
-	% a non-empty queue whose first element is `Elem', and `Queue'
-	% the queue which results from removing that element from
-	% the front of `Queue0'.
-	%
+    % `queue__get(Queue0, Elem, Queue)' is true iff `Queue0' is a non-empty
+    % queue whose first element is `Elem', and `Queue' the queue which results
+    % from removing that element from the front of `Queue0'.
+    %
 :- pred queue__get(queue(T)::in, T::out, queue(T)::out) is semidet.
 
-	% `queue__length(Queue, Length)' is true iff `Queue' is a queue
-	% containing `Length' elements.
-	%
+    % `queue__length(Queue, Length)' is true iff `Queue' is a queue
+    % containing `Length' elements.
+    %
 :- pred queue__length(queue(T)::in, int::out) is det.
 :- func queue__length(queue(T)) = int.
 
-	% `queue__list_to_queue(List, Queue)' is true iff `Queue' is a queue
-	% containing the elements of List, with the first element of List at
-	% the head of the queue.
-	%
+    % `queue__list_to_queue(List, Queue)' is true iff `Queue' is a queue
+    % containing the elements of List, with the first element of List at
+    % the head of the queue.
+    %
 :- pred queue__list_to_queue(list(T)::in, queue(T)::out) is det.
 :- func queue__list_to_queue(list(T)) = queue(T).
 
-	% A synonym for queue.list_to_queue/1.
-	%
+    % A synonym for queue.list_to_queue/1.
+    %
 :- func queue__from_list(list(T)) = queue(T).
 
-	% `queue__to_list(Queue) = List' is the inverse of queue__from_list/1.
-	%
+    % `queue__to_list(Queue) = List' is the inverse of queue__from_list/1.
+    %
 :- func queue__to_list(queue(T)) = list(T).
 
-	% `queue__delete_all(Queue0, Elem, Queue)' is true iff `Queue' is
-	% the same queue as `Queue0' with all occurrences of `Elem' removed
-	% from it.
-	% 
+    % `queue__delete_all(Queue0, Elem, Queue)' is true iff `Queue' is the same
+    % queue as `Queue0' with all occurrences of `Elem' removed from it.
+    %
 :- pred queue__delete_all(queue(T)::in, T::in, queue(T)::out) is det.
 :- func queue__delete_all(queue(T), T) = queue(T).
 
-	% `queue__put_on_front(Queue0, Elem) = Queue' pushes `Elem' on to
-	% the front of `Queue0', giving `Queue'.
-	%
+    % `queue__put_on_front(Queue0, Elem) = Queue' pushes `Elem' on to
+    % the front of `Queue0', giving `Queue'.
+    %
 :- func queue__put_on_front(queue(T), T) = queue(T).
 :- pred queue__put_on_front(queue(T)::in, T::in, queue(T)::out) is det.
 
-	% `queue__put_list_on_front(Queue0, Elems) = Queue' pushes `Elems'
-	% on to the front of `Queue0', giving `Queue' (the Nth member
-	% of `Elems' becomes the Nth member from the front of `Queue').
-	%
+    % `queue__put_list_on_front(Queue0, Elems) = Queue' pushes `Elems'
+    % on to the front of `Queue0', giving `Queue' (the Nth member
+    % of `Elems' becomes the Nth member from the front of `Queue').
+    %
 :- func queue__put_list_on_front(queue(T), list(T)) = queue(T).
 :- pred queue__put_list_on_front(queue(T)::in, list(T)::in, queue(T)::out)
-	is det.
+    is det.
 
-	% `queue__get_from_back(Queue0, Elem, Queue)' removes `Elem' from
-	% the back of `Queue0', giving `Queue'.
-	%
+    % `queue__get_from_back(Queue0, Elem, Queue)' removes `Elem' from
+    % the back of `Queue0', giving `Queue'.
+    %
 :- pred queue__get_from_back(queue(T)::in, T::out, queue(T)::out) is semidet.
 
 %--------------------------------------------------------------------------%
@@ -126,65 +123,70 @@
 :- import_module int.
 :- import_module std_util.
 
-% This implementation is in terms of a pair of lists.  We impose the
-% extra constraint that the `off' list is empty if and only if the queue
-% is empty.
-
+    % This implementation is in terms of a pair of lists. We impose the
+    % extra constraint that the `off' list is empty if and only if the queue
+    % is empty.
 :- type queue(T) == pair(list(T)).
 
 queue__init([] - []).
 
 queue__equal(On0 - Off0, On1 - Off1) :-
-	list__reverse(On0, On0R),
-	list__append(Off0, On0R, Q0),
-	list__reverse(On1, On1R),
-	list__append(Off1, On1R, Q1),
-	Q0 = Q1.
+    list__reverse(On0, On0R),
+    list__append(Off0, On0R, Q0),
+    list__reverse(On1, On1R),
+    list__append(Off1, On1R, Q1),
+    Q0 = Q1.
 
 queue__is_empty(_ - []).
 
 queue__is_full(_) :-
-	semidet_fail.
+    semidet_fail.
 
 queue__put(On0 - Off0, Elem, On - Off) :-
-	( Off0 = [] ->
-		On = On0,
-		Off = [Elem]
-	;
-		On = [Elem | On0],
-		Off = Off0
-	).
+    (
+        Off0 = [],
+        On = On0,
+        Off = [Elem]
+    ;
+        Off0 = [_ | _],
+        On = [Elem | On0],
+        Off = Off0
+    ).
 
 queue__put_list(On0 - Off0, Xs, On - Off) :-
-	( Off0 = [] ->
-		On = On0,
-		Off = Xs
-	;
-		Off = Off0,
-		queue__put_list_2(Xs, On0, On)
-	).
+    (
+        Off0 = [],
+        On = On0,
+        Off = Xs
+    ;
+        Off0 = [_ | _],
+        Off = Off0,
+        queue__put_list_2(Xs, On0, On)
+    ).
 
 :- pred queue__put_list_2(list(T)::in, list(T)::in, list(T)::out) is det.
 
 queue__put_list_2([], On, On).
 queue__put_list_2([X | Xs], On0, On) :-
-	queue__put_list_2(Xs, [X | On0], On).
+    queue__put_list_2(Xs, [X | On0], On).
 
 queue__first(_ - [Elem | _], Elem).
 
 queue__get(On0 - [Elem | Off0], Elem, On - Off) :-
-	( Off0 = [] ->
-		list__reverse(On0, Off),
-		On = []
-	;
-		On = On0,
-		Off = Off0
-	).
+    (
+        Off0 = [],
+        list__reverse(On0, Off),
+        On = []
+    ;
+        Off0 = [_ | _],
+        On = On0,
+        Off = Off0
+    ).
 
 queue__length(On - Off, Length) :-
-	list__length(On, LengthOn),
-	list__length(Off, LengthOff),
-	Length = LengthOn + LengthOff.
+    list__length(On, LengthOn),
+    list__length(Off, LengthOff),
+    Length = LengthOn + LengthOff.
 
 queue__list_to_queue(List, [] - List).
 
@@ -193,74 +195,71 @@ queue__from_list(List) = [] - List.
 queue__to_list(On - Off) = Off ++ list__reverse(On).
 
 queue__delete_all(On0 - Off0, Elem, On - Off) :-
-	list__delete_all(On0, Elem, On1),
-	list__delete_all(Off0, Elem, Off1),
-	( Off1 = [] ->
-		list__reverse(On1, Off),
-		On = []
-	;
-		On = On1,
-		Off = Off1
-	).
+    list__delete_all(On0, Elem, On1),
+    list__delete_all(Off0, Elem, Off1),
+    (
+        Off1 = [],
+        list__reverse(On1, Off),
+        On = []
+    ;
+        Off1 = [_ | _],
+        On = On1,
+        Off = Off1
+    ).
 
 queue__put_on_front(On - Off, Elem, On - [Elem | Off]).
 
 queue__put_on_front(Queue0, Elem) = Queue :-
-	queue__put_on_front(Queue0, Elem, Queue).
+    queue__put_on_front(Queue0, Elem, Queue).
 
 queue__put_list_on_front(On - Off, Elems, On - (Elems ++ Off)).
 
 queue__put_list_on_front(Queue0, Elems) = Queue :-
-	queue__put_list_on_front(Queue0, Elems, Queue).
+    queue__put_list_on_front(Queue0, Elems, Queue).
 
 queue__get_from_back(On0 - Off0, Elem, On - Off) :-
-	(
-		% The On list is non-empty and the last element
-		% in the queue is the head of the On list.
-		%
-		On0 = [Elem | On],
-		Off = Off0
-	;
-		% The On list is empty.
-		%
-		On0 = [],
-		(
-			% The Off list contains a single element.
-			%
-			Off0 = [Elem],
-			On   = [],
-			Off  = []
-		;
-			% The Off list contains two or more elements.
-			% We split it in two and take the head of the
-			% new On list as Elem.
-			%
-			Off0 = [_, _ | _],
-			N    = list__length(Off0),
-			list__split_list(N / 2, Off0, Off, RevOn),
-			[Elem | On] = list__reverse(RevOn)
-		)
-	).
+    (
+        % The On list is non-empty and the last element in the queue
+        % is the head of the On list.
+        On0 = [Elem | On],
+        Off = Off0
+    ;
+        % The On list is empty.
+        On0 = [],
+        (
+            % The Off list contains a single element.
+            Off0 = [Elem],
+            On   = [],
+            Off  = []
+        ;
+            % The Off list contains two or more elements. We split it in two
+            % and take the head of the new On list as Elem.
+            Off0 = [_, _ | _],
+            N    = list__length(Off0),
+            list__split_list(N / 2, Off0, Off, RevOn),
+            [Elem | On] = list__reverse(RevOn)
+        )
+    ).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
-% 	Function forms added.
+%   Function forms added.
 
 queue__init = Q :-
-	queue__init(Q).
+    queue__init(Q).
 
 queue__put(Q1, T) = Q2 :-
-	queue__put(Q1, T, Q2).
+    queue__put(Q1, T, Q2).
 
 queue__put_list(Q1, Xs) = Q2 :-
-	queue__put_list(Q1, Xs, Q2).
+    queue__put_list(Q1, Xs, Q2).
 
 queue__length(Q) = N :-
-	queue__length(Q, N).
+    queue__length(Q, N).
 
 queue__list_to_queue(Xs) = Q :-
-	queue__list_to_queue(Xs, Q).
+    queue__list_to_queue(Xs, Q).
 
 queue__delete_all(Q1, T) = Q2 :-
-	queue__delete_all(Q1, T, Q2).
+    queue__delete_all(Q1, T, Q2).

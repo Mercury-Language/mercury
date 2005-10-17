@@ -125,8 +125,7 @@
 :- mode set(hash_table_di, in, in) = hash_table_uo is det.
 
 :- pred set(K::in, V::in,
-        hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo)
-        is det.
+    hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
     % Field update for hash tables.
     % HT ^ elem(K) := V  is equivalent to  set(HT, K, V).
@@ -134,27 +133,23 @@
 :- func 'elem :='(K, hash_table(K, V), V) = hash_table(K, V).
 :- mode 'elem :='(in, hash_table_di, in) = hash_table_uo is det.
 
-    % Insert a key-value binding into a hash table.  An
-    % exception is thrown if a binding for the key is already
-    % present.
+    % Insert a key-value binding into a hash table. An exception is thrown
+    % if a binding for the key is already present.
     %
 :- func det_insert(hash_table(K, V), K, V) = hash_table(K, V).
 :- mode det_insert(hash_table_di, in, in) = hash_table_uo is det.
 
 :- pred det_insert(K::in, V::in,
-        hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo)
-        is det.
+    hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
-    % Change a key-value binding in a hash table.  An
-    % exception is thrown if a binding for the key does not
-    % already exist.
+    % Change a key-value binding in a hash table. An exception is thrown
+    % if a binding for the key does not already exist.
     %
 :- func det_update(hash_table(K, V), K, V) = hash_table(K, V).
 :- mode det_update(hash_table_di, in, in) = hash_table_uo is det.
 
 :- pred det_update(K::in, V::in,
-        hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo)
-        is det.
+    hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
     % Delete the entry for the given key, leaving the hash table
     % unchanged if there is no such entry.
@@ -162,12 +157,11 @@
 :- func delete(hash_table(K, V), K) = hash_table(K, V).
 :- mode delete(hash_table_di, in) = hash_table_uo is det.
 
-:- pred delete(K::in, 
-        hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo)
-        is det.
+:- pred delete(K::in,
+    hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
-    % Lookup the value associated with the given key.  An exception
-    % is raised if there is no entry for the key.
+    % Lookup the value associated with the given key. An exception is raised
+    % if there is no entry for the key.
     %
 :- func lookup(hash_table(K, V), K) = V.
 :- mode lookup(hash_table_ui, in) = out is det.
@@ -199,7 +193,7 @@
     % Convert an association list into a hash table.
     %
 :- func from_assoc_list(hash_pred(K)::in(hash_pred), assoc_list(K, V)::in) =
-        (hash_table(K, V)::hash_table_uo) is det.
+    (hash_table(K, V)::hash_table_uo) is det.
 
     % Fold a function over the key-value bindings in a hash table.
     %
@@ -446,8 +440,8 @@ to_assoc_list_2(I, HT, AList) =
 from_assoc_list(HP, AList) = from_assoc_list_2(AList, new_default(HP)).
 
 :- func from_assoc_list_2(assoc_list(K, V)::in,
-        hash_table(K, V)::hash_table_di) = (hash_table(K, V)::hash_table_uo)
-        is det.
+    hash_table(K, V)::hash_table_di) = (hash_table(K, V)::hash_table_uo)
+    is det.
 
 from_assoc_list_2([], HT) = HT.
 

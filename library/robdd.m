@@ -22,11 +22,11 @@
 %	term__create_var(VarSupply0, A, VarSupply1),
 %	term__create_var(VarSupply1, B, VarSupply2),
 %	term__create_var(VarSupply2, C, VarSupply),
-%	
+%
 %	% Create some ROBDDs.
 %	R1 = ( var(A) =:= var(B) * (~var(C)) ),
 %	R2 = ( var(A) =< var(B) ),
-%	
+%
 %	% Test if R1 entails R2 (should succeed).
 %	R1 `entails` R2,
 %
@@ -126,7 +126,7 @@
 	% disj_vars([V1, V2, ..., Vn]) = var(V1) + var(V2) + ... + var(Vn).
 :- func disj_vars(vars(T)) = robdd(T).
 
-	% at_most_one_of(Vs) = 
+	% at_most_one_of(Vs) =
 	%	foreach pair Vi, Vj in Vs where Vi \= Vj. ~(var(Vi) * var(Vj)).
 :- func at_most_one_of(vars(T)) = robdd(T).
 
@@ -271,13 +271,13 @@
 :- pred print_robdd(robdd(T)::in, io__state::di, io__state::uo) is det.
 
 	% robdd_to_dot(ROBDD, WriteVar, FileName, IO0, IO).
-	%	Output the ROBDD in a format that can be processed by the 
+	%	Output the ROBDD in a format that can be processed by the
 	%	graph-drawing program `dot'.
 :- pred robdd_to_dot(robdd(T)::in, write_var(T)::in(write_var),
 		string::in, io__state::di, io__state::uo) is det.
 
 	% robdd_to_dot(ROBDD, WriteVar, IO0, IO).
-	%	Output the ROBDD in a format that can be processed by the 
+	%	Output the ROBDD in a format that can be processed by the
 	%	graph-drawing program `dot'.
 :- pred robdd_to_dot(robdd(T)::in, write_var(T)::in(write_var),
 		io__state::di, io__state::uo) is det.
@@ -427,7 +427,7 @@ empty_vars_set = sparse_bitset__init.
 
 :- pragma no_inline(ite_var/3).
 :- pragma foreign_proc("C",
-	ite_var(V::in, G::in, H::in) = (ITE::out), 
+	ite_var(V::in, G::in, H::in) = (ITE::out),
 	[will_not_call_mercury, promise_pure],
 "
 	ITE = (MR_ROBDD_NODE_TYPE) MR_ROBDD_ite_var(V, (MR_ROBDD_node *) G,
@@ -748,7 +748,7 @@ remove_implications(ImpRes, R0) = R :-
 	robdd_cache(T)::in, robdd_cache(T)::out) is det.
 
 remove_implications_2(ImpRes, True, False, R0, R) -->
-	( { is_terminal(R0) } -> 
+	( { is_terminal(R0) } ->
 		{ R = R0 }
 	; { True `contains` R0 ^ value } ->
 		remove_implications_2(ImpRes, True, False, R0 ^ tr, R)
@@ -878,10 +878,10 @@ dnf(R) =
 % 		[pos(R ^ value) | cnf(R ^ tr)] `merge_cnf`
 % 		[neg(R ^ value) | cnf(R ^ fa)]
 % 	).
-% 
+%
 % :- func merge_cnf(list(list(literal(T))), list(list(literal(T)))) =
 % 		list(list(literal(T))).
-% 
+%
 % merge_cnf(As, Bs) =
 % 	( As = [] ->
 % 		Bs
@@ -959,7 +959,7 @@ print_robdd_2(F, Trues, Falses) -->
 
 :- pragma memo(rename_vars/2).
 
-rename_vars(Subst, F) = 
+rename_vars(Subst, F) =
 	( is_terminal(F) ->
 		F
 	;
@@ -1039,7 +1039,7 @@ at_most_one_of_2(Vars, OneOf0, NoneOf0) = R :-
 		(pred(V::in, One0::in, One::out, None0::in, None::out) is det :-
 			None = make_node(V, zero, None0),
 			One = make_node(V, None0, One0)
-		), list__reverse(to_sorted_list(Vars)), 
+		), list__reverse(to_sorted_list(Vars)),
 		OneOf0, R, NoneOf0, _).
 
 :- pragma memo(var_restrict_true/2).
@@ -1107,7 +1107,7 @@ restrict_true_false_vars_2(TrueVars0, FalseVars0, R0, R, Seen0, Seen) :-
 	; search(Seen0, R0, R1) ->
 		R = R1,
 		Seen = Seen0
-	;	
+	;
 		Var = R0 ^ value,
 		TrueVars = TrueVars0 `remove_leq` Var,
 		FalseVars = FalseVars0 `remove_leq` Var,
@@ -1274,7 +1274,7 @@ add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
 		add_equivalences_2(Vs, Trues, R0 ^ fa, Rfa, !Cache),
 		R = make_node(Var, Rtr, Rfa),
 		!:Cache = !.Cache ^ elem(R0) := R
-	; Trues `contains` LeaderVar -> 
+	; Trues `contains` LeaderVar ->
 		add_equivalences_2(Vs, Trues, R0 ^ tr, Rtr, !Cache),
 		R = make_node(Var, Rtr, zero),
 		!:Cache = !.Cache ^ elem(R0) := R
@@ -1300,7 +1300,7 @@ add_implications(ImpVars, R) = R ^
 		add_implications_2(not_var, not_var, DisImps) ^
 		add_implications_2(var, var, RevDisImps) :-
 	ImpVars = imp_vars(Imps, RevImps, DisImps, RevDisImps).
-	
+
 :- func add_implications_2(func(var(T)) = robdd(T), func(var(T)) = robdd(T),
 		imp_map(T), robdd(T)) = robdd(T).
 

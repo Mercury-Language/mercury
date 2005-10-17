@@ -1,4 +1,6 @@
 %------------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%------------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -21,54 +23,54 @@
 
 :- type set_bbbtree(T).
 
-	% `set_bbbtree__init(Set)' returns an initialized empty set.
-	%
+    % `set_bbbtree__init(Set)' returns an initialized empty set.
+    %
 :- pred set_bbbtree__init(set_bbbtree(T)::uo) is det.
 :- func set_bbbtree__init = set_bbbtree(T).
 
         % `set_bbbtree__empty(Set) is true iff `Set' is contains no elements.
-	%
+    %
 :- pred set_bbbtree__empty(set_bbbtree(T)::in) is semidet.
 
-	% `set_bbbtree__size(Set, Size)' is true iff `Size' is the cardinality
-	% of `Set'.
-	%
+    % `set_bbbtree__size(Set, Size)' is true iff `Size' is the cardinality
+    % of `Set'.
+    %
 :- pred set_bbbtree__size(set_bbbtree(T)::in, int::out) is det.
 
-	% `set_bbbtree__member(X, Set)' is true iff `X' is a member of `Set'.
-	% O(lg n) for (in, in) and O(1) for (out, in).
-	%
+    % `set_bbbtree__member(X, Set)' is true iff `X' is a member of `Set'.
+    % O(lg n) for (in, in) and O(1) for (out, in).
+    %
 :- pred set_bbbtree__member(T, set_bbbtree(T)).
 :- mode set_bbbtree__member(in, in) is semidet.
 :- mode set_bbbtree__member(out, in) is nondet.
 
-	% `set_bbbtree__is_member(X, Set, Result)' is true iff `X' is a member
-	% of `Set'.
-	%
+    % `set_bbbtree__is_member(X, Set, Result)' is true iff `X' is a member
+    % of `Set'.
+    %
 :- pred set_bbbtree__is_member(T::in, set_bbbtree(T)::in, bool::out) is det.
 
-	% `set_bbbtree__contains(Set, X)' is true iff `X' is a member of `Set'.
-	% O(lg n).
-	%
+    % `set_bbbtree__contains(Set, X)' is true iff `X' is a member of `Set'.
+    % O(lg n).
+    %
 :- pred set_bbbtree__contains(set_bbbtree(T)::in, T::in) is semidet.
 
-	% `set_bbbtree__least(Set, X)' is true iff `X' is smaller than all
-	% the other members of `Set'.
-	%
+    % `set_bbbtree__least(Set, X)' is true iff `X' is smaller than all
+    % the other members of `Set'.
+    %
 :- pred set_bbbtree__least(set_bbbtree(T), T).
 :- mode set_bbbtree__least(in, out) is semidet.
 :- mode set_bbbtree__least(in, in) is semidet.
 
-	% `set_bbbtree__largest(Set, X)' is true iff `X' is larger than all
-	% the other members of `Set'.
-	%
+    % `set_bbbtree__largest(Set, X)' is true iff `X' is larger than all
+    % the other members of `Set'.
+    %
 :- pred set_bbbtree__largest(set_bbbtree(T), T).
 :- mode set_bbbtree__largest(in, out) is semidet.
 :- mode set_bbbtree__largest(in, in) is semidet.
 
-	% `set_bbbtree__singleton_set(Set, X)' is true iff `Set' is the set
-	% containing just the single element `X'.
-	%
+    % `set_bbbtree__singleton_set(Set, X)' is true iff `Set' is the set
+    % containing just the single element `X'.
+    %
 :- pred set_bbbtree__singleton_set(set_bbbtree(T), T).
 :- mode set_bbbtree__singleton_set(uo, di) is det.
 :- mode set_bbbtree__singleton_set(in, out) is semidet.
@@ -77,190 +79,190 @@
 
 :- func set_bbbtree__make_singleton_set(T) = set_bbbtree(T).
 
-	% `set_bbbtree__equal(SetA, SetB)' is true iff `SetA' and `SetB'
-	% contain the same elements.
-	%
+    % `set_bbbtree__equal(SetA, SetB)' is true iff `SetA' and `SetB'
+    % contain the same elements.
+    %
 :- pred set_bbbtree__equal(set_bbbtree(T)::in, set_bbbtree(T)::in) is semidet.
 
-	% `set_bbbtree__insert(Set0, X, Set)' is true iff `Set' is the union of
-	% `Set0' and the set containing only `X'.
-	%
+    % `set_bbbtree__insert(Set0, X, Set)' is true iff `Set' is the union of
+    % `Set0' and the set containing only `X'.
+    %
 :- pred set_bbbtree__insert(set_bbbtree(T), T, set_bbbtree(T)).
 :- mode set_bbbtree__insert(di, di, uo) is det.
 :- mode set_bbbtree__insert(in, in, out) is det.
 
 :- func set_bbbtree__insert(set_bbbtree(T), T) = set_bbbtree(T).
 
-	% `set_bbbtree__insert_list(Set0, Xs, Set)' is true iff `Set' is
-	% the union of `Set0' and the set containing only the members of `Xs'.
-	%
+    % `set_bbbtree__insert_list(Set0, Xs, Set)' is true iff `Set' is
+    % the union of `Set0' and the set containing only the members of `Xs'.
+    %
 :- pred set_bbbtree__insert_list(set_bbbtree(T)::in, list(T)::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__insert_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
 
-	% `set_bbbtree__delete(Set0, X, Set)' is true iff `Set' is the relative
-	% complement of `Set0' and the set containing only `X', i.e.
-	% if `Set' is the set which contains all the elements of `Set0'
-	% except `X'.
-	%
+    % `set_bbbtree__delete(Set0, X, Set)' is true iff `Set' is the relative
+    % complement of `Set0' and the set containing only `X', i.e.
+    % if `Set' is the set which contains all the elements of `Set0'
+    % except `X'.
+    %
 :- pred set_bbbtree__delete(set_bbbtree(T), T, set_bbbtree(T)).
 :- mode set_bbbtree__delete(di, in, uo) is det.
 :- mode set_bbbtree__delete(in, in, out) is det.
 
 :- func set_bbbtree__delete(set_bbbtree(T), T) = set_bbbtree(T).
 
-	% `set_bbbtree__delete_list(Set0, Xs, Set)' is true iff `Set' is the
-	% relative complement of `Set0' and the set containing only the members
-	% of `Xs'.
-	%
+    % `set_bbbtree__delete_list(Set0, Xs, Set)' is true iff `Set' is the
+    % relative complement of `Set0' and the set containing only the members
+    % of `Xs'.
+    %
 :- pred set_bbbtree__delete_list(set_bbbtree(T)::in, list(T)::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__delete_list(set_bbbtree(T), list(T)) = set_bbbtree(T).
 
-	% `set_bbbtree__remove(Set0, X, Set)' is true iff `Set0' contains `X',
-	% and `Set' is the relative complement of `Set0' and the set
-	% containing only `X', i.e.  if `Set' is the set which contains
-	% all the elements of `Set0' except `X'.
-	%
+    % `set_bbbtree__remove(Set0, X, Set)' is true iff `Set0' contains `X',
+    % and `Set' is the relative complement of `Set0' and the set
+    % containing only `X', i.e.  if `Set' is the set which contains
+    % all the elements of `Set0' except `X'.
+    %
 :- pred set_bbbtree__remove(set_bbbtree(T)::in, T::in, set_bbbtree(T)::out)
-	is semidet.
+    is semidet.
 
-	% `set_bbbtree__remove_list(Set0, Xs, Set)' is true iff Xs does not
-	% contain any duplicates, `Set0' contains every member of `Xs',
-	% and `Set' is the relative complement of `Set0' and the set
-	% containing only the members of `Xs'.
-	%
+    % `set_bbbtree__remove_list(Set0, Xs, Set)' is true iff Xs does not
+    % contain any duplicates, `Set0' contains every member of `Xs',
+    % and `Set' is the relative complement of `Set0' and the set
+    % containing only the members of `Xs'.
+    %
 :- pred set_bbbtree__remove_list(set_bbbtree(T)::in, list(T)::in,
-	set_bbbtree(T)::out) is semidet.
+    set_bbbtree(T)::out) is semidet.
 
-	% `set_bbbtree__remove_least(Set0, X, Set)' is true iff the union if
-	% `X' and `Set' is `Set0' and `X' is smaller than all the elements of
-	% `Set'.
-	%
+    % `set_bbbtree__remove_least(Set0, X, Set)' is true iff the union if
+    % `X' and `Set' is `Set0' and `X' is smaller than all the elements of
+    % `Set'.
+    %
 :- pred set_bbbtree__remove_least(set_bbbtree(T)::in, T::out,
-	set_bbbtree(T)::out) is semidet.
+    set_bbbtree(T)::out) is semidet.
 
-	% `set_bbbtree__remove_largest(Set0, X, Set)' is true iff the union if
-	% `X' and `Set' is `Set0' and `X' is larger than all the elements of
-	% `Set'.
-	%
+    % `set_bbbtree__remove_largest(Set0, X, Set)' is true iff the union if
+    % `X' and `Set' is `Set0' and `X' is larger than all the elements of
+    % `Set'.
+    %
 :- pred set_bbbtree__remove_largest(set_bbbtree(T)::in, T::out,
-	set_bbbtree(T)::out) is semidet.
+    set_bbbtree(T)::out) is semidet.
 
-	% `set_bbbtree__list_to_set(List, Set)' is true iff `Set' is the set
-	% containing only the members of `List'. O(n lg n)
-	%
+    % `set_bbbtree__list_to_set(List, Set)' is true iff `Set' is the set
+    % containing only the members of `List'. O(n lg n)
+    %
 :- pred set_bbbtree__list_to_set(list(T)::in, set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__list_to_set(list(T)) = set_bbbtree(T).
 
-	% A synonym for set_bbtree.list_to_set/1.
-	%
+    % A synonym for set_bbtree.list_to_set/1.
+    %
 :- func set_bbbtree__from_list(list(T)) = set_bbbtree(T).
 
-	% `set_bbbtree__sorted_list_to_set(List, Set)' is true iff `Set' is the
-	% set containing only the members of `List'.
-	% `List' must be sorted. O(n).
-	%
+    % `set_bbbtree__sorted_list_to_set(List, Set)' is true iff `Set' is the
+    % set containing only the members of `List'.
+    % `List' must be sorted. O(n).
+    %
 :- pred set_bbbtree__sorted_list_to_set(list(T)::in, set_bbbtree(T)::out)
-	is det.
+    is det.
 
 :- func set_bbbtree__sorted_list_to_set(list(T)) = set_bbbtree(T).
 
-	% A synonym for set_bbbtree.sorted_list_to_set/1.
-	%
+    % A synonym for set_bbbtree.sorted_list_to_set/1.
+    %
 :- func set_bbbtree__from_sorted_list(list(T)) = set_bbbtree(T).
 
-	% `set_bbbtree__sorted_list_to_set_len(List, Set, N)' is true iff
-	% `Set' is the set set containing only the members of `List' and `N'
-	% is the length of the list. If the length of the list is already known
-	% then a noticeable speed improvement can be expected over
-	% `set_bbbtree__sorted_list_to_set' as a significant cost involved
-	% with `set_bbbtree__sorted_list_to_set' is the call to list__length.
-	% `List' must be sorted. O(n).
-	%
+    % `set_bbbtree__sorted_list_to_set_len(List, Set, N)' is true iff
+    % `Set' is the set set containing only the members of `List' and `N'
+    % is the length of the list. If the length of the list is already known
+    % then a noticeable speed improvement can be expected over
+    % `set_bbbtree__sorted_list_to_set' as a significant cost involved
+    % with `set_bbbtree__sorted_list_to_set' is the call to list__length.
+    % `List' must be sorted. O(n).
+    %
 :- pred set_bbbtree__sorted_list_to_set_len(list(T)::in, set_bbbtree(T)::out,
-	int::in) is det.
+    int::in) is det.
 
-	% `set_bbbtree__to_sorted_list(Set, List)' is true iff `List' is the
-	% list of all the members of `Set', in sorted order. O(n).
-	%
+    % `set_bbbtree__to_sorted_list(Set, List)' is true iff `List' is the
+    % list of all the members of `Set', in sorted order. O(n).
+    %
 :- pred set_bbbtree__to_sorted_list(set_bbbtree(T), list(T)).
 :- mode set_bbbtree__to_sorted_list(di, uo) is det.
 :- mode set_bbbtree__to_sorted_list(in, out) is det.
 
 :- func set_bbbtree__to_sorted_list(set_bbbtree(T)) = list(T).
 
-	% `set_bbbtree__union(SetA, SetB, Set)' is true iff `Set' is the union
-	% of `SetA' and `SetB'.
-	%
+    % `set_bbbtree__union(SetA, SetB, Set)' is true iff `Set' is the union
+    % of `SetA' and `SetB'.
+    %
 :- pred set_bbbtree__union(set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__union(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
 
-	% `set_bbbtree__union_list(Sets) = Set' is true iff `Set' is the union
-	% of all the sets in `Sets'
-	%
+    % `set_bbbtree__union_list(Sets) = Set' is true iff `Set' is the union
+    % of all the sets in `Sets'
+    %
 :- func set_bbbtree__union_list(list(set_bbbtree(T))) = set_bbbtree(T).
 
-	% `set_bbbtree__power_union(Sets, Set)' is true iff `Set' is the union
-	% of all the sets in `Sets'
-	%
+    % `set_bbbtree__power_union(Sets, Set)' is true iff `Set' is the union
+    % of all the sets in `Sets'
+    %
 :- pred set_bbbtree__power_union(set_bbbtree(set_bbbtree(T))::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__power_union(set_bbbtree(set_bbbtree(T))) = set_bbbtree(T).
 
-	% `set_bbbtree__intersect(SetA, SetB, Set)' is true iff `Set' is the
-	% intersection of `SetA' and `SetB'.
-	%
+    % `set_bbbtree__intersect(SetA, SetB, Set)' is true iff `Set' is the
+    % intersection of `SetA' and `SetB'.
+    %
 :- pred set_bbbtree__intersect(set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__intersect(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
 
-	% `set_bbbtree__power_intersect(Sets, Set) is true iff `Set' is the
-	% intersection of the sets in `Sets'.
-	%
+    % `set_bbbtree__power_intersect(Sets, Set) is true iff `Set' is the
+    % intersection of the sets in `Sets'.
+    %
 :- pred set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T))::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T)))
-	= set_bbbtree(T).
+    = set_bbbtree(T).
 
-	% `set_bbbtree__intersect_list(Sets) = Set is true iff `Set' is the
-	% intersection of the sets in `Sets'.
-	%
+    % `set_bbbtree__intersect_list(Sets) = Set is true iff `Set' is the
+    % intersection of the sets in `Sets'.
+    %
 :- func set_bbbtree__intersect_list(list(set_bbbtree(T))) = set_bbbtree(T).
 
-	% `set_bbtree__difference(SetA, SetB, Set)' is true iff `Set' is the
-	%  set containing all the elements of `SetA' except those that
-	% occur in `SetB'.
-	%
+    % `set_bbtree__difference(SetA, SetB, Set)' is true iff `Set' is the
+    %  set containing all the elements of `SetA' except those that
+    % occur in `SetB'.
+    %
 :- pred set_bbbtree__difference(set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 :- func set_bbbtree__difference(set_bbbtree(T), set_bbbtree(T))
-		= set_bbbtree(T).
+    = set_bbbtree(T).
 
-	% `set_bbbtree__subset(SetA, SetB)' is true iff all the elements of
-	% `SetA' are also elements of `SetB'.
-	%
+    % `set_bbbtree__subset(SetA, SetB)' is true iff all the elements of
+    % `SetA' are also elements of `SetB'.
+    %
 :- pred set_bbbtree__subset(set_bbbtree(T)::in, set_bbbtree(T)::in) is semidet.
 
-	% `set_bbbtree__superset(SetA, SetB)' is true iff all the elements of
-	% `SetB' are also elements of `SetA'.
-	%
+    % `set_bbbtree__superset(SetA, SetB)' is true iff all the elements of
+    % `SetB' are also elements of `SetA'.
+    %
 :- pred set_bbbtree__superset(set_bbbtree(T)::in, set_bbbtree(T)::in)
-	is semidet.
+    is semidet.
 
 :- func set_bbbtree__map(func(T1) = T2, set_bbbtree(T1)) = set_bbbtree(T2).
 
 :- func set_bbbtree__filter_map(func(T1) = T2, set_bbbtree(T1))
-	= set_bbbtree(T2).
+    = set_bbbtree(T2).
 :- mode set_bbbtree__filter_map(func(in) = out is semidet, in) = out is det.
 
 :- func set_bbbtree__fold(func(T1, T2) = T2, set_bbbtree(T1), T2) = T2.
@@ -276,7 +278,7 @@
 % Implementation based on "Functional Pearls: Efficient sets - a balancing act"
 % by Stephen Adams, J. Functional Programming 3 (4): 553-561, Oct 1993.
 %
-% Note:	set_bbbtree__concat4 and not set_bbbtree__concat3 represents the
+% Note: set_bbbtree__concat4 and not set_bbbtree__concat3 represents the
 % function concat3 mentioned in the report.
 %
 % Predicates with the suffix `_r' in the names are predicates that accept an
@@ -314,11 +316,11 @@
 %------------------------------------------------------------------------------%
 
 :- type set_bbbtree(T)
-	--->	empty
-	;	tree(T, int, set_bbbtree(T), set_bbbtree(T)).
+    --->    empty
+    ;   tree(T, int, set_bbbtree(T), set_bbbtree(T)).
 
-	% `set_bbbtree__def_ratio(Ratio)' returns the ratio that is used in
-	% deciding whether two trees require re-balancing.
+    % `set_bbbtree__def_ratio(Ratio)' returns the ratio that is used in
+    % deciding whether two trees require re-balancing.
 
 :- pred set_bbbtree__def_ratio(int::uo) is det.
 
@@ -342,57 +344,57 @@ set_bbbtree__size(tree(_V, N, _L, _R), N).
 % set_bbbtree__member(X, empty) :- fail.
 
 set_bbbtree__member(X, tree(V, _N, L, R)) :-
-	compare(Result, X, V),
-	(
-		Result = (<),
-		set_bbbtree__member(X, L)	% search left subtree
-	;
-		Result = (>),
-		set_bbbtree__member(X, R)	% search right subtree
-	;
-		Result = (=),
-		X = V
-	).
+    compare(Result, X, V),
+    (
+        Result = (<),
+        set_bbbtree__member(X, L)   % search left subtree
+    ;
+        Result = (>),
+        set_bbbtree__member(X, R)   % search right subtree
+    ;
+        Result = (=),
+        X = V
+    ).
 
 set_bbbtree__contains(Set, X) :-
-	set_bbbtree__member(X, Set).
+    set_bbbtree__member(X, Set).
 
 %------------------------------------------------------------------------------%
 
 set_bbbtree__is_member(X, Set, Result) :-
-	( set_bbbtree__member(X, Set) ->
-		Result = yes
-	;
-		Result = no
-	).
+    ( set_bbbtree__member(X, Set) ->
+        Result = yes
+    ;
+        Result = no
+    ).
 
 %------------------------------------------------------------------------------%
 
 % set_bbbtree__least(empty, _) :- fail.
 set_bbbtree__least(tree(V, _N, L, _R), X) :-
-	(
-			% found least element
-		L = empty,
-		X = V
-	;
-			% search further in left subtree
-		L = tree(_V0, _N0, _L0, _R0),
-		set_bbbtree__least(L, X)
-	).
+    (
+        % Found least element.
+        L = empty,
+        X = V
+    ;
+        % Search further in left subtree.
+        L = tree(_V0, _N0, _L0, _R0),
+        set_bbbtree__least(L, X)
+    ).
 
 %------------------------------------------------------------------------------%
 
 % set_bbbtree__largest(empty, _) :- fail.
 set_bbbtree__largest(tree(V, _N, _L, R), X) :-
-	(
-			% found largest element
-		R = empty,
-		X = V
-	;
-			% search further in right subtree
-		R = tree(_V0, _N0, _L0, _R0),
-		set_bbbtree__largest(R, X)
-	).
+    (
+        % Found largest element.
+        R = empty,
+        X = V
+    ;
+        % Search further in right subtree.
+        R = tree(_V0, _N0, _L0, _R0),
+        set_bbbtree__largest(R, X)
+    ).
 
 %------------------------------------------------------------------------------%
 
@@ -401,134 +403,134 @@ set_bbbtree__singleton_set(tree(V, 1, empty, empty), V).
 %------------------------------------------------------------------------------%
 
 set_bbbtree__equal(SetA, SetB) :-
-	set_bbbtree__subset(SetA, SetB),
-	set_bbbtree__subset(SetB, SetA).
+    set_bbbtree__subset(SetA, SetB),
+    set_bbbtree__subset(SetB, SetA).
 
 %------------------------------------------------------------------------------%
 
 % This is a hack to handle the bugs with unique and destructive input modes.
 set_bbbtree__insert(Set0, X, Set) :-
-	set_bbbtree__def_ratio(Ratio),
-	set_bbbtree__insert_r(Set0, X, Set1, Ratio),
-	unsafe_promise_unique(Set1, Set).
+    set_bbbtree__def_ratio(Ratio),
+    set_bbbtree__insert_r(Set0, X, Set1, Ratio),
+    unsafe_promise_unique(Set1, Set).
 
 % Uncomment this once destructive input and unique modes are fixed and delete
 % the one above.
 % set_bbbtree__insert(Set0, X, Set) :-
-% 	set_bbbtree__def_ratio(Ratio),
-% 	set_bbbtree__insert_r(Set0, X, Set, Ratio).
+%   set_bbbtree__def_ratio(Ratio),
+%   set_bbbtree__insert_r(Set0, X, Set, Ratio).
 
 :- pred set_bbbtree__insert_r(set_bbbtree(T)::in, T::in, set_bbbtree(T)::out,
-	int::in) is det.
+    int::in) is det.
 
-	% X was not in the set so make new node with X as the value
+    % X was not in the set so make new node with X as the value
 set_bbbtree__insert_r(empty, X, tree(X, 1, empty, empty), _Ratio).
 set_bbbtree__insert_r(tree(V, N, L, R), X, Set, Ratio) :-
-	compare(Result, X, V),
-	(
-			% insert X into left subtree and re-balance it
-		Result = (<),
-		set_bbbtree__insert_r(L, X, NewL, Ratio),
-		set_bbbtree__balance(V, NewL, R, Set, Ratio)
-	;
-			% insert X into right subtree and re-balance it
-		Result = (>),
-		set_bbbtree__insert_r(R, X, NewR, Ratio),
-		set_bbbtree__balance(V, L, NewR, Set, Ratio)
-	;
-			% X already in tree
-		Result = (=),
-		Set = tree(V, N, L, R)
-	).
+    compare(Result, X, V),
+    (
+        % Insert X into left subtree and re-balance it.
+        Result = (<),
+        set_bbbtree__insert_r(L, X, NewL, Ratio),
+        set_bbbtree__balance(V, NewL, R, Set, Ratio)
+    ;
+        % Insert X into right subtree and re-balance it.
+        Result = (>),
+        set_bbbtree__insert_r(R, X, NewR, Ratio),
+        set_bbbtree__balance(V, L, NewR, Set, Ratio)
+    ;
+        % X already in tree.
+        Result = (=),
+        Set = tree(V, N, L, R)
+    ).
 
 %------------------------------------------------------------------------------%
 
 set_bbbtree__insert_list(Set0, List, Set) :-
-	set_bbbtree__def_ratio(Ratio),
-	set_bbbtree__insert_list_r(Set0, List, Set, Ratio).
+    set_bbbtree__def_ratio(Ratio),
+    set_bbbtree__insert_list_r(Set0, List, Set, Ratio).
 
 :- pred set_bbbtree__insert_list_r(set_bbbtree(T)::in, list(T)::in,
-	set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__insert_list_r(Set, [], Set, _Ratio).
 set_bbbtree__insert_list_r(Set0, [X | Xs], Set, Ratio) :-
-	set_bbbtree__insert_r(Set0, X, Set1, Ratio),
-	set_bbbtree__insert_list_r(Set1, Xs, Set, Ratio).
+    set_bbbtree__insert_r(Set0, X, Set1, Ratio),
+    set_bbbtree__insert_list_r(Set1, Xs, Set, Ratio).
 
 %------------------------------------------------------------------------------%
 
 % set_bbbtree__delete(empty, _X, empty).
 % set_bbbtree__delete(tree(V, N, L, R), X, Set) :-
-% 	compare(Result, X, V),
-% 	(
-% 			% delete X from left subtree
-% 		Result = (<),
-% 		set_bbbtree__delete(L, X, NewL), % X in left tree
-% 		NewN = N - 1,
-% 		Set = tree(V, NewN, NewL, R)
-% 	;
-% 			% delete X from right subtree
-% 		Result = (>),
-% 		set_bbbtree__delete(R, X, NewR), % X in right tree
-% 		NewN = N - 1,
-% 		Set = tree(V, NewN, L, NewR)
-% 	;
-% 			% found X so just concatenate its two subtrees together
-% 		Result = (=),
-% 		set_bbbtree__concat3(L, R, Set)
-% 	).
+%   compare(Result, X, V),
+%   (
+%       % Delete X from left subtree.
+%       Result = (<),
+%       set_bbbtree__delete(L, X, NewL), % X in left tree
+%       NewN = N - 1,
+%       Set = tree(V, NewN, NewL, R)
+%   ;
+%       % Delete X from right subtree.
+%       Result = (>),
+%       set_bbbtree__delete(R, X, NewR), % X in right tree
+%       NewN = N - 1,
+%       Set = tree(V, NewN, L, NewR)
+%   ;
+%       % Found X so just concatenate its two subtrees together.
+%       Result = (=),
+%       set_bbbtree__concat3(L, R, Set)
+%   ).
 %
 % set_bbbtree__delete(Set0, X, Set) :-
-% 	( set_bbbtree__remove(Set0, X, Set1) ->
-% 		Set = Set1
-% 	;
-% 		Set = Set0
-% 	).
+%   ( set_bbbtree__remove(Set0, X, Set1) ->
+%       Set = Set1
+%   ;
+%       Set = Set0
+%   ).
 
 set_bbbtree__delete(Set0, X, Set) :-
-	( set_bbbtree__remove(Set0, X, Set1) ->
-		Set2 = Set1
-	;
-		Set2 = Set0
-	),
-	unsafe_promise_unique(Set2, Set).
+    ( set_bbbtree__remove(Set0, X, Set1) ->
+        Set2 = Set1
+    ;
+        Set2 = Set0
+    ),
+    unsafe_promise_unique(Set2, Set).
 
 %------------------------------------------------------------------------------%
 
 set_bbbtree__delete_list(Set, [], Set).
 set_bbbtree__delete_list(Set0, [X | Xs], Set) :-
-	set_bbbtree__delete(Set0, X, Set1),
-	set_bbbtree__delete_list(Set1, Xs, Set).
+    set_bbbtree__delete(Set0, X, Set1),
+    set_bbbtree__delete_list(Set1, Xs, Set).
 
 %------------------------------------------------------------------------------%
 
 % set_bbbtree__remove(empty, X, _):- fail.
 set_bbbtree__remove(tree(V, N, L, R), X, Set) :-
-	compare(Result, X, V),
-	(
-			% remove X from left subtree
-		Result = (<),
-		set_bbbtree__remove(L, X, NewL), % X in left tree
-		NewN = N - 1,
-		Set = tree(V, NewN, NewL, R)
-	;
-			% remove X from right subtree
-		Result = (>),
-		set_bbbtree__remove(R, X, NewR), % X in right tree
-		NewN = N - 1,
-		Set = tree(V, NewN, L, NewR)
-	;
-			% found X so just concatenate its two subtrees together
-		Result = (=),
-		set_bbbtree__concat3(L, R, Set)
-	).
+    compare(Result, X, V),
+    (
+        % Remove X from left subtree.
+        Result = (<),
+        set_bbbtree__remove(L, X, NewL), % X in left tree
+        NewN = N - 1,
+        Set = tree(V, NewN, NewL, R)
+    ;
+        % Remove X from right subtree.
+        Result = (>),
+        set_bbbtree__remove(R, X, NewR), % X in right tree
+        NewN = N - 1,
+        Set = tree(V, NewN, L, NewR)
+    ;
+        % Found X so just concatenate its two subtrees together.
+        Result = (=),
+        set_bbbtree__concat3(L, R, Set)
+    ).
 
 %------------------------------------------------------------------------------%
 
 set_bbbtree__remove_list(Set, [], Set).
 set_bbbtree__remove_list(Set0, [X | Xs], Set) :-
-	set_bbbtree__remove(Set0, X, Set1),
-	set_bbbtree__remove_list(Set1, Xs, Set).
+    set_bbbtree__remove(Set0, X, Set1),
+    set_bbbtree__remove_list(Set1, Xs, Set).
 
 %------------------------------------------------------------------------------%
 
@@ -537,18 +539,18 @@ set_bbbtree__remove_list(Set0, [X | Xs], Set) :-
 
 % set_bbbtree__remove_least(empty, X, _) :- fail.
 set_bbbtree__remove_least(tree(V, N, L, R), X, Set) :-
-	(
-			% found the least element
-		L = empty,
-		X = V,
-		Set = R
-	;
-			% search further in the left subtree
-		L = tree(_V, _N, _L, _R),
-		set_bbbtree__remove_least(L, X, NewL),
-		NewN = N - 1,
-		Set = tree(V, NewN, NewL, R)
-	).
+    (
+        % Found the least element.
+        L = empty,
+        X = V,
+        Set = R
+    ;
+        % Search further in the left subtree.
+        L = tree(_V, _N, _L, _R),
+        set_bbbtree__remove_least(L, X, NewL),
+        NewN = N - 1,
+        Set = tree(V, NewN, NewL, R)
+    ).
 
 %------------------------------------------------------------------------------%
 
@@ -557,34 +559,34 @@ set_bbbtree__remove_least(tree(V, N, L, R), X, Set) :-
 
 % set_bbbtree__remove_largest(empty, X, _) :- fail.
 set_bbbtree__remove_largest(tree(V, N, L, R), X, Set) :-
-	(
-			% found the largest element
-		R = empty,
-		X = V,
-		Set = L
-	;
-			% search further in the right subtree
-		R = tree(_V, _N, _L, _R),
-		set_bbbtree__remove_largest(R, X, NewR),
-		NewN = N - 1,
-		Set = tree(V, NewN, L, NewR)
-	).
+    (
+        % Found the largest element.
+        R = empty,
+        X = V,
+        Set = L
+    ;
+        % Search further in the right subtree.
+        R = tree(_V, _N, _L, _R),
+        set_bbbtree__remove_largest(R, X, NewR),
+        NewN = N - 1,
+        Set = tree(V, NewN, L, NewR)
+    ).
 
 %------------------------------------------------------------------------------%
 
 set_bbbtree__list_to_set(List, Set) :-
-	set_bbbtree__def_ratio(Ratio),
-	set_bbbtree__list_to_set_r(List, Set, Ratio).
+    set_bbbtree__def_ratio(Ratio),
+    set_bbbtree__list_to_set_r(List, Set, Ratio).
 
 :- pred set_bbbtree__list_to_set_r(list(T)::in, set_bbbtree(T)::out, int::in)
-	is det.
+    is det.
 
 set_bbbtree__list_to_set_r(List, Set, Ratio) :-
-	set_bbbtree__init(InitSet),
-	set_bbbtree__insert_list_r(InitSet, List, Set, Ratio).
+    set_bbbtree__init(InitSet),
+    set_bbbtree__insert_list_r(InitSet, List, Set, Ratio).
 
 set_bbbtree__from_list(List) = Set :-
-	set_bbbtree__list_to_set(List, Set).
+    set_bbbtree__list_to_set(List, Set).
 
 %------------------------------------------------------------------------------%
 
@@ -604,81 +606,81 @@ set_bbbtree__from_list(List) = Set :-
 % computed results as long as the 3 in N > 3 is adjusted appropriately.
 
 set_bbbtree__sorted_list_to_set(List, Set) :-
-	list__length(List, N),
-	set_bbbtree__sorted_list_to_set_len(List, Set, N).
+    list__length(List, N),
+    set_bbbtree__sorted_list_to_set_len(List, Set, N).
 
 set_bbbtree__sorted_list_to_set_len([], empty, _N).
 set_bbbtree__sorted_list_to_set_len([X | Xs], Set, N) :-
-	set_bbbtree__sorted_list_to_set_len2([X | Xs], RestOfList, N, Set),
-	% The list should be exhausted on completion
-	( RestOfList = [] ->
-		true
-	;
-			% Should never happen. Here only to satisfy det checker
-		error("set_bbbtree__sorted_list_to_set_r")
-	).
+    set_bbbtree__sorted_list_to_set_len2([X | Xs], RestOfList, N, Set),
+    % The list should be exhausted on completion.
+    (
+        RestOfList = []
+    ;
+        RestOfList = [_ | _],
+        % Should never happen. Here only to satisfy det checker.
+        error("set_bbbtree__sorted_list_to_set_r")
+    ).
 
 :- pred set_bbbtree__sorted_list_to_set_len2(list(T)::in, list(T)::out,
-	int::in, set_bbbtree(T)::out) is det.
+    int::in, set_bbbtree(T)::out) is det.
 
 set_bbbtree__sorted_list_to_set_len2(List, RestOfList, N, Set) :-
-	( N > 3 ->
-		NL = N//2,
-		NR = N - NL - 1,
-		set_bbbtree__sorted_list_to_set_len2(List, RestOfList0, NL, L),
-		(
-			RestOfList0 = [V | RestOfList1],
-			set_bbbtree__sorted_list_to_set_len2(RestOfList1,
-				RestOfList, NR, R),
-			Set = tree(V, N, L, R)
-		;
-				% Should never occur.
-				%Here only to satisfy det checker
-			RestOfList0 = [],
-			error("set_bbbtree__sorted_list_to_set_len2.1")
-		)
-	; N = 3 ->
-		( List = [X, Y, Z | RestOfList0] ->
-			RestOfList = RestOfList0,
-			Set = tree(Y, N,
-				tree(X, 1, empty, empty),
-				tree(Z, 1, empty, empty))
-		;
-			% Should never occur.Here only to satisfy det checker
-			error("set_bbbtree__sorted_list_to_set_len2.2")
-		)
-	; N = 2 ->
-		( List = [X, Y | RestOfList0] ->
-			RestOfList = RestOfList0,
-			Set = tree(Y, N, tree(X, 1, empty, empty), empty)
-		;
-			% Should never occur. Here only to satisfy det checker
-			error("set_bbbtree__sorted_list_to_set_len2.3")
-		)
-	; N = 1 ->
-		( List = [X | RestOfList0] ->
-			RestOfList = RestOfList0,
-			Set = tree(X, N, empty, empty)
-		;
-			% Should never occur. Here only to satisfy det checker
-			error("set_bbbtree__sorted_list_to_set_len2.4")
-		)
-	;
-			% N = 0.
-		RestOfList = List,
-		Set = empty
-	).
+    ( N > 3 ->
+        NL = N//2,
+        NR = N - NL - 1,
+        set_bbbtree__sorted_list_to_set_len2(List, RestOfList0, NL, L),
+        (
+            RestOfList0 = [V | RestOfList1],
+            set_bbbtree__sorted_list_to_set_len2(RestOfList1, RestOfList,
+                NR, R),
+            Set = tree(V, N, L, R)
+        ;
+            % Should never occur. Here only to satisfy det checker.
+            RestOfList0 = [],
+            error("set_bbbtree__sorted_list_to_set_len2.1")
+        )
+    ; N = 3 ->
+        ( List = [X, Y, Z | RestOfList0] ->
+            RestOfList = RestOfList0,
+            Set = tree(Y, N,
+                tree(X, 1, empty, empty),
+                tree(Z, 1, empty, empty))
+        ;
+            % Should never occur. Here only to satisfy det checker
+            error("set_bbbtree__sorted_list_to_set_len2.2")
+        )
+    ; N = 2 ->
+        ( List = [X, Y | RestOfList0] ->
+            RestOfList = RestOfList0,
+            Set = tree(Y, N, tree(X, 1, empty, empty), empty)
+        ;
+            % Should never occur. Here only to satisfy det checker
+            error("set_bbbtree__sorted_list_to_set_len2.3")
+        )
+    ; N = 1 ->
+        ( List = [X | RestOfList0] ->
+            RestOfList = RestOfList0,
+            Set = tree(X, N, empty, empty)
+        ;
+            % Should never occur. Here only to satisfy det checker
+            error("set_bbbtree__sorted_list_to_set_len2.4")
+        )
+    ;
+            % N = 0.
+        RestOfList = List,
+        Set = empty
+    ).
 
 set_bbbtree__from_sorted_list(List) = Set :-
-	set_bbbtree__sorted_list_to_set(List, Set).
+    set_bbbtree__sorted_list_to_set(List, Set).
 
 %------------------------------------------------------------------------------%
 
-	% Flatten the tree by an accumulator based tree traversal
-	% traversing the tree in a right-to-left post order manner. O(n).
+    % Flatten the tree by an accumulator based tree traversal
+    % traversing the tree in a right-to-left post order manner. O(n).
 
 set_bbbtree__to_sorted_list(Set, List) :-
-	set_bbbtree__to_sorted_list2(Set, [], List).
+    set_bbbtree__to_sorted_list2(Set, [], List).
 
 :- pred set_bbbtree__to_sorted_list2(set_bbbtree(T), list(T), list(T)).
 :- mode set_bbbtree__to_sorted_list2(di, di, uo) is det.
@@ -687,8 +689,8 @@ set_bbbtree__to_sorted_list(Set, List) :-
 set_bbbtree__to_sorted_list2(empty, List, List).
 
 set_bbbtree__to_sorted_list2(tree(V, _N, L, R), Acc, List) :-
-	set_bbbtree__to_sorted_list2(R, Acc, List0),
-	set_bbbtree__to_sorted_list2(L, [V|List0], List).
+    set_bbbtree__to_sorted_list2(R, Acc, List0),
+    set_bbbtree__to_sorted_list2(L, [V|List0], List).
 
 %------------------------------------------------------------------------------%
 
@@ -700,25 +702,25 @@ set_bbbtree__to_sorted_list2(tree(V, _N, L, R), Acc, List) :-
 %             union ( { elem(x, A) | x > a } union { elem(x, B) | x > a } )
 
 set_bbbtree__union(SetA, SetB, Set) :-
-	set_bbbtree__def_ratio(Ratio),
-	set_bbbtree__union_r(SetA, SetB, Set, Ratio).
+    set_bbbtree__def_ratio(Ratio),
+    set_bbbtree__union_r(SetA, SetB, Set, Ratio).
 
 :- pred set_bbbtree__union_r(set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__union_r(empty, Set, Set, _Ratio).
 
 set_bbbtree__union_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
-	set_bbbtree__split_lt(R, V, NewRL, Ratio),
-	set_bbbtree__split_gt(R, V, NewRR, Ratio),
-	set_bbbtree__union_r(LL, NewRL, LSet, Ratio),
-	set_bbbtree__union_r(LR, NewRR, RSet, Ratio),
-	set_bbbtree__concat4(LSet, RSet, V, Set, Ratio).
+    set_bbbtree__split_lt(R, V, NewRL, Ratio),
+    set_bbbtree__split_gt(R, V, NewRR, Ratio),
+    set_bbbtree__union_r(LL, NewRL, LSet, Ratio),
+    set_bbbtree__union_r(LR, NewRR, RSet, Ratio),
+    set_bbbtree__concat4(LSet, RSet, V, Set, Ratio).
 
 %------------------------------------------------------------------------------%
 
 set_bbbtree__union_list(ListofSets) =
-	list__foldl(set_bbbtree__union, ListofSets, set_bbbtree__init).
+    list__foldl(set_bbbtree__union, ListofSets, set_bbbtree__init).
 
 %------------------------------------------------------------------------------%
 
@@ -733,18 +735,18 @@ set_bbbtree__union_list(ListofSets) =
 % increase, but this cannot be avoided.
 
 set_bbbtree__power_union(Sets, Set) :-
-	set_bbbtree__def_ratio(Ratio),
-	set_bbbtree__power_union_r(Sets, Set, Ratio).
+    set_bbbtree__def_ratio(Ratio),
+    set_bbbtree__power_union_r(Sets, Set, Ratio).
 
 :- pred set_bbbtree__power_union_r(set_bbbtree(set_bbbtree(T))::in,
-	set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__power_union_r(empty, empty, _Ratio).
 set_bbbtree__power_union_r(tree(V, _N, L, R), Set, Ratio) :-
-	set_bbbtree__power_union_r(L, LUnion, Ratio),
-	set_bbbtree__power_union_r(R, RUnion, Ratio),
-	set_bbbtree__union_r(LUnion, RUnion, Union, Ratio),
-	set_bbbtree__union_r(V, Union, Set, Ratio).
+    set_bbbtree__power_union_r(L, LUnion, Ratio),
+    set_bbbtree__power_union_r(R, RUnion, Ratio),
+    set_bbbtree__union_r(LUnion, RUnion, Union, Ratio),
+    set_bbbtree__union_r(V, Union, Set, Ratio).
 
 %------------------------------------------------------------------------------%
 
@@ -756,23 +758,23 @@ set_bbbtree__power_union_r(tree(V, _N, L, R), Set, Ratio) :-
 %             union ( { elem(x, A) | x > a } intersect { elem(x, B) | x > a } )
 
 set_bbbtree__intersect(SetA, SetB, Set) :-
-	set_bbbtree__def_ratio(Ratio),
-	set_bbbtree__intersect_r(SetA, SetB, Set, Ratio).
+    set_bbbtree__def_ratio(Ratio),
+    set_bbbtree__intersect_r(SetA, SetB, Set, Ratio).
 
 :- pred set_bbbtree__intersect_r(set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__intersect_r(empty, _Set, empty, _Ratio).
 set_bbbtree__intersect_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
-	set_bbbtree__split_lt(R, V, NewRL, Ratio),
-	set_bbbtree__split_gt(R, V, NewRR, Ratio),
-	set_bbbtree__intersect_r(LL, NewRL, LSet, Ratio),
-	set_bbbtree__intersect_r(LR, NewRR, RSet, Ratio),
-	( set_bbbtree__member(V, R) ->
-		set_bbbtree__concat4(LSet, RSet, V, Set, Ratio)
-	;
-		set_bbbtree__concat3(LSet, RSet, Set)
-	).
+    set_bbbtree__split_lt(R, V, NewRL, Ratio),
+    set_bbbtree__split_gt(R, V, NewRR, Ratio),
+    set_bbbtree__intersect_r(LL, NewRL, LSet, Ratio),
+    set_bbbtree__intersect_r(LR, NewRR, RSet, Ratio),
+    ( set_bbbtree__member(V, R) ->
+        set_bbbtree__concat4(LSet, RSet, V, Set, Ratio)
+    ;
+        set_bbbtree__concat3(LSet, RSet, Set)
+    ).
 
 %------------------------------------------------------------------------------%
 
@@ -784,43 +786,43 @@ set_bbbtree__intersect_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
 % returns.
 
 set_bbbtree__power_intersect(Sets, Set) :-
-	set_bbbtree__def_ratio(Ratio),
-	set_bbbtree__power_intersect_r(Sets, Set, Ratio).
+    set_bbbtree__def_ratio(Ratio),
+    set_bbbtree__power_intersect_r(Sets, Set, Ratio).
 
 :- pred set_bbbtree__power_intersect_r(set_bbbtree(set_bbbtree(T))::in,
-	set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__power_intersect_r(empty, empty, _Ratio).
 set_bbbtree__power_intersect_r(tree(V, _N, L, R), Set, Ratio) :-
-	set_bbbtree__power_intersect_r2(L, V, Intersection0, Ratio),
-	set_bbbtree__power_intersect_r2(R, Intersection0, Set, Ratio).
+    set_bbbtree__power_intersect_r2(L, V, Intersection0, Ratio),
+    set_bbbtree__power_intersect_r2(R, Intersection0, Set, Ratio).
 
 :- pred set_bbbtree__power_intersect_r2(set_bbbtree(set_bbbtree(T))::in,
-	set_bbbtree(T)::in, set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::in, set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__power_intersect_r2(empty, empty, empty, _Ratio).
 set_bbbtree__power_intersect_r2(empty, tree(_V, _N, _L, _R), empty, _Ratio).
 set_bbbtree__power_intersect_r2(tree(_V, _N, _L, _R), empty, empty, _Ratio).
 set_bbbtree__power_intersect_r2(tree(V, _N, L, R), tree(AccV, AccN, AccL, AccR),
-		Set, Ratio) :-
-	set_bbbtree__intersect_r(V, tree(AccV, AccN, AccL, AccR),
-		Intersection0, Ratio),
-	set_bbbtree__power_intersect_r2(L, Intersection0,
-		Intersection1, Ratio),
-	set_bbbtree__power_intersect_r2(R, Intersection1, Set, Ratio).
+        Set, Ratio) :-
+    set_bbbtree__intersect_r(V, tree(AccV, AccN, AccL, AccR),
+        Intersection0, Ratio),
+    set_bbbtree__power_intersect_r2(L, Intersection0,
+        Intersection1, Ratio),
+    set_bbbtree__power_intersect_r2(R, Intersection1, Set, Ratio).
 
 set_bbbtree__intersect_list([]) = set_bbbtree__init.
 set_bbbtree__intersect_list([Set | Sets]) =
-		set_bbbtree__intersect_list_r(Set, Sets, Ratio) :-
-	set_bbbtree__def_ratio(Ratio).
+        set_bbbtree__intersect_list_r(Set, Sets, Ratio) :-
+    set_bbbtree__def_ratio(Ratio).
 
 :- func set_bbbtree__intersect_list_r(set_bbbtree(T), list(set_bbbtree(T)),
-	int) = set_bbbtree(T).
+    int) = set_bbbtree(T).
 
 set_bbbtree__intersect_list_r(Intersect, [], _Ratio) = Intersect.
 set_bbbtree__intersect_list_r(Intersect0, [Set | Sets], Ratio) =
-		set_bbbtree__intersect_list_r(Intersect1, Sets, Ratio) :-
-	set_bbbtree__intersect_r(Intersect0, Set, Intersect1, Ratio).
+        set_bbbtree__intersect_list_r(Intersect1, Sets, Ratio) :-
+    set_bbbtree__intersect_r(Intersect0, Set, Intersect1, Ratio).
 
 %------------------------------------------------------------------------------%
 
@@ -832,380 +834,369 @@ set_bbbtree__intersect_list_r(Intersect0, [Set | Sets], Ratio) =
 %             union ( { elem(x, A) | x > a } difference { elem(x, B) | x > a } )
 
 set_bbbtree__difference(SetA, SetB, Set) :-
-	set_bbbtree__def_ratio(Ratio),
-	set_bbbtree__difference_r(SetA, SetB, Set, Ratio).
+    set_bbbtree__def_ratio(Ratio),
+    set_bbbtree__difference_r(SetA, SetB, Set, Ratio).
 
 :- pred set_bbbtree__difference_r(set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__difference_r(empty, _Set, empty, _Ratio).
 set_bbbtree__difference_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
-	set_bbbtree__split_lt(R, V, NewRL, Ratio),
-	set_bbbtree__split_gt(R, V, NewRR, Ratio),
-	set_bbbtree__difference_r(LL, NewRL, LSet, Ratio),
-	set_bbbtree__difference_r(LR, NewRR, RSet, Ratio),
-	( set_bbbtree__member(V, R) ->
-		set_bbbtree__concat3(LSet, RSet, Set)
-	;
-		set_bbbtree__concat4(LSet, RSet, V, Set, Ratio)
-	).
+    set_bbbtree__split_lt(R, V, NewRL, Ratio),
+    set_bbbtree__split_gt(R, V, NewRR, Ratio),
+    set_bbbtree__difference_r(LL, NewRL, LSet, Ratio),
+    set_bbbtree__difference_r(LR, NewRR, RSet, Ratio),
+    ( set_bbbtree__member(V, R) ->
+        set_bbbtree__concat3(LSet, RSet, Set)
+    ;
+        set_bbbtree__concat4(LSet, RSet, V, Set, Ratio)
+    ).
 
 %------------------------------------------------------------------------------%
 
 set_bbbtree__subset(SetA, SetB) :-
-	set_bbbtree__difference(SetA, SetB, Set),
-	set_bbbtree__empty(Set).
+    set_bbbtree__difference(SetA, SetB, Set),
+    set_bbbtree__empty(Set).
 
 %------------------------------------------------------------------------------%
 
 set_bbbtree__superset(SetA, SetB) :-
-	set_bbbtree__subset(SetB, SetA).
+    set_bbbtree__subset(SetB, SetA).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
-	% given X, L and R create a new tree who's root is X,
-	% left subtree is L and right subtree is R.
-
+    % Given X, L and R create a new tree who's root is X,
+    % left subtree is L and right subtree is R.
+    %
 :- pred set_bbbtree__build_node(T::in, set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 set_bbbtree__build_node(X, L, R, Tree) :-
-	set_bbbtree__size(L, LSize),
-	set_bbbtree__size(R, RSize),
-	N = 1 + LSize + RSize,
-	Tree0 = tree(X, N, L, R),
-	unsafe_promise_unique(Tree0, Tree).
+    set_bbbtree__size(L, LSize),
+    set_bbbtree__size(R, RSize),
+    N = 1 + LSize + RSize,
+    Tree0 = tree(X, N, L, R),
+    unsafe_promise_unique(Tree0, Tree).
 
 %------------------------------------------------------------------------------%
 
-	% Single rotation to the left.
-
-	%     A                        B
-	%   /   \                    /   \
-	%  X     B      ----->      A     Z
-	%      /   \              /   \
-	%     Y     Z            X     Y
-
+    % Single rotation to the left.
+    %
+    %     A                        B
+    %   /   \                    /   \
+    %  X     B      ----->      A     Z
+    %      /   \              /   \
+    %     Y     Z            X     Y
+    %
 :- pred set_bbbtree__single_rot_l(T::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
 
 set_bbbtree__single_rot_l(_A, _X, empty, _Set) :-
-	error("set_bbbtree__single_rot_l").
+    error("set_bbbtree__single_rot_l").
 set_bbbtree__single_rot_l(A, X, tree(B, _N, Y, Z), Set) :-
-	set_bbbtree__build_node(A, X, Y, A_X_and_Y),
-	set_bbbtree__build_node(B, A_X_and_Y, Z, Set).
+    set_bbbtree__build_node(A, X, Y, A_X_and_Y),
+    set_bbbtree__build_node(B, A_X_and_Y, Z, Set).
 
 %------------------------------------------------------------------------------%
 
-	% Single rotation to the right.
-
+    % Single rotation to the right.
+    %
 :- pred set_bbbtree__single_rot_r(T::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
 
 set_bbbtree__single_rot_r(_B, empty, _Z, _Set) :-
-	error("set_bbbtree__single_rot_r").
+    error("set_bbbtree__single_rot_r").
 set_bbbtree__single_rot_r(B, tree(A, _N, X, Y), Z, Set) :-
-	set_bbbtree__build_node(B, Y, Z, B_Y_and_Z),
-	set_bbbtree__build_node(A, X, B_Y_and_Z, Set).
+    set_bbbtree__build_node(B, Y, Z, B_Y_and_Z),
+    set_bbbtree__build_node(A, X, B_Y_and_Z, Set).
 
 %------------------------------------------------------------------------------%
 
-	% Double rotation to the left.
-
-	%        A
-	%      /   \                         B
-	%     X     C                      /   \
-	%         /   \     ----->       A       C
-	%        B     Z               /   \   /   \
-	%      /   \                  X    Y1 Y2    Z
-	%    Y1     Y2
-
+    % Double rotation to the left.
+    %
+    %        A
+    %      /   \                         B
+    %     X     C                      /   \
+    %         /   \     ----->       A       C
+    %        B     Z               /   \   /   \
+    %      /   \                  X    Y1 Y2    Z
+    %    Y1     Y2
+    %
 :- pred set_bbbtree__double_rot_l(T::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
 
 set_bbbtree__double_rot_l(_A, _X, empty, _Set) :-
-	error("set_bbbtree__double_rot_l.1").
+    error("set_bbbtree__double_rot_l.1").
 set_bbbtree__double_rot_l(A, X, tree(C, _N0, Y, Z), Set) :-
-	(
-		Y = tree(B, _N1, Y1, Y2),
-		set_bbbtree__build_node(A, X, Y1, A_X_and_Y1),
-		set_bbbtree__build_node(C, Y2, Z, C_Y2_and_Z),
-		set_bbbtree__build_node(B, A_X_and_Y1, C_Y2_and_Z, Set)
-	;
-		Y = empty,
-		error("set_bbbtree__double_rot_l.2")
-	).
+    (
+        Y = tree(B, _N1, Y1, Y2),
+        set_bbbtree__build_node(A, X, Y1, A_X_and_Y1),
+        set_bbbtree__build_node(C, Y2, Z, C_Y2_and_Z),
+        set_bbbtree__build_node(B, A_X_and_Y1, C_Y2_and_Z, Set)
+    ;
+        Y = empty,
+        error("set_bbbtree__double_rot_l.2")
+    ).
 
 %------------------------------------------------------------------------------%
 
-	% Double rotation to the right.
-
+    % Double rotation to the right.
+    %
 :- pred set_bbbtree__double_rot_r(T::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::in, set_bbbtree(T)::out) is det.
 
 set_bbbtree__double_rot_r(_B, empty, _Z, _Set) :-
-	error("set_bbbtree__double_rot_r.1").
+    error("set_bbbtree__double_rot_r.1").
 set_bbbtree__double_rot_r(C, tree(A, _N0, X, Y), Z, Set) :-
-	(
-		Y = tree(B, _N1, Y1, Y2),
-		set_bbbtree__build_node(A, X, Y1, A_X_and_Y1),
-		set_bbbtree__build_node(C, Y2, Z, C_Y2_and_Z),
-		set_bbbtree__build_node(B, A_X_and_Y1, C_Y2_and_Z, Set)
-	;
-		Y = empty,
-		error("set_bbbtree__double_rot_r.2")
-	).
+    (
+        Y = tree(B, _N1, Y1, Y2),
+        set_bbbtree__build_node(A, X, Y1, A_X_and_Y1),
+        set_bbbtree__build_node(C, Y2, Z, C_Y2_and_Z),
+        set_bbbtree__build_node(B, A_X_and_Y1, C_Y2_and_Z, Set)
+    ;
+        Y = empty,
+        error("set_bbbtree__double_rot_r.2")
+    ).
 
 %------------------------------------------------------------------------------%
 
-% Given two trees L and R, such that all the elements of L are less than those
-% of R, and an element V that lies between the values of L and the values of R
-% construct a new tree consisting of V, L and R that is balanced by the use of
-% single and double left and right rotations.
-
+    % Given two trees L and R, such that all the elements of L are less than
+    % those of R, and an element V that lies between the values of L and the
+    % values of R construct a new tree consisting of V, L and R that is
+    % balanced by the use of single and double left and right rotations.
+    %
 :- pred set_bbbtree__balance(T::in, set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__balance(V, L, R, Set, Ratio) :-
-	set_bbbtree__size(L, LSize),
-	set_bbbtree__size(R, RSize),
-	(
-		Val = LSize + RSize,
-		Val < 2
-	->
-			% The two trees are too small to bother rebalancing
-		set_bbbtree__build_node(V, L, R, Set)
-	;
-		Val = Ratio * LSize,
-		RSize > Val
-	->
-		(
-			R = tree(_V0, _N0, RL, RR),
-			set_bbbtree__size(RL, RLSize),	% right side too big
-			set_bbbtree__size(RR, RRSize),
-			(
-				RLSize < RRSize
-			->
-				set_bbbtree__single_rot_l(V, L, R, Set)
-			;
-				set_bbbtree__double_rot_l(V, L, R, Set)
-			)
-		;
-			R = empty,
-			error("set_bbbtree__balance.1")
-		)
-	;
-		Val = Ratio * RSize,
-		LSize > Val
-	->
-		(
-			L = tree(_V1, _N1, LL, LR),
-			set_bbbtree__size(LL, LLSize),	% left side too big
-			set_bbbtree__size(LR, LRSize),
-			(
-				LRSize < LLSize
-			->
-				set_bbbtree__single_rot_r(V, L, R, Set)
-			;
-				set_bbbtree__double_rot_r(V, L, R, Set)
-			)
-		;
-			L = empty,
-			error("set_bbbtree__balance.2")
-		)
-	;
-		set_bbbtree__build_node(V, L, R, Set)	% Already balanced
-	).
+    set_bbbtree__size(L, LSize),
+    set_bbbtree__size(R, RSize),
+    (
+        Val = LSize + RSize,
+        Val < 2
+    ->
+        % the two trees are too small to bother rebalancing.
+        set_bbbtree__build_node(V, L, R, Set)
+    ;
+        Val = Ratio * LSize,
+        RSize > Val
+    ->
+        (
+            R = tree(_V0, _N0, RL, RR),
+            set_bbbtree__size(RL, RLSize),  % Right side too big.
+            set_bbbtree__size(RR, RRSize),
+            ( RLSize < RRSize ->
+                set_bbbtree__single_rot_l(V, L, R, Set)
+            ;
+                set_bbbtree__double_rot_l(V, L, R, Set)
+            )
+        ;
+            R = empty,
+            error("set_bbbtree__balance.1")
+        )
+    ;
+        Val = Ratio * RSize,
+        LSize > Val
+    ->
+        (
+            L = tree(_V1, _N1, LL, LR),
+            set_bbbtree__size(LL, LLSize),  % Left side too big.
+            set_bbbtree__size(LR, LRSize),
+            ( LRSize < LLSize ->
+                set_bbbtree__single_rot_r(V, L, R, Set)
+            ;
+                set_bbbtree__double_rot_r(V, L, R, Set)
+            )
+        ;
+            L = empty,
+            error("set_bbbtree__balance.2")
+        )
+    ;
+        set_bbbtree__build_node(V, L, R, Set)   % Already balanced
+    ).
 
 %------------------------------------------------------------------------------%
 
-% Given two trees concatenate them by removing the greatest element from the
-% left subtree if it is larger than the right subtree by a factor of ratio,
-% else the smallest element from the right subtree, and make it the root along
-% with the two remaining trees as its subtrees. No rebalancing is performed on
-% the resultant tree. `set_bbbtree__concat3' is largely used for deletion of
-% elements. This predicate should not be confused with the predicate `concat3'
-% in the paper for that is `set_bbbtree__concat4'.
-
+    % Given two trees concatenate them by removing the greatest element
+    % from the left subtree if it is larger than the right subtree by a
+    % factor of ratio, else the smallest element from the right subtree,
+    % and make it the root along with the two remaining trees as its subtrees.
+    % No rebalancing is performed on the resultant tree. `set_bbbtree__concat3'
+    % is largely used for deletion of elements. This predicate should not be
+    % confused with the predicate `concat3' in the paper for that is
+    % `set_bbbtree__concat4'.
+    %
 :- pred set_bbbtree__concat3(set_bbbtree(T)::in, set_bbbtree(T)::in,
-	set_bbbtree(T)::out) is det.
+    set_bbbtree(T)::out) is det.
 
 set_bbbtree__concat3(L, R, Set) :-
-	set_bbbtree__size(L, LSize),
-	(
-		LSize = 0		% Left tree empty so just
-	->				% return the right tree
-		Set = R
-	;
-		set_bbbtree__size(R, RSize),
-		(
-			RSize = 0	% Right tree empty so just
-		->			% just return the left tree
-			Set = L
-		;
-			% If the left tree is the larger of the two then
-			% remove its largest value and make it the root
-			% of the new left and the right trees.
-			% Otherwise remove the smallest value from the
-			% right tree and make it the root of the left and
-			% the new right trees.
-			(
-				LSize > RSize
-			->
-				( set_bbbtree__remove_largest(L, X, NewL) ->
-					set_bbbtree__build_node(X, NewL, R,
-						Set)
-				;
-					error("set_bbbtree__concat3.1")
-				)
-			;
-				( set_bbbtree__remove_least(R, X, NewR) ->
-					set_bbbtree__build_node(X, L, NewR,
-						Set)
-				;
-					error("set_bbbtree__concat3.2")
-				)
-			)
-		)
-	).
+    set_bbbtree__size(L, LSize),
+    ( LSize = 0 ->
+        % Left tree empty so just return the right tree.
+        Set = R
+    ;
+        set_bbbtree__size(R, RSize),
+        ( RSize = 0 ->
+            % Right tree empty so just just return the left tree.
+            Set = L
+        ;
+            % If the left tree is the larger of the two then
+            % remove its largest value and make it the root
+            % of the new left and the right trees.
+            % Otherwise remove the smallest value from the
+            % right tree and make it the root of the left and
+            % the new right trees.
+            ( LSize > RSize ->
+                ( set_bbbtree__remove_largest(L, X, NewL) ->
+                    set_bbbtree__build_node(X, NewL, R, Set)
+                ;
+                    error("set_bbbtree__concat3.1")
+                )
+            ;
+                ( set_bbbtree__remove_least(R, X, NewR) ->
+                    set_bbbtree__build_node(X, L, NewR, Set)
+                ;
+                    error("set_bbbtree__concat3.2")
+                )
+            )
+        )
+    ).
 
 %------------------------------------------------------------------------------%
 
-% Given two trees L and R, such that all the elements of L are less than those
-% of R, and an element V that lies between the values of L and the values of R
-% construct a new tree consisting of V and the elements of L and R.
-% This predicate is the equivalent of concat3 in the paper.
-
+    % Given two trees L and R, such that all the elements of L are less than
+    % those of R, and an element V that lies between the values of L and the
+    % values of R construct a new tree consisting of V and the elements of
+    % L and R. This predicate is the equivalent of concat3 in the paper.
+    %
 :- pred set_bbbtree__concat4(set_bbbtree(T)::in, set_bbbtree(T)::in, T::in,
-	set_bbbtree(T)::out, int::in) is det.
+    set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree__concat4(empty, R, V, Set, Ratio) :-
-	set_bbbtree__insert_r(R, V, Set, Ratio).
+    set_bbbtree__insert_r(R, V, Set, Ratio).
 
 set_bbbtree__concat4(tree(LV, LN, LL, LR), R, V, Set, Ratio) :-
-	(
-		R = empty,
-		set_bbbtree__insert_r(tree(LV, LN, LL, LR), V, Set, Ratio)
-	;
-		R = tree(RV, RN, RL, RR),
-		(
-			Val = Ratio * LN,	% Right too big
-			Val < RN
-		->
-			set_bbbtree__concat4(tree(LV,LN,LL,LR), RL, V,
-								NewL, Ratio),
-			set_bbbtree__balance(RV, NewL, RR, Set, Ratio)
-		;
-			Val = Ratio * RN,	% Left too big
-			Val < LN
-		->
-			set_bbbtree__concat4(LR, tree(RV,RN,RL,RR), V,
-								NewR, Ratio),
-			set_bbbtree__balance(LV, LL, NewR, Set, Ratio)
-		;
-			set_bbbtree__build_node(V, tree(LV,LN,LL,LR), R, Set)
-		)
-	).
+    (
+        R = empty,
+        set_bbbtree__insert_r(tree(LV, LN, LL, LR), V, Set, Ratio)
+    ;
+        R = tree(RV, RN, RL, RR),
+        (
+            Val = Ratio * LN,   % Right too big
+            Val < RN
+        ->
+            set_bbbtree__concat4(tree(LV, LN, LL, LR), RL, V, NewL, Ratio),
+            set_bbbtree__balance(RV, NewL, RR, Set, Ratio)
+        ;
+            Val = Ratio * RN,   % Left too big
+            Val < LN
+        ->
+            set_bbbtree__concat4(LR, tree(RV, RN, RL, RR), V, NewR, Ratio),
+            set_bbbtree__balance(LV, LL, NewR, Set, Ratio)
+        ;
+            set_bbbtree__build_node(V, tree(LV, LN, LL, LR), R, Set)
+        )
+    ).
 
 %------------------------------------------------------------------------------%
 
 % Given a set return the subset that is less that X
 
 :- pred set_bbbtree__split_lt(set_bbbtree(T)::in, T::in, set_bbbtree(T)::out,
-	int::in) is det.
+    int::in) is det.
 
 set_bbbtree__split_lt(empty, _X, empty, _Ratio).
 set_bbbtree__split_lt(tree(V, _N, L, R), X, Set, Ratio) :-
-	compare(Result, X, V),
-	(
-		Result = (<),
-		set_bbbtree__split_lt(L, X, Set, Ratio)
-	;
-		Result = (>),
-		set_bbbtree__split_lt(R, X, Set0, Ratio),
-		set_bbbtree__concat4(L, Set0, V, Set, Ratio)
-	;
-		Result = (=),
-		Set = L
-	).
+    compare(Result, X, V),
+    (
+        Result = (<),
+        set_bbbtree__split_lt(L, X, Set, Ratio)
+    ;
+        Result = (>),
+        set_bbbtree__split_lt(R, X, Set0, Ratio),
+        set_bbbtree__concat4(L, Set0, V, Set, Ratio)
+    ;
+        Result = (=),
+        Set = L
+    ).
 
 %------------------------------------------------------------------------------%
 
-% Given a set return the subset of it that is greater that X
-
+    % Given a set return the subset of it that is greater than X.
+    %
 :- pred set_bbbtree__split_gt(set_bbbtree(T)::in, T::in, set_bbbtree(T)::out,
-	int::in) is det.
+    int::in) is det.
 
 set_bbbtree__split_gt(empty, _X, empty, _Ratio).
 set_bbbtree__split_gt(tree(V, _N, L, R), X, Set, Ratio) :-
-	compare(Result, X, V),
-	(
-		Result = (>),
-		set_bbbtree__split_gt(R, X, Set, Ratio)
-	;
-		Result = (<),
-		set_bbbtree__split_gt(L, X, Set0, Ratio),
-		set_bbbtree__concat4(Set0, R, V, Set, Ratio)
-	;
-		Result = (=),
-		Set = R
-	).
+    compare(Result, X, V),
+    (
+        Result = (>),
+        set_bbbtree__split_gt(R, X, Set, Ratio)
+    ;
+        Result = (<),
+        set_bbbtree__split_gt(L, X, Set0, Ratio),
+        set_bbbtree__concat4(Set0, R, V, Set, Ratio)
+    ;
+        Result = (=),
+        Set = R
+    ).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%	Function forms added.
+%   Function forms added.
 
 set_bbbtree__list_to_set(Xs) = S :-
-	set_bbbtree__list_to_set(Xs, S).
+    set_bbbtree__list_to_set(Xs, S).
 
 set_bbbtree__sorted_list_to_set(Xs) = S :-
-	set_bbbtree__sorted_list_to_set(Xs, S).
+    set_bbbtree__sorted_list_to_set(Xs, S).
 
 set_bbbtree__to_sorted_list(S) = Xs :-
-	set_bbbtree__to_sorted_list(S, Xs).
+    set_bbbtree__to_sorted_list(S, Xs).
 
 set_bbbtree__init = S :-
-	set_bbbtree__init(S).
+    set_bbbtree__init(S).
 
 set_bbbtree__make_singleton_set(T) = S :-
-	set_bbbtree__singleton_set(S, T).
+    set_bbbtree__singleton_set(S, T).
 
 set_bbbtree__insert(S1, T) = S2 :-
-	set_bbbtree__insert(S1, T, S2).
+    set_bbbtree__insert(S1, T, S2).
 
 set_bbbtree__insert_list(S1, Xs) = S2 :-
-	set_bbbtree__insert_list(S1, Xs, S2).
+    set_bbbtree__insert_list(S1, Xs, S2).
 
 set_bbbtree__delete(S1, T) = S2 :-
-	set_bbbtree__delete(S1, T, S2).
+    set_bbbtree__delete(S1, T, S2).
 
 set_bbbtree__delete_list(S1, Xs) = S2 :-
-	set_bbbtree__delete_list(S1, Xs, S2).
+    set_bbbtree__delete_list(S1, Xs, S2).
 
 set_bbbtree__union(S1, S2) = S3 :-
-	set_bbbtree__union(S1, S2, S3).
+    set_bbbtree__union(S1, S2, S3).
 
 set_bbbtree__power_union(SS) = S :-
-	set_bbbtree__power_union(SS, S).
+    set_bbbtree__power_union(SS, S).
 
 set_bbbtree__intersect(S1, S2) = S3 :-
-	set_bbbtree__intersect(S1, S2, S3).
+    set_bbbtree__intersect(S1, S2, S3).
 
 set_bbbtree__power_intersect(SS) = S :-
-	set_bbbtree__power_intersect(SS, S).
+    set_bbbtree__power_intersect(SS, S).
 
 set_bbbtree__difference(S1, S2) = S3 :-
-	set_bbbtree__difference(S1, S2, S3).
+    set_bbbtree__difference(S1, S2, S3).
 
 set_bbbtree__map(F, S1) = S2 :-
-	S2 = set_bbbtree__list_to_set(list__map(F,
-			set_bbbtree__to_sorted_list(S1))).
+    S2 = set_bbbtree__list_to_set(list__map(F,
+        set_bbbtree__to_sorted_list(S1))).
 
 set_bbbtree__filter_map(PF, S1) = S2 :-
-	S2 = set_bbbtree__list_to_set(list__filter_map(PF,
-			set_bbbtree__to_sorted_list(S1))).
+    S2 = set_bbbtree__list_to_set(list__filter_map(PF,
+        set_bbbtree__to_sorted_list(S1))).
 
 set_bbbtree__fold(F, S, A) = B :-
-	B = list__foldl(F, set_bbbtree__to_sorted_list(S), A).
+    B = list__foldl(F, set_bbbtree__to_sorted_list(S), A).

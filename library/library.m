@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -8,7 +10,7 @@
 %
 % It is used as a way for the Makefiles to know which library interface
 % files, objects, etc., need to be installed.
-% 
+%
 % ---------------------------------------------------------------------------%
 % ---------------------------------------------------------------------------%
 
@@ -25,9 +27,9 @@
 
 :- interface.
 
-	% Succeeds iff the string is the (unqualified) name of one of the
-	% modules in the Mercury standard library.
-	%
+    % Succeeds iff the string is the (unqualified) name of one of the
+    % modules in the Mercury standard library.
+    %
 :- pred mercury_std_library_module(string::in) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -146,32 +148,32 @@
 % we might not have a Mercury compiler around to compile library.m with.
 
 :- pragma foreign_proc("C",
-	library__version(Version::out),
-	[will_not_call_mercury, promise_pure],
+    library__version(Version::out),
+    [will_not_call_mercury, promise_pure],
 "
-	MR_ConstString version_string = 
-		MR_VERSION "", configured for "" MR_FULLARCH;
-	/*
-	** Cast away const needed here, because Mercury declares Version
-	** with type MR_String rather than MR_ConstString.
-	*/
-	Version = (MR_String) (MR_Word) version_string;
+    MR_ConstString version_string =
+        MR_VERSION "", configured for "" MR_FULLARCH;
+    /*
+    ** Cast away const needed here, because Mercury declares Version
+    ** with type MR_String rather than MR_ConstString.
+    */
+    Version = (MR_String) (MR_Word) version_string;
 ").
 
 :- pragma foreign_proc("C#",
-	library__version(Version::out),
-	[will_not_call_mercury, promise_pure],
+    library__version(Version::out),
+    [will_not_call_mercury, promise_pure],
 "
-	Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""
-			+ mercury.runtime.Constants.MR_FULLARCH;
+    Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""
+        + mercury.runtime.Constants.MR_FULLARCH;
 ").
 
 :- pragma foreign_proc("Java",
-	library__version(Version::out),
-	[will_not_call_mercury, promise_pure],
+    library__version(Version::out),
+    [will_not_call_mercury, promise_pure],
 "
-	Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""
-			+ mercury.runtime.Constants.MR_FULLARCH;
+    Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""
+        + mercury.runtime.Constants.MR_FULLARCH;
 ").
 
 %---------------------------------------------------------------------------%

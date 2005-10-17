@@ -41,7 +41,7 @@
 	% A synonym for set_ordrlist.sorted_list_to_set/1.
 	%
 :- func set_ordlist__from_sorted_list(list(T)) = set_ordlist(T).
-	
+
 	% `set_ordlist__to_sorted_list(Set, List)' is true iff `List' is the
 	% list of all the members of `Set', in sorted order.
 	%

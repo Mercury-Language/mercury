@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995, 1997, 2000, 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -29,226 +31,226 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type multi_map(Key, Data)	==	map(Key, list(Data)).
+:- type multi_map(Key, Data)    ==  map(Key, list(Data)).
 
 %-----------------------------------------------------------------------------%
 
-	% Initialize an empty multi_map.
-	%
+    % Initialize an empty multi_map.
+    %
 :- func multi_map__init = multi_map(_, _).
 :- pred multi_map__init(multi_map(_, _)::uo) is det.
 
-	% Check whether a multi_map is empty.
-	%
+    % Check whether a multi_map is empty.
+    %
 :- pred multi_map__is_empty(multi_map(_, _)::in) is semidet.
 
-	% Check whether multi_map contains key.
-	%
+    % Check whether multi_map contains key.
+    %
 :- pred multi_map__contains(multi_map(K, _V)::in, K::in) is semidet.
 
 :- pred multi_map__member(multi_map(K, V)::in, K::out, V::out) is nondet.
 
-	% Search multi_map for given key.
-	% 
+    % Search multi_map for given key.
+    %
 :- pred multi_map__search(multi_map(K, V)::in, K::in, list(V)::out) is semidet.
 
-	% Search multi_map for given key.
-	% 
+    % Search multi_map for given key.
+    %
 :- pred multi_map__nondet_search(multi_map(K, V)::in, K::in, V::out) is nondet.
 
-	% Search multi_map for key, but abort if search fails.
-	%
+    % Search multi_map for key, but abort if search fails.
+    %
 :- func multi_map__lookup(multi_map(K, V), K) = list(V).
 :- pred multi_map__lookup(multi_map(K, V)::in, K::in, list(V)::out) is det.
 
-	% Search multi_map for key.
-	%
+    % Search multi_map for key.
+    %
 :- pred multi_map__nondet_lookup(multi_map(K, V)::in, K::in, V::out) is nondet.
 
-	% Search multi_map for data.
-	%
+    % Search multi_map for data.
+    %
 :- pred multi_map__inverse_search(multi_map(K, V)::in, V::in, K::out) is nondet.
 
-	% Insert a new key and corresponding value into a multi_map.
-	% Fail if the key already exists.
-	%
+    % Insert a new key and corresponding value into a multi_map.
+    % Fail if the key already exists.
+    %
 :- pred multi_map__insert(multi_map(K, V)::in, K::in, V::in,
-	multi_map(K, V)::out) is semidet.
+    multi_map(K, V)::out) is semidet.
 
-	% Insert a new key and corresponding value into a multi_map.
-	% Abort if the key already exists.
-	%
+    % Insert a new key and corresponding value into a multi_map.
+    % Abort if the key already exists.
+    %
 :- func multi_map__det_insert(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map__det_insert(multi_map(K, V)::in, K::in, V::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Update (add) the value corresponding to a given key.
-	% Fail if the key does not already exist.
-	%
+    % Update (add) the value corresponding to a given key.
+    % Fail if the key does not already exist.
+    %
 :- pred multi_map__update(multi_map(K, V)::in, K::in, V::in,
-	multi_map(K, V)::out) is semidet.
+    multi_map(K, V)::out) is semidet.
 
-	% Update (add) the value corresponding to a given key.
-	% Abort if the key does not already exist.
-	%
+    % Update (add) the value corresponding to a given key.
+    % Abort if the key does not already exist.
+    %
 :- func multi_map__det_update(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map__det_update(multi_map(K, V)::in, K::in, V::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Update (replace) the value corresponding to a given key.
-	% Abort if the key does not already exist.
-	%
+    % Update (replace) the value corresponding to a given key.
+    % Abort if the key does not already exist.
+    %
 :- func multi_map__det_replace(multi_map(K, V), K, list(V)) = multi_map(K, V).
 :- pred multi_map__det_replace(multi_map(K, V)::in, K::in, list(V)::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Update (add) value if the key is already present, otherwise
-	% insert the new key and value.
-	%
+    % Update (add) value if the key is already present, otherwise
+    % insert the new key and value.
+    %
 :- func multi_map__set(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map__set(multi_map(K, V)::in, K::in, V::in, multi_map(K, V)::out)
-	is det.
+    is det.
 
 :- func multi_map__add(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map__add(multi_map(K, V)::in, K::in, V::in, multi_map(K, V)::out)
-	is det.
+    is det.
 
-	% Given a multi_map, return a list of all the keys in the multi_map.
-	%
+    % Given a multi_map, return a list of all the keys in the multi_map.
+    %
 :- func multi_map__keys(multi_map(K, _V)) = list(K).
 :- pred multi_map__keys(multi_map(K, _V)::in, list(K)::out) is det.
 
-	% Given a multi_map, return a list of all the data values in the
-	% multi_map
-	%
+    % Given a multi_map, return a list of all the data values in the
+    % multi_map
+    %
 :- func multi_map__values(multi_map(_K, V)) = list(V).
 :- pred multi_map__values(multi_map(_K, V)::in, list(V)::out) is det.
 
-	% Convert a multi_map to an association list.
-	%
+    % Convert a multi_map to an association list.
+    %
 :- func multi_map__to_flat_assoc_list(multi_map(K, V)) = assoc_list(K, V).
 :- pred multi_map__to_flat_assoc_list(multi_map(K, V)::in,
-	assoc_list(K, V)::out) is det.
+    assoc_list(K, V)::out) is det.
 
-	% Convert an association list to a multi_map.
-	%
+    % Convert an association list to a multi_map.
+    %
 :- func multi_map__from_flat_assoc_list(assoc_list(K, V)) = multi_map(K, V).
 :- pred multi_map__from_flat_assoc_list(assoc_list(K, V)::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Convert a multi_map to an association list, with all the
-	% values for each key in one element of the association list.
-	%
+    % Convert a multi_map to an association list, with all the
+    % values for each key in one element of the association list.
+    %
 :- func multi_map__to_assoc_list(multi_map(K, V)) = assoc_list(K, list(V)).
 :- pred multi_map__to_assoc_list(multi_map(K, V)::in,
-	assoc_list(K, list(V))::out) is det.
+    assoc_list(K, list(V))::out) is det.
 
-	% Convert an association list with all the values for each
-	% key in one element of the list to a multi_map.
-	%
+    % Convert an association list with all the values for each
+    % key in one element of the list to a multi_map.
+    %
 :- func multi_map__from_assoc_list(assoc_list(K, list(V))) = multi_map(K, V).
 :- pred multi_map__from_assoc_list(assoc_list(K, list(V))::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Convert a sorted association list to a multi_map.
-	%
+    % Convert a sorted association list to a multi_map.
+    %
 :- func multi_map__from_sorted_assoc_list(assoc_list(K, list(V)))
-	= multi_map(K, V).
+    = multi_map(K, V).
 :- pred multi_map__from_sorted_assoc_list(assoc_list(K, list(V))::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Delete a key and data from a multi_map
-	% if the key is not present, leave the multi_map unchanged.
-	%
+    % Delete a key and data from a multi_map
+    % if the key is not present, leave the multi_map unchanged.
+    %
 :- func multi_map__delete(multi_map(K, V), K) = multi_map(K, V).
 :- pred multi_map__delete(multi_map(K, V)::in, K::in, multi_map(K, V)::out)
-	is det.
+    is det.
 
-	% Delete a data value from a key in a multi_map
-	% if the key is not present, leave the multi_map unchanged.
-	%
+    % Delete a data value from a key in a multi_map
+    % if the key is not present, leave the multi_map unchanged.
+    %
 :- func multi_map__delete(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred multi_map__delete(multi_map(K, V)::in, K::in, V::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Delete a key-value pair from a multi_map and return the value.
-	% fail if the key is not present.
-	%
+    % Delete a key-value pair from a multi_map and return the value.
+    % fail if the key is not present.
+    %
 :- pred multi_map__remove(multi_map(K, V)::in, K::in, list(V)::out,
-	multi_map(K, V)::out) is semidet.
+    multi_map(K, V)::out) is semidet.
 
-	% Delete a key-value pair from a multi_map and return the value.
-	% Abort if the key is not present.
-	%
+    % Delete a key-value pair from a multi_map and return the value.
+    % Abort if the key is not present.
+    %
 :- pred multi_map__det_remove(multi_map(K, V)::in, K::in, list(V)::out,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Count the number of elements (keys) in the multi_map.
-	%
+    % Count the number of elements (keys) in the multi_map.
+    %
 :- func multi_map__count(multi_map(K, V)) = int.
 :- pred multi_map__count(multi_map(K, V)::in, int::out) is det.
 
-	% Count the number of data elements in the multi_map.
-	%
+    % Count the number of data elements in the multi_map.
+    %
 :- func multi_map__all_count(multi_map(K, V)) = int.
 :- pred multi_map__all_count(multi_map(K, V)::in, int::out) is det.
 
-	% Convert a pair of lists (which must be of the same length)
-	% to a multi_map.
-	%
+    % Convert a pair of lists (which must be of the same length)
+    % to a multi_map.
+    %
 :- func multi_map__from_corresponding_lists(list(K), list(V))
-	= multi_map(K, V).
+    = multi_map(K, V).
 :- pred multi_map__from_corresponding_lists(list(K)::in, list(V)::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Convert a pair of lists (which must be of the same length)
-	% to a multi_map.
-	%
+    % Convert a pair of lists (which must be of the same length)
+    % to a multi_map.
+    %
 :- func multi_map__from_corresponding_list_lists(list(K), list(list(V)))
-	= multi_map(K, V).
+    = multi_map(K, V).
 :- pred multi_map__from_corresponding_list_lists(list(K)::in, list(list(V))::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% multi_map__merge(MultiMapA, MultiMapB, MultiMap). 
-	% Merge `MultiMapA' and `MultiMapB' so that if a key occurs in
-	% both `MultiMapA' and `MultiMapB' then the values corresponding
-	% to that key in `MultiMap' will be the concatenation of
-	% the values corresponding to that key from `MultiMapA' and
-	% `MultiMapB'. 
-	% 
+    % multi_map__merge(MultiMapA, MultiMapB, MultiMap).
+    % Merge `MultiMapA' and `MultiMapB' so that if a key occurs in
+    % both `MultiMapA' and `MultiMapB' then the values corresponding
+    % to that key in `MultiMap' will be the concatenation of
+    % the values corresponding to that key from `MultiMapA' and
+    % `MultiMapB'.
+    %
 :- func multi_map__merge(multi_map(K, V), multi_map(K, V))
-	= multi_map(K, V).
+    = multi_map(K, V).
 :- pred multi_map__merge(multi_map(K, V)::in, multi_map(K, V)::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% multi_map__select takes a multi_map and a set of keys and returns
-	% a multi_map containing the keys in the set and their corresponding
-	% values.
-	%
+    % multi_map__select takes a multi_map and a set of keys and returns
+    % a multi_map containing the keys in the set and their corresponding
+    % values.
+    %
 :- func multi_map__select(multi_map(K, V), set(K)) = multi_map(K, V).
 :- pred multi_map__select(multi_map(K, V)::in, set(K)::in,
-	multi_map(K, V)::out) is det.
+    multi_map(K, V)::out) is det.
 
-	% Given a list of keys, produce a list of their values in a
-	% specified multi_map.
-	%
+    % Given a list of keys, produce a list of their values in a
+    % specified multi_map.
+    %
 :- func multi_map__apply_to_list(list(K), multi_map(K, V)) = list(V).
 :- pred multi_map__apply_to_list(list(K)::in, multi_map(K, V)::in,
-	list(V)::out) is det.
+    list(V)::out) is det.
 
-	% Declaratively, a NOP.
-	% Operationally, a suggestion that the implementation
-	% optimize the representation of the multi_map in the expectation
-	% of a number of lookups but few or no modifications.
-	%
+    % Declaratively, a NOP.
+    % Operationally, a suggestion that the implementation
+    % optimize the representation of the multi_map in the expectation
+    % of a number of lookups but few or no modifications.
+    %
 :- func multi_map__optimize(multi_map(K, V)) = multi_map(K, V).
 :- pred multi_map__optimize(multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
-	% Remove the smallest item from the multi_map, fail if
-	% the multi_map is empty.
-	%
+    % Remove the smallest item from the multi_map, fail if
+    % the multi_map is empty.
+    %
 :- pred multi_map__remove_smallest(multi_map(K, V)::in, K::out, list(V)::out,
-	multi_map(K, V)::out) is semidet.
+    multi_map(K, V)::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -263,298 +265,294 @@
 %-----------------------------------------------------------------------------%
 
 multi_map__init(M) :-
-	map__init(M).
+    map__init(M).
 
 multi_map__is_empty(M) :-
-	map__is_empty(M).
+    map__is_empty(M).
 
 multi_map__contains(MultiMap, Key) :-
-	map__search(MultiMap, Key, _).
+    map__search(MultiMap, Key, _).
 
 multi_map__member(MultiMap, Key, Value) :-
-	map__member(MultiMap, Key, ValueList),
-	list__member(Value, ValueList).
+    map__member(MultiMap, Key, ValueList),
+    list__member(Value, ValueList).
 
 multi_map__search(MultiMap, Key, Values) :-
-	map__search(MultiMap, Key, Values).
+    map__search(MultiMap, Key, Values).
 
 multi_map__nondet_search(MultiMap, Key, Value) :-
-	map__search(MultiMap, Key, Values),
-	list__member(Value, Values).
+    map__search(MultiMap, Key, Values),
+    list__member(Value, Values).
 
 multi_map__lookup(MultiMap, Key, Values) :-
-	map__lookup(MultiMap, Key, Values).
+    map__lookup(MultiMap, Key, Values).
 
 multi_map__nondet_lookup(MultiMap, Key, Value) :-
-	map__search(MultiMap, Key, Values),
-	list__member(Value, Values).
+    map__search(MultiMap, Key, Values),
+    list__member(Value, Values).
 
 multi_map__insert(MultiMap0, Key, Value, MultiMap) :-
-	map__insert(MultiMap0, Key, [Value], MultiMap).
+    map__insert(MultiMap0, Key, [Value], MultiMap).
 
 multi_map__det_insert(MultiMap0, Key, Value, MultiMap) :-
-	map__det_insert(MultiMap0, Key, [Value], MultiMap).
+    map__det_insert(MultiMap0, Key, [Value], MultiMap).
 
 multi_map__update(MultiMap0, Key, Value, MultiMap) :-
-	map__search(MultiMap0, Key, Values0),
-	Values = [Value | Values0],
-	map__update(MultiMap0, Key, Values, MultiMap).
+    map__search(MultiMap0, Key, Values0),
+    Values = [Value | Values0],
+    map__update(MultiMap0, Key, Values, MultiMap).
 
 multi_map__det_update(MultiMap0, Key, Value, MultiMap) :-
-	map__det_update(MultiMap0, Key, [Value], MultiMap).
+    map__det_update(MultiMap0, Key, [Value], MultiMap).
 
 multi_map__det_replace(MultiMap0, Key, Value, MultiMap) :-
-	map__det_update(MultiMap0, Key, Value, MultiMap).
+    map__det_update(MultiMap0, Key, Value, MultiMap).
 
 multi_map__set(MultiMap0, Key, Value, MultiMap) :-
-	( map__search(MultiMap0, Key, Values0) ->
-		Values = [Value | Values0],
-		map__set(MultiMap0, Key, Values, MultiMap)
-	;
-		map__det_insert(MultiMap0, Key, [Value], MultiMap)
-	).
+    ( map__search(MultiMap0, Key, Values0) ->
+        Values = [Value | Values0],
+        map__set(MultiMap0, Key, Values, MultiMap)
+    ;
+        map__det_insert(MultiMap0, Key, [Value], MultiMap)
+    ).
 
 multi_map__add(MultiMap0, Key, Value, MultiMap) :-
-	multi_map__set(MultiMap0, Key, Value, MultiMap).
+    multi_map__set(MultiMap0, Key, Value, MultiMap).
 
 multi_map__keys(MultiMap, KeyList) :-
-	map__keys(MultiMap, KeyList).
+    map__keys(MultiMap, KeyList).
 
 multi_map__values(MultiMap, KeyList) :-
-	map__values(MultiMap, KeyList0),
-	list__condense(KeyList0, KeyList).
+    map__values(MultiMap, KeyList0),
+    list__condense(KeyList0, KeyList).
 
 multi_map__from_flat_assoc_list(AList, MultiMap) :-
-	MultiMap = list__foldl(
-		(func(Key - Value, Map0) = Map  :-
-			multi_map__set(Map0, Key, Value, Map)
-		),
-		AList, map__init).
+    MultiMap = list__foldl(
+        (func(Key - Value, Map0) = Map  :-
+            multi_map__set(Map0, Key, Value, Map)
+        ),
+        AList, map__init).
 
 multi_map__to_flat_assoc_list(MultiMap, AList) :-
-	AList = list__reverse(map__foldl(
-		(func(Key, Values, AL) =
-			list__reverse(
-				list__map((func(Value) = Key - Value), Values)
-			) ++ AL
-		),
-		MultiMap, [])).
+    AList = list__reverse(map__foldl(
+        (func(Key, Values, AL) =
+            list__reverse(
+                list__map((func(Value) = Key - Value), Values)
+            ) ++ AL
+        ),
+        MultiMap, [])).
 
 multi_map__from_assoc_list(AList, MultiMap) :-
-	map__from_assoc_list(AList, MultiMap).
+    map__from_assoc_list(AList, MultiMap).
 
 multi_map__from_sorted_assoc_list(AList, MultiMap) :-
-	map__from_sorted_assoc_list(AList, MultiMap).
+    map__from_sorted_assoc_list(AList, MultiMap).
 
 multi_map__to_assoc_list(MultiMap, AList) :-
-	map__to_assoc_list(MultiMap, AList).
+    map__to_assoc_list(MultiMap, AList).
 
 multi_map__delete(MultiMap0, Key, MultiMap) :-
-	map__delete(MultiMap0, Key, MultiMap).
+    map__delete(MultiMap0, Key, MultiMap).
 
 multi_map__delete(MultiMap0, Key, Value, MultiMap) :-
-	(
-		map__search(MultiMap0, Key, Values0),
-		list__delete_all(Values0, Value, Values)
-	->
-		(
-			Values = []
-		->
-			map__delete(MultiMap0, Key, MultiMap)
-		;
-			map__set(MultiMap0, Key, Values, MultiMap)
-		)
-	;
-		MultiMap = MultiMap0
-	).
+    (
+        map__search(MultiMap0, Key, Values0),
+        list__delete_all(Values0, Value, Values)
+    ->
+        (
+            Values = [],
+            map__delete(MultiMap0, Key, MultiMap)
+        ;
+            Values = [_ | _],
+            map__set(MultiMap0, Key, Values, MultiMap)
+        )
+    ;
+        MultiMap = MultiMap0
+    ).
 
 multi_map__remove(MultiMap0, Key, Values, MultiMap) :-
-	map__remove(MultiMap0, Key, Values, MultiMap).
+    map__remove(MultiMap0, Key, Values, MultiMap).
 
 multi_map__det_remove(MultiMap0, Key, Values, MultiMap) :-
-	map__det_remove(MultiMap0, Key, Values, MultiMap).
+    map__det_remove(MultiMap0, Key, Values, MultiMap).
 
 multi_map__count(MultiMap, Count) :-
-	map__count(MultiMap, Count).
+    map__count(MultiMap, Count).
 
 multi_map__all_count(MultiMap, Count) :-
-	multi_map__values(MultiMap, List),
-	multi_map__count_list(List, 0, Count).
+    multi_map__values(MultiMap, List),
+    multi_map__count_list(List, 0, Count).
 
 :- pred multi_map__count_list(list(A)::in, int::in, int::out) is det.
 
 multi_map__count_list([], X, X).
 multi_map__count_list([_A | As], Count0, Count) :-
-	Count1 = Count0 + 1,
-	multi_map__count_list(As, Count1, Count).
+    Count1 = Count0 + 1,
+    multi_map__count_list(As, Count1, Count).
 
 %-----------------------------------------------------------------------------%
 
-	% XXX inefficient
+    % XXX inefficient
 
 multi_map__inverse_search(MultiMap, Value, Key) :-
-	map__member(MultiMap, Key, ValueList),
-	list__member(Value, ValueList).
+    map__member(MultiMap, Key, ValueList),
+    list__member(Value, ValueList).
 
 %-----------------------------------------------------------------------------%
 
 multi_map__from_corresponding_lists(Keys, Values, MultiMap) :-
-	multi_map__init(MultiMap0),
-	(
-		multi_map__from_corresponding_lists_2(MultiMap0, Keys, Values,
-			MultiMap1)
-	->
-		MultiMap = MultiMap1
-	;
-		error("multi_map__from_corresponding_lists: " ++
-			"list length mismatch")
-	).
+    multi_map__init(MultiMap0),
+    (
+        multi_map__from_corresponding_lists_2(MultiMap0, Keys, Values,
+            MultiMap1)
+    ->
+        MultiMap = MultiMap1
+    ;
+        error("multi_map__from_corresponding_lists: list length mismatch")
+    ).
 
 :- pred multi_map__from_corresponding_lists_2(multi_map(K, V)::in, list(K)::in,
-	list(V)::in, multi_map(K, V)::out) is semidet.
+    list(V)::in, multi_map(K, V)::out) is semidet.
 
 multi_map__from_corresponding_lists_2(MultiMap, [], [], MultiMap).
 multi_map__from_corresponding_lists_2(MultiMap0, [Key | Keys],
-		[Value | Values], MultiMap) :-
-	multi_map__set(MultiMap0, Key, Value, MultiMap1),
-	multi_map__from_corresponding_lists_2(MultiMap1, Keys, Values,
-		MultiMap).
+        [Value | Values], MultiMap) :-
+    multi_map__set(MultiMap0, Key, Value, MultiMap1),
+    multi_map__from_corresponding_lists_2(MultiMap1, Keys, Values, MultiMap).
 
 multi_map__from_corresponding_list_lists(Keys, Values, MultiMap) :-
-	map__from_corresponding_lists(Keys, Values, MultiMap).
+    map__from_corresponding_lists(Keys, Values, MultiMap).
 
 %-----------------------------------------------------------------------------%
 
 multi_map__merge(M0, M1, M) :-
-	multi_map__to_assoc_list(M0, ML0),
-	multi_map__to_assoc_list(M1, ML1),
-	multi_map__assoc_list_merge(ML0, ML1, ML),
-	multi_map__from_sorted_assoc_list(ML, M).
+    multi_map__to_assoc_list(M0, ML0),
+    multi_map__to_assoc_list(M1, ML1),
+    multi_map__assoc_list_merge(ML0, ML1, ML),
+    multi_map__from_sorted_assoc_list(ML, M).
 
 :- pred multi_map__assoc_list_merge(assoc_list(K, list(V))::in,
-	assoc_list(K, list(V))::in, assoc_list(K, list(V))::out) is det.
+    assoc_list(K, list(V))::in, assoc_list(K, list(V))::out) is det.
 
 multi_map__assoc_list_merge([], ListB, ListB).
 multi_map__assoc_list_merge([A | ListA], [], [A | ListA]).
 multi_map__assoc_list_merge([(KeyA - DataA) | ListA], [(KeyB - DataB) | ListB],
-		[(Key - Data) | List]) :-
-	compare(Res, KeyA, KeyB),
-	(
-		Res = (=),
-		Key = KeyA,
-		list__append(DataA, DataB, Data),
-		multi_map__assoc_list_merge(ListA, ListB, List)
-	;
-		Res = (<),
-		Key = KeyA,
-		Data = DataA,
-		multi_map__assoc_list_merge(ListA, [(KeyB - DataB) | ListB],
-			List)
-	;
-		Res = (>),
-		Key = KeyB,
-		Data = DataB,
-		multi_map__assoc_list_merge([(KeyA - DataA) | ListA], ListB,
-			List)
-	).
+        [(Key - Data) | List]) :-
+    compare(Res, KeyA, KeyB),
+    (
+        Res = (=),
+        Key = KeyA,
+        list__append(DataA, DataB, Data),
+        multi_map__assoc_list_merge(ListA, ListB, List)
+    ;
+        Res = (<),
+        Key = KeyA,
+        Data = DataA,
+        multi_map__assoc_list_merge(ListA, [(KeyB - DataB) | ListB], List)
+    ;
+        Res = (>),
+        Key = KeyB,
+        Data = DataB,
+        multi_map__assoc_list_merge([(KeyA - DataA) | ListA], ListB, List)
+    ).
 
 %-----------------------------------------------------------------------------%
 
 multi_map__optimize(MultiMap0, MultiMap) :-
-	map__optimize(MultiMap0, MultiMap).
+    map__optimize(MultiMap0, MultiMap).
 
 %-----------------------------------------------------------------------------%
 
 multi_map__select(Original, KeySet, NewMultiMap) :-
-	map__select(Original, KeySet, NewMultiMap).
+    map__select(Original, KeySet, NewMultiMap).
 
 %-----------------------------------------------------------------------------%
 
 multi_map__apply_to_list([], _, []).
 multi_map__apply_to_list([K | Keys], MultiMap, Values) :-
-	map__apply_to_list([K | Keys], MultiMap, Values0),
-	list__condense(Values0, Values).
+    map__apply_to_list([K | Keys], MultiMap, Values0),
+    list__condense(Values0, Values).
 
 %-----------------------------------------------------------------------------%
 
 multi_map__remove_smallest(MultiMap0, Key, Values, MultiMap) :-
-	map__remove_smallest(MultiMap0, Key, Values, MultiMap).
+    map__remove_smallest(MultiMap0, Key, Values, MultiMap).
 
 %-----------------------------------------------------------------------------%
 
 % Functional versions.
 
 multi_map__init = M :-
-	multi_map__init(M).
+    multi_map__init(M).
 
 multi_map__lookup(MultiMap, Key) = Value :-
-	multi_map__lookup(MultiMap, Key, Value).
+    multi_map__lookup(MultiMap, Key, Value).
 
 multi_map__det_insert(MultiMap0, Key, Value) = MultiMap :-
-	multi_map__det_insert(MultiMap0, Key, Value, MultiMap).
+    multi_map__det_insert(MultiMap0, Key, Value, MultiMap).
 
 multi_map__det_update(MultiMap0, Key, Value) = MultiMap :-
-	multi_map__det_update(MultiMap0, Key, Value, MultiMap).
+    multi_map__det_update(MultiMap0, Key, Value, MultiMap).
 
 multi_map__det_replace(MultiMap0, Key, Value) = MultiMap :-
-	multi_map__det_replace(MultiMap0, Key, Value, MultiMap).
+    multi_map__det_replace(MultiMap0, Key, Value, MultiMap).
 
 multi_map__set(MultiMap0, Key, Value) = MultiMap :-
-	multi_map__set(MultiMap0, Key, Value, MultiMap).
+    multi_map__set(MultiMap0, Key, Value, MultiMap).
 
 multi_map__add(MultiMap0, Key, Value) = MultiMap :-
-	multi_map__set(MultiMap0, Key, Value, MultiMap).
+    multi_map__set(MultiMap0, Key, Value, MultiMap).
 
 multi_map__keys(MultiMap) = Keys :-
-	multi_map__keys(MultiMap, Keys).
+    multi_map__keys(MultiMap, Keys).
 
 multi_map__values(MultiMap) = Valyes :-
-	multi_map__values(MultiMap, Valyes).
+    multi_map__values(MultiMap, Valyes).
 
 multi_map__to_flat_assoc_list(MultiMap) = AssocList :-
-	multi_map__to_flat_assoc_list(MultiMap, AssocList).
+    multi_map__to_flat_assoc_list(MultiMap, AssocList).
 
 multi_map__from_flat_assoc_list(AssocList) = MultiMap :-
-	multi_map__from_flat_assoc_list(AssocList, MultiMap).
+    multi_map__from_flat_assoc_list(AssocList, MultiMap).
 
 multi_map__to_assoc_list(MultiMap) = AssocList :-
-	multi_map__to_assoc_list(MultiMap, AssocList).
+    multi_map__to_assoc_list(MultiMap, AssocList).
 
 multi_map__from_assoc_list(AssocList) = MultiMap :-
-	multi_map__from_assoc_list(AssocList, MultiMap).
+    multi_map__from_assoc_list(AssocList, MultiMap).
 
 multi_map__from_sorted_assoc_list(AssocList) = MultiMap :-
-	multi_map__from_sorted_assoc_list(AssocList, MultiMap).
+    multi_map__from_sorted_assoc_list(AssocList, MultiMap).
 
 multi_map__delete(MultiMap0, Key) = MultiMap :-
-	multi_map__delete(MultiMap0, Key, MultiMap).
+    multi_map__delete(MultiMap0, Key, MultiMap).
 
 multi_map__delete(MultiMap0, Key, Value) = MultiMap :-
-	multi_map__delete(MultiMap0, Key, Value, MultiMap).
+    multi_map__delete(MultiMap0, Key, Value, MultiMap).
 
 multi_map__count(MultiMap0) = Count :-
-	multi_map__count(MultiMap0, Count).
+    multi_map__count(MultiMap0, Count).
 
 multi_map__all_count(MultiMap0) = Count :-
-	multi_map__all_count(MultiMap0, Count).
+    multi_map__all_count(MultiMap0, Count).
 
 multi_map__from_corresponding_lists(Keys, Values) = MultiMap :-
-	multi_map__from_corresponding_lists(Keys, Values, MultiMap).
+    multi_map__from_corresponding_lists(Keys, Values, MultiMap).
 
 multi_map__from_corresponding_list_lists(Keys, Values) = MultiMap :-
-	multi_map__from_corresponding_list_lists(Keys, Values, MultiMap).
+    multi_map__from_corresponding_list_lists(Keys, Values, MultiMap).
 
 multi_map__merge(MultiMapA, MultiMapB) = MultiMap :-
-	multi_map__merge(MultiMapA, MultiMapB, MultiMap).
+    multi_map__merge(MultiMapA, MultiMapB, MultiMap).
 
 multi_map__select(MultiMap, KeySet) = NewMultiMap :-
-	multi_map__select(MultiMap, KeySet, NewMultiMap).
+    multi_map__select(MultiMap, KeySet, NewMultiMap).
 
 multi_map__apply_to_list(Keys, MultiMap) = Values :-
-	multi_map__apply_to_list(Keys, MultiMap, Values).
+    multi_map__apply_to_list(Keys, MultiMap, Values).
 
 multi_map__optimize(MultiMap0) = MultiMap :-
-	multi_map__optimize(MultiMap0, MultiMap).
+    multi_map__optimize(MultiMap0, MultiMap).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -96,11 +96,11 @@
 :- pred tree234__update(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
     is semidet.
 
-    % Update the value at the given key by applying the supplied 
-    % transformation to it.  This is faster than first searching for 
+    % Update the value at the given key by applying the supplied
+    % transformation to it.  This is faster than first searching for
     % the value and then updating it.
     %
-:- pred tree234__transform_value(pred(V, V)::in(pred(in, out) is det), K::in, 
+:- pred tree234__transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     tree234(K, V)::in, tree234(K, V)::out) is semidet.
 
     % Count the number of elements in a tree.
@@ -129,9 +129,9 @@
 :- mode tree234__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
 
 :- pred tree234__foldl2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
-:- mode tree234__foldl2(pred(in, in, in, out, in, out) is det, 
+:- mode tree234__foldl2(pred(in, in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode tree234__foldl2(pred(in, in, in, out, in, out) is semidet, 
+:- mode tree234__foldl2(pred(in, in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
 :- mode tree234__foldl2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
@@ -140,9 +140,9 @@
 
 :- pred tree234__foldl3(pred(K, V, A, A, B, B, C, C), tree234(K, V),
 	A, A, B, B, C, C).
-:- mode tree234__foldl3(pred(in, in, in, out, in, out, in, out) is det, 
+:- mode tree234__foldl3(pred(in, in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode tree234__foldl3(pred(in, in, in, out, in, out, in, out) is semidet, 
+:- mode tree234__foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
 :- mode tree234__foldl3(pred(in, in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
@@ -157,7 +157,7 @@
 	is det,
 	in, in, out, in, out, in, out, in, out) is det.
 :- mode tree234__foldl4(pred(in, in, in, out, in, out, in, out, in, out)
-	is semidet, 
+	is semidet,
 	in, in, out, in, out, in, out, in, out) is semidet.
 :- mode tree234__foldl4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
 	in, in, out, in, out, in, out, di, uo) is det.
@@ -434,7 +434,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result1, SearchK, K1),
             (
                 Result1 = (<),
-                ( tree234__lower_bound_search(T1, SearchK, Kp, Vp) -> 
+                ( tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -448,7 +448,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V1
             ;
                 Result1 = (>),
-                ( tree234__lower_bound_search(T2, SearchK, Kp, Vp) -> 
+                ( tree234__lower_bound_search(T2, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -472,7 +472,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V0
             ;
                 Result0 = (>),
-                ( tree234__lower_bound_search(T1, SearchK, Kp, Vp) -> 
+                ( tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -489,7 +489,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result2, SearchK, K2),
             (
                 Result2 = (<),
-                ( tree234__lower_bound_search(T2, SearchK, Kp, Vp) -> 
+                ( tree234__lower_bound_search(T2, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -502,7 +502,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V2
             ;
                 Result2 = (>),
-                ( tree234__lower_bound_search(T3, SearchK, Kp, Vp) -> 
+                ( tree234__lower_bound_search(T3, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -533,7 +533,7 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
         compare(Result, SearchK, K0),
         (
             Result = (<),
-            ( tree234__upper_bound_search(T0, SearchK, Kp, Vp) -> 
+            ( tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
                 K = Kp,
                 V = Vp
             ;
@@ -654,7 +654,7 @@ tree234__upper_bound_lookup(T, SearchK, K, V) :-
 %------------------------------------------------------------------------------%
 
 tree234__max_key(T0) = MaxKey :-
-    ( T0 = two(NodeMaxKey, _, _, NodeMaxSubtree) 
+    ( T0 = two(NodeMaxKey, _, _, NodeMaxSubtree)
     ; T0 = three(_, _, NodeMaxKey, _, _, _, NodeMaxSubtree)
     ; T0 = four(_, _, _, _, NodeMaxKey, _, _, _, _, NodeMaxSubtree)
     ),
@@ -665,7 +665,7 @@ tree234__max_key(T0) = MaxKey :-
     ).
 
 tree234__min_key(T0) = MinKey :-
-    ( T0 = two(NodeMinKey, _, NodeMinSubtree, _) 
+    ( T0 = two(NodeMinKey, _, NodeMinSubtree, _)
     ; T0 = three(NodeMinKey, _, _, _, NodeMinSubtree, _, _)
     ; T0 = four(NodeMinKey, _, _, _, _, _, NodeMinSubtree, _, _, _)
     ),

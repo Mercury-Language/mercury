@@ -60,7 +60,7 @@
     % but it returns only a count of the solutions, rather than solutions
     % themselves. The number of milliseconds required to generate all
     % solutions of Pred with input In Repeats times is returned as Time.
-    % 
+    %
 :- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
 :- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out)
     is cc_multi.

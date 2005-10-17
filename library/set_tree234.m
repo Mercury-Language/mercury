@@ -136,7 +136,7 @@
 
     % `set_tree234_union(SetA, SetB) = Set' is true iff `Set' is the union
     % of `SetA' and `SetB'.
-    %    
+    %
 :- pred set_tree234__union(set_tree234(T)::in, set_tree234(T)::in,
     set_tree234(T)::out) is det.
 :- func set_tree234__union(set_tree234(T), set_tree234(T)) = set_tree234(T).
@@ -250,14 +250,14 @@
 %         empty
 %     ;
 %         two(T, uniq_set_tree234(T), uniq_set_tree234(T))
-%     ;  
+%     ;
 %         three(T, T, uniq_set_tree234(T), uniq_set_tree234(T),
 %             uniq_set_tree234(T))
 %     ;
 %         four(T, T, T, uniq_set_tree234(T), uniq_set_tree234(T),
 %             uniq_set_tree234(T), uniq_set_tree234(T))
 %     )).
-% 
+%
 % :- inst uniq_set_tree234_gg == unique(
 %     (
 %         empty
@@ -272,7 +272,7 @@
 %             uniq_set_tree234_gg, uniq_set_tree234_gg,
 %             uniq_set_tree234_gg, uniq_set_tree234_gg)
 %     )).
-% 
+%
 % :- mode di_set_tree234(T) == uniq_set_tree234(T) >> dead.
 % :- mode di_set_tree234    == uniq_set_tree234(ground) >> dead.
 % :- mode uo_set_tree234(T) == free >> uniq_set_tree234(T).
@@ -490,13 +490,13 @@ set_tree234__superset(SuperSet, Set) :-
 % XXX
 % :- mode uo_two  == out(uniq_two(unique, unique)).
 % :- mode suo_two == out(uniq_two(ground, uniq_tree234_gg)).
-% 
+%
 % :- mode di_two  == di(uniq_two(unique, unique)).
 % :- mode sdi_two == di(uniq_two(ground, uniq_tree234_gg)).
-% 
+%
 % :- mode di_three  == di(uniq_three(unique, unique)).
 % :- mode sdi_three == di(uniq_three(ground, uniq_tree234_gg)).
-% 
+%
 % :- mode di_four  == di(uniq_four(unique, unique)).
 % :- mode sdi_four == di(uniq_four(ground, uniq_tree234_gg)).
 

@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998,2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -54,42 +56,35 @@
 
 	% addition
 	%
-:- func float + float = float.
-:- mode in    + in    = uo  is det.
+:- func (float::in) + (float::in) = (float::uo) is det.
 
 	% subtraction
 	%
-:- func float - float = float.
-:- mode in    - in    = uo  is det.
+:- func (float::in) - (float::in) = (float::uo) is det.
 
 	% multiplication
 	%
-:- func float * float = float.
-:- mode in    * in    = uo  is det.
+:- func (float::in) * (float::in) = (float::uo) is det.
 
 	% division
-	% Throws a `math__domain_error' exception if the right
-	% operand is zero. See the comments at the top of math.m
-	% to find out how to disable this check.
+	% Throws a `math__domain_error' exception if the right operand is zero.
+    % See the comments at the top of math.m to find out how to disable
+    % this check.
 	%
-:- func float / float = float.
-:- mode in    / in    = uo  is det.
+:- func (float::in) / (float::in) = (float::uo) is det.
 
-	% unchecked_quotient(X, Y) is the same as X / Y, but the
-	% behaviour is undefined if the right operand is zero.
+	% unchecked_quotient(X, Y) is the same as X / Y, but the behaviour
+    % is undefined if the right operand is zero.
 	%
-:- func unchecked_quotient(float, float) = float.
-:- mode unchecked_quotient(in, in)    = uo  is det.
+:- func unchecked_quotient(float::in, float::in) = (float::uo) is det.
 
 	% unary plus
 	%
-:- func + float = float.
-:- mode + in    = uo  is det.
+:- func + (float::in) = (float::uo) is det.
 
 	% unary minus
 	%
-:- func - float = float.
-:- mode - in    = uo  is det.
+:- func - (float::in) = (float::uo) is det.
 
 %
 % Comparison predicates
@@ -110,13 +105,11 @@
 	%
 :- func float(int) = float.
 
-	% ceiling_to_int(X) returns the
-	% smallest integer not less than X.
+	% ceiling_to_int(X) returns the smallest integer not less than X.
 	%
 :- func ceiling_to_int(float) = int.
 
-	% floor_to_int(X) returns the
-	% largest integer not greater than X.
+	% floor_to_int(X) returns the largest integer not greater than X.
 	%
 :- func floor_to_int(float) = int.
 
@@ -125,7 +118,7 @@
 	%
 :- func round_to_int(float) = int.
 
-	% truncate_to_int(X) returns 
+	% truncate_to_int(X) returns
 	% the integer closest to X such that |truncate_to_int(X)| =< |X|.
 	%
 :- func truncate_to_int(float) = int.
@@ -231,7 +224,6 @@
 %
 
 :- pragma foreign_decl("C", "
-
 	#include <float.h>
 	#include <math.h>
 
@@ -243,7 +235,7 @@
 %---------------------------------------------------------------------------%
 
 % The other arithmetic and comparison operators are builtins,
-% which the compiler expands inline.  We don't need to define them here.
+% which the compiler expands inline. We don't need to define them here.
 
 :- pragma inline('/'/2).
 X / Y = Z :-
@@ -253,11 +245,11 @@ X / Y = Z :-
 		Z = unchecked_quotient(X, Y)
 	).
 
-	% This code is included here rather than just calling
-	% the version in math.m because we currently don't do
-	% transitive inter-module inlining, so code which uses
-	% `/'/2 but doesn't import math.m couldn't have the
-	% domain check optimized away..
+	% This code is included here rather than just calling the version in math.m
+    % because we currently don't do transitive inter-module inlining, so code
+    % which uses `/'/2 but doesn't import math.m couldn't have the domain check
+    % optimized away..
+    %
 :- pred domain_checks is semidet.
 :- pragma inline(domain_checks/0).
 
@@ -319,8 +311,6 @@ X / Y = Z :-
 	FloatVal = (double) IntVal;
 ").
 
-	% float__ceiling_to_int(X) returns the
-	% smallest integer not less than X.
 :- pragma foreign_proc("C",
 	float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -338,17 +328,15 @@ X / Y = Z :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (X > (double) java.lang.Integer.MAX_VALUE ||
-			X <= (double) java.lang.Integer.MIN_VALUE - 1)
+        X <= (double) java.lang.Integer.MIN_VALUE - 1)
 	{
 		throw new java.lang.RuntimeException(
-				""Overflow converting floating point to int"");
+            ""Overflow converting floating point to int"");
 	} else {
 		Ceil = (int) java.lang.Math.ceil(X);
 	}
 ").
 
-	% float__floor_to_int(X) returns the
-	% largest integer not greater than X.
 :- pragma foreign_proc("C",
 	float__floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -366,17 +354,15 @@ X / Y = Z :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (X >= (double) java.lang.Integer.MAX_VALUE + 1 ||
-			X < (double) java.lang.Integer.MIN_VALUE)
+        X < (double) java.lang.Integer.MIN_VALUE)
 	{
 		throw new java.lang.RuntimeException(
-				""Overflow converting floating point to int"");
+            ""Overflow converting floating point to int"");
 	} else {
 		Floor = (int) java.lang.Math.floor(X);
 	}
 ").
 
-	% float__round_to_int(X) returns the integer closest to X.
-	% If X has a fractional value of 0.5, it is rounded up.
 :- pragma foreign_proc("C",
 	float__round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -394,17 +380,15 @@ X / Y = Z :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (X >= (double) java.lang.Integer.MAX_VALUE + 0.5 ||
-			X < (double) java.lang.Integer.MIN_VALUE - 0.5)
+        X < (double) java.lang.Integer.MIN_VALUE - 0.5)
 	{
 		throw new java.lang.RuntimeException(
-				""Overflow converting floating point to int"");
+            ""Overflow converting floating point to int"");
 	} else {
 		Round = (int) java.lang.Math.round(X);
 	}
 ").
 
-	% float__truncate_to_int(X) returns the integer closest
-	% to X such that |float__truncate_to_int(X)| =< |X|.
 :- pragma foreign_proc("C",
 	float__truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -422,10 +406,10 @@ X / Y = Z :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (X >= (double) java.lang.Integer.MAX_VALUE + 1 ||
-			X <= (double) java.lang.Integer.MIN_VALUE - 1)
+        X <= (double) java.lang.Integer.MIN_VALUE - 1)
 	{
 		throw new java.lang.RuntimeException(
-				""Overflow converting floating point to int"");
+            ""Overflow converting floating point to int"");
 	} else {
 		Trunc = (int) X;
 	}
@@ -437,32 +421,25 @@ X / Y = Z :-
 %
 
 float__abs(Num) = Abs :-
-	(
-		Num =< 0.0
-	->
+	( Num =< 0.0 ->
 		Abs = - Num
 	;
 		Abs = Num
 	).
 
 float__max(X, Y) = Max :-
-	(
-		X >= Y
-	->
+	( X >= Y ->
 		Max = X
 	;
 		Max = Y
 	).
 
 float__min(X, Y) = Min :-
-	(
-		X =< Y
-	->
+	( X =< Y ->
 		Min = X
 	;
 		Min = Y
 	).
-
 
 float__pow(Base, Exp) = Ans :-
 	( Exp >= 0 ->
@@ -477,10 +454,12 @@ float__pow(Base, Exp) = Ans :-
 		)
 	).
 
-:- func float__multiply_by_pow(float, float, int) = float.
 	% Returns Scale0 * (Base ** Exp) (where X ** 0 == 1.0 for all X).
 	% Requires that Exp >= 0.
 	% Uses a simple "Russian peasants" algorithm.  O(lg(Exp+1)).
+    %
+:- func float__multiply_by_pow(float, float, int) = float.
+
 float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	( Exp = 0 ->
 		Result = Scale0
@@ -503,21 +482,20 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	% generally as accurate.
 
 	% (Efficiency note: An optimization used by `power' in SGI's STL
-	%  implementation is to test for Exp=0 and (for non-zero Exp) handle
-	%  low zero bits in Exp before calling this loop: the loop for the low
-	%  zero bits needs only square Base, it needn't update Acc until the
-	%  end of that loop at which point Acc can be simply assigned from the
-	%  then-current value of Base.  This optimization would be especially
-	%  valuable for expensive `*' operations; maybe provide a
-	%  std_util__monoid_pow(func(T,T)=T MonoidOperator, T Identity, int
-	%  Exp, T Base) = T Result function to complement the existing
-	%  std_util__pow function.)
+	% implementation is to test for Exp=0 and (for non-zero Exp) handle
+	% low zero bits in Exp before calling this loop: the loop for the low
+	% zero bits needs only square Base, it needn't update Acc until the
+	% end of that loop at which point Acc can be simply assigned from the
+	% then-current value of Base.  This optimization would be especially
+	% valuable for expensive `*' operations; maybe provide a
+	% std_util__monoid_pow(func(T,T)=T MonoidOperator, T Identity, int
+	% Exp, T Base) = T Result function to complement the existing
+	% std_util__pow function.)
 
 %---------------------------------------------------------------------------%
 
 	% In hashing a float in .NET or Java, we ensure that the value is
 	% non-negative, as this condition is not guaranteed by either API.
-
 :- pragma foreign_proc("C",
 	float__hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -615,7 +593,6 @@ is_nan_or_inf(Float) :-
 
 :- pragma foreign_decl("C",
 "
-
 	#define	ML_FLOAT_RADIX	FLT_RADIX	/* There is no DBL_RADIX. */
 
 	#if defined MR_USE_SINGLE_PREC_FLOAT
@@ -633,10 +610,8 @@ is_nan_or_inf(Float) :-
 		#define	ML_FLOAT_MIN_EXP	DBL_MIN_EXP
 		#define	ML_FLOAT_MAX_EXP	DBL_MAX_EXP
 	#endif
-
 ").
 
-	% Maximum floating-point number
 :- pragma foreign_proc("C",
 	float__max = (Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -656,7 +631,6 @@ is_nan_or_inf(Float) :-
 	Max = java.lang.Double.MAX_VALUE;
 ").
 
-	% Minimum normalised floating-point number */
 :- pragma foreign_proc("C",
 	float__min = (Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -678,7 +652,6 @@ is_nan_or_inf(Float) :-
 %
 float__min = 2.2250738585072014e-308.
 
-	% Smallest x such that x \= 1.0 + x
 :- pragma foreign_proc("C",
 	float__epsilon = (Eps::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -701,7 +674,6 @@ float__min = 2.2250738585072014e-308.
 %
 float__epsilon = 2.2204460492503131e-16.
 
-	% Radix of the floating-point representation.
 :- pragma foreign_proc("C",
 	float__radix = (Radix::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -720,7 +692,6 @@ float__epsilon = 2.2204460492503131e-16.
 %
 float__radix = 2.
 
-	% The number of base-radix digits in the mantissa.
 :- pragma foreign_proc("C",
 	float__mantissa_digits = (MantDig::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -737,9 +708,6 @@ float__radix = 2.
 %
 float__mantissa_digits = 53.
 
-	% Minimum negative integer such that:
-	%	radix ** (min_exponent - 1)
-	% is a normalised floating-point number.
 :- pragma foreign_proc("C",
 	float__min_exponent = (MinExp::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -756,9 +724,6 @@ float__mantissa_digits = 53.
 %
 float__min_exponent = -1021.
 
-	% Maximum integer such that:
-	%	radix ** (max_exponent - 1)
-	% is a normalised floating-point number.
 :- pragma foreign_proc("C",
 	float__max_exponent = (MaxExp::out),
 	[will_not_call_mercury, promise_pure, thread_safe],

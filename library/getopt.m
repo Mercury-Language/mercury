@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1999,2001-2005 The University of Melbourne.
-% This file may only be copied under the terms of the GNU Library General 
+% This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
@@ -97,7 +97,7 @@
 %   `OptionTable' is a map from a user-defined option type to option_data.
 %   If an invalid option is encountered, we return `error(Message)'
 %   otherwise we return `ok(OptionTable)' in 'Result'.
-% 
+%
 %   The argument `OptionOps' is a structure holding three or four
 %   predicates used to categorize a set of options. Their
 %   interfaces should be like these:
@@ -232,7 +232,7 @@
     ;       int_special
     ;       string_special
     ;       maybe_string_special.
-    
+
 :- type special_data
     --->    none
     ;       bool(bool)
@@ -645,7 +645,7 @@ getopt__process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
         map__set(OptionTable0, Flag, bool(yes), OptionTable),
         Result = ok(OptionTable)
     ).
-getopt__process_option(int(_), Option, Flag, MaybeArg, _OptionOps, 
+getopt__process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     svset__insert(Flag, !OptionsSet),
     (

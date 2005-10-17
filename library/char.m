@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -31,127 +33,125 @@
 
 :- instance enum(character).
 
-	% Convert a character to its corresponding numerical code
-	% (integer value).
-	% Beware that the mapping from characters to numerical codes
-	% is implementation-dependent; there is no guarantee that
-	% the integer values for characters will fit in 8 bits.
-	% Furthermore, the value returned from char__to_int might be
-	% different than the byte(s) used to store the character in a file.
-	% There is also no guarantee that characters created using
-	% `char__to_int(out, in)' can be written to files or
-	% to the standard output or standard error streams.
-	% For example, an implementation might represent characters
-	% using Unicode, but store files in an 8-bit national character set.
-	%
+    % Convert a character to its corresponding numerical code (integer value).
+    % Beware that the mapping from characters to numerical codes is
+    % implementation-dependent; there is no guarantee that the integer values
+    % for characters will fit in 8 bits. Furthermore, the value returned from
+    % char__to_int might be different than the byte(s) used to store the
+    % character in a file. There is also no guarantee that characters created
+    % using `char__to_int(out, in)' can be written to files or to the standard
+    % output or standard error streams. For example, an implementation might
+    % represent characters using Unicode, but store files in an 8-bit national
+    % character set.
+    %
 :- func char__to_int(char) = int.
 :- pred char__to_int(char, int).
 :- mode char__to_int(in, out) is det.
-:- mode char__to_int(in, in) is semidet.	% implied
+:- mode char__to_int(in, in) is semidet.    % implied
 :- mode char__to_int(out, in) is semidet.
 
-	% Converts an integer to its corresponding character, if any.
-	% A more expressive name for the reverse mode of char__to_int.
-	%
+    % Converts an integer to its corresponding character, if any.
+    % A more expressive name for the reverse mode of char__to_int.
+    %
 :- pred char__from_int(int::in, char::out) is semidet.
 
-	% Converts an integer to its corresponding character. Aborts
-	% if there isn't one.
-	%
+    % Converts an integer to its corresponding character. Aborts
+    % if there isn't one.
+    %
 :- pred char__det_from_int(int::in, char::out) is det.
 :- func char__det_from_int(int) = char.
 
-	% Returns the maximum numerical character code.
-	%
+    % Returns the maximum numerical character code.
+    %
 :- func char__max_char_value = int.
 :- pred char__max_char_value(int::out) is det.
 
-	% Returns the minimum numerical character code.
-	%
+    % Returns the minimum numerical character code.
+    %
 :- func char__min_char_value = int.
 :- pred char__min_char_value(int::out) is det.
 
-	% Convert a character to uppercase.
-	%
+    % Convert a character to uppercase.
+    %
 :- func char__to_upper(char) = char.
 :- pred char__to_upper(char::in, char::out) is det.
 
-	% Convert a character to lowercase.
-	%
+    % Convert a character to lowercase.
+    %
 :- func char__to_lower(char) = char.
 :- pred char__to_lower(char::in, char::out) is det.
 
-	% char__lower_upper(Lower, Upper) is true iff
-	% Lower is a lower-case letter and Upper is the corresponding
-	% upper-case letter.
-	%
+    % char__lower_upper(Lower, Upper) is true iff
+    % Lower is a lower-case letter and Upper is the corresponding
+    % upper-case letter.
+    %
 :- pred char__lower_upper(char, char).
 :- mode char__lower_upper(in, out) is semidet.
 :- mode char__lower_upper(out, in) is semidet.
 
-	% True iff the character is whitespace, i.e. a space, tab,
-	% newline, carriage return, form-feed, or vertical tab.
-	%
+    % True iff the character is whitespace, i.e. a space, tab,
+    % newline, carriage return, form-feed, or vertical tab.
+    %
 :- pred char__is_whitespace(char::in) is semidet.
 
-	% True iff the character is an uppercase letter.
-	%
+    % True iff the character is an uppercase letter.
+    %
 :- pred char__is_upper(char::in) is semidet.
 
-	% True iff the character is a lowercase letter.
-	%
+    % True iff the character is a lowercase letter.
+    %
 :- pred char__is_lower(char::in) is semidet.
 
-	% True iff the character is a letter.
-	%
+    % True iff the character is a letter.
+    %
 :- pred char__is_alpha(char::in) is semidet.
 
-	% True iff the character is a letter or digit.
-	%
+    % True iff the character is a letter or digit.
+    %
 :- pred char__is_alnum(char::in) is semidet.
 
-	% True iff the character is a letter or an underscore.
-	%
+    % True iff the character is a letter or an underscore.
+    %
 :- pred char__is_alpha_or_underscore(char::in) is semidet.
 
-	% True iff the character is a letter, a digit or an underscore.
-	%
+    % True iff the character is a letter, a digit or an underscore.
+    %
 :- pred char__is_alnum_or_underscore(char::in) is semidet.
 
-	% True iff the character is a decimal digit (0-9).
-	%
+    % True iff the character is a decimal digit (0-9).
+    %
 :- pred char__is_digit(char::in) is semidet.
 
-	% True iff the character is a binary digit (0 or 1).
-	%
+    % True iff the character is a binary digit (0 or 1).
+    %
 :- pred char__is_binary_digit(char::in) is semidet.
 
-	% True iff the character is a octal digit (0-7).
-	%
+    % True iff the character is a octal digit (0-7).
+    %
 :- pred char__is_octal_digit(char::in) is semidet.
 
-	% True iff the character is a hexadecimal digit (0-9, a-f, A-F).
-	%
+    % True iff the character is a hexadecimal digit (0-9, a-f, A-F).
+    %
 :- pred char__is_hex_digit(char::in) is semidet.
 
-	% Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
-	% Returns the character's value as a digit (0-9 or 10-35).
-	%
+    % Succeeds if char is a decimal digit (0-9) or letter (a-z or A-Z).
+    % Returns the character's value as a digit (0-9 or 10-35).
+    %
 :- pred char__digit_to_int(char::in, int::out) is semidet.
 
-	% char__int_to_uppercase_digit(Int, DigitChar):
-	% True iff `Int' is an integer in the range 0-35 and
-	% `DigitChar' is a decimal digit or uppercase letter
-	% whose value as a digit is `Int'.
-	%
+    % char__int_to_uppercase_digit(Int, DigitChar):
+    %
+    % True iff `Int' is an integer in the range 0-35 and
+    % `DigitChar' is a decimal digit or uppercase letter
+    % whose value as a digit is `Int'.
+    %
 :- pred char__int_to_digit(int, char).
 :- mode char__int_to_digit(in, out) is semidet.
 :- mode char__int_to_digit(out, in) is semidet.
 
-	% Returns a decimal digit or uppercase letter corresponding to the
-	% value.
-	% Calls error/1 if the integer is not in the range 0-35.
-	%
+    % Returns a decimal digit or uppercase letter corresponding to the value.
+    % Calls error/1 if the integer is not in the range 0-35.
+    %
 :- func char__det_int_to_digit(int) = char.
 :- pred char__det_int_to_digit(int::in, char::out) is det.
 
@@ -159,11 +159,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module require.
 
 :- instance enum(character) where [
-	(to_int(X) = Y :- char__to_int(X, Y)),
-	(from_int(X) = Y :- char__to_int(Y, X))
+    (to_int(X) = Y :- char__to_int(X, Y)),
+    (from_int(X) = Y :- char__to_int(Y, X))
 ].
 
 char__is_whitespace(' ').
@@ -174,127 +175,127 @@ char__is_whitespace('\f').
 char__is_whitespace('\v').
 
 char__is_alpha(Char) :-
-	( char__is_lower(Char) ->
-		true
-	; char__is_upper(Char) ->
-		true
-	;
-		fail
-	).
+    ( char__is_lower(Char) ->
+        true
+    ; char__is_upper(Char) ->
+        true
+    ;
+        fail
+    ).
 
 char__is_alnum(Char) :-
-	( char__is_alpha(Char) ->
-		true
-	; char__is_digit(Char) ->
-		true
-	;
-		fail
-	).
+    ( char__is_alpha(Char) ->
+        true
+    ; char__is_digit(Char) ->
+        true
+    ;
+        fail
+    ).
 
 char__is_alpha_or_underscore(Char) :-
-	( Char = '_' ->
-		true
-	;
-		char__is_alpha(Char)
-	).
+    ( Char = '_' ->
+        true
+    ;
+        char__is_alpha(Char)
+    ).
 
-	% We explicitly enumerate here for efficiency.
-	% (this predicate is part of the inner loop of the lexer.)
+    % We explicitly enumerate here for efficiency.
+    % (this predicate is part of the inner loop of the lexer.)
 char__is_alnum_or_underscore(Char) :-
-	( Char = '0'
-	; Char = '1'
-	; Char = '2'
-	; Char = '3'
-	; Char = '4'
-	; Char = '5'
-	; Char = '6'
-	; Char = '7'
-	; Char = '8'
-	; Char = '9'
-	; Char = 'a'
-	; Char = 'b'
-	; Char = 'c'
-	; Char = 'd'
-	; Char = 'e'
-	; Char = 'f'
-	; Char = 'g'
-	; Char = 'h'
-	; Char = 'i'
-	; Char = 'j'
-	; Char = 'k'
-	; Char = 'l'
-	; Char = 'm'
-	; Char = 'n'
-	; Char = 'o'
-	; Char = 'p'
-	; Char = 'q'
-	; Char = 'r'
-	; Char = 's'
-	; Char = 't'
-	; Char = 'u'
-	; Char = 'v'
-	; Char = 'w'
-	; Char = 'x'
-	; Char = 'y'
-	; Char = 'z'
-	; Char = 'A'
-	; Char = 'B'
-	; Char = 'C'
-	; Char = 'D'
-	; Char = 'E'
-	; Char = 'F'
-	; Char = 'G'
-	; Char = 'H'
-	; Char = 'I'
-	; Char = 'J'
-	; Char = 'K'
-	; Char = 'L'
-	; Char = 'M'
-	; Char = 'N'
-	; Char = 'O'
-	; Char = 'P'
-	; Char = 'Q'
-	; Char = 'R'
-	; Char = 'S'
-	; Char = 'T'
-	; Char = 'U'
-	; Char = 'V'
-	; Char = 'W'
-	; Char = 'X'
-	; Char = 'Y'
-	; Char = 'Z'
-	; Char = '_'
-	).
+    ( Char = '0'
+    ; Char = '1'
+    ; Char = '2'
+    ; Char = '3'
+    ; Char = '4'
+    ; Char = '5'
+    ; Char = '6'
+    ; Char = '7'
+    ; Char = '8'
+    ; Char = '9'
+    ; Char = 'a'
+    ; Char = 'b'
+    ; Char = 'c'
+    ; Char = 'd'
+    ; Char = 'e'
+    ; Char = 'f'
+    ; Char = 'g'
+    ; Char = 'h'
+    ; Char = 'i'
+    ; Char = 'j'
+    ; Char = 'k'
+    ; Char = 'l'
+    ; Char = 'm'
+    ; Char = 'n'
+    ; Char = 'o'
+    ; Char = 'p'
+    ; Char = 'q'
+    ; Char = 'r'
+    ; Char = 's'
+    ; Char = 't'
+    ; Char = 'u'
+    ; Char = 'v'
+    ; Char = 'w'
+    ; Char = 'x'
+    ; Char = 'y'
+    ; Char = 'z'
+    ; Char = 'A'
+    ; Char = 'B'
+    ; Char = 'C'
+    ; Char = 'D'
+    ; Char = 'E'
+    ; Char = 'F'
+    ; Char = 'G'
+    ; Char = 'H'
+    ; Char = 'I'
+    ; Char = 'J'
+    ; Char = 'K'
+    ; Char = 'L'
+    ; Char = 'M'
+    ; Char = 'N'
+    ; Char = 'O'
+    ; Char = 'P'
+    ; Char = 'Q'
+    ; Char = 'R'
+    ; Char = 'S'
+    ; Char = 'T'
+    ; Char = 'U'
+    ; Char = 'V'
+    ; Char = 'W'
+    ; Char = 'X'
+    ; Char = 'Y'
+    ; Char = 'Z'
+    ; Char = '_'
+    ).
 % A more concise implementation is:
-%	( char__is_digit(Char) ->
-%		true
-%	;
-%		char__is_alpha_or_underscore(Char)
-%	).
+%   ( char__is_digit(Char) ->
+%       true
+%   ;
+%       char__is_alpha_or_underscore(Char)
+%   ).
 
 char__is_lower(Lower) :-
-	char__lower_upper(Lower, _).
+    char__lower_upper(Lower, _).
 
 char__is_upper(Upper) :-
-	( char__lower_upper(_, Upper) ->
-		true
-	;
-		fail
-	).
+    ( char__lower_upper(_, Upper) ->
+        true
+    ;
+        fail
+    ).
 
 char__to_lower(Char, Lower) :-
-	( char__lower_upper(LowerChar, Char) ->
-		Lower = LowerChar
-	;
-		Lower = Char
-	).
+    ( char__lower_upper(LowerChar, Char) ->
+        Lower = LowerChar
+    ;
+        Lower = Char
+    ).
 
 char__to_upper(Char, Upper) :-
-	( char__lower_upper(Char, UpperChar) ->
-		Upper = UpperChar
-	;
-		Upper = Char
-	).
+    ( char__lower_upper(Char, UpperChar) ->
+        Upper = UpperChar
+    ;
+        Upper = Char
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -354,11 +355,11 @@ char__is_hex_digit('F').
 %-----------------------------------------------------------------------------%
 
 char__det_int_to_digit(Int, Digit) :-
-	( char__int_to_digit(Int, Digit1) ->
-		Digit = Digit1
-	;
-		error("char__int_to_digit failed")
-	).
+    ( char__int_to_digit(Int, Digit1) ->
+        Digit = Digit1
+    ;
+        error("char__int_to_digit failed")
+    ).
 
 char__int_to_digit(0, '0').
 char__int_to_digit(1, '1').
@@ -398,11 +399,11 @@ char__int_to_digit(34, 'Y').
 char__int_to_digit(35, 'Z').
 
 char__digit_to_int(Digit, Int) :-
-	( char__lower_upper(Digit, Upper) ->
-		char__int_to_digit(Int, Upper)
-	;
-		char__int_to_digit(Int, Digit)
-	).
+    ( char__lower_upper(Digit, Upper) ->
+        char__int_to_digit(Int, Upper)
+    ;
+        char__int_to_digit(Int, Digit)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -436,140 +437,138 @@ char__lower_upper('z', 'Z').
 %-----------------------------------------------------------------------------%
 
 char__from_int(Int, Char) :-
-	char__to_int(Char, Int).
+    char__to_int(Char, Int).
 
 char__det_from_int(Int, Char) :-
-	( char__from_int(Int, CharPrime) ->
-		Char = CharPrime
-	;
-		error("char__det_from_int: conversion failed")
-	).
+    ( char__from_int(Int, CharPrime) ->
+        Char = CharPrime
+    ;
+        error("char__det_from_int: conversion failed")
+    ).
 
 char__det_from_int(Int) = Char :-
-	char__det_from_int(Int, Char).
+    char__det_from_int(Int, Char).
 
 :- pragma foreign_proc("C",
-	char__to_int(Character::in, Int::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	Int = (MR_UnsignedChar) Character;
-").
-
-:- pragma foreign_proc("C",
-	char__to_int(Character::in, Int::in),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
+    Int = (MR_UnsignedChar) Character;
 ").
 
 :- pragma foreign_proc("C",
-	char__to_int(Character::out, Int::in),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	/*
-	** If the integer doesn't fit into a char, then
-	** the assignment `Character = Int' below will truncate it.
-	** SUCCESS_INDICATOR will be set to true only if
-	** the result was not truncated.
-	*/
-	Character = Int;
-	SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
+    SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
+").
+
+:- pragma foreign_proc("C",
+    char__to_int(Character::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    /*
+    ** If the integer doesn't fit into a char, then the assignment
+    ** `Character = Int' below will truncate it. SUCCESS_INDICATOR will be set
+    ** to true only if the result was not truncated.
+    */
+    Character = Int;
+    SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
 ").
 
 :- pragma foreign_proc("C#",
-	char__to_int(Character::in, Int::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	Int = Character;
+    Int = Character;
 ").
 
 :- pragma foreign_proc("C#",
-	char__to_int(Character::in, Int::in),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	SUCCESS_INDICATOR = (Character == Int);
+    SUCCESS_INDICATOR = (Character == Int);
 ").
 
 :- pragma foreign_proc("C#",
-	char__to_int(Character::out, Int::in),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__to_int(Character::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	Character = (char) Int;
-	SUCCESS_INDICATOR = (Character == Int);
+    Character = (char) Int;
+    SUCCESS_INDICATOR = (Character == Int);
 ").
 
 :- pragma foreign_proc("Java",
-        char__to_int(Character::in, Int::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-        Int = (int) Character;
+    Int = (int) Character;
 ").
 
 :- pragma foreign_proc("Java",
-        char__to_int(Character::in, Int::in),
-        [will_not_call_mercury, promise_pure, thread_safe],
+    char__to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-        succeeded = ((int) Character == Int);
+    succeeded = ((int) Character == Int);
 ").
 
 :- pragma foreign_proc("Java",
-        char__to_int(Character::out, Int::in),
-        [will_not_call_mercury, promise_pure, thread_safe],
+    char__to_int(Character::out, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	Character = (char) Int;
-	succeeded = ((int) Character == Int);
+    Character = (char) Int;
+    succeeded = ((int) Character == Int);
 ").
 
-% We used unsigned character codes, so the minimum character code
-% is always zero.
-
+    % We used unsigned character codes, so the minimum character code
+    % is always zero.
 char__min_char_value(0).
 
 :- pragma foreign_decl("C", "#include <limits.h>").
 
 :- pragma foreign_proc("C",
-	char__max_char_value(Max::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__max_char_value(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	Max = UCHAR_MAX;
+    Max = UCHAR_MAX;
 ").
 :- pragma foreign_proc("C#",
-	char__max_char_value(Max::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__max_char_value(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	// .NET uses 16-bit 'Unicode'. This might be either UCS-2,
-	// where Unicode characters that don't fit in 16 bits are encoded
-	// in two 16 bit characters, or it might be just the 16-bit subset,
-	// i.e. only the Unicode characters that fit in 16 bits.
-	// For our purposes, it doesn't matter.
-	Max = 0xffff;
+    // .NET uses 16-bit 'Unicode'. This might be either UCS-2,
+    // where Unicode characters that don't fit in 16 bits are encoded
+    // in two 16 bit characters, or it might be just the 16-bit subset,
+    // i.e. only the Unicode characters that fit in 16 bits.
+    // For our purposes, it doesn't matter.
+    Max = 0xffff;
 ").
 :- pragma foreign_proc("Java",
-	char__max_char_value(Max::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    char__max_char_value(Max::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	Max = (int) java.lang.Character.MAX_VALUE;
+    Max = (int) java.lang.Character.MAX_VALUE;
 ").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
-%	Functional forms added.
+%   Functional forms added.
 
 char__to_int(C) = N :-
-	char__to_int(C, N).
+    char__to_int(C, N).
 
 char__max_char_value = N :-
-	char__max_char_value(N).
+    char__max_char_value(N).
 
 char__min_char_value = N :-
-	char__min_char_value(N).
+    char__min_char_value(N).
 
 char__to_upper(C1) = C2 :-
-	char__to_upper(C1, C2).
+    char__to_upper(C1, C2).
 
 char__to_lower(C1) = C2 :-
-	char__to_lower(C1, C2).
+    char__to_lower(C1, C2).
 
 char__det_int_to_digit(N) = C :-
-	char__det_int_to_digit(N, C).
+    char__det_int_to_digit(N, C).

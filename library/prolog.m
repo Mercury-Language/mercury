@@ -53,7 +53,7 @@ is/2 is currently defined in int.m, for historical reasons.
 	% one.  We could make it slightly more similar by overloading '.'/2,
 	% but that would cause ambiguities that might prevent type
 	% inference in a lot of cases.
-	% 
+	%
 % :- type univ_result ---> '.'(string, list(univ)).
 :- type univ_result == pair(string, list(univ)).
 
