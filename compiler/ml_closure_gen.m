@@ -171,7 +171,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
     % Generate a `new_object' statement (or static constant) for the closure.
     ml_gen_new_object(MaybeConsId, PrimaryTag, MaybeSecondaryTag,
         MaybeConsName, Var, ExtraArgRvals, ExtraArgTypes, ArgVars,
-        ArgModes, HowToConstruct, Context, Decls0, Statements, !Info),
+        ArgModes, [], HowToConstruct, Context, Decls0, Statements, !Info),
     Decls1 = ClosureLayoutDecls ++ Decls0,
     % We sometimes generates two definitions of the same RTTI constant
     % in ml_gen_closure_layout (e.g. two definitions of the same

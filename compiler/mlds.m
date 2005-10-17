@@ -1457,7 +1457,7 @@
                 field_addr      :: mlds__rval,
                 field_field_id  :: field_id,
                 field_type      :: mlds__type,
-                field_ptr_typ   :: mlds__type
+                field_ptr_type  :: mlds__type
             )
 
     % Values somewhere in memory.
@@ -1465,7 +1465,7 @@
 
     ;       mem_ref(
                 % The rval should have originally come from a mem_addr rval.
-                % The type is the type of the value being dereferenced
+                % The type is the type of the value being dereferenced.
 
                 mlds__rval,
                 mlds__type
@@ -1712,14 +1712,13 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 
 %-----------------------------------------------------------------------------%
 
-% There is some special-case handling for arrays and foreign_types here.
-% But apart from that,
-% currently we return mlds__types that are just the same as Mercury types,
-% except that we also store the type category, so that we
-% can tell if the type is an enumeration or not, without
+% There is some special-case handling for arrays, foreign types and some
+% other types here, but apart from that, currently we return mlds__types
+% that are just the same as Mercury types, except that we also store the type
+% category, so that we can tell if the type is an enumeration or not, without
 % needing to refer to the HLDS type_table.
-% XXX It might be a better idea to get rid of the mercury_type/2
-% MLDS type and instead fully convert all Mercury types to MLDS types.
+% XXX It might be a better idea to get rid of the mercury_type/2 MLDS type
+% and instead fully convert all Mercury types to MLDS types.
 
 mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
     (
@@ -1728,6 +1727,13 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
     ->
         MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
         MLDSType = mlds__mercury_array_type(MLDSElemType)
+    ;
+        type_to_ctor_and_args(Type, TypeCtor, [RefType]),
+        TypeCtor = qualified(mercury_private_builtin_module,
+            "store_by_ref_type") - 1
+    ->
+        MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
+        MLDSType = mlds__ptr_type(MLDSRefType)
     ;
         type_to_ctor_and_args(Type, TypeCtor, _),
         module_info_get_type_table(ModuleInfo, Types),

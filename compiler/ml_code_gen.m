@@ -1097,8 +1097,7 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
     mlds__entity_defn::out, mlds__defns::out) is det.
 
 ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     pred_info_import_status(PredInfo, ImportStatus),
     pred_info_arg_types(PredInfo, ArgTypes),
     proc_info_interface_code_model(ProcInfo, CodeModel),

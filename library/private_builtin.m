@@ -1205,7 +1205,13 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
     % store_at_ref/2 is used internally by the compiler. Bad things
     % will happen if this is used in programs.
     %
-:- pred store_at_ref(c_pointer::in, T::in) is det.
+:- pred store_at_ref(store_at_ref_type(T)::in, T::in) is det.
+
+    % This type should be used only by the program transformation that
+    % introduces calls to store_at_ref. Any other use is will cause bad things
+    % to happen.
+:- type store_at_ref_type(T)
+    ---> store_at_ref_type(int).
 
     % unused/0 should never be called.
     % The compiler sometimes generates references to this procedure,

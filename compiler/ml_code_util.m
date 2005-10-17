@@ -158,12 +158,12 @@
     %
 :- func ml_gen_proc_params(module_info, pred_id, proc_id) = mlds__func_params.
 
-    % As above, but from the rtti_proc_id rather than from the module_info,
-    % pred_id, and proc_id.
-    %
 :- pred ml_gen_proc_params(pred_id::in, proc_id::in, mlds__func_params::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
+    % As above, but from the rtti_proc_id rather than from the module_info,
+    % pred_id, and proc_id.
+    %
 :- func ml_gen_proc_params_from_rtti(module_info, rtti_proc_label) =
     mlds__func_params.
 
@@ -1000,8 +1000,7 @@ ml_make_boxed_types(Arity) = BoxedTypes :-
 %
 
 ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     proc_info_varset(ProcInfo, VarSet),
     proc_info_headvars(ProcInfo, HeadVars),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -1013,9 +1012,8 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
         HeadModes, PredOrFunc, CodeModel).
 
 ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
-    ModuleInfo = !.Info  ^  module_info,
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        PredInfo, ProcInfo),
+    ModuleInfo = !.Info ^ module_info,
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     proc_info_varset(ProcInfo, VarSet),
     proc_info_headvars(ProcInfo, HeadVars),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -1077,8 +1075,8 @@ ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
     code_model::in, mlds__func_params::out,
     maybe(ml_gen_info)::in, maybe(ml_gen_info)::out) is det.
 
-ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
-        PredOrFunc, CodeModel, FuncParams, !MaybeInfo) :-
+ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
+        CodeModel, FuncParams, !MaybeInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     CopyOut = get_copy_out_option(Globals, CodeModel),
     ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
@@ -1213,10 +1211,10 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
 
 ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-    ( ArgMode \= top_in ->
-        MLDS_ArgType = mlds__ptr_type(MLDS_Type)
-    ;
+    ( ArgMode = top_in ->
         MLDS_ArgType = MLDS_Type
+    ;
+        MLDS_ArgType = mlds__ptr_type(MLDS_Type)
     ),
     Name = data(var(Var)),
     (

@@ -47,7 +47,7 @@
 % 		app'(T, B, AddrHT)
 % 	)
 % 
-% app'(list(T)::in, list(T)::in, c_pointer::in)
+% app'(list(T)::in, list(T)::in, store_by_ref_type(T)::in)
 % app'(A, B, AddrC) :-
 % 	(
 % 		A == [],
@@ -75,7 +75,8 @@
 % predicate, but it has a further transformation performed on it. This further
 % transformation
 % 
-% 3 replaces the output arguments with input arguments of type c_pointer, and
+% 3 replaces the output arguments with input arguments of type
+%   store_by_ref_type(T), where T is type of the field pointed to, and
 % 
 % 4 follows each primitive goal that binds one of the output arguments
 %   with a store to the memory location indicated by the corresponding pointer.
@@ -635,9 +636,17 @@ make_address_var(Var, AddrVar, !Info) :-
     varset__lookup_name(VarSet0, Var, "SCCcallarg", Name),
     AddrName = "Addr" ++ Name,
     varset__new_named_var(VarSet0, AddrName, AddrVar, VarSet),
-    map__det_insert(VarTypes0, AddrVar, c_pointer_type, VarTypes),
+    map__lookup(VarTypes0, Var, FieldType),
+    map__det_insert(VarTypes0, AddrVar, make_ref_type(FieldType), VarTypes),
     !:Info = !.Info ^ var_set := VarSet,
     !:Info = !.Info ^ var_types := VarTypes.
+
+:- func make_ref_type(type) = (type).
+
+make_ref_type(FieldType) = PtrType :-
+    RefTypeName = qualified(mercury_private_builtin_module,
+        "store_by_ref_type"),
+    PtrType = defined(RefTypeName, [FieldType], star).
 
 %-----------------------------------------------------------------------------%
 
@@ -761,8 +770,8 @@ occurs_once(Bag, Var) :-
 :- pred transform_variant_proc(module_info::in, list(int)::in,
     proc_info::in, proc_info::out) is det.
 
-transform_variant_proc(ModuleInfo, AddrOutArgPosns,
-        ProcInfo, !:VariantProcInfo) :-
+transform_variant_proc(ModuleInfo, AddrOutArgPosns, ProcInfo,
+        !:VariantProcInfo) :-
     !:VariantProcInfo = ProcInfo,
     proc_info_varset(ProcInfo, VarSet0),
     proc_info_vartypes(ProcInfo, VarTypes0),
@@ -812,7 +821,8 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
             varset__lookup_name(!.VarSet, HeadVar0, Name),
             AddrName = "AddrOf" ++ Name,
             svvarset__new_named_var(AddrName, AddrVar, !VarSet),
-            svmap__det_insert(AddrVar, c_pointer_type, !VarTypes),
+            map__lookup(!.VarTypes, HeadVar0, OldType),
+            svmap__det_insert(AddrVar, make_ref_type(OldType), !VarTypes),
             HeadVar = AddrVar,
             Mode = in_mode,
             make_addr_vars(HeadVars0, Modes0, HeadVars, Modes,

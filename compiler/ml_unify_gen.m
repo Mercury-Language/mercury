@@ -70,8 +70,8 @@
     mlds__rval.
 
     % ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
-    %   ExtraRvals, ExtraTypes, ArgVars, ArgModes, HowToConstruct,
-    %   Context, Decls, Statements):
+    %   ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr, HowToConstruct,
+    %   Context, Decls, Statements, !Info):
     %
     % Generate a `new_object' statement, or a static constant, depending on the
     % value of the how_to_construct argument. The `ExtraRvals' and `ExtraTypes'
@@ -80,7 +80,7 @@
     %
 :- pred ml_gen_new_object(maybe(cons_id)::in, mlds__tag::in, bool::in,
     maybe(ctor_name)::in, prog_var::in, list(mlds__rval)::in,
-    list(mlds__type)::in, prog_vars::in, list(uni_mode)::in,
+    list(mlds__type)::in, prog_vars::in, list(uni_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, mlds__defns::out,
     mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -152,7 +152,7 @@ ml_gen_unification(Unification, CodeModel, Context, [], Statements, !Info) :-
     ).
 
 ml_gen_unification(Unification, CodeModel, Context, [], [Statement], !Info) :-
-    Unification = simple_test(Var1, Var2), 
+    Unification = simple_test(Var1, Var2),
     require(unify(CodeModel, model_semi),
         "ml_code_gen: simple_test not semidet"),
     ml_variable_type(!.Info, Var1, Type),
@@ -174,16 +174,21 @@ ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         _CellIsUnique, SubInfo),
     require(unify(CodeModel, model_det), "ml_code_gen: construct not det"),
     (
-        SubInfo = no_construct_sub_info
+        SubInfo = no_construct_sub_info,
+        TakeAddr = []
     ;
         SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSizeProfInfo),
-        require(unify(MaybeTakeAddr, no),
-            "ml_code_gen: take field addresses not yet supported"),
+        (
+            MaybeTakeAddr = no,
+            TakeAddr = []
+        ;
+            MaybeTakeAddr = yes(TakeAddr)
+        ),
         require(unify(MaybeSizeProfInfo, no),
             "ml_code_gen: term size profiling not yet supported")
     ),
-    ml_gen_construct(Var, ConsId, Args, ArgModes, HowToConstruct, Context,
-        Decls, Statements, !Info).
+    ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
+        Context, Decls, Statements, !Info).
 
 ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         !Info) :-
@@ -231,39 +236,36 @@ ml_gen_unification(complicated_unify(_, _, _), _, _, [], [], !Info) :-
     % the code here, and any changes may need to be done in both places.
     %
 :- pred ml_gen_construct(prog_var::in, cons_id::in, prog_vars::in,
-    list(uni_mode)::in, how_to_construct::in, prog_context::in,
+    list(uni_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
     mlds__defns::out, mlds__statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_construct(Var, ConsId, Args, ArgModes, HowToConstruct, Context,
-        Decls, Statements, !Info) :-
+ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
+        Context, Decls, Statements, !Info) :-
     % Figure out how this cons_id is represented.
     ml_variable_type(!.Info, Var, Type),
     ml_cons_id_to_tag(!.Info, ConsId, Type, Tag),
-
-    ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes,
+    ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         HowToConstruct, Context, Decls, Statements, !Info).
 
 :- pred ml_gen_construct_2(cons_tag::in, prog_type::in, prog_var::in,
-    cons_id::in, prog_vars::in, list(uni_mode)::in, how_to_construct::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    cons_id::in, prog_vars::in, list(uni_mode)::in, list(int)::in,
+    how_to_construct::in, prog_context::in, mlds__defns::out,
+    mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, HowToConstruct,
-        Context, Decls, Statements, !Info) :-
+ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
+        HowToConstruct, Context, Decls, Statements, !Info) :-
     (
         % Types for which some other constructor has a reserved_address
         % -- that only makes a difference when deconstructing, so here we
         % ignore that, and just recurse on the representation for this
         % constructor.
 
-        Tag = shared_with_reserved_addresses(_, ThisTag)
-    ->
+        Tag = shared_with_reserved_addresses(_, ThisTag),
         ml_gen_construct_2(ThisTag, Type, Var, ConsId, Args, ArgModes,
-            HowToConstruct, Context, Decls, Statements, !Info)
+            TakeAddr, HowToConstruct, Context, Decls, Statements, !Info)
     ;
-        Tag = no_tag
-    ->
+        Tag = no_tag,
         (
             Args = [Arg],
             ArgModes = [ArgMode]
@@ -276,35 +278,45 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, HowToConstruct,
                 VarType, Context, [], Statements, !Info),
             Decls = []
         ;
-            error("ml_code_gen: no_tag: arity != 1")
+            unexpected(this_file, "ml_code_gen: no_tag: arity != 1")
         )
     ;
         % Lambda expressions.
-        Tag = pred_closure_tag(PredId, ProcId, EvalMethod)
-    ->
-        ml_gen_closure(PredId, ProcId, EvalMethod, Var, Args,
-            ArgModes, HowToConstruct, Context,
-            Decls, Statements, !Info)
+        Tag = pred_closure_tag(PredId, ProcId, EvalMethod),
+        ml_gen_closure(PredId, ProcId, EvalMethod, Var, Args, ArgModes,
+            HowToConstruct, Context, Decls, Statements, !Info)
     ;
         % Ordinary compound terms.
         ( Tag = single_functor
         ; Tag = unshared_tag(_TagVal)
         ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
-        )
-    ->
-        ml_gen_compound(Tag, ConsId, Var, Args, ArgModes,
+        ),
+        ml_gen_compound(Tag, ConsId, Var, Args, ArgModes, TakeAddr,
             HowToConstruct, Context, Decls, Statements, !Info)
     ;
-        % Constants.
-        Args = []
-    ->
-        ml_gen_var(!.Info, Var, VarLval),
-        ml_gen_constant(Tag, Type, Rval, !Info),
-        Statement = ml_gen_assign(VarLval, Rval, Context),
-        Decls = [],
-        Statements = [Statement]
-    ;
-        unexpected(this_file, "ml_gen_construct: unknown compound term")
+        ( Tag = int_constant(_)
+        ; Tag = float_constant(_)
+        ; Tag = string_constant(_)
+        ; Tag = reserved_address(_)
+        ; Tag = shared_local_tag(_, _)
+        ; Tag = type_ctor_info_constant(_, _, _)
+        ; Tag = base_typeclass_info_constant(_, _, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = tabling_pointer_constant(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ),
+        (
+            % Constants.
+            Args = []
+        ->
+            ml_gen_var(!.Info, Var, VarLval),
+            ml_gen_constant(Tag, Type, Rval, !Info),
+            Statement = ml_gen_assign(VarLval, Rval, Context),
+            Decls = [],
+            Statements = [Statement]
+        ;
+            unexpected(this_file, "ml_gen_construct: bad constant term")
+        )
     ).
 
     % ml_gen_static_const_arg is similar to ml_gen_construct with
@@ -528,12 +540,12 @@ ml_cons_id_to_tag(Info, ConsId, Type, Tag) :-
     % Generate code to construct a new object.
     %
 :- pred ml_gen_compound(cons_tag::in, cons_id::in, prog_var::in, prog_vars::in,
-    list(uni_mode)::in, how_to_construct::in, prog_context::in,
+    list(uni_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
     mlds__defns::out, mlds__statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, HowToConstruct, Context,
-        Decls, Statements, !Info) :-
+ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, TakeAddr, HowToConstruct,
+        Context, Decls, Statements, !Info) :-
     % Get the primary and secondary tags.
     ( get_primary_tag(Tag) = yes(PrimaryTag0) ->
         PrimaryTag = PrimaryTag0
@@ -581,7 +593,7 @@ ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, HowToConstruct, Context,
         ExtraArgTypes = []
     ),
     ml_gen_new_object(yes(ConsId), PrimaryTag, HasSecTag, MaybeCtorName,
-        Var, ExtraRvals, ExtraArgTypes, ArgVars, ArgModes,
+        Var, ExtraRvals, ExtraArgTypes, ArgVars, ArgModes, TakeAddr,
         HowToConstruct, Context, Decls, Statements, !Info).
 
     % ml_gen_new_object: Generate a `new_object' statement, or a static
@@ -590,7 +602,7 @@ ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, HowToConstruct, Context,
     % to insert at the start of the argument list.
     %
 ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
-        ExtraRvals, ExtraTypes, ArgVars, ArgModes, HowToConstruct,
+        ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr, HowToConstruct,
         Context, Decls, Statements, !Info) :-
     % Determine the variable's type and lval, the tag to use, and the types
     % of the argument vars.
@@ -613,8 +625,10 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         get_maybe_cons_id_arg_types(MaybeConsId, ArgTypes, Type,
             ModuleInfo, ConsArgTypes),
-        ml_gen_cons_args(ArgLvals, ArgTypes, ConsArgTypes, ArgModes,
-            ModuleInfo, ArgRvals0, MLDS_ArgTypes0, !Info),
+        FirstOffset = length(ExtraRvals),
+        ml_gen_cons_args(ArgVars, ArgLvals, ArgTypes, ConsArgTypes, ArgModes,
+            FirstOffset, 1, TakeAddr, ModuleInfo, ArgRvals0, MLDS_ArgTypes0,
+            TakeAddrInfos, !Info),
 
         % Insert the extra rvals at the start.
         list__append(ExtraRvals, ArgRvals0, ArgRvals),
@@ -631,10 +645,16 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
             yes(SizeInWordsRval), MaybeCtorName, ArgRvals, MLDS_ArgTypes),
         Stmt = atomic(MakeNewObject),
         Statement = mlds__statement(Stmt, mlds__make_context(Context)),
-        Statements = [Statement],
+
+        ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
+            MaybeTag, Context, !.Info, FieldAssigns),
+        Statements = [Statement | FieldAssigns],
         Decls = []
     ;
         HowToConstruct = construct_statically(StaticArgs),
+        require(unify(TakeAddr, []),
+            "ml_gen_new_object: cannot take address of static object's field"),
+
         % Find out the types of the constructor arguments.
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         get_maybe_cons_id_arg_types(MaybeConsId, ArgTypes, Type,
@@ -756,6 +776,28 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         Decls = [],
         Statements = [Statement | Statements0]
     ).
+
+:- pred ml_gen_field_take_address_assigns(list(take_addr_info)::in,
+    mlds__lval::in, mlds__type::in, maybe(mlds__tag)::in, prog_context::in,
+    ml_gen_info::in, list(mlds__statement)::out) is det.
+
+ml_gen_field_take_address_assigns([], _, _, _, _, _, []).
+ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
+        CellLval, CellType, MaybeTag, Context, Info, [Assign | Assigns]) :-
+    TakeAddrInfo = take_addr_info(AddrVar, Offset, ConsArgType, FieldType),
+    % I am not sure that the types specified here are always the right ones,
+    % particularly in cases where the field whose address we are taking has
+    % a non-du type such as int or float. However, I can't think of a test case
+    % in which a predicate fills in a field of such a type after a *recursive*
+    % call, since recursive calls tend to generate values of recursive (i.e.
+    % discriminated union) types. -zs
+    SourceRval = mem_addr(field(MaybeTag, lval(CellLval),
+        offset(const(int_const(Offset))), FieldType, CellType)),
+    ml_gen_var(Info, AddrVar, AddrLval),
+    CastSourceRval = unop(cast(ptr_type(ConsArgType)), SourceRval),
+    Assign = ml_gen_assign(AddrLval, CastSourceRval, Context),
+    ml_gen_field_take_address_assigns(TakeAddrInfos, CellLval, CellType,
+        MaybeTag, Context, Info, Assigns).
 
     % Return the MLDS type suitable for constructing a constant static
     % ground term with the specified cons_id.
@@ -921,9 +963,8 @@ constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
             % type_infos and type_class_infos for existentially quantified
             % types. We can get these from the ArgTypes.
 
-            NumExtraArgs = list__length(ArgTypes) -
-                    list__length(ConsArgTypes0),
-            ExtraArgTypes = list__take_upto(NumExtraArgs, ArgTypes),
+            NumExtraArgs = list.length(ArgTypes) - list.length(ConsArgTypes0),
+            ExtraArgTypes = list.take_upto(NumExtraArgs, ArgTypes),
             ConsArgTypes = ExtraArgTypes ++ ConsArgTypes0
         ;
             % If we didn't find a constructor definition, maybe that is because
@@ -1119,63 +1160,89 @@ ml_cons_name(HLDS_ConsId, QualifiedConsId) :-
     ),
     QualifiedConsId = qual(ModuleName, module_qual, ConsId).
 
+:- type take_addr_info
+    --->    take_addr_info(
+                prog_var,           % The variable we record the address in.
+                int,                % The offset of the field
+                mlds__type,         % The type of the field variable.
+                mlds__type          % The type of the field, possibly
+                                    % after boxing.
+            ).
+
     % Create a list of rvals for the arguments for a construction unification.
     % For each argument which is input to the construction unification,
     % we produce the corresponding lval, boxed or unboxed if needed,
     % but if the argument is free, we produce a null value.
     %
-:- pred ml_gen_cons_args(list(mlds__lval)::in, list(prog_type)::in,
-    list(prog_type)::in, list(uni_mode)::in, module_info::in,
-    list(mlds__rval)::out, list(mlds__type)::out,
+:- pred ml_gen_cons_args(list(prog_var)::in, list(mlds__lval)::in,
+    list(prog_type)::in, list(prog_type)::in, list(uni_mode)::in,
+    int::in, int::in, list(int)::in, module_info::in, list(mlds__rval)::out,
+    list(mlds__type)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_cons_args(Lvals, ArgTypes, ConsArgTypes, UniModes, ModuleInfo,
-        Rvals, MLDS_Types, !Info) :-
+ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes, FirstOffset,
+        FirstArgNum, TakeAddr, ModuleInfo, Rvals, MLDS_Types, TakeAddrInfos,
+        !Info) :-
     (
-        Lvals = [],
-        ArgTypes = [],
-        ConsArgTypes = [],
-        UniModes = []
+        ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes,
+            FirstOffset, FirstArgNum, TakeAddr, ModuleInfo, RvalsPrime,
+            MLDS_TypesPrime, TakeAddrInfosPrime, !Info)
     ->
-        Rvals = [],
-        MLDS_Types = []
+        Rvals = RvalsPrime,
+        MLDS_Types = MLDS_TypesPrime,
+        TakeAddrInfos = TakeAddrInfosPrime
     ;
-        Lvals = [Lval | LvalsTail],
-        ArgTypes = [ArgType | ArgTypesTail],
-        ConsArgTypes = [ConsArgType | ConsArgTypesTail],
-        UniModes = [UniMode | UniModesTail]
-    ->
-        % Figure out the type of the field. Note that for the MLDS->C and
-        % MLDS->asm back-ends, we need to box floating point fields.
-        module_info_get_globals(ModuleInfo, Globals),
-        globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
-        ml_type_as_field(ConsArgType, ModuleInfo, HighLevelData, BoxedArgType),
-        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
+        unexpected(this_file, "ml_gen_cons_args: length mismatch")
+    ).
 
-        % Compute the value of the field.
-        UniMode = ((_LI - RI) -> (_LF - RF)),
+:- pred ml_gen_cons_args_2(list(prog_var)::in, list(mlds__lval)::in,
+    list(prog_type)::in, list(prog_type)::in, list(uni_mode)::in,
+    int::in, int::in, list(int)::in, module_info::in, list(mlds__rval)::out,
+    list(mlds__type)::out, list(take_addr_info)::out,
+    ml_gen_info::in, ml_gen_info::out) is semidet.
+
+ml_gen_cons_args_2([], [], [], [], [], _FirstOffset, _FirstArgNum, _TakeAddr,
+        _ModuleInfo, [], [], [], !Info).
+ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
+        [ConsArgType | ConsArgTypes], [UniMode | UniModes], FirstOffset,
+        CurArgNum, !.TakeAddr, ModuleInfo, [Rval | Rvals],
+        [MLDS_Type | MLDS_Types], TakeAddrInfos, !Info) :-
+    % Figure out the type of the field. Note that for the MLDS->C and
+    % MLDS->asm back-ends, we need to box floating point fields.
+    module_info_get_globals(ModuleInfo, Globals),
+    globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    ml_type_as_field(ConsArgType, ModuleInfo, HighLevelData, BoxedArgType),
+    MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, BoxedArgType),
+
+    % Compute the value of the field.
+    UniMode = ((_LI - RI) -> (_LF - RF)),
+    ( !.TakeAddr = [CurArgNum | !:TakeAddr] ->
+        Rval = const(null(MLDS_Type)),
+        ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes,
+            FirstOffset, CurArgNum + 1, !.TakeAddr, ModuleInfo, Rvals,
+            MLDS_Types, TakeAddrInfosTail, !Info),
+        % Whereas CurArgNum starts numbering the arguments from 1, offsets
+        % into fields start from zero. However, if FirstOffset > 0, then the
+        % cell contains FirstOffset other things (e.g. a secondary tag) before
+        % the first argument.
+        Offset = CurArgNum - 1 + FirstOffset,
+        OrigMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ConsArgType),
+        TakeAddrInfo = take_addr_info(Var, Offset, OrigMLDS_Type, MLDS_Type),
+        TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
+    ;
         (
-            ( is_dummy_argument_type(ModuleInfo, ArgType)
-            ; is_dummy_argument_type(ModuleInfo, ConsArgType)
-            )
-        ->
-            Rval = const(null(MLDS_Type))
-        ;
-            mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, top_in)
+            mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, top_in),
+            not is_dummy_argument_type(ModuleInfo, ArgType),
+            not is_dummy_argument_type(ModuleInfo, ConsArgType)
         ->
             ml_gen_box_or_unbox_rval(ArgType, BoxedArgType, lval(Lval), Rval,
                 !Info)
         ;
             Rval = const(null(MLDS_Type))
         ),
-
-        % Process the remaining arguments.
-        ml_gen_cons_args(LvalsTail, ArgTypesTail, ConsArgTypesTail,
-            UniModesTail, ModuleInfo, Rvals1, MLDS_Types1, !Info),
-        Rvals = [Rval | Rvals1],
-        MLDS_Types = [MLDS_Type | MLDS_Types1]
-    ;
-        unexpected(this_file, "ml_gen_cons_args: length mismatch")
+        ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes,
+            FirstOffset, CurArgNum + 1, !.TakeAddr, ModuleInfo, Rvals,
+            MLDS_Types, TakeAddrInfos, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1198,7 +1265,6 @@ ml_gen_cons_args(Lvals, ArgTypes, ConsArgTypes, UniModes, ModuleInfo,
 
 ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Decls, Statements,
         !Info) :-
-
     Decls = [],
     ml_variable_type(!.Info, Var, Type),
     ml_cons_id_to_tag(!.Info, ConsId, Type, Tag),

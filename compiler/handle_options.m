@@ -1573,14 +1573,16 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             BackendForeignLanguages = ["c"]
         ;
             Target = il,
-            BackendForeignLanguages = ["il", "csharp", "mc++"]
+            BackendForeignLanguages = ["il", "csharp", "mc++"],
+            set_option(optimize_constructor_last_call, bool(no), !Globals)
         ;
             Target = asm,
             % XXX This is wrong!  It should be asm.
             BackendForeignLanguages = ["c"]
         ;
             Target = java,
-            BackendForeignLanguages = ["java"]
+            BackendForeignLanguages = ["java"],
+            set_option(optimize_constructor_last_call, bool(no), !Globals)
         ),
 
             % only set the backend foreign languages if they are unset
@@ -1633,9 +1635,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals__set_option(can_compare_constants_as_ints, bool(no),
                 !Globals)
         ),
-
-        option_implies(highlevel_code, optimize_constructor_last_call,
-            bool(no), !Globals),
 
         (
             HighLevel = no,

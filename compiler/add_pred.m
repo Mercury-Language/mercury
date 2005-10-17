@@ -214,16 +214,12 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     %
     %   foo(H1, H2) :- foo(H1, H2).
     %
-    % This does not generate an infinite loop!
-    % Instead, the compiler will generate the usual builtin inline code
-    % for foo/2 in the body.  The reason for generating this
-    % forwarding code stub is so that things work correctly if
-    % you take the address of the predicate.
+    % This does not generate an infinite loop! Instead, the compiler will
+    % generate the usual builtin inline code for foo/2 in the body. The reason
+    % for generating this forwarding code stub is so that things work correctly
+    % if you take the address of the predicate.
     %
 add_builtin(PredId, Types, !PredInfo) :-
-        %
-        % lookup some useful info: Module, Name, Context, HeadVars
-        %
     Module = pred_info_module(!.PredInfo),
     Name = pred_info_name(!.PredInfo),
     pred_info_context(!.PredInfo, Context),
@@ -231,28 +227,30 @@ add_builtin(PredId, Types, !PredInfo) :-
     clauses_info_varset(ClausesInfo0, VarSet),
     clauses_info_headvars(ClausesInfo0, HeadVars),
 
-        %
-        % construct the pseudo-recursive call to Module:Name(HeadVars)
-        %
+    % Construct the pseudo-recursive call to Module.Name(HeadVars).
     SymName = qualified(Module, Name),
-    ModeId = invalid_proc_id,   % mode checking will figure it out
+    % Mode checking will figure it the mode.
+    ModeId = invalid_proc_id,
     MaybeUnifyContext = no,
-    Call = call(PredId, ModeId, HeadVars, inline_builtin, MaybeUnifyContext,
-        SymName),
+    (
+        Module = mercury_private_builtin_module,
+        Name = "store_at_ref"
+    ->
+        GoalExpr = conj([])
+    ;
+        GoalExpr = call(PredId, ModeId, HeadVars, inline_builtin,
+            MaybeUnifyContext, SymName)
+    ),
 
-        %
-        % construct a clause containing that pseudo-recursive call
-        %
+    % Construct a clause containing that pseudo-recursive call.
     goal_info_init(Context, GoalInfo0),
     set__list_to_set(HeadVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-    Goal = Call - GoalInfo,
+    Goal = GoalExpr - GoalInfo,
     Clause = clause([], Goal, mercury, Context),
 
-        %
-        % put the clause we just built into the pred_info,
-        % annotateed with the appropriate types
-        %
+    % Put the clause we just built into the pred_info,
+    % annotateed with the appropriate types.
     map__from_corresponding_lists(HeadVars, Types, VarTypes),
     map__init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
@@ -262,14 +260,11 @@ add_builtin(PredId, Types, !PredInfo) :-
         HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
-        %
-        % It's pointless but harmless to inline these clauses.
-        % The main purpose of the `no_inline' marker is to stop
-        % constraint propagation creating real infinite loops in
-        % the generated code when processing calls to these
-        % predicates. The code generator will still generate
-        % inline code for calls to these predicates.
-        %
+    % It's pointless but harmless to inline these clauses. The main purpose
+    % of the `no_inline' marker is to stop constraint propagation creating
+    % real infinite loops in the generated code when processing calls to these
+    % predicates. The code generator will still generate inline code for calls
+    % to these predicates.
     pred_info_get_markers(!.PredInfo, Markers0),
     add_marker(user_marked_no_inline, Markers0, Markers),
     pred_info_set_markers(Markers, !PredInfo).
@@ -436,7 +431,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
         predicate_table_insert(PredInfo, may_be_unqualified, MQInfo, PredId,
             !PredicateTable)
     ;
-        error("preds_add_implicit")
+        unexpected(this_file, "preds_add_implicit")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -496,5 +491,11 @@ unqualified_pred_error(PredName, Arity, Context, !IO) :-
         words("should have been qualified by prog_io.m.")],
     write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "add_pred.m".
 
 %-----------------------------------------------------------------------------%
