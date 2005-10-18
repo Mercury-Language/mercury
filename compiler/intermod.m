@@ -1538,6 +1538,7 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
     clauses_info_varset(ClausesInfo, VarSet),
     clauses_info_headvars(ClausesInfo, HeadVars),
     clauses_info_clauses_only(ClausesInfo, Clauses),
+    clauses_info_vartypes(ClausesInfo, VarTypes),
 
     ( pred_info_get_goal_type(PredInfo, promise(PromiseType)) ->
         ( Clauses = [Clause] ->
@@ -1547,17 +1548,19 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
             error("write_preds: assertion not a single clause.")
         )
     ;
+        pred_info_typevarset(PredInfo, TypeVarset),
+        MaybeVarTypes = yes(TypeVarset, VarTypes),
         list__foldl(write_clause(ModuleInfo, PredId, VarSet,
-            HeadVars, PredOrFunc, SymName), Clauses, !IO)
+            HeadVars, PredOrFunc, SymName, MaybeVarTypes), Clauses, !IO)
     ),
     write_preds(ModuleInfo, PredIds, !IO).
 
 :- pred write_clause(module_info::in, pred_id::in, prog_varset::in,
-    list(prog_var)::in, pred_or_func::in, sym_name::in, clause::in,
-    io::di, io::uo) is det.
+    list(prog_var)::in, pred_or_func::in, sym_name::in,
+    maybe_vartypes::in, clause::in, io::di, io::uo) is det.
 
 write_clause(ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc, _SymName,
-        Clause0, !IO) :-
+        MaybeVarTypes, Clause0, !IO) :-
     Clause0 = clause(_, _, mercury, _),
     strip_headvar_unifications(HeadVars, Clause0, ClauseHeadVars, Clause),
     % Variable numbers need to be appended for the case
@@ -1565,13 +1568,12 @@ write_clause(ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc, _SymName,
     % are named the same as variables in the enclosing clause.
     AppendVarNums = yes,
     UseDeclaredModes = yes,
-    MaybeVarTypes = no,
     hlds_out__write_clause(1, ModuleInfo, PredId, VarSet, AppendVarNums,
         ClauseHeadVars, PredOrFunc, Clause, UseDeclaredModes, MaybeVarTypes,
         !IO).
 
 write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
-        Clause, !IO) :-
+        _, Clause, !IO) :-
     Clause = clause(ProcIds, Goal, foreign_language(_), _),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_procedures(PredInfo, Procs),

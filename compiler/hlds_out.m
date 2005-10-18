@@ -136,7 +136,7 @@
     %
 :- pred write_hlds(int::in, module_info::in, io::di, io::uo) is det.
 
-    % write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadVars,
+    % write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadVars,
     %   PredOrFunc, Clauses, MaybeVarTypes).
     %
 :- pred write_clauses(int::in, module_info::in, pred_id::in,
@@ -2508,7 +2508,7 @@ write_unify_rhs_3(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
         MaybeType = yes(Type),
         TypeQual = yes(TVarSet, _)
     ->
-        io__write_string(" `with_type` ", !IO),
+        io__write_string(" : ", !IO),
         mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
     ;
         true
@@ -2578,7 +2578,7 @@ write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocals,
         MaybeType = yes(Type),
         TypeQual = yes(TVarSet, _)
     ->
-        io__write_string(" `with_type` ", !IO),
+        io__write_string(" : ", !IO),
         mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
     ;
         true

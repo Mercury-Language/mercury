@@ -237,8 +237,8 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		q(T, N) :-
 			(
-			 	T = a,
-				N = 0
+			 	T = a : t,
+				N = 0 : int
 			;
 				( T = b ; T = c(_) ),
 				N = 1
