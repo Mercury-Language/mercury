@@ -1045,7 +1045,9 @@
     ;       first
     ;       later.
 
-:- type maybe_cut   --->    cut ; no_cut.
+:- type maybe_cut
+    --->    cut
+    ;       no_cut.
 
     % Convert a goal path to a string, using the format documented
     % in the Mercury user's guide.

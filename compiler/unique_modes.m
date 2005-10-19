@@ -593,7 +593,7 @@ check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism, NeverSucceeds,
     modecheck_var_has_inst_list(ArgVars, InitialInsts,
         NeedExactMatch, ArgOffset, InstVarSub, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts0),
-    inst_list_apply_substitution(FinalInsts0, InstVarSub, FinalInsts),
+    inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
     modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,
         ArgOffset, NewArgVars, ExtraGoals, !ModeInfo),
     (

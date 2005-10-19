@@ -779,7 +779,7 @@ equiv_type__replace_in_inst(Inst0, EqvInstMap, ExpandedInstIds,
             map__search(EqvInstMap, InstId,
                 eqv_inst_body(_, EqvInstParams, EqvInst))
         ->
-            inst_substitute_arg_list(EqvInst, EqvInstParams, ArgInsts, Inst1),
+            inst_substitute_arg_list(EqvInstParams, ArgInsts, EqvInst, Inst1),
             equiv_type__record_expanded_item(item_id(inst, InstId), !Info),
             equiv_type__replace_in_inst(Inst1, EqvInstMap,
                 set__insert(ExpandedInstIds, InstId), Inst, !Info)

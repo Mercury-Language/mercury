@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% vim:ts=4 sw=4 expandtab
+% vim: ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General

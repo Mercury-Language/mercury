@@ -1,4 +1,6 @@
 %---------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -31,17 +33,17 @@
 % See library/library.m for why we implement this predicate this way.
 
 :- pragma foreign_proc("C",
-	mdbcomp__version(Version::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+    mdbcomp__version(Version::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-	MR_ConstString version_string;
+    MR_ConstString version_string;
 
-	version_string = MR_VERSION "", configured for "" MR_FULLARCH;
-	/*
-	** Cast away const needed here, because Mercury declares Version
-	** with type MR_String rather than MR_ConstString.
-	*/
-	Version = (MR_String) (MR_Word) version_string;
+    version_string = MR_VERSION "", configured for "" MR_FULLARCH;
+    /*
+    ** Cast away const needed here, because Mercury declares Version
+    ** with type MR_String rather than MR_ConstString.
+    */
+    Version = (MR_String) (MR_Word) version_string;
 ").
 
 mdbcomp__version("unknown version").

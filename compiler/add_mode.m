@@ -108,7 +108,7 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
             map__search(InstDefns, InstId0, InstDefn),
             InstDefn = hlds_inst_defn(_, Params, Body, _, _),
             Body = eqv_inst(EqvInst0),
-            inst_substitute_arg_list(EqvInst0, Params, Args0, EqvInst),
+            inst_substitute_arg_list(Params, Args0, EqvInst0, EqvInst),
             EqvInst = defined_inst(user_inst(Name, Args))
         ->
             Arity = list__length(Args),

@@ -883,7 +883,7 @@ apply_type_subst(Type0, Subst, Type) :-
     sym_name::in, list(inst)::in, (inst)::out) is det.
 
 inst_lookup_subst_args(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
-    inst_substitute_arg_list(Inst0, Params, Args, Inst).
+    inst_substitute_arg_list(Params, Args, Inst0, Inst).
 inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
         abstract_inst(Name, Args)).
 
@@ -1263,7 +1263,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
             InitialInsts, InstVarSub0), InstVarSub, !RI),
 
         % Apply the inst_var substitution to the argument modes.
-        mode_list_apply_substitution(ArgModes1, InstVarSub, ArgModes2),
+        mode_list_apply_substitution(InstVarSub, ArgModes1, ArgModes2),
 
         % Calculate the final insts of the argument variables from their
         % initial insts and the final insts of the called procedure

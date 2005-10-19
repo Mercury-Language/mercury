@@ -315,7 +315,7 @@ modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args, !ModeInfo) :-
     modecheck_var_has_inst_list(Args0, InitialInsts, NeedExactMatch,
         ArgOffset, InstVarSub, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo0, Modes, FinalInsts0),
-    inst_list_apply_substitution(FinalInsts0, InstVarSub, FinalInsts),
+    inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
     modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
         ArgOffset, Args, ExtraGoals, !ModeInfo).
 
@@ -439,9 +439,9 @@ modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0, ArgOffset,
 
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts0),
-    inst_list_apply_substitution(InitialInsts0, InstVarSub, InitialInsts),
+    inst_list_apply_substitution(InstVarSub, InitialInsts0, InitialInsts),
     mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts0),
-    inst_list_apply_substitution(FinalInsts0, InstVarSub, FinalInsts),
+    inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
     modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
         ArgOffset, ArgVars, ExtraGoals, !ModeInfo),
     proc_info_never_succeeds(ProcInfo, NeverSucceeds),
