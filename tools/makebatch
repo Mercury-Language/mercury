@@ -5,15 +5,18 @@
 #
 # The control and output files are all in the subdirectory batch.
 # The control files are $batch.MCFLAGS and possibly $batch.CFLAGS,
-# $batch.MGNUCFLAGS, $batch.MLFLAGS, $batch.GRADE, and/or $batch.MMAKE,
-# where $batch is the last argument of makebatch. $batch.CFLAGS,
-# $batch.MGNUCFLAGS, $batch.MLFLAGS, $batch.GRADE and $batch.MMAKE
-# are consulted if they exist.
+# $batch.MGNUCFLAGS, $batch.MLFLAGS, $batch.GRADE, $batch.MMAKE,
+# $batch.MMAKE.$n where $batch is the last argument of makebatch.
+# They are all consulted if they exist.
 #
-# All the control files except $batch.MMAKE must have the same number
-# of lines. Each line corresponds to a version of the compiler that is
-# built with the MCFLAGS, EXTRA_MGNUCFLAGS, EXTRA_CFLAGS and GRADE make
-# variables being set from that line.
+# All the control files except $batch.MMAKE and $batch.MMAKE.$n
+# must have the same number of lines. Each line corresponds to a version
+# of the compiler that is built with the MCFLAGS, EXTRA_CFLAGS,
+# EXTRA_MGNUCFLAGS, EXTRA_MLFLAGS and GRADE make variables being set
+# from that line.
+#
+# The control file $batch.MMAKE.$n contains an Mmakefile fragment that is
+# included in the parameters of the version numbered $n.
 #
 # The control file $batch.MMAKE contains an Mmakefile fragment that is
 # included in the parameters of all the versions being built.
@@ -189,6 +192,11 @@ do
     then
         mlflags=`awk "NR == $n" batch/$batch.MLFLAGS`
         echo "EXTRA_MLFLAGS = $mlflags" >> Mmake.stage.params
+    fi
+
+    if test -f batch/$batch.MMAKE.$n
+    then
+        cat batch/$batch.MMAKE.$n >> Mmake.stage.params
     fi
 
     if $needgrade
