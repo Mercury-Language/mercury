@@ -46,6 +46,8 @@
 :- import_module std_util.
 :- import_module term.
 
+%-----------------------------------------------------------------------------%
+
     % finish_preds(PredIds, ReportTypeErrors, NumErrors, FoundTypeError,
     %   !Module):
     %
@@ -343,11 +345,11 @@ report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo,
         !IO),
 
     prog_out__write_context(Context, !IO),
-    io__write_string("  ", !IO),
+    io__write_string("  `", !IO),
     AppendVarnums = no,
-    io__write_list(Constraints, ", ",
+    io__write_list(Constraints, "', `",
         mercury_output_constraint(TVarSet, AppendVarnums), !IO),
-    io__write_string(".\n", !IO).
+    io__write_string("'.\n", !IO).
 
     % Report a warning: uninstantiated type parameter.
     %
@@ -491,7 +493,8 @@ finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context, !Builtin,
                 ( list__split_list(HalfLength, Types0, Types1, _) ->
                     Types = Types1
                 ;
-                    error("finish_aditi_builtin: aditi_modify")
+                    unexpected(this_file,
+                        "finish_aditi_builtin: aditi_modify")
                 )
             )
     ),
@@ -572,7 +575,7 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
             typecheck__resolve_pred_overloading(ModuleInfo, Markers, ArgTypes,
                 TVarSet, SymName0, SymName, PredId)
         ;
-            error("resolve_aditi_builtin_overloading")
+            unexpected(this_file, "resolve_aditi_builtin_overloading")
         )
     ;
         PredId = PredId0,
@@ -749,7 +752,7 @@ promise_ex_goal(ExclusiveDecl, Module, Goal) :-
     ( Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)] ->
         assertion__normalise_goal(Goal0, Goal)
     ;
-        error("promise_ex__goal: not an promise")
+        unexpected(this_file, "promise_ex__goal: not an promise")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1282,7 +1285,8 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         ( type_list_subsumes([FieldArgType], [FieldType], FieldSubst) ->
             apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
         ;
-            error("translate_get_function: type_list_subsumes failed")
+            unexpected(this_file,
+                "translate_get_function: type_list_subsumes failed")
         )
     ;
         ExistQVars = [],
@@ -1358,7 +1362,8 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
             remove_new_prefix(ConsName, ConsName0),
             ConsId = cons(ConsName, ConsArity)
         ;
-            error("translate_set_function: invalid cons_id")
+            unexpected(this_file, 
+                "translate_set_function: invalid cons_id")
         )
     ),
 
@@ -1402,7 +1407,8 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
     ( type_to_ctor_and_args(TermType, _, TypeArgs) ->
         map__from_corresponding_lists(TypeParams, TypeArgs, TSubst)
     ;
-        error("get_cons_id_arg_types_adding_existq_tvars: " ++
+        unexpected(this_file,
+            "get_cons_id_arg_types_adding_existq_tvars: " ++
             "type_to_ctor_and_args failed")
 
     ),
@@ -1420,7 +1426,7 @@ split_list_at_index(Index, List, Before, At, After) :-
         At = At0,
         After = After0
     ;
-        error("split_list_at_index")
+        unexpected(this_file, "split_list_at_index")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1436,7 +1442,8 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
     ( type_to_ctor_and_args(TermType, TermTypeCtor0, _) ->
         TermTypeCtor = TermTypeCtor0
     ;
-        error("get_constructor_containing_field: " ++
+        unexpected(this_file, 
+            "get_constructor_containing_field: " ++
             "type_to_ctor_and_args failed")
     ),
     module_info_get_type_table(ModuleInfo, Types),
@@ -1446,14 +1453,14 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         get_constructor_containing_field_2(Ctors, FieldName, ConsId,
             FieldNumber)
     ;
-        error("get_constructor_containing_field: not du type")
+        unexpected(this_file, "get_constructor_containing_field: not du type")
     ).
 
 :- pred get_constructor_containing_field_2(list(constructor)::in,
     ctor_field_name::in, cons_id::out, int::out) is det.
 
 get_constructor_containing_field_2([], _, _, _) :-
-    error("get_constructor_containing_field: can't find field").
+    unexpected(this_file, "get_constructor_containing_field: can't find field").
 get_constructor_containing_field_2([Ctor | Ctors], FieldName,
         ConsId, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs),
@@ -1592,6 +1599,12 @@ check_for_missing_definitions_2(TypeCtor, TypeDefn, !NumErrors,
     ;
         true
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "post_typecheck.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module post_typecheck.
