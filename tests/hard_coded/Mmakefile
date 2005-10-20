@@ -506,15 +506,22 @@ endif
 #
 # --split-c-files also doesn't work on MacOS X.
 #
-ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
-  ifeq "$(findstring yes,$(MMAKE_USE_MMC_MAKE))$(filter hl% il% java%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
-	SPLIT_PROGS = mapped_module split_c_files
-  else
-	SPLIT_PROGS =
-  endif
-else
-  	SPLIT_PROGS =
-endif
+#ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
+#  ifeq "$(findstring yes,$(MMAKE_USE_MMC_MAKE))$(filter hl% il% java%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+#	SPLIT_PROGS = mapped_module split_c_files
+#  else
+#	SPLIT_PROGS =
+#  endif
+#else
+#  	SPLIT_PROGS =
+#endif
+
+# We don't currently test any programs that use '--split-c-files' because that
+# option has been incompatible with the version of mkinit used since about
+# rotd-2005-10-19.
+#
+SPLIT_PROGS = 
+
 
 #-----------------------------------------------------------------------------#
 
