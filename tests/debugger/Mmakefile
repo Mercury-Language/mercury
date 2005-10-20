@@ -347,7 +347,8 @@ existential_type_classes.out: existential_type_classes \
 			existential_type_classes.inp
 	$(MDB_STD) ./existential_type_classes < existential_type_classes.inp \
 		2>&1 | sed 's/string.m:[0-9]*/string.m:NNNN/g' | \
-		sed 's/int.m:[0-9]*/int.m:NNNN/g' \
+		sed 's/int.m:[0-9]*/int.m:NNNN/g' | \
+		sed 's/existential_type_classes.m:[0-9]*/existential_type_classes.m:NNNN/g' \
 		> existential_type_classes.out
 
 exported_eqv_type.out: exported_eqv_type exported_eqv_type.inp
