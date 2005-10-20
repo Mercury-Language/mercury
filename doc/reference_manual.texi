@@ -4614,7 +4614,7 @@ The effect of the @samp{initialise} declaration is to ensure that
 predicate.  Initialisation predicates within a module are executed in the
 order in which they are specified, although no order may be assumed between
 different modules or sub-modules.  Initialisation predicates are only invoked
-after any intialisation required by the Mercury standard library.
+after any initialisation required by the Mercury standard library.
 
 @samp{initialize} is also allowed as a synonym for @samp{initialise}.
 

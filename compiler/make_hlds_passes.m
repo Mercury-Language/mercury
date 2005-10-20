@@ -1129,7 +1129,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             Attrs = Attrs1
         ),
         %
-        % Add the `:- intialise' declaration and clause for the
+        % Add the `:- initialise' declaration and clause for the
         % initialise predicate.
         %
         add_item_clause(initialise(compiler(mutable_decl),
