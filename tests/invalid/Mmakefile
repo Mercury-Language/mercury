@@ -233,7 +233,6 @@ TYPE_SPEC_MODULES = \
 #			see XXX comment in inst_match:inst_matches_final_3)
 #	inst_matches_final_bug (due to same bug as ho_default_func_4)
 #	bad_detism (error check not yet implemented)
-#	missing_instance_decl (error check seems not to be implemented)
 
 # XXX we do not currently pass the following tests:
 #	nonexistent_import (it is unclear whether the new output is OK or not)
