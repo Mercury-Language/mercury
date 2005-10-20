@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -54,7 +54,7 @@ lseek(Fd, Offset, Whence, Result) -->
 	IO = IO0;
 }").
 
-:- func whence(lseek:whence) = int.
+:- func whence(lseek.whence) = int.
 
 :- pragma c_code(whence(W::in) = (V::out),
 		[will_not_call_mercury, thread_safe], "{
