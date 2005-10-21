@@ -322,34 +322,48 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypesMap, !Proofs,
     apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
 
 %-----------------------------------------------------------------------------%
+%
+% Report unsatisfied typeclass constraints
+%
 
-    % Report an error: unsatisfied type class constraints.
-    %
 :- pred report_unsatisfied_constraints(list(prog_constraint)::in,
     pred_id::in, pred_info::in, module_info::in, io::di, io::uo) is det.
 
 report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo,
         !IO) :-
-    io__set_exit_status(1, !IO),
+    io.set_exit_status(1, !IO),
 
     pred_info_typevarset(PredInfo, TVarSet),
     pred_info_context(PredInfo, Context),
+    
+    Pieces0 = constraints_to_error_pieces(TVarSet, Constraints),
+ 
+    PredIdStr = pred_id_to_string(ModuleInfo, PredId),
+    
+    Pieces = [
+        words("In"), fixed(PredIdStr), suffix(":"), nl, 
+        fixed("type error: unsatisfied typeclass " ++
+            choose_number(Constraints, "constraint:", "constraints:")),
+            nl_indent_delta(2) | Pieces0 ],
+             
+    write_error_pieces(Context, 0, Pieces, !IO).   
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("In ", !IO),
-    hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
-    io__write_string(":\n", !IO),
+:- func constraints_to_error_pieces(tvarset, list(prog_constraint)) 
+    = format_components.
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  type error: unsatisfied typeclass constraint(s):\n",
-        !IO),
+constraints_to_error_pieces(_, []) = [].
+constraints_to_error_pieces(TVarset, [C]) = 
+    [constraint_to_error_piece(TVarset, C)].
+constraints_to_error_pieces(TVarset, [ C0, C1 | Cs]) = Components :-
+    Format0    = [ constraint_to_error_piece(TVarset, C0), nl ],
+    Components = Format0 ++ constraints_to_error_pieces(TVarset, [C1 | Cs]).
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  `", !IO),
-    AppendVarnums = no,
-    io__write_list(Constraints, "', `",
-        mercury_output_constraint(TVarSet, AppendVarnums), !IO),
-    io__write_string("'.\n", !IO).
+:- func constraint_to_error_piece(tvarset, prog_constraint) = format_component.
+
+constraint_to_error_piece(TVarset, Constraint) =
+    fixed("`" ++ mercury_constraint_to_string(TVarset, Constraint) ++ "'").
+   
+%-----------------------------------------------------------------------------%
 
     % Report a warning: uninstantiated type parameter.
     %
