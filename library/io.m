@@ -7635,7 +7635,7 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
             Status = 127;
         }
     #else
-        if (Status0 & 0xff != 0) {
+        if ((Status0 & 0xff) != 0) {
             /* the process was killed by a signal */
             Status = -(Status0 & 0xff);
         } else {

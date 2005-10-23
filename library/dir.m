@@ -1349,7 +1349,7 @@ dir__open(DirName, Res, !IO) :-
         Dir = FindFirstFile(dir_pattern, &file_data);
         if (Dir == INVALID_HANDLE_VALUE) {
             int error = GetLastError();
-            if (error = ERROR_NO_MORE_FILES) {
+            if (error == ERROR_NO_MORE_FILES) {
                 Result = ML_make_dir_open_result_eof();
             } else {
                 ML_make_dir_open_result_error(error, &Result);
