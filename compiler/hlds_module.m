@@ -1454,14 +1454,14 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
     % the given argument types, aborting with an error if none is found.
     %
 :- pred get_pred_id_and_proc_id(is_fully_qualified::in, sym_name::in,
-    pred_or_func::in, tvarset::in, list(type)::in, module_info::in,
+    pred_or_func::in, tvarset::in, list(mer_type)::in, module_info::in,
     pred_id::out, proc_id::out) is det.
 
     % Get the pred_id matching a higher-order term with
     % the given argument types, failing if none is found.
     %
 :- pred get_pred_id(is_fully_qualified::in, sym_name::in, pred_or_func::in,
-    tvarset::in, list(type)::in, module_info::in, pred_id::out) is semidet.
+    tvarset::in, list(mer_type)::in, module_info::in, pred_id::out) is semidet.
 
     % Given a pred_id, return the single proc_id, aborting
     % if there are no modes or more than one mode.

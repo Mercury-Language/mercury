@@ -26,19 +26,19 @@
 % to transform the code in order to fill a delay slot is this pattern,
 % produced by frameopt:
 %
-%	L1:
-%		if (cond) goto L2
-%		incr_sp(N)
-%		stackvar(N) = succip
-%		...
+%   L1:
+%       if (cond) goto L2
+%       incr_sp(N)
+%       stackvar(N) = succip
+%       ...
 %
 % We transform this code into:
 %
-%	L1:
-%		stackvar(0) = succip
-%		if (cond) goto L2
-%		incr_sp(N)
-%		...
+%   L1:
+%       stackvar(0) = succip
+%       if (cond) goto L2
+%       incr_sp(N)
+%       ...
 %
 % The initial store into stackvar(0) is into the first word above the
 % current detstack top. After the incr_sp is executed (if it ever is), this
@@ -55,7 +55,7 @@
 :- import_module list.
 
 :- pred fill_branch_delay_slot(list(instruction)::in, list(instruction)::out)
-	is det.
+    is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -66,18 +66,18 @@
 
 fill_branch_delay_slot([], []).
 fill_branch_delay_slot([Instr0 | Instrs0], Instrs) :-
-	(
-		Instr0 = label(_) - _,
-		Instrs0 = [Instr1, Instr2, Instr3 | Tail0],
-		Instr1 = if_val(_, _) - _,
-		Instr2 = incr_sp(Size, _) - _,
-		Instr3 = assign(stackvar(Size), lval(succip)) - C2
-	->
-		fill_branch_delay_slot(Tail0, Tail1),
-		string__append(C2, " (early save in delay slot)", NewC2),
-		EarlySave = assign(stackvar(0), lval(succip)) - NewC2,
-		Instrs = [Instr0, EarlySave, Instr1, Instr2 | Tail1]
-	;
-		fill_branch_delay_slot(Instrs0, Instrs1),
-		Instrs = [Instr0 | Instrs1]
-	).
+    (
+        Instr0 = label(_) - _,
+        Instrs0 = [Instr1, Instr2, Instr3 | Tail0],
+        Instr1 = if_val(_, _) - _,
+        Instr2 = incr_sp(Size, _) - _,
+        Instr3 = assign(stackvar(Size), lval(succip)) - C2
+    ->
+        fill_branch_delay_slot(Tail0, Tail1),
+        string__append(C2, " (early save in delay slot)", NewC2),
+        EarlySave = assign(stackvar(0), lval(succip)) - NewC2,
+        Instrs = [Instr0, EarlySave, Instr1, Instr2 | Tail1]
+    ;
+        fill_branch_delay_slot(Instrs0, Instrs1),
+        Instrs = [Instr0 | Instrs1]
+    ).

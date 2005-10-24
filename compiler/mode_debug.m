@@ -113,7 +113,7 @@ mode_checkpoint_write(Verbose, Minimal, Statistics, Port, Msg, !ModeInfo,
     io__write_string("\n", !IO),
     io__flush_output(!IO).
 
-:- pred write_var_insts(assoc_list(prog_var, inst)::in, instmap::in,
+:- pred write_var_insts(assoc_list(prog_var, mer_inst)::in, instmap::in,
     prog_varset::in, inst_varset::in, bool::in, bool::in,
     io::di, io::uo) is det.
 
@@ -162,7 +162,7 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
     % increase in the constant factor in cases where identical_insts fails
     % is much easier to live with.
     %
-:- pred identical_insts((inst)::in, (inst)::in) is semidet.
+:- pred identical_insts(mer_inst::in, mer_inst::in) is semidet.
 
 identical_insts(_, _) :-
     semidet_fail.

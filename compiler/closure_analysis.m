@@ -113,7 +113,7 @@ process_scc(Debug, SCC, !ModuleInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 
-:- func closure_info_init(module_info, vartypes, prog_vars, list(mode))
+:- func closure_info_init(module_info, vartypes, prog_vars, list(mer_mode))
     = closure_info.
 
 closure_info_init(ModuleInfo, VarTypes, HeadVars, ArgModes) = ClosureInfo :-
@@ -295,7 +295,7 @@ process_goal(VarTypes, _, Goal, Goal, !ClosureInfo) :-
             % NOTE: we don't bother worrying about features
             % that relate to Aditi, i.e. when EvalMethod = (aditi_bottom_up)
             RHS = pred_const(ShroudedPPId, EvalMethod),
-            EvalMethod = normal 
+            EvalMethod = lambda_normal 
         ->
             PPId = unshroud_pred_proc_id(ShroudedPPId),
             HO_Value = set.make_singleton_set(PPId),
@@ -394,7 +394,7 @@ process_goal(_, _, shorthand(_) - _, _, _, _) :-
 %----------------------------------------------------------------------------%
 
 :- pred partition_arguments(module_info::in, vartypes::in,
-    prog_vars::in, list(mode)::in,
+    prog_vars::in, list(mer_mode)::in,
     set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out) is det.
 

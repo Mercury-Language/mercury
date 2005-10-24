@@ -350,7 +350,8 @@ assertion__is_update_assertion(AssertId, Module, _PredId, CallVars,
 :- pred update(hlds_goals::in, hlds_goals::in, set(prog_var)::in,
     prog_vars::in, pair(prog_var)::out) is nondet.
 
-update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars, StateA - StateB) :-
+update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
+        StateA - StateB) :-
     reorder(PCalls, QCalls, LHSCalls, RHSCalls),
     process_two_linked_calls(LHSCalls, UniversiallyQuantifiedVars, PredId,
         SA, PairsL, Vs),
@@ -842,7 +843,8 @@ is_defined_in_implementation_section(imported(implementation)) = yes.
 
 is_defined_in_implementation_section(imported(interface)) = no.
 is_defined_in_implementation_section(imported(ancestor)) = no.
-is_defined_in_implementation_section(imported(ancestor_private_interface)) = no.
+is_defined_in_implementation_section(imported(ancestor_private_interface))
+    = no.
 is_defined_in_implementation_section(opt_imported) = no.
 is_defined_in_implementation_section(abstract_imported) = no.
 is_defined_in_implementation_section(pseudo_imported) = no.

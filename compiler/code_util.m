@@ -313,7 +313,7 @@ neg_rval(Rval, NegRval) :-
     ( neg_rval_2(Rval, NegRval0) ->
         NegRval = NegRval0
     ;
-        NegRval = unop(not, Rval)
+        NegRval = unop(logical_not, Rval)
     ).
 
 :- pred neg_rval_2(rval::in, rval::out) is semidet.
@@ -326,7 +326,7 @@ neg_rval_2(const(Const), const(NegConst)) :-
         Const = false,
         NegConst = true
     ).
-neg_rval_2(unop(not, Rval), Rval).
+neg_rval_2(unop(logical_not, Rval), Rval).
 neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-
     neg_op(Op, NegOp).
 
@@ -334,10 +334,10 @@ neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-
 
 neg_op(eq, ne).
 neg_op(ne, eq).
-neg_op(<, >=).
-neg_op(<=, >).
-neg_op(>, <=).
-neg_op(>=, <).
+neg_op(int_lt, int_ge).
+neg_op(int_le, int_gt).
+neg_op(int_gt, int_le).
+neg_op(int_ge, int_lt).
 neg_op(str_eq, str_ne).
 neg_op(str_ne, str_eq).
 neg_op(str_lt, str_ge).

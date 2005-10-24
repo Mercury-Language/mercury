@@ -88,7 +88,7 @@
                 gcall_args          :: list(prog_var),
                                     % The list of argument variables.
 
-                gcall_modes         :: list(mode),
+                gcall_modes         :: list(mer_mode),
                                     % The modes of the argument variables.
                                     % For higher_order calls, this field
                                     % is junk until after mode analysis.
@@ -346,16 +346,17 @@
 :- type foreign_arg
     --->    foreign_arg(
                 arg_var         :: prog_var,
-                arg_name_mode   :: maybe(pair(string, mode)),
-                arg_type        :: (type)
+                arg_name_mode   :: maybe(pair(string, mer_mode)),
+                arg_type        :: mer_type
             ).
 
 :- func foreign_arg_var(foreign_arg) = prog_var.
-:- func foreign_arg_maybe_name_mode(foreign_arg) = maybe(pair(string, mode)).
-:- func foreign_arg_type(foreign_arg) = (type).
+:- func foreign_arg_maybe_name_mode(foreign_arg) =
+    maybe(pair(string, mer_mode)).
+:- func foreign_arg_type(foreign_arg) = mer_type.
 
 :- pred make_foreign_args(list(prog_var)::in,
-    list(maybe(pair(string, mode)))::in, list(type)::in,
+    list(maybe(pair(string, mer_mode)))::in, list(mer_type)::in,
     list(foreign_arg)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -451,7 +452,7 @@
                                     % the lambda quantified variables.
                 rhs_lambda_quant_vars :: list(prog_var),
                                     % Lambda quantified variables.
-                rhs_lambda_modes    :: list(mode),
+                rhs_lambda_modes    :: list(mer_mode),
                                     % Modes of the lambda quantified variables.
                 rhs_detism          :: determinism,
                 rhs_lambda_goal     :: hlds_goal
@@ -750,9 +751,9 @@
     --->    cell_is_unique
     ;       cell_is_shared.
 
-:- type unify_mode  ==  pair(mode, mode).
+:- type unify_mode  ==  pair(mer_mode, mer_mode).
 
-:- type uni_mode    --->    pair(inst) -> pair(inst).
+:- type uni_mode    --->    pair(mer_inst) -> pair(mer_inst).
                     % Each uni_mode maps a pair of insts to a pair of new insts
                     % Each pair represents the insts of the LHS and the RHS
                     % respectively.
@@ -910,9 +911,9 @@
                             % clause, and was put into the body by the
                             % superhomogeneous form transformation.
 
-    ;       (impure)        % This goal is impure.  See hlds_pred.m.
+    ;       impure_goal     % This goal is impure.  See hlds_pred.m.
 
-    ;       (semipure)      % This goal is semipure.  See hlds_pred.m.
+    ;       semipure_goal   % This goal is semipure.  See hlds_pred.m.
 
     ;       not_impure_for_determinism
                             % This goal should not be treated as impure
@@ -1222,7 +1223,7 @@
 :- pred make_char_const_construction_alloc(char::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
-:- pred make_const_construction_alloc(cons_id::in, (type)::in,
+:- pred make_const_construction_alloc(cons_id::in, mer_type::in,
     maybe(string)::in, hlds_goal::out, prog_var::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
 
@@ -1238,14 +1239,14 @@
 :- pred make_char_const_construction_alloc_in_proc(char::in,
     maybe(string)::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
-:- pred make_const_construction_alloc_in_proc(cons_id::in, (type)::in,
+:- pred make_const_construction_alloc_in_proc(cons_id::in, mer_type::in,
     maybe(string)::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
 
     % Given the variable info field from a pragma foreign_code, get
     % all the variable names.
     %
-:- pred get_pragma_foreign_var_names(list(maybe(pair(string, mode)))::in,
+:- pred get_pragma_foreign_var_names(list(maybe(pair(string, mer_mode)))::in,
     list(string)::out) is det.
 
     % Produce a goal to construct or deconstruct a unification with
@@ -1762,25 +1763,25 @@ add_goal_info_purity_feature(Purity, !GoalInfo) :-
 :- pred purity_features(purity::in, list(goal_feature)::out,
     list(goal_feature)::out) is det.
 
-purity_features(pure, [(impure), (semipure)], []).
-purity_features((semipure), [(impure)], [(semipure)]).
-purity_features((impure), [(semipure)], [(impure)]).
+purity_features(purity_pure, [impure_goal, semipure_goal], []).
+purity_features(purity_semipure, [impure_goal], [semipure_goal]).
+purity_features(purity_impure, [semipure_goal], [impure_goal]).
 
 infer_goal_info_purity(GoalInfo, Purity) :-
-    ( goal_info_has_feature(GoalInfo, (impure)) ->
-        Purity = (impure)
-    ; goal_info_has_feature(GoalInfo, (semipure)) ->
-        Purity = (semipure)
+    ( goal_info_has_feature(GoalInfo, impure_goal) ->
+        Purity = purity_impure
+    ; goal_info_has_feature(GoalInfo, semipure_goal) ->
+        Purity = purity_semipure
     ;
-        Purity = pure
+        Purity = purity_pure
     ).
 
 goal_info_is_pure(GoalInfo) :-
-    \+ goal_info_has_feature(GoalInfo, (impure)),
-    \+ goal_info_has_feature(GoalInfo, (semipure)).
+    \+ goal_info_has_feature(GoalInfo, impure_goal),
+    \+ goal_info_has_feature(GoalInfo, semipure_goal).
 
 goal_info_is_impure(GoalInfo) :-
-    goal_info_has_feature(GoalInfo, (impure)).
+    goal_info_has_feature(GoalInfo, impure_goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -2047,7 +2048,7 @@ goal_is_atomic(shorthand(_)) = no.
 
 true_goal(conj([]) - GoalInfo) :-
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(set__init, InstMapDelta, det, pure, GoalInfo).
+    goal_info_init(set__init, InstMapDelta, det, purity_pure, GoalInfo).
 
 true_goal(Context, Goal - GoalInfo) :-
     true_goal(Goal - GoalInfo0),
@@ -2055,7 +2056,7 @@ true_goal(Context, Goal - GoalInfo) :-
 
 fail_goal(disj([]) - GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(set__init, InstMapDelta, failure, pure, GoalInfo).
+    goal_info_init(set__init, InstMapDelta, failure, purity_pure, GoalInfo).
 
 fail_goal(Context, Goal - GoalInfo) :-
     fail_goal(Goal - GoalInfo0),
@@ -2094,7 +2095,7 @@ goal_list_purity(Goals, Purity) :-
         infer_goal_info_purity(GoalInfo, GoalPurity),
         worst_purity(GoalPurity, Purity0) = Purity1
     ),
-    Purity = list__foldl(ComputePurity, Goals, pure).
+    Purity = list__foldl(ComputePurity, Goals, purity_pure).
 
 %-----------------------------------------------------------------------------%
 
@@ -2165,7 +2166,8 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Unification = simple_test(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(list_to_set([X, Y]), InstMapDelta, semidet, pure, GoalInfo),
+    goal_info_init(list_to_set([X, Y]), InstMapDelta, semidet, purity_pure,
+        GoalInfo),
     Goal = unify(X, var(Y), Mode, Unification, UnifyContext) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
@@ -2249,7 +2251,7 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
     set__singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert(Var, Inst, InstMapDelta0, InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo).
+    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo).
 
 construct_functor(Var, ConsId, Args, Goal) :-
     list__length(Args, Arity),
@@ -2263,7 +2265,7 @@ construct_functor(Var, ConsId, Args, Goal) :-
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
     set__list_to_set([Var | Args], NonLocals),
     instmap_delta_from_assoc_list([Var - ground_inst], InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
     Goal = Unify - GoalInfo.
 
 deconstruct_functor(Var, ConsId, Args, Goal) :-
@@ -2280,7 +2282,7 @@ deconstruct_functor(Var, ConsId, Args, Goal) :-
     list__duplicate(Arity, ground_inst, DeltaValues),
     assoc_list__from_corresponding_lists(Args, DeltaValues, DeltaAL),
     instmap_delta_from_assoc_list(DeltaAL, InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
     Goal = Unify - GoalInfo.
 
 construct_tuple(Tuple, Args, Goal) :-
@@ -2299,7 +2301,7 @@ get_pragma_foreign_var_names(MaybeVarNames, VarNames) :-
     get_pragma_foreign_var_names_2(MaybeVarNames, [], VarNames0),
     list__reverse(VarNames0, VarNames).
 
-:- pred get_pragma_foreign_var_names_2(list(maybe(pair(string, mode)))::in,
+:- pred get_pragma_foreign_var_names_2(list(maybe(pair(string, mer_mode)))::in,
     list(string)::in, list(string)::out) is det.
 
 get_pragma_foreign_var_names_2([], !Names).

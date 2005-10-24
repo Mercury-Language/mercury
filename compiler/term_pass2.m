@@ -59,7 +59,7 @@
 	;	down.
 
 :- type call_weight_info
-	==	pair(list(term_errors__error), call_weight_graph).
+	==	pair(list(termination_error_context), call_weight_graph).
 
 
 :- type call_weight_graph
@@ -76,7 +76,7 @@
 			used_args
 		)
 	;	error(
-			list(term_errors__error)
+			list(termination_error_context)
 		).
 
 %-----------------------------------------------------------------------------%
@@ -226,7 +226,7 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 	init_rec_input_suppliers_single_arg_others(RestSCC, Module,
 		RecSupplierMap1, RecSupplierMap).
 
-:- pred init_rec_input_suppliers_add_single_arg(list(mode)::in, int::in,
+:- pred init_rec_input_suppliers_add_single_arg(list(mer_mode)::in, int::in,
 	module_info::in, list(bool)::out) is semidet.
 
 init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
@@ -515,7 +515,7 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
 	% all, then maybe a limited set).
 
 :- pred zero_or_positive_weight_cycles(call_weight_graph::in,
-	module_info::in, list(term_errors__error)::out) is det.
+	module_info::in, list(termination_error_context)::out) is det.
 
 zero_or_positive_weight_cycles(CallWeights, Module, Cycles) :-
 	map__keys(CallWeights, PPIds),
@@ -523,7 +523,7 @@ zero_or_positive_weight_cycles(CallWeights, Module, Cycles) :-
 
 :- pred zero_or_positive_weight_cycles_2(list(pred_proc_id)::in,
 	call_weight_graph::in, module_info::in,
-	list(term_errors__error)::out) is det.
+	list(termination_error_context)::out) is det.
 
 zero_or_positive_weight_cycles_2([], _, _, []).
 zero_or_positive_weight_cycles_2([PPId | PPIds], CallWeights, Module, Cycles) :-
@@ -533,7 +533,7 @@ zero_or_positive_weight_cycles_2([PPId | PPIds], CallWeights, Module, Cycles) :-
 
 :- pred zero_or_positive_weight_cycles_from(pred_proc_id::in,
 	call_weight_graph::in, module_info::in,
-	list(term_errors__error)::out) is det.
+	list(termination_error_context)::out) is det.
 
 zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles) :-
 	map__lookup(CallWeights, PPId, NeighboursMap),
@@ -547,7 +547,7 @@ zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles) :-
 :- pred zero_or_positive_weight_cycles_from_neighbours(assoc_list(pred_proc_id,
 	pair(prog_context, int))::in, pred_proc_id::in, prog_context::in,
 	int::in, assoc_list(pred_proc_id, prog_context)::in,
-	call_weight_graph::in, list(term_errors__error)::out) is det.
+	call_weight_graph::in, list(termination_error_context)::out) is det.
 
 zero_or_positive_weight_cycles_from_neighbours([], _, _, _, _, _, []).
 zero_or_positive_weight_cycles_from_neighbours([Neighbour | Neighbours],
@@ -562,7 +562,7 @@ zero_or_positive_weight_cycles_from_neighbours([Neighbour | Neighbours],
 :- pred zero_or_positive_weight_cycles_from_neighbour(pair(pred_proc_id,
 	pair(prog_context, int))::in, pred_proc_id::in, prog_context::in,
 	int::in, assoc_list(pred_proc_id, prog_context)::in,
-	call_weight_graph::in, list(term_errors__error)::out) is det.
+	call_weight_graph::in, list(termination_error_context)::out) is det.
 
 zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),
 		LookforPPId, ProcContext, WeightSoFar0, VisitedCalls,

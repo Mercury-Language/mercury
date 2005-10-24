@@ -313,7 +313,7 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         VarStag = lval(field(yes(Bits), Rval, const(int_const(0)))),
         ConstStag = const(int_const(Num)),
         StagTestRval = binop(eq, VarStag, ConstStag),
-        TestRval = binop(and, PtagTestRval, StagTestRval)
+        TestRval = binop(logical_and, PtagTestRval, StagTestRval)
     ;   
         ConsTag = shared_local_tag(Bits, Num),
         ConstStag = mkword(Bits, unop(mkbody, const(int_const(Num)))),
@@ -327,7 +327,8 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         % and then check that it matches ThisTag.
         CheckReservedAddrs = (func(RA, InnerTestRval0) = InnerTestRval :-
             generate_tag_test_rval_2(reserved_address(RA), Rval, EqualRA),
-            InnerTestRval = binop((and), unop(not, EqualRA), InnerTestRval0)
+            InnerTestRval = binop(logical_and,
+                unop(logical_not, EqualRA), InnerTestRval0)
         ),
         generate_tag_test_rval_2(ThisTag, Rval, MatchesThisTag),
         TestRval = list__foldr(CheckReservedAddrs, ReservedAddrs,
@@ -538,19 +539,19 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
     % Its disadvantage is that the cost of creating the closure P is greater.
     % Whether this is a net win depend on the number of times P is called.
     %
-    % The pattern that this optimization looks for happens rarely at the moment.
-    % The reason is that although we allow the creation of closures with a
-    % simple syntax (e.g. P0 = append4([1])), we don't allow their extension
-    % with a similarly simple syntax (e.g. P = call(P0, [2])). In fact,
-    % typecheck.m contains code to detect such constructs, because it does not
-    % have code to typecheck them (you get a message about call/2 should be
-    % used as a goal, not an expression).
+    % The pattern that this optimization looks for happens rarely at the
+    % moment. The reason is that although we allow the creation of closures
+    % with a simple syntax (e.g. P0 = append4([1])), we don't allow their
+    % extension with a similarly simple syntax (e.g. P = call(P0, [2])).
+    % In fact, typecheck.m contains code to detect such constructs, because
+    % it does not have code to typecheck them (you get a message about call/2
+    % should be used as a goal, not an expression).
 
     proc_info_goal(ProcInfo, ProcInfoGoal),
     proc_info_interface_code_model(ProcInfo, CodeModel),
     proc_info_headvars(ProcInfo, ProcHeadVars),
     (
-        EvalMethod = normal,
+        EvalMethod = lambda_normal,
         Args = [CallPred | CallArgs],
         ProcHeadVars = [ProcPred | ProcArgs],
         ProcInfoGoal = generic_call(higher_order(ProcPred, _, _, _),
@@ -599,7 +600,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                 assign(NumOldArgs, lval(field(yes(0), OldClosure, Two)))
                     - "get number of arguments",
                 incr_hp(NewClosure, no, no,
-                    binop(+, lval(NumOldArgs), NumNewArgsPlusThree_Rval),
+                    binop(int_add, lval(NumOldArgs), NumNewArgsPlusThree_Rval),
                         "closure")
                     - "allocate new closure",
                 assign(field(yes(0), lval(NewClosure), Zero),
@@ -609,9 +610,9 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                     lval(field(yes(0), OldClosure, One)))
                     - "set closure code pointer",
                 assign(field(yes(0), lval(NewClosure), Two),
-                    binop(+, lval(NumOldArgs), NumNewArgs_Rval))
+                    binop(int_add, lval(NumOldArgs), NumNewArgs_Rval))
                     - "set new number of arguments",
-                assign(NumOldArgs, binop(+, lval(NumOldArgs), Three))
+                assign(NumOldArgs, binop(int_add, lval(NumOldArgs), Three))
                     - "set up loop limit",
                 assign(LoopCounter, Three)
                     - "initialize loop counter",
@@ -624,11 +625,11 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                 assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
                     lval(field(yes(0), OldClosure, lval(LoopCounter))))
                     - "copy old hidden argument",
-                assign(LoopCounter, binop(+, lval(LoopCounter), One))
+                assign(LoopCounter, binop(int_add, lval(LoopCounter), One))
                     - "increment loop counter",
                 label(LoopTest)
                     - ("do we have more old arguments to copy?"),
-                if_val(binop(<, lval(LoopCounter), lval(NumOldArgs)),
+                if_val(binop(int_lt, lval(LoopCounter), lval(NumOldArgs)),
                     label(LoopStart))
                     - "repeat the loop?"
             ]),
@@ -646,10 +647,10 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             PredId, ProcId, no),
         code_util__extract_proc_label_from_code_addr(CodeAddr, ProcLabel),
         (
-            EvalMethod = normal,
+            EvalMethod = lambda_normal,
             CallArgsRval = const(code_addr_const(CodeAddr))
         ;
-            EvalMethod = (aditi_bottom_up),
+            EvalMethod = lambda_aditi_bottom_up,
             rl__get_c_interface_rl_proc_name(ModuleInfo,
                 proc(PredId, ProcId), RLProcName),
             rl__proc_name_to_string(RLProcName, RLProcNameStr),
@@ -710,7 +711,7 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
     Code1 = node([
         assign(field(yes(0), lval(NewClosure), lval(LoopCounter)), Value)
             - "set new argument field",
-        assign(LoopCounter, binop(+, lval(LoopCounter), One))
+        assign(LoopCounter, binop(int_add, lval(LoopCounter), One))
             - "increment argument counter"
     ]),
     generate_extra_closure_args(Vars, LoopCounter, NewClosure, Code2, !CI),
@@ -732,7 +733,7 @@ generate_pred_args([Var | Vars], [ArgInfo | ArgInfos],
     ),
     generate_pred_args(Vars, ArgInfos, Rvals).
 
-:- pred generate_cons_args(list(prog_var)::in, list(type)::in,
+:- pred generate_cons_args(list(prog_var)::in, list(mer_type)::in,
     list(uni_mode)::in, int::in, int::in, list(int)::in, module_info::in,
     list(maybe(rval))::out, assoc_list(int, prog_var)::out) is det.
 
@@ -754,7 +755,7 @@ generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
     % we just produce `no', meaning don't generate an assignment to that
     % field.
     %
-:- pred generate_cons_args_2(list(prog_var)::in, list(type)::in,
+:- pred generate_cons_args_2(list(prog_var)::in, list(mer_type)::in,
     list(uni_mode)::in, int::in, int::in, list(int)::in, module_info::in,
     list(maybe(rval))::out, assoc_list(int, prog_var)::out) is semidet.
 
@@ -836,7 +837,8 @@ generate_field_take_address_assigns([FieldNum - Var | FieldAddrs],
 
 %---------------------------------------------------------------------------%
 
-:- pred var_types(code_info::in, list(prog_var)::in, list(type)::out) is det.
+:- pred var_types(code_info::in, list(prog_var)::in, list(mer_type)::out)
+    is det.
 
 var_types(CI, Vars, Types) :-
     code_info__get_proc_info(CI, ProcInfo),
@@ -1001,7 +1003,7 @@ generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
     % for the arguments of a construction.
     %
 :- pred generate_unify_args(list(uni_val)::in, list(uni_val)::in,
-    list(uni_mode)::in, list(type)::in, code_tree::out,
+    list(uni_mode)::in, list(mer_type)::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
 generate_unify_args(Ls, Rs, Ms, Ts, Code, !CI) :-
@@ -1012,7 +1014,7 @@ generate_unify_args(Ls, Rs, Ms, Ts, Code, !CI) :-
     ).
 
 :- pred generate_unify_args_2(list(uni_val)::in, list(uni_val)::in,
-    list(uni_mode)::in, list(type)::in, code_tree::out,
+    list(uni_mode)::in, list(mer_type)::in, code_tree::out,
     code_info::in, code_info::out) is semidet.
 
 generate_unify_args_2([], [], [], [], empty, !CI).
@@ -1026,7 +1028,7 @@ generate_unify_args_2([L | Ls], [R | Rs], [M | Ms], [T | Ts], Code, !CI) :-
     % Generate a subunification between two [field | variable].
     %
 :- pred generate_sub_unify(uni_val::in, uni_val::in, uni_mode::in,
-    (type)::in, code_tree::out, code_info::in, code_info::out) is det.
+    mer_type::in, code_tree::out, code_info::in, code_info::out) is det.
 
 generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
     Mode = ((LI - RI) -> (LF - RF)),
@@ -1105,7 +1107,7 @@ generate_sub_assign(Left, Right, Code, !CI) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred var_type_msg((type)::in, string::out) is det.
+:- pred var_type_msg(mer_type::in, string::out) is det.
 
 var_type_msg(Type, Msg) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->

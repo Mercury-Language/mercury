@@ -741,7 +741,7 @@ target_requires_module_qualified_params(java)    = yes.
 target_requires_module_qualified_params(asm)     = no.
 
 :- func gen_constructor_function(globals, mlds__class_id,
-    mlds__type, mlds_module_name, mlds__class_id, maybe(int), mlds__defns,
+    mlds_type, mlds_module_name, mlds__class_id, maybe(int), mlds__defns,
     mlds__context) = mlds__defn.
 
 gen_constructor_function(Globals, BaseClassId, ClassType, ClassQualifier,
@@ -762,7 +762,7 @@ gen_constructor_function(Globals, BaseClassId, ClassType, ClassQualifier,
         InitMembers = InitMembers0
     ),
 
-    Stmt = mlds__statement(block([], InitMembers), Context),
+    Stmt = statement(block([], InitMembers), Context),
     Attributes = [],
 
     Ctor = mlds__function(no, func_params(Args, ReturnValues),
@@ -788,8 +788,8 @@ make_arg(mlds__defn(Name, _Context, _Flags, Defn)) = Arg :-
 
     % Generate "this-><fieldname> = <fieldname>;".
     %
-:- func gen_init_field(compilation_target, mlds__class_id, mlds__type,
-    mlds_module_name, mlds__defn) = mlds__statement is det.
+:- func gen_init_field(compilation_target, mlds__class_id, mlds_type,
+    mlds_module_name, mlds__defn) = statement is det.
 
 gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         Statement :-
@@ -828,12 +828,12 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
             % But doing so breaks the IL back-end, because then the hack in
             % fixup_class_qualifiers doesn't work.
         Type, BaseClassId),
-    Statement = mlds__statement(atomic(assign(Field, Param)), Context).
+    Statement = statement(atomic(assign(Field, Param)), Context).
 
     % Generate "this->data_tag = <TagVal>;".
     %
-:- func gen_init_tag(mlds__type, mlds__class_id, int, mlds__context, globals)
-    = mlds__statement.
+:- func gen_init_tag(mlds_type, mlds__class_id, int, mlds__context, globals)
+    = statement.
 
 gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context, Globals)
         = Statement :-
@@ -851,7 +851,7 @@ gen_init_tag(ClassType, SecondaryTagClassId, TagVal, Context, Globals)
         named_field(qual(TagClassQualifier, type_qual, Name),
             mlds__ptr_type(SecondaryTagClassId)),
         Type, ClassType),
-    Statement = mlds__statement(atomic(assign(Field, Val)), Context).
+    Statement = statement(atomic(assign(Field, Val)), Context).
 
 :- pred ml_gen_typeclass_info_member(module_info::in, prog_context::in,
     prog_constraint::in, mlds__defn::out, int::in, int::out) is det.
@@ -882,7 +882,7 @@ ml_gen_du_ctor_field(ModuleInfo, Context, MaybeFieldName - Type, MLDS_Defn,
         ArgNum0, ArgNum).
 
 :- pred ml_gen_field(module_info::in, prog_context::in,
-    maybe(ctor_field_name)::in, prog_type::in, mlds__defn::out,
+    maybe(ctor_field_name)::in, mer_type::in, mlds__defn::out,
     int::in, int::out) is det.
 
 ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
@@ -897,7 +897,7 @@ ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
         MLDS_Type, mlds__make_context(Context)),
     ArgNum = ArgNum0 + 1.
 
-:- func ml_gen_mlds_field_decl(mlds__data_name, mlds__type, mlds__context)
+:- func ml_gen_mlds_field_decl(mlds__data_name, mlds_type, mlds__context)
     = mlds__defn.
 
 ml_gen_mlds_field_decl(DataName, MLDS_Type, Context) = MLDS_Defn :-

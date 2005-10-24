@@ -45,7 +45,7 @@
     % Similar to undefined_mode_error, but gives more information.
     % XXX the documentation here should be somewhat less circular.
     %
-:- pred undeclared_mode_error(list(mode)::in, prog_varset::in,
+:- pred undeclared_mode_error(list(mer_mode)::in, prog_varset::in,
     pred_id::in, pred_info::in, module_info::in, prog_context::in,
     io::di, io::uo) is det.
 

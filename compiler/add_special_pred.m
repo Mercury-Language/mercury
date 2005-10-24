@@ -29,7 +29,7 @@
     % during mode analysis.
     %
 :- pred do_add_special_pred_for_real(special_pred_id::in, tvarset::in,
-    (type)::in, type_ctor::in, hlds_type_body::in, prog_context::in,
+    mer_type::in, type_ctor::in, hlds_type_body::in, prog_context::in,
     import_status::in, module_info::in, module_info::out) is det.
 
     % do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
@@ -41,10 +41,10 @@
     % are generated lazily.
     %
 :- pred do_add_special_pred_decl_for_real(special_pred_id::in,
-    tvarset::in, (type)::in, type_ctor::in, prog_context::in,
+    tvarset::in, mer_type::in, type_ctor::in, prog_context::in,
     import_status::in, module_info::in, module_info::out) is det.
 
-:- pred add_special_preds(tvarset::in, (type)::in, type_ctor::in,
+:- pred add_special_preds(tvarset::in, mer_type::in, type_ctor::in,
     hlds_type_body::in, prog_context::in, import_status::in,
     module_info::in, module_info::out) is det.
 
@@ -167,7 +167,7 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
     ).
 
 :- pred add_special_pred_list(list(special_pred_id)::in, tvarset::in,
-    (type)::in, type_ctor::in, hlds_type_body::in, prog_context::in,
+    mer_type::in, type_ctor::in, hlds_type_body::in, prog_context::in,
     import_status::in, module_info::in, module_info::out) is det.
 
 add_special_pred_list([], _, _, _, _, _, _, !ModuleInfo).
@@ -178,7 +178,7 @@ add_special_pred_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
     add_special_pred_list(SpecialPredIds, TVarSet, Type,
         TypeCtor, Body, Context, Status, !ModuleInfo).
 
-:- pred add_special_pred(special_pred_id::in, tvarset::in, (type)::in,
+:- pred add_special_pred(special_pred_id::in, tvarset::in, mer_type::in,
     type_ctor::in, hlds_type_body::in, prog_context::in, import_status::in,
     module_info::in, module_info::out) is det.
 
@@ -285,7 +285,8 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     % These types need to have the builtin qualifier removed
     % so that their special predicates type check.
     %
-:- func adjust_types_with_special_preds_in_private_builtin(type) = (type).
+:- func adjust_types_with_special_preds_in_private_builtin(mer_type)
+    = mer_type.
 
 adjust_types_with_special_preds_in_private_builtin(Type) = NormalizedType :-
     ( type_to_ctor_and_args(Type, TypeCtor, []) ->
@@ -299,7 +300,7 @@ adjust_types_with_special_preds_in_private_builtin(Type) = NormalizedType :-
     ).
 
 :- pred add_special_pred_decl_list(list(special_pred_id)::in, tvarset::in,
-    (type)::in, type_ctor::in, hlds_type_body::in, prog_context::in,
+    mer_type::in, type_ctor::in, hlds_type_body::in, prog_context::in,
     import_status::in, module_info::in, module_info::out) is det.
 
 add_special_pred_decl_list([], _, _, _, _, _, _, !ModuleInfo).
@@ -310,7 +311,7 @@ add_special_pred_decl_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
     add_special_pred_decl_list(SpecialPredIds, TVarSet, Type,
         TypeCtor, TypeBody, Context, Status, !ModuleInfo).
 
-:- pred add_special_pred_decl(special_pred_id::in, tvarset::in, (type)::in,
+:- pred add_special_pred_decl(special_pred_id::in, tvarset::in, mer_type::in,
     type_ctor::in, hlds_type_body::in, prog_context::in, import_status::in,
     module_info::in, module_info::out) is det.
 

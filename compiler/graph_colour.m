@@ -53,7 +53,7 @@ group_elements(Constraints, Colours) :-
 %       true
 %   ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Iterate the assignment of a new colour until all constraints
     % are satisfied.
@@ -73,7 +73,7 @@ find_all_colours(ConstraintList, Vars, ColourList) :-
         ColourList = [Colour | ColourList0]
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred next_colour(set(T)::in, list(set(T))::in,
     list(set(T))::out, set(T)::out) is det.
@@ -130,7 +130,7 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
         set__init(SameColour)
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Divide_constraints takes a var and a list of sets of var, and divides
     % the list into two lists: a list of sets containing the given variable
@@ -160,7 +160,7 @@ divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
         NC = [S | NC0]
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Choose_var/3, given a set of variables, chooses one, returns it
     % and the set with that variable removed.
@@ -175,10 +175,10 @@ choose_var(Vars0, Var, Vars) :-
         unexpected(this_file, "choose_var: no vars!")
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "graph_colour.m".
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

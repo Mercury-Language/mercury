@@ -97,8 +97,8 @@
     % for generality.)
     %
 :- pred create_variables(list(prog_var)::in, prog_varset::in,
-    map(prog_var, type)::in, prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out,
+    vartypes::in, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
     % Return all the variables in the goal.
@@ -143,7 +143,7 @@
     % variable.
     %
 :- pred extra_nonlocal_typeinfos(rtti_varmaps::in,
-    map(prog_var, type)::in, existq_tvars::in,
+    vartypes::in, existq_tvars::in,
     set(prog_var)::in, set(prog_var)::out) is det.
 
     % See whether the goal is a branched structure.
@@ -208,7 +208,7 @@
     %
 :- pred switch_to_disjunction(prog_var::in, list(case)::in,
     instmap::in, list(hlds_goal)::out, prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out,
+    vartypes::in, vartypes::out,
     module_info::in, module_info::out) is det.
 
     % Convert a case into a conjunction by adding a tag test
@@ -217,7 +217,7 @@
     %
 :- pred case_to_disjunct(prog_var::in, cons_id::in, hlds_goal::in,
     instmap::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out,
+    vartypes::in, vartypes::out,
     module_info::in, module_info::out) is det.
 
     % Transform an if-then-else into ( Cond, Then ; \+ Cond, Else ),
@@ -266,7 +266,7 @@
     %
 :- pred generate_simple_call(module_name::in, string::in,
     pred_or_func::in, mode_no::in, determinism::in, list(prog_var)::in,
-    list(goal_feature)::in, assoc_list(prog_var, inst)::in,
+    list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term__context::in, hlds_goal::out) is det.
 
     % generate_foreign_proc(ModuleName, ProcName, PredOrFunc,
@@ -287,7 +287,7 @@
     pred_or_func::in, mode_no::in, determinism::in,
     pragma_foreign_proc_attributes::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in, string::in,
-    string::in, list(goal_feature)::in, assoc_list(prog_var, inst)::in,
+    string::in, list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term__context::in, hlds_goal::out) is det.
 
     % Generate a cast goal.  The input and output insts are just ground.
@@ -300,7 +300,7 @@
     % any, or casting between enumeration types and ints.
     %
 :- pred generate_cast(cast_type::in, prog_var::in, prog_var::in,
-    (inst)::in, (inst)::in, prog_context::in, hlds_goal::out) is det.
+    mer_inst::in, mer_inst::in, prog_context::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -372,7 +372,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTypes, !VarSet,
     GoalExpr = unify(OrigVar, var(NewVar), Mode, UnifyInfo, UnifyContext),
     set__list_to_set([OrigVar, NewVar], NonLocals),
     instmap_delta_from_assoc_list([OrigVar - NewInst], UnifyInstMapDelta),
-    goal_info_init(NonLocals, UnifyInstMapDelta, det, pure,
+    goal_info_init(NonLocals, UnifyInstMapDelta, det, purity_pure,
         term__context_init, GoalInfo),
     Goal = GoalExpr - GoalInfo,
     !:RevUnifies = [Goal | !.RevUnifies],
@@ -1272,7 +1272,7 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
     instmap_delta_bind_var_to_functor(Var, VarType, ConsId, InstMap,
         ExtraInstMapDelta0, ExtraInstMapDelta, !ModuleInfo),
     goal_info_init(NonLocals, ExtraInstMapDelta,
-        semidet, pure, ExtraGoalInfo),
+        semidet, purity_pure, ExtraGoalInfo),
 
     % Conjoin the test and the rest of the case.
     goal_to_conj_list(CaseGoal, CaseGoalConj),
@@ -1521,7 +1521,8 @@ generate_cast(CastType, InArg, OutArg, Context, Goal) :-
 generate_cast(CastType, InArg, OutArg, InInst, OutInst, Context, Goal) :-
     set__list_to_set([InArg, OutArg], NonLocals),
     instmap_delta_from_assoc_list([OutArg - OutInst], InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, pure, Context, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, Context,
+        GoalInfo),
     Goal = generic_call(cast(CastType), [InArg, OutArg],
         [in_mode(InInst), out_mode(OutInst)], det) - GoalInfo.
 

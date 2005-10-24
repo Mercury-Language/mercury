@@ -430,7 +430,7 @@ add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
         complete_inst_graph_node(ModuleInfo, BaseVars, NewVar, !HI)
     ).
 
-:- pred find_var_with_type(prog_var::in, (type)::in, inst_graph::in,
+:- pred find_var_with_type(prog_var::in, mer_type::in, inst_graph::in,
     vartypes::in, list(prog_var)::in, prog_var::out) is semidet.
 
 find_var_with_type(Var0, Type, InstGraph, VarTypes, BaseVars, Var) :-
@@ -445,14 +445,14 @@ find_var_with_type(Var0, Type, InstGraph, VarTypes, BaseVars, Var) :-
         find_var_with_type(Var1, Type, InstGraph, VarTypes, BaseVars, Var)
     ).
 
-:- pred same_type((type)::in, (type)::in) is semidet.
+:- pred same_type(mer_type::in, mer_type::in) is semidet.
 
 same_type(A0, B0) :-
     A = strip_kind_annotation(A0),
     B = strip_kind_annotation(B0),
     same_type_2(A, B).
 
-:- pred same_type_2((type)::in, (type)::in) is semidet.
+:- pred same_type_2(mer_type::in, mer_type::in) is semidet.
 
 same_type_2(variable(_, _), variable(_, _)).
 same_type_2(defined(Name, ArgsA, _), defined(Name, ArgsB, _)) :-
@@ -470,7 +470,7 @@ same_type_2(tuple(ArgsA, _), tuple(ArgsB, _)) :-
 same_type_2(apply_n(_, ArgsA, _), apply_n(_, ArgsB, _)) :-
     same_type_list(ArgsA, ArgsB).
 
-:- pred same_type_list(list(type)::in, list(type)::in) is semidet.
+:- pred same_type_list(list(mer_type)::in, list(mer_type)::in) is semidet.
 
 same_type_list([], []).
 same_type_list([A | As], [B | Bs]) :-

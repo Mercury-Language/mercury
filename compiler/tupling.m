@@ -442,7 +442,7 @@ candidate_headvars_of_proc(ModuleInfo, PredProcId @ proc(PredId, ProcId),
         HeadVars, ArgModes).
 
 :- func candidate_headvars_of_proc_2(pred_proc_id, prog_varset, vartypes,
-    module_info, prog_var, (mode))
+    module_info, prog_var, mer_mode)
     = pair(string, candidate_headvar_origins) is semidet.
 
 candidate_headvars_of_proc_2(PredProcId, VarSet, VarTypes, ModuleInfo,
@@ -1601,7 +1601,7 @@ combine_inserts(A, [B | Bs], [C | Cs]) :-
 
                 % The type of the cell variable created by the transformation.
                 % This will be a tuple type.
-                tuple_cons_type         :: (type),
+                tuple_cons_type         :: mer_type,
 
                 % The argument positions of the original procedure
                 % which were tupled.

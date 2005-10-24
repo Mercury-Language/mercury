@@ -1929,7 +1929,7 @@ accumulate_modules(TypeCtor, !Modules) :-
     % Given a type, return the set of user-defined type constructors
     % occurring in it.
     %
-:- pred type_to_type_ctor_set((type)::in, set(type_ctor)::in,
+:- pred type_to_type_ctor_set(mer_type::in, set(type_ctor)::in,
     set(type_ctor)::out) is det.
 
 type_to_type_ctor_set(Type, !TypeCtors) :-
@@ -3075,7 +3075,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             !IO),
         module_name_to_file_name(ModuleName, ".java_date", no,
             JavaDateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".pic_o", no, PicObjFileName, !IO),
+        module_name_to_file_name(ModuleName, ".pic_o", no, PicObjFileName,
+            !IO),
         module_name_to_file_name(ModuleName, ".int0", no, Int0FileName, !IO),
         module_name_to_split_c_file_pattern(ModuleName, ".$O",
             SplitObjPattern, !IO),
@@ -3128,7 +3129,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ),
 
         globals__io_lookup_bool_option(use_opt_files, UseOptFiles, !IO),
-        globals__io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
+        globals__io_lookup_bool_option(intermodule_optimization, Intermod,
+            !IO),
         globals__io_lookup_accumulating_option(intermod_directories,
             IntermodDirs, !IO),
 
@@ -3748,7 +3750,8 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps, !IO) :-
     (
         TransOpt = yes,
         globals__io_lookup_bool_option(verbose, Verbose, !IO),
-        module_name_to_file_name(ModuleName, ".d", no, DependencyFileName, !IO),
+        module_name_to_file_name(ModuleName, ".d", no, DependencyFileName,
+            !IO),
         maybe_write_string(Verbose, "% Reading auto-dependency file `", !IO),
         maybe_write_string(Verbose, DependencyFileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -5034,7 +5037,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     module_name_to_file_name(ModuleName, ".init", yes, InitFileName, !IO),
     module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName, !IO),
     module_name_to_file_name(ModuleName, "_init.s", no, InitAsmFileName, !IO),
-    module_name_to_file_name(ModuleName, "_init.$O", yes, InitObjFileName, !IO),
+    module_name_to_file_name(ModuleName, "_init.$O", yes, InitObjFileName,
+        !IO),
     module_name_to_file_name(ModuleName, "_init.pic_o", yes,
         InitPicObjFileName, !IO),
 
@@ -5174,7 +5178,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         MaybeModuleDepsVar = ""
     ),
 
-    module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName, !IO),
+    module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName,
+        !IO),
     module_name_to_lib_file_name("lib", ModuleName, ".$A", yes, LibFileName,
         !IO),
     module_name_to_lib_file_name("lib", ModuleName,
@@ -7161,7 +7166,8 @@ report_error_duplicate_module_decl(ModuleName - Context, !IO) :-
     io__write_string(ChildModule, !IO),
     io__write_string("' declared as both\n", !IO),
     prog_out__write_context(Context, !IO),
-    io__write_string("  a separate sub-module and a nested sub-module.\n", !IO),
+    io__write_string("  a separate sub-module and a nested sub-module.\n",
+        !IO),
     io__set_exit_status(1, !IO).
 
 :- pred report_items_after_end_module(prog_context::in, io::di, io::uo) is det.

@@ -1091,7 +1091,7 @@ output_instr(calli(Signature), !Info, !IO) :-
 	output_name_signature_and_call_conv(Signature, no, "\t\t", !Info, !IO).
 output_instr(ret, !Info, !IO) :-
 	io__write_string("ret", !IO).
-output_instr((and), !Info, !IO) :-
+output_instr(bitwise_and, !Info, !IO) :-
 	io__write_string("and", !IO).
 output_instr(arglist, !Info, !IO) :-
 	io__write_string("arglist", !IO).
@@ -1119,9 +1119,9 @@ output_instr(neg, !Info, !IO) :-
 	io__write_string("neg", !IO).
 output_instr(nop, !Info, !IO) :-
 	io__write_string("nop", !IO).
-output_instr((not), !Info, !IO) :-
+output_instr(bitwise_not, !Info, !IO) :-
 	io__write_string("not", !IO).
-output_instr((or), !Info, !IO) :-
+output_instr(bitwise_or, !Info, !IO) :-
 	io__write_string("or", !IO).
 output_instr(pop, !Info, !IO) :-
 	io__write_string("pop", !IO).
@@ -1131,7 +1131,7 @@ output_instr(tailcall, !Info, !IO) :-
 	io__write_string("tail.", !IO).
 output_instr(volatile, !Info, !IO) :-
 	io__write_string("volatile", !IO).
-output_instr(xor, !Info, !IO) :-
+output_instr(bitwise_xor, !Info, !IO) :-
 	io__write_string("xor", !IO).
 output_instr(ldlen, !Info, !IO) :-
 	io__write_string("ldlen", !IO).

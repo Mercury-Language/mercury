@@ -30,14 +30,14 @@
     item_status::in, maybe(pair(pred_id, proc_id))::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred do_add_new_proc(inst_varset::in, arity::in, list(mode)::in,
-    maybe(list(mode))::in, maybe(list(is_live))::in,
+:- pred do_add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
+    maybe(list(mer_mode))::in, maybe(list(is_live))::in,
     maybe(determinism)::in, prog_context::in, is_address_taken::in,
     pred_info::in, pred_info::out, proc_id::out) is det.
 
     % Add a mode declaration for a predicate.
     %
-:- pred module_add_mode(inst_varset::in, sym_name::in, list(mode)::in,
+:- pred module_add_mode(inst_varset::in, sym_name::in, list(mer_mode)::in,
     maybe(determinism)::in, import_status::in, prog_context::in,
     pred_or_func::in, bool::in, pair(pred_id, proc_id)::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -134,7 +134,7 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
     % to be reflected there too.
     %
 :- pred add_new_pred(tvarset::in, existq_tvars::in, sym_name::in,
-    list(type)::in, purity::in, prog_constraints::in,
+    list(mer_type)::in, purity::in, prog_constraints::in,
     pred_markers::in, prog_context::in, import_status::in,
     need_qualifier::in, pred_or_func::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -207,8 +207,8 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_builtin(pred_id::in, list(type)::in, pred_info::in, pred_info::out)
-    is det.
+:- pred add_builtin(pred_id::in, list(mer_type)::in,
+    pred_info::in, pred_info::out) is det.
 
     % For a builtin predicate, say foo/2, we add a clause
     %
@@ -321,7 +321,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
     PredProcId = PredId - ProcId.
 
-:- pred module_do_add_mode(inst_varset::in, arity::in, list(mode)::in,
+:- pred module_do_add_mode(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(determinism)::in, bool::in, prog_context::in,
     pred_info::in, pred_info::out, proc_id::out, io::di, io::uo) is det.
 

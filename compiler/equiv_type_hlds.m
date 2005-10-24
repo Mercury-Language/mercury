@@ -95,7 +95,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
         true
     ).
 
-:- pred add_type_ctors_to_set((type)::in,
+:- pred add_type_ctors_to_set(mer_type::in,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
 add_type_ctors_to_set(Type, !Set) :-
@@ -160,7 +160,7 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
         TVarSet = TVarSet0
     ),
     equiv_type__finish_recording_expanded_items(
-        item_id(type_body, TypeCtor), EquivTypeInfo, !MaybeRecompInfo),
+        item_id(type_body_item, TypeCtor), EquivTypeInfo, !MaybeRecompInfo),
     hlds_data__set_type_defn_body(Body, !Defn),
     hlds_data__set_type_defn_tvarset(TVarSet, !Defn).
 
@@ -391,7 +391,7 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
 % insts and modes.  This means we don't need to hash-cons those
 % insts to avoid losing sharing.
 
-:- pred replace_in_modes(eqv_map::in, list(mode)::in, list(mode)::out,
+:- pred replace_in_modes(eqv_map::in, list(mer_mode)::in, list(mer_mode)::out,
     bool::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
 
@@ -405,7 +405,7 @@ replace_in_modes(EqvMap, List0 @ [Mode0 | Modes0], List, Changed,
     ; Changed = no, List = List0
     ).
 
-:- pred replace_in_mode(eqv_map::in, (mode)::in, (mode)::out, bool::out,
+:- pred replace_in_mode(eqv_map::in, mer_mode::in, mer_mode::out, bool::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
 replace_in_mode(EqvMap, Mode0 @ (InstA0 -> InstB0), Mode,
@@ -423,7 +423,7 @@ replace_in_mode(EqvMap, Mode0 @ user_defined_mode(Name, Insts0), Mode,
     ; Changed = no, Mode = Mode0
     ).
 
-:- pred replace_in_inst(eqv_map::in, (inst)::in, (inst)::out,
+:- pred replace_in_inst(eqv_map::in, mer_inst::in, mer_inst::out,
     bool::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
 
@@ -439,7 +439,7 @@ replace_in_inst(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
         Inst = Inst1
     ).
 
-:- pred replace_in_inst_2(eqv_map::in, (inst)::in, (inst)::out, bool::out,
+:- pred replace_in_inst_2(eqv_map::in, mer_inst::in, mer_inst::out, bool::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
 
 replace_in_inst_2(_, any(_) @ Inst, Inst, no, !TVarSet, !Cache).
@@ -574,7 +574,7 @@ replace_in_bound_insts(EqvMap, List0 @ [functor(ConsId, Insts0) | BoundInsts0],
     ; Changed = no, List = List0
     ).
 
-:- pred replace_in_insts(eqv_map::in, list(inst)::in, list(inst)::out,
+:- pred replace_in_insts(eqv_map::in, list(mer_inst)::in, list(mer_inst)::out,
     bool::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
 
@@ -590,13 +590,13 @@ replace_in_insts(EqvMap, List0 @ [Inst0 | Insts0], List, Changed,
 
     % We hash-cons (actually map-cons) insts created by this pass
     % to avoid losing sharing.
-:- type inst_cache == map(inst, inst).
+:- type inst_cache == map(mer_inst, mer_inst).
 
-:- pred hash_cons_inst((inst)::in, (inst)::out,
+:- pred hash_cons_inst(mer_inst::in, mer_inst::out,
     inst_cache::in, inst_cache::out) is det.
 
 hash_cons_inst(Inst0, Inst, !Cache) :-
-    ( Inst1 = map__search(!.Cache, Inst0) ->
+    ( map__search(!.Cache, Inst0, Inst1) ->
         Inst = Inst1
     ;
         Inst = Inst0,

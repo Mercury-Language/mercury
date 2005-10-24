@@ -524,18 +524,18 @@
 :- type pragma_c_decl
     --->    pragma_c_arg_decl(
                 % This local variable corresponds to a procedure arg.
-                type,   % The Mercury type of the argument.
-                string, % The string which is used to describe the type
-                        % in the C code.
-                string  % The name of the local variable that will hold
-                        % the value of that argument inside the C block.
+                mer_type,   % The Mercury type of the argument.
+                string,     % The string which is used to describe the type
+                            % in the C code.
+                string      % The name of the local variable that will hold
+                            % the value of that argument inside the C block.
             )
         ;   pragma_c_struct_ptr_decl(
                 % This local variable holds the address of the save struct.
-                string, % The name of the C struct tag of the save struct;
-                        % the type of the local variable will be a pointer
-                        % to a struct with this tag.
-                string  % The name of the local variable.
+                string,     % The name of the C struct tag of the save struct;
+                            % the type of the local variable will be a pointer
+                            % to a struct with this tag.
+                string      % The name of the local variable.
             ).
 
     % A pragma_c_component holds one component of a pragma_c instruction.
@@ -561,7 +561,7 @@
                 in_foreign_lang_var_name    :: string,
 
                 % The type of the Mercury variable being passed.
-                in_var_type                 :: (type),
+                in_var_type                 :: mer_type,
 
                 % Whether in_var_type is a dummy type.
                 in_var_type_is_dummy        :: bool,
@@ -570,7 +570,7 @@
                 % If the foreign_proc was inlined in some other procedure,
                 % then the in_var_type can be an instance of in_original_type;
                 % otherwise, the two should be the same.
-                in_original_type            :: (type),
+                in_original_type            :: mer_type,
 
                 % The value being passed.
                 in_arg_value                :: rval,
@@ -589,14 +589,14 @@
                 out_arg_dest                :: lval,
 
                 % The type of the Mercury variable being passed.
-                out_var_type                :: (type),
+                out_var_type                :: mer_type,
 
                 % Whether out_var_type is a dummy type.
                 out_var_type_is_dummy       :: bool,
 
                 % The type of the argument in original foreign_proc procedure;
                 % see in_original_type above.
-                out_original_type           :: (type),
+                out_original_type           :: mer_type,
 
                 % The name of the foreign language variable.
                 out_var_name                :: string,
@@ -665,7 +665,7 @@
     ;       hp                  % A stored heap pointer.
     ;       trail_ptr           % A stored trail pointer.
     ;       ticket              % A stored ticket.
-    ;       var(prog_var, string, type, llds_inst)
+    ;       var(prog_var, string, mer_type, llds_inst)
                                 % A variable (the var number and name are
                                 % for execution tracing; we have to store
                                 % the name here because when we want to use
@@ -690,7 +690,7 @@
     %
 :- type llds_inst
     --->    ground
-    ;       partial((inst)).
+    ;       partial(mer_inst).
 
 :- func stack_slot_to_lval(stack_slot) = lval.
 :- func key_stack_slot_to_lval(_, stack_slot) = lval.
@@ -1140,7 +1140,7 @@ llds__unop_return_type(mkbody, word).
 llds__unop_return_type(unmkbody, word).
 llds__unop_return_type(hash_string, integer).
 llds__unop_return_type(bitwise_complement, integer).
-llds__unop_return_type(not, bool).
+llds__unop_return_type(logical_not, bool).
 
 llds__unop_arg_type(mktag, word).
 llds__unop_arg_type(tag, word).
@@ -1150,20 +1150,20 @@ llds__unop_arg_type(mkbody, word).
 llds__unop_arg_type(unmkbody, word).
 llds__unop_arg_type(hash_string, string).
 llds__unop_arg_type(bitwise_complement, integer).
-llds__unop_arg_type(not, bool).
+llds__unop_arg_type(logical_not, bool).
 
-llds__binop_return_type((+), integer).
-llds__binop_return_type((-), integer).
-llds__binop_return_type((*), integer).
-llds__binop_return_type((/), integer).
-llds__binop_return_type((mod), integer).
-llds__binop_return_type((<<), integer).
-llds__binop_return_type((>>), integer).
-llds__binop_return_type((&), integer).
-llds__binop_return_type(('|'), integer).
-llds__binop_return_type((^), integer).
-llds__binop_return_type((and), bool).
-llds__binop_return_type((or), bool).
+llds__binop_return_type(int_add, integer).
+llds__binop_return_type(int_sub, integer).
+llds__binop_return_type(int_mul, integer).
+llds__binop_return_type(int_div, integer).
+llds__binop_return_type(int_mod, integer).
+llds__binop_return_type(unchecked_left_shift, integer).
+llds__binop_return_type(unchecked_right_shift, integer).
+llds__binop_return_type(bitwise_and, integer).
+llds__binop_return_type(bitwise_or, integer).
+llds__binop_return_type(bitwise_xor, integer).
+llds__binop_return_type(logical_and, bool).
+llds__binop_return_type(logical_or, bool).
 llds__binop_return_type(eq, bool).
 llds__binop_return_type(ne, bool).
 llds__binop_return_type(array_index(_Type), word).
@@ -1173,10 +1173,10 @@ llds__binop_return_type(str_lt, bool).
 llds__binop_return_type(str_gt, bool).
 llds__binop_return_type(str_le, bool).
 llds__binop_return_type(str_ge, bool).
-llds__binop_return_type((<), bool).
-llds__binop_return_type((>), bool).
-llds__binop_return_type((<=), bool).
-llds__binop_return_type((>=), bool).
+llds__binop_return_type(int_lt, bool).
+llds__binop_return_type(int_gt, bool).
+llds__binop_return_type(int_le, bool).
+llds__binop_return_type(int_ge, bool).
 llds__binop_return_type(unsigned_le, bool).
 llds__binop_return_type(float_plus, float).
 llds__binop_return_type(float_minus, float).

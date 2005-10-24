@@ -295,9 +295,9 @@ build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
         require_in_regs(InputArgs, !IntervalInfo),
         require_access(InputArgs, !IntervalInfo)
     ;
-		module_info_get_globals(ModuleInfo, Globals),
-		call_gen__generic_call_info(Globals, GenericCall,
-			length(InputArgs), _, GenericVarsArgInfos, _, _),
+        module_info_get_globals(ModuleInfo, Globals),
+        call_gen__generic_call_info(Globals, GenericCall,
+            length(InputArgs), _, GenericVarsArgInfos, _, _),
         assoc_list__keys(GenericVarsArgInfos, GenericVars),
         list__append(GenericVars, InputArgs, Inputs),
         build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,

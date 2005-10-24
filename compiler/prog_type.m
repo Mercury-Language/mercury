@@ -35,16 +35,16 @@
 
     % Succeeds iff the given type is a variable.
     %
-:- pred type_is_var((type)::in) is semidet.
+:- pred type_is_var(mer_type::in) is semidet.
 
     % Succeeds iff the given type is not a variable.
     %
-:- pred type_is_nonvar((type)::in) is semidet.
+:- pred type_is_nonvar(mer_type::in) is semidet.
 
     % Succeeds iff the given type is a higher-order predicate or function
     % type.
     %
-:- pred type_is_higher_order((type)::in) is semidet.
+:- pred type_is_higher_order(mer_type::in) is semidet.
 
     % type_is_higher_order(Type, Purity, PredOrFunc, ArgTypes, EvalMeth):
     % succeeds iff Type is a higher-order predicate or function type with
@@ -52,57 +52,57 @@
     % appended to the end of the argument types), purity, and
     % evaluation method.
     % 
-:- pred type_is_higher_order((type)::in, purity::out, pred_or_func::out,
-    lambda_eval_method::out, list(type)::out) is semidet.
+:- pred type_is_higher_order(mer_type::in, purity::out, pred_or_func::out,
+    lambda_eval_method::out, list(mer_type)::out) is semidet.
 
     % Succeed if the given type is a tuple type, returning
     % the argument types.
     %
-:- pred type_is_tuple((type)::in, list(type)::out) is semidet.
+:- pred type_is_tuple(mer_type::in, list(mer_type)::out) is semidet.
 
     % Remove the kind annotation at the top-level if there is one,
     % otherwise return the type unchanged.
     %
-:- func strip_kind_annotation(type) = (type).
+:- func strip_kind_annotation(mer_type) = mer_type.
     
 %-----------------------------------------------------------------------------%
 
     % Succeeds iff the given type is ground (that is, contains no type
     % variables).
     %
-:- pred type_is_ground((type)::in) is semidet.
+:- pred type_is_ground(mer_type::in) is semidet.
 
     % Succeeds iff the given type is not ground.
     %
-:- pred type_is_nonground((type)::in) is semidet.
+:- pred type_is_nonground(mer_type::in) is semidet.
 
     % Succeeds iff the given type with the substitution applied is ground.
     %
-:- pred type_is_ground((type)::in, tsubst::in) is semidet.
+:- pred type_is_ground(mer_type::in, tsubst::in) is semidet.
 
     % Succeeds iff the given type with the substitution applied is not
     % ground.
     %
-:- pred type_is_nonground((type)::in, tsubst::in) is semidet.
+:- pred type_is_nonground(mer_type::in, tsubst::in) is semidet.
 
     % type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs)
     % Check if the principal type constructor of Type is of variable arity.
     % If yes, return the type constructor as TypeCtor and its args as
     % TypeArgs. If not, fail.
     %
-:- pred type_has_variable_arity_ctor((type)::in, type_ctor::out,
-    list(type)::out) is semidet.
+:- pred type_has_variable_arity_ctor(mer_type::in, type_ctor::out,
+    list(mer_type)::out) is semidet.
 
     % Given a non-variable type, return its type-id and argument types.
     % 
-:- pred type_to_ctor_and_args((type)::in, type_ctor::out, list(type)::out)
-    is semidet.
+:- pred type_to_ctor_and_args(mer_type::in, type_ctor::out,
+    list(mer_type)::out) is semidet.
     
     % type_ctor_is_higher_order(TypeCtor, PredOrFunc) succeeds iff
     % TypeCtor is a higher-order predicate or function type.
     %
-:- pred type_ctor_is_higher_order(type_ctor::in, purity::out, pred_or_func::out,
-    lambda_eval_method::out) is semidet.
+:- pred type_ctor_is_higher_order(type_ctor::in, purity::out,
+    pred_or_func::out, lambda_eval_method::out) is semidet.
 
     % type_ctor_is_tuple(TypeCtor) succeeds iff TypeCtor is a tuple type.
     %
@@ -115,86 +115,88 @@
     % Convert a list of types to a list of vars.  Fail if any of them are
     % not variables.
     %
-:- pred prog_type.type_list_to_var_list(list(type)::in, list(tvar)::out)
+:- pred prog_type.type_list_to_var_list(list(mer_type)::in, list(tvar)::out)
     is semidet.
 
     % Convert a list of vars into a list of variable types.
     %
 :- pred prog_type.var_list_to_type_list(tvar_kind_map::in, list(tvar)::in,
-    list(type)::out) is det.
+    list(mer_type)::out) is det.
 
     % Return a list of the type variables of a type, in order of their
     % first occurrence in a depth-first, left-right traversal.
     %
-:- pred prog_type.vars((type)::in, list(tvar)::out) is det.
+:- pred prog_type.vars(mer_type::in, list(tvar)::out) is det.
 
     % Return a list of the type variables of a list of types, in order
     % of their first occurrence in a depth-first, left-right traversal.
     %
-:- pred prog_type.vars_list(list(type)::in, list(tvar)::out) is det.
+:- pred prog_type.vars_list(list(mer_type)::in, list(tvar)::out) is det.
 
     % Nondeterministically return the variables in a type.
     %
-:- pred type_contains_var((type)::in, tvar::out) is nondet.
+:- pred type_contains_var(mer_type::in, tvar::out) is nondet.
 
     % Nondeterministically return the variables in a list of types.
     %
-:- pred type_list_contains_var(list(type)::in, tvar::out) is nondet.
+:- pred type_list_contains_var(list(mer_type)::in, tvar::out) is nondet.
 
     % Given a type_ctor and a list of argument types,
     % construct a type.
     %
-:- pred construct_type(type_ctor::in, list(type)::in, (type)::out) is det.
+:- pred construct_type(type_ctor::in, list(mer_type)::in, mer_type::out)
+    is det.
 
 :- pred construct_higher_order_type(purity::in, pred_or_func::in,
-    lambda_eval_method::in, list(type)::in, (type)::out) is det.
+    lambda_eval_method::in, list(mer_type)::in, mer_type::out) is det.
 
 :- pred construct_higher_order_pred_type(purity::in, lambda_eval_method::in,
-    list(type)::in, (type)::out) is det.
+    list(mer_type)::in, mer_type::out) is det.
 
 :- pred construct_higher_order_func_type(purity::in, lambda_eval_method::in,
-    list(type)::in, (type)::in, (type)::out) is det.
+    list(mer_type)::in, mer_type::in, mer_type::out) is det.
     
     % Make error messages more readable by removing "builtin."
     % qualifiers.
     %
-:- pred strip_builtin_qualifiers_from_type((type)::in, (type)::out) is det.
+:- pred strip_builtin_qualifiers_from_type(mer_type::in, mer_type::out) is det.
 
-:- pred strip_builtin_qualifiers_from_type_list(list(type)::in,
-    list(type)::out) is det.
+:- pred strip_builtin_qualifiers_from_type_list(list(mer_type)::in,
+    list(mer_type)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
 % Type substitutions.
 %
 
-:- pred apply_rec_subst_to_type(tsubst::in, (type)::in, (type)::out) is det.
-
-:- pred apply_rec_subst_to_type_list(tsubst::in, list(type)::in,
-    list(type)::out) is det.
-
-:- pred apply_rec_subst_to_tvar(tvar_kind_map::in, tsubst::in,
-    tvar::in, (type)::out) is det.
-
-:- pred apply_rec_subst_to_tvar_list(tvar_kind_map::in, tsubst::in,
-    list(tvar)::in, list(type)::out) is det.
-
-:- pred apply_subst_to_type(tsubst::in, (type)::in, (type)::out) is det.
-
-:- pred apply_subst_to_type_list(tsubst::in, list(type)::in, list(type)::out)
+:- pred apply_rec_subst_to_type(tsubst::in, mer_type::in, mer_type::out)
     is det.
 
+:- pred apply_rec_subst_to_type_list(tsubst::in, list(mer_type)::in,
+    list(mer_type)::out) is det.
+
+:- pred apply_rec_subst_to_tvar(tvar_kind_map::in, tsubst::in,
+    tvar::in, mer_type::out) is det.
+
+:- pred apply_rec_subst_to_tvar_list(tvar_kind_map::in, tsubst::in,
+    list(tvar)::in, list(mer_type)::out) is det.
+
+:- pred apply_subst_to_type(tsubst::in, mer_type::in, mer_type::out) is det.
+
+:- pred apply_subst_to_type_list(tsubst::in, list(mer_type)::in,
+    list(mer_type)::out) is det.
+
 :- pred apply_subst_to_tvar(tvar_kind_map::in, tsubst::in,
-    tvar::in, (type)::out) is det.
+    tvar::in, mer_type::out) is det.
 
 :- pred apply_subst_to_tvar_list(tvar_kind_map::in, tsubst::in,
-    list(tvar)::in, list(type)::out) is det.
+    list(tvar)::in, list(mer_type)::out) is det.
 
-:- pred apply_variable_renaming_to_type(tvar_renaming::in, (type)::in,
-    (type)::out) is det.
+:- pred apply_variable_renaming_to_type(tvar_renaming::in, mer_type::in,
+    mer_type::out) is det.
 
-:- pred apply_variable_renaming_to_type_list(tvar_renaming::in, list(type)::in,
-    list(type)::out) is det.
+:- pred apply_variable_renaming_to_type_list(tvar_renaming::in,
+    list(mer_type)::in, list(mer_type)::out) is det.
 
 :- pred apply_variable_renaming_to_tvar(tvar_renaming::in, tvar::in, tvar::out)
     is det.
@@ -237,15 +239,12 @@
 :- pred apply_variable_renaming_to_prog_constraint(tvar_renaming::in,
     prog_constraint::in, prog_constraint::out) is det.
 
-    % constraint_list_get_tvars(Constraints, TVars):
-    %   return the list of type variables contained in a
-    %   list of constraints
+    % Return the list of type variables contained in a list of constraints.
     %
 :- pred constraint_list_get_tvars(list(prog_constraint)::in, list(tvar)::out)
     is det.
     
-    % constraint_get_tvars(Constraint, TVars):
-    %   return the list of type variables contained in a constraint.
+    % Return the list of type variables contained in a constraint.
     %
 :- pred constraint_get_tvars(prog_constraint::in, list(tvar)::out) is det.
 
@@ -356,20 +355,20 @@ type_to_ctor_and_args(higher_order(Args0, MaybeRet, Purity, EvalMethod),
     ),
     SymName0 = unqualified(PorFStr),
     (
-        EvalMethod = (aditi_bottom_up),
+        EvalMethod = lambda_aditi_bottom_up,
         insert_module_qualifier("aditi_bottom_up", SymName0, SymName1)
     ;
-        EvalMethod = normal,
+        EvalMethod = lambda_normal,
         SymName1 = SymName0
     ),
     (
-        Purity = (pure),
+        Purity = purity_pure,
         SymName = SymName1
     ;
-        Purity = (semipure),
+        Purity = purity_semipure,
         insert_module_qualifier("semipure", SymName1, SymName)
     ;
-        Purity = (impure),
+        Purity = purity_impure,
         insert_module_qualifier("impure", SymName1, SymName)
     ).
 type_to_ctor_and_args(tuple(Args, _), unqualified("{}") - Arity, Args) :-
@@ -397,21 +396,21 @@ get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
         SymName = qualified(unqualified(Qualifier), PorFStr),
         (
             Qualifier = "aditi_bottom_up",
-            EvalMethod = (aditi_bottom_up),
-            Purity = (pure)
+            EvalMethod = lambda_aditi_bottom_up,
+            Purity = purity_pure
         ;
             Qualifier = "impure",
-            Purity = (impure),
-            EvalMethod = normal
+            Purity = purity_impure,
+            EvalMethod = lambda_normal
         ;
             Qualifier = "semipure",
-            Purity = (semipure),
-            EvalMethod = normal
+            Purity = purity_semipure,
+            EvalMethod = lambda_normal
         )
     ;
         SymName = unqualified(PorFStr),
-        EvalMethod = normal,
-        Purity = (pure)
+        EvalMethod = lambda_normal,
+        Purity = purity_pure
     ).
 
 type_ctor_is_tuple(unqualified("{}") - _).
@@ -434,7 +433,7 @@ prog_type.vars(Type, TVars) :-
     list.reverse(RevTVars, TVarsDups),
     list.remove_dups(TVarsDups, TVars).
 
-:- pred prog_type.vars_2((type)::in, list(tvar)::in, list(tvar)::out) is det.
+:- pred prog_type.vars_2(mer_type::in, list(tvar)::in, list(tvar)::out) is det.
 
 prog_type.vars_2(variable(Var, _), Vs, [Var | Vs]).
 prog_type.vars_2(defined(_, Args, _), !V) :-
@@ -461,8 +460,8 @@ prog_type.vars_list(Types, TVars) :-
     list.reverse(RevTVars, TVarsDups),
     list.remove_dups(TVarsDups, TVars).
 
-:- pred prog_type.vars_list_2(list(type)::in, list(tvar)::in, list(tvar)::out)
-    is det.
+:- pred prog_type.vars_list_2(list(mer_type)::in, list(tvar)::in,
+    list(tvar)::out) is det.
 
 prog_type.vars_list_2([], !V).
 prog_type.vars_list_2([Type | Types], !V) :-
@@ -524,7 +523,8 @@ construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes, Type) :-
 construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, Type) :-
     Type = higher_order(ArgTypes, no, Purity, EvalMethod).
 
-construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType, Type) :-
+construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
+        Type) :-
     Type = higher_order(ArgTypes, yes(RetType), Purity, EvalMethod).
 
 strip_builtin_qualifiers_from_type(variable(Var, Kind), variable(Var, Kind)).
@@ -717,7 +717,8 @@ apply_variable_renaming_to_tvar_kind_map_2(Renaming, TVar0, Kind, !KindMap) :-
     apply_variable_renaming_to_tvar(Renaming, TVar0, TVar),
     svmap__det_insert(TVar, Kind, !KindMap).
 
-:- pred apply_type_args((type)::in, list(type)::in, (type)::out) is det.
+:- pred apply_type_args(mer_type::in, list(mer_type)::in, mer_type::out)
+    is det.
 
 apply_type_args(variable(TVar, Kind0), Args, apply_n(TVar, Args, Kind)) :-
     apply_type_args_to_kind(Kind0, Args, Kind).
@@ -741,7 +742,8 @@ apply_type_args(kinded(Type0, _), Args, Type) :-
     %   - it no longer corresponds to any explicit annotation given.
     apply_type_args(Type0, Args, Type).
 
-:- pred apply_type_args_to_kind(kind::in, list(type)::in, kind::out) is det.
+:- pred apply_type_args_to_kind(kind::in, list(mer_type)::in, kind::out)
+    is det.
 
 apply_type_args_to_kind(Kind, [], Kind).
 apply_type_args_to_kind(star, [_ | _], _) :-
@@ -755,7 +757,7 @@ apply_type_args_to_kind(arrow(Kind0, Kind1), [ArgType | ArgTypes], Kind) :-
 apply_type_args_to_kind(variable(_), [_ | _], _) :-
     unexpected(this_file, "unbound kind variable").
 
-:- pred ensure_type_has_kind(kind::in, (type)::in, (type)::out) is det.
+:- pred ensure_type_has_kind(kind::in, mer_type::in, mer_type::out) is det.
 
 ensure_type_has_kind(Kind, Type0, Type) :-
     ( get_type_kind(Type0) = Kind ->
@@ -832,6 +834,4 @@ get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 
 this_file = "prog_type.m".
 
-%-----------------------------------------------------------------------------%
-:- end_module prog_type.
 %-----------------------------------------------------------------------------%

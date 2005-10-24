@@ -1,8 +1,8 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % file: polyhedron.m
 % main author: juliensf
@@ -37,7 +37,7 @@
 % TODO:
 %	* See if using the double description method is any faster.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module libs.polyhedron.
 
@@ -51,13 +51,13 @@
 :- import_module set.
 :- import_module std_util.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type polyhedron. 
 
 :- type polyhedra == list(polyhedron).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% The `empty' polyhedron.  Equivalent to the constraint `false'.
 	%
@@ -178,8 +178,8 @@
 :- pred polyhedron.write_polyhedron(polyhedron::in, lp_varset::in, io::di,
 	io::uo) is det.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -193,7 +193,7 @@
 :- import_module svvarset.
 :- import_module varset.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% XXX The constructor eqns/1 should really be called something
 	% more meaningful.
@@ -202,7 +202,7 @@
 	--->	eqns(constraints)
 	;	empty_poly.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Creation of polyhedra.
 %
@@ -246,7 +246,7 @@ polyhedron.optimize(Varset, eqns(Constraints0), Result) :-
 		Result = eqns(Constraints)
 	).	
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Intersection
 %
@@ -260,7 +260,7 @@ polyhedron.intersection(eqns(MatrixA), eqns(MatrixB)) = eqns(Constraints) :-
 	restore_equalities(Constraints0, Constraints1),
 	Constraints = simplify_constraints(Constraints1).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Convex union.
 %
@@ -282,13 +282,15 @@ polyhedron.convex_union(Varset, MaxMatrixSize, PolyhedronA, PolyhedronB)
 		Polyhedron).
 
 polyhedron.convex_union(_, _, empty_poly, empty_poly, empty_poly).
-polyhedron.convex_union(_, _, eqns(Constraints), empty_poly, eqns(Constraints)).
-polyhedron.convex_union(_, _, empty_poly, eqns(Constraints), eqns(Constraints)).
+polyhedron.convex_union(_, _, eqns(Constraints), empty_poly,
+	eqns(Constraints)).
+polyhedron.convex_union(_, _, empty_poly, eqns(Constraints),
+	eqns(Constraints)).
 polyhedron.convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
 		eqns(ConstraintsB), Hull) :-
 	convex_hull([ConstraintsA, ConstraintsB], Hull, MaybeMaxSize, Varset).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Convex hull calculation.
 %
@@ -514,7 +516,7 @@ make_last_terms(OriginalVar, VarMap, !Terms) :-
 	NewVar = VarMap ^ elem(OriginalVar),
 	list.cons(NewVar - (-one), !Terms).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Approximation of polyhedron by a bounding box.
 %
@@ -523,7 +525,7 @@ polyhedron.bounding_box(empty_poly, _) = empty_poly.
 polyhedron.bounding_box(eqns(Constraints), Varset) = 
 	eqns(lp_rational.bounding_box(Varset, Constraints)).	
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Widening
 %
@@ -534,7 +536,7 @@ polyhedron.widen(empty_poly, eqns(_), _) = throw("widen/2: empty polyhedron").
 polyhedron.widen(eqns(Poly1), eqns(Poly2), Varset) = eqns(WidenedEqns) :-
 	WidenedEqns = list.filter(entailed(Varset, Poly2), Poly1).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Projection.
 %
@@ -579,7 +581,7 @@ polyhedron.project(Vars, Varset, eqns(Constraints0), Result) :-
 		restore_equalities(Constraints1, Constraints),
 		Result = eqns(Constraints)
 	).
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Variable substitution.
 %
@@ -595,7 +597,7 @@ polyhedron.substitute_vars(SubstMap, Polyhedron0) = Polyhedron :-
 	Constraints = lp_rational.substitute_vars(SubstMap, Constraints0),	
 	Polyhedron = polyhedron.from_constraints(Constraints).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Zeroing out variables.
 %
@@ -604,7 +606,7 @@ polyhedron.zero_vars(_, empty_poly) = empty_poly.
 polyhedron.zero_vars(Vars, eqns(Constraints0)) = eqns(Constraints) :-
 	Constraints = lp_rational.set_vars_to_zero(Vars, Constraints0).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Printing. 
 %
@@ -616,6 +618,4 @@ polyhedron.write_polyhedron(eqns([]),   _, !IO) :-
 polyhedron.write_polyhedron(eqns(Constraints @ [_|_]), Varset, !IO) :-
 	lp_rational.write_constraints(Constraints, Varset, !IO).	
 
-%------------------------------------------------------------------------------%
-:- end_module libs.polyhedron.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

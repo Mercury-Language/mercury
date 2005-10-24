@@ -193,7 +193,7 @@
     % such annotations can be part of .opt and .trans_opt files.
     %
 :- pred term_constr_main.output_pragma_termination2_info(pred_or_func::in,
-    sym_name::in, list(mode)::in, prog_context::in,
+    sym_name::in, list(mer_mode)::in, prog_context::in,
     maybe(constr_arg_size_info)::in, maybe(constr_arg_size_info)::in,
     maybe(constr_termination_info)::in, size_vars::in, io::di, 
     io::uo) is det.

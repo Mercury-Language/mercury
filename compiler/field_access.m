@@ -218,8 +218,8 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
         SubContext = [TermInputContext | SubContext0],
         expand_get_field_function_call_2(Context, MainContext,
             SubContext, FieldNames, FieldValueVar, SubTermInputVar,
-            !VarSet, _, FieldSubContext, Goals1, !ModuleInfo, !QualInfo, !SInfo,
-            !IO),
+            !VarSet, _, FieldSubContext, Goals1, !ModuleInfo, !QualInfo,
+            !SInfo, !IO),
         Goals2 = [Goal | Goals1]
     ;
         FieldNames = [],

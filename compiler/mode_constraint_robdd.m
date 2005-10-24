@@ -7,8 +7,8 @@
 % File: mode_constraint_robdd.m
 % Main author: dmo
 %
-% This module provides an abstraction layer on top of the ROBDD library modules.
-% It provides for the possibility of storing the constraints in a more
+% This module provides an abstraction layer on top of the ROBDD library
+% modules. It provides for the possibility of storing the constraints in a more
 % convenient structure (but less efficient), in addition to the ROBDD.
 % This might be desirable for viewing the constraints in a human-readable
 % form or for outputting them to the SICStus clpb solver.
@@ -48,14 +48,17 @@
 	;	out(prog_var)
 	;	prog_var `at` goal_path.
 
-% Lookup a var in the mode_constraint_info.  If the var is not found, insert it.
+	% Lookup a var in the mode_constraint_info. If the var is not found,
+	% insert it.
+	%
 :- pred mode_constraint_var(rep_var::in, mode_constraint_var::out,
 	mode_constraint_info::in, mode_constraint_info::out) is det.
 
 :- pred mode_constraint_var(pred_id::in, rep_var::in, mode_constraint_var::out,
 	mode_constraint_info::in, mode_constraint_info::out) is det.
 
-% Functional version of the above.  If the var is not found, abort.
+	% Functional version of the above. If the var is not found, abort.
+	%
 :- func mode_constraint_var(mode_constraint_info, rep_var) =
 	mode_constraint_var.
 

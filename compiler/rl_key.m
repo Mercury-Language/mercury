@@ -20,21 +20,21 @@
 :- import_module aditi_backend__rl.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
 :- import_module list.
-:- import_module map.
 
 	% Work out the upper and lower bounds for the inputs to an
 	% goal which could result in the goal succeeding.
 :- pred rl_key__extract_indexing(rl_goal_inputs::in,
-		list(hlds_goal)::in, module_info::in, map(prog_var, type)::in,
+		list(hlds_goal)::in, module_info::in, vartypes::in,
 		list(rl_var_bounds)::out) is det.
 
 	% Given an index specifier, work out whether the bounds of the
 	% arguments give useful key ranges for that index. If so, return
 	% the list of key ranges.
-:- pred rl_key__get_select_key_ranges(module_info::in, map(prog_var, type)::in,
+:- pred rl_key__get_select_key_ranges(module_info::in, vartypes::in,
 		list(prog_var)::in, index_spec::in, list(rl_var_bounds)::in,
 		list(key_range)::out) is semidet.
 
@@ -42,7 +42,7 @@
 	% for the non-indexed relation. The values of these arguments
 	% are used to construct the key_ranges for the indexed second
 	% relation.
-:- pred rl_key__get_join_key_ranges(module_info::in, map(prog_var, type)::in,
+:- pred rl_key__get_join_key_ranges(module_info::in, vartypes::in,
 		list(prog_var)::in, list(prog_var)::in, index_spec::in,
 		list(rl_var_bounds)::in, list(key_range)::out) is semidet.
 
@@ -58,7 +58,6 @@
 
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
-:- import_module hlds__hlds_pred.
 :- import_module hlds__special_pred.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_util.
@@ -67,6 +66,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module map.
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
@@ -87,7 +87,7 @@ rl_key__extract_indexing(two_inputs(Args1, Args2), Goals, ModuleInfo, VarTypes,
 		VarMaps, ArgBounds).
 
 :- pred rl_key__compute_var_bound_maps(list(hlds_goal)::in, module_info::in,
-		map(prog_var, type)::in, list(var_map)::out) is det.
+		vartypes::in, list(var_map)::out) is det.
 
 rl_key__compute_var_bound_maps(Goals, ModuleInfo, VarTypes, Cnstrs) :-
 	map__init(VarMap),
@@ -176,7 +176,7 @@ rl_key__get_join_key_ranges(ModuleInfo, VarTypes, Args1, Args2, Index,
 	rl_key__merge_key_ranges(ModuleInfo, KeyRanges0, [], KeyRanges).
 
 :- pred rl_key__bounds_to_key_range(maybe(list(prog_var))::in,
-	list(prog_var)::in, map(prog_var, type)::in, index_spec::in,
+	list(prog_var)::in, vartypes::in, index_spec::in,
 	map(prog_var, pair(key_term))::in, key_range::out) is semidet.
 
 rl_key__bounds_to_key_range(MaybeConstructArgs, Args, VarTypes,
@@ -1016,7 +1016,7 @@ rl_key__unify_term_2(ModuleInfo, UpperLower,
 	% the one which gives the largest range on the possible
 	% value of the term.
 :- pred rl_key__det_choose_cons_id(module_info::in, upper_lower::in,
-	(type)::in, cons_id::in, list(T)::in, cons_id::in, list(T)::in,
+	mer_type::in, cons_id::in, list(T)::in, cons_id::in, list(T)::in,
 	cons_id::out, list(T)::out) is det.
 
 rl_key__det_choose_cons_id(ModuleInfo, UpperLower, Type, ConsId1, Args1,
@@ -1036,7 +1036,7 @@ rl_key__det_choose_cons_id(ModuleInfo, UpperLower, Type, ConsId1, Args1,
 	).
 
 :- pred rl_key__choose_cons_id(module_info::in, upper_lower::in,
-		(type)::in, cons_id::in, cons_id::in, cons_id::out) is semidet.
+		mer_type::in, cons_id::in, cons_id::in, cons_id::out) is semidet.
 
 rl_key__choose_cons_id(ModuleInfo, UpperLower, Type,
 		ConsId1, ConsId2, ConsId) :-
@@ -1095,7 +1095,7 @@ rl_key__choose_cons_id_3((>), lower, _, ConsId, ConsId).
 :- type key_info
 	---> key_info(
 		module_info,
-		map(prog_var, type),
+		vartypes,
 		list(var_map)
 	).
 
@@ -1118,7 +1118,7 @@ rl_key__choose_cons_id_3((>), lower, _, ConsId, ConsId).
 key_info_get_module_info(ModuleInfo, Info, Info) :-
 	Info = key_info(ModuleInfo, _, _).
 
-:- pred key_info_get_vartypes(map(prog_var, type), key_info, key_info).
+:- pred key_info_get_vartypes(vartypes, key_info, key_info).
 :- mode key_info_get_vartypes(out, in, out) is det.
 
 key_info_get_vartypes(VarTypes, Info, Info) :-

@@ -35,7 +35,7 @@
     % are universally quantified. ExistQVars is the list of existentially
     % quantified type variables of the constructor in question.
     %
-:- pred construct_pseudo_type_info((type)::in, int::in, existq_tvars::in,
+:- pred construct_pseudo_type_info(mer_type::in, int::in, existq_tvars::in,
     rtti_pseudo_type_info::out) is det.
 
     % construct_type_info(Type, TypeInfo):
@@ -43,7 +43,7 @@
     % Given a ground Mercury type (`Type'), this predicate returns a
     % representation of the type info for that type.
     %
-:- pred construct_type_info((type)::in, rtti_type_info::out) is det.
+:- pred construct_type_info(mer_type::in, rtti_type_info::out) is det.
 
     % construct_maybe_pseudo_type_info(Type, NumUnivQTvars, ExistQVars,
     %   MaybePseudoTypeInfo):
@@ -53,8 +53,8 @@
     % is not ground, it returns a pseudo type info for it. The arguments
     % are the same as for construct_pseudo_type_info.
     %
-:- pred construct_maybe_pseudo_type_info((type)::in, int::in, existq_tvars::in,
-    rtti_maybe_pseudo_type_info::out) is det.
+:- pred construct_maybe_pseudo_type_info(mer_type::in, int::in,
+    existq_tvars::in, rtti_maybe_pseudo_type_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -199,14 +199,14 @@ check_arity(Args, RealArity) :-
     list__length(Args, NumPseudoArgs),
     NumPseudoArgs = RealArity.
 
-:- pred generate_pseudo_args(list(type)::in, int::in, existq_tvars::in,
+:- pred generate_pseudo_args(list(mer_type)::in, int::in, existq_tvars::in,
     list(rtti_maybe_pseudo_type_info)::out) is det.
 
 generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars, PseudoArgs) :-
     list__map(generate_pseudo_arg(NumUnivQTvars, ExistQTvars),
         TypeArgs, PseudoArgs).
 
-:- pred generate_pseudo_arg(int::in, existq_tvars::in, (type)::in,
+:- pred generate_pseudo_arg(int::in, existq_tvars::in, mer_type::in,
     rtti_maybe_pseudo_type_info::out) is det.
 
 generate_pseudo_arg(NumUnivQTvars, ExistQTvars, TypeArg, MaybePseudoArg) :-
@@ -219,7 +219,8 @@ generate_pseudo_arg(NumUnivQTvars, ExistQTvars, TypeArg, MaybePseudoArg) :-
         MaybePseudoArg = pseudo(PseudoArg)
     ).
 
-:- pred generate_plain_args(list(type)::in, list(rtti_type_info)::out) is det.
+:- pred generate_plain_args(list(mer_type)::in, list(rtti_type_info)::out)
+    is det.
 
 generate_plain_args(TypeArgs, PseudoArgs) :-
     list__map(construct_type_info, TypeArgs, PseudoArgs).
@@ -236,7 +237,7 @@ generate_plain_args(TypeArgs, PseudoArgs) :-
     % we have three: pred, func, and tuple.
     % XXX FIXME we should also encode purity in the RTTI!
     %
-:- pred type_is_var_arity((type)::in, var_arity_ctor_id::out) is semidet.
+:- pred type_is_var_arity(mer_type::in, var_arity_ctor_id::out) is semidet.
 
 type_is_var_arity(Type, VarArityCtorId) :-
     ( type_is_higher_order(Type, _Purity, PredOrFunc, _, _) ->

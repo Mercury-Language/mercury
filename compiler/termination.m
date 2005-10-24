@@ -493,8 +493,8 @@ set_termination_infos([PPId | PPIds], TerminationInfo, !Module) :-
 	set_termination_infos(PPIds, TerminationInfo, !Module).
 
 :- pred report_termination_errors(list(pred_proc_id)::in,
-	list(term_errors__error)::in, module_info::in, module_info::out,
-	io::di, io::uo) is det.
+	list(termination_error_context)::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 report_termination_errors(SCC, Errors, !Module, !IO) :-
 	globals__io_lookup_bool_option(check_termination,
@@ -796,7 +796,7 @@ all_args_input_or_zero_size(Module, PredInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo, ModeList),
 	all_args_input_or_zero_size_2(TypeList, ModeList, Module).
 
-:- pred all_args_input_or_zero_size_2(list(type)::in, list(mode)::in,
+:- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
 	module_info::in) is semidet.
 
 all_args_input_or_zero_size_2([], [], _).

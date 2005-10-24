@@ -4,7 +4,7 @@
 % Copyright (C) 1995-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module ll_backend__exprn_aux.
 
@@ -96,8 +96,8 @@
 
 :- func lval_to_rval(lval) = rval.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -173,7 +173,7 @@ label_is_constant(entry(local, _), NonLocalGotos, AsmLabels, IsConst) :-
 label_is_constant(entry(c_local, _), _NonLocalGotos, _AsmLabels, yes).
 label_is_constant(internal(_, _), _NonLocalGotos, _AsmLabels, yes).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 rval_contains_lval(lval(Lval0), Lval) :-
     lval_contains_lval(Lval0, Lval).
@@ -205,7 +205,7 @@ lval_contains_lval(Lval0, Lval) :-
         fail
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 rval_contains_rval(Rval0, Rval) :-
     (
@@ -249,7 +249,7 @@ args_contain_rval([M | Ms], Rval) :-
         args_contain_rval(Ms, Rval)
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 vars_in_rval(lval(Lval), Vars) :-
     vars_in_lval(Lval, Vars).
@@ -300,7 +300,7 @@ vars_in_mem_ref(framevar_ref(_SlotNum), []).
 vars_in_mem_ref(heap_ref(Rval, _Tag, _FieldNum), Vars) :-
     vars_in_rval(Rval, Vars).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 substitute_lval_in_lval(OldLval, NewLval, Lval0, Lval) :-
     substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval,
@@ -797,7 +797,7 @@ substitute_rval_in_arg(OldRval, NewRval, MaybeRval0, MaybeRval) :-
         MaybeRval = MaybeRval0
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 substitute_vars_in_rval([], !Rval).
 substitute_vars_in_rval([Var - Sub | Rest], !Rval) :-
@@ -989,10 +989,10 @@ var_lval_to_rval(_Var, Lval) = lval(Lval).
 
 lval_to_rval(Lval) = lval(Lval).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "exprn_aux.m".
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

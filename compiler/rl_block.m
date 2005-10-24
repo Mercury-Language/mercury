@@ -484,7 +484,7 @@ rl_block__update_nonlocal_relations(BlockId, Single0 - Multi0, Single - Multi)
 :- pred rl_opt_info_set_relation_info(relation_id::in, relation_info::in,
 		rl_opt_info::in, rl_opt_info::out) is det.
 
-:- pred rl_opt_info_add_relation(list(type)::in,
+:- pred rl_opt_info_add_relation(list(mer_type)::in,
 		relation_id::out, rl_opt_info::in, rl_opt_info::out) is det.
 
 :- pred block_info_init(block_info::out) is det.

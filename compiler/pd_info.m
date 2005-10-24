@@ -68,12 +68,15 @@
 :- pred pd_info_get_versions(pd_info::in, version_index::out) is det.
 :- pred pd_info_get_proc_arg_info(pd_info::in, pd_arg_info::out) is det.
 :- pred pd_info_get_counter(pd_info::in, counter::out) is det.
-:- pred pd_info_get_global_term_info(pd_info::in, global_term_info::out) is det.
-:- pred pd_info_get_parent_versions(pd_info::in, set(pred_proc_id)::out) is det.
+:- pred pd_info_get_global_term_info(pd_info::in, global_term_info::out)
+    is det.
+:- pred pd_info_get_parent_versions(pd_info::in, set(pred_proc_id)::out)
+    is det.
 :- pred pd_info_get_depth(pd_info::in, int::out) is det.
 :- pred pd_info_get_created_versions(pd_info::in, set(pred_proc_id)::out)
 	is det.
-:- pred pd_info_get_useless_versions(pd_info::in, useless_versions::out) is det.
+:- pred pd_info_get_useless_versions(pd_info::in, useless_versions::out)
+    is det.
 
 :- pred pd_info_set_module_info(module_info::in,
 	pd_info::in, pd_info::out) is det.
@@ -433,7 +436,7 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
                                     % calls being deforested.
                 version_arg_vars	:: list(prog_var),
                                     % arguments.
-                version_arg_types	:: list(type),
+                version_arg_types	:: list(mer_type),
                                     % argument types.
                 version_init_insts	:: instmap,
                                     % initial insts of the nonlocals.
@@ -475,7 +478,7 @@ pd_info__search_version(PDInfo, Goal, MaybeVersion, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred pd_info__get_matching_version(module_info::in, hlds_goal::in,
-	instmap::in, map(prog_var, type)::in, list(pred_proc_id)::in,
+	instmap::in, vartypes::in, list(pred_proc_id)::in,
 	version_index::in, maybe_version::out) is semidet.
 
 pd_info__get_matching_version(_, _, _, _, [], _, no_version).
@@ -556,8 +559,8 @@ pd_info__pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
 	% 	new one, i.e inst_matches_initial(FirstInst, SecondInst) (?)
 	%
 :- pred pd_info__goal_is_more_general(module_info::in, hlds_goal::in,
-	instmap::in, list(prog_var)::in, list(type)::in, hlds_goal::in,
-	instmap::in, map(prog_var, type)::in, pred_proc_id::in,
+	instmap::in, list(prog_var)::in, list(mer_type)::in, hlds_goal::in,
+	instmap::in, vartypes::in, pred_proc_id::in,
 	version_info::in, maybe_version::out) is semidet.
 
 pd_info__goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,

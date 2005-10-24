@@ -29,7 +29,7 @@
     % Generate efficient indexing code for tag based switches.
     %
 :- pred generate(list(extended_case)::in, prog_var::in, code_model::in,
-    can_fail::in, prog_context::in, mlds__defns::out, mlds__statements::out,
+    can_fail::in, prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 :- implementation.
@@ -155,7 +155,7 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
 
 :- pred gen_stag_switch(stag_goal_list::in, int::in,
     stag_loc::in, prog_var::in, code_model::in, can_fail::in,
-    prog_context::in, mlds__statement::out,
+    prog_context::in, statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_stag_switch(Cases, PrimaryTag, StagLocn, Var, CodeModel, CanFail, Context,

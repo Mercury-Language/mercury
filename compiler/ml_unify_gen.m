@@ -34,12 +34,12 @@
     % Generate MLDS code for a unification.
     %
 :- pred ml_gen_unification(unification::in, code_model::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Convert a cons_id for a given type to a cons_tag.
     %
-:- pred ml_cons_id_to_tag(ml_gen_info::in, cons_id::in, prog_type::in,
+:- pred ml_cons_id_to_tag(ml_gen_info::in, cons_id::in, mer_type::in,
     cons_tag::out) is det.
 
     % ml_gen_tag_test(Var, ConsId, Defns, Statements, Expression):
@@ -52,7 +52,7 @@
     % by ConsId.
     %
 :- pred ml_gen_tag_test(prog_var::in, cons_id::in,
-    mlds__defns::out, mlds__statements::out, mlds__rval::out,
+    mlds__defns::out, statements::out, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo, VarRval):
@@ -60,14 +60,14 @@
     % Return the rval for the secondary tag field of VarRval, assuming that
     % VarRval has the specified VarType and PrimaryTag.
     %
-:- func ml_gen_secondary_tag_rval(tag_bits, prog_type, module_info, mlds__rval)
-    = mlds__rval.
+:- func ml_gen_secondary_tag_rval(tag_bits, mer_type, module_info, mlds_rval)
+    = mlds_rval.
 
     % Generate an MLDS rval for a given reserved address,
     % cast to the appropriate type.
     %
-:- func ml_gen_reserved_address(module_info, reserved_address, mlds__type) =
-    mlds__rval.
+:- func ml_gen_reserved_address(module_info, reserved_address, mlds_type) =
+    mlds_rval.
 
     % ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
     %   ExtraRvals, ExtraTypes, ArgVars, ArgModes, TakeAddr, HowToConstruct,
@@ -78,11 +78,11 @@
     % arguments specify additional constants to insert at the start of the
     % argument list.
     %
-:- pred ml_gen_new_object(maybe(cons_id)::in, mlds__tag::in, bool::in,
-    maybe(ctor_name)::in, prog_var::in, list(mlds__rval)::in,
-    list(mlds__type)::in, prog_vars::in, list(uni_mode)::in, list(int)::in,
+:- pred ml_gen_new_object(maybe(cons_id)::in, mlds_tag::in, bool::in,
+    maybe(ctor_name)::in, prog_var::in, list(mlds_rval)::in,
+    list(mlds_type)::in, prog_vars::in, list(uni_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, mlds__defns::out,
-    mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
+    statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -211,7 +211,7 @@ ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         CanCGC = can_cgc,
         ml_gen_var(!.Info, Var, VarLval),
         Stmt = atomic(delete_object(VarLval)),
-        CGC_Statements = [mlds__statement(Stmt, mlds__make_context(Context)) ]
+        CGC_Statements = [statement(Stmt, mlds__make_context(Context)) ]
     ;
         CanCGC = cannot_cgc,
         CGC_Statements = []
@@ -237,7 +237,7 @@ ml_gen_unification(complicated_unify(_, _, _), _, _, [], [], !Info) :-
     %
 :- pred ml_gen_construct(prog_var::in, cons_id::in, prog_vars::in,
     list(uni_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
@@ -248,10 +248,10 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
     ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         HowToConstruct, Context, Decls, Statements, !Info).
 
-:- pred ml_gen_construct_2(cons_tag::in, prog_type::in, prog_var::in,
+:- pred ml_gen_construct_2(cons_tag::in, mer_type::in, prog_var::in,
     cons_id::in, prog_vars::in, list(uni_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in, mlds__defns::out,
-    mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
+    statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         HowToConstruct, Context, Decls, Statements, !Info) :-
@@ -327,7 +327,7 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
     % Note that any changes here may require similar changes to
     % ml_gen_construct.
     %
-:- pred ml_gen_static_const_arg(prog_var::in, static_cons::in, mlds__rval::out,
+:- pred ml_gen_static_const_arg(prog_var::in, static_cons::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_static_const_arg(Var, StaticCons, Rval, !Info) :-
@@ -337,9 +337,8 @@ ml_gen_static_const_arg(Var, StaticCons, Rval, !Info) :-
     ml_cons_id_to_tag(!.Info, ConsId, VarType, Tag),
     ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info).
 
-:- pred ml_gen_static_const_arg_2(cons_tag::in, prog_type::in, prog_var::in,
-    static_cons::in, mlds__rval::out, ml_gen_info::in, ml_gen_info::out)
-    is det.
+:- pred ml_gen_static_const_arg_2(cons_tag::in, mer_type::in, prog_var::in,
+    static_cons::in, mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
     StaticCons = static_cons(ConsId, ArgVars, StaticArgs),
@@ -405,7 +404,7 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
 
     % Generate the rval for a given constant.
     %
-:- pred ml_gen_constant(cons_tag::in, prog_type::in, mlds__rval::out,
+:- pred ml_gen_constant(cons_tag::in, mer_type::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_constant(string_constant(String), _, const(string_const(String)),
@@ -541,7 +540,7 @@ ml_cons_id_to_tag(Info, ConsId, Type, Tag) :-
     %
 :- pred ml_gen_compound(cons_tag::in, cons_id::in, prog_var::in, prog_vars::in,
     list(uni_mode)::in, list(int)::in, how_to_construct::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, TakeAddr, HowToConstruct,
@@ -644,7 +643,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         MakeNewObject = new_object(VarLval, MaybeTag, HasSecTag, MLDS_Type,
             yes(SizeInWordsRval), MaybeCtorName, ArgRvals, MLDS_ArgTypes),
         Stmt = atomic(MakeNewObject),
-        Statement = mlds__statement(Stmt, mlds__make_context(Context)),
+        Statement = statement(Stmt, mlds__make_context(Context)),
 
         ml_gen_field_take_address_assigns(TakeAddrInfos, VarLval, MLDS_Type,
             MaybeTag, Context, !.Info, FieldAssigns),
@@ -778,8 +777,8 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
     ).
 
 :- pred ml_gen_field_take_address_assigns(list(take_addr_info)::in,
-    mlds__lval::in, mlds__type::in, maybe(mlds__tag)::in, prog_context::in,
-    ml_gen_info::in, list(mlds__statement)::out) is det.
+    mlds_lval::in, mlds_type::in, maybe(mlds_tag)::in, prog_context::in,
+    ml_gen_info::in, list(statement)::out) is det.
 
 ml_gen_field_take_address_assigns([], _, _, _, _, _, []).
 ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
@@ -803,8 +802,8 @@ ml_gen_field_take_address_assigns([TakeAddrInfo | TakeAddrInfos],
     % Return the MLDS type suitable for constructing a constant static
     % ground term with the specified cons_id.
     %
-:- func get_type_for_cons_id(mlds__type, bool, maybe(cons_id), bool, globals)
-    = mlds__type.
+:- func get_type_for_cons_id(mlds_type, bool, maybe(cons_id), bool, globals)
+    = mlds_type.
 
 get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
         Globals) = ConstType :-
@@ -881,7 +880,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
         )
     ).
 
-:- pred ml_gen_field_type(ml_gen_info::in, prog_type::in, prog_type::out)
+:- pred ml_gen_field_type(ml_gen_info::in, mer_type::in, mer_type::out)
     is det.
 
 ml_gen_field_type(Info, Type, FieldType) :-
@@ -890,8 +889,8 @@ ml_gen_field_type(Info, Type, FieldType) :-
     globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
     ml_type_as_field(Type, ModuleInfo, HighLevelData, FieldType).
 
-:- pred ml_type_as_field(prog_type::in, module_info::in, bool::in,
-    prog_type::out) is det.
+:- pred ml_type_as_field(mer_type::in, module_info::in, bool::in,
+    mer_type::out) is det.
 
 ml_type_as_field(FieldType, ModuleInfo, HighLevelData, BoxedFieldType) :-
     (
@@ -921,8 +920,8 @@ ml_type_as_field(FieldType, ModuleInfo, HighLevelData, BoxedFieldType) :-
         BoxedFieldType = FieldType
     ).
 
-:- pred get_maybe_cons_id_arg_types(maybe(cons_id)::in, list(prog_type)::in,
-    prog_type::in, module_info::in, list(prog_type)::out) is det.
+:- pred get_maybe_cons_id_arg_types(maybe(cons_id)::in, list(mer_type)::in,
+    mer_type::in, module_info::in, list(mer_type)::out) is det.
 
 get_maybe_cons_id_arg_types(MaybeConsId, ArgTypes, Type, ModuleInfo,
         ConsArgTypes) :-
@@ -936,8 +935,8 @@ get_maybe_cons_id_arg_types(MaybeConsId, ArgTypes, Type, ModuleInfo,
         ConsArgTypes = ml_make_boxed_types(list__length(ArgTypes))
     ).
 
-:- func constructor_arg_types(cons_id, list(prog_type), prog_type, module_info)
-    = list(prog_type).
+:- func constructor_arg_types(cons_id, list(mer_type), mer_type, module_info)
+    = list(mer_type).
 
 constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
     (
@@ -990,13 +989,13 @@ constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
         ArgTypes = ConsArgTypes
     ).
 
-:- func ml_gen_mktag(int) = mlds__rval.
+:- func ml_gen_mktag(int) = mlds_rval.
 
 ml_gen_mktag(Tag) = unop(std_unop(mktag), const(int_const(Tag))).
 
-:- pred ml_gen_box_or_unbox_const_rval_list(list(prog_type)::in,
-    list(prog_type)::in, list(mlds__rval)::in, prog_context::in,
-    mlds__defns::out, list(mlds__rval)::out,
+:- pred ml_gen_box_or_unbox_const_rval_list(list(mer_type)::in,
+    list(mer_type)::in, list(mlds_rval)::in, prog_context::in,
+    mlds__defns::out, list(mlds_rval)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_box_or_unbox_const_rval_list(ArgTypes, FieldTypes, ArgRvals,
@@ -1037,8 +1036,8 @@ ml_gen_box_or_unbox_const_rval_list(ArgTypes, FieldTypes, ArgRvals,
             "ml_gen_box_or_unbox_const_rval_list: list length mismatch")
     ).
 
-:- pred ml_gen_box_const_rval_list(list(mlds__type)::in, list(mlds__rval)::in,
-    prog_context::in, mlds__defns::out, list(mlds__rval)::out,
+:- pred ml_gen_box_const_rval_list(list(mlds_type)::in, list(mlds_rval)::in,
+    prog_context::in, mlds__defns::out, list(mlds_rval)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_box_const_rval_list([], [], _, [], [], !Info).
@@ -1053,8 +1052,8 @@ ml_gen_box_const_rval_list([], [_|_], _, _, _, !Info) :-
 ml_gen_box_const_rval_list([_|_], [], _, _, _, !Info) :-
     error("ml_gen_box_const_rval_list: length mismatch").
 
-:- pred ml_gen_box_const_rval(mlds__type::in, mlds__rval::in, prog_context::in,
-    mlds__defns::out, mlds__rval::out,
+:- pred ml_gen_box_const_rval(mlds_type::in, mlds_rval::in, prog_context::in,
+    mlds__defns::out, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval, !Info) :-
@@ -1103,7 +1102,7 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval, !Info) :-
     ).
 
 :- pred ml_gen_static_const_arg_list(list(prog_var)::in, list(static_cons)::in,
-    list(mlds__rval)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_rval)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_static_const_arg_list([], [], [], !Info).
 ml_gen_static_const_arg_list([Var | Vars], [StaticCons | StaticConses],
@@ -1138,7 +1137,7 @@ ml_lookup_static_const_name(Info, Var, ConstName) :-
     % for a given variable.
     %
 :- pred ml_gen_static_const_addr(ml_gen_info::in, prog_var::in,
-    mlds__type::in, mlds__rval::out) is det.
+    mlds_type::in, mlds_rval::out) is det.
 
 ml_gen_static_const_addr(Info, Var, Type, ConstAddrRval) :-
     ml_lookup_static_const_name(Info, Var, ConstName),
@@ -1165,8 +1164,8 @@ ml_cons_name(HLDS_ConsId, QualifiedConsId) :-
     --->    take_addr_info(
                 prog_var,           % The variable we record the address in.
                 int,                % The offset of the field
-                mlds__type,         % The type of the field variable.
-                mlds__type          % The type of the field, possibly
+                mlds_type,          % The type of the field variable.
+                mlds_type           % The type of the field, possibly
                                     % after boxing.
             ).
 
@@ -1175,10 +1174,10 @@ ml_cons_name(HLDS_ConsId, QualifiedConsId) :-
     % we produce the corresponding lval, boxed or unboxed if needed,
     % but if the argument is free, we produce a null value.
     %
-:- pred ml_gen_cons_args(list(prog_var)::in, list(mlds__lval)::in,
-    list(prog_type)::in, list(prog_type)::in, list(uni_mode)::in,
-    int::in, int::in, list(int)::in, module_info::in, list(mlds__rval)::out,
-    list(mlds__type)::out, list(take_addr_info)::out,
+:- pred ml_gen_cons_args(list(prog_var)::in, list(mlds_lval)::in,
+    list(mer_type)::in, list(mer_type)::in, list(uni_mode)::in,
+    int::in, int::in, list(int)::in, module_info::in, list(mlds_rval)::out,
+    list(mlds_type)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes, FirstOffset,
@@ -1196,10 +1195,10 @@ ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes, FirstOffset,
         unexpected(this_file, "ml_gen_cons_args: length mismatch")
     ).
 
-:- pred ml_gen_cons_args_2(list(prog_var)::in, list(mlds__lval)::in,
-    list(prog_type)::in, list(prog_type)::in, list(uni_mode)::in,
-    int::in, int::in, list(int)::in, module_info::in, list(mlds__rval)::out,
-    list(mlds__type)::out, list(take_addr_info)::out,
+:- pred ml_gen_cons_args_2(list(prog_var)::in, list(mlds_lval)::in,
+    list(mer_type)::in, list(mer_type)::in, list(uni_mode)::in,
+    int::in, int::in, list(int)::in, module_info::in, list(mlds_rval)::out,
+    list(mlds_type)::out, list(take_addr_info)::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
 
 ml_gen_cons_args_2([], [], [], [], [], _FirstOffset, _FirstArgNum, _TakeAddr,
@@ -1261,7 +1260,7 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
     %
 :- pred ml_gen_det_deconstruct(prog_var::in, cons_id::in, prog_vars::in,
     list(uni_mode)::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Decls, Statements,
@@ -1272,9 +1271,9 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context, Decls, Statements,
     ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
         Statements, !Info).
 
-:- pred ml_gen_det_deconstruct_2(cons_tag::in, prog_type::in, prog_var::in,
+:- pred ml_gen_det_deconstruct_2(cons_tag::in, mer_type::in, prog_var::in,
     cons_id::in, prog_vars::in, list(uni_mode)::in, prog_context::in,
-    mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
+    statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
         Statements, !Info) :-
@@ -1437,8 +1436,8 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
     % polymorphic types, the types of the actual arguments can be an instance
     % of the field types.
     %
-:- pred ml_field_names_and_types(ml_gen_info::in, prog_type::in, cons_id::in,
-    list(prog_type)::in, list(constructor_arg)::out) is det.
+:- pred ml_field_names_and_types(ml_gen_info::in, mer_type::in, cons_id::in,
+    list(mer_type)::in, list(constructor_arg)::out) is det.
 
 ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
     % Lookup the field types for the arguments of this cons_id.
@@ -1468,9 +1467,9 @@ ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
     ).
 
 :- pred ml_gen_unify_args(cons_id::in, prog_vars::in, list(uni_mode)::in,
-    list(prog_type)::in, list(constructor_arg)::in, prog_type::in,
-    mlds__lval::in, int::in, int::in, cons_tag::in, prog_context::in,
-    mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mer_type)::in, list(constructor_arg)::in, mer_type::in,
+    mlds_lval::in, int::in, int::in, cons_tag::in, prog_context::in,
+    statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
         Offset, ArgNum, Tag, Context, Statements, !Info) :-
@@ -1485,9 +1484,9 @@ ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
     ).
 
 :- pred ml_gen_unify_args_2(cons_id::in, prog_vars::in, list(uni_mode)::in,
-    list(prog_type)::in, list(constructor_arg)::in, prog_type::in,
-    mlds__lval::in, int::in, int::in, cons_tag::in, prog_context::in,
-    mlds__statements::in, mlds__statements::out,
+    list(mer_type)::in, list(constructor_arg)::in, mer_type::in,
+    mlds_lval::in, int::in, int::in, cons_tag::in, prog_context::in,
+    statements::in, statements::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
 
 ml_gen_unify_args_2(_, [], [], [], _, _, _, _, _, _, _, !Statements, !Info).
@@ -1501,10 +1500,10 @@ ml_gen_unify_args_2(ConsId, [Arg | Args], [Mode | Modes], [ArgType | ArgTypes],
     ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
         Offset, ArgNum, Tag, Context, !Statements, !Info).
 
-:- pred ml_gen_unify_arg(cons_id::in, prog_var::in, uni_mode::in, prog_type::in,
-    constructor_arg::in, prog_type::in, mlds__lval::in, int::in, int::in,
+:- pred ml_gen_unify_arg(cons_id::in, prog_var::in, uni_mode::in, mer_type::in,
+    constructor_arg::in, mer_type::in, mlds_lval::in, int::in, int::in,
     cons_tag::in, prog_context::in,
-    mlds__statements::in, mlds__statements::out,
+    statements::in, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
@@ -1558,9 +1557,9 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
     ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, BoxedFieldType,
         Context, !Statements, !Info).
 
-:- pred ml_gen_sub_unify(uni_mode::in, mlds__lval::in, prog_type::in,
-    mlds__lval::in, prog_type::in, prog_context::in,
-    mlds__statements::in, mlds__statements::out,
+:- pred ml_gen_sub_unify(uni_mode::in, mlds_lval::in, mer_type::in,
+    mlds_lval::in, mer_type::in, prog_context::in,
+    statements::in, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
@@ -1633,7 +1632,7 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
     %
 :- pred ml_gen_semi_deconstruct(prog_var::in, cons_id::in, prog_vars::in,
     list(uni_mode)::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
@@ -1654,7 +1653,7 @@ ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
     ;
         GetArgs = ml_gen_block(GetArgsDecls, GetArgsStatements, Context),
         IfStmt = if_then_else(SucceededExpression, GetArgs, no),
-        IfStatement = mlds__statement(IfStmt, mlds__make_context(Context)),
+        IfStatement = statement(IfStmt, mlds__make_context(Context)),
         Decls = TagTestDecls,
         Statements = TagTestStatements ++ [SetTagTestResult, IfStatement]
     ).
@@ -1688,8 +1687,8 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
     % TestRval is a Rval of type bool which evaluates to true if VarRval has
     % the specified Tag and false otherwise. VarType is the type of VarRval.
     %
-:- func ml_gen_tag_test_rval(cons_tag, prog_type, module_info, mlds__rval)
-    = mlds__rval.
+:- func ml_gen_tag_test_rval(cons_tag, mer_type, module_info, mlds_rval)
+    = mlds_rval.
 
 ml_gen_tag_test_rval(string_constant(String), _, _, Rval) =
     binop(str_eq, Rval, const(string_const(String))).
@@ -1731,7 +1730,7 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
         PrimaryTagTest = binop(eq,
             unop(std_unop(tag), Rval),
             unop(std_unop(mktag), const(int_const(PrimaryTagVal)))),
-        TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
+        TagTest = binop(logical_and, PrimaryTagTest, SecondaryTagTest)
     ).
 ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
         TestRval :-
@@ -1791,7 +1790,7 @@ ml_gen_secondary_tag_rval(PrimaryTagVal, VarType, ModuleInfo, Rval) =
     % Return the field_id for the "data_tag" field of the specified
     % Mercury type, which holds the secondary tag.
     %
-:- func ml_gen_hl_tag_field_id(prog_type, module_info) = mlds__field_id.
+:- func ml_gen_hl_tag_field_id(mer_type, module_info) = mlds__field_id.
 
 ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
     FieldName = "data_tag",
@@ -1848,10 +1847,11 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
     QualifiedFieldName = qual(FieldQualifier, type_qual, FieldName),
     FieldId = named_field(QualifiedFieldName, ClassPtrType).
 
-:- func ml_gen_field_id(prog_type, cons_tag, mlds__class_name, arity,
+:- func ml_gen_field_id(mer_type, cons_tag, mlds__class_name, arity,
     mlds__field_name, globals) = mlds__field_id.
 
-ml_gen_field_id(Type, Tag, ConsName, ConsArity, FieldName, Globals) = FieldId :-
+ml_gen_field_id(Type, Tag, ConsName, ConsArity, FieldName, Globals)
+        = FieldId :-
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
         ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
         QualTypeName = qual(MLDS_Module, QualKind, TypeName),

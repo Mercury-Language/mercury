@@ -390,7 +390,7 @@ collect_class_and_inst_constraints([Constraint | Constraints],
             % An arbitrary class constraint not matching the description
             % of "simple".
 
-    ;       inst_constraint(inst_var, inst)
+    ;       inst_constraint(inst_var, mer_inst)
             % A constraint on an inst variable (that is, one whose head
             % is '=<'/2).
 
@@ -458,7 +458,8 @@ parse_arbitrary_constraint(ConstraintTerm, Result) :-
             ConstraintTerm)
     ).
 
-:- pred parse_inst_constraint(term::in, inst_var::out, (inst)::out) is semidet.
+:- pred parse_inst_constraint(term::in, inst_var::out, mer_inst::out)
+    is semidet.
 
 parse_inst_constraint(Term, InstVar, Inst) :-
     Term = term__functor(term__atom("=<"), [Arg1, Arg2], _),
@@ -576,7 +577,7 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
     ).
 
 :- pred parse_underived_instance_2(term::in, class_name::in,
-    maybe1(list(type))::in, tvarset::in, module_name::in,
+    maybe1(list(mer_type))::in, tvarset::in, module_name::in,
     maybe1(item)::out) is det.
 
 parse_underived_instance_2(_, _, error(Msg, Term), _, _, error(Msg, Term)).
@@ -597,7 +598,7 @@ parse_underived_instance_2(ErrorTerm, ClassName, ok(Types), TVarSet,
             ModuleName))
     ).
 
-:- pred type_is_functor_and_vars((type)::in) is semidet.
+:- pred type_is_functor_and_vars(mer_type::in) is semidet.
 
 type_is_functor_and_vars(defined(_, Args, _)) :-
     functor_args_are_variables(Args).
@@ -610,15 +611,15 @@ type_is_functor_and_vars(higher_order(Args, MaybeRet, Purity, EvalMethod)) :-
     % now without fixing the more general problem of having these
     % restrictions in the first place.
     MaybeRet = no,
-    Purity = (pure),
-    EvalMethod = normal,
+    Purity = purity_pure,
+    EvalMethod = lambda_normal,
     functor_args_are_variables(Args).
 type_is_functor_and_vars(tuple(Args, _)) :-
     functor_args_are_variables(Args).
 type_is_functor_and_vars(kinded(Type, _)) :-
     type_is_functor_and_vars(Type).
 
-:- pred functor_args_are_variables(list(type)::in) is semidet.
+:- pred functor_args_are_variables(list(mer_type)::in) is semidet.
 
 functor_args_are_variables(Args) :-
     all [Arg] (

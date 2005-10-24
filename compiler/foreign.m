@@ -44,7 +44,7 @@
     % Given a type which is not defined as a foreign type, get the
     % exported_type representation of that type.
     %
-:- func non_foreign_type((type)) = exported_type.
+:- func non_foreign_type(mer_type) = exported_type.
 
     % Does the foreign_type_body contain a definition usable
     % when compiling to the given target.
@@ -55,7 +55,7 @@
     % Given an arbitary mercury type, get the exported_type representation
     % of that type on the current backend.
     %
-:- func to_exported_type(module_info, (type)) = exported_type.
+:- func to_exported_type(module_info, mer_type) = exported_type.
 
     % Does the implementation of the given foreign type body on
     % the current backend use a user-defined comparison predicate.
@@ -84,7 +84,7 @@
     % `pragma foreign_proc').
     %
 :- func to_type_string(foreign_language, exported_type) = string.
-:- func to_type_string(foreign_language, module_info, (type)) = string.
+:- func to_type_string(foreign_language, module_info, mer_type) = string.
 
     % Filter the decls for the given foreign language.
     % The first return value is the list of matches, the second is
@@ -136,7 +136,7 @@
     %
 :- pred make_pragma_import(pred_info::in, proc_info::in, string::in,
     prog_context::in, pragma_foreign_code_impl::out,
-    prog_varset::out, list(pragma_var)::out, list(type)::out, arity::out,
+    prog_varset::out, list(pragma_var)::out, list(mer_type)::out, arity::out,
     pred_or_func::out, module_info::in, module_info::out, io::di, io::uo)
     is det.
 
@@ -387,7 +387,8 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
     %
 :- pred handle_return_value(prog_context::in, maybe(determinism)::in,
     code_model::in, pred_or_func::in,
-    assoc_list(pragma_var, type)::in, assoc_list(pragma_var, type)::out,
+    assoc_list(pragma_var, mer_type)::in,
+    assoc_list(pragma_var, mer_type)::out,
     string::out, module_info::in, module_info::out, io::di, io::uo) is det.
 
 handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
@@ -442,7 +443,7 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
     % Fails if `Arg' has a type such as `io__state' that is just a dummy
     % argument that should not be passed to C.
     %
-:- pred include_import_arg(module_info::in, pair(pragma_var, type)::in)
+:- pred include_import_arg(module_info::in, pair(pragma_var, mer_type)::in)
     is semidet.
 
 include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode) - Type) :-
@@ -456,7 +457,7 @@ include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode) - Type) :-
     % names to all the variables, and construct a single list containing
     % the variables, names, and modes.
     %
-:- pred create_pragma_vars(list(prog_var)::in, list(mode)::in, int::in,
+:- pred create_pragma_vars(list(prog_var)::in, list(mer_mode)::in, int::in,
     list(pragma_var)::out) is det.
 
 create_pragma_vars([], [], _Num, []).
@@ -520,7 +521,7 @@ have_foreign_type_for_backend(asm, ForeignTypeBody, Result) :-
             % A type defined by a pragma foreign_type, and the assertions
             % on that foreign_type.
 
-    ;       mercury((type)).
+    ;       mercury(mer_type).
             % Any other mercury type.
 
 non_foreign_type(Type) = mercury(Type).

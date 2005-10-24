@@ -1834,7 +1834,8 @@ rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId,
 :- pred rl_sort__trivial_join_or_subtract_output_indexes(relation_sort_map::in,
 		output_rel::in, output_rel::out) is det.
 
-rl_sort__trivial_join_or_subtract_output_indexes(RelSortMap, Output0, Output) :-
+rl_sort__trivial_join_or_subtract_output_indexes(RelSortMap,
+		Output0, Output) :-
 	rl_sort__map_output_rel(RelSortMap, rl_sort__map_spec,
 		Output0, Output1),
 	Output1 = output_rel(OutputRel, Indexes0),

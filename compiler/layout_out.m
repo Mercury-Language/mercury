@@ -473,7 +473,8 @@ layout_name_would_include_code_addr(proc_layout_body_bytecode(_)) = no.
 layout_name_would_include_code_addr(closure_proc_id(_, _, _)) = no.
 layout_name_would_include_code_addr(file_layout(_, _)) = no.
 layout_name_would_include_code_addr(file_layout_line_number_vector(_, _)) = no.
-layout_name_would_include_code_addr(file_layout_label_layout_vector(_, _)) = no.
+layout_name_would_include_code_addr(file_layout_label_layout_vector(_, _))
+    = no.
 layout_name_would_include_code_addr(module_layout_string_table(_)) = no.
 layout_name_would_include_code_addr(module_layout_file_vector(_)) = no.
 layout_name_would_include_code_addr(module_layout_proc_vector(_)) = no.
@@ -1236,7 +1237,7 @@ pred_transform_name(dnf(N)) = "dnf_" ++ int_to_string(N).
 ints_to_string([]) = "".
 ints_to_string([N | Ns]) = "_" ++ int_to_string(N) ++ ints_to_string(Ns).
 
-:- func subst_to_name(pair(int, type)) = string.
+:- func subst_to_name(pair(int, mer_type)) = string.
 
 subst_to_name(TVar - Type) =
     string__format("%d/%s",

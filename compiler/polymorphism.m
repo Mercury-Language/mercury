@@ -182,7 +182,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module std_util.
 :- import_module term.
 
@@ -208,7 +207,7 @@
     % Add the type_info variables for a complicated unification to
     % the appropriate fields in the unification and the goal_info.
     %
-:- pred unification_typeinfos((type)::in, rtti_varmaps::in,
+:- pred unification_typeinfos(mer_type::in, rtti_varmaps::in,
     unification::in, unification::out, hlds_goal_info::in, hlds_goal_info::out)
     is det.
 
@@ -229,13 +228,13 @@
     % variables to the appropriate type_info structures for the types.
     % Update the varset and vartypes accordingly.
     %
-:- pred make_type_info_vars(list(type)::in, term__context::in,
+:- pred make_type_info_vars(list(mer_type)::in, term__context::in,
     list(prog_var)::out, list(hlds_goal)::out, poly_info::in, poly_info::out)
     is det.
 
     % Likewise, but for a single type.
     %
-:- pred make_type_info_var((type)::in, term__context::in, prog_var::out,
+:- pred make_type_info_var(mer_type::in, term__context::in, prog_var::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
     % gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar,
@@ -253,7 +252,7 @@
 :- pred gen_extract_type_info(tvar::in, kind::in, prog_var::in,
     int::in, module_info::in, list(hlds_goal)::out, prog_var::out,
     prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out,
+    vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 :- type poly_info.
@@ -273,20 +272,20 @@
     % Build the type describing the typeclass_info for the
     % given prog_constraint.
     %
-:- pred build_typeclass_info_type(prog_constraint::in, (type)::out) is det.
+:- pred build_typeclass_info_type(prog_constraint::in, mer_type::out) is det.
 
     % Check if a type is the `typeclass_info' type introduced by this pass.
     %
-:- pred type_is_typeclass_info((type)::in) is semidet.
+:- pred type_is_typeclass_info(mer_type::in) is semidet.
 
     % Check if a type is either the `type_info' type or the
     % `type_ctor_info' type introduced by this pass.
     %
-:- pred type_is_type_info_or_ctor_type((type)::in) is semidet.
+:- pred type_is_type_info_or_ctor_type(mer_type::in) is semidet.
 
     % Construct the type of the type_info for the given type.
     %
-:- pred build_type_info_type((type)::in, (type)::out) is det.
+:- pred build_type_info_type(mer_type::in, mer_type::out) is det.
 
     % Succeed if the predicate is one of the predicates defined in
     % library/private_builtin.m to extract type_infos or typeclass_infos
@@ -303,18 +302,18 @@
     % Look up the pred_id and proc_id for a type specific
     % unification/comparison/index/initialise predicate.
     %
-:- pred get_special_proc((type)::in, special_pred_id::in,
+:- pred get_special_proc(mer_type::in, special_pred_id::in,
     module_info::in, sym_name::out, pred_id::out, proc_id::out) is semidet.
-:- pred get_special_proc_det((type)::in, special_pred_id::in,
+:- pred get_special_proc_det(mer_type::in, special_pred_id::in,
     module_info::in, sym_name::out, pred_id::out, proc_id::out) is det.
 
     % Convert a higher order pred term to a lambda goal.
     %
 :- pred convert_pred_to_lambda_goal(purity::in, lambda_eval_method::in,
     prog_var::in, pred_id::in, proc_id::in, list(prog_var)::in,
-    list(type)::in, unify_context::in, hlds_goal_info::in, context::in,
+    list(mer_type)::in, unify_context::in, hlds_goal_info::in, context::in,
     module_info::in, unify_rhs::out, prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out) is det.
+    vartypes::in, vartypes::out) is det.
 
     % init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
     %   !VarSet, !VarTypes) :-
@@ -332,9 +331,9 @@
     % ArgVars should be bound to the type_infos or type_ctor_infos giving
     % Type's argument types.
     %
-:- pred init_type_info_var((type)::in, list(prog_var)::in, maybe(prog_var)::in,
-    prog_var::out, hlds_goal::out, prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out,
+:- pred init_type_info_var(mer_type::in, list(prog_var)::in,
+    maybe(prog_var)::in, prog_var::out, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % init_const_type_ctor_info_var(Type, TypeCtor,
@@ -353,7 +352,7 @@
     % the type whose type constructor TypeCtor is, in the type of
     % TypeCtorInfoVar.
     %
-:- pred init_const_type_ctor_info_var((type)::in, type_ctor::in,
+:- pred init_const_type_ctor_info_var(mer_type::in, type_ctor::in,
     prog_var::out, hlds_goal::out, module_info::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
@@ -362,9 +361,9 @@
     --->    type_info
     ;       type_ctor_info.
 
-:- pred new_type_info_var_raw((type)::in, type_info_kind::in,
+:- pred new_type_info_var_raw(mer_type::in, type_info_kind::in,
     prog_var::out, prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out,
+    vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 :- implementation.
@@ -588,7 +587,7 @@ process_pred(PredId, !ModuleInfo) :-
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred process_clause_info(pred_info::in, module_info::in,
-    clauses_info::in, clauses_info::out, poly_info::out, list(mode)::out)
+    clauses_info::in, clauses_info::out, poly_info::out, list(mer_mode)::out)
     is det.
 
 process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
@@ -645,7 +644,7 @@ process_clause(PredInfo0, OldHeadVars, NewHeadVars,
     ).
 
 :- pred process_proc_in_table(pred_info::in, clauses_info::in,
-    list(mode)::in, proc_id::in, proc_table::in, proc_table::out) is det.
+    list(mer_mode)::in, proc_id::in, proc_table::in, proc_table::out) is det.
 
 process_proc_in_table(PredInfo, ClausesInfo, ExtraArgModes,
         ProcId, !ProcTable) :-
@@ -655,7 +654,7 @@ process_proc_in_table(PredInfo, ClausesInfo, ExtraArgModes,
     map__det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable).
 
 :- pred process_proc(pred_info::in, clauses_info::in,
-    list(mode)::in, proc_id::in, proc_info::in, proc_info::out) is det.
+    list(mer_mode)::in, proc_id::in, proc_info::in, proc_info::out) is det.
 
 process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
         !ProcInfo) :-
@@ -696,7 +695,7 @@ process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
     % in a more consistent manner.
     %
 :- pred setup_headvars(pred_info::in, list(prog_var)::in,
-    list(prog_var)::out, list(mode)::out, list(tvar)::out, list(tvar)::out,
+    list(prog_var)::out, list(mer_mode)::out, list(tvar)::out, list(tvar)::out,
     list(prog_var)::out, list(prog_var)::out,
     poly_info::in, poly_info::out) is det.
 
@@ -730,7 +729,7 @@ setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 :- pred setup_headvars_instance_method(pred_info::in,
     instance_method_constraints::in,
     list(prog_var)::in, list(prog_var)::out,
-    list(mode)::out, list(tvar)::out, list(tvar)::out, list(prog_var)::out,
+    list(mer_mode)::out, list(tvar)::out, list(tvar)::out, list(prog_var)::out,
     list(prog_var)::out, poly_info::in, poly_info::out) is det.
 
 setup_headvars_instance_method(PredInfo,
@@ -765,9 +764,9 @@ setup_headvars_instance_method(PredInfo,
         ExistHeadTypeClassInfoVars, !Info).
 
 :- pred setup_headvars_2(pred_info::in, prog_constraints::in,
-    list(prog_var)::in, list(mode)::in, list(tvar)::in,
+    list(prog_var)::in, list(mer_mode)::in, list(tvar)::in,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out,
-    list(mode)::out, list(tvar)::out, list(tvar)::out,
+    list(mer_mode)::out, list(tvar)::out, list(tvar)::out,
     list(prog_var)::out, list(prog_var)::out,
     poly_info::in, poly_info::out) is det.
 
@@ -1149,7 +1148,7 @@ process_unify(XVar, Y, Mode, Unification0, UnifyContext, GoalInfo0, Goal,
         Goal = unify(XVar, Y1, Mode, Unification0, UnifyContext) - GoalInfo
     ).
 
-:- pred unification_typeinfos((type)::in,
+:- pred unification_typeinfos(mer_type::in,
     unification::in, unification::out, hlds_goal_info::in, hlds_goal_info::out,
     poly_info::in, poly_info::out) is det.
 
@@ -1367,9 +1366,9 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     Functor = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
         ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
 
-:- pred make_fresh_vars(list(type)::in, list(prog_var)::out,
+:- pred make_fresh_vars(list(mer_type)::in, list(prog_var)::out,
     prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out) is det.
+    vartypes::in, vartypes::out) is det.
 
 make_fresh_vars([], [], !VarSet, !VarTypes).
 make_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
@@ -1383,7 +1382,7 @@ make_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
     % an existentially quantified data constructor.
     %
 :- pred process_existq_unify_functor(ctor_defn::in, bool::in,
-    list(type)::in, (type)::in, prog_context::in, list(prog_var)::out,
+    list(mer_type)::in, mer_type::in, prog_context::in, list(prog_var)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 process_existq_unify_functor(CtorDefn, IsConstruction,
@@ -1555,9 +1554,9 @@ process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars, Args) :-
 
     make_foreign_args(Vars, ArgInfos, OrigArgTypes, Args).
 
-:- pred foreign_proc_add_typeclass_info(bool::in, (mode)::in,
+:- pred foreign_proc_add_typeclass_info(bool::in, mer_mode::in,
     pragma_foreign_code_impl::in, tvarset::in, prog_constraint::in,
-    maybe(pair(string, mode))::out) is det.
+    maybe(pair(string, mer_mode))::out) is det.
 
 foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
         Constraint, MaybeArgName) :-
@@ -1578,9 +1577,9 @@ foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
         MaybeArgName = yes(ConstraintVarName - Mode)
     ).
 
-:- pred foreign_proc_add_typeinfo(bool::in, (mode)::in,
+:- pred foreign_proc_add_typeinfo(bool::in, mer_mode::in,
     pragma_foreign_code_impl::in, tvarset::in, tvar::in,
-    maybe(pair(string, mode))::out) is det.
+    maybe(pair(string, mer_mode))::out) is det.
 
 foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
         MaybeArgName) :-
@@ -2212,7 +2211,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
 
 :- pred construct_typeclass_info(list(prog_var)::in, list(prog_var)::in,
     list(prog_var)::in, class_id::in, prog_constraint::in, int::in,
-    list(type)::in, constraint_proof_map::in, existq_tvars::in,
+    list(mer_type)::in, constraint_proof_map::in, existq_tvars::in,
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
@@ -2260,7 +2259,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     set__list_to_set([BaseVar], NonLocals),
     instmap_delta_from_assoc_list([BaseVar - ground(shared, none)],
         InstmapDelta),
-    goal_info_init(NonLocals, InstmapDelta, det, pure, BaseGoalInfo),
+    goal_info_init(NonLocals, InstmapDelta, det, purity_pure, BaseGoalInfo),
 
     BaseGoal = BaseUnify - BaseGoalInfo,
 
@@ -2305,7 +2304,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
 
 %---------------------------------------------------------------------------%
 
-:- pred get_arg_superclass_vars(hlds_class_defn::in, list(type)::in,
+:- pred get_arg_superclass_vars(hlds_class_defn::in, list(mer_type)::in,
     constraint_proof_map::in, existq_tvars::in, list(prog_var)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
@@ -2481,8 +2480,8 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
     ).
 
-:- pred construct_type_info((type)::in, type_ctor::in,
-    list(type)::in, bool::in, prog_context::in, prog_var::out,
+:- pred construct_type_info(mer_type::in, type_ctor::in,
+    list(mer_type)::in, bool::in, prog_context::in, prog_var::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity, Context, Var,
@@ -2533,10 +2532,10 @@ construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity, Context, Var,
     % concatenation of ArgTypeInfoGoals, ExtraGoals0, and any goals needed
     % to construct Var.
     %
-:- pred maybe_init_second_cell((type)::in, prog_var::in,
+:- pred maybe_init_second_cell(mer_type::in, prog_var::in,
     bool::in, list(prog_var)::in, prog_context::in, prog_var::out,
     prog_varset::in, prog_varset::out,
-    map(prog_var, type)::in, map(prog_var, type)::out,
+    vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out,
     list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
@@ -2688,7 +2687,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
     instmap_delta_from_assoc_list(
         [TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
         InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
 
     TypeInfoGoal = Unify - GoalInfo.
 
@@ -2718,7 +2717,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
     set__list_to_set([TypeCtorInfoVar], NonLocals),
     instmap_delta_from_assoc_list([TypeCtorInfoVar - ground(shared, none)],
         InstmapDelta),
-    goal_info_init(NonLocals, InstmapDelta, det, pure, GoalInfo),
+    goal_info_init(NonLocals, InstmapDelta, det, purity_pure, GoalInfo),
 
     TypeCtorInfoGoal = Unify - GoalInfo.
 
@@ -2743,7 +2742,7 @@ make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
     make_head_vars(TypeVars, TypeVarSet, TypeInfoVars1, !Info),
     TypeInfoVars = [Var | TypeInfoVars1].
 
-:- pred new_type_info_var((type)::in, type_info_kind::in,
+:- pred new_type_info_var(mer_type::in, type_info_kind::in,
     prog_var::out, poly_info::in, poly_info::out) is det.
 
 new_type_info_var(Type, Kind, Var, !Info) :-
@@ -2978,7 +2977,7 @@ build_type_info_type(Type, TypeInfoType) :-
     ),
     build_type_info_type_2(Kind, TypeInfoType).
 
-:- pred build_type_info_type_2(type_info_kind::in, (type)::out)
+:- pred build_type_info_type_2(type_info_kind::in, mer_type::out)
     is det.
 
 build_type_info_type_2(Kind, TypeInfoType) :-

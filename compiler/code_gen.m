@@ -262,7 +262,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     % for model_det procedures, always needed for model_semi procedures, and
     % needed for model_non procedures only if we are doing execution tracing.
     global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
-    code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
+    code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
         ProcInfo, FollowVars, ModuleInfo, StaticCellInfo0,
         OutsideResumePoint, TraceSlotInfo, CodeInfo0),
 
@@ -695,7 +695,7 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
                     llds__stack_slot_num_to_lval(model_non, FromFullSlot),
                 code_info__get_next_label(SkipLabel, !CI),
                 DiscardTraceTicketCode = node([
-                    if_val(unop(not, lval(FromFullSlotLval)),
+                    if_val(unop(logical_not, lval(FromFullSlotLval)),
                         label(SkipLabel)) - "",
                     discard_ticket - "discard retry ticket",
                     label(SkipLabel) - ""
@@ -951,13 +951,13 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
                 code_info__get_next_label(SkipLabel, !CI),
                 code_info__get_next_label(SkipLabelCopy, !CI),
                 PruneTraceTicketCode = node([
-                    if_val(unop(not, lval(FromFullSlotLval)),
+                    if_val(unop(logical_not, lval(FromFullSlotLval)),
                         label(SkipLabel)) - "",
                     prune_ticket - "prune retry ticket",
                     label(SkipLabel) - ""
                 ]),
                 PruneTraceTicketCodeCopy = node([
-                    if_val(unop(not, lval(FromFullSlotLval)),
+                    if_val(unop(logical_not, lval(FromFullSlotLval)),
                         label(SkipLabelCopy)) - "",
                     prune_ticket - "prune retry ticket",
                     label(SkipLabelCopy) - ""

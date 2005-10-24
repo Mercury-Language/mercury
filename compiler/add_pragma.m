@@ -30,7 +30,7 @@
     io::di, io::uo) is det.
 
 :- pred add_pragma_export(item_origin::in, sym_name::in, pred_or_func::in,
-    list(mode)::in, string::in, prog_context::in,
+    list(mer_mode)::in, string::in, prog_context::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred add_pragma_reserve_tag(sym_name::in, arity::in, import_status::in,
@@ -42,13 +42,13 @@
     io::di, io::uo) is det.
 
 :- pred add_pragma_termination2_info(pred_or_func::in, sym_name::in,
-    list(mode)::in, maybe(pragma_constr_arg_size_info)::in,
+    list(mer_mode)::in, maybe(pragma_constr_arg_size_info)::in,
     maybe(pragma_constr_arg_size_info)::in,
     maybe(pragma_termination_info)::in, prog_context::in, module_info::in,
     module_info::out, io::di, io::uo) is det.
 
 :- pred add_pragma_termination_info(pred_or_func::in, sym_name::in,
-    list(mode)::in, maybe(pragma_arg_size_info)::in,
+    list(mer_mode)::in, maybe(pragma_arg_size_info)::in,
     maybe(pragma_termination_info)::in, prog_context::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -63,7 +63,7 @@
     % handling of `pragma export' declarations, in export.m.
     %
 :- pred module_add_pragma_import(sym_name::in, pred_or_func::in,
-    list(mode)::in, pragma_foreign_proc_attributes::in, string::in,
+    list(mer_mode)::in, pragma_foreign_proc_attributes::in, string::in,
     import_status::in, prog_context::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
@@ -75,7 +75,7 @@
     io::di, io::uo) is det.
 
 :- pred module_add_pragma_tabled(eval_method::in, sym_name::in, int::in,
-    maybe(pred_or_func)::in, maybe(list(mode))::in, import_status::in,
+    maybe(pred_or_func)::in, maybe(list(mer_mode))::in, import_status::in,
     prog_context::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
@@ -98,7 +98,7 @@
     % If there was no mode declaration, then use the inferred argmodes.
     %
 :- pred get_procedure_matching_declmodes(assoc_list(proc_id, proc_info)::in,
-    list(mode)::in, module_info::in, proc_id::out) is semidet.
+    list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -250,7 +250,8 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         maybe_enable_aditi_compilation(!.Status, Context, !ModuleInfo, !IO),
         add_pred_marker("aditi", PredName, Arity, ImportStatus, Context,
             aditi, [], !ModuleInfo, !IO),
-        add_stratified_pred("aditi", PredName, Arity, Context, !ModuleInfo, !IO)
+        add_stratified_pred("aditi", PredName, Arity, Context, !ModuleInfo,
+            !IO)
     ;
         Pragma = base_relation(PredName, Arity),
         maybe_enable_aditi_compilation(!.Status, Context, !ModuleInfo, !IO),
@@ -401,7 +402,8 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
                 )
             )
         )
-    ;   ( 
+    ;
+        ( 
             Origin = user,
             undefined_pred_or_func_error(Name, Arity, Context,
                 "`:- pragma export' declaration", !IO),
@@ -753,7 +755,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
         SubstOk = no
     ).
 
-:- func subst_desc(pair(tvar, type)) = pair(int, type).
+:- func subst_desc(pair(tvar, mer_type)) = pair(int, mer_type).
 
 subst_desc(TVar - Type) = var_to_int(TVar) - Type.
 
@@ -766,8 +768,8 @@ subst_desc(TVar - Type) = var_to_int(TVar) - Type.
     % not ground, however this is a (hopefully temporary) limitation
     % of the current implementation, so it only results in a warning.
 :- pred handle_pragma_type_spec_subst(prog_context::in,
-    assoc_list(tvar, type)::in, pred_info::in, tvarset::in, tvarset::out,
-    list(type)::out, existq_tvars::out, prog_constraints::out,
+    assoc_list(tvar, mer_type)::in, pred_info::in, tvarset::in, tvarset::out,
+    list(mer_type)::out, existq_tvars::out, prog_constraints::out,
     maybe(tsubst)::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
@@ -982,7 +984,7 @@ report_variables(SubExistQVars, VarSet) = Str :-
     % specifies a known procedure.
     %
 :- pred handle_pragma_type_spec_modes(sym_name::in, arity::in,
-    prog_context::in, maybe(list(mode))::in, list(proc_id)::out,
+    prog_context::in, maybe(list(mer_mode))::in, list(proc_id)::out,
     proc_table::in, proc_table::out, bool::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -1082,7 +1084,7 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         %   module_info_incr_errors(!ModuleInfo)
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 add_pragma_termination_info(PredOrFunc, SymName, ModeList,
         MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo,
@@ -1248,8 +1250,8 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
 
 %-----------------------------------------------------------------------------%
 
-module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars, VarSet,
-        PragmaImpl, Status, Context, !ModuleInfo, !QualInfo, !IO) :-
+module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
+        VarSet, PragmaImpl, Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     %
     % Begin by replacing any maybe_thread_safe foreign_proc attributes
     % with the actual thread safety attributes which we get from the
@@ -1448,7 +1450,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
         PredIds, !ModuleInfo, !IO).
 
 :- pred module_add_pragma_tabled_2(eval_method::in, sym_name::in, int::in,
-    maybe(pred_or_func)::in, maybe(list(mode))::in, prog_context::in,
+    maybe(pred_or_func)::in, maybe(list(mer_mode))::in, prog_context::in,
     pred_id::in, module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
@@ -1652,7 +1654,7 @@ set_eval_method(ProcId, ProcInfo0, Context, SimpleCallId, EvalMethod,
         )
     ).
 
-:- pred check_pred_args_against_tabling_methods(list(mode)::in,
+:- pred check_pred_args_against_tabling_methods(list(mer_mode)::in,
     list(maybe(arg_tabling_method))::in, module_info::in, int::in,
     maybe(pair(string))::out) is det.
 
@@ -1694,7 +1696,7 @@ check_pred_args_against_tabling_methods([Mode | Modes],
             "is neither input or output.")
     ).
 
-:- pred check_pred_args_against_tabling(list(mode)::in, module_info::in,
+:- pred check_pred_args_against_tabling(list(mer_mode)::in, module_info::in,
     int::in, maybe(pair(string))::out) is det.
 
 check_pred_args_against_tabling([], _, _, no).
@@ -1713,7 +1715,7 @@ check_pred_args_against_tabling([Mode | Modes], ModuleInfo, ArgNum,
 
     % Extract the modes from the list of pragma_vars.
     %
-:- pred pragma_get_modes(list(pragma_var)::in, list(mode)::out) is det.
+:- pred pragma_get_modes(list(pragma_var)::in, list(mer_mode)::out) is det.
 
 pragma_get_modes([], []).
 pragma_get_modes([PragmaVar | Vars], [Mode | Modes]) :-
@@ -1736,7 +1738,7 @@ pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
     % Extract the names from the list of pragma_vars.
     %
 :- pred pragma_get_var_infos(list(pragma_var)::in,
-    list(maybe(pair(string, mode)))::out) is det.
+    list(maybe(pair(string, mer_mode)))::out) is det.
 
 pragma_get_var_infos([], []).
 pragma_get_var_infos([PragmaVar | PragmaVars], [yes(Name - Mode) | Info]) :-
@@ -1803,7 +1805,7 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
     %
 :- pred module_add_fact_table_procedures(list(proc_id)::in, proc_id::in,
     proc_table::in, sym_name::in, pred_or_func::in, arity::in,
-    list(type)::in, import_status::in, prog_context::in,
+    list(mer_type)::in, import_status::in, prog_context::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
 
@@ -1820,7 +1822,7 @@ module_add_fact_table_procedures([ProcID | ProcIDs], PrimaryProcID, ProcTable,
         !ModuleInfo, !QualInfo, !IO).
 
 :- pred module_add_fact_table_proc(proc_id::in, proc_id::in, proc_table::in,
-    sym_name::in, pred_or_func::in, arity::in, list(type)::in,
+    sym_name::in, pred_or_func::in, arity::in, list(mer_type)::in,
     import_status::in, prog_context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out, io::di, io::uo) is det.
 
@@ -1839,8 +1841,8 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     Attrs0 = default_attributes(c),
     set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
     set_thread_safe(thread_safe, Attrs1, Attrs2),
-        % fact tables procedures should be considered pure
-    set_purity(pure, Attrs2, Attrs),
+    % Fact tables procedures should be considered pure.
+    set_purity(purity_pure, Attrs2, Attrs),
     module_add_pragma_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
         VarSet, ordinary(C_ProcCode, no), Status, Context,
         !ModuleInfo, !QualInfo, !IO),
@@ -1863,7 +1865,7 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     % This is required by module_add_pragma_c_code to add the C code for
     % the procedure to the HLDS.
     %
-:- pred fact_table_pragma_vars(list(prog_var)::in, list(mode)::in,
+:- pred fact_table_pragma_vars(list(prog_var)::in, list(mer_mode)::in,
     prog_varset::in, list(pragma_var)::out) is det.
 
 fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
@@ -1886,7 +1888,7 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
     %
 :- pred clauses_info_add_pragma_foreign_proc(purity::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-    prog_varset::in, list(pragma_var)::in, list(type)::in,
+    prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
     pragma_foreign_code_impl::in, prog_context::in, pred_or_func::in,
     sym_name::in, arity::in, clauses_info::in, clauses_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -2075,14 +2077,14 @@ decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
     % Find the procedure with argmodes which match the ones we want.
     %
 :- pred get_procedure_matching_argmodes(assoc_list(proc_id, proc_info)::in,
-    list(mode)::in, module_info::in, proc_id::out) is semidet.
+    list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
 
 get_procedure_matching_argmodes(Procs, Modes0, ModuleInfo, ProcId) :-
     list__map(constrain_inst_vars_in_mode, Modes0, Modes),
     get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, ProcId).
 
 :- pred get_procedure_matching_argmodes_2(assoc_list(proc_id, proc_info)::in,
-    list(mode)::in, module_info::in, proc_id::out) is semidet.
+    list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
 
 get_procedure_matching_argmodes_2([P | Procs], Modes, ModuleInfo, OurProcId) :-
     P = ProcId - ProcInfo,
@@ -2098,7 +2100,7 @@ get_procedure_matching_declmodes(Procs, Modes0, ModuleInfo, ProcId) :-
     get_procedure_matching_declmodes_2(Procs, Modes, ModuleInfo, ProcId).
 
 :- pred get_procedure_matching_declmodes_2(assoc_list(proc_id, proc_info)::in,
-    list(mode)::in, module_info::in, proc_id::out) is semidet.
+    list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
 
 get_procedure_matching_declmodes_2([P | Procs], Modes, ModuleInfo,
         OurProcId) :-
@@ -2110,8 +2112,8 @@ get_procedure_matching_declmodes_2([P | Procs], Modes, ModuleInfo,
         get_procedure_matching_declmodes_2(Procs, Modes, ModuleInfo, OurProcId)
     ).
 
-:- pred mode_list_matches(list(mode)::in, list(mode)::in, module_info::in)
-    is semidet.
+:- pred mode_list_matches(list(mer_mode)::in, list(mer_mode)::in,
+    module_info::in) is semidet.
 
 mode_list_matches([], [], _).
 mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-

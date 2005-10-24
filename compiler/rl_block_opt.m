@@ -641,7 +641,7 @@ rl_block_opt__ensure_index(OutputId, TheIndex) -->
 		error("rl_block_opt__ensure_index")
 	}.
 
-:- pred rl_block_opt__add_full_index(list(type)::in, list(index_spec)::in,
+:- pred rl_block_opt__add_full_index(list(mer_type)::in, list(index_spec)::in,
 		list(index_spec)::out, list(index_spec)::out) is det.
 
 rl_block_opt__add_full_index(Schema, Indexes0, Indexes, [TheIndex]) :-
@@ -675,7 +675,7 @@ rl_block_opt__add_index_to_node(OutputId, Index) -->
 	rl_block_opt__update_node_index(
 		rl_block_opt__add_specific_index(Index), OutputId, _).
 
-:- pred rl_block_opt__add_specific_index(list(index_spec)::in, list(type)::in,
+:- pred rl_block_opt__add_specific_index(list(index_spec)::in, list(mer_type)::in,
 	list(index_spec)::in, list(index_spec)::out,
 	list(index_spec)::out) is det.
 
@@ -685,7 +685,7 @@ rl_block_opt__add_specific_index(AddedIndexes0, _,
 	list__append(Indexes0, AddedIndexes, Indexes).
 
 :- pred rl_block_opt__update_node_index(
-	pred(list(type), list(index_spec), list(index_spec), list(index_spec)),
+	pred(list(mer_type), list(index_spec), list(index_spec), list(index_spec)),
 	output_id, list(index_spec), dag, dag).
 :- mode rl_block_opt__update_node_index(pred(in, in, out, out) is det,
 	in, out, in, out) is det.
@@ -1540,7 +1540,7 @@ rl_block_opt__one_output(Outputs, Output) :-
 	;	call(rl_proc_name, list(output_id))
 	;	aggregate(output_id, pred_proc_id, pred_proc_id)
 	;	insert_tuple(output_id, rl_goal)
-	;	init(list(type))
+	;	init(list(mer_type))
 	;	input(relation_id)	% input to block
 	.
 
@@ -1580,7 +1580,7 @@ rl_block_opt__one_output(Outputs, Output) :-
 
 :- type output_node
 	---> output_node(
-		list(type),		% schema.
+		list(mer_type),		% schema.
 		list(index_spec),	% indexes which should be added to
 					% the outputs.
 		set(relation_id)	% relation_ids produced
@@ -1734,7 +1734,7 @@ dag_get_relation_info(RelationId, RelationInfo) -->
 	{ rl_opt_info_get_relation_info(RelationId, RelationInfo,
 		RLOptInfo, _) }.
 
-:- pred dag_add_relation(list(type)::in, relation_id::out,
+:- pred dag_add_relation(list(mer_type)::in, relation_id::out,
 		dag::in, dag::out) is det.
 
 dag_add_relation(Schema, RelationId) -->

@@ -292,7 +292,7 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 
         % Build the lambda expression for the modification condition.
         make_atomic_unification(LambdaVar,
-            lambda_goal((pure), LambdaPredOrFunc, EvalMethod,
+            lambda_goal(purity_pure, LambdaPredOrFunc, EvalMethod,
                 FixModes, LambdaNonLocals,
                 HeadArgs, LambdaModes, Detism, PredGoal),
             Context, MainContext, [], LambdaConstruct, !QualInfo),
@@ -370,14 +370,14 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 
 :- pred aditi_bulk_update_goal_info(aditi_bulk_update::in, pred_or_func::in,
     sym_name::in, arity::in, list(prog_var)::in, pred_or_func::out,
-    lambda_eval_method::out, list(mode)::out, determinism::out,
+    lambda_eval_method::out, list(mer_mode)::out, determinism::out,
     hlds_goal::in, hlds_goal::out) is det.
 
 aditi_bulk_update_goal_info(bulk_insert, PredOrFunc, _SymName,
         PredArity, _Args, LambdaPredOrFunc, EvalMethod,
         LambdaModes, Detism, Goal, Goal) :-
     LambdaPredOrFunc = PredOrFunc,
-    EvalMethod = (aditi_bottom_up),
+    EvalMethod = lambda_aditi_bottom_up,
     out_mode(OutMode),
     Detism = nondet,
     % Modes for the arguments of the input tuple.
@@ -387,7 +387,7 @@ aditi_bulk_update_goal_info(bulk_delete, PredOrFunc,
         SymName, PredArity, Args, LambdaPredOrFunc, EvalMethod,
         LambdaModes, Detism, Goal0, Goal) :-
     LambdaPredOrFunc = PredOrFunc,
-    EvalMethod = (aditi_bottom_up),
+    EvalMethod = lambda_aditi_bottom_up,
     Detism = nondet,
     out_mode(OutMode),
     list__duplicate(PredArity, OutMode, LambdaModes),
@@ -405,7 +405,7 @@ aditi_bulk_update_goal_info(bulk_modify, PredOrFunc,
     LambdaPredOrFunc = predicate,
 
     out_mode(OutMode),
-    EvalMethod = (aditi_bottom_up),
+    EvalMethod = lambda_aditi_bottom_up,
     Detism = nondet,
 
     % Modes for the arguments corresponding to the input tuple.

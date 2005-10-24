@@ -701,7 +701,7 @@ cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, InstMap, ModuleInfo,
     % Check whether a switch handles all the possible constants/functors
     % for the type.
     %
-:- pred switch_covers_all_cases(module_info::in, (type)::in,
+:- pred switch_covers_all_cases(module_info::in, mer_type::in,
     sorted_case_list::in) is semidet.
 
 switch_covers_all_cases(ModuleInfo, Type, CasesList) :-

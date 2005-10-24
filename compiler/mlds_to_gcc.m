@@ -407,7 +407,7 @@ gen_init_fn_defns(MLDS_ModuleName, GlobalInfo0, GlobalInfo) -->
 		qual(MLDS_ModuleName, module_qual, Name),
 		SymbolTable, LabelTable) },
 	{ term__context_init(Context) },
-	{ FuncBody = mlds__statement(block([], []),
+	{ FuncBody = statement(block([], []),
 		mlds__make_context(Context)) },
 	gcc__start_function(GCC_FuncDecl),
 	gen_statement(DefnInfo, FuncBody),
@@ -553,8 +553,8 @@ mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) -->
 	% Generate calls to MR_register_type_ctor_info() for the specified
 	% type_ctor_infos.
 	%
-:- pred mlds_output_calls_to_register_tci(mlds_module_name::in, mlds__defns::in,
-		io__state::di, io__state::uo) is det.
+:- pred mlds_output_calls_to_register_tci(mlds_module_name::in,
+	mlds__defns::in, io__state::di, io__state::uo) is det.
 
 mlds_output_calls_to_register_tci(_ModuleName, []) --> [].
 mlds_output_calls_to_register_tci(ModuleName,
@@ -619,7 +619,7 @@ mlds_output_pragma_export_func_name(ModuleName, Indent,
 			mlds_output_pragma_export_type(suffix)).
 
 :- type locn ---> prefix ; suffix.
-:- pred mlds_output_pragma_export_type(locn, mlds__type, io__state, io__state).
+:- pred mlds_output_pragma_export_type(locn, mlds_type, io__state, io__state).
 :- mode mlds_output_pragma_export_type(in, in, di, uo) is det.
 
 mlds_output_pragma_export_type(suffix, _Type) --> [].
@@ -707,7 +707,7 @@ write_func_args(ModuleName, [Arg | Args]) -->
 	% Output a fully qualified name preceded by a cast.
 	%
 :- pred mlds_output_name_with_cast(mlds_module_name::in,
-		pair(mlds__entity_name, mlds__type)::in,
+		pair(mlds__entity_name, mlds_type)::in,
 		io__state::di, io__state::uo) is det.
 
 mlds_output_name_with_cast(ModuleName, Name - Type) -->
@@ -877,7 +877,8 @@ build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 		io__state, io__state).
 :- mode build_field_defn_body(in, in, in, in, in, out, di, uo) is det.
 
-build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo, GCC_Defn) -->
+build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo,
+		GCC_Defn) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer, _GC_TraceCode) },
 		build_field_data_defn(Name, Type, Initializer, GlobalInfo,
@@ -1151,7 +1152,7 @@ add_func_abstractness_flag(concrete, _GCC_Defn) -->
 	% function definition (or inside a block within a function),
 	% and which is hence local to that function.
 :- pred build_local_data_defn(mlds__qualified_entity_name, mlds__decl_flags,
-		mlds__type, mlds__initializer, defn_info, gcc__var_decl,
+		mlds_type, mlds__initializer, defn_info, gcc__var_decl,
 		io__state, io__state).
 :- mode build_local_data_defn(in, in, in, in, in, out, di, uo) is det.
 
@@ -1198,7 +1199,7 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 
 	% Handle an MLDS data definition that is nested inside a type,
 	% i.e. a field definition.
-:- pred build_field_data_defn(mlds__qualified_entity_name, mlds__type,
+:- pred build_field_data_defn(mlds__qualified_entity_name, mlds_type,
 		mlds__initializer, global_info, gcc__field_decl,
 		io__state, io__state).
 :- mode build_field_data_defn(in, in, in, in, out, di, uo) is det.
@@ -1515,7 +1516,7 @@ gen_func(Name, Context, Flags, Signature, MaybeBody,
 	% we build a table of all the label declarations
 	% in that function body.
 	%
-:- pred build_label_table(mlds__statement::in, label_table::out,
+:- pred build_label_table(statement::in, label_table::out,
 		io__state::di, io__state::uo) is det.
 build_label_table(Statement, LabelTable) -->
 	{ solutions(statement_contains_label(Statement), Labels) },
@@ -1523,11 +1524,11 @@ build_label_table(Statement, LabelTable) -->
 	{ map__from_corresponding_lists(Labels, GCC_LabelDecls,
 		LabelTable) }.
 
-:- pred statement_contains_label(mlds__statement::in, mlds__label::out)
+:- pred statement_contains_label(statement::in, mlds__label::out)
 	is nondet.
 statement_contains_label(Statement, Label) :-
 	statement_contains_statement(Statement, SubStatement),
-	SubStatement = mlds__statement(label(Label), _).
+	SubStatement = statement(label(Label), _).
 
 	% XXX we should lookup the existing definition, if there is one,
 	% rather than always making a new one
@@ -1558,7 +1559,8 @@ build_dummy_param_decls([Type | Types],
 :- pred make_func_decl_for_defn(mlds__qualified_entity_name::in,
 		mlds__func_params::in, global_info::in, gcc__func_decl::out,
 		symbol_table::out, io__state::di, io__state::uo) is det.
-make_func_decl_for_defn(Name, Parameters, GlobalInfo, FuncDecl, SymbolTable) -->
+make_func_decl_for_defn(Name, Parameters, GlobalInfo, FuncDecl,
+		SymbolTable) -->
 	{ Parameters = func_params(Arguments, ReturnTypes) },
 	get_return_type(ReturnTypes, GlobalInfo, RetType),
 	{ get_qualified_func_name(Name, ModuleName, FuncName, AsmFuncName) },
@@ -1567,7 +1569,7 @@ make_func_decl_for_defn(Name, Parameters, GlobalInfo, FuncDecl, SymbolTable) -->
 	gcc__build_function_decl(FuncName, AsmFuncName,
 		RetType, ParamTypes, ParamDecls, FuncDecl).
 
-:- pred get_return_type(list(mlds__type)::in, global_info::in, gcc__type::out,
+:- pred get_return_type(list(mlds_type)::in, global_info::in, gcc__type::out,
 		io__state::di, io__state::uo) is det.
 get_return_type(List, GlobalInfo, GCC_Type) -->
 	( { List = [] } ->
@@ -1722,13 +1724,13 @@ build_param_types_and_decls([Arg|Args], ModuleName, GlobalInfo,
 % Code to build types
 %
 
-:- pred build_type(mlds__type, global_info, gcc__type, io__state, io__state).
+:- pred build_type(mlds_type, global_info, gcc__type, io__state, io__state).
 :- mode build_type(in, in, out, di, uo) is det.
 
 build_type(Type, GlobalInfo, GCC_Type) -->
 	build_type(Type, no_size, GlobalInfo, GCC_Type).
 
-:- pred build_type(mlds__type, initializer_array_size, global_info,
+:- pred build_type(mlds_type, initializer_array_size, global_info,
 		gcc__type, io__state, io__state).
 :- mode build_type(in, in, in, out, di, uo) is det.
 
@@ -1856,7 +1858,7 @@ build_type(mlds__rtti_type(RttiIdMaybeElement), InitializerSize, _GlobalInfo,
 build_type(mlds__unknown_type, _, _, _) -->
 	{ unexpected(this_file, "build_type: unknown type") }.
 
-:- pred build_mercury_type(mercury_type, type_category, gcc__type,
+:- pred build_mercury_type(mer_type, type_category, gcc__type,
 	io__state, io__state).
 :- mode build_mercury_type(in, in, out, di, uo) is det.
 
@@ -2689,7 +2691,8 @@ fixup_pseudo_type_info(PseudoTypeInfo0) = PseudoTypeInfo :-
 
 % The field table records the mapping from MLDS field names
 % to GCC field declarations.
-:- type field_table == map(mlds__fully_qualified_name(field_name), gcc__field_decl).
+:- type field_table ==
+	map(mlds__fully_qualified_name(field_name), gcc__field_decl).
 
 % The defn_info holds information used while generating code
 % inside a function, or in the initializers for a global variable.
@@ -2718,18 +2721,18 @@ fixup_pseudo_type_info(PseudoTypeInfo0) = PseudoTypeInfo :-
 % Code to output statements
 %
 
-:- pred gen_statements(defn_info, list(mlds__statement),
+:- pred gen_statements(defn_info, list(statement),
 		io__state, io__state).
 :- mode gen_statements(in, in, di, uo) is det.
 
 gen_statements(DefnInfo, Statements) -->
 	list__foldl(gen_statement(DefnInfo), Statements).
 
-:- pred gen_statement(defn_info, mlds__statement,
+:- pred gen_statement(defn_info, statement,
 		io__state, io__state).
 :- mode gen_statement(in, in, di, uo) is det.
 
-gen_statement(DefnInfo, mlds__statement(Statement, Context)) -->
+gen_statement(DefnInfo, statement(Statement, Context)) -->
 	gen_context(Context),
 	gen_stmt(DefnInfo, Statement, Context).
 
@@ -2985,7 +2988,7 @@ mlds_to_c.m.  It shows what we should generate.
 	% record the heap allocation.
 	%
 :- pred mlds_maybe_output_heap_profile_instr(mlds__context::in,
-		indent::in, list(mlds__rval)::in,
+		indent::in, list(mlds_rval)::in,
 		mlds__qualified_entity_name::in, maybe(ctor_name)::in,
 		io__state::di, io__state::uo) is det.
 
@@ -3020,7 +3023,7 @@ mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
 	% an arc in the call profile between the callee and caller.
 	%
 :- pred mlds_maybe_output_call_profile_instr(mlds__context::in,
-		indent::in, mlds__rval::in, mlds__qualified_entity_name::in,
+		indent::in, mlds_rval::in, mlds__qualified_entity_name::in,
 		io__state::di, io__state::uo) is det.
 
 mlds_maybe_output_call_profile_instr(Context, Indent,
@@ -3108,7 +3111,7 @@ gen_atomic_stmt(DefnInfo, NewObject, Context) -->
 	( { MaybeSize = yes(SizeInWords) } ->
 		globals__io_lookup_int_option(bytes_per_word, BytesPerWord),
 		{ SizeOfWord = const(int_const(BytesPerWord)) },
-		{ SizeInBytes = binop((*), SizeInWords, SizeOfWord) }
+		{ SizeInBytes = binop(int_mul, SizeInWords, SizeOfWord) }
 	;
 		{ sorry(this_file, "new_object with unknown size") }
 	),
@@ -3188,8 +3191,8 @@ gen_atomic_stmt(_DefnInfo, outline_foreign_proc(_, _, _, _), _Context) -->
 	% gen_init_args generates code to initialize the fields
 	% of an object allocated with a new_object MLDS instruction.
 	%
-:- pred gen_init_args(list(mlds__rval), list(mlds__type), mlds__context, int,
-		mlds__lval, mlds__type, mlds__tag, defn_info,
+:- pred gen_init_args(list(mlds_rval), list(mlds_type), mlds__context, int,
+		mlds_lval, mlds_type, mlds_tag, defn_info,
 		io__state, io__state).
 :- mode gen_init_args(in, in, in, in, in, in, in, in, di, uo) is det.
 
@@ -3218,7 +3221,7 @@ gen_init_args([Arg | Args], [ArgType | ArgTypes], Context,
 % Code to output expressions
 %
 
-:- pred build_lval(mlds__lval, defn_info, gcc__expr, io__state, io__state).
+:- pred build_lval(mlds_lval, defn_info, gcc__expr, io__state, io__state).
 :- mode build_lval(in, in, out, di, uo) is det.
 
 build_lval(field(MaybeTag, Rval, offset(OffsetRval),
@@ -3351,7 +3354,7 @@ build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
 			build_qualified_name(Name)) }
 	).
 
-:- func get_class_type_name(mlds__type) = mlds__qualified_entity_name.
+:- func get_class_type_name(mlds_type) = mlds__qualified_entity_name.
 get_class_type_name(Type) = Name :-
 	(
 		(
@@ -3367,7 +3370,7 @@ get_class_type_name(Type) = Name :-
 		unexpected(this_file, "non-class_type in get_type_name")
 	).
 
-:- pred build_rval(mlds__rval, defn_info, gcc__expr, io__state, io__state).
+:- pred build_rval(mlds_rval, defn_info, gcc__expr, io__state, io__state).
 :- mode build_rval(in, in, out, di, uo) is det.
 
 build_rval(lval(Lval), DefnInfo, Expr) -->
@@ -3395,7 +3398,7 @@ build_rval(mem_addr(Lval), DefnInfo, AddrExpr) -->
 build_rval(self(_), _DefnInfo, _Expr) -->
 	{ unexpected(this_file, "self rval") }.
 
-:- pred build_unop(mlds__unary_op, mlds__rval, defn_info, gcc__expr,
+:- pred build_unop(mlds_unary_op, mlds_rval, defn_info, gcc__expr,
 		io__state, io__state).
 :- mode build_unop(in, in, in, out, di, uo) is det.
 
@@ -3444,13 +3447,13 @@ build_unop(unbox(Type), Rval, DefnInfo, GCC_Expr) -->
 build_unop(std_unop(Unop), Exprn, DefnInfo, GCC_Expr) -->
 	build_std_unop(Unop, Exprn, DefnInfo, GCC_Expr).
 
-:- pred type_is_float(mlds__type::in) is semidet.
+:- pred type_is_float(mlds_type::in) is semidet.
 type_is_float(Type) :-
 	( Type = mlds__mercury_type(builtin(float), _, _)
 	; Type = mlds__native_float_type
 	).
 
-:- pred build_cast_rval(mlds__type, mlds__rval, defn_info, gcc__expr,
+:- pred build_cast_rval(mlds_type, mlds_rval, defn_info, gcc__expr,
 		io__state, io__state).
 :- mode build_cast_rval(in, in, in, out, di, uo) is det.
 
@@ -3459,7 +3462,7 @@ build_cast_rval(Type, Rval, DefnInfo, GCC_Expr) -->
 	build_type(Type, DefnInfo ^ global_info, GCC_Type),
 	gcc__convert_type(GCC_Rval, GCC_Type, GCC_Expr).
 
-:- pred build_std_unop(builtin_ops__unary_op, mlds__rval, defn_info,
+:- pred build_std_unop(builtin_ops__unary_op, mlds_rval, defn_info,
 		gcc__expr, io__state, io__state).
 :- mode build_std_unop(in, in, in, out, di, uo) is det.
 
@@ -3509,10 +3512,11 @@ build_unop_expr(hash_string, Arg, Expr) -->
 		Expr).
 build_unop_expr(bitwise_complement, Arg, Expr) -->
 	gcc__build_unop(gcc__bit_not_expr, 'MR_Integer', Arg, Expr).
-build_unop_expr((not), Arg, Expr) -->
-	gcc__build_unop(gcc__truth_not_expr, gcc__boolean_type_node, Arg, Expr).
+build_unop_expr(logical_not, Arg, Expr) -->
+	gcc__build_unop(gcc__truth_not_expr, gcc__boolean_type_node,
+		Arg, Expr).
 
-:- pred build_std_binop(builtin_ops__binary_op, mlds__rval, mlds__rval,
+:- pred build_std_binop(builtin_ops__binary_op, mlds_rval, mlds_rval,
 		defn_info, gcc__expr, io__state, io__state).
 :- mode build_std_binop(in, in, in, in, out, di, uo) is det.
 
@@ -3586,18 +3590,18 @@ unsigned_compare_op(unsigned_le, gcc__le_expr).
 :- mode convert_binary_op(in, out, out) is det.
 
 		% Operator	GCC operator	     GCC result type
-convert_binary_op(+,		gcc__plus_expr,      'MR_Integer').
-convert_binary_op(-,		gcc__minus_expr,     'MR_Integer').
-convert_binary_op(*,		gcc__mult_expr,      'MR_Integer').
-convert_binary_op(/,		gcc__trunc_div_expr, 'MR_Integer').
-convert_binary_op((mod),	gcc__trunc_mod_expr, 'MR_Integer').
-convert_binary_op((<<),		gcc__lshift_expr,    'MR_Integer').
-convert_binary_op((>>),		gcc__rshift_expr,    'MR_Integer').
-convert_binary_op((&),		gcc__bit_and_expr,   'MR_Integer').
-convert_binary_op(('|'),	gcc__bit_ior_expr,   'MR_Integer').
-convert_binary_op((^),		gcc__bit_xor_expr,   'MR_Integer').
-convert_binary_op((and),	gcc__truth_andif_expr, gcc__boolean_type_node).
-convert_binary_op((or),		gcc__truth_orif_expr, gcc__boolean_type_node).
+convert_binary_op(int_add,	gcc__plus_expr,      'MR_Integer').
+convert_binary_op(int_sub,	gcc__minus_expr,     'MR_Integer').
+convert_binary_op(int_mul,	gcc__mult_expr,      'MR_Integer').
+convert_binary_op(int_div,	gcc__trunc_div_expr, 'MR_Integer').
+convert_binary_op(int_mod,	gcc__trunc_mod_expr, 'MR_Integer').
+convert_binary_op(unchecked_left_shift,	gcc__lshift_expr,    'MR_Integer').
+convert_binary_op(unchecked_right_shift,gcc__rshift_expr,    'MR_Integer').
+convert_binary_op(bitwise_and,	gcc__bit_and_expr,   'MR_Integer').
+convert_binary_op(bitwise_or,	gcc__bit_ior_expr,   'MR_Integer').
+convert_binary_op(bitwise_xor,	gcc__bit_xor_expr,   'MR_Integer').
+convert_binary_op(logical_and,	gcc__truth_andif_expr, gcc__boolean_type_node).
+convert_binary_op(logical_or,	gcc__truth_orif_expr, gcc__boolean_type_node).
 convert_binary_op(eq,		gcc__eq_expr,	     gcc__boolean_type_node).
 convert_binary_op(ne,		gcc__ne_expr,	     gcc__boolean_type_node).
 convert_binary_op(body,		gcc__minus_expr,     'MR_intptr_t').
@@ -3609,10 +3613,10 @@ convert_binary_op(str_lt, _, _) :- unexpected(this_file, "str_lt").
 convert_binary_op(str_gt, _, _) :- unexpected(this_file, "str_gt").
 convert_binary_op(str_le, _, _) :- unexpected(this_file, "str_le").
 convert_binary_op(str_ge, _, _) :- unexpected(this_file, "str_ge").
-convert_binary_op((<),		gcc__lt_expr,	     gcc__boolean_type_node).
-convert_binary_op((>),		gcc__gt_expr,	     gcc__boolean_type_node).
-convert_binary_op((<=),		gcc__le_expr,	     gcc__boolean_type_node).
-convert_binary_op((>=),		gcc__ge_expr,	     gcc__boolean_type_node).
+convert_binary_op(int_lt,	gcc__lt_expr,	     gcc__boolean_type_node).
+convert_binary_op(int_gt,	gcc__gt_expr,	     gcc__boolean_type_node).
+convert_binary_op(int_le,	gcc__le_expr,	     gcc__boolean_type_node).
+convert_binary_op(int_ge,	gcc__ge_expr,	     gcc__boolean_type_node).
 convert_binary_op(unsigned_le, _, _) :- unexpected(this_file, "unsigned_le").
 convert_binary_op(float_plus,	gcc__plus_expr,	     'MR_Float').
 convert_binary_op(float_minus,	gcc__minus_expr,     'MR_Float').
@@ -3625,7 +3629,7 @@ convert_binary_op(float_gt,	gcc__gt_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_le,	gcc__le_expr,	     gcc__boolean_type_node).
 convert_binary_op(float_ge,	gcc__ge_expr,	     gcc__boolean_type_node).
 
-:- pred build_call(gcc__func_decl::in, list(mlds__rval)::in, defn_info::in,
+:- pred build_call(gcc__func_decl::in, list(mlds_rval)::in, defn_info::in,
 		gcc__expr::out, io__state::di, io__state::uo) is det.
 build_call(FuncDecl, ArgList, DefnInfo, GCC_Call) -->
 	gcc__build_func_addr_expr(FuncDecl, FuncExpr),
@@ -3633,7 +3637,7 @@ build_call(FuncDecl, ArgList, DefnInfo, GCC_Call) -->
 	{ IsTailCall = no },
 	gcc__build_call_expr(FuncExpr, GCC_ArgList, IsTailCall, GCC_Call).
 
-:- pred build_args(list(mlds__rval), defn_info, gcc__arg_list,
+:- pred build_args(list(mlds_rval), defn_info, gcc__arg_list,
 		io__state, io__state).
 :- mode build_args(in, in, out, di, uo) is det.
 
@@ -3649,7 +3653,7 @@ build_args([Arg|Args], DefnInfo, GCC_ArgList) -->
 % Code to output constants
 %
 
-:- pred build_rval_const(mlds__rval_const, global_info, gcc__expr,
+:- pred build_rval_const(mlds_rval_const, global_info, gcc__expr,
 		io__state, io__state).
 :- mode build_rval_const(in, in, out, di, uo) is det.
 

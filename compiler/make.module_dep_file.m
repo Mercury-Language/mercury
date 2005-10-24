@@ -294,9 +294,11 @@ do_write_module_dep_file(Imports, !IO) :-
 read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
     module_name_to_search_file_name(ModuleName, module_dep_file_extension,
         ModuleDepFile, !IO),
-    globals__io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
+    globals__io_lookup_accumulating_option(search_directories, SearchDirs,
+        !IO),
     io__input_stream(OldInputStream, !IO),
-    search_for_file_returning_dir(SearchDirs, ModuleDepFile, SearchResult, !IO),
+    search_for_file_returning_dir(SearchDirs, ModuleDepFile, SearchResult,
+        !IO),
     (
         SearchResult = ok(ModuleDir),
         parser__read_term(ImportsTermResult, !IO),
@@ -343,8 +345,7 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
                 (pred(LanguageTerm::in, Language::out) is semidet :-
                     LanguageTerm = term__functor(
                         term__string(LanguageString), [], _),
-                    globals__convert_foreign_language(
-                        LanguageString, Language)
+                    globals__convert_foreign_language(LanguageString, Language)
                 ), ForeignLanguagesTerms, ForeignLanguages),
             ForeignImportsTerm = term__functor(term__atom("{}"),
                 ForeignImportTerms, _),
@@ -355,7 +356,8 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
                         [LanguageTerm, ImportedModuleTerm], _),
                     LanguageTerm = term__functor(
                         term__string(LanguageString), [], _),
-                    globals__convert_foreign_language(LanguageString, Language),
+                    globals__convert_foreign_language(LanguageString,
+                        Language),
                     sym_name_and_args(ImportedModuleTerm, ImportedModuleName,
                         []),
                     ForeignImportModule = foreign_import_module(Language,

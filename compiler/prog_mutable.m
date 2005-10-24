@@ -25,22 +25,22 @@
     % Create a predmode declaration for a non-pure mutable get predicate.
     % (This is the default get predicate.)
     %
-:- func nonpure_get_pred_decl(module_name, string, (type), (inst)) = item.
+:- func nonpure_get_pred_decl(module_name, string, mer_type, mer_inst) = item.
 
     % Create a predmode declaration for a non-pure mutable set predicate.
     % (This is the default set predicate.)
     %
-:- func nonpure_set_pred_decl(module_name, string, (type), (inst)) = item.
+:- func nonpure_set_pred_decl(module_name, string, mer_type, mer_inst) = item.
 
     % Create a predmode declaration for a pure mutable get predicate.
     % (This is only created if the `pure' mutable attribute is given.)
     %
-:- func pure_get_pred_decl(module_name, string, (type), (inst)) = item.
+:- func pure_get_pred_decl(module_name, string, mer_type, mer_inst) = item.
 
     % Create a predmode declaration for a pure mutable set predicate.
     % (This is only create the `pure' mutable attribute is give.)
     %
-:- func pure_set_pred_decl(module_name, string, (type), (inst)) = item.
+:- func pure_set_pred_decl(module_name, string, mer_type, mer_inst) = item.
 
     % Create a predmode declaration for the mutable initialisation
     % predicate.
@@ -86,7 +86,7 @@ nonpure_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
         mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(det),
-        true /* condition */, (semipure), Constraints).
+        true /* condition */, purity_semipure, Constraints).
 
 nonpure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     VarSet = varset__init,
@@ -97,7 +97,7 @@ nonpure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         mutable_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(det),
-        true /* condition */, (impure), Constraints).
+        true /* condition */, purity_impure, Constraints).
 
 pure_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
     VarSet = varset__init,
@@ -110,7 +110,7 @@ pure_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
         type_and_mode(io_state_type, di_mode),
         type_and_mode(io_state_type, uo_mode)],
         no /* with_type */, no /* with_inst */, yes(det),
-        true /* condition */, pure, Constraints).
+        true /* condition */, purity_pure, Constraints).
 
 pure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     VarSet = varset__init,
@@ -123,12 +123,12 @@ pure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         type_and_mode(io_state_type, di_mode),
         type_and_mode(io_state_type, uo_mode)],
         no /* with_type */, no /* with_inst */, yes(det),
-        true /* condition */, pure, Constraints).
+        true /* condition */, purity_pure, Constraints).
 
     % Return the type io.state.
     % XXX Perhaps this should be in prog_type?
     %
-:- func io_state_type = (type).
+:- func io_state_type = mer_type.
 
 io_state_type = defined(qualified(unqualified("io"), "state"), [], star).
 
@@ -140,7 +140,7 @@ init_pred_decl(ModuleName, Name) = InitPredDecl :-
     InitPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars,
         predicate, mutable_init_pred_sym_name(ModuleName, Name),
         [], no /* with_type */, no /* with_inst */, yes(det),
-        true /* condition */, (impure), Constraints).
+        true /* condition */, purity_impure, Constraints).
 
 %-----------------------------------------------------------------------------%
 

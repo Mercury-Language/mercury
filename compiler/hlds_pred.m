@@ -103,8 +103,8 @@
     % Return the id of the first predicate in a module, and of the first
     % procedure in a predicate.
     %
-:- func hlds_pred__initial_pred_id = pred_id.
-:- func hlds_pred__initial_proc_id = proc_id.
+:- func initial_pred_id = pred_id.
+:- func initial_proc_id = proc_id.
 
     % Return an invalid predicate or procedure id. These are intended to be
     % used to initialize the relevant fields in in call(...) goals before
@@ -114,12 +114,12 @@
 :- func invalid_pred_id = pred_id.
 :- func invalid_proc_id = proc_id.
 
-:- pred hlds_pred__next_pred_id(pred_id::in, pred_id::out) is det.
+:- pred next_pred_id(pred_id::in, pred_id::out) is det.
 
     % For semidet complicated unifications with mode (in, in), these are
     % defined to have the same proc_id (0). This returns that proc_id.
     %
-:- pred hlds_pred__in_in_unification_proc_id(proc_id::out) is det.
+:- pred in_in_unification_proc_id(proc_id::out) is det.
 
 :- type pred_info.
 :- type proc_info.
@@ -153,7 +153,7 @@
         proc_module             ::  module_name,
         proc_name               ::  string,
         proc_arity              ::  arity,
-        proc_arg_types          ::  list(type),
+        proc_arg_types          ::  list(mer_type),
         pred_id                 ::  pred_id,
         proc_id                 ::  proc_id,
         proc_headvars           ::  assoc_list(prog_var, prog_var_name),
@@ -205,7 +205,7 @@
 :- type instance_method_constraints
     --->    instance_method_constraints(
                 class_id,
-                list(type),             % The types in the head of the
+                list(mer_type),             % The types in the head of the
                                         % instance declaration.
                 list(prog_constraint),  % The universal constraints
                                         % on the instance declaration.
@@ -249,7 +249,7 @@
     % This type describes the contents of a prog_var.
     %
 :- type rtti_var_info
-    --->    type_info_var(type)
+    --->    type_info_var(mer_type)
             % The variable holds a type_info for the given type.
 
     ;       typeclass_info_var(prog_constraint)
@@ -334,13 +334,13 @@
     % For a prog_var which holds a type_info, set the type that the
     % type_info is for.  Abort if such information already exists.
     %
-:- pred rtti_det_insert_type_info_type(prog_var::in, (type)::in,
+:- pred rtti_det_insert_type_info_type(prog_var::in, mer_type::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % For a prog_var which holds a type_info, set the type that the
     % type_info is for, overwriting any previous information.
     %
-:- pred rtti_set_type_info_type(prog_var::in, (type)::in,
+:- pred rtti_set_type_info_type(prog_var::in, mer_type::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % rtti_var_info_duplicate(Var, NewVar, !RttiVarMaps)
@@ -359,7 +359,7 @@
     % rtti_varmaps structure, including those types which appear in the
     % arguments of constraints.
     %
-:- pred rtti_varmaps_types(rtti_varmaps::in, list(type)::out) is det.
+:- pred rtti_varmaps_types(rtti_varmaps::in, list(mer_type)::out) is det.
 
     % Returns all of the prog_constraints which have typeclass_infos
     % stored in a prog_var we can reuse.
@@ -390,7 +390,7 @@
     % rtti_varmaps structure, including those in the arguments of constraints.
     %
 :- pred rtti_varmaps_transform_types(
-    pred((type), (type))::in(pred(in, out) is det),
+    pred(mer_type, mer_type)::in(pred(in, out) is det),
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % rtti_varmaps_overlay(A, B, C)
@@ -444,7 +444,7 @@ type_info_locn_set_var(Var, typeclass_info(_, Num), typeclass_info(Var, Num)).
     % map.  The value associated with a given key is the type that the
     % type_info is for.
     %
-:- type type_info_type_map == map(prog_var, type).
+:- type type_info_type_map == map(prog_var, mer_type).
 
     % Every program variable which holds a typeclass_info is a key in this
     % map.  The value associated with a given key is the prog_constraint
@@ -557,7 +557,7 @@ rtti_varmaps_tvars(VarMaps, TVars) :-
 rtti_varmaps_types(VarMaps, Types) :-
     solutions(rtti_varmaps_is_known_type(VarMaps), Types).
 
-:- pred rtti_varmaps_is_known_type(rtti_varmaps::in, (type)::out) is nondet.
+:- pred rtti_varmaps_is_known_type(rtti_varmaps::in, mer_type::out) is nondet.
 
 rtti_varmaps_is_known_type(VarMaps, Type) :-
     map__values(VarMaps ^ ti_type_map, Types),
@@ -650,7 +650,7 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     ).
 
 :- pred apply_substs_to_type_map(tvar_renaming::in, tsubst::in,
-    map(prog_var, prog_var)::in, prog_var::in, (type)::in,
+    map(prog_var, prog_var)::in, prog_var::in, mer_type::in,
     type_info_type_map::in, type_info_type_map::out) is det.
 
 apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
@@ -705,7 +705,7 @@ rtti_varmaps_transform_types(Pred, !RttiVarMaps) :-
     !:RttiVarMaps = !.RttiVarMaps ^ tci_constraint_map := ConstraintMap.
 
 :- pred apply_constraint_key_transformation(
-    pred((type), (type))::in(pred(in, out) is det),
+    pred(mer_type, mer_type)::in(pred(in, out) is det),
     prog_constraint::in, prog_var::in,
     typeclass_info_varmap::in, typeclass_info_varmap::out) is det.
 
@@ -716,7 +716,7 @@ apply_constraint_key_transformation(Pred, Constraint0, Var, !Map) :-
     svmap__set(Constraint, Var, !Map).
 
 :- pred apply_constraint_value_transformation(
-    pred((type), (type))::in(pred(in, out) is det),
+    pred(mer_type, mer_type)::in(pred(in, out) is det),
     prog_var::in, prog_constraint::in, prog_constraint::out) is det.
 
 apply_constraint_value_transformation(Pred, _, Constraint0, Constraint) :-
@@ -803,7 +803,7 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
     %
 :- pred set_clause_list(list(clause)::in, clauses_rep::out) is det.
 
-:- type vartypes == map(prog_var, type).
+:- type vartypes == map(prog_var, mer_type).
 
 :- pred clauses_info_varset(clauses_info::in, prog_varset::out) is det.
 
@@ -1225,14 +1225,14 @@ add_clause(Clause, !ClausesRep) :-
                         % syntax. (For such predicates, we output slightly
                         % different error messages.)
 
-    ;       (impure)    % Requests that no transformation that would be
+    ;       is_impure   % Requests that no transformation that would be
                         % inappropriate for impure code be performed on calls
                         % to this predicate. This includes reordering calls
                         % to it relative to other goals (in both conjunctions
                         % and disjunctions), and removing redundant calls
                         % to it.
 
-    ;       (semipure)  % Requests that no transformation that would be
+    ;       is_semipure  % Requests that no transformation that would be
                         % inappropriate for semipure code be performed on
                         % calls to this predicate. This includes removing
                         % redundant calls to it on different sides of an
@@ -1277,7 +1277,7 @@ add_clause(Clause, !ClausesRep) :-
 :- type pred_attributes.
 
 :- type attribute
-    --->    custom(type).
+    --->    custom(mer_type).
                         % A custom attribute, indended to be associated
                         % with this predicate in the underlying
                         % implementation.
@@ -1295,7 +1295,7 @@ add_clause(Clause, !ClausesRep) :-
                 int % The procedure number of the original procedure.
             )
     ;       type_specialization(
-                assoc_list(int, type)
+                assoc_list(int, mer_type)
                     % The substitution from type variables (represented by
                     % the integers) to types (represented by the terms).
             )
@@ -1380,7 +1380,7 @@ add_clause(Clause, !ClausesRep) :-
     %
 :- pred pred_info_init(module_name::in, sym_name::in, arity::in,
     pred_or_func::in, prog_context::in, pred_origin::in, import_status::in,
-    goal_type::in, pred_markers::in, list(type)::in, tvarset::in,
+    goal_type::in, pred_markers::in, list(mer_type)::in, tvarset::in,
     existq_tvars::in, prog_constraints::in, constraint_proof_map::in,
     constraint_map::in, aditi_owner::in, clauses_info::in,
     pred_info::out) is det.
@@ -1396,11 +1396,11 @@ add_clause(Clause, !ClausesRep) :-
     %
 :- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
     prog_context::in, pred_origin::in, import_status::in, pred_markers::in,
-    list(type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
+    list(mer_type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
     set(assert_id)::in, aditi_owner::in, proc_info::in, proc_id::out,
     pred_info::out) is det.
 
-    % hlds_pred__define_new_pred(Origin, Goal, CallGoal, Args, ExtraArgs,
+    % define_new_pred(Origin, Goal, CallGoal, Args, ExtraArgs,
     %   InstMap, PredName, TVarSet, VarTypes, ClassContext,
     %   TVarMap, TCVarMap, VarSet, Markers, Owner, IsAddressTaken,
     %   ModuleInfo0, ModuleInfo, PredProcId)
@@ -1410,7 +1410,7 @@ add_clause(Clause, !ClausesRep) :-
     % type_infos and typeclass_infos required by typeinfo liveness
     % which were added to the front of the argument list.
     %
-:- pred hlds_pred__define_new_pred(pred_origin::in,
+:- pred define_new_pred(pred_origin::in,
     hlds_goal::in, hlds_goal::out, list(prog_var)::in, list(prog_var)::out,
     instmap::in, string::in, tvarset::in, vartypes::in,
     prog_constraints::in, rtti_varmaps::in, prog_varset::in,
@@ -1447,7 +1447,7 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_get_goal_type(pred_info::in, goal_type::out) is det.
 :- pred pred_info_get_markers(pred_info::in, pred_markers::out) is det.
 :- pred pred_info_get_attributes(pred_info::in, pred_attributes::out) is det.
-:- pred pred_info_arg_types(pred_info::in, list(type)::out) is det.
+:- pred pred_info_arg_types(pred_info::in, list(mer_type)::out) is det.
 :- pred pred_info_typevarset(pred_info::in, tvarset::out) is det.
 :- pred pred_info_tvar_kinds(pred_info::in, tvar_kind_map::out) is det.
 :- pred pred_info_get_exist_quant_tvars(pred_info::in, existq_tvars::out)
@@ -1554,10 +1554,10 @@ add_clause(Clause, !ClausesRep) :-
     is det.
 
 :- pred pred_info_arg_types(pred_info::in, tvarset::out, existq_tvars::out,
-    list(type)::out) is det.
+    list(mer_type)::out) is det.
 
-:- pred pred_info_set_arg_types(tvarset::in, existq_tvars::in, list(type)::in,
-    pred_info::in, pred_info::out) is det.
+:- pred pred_info_set_arg_types(tvarset::in, existq_tvars::in,
+    list(mer_type)::in, pred_info::in, pred_info::out) is det.
 
 :- pred pred_info_get_univ_quant_tvars(pred_info::in, existq_tvars::out)
     is det.
@@ -1701,16 +1701,16 @@ pred_id_to_int(PredId) = PredId.
 proc_id_to_int(ProcId, ProcId).
 proc_id_to_int(ProcId) = ProcId.
 
-hlds_pred__initial_pred_id = 0.
-hlds_pred__initial_proc_id = 0.
+initial_pred_id = 0.
+initial_proc_id = 0.
 
 invalid_pred_id = -1.
 invalid_proc_id = -1.
 
-hlds_pred__next_pred_id(PredId, NextPredId) :-
+next_pred_id(PredId, NextPredId) :-
     NextPredId = PredId + 1.
 
-hlds_pred__in_in_unification_proc_id(0).
+in_in_unification_proc_id(0).
 
     % We could store the next available ModeId rather than recomputing
     % it on demand, but it is probably more efficient this way.
@@ -1810,7 +1810,7 @@ calls_are_fully_qualified(Markers) =
         attributes          :: pred_attributes,
                             % Various attributes.
 
-        arg_types           :: list(type),
+        arg_types           :: list(mer_type),
                             % Argument types.
 
         decl_typevarset     :: tvarset,
@@ -1951,7 +1951,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
         UnprovenBodyConstraints, inst_graph_info_init, [], Assertions,
         User, Indexes, ClausesInfo, Procs).
 
-hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
+define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
         InstMap0, PredName, TVarSet, VarTypes0, ClassContext,
         RttiVarMaps, VarSet0, InstVarSet, Markers, Owner,
         IsAddressTaken, ModuleInfo0, ModuleInfo, PredProcId) :-
@@ -2027,7 +2027,7 @@ hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
     PredProcId = proc(PredId, ProcId).
 
 :- pred compute_arg_types_modes(list(prog_var)::in, vartypes::in,
-    instmap::in, instmap::in, list(type)::out, list(mode)::out) is det.
+    instmap::in, instmap::in, list(mer_type)::out, list(mer_mode)::out) is det.
 
 compute_arg_types_modes([], _, _, _, [], []).
 compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
@@ -2207,7 +2207,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         pred_info_is_exported_to_submodules(PredInfo)
     ;
         pred_info_is_pseudo_exported(PredInfo),
-        hlds_pred__in_in_unification_proc_id(ProcId)
+        in_in_unification_proc_id(ProcId)
     ;
         pred_info_import_status(PredInfo, ImportStatus),
         ImportStatus = external(ExternalImportStatus),
@@ -2223,7 +2223,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         (
             SpecialId = spec_pred_unify,
             % The other proc_ids are module-specific.
-            hlds_pred__in_in_unification_proc_id(ProcId)
+            in_in_unification_proc_id(ProcId)
         ;
             SpecialId = spec_pred_compare
             % The declared modes are all global, and we don't
@@ -2298,31 +2298,31 @@ pred_info_requested_no_inlining(PredInfo0) :-
 
 pred_info_get_purity(PredInfo0, Purity) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( check_marker(Markers, (impure)) ->
-        Purity = (impure)
-    ; check_marker(Markers, (semipure)) ->
-        Purity = (semipure)
+    ( check_marker(Markers, is_impure) ->
+        Purity = purity_impure
+    ; check_marker(Markers, is_semipure) ->
+        Purity = purity_semipure
     ;
-        Purity = pure
+        Purity = purity_pure
     ).
 
 pred_info_get_promised_purity(PredInfo0, PromisedPurity) :-
     pred_info_get_markers(PredInfo0, Markers),
     ( check_marker(Markers, promised_pure) ->
-        PromisedPurity = pure
+        PromisedPurity = purity_pure
     ; check_marker(Markers, promised_semipure) ->
-        PromisedPurity = (semipure)
+        PromisedPurity = purity_semipure
     ;
-        PromisedPurity = (impure)
+        PromisedPurity = purity_impure
     ).
 
 pred_info_infer_modes(PredInfo) :-
     pred_info_get_markers(PredInfo, Markers),
     check_marker(Markers, infer_modes).
 
-purity_to_markers(pure, []).
-purity_to_markers(semipure, [semipure]).
-purity_to_markers(impure, [impure]).
+purity_to_markers(purity_pure, []).
+purity_to_markers(purity_semipure, [is_semipure]).
+purity_to_markers(purity_impure, [is_impure]).
 
 terminates_to_markers(terminates, [terminates]).
 terminates_to_markers(does_not_terminate, [does_not_terminate]).
@@ -2492,7 +2492,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    table_arg_info(
                 headvar         :: prog_var,
                 slot_num        :: int,
-                arg_type        :: (type)
+                arg_type        :: mer_type
             ).
 
     % This type is analogous to llds:layout_locn, but it refers to slots in
@@ -2511,8 +2511,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     ;       table_trie_step_enum(int)
                 % The int gives the number of alternatives in the enum type,
                 % and thus the size of the corresponding trie node.
-    ;       table_trie_step_user(type)
-    ;       table_trie_step_user_fast_loose(type)
+    ;       table_trie_step_user(mer_type)
+    ;       table_trie_step_user_fast_loose(mer_type)
     ;       table_trie_step_poly
     ;       table_trie_step_poly_fast_loose
     ;       table_trie_step_typeinfo
@@ -2556,12 +2556,12 @@ attribute_list_to_attributes(Attributes, Attributes).
                 map(prog_var, prog_vars)
             ).
 
-:- pred proc_info_init(prog_context::in, arity::in, list(type)::in,
-    maybe(list(mode))::in, list(mode)::in, maybe(list(is_live))::in,
+:- pred proc_info_init(prog_context::in, arity::in, list(mer_type)::in,
+    maybe(list(mer_mode))::in, list(mer_mode)::in, maybe(list(is_live))::in,
     maybe(determinism)::in, is_address_taken::in, proc_info::out) is det.
 
 :- pred proc_info_set(prog_context::in, prog_varset::in, vartypes::in,
-    list(prog_var)::in, inst_varset::in, list(mode)::in,
+    list(prog_var)::in, inst_varset::in, list(mer_mode)::in,
     maybe(list(is_live))::in, maybe(determinism)::in, determinism::in,
     hlds_goal::in, bool::in, rtti_varmaps::in,
     maybe(arg_size_info)::in, maybe(termination_info)::in,
@@ -2569,12 +2569,12 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(list(arg_info))::in, liveness_info::in, proc_info::out) is det.
 
 :- pred proc_info_create(prog_context::in, prog_varset::in, vartypes::in,
-    list(prog_var)::in, inst_varset::in, list(mode)::in,
+    list(prog_var)::in, inst_varset::in, list(mer_mode)::in,
     determinism::in, hlds_goal::in, rtti_varmaps::in,
     is_address_taken::in, proc_info::out) is det.
 
 :- pred proc_info_create(prog_context::in, prog_varset::in, vartypes::in,
-    list(prog_var)::in, inst_varset::in, list(mode)::in,
+    list(prog_var)::in, inst_varset::in, list(mer_mode)::in,
     maybe(determinism)::in, determinism::in, hlds_goal::in,
     rtti_varmaps::in, is_address_taken::in, proc_info::out) is det.
 
@@ -2590,8 +2590,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_headvars(proc_info::in, list(prog_var)::out) is det.
 :- pred proc_info_inst_varset(proc_info::in, inst_varset::out) is det.
 :- pred proc_info_maybe_declared_argmodes(proc_info::in,
-    maybe(list(mode))::out) is det.
-:- pred proc_info_argmodes(proc_info::in, list(mode)::out) is det.
+    maybe(list(mer_mode))::out) is det.
+:- pred proc_info_argmodes(proc_info::in, list(mer_mode)::out) is det.
 :- pred proc_info_maybe_arglives(proc_info::in,
     maybe(list(is_live))::out) is det.
 :- pred proc_info_declared_determinism(proc_info::in,
@@ -2631,9 +2631,9 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_inst_varset(inst_varset::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_maybe_declared_argmodes(maybe(list(mode))::in,
+:- pred proc_info_set_maybe_declared_argmodes(maybe(list(mer_mode))::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_argmodes(list(mode)::in,
+:- pred proc_info_set_argmodes(list(mer_mode)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_arglives(maybe(list(is_live))::in,
     proc_info::in, proc_info::out) is det.
@@ -2694,7 +2694,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     %
 :- pred proc_info_never_succeeds(proc_info::in, bool::out) is det.
 
-:- pred proc_info_declared_argmodes(proc_info::in, list(mode)::out) is det.
+:- pred proc_info_declared_argmodes(proc_info::in, list(mer_mode)::out) is det.
 :- pred proc_info_arglives(proc_info::in, module_info::in,
     list(is_live)::out) is det.
 :- pred proc_info_arg_info(proc_info::in, list(arg_info)::out) is det.
@@ -2712,20 +2712,20 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_get_typeinfo_vars(set(prog_var)::in, vartypes::in,
     rtti_varmaps::in, set(prog_var)::out) is det.
 
-:- pred proc_info_maybe_complete_with_typeinfo_vars(set(prog_var)::in, bool::in,
-    vartypes::in, rtti_varmaps::in, set(prog_var)::out) is det.
+:- pred proc_info_maybe_complete_with_typeinfo_vars(set(prog_var)::in,
+    bool::in, vartypes::in, rtti_varmaps::in, set(prog_var)::out) is det.
 
 :- pred proc_info_ensure_unique_names(proc_info::in, proc_info::out) is det.
 
     % Create a new variable of the given type to the procedure.
     %
-:- pred proc_info_create_var_from_type((type)::in, maybe(string)::in,
+:- pred proc_info_create_var_from_type(mer_type::in, maybe(string)::in,
     prog_var::out, proc_info::in, proc_info::out) is det.
 
     % Create a new variable for each element of the list of types.
     %
-:- pred proc_info_create_vars_from_types(list(type)::in, list(prog_var)::out,
-    proc_info::in, proc_info::out) is det.
+:- pred proc_info_create_vars_from_types(list(mer_type)::in,
+    list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
     % Given a procedure, return a list of all its headvars which are
     % (further) instantiated by the procedure.
@@ -2803,7 +2803,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     int::out, int::out) is semidet.
 
 :- pred proc_info_has_io_state_pair_from_details(module_info::in,
-    list(prog_var)::in, list(mode)::in, vartypes::in,
+    list(prog_var)::in, list(mer_mode)::in, vartypes::in,
     int::out, int::out) is semidet.
 
     % Given a procedure table and the id of a procedure in that table,
@@ -2845,9 +2845,9 @@ attribute_list_to_attributes(Attributes, Attributes).
         var_types                   :: vartypes,
         head_vars                   :: list(prog_var),
         inst_varset                 :: inst_varset,
-        maybe_declared_head_modes   :: maybe(list(mode)),
+        maybe_declared_head_modes   :: maybe(list(mer_mode)),
                                     % The declared modes of arguments.
-        actual_head_modes           :: list(mode),
+        actual_head_modes           :: list(mer_mode),
         maybe_head_modes_constraint :: maybe(mode_constraint),
         head_var_caller_liveness    :: maybe(list(is_live)),
                                     % Liveness (in the mode analysis sense)
@@ -3444,8 +3444,8 @@ proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
         fail
     ).
 
-:- pred proc_info_has_io_state_pair_2(assoc_list(prog_var, mode)::in,
-    module_info::in, map(prog_var, type)::in, int::in,
+:- pred proc_info_has_io_state_pair_2(assoc_list(prog_var, mer_mode)::in,
+    module_info::in, vartypes::in, int::in,
     maybe(int)::in, maybe(int)::out, maybe(int)::in, maybe(int)::out)
     is semidet.
 
@@ -3644,7 +3644,7 @@ pred_info_is_builtin(PredInfo) :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    ProcId = hlds_pred__initial_proc_id,
+    ProcId = initial_proc_id,
     is_inline_builtin(ModuleName, PredName, ProcId, Arity).
 
 builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
@@ -3694,82 +3694,82 @@ is_unify_or_compare_pred(PredInfo) :-
 
 :- interface.
 
-:- pred hlds_pred__is_base_relation(module_info::in, pred_id::in) is semidet.
+:- pred is_base_relation(module_info::in, pred_id::in) is semidet.
 
-:- pred hlds_pred__is_derived_relation(module_info::in, pred_id::in) is semidet.
+:- pred is_derived_relation(module_info::in, pred_id::in) is semidet.
 
     % Is the given predicate a base or derived Aditi relation.
     %
-:- pred hlds_pred__is_aditi_relation(module_info::in, pred_id::in) is semidet.
+:- pred is_aditi_relation(module_info::in, pred_id::in) is semidet.
 
     % Is the predicate `aditi:aggregate_compute_initial', declared
     % in extras/aditi/aditi.m.
     % Special code is generated for each call to this in rl_gen.m.
     %
-:- pred hlds_pred__is_aditi_aggregate(module_info::in, pred_id::in) is semidet.
+:- pred is_aditi_aggregate(module_info::in, pred_id::in) is semidet.
 
-:- pred hlds_pred__pred_info_is_aditi_relation(pred_info::in) is semidet.
+:- pred pred_info_is_aditi_relation(pred_info::in) is semidet.
 
-:- pred hlds_pred__pred_info_is_aditi_aggregate(pred_info::in) is semidet.
+:- pred pred_info_is_aditi_aggregate(pred_info::in) is semidet.
 
-:- pred hlds_pred__pred_info_is_base_relation(pred_info::in) is semidet.
+:- pred pred_info_is_base_relation(pred_info::in) is semidet.
 
     % Aditi can optionally memo the results of predicates
     % between calls to reduce redundant computation.
     %
-:- pred hlds_pred__is_aditi_memoed(module_info::in, pred_id::in) is semidet.
+:- pred is_aditi_memoed(module_info::in, pred_id::in) is semidet.
 
     % Differential evaluation is a method of evaluating recursive
     % Aditi predicates which uses the just new tuples in each
     % iteration where possible rather than the full relations,
     % reducing the sizes of joins.
     %
-:- pred hlds_pred__is_differential(module_info::in, pred_id::in) is semidet.
+:- pred is_differential(module_info::in, pred_id::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-hlds_pred__is_base_relation(ModuleInfo, PredId) :-
+is_base_relation(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    hlds_pred__pred_info_is_base_relation(PredInfo).
+    pred_info_is_base_relation(PredInfo).
 
-hlds_pred__pred_info_is_base_relation(PredInfo) :-
+pred_info_is_base_relation(PredInfo) :-
     pred_info_get_markers(PredInfo, Markers),
     check_marker(Markers, base_relation).
 
-hlds_pred__is_derived_relation(ModuleInfo, PredId) :-
+is_derived_relation(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     check_marker(Markers, aditi),
-    \+ hlds_pred__pred_info_is_base_relation(PredInfo),
-    \+ hlds_pred__pred_info_is_aditi_aggregate(PredInfo).
+    \+ pred_info_is_base_relation(PredInfo),
+    \+ pred_info_is_aditi_aggregate(PredInfo).
 
-hlds_pred__is_aditi_relation(ModuleInfo, PredId) :-
+is_aditi_relation(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    hlds_pred__pred_info_is_aditi_relation(PredInfo).
+    pred_info_is_aditi_relation(PredInfo).
 
-hlds_pred__pred_info_is_aditi_relation(PredInfo) :-
+pred_info_is_aditi_relation(PredInfo) :-
     pred_info_get_markers(PredInfo, Markers),
     check_marker(Markers, aditi).
 
-hlds_pred__is_aditi_aggregate(ModuleInfo, PredId) :-
+is_aditi_aggregate(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    hlds_pred__pred_info_is_aditi_aggregate(PredInfo).
+    pred_info_is_aditi_aggregate(PredInfo).
 
-hlds_pred__pred_info_is_aditi_aggregate(PredInfo) :-
+pred_info_is_aditi_aggregate(PredInfo) :-
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    hlds_pred__aditi_aggregate(Module, Name, Arity).
+    aditi_aggregate(Module, Name, Arity).
 
-:- pred hlds_pred__aditi_aggregate(sym_name::in, string::in, int::in)
+:- pred aditi_aggregate(sym_name::in, string::in, int::in)
     is semidet.
 
-hlds_pred__aditi_aggregate(unqualified("aditi"), "aggregate_compute_initial",
+aditi_aggregate(unqualified("aditi"), "aggregate_compute_initial",
     5).
 
-hlds_pred__is_aditi_memoed(ModuleInfo, PredId) :-
+is_aditi_memoed(ModuleInfo, PredId) :-
     % XXX memoing doesn't work yet.
     semidet_fail,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -3783,7 +3783,7 @@ hlds_pred__is_aditi_memoed(ModuleInfo, PredId) :-
         \+ check_marker(Markers, aditi_no_memo)
     ).
 
-hlds_pred__is_differential(ModuleInfo, PredId) :-
+is_differential(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     (

@@ -107,7 +107,7 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
 
 %----------------------------------------------------------------------------%
 
-:- pred gen_body(maybe(list(hlds_class_proc))::in, list(type)::in,
+:- pred gen_body(maybe(list(hlds_class_proc))::in, list(mer_type)::in,
 	list(prog_constraint)::in, module_info::in, class_id::in,
 	base_typeclass_info::out) is det.
 

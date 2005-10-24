@@ -478,7 +478,7 @@ all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo, ModeList),
 	all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo). 
 
-:- pred all_args_input_or_zero_size_2(list(type)::in, list(mode)::in,
+:- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
 	module_info::in) is semidet.
 
 all_args_input_or_zero_size_2([], [], _).

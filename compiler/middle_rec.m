@@ -248,27 +248,25 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
             assign(AuxReg, const(int_const(0)))
                 - "initialize counter register"],
         IncrAuxReg = [
-            assign(AuxReg, binop((+), lval(AuxReg), const(int_const(1))))
+            assign(AuxReg, binop(int_add, lval(AuxReg), const(int_const(1))))
                 - "increment loop counter"],
         DecrAuxReg = [
-            assign(AuxReg, binop((-), lval(AuxReg), const(int_const(1))))
+            assign(AuxReg, binop(int_sub, lval(AuxReg), const(int_const(1))))
                 - "decrement loop counter"],
         TestAuxReg = [
-            if_val(binop((>), lval(AuxReg), const(int_const(0))),
+            if_val(binop(int_gt, lval(AuxReg), const(int_const(0))),
                 label(Loop2Label))
                 - "test on upward loop"]
     ;
         PushMsg = code_gen__push_msg(ModuleInfo, PredId, ProcId),
         MaybeIncrSp = [incr_sp(FrameSize, PushMsg) - ""],
         MaybeDecrSp = [decr_sp(FrameSize) - ""],
-        InitAuxReg =  [
-            assign(AuxReg, lval(sp))
-                - "initialize counter register"],
+        InitAuxReg =  [assign(AuxReg, lval(sp))
+            - "initialize counter register"],
         IncrAuxReg = [],
         DecrAuxReg = [],
         TestAuxReg = [
-            if_val(binop((>), lval(sp), lval(AuxReg)),
-                label(Loop2Label))
+            if_val(binop(int_gt, lval(sp), lval(AuxReg)), label(Loop2Label))
                 - "test on upward loop"]
     ),
 

@@ -398,7 +398,7 @@ pred_or_func_to_str(predicate) = "pred".
 pred_or_func_to_str(function) = "func".
 
 write_purity_prefix(Purity, !IO) :-
-    ( Purity = pure ->
+    ( Purity = purity_pure ->
         true
     ;
         write_purity(Purity, !IO),
@@ -406,7 +406,7 @@ write_purity_prefix(Purity, !IO) :-
     ).
 
 purity_prefix_to_string(Purity) = String :-
-    ( Purity = pure ->
+    ( Purity = purity_pure ->
         String = ""
     ;
         purity_name(Purity, PurityName),
@@ -417,9 +417,9 @@ write_purity(Purity, !IO) :-
     purity_name(Purity, String),
     io__write_string(String, !IO).
 
-purity_name(pure, "pure").
-purity_name((semipure), "semipure").
-purity_name((impure), "impure").
+purity_name(purity_pure, "pure").
+purity_name(purity_semipure, "semipure").
+purity_name(purity_impure, "impure").
 
 eval_method_to_one_string(EvalMethod) = Str :-
     BaseStr - MaybeArgsStr = eval_method_to_string(EvalMethod),

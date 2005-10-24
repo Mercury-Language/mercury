@@ -67,7 +67,7 @@
 	% Generate an expression to compare tuples with the
 	% given schema on the given attributes.
 :- pred rl_exprn__generate_compare_exprn(module_info::in, sort_spec::in,
-	list(type)::in, list(bytecode)::out) is det.
+	list(mer_type)::in, list(bytecode)::out) is det.
 
 	% rl_exprn__generate_sort_merge_compare_exprn(ModuleInfo, Attrs1,
 	% 	Schema1, Attrs2, Schema2, CompareCodes).
@@ -75,7 +75,7 @@
 	% Generate an expression to compare the join attributes in
 	% a sort-merge equi-join.
 :- pred rl_exprn__generate_sort_merge_compare_exprn(module_info::in,
-	sort_spec::in, list(type)::in, sort_spec::in, list(type)::in,
+	sort_spec::in, list(mer_type)::in, sort_spec::in, list(mer_type)::in,
 	list(bytecode)::out) is det.
 
 	% rl_exprn__generate_equijoin_exprn(ModuleInfo, Attrs,
@@ -84,7 +84,7 @@
 	% Generate an expression to compare the join attributes in
 	% an equi-join.
 :- pred rl_exprn__generate_equijoin_exprn(module_info::in, list(int)::in,
-	list(type)::in, list(bytecode)::out) is det.
+	list(mer_type)::in, list(bytecode)::out) is det.
 
 	% rl_exprn__generate_hash_function(ModuleInfo, HashAttrs,
 	%	InputSchema, ExprnCode).
@@ -92,7 +92,7 @@
 	% Generate an expression to compute a hash value for the given
 	% attributes of a tuple.
 :- pred rl_exprn__generate_hash_function(module_info::in, list(int)::in,
-	list(type)::in, list(bytecode)::out) is det.
+	list(mer_type)::in, list(bytecode)::out) is det.
 
 	% rl_exprn__generate_key_range(ModuleInfo, KeyRange, ExprnCode,
 	% 	NumParams, LowerBoundSchema, UpperBoundSchema,
@@ -101,21 +101,21 @@
 	% Generate an expression to produce the upper and lower
 	% bounds for a B-tree access.
 :- pred rl_exprn__generate_key_range(module_info::in, key_range::in,
-	list(bytecode)::out, int::out, list(type)::out, list(type)::out,
-	int::out, list(type)::out) is det.
+	list(bytecode)::out, int::out, list(mer_type)::out, list(mer_type)::out,
+	int::out, list(mer_type)::out) is det.
 
 	% Generate an expression to produce either the tuple
 	% to insert or the tuple to delete for a modification
 	% query.
 :- pred rl_exprn__generate_modify_project_exprn(module_info::in,
-	tuple_num::in, list(type)::in, list(bytecode)::out) is det.
+	tuple_num::in, list(mer_type)::in, list(bytecode)::out) is det.
 
 	% rl_exprn__generate(ModuleInfo, Goal, ExprnCode, NumParams,
 	%	ExprnMode, ExprnVarTypes).
 	%
 	% Generate an expression for a join/project/subtract condition.
 :- pred rl_exprn__generate(rl_goal::in, list(bytecode)::out,
-	int::out, exprn_mode::out, list(type)::out,
+	int::out, exprn_mode::out, list(mer_type)::out,
 	module_info::in, module_info::out) is det.
 
 	% rl_exprn__aggregate(ModuleInfo, InitAccPred, UpdateAccPred,
@@ -125,8 +125,8 @@
 	% group and update the accumulator for each tuple, create
 	% an expression to evaluate the aggregate.
 :- pred rl_exprn__aggregate(pred_proc_id::in, pred_proc_id::in,
-	(type)::in, (type)::in, (type)::in, list(bytecode)::out,
-	list(type)::out, module_info::in, module_info::out) is det.
+	mer_type::in, mer_type::in, mer_type::in, list(bytecode)::out,
+	list(mer_type)::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -202,7 +202,7 @@ rl_exprn__generate_sort_merge_compare_exprn(_ModuleInfo, Spec1, Schema1,
 	),
 	rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code).
 
-:- pred rl_exprn__do_generate_compare_exprn(list(type)::in,
+:- pred rl_exprn__do_generate_compare_exprn(list(mer_type)::in,
 	assoc_list(pair(int, sort_dir))::in, list(bytecode)::out) is det.
 
 rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code) :-
@@ -223,7 +223,7 @@ rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code) :-
 	tree__flatten(ExprnCode, Instrs0),
 	list__condense(Instrs0, Code).
 
-:- pred rl_exprn__generate_compare_instrs(list(type)::in,
+:- pred rl_exprn__generate_compare_instrs(list(mer_type)::in,
 	pair(pair(int, sort_dir))::in, byte_tree::in, byte_tree::out) is det.
 
 rl_exprn__generate_compare_instrs(Types1, (Attr1a - Dir1) - (Attr2a - Dir2),
@@ -273,7 +273,7 @@ rl_exprn__generate_equijoin_exprn(_, Attrs0, Schema, Code) :-
 	tree__flatten(ExprnCode, Instrs0),
 	list__condense(Instrs0, Code).
 
-:- pred rl_exprn__generate_equijoin_instrs(list(int)::in, list(type)::in,
+:- pred rl_exprn__generate_equijoin_instrs(list(int)::in, list(mer_type)::in,
 		byte_tree::in, byte_tree::out) is det.
 
 rl_exprn__generate_equijoin_instrs([], _, Code, Code).
@@ -310,7 +310,7 @@ rl_exprn__generate_hash_function(_ModuleInfo, Attrs0, Schema, Code) :-
 	tree__flatten(ExprnCode, Instrs0),
 	list__condense(Instrs0, Code).
 
-:- pred rl_exprn__generate_hash_function_2(list(int)::in, list(type)::in,
+:- pred rl_exprn__generate_hash_function_2(list(int)::in, list(mer_type)::in,
 		bool::in, byte_tree::in, byte_tree::out) is det.
 
 rl_exprn__generate_hash_function_2([], _, _, Code, Code).
@@ -378,9 +378,9 @@ rl_exprn__generate_key_range(ModuleInfo,
 	rl_exprn__generate_fragments(ConstCode, InitCode, empty,
 		empty, ProjectCode, empty, Code).
 
-:- pred rl_exprn__generate_bound(module_info::in, maybe(list(type))::in,
-	list(type)::in, tuple_num::in, bounding_tuple::in, byte_tree::out,
-	list(type)::out, int::out, rl_exprn_info::in,
+:- pred rl_exprn__generate_bound(module_info::in, maybe(list(mer_type))::in,
+	list(mer_type)::in, tuple_num::in, bounding_tuple::in, byte_tree::out,
+	list(mer_type)::out, int::out, rl_exprn_info::in,
 	rl_exprn_info::out) is det.
 
 	% An output schema of [] signals to the relational operation that
@@ -393,7 +393,7 @@ rl_exprn__generate_bound(ModuleInfo, MaybeArgTypes, KeyTypes,
 	rl_exprn__generate_bound_2(ModuleInfo, MaybeArgTypes,
 		TupleNum, no, AttrValues, empty, Code, 0, 1, MaxDepth).
 
-:- pred rl_exprn__generate_bound_2(module_info::in, maybe(list(type))::in,
+:- pred rl_exprn__generate_bound_2(module_info::in, maybe(list(mer_type))::in,
 	tuple_num::in, bool::in, list(key_attr)::in, byte_tree::in,
 	byte_tree::out, int::in, int::in, int::out, rl_exprn_info::in,
 	rl_exprn_info::out) is det.
@@ -410,7 +410,7 @@ rl_exprn__generate_bound_2(ModuleInfo, MaybeArgTypes, TupleNum, IsSubTerm,
 		IsSubTerm, Attrs, tree(Code0, AttrCode),
 		Code, Index, MaxDepth1, MaxDepth).
 
-:- pred rl_exprn__generate_bound_3(module_info::in, maybe(list(type))::in,
+:- pred rl_exprn__generate_bound_3(module_info::in, maybe(list(mer_type))::in,
 	bool::in, int::in, tuple_num::in, key_attr::in, byte_tree::out,
 	int::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -455,7 +455,7 @@ rl_exprn__get_key_arg(yes(Args), Index, Arg) :-
 rl_exprn__get_key_arg(no, _, _) :-
 	error("rl_exprn__get_key_arg").
 
-:- pred rl_exprn__set_term_arg_cons_id_code(cons_id::in, (type)::in,
+:- pred rl_exprn__set_term_arg_cons_id_code(cons_id::in, mer_type::in,
 	tuple_num::in, int::in, bool::in, list(bytecode)::out, bool::out,
 	rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -590,7 +590,7 @@ rl_exprn__generate_modify_project_exprn(_ModuleInfo, TupleNum, Types, Codes) :-
 	tree__flatten(CodeTree, CodeList),
 	list__condense(CodeList, Codes).
 
-:- pred rl_exprn__generate_modify_project_exprn_2(list(type)::in, int::in,
+:- pred rl_exprn__generate_modify_project_exprn_2(list(mer_type)::in, int::in,
 		tuple_num::in, int::in, byte_tree::in, byte_tree::out) is det.
 
 rl_exprn__generate_modify_project_exprn_2([], _, _, _, Code, Code).
@@ -618,7 +618,7 @@ rl_exprn__generate_modify_project_exprn_2([Type | Types],
 rl_exprn__generate(RLGoal, Code, NumParams, Mode, Decls,
 		ModuleInfo0, ModuleInfo) :-
 	RLGoal = rl_goal(_, VarSet, VarTypes, InstMap,
-		Inputs, MaybeOutputs, Goals, _), 
+		Inputs, MaybeOutputs, Goals, _),
 	rl_exprn_info_init(ModuleInfo0, InstMap, VarTypes, VarSet, Info0),
 	module_info_get_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, aditi_calls_mercury,
@@ -694,7 +694,7 @@ rl_exprn__cons_id_is_complex(deep_profiling_proc_layout(_)) = yes.
 	%
 :- pred rl_exprn__generate_top_down_call(rl_goal_inputs::in,
 	rl_goal_outputs::in, list(hlds_goal)::in, list(bytecode)::out,
-	int::out, exprn_mode::out, list(type)::out,
+	int::out, exprn_mode::out, list(mer_type)::out,
 	rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__generate_top_down_call(Inputs, MaybeOutputs,
@@ -851,12 +851,12 @@ rl_exprn__generate_top_down_call(Inputs, MaybeOutputs,
 			rl_exprn__generate_push(reg(AllResultsReg),
 				int_type, PushNondetResultLocnCode),
 			rl_exprn_info_get_free_reg(int_type, SingleResultReg),
-			rl_exprn__generate_pop(reg(SingleResultReg), int_type, 
+			rl_exprn__generate_pop(reg(SingleResultReg), int_type,
 				PopSingleResultLocnCode),
 			rl_exprn_info_get_next_label_id(MoreSolutionsLabel),
 			rl_exprn__cleanup_mercury_value(
 				rl_EXP_cleanup_nondet_solution,
-				AllResultsReg, empty, NondetCleanupCode),	
+				AllResultsReg, empty, NondetCleanupCode),
 			{ RetrieveCode =
 			    tree(PushNondetResultLocnCode,
 			    tree(node([
@@ -886,8 +886,8 @@ rl_exprn__generate_top_down_call(Inputs, MaybeOutputs,
 		rl_exprn__deconstruct_mercury_output_tuple(SingleResultReg,
 			AditiProcId, OutputArgs, 0, OutputCode),
 		rl_exprn__cleanup_mercury_value(rl_EXP_cleanup_single_solution,
-			SingleResultReg, empty, CleanupSingleResultCode),	
-						
+			SingleResultReg, empty, CleanupSingleResultCode),
+
 		{ ResultCode =
 			tree(RetrieveCode,
 			tree(OutputCode,
@@ -909,7 +909,7 @@ rl_exprn__generate_top_down_call(Inputs, MaybeOutputs,
 			CleanupByteCode = rl_EXP_cleanup_single_solution
 		},
 		rl_exprn__cleanup_mercury_value(CleanupByteCode, AllResultsReg,
-			empty, CleanupCode),	
+			empty, CleanupCode),
 		{ EvalCode =
 			tree(EvalCode0,
 			tree(CleanupPushStoreLocnCode,
@@ -953,7 +953,7 @@ rl_exprn__construct_mercury_input_tuple(ArgsLoc, Tuple, TupleArg,
 		{ rl_exprn__convert_mercury_input_arg_code(Type,
 			ProcId, ArgNum0, ArgCode) },
 		{ ArgNum1 = ArgNum0 + 1 },
-		{ Code0 = tree(ArgLocPushCode, tree(PushCode, ArgCode)) } 
+		{ Code0 = tree(ArgLocPushCode, tree(PushCode, ArgCode)) }
 	;
 		{ ArgNum1 = ArgNum0 },
 		{ Code0 = empty }
@@ -965,7 +965,7 @@ rl_exprn__construct_mercury_input_tuple(ArgsLoc, Tuple, TupleArg,
 	% passed in reverse order.
 	{ Code = tree(Code1, Code0) }.
 
-:- pred rl_exprn__convert_mercury_input_arg_code((type)::in,
+:- pred rl_exprn__convert_mercury_input_arg_code(mer_type::in,
 		mercury_proc_id::in, int::in, byte_tree::out) is det.
 
 rl_exprn__convert_mercury_input_arg_code(Type, ProcId, Arg, Code) :-
@@ -1000,7 +1000,7 @@ rl_exprn__deconstruct_mercury_output_tuple(SolnLocn, ProcId, [Arg | Args],
 		ArgNum + 1, OutputCode1),
 	{ OutputCode = tree(PushSolnCode, tree(OutputCode0, OutputCode1)) }.
 
-:- pred rl_exprn__convert_mercury_output_arg_code((type)::in,
+:- pred rl_exprn__convert_mercury_output_arg_code(mer_type::in,
 		mercury_proc_id::in, int::in, int::in, byte_tree::out) is det.
 
 rl_exprn__convert_mercury_output_arg_code(Type, ProcId, Arg, Attr, Code) :-
@@ -1032,7 +1032,7 @@ rl_exprn__convert_mercury_output_arg_code(Type, ProcId, Arg, Attr, Code) :-
 :- pred rl_exprn__build_top_down_procedure(list(prog_var)::in,
 	list(prog_var)::in, list(hlds_goal)::in, string::out, int::out,
 	rl_exprn_info::in, rl_exprn_info::out) is det.
-		
+
 rl_exprn__build_top_down_procedure(InputArgs, OutputArgs,
 		Goals, DataName, AditiProcId) -->
 	rl_exprn__name_top_down_procedure(AditiProcId, ProcName),
@@ -1093,9 +1093,9 @@ rl_exprn__build_top_down_procedure(InputArgs, OutputArgs,
 
 	{ instmap_delta_from_assoc_list([OutputTupleVar - OutputTupleInst],
 		GoalInstMapDelta) },
-	{ goal_list_determinism(Goals, Detism) },	
+	{ goal_list_determinism(Goals, Detism) },
 	{ goal_info_init(list_to_set([InputTupleVar, OutputTupleVar]),
-		GoalInstMapDelta, Detism, pure, GoalInfo) },
+		GoalInstMapDelta, Detism, purity_pure, GoalInfo) },
 	{ conj_list_to_goal(AllGoals, GoalInfo, Goal) },
 
 	{ ClassContext = constraints([], []) },
@@ -1172,16 +1172,16 @@ rl_exprn__cleanup_mercury_value(CleanupBytecode, Reg,
 			CleanupBytecode,
 			rl_EXP_invalid_solution_location
 		]),
-		PopCode	
+		PopCode
 	))) }.
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_exprn__generate_simple_goal(rl_goal_inputs::in, rl_goal_outputs::in,
 	list(hlds_goal)::in, list(bytecode)::out, int::out, exprn_mode::out,
-	list(type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
+	list(mer_type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
-rl_exprn__generate_simple_goal(Inputs, MaybeOutputs, GoalList, 
+rl_exprn__generate_simple_goal(Inputs, MaybeOutputs, GoalList,
 		Code, NumParams, Mode, Decls) -->
 	{ goal_list_determinism(GoalList, Detism) },
 	{ determinism_components(Detism, CanFail, _) },
@@ -1302,7 +1302,7 @@ rl_exprn__get_exprn_mode(MaybeOutputs, MaxSoln, Mode) :-
 	).
 
 :- pred rl_exprn__generate_decls(byte_tree::out, byte_tree::out,
-		list(type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
+		list(mer_type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__generate_decls(node(ConstCode), node(RuleCodes), VarTypes) -->
 	rl_exprn_info_get_rules(Rules - _),
@@ -1334,7 +1334,8 @@ rl_exprn__generate_const_decl(Addr - Const, Code) :-
 		Code = rl_HEAD_const_str(Addr, Str)
 	).
 
-:- pred rl_exprn__generate_rule(pair(int, pair(rl_rule, exprn_tuple))::in,			 bytecode::out, rl_exprn_info::in, rl_exprn_info::out) is det.
+:- pred rl_exprn__generate_rule(pair(int, pair(rl_rule, exprn_tuple))::in,
+	bytecode::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__generate_rule(RuleNo - (Rule - RuleTuple), Code) -->
 	{ Rule = rl_rule(Type, Name, Arity) },
@@ -1365,7 +1366,7 @@ rl_exprn__generate_rule(RuleNo - (Rule - RuleTuple), Code) -->
 %-----------------------------------------------------------------------------%
 
 	% Move the inputs to the expression out of the input tuple.
-:- pred rl_exprn__deconstruct_input_tuple(tuple_num::in, int::in, 
+:- pred rl_exprn__deconstruct_input_tuple(tuple_num::in, int::in,
 	list(prog_var)::in, set(prog_var)::in, byte_tree::out,
 	rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -1471,7 +1472,8 @@ rl_exprn__goal(switch(Var, _, Cases) - _, Fail, Code) -->
 	rl_exprn__cases(Var, Cases, GotoEnd, Fail, SwitchCode),
 	{ Code = tree(SwitchCode, node([rl_PROC_label(EndSwitch)])) }.
 rl_exprn__goal(generic_call(_, _, _, _) - _, _, _) -->
-	{ error("rl_exprn__goal: higher-order and class-method calls not yet implemented") }.
+	{ error("rl_exprn__goal: higher-order and class-method calls " ++
+		"not yet implemented") }.
 rl_exprn__goal(foreign_proc(_, _, _, _, _, _) - _, _, _) -->
 	{ error("rl_exprn__goal: foreign_proc not yet implemented") }.
 rl_exprn__goal(scope(_, Goal) - _, Fail, Code) -->
@@ -1833,7 +1835,7 @@ rl_exprn__unify(simple_test(Var1, Var2), _GoalInfo, Fail, Code) -->
 	rl_exprn_info_lookup_var_type(Var1, Type),
 	rl_exprn__test(reg(Var1Loc), reg(Var2Loc), Type, Fail, Code).
 
-:- pred rl_exprn__assign(rl_lval::in, rl_rval::in, (type)::in,
+:- pred rl_exprn__assign(rl_lval::in, rl_rval::in, mer_type::in,
 	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__assign(Lval, Rval, Type, Code) -->
@@ -1841,7 +1843,7 @@ rl_exprn__assign(Lval, Rval, Type, Code) -->
 	rl_exprn__generate_pop(Lval, Type, PopCode),
 	{ Code = tree(PushCode, PopCode) }.
 
-:- pred rl_exprn__test(rl_rval::in, rl_rval::in, (type)::in, byte_tree::in,
+:- pred rl_exprn__test(rl_rval::in, rl_rval::in, mer_type::in, byte_tree::in,
 	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__test(Var1Loc, Var2Loc, Type, Fail, Code) -->
@@ -1901,7 +1903,7 @@ rl_exprn__functor_test(Var, ConsId, Fail, Code) -->
 	).
 
 :- pred rl_exprn__is_char_cons_id(cons_id::in,
-		(type)::in, int::out) is semidet.
+		mer_type::in, int::out) is semidet.
 
 rl_exprn__is_char_cons_id(ConsId, Type, Int) :-
 	ConsId = cons(unqualified(CharStr), 0),
@@ -1983,13 +1985,13 @@ rl_exprn__handle_functor_args([Arg | Args], [Mode | Modes], NonLocals,
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_exprn__cons_id_to_rule_number(cons_id::in, (type)::in, int::out,
+:- pred rl_exprn__cons_id_to_rule_number(cons_id::in, mer_type::in, int::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__cons_id_to_rule_number(ConsId, Type, RuleNo) -->
 	rl_exprn__cons_id_to_rule_number(ConsId, Type, variables, RuleNo).
 
-:- pred rl_exprn__cons_id_to_rule_number(cons_id::in, (type)::in,
+:- pred rl_exprn__cons_id_to_rule_number(cons_id::in, mer_type::in,
 		exprn_tuple::in, int::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -2011,7 +2013,7 @@ rl_exprn__cons_id_to_rule_number(ConsId, Type, ExprnTuple, RuleNo) -->
 %-----------------------------------------------------------------------------%
 
 	% Put a value on top of the expression stack.
-:- pred rl_exprn__generate_push(rl_rval::in, (type)::in, byte_tree::out,
+:- pred rl_exprn__generate_push(rl_rval::in, mer_type::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__generate_push(reg(Reg), Type0, Code) -->
@@ -2078,8 +2080,8 @@ rl_exprn__do_generate_push_var(Index, Type, node([ByteCode])) -->
 
 	% Get the value on top of the expression stack and put it in the
 	% specified rl_lval.
-:- pred rl_exprn__generate_pop(rl_lval::in, (type)::in, byte_tree::out,
-		rl_exprn_info::in, rl_exprn_info::out) is det.
+:- pred rl_exprn__generate_pop(rl_lval::in, mer_type::in, byte_tree::out,
+	rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__generate_pop(reg(Reg), Type0, ByteCode) -->
 	{ rl_exprn__type_to_aditi_type(Type0, Type) },
@@ -2103,7 +2105,8 @@ rl_exprn__generate_pop(output_field(FieldNo), Type0, node([ByteCode])) -->
 		% do not match.
 		ByteCode = rl_EXP_put_term_output(FieldNo)
 	}.
-rl_exprn__generate_pop(term_arg(Reg, _ConsId, Field, TermType), Type0, Code) -->
+rl_exprn__generate_pop(term_arg(Reg, _ConsId, Field, TermType), Type0,
+		Code) -->
 	% There's no swap operation (and to do a swap, the expression
 	% evaluator would probably need to know the types of the top
 	% two elements of the stack, so rl_EXP_swap_int_int,
@@ -2171,7 +2174,7 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 	->
 		(
 			{ SimpleCode = test(TestExpr) },
-			( rl_exprn__simple_expr_to_rl_rval(TestExpr, RvalCode) ->
+			( simple_expr_to_rl_rval(TestExpr, RvalCode) ->
 				rl_exprn_info_get_next_label_id(SuccLabel),
 				{ Code =
 					tree(RvalCode,
@@ -2180,7 +2183,8 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 					node([rl_PROC_label(SuccLabel)])
 				))) }
 			;
-				{ error("rl_exprn__generate_exprn_instr: invalid test") }
+				{ error("rl_exprn__generate_exprn_instr: " ++
+					"invalid test") }
 			)
 		 ;
 		 	{ SimpleCode = assign(OutputVar, AssignExpr) },
@@ -2196,7 +2200,7 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 			{ error("rl_exprn__generate_builtin_call: ref_assign") }
 		)
 	;
-		{ mdbcomp__prim_data__sym_name_to_string(PredModule0, 
+		{ mdbcomp__prim_data__sym_name_to_string(PredModule0,
 			PredModule) },
 		{ Arity = pred_info_orig_arity(PredInfo) },
 		{ string__format("Sorry, not implemented in Aditi: %s.%s/%i",
@@ -2204,9 +2208,9 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 		{ error(Msg) }
 	).
 
-:- pred rl_exprn__maybe_simple_expr_to_rl_rval(maybe(simple_expr(prog_var))::in,
-		aditi_type::in, byte_tree::out,
-		rl_exprn_info::in, rl_exprn_info::out) is det.
+:- pred rl_exprn__maybe_simple_expr_to_rl_rval(
+	maybe(simple_expr(prog_var))::in, aditi_type::in, byte_tree::out,
+	rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__maybe_simple_expr_to_rl_rval(no, _, empty) --> [].
 rl_exprn__maybe_simple_expr_to_rl_rval(yes(LLDSRval), _ResultType, Code) -->
@@ -2216,8 +2220,8 @@ rl_exprn__maybe_simple_expr_to_rl_rval(yes(LLDSRval), _ResultType, Code) -->
 		{ error("rl_exprn__maybe_simple_expr_to_rl_rval: invalid simple_expr") }
 	).
 
-:- pred rl_exprn__simple_expr_to_rl_rval(simple_expr(prog_var)::in, byte_tree::out,
-		rl_exprn_info::in, rl_exprn_info::out) is semidet.
+:- pred rl_exprn__simple_expr_to_rl_rval(simple_expr(prog_var)::in,
+	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is semidet.
 
 rl_exprn__simple_expr_to_rl_rval(leaf(Var), Code) -->
 	rl_exprn_info_lookup_var(Var, VarLoc),
@@ -2247,11 +2251,11 @@ rl_exprn__simple_expr_to_rl_rval(binary(BinOp, Expr1, Expr2), Code) -->
 
 :- pred rl_exprn__binop_bytecode(binary_op::in, bytecode::out) is semidet.
 
-rl_exprn__binop_bytecode((+), rl_EXP_int_add).
-rl_exprn__binop_bytecode((-), rl_EXP_int_sub).
-rl_exprn__binop_bytecode((*), rl_EXP_int_mult).
-rl_exprn__binop_bytecode((/), rl_EXP_int_div).
-rl_exprn__binop_bytecode((mod), rl_EXP_int_mod).
+rl_exprn__binop_bytecode(int_add, rl_EXP_int_add).
+rl_exprn__binop_bytecode(int_sub, rl_EXP_int_sub).
+rl_exprn__binop_bytecode(int_mul, rl_EXP_int_mult).
+rl_exprn__binop_bytecode(int_div, rl_EXP_int_div).
+rl_exprn__binop_bytecode(int_mod, rl_EXP_int_mod).
 rl_exprn__binop_bytecode(eq, rl_EXP_int_eq).
 rl_exprn__binop_bytecode(ne, rl_EXP_int_ne).
 rl_exprn__binop_bytecode(str_eq, rl_EXP_str_eq).
@@ -2260,10 +2264,10 @@ rl_exprn__binop_bytecode(str_lt, rl_EXP_str_lt).
 rl_exprn__binop_bytecode(str_gt, rl_EXP_str_gt).
 rl_exprn__binop_bytecode(str_le, rl_EXP_str_le).
 rl_exprn__binop_bytecode(str_ge, rl_EXP_str_ge).
-rl_exprn__binop_bytecode((<), rl_EXP_int_lt).
-rl_exprn__binop_bytecode((>), rl_EXP_int_gt).
-rl_exprn__binop_bytecode((>=), rl_EXP_int_ge).
-rl_exprn__binop_bytecode((<=), rl_EXP_int_le).
+rl_exprn__binop_bytecode(int_lt, rl_EXP_int_lt).
+rl_exprn__binop_bytecode(int_gt, rl_EXP_int_gt).
+rl_exprn__binop_bytecode(int_ge, rl_EXP_int_ge).
+rl_exprn__binop_bytecode(int_le, rl_EXP_int_le).
 rl_exprn__binop_bytecode(float_plus, rl_EXP_flt_add).
 rl_exprn__binop_bytecode(float_minus, rl_EXP_flt_sub).
 rl_exprn__binop_bytecode(float_times, rl_EXP_flt_mult).
@@ -2391,7 +2395,7 @@ rl_exprn__simple_extra_builtin(predicate, "string", "length", 2, 0,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-rl_exprn__aggregate(ComputeInitial, UpdateAcc, GrpByType, 
+rl_exprn__aggregate(ComputeInitial, UpdateAcc, GrpByType,
 		NonGrpByType, AccType, AggCode, Decls,
 		ModuleInfo0, ModuleInfo) :-
 	map__init(VarTypes),
@@ -2403,8 +2407,8 @@ rl_exprn__aggregate(ComputeInitial, UpdateAcc, GrpByType,
 	rl_exprn_info_get_module_info(ModuleInfo, Info, _).
 
 :- pred rl_exprn__aggregate_2(pred_proc_id::in, pred_proc_id::in,
-	(type)::in, (type)::in, (type)::in, list(bytecode)::out,
-	list(type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
+	mer_type::in, mer_type::in, mer_type::in, list(bytecode)::out,
+	list(mer_type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 		NonGrpByType, AccType, AggCode, Decls) -->
@@ -2451,8 +2455,8 @@ rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 
 	% Generate code to initialise the accumulator for a group and
 	% put the group-by variable in a known place.
-:- pred rl_exprn__aggregate_init(pred_proc_id::in, reg_id::in, (type)::in,
-	(type)::in, reg_id::in, (type)::in, byte_tree::out, byte_tree::out,
+:- pred rl_exprn__aggregate_init(pred_proc_id::in, reg_id::in, mer_type::in,
+	mer_type::in, reg_id::in, mer_type::in, byte_tree::out, byte_tree::out,
 	rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__aggregate_init(ComputeClosure, GrpByReg, GrpByType, NonGrpByType,
@@ -2502,7 +2506,7 @@ rl_exprn__aggregate_init(ComputeClosure, GrpByReg, GrpByType, NonGrpByType,
 	% next element in the group, then destructively update the
 	% old accumulator.
 :- pred rl_exprn__aggregate_update(pred_proc_id::in, reg_id::in,
-	(type)::in, (type)::in, reg_id::in, (type)::in,
+	mer_type::in, mer_type::in, reg_id::in, mer_type::in,
 	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__aggregate_update(UpdateClosure, GrpByReg, GrpByType, NonGrpByType,
@@ -2534,7 +2538,7 @@ rl_exprn__aggregate_update(UpdateClosure, GrpByReg, GrpByType, NonGrpByType,
 	% Return whether the input arguments are actually used in
 	% constructing the outputs. If not, the closure is constant
 	% and can be evaluated once, instead of once per group.
-:- pred rl_exprn__closure(pred_proc_id::in, list(reg_id)::in, list(type)::in,
+:- pred rl_exprn__closure(pred_proc_id::in, list(reg_id)::in, list(mer_type)::in,
 		bool::out, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -2639,9 +2643,9 @@ rl_exprn__compare_bytecode(term(_), rl_EXP_term_cmp).
 	--->	int
 	;	string
 	;	float
-	;	term(type).
+	;	term(mer_type).
 
-:- pred rl_exprn__type_to_aditi_type((type)::in, aditi_type::out) is det.
+:- pred rl_exprn__type_to_aditi_type(mer_type::in, aditi_type::out) is det.
 
 rl_exprn__type_to_aditi_type(Type, AditiType) :-
 	( type_to_ctor_and_args(Type, TypeCtor, _) ->
@@ -2664,7 +2668,7 @@ rl_exprn__type_to_aditi_type(Type, AditiType) :-
 		AditiType = int
 	).
 
-:- pred rl_exprn__aditi_type_to_type(aditi_type::in, (type)::out) is det.
+:- pred rl_exprn__aditi_type_to_type(aditi_type::in, mer_type::out) is det.
 
 rl_exprn__aditi_type_to_type(int, Int) :-
 	construct_type(unqualified("int") - 0, [], Int).
@@ -2765,7 +2769,7 @@ rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
 			reg_id,
 			cons_id,
 			int,
-			type		% type of the term
+			mer_type		% type of the term
 		).
 
 :- type rl_rval
@@ -2784,7 +2788,7 @@ rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
 			rl_rval,	% register holding the term
 			cons_id,
 			int,		% arg no
-			type		% type of the term
+			mer_type		% type of the term
 		).
 
 :- type input_tuple
@@ -2798,7 +2802,7 @@ rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
 
 :- type rl_exprn_info.
 
-:- pred rl_exprn_info_init(module_info, instmap, map(prog_var, type),
+:- pred rl_exprn_info_init(module_info, instmap, vartypes,
 		prog_varset, rl_exprn_info).
 :- mode rl_exprn_info_init(in, in, in, in, out) is det.
 
@@ -2819,11 +2823,11 @@ rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
 :- pred rl_exprn_info_set_instmap(instmap, rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_set_instmap(in, in, out) is det.
 
-:- pred rl_exprn_info_get_vartypes(map(prog_var, type),
+:- pred rl_exprn_info_get_vartypes(vartypes,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_vartypes(out, in, out) is det.
 
-:- pred rl_exprn_info_set_vartypes(map(prog_var, type),
+:- pred rl_exprn_info_set_vartypes(vartypes,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_set_vartypes(in, in, out) is det.
 
@@ -2842,13 +2846,13 @@ rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
 :- pred rl_exprn_info_lookup_var(prog_var, int, rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_lookup_var(in, out, in, out) is det.
 
-:- pred rl_exprn_info_get_free_reg((type), reg_id,
+:- pred rl_exprn_info_get_free_reg(mer_type, reg_id,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_free_reg(in, out, in, out) is det.
 
 :- pred rl_exprn_info_reg_is_single_value_location(reg_id::in,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
-	
+
 :- pred rl_exprn_info_reg_is_multiple_value_location(reg_id::in,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -2883,7 +2887,7 @@ rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
 		rl_exprn_info, rl_exprn_info) is det.
 :- mode rl_exprn_info_set_parent_pred_proc_ids(in, in, out) is det.
 
-:- pred rl_exprn_info_lookup_var_type(prog_var, type,
+:- pred rl_exprn_info_lookup_var_type(prog_var, mer_type,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_lookup_var_type(in, out, in, out) is det.
 
@@ -2895,14 +2899,14 @@ rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_set_var_loc(in, in, in, out) is det.
 
-:- pred rl_exprn_info_get_decls(list(type), rl_exprn_info, rl_exprn_info).
+:- pred rl_exprn_info_get_decls(list(mer_type), rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_decls(out, in, out) is det.
 
 :- type rl_exprn_info
 	---> rl_exprn_info(
 		module_info :: module_info,
 		instmap :: instmap,		% not yet used.
-		vartypes :: map(prog_var, type),
+		vartypes :: vartypes,
 		varset :: prog_varset,
 		vars :: id_map(prog_var),
 		label_counter :: counter,		% next label.
@@ -2911,7 +2915,7 @@ rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
 		parent_proc_ids :: set(pred_proc_id),
 					% parent pred_proc_ids, used
 					% to abort on recursion.
-		decls :: list(type),	% variable declarations in reverse.
+		decls :: list(mer_type),	% variable declarations in reverse.
 		mercury_proc_counter :: counter,
 
 		% The solution for a call to a det top-down Mercury
@@ -3062,7 +3066,7 @@ rl_exprn_info_get_next_label_id(Label, Info0,
 
 rl_exprn_info_lookup_const(Const, Loc, Info0, Info) :-
 	Consts0 = Info0 ^ consts,
-	id_map_lookup(Const, Loc, Consts0, Consts), 
+	id_map_lookup(Const, Loc, Consts0, Consts),
 	Info = Info0 ^ consts := Consts.
 
 rl_exprn_info_lookup_rule(Rule, Loc, Info0, Info) :-

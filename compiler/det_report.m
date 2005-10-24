@@ -50,10 +50,10 @@
 
             % The following are errors.
 
-    ;       cc_unify_can_fail(hlds_goal_info, prog_var, type,
+    ;       cc_unify_can_fail(hlds_goal_info, prog_var, mer_type,
                 prog_varset, cc_unify_context)
     ;       cc_unify_in_wrong_context(hlds_goal_info, prog_var,
-                type, prog_varset, cc_unify_context)
+                mer_type, prog_varset, cc_unify_context)
     ;       cc_pred_in_wrong_context(hlds_goal_info, determinism,
                 pred_id, proc_id)
     ;       higher_order_cc_pred_in_wrong_context(hlds_goal_info, determinism)
@@ -730,9 +730,9 @@ det_diagnose_conj([Goal | Goals], Desired, SwitchContext, DetInfo,
     det_diagnose_conj(Goals, Desired, SwitchContext, DetInfo, Diagnosed2, !IO),
     bool__or(Diagnosed1, Diagnosed2, Diagnosed).
 
-:- pred det_diagnose_disj(list(hlds_goal)::in, determinism::in, determinism::in,
-    list(switch_context)::in, det_info::in, int::in, int::out, bool::out,
-    io::di, io::uo) is det.
+:- pred det_diagnose_disj(list(hlds_goal)::in,
+    determinism::in, determinism::in, list(switch_context)::in,
+    det_info::in, int::in, int::out, bool::out, io::di, io::uo) is det.
 
 det_diagnose_disj([], _Desired, _Actual, _SwitchContext, _DetInfo,
         !ClausesWithSoln, no, !IO).
@@ -1405,7 +1405,8 @@ det_report_msg(export_model_non_proc(PredId, ProcId, Detism), ModuleInfo,
         unexpected(this_file,
             "Cannot find proc in table of pragma exported procs")
     ).
-det_report_msg(promise_equivalent_solutions_missing_vars(Context, VarSet, Vars),
+det_report_msg(
+        promise_equivalent_solutions_missing_vars(Context, VarSet, Vars),
         _, !IO) :-
     VarNames = list.map(lookup_var_name_in_varset(VarSet),
         set.to_sorted_list(Vars)),

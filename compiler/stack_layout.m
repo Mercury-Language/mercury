@@ -566,7 +566,7 @@ construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 
 :- pred construct_trace_layout(rtti_proc_label::in,
     eval_method::in, trace_level::in, maybe(label)::in, int::in,
-    list(prog_var)::in, list(mode)::in, hlds_goal::in, bool::in,
+    list(prog_var)::in, list(mer_mode)::in, hlds_goal::in, bool::in,
     instmap::in, trace_slot_info::in, prog_varset::in, vartypes::in,
     maybe(proc_table_info)::in, bool::in, var_num_map::in,
     proc_layout_exec_trace::out,
@@ -628,7 +628,7 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         MaybeCallTableSlot, EffTraceLevel, Flags).
 
 :- pred encode_exec_trace_flags(module_info::in, list(prog_var)::in,
-    list(mode)::in, vartypes::in, int::in, int::out) is det.
+    list(mer_mode)::in, vartypes::in, int::in, int::out) is det.
 
 encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, !Flags) :-
     (

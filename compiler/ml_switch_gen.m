@@ -80,7 +80,7 @@
     %
 :- pred ml_gen_switch(prog_var::in, can_fail::in, list(case)::in,
     code_model::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate an appropriate default for a switch.
@@ -333,7 +333,7 @@ ml_switch_lookup_tags(Info, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     %
 :- pred ml_switch_generate_if_else_chain(list(extended_case)::in, prog_var::in,
     code_model::in, can_fail::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_if_else_chain([], _Var, CodeModel, CanFail, Context,
@@ -361,7 +361,7 @@ ml_switch_generate_if_else_chain([Case | Cases], Var, CodeModel, CanFail,
             CanFail, Context, RestDecls, RestStatements, !Info),
         Rest = ml_gen_block(RestDecls, RestStatements, Context),
         IfStmt = if_then_else(TagTestExpression, GoalStatement, yes(Rest)),
-        IfStatement = mlds__statement(IfStmt, mlds__make_context(Context)),
+        IfStatement = statement(IfStmt, mlds__make_context(Context)),
         Decls = TagTestDecls,
         Statements = TagTestStatements ++ [IfStatement]
     ).
@@ -374,7 +374,7 @@ ml_switch_generate_if_else_chain([Case | Cases], Var, CodeModel, CanFail,
     %
 :- pred ml_switch_generate_mlds_switch(list(extended_case)::in, prog_var::in,
     code_model::in, can_fail::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
@@ -392,7 +392,7 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
     Decls = [],
     Statements = [SwitchStatement].
 
-:- pred ml_switch_gen_range(ml_gen_info::in, mlds__type::in,
+:- pred ml_switch_gen_range(ml_gen_info::in, mlds_type::in,
     mlds__switch_range::out) is det.
 
 ml_switch_gen_range(Info, MLDS_Type, Range) :-

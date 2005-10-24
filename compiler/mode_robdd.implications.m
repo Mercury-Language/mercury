@@ -341,16 +341,15 @@ extract_implication_vars_from_robdd(Changed, Robdd0, Robdd,
 	ImpVars = ImpVars0 * ImpVars1,
 
 	% XXX
-	/*
-	P = (pred(V::in, di, uo) is det --> io__write_int(var_to_int(V))), % XXX
-	impure unsafe_perform_io(robdd_to_dot(Robdd0, P, "extract_impl_before.dot")), % XXX
-	*/
+	% P = (pred(V::in, di, uo) is det -->
+	%	io__write_int(var_to_int(V))), % XXX
+	% impure unsafe_perform_io(robdd_to_dot(Robdd0, P,
+	%	"extract_impl_before.dot")), % XXX
 
 	Robdd = remove_implications(ImpVars, Robdd0),
 
-	/*
-	impure unsafe_perform_io(robdd_to_dot(Robdd, P, "extract_impl_after.dot")), % XXX
-	*/
+	% impure unsafe_perform_io(robdd_to_dot(Robdd, P,
+	%	"extract_impl_after.dot")), % XXX
 
 	Changed = ( Robdd = Robdd0, empty(ImpVars1) -> no ; yes ).
 

@@ -249,7 +249,8 @@ add_item_list_decls_pass_1([Item - Context | Items], Status0, !ModuleInfo,
     add_item_decl_pass_1(Item, Context, Status0, Status1, !ModuleInfo,
         NewInvalidModes, !IO),
     !:InvalidModes = bool__or(!.InvalidModes, NewInvalidModes),
-    add_item_list_decls_pass_1(Items, Status1, !ModuleInfo, !InvalidModes, !IO).
+    add_item_list_decls_pass_1(Items, Status1, !ModuleInfo, !InvalidModes,
+        !IO).
 
     % pass 2:
     % Add the type definitions and pragmas one by one to the module,
@@ -956,7 +957,7 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
                 MaybeDetism = yes(Detism),
                 ( Detism = det ; Detism = cc_multidet ),
                 pred_info_get_purity(PredInfo, Purity),
-                Purity = pure
+                Purity = purity_pure
             ->
                 module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
@@ -974,7 +975,7 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
                 MaybeDetism = yes(Detism),
                 ( Detism = det; Detism = cc_multidet ),
                 pred_info_get_purity(PredInfo, Purity),
-                Purity = (impure)
+                Purity = purity_impure
             ->
                 module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
                 PragmaExportedItem = 
@@ -1065,7 +1066,7 @@ add_item_clause(finalise(Origin, SymName, Arity),
                 MaybeDetism = yes(Detism),
                 ( Detism = det ; Detism = cc_multidet ),
                 pred_info_get_purity(PredInfo, Purity),
-                Purity = pure
+                Purity = purity_pure
             ->
                 module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
@@ -1083,7 +1084,7 @@ add_item_clause(finalise(Origin, SymName, Arity),
                 MaybeDetism = yes(Detism),
                 ( Detism = det; Detism = cc_multidet ),
                 pred_info_get_purity(PredInfo, Purity),
-                Purity = (impure)
+                Purity = purity_impure
             ->
                 module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
@@ -1138,7 +1139,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         InitClause = clause(compiler(mutable_decl), varset.init, predicate,
             mutable_init_pred_sym_name(ModuleName, Name), [],
             call(mutable_set_pred_sym_name(ModuleName, Name),
-                [InitTerm], (impure)) - Context),
+                [InitTerm], purity_impure) - Context),
         add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,
             !IO),
         mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
@@ -1149,13 +1150,14 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             MaybeForeignNames = yes(ForeignNames),
             ReportErrors = no,    % We've already reported them during pass 2.
             get_global_name_from_foreign_names(ReportErrors, Context,
-                    ModuleName, Name, ForeignNames, TargetMutableName, !IO)
+                ModuleName, Name, ForeignNames, TargetMutableName, !IO)
         ),
-        set_purity((semipure), Attrs, GetAttrs),
-        NonPureGetClause = pragma(compiler(mutable_decl), foreign_proc(GetAttrs,
-            mutable_get_pred_sym_name(ModuleName, Name), predicate,
-            [pragma_var(X, "X", out_mode(Inst))], VarSet0,
-            ordinary("X = " ++ TargetMutableName ++ ";", yes(Context)))),
+        set_purity(purity_semipure, Attrs, GetAttrs),
+        NonPureGetClause = pragma(compiler(mutable_decl),
+            foreign_proc(GetAttrs,
+                mutable_get_pred_sym_name(ModuleName, Name), predicate,
+                [pragma_var(X, "X", out_mode(Inst))], VarSet0,
+                ordinary("X = " ++ TargetMutableName ++ ";", yes(Context)))),
         add_item_clause(NonPureGetClause, !Status, Context, !ModuleInfo,
             !QualInfo, !IO),
         TrailMutableUpdates = mutable_var_trailed(MutAttrs),
@@ -1190,19 +1192,19 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             [pragma_var(X, "X", in_mode(Inst))], VarSet0,
             ordinary(TrailCode ++ TargetMutableName ++ " = X;",
                 yes(Context)))),
-        add_item_clause(NonPureSetClause, !Status, Context, !ModuleInfo, !QualInfo,
-            !IO),
-        %
+        add_item_clause(NonPureSetClause, !Status, Context, !ModuleInfo,
+            !QualInfo, !IO),
+
         % Create pure access predicates for the mutable if requested.
         %
         % XXX We don't define these directly in terms of the non-pure 
         % access predicates because I/O tabling doesn't currently work
         % for impure/semipure predicates.  At the moment we just generate
         % another pair of foreign_procs.
-        % 
+
         ( mutable_var_attach_to_io_state(MutAttrs) = yes ->
             set_tabled_for_io(tabled_for_io, Attrs0, PureIntAttrs0),
-            set_purity(pure, PureIntAttrs0, PureIntAttrs),
+            set_purity(purity_pure, PureIntAttrs0, PureIntAttrs),
             varset.new_named_var(VarSet0, "IO0", IO0, VarSet1),
             varset.new_named_var(VarSet1, "IO",  IO,  VarSet),
             PureSetClause = pragma(compiler(mutable_decl),
@@ -1213,10 +1215,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                         pragma_var(IO0, "IO0", di_mode),
                         pragma_var(IO,  "IO",  uo_mode)
                     ], VarSet,
-                    ordinary(
-                                TargetMutableName ++ " = X; " ++
-                                "IO = IO0;",
-                                yes(Context)
+                    ordinary(TargetMutableName ++ " = X; IO = IO0;",
+                        yes(Context)
                     )
                 )
             ),
@@ -1312,8 +1312,8 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
         %
     GoalType = promise(PromiseType) ,
     module_info_get_name(!.ModuleInfo, ModuleName),
-    module_add_clause(VarSet, predicate, qualified(ModuleName, Name),
-        HeadVars, Goal, Status, Context, GoalType, !ModuleInfo, !QualInfo, !IO).
+    module_add_clause(VarSet, predicate, qualified(ModuleName, Name), HeadVars,
+        Goal, Status, Context, GoalType, !ModuleInfo, !QualInfo, !IO).
 
 add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !IO) :-
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),

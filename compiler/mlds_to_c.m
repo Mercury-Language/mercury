@@ -110,7 +110,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type output_type == pred(mlds__type, io, io).
+:- type output_type == pred(mlds_type, io, io).
 :- inst output_type == (pred(in, di, uo) is det).
 
 %-----------------------------------------------------------------------------%
@@ -754,7 +754,7 @@ mlds_output_pragma_export_func_name(ModuleName, Indent, Export, !IO) :-
         mlds_output_pragma_export_type(prefix),
         mlds_output_pragma_export_type(suffix), !IO).
 
-:- pred mlds_output_pragma_export_type(mlds__type::in, io::di, io::uo) is det.
+:- pred mlds_output_pragma_export_type(mlds_type::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_type(Type, !IO) :-
     mlds_output_pragma_export_type(prefix, Type, !IO),
@@ -764,13 +764,14 @@ mlds_output_pragma_export_type(Type, !IO) :-
     --->    prefix
     ;       suffix.
 
-:- pred mlds_output_pragma_export_type(locn::in, mlds__type::in,
+:- pred mlds_output_pragma_export_type(locn::in, mlds_type::in,
     io::di, io::uo) is det.
 
 mlds_output_pragma_export_type(suffix, _Type, !IO).
 mlds_output_pragma_export_type(prefix, mercury_array_type(_ElemType), !IO) :-
     io__write_string("MR_ArrayPtr", !IO).
-mlds_output_pragma_export_type(prefix, mercury_type(_, _, ExportedType), !IO) :-
+mlds_output_pragma_export_type(prefix, mercury_type(_, _, ExportedType),
+        !IO) :-
     io__write_string(foreign__to_type_string(c, ExportedType), !IO).
 mlds_output_pragma_export_type(prefix, mlds__cont_type(_), !IO) :-
     io__write_string("MR_Word", !IO).
@@ -959,7 +960,7 @@ mlds_output_pragma_export_output_defns(ModuleName, Arg, !IO) :-
         !IO),
     io__write_string(";\n", !IO).
 
-:- func pointed_to_type(mlds__type) = mlds__type.
+:- func pointed_to_type(mlds_type) = mlds_type.
 
 pointed_to_type(PtrType) =
     ( PtrType = mlds__ptr_type(Type) ->
@@ -1116,7 +1117,7 @@ mlds_output_decl(Indent, ModuleName, Defn, !IO) :-
             Context, DefnBody, !IO)
     ).
 
-:- pred mlds_output_type_forward_decls(indent::in, list(mlds__type)::in,
+:- pred mlds_output_type_forward_decls(indent::in, list(mlds_type)::in,
     io::di, io::uo) is det.
 
 mlds_output_type_forward_decls(Indent, ParamTypes, !IO) :-
@@ -1131,7 +1132,7 @@ mlds_output_type_forward_decls(Indent, ParamTypes, !IO) :-
     % True iff the type SubType occurs (directly or indirectly) in the
     % specified list of Types.
     %
-:- pred mlds_type_list_contains_type(list(mlds__type)::in, mlds__type::out)
+:- pred mlds_type_list_contains_type(list(mlds_type)::in, mlds_type::out)
     is nondet.
 
 mlds_type_list_contains_type(Types, SubType) :-
@@ -1142,7 +1143,7 @@ mlds_type_list_contains_type(Types, SubType) :-
     %
     % True iff the type Type contains the type SubType.
     %
-:- pred mlds_type_contains_type(mlds__type::in, mlds__type::out) is multi.
+:- pred mlds_type_contains_type(mlds_type::in, mlds_type::out) is multi.
 
 mlds_type_contains_type(Type, Type).
 mlds_type_contains_type(mlds__mercury_array_type(Type), Type).
@@ -1154,7 +1155,7 @@ mlds_type_contains_type(mlds__func_type(Parameters), Type) :-
     ; list__member(Type, RetTypes)
     ).
 
-:- pred mlds_output_type_forward_decl(indent::in, mlds__type::in,
+:- pred mlds_output_type_forward_decl(indent::in, mlds_type::in,
     io::di, io::uo) is det.
 
 mlds_output_type_forward_decl(Indent, Type, !IO) :-
@@ -1233,7 +1234,7 @@ mlds_output_defn_body(Indent, Name, Context, DefnBody, !IO) :-
     ).
 
 :- pred mlds_output_maybe_gc_trace_code(indent::in,
-    mlds__qualified_entity_name::in, maybe(mlds__statement)::in,
+    mlds__qualified_entity_name::in, maybe(statement)::in,
     string::in, io::di, io::uo) is det.
 
 mlds_output_maybe_gc_trace_code(Indent, Name, Maybe_GC_TraceCode, MaybeNewLine,
@@ -1413,14 +1414,14 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn, !IO) :-
 % Code to output data declarations/definitions
 %
 
-:- pred mlds_output_data_decl(mlds__qualified_entity_name::in, mlds__type::in,
+:- pred mlds_output_data_decl(mlds__qualified_entity_name::in, mlds_type::in,
     initializer_array_size::in, io::di, io::uo) is det.
 
 mlds_output_data_decl(Name, Type, InitializerSize, !IO) :-
     mlds_output_data_decl_ho(mlds_output_type_prefix,
         mlds_output_data_decl_2(InitializerSize), Name, Type, !IO).
 
-:- pred mlds_output_data_decl_2(initializer_array_size::in, mlds__type::in,
+:- pred mlds_output_data_decl_2(initializer_array_size::in, mlds_type::in,
     io::di, io::uo) is det.
 
 mlds_output_data_decl_2(InitializerSize, Type, !IO) :-
@@ -1428,7 +1429,7 @@ mlds_output_data_decl_2(InitializerSize, Type, !IO) :-
 
 :- pred mlds_output_data_decl_ho(output_type::in(output_type),
     output_type::in(output_type), mlds__qualified_entity_name::in,
-    mlds__type::in, io::di, io::uo) is det.
+    mlds_type::in, io::di, io::uo) is det.
 
 mlds_output_data_decl_ho(OutputPrefix, OutputSuffix, Name, Type, !IO) :-
     OutputPrefix(Type, !IO),
@@ -1436,7 +1437,7 @@ mlds_output_data_decl_ho(OutputPrefix, OutputSuffix, Name, Type, !IO) :-
     mlds_output_fully_qualified_name(Name, !IO),
     OutputSuffix(Type, !IO).
 
-:- pred mlds_output_data_defn(mlds__qualified_entity_name::in, mlds__type::in,
+:- pred mlds_output_data_defn(mlds__qualified_entity_name::in, mlds_type::in,
     mlds__initializer::in, io::di, io::uo) is det.
 
 mlds_output_data_defn(Name, Type, Initializer, !IO) :-
@@ -1456,7 +1457,7 @@ mlds_output_maybe(MaybeValue, OutputAction, !IO) :-
         MaybeValue = no
     ).
 
-:- pred mlds_output_initializer(mlds__type::in, mlds__initializer::in,
+:- pred mlds_output_initializer(mlds_type::in, mlds__initializer::in,
     io::di, io::uo) is det.
 
 mlds_output_initializer(_Type, Initializer, !IO) :-
@@ -1600,7 +1601,7 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context, CallingConvention,
     ).
 
 :- pred mlds_output_prefix_suffix(output_type::in(output_type),
-    output_type::in(output_type), mlds__type::in, io::di, io::uo) is det.
+    output_type::in(output_type), mlds_type::in, io::di, io::uo) is det.
 
 mlds_output_prefix_suffix(OutputPrefix, OutputSuffix, Value, !IO) :-
     OutputPrefix(Value, !IO),
@@ -1823,7 +1824,7 @@ mlds_output_data_name(tabling_pointer(ProcLabel), !IO) :-
 % Code to output types
 %
 
-:- pred mlds_output_type(mlds__type::in, io::di, io::uo) is det.
+:- pred mlds_output_type(mlds_type::in, io::di, io::uo) is det.
 
 mlds_output_type(Type, !IO) :-
     % Because of the joys of C syntax, the code for outputting types
@@ -1835,7 +1836,7 @@ mlds_output_type(Type, !IO) :-
     mlds_output_type_prefix(Type, !IO),
     mlds_output_type_suffix(Type, !IO).
 
-:- pred mlds_output_type_prefix(mlds__type::in, io::di, io::uo) is det.
+:- pred mlds_output_type_prefix(mlds_type::in, io::di, io::uo) is det.
 
 mlds_output_type_prefix(mercury_type(Type, TypeCategory, _), !IO) :-
     mlds_output_mercury_type_prefix(Type, TypeCategory, !IO).
@@ -1932,7 +1933,7 @@ mlds_output_type_prefix(mlds__rtti_type(RttiIdMaybeElement), !IO) :-
 mlds_output_type_prefix(mlds__unknown_type, !IO) :-
     error("mlds_to_c.m: prefix has unknown type").
 
-:- pred mlds_output_mercury_type_prefix(mercury_type::in, type_category::in,
+:- pred mlds_output_mercury_type_prefix(mer_type::in, type_category::in,
     io::di, io::uo) is det.
 
 mlds_output_mercury_type_prefix(Type, TypeCategory, !IO) :-
@@ -1998,7 +1999,7 @@ mlds_output_mercury_type_prefix(Type, TypeCategory, !IO) :-
         mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
     ).
 
-:- pred mlds_output_mercury_user_type_prefix(mercury_type::in,
+:- pred mlds_output_mercury_user_type_prefix(mer_type::in,
     type_category::in, io::di, io::uo) is det.
 
 mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO) :-
@@ -2029,7 +2030,7 @@ mlds_output_mercury_user_type_name(TypeCtor, TypeCategory, !IO) :-
     ),
     mlds_output_type_prefix(MLDS_Type, !IO).
 
-:- pred mlds_output_type_suffix(mlds__type::in, io::di, io::uo) is det.
+:- pred mlds_output_type_suffix(mlds_type::in, io::di, io::uo) is det.
 
 mlds_output_type_suffix(Type, !IO) :-
     mlds_output_type_suffix(Type, no_size, !IO).
@@ -2046,7 +2047,7 @@ initializer_array_size(init_obj(_)) = no_size.
 initializer_array_size(init_struct(_, _)) = no_size.
 initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
 
-:- pred mlds_output_type_suffix(mlds__type::in, initializer_array_size::in,
+:- pred mlds_output_type_suffix(mlds_type::in, initializer_array_size::in,
     io::di, io::uo) is det.
 
 mlds_output_type_suffix(mercury_type(_, _, _), _, !IO).
@@ -2250,15 +2251,15 @@ mlds_output_abstractness(concrete, !IO).
     --->    func_info(mlds__qualified_entity_name, mlds__func_signature).
 
 :- pred mlds_output_statements(indent::in, func_info::in,
-    list(mlds__statement)::in, io::di, io::uo) is det.
+    list(statement)::in, io::di, io::uo) is det.
 
 mlds_output_statements(Indent, FuncInfo, Statements, !IO) :-
     list__foldl(mlds_output_statement(Indent, FuncInfo), Statements, !IO).
 
-:- pred mlds_output_statement(indent::in, func_info::in, mlds__statement::in,
+:- pred mlds_output_statement(indent::in, func_info::in, statement::in,
     io::di, io::uo) is det.
 
-mlds_output_statement(Indent, FuncInfo, mlds__statement(Statement, Context),
+mlds_output_statement(Indent, FuncInfo, statement(Statement, Context),
         !IO) :-
     mlds_to_c__output_context(Context, !IO),
     mlds_output_stmt(Indent, FuncInfo, Statement, Context, !IO).
@@ -2655,8 +2656,8 @@ mlds_output_case_cond(Indent, Context, match_range(Low, High), !IO) :-
     mlds_output_rval(High, !IO),
     io__write_string(":\n", !IO).
 
-:- pred mlds_output_switch_default(indent::in, func_info::in, mlds__context::in,
-    mlds__switch_default::in, io::di, io::uo) is det.
+:- pred mlds_output_switch_default(indent::in, func_info::in,
+    mlds__context::in, mlds__switch_default::in, io::di, io::uo) is det.
 
 mlds_output_switch_default(Indent, _FuncInfo, Context, default_is_unreachable,
         !IO) :-
@@ -2678,7 +2679,7 @@ mlds_output_switch_default(Indent, FuncInfo, Context, default_case(Statement),
     % record the heap allocation.
     %
 :- pred mlds_maybe_output_heap_profile_instr(mlds__context::in,
-    indent::in, list(mlds__rval)::in, mlds__qualified_entity_name::in,
+    indent::in, list(mlds_rval)::in, mlds__qualified_entity_name::in,
     maybe(ctor_name)::in, io::di, io::uo) is det.
 
 mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
@@ -2717,7 +2718,7 @@ mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
     % an arc in the call profile between the callee and caller.
     %
 :- pred mlds_maybe_output_call_profile_instr(mlds__context::in, indent::in,
-    mlds__rval::in, mlds__qualified_entity_name::in, io::di, io::uo) is det.
+    mlds_rval::in, mlds__qualified_entity_name::in, io::di, io::uo) is det.
 
 mlds_maybe_output_call_profile_instr(Context, Indent,
         CalleeFuncRval, CallerName, !IO) :-
@@ -2973,7 +2974,7 @@ mlds_output_target_code_component(_Context, name(Name), !IO) :-
     mlds_output_fully_qualified_name(Name, !IO),
     io__write_string("\n", !IO).
 
-:- func type_needs_forwarding_pointer_space(mlds__type) = bool.
+:- func type_needs_forwarding_pointer_space(mlds_type) = bool.
 
 type_needs_forwarding_pointer_space(mlds__type_info_type) = yes.
 type_needs_forwarding_pointer_space(mlds__pseudo_type_info_type) = yes.
@@ -3002,11 +3003,11 @@ type_needs_forwarding_pointer_space(mlds__unknown_type) = _ :-
     unexpected(this_file, "type_needs_forwarding_pointer_space: unknown_type").
 
 :- type lval_or_string
-    --->    lval(mlds__lval)
+    --->    lval(mlds_lval)
     ;       string(string).
 
-:- pred mlds_output_init_args(list(mlds__rval)::in, list(mlds__type)::in,
-    mlds__context::in, int::in, lval_or_string::in, mlds__tag::in,
+:- pred mlds_output_init_args(list(mlds_rval)::in, list(mlds_type)::in,
+    mlds__context::in, int::in, lval_or_string::in, mlds_tag::in,
     indent::in, io::di, io::uo) is det.
 
 mlds_output_init_args([_|_], [], _, _, _, _, _, !IO) :-
@@ -3053,7 +3054,7 @@ write_lval_or_string(Base, !IO) :-
 % Code to output expressions
 %
 
-:- pred mlds_output_lval(mlds__lval::in, io::di, io::uo) is det.
+:- pred mlds_output_lval(mlds_lval::in, io::di, io::uo) is det.
 
 mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval),
         FieldType, _ClassType), !IO) :-
@@ -3135,7 +3136,7 @@ mlds_output_var_name(VarName, !IO) :-
 mlds_output_mangled_name(Name, !IO) :-
     io__write_string(name_mangle(Name), !IO).
 
-:- pred mlds_output_bracketed_lval(mlds__lval::in, io::di, io::uo) is det.
+:- pred mlds_output_bracketed_lval(mlds_lval::in, io::di, io::uo) is det.
 
 mlds_output_bracketed_lval(Lval, !IO) :-
     (
@@ -3149,7 +3150,7 @@ mlds_output_bracketed_lval(Lval, !IO) :-
         io__write_char(')', !IO)
     ).
 
-:- pred mlds_output_bracketed_rval(mlds__rval::in, io::di, io::uo) is det.
+:- pred mlds_output_bracketed_rval(mlds_rval::in, io::di, io::uo) is det.
 
 mlds_output_bracketed_rval(Rval, !IO) :-
     (
@@ -3182,7 +3183,7 @@ mlds_output_return_list(List, OutputPred, !IO) :-
     io__write_list(List, ", ", OutputPred, !IO),
     io__write_string("}", !IO).
 
-:- pred mlds_output_rval(mlds__rval::in, io::di, io::uo) is det.
+:- pred mlds_output_rval(mlds_rval::in, io::di, io::uo) is det.
 
 mlds_output_rval(lval(Lval), !IO) :-
     mlds_output_lval(Lval, !IO).
@@ -3233,7 +3234,7 @@ mlds_output_rval(mem_addr(Lval), !IO) :-
 mlds_output_rval(self(_), !IO) :-
     io__write_string("this", !IO).
 
-:- pred mlds_output_unop(mlds__unary_op::in, mlds__rval::in, io::di, io::uo)
+:- pred mlds_output_unop(mlds_unary_op::in, mlds_rval::in, io::di, io::uo)
     is det.
 
 mlds_output_unop(cast(Type), Exprn, !IO) :-
@@ -3245,21 +3246,21 @@ mlds_output_unop(unbox(Type), Exprn, !IO) :-
 mlds_output_unop(std_unop(Unop), Exprn, !IO) :-
     mlds_output_std_unop(Unop, Exprn, !IO).
 
-:- pred mlds_output_cast_rval(mlds__type::in, mlds__rval::in, io::di, io::uo)
+:- pred mlds_output_cast_rval(mlds_type::in, mlds_rval::in, io::di, io::uo)
     is det.
 
 mlds_output_cast_rval(Type, Exprn, !IO) :-
     mlds_output_cast(Type, !IO),
     mlds_output_rval(Exprn, !IO).
 
-:- pred mlds_output_cast(mlds__type::in, io::di, io::uo) is det.
+:- pred mlds_output_cast(mlds_type::in, io::di, io::uo) is det.
 
 mlds_output_cast(Type, !IO) :-
     io__write_string("(", !IO),
     mlds_output_type(Type, !IO),
     io__write_string(") ", !IO).
 
-:- pred mlds_output_boxed_rval(mlds__type::in, mlds__rval::in, io::di, io::uo)
+:- pred mlds_output_boxed_rval(mlds_type::in, mlds_rval::in, io::di, io::uo)
     is det.
 
 mlds_output_boxed_rval(Type, Exprn, !IO) :-
@@ -3310,7 +3311,7 @@ mlds_output_boxed_rval(Type, Exprn, !IO) :-
     % Succeed if the specified rval is an address (possibly tagged and/or
     % cast to a different type).
     %
-:- pred is_an_address(mlds__rval::in) is semidet.
+:- pred is_an_address(mlds_rval::in) is semidet.
 
 is_an_address(mkword(_Tag, Expr)) :-
     is_an_address(Expr).
@@ -3321,7 +3322,7 @@ is_an_address(const(null(_))).
 is_an_address(const(code_addr_const(_))).
 is_an_address(const(data_addr_const(_))).
 
-:- pred mlds_output_unboxed_rval(mlds__type::in, mlds__rval::in,
+:- pred mlds_output_unboxed_rval(mlds_type::in, mlds_rval::in,
     io::di, io::uo) is det.
 
 mlds_output_unboxed_rval(Type, Exprn, !IO) :-
@@ -3355,7 +3356,7 @@ mlds_output_unboxed_rval(Type, Exprn, !IO) :-
         io__write_string(")", !IO)
     ).
 
-:- pred mlds_output_std_unop(builtin_ops__unary_op::in, mlds__rval::in,
+:- pred mlds_output_std_unop(builtin_ops__unary_op::in, mlds_rval::in,
     io::di, io::uo) is det.
 
 mlds_output_std_unop(UnaryOp, Exprn, !IO) :-
@@ -3372,7 +3373,7 @@ mlds_output_std_unop(UnaryOp, Exprn, !IO) :-
     mlds_output_rval(Exprn, !IO),
     io__write_string(")", !IO).
 
-:- pred mlds_output_binop(binary_op::in, mlds__rval::in, mlds__rval::in,
+:- pred mlds_output_binop(binary_op::in, mlds_rval::in, mlds_rval::in,
     io::di, io::uo) is det.
 
 mlds_output_binop(Op, X, Y, !IO) :-
@@ -3454,7 +3455,7 @@ mlds_output_binary_op(Op, !IO) :-
         error("mlds_output_binary_op: invalid binary operator")
     ).
 
-:- pred mlds_output_rval_const(mlds__rval_const::in, io::di, io::uo) is det.
+:- pred mlds_output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
 
 mlds_output_rval_const(true, !IO) :-
     io__write_string("MR_TRUE", !IO).
@@ -3490,7 +3491,7 @@ mlds_output_rval_const(null(_), !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mlds_output_tag(mlds__tag::in, io::di, io::uo) is det.
+:- pred mlds_output_tag(mlds_tag::in, io::di, io::uo) is det.
 
 mlds_output_tag(Tag, !IO) :-
     io__write_string("MR_mktag(", !IO),

@@ -972,7 +972,7 @@ trace__produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred trace__build_fail_vars(list(prog_var)::in, list(inst)::in,
+:- pred trace__build_fail_vars(list(prog_var)::in, list(mer_inst)::in,
     list(arg_info)::in, module_info::in, vartypes::in,
     list(prog_var)::out) is semidet.
 

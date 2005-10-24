@@ -98,7 +98,7 @@
 :- pred finish_aditi_builtin(module_info::in, pred_info::in,
     list(prog_var)::in, term__context::in,
     aditi_builtin::in, aditi_builtin::out,
-    simple_call_id::in, simple_call_id::out, list(mode)::out,
+    simple_call_id::in, simple_call_id::out, list(mer_mode)::out,
     maybe(aditi_builtin_error)::out) is det.
 
 :- type aditi_builtin_error
@@ -186,8 +186,8 @@ finish_preds([PredId | PredIds], ReportTypeErrors, !ModuleInfo, !NumErrors,
                 ReportTypeErrors, UnboundTypeErrsInThisPred, !IO),
 
             % If there were any unsatisfied type class constraints, then that
-            % can cause internal errors in polymorphism.m if we try to continue,
-            % so we need to halt compilation after this pass.
+            % can cause internal errors in polymorphism.m if we try to
+            % continue, so we need to halt compilation after this pass.
             ( UnboundTypeErrsInThisPred \= 0 ->
                 !:FoundTypeError = yes
             ;
@@ -284,8 +284,9 @@ check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
         pred_info_set_constraint_map(ConstraintMap, !PredInfo)
     ).
 
-:- pred check_type_bindings_2(assoc_list(prog_var, (type))::in, list(tvar)::in,
-    assoc_list(prog_var, (type))::in, assoc_list(prog_var, (type))::out,
+:- pred check_type_bindings_2(assoc_list(prog_var, mer_type)::in,
+    list(tvar)::in,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
 check_type_bindings_2([], _, !Errs, !Set).
@@ -367,7 +368,7 @@ constraint_to_error_piece(TVarset, Constraint) =
 
     % Report a warning: uninstantiated type parameter.
     %
-:- pred report_unresolved_type_warning(assoc_list(prog_var, (type))::in,
+:- pred report_unresolved_type_warning(assoc_list(prog_var, mer_type)::in,
     pred_id::in, pred_info::in, module_info::in, prog_varset::in,
     io::di, io::uo) is det.
 
@@ -414,8 +415,8 @@ report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet,
         globals.io_set_extra_error_info(yes, !IO)
     ).
 
-:- pred write_type_var_list(assoc_list(prog_var, (type))::in, prog_context::in,
-    prog_varset::in, tvarset::in, io::di, io::uo) is det.
+:- pred write_type_var_list(assoc_list(prog_var, mer_type)::in,
+    prog_context::in, prog_varset::in, tvarset::in, io::di, io::uo) is det.
 
 write_type_var_list([], _, _, _, !IO).
 write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet, !IO) :-
@@ -531,8 +532,8 @@ finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context, !Builtin,
     Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
 
 :- pred bulk_update_closure_info(aditi_bulk_update::in,
-    pred_or_func::in, list(type)::in, pred_or_func::out, list(mode)::out,
-    determinism::out) is det.
+    pred_or_func::in, list(mer_type)::in, pred_or_func::out,
+    list(mer_mode)::out, determinism::out) is det.
 
 bulk_update_closure_info(bulk_insert, PredOrFunc, ArgTypes, PredOrFunc,
         ClosureArgModes, nondet) :-
@@ -567,7 +568,7 @@ bulk_update_closure_info(bulk_modify, _PredOrFunc, ArgTypes, LambdaPredOrFunc,
     %
 :- pred resolve_aditi_builtin_overloading(module_info::in, pred_info::in,
     list(prog_var)::in,
-    pred(list(type), list(type))::in(pred(in, out) is det),
+    pred(list(mer_type), list(mer_type))::in(pred(in, out) is det),
     pred_id::in, pred_id::out, sym_name::in, sym_name::out) is det.
 
 resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
@@ -582,7 +583,7 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
             clauses_info_vartypes(ClausesInfo, VarTypes),
             map__lookup(VarTypes, HOArg, HOArgType),
             type_is_higher_order(HOArgType, _Purity, _, EvalMethod, ArgTypes0),
-            EvalMethod \= normal
+            EvalMethod \= lambda_normal
         ->
             call(AdjustArgTypes, ArgTypes0, ArgTypes),
             pred_info_get_markers(CallerPredInfo, Markers),
@@ -600,8 +601,8 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
     % update. The `Mode' passed is the mode of all arguments apart from
     % the `aditi__state'.
     %
-:- pred aditi_builtin_modes((mode)::in, (mode)::in, list(type)::in,
-    list(mode)::out) is det.
+:- pred aditi_builtin_modes(mer_mode::in, mer_mode::in, list(mer_type)::in,
+    list(mer_mode)::out) is det.
 
 aditi_builtin_modes(_, _, [], []).
 aditi_builtin_modes(Mode, AditiStateMode, [ArgType | ArgTypes],
@@ -818,7 +819,7 @@ propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred propagate_types_into_proc_modes(module_info::in, list(proc_id)::in,
-    list(type)::in, list(proc_id)::in, list(proc_id)::out,
+    list(mer_type)::in, list(proc_id)::in, list(proc_id)::out,
     proc_table::in, proc_table::out) is det.
 
 propagate_types_into_proc_modes(_, [], _,
@@ -982,8 +983,8 @@ check_aditi_state(ModuleInfo, PredInfo, !IO) :-
     % If the procedure has declared modes, check that there is an input
     % `aditi__state' argument.
     %
-:- pred check_aditi_state_modes(module_info::in, pred_info::in, list(type)::in,
-    proc_id::in, io::di, io::uo) is det.
+:- pred check_aditi_state_modes(module_info::in, pred_info::in,
+    list(mer_type)::in, proc_id::in, io::di, io::uo) is det.
 
 check_aditi_state_modes(ModuleInfo, PredInfo, ArgTypes, ProcId, !IO) :-
     pred_info_procedures(PredInfo, Procs),
@@ -1012,8 +1013,8 @@ check_aditi_state_modes(ModuleInfo, PredInfo, ArgTypes, ProcId, !IO) :-
         MaybeArgModes = no
     ).
 
-:- pred check_aditi_state_modes_2(module_info::in, list(type)::in,
-    list(mode)::in, (inst)::in) is semidet.
+:- pred check_aditi_state_modes_2(module_info::in, list(mer_type)::in,
+    list(mer_mode)::in, mer_inst::in) is semidet.
 
 check_aditi_state_modes_2(ModuleInfo, [Type | Types], [Mode | Modes],
         InitialAditiStateInst) :-
@@ -1081,10 +1082,10 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % and semipure_apply/N?
         % (XXX FIXME We should use nicer syntax for impure apply/N.)
         ConsId0 = cons(unqualified(ApplyName), _),
-        ( ApplyName = "apply", Purity = (pure)
-        ; ApplyName = "", Purity = (pure)
-        ; ApplyName = "impure_apply", Purity = (impure)
-        ; ApplyName = "semipure_apply", Purity = (semipure)
+        ( ApplyName = "apply", Purity = purity_pure
+        ; ApplyName = "", Purity = purity_pure
+        ; ApplyName = "impure_apply", Purity = purity_impure
+        ; ApplyName = "semipure_apply", Purity = purity_semipure
         ),
         Arity >= 1,
         ArgVars0 = [FuncVar | FuncArgVars]
@@ -1218,7 +1219,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
     % type and argument types.
     %
 :- pred find_matching_constructor(module_info::in, tvarset::in,
-    cons_id::in, (type)::in, list(type)::in) is semidet.
+    cons_id::in, mer_type::in, list(mer_type)::in) is semidet.
 
 find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     type_to_ctor_and_args(Type, TypeCtor, _),
@@ -1393,7 +1394,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     Goal = scope(barrier(removable), Conj).
 
 :- pred get_cons_id_arg_types_adding_existq_tvars(module_info::in, cons_id::in,
-    (type)::in, list(type)::out, list(tvar)::out,
+    mer_type::in, list(mer_type)::out, list(tvar)::out,
     pred_info::in, pred_info::out) is det.
 
 get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
@@ -1448,7 +1449,7 @@ split_list_at_index(Index, List, Before, At, After) :-
     % Work out which constructor of the type has an argument with the
     % given field name.
     %
-:- pred get_constructor_containing_field(module_info::in, (type)::in,
+:- pred get_constructor_containing_field(module_info::in, mer_type::in,
     ctor_field_name::in, cons_id::out, int::out) is det.
 
 get_constructor_containing_field(ModuleInfo, TermType, FieldName,
@@ -1474,7 +1475,8 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
     ctor_field_name::in, cons_id::out, int::out) is det.
 
 get_constructor_containing_field_2([], _, _, _) :-
-    unexpected(this_file, "get_constructor_containing_field: can't find field").
+    unexpected(this_file,
+        "get_constructor_containing_field: can't find field").
 get_constructor_containing_field_2([Ctor | Ctors], FieldName,
         ConsId, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs),
@@ -1526,7 +1528,7 @@ create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Goal = GoalExpr0 - GoalInfo.
 
-:- pred make_new_vars(list(type)::in, list(prog_var)::out,
+:- pred make_new_vars(list(mer_type)::in, list(prog_var)::out,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
 
 make_new_vars(Types, Vars, !VarTypes, !VarSet) :-
@@ -1535,7 +1537,7 @@ make_new_vars(Types, Vars, !VarTypes, !VarSet) :-
     map__det_insert_from_corresponding_lists(!.VarTypes, Vars, Types,
         !:VarTypes).
 
-:- pred make_new_var((type)::in, prog_var::out, vartypes::in, vartypes::out,
+:- pred make_new_var(mer_type::in, prog_var::out, vartypes::in, vartypes::out,
     prog_varset::in, prog_varset::out) is det.
 
 make_new_var(Type, Var, !VarTypes, !VarSet) :-

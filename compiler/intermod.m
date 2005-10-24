@@ -298,7 +298,8 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
     set(pred_id)::in, int::in, int::in, bool::in,
     module_info::in) is semidet.
 
-should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,            InlineThreshold, HigherOrderSizeLimit, Deforestation, ModuleInfo) :-
+should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
+        InlineThreshold, HigherOrderSizeLimit, Deforestation, ModuleInfo) :-
     (
         ProcessLocalPreds = no,
         ( pred_info_is_exported(PredInfo)
@@ -415,7 +416,7 @@ has_ho_input(ModuleInfo, ProcInfo) :-
     check_for_ho_input_args(ModuleInfo, VarTypes, HeadVars, ArgModes).
 
 :- pred check_for_ho_input_args(module_info::in, vartypes::in,
-    list(prog_var)::in, list(mode)::in) is semidet.
+    list(prog_var)::in, list(mer_mode)::in) is semidet.
 
 check_for_ho_input_args(ModuleInfo, VarTypes,
         [HeadVar | HeadVars], [ArgMode | ArgModes]) :-
@@ -630,7 +631,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
         % in mode analysis would be tricky.
         %
         % See tests/valid/impure_intermod.m.
-        pred_info_get_purity(PredInfo, impure)
+        pred_info_get_purity(PredInfo, purity_impure)
     ->
         DoWrite = no
     ;
@@ -892,7 +893,7 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
     % possible matches, we don't write the instance method.
     %
 :- pred find_func_matching_instance_method(module_info::in, sym_name::in,
-    arity::in, tvarset::in, list(type)::in, maybe(pred_id)::out,
+    arity::in, tvarset::in, list(mer_type)::in, maybe(pred_id)::out,
     sym_name::out) is semidet.
 
 find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
@@ -1299,7 +1300,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         ReservedTag = yes
     ->
         % The pragma_origin doesn't matter here.
-        mercury_output_item(pragma(user, reserve_tag(Name, Arity)), Context, !IO)
+        mercury_output_item(pragma(user, reserve_tag(Name, Arity)), Context,
+            !IO)
     ;
         true
     ).
@@ -1760,8 +1762,8 @@ should_output_marker(stub, no).
 should_output_marker(infer_type, no).
 should_output_marker(infer_modes, no).
     % Purity is output as part of the pred/func decl.
-should_output_marker((impure), no).
-should_output_marker((semipure), no).
+should_output_marker(is_impure, no).
+should_output_marker(is_semipure, no).
     % There is no pragma required for generated class methods.
 should_output_marker(class_method, no).
 should_output_marker(class_instance_method, no).
@@ -1793,7 +1795,7 @@ should_output_marker(generate_inline, _) :-
 should_output_marker(calls_are_fully_qualified, no).
 should_output_marker(mode_check_clauses, yes).
 
-:- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mode)::in,
+:- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,
     prog_varset::in, prog_varset::out, list(pragma_var)::out) is det.
 
 get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
@@ -1904,7 +1906,7 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
     intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_write_header(intermod_info::in,
     intermod_info::out) is det.
-:- pred intermod_info_set_var_types(map(prog_var, type)::in, intermod_info::in,
+:- pred intermod_info_set_var_types(vartypes::in, intermod_info::in,
     intermod_info::out) is det.
 :- pred intermod_info_set_tvarset(tvarset::in,
     intermod_info::in, intermod_info::out) is det.
@@ -2016,7 +2018,8 @@ adjust_class_status(!ModuleInfo) :-
     pair(class_id, hlds_class_defn)::out,
     module_info::in, module_info::out) is det.
 
-adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn, !ModuleInfo) :-
+adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn,
+        !ModuleInfo) :-
     ( import_status_to_write(ClassDefn0 ^ class_status) ->
         ClassDefn = ClassDefn0 ^ class_status := exported,
         class_procs_to_pred_ids(ClassDefn ^ class_hlds_interface, PredIds),

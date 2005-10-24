@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%)
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%)
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -58,13 +58,14 @@
     % a C type to a mercury C type (ie. convert strings and floats to
     % words) and return the resulting C code as a string.
     %
-:- pred convert_type_to_mercury(string::in, (type)::in, string::out) is det.
+:- pred convert_type_to_mercury(string::in, mer_type::in, string::out) is det.
 
     % Generate C code to convert an rval (represented as a string), from
     % a mercury C type to a C type. (ie. convert words to strings and
     % floats if required) and return the resulting C code as a string.
     %
-:- pred convert_type_from_mercury(string::in, (type)::in, string::out) is det.
+:- pred convert_type_from_mercury(string::in, mer_type::in, string::out)
+    is det.
 
     % Succeeds iff the given C type is known by the compiler to be
     % an integer or pointer type the same size as MR_Word.
@@ -336,7 +337,7 @@ to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
 
 :- pred get_export_info(pred_table::in, pred_id::in, proc_id::in, globals::in,
     module_info::in, string::out, string::out, string::out, string::out,
-    string::out, assoc_list(arg_info, type)::out) is det.
+    string::out, assoc_list(arg_info, mer_type)::out) is det.
 
 get_export_info(Preds, PredId, ProcId, Globals, ModuleInfo, HowToDeclareLabel,
         C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
@@ -435,7 +436,7 @@ get_export_info(Preds, PredId, ProcId, Globals, ModuleInfo, HowToDeclareLabel,
     % Succeeds iff the specified argument should be included in
     % the arguments of the exported C function.
     %
-:- pred include_arg(module_info::in, pair(arg_info, type)::in) is semidet.
+:- pred include_arg(module_info::in, pair(arg_info, mer_type)::in) is semidet.
 
 include_arg(ModuleInfo, arg_info(_Loc, Mode) - Type) :-
     Mode \= top_unused,
@@ -446,15 +447,15 @@ include_arg(ModuleInfo, arg_info(_Loc, Mode) - Type) :-
     % Build a string to declare the argument types (and if NameThem = yes,
     % the argument names) of a C function.
     %
-:- pred get_argument_declarations(assoc_list(arg_info, type)::in, bool::in,
+:- pred get_argument_declarations(assoc_list(arg_info, mer_type)::in, bool::in,
     module_info::in, string::out) is det.
 
 get_argument_declarations([], _, _, "void").
 get_argument_declarations([X | Xs], NameThem, ModuleInfo, Result) :-
     get_argument_declarations_2([X | Xs], 0, NameThem, ModuleInfo, Result).
 
-:- pred get_argument_declarations_2(assoc_list(arg_info, type)::in, int::in,
-    bool::in, module_info::in, string::out) is det.
+:- pred get_argument_declarations_2(assoc_list(arg_info, mer_type)::in,
+    int::in, bool::in, module_info::in, string::out) is det.
 
 get_argument_declarations_2([], _, _, _, "").
 get_argument_declarations_2([AT | ATs], Num0, NameThem, ModuleInfo, Result) :-
@@ -471,7 +472,7 @@ get_argument_declarations_2([AT | ATs], Num0, NameThem, ModuleInfo, Result) :-
         Result = TypeString ++ ArgName ++ ", " ++ TheRest
     ).
 
-:- pred get_argument_declaration(arg_info::in, (type)::in, int::in, bool::in,
+:- pred get_argument_declaration(arg_info::in, mer_type::in, int::in, bool::in,
     module_info::in, string::out, string::out) is det.
 
 get_argument_declaration(ArgInfo, Type, Num, NameThem, ModuleInfo,
@@ -493,7 +494,7 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, ModuleInfo,
         TypeString = TypeString0
     ).
 
-:- pred get_input_args(assoc_list(arg_info, type)::in, int::in,
+:- pred get_input_args(assoc_list(arg_info, mer_type)::in, int::in,
     module_info::in, string::out) is det.
 
 get_input_args([], _, _, "").
@@ -527,7 +528,7 @@ get_input_args([AT | ATs], Num0, ModuleInfo, Result) :-
     get_input_args(ATs, Num, ModuleInfo, TheRest),
     Result = InputArg ++ TheRest.
 
-:- pred copy_output_args(assoc_list(arg_info, type)::in, int::in,
+:- pred copy_output_args(assoc_list(arg_info, mer_type)::in, int::in,
     module_info::in, string::out) is det.
 
 copy_output_args([], _, _, "").

@@ -118,8 +118,8 @@
     % Work out a type substitution to map the callee's argument types
     % into the caller's.
     %
-:- pred inlining__get_type_substitution(list(type)::in, list(type)::in,
-    head_type_params::in, list(tvar)::in, map(tvar, type)::out) is det.
+:- pred inlining__get_type_substitution(list(mer_type)::in, list(mer_type)::in,
+    head_type_params::in, list(tvar)::in, map(tvar, mer_type)::out) is det.
 
     % inlining__rename_goal(CalledProcHeadVars, CallArgs,
     %   CallerVarSet0, CalleeVarSet, CallerVarSet,
@@ -968,7 +968,7 @@ inlining__can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         % propagated through the goal will defeat any attempts at optimization.
         %
         InlinePromisedPure = no,
-        pred_info_get_promised_purity(PredInfo, (impure))
+        pred_info_get_promised_purity(PredInfo, purity_impure)
     ).
 
     % Succeed iff it is appropriate to inline `pragma foreign_code'

@@ -1542,8 +1542,9 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
         TypeinfoLiveness, VarTypes, RttiVarMaps, NonLocals),
     set__intersect(!.Liveness, NonLocals, !:Liveness).
 
-:- pred initial_liveness_2(list(prog_var)::in, list(mode)::in, list(type)::in,
-    module_info::in, set(prog_var)::in, set(prog_var)::out) is semidet.
+:- pred initial_liveness_2(list(prog_var)::in, list(mer_mode)::in,
+    list(mer_type)::in, module_info::in,
+    set(prog_var)::in, set(prog_var)::out) is semidet.
 
 initial_liveness_2([], [], [], _ModuleInfo, !Liveness).
 initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo, !Liveness) :-

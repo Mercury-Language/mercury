@@ -238,7 +238,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         %
         ( contains_nonpure_goal(GoalList) ->
             list__map(get_purity, GoalList, PurityList),
-            Purity = list__foldl(worst_purity, PurityList, (pure)),
+            Purity = list__foldl(worst_purity, PurityList, purity_pure),
             add_goal_info_purity_feature(Purity, GoalInfo2, GoalInfo)
         ;
             GoalInfo2 = GoalInfo
@@ -403,7 +403,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
         !ProcInfo).
 
 :- pred introduce_exists_casts_for_head(module_info::in, tsubst::in,
-    list(type)::in, list(mode)::in, list(prog_var)::in,
+    list(mer_type)::in, list(mer_mode)::in, list(prog_var)::in,
     list(prog_var)::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, list(hlds_goal)::in, list(hlds_goal)::out)
     is det.
@@ -433,7 +433,7 @@ introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
     ).
 
 :- pred introduce_exists_casts_for_arg(module_info::in, tsubst::in,
-    (type)::in, (mode)::in, prog_var::in, prog_var::out,
+    mer_type::in, mer_mode::in, prog_var::in, prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
@@ -459,7 +459,7 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
     ).
 
 :- pred introduce_exists_casts_extra(module_info::in, vartypes::in, tsubst::in,
-    list(mode)::in, list(prog_var)::in, list(prog_var)::out,
+    list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in,  rtti_varmaps::out, list(hlds_goal)::out) is det.
 

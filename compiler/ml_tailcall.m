@@ -98,7 +98,7 @@ ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
     % position, i.e. is followed by a return statement or the end of the
     % function, and if so, specifies the return values (if any) in the return
     % statement.
-:- type at_tail == maybe(list(mlds__rval)).
+:- type at_tail == maybe(list(mlds_rval)).
 
     % The `locals' type contains a list of local definitions
     % which are in scope.
@@ -173,16 +173,16 @@ mark_tailcalls_in_function_body(defined_here(Statement0), AtTail, Locals) =
         defined_here(Statement) :-
     Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
 
-:- func mark_tailcalls_in_maybe_statement(maybe(mlds__statement),
-    at_tail, locals) = maybe(mlds__statement).
+:- func mark_tailcalls_in_maybe_statement(maybe(statement),
+    at_tail, locals) = maybe(statement).
 
 mark_tailcalls_in_maybe_statement(no, _, _) = no.
 mark_tailcalls_in_maybe_statement(yes(Statement0), AtTail, Locals) =
         yes(Statement) :-
     Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
 
-:- func mark_tailcalls_in_statements(mlds__statements, at_tail, locals)
-    = mlds__statements.
+:- func mark_tailcalls_in_statements(statements, at_tail, locals)
+    = statements.
 
 mark_tailcalls_in_statements([], _, _) = [].
 mark_tailcalls_in_statements([First0 | Rest0], AtTail, Locals) =
@@ -194,7 +194,7 @@ mark_tailcalls_in_statements([First0 | Rest0], AtTail, Locals) =
     % is followed by anything other than a `return' statement, then
     % the first statement is not in a tail call position.
     %
-    ( Rest = [mlds__statement(return(ReturnVals), _) | _] ->
+    ( Rest = [statement(return(ReturnVals), _) | _] ->
         FirstAtTail = yes(ReturnVals)
     ; Rest = [] ->
         FirstAtTail = AtTail
@@ -204,13 +204,13 @@ mark_tailcalls_in_statements([First0 | Rest0], AtTail, Locals) =
     First = mark_tailcalls_in_statement(First0, FirstAtTail, Locals),
     Rest = mark_tailcalls_in_statements(Rest0, AtTail, Locals).
 
-:- func mark_tailcalls_in_statement(mlds__statement, at_tail, locals)
-    = mlds__statement.
+:- func mark_tailcalls_in_statement(statement, at_tail, locals)
+    = statement.
 
 mark_tailcalls_in_statement(Statement0, AtTail, Locals) = Statement :-
-    Statement0 = mlds__statement(Stmt0, Context),
+    Statement0 = statement(Stmt0, Context),
     Stmt = mark_tailcalls_in_stmt(Stmt0, AtTail, Locals),
-    Statement = mlds__statement(Stmt, Context).
+    Statement = statement(Stmt, Context).
 
 :- func mark_tailcalls_in_stmt(mlds__stmt, at_tail, locals) = mlds__stmt.
 
@@ -343,7 +343,7 @@ mark_tailcalls_in_default(default_case(Statement0), AtTail, Locals) =
 %   (so that assignments to them won't have any side effects),
 %   so that we can optimize the call into a tailcall.
 
-:- pred match_return_vals(list(mlds__rval)::in, list(mlds__lval)::in)
+:- pred match_return_vals(list(mlds_rval)::in, list(mlds_lval)::in)
     is semidet.
 
 match_return_vals([], []).
@@ -351,12 +351,12 @@ match_return_vals([Rval|Rvals], [Lval|Lvals]) :-
     match_return_val(Rval, Lval),
     match_return_vals(Rvals, Lvals).
 
-:- pred match_return_val(mlds__rval::in, mlds__lval::in) is semidet.
+:- pred match_return_val(mlds_rval::in, mlds_lval::in) is semidet.
 
 match_return_val(lval(Lval), Lval) :-
     lval_is_local(Lval).
 
-:- pred lval_is_local(mlds__lval::in) is semidet.
+:- pred lval_is_local(mlds_lval::in) is semidet.
 
 lval_is_local(var(_, _)) :-
     % We just assume it is local. (This assumption is true for the code
@@ -380,20 +380,20 @@ lval_is_local(mem_ref(_Rval, _Type)) :-
 %   Fail if the specified rval(s) might evaluate to the addresses of
 %   local variables (or fields of local variables) or nested functions.
 
-:- pred check_rvals(list(mlds__rval)::in, locals::in) is semidet.
+:- pred check_rvals(list(mlds_rval)::in, locals::in) is semidet.
 
 check_rvals([], _).
 check_rvals([Rval|Rvals], Locals) :-
     check_rval(Rval, Locals),
     check_rvals(Rvals, Locals).
 
-:- pred check_maybe_rval(maybe(mlds__rval)::in, locals::in) is semidet.
+:- pred check_maybe_rval(maybe(mlds_rval)::in, locals::in) is semidet.
 
 check_maybe_rval(no, _).
 check_maybe_rval(yes(Rval), Locals) :-
     check_rval(Rval, Locals).
 
-:- pred check_rval(mlds__rval::in, locals::in) is semidet.
+:- pred check_rval(mlds_rval::in, locals::in) is semidet.
 
 check_rval(lval(_Lval), _) :-
     % Passing the _value_ of an lval is fine.
@@ -415,7 +415,7 @@ check_rval(mem_addr(Lval), Locals) :-
     % Fail if the specified lval might be a local variable
     % (or a field of a local variable).
     %
-:- pred check_lval(mlds__lval::in, locals::in) is semidet.
+:- pred check_lval(mlds_lval::in, locals::in) is semidet.
 
 check_lval(field(_MaybeTag, Rval, _FieldId, _, _), Locals) :-
     check_rval(Rval, Locals).
@@ -435,7 +435,7 @@ check_lval(var(Var0, _), Locals) :-
     % so it might be safe to allow all data_addr_consts here, but currently
     % we just take a conservative approach.
     %
-:- pred check_const(mlds__rval_const::in, locals::in) is semidet.
+:- pred check_const(mlds_rval_const::in, locals::in) is semidet.
 
 check_const(Const, Locals) :-
     ( Const = code_addr_const(CodeAddr) ->
@@ -554,12 +554,12 @@ nontailcall_in_defn(ModuleName, Defn, Warning) :-
     ).
 
 :- pred nontailcall_in_statement(mlds_module_name::in, mlds__entity_name::in,
-    mlds__statement::in, tailcall_warning::out) is nondet.
+    statement::in, tailcall_warning::out) is nondet.
 
 nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
     % Nondeterministically find a non-tail call.
     statement_contains_statement(Statement, SubStatement),
-    SubStatement = mlds__statement(SubStmt, Context),
+    SubStatement = statement(SubStmt, Context),
     SubStmt = call(_CallSig, Func, _This, _Args, _RetVals, CallKind),
     CallKind = ordinary_call,
     % Check if this call is a directly recursive call.

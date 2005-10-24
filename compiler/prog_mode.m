@@ -22,36 +22,36 @@
     % Construct a mode corresponding to the standard `in', `out', `uo'
     % or `unused' mode.
     %
-:- pred in_mode((mode)::out) is det.
-:- func in_mode = (mode).
-:- func in_mode(inst) = (mode).
-:- pred out_mode((mode)::out) is det.
-:- func out_mode = (mode).
-:- func out_mode(inst) = (mode).
-:- pred di_mode((mode)::out) is det.
-:- func di_mode = (mode).
-:- pred uo_mode((mode)::out) is det.
-:- func uo_mode = (mode).
-:- pred unused_mode((mode)::out) is det.
-:- func unused_mode = (mode).
-:- func in_any_mode = (mode).
-:- func out_any_mode = (mode).
+:- pred in_mode(mer_mode::out) is det.
+:- func in_mode = mer_mode.
+:- func in_mode(mer_inst) = mer_mode.
+:- pred out_mode(mer_mode::out) is det.
+:- func out_mode = mer_mode.
+:- func out_mode(mer_inst) = mer_mode.
+:- pred di_mode(mer_mode::out) is det.
+:- func di_mode = mer_mode.
+:- pred uo_mode(mer_mode::out) is det.
+:- func uo_mode = mer_mode.
+:- pred unused_mode(mer_mode::out) is det.
+:- func unused_mode = mer_mode.
+:- func in_any_mode = mer_mode.
+:- func out_any_mode = mer_mode.
 
-:- func ground_inst = (inst).
-:- func free_inst = (inst).
-:- func any_inst = (inst).
+:- func ground_inst = mer_inst.
+:- func free_inst = mer_inst.
+:- func any_inst = mer_inst.
 
     % Construct the modes used for `aditi__state' arguments.
     % XXX These should be unique, but are not yet because that
     % would require alias tracking.
     %
-:- func aditi_mui_mode = (mode).
-:- func aditi_ui_mode = (mode).
-:- func aditi_di_mode = (mode).
-:- func aditi_uo_mode = (mode).
+:- func aditi_mui_mode = mer_mode.
+:- func aditi_ui_mode = mer_mode.
+:- func aditi_di_mode = mer_mode.
+:- func aditi_uo_mode = mer_mode.
 
-:- pred make_std_mode(string::in, list(inst)::in, (mode)::out) is det.
-:- func make_std_mode(string, list(inst)) = (mode).
+:- pred make_std_mode(string::in, list(mer_inst)::in, mer_mode::out) is det.
+:- func make_std_mode(string, list(mer_inst)) = mer_mode.
 
 %-----------------------------------------------------------------------------%
 
@@ -59,18 +59,18 @@
     % the mode that results from substituting all occurrences of Params
     % in Mode0 with the corresponding value in Args.
     %
-:- pred mode_substitute_arg_list((mode)::in, list(inst_var)::in,
-    list(inst)::in, (mode)::out) is det.
+:- pred mode_substitute_arg_list(mer_mode::in, list(inst_var)::in,
+    list(mer_inst)::in, mer_mode::out) is det.
 
     % inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes):
     %
     % Given two lists of corresponding initial and final insts, return
     % a list of modes which maps from the initial insts to the final insts.
     %
-:- pred inst_lists_to_mode_list(list(inst)::in, list(inst)::in,
-    list(mode)::out) is det.
+:- pred inst_lists_to_mode_list(list(mer_inst)::in, list(mer_inst)::in,
+    list(mer_mode)::out) is det.
 
-:- pred insts_to_mode((inst)::in, (inst)::in, (mode)::out) is det.
+:- pred insts_to_mode(mer_inst::in, mer_inst::in, mer_mode::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -78,28 +78,28 @@
     % is the inst that results from substituting all occurrences of Params
     % in Inst0 with the corresponding value in Args.
     %
-:- pred inst_substitute_arg_list(list(inst_var)::in, list(inst)::in,
-    (inst)::in, (inst)::out) is det.
+:- pred inst_substitute_arg_list(list(inst_var)::in, list(mer_inst)::in,
+    mer_inst::in, mer_inst::out) is det.
 
     % inst_list_apply_substitution(Subst, Insts0, Insts) is true
     % iff Inst is the inst that results from applying Subst to Insts0.
     %
 :- pred inst_list_apply_substitution(inst_var_sub::in,
-    list(inst)::in, list(inst)::out) is det.
+    list(mer_inst)::in, list(mer_inst)::out) is det.
 
     % mode_list_apply_substitution(Subst, Modes0, Modes) is true
     % iff Mode is the mode that results from applying Subst to Modes0.
     %
 :- pred mode_list_apply_substitution(inst_var_sub::in,
-    list(mode)::in, list(mode)::out) is det.
+    list(mer_mode)::in, list(mer_mode)::out) is det.
 
 :- pred rename_apart_inst_vars(inst_varset::in, inst_varset::in,
-    list(mode)::in, list(mode)::out) is det.
+    list(mer_mode)::in, list(mer_mode)::out) is det.
 
     % inst_contains_unconstrained_var(Inst) iff Inst includes an
     % unconstrained inst variable.
     %
-:- pred inst_contains_unconstrained_var((inst)::in) is semidet.
+:- pred inst_contains_unconstrained_var(mer_inst::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -107,8 +107,8 @@
     % insts of the arguments of the top level functor, failing if the
     % inst could not be bound to the functor.
     %
-:- pred get_arg_insts((inst)::in, cons_id::in, arity::in, list(inst)::out)
-    is semidet.
+:- pred get_arg_insts(mer_inst::in, cons_id::in, arity::in,
+    list(mer_inst)::out) is semidet.
 
     % Given a list of bound_insts, get the corresponding list of cons_ids
     %
@@ -121,13 +121,13 @@
     %
 :- pred strip_builtin_qualifier_from_cons_id(cons_id::in, cons_id::out) is det.
 
-:- pred strip_builtin_qualifiers_from_mode_list(list(mode)::in,
-    list(mode)::out) is det.
+:- pred strip_builtin_qualifiers_from_mode_list(list(mer_mode)::in,
+    list(mer_mode)::out) is det.
 
-:- pred strip_builtin_qualifiers_from_inst_list(list(inst)::in,
-    list(inst)::out) is det.
+:- pred strip_builtin_qualifiers_from_inst_list(list(mer_inst)::in,
+    list(mer_inst)::out) is det.
 
-:- pred strip_builtin_qualifiers_from_inst((inst)::in, (inst)::out) is det.
+:- pred strip_builtin_qualifiers_from_inst(mer_inst::in, mer_inst::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -244,7 +244,7 @@ inst_substitute_arg_list(Params, Args, Inst0, Inst) :-
     % mode_apply_substitution(Mode0, Subst, Mode) is true iff
     % Mode is the mode that results from apply Subst to Mode0.
     %
-:- pred mode_apply_substitution(inst_var_sub::in, (mode)::in, (mode)::out)
+:- pred mode_apply_substitution(inst_var_sub::in, mer_mode::in, mer_mode::out)
     is det.
 
 mode_apply_substitution(Subst, (I0 -> F0), (I -> F)) :-
@@ -262,7 +262,7 @@ inst_list_apply_substitution(Subst, Insts0, Insts) :-
     ).
 
 :- pred inst_list_apply_substitution_2(inst_var_sub::in,
-    list(inst)::in, list(inst)::out) is det.
+    list(mer_inst)::in, list(mer_inst)::out) is det.
 
 inst_list_apply_substitution_2(_, [], []).
 inst_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
@@ -272,7 +272,7 @@ inst_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
     % inst_substitute_arg(Inst0, Subst, Inst) is true iff Inst is the inst that
     % results from substituting all occurrences of Param in Inst0 with Arg.
     %
-:- pred inst_apply_substitution(inst_var_sub::in, (inst)::in, (inst)::out)
+:- pred inst_apply_substitution(inst_var_sub::in, mer_inst::in, mer_inst::out)
     is det.
 
 inst_apply_substitution(_, any(Uniq), any(Uniq)).
@@ -341,7 +341,7 @@ alt_list_apply_substitution(Subst, [Alt0 | Alts0], [Alt | Alts]) :-
     alt_list_apply_substitution(Subst, Alts0, Alts).
 
 :- pred ground_inst_info_apply_substitution(inst_var_sub::in, uniqueness::in,
-    ground_inst_info::in, (inst)::out) is det.
+    ground_inst_info::in, mer_inst::out) is det.
 
 ground_inst_info_apply_substitution(_, Uniq, none, ground(Uniq, none)).
 ground_inst_info_apply_substitution(Subst, Uniq, GII0, ground(Uniq, GII)) :-
@@ -357,7 +357,7 @@ mode_list_apply_substitution(Subst, Modes0, Modes) :-
     ).
 
 :- pred mode_list_apply_substitution_2(inst_var_sub::in,
-    list(mode)::in, list(mode)::out) is det.
+    list(mer_mode)::in, list(mer_mode)::out) is det.
 
 mode_list_apply_substitution_2(_, [], []).
 mode_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
@@ -371,7 +371,7 @@ rename_apart_inst_vars(VarSet, NewVarSet, Modes0, Modes) :-
     list__map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes).
 
 :- pred rename_apart_inst_vars_in_mode(substitution(inst_var_type)::in,
-    (mode)::in, (mode)::out) is det.
+    mer_mode::in, mer_mode::out) is det.
 
 rename_apart_inst_vars_in_mode(Sub, I0 -> F0, I -> F) :-
     rename_apart_inst_vars_in_inst(Sub, I0, I),
@@ -381,7 +381,7 @@ rename_apart_inst_vars_in_mode(Sub, user_defined_mode(Name, Insts0),
     list__map(rename_apart_inst_vars_in_inst(Sub), Insts0, Insts).
 
 :- pred rename_apart_inst_vars_in_inst(substitution(inst_var_type)::in,
-    (inst)::in, (inst)::out) is det.
+    mer_inst::in, mer_inst::out) is det.
 
 rename_apart_inst_vars_in_inst(_, any(U), any(U)).
 rename_apart_inst_vars_in_inst(_, free, free).
@@ -521,7 +521,7 @@ get_arg_insts(free(_Type), _ConsId, Arity, ArgInsts) :-
 get_arg_insts(any(Uniq), _ConsId, Arity, ArgInsts) :-
     list__duplicate(Arity, any(Uniq), ArgInsts).
 
-:- pred get_arg_insts_2(list(bound_inst)::in, cons_id::in, list(inst)::out)
+:- pred get_arg_insts_2(list(bound_inst)::in, cons_id::in, list(mer_inst)::out)
     is semidet.
 
 get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
@@ -541,7 +541,7 @@ mode_id_to_int(_ - X, X).
 strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
     list__map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
 
-:- pred strip_builtin_qualifiers_from_mode((mode)::in, (mode)::out) is det.
+:- pred strip_builtin_qualifiers_from_mode(mer_mode::in, mer_mode::out) is det.
 
 strip_builtin_qualifiers_from_mode((Initial0 -> Final0), (Initial -> Final)) :-
     strip_builtin_qualifiers_from_inst(Initial0, Initial),

@@ -150,13 +150,13 @@
     % This predicate takes the argument list of a pred declaration, splits it
     % into two separate lists for the types and (if present) the modes.
 
-:- type maybe_modes == maybe(list(mode)).
+:- type maybe_modes == maybe(list(mer_mode)).
 
-:- pred split_types_and_modes(list(type_and_mode)::in, list(type)::out,
+:- pred split_types_and_modes(list(type_and_mode)::in, list(mer_type)::out,
     maybe_modes::out) is det.
 
-:- pred split_type_and_mode(type_and_mode::in, (type)::out, maybe(mode)::out)
-    is det.
+:- pred split_type_and_mode(type_and_mode::in, mer_type::out,
+    maybe(mer_mode)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -324,7 +324,7 @@ split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
     ).
 
 :- pred split_types_and_modes_2(list(type_and_mode)::in, bool::in,
-    list(type)::out, list(mode)::out, bool::out) is det.
+    list(mer_type)::out, list(mer_mode)::out, bool::out) is det.
 
     % T = type, M = mode, TM = combined type and mode
 split_types_and_modes_2([], Result, [], [], Result).
@@ -337,7 +337,7 @@ split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
     % trd: this should never happen because prog_io.m will detect these cases.
     %
 :- pred split_type_and_mode(type_and_mode::in, bool::in,
-    (type)::out, (mode)::out, bool::out) is det.
+    mer_type::out, mer_mode::out, bool::out) is det.
 
 split_type_and_mode(type_only(T), _, T, (free -> free), no).
 split_type_and_mode(type_and_mode(T,M), R, T, M, R).

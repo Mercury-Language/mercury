@@ -119,7 +119,7 @@
 :- type lambda_info
     --->    lambda_info(
                 prog_varset,            % from the proc_info
-                map(prog_var, type),    % from the proc_info
+                vartypes,    % from the proc_info
                 prog_constraints,       % from the pred_info
                 tvarset,                % from the proc_info
                 inst_varset,            % from the proc_info
@@ -310,9 +310,9 @@ process_unify_goal(XVar, Y0, Mode, Unification0, Context, GoalExpr, !Info) :-
     ).
 
 :- pred process_lambda(purity::in, pred_or_func::in, lambda_eval_method::in,
-    list(prog_var)::in, list(mode)::in, determinism::in, list(prog_var)::in,
-    hlds_goal::in, unification::in, unify_rhs::out, unification::out,
-    lambda_info::in, lambda_info::out) is det.
+    list(prog_var)::in, list(mer_mode)::in, determinism::in,
+    list(prog_var)::in, hlds_goal::in, unification::in, unify_rhs::out,
+    unification::out, lambda_info::in, lambda_info::out) is det.
 
 process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         OrigNonLocals0, LambdaGoal, Unification0, Functor,
@@ -382,11 +382,11 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0,
             Call_PredInfo, Call_ProcInfo),
         (
-            EvalMethod = (aditi_bottom_up),
+            EvalMethod = lambda_aditi_bottom_up,
             pred_info_get_markers(Call_PredInfo, Call_Markers),
             check_marker(Call_Markers, aditi)
         ;
-            EvalMethod = normal
+            EvalMethod = lambda_normal
         ),
         list__remove_suffix(CallVars, Vars, InitialVars),
 
@@ -517,7 +517,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
                 MarkerList0, MarkerList),
             list__foldl(add_marker, MarkerList, LambdaMarkers0, LambdaMarkers)
         ;
-            EvalMethod = (aditi_bottom_up)
+            EvalMethod = lambda_aditi_bottom_up
         ->
             add_marker(aditi, LambdaMarkers0, LambdaMarkers)
         ;
@@ -583,7 +583,7 @@ constraint_contains_vars(LambdaVars, ClassConstraint) :-
     % of a lambda expression based on the list of uni_mode in the unify_info
     % for the lambda unification.
     %
-:- pred uni_modes_to_modes(list(uni_mode)::in, list(mode)::out) is det.
+:- pred uni_modes_to_modes(list(uni_mode)::in, list(mer_mode)::out) is det.
 
 uni_modes_to_modes([], []).
 uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-

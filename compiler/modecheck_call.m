@@ -39,16 +39,16 @@
     extra_goals::out, mode_info::in, mode_info::out) is det.
 
 :- pred modecheck_higher_order_call(pred_or_func::in, prog_var::in,
-    list(prog_var)::in, list(prog_var)::out, list(mode)::out,
+    list(prog_var)::in, list(prog_var)::out, list(mer_mode)::out,
     determinism::out, extra_goals::out,
     mode_info::in, mode_info::out) is det.
 
 :- pred modecheck_aditi_builtin(aditi_builtin::in, simple_call_id::in,
-    list(mode)::in, list(prog_var)::in, list(prog_var)::out,
+    list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
     determinism::out, extra_goals::out,
     mode_info::in, mode_info::out) is det.
 
-:- pred modecheck_builtin_cast(list(mode)::in,
+:- pred modecheck_builtin_cast(list(mer_mode)::in,
     list(prog_var)::in, list(prog_var)::out, determinism::out,
     extra_goals::out, mode_info::in, mode_info::out) is det.
 
@@ -291,7 +291,7 @@ modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_arg_list(int::in, list(mode)::in, extra_goals::out,
+:- pred modecheck_arg_list(int::in, list(mer_mode)::in, extra_goals::out,
     list(prog_var)::in, list(prog_var)::out, mode_info::in, mode_info::out)
     is det.
 
@@ -354,7 +354,7 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
             mode_error_no_matching_mode(ArgVars, ArgInsts), !ModeInfo)
     ).
 
-:- type proc_mode ---> proc_mode(proc_id, inst_var_sub, list(mode)).
+:- type proc_mode ---> proc_mode(proc_id, inst_var_sub, list(mer_mode)).
 
 :- pred modecheck_find_matching_modes(list(proc_id)::in, pred_id::in,
     proc_table::in, list(prog_var)::in, list(proc_mode)::in,
@@ -420,7 +420,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
     modecheck_find_matching_modes(ProcIds, PredId, Procs, ArgVars0,
         !MatchingProcIds, !WaitingVars, !ModeInfo).
 
-:- pred modecheck_end_of_call(proc_info::in, purity::in, list(mode)::in,
+:- pred modecheck_end_of_call(proc_info::in, purity::in, list(mer_mode)::in,
     list(prog_var)::in, int::in, inst_var_sub::in, list(prog_var)::out,
     extra_goals::out, mode_info::in, mode_info::out) is det.
 
@@ -431,7 +431,7 @@ modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0, ArgOffset,
 
     % Since we can't reschedule impure goals, we must allow the initialisation
     % of free solver type args if necessary in impure calls.
-    ( Purity = (impure) ->
+    ( Purity = purity_impure ->
         mode_info_set_may_initialise_solver_vars(yes, !ModeInfo)
     ;
         true
@@ -492,7 +492,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
     mode_info_set_changed_flag(yes, !ModeInfo).
 
 :- pred get_var_insts_and_lives(list(prog_var)::in, mode_info::in,
-    list(inst)::out, list(is_live)::out) is det.
+    list(mer_inst)::out, list(is_live)::out) is det.
 
 get_var_insts_and_lives([], _, [], []).
 get_var_insts_and_lives([Var | Vars], ModeInfo,
@@ -676,7 +676,7 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 
 :- pred choose_best_match(mode_info::in, list(proc_mode)::in, pred_id::in,
     proc_table::in, list(prog_var)::in, proc_id::out, inst_var_sub::out,
-    list(mode)::out) is det.
+    list(mer_mode)::out) is det.
 
 choose_best_match(_, [], _, _, _, _, _, _) :-
     error("choose_best_match: no best match").
@@ -750,8 +750,9 @@ compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
     combine_results(CompareInsts, CompareLives, Compare0),
     prioritized_combine_results(Compare0, CompareDet, Compare).
 
-:- pred compare_inst_list(module_info::in, list(inst)::in, list(inst)::in,
-    maybe(list(inst))::in, list(type)::in, match::out) is det.
+:- pred compare_inst_list(module_info::in,
+    list(mer_inst)::in, list(mer_inst)::in,
+    maybe(list(mer_inst))::in, list(mer_type)::in, match::out) is det.
 
 compare_inst_list(ModuleInfo, InstsA, InstsB, ArgInsts, Types, Result) :-
     (
@@ -763,8 +764,9 @@ compare_inst_list(ModuleInfo, InstsA, InstsB, ArgInsts, Types, Result) :-
         error("compare_inst_list: length mis-match")
     ).
 
-:- pred compare_inst_list_2(module_info::in, list(inst)::in, list(inst)::in,
-    maybe(list(inst))::in, list(type)::in, match::out) is semidet.
+:- pred compare_inst_list_2(module_info::in,
+    list(mer_inst)::in, list(mer_inst)::in,
+    maybe(list(mer_inst))::in, list(mer_type)::in, match::out) is semidet.
 
 compare_inst_list_2(_, [], [], _, [], same).
 compare_inst_list_2(ModuleInfo, [InstA | InstsA], [InstB | InstsB],
@@ -842,8 +844,8 @@ combine_results(incomparable, _, incomparable).
     %   prefer ground to any    (e.g. prefer in to in(any))
     %   prefer any to free  (e.g. prefer any->ground to out)
     %
-:- pred compare_inst(module_info::in, (inst)::in, (inst)::in, maybe(inst)::in,
-    (type)::in, match::out) is det.
+:- pred compare_inst(module_info::in, mer_inst::in, mer_inst::in,
+    maybe(mer_inst)::in, mer_type::in, match::out) is det.
 
 compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
     % inst_matches_initial(A,B) succeeds iff

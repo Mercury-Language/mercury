@@ -100,7 +100,8 @@ transform_aditi_builtins_in_goal_expr(Goal0, GoalInfo, Goal) -->
 	{ Goal0 = unify(_, _, _, Unification, _) },
 	(
 		{ Unification = construct(Var, ConsId, Args, _, _, _, _) },
-		{ ConsId = pred_const(ShroudedPredProcId, aditi_bottom_up) },
+		{ ConsId = pred_const(ShroudedPredProcId,
+			lambda_aditi_bottom_up) },
 		{ proc(PredId, ProcId) =
 			unshroud_pred_proc_id(ShroudedPredProcId) }
 	->
@@ -234,14 +235,14 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	{ list__duplicate(NumBuiltinArgs, UniMode, UniModes) },
 	{ ShroudedPredProcId = shroud_pred_proc_id(
 		proc(BuiltinPredId, BuiltinProcId)) },
-	{ BuiltinConsId = pred_const(ShroudedPredProcId, normal) },
+	{ BuiltinConsId = pred_const(ShroudedPredProcId, lambda_normal) },
 	{ Unification = construct(NewVar, BuiltinConsId, BuiltinArgs,
 			UniModes, construct_dynamically, cell_is_unique,
 			no_construct_sub_info) },
 	{ set__list_to_set([NewVar | BuiltinArgs], NonLocals) },
 	{ instmap_delta_from_assoc_list([NewVar - ground_inst],
 		InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo) },
+	{ goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo) },
 	{ UnifyMode = out_mode - in_mode },
 	{ UnifyContext = unify_context(explicit, []) },
 	{ UnifyGoal = unify(NewVar, Rhs, UnifyMode,
@@ -297,7 +298,7 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	{ Goal = conj(Goals) }.
 
 :- pred transform_aditi_builtin(aditi_builtin, list(prog_var),
-		list(mode), determinism, hlds_goal_info, hlds_goal_expr,
+		list(mer_mode), determinism, hlds_goal_info, hlds_goal_expr,
 		aditi_transform_info, aditi_transform_info).
 :- mode transform_aditi_builtin(in, in, in, in, in, out, in, out) is det.
 
@@ -318,7 +319,7 @@ transform_aditi_builtin(Builtin, Args, Modes, Det, GoalInfo, Goal) -->
 
 
 :- pred transform_aditi_builtin_2(aditi_builtin, list(prog_var),
-		list(mode), determinism, hlds_goal_info, pred_proc_id,
+		list(mer_mode), determinism, hlds_goal_info, pred_proc_id,
 		sym_name, list(prog_var), list(hlds_goal),
 		aditi_transform_info, aditi_transform_info).
 :- mode transform_aditi_builtin_2(in, in, in, in, in, in, in, in,
@@ -360,7 +361,8 @@ transform_aditi_builtin_2(aditi_tuple_update(_, _),
 	{ set__list_to_set(CallArgs, NonLocals) },
 	{ instmap_delta_from_assoc_list([StateArg - ground_inst],
 		InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, det, pure, CallGoalInfo) },
+	{ goal_info_init(NonLocals, InstMapDelta, det, purity_pure,
+		CallGoalInfo) },
 	{ CallGoal = call(BuiltinPredId, BuiltinProcId, CallArgs,
 			not_builtin, no, BuiltinSymName) - CallGoalInfo },
 
@@ -418,7 +420,8 @@ transform_aditi_builtin_2(
 	{ set__list_to_set([Closure, CastClosure], NonLocals) },
 	{ instmap_delta_from_assoc_list([CastClosure - CastOutputInst],
 		InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo) },
+	{ goal_info_init(NonLocals, InstMapDelta, det, purity_pure,
+		GoalInfo) },
 	{ CastGoal = generic_call(cast(unsafe_type_inst_cast),
 		[Closure, CastClosure], CastModes, det) - GoalInfo },
 
@@ -463,8 +466,8 @@ create_aditi_call_proc(PredProcId, ModuleInfo0, ModuleInfo) :-
 	%	OutputTupleTypeInfo, ProcName, NumInputs, InputSchema,
 	%	NumOutputs, InputTuple, OutputTuple).
 	%
-:- pred create_aditi_call_goal(string, list(prog_var), list(mode), determinism,
-	hlds_goal, aditi_transform_info, aditi_transform_info).
+:- pred create_aditi_call_goal(string, list(prog_var), list(mer_mode),
+	determinism, hlds_goal, aditi_transform_info, aditi_transform_info).
 :- mode create_aditi_call_goal(in, in, in, in, out, in, out) is det.
 
 create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
@@ -549,7 +552,8 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 		instmap_delta_from_assoc_list([OutputTupleVar - ground_inst],
 			InstMapDelta)
 	},
-	{ goal_info_init(NonLocals, InstMapDelta, Det, pure, GoalInfo) },
+	{ goal_info_init(NonLocals, InstMapDelta, Det, purity_pure,
+		GoalInfo) },
 	{ CallGoal = call(BuiltinPredId, BuiltinProcId, CallArgs,
 		not_builtin, no, BuiltinSymName) - GoalInfo },
 
@@ -647,7 +651,7 @@ create_bulk_update_closure_var(NewVar, Info0, Info) :-
 	construct_type(
 		qualified(aditi_private_builtin_module, "relation_ticket") - 0,
 		[], RelationType),
-	construct_higher_order_pred_type(pure, normal,
+	construct_higher_order_pred_type(purity_pure, lambda_normal,
 		[aditi_state_type, RelationType], PredType),
 	proc_info_create_var_from_type(PredType, no, NewVar,
 		Info0 ^ proc_info, ProcInfo),

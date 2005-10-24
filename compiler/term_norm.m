@@ -64,7 +64,7 @@
 	% Succeeds if all values of the given type are zero size
 	% (for all norms).
 	%
-:- pred zero_size_type((type)::in, module_info::in) is semidet.
+:- pred zero_size_type(mer_type::in, module_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

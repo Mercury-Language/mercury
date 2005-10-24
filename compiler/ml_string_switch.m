@@ -29,7 +29,7 @@
 :- import_module parse_tree__prog_data.
 
 :- pred generate(cases_list::in, prog_var::in, code_model::in, can_fail::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -88,7 +88,7 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
 
     % Generate new labels.
     ml_gen_new_label(EndLabel, !Info),
-    GotoEndStatement = mlds__statement(goto(label(EndLabel)),
+    GotoEndStatement = statement(goto(label(EndLabel)),
         MLDS_Context),
 
     % Determine how big to make the hash table. Currently we round the number
@@ -140,7 +140,7 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
 
     FoundMatchCond =
-        binop(and,
+        binop(logical_and,
             binop(ne,
                 lval(StringVarLval),
                 const(null(StringVarType))),
@@ -148,30 +148,30 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
                 lval(StringVarLval),
                 VarRval)
         ),
-    FoundMatchCode = mlds__statement(
+    FoundMatchCode = statement(
         block([], [
-            mlds__statement(atomic(comment("we found a match")), MLDS_Context),
-            mlds__statement(atomic(comment(
+            statement(atomic(comment("we found a match")), MLDS_Context),
+            statement(atomic(comment(
                 "dispatch to the corresponding code")), MLDS_Context),
             SwitchStatement,
             GotoEndStatement
         ]),
         MLDS_Context),
     LoopBody = ml_gen_block([], [
-        mlds__statement(atomic(comment(
+        statement(atomic(comment(
             "lookup the string for this hash slot")), MLDS_Context),
-        mlds__statement(
+        statement(
             atomic(assign(StringVarLval,
                 binop(array_index(elem_type_string),
                     lval(StringTableLval),
                     lval(SlotVarLval)))),
             MLDS_Context),
-        mlds__statement(atomic(comment("did we find a match?")), MLDS_Context),
-        mlds__statement(
+        statement(atomic(comment("did we find a match?")), MLDS_Context),
+        statement(
             if_then_else(FoundMatchCond, FoundMatchCode, no), MLDS_Context),
-        mlds__statement(atomic(comment(
+        statement(atomic(comment(
             "no match yet, so get next slot in hash chain")), MLDS_Context),
-        mlds__statement(
+        statement(
             atomic(assign(SlotVarLval,
                 binop(array_index(elem_type_int),
                     lval(NextSlotsLval),
@@ -180,28 +180,28 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
         ],
         Context),
     HashLookupStatements = [
-        mlds__statement(atomic(comment("hashed string switch")),
+        statement(atomic(comment("hashed string switch")),
             MLDS_Context),
-        mlds__statement(atomic(comment(
+        statement(atomic(comment(
             "compute the hash value of the input string")), MLDS_Context),
-        mlds__statement(
-            atomic(assign(SlotVarLval, binop(&,
+        statement(
+            atomic(assign(SlotVarLval, binop(bitwise_and,
                 unop(std_unop(hash_string), VarRval),
                 const(int_const(HashMask))))),
             MLDS_Context),
-        mlds__statement(atomic(comment("hash chain loop")), MLDS_Context),
-        mlds__statement(
-            while(binop(>=, lval(SlotVarLval), const(int_const(0))),
+        statement(atomic(comment("hash chain loop")), MLDS_Context),
+        statement(
+            while(binop(int_ge, lval(SlotVarLval), const(int_const(0))),
                 LoopBody,
                 yes), % this is a do...while loop
             MLDS_Context)
         ],
     FailComment =
-        mlds__statement(atomic(comment("no match, so fail")),
+        statement(atomic(comment("no match, so fail")),
             MLDS_Context),
-    EndLabelStatement = mlds__statement(label(EndLabel), MLDS_Context),
+    EndLabelStatement = statement(label(EndLabel), MLDS_Context),
     EndComment =
-        mlds__statement(atomic(comment("end of hashed string switch")),
+        statement(atomic(comment("end of hashed string switch")),
             MLDS_Context),
 
     % Collect all the generated variable/constant declarations
@@ -254,9 +254,9 @@ gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
         ml_gen_goal(CodeModel, Goal, GoalStatement, !Info),
 
         string__append_list(["case """, String, """"], CommentString),
-        Comment = mlds__statement(atomic(comment(CommentString)),
+        Comment = statement(atomic(comment(CommentString)),
             MLDS_Context),
-        CaseStatement = mlds__statement(block([], [Comment, GoalStatement]),
+        CaseStatement = statement(block([], [Comment, GoalStatement]),
             MLDS_Context),
         MLDS_Cases = [[match_value(const(int_const(Slot)))] - CaseStatement]
     ;

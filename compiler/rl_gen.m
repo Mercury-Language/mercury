@@ -219,7 +219,7 @@ rl_gen__scc_list_args([EntryPoint | EntryPoints],
 	% corresponding input arguments for each entry point have the
 	% same value.
 :- pred rl_gen__scc_list_input_args(pred_proc_id::in, int::in,
-	list(mode)::in, list(type)::in, list(relation_id)::in,
+	list(mer_mode)::in, list(mer_type)::in, list(relation_id)::in,
 	list(relation_id)::out, map(int, relation_id)::in,
 	map(int, relation_id)::out, rl_info::rl_info_di,
 	rl_info::rl_info_uo) is det.
@@ -233,8 +233,9 @@ rl_gen__scc_list_input_args(EntryPoint, ArgNo, ArgModes, ArgTypes,
 		rl_info_get_module_info(ModuleInfo),
 		( { mode_is_input(ModuleInfo, Mode) } ->
 			(
-				{ type_is_higher_order(Type, (pure), predicate,
-					(aditi_bottom_up), PredArgTypes) }
+				{ type_is_higher_order(Type, purity_pure,
+					predicate, lambda_aditi_bottom_up,
+					PredArgTypes) }
 			->
 				rl_info_get_new_temporary(schema(PredArgTypes),
 					InputRel),
@@ -400,8 +401,8 @@ rl_gen__scc_comment(SubSCC0, Comment) -->
 	add_pred_name_and_arity(SubSCC, "", NameList),
 	{ string__append("Code for SCC: ", NameList, Comment) }.
 
-:- pred add_pred_name_and_arity(list(pred_proc_id)::in, string::in, string::out,
-		rl_info::rl_info_di, rl_info::rl_info_uo) is det.
+:- pred add_pred_name_and_arity(list(pred_proc_id)::in, string::in,
+	string::out, rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
 add_pred_name_and_arity([], S, S) --> [].
 add_pred_name_and_arity([proc(PredId, _) | PredProcIds], S0, S) -->
@@ -953,7 +954,7 @@ rl_gen__goal_is_aditi_call(ModuleInfo, Goal, CallGoal, MaybeNegGoals) :-
 		MaybeNegGoals = no
 	;
 		% XXX check that the var is an input relation variable.
-		Goal = generic_call(higher_order(_, (pure), predicate, _),
+		Goal = generic_call(higher_order(_, purity_pure, predicate, _),
 			_, _, _) - _,
 		CallGoal = Goal,
 		MaybeNegGoals = no
@@ -995,7 +996,7 @@ rl_gen__collect_call_info(CallGoal, MaybeNegGoals, DBCall) -->
 				InputArgs, OutputArgs, GoalInfo) }
 	;
 		{ CallGoal = generic_call(
-			higher_order(Var, (pure), predicate, _),
+			higher_order(Var, purity_pure, predicate, _),
 			Args, ArgModes, _) - GoalInfo }
 	->
 		{ CallId = ho_called_var(Var) },
@@ -1742,7 +1743,7 @@ rl_gen__aggregate(InputRelationArg, UpdateAcc, ComputeInitial,
 		% XXX The type declaration in extras/aditi/aditi.m
 		% should be changed to require that the eval_method
 		% for the InputRelationArg is `aditi_bottom_up'.
-		{ type_is_higher_order(ComputeInitialType, (pure),
+		{ type_is_higher_order(ComputeInitialType, purity_pure,
 			predicate, _, ComputeInitialArgTypes) },
 		{ ComputeInitialArgTypes = [GrpByType, _NGrpByType, AccType] }
 	->

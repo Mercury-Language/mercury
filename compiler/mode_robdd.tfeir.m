@@ -209,7 +209,8 @@ mode_robdd(TA, FA, EA, IA, RA) * mode_robdd(TB, FB, EB, IB, RB) =
 	mode_robdd(TB1, FB1, EB1, IB1, RB1) =
 		normalise(mode_robdd(TU, FU, EU, IU, RB)).
 
-mode_robdd(TA0, FA0, EA0, IA0, RA0) + mode_robdd(TB0, FB0, EB0, IB0, RB0) = X :-
+mode_robdd(TA0, FA0, EA0, IA0, RA0) + mode_robdd(TB0, FB0, EB0, IB0, RB0)
+		= X :-
 	( RA0 = zero ->
 		X = mode_robdd(TB0, FB0, EB0, IB0, RB0)
 	; RB0 = zero ->

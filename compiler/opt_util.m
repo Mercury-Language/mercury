@@ -531,14 +531,15 @@ is_succeed_next(Instrs0, InstrsBetweenIncl) :-
 is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    ( Instr1 = if_val(lval(reg(r, 1)), label(JumpLabel)) - _ ->
+    Instr1 = Uinstr1 - _,
+    ( Uinstr1 = if_val(lval(reg(r, 1)), label(JumpLabel)) ->
         map__search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
         filter_out_r1(BetweenJump, yes(true), BetweenTrue0),
         filter_out_livevals(BetweenTrue0, Between),
         filter_out_r1(BetweenFall, yes(false), BetweenFalse0),
         filter_out_livevals(BetweenFalse0, Between)
-    ; Instr1 = if_val(unop(not, lval(reg(r, 1))), label(JumpLabel)) - _ ->
+    ; Uinstr1 = if_val(unop(logical_not, lval(reg(r, 1))), label(JumpLabel)) ->
         map__search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
         filter_out_r1(BetweenJump, yes(false), BetweenFalse0),
@@ -917,7 +918,7 @@ is_const_condition(const(Const), Taken) :-
         unexpected(this_file, "non-boolean constant as if-then-else condition")
     ).
 is_const_condition(unop(Op, Rval1), Taken) :-
-    Op = (not),
+    Op = logical_not,
     is_const_condition(Rval1, Taken1),
     bool__not(Taken1, Taken).
 is_const_condition(binop(Op, Rval1, Rval2), Taken) :-

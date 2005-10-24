@@ -38,7 +38,7 @@
     % The goal's mode and determinism information are not filled in.
     %
 :- pred modecheck_unify__create_var_var_unification(prog_var::in, prog_var::in,
-    (type)::in, mode_info::in, hlds_goal::out) is det.
+    mer_type::in, mode_info::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -389,9 +389,9 @@ modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
     ).
 
 :- pred modecheck_unify_lambda(prog_var::in, pred_or_func::in,
-    list(prog_var)::in, list(mode)::in, determinism::in,
+    list(prog_var)::in, list(mer_mode)::in, determinism::in,
     unify_rhs::in, unify_rhs::out, unification::in, unification::out,
-    pair(mode)::out, mode_info::in, mode_info::out) is det.
+    pair(mer_mode)::out, mode_info::in, mode_info::out) is det.
 
 modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
         RHS0, RHS, Unification0, Unification, Mode, !ModeInfo) :-
@@ -434,7 +434,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
         RHS = RHS0
     ).
 
-:- pred modecheck_unify_functor(prog_var::in, (type)::in, cons_id::in,
+:- pred modecheck_unify_functor(prog_var::in, mer_type::in, cons_id::in,
     is_existential_construction::in, list(prog_var)::in, unification::in,
     unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
@@ -672,7 +672,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     ).
 
 :- pred all_arg_vars_are_non_free_or_solver_vars(list(prog_var)::in,
-    list(inst)::in, map(prog_var, type)::in, module_info::in,
+    list(mer_inst)::in, vartypes::in, module_info::in,
     list(prog_var)::out) is semidet.
 
 all_arg_vars_are_non_free_or_solver_vars([], [], _, _, []).
@@ -833,10 +833,10 @@ modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
     % between a variable and another variable expression is - whether it is
     % an assignment, a simple test or a complicated unify.
     %
-:- pred categorize_unify_var_var((mode)::in, (mode)::in,
+:- pred categorize_unify_var_var(mer_mode::in, mer_mode::in,
     is_live::in, is_live::in, prog_var::in,
     prog_var::in, determinism::in, unify_context::in, hlds_goal_info::in,
-    map(prog_var, type)::in, unification::in, hlds_goal_expr::out,
+    vartypes::in, unification::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out) is det.
 
 categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
@@ -965,8 +965,8 @@ record_optimize_away(GoalInfo, Var1, Var2, !ModeInfo) :-
     % for mode-checking complicated unifications.
     %
 :- pred modecheck_complicated_unify(prog_var::in, prog_var::in,
-    (type)::in, (mode)::in, (mode)::in, determinism::in, unify_context::in,
-    unification::in, unification::out,
+    mer_type::in, mer_mode::in, mer_mode::in, determinism::in,
+    unify_context::in, unification::in, unification::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
@@ -1071,7 +1071,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     % construction unification or a deconstruction. It also works out
     % whether it will be deterministic or semideterministic.
     %
-:- pred categorize_unify_var_lambda((mode)::in, list(mode)::in,
+:- pred categorize_unify_var_lambda(mer_mode::in, list(mer_mode)::in,
     prog_var::in, list(prog_var)::in, pred_or_func::in,
     unify_rhs::in, unify_rhs::out, unification::in, unification::out,
     mode_info::in, mode_info::out) is det.
@@ -1165,9 +1165,9 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
     % unification or a deconstruction. It also works out whether it will be
     % deterministic or semideterministic.
 
-:- pred categorize_unify_var_functor((mode)::in, list(mode)::in,
-    list(mode)::in, prog_var::in, cons_id::in, list(prog_var)::in,
-    map(prog_var, type)::in, unify_context::in,
+:- pred categorize_unify_var_functor(mer_mode::in, list(mer_mode)::in,
+    list(mer_mode)::in, prog_var::in, cons_id::in, list(prog_var)::in,
+    vartypes::in, unify_context::in,
     unification::in, unification::out,
     mode_info::in, mode_info::out) is det.
 
@@ -1258,7 +1258,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
     % in the argument list are ground.
     %
 :- pred check_type_info_args_are_ground(list(prog_var)::in,
-    map(prog_var, type)::in, unify_context::in,
+    vartypes::in, unify_context::in,
     mode_info::in, mode_info::out) is det.
 
 check_type_info_args_are_ground([], _VarTypes, _UnifyContext, !ModeInfo).
@@ -1282,7 +1282,7 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
 
 %-----------------------------------------------------------------------------%
 
-:- pred bind_args((inst)::in, list(prog_var)::in, list(maybe(inst))::in,
+:- pred bind_args(mer_inst::in, list(prog_var)::in, list(maybe(mer_inst))::in,
     mode_info::in, mode_info::out) is det.
 
 bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) :-
@@ -1292,8 +1292,8 @@ bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) :-
         unexpected(this_file, "bind_args: try_bind_args failed")
     ).
 
-:- pred try_bind_args((inst)::in, list(prog_var)::in, list(maybe(inst))::in,
-    mode_info::in, mode_info::out) is semidet.
+:- pred try_bind_args(mer_inst::in, list(prog_var)::in,
+    list(maybe(mer_inst))::in, mode_info::in, mode_info::out) is semidet.
 
 try_bind_args(not_reached, _, _, !ModeInfo) :-
     instmap__init_unreachable(InstMap),
@@ -1315,8 +1315,8 @@ try_bind_args(constrained_inst_vars(_, Inst), Args, UnifyArgInsts,
         !ModeInfo) :-
     try_bind_args(Inst, Args, UnifyArgInsts, !ModeInfo).
 
-:- pred try_bind_args_2(list(prog_var)::in, list(inst)::in,
-    list(maybe(inst))::in, mode_info::in, mode_info::out) is semidet.
+:- pred try_bind_args_2(list(prog_var)::in, list(mer_inst)::in,
+    list(maybe(mer_inst))::in, mode_info::in, mode_info::out) is semidet.
 
 try_bind_args_2([], [], [], !ModeInfo).
 try_bind_args_2([Arg | Args], [Inst | Insts], [UnifyArgInst | UnifyArgInsts],
@@ -1324,8 +1324,8 @@ try_bind_args_2([Arg | Args], [Inst | Insts], [UnifyArgInst | UnifyArgInsts],
     modecheck_set_var_inst(Arg, Inst, UnifyArgInst, !ModeInfo),
     try_bind_args_2(Args, Insts, UnifyArgInsts, !ModeInfo).
 
-:- pred ground_args(uniqueness::in, list(prog_var)::in, list(maybe(inst))::in,
-    mode_info::in, mode_info::out) is semidet.
+:- pred ground_args(uniqueness::in, list(prog_var)::in,
+    list(maybe(mer_inst))::in, mode_info::in, mode_info::out) is semidet.
 
 ground_args(_Uniq, [], [], !ModeInfo).
 ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts], !ModeInfo) :-
@@ -1340,7 +1340,7 @@ ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts], !ModeInfo) :-
     % and the initial insts of the functor arguments, compute the modes
     % of the functor arguments.
     %
-:- pred get_mode_of_args((inst)::in, list(inst)::in, list(mode)::out)
+:- pred get_mode_of_args(mer_inst::in, list(mer_inst)::in, list(mer_mode)::out)
     is semidet.
 
 get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
@@ -1362,15 +1362,16 @@ get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
 get_mode_of_args(constrained_inst_vars(_, Inst), ArgInsts, ArgModes) :-
     get_mode_of_args(Inst, ArgInsts, ArgModes).
 
-:- pred get_mode_of_args_2(list(inst)::in, list(inst)::in, list(mode)::out)
-    is semidet.
+:- pred get_mode_of_args_2(list(mer_inst)::in, list(mer_inst)::in,
+    list(mer_mode)::out) is semidet.
 
 get_mode_of_args_2([], [], []).
 get_mode_of_args_2([InstA | InstsA], [InstB | InstsB], [Mode | Modes]) :-
     Mode = (InstA -> InstB),
     get_mode_of_args_2(InstsA, InstsB, Modes).
 
-:- pred mode_set_args(list(inst)::in, (inst)::in, list(mode)::out) is det.
+:- pred mode_set_args(list(mer_inst)::in, mer_inst::in, list(mer_mode)::out)
+    is det.
 
 mode_set_args([], _, []).
 mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-

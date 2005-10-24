@@ -120,7 +120,7 @@
 % 5. Global data
 %
 % MLDS names for global data are structured; they hold some
-% information about the kind of global data (see the mlds__data_name type).
+% information about the kind of global data (see the mlds_data_name type).
 %
 % It's not clear whether this is actually useful.
 % And we're not completely consistent about applying this approach.
@@ -356,32 +356,31 @@
 % XXX we ought to make this type abstract
 %
 :- type mlds
-    ---> mlds(
-            % The original Mercury module name.
-            name                :: mercury_module_name,
+    --->    mlds(
+                % The original Mercury module name.
+                name                :: mercury_module_name,
 
-            % Code defined in some other language, e.g.  for
-            % `pragma c_header_code', etc.
-            foreign_code        :: map(foreign_language, mlds__foreign_code),
+                % Code defined in some other language, e.g.  for
+                % `pragma c_header_code', etc.
+                foreign_code        :: map(foreign_language,
+                                        mlds__foreign_code),
 
-            %
-            % The MLDS code itself
-            %
+                % The MLDS code itself.
 
-            % Packages/classes to import
-            toplevel_imports    :: mlds__imports,
+                % Packages/classes to import
+                toplevel_imports    :: mlds__imports,
 
-            % Definitions of code and data
-            defns               :: mlds__defns,
+                % Definitions of code and data
+                defns               :: mlds__defns,
 
-            % The names of init and final preds.
-            % XXX These only work for the C backend, because
-            % pragma export doesn't work for the other backends.
-            init_preds          :: list(string),
-            final_preds         :: list(string)
-        ).
+                % The names of init and final preds.
+                % XXX These only work for the C backend, because
+                % pragma export doesn't work for the other backends.
+                init_preds          :: list(string),
+                final_preds         :: list(string)
+            ).
 
-:- func mlds__get_module_name(mlds) = mercury_module_name.
+:- func get_module_name(mlds) = mercury_module_name.
 
 :- type mlds__imports == list(mlds__import).
 
@@ -557,7 +556,7 @@
     --->    mlds__data(
                 % Represents a constant or variable.
 
-                mlds__type,
+                mlds_type,
                 mlds__initializer,
                 % If accurate GC is enabled, we associate with each variable
                 % the code needed to trace that variable when doing GC.
@@ -583,14 +582,14 @@
     % `no' here indicates that no GC tracing code is needed,
     % e.g. because accurate GC isn't enabled, or because the
     % variable can never contain pointers to objects on the heap.
-:- type mlds__maybe_gc_trace_code == maybe(mlds__statement).
+:- type mlds__maybe_gc_trace_code == maybe(statement).
 
     % It is possible for the function to be defined externally
     % (i.e. the original Mercury procedure was declared `:- external').
     % (If you want to generate an abstract body consider adding another
     % alternative here).
 :- type mlds__function_body
-    --->    defined_here(mlds__statement)
+    --->    defined_here(statement)
     ;       external.
 
     % Note that `one_copy' variables *must* have an initializer
@@ -598,8 +597,8 @@
     % XXX Currently we only record the type for structs.
     %     We should do the same for objects and arrays.
 :- type mlds__initializer
-    --->    init_obj(mlds__rval)
-    ;       init_struct(mlds__type, list(mlds__initializer))
+    --->    init_obj(mlds_rval)
+    ;       init_struct(mlds_type, list(mlds__initializer))
     ;       init_array(list(mlds__initializer))
     ;       no_initializer.
 
@@ -613,15 +612,15 @@
 :- type mlds__argument
     ---> mlds__argument(
             mlds__entity_name,          % argument name
-            mlds__type,                 % argument type
+            mlds_type,                  % argument type
             mlds__maybe_gc_trace_code   % GC tracing code for this argument,
                                         % if needed
         ).
 
-:- type mlds__arg_types == list(mlds__type).
-:- type mlds__return_types == list(mlds__type).
+:- type mlds__arg_types == list(mlds_type).
+:- type mlds__return_types == list(mlds_type).
 
-:- func mlds__get_arg_types(mlds__arguments) = list(mlds__type).
+:- func mlds__get_arg_types(mlds__arguments) = list(mlds_type).
 
     % An mlds__func_signature is like an mlds__func_params
     % except that it only includes the function's type, not
@@ -678,21 +677,21 @@
                         % Contains these members.
         ).
 
-    % Note: the definition of the `mlds__type' type is subject to change.
+    % Note: the definition of the `mlds_type' type is subject to change.
     % In particular, we might add new alternatives here, so try to avoid
     % switching on this type.
-:- type mlds__type
+:- type mlds_type
     --->    mercury_type(
                 % Mercury data types
 
-                prog_data__type,    % The exact Mercury type.
+                mer_type,           % The exact Mercury type.
                 type_category,      % What kind of type it is: enum, float, ...
                 exported_type       % A representation of the type which can be
                                     % used to determine the foreign language
                                     % representation of the type.
             )
 
-    ;       mlds__mercury_array_type(mlds__type)
+    ;       mlds__mercury_array_type(mlds_type)
             % The Mercury array type is treated specially, some backends
             % will treat it like any other mercury_type, whereas other may
             % use a special representation for it.
@@ -757,7 +756,7 @@
                 mlds__class_kind
             )
 
-    ;       mlds__array_type(mlds__type)
+    ;       mlds__array_type(mlds_type)
             % MLDS array types.
             % These are single-dimensional, and can be indexed
             % using the `field' lval with an `offset' field_id;
@@ -780,7 +779,7 @@
             %     MLDS code generator, e.g. the arrays used for
             %     string switches.
 
-    ;       mlds__ptr_type(mlds__type)
+    ;       mlds__ptr_type(mlds_type)
             % Pointer types.
             % Currently these are used for handling output arguments.
 
@@ -812,13 +811,11 @@
             % where references to env_ptr's are generated but the declaration
             % of these env_ptr's does not occur until the ml_elim_nested pass.
 
-:- type mercury_type == prog_data__type.
-
-:- func mercury_type_to_mlds_type(module_info, mercury_type) = mlds__type.
+:- func mercury_type_to_mlds_type(module_info, mer_type) = mlds_type.
 
     % Hmm... this is tentative.
-:- type mlds__class_id == mlds__type.
-:- type mlds__interface_id == mlds__type.
+:- type mlds__class_id == mlds_type.
+:- type mlds__interface_id == mlds_type.
 
 %-----------------------------------------------------------------------------%
 %
@@ -917,7 +914,7 @@
 
 :- type mlds__attribute
     --->    custom(
-                mlds__type
+                mlds_type
             ).
 
 %-----------------------------------------------------------------------------%
@@ -937,10 +934,10 @@
 % Statements
 %
 
-:- type mlds__statements == list(mlds__statement).
+:- type statements == list(statement).
 
-:- type mlds__statement
-    --->    mlds__statement(
+:- type statement
+    --->    statement(
                 mlds__stmt,
                 mlds__context
             ).
@@ -948,11 +945,11 @@
 :- type mlds__stmt
     % Sequence.
 
-    --->    block(mlds__defns, list(mlds__statement))
+    --->    block(mlds__defns, list(statement))
 
     % Iteration.
 
-    ;       while(mlds__rval, mlds__statement, bool)
+    ;       while(mlds_rval, statement, bool)
             % The `bool' is true iff the loop is guaranteed to iterate at
             % least once -- in that case, the compiler can generate a
             % `do...while' loop rather than a `while...' loop.
@@ -960,7 +957,7 @@
 
     % Selection (see also computed_goto).
 
-    ;       if_then_else(mlds__rval, mlds__statement, maybe(mlds__statement))
+    ;       if_then_else(mlds_rval, statement, maybe(statement))
 
     ;       switch(
                 % This representation for switches is very general:
@@ -974,11 +971,12 @@
                 % that the target will support.
                 %
                 % Note that unlike C, MLDS cases do NOT fall through; if you
-                % want to achieve that effect, you need to use an explicit goto.
+                % want to achieve that effect, you need to use an explicit
+                % goto.
 
                 % The value to switch on
-                mlds__type,
-                mlds__rval,
+                mlds_type,
+                mlds_rval,
 
                 % The range of possible values which the value might take
                 % (if known).
@@ -1000,7 +998,7 @@
     ;       goto(mlds__goto_target)
             % goto(Target): Branch to the specified address.
 
-    ;       computed_goto(mlds__rval, list(mlds__label))
+    ;       computed_goto(mlds_rval, list(mlds__label))
             % Evaluate rval, which should be an integer, and jump to the
             % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
             % will branch to label C.
@@ -1009,23 +1007,23 @@
 
     ;       call(
                 mlds__func_signature,   % Signature of the function.
-                mlds__rval,             % The function to call.
-                maybe(mlds__rval),      % For method calls, this field
+                mlds_rval,              % The function to call.
+                maybe(mlds_rval),       % For method calls, this field
                                         % specifies the `this' object.
-                list(mlds__rval),       % Ordinary function arguments.
-                list(mlds__lval),       % Places to store the function return
+                list(mlds_rval),        % Ordinary function arguments.
+                list(mlds_lval),        % Places to store the function return
                                         % value(s).
                 call_kind               % Indicates whether this call is a
                                         % tail call.
             )
 
-    ;       return(list(mlds__rval))    % Some targets will not support
+    ;       return(list(mlds_rval))     % Some targets will not support
                                         % returning more than one value.
 
     % Commits (a specialized form of exception handling).
 
-    ;       try_commit(mlds__lval, mlds__statement, mlds__statement)
-    ;       do_commit(mlds__rval)
+    ;       try_commit(mlds_lval, statement, statement)
+    ;       do_commit(mlds_rval)
             % try_commit(Ref, GoalToTry, CommitHandlerGoal):
             %   Execute GoalToTry.  If GoalToTry exits via a
             %   `commit(Ref)' instruction, then execute
@@ -1063,7 +1061,7 @@
     % It might not be a good choice for different target languages.
     % XXX Full exception handling support is not yet implemented.
 
-%   ;       throw(mlds__type, mlds__rval)
+%   ;       throw(mlds_type, mlds_rval)
 %           % Throw the specified exception.
 
 %   ;       rethrow
@@ -1071,7 +1069,7 @@
 %           % (only valid inside an exception handler).
 
 %   ;       try_catch(
-%               mlds__statement,
+%               statement,
 %               list(mlds__exception_handler)
 %           )
 %           % Execute the specified statement, and if it throws an exception,
@@ -1098,7 +1096,7 @@
     % Unlike C, cases do NOT fall through; if you want to achieve that
     % effect, you need to use an explicit goto.
 :- type mlds__switch_cases == list(mlds__switch_case).
-:- type mlds__switch_case == pair(mlds__case_match_conds, mlds__statement).
+:- type mlds__switch_case == pair(mlds__case_match_conds, statement).
 
     % Case_match_conds should be a _non-empty_ list of conditions;
     % if _any_ of the conditions match, this case will be selected.
@@ -1106,11 +1104,11 @@
 
     % A case_match_cond specifies when a switch case will be selected
 :- type mlds__case_match_cond
-    --->    match_value(mlds__rval)
+    --->    match_value(mlds_rval)
             % match_value(Val) matches if the switch value is equal to
             % the specified Val.
 
-    ;       match_range(mlds__rval, mlds__rval).
+    ;       match_range(mlds_rval, mlds_rval).
             % match_range(Min, Max) matches if the switch value is between
             % Min and Max, inclusive. Note that this should only be used
             % if the target supports it; currently the C back-end supports
@@ -1127,7 +1125,7 @@
             % The default action is to just fall through to the statement
             % after the switch.
 
-    ;       default_case(mlds__statement).
+    ;       default_case(statement).
             % % The default is to execute the specified statement.
 
 %-----------------------------------------------------------------------------%
@@ -1180,7 +1178,7 @@
     % It might not be a good choice for different target languages.
 :- type mlds__exception_handler
     --->    handler(
-                maybe(mlds__type),
+                maybe(mlds_type),
                 % If `yes(T)', specifies the type of exceptions to catch.
                 % If `no', it means catch all exceptions.
 
@@ -1200,14 +1198,14 @@
     --->    comment(string)
             % Insert a comment into the output code.
 
-    ;       assign(mlds__lval, mlds__rval)
+    ;       assign(mlds_lval, mlds_rval)
             % assign(Location, Value):
             % Assign the value specified by rval to the location
             % specified by lval.
 
     % Heap management.
 
-    ;       delete_object(mlds__lval)
+    ;       delete_object(mlds_lval)
             % Compile time garbage collect (ie explicitly
             % deallocate) the memory used by the lval.
 
@@ -1222,11 +1220,11 @@
                 % (Some targets might not support tags.)
 
                 % The target to assign the new object's address to.
-                mlds__lval,
+                mlds_lval,
 
                 % A (primary) tag to tag the address with before assigning
                 % the result to the target.
-                maybe(mlds__tag),
+                maybe(mlds_tag),
 
                 % Indicates whether or not there is a secondary tag. If so,
                 % it will be stored as the first argument in the argument list
@@ -1234,17 +1232,17 @@
                 bool,
 
                 % The type of the object being allocated.
-                mlds__type,
+                mlds_type,
 
                 % The amount of memory that needs to be allocated for the new
                 % object, measured in words (NOT bytes!).
-                maybe(mlds__rval),
+                maybe(mlds_rval),
 
                 % The name of the constructor to invoke.
                 maybe(ctor_name),
 
                 % The arguments to the constructor.
-                list(mlds__rval),
+                list(mlds_rval),
 
                 % The types of the arguments to the constructor.
                 %
@@ -1256,7 +1254,7 @@
                 % here should be mlds__generic_type; it is the responsibility
                 % of the HLDS->MLDS code generator to insert code to box/unbox
                 % the arguments.
-                list(mlds__type)
+                list(mlds_type)
             )
 
     ;       gc_check
@@ -1265,14 +1263,14 @@
             % This is used for accurate garbage collection
             % with the MLDS->C back-end.
 
-    ;       mark_hp(mlds__lval)
+    ;       mark_hp(mlds_lval)
             % Tell the heap sub-system to store a marker (for later use in
             % restore_hp/1 instructions) in the specified lval.
             %
             % It's OK for the target to treat this as a no-op, and probably
             % that is what most targets will do.
 
-    ;       restore_hp(mlds__rval)
+    ;       restore_hp(mlds_rval)
             % The rval must be a marker as returned by mark_hp/1.
             % The effect is to deallocate all the memory which
             % was allocated since that call to mark_hp.
@@ -1301,7 +1299,7 @@
                 % generate the definition for (in some other file perhaps)
                 % and calling it. The lvals are use to generate the appropriate
                 % forwarding code.
-                % XXX We should also store the list of mlds__rvals where
+                % XXX We should also store the list of mlds_rvals where
                 % the input values come from.
 
                 % The foreign language this code is written in.
@@ -1310,7 +1308,7 @@
                 list(outline_arg),
 
                 % Where to store return value(s).
-                list(mlds__lval),
+                list(mlds_lval),
 
                 % The user's foreign language code fragment.
                 string
@@ -1319,15 +1317,15 @@
     % Stores information about each argument to an outline_foreign_proc.
 :- type outline_arg
     --->    in(
-                mlds__type,     % The type of the argument.
+                mlds_type,      % The type of the argument.
                 string,         % The name of the argument in the foreign code.
-                mlds__rval      % The rval which holds the value of this
+                mlds_rval       % The rval which holds the value of this
                                 % argument.
             )
     ;       out(
-                mlds__type,     % The type of the argument.
+                mlds_type,      % The type of the argument.
                 string,         % The name of the argument in the foreign code.
-                mlds__lval      % The lval where we are to place the result
+                mlds_lval       % The lval where we are to place the result
                                 % calculated by the foreign code into.
             )
     ;       unused.
@@ -1365,8 +1363,8 @@
                 target_code_attributes
             )
 
-    ;       target_code_input(mlds__rval)
-    ;       target_code_output(mlds__lval)
+    ;       target_code_input(mlds_rval)
+    ;       target_code_output(mlds_lval)
     ;       name(mlds__qualified_entity_name).
 
 :- type target_code_attributes == list(target_code_attribute).
@@ -1390,22 +1388,22 @@
     % For documentation, see the corresponding LLDS instructions in llds.m.
     %
 :- type trail_op
-    --->    store_ticket(mlds__lval)
-    ;       reset_ticket(mlds__rval, mlds__reset_trail_reason)
+    --->    store_ticket(mlds_lval)
+    ;       reset_ticket(mlds_rval, mlds__reset_trail_reason)
     ;       discard_ticket
     ;       prune_ticket
-    ;       mark_ticket_stack(mlds__lval)
-    ;       prune_tickets_to(mlds__rval).
-%   ;       discard_tickets_to(mlds__rval).  % used only by the library
+    ;       mark_ticket_stack(mlds_lval)
+    ;       prune_tickets_to(mlds_rval).
+%   ;       discard_tickets_to(mlds_rval).  % used only by the library
 
 %-----------------------------------------------------------------------------%
 
     % A field_id represents some data within an object.
 :- type field_id
-    --->    offset(mlds__rval)
+    --->    offset(mlds_rval)
             % offset(N) represents the field at offset N Words.
 
-    ;       named_field(mlds__fully_qualified_name(field_name), mlds__type).
+    ;       named_field(mlds__fully_qualified_name(field_name), mlds_type).
             % named_field(Name, CtorType) represents the field with the
             % specified name. The CtorType gives the MLDS type for this
             % particular constructor. The type of the object is given by
@@ -1426,7 +1424,7 @@
 
     % An lval represents a data location or variable that can be used
     % as the target of an assignment.
-:- type mlds__lval
+:- type mlds_lval
 
     % Values on the heap or fields of a structure.
 
@@ -1453,11 +1451,11 @@
                 % HLDS->MLDS code generator's responsibility to insert the
                 % necessary code to handle boxing/unboxing.
 
-                field_tag       :: maybe(mlds__tag),
-                field_addr      :: mlds__rval,
+                field_tag       :: maybe(mlds_tag),
+                field_addr      :: mlds_rval,
                 field_field_id  :: field_id,
-                field_type      :: mlds__type,
-                field_ptr_type  :: mlds__type
+                field_type      :: mlds_type,
+                field_ptr_type  :: mlds_type
             )
 
     % Values somewhere in memory.
@@ -1467,8 +1465,8 @@
                 % The rval should have originally come from a mem_addr rval.
                 % The type is the type of the value being dereferenced.
 
-                mlds__rval,
-                mlds__type
+                mlds_rval,
+                mlds_type
             )
 
     % Variables.
@@ -1477,7 +1475,7 @@
 
     ;       var(
                 mlds__var,
-                mlds__type
+                mlds_type
             ).
 
 %-----------------------------------------------------------------------------%
@@ -1485,50 +1483,50 @@
 % Expressions
 
     % An rval is an expression that represents a value.
-:- type mlds__rval
-    --->    lval(mlds__lval)
+:- type mlds_rval
+    --->    lval(mlds_lval)
             % The value of an `lval' rval is just the value stored in
             % the specified lval.
 
-    ;       mkword(mlds__tag, mlds__rval)
+    ;       mkword(mlds_tag, mlds_rval)
             % Given a pointer and a tag, mkword returns a tagged pointer.
             %
             % (XXX It might be more consistent to make this a binary_op,
             % with the tag argument just being an rval, rather than
             % having `mkword' be a separate kind of rval.)
 
-    ;       const(mlds__rval_const)
+    ;       const(mlds_rval_const)
 
-    ;       unop(mlds__unary_op, mlds__rval)
+    ;       unop(mlds_unary_op, mlds_rval)
 
-    ;       binop(binary_op, mlds__rval, mlds__rval)
+    ;       binop(binary_op, mlds_rval, mlds_rval)
 
-    ;       mem_addr(mlds__lval)
+    ;       mem_addr(mlds_lval)
             % The address of a variable, etc.
 
-    ;       self(mlds__type).
+    ;       self(mlds_type).
             % The equivalent of the `this' pointer in C++ with the type of the
             % object. Note that this rval is valid iff we are targeting an
             % object oriented backend and we are in an instance method
             % (procedures which have the per_instance flag set).
 
-:- type mlds__unary_op
-    --->    box(mlds__type)
+:- type mlds_unary_op
+    --->    box(mlds_type)
             % box(MLDSType); convert from MLDSType to mlds__generic_type,
             % by boxing if necessary, or just casting if not.
 
-    ;       unbox(mlds__type)
+    ;       unbox(mlds_type)
             % unbox(MLDSType): convert from mlds__generic_type to MLDSType,
             % applying the inverse transformation to box/1, i.e. unboxing
             % if boxing was necessary, and just casting otherwise.
 
-    ;       cast(mlds__type)
+    ;       cast(mlds_type)
             % cast(MLDSType): Coerce the type of the rval to be MLDSType.
             % XXX It might be worthwhile adding the type that we cast from.
 
     ;       std_unop(builtin_ops__unary_op).
 
-:- type mlds__rval_const
+:- type mlds_rval_const
     --->    true
     ;       false
     ;       int_const(int)
@@ -1542,7 +1540,7 @@
     ;       code_addr_const(mlds__code_addr)
     ;       data_addr_const(mlds__data_addr)
 
-    ;       null(mlds__type).
+    ;       null(mlds_type).
             % A null value, of the given type. Usually the type will be a
             % pointer (mlds__ptr_type) but it could also be string or a
             % func_type. (Null is not a valid value of type string or
@@ -1612,7 +1610,7 @@
 % just for them.)
 
     % A tag should be a small non-negative integer.
-:- type tag == int.
+:- type mlds_tag == int.
 
     % see runtime/mercury_trail.h
 :- type reset_trail_reason
@@ -1713,7 +1711,7 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 %-----------------------------------------------------------------------------%
 
 % There is some special-case handling for arrays, foreign types and some
-% other types here, but apart from that, currently we return mlds__types
+% other types here, but apart from that, currently we return mlds_types
 % that are just the same as Mercury types, except that we also store the type
 % category, so that we can tell if the type is an enumeration or not, without
 % needing to refer to the HLDS type_table.
@@ -1831,7 +1829,8 @@ mlds__get_arg_types(Parameters) = ArgTypes :-
 mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)
     = name(MLDS_Package, MercuryModule).
 
-mercury_module_name_to_mlds(MercuryModule) = name(MLDS_Package, MLDS_Package) :-
+mercury_module_name_to_mlds(MercuryModule)
+        = name(MLDS_Package, MLDS_Package) :-
     (
         MercuryModule = unqualified(ModuleName),
         mercury_std_library_module(ModuleName)

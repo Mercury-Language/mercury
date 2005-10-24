@@ -206,7 +206,7 @@ generate_class_constraint(constraint(ClassName, Types)) = TCConstr :-
     ClassTypes = list__map(generate_tc_type, Types),
     TCConstr = tc_constraint(TCClassName, ClassTypes).
 
-:- func generate_tc_type(type) = tc_type.
+:- func generate_tc_type(mer_type) = tc_type.
 
 generate_tc_type(Type) = TCType :-
     pseudo_type_info__construct_maybe_pseudo_type_info(Type, -1, [], TCType).

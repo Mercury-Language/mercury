@@ -1,16 +1,18 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: java_util.m
 % Main authors: juliensf, mjwybrow.
-
+%
 % This module defines utility routines that are used by the
 % Java backend.  Much of the code below is similar to that in c_util.m;
 % changes made to this module may require changes to c_util.m.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend__java_util.
@@ -22,9 +24,8 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Succeeds iff the given string matches a reserved
-	% word in Java.
-	%
+    % Succeeds iff the given string matches a reserved word in Java.
+    %
 :- pred java_util__is_keyword(string::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -35,32 +36,30 @@
 % that can be used to implement it.
 %
 
-	% The operator returned will be either a prefix operator
-	% or function name.  The operand needs
-	% to be placed in parentheses after the operator name.
-	%
+    % The operator returned will be either a prefix operator or function name.
+    % The operand needs to be placed in parentheses after the operator name.
+    %
 :- pred java_util__unary_prefix_op(unary_op::in, string::out) is det.
 
-	% The operator returned will be <, >, etc.;
-	% it can be used in the form:
-	% `<string_object>.CompareTo(<Arg1>, <Arg2>) <Op> 0'.
-	%
+    % The operator returned will be <, >, etc.; it can be used in the form:
+    % `<string_object>.CompareTo(<Arg1>, <Arg2>) <Op> 0'.
+    %
 :- pred java_util__string_compare_op(binary_op::in, string::out) is semidet.
 
-	% The operator returned will be +, *, etc.;
-	% the arguments should be floats and the result will be a float.
-	%
+    % The operator returned will be +, *, etc.;
+    % the arguments should be floats and the result will be a float.
+    %
 :- pred java_util__float_op(binary_op::in, string::out) is semidet.
 
-	% The operator returned will be <, >, etc.;
-	% the arguments should be floats and the result will be a boolean.
-	%
+    % The operator returned will be <, >, etc.;
+    % the arguments should be floats and the result will be a boolean.
+    %
 :- pred java_util__float_compare_op(binary_op::in, string::out) is semidet.
 
-	% The operator returned will be an infix operator.
-	% The arguments should be integer or booleans
-	% and the result will be an integer or a boolean.
-	%
+    % The operator returned will be an infix operator.
+    % The arguments should be integer or booleans
+    % and the result will be an integer or a boolean.
+    %
 :- pred java_util__binary_infix_op(binary_op::in, string::out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -74,19 +73,19 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Tags are not used in the Java back-end, as such, all of the tagging
-	% operators except for `tag' return no-ops. The `tag' case is handled
-	% seperately in mlds_to_java__output_std_unop.
-	%
-java_util__unary_prefix_op(mktag, 		"/* mktag */ ").
-java_util__unary_prefix_op(unmktag, 		"/* unmktag */ ").
-java_util__unary_prefix_op(strip_tag,           "/* strip_tag */ ").
-java_util__unary_prefix_op(mkbody, 		"/* mkbody */ ").
-java_util__unary_prefix_op(unmkbody,		"/* unmkbody */ ").
-java_util__unary_prefix_op(hash_string, 	"mercury.String.hash_1_f_0").
-java_util__unary_prefix_op(bitwise_complement,	"~").
-java_util__unary_prefix_op((not),		"!").
-java_util__unary_prefix_op(tag,	"").	% This case is never used.
+    % Tags are not used in the Java back-end, as such, all of the tagging
+    % operators except for `tag' return no-ops. The `tag' case is handled
+    % seperately in mlds_to_java__output_std_unop.
+    %
+java_util__unary_prefix_op(mktag,           "/* mktag */ ").
+java_util__unary_prefix_op(unmktag,         "/* unmktag */ ").
+java_util__unary_prefix_op(strip_tag,       "/* strip_tag */ ").
+java_util__unary_prefix_op(mkbody,          "/* mkbody */ ").
+java_util__unary_prefix_op(unmkbody,        "/* unmkbody */ ").
+java_util__unary_prefix_op(hash_string,     "mercury.String.hash_1_f_0").
+java_util__unary_prefix_op(bitwise_complement,  "~").
+java_util__unary_prefix_op(logical_not,      "!").
+java_util__unary_prefix_op(tag, "").    % This case is never used.
 
 java_util__string_compare_op(str_eq, "==").
 java_util__string_compare_op(str_ne, "!=").
@@ -107,26 +106,26 @@ java_util__float_op(float_minus, "-").
 java_util__float_op(float_times, "*").
 java_util__float_op(float_divide, "/").
 
-java_util__binary_infix_op(+, "+").
-java_util__binary_infix_op(-, "-").
-java_util__binary_infix_op(*, "*").
-java_util__binary_infix_op(/, "/").
-java_util__binary_infix_op(mod, "%").
-java_util__binary_infix_op(<<, "<<").
-java_util__binary_infix_op(>>, ">>").
-java_util__binary_infix_op(&, "&").
-java_util__binary_infix_op('|', "|").
-java_util__binary_infix_op(^, "^").
-java_util__binary_infix_op(and, "&&").
-java_util__binary_infix_op(or, "||").
+java_util__binary_infix_op(int_add, "+").
+java_util__binary_infix_op(int_sub, "-").
+java_util__binary_infix_op(int_mul, "*").
+java_util__binary_infix_op(int_div, "/").
+java_util__binary_infix_op(int_mod, "%").
+java_util__binary_infix_op(unchecked_left_shift, "<<").
+java_util__binary_infix_op(unchecked_right_shift, ">>").
+java_util__binary_infix_op(bitwise_and, "&").
+java_util__binary_infix_op(bitwise_or, "|").
+java_util__binary_infix_op(bitwise_xor, "^").
+java_util__binary_infix_op(logical_and, "&&").
+java_util__binary_infix_op(logical_or, "||").
 java_util__binary_infix_op(eq, "==").
 java_util__binary_infix_op(ne, "!=").
-java_util__binary_infix_op(<, "<").
-java_util__binary_infix_op(>, ">").
-java_util__binary_infix_op(<=, "<=").
-java_util__binary_infix_op(>=, ">=").
+java_util__binary_infix_op(int_lt, "<").
+java_util__binary_infix_op(int_gt, ">").
+java_util__binary_infix_op(int_le, "<=").
+java_util__binary_infix_op(int_ge, ">=").
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 java_util__is_keyword("abstract").
 java_util__is_keyword("boolean").
@@ -181,8 +180,10 @@ java_util__is_keyword("void").
 java_util__is_keyword("volatile").
 java_util__is_keyword("while").
 
+%-----------------------------------------------------------------------------%
+
 :- func this_file = string.
+
 this_file = "java_util.m".
 
-:- end_module java_util.
 %-----------------------------------------------------------------------------%

@@ -295,7 +295,7 @@ cases_add_heap_ops([Case0 | Cases0], [Case | Cases], !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
-    generate_call("mark_hp", det, [SavedHeapPointerVar], [impure],
+    generate_call("mark_hp", det, [SavedHeapPointerVar], [impure_goal],
         [SavedHeapPointerVar - ground_inst], !.Info ^ module_info, Context,
         MarkHeapPointerGoal).
 
@@ -303,10 +303,10 @@ gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
-    generate_call("restore_hp", det, [SavedHeapPointerVar], [impure],
+    generate_call("restore_hp", det, [SavedHeapPointerVar], [impure_goal],
         [], !.Info ^ module_info, Context, RestoreHeapPointerGoal).
 
-:- func ground_inst = (inst).
+:- func ground_inst = mer_inst.
 
 ground_inst = ground(unique, none).
 
@@ -318,7 +318,7 @@ ground_inst = ground(unique, none).
 new_saved_hp_var(Var, !Info) :-
     new_var("HeapPointer", heap_pointer_type, Var, !Info).
 
-:- pred new_var(string::in, (type)::in, prog_var::out,
+:- pred new_var(string::in, mer_type::in, prog_var::out,
     heap_ops_info::in, heap_ops_info::out) is det.
 
 new_var(Name, Type, Var, !Info) :-
@@ -332,7 +332,7 @@ new_var(Name, Type, Var, !Info) :-
 %-----------------------------------------------------------------------------%
 
 :- pred generate_call(string::in, determinism::in, list(prog_var)::in,
-    list(goal_feature)::in, assoc_list(prog_var, inst)::in,
+    list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term__context::in, hlds_goal::out) is det.
 
 generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,

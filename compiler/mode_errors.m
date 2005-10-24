@@ -37,7 +37,7 @@
     --->    disj
     ;       if_then_else.
 
-:- type merge_error  == pair(prog_var, list(inst)).
+:- type merge_error  == pair(prog_var, list(mer_inst)).
 :- type merge_errors == list(merge_error).
 
 :- type delayed_goal
@@ -57,13 +57,13 @@
             % bindings - ie the process of unifying the instmaps from the end
             % of each branch failed.
 
-    ;       mode_error_higher_order_pred_var(pred_or_func, prog_var, inst,
+    ;       mode_error_higher_order_pred_var(pred_or_func, prog_var, mer_inst,
                 arity)
             % The predicate variable in a higher-order predicate or function
             % call didn't have a higher-order predicate or function inst
             % of the appropriate arity.
 
-    ;       mode_error_poly_unify(prog_var, inst)
+    ;       mode_error_poly_unify(prog_var, mer_inst)
             % A variable in a polymorphic unification with unknown
             % type has inst other than `ground' or `any'.
 
@@ -71,16 +71,16 @@
             % Call to a predicate which will clobber its argument,
             % but the argument is still live.
 
-    ;       mode_error_var_has_inst(prog_var, inst, inst)
+    ;       mode_error_var_has_inst(prog_var, mer_inst, mer_inst)
             % Call to a predicate with an insufficiently
             % instantiated variable (for preds with one mode).
 
-    ;       mode_error_unify_pred(prog_var, mode_error_unify_rhs, type,
+    ;       mode_error_unify_pred(prog_var, mode_error_unify_rhs, mer_type,
                 pred_or_func)
             % An attempt was made to unify two higher-order
             % predicate or function variables.
 
-    ;       mode_error_implied_mode(prog_var, inst, inst)
+    ;       mode_error_implied_mode(prog_var, mer_inst, mer_inst)
             % A call to a predicate with an overly instantiated variable
             % would use an implied mode of the predicate, but we can't
             % introduce a simple unification after calling the predicate in a
@@ -91,32 +91,32 @@
             % A call to a predicate for which there are no mode declarations
             % (and mode inference is not enabled).
 
-    ;       mode_error_no_matching_mode(list(prog_var), list(inst))
+    ;       mode_error_no_matching_mode(list(prog_var), list(mer_inst))
             % Call to a predicate with an insufficiently instantiated variable
             % (for preds with >1 mode).
 
-    ;       mode_error_in_callee(list(prog_var), list(inst),
+    ;       mode_error_in_callee(list(prog_var), list(mer_inst),
                 pred_id, proc_id, list(mode_error_info))
             % Call to a predicate with initial argument insts for which mode
             % inference gave a mode error in the callee.
 
-    ;       mode_error_bind_var(var_lock_reason, prog_var, inst, inst)
+    ;       mode_error_bind_var(var_lock_reason, prog_var, mer_inst, mer_inst)
             % Attempt to bind a non-local variable inside a negated context,
             % or attempt to re-bind a variable in a parallel conjunct.
 
-    ;       mode_error_non_local_lambda_var(prog_var, inst)
+    ;       mode_error_non_local_lambda_var(prog_var, mer_inst)
             % Attempt to pass a live non-ground var as a non-local variable
             % to a lambda goal.
 
-    ;       mode_error_unify_var_var(prog_var, prog_var, inst, inst)
+    ;       mode_error_unify_var_var(prog_var, prog_var, mer_inst, mer_inst)
             % Attempt to unify two free variables.
 
     ;       mode_error_unify_var_functor(prog_var, cons_id, list(prog_var),
-                inst, list(inst))
+                mer_inst, list(mer_inst))
             % Attempt to unify a free var with a functor containing
             % free arguments.
 
-    ;       mode_error_unify_var_lambda(prog_var, inst, inst)
+    ;       mode_error_unify_var_lambda(prog_var, mer_inst, mer_inst)
             % Some sort of error in attempt to unify a variable with lambda
             % expression.
 
@@ -124,7 +124,8 @@
             % A conjunction contains one or more unscheduleable goals;
             % schedule_culprit gives the reason why they couldn't be scheduled.
 
-    ;       mode_error_final_inst(int, prog_var, inst, inst, final_inst_error).
+    ;       mode_error_final_inst(int, prog_var, mer_inst, mer_inst,
+                final_inst_error).
             % One of the head variables did not have the expected final inst
             % on exit from the proc.
 
@@ -143,7 +144,7 @@
 :- type mode_error_unify_rhs
     --->    error_at_var(prog_var)
     ;       error_at_functor(cons_id, list(prog_var))
-    ;       error_at_lambda(list(prog_var), list(mode)).
+    ;       error_at_lambda(list(prog_var), list(mer_mode)).
 
 :- type mode_error_info
     --->    mode_error_info(
@@ -157,8 +158,8 @@
             ).
 
 :- type mode_warning
-    --->    cannot_succeed_var_var(prog_var, prog_var, inst, inst)
-    ;       cannot_succeed_var_functor(prog_var, inst, cons_id).
+    --->    cannot_succeed_var_var(prog_var, prog_var, mer_inst, mer_inst)
+    ;       cannot_succeed_var_functor(prog_var, mer_inst, cons_id).
 
 :- type mode_warning_info
     --->    mode_warning_info(
@@ -519,7 +520,7 @@ merge_context_to_string(if_then_else) = "if-then-else".
 %-----------------------------------------------------------------------------%
 
 :- func mode_error_bind_var_to_specs(mode_info::in, var_lock_reason::in,
-    prog_var::in, (inst)::in, (inst)::in)
+    prog_var::in, mer_inst::in, mer_inst::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
@@ -587,7 +588,7 @@ mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
 %-----------------------------------------------------------------------------%
 
 :- func mode_error_non_local_lambda_var_to_specs(mode_info::in, prog_var::in,
-    (inst)::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
+    mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_non_local_lambda_var_to_specs(ModeInfo, Var, VarInst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -605,7 +606,7 @@ mode_error_non_local_lambda_var_to_specs(ModeInfo, Var, VarInst) = Specs :-
 %-----------------------------------------------------------------------------%
 
 :- func mode_error_in_callee_to_specs(mode_info::in, list(prog_var)::in,
-    list(inst)::in, pred_id::in, proc_id::in, list(mode_error_info)::in)
+    list(mer_inst)::in, pred_id::in, proc_id::in, list(mode_error_info)::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
@@ -662,7 +663,7 @@ mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
     ).
 
 :- func mode_error_no_matching_mode_to_specs(mode_info::in, list(prog_var)::in,
-    list(inst)::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
+    list(mer_inst)::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -684,7 +685,7 @@ mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts) = Specs :-
         error_msg_spec(no, Context, 0, Pieces)].
 
 :- func mode_error_higher_order_pred_var_to_specs(mode_info::in,
-    pred_or_func::in, prog_var::in, (inst)::in, arity::in)
+    pred_or_func::in, prog_var::in, mer_inst::in, arity::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_higher_order_pred_var_to_specs(ModeInfo, PredOrFunc, Var, VarInst,
@@ -709,8 +710,8 @@ mode_error_higher_order_pred_var_to_specs(ModeInfo, PredOrFunc, Var, VarInst,
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)].
 
-:- func mode_error_poly_unify_to_specs(mode_info::in, prog_var::in, (inst)::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_poly_unify_to_specs(mode_info::in, prog_var::in,
+    mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_poly_unify_to_specs(ModeInfo, Var, VarInst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -752,7 +753,7 @@ mode_error_var_is_live_to_specs(ModeInfo, Var) = Specs :-
         error_msg_spec(no, Context, 0, Pieces)].
 
 :- func mode_error_var_has_inst_to_specs(mode_info::in, prog_var::in,
-    (inst)::in, (inst)::in) = (list(error_msg_spec)::out(error_msg_specs))
+    mer_inst::in, mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs))
     is det.
 
 mode_error_var_has_inst_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
@@ -768,7 +769,7 @@ mode_error_var_has_inst_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
         error_msg_spec(no, Context, 0, Pieces)].
 
 :- func mode_error_implied_mode_to_specs(mode_info::in, prog_var::in,
-    (inst)::in, (inst)::in) = (list(error_msg_spec)::out(error_msg_specs))
+    mer_inst::in, mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs))
     is det.
 
 mode_error_implied_mode_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
@@ -807,7 +808,7 @@ mode_error_no_mode_decl_to_specs(ModeInfo) = Specs :-
         error_msg_spec(no, Context, 0, Pieces)].
 
 :- func mode_error_unify_pred_to_specs(mode_info::in, prog_var::in,
-    mode_error_unify_rhs::in, (type)::in, pred_or_func::in)
+    mode_error_unify_rhs::in, mer_type::in, pred_or_func::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_unify_pred_to_specs(ModeInfo, X, RHS, Type, PredOrFunc) = Specs :-
@@ -863,7 +864,7 @@ mode_error_unify_pred_to_specs(ModeInfo, X, RHS, Type, PredOrFunc) = Specs :-
 %-----------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_var_to_specs(mode_info::in, prog_var::in,
-    prog_var::in, (inst)::in, (inst)::in)
+    prog_var::in, mer_inst::in, mer_inst::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_unify_var_var_to_specs(ModeInfo, X, Y, InstX, InstY) = Specs :-
@@ -888,7 +889,7 @@ mode_error_unify_var_var_to_specs(ModeInfo, X, Y, InstX, InstY) = Specs :-
 %-----------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_lambda_to_specs(mode_info::in, prog_var::in,
-    (inst)::in, (inst)::in) = (list(error_msg_spec)::out(error_msg_specs))
+    mer_inst::in, mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs))
     is det.
 
 mode_error_unify_var_lambda_to_specs(ModeInfo, X, InstX, InstY) = Specs :-
@@ -909,7 +910,7 @@ mode_error_unify_var_lambda_to_specs(ModeInfo, X, InstX, InstY) = Specs :-
 %-----------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_functor_to_specs(mode_info::in, prog_var::in,
-    cons_id::in, list(prog_var)::in, (inst)::in, list(inst)::in)
+    cons_id::in, list(prog_var)::in, mer_inst::in, list(mer_inst)::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_unify_var_functor_to_specs(ModeInfo, X, ConsId, Args,
@@ -949,7 +950,7 @@ mode_error_unify_var_functor_to_specs(ModeInfo, X, ConsId, Args,
 %-----------------------------------------------------------------------------%
 
 :- func mode_warning_cannot_succeed_var_var(mode_info::in,
-    prog_var::in, prog_var::in, (inst)::in, (inst)::in)
+    prog_var::in, prog_var::in, mer_inst::in, mer_inst::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Specs :-
@@ -970,7 +971,7 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Specs :-
         error_msg_spec(no, Context, 0, Pieces)].
 
 :- func mode_warning_cannot_succeed_var_functor(mode_info::in,
-    prog_var::in, (inst)::in, cons_id::in)
+    prog_var::in, mer_inst::in, cons_id::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Specs :-
@@ -1038,7 +1039,7 @@ mode_context_init(uninitialized).
 %-----------------------------------------------------------------------------%
 
 :- func mode_error_final_inst_to_specs(mode_info::in, int::in, prog_var::in,
-    (inst)::in, (inst)::in, final_inst_error::in)
+    mer_inst::in, mer_inst::in, final_inst_error::in)
     = (list(error_msg_spec)::out(error_msg_specs)) is det.
 
 mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
@@ -1296,12 +1297,12 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     String = mercury_mode_subdecl_to_string(PredOrFunc, InstVarSet, Name,
         Modes, MaybeDet, Context).
 
-:- pred output_inst((inst)::in, mode_info::in, io::di, io::uo) is det.
+:- pred output_inst(mer_inst::in, mode_info::in, io::di, io::uo) is det.
 
 output_inst(Inst0, ModeInfo, !IO) :-
     io__write_string(inst_to_string(ModeInfo, Inst0), !IO).
 
-:- func inst_to_string(mode_info, (inst)) = string.
+:- func inst_to_string(mode_info, mer_inst) = string.
 
 inst_to_string(ModeInfo, Inst0) = Str :-
     strip_builtin_qualifiers_from_inst(Inst0, Inst),
@@ -1309,17 +1310,18 @@ inst_to_string(ModeInfo, Inst0) = Str :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     Str = mercury_expanded_inst_to_string(Inst, InstVarSet, ModuleInfo).
 
-:- pred output_inst_list(list(inst)::in, mode_info::in, io::di, io::uo) is det.
+:- pred output_inst_list(list(mer_inst)::in, mode_info::in, io::di, io::uo)
+    is det.
 
 output_inst_list(Insts, ModeInfo, !IO) :-
     io__write_string(inst_list_to_string(ModeInfo, Insts), !IO).
 
-:- func inst_list_to_string(mode_info, list(inst)) = string.
+:- func inst_list_to_string(mode_info, list(mer_inst)) = string.
 
 inst_list_to_string(ModeInfo, Insts) =
     string__join_list(", ", list__map(inst_to_string(ModeInfo), Insts)).
 
-:- pred output_inst_list_sep_lines(prog_context::in, list(inst)::in,
+:- pred output_inst_list_sep_lines(prog_context::in, list(mer_inst)::in,
     mode_info::in, io::di, io::uo) is det.
 
 output_inst_list_sep_lines(_Context, [], _, !IO).
@@ -1336,7 +1338,8 @@ output_inst_list_sep_lines(Context, [Inst | Insts], ModeInfo, !IO) :-
     io__nl(!IO),
     output_inst_list_sep_lines(Context, Insts, ModeInfo, !IO).
 
-:- func inst_list_to_sep_lines(mode_info, list(inst)) = list(format_component).
+:- func inst_list_to_sep_lines(mode_info, list(mer_inst))
+    = list(format_component).
 
 inst_list_to_sep_lines(_ModeInfo, []) = [].
 inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces ++ MorePieces :-

@@ -32,44 +32,44 @@
     % instantiatedness for a given mode.
     % Throw an exception if the mode is undefined.
     %
-:- pred mode_get_insts(module_info::in, (mode)::in, (inst)::out, (inst)::out)
-    is det.
+:- pred mode_get_insts(module_info::in, mer_mode::in,
+    mer_inst::out, mer_inst::out) is det.
 
     % A version of mode_get_insts that fails if the mode is undefined.
     %
-:- pred mode_get_insts_semidet(module_info::in, (mode)::in,
-    (inst)::out, (inst)::out) is semidet.
+:- pred mode_get_insts_semidet(module_info::in, mer_mode::in,
+    mer_inst::out, mer_inst::out) is semidet.
 
     % A mode is considered input if the initial inst is bound.
     % Throws an exception if the mode is undefined.
     %
-:- pred mode_is_input(module_info::in, (mode)::in) is semidet.
+:- pred mode_is_input(module_info::in, mer_mode::in) is semidet.
 
     % A mode is considered fully input if the initial inst is ground.
     % Throws an exception if the mode is undefined.
     %
-:- pred mode_is_fully_input(module_info::in, (mode)::in) is semidet.
+:- pred mode_is_fully_input(module_info::in, mer_mode::in) is semidet.
 
     % A mode is considered output if the initial inst is free and the
     % final inst is bound.
     % Throws an exception if the mode is undefined.
     %
-:- pred mode_is_output(module_info::in, (mode)::in) is semidet.
+:- pred mode_is_output(module_info::in, mer_mode::in) is semidet.
 
     % A mode is considered fully output if the initial inst is free and
     % the final inst is ground.
     % Throws an exception if the mode is undefined.
     %
-:- pred mode_is_fully_output(module_info::in, (mode)::in) is semidet.
+:- pred mode_is_fully_output(module_info::in, mer_mode::in) is semidet.
 
     % A mode is considered unused if both initial and final insts are free.
     % Throws an exception if the mode is undefined.
     %
-:- pred mode_is_unused(module_info::in, (mode)::in) is semidet.
+:- pred mode_is_unused(module_info::in, mer_mode::in) is semidet.
 
 	% Succeeds iff the given mode is undefined.
 	%
-:- pred mode_is_undefined(module_info::in, (mode)::in) is semidet.
+:- pred mode_is_undefined(module_info::in, mer_mode::in) is semidet.
 
 	% mode_to_arg_mode converts a mode (and corresponding type) to
 	% an arg_mode.  A mode is a high-level notion, the normal
@@ -80,29 +80,29 @@
 	% the mode, because the argument passing convention can depend
 	% on the type's representation.
 	%
-:- pred mode_to_arg_mode(module_info::in, (mode)::in, (type)::in,
+:- pred mode_to_arg_mode(module_info::in, mer_mode::in, mer_type::in,
     arg_mode::out) is det.
 
-:- pred modes_to_arg_modes(module_info::in, list(mode)::in, list(type)::in,
-    list(arg_mode)::out) is det.
+:- pred modes_to_arg_modes(module_info::in, list(mer_mode)::in,
+    list(mer_type)::in, list(arg_mode)::out) is det.
 
-:- func mode_get_initial_inst(module_info, (mode)) = (inst).
+:- func mode_get_initial_inst(module_info, mer_mode) = mer_inst.
 
-:- func mode_get_final_inst(module_info, (mode)) = (inst).
+:- func mode_get_final_inst(module_info, mer_mode) = mer_inst.
 
 :- pred mode_list_get_initial_insts(module_info::in,
-    list(mode)::in, list(inst)::out) is det.
+    list(mer_mode)::in, list(mer_inst)::out) is det.
 
 :- pred mode_list_get_final_insts(module_info::in,
-    list(mode)::in, list(inst)::out) is det.
+    list(mer_mode)::in, list(mer_inst)::out) is det.
 
-:- pred modes_to_uni_modes(module_info::in, list(mode)::in, list(mode)::in,
-    list(uni_mode)::out) is det.
+:- pred modes_to_uni_modes(module_info::in, list(mer_mode)::in,
+    list(mer_mode)::in, list(uni_mode)::out) is det.
 
     % Given a user-defined or compiler-defined inst name, lookup the
     % corresponding inst in the inst table.
     %
-:- pred inst_lookup(module_info::in, inst_name::in, (inst)::out) is det.
+:- pred inst_lookup(module_info::in, inst_name::in, mer_inst::out) is det.
 
     % Use the instmap deltas for all the atomic sub-goals to recompute
     % the instmap deltas for all the non-atomic sub-goals of a goal.
@@ -124,15 +124,15 @@
     % of modes which includes the information provided by the
     % corresponding types.
     %
-:- pred propagate_types_into_mode_list(module_info::in, list(type)::in,
-    list(mode)::in, list(mode)::out) is det.
+:- pred propagate_types_into_mode_list(module_info::in, list(mer_type)::in,
+    list(mer_mode)::in, list(mer_mode)::out) is det.
 
     % Given corresponding lists of types and insts and a substitution
     % for the type variables in the type, produce a new list of insts
     % which includes the information provided by the corresponding types.
     %
 :- pred propagate_types_into_inst_list(module_info::in, tsubst::in,
-    list(type)::in, list(inst)::in, list(inst)::out) is det.
+    list(mer_type)::in, list(mer_inst)::in, list(mer_inst)::out) is det.
 
     % Convert a list of constructors to a list of bound_insts where the
     % arguments are `ground'.
@@ -156,7 +156,7 @@
     % (might be used again by the caller of that predicate) and which
     % are dead.
     %
-:- pred get_arg_lives(module_info::in, list(mode)::in, list(is_live)::out)
+:- pred get_arg_lives(module_info::in, list(mer_mode)::in, list(is_live)::out)
     is det.
 
     % Given the switched on variable and the instmaps before the switch
@@ -168,18 +168,18 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred normalise_insts(module_info::in, list(type)::in,
-    list(inst)::in, list(inst)::out) is det.
+:- pred normalise_insts(module_info::in, list(mer_type)::in,
+    list(mer_inst)::in, list(mer_inst)::out) is det.
 
-:- pred normalise_inst(module_info::in, (type)::in, (inst)::in, (inst)::out)
-    is det.
+:- pred normalise_inst(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::out) is det.
 
 %-----------------------------------------------------------------------------%
 
     % Partition a list of arguments into inputs and others.
     % Throws an exception if one of the modes is undefined.
     %
-:- pred partition_args(module_info::in, list(mode)::in, list(T)::in,
+:- pred partition_args(module_info::in, list(mer_mode)::in, list(T)::in,
     list(T)::out, list(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -281,7 +281,7 @@ modes_to_arg_modes(ModuleInfo, [Mode | Modes], [Type | Types],
 mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
     mode_to_arg_mode_2(ModuleInfo, Mode, Type, [], ArgMode).
 
-:- pred mode_to_arg_mode_2(module_info::in, (mode)::in, (type)::in,
+:- pred mode_to_arg_mode_2(module_info::in, mer_mode::in, mer_type::in,
     list(type_ctor)::in, arg_mode::out) is det.
 
 mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
@@ -313,7 +313,7 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
         base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode)
     ).
 
-:- pred base_mode_to_arg_mode(module_info::in, (mode)::in, arg_mode::out)
+:- pred base_mode_to_arg_mode(module_info::in, mer_mode::in, arg_mode::out)
     is det.
 
 base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
@@ -333,8 +333,8 @@ base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
     % assuming that the functor is the one given by the specified ConsId,
     % whose arity is 1.
     %
-:- pred get_single_arg_inst((inst)::in, module_info::in, cons_id::in,
-    (inst)::out) is det.
+:- pred get_single_arg_inst(mer_inst::in, module_info::in, cons_id::in,
+    mer_inst::out) is det.
 
 get_single_arg_inst(defined_inst(InstName), ModuleInfo, ConsId, ArgInst) :-
     inst_lookup(ModuleInfo, InstName, Inst),
@@ -360,7 +360,7 @@ get_single_arg_inst(constrained_inst_vars(_, Inst), ModuleInfo, ConsId,
         ArgInst) :-
     get_single_arg_inst(Inst, ModuleInfo, ConsId, ArgInst).
 
-:- pred get_single_arg_inst_2(list(bound_inst)::in, cons_id::in, (inst)::out)
+:- pred get_single_arg_inst_2(list(bound_inst)::in, cons_id::in, mer_inst::out)
     is semidet.
 
 get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
@@ -503,8 +503,8 @@ propagate_types_into_inst_list(_, _, [_ | _], [], []) :-
     % Given a type and a mode, produce a new mode that includes the
     % information provided by the type.
     %
-:- pred propagate_type_into_mode(module_info::in, (type)::in,
-    (mode)::in, (mode)::out) is det.
+:- pred propagate_type_into_mode(module_info::in, mer_type::in,
+    mer_mode::in, mer_mode::out) is det.
 
 propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode) :-
     mode_get_insts(ModuleInfo, Mode0, InitialInst0, FinalInst0),
@@ -539,11 +539,11 @@ propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode) :-
     % imported procedures will not be called, so for the insts in
     % imported mode declarations N is often zero.
     %
-:- pred propagate_type_into_inst(module_info::in, tsubst::in, (type)::in,
-    (inst)::in, (inst)::out) is det.
+:- pred propagate_type_into_inst(module_info::in, tsubst::in, mer_type::in,
+    mer_inst::in, mer_inst::out) is det.
 
 :- pred propagate_type_into_inst_lazily(module_info::in, tsubst::in,
-    (type)::in, (inst)::in, (inst)::out) is det.
+    mer_type::in, mer_inst::in, mer_inst::out) is det.
 
 %   % XXX We ought to expand things eagerly here, using the commented
 %   % out code below.  However, that causes efficiency problems,
@@ -566,8 +566,8 @@ propagate_type_into_inst_lazily(ModuleInfo, Subst, Type, Inst0, Inst) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred propagate_ctor_info(module_info::in, (type)::in,
-    list(constructor)::in, (inst)::in, (inst)::out) is det.
+:- pred propagate_ctor_info(module_info::in, mer_type::in,
+    list(constructor)::in, mer_inst::in, mer_inst::out) is det.
 
 propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
     (
@@ -639,8 +639,8 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         propagate_ctor_info(ModuleInfo, Type, Constructors, NamedInst, Inst)
     ).
 
-:- pred propagate_ctor_info_lazily(module_info::in, tsubst::in, (type)::in,
-    (inst)::in, (inst)::out) is det.
+:- pred propagate_ctor_info_lazily(module_info::in, tsubst::in, mer_type::in,
+    mer_inst::in, mer_inst::out) is det.
 
 propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     (
@@ -735,7 +735,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     % This applies recursively to the arguments and return
     % value too.
     %
-:- pred default_higher_order_func_inst(module_info::in, list(type)::in,
+:- pred default_higher_order_func_inst(module_info::in, list(mer_type)::in,
     pred_inst_info::out) is det.
 
 default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
@@ -759,7 +759,7 @@ constructors_to_bound_any_insts(ModuleInfo, Uniq, Constructors, BoundInsts) :-
         Constructors, any(Uniq), BoundInsts).
 
 :- pred constructors_to_bound_insts_2(module_info::in, uniqueness::in,
-    list(constructor)::in, (inst)::in, list(bound_inst)::out) is det.
+    list(constructor)::in, mer_inst::in, list(bound_inst)::out) is det.
 
 constructors_to_bound_insts_2(_, _, [], _, []).
 constructors_to_bound_insts_2(ModuleInfo, Uniq, [Ctor | Ctors], ArgInst,
@@ -768,16 +768,17 @@ constructors_to_bound_insts_2(ModuleInfo, Uniq, [Ctor | Ctors], ArgInst,
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list__length(Insts, Arity),
     BoundInst = functor(cons(Name, Arity), Insts),
-    constructors_to_bound_insts_2(ModuleInfo, Uniq, Ctors, ArgInst, BoundInsts).
+    constructors_to_bound_insts_2(ModuleInfo, Uniq, Ctors,
+        ArgInst, BoundInsts).
 
-:- pred ctor_arg_list_to_inst_list(list(constructor_arg)::in, (inst)::in,
-    list(inst)::out) is det.
+:- pred ctor_arg_list_to_inst_list(list(constructor_arg)::in, mer_inst::in,
+    list(mer_inst)::out) is det.
 
 ctor_arg_list_to_inst_list([], _, []).
 ctor_arg_list_to_inst_list([_Name - _Type | Args], Inst, [Inst | Insts]) :-
     ctor_arg_list_to_inst_list(Args, Inst, Insts).
 
-:- pred propagate_ctor_info_2(module_info::in, (type)::in,
+:- pred propagate_ctor_info_2(module_info::in, mer_type::in,
     list(bound_inst)::in, list(bound_inst)::out) is det.
 
 propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
@@ -804,7 +805,7 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
         BoundInsts = BoundInsts0
     ).
 
-:- pred propagate_ctor_info_tuple(module_info::in, list(type)::in,
+:- pred propagate_ctor_info_tuple(module_info::in, list(mer_type)::in,
     bound_inst::in, bound_inst::out) is det.
 
 propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
@@ -867,7 +868,7 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeModule, Constructors,
     propagate_ctor_info_3(ModuleInfo, Subst, TypeModule,
         Constructors, BoundInsts0, BoundInsts).
 
-:- pred apply_type_subst((type)::in, tsubst::in, (type)::out) is det.
+:- pred apply_type_subst(mer_type::in, tsubst::in, mer_type::out) is det.
 
 apply_type_subst(Type0, Subst, Type) :-
     % optimize common case
@@ -880,7 +881,7 @@ apply_type_subst(Type0, Subst, Type) :-
 %-----------------------------------------------------------------------------%
 
 :- pred inst_lookup_subst_args(hlds_inst_body::in, list(inst_var)::in,
-    sym_name::in, list(inst)::in, (inst)::out) is det.
+    sym_name::in, list(mer_inst)::in, mer_inst::out) is det.
 
 inst_lookup_subst_args(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
     inst_substitute_arg_list(Params, Args, Inst0, Inst).
@@ -1275,7 +1276,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
     ).
 
 :- pred compute_inst_var_sub(list(prog_var)::in, vartypes::in, instmap::in,
-    list(inst)::in, inst_var_sub::in, inst_var_sub::out,
+    list(mer_inst)::in, inst_var_sub::in, inst_var_sub::out,
     module_info::in, module_info::out) is det.
 
 compute_inst_var_sub([], _, _, [], !Sub, !ModuleInfo).
@@ -1310,7 +1311,7 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
     compute_inst_var_sub(Args, VarTypes, InstMap, Insts, !Sub, !ModuleInfo).
 
 :- pred recompute_instmap_delta_call_2(list(prog_var)::in, instmap::in,
-    list(mode)::in, list(mode)::out, module_info::in, module_info::out)
+    list(mer_mode)::in, list(mer_mode)::out, module_info::in, module_info::out)
     is det.
 
 recompute_instmap_delta_call_2([], _, [], [], !ModuleInfo).

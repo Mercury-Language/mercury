@@ -46,7 +46,7 @@
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     svar_info::in, svar_info::out, io::di, io::uo) is det.
 
-:- pred qualify_lambda_mode_list(list(mode)::in, list(mode)::out,
+:- pred qualify_lambda_mode_list(list(mer_mode)::in, list(mer_mode)::out,
     prog_context::in, qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 :- implementation.
@@ -362,7 +362,7 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
     ;       none    % One or more arguments,
                     % each without any mode annotations.
 
-    ;       modes(list(mode))
+    ;       modes(list(mer_mode))
                     % One or more arguments, each with a mode annotation.
 
     ;       mixed.  % Two or more arguments, including some with mode
@@ -379,12 +379,12 @@ get_mode_annotations([Arg0 | Args0], [Arg | Args], !Annotations) :-
     add_annotation(MaybeAnnotation, !Annotations),
     get_mode_annotations(Args0, Args, !Annotations).
 
-:- pred add_annotation(maybe(mode)::in,
+:- pred add_annotation(maybe(mer_mode)::in,
     mode_annotations::in, mode_annotations::out) is det.
 
 add_annotation(no,        empty, none).
 add_annotation(yes(Mode), empty, modes([Mode])).
-add_annotation(no,        modes(_ `with_type` list(mode)), mixed).
+add_annotation(no,        modes(_ `with_type` list(mer_mode)), mixed).
 add_annotation(yes(Mode), modes(Modes), modes(Modes ++ [Mode])).
 add_annotation(no,        none, none).
 add_annotation(yes(_),    none, mixed).
@@ -392,8 +392,8 @@ add_annotation(_,         mixed, mixed).
 
     % Extract the mode annotations (if any) from a single argument.
     %
-:- pred get_mode_annotation(prog_term::in, prog_term::out, maybe(mode)::out)
-    is det.
+:- pred get_mode_annotation(prog_term::in, prog_term::out,
+    maybe(mer_mode)::out) is det.
 
 get_mode_annotation(Arg0, Arg, MaybeAnnotation) :-
     (
@@ -671,7 +671,7 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
         Args1 = [LHS, RHS]
     ->
         prepare_for_call(!SInfo),
-            % `LHS \= RHS' is defined as `not (LHS = RHS)'
+        % `LHS \= RHS' is defined as `not (LHS = RHS)'
         transform_goal_2(not(unify(LHS, RHS, Purity) - Context), Context,
             Subst, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
@@ -690,8 +690,8 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
             Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ;
-        % check for an Aditi builtin
-        Purity = pure,
+        % Check for an Aditi builtin.
+        Purity = purity_pure,
         Name = unqualified(Name1),
         ( Name1 = "aditi_insert"
         ; Name1 = "aditi_delete"
@@ -709,7 +709,7 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
         make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !IO),
         list__length(Args, Arity),
         (
-            % check for a higher-order call,
+            % Check for a higher-order call,
             % i.e. a call to either call/N or ''/N.
             ( Name = unqualified("call")
             ; Name = unqualified("")
@@ -747,7 +747,6 @@ transform_goal_2(unify(A0, B0, Purity), Context, Subst, Goal, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     % It is an error for the left or right hand side of a
     % unification to be !X (it may be !.X or !:X, however).
-    %
     ( A0 = functor(atom("!"), [variable(StateVarA)], _) ->
         report_svar_unify_error(Context, !.VarSet, StateVarA, !IO),
         true_goal(Goal)

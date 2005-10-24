@@ -18,7 +18,7 @@
 % not be the same as that of the target machine, e.g. if they have different
 % word sizes.
 %
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds__const_prop.
 
@@ -44,7 +44,7 @@
     vartypes::in, instmap::in, module_info::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out) is semidet.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -74,15 +74,15 @@
 :- import_module std_util.
 :- import_module string.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This type groups the information from the HLDS
     % about a procedure call argument.
 :- type arg_hlds_info
     --->    arg_hlds_info(
                 arg_var     :: prog_var,
-                arg_type    :: prog_data__type,
-                arg_inst    :: (inst)
+                arg_type    :: mer_type,
+                arg_inst    :: mer_inst
             ).
 
 evaluate_call(PredId, ProcId, Args, VarTypes, InstMap, ModuleInfo, Goal,
@@ -125,7 +125,7 @@ evaluate_call_2(Module, Pred, ModeNum, Args, Goal, !GoalInfo) :-
         fail
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % evaluate_det_call(ModuleName, ProcName, ModeNum,
     %   Args, OutputArg, OutputArgVal):
@@ -335,7 +335,7 @@ evaluate_det_call("string", Name, _, [X, Y, Z], Z, string_const(ZVal)) :-
     Z ^ arg_inst = free,
     ZVal = XVal ++ YVal.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % evaluate_test(ModuleName, ProcName, ModeNum, ArgList, Result):
     %
@@ -527,7 +527,7 @@ eval_unify(X, Y, Result) :-
         fail
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_assignment_goal(arg_hlds_info::in, arg_hlds_info::in,
     hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -572,11 +572,11 @@ make_assignment(OutputArg, InputArg, Goal) :-
 make_construction(Arg, ConsId, Goal) :-
     make_const_construction(Arg ^ arg_var, ConsId, Goal - _).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_true_or_fail(bool::in, hlds_goal_expr::out) is det.
 
 make_true_or_fail(yes, conj([])).
 make_true_or_fail(no, disj([])).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

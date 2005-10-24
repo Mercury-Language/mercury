@@ -45,21 +45,21 @@
 
     % Nondeterministically generates sub-statements from statements.
     %
-:- pred statements_contains_statement(mlds__statements::in,
-    mlds__statement::out) is nondet.
+:- pred statements_contains_statement(statements::in,
+    statement::out) is nondet.
 
-:- pred statement_contains_statement(mlds__statement::in, mlds__statement::out)
+:- pred statement_contains_statement(statement::in, statement::out)
     is multi.
 
-:- pred stmt_contains_statement(mlds__stmt::in, mlds__statement::out)
+:- pred stmt_contains_statement(mlds__stmt::in, statement::out)
     is nondet.
 
     % Succeeds iff this statement contains a reference to the
     % specified variable.
     %
-:- pred statement_contains_var(mlds__statement::in, mlds__data::in) is semidet.
+:- pred statement_contains_var(statement::in, mlds__data::in) is semidet.
 
-:- pred has_foreign_languages(mlds__statement::in, list(foreign_language)::out)
+:- pred has_foreign_languages(statement::in, list(foreign_language)::out)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -137,24 +137,24 @@
 :- pred initializer_contains_var(mlds__initializer::in, mlds__data::in)
     is semidet.
 
-:- pred rvals_contains_var(list(mlds__rval)::in, mlds__data::in) is semidet.
+:- pred rvals_contains_var(list(mlds_rval)::in, mlds__data::in) is semidet.
 
-:- pred maybe_rval_contains_var(maybe(mlds__rval)::in, mlds__data::in)
+:- pred maybe_rval_contains_var(maybe(mlds_rval)::in, mlds__data::in)
     is semidet.
 
-:- pred rval_contains_var(mlds__rval::in, mlds__data::in) is semidet.
+:- pred rval_contains_var(mlds_rval::in, mlds__data::in) is semidet.
 
-:- pred lvals_contains_var(list(mlds__lval)::in, mlds__data::in) is semidet.
+:- pred lvals_contains_var(list(mlds_lval)::in, mlds__data::in) is semidet.
 
-:- pred lval_contains_var(mlds__lval::in, mlds__data::in) is semidet.
+:- pred lval_contains_var(mlds_lval::in, mlds__data::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
     % Does the type require the lowlevel representation on the indicated
     % backend?
     %
-:- pred type_needs_lowlevel_rep(compilation_target::in,
-    prog_data__type::in) is semidet.
+:- pred type_needs_lowlevel_rep(compilation_target::in, mer_type::in)
+    is semidet.
 
 :- pred type_ctor_needs_lowlevel_rep(compilation_target::in,
     type_ctor::in) is semidet.
@@ -225,8 +225,8 @@ statements_contains_statement(Statements, SubStatement) :-
     list__member(Statement, Statements),
     statement_contains_statement(Statement, SubStatement).
 
-:- pred maybe_statement_contains_statement(maybe(mlds__statement)::in,
-    mlds__statement::out) is nondet.
+:- pred maybe_statement_contains_statement(maybe(statement)::in,
+    statement::out) is nondet.
 
 maybe_statement_contains_statement(no, _Statement) :- fail.
 maybe_statement_contains_statement(yes(Statement), SubStatement) :-
@@ -234,7 +234,7 @@ maybe_statement_contains_statement(yes(Statement), SubStatement) :-
 
 statement_contains_statement(Statement, Statement).
 statement_contains_statement(Statement, SubStatement) :-
-    Statement = mlds__statement(Stmt, _Context),
+    Statement = statement(Stmt, _Context),
     stmt_contains_statement(Stmt, SubStatement).
 
 stmt_contains_statement(Stmt, SubStatement) :-
@@ -283,7 +283,7 @@ stmt_contains_statement(Stmt, SubStatement) :-
     ).
 
 :- pred cases_contains_statement(list(mlds__switch_case)::in,
-    mlds__statement::out) is nondet.
+    statement::out) is nondet.
 
 cases_contains_statement(Cases, SubStatement) :-
     list__member(Case, Cases),
@@ -291,7 +291,7 @@ cases_contains_statement(Cases, SubStatement) :-
     statement_contains_statement(Statement, SubStatement).
 
 :- pred default_contains_statement(mlds__switch_default::in,
-    mlds__statement::out) is nondet.
+    statement::out) is nondet.
 
 default_contains_statement(default_do_nothing, _) :- fail.
 default_contains_statement(default_is_unreachable, _) :- fail.
@@ -306,14 +306,14 @@ default_contains_statement(default_case(Statement), SubStatement) :-
 %   Succeeds iff the specified construct contains a reference to
 %   the specified variable.
 
-:- pred statements_contains_var(mlds__statements::in, mlds__data::in)
+:- pred statements_contains_var(statements::in, mlds__data::in)
     is semidet.
 
 statements_contains_var(Statements, Name) :-
     list__member(Statement, Statements),
     statement_contains_var(Statement, Name).
 
-:- pred maybe_statement_contains_var(maybe(mlds__statement)::in,
+:- pred maybe_statement_contains_var(maybe(statement)::in,
     mlds__data::in) is semidet.
 
 % maybe_statement_contains_var(no, _) :- fail.
@@ -321,7 +321,7 @@ maybe_statement_contains_var(yes(Statement), Name) :-
     statement_contains_var(Statement, Name).
 
 statement_contains_var(Statement, Name) :-
-    Statement = mlds__statement(Stmt, _Context),
+    Statement = statement(Stmt, _Context),
     stmt_contains_var(Stmt, Name).
 
 :- pred stmt_contains_var(mlds__stmt::in, mlds__data::in) is semidet.
@@ -440,7 +440,7 @@ trail_op_contains_var(prune_tickets_to(Rval), Name) :-
 
 %target_code_component_contains_var(raw_target_code(_Code), _Name) :-
 %   fail.
-%target_code_component_contains_var(user_target_code(_Code, _Context), _Name) :-
+%target_code_component_contains_var(user_target_code(_Code, _Ctxt), _Name) :-
 %   fail.
 target_code_component_contains_var(target_code_input(Rval), Name) :-
     rval_contains_var(Rval, Name).
@@ -469,7 +469,7 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
     Defn = mlds__defn(_Name, _Context, _Flags, Body),
     Body = function(_, _, defined_here(FunctionBody), _),
     statement_contains_statement(FunctionBody, Statement),
-    Statement = mlds__statement(Stmt, _),
+    Statement = statement(Stmt, _),
     (
         Stmt = atomic(inline_target_code(TargetLang, _)),
         TargetLang \= NativeTargetLang
@@ -481,7 +481,7 @@ defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
     Defn = mlds__defn(_Name, _Context, _Flags, Body),
     Body = function(_, _, defined_here(FunctionBody), _),
     statement_contains_statement(FunctionBody, Statement),
-    Statement = mlds__statement(Stmt, _),
+    Statement = statement(Stmt, _),
     Stmt = atomic(outline_foreign_proc(ForeignLang, _, _, _)).
 
 defn_is_type(Defn) :-

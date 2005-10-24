@@ -345,7 +345,8 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
     % See Partition I 'Built-In Types' (Section 8.2.2) for the list
     % of all builtin types.
     %
-:- pred parse_special_il_type_name(string::in, il_foreign_type::out) is semidet.
+:- pred parse_special_il_type_name(string::in, il_foreign_type::out)
+    is semidet.
 
 parse_special_il_type_name("bool", il(value, "mscorlib",
         qualified(unqualified("System"), "Boolean"))).
@@ -847,8 +848,8 @@ parse_pragma_type(ModuleName, "unused_args", PragmaTerms, ErrorTerm, _VarSet,
         convert_int_list(UnusedArgsTerm, UnusedArgsResult),
         UnusedArgsResult = ok(UnusedArgs)
     ->
-        Result = ok(pragma(user, unused_args(PredOrFunc, PredName, Arity, ModeNum,
-            UnusedArgs)))
+        Result = ok(pragma(user, unused_args(PredOrFunc, PredName, Arity,
+            ModeNum, UnusedArgs)))
     ;
         Result = error("error in `:- pragma unused_args'", ErrorTerm)
     ).
@@ -1322,7 +1323,7 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
     Attributes0 = default_attributes(ForeignLanguage),
     ( ( Pragma = "c_code" ; Pragma = "import" ) ->
         set_legacy_purity_behaviour(yes, Attributes0, Attributes1),
-        set_purity(pure, Attributes1, Attributes2)
+        set_purity(purity_pure, Attributes1, Attributes2)
     ;
         Attributes2 = Attributes0
     ),
@@ -1342,9 +1343,9 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
             tabled_for_io(not_tabled_for_io),
         tabled_for_io(tabled_for_descendant_io) -
             tabled_for_io(not_tabled_for_io),
-        purity(pure) - purity(impure),
-        purity(pure) - purity(semipure),
-        purity(semipure) - purity(impure),
+        purity(purity_pure) - purity(purity_impure),
+        purity(purity_pure) - purity(purity_semipure),
+        purity(purity_semipure) - purity(purity_impure),
         terminates(terminates) - terminates(does_not_terminate),
         terminates(depends_on_mercury_calls) - terminates(terminates),
         terminates(depends_on_mercury_calls) - terminates(does_not_terminate)
@@ -1536,9 +1537,9 @@ parse_backend(term__functor(term__atom(Functor), [], _), Backend) :-
 :- pred parse_purity_promise(term::in, purity::out) is semidet.
 
 parse_purity_promise(term__functor(term__atom("promise_pure"), [], _),
-        (pure)).
+        purity_pure).
 parse_purity_promise(term__functor(term__atom("promise_semipure"), [], _),
-        (semipure)).
+        purity_semipure).
 
 :- pred parse_terminates(term::in, terminates::out) is semidet.
 
@@ -1696,7 +1697,7 @@ parse_arg_tabling_method(term__functor(term__atom("output"), [], _), no).
                 sym_name,
                 arity,
                 maybe(pred_or_func),
-                maybe(list(mode))
+                maybe(list(mer_mode))
             ).
 
 :- pred parse_arity_or_modes(module_name::in, term::in, term::in,
@@ -1739,7 +1740,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
     ).
 
 :- type maybe_pred_or_func_modes ==
-        maybe2(pair(sym_name, pred_or_func), list(mode)).
+        maybe2(pair(sym_name, pred_or_func), list(mer_mode)).
 
 :- pred parse_pred_or_func_and_arg_modes(maybe(module_name)::in, term::in,
     term::in, string::in, maybe_pred_or_func_modes::out) is det.
@@ -1844,7 +1845,7 @@ convert_list(term__functor(Functor, Args, Context), Pred, UnrecognizedMsg,
         Result = error("error in list", term__functor(Functor, Args, Context))
     ).
 
-:- pred convert_type_spec_pair(term::in, pair(tvar, type)::out) is semidet.
+:- pred convert_type_spec_pair(term::in, pair(tvar, mer_type)::out) is semidet.
 
 convert_type_spec_pair(Term, TypeSpec) :-
     Term = term__functor(term__atom("="), [TypeVarTerm, SpecTypeTerm0], _),
@@ -1853,7 +1854,7 @@ convert_type_spec_pair(Term, TypeSpec) :-
     parse_type(SpecTypeTerm0, ok(SpecType)),
     TypeSpec = TypeVar - SpecType.
 
-%------------------------------------------------------------------------------%%
+%-----------------------------------------------------------------------------%
 %
 % Parsing termination2_info pragmas.
 %
@@ -1910,6 +1911,4 @@ parse_rational(Term, Rational) :-
     DenomTerm = term__functor(term__integer(Denom), [], _),
     Rational = rat__rat(Numer, Denom).
 
-%------------------------------------------------------------------------------%
-:- end_module prog_io_pragma.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

@@ -263,7 +263,8 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
     set__list_to_set(HeadVars, OrigNonLocals),
     OrigGoal = _ - OrigGoalInfo,
     goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
-    add_goal_info_purity_feature(impure, OrigGoalInfo, ImpureOrigGoalInfo),
+    add_goal_info_purity_feature(purity_impure,
+        OrigGoalInfo, ImpureOrigGoalInfo),
 
     IsActiveVarName = "IsActive",
     generate_new_var(IsActiveVarName, is_active_type, !ProcInfo, IsActiveVar),
@@ -333,7 +334,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
 
         instmap_delta_init_reachable(AfterInstMapDelta),
         goal_info_init(list_to_set([SlotVar]), AfterInstMapDelta,
-            multidet, impure, Context, AfterGoalInfo),
+            multidet, purity_impure, Context, AfterGoalInfo),
         AfterGoal = disj([ExitGoal, RedoGoal]) - AfterGoalInfo,
 
         OrigAfterGoal = conj([OrigGoal, AfterGoal]) - ImpureOrigGoalInfo,
@@ -348,12 +349,12 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
     ],
 
     SwitchExpr = switch(IsActiveVar, cannot_fail, SwitchArms),
-    goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, impure,
+    goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, SwitchGoalInfo),
     SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
     GoalExpr = conj([IsActiveGoal, SwitchGoal]),
-    goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, impure,
+    goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
     Goal = GoalExpr - GoalInfo,
 
@@ -456,8 +457,8 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_new_var(string::in, (type)::in, proc_info::in, proc_info::out,
-    prog_var::out) is det.
+:- pred generate_new_var(string::in, mer_type::in,
+    proc_info::in, proc_info::out, prog_var::out) is det.
 
 generate_new_var(Name, Type, !ProcInfo, Var) :-
     proc_info_varset(!.ProcInfo, VarSet0),
@@ -479,12 +480,12 @@ complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
     set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs),
     goal_util__generate_foreign_proc(BuiltinModule, PredName, predicate,
         only_mode, Detism, Attrs, Args, ExtraArgs,
-        PrefixCode, Code, SuffixCode, [impure],
+        PrefixCode, Code, SuffixCode, [impure_goal],
         ground_vars(BoundVars), ModuleInfo, Context, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred classify_args(list(prog_var)::in, list(mode)::in, module_info::in,
+:- pred classify_args(list(prog_var)::in, list(mer_mode)::in, module_info::in,
     prog_varset::in, vartypes::in,
     assoc_list(prog_var, complexity_arg_info)::out) is det.
 
@@ -529,18 +530,18 @@ allocate_slot_numbers_cl([Var - Info | VarInfos], Offset,
         allocate_slot_numbers_cl(VarInfos, Offset, NumberedProfiledVars)
     ).
 
-:- func ground_vars(list(prog_var)) = assoc_list(prog_var, inst).
+:- func ground_vars(list(prog_var)) = assoc_list(prog_var, mer_inst).
 
 ground_vars(Vars) = VarsAndGround :-
     VarsAndGround = list__map(pair_with_ground, Vars).
 
-:- func pair_with_ground(prog_var) = pair(prog_var, inst).
+:- func pair_with_ground(prog_var) = pair(prog_var, mer_inst).
 
 pair_with_ground(Var) = Var - ground(shared, none).
 
 %-----------------------------------------------------------------------------%
 
-:- func is_active_type = (type).
+:- func is_active_type = mer_type.
 
 is_active_type = Type :-
     mercury_term_size_prof_builtin_module(M),
@@ -548,7 +549,7 @@ is_active_type = Type :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_type_info_var((type)::in, term__context::in, pred_id::in,
+:- pred make_type_info_var(mer_type::in, term__context::in, pred_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out,
     prog_var::out, list(hlds_goal)::out) is det.
 

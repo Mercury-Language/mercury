@@ -297,7 +297,8 @@ output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
 output_split_c_exports([], _, _, _, _, !Num, !IO).
 output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
         ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [Export], [], [], [], [], []),
+    CFile = c_file(ModuleName, C_HeaderLines, [], [Export],
+        [], [], [], [], []),
     output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
         StackLayoutLabels, no, !IO),
     !:Num = !.Num + 1,
@@ -4475,7 +4476,7 @@ output_test_rval(Test, !IO) :-
         io__write_int(RightConst, !IO),
         io__write_string(")", !IO)
     ;
-        Test = unop(not, InnerTest),
+        Test = unop(logical_not, InnerTest),
         is_int_cmp(InnerTest, Left, RightConst, _, NegOpStr)
     ->
         io__write_string(NegOpStr, !IO),
@@ -4499,7 +4500,7 @@ output_test_rval(Test, !IO) :-
         io__write_int(Ptag, !IO),
         io__write_string(")", !IO)
     ;
-        Test = unop(not, InnerTest),
+        Test = unop(logical_not, InnerTest),
         is_ptag_test(InnerTest, Rval, Ptag, Negated)
     ->
         (
@@ -4514,7 +4515,7 @@ output_test_rval(Test, !IO) :-
         io__write_int(Ptag, !IO),
         io__write_string(")", !IO)
     ;
-        Test = binop(and, Left, Right),
+        Test = binop(logical_and, Left, Right),
         is_ptag_test(Left, Rval, Ptag, no),
         is_remote_stag_test(Right, Rval, Ptag, Stag)
     ->
@@ -4526,8 +4527,8 @@ output_test_rval(Test, !IO) :-
         io__write_int(Stag, !IO),
         io__write_string(")", !IO)
     ;
-        Test = unop(not, InnerTest),
-        InnerTest = binop(and, Left, Right),
+        Test = unop(logical_not, InnerTest),
+        InnerTest = binop(logical_and, Left, Right),
         is_ptag_test(Left, Rval, Ptag, no),
         is_remote_stag_test(Right, Rval, Ptag, Stag)
     ->
@@ -4555,7 +4556,7 @@ output_test_rval(Test, !IO) :-
         io__write_int(Stag, !IO),
         io__write_string(")", !IO)
     ;
-        Test = unop(not, InnerTest),
+        Test = unop(logical_not, InnerTest),
         is_local_stag_test(InnerTest, Rval, Ptag, Stag, Negated)
     ->
         (
@@ -4590,19 +4591,19 @@ is_int_cmp(Test, Left, RightConst, OpStr, NegOpStr) :-
         OpStr = "MR_INT_NE",
         NegOpStr = "MR_INT_EQ"
     ;
-        Op = (<),
+        Op = int_lt,
         OpStr = "MR_INT_LT",
         NegOpStr = "MR_INT_GE"
     ;
-        Op = (>),
+        Op = int_gt,
         OpStr = "MR_INT_GT",
         NegOpStr = "MR_INT_LT"
     ;
-        Op = (<=),
+        Op = int_le,
         OpStr = "MR_INT_LE",
         NegOpStr = "MR_INT_GT"
     ;
-        Op = (>=),
+        Op = int_ge,
         OpStr = "MR_INT_GE",
         NegOpStr = "MR_INT_LT"
     ).
@@ -5068,7 +5069,8 @@ output_lval(mem_ref(Rval), !IO) :-
     output_rval(Rval, !IO),
     io__write_string(")", !IO).
 
-:- pred output_lval_for_assign(lval::in, llds_type::out, io::di, io::uo) is det.
+:- pred output_lval_for_assign(lval::in, llds_type::out, io::di, io::uo)
+    is det.
 
 output_lval_for_assign(reg(RegType, Num), word, !IO) :-
     require(unify(RegType, r), "output_lval_for_assign: float reg"),

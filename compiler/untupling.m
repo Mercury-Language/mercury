@@ -197,7 +197,7 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
         true
     ).
 
-:- pred at_least_one_expandable_type(list(type)::in, type_table::in)
+:- pred at_least_one_expandable_type(list(mer_type)::in, type_table::in)
     is semidet.
 
 at_least_one_expandable_type([Type | Types], TypeTable) :-
@@ -257,8 +257,8 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
             !TransformMap)
     ).
 
-:- pred expand_args_in_proc_2(prog_vars::in, list(mode)::in,
-    prog_vars::out, list(mode)::out, hlds_goal::in, hlds_goal::out,
+:- pred expand_args_in_proc_2(prog_vars::in, list(mer_mode)::in,
+    prog_vars::out, list(mer_mode)::out, hlds_goal::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     type_table::in, untuple_map::out) is det.
 
@@ -273,10 +273,10 @@ expand_args_in_proc_2(HeadVars0, ArgModes0, HeadVars, ArgModes,
     list__condense(ListOfArgModes, ArgModes),
     build_untuple_map(HeadVars0, ListOfHeadVars, map__init, UntupleMap).
 
-:- pred expand_args_in_proc_3(list(prog_var)::in, list(mode)::in,
-    list(list(prog_var))::out, list(list(mode))::out,
+:- pred expand_args_in_proc_3(list(prog_var)::in, list(mer_mode)::in,
+    list(list(prog_var))::out, list(list(mer_mode))::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, list(type)::in, type_table::in) is det.
+    vartypes::in, vartypes::out, list(mer_type)::in, type_table::in) is det.
 
 expand_args_in_proc_3([], [], [], [], !_, !_, !_, _, _).
 expand_args_in_proc_3([HeadVar0 | HeadVars0], [ArgMode0 | ArgModes0],
@@ -291,9 +291,9 @@ expand_args_in_proc_3([], [_|_], _, _, !_, !_, !_, _, _) :-
 expand_args_in_proc_3([_|_], [], _, _, !_, !_, !_, _, _) :-
     unexpected(this_file, "expand_args_in_proc_3: length mismatch").
 
-:- pred expand_one_arg_in_proc(prog_var::in, (mode)::in, prog_vars::out,
-    list(mode)::out, hlds_goal::in, hlds_goal::out, prog_varset::in,
-    prog_varset::out, vartypes::in, vartypes::out, list(type)::in,
+:- pred expand_one_arg_in_proc(prog_var::in, mer_mode::in, prog_vars::out,
+    list(mer_mode)::out, hlds_goal::in, hlds_goal::out, prog_varset::in,
+    prog_varset::out, vartypes::in, vartypes::out, list(mer_type)::in,
     type_table::in) is det.
 
 expand_one_arg_in_proc(HeadVar0, ArgMode0, HeadVars, ArgModes,
@@ -313,10 +313,10 @@ expand_one_arg_in_proc(HeadVar0, ArgMode0, HeadVars, ArgModes,
         ArgModes = [ArgMode0]
     ).
 
-:- pred expand_one_arg_in_proc_2(prog_var::in, (mode)::in,
-    maybe(pair(list(prog_var), list(mode)))::out,
+:- pred expand_one_arg_in_proc_2(prog_var::in, mer_mode::in,
+    maybe(pair(list(prog_var), list(mer_mode)))::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, list(type)::in, list(type)::out,
+    vartypes::in, vartypes::out, list(mer_type)::in, list(mer_type)::out,
     type_table::in) is det.
 
 expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
@@ -349,7 +349,7 @@ expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
         ContainerTypes = ContainerTypes0
     ).
 
-:- pred create_untuple_vars(string::in, int::in, list(type)::in,
+:- pred create_untuple_vars(string::in, int::in, list(mer_type)::in,
     list(prog_var)::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
@@ -630,7 +630,7 @@ fix_calls_in_cases([Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred expand_call_args(prog_vars::in, list(mode)::in, prog_vars::out,
+:- pred expand_call_args(prog_vars::in, list(mer_mode)::in, prog_vars::out,
     hlds_goals::out, hlds_goals::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, type_table::in) is det.
 
@@ -639,9 +639,9 @@ expand_call_args(Args0, ArgModes0, Args, EnterUnifs, ExitUnifs,
     expand_call_args_2(Args0, ArgModes0, Args, EnterUnifs, ExitUnifs,
         !VarSet, !VarTypes, [], TypeTable).
 
-:- pred expand_call_args_2(prog_vars::in, list(mode)::in, prog_vars::out,
+:- pred expand_call_args_2(prog_vars::in, list(mer_mode)::in, prog_vars::out,
     hlds_goals::out, hlds_goals::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, list(type)::in, type_table::in) is det.
+    vartypes::in, vartypes::out, list(mer_type)::in, type_table::in) is det.
 
 expand_call_args_2([], [], [], [], [], !VarSet, !VarTypes, _, _).
 expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
@@ -693,7 +693,7 @@ expand_call_args_2([_|_], [], _, _, _, !_, !_, _, _) :-
     --->    expansion(
                 cons_id,
                     % the cons_id of the expanded constructor
-                list(type)
+                list(mer_type)
                     % the types of the arguments for the
                     % expanded constructor
             )
@@ -704,7 +704,7 @@ expand_call_args_2([_|_], [], _, _, _, !_, !_, _, _) :-
     % `expansion' functor, giving the details of the expansion.
     % Otherwise it is unified with `no_expansion'.
     %
-:- pred expand_argument((mode)::in, (type)::in, list(type)::in,
+:- pred expand_argument(mer_mode::in, mer_type::in, list(mer_type)::in,
     type_table::in, expansion_result::out) is det.
 
 expand_argument(ArgMode, ArgType, ContainerTypes, TypeTable, Expansion) :-
@@ -717,12 +717,12 @@ expand_argument(ArgMode, ArgType, ContainerTypes, TypeTable, Expansion) :-
     % This module so far only knows how to expand arguments which have
     % the following modes.
     %
-:- pred expandable_arg_mode((mode)::in) is semidet.
+:- pred expandable_arg_mode(mer_mode::in) is semidet.
 
 expandable_arg_mode(in_mode).
 expandable_arg_mode(out_mode).
 
-:- pred expand_type((type)::in, list(type)::in, type_table::in,
+:- pred expand_type(mer_type::in, list(mer_type)::in, type_table::in,
     expansion_result::out) is det.
 
 expand_type(Type, ContainerTypes, TypeTable, Expansion) :-

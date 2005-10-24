@@ -44,7 +44,7 @@
 
 :- module transform_hlds__unused_args.
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 :- interface.
 
@@ -66,7 +66,7 @@
 :- instance answer_pattern(unused_args_func_info, unused_args_answer).
 :- instance to_string(unused_args_answer).
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -271,7 +271,7 @@ unused_args__process_module(!ModuleInfo, !IO) :-
         DoFixup = no
     ).
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 %
 % Initialisation section
 
@@ -448,7 +448,7 @@ initialise_vardep([Var | Vars], !VarDep) :-
     svmap__set(Var, unused(VDep, Args), !VarDep),
     initialise_vardep(Vars, !VarDep).
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 %
 % Predicates for manipulating the var_usage and var_dep structures.
 
@@ -457,7 +457,7 @@ initialise_vardep([Var | Vars], !VarDep) :-
     % if HeadVar1 has type list(T), then TypeInfo_for_T is used if HeadVar1
     % is used.
     %
-:- pred setup_typeinfo_deps(list(prog_var)::in, map(prog_var, type)::in,
+:- pred setup_typeinfo_deps(list(prog_var)::in, vartypes::in,
     pred_proc_id::in, rtti_varmaps::in, var_dep::in, var_dep::out) is det.
 
 setup_typeinfo_deps([], _, _, _, !VarDep).
@@ -466,7 +466,7 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, RttiVarMaps,
     setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps, !VarDep),
     setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, RttiVarMaps, !VarDep).
 
-:- pred setup_typeinfo_dep(prog_var::in, map(prog_var, type)::in,
+:- pred setup_typeinfo_dep(prog_var::in, vartypes::in,
     pred_proc_id::in, rtti_varmaps::in, var_dep::in, var_dep::out) is det.
 
 setup_typeinfo_dep(Var, VarTypeMap, PredProcId, RttiVarMaps, !VarDep) :-
@@ -535,12 +535,13 @@ set_list_vars_used(Vars, !VarDep) :-
 set_var_used(Var, !VarDep) :-
     map__delete(!.VarDep, Var, !:VarDep).
 
-:- pred lookup_local_var(var_dep::in, prog_var::in, usage_info::out) is semidet.
+:- pred lookup_local_var(var_dep::in, prog_var::in, usage_info::out)
+    is semidet.
 
 lookup_local_var(VarDep, Var, UsageInfo) :-
     map__search(VarDep, Var, UsageInfo).
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 %
 % Traversal of goal structure, building up dependencies for all
 % variables.
@@ -776,7 +777,7 @@ traverse_list_of_goals(Info, [Goal | Goals], !VarDep) :-
     traverse_goal(Info, Goal, !VarDep),
     traverse_list_of_goals(Info, Goals, !VarDep).
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 %
 % Analysis section - do the fixpoint iteration.
 
@@ -878,7 +879,7 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
     svmap__det_insert(PredProc, UnusedArgs, !UnusedArgInfo),
     get_unused_arg_info(ModuleInfo, PredProcs, VarUsage, !UnusedArgInfo).
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 %
 % Fix up the module.
 
@@ -1616,7 +1617,7 @@ fixup_goal_info(UnusedVars, !GoalInfo) :-
     instmap_delta_delete_vars(UnusedVars, InstMap0, InstMap),
     goal_info_set_instmap_delta(InstMap, !GoalInfo).
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
     % Except for type_infos, all args that are unused in one mode of a
     % predicate should be unused in all of the modes of a predicate, so we only

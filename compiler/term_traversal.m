@@ -50,7 +50,7 @@
                     % likely) many of the paths have identical
                     % properties.
                 
-                list(term_errors.error)
+                list(termination_error_context)
                     % Have we processed a call to a procedure whose
                     % maybe termination info was yes(can_loop(_))?  If
                     % yes, record the error here.  (This is not an error
@@ -59,10 +59,10 @@
         )
     ;   
         error(
-                list(term_errors.error),
-                    % Errors which are fatal in both % passes.
+                list(termination_error_context),
+                    % Errors which are fatal in both passes.
                 
-                list(term_errors.error)
+                list(termination_error_context)
                     % Have we processed a call to a procedure whose
                     % maybe termination info was yes(can_loop(_))?  If
                     % yes, record the error here.  (This is not an error
@@ -528,7 +528,7 @@ unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
         unexpected(this_file, "unify_change/8: variable type.")
     ).
 
-:- pred filter_args_and_modes(map(prog_var, (type))::in, list(prog_var)::in,
+:- pred filter_args_and_modes(map(prog_var, mer_type)::in, list(prog_var)::in,
     list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out) is det.
 
 filter_args_and_modes(VarTypes, Args0, Args, Modes0, Modes) :-

@@ -623,7 +623,7 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
 ].
 
 :- type ho_modes ==
-    multi_map(prog_var_and_level, list(mode)).
+    multi_map(prog_var_and_level, list(mer_mode)).
 
 :- type ho_calls ==
     multi_map(prog_var_and_level, pair(goal_path, list(prog_var))).
@@ -717,7 +717,7 @@ process_mode_decl_for_proc(ModuleInfo, InstGraph, HeadVars,
     inst_graph::in, list(prog_var)::in, constrain_var::in(constrain_var),
     constrain_var::in(constrain_var), bool::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
-    bool::in, list(mode)::in, mode_constraint::in, mode_constraint::out,
+    bool::in, list(mer_mode)::in, mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
 process_mode_decl(ModuleInfo, InstGraph, HeadVars,
@@ -734,7 +734,7 @@ process_mode_decl(ModuleInfo, InstGraph, HeadVars,
     bool::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
     bool::in,
-    pair(prog_var, mode)::in,
+    pair(prog_var, mer_mode)::in,
     mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
@@ -812,7 +812,7 @@ call_out(Path, Var, C0, C, !MCI) :-
 
 :- pred process_inst(module_info::in, inst_graph::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
-    bool::in, (inst)::in, set(prog_var)::in, prog_var::in,
+    bool::in, mer_inst::in, set(prog_var)::in, prog_var::in,
     mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
@@ -833,7 +833,7 @@ process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO, Inst,
 
 :- pred do_process_inst(module_info::in, inst_graph::in,
     constrain_var::in(constrain_var), constrain_var::in(constrain_var),
-    bool::in, (inst)::in, set(prog_var)::in, prog_var::in,
+    bool::in, mer_inst::in, set(prog_var)::in, prog_var::in,
     mode_constraint::in, mode_constraint::out,
     mode_decl_info::in, mode_decl_info::out) is det.
 
@@ -1739,7 +1739,7 @@ add_imported_preds(ModuleInfo, SCCs0, SCCs) :-
     SCCs = SCCs0 ++ ImportedPredIds.
 
 :- pred cons_id_in_bound_insts(cons_id::in, list(bound_inst)::in,
-        list(inst)::out) is semidet.
+        list(mer_inst)::out) is semidet.
 
 cons_id_in_bound_insts(ConsId, [functor(ConsId0, Insts0) | BIs], Insts) :-
     ( equivalent_cons_ids(ConsId0, ConsId) ->

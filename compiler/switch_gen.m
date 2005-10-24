@@ -4,7 +4,7 @@
 % Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % File: switch_gen.m
 % Authors: conway, fjh, zs
@@ -41,7 +41,7 @@
 % For all other cases (or if the --smart-indexing option was disabled),
 % we just generate a chain of if-then-elses.
 %
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module ll_backend__switch_gen.
 
@@ -60,7 +60,7 @@
     list(case)::in, hlds_goal_info::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -86,13 +86,13 @@
 :- import_module std_util.
 :- import_module string.
 
-%---------------------------------------------------------------------------%
-
-    % Choose which method to use to generate the switch.
-    % CanFail says whether the switch covers all cases.
+%-----------------------------------------------------------------------------%
 
 generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
         Code, !CI) :-
+    % Choose which method to use to generate the switch.
+    % CanFail says whether the switch covers all cases.
+
     goal_info_get_store_map(GoalInfo, StoreMap),
     SwitchCategory = determine_category(!.CI, CaseVar),
     code_info__get_next_label(EndLabel, !CI),
@@ -171,7 +171,7 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
     ),
     code_info__after_all_branches(StoreMap, MaybeEnd, !CI).
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % We categorize switches according to whether the value being switched on
     % is an atomic type, a string, or something more complicated.
@@ -184,7 +184,7 @@ determine_category(CI, CaseVar) = SwitchCategory :-
     classify_type(ModuleInfo, Type) = TypeCategory,
     SwitchCategory = switch_util__type_cat_to_switch_cat(TypeCategory).
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred lookup_tags(code_info::in, list(case)::in, prog_var::in,
     cases_list::out) is det.
@@ -197,8 +197,8 @@ lookup_tags(CI, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     TaggedCase = case(Priority, Tag, ConsId, Goal),
     lookup_tags(CI, Cases, Var, TaggedCases).
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Generate a switch as a chain of if-then-elses.
     %
@@ -318,4 +318,4 @@ generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, !MaybeEnd, OtherCasesCode, !CI),
     CasesCode = tree(ThisCaseCode, OtherCasesCode).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

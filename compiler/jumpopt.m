@@ -919,7 +919,7 @@ redirect_comment(Comment0) = string__append(Comment0, " (redirected return)").
 
 needs_workaround(Lval, Cond) :-
     (
-        Cond = unop(not, lval(Lval))
+        Cond = unop(logical_not, lval(Lval))
     ;
         Cond = binop(Op, Left, Right),
         ( Op = eq ; Op = ne ),

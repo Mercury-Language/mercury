@@ -107,7 +107,7 @@
     % Abort if there are multiple matching preds.
     %
 :- pred typecheck__resolve_pred_overloading(module_info::in, pred_markers::in,
-    list(type)::in, tvarset::in, sym_name::in, sym_name::out, pred_id::out)
+    list(mer_type)::in, tvarset::in, sym_name::in, sym_name::out, pred_id::out)
     is det.
 
     % Find a predicate or function from the list of pred_ids
@@ -116,7 +116,7 @@
     % Abort if there are multiple matching preds.
     %
 :- pred typecheck__find_matching_pred_id(list(pred_id)::in, module_info::in,
-    tvarset::in, list(type)::in, pred_id::out, sym_name::out) is semidet.
+    tvarset::in, list(mer_type)::in, pred_id::out, sym_name::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -522,7 +522,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
                     !PredInfo),
                 pred_info_get_class_context(!.PredInfo, OldTypeConstraints),
-                pred_info_set_class_context(InferredTypeConstraints, !PredInfo),
+                pred_info_set_class_context(InferredTypeConstraints,
+                    !PredInfo),
 
                 % Check if anything changed.
                 (
@@ -758,8 +759,8 @@ is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
     % then compare them in a single call to identical_up_to_renaming.
     %
 :- pred argtypes_identical_up_to_renaming(tvar_kind_map::in,
-    existq_tvars::in, list(type)::in, prog_constraints::in,
-    existq_tvars::in, list(type)::in, prog_constraints::in) is semidet.
+    existq_tvars::in, list(mer_type)::in, prog_constraints::in,
+    existq_tvars::in, list(mer_type)::in, prog_constraints::in) is semidet.
 
 argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
         TypeConstraintsA, ExistQVarsB, ArgTypesB, TypeConstraintsB) :-
@@ -779,7 +780,7 @@ argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
     % type classes in each set of type class constraints and return them.
     %
 :- pred same_structure(prog_constraints::in, prog_constraints::in,
-    list(type)::out, list(type)::out) is semidet.
+    list(mer_type)::out, list(mer_type)::out) is semidet.
 
 same_structure(ConstraintsA, ConstraintsB, TypesA, TypesB) :-
     ConstraintsA = constraints(UnivCsA, ExistCsA),
@@ -794,7 +795,7 @@ same_structure(ConstraintsA, ConstraintsB, TypesA, TypesB) :-
     list__append(ExistTypesB, UnivTypesB, TypesB).
 
 :- pred same_structure_2(list(prog_constraint)::in, list(prog_constraint)::in,
-    list(type)::out, list(type)::out) is semidet.
+    list(mer_type)::out, list(mer_type)::out) is semidet.
 
 same_structure_2([], [], [], []).
 same_structure_2([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
@@ -808,7 +809,8 @@ same_structure_2([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
 
     % Check whether two lists of types are identical up to renaming.
     %
-:- pred identical_up_to_renaming(list(type)::in, list(type)::in) is semidet.
+:- pred identical_up_to_renaming(list(mer_type)::in, list(mer_type)::in)
+    is semidet.
 
 identical_up_to_renaming(TypesList1, TypesList2) :-
     % They are identical up to renaming if they each subsume each other.
@@ -1103,7 +1105,7 @@ goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) :-
 
     % Iterate over the list of clauses for a predicate.
     %
-:- pred typecheck_clause_list(list(prog_var)::in, list(type)::in,
+:- pred typecheck_clause_list(list(prog_var)::in, list(mer_type)::in,
     list(clause)::in, list(clause)::out,
     typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
@@ -1131,7 +1133,7 @@ typecheck_clause_list(HeadVars, ArgTypes, [Clause0 | Clauses0],
     %
     % We should perhaps do manual garbage collection here.
     %
-:- pred typecheck_clause(list(prog_var)::in, list(type)::in,
+:- pred typecheck_clause(list(prog_var)::in, list(mer_type)::in,
     clause::in, clause::out,
     typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
@@ -1414,7 +1416,7 @@ ensure_vars_have_a_type(Vars, !Info, !IO) :-
 
 typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO) :-
     list__length(Args, Arity),
-    higher_order_pred_type(Purity, Arity, normal,
+    higher_order_pred_type(Purity, Arity, lambda_normal,
         TypeVarSet, PredVarType, ArgTypes),
     % The class context is empty because higher-order predicates
     % are always monomorphic. Similarly for ExistQVars.
@@ -1424,7 +1426,7 @@ typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO) :-
         ExistQVars, [PredVarType | ArgTypes], EmptyConstraints, !Info, !IO).
 
 :- pred higher_order_pred_type(purity::in, int::in, lambda_eval_method::in,
-    tvarset::out, (type)::out, list(type)::out) is det.
+    tvarset::out, mer_type::out, list(mer_type)::out) is det.
 
     % higher_order_pred_type(Purity, N, EvalMethod,
     %   TypeVarSet, PredType, ArgTypes):
@@ -1443,7 +1445,7 @@ higher_order_pred_type(Purity, Arity, EvalMethod, TypeVarSet, PredType,
         PredType).
 
 :- pred higher_order_func_type(purity::in, int::in, lambda_eval_method::in,
-    tvarset::out, (type)::out, list(type)::out, (type)::out) is det.
+    tvarset::out, mer_type::out, list(mer_type)::out, mer_type::out) is det.
 
     % higher_order_func_type(Purity, N, EvalMethod, TypeVarSet,
     %   FuncType, ArgTypes, RetType):
@@ -1502,8 +1504,8 @@ typecheck_aditi_builtin_2(CallId, Args, GoalPath,
     CallId = PredOrFunc - _,
     InsertDeleteAdjustArgTypes =
         (pred(RelationArgTypes::in, UpdateArgTypes::out) is det :-
-            construct_higher_order_type((pure), PredOrFunc,
-                (aditi_bottom_up), RelationArgTypes, ClosureType),
+            construct_higher_order_type(purity_pure, PredOrFunc,
+                lambda_aditi_bottom_up, RelationArgTypes, ClosureType),
             UpdateArgTypes = [ClosureType]
     ),
 
@@ -1513,8 +1515,8 @@ typecheck_aditi_builtin_2(CallId, Args, GoalPath,
     ModifyAdjustArgTypes =
         (pred(RelationArgTypes::in, AditiModifyTypes::out) is det :-
             list__append(RelationArgTypes, RelationArgTypes, ClosureArgTypes),
-            construct_higher_order_pred_type((pure), (aditi_bottom_up),
-                ClosureArgTypes, ClosureType),
+            construct_higher_order_pred_type(purity_pure,
+                lambda_aditi_bottom_up, ClosureArgTypes, ClosureType),
             AditiModifyTypes = [ClosureType]
     ),
     (
@@ -1597,7 +1599,7 @@ typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info, !IO) :-
     % argument of the update predicate. For an ordinary predicate call,
     % the types are not transformed.
     %
-:- type adjust_arg_types == pred(list(type), list(type)).
+:- type adjust_arg_types == pred(list(mer_type), list(mer_type)).
 :- inst adjust_arg_types == (pred(in, out) is det).
 
     % Typecheck a predicate, performing the given transformation on the
@@ -1824,7 +1826,7 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
     % types contained within renamed apart.
     %
 :- pred typecheck_var_has_polymorphic_type_list(list(prog_var)::in,
-    tvarset::in, existq_tvars::in, list(type)::in, hlds_constraints::in,
+    tvarset::in, existq_tvars::in, list(mer_type)::in, hlds_constraints::in,
     typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
 typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet, PredExistQVars,
@@ -1835,7 +1837,7 @@ typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet, PredExistQVars,
     typecheck_var_has_arg_type_list(Args, 1, ArgsTypeAssignSet, !Info, !IO).
 
 :- pred rename_apart(type_assign_set::in, tvarset::in, existq_tvars::in,
-    list(type)::in, hlds_constraints::in,
+    list(mer_type)::in, hlds_constraints::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
 rename_apart([], _, _, _, _, !ArgTypeAssigns).
@@ -1862,8 +1864,9 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars,
     rename_apart(TypeAssigns0, PredTypeVarSet, PredExistQVars,
         PredArgTypes, PredConstraints, !ArgTypeAssigns).
 
-:- pred type_assign_rename_apart(type_assign::in, tvarset::in, list(type)::in,
-    type_assign::out, list(type)::out, tvar_renaming::out) is det.
+:- pred type_assign_rename_apart(type_assign::in, tvarset::in,
+    list(mer_type)::in, type_assign::out, list(mer_type)::out,
+    tvar_renaming::out) is det.
 
 type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
         TypeAssign, ParentArgTypes, Renaming) :-
@@ -1940,7 +1943,7 @@ typecheck_var_has_arg_type_2([ArgsTypeAssign | ArgsTypeAssignSets], Var,
     typecheck_var_has_arg_type_2(ArgsTypeAssignSets, Var,
         !ArgsTypeAssignSet).
 
-:- pred arg_type_assign_var_has_type(type_assign::in, list(type)::in,
+:- pred arg_type_assign_var_has_type(type_assign::in, list(mer_type)::in,
     prog_var::in, hlds_constraints::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
@@ -1975,20 +1978,21 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
     % Given a list of variables and a list of types, ensure
     % that each variable has the corresponding type.
     %
-:- pred typecheck_var_has_type_list(list(prog_var)::in, list(type)::in, int::in,
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+:- pred typecheck_var_has_type_list(list(prog_var)::in, list(mer_type)::in,
+    int::in, typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
 typecheck_var_has_type_list([], [_ | _], _, !Info, !IO) :-
     error("typecheck_var_has_type_list: length mismatch").
 typecheck_var_has_type_list([_ | _], [], _, !Info, !IO) :-
     error("typecheck_var_has_type_list: length mismatch").
 typecheck_var_has_type_list([], [], _, !Info, !IO).
-typecheck_var_has_type_list([Var | Vars], [Type | Types], ArgNum, !Info, !IO) :-
+typecheck_var_has_type_list([Var | Vars], [Type | Types], ArgNum, !Info,
+        !IO) :-
     typecheck_info_set_arg_num(ArgNum, !Info),
     typecheck_var_has_type(Var, Type, !Info, !IO),
     typecheck_var_has_type_list(Vars, Types, ArgNum + 1, !Info, !IO).
 
-:- pred typecheck_var_has_type(prog_var::in, (type)::in,
+:- pred typecheck_var_has_type(prog_var::in, mer_type::in,
     typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
 typecheck_var_has_type(Var, Type, !Info, !IO) :-
@@ -2005,8 +2009,8 @@ typecheck_var_has_type(Var, Type, !Info, !IO) :-
         typecheck_info_set_type_assign_set(TypeAssignSet, !Info)
     ).
 
-:- pred typecheck_var_has_type_2(type_assign_set::in, prog_var::in, (type)::in,
-    type_assign_set::in, type_assign_set::out) is det.
+:- pred typecheck_var_has_type_2(type_assign_set::in, prog_var::in,
+    mer_type::in, type_assign_set::in, type_assign_set::out) is det.
 
 typecheck_var_has_type_2([], _, _, !TypeAssignSet).
 typecheck_var_has_type_2([TypeAssign0 | TypeAssignSet0], Var, Type,
@@ -2014,7 +2018,7 @@ typecheck_var_has_type_2([TypeAssign0 | TypeAssignSet0], Var, Type,
     type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet),
     typecheck_var_has_type_2(TypeAssignSet0, Var, Type, !TypeAssignSet).
 
-:- pred type_assign_var_has_type(type_assign::in, prog_var::in, (type)::in,
+:- pred type_assign_var_has_type(type_assign::in, prog_var::in, mer_type::in,
     type_assign_set::in, type_assign_set::out) is det.
 
 type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
@@ -2040,7 +2044,7 @@ type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     %       their respective Types },
     % list__append(TAs, TypeAssignSet0, TypeAssignSet).
     %
-:- pred type_assign_var_has_type_list(list(prog_var)::in, list(type)::in,
+:- pred type_assign_var_has_type_list(list(prog_var)::in, list(mer_type)::in,
     type_assign::in, typecheck_info::in,
     type_assign_set::in, type_assign_set::out) is det.
 
@@ -2064,7 +2068,7 @@ type_assign_var_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
     % list__append(TAs, TypeAssignSet0, TypeAssignSet).
     %
 :- pred type_assign_list_var_has_type_list(type_assign_set::in,
-    list(prog_var)::in, list(type)::in, typecheck_info::in,
+    list(prog_var)::in, list(mer_type)::in, typecheck_info::in,
     type_assign_set::in, type_assign_set::out) is det.
 
 type_assign_list_var_has_type_list([], _, _, _, !TypeAssignSet).
@@ -2216,7 +2220,7 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
         )
     ).
 
-:- type cons_type ---> cons_type(type, list(type)).
+:- type cons_type ---> cons_type(mer_type, list(mer_type)).
 :- type cons_type_assign_set == list(pair(type_assign, cons_type)).
 
     % typecheck_unify_var_functor_get_ctors(TypeAssignSet, Info,
@@ -2367,7 +2371,7 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_assign_check_functor_type((type)::in, list(type)::in,
+:- pred type_assign_check_functor_type(mer_type::in, list(mer_type)::in,
     prog_var::in, type_assign::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
@@ -2402,7 +2406,7 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
     % from the current type_assign's typevarset.
     %
 :- pred get_cons_stuff(cons_type_info::in, type_assign::in, typecheck_info::in,
-    (type)::out, list(type)::out, type_assign::out) is det.
+    mer_type::out, list(mer_type)::out, type_assign::out) is det.
 
 get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
     ConsDefn = cons_type_info(ConsTypeVarSet, ConsExistQVars0,
@@ -2477,7 +2481,8 @@ apply_var_renaming_to_var(RenameSubst, Var0, Var) :-
 
     % typecheck_lambda_var_has_type(Var, ArgVars, ...):
     %
-    % Check that `Var' has type `pred(T1, T2, ...)' where T1, T2, ... are the types of the `ArgVars'.
+    % Check that `Var' has type `pred(T1, T2, ...)' where T1, T2, ...
+    % are the types of the `ArgVars'.
     %
 :- pred typecheck_lambda_var_has_type(purity::in, pred_or_func::in,
     lambda_eval_method::in, prog_var::in, list(prog_var)::in,
@@ -2514,7 +2519,7 @@ typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0], Purity,
     typecheck_lambda_var_has_type_2(TypeAssignSet0,
         Purity, PredOrFunc, EvalMethod, Var, ArgVars, !TypeAssignSet).
 
-:- pred type_assign_get_types_of_vars(list(prog_var)::in, list(type)::out,
+:- pred type_assign_get_types_of_vars(list(prog_var)::in, list(mer_type)::out,
     type_assign::in, type_assign::out) is det.
 
 type_assign_get_types_of_vars([], [], !TypeAssign).
@@ -2542,7 +2547,7 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
     % Unify (with occurs check) two types in a type assignment
     % and update the type bindings.
     %
-:- pred type_assign_unify_type(type_assign::in, (type)::in, (type)::in,
+:- pred type_assign_unify_type(type_assign::in, mer_type::in, mer_type::in,
     type_assign::out) is semidet.
 
 type_assign_unify_type(TypeAssign0, X, Y, TypeAssign) :-
@@ -2637,7 +2642,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
             list__split_list(FuncArity, CompleteArgTypes,
                 ArgTypes, PredTypeParams)
         ->
-            construct_higher_order_pred_type(Purity, normal,
+            construct_higher_order_pred_type(Purity, lambda_normal,
                 PredTypeParams, PredType),
             make_body_hlds_constraints(ClassTable, PredTypeVarSet,
                 GoalPath, PredClassContext, PredConstraints),
@@ -2651,7 +2656,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
             pred_info_get_markers(PredInfo, Markers),
             ( check_marker(Markers, aditi) ->
                 construct_higher_order_pred_type(Purity,
-                    (aditi_bottom_up), PredTypeParams, PredType2),
+                    lambda_aditi_bottom_up, PredTypeParams, PredType2),
                 ConsInfo2 = cons_type_info(PredTypeVarSet,
                     PredExistQVars, PredType2, ArgTypes, PredConstraints),
                 !:ConsInfos = [ConsInfo2 | !.ConsInfos]
@@ -2681,7 +2686,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
                 FuncType = FuncReturnTypeParam
             ;
                 FuncArgTypeParams = [_ | _],
-                construct_higher_order_func_type(Purity, normal,
+                construct_higher_order_func_type(Purity, lambda_normal,
                     FuncArgTypeParams, FuncReturnTypeParam, FuncType)
             ),
             make_body_hlds_constraints(ClassTable, PredTypeVarSet,
@@ -2708,15 +2713,15 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
 
 builtin_apply_type(_Info, Functor, Arity, ConsTypeInfos) :-
     Functor = cons(unqualified(ApplyName), _),
-    ( ApplyName = "apply", Purity = (pure)
-    ; ApplyName = "", Purity = (pure)
+    ( ApplyName = "apply", Purity = purity_pure
+    ; ApplyName = "", Purity = purity_pure
     % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
-    ; ApplyName = "impure_apply", Purity = (impure)
-    ; ApplyName = "semipure_apply", Purity = (semipure)
+    ; ApplyName = "impure_apply", Purity = purity_impure
+    ; ApplyName = "semipure_apply", Purity = purity_semipure
     ),
     Arity >= 1,
     Arity1 = Arity - 1,
-    higher_order_func_type(Purity, Arity1, normal, TypeVarSet, FuncType,
+    higher_order_func_type(Purity, Arity1, lambda_normal, TypeVarSet, FuncType,
         ArgTypes, RetType),
     ExistQVars = [],
     empty_hlds_constraints(EmptyConstraints),

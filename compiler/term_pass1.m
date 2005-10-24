@@ -43,12 +43,12 @@
 					% each procedure in the SCC.
 		)
 	;	error(
-			list(term_errors__error)
+			list(termination_error_context)
 		).
 
 :- pred find_arg_sizes_in_scc(list(pred_proc_id)::in, module_info::in,
-	pass_info::in, arg_size_result::out, list(term_errors__error)::out,
-	io::di, io::uo) is det.
+	pass_info::in, arg_size_result::out,
+	list(termination_error_context)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -85,14 +85,14 @@
 					% code.
 			used_args,
 					% The next output_supplier map.
-			list(term_errors__error)
+			list(termination_error_context)
 					% There is an entry in this list for
 					% each procedure in the SCC in which
 					% the set of active vars is not
 					% a subset of the input arguments.
 		)
 	;	error(
-			list(term_errors__error)
+			list(termination_error_context)
 		).
 
 find_arg_sizes_in_scc(SCC, Module, PassInfo, ArgSize, TermErrors, !IO) :-
@@ -146,7 +146,7 @@ init_output_suppliers([PPId | PPIds], Module, OutputSupplierMap) :-
 
 :- pred find_arg_sizes_in_scc_fixpoint(list(pred_proc_id)::in,
 	module_info::in, pass_info::in, used_args::in, pass1_result::out,
-	list(term_errors__error)::out) is det.
+	list(termination_error_context)::out) is det.
 
 find_arg_sizes_in_scc_fixpoint(SCC, Module, PassInfo, OutputSupplierMap0,
 		Result, TermErrors) :-
@@ -172,9 +172,10 @@ find_arg_sizes_in_scc_fixpoint(SCC, Module, PassInfo, OutputSupplierMap0,
 	).
 
 :- pred find_arg_sizes_in_scc_pass(list(pred_proc_id)::in,
-	module_info::in, pass_info::in, used_args::in,
-	list(path_info)::in, list(term_errors__error)::in, pass1_result::out,
-	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+	module_info::in, pass_info::in, used_args::in, list(path_info)::in,
+	list(termination_error_context)::in, pass1_result::out,
+	list(termination_error_context)::in,
+	list(termination_error_context)::out) is det.
 
 find_arg_sizes_in_scc_pass([], _, _, OutputSupplierMap, Paths, SubsetErrors,
 		Result, !TermErrors) :-
@@ -212,7 +213,7 @@ find_arg_sizes_in_scc_pass([PPId | PPIds], Module, PassInfo,
 
 :- pred find_arg_sizes_pred(pred_proc_id::in, module_info::in,
 	pass_info::in, used_args::in, pass1_result::out,
-	list(term_errors__error)::out) is det.
+	list(termination_error_context)::out) is det.
 
 find_arg_sizes_pred(PPId, Module, PassInfo, OutputSupplierMap0, Result,
 		TermErrors) :-
@@ -260,9 +261,11 @@ find_arg_sizes_pred(PPId, Module, PassInfo, OutputSupplierMap0, Result,
 
 update_output_suppliers([], _ActiveVars, [], []).
 update_output_suppliers([_ | _], _ActiveVars, [], []) :-
-	unexpected(this_file, "update_output_suppliers/4: umatched variables.").
+	unexpected(this_file,
+		"update_output_suppliers/4: umatched variables.").
 update_output_suppliers([], _ActiveVars, [_ | _], []) :-
-	unexpected(this_file, "update_output_suppliers/4: umatched variables.").
+	unexpected(this_file,
+		"update_output_suppliers/4: umatched variables.").
 update_output_suppliers([Arg | Args], ActiveVars,
 		[OutputSupplier0 | OutputSuppliers0],
 		[OutputSupplier | OutputSuppliers]) :-
@@ -277,7 +280,7 @@ update_output_suppliers([Arg | Args], ActiveVars,
 	update_output_suppliers(Args, ActiveVars,
 		OutputSuppliers0, OutputSuppliers).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Check if a procedure makes any nonterminating calls.
 %
@@ -289,7 +292,8 @@ update_output_suppliers([Arg | Args], ActiveVars,
 % procedures lower down the call-graph (see term_pass2.m for details).
 
 :- pred check_proc_non_term_calls(module_info::in, pred_proc_id::in,
-	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+	list(termination_error_context)::in,
+	list(termination_error_context)::out) is det.
 
 check_proc_non_term_calls(Module, PPId, !Errors) :-
 	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
@@ -299,7 +303,8 @@ check_proc_non_term_calls(Module, PPId, !Errors) :-
 
 :- pred check_goal_non_term_calls(module_info::in,
 	pred_proc_id::in, vartypes::in, hlds_goal::in,
-	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+	list(termination_error_context)::in,
+	list(termination_error_context)::out) is det.
 
 check_goal_non_term_calls(Module, PPId, VarTypes, GoalExpr - GoalInfo,
 		!Errors) :-
@@ -308,7 +313,8 @@ check_goal_non_term_calls(Module, PPId, VarTypes, GoalExpr - GoalInfo,
 
 :- pred check_goal_expr_non_term_calls(module_info::in, pred_proc_id::in,
 	vartypes::in, hlds_goal_expr::in, hlds_goal_info::in,
-	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+	list(termination_error_context)::in,
+	list(termination_error_context)::out) is det.
 
 check_goal_expr_non_term_calls(Module, PPId, VarTypes, conj(Goals), _,
 		!Errors):-
@@ -350,7 +356,8 @@ check_goal_expr_non_term_calls(Module, PPId, VarTypes, disj(Goals), _,
 		!Errors) :-
 	list__foldl(check_goal_non_term_calls(Module, PPId, VarTypes), Goals,
 		!Errors).
-check_goal_expr_non_term_calls(Module, PPId, VarTypes, not(Goal), _, !Errors) :-
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, not(Goal), _,
+		!Errors) :-
 	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
 check_goal_expr_non_term_calls(Module, PPId, VarTypes, scope(_, Goal), _,
 		!Errors) :-
@@ -370,14 +377,15 @@ check_goal_expr_non_term_calls(_, _, _, shorthand(_), _, _, _) :-
 		"shorthand goal encountered during termination analysis.").
 
 :- pred check_cases_non_term_calls(module_info::in, pred_proc_id::in,
-	vartypes::in, case::in, list(term_errors__error)::in,
-	list(term_errors__error)::out) is det.
+	vartypes::in, case::in,
+	list(termination_error_context)::in,
+	list(termination_error_context)::out) is det.
 
 check_cases_non_term_calls(Module, PPId, VarTypes, case(_, Goal), !Errors) :-
 	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 % Solve the list of constraints
 

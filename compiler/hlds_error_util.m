@@ -41,7 +41,7 @@
     = list(format_component).
 
 :- func describe_one_pred_name_mode(module_info, should_module_qualify,
-    pred_id, inst_varset, list(mode)) = list(format_component).
+    pred_id, inst_varset, list(mer_mode)) = list(format_component).
 
 :- func describe_several_pred_names(module_info, should_module_qualify,
     list(pred_id)) = list(format_component).
@@ -206,7 +206,7 @@ module_qualification(ModuleName, ShouldModuleQualify) = ModuleQualification :-
         ModuleQualification = ""
     ).
 
-:- func arg_modes_to_string(inst_varset, list(mode)) = string.
+:- func arg_modes_to_string(inst_varset, list(mer_mode)) = string.
 
 arg_modes_to_string(InstVarSet, ArgModes) = Str :-
     (

@@ -31,13 +31,13 @@
     % Find out how a function symbol (constructor) is represented
     % in the given type.
     %
-:- func cons_id_to_tag(cons_id, type, module_info) = cons_tag.
+:- func cons_id_to_tag(cons_id, mer_type, module_info) = cons_tag.
 
     % Given a list of types, mangle the names so into a string which
     % identifies them. The types must all have their top level functor
     % bound, with any arguments free variables.
     %
-:- pred make_instance_string(list(type)::in, string::out) is det.
+:- pred make_instance_string(list(mer_type)::in, string::out) is det.
 
 :- implementation.
 
@@ -142,7 +142,7 @@ make_instance_string(InstanceTypes, InstanceString) :-
     list__map(type_to_string, InstanceTypes, InstanceStrings),
     string__append_list(InstanceStrings, InstanceString).
 
-:- pred type_to_string((type)::in, string::out) is det.
+:- pred type_to_string(mer_type::in, string::out) is det.
 
 type_to_string(Type, String) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->

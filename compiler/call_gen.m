@@ -36,7 +36,7 @@
     code_info::in, code_info::out) is det.
 
 :- pred call_gen__generate_generic_call(code_model::in, generic_call::in,
-    list(prog_var)::in, list(mode)::in, determinism::in,
+    list(prog_var)::in, list(mer_mode)::in, determinism::in,
     hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
     is det.
 
@@ -169,7 +169,7 @@ call_gen__generate_generic_call(OuterCodeModel, GenericCall, Args0,
     ).
 
 :- pred call_gen__generate_generic_call_2(code_model::in, generic_call::in,
-    list(prog_var)::in, list(mode)::in, determinism::in,
+    list(prog_var)::in, list(mer_mode)::in, determinism::in,
     hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
     is det.
 

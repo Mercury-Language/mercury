@@ -248,7 +248,7 @@ insert_arg_unification(Var, Arg, Context, ArgContext, N1, !VarSet,
         arg_context_to_unify_context(ArgContext, N1, UnifyMainContext,
             UnifySubContext),
         unravel_unification(term__variable(Var), Arg, Context,
-            UnifyMainContext, UnifySubContext, pure, Goal,
+            UnifyMainContext, UnifySubContext, purity_pure, Goal,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         goal_to_conj_list(Goal, ArgUnifyConj)
     ).
@@ -307,7 +307,7 @@ append_arg_unification(Var, Arg, Context, ArgContext, N1, ConjList,
         arg_context_to_unify_context(ArgContext, N1, UnifyMainContext,
             UnifySubContext),
         unravel_unification(term__variable(Var), Arg, Context,
-            UnifyMainContext, UnifySubContext, pure, Goal,
+            UnifyMainContext, UnifySubContext, purity_pure, Goal,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         goal_to_conj_list(Goal, ConjList)
     ).
@@ -524,13 +524,13 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
 
         unravel_unification(term__variable(X), ThenTerm,
-            Context, MainContext, SubContext, pure, ThenGoal,
+            Context, MainContext, SubContext, purity_pure, ThenGoal,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
         finish_if_then_else_expr_then_goal(StateVars, BeforeSInfo, !SInfo),
 
         unravel_unification(term__variable(X), ElseTerm,
-            Context, MainContext, SubContext, pure,
+            Context, MainContext, SubContext, purity_pure,
             ElseGoal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
         IfThenElse = if_then_else(StateVars ++ Vars, IfGoal, ThenGoal,
@@ -621,7 +621,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
             % But for impure unifications, we need to do
             % this, because mode reordering can't reorder
             % around the functor unification.
-            ( Purity = pure ->
+            ( Purity = purity_pure ->
                 append_arg_unifications(HeadVars, FunctorArgs, FunctorContext,
                     ArgContext, Goal0, Goal2, !VarSet,
                     !ModuleInfo, !QualInfo, !SInfo, !IO)
@@ -702,7 +702,7 @@ ground_terms([Term | Terms]) :-
 %
 
 :- pred build_lambda_expression(prog_var::in, purity::in, pred_or_func::in,
-    lambda_eval_method::in, list(prog_term)::in, list(mode)::in,
+    lambda_eval_method::in, list(prog_term)::in, list(mer_mode)::in,
     determinism::in, goal::in, prog_context::in, unify_main_context::in,
     unify_sub_contexts::in, hlds_goal::out,
     prog_varset::in, prog_varset::out,
@@ -865,7 +865,7 @@ build_lambda_expression(X, Purity, PredOrFunc, EvalMethod, Args0, Modes, Det,
     %
  :- pred partition_args_and_lambda_vars(
     module_info::in, list(prog_term)::in,
-    list(prog_var)::in, list(mode)::in,
+    list(prog_var)::in, list(mer_mode)::in,
     list(prog_term)::out, list(prog_term)::out,
     list(prog_var)::out, list(prog_var)::out) is semidet.
 
@@ -906,7 +906,7 @@ partition_args_and_lambda_vars(ModuleInfo, [ Arg | Args ],
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 check_expr_purity(Purity, Context, !ModuleInfo, !IO) :-
-    ( Purity \= pure ->
+    ( Purity \= purity_pure ->
         impure_unification_expr_error(Context, Purity, !IO),
         module_info_incr_errors(!ModuleInfo)
     ;

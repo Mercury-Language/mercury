@@ -287,7 +287,7 @@ generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
     ( StartVal = 0 ->
         Index = Rval
     ;
-        Index = binop(-, Rval, const(int_const(StartVal)))
+        Index = binop(int_sub, Rval, const(int_const(StartVal)))
     ),
 
     % If the switch is not locally deterministic, we need to check that
@@ -329,7 +329,7 @@ generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
     Comment = node([comment("lookup switch") - ""]),
     Code = tree_list([Comment, VarCode, RangeCheck, CheckBitVec, LookupCode]).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % The bitvector is an array of words (where we use the first 32 bits
     % of each word). Each bit represents a tag value for the (range checked)
@@ -352,18 +352,20 @@ generate_bitvec_test(Index, CaseVals, Start, _End, CheckCode, !CI) :-
         BitNum = Index
     ;
         % This is the same as
-        % WordNum = binop(/, Index, const(int_const(WordBits)))
+        % WordNum = binop(int_div, Index, const(int_const(WordBits)))
         % except that it can generate more efficient code.
-        WordNum = binop(>>, Index, const(int_const(Log2WordBits))),
+        WordNum = binop(unchecked_right_shift, Index,
+            const(int_const(Log2WordBits))),
 
         Word = lval(field(yes(0), BitVecRval, WordNum)),
 
         % This is the same as
-        % BitNum = binop(mod, Index, const(int_const(WordBits)))
+        % BitNum = binop(int_mod, Index, const(int_const(WordBits)))
         % except that it can generate more efficient code.
-        BitNum = binop(&, Index, const(int_const(WordBits - 1)))
+        BitNum = binop(bitwise_and, Index, const(int_const(WordBits - 1)))
     ),
-    HasBit = binop((&), binop((<<), const(int_const(1)), BitNum), Word),
+    HasBit = binop(bitwise_and,
+        binop(unchecked_left_shift, const(int_const(1)), BitNum), Word),
     code_info__fail_if_rval_is_false(HasBit, CheckCode, !CI).
 
     % Prevent cross-compilation errors by making sure that the bitvector
@@ -436,7 +438,7 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
     Count1 = Count + 1,
     generate_bit_vec_args(Remainder, Count1, Rvals).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Add an expression to the expression cache in the code_info structure
     % for each of the output variables of the lookup switch. This is done by
@@ -483,7 +485,7 @@ construct_args([Index - Rval | Rest], Count0, [Arg | Args]) :-
     Count1 = Count0 + 1,
     construct_args(Remainder, Count1, Args).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % For the purpose of constructing the terms, the case_consts structure
     % is a bit inconvenient, so we rearrange the data into a map from var
@@ -512,10 +514,10 @@ rearrange_vals_2([Var - Rval | Rest], Tag, Map0, Map) :-
     map__set(Map0, Var, Vals, Map1),
     rearrange_vals_2(Rest, Tag, Map1, Map).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "lookup_switch.m".
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

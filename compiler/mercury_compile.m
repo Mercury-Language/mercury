@@ -1053,7 +1053,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
                 FindTimestampFiles, ModulesToRecompile0, ReadModules, !IO),
             (
                 Target = asm,
-                ModulesToRecompile0 = some([_ | _])
+                ModulesToRecompile0 = some_modules([_ | _])
             ->
                 %
                 % With `--target asm', if one module
@@ -1061,16 +1061,16 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
                 % recompiled because they are all compiled
                 % into a single object file.
                 %
-                ModulesToRecompile = (all)
+                ModulesToRecompile = all_modules
             ;
                 ModulesToRecompile = ModulesToRecompile0
             )
         ;
             Smart = no,
             map__init(ReadModules),
-            ModulesToRecompile = (all)
+            ModulesToRecompile = all_modules
         ),
-        ( ModulesToRecompile = some([]) ->
+        ( ModulesToRecompile = some_modules([]) ->
             % XXX Currently smart recompilation is disabled
             % if mmc is linking the executable because it
             % doesn't know how to check whether all the
@@ -1131,7 +1131,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         FactTableObjFiles = []
     ;
         split_into_submodules(ModuleName, Items, SubModuleList0, !IO),
-        ( MaybeModulesToRecompile = some(ModulesToRecompile) ->
+        ( MaybeModulesToRecompile = some_modules(ModulesToRecompile) ->
             ToRecompile = (pred((SubModule - _)::in) is semidet :-
                 list__member(SubModule, ModulesToRecompile)
             ),
@@ -3345,7 +3345,7 @@ maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
         maybe_dump_hlds(HLDS1, 505, "bytecode_args_to_regs", !DumpInfo, !IO),
         maybe_write_string(Verbose, "% Generating bytecodes...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        bytecode_gen__module(HLDS1, Bytecode, !IO),
+        bytecode_gen__gen_module(HLDS1, Bytecode, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         module_name_to_file_name(ModuleName, ".bytedebug", yes, BytedebugFile,
@@ -4161,9 +4161,9 @@ make_foreign_import_header_code(ForeignImportModule, Include, !IO) :-
     ForeignImportModule = foreign_import_module(Lang, ModuleName, Context),
     (
         Lang = c,
-        module_name_to_search_file_name(ModuleName, ".mh", HeaderFileName, !IO),
-        string__append_list(["#include """, HeaderFileName, """\n"],
-            IncludeString),
+        module_name_to_search_file_name(ModuleName, ".mh", HeaderFileName,
+            !IO),
+        IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(c, foreign_decl_is_exported,
             IncludeString, Context)
     ;
@@ -4323,7 +4323,8 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
 
     % Warning about non-tail calls needs to come after detection
     % of tail calls
-    globals__io_lookup_bool_option(warn_non_tail_recursion, WarnTailCalls, !IO),
+    globals__io_lookup_bool_option(warn_non_tail_recursion, WarnTailCalls,
+        !IO),
     (
         OptimizeTailCalls = yes,
         WarnTailCalls = yes
@@ -4441,7 +4442,8 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
     MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
         FinalPreds),
     list__append(RttiDefns, Defns0, Defns),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds, FinalPreds).
+    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns,
+        InitPreds, FinalPreds).
 
 % The `--high-level-C' MLDS output pass
 

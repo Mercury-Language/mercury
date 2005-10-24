@@ -24,7 +24,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 
 :- type qual_info.
 
@@ -32,7 +31,7 @@
 
     % Update the qual_info when processing a new clause.
 :- pred update_qual_info(tvar_name_map::in, tvarset::in,
-    map(prog_var, type)::in, import_status::in,
+    vartypes::in, import_status::in,
     qual_info::in, qual_info::out) is det.
 
 :- pred qual_info_get_tvarset(qual_info::in, tvarset::out) is det.
@@ -60,7 +59,7 @@
 
     % Process an explicit type qualification.
     %
-:- pred process_type_qualification(prog_var::in, (type)::in, tvarset::in,
+:- pred process_type_qualification(prog_var::in, mer_type::in, tvarset::in,
     prog_context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out, io::di, io::uo) is det.
 
@@ -88,6 +87,7 @@
 :- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
+:- import_module map.
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
@@ -203,7 +203,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
     !:QualInfo = qual_info(EqvMap, TVarSet, TVarRenaming,
         TVarNameMap, VarTypes, MQInfo, Status, FoundError).
 
-:- pred update_var_types(prog_var::in, (type)::in, prog_context::in,
+:- pred update_var_types(prog_var::in, mer_type::in, prog_context::in,
     vartypes::in, vartypes::out, io::di, io::uo) is det.
 
 update_var_types(Var, Type, Context, !VarTypes, !IO) :-
@@ -246,8 +246,8 @@ record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
 record_used_functor(ConsId, !QualInfo) :-
     ( ConsId = cons(SymName, Arity) ->
         Id = SymName - Arity,
-        apply_to_recompilation_info(
-            recompilation__record_used_item(functor, Id, Id), !QualInfo)
+        apply_to_recompilation_info(record_used_item(functor_item, Id, Id),
+            !QualInfo)
     ;
         true
     ).

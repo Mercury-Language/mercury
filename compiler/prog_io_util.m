@@ -108,11 +108,11 @@
 :- pred parse_pred_or_func_and_args(term(_T)::in, pred_or_func::out,
     sym_name::out, list(term(_T))::out) is semidet.
 
-:- pred parse_type(term::in, maybe1(type)::out) is det.
+:- pred parse_type(term::in, maybe1(mer_type)::out) is det.
 
-:- pred parse_types(list(term)::in, maybe1(list(type))::out) is det.
+:- pred parse_types(list(term)::in, maybe1(list(mer_type))::out) is det.
 
-:- pred unparse_type((type)::in, term::out) is det.
+:- pred unparse_type(mer_type::in, term::out) is det.
 
 :- pred parse_purity_annotation(term(T)::in, purity::out, term(T)::out) is det.
 
@@ -121,15 +121,15 @@
     ;       no_allow_constrained_inst_var.
 
 :- pred convert_mode_list(allow_constrained_inst_var::in, list(term)::in,
-    list(mode)::out) is semidet.
+    list(mer_mode)::out) is semidet.
 
-:- pred convert_mode(allow_constrained_inst_var::in, term::in, (mode)::out)
+:- pred convert_mode(allow_constrained_inst_var::in, term::in, mer_mode::out)
     is semidet.
 
 :- pred convert_inst_list(allow_constrained_inst_var::in, list(term)::in,
-    list(inst)::out) is semidet.
+    list(mer_inst)::out) is semidet.
 
-:- pred convert_inst(allow_constrained_inst_var::in, term::in, (inst)::out)
+:- pred convert_inst(allow_constrained_inst_var::in, term::in, mer_inst::out)
     is semidet.
 
 :- pred standard_det(string::in, determinism::out) is semidet.
@@ -312,8 +312,8 @@ parse_type(Term, Result) :-
 parse_types(Terms, Result) :-
     parse_types_2(Terms, [], Result).
 
-:- pred parse_types_2(list(term)::in, list(type)::in, maybe1(list(type))::out)
-    is det.
+:- pred parse_types_2(list(term)::in, list(mer_type)::in,
+    maybe1(list(mer_type))::out) is det.
 
 parse_types_2([], RevTypes, ok(Types)) :-
     list__reverse(RevTypes, Types).
@@ -337,8 +337,8 @@ parse_builtin_type(Term, BuiltinType) :-
     % The predicate parse_type will then try to parse the term as an ordinary
     % defined type and will produce the required error message.
     %
-:- pred parse_higher_order_type(term::in, list(type)::out, maybe(type)::out,
-    purity::out, lambda_eval_method::out) is semidet.
+:- pred parse_higher_order_type(term::in, list(mer_type)::out,
+    maybe(mer_type)::out, purity::out, lambda_eval_method::out) is semidet.
 
 parse_higher_order_type(Term0, ArgTypes, MaybeRet, Purity, EvalMethod) :-
     parse_purity_annotation(Term0, Purity, Term1),
@@ -362,7 +362,7 @@ parse_purity_annotation(Term0, Purity, Term) :-
         Purity = Purity0,
         Term = Term1
     ;
-        Purity = (pure),
+        Purity = purity_pure,
         Term = Term0
     ).
 
@@ -403,7 +403,7 @@ unparse_type(apply_n(TVar, Args, _), Term) :-
 unparse_type(kinded(_, _), _) :-
     unexpected(this_file, "prog_io_util: kind annotation").
 
-:- pred unparse_type_list(list(type)::in, list(term)::out) is det.
+:- pred unparse_type_list(list(mer_type)::in, list(term)::out) is det.
 
 unparse_type_list(Types, Terms) :-
     list__map(unparse_type, Types, Terms).
@@ -422,18 +422,18 @@ unparse_qualified_term(qualified(Qualifier, Name), Args, Term) :-
 :- pred maybe_add_lambda_eval_method(lambda_eval_method::in, term::in,
     term::out) is det.
 
-maybe_add_lambda_eval_method(normal, Term, Term).
-maybe_add_lambda_eval_method((aditi_bottom_up), Term0, Term) :-
+maybe_add_lambda_eval_method(lambda_normal, Term, Term).
+maybe_add_lambda_eval_method(lambda_aditi_bottom_up, Term0, Term) :-
     Context = term__context_init,
     Term = term__functor(term__atom("aditi_bottom_up"), [Term0], Context).
 
 :- pred maybe_add_purity_annotation(purity::in, term::in, term::out) is det.
 
-maybe_add_purity_annotation(pure, Term, Term).
-maybe_add_purity_annotation((semipure), Term0, Term) :-
+maybe_add_purity_annotation(purity_pure, Term, Term).
+maybe_add_purity_annotation(purity_semipure, Term0, Term) :-
     Context = term__context_init,
     Term = term__functor(term__atom("semipure"), [Term0], Context).
-maybe_add_purity_annotation((impure), Term0, Term) :-
+maybe_add_purity_annotation(purity_impure, Term0, Term) :-
     Context = term__context_init,
     Term = term__functor(term__atom("impure"), [Term0], Context).
 
@@ -590,13 +590,13 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
     % A "simple" builtin inst is one that has no arguments and no special
     % syntax.
     %
-:- pred convert_simple_builtin_inst(string::in, list(term)::in, (inst)::out)
+:- pred convert_simple_builtin_inst(string::in, list(term)::in, mer_inst::out)
     is semidet.
 
 convert_simple_builtin_inst(Name, [], Inst) :-
     convert_simple_builtin_inst_2(Name, Inst).
 
-:- pred convert_simple_builtin_inst_2(string::in, (inst)::out) is semidet.
+:- pred convert_simple_builtin_inst_2(string::in, mer_inst::out) is semidet.
 
     % `free' insts
 convert_simple_builtin_inst_2("free", free).
@@ -630,7 +630,7 @@ standard_det("erroneous", erroneous).
 standard_det("failure", failure).
 
 :- pred parse_bound_inst_list(allow_constrained_inst_var::in, term::in,
-    uniqueness::in, (inst)::out) is semidet.
+    uniqueness::in, mer_inst::out) is semidet.
 
 parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness,
         bound(Uniqueness, Functors)) :-

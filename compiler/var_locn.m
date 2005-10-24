@@ -1128,7 +1128,8 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
     ( set__member(Target, Lvals0) ->
         Code = empty
     ;
-        free_up_lval(ModuleInfo, Target, [Var], ForbiddenLvals, FreeCode, !VLI),
+        free_up_lval(ModuleInfo, Target, [Var], ForbiddenLvals, FreeCode,
+            !VLI),
 
         % If Var's value is cached, Lvals0 must be empty. However, the cached
         % value may simply be var(Other), and Other may already be in Target.
@@ -1336,7 +1337,8 @@ find_one_occupying_var([Var | Vars], Lval, VarStateMap, OccupyingVar,
 ensure_copies_are_present(OneSource, OtherSources, Var, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap0),
     map__lookup(VarStateMap0, Var, State0),
-    State0 = state(LvalSet0, MaybeConstRval, MaybeExprRval, Using, DeadOrAlive),
+    State0 = state(LvalSet0, MaybeConstRval, MaybeExprRval, Using,
+        DeadOrAlive),
     set__to_sorted_list(LvalSet0, Lvals0),
     list__foldl(ensure_copies_are_present_lval(OtherSources, OneSource),
         Lvals0, LvalSet0, LvalSet),

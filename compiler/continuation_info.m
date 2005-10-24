@@ -111,7 +111,7 @@
                 % The head variables, in order, including the ones introduced
                 % by the compiler.
 
-                arg_modes           :: list(mode),
+                arg_modes           :: list(mer_mode),
                 % The modes of the head variables.
 
                 proc_body           :: hlds_goal,
@@ -277,17 +277,17 @@
 
 :- type closure_arg_info
     --->    closure_arg_info(
-                type,   % The type of the argument.
-                (inst)  % The initial inst of the argument.
+                mer_type,   % The type of the argument.
+                mer_inst    % The initial inst of the argument.
 
-                        % It may be useful in the future to include
-                        % info about the final insts and about
-                        % the determinism. This would allow us
-                        % to implement checked dynamic inst casts,
-                        % which may be helpful for dynamic loading.
-                        % It may also be useful for printing
-                        % closures and for providing user-level
-                        % RTTI access.
+                            % It may be useful in the future to include
+                            % info about the final insts and about
+                            % the determinism. This would allow us
+                            % to implement checked dynamic inst casts,
+                            % which may be helpful for dynamic loading.
+                            % It may also be useful for printing
+                            % closures and for providing user-level
+                            % RTTI access.
             ).
 
 :- type slot_contents
@@ -739,7 +739,7 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
     ).
 
 :- pred build_closure_info(list(prog_var)::in,
-    list(type)::in, list(arg_info)::in,  list(closure_arg_info)::out,
+    list(mer_type)::in, list(arg_info)::in,  list(closure_arg_info)::out,
     instmap::in, map(prog_var, set(lval))::in,
     map(prog_var, set(lval))::out, set(tvar)::in, set(tvar)::out) is semidet.
 

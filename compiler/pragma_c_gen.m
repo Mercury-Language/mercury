@@ -1035,7 +1035,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     --->    c_arg(
                 prog_var,
                 maybe(string),  % name
-                type,           % original type before
+                mer_type,       % original type before
                                 % inlining/specialization
                                 % (the actual type may be an instance
                                 % of this type, if this type is polymorphic).
@@ -1252,7 +1252,7 @@ get_pragma_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
         get_pragma_input_vars(Args, Inputs, CanOptAwayUnnamedArgs, Code, !CI)
     ).
 
-:- func get_maybe_foreign_type_info(code_info, (type)) =
+:- func get_maybe_foreign_type_info(code_info, mer_type) =
     maybe(pragma_c_foreign_type).
 
 get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-

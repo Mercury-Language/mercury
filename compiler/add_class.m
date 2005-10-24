@@ -26,7 +26,7 @@
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred module_add_instance_defn(module_name::in, list(prog_constraint)::in,
-    sym_name::in, list(type)::in, instance_body::in, tvarset::in,
+    sym_name::in, list(mer_type)::in, instance_body::in, tvarset::in,
     import_status::in, prog_context::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -35,7 +35,7 @@
     % for that definition.
     %
 :- pred do_produce_instance_method_clauses(instance_proc_def::in,
-    pred_or_func::in, arity::in, list(type)::in, pred_markers::in,
+    pred_or_func::in, arity::in, list(mer_type)::in, pred_markers::in,
     term__context::in, import_status::in, clauses_info::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
@@ -466,10 +466,10 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
         set__list_to_set(HeadVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
-        ( check_marker(Markers, (impure)) ->
-            goal_info_add_feature((impure), GoalInfo2, GoalInfo)
-        ; check_marker(Markers, (semipure)) ->
-            goal_info_add_feature((semipure), GoalInfo2, GoalInfo)
+        ( check_marker(Markers, is_impure) ->
+            goal_info_add_feature(impure_goal, GoalInfo2, GoalInfo)
+        ; check_marker(Markers, is_semipure) ->
+            goal_info_add_feature(semipure_goal, GoalInfo2, GoalInfo)
         ;
             GoalInfo = GoalInfo2
         ),

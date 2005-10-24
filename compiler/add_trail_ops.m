@@ -350,7 +350,7 @@ cases_add_trail_ops([Case0 | Cases0], [Case | Cases], !Info) :-
     trail_ops_info::in) is det.
 
 gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
-    generate_call("store_ticket", det, [TicketVar], [impure],
+    generate_call("store_ticket", det, [TicketVar], [impure_goal],
         [TicketVar - ground_inst], Info ^ module_info, Context,
         SaveTicketGoal).
 
@@ -358,35 +358,35 @@ gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
     trail_ops_info::in) is det.
 
 gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
-    generate_call("reset_ticket_undo", det, [TicketVar], [impure],
+    generate_call("reset_ticket_undo", det, [TicketVar], [impure_goal],
         [], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_reset_ticket_solve(prog_var::in, prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
-    generate_call("reset_ticket_solve", det, [TicketVar], [impure],
+    generate_call("reset_ticket_solve", det, [TicketVar], [impure_goal],
         [], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_reset_ticket_commit(prog_var::in, prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
-    generate_call("reset_ticket_commit", det, [TicketVar], [impure],
+    generate_call("reset_ticket_commit", det, [TicketVar], [impure_goal],
         [], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_prune_ticket(prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_prune_ticket(Context, PruneTicketGoal, Info) :-
-    generate_call("prune_ticket", det, [], [impure],
+    generate_call("prune_ticket", det, [], [impure_goal],
         [], Info ^ module_info, Context, PruneTicketGoal).
 
 :- pred gen_discard_ticket(prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
-    generate_call("discard_ticket", det, [], [impure], [],
+    generate_call("discard_ticket", det, [], [impure_goal], [],
         Info ^ module_info, Context, DiscardTicketGoal).
 
 :- pred gen_mark_ticket_stack(prog_var::in, prog_context::in, hlds_goal::out,
@@ -394,8 +394,8 @@ gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
 
 gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
         Info) :-
-    generate_call("mark_ticket_stack", det, [SavedTicketCounterVar], [impure],
-        [], Info ^ module_info, Context, MarkTicketStackGoal).
+    generate_call("mark_ticket_stack", det, [SavedTicketCounterVar],
+        [impure_goal], [], Info ^ module_info, Context, MarkTicketStackGoal).
 
 :- pred gen_prune_tickets_to(prog_var::in, prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
@@ -403,9 +403,9 @@ gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
 gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
         Info) :-
     generate_call("prune_tickets_to", det, [SavedTicketCounterVar],
-        [impure], [], Info ^ module_info, Context, PruneTicketsToGoal).
+        [impure_goal], [], Info ^ module_info, Context, PruneTicketsToGoal).
 
-:- func ground_inst = (inst).
+:- func ground_inst = mer_inst.
 
 ground_inst = ground(unique, none).
 
@@ -423,7 +423,7 @@ new_ticket_var(Var, !Info) :-
 new_ticket_counter_var(Var, !Info) :-
     new_var("SavedTicketCounter", ticket_counter_type, Var, !Info).
 
-:- pred new_var(string::in, (type)::in, prog_var::out,
+:- pred new_var(string::in, mer_type::in, prog_var::out,
     trail_ops_info::in, trail_ops_info::out) is det.
 
 new_var(Name, Type, Var, !Info) :-
@@ -436,18 +436,18 @@ new_var(Name, Type, Var, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func ticket_type = (type).
+:- func ticket_type = mer_type.
 
 ticket_type = c_pointer_type.
 
-:- func ticket_counter_type = (type).
+:- func ticket_counter_type = mer_type.
 
 ticket_counter_type = c_pointer_type.
 
 %-----------------------------------------------------------------------------%
 
 :- pred generate_call(string::in, determinism::in, list(prog_var)::in,
-    list(goal_feature)::in, assoc_list(prog_var, inst)::in,
+    list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term__context::in, hlds_goal::out) is det.
 
 generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,

@@ -55,8 +55,8 @@
     module_info::out, make_hlds_qual_info::out, bool::out, bool::out,
     io::di, io::uo) is det.
 
-:- pred add_new_proc(inst_varset::in, arity::in, list(mode)::in,
-    maybe(list(mode))::in, maybe(list(is_live))::in,
+:- pred add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
+    maybe(list(mer_mode))::in, maybe(list(is_live))::in,
     maybe(determinism)::in, prog_context::in, is_address_taken::in,
     pred_info::in, pred_info::out, proc_id::out) is det.
 
@@ -69,9 +69,9 @@
     % generated only when a unification procedure is requested
     % during mode analysis.
     %
-:- pred add_special_pred_for_real(special_pred_id::in, tvarset::in, (type)::in,
-    type_ctor::in, hlds_type_body::in, prog_context::in, import_status::in,
-    module_info::in, module_info::out) is det.
+:- pred add_special_pred_for_real(special_pred_id::in, tvarset::in,
+    mer_type::in, type_ctor::in, hlds_type_body::in, prog_context::in,
+    import_status::in, module_info::in, module_info::out) is det.
 
     % add_special_pred_decl_for_real(SpecialPredId, TVarSet,
     %   Type, TypeCtor, TypeContext, TypeStatus, !ModuleInfo).
@@ -82,7 +82,7 @@
     % are generated lazily.
     %
 :- pred add_special_pred_decl_for_real(special_pred_id::in,
-    tvarset::in, (type)::in, type_ctor::in, prog_context::in,
+    tvarset::in, mer_type::in, type_ctor::in, prog_context::in,
     import_status::in, module_info::in, module_info::out) is det.
 
     % Given the definition for a predicate or function from a
@@ -90,7 +90,7 @@
     % for that definition.
     %
 :- pred produce_instance_method_clauses(instance_proc_def::in,
-    pred_or_func::in, arity::in, list(type)::in, pred_markers::in,
+    pred_or_func::in, arity::in, list(mer_type)::in, pred_markers::in,
     term__context::in, import_status::in, clauses_info::out,
     module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out, io::di, io::uo) is det.

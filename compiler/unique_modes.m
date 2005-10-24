@@ -582,7 +582,7 @@ check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
     % arguments of the call, and then check for each argument if the variable
     % is nondet-live and the required initial inst was unique.
     %
-:- pred check_call_modes(list(prog_var)::in, list(mode)::in, int::in,
+:- pred check_call_modes(list(prog_var)::in, list(mer_mode)::in, int::in,
     determinism::in, bool::in, mode_info::in, mode_info::out) is det.
 
 check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism, NeverSucceeds,

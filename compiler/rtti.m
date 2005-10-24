@@ -1254,8 +1254,9 @@ encode_tc_instance_type(TCType) = Str :-
     % being type constructors applied to vectors of distinct variables. When
     % we lift that restriction, we will have to change this scheme.
     %
-    % The code here is based on the code of base_typeclass_info__type_to_string,
-    % but its input is of type `maybe_pseudo_type_info', not of type `type'.
+    % The code here is based on the code of
+    % base_typeclass_info__type_to_string, but its input is of type
+    % `maybe_pseudo_type_info', not of type `type'.
     (
         TCType = plain(TI),
         (
@@ -1381,8 +1382,8 @@ var_arity_ctor_id_to_string(tuple_type_info) = "tuple".
 
 %-----------------------------------------------------------------------------%
 
-:- func maybe_pseudo_type_info_list_to_string(list(rtti_maybe_pseudo_type_info))
-    = string.
+:- func maybe_pseudo_type_info_list_to_string(
+    list(rtti_maybe_pseudo_type_info)) = string.
 
 maybe_pseudo_type_info_list_to_string(MaybePseudoTypeInfoList) =
     string__append_list(
@@ -1819,7 +1820,8 @@ ctor_rtti_name_type(du_stag_ordered_table(_),   "DuFunctorDescPtr", yes).
 ctor_rtti_name_type(du_ptag_ordered_table,      "DuPtagLayout", yes).
 ctor_rtti_name_type(du_ptag_layout(_),          "DuPtagLayout", no).
 ctor_rtti_name_type(res_value_ordered_table,    "ReservedAddrTypeLayout", no).
-ctor_rtti_name_type(res_name_ordered_table,     "MaybeResAddrFunctorDesc", yes).
+ctor_rtti_name_type(res_name_ordered_table,     "MaybeResAddrFunctorDesc",
+    yes).
 ctor_rtti_name_type(maybe_res_addr_functor_desc,"MaybeResAddrFunctorDesc", no).
 ctor_rtti_name_type(type_functors,              "TypeFunctors", no).
 ctor_rtti_name_type(type_layout,                "TypeLayout", no).

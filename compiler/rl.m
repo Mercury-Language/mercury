@@ -63,7 +63,7 @@
 :- type relation_info
 	---> relation_info(
 		relation_type,
-		list(type),		% schema
+		list(mer_type),		% schema
 		list(index_spec),
 			% Only used for base relations - other relations
 			% may have different indexes at different times.
@@ -93,10 +93,10 @@
 	---> key_range(
 		bounding_tuple,		% lower bound
 		bounding_tuple,		% upper bound
-		maybe(list(type)),	% schema of the tuple used to generate
+		maybe(list(mer_type)),	% schema of the tuple used to generate
 					% the key range - there isn't one
 					% for selects.
-		list(type)		% schema of the tuple used to search
+		list(mer_type)		% schema of the tuple used to search
 					% the B-tree index
 	).
 
@@ -113,7 +113,7 @@
 	.
 
 :- type key_attr
-	--->	functor(cons_id, (type), list(key_attr))
+	--->	functor(cons_id, mer_type, list(key_attr))
 	;	infinity		% -infinity for lower bound,
 					% +infinity for upper
 					% This is currently not supported,
@@ -187,7 +187,7 @@
 		union_diff(
 			relation_id,	% output (uo) (same indexes as input 1)
 			relation_id,	% input 1 (di)
-			relation_id, 	% input 2 (in)
+			relation_id,	% input 2 (in)
 			output_rel,	% difference (out)
 			index_spec,
 			maybe(output_rel)
@@ -223,7 +223,7 @@
 		% as the input without copying.
 		ref(
 			relation_id,		% output
-			relation_id 		% input
+			relation_id		% input
 		)
 	;
 		% Make a copy of the input relation, making sure the
@@ -466,20 +466,21 @@
 	% for as long as possible because they are easier to deal with in
 	% hlds_goal form.
 :- type rl_goal
-	---> rl_goal(
-		pred_proc_id :: maybe(pred_proc_id),
-				% Predicate from which the expression was
-				% taken - used to avoid unnecessarily merging
-				% varsets. Should be `no' if the varset
-				% contains vars from multiple procs.
-		varset :: prog_varset,
-		vartypes :: map(prog_var, type),
-		instmap:: instmap,	% instmap before goal
-		inputs :: rl_goal_inputs,
-		outputs :: rl_goal_outputs,
-		goal :: list(hlds_goal),
-		bounds :: list(rl_var_bounds)
-	).
+	--->	rl_goal(
+			% Predicate from which the expression was
+			% taken - used to avoid unnecessarily merging
+			% varsets. Should be `no' if the varset
+			% contains vars from multiple procs.
+			pred_proc_id	:: maybe(pred_proc_id),
+
+			varset		:: prog_varset,
+			vartypes	:: vartypes,
+			instmap		:: instmap,	% instmap before goal
+			inputs		:: rl_goal_inputs,
+			outputs		:: rl_goal_outputs,
+			goal		:: list(hlds_goal),
+			bounds		:: list(rl_var_bounds)
+		).
 
 :- type rl_goal_inputs
 	--->	no_inputs
@@ -496,7 +497,7 @@
 	% to have that value.
 :- type key_term == pair(key_term_node, set(prog_var)).
 :- type key_term_node
-        --->    functor(cons_id, (type), list(key_term))
+        --->    functor(cons_id, mer_type, list(key_term))
         ;       var
         .
 
@@ -532,7 +533,7 @@
 :- pred rl__output_rel_relation(output_rel::in, relation_id::out) is det.
 
 	% Get a sort specification sorting ascending on all attributes.
-:- pred rl__ascending_sort_spec(list(type)::in, sort_attrs::out) is det.
+:- pred rl__ascending_sort_spec(list(mer_type)::in, sort_attrs::out) is det.
 
 	% Get a list of all attributes for a given schema.
 :- pred rl__attr_list(list(T)::in, list(int)::out) is det.
@@ -638,7 +639,7 @@
 		pred_id::in, string::out) is det.
 
 	% rl__get_permanent_relation_info(ModuleInfo, PredId,
-	% 	Owner, Module, Name, Arity, RelationName, SchemaString).
+	%	Owner, Module, Name, Arity, RelationName, SchemaString).
 :- pred rl__get_permanent_relation_info(module_info::in, pred_id::in,
 		string::out, string::out, string::out, int::out,
 		string::out, string::out) is det.
@@ -657,22 +658,22 @@
 	% Convert a list of lists of types to a list of schema strings,
 	% with the declarations for the types used in TypeDecls.
 :- pred rl__schemas_to_strings(module_info::in,
-		list(list(type))::in, string::out, list(string)::out) is det.
+		list(list(mer_type))::in, string::out, list(string)::out) is det.
 
 	% Convert a list of types to a schema string.
 :- pred rl__schema_to_string(module_info::in,
-		list(type)::in, string::out) is det.
+		list(mer_type)::in, string::out) is det.
 
 	% Produce names acceptable to Aditi (just wrap single
 	% quotes around non-alphanumeric-and-underscore names).
-:- pred rl__mangle_and_quote_type_name(type_ctor::in, list(type)::in,
+:- pred rl__mangle_and_quote_type_name(type_ctor::in, list(mer_type)::in,
 		string::out) is det.
 :- pred rl__mangle_and_quote_ctor_name(sym_name::in,
 		int::in, string::out) is det.
 
 	% The expression stuff expects that constructor
 	% and type names are unquoted.
-:- pred rl__mangle_type_name(type_ctor::in, list(type)::in,
+:- pred rl__mangle_type_name(type_ctor::in, list(mer_type)::in,
 		string::out) is det.
 :- pred rl__mangle_ctor_name(sym_name::in, int::in, string::out) is det.
 
@@ -926,7 +927,7 @@ rl__is_removeable_project(ModuleInfo, ProjectType, RLGoal, IsRemoveable) :-
 			Goals = RLGoal ^ goal,
 
 			rl__goal_can_be_removed(ModuleInfo, Goals)
-        	->
+		->
 			IsRemoveable = yes
 		;
 			IsRemoveable = no
@@ -1194,7 +1195,7 @@ rl__schemas_to_strings(ModuleInfo, SchemaList, TypeDecls, SchemaStrings) :-
 		SchemaList, "", TypeDecls, [], SchemaStrings).
 
 :- pred rl__schemas_to_strings_2(module_info::in, gathered_types::in,
-	set(full_type_id)::in, list(list(type))::in,
+	set(full_type_id)::in, list(list(mer_type))::in,
 	string::in, string::out, list(string)::in, list(string)::out) is det.
 
 rl__schemas_to_strings_2(_, _, _, [], TypeDecls, TypeDecls,
@@ -1223,13 +1224,13 @@ rl__schema_to_string(ModuleInfo, Types, SchemaString) :-
 	string__append_list([Decls, "(", SchemaString0, ")"], SchemaString).
 
 	% Map from type to name and type definition string
-:- type gathered_types == map(pair(type_ctor, list(type)), string).
-:- type full_type_id == pair(type_ctor, list(type)).
+:- type gathered_types == map(pair(type_ctor, list(mer_type)), string).
+:- type full_type_id == pair(type_ctor, list(mer_type)).
 
 	% Go over a list of types collecting declarations for all the
 	% types used in the list.
 :- pred rl__gather_types(module_info::in, set(full_type_id)::in,
-		list(type)::in, gathered_types::in, gathered_types::out,
+		list(mer_type)::in, gathered_types::in, gathered_types::out,
 		set(full_type_id)::in, set(full_type_id)::out,
 		string::in, string::out, string::in, string::out) is det.
 
@@ -1252,7 +1253,7 @@ rl__gather_types(ModuleInfo, Parents, [Type | Types], GatheredTypes0,
 		GatheredTypes, RecursiveTypes1, RecursiveTypes,
 		Decls1, Decls, TypeString1, TypeString).
 
-:- pred rl__gather_type(module_info::in, set(full_type_id)::in, (type)::in,
+:- pred rl__gather_type(module_info::in, set(full_type_id)::in, mer_type::in,
 		gathered_types::in, gathered_types::out, set(full_type_id)::in,
 		set(full_type_id)::out, string::in, string::out,
 		string::out) is det.
@@ -1337,7 +1338,7 @@ rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 	).
 
 :- pred rl__gather_du_type(module_info::in, set(full_type_id)::in,
-		(type)::in, gathered_types::in, gathered_types::out,
+		mer_type::in, gathered_types::in, gathered_types::out,
 		set(full_type_id)::in, set(full_type_id)::out,
 		string::in, string::out, string::out) is det.
 
@@ -1435,7 +1436,7 @@ rl__mangle_and_quote_type_name(TypeCtor, Args, MangledTypeName) :-
 rl__mangle_type_name(TypeCtor, Args, MangledTypeName) :-
 	rl__mangle_type_name_2(TypeCtor, Args, "", MangledTypeName).
 
-:- pred rl__mangle_type_name_2(type_ctor::in, list(type)::in,
+:- pred rl__mangle_type_name_2(type_ctor::in, list(mer_type)::in,
 		string::in, string::out) is det.
 
 rl__mangle_type_name_2(TypeCtor, Args, MangledTypeName0, MangledTypeName) :-
@@ -1458,7 +1459,7 @@ rl__mangle_type_name_2(TypeCtor, Args, MangledTypeName0, MangledTypeName) :-
 			MangledTypeName2, MangledTypeName)
 	).
 
-:- pred rl__mangle_type_arg((type)::in, string::in, string::out) is det.
+:- pred rl__mangle_type_arg(mer_type::in, string::in, string::out) is det.
 
 rl__mangle_type_arg(Arg, String0, String) :-
 	string__append(String0, "___", String1),

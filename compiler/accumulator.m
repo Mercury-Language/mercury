@@ -1249,8 +1249,8 @@ heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C], Set) :-
     % Also associate with each Output variable which accumulator
     % variable to get the result from.
     %
-:- pred process_update_set(list(goal_id)::in, goal_store::in, set(prog_var)::in,
-    module_info::in, substs::in, substs::out,
+:- pred process_update_set(list(goal_id)::in, goal_store::in,
+    set(prog_var)::in, module_info::in, substs::in, substs::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     prog_vars::out, prog_vars::out, list(pair(prog_var))::out) is semidet.
 
@@ -1432,7 +1432,7 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
     % Construct a proc_info for the introduced predicate.
     %
 :- pred acc_proc_info(prog_vars::in, prog_varset::in, vartypes::in,
-    substs::in, proc_info::in, list(type)::out, proc_info::out) is det.
+    substs::in, proc_info::in, list(mer_type)::out, proc_info::out) is det.
 
 acc_proc_info(Accs0, VarSet, VarTypes, Substs,
         OrigProcInfo, AccTypes, AccProcInfo) :-
@@ -1474,7 +1474,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 
     % Construct the pred_info for the introduced predicate.
     %
-:- pred acc_pred_info(list(type)::in, prog_vars::in, proc_info::in,
+:- pred acc_pred_info(list(mer_type)::in, prog_vars::in, proc_info::in,
     pred_id::in, pred_info::in, proc_id::out, pred_info::out) is det.
 
 acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
@@ -1666,7 +1666,7 @@ acc_unification(Out - Acc, Goal) :-
     Expr = unify(Out, var(Acc), UniMode, assign(Out,Acc), Context),
     set__list_to_set([Out,Acc], NonLocalVars),
     instmap_delta_from_assoc_list([Out - ground(shared, none)], InstMapDelta),
-    goal_info_init(NonLocalVars, InstMapDelta, det, pure, Info),
+    goal_info_init(NonLocalVars, InstMapDelta, det, purity_pure, Info),
     Goal = Expr - Info.
 
 %-----------------------------------------------------------------------------%
@@ -1835,7 +1835,8 @@ calculate_goal_info(GoalExpr, GoalExpr - GoalInfo) :-
         goal_list_instmap_delta(GoalList, InstMapDelta),
         goal_list_determinism(GoalList, Determinism),
 
-        goal_info_init(NonLocals, InstMapDelta, Determinism, pure, GoalInfo)
+        goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
+            GoalInfo)
     ;
         unexpected(this_file, "calculate_goal_info: not a conj.")
     ).

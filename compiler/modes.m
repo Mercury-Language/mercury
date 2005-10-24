@@ -223,7 +223,7 @@
     % match (using inst_matches_final), otherwise we allow the var
     % to be more instantiated than the inst (using inst_matches_initial).
     %
-:- pred modecheck_var_has_inst_list(list(prog_var)::in, list(inst)::in,
+:- pred modecheck_var_has_inst_list(list(prog_var)::in, list(mer_inst)::in,
     bool::in, int::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
@@ -238,17 +238,17 @@
     % nonlocal variable in a negated context). Where the inst is not
     % the result of an abstract unification then MaybeUInst should be `no'.
     %
-:- pred modecheck_set_var_inst(prog_var::in, (inst)::in, maybe(inst)::in,
+:- pred modecheck_set_var_inst(prog_var::in, mer_inst::in, maybe(mer_inst)::in,
     mode_info::in, mode_info::out) is det.
 
-:- pred modecheck_set_var_inst_list(list(prog_var)::in, list(inst)::in,
-    list(inst)::in, int::in, list(prog_var)::out, extra_goals::out,
+:- pred modecheck_set_var_inst_list(list(prog_var)::in, list(mer_inst)::in,
+    list(mer_inst)::in, int::in, list(prog_var)::out, extra_goals::out,
     mode_info::in, mode_info::out) is det.
 
     % Check that the final insts of the head vars of a lambda
     % goal matches their expected insts.
     %
-:- pred modecheck_lambda_final_insts(list(prog_var)::in, list(inst)::in,
+:- pred modecheck_lambda_final_insts(list(prog_var)::in, list(mer_inst)::in,
     hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
 
 :- pred mode_info_add_goals_live_vars(list(hlds_goal)::in,
@@ -326,7 +326,7 @@
 
     % Construct a call to initialise a free solver type variable.
     %
-:- pred construct_initialisation_call(prog_var::in, (type)::in, (inst)::in,
+:- pred construct_initialisation_call(prog_var::in, mer_type::in, mer_inst::in,
     prog_context::in, maybe(call_unify_context)::in,
     hlds_goal::out, mode_info::in, mode_info::out) is det.
 
@@ -963,9 +963,9 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
     --->    clause_disj(list(hlds_goal))
     ;       clause_switch(prog_var, can_fail, list(case)).
 
-:- pred modecheck_clause_disj(list(prog_var)::in, instmap::in, list(inst)::in,
-    hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out,
-    io::di, io::uo) is det.
+:- pred modecheck_clause_disj(list(prog_var)::in, instmap::in,
+    list(mer_inst)::in, hlds_goal::in, hlds_goal::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
 
 modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0, Disjunct0, Disjunct,
         !ModeInfo, !IO) :-
@@ -977,7 +977,7 @@ modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0, Disjunct0, Disjunct,
         _ArgFinalInsts, Disjunct1, Disjunct, !ModeInfo).
 
 :- pred modecheck_clause_switch(list(prog_var)::in, instmap::in,
-    list(inst)::in, prog_var::in, case::in, case::out,
+    list(mer_inst)::in, prog_var::in, case::in, case::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
 modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var, Case0, Case,
@@ -1009,7 +1009,7 @@ modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var, Case0, Case,
     Case = case(ConsId, Goal).
 
 :- pred unique_modecheck_clause_disj(list(prog_var)::in, instmap::in,
-    list(inst)::in, determinism::in, set(prog_var)::in, bag(prog_var)::in,
+    list(mer_inst)::in, determinism::in, set(prog_var)::in, bag(prog_var)::in,
     hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out,
     io::di, io::uo) is det.
 
@@ -1026,7 +1026,7 @@ unique_modecheck_clause_disj(HeadVars, InstMap0, ArgFinalInsts0, DisjDetism,
         _ArgFinalInsts, Disjunct1, Disjunct, !ModeInfo).
 
 :- pred unique_modecheck_clause_switch(list(prog_var)::in, instmap::in,
-    list(inst)::in, prog_var::in, case::in, case::out,
+    list(mer_inst)::in, prog_var::in, case::in, case::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
 unique_modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var,
@@ -1067,7 +1067,7 @@ modecheck_lambda_final_insts(HeadVars, ArgFinalInsts, !Goal, !ModeInfo) :-
         _NewFinalInsts, !Goal, !ModeInfo).
 
 :- pred modecheck_final_insts(list(prog_var)::in, bool::in,
-    list(inst)::in, list(inst)::out, hlds_goal::in, hlds_goal::out,
+    list(mer_inst)::in, list(mer_inst)::out, hlds_goal::in, hlds_goal::out,
     mode_info::in, mode_info::out) is det.
 
     % Check that the final insts of the head vars match their expected insts.
@@ -1125,8 +1125,8 @@ modecheck_final_insts(HeadVars, InferModes, FinalInsts0, FinalInsts,
         FinalInsts = FinalInsts0
     ).
 
-:- pred maybe_clobber_insts(list(inst)::in, list(is_live)::in,
-    list(inst)::out) is det.
+:- pred maybe_clobber_insts(list(mer_inst)::in, list(is_live)::in,
+    list(mer_inst)::out) is det.
 
 maybe_clobber_insts([], [_ | _], _) :-
     error("maybe_clobber_insts: length mismatch").
@@ -1141,7 +1141,8 @@ maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
     ),
     maybe_clobber_insts(Insts0, IsLives, Insts).
 
-:- pred check_final_insts(list(prog_var)::in, list(inst)::in, list(inst)::in,
+:- pred check_final_insts(list(prog_var)::in,
+    list(mer_inst)::in, list(mer_inst)::in,
     bool::in, int::in, module_info::in, hlds_goal::in, hlds_goal::out,
     bool::in, bool::out, mode_info::in, mode_info::out) is det.
 
@@ -1212,7 +1213,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred prepend_initialisation_call(prog_var::in, (type)::in, (inst)::in,
+:- pred prepend_initialisation_call(prog_var::in, mer_type::in, mer_inst::in,
     hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
 
 prepend_initialisation_call(Var, VarType, InitialInst, Goal0, Goal,
@@ -1729,7 +1730,7 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
     % one disjunct is initialised in all disjuncts.
     %
 :- pred handle_solver_vars_in_disjs(list(prog_var)::in,
-    map(prog_var, (type))::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    map(prog_var, mer_type)::in, list(hlds_goal)::in, list(hlds_goal)::out,
     list(instmap)::in, list(instmap)::out, mode_info::in, mode_info::out)
     is det.
 
@@ -1742,7 +1743,7 @@ handle_solver_vars_in_disjs(NonLocals, VarTypes, Disjs0, Disjs,
         EnsureInitialised, !ModeInfo).
 
 :- pred handle_solver_vars_in_ite(list(prog_var)::in,
-    map(prog_var, (type))::in,
+    map(prog_var, mer_type)::in,
     hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
     instmap::in, instmap::out, instmap::in, instmap::out, mode_info::in,
     mode_info::out) is det.
@@ -2277,7 +2278,7 @@ construct_initialisation_calls([Var | Vars], [Goal | Goals], !ModeInfo) :-
     % N.B. This is perhaps the only time when `for' and `free'
     % can be juxtaposed grammatically :-)
     %
-:- func non_free_vars_in_assoc_list(assoc_list(prog_var, inst)) =
+:- func non_free_vars_in_assoc_list(assoc_list(prog_var, mer_inst)) =
     list(prog_var).
 
 non_free_vars_in_assoc_list([]) = [].
@@ -2470,7 +2471,7 @@ non_solver_var(ModuleInfo, VarTypes, Var) :-
     % a call.
     %
 :- pred candidate_init_vars_call(mode_info::in,
-    list(prog_var)::in, list(mode)::in,
+    list(prog_var)::in, list(mer_mode)::in,
     set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out) is semidet.
 
@@ -2841,7 +2842,7 @@ modecheck_var_has_inst_list(Vars, Insts, NeedEaxctMatch, ArgNum, Subst,
     modecheck_var_has_inst_list_2(Vars, Insts, NeedEaxctMatch, ArgNum,
         map__init, Subst, !ModeInfo).
 
-:- pred modecheck_var_has_inst_list_2(list(prog_var)::in, list(inst)::in,
+:- pred modecheck_var_has_inst_list_2(list(prog_var)::in, list(mer_inst)::in,
     bool::in, int::in, inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
@@ -2858,7 +2859,7 @@ modecheck_var_has_inst_list_2([Var | Vars], [Inst | Insts], NeedExactMatch,
     modecheck_var_has_inst_list_2(Vars, Insts, NeedExactMatch, ArgNum,
         !Subst, !ModeInfo).
 
-:- pred modecheck_var_has_inst(prog_var::in, (inst)::in, bool::in,
+:- pred modecheck_var_has_inst(prog_var::in, mer_inst::in, bool::in,
     inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
@@ -2900,8 +2901,8 @@ modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, ArgOffset,
         error("modecheck_set_var_inst_list: length mismatch")
     ).
 
-:- pred modecheck_set_var_inst_list_2(list(prog_var)::in, list(inst)::in,
-    list(inst)::in, int::in, list(prog_var)::out,
+:- pred modecheck_set_var_inst_list_2(list(prog_var)::in, list(mer_inst)::in,
+    list(mer_inst)::in, int::in, list(prog_var)::out,
     extra_goals::in, extra_goals::out,
     mode_info::in, mode_info::out) is semidet.
 
@@ -2916,7 +2917,7 @@ modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
     modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts, ArgNum,
         Vars, !ExtraGoals, !ModeInfo).
 
-:- pred modecheck_set_var_inst_call(prog_var::in, (inst)::in, (inst)::in,
+:- pred modecheck_set_var_inst_call(prog_var::in, mer_inst::in, mer_inst::in,
     prog_var::out, extra_goals::in, extra_goals::out,
     mode_info::in, mode_info::out) is det.
 
@@ -3035,7 +3036,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
     % If this was a call to an implied mode for that variable, then we need to
     % introduce a fresh variable.
     %
-:- pred handle_implied_mode(prog_var::in, (inst)::in, (inst)::in,
+:- pred handle_implied_mode(prog_var::in, mer_inst::in, mer_inst::in,
     prog_var::out, extra_goals::in, extra_goals::out,
     mode_info::in, mode_info::out) is det.
 
@@ -3134,10 +3135,9 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         append_extra_goals(!.ExtraGoals, NewUnifyExtraGoal, !:ExtraGoals)
     ).
 
-:- pred insert_extra_initialisation_call(prog_var::in, (type)::in, (inst)::in,
-    prog_context::in, maybe(call_unify_context)::in,
-    extra_goals::in, extra_goals::out, mode_info::in, mode_info::out)
-    is det.
+:- pred insert_extra_initialisation_call(prog_var::in, mer_type::in,
+    mer_inst::in, prog_context::in, maybe(call_unify_context)::in,
+    extra_goals::in, extra_goals::out, mode_info::in, mode_info::out) is det.
 
 insert_extra_initialisation_call(Var, VarType, Inst, Context, CallUnifyContext,
         !ExtraGoals, !ModeInfo) :-
@@ -3302,7 +3302,8 @@ proc_check_eval_methods([ProcId | Rest], PredId, !ModuleInfo, !IO) :-
     ),
     proc_check_eval_methods(Rest, PredId, !ModuleInfo, !IO).
 
-:- pred only_fully_in_out_modes(list(mode)::in, module_info::in) is semidet.
+:- pred only_fully_in_out_modes(list(mer_mode)::in, module_info::in)
+    is semidet.
 
 only_fully_in_out_modes([], _).
 only_fully_in_out_modes([Mode | Rest], ModuleInfo) :-
@@ -3319,7 +3320,7 @@ only_fully_in_out_modes([Mode | Rest], ModuleInfo) :-
     ),
     only_fully_in_out_modes(Rest, ModuleInfo).
 
-:- pred only_nonunique_modes(list(mode)::in, module_info::in) is semidet.
+:- pred only_nonunique_modes(list(mer_mode)::in, module_info::in) is semidet.
 
 only_nonunique_modes([], _).
 only_nonunique_modes([Mode | Rest], ModuleInfo) :-
@@ -3328,7 +3329,7 @@ only_nonunique_modes([Mode | Rest], ModuleInfo) :-
     inst_is_not_partly_unique(ModuleInfo, FinalInst),
     only_nonunique_modes(Rest, ModuleInfo).
 
-:- pred check_mode_of_main(list(mode)::in, module_info::in) is semidet.
+:- pred check_mode_of_main(list(mer_mode)::in, module_info::in) is semidet.
 
 check_mode_of_main([Di, Uo], ModuleInfo) :-
     mode_get_insts(ModuleInfo, Di, DiInitialInst, DiFinalInst),

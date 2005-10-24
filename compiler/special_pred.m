@@ -42,8 +42,8 @@
     % `det', however we need to pretend it is `semidet' so that it can be
     % called correctly from the polymorphic `unify' procedure.
     %
-:- pred special_pred_interface(special_pred_id::in, (type)::in,
-    list(type)::out, list(mode)::out, determinism::out) is det.
+:- pred special_pred_interface(special_pred_id::in, mer_type::in,
+    list(mer_type)::out, list(mer_mode)::out, determinism::out) is det.
 
 :- pred special_pred_mode_num(special_pred_id::in, int::out) is det.
 

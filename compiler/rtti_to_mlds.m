@@ -1031,7 +1031,8 @@ gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor, ResFunctors,
 :- func gen_res_addr_functor_table(module_name, rtti_type_ctor,
     list(reserved_functor)) = mlds__defn.
 
-gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors) = MLDS_Defn :-
+gen_res_addr_functor_table(ModuleName, RttiTypeCtor, ResFunctors)
+        = MLDS_Defn :-
     FunctorRttiNames = list__map(res_functor_rtti_name, ResFunctors),
     Init = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
@@ -1105,7 +1106,7 @@ gen_init_rtti_names_array(ModuleName, RttiTypeCtor, RttiNames) =
 gen_init_rtti_datas_array(ModuleName, RttiDatas) =
     gen_init_array(gen_init_rtti_data(ModuleName), RttiDatas).
 
-:- func gen_init_cast_rtti_datas_array(mlds__type, module_name,
+:- func gen_init_cast_rtti_datas_array(mlds_type, module_name,
     list(rtti_data)) = mlds__initializer.
 
 gen_init_cast_rtti_datas_array(Type, ModuleName, RttiDatas) =
@@ -1115,7 +1116,7 @@ gen_init_cast_rtti_datas_array(Type, ModuleName, RttiDatas) =
     % for a given rtti_data, converted to mlds__generic_type.
     % XXX We don't need to pass the module_name down to here.
     %
-:- func gen_init_cast_rtti_data(mlds__type, module_name, rtti_data) =
+:- func gen_init_cast_rtti_data(mlds_type, module_name, rtti_data) =
     mlds__initializer.
 
 gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
@@ -1145,7 +1146,7 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 
     % Currently casts only store the destination type.
     %
-:- func gen_cast(mlds__type, mlds__type) = mlds__unary_op.
+:- func gen_cast(mlds_type, mlds_type) = mlds_unary_op.
 
 gen_cast(_SrcType, DestType) = cast(DestType).
 
@@ -1200,7 +1201,7 @@ gen_init_aditi_rtti_name(ModuleName, ProcLabel) =
     % Generate the MLDS initializer comprising the rtti_name
     % for a given rtti_name, converted to the given type.
     %
-:- func gen_init_cast_rtti_id(mlds__type, module_name, rtti_id)
+:- func gen_init_cast_rtti_id(mlds_type, module_name, rtti_id)
     = mlds__initializer.
 
 gen_init_cast_rtti_id(DestType, ModuleName, RttiId) = Initializer :-
@@ -1210,7 +1211,7 @@ gen_init_cast_rtti_id(DestType, ModuleName, RttiId) = Initializer :-
 
     % Generate the MLDS rval for an rtti_id.
     %
-:- func gen_rtti_id(module_name, rtti_id) = mlds__rval.
+:- func gen_rtti_id(module_name, rtti_id) = mlds_rval.
 
 gen_rtti_id(ThisModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
     gen_rtti_name(ThisModuleName, RttiTypeCtor, RttiName).
@@ -1220,7 +1221,7 @@ gen_rtti_id(ThisModuleName, aditi_rtti_id(ProcLabel)) =
     gen_aditi_rtti_name(ThisModuleName, ProcLabel).
 
 :- func gen_rtti_name(module_name, rtti_type_ctor, ctor_rtti_name)
-    = mlds__rval.
+    = mlds_rval.
 
 gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
     % Typeinfos and pseudo typeinfos are defined locally to each module.
@@ -1263,7 +1264,7 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
     DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
     Rval = const(data_addr_const(DataAddr)).
 
-:- func gen_tc_rtti_name(module_name, tc_name, tc_rtti_name) = mlds__rval.
+:- func gen_tc_rtti_name(module_name, tc_name, tc_rtti_name) = mlds_rval.
 
 gen_tc_rtti_name(_ThisModuleName, TCName, TCRttiName) = Rval :-
     (
@@ -1307,7 +1308,7 @@ gen_tc_rtti_name(_ThisModuleName, TCName, TCRttiName) = Rval :-
     DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
     Rval = const(data_addr_const(DataAddr)).
 
-:- func gen_aditi_rtti_name(module_name, rtti_proc_label) = mlds__rval.
+:- func gen_aditi_rtti_name(module_name, rtti_proc_label) = mlds_rval.
 
 gen_aditi_rtti_name(ThisModuleName, ProcLabel) = Rval :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ThisModuleName),
@@ -1379,8 +1380,9 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Init, !ExtraDefns) :-
     gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcLabel,
         typeclass_info_closure, Init, !ExtraDefns).
 
-:- pred gen_init_special_pred(module_info::in, univ::in, mlds__initializer::out,
-    list(mlds__defn)::in, list(mlds__defn)::out) is det.
+:- pred gen_init_special_pred(module_info::in, univ::in,
+    mlds__initializer::out, list(mlds__defn)::in, list(mlds__defn)::out)
+    is det.
 
 gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
     % We can't store the address of the special pred procedure directly in the
@@ -1526,13 +1528,13 @@ gen_init_builtin_const(Name) = init_obj(Rval) :-
 
 gen_init_array(Conv, List) = init_array(list__map(Conv, List)).
 
-:- func gen_init_maybe(mlds__type, func(T) = mlds__initializer, maybe(T)) =
+:- func gen_init_maybe(mlds_type, func(T) = mlds__initializer, maybe(T)) =
     mlds__initializer.
 
 gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
 gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
 
-:- func gen_init_null_pointer(mlds__type) = mlds__initializer.
+:- func gen_init_null_pointer(mlds_type) = mlds__initializer.
 
 gen_init_null_pointer(Type) = init_obj(const(null(Type))).
 

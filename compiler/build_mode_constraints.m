@@ -139,8 +139,8 @@
     % and is not produced.
     %
 :- pred mode_decls_constraints(module_info::in, mc_var_map::in,
-    pred_id::in, list(list(mode))::in, list(args)::in, mode_constraints::out)
-    is det.
+    pred_id::in, list(list(mer_mode))::in, list(args)::in,
+    mode_constraints::out) is det.
 
     % In the event that type_info arguments have been added to a
     % predicate call's arguments/headvars, but the modes have not
@@ -157,7 +157,7 @@
     % they are all specifically of mode in as given by function
     % prog_tree.prog_mode.in_mode
 :- pred add_sufficient_in_modes_for_type_info_args(args::in,
-    list(mode)::in, list(mode)::out) is det.
+    list(mer_mode)::in, list(mer_mode)::out) is det.
 
     % goal_expr_constraints generates the constraints that apply to
     % a given goal_expr at a given goal path.
@@ -708,7 +708,7 @@ mode_decls_constraints(
     % free and is not produced.
     %
 :- pred call_mode_decls_constraints(module_info::in,
-    mc_var_map::in, pred_id::in, list(list(mode))::in,
+    mc_var_map::in, pred_id::in, list(list(mer_mode))::in,
     goal_path::in, args::in, mode_constraints::out) is det.
 
 call_mode_decls_constraints(ModuleInfo, VarMap, CallingPred, Decls, GoalPath,
@@ -729,7 +729,7 @@ call_mode_decls_constraints(ModuleInfo, VarMap, CallingPred, Decls, GoalPath,
     % creates constraints for the corresponding constraint variables
     % accordingly.
     %
-:- func mode_decl_constraints(module_info, list(mc_var), list(mode)) =
+:- func mode_decl_constraints(module_info, list(mc_var), list(mer_mode)) =
     mode_constraints.
 
 mode_decl_constraints(ModuleInfo, ConstraintVars, ArgModes) =

@@ -247,21 +247,21 @@
     % Replace all occurrences of inst_var(I) with
     % constrained_inst_var(I, ground(shared, none)).
     %
-:- pred constrain_inst_vars_in_mode((mode)::in, (mode)::out) is det.
+:- pred constrain_inst_vars_in_mode(mer_mode::in, mer_mode::out) is det.
 
     % Replace all occurrences of inst_var(I) with
     % constrained_inst_var(I, Inst) where I -> Inst is in the inst_var_sub.
     % If I is not in the inst_var_sub, default to ground(shared, none).
     %
-:- pred constrain_inst_vars_in_mode(inst_var_sub::in, (mode)::in, (mode)::out)
-    is det.
+:- pred constrain_inst_vars_in_mode(inst_var_sub::in,
+    mer_mode::in, mer_mode::out) is det.
 
 %-----------------------------------------------------------------------------%
 
     % Check that for each constrained_inst_var all occurrences have the
     % same constraint.
     %
-:- pred inst_var_constraints_are_consistent_in_modes(list(mode)::in)
+:- pred inst_var_constraints_are_consistent_in_modes(list(mer_mode)::in)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -1361,8 +1361,8 @@ process_decl(ModuleName, VarSet, "mutable", Args, Attributes, Result) :-
 :- pred parse_decl_attribute(string::in, list(term)::in, decl_attribute::out,
     term::out) is semidet.
 
-parse_decl_attribute("impure", [Decl], purity(impure), Decl).
-parse_decl_attribute("semipure", [Decl], purity(semipure), Decl).
+parse_decl_attribute("impure", [Decl], purity(purity_impure), Decl).
+parse_decl_attribute("semipure", [Decl], purity(purity_semipure), Decl).
 parse_decl_attribute("<=", [Decl, Constraints],
         constraints(univ, Constraints), Decl).
 parse_decl_attribute("=>", [Decl, Constraints],
@@ -1600,7 +1600,7 @@ parse_type_decl_pred(ModuleName, VarSet, Pred, Attributes, R) :-
     ).
 
 :- pred process_type_decl_pred_or_func(pred_or_func::in, module_name::in,
-    maybe(type)::in, maybe1(maybe(inst))::in,
+    maybe(mer_type)::in, maybe1(maybe(mer_inst))::in,
     maybe1(maybe(determinism))::in, varset::in, term::in, condition::in,
     decl_attrs::in, maybe1(item)::out) is det.
 
@@ -1853,7 +1853,7 @@ parse_mutable_name(NameTerm, NameResult) :-
         NameResult = error("invalid mutable name", NameTerm)
     ).
 
-:- pred parse_mutable_type(term::in, maybe1(type)::out) is det.
+:- pred parse_mutable_type(term::in, maybe1(mer_type)::out) is det.
 
 parse_mutable_type(TypeTerm, TypeResult) :-
     ( term__contains_var(TypeTerm, _) ->
@@ -1863,7 +1863,7 @@ parse_mutable_type(TypeTerm, TypeResult) :-
         parse_type(TypeTerm, TypeResult)
     ).
 
-:- pred parse_mutable_inst(term::in, maybe1(inst)::out) is det.
+:- pred parse_mutable_inst(term::in, maybe1(mer_inst)::out) is det.
 
 parse_mutable_inst(InstTerm, InstResult) :-
     ( term__contains_var(InstTerm, _) ->
@@ -2137,7 +2137,7 @@ parse_where_initialisation_is(ModuleName, Term) = Result :-
 parse_where_pred_is(ModuleName, Term) = Result :-
     parse_implicitly_qualified_symbol_name(ModuleName, Term, Result).
 
-:- func parse_where_inst_is(module_name, term) = maybe1(inst).
+:- func parse_where_inst_is(module_name, term) = maybe1(mer_inst).
 
 parse_where_inst_is(_ModuleName, Term) =
     (
@@ -2149,7 +2149,7 @@ parse_where_inst_is(_ModuleName, Term) =
         error("expected a ground, unconstrained inst", Term)
     ).
 
-:- func parse_where_type_is(module_name, term) = maybe1(type).
+:- func parse_where_type_is(module_name, term) = maybe1(mer_type).
 
 parse_where_type_is(_ModuleName, Term) = Result :-
     prog_io_util__parse_type(Term, Result).
@@ -2163,10 +2163,10 @@ parse_where_end(yes(Term), error("attributes are either badly ordered or " ++
 :- func make_maybe_where_details(
         is_solver_type,
         maybe1(maybe(unit)),
-        maybe1(maybe(type)),
+        maybe1(maybe(mer_type)),
         maybe1(maybe(init_pred)),
-        maybe1(maybe(inst)),
-        maybe1(maybe(inst)),
+        maybe1(maybe(mer_inst)),
+        maybe1(maybe(mer_inst)),
         maybe1(maybe(equality_pred)),
         maybe1(maybe(comparison_pred)),
         maybe1(maybe(unit)),
@@ -2335,7 +2335,8 @@ get_determinism(B, Body, Determinism) :-
     % Process the `with_inst` part of a declaration of the form:
     % :- mode p(int) `with_inst` (pred(in, out) is det).
     %
-:- pred get_with_inst(term::in, term::out, maybe1(maybe(inst))::out) is det.
+:- pred get_with_inst(term::in, term::out, maybe1(maybe(mer_inst))::out)
+    is det.
 
 get_with_inst(Body0, Body, WithInst) :-
     (
@@ -2352,7 +2353,8 @@ get_with_inst(Body0, Body, WithInst) :-
         WithInst = ok(no)
     ).
 
-:- pred get_with_type(term::in, term::out, maybe1(maybe(type))::out) is det.
+:- pred get_with_type(term::in, term::out, maybe1(maybe(mer_type))::out)
+    is det.
 
 get_with_type(Body0, Body, Result) :-
     (
@@ -2756,7 +2758,7 @@ convert_constructor_3(ModuleName, ExistQVars, Constraints, Term0, Term1) =
     % `:- func f(...) `with_type` t' declaration
     %
 :- pred process_pred_or_func(pred_or_func::in, module_name::in, varset::in,
-    term::in, condition::in, maybe(type)::in, maybe(inst)::in,
+    term::in, condition::in, maybe(mer_type)::in, maybe(mer_inst)::in,
     maybe(determinism)::in, decl_attrs::in, maybe1(item)::out) is det.
 
 process_pred_or_func(PredOrFunc, ModuleName, VarSet, PredType, Cond, WithType,
@@ -2776,9 +2778,10 @@ process_pred_or_func(PredOrFunc, ModuleName, VarSet, PredType, Cond, WithType,
     ).
 
 :- pred process_pred_or_func_2(pred_or_func::in, maybe_functor::in, term::in,
-    varset::in, maybe(type)::in, maybe(inst)::in, maybe(determinism)::in,
-    condition::in, existq_tvars::in, prog_constraints::in,
-    inst_var_sub::in, decl_attrs::in, maybe1(item)::out) is det.
+    varset::in, maybe(mer_type)::in, maybe(mer_inst)::in,
+    maybe(determinism)::in, condition::in, existq_tvars::in,
+    prog_constraints::in, inst_var_sub::in, decl_attrs::in, maybe1(item)::out)
+    is det.
 
 process_pred_or_func_2(PredOrFunc, ok(F, As0), PredType, VarSet0,
         WithType, WithInst, MaybeDet, Cond, ExistQVars,
@@ -2830,7 +2833,7 @@ get_purity(Purity, !Attributes) :-
     ( !.Attributes = [purity(Purity0) - _ | !:Attributes] ->
         Purity = Purity0
     ;
-        Purity = (pure)
+        Purity = purity_pure
     ).
 
 :- func pred_or_func_decl_string(pred_or_func) = string.
@@ -3125,7 +3128,7 @@ desugar_field_access(Term) =
     % Parse a `:- mode p(...)' declaration.
     %
 :- pred process_mode(module_name::in, varset::in, term::in, condition::in,
-    decl_attrs::in, maybe(inst)::in, maybe(determinism)::in,
+    decl_attrs::in, maybe(mer_inst)::in, maybe(determinism)::in,
     maybe1(item)::out) is det.
 
 process_mode(ModuleName, VarSet, Term, Cond, Attributes, WithInst, MaybeDet,
@@ -3148,7 +3151,7 @@ process_mode(ModuleName, VarSet, Term, Cond, Attributes, WithInst, MaybeDet,
     ).
 
 :- pred process_pred_or_func_mode(maybe_functor::in, module_name::in, term::in,
-    varset::in, maybe(inst)::in, maybe(determinism)::in, condition::in,
+    varset::in, maybe(mer_inst)::in, maybe(determinism)::in, condition::in,
     decl_attrs::in, maybe1(item)::out) is det.
 
 process_pred_or_func_mode(ok(F, As0), ModuleName, PredMode, VarSet0, WithInst,
@@ -3247,8 +3250,8 @@ constrain_inst_vars_in_mode(InstConstraints, user_defined_mode(Name, Args0),
         user_defined_mode(Name, Args)) :-
     list__map(constrain_inst_vars_in_inst(InstConstraints), Args0, Args).
 
-:- pred constrain_inst_vars_in_inst(inst_var_sub::in, (inst)::in, (inst)::out)
-    is det.
+:- pred constrain_inst_vars_in_inst(inst_var_sub::in,
+    mer_inst::in, mer_inst::out) is det.
 
 constrain_inst_vars_in_inst(_, any(U), any(U)).
 constrain_inst_vars_in_inst(_, free, free).
@@ -3313,7 +3316,7 @@ constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name) :-
 inst_var_constraints_are_consistent_in_modes(Modes) :-
     inst_var_constraints_are_consistent_in_modes(Modes, map__init, _).
 
-:- pred inst_var_constraints_are_consistent_in_modes(list(mode)::in,
+:- pred inst_var_constraints_are_consistent_in_modes(list(mer_mode)::in,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
 inst_var_constraints_are_consistent_in_modes(Modes, !Sub) :-
@@ -3329,7 +3332,7 @@ inst_var_constraints_are_consistent_in_type_and_modes(TypeAndModes) :-
             inst_var_constraints_are_consistent_in_mode(Mode)
         )), TypeAndModes, map__init, _).
 
-:- pred inst_var_constraints_are_consistent_in_mode((mode)::in,
+:- pred inst_var_constraints_are_consistent_in_mode(mer_mode::in,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
 inst_var_constraints_are_consistent_in_mode(InitialInst -> FinalInst, !Sub) :-
@@ -3339,13 +3342,13 @@ inst_var_constraints_are_consistent_in_mode(user_defined_mode(_, ArgInsts),
         !Sub) :-
     inst_var_constraints_are_consistent_in_insts(ArgInsts, !Sub).
 
-:- pred inst_var_constraints_are_consistent_in_insts(list(inst)::in,
+:- pred inst_var_constraints_are_consistent_in_insts(list(mer_inst)::in,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
 inst_var_constraints_are_consistent_in_insts(Insts, !Sub) :-
     list__foldl(inst_var_constraints_are_consistent_in_inst, Insts, !Sub).
 
-:- pred inst_var_constraints_are_consistent_in_inst((inst)::in,
+:- pred inst_var_constraints_are_consistent_in_inst(mer_inst::in,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
 inst_var_constraints_are_consistent_in_inst(any(_), !Sub).
@@ -3781,7 +3784,8 @@ make_cons_symbol_specifier(ConsSpec, cons(ConsSpec)).
 
 make_type_symbol_specifier(TypeSpec, type(TypeSpec)).
 
-:- pred make_adt_symbol_specifier(adt_specifier::in, sym_specifier::out) is det.
+:- pred make_adt_symbol_specifier(adt_specifier::in, sym_specifier::out)
+    is det.
 
 make_adt_symbol_specifier(ADT_Spec, adt(ADT_Spec)).
 
@@ -3923,14 +3927,14 @@ parse_arg_types_specifier(Term, Result) :-
     % ... but we have to convert the result back into the appropriate format.
     %
 :- pred process_typed_constructor_specifier(maybe1(pred_specifier)::in,
-    maybe1(type)::in, maybe1(cons_specifier)::out) is det.
+    maybe1(mer_type)::in, maybe1(cons_specifier)::out) is det.
 
 process_typed_constructor_specifier(error(Msg, Term), _, error(Msg, Term)).
 process_typed_constructor_specifier(ok(_), error(Msg, Term), error(Msg, Term)).
 process_typed_constructor_specifier(ok(NameArgs), ok(ResType), ok(Result)) :-
     process_typed_cons_spec_2(NameArgs, ResType, Result).
 
-:- pred process_typed_cons_spec_2(pred_specifier::in, (type)::in,
+:- pred process_typed_cons_spec_2(pred_specifier::in, mer_type::in,
     cons_specifier::out) is det.
 
 process_typed_cons_spec_2(sym(Name), Res, typed(name_res(Name, Res))).
@@ -3960,7 +3964,8 @@ parse_symbol_name_specifier(Term, Result) :-
 :- pred parse_implicitly_qualified_symbol_name_specifier(module_name::in,
     term::in, maybe1(sym_name_specifier)::out) is det.
 
-parse_implicitly_qualified_symbol_name_specifier(DefaultModule, Term, Result) :-
+parse_implicitly_qualified_symbol_name_specifier(DefaultModule, Term,
+        Result) :-
     (
         Term = term__functor(term__atom("/"), [NameTerm, ArityTerm], _Context)
     ->

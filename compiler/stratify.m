@@ -615,7 +615,8 @@ add_new_arcs2([Callee | Cs], CallerKey, !DepGraph) :-
 	set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
 expand_predids([], _, !ProcCalls, !HOInfo, !CallsHO).
-expand_predids([PredId | PredIds], ModuleInfo, !ProcCalls, !HOInfo, !CallsHO) :-
+expand_predids([PredId | PredIds], ModuleInfo, !ProcCalls, !HOInfo,
+		!CallsHO) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	Procs = pred_info_non_imported_procids(PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
@@ -627,7 +628,7 @@ expand_predids([PredId | PredIds], ModuleInfo, !ProcCalls, !HOInfo, !CallsHO) :-
 	% for each given proc id generate the set of procs it calls and
 	% its higher order info structure
 :- pred process_procs(list(proc_id)::in, module_info::in, pred_id::in,
-	list(type)::in, proc_table::in, call_map::in, call_map::out,
+	list(mer_type)::in, proc_table::in, call_map::in, call_map::out,
 	ho_map::in, ho_map::out, set(pred_proc_id)::in, set(pred_proc_id)::out)
 	is det.
 
@@ -653,8 +654,8 @@ process_procs([ProcId | Procs], ModuleInfo, PredId, ArgTypes, ProcTable,
 
 	% determine if a given set of modes and types indicates that
 	% higher order values can be passed into and/or out of a proc
-:- pred higherorder_in_out(list(type)::in, list(mode)::in, module_info::in,
-	ho_in_out::out) is det.
+:- pred higherorder_in_out(list(mer_type)::in, list(mer_mode)::in,
+	module_info::in, ho_in_out::out) is det.
 
 higherorder_in_out(Types, Modes, ModuleInfo, HOInOut) :-
 	higherorder_in_out1(Types, Modes, ModuleInfo, no, HOIn, no, HOOut),
@@ -667,8 +668,8 @@ bool_2_ho_in_out(no, yes, ho_out).
 bool_2_ho_in_out(yes, yes, ho_in_out).
 bool_2_ho_in_out(no, no, ho_none).
 
-:- pred higherorder_in_out1(list(type)::in, list(mode)::in, module_info::in,
-	bool::in, bool::out, bool::in, bool::out) is det.
+:- pred higherorder_in_out1(list(mer_type)::in, list(mer_mode)::in,
+	module_info::in, bool::in, bool::out, bool::in, bool::out) is det.
 
 higherorder_in_out1([], [], _ModuleInfo, !HOIn, !HOOut).
 higherorder_in_out1([], [_ | _], _, !HOIn, !HOOut) :-

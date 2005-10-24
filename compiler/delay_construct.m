@@ -231,8 +231,8 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         set__intersect(CompletedNonLocals, ConstructedVars0,
             Intersection),
         set__empty(Intersection),
-        \+ goal_info_has_feature(GoalInfo0, impure),
-        \+ goal_info_has_feature(GoalInfo0, semipure)
+        \+ goal_info_has_feature(GoalInfo0, impure_goal),
+        \+ goal_info_has_feature(GoalInfo0, semipure_goal)
     ->
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             ConstructedVars0, RevDelayedGoals0, Goals1),

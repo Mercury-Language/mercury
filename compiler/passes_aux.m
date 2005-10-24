@@ -142,7 +142,7 @@
     %   Name(ArgMode1, ..., ArgModeN-1) = ArgModeN
     % In new code, use describe_one_pred_name_mode in error_util instead.
     %
-:- pred report_pred_name_mode(pred_or_func::in, string::in, list(mode)::in,
+:- pred report_pred_name_mode(pred_or_func::in, string::in, list(mer_mode)::in,
     io::di, io::uo) is det.
 
     % Write to a given filename, giving appropriate status messages

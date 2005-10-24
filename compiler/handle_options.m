@@ -391,8 +391,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ( NumTagBits1 < 0 ->
             io__progname_base("mercury_compile", ProgName, !IO),
             report_warning(ProgName, !IO),
-            report_warning(": warning: --num-tag-bits invalid or unspecified\n",
-                !IO),
+            report_warning(
+                ": warning: --num-tag-bits invalid or unspecified\n", !IO),
             io__write_string(ProgName, !IO),
             report_warning(": using --num-tag-bits 0 (tags disabled)\n", !IO),
             NumTagBits = 0
@@ -448,7 +448,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %     again because this causes problems with RTTI
         %   - no static ground terms
         %         XXX Previously static ground terms used to not work with
-        %             --high-level-data.  But this has been (mostly?) fixed now.
+        %             --high-level-data. But this has been (mostly?) fixed now.
         %             So we should investigate re-enabling static ground terms.
         %         Currently mlds_to_il.m doesn't support them yet?
         %   - intermodule optimization
@@ -544,7 +544,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         Because Java has no way of allocating structs on the stack.
         %   - no static ground terms
         %         XXX Previously static ground terms used to not work with
-        %             --high-level-data.  But this has been (mostly?) fixed now.
+        %             --high-level-data. But this has been (mostly?) fixed now.
         %             So we should investigate re-enabling static ground terms.
         %   - intermodule optimization
         %     This is only required for high-level data and is needed
@@ -936,7 +936,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % --trace-table-io-all is compulsory application of --trace-table-io
         option_implies(trace_table_io_all, trace_table_io, bool(yes),
             !Globals),
-        % --trace-table-io-require is compulsory application of --trace-table-io
+        % --trace-table-io-require is compulsory application
+        %   of --trace-table-io
         option_implies(trace_table_io_require, trace_table_io, bool(yes),
             !Globals),
 

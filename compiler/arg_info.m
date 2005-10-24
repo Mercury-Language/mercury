@@ -43,31 +43,31 @@
     % Annotate a single procedure with information
     % about its argument passing interface.
     %
-:- pred generate_proc_arg_info(list(type)::in, module_info::in,
+:- pred generate_proc_arg_info(list(mer_type)::in, module_info::in,
     proc_info::in, proc_info::out) is det.
 
     % Given the list of types and modes of the arguments of a procedure
     % and its code model, return its argument passing interface.
     %
-:- pred make_arg_infos(list(type)::in, list(mode)::in, code_model::in,
+:- pred make_arg_infos(list(mer_type)::in, list(mer_mode)::in, code_model::in,
     module_info::in, list(arg_info)::out) is det.
 
     % Divide the given list of arguments into those treated as inputs
     % by the calling convention and those treated as outputs.
     %
-:- pred arg_info__compute_in_and_out_vars(module_info::in,
-    list(prog_var)::in, list(mode)::in, list(type)::in,
+:- pred compute_in_and_out_vars(module_info::in,
+    list(prog_var)::in, list(mer_mode)::in, list(mer_type)::in,
     list(prog_var)::out, list(prog_var)::out) is det.
 
     % Return the arg_infos for the two input arguments of a unification
     % of the specified code model.
     %
-:- pred arg_info__unify_arg_info(code_model::in, list(arg_info)::out) is det.
+:- pred unify_arg_info(code_model::in, list(arg_info)::out) is det.
 
     % Divide the given list of arguments and the arg_infos into three lists:
     % the inputs, the outputs, and the unused arguments, in that order.
     %
-:- pred arg_info__partition_args(assoc_list(prog_var, arg_info)::in,
+:- pred partition_args(assoc_list(prog_var, arg_info)::in,
     assoc_list(prog_var, arg_info)::out,
     assoc_list(prog_var, arg_info)::out,
     assoc_list(prog_var, arg_info)::out) is det.
@@ -76,7 +76,7 @@
     % lists: those which are treated as inputs by the calling convention
     % and those which are treated as outputs by the calling convention.
     %
-:- pred arg_info__partition_args(assoc_list(prog_var, arg_info)::in,
+:- pred partition_args(assoc_list(prog_var, arg_info)::in,
     assoc_list(prog_var, arg_info)::out,
     assoc_list(prog_var, arg_info)::out) is det.
 
@@ -85,25 +85,25 @@
     % on the arg_info annotations of the arguments, which means that this
     % predicate should only be called after the arg_info pass has been run.
     %
-:- pred arg_info__partition_proc_args(proc_info::in, module_info::in,
+:- pred partition_proc_args(proc_info::in, module_info::in,
     set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
 
-    % Like arg_info__partition_proc_args, but partitions the actual
+    % Like partition_proc_args, but partitions the actual
     % arguments of a call (given in the fourth argument) instead of the
     % head variables. Since the first (proc_info) argument is now the
     % proc_info of the callee, we need to pass the types of the arguments
     % (in the caller) separately.
     %
-:- pred arg_info__partition_proc_call_args(proc_info::in, vartypes::in,
+:- pred partition_proc_call_args(proc_info::in, vartypes::in,
     module_info::in, list(prog_var)::in, set(prog_var)::out,
     set(prog_var)::out, set(prog_var)::out) is det.
 
-    % Like arg_info__partition_proc_call_args, but partitions the actual
+    % Like partition_proc_call_args, but partitions the actual
     % arguments of a generic call, so instead of looking up the types and modes
     % of the arguments in the module_info, we get them from the arguments.
     %
-:- pred arg_info__partition_generic_call_args(module_info::in,
-    list(prog_var)::in, list(type)::in, list(mode)::in,
+:- pred partition_generic_call_args(module_info::in,
+    list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
     set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -200,8 +200,8 @@ make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
     ),
     make_arg_infos_list(ArgModes, ArgTypes, 1, StartReg, ModuleInfo, ArgInfo).
 
-:- pred make_arg_infos_list(list(mode)::in, list(type)::in, int::in, int::in,
-    module_info::in, list(arg_info)::out) is det.
+:- pred make_arg_infos_list(list(mer_mode)::in, list(mer_type)::in,
+    int::in, int::in, module_info::in, list(arg_info)::out) is det.
 
 make_arg_infos_list([], [], _, _, _, []).
 make_arg_infos_list([Mode | Modes], [Type | Types], !.InReg, !.OutReg,
@@ -223,25 +223,25 @@ make_arg_infos_list([_|_], [], _, _, _, _) :-
 
 %---------------------------------------------------------------------------%
 
-arg_info__compute_in_and_out_vars(ModuleInfo, Vars, Modes, Types,
+compute_in_and_out_vars(ModuleInfo, Vars, Modes, Types,
         !:InVars, !:OutVars) :-
     (
-        arg_info__compute_in_and_out_vars_2(ModuleInfo,
+        compute_in_and_out_vars_2(ModuleInfo,
             Vars, Modes, Types, !:InVars, !:OutVars)
     ->
         true
     ;
-        error("arg_info__compute_in_and_out_vars: length mismatch")
+        error("compute_in_and_out_vars: length mismatch")
     ).
 
-:- pred arg_info__compute_in_and_out_vars_2(module_info::in,
-    list(prog_var)::in, list(mode)::in, list(type)::in,
+:- pred compute_in_and_out_vars_2(module_info::in,
+    list(prog_var)::in, list(mer_mode)::in, list(mer_type)::in,
     list(prog_var)::out, list(prog_var)::out) is semidet.
 
-arg_info__compute_in_and_out_vars_2(_ModuleInfo, [], [], [], [], []).
-arg_info__compute_in_and_out_vars_2(ModuleInfo, [Var | Vars],
+compute_in_and_out_vars_2(_ModuleInfo, [], [], [], [], []).
+compute_in_and_out_vars_2(ModuleInfo, [Var | Vars],
         [Mode | Modes], [Type | Types], !:InVars, !:OutVars) :-
-    arg_info__compute_in_and_out_vars_2(ModuleInfo, Vars,
+    compute_in_and_out_vars_2(ModuleInfo, Vars,
         Modes, Types, !:InVars, !:OutVars),
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
     ( ArgMode = top_in ->
@@ -252,22 +252,22 @@ arg_info__compute_in_and_out_vars_2(ModuleInfo, [Var | Vars],
 
 %---------------------------------------------------------------------------%
 
-arg_info__unify_arg_info(model_det,
+unify_arg_info(model_det,
     [arg_info(1, top_in), arg_info(2, top_in)]).
-arg_info__unify_arg_info(model_semi,
+unify_arg_info(model_semi,
     [arg_info(1, top_in), arg_info(2, top_in)]).
-arg_info__unify_arg_info(model_non, _) :-
+unify_arg_info(model_non, _) :-
     error("arg_info: nondet unify!").
 
 %---------------------------------------------------------------------------%
 
-arg_info__partition_args(Args, Ins, Outs) :-
-    arg_info__partition_args(Args, Ins, Outs0, Unuseds),
+partition_args(Args, Ins, Outs) :-
+    partition_args(Args, Ins, Outs0, Unuseds),
     list__append(Outs0, Unuseds, Outs).
 
-arg_info__partition_args([], [], [], []).
-arg_info__partition_args([Var - ArgInfo | Rest], !:Ins, !:Outs, !:Unuseds) :-
-    arg_info__partition_args(Rest, !:Ins, !:Outs, !:Unuseds),
+partition_args([], [], [], []).
+partition_args([Var - ArgInfo | Rest], !:Ins, !:Outs, !:Unuseds) :-
+    partition_args(Rest, !:Ins, !:Outs, !:Unuseds),
     ArgInfo = arg_info(_, ArgMode),
     (
         ArgMode = top_in,
@@ -282,11 +282,11 @@ arg_info__partition_args([Var - ArgInfo | Rest], !:Ins, !:Outs, !:Unuseds) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred arg_info__input_args(list(arg_info)::in, list(arg_loc)::out) is det.
+:- pred input_args(list(arg_info)::in, list(arg_loc)::out) is det.
 
-arg_info__input_args([], []).
-arg_info__input_args([arg_info(Loc, Mode) | Args], !:Locs) :-
-    arg_info__input_args(Args, !:Locs),
+input_args([], []).
+input_args([arg_info(Loc, Mode) | Args], !:Locs) :-
+    input_args(Args, !:Locs),
     ( Mode = top_in ->
         !:Locs = [Loc | !.Locs]
     ;
@@ -295,51 +295,51 @@ arg_info__input_args([arg_info(Loc, Mode) | Args], !:Locs) :-
 
 %---------------------------------------------------------------------------%
 
-arg_info__partition_proc_args(ProcInfo, ModuleInfo, Inputs, Outputs, Unuseds) :-
+partition_proc_args(ProcInfo, ModuleInfo, Inputs, Outputs, Unuseds) :-
     proc_info_headvars(ProcInfo, Vars),
     proc_info_argmodes(ProcInfo, Modes),
     proc_info_vartypes(ProcInfo, VarTypes),
     map__apply_to_list(Vars, VarTypes, Types),
-    arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+    do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
-arg_info__partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo, Vars,
+partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo, Vars,
         Inputs, Outputs, Unuseds) :-
     proc_info_argmodes(ProcInfo, Modes),
     map__apply_to_list(Vars, VarTypes, Types),
-    arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+    do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
-arg_info__partition_generic_call_args(ModuleInfo, Vars, Types, Modes,
+partition_generic_call_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds) :-
-    arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+    do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
-:- pred arg_info__do_partition_proc_args(module_info::in, list(prog_var)::in,
-    list(type)::in, list(mode)::in, set(prog_var)::out,
+:- pred do_partition_proc_args(module_info::in, list(prog_var)::in,
+    list(mer_type)::in, list(mer_mode)::in, set(prog_var)::out,
     set(prog_var)::out, set(prog_var)::out) is det.
 
-arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         !:Inputs, !:Outputs, !:Unuseds) :-
     (
-        arg_info__partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
+        partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
             set__init, !:Inputs, set__init, !:Outputs,
             set__init, !:Unuseds)
     ->
         true
     ;
-        error("arg_info__do_partition_proc_args: list length mismatch")
+        error("do_partition_proc_args: list length mismatch")
     ).
 
-:- pred arg_info__partition_proc_args_2(list(prog_var)::in, list(type)::in,
-    list(mode)::in, module_info::in,
+:- pred partition_proc_args_2(list(prog_var)::in, list(mer_type)::in,
+    list(mer_mode)::in, module_info::in,
     set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out) is semidet.
 
-arg_info__partition_proc_args_2([], [], [], _ModuleInfo,
+partition_proc_args_2([], [], [], _ModuleInfo,
         !Inputs, !Outputs, !Unuseds).
-arg_info__partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
+partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
         ModuleInfo, !Inputs, !Outputs, !Unuseds) :-
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
     (
@@ -352,5 +352,5 @@ arg_info__partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
         ArgMode = top_unused,
         svset__insert(Var, !Unuseds)
     ),
-    arg_info__partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
+    partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
         !Inputs, !Outputs, !Unuseds).

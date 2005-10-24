@@ -451,7 +451,7 @@ do_instance_improvement_3(Constraints, FunDeps, HeadTypeParams, InstanceDefn,
         Changed0 = no
     ).
 
-:- pred do_instance_improvement_4(hlds_class_fundeps::in, list(type)::in,
+:- pred do_instance_improvement_4(hlds_class_fundeps::in, list(mer_type)::in,
     head_type_params::in, hlds_constraint::in, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
@@ -462,7 +462,7 @@ do_instance_improvement_4(FunDeps, InstanceTypes, HeadTypeParams, Constraint,
             HeadTypeParams),
         FunDeps, !Bindings, !Changed).
 
-:- pred do_instance_improvement_fundep(hlds_constraint::in, list(type)::in,
+:- pred do_instance_improvement_fundep(hlds_constraint::in, list(mer_type)::in,
     head_type_params::in, hlds_class_fundep::in, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
@@ -492,8 +492,8 @@ do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
     % For each index in the set, check that the types in the corresponding
     % positions in the lists are identical.
     %
-:- pred lists_match_on_elements(set(hlds_class_argpos)::in, list(type)::in,
-    list(type)::in) is semidet.
+:- pred lists_match_on_elements(set(hlds_class_argpos)::in, list(mer_type)::in,
+    list(mer_type)::in) is semidet.
 
 lists_match_on_elements(Elements, TypesA, TypesB) :-
     RTypesA = restrict_list_elements(Elements, TypesA),
@@ -503,8 +503,8 @@ lists_match_on_elements(Elements, TypesA, TypesB) :-
     % For each index in the set, unify the types in the corresponding
     % positions in the lists and add to the current bindings.
     %
-:- pred unify_on_elements(set(hlds_class_argpos)::in, list(type)::in,
-    list(type)::in, head_type_params::in, tsubst::in, tsubst::out)
+:- pred unify_on_elements(set(hlds_class_argpos)::in, list(mer_type)::in,
+    list(mer_type)::in, head_type_params::in, tsubst::in, tsubst::out)
     is semidet.
 
 unify_on_elements(Elements, TypesA, TypesB, HeadTypeParams, !Bindings) :-
@@ -515,8 +515,8 @@ unify_on_elements(Elements, TypesA, TypesB, HeadTypeParams, !Bindings) :-
     % Analogous to type_list_subsumes except that it only checks those
     % elements of the list specified by the set of indices.
     %
-:- pred subsumes_on_elements(set(hlds_class_argpos)::in, list(type)::in,
-    list(type)::in, tsubst::out) is semidet.
+:- pred subsumes_on_elements(set(hlds_class_argpos)::in, list(mer_type)::in,
+    list(mer_type)::in, tsubst::out) is semidet.
 
 subsumes_on_elements(Elements, TypesA, TypesB, Subst) :-
     RTypesA = restrict_list_elements(Elements, TypesA),
@@ -821,7 +821,7 @@ match_assumed_constraint_2(HeadTypeParams, AssumedConstraint,
     % type_unify_list fails.
     %
 :- pred subclass_details_to_constraint(tvarset::in, tvar_kind_map::in,
-    list(type)::in, subclass_details::in, prog_constraint::out) is semidet.
+    list(mer_type)::in, subclass_details::in, prog_constraint::out) is semidet.
 
 subclass_details_to_constraint(TVarSet, KindMap0, SuperClassTypes,
         SubClassDetails, SubC) :-

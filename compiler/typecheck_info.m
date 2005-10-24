@@ -26,7 +26,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 
 %-----------------------------------------------------------------------------%
 %
@@ -95,7 +94,7 @@
 %
 
 :- pred typecheck_info_init(module_info::in, pred_id::in,
-	bool::in, tvarset::in, prog_varset::in, map(prog_var, type)::in,
+	bool::in, tvarset::in, prog_varset::in, vartypes::in,
 	head_type_params::in, hlds_constraints::in, import_status::in,
 	pred_markers::in, typecheck_info::out) is det.
 
@@ -120,7 +119,7 @@
 	%
 :- pred typecheck_info_get_final_info(typecheck_info::in, list(tvar)::in,
 	existq_tvars::in, vartypes::in, tvarset::out, existq_tvars::out,
-	map(prog_var, type)::out, prog_constraints::out,
+	vartypes::out, prog_constraints::out,
 	constraint_proof_map::out, constraint_map::out,
 	tvar_renaming::out, tvar_renaming::out) is det.
 
@@ -189,7 +188,7 @@
 
 :- type type_assign --->
 	type_assign(
-		var_types		:: map(prog_var, type),
+		var_types		:: vartypes,
 		type_varset		:: tvarset,
 					% type names
 		head_type_params	:: head_type_params,
@@ -217,7 +216,7 @@
 %
 
 :- pred type_assign_get_var_types(type_assign::in,
-	map(prog_var, type)::out) is det.
+	vartypes::out) is det.
 :- pred type_assign_get_typevarset(type_assign::in,
 	tvarset::out) is det.
 :- pred type_assign_get_head_type_params(type_assign::in,
@@ -231,7 +230,7 @@
 :- pred type_assign_get_constraint_map(type_assign::in,
 	constraint_map::out) is det.
 
-:- pred type_assign_set_var_types(map(prog_var, type)::in,
+:- pred type_assign_set_var_types(vartypes::in,
 	type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_typevarset(tvarset::in,
 	type_assign::in, type_assign::out) is det.
@@ -255,7 +254,7 @@
 	--->	args(
 			caller_arg_assign	:: type_assign,
 						% Type assignment.
-			callee_arg_types	:: list(type),
+			callee_arg_types	:: list(mer_type),
 						% Types of callee args,
 						% renamed apart.
 			callee_constraints	:: hlds_constraints
@@ -264,7 +263,7 @@
 		).
 
 :- func get_caller_arg_assign(args_type_assign) = type_assign.
-:- func get_callee_arg_types(args_type_assign) = list(type).
+:- func get_callee_arg_types(args_type_assign) = list(mer_type).
 :- func get_callee_constraints(args_type_assign) = hlds_constraints.
 
 :- pred write_args_type_assign_set(args_type_assign_set::in, prog_varset::in,
@@ -286,8 +285,8 @@
 			tvarset, 		% Type variables
 			existq_tvars,		% Existentially quantified
 						% type vars
-			type, 			% Constructor type
-			list(type), 		% Types of the arguments
+			mer_type, 		% Constructor type
+			list(mer_type), 	% Types of the arguments
 			hlds_constraints	% Constraints introduced by
 						% this constructor (e.g. if
 						% it is actually a function,
@@ -306,6 +305,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module map.
 :- import_module std_util.
 :- import_module svmap.
 :- import_module term.
@@ -447,8 +447,8 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 	% Fully expand the types of the variables by applying the type
 	% bindings.
 	%
-:- pred expand_types(list(prog_var)::in, tsubst::in, map(prog_var, type)::in,
-	map(prog_var, type)::out) is det.
+:- pred expand_types(list(prog_var)::in, tsubst::in, vartypes::in,
+	vartypes::out) is det.
 
 expand_types([], _, !VarTypes).
 expand_types([Var | Vars], TypeSubst, !VarTypes) :-
@@ -597,7 +597,7 @@ write_type_assign(TypeAssign, VarSet, !IO) :-
 	io__write_string("\n", !IO).
 
 :- pred write_type_assign_types(list(prog_var)::in, prog_varset::in,
-	map(prog_var, type)::in, tsubst::in, tvarset::in, bool::in,
+	vartypes::in, tsubst::in, tvarset::in, bool::in,
 	io::di, io::uo) is det.
 
 write_type_assign_types([], _, _, _, _, FoundOne, !IO) :-
@@ -661,7 +661,7 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
 	% write_type_with_bindings writes out a type after applying the
 	% type bindings.
 	%
-:- pred write_type_with_bindings((type)::in, tvarset::in, tsubst::in,
+:- pred write_type_with_bindings(mer_type::in, tvarset::in, tsubst::in,
 	io::di, io::uo) is det.
 
 write_type_with_bindings(Type0, TypeVarSet, TypeBindings, !IO) :-

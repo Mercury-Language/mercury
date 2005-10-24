@@ -79,7 +79,7 @@
     % to the request queue. Return the procedure's newly allocated proc_id.
     % (This is used by unique_modes.m.)
     %
-:- pred request_proc(pred_id::in, list(mode)::in, inst_varset::in,
+:- pred request_proc(pred_id::in, list(mer_mode)::in, inst_varset::in,
     maybe(list(is_live))::in, maybe(determinism)::in, prog_context::in,
     proc_id::out, module_info::in, module_info::out) is det.
 
@@ -123,7 +123,7 @@
     % Generate the clauses for one of the compiler-generated special predicates
     % (compare/3, index/3, unify/2, etc.)
     %
-:- pred generate_clause_info(special_pred_id::in, (type)::in,
+:- pred generate_clause_info(special_pred_id::in, mer_type::in,
     hlds_type_body::in, prog_context::in, module_info::in, clauses_info::out)
     is det.
 
@@ -265,7 +265,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
     module_info_get_maybe_recompilation_info(!.ModuleInfo, MaybeRecompInfo0),
     (
         MaybeRecompInfo0 = yes(RecompInfo0),
-        recompilation__record_used_item(type_body, TypeCtor, TypeCtor,
+        recompilation__record_used_item(type_body_item, TypeCtor, TypeCtor,
             RecompInfo0, RecompInfo),
         module_info_set_maybe_recompilation_info(yes(RecompInfo), !ModuleInfo)
     ;
@@ -305,7 +305,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
             add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo)
         ),
 
-        % Convert from `uni_mode' to `list(mode)'.
+        % Convert from `uni_mode' to `list(mer_mode)'.
         UnifyMode = ((X_Initial - Y_Initial) -> (X_Final - Y_Final)),
         ArgModes0 = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
 
@@ -545,7 +545,7 @@ add_lazily_generated_compare_pred_decl(TypeCtor, PredId, !ModuleInfo) :-
         Type, TypeCtor, TypeBody, Context, ImportStatus, PredId, !ModuleInfo).
 
 :- pred add_lazily_generated_special_pred(special_pred_id::in,
-    unify_pred_item::in, tvarset::in, (type)::in, type_ctor::in,
+    unify_pred_item::in, tvarset::in, mer_type::in, type_ctor::in,
     hlds_type_body::in, context::in, import_status::in, pred_id::out,
     module_info::in, module_info::out) is det.
 
@@ -595,7 +595,7 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
     --->    declaration
     ;       clauses.
 
-:- pred collect_type_defn(module_info::in, type_ctor::in, (type)::out,
+:- pred collect_type_defn(module_info::in, type_ctor::in, mer_type::out,
     tvarset::out, hlds_type_body::out, prog_context::out) is det.
 
 collect_type_defn(ModuleInfo, TypeCtor, Type, TVarSet, TypeBody, Context) :-
@@ -664,7 +664,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
     ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, Args,
         ClausesRep, RttiVarMaps, HasForeignClauses).
 
-:- pred generate_initialise_clauses((type)::in,
+:- pred generate_initialise_clauses(mer_type::in,
     hlds_type_body::in, prog_var::in, prog_context::in,
     list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
@@ -723,7 +723,7 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
             "that has no solver_type_details")
     ).
 
-:- pred generate_unify_clauses((type)::in, hlds_type_body::in,
+:- pred generate_unify_clauses(mer_type::in, hlds_type_body::in,
     prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
@@ -886,8 +886,8 @@ generate_user_defined_unify_clauses(UserEqCompare, H1, H2, Context, Clauses,
     ),
     quantify_clauses_body([H1, H2], Goal, Context, Clauses, !Info).
 
-:- pred generate_unify_clauses_eqv_type((type)::in, prog_var::in, prog_var::in,
-    prog_context::in, list(clause)::out,
+:- pred generate_unify_clauses_eqv_type(mer_type::in, prog_var::in,
+    prog_var::in, prog_context::in, list(clause)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_unify_clauses_eqv_type(EqvType, H1, H2, Context, Clauses, !Info) :-
@@ -978,7 +978,7 @@ generate_index_clauses(TypeBody, X, Index, Context, Clauses, !Info) :-
         )
     ).
 
-:- pred generate_compare_clauses((type)::in, hlds_type_body::in,
+:- pred generate_compare_clauses(mer_type::in, hlds_type_body::in,
     prog_var::in, prog_var::in, prog_var::in, prog_context::in,
     list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
@@ -1155,7 +1155,7 @@ generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
     ),
     quantify_clauses_body(ArgVars, Goal, Context, Clauses, !Info).
 
-:- pred generate_compare_clauses_eqv_type((type)::in,
+:- pred generate_compare_clauses_eqv_type(mer_type::in,
     prog_var::in, prog_var::in, prog_var::in,
     prog_context::in, list(clause)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
@@ -1353,7 +1353,7 @@ generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_du_compare_clauses((type)::in, list(constructor)::in,
+:- pred generate_du_compare_clauses(mer_type::in, list(constructor)::in,
     prog_var::in, prog_var::in, prog_var::in, prog_context::in,
     list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
@@ -1528,7 +1528,7 @@ generate_du_quad_compare_clauses_2(LeftCtor, [RightCtor | RightCtors],
     % Note that disjuncts covering constants do not test Y, since for constants
     % X_Index = Y_Index implies X = Y.
     %
-:- pred generate_du_linear_compare_clauses((type)::in, list(constructor)::in,
+:- pred generate_du_linear_compare_clauses(mer_type::in, list(constructor)::in,
     prog_var::in, prog_var::in, prog_var::in, prog_context::in,
     list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
@@ -1539,8 +1539,9 @@ generate_du_linear_compare_clauses(Type, Ctors, Res, X, Y, Context, [Clause],
     HeadVars = [Res, X, Y],
     quantify_clause_body(HeadVars, Goal, Context, Clause, !Info).
 
-:- pred generate_du_linear_compare_clauses_2((type)::in, list(constructor)::in,
-    prog_var::in, prog_var::in, prog_var::in, prog_context::in, hlds_goal::out,
+:- pred generate_du_linear_compare_clauses_2(mer_type::in,
+    list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
+    prog_context::in, hlds_goal::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y, Context, Goal,
@@ -1818,7 +1819,7 @@ build_call(Name, ArgVars, Context, Goal, !Info) :-
     goal_util__generate_simple_call(MercuryBuiltin, Name, predicate,
         mode_no(0), erroneous, ArgVars, [], [], ModuleInfo, Context, Goal).
 
-:- pred build_specific_call((type)::in, special_pred_id::in,
+:- pred build_specific_call(mer_type::in, special_pred_id::in,
     list(prog_var)::in, instmap_delta::in, determinism::in,
     prog_context::in, hlds_goal::out,
     unify_proc_info::in, unify_proc_info::out) is det.
@@ -1832,7 +1833,8 @@ build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta, Detism,
     ->
         GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, PredName),
         set__list_to_set(ArgVars, NonLocals),
-        goal_info_init(NonLocals, InstmapDelta, Detism, pure, GoalInfo0),
+        goal_info_init(NonLocals, InstmapDelta, Detism, purity_pure,
+            GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo
     ;
@@ -1845,7 +1847,7 @@ build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta, Detism,
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_fresh_named_var_from_type((type)::in, string::in, int::in,
+:- pred make_fresh_named_var_from_type(mer_type::in, string::in, int::in,
     prog_var::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 make_fresh_named_var_from_type(Type, BaseName, Num, Var, !Info) :-
@@ -1853,8 +1855,9 @@ make_fresh_named_var_from_type(Type, BaseName, Num, Var, !Info) :-
     string__append(BaseName, NumStr, Name),
     info_new_named_var(Type, Name, Var, !Info).
 
-:- pred make_fresh_named_vars_from_types(list(type)::in, string::in, int::in,
-    list(prog_var)::out, unify_proc_info::in, unify_proc_info::out) is det.
+:- pred make_fresh_named_vars_from_types(list(mer_type)::in, string::in,
+    int::in, list(prog_var)::out, unify_proc_info::in, unify_proc_info::out)
+    is det.
 
 make_fresh_named_vars_from_types([], _, _, [], !Info).
 make_fresh_named_vars_from_types([Type | Types], BaseName, Num,
@@ -1862,7 +1865,7 @@ make_fresh_named_vars_from_types([Type | Types], BaseName, Num,
     make_fresh_named_var_from_type(Type, BaseName, Num, Var, !Info),
     make_fresh_named_vars_from_types(Types, BaseName, Num + 1, Vars, !Info).
 
-:- pred make_fresh_vars_from_types(list(type)::in, list(prog_var)::out,
+:- pred make_fresh_vars_from_types(list(mer_type)::in, list(prog_var)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 make_fresh_vars_from_types([], [], !Info).
@@ -1950,9 +1953,9 @@ equal_functor = functor(equal_cons_id, no, []).
 :- type unify_proc_info.
 
 :- pred info_init(module_info::in, unify_proc_info::out) is det.
-:- pred info_new_var((type)::in, prog_var::out,
+:- pred info_new_var(mer_type::in, prog_var::out,
     unify_proc_info::in, unify_proc_info::out) is det.
-:- pred info_new_named_var((type)::in, string::in, prog_var::out,
+:- pred info_new_named_var(mer_type::in, string::in, prog_var::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
 :- pred info_extract(unify_proc_info::in,

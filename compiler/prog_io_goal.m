@@ -39,7 +39,7 @@
     % of their corresponding modes, and a determinism.
     %
 :- pred parse_pred_expression(term::in, lambda_eval_method::out,
-    list(prog_term)::out, list(mode)::out, determinism::out) is semidet.
+    list(prog_term)::out, list(mer_mode)::out, determinism::out) is semidet.
 
     % parse_dcg_pred_expression/3 converts the first argument to a -->/2
     % higher-order DCG pred expression into a list of arguments, a list
@@ -50,7 +50,7 @@
     %       is Det --> Goal)'.
     %
 :- pred parse_dcg_pred_expression(term::in, lambda_eval_method::out,
-    list(prog_term)::out, list(mode)::out, determinism::out) is semidet.
+    list(prog_term)::out, list(mer_mode)::out, determinism::out) is semidet.
 
     % parse_func_expression/3 converts the first argument to a :-/2
     % higher-order func expression into a list of arguments, a list
@@ -70,7 +70,7 @@
     %   `(func(Var1, ..., VarN) = (VarN1). '
     %
 :- pred parse_func_expression(term::in, lambda_eval_method::out,
-    list(prog_term)::out, list(mode)::out, determinism::out) is semidet.
+    list(prog_term)::out, list(mer_mode)::out, determinism::out) is semidet.
 
     % parse_lambda_eval_method/3 extracts the `aditi_bottom_up'
     % annotation (if any) from a pred expression and returns the
@@ -125,12 +125,12 @@ parse_goal(Term, Goal, !VarSet) :-
             % Check for predicate calls.
             sym_name_and_args(ArgsTerm, SymName, Args)
         ->
-            Goal = call(SymName, Args, pure) - Context
+            Goal = call(SymName, Args, purity_pure) - Context
         ;
             % A call to a free variable, or to a number or string.
             % Just translate it into a call to call/1 - the
             % typechecker will catch calls to numbers and strings.
-            Goal = call(unqualified("call"), [ArgsTerm], pure) - Context
+            Goal = call(unqualified("call"), [ArgsTerm], purity_pure) - Context
         )
     ).
 
@@ -146,7 +146,7 @@ parse_goal(Term, Goal, !VarSet) :-
 
 parse_goal_2("true", [], true, !V).
 parse_goal_2("fail", [], fail, !V).
-parse_goal_2("=", [A0, B0], unify(A, B, pure), !V) :-
+parse_goal_2("=", [A0, B0], unify(A, B, purity_pure), !V) :-
     term__coerce(A0, A),
     term__coerce(B0, B).
 parse_goal_2(",", [A0, B0], (A, B), !V) :-
@@ -246,47 +246,47 @@ parse_goal_2("promise_equivalent_solutions", [OVars, A0], GoalExpr, !V):-
 
 parse_goal_2("promise_pure", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(dont_make_implicit_promises, pure, A).
+    GoalExpr = promise_purity(dont_make_implicit_promises, purity_pure, A).
 
 parse_goal_2("promise_semipure", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(dont_make_implicit_promises, semipure, A).
+    GoalExpr = promise_purity(dont_make_implicit_promises, purity_semipure, A).
 
 parse_goal_2("promise_impure", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(dont_make_implicit_promises, impure, A).
+    GoalExpr = promise_purity(dont_make_implicit_promises, purity_impure, A).
 
 parse_goal_2("promise_pure_implicit", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(make_implicit_promises, pure, A).
+    GoalExpr = promise_purity(make_implicit_promises, purity_pure, A).
 
 parse_goal_2("promise_semipure_implicit", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(make_implicit_promises, semipure, A).
+    GoalExpr = promise_purity(make_implicit_promises, purity_semipure, A).
 
 parse_goal_2("promise_impure_implicit", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(make_implicit_promises, impure, A).
+    GoalExpr = promise_purity(make_implicit_promises, purity_impure, A).
 
     % The following is a temporary hack to handle `is' in the parser -
     % we ought to handle it in the code generation - but then `is/2' itself
     % is a bit of a hack.
-parse_goal_2("is", [A0, B0], unify(A, B, pure), !V) :-
+parse_goal_2("is", [A0, B0], unify(A, B, purity_pure), !V) :-
     term__coerce(A0, A),
     term__coerce(B0, B).
 parse_goal_2("impure", [A0], A, !V) :-
-    parse_goal_with_purity(A0, (impure), A, !V).
+    parse_goal_with_purity(A0, purity_impure, A, !V).
 parse_goal_2("semipure", [A0], A, !V) :-
-    parse_goal_with_purity(A0, (semipure), A, !V).
+    parse_goal_with_purity(A0, purity_semipure, A, !V).
 
 :- pred parse_goal_with_purity(term::in, purity::in, goal_expr::out,
     prog_varset::in, prog_varset::out) is det.
 
 parse_goal_with_purity(A0, Purity, A, !V) :-
     parse_goal(A0, A1, !V),
-    ( A1 = call(Pred, Args, pure) - _ ->
+    ( A1 = call(Pred, Args, purity_pure) - _ ->
         A = call(Pred, Args, Purity)
-    ; A1 = unify(ProgTerm1, ProgTerm2, pure) - _ ->
+    ; A1 = unify(ProgTerm1, ProgTerm2, purity_pure) - _ ->
         A = unify(ProgTerm1, ProgTerm2, Purity)
     ;
         % Inappropriate placement of an impurity marker, so we treat
@@ -294,7 +294,7 @@ parse_goal_with_purity(A0, Purity, A, !V) :-
         % descriptive for these errors.
         purity_name(Purity, PurityString),
         term__coerce(A0, A2),
-        A = call(unqualified(PurityString), [A2], pure)
+        A = call(unqualified(PurityString), [A2], purity_pure)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -315,7 +315,7 @@ parse_some_vars_goal(A0, Vars, StateVars, A, !VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred parse_lambda_arg(term::in, prog_term::out, (mode)::out) is semidet.
+:- pred parse_lambda_arg(term::in, prog_term::out, mer_mode::out) is semidet.
 
 parse_lambda_arg(Term, ArgTerm, Mode) :-
     Term = term__functor(term__atom("::"), [ArgTerm0, ModeTerm], _),
@@ -396,19 +396,19 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 parse_lambda_eval_method(Term0, EvalMethod, Term) :-
     ( Term0 = term__functor(term__atom(MethodStr), [Term1], _) ->
         ( MethodStr = "aditi_bottom_up" ->
-            EvalMethod = (aditi_bottom_up),
+            EvalMethod = lambda_aditi_bottom_up,
             Term = Term1
         ;
-            EvalMethod = normal,
+            EvalMethod = lambda_normal,
             Term = Term0
         )
     ;
-        EvalMethod = normal,
+        EvalMethod = lambda_normal,
         Term = Term0
     ).
 
 :- pred parse_pred_expr_args(list(term)::in, list(prog_term)::out,
-    list(mode)::out) is semidet.
+    list(mer_mode)::out) is semidet.
 
 parse_pred_expr_args([], [], []).
 parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
@@ -420,7 +420,7 @@ parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
     % two DCG arguments.
     %
 :- pred parse_dcg_pred_expr_args(list(term)::in, list(prog_term)::out,
-    list(mode)::out) is semidet.
+    list(mer_mode)::out) is semidet.
 
 parse_dcg_pred_expr_args([DCGModeTermA, DCGModeTermB], [],
         [DCGModeA, DCGModeB]) :-

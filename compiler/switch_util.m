@@ -60,7 +60,7 @@
     % Fail if the type isn't the sort of type that has a range
     % or if the type's range is too big to switch on (e.g. int).
     %
-:- pred type_range(type_category::in, (type)::in, module_info::in,
+:- pred type_range(type_category::in, mer_type::in, module_info::in,
     int::out, int::out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -140,7 +140,7 @@
     % Find out how many secondary tags share each primary tag
     % of the given variable.
     %
-:- pred get_ptag_counts((type)::in, module_info::in,
+:- pred get_ptag_counts(mer_type::in, module_info::in,
     int::out, ptag_count_map::out) is det.
 
 %-----------------------------------------------------------------------------%

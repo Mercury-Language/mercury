@@ -62,7 +62,7 @@
 	list(cons_type_info)::in, cons_id::in, list(prog_var)::in,
 	args_type_assign_set::in, io::di, io::uo) is det.
 
-:- pred report_error_var(typecheck_info::in, prog_var::in, (type)::in,
+:- pred report_error_var(typecheck_info::in, prog_var::in, mer_type::in,
 	type_assign_set::in, io::di, io::uo) is det.
 
 :- pred report_error_arg_var(typecheck_info::in, prog_var::in,
@@ -418,8 +418,8 @@ report_error_lambda_var(Info, PredOrFunc, EvalMethod, Var, ArgVars,
 	io__write_string("\n", !IO),
 	prog_out__write_context(Context, !IO),
 
-	( EvalMethod = normal, EvalStr = ""
-	; EvalMethod = (aditi_bottom_up), EvalStr = "aditi_bottom_up "
+	( EvalMethod = lambda_normal, EvalStr = ""
+	; EvalMethod = lambda_aditi_bottom_up, EvalStr = "aditi_bottom_up "
 	),
 
 	(
@@ -610,14 +610,14 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
 
 :- type type_mismatch
 	--->	type_mismatch(
-			type,		% actual type of that variable
-			type,		% expected type of that variable
+			mer_type,	% actual type of that variable
+			mer_type,	% expected type of that variable
 			tvarset,	% the type vars in the expected
 					% and expected types
 			head_type_params % existentially quantified type vars
 		).
 
-:- pred find_mismatched_args(assoc_list(prog_var, type)::in,
+:- pred find_mismatched_args(assoc_list(prog_var, mer_type)::in,
 	type_assign_set::in, int::in, list(mismatch_info)::out,
 	list(mismatch_info)::out, list(mismatch_info)::out) is det.
 
@@ -651,7 +651,7 @@ find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
 		AllMismatches = [Mismatch | AllMismatchesTail]
 	).
 
-:- pred substitute_types_check_match((type)::in, type_stuff::in,
+:- pred substitute_types_check_match(mer_type::in, type_stuff::in,
 	type_mismatch::out) is semidet.
 
 substitute_types_check_match(ExpType, TypeStuff, TypeMismatch) :-
@@ -1428,7 +1428,7 @@ write_args_type_assign_set_msg(ArgTypeAssignSet, VarSet, !IO) :-
 		globals__io_set_extra_error_info(yes, !IO)
 	).
 
-:- pred output_type((type)::in, tvarset::in, head_type_params::in,
+:- pred output_type(mer_type::in, tvarset::in, head_type_params::in,
 	io::di, io::uo) is det.
 
 output_type(Type0, TVarSet, HeadTypeParams, !IO) :-
@@ -1463,13 +1463,13 @@ write_type_stuff(type_stuff(Type, TVarSet, TypeBinding, HeadTypeParams),
 	write_type_b(Type, TVarSet, TypeBinding, HeadTypeParams, !IO).
 
 :- pred write_var_type_stuff_list(prog_context::in, list(type_stuff)::in,
-	(type)::in, io::di, io::uo) is det.
+	mer_type::in, io::di, io::uo) is det.
 
 write_var_type_stuff_list(Context, TypeStuffs, Type, !IO) :-
 	io__write_list(TypeStuffs, ",\n", write_var_type_stuff(Context, Type),
 		!IO).
 
-:- pred write_var_type_stuff(prog_context::in, (type)::in, type_stuff::in,
+:- pred write_var_type_stuff(prog_context::in, mer_type::in, type_stuff::in,
 	io::di, io::uo) is det.
 
 write_var_type_stuff(Context, Type, VarTypeStuff, !IO) :-
@@ -1483,8 +1483,8 @@ write_var_type_stuff(Context, Type, VarTypeStuff, !IO) :-
 	io__write_string("    (expected) ", !IO),
 	write_type_b(Type, TVarSet, TypeBinding, HeadTypeParams, !IO).
 
-:- pred write_type_b((type)::in, tvarset::in, tsubst::in, head_type_params::in,
-	io::di, io::uo) is det.
+:- pred write_type_b(mer_type::in, tvarset::in, tsubst::in,
+	head_type_params::in, io::di, io::uo) is det.
 
 write_type_b(Type0, TypeVarSet, TypeBindings, HeadTypeParams, !IO) :-
 	apply_rec_subst_to_type(TypeBindings, Type0, Type),
@@ -1637,7 +1637,7 @@ make_pred_id_preamble(Info, Preamble) :-
 	% prog_contexts, i.e. whether they can be unified without
 	% binding any type parameters.
 	%
-:- pred identical_types((type)::in, (type)::in) is semidet.
+:- pred identical_types(mer_type::in, mer_type::in) is semidet.
 
 identical_types(Type1, Type2) :-
 	map__init(TypeSubst0),
@@ -1649,7 +1649,13 @@ identical_types(Type1, Type2) :-
 	% Given a type assignment set and a variable,
 	% return the list of possible different types for the variable.
 	%
-:- type type_stuff ---> type_stuff(type, tvarset, tsubst, head_type_params).
+:- type type_stuff
+	--->	type_stuff(
+			mer_type,
+			tvarset,
+			tsubst,
+			head_type_params
+		).
 
 :- pred get_type_stuff(type_assign_set::in, prog_var::in,
 	list(type_stuff)::out) is det.
@@ -1693,8 +1699,13 @@ typestuff_to_typestr(TypeStuff) = TypeStr :-
 	% return the list of possible different types for the argument
 	% and the variable.
 	%
-:- type arg_type_stuff --->
-	arg_type_stuff(type, type, tvarset, head_type_params).
+:- type arg_type_stuff
+	--->	arg_type_stuff(
+			mer_type,
+			mer_type,
+			tvarset,
+			head_type_params
+		).
 
 :- pred get_arg_type_stuff(args_type_assign_set::in, prog_var::in,
 	list(arg_type_stuff)::out) is det.
@@ -1857,4 +1868,3 @@ this_file = "typecheck_errors.m".
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_errors.
 %-----------------------------------------------------------------------------%
-

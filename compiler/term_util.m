@@ -40,8 +40,9 @@
 % For cross-module analysis, the information is written out as
 % `pragma termination_info(...)' declarations in the
 % `.opt' and `.trans_opt' files.  The module prog_data.m defines
-% types similar to these two (but without the `list(term_errors__error)')
-% which are used when parsing `termination_info' pragmas.
+% types similar to these two (but without the
+% `list(termination_error_context)') which are used when parsing
+% `termination_info' pragmas.
 %
 
 % The arg size info defines an upper bound on the difference
@@ -53,10 +54,10 @@
 % where | | represents a semilinear norm.
 
 :- type arg_size_info ==
-	generic_arg_size_info(list(term_errors__error)).
+	generic_arg_size_info(list(termination_error_context)).
 
 :- type termination_info ==
-	generic_termination_info(unit, list(term_errors__error)).
+	generic_termination_info(unit, list(termination_error_context)).
 
 % The type `used_args' holds a mapping which specifies for each procedure
 % which of its arguments are used.
@@ -75,7 +76,7 @@
 % This predicate partitions the arguments of a call into a list of input
 % variables and a list of output variables,
 
-:- pred partition_call_args(module_info::in, list(mode)::in, list(prog_var)::in,
+:- pred partition_call_args(module_info::in, list(mer_mode)::in, list(prog_var)::in,
 	bag(prog_var)::out, bag(prog_var)::out) is det.
 
 % Given a list of variables from a unification, this predicate divides the
@@ -122,7 +123,7 @@
 	maybe(arg_size_info)::out) is det.
 
 	% Succeeds if one or more variables in the list are higher order.
-:- pred horder_vars(list(prog_var)::in , map(prog_var, type)::in) is semidet.
+:- pred horder_vars(list(prog_var)::in , vartypes::in) is semidet.
 
 :- pred get_context_from_scc(list(pred_proc_id)::in, module_info::in,
 	prog_context::out) is det.
@@ -181,7 +182,7 @@ partition_call_args(Module, ArgModes, Args, InVarsBag, OutVarsBag) :-
 	bag__from_list(InVars, InVarsBag),
 	bag__from_list(OutVars, OutVarsBag).
 
-:- pred partition_call_args_2(module_info::in, list(mode)::in,
+:- pred partition_call_args_2(module_info::in, list(mer_mode)::in,
 	list(prog_var)::in, list(prog_var)::out, list(prog_var)::out) is det.
 
 partition_call_args_2(_, [], [], [], []).

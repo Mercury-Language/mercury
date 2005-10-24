@@ -258,7 +258,7 @@ recursively_process_requests(!Info, !IO) :-
                                     % --typeinfo-liveness is set.
 
                 rq_ho_args          :: list(higher_order_arg),
-                rq_caller_types     :: list(type),
+                rq_caller_types     :: list(mer_type),
                                     % argument types in caller
 
                 rq_typeinfo_liveness :: bool,
@@ -296,7 +296,7 @@ recursively_process_requests(!Info, !IO) :-
                 hoa_curry_arg_in_caller :: list(prog_var),
                                     % Curried arguments in caller.
 
-                hoa_curry_type_in_caller :: list(type),
+                hoa_curry_type_in_caller :: list(mer_type),
                                     % Curried argument types in caller.
 
                 hoa_curry_rtti_type :: list(rtti_var_info),
@@ -399,7 +399,7 @@ recursively_process_requests(!Info, !IO) :-
                                         % caller.
                 np_extra_act_ti_vars    :: list(tvar),
                                         % Extra typeinfo tvars in caller.
-                np_unspec_act_types     :: list(type),
+                np_unspec_act_types     :: list(mer_type),
                                         % Unspecialised argument types
                                         % in requesting caller.
                 np_typeinfo_liveness    :: bool,
@@ -926,8 +926,8 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
     ).
 
 :- pred find_matching_instance_method(list(hlds_instance_defn)::in, int::in,
-    list(type)::in, pred_id::out, proc_id::out,
-    list(prog_constraint)::out, list(type)::out,
+    list(mer_type)::in, pred_id::out, proc_id::out,
+    list(prog_constraint)::out, list(mer_type)::out,
     tvarset::in, tvarset::out) is semidet.
 
 find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
@@ -946,8 +946,8 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
             PredId, ProcId, Constraints, UnconstrainedTVarTypes, !TVarSet)
     ).
 
-:- pred instance_matches(list(type)::in, hlds_instance_defn::in,
-    list(prog_constraint)::out, list(type)::out,
+:- pred instance_matches(list(mer_type)::in, hlds_instance_defn::in,
+    list(prog_constraint)::out, list(mer_type)::out,
     tvarset::in, tvarset::out) is semidet.
 
 instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
@@ -997,7 +997,7 @@ get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
     % runtime/mercury_ho_call.c.
     %
 :- pred get_unconstrained_instance_type_infos(module_info::in,
-    prog_var::in, list(type)::in, int::in, list(hlds_goal)::out,
+    prog_var::in, list(mer_type)::in, int::in, list(hlds_goal)::out,
     list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
 get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
@@ -1009,7 +1009,7 @@ get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
         Index, Goals, Vars, !ProcInfo).
 
 :- pred get_typeclass_info_args(module_info::in, prog_var::in, string::in,
-    pred(T, type)::(pred(in, out) is det),
+    pred(T, mer_type)::(pred(in, out) is det),
     list(T)::in, int::in, list(hlds_goal)::out,
     list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
@@ -1023,7 +1023,7 @@ get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
         MakeResultType, Args, Index, Goals, Vars, !ProcInfo).
 
 :- pred get_typeclass_info_args_2(prog_var::in, pred_id::in, proc_id::in,
-    sym_name::in, pred(T, type)::(pred(in, out) is det),
+    sym_name::in, pred(T, mer_type)::(pred(in, out) is det),
     list(T)::in, int::in, list(hlds_goal)::out,
     list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
@@ -1042,7 +1042,7 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert(ResultVar, ground(shared, none),
         InstMapDelta0, InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
     CallGoal = call(PredId, ProcId, CallArgs, not_builtin,
         MaybeContext, SymName) - GoalInfo,
     get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
@@ -1348,7 +1348,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
     % a known value.
     %
 :- pred find_higher_order_args(module_info::in, import_status::in,
-    list(prog_var)::in, list(type)::in, map(prog_var, type)::in,
+    list(prog_var)::in, list(mer_type)::in, vartypes::in,
     rtti_varmaps::in, pred_vars::in, int::in, list(higher_order_arg)::in,
     list(higher_order_arg)::out) is det.
 
@@ -1424,8 +1424,8 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
     % class constraints match an instance which was not matched before.
     %
 :- pred type_subst_makes_instance_known(module_info::in,
-    list(prog_constraint)::in, tvarset::in, list(tvar)::in, list(type)::in,
-    tvarset::in, existq_tvars::in, list(type)::in) is semidet.
+    list(prog_constraint)::in, tvarset::in, list(tvar)::in, list(mer_type)::in,
+    tvarset::in, existq_tvars::in, list(mer_type)::in) is semidet.
 
 type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
         CallerHeadTypeParams, ArgTypes, CalleeTVarSet,
@@ -1473,7 +1473,7 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
 
                 list(prog_var),
                             % The arguments to the specialised call.
-                list(type)
+                list(mer_type)
                             % Type variables for which extra type-infos must be
                             % added to the start of the argument list.
             ).
@@ -1624,7 +1624,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
         VarInfo = non_rtti_var
     ).
 
-:- pred construct_extra_type_infos(list(type)::in,
+:- pred construct_extra_type_infos(list(mer_type)::in,
     list(prog_var)::out, list(hlds_goal)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
@@ -2008,7 +2008,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
             Goal, !Info)
     ).
 
-:- pred call_type_specific_unify_or_compare((type)::in, special_pred_id::in,
+:- pred call_type_specific_unify_or_compare(mer_type::in, special_pred_id::in,
     list(prog_var)::in, list(prog_var)::in,
     maybe(call_unify_context)::in, bool::in, hlds_goal_expr::out,
     higher_order_info::in, higher_order_info::out) is semidet.
@@ -2046,7 +2046,7 @@ specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
         Goal = GoalExpr - _
     ).
 
-:- pred specialize_unify_or_compare_pred_for_atomic((type)::in,
+:- pred specialize_unify_or_compare_pred_for_atomic(mer_type::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in,
     maybe(call_unify_context)::in, hlds_goal_info::in, hlds_goal_expr::out,
     higher_order_info::in, higher_order_info::out) is det.
@@ -2085,14 +2085,14 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
             instmap_delta_from_assoc_list(
                 [ComparisonResult - ground(shared,none)], InstMapDelta),
             Detism = det,
-            goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
-                GoalInfo),
+            goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
+                Context, GoalInfo),
             GoalExpr = conj([CastGoal1, CastGoal2, Call - GoalInfo]),
             !:Info = !.Info ^ proc_info := ProcInfo
         )
     ).
 
-:- pred specialize_unify_or_compare_pred_for_no_tag((type)::in, sym_name::in,
+:- pred specialize_unify_or_compare_pred_for_no_tag(mer_type::in, sym_name::in,
     maybe(prog_var)::in, prog_var::in, prog_var::in,
     maybe(call_unify_context)::in, hlds_goal_info::in, hlds_goal_expr::out,
     higher_order_info::in, higher_order_info::out) is det.
@@ -2117,7 +2117,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
         SpecialGoal = unify(UnwrappedArg1, var(UnwrappedArg2), (In - In),
             simple_test(UnwrappedArg1, UnwrappedArg2),
             unify_context(explicit, [])),
-        goal_info_init(NonLocals, InstMapDelta, Detism, pure,
+        goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
             Context, GoalInfo),
         GoalExpr = conj([ExtractGoal1, ExtractGoal2, SpecialGoal - GoalInfo]),
         !:Info = !.Info ^ proc_info := ProcInfo2
@@ -2137,8 +2137,8 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
             NewCallArgs = [ComparisonResult, UnwrappedArg1, UnwrappedArg2],
             SpecialGoal = call(SpecialPredId, SpecialProcId, NewCallArgs,
                 not_builtin, MaybeContext, SymName),
-            goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
-                GoalInfo),
+            goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
+                Context, GoalInfo),
             GoalExpr = conj([ExtractGoal1, ExtractGoal2,
                 SpecialGoal - GoalInfo]),
             !:Info = !.Info ^ proc_info := ProcInfo2
@@ -2151,15 +2151,15 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
             NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
             SpecialGoal = call(SpecialPredId, SpecialProcId, NewCallArgs,
                 not_builtin, MaybeContext, SymName),
-            goal_info_init(NonLocals, InstMapDelta, Detism, pure, Context,
-                GoalInfo),
+            goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
+                Context, GoalInfo),
             GoalExpr = conj([ExtractGoal1, CastGoal1, ExtractGoal2, CastGoal2,
                 SpecialGoal - GoalInfo]),
             !:Info = !.Info ^ proc_info := ProcInfo4
         )
     ).
 
-:- pred find_special_proc((type)::in, special_pred_id::in, sym_name::out,
+:- pred find_special_proc(mer_type::in, special_pred_id::in, sym_name::out,
     pred_id::out, proc_id::out,
     higher_order_info::in, higher_order_info::out) is semidet.
 
@@ -2209,7 +2209,7 @@ find_special_proc(Type, SpecialId, SymName, PredId, ProcId, !Info) :-
     ).
 
 :- pred find_builtin_type_with_equivalent_compare(module_info::in,
-    (type)::in, (type)::out, bool::out) is det.
+    mer_type::in, mer_type::out, bool::out) is det.
 
 find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         NeedIntCast) :-
@@ -2277,14 +2277,14 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
     ).
 
 :- pred generate_unsafe_type_cast(prog_context::in,
-    (type)::in, prog_var::in, prog_var::out, hlds_goal::out,
+    mer_type::in, prog_var::in, prog_var::out, hlds_goal::out,
     proc_info::in, proc_info::out) is det.
 
 generate_unsafe_type_cast(Context, ToType, Arg, CastArg, Goal, !ProcInfo) :-
     proc_info_create_var_from_type(ToType, no, CastArg, !ProcInfo),
     generate_cast(unsafe_type_cast, Arg, CastArg, Context, Goal).
 
-:- pred unwrap_no_tag_arg((type)::in, prog_context::in, sym_name::in,
+:- pred unwrap_no_tag_arg(mer_type::in, prog_context::in, sym_name::in,
     prog_var::in, prog_var::out, hlds_goal::out,
     proc_info::in, proc_info::out) is det.
 
@@ -2298,14 +2298,15 @@ unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg, Goal,
     % This will be recomputed later.
     instmap_delta_from_assoc_list([UnwrappedArg - ground(shared, none)],
         InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, pure, Context, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, Context,
+        GoalInfo),
     Goal = unify(Arg, functor(ConsId, no, [UnwrappedArg]),
         in_mode - out_mode,
         deconstruct(Arg, ConsId, [UnwrappedArg], UniModes,
             cannot_fail, cannot_cgc),
         unify_context(explicit, [])) - GoalInfo.
 
-%-------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 %
 % Predicates to process requests for specialization, and create any
 % new predicates that are required.
@@ -2925,8 +2926,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     map.det_insert(NewProcs0, NewProcId, !.NewProcInfo, NewProcs),
     pred_info_set_procedures(NewProcs, !NewPredInfo).
 
-:- pred update_var_types(pair(prog_var, type)::in, vartypes::in, vartypes::out)
-    is det.
+:- pred update_var_types(pair(prog_var, mer_type)::in,
+    vartypes::in, vartypes::out) is det.
 
 update_var_types(VarAndType, !Map) :-
     VarAndType = Var - Type,
@@ -2950,7 +2951,7 @@ update_var_types(VarAndType, !Map) :-
     % the arguments for specialized versions changes.
     %
 :- pred construct_higher_order_terms(module_info::in, list(prog_var)::in,
-    list(prog_var)::out, list(mode)::in, list(mode)::out,
+    list(prog_var)::out, list(mer_mode)::in, list(mer_mode)::out,
     list(higher_order_arg)::in, proc_info::in, proc_info::out,
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out,
     pred_vars::in, pred_vars::out, list(hlds_goal)::out) is det.
@@ -3039,8 +3040,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         ConstInst = ground(shared, GroundInstInfo),
         instmap_delta_from_assoc_list([LVar - ConstInst],
             ConstInstMapDelta),
-        goal_info_init(ConstNonLocals, ConstInstMapDelta,
-            det, pure, ConstGoalInfo),
+        goal_info_init(ConstNonLocals, ConstInstMapDelta, det, purity_pure,
+            ConstGoalInfo),
         RHS = functor(ConsId, no, CurriedHeadVars1),
         UniMode = (free -> ConstInst) - (ConstInst -> ConstInst),
         ConstGoal = unify(LVar, RHS, UniMode,
@@ -3092,7 +3093,7 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
         VarInfo = non_rtti_var
     ).
 
-:- pred update_type_info_locn(prog_var::in, (type)::in, int::in, int::out,
+:- pred update_type_info_locn(prog_var::in, mer_type::in, int::in, int::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
@@ -3201,7 +3202,7 @@ higher_order_arg_depth(HOArg) =
     % output for existential constraints.
     %
 :- pred find_class_context(module_info::in, list(rtti_var_info)::in,
-    list(mode)::in, list(prog_constraint)::in, list(prog_constraint)::in,
+    list(mer_mode)::in, list(prog_constraint)::in, list(prog_constraint)::in,
     prog_constraints::out) is det.
 
 find_class_context(_, [], [], Univ0, Exist0, Constraints) :-

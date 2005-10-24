@@ -200,8 +200,8 @@ split_computed_goto(Rval, Labels, Comment, Instrs, !C, MaxSize, NumLabels,
 			error("split_computed_goto: list__split_list")
 		),
 
-		Index     = binop((-), Rval, const(int_const(Mid))),
-		Test      = binop((>=), Rval, const(int_const(Mid))),
+		Index     = binop(int_sub, Rval, const(int_const(Mid))),
+		Test      = binop(int_ge,  Rval, const(int_const(Mid))),
 		ElseAddr  = label(internal(LabelNum, ProcLabel)),
 		IfInstr   = if_val(Test, ElseAddr) - "binary search",
 		ElseInstr = label(internal(LabelNum, ProcLabel)) - "",

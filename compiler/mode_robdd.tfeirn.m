@@ -168,7 +168,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func ensure_normalised(tfeirn(T)::di_tfeirn) = (tfeirn(T)::no_tfeirn) is det.
+:- func ensure_normalised(tfeirn(T)::di_tfeirn) = (tfeirn(T)::no_tfeirn)
+	is det.
 :- pragma type_spec(ensure_normalised/1, T = mc_type).
 
 %-----------------------------------------------------------------------------%

@@ -44,7 +44,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 
 :- pred simplify_pred(list(simplification)::in, pred_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
@@ -114,6 +113,7 @@
 :- import_module transform_hlds__pd_cost.
 
 :- import_module int.
+:- import_module map.
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
@@ -740,7 +740,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info) :-
         % class method calls here.
         GenericCall = higher_order(Closure, Purity, _, _),
         % XXX Should we handle semipure higher-order calls too?
-        Purity = (pure)
+        Purity = purity_pure
     ->
         common__optimise_higher_order_call(Closure, Args, Modes, Det,
             GoalInfo, Goal0, Goal, !Info)
@@ -748,7 +748,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info) :-
         simplify_do_warn_calls(!.Info),
         GenericCall = higher_order(Closure, Purity, _, _),
         % XXX Should we handle impure/semipure higher-order calls too?
-        Purity = (pure)
+        Purity = purity_pure
     ->
         % We need to do the pass, for the warnings, but we ignore
         % the optimized goal and instead use the original one.
@@ -1281,7 +1281,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         % Don't warn about impure procedures, since they may modify the state
         % in ways not visible to us (unlike pure and semipure procedures).
         pred_info_get_purity(PredInfo1, Purity),
-        \+ Purity = (impure),
+        \+ Purity = purity_impure,
 
         % Don't warn about Aditi relations.
         \+ hlds_pred__pred_info_is_aditi_relation(PredInfo1)
@@ -1454,7 +1454,7 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
     set__insert_list(NonLocals0, TypeInfoVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, CallGoalInfo).
 
-:- pred make_type_info_vars(list(type)::in, list(prog_var)::out,
+:- pred make_type_info_vars(list(mer_type)::in, list(prog_var)::out,
     list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.
 
 make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
@@ -1552,7 +1552,7 @@ extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, Goals, TypeInfoVar,
     % HeadVars, Modes, and Args should all be lists of the same length.
     %
 :- pred input_args_are_equiv(list(prog_var)::in, list(prog_var)::in,
-    list(mode)::in, common_info::in, module_info::in) is semidet.
+    list(mer_mode)::in, common_info::in, module_info::in) is semidet.
 
 input_args_are_equiv([], [], _, _, _).
 input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
@@ -1980,7 +1980,8 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal - ExtraGoalInfo,
 
     % The test can't bind any variables, so the InstMapDelta should be empty.
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, semidet, pure, ExtraGoalInfo).
+    goal_info_init(NonLocals, InstMapDelta, semidet, purity_pure,
+        ExtraGoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2276,7 +2277,7 @@ simplify_info_get_pred_info(Info, PredInfo) :-
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_varset(prog_varset::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_var_types(map(prog_var, type)::in,
+:- pred simplify_info_set_var_types(vartypes::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_requantify(
     simplify_info::in, simplify_info::out) is det.
@@ -2345,7 +2346,8 @@ simplify_info_leave_lambda(Info, Info ^ lambdas := LambdaCount) :-
     ( LambdaCount1 >= 0 ->
         LambdaCount = LambdaCount1
     ;
-        unexpected(this_file, "simplify_info_leave_lambda: Left too many lambdas")
+        unexpected(this_file,
+            "simplify_info_leave_lambda: Left too many lambdas")
     ).
 simplify_info_inside_lambda(Info) :-
     Info ^ lambdas > 0.

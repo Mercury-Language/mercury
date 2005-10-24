@@ -29,7 +29,7 @@
 % they are allocated is passed to the solver because it needs to
 % introduce new variables as part of the solving algorithm.
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module libs.lp.
 
@@ -59,7 +59,7 @@
     --->    unsatisfiable
     ;       satisfiable(float, map(var, float)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % lp_solve(Inequations, MaxOrMin, Objective, Varset, URSVars,
     %       Result, IO0, IO)
@@ -77,8 +77,8 @@
 :- pred lp_solve(equations::in, direction::in, objective::in, varset::in,
     list(var)::in, lp.result::out, io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -91,7 +91,7 @@
 :- import_module svset.
 :- import_module svvarset.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type lp_info --->
     lp(
@@ -107,7 +107,7 @@
         artificial_vars :: list(var)  % artificial variables
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 lp_solve(Eqns, Dir, Obj, Varset0, URSVars, Result, !IO) :-
     lp_info_init(Varset0, URSVars, Info0),
@@ -181,7 +181,7 @@ lp_solve_2(Eqns0, Dir, Obj0, Result, !Info, !IO) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred one_phase(list(coeff)::in, list(coeff)::in, map(var, int)::in,
     tableau::in, lp.result::out) is det.
@@ -205,7 +205,7 @@ get_vars_from_coeffs_2([Var - _ | Coeffs], !SetVar) :-
     svset.insert(Var, !SetVar),
     get_vars_from_coeffs_2(Coeffs, !SetVar).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred two_phase(list(coeff)::in, list(coeff)::in, list(var)::in,
     map(var, int)::in, tableau::in, lp.result::out) is det.
@@ -243,7 +243,7 @@ two_phase(Obj0, Obj, ArtVars, VarNums, Tableau0, Result) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred construct_art_objective(list(var)::in, list(coeff)::out) is det.
 
@@ -251,7 +251,7 @@ construct_art_objective([], []).
 construct_art_objective([V | Vs], [V - (1.0) | Rest]) :-
     construct_art_objective(Vs, Rest).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred standardize_equations(equations::in, equations::out,
     lp_info::in, lp_info::out) is det.
@@ -377,7 +377,7 @@ expand_urs_vars([Var - Coeff | Rest], Vars, !Coeffs) :-
     ),
     expand_urs_vars(Rest, Vars, !Coeffs).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred collect_vars(equations::in, objective::in, set(var)::out) is det.
 
@@ -424,7 +424,7 @@ insert_coeffs([Coeff|Coeffs], Row, VarNums, !Tableau) :-
     set_index(Row, Col, Const, !Tableau),
     insert_coeffs(Coeffs, Row, VarNums, !Tableau).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred optimize(list(var)::in, tableau::in, tableau::out, lp.result::out)
     is det.
@@ -550,7 +550,7 @@ simplex(A0, A, Result) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred ensure_zero_obj_coeffs(list(var)::in, tableau::in, tableau::out)
     is det.
@@ -620,7 +620,7 @@ fix_basis_and_rem_cols([V | Vs], !Tableau) :-
     remove_col(Col, !Tableau),
     fix_basis_and_rem_cols(Vs, !Tableau).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type cell ---> cell(int, int).
 
@@ -675,7 +675,7 @@ row_op(Scale, From, To, !Tableau) :-
     ),
     aggregate(AllCols, AddRow, !Tableau).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type tableau
     ---> tableau(
@@ -810,7 +810,7 @@ get_basis_vars(Tab, Vars) :-
     ),
     solutions(BasisVars, Vars).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred lp_info_init(varset::in, list(var)::in, lp_info::out) is det.
 
@@ -859,12 +859,14 @@ set_varset(Varset, Info0, Info) :-
     Info0 = lp(_Varset, URSVars, Slack, Art),
     Info  = lp(Varset, URSVars, Slack, Art).
 
-:- pred get_urs_vars(map(var, pair(var))::out, lp_info::in, lp_info::out) is det.
+:- pred get_urs_vars(map(var, pair(var))::out, lp_info::in, lp_info::out)
+    is det.
 
 get_urs_vars(URSVars, Info, Info) :-
     Info = lp(_Varset, URSVars, _Slack, _Art).
 
-:- pred set_urs_vars(map(var, pair(var))::in, lp_info::in, lp_info::out) is det.
+:- pred set_urs_vars(map(var, pair(var))::in, lp_info::in, lp_info::out)
+    is det.
 
 set_urs_vars(URSVars, Info0, Info) :-
     Info0 = lp(Varset, _URSVars, Slack, Art),
@@ -892,7 +894,7 @@ set_art_vars(Art, Info0, Info) :-
     Info0 = lp(Varset, URSVars, Slack, _Art),
     Info  = lp(Varset, URSVars, Slack, Art).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred between(int::in, int::in, int::out) is nondet.
 
@@ -905,7 +907,7 @@ between(Min, Max, I) :-
         between(Min1, Max, I)
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Debugging predicates.
 %
@@ -929,6 +931,4 @@ show_cell(Tableau, Row, Col, !IO) :-
     index(Tableau, Row, Col, Val),
     io.format("%2.2f\t", [f(Val)], !IO).
 
-%------------------------------------------------------------------------------%
-:- end_module lp.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

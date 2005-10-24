@@ -103,7 +103,8 @@ propagate_goal(Goal0, Constraints, Goal, !Info) :-
     goal_list_instmap_delta(Goals, Delta),
     goal_list_determinism(Goals, ConjDetism),
     goal_list_purity(Goals, Purity),
-    goal_info_init(NonLocals, Delta, ConjDetism, pure, Context, GoalInfo1),
+    goal_info_init(NonLocals, Delta, ConjDetism, purity_pure, Context,
+        GoalInfo1),
     goal_info_set_features(Features0, GoalInfo1, GoalInfo2),
     add_goal_info_purity_feature(Purity, GoalInfo2, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, Goal).

@@ -168,7 +168,7 @@
                 % this type?
                 du_type_is_foreign_type :: maybe(foreign_type_body)
             )
-    ;       eqv_type(type)
+    ;       eqv_type(mer_type)
     ;       foreign_type(foreign_type_body)
     ;       solver_type(solver_type_details, maybe(unify_compare))
     ;       abstract_type(is_solver_type).
@@ -325,7 +325,7 @@
     --->    no_tag_type(
                 list(type_param),   % Formal type parameters.
                 sym_name,           % Constructor name.
-                (type)              % Argument type.
+                mer_type              % Argument type.
             ).
 
 :- type no_tag_type_table == map(type_ctor, no_tag_type).
@@ -462,12 +462,12 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
 :- type unify_inst_pair
     --->    unify_inst_pair(
                 is_live,
-                inst,
-                inst,
+                mer_inst,
+                mer_inst,
                 unify_is_real
             ).
 
-:- type merge_inst_table == map(pair(inst), maybe_inst).
+:- type merge_inst_table == map(pair(mer_inst), maybe_inst).
 
 :- type ground_inst_table ==    map(inst_name, maybe_inst_det).
 
@@ -479,11 +479,11 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
 
 :- type maybe_inst
     --->    unknown
-    ;       known(inst).
+    ;       known(mer_inst).
 
 :- type maybe_inst_det
     --->    unknown
-    ;       known(inst, determinism).
+    ;       known(mer_inst, determinism).
 
     % An `hlds_inst_defn' holds the information we need to store
     % about inst definitions such as
@@ -511,7 +511,7 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
             ).
 
 :- type hlds_inst_body
-    --->    eqv_inst(inst)      % This inst is equivalent to
+    --->    eqv_inst(mer_inst)  % This inst is equivalent to
                                 % some other inst.
 
     ;       abstract_inst.      % This inst is just a forward declaration;
@@ -683,7 +683,7 @@ user_inst_table_optimize(UserInstTable0, UserInstTable) :-
     % The only sort of mode definitions allowed are equivalence modes.
 
 :- type hlds_mode_body
-    --->    eqv_mode(mode).     % This mode is equivalent to some other mode.
+    --->    eqv_mode(mer_mode).  % This mode is equivalent to some other mode.
 
     % Given a mode table get the mode_id - hlds_mode_defn map.
     %
@@ -856,7 +856,7 @@ determinism_components(failure,     can_fail,    at_most_zero).
                 instance_constraints    :: list(prog_constraint),
                                         % Constraints on the instance
                                         % declaration.
-                instance_types          :: list(type),
+                instance_types          :: list(mer_type),
                                         % ClassTypes
                 instance_body           :: instance_body,
                                         % Methods
@@ -932,7 +932,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     --->    constraint(
                 list(constraint_id),
                 class_name,
-                list(type)
+                list(mer_type)
             ).
 
 :- type hlds_constraints
@@ -1226,7 +1226,7 @@ lookup_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath, Count,
 
 :- type subclass_details
     --->    subclass_details(
-                subclass_types      :: list(type),
+                subclass_types      :: list(mer_type),
                                     % Arguments of the superclass constraint.
 
                 subclass_id         :: class_id,
@@ -1280,10 +1280,10 @@ lookup_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath, Count,
 assertion_table_init(assertion_table(0, AssertionMap)) :-
     map__init(AssertionMap).
 
-assertion_table_add_assertion(Assertion, Id, AssertionTable0, AssertionTable) :-
-    AssertionTable0 = assertion_table(Id, AssertionMap0),
+assertion_table_add_assertion(Assertion, Id, !AssertionTable) :-
+    !.AssertionTable = assertion_table(Id, AssertionMap0),
     map__det_insert(AssertionMap0, Id, Assertion, AssertionMap),
-    AssertionTable = assertion_table(Id + 1, AssertionMap).
+    !:AssertionTable = assertion_table(Id + 1, AssertionMap).
 
 assertion_table_lookup(AssertionTable, Id, Assertion) :-
     AssertionTable = assertion_table(_MaxId, AssertionMap),

@@ -32,8 +32,8 @@
     % This includes boxing/unboxing the arguments if necessary.
     %
 :- pred ml_gen_generic_call(generic_call::in, list(prog_var)::in,
-    list(mode)::in, determinism::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    list(mer_mode)::in, determinism::in, prog_context::in,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ArgTypes,
@@ -49,36 +49,35 @@
     % `type_params' local.
     %
 :- pred ml_gen_call(pred_id::in, proc_id::in, list(var_name)::in,
-    list(mlds__lval)::in, list(prog_data__type)::in, code_model::in,
-    prog_context::in, bool::in, mlds__defns::out, mlds__statements::out,
+    list(mlds_lval)::in, list(mer_type)::in, code_model::in,
+    prog_context::in, bool::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate MLDS code for a call to a builtin procedure.
     %
 :- pred ml_gen_builtin(pred_id::in, proc_id::in, list(prog_var)::in,
     code_model::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate MLDS code for a cast. The list of argument variables
     % must have only two elements, the input and the output.
     %
 :- pred ml_gen_cast(prog_context::in, list(prog_var)::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate an rval containing the address of the specified procedure.
     %
-:- pred ml_gen_proc_addr_rval(pred_id::in, proc_id::in, mlds__rval::out,
+:- pred ml_gen_proc_addr_rval(pred_id::in, proc_id::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Given a source type and a destination type, and given an source rval
     % holding a value of the source type, produce an rval that converts
     % the source rval to the destination type.
     %
-:- pred ml_gen_box_or_unbox_rval(prog_type::in, prog_type::in,
-    mlds__rval::in, mlds__rval::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_box_or_unbox_rval(mer_type::in, mer_type::in,
+    mlds_rval::in, mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
     %   Context, ForClosureWrapper, ArgNum,
@@ -99,9 +98,9 @@
     % from the ArgNum-th entry in the `type_params' local.
     % (If ForClosureWrapper = no, then ArgNum is unused.)
     %
-:- pred ml_gen_box_or_unbox_lval(prog_type::in, prog_type::in, mlds__lval::in,
-    var_name::in, prog_context::in, bool::in, int::in, mlds__lval::out,
-    mlds__defns::out, mlds__statements::out, mlds__statements::out,
+:- pred ml_gen_box_or_unbox_lval(mer_type::in, mer_type::in, mlds_lval::in,
+    var_name::in, prog_context::in, bool::in, int::in, mlds_lval::out,
+    mlds__defns::out, statements::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate the appropriate MLDS type for a continuation function
@@ -111,7 +110,7 @@
     % parameters. It is the caller's responsibility to fill these in properly
     % if needed.
     %
-:- pred ml_gen_cont_params(list(mlds__type)::in, mlds__func_params::out,
+:- pred ml_gen_cont_params(list(mlds_type)::in, mlds__func_params::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -161,8 +160,8 @@ ml_gen_generic_call(aditi_builtin(_, _), _, _, _, _, _, _, !Info) :-
     unexpected(this_file, "ml_gen_generic_call: aditi_builtin").
 
 :- pred ml_gen_generic_call_2(generic_call::in, list(prog_var)::in,
-    list(mode)::in, determinism::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    list(mer_mode)::in, determinism::in, prog_context::in,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
@@ -421,10 +420,10 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
     % This is a lower-level routine called by both ml_gen_call
     % and ml_gen_generic_call.
     %
-:- pred ml_gen_mlds_call(mlds__func_signature::in, maybe(mlds__rval)::in,
-    mlds__rval::in, list(mlds__rval)::in, list(mlds__lval)::in,
-    list(mlds__type)::in, determinism::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+:- pred ml_gen_mlds_call(mlds__func_signature::in, maybe(mlds_rval)::in,
+    mlds_rval::in, list(mlds_rval)::in, list(mlds_lval)::in,
+    list(mlds_type)::in, determinism::in, prog_context::in,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
@@ -483,10 +482,10 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
         CallKind = ordinary_call
     ),
     Stmt = call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals, CallKind),
-    Statement = mlds__statement(Stmt, mlds__make_context(Context)),
+    Statement = statement(Stmt, mlds__make_context(Context)),
     Statements = [Statement].
 
-:- pred ml_gen_success_cont(list(mlds__type)::in, list(mlds__lval)::in,
+:- pred ml_gen_success_cont(list(mlds_type)::in, list(mlds_lval)::in,
     prog_context::in, success_cont::out, mlds__defns::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -548,7 +547,7 @@ ml_gen_cont_params(OutputArgTypes, Params, !Info) :-
     ),
     Params = mlds__func_params(Args, []).
 
-:- pred ml_gen_cont_params_2(list(mlds__type)::in, int::in,
+:- pred ml_gen_cont_params_2(list(mlds_type)::in, int::in,
     mlds__arguments::out) is det.
 
 ml_gen_cont_params_2([], _, []).
@@ -562,9 +561,9 @@ ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) :-
     Argument = mlds__argument(data(var(ArgName)), Type, Maybe_GC_TraceCode),
     ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).
 
-:- pred ml_gen_copy_args_to_locals(ml_gen_info::in, list(mlds__lval)::in,
-    list(mlds__type)::in, prog_context::in, mlds__defns::out,
-    mlds__statements::out) is det.
+:- pred ml_gen_copy_args_to_locals(ml_gen_info::in, list(mlds_lval)::in,
+    list(mlds_type)::in, prog_context::in, mlds__defns::out,
+    statements::out) is det.
 
 ml_gen_copy_args_to_locals(Info, ArgLvals, ArgTypes, Context,
         CopyDecls, CopyStatements) :-
@@ -572,8 +571,8 @@ ml_gen_copy_args_to_locals(Info, ArgLvals, ArgTypes, Context,
     ml_gen_copy_args_to_locals_2(Info, ArgLvals, ArgTypes, 1, Context,
         CopyStatements).
 
-:- pred ml_gen_copy_args_to_locals_2(ml_gen_info::in, list(mlds__lval)::in,
-    list(mlds__type)::in, int::in, prog_context::in, mlds__statements::out)
+:- pred ml_gen_copy_args_to_locals_2(ml_gen_info::in, list(mlds_lval)::in,
+    list(mlds_type)::in, int::in, prog_context::in, statements::out)
     is det.
 
 ml_gen_copy_args_to_locals_2(_Info, [], [], _, _, []).
@@ -604,11 +603,11 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
 
     % Generate rvals and lvals for the arguments of a procedure call
     %
-:- pred ml_gen_arg_list(list(var_name)::in, list(mlds__lval)::in,
-    list(prog_type)::in, list(prog_type)::in, list(mode)::in,
+:- pred ml_gen_arg_list(list(var_name)::in, list(mlds_lval)::in,
+    list(mer_type)::in, list(mer_type)::in, list(mer_mode)::in,
     pred_or_func::in, code_model::in, prog_context::in, bool::in, int::in,
-    list(mlds__rval)::out, list(mlds__lval)::out, list(mlds__type)::out,
-    mlds__defns::out, mlds__statements::out,
+    list(mlds_rval)::out, list(mlds_lval)::out, list(mlds_type)::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
@@ -716,7 +715,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
     % For the case where Lval = *Rval, for some Rval,
     % we optimize &*Rval to just Rval.
     %
-:- func ml_gen_mem_addr(mlds__lval) = mlds__rval.
+:- func ml_gen_mem_addr(mlds_lval) = mlds_rval.
 
 ml_gen_mem_addr(Lval) =
     (if Lval = mem_ref(Rval, _) then Rval else mem_addr(Lval)).
@@ -943,7 +942,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
     ),
     Decls = [].
 
-:- func ml_gen_simple_expr(simple_expr(mlds__lval)) = mlds__rval.
+:- func ml_gen_simple_expr(simple_expr(mlds_lval)) = mlds_rval.
 
 ml_gen_simple_expr(leaf(Lval)) = lval(Lval).
 ml_gen_simple_expr(int_const(Int)) = const(int_const(Int)).

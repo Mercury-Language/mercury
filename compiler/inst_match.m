@@ -52,7 +52,7 @@
     % part of the inst is a defined inst, and if so replaces it
     % with the definition.
     %
-:- pred inst_expand(module_info::in, (inst)::in, (inst)::out) is det.
+:- pred inst_expand(module_info::in, mer_inst::in, mer_inst::out) is det.
 
 
     % inst_expand_and_remove_constrained_inst_vars is the same as inst_expand
@@ -60,7 +60,7 @@
     % replacing them with the constraining inst.
     %
 :- pred inst_expand_and_remove_constrained_inst_vars(module_info::in,
-    (inst)::in, (inst)::out) is det.
+    mer_inst::in, mer_inst::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -75,14 +75,14 @@
     %   inst_matches_initial(bound(a), bound(a;b), _) should
     %   succeed, but not vice versa.
     %
-:- pred inst_matches_initial((inst)::in, (inst)::in, (type)::in,
+:- pred inst_matches_initial(mer_inst::in, mer_inst::in, mer_type::in,
     module_info::in) is semidet.
 
     % This version of inst_matches_initial builds up a substitution map
     % (inst_var_sub).  For each inst_var which occurs in InstA there will be a
     % substitution to the corresponding inst in InstB.
     %
-:- pred inst_matches_initial((inst)::in, (inst)::in, (type)::in,
+:- pred inst_matches_initial(mer_inst::in, mer_inst::in, mer_type::in,
     module_info::in, module_info::out, inst_var_sub::in, inst_var_sub::out)
     is semidet.
 
@@ -90,13 +90,13 @@
     % makes it almost the same as inst_matches_final.  The only different is
     % in the way it handles constrained_inst_vars.
     %
-:- pred inst_matches_initial_no_implied_modes((inst)::in, (inst)::in,
-    (type)::in, module_info::in) is semidet.
+:- pred inst_matches_initial_no_implied_modes(mer_inst::in, mer_inst::in,
+    mer_type::in, module_info::in) is semidet.
 
     % A version of the above that also computes the inst_var_sub.
     %
-:- pred inst_matches_initial_no_implied_modes((inst)::in, (inst)::in,
-    (type)::in, module_info::in, module_info::out,
+:- pred inst_matches_initial_no_implied_modes(mer_inst::in, mer_inst::in,
+    mer_type::in, module_info::in, module_info::out,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
     % inst_matches_final(InstA, InstB, ModuleInfo):
@@ -106,7 +106,8 @@
     %   by InstB, and where the information is the same and both insts specify
     %   a binding, the binding must be identical.
     %
-:- pred inst_matches_final((inst)::in, (inst)::in, module_info::in) is semidet.
+:- pred inst_matches_final(mer_inst::in, mer_inst::in, module_info::in)
+    is semidet.
 
     % This version of inst_matches_final allows you to pass in the type of the
     % variables being compared.  This allows it to be more precise (i.e. less
@@ -114,8 +115,8 @@
     % bound(...), ...).  This version is to be preferred when the type is
     % available.
     %
-:- pred inst_matches_final((inst)::in, (inst)::in, (type)::in, module_info::in)
-    is semidet.
+:- pred inst_matches_final(mer_inst::in, mer_inst::in, mer_type::in,
+    module_info::in) is semidet.
 
     %   The difference between inst_matches_initial and inst_matches_final is
     %   that inst_matches_initial requires only something which is at least as
@@ -138,8 +139,8 @@
     %   uniqueness comparisons are reversed and we don't allow
     %   inst_is_at_least_as_instantiated(any, any).
     %
-:- pred inst_is_at_least_as_instantiated((inst)::in, (inst)::in, (type)::in,
-    module_info::in) is semidet.
+:- pred inst_is_at_least_as_instantiated(mer_inst::in, mer_inst::in,
+    mer_type::in, module_info::in) is semidet.
 
     % unique_matches_initial(A, B) succeeds if A >= B in the ordering
     % clobbered < mostly_clobbered < shared < mostly_unique < unique
@@ -157,14 +158,14 @@
     %   ignores uniqueness, and that `any' does not match itself.  It is used
     %   to check whether variables get bound in negated contexts.
     %
-:- pred inst_matches_binding((inst)::in, (inst)::in, (type)::in,
+:- pred inst_matches_binding(mer_inst::in, mer_inst::in, mer_type::in,
     module_info::in) is semidet.
 
     % inst_matches_binding_allow_any_any is the same as
     % inst_matches_binding except that it also allows `any' to match `any'.
     %
-:- pred inst_matches_binding_allow_any_any((inst)::in, (inst)::in, (type)::in,
-    module_info::in) is semidet.
+:- pred inst_matches_binding_allow_any_any(mer_inst::in, mer_inst::in,
+    mer_type::in, module_info::in) is semidet.
 
 
 %-----------------------------------------------------------------------------%
@@ -192,7 +193,7 @@
     % needs to be taken since these insts may not be replaced by a less
     % precise inst that uses the higher-order mode information.
     %
-:- pred inst_is_ground(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_ground(module_info::in, mer_inst::in) is semidet.
 
     % succeed if the inst is not partly free (i.e. contains only `any',
     % `ground', `bound', and `not_reached' insts, with no `free' insts).
@@ -200,38 +201,40 @@
     % needs to be taken since these insts may not be replaced by a less
     % precise inst that uses the higher-order mode information.
     %
-:- pred inst_is_ground_or_any(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_ground_or_any(module_info::in, mer_inst::in) is semidet.
 
     % Succeed if the inst is `mostly_unique' or `unique'.
     %
-:- pred inst_is_mostly_unique(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_mostly_unique(module_info::in, mer_inst::in) is semidet.
 
     % Succeed if the inst is `unique'.
     %
-:- pred inst_is_unique(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_unique(module_info::in, mer_inst::in) is semidet.
 
     % Succeed if the inst is not `mostly_unique' or `unique'.
     %
-:- pred inst_is_not_partly_unique(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_not_partly_unique(module_info::in, mer_inst::in) is semidet.
 
     % Succeed if the inst is not `unique'.
     %
-:- pred inst_is_not_fully_unique(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_not_fully_unique(module_info::in, mer_inst::in) is semidet.
 
-:- pred inst_is_clobbered(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_clobbered(module_info::in, mer_inst::in) is semidet.
 
-:- pred inst_list_is_ground(list(inst)::in, module_info::in) is semidet.
+:- pred inst_list_is_ground(list(mer_inst)::in, module_info::in) is semidet.
 
-:- pred inst_list_is_ground_or_any(list(inst)::in, module_info::in) is semidet.
-
-:- pred inst_list_is_unique(list(inst)::in, module_info::in) is semidet.
-
-:- pred inst_list_is_mostly_unique(list(inst)::in, module_info::in) is semidet.
-
-:- pred inst_list_is_not_partly_unique(list(inst)::in, module_info::in)
+:- pred inst_list_is_ground_or_any(list(mer_inst)::in, module_info::in)
     is semidet.
 
-:- pred inst_list_is_not_fully_unique(list(inst)::in, module_info::in)
+:- pred inst_list_is_unique(list(mer_inst)::in, module_info::in) is semidet.
+
+:- pred inst_list_is_mostly_unique(list(mer_inst)::in, module_info::in)
+    is semidet.
+
+:- pred inst_list_is_not_partly_unique(list(mer_inst)::in, module_info::in)
+    is semidet.
+
+:- pred inst_list_is_not_fully_unique(list(mer_inst)::in, module_info::in)
     is semidet.
 
 :- pred bound_inst_list_is_ground(list(bound_inst)::in, module_info::in)
@@ -252,18 +255,18 @@
 :- pred bound_inst_list_is_not_fully_unique(list(bound_inst)::in,
     module_info::in) is semidet.
 
-:- pred inst_is_free(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_free(module_info::in, mer_inst::in) is semidet.
 
-:- pred inst_is_any(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_any(module_info::in, mer_inst::in) is semidet.
 
-:- pred inst_list_is_free(list(inst)::in, module_info::in) is semidet.
+:- pred inst_list_is_free(list(mer_inst)::in, module_info::in) is semidet.
 
 :- pred bound_inst_list_is_free(list(bound_inst)::in, module_info::in)
     is semidet.
 
-:- pred inst_is_bound(module_info::in, (inst)::in) is semidet.
+:- pred inst_is_bound(module_info::in, mer_inst::in) is semidet.
 
-:- pred inst_is_bound_to_functors(module_info::in, (inst)::in,
+:- pred inst_is_bound_to_functors(module_info::in, mer_inst::in,
     list(bound_inst)::out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -271,20 +274,20 @@
     % Succeed iff the specified inst contains (directly or indirectly) the
     % specified inst_name.
     %
-:- pred inst_contains_instname((inst)::in, module_info::in, inst_name::in)
+:- pred inst_contains_instname(mer_inst::in, module_info::in, inst_name::in)
     is semidet.
 
     % Nondeterministically produce all the inst_vars contained in the
     % specified list of modes.
     %
-:- pred mode_list_contains_inst_var(list(mode)::in, module_info::in,
+:- pred mode_list_contains_inst_var(list(mer_mode)::in, module_info::in,
     inst_var::out) is nondet.
 
     % Given a list of insts, and a corresponding list of livenesses, return
     % true iff for every element in the list of insts, either the elemement is
     % ground or the corresponding element in the liveness list is dead.
     %
-:- pred inst_list_is_ground_or_dead(list(inst)::in, list(is_live)::in,
+:- pred inst_list_is_ground_or_dead(list(mer_inst)::in, list(is_live)::in,
     module_info::in) is semidet.
 
     % Given a list of insts, and a corresponding list of livenesses, return
@@ -292,8 +295,8 @@
     % ground or any, or the corresponding element in the liveness list is
     % dead.
     %
-:- pred inst_list_is_ground_or_any_or_dead(list(inst)::in, list(is_live)::in,
-    module_info::in) is semidet.
+:- pred inst_list_is_ground_or_any_or_dead(list(mer_inst)::in,
+    list(is_live)::in, module_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -345,7 +348,7 @@ inst_matches_initial_no_implied_modes(InstA, InstB, Type, !ModuleInfo, !Sub) :-
     !:ModuleInfo = Info ^ module_info,
     yes(!:Sub) = Info ^ maybe_sub.
 
-:- pred inst_matches_initial_1((inst)::in, (inst)::in, (type)::in,
+:- pred inst_matches_initial_1(mer_inst::in, mer_inst::in, mer_type::in,
     module_info::in, module_info::out,
     maybe(inst_var_sub)::in, maybe(inst_var_sub)::out) is semidet.
 
@@ -357,7 +360,12 @@ inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
     !:ModuleInfo = Info ^ module_info,
     !:MaybeSub = Info ^ maybe_sub.
 
-:- type inst_match_inputs ---> inst_match_inputs(inst, inst, maybe(type)).
+:- type inst_match_inputs
+    --->    inst_match_inputs(
+                mer_inst,
+                mer_inst,
+                maybe(mer_type)
+            ).
 :- type expansions == set(inst_match_inputs).
 
     % The uniqueness_comparison type is used by the predicate
@@ -368,20 +376,20 @@ inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
     --->    match
             % We are doing a "matches" comparison, e.g. at a
             % predicate call or the end of a procedure body.
-    ;   instantiated.
+    ;       instantiated.
             % We are comparing two insts for how "instantiated" they
             % are.  The uniqueness order here should be the reverse
             % of the order used for matching.
 
 :- type inst_match_info
     --->    inst_match_info(
-            module_info :: module_info,
-            expansions  :: expansions,
-            maybe_sub   :: maybe(inst_var_sub),
-            calculate_sub   :: calculate_sub,
-            uniqueness_comparison   :: uniqueness_comparison,
-            any_matches_any :: bool
-        ).
+                module_info             :: module_info,
+                expansions              :: expansions,
+                maybe_sub               :: maybe(inst_var_sub),
+                calculate_sub           :: calculate_sub,
+                uniqueness_comparison   :: uniqueness_comparison,
+                any_matches_any         :: bool
+            ).
 
     % The calculate_sub type determines how the inst var substitution
     % should be calculated.
@@ -389,12 +397,14 @@ inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
     --->    forward
             % Calculate in the (normal) forward direction
             % (used by inst_matches_initial).
-    ;   reverse
+
+    ;       reverse
             % Calculate in the reverse direction.  Used by the call
             % to inst_matches_final from pred_inst_argmodes_match
             % to ensure contravariance of the initial argument
             % insts of higher order pred insts.
-    ;   none.
+
+    ;       none.
             % Do not calculate inst var substitions.
 
 :- func sub(inst_match_info) = inst_var_sub is semidet.
@@ -429,7 +439,8 @@ swap_calculate_sub(reverse) = forward.
 swap_calculate_sub(none) = none.
 
 :- type inst_matches_pred ==
-    pred(inst, inst, maybe(type), inst_match_info, inst_match_info).
+    pred(mer_inst, mer_inst, maybe(mer_type),
+        inst_match_info, inst_match_info).
 :- inst inst_matches_pred ==
     (pred(in, in, in, in, out) is semidet).
 
@@ -583,8 +594,9 @@ inst_matches_initial_4(not_reached, _, _, !Info).
 
     % This predicate assumes that the check of
     % `bound_inst_list_is_complete_for_type' is done by the caller.
+    %
 :- pred ground_matches_initial_bound_inst_list(uniqueness::in,
-    list(bound_inst)::in, maybe(type)::in,
+    list(bound_inst)::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 ground_matches_initial_bound_inst_list(_, [], _, !Info).
@@ -595,8 +607,8 @@ ground_matches_initial_bound_inst_list(Uniq, [functor(ConsId, Args) | List],
     ground_matches_initial_inst_list(Uniq, Args, MaybeTypes, !Info),
     ground_matches_initial_bound_inst_list(Uniq, List, MaybeType, !Info).
 
-:- pred ground_matches_initial_inst_list(uniqueness::in, list(inst)::in,
-    list(maybe(type))::in, inst_match_info::in, inst_match_info::out)
+:- pred ground_matches_initial_inst_list(uniqueness::in, list(mer_inst)::in,
+    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
     is semidet.
 
 ground_matches_initial_inst_list(_, [], [], !Info).
@@ -611,7 +623,7 @@ ground_matches_initial_inst_list(Uniq, [Inst | Insts], [Type | Types],
     % includes each functor of the type and each argument of each
     % functor is also ``complete'' for the type.
 :- pred bound_inst_list_is_complete_for_type(set(inst_name)::in,
-    module_info::in, list(bound_inst)::in, (type)::in) is semidet.
+    module_info::in, list(bound_inst)::in, mer_type::in) is semidet.
 
 bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
         Type) :-
@@ -620,8 +632,7 @@ bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
 
     % Is there a bound_inst for each cons_id in the type_table?
     all [ConsId, ArgTypes] (
-        type_util__cons_id_arg_types(ModuleInfo, Type, ConsId,
-            ArgTypes)
+        type_util__cons_id_arg_types(ModuleInfo, Type, ConsId, ArgTypes)
     =>
         (
             list__member(functor(ConsId0, ArgInsts), BoundInsts),
@@ -629,13 +640,13 @@ bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
             % are not module-qualified so we need to call
             % equivalent_cons_ids instead of just using `=/2'.
             equivalent_cons_ids(ConsId0, ConsId),
-            list__map(inst_is_complete_for_type(Expansions,
-                ModuleInfo), ArgInsts, ArgTypes)
+            list__map(inst_is_complete_for_type(Expansions, ModuleInfo),
+                ArgInsts, ArgTypes)
         )
     ).
 
 :- pred inst_is_complete_for_type(set(inst_name)::in, module_info::in,
-    (inst)::in, (type)::in) is semidet.
+    mer_inst::in, mer_type::in) is semidet.
 
 inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
     ( Inst = defined_inst(Name) ->
@@ -655,6 +666,7 @@ inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
 
     % Check that two cons_ids are the same, except that one may be less
     % module qualified than the other.
+    %
 :- pred equivalent_cons_ids(cons_id::in, cons_id::in) is semidet.
 
 equivalent_cons_ids(ConsIdA, ConsIdB) :-
@@ -687,11 +699,11 @@ greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
         ConsIdA = cons(QNameA, ArityA),
         ConsIdB = cons(QNameB, ArityB)
     ->
-        (   QNameA = unqualified(NameA)
-        ;   QNameA = qualified(_, NameA)
+        ( QNameA = unqualified(NameA)
+        ; QNameA = qualified(_, NameA)
         ),
-        (   QNameB = unqualified(NameB)
-        ;   QNameB = qualified(_, NameB)
+        ( QNameB = unqualified(NameB)
+        ; QNameB = qualified(_, NameB)
         ),
         compare(O, NameA, NameB),
         (
@@ -709,8 +721,9 @@ greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
     % Update the inst_var_sub that is computed by inst_matches_initial.
     % The inst_var_sub records what inst should be substituted for each
     % inst_var that occurs in the called procedure's argument modes.
-:- pred update_inst_var_sub(set(inst_var)::in, (inst)::in, maybe(type)::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
+    %
+:- pred update_inst_var_sub(set(inst_var)::in, mer_inst::in,
+    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
 
 update_inst_var_sub(InstVars, InstA, MaybeType, !Info) :-
     (
@@ -721,14 +734,13 @@ update_inst_var_sub(InstVars, InstA, MaybeType, !Info) :-
         !.Info ^ maybe_sub  = no
     ).
 
-:- pred update_inst_var_sub_2((inst)::in, maybe(type)::in, inst_var::in,
+:- pred update_inst_var_sub_2(mer_inst::in, maybe(mer_type)::in, inst_var::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
     ( InstB = !.Info ^ sub ^ elem(InstVar) ->
-        % If InstVar already has an inst associated with
-        % it, merge the old inst and the new inst.  Fail
-        % if this merge is not possible.
+        % If InstVar already has an inst associated with it, merge the old inst
+        % and the new inst.  Fail if this merge is not possible.
         ModuleInfo0 = !.Info ^ module_info,
         inst_merge(InstA, InstB, MaybeType, Inst,
             ModuleInfo0, ModuleInfo),
@@ -742,8 +754,9 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
 
     % This predicate checks if two ground_inst_infos match_initial.
     % It does not check uniqueness.
+    %
 :- pred ground_inst_info_matches_initial(ground_inst_info::in,
-    ground_inst_info::in, uniqueness::in, maybe(type)::in,
+    ground_inst_info::in, uniqueness::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 ground_inst_info_matches_initial(GroundInstInfoA, none, _, _, !Info) :-
@@ -763,23 +776,21 @@ pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
     pred_inst_matches_1(PredInstA, PredInstB, no, ModuleInfo).
 
 :- pred pred_inst_matches_1(pred_inst_info::in, pred_inst_info::in,
-    maybe(type)::in, module_info::in) is semidet.
+    maybe(mer_type)::in, module_info::in) is semidet.
 
 pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo) :-
     Info0 = init_inst_match_info(ModuleInfo),
     pred_inst_matches_2(PredInstA, PredInstB, MaybeType, Info0, _).
 
-    % pred_inst_matches_2(PredInstA, PredInstB, Info0, Info)
+    % pred_inst_matches_2(PredInstA, PredInstB, !Info)
     %
-    %   Same as pred_inst_matches/3, except that it updates
-    %   the inst_var_sub in the inst_match_info, and that any
-    %   inst pairs in Info0 ^ expansions are assumed to
-    %   match_final each other.
-    %   (This avoids infinite loops when calling inst_matches_final
-    %   on higher-order recursive insts.)
+    % Same as pred_inst_matches/3, except that it updates the inst_var_sub
+    % in the inst_match_info, and that any inst pairs in !.Info ^ expansions
+    % are assumed to match_final each other. (This avoids infinite loops
+    % when calling inst_matches_final on higher-order recursive insts.)
     %
 :- pred pred_inst_matches_2(pred_inst_info::in, pred_inst_info::in,
-    maybe(type)::in, inst_match_info::in, inst_match_info::out) is semidet.
+    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
 
 pred_inst_matches_2(pred_inst_info(PredOrFunc, ModesA, Det),
         pred_inst_info(PredOrFunc, ModesB, Det), MaybeType, !Info) :-
@@ -800,8 +811,8 @@ pred_inst_matches_2(pred_inst_info(PredOrFunc, ModesA, Det),
     % the initial insts, and covariant in the final insts;
     % as far as binding goes, it is invariant for both.)
     %
-:- pred pred_inst_argmodes_matches(list(mode)::in, list(mode)::in,
-    list(maybe(type))::in, inst_match_info::in, inst_match_info::out)
+:- pred pred_inst_argmodes_matches(list(mer_mode)::in, list(mer_mode)::in,
+    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
     is semidet.
 
 pred_inst_argmodes_matches([], [], [], !Info).
@@ -816,14 +827,12 @@ pred_inst_argmodes_matches([ModeA | ModeAs], [ModeB | ModeBs],
 
 %-----------------------------------------------------------------------------%
 
-    % Determine what kind of uniqueness comparison we are doing and then do
-    % it.
+    % Determine what kind of uniqueness comparison we are doing and then do it.
     % If we are doing a "match" then call unique_matches_initial to do the
-    % comparison.
-    % If we are comparing "instantiatedness" then the uniqueness comparison
-    % is the reverse of when we are doing a match so call
+    % comparison. If we are comparing "instantiatedness" then the uniqueness
+    % comparison is the reverse of when we are doing a match so call
     % unique_matches_initial with the arguments reversed.
-
+    %
 :- pred compare_uniqueness(uniqueness_comparison::in,
     uniqueness::in, uniqueness::in) is semidet.
 
@@ -883,17 +892,14 @@ uniq_matches_bound_inst_list(Uniq, List, ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Here we check that the functors in the first list are a
-    % subset of the functors in the second list.
-    % (If a bound(...) inst only specifies the insts for some of
-    % the constructors of its type, then it implicitly means that
-    % all other constructors must have all their arguments
-    % `not_reached'.)
-    % The code here makes use of the fact that the bound_inst lists
-    % are sorted.
-
+    % Here we check that the functors in the first list are a subset of the
+    % functors in the second list. (If a bound(...) inst only specifies the
+    % insts for some of the constructors of its type, then it implicitly means
+    % that all other constructors must have all their arguments `not_reached'.)
+    % The code here makes use of the fact that the bound_inst lists are sorted.
+    %
 :- pred bound_inst_list_matches_initial(list(bound_inst)::in,
-    list(bound_inst)::in, maybe(type)::in,
+    list(bound_inst)::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 bound_inst_list_matches_initial([], _, _, !Info).
@@ -915,8 +921,8 @@ bound_inst_list_matches_initial([X | Xs], [Y | Ys], MaybeType, !Info) :-
         bound_inst_list_matches_initial([X | Xs], Ys, MaybeType, !Info)
     ).
 
-:- pred inst_list_matches_initial(list(inst)::in, list(inst)::in,
-    list(maybe(type))::in, inst_match_info::in, inst_match_info::out)
+:- pred inst_list_matches_initial(list(mer_inst)::in, list(mer_inst)::in,
+    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
     is semidet.
 
 inst_list_matches_initial([], [], [], !Info).
@@ -1054,7 +1060,7 @@ inst_matches_final_3(constrained_inst_vars(InstVarsA, InstA), InstB, MaybeType,
     ).
 
 :- pred ground_inst_info_matches_final(ground_inst_info::in,
-    ground_inst_info::in, maybe(type)::in,
+    ground_inst_info::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 ground_inst_info_matches_final(GroundInstInfoA, none, _, !Info) :-
@@ -1069,8 +1075,8 @@ ground_inst_info_matches_final(higher_order(PredInstA),
         higher_order(PredInstB), MaybeType, !Info) :-
     pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info).
 
-:- pred inst_list_matches_final(list(inst)::in, list(inst)::in,
-    list(maybe(type))::in, inst_match_info::in, inst_match_info::out)
+:- pred inst_list_matches_final(list(mer_inst)::in, list(mer_inst)::in,
+    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
     is semidet.
 
 inst_list_matches_final([], [], [], !Info).
@@ -1089,7 +1095,7 @@ inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB], [Type | Types],
     % are sorted.
 
 :- pred bound_inst_list_matches_final(list(bound_inst)::in,
-    list(bound_inst)::in, maybe(type)::in,
+    list(bound_inst)::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 bound_inst_list_matches_final([], _, _, !Info).
@@ -1202,7 +1208,7 @@ inst_matches_binding_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 inst_matches_binding_3(not_reached, _, _, !Info).
 
 :- pred ground_inst_info_matches_binding(ground_inst_info::in,
-    ground_inst_info::in, maybe(type)::in, module_info::in) is semidet.
+    ground_inst_info::in, maybe(mer_type)::in, module_info::in) is semidet.
 
 ground_inst_info_matches_binding(_, none, _, _).
 ground_inst_info_matches_binding(none, higher_order(PredInstB), MaybeType,
@@ -1215,8 +1221,8 @@ ground_inst_info_matches_binding(higher_order(PredInstA),
         higher_order(PredInstB), MaybeType, ModuleInfo) :-
     pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo).
 
-:- pred inst_list_matches_binding(list(inst)::in, list(inst)::in,
-    list(maybe(type))::in, inst_match_info::in, inst_match_info::out)
+:- pred inst_list_matches_binding(list(mer_inst)::in, list(mer_inst)::in,
+    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
     is semidet.
 
 inst_list_matches_binding([], [], [], !Info).
@@ -1235,7 +1241,7 @@ inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB],
     % are sorted.
 
 :- pred bound_inst_list_matches_binding(list(bound_inst)::in,
-    list(bound_inst)::in, maybe(type)::in,
+    list(bound_inst)::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 bound_inst_list_matches_binding([], _, _, !Info).
@@ -1340,7 +1346,7 @@ inst_is_bound_to_functors(ModuleInfo, defined_inst(InstName), Functors) :-
 inst_is_ground(ModuleInfo, Inst) :-
     inst_is_ground(ModuleInfo, no, Inst).
 
-:- pred inst_is_ground(module_info::in, maybe(type)::in, (inst)::in)
+:- pred inst_is_ground(module_info::in, maybe(mer_type)::in, mer_inst::in)
     is semidet.
 
 inst_is_ground(ModuleInfo, MaybeType, Inst) :-
@@ -1351,8 +1357,8 @@ inst_is_ground(ModuleInfo, MaybeType, Inst) :-
     % The third arg is the set of insts which have already been expanded - we
     % use this to avoid going into an infinite loop.
     %
-:- pred inst_is_ground_1(module_info::in, maybe(type)::in, (inst)::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_is_ground_1(module_info::in, maybe(mer_type)::in, mer_inst::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
     ( set__member(Inst, !.Expansions) ->
@@ -1367,8 +1373,8 @@ inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
             !Expansions)
     ).
 
-:- pred inst_is_ground_2(module_info::in, maybe(type)::in, (inst)::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_is_ground_2(module_info::in, maybe(mer_type)::in, mer_inst::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_is_ground_2(_, _, not_reached, !Expansions).
 inst_is_ground_2(ModuleInfo, MaybeType, bound(_, List), !Expansions) :-
@@ -1397,8 +1403,8 @@ inst_is_ground_or_any(ModuleInfo, Inst) :-
     % The third arg is the set of insts which have already been expanded - we
     % use this to avoid going into an infinite loop.
     %
-:- pred inst_is_ground_or_any_2(module_info::in, (inst)::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_is_ground_or_any_2(module_info::in, mer_inst::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_is_ground_or_any_2(_, not_reached, !Expansions).
 inst_is_ground_or_any_2(ModuleInfo, bound(_, List), !Expansions) :-
@@ -1431,8 +1437,8 @@ inst_is_unique(ModuleInfo, Inst) :-
     % The third arg is the set of insts which have already been expanded - we
     % use this to avoid going into an infinite loop.
     %
-:- pred inst_is_unique_2(module_info::in, (inst)::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_is_unique_2(module_info::in, mer_inst::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_is_unique_2(_, not_reached, !Expansions).
 inst_is_unique_2(ModuleInfo, bound(unique, List), !Expansions) :-
@@ -1465,8 +1471,8 @@ inst_is_mostly_unique(ModuleInfo, Inst) :-
     % The third arg is the set of insts which have already been expanded - we
     % use this to avoid going into an infinite loop.
     %
-:- pred inst_is_mostly_unique_2(module_info::in, (inst)::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_is_mostly_unique_2(module_info::in, mer_inst::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_is_mostly_unique_2(_, not_reached, !Expansions).
 inst_is_mostly_unique_2(ModuleInfo, bound(unique, List), !Expansions) :-
@@ -1506,8 +1512,8 @@ inst_is_not_partly_unique(ModuleInfo, Inst) :-
     % been expanded - we use this to avoid going into an
     % infinite loop.
     %
-:- pred inst_is_not_partly_unique_2(module_info::in, (inst)::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_is_not_partly_unique_2(module_info::in, mer_inst::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_is_not_partly_unique_2(_, not_reached, !Expansions).
 inst_is_not_partly_unique_2(ModuleInfo, bound(shared, List), !Expansions) :-
@@ -1542,8 +1548,8 @@ inst_is_not_fully_unique(ModuleInfo, Inst) :-
     % The third arg is the set of insts which have already been expanded - we
     % use this to avoid going into an infinite loop.
     %
-:- pred inst_is_not_fully_unique_2(module_info::in, (inst)::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_is_not_fully_unique_2(module_info::in, mer_inst::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_is_not_fully_unique_2(_, not_reached, !Expansions).
 inst_is_not_fully_unique_2(ModuleInfo, bound(shared, List),
@@ -1579,7 +1585,7 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
 bound_inst_list_is_ground(BoundInsts, ModuleInfo) :-
     bound_inst_list_is_ground(BoundInsts, no, ModuleInfo).
 
-:- pred bound_inst_list_is_ground(list(bound_inst)::in, maybe(type)::in,
+:- pred bound_inst_list_is_ground(list(bound_inst)::in, maybe(mer_type)::in,
     module_info::in) is semidet.
 
 bound_inst_list_is_ground([], _, _).
@@ -1621,8 +1627,8 @@ bound_inst_list_is_not_fully_unique([functor(_Name, Args) | BoundInsts],
 
 %-----------------------------------------------------------------------------%
 
-:- pred bound_inst_list_is_ground_2(list(bound_inst)::in, maybe(type)::in,
-    module_info::in, set(inst)::in, set(inst)::out) is semidet.
+:- pred bound_inst_list_is_ground_2(list(bound_inst)::in, maybe(mer_type)::in,
+    module_info::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 bound_inst_list_is_ground_2([], _, _, !Expansions).
 bound_inst_list_is_ground_2([functor(Name, Args) | BoundInsts], MaybeType,
@@ -1634,7 +1640,7 @@ bound_inst_list_is_ground_2([functor(Name, Args) | BoundInsts], MaybeType,
         !Expansions).
 
 :- pred bound_inst_list_is_ground_or_any_2(list(bound_inst)::in,
-    module_info::in, set(inst)::in, set(inst)::out) is semidet.
+    module_info::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 bound_inst_list_is_ground_or_any_2([], _, !Expansions).
 bound_inst_list_is_ground_or_any_2([functor(_Name, Args) | BoundInsts],
@@ -1644,7 +1650,7 @@ bound_inst_list_is_ground_or_any_2([functor(_Name, Args) | BoundInsts],
         !Expansions).
 
 :- pred bound_inst_list_is_unique_2(list(bound_inst)::in, module_info::in,
-    set(inst)::in, set(inst)::out) is semidet.
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 bound_inst_list_is_unique_2([], _, !Expansions).
 bound_inst_list_is_unique_2([functor(_Name, Args) | BoundInsts], ModuleInfo,
@@ -1653,7 +1659,7 @@ bound_inst_list_is_unique_2([functor(_Name, Args) | BoundInsts], ModuleInfo,
     bound_inst_list_is_unique_2(BoundInsts, ModuleInfo, !Expansions).
 
 :- pred bound_inst_list_is_mostly_unique_2(list(bound_inst)::in,
-    module_info::in, set(inst)::in, set(inst)::out) is semidet.
+    module_info::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 bound_inst_list_is_mostly_unique_2([], _, !Expansions).
 bound_inst_list_is_mostly_unique_2([functor(_Name, Args) | BoundInsts],
@@ -1663,7 +1669,7 @@ bound_inst_list_is_mostly_unique_2([functor(_Name, Args) | BoundInsts],
         !Expansions).
 
 :- pred bound_inst_list_is_not_partly_unique_2(list(bound_inst)::in,
-    module_info::in, set(inst)::in, set(inst)::out) is semidet.
+    module_info::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 bound_inst_list_is_not_partly_unique_2([], _, !Expansions).
 bound_inst_list_is_not_partly_unique_2([functor(_Name, Args) | BoundInsts],
@@ -1673,7 +1679,7 @@ bound_inst_list_is_not_partly_unique_2([functor(_Name, Args) | BoundInsts],
         !Expansions).
 
 :- pred bound_inst_list_is_not_fully_unique_2(list(bound_inst)::in,
-    module_info::in, set(inst)::in, set(inst)::out) is semidet.
+    module_info::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 bound_inst_list_is_not_fully_unique_2([], _, !Expansions).
 bound_inst_list_is_not_fully_unique_2([functor(_Name, Args) | BoundInsts],
@@ -1688,7 +1694,7 @@ inst_list_is_ground(Insts, ModuleInfo) :-
     MaybeTypes = list__duplicate(list__length(Insts), no),
     inst_list_is_ground(Insts, MaybeTypes, ModuleInfo).
 
-:- pred inst_list_is_ground(list(inst)::in, list(maybe(type))::in,
+:- pred inst_list_is_ground(list(mer_inst)::in, list(maybe(mer_type))::in,
     module_info::in) is semidet.
 
 inst_list_is_ground([], [], _).
@@ -1723,8 +1729,8 @@ inst_list_is_not_fully_unique([Inst | Insts], ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_list_is_ground_2(list(inst)::in, list(maybe(type))::in,
-    module_info::in, set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_list_is_ground_2(list(mer_inst)::in, list(maybe(mer_type))::in,
+    module_info::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_list_is_ground_2([], _, _, !Expansions).
 inst_list_is_ground_2([Inst | Insts], [MaybeType | MaybeTypes], ModuleInfo,
@@ -1732,24 +1738,24 @@ inst_list_is_ground_2([Inst | Insts], [MaybeType | MaybeTypes], ModuleInfo,
     inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions),
     inst_list_is_ground_2(Insts, MaybeTypes, ModuleInfo, !Expansions).
 
-:- pred inst_list_is_ground_or_any_2(list(inst)::in, module_info::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_list_is_ground_or_any_2(list(mer_inst)::in, module_info::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_list_is_ground_or_any_2([], _, !Expansions).
 inst_list_is_ground_or_any_2([Inst | Insts], ModuleInfo, !Expansions) :-
     inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions),
     inst_list_is_ground_or_any_2(Insts, ModuleInfo, !Expansions).
 
-:- pred inst_list_is_unique_2(list(inst)::in, module_info::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_list_is_unique_2(list(mer_inst)::in, module_info::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_list_is_unique_2([], _, !Expansions).
 inst_list_is_unique_2([Inst | Insts], ModuleInfo, !Expansions) :-
     inst_is_unique_2(ModuleInfo, Inst, !Expansions),
     inst_list_is_unique_2(Insts, ModuleInfo, !Expansions).
 
-:- pred inst_list_is_mostly_unique_2(list(inst)::in, module_info::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_list_is_mostly_unique_2(list(mer_inst)::in, module_info::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_list_is_mostly_unique_2([], _, !Expansions).
 inst_list_is_mostly_unique_2([Inst | Insts], ModuleInfo,
@@ -1757,8 +1763,8 @@ inst_list_is_mostly_unique_2([Inst | Insts], ModuleInfo,
     inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions),
     inst_list_is_mostly_unique_2(Insts, ModuleInfo, !Expansions).
 
-:- pred inst_list_is_not_partly_unique_2(list(inst)::in, module_info::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_list_is_not_partly_unique_2(list(mer_inst)::in, module_info::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_list_is_not_partly_unique_2([], _, !Expansions).
 inst_list_is_not_partly_unique_2([Inst | Insts], ModuleInfo,
@@ -1766,8 +1772,8 @@ inst_list_is_not_partly_unique_2([Inst | Insts], ModuleInfo,
     inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions),
     inst_list_is_not_partly_unique_2(Insts, ModuleInfo, !Expansions).
 
-:- pred inst_list_is_not_fully_unique_2(list(inst)::in, module_info::in,
-    set(inst)::in, set(inst)::out) is semidet.
+:- pred inst_list_is_not_fully_unique_2(list(mer_inst)::in, module_info::in,
+    set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_list_is_not_fully_unique_2([], _, !Expansions).
 inst_list_is_not_fully_unique_2([Inst | Insts], ModuleInfo,
@@ -1818,7 +1824,7 @@ inst_contains_instname(Inst, ModuleInfo, InstName) :-
 
 :- type inst_names == set(inst_name).
 
-:- pred inst_contains_instname_2((inst)::in, module_info::in, inst_name::in,
+:- pred inst_contains_instname_2(mer_inst::in, module_info::in, inst_name::in,
     bool::out, inst_names::in, inst_names::out) is det.
 
 inst_contains_instname_2(abstract_inst(_, _), _, _, no, !Expansions).
@@ -1871,7 +1877,7 @@ bound_inst_list_contains_instname([BoundInst | BoundInsts], ModuleInfo,
             InstName, Result, !Expansions)
     ).
 
-:- pred inst_list_contains_instname(list(inst)::in, module_info::in,
+:- pred inst_list_contains_instname(list(mer_inst)::in, module_info::in,
     inst_name::in, bool::out, inst_names::in, inst_names::out) is det.
 
 inst_list_contains_instname([], _ModuleInfo, _InstName, no,
@@ -1917,7 +1923,7 @@ inst_name_contains_inst_var(typed_ground(_Uniq, _Type), _InstVar) :- fail.
 inst_name_contains_inst_var(typed_inst(_Type, InstName), InstVar) :-
     inst_name_contains_inst_var(InstName, InstVar).
 
-:- pred inst_contains_inst_var((inst)::in, inst_var::out) is nondet.
+:- pred inst_contains_inst_var(mer_inst::in, inst_var::out) is nondet.
 
 inst_contains_inst_var(inst_var(InstVar), InstVar).
 inst_contains_inst_var(defined_inst(InstName), InstVar) :-
@@ -1941,7 +1947,8 @@ bound_inst_list_contains_inst_var([BoundInst | BoundInsts], InstVar) :-
         bound_inst_list_contains_inst_var(BoundInsts, InstVar)
     ).
 
-:- pred inst_list_contains_inst_var(list(inst)::in, inst_var::out) is nondet.
+:- pred inst_list_contains_inst_var(list(mer_inst)::in, inst_var::out)
+    is nondet.
 
 inst_list_contains_inst_var([Inst | Insts], InstVar) :-
     (
@@ -1953,14 +1960,15 @@ inst_list_contains_inst_var([Inst | Insts], InstVar) :-
 mode_list_contains_inst_var(Modes, _ModuleInfo, InstVar) :-
     mode_list_contains_inst_var(Modes, InstVar).
 
-:- pred mode_list_contains_inst_var(list(mode)::in, inst_var::out) is nondet.
+:- pred mode_list_contains_inst_var(list(mer_mode)::in, inst_var::out)
+    is nondet.
 
 mode_list_contains_inst_var([Mode | _Modes], InstVar) :-
     mode_contains_inst_var(Mode, InstVar).
 mode_list_contains_inst_var([_ | Modes], InstVar) :-
     mode_list_contains_inst_var(Modes, InstVar).
 
-:- pred mode_contains_inst_var((mode)::in, inst_var::out) is nondet.
+:- pred mode_contains_inst_var(mer_mode::in, inst_var::out) is nondet.
 
 mode_contains_inst_var(Mode, InstVar) :-
     (
@@ -1979,8 +1987,8 @@ mode_contains_inst_var(Mode, InstVar) :-
     % to a bound inst i where i contains all the functors of the type t and
     % each argument has inst `any'.
     %
-:- pred maybe_any_to_bound(maybe(type)::in, module_info::in, uniqueness::in,
-    (inst)::out) is semidet.
+:- pred maybe_any_to_bound(maybe(mer_type)::in, module_info::in,
+    uniqueness::in, mer_inst::out) is semidet.
 
 maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, Inst) :-
     \+ type_util__is_solver_type(ModuleInfo, Type),
@@ -2002,7 +2010,7 @@ maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, Inst) :-
         Inst = ground(Uniq, none)
     ).
 
-:- pred type_may_contain_solver_type((type)::in, module_info::in) is semidet.
+:- pred type_may_contain_solver_type(mer_type::in, module_info::in) is semidet.
 
 type_may_contain_solver_type(Type, ModuleInfo) :-
     type_may_contain_solver_type_2(classify_type(ModuleInfo, Type)) = yes.

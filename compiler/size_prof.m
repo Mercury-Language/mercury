@@ -193,9 +193,9 @@
 % The module_info is needed by some utility predicates called by the
 % transformation.
 
-:- type type_info_map       == map(type, prog_var).
+:- type type_info_map       == map(mer_type, prog_var).
 :- type type_ctor_map       == map(type_ctor, prog_var).
-:- type rev_type_info_map   == map(prog_var, type).
+:- type rev_type_info_map   == vartypes.
 :- type rev_type_ctor_map   == map(prog_var, type_ctor).
 :- type known_size_map      == map(prog_var, int).
 
@@ -688,7 +688,7 @@ process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr, !Info) :-
 %-----------------------------------------------------------------------------%
 
 :- pred process_cons_construct(prog_var::in, unify_rhs::in, unify_mode::in,
-    unify_context::in, prog_var::in, (type)::in, cons_id::in,
+    unify_context::in, prog_var::in, mer_type::in, cons_id::in,
     list(prog_var)::in, list(uni_mode)::in, how_to_construct::in,
     cell_is_unique::in, hlds_goal_info::in, hlds_goal_expr::out,
     info::in, info::out) is det.
@@ -757,7 +757,7 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
         TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
         goal_util__generate_simple_call(TermSizeProfBuiltin,
             "increment_size", predicate, only_mode, det,
-            [Var, SizeVar], [impure], [], !.Info ^ module_info,
+            [Var, SizeVar], [impure_goal], [], !.Info ^ module_info,
             Context, UpdateGoal),
         % Put UnifyGoal first in case it fails.
         Goals = [UnifyGoal] ++ ArgGoals ++ SizeGoals ++ [UpdateGoal],
@@ -835,7 +835,7 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
     % type_ctor_infos. Return the variable holding the type_info in
     % TypeInfoVar, and the goals needed to create it in TypeInfoGoals.
 
-:- pred make_type_info(prog_context::in, (type)::in, prog_var::out,
+:- pred make_type_info(prog_context::in, mer_type::in, prog_var::out,
     list(hlds_goal)::out, info::in, info::out) is det.
 
 make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
@@ -903,8 +903,8 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
     % the variable holding the type_info in TypeInfoVar, and the goals needed
     % to create it in TypeInfoGoals.
     %
-:- pred construct_type_info(prog_context::in, (type)::in, type_ctor::in,
-    list(type)::in, bool::in, prog_var::out, list(hlds_goal)::out,
+:- pred construct_type_info(prog_context::in, mer_type::in, type_ctor::in,
+    list(mer_type)::in, bool::in, prog_var::out, list(hlds_goal)::out,
     info::in, info::out) is det.
 
 construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
@@ -952,7 +952,7 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     % type_ctor_info. Return the variable holding the type_ctor_info in
     % TypeCtorVar, and the goals needed to create it in TypeCtorGoals.
     %
-:- pred make_type_ctor_info(type_ctor::in, list(type)::in, prog_var::out,
+:- pred make_type_ctor_info(type_ctor::in, list(mer_type)::in, prog_var::out,
     list(hlds_goal)::out, info::in, info::out) is det.
 
 make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
@@ -1019,7 +1019,7 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
     % Create a new variable with a name constructed from Prefix and the
     % variable number.
     %
-:- pred get_new_var((type)::in, string::in, prog_var::out,
+:- pred get_new_var(mer_type::in, string::in, prog_var::out,
     info::in, info::out) is det.
 
 get_new_var(Type, Prefix, Var, !Info) :-
@@ -1094,7 +1094,7 @@ record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
         true
     ).
 
-:- pred record_type_info_var((type)::in, prog_var::in, info::in, info::out)
+:- pred record_type_info_var(mer_type::in, prog_var::in, info::in, info::out)
     is det.
 
 record_type_info_var(Type, Var, !Info) :-
@@ -1218,7 +1218,7 @@ update_target_map(!Info) :-
         map__init, TargetTypeInfoMap),
     !:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap.
 
-:- pred include_in_target_map(type_info_map::in, pair(type, prog_var)::in,
+:- pred include_in_target_map(type_info_map::in, pair(mer_type, prog_var)::in,
     type_info_map::in, type_info_map::out) is det.
 
 include_in_target_map(TypeInfoMap, Type - TypeInfoVar, !TargetTypeInfoMap) :-

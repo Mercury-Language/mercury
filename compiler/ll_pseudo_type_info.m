@@ -43,15 +43,16 @@
     % are universally quantified. ExistQVars is the list of existentially
     % quantified type variables of the constructor in question.
     %
-:- pred construct_typed_llds_pseudo_type_info((type)::in, int::in,
+:- pred construct_typed_llds_pseudo_type_info(mer_type::in, int::in,
     existq_tvars::in, static_cell_info::in, static_cell_info::out,
     rval::out, llds_type::out) is det.
 
     % This is the same as the previous predicate, but does not return
     % the LLDS type.
     %
-:- pred construct_llds_pseudo_type_info((type)::in, int::in, existq_tvars::in,
-    static_cell_info::in, static_cell_info::out, rval::out) is det.
+:- pred construct_llds_pseudo_type_info(mer_type::in, int::in,
+    existq_tvars::in, static_cell_info::in, static_cell_info::out,
+    rval::out) is det.
 
 %-----------------------------------------------------------------------------%
 

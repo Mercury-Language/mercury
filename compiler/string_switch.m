@@ -104,7 +104,7 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
         HashLookupCode = node([
             comment("hashed string switch") - "",
             assign(SlotReg,
-                binop(&, unop(hash_string, VarRval),
+                binop(bitwise_and, unop(hash_string, VarRval),
                     const(int_const(HashMask))))
                 - "compute the hash value of the input string",
             label(LoopLabel) - "begin hash chain loop",
@@ -112,14 +112,14 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
                 binop(array_index(elem_type_string),
                     StringTable, lval(SlotReg)))
                 - "lookup the string for this hash slot",
-            if_val(binop(and, lval(StringReg),
+            if_val(binop(logical_and, lval(StringReg),
                 binop(str_eq, lval(StringReg), VarRval)), label(JumpLabel))
                 - "did we find a match?",
             assign(SlotReg,
                 binop(array_index(elem_type_int),
                     NextSlotsTable, lval(SlotReg)))
                 - "not yet, so get next slot in hash chain",
-            if_val(binop(>=, lval(SlotReg), const(int_const(0))),
+            if_val(binop(int_ge, lval(SlotReg), const(int_const(0))),
                 label(LoopLabel))
                 - "keep searching until we reach the end of the chain",
             label(FailLabel) - "no match, so fail"

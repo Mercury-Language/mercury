@@ -93,7 +93,7 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
     % Check if the inst is infinitely recursive (at the top level).
     %
 :- pred check_for_cyclic_inst(user_inst_table::in, inst_id::in, inst_id::in,
-    list(inst)::in, list(inst_id)::in, prog_context::in, bool::out,
+    list(mer_inst)::in, list(inst_id)::in, prog_context::in, bool::out,
     io::di, io::uo) is det.
 
 check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,

@@ -730,7 +730,7 @@
     % Return the result as a single statement (which may be a block statement
     % containing nested declarations).
     %
-:- pred ml_gen_goal(code_model::in, hlds_goal::in, mlds__statement::out,
+:- pred ml_gen_goal(code_model::in, hlds_goal::in, statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate MLDS code for the specified goal in the specified code model.
@@ -738,7 +738,7 @@
     % and the other containing the generated statements.
     %
 :- pred ml_gen_goal(code_model::in, hlds_goal::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_wrap_goal(OuterCodeModel, InnerCodeModel, Context,
@@ -751,12 +751,12 @@
     % for OuterCodeModel.
     %
 :- pred ml_gen_wrap_goal(code_model::in, code_model::in, prog_context::in,
-    mlds__statements::in, mlds__statements::out,
+    statements::in, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate declarations for a list of local variables.
     %
-:- pred ml_gen_local_var_decls(prog_varset::in, map(prog_var, prog_type)::in,
+:- pred ml_gen_local_var_decls(prog_varset::in, map(prog_var, mer_type)::in,
     prog_context::in, prog_vars::in, mlds__defns::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -809,7 +809,8 @@ ml_code_gen(ModuleInfo, MLDS, !IO) :-
     ml_gen_defns(ModuleInfo, Defns, !IO),
     module_info_user_init_pred_c_names(ModuleInfo, InitPreds),
     module_info_user_final_pred_c_names(ModuleInfo, FinalPreds),
-    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns, InitPreds, FinalPreds).
+    MLDS = mlds(ModuleName, ForeignCode, Imports, Defns,
+        InitPreds, FinalPreds).
 
 :- pred ml_gen_foreign_code(module_info::in,
     map(foreign_language, mlds__foreign_code)::out,
@@ -1263,7 +1264,7 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
     % local declarations for all the variables used in each sub-goal.
     %
 :- pred ml_gen_all_local_var_decls(hlds_goal::in, prog_varset::in,
-    map(prog_var, prog_type)::in, list(prog_var)::in, mlds__defns::out,
+    map(prog_var, mer_type)::in, list(prog_var)::in, mlds__defns::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars, MLDS_LocalVars,
@@ -1299,8 +1300,8 @@ ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var | Vars], Defns,
     % Generate the code for a procedure body.
     %
 :- pred ml_gen_proc_body(code_model::in, list(prog_var)::in,
-    list(prog_type)::in, list(arg_mode)::in, list(prog_var)::in,
-    hlds_goal::in, mlds__defns::out, mlds__statements::out,
+    list(mer_type)::in, list(arg_mode)::in, list(prog_var)::in,
+    hlds_goal::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
@@ -1355,9 +1356,9 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
     % In such cases, we need to box/unbox/cast them to the right type.
     % This procedure handles that.
     %
-:- pred ml_gen_convert_headvars(list(prog_var)::in, list(prog_type)::in,
+:- pred ml_gen_convert_headvars(list(prog_var)::in, list(mer_type)::in,
     list(arg_mode)::in, list(prog_var)::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out, mlds__statements::out,
+    mlds__defns::out, statements::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
@@ -1563,7 +1564,7 @@ ml_gen_wrap_goal(model_non, model_semi, Context, !Statements, !Info) :-
     ml_gen_test_success(!.Info, Succeeded),
     ml_gen_call_current_success_cont(Context, CallCont, !Info),
     IfStmt = if_then_else(Succeeded, CallCont, no),
-    IfStatement = mlds__statement(IfStmt, mlds__make_context(Context)),
+    IfStatement = statement(IfStmt, mlds__make_context(Context)),
     !:Statements = list__append(!.Statements, [IfStatement]).
 
     % If the inner code model is less precise than the outer code model,
@@ -1583,7 +1584,7 @@ ml_gen_wrap_goal(model_semi, model_non, _, _, _, !Info) :-
     % Generate code for a commit.
     %
 :- pred ml_gen_commit(hlds_goal::in, code_model::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
@@ -1646,7 +1647,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
         ml_gen_var_lval(!.Info, CommitRef, mlds__commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
         DoCommitStmt = do_commit(lval(CommitRefLval)),
-        DoCommitStatement = mlds__statement(DoCommitStmt, MLDS_Context),
+        DoCommitStatement = statement(DoCommitStmt, MLDS_Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
             DoCommitStatement, SuccessFunc),
@@ -1667,7 +1668,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             ml_gen_block([], [GoalStatement, SetSuccessFalse], Context),
             ml_gen_block([], list__append(CopyLocalsToOutputArgs,
                 [SetSuccessTrue]), Context)),
-        TryCommitStatement = mlds__statement(TryCommitStmt, MLDS_Context),
+        TryCommitStatement = statement(TryCommitStmt, MLDS_Context),
         CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc | GoalStaticDecls],
         maybe_put_commit_in_own_func(CommitFuncLocalDecls,
             [TryCommitStatement], Context, CommitFuncDecls, Statements, !Info),
@@ -1723,7 +1724,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
         ml_gen_var_lval(!.Info, CommitRef, mlds__commit_type, CommitRefLval),
         CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context, CommitRef),
         DoCommitStmt = do_commit(lval(CommitRefLval)),
-        DoCommitStatement = mlds__statement(DoCommitStmt, MLDS_Context),
+        DoCommitStatement = statement(DoCommitStmt, MLDS_Context),
         % pop nesting level
         ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
             DoCommitStatement, SuccessFunc),
@@ -1741,7 +1742,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
 
         TryCommitStmt = try_commit(CommitRefLval, GoalStatement,
             ml_gen_block([], CopyLocalsToOutputArgs, Context)),
-        TryCommitStatement = mlds__statement(TryCommitStmt, MLDS_Context),
+        TryCommitStatement = statement(TryCommitStmt, MLDS_Context),
         CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc | GoalStaticDecls],
         maybe_put_commit_in_own_func(CommitFuncLocalDecls,
             [TryCommitStatement], Context, CommitFuncDecls, Statements, !Info),
@@ -1784,8 +1785,8 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
     % But that would impose distributed fat and would make interoperability
     % difficult.]
     %
-:- pred maybe_put_commit_in_own_func(mlds__defns::in, mlds__statements::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
+:- pred maybe_put_commit_in_own_func(mlds__defns::in, statements::in,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
@@ -1821,7 +1822,7 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
         CallKind = ordinary_call,
         CallStmt = call(Signature, CommitFuncLabelRval, no, ArgRvals, [],
             CallKind),
-        CallStatement = mlds__statement(CallStmt, mlds__make_context(Context)),
+        CallStatement = statement(CallStmt, mlds__make_context(Context)),
         % Package it all up.
         Statements = [CallStatement],
         Decls = [CommitFunc]
@@ -1839,8 +1840,8 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
     % we'll copy the local variables into the output arguments.
     %
 :- pred ml_gen_maybe_make_locals_for_output_args(hlds_goal_info::in,
-    mlds__defns::out, mlds__statements::out,
-    map(prog_var, mlds__lval)::out,
+    mlds__defns::out, statements::out,
+    map(prog_var, mlds_lval)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
@@ -1863,8 +1864,8 @@ ml_gen_maybe_make_locals_for_output_args(GoalInfo, LocalVarDecls,
         CopyLocalsToOutputArgs = []
     ).
 
-:- pred ml_gen_make_locals_for_output_args(list(prog_var)::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+:- pred ml_gen_make_locals_for_output_args(list(prog_var)::in,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_make_locals_for_output_args([], _, [], [], !Info).
@@ -1884,8 +1885,8 @@ ml_gen_make_locals_for_output_args([Var | Vars], Context,
         Assigns = [Assign | Assigns0]
     ).
 
-:- pred ml_gen_make_local_for_output_arg(prog_var::in, prog_type::in,
-    prog_context::in, mlds__defn::out, mlds__statement::out,
+:- pred ml_gen_make_local_for_output_arg(prog_var::in, mer_type::in,
+    prog_context::in, mlds__defn::out, statement::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
@@ -1925,7 +1926,7 @@ ml_gen_commit_var_decl(Context, VarName) =
     % Generate MLDS code for the different kinds of HLDS goals.
     %
 :- pred ml_gen_goal_expr(hlds_goal_expr::in, code_model::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_goal_expr(switch(Var, CanFail, CasesList), CodeModel, Context,
@@ -2033,7 +2034,7 @@ ml_gen_goal_expr(shorthand(_), _, _, _, _, !Info) :-
     prog_context::in, string::in, maybe(prog_context)::in, string::in,
     maybe(prog_context)::in, string::in, maybe(prog_context)::in,
     string::in, maybe(prog_context)::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % For model_non pragma c_code,
@@ -2196,10 +2197,10 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         raw_target_code("}\n", [])
     ],
     Starting_C_Code_Stmt = inline_target_code(lang_C, Starting_C_Code),
-    Starting_C_Code_Statement = mlds__statement(
+    Starting_C_Code_Statement = statement(
         atomic(Starting_C_Code_Stmt), mlds__make_context(Context)),
     Ending_C_Code_Stmt = inline_target_code(lang_C, Ending_C_Code),
-    Ending_C_Code_Statement = mlds__statement(
+    Ending_C_Code_Statement = statement(
         atomic(Ending_C_Code_Stmt), mlds__make_context(Context)),
     Statements = list__condense([
         [Starting_C_Code_Statement],
@@ -2212,7 +2213,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
 :- pred ml_gen_ordinary_pragma_foreign_proc(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
@@ -2277,7 +2278,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
 :- pred ml_gen_ordinary_pragma_java_proc(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
@@ -2306,7 +2307,7 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
         [user_target_code(JavaCode, yes(Context), [])]
     ]),
     Java_Code_Stmt = inline_target_code(lang_java, Java_Code),
-    Java_Code_Statement = mlds__statement(
+    Java_Code_Statement = statement(
         atomic(Java_Code_Stmt),
         mlds__make_context(Context)),
     Statements = list__condense([
@@ -2328,7 +2329,7 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
 :- pred ml_gen_ordinary_pragma_managed_proc(ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
@@ -2377,7 +2378,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
     ),
 
     Statements = [
-        mlds__statement(atomic(OutlineStmt), MLDSContext) |
+        statement(atomic(OutlineStmt), MLDSContext) |
         SuccessIndicatorStatements
         ],
     Decls = SuccessVarLocals.
@@ -2415,7 +2416,7 @@ ml_gen_outline_args([foreign_arg(Var, MaybeVarMode, OrigType) | Args],
 :- pred ml_gen_ordinary_pragma_il_proc(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
@@ -2477,7 +2478,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
                 Attributes ^ extra_attributes))
         ]),
 
-    ILCodeFragment = mlds__statement(atomic(OutlineStmt), MLDSContext),
+    ILCodeFragment = statement(atomic(OutlineStmt), MLDSContext),
     Statements = [statement(block(VarLocals,
         [ILCodeFragment] ++ ByRefAssignStatements ++ CopiedOutputStatements),
         mlds__make_context(Context))],
@@ -2494,7 +2495,7 @@ build_arg_map([ForeignArg | ForeignArgs], !ArgMap) :-
 
 :- pred ml_gen_pragma_il_proc_assign_output(module_info::in,
     mlds_module_name::in, map(prog_var, foreign_arg)::in, prog_varset::in,
-    prog_context::in, bool::in, prog_var::in, mlds__statement::out)
+    prog_context::in, bool::in, prog_var::in, statement::out)
     is semidet.
 
 ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
@@ -2623,7 +2624,7 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
 :- pred ml_gen_ordinary_pragma_c_proc(ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
@@ -2721,9 +2722,9 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     ),
     Starting_C_Code_Stmt = inline_target_code(lang_C, Starting_C_Code),
     Ending_C_Code_Stmt = inline_target_code(lang_C, Ending_C_Code),
-    Starting_C_Code_Statement = mlds__statement(
+    Starting_C_Code_Statement = statement(
         atomic(Starting_C_Code_Stmt), mlds__make_context(Context)),
-    Ending_C_Code_Statement = mlds__statement(atomic(Ending_C_Code_Stmt),
+    Ending_C_Code_Statement = statement(atomic(Ending_C_Code_Stmt),
         mlds__make_context(Context)),
     Statements = list__condense([
         [Starting_C_Code_Statement],
@@ -2879,7 +2880,7 @@ ml_gen_pragma_c_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     ).
 
 :- pred ml_gen_pragma_c_gen_input_arg(foreign_language::in, prog_var::in,
-    string::in, prog_type::in, list(target_code_component)::out,
+    string::in, mer_type::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
@@ -2962,8 +2963,8 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
     ).
 
 :- pred ml_gen_pragma_java_output_arg_list(foreign_language::in,
-    list(foreign_arg)::in, prog_context::in, mlds__statements::out,
-    mlds__defns::out, mlds__statements::out,
+    list(foreign_arg)::in, prog_context::in, statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_java_output_arg_list(_, [], _, [], [], [], !Info).
@@ -2981,8 +2982,8 @@ ml_gen_pragma_java_output_arg_list(Lang, [Java_Arg | Java_Args], Context,
     % value of an output arg for a `pragma foreign_proc' declaration.
     %
 :- pred ml_gen_pragma_java_output_arg(foreign_language::in,
-    foreign_arg::in, prog_context::in, mlds__statements::out,
-    mlds__defns::out, mlds__statements::out,
+    foreign_arg::in, prog_context::in, statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
@@ -3033,7 +3034,7 @@ ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
 :- pred ml_gen_pragma_c_output_arg_list(foreign_language::in,
     list(foreign_arg)::in, prog_context::in,
     list(target_code_component)::out, mlds__defns::out,
-    mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
+    statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg_list(_, [], _, [], [], [], !Info).
 ml_gen_pragma_c_output_arg_list(Lang, [ForeignArg | ForeignArgs], Context,
@@ -3051,7 +3052,7 @@ ml_gen_pragma_c_output_arg_list(Lang, [ForeignArg | ForeignArgs], Context,
     %
 :- pred ml_gen_pragma_c_output_arg(foreign_language::in, foreign_arg::in,
     prog_context::in, list(target_code_component)::out,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
@@ -3074,9 +3075,9 @@ ml_gen_pragma_c_output_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
     ).
 
 :- pred ml_gen_pragma_c_gen_output_arg(foreign_language::in, prog_var::in,
-    string::in, prog_type::in, prog_context::in,
+    string::in, mer_type::in, prog_context::in,
     list(target_code_component)::out, mlds__defns::out,
-    mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
+    statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, Context,
         AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
@@ -3163,7 +3164,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, Context,
 %
 
 :- pred ml_gen_ite(code_model::in, hlds_goal::in, hlds_goal::in, hlds_goal::in,
-    prog_context::in, mlds__defns::out, mlds__statements::out,
+    prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
@@ -3200,7 +3201,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         ml_gen_goal(CodeModel, Then, ThenStatement, !Info),
         ml_gen_goal(CodeModel, Else, ElseStatement, !Info),
         IfStmt = if_then_else(Succeeded, ThenStatement, yes(ElseStatement)),
-        IfStatement = mlds__statement(IfStmt, mlds__make_context(Context)),
+        IfStatement = statement(IfStmt, mlds__make_context(Context)),
         Decls = CondDecls,
         Statements = CondStatements ++ [IfStatement]
     ;
@@ -3264,9 +3265,9 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         % Generate `if (!cond_<N>) { <Else> }'.
         ml_gen_test_cond_var(!.Info, CondVar, CondSucceeded),
         ml_gen_goal(CodeModel, Else, ElseStatement, !Info),
-        IfStmt = if_then_else(unop(std_unop(not), CondSucceeded),
+        IfStmt = if_then_else(unop(std_unop(logical_not), CondSucceeded),
             ElseStatement, no),
-        IfStatement = mlds__statement(IfStmt, MLDS_Context),
+        IfStatement = statement(IfStmt, MLDS_Context),
 
         % Package it all up in the right order.
         Decls = [CondVarDecl | CondDecls] ++ [ThenFunc],
@@ -3279,7 +3280,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
 %
 
 :- pred ml_gen_negation(hlds_goal::in, code_model::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
@@ -3320,7 +3321,7 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
         CodeModel = model_semi, CondCodeModel = model_semi,
         ml_gen_goal(model_semi, Cond, CondDecls, CondStatements, !Info),
         ml_gen_test_success(!.Info, Succeeded),
-        ml_gen_set_success(!.Info, unop(std_unop(not), Succeeded),
+        ml_gen_set_success(!.Info, unop(std_unop(logical_not), Succeeded),
             Context, InvertSuccess),
         Decls = CondDecls,
         Statements = list__append(CondStatements, [InvertSuccess])
@@ -3338,7 +3339,7 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
 %
 
 :- pred ml_gen_conj(hlds_goals::in, code_model::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_conj([], CodeModel, Context, [], Statements, !Info) :-
@@ -3366,7 +3367,7 @@ ml_gen_conj([First | Rest], CodeModel, Context, Decls, Statements, !Info) :-
 %
 
 :- pred ml_gen_disj(hlds_goals::in, code_model::in, prog_context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_disj([], CodeModel, Context, [], Statements, !Info) :-
@@ -3440,9 +3441,9 @@ ml_gen_disj([First | Rest], CodeModel, Context, Decls, Statements, !Info) :-
             ml_gen_disj(Rest, CodeModel, Context,
                 RestDecls, RestStatements, !Info),
             RestStatement = ml_gen_block(RestDecls, RestStatements, Context),
-            IfStmt = if_then_else(unop(std_unop(not), Succeeded),
+            IfStmt = if_then_else(unop(std_unop(logical_not), Succeeded),
                 RestStatement, no),
-            IfStatement = mlds__statement(IfStmt, mlds__make_context(Context)),
+            IfStatement = statement(IfStmt, mlds__make_context(Context)),
             Decls = FirstDecls,
             Statements = FirstStatements ++ [IfStatement]
         ;

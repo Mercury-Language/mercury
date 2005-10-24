@@ -101,7 +101,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
          type_and_mode(RepnType,   OutGroundMode)],
     module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
         ToGroundRepnSymName, ToGroundRepnArgTypes, yes(det),
-        (impure), constraints([], []), NoMarkers, Context, !.Status, _,
+        purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
         !ModuleInfo, !IO),
 
         % The `:- impure
@@ -114,7 +114,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
          type_and_mode(RepnType,   OutAnyMode)],
     module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
         ToAnyRepnSymName, ToAnyRepnArgTypes, yes(det),
-        (impure), constraints([], []), NoMarkers, Context, !.Status, _,
+        purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
         !ModuleInfo, !IO),
 
         % The `:- impure
@@ -127,7 +127,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
          type_and_mode(SolverType, out_mode       )],
     module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
         FromGroundRepnSymName, FromGroundRepnArgTypes, yes(det),
-        (impure), constraints([], []), NoMarkers, Context, !.Status, _,
+        purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
         !ModuleInfo, !IO),
 
         % The `:- impure
@@ -140,7 +140,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
          type_and_mode(SolverType, out_any_mode)],
     module_add_pred_or_func(TVarSet, InstVarSet, ExistQTVars, function,
         FromAnyRepnSymName, FromAnyRepnArgTypes, yes(det),
-        (impure), constraints([], []), NoMarkers, Context, !.Status, _,
+        purity_impure, constraints([], []), NoMarkers, Context, !.Status, _,
         !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%

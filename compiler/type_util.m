@@ -38,7 +38,7 @@
     % Succeed iff type is an "atomic" type - one which can be unified
     % using a simple_test rather than a complicated_unify.
     %
-:- pred type_is_atomic((type)::in, module_info::in) is semidet.
+:- pred type_is_atomic(mer_type::in, module_info::in) is semidet.
 
 :- pred type_ctor_is_atomic(type_ctor::in, module_info::in) is semidet.
 
@@ -52,10 +52,10 @@
     %
     % Fail if the given type is a type variable.
     %
-:- pred type_to_type_defn(module_info::in, (type)::in, hlds_type_defn::out)
+:- pred type_to_type_defn(module_info::in, mer_type::in, hlds_type_defn::out)
     is semidet.
 
-:- pred type_to_type_defn_body(module_info::in, (type)::in,
+:- pred type_to_type_defn_body(module_info::in, mer_type::in,
     hlds_type_body::out) is semidet.
 
     % Succeed iff there was either a `where equality is <predname>' or a
@@ -69,7 +69,7 @@
     % If the type is a type variable and thus has no principal type
     % constructor, fail.
     %
-:- pred type_has_user_defined_equality_pred(module_info::in, (type)::in,
+:- pred type_has_user_defined_equality_pred(module_info::in, mer_type::in,
     unify_compare::out) is semidet.
 
 :- pred type_body_has_user_defined_equality_pred(module_info::in,
@@ -81,15 +81,15 @@
     % If the type is a type variable and thus has no principal type
     % constructor, fail.
     %
-:- pred type_is_solver_type(module_info::in, (type)::in) is semidet.
+:- pred type_is_solver_type(module_info::in, mer_type::in) is semidet.
 
-:- pred type_has_solver_type_details(module_info::in, (type)::in,
+:- pred type_has_solver_type_details(module_info::in, mer_type::in,
     solver_type_details::out) is semidet.
 
 :- pred type_body_has_solver_type_details(module_info::in,
     hlds_type_body::in, solver_type_details::out) is semidet.
 
-:- pred is_solver_type(module_info::in, (type)::in) is semidet.
+:- pred is_solver_type(module_info::in, mer_type::in) is semidet.
 
 :- pred type_body_is_solver_type(module_info::in, hlds_type_body::in)
     is semidet.
@@ -97,7 +97,7 @@
     % Succeeds iff one or more of the type constructors for a given
     % type is existentially quantified.
     %
-:- pred is_existq_type(module_info::in, (type)::in) is semidet.
+:- pred is_existq_type(module_info::in, mer_type::in) is semidet.
 
     % Certain types, e.g. io.state and store.store(S), are just dummy types
     % used to ensure logical semantics; there is no need to actually pass them,
@@ -107,19 +107,20 @@
     % A type is a dummy type in one of two cases: either it is a builtin
     % dummy type, or it has only a single function symbol of arity zero.
     %
-:- pred is_dummy_argument_type(module_info::in, (type)::in) is semidet.
+:- pred is_dummy_argument_type(module_info::in, mer_type::in) is semidet.
 :- pred constructor_list_represents_dummy_argument_type(list(constructor)::in,
     maybe(unify_compare)::in) is semidet.
 
-:- pred type_is_io_state((type)::in) is semidet.
+:- pred type_is_io_state(mer_type::in) is semidet.
 
-:- pred type_is_aditi_state((type)::in) is semidet.
+:- pred type_is_aditi_state(mer_type::in) is semidet.
 
 :- pred type_ctor_is_array(type_ctor::in) is semidet.
 
     % Remove an `aditi:state' from the given list if one is present.
     %
-:- pred remove_aditi_state(list(type)::in, list(T)::in, list(T)::out) is det.
+:- pred remove_aditi_state(list(mer_type)::in, list(T)::in, list(T)::out)
+    is det.
 
     % A test for types that are defined in Mercury, but whose definitions
     % are `lies', i.e. they are not sufficiently accurate for RTTI
@@ -135,7 +136,7 @@
     % for these types, since it would not be useful, and since we
     % want to minimize the number of different modes that we infer.
     %
-:- pred is_introduced_type_info_type((type)::in) is semidet.
+:- pred is_introduced_type_info_type(mer_type::in) is semidet.
 
 :- pred is_introduced_type_info_type_ctor(type_ctor::in) is semidet.
 
@@ -163,7 +164,7 @@
     % Given a type, determine what category its principal constructor
     % falls into.
     %
-:- func classify_type(module_info, type) = type_category.
+:- func classify_type(module_info, mer_type) = type_category.
 
     % Given a type_ctor, determine what sort it is.
     %
@@ -188,22 +189,22 @@
 
     % Construct builtin types.
     %
-:- func int_type = (type).
-:- func string_type = (type).
-:- func float_type = (type).
-:- func char_type = (type).
-:- func void_type = (type).
-:- func c_pointer_type = (type).
-:- func heap_pointer_type = (type).
-:- func sample_type_info_type = (type).
-:- func sample_typeclass_info_type = (type).
-:- func comparison_result_type = (type).
-:- func aditi_state_type = (type).
+:- func int_type = mer_type.
+:- func string_type = mer_type.
+:- func float_type = mer_type.
+:- func char_type = mer_type.
+:- func void_type = mer_type.
+:- func c_pointer_type = mer_type.
+:- func heap_pointer_type = mer_type.
+:- func sample_type_info_type = mer_type.
+:- func sample_typeclass_info_type = mer_type.
+:- func comparison_result_type = mer_type.
+:- func aditi_state_type = mer_type.
 
     % Construct the types of type_infos and type_ctor_infos.
     %
-:- func type_info_type = (type).
-:- func type_ctor_info_type = (type).
+:- func type_info_type = mer_type.
+:- func type_ctor_info_type = mer_type.
 
     % Given a constant and an arity, return a type_ctor.
     % Fails if the constant is not an atom.
@@ -224,8 +225,8 @@
     % If the type is a du type or a tuple type, return the list of its
     % constructors.
     %
-:- pred type_constructors((type)::in, module_info::in, list(constructor)::out)
-    is semidet.
+:- pred type_constructors(mer_type::in, module_info::in,
+    list(constructor)::out) is semidet.
 
     % Given a type on which it is possible to have a complete switch,
     % return the number of alternatives. (It is possible to have a complete
@@ -235,7 +236,7 @@
     % and equivalence types will have been expanded out by the time
     % we consider switches.)
     %
-:- pred switch_type_num_functors(module_info::in, (type)::in,
+:- pred switch_type_num_functors(module_info::in, mer_type::in,
     int::out) is semidet.
 
     % Work out the types of the arguments of a functor, given the cons_id
@@ -244,20 +245,20 @@
     % in the functor's argument types, to match their bindings in the
     % functor's type.
     %
-:- pred get_cons_id_arg_types(module_info::in, (type)::in,
-    cons_id::in, list(type)::out) is det.
+:- pred get_cons_id_arg_types(module_info::in, mer_type::in,
+    cons_id::in, list(mer_type)::out) is det.
 
     % The same as gget_cons_id_arg_types except that it fails rather than
     % aborting if the functor is existentially typed.
     %
 :- pred get_cons_id_non_existential_arg_types(module_info::in,
-    (type)::in, cons_id::in, list(type)::out) is semidet.
+    mer_type::in, cons_id::in, list(mer_type)::out) is semidet.
 
     % The same as gget_cons_id_arg_types except that the cons_id is output
     % non-deterministically. The cons_id is not module-qualified.
     %
-:- pred cons_id_arg_types(module_info::in, (type)::in,
-    cons_id::out, list(type)::out) is nondet.
+:- pred cons_id_arg_types(module_info::in, mer_type::in,
+    cons_id::out, list(mer_type)::out) is nondet.
 
     % Given a type and a cons_id, look up the definitions of that type
     % and constructor. Aborts if the cons_id is not user-defined.
@@ -266,7 +267,7 @@
     % original types from the constructor definition. The caller must do
     % that substitution itself if required.
     %
-:- pred get_type_and_cons_defn(module_info::in, (type)::in,
+:- pred get_type_and_cons_defn(module_info::in, mer_type::in,
     cons_id::in, hlds_type_defn::out, hlds_cons_defn::out) is det.
 
     % Like gget_type_and_cons_defn (above), except that it only returns
@@ -282,7 +283,7 @@
     % and is just used for obtaining the arity for typeclass_info and type_info
     % cons_ids.
     %
-:- pred qualify_cons_id((type)::in, list(prog_var)::in, cons_id::in,
+:- pred qualify_cons_id(mer_type::in, list(prog_var)::in, cons_id::in,
     cons_id::out, cons_id::out) is det.
 
     % Given a type and a cons_id, look up the definition of that constructor;
@@ -292,10 +293,10 @@
     % original types from the constructor definition. The caller must do
     % that substitution itself if required.
     %
-:- pred get_existq_cons_defn(module_info::in, (type)::in,
+:- pred get_existq_cons_defn(module_info::in, mer_type::in,
     cons_id::in, ctor_defn::out) is semidet.
 
-:- pred is_existq_cons(module_info::in, (type)::in, cons_id::in)
+:- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in)
     is semidet.
 
     % This type is used to return information about a constructor definition,
@@ -309,9 +310,9 @@
                                     % kinds of existq_tvars
                 ctor_constraints    :: list(prog_constraint),
                                     % existential constraints
-                ctor_arg_types      :: list(type),
+                ctor_arg_types      :: list(mer_type),
                                     % functor argument types
-                ctor_result_type    :: (type)
+                ctor_result_type    :: mer_type
                                     % functor result type
             ).
 
@@ -319,8 +320,8 @@
     % constructor, and whose one constructor has only one argument),
     % and if so, return its constructor symbol and argument type.
     %
-:- pred type_is_no_tag_type(module_info::in, (type)::in, sym_name::out,
-    (type)::out) is semidet.
+:- pred type_is_no_tag_type(module_info::in, mer_type::in, sym_name::out,
+    mer_type::out) is semidet.
 
     % Check whether the type with the given list of constructors would be
     % a no_tag type (which requires the list to include exactly one constructor
@@ -333,7 +334,7 @@
     % perform the checks yourself.
     %
 :- pred type_constructors_are_no_tag_type(list(constructor)::in, sym_name::out,
-    (type)::out, maybe(string)::out) is semidet.
+    mer_type::out, maybe(string)::out) is semidet.
 
     % Given a list of constructors for a type, check whether that type
     % is a private_builtin.type_info/0 or similar type.
@@ -351,7 +352,7 @@
     %
 :- pred type_with_constructors_should_be_no_tag(globals::in, type_ctor::in,
     bool::in, list(constructor)::in, maybe(unify_compare)::in, sym_name::out,
-    (type)::out, maybe(string)::out) is semidet.
+    mer_type::out, maybe(string)::out) is semidet.
 
     % Unify (with occurs check) two types with respect to a type substitution
     % and update the type bindings. The third argument is a list of type
@@ -360,23 +361,23 @@
     % No kind checking is done, since it is assumed that kind errors
     % will be picked up elsewhere.
     %
-:- pred type_unify((type)::in, (type)::in, list(tvar)::in, tsubst::in,
+:- pred type_unify(mer_type::in, mer_type::in, list(tvar)::in, tsubst::in,
     tsubst::out) is semidet.
 
-:- pred type_unify_list(list(type)::in, list(type)::in, list(tvar)::in,
+:- pred type_unify_list(list(mer_type)::in, list(mer_type)::in, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.
 
     % type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
     % TypesA subsumes (is more general than) TypesB, producing a
     % type substitution which when applied to TypesA will give TypesB.
     %
-:- pred type_list_subsumes(list(type)::in, list(type)::in, tsubst::out)
+:- pred type_list_subsumes(list(mer_type)::in, list(mer_type)::in, tsubst::out)
     is semidet.
 
     % This does the same as type_list_subsumes, but aborts instead of failing.
     %
-:- pred type_list_subsumes_det(list(type)::in, list(type)::in, tsubst::out)
-    is det.
+:- pred type_list_subsumes_det(list(mer_type)::in, list(mer_type)::in,
+    tsubst::out) is det.
 
     % arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
     %   CalleeExistQVars, CalleeArgTypes):
@@ -386,8 +387,8 @@
     % that none of the existentially quantified type variables of the callee
     % are bound.
     %
-:- pred arg_type_list_subsumes(tvarset::in, list(type)::in, tvarset::in,
-    tvar_kind_map::in, existq_tvars::in, list(type)::in) is semidet.
+:- pred arg_type_list_subsumes(tvarset::in, list(mer_type)::in, tvarset::in,
+    tvar_kind_map::in, existq_tvars::in, list(mer_type)::in) is semidet.
 
     % Apply a type substitution (i.e. map from tvar -> type)
     % to all the types in a variable typing (i.e. map from var -> type).
@@ -462,7 +463,7 @@
     % to include the extra typeclassinfo and typeinfo arguments inserted
     % by polymorphism.m for existentially typed constructors.
     %
-:- func cons_id_adjusted_arity(module_info, type, cons_id) = int.
+:- func cons_id_adjusted_arity(module_info, mer_type, cons_id) = int.
 
 %-----------------------------------------------------------------------------%
 
@@ -471,11 +472,11 @@
     % in the cons_id will not include any extra type_info arguments for
     % existentially quantified types.
     %
-:- pred maybe_get_cons_id_arg_types(module_info::in, maybe(type)::in,
-    cons_id::in, arity::in, list(maybe(type))::out) is det.
+:- pred maybe_get_cons_id_arg_types(module_info::in, maybe(mer_type)::in,
+    cons_id::in, arity::in, list(maybe(mer_type))::out) is det.
 
-:- pred maybe_get_higher_order_arg_types(maybe(type)::in, arity::in,
-    list(maybe(type))::out) is det.
+:- pred maybe_get_higher_order_arg_types(maybe(mer_type)::in, arity::in,
+    list(maybe(mer_type))::out) is det.
 
 :- type polymorphism_cell
     --->    type_info_cell(type_ctor)
@@ -910,8 +911,8 @@ get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId, ArgTypes) :-
     --->    fail_on_exist_qvar
     ;       abort_on_exist_qvar.
 
-:- pred get_cons_id_arg_types_2(exist_qvar_action, module_info, (type),
-    cons_id, list(type)).
+:- pred get_cons_id_arg_types_2(exist_qvar_action, module_info, mer_type,
+    cons_id, list(mer_type)).
 :- mode get_cons_id_arg_types_2(in(bound(fail_on_exist_qvar)), in, in,
     in, out) is semidet.
 :- mode get_cons_id_arg_types_2(in(bound(abort_on_exist_qvar)), in, in,
@@ -982,7 +983,7 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 is_existq_cons(ModuleInfo, VarType, ConsId) :-
     is_existq_cons(ModuleInfo, VarType, ConsId, _).
 
-:- pred is_existq_cons(module_info::in, (type)::in, cons_id::in,
+:- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in,
     hlds_cons_defn::out) is semidet.
 
 is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
@@ -1120,7 +1121,7 @@ unqualify_private_builtin(qualified(ModuleName, Name), Name) :-
     mercury_private_builtin_module(ModuleName).
 
 :- pred type_is_single_ctor_single_arg(list(constructor)::in, sym_name::out,
-    maybe(ctor_field_name)::out, (type)::out) is semidet.
+    maybe(ctor_field_name)::out, mer_type::out) is semidet.
 
 type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
     Ctors = [SingleCtor],
@@ -1155,7 +1156,7 @@ type_with_constructors_should_be_no_tag(Globals, TypeCtor, ReserveTagPragma,
     % Substitute the actual values of the type parameters in list of
     % constructors, for a particular instance of a polymorphic type.
     %
-:- pred substitute_type_args(list(type_param)::in, list(type)::in,
+:- pred substitute_type_args(list(type_param)::in, list(mer_type)::in,
     list(constructor)::in, list(constructor)::out) is det.
 
 substitute_type_args(TypeParams, TypeArgs, Constructors0, Constructors) :-
@@ -1267,7 +1268,7 @@ type_unify(X, Y, HeadTypeParams, !Bindings) :-
         type_unify_special(X, Y, HeadTypeParams, !Bindings)
     ).
 
-:- pred type_unify_var(tvar::in, (type)::in, list(tvar)::in,
+:- pred type_unify_var(tvar::in, mer_type::in, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.
 
 type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings) :-
@@ -1347,7 +1348,7 @@ type_unify_head_type_param(Var, HeadVar, Kind, HeadTypeParams, !Bindings) :-
     % which are not handled here are apply_n types and kinded types.
     % Those are handled below.
     %
-:- pred type_unify_nonvar((type)::in, (type)::in, list(tvar)::in,
+:- pred type_unify_nonvar(mer_type::in, mer_type::in, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.
 
 type_unify_nonvar(defined(SymName, ArgsX, _), defined(SymName, ArgsY, _),
@@ -1373,7 +1374,7 @@ type_unify_nonvar(tuple(ArgsX, _), tuple(ArgsY, _), HeadTypeParams,
 
     % Handle apply_n types and kinded types.
     %
-:- pred type_unify_special((type)::in, (type)::in, list(tvar)::in,
+:- pred type_unify_special(mer_type::in, mer_type::in, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.
 
 type_unify_special(X, Y, HeadTypeParams, !Bindings) :-
@@ -1404,8 +1405,8 @@ type_unify_special(X, Y, HeadTypeParams, !Bindings) :-
     % Note that Y is not a variable, since that case would have been
     % caught by type_unify.
     %
-:- pred type_unify_apply((type)::in, tvar::in, list(type)::in, list(tvar)::in,
-    tsubst::in, tsubst::out) is semidet.
+:- pred type_unify_apply(mer_type::in, tvar::in, list(mer_type)::in,
+    list(tvar)::in, tsubst::in, tsubst::out) is semidet.
 
 type_unify_apply(defined(NameY, ArgsY0, KindY0), VarX, ArgsX, HeadTypeParams,
         !Bindings) :-
@@ -1450,8 +1451,9 @@ type_unify_apply(apply_n(VarY, ArgsY0, Kind0), VarX, ArgsX0, HeadTypeParams,
 type_unify_apply(kinded(RawY, _), VarX, ArgsX, HeadTypeParams, !Bindings) :-
     type_unify_apply(RawY, VarX, ArgsX, HeadTypeParams, !Bindings).
 
-:- pred type_unify_args(list(type)::in, list(type)::in, list(type)::out,
-    kind::in, kind::out, list(tvar)::in, tsubst::in, tsubst::out) is semidet.
+:- pred type_unify_args(list(mer_type)::in, list(mer_type)::in,
+    list(mer_type)::out, kind::in, kind::out, list(tvar)::in,
+    tsubst::in, tsubst::out) is semidet.
 
 type_unify_args(ArgsX, ArgsY0, ArgsY, KindY0, KindY, HeadTypeParams,
         !Bindings) :-
@@ -1461,9 +1463,9 @@ type_unify_args(ArgsX, ArgsY0, ArgsY, KindY0, KindY, HeadTypeParams,
         HeadTypeParams, !Bindings),
     list.reverse(RevArgsY, ArgsY).
 
-:- pred type_unify_rev_args(list(type)::in, list(type)::in, list(type)::out,
-    kind::in, kind::out, list(tvar)::in, tsubst::in, tsubst::out)
-    is semidet.
+:- pred type_unify_rev_args(list(mer_type)::in, list(mer_type)::in,
+    list(mer_type)::out, kind::in, kind::out, list(tvar)::in,
+    tsubst::in, tsubst::out) is semidet.
 
 type_unify_rev_args([], ArgsY, ArgsY, KindY, KindY, _, !Bindings).
 type_unify_rev_args([ArgX | ArgsX], [ArgY0 | ArgsY0], ArgsY, KindY0, KindY,
@@ -1482,7 +1484,7 @@ type_unify_list([X | Xs], [Y | Ys], HeadTypeParams, !Bindings) :-
     % perhaps indirectly via the substitution.  (The variable must not
     % be mapped by the substitution.)
     %
-:- pred type_occurs((type)::in, tvar::in, tsubst::in) is semidet.
+:- pred type_occurs(mer_type::in, tvar::in, tsubst::in) is semidet.
 
 type_occurs(variable(X, _), Y, Bindings) :-
     ( X = Y ->
@@ -1514,7 +1516,7 @@ type_occurs(apply_n(X, Args, _), Y, Bindings) :-
 type_occurs(kinded(X, _), Y, Bindings) :-
     type_occurs(X, Y, Bindings).
 
-:- pred type_occurs_list(list(type)::in, tvar::in, tsubst::in) is semidet.
+:- pred type_occurs_list(list(mer_type)::in, tvar::in, tsubst::in) is semidet.
 
 type_occurs_list([X | Xs], Y,  Bindings) :-
     (
@@ -1529,7 +1531,7 @@ apply_subst_to_type_map(Subst, !VarTypes) :-
     map__map_values(apply_subst_to_type_map_2(Subst), !VarTypes).
 
 :- pred apply_subst_to_type_map_2(tsubst::in, prog_var::in,
-    (type)::in, (type)::out) is det.
+    mer_type::in, mer_type::out) is det.
 
 apply_subst_to_type_map_2(Subst, _, !Type) :-
     apply_subst_to_type(Subst, !Type).
@@ -1538,7 +1540,7 @@ apply_rec_subst_to_type_map(Subst, !VarTypes) :-
     map__map_values(apply_rec_subst_to_type_map_2(Subst), !VarTypes).
 
 :- pred apply_rec_subst_to_type_map_2(tsubst::in, prog_var::in,
-    (type)::in, (type)::out) is det.
+    mer_type::in, mer_type::out) is det.
 
 apply_rec_subst_to_type_map_2(Subst, _, !Type) :-
     apply_rec_subst_to_type(Subst, !Type).
@@ -1547,7 +1549,7 @@ apply_variable_renaming_to_type_map(Renaming, !Map) :-
     map__map_values(apply_variable_renaming_to_type_map_2(Renaming), !Map).
 
 :- pred apply_variable_renaming_to_type_map_2(tvar_renaming::in, prog_var::in,
-    (type)::in, (type)::out) is det.
+    mer_type::in, mer_type::out) is det.
 
 apply_variable_renaming_to_type_map_2(Renaming, _, !Type) :-
     apply_variable_renaming_to_type(Renaming, !Type).

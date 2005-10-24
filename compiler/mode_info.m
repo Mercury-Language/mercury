@@ -127,7 +127,7 @@
 :- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
 :- pred mode_info_get_instvarset(mode_info::in, inst_varset::out) is det.
 :- pred mode_info_get_var_types(mode_info::in,
-    map(prog_var, type)::out) is det.
+    map(prog_var, mer_type)::out) is det.
 :- pred mode_info_get_delay_info(mode_info::in, delay_info::out) is det.
 :- pred mode_info_get_live_vars(mode_info::in, bag(prog_var)::out) is det.
 :- pred mode_info_get_nondet_live_vars(mode_info::in, bag(prog_var)::out)
@@ -177,7 +177,7 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_varset(prog_varset::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_var_types(map(prog_var, type)::in,
+:- pred mode_info_set_var_types(map(prog_var, mer_type)::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_delay_info(delay_info::in,
     mode_info::in, mode_info::out) is det.
@@ -201,7 +201,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_types_of_vars(mode_info::in,
-    list(prog_var)::in, list(type)::out) is det.
+    list(prog_var)::in, list(mer_type)::out) is det.
 
 :- pred mode_info_lock_vars(var_lock_reason::in, set(prog_var)::in,
     mode_info::in, mode_info::out) is det.

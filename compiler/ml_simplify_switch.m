@@ -29,7 +29,7 @@
 :- import_module ml_backend__ml_code_util.
 
 :- pred ml_simplify_switch(mlds__stmt::in, mlds__context::in,
-    mlds__statement::out, ml_gen_info::in, ml_gen_info::out) is det.
+    statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -84,7 +84,7 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
             NeedRangeCheck, Type, Rval, MLDS_Context,
             Decls, Statements, !Info),
         Stmt = block(Decls, Statements),
-        Statement = mlds__statement(Stmt, MLDS_Context)
+        Statement = statement(Stmt, MLDS_Context)
     ;
         % Convert the remaining (sparse) int switches into if-then-else chains,
         % unless the target prefers switches.
@@ -110,10 +110,10 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         Statement = CaseStatement
     ;
         Stmt = Stmt0,
-        Statement = mlds__statement(Stmt, MLDS_Context)
+        Statement = statement(Stmt, MLDS_Context)
     ).
 
-:- pred is_integral_type(mlds__type::in) is semidet.
+:- pred is_integral_type(mlds_type::in) is semidet.
 
 is_integral_type(mlds__native_int_type).
 is_integral_type(mlds__native_char_type).
@@ -222,8 +222,8 @@ find_first_and_last_case_3(match_range(MinRval, MaxRval),
     %
 :- pred generate_dense_switch(list(mlds__switch_case)::in,
     mlds__switch_default::in, int::in, int::in, bool::in,
-    mlds__type::in, mlds__rval::in, mlds__context::in,
-    mlds__defns::out, mlds__statements::out,
+    mlds_type::in, mlds_rval::in, mlds__context::in,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
@@ -233,7 +233,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     ( FirstVal = 0 ->
         Index = Rval
     ;
-        Index = binop(-, Rval, const(int_const(FirstVal)))
+        Index = binop(int_sub, Rval, const(int_const(FirstVal)))
     ),
 
     % Now generate the jump table.
@@ -244,7 +244,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     ml_gen_new_label(DefaultLabel, !Info),
     CaseLabels = get_case_labels(FirstVal, LastVal,
         CaseLabelsMap, DefaultLabel),
-    DefaultLabelStatement = mlds__statement(label(DefaultLabel), MLDS_Context),
+    DefaultLabelStatement = statement(label(DefaultLabel), MLDS_Context),
     (
         Default = default_is_unreachable,
         % We still need the label, in case we inserted references to it
@@ -258,12 +258,12 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
         DefaultStatements = [DefaultLabelStatement, DefaultCase]
     ),
 
-    StartComment = mlds__statement(
+    StartComment = statement(
         atomic(comment("switch (using dense jump table)")),
         MLDS_Context),
-    DoJump = mlds__statement(computed_goto(Index, CaseLabels), MLDS_Context),
-    EndLabelStatement = mlds__statement(label(EndLabel), MLDS_Context),
-    EndComment = mlds__statement(atomic(comment("End of dense switch")),
+    DoJump = statement(computed_goto(Index, CaseLabels), MLDS_Context),
+    EndLabelStatement = statement(label(EndLabel), MLDS_Context),
+    EndComment = statement(atomic(comment("End of dense switch")),
         MLDS_Context),
 
     % We may need to check that the value of the variable lies within the
@@ -272,11 +272,11 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
         NeedRangeCheck = yes,
         Difference = LastVal - FirstVal,
         InRange = binop(unsigned_le, Index, const(int_const(Difference))),
-        Else = yes(mlds__statement(block([], DefaultStatements),
+        Else = yes(statement(block([], DefaultStatements),
             MLDS_Context)),
-        SwitchBody = mlds__statement(block([], [DoJump | CasesCode]),
+        SwitchBody = statement(block([], [DoJump | CasesCode]),
             MLDS_Context),
-        DoSwitch = mlds__statement(if_then_else(InRange, SwitchBody, Else),
+        DoSwitch = statement(if_then_else(InRange, SwitchBody, Else),
             MLDS_Context),
         Statements = [StartComment, DoSwitch] ++
             [EndLabelStatement, EndComment]
@@ -289,7 +289,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
 
 :- pred generate_cases(list(mlds__switch_case)::in, mlds__label::in,
     case_labels_map::in, case_labels_map::out,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_cases([], _EndLabel, CaseLabelsMap, CaseLabelsMap, [], [], !Info).
@@ -309,7 +309,7 @@ generate_cases([Case | Cases], EndLabel, CaseLabelsMap0,
     %
 :- pred generate_case(mlds__switch_case::in, mlds__label::in,
     case_labels_map::in, case_labels_map::out,
-    mlds__defns::out, mlds__statements::out,
+    mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
@@ -318,14 +318,14 @@ generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
     ml_gen_new_label(ThisLabel, !Info),
     insert_cases_into_map(MatchCondition, ThisLabel,
         CaseLabelsMap0, CaseLabelsMap),
-    CaseStatement = mlds__statement(_, MLDS_Context),
-    LabelComment = mlds__statement(atomic(comment("case of dense switch")),
+    CaseStatement = statement(_, MLDS_Context),
+    LabelComment = statement(atomic(comment("case of dense switch")),
         MLDS_Context),
-    LabelCode = mlds__statement(label(ThisLabel), MLDS_Context),
-    JumpComment = mlds__statement(
+    LabelCode = statement(label(ThisLabel), MLDS_Context),
+    JumpComment = statement(
         atomic(comment("branch to end of dense switch")),
         MLDS_Context),
-    JumpCode = mlds__statement(goto(label(EndLabel)), MLDS_Context),
+    JumpCode = statement(goto(label(EndLabel)), MLDS_Context),
     Decls = [],
     Statements = [LabelComment, LabelCode, CaseStatement,
         JumpComment, JumpCode].
@@ -340,10 +340,10 @@ generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
 :- pred insert_cases_into_map(mlds__case_match_conds::in, mlds__label::in,
     case_labels_map::in, case_labels_map::out) is det.
 
-insert_cases_into_map([], _ThisLabel, CaseLabelsMap, CaseLabelsMap).
-insert_cases_into_map([Cond|Conds], ThisLabel, CaseLabelsMap0, CaseLabelsMap) :-
-    insert_case_into_map(Cond, ThisLabel, CaseLabelsMap0, CaseLabelsMap1),
-    insert_cases_into_map(Conds, ThisLabel, CaseLabelsMap1, CaseLabelsMap).
+insert_cases_into_map([], _ThisLabel, !CaseLabelsMap).
+insert_cases_into_map([Cond|Conds], ThisLabel, !CaseLabelsMap) :-
+    insert_case_into_map(Cond, ThisLabel, !CaseLabelsMap),
+    insert_cases_into_map(Conds, ThisLabel, !CaseLabelsMap).
 
 :- pred insert_case_into_map(mlds__case_match_cond::in, mlds__label::in,
     case_labels_map::in, case_labels_map::out) is det.
@@ -406,15 +406,15 @@ get_case_labels(ThisVal, LastVal, CaseLabelsMap, DefaultLabel) = CaseLabels :-
     % in turn.
     %
 :- func ml_switch_to_if_else_chain(mlds__switch_cases, mlds__switch_default,
-    mlds__rval, mlds__context) = mlds__statement.
+    mlds_rval, mlds__context) = statement.
 
 ml_switch_to_if_else_chain([], Default, _Rval, MLDS_Context) = Statement :-
     (
         Default = default_do_nothing,
-        Statement = mlds__statement(block([],[]), MLDS_Context)
+        Statement = statement(block([],[]), MLDS_Context)
     ;
         Default = default_is_unreachable,
-        Statement = mlds__statement(block([],[]), MLDS_Context)
+        Statement = statement(block([],[]), MLDS_Context)
     ;
         Default = default_case(Statement)
     ).
@@ -432,31 +432,33 @@ ml_switch_to_if_else_chain([Case | Cases], Default, SwitchRval, MLDS_Context) =
             MLDS_Context),
         IfStmt = if_then_else(CaseMatchedRval, CaseStatement,
             yes(RestStatement)),
-        Statement = mlds__statement(IfStmt, MLDS_Context)
+        Statement = statement(IfStmt, MLDS_Context)
     ).
 
     % Generate an rval which will be true iff any of the specified list of
     % case conditions matches the specified rval (which must have integral
     % type).
     %
-:- func ml_gen_case_match_conds(mlds__case_match_conds, rval) = rval.
+:- func ml_gen_case_match_conds(mlds__case_match_conds, mlds_rval) = mlds_rval.
 
 ml_gen_case_match_conds([], _) = const(false).
 ml_gen_case_match_conds([Cond], SwitchRval) =
     ml_gen_case_match_cond(Cond, SwitchRval).
 ml_gen_case_match_conds([Cond1, Cond2 | Conds], SwitchRval) =
-    binop(or,
+    binop(logical_or,
         ml_gen_case_match_cond(Cond1, SwitchRval),
         ml_gen_case_match_conds([Cond2 | Conds], SwitchRval)).
 
     % Generate an rval which will be true iff the specified case condition
     % matches the specified rval (which must have integral type).
     %
-:- func ml_gen_case_match_cond(mlds__case_match_cond, rval) = rval.
+:- func ml_gen_case_match_cond(mlds__case_match_cond, mlds_rval) = mlds_rval.
 
 ml_gen_case_match_cond(match_value(CaseRval), SwitchRval) =
     binop(eq, CaseRval, SwitchRval).
 ml_gen_case_match_cond(match_range(MinRval, MaxRval), SwitchRval) =
-    binop(and, binop(>=, SwitchRval, MinRval), binop(<=, SwitchRval, MaxRval)).
+    binop(logical_and,
+        binop(int_gt, SwitchRval, MinRval),
+        binop(int_le, SwitchRval, MaxRval)).
 
 %-----------------------------------------------------------------------------%

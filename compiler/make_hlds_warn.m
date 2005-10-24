@@ -39,7 +39,7 @@
     module_info::in, hlds_goal::in, io::di, io::uo) is det.
 
 :- pred maybe_warn_pragma_singletons(pragma_foreign_code_impl::in,
-    foreign_language::in, list(maybe(pair(string, mode)))::in,
+    foreign_language::in, list(maybe(pair(string, mer_mode)))::in,
     prog_context::in, simple_call_id::in, module_info::in,
     io::di, io::uo) is det.
 
@@ -140,7 +140,8 @@ warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
 warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
         MI, !IO) :-
     Goal = disj(Goals),
-    warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI, !IO).
+    warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI,
+        !IO).
 warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
         MI, !IO) :-
     Goal = switch(_Var, _CanFail, Cases),
@@ -297,7 +298,8 @@ warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval, _Fix,
     warn_singletons([X], GoalInfo, NonLocals, QuantVars, VarSet, Context,
         CallPredId, !IO),
     % Warn if the lambda-goal contains singletons.
-    warn_singletons_in_goal(LambdaGoal, QuantVars, VarSet, CallPredId, MI, !IO).
+    warn_singletons_in_goal(LambdaGoal, QuantVars, VarSet, CallPredId, MI,
+        !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -321,7 +323,7 @@ maybe_warn_pragma_singletons(PragmaImpl, Lang, ArgInfo, Context, CallId, MI,
     % Mercury variable names into identifiers for that foreign language).
     %
 :- pred warn_singletons_in_pragma_foreign_proc(pragma_foreign_code_impl::in,
-    foreign_language::in, list(maybe(pair(string, mode)))::in,
+    foreign_language::in, list(maybe(pair(string, mer_mode)))::in,
     prog_context::in, simple_call_id::in, module_info::in,
     io::di, io::uo) is det.
 

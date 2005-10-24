@@ -214,8 +214,8 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
 
 ok_to_duplicate(constraint) = no.
 ok_to_duplicate(from_head) = yes.
-ok_to_duplicate(impure) = no.
-ok_to_duplicate(semipure) = no.
+ok_to_duplicate(impure_goal) = no.
+ok_to_duplicate(semipure_goal) = no.
 ok_to_duplicate(not_impure_for_determinism) = no.
 ok_to_duplicate(stack_opt) = no.
 ok_to_duplicate(tuple_opt) = no.
@@ -508,7 +508,7 @@ saved_vars_in_switch([case(Cons, Goal0) | Cases0],
             bool            % TypeInfoLiveness
         ).
 
-:- pred init_slot_info(prog_varset::in, map(prog_var, type)::in,
+:- pred init_slot_info(prog_varset::in, vartypes::in,
     rtti_varmaps::in, bool::in, slot_info::out) is det.
 
 init_slot_info(Varset, VarTypes, RttiVarMaps, TypeInfoLiveness, SlotInfo) :-

@@ -407,7 +407,7 @@ format_method_name(Method) = MethodName :-
                                         % predicate.)
                 existq_tvars,           % Existentially quantified
                                         % type variables.
-                list(type),             % Expected types of arguments.
+                list(mer_type),             % Expected types of arguments.
                 prog_constraints,       % Constraints from class method.
                 list(modes_and_detism), % Modes and determinisms of the
                                         % required procs.
@@ -495,7 +495,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
 :- type modes_and_detism
     --->    modes_and_detism(
-                list(mode),
+                list(mer_mode),
                 inst_varset,
                 maybe(determinism)
             ).
@@ -650,7 +650,7 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
     ).
 
 :- pred produce_auxiliary_procs(class_id::in, list(tvar)::in, pred_markers::in,
-    list(type)::in, list(prog_constraint)::in, tvarset::in,
+    list(mer_type)::in, list(prog_constraint)::in, tvarset::in,
     module_name::in, instance_proc_def::in, prog_context::in,
     pred_id::out, list(proc_id)::out,
     instance_method_info::in, instance_method_info::out,
@@ -769,7 +769,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     % XXX This isn't quite perfect, I suspect
     %
 :- pred make_introduced_pred_name(class_id::in, sym_name::in, arity::in,
-    list(type)::in, sym_name::out) is det.
+    list(mer_type)::in, sym_name::out) is det.
 
 make_introduced_pred_name(ClassId, MethodName, Arity, InstanceTypes,
         PredName) :-
@@ -1524,7 +1524,7 @@ induced_fundeps_2(ClassTable, constraint(Name, Args), FunDeps0) = FunDeps :-
     ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
     FunDeps = foldl(induced_fundep(Args), ClassDefn ^ class_fundeps, FunDeps0).
 
-:- func induced_fundep(list(type), hlds_class_fundep, induced_fundeps)
+:- func induced_fundep(list(mer_type), hlds_class_fundep, induced_fundeps)
     = induced_fundeps.
 
 induced_fundep(Args, fundep(Domain0, Range0), FunDeps)
@@ -1532,7 +1532,7 @@ induced_fundep(Args, fundep(Domain0, Range0), FunDeps)
     Domain = set.fold(induced_vars(Args), Domain0, set.init),
     Range = set.fold(induced_vars(Args), Range0, set.init).
 
-:- func induced_vars(list(type), int, set(tvar)) = set(tvar).
+:- func induced_vars(list(mer_type), int, set(tvar)) = set(tvar).
 
 induced_vars(Args, ArgNum, Vars) = union(Vars, NewVars) :-
     Arg = list.index1_det(Args, ArgNum),

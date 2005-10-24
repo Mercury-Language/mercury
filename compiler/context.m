@@ -409,7 +409,8 @@ context__transform_rule(PredProcId, right_linear(CallList, Goals, Call) - _,
 	{ list__append(FactoredGoal, Goals, AllGoals) },
 	{ goal_list_instmap_delta(AllGoals, Delta) },
 	{ goal_list_determinism(AllGoals, Det) },
-	{ goal_info_init(AllNonLocals, Delta, Det, pure, MagicRuleInfo) },
+	{ goal_info_init(AllNonLocals, Delta, Det, purity_pure,
+		MagicRuleInfo) },
 	{ conj_list_to_goal(AllGoals, MagicRuleInfo, MagicGoal) },
 	magic_util__add_to_magic_predicate(PredProcId1, MagicGoal, MagicArgs).
 
@@ -453,7 +454,7 @@ context__transform_rule(PredProcId,
 	{ list__append(FactoredGoal, Goals1, AllGoals) },
 	{ goal_list_instmap_delta(AllGoals, Delta) },
 	{ goal_list_determinism(AllGoals, Det) },
-	{ goal_info_init(NonLocals2, Delta, Det, pure, MagicRuleInfo) },
+	{ goal_info_init(NonLocals2, Delta, Det, purity_pure, MagicRuleInfo) },
 	{ conj_list_to_goal(AllGoals, MagicRuleInfo, MagicGoal) },
 	magic_info_get_curr_pred_proc_id(PredProcId1),
 	magic_util__add_to_magic_predicate(PredProcId1, MagicGoal, MagicArgs).
@@ -575,7 +576,8 @@ context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 	magic_info_get_module_info(ModuleInfo),
 	{ instmap_delta_from_mode_list(AllInputArgs, AllOutputModes,
 		ModuleInfo, InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, nondet, pure, GoalInfo) },
+	{ goal_info_init(NonLocals, InstMapDelta, nondet, purity_pure,
+		GoalInfo) },
 
 	{ MagicCall = call(MagicPredId, MagicProcId, MagicArgs,
 			not_builtin, no, PredName) - GoalInfo }.

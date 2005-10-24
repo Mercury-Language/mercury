@@ -467,8 +467,9 @@ type_ctor_info_rtti_version = 9.
     % rtti_data definitions for all of the pseudo_type_infos that it references
     % and prepend them to the given list of rtti_data tables.
     %
-:- pred make_pseudo_type_info_and_tables((type)::in, int::in, existq_tvars::in,
-    rtti_data::out, list(rtti_data)::in, list(rtti_data)::out) is det.
+:- pred make_pseudo_type_info_and_tables(mer_type::in, int::in,
+    existq_tvars::in, rtti_data::out,
+    list(rtti_data)::in, list(rtti_data)::out) is det.
 
 make_pseudo_type_info_and_tables(Type, UnivTvars, ExistTvars, RttiData,
         !Tables) :-
@@ -531,7 +532,7 @@ make_maybe_pseudo_type_info_or_self_tables(self, !Tables).
 
 % Make the functor and layout tables for a notag type.
 
-:- pred make_notag_details(int::in, sym_name::in, (type)::in,
+:- pred make_notag_details(int::in, sym_name::in, mer_type::in,
     maybe(string)::in, equality_axioms::in, type_ctor_details::out) is det.
 
 make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,

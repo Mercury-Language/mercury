@@ -136,8 +136,8 @@
     %
 :- pred write_hlds(int::in, module_info::in, io::di, io::uo) is det.
 
-    % write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadVars,
-    %   PredOrFunc, Clauses, MaybeVarTypes).
+    % write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
+    %   HeadVars, PredOrFunc, Clauses, MaybeVarTypes).
     %
 :- pred write_clauses(int::in, module_info::in, pred_id::in,
     prog_varset::in, bool::in, list(prog_var)::in, pred_or_func::in,
@@ -206,9 +206,9 @@
     % The boolean says whether variables should have their numbers
     % appended to them.
     %
-:- pred write_var_modes(list(prog_var)::in, list(mode)::in, prog_varset::in,
-    inst_varset::in, bool::in, io::di, io::uo) is det.
-:- func var_modes_to_string(list(prog_var), list(mode), prog_varset,
+:- pred write_var_modes(list(prog_var)::in, list(mer_mode)::in,
+    prog_varset::in, inst_varset::in, bool::in, io::di, io::uo) is det.
+:- func var_modes_to_string(list(prog_var), list(mer_mode), prog_varset,
     inst_varset, bool) = string.
 
 :- pred write_instmap(instmap::in, prog_varset::in, bool::in, int::in,
@@ -228,8 +228,8 @@
 
     % Convert a mode or inst to a term representation.
     %
-:- func mode_to_term(mode) = prog_term.
-:- func inst_to_term(inst) = prog_term.
+:- func mode_to_term(mer_mode) = prog_term.
+:- func inst_to_term(mer_inst) = prog_term.
 
 %-----------------------------------------------------------------------------%
 
@@ -248,9 +248,9 @@
     % parts printed out as elipses ("...").
     % (These routines are used for outputting insts in mode errors.)
     %
-:- pred mercury_output_expanded_inst((inst)::in, inst_varset::in,
+:- pred mercury_output_expanded_inst(mer_inst::in, inst_varset::in,
     module_info::in, io::di, io::uo) is det.
-:- func mercury_expanded_inst_to_string(inst, inst_varset, module_info)
+:- func mercury_expanded_inst_to_string(mer_inst, inst_varset, module_info)
     = string.
 
 %-----------------------------------------------------------------------------%
@@ -1058,8 +1058,8 @@ marker_name(obsolete, "obsolete").
 marker_name(class_method, "class_method").
 marker_name(class_instance_method, "class_instance_method").
 marker_name(named_class_instance_method, "named_class_instance_method").
-marker_name((impure), "impure").
-marker_name((semipure), "semipure").
+marker_name(is_impure, "impure").
+marker_name(is_semipure, "semipure").
 marker_name(promised_pure, "promise_pure").
 marker_name(promised_semipure, "promise_semipure").
 marker_name(terminates, "terminates").
@@ -1524,13 +1524,13 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
     ;
         Reason = promise_purity(Implicit, Purity),
         (
-            Purity = pure,
+            Purity = purity_pure,
             io__write_string("promise_pure (", !IO)
         ;
-            Purity = (semipure),
+            Purity = purity_semipure,
             io__write_string("promise_semipure (", !IO)
         ;
-            Purity = (impure),
+            Purity = purity_impure,
             io__write_string("promise_impure (", !IO)
         ),
         (
@@ -2477,7 +2477,7 @@ write_unify_rhs(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
 
 :- pred write_unify_rhs_2(unify_rhs::in, module_info::in,
     prog_varset::in, inst_varset::in, bool::in, int::in, string::in,
-    maybe(type)::in, maybe_vartypes::in, io::di, io::uo) is det.
+    maybe(mer_type)::in, maybe_vartypes::in, io::di, io::uo) is det.
 
 write_unify_rhs_2(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
         Follow, MaybeType, TypeQual, !IO) :-
@@ -2486,7 +2486,7 @@ write_unify_rhs_2(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
     io__write_string(Follow, !IO).
 
 :- pred write_unify_rhs_3(unify_rhs::in, module_info::in,
-    prog_varset::in, inst_varset::in, bool::in, int::in, maybe(type)::in,
+    prog_varset::in, inst_varset::in, bool::in, int::in, maybe(mer_type)::in,
     maybe_vartypes::in, io::di, io::uo) is det.
 
 write_unify_rhs_3(var(Var), _, VarSet, _, AppendVarNums, _, _, _, !IO) :-
@@ -2520,10 +2520,10 @@ write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocals,
     Indent1 = Indent + 1,
     write_purity_prefix(Purity, !IO),
     (
-        EvalMethod = normal,
+        EvalMethod = lambda_normal,
         EvalStr = ""
     ;
-        EvalMethod = (aditi_bottom_up),
+        EvalMethod = lambda_aditi_bottom_up,
         EvalStr = "aditi_bottom_up "
     ),
     (
@@ -2769,14 +2769,14 @@ var_modes_to_string(Vars, Modes, VarSet, InstVarSet, AppendVarNums) = Str :-
     Str = string__join_list(", ", Strs).
 
 :- pred write_var_mode(prog_varset::in, inst_varset::in, bool::in,
-    pair(prog_var, (mode))::in, io::di, io::uo) is det.
+    pair(prog_var, mer_mode)::in, io::di, io::uo) is det.
 
 write_var_mode(VarSet, InstVarSet, AppendVarNums, Var - Mode, !IO) :-
     io__write_string(var_mode_to_string(VarSet, InstVarSet, AppendVarNums,
         Var - Mode), !IO).
 
 :- func var_mode_to_string(prog_varset, inst_varset, bool,
-    pair(prog_var, (mode))) = string.
+    pair(prog_var, mer_mode)) = string.
 
 var_mode_to_string(VarSet, InstVarSet, AppendVarNums, Var - Mode) =
     mercury_var_to_string(Var, VarSet, AppendVarNums)
@@ -2874,7 +2874,7 @@ write_instmap(InstMap, VarSet, AppendVarNums, Indent, !IO) :-
         write_instmap_2(AssocList, VarSet, AppendVarNums, Indent, !IO)
     ).
 
-:- pred write_instmap_2(assoc_list(prog_var, inst)::in,
+:- pred write_instmap_2(assoc_list(prog_var, mer_inst)::in,
     prog_varset::in, bool::in, int::in, io::di, io::uo) is det.
 
 write_instmap_2([], _, _, _, !IO).
@@ -2947,13 +2947,13 @@ import_status_to_string(pseudo_imported) =
 import_status_to_string(exported_to_submodules) =
     "exported_to_submodules".
 
-:- pred write_type_list(list(type)::in, tvarset::in, bool::in, io::di, io::uo)
-    is det.
+:- pred write_type_list(list(mer_type)::in, tvarset::in, bool::in,
+    io::di, io::uo) is det.
 
 write_type_list(Types, TypeVarSet, AppendVarNums, !IO) :-
     list__foldl(output_type_and_comma(TypeVarSet, AppendVarNums), Types, !IO).
 
-:- pred output_type_and_comma(tvarset::in, bool::in, (type)::in,
+:- pred output_type_and_comma(tvarset::in, bool::in, mer_type::in,
     io::di, io::uo) is det.
 
 output_type_and_comma(TypeVarSet, AppendVarNums, Type, !IO) :-
@@ -3059,32 +3059,32 @@ write_typeclass_info_var(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet,
     io__nl(!IO).
 
 :- pred write_rtti_var_info(int::in, bool::in, rtti_varmaps::in,
-	prog_varset::in, tvarset::in, prog_var::in, io::di, io::uo) is det.
+    prog_varset::in, tvarset::in, prog_var::in, io::di, io::uo) is det.
 
 write_rtti_var_info(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, Var,
-		!IO) :-
-	write_indent(Indent, !IO),
-	io__write_string("% ", !IO),
-	mercury_output_var(Var, VarSet, AppendVarNums, !IO),
-	io__write_string(" (number ", !IO),
-	term__var_to_int(Var, VarNum),
-	io__write_int(VarNum, !IO),
-	io__write_string(") ", !IO),
-	io__write_string(" -> ", !IO),
-	rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
-	(
-		VarInfo = type_info_var(Type),
-		io__write_string("type_info for ", !IO),
-		mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
-	;
-		VarInfo = typeclass_info_var(Constraint),
-		io__write_string("typeclass_info for", !IO),
-		mercury_output_constraint(TVarSet, AppendVarNums, Constraint, !IO)
-	;
-		VarInfo = non_rtti_var,
-		unexpected(this_file, "write_rtti_var_info: non rtti var")
-	),
-	io__nl(!IO).
+        !IO) :-
+    write_indent(Indent, !IO),
+    io__write_string("% ", !IO),
+    mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+    io__write_string(" (number ", !IO),
+    term__var_to_int(Var, VarNum),
+    io__write_int(VarNum, !IO),
+    io__write_string(") ", !IO),
+    io__write_string(" -> ", !IO),
+    rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
+    (
+        VarInfo = type_info_var(Type),
+        io__write_string("type_info for ", !IO),
+        mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
+    ;
+        VarInfo = typeclass_info_var(Constraint),
+        io__write_string("typeclass_info for", !IO),
+        mercury_output_constraint(TVarSet, AppendVarNums, Constraint, !IO)
+    ;
+        VarInfo = non_rtti_var,
+        unexpected(this_file, "write_rtti_var_info: non rtti var")
+    ),
+    io__nl(!IO).
 
 :- pred write_stack_slots(int::in, stack_slots::in, prog_varset::in,
     bool::in, io::di, io::uo) is det.
@@ -3930,7 +3930,8 @@ write_constraint_id(ConstraintId, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func add_mode_qualifier(prog_context, pair(prog_term, mode)) = prog_term.
+:- func add_mode_qualifier(prog_context, pair(prog_term, mer_mode))
+    = prog_term.
 
 add_mode_qualifier(Context, HeadTerm - Mode) = AnnotatedTerm :-
     construct_qualified_term(unqualified("::"),
@@ -3938,7 +3939,7 @@ add_mode_qualifier(Context, HeadTerm - Mode) = AnnotatedTerm :-
 
 mode_to_term(Mode) = mode_to_term(term__context_init, Mode).
 
-:- func mode_to_term(term__context, mode) = prog_term.
+:- func mode_to_term(term__context, mer_mode) = prog_term.
 
 mode_to_term(Context, (InstA -> InstB)) = Term :-
     (
@@ -3962,13 +3963,13 @@ mode_to_term(Context, user_defined_mode(Name, Args)) = Term :-
 make_atom(Name, Context) =
     term__functor(term__atom(Name), [], Context).
 
-:- func map_inst_to_term(prog_context, inst) = prog_term.
+:- func map_inst_to_term(prog_context, mer_inst) = prog_term.
 
 map_inst_to_term(Context, Inst) = inst_to_term(Inst, Context).
 
 inst_to_term(Inst) = inst_to_term(Inst, term__context_init).
 
-:- func inst_to_term(inst, prog_context) = prog_term.
+:- func inst_to_term(mer_inst, prog_context) = prog_term.
 
 inst_to_term(any(Uniq), Context) =
     make_atom(any_inst_uniqueness(Uniq), Context).

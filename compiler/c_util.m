@@ -395,7 +395,7 @@ unary_prefix_op(unmkbody,           "MR_unmkbody").
 unary_prefix_op(strip_tag,          "MR_strip_tag").
 unary_prefix_op(hash_string,        "MR_hash_string").
 unary_prefix_op(bitwise_complement, "~").
-unary_prefix_op(not,                "!").
+unary_prefix_op(logical_not,        "!").
 
 string_compare_op(str_eq, "==").
 string_compare_op(str_ne, "!=").
@@ -418,24 +418,24 @@ float_compare_op(float_ge, ">=").
 float_compare_op(float_lt, "<").
 float_compare_op(float_gt, ">").
 
-binary_infix_op(+, "+").
-binary_infix_op(-, "-").
-binary_infix_op(*, "*").
-binary_infix_op(/, "/").
-binary_infix_op(<<, "<<").
-binary_infix_op(>>, ">>").
-binary_infix_op(&, "&").
-binary_infix_op('|', "|").
-binary_infix_op(^, "^").
-binary_infix_op(mod, "%").
+binary_infix_op(int_add, "+").
+binary_infix_op(int_sub, "-").
+binary_infix_op(int_mul, "*").
+binary_infix_op(int_div, "/").
+binary_infix_op(unchecked_left_shift,  "<<").
+binary_infix_op(unchecked_right_shift, ">>").
+binary_infix_op(bitwise_and, "&").
+binary_infix_op(bitwise_or, "|").
+binary_infix_op(bitwise_xor, "^").
+binary_infix_op(int_mod, "%").
 binary_infix_op(eq, "==").
 binary_infix_op(ne, "!=").
-binary_infix_op(and, "&&").
-binary_infix_op(or, "||").
-binary_infix_op(<, "<").
-binary_infix_op(>, ">").
-binary_infix_op(<=, "<=").
-binary_infix_op(>=, ">=").
+binary_infix_op(logical_and, "&&").
+binary_infix_op(logical_or, "||").
+binary_infix_op(int_lt, "<").
+binary_infix_op(int_gt, ">").
+binary_infix_op(int_le, "<=").
+binary_infix_op(int_ge, ">=").
 
 %-----------------------------------------------------------------------------%
 

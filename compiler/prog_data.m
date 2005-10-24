@@ -144,8 +144,8 @@
                 pf_which                        :: pred_or_func,
                 pf_name                         :: sym_name,
                 pf_arg_decls                    :: list(type_and_mode),
-                pf_maybe_with_type              :: maybe(type),
-                pf_maybe_with_inst              :: maybe(inst),
+                pf_maybe_with_type              :: maybe(mer_type),
+                pf_maybe_with_inst              :: maybe(mer_inst),
                 pf_maybe_detism                 :: maybe(determinism),
                 pf_cond                         :: condition,
                 pf_purity                       :: purity,
@@ -162,8 +162,8 @@
                 pfm_instvarset                  :: inst_varset,
                 pfm_which                       :: maybe(pred_or_func),
                 pfm_name                        :: sym_name,
-                pfm_arg_modes                   :: list(mode),
-                pfm_maybe_with_inst             :: maybe(inst),
+                pfm_arg_modes                   :: list(mer_mode),
+                pfm_maybe_with_inst             :: maybe(mer_inst),
                 pfm_maybe_detism                :: maybe(determinism),
                 pfm_cond                        :: condition
             )
@@ -195,7 +195,7 @@
     ;       instance(
                 ci_deriving_class               :: list(prog_constraint),
                 ci_class_name                   :: class_name,
-                ci_types                        :: list(type),
+                ci_types                        :: list(mer_type),
                 ci_method_instances             :: instance_body,
                 ci_varset                       :: tvarset,
                 ci_module_containing_instance   :: module_name
@@ -218,9 +218,9 @@
             % :- mutable(var_name, type, inst, value, attrs).
     ;       mutable(
                 mut_name                        :: string,
-                mut_type                        :: (type),
+                mut_type                        :: mer_type,
                 mut_init_value                  :: prog_term,
-                mut_inst                        :: (inst),
+                mut_inst                        :: mer_inst,
                 mut_attrs                       :: mutable_var_attributes 
             )
 
@@ -242,16 +242,16 @@
     ;       true.                       % Promise goal is true.
 
 :- type type_and_mode
-    --->    type_only(type)
-    ;       type_and_mode(type, mode).
+    --->    type_only(mer_type)
+    ;       type_and_mode(mer_type, mer_mode).
 
     % Purity indicates whether a goal can have side effects or can depend on
     % global state. See purity.m and the "Purity" section of the Mercury
     % language reference manual.
 :- type purity
-    --->    pure
-    ;       (semipure)
-    ;       (impure).
+    --->    purity_pure
+    ;       purity_semipure
+    ;       purity_impure.
 
     % The `determinism' type specifies how many solutions a given procedure
     % may have. Procedures for manipulating this type are defined in
@@ -389,7 +389,7 @@
     ;       export(
                 exp_predname            :: sym_name,
                 exp_p_or_f              :: pred_or_func,
-                exp_modes               :: list(mode),
+                exp_modes               :: list(mer_mode),
                 exp_foreign_name        :: string
                 % Predname, Predicate/function, Modes, foreign function name.
             )
@@ -397,7 +397,7 @@
     ;       import(
                 import_pred_name        :: sym_name,
                 import_p_or_f           :: pred_or_func,
-                import_modes            :: list(mode),
+                import_modes            :: list(mer_mode),
                 import_attrs            :: pragma_foreign_proc_attributes,
                 import_foreign_name     :: string
                 % Predname, Predicate/function, Modes,
@@ -412,9 +412,9 @@
     ;       type_spec(
                 tspec_pred_name         :: sym_name,
                 tspec_new_name          :: sym_name,
-                tspec_arity             ::  arity,
+                tspec_arity             :: arity,
                 tspec_p_or_f            :: maybe(pred_or_func),
-                tspec_modes             :: maybe(list(mode)),
+                tspec_modes             :: maybe(list(mer_mode)),
                 tspec_tsubst            :: type_subst,
                 tspec_tvarset           :: tvarset,
                 tspec_items             :: set(item_id)
@@ -481,7 +481,7 @@
                 tabled_name             :: sym_name,
                 tabled_arity            :: int,
                 tabled_p_or_f           :: maybe(pred_or_func),
-                tabled_mode             :: maybe(list(mode))
+                tabled_mode             :: maybe(list(mer_mode))
                 % Tabling type, Predname, Arity, PredOrFunc?, Mode?
             )
 
@@ -594,10 +594,10 @@
     ;       termination_info(
                 terminfo_p_or_f         :: pred_or_func,
                 terminfo_name           :: sym_name,
-                terminfo_mode           :: list(mode),
+                terminfo_mode           :: list(mer_mode),
                 terminfo_args           :: maybe(pragma_arg_size_info),
                 terminfo_term           :: maybe(pragma_termination_info)
-                % The list(mode) is the declared argmodes of the
+                % The list(mer_mode) is the declared argmodes of the
                 % procedure, unless there are no declared argmodes,
                 % in which case the inferred argmodes are used.
                 % This pragma is used to define information about a
@@ -612,7 +612,7 @@
     ;       termination2_info(
                 terminfo2_p_or_f        :: pred_or_func, 
                 terminfo2_name          :: sym_name, 
-                terminfo2_mode          :: list(mode),
+                terminfo2_mode          :: list(mer_mode),
                 terminfo2_args          :: maybe(pragma_constr_arg_size_info),
                 terminfo2_args2         :: maybe(pragma_constr_arg_size_info),
                 terminfo2_term          :: maybe(pragma_termination_info)
@@ -856,7 +856,7 @@
     % Elsewhere in the compiler we generally use the `tsubst' type
     % which is a map rather than an assoc_list.
     %
-:- type type_subst == assoc_list(tvar, type).
+:- type type_subst == assoc_list(tvar, mer_type).
 
 %-----------------------------------------------------------------------------%
 %
@@ -965,7 +965,7 @@
 :- type prog_constraint
     --->    constraint(
                 class_name,
-                list(type)
+                list(mer_type)
             ).
 
 :- type prog_constraints
@@ -1017,8 +1017,8 @@
                 pred_or_func,
                 sym_name,           % name of the pred or func
                 list(type_and_mode),% the arguments' types and modes
-                maybe(type),        % any `with_type` annotation
-                maybe(inst),        % any `with_inst` annotation
+                maybe(mer_type),    % any `with_type` annotation
+                maybe(mer_inst),    % any `with_inst` annotation
                 maybe(determinism), % any determinism declaration
                 condition,          % any attached declaration
                 purity,             % any purity annotation
@@ -1039,8 +1039,8 @@
                                     % know which until we've
                                     % expanded the inst.
                 sym_name,           % the method name
-                list(mode),         % the arguments' modes
-                maybe(inst),        % any `with_inst` annotation
+                list(mer_mode),     % the arguments' modes
+                maybe(mer_inst),    % any `with_inst` annotation
                 maybe(determinism), % any determinism declaration
                 condition,          % any attached condition
                 prog_context        % the declaration's context
@@ -1163,10 +1163,10 @@
     ;       tabled_for_descendant_io.
 
 :- type pragma_var
-    --->    pragma_var(prog_var, string, mode).
+    --->    pragma_var(prog_var, string, mer_mode).
             % variable, name, mode
-            % we explicitly store the name because we need the real
-            % name in code_gen
+            % We explicitly store the name because we need the real
+            % name in code_gen.
 
     % This type specifies the termination property of a procedure
     % defined using pragma c_code or pragma foreign_proc.
@@ -1387,15 +1387,15 @@
     %
     % `normal' is the top-down Mercury execution algorithm.
     %
-    % `lambda_eval_method's other than `normal' are used for lambda
+    % `lambda_eval_method's other than `lambda_normal' are used for lambda
     % expressions constructed for arguments of the builtin Aditi
     % update constructs.
     %
-    % `aditi_bottom_up' expressions are used as database queries to
+    % `lambda_aditi_bottom_up' expressions are used as database queries to
     % produce a set of tuples to be inserted or deleted.
 :- type lambda_eval_method
-    --->    normal
-    ;       (aditi_bottom_up).
+    --->    lambda_normal
+    ;       lambda_aditi_bottom_up.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1415,7 +1415,7 @@
                 du_user_uc          :: maybe(unify_compare)
             )
     ;       eqv_type(
-                eqv_type            :: (type)
+                eqv_type            :: mer_type
             )
     ;       abstract_type(
                 abstract_is_solver  :: is_solver_type
@@ -1443,7 +1443,7 @@
                 cons_args           :: list(constructor_arg)
             ).
 
-:- type constructor_arg == pair(maybe(ctor_field_name), type).
+:- type constructor_arg == pair(maybe(ctor_field_name), mer_type).
 
 :- type ctor_field_name == sym_name.
 
@@ -1471,10 +1471,10 @@
     % 
 :- type solver_type_details
     --->    solver_type_details(
-                representation_type :: (type),
+                representation_type :: mer_type,
                 init_pred           :: init_pred,
-                ground_inst         :: (inst),
-                any_inst            :: (inst)
+                ground_inst         :: mer_inst,
+                any_inst            :: mer_inst
             ).
 
     % An init_pred specifies the name of an impure user-defined predicate
@@ -1499,11 +1499,11 @@
     % type_ctor and a list of arguments.  Use type_util.construct_type to
     % construct a type from a type_ctor and a list of arguments.
     %
-:- type (type)
+:- type mer_type
     --->    variable(tvar, kind)
             % A type variable.
 
-    ;       defined(sym_name, list(type), kind)
+    ;       defined(sym_name, list(mer_type), kind)
             % A user defined type constructor.
 
     ;       builtin(builtin_type)
@@ -1513,21 +1513,26 @@
     % they will be the most commonly used and therefore we want them to
     % get the primary tags on a 32-bit machine.
 
-    ;       higher_order(list(type), maybe(type), purity, lambda_eval_method)
-            % A type for higher-order values.  If the second
-            % argument is yes(T) then the values are functions
-            % returning T, otherwise they are predicates.  The
-            % kind is always `star'.
+    ;       higher_order(
+                % A type for higher-order values. If the second argument
+                % is yes(T) then the values are functions returning T,
+                % otherwise they are predicates. The kind is always `star'.
 
-    ;       tuple(list(type), kind)
+                list(mer_type),
+                maybe(mer_type),
+                purity,
+                lambda_eval_method
+            )
+
+    ;       tuple(list(mer_type), kind)
             % Tuple types.
 
-    ;       apply_n(tvar, list(type), kind)
+    ;       apply_n(tvar, list(mer_type), kind)
             % An apply/N expression.  `apply_n(V, [T1, ...], K)'
             % would be the representation of type `V(T1, ...)'
             % with kind K.  The list must be non-empty.
 
-    ;       kinded((type), kind).
+    ;       kinded(mer_type, kind).
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
 
@@ -1544,7 +1549,7 @@
                     % used for type variables
 :- type tvarset     ==  varset(tvar_type).
                     % used for sets of type variables
-:- type tsubst      ==  map(tvar, type). % used for type substitutions
+:- type tsubst      ==  map(tvar, mer_type). % used for type substitutions
 :- type tvar_renaming   ==  map(tvar, tvar). % type renaming
 
 :- type type_ctor   ==  pair(sym_name, arity).
@@ -1612,7 +1617,7 @@
 
     % Return the kind of a type.
     %
-:- func get_type_kind(type) = kind.
+:- func get_type_kind(mer_type) = kind.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1624,10 +1629,10 @@
     % type terms (see above), we need a separate data structure for inst
     % terms.
     %
-:- type (inst)
+:- type mer_inst
     --->        any(uniqueness)
     ;           free
-    ;           free(type)
+    ;           free(mer_type)
 
     ;           bound(uniqueness, list(bound_inst))
                 % The list(bound_inst) must be sorted.
@@ -1639,7 +1644,7 @@
     ;           not_reached
     ;           inst_var(inst_var)
 
-    ;           constrained_inst_vars(set(inst_var), inst)
+    ;           constrained_inst_vars(set(inst_var), mer_inst)
                 % Constrained_inst_vars is a set of inst variables that are
                 % constrained to have the same uniqueness as and to match_final
                 % the specified inst.
@@ -1649,7 +1654,7 @@
                 % stored in the inst_table. This is used both for user-defined
                 % insts and for compiler-generated insts.
 
-    ;           abstract_inst(sym_name, list(inst)).
+    ;           abstract_inst(sym_name, list(mer_inst)).
                 % An abstract inst is a defined inst which
                 % has been declared but not actually been
                 % defined (yet).
@@ -1686,7 +1691,7 @@
                 pred_or_func,       % Is this a higher-order func mode or a
                                     % higher-order pred mode?
 
-                list(mode),         % The modes of the additional (i.e.
+                list(mer_mode),     % The modes of the additional (i.e.
                                     % not-yet-supplied) arguments of the pred;
                                     % for a function, this includes the mode
                                     % of the return value as the last element
@@ -1698,19 +1703,19 @@
 
 :- type inst_id     ==  pair(sym_name, arity).
 
-:- type bound_inst  --->    functor(cons_id, list(inst)).
+:- type bound_inst  --->    functor(cons_id, list(mer_inst)).
 
 :- type inst_var_type   --->    inst_var_type.
 :- type inst_var    ==  var(inst_var_type).
 :- type inst_term   ==  term(inst_var_type).
 :- type inst_varset ==  varset(inst_var_type).
 
-:- type inst_var_sub    ==  map(inst_var, inst).
+:- type inst_var_sub    ==  map(inst_var, mer_inst).
 
 % inst_defn/3 defined above
 
 :- type inst_defn
-    --->    eqv_inst(inst)
+    --->    eqv_inst(mer_inst)
     ;       abstract_inst.
 
     % An `inst_name' is used as a key for the inst_table.
@@ -1733,15 +1738,15 @@
     % The reason for having the special cases is efficiency.
     %
 :- type inst_name
-    --->    user_inst(sym_name, list(inst))
-    ;       merge_inst(inst, inst)
-    ;       unify_inst(is_live, inst, inst, unify_is_real)
+    --->    user_inst(sym_name, list(mer_inst))
+    ;       merge_inst(mer_inst, mer_inst)
+    ;       unify_inst(is_live, mer_inst, mer_inst, unify_is_real)
     ;       ground_inst(inst_name, is_live, uniqueness, unify_is_real)
     ;       any_inst(inst_name, is_live, uniqueness, unify_is_real)
     ;       shared_inst(inst_name)
     ;       mostly_uniq_inst(inst_name)
-    ;       typed_ground(uniqueness, type)
-    ;       typed_inst(type, inst_name).
+    ;       typed_ground(uniqueness, mer_type)
+    ;       typed_inst(mer_type, inst_name).
 
     % NOTE: `is_live' records liveness in the sense used by
     % mode analysis.  This is not the same thing as the notion of liveness
@@ -1777,11 +1782,11 @@
 % mode_defn/3 defined above
 
 :- type mode_defn
-    --->    eqv_mode(mode).
+    --->    eqv_mode(mer_mode).
 
-:- type (mode)
-    --->    ((inst) -> (inst))
-    ;       user_defined_mode(sym_name, list(inst)).
+:- type mer_mode
+    --->    (mer_inst -> mer_inst)
+    ;       user_defined_mode(sym_name, list(mer_inst)).
 
 % mode/4 defined above
 
@@ -1898,7 +1903,7 @@
 
 :- type pred_specifier
     --->    sym(sym_name_specifier)
-    ;       name_args(sym_name, list(type)).
+    ;       name_args(sym_name, list(mer_type)).
 
 :- type func_specifier  ==  cons_specifier.
 :- type cons_specifier
@@ -1906,9 +1911,9 @@
     ;       typed(typed_cons_specifier).
 
 :- type typed_cons_specifier
-    --->    name_args(sym_name, list(type))
-    ;       name_res(sym_name_specifier, type)
-    ;       name_args_res(sym_name, list(type), type).
+    --->    name_args(sym_name, list(mer_type))
+    ;       name_res(sym_name_specifier, mer_type)
+    ;       name_args_res(sym_name, list(mer_type), mer_type).
 
 :- type adt_specifier   ==  sym_name_specifier.
 :- type type_specifier  ==  sym_name_specifier.
@@ -1977,7 +1982,7 @@
 
 default_attributes(Language) =
     attributes(Language, may_call_mercury, not_thread_safe,
-        not_tabled_for_io, impure, depends_on_mercury_calls,
+        not_tabled_for_io, purity_impure, depends_on_mercury_calls,
         default_exception_behaviour, no, no, []).
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
@@ -2037,13 +2042,13 @@ attributes_to_strings(Attrs) = StringList :-
         TabledForIOStr = "not_tabled_for_io"
     ),
     (
-        Purity = pure,
+        Purity = purity_pure,
         PurityStrList = ["promise_pure"]
     ;
-        Purity = (semipure),
+        Purity = purity_semipure,
         PurityStrList = ["promise_semipure"]
     ;
-        Purity = (impure),
+        Purity = purity_impure,
         PurityStrList = []
     ),
     (

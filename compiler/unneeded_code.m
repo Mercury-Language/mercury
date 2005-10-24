@@ -357,7 +357,7 @@ process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
     (
         Goal = _ - GoalInfo,
         goal_info_get_features(GoalInfo, Features),
-        set__member((impure), Features)
+        set__member(impure_goal, Features)
     ->
         % By saying that all vars that are live before the impure goal are
         % needed everywhere, we prevent the movement of the goals producing
@@ -444,16 +444,16 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
             % Do not move impure or semipure goals, since their ordering
             % wrt other such goals must be preserved.
             goal_info_get_features(GoalInfo, Features),
-            set__member((impure), Features)
+            set__member(impure_goal, Features)
         ;
             % With --fully-strict, we cannot optimize away infinite loops
             % or exceptions.
-            Options^fully_strict = yes,
+            Options ^ fully_strict = yes,
             goal_can_loop_or_throw(Goal)
         ;
             % With --no-reorder-conj, we cannot move infinite loops or
             % exceptions, but we can delete them.
-            Options^reorder_conj = no,
+            Options ^ reorder_conj = no,
             goal_can_loop_or_throw(Goal),
             !.WhereInfo = branches(BranchMap),
             \+ map__is_empty(BranchMap)
@@ -468,7 +468,7 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
             list__map(set__count, BranchArms, BranchArmCounts),
             BranchArmCount = list__foldl(int__plus,
                 BranchArmCounts, 0),
-            BranchArmCount > Options^copy_limit
+            BranchArmCount > Options ^ copy_limit
 
             % We may also want to add ither space time tradeoffs. E.g. if
             % profiling shows that Goal is required in 10 branches that

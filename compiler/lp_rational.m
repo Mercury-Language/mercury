@@ -171,7 +171,7 @@
     %
 :- func lp_rational.set_vars_to_zero(set(lp_var), constraints) = constraints.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Bounding boxes and other approximations.
 %
@@ -187,7 +187,7 @@
     %
 :- func lp_rational.nonneg_box(lp_vars, constraints) = constraints.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Linear solver.
 %
@@ -215,7 +215,7 @@
 :- func lp_rational.solve(constraints, direction, objective, lp_varset) 
     = lp_result.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Projection. 
 %
@@ -252,7 +252,7 @@
 :- pred lp_rational.project(lp_vars::in, lp_varset::in, maybe(int)::in,
     constraints::in, projection_result::out) is det.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Entailment. 
 %
@@ -283,7 +283,7 @@
 :- pred lp_rational.entailed(lp_varset::in, constraints::in,
     constraint::in) is semidet.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Stuff for intermodule optimization.
 %
@@ -298,7 +298,7 @@
 :- pred lp_rational.output_constraints(output_var::in, constraints::in,
     io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Debugging predicates.
 %
@@ -317,8 +317,8 @@
     %
 :- func get_vars_from_constraints(constraints) = set(lp_var).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -330,7 +330,7 @@
 :- import_module svmap.
 :- import_module svset.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Constraints
 %
@@ -349,7 +349,7 @@
     ;       gte(lp_terms, constant).    % sumof(Terms) >= Constant
 
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Procedures for constructing/deconstructing constraints.
 %
@@ -683,7 +683,7 @@ set_terms_to_zero(Vars, Terms0) = Terms :-
     ),
     Terms = list.filter(IsNonZero, Terms0).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Bounding boxes and other weaker approximations of the convex union.
 %
@@ -717,8 +717,8 @@ nonneg_box(VarsToIgnore, Constraints) = NonNegConstraints :-
     ),
     set.fold(MakeConstr, Vars0, [], NonNegConstraints).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Linear solver.
 %
@@ -799,7 +799,7 @@ solve_2(!.Constraints, Direction, !.Objective, Result, !LPInfo) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func one_phase(lp_terms, lp_terms, map(lp_var, int), tableau) = lp_result.
 
@@ -809,7 +809,7 @@ one_phase(Obj0, Obj, VarNums, !.Tableau) = Result :-
     ObjVars = set.to_sorted_list(ObjVars0),
     optimize(ObjVars, Result, !.Tableau, _).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func two_phase(lp_terms, lp_terms, lp_vars, map(lp_var, int), tableau) 
     = lp_result.
@@ -849,7 +849,7 @@ two_phase(Obj0, Obj, ArtVars, VarNums, !.Tableau) = Result :-
          )
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred lp_standardize_constraints(constraints::in, constraints::out, 
     lp_info::in, lp_info::out) is det.
@@ -863,8 +863,8 @@ lp_standardize_constraints(!Constraints, !LPInfo) :-
     %       (multiplying by -1 if necessary)
     %   - introduces slack and artificial variables
     %
-:- pred lp_standardize_constraint(constraint::in, constraint::out, lp_info::in, 
-    lp_info::out) is det.
+:- pred lp_standardize_constraint(constraint::in, constraint::out,
+    lp_info::in, lp_info::out) is det.
 
 lp_standardize_constraint(Constr0 @ lte(Coeffs, Const), Constr, !LPInfo) :-
     ( Const < zero ->
@@ -909,7 +909,7 @@ add_var(Map0, Var, Coeff) = Map :-
     Acc  = Acc1 + Coeff,
     Map  = Map0 ^ elem(Var) := Acc.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func collect_vars(constraints, objective) = set(lp_var).
 
@@ -960,9 +960,10 @@ insert_terms([Var - Const | Coeffs], Row, VarNums, !Tableau) :-
     set_cell(Row, Col, Const, !Tableau),
     insert_terms(Coeffs, Row, VarNums, !Tableau).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-:- pred optimize(lp_vars::in, lp_result::out, tableau::in, tableau::out) is det.
+:- pred optimize(lp_vars::in, lp_result::out, tableau::in, tableau::out)
+    is det.
 
 optimize(ObjVars, Result, !Tableau) :- 
     simplex(Result0, !Tableau),
@@ -1070,7 +1071,7 @@ simplex(Result, !Tableau) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred ensure_zero_obj_coeffs(lp_vars::in, tableau::in, tableau::out) is det.
 
@@ -1139,7 +1140,7 @@ fix_basis_and_rem_cols([Var | Vars], !Tableau) :-
     remove_col(Col, !Tableau),
     fix_basis_and_rem_cols(Vars, !Tableau).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type cell ---> cell(int, int).
 
@@ -1200,7 +1201,7 @@ row_op(Scale, From, To, !Tableau) :-
     ),
     std_util.aggregate(AllCols, AddRow, !Tableau).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 % XXX We should try using arrays or version_arrays for the simplex tableau.
 % (We should try this in lp.m as well).
@@ -1326,7 +1327,7 @@ get_basis_vars(Tableau) = Vars :-
     ),
     std_util.solutions(BasisVars, Vars).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func lp_info_init(lp_varset) = lp_info.
 
@@ -1348,7 +1349,7 @@ new_art_var(Var, !LPInfo) :-
     Vars = !.LPInfo ^ art_vars,
     !:LPInfo = !.LPInfo ^ art_vars := [Var | Vars].
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred between(int::in, int::in, int::out) is nondet.
 
@@ -1360,8 +1361,8 @@ between(Min, Max, I) :-
         between(Min + 1, Max, I)
     ).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Projection. 
 % 
@@ -1388,7 +1389,7 @@ between(Min, Max, I) :-
 % we also use a heuristic developed by Duffin to choose the order in 
 % which we eliminate variables (See below).
 % 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type vector 
     ---> vector(
@@ -1456,7 +1457,7 @@ project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :-
         ) 
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % 
 % Convert each constraint into `=<' form and give each an initial label.
 %
@@ -1501,7 +1502,7 @@ vector_to_constraint(vector(_, Terms0, Constant0)) = Constraint :-
     normalize_terms_and_const(yes, Terms1, Constant0, Terms, Constant),
     Constraint = lte(Terms, Constant).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Predicates for eliminating equations from the constraints.
 % (Gaussian elimination)
@@ -1662,7 +1663,7 @@ substitute_into_constraint(Var, SubCoeffs, SubConst, !Constraint, Flag) :-
     ).
 
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Fourier elimination.
 %
@@ -1747,7 +1748,8 @@ classify_vector(Var, Vector0, !Pos, !Neg, !Zero, !Num) :-
 :- pred eliminate_var(int::in, maybe(int)::in, matrix::in,
     vector::in, matrix::in, matrix::out, int::in, int::out) is semidet.
 
-eliminate_var(Step, MaybeThreshold, NegMatrix, PosVector, !Zeros, !ZerosSize) :-
+eliminate_var(Step, MaybeThreshold, NegMatrix, PosVector, !Zeros,
+        !ZerosSize) :-
     list.foldl2(combine_vectors(Step, MaybeThreshold, PosVector),
         NegMatrix, !Zeros, !ZerosSize).
 
@@ -1818,8 +1820,8 @@ combine_vectors(Step, MaybeThreshold, vector(LabelPos, TermsPos, ConstPos),
 
 %-----------------------------------------------------------------------------%
 
-:- pred filter_and_count(pred(vector), matrix, matrix, matrix, int, int) is det.
-:- mode filter_and_count(pred(in) is semidet, in, in, out, in, out) is det.
+:- pred filter_and_count(pred(vector)::in(pred(in) is semidet),
+    matrix::in, matrix::in, matrix::out, int::in, int::out) is det.
 
 filter_and_count(_, [], !Acc, !Count).
 filter_and_count(P, [X | Xs], !Acc, !Count) :-
@@ -1858,7 +1860,7 @@ quasi_syntactic_redundant(VecA, VecB) :-
 label_subsumed(VectorA, VectorB) :- 
     set.subset(VectorB ^ label, VectorA ^ label).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Duffin's heuristic.
 %
@@ -1881,7 +1883,7 @@ label_subsumed(VectorA, VectorB) :-
 % R.J. Duffin.  On Fourier's Analysis of Linear Inequality Systems.
 % Mathematical Programming Study 1, 71 - 95 (1974).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % We only count the occurrences of positive and negative coefficients.
     % We can work out the zero occurrences by subtracting the two
@@ -1994,7 +1996,7 @@ init_cc_map(Vars) = list.foldl(InitMap, Vars, map.init) :-
         map.det_insert(Map, Var, coeff_info(0, 0))
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Predicates for normalizing vectors and constraints.
 %
@@ -2076,7 +2078,7 @@ add_vectors(TermsA, ConstA, TermsB, ConstB, Terms, ConstA + ConstB) :-
     ),
     std_util.aggregate(IsMapKey, AddVal, TermsB, Terms).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % 
 % Redundancy checking using the linear solver.
 %
@@ -2112,7 +2114,7 @@ remove_some_entailed_constraints_2(Varset, [E, X | Es], !Constraints) :-
     ),
     remove_some_entailed_constraints_2(Varset, [X | Es], !Constraints).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 restore_equalities([], []).
 restore_equalities([E0 | Es0], [E | Es])  :-
@@ -2152,8 +2154,8 @@ check_for_equalities(Eqn0, [Eqn | Eqns], SoFar, NewEqn, NewEqnSet) :-
 opposing_inequalities(lte(TermsA, Const), lte(TermsB, -Const)) :- 
     TermsB = list.map((func(V - X) = V - (-X)), TermsA).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Entailment test.
 %
@@ -2202,7 +2204,7 @@ entailed(Varset, Constraints, Constraint) :-
         fail 
     ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 get_vars_from_constraints(Constraints) = Vars :-
     list.foldl(get_vars_from_constraint, Constraints, set.init, Vars).
@@ -2221,7 +2223,7 @@ get_vars_from_terms([Var - _ | Coeffs], !SetVar) :-
     svset.insert(Var, !SetVar),
     get_vars_from_terms(Coeffs, !SetVar).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Printing constraints.
 %
@@ -2246,7 +2248,7 @@ write_term(Varset, Var - Coefficient, !IO) :-
     io.write_char(')', !IO),
     io.write_string(varset.lookup_name(Varset, Var), !IO).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Debugging predicates for writing out constraints. 
 %
@@ -2313,7 +2315,7 @@ write_vector(Varset, _WriteLabels, vector(_Label, Terms0, Constant), !IO) :-
     io.write_string(" (=<) ", !IO),
     io.write_string(rat.to_string(Constant), !IO).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Intermodule optimization stuff.
 %
@@ -2363,12 +2365,12 @@ output_term(OutputVar, Var - Coefficient, !IO) :-
     rat.write_rat(Coefficient, !IO),
     io.write_char(')', !IO).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "lp_rational.m".
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 :- end_module libs.lp_rational.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

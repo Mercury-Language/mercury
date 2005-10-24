@@ -802,7 +802,7 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     !:CseInfo = !.CseInfo ^ vartypes := VarTypes.
 
 :- pred apply_tvar_rename(tvar_renaming::in, prog_var::in,
-    (type)::in, (type)::out) is det.
+    mer_type::in, mer_type::out) is det.
 
 apply_tvar_rename(Renaming, _Var, Type0, Type) :-
     apply_variable_renaming_to_type(Renaming, Type0, Type).

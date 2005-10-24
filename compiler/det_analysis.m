@@ -820,8 +820,8 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
     is det.
 
 det_infer_conj([], [], _InstMap0, _SolnContext, _DetInfo, det, []).
-det_infer_conj([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext, DetInfo,
-        Detism, Msgs) :-
+det_infer_conj([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
+        DetInfo, Detism, Msgs) :-
     % We should look to see when we get to a not_reached point
     % and optimize away the remaining elements of the conjunction.
     % But that optimization is done in the code generator anyway.
@@ -1028,7 +1028,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
     % has user-defined equality.
     %
 :- pred det_type_has_user_defined_equality_pred(det_info::in,
-    (type)::in) is semidet.
+    mer_type::in) is semidet.
 
 det_type_has_user_defined_equality_pred(DetInfo, Type) :-
     det_info_get_module_info(DetInfo, ModuleInfo),

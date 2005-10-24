@@ -55,7 +55,7 @@
 :- type relation_schema
 	--->	same_as_pred(pred_proc_id)
 	;	same_as_relation(relation_id)
-	;	schema(list(type)).
+	;	schema(list(mer_type)).
 
 :- inst uniq_rl_info == ground.
 
@@ -187,14 +187,14 @@
 :- mode rl_info_get_new_temporary(in, out, rl_info_di, rl_info_uo) is det.
 
 :- pred rl_info_relation_schema_to_type_list(relation_schema::in,
-	list(type)::out, rl_info::rl_info_di, rl_info::rl_info_uo) is det.
+	list(mer_type)::out, rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
 	% Get the relation corresponding to the given relation_spec,
 	% creating it if it doesn't exist.
 :- pred rl_info_lookup_relation(relation_spec, relation_id, rl_info, rl_info).
 :- mode rl_info_lookup_relation(in, out, rl_info_di, rl_info_uo) is det.
 
-:- pred rl_info_get_relation_schema(relation_id, list(type), rl_info, rl_info).
+:- pred rl_info_get_relation_schema(relation_id, list(mer_type), rl_info, rl_info).
 :- mode rl_info_get_relation_schema(in, out, rl_info_di, rl_info_uo) is det.
 
 	% Return whether a variable holds an input closure.
@@ -222,7 +222,7 @@
 :- mode rl_info_partition_call_args(in, in, out, out,
 		rl_info_di, rl_info_uo) is det.
 
-:- pred rl_info_get_var_type(prog_var, (type), rl_info, rl_info).
+:- pred rl_info_get_var_type(prog_var, mer_type, rl_info, rl_info).
 :- mode rl_info_get_var_type(in, out, rl_info_di, rl_info_uo) is det.
 
 %-----------------------------------------------------------------------------%

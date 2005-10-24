@@ -1806,7 +1806,8 @@ standard_library_directory_option(Opt, !IO) :-
             MaybeConfDir = yes(ConfDir),
             ConfDir \= StdLibDir
         ->
-            Opt = Opt0 ++ "--mercury-configuration-directory " ++ ConfDir ++ " "
+            Opt = Opt0 ++
+                "--mercury-configuration-directory " ++ ConfDir ++ " "
         ;
             Opt = Opt0
         )

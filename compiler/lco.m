@@ -543,7 +543,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         MaybeGoals = no
     ).
 
-:- pred update_call_args(module_info::in, vartypes::in, list(mode)::in,
+:- pred update_call_args(module_info::in, vartypes::in, list(mer_mode)::in,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out) is det.
 
 update_call_args(_ModuleInfo, _VarTypes, [], [], UpdatedCallOutArgs, []) :-
@@ -581,7 +581,7 @@ update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
 %-----------------------------------------------------------------------------%
 
 :- pred classify_proc_call_args(module_info::in, vartypes::in,
-    list(prog_var)::in, list(mode)::in,
+    list(prog_var)::in, list(mer_mode)::in,
     list(prog_var)::out, list(prog_var)::out, list(prog_var)::out) is det.
 
 classify_proc_call_args(_ModuleInfo, _VarTypes, [], [], [], [], []).
@@ -641,7 +641,7 @@ make_address_var(Var, AddrVar, !Info) :-
     !:Info = !.Info ^ var_set := VarSet,
     !:Info = !.Info ^ var_types := VarTypes.
 
-:- func make_ref_type(type) = (type).
+:- func make_ref_type(mer_type) = mer_type.
 
 make_ref_type(FieldType) = PtrType :-
     RefTypeName = qualified(mercury_private_builtin_module,
@@ -792,12 +792,13 @@ transform_variant_proc(ModuleInfo, AddrOutArgPosns, ProcInfo,
     % We changed the scopes of the headvars we now return via pointers.
     requantify_proc(!VariantProcInfo).
 
-:- pred make_addr_vars(list(prog_var)::in, list(mode)::in,
-    list(prog_var)::out, list(mode)::out, list(int)::in,
+:- pred make_addr_vars(list(prog_var)::in, list(mer_mode)::in,
+    list(prog_var)::out, list(mer_mode)::out, list(int)::in,
     int::in, module_info::in, assoc_list(prog_var)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-make_addr_vars([], [], [], [], AddrOutArgPosns, _, _, [], !VarSet, !VarTypes) :-
+make_addr_vars([], [], [], [], AddrOutArgPosns, _, _, [],
+        !VarSet, !VarTypes) :-
     require(unify(AddrOutArgPosns, []),
         "make_addr_vars: AddrOutArgPosns != []").
 make_addr_vars([], [_ | _], _, _, _, _, _, _, !VarSet, !VarTypes) :-
@@ -953,8 +954,8 @@ is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
 
 make_store_goal(ModuleInfo, Var - AddrVar, Goal) :-
     generate_simple_call(mercury_private_builtin_module, "store_at_ref",
-        predicate, only_mode, det, [AddrVar, Var], [impure], [], ModuleInfo,
-        term__context_init, Goal).
+        predicate, only_mode, det, [AddrVar, Var], [impure_goal], [],
+        ModuleInfo, term__context_init, Goal).
 
 %-----------------------------------------------------------------------------%
 

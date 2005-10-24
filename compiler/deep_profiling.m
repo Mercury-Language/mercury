@@ -150,8 +150,8 @@ apply_tail_recursion_to_proc(PredProcId, !ModuleInfo) :-
         true
     ).
 
-:- pred find_list_of_output_args(list(prog_var)::in, list(mode)::in,
-    list(type)::in, module_info::in, list(prog_var)::out) is det.
+:- pred find_list_of_output_args(list(prog_var)::in, list(mer_mode)::in,
+    list(mer_type)::in, module_info::in, list(prog_var)::out) is det.
 
 find_list_of_output_args(Vars, Modes, Types, ModuleInfo, !:Outputs) :-
     ( find_list_of_output_args_2(Vars, Modes, Types, ModuleInfo, !:Outputs) ->
@@ -160,8 +160,8 @@ find_list_of_output_args(Vars, Modes, Types, ModuleInfo, !:Outputs) :-
         unexpected(this_file, "find_list_of_output_args: list length mismatch")
     ).
 
-:- pred find_list_of_output_args_2(list(prog_var)::in, list(mode)::in,
-    list(type)::in, module_info::in, list(prog_var)::out) is semidet.
+:- pred find_list_of_output_args_2(list(prog_var)::in, list(mer_mode)::in,
+    list(mer_type)::in, module_info::in, list(prog_var)::out) is semidet.
 
 find_list_of_output_args_2([], [], [], _, []).
 find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
@@ -1652,7 +1652,8 @@ generate_unify(ConsId, Var, Goal) :-
     NonLocals = set__make_singleton_set(Var),
     instmap_delta_from_assoc_list([Var - ground(shared, none)], InstMapDelta),
     Determinism = det,
-    goal_info_init(NonLocals, InstMapDelta, Determinism, pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
+        GoalInfo),
     Goal = unify(Var, functor(ConsId, no, []),
         (free -> Ground) - (Ground -> Ground),
         construct(Var, ConsId, [], [], construct_statically([]),
@@ -1667,7 +1668,8 @@ generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
     NonLocals = set__list_to_set([Var | Args]),
     instmap_delta_from_assoc_list([Var - Ground], InstMapDelta),
     Determinism = det,
-    goal_info_init(NonLocals, InstMapDelta, Determinism, pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
+        GoalInfo),
     ArgMode = ((free - Ground) -> (Ground - Ground)),
     list__duplicate(Length, ArgMode, ArgModes),
     Goal = unify(Var, functor(ConsId, no, Args),
@@ -1725,7 +1727,8 @@ get_deep_profile_builtin_ppid(ModuleInfo, Name, Arity, PredId, ProcId) :-
     = hlds_goal_info.
 
 impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
-    goal_info_init(NonLocals, InstMapDelta, Determinism, impure, GoalInfo0),
+    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
+        GoalInfo0),
     goal_info_add_feature(not_impure_for_determinism, GoalInfo0, GoalInfo).
 
 :- func impure_reachable_init_goal_info(set(prog_var), determinism)
@@ -1733,14 +1736,16 @@ impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
 
 impure_reachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, Determinism, impure, GoalInfo).
+    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
+        GoalInfo).
 
 :- func impure_unreachable_init_goal_info(set(prog_var), determinism)
     = hlds_goal_info.
 
 impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, Determinism, impure, GoalInfo0),
+    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
+        GoalInfo0),
     goal_info_add_feature(not_impure_for_determinism, GoalInfo0, GoalInfo).
 
 :- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set(prog_var))
@@ -1756,17 +1761,17 @@ goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
 
 fail_goal_info = GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(set__init, InstMapDelta, failure, pure, GoalInfo).
+    goal_info_init(set__init, InstMapDelta, failure, purity_pure, GoalInfo).
 
 :- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
 
 make_impure(!GoalInfo) :-
-    ( goal_info_has_feature(!.GoalInfo, (impure)) ->
+    ( goal_info_has_feature(!.GoalInfo, impure_goal) ->
         % We don't add not_impure_for_determinism, since we want to
         % keep the existing determinism.
         true
     ;
-        goal_info_add_feature(impure, !GoalInfo),
+        goal_info_add_feature(impure_goal, !GoalInfo),
         goal_info_add_feature(not_impure_for_determinism, !GoalInfo)
     ).
 

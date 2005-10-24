@@ -49,7 +49,7 @@
 
     % Also used by lookup_switch.
     %
-:- pred type_range(code_info::in, type_category::in, (type)::in, int::out)
+:- pred type_range(code_info::in, type_category::in, mer_type::in, int::out)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -140,7 +140,7 @@ generate_dense_switch(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
     ( StartVal = 0 ->
         Index = Rval
     ;
-        Index = binop(-, Rval, const(int_const(StartVal)))
+        Index = binop(int_sub, Rval, const(int_const(StartVal)))
     ),
     % If the switch is not locally deterministic, we need to check that
     % the value of the variable lies within the appropriate range.

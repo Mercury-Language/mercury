@@ -577,8 +577,8 @@ magic__preprocess_scc(aditi_scc(SCC0, EntryPoints)) -->
 
 	% Work out the types and modes of the input relations that need
 	% to be passed around the sub-module.
-:- pred magic__get_scc_inputs(list(pred_proc_id)::in, list(type)::out,
-		list(mode)::out, magic_info::in, magic_info::out) is det.
+:- pred magic__get_scc_inputs(list(pred_proc_id)::in, list(mer_type)::out,
+		list(mer_mode)::out, magic_info::in, magic_info::out) is det.
 
 magic__get_scc_inputs([], [], []) --> [].
 magic__get_scc_inputs([PredProcId | PredProcIds],
@@ -592,8 +592,8 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 	{ type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
 	{ partition_args(ModuleInfo, ArgModes, ArgModes, InputModes, _) },
 	{ partition_args(ModuleInfo, ArgModes, ArgTypes, InputTypes, _) },
-	{ construct_higher_order_type((pure), predicate, (aditi_bottom_up),
-		InputTypes, Type) },
+	{ construct_higher_order_type(purity_pure, predicate,
+		lambda_aditi_bottom_up, InputTypes, Type) },
 	{ GetOutputMode = (pred(ArgMode::in, OutputMode::out) is det :-
 			mode_get_insts(ModuleInfo, ArgMode, _, OutputInst),
 			OutputMode = (free -> OutputInst)
@@ -606,8 +606,8 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 
 %-----------------------------------------------------------------------------%
 
-:- pred magic__adjust_pred_info(list(pred_proc_id)::in, list(type)::in,
-		list(mode)::in, pred_proc_id::in,
+:- pred magic__adjust_pred_info(list(pred_proc_id)::in, list(mer_type)::in,
+		list(mer_mode)::in, pred_proc_id::in,
 		magic_info::in, magic_info::out) is det.
 
 magic__adjust_pred_info(EntryPoints, MagicTypes,
@@ -697,7 +697,7 @@ magic__separate_proc(PredId, ProcId) -->
 	% - convert input arguments to output
 	% - add input closure arguments
 :- pred magic__adjust_proc_info(list(pred_proc_id)::in, pred_proc_id::in,
-		pred_proc_id::in, list(type)::in, list(mode)::in,
+		pred_proc_id::in, list(mer_type)::in, list(mer_mode)::in,
 		magic_info::in, magic_info::out) is det.
 
 magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
@@ -758,8 +758,8 @@ magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
 	% Create an interface procedure if the SCC has multiple entry points
 	% and is exported.
 :- pred magic__adjust_args(pred_proc_id::in, pred_proc_id::in, maybe(int)::in,
-		maybe(int)::in, list(type)::in, list(mode)::in,
-		pred_info::in, proc_info::in, list(type)::out, list(mode)::out,
+		maybe(int)::in, list(mer_type)::in, list(mer_mode)::in,
+		pred_info::in, proc_info::in, list(mer_type)::out, list(mer_mode)::out,
 		pred_proc_id::out, magic_info::in, magic_info::out) is det.
 
 magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
@@ -860,8 +860,8 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 	%
 :- pred magic__create_interface_proc(int::in, pred_proc_id::in,
 		pred_proc_id::in, pred_info::in, proc_info::in, proc_info::in,
-		list(prog_var)::in, list(type)::in, list(mode)::in,
-		list(prog_var)::in, list(type)::in, list(mode)::in,
+		list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
+		list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
 		pred_proc_id::out, magic_info::in, magic_info::out) is det.
 
 magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
@@ -947,8 +947,8 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 
 %-----------------------------------------------------------------------------%
 
-:- pred magic__interface_call_args(list(prog_var)::in, list(type)::in,
-	list(mode)::in, int::in, int::in, list(hlds_goal)::out,
+:- pred magic__interface_call_args(list(prog_var)::in, list(mer_type)::in,
+	list(mer_mode)::in, int::in, int::in, list(hlds_goal)::out,
 	magic_info::in, magic_info::out) is det.
 
 magic__interface_call_args([], _, _, _, _, []) --> [].
@@ -969,8 +969,8 @@ magic__interface_call_args([MagicInput | MagicInputs], MagicTypes, MagicModes,
 		%
 		{ list__index1_det(MagicTypes, CurrVar, MagicType) },
 		{
-			type_is_higher_order(MagicType, (pure), predicate,
-				(aditi_bottom_up), ArgTypes1)
+			type_is_higher_order(MagicType, purity_pure, predicate,
+				lambda_aditi_bottom_up, ArgTypes1)
 		->
 			ArgTypes = ArgTypes1
 		;
@@ -1073,8 +1073,8 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 
 	map__apply_to_list(InputArgs, VarTypes0, InputVarTypes),
 
-	construct_higher_order_type((pure), predicate, (aditi_bottom_up),
-		InputVarTypes, ClosureVarType),
+	construct_higher_order_type(purity_pure, predicate,
+		lambda_aditi_bottom_up, InputVarTypes, ClosureVarType),
 	list__map(magic_util__mode_to_output_mode(ModuleInfo0),
 		InputArgModes, MagicArgModes),
 
@@ -1090,11 +1090,11 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 	set__list_to_set([ClosureVar | InputArgs], HOCallNonLocals),
 	instmap_delta_from_mode_list(InputArgs, MagicArgModes,
 		ModuleInfo0, HOCallDelta),
-	goal_info_init(HOCallNonLocals, HOCallDelta, nondet, pure,
+	goal_info_init(HOCallNonLocals, HOCallDelta, nondet, purity_pure,
 		InputGoalInfo),
 	list__length(InputArgs, Arity),
 	InputGoal = generic_call(
-		higher_order(ClosureVar, (pure), predicate, Arity),
+		higher_order(ClosureVar, purity_pure, predicate, Arity),
 		InputArgs, MagicArgModes, nondet) - InputGoalInfo,
 
 	ClosureInst = ground(shared,
@@ -1138,7 +1138,8 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 		ModuleInfo1, GoalDelta),
 	set__list_to_set([ClosureVar | OutputArgs],
 		GoalNonLocals),
-	goal_info_init(GoalNonLocals, GoalDelta, nondet, pure, GoalInfo),
+	goal_info_init(GoalNonLocals, GoalDelta, nondet, purity_pure,
+		GoalInfo),
 	conj_list_to_goal([InputGoal, CallGoal | Tests], GoalInfo,
 		JoinGoal),
 	proc_info_set_goal(JoinGoal, JoinProcInfo4, JoinProcInfo),
@@ -1180,8 +1181,8 @@ magic__build_join_pred_info(CPredProcId, CPredInfo, JoinProcInfo,
 
 	% Allocate a predicate to collect the input for the current predicate.
 :- pred magic__create_magic_pred(pred_proc_id::in, pred_proc_id::in,
-		list(type)::in, list(mode)::in, list(type)::in,
-		list(mode)::in, inst_varset::in, maybe(int)::in,
+		list(mer_type)::in, list(mer_mode)::in, list(mer_type)::in,
+		list(mer_mode)::in, inst_varset::in, maybe(int)::in,
 		magic_info::in, magic_info::out) is det.
 
 magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
@@ -1245,11 +1246,12 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 		{ assoc_list__from_corresponding_lists(InputArgs0,
 			OutputInsts0, InstAL0) },
 		{ instmap_delta_from_assoc_list(InstAL0, InstMapDelta0) },
-		{ goal_info_init(NonLocals0, InstMapDelta0,
-			nondet, pure, GoalInfo0) },
+		{ goal_info_init(NonLocals0, InstMapDelta0, nondet,
+			purity_pure, GoalInfo0) },
 		{ list__length(InputArgs0, Arity) },
 		{ Goal0 = generic_call(
-			higher_order(CurrPredVar, (pure), predicate, Arity),
+			higher_order(CurrPredVar, purity_pure, predicate,
+				Arity),
 			InputArgs0, OutputModes0, nondet) - GoalInfo0 },
 		( { IsContext = yes(ArgsAL) } ->
 			% Create assignments to assign to the extra arguments.
@@ -1262,8 +1264,8 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 			{ instmap_delta_from_assoc_list(InstAL, InstMapDelta) },
 			{ set__list_to_set([CurrPredVar | InputArgs],
 				NonLocals) },
-			{ goal_info_init(NonLocals, InstMapDelta, nondet, pure,
-				GoalInfo) },
+			{ goal_info_init(NonLocals, InstMapDelta, nondet,
+				purity_pure, GoalInfo) },
 			{ conj_list_to_goal([Goal0 | Assigns],
 				GoalInfo, Goal) }
 		;
@@ -1325,7 +1327,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	% of a context magic predicate.
 :- pred magic__create_assignments(module_info::in,
 		assoc_list(prog_var, prog_var)::in,
-		list(mode)::in, list(hlds_goal)::out) is det.
+		list(mer_mode)::in, list(hlds_goal)::out) is det.
 
 magic__create_assignments(_, [], [], []).
 magic__create_assignments(_, [], [_|_], _) :-
@@ -1339,7 +1341,7 @@ magic__create_assignments(ModuleInfo, [Arg0 - Arg | ArgsAL],
 			assign(Arg, Arg0), unify_context(explicit, [])),
 	set__list_to_set([Arg0, Arg], NonLocals),
 	instmap_delta_from_assoc_list([Arg - Inst], Delta),
-	goal_info_init(NonLocals, Delta, det, pure, GoalInfo),
+	goal_info_init(NonLocals, Delta, det, purity_pure, GoalInfo),
 	magic__create_assignments(ModuleInfo, ArgsAL, Modes, Assigns).
 
 %-----------------------------------------------------------------------------%
@@ -1530,7 +1532,8 @@ magic__preprocess_call_args([Arg | Args], [NewArg | NewArgs], SeenArgs,
 		{ Inst = ground(shared, none) },
 		{ set__list_to_set([Arg, NewArg], NonLocals) },
 		{ instmap_delta_from_assoc_list([NewArg - Inst], Delta) },
-		{ goal_info_init(NonLocals, Delta, det, pure, GoalInfo) },
+		{ goal_info_init(NonLocals, Delta, det, purity_pure,
+			GoalInfo) },
 		{ ExtraGoal = unify(NewArg, var(Arg), OutMode - InMode,
 			assign(NewArg, Arg), unify_context(explicit, []))
 			- GoalInfo },
@@ -1848,7 +1851,8 @@ magic__create_magic_call(MagicCall) -->
 	magic_info_get_module_info(ModuleInfo),
 	{ instmap_delta_from_mode_list(InputArgs, MagicOutputModes,
 		ModuleInfo, InstMapDelta) },
-	{ goal_info_init(NonLocals, InstMapDelta, nondet, pure, GoalInfo) },
+	{ goal_info_init(NonLocals, InstMapDelta, nondet, purity_pure,
+		GoalInfo) },
 
 	{ MagicCall = call(MagicPredId, MagicProcId, MagicArgs,
 			not_builtin, no, PredName) - GoalInfo }.
