@@ -23,6 +23,9 @@ Portability Improvements:
 * None yet.
 
 Changes to the Mercury debugger:
+* Users can now see a listing of the source code lines referred to by the
+  current environment (see the documentation for the `list' command in
+  the Mercury Users' Guide).
 * Users can now keep hold of a term, referring to it even when execution has
   left the goal at which the term was available as the value of a program
   variable.

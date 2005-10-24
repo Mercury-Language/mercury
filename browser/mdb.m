@@ -26,6 +26,7 @@
 :- include_module help.
 :- include_module interactive_query.
 :- include_module io_action.
+:- include_module listing.
 
 :- implementation.
 

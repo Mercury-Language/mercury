@@ -36,6 +36,7 @@
 #include "mercury_trace_source.h"
 
 #include "mdb.browse.mh"
+#include "mdb.listing.mh"
 #include "mdb.diff.mh"
 #include "mdb.browser_info.mh"
 #include "mdb.declarative_execution.mh"
@@ -228,6 +229,20 @@ static  MR_Context_Position MR_context_position = MR_CONTEXT_AFTER;
 */
 
 static  MR_bool     MR_print_goal_paths = MR_TRUE;
+
+/*
+** MR_LISTING_path holds the current value of the listings structure
+** as defined in browser/listing.m.
+*/
+
+static  MR_Word     MR_LISTING_path;
+
+/*
+** MR_num_context_lines holds the current number of context lines to be
+** printed before and after the current callee/caller's file context.
+*/
+
+static  int         MR_num_context_lines = 2;
 
 typedef struct MR_Line_Struct {
     char            *MR_line_contents;
@@ -464,6 +479,10 @@ static  MR_TraceCmdFunc MR_trace_cmd_view;
 static  MR_TraceCmdFunc MR_trace_cmd_hold;
 static  MR_TraceCmdFunc MR_trace_cmd_diff;
 static  MR_TraceCmdFunc MR_trace_cmd_save_to_file;
+static  MR_TraceCmdFunc MR_trace_cmd_list;
+static  MR_TraceCmdFunc MR_trace_cmd_set_list_dir_path;
+static  MR_TraceCmdFunc MR_trace_cmd_push_list_dir;
+static  MR_TraceCmdFunc MR_trace_cmd_pop_list_dir;
 static  MR_TraceCmdFunc MR_trace_cmd_break;
 static  MR_TraceCmdFunc MR_trace_cmd_condition;
 static  MR_TraceCmdFunc MR_trace_cmd_ignore;
@@ -930,6 +949,12 @@ MR_trace_internal_ensure_init(void)
         if (env != NULL && MR_trace_is_natural_number(env, &n)) {
             MR_scroll_limit = n;
         }
+
+        /*
+        ** Set up MR_LISTING_path.
+        */
+
+        MR_LISTING_path = MR_LISTING_new_list_path();
 
         /*
         ** These functions add the commands to the front of the queue, so
@@ -2372,24 +2397,34 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Word             verbose_format;
     MR_Word             pretty_format;
 
-    if (word_count == 3 &&
-        ( MR_streq(words[1], "fail_trace_count")
-        || MR_streq(words[1], "fail_trace_counts")))
+    if (word_count >= 3 && MR_streq(words[1], "list_context_lines")) {
+
+        if (word_count > 3
+            || !MR_trace_is_natural_number(words[2], &MR_num_context_lines)) {
+            MR_trace_usage("misc", "set");
+        }
+
+    } else if (word_count >= 3 && MR_streq(words[1], "list_path")) {
+
+        MR_trace_cmd_set_list_dir_path(words, word_count, cmd, event_info,
+        event_details, jumpaddr);
+
+    } else if (word_count == 3 && (  MR_streq(words[1], "fail_trace_count")
+                                  || MR_streq(words[1], "fail_trace_counts")))
     {
         if (MR_dice_fail_trace_counts_file != NULL) {
             free(MR_dice_fail_trace_counts_file);
         }
-
         MR_dice_fail_trace_counts_file = MR_copy_string(words[2]);
-    } else if (word_count == 3 &&
-        ( MR_streq(words[1], "pass_trace_count")
-        || MR_streq(words[1], "pass_trace_counts")))
+
+    } else if (word_count == 3 && (  MR_streq(words[1], "pass_trace_count")
+                                  || MR_streq(words[1], "pass_trace_counts")))
     {
         if (MR_dice_pass_trace_counts_file != NULL) {
             free(MR_dice_pass_trace_counts_file);
         }
-
         MR_dice_pass_trace_counts_file = MR_copy_string(words[2]);
+
     } else if (! MR_trace_options_param_set(&print_set, &browse_set,
         &print_all_set, &flat_format, &raw_pretty_format, &verbose_format,
         &pretty_format, &words, &word_count, "misc", "set"))
@@ -2640,6 +2675,116 @@ MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
             }
         }
     }
+
+    return KEEP_INTERACTING;
+}
+
+    /*
+    ** list [num]
+    **  List num lines of context around the line number of the context of the
+    **  current point (i.e., level in the call stack).  If num is not given,
+    **  the number of context lines defaults to the value of the context_lines
+    **  setting.
+    **
+    ** TODO: add the following (use MR_parse_source_locn()):
+    ** list filename:num[-num]
+    **  List a range of lines from a given file.  If only one number is
+    **  given, the default number of lines of context is used.
+    */
+
+static MR_Next
+MR_trace_cmd_list(char **words, int word_count,
+    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+    MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+    const MR_Proc_Layout    *entry_ptr;
+    const char              *filename;
+    int                     lineno;
+    MR_Word                 *base_sp_ptr;
+    MR_Word                 *base_curfr_ptr;
+    MR_bool                 num = MR_num_context_lines;
+    MR_String               aligned_filename;
+
+    if (word_count > 2) {
+        MR_trace_usage("browsing", "list");
+        return KEEP_INTERACTING;
+    }
+
+    if (word_count == 2 && !MR_trace_is_natural_number(words[1], &num)) {
+        MR_trace_usage("browsing", "list");
+        return KEEP_INTERACTING;
+    }
+
+    MR_trace_current_level_details(&entry_ptr, &filename, &lineno,
+        &base_sp_ptr, &base_curfr_ptr);
+
+    MR_make_aligned_string(aligned_filename, (MR_String) filename);
+
+    MR_TRACE_CALL_MERCURY(
+        MR_LISTING_list_file(MR_mdb_out, MR_mdb_err, (char *) aligned_filename,
+            lineno - num, lineno + num, lineno, MR_LISTING_path);
+    );
+
+    return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_set_list_dir_path(char **words, int word_count,
+    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+    MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+    int       i;
+    MR_String aligned_word;
+
+    MR_TRACE_CALL_MERCURY(
+        MR_LISTING_clear_list_path(MR_LISTING_path, &MR_LISTING_path);
+        for(i = word_count - 1; i >= 1; i--) {
+            MR_make_aligned_string(aligned_word, (MR_String) words[i]);
+            MR_LISTING_push_list_path(aligned_word,
+                MR_LISTING_path, &MR_LISTING_path);
+        }
+    );
+
+    return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_push_list_dir(char **words, int word_count,
+    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+    MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+    int       i;
+    MR_String aligned_word;
+
+    if (word_count < 2) {
+        MR_trace_usage("browsing", "push_list_dir");
+        return KEEP_INTERACTING;
+    }
+
+    MR_TRACE_CALL_MERCURY(
+        for(i = word_count - 1; i >= 1; i--) {
+            MR_make_aligned_string(aligned_word, (MR_String) words[i]);
+            MR_LISTING_push_list_path(aligned_word,
+                MR_LISTING_path, &MR_LISTING_path);
+        }
+    );
+
+    return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_pop_list_dir(char **words, int word_count,
+    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+    MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+    if (word_count > 1) {
+        MR_trace_usage("browsing", "pop_list_dir");
+        return KEEP_INTERACTING;
+    }
+
+    MR_TRACE_CALL_MERCURY(
+        MR_LISTING_pop_list_path(MR_LISTING_path, &MR_LISTING_path);
+    );
 
     return KEEP_INTERACTING;
 }
@@ -8357,6 +8502,12 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         NULL, MR_trace_var_completer },
     { "browsing", "save_to_file", MR_trace_cmd_save_to_file,
         NULL, MR_trace_var_completer },
+    { "browsing", "list", MR_trace_cmd_list,
+        NULL, MR_trace_null_completer },
+    { "browsing", "push_list_dir", MR_trace_cmd_push_list_dir,
+        NULL, MR_trace_null_completer },
+    { "browsing", "pop_list_dir", MR_trace_cmd_pop_list_dir,
+        NULL, MR_trace_null_completer },
 
     { "breakpoint", "break", MR_trace_cmd_break,
         MR_trace_break_cmd_args, MR_trace_proc_spec_completer },

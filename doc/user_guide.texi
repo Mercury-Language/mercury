@@ -2886,6 +2886,22 @@ output to be in XML.
 @c if it is available,
 @c to the specified file. The option @samp{-x} (or @samp{--xml}) causes the
 @c output to be in XML.
+@sp 1
+@item list [@var{num}]
+@kindex list (mdb command)
+Lists the source code text for the current environment, including
+@var{num} preceding and following lines.  If @var{num} is not provided then
+the default of two is used.
+@sp 1
+@item push_list_dir @var{dir1} @var{dir2} ...
+@kindex push_list_dir (mdb command)
+The @samp{list} command searches a list of directories when looking for a
+source code file.  The @samp{push_list_dir} pushes one or more such
+directories on to this list.
+@sp 1
+@item pop_list_dir
+@kindex pop_list_dir (mdb command)
+Pops the most recent @samp{push_list_dir}' directory from the search list.
 @end table
 
 @sp 1
@@ -3642,6 +3658,8 @@ and its submodules, if any.
 @kindex xml_tmp_filename (mdb command)
 @kindex fail_trace_counts (mdb command)
 @kindex pass_trace_counts (mdb command)
+@kindex list_path (mdb command)
+@kindex list_context_lines (mdb command)
 Updates the given configuration parameter.
 The parameters that can be configured are
 @samp{format}, @samp{depth}, @samp{size}, @samp{width}, @samp{lines}, 
@@ -4224,7 +4242,8 @@ Print the @var{n}th to @var{m}th IO actions (inclusive).
 @item set @var{param} @var{value}
 Update the given configuration parameter.
 The parameters that can be configured are
-@samp{format}, @samp{depth}, @samp{size}, @samp{width} and @samp{lines}.
+@samp{list_path}, @samp{list_context_lines}, @samp{format}, @samp{depth},
+@samp{size}, @samp{width} and @samp{lines}.
 @sp 1
 @item mark [@var{term-path}]
 The @samp{mark} command can only be given from within the interactive

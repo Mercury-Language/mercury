@@ -132,4 +132,5 @@ extern	MR_Word	MR_trace_browser_persistent_state;
 */
 extern	void	MR_trace_browse_ensure_init(void);
 
+
 #endif	/* MERCURY_TRACE_BROWSE_H */
