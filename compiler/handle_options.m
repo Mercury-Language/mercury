@@ -1397,13 +1397,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals__lookup_accumulating_option(!.Globals,
                 link_library_directories, LinkLibDirs0),
             globals__set_option(link_library_directories,
-                accumulating([StdLibDir/"lib"/FullArch | LinkLibDirs0]),
+                accumulating([StdLibDir/"lib" | LinkLibDirs0]),
                 !Globals),
 
             globals__lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath0),
             globals__set_option(runtime_link_library_directories,
-                accumulating([StdLibDir/"lib"/FullArch | Rpath0]), !Globals)
+                accumulating([StdLibDir/"lib" | Rpath0]), !Globals)
 
         ;
             MaybeStdLibDir = no
@@ -1455,7 +1455,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             MercuryLibDirs = [_ | _],
             ExtraLinkLibDirs = list__map(
                 (func(MercuryLibDir) =
-                    MercuryLibDir/"lib"/GradeString/FullArch
+                    MercuryLibDir/"lib"/GradeString
                 ), MercuryLibDirs),
 
             globals__lookup_accumulating_option(!.Globals,
@@ -1470,7 +1470,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
             ExtraCIncludeDirs = list__map(
                 (func(MercuryLibDir) =
-                    MercuryLibDir/"lib"/GradeString/FullArch/"inc"
+                    MercuryLibDir/"lib"/GradeString/"inc"
                 ), MercuryLibDirs),
             globals__lookup_accumulating_option(!.Globals, c_include_directory,
                 CIncludeDirs),

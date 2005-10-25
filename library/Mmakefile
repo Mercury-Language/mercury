@@ -533,7 +533,7 @@ ifneq (,$(findstring java,$(GRADE)))
 install_library: jars
 	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
 	cp $(JARS) $(INSTALL_JAVA_LIBRARY_DIR)
-	-cp $(NATIVE_SO) $(INSTALL_JAVA_LIBRARY_DIR)/$(FULLARCH)
+	-cp $(NATIVE_SO) $(INSTALL_JAVA_LIBRARY_DIR)
 
 else
 

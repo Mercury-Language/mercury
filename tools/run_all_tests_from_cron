@@ -161,7 +161,7 @@ then
 	echo
 	INSTALL_DIR=`tail $logfile | \
 		awk '/^Installation directory:/ { print $3; }' `
-	cd $INSTALL_DIR/lib/mercury/bin/$FULLARCH
+	cd $INSTALL_DIR/bin
 	ls -l mercury_compile
 	size mercury_compile
 	{

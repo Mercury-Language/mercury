@@ -300,11 +300,11 @@ EOF
 		then
 			true
 		elif
-			test -f $LIBDIR/bin/$FULLARCH/mercury_compile ||
-			test -f $LIBDIR/bin/$FULLARCH/mercury_compile.exe
+			test -f $PREFIX/bin/mercury_compile ||
+			test -f $PREFIX/bin/mercury_compile.exe
 		then
 			AC_MSG_WARN(
-[using $LIBDIR/bin/$FULLARCH/mercury_compile to bootstrap])
+[using $PREFIX/bin/mercury_compile to bootstrap])
 		else
 			AC_MSG_ERROR(
 [You need a working Mercury compiler to bootstrap with])

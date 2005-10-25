@@ -1,7 +1,7 @@
 @echo off
 rem @configure_input@
 rem ---------------------------------------------------------------------------
-rem Copyright (C) 1994-1998, 2000-2001, 2003 The University of Melbourne.
+rem Copyright (C) 1994-1998, 2000-2001, 2003, 2005 The University of Melbourne.
 rem This file may only be copied under the terms of the GNU General
 rem Public License - see the file COPYING in the Mercury distribution.
 rem ---------------------------------------------------------------------------
@@ -45,8 +45,8 @@ set MERCURY_CONFIG_DIR="@CONFIG_LIBDIR@"
 
 :config_dir_set
 
-if "%MERCURY_COMPILER%"=="" set MERCURY_COMPILER="@LIBDIR@\bin\@FULLARCH@\mercury_compile"
-if "%MERCURY_COMPILER%"=="^%MERCURY_COMPILER^%" set MERCURY_COMPILER="@LIBDIR@\bin\@FULLARCH@\mercury_compile"
+if "%MERCURY_COMPILER%"=="" set MERCURY_COMPILER="@PREFIX@\bin\mercury_compile"
+if "%MERCURY_COMPILER%"=="^%MERCURY_COMPILER^%" set MERCURY_COMPILER="@PREFIX@\bin\mercury_compile"
 
 rem There is no equivalent of "$@" available on all Windows platforms.
 rem (Windows XP has `%*').

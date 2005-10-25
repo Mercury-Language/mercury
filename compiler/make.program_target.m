@@ -749,13 +749,12 @@ install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
         linked_target_file_name(ModuleName, java_archive, JarFileName, !IO),
 
         globals__io_lookup_string_option(install_prefix, Prefix, !IO),
-        globals__io_lookup_string_option(fullarch, FullArch, !IO),
 
         ( Grade = "java" ->
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/"java",
             install_file(JarFileName, GradeLibDir, LibsSucceeded, !IO)
         ;
-            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/Grade/FullArch,
+            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/Grade,
             install_file(LibFileName, GradeLibDir, LibSuccess, !IO),
             install_file(SharedLibFileName, GradeLibDir, SharedLibSuccess,
                 !IO),
@@ -781,7 +780,6 @@ install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName, Succeeded,
     (
         MaybeImports = yes(Imports),
         globals__io_lookup_string_option(install_prefix, Prefix, !IO),
-        globals__io_lookup_string_option(fullarch, FullArch, !IO),
         LibDir = Prefix/"lib"/"mercury",
 
         globals__io_get_target(Target, !IO),
@@ -795,7 +793,7 @@ install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName, Succeeded,
                 Imports ^ foreign_code = contains_foreign_code(_)
             )
         ->
-            GradeIncDir = LibDir/"lib"/Grade/FullArch/"inc",
+            GradeIncDir = LibDir/"lib"/Grade/"inc",
             install_subdir_file(LinkSucceeded, GradeIncDir, ModuleName, "mih",
                 HeaderSucceded1, !IO),
 
@@ -901,13 +899,12 @@ make_install_dirs(Result, LinkResult, !IO) :-
 
 make_grade_install_dirs(Grade, Result, LinkResult, !IO) :-
     globals__io_lookup_string_option(install_prefix, Prefix, !IO),
-    globals__io_lookup_string_option(fullarch, FullArch, !IO),
     LibDir = Prefix/"lib"/"mercury",
 
     GradeIntsSubdir = LibDir/"ints"/Grade/"Mercury",
     make_directory(GradeIntsSubdir, Result1, !IO),
 
-    GradeIncSubdir = LibDir/"lib"/Grade/FullArch/"inc"/"Mercury",
+    GradeIncSubdir = LibDir/"lib"/Grade/"inc"/"Mercury",
     make_directory(GradeIncSubdir, Result2, !IO),
 
     Results0 = [Result1, Result2],

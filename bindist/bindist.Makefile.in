@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999, 2001-2003 The University of Melbourne.
+# Copyright (C) 1996-1999, 2001-2003, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -180,7 +180,7 @@ ifneq ("$(strip $(GACUTIL))","")
 .PHONY: install_gac
 install_gac: 
 	if test -d $(INSTALL_LIBDIR)/lib/ilc/ ; then 		\
-		cd $(INSTALL_LIBDIR)/lib/ilc/$(FULLARCH) &&	\
+		cd $(INSTALL_LIBDIR)/lib/ilc &&			\
 		$(GACUTIL) -i mercury.dll ; 			\
 	fi
 else

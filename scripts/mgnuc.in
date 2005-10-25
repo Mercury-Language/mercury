@@ -211,7 +211,7 @@ case "$mercury_stdlib_dir" in
         # The option setting code above guarantees that if
         # `--mercury-stdlib-dir' is set, `--mercury-config-dir'
         # is also set.
-        MERC_ALL_C_INCL_DIRS="-I$mercury_config_dir/conf -I$mercury_stdlib_dir/inc -I$mercury_stdlib_dir/lib/$GRADE/$FULLARCH/inc"
+        MERC_ALL_C_INCL_DIRS="-I$mercury_config_dir/conf -I$mercury_stdlib_dir/inc -I$mercury_stdlib_dir/lib/$GRADE/inc"
         ;;
 esac
 

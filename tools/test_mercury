@@ -305,16 +305,16 @@ esac
 # Version of the mercury compiler to use for bootstrapping
 # Normally we use the compiler from same location that we will install in.
 # But occasionally this setting will get overridden below.
-if test -x $INSTALL_DIR/lib/mercury/bin/$FULLARCH/mercury_compile
+if test -x $INSTALL_DIR/bin/mercury_compile
 then
-	BOOTSTRAP_MERCURY_COMPILER=$INSTALL_DIR/lib/mercury/bin/$FULLARCH/mercury_compile
+	BOOTSTRAP_MERCURY_COMPILER=$INSTALL_DIR/bin/mercury_compile
 fi
 
 # The following can be edited and uncommented if you need to use
 # a different bootstrap compiler to re-bootstrap a host which
 # has gotten too out-of-date.
 #case $HOST in mars)
-#	BOOTSTRAP_MERCURY_COMPILER=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+#	BOOTSTRAP_MERCURY_COMPILER=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH/bin/mercury_compile
 #		;;
 #esac
 

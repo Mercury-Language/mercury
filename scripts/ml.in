@@ -218,7 +218,7 @@ case "$gc_grade" in
 	*)
 		LIBGC="-l$gc_grade"
 		LIBGC_STATIC=`$FIX_PATH_FOR_LINKER \
-			$LIBDIR/$FULLARCH/lib$gc_grade.@LIB_SUFFIX@`
+			$LIBDIR/lib$gc_grade.@LIB_SUFFIX@`
 		;;
 esac
 
@@ -235,11 +235,11 @@ case $trace in
 		TRACE_LIBS_SYSTEM="$TRACE_LIBS_SYSTEM $READLINE_LIBRARIES"
 		TRACE_STATIC_LIBS="\
 		  `$FIX_PATH_FOR_LINKER \
-		   $LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
+		   $LIBDIR/$GRADE/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
 		  `$FIX_PATH_FOR_LINKER \
-		   $LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.@LIB_SUFFIX@` \
+		   $LIBDIR/$GRADE/lib$BROWSER_LIB_NAME.@LIB_SUFFIX@` \
 		  `$FIX_PATH_FOR_LINKER \
-		   $LIBDIR/$GRADE/$FULLARCH/lib$MDBCOMP_LIB_NAME.@LIB_SUFFIX@`"
+		   $LIBDIR/$GRADE/lib$MDBCOMP_LIB_NAME.@LIB_SUFFIX@`"
 		;;
 	false)	TRACE_LIBS=
 		TRACE_LIBS_SYSTEM=
@@ -334,8 +334,8 @@ else
 fi
 
 merc_libdir_opts="\
-	@LIB_LIBPATH@$LIBDIR/$GRADE/$FULLARCH
-	@LIB_LIBPATH@$LIBDIR/$FULLARCH
+	@LIB_LIBPATH@$LIBDIR/$GRADE
+	@LIB_LIBPATH@$LIBDIR
 "
 system_libdir_opts=
 for dir in $ALL_LOCAL_C_LIB_DIRS kludge_for_broken_shells; do
@@ -349,15 +349,15 @@ case $mercury_libs in
 	shared)
 		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_LIBS -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC"}
 		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
-		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE/$FULLARCH"
-		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$FULLARCH"
+		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE"
+		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR"
 		;;
 	static)
 		MERCURY_LIBS=${MERCURY_LIBS="$TRACE_STATIC_LIBS
 		`$FIX_PATH_FOR_LINKER \
-		  $LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
+		  $LIBDIR/$GRADE/lib$STD_LIB_NAME.@LIB_SUFFIX@` \
 		`$FIX_PATH_FOR_LINKER \
-		  $LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
+		  $LIBDIR/$GRADE/lib$RT_LIB_NAME.@LIB_SUFFIX@` \
 		$LIBGC_STATIC"}
 		LIBS=${LIBS="$MERCURY_LIBS $TRACE_LIBS_SYSTEM $STDLIBS"}
 		merc_shlib_dirs=""

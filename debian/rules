@@ -100,7 +100,7 @@ install-stamp:
 
 	cd build/mercury && \
 	  CC="$(CC)" \
-	  MERCURY_COMPILER="$(CURDIR)/debian/tmp/usr/lib/mercury/bin/`grep ^FULLARCH tmp_dir/scripts/Mmake.vars | sed -e 's/.*= //'`/mercury_compile" \
+	  MERCURY_COMPILER="$(CURDIR)/debian/tmp/usr/bin/mercury_compile" \
 	  $(MAKE) install INSTALL_PREFIX=$(CURDIR)/debian/tmp/usr $(MAKEFLAGS) 
 
 	cp build/mercury/README build/mercury/README.DotNet \

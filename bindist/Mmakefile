@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-2003 The University of Melbourne.
+# Copyright (C) 1996-2003, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -43,7 +43,7 @@ SCRIPT_FILES	= $(INSTALL_SCRIPTS) ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/canonical_grade \
 		  ../scripts/gud.el
 
-CGI_PROG	= $(INSTALL_LIB_DIR)/mercury/bin/$(FULLARCH)/mdprof_cgi
+CGI_PROG	= $(INSTALL_PREFIX)/bin/mdprof_cgi
 
 VIM_FILES	= ../vim/*
 

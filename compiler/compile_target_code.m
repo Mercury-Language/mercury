@@ -1379,17 +1379,16 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             globals__io_lookup_string_option(TraceFlagsOpt, TraceOpts, !IO)
         ),
 
-        % Pass either `-llib' or `PREFIX/lib/GRADE/FULLARCH/liblib.a',
+        % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a',
         % depending on whether we are linking with static or shared
         % Mercury libraries.
 
         globals__io_lookup_accumulating_option(
             mercury_library_directories, MercuryLibDirs0, !IO),
-        globals__io_lookup_string_option(fullarch, FullArch, !IO),
         globals__io_get_globals(Globals, !IO),
         grade_directory_component(Globals, GradeDir),
         MercuryLibDirs = list__map(
-            (func(LibDir) = LibDir/"lib"/GradeDir/FullArch),
+            (func(LibDir) = LibDir/"lib"/GradeDir),
             MercuryLibDirs0),
         globals__io_lookup_accumulating_option(link_libraries,
             LinkLibrariesList0, !IO),
@@ -1469,7 +1468,6 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
     io::di, io::uo) is det.
 
 get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
-    globals__io_lookup_string_option(fullarch, FullArch, !IO),
     globals__io_get_gc_method(GCMethod, !IO),
     globals__io_lookup_string_option(library_extension, LibExt, !IO),
     globals__io_get_globals(Globals, !IO),
@@ -1506,12 +1504,12 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
             GCGrade = GCGrade0
         ),
         make_link_lib(TargetType, GCGrade, SharedGCLibs, !IO),
-        StaticGCLibs = quote_arg(StdLibDir/"lib"/FullArch/
+        StaticGCLibs = quote_arg(StdLibDir/"lib"/
             ("lib" ++ GCGrade ++ LibExt))
     ;
         GCMethod = mps,
         make_link_lib(TargetType, "mps", SharedGCLibs, !IO),
-        StaticGCLibs = quote_arg(StdLibDir/"lib"/FullArch/
+        StaticGCLibs = quote_arg(StdLibDir/"lib"/
             ("libmps" ++ LibExt) )
     ;
         GCMethod = accurate,
@@ -1526,13 +1524,13 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
         SharedTraceLibs = ""
     ;
         StaticTraceLibs =
-            quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+            quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_trace" ++ LibExt)) ++
             " " ++
-            quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+            quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_browser" ++ LibExt)) ++
             " " ++
-            quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+            quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_mdbcomp" ++ LibExt)),
         make_link_lib(TargetType, "mer_trace", TraceLib, !IO),
         make_link_lib(TargetType, "mer_browser", BrowserLib, !IO),
@@ -1545,9 +1543,9 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
     ( MercuryLinkage = "static" ->
         StdLibs = string__join_list(" ",
             [StaticTraceLibs,
-            quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+            quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_std" ++ LibExt)),
-            quote_arg(StdLibDir/"lib"/GradeDir/FullArch/
+            quote_arg(StdLibDir/"lib"/GradeDir/
                 ("libmer_rt" ++ LibExt)),
             StaticGCLibs])
     ; MercuryLinkage = "shared" ->
