@@ -628,7 +628,7 @@ MR_print_ambiguities(FILE *fp)
             fprintf(fp, "\n");
 
             for (i = type_num; i < end_type_num; i++) {
-                fprintf(fp, "%s.%s/%d\n",
+                fprintf(fp, "%s.%s/%" MR_INTEGER_LENGTH_MODIFIER "d\n",
                     type_ctors[i]->MR_type_ctor_module_name,
                     type_ctors[i]->MR_type_ctor_name,
                     type_ctors[i]->MR_type_ctor_arity);
