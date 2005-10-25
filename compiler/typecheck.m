@@ -2828,7 +2828,7 @@ get_field_access_constructor(Info, GoalPath, FuncName, Arity, AccessType,
 
 convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         FieldDefn, FunctorConsTypeInfo, OrigExistTVars, ConsTypeInfo) :-
-    FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars0,
+    FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars,
         FunctorType, ConsArgTypes, Constraints0),
     FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
     list__index1_det(ConsArgTypes, FieldNumber, FieldType),
@@ -2837,19 +2837,11 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         RetType = FieldType,
         ArgTypes = [FunctorType],
         TVarSet = TVarSet0,
-        ExistQVars = ExistQVars0,
         Constraints = Constraints0,
         ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
             RetType, ArgTypes, Constraints))
     ;
         AccessType = set,
-
-        % A `'field :='/2' function has no existentially quantified type
-        % variables - the values of all type variables in the field are
-        % supplied by the caller, all the others are supplied by the
-        % input term.
-
-        ExistQVars = [],
 
         % When setting a polymorphic field, the type of the field in the result
         % is not necessarily the same as in the input. If a type variable
@@ -2870,12 +2862,10 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
             RetType = FunctorType,
             ArgTypes = [FunctorType, FieldType],
 
-            % Remove any existential constraints (which are in the unproven
-            % field, since this is a construction). The typeclass-infos
-            % supplied by the input term are local to the set function,
-            % so they don't have to be considered here.
+            % None of the constraints are affected by the updated field,
+            % so the constraints are unchanged.
+            Constraints = Constraints0,
 
-            Constraints = Constraints0 ^ unproven := [],
             ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
                 RetType, ArgTypes, Constraints))
         ;
@@ -2947,9 +2937,10 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         )
     ).
 
-    % Rename constraints containing variables that have been renamed.
-    % These constraints are all universal constraints - the values
-    % of the type variables are supplied by the caller.
+    % Add new universal constraints for constraints containing variables that
+    % have been renamed.  These new constraints are the ones that will need
+    % to be supplied by the caller.  The other constraints will be supplied
+    % from non-updated fields.
     %
 :- pred project_and_rename_constraints(class_table::in, tvarset::in,
     set(tvar)::in, tvar_renaming::in,
@@ -2957,27 +2948,16 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
 
 project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
         !Constraints) :-
-    !.Constraints = constraints(Unproven0, Assumed, _),
-
-    % XXX We currently don't allow universal constraints on types or
-    % data constructors (but we should). When we implement handling ofthose,
-    % they will need to be renamed here as well. (The constraints have already
-    % been flipped at this point, which is why we test the assumed constraints
-    % here.)
-    (
-        Assumed = []
-    ;
-        Assumed = [_ | _],
-        unexpected(this_file,
-            "project_and_rename_constraints: universal constraints")
-    ),
+    !.Constraints = constraints(Unproven0, Assumed, Redundant0),
 
     % Project the constraints down onto the list of tvars in the call.
-    list.filter(project_constraint(CallTVars), Unproven0, Unproven1),
-    list.filter_map(rename_constraint(TVarRenaming), Unproven1, Unproven),
-    update_redundant_constraints(ClassTable, TVarSet, Unproven,
-        multi_map.init, Redundant),
-    !:Constraints = constraints(Unproven, [], Redundant).
+    list.filter(project_constraint(CallTVars), Unproven0, NewUnproven0),
+    list.filter_map(rename_constraint(TVarRenaming), NewUnproven0,
+        NewUnproven),
+    update_redundant_constraints(ClassTable, TVarSet, NewUnproven,
+        Redundant0, Redundant),
+    list.append(NewUnproven, Unproven0, Unproven),
+    !:Constraints = constraints(Unproven, Assumed, Redundant).
 
 :- pred project_constraint(set(tvar)::in, hlds_constraint::in) is semidet.
 
@@ -3268,18 +3248,29 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         construct_type(TypeCtor, ConsTypeArgs, ConsType),
         UnivProgConstraints = [],
         (
-            Action = do_not_flip_constraints
-        ->
+            Action = do_not_flip_constraints,
             ProgConstraints = constraints(UnivProgConstraints,
                 ExistProgConstraints),
             ExistQVars = ExistQVars0
         ;
+            Action = flip_constraints_for_new,
             % Make the existential constraints into universal ones, and discard
             % the existentially quantified variables (since they are now
             % universally quantified).
             ProgConstraints = constraints(ExistProgConstraints,
                 UnivProgConstraints),
             ExistQVars = []
+        ;
+            Action = flip_constraints_for_field_set,
+            % The constraints are existential for the deconstruction, and
+            % universal for the construction.  Even though all of the unproven
+            % constraints here can be trivially reduced by the assumed ones,
+            % we still need to process them so that the appropriate tables
+            % get updated.
+            %
+            ProgConstraints = constraints(ExistProgConstraints,
+                ExistProgConstraints),
+            ExistQVars = ExistQVars0
         ),
         make_body_hlds_constraints(ClassTable, ConsTypeVarSet,
             GoalPath, ProgConstraints, Constraints),

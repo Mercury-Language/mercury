@@ -1282,7 +1282,8 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId, FieldNumber),
 
-    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId,
+    goal_info_get_goal_path(OldGoalInfo, GoalPath),
+    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
         TermType, ArgTypes0, ExistQVars, !PredInfo),
 
     % If the type of the field we are extracting contains existentially
@@ -1337,7 +1338,8 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId0, FieldNumber),
 
-    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId0,
+    goal_info_get_goal_path(OldGoalInfo, GoalPath),
+    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId0,
         TermType, ArgTypes, ExistQVars, !PredInfo),
 
     split_list_at_index(FieldNumber, ArgTypes,
@@ -1393,41 +1395,97 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     % as an atomic goal.
     Goal = scope(barrier(removable), Conj).
 
-:- pred get_cons_id_arg_types_adding_existq_tvars(module_info::in, cons_id::in,
-    mer_type::in, list(mer_type)::out, list(tvar)::out,
-    pred_info::in, pred_info::out) is det.
+:- pred get_cons_id_arg_types_adding_existq_tvars(module_info::in,
+    goal_path::in, cons_id::in, mer_type::in, list(mer_type)::out,
+    list(tvar)::out, pred_info::in, pred_info::out) is det.
 
-get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
-        ArgTypes, NewExistQVars, !PredInfo) :-
+get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
+        TermType, ActualArgTypes, ActualExistQVars, !PredInfo) :-
     % Split the list of argument types at the named field.
     type_util__get_type_and_cons_defn(ModuleInfo, TermType, ConsId,
         TypeDefn, ConsDefn),
-    ConsDefn = hlds_cons_defn(ExistQVars, _, Args, _, _),
-    assoc_list__values(Args, ArgTypes0),
+    ConsDefn = hlds_cons_defn(ConsExistQVars, ConsConstraints, ConsArgs, _, _),
+    assoc_list__values(ConsArgs, ConsArgTypes),
+
     (
-        ExistQVars = [],
-        ArgTypes1 = ArgTypes0,
-        NewExistQVars = []
+        ConsExistQVars = [],
+        ActualArgTypes0 = ConsArgTypes,
+        ActualExistQVars = []
     ;
-        ExistQVars = [_ | _],
+        ConsExistQVars = [_ | _],
         % Rename apart the existentially quantified type variables.
-        list__length(ExistQVars, NumExistQVars),
+        list__length(ConsExistQVars, NumExistQVars),
         pred_info_typevarset(!.PredInfo, TVarSet0),
-        varset__new_vars(TVarSet0, NumExistQVars, NewExistQVars, TVarSet),
+        varset__new_vars(TVarSet0, NumExistQVars, ParentExistQVars, TVarSet),
         pred_info_set_typevarset(TVarSet, !PredInfo),
-        map__from_corresponding_lists(ExistQVars, NewExistQVars, TVarSubst),
-        apply_variable_renaming_to_type_list(TVarSubst, ArgTypes0, ArgTypes1)
+        map__from_corresponding_lists(ConsExistQVars, ParentExistQVars,
+            ConsToParentRenaming),
+        apply_variable_renaming_to_type_list(ConsToParentRenaming,
+            ConsArgTypes, ParentArgTypes),
+        apply_variable_renaming_to_prog_constraint_list(ConsToParentRenaming,
+            ConsConstraints, ParentConstraints),
+
+            % Constrained existentially quantified tvars will have already
+            % been created during typechecking, so we need to ensure that the
+            % new ones we allocate here are bound to those created earlier,
+            % so that the varmaps remain meaningful.
+            %
+        pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
+        list__length(ConsConstraints, NumConstraints),
+        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalPath,
+            NumConstraints, ActualConstraints),
+        constraint_list_subsumes_det(ParentConstraints, ActualConstraints,
+            ExistTSubst),
+        apply_rec_subst_to_type_list(ExistTSubst, ParentArgTypes,
+            ActualArgTypes0),
+
+            % The kinds will be ignored when the types are converted back
+            % to tvars.
+        map__init(KindMap),
+        apply_rec_subst_to_tvar_list(KindMap, ExistTSubst, ParentExistQVars,
+            ActualExistQVarTypes),
+        ( type_list_to_var_list(ActualExistQVarTypes, ActualExistQVars0) ->
+            ActualExistQVars = ActualExistQVars0
+        ;
+            unexpected(this_file, "existq_tvar bound to non-var")
+        )
     ),
     hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
     ( type_to_ctor_and_args(TermType, _, TypeArgs) ->
-        map__from_corresponding_lists(TypeParams, TypeArgs, TSubst)
+        map__from_corresponding_lists(TypeParams, TypeArgs, UnivTSubst)
     ;
         unexpected(this_file,
             "get_cons_id_arg_types_adding_existq_tvars: " ++
             "type_to_ctor_and_args failed")
 
     ),
-    apply_subst_to_type_list(TSubst, ArgTypes1, ArgTypes).
+    apply_subst_to_type_list(UnivTSubst, ActualArgTypes0, ActualArgTypes).
+
+:- pred constraint_list_subsumes_det(list(prog_constraint)::in,
+    list(prog_constraint)::in, tsubst::out) is det.
+
+constraint_list_subsumes_det(ConstraintsA, ConstraintsB, Subst) :-
+    constraint_list_get_tvars(ConstraintsB, TVarsB),
+    map__init(Subst0),
+    (
+        unify_constraint_list(ConstraintsA, ConstraintsB, TVarsB,
+            Subst0, Subst1)
+    ->
+        Subst = Subst1
+    ;
+        unexpected(this_file, "constraint_list_subsumes_det: failed")
+    ).
+
+:- pred unify_constraint_list(list(prog_constraint)::in,
+    list(prog_constraint)::in, list(tvar)::in, tsubst::in, tsubst::out)
+    is semidet.
+
+unify_constraint_list([], [], _, !Subst).
+unify_constraint_list([A | As], [B | Bs], TVars, !Subst) :-
+    A = constraint(_, ArgsA),
+    B = constraint(_, ArgsB),
+    type_unify_list(ArgsA, ArgsB, TVars, !Subst),
+    unify_constraint_list(As, Bs, TVars, !Subst).
 
 :- pred split_list_at_index(int::in, list(T)::in, list(T)::out, T::out,
     list(T)::out) is det.
@@ -1517,6 +1575,7 @@ get_constructor_containing_field_3([MaybeArgFieldName - _ | CtorArgs],
 create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
         RestrictNonLocals, VarsList, UnifyContext, Goal) :-
     goal_info_get_context(OldGoalInfo, Context),
+    goal_info_get_goal_path(OldGoalInfo, GoalPath),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     create_atomic_complicated_unification(Var, RHS,
         Context, UnifyMainContext, UnifySubContext, Goal0),
@@ -1525,7 +1584,13 @@ create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     % Compute the nonlocals of the goal.
     set__list_to_set(VarsList, NonLocals1),
     set__intersect(RestrictNonLocals, NonLocals1, NonLocals),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
+
+    % Use the goal path from the original goal, so that the constraint_ids
+    % will be as expected.  (See the XXX comment near the definition of
+    % constraint_id in hlds_data.m for more info.)
+    goal_info_set_goal_path(GoalPath, GoalInfo1, GoalInfo),
+
     Goal = GoalExpr0 - GoalInfo.
 
 :- pred make_new_vars(list(mer_type)::in, list(prog_var)::out,

@@ -1273,9 +1273,8 @@ process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % type_info and/or type_class_info variables.
 
         map__apply_to_list(ArgVars0, VarTypes0, ActualArgTypes),
-        goal_info_get_context(GoalInfo0, Context),
         process_existq_unify_functor(ConsDefn,
-            IsConstruction, ActualArgTypes, TypeOfX, Context,
+            IsConstruction, ActualArgTypes, TypeOfX, GoalInfo0,
             ExtraVars, ExtraGoals, !Info),
         list__append(ExtraVars, ArgVars0, ArgVars),
         goal_info_get_nonlocals(GoalInfo0, NonLocals0),
@@ -1382,11 +1381,11 @@ make_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
     % an existentially quantified data constructor.
     %
 :- pred process_existq_unify_functor(ctor_defn::in, bool::in,
-    list(mer_type)::in, mer_type::in, prog_context::in, list(prog_var)::out,
+    list(mer_type)::in, mer_type::in, hlds_goal_info::in, list(prog_var)::out,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
 process_existq_unify_functor(CtorDefn, IsConstruction,
-        ActualArgTypes, ActualRetType, Context,
+        ActualArgTypes, ActualRetType, GoalInfo,
         ExtraVars, ExtraGoals, !Info) :-
     CtorDefn = ctor_defn(CtorTypeVarSet, CtorExistQVars, CtorKindMap,
         CtorExistentialConstraints, CtorArgTypes, CtorRetType),
@@ -1412,20 +1411,23 @@ process_existq_unify_functor(CtorDefn, IsConstruction,
     type_list_subsumes_det([ParentRetType | ParentArgTypes],
         [ActualRetType | ActualArgTypes], ParentToActualTypeSubst),
 
-    % Apply those type bindings to the existential type class constraints.
-    apply_rec_subst_to_prog_constraint_list(ParentToActualTypeSubst,
-        ParentExistentialConstraints,
-        ActualExistentialConstraints),
-
     % Create type_class_info variables for the type class constraints.
+    poly_info_get_constraint_map(!.Info, ConstraintMap),
+    goal_info_get_goal_path(GoalInfo, GoalPath),
+    list__length(ParentExistentialConstraints, NumExistentialConstraints),
+    goal_info_get_context(GoalInfo, Context),
     (
         IsConstruction = yes,
         % Assume it's a construction.
+        lookup_hlds_constraint_list(ConstraintMap, unproven, GoalPath,
+            NumExistentialConstraints, ActualExistentialConstraints),
         make_typeclass_info_vars(ActualExistentialConstraints, [], Context,
             ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
     ;
         IsConstruction = no,
         % Assume it's a deconstruction.
+        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalPath,
+            NumExistentialConstraints, ActualExistentialConstraints),
         make_existq_typeclass_info_vars(ActualExistentialConstraints,
             ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
     ),
@@ -1770,8 +1772,8 @@ process_call(PredId, ArgVars0, GoalInfo0, GoalInfo, ExtraVars, ExtraGoals,
         % Make variables to hold any existentially quantified typeclass_infos
         % in the call, insert them into the typeclass_info map.
         list__length(ParentExistConstraints, NumExistConstraints),
-        lookup_hlds_constraint_list(ConstraintMap, assumed,
-            GoalPath, NumExistConstraints, ActualExistConstraints),
+        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalPath,
+            NumExistConstraints, ActualExistConstraints),
         make_existq_typeclass_info_vars(
             ActualExistConstraints, ExtraExistClassVars,
             ExtraExistClassGoals, !Info),
