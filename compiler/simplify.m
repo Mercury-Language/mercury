@@ -88,8 +88,8 @@
 
 :- import_module check_hlds__det_analysis.
 :- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
 :- import_module check_hlds__modes.
+:- import_module check_hlds__mode_util.
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
@@ -107,8 +107,9 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
+:- import_module parse_tree__prog_util.
 :- import_module transform_hlds__const_prop.
 :- import_module transform_hlds__pd_cost.
 
@@ -148,7 +149,9 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo,
         MaybeMsgs = no,
         WarnCnt = 0,
         ErrCnt = 0
-    ).
+    ),
+    globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+    maybe_report_stats(Statistics, !IO).
 
 :- pred simplify_procs(list(simplification)::in, pred_id::in,
     list(proc_id)::in, module_info::in, module_info::out,

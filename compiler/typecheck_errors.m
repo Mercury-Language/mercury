@@ -1830,7 +1830,7 @@ checkpoint_2(Msg, T0, !IO) :-
 	io__write_string("At ", !IO),
 	io__write_string(Msg, !IO),
 	io__write_string(": ", !IO),
-	globals__io_lookup_bool_option(statistics, Statistics, !IO),
+	globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
 	maybe_report_stats(Statistics, !IO),
 	io__write_string("\n", !IO),
 	typecheck_info_get_type_assign_set(T0, TypeAssignSet),

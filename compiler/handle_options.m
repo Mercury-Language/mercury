@@ -780,6 +780,16 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         option_implies(very_verbose, verbose, bool(yes), !Globals),
         option_implies(verbose, verbose_commands, bool(yes), !Globals),
+        globals__lookup_bool_option(!.Globals, very_verbose, VeryVerbose),
+        globals__lookup_bool_option(!.Globals, statistics, Statistics),
+        (
+            VeryVerbose = yes,
+            Statistics = yes
+        ->
+            globals__set_option(detailed_statistics, bool(yes), !Globals)
+        ;
+            true
+        ),
 
         option_implies(debug_modes_minimal, debug_modes, bool(yes), !Globals),
         option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
@@ -1298,7 +1308,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         % --dump-hlds and --statistics require compilation by phases
         globals__lookup_accumulating_option(!.Globals, dump_hlds, DumpStages),
-        globals__lookup_bool_option(!.Globals, statistics, Statistics),
         (
             ( DumpStages = [_ | _]
             ; Statistics = yes

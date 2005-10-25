@@ -176,7 +176,8 @@ generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId, Predicates, !IO) :-
             io__write_string("% Generating code for ", !IO),
             hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
             io__write_string("\n", !IO),
-            globals__lookup_bool_option(Globals, statistics, Statistics),
+            globals__lookup_bool_option(Globals, detailed_statistics,
+                Statistics),
             maybe_report_stats(Statistics, !IO)
         ;
             VeryVerbose = no

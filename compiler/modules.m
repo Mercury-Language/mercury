@@ -6437,7 +6437,7 @@ process_module_private_interfaces(ReadModules, [Ancestor | Ancestors],
             PrivateIntItems, Items),
         maybe_add_int_error(PrivateIntError, ModError0, ModError),
 
-        globals__io_lookup_bool_option(statistics, Statistics, !IO),
+        globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
         maybe_report_stats(Statistics, !IO),
 
         ( PrivateIntError = fatal_module_errors ->
@@ -6449,9 +6449,9 @@ process_module_private_interfaces(ReadModules, [Ancestor | Ancestors],
         !:DirectImports = !.DirectImports ++ AncDirectImports,
         !:DirectUses = !.DirectUses ++ AncDirectUses,
         ModItems = ModItems0 ++ Items,
-        !:Module = ((!.Module ^ items := ModItems)
-            ^ parent_deps := ModAncestors)
-            ^ error := ModError,
+        !:Module = !.Module ^ items := ModItems,
+        !:Module = !.Module ^ parent_deps := ModAncestors,
+        !:Module = !.Module ^ error := ModError,
         process_module_private_interfaces(ReadModules, Ancestors,
             IntStatusItem, ImpStatusItem,
             !DirectImports, !DirectUses, !Module, !IO)
@@ -6493,7 +6493,7 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
             LongIntItems, Items),
         maybe_add_int_error(LongIntError, ModError0, ModError),
 
-        globals__io_lookup_bool_option(statistics, Statistics, !IO),
+        globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
         maybe_report_stats(Statistics, !IO),
 
         ( LongIntError = fatal_module_errors ->
@@ -6508,9 +6508,9 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
         !:ImplIndirectImports = !.ImplIndirectImports
             ++ ImplIndirectImports1 ++ ImplIndirectUses1,
         list__append(ModItems0, Items, ModItems),
-        !:Module = ((!.Module ^ impl_deps := ModImplementationImports)
-            ^ items := ModItems)
-            ^ error := ModError,
+        !:Module = !.Module ^ impl_deps := ModImplementationImports,
+        !:Module = !.Module ^ items := ModItems,
+        !:Module = !.Module ^ error := ModError,
 
         process_module_long_interfaces(ReadModules, NeedQualifier,
             Imports, Ext, IntStatusItem, ImpStatusItem,
@@ -6696,16 +6696,16 @@ process_module_short_interfaces(ReadModules, [Import | Imports], Ext,
             ShortIntItems, Items),
         maybe_add_int_error(ShortIntError, ModError0, ModError),
 
-        globals__io_lookup_bool_option(statistics, Statistics, !IO),
+        globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
         maybe_report_stats(Statistics, !IO),
 
         ModIndirectImports = [Import | ModIndirectImports0],
         !:IndirectImports = !.IndirectImports ++ IntImports1 ++ IntUses1,
         !:ImpIndirectImports = !.ImpIndirectImports ++ ImpImports1 ++ ImpUses1,
         ModItems = ModItems0 ++ Items,
-        !:Module = ((!.Module ^ indirect_deps := ModIndirectImports)
-            ^ items := ModItems)
-            ^ error := ModError,
+        !:Module = !.Module ^ indirect_deps := ModIndirectImports,
+        !:Module = !.Module ^ items := ModItems,
+        !:Module = !.Module ^ error := ModError,
         process_module_short_interfaces(ReadModules, Imports, Ext,
             IntStatusItem, ImpStatusItem, !IndirectImports,
             !ImpIndirectImports, !Module, !IO)

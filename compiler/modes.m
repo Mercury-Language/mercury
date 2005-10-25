@@ -615,14 +615,8 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
             module_info_remove_predid(PredId, !ModuleInfo)
         ),
         !:NumErrors = !.NumErrors + ErrsInThisPred,
-        globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-        globals__io_lookup_bool_option(statistics, Statistics, !IO),
-        (
-            VeryVerbose = yes,
-            maybe_report_stats(Statistics, !IO)
-        ;
-            VeryVerbose = no
-        )
+        globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+        maybe_report_stats(Statistics, !IO)
     ).
 
 :- pred write_modes_progress_message(pred_id::in, pred_info::in,

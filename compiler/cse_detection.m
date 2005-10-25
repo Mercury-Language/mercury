@@ -52,6 +52,7 @@
 :- import_module libs__options.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
 
 :- import_module assoc_list.
@@ -103,6 +104,8 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, !ModuleInfo, !IO) :-
 
 detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
     detect_cse_in_proc_2(ProcId, PredId, Redo, !ModuleInfo),
+    globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+    maybe_report_stats(Statistics, !IO),
     (
         Redo = no
     ;
@@ -117,6 +120,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
             VeryVerbose = no
         ),
         modecheck_proc(ProcId, PredId, !ModuleInfo, Errs, _Changed, !IO),
+        maybe_report_stats(Statistics, !IO),
         ( Errs > 0 ->
             unexpected(this_file, "mode check fails when repeated")
         ;
@@ -131,6 +135,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
             VeryVerbose = no
         ),
         detect_switches_in_proc(ProcId, PredId, !ModuleInfo),
+        maybe_report_stats(Statistics, !IO),
         (
             VeryVerbose = yes,
             io__write_string("% Repeating common " ++

@@ -377,7 +377,7 @@ optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
     ;
         Mod = yes
     ),
-    globals__io_lookup_bool_option(statistics, Statistics, !IO),
+    globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
     maybe_report_stats(Statistics, !IO).
 
 :- pred optimize__middle(bool::in, set(label)::in, proc_label::in,

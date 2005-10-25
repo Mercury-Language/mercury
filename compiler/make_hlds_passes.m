@@ -144,6 +144,8 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
                 item_status(local, may_be_unqualified), !Module,
                 no, InvalidModes0, !IO),
         globals__io_lookup_bool_option(statistics, Statistics, !IO),
+        maybe_write_string(Statistics, "% Processed all items in pass 1\n",
+            !IO),
         maybe_report_stats(Statistics, !IO),
 
         check_for_errors(
@@ -186,9 +188,10 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
             true
         ),
 
-        maybe_report_stats(Statistics, !IO),
-            % Balance any data structures that need it.
+        % Balance any data structures that need it.
         module_info_optimize(!Module),
+        maybe_write_string(Statistics, "% Processed all items in pass 2\n",
+            !IO),
         maybe_report_stats(Statistics, !IO),
         init_qual_info(MQInfo0, EqvMap, QualInfo0),
         add_item_list_clauses(Items, local, !Module, QualInfo0, QualInfo, !IO),
@@ -203,8 +206,8 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
         module_info_get_num_errors(!.Module, ModuleNumErrors),
         NumErrors = ModuleNumErrors + MQ_NumErrors,
         module_info_set_num_errors(NumErrors, !Module),
-            % The predid list is constructed in reverse order, for efficiency,
-            % so we return it to the correct order here.
+        % The predid list is constructed in reverse order, for efficiency,
+        % so we return it to the correct order here.
         module_info_reverse_predids(!Module),
         ModuleInfo = !.Module
     ).

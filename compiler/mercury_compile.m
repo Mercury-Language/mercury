@@ -964,7 +964,7 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
             true
         )
     ),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals__io_lookup_bool_option(detailed_statistics, Stats, !IO),
     maybe_report_stats(Stats, !IO),
     string__append(FileName, ".m", SourceFileName).
 

@@ -117,6 +117,7 @@
     ;       verbose_commands
     ;       output_compile_error_lines
     ;       statistics
+    ;       detailed_statistics
     ;       debug_types
     ;       debug_modes
     ;       debug_modes_statistics
@@ -847,6 +848,7 @@ option_defaults_2(verbosity_option, [
     verbose_commands                    -   bool(no),
     output_compile_error_lines          -   int(15),
     statistics                          -   bool(no),
+    detailed_statistics                 -   bool(no),
     debug_types                         -   bool(no),
     debug_modes                         -   bool(no),
     debug_modes_statistics              -   bool(no),
@@ -1534,6 +1536,7 @@ long_option("verbose-make",         verbose_make).
 long_option("verbose-commands",     verbose_commands).
 long_option("output-compile-error-lines", output_compile_error_lines).
 long_option("statistics",           statistics).
+long_option("detailed-statistics",  detailed_statistics).
 long_option("debug-types",          debug_types).
 long_option("debug-modes",          debug_modes).
 long_option("debug-modes-statistics",   debug_modes_statistics).
@@ -2835,6 +2838,11 @@ options_help_verbosity -->
         "\tOutput messages about the compiler's time/space usage.",
         "\tAt the moment this option implies `--no-trad-passes', so you get",
         "\tinformation at the boundaries between phases of the compiler.",
+% The only sensible way to use --detailed-statistics, based on --very-verbose,
+% is implemented automatically in handle_options, so users shouldn't need to be
+% aware of it.
+%       "--detailed-statistics",
+%       "\tOutput more detailed messages about the compiler's time/space usage.",
         "-T, --debug-types",
         "\tOutput detailed debugging traces of the type checking.",
         "-N, --debug-modes",
