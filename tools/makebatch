@@ -30,7 +30,7 @@
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-jN] [-cdeost] [--compile-times] [--save-stage2-on-error] [--save-stage2-on-no-compiler] [--test-params] batchname"
+usage="Usage: makebatch [-jN] [-cdeoqst] [--compile-times] [--save-stage2-on-error] [--save-stage2-on-no-compiler] [--test-params] batchname"
 jfactor=-j1
 runtests=""
 objects=""
@@ -76,8 +76,10 @@ do
     -s|--stop-at-failure)
         failed="stop" ;;
 
-    --stop-after-stage-2)
-        stop_after_stage_2="--stop-after-stage-2" ;;
+    -q|--quick)
+        stop_after_stage_2="--stop-after-stage-2"
+        runtests="-t-"
+        ;;
 
     -t-|--no-test-suite)
         runtests="-t-" ;;
