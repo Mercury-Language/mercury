@@ -27,7 +27,8 @@ document_category 400 browsing
 browsing   - Commands that let users explore the state of the computation.
              The browsing commands are `vars', `held_vars', `print', `browse',
              `stack', `up', `down', `level', `current', `view', `hold',
-             `diff' and `save_to_file'.
+             `diff', `save_to_file', `list', `push_list_dir' and
+             `pop_list_dir'.
 
 end
 document_category 500 breakpoint
@@ -44,8 +45,8 @@ end
 document_category 700 parameter
 parameter  - Commands that let users access debugger parameters.
              The parameter commands are `set', `printlevel', `echo', `context',
-             `goal_paths' `scroll', `mmc_options', `scope', `alias' and
-             `unalias'.
+             `goal_paths' `scroll', `mmc_options', `scope', `alias',
+             `unalias', and `stack_default_limit'.
 
 end
 document_category 800 help
@@ -84,6 +85,7 @@ developer  - Commands that are intended to be of use only to developers
              `pneg_stack', `mm_stacks', `nondet_stack', `stack_regs',
              `all_regs', `debug_vars', `stats', `print_optionals',
              `unhide_events', `dd_dd', `table', `type_ctor', `class_decl',
-             `all_type_ctors' and `all_class_decls'.
+             `all_type_ctors', `all_class_decls', `all_procedures' and
+             `ambiguity'.
 
 end

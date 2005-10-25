@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000, 2003 The University of Melbourne.
+** Copyright (C) 2000, 2003, 2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -134,20 +134,21 @@ extern	MR_Dlist		*MR_lookup_type_class_instances(
 					const char *class_name, int arity);
 
 /*
-** Return a list of all the type constructors registered so far. The list
-** elements are of type MR_TypeCtorInfo. The caller must not modify anything
-** reachable from the returned list.
+** Return a list of all the type constructors registered so far, and return
+** their number in *num_ptr if num_ptr is not NULL. The list elements are
+** of type MR_TypeCtorInfo. The caller must not modify anything reachable
+** from the returned list.
 */
 
-extern	MR_Dlist		*MR_all_type_ctor_infos(void);
+extern	MR_Dlist		*MR_all_type_ctor_infos(int *num_ptr);
 
 /*
-** Return a list of all the type classes registered so far. The list
-** elements are of type MR_TypeClassDeclInfo.
-** The caller must not modify anything reachable from the returned
-** list.
+** Return a list of all the type classes registered so far, and return their
+** number in *num_ptr if num_ptr is not NULL. The list elements are of type
+** MR_TypeClassDeclInfo. The caller must not modify anything reachable
+** from the returned list.
 */
 
-extern	MR_Dlist		*MR_all_type_class_decl_infos(void);
+extern	MR_Dlist		*MR_all_type_class_decl_infos(int *num_ptr);
 
 #endif /* not MERCURY_TYPE_TABLES */

@@ -25,6 +25,7 @@
 #include "mercury_trace.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -369,6 +370,279 @@ MR_dump_module_procs(FILE *fp, const char *name)
             MR_print_proc_id_and_nl(fp, module->MR_ml_procs[i]);
         }
     }
+}
+
+#define MR_proc_compare_name(proc1, proc2)                              \
+    strcmp(proc1->MR_sle_user.MR_user_name,                             \
+        proc2->MR_sle_user.MR_user_name)
+
+#define MR_proc_compare_module_name(proc1, proc2)                       \
+    strcmp(proc1->MR_sle_user.MR_user_decl_module,                      \
+        proc2->MR_sle_user.MR_user_decl_module)
+
+#define MR_proc_compare_arity(proc1, proc2)                              \
+    (proc1->MR_sle_user.MR_user_arity - proc2->MR_sle_user.MR_user_arity)
+
+#define MR_proc_compare_mode(proc1, proc2)                               \
+    (proc1->MR_sle_user.MR_user_mode - proc2->MR_sle_user.MR_user_mode)
+
+#define MR_proc_same_name(proc1, proc2)                                  \
+    (MR_proc_compare_name(proc1, proc2) == 0)
+
+#define MR_proc_same_module_name(proc1, proc2)                           \
+    (MR_proc_compare_module_name(proc1, proc2) == 0)
+
+#define MR_proc_same_arity(proc1, proc2)                                 \
+    (MR_proc_compare_arity(proc1, proc2) == 0)
+
+#define MR_proc_same_name_module_arity(proc1, proc2)                     \
+    (MR_proc_same_name(proc1, proc2) &&                                  \
+    MR_proc_same_module_name(proc1, proc2) &&                            \
+    MR_proc_same_arity(proc1, proc2))
+
+static int
+MR_compare_proc_layout_by_name(const void *ptr1, const void *ptr2)
+{
+    const MR_Proc_Layout    **proc_addr1;
+    const MR_Proc_Layout    **proc_addr2;
+    const MR_Proc_Layout    *proc1;
+    const MR_Proc_Layout    *proc2;
+    int                     result;
+
+    proc_addr1 = (const MR_Proc_Layout **) ptr1;
+    proc_addr2 = (const MR_Proc_Layout **) ptr2;
+    proc1 = *proc_addr1;
+    proc2 = *proc_addr2;
+    result = MR_proc_compare_name(proc1, proc2);
+    if (result != 0) {
+        return result;
+    }
+
+    /*
+    ** Return equal only if the module name and the arity are the same as well,
+    ** in order to group all procedures of a predicate together.
+    */
+
+    result = MR_proc_compare_module_name(proc1, proc2);
+    if (result != 0) {
+        return result;
+    }
+
+    result = MR_proc_compare_arity(proc1, proc2);
+    if (result != 0) {
+        return result;
+    }
+
+    return MR_proc_compare_mode(proc1, proc2);
+}
+
+#define MR_type_compare_name(type1, type2)                              \
+    strcmp(type1->MR_type_ctor_name,                                    \
+        type2->MR_type_ctor_name)
+
+#define MR_type_compare_module_name(type1, type2)                       \
+    strcmp(type1->MR_type_ctor_module_name,                             \
+        type2->MR_type_ctor_module_name)
+
+#define MR_type_compare_arity(type1, type2)                              \
+    (type1->MR_type_ctor_arity - type2->MR_type_ctor_arity)
+
+#define MR_type_same_name(type1, type2)                                  \
+    (MR_type_compare_name(type1, type2) == 0)
+
+#define MR_type_same_module_name(type1, type2)                           \
+    (MR_type_compare_module_name(type1, type2) == 0)
+
+static int
+MR_compare_type_ctor_by_name(const void *ptr1, const void *ptr2)
+{
+    const MR_TypeCtorInfo   *type_ctor_addr1;
+    const MR_TypeCtorInfo   *type_ctor_addr2;
+    MR_TypeCtorInfo         type_ctor1;
+    MR_TypeCtorInfo         type_ctor2;
+    int                     result;
+
+    type_ctor_addr1 = (const MR_TypeCtorInfo *) ptr1;
+    type_ctor_addr2 = (const MR_TypeCtorInfo *) ptr2;
+    type_ctor1 = *type_ctor_addr1;
+    type_ctor2 = *type_ctor_addr2;
+    result = MR_type_compare_name(type_ctor1, type_ctor2);
+    if (result != 0) {
+        return result;
+    }
+
+    result = MR_type_compare_module_name(type_ctor1, type_ctor2);
+    if (result != 0) {
+        return result;
+    }
+
+    return MR_type_compare_arity(type_ctor1, type_ctor2);
+}
+
+void
+MR_print_ambiguities(FILE *fp)
+{
+    int                     module_num;
+    int                     proc_num;
+    int                     type_num;
+    int                     end_proc_num;
+    int                     end_type_num;
+    int                     num_procs;
+    int                     num_types;
+    int                     next_proc_num;
+    int                     procs_in_module;
+    const MR_Module_Layout  *module;
+    const MR_Proc_Layout    **procs;
+    const MR_Proc_Layout    *cur_proc;
+    MR_TypeCtorInfo         *type_ctors;
+    MR_TypeCtorInfo         type_ctor_info;
+    MR_Dlist                *type_ctor_list;
+    MR_Dlist                *element_ptr;
+    MR_bool                 *report;
+    int                     num_distinct;
+    int                     num_ambiguous;
+    int                     i;
+
+    num_procs = 0;
+    for (module_num = 0; module_num < MR_module_info_next; module_num++) {
+        num_procs += MR_module_infos[module_num]->MR_ml_proc_count;
+    }
+
+    /*
+    ** num_procs is an conservative estimate of the number of user-defined
+    ** procs.
+    */
+
+    procs = malloc(sizeof(const MR_Proc_Layout *) * num_procs);
+    if (procs == NULL) {
+        fprintf(MR_mdb_err, "Error: could not allocate sufficient memory\n");
+        return;
+    }
+
+    report = malloc(sizeof(MR_bool) * num_procs);
+    if (report == NULL) {
+        fprintf(MR_mdb_err, "Error: could not allocate sufficient memory\n");
+        return;
+    }
+
+    next_proc_num = 0;
+    for (module_num = 0; module_num < MR_module_info_next; module_num++) {
+        module = MR_module_infos[module_num];
+        procs_in_module = MR_module_infos[module_num]->MR_ml_proc_count;
+        for (proc_num = 0; proc_num < procs_in_module; proc_num++) {
+            cur_proc = module->MR_ml_procs[proc_num];
+            if (! MR_PROC_LAYOUT_IS_UCI(cur_proc)) {
+                procs[next_proc_num] = cur_proc;
+                next_proc_num++;
+            }
+        }
+    }
+
+    num_procs = next_proc_num;
+    qsort(procs, num_procs, sizeof(const MR_Proc_Layout *),
+        MR_compare_proc_layout_by_name);
+
+    fprintf(fp, "Ambiguous predicate and function names:\n");
+    num_ambiguous = 0;
+
+    proc_num = 0;
+    while (proc_num < num_procs) {
+        end_proc_num = proc_num + 1;
+        while (end_proc_num < num_procs &&
+            MR_proc_same_name(procs[proc_num], procs[end_proc_num]))
+        {
+            end_proc_num++;
+        }
+
+        if (end_proc_num > proc_num + 1) {
+            report[proc_num] = MR_TRUE;
+            num_distinct = 1;
+
+            for (i = proc_num + 1; i < end_proc_num; i++) {
+                if (MR_proc_same_name_module_arity(procs[i-1], procs[i])) {
+                    report[i] = MR_FALSE;
+                } else {
+                    report[i] = MR_TRUE;
+                    num_distinct++;
+                }
+            }
+
+            if (num_distinct > 1) {
+                num_ambiguous++;
+                fprintf(fp, "\n");
+
+                for (i = proc_num; i < end_proc_num; i++) {
+                    if (report[i]) {
+                        fprintf(fp, "%s %s.%s/%d\n",
+                            (procs[i]->MR_sle_user.MR_user_pred_or_func
+                                == MR_PREDICATE ? "pred" : "func"),
+                            procs[i]->MR_sle_user.MR_user_decl_module,
+                            procs[i]->MR_sle_user.MR_user_name,
+                            procs[i]->MR_sle_user.MR_user_arity);
+                    }
+                }
+            }
+        }
+
+        proc_num = end_proc_num;
+    }
+
+    if (num_ambiguous == 0) {
+        fprintf(fp, "\nNone\n");
+    }
+
+    free(procs);
+    free(report);
+
+    type_ctor_list = MR_all_type_ctor_infos(&num_types);
+    type_ctors = malloc(sizeof(MR_TypeCtorInfo) * num_types);
+    if (type_ctors == NULL) {
+        fprintf(MR_mdb_err, "Error: could not allocate sufficient memory\n");
+        return;
+    }
+
+    type_num = 0;
+    MR_for_dlist (element_ptr, type_ctor_list) {
+        type_ctor_info = (MR_TypeCtorInfo) MR_dlist_data(element_ptr);
+        type_ctors[type_num] = type_ctor_info;
+        type_num++;
+    }
+
+    qsort(type_ctors, num_types, sizeof(MR_TypeCtorInfo),
+        MR_compare_type_ctor_by_name);
+
+    fprintf(fp, "\nAmbiguous type names:\n");
+    num_ambiguous = 0;
+
+    type_num = 0;
+    while (type_num < num_types) {
+        end_type_num = type_num + 1;
+        while (end_type_num < num_types &&
+            MR_type_same_name(type_ctors[type_num], type_ctors[end_type_num]))
+        {
+            end_type_num++;
+        }
+
+        if (end_type_num > type_num + 1) {
+            num_ambiguous++;
+            fprintf(fp, "\n");
+
+            for (i = type_num; i < end_type_num; i++) {
+                fprintf(fp, "%s.%s/%d\n",
+                    type_ctors[i]->MR_type_ctor_module_name,
+                    type_ctors[i]->MR_type_ctor_name,
+                    type_ctors[i]->MR_type_ctor_arity);
+            }
+        }
+
+        type_num = end_type_num;
+    }
+
+    if (num_ambiguous == 0) {
+        fprintf(fp, "\nNone\n");
+    }
+
+    free(type_ctors);
 }
 
 MR_bool

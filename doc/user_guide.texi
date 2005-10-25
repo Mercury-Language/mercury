@@ -4003,6 +4003,18 @@ If the @samp{-u} or @samp{--uci} option is given,
 the list will include the procedures of
 compiler generated unify, compare, index and initialization predicates.
 Normally, the list includes the procedures of only user defined predicates.
+@sp 1
+@item ambiguity [@var{filename}]
+@kindex ambiguity (mdb command)
+Print all ambiguous predicate, function and type names,
+to the named file if a filename is given,
+and to standard output otherwise.
+A predicate or function name is ambiguous
+if a predicate or function is defined with that name
+in more than one module or with more than one arity.
+A type name is ambiguous
+if a type is defined with that name
+in more than one module or with more than one arity.
 @end table
 
 @node Declarative debugging

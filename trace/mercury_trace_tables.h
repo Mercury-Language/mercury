@@ -74,6 +74,14 @@ extern	void		MR_dump_module_list(FILE *fp);
 extern	void		MR_dump_module_procs(FILE *fp, const char *name);
 
 /*
+** Print the names of ambiguous predicates, functions and types. The ambiguity
+** may exist because a predicate, function or type with that name is defined
+** with more than one arity or in more than one module.
+*/
+
+extern	void		MR_print_ambiguities(FILE *fp);
+
+/*
 ** A procedure specification has several components, the meaning of which
 ** depends on whether the procedure is from a user defined procedure (user)
 ** or from a unify, compare, index or init procedure (uci).

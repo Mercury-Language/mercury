@@ -39,6 +39,9 @@ view                 xyzzy xyzzy xyzzy xyzzy xyzzy
 hold                 xyzzy xyzzy xyzzy xyzzy xyzzy
 diff                 xyzzy xyzzy xyzzy xyzzy xyzzy
 save_to_file         xyzzy xyzzy xyzzy xyzzy xyzzy
+list                 xyzzy xyzzy xyzzy xyzzy xyzzy
+push_list_dir        xyzzy xyzzy xyzzy xyzzy xyzzy
+pop_list_dir         xyzzy xyzzy xyzzy xyzzy xyzzy
 break                xyzzy xyzzy xyzzy xyzzy xyzzy
 condition            xyzzy xyzzy xyzzy xyzzy xyzzy
 ignore               xyzzy xyzzy xyzzy xyzzy xyzzy
@@ -92,3 +95,4 @@ all_type_ctors       xyzzy xyzzy xyzzy xyzzy xyzzy
 class_decl           xyzzy xyzzy xyzzy xyzzy xyzzy
 all_class_decls      xyzzy xyzzy xyzzy xyzzy xyzzy
 all_procedures       xyzzy xyzzy xyzzy xyzzy xyzzy
+ambiguity            xyzzy xyzzy xyzzy xyzzy xyzzy

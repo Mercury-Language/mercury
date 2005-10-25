@@ -536,6 +536,7 @@ static  MR_TraceCmdFunc MR_trace_cmd_class_decl;
 static  MR_TraceCmdFunc MR_trace_cmd_all_type_ctors;
 static  MR_TraceCmdFunc MR_trace_cmd_all_class_decls;
 static  MR_TraceCmdFunc MR_trace_cmd_all_procedures;
+static  MR_TraceCmdFunc MR_trace_cmd_ambiguity;
 static  MR_TraceCmdFunc MR_trace_cmd_save;
 static  MR_TraceCmdFunc MR_trace_cmd_quit;
 static  MR_TraceCmdFunc MR_trace_cmd_dd;
@@ -635,6 +636,9 @@ static  MR_bool     MR_trace_options_class_decl(MR_bool *print_methods,
                         MR_bool *print_instances, char ***words,
                         int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_all_procedures(MR_bool *separate,
+                        MR_bool *uci, char **module, char ***words,
+                        int *word_count, const char *cat, const char *item);
+static  MR_bool     MR_trace_options_ambiguity(MR_bool *separate,
                         MR_bool *uci, char **module, char ***words,
                         int *word_count, const char *cat, const char *item);
 static  MR_bool     MR_trace_options_diff(int *start, int *max,
@@ -5508,7 +5512,7 @@ MR_trace_cmd_all_type_ctors(char **words, int word_count,
             module_name = NULL;
         }
 
-        list = MR_all_type_ctor_infos();
+        list = MR_all_type_ctor_infos(NULL);
         count = 0;
         MR_for_dlist(element_ptr, list) {
             type_ctor_info = (MR_TypeCtorInfo) MR_dlist_data(element_ptr);
@@ -5533,7 +5537,7 @@ MR_trace_cmd_all_type_ctors(char **words, int word_count,
             fprintf(MR_mdb_out, "in module %s: %d\n", module_name, count);
         }
     } else {
-        MR_trace_usage("developer", "class_decl");
+        MR_trace_usage("developer", "all_type_ctors");
     }
 
     return KEEP_INTERACTING;
@@ -5566,7 +5570,7 @@ MR_trace_cmd_all_class_decls(char **words, int word_count,
         } else {
             module_name = NULL;
         }
-        list = MR_all_type_class_decl_infos();
+        list = MR_all_type_class_decl_infos(NULL);
         count = 0;
         MR_for_dlist(element_ptr, list) {
             type_class_decl_info = (MR_TypeClassDeclInfo *)
@@ -5593,7 +5597,7 @@ MR_trace_cmd_all_class_decls(char **words, int word_count,
             fprintf(MR_mdb_out, "in module %s: %d\n", module_name, count);
         }
     } else {
-        MR_trace_usage("developer", "class_decl");
+        MR_trace_usage("developer", "all_class_decls");
     }
 
     return KEEP_INTERACTING;
@@ -5638,7 +5642,44 @@ MR_trace_cmd_all_procedures(char **words, int word_count,
             fprintf(MR_mdb_out, "mdb: wrote table to `%s'.\n", filename);
         }
     } else {
+        MR_trace_usage("developer", "all_procedures");
+    }
+
+    return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_ambiguity(char **words, int word_count,
+    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+    MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+    const char      *filename;
+    FILE            *fp;
+
+    MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
+
+    if (word_count == 1) {
+        filename = NULL;
+        fp = MR_mdb_out;
+    } else if (word_count == 2) {
+        filename = words[1];
+        fp = fopen(filename, "w");
+        if (fp == NULL) {
+            fflush(MR_mdb_out);
+            fprintf(MR_mdb_err, "mdb: error opening `%s': %s.\n",
+                filename, strerror(errno));
+            return KEEP_INTERACTING;
+        }
+    } else {
         MR_trace_usage("developer", "class_decl");
+        return KEEP_INTERACTING;
+    }
+
+    MR_print_ambiguities(fp);
+
+    if (filename != NULL) {
+        fprintf(MR_mdb_out, "mdb: wrote report to `%s'.\n", filename);
+        fclose(fp);
     }
 
     return KEEP_INTERACTING;
@@ -8642,6 +8683,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
     { "developer", "all_class_decls", MR_trace_cmd_all_class_decls,
         NULL, MR_trace_null_completer },
     { "developer", "all_procedures", MR_trace_cmd_all_procedures,
+        NULL, MR_trace_filename_completer },
+    { "developer", "ambiguity", MR_trace_cmd_ambiguity,
         NULL, MR_trace_filename_completer },
 
     /* End of doc/mdb_command_list. */
