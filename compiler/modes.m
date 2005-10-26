@@ -3193,9 +3193,16 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, NonLocals, InstmapDelta,
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
         ProcInfo0),
 
-        % Create a poly_info for the caller.
+        % Create a poly_info for the caller.  We have to set the varset and
+        % vartypes from the mode_info, not the proc_info, because new vars may
+        % have been introduced during mode analysis (e.g., when adding
+        % unifications to handle implied modes).
         %
-    polymorphism__create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0,
+    mode_info_get_varset(!.ModeInfo, VarSet0),
+    mode_info_get_var_types(!.ModeInfo, VarTypes0),
+    proc_info_set_varset(VarSet0, ProcInfo0, ProcInfo1),
+    proc_info_set_vartypes(VarTypes0, ProcInfo1, ProcInfo2),
+    polymorphism__create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2,
         PolyInfo0),
 
         % Create a goal_info for the call.
@@ -3215,7 +3222,7 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, NonLocals, InstmapDelta,
         % Update the information in the predicate table.
         %
     polymorphism__poly_info_extract(PolyInfo, PredInfo0, PredInfo,
-        ProcInfo0, ProcInfo, ModuleInfo1),
+        ProcInfo2, ProcInfo, ModuleInfo1),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
 

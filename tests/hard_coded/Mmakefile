@@ -163,6 +163,7 @@ ORDINARY_PROGS=	\
 	setjmp_test \
 	shift_test \
 	solve_quadratic \
+	solver_build_call \
 	solver_construction_init_test \
 	solver_disj_inits \
 	solver_ite_inits \
