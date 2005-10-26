@@ -129,8 +129,7 @@ MR_materialize_closure_type_params(MR_Closure *closure)
         int                 i;
 
         count = tvar_locns->MR_tp_param_count;
-        type_params = (MR_TypeInfoParams)
-            MR_NEW_ARRAY(MR_Word, count + 1);
+        type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
         for (i = 0; i < count; i++) {
             if (tvar_locns->MR_tp_param_locns[i] != 0) {
@@ -164,8 +163,7 @@ MR_materialize_typeclass_info_type_params(MR_Word typeclass_info,
         int                 i;
 
         count = tvar_locns->MR_tp_param_count;
-        type_params = (MR_TypeInfoParams)
-            MR_NEW_ARRAY(MR_Word, count + 1);
+        type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
         for (i = 0; i < count; i++) {
             if (tvar_locns->MR_tp_param_locns[i] != 0)
@@ -198,8 +196,7 @@ MR_materialize_answer_block_type_params(const MR_Type_Param_Locns *tvar_locns,
         int                 i;
 
         count = tvar_locns->MR_tp_param_count;
-        type_params = (MR_TypeInfoParams)
-            MR_NEW_ARRAY(MR_Word, count + 1);
+        type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
         for (i = 0; i < count; i++) {
             if (tvar_locns->MR_tp_param_locns[i] != 0) {
