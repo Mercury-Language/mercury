@@ -1,0 +1,8 @@
+MAIN_TARGET=gen_merc_wxs
+depend: gen_merc_wxs.depend
+
+VPATH = ..:$(MMAKE_VPATH)
+MLLIBS = -lwix
+MCFLAGS = -I.. -R..
+MLFLAGS = -L..
+C2INITARGS = ../wix.init

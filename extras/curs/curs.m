@@ -829,7 +829,7 @@ addstr(Attr, Str) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_proc("C", curs:((Attr1::in) + (Attr2::in)) = (Attr::out),
+:- pragma foreign_proc("C", curs.((Attr1::in) + (Attr2::in)) = (Attr::out),
     [will_not_call_mercury, promise_pure], "
 
     Attr = (chtype)Attr1 | (chtype)Attr2;

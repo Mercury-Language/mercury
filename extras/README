@@ -79,6 +79,11 @@ trailed_update	Some library modules that make use of backtrackable
 		destructive update, including a module which provides
 		some support for Prolog-style unification constraints.
 
+windows_installer_generator
+		A library for generating Wix source files.  WiX is an XML
+		language that is used to generate Microsoft Windows Installer
+		(.msi) packages.
+
 xml		An XML parsing library.
 
 xml_stylesheets

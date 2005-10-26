@@ -36,6 +36,7 @@ Changes to the compiler backends:
 
 Changes to the extras distribution:
 * We've added a library of data structures designed to work with solver types. 
+* We've added a library to generate Windows installer packages.
 
 
 DETAILED LISTING
@@ -115,6 +116,11 @@ Changes to the extras distribution:
   library's array, assoc_list, list and map modules that are designed to
   work with terms that have inst `any'.
 
+* We've added a library to generate Windows installer packages.
+
+  The directory extras/windows_installer_generator contains a library to
+  generate Wix source files.  WiX is an XML language that is used to generate
+  Microsoft Windows Installer (.msi) packages.
 
 NEWS for Mercury 0.12
 ---------------------

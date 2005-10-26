@@ -1,0 +1,30 @@
+This is the top-level module for a Mercury Wix source file generator.
+WiX is an XML language that is used to generate Microsoft Windows Installer
+(.msi) packages.
+
+To compile the XML into an .msi file you need the WiX compiler, available
+from wix.sourceforge.net.  You will also need a tool to generate
+GUID. GUIDs are unique identifiers that Windows uses to identify all
+the components in a package.  A GUID generator for Linux is uuidgen.
+Microsoft Visual Studio also comes with a GUID generator, uuidgen.exe.
+
+For documentation on the toolkit API see wix.m in this directory.
+
+The predicate wix.installer.generate_installer will generate a .wxs file
+based on information in its arguments.
+
+The .wxs file can then be compiled to a .msi file using the Wix toolset.
+The following commands will generate <filename>.msi, given <filename>.wxs.
+
+candle <filename>.wxs
+light <filename>.wixobj
+
+NOTE that there are still a few features missing from the current
+implementation.  For example the user cannot select different features of a
+product to install -- it's all or nothing.  Also Windows installer error codes
+are not converted into friendlier error messages at the moment.  The installer
+wizard is also not as customizable as it could be.
+
+To build the wix library execute the command:
+
+mmc --make libwix
