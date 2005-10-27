@@ -3974,10 +3974,10 @@ generate_file_dependencies(FileName, !IO) :-
     io::di, io::uo) is det.
 
 generate_dependencies(ModuleName, DepsMap0, !IO) :-
-    % first, build up a map of the dependencies.
+    % First, build up a map of the dependencies.
     generate_deps_map([ModuleName], DepsMap0, DepsMap, !IO),
     %
-    % check whether we could read the main `.m' file
+    % Check whether we could read the main `.m' file.
     %
     map__lookup(DepsMap, ModuleName, deps(_, ModuleImports)),
     module_imports_get_error(ModuleImports, Error),
@@ -3994,8 +3994,8 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
             DepsMap, !IO),
 
         %
-        % compute the interface deps relation and
-        % the implementation deps relation from the deps map
+        % Compute the interface deps relation and the implementation deps
+        % relation from the deps map.
         %
         relation__init(IntDepsRel0),
         relation__init(ImplDepsRel0),
@@ -4004,10 +4004,10 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
             IntDepsRel0, IntDepsRel, ImplDepsRel0, ImplDepsRel),
 
         %
-        % compute the trans-opt deps ordering, by doing an
-        % approximate topological sort of the implementation deps,
-        % and then finding the subset of those for which of those
-        % we have (or can make) trans-opt files.
+        % Compute the trans-opt deps ordering, by doing an approximate
+        % topological sort of the implementation deps, and then finding
+        % the subset of those for which of those we have (or can make)
+        % trans-opt files.
         %
         relation__atsort(ImplDepsRel, ImplDepsOrdering0),
         maybe_output_module_order(ModuleName, ImplDepsOrdering0, !IO),
@@ -4023,12 +4023,11 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
         % write_list(ImplDepsAL, "\n", print, !IO), nl(!IO),
 
         %
-        % compute the indirect dependencies: they are equal to the
-        % composition of the implementation dependencies
-        % with the transitive closure of the implementation
-        % dependencies.  (We used to take the transitive closure
-        % of the interface dependencies, but we now include
-        % implementation details in the interface files).
+        % Compute the indirect dependencies: they are equal to the composition
+        % of the implementation dependencies with the transitive closure of the
+        % implementation dependencies.  (We used to take the transitive closure
+        % of the interface dependencies, but we now include implementation
+        % details in the interface files).
         %
         relation__tc(ImplDepsRel, TransImplDepsRel),
         relation__compose(ImplDepsRel, TransImplDepsRel, IndirectDepsRel),
@@ -4068,6 +4067,7 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
 
 %   % Output the various relations into a file which can be
 %   % processed by the dot package to draw the relations.
+%   %
 % :- pred write_relations(string::in, relation(sym_name)::in,
 %   relation(sym_name)::in, relation(sym_name)::in,
 %   relation(sym_name)::in, relation(sym_name)::in, io::di, io::uo) is det.
@@ -4168,7 +4168,7 @@ write_module_scc(Stream, SCC0, !IO) :-
     % These are all computed from the DepsMap.
     % TransOptOrder gives the ordering that is used to determine
     % which other modules the .trans_opt files may depend on.
-
+    %
 :- pred generate_dependencies_write_d_files(list(deps)::in,
     deps_rel::in, deps_rel::in, deps_rel::in, deps_rel::in,
     list(module_name)::in, deps_map::in, io::di, io::uo) is det.
@@ -4192,10 +4192,9 @@ generate_dependencies_write_d_files([Dep | Deps],
             !IO),
         (
             Intermod = yes,
-            % Be conservative with inter-module optimization
-            % -- assume a module depends on the `.int', `.int2'
-            % and `.opt' files for all transitively imported
-            % modules.
+            % Be conservative with inter-module optimization -- assume a
+            % module depends on the `.int', `.int2' and `.opt' files
+            % for all transitively imported modules.
             IntDeps = IndirectOptDeps,
             ImplDeps = IndirectOptDeps,
             IndirectDeps = IndirectOptDeps
@@ -4213,8 +4212,8 @@ generate_dependencies_write_d_files([Dep | Deps],
         ; Target = java, Lang = java
         ; Target = il, Lang = il
         ),
-        % Assume we need the `.mh' files for all imported
-        % modules (we will if they define foreign types).
+        % Assume we need the `.mh' files for all imported modules
+        % (we will if they define foreign types).
         ForeignImports = list__map(
             (func(ThisDep) = foreign_import_module(Lang, ThisDep,
                 term__context_init)),
@@ -4226,10 +4225,9 @@ generate_dependencies_write_d_files([Dep | Deps],
         module_imports_set_indirect_deps(IndirectDeps, !Module),
 
         %
-        % Compute the trans-opt dependencies for this module.
-        % To avoid the possibility of cycles, each module is
-        % only allowed to depend on modules that occur later
-        % than it in the TransOptOrder.
+        % Compute the trans-opt dependencies for this module. To avoid
+        % the possibility of cycles, each module is only allowed to depend
+        % on modules that occur later than it in the TransOptOrder.
         %
         FindModule = (pred(OtherModule::in) is semidet :-
             ModuleName \= OtherModule
@@ -4242,11 +4240,9 @@ generate_dependencies_write_d_files([Dep | Deps],
             TransOptDeps = []
         ),
 
-        %
         % Note that even if a fatal error occured for one of the files
-        % that the current Module depends on, a .d file is still
-        % produced, even though it probably contains incorrect
-        % information.
+        % that the current Module depends on, a .d file is still produced,
+        % even though it probably contains incorrect information.
         module_imports_get_error(!.Module, Error),
         ( Error \= fatal_module_errors ->
             write_dependency_file(!.Module, set__list_to_set(IndirectOptDeps),
@@ -4320,6 +4316,7 @@ generate_deps_map([Module | Modules], !DepsMap, !IO) :-
     % Construct a pair of dependency relations (the interface dependencies
     % and the implementation dependencies) for all the modules in the
     % program.
+    %
 :- pred deps_list_to_deps_rel(list(deps)::in, deps_map::in,
     deps_rel::in, deps_rel::out, deps_rel::in, deps_rel::out) is det.
 
@@ -4369,7 +4366,7 @@ deps_list_to_deps_rel([Deps | DepsList], DepsMap, !IntRel, !ImplRel) :-
     ),
     deps_list_to_deps_rel(DepsList, DepsMap, !IntRel, !ImplRel).
 
-    % add interface dependencies to the interface deps relation
+    % Add interface dependencies to the interface deps relation.
     %
 :- pred add_int_deps(relation_key::in, module_imports::in,
     deps_rel::in, deps_rel::out) is det.
@@ -4379,15 +4376,15 @@ add_int_deps(ModuleKey, ModuleImports, Rel0, Rel) :-
     list__foldl(AddDep, ModuleImports ^ parent_deps, Rel0, Rel1),
     list__foldl(AddDep, ModuleImports ^ int_deps, Rel1, Rel).
 
-    % add direct implementation dependencies for a module to the
-    % impl. deps relation
+    % Add direct implementation dependencies for a module to the
+    % implementation deps relation.
     %
 :- pred add_impl_deps(relation_key::in, module_imports::in,
     deps_rel::in, deps_rel::out) is det.
 
 add_impl_deps(ModuleKey, ModuleImports, !Rel) :-
-    % the implementation dependencies are a superset of the
-    % interface dependencies, so first we add the interface deps
+    % The implementation dependencies are a superset of the
+    % interface dependencies, so first we add the interface deps.
     add_int_deps(ModuleKey, ModuleImports, !Rel),
     % then we add the impl deps
     module_imports_get_impl_deps(ModuleImports, ImplDeps),
@@ -4448,6 +4445,7 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 
     % Write out the `.dv' file, using the information collected in the
     % deps_map data structure.
+    %
 :- pred generate_dependencies_write_dv_file(file_name::in, module_name::in,
     deps_map::in, io::di, io::uo) is det.
 
@@ -4476,6 +4474,7 @@ generate_dependencies_write_dv_file(SourceFileName, ModuleName, DepsMap,
 
     % Write out the `.dep' file, using the information collected in the
     % deps_map data structure.
+    %
 :- pred generate_dependencies_write_dep_file(file_name::in, module_name::in,
     deps_map::in, io::di, io::uo) is det.
 
@@ -4489,8 +4488,7 @@ generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap,
     io__open_output(DepFileName, DepResult, !IO),
     (
         DepResult = ok(DepStream),
-        generate_dep_file(SourceFileName, ModuleName, DepsMap,
-            DepStream, !IO),
+        generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO),
         io__close_output(DepStream, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
@@ -4884,9 +4882,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
             write_compact_dependencies_list(Modules,
                 "$(mihs_subdir)", ".mih", Basis, DepStream, !IO)
         ;
-            % For the IL and Java targets, currently we don't
-            % generate `.mih' files at all; although perhaps
-            % we should...
+            % For the IL and Java targets, currently we don't generate
+            % `.mih' files at all; although perhaps we should...
             true
         )
     ;
@@ -6051,7 +6048,7 @@ write_compact_dependencies_separator(yes(_), DepStream, !IO) :-
     % Look up a module in the dependency map.
     % If we don't know its dependencies, read the module and
     % save the dependencies in the dependency map.
-
+    %
 :- pred lookup_dependencies(module_name::in, bool::in, bool::out,
     deps_map::in, deps_map::out, module_imports::out,
     io::di, io::uo) is det.
@@ -6099,7 +6096,7 @@ insert_into_deps_map(ModuleImports, DepsMap0, DepsMap) :-
 
     % Read a module to determine the (direct) dependencies
     % of that module and any nested sub-modules it contains.
-
+    %
 :- pred read_dependencies(module_name::in, bool::in, list(module_imports)::out,
     io::di, io::uo) is det.
 
@@ -6141,7 +6138,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
         InterfaceUseDeps0, InterfaceUseDeps),
     list__append(InterfaceImportDeps, InterfaceUseDeps, InterfaceDeps),
 
-    % we don't fill in the indirect dependencies yet
+    % We don't fill in the indirect dependencies yet.
     IndirectDeps = [],
 
     get_children(Items, IncludeDeps),
@@ -6982,30 +6979,28 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         ThisModuleItems, OtherItems, SubModules, !IO) :-
     (
         %
-        % check for a `module' declaration, which signals
-        % the start of a nested module
+        % Check for a `module' declaration, which signals
+        % the start of a nested module.
         %
         Item = module_defn(VarSet, module(SubModuleName)) - Context
     ->
         %
-        % parse in the items for the nested submodule
+        % Parse in the items for the nested submodule.
         %
         split_into_submodules_2(SubModuleName, Items1, InInterface0,
             Items2, SubModules0, !IO),
         %
-        % parse in the remaining items for this module
+        % Parse in the remaining items for this module.
         %
         split_into_submodules_3(ModuleName, Items2, InParentInterface,
             InInterface0, ThisModuleItems0, Items3, SubModules1, !IO),
 
         %
-        % combine the sub-module declarations from the previous two
-        % steps
+        % Combine the sub-module declarations from the previous two steps.
         %
         list__foldl(add_submodule, SubModules0, SubModules1, SubModules),
         %
-        % replace the nested submodule with an `include_module'
-        % declaration
+        % Replace the nested submodule with an `include_module' declaration.
         %
         IncludeSubMod = module_defn(VarSet,
             include_module([SubModuleName])) - Context,
@@ -7013,7 +7008,7 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         OtherItems = Items3
     ;
         %
-        % check for a matching `end_module' declaration
+        % Check for a matching `end_module' declaration.
         %
         Item = module_defn(_VarSet, end_module(ModuleName)) - _
     ->
@@ -7025,14 +7020,13 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         map__init(SubModules)
     ;
         %
-        % otherwise, process the next item in this module
+        % Otherwise, process the next item in this module.
         %
 
         %
-        % update the flag which records whether
-        % we're currently in the interface section,
-        % and report an error if there is an `implementation'
-        % section inside an `interface' section.
+        % Update the flag which records whether we're currently in the
+        % interface section, and report an error if there is an
+        % `implementation' section inside an `interface' section.
         %
         ( Item = module_defn(_, interface) - _Context ->
             InInterface1 = yes
@@ -7063,14 +7057,14 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         ),
 
         %
-        % parse the remaining items for this module,
+        % Parse the remaining items for this module.
         %
         split_into_submodules_3(ModuleName, Items1,
             InParentInterface, InInterface1,
             ThisModuleItems0, Items2, SubModules, !IO),
         %
-        % put the current item back onto the
-        % front of the item list for this module
+        % Put the current item back onto the front of the item list
+        % for this module.
         %
         ThisModuleItems = [Item | ThisModuleItems0],
         OtherItems = Items2
@@ -7108,20 +7102,12 @@ report_error_implementation_in_interface(ModuleName, Context, !IO) :-
     ;
         error("report_error_implementation_in_interface")
     ),
-    prog_out__write_context(Context, !IO),
-    io__write_string("In interface for module `", !IO),
-    prog_out__write_sym_name(ParentModule, !IO),
-    io__write_string("':\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  in definition of sub-module `", !IO),
-    io__write_string(ChildModule, !IO),
-    io__write_string("':\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string(
-        "  error: `:- implementation.' declaration for sub-module\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string(
-        "  occurs in interface section of parent module.\n", !IO),
+    Pieces = [words("In interface for module"), sym_name(ParentModule),
+        suffix(":"), nl,
+        words("in definition of sub-module `" ++ ChildModule ++ "':"), nl,
+        words("error: `:- implementation.' declaration for sub-module\n"),
+        words("occurs in interface section of parent module.")],
+    write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).
 
 :- pred report_duplicate_modules(set(module_name)::in, item_list::in,
@@ -7153,21 +7139,10 @@ report_error_duplicate_module_decl(ModuleName - Context, !IO) :-
     ;
         error("report_error_duplicate_module_decl")
     ),
-    % The error message should look this this:
-    % foo.m:123: In module `foo':
-    % foo.m:123:   error: sub-module `bar' declared as both
-    % foo.m:123:   a separate sub-module and a nested sub-module.
-    prog_out__write_context(Context, !IO),
-    io__write_string("In module `", !IO),
-    prog_out__write_sym_name(ParentModule, !IO),
-    io__write_string("':\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  error: sub-module `", !IO),
-    io__write_string(ChildModule, !IO),
-    io__write_string("' declared as both\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  a separate sub-module and a nested sub-module.\n",
-        !IO),
+    Pieces = [words("In module"), sym_name(ParentModule), suffix(":"), nl,
+        words("error: sub-module `" ++ ChildModule ++ "' declared"),
+        words("as both a separate sub-module and a nested sub-module.")],
+    write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).
 
 :- pred report_items_after_end_module(prog_context::in, io::di, io::uo) is det.
@@ -7176,7 +7151,7 @@ report_items_after_end_module(Context, !IO) :-
     ErrorPieces = [words("Error: item(s) after end_module declaration.")],
     write_error_pieces(Context, 0, ErrorPieces, !IO),
     io.set_exit_status(1, !IO).
-            
+
 :- pred report_non_abstract_instance_in_interface(prog_context::in,
     io::di, io::uo) is det.
 
@@ -7500,12 +7475,11 @@ make_abstract_unify_compare(type_defn(VarSet, Name, Args, TypeDefn0, Cond),
             yes(abstract_noncanonical_type(solver_type)))
     ).
 
-    % All instance declarations must be written
-    % to `.int' files as abstract instance
-    % declarations because the method names
-    % have not yet been module qualified.
-    % This could cause the wrong predicate to be
+    % All instance declarations must be written to `.int' files as
+    % abstract instance declarations, because the method names have not yet
+    % been module qualified. This could cause the wrong predicate to be
     % used if calls to the method are specialized.
+    %
 :- pred make_abstract_instance(item::in, item::out) is semidet.
 
 make_abstract_instance(Item0, Item) :-
