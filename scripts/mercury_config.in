@@ -137,6 +137,22 @@ mkdir $TMPDIR/java || exit 1
 mkdir $TMPDIR/java/runtime || exit 1
 touch $TMPDIR/java/runtime/Constants.java.in || exit 1
 touch $TMPDIR/java/runtime/Native.java.in || exit 1
+mkdir $TMPDIR/compiler || exit 1
+touch $TMPDIR/compiler/COMP_FLAGS.in || exit 1
+mkdir $TMPDIR/library || exit 1
+touch $TMPDIR/library/LIB_FLAGS.in || exit 1
+mkdir $TMPDIR/mdbcomp || exit 1
+touch $TMPDIR/mdbcomp/MDBCOMP_FLAGS.in || exit 1
+mkdir $TMPDIR/browser || exit 1
+touch $TMPDIR/browser/MDB_FLAGS.in || exit 1
+mkdir $TMPDIR/analysis || exit 1
+touch $TMPDIR/analysis/ANALYSIS_FLAGS.in || exit 1
+mkdir $TMPDIR/slice || exit 1
+touch $TMPDIR/slice/SLICE_FLAGS.in || exit 1
+mkdir $TMPDIR/profiler || exit 1
+touch $TMPDIR/profiler/PROF_FLAGS.in || exit 1
+mkdir $TMPDIR/deep_profiler || exit 1
+touch $TMPDIR/deep_profiler/DEEP_FLAGS.in || exit 1
 
 cd $TMPDIR
 case $# in
