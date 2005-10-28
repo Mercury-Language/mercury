@@ -466,8 +466,8 @@ MR_string_hash_lookup(MR_TrieNode t, MR_ConstString key)
 MR_TrieNode
 MR_word_hash_lookup_or_add(MR_TrieNode t, MR_Word key)
 {
-#define key_format              "%p"
-#define key_cast                (MR_Word)
+#define key_format              "%d"
+#define key_cast                MR_Word
 #define table_type              MR_WordHashTableSlot
 #define table_field             word_slot_ptr
 #define hash(key)               ((long) (key))
@@ -486,8 +486,8 @@ MR_word_hash_lookup_or_add(MR_TrieNode t, MR_Word key)
 MR_TrieNode
 MR_word_hash_lookup(MR_TrieNode t, MR_Word key)
 {
-#define key_format              "%p"
-#define key_cast                (MR_Word)
+#define key_format              "%d"
+#define key_cast                MR_Word
 #define table_type              MR_WordHashTableSlot
 #define table_field             word_slot_ptr
 #define hash(key)               ((long) (key))
