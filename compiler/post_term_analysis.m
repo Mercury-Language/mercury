@@ -1,3 +1,5 @@
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -24,8 +26,7 @@
 
 :- import_module io.
 
-:- pred post_term_analysis.process_module(module_info::in, io::di, io::uo)
-	is det.
+:- pred run_post_term_analysis(module_info::in, io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -58,197 +59,194 @@
 
 %----------------------------------------------------------------------------%
 
-post_term_analysis.process_module(ModuleInfo, !IO) :-
-	warn_non_term_user_special_preds(ModuleInfo, !IO).
+run_post_term_analysis(ModuleInfo, !IO) :-
+    warn_non_term_user_special_preds(ModuleInfo, !IO).
 
 %----------------------------------------------------------------------------%
 %
-% Warn about user-defined special predicates that do not terminate. 
+% Warn about user-defined special predicates that do not terminate
 %
 
-% We check the termination status of user-defined special predicates by
-% taking the body goal of the compiler generated wrapper predicate and
-% checking if that terminates.  We cannot check the termination status
-% of the compiler generated wrappers directly, because termination analysis
-% always assumes that they terminate.
+% We check the termination status of user-defined special predicates by taking
+% the body goal of the compiler generated wrapper predicate and checking if
+% that terminates.  We cannot check the termination status of the compiler
+% generated wrappers directly, because termination analysis always assumes
+% that they terminate.
 %
-% Since all of the special predicates of interest here have to be defined
-% in the same module as the type that uses them, we only check locally
-% defined types.  The ones for imported types will be checked when the
-% relevant module is compiled and analysed. 
+% Since all of the special predicates of interest here have to be defined in
+% the same module as the type that uses them, we only check locally defined
+% types.  The ones for imported types will be checked when the relevant module
+% is compiled and analysed. 
 
 :- pred warn_non_term_user_special_preds(module_info::in, io::di, io::uo)
-	is det.
+    is det.
 
 warn_non_term_user_special_preds(ModuleInfo, !IO) :-
-	globals.io_lookup_bool_option(termination, Termination, !IO),
-	globals.io_lookup_bool_option(warn_non_term_special_preds,
-		WarnSpecialPreds, !IO),
-	globals.io_lookup_bool_option(make_optimization_interface,
-		MakeOptInt, !IO),
-	globals.io_lookup_bool_option(transitive_optimization,
-		TransIntermodOpt, !IO),
-	( 
-		Termination = yes, WarnSpecialPreds = yes,
-		%
-		% Don't run this pass if we are only building the
-		% optimization interface and we are compiling
-		% with `--transitive-intermodule-optimization'
-		% enabled because we'll get more accurate results
-		% when we build the .trans_opt files.  Any warnings 
-		% this time around may be spurious.
-		%
-		not (MakeOptInt = yes, TransIntermodOpt = yes)
-	->
-		module_info_get_special_pred_map(ModuleInfo,
-			SpecialPredMap),
-		module_info_get_type_table(ModuleInfo, TypeTable),
-		map.foldl(warn_non_term_user_special_pred(ModuleInfo,
-			TypeTable), SpecialPredMap, !IO)
-	;
-		true
-	).
+    globals.io_lookup_bool_option(termination, Termination, !IO),
+    globals.io_lookup_bool_option(warn_non_term_special_preds,
+        WarnSpecialPreds, !IO),
+    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
+        !IO),
+    globals.io_lookup_bool_option(transitive_optimization, TransIntermodOpt,
+        !IO),
+    ( 
+        Termination = yes, WarnSpecialPreds = yes,
+        %
+        % Don't run this pass if we are only building the optimization
+        % interface and we are compiling with
+        % `--transitive-intermodule-optimization' enabled because we'll get
+        % more accurate results when we build the .trans_opt files.  Any
+        % warnings this time around may be spurious.
+        %
+        not (MakeOptInt = yes, TransIntermodOpt = yes)
+    ->
+        module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        map.foldl(warn_non_term_user_special_pred(ModuleInfo, TypeTable),
+            SpecialPredMap, !IO)
+    ;
+        true
+    ).
 
 :- pred warn_non_term_user_special_pred(module_info::in, type_table::in,
-	special_pred::in, pred_id::in, io::di, io::uo) is det.
+    special_pred::in, pred_id::in, io::di, io::uo) is det.
 
 warn_non_term_user_special_pred(ModuleInfo, TypeTable,
-		SpecialPredId - TypeCtor, PredId, !IO) :-
-	%
-	% index predicates cannot be defined by the user and should
-	% always terminate in any case.  Do not perform this
-	% check for builtin types that don't have hlds_type_defns.
-	%
-	BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
-	(
-		SpecialPredId \= spec_pred_index,
-		not list.member(TypeCtor, BuiltinTypeCtors)
-	->
-		map.lookup(TypeTable, TypeCtor, TypeDefn),
-		get_type_defn_status(TypeDefn, ImportStatus),
-		(
-			status_defined_in_this_module(ImportStatus, yes)
-		->
-			process_special_pred_for_type(ModuleInfo,
-				SpecialPredId, TypeCtor, PredId, TypeDefn, !IO)
-		;
-			true
-		)		
-	;
-		true
-	).
+        SpecialPredId - TypeCtor, PredId, !IO) :-
+    %
+    % index predicates cannot be defined by the user and should
+    % always terminate by design.  Do not perform this
+    % check for builtin types that don't have hlds_type_defns.
+    %
+    BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
+    (
+        SpecialPredId \= spec_pred_index,
+        not list.member(TypeCtor, BuiltinTypeCtors)
+    ->
+        map.lookup(TypeTable, TypeCtor, TypeDefn),
+        get_type_defn_status(TypeDefn, ImportStatus),
+        (
+            status_defined_in_this_module(ImportStatus, yes)
+        ->
+            process_special_pred_for_type(ModuleInfo,
+                SpecialPredId, TypeCtor, PredId, TypeDefn, !IO)
+        ;
+            true
+        )       
+    ;
+        true
+    ).
 
-	% If the specified special predicate for the given type is user-defined
-	% then check that it terminates.  Emit a warning if it does not.
-	%
+    % If the specified special predicate for the given type is user-defined
+    % then check that it terminates.  Emit a warning if it does not.
+    %
 :- pred process_special_pred_for_type(module_info::in,
-	special_pred_id::in, type_ctor::in, pred_id::in,
-	hlds_type_defn::in, io::di, io::uo) is det.
+    special_pred_id::in, type_ctor::in, pred_id::in,
+    hlds_type_defn::in, io::di, io::uo) is det.
 
 process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor,
-		PredId, TypeDefn, !IO) :-
-	(
-		special_pred_needs_term_check(ModuleInfo, SpecialPredId,
-			TypeDefn)
-	->
-  		% Compiler generated special preds are always mode 0.
- 		proc_id_to_int(ProcId, 0),
- 		module_info_pred_proc_info(ModuleInfo,
- 			PredId, ProcId, _, ProcInfo),
- 		proc_info_goal(ProcInfo, BodyGoal),
- 		%
- 		% We cannot just look up the the termination_info because
- 		% the termination status of compiler generated wrapper
- 		% predicates for special preds is always set to terminates.
- 		% Instead, we check if the body goal of the generated wrapper
- 		% predicate terminates.
- 		%
-		( not goal_cannot_loop(ModuleInfo, BodyGoal) ->
- 			get_type_defn_context(TypeDefn, Context),
-			emit_non_term_user_special_warning(Context,
-				SpecialPredId, TypeCtor, !IO)	
- 		;
- 			true
- 		)
-  	;
-		true
-	).
+        PredId, TypeDefn, !IO) :-
+    (
+        special_pred_needs_term_check(ModuleInfo, SpecialPredId,
+            TypeDefn)
+    ->
+        % Compiler generated special preds are always mode 0.
+        proc_id_to_int(ProcId, 0),
+        module_info_pred_proc_info(ModuleInfo,
+            PredId, ProcId, _, ProcInfo),
+        proc_info_goal(ProcInfo, BodyGoal),
+        %
+        % We cannot just look up the the termination_info because the
+        % termination status of compiler generated wrapper predicates for
+        % special preds is always set to terminates.  Instead, we check if the
+        % body of the generated wrapper predicate terminates.
+        %
+        ( not goal_cannot_loop(ModuleInfo, BodyGoal) ->
+            get_type_defn_context(TypeDefn, Context),
+            emit_non_term_user_special_warning(Context,
+                SpecialPredId, TypeCtor, !IO)   
+        ;
+            true
+        )
+    ;
+        true
+    ).
 
-	% Succeeds if the specified type of special_pred for this
-	% type needs to have its termination status checked.
-	%
+    % Succeeds if the specified type of special_pred for this type needs to
+    % have its termination status checked.
+    %
 :- pred special_pred_needs_term_check(module_info::in,
-	special_pred_id::in, hlds_type_defn::in) is semidet.
+    special_pred_id::in, hlds_type_defn::in) is semidet.
 
 special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
-	get_type_defn_body(TypeDefn, TypeBody),
-	(
-		% Always check solver type initialisation
-		% predicates since they are always user-defined.
-		SpecialPredId = spec_pred_init
-	;	
-		get_user_unify_compare(ModuleInfo, TypeBody,
-			UnifyCompare),
-		(
-			UnifyCompare = unify_compare(MaybeUnify,
-				MaybeCompare),
-			( 
-				MaybeUnify = yes(_),
-				SpecialPredId = spec_pred_unify 
-			;
-				MaybeCompare = yes(_),
-				SpecialPredId = spec_pred_compare 
-			)
-		;
-			UnifyCompare = abstract_noncanonical_type(_),
-			unexpected(this_file, "special_pred_needs_term" ++
-				"_check/3: type is local and " ++
-				"abstract_noncanonical")
-		)
-	). 
+    get_type_defn_body(TypeDefn, TypeBody),
+    (
+        % Always check solver type initialisation
+        % predicates since they are always user-defined.
+        SpecialPredId = spec_pred_init
+    ;   
+        get_user_unify_compare(ModuleInfo, TypeBody,
+            UnifyCompare),
+        (
+            UnifyCompare = unify_compare(MaybeUnify,
+                MaybeCompare),
+            ( 
+                MaybeUnify = yes(_),
+                SpecialPredId = spec_pred_unify 
+            ;
+                MaybeCompare = yes(_),
+                SpecialPredId = spec_pred_compare 
+            )
+        ;
+            UnifyCompare = abstract_noncanonical_type(_),
+            unexpected(this_file, "special_pred_needs_term" ++
+                "_check/3: type is local and " ++
+                "abstract_noncanonical")
+        )
+    ). 
 
-	% Succeeds if the given type has user-defined equality and/or
-	% comparison and returns the relevant information about which
-	% predicates implement it.
-	%
+    % Succeeds if the given type has user-defined equality and/or comparison
+    % and returns the relevant information about which predicates implement it.
+    %
 :- pred get_user_unify_compare(module_info::in, hlds_type_body::in,
-	unify_compare::out) is semidet.
+    unify_compare::out) is semidet.
 
 get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
-	TypeBody = du_type(_, _, _, yes(UnifyCompare), _, _).
+    TypeBody = du_type(_, _, _, yes(UnifyCompare), _, _).
 get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare) :-
-	TypeBody = foreign_type(ForeignTypeBody),
-	UnifyCompare = foreign_type_body_has_user_defined_eq_comp_pred(
-		ModuleInfo, ForeignTypeBody).
+    TypeBody = foreign_type(ForeignTypeBody),
+    UnifyCompare = foreign_type_body_has_user_defined_eq_comp_pred(
+        ModuleInfo, ForeignTypeBody).
 get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
-	TypeBody = solver_type(_, yes(UnifyCompare)).
+    TypeBody = solver_type(_, yes(UnifyCompare)).
 
 :- pred emit_non_term_user_special_warning(prog_context::in,
-	special_pred_id::in, type_ctor::in, io::di, io::uo) is det.
+    special_pred_id::in, type_ctor::in, io::di, io::uo) is det.
 
 emit_non_term_user_special_warning(Context, SpecialPred, TypeCtor, !IO) :-
-	TypeCtorString = hlds_out.type_ctor_to_string(TypeCtor),
-	( 
-		SpecialPred = spec_pred_unify,
-		SpecialPredStr = "equality"
-	;
-		SpecialPred = spec_pred_compare,
-		SpecialPredStr = "comparison"
-	;
-		SpecialPred = spec_pred_init,
-		SpecialPredStr = "initialisation"
-	;
-		SpecialPred = spec_pred_index,
-		unexpected(this_file, "emit_non_term_user_special_" ++
-			"warning/5 index predicate.")
-	),
-	Pieces = [words("Warning: the user-defined "),
-		  fixed(SpecialPredStr ++ " predicate"),
-		  words("for the type "),
-		  fixed(TypeCtorString),
-		  words("cannot be proven to terminate.")
-		],
-	report_warning(Context, 0, Pieces, !IO).	
+    TypeCtorString = hlds_out.type_ctor_to_string(TypeCtor),
+    ( 
+        SpecialPred = spec_pred_unify,
+        SpecialPredStr = "equality"
+    ;
+        SpecialPred = spec_pred_compare,
+        SpecialPredStr = "comparison"
+    ;
+        SpecialPred = spec_pred_init,
+        SpecialPredStr = "initialisation"
+    ;
+        SpecialPred = spec_pred_index,
+        unexpected(this_file, "emit_non_term_user_special_" ++
+            "warning/5 index predicate.")
+    ),
+    Pieces = [
+        words("Warning: the user-defined "),
+        fixed(SpecialPredStr ++ " predicate"),
+        words("for the type "),
+        fixed(TypeCtorString),
+        words("cannot be proven to terminate.")
+    ],
+    report_warning(Context, 0, Pieces, !IO).    
 
 %----------------------------------------------------------------------------%
 

@@ -6,15 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% term_errors.m
-% Main author: crs.
+% File: term_errors.m
+% Main author: crs
 %
 % This module prints out the various error messages that are produced by
 % the various modules of termination analysis.
 %
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__term_errors.
+:- module transform_hlds.term_errors.
 
 :- interface.
 
@@ -27,6 +27,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type termination_error
     --->    pragma_foreign_code
@@ -156,11 +158,15 @@
     %
 :- pred indirect_error(termination_error::in) is semidet.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
@@ -176,6 +182,8 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 indirect_error(horder_call).
 indirect_error(method_call).
@@ -203,18 +211,18 @@ report_term_errors(SCC, Errors, Module, !IO) :-
         % XXX This should never happen but for some reason, it often does.
         % error("empty list of errors")
         Pieces2 = [words("not proven, for unknown reason(s).")],
-        list__append(Pieces1, Pieces2, Pieces),
+        list.append(Pieces1, Pieces2, Pieces),
         write_error_pieces(Context, 0, Pieces, !IO)
     ;
         Errors = [Error],
         Pieces2 = [words("not proven for the following reason:")],
-        list__append(Pieces1, Pieces2, Pieces),
+        list.append(Pieces1, Pieces2, Pieces),
         write_error_pieces(Context, 0, Pieces, !IO),
         output_term_error(Error, Single, no, 0, Module, !IO)
     ;
         Errors = [_, _ | _],
         Pieces2 = [words("not proven for the following reasons:")],
-        list__append(Pieces1, Pieces2, Pieces),
+        list.append(Pieces1, Pieces2, Pieces),
         write_error_pieces(Context, 0, Pieces, !IO),
         output_term_errors(Errors, Single, 1, 0, Module, !IO)
     ).
@@ -238,17 +246,17 @@ report_arg_size_errors(SCC, Errors, Module, !IO) :-
     Piece2 = words("set to infinity for the following"),
     (
         Errors = [],
-        error("empty list of errors")
+        unexpected(this_file, "empty list of errors")
     ;
         Errors = [Error],
         Piece3 = words("reason:"),
-        list__append(Pieces1, [Piece2, Piece3], Pieces),
+        list.append(Pieces1, [Piece2, Piece3], Pieces),
         write_error_pieces(Context, 0, Pieces, !IO),
         output_term_error(Error, Single, no, 0, Module, !IO)
     ;
         Errors = [_, _ | _],
         Piece3 = words("reasons:"),
-        list__append(Pieces1, [Piece2, Piece3], Pieces),
+        list.append(Pieces1, [Piece2, Piece3], Pieces),
         write_error_pieces(Context, 0, Pieces, !IO),
         output_term_errors(Errors, Single, 1, 0, Module, !IO)
     ).
@@ -269,8 +277,8 @@ output_term_errors([Error | Errors], Single, ErrNum0, Indent, Module, !IO) :-
 output_term_error(Context - Error, Single, ErrorNum, Indent, Module, !IO) :-
     description(Error, Single, Module, Pieces0, Reason),
     ( ErrorNum = yes(N) ->
-        string__int_to_string(N, Nstr),
-        string__append_list(["Reason ", Nstr, ":"], Preamble),
+        string.int_to_string(N, Nstr),
+        string.append_list(["Reason ", Nstr, ":"], Preamble),
         Pieces = [fixed(Preamble) | Pieces0]
     ;
         Pieces = Pieces0
@@ -283,7 +291,8 @@ output_term_error(Context - Error, Single, ErrorNum, Indent, Module, !IO) :-
             ArgSizePPIdSCC = [InfArgSizePPId],
             report_arg_size_errors(ArgSizePPIdSCC, ArgSizeErrors, Module, !IO)
         ;
-            error("inf arg size procedure does not have inf arg size")
+            unexpected(this_file,
+                "inf arg size procedure does not have inf arg size")
         )
     ;
         true
@@ -303,12 +312,14 @@ description(aditi_call, _, _, Pieces, no) :-
     Pieces = [words("It contains an Aditi builtin call.")]. 
 
 description(pragma_foreign_code, _, _, Pieces, no) :-
-    Pieces = [words("It depends on the properties of"),
+    Pieces = [
+        words("It depends on the properties of"),
         words("foreign language code included via a"),
         fixed("`:- pragma c_code'"),
         words("or"),
         fixed("`:- pragma foreign'"),
-        words("declaration.")].
+        words("declaration.")
+    ].
 
 description(inf_call(CallerPPId, CalleePPId),
         Single, Module, Pieces, no) :-
@@ -346,9 +357,11 @@ description(can_loop_proc_called(CallerPPId, CalleePPId),
     Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
 
 description(imported_pred, _, _, Pieces, no) :-
-    Pieces = [words("It contains one or more"),
+    Pieces = [
+        words("It contains one or more"),
         words("predicates and/or functions"),
-        words("imported from another module.")].
+        words("imported from another module.")
+    ].
 
 description(horder_args(CallerPPId, CalleePPId), Single, Module,
         Pieces, no) :-
@@ -427,13 +440,13 @@ description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
     proc_info_varset(ProcInfo, Varset),
     term_errors_var_bag_description(OutputSuppliers, Varset,
         OutputSuppliersNames),
-    list__map((pred(OS::in, FOS::out) is det :- FOS = fixed(OS)),
+    list.map((pred(OS::in, FOS::out) is det :- FOS = fixed(OS)),
         OutputSuppliersNames, OutputSuppliersPieces),
     Pieces3 = [words("is not a subset of the head variables")],
     term_errors_var_bag_description(HeadVars, Varset, HeadVarsNames),
-    list__map((pred(HV::in, FHV::out) is det :- FHV = fixed(HV)),
+    list.map((pred(HV::in, FHV::out) is det :- FHV = fixed(HV)),
         HeadVarsNames, HeadVarsPieces),
-    list__condense([Pieces1, OutputSuppliersPieces, Pieces3,
+    list.condense([Pieces1, OutputSuppliersPieces, Pieces3,
         HeadVarsPieces], Pieces).
 
 description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
@@ -441,8 +454,10 @@ description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
         SitePieces = describe_one_call_site(Module,
             should_module_qualify, DirectCall),
         Pieces = [words("At the recursive call to") | SitePieces] ++
-            [words("the arguments are"),
-            words("not guaranteed to decrease in size.")]
+            [
+                words("the arguments are"),
+                words("not guaranteed to decrease in size.")
+            ]
     ;
         Pieces1 = [words("In the recursive cycle"),
             words("through the calls to")],
@@ -450,20 +465,26 @@ description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
             should_module_qualify, CallSites),
         Pieces2 = [words("the arguments are"),
             words("not guaranteed to decrease in size.")],
-        list__condense([Pieces1, SitePieces, Pieces2], Pieces)
+        list.condense([Pieces1, SitePieces, Pieces2], Pieces)
     ).
 
 description(too_many_paths, _, _, Pieces, no) :-
-    Pieces = [words("There are too many execution paths"),
-        words("for the analysis to process.")].
+    Pieces = [
+        words("There are too many execution paths"),
+        words("for the analysis to process.")
+    ].
 
 description(no_eqns, _, _, Pieces, no) :-
-    Pieces = [words("The analysis was unable to form any constraints"),
-        words("between the arguments of this group of procedures.")].
+    Pieces = [
+        words("The analysis was unable to form any constraints"),
+        words("between the arguments of this group of procedures.")
+    ].
 
 description(solver_failed, _, _, Pieces, no)  :-
-    Pieces = [words("The solver found the constraints produced"),
-        words("by the analysis to be infeasible.")].
+    Pieces = [
+        words("The solver found the constraints produced"),
+        words("by the analysis to be infeasible.")
+    ].
 
 description(is_builtin(_PredId), _Single, _, Pieces, no) :-
     % XXX require(unify(Single, yes(_)), "builtin not alone in SCC"),
@@ -484,15 +505,16 @@ description(does_not_term_pragma(PredId), Single, Module,
         Pieces2 = describe_one_pred_name(Module, should_module_qualify,
             PredId) ++ [suffix(".")]
     ),
-    list__append(Pieces1, Pieces2, Pieces).
+    list.append(Pieces1, Pieces2, Pieces).
 
 description(inconsistent_annotations, _, _, Pieces, no) :-
     Pieces = [words("The termination pragmas are inconsistent.")].
 
 description(does_not_term_foreign(_), _, _, Pieces, no) :-
-    Piece1 = words("It contains foreign code that"),
-    Piece2 = words("may make one or more calls back to Mercury."),
-    Pieces = [Piece1, Piece2].
+    Pieces = [
+        words("It contains foreign code that"),
+        words("may make one or more calls back to Mercury.")
+    ].
 
 %----------------------------------------------------------------------------%
 
@@ -500,7 +522,7 @@ description(does_not_term_foreign(_), _, _, Pieces, no) :-
     list(string)::out) is det.
 
 term_errors_var_bag_description(HeadVars, Varset, Pieces) :-
-    bag__to_assoc_list(HeadVars, HeadVarCountList),
+    bag.to_assoc_list(HeadVars, HeadVarCountList),
     term_errors_var_bag_description_2(HeadVarCountList, Varset, yes,
         Pieces).
 
@@ -510,31 +532,37 @@ term_errors_var_bag_description(HeadVars, Varset, Pieces) :-
 term_errors_var_bag_description_2([], _, _, ["{}"]).
 term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
         [Piece | Pieces]) :-
-    varset__lookup_name(Varset, Var, VarName),
+    varset.lookup_name(Varset, Var, VarName),
     ( Count > 1 ->
-        string__append(VarName, "*", VarCountPiece0),
-        string__int_to_string(Count, CountStr),
-        string__append(VarCountPiece0, CountStr, VarCountPiece)
+        string.append(VarName, "*", VarCountPiece0),
+        string.int_to_string(Count, CountStr),
+        string.append(VarCountPiece0, CountStr, VarCountPiece)
     ;
         VarCountPiece = VarName
     ),
     (
         First = yes,
-        string__append("{", VarCountPiece, Piece0)
+        string.append("{", VarCountPiece, Piece0)
     ;
         First = no,
         Piece0 = VarCountPiece
     ),
     (
         VarCounts = [],
-        string__append(Piece0, "}.", Piece),
+        string.append(Piece0, "}.", Piece),
         Pieces = []
     ;
-        VarCounts = [_ | _],
+        VarCounts = [_|_],
         Piece = Piece0,
-        term_errors_var_bag_description_2(VarCounts, Varset, First,
-            Pieces)
+        term_errors_var_bag_description_2(VarCounts, Varset, First, Pieces)
     ).
 
 %----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "term_errors.m".
+
+%----------------------------------------------------------------------------%
+:- end_module term_errors.
 %----------------------------------------------------------------------------%

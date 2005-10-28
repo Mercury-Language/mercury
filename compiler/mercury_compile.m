@@ -2903,7 +2903,7 @@ maybe_termination(Verbose, Stats, !HLDS, !IO) :-
         Termination = yes
     ->
         maybe_write_string(Verbose, "% Detecting termination...\n", !IO),
-        termination__pass(!HLDS, !IO),
+        analyse_termination_in_module(!HLDS, !IO),
         maybe_write_string(Verbose, "% Termination checking done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

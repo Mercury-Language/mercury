@@ -211,17 +211,17 @@ traverse_goal_2(if_then_else(_, Cond, Then, Else), _, Params, !Info) :-
     traverse_goal(Else, Params, !.Info, ElseInfo),
     combine_paths(CondThenInfo, ElseInfo, Params, !:Info).
 
-traverse_goal_2(foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
-        GoalInfo, Params, !Info) :-
-    params_get_module_info(Params, Module),
-    module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
+traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
+    Goal = foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
+    params_get_module_info(Params, ModuleInfo),
+    module_info_pred_proc_info(ModuleInfo, CallPredId, CallProcId, _,
         CallProcInfo),
     proc_info_argmodes(CallProcInfo, CallArgModes),
     ArgVars = list.map(foreign_arg_var, Args),
-    partition_call_args(Module, CallArgModes, ArgVars, _InVars, OutVars),
+    partition_call_args(ModuleInfo, CallArgModes, ArgVars, _InVars, OutVars),
     goal_info_get_context(GoalInfo, Context),
 
-    ( is_termination_known(Module, proc(CallPredId, CallProcId)) ->
+    ( is_termination_known(ModuleInfo, proc(CallPredId, CallProcId)) ->
         error_if_intersect(OutVars, Context, pragma_foreign_code, !Info)
     ;
         ( attributes_imply_termination(Attributes) ->
@@ -231,7 +231,8 @@ traverse_goal_2(foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
         )
     ).
             
-traverse_goal_2(generic_call(Details, Args, ArgModes, _), GoalInfo, Params, !Info) :-
+traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
+    Goal = generic_call(Details, Args, ArgModes, _),
     goal_info_get_context(GoalInfo, Context),
     (
         Details = higher_order(Var, _, _, _),
@@ -242,14 +243,14 @@ traverse_goal_2(generic_call(Details, Args, ArgModes, _), GoalInfo, Params, !Inf
         % anything about the size of the arguments of the higher-order call,
         % so we assume that they are unbounded.
         %
-        params_get_module_info(Params, Module),
+        params_get_module_info(Params, ModuleInfo),
         ( ClosureValues0 = ClosureValueMap ^ elem(Var) ->
             ClosureValues = set.to_sorted_list(ClosureValues0),
-            list.filter(terminates(Module), ClosureValues,
+            list.filter(terminates(ModuleInfo), ClosureValues,
                 Terminating, NonTerminating),
             ( 
                 NonTerminating = [],
-                partition_call_args(Module, ArgModes, Args, _InVars, OutVars),
+                partition_call_args(ModuleInfo, ArgModes, Args, _InVars, OutVars),
                 params_get_ppid(Params, PPId),
                 Error = ho_inf_termination_const(PPId, Terminating),
                 error_if_intersect(OutVars, Context, Error, !Info)
@@ -265,11 +266,10 @@ traverse_goal_2(generic_call(Details, Args, ArgModes, _), GoalInfo, Params, !Inf
     ;
         Details = class_method(_, _, _, _),
         %
-        % For class method calls, we could probably analyse
-        % further than this, since we know that the method being
-        % called must come from one of the instance
-        % declarations, and we could potentially (globally)
-        % analyse these.
+        % For class method calls, we could probably analyse further than this,
+        % since we know that the method being called must come from one of the
+        % instance declarations, and we could potentially (globally) analyse
+        % these.
         %
         add_error(Context, method_call, Params, !Info)
     ;
@@ -287,20 +287,20 @@ traverse_goal_2(generic_call(Details, Args, ArgModes, _), GoalInfo, Params, !Inf
         add_error(Context, aditi_call, Params, !Info)
     ).
 
-traverse_goal_2(call(CallPredId, CallProcId, Args, _, _, _),
-        GoalInfo, Params, !Info) :-
+traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
+    Goal = call(CallPredId, CallProcId, Args, _, _, _),
     goal_info_get_context(GoalInfo, Context),
-    params_get_module_info(Params, Module),
+    params_get_module_info(Params, ModuleInfo),
     params_get_ppid(Params, PPId),
     CallPPId = proc(CallPredId, CallProcId),
 
-    module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
+    module_info_pred_proc_info(ModuleInfo, CallPredId, CallProcId, _,
         CallProcInfo),
     proc_info_argmodes(CallProcInfo, CallArgModes),
     proc_info_get_maybe_arg_size_info(CallProcInfo, CallArgSizeInfo),
     proc_info_get_maybe_termination_info(CallProcInfo, CallTerminationInfo),
 
-    partition_call_args(Module, CallArgModes, Args, InVars, OutVars),
+    partition_call_args(ModuleInfo, CallArgModes, Args, InVars, OutVars),
 
     % Handle existing paths
     (
@@ -367,7 +367,7 @@ traverse_goal_2(shorthand(_), _, _, _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Traverse_conj should be invoked with a reversed list of goals.
+    % traverse_conj should be invoked with a reversed list of goals.
     % This is to keep stack consumption down.
     %
 :- pred traverse_conj(list(hlds_goal)::in, traversal_params::in,
@@ -519,11 +519,11 @@ unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
     map.lookup(VarTypes, OutVar, Type),
     \+ type_is_higher_order(Type, _, _, _, _),
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        params_get_module_info(Params, Module),
+        params_get_module_info(Params, ModuleInfo),
         filter_args_and_modes(VarTypes, Args0, Args1, Modes0, Modes1),
-        functor_norm(FunctorInfo, TypeCtor, ConsId, Module,
+        functor_norm(FunctorInfo, TypeCtor, ConsId, ModuleInfo,
             Gamma, Args1, Args, Modes1, Modes),
-        split_unification_vars(Args, Modes, Module, InVars, OutVars)
+        split_unification_vars(Args, Modes, ModuleInfo, InVars, OutVars)
     ;
         unexpected(this_file, "unify_change/8: variable type.")
     ).
