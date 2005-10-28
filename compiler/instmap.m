@@ -22,11 +22,11 @@
 
 :- interface.
 
-:- import_module check_hlds__mode_errors.
-:- import_module check_hlds__mode_info.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.mode_errors.
+:- import_module check_hlds.mode_info.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -312,13 +312,13 @@
 
 :- implementation.
 
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__inst_util.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_util.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module int.
 :- import_module require.

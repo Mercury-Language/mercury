@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module check_hlds__mode_info.
+:- import_module check_hlds.mode_info.
 :- import_module io.
 
     % Print a debugging message which includes the port, message string,
@@ -37,16 +37,16 @@
 
 :- implementation.
 
-:- import_module check_hlds__modes.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__instmap.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_out.
+:- import_module check_hlds.modes.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module bool.

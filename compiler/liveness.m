@@ -157,9 +157,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module set.
@@ -180,34 +180,26 @@
 
 :- implementation.
 
-% Parse tree modules
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.polymorphism.
+:- import_module hlds.arg_info.
+:- import_module hlds.code_model.
+:- import_module hlds.goal_form.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_out.
+:- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
+:- import_module hlds.quantification.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.trace_params.
+:- import_module ll_backend.llds.
+:- import_module ll_backend.trace.
+:- import_module parse_tree.prog_util.
 
-% HLDS modules
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__polymorphism.
-:- import_module hlds__arg_info.
-:- import_module hlds__code_model.
-:- import_module hlds__goal_form.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_out.
-:- import_module hlds__instmap.
-:- import_module hlds__passes_aux.
-:- import_module hlds__quantification.
-
-% LLDS modules
-:- import_module ll_backend__llds.
-:- import_module ll_backend__trace.
-
-% Misc
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__trace_params.
-
-% Standard library modules
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.

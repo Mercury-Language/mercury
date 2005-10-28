@@ -42,11 +42,11 @@
 
 :- interface.
 
-:- import_module libs__globals.
-:- import_module libs__timestamp.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_io.
+:- import_module libs.globals.
+:- import_module libs.timestamp.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io.
 
 :- import_module bool.
 :- import_module io.
@@ -785,22 +785,23 @@
 
 :- implementation.
 
-:- import_module check_hlds__type_util.
-:- import_module libs__handle_options.
-:- import_module libs__options.
+:- import_module check_hlds.type_util.
+:- import_module libs.compiler_util.
+:- import_module libs.handle_options.
+:- import_module libs.options.
 :- import_module make.              % XXX undesirable dependency
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__module_qual.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_io_util.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_mutable.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__source_file_map.
-:- import_module recompilation__version.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_mutable.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
+:- import_module parse_tree.source_file_map.
+:- import_module recompilation.version.
 
 :- import_module assoc_list.
 :- import_module char.

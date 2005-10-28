@@ -18,13 +18,13 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__hlds_module.
-:- import_module hlds__make_hlds__qual_info.
-:- import_module hlds__make_hlds__state_var.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module hlds.make_hlds.state_var.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -109,21 +109,22 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__purity.
-:- import_module hlds__goal_util.
-:- import_module hlds__make_hlds__add_clause.
-:- import_module hlds__make_hlds__field_access.
-:- import_module hlds__make_hlds__qual_info.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__module_qual.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_io_dcg.
-:- import_module parse_tree__prog_io_util.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.purity.
+:- import_module hlds.goal_util.
+:- import_module hlds.make_hlds.add_clause.
+:- import_module hlds.make_hlds.field_access.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_dcg.
+:- import_module parse_tree.prog_io_goal.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.

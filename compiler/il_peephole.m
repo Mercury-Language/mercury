@@ -36,7 +36,7 @@
 
 :- interface.
 
-:- import_module ml_backend__ilasm.
+:- import_module ml_backend.ilasm.
 
 :- import_module bool.
 :- import_module list.
@@ -53,7 +53,7 @@
 
 :- type instrs == list(instr).
 
-:- import_module ml_backend__ilds.
+:- import_module ml_backend.ilds.
 
 :- import_module assoc_list.
 :- import_module bool.

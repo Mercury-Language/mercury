@@ -17,8 +17,8 @@
 :- module ml_backend__maybe_mlds_to_gcc.
 :- interface.
 
-:- import_module aditi_backend__rl_file.
-:- import_module ml_backend__mlds.
+:- import_module aditi_backend.rl_file.
+:- import_module ml_backend.mlds.
 
 :- import_module bool.
 :- import_module std_util.
@@ -57,7 +57,7 @@ maybe_mlds_to_gcc__compile_to_asm(MLDS, RLFile, ContainsCCode) -->
 
 #else
 
-:- import_module parse_tree__prog_out.
+:- import_module parse_tree.prog_out.
 :- import_module string.
 
 maybe_mlds_to_gcc__run_gcc_backend(_ModuleName, CallBack, CallBackOutput) -->

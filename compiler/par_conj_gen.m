@@ -100,10 +100,10 @@
 
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_goal.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__llds.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.llds.
 
 :- import_module list.
 
@@ -114,19 +114,19 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_module.
-:- import_module hlds__instmap.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__tree.
-:- import_module ll_backend__code_gen.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__continuation_info.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module hlds.instmap.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.tree.
+:- import_module ll_backend.code_gen.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.continuation_info.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module int.

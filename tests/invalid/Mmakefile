@@ -69,6 +69,7 @@ SINGLEMODULE= \
 	cyclic_typeclass_2 \
 	cyclic_typeclass_3 \
 	det_errors \
+	det_errors_cc \
 	duplicate_modes \
 	duplicate_module_test \
 	erroneous_throw_promise \

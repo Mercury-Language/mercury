@@ -34,11 +34,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_pred.
-:- import_module libs__trace_params.
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_pred.
+:- import_module libs.trace_params.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.

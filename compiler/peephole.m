@@ -16,8 +16,8 @@
 
 :- interface.
 
-:- import_module ll_backend__llds.
-:- import_module libs__globals.
+:- import_module ll_backend.llds.
+:- import_module libs.globals.
 
 :- import_module bool.
 :- import_module list.
@@ -31,10 +31,10 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__opt_debug.
-:- import_module ll_backend__opt_util.
+:- import_module backend_libs.builtin_ops.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.opt_debug.
+:- import_module ll_backend.opt_util.
 
 :- import_module int.
 :- import_module map.

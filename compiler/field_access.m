@@ -11,12 +11,12 @@
 :- module hlds__make_hlds__field_access.
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__make_hlds__qual_info.
-:- import_module hlds__make_hlds__state_var.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_io_util.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module hlds.make_hlds.state_var.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io_util.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -85,10 +85,10 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__make_hlds__superhomogeneous.
-:- import_module parse_tree__prog_io.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.make_hlds.superhomogeneous.
+:- import_module parse_tree.prog_io.
 
 :- import_module bool.
 :- import_module int.

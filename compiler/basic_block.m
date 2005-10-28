@@ -19,8 +19,8 @@
 
 :- interface.
 
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module counter.
@@ -97,7 +97,7 @@
 
 :- implementation.
 
-:- import_module ll_backend__opt_util.
+:- import_module ll_backend.opt_util.
 
 :- import_module int.
 :- import_module require.

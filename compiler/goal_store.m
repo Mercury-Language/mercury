@@ -19,10 +19,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
 
 :- import_module bool.
 :- import_module set.
@@ -51,7 +51,7 @@
 
 :- implementation.
 
-:- import_module hlds__goal_util.
+:- import_module hlds.goal_util.
 
 :- import_module int.
 :- import_module list.

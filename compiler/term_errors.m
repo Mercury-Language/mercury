@@ -18,9 +18,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bag.
@@ -158,15 +158,15 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_error_util.
-:- import_module hlds__hlds_out.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_out.
-:- import_module transform_hlds__term_util.
+:- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_out.
+:- import_module hlds.passes_aux.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_out.
+:- import_module transform_hlds.term_util.
 
 :- import_module bag.
 :- import_module bool.

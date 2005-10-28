@@ -15,8 +15,8 @@
 :- module parse_tree__equiv_type.
 :- interface.
 
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 :- import_module recompilation.
 
 :- import_module bool.
@@ -101,12 +101,13 @@
 
 :- implementation.
 
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

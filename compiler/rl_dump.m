@@ -13,8 +13,8 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl.
-:- import_module hlds__hlds_module.
+:- import_module aditi_backend.rl.
+:- import_module hlds.hlds_module.
 
 :- import_module io.
 
@@ -28,10 +28,10 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds__hlds_out.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.

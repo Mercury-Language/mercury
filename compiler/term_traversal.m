@@ -112,7 +112,7 @@
 
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
-:- import_module parse_tree.error_util.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.

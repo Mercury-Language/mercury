@@ -83,8 +83,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module ml_backend__mlds.
+:- import_module hlds.hlds_module.
+:- import_module ml_backend.mlds.
 
 :- import_module io.
 
@@ -99,31 +99,31 @@
     % XXX needed for c_util__output_quoted_string,
     %     c_util__output_quoted_multi_string, and
     %     c_util__make_float_literal.
-:- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__c_util.
-:- import_module backend_libs__export.      % for export__type_to_type_string
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__rtti.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_pred.           % for pred_proc_id.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
-:- import_module ml_backend__java_util.
-:- import_module ml_backend__ml_code_util.  % for ml_gen_local_var_decl_flags.
-:- import_module ml_backend__ml_type_gen.   % for ml_gen_type_name
-:- import_module ml_backend__ml_util.
-:- import_module ml_backend__rtti_to_mlds.  % for mlds_rtti_type_name.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__modules.       % for mercury_std_library_name.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.c_util.
+:- import_module backend_libs.export.      % for export.type_to_type_string
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.name_mangle.
+:- import_module backend_libs.rtti.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_pred.           % for pred_proc_id.
+:- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module ml_backend.java_util.
+:- import_module ml_backend.ml_code_util.  % for ml_gen_local_var_decl_flags.
+:- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
+:- import_module ml_backend.ml_util.
+:- import_module ml_backend.rtti_to_mlds.  % for mlds_rtti_type_name.
+:- import_module parse_tree.modules.       % for mercury_std_library_name.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.

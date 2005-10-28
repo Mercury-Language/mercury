@@ -19,5 +19,5 @@ det_errors.m:021:   unification with `21' can fail.
 det_errors.m:013: In `q(in, out)':
 det_errors.m:013:   error: determinism declaration not satisfied.
 det_errors.m:013:   Declared `det', inferred `semidet'.
-det_errors.m:024: The switch on HeadVar__1 does not cover det_errors.d/0,
+det_errors.m:024:   The switch on HeadVar__1 does not cover det_errors.d/0,
 det_errors.m:024:   det_errors.e/0, det_errors.f/0 or det_errors.g/0.

@@ -29,8 +29,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.
-:- import_module parse_tree__error_util.
+:- import_module libs.compiler_util.
 
 :- import_module list.
 :- import_module require.

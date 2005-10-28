@@ -20,8 +20,8 @@
 
 :- interface.
 
-:- import_module libs__globals.
-:- import_module libs__options.
+:- import_module libs.globals.
+:- import_module libs.options.
 
 :- import_module bool.
 :- import_module getopt_io.
@@ -75,10 +75,11 @@
 
 :- implementation.
 
-:- import_module libs__trace_params.
+:- import_module libs.compiler_util.
+:- import_module libs.trace_params.
 :- import_module parse_tree.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_io_util.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_io_util.
 
 :- import_module char.
 :- import_module dir.

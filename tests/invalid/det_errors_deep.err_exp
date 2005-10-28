@@ -1,0 +1,31 @@
+det_errors_deep.m:010: In `p1(in, in, out)':
+det_errors_deep.m:010:   error: determinism declaration not satisfied.
+det_errors_deep.m:010:   Declared `det', inferred `semidet'.
+det_errors_deep.m:019:   In argument 2 of clause head:
+det_errors_deep.m:019:   unification of `HeadVar__2' and `X' can fail.
+det_errors_deep.m:011: In `p2(in, in, out)':
+det_errors_deep.m:011:   error: determinism declaration not satisfied.
+det_errors_deep.m:011:   Declared `det', inferred `semidet'.
+det_errors_deep.m:022:   In argument 2 of clause head:
+det_errors_deep.m:022:   in argument 2 of functor `node/3':
+det_errors_deep.m:022:   unification with `X' can fail.
+det_errors_deep.m:012: In `p3(in, in, out)':
+det_errors_deep.m:012:   error: determinism declaration not satisfied.
+det_errors_deep.m:012:   Declared `det', inferred `semidet'.
+det_errors_deep.m:024:   In argument 2 of clause head:
+det_errors_deep.m:024:   unification of `HeadVar__2' and
+det_errors_deep.m:024:   `det_errors_deep.node(_L, V_8, _R)' can fail.
+det_errors_deep.m:024:   In argument 2 of clause head:
+det_errors_deep.m:024:   in argument 2 of functor `node/3':
+det_errors_deep.m:024:   unification with `X' can fail.
+det_errors_deep.m:013: In `p4(in, in, out)':
+det_errors_deep.m:013:   error: determinism declaration not satisfied.
+det_errors_deep.m:013:   Declared `det', inferred `semidet'.
+det_errors_deep.m:027:   In argument 2 of clause head:
+det_errors_deep.m:027:   unification of `HeadVar__2' and `X' can fail.
+det_errors_deep.m:028:   In argument 1 of clause head:
+det_errors_deep.m:028:   in argument 3 of functor `node/3':
+det_errors_deep.m:028:   in argument 2 of functor `node/3':
+det_errors_deep.m:028:   unification with `X' can fail.
+det_errors_deep.m:028:   In argument 2 of clause head:
+det_errors_deep.m:028:   unification of `HeadVar__2' and `X' can fail.

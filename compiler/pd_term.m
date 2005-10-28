@@ -41,11 +41,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module transform_hlds__pd_info.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module transform_hlds.pd_info.
 
 :- import_module list.
 :- import_module std_util.
@@ -100,10 +100,10 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
-:- import_module transform_hlds__pd_util.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
+:- import_module transform_hlds.pd_util.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -12,9 +12,9 @@
 :- module hlds__make_hlds__state_var.
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module list.
@@ -295,8 +295,9 @@
 
 :- implementation.
 
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_util.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_util.
 
 :- import_module char.
 :- import_module int.

@@ -40,7 +40,8 @@
 
 :- implementation.
 
-:- import_module hlds__passes_aux.
+:- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
 
 %-----------------------------------------------------------------------------%
 

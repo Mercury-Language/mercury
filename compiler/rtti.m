@@ -26,11 +26,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
@@ -813,16 +813,16 @@
 
 :- implementation.
 
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__proc_label.
-:- import_module backend_libs__pseudo_type_info.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_util. % for mercury_public_builtin_module
-:- import_module parse_tree__prog_out.
+:- import_module backend_libs.name_mangle.
+:- import_module backend_libs.proc_label.
+:- import_module backend_libs.pseudo_type_info.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util. % for mercury_public_builtin_module
 
 :- import_module int.
 :- import_module require.

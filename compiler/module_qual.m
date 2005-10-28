@@ -123,6 +123,7 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
@@ -130,8 +131,8 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module int.

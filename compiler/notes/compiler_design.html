@@ -280,8 +280,9 @@ such as pretty-printing.
 	predicates for manipulating insts and modes, prog_type contains utility
 	predicates for manipulating types, prog_foreign contains utility
 	predicates for manipulating foreign code, prog_mutable contains utility
-	predicates for manipulating mutable variables, while error_util.m contains
-	predicates for printing nicely formatting error messages.
+	predicates for manipulating mutable variables,
+	while error_util.m contains predicates
+	for printing nicely formatting error messages.
 
 <li><p> imports and exports are handled at this point (modules.m)
 
@@ -985,6 +986,9 @@ specialized versions without them (unused_args.m); type_infos are often unused.
   it cannot fail etc), it either deletes the goal or moves it to the
   computation branches where its output is needed.
 
+<dt> lco.m finds predicates whose implementations would benefit
+  from last call optimization modulo constructor application.
+
 <li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
   even the user doesn't, and automatically constructed unification and
@@ -1639,6 +1643,7 @@ The following modules are part of the backend_libs.m package.
 The following modules are part of the libs.m package.
 
 	<dl>
+
 	<dt> process_util.m:
 		<dd>
 		Predicates to deal with process creation and signal handling.
@@ -1665,6 +1670,21 @@ The following modules are part of the libs.m package.
 		Implements the linear programming algorithm for optimizing
 		a set of linear constraints with respect to a linear
 		cost function.  This is used by termination analyser.
+
+	<dt> lp_rational.m
+		<dd>
+		Implements the linear programming algorithm for optimizing
+		a set of linear constraints with respect to a linear
+		cost function, for rational numbers.
+		This is used by termination analyser.
+
+	<dt> rat.m
+		<dd>
+		Implements rational numbers.
+
+	<dt> compiler_util.m:
+		<dd>
+		Generic utility predicates, mainly for error handling.
 	</dl>
 
 <hr>
@@ -1687,18 +1707,11 @@ The following modules are part of the libs.m package.
 		This was once used for traversing the call graph,
 		but nowadays we use relation__atsort from library/relation.m.
 
-	<dt> lco.m (in the transform_hlds.m package):
-		<dd>
-		This finds predicates whose implementations would benefit
-		from last call optimization modulo constructor application.
-		It does not apply the optimization and will not until the
-		mode system is capable of expressing definite aliasing.
-
 	</dl>
 
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-09-15 07:38:45 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-10-28 02:10:59 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -13,10 +13,10 @@
 
 :- interface.
 
-:- import_module check_hlds__mode_constraint_robdd.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__inst_graph.
+:- import_module check_hlds.mode_constraint_robdd.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.inst_graph.
 
 :- import_module io.
 :- import_module list.
@@ -43,14 +43,14 @@
 
 :- implementation.
 
-:- import_module check_hlds__clause_to_proc.
-:- import_module check_hlds__mode_constraint_robdd.
-:- import_module hlds__hlds_goal.
+:- import_module check_hlds.clause_to_proc.
+:- import_module check_hlds.mode_constraint_robdd.
+:- import_module hlds.hlds_goal.
 :- import_module mode_robdd.
 % :- import_module mode_robdd__check.
 % :- import_module mode_robdd__tfeir.
-:- import_module mode_robdd__tfeirn.
-:- import_module parse_tree__prog_data.
+:- import_module mode_robdd.tfeirn.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module relation.

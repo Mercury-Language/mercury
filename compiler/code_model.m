@@ -23,9 +23,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- type code_model
     --->    model_det       % functional & total

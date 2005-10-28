@@ -19,8 +19,8 @@
 :- module backend_libs__pseudo_type_info.
 :- interface.
 
-:- import_module backend_libs__rtti.
-:- import_module parse_tree__prog_data.
+:- import_module backend_libs.rtti.
+:- import_module parse_tree.prog_data.
 
     % construct_pseudo_type_info(Type, NumUnivQTvars, ExistQVars,
     %   PseudoTypeInfo):
@@ -61,11 +61,11 @@
 
 :- implementation.
 
-:- import_module check_hlds__type_util.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.type_util.
+:- import_module libs.compiler_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module list.

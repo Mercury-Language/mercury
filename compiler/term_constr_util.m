@@ -200,17 +200,17 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.mode_util.
-:- import_module libs.options.
-:- import_module libs.globals.
-:- import_module libs.rat.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal. 
 :- import_module hlds.hlds_module. 
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred. 
 :- import_module hlds.quantification. 
-:- import_module parse_tree.error_util.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.rat.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_type. 
 :- import_module transform_hlds.term_constr_errors.

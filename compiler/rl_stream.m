@@ -33,7 +33,7 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl_block.
+:- import_module aditi_backend.rl_block.
 
 :- pred rl_stream__detect_streams(rl_opt_info, rl_opt_info).
 :- mode rl_stream__detect_streams(in, out) is det.
@@ -41,7 +41,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module aditi_backend__rl.
+:- import_module aditi_backend.rl.
 
 :- import_module assoc_list.
 :- import_module bag.

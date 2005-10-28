@@ -36,7 +36,7 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
+:- import_module hlds.hlds_module.
 
 :- import_module io.
 
@@ -47,38 +47,38 @@
 
 :- implementation.
 
-:- import_module check_hlds__det_analysis.
-:- import_module check_hlds__det_report.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_info.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__modes.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__simplify.
-:- import_module check_hlds__unique_modes.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_out.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module hlds__passes_aux.
-:- import_module hlds__quantification.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
-:- import_module transform_hlds__dependency_graph.
-:- import_module transform_hlds__inlining.
-:- import_module transform_hlds__pd_cost.
-:- import_module transform_hlds__pd_debug.
-:- import_module transform_hlds__pd_info.
-:- import_module transform_hlds__pd_term.
-:- import_module transform_hlds__pd_util.
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.det_report.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_info.
+:- import_module check_hlds.modes.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.purity.
+:- import_module check_hlds.simplify.
+:- import_module check_hlds.unique_modes.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
+:- import_module hlds.quantification.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
+:- import_module transform_hlds.dependency_graph.
+:- import_module transform_hlds.inlining.
+:- import_module transform_hlds.pd_cost.
+:- import_module transform_hlds.pd_debug.
+:- import_module transform_hlds.pd_info.
+:- import_module transform_hlds.pd_term.
+:- import_module transform_hlds.pd_util.
 
 :- import_module assoc_list.
 :- import_module bool.

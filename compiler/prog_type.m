@@ -256,7 +256,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.

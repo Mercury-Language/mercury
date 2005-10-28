@@ -26,8 +26,8 @@
 :- module backend_libs__name_mangle.
 :- interface.
 
-:- import_module backend_libs__rtti.
-:- import_module mdbcomp__prim_data.
+:- import_module backend_libs.rtti.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module io.
@@ -96,11 +96,11 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_pred.
-:- import_module hlds__special_pred.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_util.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.special_pred.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_util.
 
 :- import_module char.
 :- import_module int.

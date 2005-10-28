@@ -15,9 +15,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__llds.
+:- import_module hlds.hlds_goal.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.llds.
 
 :- pred middle_rec__match_and_generate(hlds_goal::in, code_tree::out,
     code_info::in, code_info::out) is semidet.
@@ -27,21 +27,21 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module hlds__code_model.
-:- import_module hlds__goal_form.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_module.
-:- import_module libs__tree.
-:- import_module ll_backend__code_gen.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__llds_out.
-:- import_module ll_backend__opt_util.
-:- import_module ll_backend__unify_gen.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_out.
+:- import_module backend_libs.builtin_ops.
+:- import_module hlds.code_model.
+:- import_module hlds.goal_form.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module libs.compiler_util.
+:- import_module libs.tree.
+:- import_module ll_backend.code_gen.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.llds_out.
+:- import_module ll_backend.opt_util.
+:- import_module ll_backend.unify_gen.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module bool.

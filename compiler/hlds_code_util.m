@@ -18,9 +18,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_module.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -41,15 +41,15 @@
 
 :- implementation.
 
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_pred.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module char.

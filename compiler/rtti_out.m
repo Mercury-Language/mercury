@@ -25,8 +25,8 @@
 
 :- interface.
 
-:- import_module backend_libs__rtti.
-:- import_module ll_backend__llds_out.
+:- import_module backend_libs.rtti.
+:- import_module ll_backend.llds_out.
 
 :- import_module bool.
 :- import_module io.
@@ -94,24 +94,24 @@
 
 :- implementation.
 
-:- import_module backend_libs__c_util.
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__proc_label.
-:- import_module backend_libs__pseudo_type_info.
-:- import_module backend_libs__type_ctor_info.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_pred.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__layout_out.
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_out.
+:- import_module backend_libs.c_util.
+:- import_module backend_libs.name_mangle.
+:- import_module backend_libs.proc_label.
+:- import_module backend_libs.pseudo_type_info.
+:- import_module backend_libs.type_ctor_info.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.layout_out.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module counter.

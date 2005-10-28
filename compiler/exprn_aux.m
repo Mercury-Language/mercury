@@ -10,9 +10,9 @@
 
 :- interface.
 
-:- import_module libs__options.
-:- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
+:- import_module libs.options.
+:- import_module ll_backend.llds.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -101,9 +101,9 @@
 
 :- implementation.
 
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__error_util.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 
 :- import_module getopt_io.
 :- import_module int.

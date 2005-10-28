@@ -11,10 +11,10 @@
 :- module hlds__make_hlds__add_mode.
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__make_hlds__make_hlds_passes.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.make_hlds_passes.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -30,11 +30,11 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__make_hlds__make_hlds_error.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_mode.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.make_hlds.make_hlds_error.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_mode.
 
 :- import_module map.
 :- import_module require.

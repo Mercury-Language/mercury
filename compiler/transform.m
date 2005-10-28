@@ -34,8 +34,8 @@
 :- module transform_hlds__transform.
 :- interface.
 
-:- import_module check_hlds__mode_info.
-:- import_module hlds__hlds_goal.
+:- import_module check_hlds.mode_info.
+:- import_module hlds.hlds_goal.
 
 :- import_module list.
 
@@ -47,10 +47,10 @@
 
 :- implementation.
 
-:- import_module check_hlds__delay_info.
-:- import_module check_hlds__mode_util.
-:- import_module hlds__instmap.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.delay_info.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.instmap.
+:- import_module parse_tree.prog_data.
 
 :- import_module map.
 :- import_module require.

@@ -20,11 +20,11 @@
 
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_goal.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.llds.
+:- import_module parse_tree.prog_data.
 
 :- type test_sense
     --->    branch_on_success
@@ -40,31 +40,31 @@
 
 :- implementation.
 
-:- import_module aditi_backend__rl.
-:- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__proc_label.
-:- import_module backend_libs__rtti.
-:- import_module backend_libs__type_class_info.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__arg_info.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_out.
-:- import_module hlds__hlds_pred.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__tree.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__continuation_info.
-:- import_module ll_backend__layout.
-:- import_module ll_backend__llds_out.
-:- import_module ll_backend__stack_layout.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
-:- import_module mdbcomp__prim_data.
+:- import_module aditi_backend.rl.
+:- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.proc_label.
+:- import_module backend_libs.rtti.
+:- import_module backend_libs.type_class_info.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.arg_info.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.tree.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.continuation_info.
+:- import_module ll_backend.layout.
+:- import_module ll_backend.llds_out.
+:- import_module ll_backend.stack_layout.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

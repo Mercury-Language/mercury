@@ -24,13 +24,13 @@
 :- module hlds__make_hlds.
 :- interface.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__equiv_type.
-:- import_module parse_tree__module_qual.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.equiv_type.
+:- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -120,11 +120,11 @@
 :- include_module state_var.
 :- include_module superhomogeneous.
 
-:- import_module hlds__make_hlds__add_class.
-:- import_module hlds__make_hlds__add_pred.
-:- import_module hlds__make_hlds__add_special_pred.
-:- import_module hlds__make_hlds__make_hlds_passes.
-:- import_module hlds__make_hlds__qual_info.
+:- import_module hlds.make_hlds.add_class.
+:- import_module hlds.make_hlds.add_pred.
+:- import_module hlds.make_hlds.add_special_pred.
+:- import_module hlds.make_hlds.make_hlds_passes.
+:- import_module hlds.make_hlds.qual_info.
 
 :- type make_hlds_qual_info == hlds__make_hlds__qual_info__qual_info.
 

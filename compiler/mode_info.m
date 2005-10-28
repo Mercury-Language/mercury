@@ -18,15 +18,15 @@
 
 :- interface.
 
-:- import_module check_hlds__delay_info.
-:- import_module check_hlds__mode_errors.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.delay_info.
+:- import_module check_hlds.mode_errors.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bag.
@@ -265,12 +265,12 @@
 
 :- implementation.
 
-:- import_module check_hlds__delay_info.
-:- import_module check_hlds__mode_errors.
-:- import_module check_hlds__mode_util.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__error_util.
+:- import_module check_hlds.delay_info.
+:- import_module check_hlds.mode_errors.
+:- import_module check_hlds.mode_util.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 
 :- import_module int.
 :- import_module queue.

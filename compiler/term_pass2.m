@@ -18,9 +18,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module transform_hlds__term_util.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module transform_hlds.term_util.
 
 :- import_module list.
 
@@ -35,13 +35,13 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_goal.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module transform_hlds__term_traversal.
-:- import_module transform_hlds__term_errors.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_goal.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.prog_data.
+:- import_module transform_hlds.term_errors.
+:- import_module transform_hlds.term_traversal.
 
 :- import_module assoc_list.
 :- import_module bag.

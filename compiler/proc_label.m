@@ -20,10 +20,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 
@@ -53,12 +53,12 @@
 
 :- implementation.
 
-:- import_module backend_libs__rtti.
-:- import_module check_hlds__type_util.
-:- import_module hlds__special_pred.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.rtti.
+:- import_module check_hlds.type_util.
+:- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module list.
 :- import_module require.

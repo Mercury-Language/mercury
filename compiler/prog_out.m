@@ -21,8 +21,8 @@
 
 :- interface.
 
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -166,8 +166,8 @@
 
 :- implementation.
 
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module require.

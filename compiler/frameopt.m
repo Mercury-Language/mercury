@@ -93,9 +93,9 @@
 
 :- interface.
 
-:- import_module libs__globals.
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data.
+:- import_module libs.globals.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module counter.
@@ -149,13 +149,13 @@
 
 :- implementation.
 
-:- import_module libs__options.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__livemap.
-:- import_module ll_backend__opt_debug.
-:- import_module ll_backend__opt_util.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
+:- import_module libs.compiler_util.
+:- import_module libs.options.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.livemap.
+:- import_module ll_backend.opt_debug.
+:- import_module ll_backend.opt_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module int.

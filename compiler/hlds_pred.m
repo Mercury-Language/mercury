@@ -15,21 +15,21 @@
 
 :- interface.
 
-:- import_module check_hlds__mode_constraint_robdd.
-:- import_module check_hlds__mode_errors.
-:- import_module check_hlds__mode_errors.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_module.
-:- import_module hlds__inst_graph.
-:- import_module hlds__special_pred.
-:- import_module hlds__instmap.
-:- import_module libs__globals.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
-:- import_module transform_hlds__term_constr_main.
-:- import_module transform_hlds__term_util.
+:- import_module check_hlds.mode_constraint_robdd.
+:- import_module check_hlds.mode_errors.
+:- import_module check_hlds.mode_errors.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module hlds.inst_graph.
+:- import_module hlds.special_pred.
+:- import_module hlds.instmap.
+:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module transform_hlds.term_constr_main.
+:- import_module transform_hlds.term_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -40,21 +40,16 @@
 
 :- implementation.
 
-% Parse tree modules.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
-
-% HLDS modules.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__goal_form.
-:- import_module hlds__goal_util.
-:- import_module hlds__make_hlds.
-
-% Misc
-:- import_module libs__options.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.goal_form.
+:- import_module hlds.goal_util.
+:- import_module hlds.make_hlds.
+:- import_module libs.compiler_util.
+:- import_module libs.options.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 % Standard library modules.
 :- import_module int.
@@ -2833,7 +2828,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     is semidet.
 
 :- implementation.
-:- import_module check_hlds__mode_errors.
+:- import_module check_hlds.mode_errors.
 
 :- type proc_info --->
     proc_info(
@@ -3637,8 +3632,8 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs__builtin_ops.
-:- import_module hlds__special_pred.
+:- import_module backend_libs.builtin_ops.
+:- import_module hlds.special_pred.
 
 pred_info_is_builtin(PredInfo) :-
     ModuleName = pred_info_module(PredInfo),
@@ -3837,7 +3832,7 @@ is_differential(ModuleInfo, PredId) :-
 
 :- implementation.
 
-:- import_module check_hlds__det_analysis.
+:- import_module check_hlds.det_analysis.
 
 valid_determinism_for_eval_method(eval_normal, _) = yes.
 valid_determinism_for_eval_method(eval_loop_check, Detism) = Valid :-

@@ -12,13 +12,13 @@
 :- module hlds__make_hlds__qual_info.
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__equiv_type.
-:- import_module parse_tree__module_qual.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.equiv_type.
+:- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_data.
 :- import_module recompilation.
 
 :- import_module bool.
@@ -82,10 +82,10 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
+:- import_module hlds.hlds_data.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module map.
 :- import_module std_util.

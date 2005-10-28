@@ -21,12 +21,12 @@
 
 :- interface.
 
-:- import_module backend_libs__switch_util.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module ml_backend__ml_code_util.
-:- import_module ml_backend__mlds.
-:- import_module parse_tree__prog_data.
+:- import_module backend_libs.switch_util.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.mlds.
+:- import_module parse_tree.prog_data.
 
 :- pred generate(cases_list::in, prog_var::in, code_model::in, can_fail::in,
     prog_context::in, mlds__defns::out, statements::out,
@@ -36,14 +36,14 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module check_hlds__type_util.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module ml_backend__ml_code_gen.
-:- import_module ml_backend__ml_simplify_switch.
-:- import_module ml_backend__ml_switch_gen.
-:- import_module parse_tree__error_util.
+:- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.type_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module ml_backend.ml_code_gen.
+:- import_module ml_backend.ml_simplify_switch.
+:- import_module ml_backend.ml_switch_gen.
+:- import_module parse_tree.error_util.
 
 :- import_module assoc_list.
 :- import_module bool.

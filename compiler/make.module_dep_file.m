@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module parse_tree__modules.
+:- import_module parse_tree.modules.
 
 :- import_module io.
 :- import_module std_util.

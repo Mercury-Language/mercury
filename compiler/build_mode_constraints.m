@@ -26,7 +26,7 @@
 :- import_module hlds.hlds_module.
 % :- import_module hlds.inst_graph.
 %   % Needed if converting for partial instantiation.
-:- import_module parse_tree__prog_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bimap.
 :- import_module list.
@@ -172,15 +172,12 @@
 :- implementation.
 
 :- import_module check_hlds.goal_path.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.inst_match.
-
+:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.passes_aux.
-
-:- import_module parse_tree.error_util.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_mode.
-
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module bool.

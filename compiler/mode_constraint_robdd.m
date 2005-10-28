@@ -19,9 +19,9 @@
 :- module check_hlds__mode_constraint_robdd.
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
+:- import_module parse_tree.prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
 :- import_module mode_robdd.
 
 :- import_module bool.
@@ -141,7 +141,7 @@
 :- implementation.
 
 % :- import_module mode_robdd__tfeir.
-:- import_module mode_robdd__tfeirn.
+:- import_module mode_robdd.tfeirn.
 % :- import_module mode_robdd__check.
 
 :- import_module assoc_list.

@@ -19,10 +19,10 @@
 
 :- interface.
 
-:- import_module libs__options.
-:- import_module libs__trace_params.
+:- import_module libs.options.
+:- import_module libs.trace_params.
 :- import_module mdbcomp.
-:- import_module mdbcomp__prim_data. % for module_name
+:- import_module mdbcomp.prim_data. % for module_name
 
 :- import_module bool.
 :- import_module getopt_io.

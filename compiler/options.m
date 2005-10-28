@@ -764,7 +764,7 @@
 
 :- implementation.
 
-:- import_module libs__handle_options.
+:- import_module libs.handle_options.
 
 :- import_module assoc_list.
 :- import_module bool.

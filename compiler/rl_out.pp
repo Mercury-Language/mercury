@@ -20,13 +20,13 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl.
-:- import_module aditi_backend__rl_file.
-:- import_module hlds__hlds_module.
+:- import_module aditi_backend.rl.
+:- import_module aditi_backend.rl_file.
+:- import_module hlds.hlds_module.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
-:- import_module aditi_backend__rl_code.
-:- import_module libs__tree.
+:- import_module aditi_backend.rl_code.
+:- import_module libs.tree.
 #else
 #endif
 
@@ -64,27 +64,27 @@
 
 :- implementation.
 
-:- import_module aditi_backend__magic_util.
-:- import_module aditi_backend__rl_file.
-:- import_module check_hlds__det_analysis.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__tree.
-:- import_module libs__tree.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module aditi_backend.magic_util.
+:- import_module aditi_backend.rl_file.
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.tree.
+:- import_module libs.tree.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
-:- import_module aditi_backend__rl_exprn.
+:- import_module aditi_backend.rl_exprn.
 #else
 #endif
 

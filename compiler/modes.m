@@ -130,11 +130,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -191,7 +191,7 @@
 
 % The following predicates are used by unique_modes.m.
 
-:- import_module check_hlds__mode_info.
+:- import_module check_hlds.mode_info.
 
     % Modecheck a unification.
 
@@ -340,38 +340,38 @@
 
 :- implementation.
 
-:- import_module check_hlds__clause_to_proc.
-:- import_module check_hlds__delay_info.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__inst_util.
-:- import_module check_hlds__modecheck_call.
-:- import_module check_hlds__modecheck_unify.
-:- import_module check_hlds__mode_debug.
-:- import_module check_hlds__mode_errors.
-:- import_module check_hlds__mode_info.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__polymorphism.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__typecheck.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__unify_proc.
-:- import_module check_hlds__unique_modes.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_out.
-:- import_module hlds__instmap.
-:- import_module hlds__make_hlds.
-:- import_module hlds__passes_aux.
-:- import_module hlds__quantification.
-:- import_module hlds__special_pred.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__module_qual.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.clause_to_proc.
+:- import_module check_hlds.delay_info.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_util.
+:- import_module check_hlds.modecheck_call.
+:- import_module check_hlds.modecheck_unify.
+:- import_module check_hlds.mode_debug.
+:- import_module check_hlds.mode_errors.
+:- import_module check_hlds.mode_info.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.purity.
+:- import_module check_hlds.typecheck.
+:- import_module check_hlds.type_util.
+:- import_module check_hlds.unify_proc.
+:- import_module check_hlds.unique_modes.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_out.
+:- import_module hlds.instmap.
+:- import_module hlds.make_hlds.
+:- import_module hlds.passes_aux.
+:- import_module hlds.quantification.
+:- import_module hlds.special_pred.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bag.

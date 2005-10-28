@@ -15,7 +15,7 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -133,8 +133,8 @@
 
 :- implementation.
 
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_util.
 
 :- import_module map.
 :- import_module require.

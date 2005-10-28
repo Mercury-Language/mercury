@@ -23,13 +23,13 @@
 
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -51,25 +51,25 @@
 
 :- implementation.
 
-:- import_module backend_libs__c_util.
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__name_mangle.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__tree.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__llds_out.
-:- import_module ll_backend__trace.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.c_util.
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.name_mangle.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.tree.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.llds_out.
+:- import_module ll_backend.trace.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

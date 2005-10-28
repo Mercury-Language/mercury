@@ -24,15 +24,15 @@
 :- interface.
 
 :- import_module analysis.
-:- import_module check_hlds__unify_proc.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__special_pred.
-:- import_module libs__globals.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__module_qual.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_foreign.
+:- import_module check_hlds.unify_proc.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.special_pred.
+:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.module_qual.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
 :- import_module recompilation.
 
 :- import_module list.
@@ -44,12 +44,12 @@
 
 :- implementation.
 
-:- import_module check_hlds__typecheck.
-:- import_module hlds__hlds_out.
-:- import_module transform_hlds__mmc_analysis.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.typecheck.
+:- import_module hlds.hlds_out.
+:- import_module transform_hlds.mmc_analysis.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.
@@ -574,9 +574,10 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
+
 :- import_module assoc_list.
 :- import_module counter.
-:- import_module parse_tree__error_util.
 
 :- pred module_info_get_lambdas_per_context(module_info::in,
     map(prog_context, counter)::out) is det.

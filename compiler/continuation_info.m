@@ -53,18 +53,18 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module libs__globals.
-:- import_module libs__trace_params.
-:- import_module ll_backend__global_data.
-:- import_module ll_backend__layout.
-:- import_module ll_backend__llds.
-:- import_module ll_backend__trace.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module libs.globals.
+:- import_module libs.trace_params.
+:- import_module ll_backend.global_data.
+:- import_module ll_backend.layout.
+:- import_module ll_backend.llds.
+:- import_module ll_backend.trace.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -356,14 +356,14 @@
 
 :- implementation.
 
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module libs__options.
-:- import_module ll_backend__code_util.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module libs.compiler_util.
+:- import_module libs.options.
+:- import_module ll_backend.code_util.
+:- import_module parse_tree.prog_type.
 
 :- import_module int.
 :- import_module require.

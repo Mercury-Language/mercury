@@ -15,8 +15,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module map.
@@ -273,7 +273,7 @@
 
 :- implementation.
 
-:- import_module hlds__goal_util.
+:- import_module hlds.goal_util.
 
 :- import_module assoc_list.
 :- import_module list.

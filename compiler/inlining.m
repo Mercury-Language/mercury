@@ -80,10 +80,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -145,26 +145,26 @@
 :- implementation.
 
 % Parse tree modules
-:- import_module parse_tree__prog_data.
+:- import_module parse_tree.prog_data.
 
 % HLDS modules
-:- import_module check_hlds__det_analysis.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__type_util.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__passes_aux.
-:- import_module hlds__quantification.
-:- import_module transform_hlds__complexity.
-:- import_module transform_hlds__dead_proc_elim.
-:- import_module transform_hlds__dependency_graph.
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.purity.
+:- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.passes_aux.
+:- import_module hlds.quantification.
+:- import_module transform_hlds.complexity.
+:- import_module transform_hlds.dead_proc_elim.
+:- import_module transform_hlds.dependency_graph.
 
 % Misc
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__trace_params.
-:- import_module mdbcomp__prim_data.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.trace_params.
+:- import_module mdbcomp.prim_data.
 
 % Standard library modules
 :- import_module assoc_list.

@@ -32,13 +32,13 @@
 
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__global_data.
-:- import_module ll_backend__llds.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.global_data.
+:- import_module ll_backend.llds.
 
 :- import_module io.
 :- import_module list.
@@ -70,54 +70,46 @@
 
 :- implementation.
 
-% Parse tree modules
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.proc_label.
+:- import_module backend_libs.rtti.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_out.
+:- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
+:- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.trace_params.
+:- import_module libs.tree.
+:- import_module ll_backend.call_gen.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.commit_gen.
+:- import_module ll_backend.continuation_info.
+:- import_module ll_backend.disj_gen.
+:- import_module ll_backend.ite_gen.
+:- import_module ll_backend.layout.
+:- import_module ll_backend.llds_out.
+:- import_module ll_backend.middle_rec.
+:- import_module ll_backend.par_conj_gen.
+:- import_module ll_backend.pragma_c_gen.
+:- import_module ll_backend.switch_gen.
+:- import_module ll_backend.trace.
+:- import_module ll_backend.unify_gen.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
-% HLDS modules
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_out.
-:- import_module hlds__instmap.
-:- import_module hlds__passes_aux.
-:- import_module hlds__special_pred.
-
-% LLDS code generator modules.
-:- import_module ll_backend__call_gen.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__commit_gen.
-:- import_module ll_backend__continuation_info.
-:- import_module ll_backend__disj_gen.
-:- import_module ll_backend__ite_gen.
-:- import_module ll_backend__layout.
-:- import_module ll_backend__llds_out.
-:- import_module ll_backend__middle_rec.
-:- import_module ll_backend__par_conj_gen.
-:- import_module ll_backend__pragma_c_gen.
-:- import_module ll_backend__switch_gen.
-:- import_module ll_backend__trace.
-:- import_module ll_backend__unify_gen.
-
-% Misc compiler modules
-:- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__proc_label.
-:- import_module backend_libs__rtti.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__trace_params.
-:- import_module mdbcomp__prim_data.
-
-% Standard library modules
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module counter.
 :- import_module int.
-:- import_module libs__tree.
 :- import_module map.
 :- import_module require.
 :- import_module set.

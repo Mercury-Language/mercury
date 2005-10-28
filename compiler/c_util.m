@@ -21,9 +21,9 @@
 :- interface.
 
 :- import_module aditi_backend.
-:- import_module aditi_backend__rl_file.
-:- import_module backend_libs__builtin_ops.
-:- import_module mdbcomp__prim_data.
+:- import_module aditi_backend.rl_file.
+:- import_module backend_libs.builtin_ops.
+:- import_module mdbcomp.prim_data.
 
 :- import_module char.
 :- import_module int.
@@ -165,10 +165,10 @@
 
 :- implementation.
 
-:- import_module backend_libs__name_mangle.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__prog_foreign.
+:- import_module backend_libs.name_mangle.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
 :- import_module list.

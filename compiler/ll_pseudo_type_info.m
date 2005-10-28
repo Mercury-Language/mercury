@@ -25,9 +25,9 @@
 
 :- interface.
 
-:- import_module ll_backend__global_data.
-:- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
+:- import_module ll_backend.global_data.
+:- import_module ll_backend.llds.
+:- import_module parse_tree.prog_data.
 
     % construct_typed_pseudo_type_info(Type, NumUnivQTvars, ExistQVars,
     %   Rval, LldsType):
@@ -58,8 +58,8 @@
 
 :- implementation.
 
-:- import_module backend_libs__pseudo_type_info.
-:- import_module backend_libs__rtti.
+:- import_module backend_libs.pseudo_type_info.
+:- import_module backend_libs.rtti.
 
 :- import_module bool.
 :- import_module int.

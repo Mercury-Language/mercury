@@ -12,7 +12,7 @@
 :- interface.
 
 :- import_module check_hlds.
-:- import_module check_hlds__mode_constraint_robdd.
+:- import_module check_hlds.mode_constraint_robdd.
 
 :- import_module bool.
 :- import_module robdd.

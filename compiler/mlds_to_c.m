@@ -26,8 +26,8 @@
 :- interface.
 
 :- import_module aditi_backend.
-:- import_module aditi_backend__rl_file.
-:- import_module ml_backend__mlds.
+:- import_module aditi_backend.rl_file.
+:- import_module ml_backend.mlds.
 
 :- import_module io.
 :- import_module std_util.
@@ -71,31 +71,31 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__c_util.
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__rtti.      % for rtti__addr_to_string.
-:- import_module check_hlds__type_util.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_pred.         % for pred_proc_id.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
-:- import_module ml_backend__ml_code_util.
+:- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.c_util.
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.name_mangle.
+:- import_module backend_libs.rtti.      % for rtti.addr_to_string.
+:- import_module check_hlds.type_util.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_pred.         % for pred_proc_id.
+:- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module ml_backend.ml_code_util.
                                           % for ml_gen_public_field_decl_flags,
                                           % which is used by the code that
                                           % handles derived classes
-:- import_module ml_backend__ml_type_gen. % for ml_gen_type_name
-:- import_module ml_backend__ml_util.
-:- import_module ml_backend__rtti_to_mlds.% for mlds_rtti_type_name.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
+:- import_module ml_backend.ml_type_gen. % for ml_gen_type_name
+:- import_module ml_backend.ml_util.
+:- import_module ml_backend.rtti_to_mlds.% for mlds_rtti_type_name.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

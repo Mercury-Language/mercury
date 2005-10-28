@@ -34,18 +34,15 @@
 
 :- interface.
 
-% Parse tree modules
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-% HLDS modules
-:- import_module hlds__hlds_data.
+:- import_module hlds.hlds_data.
 % :- import_module hlds__hlds_error_util.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-% mdbcomp modules.
-:- import_module mdbcomp__prim_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -201,6 +198,14 @@
 :- pred write_unify_rhs(unify_rhs::in, module_info::in, prog_varset::in,
     inst_varset::in, bool::in, int::in, io::di, io::uo) is det.
 
+    % Converts the right-hand-side of a unification to a string, similarly to
+    % write_unify_rhs, but doesn't print any details for lambda goals.
+    % The module_info and the varset give the context of the rhs. The boolean
+    % says whether variables should have their numbers appended to them.
+    %
+:- func unify_rhs_to_string(unify_rhs, module_info, prog_varset, bool)
+    = string.
+
     % Print out a list of variables and their corresponding modes
     % (e.g. for a lambda expressions). The varsets gives the context.
     % The boolean says whether variables should have their numbers
@@ -258,27 +263,22 @@
 
 :- implementation.
 
-% Parse tree modules.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_io_util.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.check_typeclass.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.purity.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.instmap.
+:- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
-% HLDS modules.
-:- import_module check_hlds__check_typeclass.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__instmap.
-:- import_module hlds__special_pred.
-
-% Misc
-:- import_module libs__globals.
-:- import_module libs__options.
-
-% Standard library modules
 :- import_module assoc_list.
 :- import_module getopt_io.
 :- import_module int.
@@ -2470,18 +2470,18 @@ write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo, ProgVarSet,
         )
     ).
 
-write_unify_rhs(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
+write_unify_rhs(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
         !IO) :-
-    write_unify_rhs_3(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
+    write_unify_rhs_3(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
         Indent, no, no, !IO).
 
 :- pred write_unify_rhs_2(unify_rhs::in, module_info::in,
     prog_varset::in, inst_varset::in, bool::in, int::in, string::in,
     maybe(mer_type)::in, maybe_vartypes::in, io::di, io::uo) is det.
 
-write_unify_rhs_2(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
+write_unify_rhs_2(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
         Follow, MaybeType, TypeQual, !IO) :-
-    write_unify_rhs_3(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
+    write_unify_rhs_3(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
         Indent, MaybeType, TypeQual, !IO),
     io__write_string(Follow, !IO).
 
@@ -2513,7 +2513,6 @@ write_unify_rhs_3(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
     ;
         true
     ).
-
 write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocals,
         Vars, Modes, Det, Goal), ModuleInfo, VarSet, InstVarSet, AppendVarNums,
         Indent, MaybeType, TypeQual, !IO) :-
@@ -2596,6 +2595,24 @@ write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocals,
     ;
         true
     ).
+
+unify_rhs_to_string(var(Var), _ModuleInfo, VarSet, AppendVarNums)
+    = mercury_var_to_string(Var, VarSet, AppendVarNums).
+unify_rhs_to_string(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
+        VarSet, AppendVarNums) = Str :-
+    (
+        IsExistConstruct = yes,
+        ConsId0 = cons(SymName0, Arity)
+    ->
+        remove_new_prefix(SymName, SymName0),
+        ConsId = cons(SymName, Arity)
+    ;
+        ConsId = ConsId0
+    ),
+    Str = functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo,
+        AppendVarNums).
+unify_rhs_to_string(lambda_goal(_, _, _, _, _, _, _, _, _), _, _, _)
+    = "lambda goal".
 
 :- pred write_sym_name_and_args(sym_name::in, list(prog_var)::in,
     prog_varset::in, bool::in, io::di, io::uo) is det.

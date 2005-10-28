@@ -12,19 +12,22 @@
 :- module libs.
 :- interface.
 
-% option handling
+% Option handling.
 :- include_module globals.
 :- include_module handle_options.
 :- include_module options.
 :- include_module trace_params.
 
-% generic algorithms and data structures that are not
-% quite useful enough to go in the standard library
+% Error handling.
+:- include_module compiler_util.
+
+% Generic algorithms and data structures that are not quite useful enough
+% to go in the standard library.
 :- include_module atsort.
 :- include_module graph_colour.
 :- include_module tree.
 
-% OS interfaces not provided by the standard library
+% OS interfaces not provided by the standard library.
 :- include_module process_util.
 :- include_module timestamp.
 

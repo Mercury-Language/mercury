@@ -20,8 +20,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- pred mark_static_terms(module_info::in, proc_info::in, proc_info::out)
     is det.
@@ -30,10 +30,10 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module int.

@@ -17,9 +17,9 @@
 :- interface.
 
 :- import_module analysis.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- type mmc ---> mmc.
 
@@ -33,10 +33,10 @@
 
 :- implementation.
 
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module transform_hlds__unused_args.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
+:- import_module transform_hlds.unused_args.
 
 :- import_module bool.
 :- import_module std_util.

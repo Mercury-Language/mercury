@@ -18,14 +18,14 @@
 
 :- interface.
 
-:- import_module backend_libs__switch_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
+:- import_module backend_libs.switch_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.llds.
+:- import_module parse_tree.prog_data.
 
     % Should this switch be implemented as a dense jump table?
     % If so, we return the starting and ending values for the table,
@@ -56,13 +56,13 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_module.
-:- import_module libs__tree.
-:- import_module ll_backend__code_gen.
-:- import_module ll_backend__trace.
+:- import_module backend_libs.builtin_ops.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module libs.tree.
+:- import_module ll_backend.code_gen.
+:- import_module ll_backend.trace.
 
 :- import_module char.
 :- import_module int.

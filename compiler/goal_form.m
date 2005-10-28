@@ -17,9 +17,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- import_module list.
 
@@ -110,11 +110,11 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module transform_hlds__term_constr_main.
-:- import_module transform_hlds__term_util.
+:- import_module hlds.hlds_data.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.prog_data.
+:- import_module transform_hlds.term_constr_main.
+:- import_module transform_hlds.term_util.
 
 :- import_module bool.
 :- import_module int.

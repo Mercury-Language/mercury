@@ -15,13 +15,13 @@
 
 :- interface.
 
-:- import_module check_hlds__mode_errors.
-:- import_module check_hlds__simplify.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
-:- import_module transform_hlds__pd_info.
+:- import_module check_hlds.mode_errors.
+:- import_module check_hlds.simplify.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
+:- import_module transform_hlds.pd_info.
 
 :- import_module bool.
 :- import_module io.
@@ -148,28 +148,28 @@
 
 :- implementation.
 
-:- import_module check_hlds__det_analysis.
-:- import_module check_hlds__det_report.
-:- import_module check_hlds__det_util.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__inst_util.
-:- import_module check_hlds__mode_info.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__unique_modes.
-:- import_module hlds__goal_form.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__instmap.
-:- import_module hlds__quantification.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__error_util.
-:- import_module transform_hlds__constraint.
-:- import_module transform_hlds__pd_cost.
-:- import_module transform_hlds__pd_debug.
-:- import_module transform_hlds__unused_args.
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.det_report.
+:- import_module check_hlds.det_util.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_util.
+:- import_module check_hlds.mode_info.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.purity.
+:- import_module check_hlds.type_util.
+:- import_module check_hlds.unique_modes.
+:- import_module hlds.goal_form.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.instmap.
+:- import_module hlds.quantification.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module transform_hlds.constraint.
+:- import_module transform_hlds.pd_cost.
+:- import_module transform_hlds.pd_debug.
+:- import_module transform_hlds.unused_args.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -359,9 +359,8 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
     goal_info_get_determinism(GoalInfo0, Det),
     det_get_soln_context(Det, SolnContext),
 
-    % det_infer_goal looks up the proc_info in the module_info
-    % for the vartypes, so we'd better stick them back in the
-    % module_info.
+    % det_infer_goal looks up the proc_info in the module_info for the
+    % vartypes, so we'd better stick them back in the module_info.
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
     pd_info_get_pred_info(!.PDInfo, PredInfo),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
@@ -374,7 +373,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
     proc_info_vartypes(ProcInfo, VarTypes),
     det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
     pd_info_get_instmap(!.PDInfo, InstMap),
-    det_infer_goal(Goal0, Goal, InstMap, SolnContext, DetInfo, _, Msgs),
+    det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], DetInfo, _, _, Msgs),
 
     % Make sure there were no errors.
     disable_det_warnings(OptionsToRestore, !IO),

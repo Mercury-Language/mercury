@@ -16,12 +16,12 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module char.
@@ -1388,13 +1388,13 @@
 
 :- implementation.
 
-:- import_module check_hlds__det_analysis.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__type_util.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.purity.
+:- import_module check_hlds.type_util.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module map.

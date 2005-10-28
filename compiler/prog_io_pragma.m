@@ -15,10 +15,10 @@
 
 :- interface.
 
-:- import_module libs__globals.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_io_util.
+:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io_util.
 
 :- import_module list.
 :- import_module term.
@@ -40,11 +40,11 @@
 
 :- implementation.
 
-:- import_module libs__lp_rational.
-:- import_module libs__rat.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_util.
+:- import_module libs.lp_rational.
+:- import_module libs.rat.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_goal.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.

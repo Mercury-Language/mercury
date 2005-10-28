@@ -21,7 +21,7 @@
 
 :- interface.
 
-:- import_module mode_robdd__tfeirn.
+:- import_module mode_robdd.tfeirn.
 
 :- import_module robdd.
 :- import_module term.
@@ -161,10 +161,10 @@ check_robdd(T)::di_check_robdd)
 
 :- implementation.
 
-:- import_module mode_robdd__r.
-:- import_module mode_robdd__tfer.
-:- import_module mode_robdd__tfeir.
-:- import_module mode_robdd__tfeirn.
+:- import_module mode_robdd.r.
+:- import_module mode_robdd.tfer.
+:- import_module mode_robdd.tfeir.
+:- import_module mode_robdd.tfeirn.
 
 :- import_module require.
 :- import_module robdd.

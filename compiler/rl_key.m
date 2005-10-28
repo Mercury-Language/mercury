@@ -17,11 +17,11 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module aditi_backend.rl.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -56,12 +56,12 @@
 
 :- implementation.
 
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__special_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.special_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -39,9 +39,9 @@
 :- module ml_backend__rtti_to_mlds.
 :- interface.
 
-:- import_module backend_libs__rtti.
-:- import_module hlds__hlds_module.
-:- import_module ml_backend__mlds.
+:- import_module backend_libs.rtti.
+:- import_module hlds.hlds_module.
+:- import_module ml_backend.mlds.
 
 :- import_module list.
 
@@ -51,21 +51,21 @@
 
 :- implementation.
 
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__pseudo_type_info.
-:- import_module backend_libs__type_ctor_info.
-:- import_module check_hlds__type_util.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module ml_backend__ml_closure_gen.
-:- import_module ml_backend__ml_code_util.
-:- import_module ml_backend__ml_unify_gen.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.pseudo_type_info.
+:- import_module backend_libs.type_ctor_info.
+:- import_module check_hlds.type_util.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
+:- import_module mdbcomp.prim_data.
+:- import_module ml_backend.ml_closure_gen.
+:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_unify_gen.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.

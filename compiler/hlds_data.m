@@ -15,10 +15,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_pred.
-:- import_module hlds__hlds_goal.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_goal.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
@@ -28,8 +28,8 @@
 
 :- implementation.
 
-:- import_module check_hlds__type_util.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.type_util.
+:- import_module parse_tree.prog_type.
 
 :- import_module int.
 :- import_module svmulti_map.

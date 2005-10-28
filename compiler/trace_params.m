@@ -38,8 +38,8 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module std_util.
@@ -112,9 +112,9 @@
 
 :- implementation.
 
-:- import_module hlds__special_pred.
+:- import_module hlds.special_pred.
 :- import_module mdbcomp.
-:- import_module mdbcomp__prim_data.
+:- import_module mdbcomp.prim_data.
 
 :- import_module char.
 :- import_module int.

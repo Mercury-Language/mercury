@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2004 The University of Melbourne.
+% Copyright (C) 1998-2000, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -461,7 +461,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module backend_libs__bytecode_data.
+:- import_module backend_libs.bytecode_data.
 
 %-----------------------------------------------------------------------------%
 

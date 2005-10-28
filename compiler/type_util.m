@@ -20,12 +20,12 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module libs__globals.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
@@ -492,15 +492,15 @@
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs__foreign.
-:- import_module check_hlds__purity.
-:- import_module hlds__hlds_out.
-:- import_module libs__options.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.foreign.
+:- import_module check_hlds.purity.
+:- import_module hlds.hlds_out.
+:- import_module libs.options.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_io_goal.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

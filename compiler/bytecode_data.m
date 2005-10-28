@@ -62,7 +62,7 @@
 
 :- implementation.
 
-:- import_module parse_tree__error_util.
+:- import_module parse_tree.error_util.
 
 :- import_module char.
 :- import_module require.

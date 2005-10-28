@@ -28,8 +28,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- type store_map_run_type
     --->    final_allocation
@@ -43,20 +43,20 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__instmap.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__trace_params.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__follow_vars.
-:- import_module ll_backend__liveness.
-:- import_module ll_backend__llds.
-:- import_module ll_backend__trace.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.instmap.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.trace_params.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.follow_vars.
+:- import_module ll_backend.liveness.
+:- import_module ll_backend.llds.
+:- import_module ll_backend.trace.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.

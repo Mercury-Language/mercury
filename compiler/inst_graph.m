@@ -16,7 +16,7 @@
 :- module hlds__inst_graph.
 :- interface.
 
-:- import_module parse_tree__prog_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module list.
@@ -180,8 +180,8 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_out.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_out.
 
 :- import_module require.
 :- import_module set.

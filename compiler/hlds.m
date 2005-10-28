@@ -51,7 +51,7 @@
 :- implementation.
 
 :- import_module libs.
-:- import_module check_hlds.        % needed for unify_proc__unify_proc_id, etc
+:- import_module check_hlds.        % needed for unify_proc.unify_proc_id, etc
 :- import_module transform_hlds.    % needed for term_util, mmc_analysis
 
 :- end_module hlds.

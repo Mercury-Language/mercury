@@ -16,15 +16,16 @@
 
 :- interface.
 
-:- import_module check_hlds__det_util.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.det_util.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module list.
 :- import_module set.
+:- import_module std_util.
 
 :- type det_msg
             % The followintg are warnings.
@@ -53,10 +54,11 @@
     ;       cc_unify_can_fail(hlds_goal_info, prog_var, mer_type,
                 prog_varset, cc_unify_context)
     ;       cc_unify_in_wrong_context(hlds_goal_info, prog_var,
-                mer_type, prog_varset, cc_unify_context)
+                mer_type, prog_varset, cc_unify_context, list(failing_context))
     ;       cc_pred_in_wrong_context(hlds_goal_info, determinism,
-                pred_id, proc_id)
-    ;       higher_order_cc_pred_in_wrong_context(hlds_goal_info, determinism)
+                pred_id, proc_id, prog_varset, list(failing_context))
+    ;       higher_order_cc_pred_in_wrong_context(hlds_goal_info, determinism,
+                prog_varset, list(failing_context))
     ;       error_in_lambda(determinism, determinism, % declared, inferred
                 hlds_goal, hlds_goal_info, pred_id, proc_id)
     ;       par_conj_not_det(determinism, pred_id, proc_id,
@@ -79,6 +81,17 @@
 :- type cc_unify_context
     --->    unify(unify_context)
     ;       switch.
+
+:- type failing_context == pair(prog_context, failing_goal).
+
+:- type failing_goal
+    --->    incomplete_switch(prog_var)
+    ;       fail_goal
+    ;       test_goal(prog_var, prog_var)
+    ;       deconstruct_goal(prog_var, cons_id)
+    ;       call_goal(pred_id, proc_id)
+    ;       generic_call_goal(generic_call)
+    ;       negated_goal.
 
 %-----------------------------------------------------------------------------%
 
@@ -141,23 +154,24 @@
 
 :- implementation.
 
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_error_util.
-:- import_module hlds__hlds_out.
-:- import_module hlds__passes_aux.
-:- import_module hlds__special_pred.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_out.
+:- import_module hlds.passes_aux.
+:- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -165,7 +179,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -234,8 +247,10 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
             ->
                 Message = "warning: determinism declaration " ++
                     "could be tighter.\n",
+                record_warning(!IO),
                 report_determinism_problem(PredId, ProcId, !.ModuleInfo,
-                    Message, DeclaredDetism, InferredDetism, !IO)
+                    Message, DeclaredDetism, InferredDetism, ReportSpec),
+                write_error_specs([ReportSpec], !IO)
             ;
                 true
             )
@@ -243,17 +258,16 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
             Cmp = tighter,
             module_info_incr_errors(!ModuleInfo),
             Message = "  error: determinism declaration not satisfied.\n",
+            record_warning(!IO),
             report_determinism_problem(PredId, ProcId, !.ModuleInfo, Message,
-                DeclaredDetism, InferredDetism, !IO),
+                DeclaredDetism, InferredDetism, ReportSpec),
             proc_info_goal(ProcInfo0, Goal),
             proc_info_vartypes(ProcInfo0, VarTypes),
             globals__io_get_globals(Globals, !IO),
             det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId, Globals,
                 DetInfo),
-            det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _, !IO)
-            % XXX With the right verbosity options, we want to call
-            % report_determinism_problem only if diagnose returns false,
-            % i.e. it didn't print a message.
+            det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _, [], Specs),
+            write_error_specs([ReportSpec | Specs], !IO)
         )
     ),
 
@@ -412,11 +426,11 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
     ).
 
 :- pred report_determinism_problem(pred_id::in, proc_id::in, module_info::in,
-    string::in, determinism::in, determinism::in, io::di, io::uo) is det.
+    string::in, determinism::in, determinism::in,
+    error_msg_spec::out(known_error_msg_spec)) is det.
 
 report_determinism_problem(PredId, ProcId, ModuleInfo, Message,
-        DeclaredDetism, InferredDetism, !IO) :-
-    record_warning(!IO),
+        DeclaredDetism, InferredDetism, Spec) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_context(ProcInfo, Context),
     ProcPieces = describe_one_proc_name_mode(ModuleInfo,
@@ -426,7 +440,7 @@ report_determinism_problem(PredId, ProcId, ModuleInfo, Message,
         words("Declared `" ++ determinism_to_string(DeclaredDetism)
             ++ "', inferred `" ++ determinism_to_string(InferredDetism)
             ++ "'.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+    Spec = error_msg_spec(no, Context, 0, Pieces).
 
 %-----------------------------------------------------------------------------%
 
@@ -486,14 +500,16 @@ compare_solncounts(at_most_many,    at_most_many,    sameas).
     % Find out what is wrong and print a report of the cause.
     %
 :- pred det_diagnose_goal(hlds_goal::in, determinism::in,
-    list(switch_context)::in, det_info::in, bool::out, io::di, io::uo) is det.
+    list(switch_context)::in, det_info::in, bool::out,
+    list(error_msg_spec)::in(known_error_msg_specs),
+    list(error_msg_spec)::out(known_error_msg_specs)) is det.
 
 det_diagnose_goal(Goal - GoalInfo, Desired, SwitchContext, DetInfo, Diagnosed,
-        !IO) :-
+        !Specs) :-
     goal_info_get_determinism(GoalInfo, Actual),
     ( compare_determinisms(Desired, Actual, tighter) ->
         det_diagnose_goal_2(Goal, GoalInfo, Desired, Actual, SwitchContext,
-            DetInfo, Diagnosed, !IO)
+            DetInfo, Diagnosed, !Specs)
     ;
         Diagnosed = no
     ).
@@ -502,20 +518,22 @@ det_diagnose_goal(Goal - GoalInfo, Desired, SwitchContext, DetInfo, Diagnosed,
 
 :- pred det_diagnose_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
     determinism::in, determinism::in, list(switch_context)::in,
-    det_info::in, bool::out, io::di, io::uo) is det.
+    det_info::in, bool::out,
+    list(error_msg_spec)::in(known_error_msg_specs),
+    list(error_msg_spec)::out(known_error_msg_specs)) is det.
 
 det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, Context, DetInfo,
-        Diagnosed, !IO) :-
-    det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed, !IO).
+        Diagnosed, !Specs) :-
+    det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed, !Specs).
 
 det_diagnose_goal_2(par_conj(Goals), _GoalInfo, Desired, _Actual,
-        Context, DetInfo, Diagnosed, !IO) :-
-    det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed, !IO).
+        Context, DetInfo, Diagnosed, !Specs) :-
+    det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed, !Specs).
 
 det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, Actual, SwitchContext,
-        DetInfo, Diagnosed, !IO) :-
+        DetInfo, Diagnosed, !Specs) :-
     det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo, 0,
-        ClausesWithSoln, Diagnosed1, !IO),
+        ClausesWithSoln, Diagnosed1, !Specs),
     determinism_components(Desired, _, DesSolns),
     (
         DesSolns \= at_most_many,
@@ -523,8 +541,9 @@ det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, Actual, SwitchContext,
         ClausesWithSoln > 1
     ->
         goal_info_get_context(GoalInfo, Context),
-        Msg = "Disjunction has multiple clauses with solutions.",
-        write_error_pieces(Context, 2, [words(Msg)], !IO),
+        Pieces = [words("Disjunction has multiple clauses with solutions.")],
+        Spec = error_msg_spec(no, Context, 0, Pieces),
+        inst_preserving_append(!.Specs, [Spec], !:Specs),
         Diagnosed = yes
     ;
         Diagnosed = Diagnosed1
@@ -536,14 +555,13 @@ det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, Actual, SwitchContext,
     % in switch_detection.m and handled via the CanFail field.
     %
 det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
-        Desired, _Actual, SwitchContext, DetInfo, Diagnosed, !IO) :-
+        Desired, _Actual, SwitchContext, DetInfo, Diagnosed, !Specs) :-
     (
         SwitchCanFail = can_fail,
         determinism_components(Desired, cannot_fail, _)
     ->
         goal_info_get_context(GoalInfo, Context),
-        det_diagnose_write_switch_context(Context, SwitchContext, DetInfo,
-            yes, IsFirst, !IO),
+        det_diagnose_switch_context(Context, SwitchContext, DetInfo, !Specs),
         det_get_proc_info(DetInfo, ProcInfo),
         proc_info_varset(ProcInfo, VarSet),
         det_info_get_module_info(DetInfo, ModuleInfo),
@@ -562,40 +580,40 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
             Pieces = [words("The switch on "), fixed(VarStr),
                 words("can fail.")]
         ),
-        write_error_pieces_maybe_first_line(IsFirst, Context, 0, Pieces, !IO),
+        Spec = error_msg_spec(no, Context, 0, Pieces),
+        inst_preserving_append(!.Specs, [Spec], !:Specs),
         Diagnosed1 = yes
     ;
         Diagnosed1 = no
     ),
     det_diagnose_switch(Var, Cases, Desired, SwitchContext, DetInfo,
-        Diagnosed2, !IO),
+        Diagnosed2, !Specs),
     bool__or(Diagnosed1, Diagnosed2, Diagnosed).
 
-det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
-        Desired, Actual, _, DetInfo, yes, !IO) :-
+det_diagnose_goal_2(call(PredId, ProcId, _, _, CallContext, _), GoalInfo,
+        Desired, Actual, _, DetInfo, yes, !Specs) :-
     goal_info_get_context(GoalInfo, Context),
-    det_diagnose_atomic_goal(Desired, Actual,
-        det_report_call_context(Context, CallContext, DetInfo, PredId, ModeId),
-        Context, !IO).
+    det_report_call_context(Context, CallContext, DetInfo, PredId, ProcId,
+        InitSpecs, Spec),
+    det_diagnose_atomic_goal(Desired, Actual, InitSpecs, Spec, !Specs).
 
 det_diagnose_goal_2(generic_call(GenericCall, _, _, _), GoalInfo,
-        Desired, Actual, _, _DetInfo, yes, !IO) :-
+        Desired, Actual, _, _DetInfo, yes, !Specs) :-
     goal_info_get_context(GoalInfo, Context),
-    det_diagnose_atomic_goal(Desired, Actual,
-        report_generic_call_context(Context, GenericCall),
-        Context, !IO).
+    report_generic_call_context(Context, GenericCall, Spec),
+    det_diagnose_atomic_goal(Desired, Actual, [], Spec, !Specs).
 
 det_diagnose_goal_2(unify(LHS, RHS, _, _, UnifyContext), GoalInfo,
-        Desired, Actual, _, DetInfo, yes, !IO) :-
+        Desired, Actual, _, DetInfo, yes, !Specs) :-
     goal_info_get_context(GoalInfo, Context),
-    ( First = yes, Last = yes ),
-    det_diagnose_atomic_goal(Desired, Actual,
-        det_report_unify_context(First, Last, Context, UnifyContext,
-            DetInfo, LHS, RHS),
-        Context, !IO).
+    First = yes,
+    Last = yes,
+    det_report_unify_context(First, Last, Context, UnifyContext,
+        DetInfo, LHS, RHS, Spec),
+    det_diagnose_atomic_goal(Desired, Actual, [], Spec, !Specs).
 
 det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
-        Desired, _Actual, SwitchContext, DetInfo, Diagnosed, !IO) :-
+        Desired, _Actual, SwitchContext, DetInfo, Diagnosed, !Specs) :-
     determinism_components(Desired, _DesiredCanFail, DesiredSolns),
     Cond = _CondGoal - CondInfo,
     goal_info_get_determinism(CondInfo, CondDetism),
@@ -606,16 +624,19 @@ det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
     ->
         determinism_components(DesiredCond, can_fail, DesiredSolns),
         det_diagnose_goal(Cond, DesiredCond, SwitchContext, DetInfo,
-            Diagnosed1, !IO)
+            Diagnosed1, !Specs)
     ;
         Diagnosed1 = no
     ),
-    det_diagnose_goal(Then, Desired, SwitchContext, DetInfo, Diagnosed2, !IO),
-    det_diagnose_goal(Else, Desired, SwitchContext, DetInfo, Diagnosed3, !IO),
+    det_diagnose_goal(Then, Desired, SwitchContext, DetInfo, Diagnosed2,
+        !Specs),
+    det_diagnose_goal(Else, Desired, SwitchContext, DetInfo, Diagnosed3,
+        !Specs),
     bool__or(Diagnosed2, Diagnosed3, Diagnosed23),
     bool__or(Diagnosed1, Diagnosed23, Diagnosed).
 
-det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed, !IO) :-
+det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed,
+        !Specs) :-
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
     determinism_components(Actual, ActualCanFail, ActualSolns),
     (
@@ -623,22 +644,25 @@ det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed, !IO) :-
         ActualCanFail = can_fail
     ->
         goal_info_get_context(GoalInfo, Context),
-        write_error_pieces(Context, 0, [words("Negated goal can succeed.")],
-            !IO),
+        Pieces = [words("Negated goal can succeed.")],
+        Spec = error_msg_spec(no, Context, 0, Pieces),
+        inst_preserving_append(!.Specs, [Spec], !:Specs),
         Diagnosed = yes
     ;
         DesiredSolns = at_most_zero,
         ActualSolns \= at_most_zero
     ->
         goal_info_get_context(GoalInfo, Context),
-        write_error_pieces(Context, 0, [words("Negated goal can fail.")], !IO),
+        Pieces = [words("Negated goal can fail.")],
+        Spec = error_msg_spec(no, Context, 0, Pieces),
+        inst_preserving_append(!.Specs, [Spec], !:Specs),
         Diagnosed = yes
     ;
         Diagnosed = no
     ).
 
 det_diagnose_goal_2(scope(_, Goal), _, Desired, Actual,
-        SwitchContext, DetInfo, Diagnosed, !IO) :-
+        SwitchContext, DetInfo, Diagnosed, !Specs) :-
     Goal = _ - GoalInfo,
     goal_info_get_determinism(GoalInfo, Internal),
     ( Actual = Internal ->
@@ -648,99 +672,110 @@ det_diagnose_goal_2(scope(_, Goal), _, Desired, Actual,
         determinism_components(InternalDesired, CanFail, at_most_many)
     ),
     det_diagnose_goal(Goal, InternalDesired, SwitchContext, DetInfo, Diagnosed,
-        !IO).
+        !Specs).
 
 det_diagnose_goal_2(foreign_proc(_, _, _, _, _, _), GoalInfo, Desired,
-        _, _, _, yes, !IO) :-
+        _, _, _, yes, !Specs) :-
     goal_info_get_context(GoalInfo, Context),
     DesiredStr = determinism_to_string(Desired),
     Pieces = [words("Determinism declaration not satisfied."),
         words("Desired determinism is " ++ DesiredStr ++ ".")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+    Spec = error_msg_spec(no, Context, 0, Pieces),
+    inst_preserving_append(!.Specs, [Spec], !:Specs).
 
-det_diagnose_goal_2(shorthand(_), _, _, _, _, _, _, !IO) :-
+det_diagnose_goal_2(shorthand(_), _, _, _, _, _, _, !Specs) :-
     % These should have been expanded out by now.
     error("det_diagnose_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
 :- pred report_generic_call_context(prog_context::in, generic_call::in,
-    io::di, io::uo) is det.
+    error_msg_spec::out(known_error_msg_spec)) is det.
 
-report_generic_call_context(Context, CallType, !IO) :-
+report_generic_call_context(Context, CallType, Spec) :-
     hlds_goal__generic_call_id(CallType, CallId),
-    write_error_pieces(Context, 0, [words(call_id_to_string(CallId))], !IO).
+    Pieces = [words(call_id_to_string(CallId))],
+    Spec = error_msg_spec(no, Context, 0, Pieces).
 
 %-----------------------------------------------------------------------------%
 
 :- pred det_diagnose_atomic_goal(determinism::in, determinism::in,
-    pred(io, io)::in(pred(di, uo) is det), prog_context::in, io::di, io::uo)
-    is det.
+    list(error_msg_spec)::in(known_error_msg_specs),
+    error_msg_spec::in(known_error_msg_spec),
+    list(error_msg_spec)::in(known_error_msg_specs),
+    list(error_msg_spec)::out(known_error_msg_specs)) is det.
 
-det_diagnose_atomic_goal(Desired, Actual, WriteContext, Context) -->
-    { determinism_components(Desired, DesiredCanFail, DesiredSolns) },
-    { determinism_components(Actual, ActualCanFail, ActualSolns) },
-    { compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
-    ( { CmpCanFail = tighter } ->
-        call(WriteContext),
-        io__write_string(" can fail.\n"),
-        { Diagnosed1 = yes }
+det_diagnose_atomic_goal(Desired, Actual, InitSpecs, !.CurSpec, !Specs) :-
+    determinism_components(Desired, DesiredCanFail, DesiredSolns),
+    determinism_components(Actual, ActualCanFail, ActualSolns),
+    compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail),
+    ( CmpCanFail = tighter ->
+        add_to_spec_at_end([words("can fail."), nl], !CurSpec),
+        Diagnosed1 = yes
     ;
-        { Diagnosed1 = no }
+        Diagnosed1 = no
     ),
-    { compare_solncounts(DesiredSolns, ActualSolns, CmpSolns) },
-    ( { CmpSolns = tighter } ->
-        call(WriteContext),
-        io__write_string(" can succeed"),
-        ( { DesiredSolns = at_most_one } ->
-            io__write_string(" more than once.\n")
+    compare_solncounts(DesiredSolns, ActualSolns, CmpSolns),
+    ( CmpSolns = tighter ->
+        ( DesiredSolns = at_most_one ->
+            add_to_spec_at_end([words("can succeed more than once."), nl],
+                !CurSpec)
         ;
-            io__write_string(".\n")
+            add_to_spec_at_end([words("can succeed."), nl], !CurSpec)
         ),
-        { Diagnosed2 = yes }
+        Diagnosed2 = yes
     ;
-        { Diagnosed2 = no }
+        Diagnosed2 = no
     ),
-    { bool__or(Diagnosed1, Diagnosed2, Diagnosed) },
+    bool__or(Diagnosed1, Diagnosed2, Diagnosed),
     (
-        { Diagnosed = yes }
+        Diagnosed = yes
     ;
-        { Diagnosed = no },
-        call(WriteContext),
-        io__write_string(" has unknown determinism problem;\n"),
-        prog_out__write_context(Context),
-        io__write_string("  desired determinism is "),
-        hlds_out__write_determinism(Desired),
-        io__write_string(", while actual determinism is "),
-        hlds_out__write_determinism(Actual),
-        io__write_string(".\n")
-    ).
+        Diagnosed = no,
+        Pieces = [words("has unknown determinism problem;"), nl,
+            words("desired determinism is" ++
+                determinism_to_string(Desired) ++ ","),
+            words("while actual determinism is" ++
+                determinism_to_string(Actual) ++ "."),
+            nl],
+        add_to_spec_at_end(Pieces, !CurSpec)
+    ),
+    inst_preserving_append(InitSpecs, [!.CurSpec], AllSpecs),
+    inst_preserving_append(!.Specs, AllSpecs, !:Specs).
 
-    % det_diagnose_conj is used for both normal [sequential]
-    % conjunction and parallel conjunction.
-
+    % det_diagnose_conj is used for both normal [sequential] conjunction
+    % and parallel conjunction.
+    %
 :- pred det_diagnose_conj(list(hlds_goal)::in, determinism::in,
-    list(switch_context)::in, det_info::in, bool::out, io::di, io::uo)
-    is det.
+    list(switch_context)::in, det_info::in, bool::out,
+    list(error_msg_spec)::in(known_error_msg_specs),
+    list(error_msg_spec)::out(known_error_msg_specs)) is det.
 
-det_diagnose_conj([], _Desired, _SwitchContext, _DetInfo, no, !IO).
+det_diagnose_conj([], _Desired, _SwitchContext, _DetInfo, no, !Specs).
 det_diagnose_conj([Goal | Goals], Desired, SwitchContext, DetInfo,
-        Diagnosed, !IO) :-
-    det_diagnose_goal(Goal, Desired, SwitchContext, DetInfo, Diagnosed1, !IO),
-    det_diagnose_conj(Goals, Desired, SwitchContext, DetInfo, Diagnosed2, !IO),
+        Diagnosed, !Specs) :-
+    det_diagnose_goal(Goal, Desired, SwitchContext, DetInfo, Diagnosed1,
+        !Specs),
+    det_diagnose_conj(Goals, Desired, SwitchContext, DetInfo, Diagnosed2,
+        !Specs),
     bool__or(Diagnosed1, Diagnosed2, Diagnosed).
 
 :- pred det_diagnose_disj(list(hlds_goal)::in,
     determinism::in, determinism::in, list(switch_context)::in,
-    det_info::in, int::in, int::out, bool::out, io::di, io::uo) is det.
+    det_info::in, int::in, int::out, bool::out,
+    list(error_msg_spec)::in(known_error_msg_specs),
+    list(error_msg_spec)::out(known_error_msg_specs)) is det.
 
 det_diagnose_disj([], _Desired, _Actual, _SwitchContext, _DetInfo,
-        !ClausesWithSoln, no, !IO).
+        !ClausesWithSoln, no, !Specs).
 det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
-        !ClausesWithSoln, Diagnosed, !IO) :-
+        !ClausesWithSoln, Diagnosed, !Specs) :-
     determinism_components(Actual, ActualCanFail, _),
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
-    ( DesiredCanFail = cannot_fail, ActualCanFail = can_fail ->
+    (
+        DesiredCanFail = cannot_fail,
+        ActualCanFail = can_fail
+    ->
         % if the disjunction was declared to never fail,
         % but we inferred that it might fail, then we
         % want to print an error message for every disjunct
@@ -755,7 +790,7 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
     ),
     determinism_components(ClauseDesired, ClauseCanFail, DesiredSolns),
     det_diagnose_goal(Goal, ClauseDesired, SwitchContext, DetInfo,
-        Diagnosed1, !IO),
+        Diagnosed1, !Specs),
     (
         Goal = _ - GoalInfo,
         goal_info_get_determinism(GoalInfo, GoalDetism),
@@ -766,20 +801,22 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
         !:ClausesWithSoln = !.ClausesWithSoln + 1
     ),
     det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo,
-        !ClausesWithSoln, Diagnosed2, !IO),
+        !ClausesWithSoln, Diagnosed2, !Specs),
     bool__or(Diagnosed1, Diagnosed2, Diagnosed).
 
 :- pred det_diagnose_switch(prog_var::in, list(case)::in, determinism::in,
     list(switch_context)::in, det_info::in, bool::out,
-    io::di, io::uo) is det.
+    list(error_msg_spec)::in(known_error_msg_specs),
+    list(error_msg_spec)::out(known_error_msg_specs)) is det.
 
-det_diagnose_switch(_Var, [], _Desired, _SwitchContext, _DetInfo, no, !IO).
+det_diagnose_switch(_Var, [], _Desired, _SwitchContext, _DetInfo, no, !Specs).
 det_diagnose_switch(Var, [case(ConsId, Goal) | Cases], Desired,
-        SwitchContext0, DetInfo, Diagnosed, !IO) :-
+        SwitchContext0, DetInfo, Diagnosed, !Specs) :-
     SwitchContext1 = [switch_context(Var, ConsId) | SwitchContext0],
-    det_diagnose_goal(Goal, Desired, SwitchContext1, DetInfo, Diagnosed1, !IO),
+    det_diagnose_goal(Goal, Desired, SwitchContext1, DetInfo, Diagnosed1,
+        !Specs),
     det_diagnose_switch(Var, Cases, Desired, SwitchContext0, DetInfo,
-        Diagnosed2, !IO),
+        Diagnosed2, !Specs),
     bool__or(Diagnosed1, Diagnosed2, Diagnosed).
 
 %-----------------------------------------------------------------------------%
@@ -822,13 +859,14 @@ cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
 
 :- type switch_context ---> switch_context(prog_var, cons_id).
 
-:- pred det_diagnose_write_switch_context(prog_context::in,
-    list(switch_context)::in, det_info::in, bool::in, bool::out,
-    io::di, io::uo) is det.
+:- pred det_diagnose_switch_context(prog_context::in,
+    list(switch_context)::in, det_info::in,
+    list(error_msg_spec)::in(known_error_msg_specs),
+    list(error_msg_spec)::out(known_error_msg_specs)) is det.
 
-det_diagnose_write_switch_context(_Context, [], _, !IsFirst, !IO).
-det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
-        DetInfo, !IsFirst, !IO) :-
+det_diagnose_switch_context(_Context, [], _, !Specs).
+det_diagnose_switch_context(Context, [SwitchContext | SwitchContexts],
+        DetInfo, !Specs) :-
     det_get_proc_info(DetInfo, ProcInfo),
     proc_info_varset(ProcInfo, VarSet),
     SwitchContext = switch_context(Var, ConsId),
@@ -836,47 +874,45 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
     VarStr = mercury_var_to_string(Var, VarSet, no),
     Pieces = [words("Inside the case"), fixed(ConsIdStr),
         words("of the switch on"), fixed(VarStr), words(":")],
-    write_error_pieces_maybe_first_line(!.IsFirst, Context, 0, Pieces, !IO),
-    !:IsFirst = no,
-    det_diagnose_write_switch_context(Context, SwitchContexts, DetInfo,
-        !IsFirst, !IO).
+    Spec = error_msg_spec(no, Context, 0, Pieces),
+    inst_preserving_append(!.Specs, [Spec], !:Specs),
+    det_diagnose_switch_context(Context, SwitchContexts, DetInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
 :- pred det_report_call_context(prog_context::in,
     maybe(call_unify_context)::in, det_info::in, pred_id::in, proc_id::in,
-    io::di, io::uo) is det.
+    list(error_msg_spec)::out(known_error_msg_specs),
+    error_msg_spec::out(known_error_msg_spec)) is det.
 
 det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
-        !IO) :-
+        InitSpecs, Spec) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredName = pred_info_name(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_origin(PredInfo, Origin),
-    %
-    % if the error was in a call to a type-specific unification predicate
+
+    % If the error was in a call to a type-specific unification predicate
     % (i.e. in the unification itself), then don't print out the predicate
     % name, just print out the context.  If it wasn't, then print them
     % both out. (The latter can happen if there is a determinism error
     % in a function call inside some unification.)
-    %
+
     ( Origin = special_pred(spec_pred_unify - _) ->
         (
             CallUnifyContext = yes(call_unify_context(LHS, RHS, UC)),
-            First = yes, Last = yes,
+            First = yes,
+            Last = yes,
             det_report_unify_context(First, Last, Context, UC, DetInfo,
-                LHS, RHS, !IO)
+                LHS, RHS, Spec),
+            InitSpecs = []
         ;
-            % this shouldn't happen; every call to a compiler
-            % generated type-specific unification predicate
-            % should have a unify_context
+            % This shouldn't happen; every call to a compiler generated
+            % type-specific unification predicate should have a unify_context.
             CallUnifyContext = no,
-            write_error_pieces(Context, 0,
-                [words("Some weird unification"
-                    ++ "(or explicit call to a"
-                    ++ "type-specific unify predicate?)")],
-                !IO)
+            Pieces = [words("Some weird unification"
+                ++ "(or explicit call to a type-specific unify predicate?)")],
+            Spec = error_msg_spec(no, Context, 0, Pieces),
+            InitSpecs = []
         )
     ;
         (
@@ -884,18 +920,21 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
             First = yes,
             Last = no,
             det_report_unify_context(First, Last, Context, UC, DetInfo,
-                LHS, RHS, !IO),
-            io__write_string(":\n", !IO)
+                LHS, RHS, UnifySpec0),
+            add_to_spec_at_end([suffix(":")], UnifySpec0, UnifySpec),
+            InitSpecs = [UnifySpec]
         ;
-            CallUnifyContext = no
+            CallUnifyContext = no,
+            InitSpecs = []
         ),
         pred_info_procedures(PredInfo, ProcTable),
         map__lookup(ProcTable, ProcId, ProcInfo),
         proc_info_declared_argmodes(ProcInfo, ArgModes),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  call to `", !IO),
-        report_pred_name_mode(PredOrFunc, PredName, ArgModes, !IO),
-        io__write_string("'", !IO)
+        proc_info_inst_varset(ProcInfo, InstVarSet),
+        PredPieces = describe_one_pred_name_mode(ModuleInfo,
+            should_module_qualify, PredId, InstVarSet, ArgModes),
+        CallPieces = [words("call to") | PredPieces],
+        Spec = error_msg_spec(no, Context, 0, CallPieces)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -910,35 +949,31 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     %
 :- pred det_report_unify_context(bool::in, bool::in, prog_context::in,
     unify_context::in, det_info::in, prog_var::in, unify_rhs::in,
-    io::di, io::uo) is det.
+    error_msg_spec::out(known_error_msg_spec)) is det.
 
 det_report_unify_context(!.First, Last, Context, UnifyContext, DetInfo,
-        LHS, RHS, !IO) :-
-    hlds_out__write_unify_context(!First, UnifyContext, Context, !IO),
-    prog_out__write_context(Context, !IO),
+        LHS, RHS, Spec) :-
+    unify_context_to_pieces(!First, UnifyContext, [], UnifyContextPieces),
     det_get_proc_info(DetInfo, ProcInfo),
     proc_info_varset(ProcInfo, VarSet),
     det_info_get_module_info(DetInfo, ModuleInfo),
-        % We don't have the inst varset - it's not in the
-        % proc_info, so we'll just make one up....
-    varset__init(InstVarSet),
     (
         !.First = yes,
         (
             Last = yes,
-            io__write_string("  Unification ", !IO)
+            StartWords = "Unification"
         ;
             Last = no,
-            io__write_string("  In unification ", !IO)
+            StartWords = "In unification"
         )
     ;
         !.First = no,
         (
             Last = yes,
-            io__write_string("  unification ", !IO)
+            StartWords = "unification"
         ;
             Last = no,
-            io__write_string("  in unification ", !IO)
+            StartWords = "in unification"
         )
     ),
     ( varset__search_name(VarSet, LHS, _) ->
@@ -946,27 +981,29 @@ det_report_unify_context(!.First, Last, Context, UnifyContext, DetInfo,
             RHS = var(RV),
             \+ varset__search_name(VarSet, RV, _)
         ->
-            io__write_string("with `", !IO),
-            mercury_output_var(LHS, VarSet, no, !IO),
-            io__write_string("'", !IO)
+            Pieces = [words(StartWords), words("with"),
+                words(add_quotes(mercury_var_to_string(LHS, VarSet, no)))]
         ;
-            io__write_string("of `", !IO),
-            mercury_output_var(LHS, VarSet, no, !IO),
-            io__write_string("' and `", !IO),
-            hlds_out__write_unify_rhs(RHS, ModuleInfo, VarSet,
-                InstVarSet, no, 3, !IO),
-            io__write_string("'", !IO)
+            Pieces = [words(StartWords), words("of"),
+                words(add_quotes(mercury_var_to_string(LHS, VarSet, no))),
+                words("and"),
+                words(add_quotes(
+                    unify_rhs_to_string(RHS, ModuleInfo, VarSet, no)))]
         )
     ;
-        io__write_string("with `", !IO),
-        hlds_out__write_unify_rhs(RHS, ModuleInfo, VarSet, InstVarSet,
-            no, 3, !IO),
-        io__write_string("'", !IO)
-    ).
+        Pieces = [words(StartWords), words("with"),
+            words(add_quotes(
+                unify_rhs_to_string(RHS, ModuleInfo, VarSet, no)))]
+    ),
+    AllPieces = UnifyContextPieces ++ Pieces,
+    Spec = error_msg_spec(no, Context, 0, AllPieces).
 
 %-----------------------------------------------------------------------------%
 
-:- type det_msg_type    --->    simple_code_warning ; call_warning ; error.
+:- type det_msg_type
+    --->    simple_code_warning
+    ;       call_warning
+    ;       det_error.
 
 det_report_and_handle_msgs(Msgs, !ModuleInfo, !IO) :-
     (
@@ -1024,7 +1061,7 @@ det_report_msgs_2([Msg | Msgs], WarnSimple, WarnCalls, ModuleInfo,
             MsgType = call_warning,
             !:WarnCnt = !.WarnCnt + 1
         ;
-            MsgType = error,
+            MsgType = det_error,
             !:ErrCnt = !.ErrCnt + 1
         )
     ),
@@ -1049,18 +1086,19 @@ det_msg_get_type(det_goal_has_no_outputs(_), simple_code_warning).
 det_msg_get_type(warn_obsolete(_, _), simple_code_warning).
 det_msg_get_type(warn_infinite_recursion(_), simple_code_warning).
 det_msg_get_type(duplicate_call(_, _, _), call_warning).
-det_msg_get_type(cc_unify_can_fail(_, _, _, _, _), error).
-det_msg_get_type(cc_unify_in_wrong_context(_, _, _, _, _), error).
-det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _), error).
-det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _), error).
-det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
-det_msg_get_type(par_conj_not_det(_, _, _, _, _), error).
-det_msg_get_type(pragma_c_code_without_det_decl(_, _), error).
-det_msg_get_type(has_io_state_but_not_det(_, _), error).
-det_msg_get_type(will_not_throw_with_erroneous(_, _), error).
-det_msg_get_type(export_model_non_proc(_, _, _), error).
-det_msg_get_type(promise_equivalent_solutions_missing_vars(_, _, _), error).
-det_msg_get_type(promise_equivalent_solutions_extra_vars(_, _, _), error).
+det_msg_get_type(cc_unify_can_fail(_, _, _, _, _), det_error).
+det_msg_get_type(cc_unify_in_wrong_context(_, _, _, _, _, _), det_error).
+det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _, _, _), det_error).
+det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _, _, _), det_error).
+det_msg_get_type(error_in_lambda(_, _, _, _, _, _), det_error).
+det_msg_get_type(par_conj_not_det(_, _, _, _, _), det_error).
+det_msg_get_type(pragma_c_code_without_det_decl(_, _), det_error).
+det_msg_get_type(has_io_state_but_not_det(_, _), det_error).
+det_msg_get_type(will_not_throw_with_erroneous(_, _), det_error).
+det_msg_get_type(export_model_non_proc(_, _, _), det_error).
+det_msg_get_type(promise_equivalent_solutions_missing_vars(_, _, _),
+    det_error).
+det_msg_get_type(promise_equivalent_solutions_extra_vars(_, _, _), det_error).
 
 det_msg_is_any_mode_msg(multidet_disj(_, _), all_modes).
 det_msg_is_any_mode_msg(det_disj(_, _), all_modes).
@@ -1077,9 +1115,10 @@ det_msg_is_any_mode_msg(warn_obsolete(_, _), all_modes).
 det_msg_is_any_mode_msg(warn_infinite_recursion(_), any_mode).
 det_msg_is_any_mode_msg(duplicate_call(_, _, _), any_mode).
 det_msg_is_any_mode_msg(cc_unify_can_fail(_, _, _, _, _), any_mode).
-det_msg_is_any_mode_msg(cc_unify_in_wrong_context(_, _, _, _, _), any_mode).
-det_msg_is_any_mode_msg(cc_pred_in_wrong_context(_, _, _, _), any_mode).
-det_msg_is_any_mode_msg(higher_order_cc_pred_in_wrong_context(_, _), any_mode).
+det_msg_is_any_mode_msg(cc_unify_in_wrong_context(_, _, _, _, _, _), any_mode).
+det_msg_is_any_mode_msg(cc_pred_in_wrong_context(_, _, _, _, _, _), any_mode).
+det_msg_is_any_mode_msg(higher_order_cc_pred_in_wrong_context(_, _, _, _),
+    any_mode).
 det_msg_is_any_mode_msg(error_in_lambda(_, _, _, _, _, _), any_mode).
 det_msg_is_any_mode_msg(par_conj_not_det(_, _, _, _, _), any_mode).
 det_msg_is_any_mode_msg(pragma_c_code_without_det_decl(_, _), any_mode).
@@ -1246,7 +1285,7 @@ det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
         globals.io_set_extra_error_info(yes, !IO)
     ).
 det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
-        GoalContext), _ModuleInfo, !IO) :-
+        GoalContext, FailingContexts), ModuleInfo, !IO) :-
     goal_info_get_context(GoalInfo, Context),
     (
         GoalContext = switch,
@@ -1271,9 +1310,11 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
     Pieces1 = [words(ErrorMsg),
         words("unification for non-canonical type"),
         words("`" ++ TypeCtorStr ++ "'"),
-        words("occurs in a context which requires all solutions.")],
-    Pieces = Pieces0 ++ Pieces1,
-    write_error_pieces(Context, 0, Pieces, !IO),
+        words("occurs in a context which requires all solutions."), nl],
+    FirstPieces = Pieces0 ++ Pieces1,
+    FirstSpec = error_msg_spec(yes, Context, 0, FirstPieces),
+    LaterSpecs = failing_contexts_description(ModuleInfo, VarSet,
+        FailingContexts),
     globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
@@ -1289,45 +1330,56 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
             words("representations, but I'm not going to do that"),
             words("implicitly. (If that's really what you want,"),
             words("you must do it explicitly.)")],
-        write_error_pieces_not_first_line(Context, 0, VerbosePieces, !IO)
+        VerboseSpec = error_msg_spec(no, Context, 0, VerbosePieces),
+        write_error_specs([FirstSpec, VerboseSpec | LaterSpecs], !IO)
     ;
         VerboseErrors = no,
-        globals.io_set_extra_error_info(yes, !IO)
+        globals.io_set_extra_error_info(yes, !IO),
+        write_error_specs([FirstSpec | LaterSpecs], !IO)
     ).
-det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
-        ModuleInfo, !IO) :-
+det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId,
+        VarSet, FailingContexts), ModuleInfo, !IO) :-
     goal_info_get_context(GoalInfo, Context),
     PredPieces = describe_one_pred_name(ModuleInfo,
         should_not_module_qualify, PredId),
     DetStr = mercury_det_to_string(Detism),
-    Pieces = [words("Error: call to")] ++ PredPieces ++
+    FirstPieces = [words("Error: call to")] ++ PredPieces ++
         [words("with determinism `" ++ DetStr ++ "'"),
-        words("occurs in a context which requires all solutions.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
-det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
-        _ModuleInfo, !IO) :-
+        words("occurs in a context which requires all solutions."), nl],
+    FirstSpec = error_msg_spec(yes, Context, 0, FirstPieces),
+    LaterSpecs = failing_contexts_description(ModuleInfo, VarSet,
+        FailingContexts),
+    write_error_specs([FirstSpec | LaterSpecs], !IO).
+det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism, VarSet,
+        FailingContexts), ModuleInfo, !IO) :-
     goal_info_get_context(GoalInfo, Context),
     DetStr = mercury_det_to_string(Detism),
-    Pieces = [words("Error: higher-order call to predicate with"),
+    FirstPieces = [words("Error: higher-order call to predicate with"),
         words("determinism `" ++ DetStr ++ "'"),
-        words("occurs in a context which requires all solutions.")],
-    write_error_pieces(Context, 0, Pieces, !IO).
+        words("occurs in a context which requires all solutions."), nl],
+    FirstSpec = error_msg_spec(yes, Context, 0, FirstPieces),
+    LaterSpecs = failing_contexts_description(ModuleInfo, VarSet,
+        FailingContexts),
+    write_error_specs([FirstSpec | LaterSpecs], !IO).
 det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
             PredId, ProcId), ModuleInfo, !IO) :-
     PredPieces = describe_one_proc_name_mode(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),
     goal_info_get_context(GoalInfo, Context),
-    write_error_pieces(Context, 0,
+    Pieces =
         [words("In")] ++ PredPieces ++ [suffix(":"), nl,
         words("Determinism error in lambda expression."), nl,
         words("Declared `" ++ determinism_to_string(DeclaredDetism)
             ++ "', inferred `" ++ determinism_to_string(InferredDetism)
-            ++ "'.")], !IO),
+            ++ "'.")],
+    ReportSpec = error_msg_spec(no, Context, 0, Pieces),
     globals__io_get_globals(Globals, !IO),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_vartypes(ProcInfo, VarTypes),
     det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
-    det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _, !IO).
+    det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _,
+        [ReportSpec], Specs),
+    write_error_specs(Specs, !IO).
 det_report_msg(par_conj_not_det(InferredDetism, PredId,
         ProcId, GoalInfo, Goals), ModuleInfo, !IO) :-
     goal_info_get_context(GoalInfo, Context),
@@ -1341,12 +1393,13 @@ det_report_msg(par_conj_not_det(InferredDetism, PredId,
     ),
     Rest = "The current implementation supports only single-solution"
         ++ "non-failing parallel conjunctions.",
-    write_error_pieces(Context, 0, [words(First), words(Rest)], !IO),
+    ReportSpec = error_msg_spec(no, Context, 0, [words(First), words(Rest)]),
     globals__io_get_globals(Globals, !IO),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_vartypes(ProcInfo, VarTypes),
     det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
-    det_diagnose_conj(Goals, det, [], DetInfo, _, !IO).
+    det_diagnose_conj(Goals, det, [], DetInfo, _, [ReportSpec], Specs),
+    write_error_specs(Specs, !IO).
 det_report_msg(pragma_c_code_without_det_decl(PredId, ProcId),
         ModuleInfo, !IO) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
@@ -1458,6 +1511,54 @@ get_exported_proc_context([ Proc | Procs], PredId, ProcId, Context) :-
         get_exported_proc_context(Procs, PredId, ProcId, Context)
     ).
 
+:- func failing_contexts_description(module_info::in, prog_varset::in,
+    list(failing_context)::in) =
+    (list(error_msg_spec)::out(known_error_msg_specs)) is det.
+
+failing_contexts_description(ModuleInfo, VarSet, FailingContexts) =
+    list__map(failing_context_description(ModuleInfo, VarSet),
+        FailingContexts).
+
+:- func failing_context_description(module_info::in, prog_varset::in,
+    failing_context::in) = (error_msg_spec::out(known_error_msg_spec)) is det.
+
+failing_context_description(ModuleInfo, VarSet, Context - FailingGoal)
+        = Spec :-
+    (
+        FailingGoal = incomplete_switch(Var),
+        VarStr = mercury_var_to_string(Var, VarSet, no),
+        Pieces = [words("Switch on"), fixed(VarStr), words("is incomplete.")]
+    ;
+        FailingGoal = fail_goal,
+        Pieces = [words("Fail goal can fail.")]
+    ;
+        FailingGoal = test_goal(Var1, Var2),
+        Var1Str = mercury_var_to_string(Var1, VarSet, no),
+        Var2Str = mercury_var_to_string(Var2, VarSet, no),
+        Pieces = [words("Unification of"), fixed(Var1Str),
+            words("and"), fixed(Var2Str), words("can fail.")]
+    ;
+        FailingGoal = deconstruct_goal(Var, ConsId),
+        VarStr = mercury_var_to_string(Var, VarSet, no),
+        ConsIdStr = cons_id_to_string(ConsId),
+        Pieces = [words("Unification of"), fixed(VarStr),
+            words("with"), fixed(ConsIdStr), words("can fail.")]
+    ;
+        FailingGoal = call_goal(PredId, _ProcId),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        Name = pred_info_name(PredInfo),
+        Pieces = [words("Call to"), fixed(Name), words("can fail.")]
+    ;
+        FailingGoal = generic_call_goal(GenericCall),
+        hlds_goal__generic_call_id(GenericCall, CallId),
+        Pieces = [words(capitalize(call_id_to_string(CallId))),
+            words("can fail.")]
+    ;
+        FailingGoal = negated_goal,
+        Pieces = [words("Negated goal can fail.")]
+    ),
+    Spec = error_msg_spec(no, Context, 0, Pieces ++ [nl]).
+
 %-----------------------------------------------------------------------------%
 
 :- func det_report_seen_call_id(module_info, seen_call_id)
@@ -1512,9 +1613,21 @@ disable_det_warnings(OptionsToRestore, !IO) :-
     ].
 
 restore_det_warnings(OptionsToRestore, !IO) :-
-    list__foldl((pred((Option - Value)::in, di, uo) is det -->
-        globals__io_set_option(Option, Value)
-    ), OptionsToRestore, !IO).
+    list__foldl(restore_option, OptionsToRestore, !IO).
+
+:- pred restore_option(pair(option, option_data)::in, io::di, io::uo) is det.
+
+restore_option(Option - Value, !IO) :-
+    globals__io_set_option(Option, Value, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred inst_preserving_append(list(T)::in(list_skel(I)),
+    list(T)::in(list_skel(I)), list(T)::out(list_skel(I))) is det.
+
+inst_preserving_append([], L, L).
+inst_preserving_append([H | T], B, [H | NT]) :-
+    inst_preserving_append(T, B, NT).
 
 %-----------------------------------------------------------------------------%
 

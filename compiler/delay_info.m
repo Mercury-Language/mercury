@@ -22,9 +22,9 @@
 
 :- interface.
 
-:- import_module check_hlds__mode_errors.
-:- import_module hlds__hlds_goal.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.mode_errors.
+:- import_module hlds.hlds_goal.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -90,9 +90,9 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_errors.   % for the mode_error_info
+:- import_module check_hlds.mode_errors.   % for the mode_error_info
                                             % and delay_info types.
-:- import_module parse_tree__error_util.
+:- import_module libs.compiler_util.
 
 :- import_module int.
 :- import_module map.

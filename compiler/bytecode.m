@@ -16,11 +16,11 @@
 
 :- interface.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module hlds__hlds_data.
-:- import_module libs__tree.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module backend_libs.builtin_ops.
+:- import_module hlds.hlds_data.
+:- import_module libs.tree.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module char.
 :- import_module io.
@@ -142,10 +142,10 @@
 
 :- implementation.
 
-:- import_module backend_libs__bytecode_data.
-:- import_module backend_libs__c_util.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_out.
+:- import_module backend_libs.bytecode_data.
+:- import_module backend_libs.c_util.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module int.

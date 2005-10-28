@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module check_hlds.
-:- import_module check_hlds__mode_constraint_robdd.
+:- import_module check_hlds.mode_constraint_robdd.
 
 :- import_module robdd.
 :- import_module term.
@@ -164,8 +164,8 @@
 
 :- implementation.
 
-:- import_module mode_robdd__equiv_vars.
-:- import_module mode_robdd__implications.
+:- import_module mode_robdd.equiv_vars.
+:- import_module mode_robdd.implications.
 
 :- import_module bool.
 :- import_module int.

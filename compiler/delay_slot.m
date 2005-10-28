@@ -50,7 +50,7 @@
 
 :- interface.
 
-:- import_module ll_backend__llds.
+:- import_module ll_backend.llds.
 
 :- import_module list.
 

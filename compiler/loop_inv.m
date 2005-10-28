@@ -99,8 +99,8 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_module.
 
     % hoist_loop_invariants(PredId, ProcId, PredInfo,
     %       ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo)
@@ -119,18 +119,18 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__purity.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__instmap.
-:- import_module hlds__quantification.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.purity.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
+:- import_module hlds.quantification.
+:- import_module libs.compiler_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -25,13 +25,13 @@
 :- interface.
 
 % Parse tree modules
-:- import_module parse_tree__prog_data.
+:- import_module parse_tree.prog_data.
 
 % HLDS modules
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 % Standard library modules
 :- import_module bool.
@@ -64,15 +64,15 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module hlds__arg_info.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__instmap.
-:- import_module ll_backend__liveness.
-:- import_module ll_backend__llds.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.arg_info.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.instmap.
+:- import_module ll_backend.liveness.
+:- import_module ll_backend.llds.
 
 :- import_module assoc_list.
 :- import_module int.

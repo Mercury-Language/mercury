@@ -30,10 +30,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- pred find_final_follow_vars(proc_info::in, abs_follow_vars_map::out,
     int::out) is det.
@@ -48,16 +48,16 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module hlds__arg_info.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__quantification.
-:- import_module libs__globals.
-:- import_module ll_backend__call_gen.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.arg_info.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.quantification.
+:- import_module libs.globals.
+:- import_module ll_backend.call_gen.
+:- import_module ll_backend.code_util.
+:- import_module ll_backend.llds.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.

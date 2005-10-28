@@ -16,9 +16,9 @@
 :- module ml_backend__ml_util.
 :- interface.
 
-:- import_module libs__globals.  % for foreign_language
-:- import_module ml_backend__mlds.
-:- import_module parse_tree__prog_data.
+:- import_module libs.globals.  % for foreign_language
+:- import_module ml_backend.mlds.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module std_util.
@@ -164,12 +164,12 @@
 
 :- implementation.
 
-:- import_module backend_libs__rtti.
-:- import_module check_hlds__type_util.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.rtti.
+:- import_module check_hlds.type_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module list.

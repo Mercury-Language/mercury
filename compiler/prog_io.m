@@ -57,10 +57,10 @@
 
 :- interface.
 
-:- import_module libs__timestamp.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_io_util.
+:- import_module libs.timestamp.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io_util.
 
 :- import_module bool.
 :- import_module io.
@@ -269,21 +269,21 @@
 
 :- implementation.
 
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_io_dcg.
-:- import_module parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_io_pragma.
-:- import_module parse_tree__prog_io_typeclass.
-:- import_module parse_tree__prog_io_util.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_io_dcg.
+:- import_module parse_tree.prog_io_goal.
+:- import_module parse_tree.prog_io_pragma.
+:- import_module parse_tree.prog_io_typeclass.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 :- import_module recompilation.
-:- import_module recompilation__version.
+:- import_module recompilation.version.
 
 :- import_module assoc_list.
 :- import_module dir.

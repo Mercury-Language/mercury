@@ -37,8 +37,8 @@
 
 :- interface.
 
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -200,7 +200,16 @@
         ;
             anything(pred(di, uo) is det)
         ).
+:- inst known_error_msg_spec ==
+        bound(
+            error_msg_spec(ground, ground, ground, ground)
+        ).
 :- inst error_msg_specs == list_skel(error_msg_spec).
+:- inst known_error_msg_specs == list_skel(known_error_msg_spec).
+
+:- pred add_to_spec_at_end(list(format_component)::in,
+    error_msg_spec::in(known_error_msg_spec),
+    error_msg_spec::out(known_error_msg_spec)) is det.
 
 :- pred write_error_specs(list(error_msg_spec)::in(error_msg_specs),
     io::di, io::uo) is det.
@@ -215,6 +224,11 @@
     %
 :- func add_quotes(string) = string.
 
+    % Ensure that the first character of the input string is not a lower case
+    % letter.
+    %
+:- func capitalize(string) = string.
+
     % report_error_num_args(MaybePredOrFunc, Arity, CorrectArities).
     %
     % Write "wrong number of arguments (<Arity>; should be <CorrectArities>)",
@@ -224,40 +238,6 @@
 :- pred report_error_num_args(maybe(pred_or_func)::in, int::in, list(int)::in,
     io::di, io::uo) is det.
 
-    % sorry(ModuleName, Message)
-    % Call error/1 with a "Sorry, not implemented" message.
-    %
-    % Use this for features that should be implemented (or at
-    % least could be implemented).
-    %
-:- func sorry(string, string) = _ is erroneous.
-:- pred sorry(string::in, string::in) is erroneous.
-
-    % unexpected(ModuleName, Message)
-    % Call error/1 with an "Unexpected" message.
-    %
-    % Use this to handle cases which are not expected to arise (i.e.
-    % bugs).
-    %
-:- func unexpected(string, string) = _ is erroneous.
-:- pred unexpected(string::in, string::in) is erroneous.
-
-    % Record the fact that a warning has been issued; set the exit status
-    % to error if the --halt-at-warn option is set.
-    %
-:- pred record_warning(io::di, io::uo) is det.
-
-    % Report a warning, and set the exit status to error if the
-    % --halt-at-warn option is set.
-    %
-:- pred report_warning(string::in, io::di, io::uo) is det.
-
-    % Report a warning to the specified stream, and set the exit status
-    % to error if the --halt-at-warn option is set.
-    %
-:- pred report_warning(io__output_stream::in, string::in, io::di, io::uo)
-    is det.
-
     % Report a warning, and set the exit status to error if the
     % --halt-at-warn option is set.
     %
@@ -266,18 +246,22 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module libs__globals.
-:- import_module libs__options.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 
 :- import_module char.
 :- import_module int.
-:- import_module io.
 :- import_module list.
-:- import_module require.
 :- import_module string.
 :- import_module term.
+
+add_to_spec_at_end(NewPieces, Spec0, Spec) :-
+    Spec0 = error_msg_spec(First, Context, ExtraIndent, Pieces0),
+    Pieces = Pieces0 ++ NewPieces,
+    Spec = error_msg_spec(First, Context, ExtraIndent, Pieces).
 
 write_error_specs(Specs, !IO) :-
     write_error_specs_2(Specs, yes, !IO).
@@ -790,6 +774,19 @@ pred_or_func_to_string(function) = "function".
 
 add_quotes(Str) = "`" ++ Str ++ "'".
 
+capitalize(Str0) = Str :-
+    Chars0 = string.to_char_list(Str0),
+    (
+        Chars0 = [Char0 | TailChars],
+        char.is_lower(Char0),
+        Char = char.to_upper(Char0)
+    ->
+        Chars = [Char | TailChars],
+        Str = string.from_char_list(Chars)
+    ;
+        Str = Str0
+    ).
+
 %-----------------------------------------------------------------------------%
 
 report_error_num_args(MaybePredOrFunc, Arity0, Arities0, !IO) :-
@@ -827,36 +824,6 @@ report_error_right_num_args([Arity | Arities], !IO) :-
         io__write_string(", ", !IO)
     ),
     report_error_right_num_args(Arities, !IO).
-
-    % Call error/1 with a "Sorry, not implemented" message.
-    %
-sorry(Module, What) = _ :- sorry(Module, What).
-sorry(Module, What) :-
-    string__format("%s: Sorry, not implemented: %s",
-        [s(Module), s(What)], ErrorMessage),
-    error(ErrorMessage).
-
-unexpected(Module, What) = _ :- unexpected(Module, What).
-unexpected(Module, What) :-
-    string__format("%s: Unexpected: %s", [s(Module), s(What)], ErrorMessage),
-    error(ErrorMessage).
-
-record_warning(!IO) :-
-    globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
-    (
-        HaltAtWarn = yes,
-        io__set_exit_status(1, !IO)
-    ;
-        HaltAtWarn = no
-    ).
-
-report_warning(Message, !IO) :-
-    record_warning(!IO),
-    io__write_string(Message, !IO).
-
-report_warning(Stream, Message, !IO) :-
-    record_warning(!IO),
-    io__write_string(Stream, Message, !IO).
 
 report_warning(Context, Indent, Components, !IO) :-
     record_warning(!IO),

@@ -17,9 +17,9 @@
 
 :- interface.
 
-:- import_module libs__timestamp.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_io_util.
+:- import_module libs.timestamp.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io_util.
 
 :- import_module io.
 :- import_module std_util.
@@ -44,13 +44,13 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_out.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_out.
+:- import_module libs.compiler_util.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -25,8 +25,8 @@
 :- module ml_backend__ml_simplify_switch.
 :- interface.
 
-:- import_module ml_backend__mlds.
-:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend.mlds.
+:- import_module ml_backend.ml_code_util.
 
 :- pred ml_simplify_switch(mlds__stmt::in, mlds__context::in,
     statement::out, ml_gen_info::in, ml_gen_info::out) is det.
@@ -35,11 +35,11 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module check_hlds__type_util.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module ml_backend__ml_switch_gen.
+:- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.type_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module ml_backend.ml_switch_gen.
 
 :- import_module bool.
 :- import_module int.

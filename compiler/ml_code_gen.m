@@ -709,12 +709,12 @@
 
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module ml_backend__ml_code_util.
-:- import_module ml_backend__mlds.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.mlds.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module map.
@@ -765,29 +765,29 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__c_util.
-:- import_module backend_libs__export.
-:- import_module backend_libs__foreign. % XXX needed for pragma foreign code
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
-:- import_module ml_backend__ml_call_gen.
-:- import_module ml_backend__ml_code_util.
-:- import_module ml_backend__ml_switch_gen.
-:- import_module ml_backend__ml_type_gen.
-:- import_module ml_backend__ml_unify_gen.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.c_util.
+:- import_module backend_libs.export.
+:- import_module backend_libs.foreign. % XXX needed for pragma foreign code
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module ml_backend.ml_call_gen.
+:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_switch_gen.
+:- import_module ml_backend.ml_type_gen.
+:- import_module ml_backend.ml_unify_gen.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -9,12 +9,12 @@
 :- module hlds__make_hlds__add_solver.
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__make_hlds__make_hlds_passes.
-:- import_module hlds__make_hlds__qual_info.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.make_hlds.make_hlds_passes.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module list.
@@ -51,11 +51,11 @@
 
 :- implementation.
 
-:- import_module hlds__make_hlds__add_pred.
-:- import_module libs__globals.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
+:- import_module hlds.make_hlds.add_pred.
+:- import_module libs.globals.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module map.

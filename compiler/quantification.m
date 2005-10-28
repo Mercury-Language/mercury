@@ -35,9 +35,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module set.
@@ -121,9 +121,9 @@
 
 :- implementation.
 
-:- import_module hlds__goal_util.
-:- import_module hlds__instmap.
-:- import_module parse_tree__error_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.instmap.
+:- import_module libs.compiler_util.
 
 :- import_module bool.
 :- import_module enum.

@@ -27,8 +27,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- import_module io.
 
@@ -40,22 +40,22 @@
 
 :- implementation.
 
-:- import_module check_hlds__goal_path.
-:- import_module check_hlds__type_util.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module libs__globals.
-:- import_module libs__graph_colour.
-:- import_module libs__options.
-:- import_module libs__trace_params.
-:- import_module ll_backend__live_vars.
-:- import_module ll_backend__liveness.
-:- import_module ll_backend__llds.
-:- import_module ll_backend__stack_opt.
-:- import_module ll_backend__trace.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.goal_path.
+:- import_module check_hlds.type_util.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module libs.globals.
+:- import_module libs.graph_colour.
+:- import_module libs.options.
+:- import_module libs.trace_params.
+:- import_module ll_backend.live_vars.
+:- import_module ll_backend.liveness.
+:- import_module ll_backend.llds.
+:- import_module ll_backend.stack_opt.
+:- import_module ll_backend.trace.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.

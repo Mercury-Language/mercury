@@ -19,10 +19,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__error_util.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.error_util.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -63,13 +63,13 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module hlds__special_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.special_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module string.

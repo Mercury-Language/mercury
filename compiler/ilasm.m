@@ -24,7 +24,7 @@
 
 :- interface.
 
-:- import_module ml_backend__ilds.
+:- import_module ml_backend.ilds.
 
 :- import_module bool.
 :- import_module integer.
@@ -276,10 +276,10 @@
 
 :- implementation.
 
-:- import_module backend_libs__c_util. % for output_float_literal
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__error_util.
+:- import_module backend_libs.c_util. % for output_float_literal
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 
 :- import_module bool.
 :- import_module char.

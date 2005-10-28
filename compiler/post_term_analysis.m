@@ -34,9 +34,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-
 :- import_module check_hlds.type_util.
-
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -45,12 +43,10 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.special_pred.
-
-:- import_module mdbcomp.prim_data.
-
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 

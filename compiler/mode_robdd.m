@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
 
 % The default implementation of mode_robdd's stores as much information
 % out of the robdd itself as possible, for performance.
-:- import_module mode_robdd__tfeirn.
+:- import_module mode_robdd.tfeirn.
 :- type mode_robdd(T) == tfeirn(T).
 
 % You may wish to use this type instead, for comparing to mode_robdd

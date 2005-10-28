@@ -32,9 +32,9 @@
 :- import_module mdbcomp.
 :- import_module parse_tree.
 
-:- import_module libs__timestamp.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module libs.timestamp.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module map.
@@ -247,11 +247,11 @@
 
 :- implementation.
 
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_util.
+:- import_module hlds.passes_aux.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.

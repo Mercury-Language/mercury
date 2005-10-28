@@ -9,13 +9,13 @@
 :- module hlds__make_hlds__add_pragma.
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__make_hlds__make_hlds_passes.
-:- import_module hlds__make_hlds__qual_info.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__mercury_to_mercury.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.make_hlds.make_hlds_passes.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.mercury_to_mercury.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -106,34 +106,35 @@
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs__foreign.
-:- import_module check_hlds__mode_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_out.
-:- import_module hlds__make_hlds__add_aditi.
-:- import_module hlds__make_hlds__add_pred.
-:- import_module hlds__make_hlds__make_hlds_error.
-:- import_module hlds__make_hlds__make_hlds_passes.
-:- import_module hlds__make_hlds__make_hlds_warn.
-:- import_module hlds__make_hlds__qual_info.
-:- import_module hlds__make_tags.
-:- import_module hlds__quantification.
-:- import_module libs__globals.
-:- import_module libs__options.
+:- import_module backend_libs.foreign.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
+:- import_module hlds.make_hlds.add_aditi.
+:- import_module hlds.make_hlds.add_pred.
+:- import_module hlds.make_hlds.make_hlds_error.
+:- import_module hlds.make_hlds.make_hlds_passes.
+:- import_module hlds.make_hlds.make_hlds_warn.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module hlds.make_tags.
+:- import_module hlds.quantification.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module ll_backend.
-:- import_module ll_backend__fact_table.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
+:- import_module ll_backend.fact_table.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 :- import_module recompilation.
-:- import_module transform_hlds__term_constr_main.
-:- import_module transform_hlds__term_constr_util.
-:- import_module transform_hlds__term_util.
+:- import_module transform_hlds.term_constr_main.
+:- import_module transform_hlds.term_constr_util.
+:- import_module transform_hlds.term_util.
 
 :- import_module bag.
 :- import_module bool.

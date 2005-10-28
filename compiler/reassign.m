@@ -100,7 +100,7 @@
 
 :- interface.
 
-:- import_module ll_backend__llds.
+:- import_module ll_backend.llds.
 
 :- import_module list.
 
@@ -108,8 +108,8 @@
 
 :- implementation.
 
-:- import_module ll_backend__code_util.
-:- import_module parse_tree__error_util.
+:- import_module libs.compiler_util.
+:- import_module ll_backend.code_util.
 
 :- import_module map.
 :- import_module require.

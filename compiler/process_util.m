@@ -83,8 +83,8 @@
 
 :- implementation.
 
-:- import_module libs__globals.
-:- import_module libs__options.
+:- import_module libs.globals.
+:- import_module libs.options.
 
 :- import_module require.
 :- import_module std_util.

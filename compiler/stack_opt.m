@@ -73,8 +73,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- import_module io.
 
@@ -85,31 +85,31 @@
 
 :- implementation.
 
-:- import_module backend_libs__interval.
-:- import_module backend_libs__matching.
-:- import_module check_hlds__goal_path.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__simplify.
-:- import_module check_hlds__type_util.
-:- import_module hlds__arg_info.
-:- import_module hlds__code_model.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_out.
-:- import_module hlds__instmap.
-:- import_module hlds__quantification.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module ll_backend__call_gen.
-:- import_module ll_backend__live_vars.
-:- import_module ll_backend__liveness.
-:- import_module ll_backend__store_alloc.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.interval.
+:- import_module backend_libs.matching.
+:- import_module check_hlds.goal_path.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.simplify.
+:- import_module check_hlds.type_util.
+:- import_module hlds.arg_info.
+:- import_module hlds.code_model.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_out.
+:- import_module hlds.instmap.
+:- import_module hlds.quantification.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module ll_backend.call_gen.
+:- import_module ll_backend.live_vars.
+:- import_module ll_backend.liveness.
+:- import_module ll_backend.store_alloc.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

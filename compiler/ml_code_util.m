@@ -17,14 +17,14 @@
 :- module ml_backend__ml_code_util.
 :- interface.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module libs__globals.
-:- import_module mdbcomp__prim_data.
-:- import_module ml_backend__mlds.
-:- import_module parse_tree__prog_data.
+:- import_module backend_libs.builtin_ops.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
+:- import_module ml_backend.mlds.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module int.
@@ -729,23 +729,23 @@
 
 :- implementation.
 
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__rtti.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__polymorphism.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__instmap.
-:- import_module hlds__special_pred.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module ml_backend__ml_call_gen.
-:- import_module ml_backend__ml_code_gen.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.rtti.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
+:- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module ml_backend.ml_call_gen.
+:- import_module ml_backend.ml_code_gen.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module counter.
 :- import_module require.

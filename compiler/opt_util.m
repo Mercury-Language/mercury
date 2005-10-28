@@ -16,8 +16,8 @@
 
 :- interface.
 
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module list.
@@ -295,14 +295,14 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__proc_label.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__special_pred.
-:- import_module ll_backend__exprn_aux.
-:- import_module ll_backend__llds_out.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
+:- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.proc_label.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
+:- import_module ll_backend.exprn_aux.
+:- import_module ll_backend.llds_out.
+:- import_module parse_tree.prog_data.
 
 :- import_module int.
 :- import_module require.

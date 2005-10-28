@@ -45,8 +45,8 @@
 
 :- interface.
 
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
 
 :- import_module counter.
 :- import_module list.
@@ -58,9 +58,9 @@
 
 :- implementation.
 
-:- import_module ll_backend__basic_block.
-:- import_module ll_backend__opt_util.
-:- import_module parse_tree__error_util.
+:- import_module libs.compiler_util.
+:- import_module ll_backend.basic_block.
+:- import_module ll_backend.opt_util.
 
 :- import_module assoc_list.
 :- import_module bool.

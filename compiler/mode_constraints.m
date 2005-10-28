@@ -17,7 +17,7 @@
 :- module check_hlds__mode_constraints.
 :- interface.
 
-:- import_module hlds__hlds_module.
+:- import_module hlds.hlds_module.
 :- import_module io.
 
 :- pred process_module(module_info::in, module_info::out,
@@ -29,29 +29,29 @@
 :- import_module check_hlds.abstract_mode_constraints.
 :- import_module check_hlds.build_mode_constraints.
 
-:- import_module check_hlds__goal_path.
-:- import_module check_hlds__mode_constraint_robdd.
-:- import_module check_hlds__mode_ordering.
-:- import_module check_hlds__mode_util.
-:- import_module hlds__hhf.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__inst_graph.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
+:- import_module check_hlds.goal_path.
+:- import_module check_hlds.mode_constraint_robdd.
+:- import_module check_hlds.mode_ordering.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.hhf.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.inst_graph.
+:- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module mode_robdd.
 % :- import_module mode_robdd__check.
 % :- import_module mode_robdd__tfeir.
-:- import_module mode_robdd__tfeirn.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree.prog_io.
+:- import_module mode_robdd.tfeirn.
 :- import_module parse_tree.modules.
-:- import_module transform_hlds__dependency_graph.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_mode.
+:- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
 :- import_module bimap.

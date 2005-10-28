@@ -31,15 +31,15 @@
 
 :- interface.
 
-:- import_module check_hlds__common.
-:- import_module check_hlds__det_report.
-:- import_module check_hlds__det_util.
-:- import_module check_hlds__det_util.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module libs__globals.
+:- import_module check_hlds.common.
+:- import_module check_hlds.det_report.
+:- import_module check_hlds.det_util.
+:- import_module check_hlds.det_util.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module libs.globals.
 
 :- import_module bool.
 :- import_module io.
@@ -86,32 +86,32 @@
 
 :- implementation.
 
-:- import_module check_hlds__det_analysis.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__modes.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__polymorphism.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__unify_proc.
-:- import_module hlds__goal_form.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_module.
-:- import_module hlds__passes_aux.
-:- import_module hlds__quantification.
-:- import_module hlds__special_pred.
-:- import_module libs__options.
-:- import_module libs__trace_params.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
-:- import_module transform_hlds__const_prop.
-:- import_module transform_hlds__pd_cost.
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.modes.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.purity.
+:- import_module check_hlds.type_util.
+:- import_module check_hlds.unify_proc.
+:- import_module hlds.goal_form.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
+:- import_module hlds.passes_aux.
+:- import_module hlds.quantification.
+:- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.options.
+:- import_module libs.trace_params.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
+:- import_module transform_hlds.const_prop.
+:- import_module transform_hlds.pd_cost.
 
 :- import_module int.
 :- import_module map.
@@ -308,7 +308,8 @@ do_process_goal(Goal0, Goal, !Info) :-
         simplify_info_set_module_info(ModuleInfo3, !Info),
 
         simplify_info_get_det_info(!.Info, DetInfo),
-        det_infer_goal(Goal3, Goal, InstMap0, SolnContext, DetInfo, _, _)
+        det_infer_goal(Goal3, Goal, InstMap0, SolnContext, [], DetInfo,
+            _, _, _)
     ;
         Goal = Goal3
     ).
@@ -2211,7 +2212,7 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
     % exported for common.m
 :- interface.
 
-:- import_module parse_tree__prog_data.
+:- import_module parse_tree.prog_data.
 :- import_module set.
 
 :- pred simplify_info_init(det_info::in, list(simplification)::in,
@@ -2446,22 +2447,22 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, !Info) :-
         true
     ).
 
-	% Succeed if execution of the given goal cannot encounter a context
-	% that causes any variable to be flushed to its stack slot or to a
-	% register at the specified time.
-	%
+    % Succeed if execution of the given goal cannot encounter a context
+    % that causes any variable to be flushed to its stack slot or to a
+    % register at the specified time.
+    %
 :- func will_flush(hlds_goal_expr, before_after) = bool.
 
 will_flush(unify(_, _, _, Unify, _), _) = WillFlush :-
-	( Unify = complicated_unify(_, _, _) ->
-		WillFlush = yes
-	;
-		WillFlush = no
-	).
+    ( Unify = complicated_unify(_, _, _) ->
+        WillFlush = yes
+    ;
+        WillFlush = no
+    ).
 will_flush(call(_, _, _, BuiltinState, _, _), BeforeAfter) = WillFlush :-
-	( BuiltinState = inline_builtin ->
-		WillFlush = no
-	;
+    ( BuiltinState = inline_builtin ->
+        WillFlush = no
+    ;
         (
             BeforeAfter = before,
             WillFlush = no
@@ -2469,21 +2470,21 @@ will_flush(call(_, _, _, BuiltinState, _, _), BeforeAfter) = WillFlush :-
             BeforeAfter = after,
             WillFlush = yes
         )
-	).
+    ).
 will_flush(generic_call(GenericCall, _, _, _), BeforeAfter) = WillFlush :-
-	(
+    (
         GenericCall = higher_order(_, _, _, _),
-		WillFlush0 = yes
-	;
+        WillFlush0 = yes
+    ;
         GenericCall = class_method(_, _, _, _),
-		WillFlush0 = yes
-	;
+        WillFlush0 = yes
+    ;
         GenericCall = cast(_),
-		WillFlush0 = no
-	;
+        WillFlush0 = no
+    ;
         GenericCall = aditi_builtin(_, _),
-		WillFlush0 = yes
-	),
+        WillFlush0 = yes
+    ),
     (
         BeforeAfter = before,
         WillFlush = no

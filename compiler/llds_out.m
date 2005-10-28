@@ -19,15 +19,15 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl_file.
-:- import_module backend_libs__builtin_ops.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__hlds_module.
-:- import_module libs__globals.
-:- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
+:- import_module aditi_backend.rl_file.
+:- import_module backend_libs.builtin_ops.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module libs.globals.
+:- import_module ll_backend.llds.
+:- import_module parse_tree.prog_data.
 
-:- import_module mdbcomp__prim_data.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module io.
@@ -180,29 +180,29 @@
 
 :- implementation.
 
-:- import_module backend_libs__c_util.
-:- import_module backend_libs__compile_target_code.
-:- import_module backend_libs__export.
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__proc_label.
-:- import_module backend_libs__rtti.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__passes_aux.
-:- import_module libs__options.
-:- import_module libs__trace_params.
-:- import_module ll_backend__exprn_aux.
-:- import_module ll_backend__layout.
-:- import_module ll_backend__layout_out.
-:- import_module ll_backend__pragma_c_gen.
-:- import_module ll_backend__rtti_out.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module backend_libs.compile_target_code.
+:- import_module backend_libs.c_util.
+:- import_module backend_libs.export.
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.name_mangle.
+:- import_module backend_libs.proc_label.
+:- import_module backend_libs.rtti.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
+:- import_module libs.options.
+:- import_module libs.trace_params.
+:- import_module ll_backend.exprn_aux.
+:- import_module ll_backend.layout.
+:- import_module ll_backend.layout_out.
+:- import_module ll_backend.pragma_c_gen.
+:- import_module ll_backend.rtti_out.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bintree_set.

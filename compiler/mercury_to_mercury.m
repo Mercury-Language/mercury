@@ -44,9 +44,9 @@
 :- module parse_tree__mercury_to_mercury.
 :- interface.
 
-:- import_module libs__globals.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module char.
@@ -373,14 +373,14 @@
 
 :- implementation.
 
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__rat.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_io_util.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module recompilation__version.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.rat.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
+:- import_module recompilation.version.
 
 :- import_module assoc_list.
 :- import_module int.

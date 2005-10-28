@@ -34,7 +34,7 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl_block.
+:- import_module aditi_backend.rl_block.
 
 :- import_module io.
 
@@ -45,11 +45,11 @@
 
 :- implementation.
 
-:- import_module aditi_backend__rl.
-:- import_module aditi_backend__rl_analyse.
-:- import_module aditi_backend__rl_key.
-:- import_module hlds__hlds_module.
-:- import_module parse_tree__prog_data.
+:- import_module aditi_backend.rl.
+:- import_module aditi_backend.rl_analyse.
+:- import_module aditi_backend.rl_key.
+:- import_module hlds.hlds_module.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.

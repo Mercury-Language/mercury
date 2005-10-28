@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl_block.
+:- import_module aditi_backend.rl_block.
 
 :- import_module io.
 
@@ -28,8 +28,8 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module aditi_backend__rl.
-:- import_module aditi_backend__rl_analyse.
+:- import_module aditi_backend.rl.
+:- import_module aditi_backend.rl_analyse.
 
 :- import_module bool.
 :- import_module int.

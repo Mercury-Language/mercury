@@ -40,8 +40,8 @@
 :- module check_hlds__inst_util.
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_module.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
@@ -134,13 +134,13 @@
 
 :- implementation.
 
-:- import_module check_hlds__det_analysis.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_mode.
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_mode.
 
 :- import_module int.
 :- import_module list.

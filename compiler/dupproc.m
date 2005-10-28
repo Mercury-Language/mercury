@@ -21,8 +21,8 @@
 :- interface.
 
 % :- import_module hlds__hlds_pred.
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -36,7 +36,7 @@
 
 :- implementation.
 
-:- import_module ll_backend__opt_util.
+:- import_module ll_backend.opt_util.
 
 :- import_module int.
 :- import_module require.

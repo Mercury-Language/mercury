@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
+:- import_module hlds.hlds_goal.
 
 :- pred pd_cost__goal(hlds_goal::in, int::out) is det.
 
@@ -39,8 +39,8 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module int.
 :- import_module list.

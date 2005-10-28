@@ -25,12 +25,12 @@
 :- include_module make__options_file.
 :- include_module make__util.
 
-:- import_module make__options_file.
+:- import_module make.options_file.
 :- import_module mdbcomp.
-:- import_module mdbcomp__prim_data.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_io.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_io.
 
 :- import_module io.
 :- import_module list.
@@ -64,25 +64,25 @@
 :- import_module backend_libs.
 :- import_module top_level. % XXX unwanted dependency
 
-:- import_module make__dependencies.
-:- import_module make__module_dep_file.
-:- import_module make__module_target.
-:- import_module make__program_target.
-:- import_module make__util.
+:- import_module make.dependencies.
+:- import_module make.module_dep_file.
+:- import_module make.module_target.
+:- import_module make.program_target.
+:- import_module make.util.
 
-:- import_module backend_libs__compile_target_code.
-:- import_module libs__globals.
-:- import_module libs__handle_options.
-:- import_module libs__options.
-:- import_module libs__process_util.
-:- import_module libs__timestamp.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_io_util.
-:- import_module parse_tree__prog_out.
-:- import_module top_level__mercury_compile. % XXX unwanted dependency
+:- import_module backend_libs.compile_target_code.
+:- import_module libs.globals.
+:- import_module libs.handle_options.
+:- import_module libs.options.
+:- import_module libs.process_util.
+:- import_module libs.timestamp.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_out.
+:- import_module top_level.mercury_compile. % XXX unwanted dependency
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -16,10 +16,10 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__modules.
-:- import_module libs__globals.
-:- import_module mdbcomp__prim_data.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.modules.
+:- import_module libs.globals.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module io.
@@ -180,16 +180,16 @@
 
 :- implementation.
 
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__name_mangle.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__handle_options.
-:- import_module libs__options.
-:- import_module libs__trace_params.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_out.
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.name_mangle.
+:- import_module hlds.passes_aux.
+:- import_module libs.globals.
+:- import_module libs.handle_options.
+:- import_module libs.options.
+:- import_module libs.trace_params.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_out.
 
 :- import_module char.
 :- import_module dir.

@@ -34,11 +34,11 @@
 :- module check_hlds__post_typecheck.
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -125,26 +125,27 @@
 
 :- implementation.
 
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__modecheck_call.
-:- import_module check_hlds__mode_errors.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__typecheck.
-:- import_module check_hlds__type_util.
-:- import_module hlds__assertion.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_error_util.
-:- import_module hlds__hlds_out.
-:- import_module hlds__special_pred.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_type.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.modecheck_call.
+:- import_module check_hlds.mode_errors.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.typecheck.
+:- import_module check_hlds.type_util.
+:- import_module hlds.assertion.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_out.
+:- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module int.

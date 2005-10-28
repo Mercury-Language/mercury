@@ -9,13 +9,13 @@
 :- module hlds__make_hlds__add_aditi.
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__make_hlds__qual_info.
-:- import_module hlds__make_hlds__state_var.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module hlds.make_hlds.state_var.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module list.
@@ -52,19 +52,19 @@
 
 :- implementation.
 
-:- import_module check_hlds__type_util.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_out.
-:- import_module hlds__make_hlds__add_clause.
-:- import_module hlds__make_hlds__make_hlds_passes.
-:- import_module hlds__make_hlds__qual_info.
-:- import_module hlds__make_hlds__superhomogeneous.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_io_util.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_out.
+:- import_module hlds.make_hlds.add_clause.
+:- import_module hlds.make_hlds.make_hlds_passes.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module hlds.make_hlds.superhomogeneous.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_io_goal.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.

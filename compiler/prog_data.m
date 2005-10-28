@@ -20,11 +20,11 @@
 
 :- interface.
 
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__rat.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.rat.
 
-:- import_module mdbcomp__prim_data.
+:- import_module mdbcomp.prim_data.
 :- import_module recompilation.
 
 :- import_module assoc_list.
@@ -1953,7 +1953,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
+:- import_module libs.compiler_util.
 
 :- import_module string.
 

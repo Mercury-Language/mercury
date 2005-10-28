@@ -25,7 +25,7 @@
 
 :- interface.
 
-:- import_module ll_backend__llds.
+:- import_module ll_backend.llds.
 :- import_module io.
 
 :- pred transform_llds(c_file::in, c_file::out, io::di, io::uo) is det.
@@ -34,14 +34,14 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_pred.
-:- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__proc_label.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module ll_backend__opt_util.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_pred.
+:- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.proc_label.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module ll_backend.opt_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module counter.

@@ -20,10 +20,10 @@
 
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_goal.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__llds.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_goal.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.llds.
 
 :- pred ite_gen__generate_ite(code_model::in, hlds_goal::in, hlds_goal::in,
     hlds_goal::in, hlds_goal_info::in, code_tree::out,
@@ -36,17 +36,17 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module hlds__goal_form.
-:- import_module hlds__hlds_llds.
-:- import_module hlds__instmap.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__tree.
-:- import_module ll_backend__code_gen.
-:- import_module ll_backend__trace.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
+:- import_module backend_libs.builtin_ops.
+:- import_module hlds.goal_form.
+:- import_module hlds.hlds_llds.
+:- import_module hlds.instmap.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.tree.
+:- import_module ll_backend.code_gen.
+:- import_module ll_backend.trace.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.

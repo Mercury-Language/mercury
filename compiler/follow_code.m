@@ -31,9 +31,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- import_module list.
 
@@ -50,14 +50,14 @@
 
 :- implementation.
 
-:- import_module check_hlds__det_analysis.
-:- import_module check_hlds__mode_util.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__quantification.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.quantification.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module map.

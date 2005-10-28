@@ -66,13 +66,13 @@
 
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module libs__globals.
-:- import_module ml_backend__ml_code_util.
-:- import_module ml_backend__mlds.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module libs.globals.
+:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.mlds.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -100,21 +100,21 @@
 
 :- implementation.
 
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__switch_util.
-:- import_module check_hlds__type_util.
-:- import_module libs__options.
-:- import_module ml_backend__ml_code_gen.
-:- import_module ml_backend__ml_code_util.
-:- import_module ml_backend__ml_simplify_switch.
-:- import_module ml_backend__ml_string_switch.
-:- import_module ml_backend__ml_tag_switch.
-:- import_module ml_backend__ml_unify_gen.
-:- import_module parse_tree__error_util.
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.switch_util.
+:- import_module check_hlds.type_util.
+:- import_module libs.compiler_util.
+:- import_module libs.options.
+:- import_module ml_backend.ml_code_gen.
+:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_simplify_switch.
+:- import_module ml_backend.ml_string_switch.
+:- import_module ml_backend.ml_tag_switch.
+:- import_module ml_backend.ml_unify_gen.
 
 :- import_module bool.
 :- import_module int.
-:- import_module libs__tree.
+:- import_module libs.tree.
 :- import_module map.
 :- import_module require.
 :- import_module std_util.

@@ -47,12 +47,12 @@
 
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module ll_backend__code_info.
-:- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module ll_backend.code_info.
+:- import_module ll_backend.llds.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -64,20 +64,20 @@
 
 :- implementation.
 
-:- import_module backend_libs__switch_util.
-:- import_module check_hlds__type_util.
-:- import_module hlds__goal_form.
-:- import_module hlds__hlds_llds.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__tree.
-:- import_module ll_backend__code_gen.
-:- import_module ll_backend__dense_switch.
-:- import_module ll_backend__lookup_switch.
-:- import_module ll_backend__string_switch.
-:- import_module ll_backend__tag_switch.
-:- import_module ll_backend__trace.
-:- import_module ll_backend__unify_gen.
+:- import_module backend_libs.switch_util.
+:- import_module check_hlds.type_util.
+:- import_module hlds.goal_form.
+:- import_module hlds.hlds_llds.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.tree.
+:- import_module ll_backend.code_gen.
+:- import_module ll_backend.dense_switch.
+:- import_module ll_backend.lookup_switch.
+:- import_module ll_backend.string_switch.
+:- import_module ll_backend.tag_switch.
+:- import_module ll_backend.trace.
+:- import_module ll_backend.unify_gen.
 
 :- import_module bool.
 :- import_module int.

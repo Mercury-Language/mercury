@@ -19,26 +19,26 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
+:- import_module hlds.hlds_module.
 
 :- pred replace_in_hlds(module_info::in, module_info::out) is det.
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__polymorphism.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__hlds_data.
-:- import_module hlds__instmap.
-:- import_module hlds__quantification.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__equiv_type.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module hlds.quantification.
+:- import_module libs.compiler_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.equiv_type.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 :- import_module recompilation.
 
 :- import_module bool.

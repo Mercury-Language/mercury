@@ -61,7 +61,7 @@
 
 :- implementation.
 
-:- import_module mode_robdd__equiv_vars.
+:- import_module mode_robdd.equiv_vars.
 
 :- import_module assoc_list.
 :- import_module list.

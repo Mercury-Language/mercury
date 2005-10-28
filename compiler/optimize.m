@@ -16,8 +16,8 @@
 
 :- interface.
 
-:- import_module ll_backend__global_data.
-:- import_module ll_backend__llds.
+:- import_module ll_backend.global_data.
+:- import_module ll_backend.llds.
 
 :- import_module io.
 :- import_module list.
@@ -32,28 +32,28 @@
 
 :- implementation.
 
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__proc_label.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module ll_backend__continuation_info.
-:- import_module ll_backend__delay_slot.
-:- import_module ll_backend__dupelim.
-:- import_module ll_backend__frameopt.
-:- import_module ll_backend__jumpopt.
-:- import_module ll_backend__labelopt.
-:- import_module ll_backend__llds_out.
-:- import_module ll_backend__opt_debug.
-:- import_module ll_backend__opt_util.
-:- import_module ll_backend__peephole.
-:- import_module ll_backend__reassign.
-:- import_module ll_backend__use_local_vars.
-:- import_module ll_backend__wrap_blocks.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_out.
+:- import_module backend_libs.name_mangle.
+:- import_module backend_libs.proc_label.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.passes_aux.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module ll_backend.continuation_info.
+:- import_module ll_backend.delay_slot.
+:- import_module ll_backend.dupelim.
+:- import_module ll_backend.frameopt.
+:- import_module ll_backend.jumpopt.
+:- import_module ll_backend.labelopt.
+:- import_module ll_backend.llds_out.
+:- import_module ll_backend.opt_debug.
+:- import_module ll_backend.opt_util.
+:- import_module ll_backend.peephole.
+:- import_module ll_backend.reassign.
+:- import_module ll_backend.use_local_vars.
+:- import_module ll_backend.wrap_blocks.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_out.
 
 :- import_module bool.
 :- import_module char.

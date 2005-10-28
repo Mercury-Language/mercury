@@ -137,7 +137,7 @@
 
 :- implementation.
 
-:- import_module mode_robdd__equiv_vars.
+:- import_module mode_robdd.equiv_vars.
 
 :- import_module bool.
 :- import_module int.

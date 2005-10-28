@@ -60,11 +60,11 @@
 :- module ml_backend__mlds_to_il.
 :- interface.
 
-:- import_module hlds__hlds_pred. % for `pred_proc_id'.
-:- import_module libs__globals. % for `foreign_language'.
-:- import_module ml_backend__ilasm.
-:- import_module ml_backend__ilds.
-:- import_module ml_backend__mlds.
+:- import_module hlds.hlds_pred. % for `pred_proc_id'.
+:- import_module libs.globals. % for `foreign_language'.
+:- import_module ml_backend.ilasm.
+:- import_module ml_backend.ilds.
+:- import_module ml_backend.mlds.
 
 :- import_module bool.
 :- import_module io.
@@ -143,29 +143,30 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__c_util.
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__pseudo_type_info.
-:- import_module backend_libs__rtti.
-:- import_module check_hlds__type_util.
-:- import_module hlds__code_model.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module libs__tree.
-:- import_module mdbcomp__prim_data.
-:- import_module ml_backend__il_peephole.
-:- import_module ml_backend__ml_code_util.
-:- import_module ml_backend__ml_type_gen.
-:- import_module ml_backend__ml_util.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__modules.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.c_util.
+:- import_module backend_libs.foreign.
+:- import_module backend_libs.name_mangle.
+:- import_module backend_libs.pseudo_type_info.
+:- import_module backend_libs.rtti.
+:- import_module check_hlds.type_util.
+:- import_module hlds.code_model.
+:- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module libs.tree.
+:- import_module mdbcomp.prim_data.
+:- import_module ml_backend.il_peephole.
+:- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_type_gen.
+:- import_module ml_backend.ml_util.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.modules.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.

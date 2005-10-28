@@ -23,13 +23,13 @@
 :- module check_hlds__modecheck_call.
 :- interface.
 
-:- import_module check_hlds__mode_info.
-:- import_module check_hlds__modes.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
+:- import_module check_hlds.mode_info.
+:- import_module check_hlds.modes.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module std_util.
@@ -74,22 +74,22 @@
 
 :- implementation.
 
-:- import_module check_hlds__clause_to_proc.
-:- import_module check_hlds__det_report.
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__inst_util.
-:- import_module check_hlds__mode_debug.
-:- import_module check_hlds__mode_errors.
-:- import_module check_hlds__mode_info.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__modes.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__unify_proc.
-:- import_module hlds__hlds_data.
-:- import_module hlds__instmap.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.clause_to_proc.
+:- import_module check_hlds.det_report.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_util.
+:- import_module check_hlds.mode_debug.
+:- import_module check_hlds.mode_errors.
+:- import_module check_hlds.mode_info.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.modes.
+:- import_module check_hlds.type_util.
+:- import_module check_hlds.unify_proc.
+:- import_module hlds.hlds_data.
+:- import_module hlds.instmap.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module int.

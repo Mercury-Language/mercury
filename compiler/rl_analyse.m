@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl_block.
+:- import_module aditi_backend.rl_block.
 
 :- import_module io.
 :- import_module list.
@@ -111,8 +111,8 @@
 
 :- implementation.
 
-:- import_module libs__globals.
-:- import_module libs__options.
+:- import_module libs.globals.
+:- import_module libs.options.
 
 :- import_module assoc_list.
 :- import_module bool.

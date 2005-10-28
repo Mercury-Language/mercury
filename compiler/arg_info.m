@@ -26,10 +26,10 @@
 :- module hlds__arg_info.
 :- interface.
 
-:- import_module hlds__code_model.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.code_model.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -111,7 +111,7 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
+:- import_module check_hlds.mode_util.
 
 :- import_module std_util.
 :- import_module map.

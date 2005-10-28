@@ -12,8 +12,8 @@
 
 :- interface.
 
-:- import_module aditi_backend__rl.
-:- import_module hlds__hlds_module.
+:- import_module aditi_backend.rl.
+:- import_module hlds.hlds_module.
 
 :- import_module io.
 :- import_module list.
@@ -25,16 +25,16 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module aditi_backend__rl_block.
-:- import_module aditi_backend__rl_block_opt.
-:- import_module aditi_backend__rl_liveness.
-:- import_module aditi_backend__rl_loop.
-:- import_module aditi_backend__rl_sort.
-:- import_module aditi_backend__rl_stream.
-:- import_module hlds__passes_aux.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__prog_out.
+:- import_module aditi_backend.rl_block.
+:- import_module aditi_backend.rl_block_opt.
+:- import_module aditi_backend.rl_liveness.
+:- import_module aditi_backend.rl_loop.
+:- import_module aditi_backend.rl_sort.
+:- import_module aditi_backend.rl_stream.
+:- import_module hlds.passes_aux.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module parse_tree.prog_out.
 
 :- import_module bool.
 

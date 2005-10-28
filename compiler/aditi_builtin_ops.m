@@ -15,8 +15,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- import_module io.
 
@@ -34,21 +34,21 @@
 
 :- implementation.
 
-:- import_module aditi_backend__rl.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__polymorphism.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__instmap.
-:- import_module hlds__passes_aux.
-:- import_module hlds__quantification.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module aditi_backend.rl.
+:- import_module check_hlds.mode_util.
+:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
+:- import_module hlds.quantification.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -16,11 +16,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_pred.
-:- import_module ll_backend__continuation_info.
-:- import_module ll_backend__exprn_aux.
-:- import_module ll_backend__llds.
-:- import_module mdbcomp__prim_data. % for module_name
+:- import_module hlds.hlds_pred.
+:- import_module ll_backend.continuation_info.
+:- import_module ll_backend.exprn_aux.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data. % for module_name
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -88,10 +88,10 @@
 
 :- implementation.
 
-:- import_module backend_libs__rtti.
-:- import_module ll_backend__layout.
-:- import_module ll_backend__llds_out.
-:- import_module parse_tree__error_util.
+:- import_module backend_libs.rtti.
+:- import_module libs.compiler_util.
+:- import_module ll_backend.layout.
+:- import_module ll_backend.llds_out.
 
 :- import_module counter.
 :- import_module int.

@@ -18,7 +18,7 @@
 :- module ml_backend__java_util.
 :- interface.
 
-:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs.builtin_ops.
 
 :- import_module string.
 
@@ -67,7 +67,7 @@
 
 :- implementation.
 
-:- import_module parse_tree__error_util.
+:- import_module parse_tree.error_util.
 
 :- import_module list.
 

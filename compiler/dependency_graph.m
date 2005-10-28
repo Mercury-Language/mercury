@@ -23,8 +23,8 @@
 :- module transform_hlds__dependency_graph.
 
 :- interface.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- import_module io.
 :- import_module list.
@@ -123,17 +123,17 @@
 :- implementation.
 
 :- import_module backend_libs.
-:- import_module backend_libs__name_mangle.
-:- import_module backend_libs__proc_label.
-:- import_module check_hlds__mode_util.
-:- import_module hlds__goal_util.
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_data.
+:- import_module backend_libs.name_mangle.
+:- import_module backend_libs.proc_label.
+:- import_module check_hlds.mode_util.
+:- import_module hlds.goal_util.
+:- import_module hlds.hlds_data.
+:- import_module hlds.hlds_goal.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module eqvclass.

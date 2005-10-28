@@ -17,11 +17,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
-:- import_module parse_tree__prog_data.
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module hlds.instmap.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
@@ -187,17 +187,17 @@
 
 :- implementation.
 
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__inst_util.
-:- import_module check_hlds__mode_info.
-:- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
-:- import_module mdbcomp__prim_data.
-:- import_module parse_tree__error_util.
-:- import_module parse_tree__prog_io.
-:- import_module parse_tree__prog_mode.
-:- import_module parse_tree__prog_util.
-:- import_module parse_tree__prog_type.
+:- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_util.
+:- import_module check_hlds.mode_info.
+:- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
+:- import_module libs.compiler_util.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module int.
