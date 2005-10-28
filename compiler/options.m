@@ -1800,6 +1800,7 @@ long_option("optimisation-level",   opt_level).
 long_option("opt-space",            opt_space).
 long_option("optimize-space",       opt_space).
 long_option("optimise-space",       opt_space).
+long_option("intermod-opt",        intermodule_optimization).
 long_option("intermodule-optimization", intermodule_optimization).
 long_option("intermodule-optimisation", intermodule_optimization).
 long_option("intermodule-analysis", intermodule_analysis).
@@ -3773,6 +3774,7 @@ options_help_optimization -->
         "\tTurn on optimizations that reduce code size",
         "\tand turn off optimizations that significantly",
         "\tincrease code size.",
+        "--intermod-opt",
         "--intermodule-optimization",
         "\tPerform inlining and higher-order specialization of",
         "\tthe code for predicates imported from other modules.",

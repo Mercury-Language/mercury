@@ -6820,7 +6820,9 @@ and turn off optimizations that significantly increase code size.
 @end table
 
 @table @code
+@item --intermod-opt
 @item --intermodule-optimization
+@findex --intermod-opt
 @findex --intermodule-optimization
 @cindex Intermodule optimization
 @cindex Cross-module optimization
