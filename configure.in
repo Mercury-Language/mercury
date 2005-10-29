@@ -4184,11 +4184,11 @@ AC_SUBST(CSHPATH)
 # (a) in the mercury directory
 # (b) a sibling of the mercury directory
 
-if test -d tests
+if test -e tests/TESTS_FLAGS.in
 then
 	test_flags="tests/TESTS_FLAGS"
 else
-	if test -d ../tests
+	if test -e ../tests/TESTS_FLAGS.in
 	then
 		test_flags="../tests/TESTS_FLAGS"
 	else
