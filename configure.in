@@ -132,6 +132,22 @@ case "$host" in
 		;;
 esac
 #-----------------------------------------------------------------------------#
+# MMC_INVOKE_CMD is the the command used to invoke mercury_compile in 
+# scripts/mmc.
+# On MSYS (MinGW) we cannot use exec, since exec will not find the file because
+# it will expect a path relative to the MSYS home directory and will not work
+# with a full Windows path.  A full Windows path, however must be used for the
+# prefix so that mercury_compile will find the standard library.
+#
+case "$host" in
+	*mingw*)
+		MMC_INVOKE_CMD=
+		;;
+	*)	MMC_INVOKE_CMD=exec
+		;;
+esac
+AC_SUBST(MMC_INVOKE_CMD)
+#-----------------------------------------------------------------------------#
 
 # Don't document this -- it's only used by the mercury_config script
 # to generate a new configuration for an already installed system.
@@ -475,9 +491,11 @@ AC_SUBST(MKTEMP)
 AC_PATH_PROG(INSTALL_INFO,install-info)
 AC_SUBST(INSTALL_INFO)
 #-----------------------------------------------------------------------------#
-# texi2dvi is currently broken on cygwin
+# texi2dvi is currently broken on cygwin and mingw
 case "$host" in
 	*-cygwin*)
+		TEXI2DVI="" ;;
+	*mingw*)
 		TEXI2DVI="" ;;
 	*)
 		AC_PATH_PROG(TEXI2DVI,texi2dvi) ;;
@@ -594,9 +612,9 @@ then
 
 	AC_MSG_CHECKING(whether we need to use -fno-strict-aliasing)
 	$CC -O2 -Wall -fno-strict-aliasing -c conftest.c \
-		</dev/null >&conftest1.out
+		</dev/null > conftest1.out 2>&1
 	$CC -O2 -Wall -c conftest.c \
-		</dev/null >&conftest2.out
+		</dev/null > conftest2.out 2>&1
 	# get the lines that exist only in conftest2.out
 	comm -13 conftest1.out conftest2.out > conftest.2only
 
@@ -786,6 +804,13 @@ case "$host" in
 		LN_S=false
 	fi
 	;;
+    *mingw*)
+	MATH_LIB=
+	if test "$enable_symlinks_opt" != "yes"; then
+		MMC_USE_SYMLINKS_OPT=--no-use-symlinks
+		LN_S=false
+	fi
+	;;
 esac
 
 AC_SUBST(LN_S)
@@ -819,6 +844,8 @@ mercury_check_for_functions () {
 # (at least for version b18, anyway) and trying it can crash Win95.
 case "$host" in
 	*-cygwin*)
+		ac_cv_func_mprotect=no ;;
+	*mingw*)
 		ac_cv_func_mprotect=no ;;
 esac
 
@@ -2408,6 +2435,19 @@ case "$host" in
 		esac
 		;;
 
+	*mingw*)
+		THREAD_LIBS=""
+		case "$CC" in
+			*cl* | *CL*)	# cl is the Microsoft C compiler
+				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD"
+				LDFLAGS_FOR_THREADS="/MD"
+				LD_LIBFLAGS_FOR_THREADS="/MD"
+				;;
+			*)
+				CFLAGS_FOR_THREADS="-DGC_WIN32_THREADS -DMR_THREAD_SAFE" ;;
+		esac
+		;;
+
 	# Theoretically we should change this check to *apple*darwin*)
 	# as darwin should be the same whether or not we are on a powerpc or
 	# an i386, but since we don't have access to an i386 with darwin 
@@ -3311,6 +3351,18 @@ case "$host" in
 		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		DEFAULT_LINKAGE=static
 		;;
+	*mingw*)
+		# disabled for now, since it hasn't been tested
+		# xxx_MSG_RESULT(yes)
+		# EXT_FOR_SHARED_LIB=dll
+		# USE_DLLS=yes
+		AC_MSG_RESULT(disabled for now because it is untested)
+
+		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
+		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+		DEFAULT_LINKAGE=static
+		;;
 	*powerpc*apple*darwin*)
 		# If the compiler is gcc then use darwin style dynamic linking.
 		# Otherwise use static linking.
@@ -3522,6 +3574,9 @@ esac
 
 case "$host" in
 	*-cygwin*)
+		EXT_FOR_EXE=".exe"
+		;;
+	*mingw*)
 		EXT_FOR_EXE=".exe"
 		;;
 	*)

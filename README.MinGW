@@ -30,10 +30,10 @@ To build the source distribution under MSYS follow these steps:
     It is important to specify the installation prefix as a full windows
     path with a drive letter (except use `/' instead of `\').  
     Do not use a path like `/mercury', because that
-    will be interpreted differently by the MSYS shell than by the generated
+    will be interpretted differently by the MSYS shell than by the generated
     executables, resulting in a broken installation.  
     On Windows 2000 or XP, you may get a dialog from the
-    "Microsoft Management Console" with the message "The selected file cannot
+    "Micrsoft Management Console" with the message "The selected file cannot
     be found.".  This is because configure looks for a program called "mmc".
     Simply dismiss the dialog by clicking OK.
 

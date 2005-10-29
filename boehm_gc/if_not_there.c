@@ -12,7 +12,9 @@ char ** argv;
 char ** envp;
 {
     FILE * f;
+#ifdef SIGPROF
     signal(SIGPROF, SIG_IGN);
+#endif
     if (argc < 3) goto Usage;
     if ((f = fopen(argv[1], "rb")) != 0
         || (f = fopen(argv[1], "r")) != 0) {

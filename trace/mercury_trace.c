@@ -467,27 +467,33 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
     MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-    if (MR_trace_handler == MR_TRACE_EXTERNAL) {
-        if (!interactive) {
-            MR_fatal_error("reporting event for external debugger");
+    switch (MR_trace_handler) {
+        case MR_TRACE_EXTERNAL:
+            if (!interactive) {
+                MR_fatal_error("reporting event for external debugger");
+            }
+
+            jumpaddr = MR_trace_event_external(cmd, &event_info);
+            break;
+
+        case MR_TRACE_INTERNAL:
+#endif
+            /*
+            ** MR_TRACE_INTERNAL is the only possible value of MR_trace_handler
+            ** if MR_USE_EXTERNAL_DEBUGGER is not defined.
+            */
+            {
+                MR_Spy_Action       action;         /* ignored */
+                MR_Spy_Print_List   print_list;
+
+                (void) MR_event_matches_spy_point(layout, port, &action,
+                    &print_list);
+                jumpaddr = MR_trace_event_internal(cmd, interactive,
+                    print_list, &event_info);
+            }
+#ifdef MR_USE_EXTERNAL_DEBUGGER
+            break;
         }
-
-        jumpaddr = MR_trace_event_external(cmd, &event_info);
-    } else {
-        MR_Spy_Action       action;         /* ignored */
-        MR_Spy_Print_List   print_list;
-
-        (void) MR_event_matches_spy_point(layout, port, &action, &print_list);
-        jumpaddr = MR_trace_event_internal(cmd, interactive, print_list,
-            &event_info);
-    }
-#else
-    /*
-    ** We should get here only if MR_trace_handler == MR_TRACE_INTERNAL.
-    ** This is enforced by mercury_wrapper.c.
-    */
-
-    jumpaddr = MR_trace_event_internal(cmd, interactive, &event_info);
 #endif
 
     /*
