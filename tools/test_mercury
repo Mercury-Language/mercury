@@ -37,7 +37,7 @@ case $HOST in mundroo*)
 	PATH="/usr/local/apps/ssh-1.2.32/bin:$PATH"
 	;;
 esac
-PATH="/home/staff/zs/mer/mundroo_arena/bin:$PATH"
+PATH="$PATH:/usr/bin"
 export PATH
 
 # Use NFS if we can, otherwise use anonymous cvs (pserver).
@@ -62,13 +62,20 @@ else
 fi
 
 # Stop looping tests after 5 minutes of CPU time.
-ulimit -S -t 300
-
-# Allow tests to use up to about 250 Mb of memory
+# Also allow tests to use up to about 250 Mb of memory
 # (Most of it should build fine with 128 Mb,
 # but building the --split-c-files versions of
 # the libraries needs more, at least for dec-alpha-osf*.)
-ulimit -S -d 250000
+case $HOST in
+	# ulimit doesn't work properly under cygwin, so don't use it on
+	# uranus.
+	uranus) ;;
+	*) 	ulimit -S -t 300
+		ulimit -S -d 250000
+		;;
+esac
+
+
 
 # directories to use
 
@@ -217,15 +224,14 @@ case $HOST in
 			# if scripts is a symbolic link to a directory.
 	aral)		OPTIMIZE="-O3" ;;
 	ceres)		OPTIMIZE="-O5" ;;	# hlc
+	uranus)		OPTIMIZE="-O3" ;;
 esac
 
 # on some systems, the file system we're using does not support links
-#case $HOST in
-#	hg)		LN="cp -r"; LN_S="cp -r" ;;
-#	*)		LN="ln"; LN_S="ln -s" ;;
-#esac
-LN="ln"
-LN_S="ln -s"
+case $HOST in
+	uranus)		LN="cp -r"; LN_S="cp -r" ;;
+	*)		LN="ln"; LN_S="ln -s" ;;
+esac
 
 # flags for building the compiler
 INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
@@ -272,7 +278,7 @@ esac
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-	hg|ender|roy|earth|ceres|aral|jupiter|swordfish|saturn)
+	hg|ender|roy|earth|ceres|aral|jupiter|swordfish|saturn|uranus)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -472,6 +478,9 @@ case $HOST in
 					asm_fast.gc.tr.decldebug	\
 					hlc.gc"
 		;; 
+	uranus)
+		CONFIG_OPTS=""
+		;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -1073,7 +1082,10 @@ esac
 fullname_tag=`echo $fullname | tr ' .' __`
 
 # On murlibobo building the binary distribution takes a lot of CPU time.
-ulimit -S -t unlimited
+case $HOST in
+	uranus) ;;
+	*) 	ulimit -S -t unlimited ;;
+esac
 
 {
 	cd $DIR/mercury &&

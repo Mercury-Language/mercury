@@ -42,6 +42,7 @@ fi
 PATH="$TOPDIR/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="$TOPDIR/$HOST:$PATH"
 PATH="$HOME/bin:$PATH"
+PATH="$PATH:/usr/bin"
 export PATH
 
 CVSROOT=/home/mercury1/repository
@@ -96,7 +97,7 @@ case "$BRANCH" in
 		#
 		BRANCH=latest
 	   	;; 
-	   earth|saskervoy|ceres)
+	   earth|saskervoy|ceres|uranus)
 		# On odd-numbered days, test the release branch
 		# On even-numbered days, test the main branch
 		case $DAY in
