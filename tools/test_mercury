@@ -433,15 +433,14 @@ case $HOST in
 		CONFIG_OPTS="--disable-java-grade --enable-nogc-grades"
 		;;
 	earth)
-		# earth has several versions of gcc installed (in /home/earth/public/gcc),
-		# we test with gcc 3.4.1 rather than the default one, gcc 3.2.
-		CONFIG_OPTS="--disable-java-grade --with-cc=/home/earth/public/gcc/gcc-3.4.1/bin/gcc-3.4.1"
+		CONFIG_OPTS=""
 		INSTALL_LIBGRADES="asm_fast.gc		\
 				asm_fast.gc.debug.tr 	\
 				asm_fast.gc.prof 	\
 				asm_fast.gc.profdeep 	\
 				asm_fast.gc.tsc 	\
 				hlc.gc 			\
+				hlc.par.gc		\
 				asm_fast.gc.tr.decldebug"
 		;;
 	aral)
