@@ -44,6 +44,7 @@ DECLARATIVE_PROGS=		\
 	info			\
 	input_term_dep		\
 	io_stream_test		\
+	io_tab_impure		\
 	ite_2			\
 	lpe_example		\
 	mapinit			\
@@ -365,6 +366,11 @@ input_term_dep.out: input_term_dep input_term_dep.inp
 io_stream_test.out: io_stream_test io_stream_test.inp
 	$(MDB_STD) ./io_stream_test < io_stream_test.inp \
 		> io_stream_test.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+io_tab_impure.out: io_tab_impure io_tab_impure.inp
+	$(MDB_STD) ./io_tab_impure < io_tab_impure.inp \
+		> io_tab_impure.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 ite_2.out: ite_2 ite_2.inp

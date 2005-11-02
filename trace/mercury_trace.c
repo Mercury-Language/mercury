@@ -638,6 +638,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_bool                 succeeded;
     MR_Word                 *saved_regs;
     MR_bool                 has_io_state;
+    MR_bool                 io_actions_were_performed;
     MR_bool                 is_io_state;
     MR_bool                 found_io_action_counter;
     MR_Unsigned             saved_io_action_counter;
@@ -768,14 +769,28 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         }
     }
 
-    if (has_io_state) {
-        MR_Unsigned cur_event_num;
+    found_io_action_counter = MR_find_saved_io_counter(call_label,
+        base_sp, base_curfr, &saved_io_action_counter);
+
+    if ((found_io_action_counter && 
+        saved_io_action_counter < MR_io_tabling_counter) ||
+        ((! found_io_action_counter) && has_io_state))
+    {
+        io_actions_were_performed = MR_TRUE;
+    } else {
+        /*
+        ** XXX We assume calls that weren't I/O tabled and that don't have
+        ** a pair of I/O state arguments did not do any I/O.
+        ** This assumption breaks for impure code that does I/O,
+        ** but we don't have a way to check if predicates are impure in the
+        ** debugger yet.
+        */
+        io_actions_were_performed = MR_FALSE;
+    }
+
+    if (io_actions_were_performed) {
         MR_Unsigned retry_event_num;
         MR_bool     all_actions_tabled;
-
-        found_io_action_counter = MR_find_saved_io_counter(call_label,
-            base_sp, base_curfr, &saved_io_action_counter);
-        cur_event_num = event_info->MR_event_number;
 
         /*
         ** Event numbers are stored *before* being incremented at calls.
@@ -794,7 +809,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 #endif
 
         if (! MR_retry_within_io_tabled_region(all_actions_tabled,
-            retry_event_num, cur_event_num))
+            retry_event_num, event_info->MR_event_number))
         {
             MR_bool allow_retry;
             char    *answer;
@@ -847,7 +862,6 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
             *unsafe_retry = MR_FALSE;
         }
     } else {
-        found_io_action_counter = MR_FALSE;     /* avoid a warning */
         *unsafe_retry = MR_FALSE;
     }
 
@@ -991,7 +1005,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         MR_saved_reg_assign(saved_regs, i, args[i]);
     }
 
-    if (has_io_state && found_io_action_counter) {
+    if (io_actions_were_performed && found_io_action_counter) {
         MR_io_tabling_counter = saved_io_action_counter;
     }
 

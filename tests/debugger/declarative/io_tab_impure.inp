@@ -1,0 +1,14 @@
+register --quiet
+echo on
+table_io allow
+table_io start
+break impure_print_hello
+c
+f
+dd -a
+n
+n
+y
+n
+y
+quit -y

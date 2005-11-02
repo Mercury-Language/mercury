@@ -6149,6 +6149,12 @@ For more information see the I/O tabling section of the Mercury user guide.
 If the foreign procedure contains gotos or static variables then the
 @samp{pragma no_inline} directive should also be given 
 (see @ref{pragma c_code}).
+Note that currently I/O tabling will only be done for foreign procedures
+that take a pair of I/O state arguments.  Impure foreign procedures that
+perform I/O will not be made idempotent, even if the tabled_for_io
+attribute is present.
+Note also that the tabled_for_io attribute will likely be replaced in
+a future release with a more general solution.
 
 @item @samp{terminates}/@samp{does_not_terminate}
 This attribute specifies the termination properties of the given predicate

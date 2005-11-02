@@ -1,0 +1,34 @@
+      E1:     C1 CALL pred io_tab_impure.main/2-0 (det) io_tab_impure.m:11
+mdb> mdb> echo on
+Command echo enabled.
+mdb> table_io allow
+mdb> table_io start
+I/O tabling started.
+mdb> break impure_print_hello
+ 0: + stop  interface pred io_tab_impure.impure_print_hello/0-0 (det)
+mdb> c
+      E2:     C2 CALL pred io_tab_impure.impure_print_hello/0-0 (det) io_tab_impure.m:24 (io_tab_impure.m:20)
+mdb> f
+hello      E3:     C2 EXIT pred io_tab_impure.impure_print_hello/0-0 (det) io_tab_impure.m:24 (io_tab_impure.m:20)
+mdb> dd -a
+impure_print_hello
+1 tabled IO action:
+print("hello")
+Valid? n
+impure_print("hello")
+1 tabled IO action:
+print("hello")
+Valid? n
+make_io_state(_)
+Valid? y
+print("hello", _, _)
+1 tabled IO action:
+print("hello")
+Valid? n
+Found incorrect contour:
+print("hello", _, _)
+1 tabled IO action:
+print("hello")
+Is this a bug? y
+      E4:     C3 EXIT pred io_tab_impure.print/3-0 (det) io_tab_impure.m:36 (io_tab_impure.m:31)
+mdb> quit -y
