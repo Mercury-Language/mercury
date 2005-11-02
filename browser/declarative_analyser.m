@@ -141,10 +141,12 @@
 
 :- implementation.
 
+:- import_module mdb.browser_info.
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_execution.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.rtti_access.
 
 :- import_module array.
 :- import_module bool.
@@ -200,7 +202,11 @@
 				% This is then used as the next question if the
 				% node that bound the sub-term is trusted or in
 				% an excluded part of the search tree.
-			maybe(suspect_id)
+			maybe(suspect_id),
+
+				% This field specifies the algorithm to use
+				% when tracking the subterm.
+			how_track_subterm
 		)
 			%
 			% Perform a binary search on a path in the search space
@@ -416,7 +422,7 @@ get_maybe_weighting_from_search_mode(divide_and_query(Weighting)) =
 	yes(Weighting).
 get_maybe_weighting_from_search_mode(top_down) = no.
 get_maybe_weighting_from_search_mode(binary(_, _, _)) = no.
-get_maybe_weighting_from_search_mode(follow_subterm_end(_, _, _, _)) = no.
+get_maybe_weighting_from_search_mode(follow_subterm_end(_, _, _, _, _)) = no.
 
 reask_last_question(Store, Analyser, Response) :-
 	MaybeLastQuestion = Analyser ^ last_search_question,
@@ -494,8 +500,8 @@ process_answer(_, truth_value(_, erroneous), SuspectId, !Analyser) :-
 		SearchSpace),
 	!:Analyser = !.Analyser ^ search_space := SearchSpace.
 
-process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath), SuspectId, 
-		!Analyser) :-
+process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath, HowTrack,
+		ShouldAssertInvalid), SuspectId, !Analyser) :-
 	% 
 	% XXX The following 2 lines just done so that debugging info can be
 	% printed for tests run when declarative_analyser.m not compiled with
@@ -504,20 +510,24 @@ process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath), SuspectId,
 	%
 	edt_dependency(Store, Node, ArgPos, TermPath, _, DebugOrigin),
 	!:Analyser = !.Analyser ^ debug_origin := yes(DebugOrigin),
-
-	edt_subterm_mode(Store, Node, ArgPos, TermPath, Mode),
 	(
-		Mode = subterm_in,
-		assert_suspect_is_inadmissible(SuspectId, 
-			!.Analyser ^ search_space, SearchSpace)
+		ShouldAssertInvalid = assert_invalid,
+		edt_subterm_mode(Store, Node, ArgPos, TermPath, Mode),
+		(
+			Mode = subterm_in,
+			assert_suspect_is_inadmissible(SuspectId, 
+				!.Analyser ^ search_space, SearchSpace)
+		;
+			Mode = subterm_out,
+			assert_suspect_is_erroneous(SuspectId, 
+				!.Analyser ^ search_space, SearchSpace)
+		),
+		!:Analyser = !.Analyser ^ search_space := SearchSpace
 	;
-		Mode = subterm_out,
-		assert_suspect_is_erroneous(SuspectId, 
-			!.Analyser ^ search_space, SearchSpace)
+		ShouldAssertInvalid = no_assert_invalid
 	),
-	!:Analyser = !.Analyser ^ search_space := SearchSpace,
 	!:Analyser = !.Analyser ^ search_mode := follow_subterm_end(SuspectId,
-		ArgPos, TermPath, no).
+		ArgPos, TermPath, no, HowTrack).
 
 revise_analysis(Store, Response, !Analyser) :-
 	SearchSpace = !.Analyser ^ search_space,
@@ -667,8 +677,8 @@ search(Store, Oracle, !SearchSpace, top_down, FallBackSearchMode,
 search(Store, Oracle, !SearchSpace, SearchMode, FallBackSearchMode,
 		NewMode, Response) :-
 	SearchMode = follow_subterm_end(SuspectId, ArgPos, TermPath, 
-		LastUnknown), 
-	follow_subterm_end_search(Store, Oracle, !SearchSpace,
+		LastUnknown, HowTrack), 
+	follow_subterm_end_search(Store, Oracle, !SearchSpace, HowTrack,
 		LastUnknown, SuspectId, ArgPos, TermPath, FallBackSearchMode,
 		NewMode, Response).
 
@@ -778,16 +788,31 @@ top_down_search(Store, Oracle, !SearchSpace, Response) :-
 	).
 
 :- pred follow_subterm_end_search(S::in, oracle_state::in, 
-	search_space(T)::in, search_space(T)::out, 
+	search_space(T)::in, search_space(T)::out, how_track_subterm::in, 
 	maybe(suspect_id)::in, suspect_id::in,
 	arg_pos::in, term_path::in, search_mode::in, search_mode::out,
 	search_response::out) is det <= mercury_edt(S, T).
 
-follow_subterm_end_search(Store, Oracle, !SearchSpace, 
+follow_subterm_end_search(Store, Oracle, !SearchSpace, HowTrack, 
 		LastUnknown, SuspectId, ArgPos, TermPath, FallBackSearchMode,
 		NewMode, SearchResponse) :-
+	follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack, 
+		map.init, _, LastUnknown, SuspectId, ArgPos, TermPath,
+		FallBackSearchMode, NewMode, SearchResponse).
+
+:- pred follow_subterm_end_search_2(S::in, oracle_state::in, 
+	search_space(T)::in, search_space(T)::out, how_track_subterm::in, 
+	map(proc_layout, unit)::in, map(proc_layout, unit)::out,
+	maybe(suspect_id)::in, suspect_id::in,
+	arg_pos::in, term_path::in, search_mode::in, search_mode::out,
+	search_response::out) is det <= mercury_edt(S, T).
+
+follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack, 
+		!TriedShortcutProcs, LastUnknown, SuspectId, ArgPos, TermPath,
+		FallBackSearchMode, NewMode, SearchResponse) :-
 	find_subterm_origin(Store, Oracle, SuspectId, ArgPos, 
-		TermPath, !SearchSpace, FindOriginResponse),
+		TermPath, HowTrack, !TriedShortcutProcs, !SearchSpace, 
+		FindOriginResponse),
 	(
 		FindOriginResponse = primitive_op(BindingSuspectId, FileName, 
 			LineNo, PrimOpType, Output),
@@ -863,12 +888,12 @@ follow_subterm_end_search(Store, Oracle, !SearchSpace,
 		% subtree has been generated.
 		%
 		NewMode = follow_subterm_end(SuspectId, ArgPos, TermPath,
-			LastUnknown)
+			LastUnknown, HowTrack)
 	;
 		FindOriginResponse = require_explicit_supertree,
 		SearchResponse = require_explicit_supertree,
 		NewMode = follow_subterm_end(SuspectId, ArgPos, TermPath,
-			LastUnknown)
+			LastUnknown, HowTrack)
 	;
 		FindOriginResponse = origin(OriginId, OriginArgPos, 
 			OriginTermPath, SubtermMode),
@@ -912,8 +937,9 @@ follow_subterm_end_search(Store, Oracle, !SearchSpace,
 			% information to continue (and find_subterm_origin will
 			% respond with not_found).
 			%
-			follow_subterm_end_search(Store, Oracle,
-				!SearchSpace, NewLastUnknown, OriginId,
+			follow_subterm_end_search_2(Store, Oracle,
+				!SearchSpace, HowTrack, !TriedShortcutProcs, 
+				NewLastUnknown, OriginId,
 				OriginArgPos, OriginTermPath,
 				FallBackSearchMode, NewMode, SearchResponse)
 		)
@@ -1422,8 +1448,10 @@ show_info(Store, OutStream, Analyser, !IO) :-
 :- func search_mode_to_string(search_mode) = string.
 
 search_mode_to_string(top_down) = "top down".
-search_mode_to_string(follow_subterm_end(_, _, _, _)) = 
-	"tracking marked sub-term".
+search_mode_to_string(follow_subterm_end(_, _, _, _, track_accurate)) = 
+	"tracking marked sub-term (using accurate algorithm)".
+search_mode_to_string(follow_subterm_end(_, _, _, _, track_fast)) = 
+	"tracking marked sub-term (using fast algorithm)".
 search_mode_to_string(binary(_, _, _)) = "binary search on path".
 search_mode_to_string(divide_and_query(number_of_events)) = 
 	"divide and query".

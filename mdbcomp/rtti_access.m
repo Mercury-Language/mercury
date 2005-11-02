@@ -44,6 +44,24 @@
 
 :- func get_proc_name(proc_label) = string.
 
+    % find_initial_version_arg_num(Proc, OutputArgNum, InputArgNum).
+    % Given a procedure and an output argument number of that procedure,
+    % find an input argument which has the same name as the output argument,
+    % expect for a numerical suffix and possibly an underscore.  The output
+    % argument name needn't have a numerical suffix, but if it does, then the
+    % input argument's numerical suffix should be less that the numerical
+    % suffix of the output argument.  This procedure is used as a heuristic to
+    % determine when it is worth checking if a subterm appearing in the output
+    % argument also appears in the same position in the input argument.  The
+    % heuristic is used by the subterm dependency tracking algorithm to help
+    % speed up the search.
+    % Argument numbers start at one.
+    % This procedure is implemented in C to avoid having to allocate
+    % memory to import non word-aligned strings into Mercury code.
+    %
+:- pred find_initial_version_arg_num(proc_layout::in, int::in, int::out)
+    is semidet.
+
 :- func get_all_modes_for_layout(proc_layout) = list(proc_layout).
 
 %-----------------------------------------------------------------------------%
@@ -191,6 +209,140 @@ get_proc_name(special_proc(_, _, _, ProcName , _, _)) = ProcName.
     PredName   = (MR_String) (MR_Integer) proc_id->MR_user_name;
     Arity      = proc_id->MR_user_arity;
     ModeNum    = proc_id->MR_user_mode;
+").
+
+:- pragma foreign_proc("C",
+    find_initial_version_arg_num(Layout::in, OutArgNum::in, InArgNum::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    const MR_Proc_Layout    *proc;
+    int         out_hlds_num;
+    const char      *out_name;
+
+    proc = Layout;
+
+    if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc)) {
+        MR_fatal_error(""find_initial_version_arg_num: proc"");
+    }
+
+    out_hlds_num = proc->MR_sle_head_var_nums[OutArgNum - 1];
+    out_name = MR_hlds_var_name(proc, out_hlds_num);
+    if (out_name == NULL || MR_streq(out_name, """")) {
+        /* out_hlds_num was not named by the user */
+        SUCCESS_INDICATOR = MR_FALSE;
+    } else {
+        int                     out_base_name_len;
+        int                     out_numerical_suffix;
+        int                     num_matches;
+        int                     in_hlds_num;
+        int                     in_arg_num;
+        const char              *in_name;
+        int                     start_of_num;
+        int                     in_numerical_suffix;
+        int                     head_var_num;
+        int                     call_var_num;
+        int                     call_num_vars;
+        const MR_Label_Layout   *call_label;
+        MR_bool                 found;
+
+        start_of_num = MR_find_start_of_num_suffix(out_name);
+        if (start_of_num < 0) {
+            out_base_name_len = strlen(out_name);
+            out_numerical_suffix = -1;
+        } else {
+            out_base_name_len = start_of_num;
+            out_numerical_suffix = atoi(out_name + start_of_num);
+        }
+
+        num_matches = 0;
+        in_arg_num = -1;
+
+        for (head_var_num = 0; head_var_num < proc->MR_sle_num_head_vars; 
+            head_var_num++) 
+        {
+            in_hlds_num = proc->MR_sle_head_var_nums[head_var_num];
+            in_name = MR_hlds_var_name(proc, in_hlds_num);
+            if (in_name == NULL || MR_streq(in_name, """")) {
+                continue;
+            }
+
+            start_of_num = MR_find_start_of_num_suffix(in_name);
+            if (start_of_num < 0) {
+                continue;
+            }
+ 
+            if (! (
+                    (
+                        /*
+                        ** The names are exactly the same except
+                        ** for the numerical suffix.
+                        */
+                        start_of_num == out_base_name_len && 
+                        strneq(out_name, in_name, start_of_num)
+                    )
+                ||
+                    (
+                        /*
+                        ** The names are exactly the same except
+                        ** for an underscore and the numerical suffix
+                        ** (as is the case with state variable notation).
+                        */
+                        start_of_num == out_base_name_len + 1 &&
+                        start_of_num > 0 &&
+                        in_name[start_of_num - 1] == '_' &&
+                        strneq(out_name, in_name, start_of_num - 1)
+                    )
+                ))
+            {
+                continue;
+            }
+
+            in_numerical_suffix = atoi(in_name + start_of_num);
+            if (! ((in_numerical_suffix >= out_numerical_suffix)
+                || (out_numerical_suffix < 0)))
+            {
+                continue;
+            }
+
+            call_label = proc->MR_sle_call_label;
+            if (! MR_has_valid_var_count(call_label)) {
+                    continue;
+            }
+
+            if (! MR_has_valid_var_info(call_label)) {
+                continue;
+            }
+
+            /*
+            ** The in_hlds_num has the same prefix as the output variable.
+            ** Check if in_hlds_num is an input argument.
+            */
+            call_num_vars = MR_all_desc_var_count(call_label);
+            found = MR_FALSE;
+            for (call_var_num = 0 ; call_var_num < call_num_vars;
+                    call_var_num++)
+            {
+                if (call_label->MR_sll_var_nums[call_var_num] == in_hlds_num) {
+                    found = MR_TRUE;
+                    break;
+                }
+            }
+
+            if (! found) {
+                continue;
+            }
+
+            num_matches++;
+            in_arg_num = head_var_num;
+        }
+
+        if (num_matches == 1) {
+            InArgNum = in_arg_num + 1;
+            SUCCESS_INDICATOR = MR_TRUE;
+        } else {
+            SUCCESS_INDICATOR = MR_FALSE;
+        }
+    }
 ").
 
 :- pragma foreign_proc("C",

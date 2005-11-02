@@ -19,6 +19,9 @@
 
 :- interface.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
+
 :- import_module std_util.
 
 :- type term_rep.
@@ -27,9 +30,14 @@
 
 :- pred rep_to_univ(term_rep::in, univ::out) is det.
 
+:- pred deref_path(term_rep::in, term_path::in, term_rep::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module int.
+:- import_module list.
 
 :- type term_rep
 	---> term_rep(univ)
@@ -59,4 +67,25 @@ univ_to_rep(Univ0, term_rep(Univ)) :- cc_multi_equal(Univ0, Univ).
 rep_to_univ(Rep, Univ) :-
 	Univ = promise_only_solution(
 		pred(U::out) is cc_multi :- Rep = term_rep(U)
+	).
+
+deref_path(Term, Path, SubTerm):-
+	(
+		Path = [],
+		SubTerm = Term
+	;
+		Path = [Head | Tail],
+		%
+		% There is only one representation of a subterm, given
+		% the representation of the containing term and a term path.
+		%
+		promise_equivalent_solutions [NextSubTerm] (
+			rep_to_univ(Term, Univ),
+			% Argument indexes in the term path start from one, but
+			% the argument function wants argument indexes to
+			% start from zero.
+			SubUniv = argument(univ_value(Univ), Head - 1),
+			univ_to_rep(SubUniv, NextSubTerm)
+		),
+		deref_path(NextSubTerm, Tail, SubTerm)
 	).

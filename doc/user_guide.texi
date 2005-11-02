@@ -1663,9 +1663,9 @@ you will be assured of being able to get control
 at every execution point that represents a potential trace event,
 which is very convenient.
 
-The ``decldebug'' grades improve declarative debugging by tracking 
-the source of marked subterms (see @ref{Improving the search}).
-Doing this substantially increases the size of executables so these
+The ``decldebug'' grades improve declarative debugging by allowing the user
+to track the source of subterms (see @ref{Improving the search}).
+Doing this increases the size of executables so these
 grades should only be used when the subterm dependency tracking feature
 of the declarative debugger is required.
 Note that declarative debugging, with the exception of the subterm dependency
@@ -4227,8 +4227,8 @@ Change the current search mode.  The search modes may be abbreviated to
 Start the interactive term browser and browse the @var{n}th argument 
 before answering.  If the argument number
 is omitted then browse the whole call as if it were a data term.
-While browsing a @samp{mark} command may be issued to assert that
-the current subterm is incorrect (see @ref{Improving the search}).
+While browsing a @samp{track} command may be issued to find the point at
+which the current subterm was bound (see @ref{Improving the search}).
 To return to the declarative debugger question issue a @samp{quit}
 command from within the interactive term browser.  For more information
 on the use of the interactive term browser see the @samp{browse} command
@@ -4257,13 +4257,31 @@ The parameters that can be configured are
 @samp{list_path}, @samp{list_context_lines}, @samp{format}, @samp{depth},
 @samp{size}, @samp{width} and @samp{lines}.
 @sp 1
-@item mark [@var{term-path}]
-The @samp{mark} command can only be given from within the interactive
-term browser and asserts that the marked subterm is incorrect.  The 
-declarative debugger uses this information to better direct the bug search.  
+@item track [-a] [@var{term-path}]
+The @samp{track} command can only be given from within the interactive
+term browser and tells the declarative debugger to find the point at which
+the current subterm was bound.  
 If no argument is given the current subterm is taken to be incorrect.  
 If a @var{term-path} is given then the subterm at @var{term-path} relative to
 the current subterm will be considered incorrect.
+The declarative debugger will ask about the call that bound the given subterm
+next.  
+To find out the location of the unification that bound the subterm, 
+issue an @samp{info} command when asked about the call that bound the subterm.
+The declarative debugger can use one of two algorithms to find the 
+point at which the subterm was bound.  
+The first algorithm uses some heuristics
+to find the subterm more quickly than the second algorithm.
+It is possible, though unlikely, 
+for the first algorithm to find the wrong call.
+The first algorithm is the default.
+To tell the declarative debugger to
+use the second, more accurate but slower algorithm,
+give the @samp{-a} or @samp{--accurate} option to the @samp{track} command.
+@item mark [-a] [@var{term-path}]
+The @samp{mark} command has the same effect as the @samp{track} command
+except that it also asserts that the atom is inadmissible or erroneous,
+depending on whether the subterm is input or output respectively.
 @sp 1
 @item pd
 Commence procedural debugging from the current point.
@@ -4421,25 +4439,16 @@ the location of a bug can be reduced by giving it extra information.  The kind
 of extra information that can be given and how to convey this information are
 explained in this section.
 
-@subsubsection Marking incorrect subterms
+@subsubsection Tracking suspicious subterms
 
-An incorrect subterm can be @emph{marked} by the user from within the 
-interactive term browser (see @ref{Declarative debugging commands}).
-The effect of marking a subterm depends on the whether the subterm was part
-of an input or an output argument.
+An incorrect subterm can be tracked to the call that bound the subterm
+from within the interactive term browser 
+(see @ref{Declarative debugging commands}).
 
-If the subterm was an input then by marking the subterm the user is asserting 
-that the call was inadmissible and that the marked input subterm is the 
-reason for inadmissibility (i.e. the subterm's value violates a precondition
-of the call).
-
-If the subterm was an output then the user is saying the exit atom is false
-in the intended interpretation and the marked subterm is the reason for the
-atom being false (i.e. if it were some other value then the atom would be 
-true).
-
-In either case the next question asked by the declarative debugger will 
-be about the call that bound the incorrect subterm, unless that call was
+After issuing a @samp{track} command, 
+the next question asked by the declarative debugger will 
+be about the call that bound the incorrect subterm,
+unless that call was
 eliminated as a possible bug because of an answer to a previous 
 question or the call that bound the subterm was not traced.
 
@@ -4449,9 +4458,9 @@ payments for a loan:
 @example
 :- type payment
         --->   payment(
-               date    :: date,
-               amount  :: float
-        ).
+                       date    :: date,
+                       amount  :: float
+               ).
 
 :- type date ---> date(int, int, int).  % date(day, month, year).
 
@@ -4473,7 +4482,7 @@ Valid?
 @end example
 
 Then if we know that this is the right payment amount for the given loan, 
-but the date is incorrect, we can mark the date(...) subterm and the 
+but the date is incorrect, we can track the date(...) subterm and the 
 debugger will then ask us about @code{get_payment_date}:  
 
 @noindent
@@ -4483,8 +4492,8 @@ Valid? browse
 browser> cd 3/1
 browser> ls
 date(9, 10, 1977)
-browser> mark
-get_payment_date(loan(...), 10, dat(9, 10, 1977)).
+browser> track
+get_payment_date(loan(...), 10, date(9, 10, 1977)).
 Valid?
 @end example
 	
@@ -4492,15 +4501,15 @@ Thus irrelevant questions about @code{get_payment_amount} are avoided.
 
 @noindent
 If, say, the date was only wrong in the year part, then we could also have
-marked the year subterm in which case the next question would have been about
+tracked the year subterm in which case the next question would have been about
 the call that constructed the year part of the date.
 
 This feature is also useful when using the procedural debugger.  For example,
 suppose that you come across a @samp{CALL} event and you would like to know the
 source of a particular input to the call.  To find out you could first go to
 the final event by issuing a @samp{finish} command.  Invoke the declarative
-debugger with a @samp{dd} command and then mark the input term you are
-interested in.  The next question should be about the call that bound the term.
+debugger with a @samp{dd} command and then track the input term you are
+interested in.  The next question will be about the call that bound the term.
 Issue a @samp{pd} command at this point to return to the procedural debugger.
 It will now show the final event of the call that bound the term.
 
@@ -4539,9 +4548,8 @@ current question.  See the @samp{trust} command in
 @subsubsection When different search modes are used
 
 If a search mode is given when invoking the declarative debugger then that
-search mode will be used, unless (a) a subterm is marked during the session,
-in which case the subterm is tracked to its origin, or (b) the user 
-has not answered @samp{no} to any questions yet,
+search mode will be used, unless (a) a subterm is tracked during the session,
+or (b) the user has not answered @samp{no} to any questions yet,
 in which case top-down search is used until @samp{no} is answered to at least
 one question.
 
@@ -4553,6 +4561,8 @@ otherwise top-down search will be used.
 
 You can check the search mode used to find a particular question by issuing
 an @samp{info} command at the question prompt in the declarative debugger.
+You can also change the search mode from within the declarative debugger
+with the @samp{mode} command.
 
 @c ----------------------------------------------------------------------------
 

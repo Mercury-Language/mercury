@@ -43,15 +43,28 @@
 					% mdb command.
 			state		:: browser_persistent_state,
 					% Persistent settings.
-			maybe_mark	:: maybe(list(dir)),
-					% Location of the marked term
-					% relative to the root, or `no'
-					% if there is no mark.
+			maybe_track	:: maybe_track_subterm(list(dir)),
+					% Location of subterm for which the
+					% `track' or `mark' command was given,
+					% or `no_track' if the `track' command
+					% was not given.
 			maybe_mode_func	:: maybe(browser_mode_func)
 					% An optional function to determine the
 					% mode of a particular sub-term should
 					% the user issue a `mode' query.
 		).
+
+:- type maybe_track_subterm(P)
+	--->	no_track
+	;	track(how_track_subterm, should_assert_invalid, P).
+
+:- type how_track_subterm
+	--->	track_accurate
+	;	track_fast.
+
+:- type should_assert_invalid
+	--->	assert_invalid
+	;	no_assert_invalid.
 
 	% A signature for functions that can be used by the browser to work
 	% out the mode of a sub-term.
@@ -331,7 +344,7 @@ mercury_bool_no = no.
 
 browser_info__init(BrowserTerm, CallerType, MaybeFormat, MaybeModeFunc,
 		State) =
-	browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no,
+	browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no_track,
 		MaybeModeFunc).
 
 browser_info__get_format(Info, Caller, MaybeFormat, Format) :-

@@ -50,6 +50,7 @@ DECLARATIVE_PROGS=		\
 	mismatch_on_call	\
 	negation		\
 	neg_conj		\
+	nodescend_tracking	\
 	oracle_db		\
 	output_term_dep		\
 	partial			\
@@ -385,6 +386,11 @@ mismatch_on_call.out: mismatch_on_call mismatch_on_call.$(DEBUG_INP)
 
 neg_conj.out: neg_conj neg_conj.inp
 	$(MDB) ./neg_conj < neg_conj.inp > neg_conj.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+nodescend_tracking.out: nodescend_tracking nodescend_tracking.inp
+	$(MDB_STD) ./nodescend_tracking < nodescend_tracking.inp \
+		> nodescend_tracking.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 negation.out: negation negation.inp

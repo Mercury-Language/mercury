@@ -18,6 +18,8 @@ browser> mark
 d([0], t(p([0])))
 Valid? browse
 browser> mark
+Cannot track the entire atom. Please select a subterm to track.
+dd> n
 Found incorrect contour:
 d([0], t(p([0])))
 Is this a bug? y

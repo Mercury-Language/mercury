@@ -190,47 +190,50 @@ handle_command(skip, UserQuestion, Response, !User, !IO) :-
 	Node = get_decl_question_node(Question),
 	Response = user_answer(Question, skip(Node)).
 
-handle_command(browse_arg(MaybeArgNum), UserQuestion, Response, 
-		!User, !IO) :-
+handle_command(browse_arg(MaybeArgNum), UserQuestion, Response, !User, !IO) :-
 	Question = get_decl_question(UserQuestion),
 	edt_node_trace_atoms(Question, InitAtom, FinalAtom),
 	(
 		MaybeArgNum = yes(ArgNum),
-		browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeMark, 
+		browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, 
 			!User, !IO),
 		(
-			MaybeMark = no,
+			MaybeTrack = no_track,
 			query_user(UserQuestion, Response, 
 				!User, !IO)
 		;
-			MaybeMark = yes(Mark),
+			MaybeTrack = track(HowTrack, ShouldAssertInvalid,
+				TermPath),
 			ArgPos = arg_num_to_arg_pos(ArgNum),
 			Node = get_decl_question_node(Question),
-			Answer = suspicious_subterm(Node, ArgPos, Mark),
+			Answer = suspicious_subterm(Node, ArgPos, TermPath,
+				HowTrack, ShouldAssertInvalid),
 			Response = user_answer(Question, Answer)
 		)
 	;
 		MaybeArgNum = no,
-		browse_atom(InitAtom, FinalAtom, MaybeMark, !User, !IO),
+		browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO),
 		(
-			MaybeMark = no,
+			MaybeTrack = no_track,
 			query_user(UserQuestion, Response, 
 				!User, !IO)
 		;
-			%
-			% If the user marks the predicate or function,
-			% we make the atom erroneous.
-			%
-			MaybeMark = yes([]),
-			Node = get_decl_question_node(Question),
-			Answer = truth_value(Node, erroneous),
-			Response = user_answer(Question, Answer)
-		;
-			MaybeMark = yes([ArgNum | Mark]),
+			MaybeTrack = track(HowTrack, ShouldAssertInvalid, 
+				[ArgNum | TermPath]),
 			ArgPos = arg_num_to_arg_pos(ArgNum),
 			Node = get_decl_question_node(Question),
-			Answer = suspicious_subterm(Node, ArgPos, Mark),
+			Answer = suspicious_subterm(Node, ArgPos, TermPath,
+				HowTrack, ShouldAssertInvalid),
 			Response = user_answer(Question, Answer)
+		;
+			%
+			% Tracking the entire atom doesn't make sense.
+			%
+			MaybeTrack = track(_, _, []),
+			io.write_string(!.User ^ outstr, 
+				"Cannot track the entire atom. " ++
+				"Please select a subterm to track.\n", !IO),
+			query_user(UserQuestion, Response, !User, !IO)
 		)
 	).
 
@@ -284,7 +287,7 @@ handle_command(browse_io(ActionNum), UserQuestion, Response,
 	Question = get_decl_question(UserQuestion),
 	edt_node_io_actions(Question, MaybeIoActions),
 	% We don't have code yet to trace a marked I/O action.
-	browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeMark, 
+	browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeTrack, 
 		!User, !IO),
 	query_user(UserQuestion, Response, !User, !IO).
 
@@ -434,25 +437,25 @@ decl_bug_io_actions(e_bug(unhandled_exception(_, _, _)), no).
 decl_bug_io_actions(i_bug(inadmissible_call(_, _, _, _)), no).
 
 :- pred browse_chosen_io_action(maybe(io_action_range)::in, int::in,
-	maybe(term_path)::out, user_state::in, user_state::out,
+	maybe_track_subterm(term_path)::out, user_state::in, user_state::out,
 	io::di, io::uo) is cc_multi.
 
-browse_chosen_io_action(MaybeIoActions, ActionNum, MaybeMark, !User, !IO) :-
+browse_chosen_io_action(MaybeIoActions, ActionNum, MaybeTrack, !User, !IO) :-
 	( 
 		MaybeIoActions = yes(IoActions),
 		find_tabled_io_action(IoActions, ActionNum, MaybeIoAction, 
 			!IO),
 		(
 			MaybeIoAction = yes(IoAction),
-			browse_io_action(IoAction, MaybeMark, !User, !IO)
+			browse_io_action(IoAction, MaybeTrack, !User, !IO)
 		;
 			MaybeIoAction = no,
-			MaybeMark = no
+			MaybeTrack = no_track
 		)
 	;
 		MaybeIoActions = no,
 		io.write_string("No such IO action.\n", !IO),
-		MaybeMark = no
+		MaybeTrack = no_track
 	).
 
 :- pred find_tabled_io_action(io_action_range::in, int::in, 
@@ -519,14 +522,15 @@ print_chosen_io_action(MaybeIoActions, ActionNum, User0, OK, !IO) :-
 		OK = no
 	).
 
-:- pred browse_io_action(io_action::in, maybe(term_path)::out,
+:- pred browse_io_action(io_action::in, maybe_track_subterm(term_path)::out,
 	user_state::in, user_state::out, io::di, io::uo) is cc_multi.
 
-browse_io_action(IoAction, MaybeMark, !User, !IO) :-
+browse_io_action(IoAction, MaybeTrack, !User, !IO) :-
 	Term = io_action_to_browser_term(IoAction),
 	browse_browser_term(Term, !.User ^ instr, !.User ^ outstr, no,
-		MaybeDirs, !.User ^ browser, Browser, !IO),
-	maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
+		MaybeTrackDirs, !.User ^ browser, Browser, !IO),
+	convert_maybe_track_dirs_to_term_path(MaybeTrackDirs, 
+		MaybeTrack),
 	!:User = !.User ^ browser := Browser.
 
 :- pred browse_decl_bug(decl_bug::in, maybe(int)::in, user_state::in,
@@ -557,10 +561,10 @@ browse_xml_decl_bug(Bug, MaybeArgNum, User, !IO) :-
 	).
 
 :- pred browse_atom_argument(trace_atom::in, trace_atom::in, int::in, 
-	maybe(term_path)::out, user_state::in, user_state::out, 
+	maybe_track_subterm(term_path)::out, user_state::in, user_state::out, 
 	io::di, io::uo) is cc_multi.
 
-browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeMark, !User, !IO) :-
+browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, !User, !IO) :-
 	FinalAtom = atom(_, Args0),
 	maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
 	(
@@ -573,13 +577,14 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeMark, !User, !IO) :-
 			!.User ^ instr, !.User ^ outstr,
 			yes(get_subterm_mode_from_atoms_for_arg(ArgNum, 
 				InitAtom, FinalAtom)),
-			MaybeDirs, !.User ^ browser, Browser, !IO),
-		maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
+			MaybeTrackDirs, !.User ^ browser, Browser, !IO),
+		convert_maybe_track_dirs_to_term_path(
+			MaybeTrackDirs, MaybeTrack),
 		!:User = !.User ^ browser := Browser
 	;
 		io.write_string(!.User ^ outstr, "Invalid argument number\n",
 			!IO),
-		MaybeMark = no
+		MaybeTrack = no_track
 	).
 
 :- pred browse_xml_atom_argument(trace_atom::in, int::in, user_state::in, 
@@ -601,10 +606,11 @@ browse_xml_atom_argument(Atom, ArgNum, User, !IO) :-
 			!IO)
 	).
 
-:- pred browse_atom(trace_atom::in, trace_atom::in, maybe(term_path)::out,
+:- pred browse_atom(trace_atom::in, trace_atom::in, 
+	maybe_track_subterm(term_path)::out,
 	user_state::in, user_state::out, io::di, io::uo) is cc_multi.
 
-browse_atom(InitAtom, FinalAtom, MaybeMark, !User, !IO) :-
+browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO) :-
 	FinalAtom = atom(ProcLayout, Args),
 	ProcLabel = get_proc_label_from_layout(ProcLayout),
 	get_user_arg_values(Args, ArgValues),
@@ -615,8 +621,9 @@ browse_atom(InitAtom, FinalAtom, MaybeMark, !User, !IO) :-
 		ArgValues, IsFunction),
 	browse_browser_term(BrowserTerm, !.User ^ instr, !.User ^ outstr,
 		yes(get_subterm_mode_from_atoms(InitAtom, FinalAtom)),
-		MaybeDirs, !.User ^ browser, Browser, !IO),
-	maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
+		MaybeTrackDirs, !.User ^ browser, Browser, !IO),
+	convert_maybe_track_dirs_to_term_path(
+		MaybeTrackDirs, MaybeTrack),
 	!:User = !.User ^ browser := Browser.
 
 :- pred browse_xml_atom(trace_atom::in, user_state::in, io::di, io::uo) 
@@ -727,11 +734,13 @@ print_atom_argument(Atom, ArgNum, User, OK, !IO) :-
 		OK = no
 	).
 
-:- pred maybe_convert_dirs_to_path(maybe(list(dir))::in, 
-	maybe(term_path)::out) is det.
+:- pred convert_maybe_track_dirs_to_term_path(
+	maybe_track_subterm(list(dir))::in, 
+	maybe_track_subterm(term_path)::out) is det.
 
-maybe_convert_dirs_to_path(no, no).
-maybe_convert_dirs_to_path(yes(Dirs), yes(TermPath)) :-
+convert_maybe_track_dirs_to_term_path(no_track, no_track).
+convert_maybe_track_dirs_to_term_path(track(HowTrack, ShouldAssertInvalid,
+		Dirs), track(HowTrack, ShouldAssertInvalid, TermPath)) :-
 	convert_dirs_to_term_path(Dirs, TermPath).
 
 	% Reverse the first argument and append the second to it.
@@ -1019,7 +1028,7 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
 		->
 			decl_bug_io_actions(Bug, MaybeIoActions),
 			browse_chosen_io_action(MaybeIoActions, ActionNum,
-				_MaybeMark, !User, !IO),
+				_MaybeTrack, !User, !IO),
 			user_confirm_bug(Bug, Response, !User, !IO)
 		;
 			user_confirm_bug_help(!.User, !IO),

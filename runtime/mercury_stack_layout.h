@@ -955,6 +955,23 @@ typedef	struct MR_Proc_Layout_Traversal_Struct {
 		? 1 : 0))
 
 /*
+** Return the name (if any) of the variable with the given HLDS variable number
+** in the procedure indicated by the first argument.
+*/
+
+extern	MR_ConstString	MR_hlds_var_name(const MR_Proc_Layout *entry,
+				int hlds_var_num);
+
+/*
+** Given a string, see whether its end consists a sequence of digits.
+** If yes, return the offset of the first digit in this sequence relative
+** to the start of the string. Otherwise, return a negative number.
+*/
+
+extern	int		MR_find_start_of_num_suffix(const char *str);
+
+
+/*
 ** Define a layout structure for a procedure, containing information
 ** for stack traversal and procedure identification.
 **

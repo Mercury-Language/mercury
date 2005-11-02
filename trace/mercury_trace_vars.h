@@ -128,7 +128,7 @@ extern	const char	*MR_trace_list_vars(FILE *out);
 extern	const char 	*MR_trace_list_var_details(FILE *out);
 
 /*
-** Return as a side effect the type and value of the variable with the
+** Return as a side effect the name, type and value of the variable with the
 ** specified HLDS number, in the specified locations, all of which must be
 ** non-NULL. If the variable isn't live or isn't known, return a non-null
 ** string giving the problem.
@@ -325,15 +325,6 @@ extern	const char	*MR_trace_print_size_all(FILE *out);
 extern	void		MR_convert_goal_to_synthetic_term(
 				const char **functor_ptr,
 				MR_Word *arg_list_ptr, MR_bool *is_func_ptr);
-
-
-/*
-** Return the name (if any) of the variable with the given HLDS variable number
-** in the procedure indicated by the first argument.
-*/
-
-extern	MR_ConstString	MR_hlds_var_name(const MR_Proc_Layout *entry,
-				int hlds_var_num);
 
 /*
 ** A Readline completer for variable names.

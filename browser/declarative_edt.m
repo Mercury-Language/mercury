@@ -58,13 +58,16 @@
 
 :- interface.
 
+:- import_module mdb.browser_info.
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.declarative_oracle.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.rtti_access.
 
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 :- import_module std_util.
 
 	% This typeclass defines how EDTs may be accessed by this module.
@@ -314,49 +317,78 @@
 
 	% Marks the suspect inadmissible and alls its decendents as pruned.
 	%
-:- pred assert_suspect_is_inadmissible(suspect_id::in, 
+:- pred assert_suspect_is_inadmissible(suspect_id::in,
 	search_space(T)::in, search_space(T)::out) is det.
 
 	% Marks the suspect ignored.
 	%
-:- pred ignore_suspect(S::in, suspect_id::in, search_space(T)::in, 
+:- pred ignore_suspect(S::in, suspect_id::in, search_space(T)::in,
 	search_space(T)::out) is det <= mercury_edt(S, T).
 
 	% Marks the suspect as skipped.
 	%
 :- pred skip_suspect(suspect_id::in, search_space(T)::in, search_space(T)::out)
 	is det.
-	
-	% find_subterm_origin(Store, Oracle, SuspectId, ArgPos, 
-	%	TermPath, !SearchSpace, Response).  
+
+	% lookup_subterm_node(Store, SuspectId, ArgPos,
+	%	TermPath, SearchSpace, Suspect, Mode, Node):
+	%
+	% Finds the node of the subterm given by SuspectId, ArgPos and
+	% TermPath in its immediate neighbours.
+	%
+:- pred lookup_subterm_node(S::in, suspect_id::in, arg_pos::in, term_path::in,
+	search_space(T)::in, suspect(T)::out, subterm_mode::out, T::out)
+	is det <= mercury_edt(S, T).
+
+	% find_subterm_origin(Store, Oracle, SuspectId, ArgPos,
+	%	TermPath, HowTrack, !TriedShortcutProcs, !SearchSpace, 
+	%	Response):
+	%
 	% Finds the origin of the subterm given by SuspectId, ArgPos and
 	% TermPath in its immediate neighbours.  If the children of a suspect
 	% are required then they'll be added to the search space, unless an
 	% explicit subtree is required in which case the appropriate response
 	% is returned (see definition of find_origin_response type below).
+	% 
+	% find_subterm_origin can use heuristics to avoid materialising
+	% subtrees unnecessarily.  If the subterm is being tracked through an
+	% output argument, and there is an input argument with the same
+	% name as the output argument, except for a numerical suffix, then
+	% find_subterm_origin will check if the subterm appears in the same
+	% position in the input argument.  If it does then it will continue
+	% tracking the subterm in the input argument, thus bypassing the
+	% subtree rooted at the call and so possibly avoiding materialising
+	% that subtree.  Since dereferencing a subterm in a 
+	% large structure can be expensive, find_subterm_origin will only
+	% try to bypass calls to procedures it has not tried to bypass
+	% before.  The HowTrack argument specifies whether to use the bypassing
+	% heuristics and !TriedShortcutProcs keeps track of which procedures'
+	% calls it has already tried to bypass.
 	%
-:- pred find_subterm_origin(S::in, oracle_state::in, 
-	suspect_id::in, arg_pos::in, term_path::in, search_space(T)::in,
-	search_space(T)::out, find_origin_response::out) 
+:- pred find_subterm_origin(S::in, oracle_state::in,
+	suspect_id::in, arg_pos::in, term_path::in, how_track_subterm::in,
+	map(proc_layout, unit)::in, map(proc_layout, unit)::out,
+	search_space(T)::in, search_space(T)::out, find_origin_response::out)
 	is det <= mercury_edt(S, T).
 
 :- type find_origin_response
+
 			% The origin couldn't be found because of insufficient
 			% tracing information.
 	--->	not_found
-	
-			% The subterm originated from the suspect referenced by 
+
+			% The subterm originated from the suspect referenced by
 			% argument 1.  The second and third arguments give the
 			% position of the subterm in the origin node, while the
 			% fourth argument gives the mode of the subterm.
 	;	origin(suspect_id, arg_pos, term_path, subterm_mode)
-	
+
 			% The subterm was bound by a primitive operation inside
 			% the suspect.  The other arguments are the filename,
-			% line number and type of the primitive operation 
+			% line number and type of the primitive operation
 			% that bound the subterm.
 	;	primitive_op(
-			suspect_id,		% The node in which the subterm 
+			suspect_id,		% The node in which the subterm
 						% was bound.
 			string, 		% File name of primitive op.
 			int, 			% Line number of primitive op.
@@ -540,13 +572,17 @@
 :- implementation.
 
 :- import_module bimap.
+:- import_module char.
 :- import_module counter.
 :- import_module exception.
 :- import_module float.
 :- import_module int.
-:- import_module map.
+:- import_module svmap.
 :- import_module std_util.
 :- import_module string.
+
+:- import_module mdb.declarative_execution.
+:- import_module mdb.term_rep.
 
 	% A suspect is an edt node with some additional information relevant
 	% to the bug search.
@@ -931,44 +967,48 @@ travel_up(SearchSpace, StartId, Distance, FinishId) :-
 		FinishId = StartId
 	).
 
-find_subterm_origin(Store, Oracle, SuspectId, ArgPos, TermPath, 
-		!SearchSpace, Response) :-
-	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	ImplicitToExplicit = !.SearchSpace ^
-		implicit_roots_to_explicit_roots,
+lookup_subterm_node(Store, SuspectId, ArgPos, TermPath, SearchSpace, Suspect,
+		Mode, Node) :-
+	lookup_suspect(SearchSpace, SuspectId, Suspect),
 	% The node in the search space will be the explicit version.
 	ExplicitNode = Suspect ^ edt_node,
 	edt_subterm_mode(Store, ExplicitNode, ArgPos, TermPath, Mode),
 	%
-	% If the mode is input then the origin will be in a parent or a 
+	% If the mode is input then the origin will be in a parent or a
 	% sibling.  In either case we need access to a parent EDT node, so
 	% if the node is at the top of a generated explicit subtree we must use
-	% the implicit root instead, so the dependency tracking algorithm 
+	% the implicit root instead, so the dependency tracking algorithm
 	% has access to the node's parent and siblings in the EDT.
 	%
 	(
 		Mode = subterm_in,
+		ImplicitToExplicit = SearchSpace ^
+			implicit_roots_to_explicit_roots,
 		bimap.search(ImplicitToExplicit, ImplicitNode, ExplicitNode)
 	->
 		Node = ImplicitNode
 	;
 		Node = ExplicitNode
-	),
+	).
+
+find_subterm_origin(Store, Oracle, SuspectId, ArgPos, TermPath, HowTrack,
+		!TriedShortcutProcs, !SearchSpace, Response) :-
+	lookup_subterm_node(Store, SuspectId, ArgPos, TermPath,
+		!.SearchSpace, Suspect, Mode, Node),
 	(
 		Mode = subterm_in,
 		(
 			Suspect ^ parent = yes(ParentId),
-			resolve_origin(Store, Oracle, Node,
-				ArgPos, TermPath, ParentId, no, !SearchSpace,
-				Response)
+			resolve_origin(Store, Oracle, Node, ArgPos, TermPath,
+				ParentId, no, !SearchSpace, Response)
 		;
 			Suspect ^ parent = no,
 			(
-				extend_search_space_upwards(Store, 
+				extend_search_space_upwards(Store,
 					Oracle, !SearchSpace)
 			->
 				topmost_det(!.SearchSpace, NewRootId),
-				resolve_origin(Store, Oracle, 
+				resolve_origin(Store, Oracle,
 					Node, ArgPos, TermPath, NewRootId, no,
 					!SearchSpace, Response)
 			;
@@ -977,9 +1017,27 @@ find_subterm_origin(Store, Oracle, SuspectId, ArgPos, TermPath,
 		)
 	;
 		Mode = subterm_out,
-		resolve_origin(Store, Oracle, Node, ArgPos,
-			TermPath, SuspectId, yes, !SearchSpace,
-			Response)
+		(
+			HowTrack = track_accurate,
+			resolve_origin(Store, Oracle, Node, ArgPos,
+				TermPath, SuspectId, yes, !SearchSpace,
+				Response)
+		;
+			HowTrack = track_fast,
+			subterm_is_in_input_with_same_prefix(Store, Node,
+				ArgPos, TermPath, !TriedShortcutProcs, 
+				MaybeInputArgPos),
+			(
+				MaybeInputArgPos = yes(InputArgPos),
+				Response = origin(SuspectId, InputArgPos,
+					TermPath, subterm_in)
+			;
+				MaybeInputArgPos = no,
+				resolve_origin(Store, Oracle, Node, ArgPos,
+					TermPath, SuspectId, yes, !SearchSpace,
+					Response)
+			)
+		)
 	).
 
 	% resolve_origin(Store, Oracle, Node, ArgPos, TermPath, 
@@ -994,7 +1052,8 @@ find_subterm_origin(Store, Oracle, SuspectId, ArgPos, TermPath,
 	%
 :- pred resolve_origin(S::in, oracle_state::in, T::in, 
 	arg_pos::in, term_path::in, suspect_id::in, bool::in,
-	search_space(T)::in, search_space(T)::out, find_origin_response::out)
+	search_space(T)::in, search_space(T)::out, 
+	find_origin_response::out)
 	is det <= mercury_edt(S, T).
 
 resolve_origin(Store, Oracle, Node, ArgPos, TermPath, SuspectId, 
@@ -1044,6 +1103,46 @@ resolve_origin(Store, Oracle, Node, ArgPos, TermPath, SuspectId,
 	;
 		Origin = require_explicit_subtree,
 		Response = require_explicit_subtree
+	).
+
+:- pred subterm_is_in_input_with_same_prefix(S::in, T::in, arg_pos::in,
+	term_path::in, map(proc_layout, unit)::in, map(proc_layout, unit)::out,
+	maybe(arg_pos)::out) is det <= mercury_edt(S, T).
+
+subterm_is_in_input_with_same_prefix(Store, Node, OutputArgPos, TermPath,
+		!TriedProcs, MaybeInitialVersionArgPos) :-
+	edt_question(Store, Node, Question),
+	(
+		Question = wrong_answer(_, _, FinalDeclAtom),
+		FinalDeclAtom = final_decl_atom(FinalAtom, _),
+		FinalAtom = atom(ProcLayout, FinalArgs),
+		not map.search(!.TriedProcs, ProcLayout, _)
+	->
+		svmap.det_insert(ProcLayout, unit, !TriedProcs),
+		(
+			absolute_arg_num(OutputArgPos, FinalAtom,
+				OutputArgNum),
+			select_arg_at_pos(OutputArgPos, FinalArgs, OutputArg),
+			OutputArg = arg_info(_, _, yes(OutputTermRep)),	
+			find_initial_version_arg_num(ProcLayout, OutputArgNum, 
+				InitialVersionArgNum),
+			deref_path(OutputTermRep, TermPath, OutputSubtermRep),
+			InitialVersionArgPos = any_head_var(
+				InitialVersionArgNum),
+			select_arg_at_pos(InitialVersionArgPos, FinalArgs,
+				InitialVersionArg),
+			InitialVersionArg = arg_info(_, _, 
+				yes(InitialVersionTermRep)),
+			deref_path(InitialVersionTermRep, TermPath, 
+				InitialVersionSubtermRep),
+			InitialVersionSubtermRep = OutputSubtermRep
+		->
+			MaybeInitialVersionArgPos = yes(InitialVersionArgPos)
+		;
+			MaybeInitialVersionArgPos = no
+		)
+	;
+		MaybeInitialVersionArgPos = no
 	).
 
 	% Returns the suspect id in the given list that refers to the given edt

@@ -1,0 +1,17 @@
+register --quiet
+echo on
+table_io allow
+table_io start
+break run_test
+continue
+delete *
+finish
+dd -d 1 -n 1000 -a
+browse 1
+cdr 9999 2
+cd 1
+ls
+track
+info
+quit
+quit -y

@@ -35,7 +35,8 @@
     % mode function can be supplied.
     %
 :- pred browse_browser_term_no_modes(browser_term::in,
-    io__input_stream::in, io__output_stream::in, maybe(list(dir))::out,
+    io__input_stream::in, io__output_stream::in,
+    maybe_track_subterm(list(dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -44,7 +45,7 @@
     %
 :- pred browse_browser_term(browser_term::in,
     io__input_stream::in, io__output_stream::in,
-    maybe(browser_mode_func)::in, maybe(list(dir))::out,
+    maybe(browser_mode_func)::in, maybe_track_subterm(list(dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -484,14 +485,14 @@ print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State, !IO):-
 %
 
 browse_browser_term_no_modes(Term, InputStream, OutputStream,
-        MaybeMark, !State, !IO) :-
+        MaybeTrack, !State, !IO) :-
     browse_common(internal, Term, InputStream, OutputStream, no, no,
-        MaybeMark, !State, !IO).
+        MaybeTrack, !State, !IO).
 
 browse_browser_term(Term, InputStream, OutputStream, MaybeModeFunc,
-        MaybeMark, !State, !IO) :-
+        MaybeTrack, !State, !IO) :-
     browse_common(internal, Term, InputStream, OutputStream, no,
-        MaybeModeFunc, MaybeMark, !State, !IO).
+        MaybeModeFunc, MaybeTrack, !State, !IO).
 
 browse_browser_term_format_no_modes(Term, InputStream, OutputStream,
         Format, !State, !IO) :-
@@ -513,12 +514,12 @@ browse_external(Term, InputStream, OutputStream, MaybeModeFunc, !State, !IO) :-
 
 :- pred browse_common(debugger::in, browser_term::in, io__input_stream::in,
     io__output_stream::in, maybe(portray_format)::in,
-    maybe(browser_mode_func)::in, maybe(list(dir))::out,
+    maybe(browser_mode_func)::in, maybe_track_subterm(list(dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
 browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
-        MaybeModeFunc, MaybeMark, !State, !IO) :-
+        MaybeModeFunc, MaybeTrack, !State, !IO) :-
     Info0 = browser_info__init(Object, browse, MaybeFormat, MaybeModeFunc,
         !.State),
     io__set_input_stream(InputStream, OldInputStream, !IO),
@@ -527,7 +528,7 @@ browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
     browse_main_loop(Debugger, Info0, Info, !IO),
     io__set_input_stream(OldInputStream, _, !IO),
     io__set_output_stream(OldOutputStream, _, !IO),
-    MaybeMark = Info ^ maybe_mark,
+    MaybeTrack = Info ^ maybe_track,
     !:State = Info ^ state.
 
 :- pred browse_main_loop(debugger::in, browser_info::in, browser_info::out,
@@ -626,22 +627,27 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         nl_debugger(Debugger, !IO),
         Quit = no
     ;
-        Command = mark,
-        !:Info = !.Info ^ maybe_mark := yes(!.Info ^ dirs),
-        Quit = yes
-    ;
-        Command = mark(Path),
-        change_dir(!.Info ^ dirs, Path, NewPwd),
-        deref_subterm(!.Info ^ term, NewPwd, [], SubResult),
+        Command = track(HowTrack, ShouldAssertInvalid, MaybePath),
         (
-            SubResult = deref_result(_),
-            !:Info = !.Info ^ maybe_mark := yes(NewPwd),
-            Quit = yes
+            MaybePath = yes(Path),
+            change_dir(!.Info ^ dirs, Path, NewPwd),
+            deref_subterm(!.Info ^ term, NewPwd, [], SubResult),
+            (
+                SubResult = deref_result(_),
+                !:Info = !.Info ^ maybe_track := track(HowTrack, 
+                    ShouldAssertInvalid, NewPwd),
+                Quit = yes
+            ;
+                SubResult = deref_error(_, _),
+                write_string_debugger(Debugger,
+                    "error: cannot track subterm\n", !IO),
+                Quit = no
+            )
         ;
-            SubResult = deref_error(_, _),
-            write_string_debugger(Debugger, "error: cannot mark subterm\n",
-                !IO),
-            Quit = no
+            MaybePath = no,
+            !:Info = !.Info ^ maybe_track := 
+                track(HowTrack, ShouldAssertInvalid, !.Info ^ dirs),
+            Quit = yes
         )
     ;
         Command = mode_query,

@@ -335,12 +335,8 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     int                     i;
     int                     slot;
     int                     slot_max;
-    int                     copylen;
     char                    *copy;
-    char                    *s;
     const char              *name;
-    const char              *string_table;
-    MR_Integer              string_table_size;
     const char              *filename;
     int                     linenumber;
 
@@ -415,39 +411,20 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
         MR_free(MR_point.MR_point_vars[slot].MR_var_basename);
     }
 
-    string_table = entry->MR_sle_module_layout->MR_ml_string_table;
-    string_table_size = entry->MR_sle_module_layout->MR_ml_string_table_size;
-
     MR_proc_id_arity_addedargs_predfunc(entry, &arity, &num_added_args,
         &pred_or_func);
 
     slot = 0;
     for (i = 0; i < var_count; i++) {
-        int var_num;
-        int head_var_num;
-        int offset;
+        int     hlds_var_num;
+        int     head_var_num;
+        int     start_of_num;
+        char    *num_addr;
 
-        var_num = level_layout->MR_sll_var_nums[i];
-
-        if (var_num == 0) {
-            /* this value is not a variable */
-            continue;
-        }
-
-        if (var_num > entry->MR_sle_max_named_var_num) {
-            /* this value is a compiler-generated variable */
-            continue;
-        }
-
-        /* the offset of variable number 1 is stored at index 0 */
-        offset = entry->MR_sle_used_var_names[var_num - 1];
-        if (offset > string_table_size) {
-            MR_fatal_error("array bounds error on string table");
-        }
-
-        name = string_table + offset;
+        hlds_var_num = level_layout->MR_sll_var_nums[i];
+        name = MR_hlds_var_name(entry, hlds_var_num);
         if (name == NULL || MR_streq(name, "")) {
-            /* this value is a compiler-generated variable */
+            /* this value is not a variable or is not named by the user */
             continue;
         }
 
@@ -463,7 +440,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
             continue;
         }
 
-        MR_point.MR_point_vars[slot].MR_var_hlds_number = var_num;
+        MR_point.MR_point_vars[slot].MR_var_hlds_number = hlds_var_num;
         MR_point.MR_point_vars[slot].MR_var_seq_num_in_label = i;
 
         copy = MR_copy_string(name);
@@ -473,25 +450,22 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 
         /* we need another copy we can cut apart */
         copy = MR_copy_string(name);
-        copylen = strlen(copy);
-        s = copy + copylen - 1;
-        while (s > copy && MR_isdigit(*s)) {
-            s--;
-        }
+        start_of_num = MR_find_start_of_num_suffix(copy);
 
-        if (s == copy + copylen - 1) {
+        if (start_of_num < 0) {
             MR_point.MR_point_vars[slot].MR_var_has_suffix = MR_FALSE;
             /* num_suffix should not be used */
             MR_point.MR_point_vars[slot].MR_var_num_suffix = -1;
             MR_point.MR_point_vars[slot].MR_var_basename = copy;
         } else {
-            if (MR_isdigit(*s)) {
+            if (start_of_num == 0) {
                 MR_fatal_error("variable name starts with digit");
             }
 
+            num_addr = copy + start_of_num;
             MR_point.MR_point_vars[slot].MR_var_has_suffix = MR_TRUE;
-            MR_point.MR_point_vars[slot].MR_var_num_suffix = atoi(s + 1);
-            *(s + 1) = '\0';
+            MR_point.MR_point_vars[slot].MR_var_num_suffix = atoi(num_addr);
+            *num_addr = '\0';
             MR_point.MR_point_vars[slot].MR_var_basename = copy;
         }
 
@@ -500,7 +474,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
             head_var_num < entry->MR_sle_num_head_vars;
             head_var_num++)
         {
-            if (entry->MR_sle_head_var_nums[head_var_num] == var_num) {
+            if (entry->MR_sle_head_var_nums[head_var_num] == hlds_var_num) {
                 MR_point.MR_point_vars[slot].MR_var_is_headvar =
                     head_var_num - num_added_args + 1;
                 break;
@@ -698,7 +672,7 @@ MR_trace_list_var_details(FILE *out)
 }
 
 const char *
-MR_trace_return_hlds_var_info(int hlds_num, MR_TypeInfo *type_info_ptr,
+MR_trace_return_hlds_var_info(int hlds_num, MR_TypeInfo *type_info_ptr, 
     MR_Word *value_ptr)
 {
     int i;
@@ -1471,30 +1445,6 @@ MR_lookup_var_spec(MR_Var_Spec var_spec, MR_TypeInfo *type_info_ptr,
 
     MR_fatal_error("MR_lookup_var_spec: internal error: bad var_spec kind");
     return NULL;
-}
-
-MR_ConstString
-MR_hlds_var_name(const MR_Proc_Layout *entry, int hlds_var_num)
-{
-    const char  *string_table;
-    MR_Integer  string_table_size;
-    int         offset;
-
-    string_table = entry->MR_sle_module_layout->MR_ml_string_table;
-    string_table_size = entry->MR_sle_module_layout->MR_ml_string_table_size;
-
-    if (hlds_var_num > entry->MR_sle_max_named_var_num) {
-        /* this value is a compiler-generated variable */
-        return NULL;
-    }
-
-    /* variable number 1 is stored at offset 0 */
-    offset = entry->MR_sle_used_var_names[hlds_var_num - 1];
-    if (offset > string_table_size) {
-        MR_fatal_error("array bounds error on string table");
-    }
-
-    return string_table + offset;
 }
 
 MR_Completer_List *

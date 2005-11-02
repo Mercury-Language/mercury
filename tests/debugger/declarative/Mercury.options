@@ -1,4 +1,5 @@
 MCFLAGS-deep_sub=--trace rep --suppress-trace context
+MCFLAGS-nodescend_tracking=--trace rep --trace-table-io-all
 MCFLAGS-shallow_2=--trace shallow
 MCFLAGS-tabled_read_decl=--trace rep --trace-table-io-all
 MCFLAGS-tabled_read_decl_goto=--trace rep --trace-table-io-all

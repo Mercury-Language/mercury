@@ -34,7 +34,10 @@
 %		"display"
 %		"write"
 %		"set" [[setoptions] varvalue]
-%		"mark" [path]
+%		"track" [--accurate] [path]
+%		"t" [--accurate] [path]
+%		"mark" [--accurate] [path]
+%		"m" [--accurate] [path]
 %		"mode" [path]
 %		"quit"
 %
@@ -120,8 +123,7 @@
 		)
 	;	cd(path)
 	;	cd
-	;	mark(path)
-	;	mark
+	;	track(how_track_subterm, should_assert_invalid, maybe(path))
 	;	mode_query(path)
 	;	mode_query
 	;	pwd
@@ -187,6 +189,7 @@
 	;	(<)
 	;	num(int)
 	;	name(string)
+	;	arg(string)
 	;	unknown(char).
 
 parse__read_command(Prompt, Command, !IO) :-
@@ -248,6 +251,8 @@ lexer_word_chars([C | Cs], Toks) :-
 	; C = ('<') ->
 		Toks = [(<) | Toks2],
 		lexer_word_chars(Cs, Toks2)
+	; C = ('-'), Cs = [H | T] ->
+		lexer_arg([H | T], Toks)
 	; char__is_digit(C) ->
 		dig_to_int(C, N),
 		lexer_num(N, Cs, Toks)
@@ -280,6 +285,16 @@ dig_to_int(C, N) :-
 	char__to_int('0', Zero),
 	char__to_int(C, CN),
 	N = CN - Zero.
+
+:- pred lexer_arg(list(char)::in(non_empty_list), list(token)::out) is det.
+
+lexer_arg([Head | Tail], Toks) :-
+	( Head = ('-') ->
+		string__from_char_list(Tail, ArgName)
+	;
+		string__from_char_list([Head | Tail], ArgName)
+	),
+	Toks = [arg(ArgName)].
 
 :- pred lexer_num(int::in, list(char)::in, list(token)::out) is det.
 
@@ -373,14 +388,44 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
 		ArgTokens = [],
 		Command = pwd
 	;
-		CmdToken = name("mark")
+		(
+			CmdToken = name("track"),
+			AssertInvalid = no_assert_invalid
+		;
+			CmdToken = name("t"),
+			AssertInvalid = no_assert_invalid
+		;
+			CmdToken = name("mark"),
+			AssertInvalid = assert_invalid
+		;
+			CmdToken = name("m"),
+			AssertInvalid = assert_invalid
+		)
 	->
 		( ArgTokens = [] ->
-			Command = mark
+			HowTrack = track_fast,
+			MaybePath = no
 		;
+			( ArgTokens = [arg("accurate")] 
+			; ArgTokens = [arg("a")] 
+			) 
+		->
+			HowTrack = track_accurate,
+			MaybePath = no
+		; 
+			( ArgTokens = [arg("accurate") | Rest] 
+			; ArgTokens = [arg("a") | Rest]
+			)
+		->
+			HowTrack = track_accurate,
+			parse_path(Rest, Path),
+			MaybePath = yes(Path)
+		;
+			HowTrack = track_fast,
 			parse_path(ArgTokens, Path),
-			Command = mark(Path)
-		)
+			MaybePath = yes(Path)
+		),
+		Command = track(HowTrack, AssertInvalid, MaybePath)
 	;
 		CmdToken = name("mode")
 	->
@@ -611,12 +656,12 @@ setting_option_defaults(pretty,		bool(no)).
 % 	io__nl.
 % show_command(cd) -->
 % 	io__write_string("cd\n").
-% show_command(mark(Path)) -->
-% 	io__write_string("mark "),
+% show_command(track(Path)) -->
+% 	io__write_string("track "),
 % 	show_path(Path),
 % 	io__nl.
-% show_command(mark) -->
-% 	io__write_string("mark\n").
+% show_command(track) -->
+% 	io__write_string("track\n").
 % show_command(pwd) -->
 % 	io__write_string("pwd\n").
 % show_command(help) -->

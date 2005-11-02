@@ -613,7 +613,7 @@ query_oracle_kb(KB, Question, Answer) :-
 		oracle_kb).
 :- mode assert_oracle_kb(in, in, in, out) is det.
 
-assert_oracle_kb(_, suspicious_subterm(_, _, _), KB, KB).
+assert_oracle_kb(_, suspicious_subterm(_, _, _, _, _), KB, KB).
 
 assert_oracle_kb(_, ignore(_), KB, KB).
 

@@ -183,7 +183,8 @@
 			% value, but is suspicious of the subterm at the
 			% given term_path and arg_pos.
 			%
-	;	suspicious_subterm(T, arg_pos, term_path)
+	;	suspicious_subterm(T, arg_pos, term_path, how_track_subterm,
+			should_assert_invalid)
 
 			% This node should be ignored.  It cannot contain a bug
 			% but its children may or may not contain a bug.
