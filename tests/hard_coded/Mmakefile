@@ -106,6 +106,7 @@ ORDINARY_PROGS=	\
 	intermod_c_code \
 	intermod_foreign_type \
 	intermod_multimode_main \
+	intermod_poly_mode \
 	intermod_pragma_clause \
 	intermod_type_qual \
 	int_fold_up_down \
