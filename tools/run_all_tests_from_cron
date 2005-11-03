@@ -78,7 +78,7 @@ case "$BRANCH" in
     "")
         DAY=`date '+%e'`
         case $HOST in
-	    mundroo)
+	    mundroo|mundula)
 	    	# For these hosts we only run 3 times a week;
 		# twice during the week and once on the weekend.
 		# During the week, test the main branch.
@@ -97,7 +97,7 @@ case "$BRANCH" in
 		#
 		BRANCH=latest
 	   	;; 
-	   earth|saskervoy|ceres|uranus)
+	   earth|ceres|uranus|swordfish)
 		# On odd-numbered days, test the release branch
 		# On even-numbered days, test the main branch
 		case $DAY in
