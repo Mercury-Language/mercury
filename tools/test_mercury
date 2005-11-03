@@ -33,7 +33,7 @@ else
 	PATH="$TOPDIR/$FULLARCH:$PATH"
 	PATH="$TOPDIR/$HOST:$PATH"
 fi
-case $HOST in mundroo*)
+case $HOST in mundroo*|mundula)
 	PATH="/usr/local/apps/ssh-1.2.32/bin:$PATH"
 	;;
 esac
@@ -171,28 +171,13 @@ case $BRANCH in
 		RELEASE_VERSION=0.12.1-beta-$DATE
 		RELEASE_VERSION_PATTERN=0.12.1-beta-*
 
-		# This is for release 0.12.0 itself
+		# This is for release 0.12.1 itself
 		# (as opposed to beta releases).
-		#CHECKOUT_OPTS=-rversion-0_12_0
-		#BASE_TAG_NAME=version-0_12_0
-		#FTP_DIR_NAME=0.12.0
-		#RELEASE_VERSION=0.12.0
-		#RELEASE_VERSION_PATTERN=0.12.0*
-		;;
-	0.11)
-		CHECKOUT_OPTS=-rversion-0_11-branch
-		BASE_TAG_NAME=version-0_11-branch
-		FTP_DIR_NAME=0.11.1-beta
-		RELEASE_VERSION=0.11.1-beta-$DATE
-		RELEASE_VERSION_PATTERN=0.11.1-beta-*
-
-		# This is for release 0.11.0 itself
-		# (as opposed to beta releases).
-		#CHECKOUT_OPTS=-rversion-0_11_0
-		#BASE_TAG_NAME=version-0_11_0
-		#FTP_DIR_NAME=0.11.0
-		#RELEASE_VERSION=0.11.0
-		#RELEASE_VERSION_PATTERN=0.11.0*
+		#CHECKOUT_OPTS=-rversion-0_12_1
+		#BASE_TAG_NAME=version-0_12_1
+		#FTP_DIR_NAME=0.12.1
+		#RELEASE_VERSION=0.12.1
+		#RELEASE_VERSION_PATTERN=0.12.1*
 		;;
 esac
 case "$C_COMPILER" in
@@ -219,7 +204,8 @@ case $HOST in
 	earth)		OPTIMIZE="-O2" ;;
 	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
 	swordfish)	OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation" ;;
-	mundroo) 	OPTIMIZE=-O2; use_cp_opt="--use-cp" ;;
+	mundroo|mundula)
+			OPTIMIZE=-O2; use_cp_opt="--use-cp" ;;
 			# On mundroo, "mkdir -p scripts" aborts
 			# if scripts is a symbolic link to a directory.
 	aral)		OPTIMIZE="-O3" ;;
@@ -328,31 +314,10 @@ case $BRANCH in
 		;;
 esac
 
-# The following can be edited and uncommented if you need to use
-# a different bootstrap compiler to re-bootstrap a host which
-# has gotten too out-of-date.
-#case $HOST in mars)
-#	BOOTSTRAP_MERCURY_COMPILER=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH/bin/mercury_compile
-#		;;
-#esac
-
-# For bootstrapping the 0.12 branch on mundroo - since there isn't a 0.12
-# compiler currently installed.
-case $HOST in mundroo)
-	PATH=/home/mercury/public/mercury-latest/i386-pc-solaris2.8/bin:$PATH
-	;;
-esac
-
-# for bootstrapping only
-#case $HOST in aral)
-#	PATH=/home/jupiter/public/mercury-latest/i686-pc-linux-gnu/bin:$PATH
-#	;;
-#esac
-
 # df (disk free) command
 DF=df
 case $HOST in
-	mundroo) DF="df -k" ;;
+	mundroo|mundula) DF="df -k" ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -407,7 +372,7 @@ case $HOST in
 		# to work
 		CONFIG_OPTS="--enable-hlc-prof-grades \
 			--enable-new-mercuryfile-struct" ;;
-	roy|ceres)
+	ceres)
 		# On these hosts, test the high-level back-end more:
 		# bootstrap the compiler in hlc.gc,
 		# use hlc.gc as the default grade,
@@ -423,15 +388,6 @@ case $HOST in
 					asm_fast.gc	\
 					asm_fast.gc.tr	\
 					asm_fast.gc.tr.debug"
-		;;
-	hg)
-		CONFIG_OPTS=""
-		case "$C_COMPILER" in asm)
-			# Build the compiler in grade hlc.gc, because
-			# --target asm requires an hl* grade.
-			INSTALL_GRADE="hlc.gc"
-			;;
-		esac
 		;;
 	jupiter)
 		# Ensure that the nogc grades get installed and tested
@@ -1044,26 +1000,23 @@ echo "test_mercury starting to create binary distribution at `date`" 1>&2
 # Also we distinguish them based on what optimization level
 # they were compiled with.
 case $HOST in
-	hg)	
-		fullname=i686-pc-linux-libc2.1-gnu-O4
-		;;
-	earth|jupiter)	
+	jupiter)	
 		fullname=i686-pc-linux-libc2.2-gnu-O5-intermod
 		;;
+	earth)
+		fullname=i686-pc-linux-libc2.3-gnu-O2
+		;;
 	swordfish)
-		fullname=i686-pc-linux-libc2.2-gnu-O5
+		fullname=i686-pc-linux-libc2.3-gnu-O4-intermod
 		;;
 	ceres)	
 		fullname=i686-pc-linux-libc2.3-gnu-O5-hlc
 		;;
 	aral)	
-		fullname=i686-pc-linux-libc2.3-gnu-O5
+		fullname=i686-pc-linux-libc2.3-gnu-O3
 		;;
 	saturn)
 		fullname=x86_64-unknown-linux-gnu-libc2.3
-		;;
-	roy)	
-		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
 		;;
 	ender)	
 		fullname=i686-pc-linux-libc2.1-gnu-O3
