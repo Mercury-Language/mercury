@@ -179,7 +179,6 @@ CFILES		= 	\
 			mercury_runtime_util.c	\
 			mercury_signal.c	\
 			mercury_stacks.c	\
-			mercury_stack_layout.c	\
 			mercury_stack_trace.c	\
 			mercury_string.c	\
 			mercury_tabling.c	\
