@@ -41,7 +41,7 @@ PATH="$PATH:/usr/bin"
 export PATH
 
 # Use NFS if we can, otherwise use anonymous cvs (pserver).
-CVSROOT=/home/mercury1/repository
+CVSROOT=/home/mercury/mercury1/repository
 if [ -d $CVSROOT/. ]; then
 	:
 else
