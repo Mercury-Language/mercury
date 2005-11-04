@@ -253,9 +253,20 @@
     ;       purity_semipure
     ;       purity_impure.
 
+    % Compare two purities.
+    %
+:- pred less_pure(purity::in, purity::in) is semidet.
+
+    % Sort of a "maximum" for impurity.
+    %
+:- func worst_purity(purity, purity) = purity.
+
+    % Sort of a "minimum" for impurity.
+    %
+:- func best_purity(purity, purity) = purity.
+
     % The `determinism' type specifies how many solutions a given procedure
-    % may have. Procedures for manipulating this type are defined in
-    % det_analysis.m and hlds_data.m.
+    % may have.
     %
 :- type determinism
     --->    det
@@ -266,6 +277,54 @@
     ;       cc_multidet
     ;       erroneous
     ;       failure.
+
+:- type can_fail
+    --->    can_fail
+    ;       cannot_fail.
+    
+:- type soln_count
+    --->    at_most_zero
+    ;       at_most_one
+    ;       at_most_many_cc 
+            % "_cc" means "committed-choice": there is more than one logical
+            % solution, but the pred or goal is being used in a context where
+            % we are only looking for the first solution.
+    ;       at_most_many.
+    
+:- pred determinism_components(determinism, can_fail, soln_count).
+:- mode determinism_components(in, out, out) is det.
+:- mode determinism_components(out, in, in) is det.
+
+    % The following predicates implement the tables for computing the
+    % determinism of compound goals from the determinism of their components.
+
+:- pred det_conjunction_detism(determinism::in, determinism::in,
+    determinism::out) is det.
+
+:- pred det_par_conjunction_detism(determinism::in, determinism::in,
+    determinism::out) is det.
+
+:- pred det_switch_detism(determinism::in, determinism::in, determinism::out)
+    is det. 
+
+:- pred det_negation_det(determinism::in, maybe(determinism)::out) is det.
+
+:- pred det_conjunction_maxsoln(soln_count::in, soln_count::in,
+    soln_count::out) is det.
+
+:- pred det_conjunction_canfail(can_fail::in, can_fail::in, can_fail::out)
+    is det.
+
+:- pred det_disjunction_maxsoln(soln_count::in, soln_count::in,
+    soln_count::out) is det.
+
+:- pred det_disjunction_canfail(can_fail::in, can_fail::in, can_fail::out)
+    is det. 
+            
+:- pred det_switch_maxsoln(soln_count::in, soln_count::in, soln_count::out)
+    is det. 
+
+:- pred det_switch_canfail(can_fail::in, can_fail::in, can_fail::out) is det.
 
     % The `is_solver_type' type specifies whether a type is a "solver" type,
     % for which `any' insts are interpreted as "don't know", or a non-solver
@@ -1536,6 +1595,8 @@
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
 
+:- type vartypes == map(prog_var, mer_type).
+
 :- type builtin_type
     --->    int
     ;       float
@@ -1955,6 +2016,7 @@
 
 :- import_module libs.compiler_util.
 
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -2091,6 +2153,191 @@ extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
 extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
 extra_attribute_to_string(max_stack_size(Size)) =
     "max_stack_size(" ++ string__int_to_string(Size) ++ ")".
+
+%-----------------------------------------------------------------------------%
+% 
+% Purity
+%
+
+less_pure(P1, P2) :-
+    \+ ( worst_purity(P1, P2) = P2).
+    
+% worst_purity/3 could be written more compactly, but this definition
+% guarantees us a determinism error if we add to type `purity'.  We also
+% define less_pure/2 in terms of worst_purity/3 rather than the other way
+% around for the same reason. 
+
+worst_purity(purity_pure, purity_pure) = purity_pure. 
+worst_purity(purity_pure, purity_semipure) = purity_semipure.
+worst_purity(purity_pure, purity_impure) = purity_impure.
+worst_purity(purity_semipure, purity_pure) = purity_semipure.
+worst_purity(purity_semipure, purity_semipure) = purity_semipure.
+worst_purity(purity_semipure, purity_impure) = purity_impure.
+worst_purity(purity_impure, purity_pure) = purity_impure.
+worst_purity(purity_impure, purity_semipure) = purity_impure.
+worst_purity(purity_impure, purity_impure) = purity_impure.
+
+% best_purity/3 is written as a switch for the same reason as worst_purity/3.
+
+best_purity(purity_pure, purity_pure) = purity_pure.
+best_purity(purity_pure, purity_semipure) = purity_pure.
+best_purity(purity_pure, purity_impure) = purity_pure.
+best_purity(purity_semipure, purity_pure) = purity_pure.
+best_purity(purity_semipure, purity_semipure) = purity_semipure.
+best_purity(purity_semipure, purity_impure) = purity_semipure.
+best_purity(purity_impure, purity_pure) = purity_pure.
+best_purity(purity_impure, purity_semipure) = purity_semipure.
+best_purity(purity_impure, purity_impure) = purity_impure.
+
+%-----------------------------------------------------------------------------%
+% 
+% Determinism
+%
+
+determinism_components(det,         cannot_fail, at_most_one).
+determinism_components(semidet,     can_fail,    at_most_one).
+determinism_components(multidet,    cannot_fail, at_most_many).
+determinism_components(nondet,      can_fail,    at_most_many).
+determinism_components(cc_multidet, cannot_fail, at_most_many_cc).
+determinism_components(cc_nondet,   can_fail,    at_most_many_cc).
+determinism_components(erroneous,   cannot_fail, at_most_zero).
+determinism_components(failure,     can_fail,    at_most_zero).
+
+det_conjunction_detism(DetismA, DetismB, Detism) :-
+    % When figuring out the determinism of a conjunction, if the second goal
+    % is unreachable, then then the determinism of the conjunction is just
+    % the determinism of the first goal.
+    
+    determinism_components(DetismA, CanFailA, MaxSolnA),
+    ( MaxSolnA = at_most_zero ->
+        Detism = DetismA
+    ;
+        determinism_components(DetismB, CanFailB, MaxSolnB),
+        det_conjunction_canfail(CanFailA, CanFailB, CanFail),
+        det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+        determinism_components(Detism, CanFail, MaxSoln)
+    ).
+    
+det_par_conjunction_detism(DetismA, DetismB, Detism) :-
+    % Figuring out the determinism of a parallel conjunction is much easier
+    % than for a sequential conjunction, since you simply ignore the case
+    % where the second goal is unreachable. Just do a normal solution count.
+    
+    determinism_components(DetismA, CanFailA, MaxSolnA),
+    determinism_components(DetismB, CanFailB, MaxSolnB),
+    det_conjunction_canfail(CanFailA, CanFailB, CanFail),
+    det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+    determinism_components(Detism, CanFail, MaxSoln).
+
+det_switch_detism(DetismA, DetismB, Detism) :-
+    determinism_components(DetismA, CanFailA, MaxSolnA),
+    determinism_components(DetismB, CanFailB, MaxSolnB),
+    det_switch_canfail(CanFailA, CanFailB, CanFail),
+    det_switch_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+    determinism_components(Detism, CanFail, MaxSoln).
+
+%-----------------------------------------------------------------------------%
+%
+% The predicates in this section do abstract interpretation to count
+% the number of solutions and the possible number of failures.
+%
+% If the num_solns is at_most_many_cc, this means that the goal might have
+% many logical solutions if there were no pruning, but that the goal occurs
+% in a single-solution context, so only the first solution will be
+% returned.
+%
+% The reason why we don't throw an exception in det_switch_maxsoln and
+% det_disjunction_maxsoln is given in the documentation of the test case
+% invalid/magicbox.m.
+
+det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_many,    at_most_zero).
+
+det_conjunction_maxsoln(at_most_one,     at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_one,     at_most_one,     at_most_one).
+det_conjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
+det_conjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_conjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
+det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
+det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
+    % If the first conjunct could be cc pruned, the second conj ought to have
+    % been cc pruned too.
+    error("det_conjunction_maxsoln: many_cc , many").
+
+det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
+det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
+
+det_conjunction_canfail(can_fail,    can_fail,    can_fail).
+det_conjunction_canfail(can_fail,    cannot_fail, can_fail).
+det_conjunction_canfail(cannot_fail, can_fail,    can_fail).
+det_conjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
+
+det_disjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_disjunction_maxsoln(at_most_zero,    at_most_one,     at_most_one).
+det_disjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_zero,    at_most_many,    at_most_many).
+
+det_disjunction_maxsoln(at_most_one,     at_most_zero,    at_most_one).
+det_disjunction_maxsoln(at_most_one,     at_most_one,     at_most_many).
+det_disjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
+det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
+det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
+
+det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
+det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_disjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
+
+det_disjunction_canfail(can_fail,    can_fail,    can_fail).
+det_disjunction_canfail(can_fail,    cannot_fail, cannot_fail).
+det_disjunction_canfail(cannot_fail, can_fail,    cannot_fail).
+det_disjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
+
+det_switch_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_switch_maxsoln(at_most_zero,    at_most_one,     at_most_one).
+det_switch_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_zero,    at_most_many,    at_most_many).
+
+det_switch_maxsoln(at_most_one,     at_most_zero,    at_most_one).
+det_switch_maxsoln(at_most_one,     at_most_one,     at_most_one).
+det_switch_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_switch_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
+det_switch_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
+det_switch_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
+
+det_switch_maxsoln(at_most_many,    at_most_zero,    at_most_many).
+det_switch_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_switch_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_many,    at_most_many,    at_most_many).
+
+det_switch_canfail(can_fail,    can_fail,    can_fail).
+det_switch_canfail(can_fail,    cannot_fail, can_fail).
+det_switch_canfail(cannot_fail, can_fail,    can_fail).
+det_switch_canfail(cannot_fail, cannot_fail, cannot_fail).
+
+det_negation_det(det,           yes(failure)).
+det_negation_det(semidet,       yes(semidet)).
+det_negation_det(multidet,      no).
+det_negation_det(nondet,        no).
+det_negation_det(cc_multidet,   no).
+det_negation_det(cc_nondet,     no).
+det_negation_det(erroneous,     yes(erroneous)).
+det_negation_det(failure,       yes(det)).
+
+%-----------------------------------------------------------------------------%
 
 %-----------------------------------------------------------------------------%
 % 

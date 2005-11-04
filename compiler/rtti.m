@@ -822,6 +822,7 @@
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util. % for mercury_public_builtin_module
 
 :- import_module int.
@@ -1490,14 +1491,14 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
     ;
         TypeCtorDetails = foreign(IsStable),
         (
-            type_ctor_is_array(
-                qualified(TypeCtorData ^ tcr_module_name,
-                    TypeCtorData ^ tcr_type_name) -
-                    TypeCtorData ^ tcr_arity)
+            ModuleName = TypeCtorData ^ tcr_module_name,
+            TypeName = TypeCtorData ^ tcr_type_name,
+            TypeArity = TypeCtorData ^ tcr_arity,
+            type_ctor_is_array(qualified(ModuleName, TypeName) - TypeArity)
         ->
-            % XXX This is a kludge to allow accurate GC
-            % to trace arrays. We should allow users to
-            % provide tracing functions for foreign types.
+            % XXX This is a kludge to allow accurate GC to trace arrays.
+            % We should allow users to provide tracing functions for
+            % foreign types.
             RepStr = "MR_TYPECTOR_REP_ARRAY"
         ;
             (

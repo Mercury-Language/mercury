@@ -73,6 +73,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 
 :- import_module assoc_list.
 :- import_module bool.

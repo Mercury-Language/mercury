@@ -36,10 +36,10 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.type_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_switch_gen.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module int.
@@ -117,9 +117,9 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
 
 is_integral_type(mlds__native_int_type).
 is_integral_type(mlds__native_char_type).
-is_integral_type(mlds__mercury_type(_, int_type, _)).
-is_integral_type(mlds__mercury_type(_, char_type, _)).
-is_integral_type(mlds__mercury_type(_, enum_type, _)).
+is_integral_type(mlds__mercury_type(_, type_cat_int, _)).
+is_integral_type(mlds__mercury_type(_, type_cat_char, _)).
+is_integral_type(mlds__mercury_type(_, type_cat_enum, _)).
 
 :- pred is_dense_switch(list(mlds__switch_case)::in, int::in) is semidet.
 

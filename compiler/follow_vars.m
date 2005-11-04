@@ -34,6 +34,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- pred find_final_follow_vars(proc_info::in, abs_follow_vars_map::out,
     int::out) is det.

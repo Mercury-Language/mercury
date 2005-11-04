@@ -746,7 +746,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         %
         Goal0 ^ unify_kind = construct(_, ConsId, _, _, _, _, _),
         ConsId = type_info_cell_constructor(TypeCtor),
-        TypeCat = type_info_type,
+        TypeCat = type_cat_type_info,
         map__search(Types, TypeCtor, TypeDefn),
         hlds_data__get_type_defn_body(TypeDefn, Body),
         Body = eqv_type(_)
@@ -787,7 +787,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         %
         Goal0 ^ unify_kind = construct(_, ConsId, _, _, _, _, _),
         ConsId = type_info_cell_constructor(TypeCtor),
-        TypeCat = type_ctor_info_type,
+        TypeCat = type_cat_type_ctor_info,
         map__search(Types, TypeCtor, TypeDefn),
         hlds_data__get_type_defn_body(TypeDefn, Body),
         Body = eqv_type(_)

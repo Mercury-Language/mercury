@@ -515,49 +515,49 @@ gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
     ByteInfo = byte_info(_, _, ModuleInfo, _, _),
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
     (
-        TypeCategory = int_type,
+        TypeCategory = type_cat_int,
         TestId = int_test
     ;
-        TypeCategory = char_type,
+        TypeCategory = type_cat_char,
         TestId = char_test
     ;
-        TypeCategory = str_type,
+        TypeCategory = type_cat_string,
         TestId = string_test
     ;
-        TypeCategory = float_type,
+        TypeCategory = type_cat_float,
         TestId = float_test
     ;
-        TypeCategory = dummy_type,
+        TypeCategory = type_cat_dummy,
         TestId = dummy_test
     ;
-        TypeCategory = enum_type,
+        TypeCategory = type_cat_enum,
         TestId = enum_test
     ;
-        TypeCategory = higher_order_type,
+        TypeCategory = type_cat_higher_order,
         unexpected(this_file, "higher_order_type in simple_test")
     ;
-        TypeCategory = tuple_type,
+        TypeCategory = type_cat_tuple,
         unexpected(this_file, "tuple_type in simple_test")
     ;
-        TypeCategory = user_ctor_type,
+        TypeCategory = type_cat_user_ctor,
         unexpected(this_file, "user_ctor_type in simple_test")
     ;
-        TypeCategory = variable_type,
+        TypeCategory = type_cat_variable,
         unexpected(this_file, "variable_type in simple_test")
     ;
-        TypeCategory = void_type,
+        TypeCategory = type_cat_void,
         unexpected(this_file, "void_type in simple_test")
     ;
-        TypeCategory = type_info_type,
+        TypeCategory = type_cat_type_info,
         unexpected(this_file, "type_info_type in simple_test")
     ;
-        TypeCategory = type_ctor_info_type,
+        TypeCategory = type_cat_type_ctor_info,
         unexpected(this_file, "type_ctor_info_type in simple_test")
     ;
-        TypeCategory = typeclass_info_type,
+        TypeCategory = type_cat_typeclass_info,
         unexpected(this_file, "typeclass_info_type in simple_test")
     ;
-        TypeCategory = base_typeclass_info_type,
+        TypeCategory = type_cat_base_typeclass_info,
         unexpected(this_file, "base_typeclass_info_type in simple_test")
     ),
     Code = node([test(ByteVar1, ByteVar2, TestId)]).

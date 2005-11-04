@@ -542,11 +542,11 @@ magic__process_base_relation(PredId0, ProcId0) -->
 	),
 
 	% Remove aditi:states, convert arguments to output.
-	{ type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
-	{ type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes1) },
+	{ remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
+	{ remove_aditi_state(ArgTypes0, ArgModes0, ArgModes1) },
 	{ list__map(magic_util__mode_to_output_mode(ModuleInfo0),
 		ArgModes1, ArgModes) },
-	{ type_util__remove_aditi_state(ArgTypes0, HeadVars0, HeadVars) },
+	{ remove_aditi_state(ArgTypes0, HeadVars0, HeadVars) },
 	{ pred_info_get_indexes(PredInfo0, Indexes0) },
 	{ list__map(magic_util__adjust_index(ArgTypes0), Indexes0, Indexes) },
 	{ pred_info_set_indexes(Indexes, PredInfo0, PredInfo1) },
@@ -588,8 +588,8 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 		PredInfo, ProcInfo) },
 	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 	{ pred_info_arg_types(PredInfo, ArgTypes0) },
-	{ type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
-	{ type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
+	{ remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
+	{ remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
 	{ partition_args(ModuleInfo, ArgModes, ArgModes, InputModes, _) },
 	{ partition_args(ModuleInfo, ArgModes, ArgTypes, InputTypes, _) },
 	{ construct_higher_order_type(purity_pure, predicate,
@@ -780,9 +780,9 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 	%
 	% Strip out the aditi__state argument.
 	%
-	{ type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes1) },
-	{ type_util__remove_aditi_state(ArgTypes0, HeadVars0, HeadVars1) },
-	{ type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes1) },
+	{ remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes1) },
+	{ remove_aditi_state(ArgTypes0, HeadVars0, HeadVars1) },
+	{ remove_aditi_state(ArgTypes0, ArgModes0, ArgModes1) },
 
 	%
 	% Convert all of the original modes to output. The input
@@ -1055,7 +1055,7 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 		CPredInfo, CProcInfo),
 	proc_info_argmodes(CProcInfo, ArgModes0),
 	pred_info_arg_types(CPredInfo, ArgTypes),
-	type_util__remove_aditi_state(ArgTypes, ArgModes0, ArgModes),
+	remove_aditi_state(ArgTypes, ArgModes0, ArgModes),
 	partition_args(ModuleInfo0, ArgModes, ArgModes,
 		InputArgModes, OutputArgModes),
 
@@ -1065,8 +1065,7 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 	%
 	proc_info_vartypes(CProcInfo, VarTypes0),
 	proc_info_headvars(CProcInfo, HeadVars0),
-	type_util__remove_aditi_state(ArgTypes,
-		HeadVars0, HeadVars),
+	remove_aditi_state(ArgTypes, HeadVars0, HeadVars),
 
 	partition_args(ModuleInfo0, ArgModes, HeadVars,
 		InputArgs, OutputArgs),

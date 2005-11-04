@@ -163,7 +163,6 @@
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.rtti.		% for rtti.addr_to_string.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.	% for proc_id_to_int and invalid_pred_id
 :- import_module hlds.passes_aux.
@@ -180,6 +179,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -1864,28 +1864,28 @@ build_type(mlds__unknown_type, _, _, _) -->
 
 build_mercury_type(Type, TypeCategory, GCC_Type) -->
 	(
-		{ TypeCategory = char_type },
+		{ TypeCategory = type_cat_char },
 		{ GCC_Type = 'MR_Char' }
 	;
-		{ TypeCategory = int_type },
+		{ TypeCategory = type_cat_int },
 		{ GCC_Type = 'MR_Integer' }
 	;
-		{ TypeCategory = str_type },
+		{ TypeCategory = type_cat_string },
 		{ GCC_Type = 'MR_String' }
 	;
-		{ TypeCategory = float_type },
+		{ TypeCategory = type_cat_float },
 		{ GCC_Type = 'MR_Float' }
 	;
-		{ TypeCategory = void_type },
+		{ TypeCategory = type_cat_void },
 		{ GCC_Type = 'MR_Word' }
 	;
-		{ TypeCategory = type_info_type },
-		build_mercury_type(Type, user_ctor_type, GCC_Type)
+		{ TypeCategory = type_cat_type_info },
+		build_mercury_type(Type, type_cat_user_ctor, GCC_Type)
 	;
-		{ TypeCategory = type_ctor_info_type },
-		build_mercury_type(Type, user_ctor_type, GCC_Type)
+		{ TypeCategory = type_cat_type_ctor_info },
+		build_mercury_type(Type, type_cat_user_ctor, GCC_Type)
 	;
-		{ TypeCategory = typeclass_info_type },
+		{ TypeCategory = type_cat_typeclass_info },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file,
@@ -1894,7 +1894,7 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 			{ GCC_Type = 'MR_Word' }
 		)
 	;
-		{ TypeCategory = base_typeclass_info_type },
+		{ TypeCategory = type_cat_base_typeclass_info },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file,
@@ -1903,16 +1903,16 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 			{ GCC_Type = 'MR_Word' }
 		)
 	;
-		{ TypeCategory = variable_type },
+		{ TypeCategory = type_cat_variable },
 		{ GCC_Type = 'MR_Box' }
 	;
-		{ TypeCategory = tuple_type },
+		{ TypeCategory = type_cat_tuple },
 		% tuples are always (pointers to)
 		% arrays of polymorphic terms
 		gcc__build_pointer_type('MR_Box', MR_Tuple),
 		{ GCC_Type = MR_Tuple }
 	;
-		{ TypeCategory = higher_order_type },
+		{ TypeCategory = type_cat_higher_order },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file, "--high-level-data (pred_type)") }
@@ -1921,7 +1921,9 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 			{ GCC_Type = 'MR_Word' }
 		)
 	;
-		{ TypeCategory = enum_type ; TypeCategory = dummy_type },
+		{ TypeCategory = type_cat_enum
+		; TypeCategory = type_cat_dummy
+		},
 		% Note that the MLDS -> C back-end uses 'MR_Word' here,
 		% unless --high-level-data is enabled.  But 'MR_Integer'
 		% seems better, I think.  It probably doesn't make any real
@@ -1929,7 +1931,7 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 		% XXX for --high-level-data, we should use a real enum type
 		{ GCC_Type = 'MR_Integer' }
 	;
-		{ TypeCategory = user_ctor_type },
+		{ TypeCategory = type_cat_user_ctor },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file, "--high-level-data (user_type)") }

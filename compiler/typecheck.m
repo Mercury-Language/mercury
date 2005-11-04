@@ -81,13 +81,9 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
-:- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
-:- import_module list.
 
     % typecheck(Module0, Module, FoundError, ExceededIterationLimit, !IO)
     %
@@ -101,22 +97,6 @@
     %
 :- pred typecheck(module_info::in, module_info::out, bool::out, bool::out,
     io::di, io::uo) is det.
-
-    % Find a predicate which matches the given name and argument types.
-    % Abort if there is no matching pred.
-    % Abort if there are multiple matching preds.
-    %
-:- pred typecheck__resolve_pred_overloading(module_info::in, pred_markers::in,
-    list(mer_type)::in, tvarset::in, sym_name::in, sym_name::out, pred_id::out)
-    is det.
-
-    % Find a predicate or function from the list of pred_ids
-    % which matches the given name and argument types.
-    % Fail if there is no matching pred.
-    % Abort if there are multiple matching preds.
-    %
-:- pred typecheck__find_matching_pred_id(list(pred_id)::in, module_info::in,
-    tvarset::in, list(mer_type)::in, pred_id::out, sym_name::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -135,24 +115,29 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module getopt_io.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module multi_map.
 :- import_module require.
@@ -270,18 +255,18 @@ typecheck_module_one_iteration(Iteration, [PredId | PredIds], !ModuleInfo,
 %       And this code also causes problems:
 %       if there are undefined modes,
 %       this code can end up calling error/1,
-%       since post_typecheck__finish_ill_typed_pred
+%       since post_finish_ill_typed_pred
 %       assumes that there are no undefined modes.
 %           %
 %           % if we get an error, we need to call
-%           % post_typecheck__finish_ill_typed_pred on the
+%           % post_finish_ill_typed_pred on the
 %           % pred, to ensure that its mode declaration gets
 %           % properly module qualified; then we call
 %           % `remove_predid', so that the predicate's definition
 %           % will be ignored by later passes (the declaration
 %           % will still be used to check any calls to it).
 %           %
-%           post_typecheck__finish_ill_typed_pred(ModuleInfo0,
+%           post_finish_ill_typed_pred(ModuleInfo0,
 %               PredId, PredInfo1, PredInfo),
 %           map__det_update(Preds0, PredId, PredInfo, Preds),
 %       *******************/
@@ -412,11 +397,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                     !IO),
                 Error = yes,
                 Changed = no
-            ),
-            % XXX rafe FIXME:  Deleting this call to ignore causes the state
-            % variable transformation to malfunction, leading to a bogus mode
-            % error.
-            ignore(!.ClausesInfo)
+            )
         ;
             ClausesRep1IsEmpty = no,
             pred_info_typevarset(!.PredInfo, TypeVarSet0),
@@ -480,10 +461,10 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 ExplicitVarTypes1 = ExplicitVarTypes0
             ;
                 ExistQVars0 = [_ | _],
-                apply_variable_renaming_to_type_map(ExistTypeRenaming,
+                apply_variable_renaming_to_vartypes(ExistTypeRenaming,
                     ExplicitVarTypes0, ExplicitVarTypes1)
             ),
-            apply_variable_renaming_to_type_map(TVarRenaming,
+            apply_variable_renaming_to_vartypes(TVarRenaming,
                 ExplicitVarTypes1, ExplicitVarTypes),
 
             clauses_info_set_explicit_vartypes(ExplicitVarTypes, !ClausesInfo),
@@ -596,10 +577,6 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
             typecheck_info_get_found_error(!.Info, Error)
         )
     ).
-
-:- pred ignore(T::in) is det.
-
-ignore(_).
 
 :- pred check_existq_clause(typecheck_info::in, tvarset::in, existq_tvars::in,
     clause::in, io::di, io::uo) is det.
@@ -932,7 +909,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         conj_list_to_goal(list__reverse(RevConj), GoalInfo, Goal),
 
-        apply_partial_map_to_list(HeadVars0, Subst, HeadVars),
+        apply_partial_map_to_list(Subst, HeadVars0, HeadVars),
         clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
 
         SingleClause = clause(A, Goal, C, D),
@@ -1743,78 +1720,6 @@ get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalPath,
         PredArgTypes, PredConstraints, !ArgsTypeAssignSet),
     get_overloaded_pred_arg_types(PredIds, Preds, ClassTable, GoalPath,
         AdjustArgTypes, TypeAssignSet0, !ArgsTypeAssignSet).
-
-%-----------------------------------------------------------------------------%
-
-typecheck__resolve_pred_overloading(ModuleInfo, CallerMarkers,
-        ArgTypes, TVarSet, PredName0, PredName, PredId) :-
-    % Note: calls to preds declared in `.opt' files should always be
-    % module qualified, so they should not be considered
-    % when resolving overloading.
-
-    module_info_get_predicate_table(ModuleInfo, PredTable),
-    (
-        predicate_table_search_pred_sym(PredTable,
-            calls_are_fully_qualified(CallerMarkers), PredName0, PredIds0)
-    ->
-        PredIds = PredIds0
-    ;
-        PredIds = []
-    ),
-
-    % Check if there any of the candidate pred_ids have argument/return types
-    % which subsume the actual argument/return types of this function call.
-    (
-        typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-            TVarSet, ArgTypes, PredId1, PredName1)
-    ->
-        PredId = PredId1,
-        PredName = PredName1
-    ;
-        % If there is no matching predicate for this call,
-        % then this predicate must have a type error which
-        % should have been caught by typechecking.
-        unexpected(this_file, "type error in pred call: no matching pred")
-    ).
-
-typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
-        TVarSet, ArgTypes, ThePredId, PredName) :-
-    (
-        % Lookup the argument types of the candidate predicate
-        % (or the argument types + return type of the candidate function).
-        %
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_arg_types(PredInfo, PredTVarSet, PredExistQVars0,
-            PredArgTypes0),
-        pred_info_tvar_kinds(PredInfo, PredKindMap),
-
-        arg_type_list_subsumes(TVarSet, ArgTypes, PredTVarSet, PredKindMap,
-            PredExistQVars0, PredArgTypes0)
-    ->
-        % We've found a matching predicate.
-        % Was there was more than one matching predicate/function?
-
-        PName = pred_info_name(PredInfo),
-        Module = pred_info_module(PredInfo),
-        PredName = qualified(Module, PName),
-        (
-            typecheck__find_matching_pred_id(PredIds,
-                ModuleInfo, TVarSet, ArgTypes, _OtherPredId, _)
-        ->
-            % XXX this should report an error properly, not
-            % via error/1
-            unexpected(this_file, "Type error in predicate call: " ++
-                "unresolvable predicate overloading. " ++
-                "You need to use an explicit " ++
-                "module qualifier. " ++
-                "Compile with -V to find out where.")
-        ;
-            ThePredId = PredId
-        )
-    ;
-        typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-            TVarSet, ArgTypes, ThePredId, PredName)
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -2985,7 +2890,7 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
 %-----------------------------------------------------------------------------%
 
     % Note: changes here may require changes to
-    % post_typecheck__resolve_unify_functor,
+    % post_resolve_unify_functor,
     % intermod__module_qualify_unify_rhs,
     % recompilation__usage__find_matching_constructors
     % and recompilation__check__check_functor_ambiguities.

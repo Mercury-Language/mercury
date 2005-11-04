@@ -20,7 +20,6 @@
 :- import_module aditi_backend.rl.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -58,6 +57,7 @@
 
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
@@ -140,8 +140,8 @@ rl_key__remove_useless_info(ModuleInfo,
 			ArgBound \= var - _
 		),
 		TypeCategory = classify_type(ModuleInfo, Type),
-		( TypeCategory = user_ctor_type
-		; TypeCategory = enum_type
+		( TypeCategory = type_cat_user_ctor
+		; TypeCategory = type_cat_enum
 		),
 		module_info_get_type_table(ModuleInfo, Types),
 		type_to_ctor_and_args(Type, TypeCtor, _),

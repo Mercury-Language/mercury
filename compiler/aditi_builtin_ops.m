@@ -335,7 +335,7 @@ transform_aditi_builtin_2(aditi_tuple_update(_, _),
 	{ map__apply_to_list(TupleArgs0, VarTypes, TupleTypes0) },
 
 	% Remove the `aditi__state' from the list of arguments.
-	{ type_util__remove_aditi_state(TupleTypes0, TupleArgs0, TupleArgs) },
+	{ remove_aditi_state(TupleTypes0, TupleArgs0, TupleArgs) },
 
 	%
 	% Produce code to create the vectors of type-infos and arguments
@@ -512,8 +512,8 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 	% Dont pass `aditi__state' arguments to Aditi -- they do not appear
 	% as attributes in Aditi relations.
 	%
-	{ type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
-	{ type_util__remove_aditi_state(ArgTypes0, HeadVars0, HeadVars) },
+	{ remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
+	{ remove_aditi_state(ArgTypes0, HeadVars0, HeadVars) },
 
 	%
 	% Generate arguments to describe the procedure to call.
@@ -682,7 +682,7 @@ aditi_builtin_info(ModuleInfo, aditi_tuple_update(Op, PredId),
 
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_arg_types(PredInfo, ArgTypes0),
-		type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
+		remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
 		rl__schema_to_string(ModuleInfo, ArgTypes, InputSchema),
 
 		UpdateProcArgs = [string(DeleteProcStr), string(InputSchema)]

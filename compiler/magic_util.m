@@ -296,8 +296,8 @@ construct_db_call(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	proc_info_argmodes(ProcInfo, ArgModes0),
-	type_util__remove_aditi_state(ArgTypes, ArgModes0, ArgModes),
-	type_util__remove_aditi_state(ArgTypes, Args0, Args),
+	remove_aditi_state(ArgTypes, ArgModes0, ArgModes),
+	remove_aditi_state(ArgTypes, Args0, Args),
 	partition_args(ModuleInfo, ArgModes, Args, InputArgs, OutputArgs),
 	Call = db_call(no, Goal0, proc(PredId, ProcId), Args,
 		InputArgs, OutputArgs, no).
@@ -329,8 +329,7 @@ restrict_nonlocals(NonLocals0, NonLocals) -->
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ set__to_sorted_list(NonLocals0, NonLocals1) },
 	{ map__apply_to_list(NonLocals1, VarTypes, NonLocalTypes) },
-	{ type_util__remove_aditi_state(NonLocalTypes,
-		NonLocals1, NonLocals2) },
+	{ remove_aditi_state(NonLocalTypes, NonLocals1, NonLocals2) },
 	{ set__sorted_list_to_set(NonLocals2, NonLocals) }.
 
 make_pred_name(PredInfo, ProcId, Prefix0, AddCount, Name) -->

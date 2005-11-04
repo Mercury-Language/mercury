@@ -52,7 +52,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.make_hlds.add_clause.
@@ -64,6 +63,7 @@
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.

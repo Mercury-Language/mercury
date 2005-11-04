@@ -34,8 +34,6 @@
 
 :- interface.
 
-:- import_module hlds.hlds_data.
-% :- import_module hlds__hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -263,10 +261,9 @@
 
 :- implementation.
 
-:- import_module check_hlds.check_typeclass.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.purity.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
 :- import_module hlds.special_pred.
@@ -277,6 +274,7 @@
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.

@@ -41,6 +41,7 @@
 :- include_module prog_mutable.
 :- include_module prog_util.
 :- include_module prog_type.
+:- include_module prog_type_subst.
 :- include_module error_util.
 
 % Transformations that act on the parse tree,

@@ -54,7 +54,6 @@
 
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.det_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -64,7 +63,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
 
     % Perform determinism inference for local predicates with no determinism
     % declarations, and determinism checking for all other predicates.
@@ -100,31 +98,6 @@
     --->    all_solns
     ;       first_soln.
 
-    % The following predicates implement the tables for computing the
-    % determinism of compound goals from the determinism of their components.
-
-:- pred det_conjunction_detism(determinism::in, determinism::in,
-    determinism::out) is det.
-
-:- pred det_par_conjunction_detism(determinism::in, determinism::in,
-    determinism::out) is det.
-
-:- pred det_switch_detism(determinism::in, determinism::in, determinism::out)
-    is det.
-
-:- pred det_disjunction_maxsoln(soln_count::in, soln_count::in,
-    soln_count::out) is det.
-
-:- pred det_disjunction_canfail(can_fail::in, can_fail::in, can_fail::out)
-    is det.
-
-:- pred det_switch_maxsoln(soln_count::in, soln_count::in, soln_count::out)
-    is det.
-
-:- pred det_switch_canfail(can_fail::in, can_fail::in, can_fail::out) is det.
-
-:- pred det_negation_det(determinism::in, maybe(determinism)::out) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -141,6 +114,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
@@ -148,6 +122,7 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
+:- import_module std_util.
 :- import_module string.
 :- import_module term.
 
@@ -1194,146 +1169,6 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
     ;
         SolnContext = all_solns
     ).
-
-det_conjunction_detism(DetismA, DetismB, Detism) :-
-    % When figuring out the determinism of a conjunction, if the second goal
-    % is unreachable, then then the determinism of the conjunction is just
-    % the determinism of the first goal.
-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    ( MaxSolnA = at_most_zero ->
-        Detism = DetismA
-    ;
-        determinism_components(DetismB, CanFailB, MaxSolnB),
-        det_conjunction_canfail(CanFailA, CanFailB, CanFail),
-        det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-        determinism_components(Detism, CanFail, MaxSoln)
-    ).
-
-det_par_conjunction_detism(DetismA, DetismB, Detism) :-
-    % Figuring out the determinism of a parallel conjunction is much easier
-    % than for a sequential conjunction, since you simply ignore the case
-    % where the second goal is unreachable. Just do a normal solution count.
-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    determinism_components(DetismB, CanFailB, MaxSolnB),
-    det_conjunction_canfail(CanFailA, CanFailB, CanFail),
-    det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-    determinism_components(Detism, CanFail, MaxSoln).
-
-det_switch_detism(DetismA, DetismB, Detism) :-
-    determinism_components(DetismA, CanFailA, MaxSolnA),
-    determinism_components(DetismB, CanFailB, MaxSolnB),
-    det_switch_canfail(CanFailA, CanFailB, CanFail),
-    det_switch_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
-    determinism_components(Detism, CanFail, MaxSoln).
-
-%-----------------------------------------------------------------------------%
-%
-% The predicates in this section do abstract interpretation to count
-% the number of solutions and the possible number of failures.
-%
-% If the num_solns is at_most_many_cc, this means that the goal might have
-% many logical solutions if there were no pruning, but that the goal occurs
-% in a single-solution context, so only the first solution will be
-% returned.
-%
-% The reason why we don't throw an exception in det_switch_maxsoln and
-% det_disjunction_maxsoln is given in the documentation of the test case
-% invalid/magicbox.m.
-
-:- pred det_conjunction_maxsoln(soln_count::in, soln_count::in,
-    soln_count::out) is det.
-
-det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
-det_conjunction_maxsoln(at_most_zero,    at_most_many,    at_most_zero).
-
-det_conjunction_maxsoln(at_most_one,     at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_one,     at_most_one,     at_most_one).
-det_conjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_conjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_conjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
-    % If the first conjunct could be cc pruned, the second conj ought to have
-    % been cc pruned too.
-    error("det_conjunction_maxsoln: many_cc , many").
-
-det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
-det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
-det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-:- pred det_conjunction_canfail(can_fail::in, can_fail::in, can_fail::out)
-    is det.
-
-det_conjunction_canfail(can_fail,    can_fail,    can_fail).
-det_conjunction_canfail(can_fail,    cannot_fail, can_fail).
-det_conjunction_canfail(cannot_fail, can_fail,    can_fail).
-det_conjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-det_disjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_disjunction_maxsoln(at_most_zero,    at_most_one,     at_most_one).
-det_disjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_zero,    at_most_many,    at_most_many).
-
-det_disjunction_maxsoln(at_most_one,     at_most_zero,    at_most_one).
-det_disjunction_maxsoln(at_most_one,     at_most_one,     at_most_many).
-det_disjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
-
-det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
-det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_disjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-det_disjunction_canfail(can_fail,    can_fail,    can_fail).
-det_disjunction_canfail(can_fail,    cannot_fail, cannot_fail).
-det_disjunction_canfail(cannot_fail, can_fail,    cannot_fail).
-det_disjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-det_switch_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
-det_switch_maxsoln(at_most_zero,    at_most_one,     at_most_one).
-det_switch_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_zero,    at_most_many,    at_most_many).
-
-det_switch_maxsoln(at_most_one,     at_most_zero,    at_most_one).
-det_switch_maxsoln(at_most_one,     at_most_one,     at_most_one).
-det_switch_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_one,     at_most_many,    at_most_many).
-
-det_switch_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
-
-det_switch_maxsoln(at_most_many,    at_most_zero,    at_most_many).
-det_switch_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_switch_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_many,    at_most_many,    at_most_many).
-
-det_switch_canfail(can_fail,    can_fail,    can_fail).
-det_switch_canfail(can_fail,    cannot_fail, can_fail).
-det_switch_canfail(cannot_fail, can_fail,    can_fail).
-det_switch_canfail(cannot_fail, cannot_fail, cannot_fail).
-
-det_negation_det(det,           yes(failure)).
-det_negation_det(semidet,       yes(semidet)).
-det_negation_det(multidet,      no).
-det_negation_det(nondet,        no).
-det_negation_det(cc_multidet,   no).
-det_negation_det(cc_nondet,     no).
-det_negation_det(erroneous,     yes(erroneous)).
-det_negation_det(failure,       yes(det)).
 
 %-----------------------------------------------------------------------------%
 

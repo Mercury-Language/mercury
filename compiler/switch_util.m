@@ -17,11 +17,11 @@
 :- module backend_libs__switch_util.
 :- interface.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -245,27 +245,27 @@ next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 % Stuff for categorizing switches
 %
 
-type_cat_to_switch_cat(enum_type) = atomic_switch.
-type_cat_to_switch_cat(dummy_type) = _ :-
+type_cat_to_switch_cat(type_cat_enum) = atomic_switch.
+type_cat_to_switch_cat(type_cat_dummy) = _ :-
     % You can't have a switch without at least two arms.
     unexpected(this_file, "type_cat_to_switch_cat: dummy").
-type_cat_to_switch_cat(int_type) =  atomic_switch.
-type_cat_to_switch_cat(char_type) = atomic_switch.
-type_cat_to_switch_cat(float_type) = other_switch.
-type_cat_to_switch_cat(str_type) =  string_switch.
-type_cat_to_switch_cat(higher_order_type) = other_switch.
-type_cat_to_switch_cat(user_ctor_type) = tag_switch.
-type_cat_to_switch_cat(variable_type) = other_switch.
-type_cat_to_switch_cat(tuple_type) = other_switch.
-type_cat_to_switch_cat(void_type) = _ :-
+type_cat_to_switch_cat(type_cat_int) =  atomic_switch.
+type_cat_to_switch_cat(type_cat_char) = atomic_switch.
+type_cat_to_switch_cat(type_cat_float) = other_switch.
+type_cat_to_switch_cat(type_cat_string) =  string_switch.
+type_cat_to_switch_cat(type_cat_higher_order) = other_switch.
+type_cat_to_switch_cat(type_cat_user_ctor) = tag_switch.
+type_cat_to_switch_cat(type_cat_variable) = other_switch.
+type_cat_to_switch_cat(type_cat_tuple) = other_switch.
+type_cat_to_switch_cat(type_cat_void) = _ :-
     unexpected(this_file, "type_cat_to_switch_cat: void").
-type_cat_to_switch_cat(type_info_type) = _ :-
+type_cat_to_switch_cat(type_cat_type_info) = _ :-
     unexpected(this_file, "type_cat_to_switch_cat: type_info").
-type_cat_to_switch_cat(type_ctor_info_type) = _ :-
+type_cat_to_switch_cat(type_cat_type_ctor_info) = _ :-
     unexpected(this_file, "type_cat_to_switch_cat: type_ctor_info").
-type_cat_to_switch_cat(typeclass_info_type) = _ :-
+type_cat_to_switch_cat(type_cat_typeclass_info) = _ :-
     unexpected(this_file, "type_cat_to_switch_cat: typeclass_info").
-type_cat_to_switch_cat(base_typeclass_info_type) = _ :-
+type_cat_to_switch_cat(type_cat_base_typeclass_info) = _ :-
     unexpected(this_file, "type_cat_to_switch_cat: base_typeclass_info").
 
 switch_priority(no_tag) = 0.       % should never occur
@@ -287,7 +287,7 @@ switch_priority(tabling_pointer_constant(_, _)) = 6.
 switch_priority(deep_profiling_proc_layout_tag(_, _)) = 6.
 switch_priority(table_io_decl_tag(_, _)) = 6.
 
-type_range(char_type, _, _, MinChar, MaxChar) :-
+type_range(type_cat_char, _, _, MinChar, MaxChar) :-
     % XXX the following code uses the host's character size,
     % not the target's, so it won't work if cross-compiling
     % to a machine with a different character size.
@@ -295,7 +295,7 @@ type_range(char_type, _, _, MinChar, MaxChar) :-
     % in lookup_switch.m assume that char__min_char_value is 0.
     char__min_char_value(MinChar),
     char__max_char_value(MaxChar).
-type_range(enum_type, Type, ModuleInfo, 0, MaxEnum) :-
+type_range(type_cat_enum, Type, ModuleInfo, 0, MaxEnum) :-
     ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
         TypeCtor = TypeCtorPrime
     ;
@@ -312,9 +312,6 @@ type_range(enum_type, Type, ModuleInfo, 0, MaxEnum) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-    % Find out how many secondary tags share each primary tag
-    % of the given variable.
 
 get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
     ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->

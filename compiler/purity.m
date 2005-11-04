@@ -147,14 +147,6 @@
 :- pred repuritycheck_proc(module_info::in, pred_proc_id::in, pred_info::in,
     pred_info::out) is det.
 
-    % Sort of a "maximum" for impurity.
-    %
-:- func worst_purity(purity, purity) = purity.
-
-    % Compare two purities.
-    %
-:- pred less_pure(purity::in, purity::in) is semidet.
-
     % Give an error message for unifications marked impure/semipure
     % that are not function calls (e.g. impure X = 4)
     %
@@ -212,39 +204,6 @@ puritycheck(FoundTypeError, PostTypecheckError, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Purity-checking clauses...\n", !IO),
     check_preds_purity(FoundTypeError, PostTypecheckError, !HLDS, !IO),
     maybe_report_stats(Statistics, !IO).
-
-less_pure(P1, P2) :-
-    \+ ( worst_purity(P1, P2) = P2).
-
-% worst_purity/3 could be written more compactly, but this definition
-% guarantees us a determinism error if we add to type `purity'.  We also
-% define less_pure/2 in terms of worst_purity/3 rather than the other way
-% around for the same reason.
-
-worst_purity(purity_pure, purity_pure) = purity_pure.
-worst_purity(purity_pure, purity_semipure) = purity_semipure.
-worst_purity(purity_pure, purity_impure) = purity_impure.
-worst_purity(purity_semipure, purity_pure) = purity_semipure.
-worst_purity(purity_semipure, purity_semipure) = purity_semipure.
-worst_purity(purity_semipure, purity_impure) = purity_impure.
-worst_purity(purity_impure, purity_pure) = purity_impure.
-worst_purity(purity_impure, purity_semipure) = purity_impure.
-worst_purity(purity_impure, purity_impure) = purity_impure.
-
-    % Sort of a "minimum" for impurity. The reason why this is written is
-    % as a switch is the same as for worst_purity.
-    %
-:- func best_purity(purity, purity) = purity.
-
-best_purity(purity_pure, purity_pure) = purity_pure.
-best_purity(purity_pure, purity_semipure) = purity_pure.
-best_purity(purity_pure, purity_impure) = purity_pure.
-best_purity(purity_semipure, purity_pure) = purity_pure.
-best_purity(purity_semipure, purity_semipure) = purity_semipure.
-best_purity(purity_semipure, purity_impure) = purity_semipure.
-best_purity(purity_impure, purity_pure) = purity_pure.
-best_purity(purity_impure, purity_semipure) = purity_semipure.
-best_purity(purity_impure, purity_impure) = purity_impure.
 
 %-----------------------------------------------------------------------------%
 

@@ -24,12 +24,14 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
+:- import_module set.
 :- import_module std_util.
 
 :- implementation.
 
 :- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 
 :- import_module int.
 :- import_module svmulti_map.
@@ -738,45 +740,6 @@ mode_table_optimize(ModeTable0, ModeTable) :-
 %-----------------------------------------------------------------------------%
 
 :- interface.
-
-% Types and procedures for decomposing and analysing determinism.
-% See also the `code_model' type in code_model.m.
-% The `determinism' type itself is defined in prog_data.m.
-
-:- type can_fail
-    --->    can_fail
-    ;       cannot_fail.
-
-:- type soln_count
-    --->    at_most_zero
-    ;       at_most_one
-    ;       at_most_many_cc
-            % "_cc" means "committed-choice": there is more than one logical
-            % solution, but the pred or goal is being used in a context where
-            % we are only looking for the first solution.
-    ;       at_most_many.
-
-:- pred determinism_components(determinism, can_fail, soln_count).
-:- mode determinism_components(in, out, out) is det.
-:- mode determinism_components(out, in, in) is det.
-
-:- implementation.
-
-determinism_components(det,         cannot_fail, at_most_one).
-determinism_components(semidet,     can_fail,    at_most_one).
-determinism_components(multidet,    cannot_fail, at_most_many).
-determinism_components(nondet,      can_fail,    at_most_many).
-determinism_components(cc_multidet, cannot_fail, at_most_many_cc).
-determinism_components(cc_nondet,   can_fail,    at_most_many_cc).
-determinism_components(erroneous,   cannot_fail, at_most_zero).
-determinism_components(failure,     can_fail,    at_most_zero).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- interface.
-
-:- import_module set.
 
 :- type class_table == map(class_id, hlds_class_defn).
 

@@ -21,8 +21,8 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module set.
@@ -30,18 +30,19 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type goal == pair(hlds_goal, instmap).
+:- type stored_goal == pair(hlds_goal, instmap).
 :- type goal_store(T).
 
 :- pred goal_store__init(goal_store(T)::out) is det.
 :- func goal_store__init = goal_store(T).
 
-:- pred goal_store__det_insert(T::in, goal::in,
+:- pred goal_store__det_insert(T::in, stored_goal::in,
     goal_store(T)::in, goal_store(T)::out) is det.
 
-:- pred goal_store__lookup(goal_store(T)::in, T::in, goal::out) is det.
+:- pred goal_store__lookup(goal_store(T)::in, T::in, stored_goal::out) is det.
 
-:- pred goal_store__member(goal_store(T)::in, T::out, goal::out) is nondet.
+:- pred goal_store__member(goal_store(T)::in, T::out, stored_goal::out)
+    is nondet.
 
 :- pred goal_store__all_ancestors(goal_store(T)::in, T::in, vartypes::in,
     module_info::in, bool::in, set(T)::out) is det.
@@ -58,7 +59,7 @@
 :- import_module map.
 :- import_module require.
 
-:- type goal_store(T) == map__map(T, goal).
+:- type goal_store(T) == map__map(T, stored_goal).
 
 %-----------------------------------------------------------------------------%
 

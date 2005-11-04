@@ -145,6 +145,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -309,7 +310,7 @@ check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams, !Errs, !Set) :-
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out) is det.
 
-bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypesMap, !Proofs,
+bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !Proofs,
         !ConstraintMap) :-
     % Create a substitution that maps all of the unbound type variables
     % to `void'.
@@ -319,7 +320,7 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypesMap, !Proofs,
     set__fold(MapToVoid, UnboundTypeVarsSet, map__init, VoidSubst),
 
     % Then apply the substitution we just created to the various maps.
-    apply_subst_to_type_map(VoidSubst, !VarTypesMap),
+    apply_subst_to_vartypes(VoidSubst, !VarTypes),
     apply_subst_to_constraint_proofs(VoidSubst, !Proofs),
     apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
 
@@ -337,24 +338,24 @@ report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo,
 
     pred_info_typevarset(PredInfo, TVarSet),
     pred_info_context(PredInfo, Context),
-    
+
     Pieces0 = constraints_to_error_pieces(TVarSet, Constraints),
- 
+
     PredIdStr = pred_id_to_string(ModuleInfo, PredId),
-    
+
     Pieces = [
-        words("In"), fixed(PredIdStr), suffix(":"), nl, 
+        words("In"), fixed(PredIdStr), suffix(":"), nl,
         fixed("type error: unsatisfied typeclass " ++
             choose_number(Constraints, "constraint:", "constraints:")),
             nl_indent_delta(2) | Pieces0 ],
-             
-    write_error_pieces(Context, 0, Pieces, !IO).   
 
-:- func constraints_to_error_pieces(tvarset, list(prog_constraint)) 
+    write_error_pieces(Context, 0, Pieces, !IO).
+
+:- func constraints_to_error_pieces(tvarset, list(prog_constraint))
     = format_components.
 
 constraints_to_error_pieces(_, []) = [].
-constraints_to_error_pieces(TVarset, [C]) = 
+constraints_to_error_pieces(TVarset, [C]) =
     [constraint_to_error_piece(TVarset, C)].
 constraints_to_error_pieces(TVarset, [ C0, C1 | Cs]) = Components :-
     Format0    = [ constraint_to_error_piece(TVarset, C0), nl ],
@@ -364,7 +365,7 @@ constraints_to_error_pieces(TVarset, [ C0, C1 | Cs]) = Components :-
 
 constraint_to_error_piece(TVarset, Constraint) =
     fixed("`" ++ mercury_constraint_to_string(TVarset, Constraint) ++ "'").
-   
+
 %-----------------------------------------------------------------------------%
 
     % Report a warning: uninstantiated type parameter.
@@ -444,8 +445,8 @@ resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
         pred_info_clauses_info(CallerPredInfo, ClausesInfo),
         clauses_info_vartypes(ClausesInfo, VarTypes),
         map__apply_to_list(Args0, VarTypes, ArgTypes),
-        typecheck__resolve_pred_overloading(ModuleInfo, Markers,
-            ArgTypes, TVarSet, !PredName, !:PredId)
+        resolve_pred_overloading(ModuleInfo, Markers, ArgTypes, TVarSet,
+            !PredName, !:PredId)
     ;
         !:PredName = get_qualified_pred_name(ModuleInfo, !.PredId)
     ).
@@ -588,8 +589,8 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
         ->
             call(AdjustArgTypes, ArgTypes0, ArgTypes),
             pred_info_get_markers(CallerPredInfo, Markers),
-            typecheck__resolve_pred_overloading(ModuleInfo, Markers, ArgTypes,
-                TVarSet, SymName0, SymName, PredId)
+            resolve_pred_overloading(ModuleInfo, Markers, ArgTypes, TVarSet,
+                SymName0, SymName, PredId)
         ;
             unexpected(this_file, "resolve_aditi_builtin_overloading")
         )
@@ -1135,8 +1136,8 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         pred_info_typevarset(!.PredInfo, TVarSet),
         map__apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         list__append(ArgTypes0, [TypeOfX], ArgTypes),
-        typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-            TVarSet, ArgTypes, PredId, QualifiedFuncName)
+        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
+            PredId, QualifiedFuncName)
     ->
         % Convert function calls into predicate calls:
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
@@ -1380,7 +1381,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
             remove_new_prefix(ConsName, ConsName0),
             ConsId = cons(ConsName, ConsArity)
         ;
-            unexpected(this_file, 
+            unexpected(this_file,
                 "translate_set_function: invalid cons_id")
         )
     ),
@@ -1516,9 +1517,8 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
     ( type_to_ctor_and_args(TermType, TermTypeCtor0, _) ->
         TermTypeCtor = TermTypeCtor0
     ;
-        unexpected(this_file, 
-            "get_constructor_containing_field: " ++
-            "type_to_ctor_and_args failed")
+        unexpected(this_file,
+            "get_constructor_containing_field: type_to_ctor_and_args failed")
     ),
     module_info_get_type_table(ModuleInfo, Types),
     map__lookup(Types, TermTypeCtor, TermTypeDefn),

@@ -1141,7 +1141,7 @@ rl__get_c_interface_rl_proc_name(ModuleInfo, PredProcId, ProcName) :-
 	module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
 	pred_info_arg_types(PredInfo, ArgTypes0),
 	proc_info_argmodes(ProcInfo, ArgModes0),
-	type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes),
+	remove_aditi_state(ArgTypes0, ArgModes0, ArgModes),
 	partition_args(ModuleInfo, ArgModes, ArgModes, _, OutputArgModes),
 
 	% The interface procedure includes only the output arguments
@@ -1168,7 +1168,7 @@ rl__get_permanent_relation_info(ModuleInfo, PredId, Owner, PredModule,
 	PredArity = pred_info_orig_arity(PredInfo),
 	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
 	pred_info_arg_types(PredInfo, ArgTypes0),
-	type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
+	remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
 	rl__schema_to_string(ModuleInfo, ArgTypes, SchemaString).
 
 %-----------------------------------------------------------------------------%
@@ -1261,75 +1261,75 @@ rl__gather_types(ModuleInfo, Parents, [Type | Types], GatheredTypes0,
 rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 		RecursiveTypes0, RecursiveTypes, Decls0, Decls, ThisType) :-
 	ClassifiedType0 = classify_type(ModuleInfo, Type),
-	( ClassifiedType0 = enum_type ->
-		ClassifiedType = user_ctor_type
-	; ClassifiedType0 = dummy_type ->
+	( ClassifiedType0 = type_cat_enum ->
+		ClassifiedType = type_cat_user_ctor
+	; ClassifiedType0 = type_cat_dummy ->
 		% XXX The correctness of this is extremely suspect, but a
 		% correct solution would probably require changes to to Aditi.
-		ClassifiedType = user_ctor_type
+		ClassifiedType = type_cat_user_ctor
 	;
 		ClassifiedType = ClassifiedType0
 	),
 	(
-		ClassifiedType = enum_type,
+		ClassifiedType = type_cat_enum,
 			% this is converted to user_type above
 		error("rl__gather_type: enum type")
 	;
-		ClassifiedType = dummy_type,
+		ClassifiedType = type_cat_dummy,
 			% this is converted to user_type above
 		error("rl__gather_type: dummy type")
 	;
-		ClassifiedType = variable_type,
+		ClassifiedType = type_cat_variable,
 		error("rl__gather_type: variable type")
 	;
-		ClassifiedType = char_type,
+		ClassifiedType = type_cat_char,
 		GatheredTypes = GatheredTypes0,
 		RecursiveTypes = RecursiveTypes0,
 		Decls = Decls0,
 		ThisType = ":I"
 	;
-		ClassifiedType = int_type,
+		ClassifiedType = type_cat_int,
 		GatheredTypes = GatheredTypes0,
 		RecursiveTypes = RecursiveTypes0,
 		Decls = Decls0,
 		ThisType = ":I"
 	;
-		ClassifiedType = float_type,
+		ClassifiedType = type_cat_float,
 		GatheredTypes = GatheredTypes0,
 		RecursiveTypes = RecursiveTypes0,
 		Decls = Decls0,
 		ThisType = ":D"
 	;
-		ClassifiedType = str_type,
+		ClassifiedType = type_cat_string,
 		GatheredTypes = GatheredTypes0,
 		RecursiveTypes = RecursiveTypes0,
 		Decls = Decls0,
 		ThisType = ":S"
 	;
-		ClassifiedType = tuple_type,
+		ClassifiedType = type_cat_tuple,
 		rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0,
 			GatheredTypes, RecursiveTypes0, RecursiveTypes,
 			Decls0, Decls, ThisType)
 	;
-		ClassifiedType = void_type,
+		ClassifiedType = type_cat_void,
 		error("rl__gather_type: void type")
 	;
-		ClassifiedType = type_info_type,
+		ClassifiedType = type_cat_type_info,
 		error("rl__gather_type: type_info type")
 	;
-		ClassifiedType = type_ctor_info_type,
+		ClassifiedType = type_cat_type_ctor_info,
 		error("rl__gather_type: type_ctor_info type")
 	;
-		ClassifiedType = typeclass_info_type,
+		ClassifiedType = type_cat_typeclass_info,
 		error("rl__gather_type: typeclass_info type")
 	;
-		ClassifiedType = base_typeclass_info_type,
+		ClassifiedType = type_cat_base_typeclass_info,
 		error("rl__gather_type: base_typeclass_info type")
 	;
-		ClassifiedType = higher_order_type,
+		ClassifiedType = type_cat_higher_order,
 		error("rl__gather_type: higher_order type")
 	;
-		ClassifiedType = user_ctor_type,
+		ClassifiedType = type_cat_user_ctor,
 		% We can't handle abstract types here. magic_util.m
 		% checks that there are none.
 		rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0,

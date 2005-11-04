@@ -156,7 +156,6 @@
 :- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
@@ -166,6 +165,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.constraint.
 :- import_module transform_hlds.pd_cost.
 :- import_module transform_hlds.pd_debug.

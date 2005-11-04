@@ -775,7 +775,7 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval, !Info) :-
         % This is needed to handle construction/deconstruction unifications
         % for no_tag types.
         %
-        \+ type_util__type_unify(SourceType, DestType, [], map__init, _)
+        \+ type_unify(SourceType, DestType, [], map__init, _)
     ->
         ml_gen_type(!.Info, DestType, MLDS_DestType),
         ArgRval = unop(cast(MLDS_DestType), VarRval)

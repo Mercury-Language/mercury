@@ -906,7 +906,7 @@ update(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
     % goal_store, GS, and IdB is less than IdA.
     %
 :- pred member_lessthan_goalid(goal_store::in, goal_id::in,
-    goal_id::out, goal_store__goal::out) is nondet.
+    goal_id::out, stored_goal::out) is nondet.
 
 member_lessthan_goalid(GoalStore, N - I, N - J, Goal) :-
     goal_store__member(GoalStore, N - J, Goal),
@@ -1375,7 +1375,7 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
     % Do a goal_store__lookup where the result is known to be a call.
     %
 :- pred lookup_call(goal_store::in, goal_id::in,
-    goal_store__goal::out(call_goal)) is det.
+    stored_goal::out(call_goal)) is det.
 
 lookup_call(GoalStore, Id, Call - InstMap) :-
     goal_store__lookup(GoalStore, Id, Goal - InstMap),

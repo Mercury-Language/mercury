@@ -983,7 +983,7 @@ ml_gen_array_elem_type(elem_type_int) = mlds__native_int_type.
 ml_gen_array_elem_type(elem_type_generic) = mlds__generic_type.
 
 ml_string_type =
-    mercury_type(string_type, str_type, non_foreign_type(string_type)).
+    mercury_type(string_type, type_cat_string, non_foreign_type(string_type)).
 
 ml_make_boxed_types(Arity) = BoxedTypes :-
     varset__init(TypeVarSet0),
@@ -1576,21 +1576,21 @@ ml_must_box_field_type(Type, ModuleInfo) :-
 
 :- func ml_must_box_field_type_category(type_category) = bool.
 
-ml_must_box_field_type_category(int_type) = no.
-ml_must_box_field_type_category(char_type) = yes.
-ml_must_box_field_type_category(str_type) = no.
-ml_must_box_field_type_category(float_type) = yes.
-ml_must_box_field_type_category(higher_order_type) = no.
-ml_must_box_field_type_category(tuple_type) = no.
-ml_must_box_field_type_category(enum_type) = no.
-ml_must_box_field_type_category(dummy_type) = no.
-ml_must_box_field_type_category(variable_type) = no.
-ml_must_box_field_type_category(type_info_type) = no.
-ml_must_box_field_type_category(type_ctor_info_type) = no.
-ml_must_box_field_type_category(typeclass_info_type) = no.
-ml_must_box_field_type_category(base_typeclass_info_type) = no.
-ml_must_box_field_type_category(void_type) = no.
-ml_must_box_field_type_category(user_ctor_type) = no.
+ml_must_box_field_type_category(type_cat_int) = no.
+ml_must_box_field_type_category(type_cat_char) = yes.
+ml_must_box_field_type_category(type_cat_string) = no.
+ml_must_box_field_type_category(type_cat_float) = yes.
+ml_must_box_field_type_category(type_cat_higher_order) = no.
+ml_must_box_field_type_category(type_cat_tuple) = no.
+ml_must_box_field_type_category(type_cat_enum) = no.
+ml_must_box_field_type_category(type_cat_dummy) = no.
+ml_must_box_field_type_category(type_cat_variable) = no.
+ml_must_box_field_type_category(type_cat_type_info) = no.
+ml_must_box_field_type_category(type_cat_type_ctor_info) = no.
+ml_must_box_field_type_category(type_cat_typeclass_info) = no.
+ml_must_box_field_type_category(type_cat_base_typeclass_info) = no.
+ml_must_box_field_type_category(type_cat_void) = no.
+ml_must_box_field_type_category(type_cat_user_ctor) = no.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1972,21 +1972,21 @@ ml_type_might_contain_pointers(mlds__unknown_type) = yes.
 
 :- func ml_type_category_might_contain_pointers(type_category) = bool.
 
-ml_type_category_might_contain_pointers(int_type) = no.
-ml_type_category_might_contain_pointers(char_type) = no.
-ml_type_category_might_contain_pointers(str_type) = yes.
-ml_type_category_might_contain_pointers(float_type) = no.
-ml_type_category_might_contain_pointers(void_type) = no.
-ml_type_category_might_contain_pointers(type_info_type) = yes.
-ml_type_category_might_contain_pointers(type_ctor_info_type) = no.
-ml_type_category_might_contain_pointers(typeclass_info_type) = yes.
-ml_type_category_might_contain_pointers(base_typeclass_info_type) = no.
-ml_type_category_might_contain_pointers(higher_order_type) = yes.
-ml_type_category_might_contain_pointers(tuple_type) = yes.
-ml_type_category_might_contain_pointers(enum_type) = no.
-ml_type_category_might_contain_pointers(dummy_type) = no.
-ml_type_category_might_contain_pointers(variable_type) = yes.
-ml_type_category_might_contain_pointers(user_ctor_type) = yes.
+ml_type_category_might_contain_pointers(type_cat_int) = no.
+ml_type_category_might_contain_pointers(type_cat_char) = no.
+ml_type_category_might_contain_pointers(type_cat_string) = yes.
+ml_type_category_might_contain_pointers(type_cat_float) = no.
+ml_type_category_might_contain_pointers(type_cat_void) = no.
+ml_type_category_might_contain_pointers(type_cat_type_info) = yes.
+ml_type_category_might_contain_pointers(type_cat_type_ctor_info) = no.
+ml_type_category_might_contain_pointers(type_cat_typeclass_info) = yes.
+ml_type_category_might_contain_pointers(type_cat_base_typeclass_info) = no.
+ml_type_category_might_contain_pointers(type_cat_higher_order) = yes.
+ml_type_category_might_contain_pointers(type_cat_tuple) = yes.
+ml_type_category_might_contain_pointers(type_cat_enum) = no.
+ml_type_category_might_contain_pointers(type_cat_dummy) = no.
+ml_type_category_might_contain_pointers(type_cat_variable) = yes.
+ml_type_category_might_contain_pointers(type_cat_user_ctor) = yes.
 
     % trace_type_info_type(Type, RealType):
     %
@@ -2096,7 +2096,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     mercury_private_builtin_module(PredModule),
     MLDS_Module = mercury_module_name_to_mlds(PredModule),
     Proc = qual(MLDS_Module, module_qual, Pred - ProcId),
-    CPointerType = mercury_type(c_pointer_type, user_ctor_type,
+    CPointerType = mercury_type(c_pointer_type, type_cat_user_ctor,
         non_foreign_type(c_pointer_type)),
     ArgTypes = [mlds__pseudo_type_info_type, CPointerType],
     Signature = mlds__func_signature(ArgTypes, []),

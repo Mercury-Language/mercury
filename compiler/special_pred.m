@@ -112,6 +112,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
@@ -183,10 +184,10 @@ special_pred_description(spec_pred_init,    "initialisation predicate").
 special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
     (
-        TypeCategory = tuple_type
+        TypeCategory = type_cat_tuple
     ;
-        ( TypeCategory = user_ctor_type
-        ; TypeCategory = enum_type
+        ( TypeCategory = type_cat_user_ctor
+        ; TypeCategory = type_cat_enum
         ; is_introduced_type_info_type_category(TypeCategory) = yes
         ),
         module_info_get_type_table(ModuleInfo, Types),
@@ -207,10 +208,10 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
 
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
     (
-        TypeCategory = tuple_type
+        TypeCategory = type_cat_tuple
     ;
-        ( TypeCategory = user_ctor_type
-        ; TypeCategory = enum_type
+        ( TypeCategory = type_cat_user_ctor
+        ; TypeCategory = type_cat_enum
         ; is_introduced_type_info_type_category(TypeCategory) = yes
         ),
         special_pred_is_generated_lazily_2(ModuleInfo, TypeCtor, Body, Status)

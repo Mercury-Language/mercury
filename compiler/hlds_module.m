@@ -44,11 +44,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.typecheck.
 :- import_module hlds.hlds_out.
 :- import_module transform_hlds.mmc_analysis.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
@@ -471,7 +471,7 @@
     %
 :- pred module_info_proc_info(module_info::in, pred_proc_id::in,
     proc_info::out) is det.
-:- pred module_info_proc_info(module_info::in, pred_id::in, proc_id::in, 
+:- pred module_info_proc_info(module_info::in, pred_id::in, proc_id::in,
     proc_info::out) is det.
 
     % Given a pred_id and a proc_id, get the pred_info of that predicate
@@ -696,8 +696,8 @@
                 % Exported C names for preds appearing in `:- initialise
                 % initpred' directives in this module, in order of appearance.
                 user_init_pred_c_names      :: assoc_list(sym_name, string),
-            
-                % Export C names fored pred appearing in `:- finalise 
+
+                % Export C names fored pred appearing in `:- finalise
                 % finalpred' directives in this module, in order of
                 % appearance.
                 user_final_pred_c_names     :: assoc_list(sym_name, string)
@@ -1451,6 +1451,22 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 :- pred predicate_name(module_info::in, pred_id::in, string::out) is det.
 :- pred predicate_arity(module_info::in, pred_id::in, arity::out) is det.
 
+    % Find a predicate which matches the given name and argument types.
+    % Abort if there is no matching pred.
+    % Abort if there are multiple matching preds.
+    % 
+:- pred resolve_pred_overloading(module_info::in, pred_markers::in,
+    list(mer_type)::in, tvarset::in, sym_name::in, sym_name::out, pred_id::out)
+    is det.
+
+    % Find a predicate or function from the list of pred_ids
+    % which matches the given name and argument types.
+    % Fail if there is no matching pred.
+    % Abort if there are multiple matching preds.
+    %
+:- pred find_matching_pred_id(module_info::in, list(pred_id)::in, tvarset::in,
+    list(mer_type)::in, pred_id::out, sym_name::out) is semidet.
+
     % Get the pred_id and proc_id matching a higher-order term with
     % the given argument types, aborting with an error if none is found.
     %
@@ -2122,6 +2138,74 @@ insert_into_mna_index(Module, Name, Arity, PredId, !MNA_Index) :-
 
 %-----------------------------------------------------------------------------%
 
+resolve_pred_overloading(ModuleInfo, CallerMarkers, ArgTypes, TVarSet,
+        PredName0, PredName, PredId) :-
+    % Note: calls to preds declared in `.opt' files should always be
+    % module qualified, so they should not be considered
+    % when resolving overloading.
+
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    (
+        predicate_table_search_pred_sym(PredTable,
+            calls_are_fully_qualified(CallerMarkers), PredName0, PredIds0)
+    ->
+        PredIds = PredIds0
+    ;
+        PredIds = []
+    ),
+
+    % Check if there any of the candidate pred_ids have argument/return types
+    % which subsume the actual argument/return types of this function call.
+    (
+        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
+            PredId1, PredName1)
+    ->
+        PredId = PredId1,
+        PredName = PredName1
+    ;
+        % If there is no matching predicate for this call, then this predicate
+        % must have a type error which should have been caught by typechecking.
+        unexpected(this_file, "type error in pred call: no matching pred")
+    ).
+
+find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ArgTypes,
+        ThePredId, PredName) :-
+    (
+        % Lookup the argument types of the candidate predicate
+        % (or the argument types + return type of the candidate function).
+        %
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_arg_types(PredInfo, PredTVarSet, PredExistQVars0,
+            PredArgTypes0),
+        pred_info_tvar_kinds(PredInfo, PredKindMap),
+
+        arg_type_list_subsumes(TVarSet, ArgTypes, PredTVarSet, PredKindMap,
+            PredExistQVars0, PredArgTypes0)
+    ->
+        % We've found a matching predicate.
+        % Was there was more than one matching predicate/function?
+
+        PName = pred_info_name(PredInfo),
+        Module = pred_info_module(PredInfo),
+        PredName = qualified(Module, PName),
+        (
+            find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
+                _OtherPredId, _)
+        ->
+            % XXX this should report an error properly, not
+            % via error/1
+            unexpected(this_file, "Type error in predicate call: " ++
+                "unresolvable predicate overloading. " ++
+                "You need to use an explicit module qualifier. " ++
+                "Compile with -V to find out where.")
+        ;
+            ThePredId = PredId
+        )
+    ;
+        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
+            ThePredId, PredName)
+    ).
+
 get_pred_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         ArgTypes, ModuleInfo, PredId) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -2130,8 +2214,8 @@ get_pred_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         predicate_table_search_pf_sym_arity(PredicateTable, IsFullyQualified,
             PredOrFunc, SymName, Arity, PredIds),
         % Resolve overloading using the argument types.
-        typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-            TVarSet, ArgTypes, PredId0, _PredName)
+        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
+            PredId0, _PredName)
     ->
         PredId = PredId0
     ;
@@ -2157,7 +2241,6 @@ get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
             "undefined/invalid ", PredOrFuncStr,
             "\n`", Name2, "/", ArityString, "'"], Msg),
         error(Msg)
-
     ),
     get_proc_id(ModuleInfo, PredId, ProcId).
 
@@ -2273,5 +2356,11 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
     module_info_preds(ModuleInfo, Preds),
     map__lookup(Preds, PredId, PredInfo),
     Arity = pred_info_orig_arity(PredInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "hlds_module.m".
 
 %-----------------------------------------------------------------------------%

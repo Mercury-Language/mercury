@@ -670,23 +670,25 @@ check_type(ModuleInfo, Type) = Status :-
 
 :- func check_type_2(module_info, mer_type, type_category) = type_status.
 
-check_type_2(_, _, int_type) = type_will_not_throw.
-check_type_2(_, _, char_type) = type_will_not_throw.
-check_type_2(_, _, str_type) = type_will_not_throw.
-check_type_2(_, _, float_type) = type_will_not_throw.
-check_type_2(_, _, higher_order_type) = type_will_not_throw.
-check_type_2(_, _, type_info_type) = type_will_not_throw.
-check_type_2(_, _, type_ctor_info_type) = type_will_not_throw.
-check_type_2(_, _, typeclass_info_type) = type_will_not_throw.
-check_type_2(_, _, base_typeclass_info_type) = type_will_not_throw.
-check_type_2(_, _, void_type) = type_will_not_throw.
-check_type_2(_, _, dummy_type) = type_will_not_throw.
+check_type_2(_, _, type_cat_int) = type_will_not_throw.
+check_type_2(_, _, type_cat_char) = type_will_not_throw.
+check_type_2(_, _, type_cat_string) = type_will_not_throw.
+check_type_2(_, _, type_cat_float) = type_will_not_throw.
+check_type_2(_, _, type_cat_higher_order) = type_will_not_throw.
+check_type_2(_, _, type_cat_type_info) = type_will_not_throw.
+check_type_2(_, _, type_cat_type_ctor_info) = type_will_not_throw.
+check_type_2(_, _, type_cat_typeclass_info) = type_will_not_throw.
+check_type_2(_, _, type_cat_base_typeclass_info) = type_will_not_throw.
+check_type_2(_, _, type_cat_void) = type_will_not_throw.
+check_type_2(_, _, type_cat_dummy) = type_will_not_throw.
 
-check_type_2(_, _, variable_type) = type_conditional.
+check_type_2(_, _, type_cat_variable) = type_conditional.
 
-check_type_2(ModuleInfo, Type, tuple_type) = check_user_type(ModuleInfo, Type).
-check_type_2(ModuleInfo, Type, enum_type)  = check_user_type(ModuleInfo, Type).
-check_type_2(ModuleInfo, Type, user_ctor_type) =
+check_type_2(ModuleInfo, Type, type_cat_tuple) =
+    check_user_type(ModuleInfo, Type).
+check_type_2(ModuleInfo, Type, type_cat_enum) =
+    check_user_type(ModuleInfo, Type).
+check_type_2(ModuleInfo, Type, type_cat_user_ctor) =
     check_user_type(ModuleInfo, Type).
 
 :- func check_user_type(module_info, mer_type) = type_status.
@@ -697,11 +699,9 @@ check_user_type(ModuleInfo, Type) = Status :-
             type_has_user_defined_equality_pred(ModuleInfo, Type,
                 _UnifyCompare)
         ->
-            % XXX We can do better than this by examining
-            % what these preds actually do.  Something
-            % similar needs to be sorted out for termination
-            % analysis as well, so we'll wait until that is
-            % done.
+            % XXX We can do better than this by examining what these preds
+            % actually do. Something similar needs to be sorted out for
+            % termination analysis as well, so we'll wait until that is done.
             Status = type_may_throw
         ;
             Status = check_types(ModuleInfo, Args)

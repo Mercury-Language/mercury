@@ -63,6 +63,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.inlining.
 
@@ -2215,63 +2216,63 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
         NeedIntCast) :-
     TypeCategory = classify_type(ModuleInfo, Type),
     (
-        TypeCategory = int_type,
+        TypeCategory = type_cat_int,
         EqvType = Type,
         NeedIntCast = no
     ;
-        TypeCategory = char_type,
+        TypeCategory = type_cat_char,
         EqvType = Type,
         NeedIntCast = no
     ;
-        TypeCategory = str_type,
+        TypeCategory = type_cat_string,
         EqvType = Type,
         NeedIntCast = no
     ;
-        TypeCategory = float_type,
+        TypeCategory = type_cat_float,
         EqvType = Type,
         NeedIntCast = no
     ;
-        TypeCategory = dummy_type,
+        TypeCategory = type_cat_dummy,
         unexpected(this_file,
             "dummy type in find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = void_type,
+        TypeCategory = type_cat_void,
         unexpected(this_file,
             "void type in find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = higher_order_type,
+        TypeCategory = type_cat_higher_order,
         unexpected(this_file, "higher_order type in " ++
             "find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = tuple_type,
+        TypeCategory = type_cat_tuple,
         unexpected(this_file,
             "tuple type in find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = enum_type,
+        TypeCategory = type_cat_enum,
         construct_type(unqualified("int") - 0, [], EqvType),
         NeedIntCast = yes
     ;
-        TypeCategory = variable_type,
+        TypeCategory = type_cat_variable,
         unexpected(this_file,
             "var type in find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = user_ctor_type,
+        TypeCategory = type_cat_user_ctor,
         unexpected(this_file,
             "user type in find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = type_info_type,
+        TypeCategory = type_cat_type_info,
         unexpected(this_file, "type_info type in " ++
             "find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = type_ctor_info_type,
+        TypeCategory = type_cat_type_ctor_info,
         unexpected(this_file, "type_ctor_info type in " ++
             "find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = typeclass_info_type,
+        TypeCategory = type_cat_typeclass_info,
         unexpected(this_file, "typeclass_info type in " ++
             "find_builtin_type_with_equivalent_compare")
     ;
-        TypeCategory = base_typeclass_info_type,
+        TypeCategory = type_cat_base_typeclass_info,
         unexpected(this_file, "base_typeclass_info type in " ++
             "find_builtin_type_with_equivalent_compare")
     ).
@@ -2728,14 +2729,14 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     tvarset_merge_renaming(CallerTypeVarSet, TypeVarSet0, TypeVarSet,
         TypeRenaming),
     apply_variable_renaming_to_tvar_kind_map(TypeRenaming, KindMap0, KindMap),
-    apply_variable_renaming_to_type_map(TypeRenaming, VarTypes0, VarTypes1),
-    apply_variable_renaming_to_type_list(TypeRenaming, OriginalArgTypes0,
-        OriginalArgTypes1),
+    apply_variable_renaming_to_vartypes(TypeRenaming, VarTypes0, VarTypes1),
+    apply_variable_renaming_to_type_list(TypeRenaming,
+        OriginalArgTypes0, OriginalArgTypes1),
 
     % The real set of existentially quantified variables may be
     % smaller, but this is OK.
-    apply_variable_renaming_to_tvar_list(TypeRenaming, ExistQVars0,
-        ExistQVars1),
+    apply_variable_renaming_to_tvar_list(TypeRenaming,
+        ExistQVars0, ExistQVars1),
 
     inlining.get_type_substitution(OriginalArgTypes1, CallerArgTypes0,
         CallerHeadParams, ExistQVars1, TypeSubn),
@@ -2746,9 +2747,9 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
             ExistQType = variable(ExistQVar, _)
         ), ExistQTypes),
 
-    apply_rec_subst_to_type_map(TypeSubn, VarTypes1, VarTypes2),
-    apply_rec_subst_to_type_list(TypeSubn, OriginalArgTypes1,
-        OriginalArgTypes),
+    apply_rec_subst_to_vartypes(TypeSubn, VarTypes1, VarTypes2),
+    apply_rec_subst_to_type_list(TypeSubn,
+        OriginalArgTypes1, OriginalArgTypes),
     proc_info_set_vartypes(VarTypes2, !NewProcInfo),
 
     % XXX kind inference: we assume vars have kind `star'.

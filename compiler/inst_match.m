@@ -54,7 +54,6 @@
     %
 :- pred inst_expand(module_info::in, mer_inst::in, mer_inst::out) is det.
 
-
     % inst_expand_and_remove_constrained_inst_vars is the same as inst_expand
     % except that it also removes constrained_inst_vars from the top level,
     % replacing them with the constraining inst.
@@ -166,7 +165,6 @@
     %
 :- pred inst_matches_binding_allow_any_any(mer_inst::in, mer_inst::in,
     mer_type::in, module_info::in) is semidet.
-
 
 %-----------------------------------------------------------------------------%
 
@@ -310,6 +308,7 @@
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module int.
@@ -2017,21 +2016,21 @@ type_may_contain_solver_type(Type, ModuleInfo) :-
 
 :- func type_may_contain_solver_type_2(type_category) = bool.
 
-type_may_contain_solver_type_2(int_type) = no.
-type_may_contain_solver_type_2(char_type) = no.
-type_may_contain_solver_type_2(str_type) = no.
-type_may_contain_solver_type_2(float_type) = no.
-type_may_contain_solver_type_2(higher_order_type) = no.
-type_may_contain_solver_type_2(tuple_type) = yes.
-type_may_contain_solver_type_2(enum_type) = no.
-type_may_contain_solver_type_2(dummy_type) = no.
-type_may_contain_solver_type_2(variable_type) = yes.
-type_may_contain_solver_type_2(type_info_type) = no.
-type_may_contain_solver_type_2(type_ctor_info_type) = no.
-type_may_contain_solver_type_2(typeclass_info_type) = no.
-type_may_contain_solver_type_2(base_typeclass_info_type) = no.
-type_may_contain_solver_type_2(void_type) = no.
-type_may_contain_solver_type_2(user_ctor_type) = yes.
+type_may_contain_solver_type_2(type_cat_int) = no.
+type_may_contain_solver_type_2(type_cat_char) = no.
+type_may_contain_solver_type_2(type_cat_string) = no.
+type_may_contain_solver_type_2(type_cat_float) = no.
+type_may_contain_solver_type_2(type_cat_higher_order) = no.
+type_may_contain_solver_type_2(type_cat_tuple) = yes.
+type_may_contain_solver_type_2(type_cat_enum) = no.
+type_may_contain_solver_type_2(type_cat_dummy) = no.
+type_may_contain_solver_type_2(type_cat_variable) = yes.
+type_may_contain_solver_type_2(type_cat_type_info) = no.
+type_may_contain_solver_type_2(type_cat_type_ctor_info) = no.
+type_may_contain_solver_type_2(type_cat_typeclass_info) = no.
+type_may_contain_solver_type_2(type_cat_base_typeclass_info) = no.
+type_may_contain_solver_type_2(type_cat_void) = no.
+type_may_contain_solver_type_2(type_cat_user_ctor) = yes.
 
 %-----------------------------------------------------------------------------%
 

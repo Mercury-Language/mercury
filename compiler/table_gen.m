@@ -1189,7 +1189,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         % that uses labels.  The original goal would otherwise be duplicated
         % by the transformation, resulting in duplicate label errors from
         % the C compiler.
-        % 
+        %
         clone_proc_and_create_call(PredInfo, ProcId, CallExpr, ModuleInfo0,
             ModuleInfo),
         NewGoal = CallExpr - OrigGoalInfo,
@@ -1813,7 +1813,7 @@ clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
     % expression which calls the new procedure with its formal arguments as the
     % actual arguments.
     %
-:- pred clone_proc_and_create_call(pred_info::in, proc_id::in, 
+:- pred clone_proc_and_create_call(pred_info::in, proc_id::in,
     hlds_goal_expr::out, module_info::in, module_info::out) is det.
 
 clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
@@ -1827,7 +1827,7 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
         proc_info_inferred_determinism(ProcInfo, ProcDetism),
         proc_info_goal(ProcInfo, ProcGoal),
         proc_info_rtti_varmaps(ProcInfo, ProcRttiVarMaps),
-        proc_info_create(ProcContext, ProcVarSet, ProcVarTypes, 
+        proc_info_create(ProcContext, ProcVarSet, ProcVarTypes,
                 ProcHeadVars, ProcInstVarSet, ProcHeadModes,
                 ProcDetism, ProcGoal, ProcRttiVarMaps, address_is_not_taken,
                 NewProcInfo),
@@ -1835,7 +1835,7 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
         OrigPredName = pred_info_name(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         pred_info_context(PredInfo, PredContext),
-        NewPredName = qualified(ModuleName, "OutlinedForIOTablingFrom_" ++ 
+        NewPredName = qualified(ModuleName, "OutlinedForIOTablingFrom_" ++
             OrigPredName),
         pred_info_arg_types(PredInfo, PredArgTypes),
         pred_info_typevarset(PredInfo, PredTypeVarSet),
@@ -1844,10 +1844,10 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
         pred_info_get_assertions(PredInfo, PredAssertions),
         pred_info_get_aditi_owner(PredInfo, AditiOwner),
         pred_info_get_markers(PredInfo, Markers),
-        pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext, 
-                created(io_tabling), local, Markers, PredArgTypes, 
+        pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext,
+                created(io_tabling), local, Markers, PredArgTypes,
                 PredTypeVarSet, PredExistQVars, PredClassContext,
-                PredAssertions, AditiOwner, NewProcInfo, NewProcId, 
+                PredAssertions, AditiOwner, NewProcInfo, NewProcId,
                 NewPredInfo),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
 		predicate_table_insert(NewPredInfo, NewPredId,
@@ -2229,7 +2229,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, Prefix,
     BindNextTableVar = ground_vars([NextTableVar]),
     ArgName = arg_name(VarSeqNum),
     ForeignArg = foreign_arg(ArgVar, yes(ArgName - in_mode), Type),
-    ( TypeCat = enum_type ->
+    ( TypeCat = type_cat_enum ->
         ( type_to_ctor_and_args(Type, TypeCtor, _) ->
             module_info_get_type_table(ModuleInfo, TypeDefnTable),
             map__lookup(TypeDefnTable, TypeCtor, TypeDefn),
@@ -2262,7 +2262,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, Prefix,
             unexpected(this_file,
                 "gen_lookup_call_for_type: unexpected enum type")
         )
-    ; TypeCat = dummy_type ->
+    ; TypeCat = type_cat_dummy ->
         generate_call("unify", det, [TableVar, NextTableVar],
             impure_code, BindNextTableVar, ModuleInfo, Context, SetEqualGoal),
         Goals = [SetEqualGoal],
@@ -2278,7 +2278,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, Prefix,
             prog_type__vars(Type, TypeVars),
             (
                 ArgTablingMethod = arg_value,
-                ( 
+                (
                     TypeVars = [],
                     LookupPredName = "table_lookup_insert_user",
                     Step = table_trie_step_user(Type)
@@ -2289,7 +2289,7 @@ gen_lookup_call_for_type(ArgTablingMethod, TypeCat, Type, ArgVar, Prefix,
                 )
             ;
                 ArgTablingMethod = arg_addr,
-                ( 
+                (
                     TypeVars = [],
                     LookupPredName = "table_lookup_insert_user_fast_loose",
                     Step = table_trie_step_user_fast_loose(Type)
@@ -2657,7 +2657,7 @@ gen_save_call_for_type(TypeCat, Type, TableVar, Var, Offset, OffsetVar,
     ModuleInfo = !.TableInfo ^ table_module_info,
     Name = arg_name(Offset),
     ForeignArg = foreign_arg(Var, yes(Name - in_mode), Type),
-    ( type_util__type_is_io_state(Type) ->
+    ( type_is_io_state(Type) ->
         SavePredName = "table_save_io_state_answer",
         generate_call(SavePredName, det, [TableVar, OffsetVar, Var],
             impure_code, [], ModuleInfo, Context, Goal),
@@ -2917,7 +2917,7 @@ gen_restore_call_for_type(TypeCat, Type, OrigInstmapDelta, TableVar, Var,
         Offset, OffsetVar, ModuleInfo, Context, Goal, Var - Inst, Arg,
         CodeStr) :-
     Name = "restore_arg" ++ int_to_string(Offset),
-    ( type_util__type_is_io_state(Type) ->
+    ( type_is_io_state(Type) ->
         RestorePredName = "table_restore_io_state_answer",
         ArgType = Type
     ; builtin_type(TypeCat) = no ->
@@ -3336,86 +3336,91 @@ goal_info_init_hide(NonLocals, InstmapDelta, Detism, Purity, Context,
 
 %-----------------------------------------------------------------------------%
 
-% For backward compatibility, we treat type_info_type as user_type. This
-% used to make the tabling of type_infos more expensive than necessary, since
-% we essentially tabled the information in the type_info twice, once by tabling
-% the type represented by the type_info (since this was the value of the type
-% argument of the type constructor private_builtin.type_info/1), and then
-% tabling the type_info itself. However, since we made type_info have arity
-% zero, this overhead should be gone.
-
+    % For backward compatibility, we treat type_info_type as user_type.
+    % This used to make the tabling of type_infos more expensive than
+    % necessary, since we essentially tabled the information in the type_info
+    % twice, once by tabling the type represented by the type_info (since this
+    % was the value of the type argument of the type constructor
+    % private_builtin.type_info/1), and then tabling the type_info itself.
+    % However, since we made type_info have arity zero, this overhead
+    % should be gone.
+    %
 :- func builtin_type(type_category) = bool.
 
-builtin_type(int_type) = yes.
-builtin_type(char_type) = yes.
-builtin_type(str_type) = yes.
-builtin_type(float_type) = yes.
-builtin_type(void_type) = yes.
-builtin_type(type_info_type) = no.
-builtin_type(type_ctor_info_type) = yes.
-builtin_type(typeclass_info_type) = yes.
-builtin_type(base_typeclass_info_type) = yes.
-builtin_type(higher_order_type) = no.
-builtin_type(enum_type) = no.
-builtin_type(dummy_type) = no.
-builtin_type(variable_type) = no.
-builtin_type(tuple_type) = no.
-builtin_type(user_ctor_type) = no.
+builtin_type(type_cat_int) = yes.
+builtin_type(type_cat_char) = yes.
+builtin_type(type_cat_string) = yes.
+builtin_type(type_cat_float) = yes.
+builtin_type(type_cat_void) = yes.
+builtin_type(type_cat_type_info) = no.
+builtin_type(type_cat_type_ctor_info) = yes.
+builtin_type(type_cat_typeclass_info) = yes.
+builtin_type(type_cat_base_typeclass_info) = yes.
+builtin_type(type_cat_higher_order) = no.
+builtin_type(type_cat_enum) = no.
+builtin_type(type_cat_dummy) = no.
+builtin_type(type_cat_variable) = no.
+builtin_type(type_cat_tuple) = no.
+builtin_type(type_cat_user_ctor) = no.
 
-% Figure out what kind of data structure implements the lookup table for values
-% of a given builtin type.
-
+    % Figure out what kind of data structure implements the lookup table
+    % for values of a given builtin type.
+    %
 :- pred lookup_tabling_category(type_category::in,
     maybe(pair(string, table_trie_step))::out) is det.
 
-lookup_tabling_category(int_type,   yes("int" -    table_trie_step_int)).
-lookup_tabling_category(char_type,  yes("char" -   table_trie_step_char)).
-lookup_tabling_category(str_type,   yes("string" - table_trie_step_string)).
-lookup_tabling_category(float_type, yes("float" -  table_trie_step_float)).
-lookup_tabling_category(void_type, _) :-
+lookup_tabling_category(type_cat_int,
+        yes("int" -    table_trie_step_int)).
+lookup_tabling_category(type_cat_char,
+        yes("char" -   table_trie_step_char)).
+lookup_tabling_category(type_cat_string,
+        yes("string" - table_trie_step_string)).
+lookup_tabling_category(type_cat_float,
+        yes("float" -  table_trie_step_float)).
+lookup_tabling_category(type_cat_void, _) :-
     unexpected(this_file, "lookup_tabling_category: void").
-lookup_tabling_category(dummy_type, _) :-
+lookup_tabling_category(type_cat_dummy, _) :-
     unexpected(this_file, "lookup_tabling_category: dummy_type").
-lookup_tabling_category(type_info_type,
+lookup_tabling_category(type_cat_type_info,
         yes("typeinfo" - table_trie_step_typeinfo)).
-lookup_tabling_category(type_ctor_info_type,
+lookup_tabling_category(type_cat_type_ctor_info,
         yes("typeinfo" - table_trie_step_typeinfo)).
-lookup_tabling_category(typeclass_info_type, _) :-
+lookup_tabling_category(type_cat_typeclass_info, _) :-
     unexpected(this_file, "lookup_tabling_category: typeclass_info_type").
-lookup_tabling_category(base_typeclass_info_type, _) :-
+lookup_tabling_category(type_cat_base_typeclass_info, _) :-
     unexpected(this_file, "lookup_tabling_category: base_typeclass_info_type").
-lookup_tabling_category(enum_type, no).
-lookup_tabling_category(higher_order_type, no).
-lookup_tabling_category(tuple_type, no).
-lookup_tabling_category(variable_type, no).
-lookup_tabling_category(user_ctor_type, no).
+lookup_tabling_category(type_cat_enum, no).
+lookup_tabling_category(type_cat_higher_order, no).
+lookup_tabling_category(type_cat_tuple, no).
+lookup_tabling_category(type_cat_variable, no).
+lookup_tabling_category(type_cat_user_ctor, no).
 
-% Figure out which save and restore predicates in library/table_builtin.m
-% we need to use for values of types belonging the type category given by
-% the first argument. The returned value replaces CAT in table_save_CAT_answer
-% and table_restore_CAT_answer.
+    % Figure out which save and restore predicates in library/table_builtin.m
+    % we need to use for values of types belonging the type category given by
+    % the first argument. The returned value replaces CAT in
+    % table_save_CAT_answer and table_restore_CAT_answer.
 
 :- pred type_save_category(type_category::in, string::out) is det.
 
-type_save_category(enum_type,       "enum").
-type_save_category(int_type,        "int").
-type_save_category(char_type,       "char").
-type_save_category(str_type,        "string").
-type_save_category(float_type,      "float").
-type_save_category(higher_order_type,   "pred").
-type_save_category(tuple_type,      "any").
-type_save_category(user_ctor_type,  "any").     % could do better
-type_save_category(variable_type,   "any").     % could do better
-type_save_category(dummy_type, _) :-
+type_save_category(type_cat_enum,         "enum").
+type_save_category(type_cat_int,          "int").
+type_save_category(type_cat_char,         "char").
+type_save_category(type_cat_string,       "string").
+type_save_category(type_cat_float,        "float").
+type_save_category(type_cat_higher_order, "pred").
+type_save_category(type_cat_tuple,        "any").
+type_save_category(type_cat_user_ctor,    "any").     % could do better
+type_save_category(type_cat_variable,     "any").     % could do better
+type_save_category(type_cat_dummy, _) :-
     unexpected(this_file, "type_save_category: dummy").
-type_save_category(void_type, _) :-
+type_save_category(type_cat_void, _) :-
     unexpected(this_file, "type_save_category: void").
-type_save_category(type_info_type, "any").      % could do better
-type_save_category(type_ctor_info_type, _) :-
+type_save_category(type_cat_type_info, "any").      % could do better
+type_save_category(type_cat_type_ctor_info, _) :-
     unexpected(this_file, "type_save_category: type_ctor_info").
-type_save_category(typeclass_info_type, _) :-
+type_save_category(type_cat_typeclass_info, _) :-
     unexpected(this_file, "type_save_category: typeclass_info").
-type_save_category(base_typeclass_info_type, _) :-
+type_save_category(type_cat_base_typeclass_info, _) :-
     unexpected(this_file, "type_save_category: base_typeclass_info").
 
 %-----------------------------------------------------------------------------%
@@ -3443,37 +3448,27 @@ table_gen__make_type_info_var(Type, Context, !VarTypes, !VarSet, !TableInfo,
 
 table_gen__make_type_info_vars(Types, Context, !VarTypes, !VarSet, !TableInfo,
         TypeInfoVars, TypeInfoGoals) :-
-    %
-    % Extract the information from table_info
-    %
+    % Extract the information from table_info.
     table_info_extract(!.TableInfo, ModuleInfo0, PredInfo0, ProcInfo0),
 
-    %
     % Put the varset and vartypes from the simplify_info
-    % back in the proc_info
-    %
+    % back in the proc_info.
     proc_info_set_vartypes(!.VarTypes, ProcInfo0, ProcInfo1),
     proc_info_set_varset(!.VarSet, ProcInfo1, ProcInfo2),
 
-    %
-    % Call polymorphism.m to create the type_infos
-    %
+    % Call polymorphism.m to create the type_infos.
     create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
     polymorphism__make_type_info_vars(Types, Context,
         TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo),
 
-    %
-    % Get the new varset and vartypes from the proc_info
-    %
+    % Get the new varset and vartypes from the proc_info.
     proc_info_vartypes(ProcInfo, !:VarTypes),
     proc_info_varset(ProcInfo, !:VarSet),
 
-    %
     % Put the new module_info, pred_info, and proc_info back in the
     % table_info.
-    %
     table_info_init(ModuleInfo, PredInfo, ProcInfo, !:TableInfo).
 
 %-----------------------------------------------------------------------------%
@@ -3494,7 +3489,7 @@ table_gen__var_mode_is_io_state(VarTypes, Var - _) :-
 
 table_gen__var_is_io_state(VarTypes, Var) :-
     map__lookup(VarTypes, Var, VarType),
-    type_util__type_is_io_state(VarType).
+    type_is_io_state(VarType).
 
 %-----------------------------------------------------------------------------%
 

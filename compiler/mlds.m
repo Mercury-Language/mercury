@@ -333,13 +333,13 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
@@ -1680,6 +1680,7 @@
 :- implementation.
 
 :- import_module backend_libs.foreign.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

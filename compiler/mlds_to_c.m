@@ -1165,7 +1165,7 @@ mlds_output_type_forward_decl(Indent, Type, !IO) :-
             Kind \= mlds__enum,
             ClassType = Type
         ;
-            Type = mercury_type(MercuryType, user_ctor_type, _),
+            Type = mercury_type(MercuryType, type_cat_user_ctor, _),
             type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes),
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
             ClassType = mlds__class_type(ClassName, ClassArity, mlds__class)
@@ -1846,7 +1846,7 @@ mlds_output_type_prefix(mercury_array_type(_ElemType), !IO) :-
         HighLevelData = yes,
         mlds_output_mercury_user_type_name(
             qualified(unqualified("array"), "array") - 1,
-            user_ctor_type, !IO)
+            type_cat_user_ctor, !IO)
     ;
         HighLevelData = no,
         io__write_string("MR_ArrayPtr", !IO)
@@ -1938,48 +1938,48 @@ mlds_output_type_prefix(mlds__unknown_type, !IO) :-
 
 mlds_output_mercury_type_prefix(Type, TypeCategory, !IO) :-
     (
-        TypeCategory = char_type,
+        TypeCategory = type_cat_char,
         io__write_string("MR_Char", !IO)
     ;
-        TypeCategory = int_type,
+        TypeCategory = type_cat_int,
         io__write_string("MR_Integer", !IO)
     ;
-        TypeCategory = str_type,
+        TypeCategory = type_cat_string,
         io__write_string("MR_String", !IO)
     ;
-        TypeCategory = float_type,
+        TypeCategory = type_cat_float,
         io__write_string("MR_Float", !IO)
     ;
-        TypeCategory = void_type,
+        TypeCategory = type_cat_void,
         io__write_string("MR_Word", !IO)
     ;
-        TypeCategory = variable_type,
+        TypeCategory = type_cat_variable,
         io__write_string("MR_Box", !IO)
     ;
-        TypeCategory = type_info_type,
+        TypeCategory = type_cat_type_info,
         % runtime/mercury_hlc_types requires typeclass_infos
         % to be treated as user defined types.
-        mlds_output_mercury_user_type_prefix(Type, user_ctor_type, !IO)
+        mlds_output_mercury_user_type_prefix(Type, type_cat_user_ctor, !IO)
     ;
-        TypeCategory = type_ctor_info_type,
+        TypeCategory = type_cat_type_ctor_info,
         % runtime/mercury_hlc_types requires typeclass_infos
         % to be treated as user defined types.
-        mlds_output_mercury_user_type_prefix(Type, user_ctor_type, !IO)
+        mlds_output_mercury_user_type_prefix(Type, type_cat_user_ctor, !IO)
     ;
-        TypeCategory = typeclass_info_type,
+        TypeCategory = type_cat_typeclass_info,
         % runtime/mercury_hlc_types requires typeclass_infos
         % to be treated as user defined types.
-        mlds_output_mercury_user_type_prefix(Type, user_ctor_type, !IO)
+        mlds_output_mercury_user_type_prefix(Type, type_cat_user_ctor, !IO)
     ;
-        TypeCategory = base_typeclass_info_type,
+        TypeCategory = type_cat_base_typeclass_info,
         % runtime/mercury_hlc_types requires typeclass_infos
         % to be treated as user defined types.
-        mlds_output_mercury_user_type_prefix(Type, user_ctor_type, !IO)
+        mlds_output_mercury_user_type_prefix(Type, type_cat_user_ctor, !IO)
     ;
-        TypeCategory = tuple_type,
+        TypeCategory = type_cat_tuple,
         io__write_string("MR_Tuple", !IO)
     ;
-        TypeCategory = higher_order_type,
+        TypeCategory = type_cat_higher_order,
         globals__io_lookup_bool_option(highlevel_data, HighLevelData, !IO),
         (
             HighLevelData = yes,
@@ -1989,13 +1989,13 @@ mlds_output_mercury_type_prefix(Type, TypeCategory, !IO) :-
             io__write_string("MR_Word", !IO)
         )
     ;
-        TypeCategory = enum_type,
+        TypeCategory = type_cat_enum,
         mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
     ;
-        TypeCategory = dummy_type,
+        TypeCategory = type_cat_dummy,
         mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
     ;
-        TypeCategory = user_ctor_type,
+        TypeCategory = type_cat_user_ctor,
         mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO)
     ).
 
@@ -2022,7 +2022,7 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO) :-
 
 mlds_output_mercury_user_type_name(TypeCtor, TypeCategory, !IO) :-
     ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-    ( TypeCategory = enum_type ->
+    ( TypeCategory = type_cat_enum ->
         MLDS_Type = mlds__class_type(ClassName, ClassArity, mlds__enum)
     ;
         MLDS_Type = mlds__ptr_type(
@@ -3266,7 +3266,7 @@ mlds_output_cast(Type, !IO) :-
 mlds_output_boxed_rval(Type, Exprn, !IO) :-
     (
         ( Type = mlds__generic_type
-        ; Type = mlds__mercury_type(_, variable_type, _)
+        ; Type = mlds__mercury_type(_, type_cat_variable, _)
         )
     ->
         % It already has type MR_Box, so no cast is needed.

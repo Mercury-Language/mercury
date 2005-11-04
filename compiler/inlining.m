@@ -144,29 +144,24 @@
 
 :- implementation.
 
-% Parse tree modules
-:- import_module parse_tree.prog_data.
-
-% HLDS modules
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
-:- import_module transform_hlds.complexity.
-:- import_module transform_hlds.dead_proc_elim.
-:- import_module transform_hlds.dependency_graph.
-
-% Misc
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
+:- import_module transform_hlds.complexity.
+:- import_module transform_hlds.dead_proc_elim.
+:- import_module transform_hlds.dependency_graph.
 
-% Standard library modules
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
@@ -705,8 +700,8 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 
     tvarset_merge_renaming(TypeVarSet0, CalleeTypeVarSet, TypeVarSet,
         TypeRenaming),
-    apply_variable_renaming_to_type_map(TypeRenaming, CalleeVarTypes0,
-        CalleeVarTypes1),
+    apply_variable_renaming_to_vartypes(TypeRenaming,
+        CalleeVarTypes0, CalleeVarTypes1),
 
     % next, compute the type substitution and then apply it
 
@@ -726,17 +721,19 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     inlining__get_type_substitution(HeadTypes, ArgTypes, HeadTypeParams,
         CalleeExistQVars, TypeSubn),
 
-    % handle the common case of non-existentially typed preds specially,
+    % Handle the common case of non-existentially typed preds specially,
     % since we can do things more efficiently in that case
-    ( CalleeExistQVars = [] ->
-        % update types in callee only
-        apply_rec_subst_to_type_map(TypeSubn, CalleeVarTypes1, CalleeVarTypes),
+    (
+        CalleeExistQVars = [],
+        % Update types in callee only.
+        apply_rec_subst_to_vartypes(TypeSubn, CalleeVarTypes1, CalleeVarTypes),
         VarTypes1 = VarTypes0
     ;
-        % update types in callee
-        apply_rec_subst_to_type_map(TypeSubn, CalleeVarTypes1, CalleeVarTypes),
-        % update types in caller
-        apply_rec_subst_to_type_map(TypeSubn, VarTypes0, VarTypes1)
+        CalleeExistQVars = [_ | _],
+        % Update types in callee.
+        apply_rec_subst_to_vartypes(TypeSubn, CalleeVarTypes1, CalleeVarTypes),
+        % Update types in caller.
+        apply_rec_subst_to_vartypes(TypeSubn, VarTypes0, VarTypes1)
     ),
 
     % Now rename apart the variables in the called goal.

@@ -48,7 +48,6 @@
 :- interface.
 
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
@@ -67,6 +66,7 @@
 :- import_module backend_libs.switch_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module libs.globals.
 :- import_module libs.options.

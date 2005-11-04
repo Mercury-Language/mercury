@@ -391,6 +391,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -2630,23 +2631,23 @@ get_special_proc_det(Type, SpecialPredId, ModuleInfo, PredName,
 
 :- func get_category_name(type_category) = maybe(string).
 
-get_category_name(int_type) = yes("int").
-get_category_name(char_type) = yes("int").
-get_category_name(enum_type) = no.
-get_category_name(dummy_type) = no.
-get_category_name(float_type) = yes("float").
-get_category_name(str_type) = yes("string").
-get_category_name(higher_order_type) = yes("pred").
-get_category_name(tuple_type) = yes("tuple").
-get_category_name(variable_type) = _ :-
+get_category_name(type_cat_int) = yes("int").
+get_category_name(type_cat_char) = yes("int").
+get_category_name(type_cat_enum) = no.
+get_category_name(type_cat_dummy) = no.
+get_category_name(type_cat_float) = yes("float").
+get_category_name(type_cat_string) = yes("string").
+get_category_name(type_cat_higher_order) = yes("pred").
+get_category_name(type_cat_tuple) = yes("tuple").
+get_category_name(type_cat_variable) = _ :-
     unexpected(this_file, "get_category_name: variable type").
-get_category_name(void_type) = _ :-
+get_category_name(type_cat_void) = _ :-
     unexpected(this_file, "get_category_name: void_type").
-get_category_name(user_ctor_type) = no.
-get_category_name(type_info_type) = no.
-get_category_name(type_ctor_info_type) = no.
-get_category_name(typeclass_info_type) = no.
-get_category_name(base_typeclass_info_type) = no.
+get_category_name(type_cat_user_ctor) = no.
+get_category_name(type_cat_type_info) = no.
+get_category_name(type_cat_type_ctor_info) = no.
+get_category_name(type_cat_typeclass_info) = no.
+get_category_name(type_cat_base_typeclass_info) = no.
 
 init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
         !VarSet, !VarTypes, !RttiVarMaps) :-

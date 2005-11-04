@@ -98,7 +98,6 @@
 :- import_module backend_libs.foreign.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module check_hlds.typecheck.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -115,6 +114,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.inlining.
 
@@ -423,7 +423,7 @@ check_for_ho_input_args(ModuleInfo, VarTypes,
     (
         mode_is_input(ModuleInfo, ArgMode),
         map__lookup(VarTypes, HeadVar, Type),
-        classify_type(ModuleInfo, Type) = higher_order_type
+        classify_type(ModuleInfo, Type) = type_cat_higher_order
     ;
         check_for_ho_input_args(ModuleInfo, VarTypes, HeadVars, ArgModes)
     ).
@@ -866,7 +866,7 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         InstanceMethodDefn0 = name(InstanceMethodName0),
         PredOrFunc = predicate,
         init_markers(Markers),
-        typecheck__resolve_pred_overloading(ModuleInfo, Markers,
+        resolve_pred_overloading(ModuleInfo, Markers,
             MethodCallArgTypes, MethodCallTVarSet,
             InstanceMethodName0, InstanceMethodName, PredId),
         PredIds = [PredId | PredIds0],
@@ -932,9 +932,8 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
         predicate_table_search_func_sym_arity(PredicateTable,
             may_be_partially_qualified, InstanceMethodName0,
             MethodArity, PredIds),
-        typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-            MethodCallTVarSet, MethodCallArgTypes,
-            PredId, InstanceMethodFuncName)
+        find_matching_pred_id(ModuleInfo, PredIds, MethodCallTVarSet,
+            MethodCallArgTypes, PredId, InstanceMethodFuncName)
     ->
         TypeCtors = [],
         MaybePredId = yes(PredId),
@@ -1101,7 +1100,7 @@ resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
     pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
     init_markers(Markers0),
     add_marker(calls_are_fully_qualified, Markers0, Markers),
-    typecheck__resolve_pred_overloading(ModuleInfo, Markers, ArgTypes,
+    resolve_pred_overloading(ModuleInfo, Markers, ArgTypes,
         TVarSet, Pred0, Pred, UserEqPredId),
     add_proc(UserEqPredId, _, !Info).
 

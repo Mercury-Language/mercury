@@ -65,6 +65,7 @@
 :- import_module ml_backend.ml_unify_gen.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -863,7 +864,7 @@ gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo) = MLDS_Defns :-
 gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames) = MLDS_Defn :-
     StrType = builtin(string),
     Init = gen_init_array(gen_init_maybe(
-            mercury_type(StrType, str_type, non_foreign_type(StrType)),
+            mercury_type(StrType, type_cat_string, non_foreign_type(StrType)),
             gen_init_string), MaybeNames),
     RttiName = field_names(Ordinal),
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).

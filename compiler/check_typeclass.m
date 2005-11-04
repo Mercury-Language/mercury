@@ -102,6 +102,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -688,7 +689,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     apply_variable_renaming_to_type_list(SquashSubst, ArgTypes1, ArgTypes),
     apply_variable_renaming_to_prog_constraints(SquashSubst,
         ClassMethodClassContext1, ClassMethodClassContext),
-    apply_partial_map_to_list(ExistQVars0, SquashSubst, ExistQVars),
+    apply_partial_map_to_list(SquashSubst, ExistQVars0, ExistQVars),
     apply_variable_renaming_to_type_list(SquashSubst, InstanceTypes1,
         InstanceTypes),
     apply_variable_renaming_to_prog_constraint_list(SquashSubst,

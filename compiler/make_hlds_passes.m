@@ -98,7 +98,6 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.make_hlds.add_class.
@@ -951,8 +950,8 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
             ProcInfos = map.values(ProcTable),
             (
                 ArgTypes = [Arg1Type, Arg2Type],
-                type_util.type_is_io_state(Arg1Type),
-                type_util.type_is_io_state(Arg2Type),
+                type_is_io_state(Arg1Type),
+                type_is_io_state(Arg2Type),
                 list.member(ProcInfo, ProcInfos),
                 proc_info_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
                 MaybeHeadModes = yes(HeadModes),
@@ -1060,8 +1059,8 @@ add_item_clause(finalise(Origin, SymName, Arity),
             ProcInfos = map.values(ProcTable),
             (
                 ArgTypes = [Arg1Type, Arg2Type],
-                type_util.type_is_io_state(Arg1Type),
-                type_util.type_is_io_state(Arg2Type),
+                type_is_io_state(Arg1Type),
+                type_is_io_state(Arg2Type),
                 list.member(ProcInfo, ProcInfos),
                 proc_info_maybe_declared_argmodes(ProcInfo, MaybeHeadModes),
                 MaybeHeadModes = yes(HeadModes),

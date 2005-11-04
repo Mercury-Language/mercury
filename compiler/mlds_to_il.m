@@ -1157,7 +1157,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember,
         UnivSymName = qualified(unqualified("std_util"), "univ"),
         UnivMercuryType = defined(UnivSymName, [], star),
         UnivMLDSType = mercury_type(UnivMercuryType,
-            user_ctor_type, non_foreign_type(UnivMercuryType)),
+            type_cat_user_ctor, non_foreign_type(UnivMercuryType)),
         UnivType = mlds_type_to_ilds_type(DataRep, UnivMLDSType),
 
         RenameNode = (func(N) = list__map(RenameRets, N)),
@@ -2000,7 +2000,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
             Type = mlds__class_type(_, _, mlds__class)
         ;
             DataRep ^ highlevel_data = yes,
-            Type = mlds__mercury_type(MercuryType, user_ctor_type, _),
+            Type = mlds__mercury_type(MercuryType, type_cat_user_ctor, _),
             \+ type_needs_lowlevel_rep(il, MercuryType)
         )
     ->
@@ -2518,7 +2518,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
                 % XXX Consider whether this is the right way to handle
                 % type_infos, type_ctor_infos, typeclass_infos and
                 % base_typeclass_infos.
-                ( TypeCategory = user_ctor_type
+                ( TypeCategory = type_cat_user_ctor
                 ; is_introduced_type_info_type_category(TypeCategory) = yes
                 )
             ->
@@ -3001,7 +3001,7 @@ mlds_type_to_ilds_simple_type(DataRep, MLDSType) = SimpleType :-
 mlds_type_to_ilds_type(_, mlds__rtti_type(_RttiName)) = il_object_array_type.
 
 mlds_type_to_ilds_type(DataRep, mlds__mercury_array_type(ElementType)) =
-    ( ElementType = mlds__mercury_type(_, variable_type, _) ->
+    ( ElementType = mlds__mercury_type(_, type_cat_variable, _) ->
         il_generic_array_type
     ;
         ilds__type([], '[]'(mlds_type_to_ilds_type(DataRep,
@@ -3091,26 +3091,27 @@ mlds_type_to_ilds_type(_, mlds__unknown_type) = _ :-
 :- func mlds_mercury_type_to_ilds_type(il_data_rep, mer_type,
     type_category) = ilds__type.
 
-mlds_mercury_type_to_ilds_type(_, _, int_type) =   ilds__type([], int32).
-mlds_mercury_type_to_ilds_type(_, _, char_type) =  ilds__type([], char).
-mlds_mercury_type_to_ilds_type(_, _, float_type) = ilds__type([], float64).
-mlds_mercury_type_to_ilds_type(_, _, str_type) =   il_string_type.
-mlds_mercury_type_to_ilds_type(_, _, void_type) =  ilds__type([], int32).
-mlds_mercury_type_to_ilds_type(_, _, higher_order_type) = il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, tuple_type) = il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, enum_type) =  il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, dummy_type) =  il_object_array_type.
-mlds_mercury_type_to_ilds_type(_, _, variable_type) = il_generic_type.
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_info_type) =
-    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, user_ctor_type).
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_ctor_info_type) =
-    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, user_ctor_type).
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType, typeclass_info_type) =
-    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, user_ctor_type).
+mlds_mercury_type_to_ilds_type(_, _, type_cat_int) =   ilds__type([], int32).
+mlds_mercury_type_to_ilds_type(_, _, type_cat_char) =  ilds__type([], char).
+mlds_mercury_type_to_ilds_type(_, _, type_cat_float) = ilds__type([], float64).
+mlds_mercury_type_to_ilds_type(_, _, type_cat_string) =   il_string_type.
+mlds_mercury_type_to_ilds_type(_, _, type_cat_void) =  ilds__type([], int32).
+mlds_mercury_type_to_ilds_type(_, _, type_cat_higher_order) =
+    il_object_array_type.
+mlds_mercury_type_to_ilds_type(_, _, type_cat_tuple) = il_object_array_type.
+mlds_mercury_type_to_ilds_type(_, _, type_cat_enum) =  il_object_array_type.
+mlds_mercury_type_to_ilds_type(_, _, type_cat_dummy) =  il_object_array_type.
+mlds_mercury_type_to_ilds_type(_, _, type_cat_variable) = il_generic_type.
+mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_type_info) =
+    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).
+mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_type_ctor_info) =
+    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).
+mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_typeclass_info) =
+    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).
 mlds_mercury_type_to_ilds_type(DataRep, MercuryType,
-        base_typeclass_info_type) =
-    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, user_ctor_type).
-mlds_mercury_type_to_ilds_type(DataRep, MercuryType, user_ctor_type) =
+        type_cat_base_typeclass_info) =
+    mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor).
+mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor) =
     (
         DataRep ^ highlevel_data = yes,
         \+ type_needs_lowlevel_rep(il, MercuryType)
@@ -3572,18 +3573,19 @@ rval_const_to_type(data_addr_const(_)) = mlds__array_type(mlds__generic_type).
 rval_const_to_type(code_addr_const(_))
         = mlds__func_type(mlds__func_params([], [])).
 rval_const_to_type(int_const(_))
-        = mercury_type(IntType, int_type, non_foreign_type(IntType)) :-
+        = mercury_type(IntType, type_cat_int, non_foreign_type(IntType)) :-
     IntType = builtin(int).
 rval_const_to_type(float_const(_))
-        = mercury_type(FloatType, float_type, non_foreign_type(FloatType)) :-
+        = mercury_type(FloatType, type_cat_float,
+            non_foreign_type(FloatType)) :-
     FloatType = builtin(float).
 rval_const_to_type(false) = mlds__native_bool_type.
 rval_const_to_type(true) = mlds__native_bool_type.
 rval_const_to_type(string_const(_))
-        = mercury_type(StrType, str_type, non_foreign_type(StrType)) :-
+        = mercury_type(StrType, type_cat_string, non_foreign_type(StrType)) :-
     StrType = builtin(string).
 rval_const_to_type(multi_string_const(_, _))
-        = mercury_type(StrType, str_type, non_foreign_type(StrType)) :-
+        = mercury_type(StrType, type_cat_string, non_foreign_type(StrType)) :-
     StrType = builtin(string).
 rval_const_to_type(null(MldsType)) = MldsType.
 

@@ -339,21 +339,21 @@ zero_size_type(Type, Module) :-
 
 :- pred zero_size_type_category(type_category::in, bool::out) is det.
 
-zero_size_type_category(int_type, yes).
-zero_size_type_category(char_type, yes).
-zero_size_type_category(str_type, yes).
-zero_size_type_category(float_type, yes).
-zero_size_type_category(void_type, yes).
-zero_size_type_category(type_info_type, yes).
-zero_size_type_category(type_ctor_info_type, yes).
-zero_size_type_category(typeclass_info_type, yes).
-zero_size_type_category(base_typeclass_info_type, yes).
-zero_size_type_category(higher_order_type, yes).
-zero_size_type_category(tuple_type, no).
-zero_size_type_category(enum_type, yes).
-zero_size_type_category(dummy_type, yes).
-zero_size_type_category(variable_type, no).
-zero_size_type_category(user_ctor_type, no).
+zero_size_type_category(type_cat_int, yes).
+zero_size_type_category(type_cat_char, yes).
+zero_size_type_category(type_cat_string, yes).
+zero_size_type_category(type_cat_float, yes).
+zero_size_type_category(type_cat_void, yes).
+zero_size_type_category(type_cat_type_info, yes).
+zero_size_type_category(type_cat_type_ctor_info, yes).
+zero_size_type_category(type_cat_typeclass_info, yes).
+zero_size_type_category(type_cat_base_typeclass_info, yes).
+zero_size_type_category(type_cat_higher_order, yes).
+zero_size_type_category(type_cat_tuple, no).
+zero_size_type_category(type_cat_enum, yes).
+zero_size_type_category(type_cat_dummy, yes).
+zero_size_type_category(type_cat_variable, no).
+zero_size_type_category(type_cat_user_ctor, no).
 
 %-----------------------------------------------------------------------------%
 

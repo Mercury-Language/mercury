@@ -49,6 +49,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 % Standard library modules.
@@ -797,8 +798,6 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
     % Set the list of clauses to the one given.
     %
 :- pred set_clause_list(list(clause)::in, clauses_rep::out) is det.
-
-:- type vartypes == map(prog_var, mer_type).
 
 :- pred clauses_info_varset(clauses_info::in, prog_varset::out) is det.
 
@@ -3449,7 +3448,7 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
         ArgNum, !MaybeIn, !MaybeOut) :-
     (
         map__lookup(VarTypes, Var, VarType),
-        type_util__type_is_io_state(VarType)
+        type_is_io_state(VarType)
     ->
         ( mode_is_fully_input(ModuleInfo, Mode) ->
             (
@@ -3831,8 +3830,6 @@ is_differential(ModuleInfo, PredId) :-
 :- func eval_method_change_determinism(eval_method, determinism) = determinism.
 
 :- implementation.
-
-:- import_module check_hlds.det_analysis.
 
 valid_determinism_for_eval_method(eval_normal, _) = yes.
 valid_determinism_for_eval_method(eval_loop_check, Detism) = Valid :-

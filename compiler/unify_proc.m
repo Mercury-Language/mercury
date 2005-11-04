@@ -71,9 +71,8 @@
 
     % Add a new request for a unification procedure to the proc_requests table.
     %
-:- pred request_unify(unify_proc_id::in, inst_varset::in,
-    determinism::in, prog_context::in, module_info::in, module_info::out)
-    is det.
+:- pred request_unify(unify_proc_id::in, inst_varset::in, determinism::in,
+    prog_context::in, module_info::in, module_info::out) is det.
 
     % Add a new request for a procedure (not necessarily a unification)
     % to the request queue. Return the procedure's newly allocated proc_id.
@@ -794,50 +793,50 @@ generate_builtin_unify(TypeCategory, H1, H2, Context, Clauses, !Info) :-
     % can_generate_special_pred_clauses_for_type ensures the unexpected
     % cases can never occur.
     (
-        TypeCategory = int_type,
+        TypeCategory = type_cat_int,
         Name = "builtin_unify_int"
     ;
-        TypeCategory = char_type,
+        TypeCategory = type_cat_char,
         Name = "builtin_unify_character"
     ;
-        TypeCategory = str_type,
+        TypeCategory = type_cat_string,
         Name = "builtin_unify_string"
     ;
-        TypeCategory = float_type,
+        TypeCategory = type_cat_float,
         Name = "builtin_unify_float"
     ;
-        TypeCategory = higher_order_type,
+        TypeCategory = type_cat_higher_order,
         Name = "builtin_unify_pred"
     ;
-        TypeCategory = tuple_type,
+        TypeCategory = type_cat_tuple,
         unexpected(this_file, "generate_builtin_unify: tuple")
     ;
-        TypeCategory = enum_type,
+        TypeCategory = type_cat_enum,
         unexpected(this_file, "generate_builtin_unify: enum")
     ;
-        TypeCategory = dummy_type,
+        TypeCategory = type_cat_dummy,
         unexpected(this_file, "generate_builtin_unify: enum")
     ;
-        TypeCategory = variable_type,
+        TypeCategory = type_cat_variable,
         unexpected(this_file, "generate_builtin_unify: variable type")
     ;
-        TypeCategory = type_info_type,
+        TypeCategory = type_cat_type_info,
         unexpected(this_file, "generate_builtin_unify: type_info type")
     ;
-        TypeCategory = type_ctor_info_type,
+        TypeCategory = type_cat_type_ctor_info,
         unexpected(this_file, "generate_builtin_unify: type_ctor_info type")
     ;
-        TypeCategory = typeclass_info_type,
+        TypeCategory = type_cat_typeclass_info,
         unexpected(this_file, "generate_builtin_unify: typeclass_info type")
     ;
-        TypeCategory = base_typeclass_info_type,
+        TypeCategory = type_cat_base_typeclass_info,
         unexpected(this_file,
             "generate_builtin_unify: base_typeclass_info type")
     ;
-        TypeCategory = void_type,
+        TypeCategory = type_cat_void,
         unexpected(this_file, "generate_builtin_unify: void type")
     ;
-        TypeCategory = user_ctor_type,
+        TypeCategory = type_cat_user_ctor,
         unexpected(this_file, "generate_builtin_unify: user_ctor type")
     ),
     build_call(Name, ArgVars, Context, UnifyGoal, !Info),
@@ -1073,50 +1072,50 @@ generate_builtin_compare(TypeCategory, Res, H1, H2, Context, Clauses, !Info) :-
     % can_generate_special_pred_clauses_for_type ensures the unexpected
     % cases can never occur.
     (
-        TypeCategory = int_type,
+        TypeCategory = type_cat_int,
         Name = "builtin_compare_int"
     ;
-        TypeCategory = char_type,
+        TypeCategory = type_cat_char,
         Name = "builtin_compare_character"
     ;
-        TypeCategory = str_type,
+        TypeCategory = type_cat_string,
         Name = "builtin_compare_string"
     ;
-        TypeCategory = float_type,
+        TypeCategory = type_cat_float,
         Name = "builtin_compare_float"
     ;
-        TypeCategory = higher_order_type,
+        TypeCategory = type_cat_higher_order,
         Name = "builtin_compare_pred"
     ;
-        TypeCategory = tuple_type,
+        TypeCategory = type_cat_tuple,
         unexpected(this_file, "generate_builtin_compare: tuple type")
     ;
-        TypeCategory = enum_type,
+        TypeCategory = type_cat_enum,
         unexpected(this_file, "generate_builtin_compare: enum type")
     ;
-        TypeCategory = dummy_type,
+        TypeCategory = type_cat_dummy,
         unexpected(this_file, "generate_builtin_compare: dummy type")
     ;
-        TypeCategory = variable_type,
+        TypeCategory = type_cat_variable,
         unexpected(this_file, "generate_builtin_compare: variable type")
     ;
-        TypeCategory = type_info_type,
+        TypeCategory = type_cat_type_info,
         unexpected(this_file, "generate_builtin_compare: type_info type")
     ;
-        TypeCategory = type_ctor_info_type,
+        TypeCategory = type_cat_type_ctor_info,
         unexpected(this_file, "generate_builtin_compare: type_ctor_info type")
     ;
-        TypeCategory = typeclass_info_type,
+        TypeCategory = type_cat_typeclass_info,
         unexpected(this_file, "generate_builtin_compare: typeclass_info type")
     ;
-        TypeCategory = base_typeclass_info_type,
+        TypeCategory = type_cat_base_typeclass_info,
         unexpected(this_file,
             "generate_builtin_compare: base_typeclass_info type")
     ;
-        TypeCategory = void_type,
+        TypeCategory = type_cat_void,
         unexpected(this_file, "generate_builtin_compare: void type")
     ;
-        TypeCategory = user_ctor_type,
+        TypeCategory = type_cat_user_ctor,
         unexpected(this_file, "generate_builtin_compare: user_ctor type")
     ),
     build_call(Name, ArgVars, Context, CompareGoal, !Info),
@@ -1143,8 +1142,7 @@ generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
         %
         PredId = invalid_pred_id,
         ModeId = invalid_proc_id,
-        Call = call(PredId, ModeId, ArgVars, not_builtin,
-            no, ComparePredName),
+        Call = call(PredId, ModeId, ArgVars, not_builtin, no, ComparePredName),
         goal_info_init(Context, GoalInfo),
         Goal = Call - GoalInfo
     ;

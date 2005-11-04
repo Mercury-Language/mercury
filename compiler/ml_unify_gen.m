@@ -817,10 +817,10 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             % since these need to be handled specially;
             % their Mercury type definitions are lies.
             MLDS_Type = mercury_type(_, TypeCategory, _),
-            ( TypeCategory = type_info_type
-            ; TypeCategory = type_ctor_info_type
-            ; TypeCategory = typeclass_info_type
-            ; TypeCategory = base_typeclass_info_type
+            ( TypeCategory = type_cat_type_info
+            ; TypeCategory = type_cat_type_ctor_info
+            ; TypeCategory = type_cat_typeclass_info
+            ; TypeCategory = type_cat_base_typeclass_info
             )
         ->
             ConstType = mlds__array_type(mlds__generic_type)
@@ -835,7 +835,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             (
                 MLDS_Type = mlds__class_type(QualTypeName, TypeArity, _)
             ;
-                MLDS_Type = mercury_type(MercuryType, user_ctor_type, _),
+                MLDS_Type = mercury_type(MercuryType, type_cat_user_ctor, _),
                 type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes),
                 ml_gen_type_name(TypeCtor, QualTypeName, TypeArity)
             )
@@ -856,7 +856,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             % mapped to `mlds__ptr_type(mlds__class_type(...))', but when
             % declarating static constants we want just the class type,
             % not the pointer type.
-            MLDS_Type = mercury_type(MercuryType, user_ctor_type, _),
+            MLDS_Type = mercury_type(MercuryType, type_cat_user_ctor, _),
             type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes)
         ->
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
@@ -864,7 +864,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
         ;
             % For tuples, a similar issue arises; we want tuple constants
             % to have array type, not the pointer type MR_Tuple.
-            MLDS_Type = mercury_type(_, tuple_type, _)
+            MLDS_Type = mercury_type(_, type_cat_tuple, _)
         ->
             ConstType = mlds__array_type(mlds__generic_type)
         ;
@@ -872,7 +872,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData,
             % the pointer type MR_ClosurePtr. Note that we use a low-level
             % data representation for closures, even when --high-level-data
             % is enabled.
-            MLDS_Type = mercury_type(_, higher_order_type, _)
+            MLDS_Type = mercury_type(_, type_cat_higher_order, _)
         ->
             ConstType = mlds__array_type(mlds__generic_type)
         ;

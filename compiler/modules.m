@@ -785,7 +785,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 :- import_module libs.options.
