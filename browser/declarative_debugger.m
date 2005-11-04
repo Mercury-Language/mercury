@@ -873,7 +873,7 @@ decl_bug_get_event_number(i_bug(IBug), Event) :-
 	io::di, io::uo) is det <= annotated_trace(S, R).
 
 write_origin(wrap(Store), Origin, !IO) :-
-	(Origin = output(dynamic(NodeId), ArgPos, TermPath) ->
+	( Origin = output(dynamic(NodeId), ArgPos, TermPath) ->
 		exit_node_from_id(Store, NodeId, ExitNode),
 		ProcLayout = get_proc_layout_from_label_layout(
 			ExitNode ^ exit_label),

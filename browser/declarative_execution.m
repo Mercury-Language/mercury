@@ -409,8 +409,7 @@
 :- pred select_arg_at_pos(arg_pos::in, list(trace_atom_arg)::in,
 	trace_atom_arg::out) is det.
 
-:- pred absolute_arg_num(arg_pos::in, trace_atom::in, int::out)
-	is det.
+:- pred absolute_arg_num(arg_pos::in, trace_atom::in, int::out) is det.
 
 :- pred user_arg_num(arg_pos::in, trace_atom::in, int::out) is det.
 

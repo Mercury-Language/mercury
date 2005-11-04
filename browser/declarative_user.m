@@ -685,8 +685,7 @@ get_user_arg_values([], []).
 get_user_arg_values([arg_info(UserVisible, _, MaybeValue) | Args], Values) :-
 	get_user_arg_values(Args, Values0),
 	(
-		UserVisible = yes
-	->
+		UserVisible = yes,
 		(
 			MaybeValue = yes(ValueRep),
 			term_rep.rep_to_univ(ValueRep, Value)
@@ -696,6 +695,7 @@ get_user_arg_values([arg_info(UserVisible, _, MaybeValue) | Args], Values) :-
 		),
 		Values = [Value | Values0]
 	;
+		UserVisible = no,
 		Values = Values0
 	).
 
