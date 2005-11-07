@@ -41,6 +41,7 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.instmap.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -106,6 +107,15 @@
     % the standard func mode.
     %
 :- pred inst_contains_nonstandard_func_mode(module_info::in, mer_inst::in)
+    is semidet.
+
+    % Succeed iff the inst is any or contains any.
+    %
+:- pred inst_contains_any(module_info::in, (mer_inst)::in) is semidet.
+
+    % Succeed iff the given var's inst is any or contains any.
+    %
+:- pred var_inst_contains_any(module_info::in, instmap::in, prog_var::in)
     is semidet.
 
     % Succeed iff the first argument is a function pred_inst_info
@@ -1674,6 +1684,38 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0) :-
     set__insert(Expansions0, Inst, Expansions1),
     inst_lookup(ModuleInfo, InstName, Inst2),
     inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst2, Expansions1).
+
+%-----------------------------------------------------------------------------%
+
+inst_contains_any(ModuleInfo, Inst) :-
+    set__init(Expansions),
+    inst_contains_any_2(ModuleInfo, Inst, Expansions).
+
+
+:- pred inst_contains_any_2(module_info::in, (mer_inst)::in,
+        set(inst_name)::in) is semidet.
+
+inst_contains_any_2(_ModuleInfo, any(_), _Expansions).
+
+inst_contains_any_2(ModuleInfo, bound(_, BoundInsts), Expansions) :-
+    list__member(functor(_, Insts), BoundInsts),
+    list__member(Inst, Insts),
+    inst_contains_any_2(ModuleInfo, Inst, Expansions).
+
+inst_contains_any_2(_ModuleInfo, inst_var(_), _Expansions) :-
+    error("internal error: uninstantiated inst parameter").
+
+inst_contains_any_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
+    \+ set__member(InstName, Expansions0),
+    Expansions = set__insert(Expansions0, InstName),
+    inst_lookup(ModuleInfo, InstName, Inst),
+    inst_contains_any_2(ModuleInfo, Inst, Expansions).
+
+%-----------------------------------------------------------------------------%
+
+var_inst_contains_any(ModuleInfo, Instmap, Var) :-
+    instmap__lookup_var(Instmap, Var, Inst),
+    inst_contains_any(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 

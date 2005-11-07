@@ -12,6 +12,9 @@ Changes to the Mercury language:
   have shared code.
 * Support for the old-style lambda, mode and pragma syntax has been removed.
 * ':' is now the type qualification operator, not a module qualifier.
+* To ensure soundness, goals in negated contexts using non-local variables
+  with dynamic modes (inst "any") must now be marked as impure.
+
 
 Changes to the Mercury standard library:
 * We have added an `injection' module, for reversible maps that are injective.
@@ -98,6 +101,24 @@ Changes to the Mercury language:
 	),
 	... shared code ...
   )
+
+* To ensure soundness, goals in negated contexts using non-local variables
+  with dynamic modes (inst "any") must now be marked as impure.
+
+  If a goal uses a variable with a dynamic mode (inst "any"),
+  and that goal occurs inside a negated context (such as the
+  condition of an if-then-else, or a lambda expression),
+  and the variable also occurs outside of that negated context,
+  then the compiler will infer that goal to be impure,
+  and so such goals must normally be marked as "impure".
+
+  This change was required because Mercury implements negation using
+  the standard negation-as-failure approach, which is not sound if the
+  negated goal binds any non-local variables.
+
+  As usual, the programmer can use "promise_pure" if they are
+  sure that the goal is in fact pure, e.g. because they know that
+  the goal inside the negation will not instantiate the variable.
 
 Changes to the Mercury standard library:
 

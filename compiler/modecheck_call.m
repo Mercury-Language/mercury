@@ -36,7 +36,8 @@
 
 :- pred modecheck_call_pred(pred_id::in, maybe(determinism)::in,
     proc_id::in, proc_id::out, list(prog_var)::in, list(prog_var)::out,
-    extra_goals::out, mode_info::in, mode_info::out) is det.
+    hlds_goal_info::in, extra_goals::out, mode_info::in, mode_info::out)
+    is det.
 
 :- pred modecheck_higher_order_call(pred_or_func::in, prog_var::in,
     list(prog_var)::in, list(prog_var)::out, list(mer_mode)::out,
@@ -100,7 +101,7 @@
 :- import_module varset.
 
 modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
-        ArgVars0, ArgVars, ExtraGoals, !ModeInfo) :-
+        ArgVars0, ArgVars, GoalInfo, ExtraGoals, !ModeInfo) :-
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
     mode_info_get_preds(!.ModeInfo, Preds),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
@@ -121,9 +122,44 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     compute_arg_offset(PredInfo, ArgOffset),
     pred_info_get_markers(PredInfo, Markers),
 
-    % In order to give better diagnostics, we handle the cases where there are
-    % zero or one modes for the called predicate specially.
+    mode_info_get_instmap(!.ModeInfo, InstMap),
+    AnyVars =
+        list__filter(var_inst_contains_any(ModuleInfo, InstMap), ArgVars0),
+
     (
+        % If we are in a negated context and one or more vars have
+        % inst any then this call is required to be marked impure
+        % since it may violate referential transparency.
+        %
+        mode_info_get_in_negated_context(!.ModeInfo, yes),
+        \+ goal_info_is_impure(GoalInfo),
+        AnyVars \= []
+    ->
+        set__init(WaitingVars),
+        mode_info_error(WaitingVars, purity_error_should_be_impure(AnyVars),
+            !ModeInfo),
+        TheProcId = invalid_proc_id,
+        ArgVars = ArgVars0,
+        ExtraGoals = no_extra_goals
+    ;
+        % Report a purity error if a pred call is erroneously marked as impure
+        % in a negated context.
+        %
+        mode_info_get_in_negated_context(!.ModeInfo, yes),
+        goal_info_is_impure(GoalInfo),
+        AnyVars = [],
+        Purity \= purity_impure
+    ->
+        set__init(WaitingVars),
+        mode_info_error(WaitingVars, purity_error_wrongly_impure(Purity),
+            !ModeInfo),
+        TheProcId = invalid_proc_id,
+        ArgVars = ArgVars0,
+        ExtraGoals = no_extra_goals
+    ;
+        % In order to give better diagnostics, we handle the cases where there
+        % are zero or one modes for the called predicate specially.
+        %
         ProcIds = [],
         \+ check_marker(Markers, infer_modes)
     ->
@@ -141,7 +177,6 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         TheProcId = ProcId,
         map__lookup(Procs, ProcId, ProcInfo),
 
-        %
         % Check that `ArgsVars0' have livenesses which match the
         % expected livenesses.
         %
@@ -150,7 +185,6 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         modecheck_var_list_is_live(ArgVars0, ProcArgLives0,
             NeedExactMatch, ArgOffset, !ModeInfo),
 
-        %
         % Check that `ArgsVars0' have insts which match the expected
         % initial insts, and set their new final insts (introducing
         % extra unifications for implied modes, if necessary).
@@ -194,7 +228,6 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
                 ArgVars = ArgVars0,
                 WaitingVars = set__list_to_set(ArgVars),
                 ExtraGoals = no_extra_goals,
-                mode_info_get_instmap(!.ModeInfo, InstMap),
                 instmap__lookup_vars(ArgVars, InstMap, ArgInsts),
                 mode_info_set_call_arg_context(0, !ModeInfo),
                 mode_info_error(WaitingVars,
@@ -212,6 +245,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         list__append(OldErrors, NewErrors, Errors),
         mode_info_set_errors(Errors, !ModeInfo)
     ).
+
 
 modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
         ExtraGoals, !ModeInfo) :-

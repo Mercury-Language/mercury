@@ -1,0 +1,28 @@
+anys_in_negated_contexts.m:035: In clause for `bad_if_then_else1(ia, out)':
+anys_in_negated_contexts.m:035:   in call to predicate
+anys_in_negated_contexts.m:035:   `anys_in_negated_contexts.ia/1':
+anys_in_negated_contexts.m:035:   purity error: goal should be impure because
+anys_in_negated_contexts.m:035:   it appears in a negated context, but involves
+anys_in_negated_contexts.m:035:   the following variables whose insts contain
+anys_in_negated_contexts.m:035:   `any': X
+anys_in_negated_contexts.m:043: In clause for `bad_if_then_else2(ia, out)':
+anys_in_negated_contexts.m:043:   in call to predicate
+anys_in_negated_contexts.m:043:   `anys_in_negated_contexts.ig/1':
+anys_in_negated_contexts.m:043:   purity error: goal is marked as impure, but
+anys_in_negated_contexts.m:043:   is actually pure
+anys_in_negated_contexts.m:056: In clause for `bad_negation1(ia)':
+anys_in_negated_contexts.m:056:   in call to predicate
+anys_in_negated_contexts.m:056:   `anys_in_negated_contexts.ia/1':
+anys_in_negated_contexts.m:056:   purity error: goal should be impure because
+anys_in_negated_contexts.m:056:   it appears in a negated context, but involves
+anys_in_negated_contexts.m:056:   the following variables whose insts contain
+anys_in_negated_contexts.m:056:   `any': X
+anys_in_negated_contexts.m:061: In clause for `bad_negation2(ia)':
+anys_in_negated_contexts.m:061:   in call to predicate
+anys_in_negated_contexts.m:061:   `anys_in_negated_contexts.ig/1':
+anys_in_negated_contexts.m:061:   purity error: goal is marked as impure, but
+anys_in_negated_contexts.m:061:   is actually pure
+anys_in_negated_contexts.m:082: In clause for `bad_lambda(in)':
+anys_in_negated_contexts.m:082:   purity error: lambda should be impure because
+anys_in_negated_contexts.m:082:   it contains the following non-local variables
+anys_in_negated_contexts.m:082:   whose insts contain `any': Y

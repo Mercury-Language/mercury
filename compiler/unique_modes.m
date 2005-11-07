@@ -446,13 +446,13 @@ check_goal_2(generic_call(GenericCall, Args, Modes, Det), _GoalInfo0, Goal,
     mode_checkpoint(exit, "generic_call", !ModeInfo, !IO).
 
 check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
-        PredName), _GoalInfo0, Goal, !ModeInfo, !IO) :-
+        PredName), GoalInfo0, Goal, !ModeInfo, !IO) :-
     sym_name_to_string(PredName, PredNameString),
     string__append("call ", PredNameString, CallString),
     mode_checkpoint(enter, CallString, !ModeInfo, !IO),
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_set_call_context(call(call(CallId)), !ModeInfo),
-    check_call(PredId, ProcId0, Args, ProcId, !ModeInfo),
+    check_call(PredId, ProcId0, Args, GoalInfo0, ProcId, !ModeInfo),
     Goal = call(PredId, ProcId, Args, Builtin, CallContext, PredName),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "call", !ModeInfo, !IO).
@@ -483,14 +483,14 @@ check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
     mode_checkpoint(exit, "switch", !ModeInfo, !IO).
 
 check_goal_2(foreign_proc(Attributes, PredId, ProcId0, Args, ExtraArgs,
-        PragmaCode), _GoalInfo, Goal, !ModeInfo, !IO) :-
+        PragmaCode), GoalInfo0, Goal, !ModeInfo, !IO) :-
     % To modecheck a pragma_c_code, we just modecheck the proc for
     % which it is the goal.
     mode_checkpoint(enter, "foreign_proc", !ModeInfo, !IO),
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_set_call_context(call(call(CallId)), !ModeInfo),
     ArgVars = list__map(foreign_arg_var, Args),
-    check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo),
+    check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId, !ModeInfo),
     Goal = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         PragmaCode),
     mode_info_unset_call_context(!ModeInfo),
@@ -500,10 +500,10 @@ check_goal_2(shorthand(_), _, _, !ModeInfo, !IO) :-
     % These should have been expanded out by now.
     unexpected(this_file, "check_goal_2: unexpected shorthand").
 
-:- pred check_call(pred_id::in, proc_id::in, list(prog_var)::in, proc_id::out,
-    mode_info::in, mode_info::out) is det.
+:- pred check_call(pred_id::in, proc_id::in, list(prog_var)::in,
+    hlds_goal_info::in, proc_id::out, mode_info::in, mode_info::out) is det.
 
-check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
+check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId, !ModeInfo) :-
     % Set the error list to empty for use below
     % (saving the old error list and instmap in variables).
     mode_info_get_errors(!.ModeInfo, OldErrors),
@@ -561,7 +561,7 @@ check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
         mode_info_set_instmap(InstMap0, !ModeInfo),
         proc_info_inferred_determinism(ProcInfo, Determinism),
         modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
-            ArgVars, NewArgVars, ExtraGoals, !ModeInfo),
+            ArgVars, NewArgVars, GoalInfo, ExtraGoals, !ModeInfo),
 
         (
             NewArgVars = ArgVars,

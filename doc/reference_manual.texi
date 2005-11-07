@@ -2166,7 +2166,7 @@ update_field_in_map(Map, Index, Value) =
 * Abstract solver type declarations::
 * Solver type definitions::
 * Implementing solver types::
-* Solver type constraints and negated contexts::
+* Solver types and negated contexts::
 * Polymorphic solver types::
 @end menu
 
@@ -2348,18 +2348,16 @@ of constraints on a variable may change during execution of the
 program).
 @end itemize
 
-@node Solver type constraints and negated contexts
-@subsection Solver type constraints and negated contexts
+@node Solver types and negated contexts
+@subsection Solver types and negated contexts
 
-It is (a currently unchecked) error to place a constraint on a solver
-type variable in a negated context.  The reason for this is that the
-compiler does not understand what constraints mean and therefore it
-cannot enforce their negation outside a negated context.
-
-For this reason, soundness of a program is not guaranteed if constraints
-are placed on solver type variables inside negations or the conditions of
-if-then-else goals.  Particular care is needed since unification is a primary
-form of constraint.
+Referential transparency can be violated if a non-local solver type variable
+with inst @code{any} is used in a negated context (i.e., the body of a negated
+goal or the condition of an if-then-else) or in a lambda expression.  Programs
+are therefore required to place @code{impure} annotations on such goals or
+lambda expressions, even if they would normally be considered pure.  This
+impurity propagates through the enclosing goal structure as specified in
+@ref{Impurity}.
 
 @node Polymorphic solver types
 @subsection Polymorphic solver types

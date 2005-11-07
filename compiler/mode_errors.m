@@ -125,9 +125,23 @@
             % schedule_culprit gives the reason why they couldn't be scheduled.
 
     ;       mode_error_final_inst(int, prog_var, mer_inst, mer_inst,
-                final_inst_error).
+                final_inst_error)
             % One of the head variables did not have the expected final inst
             % on exit from the proc.
+
+    ;       purity_error_should_be_impure(list(prog_var))
+            % A goal in a negated context contains vars with inst any was
+            % not marked impure, as it should be.
+
+    ;       purity_error_wrongly_impure(purity)
+            % A goal in a negated context was erroneously marked as impure.
+            % The purity argument specifies what purity the goal has.
+
+    ;       purity_error_lambda_should_be_impure(list(prog_var)).
+            % A lambda term containing inst any non-locals should have been
+            % declared impure, but hasn't been (executing such a lambda may
+            % further constrain the inst any variables, thereby violating
+            % referential transparency).
 
 :- type schedule_culprit
     --->    goal_itself_was_impure
@@ -329,6 +343,15 @@ mode_error_to_specs(ModeError, ModeInfo) = Specs :-
         ModeError = mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
         Specs = mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst,
             Inst, Reason)
+    ;
+        ModeError = purity_error_should_be_impure(Vars),
+        Specs = purity_error_should_be_impure_to_specs(ModeInfo, Vars)
+    ;
+        ModeError = purity_error_wrongly_impure(Purity),
+        Specs = purity_error_wrongly_impure_to_specs(ModeInfo, Purity)
+    ;
+        ModeError = purity_error_lambda_should_be_impure(Vars),
+        Specs = purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars)
     ).
 
 :- func mode_warning_to_specs(mode_info::in, mode_warning_info::in)
@@ -1066,6 +1089,62 @@ mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
         suffix("."), nl],
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)].
+
+%-----------------------------------------------------------------------------%
+
+:- func purity_error_should_be_impure_to_specs(mode_info::in,
+        list(prog_var)::in) = (list(error_msg_spec)::out(error_msg_specs))
+        is det.
+
+purity_error_should_be_impure_to_specs(ModeInfo, Vars) = Specs :-
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    Pieces = [
+        words("purity error: goal should be impure because it appears"),
+        words("in a negated context, but involves the following variables"),
+        words("whose insts contain `any':"),
+        words(mercury_vars_to_string(Vars, VarSet, no))
+    ],
+    Specs = [
+        mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)
+    ].
+
+%-----------------------------------------------------------------------------%
+
+:- func purity_error_wrongly_impure_to_specs(mode_info::in, purity::in) =
+        (list(error_msg_spec)::out(error_msg_specs)) is det.
+
+purity_error_wrongly_impure_to_specs(ModeInfo, Purity) = Specs :-
+    mode_info_get_context(ModeInfo, Context),
+    Pieces = [
+        words("purity error: goal is marked as impure, but is actually"),
+        words(if Purity = purity_pure then "pure" else "semipure")
+    ],
+    Specs = [
+        mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)
+    ].
+
+%-----------------------------------------------------------------------------%
+
+:- func purity_error_lambda_should_be_impure_to_specs(mode_info::in,
+        list(prog_var)::in) = (list(error_msg_spec)::out(error_msg_specs))
+        is det.
+
+purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars) = Specs :-
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    Pieces = [
+        words("purity error: lambda should be impure because it"),
+        words("contains the following non-local variables"),
+        words("whose insts contain `any':"),
+        words(mercury_vars_to_string(Vars, VarSet, no))
+    ],
+    Specs = [
+        mode_info_context_to_spec(ModeInfo),
+        error_msg_spec(no, Context, 0, Pieces)
+    ].
 
 %-----------------------------------------------------------------------------%
 

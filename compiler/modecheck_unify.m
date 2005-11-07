@@ -88,7 +88,95 @@
 
 %-----------------------------------------------------------------------------%
 
-modecheck_unification(X, var(Y), Unification0, UnifyContext, UnifyGoalInfo0,
+    % We first have to check that if a unification occurs in a negated
+    % context with an inst any argument then it has an explicit `impure'
+    % annotation.
+    %
+    % With lambdas, the lambda itself must be marked as impure if it includes
+    % any inst any nonlocals (executing such a lambda may have the side effect
+    % of constraining a nonlocal solver variable).
+    %
+modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
+        Unify, !ModeInfo, !IO) :-
+    (
+        mode_info_get_in_negated_context(!.ModeInfo, yes),
+        (
+            RHS = var(Y),
+            Vars = [Y]
+        ;
+            RHS = functor(_, _, Vars)
+        ),
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        AnyVars =
+            list__filter(var_inst_contains_any(ModuleInfo, InstMap), Vars)
+            % If this unification is in a negated context, but doesn't
+            % have an `impure' annotation, then none of the variables
+            % involved are allowed to have inst any.
+            %
+    ->
+        (
+            AnyVars = [_ | _],
+            (
+                goal_info_is_impure(UnifyGoalInfo0)
+            ->
+                modecheck_unification_2(X, RHS, Unification0, UnifyContext,
+                    UnifyGoalInfo0, Unify, !ModeInfo, !IO)
+            ;
+                set__init(WaitingVars),
+                mode_info_error(WaitingVars,
+                    purity_error_should_be_impure(AnyVars), !ModeInfo),
+                Unify = conj([])
+            )
+        ;
+            AnyVars = [],
+            (
+                goal_info_is_pure(UnifyGoalInfo0)
+            ->
+                modecheck_unification_2(X, RHS, Unification0, UnifyContext,
+                    UnifyGoalInfo0, Unify, !ModeInfo, !IO)
+            ;
+                set__init(WaitingVars),
+                mode_info_error(WaitingVars,
+                    purity_error_wrongly_impure(purity_pure), !ModeInfo),
+                Unify = conj([])
+            )
+        )
+    ;
+        mode_info_get_in_negated_context(!.ModeInfo, no),
+        \+ goal_info_is_pure(UnifyGoalInfo0)
+    ->
+        set__init(WaitingVars),
+        mode_info_error(WaitingVars,
+            purity_error_wrongly_impure(purity_pure), !ModeInfo),
+        Unify = conj([])
+    ;
+            % If this is a lambda unification containing some inst any
+            % nonlocals, then the lambda should be marked as impure.
+            %
+        RHS = lambda_goal(Purity, _, _, _, NonLocals, _, _, _, _),
+        Purity \= purity_impure,
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        AnyVars = list__filter(var_inst_contains_any(ModuleInfo, InstMap),
+            NonLocals),
+        AnyVars = [_ | _]
+    ->
+        set__init(WaitingVars),
+        mode_info_error(WaitingVars,
+            purity_error_lambda_should_be_impure(AnyVars), !ModeInfo),
+        Unify = conj([])
+    ;
+        modecheck_unification_2(X, RHS, Unification0, UnifyContext,
+            UnifyGoalInfo0, Unify, !ModeInfo, !IO)
+    ).
+
+
+:- pred modecheck_unification_2(prog_var::in, unify_rhs::in, unification::in,
+    unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+modecheck_unification_2(X, var(Y), Unification0, UnifyContext, UnifyGoalInfo0,
         Unify, !ModeInfo, !IO) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
@@ -178,7 +266,7 @@ modecheck_unification(X, var(Y), Unification0, UnifyContext, UnifyGoalInfo0,
         Unify = unify(X, var(Y), Modes, Unification, UnifyContext)
     ).
 
-modecheck_unification(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
+modecheck_unification_2(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
         Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
@@ -220,7 +308,7 @@ modecheck_unification(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
         mode_info_set_var_types(VarTypes, !ModeInfo),
 
         % Modecheck this unification in its new form.
-        modecheck_unification(X0, Functor0, Unification0, UnifyContext,
+        modecheck_unification_2(X0, Functor0, Unification0, UnifyContext,
             GoalInfo0, Goal, !ModeInfo, !IO)
     ;
         % It's not a higher-order pred unification - just
@@ -230,7 +318,7 @@ modecheck_unification(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
             UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO)
     ).
 
-modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
+modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         unify(X, RHS, Mode, Unification, UnifyContext), !ModeInfo, !IO) :-
     LambdaGoal = lambda_goal(Purity, PredOrFunc, EvalMethod, _,
         ArgVars, Vars, Modes0, Det, Goal0),
@@ -379,7 +467,7 @@ modecheck_unification(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
                 mode_error_non_local_lambda_var(BadVar, BadInst), !ModeInfo)
         ;
             unexpected(this_file,
-                "modecheck_unification(lambda): very strange var")
+                "modecheck_unification_2(lambda): very strange var")
         ),
             % Return any old garbage.
         RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,

@@ -1358,7 +1358,10 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     %
     mode_info_lock_vars(if_then_else, NonLocals, !ModeInfo),
     mode_info_add_live_vars(ThenVars, !ModeInfo),
+    mode_info_get_in_negated_context(!.ModeInfo, InNegatedContext0),
+    mode_info_set_in_negated_context(yes, !ModeInfo),
     modecheck_goal(Cond0, Cond, !ModeInfo, !IO),
+    mode_info_set_in_negated_context(InNegatedContext0, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapCond),
     mode_info_remove_live_vars(ThenVars, !ModeInfo),
     mode_info_unlock_vars(if_then_else, NonLocals, !ModeInfo),
@@ -1406,7 +1409,10 @@ modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
     % that the negation does not bind them.
     %
     mode_info_lock_vars(negation, NonLocals, !ModeInfo),
+    mode_info_get_in_negated_context(!.ModeInfo, InNegatedContext0),
+    mode_info_set_in_negated_context(yes, !ModeInfo),
     modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+    mode_info_set_in_negated_context(InNegatedContext0, !ModeInfo),
     mode_info_set_live_vars(LiveVars0, !ModeInfo),
     mode_info_unlock_vars(negation, NonLocals, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
@@ -1474,7 +1480,7 @@ modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     DeterminismKnown = no,
     modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
-        Args0, Args, ExtraGoals, !ModeInfo),
+        Args0, Args, GoalInfo0, ExtraGoals, !ModeInfo),
 
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_predid(!.ModeInfo, CallerPredId),
@@ -1602,7 +1608,7 @@ modecheck_goal_expr(ForeignProc, GoalInfo, Goal, !ModeInfo, !IO) :-
     mode_info_set_call_context(call(call(CallId)), !ModeInfo),
     ArgVars0 = list__map(foreign_arg_var, Args0),
     modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
-        ArgVars0, ArgVars, ExtraGoals, !ModeInfo),
+        ArgVars0, ArgVars, GoalInfo, ExtraGoals, !ModeInfo),
 
     % zs: The assignment to Pragma looks wrong: instead of Args0,
     % I think we should use Args after the following call:
@@ -2567,7 +2573,7 @@ modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
 hlds_goal_from_delayed_goal(delayed_goal(_WaitingVars, _ModeError, Goal)) =
     Goal.
 
-    % Check whether there are any delayed goals (other than headvar
+    % Check whether there are any delayed goals (other than 
     % unifications) at the point where we are about to schedule an impure goal.
     % If so, that is an error. Headvar unifications are allowed to be delayed
     % because in the case of output arguments, they cannot be scheduled
@@ -2612,8 +2618,8 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     ).
 
 :- pred filter_headvar_unification_goals(list(prog_var)::in,
-    list(delayed_goal)::in, list(delayed_goal)::out,
-    list(delayed_goal)::out) is det.
+    list(delayed_goal)::in, list(delayed_goal)::out, list(delayed_goal)::out)
+    is det.
 
 filter_headvar_unification_goals(HeadVars, DelayedGoals,
         HeadVarUnificationGoals, NonHeadVarUnificationGoals) :-
