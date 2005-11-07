@@ -2856,7 +2856,8 @@ options_help_verbosity -->
         "\tOutput detailed debugging traces of the mode checking.",
         "--debug-modes-pred-id <n>",
         "\tWith --debug-modes, restrict the debugging traces to the",
-        "\tmode checking of the predicate or function with the specified pred id.",
+        "\tmode checking of the predicate or function with the specified",
+        "\tpred id.",
         "--debug-det, --debug-determinism",
         "\tOutput detailed debugging traces of determinism analysis.",
 % The new termination analyser is currently a work-in-progress.
