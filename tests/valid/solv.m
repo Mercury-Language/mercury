@@ -58,7 +58,15 @@
 		any            is ground.
 
 print_labeling(Vars) -->
-	unsorted_aggregate(labeling(Vars), print_solution).
+	{ Labeling0 = (
+		impure pred(Labels::out) is nondet :-
+			labeling(Vars, Labels)
+	) },
+	{ Labeling = (
+		pred(Labels::out) is nondet :-
+			promise_pure ( impure Labeling0(Labels) )
+	) },
+	unsorted_aggregate(Labeling, print_solution).
 
 :- pred print_solution(list(fd_var), io__state, io__state).
 :- mode print_solution(in, di, uo) is det.
