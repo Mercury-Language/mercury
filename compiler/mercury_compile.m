@@ -74,6 +74,7 @@
 :- import_module transform_hlds.termination.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.exception_analysis.
+:- import_module transform_hlds.trailing_analysis.
 :- import_module transform_hlds.higher_order.
 :- import_module transform_hlds.accumulator.
 :- import_module transform_hlds.tupling.
@@ -2069,6 +2070,8 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         ExceptionAnalysis),
     globals__lookup_bool_option(Globals, analyse_closures,
         ClosureAnalysis),
+    globals__lookup_bool_option(Globals, analyse_trail_usage,
+        TrailingAnalysis),
     (
         MakeOptInt = yes,
         intermod__write_optfile(!HLDS, !IO),
@@ -2082,6 +2085,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             ; Termination = yes
             ; Termination2 = yes
             ; ExceptionAnalysis = yes
+            ; TrailingAnalysis = yes
             )
         ->
             frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo, !IO),
@@ -2120,6 +2124,12 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     maybe_termination2(Verbose, Stats, !HLDS, !IO)
                 ;
                     Termination2 = no
+                ),
+                (
+                    TrailingAnalysis = yes,
+                    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO)
+                ;
+                    TrailingAnalysis = no
                 )
             ;
                 io__set_exit_status(1, !IO)
@@ -2184,6 +2194,8 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
+    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 123, "trailing analysis", !DumpInfo, !IO),
     trans_opt__write_optfile(!.HLDS, !IO).
 
 :- pred frontend_pass_by_phases(module_info::in, module_info::out,
@@ -2297,6 +2309,12 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination2", !DumpInfo, !IO),
+
+    % XXX We should actually do this after any optimizations
+    % that introduce new predicates, so that we can add them
+    % to the trailing_info table as well.
+    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 123, "trail_usage", !DumpInfo, !IO),
     
     maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 125, "type_ctor_infos", !DumpInfo, !IO),
@@ -2929,6 +2947,20 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
     ;
         true
     ).
+:- pred maybe_analyse_trail_usage(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO) :-
+    globals.io_lookup_bool_option(analyse_trail_usage, AnalyseTrail, !IO),
+    (
+        AnalyseTrail = yes,
+        maybe_write_string(Verbose, "% Analysing trail usage...\n", !IO),
+        analyse_trail_usage(!HLDS, !IO),
+        maybe_write_string(Verbose, "% Trail usage analysis done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        AnalyseTrail = no
+    ).
 
 :- pred check_unique_modes(bool::in, bool::in,
     module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
@@ -3132,9 +3164,11 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
     globals__io_lookup_bool_option(use_trail, UseTrail, !IO),
     (
         UseTrail = yes,
+        globals.io_lookup_bool_option(optimize_trail_usage, OptTrailUse, !IO),
         maybe_write_string(Verbose, "% Adding trailing operations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_proc(add_trail_ops), !HLDS, !IO),
+        process_all_nonimported_procs(update_proc(add_trail_ops(OptTrailUse)),
+            !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

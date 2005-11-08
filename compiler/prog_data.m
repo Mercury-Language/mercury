@@ -517,6 +517,16 @@
                 % Should only appear in `.opt' or `.trans_opt' files.
             )
 
+    ;       trailing_info(
+                trailing_info_p_or_f    :: pred_or_func,
+                trailing_info_name      :: sym_name,
+                trailing_info_arity     :: arity,
+                trailing_info_mode      :: mode_num,
+                trailing_info_status    :: trailing_status
+            )
+                % PredName, Arity, Mode number, Trailing status.
+                % Should on appear in `.opt' or `.trans_opt' files.
+    
     %
     % Diagnostics pragmas (pragmas related to compiler warnings/errors)
     %
@@ -909,6 +919,16 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Stuff for the trailing analysis
+%
+
+:- type trailing_status
+    --->    may_modify_trail
+    ;       will_not_modify_trail
+    ;       conditional.
+
+%-----------------------------------------------------------------------------%
+%
 % Stuff for the `type_spec' pragma
 %
 
@@ -1154,6 +1174,7 @@
 :- func may_throw_exception(pragma_foreign_proc_attributes) =
     may_throw_exception.
 :- func ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
+:- func may_modify_trail(pragma_foreign_proc_attributes) = may_modify_trail.
 :- func extra_attributes(pragma_foreign_proc_attributes)
     = pragma_foreign_proc_extra_attributes.
 
@@ -1193,6 +1214,10 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
+:- pred set_may_modify_trail(may_modify_trail::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
 :- pred add_extra_attribute(pragma_foreign_proc_extra_attribute::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
@@ -1221,6 +1246,10 @@
     ;       tabled_for_io
     ;       tabled_for_io_unitize
     ;       tabled_for_descendant_io.
+
+:- type may_modify_trail
+    --->    may_modify_trail
+    ;       will_not_modify_trail.
 
 :- type pragma_var
     --->    pragma_var(prog_var, string, mer_mode).
@@ -2039,6 +2068,7 @@
                 may_throw_exception     :: may_throw_exception,
                 legacy_purity_behaviour :: bool,
                 ordinary_despite_detism :: bool,
+                may_modify_trail        :: may_modify_trail,
                 extra_attributes        ::
                                 list(pragma_foreign_proc_extra_attribute)
             ).
@@ -2046,7 +2076,7 @@
 default_attributes(Language) =
     attributes(Language, may_call_mercury, not_thread_safe,
         not_tabled_for_io, purity_impure, depends_on_mercury_calls,
-        default_exception_behaviour, no, no, []).
+        default_exception_behaviour, no, no, may_modify_trail, []).
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -2066,6 +2096,8 @@ set_legacy_purity_behaviour(Legacy, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ legacy_purity_behaviour := Legacy.
 set_ordinary_despite_detism(OrdinaryDespiteDetism, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ ordinary_despite_detism := OrdinaryDespiteDetism.
+set_may_modify_trail(MayModifyTrail, Attrs0, Attrs) :-
+    Attrs = Attrs0 ^ may_modify_trail := MayModifyTrail.
 
 attributes_to_strings(Attrs) = StringList :-
     % We ignore Lang because it isn't an attribute that you can put
@@ -2073,7 +2105,7 @@ attributes_to_strings(Attrs) = StringList :-
     % is at the start of the pragma.
     Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
         Purity, Terminates, Exceptions, _LegacyBehaviour,
-        OrdinaryDespiteDetism, ExtraAttributes),
+        OrdinaryDespiteDetism, MayModifyTrail, ExtraAttributes),
     (
         MayCallMercury = may_call_mercury,
         MayCallMercuryStr = "may_call_mercury"
@@ -2138,9 +2170,16 @@ attributes_to_strings(Attrs) = StringList :-
         OrdinaryDespiteDetism = no,
         OrdinaryDespiteDetismStrList = []
     ),
+    (
+        MayModifyTrail = may_modify_trail,
+        MayModifyTrailStrList = ["may_modify_trail"]
+    ;
+        MayModifyTrail = will_not_modify_trail,
+        MayModifyTrailStrList = ["will_not_modify_trail"]
+    ),
     StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
         PurityStrList] ++ TerminatesStrList ++ ExceptionsStrList ++
-        OrdinaryDespiteDetismStrList ++
+        OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
         list__map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,

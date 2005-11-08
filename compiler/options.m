@@ -136,6 +136,7 @@
     ;       debug_stack_opt
     ;       debug_make
     ;       debug_closure
+    ;       debug_trail_usage
 
     % Output options
     ;       make_short_interface
@@ -522,15 +523,17 @@
 
     % Stuff for the new termination analyser.
     ;       termination2
-    ;       check_termination2
-    ;       verbose_check_termination2
-    ;       termination2_norm
-    ;       widening_limit       
-    ;       arg_size_analysis_only      
-    ;       propagate_failure_constrs
-    ;       term2_maximum_matrix_size
+    ;          check_termination2
+    ;          verbose_check_termination2
+    ;          termination2_norm
+    ;          widening_limit       
+    ;          arg_size_analysis_only      
+    ;          propagate_failure_constrs
+    ;          term2_maximum_matrix_size
     ;       analyse_exceptions
     ;       analyse_closures
+    ;       analyse_trail_usage
+    ;       optimize_trail_usage
     ;       untuple
     ;       tuple
     ;       tuple_trace_counts_file
@@ -866,7 +869,8 @@ option_defaults_2(verbosity_option, [
     debug_liveness                      -   int(-1),
     debug_stack_opt                     -   int(-1),
     debug_make                          -   bool(no),
-    debug_closure                       -   bool(no)
+    debug_closure                       -   bool(no),
+    debug_trail_usage                   -   bool(no)
 ]).
 option_defaults_2(output_option, [
     % Output Options (mutually exclusive)
@@ -1143,7 +1147,11 @@ option_defaults_2(special_optimization_option, [
     % value for this is.
     term2_maximum_matrix_size           -   int(70),
     analyse_exceptions                  -   bool(no),
-    analyse_closures                    -   bool(no)
+    analyse_closures                    -   bool(no),
+    analyse_trail_usage                 -   bool(no),
+    % XXX Change this to yes when trailing analysis is
+    % complete.
+    optimize_trail_usage                -   bool(no)
 ]).
 option_defaults_2(optimization_option, [
     % Optimization options
@@ -1561,6 +1569,7 @@ long_option("debug-liveness",       debug_liveness).
 long_option("debug-stack-opt",      debug_stack_opt).
 long_option("debug-make",           debug_make).
 long_option("debug-closure",        debug_closure).
+long_option("debug-trail-usage",    debug_trail_usage).
 
 % output options (mutually exclusive)
 long_option("generate-source-file-mapping",
@@ -1941,6 +1950,9 @@ long_option("term2-max-matrix-size", term2_maximum_matrix_size).
 long_option("analyse-exceptions",   analyse_exceptions).
 long_option("analyse-closures",     analyse_closures).
 long_option("analyse-local-closures",   analyse_closures).
+long_option("analyse-trail-usage",      analyse_trail_usage).
+long_option("optimize-trail-usage",     optimize_trail_usage).
+long_option("optimise-trail-usage",     optimize_trail_usage).
 long_option("untuple",              untuple).
 long_option("tuple",                tuple).
 long_option("tuple-trace-counts-file",  tuple_trace_counts_file).
@@ -2880,11 +2892,14 @@ options_help_verbosity -->
         "\tOutput detailed debugging traces of the liveness analysis",
         "\tof the predicate with the given predicate id.",
         "--debug-make",
-        "\tOutput detailed debugging traces of the `--make' option."
+        "\tOutput detailed debugging traces of the `--make' option.",
 % This can be uncommented when the '--analyse-closures' option is uncommented.
 % (See below.)
 %       "--debug-closure",
 %       "\tOutput detailed debugging traces of the closure analysis."
+        "--debug-trail-usage",
+        "\tOutput detail debugging traces of the `--analyse-trail-usage'",
+        "\toption."
     ]).
 
 :- pred options_help_output(io::di, io::uo) is det.
@@ -3966,7 +3981,7 @@ options_help_hlds_hlds_optimization -->
         "--analyse-exceptions",
         "\tEnable exception analysis.  Identify those",
         "\tprocedures that will not throw an exception.",
-        "\tSome optimizations can make use of this information."
+        "\tSome optimizations can make use of this information.",
 % XXX The options controlling closure analysis are currently
 % commented out because it isn't useful.  It can be uncommented when
 % we actually have something that uses it.
@@ -3974,6 +3989,17 @@ options_help_hlds_hlds_optimization -->
 %       "\tEnable closure analysis.  Try to identify the possible",
 %       "\tvalues that higher-order valued variables can take.",
 %       "\tSome optimizations can make use of this information.",
+        "--analyse-trail-usage",
+        "\tEnable trail usage analysis.  Identify those",
+        "\tprocedures that will not modify the trail.",
+        "\tThis information can be used to reduce the overhead",
+        "\tof trailing."
+% `--no-optimize-trail-usage' is a developer-only option.  It 
+% is intended for benchmarking the trail usage optimization.
+% Otherwise, there is usually not any point in turning it off.
+        %"--no-optimize-trail-usage",
+        %"\tDo not try and restrict trailing to those parts",
+        %"\tof the program that actually use it."
         % ,
         % "--untuple",
         % "\tExpand out procedure arguments when the argument type",

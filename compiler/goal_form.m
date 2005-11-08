@@ -106,6 +106,13 @@
     int::out, int::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+    % Succeeds if the goal (and its subgoals) do not modify the trail.
+    % (Requires --analyse-trail-usage to be of any use.)
+    %
+:- pred goal_cannot_modify_trail(module_info::in, hlds_goal::in) is semidet.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -546,6 +553,49 @@ count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
         int__min(Min0, Min1, Min),
         int__max(Max0, Max1, Max)
     ).
+%-----------------------------------------------------------------------------%
+
+goal_cannot_modify_trail(ModuleInfo, GoalExpr - _GoalInfo) :-
+    goal_cannot_modify_trail_2(ModuleInfo, GoalExpr).
+
+:- pred goal_cannot_modify_trail_2(module_info::in, hlds_goal_expr::in)
+    is semidet.
+
+goal_cannot_modify_trail_2(ModuleInfo, Goal) :-
+    (
+        Goal = conj(Goals)
+    ;
+        Goal = par_conj(Goals)
+    ;
+        Goal = disj(Goals)
+    ;
+        Goal  = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
+        Goals = [IfGoal, ThenGoal, ElseGoal] 
+    ),
+    list.all_true(goal_cannot_modify_trail(ModuleInfo), Goals).
+goal_cannot_modify_trail_2(ModuleInfo, Goal) :-
+    Goal = call(CallPredId, CallProcId, _, _, _, _),
+    module_info_get_trailing_info(ModuleInfo, TrailingInfo),
+    map.search(TrailingInfo, proc(CallPredId, CallProcId), TrailingStatus),
+    TrailingStatus = will_not_modify_trail.
+% XXX We should actually look this up since we have closure analysis.
+goal_cannot_modify_trail_2(_ModuleInfo, generic_call(_, _, _, _)) :- fail.
+goal_cannot_modify_trail_2(ModuleInfo, switch(_, _, Goals)) :-
+    CheckCase = (pred(Case::in) is semidet :-
+        Case = case(_, Goal),
+        goal_cannot_modify_trail(ModuleInfo, Goal)
+    ),
+    list.all_true(CheckCase, Goals).
+goal_cannot_modify_trail_2(_, unify(_, _, _, _, _)). % XXX Is this correct.
+goal_cannot_modify_trail_2(ModuleInfo, not(Goal)) :-
+    goal_cannot_modify_trail(ModuleInfo, Goal).
+goal_cannot_modify_trail_2(ModuleInfo, scope(_, Goal)) :-
+    goal_cannot_modify_trail(ModuleInfo, Goal).
+goal_cannot_modify_trail_2(_, Goal) :-
+    Goal = foreign_proc(Attributes, _, _, _, _, _),
+    may_modify_trail(Attributes) = will_not_modify_trail. 
+goal_cannot_modify_trail_2(_, shorthand(_)) :-
+    unexpected(this_file, "goal_cannot_modify_trial_2: shorthand goal.").
 
 %-----------------------------------------------------------------------------%
 

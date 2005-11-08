@@ -1216,6 +1216,47 @@ parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
         Result = error("error in `:- pragma exceptions'", ErrorTerm)
     ).
 
+parse_pragma_type(ModuleName, "trailing_info", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    (
+        PragmaTerms = [
+            PredOrFuncTerm,
+            PredNameTerm,
+            term.functor(term.integer(Arity), [], _),
+            term.functor(term.integer(ModeNum), [], _),
+            TrailingStatusTerm
+        ],
+        (
+            PredOrFuncTerm = term.functor(term.atom("predicate"), [], _),
+            PredOrFunc = predicate
+        ;
+            PredOrFuncTerm = term.functor(term.atom("function"), [], _),
+            PredOrFunc = function
+        ),
+        parse_implicitly_qualified_term(ModuleName, PredNameTerm,
+            ErrorTerm, "`:- pragma trailing_info' declaration",
+            PredNameResult),
+        PredNameResult = ok(PredName, []),
+        (
+            TrailingStatusTerm = term.functor(
+                term.atom("will_not_modify_trail"), [], _),
+            TrailingStatus = will_not_modify_trail
+        ;
+            TrailingStatusTerm = term.functor(
+                term.atom("may_modify_trail"), [], _),
+            TrailingStatus = may_modify_trail
+        ;
+            TrailingStatusTerm = term.functor(
+                term.atom("conditional"), [], _),
+            TrailingStatus = conditional
+        )
+    ->
+        Result = ok(pragma(user, trailing_info(PredOrFunc, PredName,
+            Arity, ModeNum, TrailingStatus)))
+    ;
+        Result = error("error in `:- pragma trailing_info'", ErrorTerm)
+    ).
+
 parse_pragma_type(ModuleName, "mode_check_clauses", PragmaTerms, ErrorTerm,
         _VarSet, Result) :-
     parse_simple_pragma(ModuleName, "mode_check_clauses",
@@ -1312,7 +1353,8 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       backend(backend)
     ;       terminates(terminates)
     ;       will_not_throw_exception
-    ;       ordinary_despite_detism.
+    ;       ordinary_despite_detism
+    ;       may_modify_trail(may_modify_trail).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
     string::in, term::in, maybe1(pragma_foreign_proc_attributes)::out)
@@ -1348,7 +1390,9 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
         purity(purity_semipure) - purity(purity_impure),
         terminates(terminates) - terminates(does_not_terminate),
         terminates(depends_on_mercury_calls) - terminates(terminates),
-        terminates(depends_on_mercury_calls) - terminates(does_not_terminate)
+        terminates(depends_on_mercury_calls) - terminates(does_not_terminate),
+        may_modify_trail(may_modify_trail) -
+            may_modify_trail(will_not_modify_trail)
     ],
     (
         parse_pragma_foreign_proc_attributes_term0(Term, AttrList)
@@ -1395,6 +1439,8 @@ process_attribute(backend(Backend), !Attrs) :-
     add_extra_attribute(backend(Backend), !Attrs).
 process_attribute(ordinary_despite_detism, !Attrs) :-
     set_ordinary_despite_detism(yes, !Attrs).
+process_attribute(may_modify_trail(TrailMod), !Attrs) :-
+    set_may_modify_trail(TrailMod, !Attrs).
 
     % Aliasing is currently ignored in the main branch compiler.
     %
@@ -1465,7 +1511,9 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
         Flag = will_not_throw_exception
     ; parse_ordinary_despite_detism(Term) ->
         Flag = ordinary_despite_detism
-    ;
+    ; parse_may_modify_trail(Term, TrailMod) ->
+        Flag = may_modify_trail(TrailMod)
+    ; 
         fail
     ).
 
@@ -1488,6 +1536,13 @@ parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
     not_thread_safe).
 parse_threadsafe(term__functor(term__atom("maybe_thread_safe"), [], _),
     maybe_thread_safe).
+    
+:- pred parse_may_modify_trail(term::in, may_modify_trail::out) is semidet.
+
+parse_may_modify_trail(term.functor(term.atom("may_modify_trail"), [], _),
+    may_modify_trail).
+parse_may_modify_trail(term.functor(term.atom("will_not_modify_trail"), [], _),
+    will_not_modify_trail).
 
 :- pred parse_tabled_for_io(term::in, tabled_for_io::out) is semidet.
 
@@ -1912,4 +1967,6 @@ parse_rational(Term, Rational) :-
     DenomTerm = term__functor(term__integer(Denom), [], _),
     Rational = rat__rat(Numer, Denom).
 
+%-----------------------------------------------------------------------------%
+:- end_module prog_io_pragma.
 %-----------------------------------------------------------------------------%

@@ -236,6 +236,17 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
                 ThrowStatus, Context, !ModuleInfo, !IO)
         )
     ;
+        Pragma = trailing_info(PredOrFunc, SymName, Arity, ModeNum,
+            TrailingStatus),
+        ( ImportStatus \= opt_imported ->
+            module_info_incr_errors(!ModuleInfo),
+            Pieces = [words("Error: illegal use of pragma `trailing_info'.")],
+            write_error_pieces(Context, 0, Pieces, !IO)
+        ;
+            add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum,
+                TrailingStatus, Context, !ModuleInfo, !IO)
+        )
+    ;
         % Handle pragma type_spec decls later on (when we process clauses).
         Pragma = type_spec(_, _, _, _, _, _, _, _)
     ;
@@ -570,6 +581,34 @@ add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
         %prog_out__write_context(Context, !IO),
         %io__write_string("Internal compiler error: " ++
         %   "unknown predicate in `pragma exceptions'.\n", !IO),
+        %module_info_incr_errors(!ModuleInfo)
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pragma_trailing_info(pred_or_func::in, sym_name::in, arity::in,
+    mode_num::in, trailing_status::in, prog_context::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum, TrailingStatus,
+        _Context, !ModuleInfo, !IO) :-
+    module_info_get_predicate_table(!.ModuleInfo, Preds),
+    (
+        predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
+            PredOrFunc, SymName, Arity, [PredId])
+    ->
+        module_info_get_trailing_info(!.ModuleInfo, TrailingInfo0),
+        proc_id_to_int(ProcId, ModeNum),
+        map.set(TrailingInfo0, proc(PredId, ProcId), TrailingStatus,
+            TrailingInfo),
+        module_info_set_trailing_info(TrailingInfo, !ModuleInfo)
+    ;
+        % XXX We'll just ignore this for the time being -
+        % it causes errors with transitive-intermodule optimization.
+        %prog_out__write_context(Context, !IO),
+        %io__write_string("Internal compiler error: " ++
+        %   "unknown predicate in `pragma trailing_info'.\n", !IO),
         %module_info_incr_errors(!ModuleInfo)
         true
     ).

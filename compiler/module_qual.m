@@ -1081,6 +1081,7 @@ qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
     qualify_mode_list(Modes0, Modes, !Info, !IO).
 qualify_pragma(X@unused_args(_, _, _, _, _), X, !Info, !IO).
 qualify_pragma(X@exceptions(_, _, _, _, _), X, !Info, !IO).
+qualify_pragma(X@trailing_info(_, _, _, _, _), X, !Info, !IO).
 qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
         type_spec(A, B, C, D, MaybeModes, Subst, G, H),
         !Info, !IO) :-

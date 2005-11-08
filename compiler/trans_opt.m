@@ -34,13 +34,15 @@
 % The .trans_opt file includes:
 %   :- pragma termination_info declarations for all exported preds
 %   :- pragma exceptions declartions for all exported preds
+%   :- pragma trailing_info declarations for all exported preds.
+%
 % All these items should be module qualified.
 % Constructors should be explicitly type qualified.
 %
 % Note that the .trans_opt file does not (yet) include clauses, `pragma
 % foreign_proc' declarations, or any of the other information that would be
 % needed for inlining or other optimizations; currently it is only used
-% for termination analysis and exception analysis.
+% for termination analysis, exception and trail usage analysis.
 %
 % This module also contains predicates to read in the .trans_opt files.
 %
@@ -87,10 +89,11 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
+:- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.termination.
-:- import_module transform_hlds.exception_analysis.
+:- import_module transform_hlds.trailing_analysis.
 
 :- import_module list.
 :- import_module map.
@@ -141,6 +144,11 @@ trans_opt__write_optfile(Module, !IO) :-
         module_info_get_exception_info(Module, ExceptionInfo),
         list__foldl(
             exception_analysis__write_pragma_exceptions(Module, ExceptionInfo),
+            PredIds, !IO),
+
+        module_info_get_trailing_info(Module, TrailingInfo),
+        list__foldl(
+            write_pragma_trailing_info(Module, TrailingInfo), 
             PredIds, !IO),
 
         io__set_output_stream(OldStream, _, !IO),

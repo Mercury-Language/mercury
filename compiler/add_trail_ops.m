@@ -35,13 +35,17 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- pred add_trail_ops(module_info::in, proc_info::in, proc_info::out) is det.
+:- import_module bool.
+
+:- pred add_trail_ops(bool::in, module_info::in,
+    proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.code_model.
+:- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -55,7 +59,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module require.
@@ -74,21 +77,23 @@
     % table that it contains to lookup the pred_ids for the builtin procedures
     % that we insert calls to. We do not update the module_info as we're
     % traversing the goal.
-
+    %
 :- type trail_ops_info
     --->    trail_ops_info(
-                varset      :: prog_varset,
-                var_types   :: vartypes,
-                module_info :: module_info
+                varset        :: prog_varset,
+                var_types     :: vartypes,
+                module_info   :: module_info,
+                opt_trail_usage :: bool
             ).
 
-add_trail_ops(ModuleInfo0, !Proc) :-
+add_trail_ops(OptTrailUsage, ModuleInfo0, !Proc) :-
     proc_info_goal(!.Proc, Goal0),
     proc_info_varset(!.Proc, VarSet0),
     proc_info_vartypes(!.Proc, VarTypes0),
-    TrailOpsInfo0 = trail_ops_info(VarSet0, VarTypes0, ModuleInfo0),
+    TrailOpsInfo0 = trail_ops_info(VarSet0, VarTypes0, ModuleInfo0,
+        OptTrailUsage),
     goal_add_trail_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),
-    TrailOpsInfo = trail_ops_info(VarSet, VarTypes, _),
+    TrailOpsInfo = trail_ops_info(VarSet, VarTypes, _, _),
     proc_info_set_goal(Goal, !Proc),
     proc_info_set_varset(VarSet, !Proc),
     proc_info_set_vartypes(VarTypes, !Proc),
@@ -101,8 +106,19 @@ add_trail_ops(ModuleInfo0, !Proc) :-
 :- pred goal_add_trail_ops(hlds_goal::in, hlds_goal::out,
     trail_ops_info::in, trail_ops_info::out) is det.
 
-goal_add_trail_ops(GoalExpr0 - GoalInfo, Goal, !Info) :-
-    goal_expr_add_trail_ops(GoalExpr0, GoalInfo, Goal, !Info).
+goal_add_trail_ops(!Goal, !Info) :-
+    OptTrailUsage = !.Info ^ opt_trail_usage,
+    (
+        OptTrailUsage = yes,
+        goal_cannot_modify_trail(!.Info ^ module_info, !.Goal)
+    ->
+        % Don't add trail ops if the goal cannot modify the trail
+        % and we are optimizing trail usage.
+        true
+    ;
+        !.Goal = GoalExpr0 - GoalInfo,
+        goal_expr_add_trail_ops(GoalExpr0, GoalInfo, !:Goal, !Info)
+    ). 
 
 :- pred goal_expr_add_trail_ops(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, trail_ops_info::in, trail_ops_info::out) is det.

@@ -99,7 +99,13 @@
 
     % Map from proc to an indication of whether or not it
     % might throw an exception.
+    % 
 :- type exception_info == map(pred_proc_id, exception_status).
+
+    % Map from proc to an indication of whether or not it
+    % modifies the trail.
+    %
+:- type trailing_info == map(pred_proc_id, trailing_status).
 
     % List of procedures for which there are user-requested type
     % specializations, and a list of predicates which should be
@@ -364,6 +370,9 @@
 :- pred module_info_get_exception_info(module_info::in, exception_info::out)
     is det.
 
+:- pred module_info_get_trailing_info(module_info::in, trailing_info::out)
+    is det.
+
 :- pred module_info_set_proc_requests(proc_requests::in,
     module_info::in, module_info::out) is det.
 
@@ -371,6 +380,9 @@
     module_info::in, module_info::out) is det.
 
 :- pred module_info_set_exception_info(exception_info::in,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_set_trailing_info(trailing_info::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_set_num_errors(int::in, module_info::in, module_info::out)
@@ -646,8 +658,13 @@
                 unused_arg_info             :: unused_arg_info,
 
                 % Exception information about procedures in the current module
-                % (this includes opt_imported procedures).
+                % NOTE: this includes opt_imported procedures.
                 exception_info              :: exception_info,
+
+                % Information about whether procedures in the current module
+                % modify the trail or not.
+                % NOTE: this includes opt_imported procedures.
+                trailing_info               :: trailing_info,
 
                 % How many lambda expressions there are at different contexts
                 % in the module. This is used to uniquely identify lambda
@@ -715,6 +732,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     set__init(StratPreds),
     map__init(UnusedArgInfo),
     map__init(ExceptionInfo),
+    map__init(TrailingInfo),
 
     set__init(TypeSpecPreds),
     set__init(TypeSpecForcePreds),
@@ -738,7 +756,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 
     map__init(NoTagTypes),
     ModuleSubInfo = module_sub_info(Name, Globals, no, [], [], [], [], no, 0,
-        [], [], StratPreds, UnusedArgInfo, ExceptionInfo,
+        [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
         map.init, counter__init(1), ImportedModules,
         IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
         NoTagTypes, no, [], init_analysis_info(mmc),
@@ -812,6 +830,7 @@ module_info_get_type_ctor_gen_infos(MI, MI ^ sub_info ^ type_ctor_gen_infos).
 module_info_get_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
 module_info_get_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
 module_info_get_exception_info(MI, MI ^ sub_info ^ exception_info).
+module_info_get_trailing_info(MI, MI ^ sub_info ^ trailing_info).
 module_info_get_lambdas_per_context(MI, MI ^ sub_info ^ lambdas_per_context).
 module_info_get_model_non_pragma_counter(MI,
     MI ^ sub_info ^ model_non_pragma_counter).
@@ -919,6 +938,8 @@ module_info_set_unused_arg_info(NewVal, MI,
     MI ^ sub_info ^ unused_arg_info := NewVal).
 module_info_set_exception_info(NewVal, MI,
     MI ^ sub_info ^ exception_info := NewVal).
+module_info_set_trailing_info(NewVal, MI,
+    MI ^ sub_info ^ trailing_info := NewVal).
 module_info_set_lambdas_per_context(NewVal, MI,
     MI ^ sub_info ^ lambdas_per_context := NewVal).
 module_info_set_model_non_pragma_counter(NewVal, MI,

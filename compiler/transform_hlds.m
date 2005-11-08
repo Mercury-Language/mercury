@@ -55,6 +55,7 @@
 
 :- include_module post_term_analysis.
 :- include_module exception_analysis.
+:- include_module trailing_analysis.
 
 % Optimizations (HLDS -> HLDS)
 :- include_module higher_order.

@@ -156,6 +156,9 @@
 :- pred mercury_output_pragma_exceptions(pred_or_func::in, sym_name::in,
     int::in, mode_num::in, exception_status::in, io::di, io::uo) is det.
 
+:- pred mercury_output_pragma_trailing_info(pred_or_func::in, sym_name::in,
+    arity::in, mode_num::in, trailing_status::in, io::di, io::uo) is det.
+
     % Write an Aditi index specifier.
     %
 :- pred mercury_output_index_spec(index_spec::in, io::di, io::uo) is det.
@@ -597,6 +600,11 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         Pragma = exceptions(PredOrFunc, PredName, Arity, ModeNum, ThrowStatus),
         mercury_output_pragma_exceptions(PredOrFunc, PredName, Arity, ModeNum,
             ThrowStatus, !IO)
+    ;
+        Pragma = trailing_info(PredOrFunc, PredName, Arity, ModeNum,
+            TrailingStatus),
+        mercury_output_pragma_trailing_info(PredOrFunc, PredName, Arity,
+            ModeNum, TrailingStatus, !IO)
     ;
         Pragma = fact_table(Pred, Arity, FileName),
         mercury_format_pragma_fact_table(Pred, Arity, FileName, !IO)
@@ -3289,6 +3297,31 @@ mercury_output_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum,
         )
     ;
         ThrowStatus = conditional,
+        io.write_string("conditional", !IO)
+    ),
+    io.write_string(").\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+mercury_output_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum,
+        TrailingStatus, !IO) :-
+    io.write_string(":- pragma trailing_info(", !IO),
+    write_pred_or_func(PredOrFunc, !IO),
+    io.write_string(", ", !IO),
+    mercury_output_bracketed_sym_name(SymName, !IO),
+    io.write_string(", ", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(", ", !IO),
+    io.write_int(ModeNum, !IO),
+    io.write_string(", ", !IO),
+    (
+        TrailingStatus = may_modify_trail,
+        io.write_string("may_modify_trail", !IO)
+    ;
+        TrailingStatus = will_not_modify_trail,
+        io.write_string("will_not_modify_trail", !IO)
+    ;
+        TrailingStatus = conditional,
         io.write_string("conditional", !IO)
     ),
     io.write_string(").\n", !IO).
