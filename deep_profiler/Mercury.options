@@ -25,16 +25,13 @@
 MCFLAGS-array_util =	--no-optimize-duplicate-calls
 MCFLAGS-callgraph = 	--no-optimize-duplicate-calls
 MCFLAGS-canonical =	--no-optimize-duplicate-calls
-# Compiling at -O0 is a due to an assertion failure in
-# rotd-2005-10-05.  It can be removed when that is fixed.
-# Also for exclude.m.
-MCFLAGS-cliques = 	--no-optimize-duplicate-calls -O0
+MCFLAGS-cliques = 	--no-optimize-duplicate-calls
 MCFLAGS-dense_bitset = 	--no-optimize-duplicate-calls 
-MCFLAGS-exclude = 	--no-optimize-duplicate-calls -O0
-MCFLAGS-html_format = 	--no-optimize-duplicate-calls --no-optimize-unused-args
+MCFLAGS-exclude = 	--no-optimize-duplicate-calls
+MCFLAGS-html_format = 	--no-optimize-duplicate-calls
 MCFLAGS-measurements = 	--no-optimize-duplicate-calls
-MCFLAGS-profile = 	--no-optimize-duplicate-calls --no-optimize-unused-args
-MCFLAGS-query = 	--no-optimize-duplicate-calls --no-optimize-unused-args
+MCFLAGS-profile = 	--no-optimize-duplicate-calls
+MCFLAGS-query = 	--no-optimize-duplicate-calls
 MCFLAGS-read_profile = 	--no-optimize-duplicate-calls
-MCFLAGS-startup = 	--no-optimize-duplicate-calls --no-optimize-unused-args
+MCFLAGS-startup = 	--no-optimize-duplicate-calls
 MCFLAGS-top_procs = 	--no-optimize-duplicate-calls

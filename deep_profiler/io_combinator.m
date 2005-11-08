@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2001, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -1037,7 +1039,7 @@ io_combinator__sequence_9(P1, P2, P3, P4, P5, P6, P7, P8, P9, Combine, Res) -->
     ).
 
 io_combinator__sequence_10(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
-		Combine, Res) -->
+        Combine, Res) -->
     call(P1, Res1),
     (
         { Res1 = ok(T1) },

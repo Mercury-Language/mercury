@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2001, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -18,11 +20,11 @@
 
 %-----------------------------------------------------------------------------%
 
-	% split(Str, Char, Pieces): splits Str into pieces at every occurrence
-	% of Char, and returns the pieces in order. No piece will contain Char.
-	% If two Chars occur in a row, split will return the empty string as
-	% the piece between them.
-	%
+    % split(Str, Char, Pieces): splits Str into pieces at every occurrence of
+    % Char, and returns the pieces in order. No piece will contain Char.  If
+    % two Chars occur in a row, split will return the empty string as the piece
+    % between them.
+    %
 :- pred split(string::in, char::in, list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -36,45 +38,45 @@
 %-----------------------------------------------------------------------------%
 
 split(Str0, SplitChar, Strs) :-
-	string__to_char_list(Str0, Chars0),
-	split_2(Chars0, SplitChar, Strs).
+    string__to_char_list(Str0, Chars0),
+    split_2(Chars0, SplitChar, Strs).
 
 :- pred split_2(list(char)::in, char::in, list(string)::out) is det.
 
 split_2(Chars, SplitChar, PieceStrs) :-
-	( find_split_char(Chars, SplitChar, Before, After) ->
-		string__from_char_list(Before, BeforeStr),
-		split_2(After, SplitChar, TailStrs),
-		PieceStrs = [BeforeStr | TailStrs]
-	;
-		string__from_char_list(Chars, PieceStr),
-		PieceStrs = [PieceStr]
-	).
+    ( find_split_char(Chars, SplitChar, Before, After) ->
+        string__from_char_list(Before, BeforeStr),
+        split_2(After, SplitChar, TailStrs),
+        PieceStrs = [BeforeStr | TailStrs]
+    ;
+        string__from_char_list(Chars, PieceStr),
+        PieceStrs = [PieceStr]
+    ).
 
-	% find_split_char(Chars, SplitChar, Before, After):
-	% If SplitChar occurs in Chars, it returns all the characters in Chars
-	% before the first occurrence of SplitChar in Chars in Before, and all
-	% the characters after the first occurrence of SplitChar in Chars in
-	% After. The first occurrence of SplitChar itself is not returned.
-	%
+    % find_split_char(Chars, SplitChar, Before, After):
+    % If SplitChar occurs in Chars, it returns all the characters in Chars
+    % before the first occurrence of SplitChar in Chars in Before, and all the
+    % characters after the first occurrence of SplitChar in Chars in After. The
+    % first occurrence of SplitChar itself is not returned.
+    %
 :- pred find_split_char(list(char)::in, char::in,
-	list(char)::out, list(char)::out) is semidet.
+    list(char)::out, list(char)::out) is semidet.
 
 find_split_char(Chars, SplitChar, Before, After) :-
-	find_split_char_2(Chars, SplitChar, [], BeforeRev, After),
-	list__reverse(BeforeRev, Before).
+    find_split_char_2(Chars, SplitChar, [], BeforeRev, After),
+    list__reverse(BeforeRev, Before).
 
 :- pred find_split_char_2(list(char)::in, char::in, list(char)::in,
-	list(char)::out, list(char)::out) is semidet.
+    list(char)::out, list(char)::out) is semidet.
 
 find_split_char_2([Char | Chars], SplitChar, BeforeRev0, BeforeRev, After) :-
-	( Char = SplitChar ->
-		BeforeRev = BeforeRev0,
-		After = Chars
-	;
-		find_split_char_2(Chars, SplitChar, [Char | BeforeRev0],
-			BeforeRev, After)
-	).
+    ( Char = SplitChar ->
+        BeforeRev = BeforeRev0,
+        After = Chars
+    ;
+        find_split_char_2(Chars, SplitChar, [Char | BeforeRev0],
+            BeforeRev, After)
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module util.
