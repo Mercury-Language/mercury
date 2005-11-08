@@ -427,6 +427,7 @@
                 proc_p_or_f             :: pred_or_func,
                 proc_vars               :: list(pragma_var),
                 proc_varset             :: prog_varset,
+                proc_instvarset         :: inst_varset,
                 proc_impl               :: pragma_foreign_code_impl
                 % Set of foreign proc attributes, eg.:
                 %   what language this code is in

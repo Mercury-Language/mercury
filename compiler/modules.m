@@ -2099,7 +2099,7 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 pragma_allowed_in_interface(foreign_decl(_, _, _), no).
 pragma_allowed_in_interface(foreign_import_module(_, _), yes).
 pragma_allowed_in_interface(foreign_code(_, _), no).
-pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _), no).
+pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _, _), no).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).
@@ -5820,7 +5820,7 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         Info = Info0 ^ used_foreign_languages :=
             set__insert(Info0 ^ used_foreign_languages, Lang)
     ;
-        Pragma = foreign_proc(Attrs, Name, _, _, _, _)
+        Pragma = foreign_proc(Attrs, Name, _, _, _, _, _)
     ->
         NewLang = foreign_language(Attrs),
         ( OldLang = Info0 ^ foreign_proc_languages ^ elem(Name) ->
@@ -7388,7 +7388,7 @@ item_needs_foreign_imports(Item @ type_defn(_, _, _, _, _), Lang) :-
     Lang = foreign_type_language(ForeignType).
 item_needs_foreign_imports(pragma(_, foreign_decl(Lang, _, _)), Lang).
 item_needs_foreign_imports(pragma(_, foreign_code(Lang, _)), Lang).
-item_needs_foreign_imports(pragma(_, foreign_proc(Attrs, _, _, _, _, _)),
+item_needs_foreign_imports(pragma(_, foreign_proc(Attrs, _, _, _, _, _, _)),
         foreign_language(Attrs)).
 item_needs_foreign_imports(mutable(_, _, _, _, _), Lang) :-
     foreign_language(Lang).
@@ -7688,7 +7688,7 @@ reorderable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = foreign_code(_, _), Reorderable = no
     ; Pragma = foreign_decl(_, _, _), Reorderable = no
     ; Pragma = foreign_import_module(_, _), Reorderable = no
-    ; Pragma = foreign_proc(_, _, _, _, _, _), Reorderable = no
+    ; Pragma = foreign_proc(_, _, _, _, _, _, _), Reorderable = no
     ; Pragma = import(_, _, _, _, _), Reorderable = no
     ; Pragma = inline(_, _), Reorderable = yes
     ; Pragma = mode_check_clauses(_, _), Reorderable = yes
@@ -7776,7 +7776,7 @@ chunkable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = foreign_code(_, _), Reorderable = no
     ; Pragma = foreign_decl(_, _, _), Reorderable = no
     ; Pragma = foreign_import_module(_, _), Reorderable = no
-    ; Pragma = foreign_proc(_, _, _, _, _, _), Reorderable = no
+    ; Pragma = foreign_proc(_, _, _, _, _, _, _), Reorderable = no
     ; Pragma = import(_, _, _, _, _), Reorderable = no
     ; Pragma = inline(_, _), Reorderable = yes
     ; Pragma = mode_check_clauses(_, _), Reorderable = yes

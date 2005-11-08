@@ -559,7 +559,7 @@ item_to_item_id_2(nothing(_), no).
 is_pred_pragma(foreign_decl(_, _, _), no).
 is_pred_pragma(foreign_import_module(_, _), no).
 is_pred_pragma(foreign_code(_, _), no).
-is_pred_pragma(foreign_proc(_, Name, PredOrFunc, Args, _, _),
+is_pred_pragma(foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list__length(Args)).
 is_pred_pragma(type_spec(Name, _, Arity, MaybePredOrFunc, _, _, _, _),

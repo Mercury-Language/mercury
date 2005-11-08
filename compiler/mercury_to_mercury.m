@@ -136,9 +136,10 @@
 
 :- pred mercury_output_pragma_foreign_code(pragma_foreign_proc_attributes::in,
     sym_name::in, pred_or_func::in, list(pragma_var)::in, prog_varset::in,
-    pragma_foreign_code_impl::in, io::di, io::uo) is det.
+    inst_varset::in, pragma_foreign_code_impl::in, io::di, io::uo)
+    is det.
 :- func mercury_pragma_foreign_code_to_string(pragma_foreign_proc_attributes,
-    sym_name, pred_or_func, list(pragma_var), prog_varset,
+    sym_name, pred_or_func, list(pragma_var), prog_varset, inst_varset,
     pragma_foreign_code_impl) = string.
 
 :- inst type_spec == bound(type_spec(ground, ground, ground, ground,
@@ -373,6 +374,7 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.rat.
@@ -436,8 +438,8 @@ convert_to_mercury(ModuleName, OutputFileName, Items, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % output the declarations one by one
-
+    % Output the declarations one by one.
+    %
 :- pred mercury_output_item_list(bool::in, list(item_and_context)::in,
     io::di, io::uo) is det.
 
@@ -556,10 +558,10 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         Pragma = foreign_code(Lang, Code),
         mercury_output_pragma_foreign_body_code(Lang, Code, !IO)
     ;
-        Pragma = foreign_proc(Attributes, Pred, PredOrFunc, Vars, VarSet,
-            PragmaCode),
+        Pragma = foreign_proc(Attributes, Pred, PredOrFunc, Vars, ProgVarset,
+            InstVarset, PragmaCode),
         mercury_output_pragma_foreign_code(Attributes, Pred,
-            PredOrFunc, Vars, VarSet, PragmaCode, !IO)
+            PredOrFunc, Vars, ProgVarset, InstVarset, PragmaCode, !IO)
     ;
         Pragma = import(Pred, PredOrFunc, ModeList, Attributes, C_Function),
         mercury_format_pragma_import(Pred, PredOrFunc, ModeList,
@@ -900,7 +902,7 @@ output_instance_method_clause(Name1, Context, Item, !IO) :-
                 Body, Context, !IO)
         )
     ;
-        error("invalid instance method item")
+        unexpected(this_file, "invalid instance method item")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3027,22 +3029,24 @@ mercury_output_pragma_foreign_body_code(Lang, ForeignCodeString, !IO) :-
 %-----------------------------------------------------------------------------%
 
 mercury_output_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
-        VarSet, PragmaCode, !IO) :-
+        ProgVarset, InstVarset, PragmaCode, !IO) :-
     mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc,
-        Vars0, VarSet, PragmaCode, !IO).
+        Vars0, ProgVarset, InstVarset, PragmaCode, !IO).
 
 mercury_pragma_foreign_code_to_string(Attributes, PredName, PredOrFunc, Vars0,
-        VarSet, PragmaCode) = String :-
+        ProgVarset, InstVarset, PragmaCode) = String :-
     mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc,
-        Vars0, VarSet, PragmaCode, "", String).
+        Vars0, ProgVarset, InstVarset, PragmaCode, "", String).
 
+    % Output the given pragma foreign_code declaration.
+    %
 :- pred mercury_format_pragma_foreign_code(pragma_foreign_proc_attributes::in,
     sym_name::in, pred_or_func::in, list(pragma_var)::in, prog_varset::in,
-    pragma_foreign_code_impl::in, U::di, U::uo) is det <= output(U).
+    inst_varset::in, pragma_foreign_code_impl::in, 
+    U::di, U::uo) is det <= output(U).
 
-    % Output the given pragma foreign_code declaration
 mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
-        VarSet, PragmaCode, !U) :-
+        ProgVarset, InstVarset, PragmaCode, !U) :-
     (
         PragmaCode = import(C_Function, _, _, _),
         % The predicate or function arguments in a `:- pragma import'
@@ -3055,20 +3059,20 @@ mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
     ;
         PragmaCode = ordinary(_, _),
         mercury_format_pragma_foreign_code_2(Attributes, PredName,
-            PredOrFunc, Vars0, VarSet, PragmaCode, !U)
+            PredOrFunc, Vars0, ProgVarset, InstVarset, PragmaCode, !U)
     ;
         PragmaCode = nondet(_, _, _, _, _, _, _, _, _),
         mercury_format_pragma_foreign_code_2(Attributes, PredName,
-            PredOrFunc, Vars0, VarSet, PragmaCode, !U)
+            PredOrFunc, Vars0, ProgVarset, InstVarset, PragmaCode, !U)
     ).
 
 :- pred mercury_format_pragma_foreign_code_2(
     pragma_foreign_proc_attributes::in, sym_name::in, pred_or_func::in,
-    list(pragma_var)::in, prog_varset::in, pragma_foreign_code_impl::in,
-    U::di, U::uo) is det <= output(U).
+    list(pragma_var)::in, prog_varset::in, inst_varset::in,
+    pragma_foreign_code_impl::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
-        VarSet, PragmaCode, !U) :-
+        ProgVarset, InstVarset, PragmaCode, !U) :-
     add_string(":- pragma foreign_proc(", !U),
     Lang = foreign_language(Attributes),
     mercury_format_foreign_language_string(Lang, !U),
@@ -3088,7 +3092,8 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
     ;
         Vars = [_ | _],
         add_string("(", !U),
-        mercury_format_pragma_foreign_code_vars(Vars, VarSet, !U),
+        mercury_format_pragma_foreign_code_vars(Vars, ProgVarset, 
+            InstVarset, !U),
         add_string(")", !U)
     ),
     (
@@ -3096,7 +3101,8 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
     ;
         PredOrFunc = function,
         add_string(" = (", !U),
-        mercury_format_pragma_foreign_code_vars(ResultVars, VarSet, !U),
+        mercury_format_pragma_foreign_code_vars(ResultVars, ProgVarset, 
+            InstVarset, !U),
         add_string(")", !U)
     ),
     add_string(", ", !U),
@@ -3131,31 +3137,41 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
     ;
         PragmaCode = import(_, _, _, _),
         % This should be handle in mercury_output_pragma_foreign_code.
-        error("mercury_output_pragma_foreign_code_2")
+        unexpected(this_file, "mercury_output_pragma_foreign_code_2")
     ),
     add_string(").\n", !U).
 
 %-----------------------------------------------------------------------------%
 
-    % Output the varnames of the pragma vars
+    % Output the varnames of the pragma vars.
+    %
 :- pred mercury_format_pragma_foreign_code_vars(list(pragma_var)::in,
-    prog_varset::in, U::di, U::uo) is det <= output(U).
+    prog_varset::in, inst_varset::in, U::di, U::uo)
+    is det <= output(U).
 
-mercury_format_pragma_foreign_code_vars([], _, !U).
-mercury_format_pragma_foreign_code_vars([Var | Vars], VarSet, !U) :-
+mercury_format_pragma_foreign_code_vars(Vars, ProgVarset, InstVarset, !U) :-
+    mercury_format_pragma_foreign_code_vars_2(Vars, ProgVarset, InstVarset,
+        !U).
+
+:- pred mercury_format_pragma_foreign_code_vars_2(list(pragma_var)::in,
+    prog_varset::in, inst_varset::in, U::di, U::uo)
+    is det <= output(U).
+
+mercury_format_pragma_foreign_code_vars_2([], _, _, !U).
+mercury_format_pragma_foreign_code_vars_2([Var | Vars], ProgVarset, 
+        InstVarset, !U) :-
     Var = pragma_var(_Var, VarName, Mode),
     add_string(VarName, !U),
     add_string(" :: ", !U),
-        % XXX Fake the inst varset
-    varset__init(InstVarSet),
-    mercury_format_mode(Mode, simple_inst_info(InstVarSet), !U),
+    mercury_format_mode(Mode, simple_inst_info(InstVarset), !U),
     (
         Vars = []
     ;
         Vars = [_ | _],
         add_string(", ", !U)
     ),
-    mercury_format_pragma_foreign_code_vars(Vars, VarSet, !U).
+    mercury_format_pragma_foreign_code_vars_2(Vars, ProgVarset, InstVarset,
+        !U).
 
 %-----------------------------------------------------------------------------%
 
@@ -3170,7 +3186,7 @@ mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO) :-
             PredOrFunc = PredOrFunc0
         ;
             MaybePredOrFunc = no,
-            error("pragma type_spec: no pred_or_func")
+            unexpected(this_file, "pragma type_spec: no pred_or_func")
         ),
         (
             PredOrFunc = function,

@@ -819,10 +819,10 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     Item = pragma(Origin, Pragma),
     (
         Pragma = foreign_proc(Attributes, Pred, PredOrFunc,
-            Vars, VarSet, PragmaImpl)
+            Vars, ProgVarSet, InstVarSet, PragmaImpl)
     ->
         module_add_pragma_foreign_proc(Attributes, Pred, PredOrFunc,
-            Vars, VarSet, PragmaImpl, !.Status, Context,
+            Vars, ProgVarSet, InstVarSet, PragmaImpl, !.Status, Context,
             !ModuleInfo, !QualInfo, !IO)
     ;
         Pragma = import(Name, PredOrFunc, Modes, Attributes, C_Function)
@@ -1124,7 +1124,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     Item = mutable(Name, _Type, InitTerm, Inst, MutAttrs),
     ( status_defined_in_this_module(!.Status, yes) ->
         module_info_get_name(!.ModuleInfo, ModuleName),
-        varset__new_named_var(varset.init, "X", X, VarSet0),
+        varset.new_named_var(varset.init, "X", X, ProgVarSet0),
+        InstVarset = varset.init,
         Attrs0 = default_attributes(c),
         set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
         ( mutable_var_thread_safe(MutAttrs) = thread_safe ->
@@ -1159,7 +1160,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         NonPureGetClause = pragma(compiler(mutable_decl),
             foreign_proc(GetAttrs,
                 mutable_get_pred_sym_name(ModuleName, Name), predicate,
-                [pragma_var(X, "X", out_mode(Inst))], VarSet0,
+                [pragma_var(X, "X", out_mode(Inst))], ProgVarSet0, InstVarset,
                 ordinary("X = " ++ TargetMutableName ++ ";", yes(Context)))),
         add_item_clause(NonPureGetClause, !Status, Context, !ModuleInfo,
             !QualInfo, !IO),
@@ -1192,7 +1193,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         ),
         NonPureSetClause = pragma(compiler(mutable_decl), foreign_proc(Attrs,
             mutable_set_pred_sym_name(ModuleName, Name), predicate,
-            [pragma_var(X, "X", in_mode(Inst))], VarSet0,
+            [pragma_var(X, "X", in_mode(Inst))], ProgVarSet0, InstVarset,
             ordinary(TrailCode ++ TargetMutableName ++ " = X;",
                 yes(Context)))),
         add_item_clause(NonPureSetClause, !Status, Context, !ModuleInfo,
@@ -1208,8 +1209,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         ( mutable_var_attach_to_io_state(MutAttrs) = yes ->
             set_tabled_for_io(tabled_for_io, Attrs0, PureIntAttrs0),
             set_purity(purity_pure, PureIntAttrs0, PureIntAttrs),
-            varset.new_named_var(VarSet0, "IO0", IO0, VarSet1),
-            varset.new_named_var(VarSet1, "IO",  IO,  VarSet),
+            varset.new_named_var(ProgVarSet0, "IO0", IO0, ProgVarSet1),
+            varset.new_named_var(ProgVarSet1, "IO",  IO,  ProgVarSet),
             PureSetClause = pragma(compiler(mutable_decl),
                 foreign_proc(PureIntAttrs,
                     mutable_set_pred_sym_name(ModuleName, Name), predicate,
@@ -1217,7 +1218,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                         pragma_var(X,   "X",   in_mode(Inst)),
                         pragma_var(IO0, "IO0", di_mode),
                         pragma_var(IO,  "IO",  uo_mode)
-                    ], VarSet,
+                    ], ProgVarSet, InstVarset, 
                     ordinary(TargetMutableName ++ " = X; IO = IO0;",
                         yes(Context)
                     )
@@ -1232,7 +1233,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                         pragma_var(X,   "X",   out_mode(Inst)),
                         pragma_var(IO0, "IO0", di_mode),
                         pragma_var(IO,  "IO",  uo_mode)
-                    ], VarSet,
+                    ], ProgVarSet, InstVarset,
                     ordinary(
                                 "X = " ++ TargetMutableName ++ ";" ++
                                 "IO = IO0;",

@@ -106,6 +106,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -235,11 +236,6 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
     pred_info_clauses_info(PredInfo0, ClausesInfo0),
     (
-        %
-        % XXX hlds_out__write_clause needs to be changed to
-        % output explicit type qualifications to avoid type
-        % ambiguity errors in clauses written to `.opt' files.
-        %
         clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
         map__is_empty(ExplicitVarTypes),
         should_be_processed(ProcessLocalPreds, PredId, PredInfo0,
@@ -516,9 +512,9 @@ traverse_goal(if_then_else(Vars, Cond0, Then0, Else0) - Info,
     % non-exported types, so we just write out the clauses.
 traverse_goal(Goal @ foreign_proc(_, _, _, _, _, _) - Info,
         Goal - Info, yes, !Info).
-traverse_goal(shorthand(_) - _, _, _, !Info) :-
+traverse_goal(shorthand(_) - _, _, _, _, _) :-
     % These should have been expanded out by now.
-    error("traverse_goal: unexpected shorthand").
+    unexpected(this_file, "traverse_goal: unexpected shorthand").
 
 :- pred traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
     bool::out, intermod_info::in, intermod_info::out) is det.
@@ -684,7 +680,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
         set__insert(Modules0, PredModule, Modules),
         intermod_info_set_modules(Modules, !Info)
     ;
-        error("add_proc: unexpected status")
+        unexpected(this_file, "add_proc: unexpected status")
     ).
 
     % Resolve overloading and module qualify everything in a unify_rhs.
@@ -773,7 +769,8 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
                     MethodAL)
             ;
                 MaybePredProcIds = no,
-                error("gather_instances_3: method pred_proc_ids not filled in")
+                unexpected(this_file,
+                    "gather_instances_3: method pred_proc_ids not filled in")
             ),
             list__map_foldl(qualify_instance_method(ModuleInfo),
                 MethodAL, Methods, [], PredIds),
@@ -945,7 +942,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
             unqualify_name(InstanceMethodName0, UnqualMethodName),
             InstanceMethodName = qualified(TypeModule, UnqualMethodName)
         ;
-            error("unqualified type_ctor in " ++
+            unexpected(this_file, "unqualified type_ctor in " ++
                 "hlds_cons_defn or hlds_ctor_field_defn")
         )
     ).
@@ -1505,7 +1502,8 @@ write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds], !IO) :-
         ArgModes = ArgModes0,
         Detism = Detism0
     ;
-        error("write_pred_modes: attempt to write undeclared mode")
+        unexpected(this_file,
+            "write_pred_modes: attempt to write undeclared mode")
     ),
     proc_info_context(ProcInfo, Context),
     varset__init(Varset),
@@ -1546,7 +1544,8 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
             hlds_out__write_promise(PromiseType, 0, ModuleInfo,
                 PredId, VarSet, no, HeadVars, PredOrFunc, Clause, no, !IO)
         ;
-            error("write_preds: assertion not a single clause.")
+            unexpected(this_file,
+                "write_preds: assertion not a single clause.")
         )
     ;
         pred_info_typevarset(PredInfo, TypeVarset),
@@ -1594,7 +1593,7 @@ write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
         list__foldl(write_foreign_clause(Procs, PredOrFunc,
             PragmaCode, Attributes, Args, VarSet, SymName), ProcIds, !IO)
     ;
-        error("foreign_proc expected within this goal")
+        unexpected(this_file, "foreign_proc expected within this goal")
     ).
 
 :- pred write_foreign_clause(proc_table::in, pred_or_func::in,
@@ -1603,16 +1602,20 @@ write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
     io::di, io::uo) is det.
 
 write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
-        Attributes, Args, VarSet0, SymName, ProcId, !IO) :-
+        Attributes, Args, ProgVarset0, SymName, ProcId, !IO) :-
     map__lookup(Procs, ProcId, ProcInfo),
     proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
-    ( MaybeArgModes = yes(ArgModes) ->
-        get_pragma_foreign_code_vars(Args, ArgModes, VarSet0, VarSet,
-            PragmaVars),
+    ( 
+        MaybeArgModes = yes(ArgModes),
+        get_pragma_foreign_code_vars(Args, ArgModes,
+            ProgVarset0, ProgVarset, PragmaVars),
+        proc_info_inst_varset(ProcInfo, InstVarset),
         mercury_output_pragma_foreign_code(Attributes, SymName,
-            PredOrFunc, PragmaVars, VarSet, PragmaImpl, !IO)
+            PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl, 
+            !IO)
     ;
-        error("write_clause: no mode declaration")
+        MaybeArgModes = no,
+        unexpected(this_file, "write_clause: no mode declaration")
     ).
 
     % Strip the `Headvar__n = Term' unifications from each clause,
@@ -1747,7 +1750,7 @@ write_type_spec_pragma(Pragma, !IO) :-
         AppendVarnums = yes,
         mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO)
     ;
-        error("write_type_spec_pragma")
+        unexpected(this_file, "write_type_spec_pragma")
     ).
 
     % Is a pragma declaration required in the `.opt' file for
@@ -1790,7 +1793,7 @@ should_output_marker(does_not_terminate, yes).
 should_output_marker(check_termination, no).
 should_output_marker(generate_inline, _) :-
     % This marker should only occur after the magic sets transformation.
-    error("should_output_marker: generate_inline").
+    unexpected(this_file, "should_output_marker: generate_inline").
 should_output_marker(calls_are_fully_qualified, no).
 should_output_marker(mode_check_clauses, yes).
 
@@ -1820,7 +1823,7 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
     ->
         PragmaVars = []
     ;
-        error("intermod:get_pragma_foreign_code_vars")
+        unexpected(this_file, "get_pragma_foreign_code_vars")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2315,4 +2318,12 @@ update_error_status(FileType, FileName, ModuleError, Messages,
         )
     ).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "intermod.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module intermod.
 %-----------------------------------------------------------------------------%

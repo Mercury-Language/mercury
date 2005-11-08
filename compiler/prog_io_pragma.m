@@ -1583,9 +1583,10 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
         parse_pragma_c_code_varlist(VarSet0, VarList, PragmaVars, Error),
         (
             Error = no,
-            varset__coerce(VarSet0, VarSet),
+            varset__coerce(VarSet0, ProgVarSet),
+            varset__coerce(VarSet0, InstVarSet),
             Result = ok(pragma(user, foreign_proc(Flags, PredName, PredOrFunc,
-                PragmaVars, VarSet, PragmaImpl)))
+                PragmaVars, ProgVarSet, InstVarSet, PragmaImpl)))
         ;
             Error = yes(ErrorMessage),
             Result = error(ErrorMessage, PredAndVarsTerm0)

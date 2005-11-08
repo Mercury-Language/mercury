@@ -70,9 +70,9 @@
 
 :- pred module_add_pragma_foreign_proc(pragma_foreign_proc_attributes::in,
     sym_name::in, pred_or_func::in, list(pragma_var)::in, prog_varset::in,
-    pragma_foreign_code_impl::in, import_status::in, prog_context::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    io::di, io::uo) is det.
+    inst_varset::in, pragma_foreign_code_impl::in, import_status::in,
+    prog_context::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 :- pred module_add_pragma_tabled(eval_method::in, sym_name::in, int::in,
     maybe(pred_or_func)::in, maybe(list(mer_mode))::in, import_status::in,
@@ -188,7 +188,7 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         module_add_foreign_import_module(Lang, Import, Context, !ModuleInfo)
     ;
         % Handle pragma foreign procs later on (when we process clauses).
-        Pragma = foreign_proc(_, _, _, _, _, _)
+        Pragma = foreign_proc(_, _, _, _, _, _, _)
     ;
         % Handle pragma tabled decls later on (when we process clauses).
         Pragma = tabled(_, _, _, _, _)
@@ -1253,7 +1253,8 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
 %-----------------------------------------------------------------------------%
 
 module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
-        VarSet, PragmaImpl, Status, Context, !ModuleInfo, !QualInfo, !IO) :-
+        ProgVarSet, _InstVarset, PragmaImpl, Status, Context, !ModuleInfo,
+        !QualInfo, !IO) :-
     %
     % Begin by replacing any maybe_thread_safe foreign_proc attributes
     % with the actual thread safety attributes which we get from the
@@ -1372,14 +1373,24 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             map__to_assoc_list(Procs, ExistingProcs),
             pragma_get_modes(PVars, Modes),
             (
-                get_procedure_matching_argmodes(ExistingProcs, Modes,
-                    !.ModuleInfo, ProcId)
+                % The inst variables for the foreign_proc declaration
+                % and predmode declarations are from different varsets.
+                % We cannot just unify the argument modes directly because
+                % the representation of the inst variables may be different.
+                % Instead we need to allow for a renaming between the 
+                % inst variables in the argument modes of the foreign_proc
+                % and those of the predmode declaration.
+                %
+                % XXX We should probably also check that each pair in 
+                % the renaming has the same name.
+                get_procedure_matching_argmodes_with_renaming(ExistingProcs,
+                    Modes, !.ModuleInfo, ProcId)
             ->
                 pred_info_clauses_info(!.PredInfo, Clauses0),
                 pred_info_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
                 clauses_info_add_pragma_foreign_proc(Purity, Attributes,
-                    PredId, ProcId, VarSet, PVars, ArgTypes, PragmaImpl,
+                    PredId, ProcId, ProgVarSet, PVars, ArgTypes, PragmaImpl,
                     Context, PredOrFunc, PredName, Arity, Clauses0, Clauses,
                     !ModuleInfo, !IO),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
@@ -1832,10 +1843,11 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
         PredOrFunc, Arity, ArgTypes, Status, Context, !ModuleInfo, !QualInfo,
         !IO) :-
     map__lookup(ProcTable, ProcID, ProcInfo),
-    varset__init(VarSet0),
-    varset__new_vars(VarSet0, Arity, Vars, VarSet),
+    varset__init(ProgVarSet0),
+    varset__new_vars(ProgVarSet0, Arity, Vars, ProgVarSet),
     proc_info_argmodes(ProcInfo, Modes),
-    fact_table_pragma_vars(Vars, Modes, VarSet, PragmaVars),
+    proc_info_inst_varset(ProcInfo, InstVarSet),
+    fact_table_pragma_vars(Vars, Modes, ProgVarSet, PragmaVars),
     fact_table_generate_c_code(SymName, PragmaVars, ProcID, PrimaryProcID,
         ProcInfo, ArgTypes, !.ModuleInfo, C_ProcCode, C_ExtraCode, !IO),
 
@@ -1846,7 +1858,7 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     % Fact tables procedures should be considered pure.
     set_purity(purity_pure, Attrs2, Attrs),
     module_add_pragma_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
-        VarSet, ordinary(C_ProcCode, no), Status, Context,
+        ProgVarSet, InstVarSet, ordinary(C_ProcCode, no), Status, Context,
         !ModuleInfo, !QualInfo, !IO),
     ( C_ExtraCode = "" ->
         true
@@ -2096,6 +2108,34 @@ get_procedure_matching_argmodes_2([P | Procs], Modes, ModuleInfo, OurProcId) :-
     ;
         get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, OurProcId)
     ).
+    
+    % Find the procedure with argmodes which match the ones we want but
+    % allow for a renaming between the inst vars.
+    %
+:- pred get_procedure_matching_argmodes_with_renaming(
+    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in,
+    module_info::in, proc_id::out) is semidet.
+
+get_procedure_matching_argmodes_with_renaming(Procs, Modes0,
+        ModuleInfo, ProcId) :-
+    list__map(constrain_inst_vars_in_mode, Modes0, Modes),
+    get_procedure_matching_argmodes_with_renaming_2(Procs, Modes,
+        ModuleInfo, ProcId).
+
+:- pred get_procedure_matching_argmodes_with_renaming_2(
+    assoc_list(proc_id, proc_info)::in, list(mer_mode)::in,
+    module_info::in, proc_id::out) is semidet.
+
+get_procedure_matching_argmodes_with_renaming_2([P | Procs], Modes,
+        ModuleInfo, OurProcId) :-
+    P = ProcId - ProcInfo,
+    proc_info_argmodes(ProcInfo, ArgModes),
+    ( mode_list_matches_with_renaming(Modes, ArgModes, ModuleInfo) ->
+        OurProcId = ProcId
+    ;
+        get_procedure_matching_argmodes_with_renaming_2(Procs, Modes,
+            ModuleInfo, OurProcId)
+    ).
 
 get_procedure_matching_declmodes(Procs, Modes0, ModuleInfo, ProcId) :-
     list__map(constrain_inst_vars_in_mode, Modes0, Modes),
@@ -2124,6 +2164,178 @@ mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-
     mode_get_insts_semidet(ModuleInfo, Mode1, Inst1, Inst2),
     mode_get_insts_semidet(ModuleInfo, Mode2, Inst1, Inst2),
     mode_list_matches(Modes1, Modes2, ModuleInfo).
+
+%----------------------------------------------------------------------------%
+
+:- type inst_var_renaming == map(inst_var, inst_var).
+:- type inst_var_renamings == list(inst_var_renaming).
+
+    % Succeeds if two lists of modes match allowing for a renaming
+    % of inst variables between the two lists.
+    %
+:- pred mode_list_matches_with_renaming(list(mer_mode)::in,
+    list(mer_mode)::in, module_info::in) is semidet.
+
+mode_list_matches_with_renaming(ModesA, ModesB, ModuleInfo) :-
+    mode_list_matches_with_renaming(ModesA, ModesB, _, ModuleInfo).
+
+:- pred mode_list_matches_with_renaming(list(mer_mode)::in,
+    list(mer_mode)::in, inst_var_renaming::out, module_info::in)
+    is semidet.
+
+mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo) :-
+    mode_list_matches_with_renaming_2(ModesA, ModesB, [], Renamings,
+        ModuleInfo),
+    list.foldl(merge_inst_var_renamings, Renamings, map.init, Renaming).
+
+:- pred mode_list_matches_with_renaming_2(
+    list(mer_mode)::in, list(mer_mode)::in,
+    inst_var_renamings::in, inst_var_renamings::out,
+    module_info::in) is semidet.
+
+ mode_list_matches_with_renaming_2([], [], !Renaming, _).
+ mode_list_matches_with_renaming_2([ModeA | ModesA], [ModeB | ModesB],
+        !Substs, ModuleInfo) :-
+    %
+    % We use mode_get_insts_semidet instead of mode_get_insts to avoid
+    % aborting if there are undefined modes.  (Undefined modes get
+    % reported later).
+    %
+    mode_get_insts_semidet(ModuleInfo, ModeA, InstAInitial, InstAFinal),
+    mode_get_insts_semidet(ModuleInfo, ModeB, InstBInitial, InstBFinal),
+    match_insts_with_renaming(ModuleInfo, InstAInitial, InstBInitial,
+        InitialSubst),
+    match_insts_with_renaming(ModuleInfo, InstAFinal, InstBFinal, 
+        FinalSubst),
+    list.append([InitialSubst, FinalSubst], !Substs),
+    mode_list_matches_with_renaming_2(ModesA, ModesB, !Substs, ModuleInfo).
+
+:- pred match_corresponding_inst_lists_with_renaming(module_info::in,
+    list(mer_inst)::in, list(mer_inst)::in,
+    inst_var_renaming::in, inst_var_renaming::out) is semidet.
+
+match_corresponding_inst_lists_with_renaming(_, [], [], !Renaming).
+match_corresponding_inst_lists_with_renaming(ModuleInfo,
+        [ A | As ], [ B | Bs ], !Renaming) :-
+    match_insts_with_renaming(ModuleInfo, A, B, Renaming0),
+    merge_inst_var_renamings(Renaming0, !Renaming),
+    match_corresponding_inst_lists_with_renaming(ModuleInfo, As, Bs,
+        !Renaming).
+
+:- pred match_corresponding_bound_inst_lists_with_renaming(module_info::in,
+    list(bound_inst)::in, list(bound_inst)::in,
+    inst_var_renaming::in,inst_var_renaming::out) is semidet.
+
+match_corresponding_bound_inst_lists_with_renaming(_, [], [], !Renaming).
+match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
+        [A | As ], [B | Bs], !Renaming) :-
+    A = functor(ConsId, ArgsA),
+    B = functor(ConsId, ArgsB),
+    match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
+        map.init, Renaming0),
+    merge_inst_var_renamings(Renaming0, !Renaming),
+    match_corresponding_bound_inst_lists_with_renaming(ModuleInfo, As, Bs,
+        !Renaming).
+
+:- pred match_insts_with_renaming(module_info::in, mer_inst::in, mer_inst::in,
+    map(inst_var, inst_var)::out) is semidet.
+
+match_insts_with_renaming(_, any(Uniq), any(Uniq), map.init).
+match_insts_with_renaming(_, free, free, map.init).
+match_insts_with_renaming(_, free(Type), free(Type), map.init).
+match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
+    InstA = bound(Uniq, BoundInstsA),
+    InstB = bound(Uniq, BoundInstsB),
+    match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
+        BoundInstsA, BoundInstsB, map.init, Renaming).
+match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
+    InstA = ground(Uniq, GroundInstInfoA),
+    InstB = ground(Uniq, GroundInstInfoB),
+    (
+        GroundInstInfoA = none,
+        GroundInstInfoB = none,
+        Renaming = map.init
+    ;
+        GroundInstInfoA = higher_order(PredInstInfoA),
+        GroundInstInfoB = higher_order(PredInstInfoB),
+        PredInstInfoA = pred_inst_info(PredOrFunc, ModesA, Det),
+        PredInstInfoB = pred_inst_info(PredOrFunc, ModesB, Det),
+        mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo)
+    ).
+match_insts_with_renaming(_, not_reached, not_reached, map.init).
+match_insts_with_renaming(_, inst_var(VarA), inst_var(VarB), Subst) :-
+    svmap.insert(VarA, VarB, map.init, Subst).
+match_insts_with_renaming(ModuleInfo, InstA, InstB, Subst) :-
+    InstA = constrained_inst_vars(InstVarSetA, SpecInstA),
+    InstB = constrained_inst_vars(InstVarSetB, SpecInstB),
+    %
+    % We'll deal with the specified inst first.
+    %
+    match_insts_with_renaming(ModuleInfo, SpecInstA, SpecInstB,
+        Subst0),
+    ListVarA = set.to_sorted_list(InstVarSetA),
+    ListVarB = set.to_sorted_list(InstVarSetB),
+    (
+        ListVarA = [VarA0], ListVarB = [VarB0]
+    ->
+        VarA = VarA0,
+        VarB = VarB0
+    ;
+        unexpected(this_file,
+            "match_inst_with_renaming: non-singleton sets")
+    ),
+    ( map.search(Subst0, VarA, SpecVarB) ->
+        % If VarA was already in the renaming then check that it's consistent
+        % with the renaming from the set of inst vars.
+        VarB = SpecVarB,
+        Subst = Subst0
+    ;
+        map.insert(Subst0, VarA, VarB, Subst)
+    ).
+match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
+    InstA = defined_inst(InstNameA),
+    InstB = defined_inst(InstNameB),
+    match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB, Renaming). 
+match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
+    InstA = abstract_inst(Name, ArgsA),
+    InstB = abstract_inst(Name, ArgsB),
+    match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
+        map.init, Renaming).
+   
+:- pred match_inst_names_with_renaming(module_info::in,
+    inst_name::in, inst_name::in, inst_var_renaming::out) is semidet.
+
+match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB, Renaming) :-
+    InstNameA = user_inst(Name, ArgsA),
+    InstNameB = user_inst(Name, ArgsB),
+    match_corresponding_inst_lists_with_renaming(ModuleInfo,
+        ArgsA, ArgsB, map.init, Renaming).
+%
+% XXX The rest of these are introduced by the compiler, it doesn't
+% look like they need any special treatment.
+%
+match_inst_names_with_renaming(_, Inst @ merge_inst(_, _), Inst, map.init).
+match_inst_names_with_renaming(_, Inst @ unify_inst(_, _, _, _), Inst,
+        map.init).
+match_inst_names_with_renaming(_, Inst @ ground_inst(_, _, _, _), Inst,
+        map.init).
+match_inst_names_with_renaming(_, Inst @ any_inst(_, _, _, _), Inst,
+        map.init).
+match_inst_names_with_renaming(_, Inst @ shared_inst(_), Inst, map.init).
+match_inst_names_with_renaming(_, Inst @ mostly_uniq_inst(_), Inst, map.init).
+match_inst_names_with_renaming(_, Inst @ typed_ground(_, _), Inst, map.init).
+match_inst_names_with_renaming(_, Inst @ typed_inst(_, _), Inst, map.init).
+
+:- pred merge_inst_var_renamings(inst_var_renaming::in,
+    inst_var_renaming::in, inst_var_renaming::out) is semidet.
+
+merge_inst_var_renamings(RenamingA, RenamingB, Result) :-
+    map.union(merge_common_inst_vars, RenamingA, RenamingB, Result).
+
+:- pred merge_common_inst_vars(inst_var::in, inst_var::in, inst_var::out)
+    is semidet.
+
+merge_common_inst_vars(A, A, A).
 
 %----------------------------------------------------------------------------%
 
