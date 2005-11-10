@@ -89,7 +89,7 @@
 :- import_module string.
 
 any_assoc_list__from_corresponding_lists(Ks, Vs, KVs) :-
-    ( any_assoc_list__from_corresponding_2(Ks, Vs, KVs0) ->
+    ( impure any_assoc_list__from_corresponding_2(Ks, Vs, KVs0) ->
         KVs = KVs0
     ;
         KeyType = type_name(type_of(Ks)),
@@ -175,7 +175,7 @@ AL ^ elem(K) = V :-
     any_assoc_list__search(AL, K, V).
 
 AL ^ det_elem(K) = V :-
-    ( if   any_assoc_list__search(AL, K, V0)
+    ( if   impure any_assoc_list__search(AL, K, V0)
       then V = V0
       else report_lookup_error("any_assoc_list__det_elem: key not found", K)
     ).

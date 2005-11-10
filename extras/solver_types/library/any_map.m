@@ -467,23 +467,6 @@
 :- mode any_map__det_intersect(func(ia, ia) = oa is semidet, ia, ia) = oa
         is det.
 
-    % Given two maps M1 and M2, create a third map M3 that has only the
-    % keys that occur in both M1 and M2. For keys that occur in both M1
-    % and M2, compute the corresponding values. If they are the same,
-    % include the key/value pair in M3. If they differ, do not include the
-    % key in M3.
-    %
-    % This predicate effectively considers the input maps to be sets of
-    % key/value pairs, computes the intersection of those two sets, and
-    % returns the map corresponding to the intersection.
-    %
-    % any_map__common_subset is very similar to any_map__intersect, but can
-    % succeed even with an output map that does not contain an entry for a key
-    % value that occurs in both input maps.
-    %
-:- func any_map__common_subset(any_map(K, V)::ia, any_map(K, V)::ia)
-        = (any_map(K, V)::oa) is det.
-
     % Given two maps M1 and M2, create a third map M3 that all the keys
     % that occur in either M1 and M2. For keys that occur in both M1
     % and M2, compute the value in the final map by applying the supplied
@@ -570,7 +553,7 @@ any_map__search(Map, K, V) :-
     any_tree234__search(Map, K, V).
 
 any_map__lookup(Map, K, V) :-
-    ( any_tree234__search(Map, K, V1) ->
+    ( impure any_tree234__search(Map, K, V1) ->
         V = V1
     ;
         report_lookup_error("any_map__lookup: key not found", K, V)
@@ -580,7 +563,7 @@ any_map__lower_bound_search(Map, SearchK, K, V) :-
     any_tree234__lower_bound_search(Map, SearchK, K, V).
 
 any_map__lower_bound_lookup(Map, SearchK, K, V) :-
-    ( any_tree234__lower_bound_search(Map, SearchK, K1, V1) ->
+    ( impure any_tree234__lower_bound_search(Map, SearchK, K1, V1) ->
         K = K1,
         V = V1
     ;
@@ -592,7 +575,7 @@ any_map__upper_bound_search(Map, SearchK, K, V) :-
     any_tree234__upper_bound_search(Map, SearchK, K, V).
 
 any_map__upper_bound_lookup(Map, SearchK, K, V) :-
-    ( any_tree234__upper_bound_search(Map, SearchK, K1, V1) ->
+    ( impure any_tree234__upper_bound_search(Map, SearchK, K1, V1) ->
         K = K1,
         V = V1
     ;
@@ -608,7 +591,7 @@ any_map__insert(Map0, K, V, Map) :-
     any_tree234__insert(Map0, K, V, Map).
 
 any_map__det_insert(Map0, K, V, Map) :-
-    ( any_tree234__insert(Map0, K, V, Map1) ->
+    ( impure any_tree234__insert(Map0, K, V, Map1) ->
         Map = Map1
     ;
         report_lookup_error("any_map__det_insert: key already present",
@@ -666,7 +649,7 @@ any_map__update(Map0, K, V, Map) :-
     any_tree234__update(Map0, K, V, Map).
 
 any_map__det_update(Map0, K, V, Map) :-
-    ( any_tree234__update(Map0, K, V, Map1) ->
+    ( impure any_tree234__update(Map0, K, V, Map1) ->
         Map = Map1
     ;
         report_lookup_error("any_map__det_update: key not found", K, V)
@@ -677,7 +660,7 @@ any_map__transform_value(P, K, !Map) :-
 
 any_map__det_transform_value(P, K, !Map) :-
     (
-        any_map__transform_value(P, K, !.Map, NewMap)
+        impure any_map__transform_value(P, K, !.Map, NewMap)
     ->
         !:Map = NewMap
     ;
@@ -727,7 +710,7 @@ any_map__remove(Map0, Key, Value, Map) :-
     any_tree234__remove(Map0, Key, Value, Map).
 
 any_map__det_remove(Map0, Key, Value, Map) :-
-    ( any_tree234__remove(Map0, Key, Value1, Map1) ->
+    ( impure any_tree234__remove(Map0, Key, Value1, Map1) ->
         Value = Value1,
         Map = Map1
     ;
@@ -783,7 +766,7 @@ any_map__overlay_large_map(Map0, Map1, Map) :-
 any_map__overlay_large_map_2([], Map, Map).
 any_map__overlay_large_map_2([K - V | AssocList], Map0, Map) :-
     unsafe_cast_to_ground(K),
-    ( any_map__insert(Map0, K, V, Map1) ->
+    ( impure any_map__insert(Map0, K, V, Map1) ->
         Map2 = Map1
     ;
         Map2 = Map0
@@ -802,7 +785,7 @@ any_map__select(Original, KeySet, NewMap) :-
 
 any_map__select_2([], _Original, New, New).
 any_map__select_2([K|Ks], Original, New0, New) :-
-    ( any_map__search(Original, K, V) ->
+    ( impure any_map__search(Original, K, V) ->
         any_map__set(New0, K, V, New1)
     ;
         New1 = New0
@@ -895,61 +878,10 @@ any_map__intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
     ).
 
 any_map__det_intersect(CommonPred, Map1, Map2, Common) :-
-    ( any_map__intersect(CommonPred, Map1, Map2, CommonPrime) ->
+    ( impure any_map__intersect(CommonPred, Map1, Map2, CommonPrime) ->
         Common = CommonPrime
     ;
         error("any_map__det_intersect: any_map__intersect failed")
-    ).
-
-%-----------------------------------------------------------------------------%
-
-any_map__common_subset(Map1, Map2) = Common :-
-    any_map__to_sorted_any_assoc_list(Map1, AssocList1),
-    any_map__to_sorted_any_assoc_list(Map2, AssocList2),
-    any_map__init(Common0),
-    any_map__common_subset_2(AssocList1, AssocList2, Common0) = Common.
-
-:- func any_map__common_subset_2(any_assoc_list(K, V)::ia,
-        any_assoc_list(K, V)::ia, any_map(K, V)::ia) = (any_map(K, V)::oa)
-        is det.
-
-any_map__common_subset_2(AssocList1, AssocList2, Common0) = Common :-
-    (
-        AssocList1 = [],
-        AssocList2 = [],
-        Common = Common0
-    ;
-        AssocList1 = [_ | _],
-        AssocList2 = [],
-        Common = Common0
-    ;
-        AssocList1 = [],
-        AssocList2 = [_ | _],
-        Common = Common0
-    ;
-        AssocList1 = [Key1 - Value1 | AssocTail1],
-        AssocList2 = [Key2 - Value2 | AssocTail2],
-        unsafe_cast_to_ground(Key1),
-        unsafe_cast_to_ground(Key2),
-        compare(R, Key1, Key2),
-        (
-            R = (=),
-            ( Value1 = Value2 ->
-                any_map__det_insert(Common0, Key1, Value1, Common1)
-            ;
-                Common1 = Common0
-            ),
-            Common = any_map__common_subset_2(AssocTail1, AssocTail2,
-                Common1)
-        ;
-            R = (<),
-            Common = any_map__common_subset_2(AssocTail1, AssocList2,
-                Common0)
-        ;
-            R = (>),
-            Common = any_map__common_subset_2(AssocList1, AssocTail2,
-                Common0)
-        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1006,7 +938,7 @@ any_map__union_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
     ).
 
 any_map__det_union(CommonPred, Map1, Map2, Union) :-
-    ( any_map__union(CommonPred, Map1, Map2, UnionPrime) ->
+    ( impure any_map__union(CommonPred, Map1, Map2, UnionPrime) ->
         Union = UnionPrime
     ;
         error("any_map__det_union: any_map__union failed")

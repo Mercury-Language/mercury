@@ -391,7 +391,7 @@ any_tree234__search(T, K, V) :-
     ).
 
 any_tree234__lookup(T, K, V) :-
-    ( any_tree234__search(T, K, V0) ->
+    ( impure any_tree234__search(T, K, V0) ->
         V = V0
     ;
         report_lookup_error("any_tree234__lookup: key not found.", K, V)
@@ -416,7 +416,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
             V = V0
         ;
             Result = (>),
-            ( any_tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
+            ( impure any_tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
                 K = Kp,
                 V = Vp
             ;
@@ -442,7 +442,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result1, SearchK, K1),
             (
                 Result1 = (<),
-                ( any_tree234__lower_bound_search(T1, SearchK,
+                ( impure any_tree234__lower_bound_search(T1, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -458,7 +458,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V1
             ;
                 Result1 = (>),
-                ( any_tree234__lower_bound_search(T2, SearchK,
+                ( impure any_tree234__lower_bound_search(T2, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -486,7 +486,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V0
             ;
                 Result0 = (>),
-                ( any_tree234__lower_bound_search(T1, SearchK,
+                ( impure any_tree234__lower_bound_search(T1, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -506,7 +506,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result2, SearchK, K2),
             (
                 Result2 = (<),
-                ( any_tree234__lower_bound_search(T2, SearchK,
+                ( impure any_tree234__lower_bound_search(T2, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -521,7 +521,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V2
             ;
                 Result2 = (>),
-                ( any_tree234__lower_bound_search(T3, SearchK,
+                ( impure any_tree234__lower_bound_search(T3, SearchK,
                     Kp, Vp)
                 -> 
                     K = Kp,
@@ -535,7 +535,7 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
     ).
 
 any_tree234__lower_bound_lookup(T, SearchK, K, V) :-
-    ( any_tree234__lower_bound_search(T, SearchK, K0, V0) ->
+    ( impure any_tree234__lower_bound_search(T, SearchK, K0, V0) ->
         K = K0,
         V = V0
     ;
@@ -555,7 +555,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
         compare(Result, SearchK, K0),
         (
             Result = (<),
-            ( any_tree234__upper_bound_search(T0, SearchK, Kp, Vp) -> 
+            ( impure any_tree234__upper_bound_search(T0, SearchK, Kp, Vp) -> 
                 K = Kp,
                 V = Vp
             ;
@@ -577,7 +577,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
         compare(Result0, SearchK, K0),
         (
             Result0 = (<),
-            ( any_tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
+            ( impure any_tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
                 K = Kp,
                 V = Vp
             ;
@@ -594,7 +594,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result1, SearchK, K1),
             (
                 Result1 = (<),
-                ( any_tree234__upper_bound_search(T1, SearchK,
+                ( impure any_tree234__upper_bound_search(T1, SearchK,
                     Kp, Vp)
                 ->
                     K = Kp,
@@ -622,7 +622,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result0, SearchK, K0),
             (
                 Result0 = (<),
-                ( any_tree234__upper_bound_search(T0, SearchK,
+                ( impure any_tree234__upper_bound_search(T0, SearchK,
                     Kp, Vp)
                 ->
                     K = Kp,
@@ -637,7 +637,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
                 V = V0
             ;
                 Result0 = (>),
-                ( any_tree234__upper_bound_search(T1, SearchK,
+                ( impure any_tree234__upper_bound_search(T1, SearchK,
                     Kp, Vp)
                 ->
                     K = Kp,
@@ -657,7 +657,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result2, SearchK, K2),
             (
                 Result2 = (<),
-                ( any_tree234__upper_bound_search(T2, SearchK,
+                ( impure any_tree234__upper_bound_search(T2, SearchK,
                     Kp, Vp)
                 ->
                     K = Kp,
@@ -678,7 +678,7 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
     ).
 
 any_tree234__upper_bound_lookup(T, SearchK, K, V) :-
-    ( any_tree234__upper_bound_search(T, SearchK, K0, V0) ->
+    ( impure any_tree234__upper_bound_search(T, SearchK, K0, V0) ->
         K = K0,
         V = V0
     ;
@@ -693,7 +693,7 @@ any_tree234__max_key(T0) = MaxKey :-
     ; T0 = three(_, _, NodeMaxKey, _, _, _, NodeMaxSubtree)
     ; T0 = four(_, _, _, _, NodeMaxKey, _, _, _, _, NodeMaxSubtree)
     ),
-    ( MaxSubtreeKey = any_tree234__max_key(NodeMaxSubtree) ->
+    ( impure MaxSubtreeKey = any_tree234__max_key(NodeMaxSubtree) ->
         MaxKey = MaxSubtreeKey
     ;
         MaxKey = NodeMaxKey
@@ -705,7 +705,7 @@ any_tree234__min_key(T0) = MinKey :-
     ; T0 = three(NodeMinKey, _, _, _, NodeMinSubtree, _, _)
     ; T0 = four(NodeMinKey, _, _, _, _, _, NodeMinSubtree, _, _, _)
     ),
-    ( MinSubtreeKey = any_tree234__min_key(NodeMinSubtree) ->
+    ( impure MinSubtreeKey = any_tree234__min_key(NodeMinSubtree) ->
         MinKey = MinSubtreeKey
     ;
         MinKey = NodeMinKey
@@ -1589,7 +1589,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
         ;
             Result0 = (=),
             (
-                any_tree234__remove_smallest_2(T1, ST1K, ST1V,
+                impure any_tree234__remove_smallest_2(T1, ST1K, ST1V,
                     NewT1, RHT1)
             ->
                 ( RHT1 = yes ->
@@ -1631,7 +1631,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
         ;
             Result0 = (=),
             (
-                any_tree234__remove_smallest_2(T1, ST1K, ST1V,
+                impure any_tree234__remove_smallest_2(T1, ST1K, ST1V,
                     NewT1, RHT1)
             ->
                 ( RHT1 = yes ->
@@ -1665,7 +1665,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
             ;
                 Result1 = (=),
                 (
-                    any_tree234__remove_smallest_2(T2,
+                    impure any_tree234__remove_smallest_2(T2,
                         ST2K, ST2V, NewT2, RHT2)
                 ->
                     ( RHT2 = yes ->
@@ -1716,7 +1716,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
             ;
                 Result0 = (=),
                 (
-                    any_tree234__remove_smallest_2(T1,
+                    impure any_tree234__remove_smallest_2(T1,
                         ST1K, ST1V, NewT1, RHT1)
                 ->
                     ( RHT1 = yes ->
@@ -1751,7 +1751,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
         ;
             Result1 = (=),
             (
-                any_tree234__remove_smallest_2(T2, ST2K, ST2V,
+                impure any_tree234__remove_smallest_2(T2, ST2K, ST2V,
                     NewT2, RHT2)
             ->
                 ( RHT2 = yes ->
@@ -1785,7 +1785,7 @@ any_tree234__delete_2(Tin, K, Tout, RH) :-
             ;
                 Result2 = (=),
                 (
-                    any_tree234__remove_smallest_2(T3,
+                    impure any_tree234__remove_smallest_2(T3,
                         ST3K, ST3V, NewT3, RHT3)
                 ->
                     ( RHT3 = yes ->
@@ -1850,7 +1850,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
         ;
             Result0 = (=),
             (
-                any_tree234__remove_smallest_2(T1, ST1K, ST1V,
+                impure any_tree234__remove_smallest_2(T1, ST1K, ST1V,
                     NewT1, RHT1)
             ->
                 ( RHT1 = yes ->
@@ -1893,7 +1893,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
         ;
             Result0 = (=),
             (
-                any_tree234__remove_smallest_2(T1, ST1K, ST1V,
+                impure any_tree234__remove_smallest_2(T1, ST1K, ST1V,
                     NewT1, RHT1)
             ->
                 ( RHT1 = yes ->
@@ -1928,7 +1928,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
             ;
                 Result1 = (=),
                 (
-                    any_tree234__remove_smallest_2(T2,
+                    impure any_tree234__remove_smallest_2(T2,
                         ST2K, ST2V, NewT2, RHT2)
                 ->
                     ( RHT2 = yes ->
@@ -1980,7 +1980,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
             ;
                 Result0 = (=),
                 (
-                    any_tree234__remove_smallest_2(T1,
+                    impure any_tree234__remove_smallest_2(T1,
                         ST1K, ST1V, NewT1, RHT1)
                 ->
                     ( RHT1 = yes ->
@@ -2016,7 +2016,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
         ;
             Result1 = (=),
             (
-                any_tree234__remove_smallest_2(T2, ST2K, ST2V,
+                impure any_tree234__remove_smallest_2(T2, ST2K, ST2V,
                     NewT2, RHT2)
             ->
                 ( RHT2 = yes ->
@@ -2051,7 +2051,7 @@ any_tree234__remove_2(Tin, K, V, Tout, RH) :-
             ;
                 Result2 = (=),
                 (
-                    any_tree234__remove_smallest_2(T3,
+                    impure any_tree234__remove_smallest_2(T3,
                         ST3K, ST3V, NewT3, RHT3)
                 ->
                     ( RHT3 = yes ->

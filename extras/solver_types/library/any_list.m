@@ -739,7 +739,7 @@ append([X | Xs], Ys, [X | Zs]) :-
 %-----------------------------------------------------------------------------%
 
 index0_det(List, N) = Elem :-
-    ( index0(List, N, Elem0) ->
+    ( impure index0(List, N, Elem0) ->
         Elem = Elem0
     ;
         error("index: index out of range")
@@ -782,7 +782,7 @@ replace_nth(Xs, P, R) = L :-
 
 replace_nth_det(Xs, P, R) = L :-
     ( P > 0 ->
-        ( replace_nth_2(Xs, P, R, L0) ->
+        ( impure replace_nth_2(Xs, P, R, L0) ->
             L = L0
         ;
             error("replace_nth_det: " ++
@@ -878,7 +878,7 @@ take(N, As, Bs) :-
     ).
 
 take_upto(N, As) = Bs :-
-    ( take(N, As, Bs0) ->
+    ( impure take(N, As, Bs0) ->
         Bs = Bs0
     ;
         Bs = As
@@ -960,7 +960,7 @@ last([H | T], Last) :-
     ).
 
 det_last(List) = Last :-
-    ( last(List, LastPrime) ->
+    ( impure last(List, LastPrime) ->
         Last = LastPrime
     ;
         error("last_det: empty list")
@@ -978,7 +978,7 @@ split_last([H | T], AllButLast, Last) :-
     ).
 
 split_last_det(List, AllButLast, Last) :-
-    ( split_last(List, AllButLastPrime, LastPrime) ->
+    ( impure split_last(List, AllButLastPrime, LastPrime) ->
         AllButLast = AllButLastPrime,
         Last = LastPrime
     ;
