@@ -6903,7 +6903,7 @@ io__write_float(Stream, Float, !IO) :-
     io__stdout_stream = (Stream::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Stream = &mercury_stream;
+    Stream = &mercury_stdout;
 ").
 
 :- pragma foreign_proc("C",
