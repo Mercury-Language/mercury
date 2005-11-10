@@ -571,6 +571,10 @@
 :- pred io__set_input_stream(io__input_stream::in, io__input_stream::out,
     io::di, io::uo) is det.
 
+    % Retrieves the standard input stream.
+    %
+:- func io__stdin_stream = io__input_stream.
+
     % Retrieves the standard input stream. Does not modify the IO state.
     %
 :- pred io__stdin_stream(io__input_stream::out, io::di, io::uo) is det.
@@ -654,9 +658,17 @@
 :- pred io__set_output_stream(io__output_stream::in, io__output_stream::out,
     io::di, io::uo) is det.
 
+    % Retrieves the standard output stream.
+    %
+:- func io__stdout_stream = io__output_stream.
+
     % Retrieves the standard output stream. Does not modify the IO state.
     %
 :- pred io__stdout_stream(io__output_stream::out, io::di, io::uo) is det.
+    
+    % Retrieves the standard error stream.
+    %
+:- func io__stderr_stream = io__output_stream.
 
     % Retrieves the standard error stream. Does not modify the IO state.
     %
@@ -6873,6 +6885,13 @@ io__write_float(Stream, Float, !IO) :-
 :- pragma export(io__stderr_stream(out, di, uo), "ML_io_stderr_stream").
 
 :- pragma foreign_proc("C",
+    io__stdin_stream = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Stream = &mercury_stdin;
+").
+
+:- pragma foreign_proc("C",
     io__stdin_stream(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
@@ -6881,11 +6900,25 @@ io__write_float(Stream, Float, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
+    io__stdout_stream = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Stream = &mercury_stream;
+").
+
+:- pragma foreign_proc("C",
     io__stdout_stream(Stream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     Stream = &mercury_stdout;
     MR_update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("C",
+    io__stderr_stream = (Stream::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Stream = &mercury_stderr;
 ").
 
 :- pragma foreign_proc("C",
