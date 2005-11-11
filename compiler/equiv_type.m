@@ -415,6 +415,21 @@ replace_in_item(ModuleName,
         ExpandedItems = yes(_ - ItemIds)
     ).
 
+replace_in_item(ModuleName,
+        mutable(MutName, Type0, InitValue, Inst0, Attrs),
+        _Context, EqvMap, EqvInstMap,
+        mutable(MutName, Type, InitValue, Inst, Attrs),
+        [], !Info) :-
+    QualName = qualified(ModuleName, MutName),
+    maybe_record_expanded_items(ModuleName, QualName, !.Info, ExpandedItems0),
+    TVarSet0 = varset__init,
+    replace_in_type(EqvMap, Type0, Type, _TypeChanged, TVarSet0, _TVarSet,
+        ExpandedItems0, ExpandedItems1),
+    replace_in_inst(Inst0, EqvInstMap, Inst,
+        ExpandedItems1, ExpandedItems),
+    finish_recording_expanded_items(
+        item_id(mutable_item, QualName - 0), ExpandedItems, !Info).
+
 :- pred replace_in_type_defn(eqv_map::in, type_ctor::in,
     type_defn::in, type_defn::out, bool::out, tvarset::in, tvarset::out,
     equiv_type_info::in, equiv_type_info::out) is semidet.

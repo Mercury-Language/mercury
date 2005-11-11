@@ -284,7 +284,6 @@ add_item_list_decls_pass_2([Item - Context | Items], Status0, !ModuleInfo,
 
     % pass 3:
     % Add the clauses one by one to the module.
-    % (I supposed this could conceivably be folded into pass 2?)
     %
     % Check that the declarations for field extraction
     % and update functions are sensible.

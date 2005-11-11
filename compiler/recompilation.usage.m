@@ -542,12 +542,14 @@ find_all_used_imported_items(ModuleInfo,
     set__init(UsedClasses0),
 
     UsedItems = item_id_set(Types, TypeBodies, Modes, Insts, Classes,
-        _, _, _),
+        _, _, _, _),
     map__init(ResolvedCtors),
     map__init(ResolvedPreds),
     map__init(ResolvedFuncs),
+    map__init(ResolvedMutables),
     ResolvedUsedItems0 = item_id_set(Types, TypeBodies, Modes, Insts,
-        Classes, ResolvedCtors, ResolvedPreds, ResolvedFuncs),
+        Classes, ResolvedCtors, ResolvedPreds, ResolvedFuncs,
+        ResolvedMutables),
 
     Info0 = recompilation_usage_info(ModuleInfo, ItemsToProcess0,
         ImportedItems1, ModuleUsedClasses, Dependencies,
@@ -949,13 +951,16 @@ find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
     ;
         true
     ).
-
 find_items_used_by_item(predicate_item, ItemId, !Info) :-
     record_used_pred_or_func(predicate, ItemId, !Info).
 find_items_used_by_item(function_item, ItemId, !Info) :-
     record_used_pred_or_func(function, ItemId, !Info).
 find_items_used_by_item(functor_item, _, !Info) :-
     error("find_items_used_by_item: functor").
+find_items_used_by_item(mutable_item, _MutableItemId, !Info).
+    %
+    % Mutables are expanded into other item types which track the
+    % types, insts, preds, and funcs used.
 
 :- pred find_items_used_by_instances(class_id::in,
     list(hlds_instance_defn)::in,

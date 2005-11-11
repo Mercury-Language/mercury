@@ -77,7 +77,8 @@
     ;       typeclass_item
     ;       functor_item     % The RHS of a var-functor unification.
     ;       predicate_item
-    ;       function_item.
+    ;       function_item
+    ;       mutable_item.
 
 :- inst simple_item
     --->    type_item
@@ -158,7 +159,8 @@
                 typeclasses :: Map,
                 functors    :: Cons,
                 predicates  :: Set,
-                functions   :: Set
+                functions   :: Set,
+                mutables    :: Set
             ).
 
 :- type item_id_set(T) == item_id_set(T, T, T).
@@ -294,17 +296,19 @@ string_to_item_type("typeclass", typeclass_item).
 string_to_item_type("predicate", predicate_item).
 string_to_item_type("function", function_item).
 string_to_item_type("functor", functor_item).
+string_to_item_type("mutable", mutable_item).
 
 %-----------------------------------------------------------------------------%
 
 init_item_id_set(Init) =
-    item_id_set(Init, Init, Init, Init, Init, Init, Init, Init).
+    item_id_set(Init, Init, Init, Init, Init, Init, Init, Init, Init).
 
 init_item_id_set(Simple, PorF, Cons) =
-    item_id_set(Simple, Simple, Simple, Simple, Simple, Cons, PorF, PorF).
+    item_id_set(Simple, Simple, Simple, Simple, Simple, Cons, PorF, PorF,
+        PorF).
 
 init_used_items = item_id_set(map__init, map__init, map__init, map__init,
-    map__init, map__init, map__init, map__init).
+    map__init, map__init, map__init, map__init, map__init).
 
 extract_simple_item_set(Items, type_item) = Items ^ types.
 extract_simple_item_set(Items, type_body_item) = Items ^ type_bodies.
@@ -336,6 +340,7 @@ extract_ids(Items, typeclass_item) = Items ^ typeclasses.
 extract_ids(Items, functor_item) = Items ^ functors.
 extract_ids(Items, predicate_item) = Items ^ predicates.
 extract_ids(Items, function_item) = Items ^ functions.
+extract_ids(Items, mutable_item) = Items ^ mutables.
 
 update_ids(Items, type_item, IdMap) = Items ^ types := IdMap.
 update_ids(Items, type_body_item, IdMap) = Items ^ type_bodies := IdMap.
@@ -345,6 +350,7 @@ update_ids(Items, typeclass_item, IdMap) = Items ^ typeclasses := IdMap.
 update_ids(Items, predicate_item, IdMap) = Items ^ predicates := IdMap.
 update_ids(Items, function_item, IdMap) = Items ^ functions := IdMap.
 update_ids(Items, functor_item, IdMap) = Items ^ functors := IdMap.
+update_ids(Items, mutable_item, IdMap) = Items ^ mutables := IdMap.
 
 map_ids(Func, Items0, Init) = Items :-
     Items1 = init_item_id_set(Init),

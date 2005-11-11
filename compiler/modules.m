@@ -1317,7 +1317,7 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
         )
     ).
 
-    % Expand any mutable declarations in the item list into the type and mode
+    % Expand any mutable declarations in the item list into the pred and mode
     % declarations for their access predicates.  Only these components of a
     % mutable declaration should be written to a private interface file.
     %
