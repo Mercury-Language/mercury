@@ -461,13 +461,14 @@ generating_code(bool__not(NotGeneratingCode), !IO) :-
     io_lookup_bool_option(generate_source_file_mapping, GenSrcFileMapping,
         !IO),
     io_lookup_bool_option(generate_dependencies, GenDepends, !IO),
+    io_lookup_bool_option(generate_dependency_file, GenDependFile, !IO),
     io_lookup_bool_option(convert_to_mercury, ConvertToMercury, !IO),
     io_lookup_bool_option(typecheck_only, TypeCheckOnly, !IO),
     io_lookup_bool_option(errorcheck_only, ErrorCheckOnly, !IO),
     io_lookup_bool_option(output_grade_string, OutputGradeString, !IO),
     bool__or_list([MakeShortInterface, MakeInterface,
         MakePrivateInterface, MakeTransOptInterface,
-        GenSrcFileMapping, GenDepends, ConvertToMercury,
+        GenSrcFileMapping, GenDepends, GenDependFile, ConvertToMercury,
         TypeCheckOnly, ErrorCheckOnly, OutputGradeString],
         NotGeneratingCode).
 

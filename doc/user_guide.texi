@@ -5480,6 +5480,10 @@ Output ``Make''-style dependencies for the module and all of its
 dependencies to @file{@var{module}.dep}, @file{@var{module}.dv} and the
 relevant @samp{.d} files.
 
+@itemx --generate-dependency-file
+@findex --generate-dependency-file
+Output `Make'-style dependencies for the module to @file{@var{module}.d}'.
+
 @item --generate-module-order
 Output the strongly connected components of the module
 dependency graph in top-down order to @file{@var{module}.order}.

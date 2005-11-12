@@ -145,6 +145,7 @@
     ;       make_optimization_interface
     ;       make_transitive_opt_interface
     ;       generate_source_file_mapping
+    ;       generate_dependency_file
     ;       generate_dependencies
     ;       generate_module_order
     ;       convert_to_mercury
@@ -875,6 +876,7 @@ option_defaults_2(verbosity_option, [
 option_defaults_2(output_option, [
     % Output Options (mutually exclusive)
     generate_source_file_mapping        -   bool(no),
+    generate_dependency_file            -   bool(no),
     generate_dependencies               -   bool(no),
     generate_module_order               -   bool(no),
     make_short_interface                -   bool(no),
@@ -1574,6 +1576,7 @@ long_option("debug-trail-usage",    debug_trail_usage).
 % output options (mutually exclusive)
 long_option("generate-source-file-mapping",
                     generate_source_file_mapping).
+long_option("generate-dependency-file", generate_dependency_file).
 long_option("generate-dependencies",    generate_dependencies).
 long_option("generate-module-order",    generate_module_order).
 long_option("make-short-interface", make_short_interface).
@@ -2922,6 +2925,9 @@ options_help_output -->
         "-M, --generate-dependencies",
         "\tOutput `Make'-style dependencies for the module",
         "\tand all of its dependencies to `<module>.dep'.",
+        "--generate-dependency-file",
+        "\tOutput `Make'-style dependencies for the module",
+        "\tto `<module>.d'.",
         "--generate-module-order",
         "\tOutput the strongly connected components of the module",
         "\tdependency graph in top-down order to `<module>.order'.",

@@ -785,3 +785,9 @@ A=@LIB_SUFFIX@
 ERR_REDIRECT = > $(*F).err 2>&1
 
 #-----------------------------------------------------------------------------#
+
+# If this variable is set to no, then mmake doesn't automatically include
+# the ".d" files in the current directory in the Mmakefile.
+MMAKE_AUTO_INCLUDE_DS=yes
+
+#-----------------------------------------------------------------------------#

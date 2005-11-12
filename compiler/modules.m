@@ -2967,6 +2967,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         _Children, InclDeps, _NestDeps, FactDeps0,
         ContainsForeignCode, ForeignImports0, _ContainsForeignExport,
         Items, _Error, _Timestamps, _HasMain, _Dir),
+
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     module_name_to_make_var_name(ModuleName, MakeVarName),
     module_name_to_file_name(ModuleName, ".d", yes, DependencyFileName, !IO),
