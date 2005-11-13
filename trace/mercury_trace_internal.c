@@ -660,6 +660,7 @@ static  int         MR_trace_var_print_list(MR_Spy_Print_List print_list);
 static  void        MR_trace_print_dice(char *pass_trace_counts_file,
                         char *fail_trace_counts_file, char *sort_str,
                         int number_of_lines, char *out_str, char *module);
+static  void        MR_trace_listing_path_ensure_init(void);
 
 static  const MR_Proc_Layout *MR_find_single_matching_proc(MR_Proc_Spec *spec,
                         MR_bool verbose);
@@ -953,12 +954,6 @@ MR_trace_internal_ensure_init(void)
         if (env != NULL && MR_trace_is_natural_number(env, &n)) {
             MR_scroll_limit = n;
         }
-
-        /*
-        ** Set up MR_LISTING_path.
-        */
-
-        MR_LISTING_path = MR_LISTING_new_list_path();
 
         /*
         ** These functions add the commands to the front of the queue, so
@@ -2709,6 +2704,8 @@ MR_trace_cmd_list(char **words, int word_count,
     MR_bool                 num = MR_num_context_lines;
     MR_String               aligned_filename;
 
+    MR_trace_listing_path_ensure_init();
+
     if (word_count > 2) {
         MR_trace_usage("browsing", "list");
         return KEEP_INTERACTING;
@@ -2722,7 +2719,9 @@ MR_trace_cmd_list(char **words, int word_count,
     MR_trace_current_level_details(&entry_ptr, &filename, &lineno,
         &base_sp_ptr, &base_curfr_ptr);
 
-    MR_make_aligned_string(aligned_filename, (MR_String) filename);
+    MR_TRACE_USE_HP(
+        MR_make_aligned_string(aligned_filename, (MR_String) filename);
+    );
 
     MR_TRACE_CALL_MERCURY(
         MR_LISTING_list_file(MR_mdb_out, MR_mdb_err, (char *) aligned_filename,
@@ -2740,10 +2739,14 @@ MR_trace_cmd_set_list_dir_path(char **words, int word_count,
     int       i;
     MR_String aligned_word;
 
+    MR_trace_listing_path_ensure_init();
+
     MR_TRACE_CALL_MERCURY(
         MR_LISTING_clear_list_path(MR_LISTING_path, &MR_LISTING_path);
         for(i = word_count - 1; i >= 1; i--) {
-            MR_make_aligned_string(aligned_word, (MR_String) words[i]);
+            MR_TRACE_USE_HP(
+                MR_make_aligned_string(aligned_word, (MR_String) words[i]);
+            );
             MR_LISTING_push_list_path(aligned_word,
                 MR_LISTING_path, &MR_LISTING_path);
         }
@@ -2760,6 +2763,8 @@ MR_trace_cmd_push_list_dir(char **words, int word_count,
     int       i;
     MR_String aligned_word;
 
+    MR_trace_listing_path_ensure_init();
+
     if (word_count < 2) {
         MR_trace_usage("browsing", "push_list_dir");
         return KEEP_INTERACTING;
@@ -2767,7 +2772,9 @@ MR_trace_cmd_push_list_dir(char **words, int word_count,
 
     MR_TRACE_CALL_MERCURY(
         for(i = word_count - 1; i >= 1; i--) {
-            MR_make_aligned_string(aligned_word, (MR_String) words[i]);
+            MR_TRACE_USE_HP(
+                MR_make_aligned_string(aligned_word, (MR_String) words[i]);
+            );
             MR_LISTING_push_list_path(aligned_word,
                 MR_LISTING_path, &MR_LISTING_path);
         }
@@ -2781,6 +2788,8 @@ MR_trace_cmd_pop_list_dir(char **words, int word_count,
     MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
     MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
+    MR_trace_listing_path_ensure_init();
+
     if (word_count > 1) {
         MR_trace_usage("browsing", "pop_list_dir");
         return KEEP_INTERACTING;
@@ -2791,6 +2800,19 @@ MR_trace_cmd_pop_list_dir(char **words, int word_count,
     );
 
     return KEEP_INTERACTING;
+}
+
+static  void
+MR_trace_listing_path_ensure_init()
+{
+    static MR_bool  MR_trace_listing_path_initialized = MR_FALSE;
+
+    if (! MR_trace_listing_path_initialized) {
+        MR_TRACE_CALL_MERCURY(
+            MR_LISTING_path = MR_LISTING_new_list_path();
+        );
+        MR_trace_listing_path_initialized = MR_TRUE;
+    }
 }
 
 static MR_Next
