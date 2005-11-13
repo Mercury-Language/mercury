@@ -372,11 +372,11 @@ export MMAKEFILE
 # `modules.m'.
 {
 cat ${MMAKE_VARS}
+echo $dvs | xargs cat
 cat $include_makefile $MMAKEFILE
 echo 'ifneq ($(MMAKE_AUTO_INCLUDE_DS),no)'
 echo $ds | xargs cat
 echo 'endif'
-echo $dvs | xargs cat
 cat $deps ${MMAKE_RULES}
 } > $tmp
 case $# in
