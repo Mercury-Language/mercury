@@ -61,6 +61,13 @@
 
 :- func integer mod integer = integer.
 
+    %
+    % divide_with_rem(X, Y, Q, R) where Q = X // Y and R = X rem Y
+    % where both answers are calculated at the same time.
+    %
+:- pred divide_with_rem(integer::in, integer::in,
+                integer::out, integer::out) is det.
+
 :- func integer << int = integer.
 
 :- func integer >> int = integer.
@@ -217,6 +224,9 @@ X // Y = big_quot(X, Y).
 X rem Y = big_rem(X, Y).
 
 X mod Y = big_mod(X, Y).
+
+divide_with_rem(X, Y, Quotient, Remainder) :-
+    big_quot_rem(X, Y, Quotient, Remainder).
 
 X << I = ( I > 0 -> big_left_shift(X, I) ; I < 0 -> X >> -I ; X ).
 
