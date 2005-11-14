@@ -1132,12 +1132,17 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             PredName, Arity, PredIds),
 
         % Check if any of the candidate functions have argument/return types
-        % which subsume the actual argument/return types of this function call.
+        % which subsume the actual argument/return types of this function call,
+        % and which have universal constraints consistent with what we expect.
         pred_info_typevarset(!.PredInfo, TVarSet),
         map__apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         list__append(ArgTypes0, [TypeOfX], ArgTypes),
+        pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
+        goal_info_get_goal_path(GoalInfo0, GoalPath),
+        ConstraintSearch = search_hlds_constraint_list(ConstraintMap, unproven,
+            GoalPath),
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
-            PredId, QualifiedFuncName)
+            yes(ConstraintSearch), PredId, QualifiedFuncName)
     ->
         % Convert function calls into predicate calls:
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.

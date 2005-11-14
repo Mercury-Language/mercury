@@ -161,6 +161,7 @@ OTHER_PROGS= \
 	nested_mod_type_bug \
 	nested_module_bug \
 	nondet_live \
+	overloading \
 	parsing_bug_main \
 	pred_with_no_modes \
 	qualified_cons_id \

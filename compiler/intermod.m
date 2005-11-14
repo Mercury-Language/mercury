@@ -930,7 +930,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
             may_be_partially_qualified, InstanceMethodName0,
             MethodArity, PredIds),
         find_matching_pred_id(ModuleInfo, PredIds, MethodCallTVarSet,
-            MethodCallArgTypes, PredId, InstanceMethodFuncName)
+            MethodCallArgTypes, no, PredId, InstanceMethodFuncName)
     ->
         TypeCtors = [],
         MaybePredId = yes(PredId),

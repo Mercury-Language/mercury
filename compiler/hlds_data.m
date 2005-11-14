@@ -30,6 +30,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
@@ -1016,6 +1017,9 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 :- pred lookup_hlds_constraint_list(constraint_map::in, constraint_type::in,
     goal_path::in, int::in, list(prog_constraint)::out) is det.
 
+:- pred search_hlds_constraint_list(constraint_map::in, constraint_type::in,
+    goal_path::in, int::in, list(prog_constraint)::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1164,22 +1168,33 @@ add_redundant_constraint(Constraint, !Redundant) :-
 
 lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalPath, Count,
         Constraints) :-
-    lookup_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath,
+    (
+        search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath,
+            Count, [], Constraints0)
+    ->
+        Constraints = Constraints0
+    ;
+        unexpected(this_file, "lookup_hlds_constraint_list: not found")
+    ).
+
+search_hlds_constraint_list(ConstraintMap, ConstraintType, GoalPath, Count,
+        Constraints) :-
+    search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath,
         Count, [], Constraints).
 
-:- pred lookup_hlds_constraint_list_2(constraint_map::in, constraint_type::in,
+:- pred search_hlds_constraint_list_2(constraint_map::in, constraint_type::in,
     goal_path::in, int::in, list(prog_constraint)::in,
-    list(prog_constraint)::out) is det.
+    list(prog_constraint)::out) is semidet.
 
-lookup_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath, Count,
+search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath, Count,
         !Constraints) :-
     ( Count = 0 ->
         true
     ;
         ConstraintId = constraint_id(ConstraintType, GoalPath, Count),
-        map.lookup(ConstraintMap, ConstraintId, Constraint),
+        map.search(ConstraintMap, ConstraintId, Constraint),
         !:Constraints = [Constraint | !.Constraints],
-        lookup_hlds_constraint_list_2(ConstraintMap, ConstraintType,
+        search_hlds_constraint_list_2(ConstraintMap, ConstraintType,
             GoalPath, Count - 1, !Constraints)
     ).
 
@@ -1330,3 +1345,13 @@ exclusive_table_optimize(ExclusiveTable0, ExclusiveTable) :-
 
 exclusive_table_add(ExclusiveId, PredId, ExclusiveTable0, ExclusiveTable) :-
     multi_map__set(ExclusiveTable0, PredId, ExclusiveId, ExclusiveTable).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "hlds_data.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module hlds.hlds_data.
+%-----------------------------------------------------------------------------%

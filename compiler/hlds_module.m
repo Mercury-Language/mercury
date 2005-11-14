@@ -1480,13 +1480,21 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
     list(mer_type)::in, tvarset::in, sym_name::in, sym_name::out, pred_id::out)
     is det.
 
-    % Find a predicate or function from the list of pred_ids
-    % which matches the given name and argument types.
-    % Fail if there is no matching pred.
-    % Abort if there are multiple matching preds.
+    % Find a predicate or function from the list of pred_ids which matches the
+    % given name and argument types.  If the constraint_search argument is
+    % provided then also check that the class context is consistent with what
+    % is expected.  Fail if there is no matching pred.  Abort if there are
+    % multiple matching preds.
     %
 :- pred find_matching_pred_id(module_info::in, list(pred_id)::in, tvarset::in,
-    list(mer_type)::in, pred_id::out, sym_name::out) is semidet.
+    list(mer_type)::in, maybe(constraint_search)::in(maybe(constraint_search)),
+    pred_id::out, sym_name::out) is semidet.
+
+    % A means to check that the required constraints are available, without
+    % knowing in advance how many are required.
+    %
+:- type constraint_search == pred(int, list(prog_constraint)).
+:- inst constraint_search == (pred(in, out) is semidet).
 
     % Get the pred_id and proc_id matching a higher-order term with
     % the given argument types, aborting with an error if none is found.
@@ -2179,7 +2187,7 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, ArgTypes, TVarSet,
     % which subsume the actual argument/return types of this function call.
     (
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
-            PredId1, PredName1)
+            no, PredId1, PredName1)
     ->
         PredId = PredId1,
         PredName = PredName1
@@ -2190,7 +2198,7 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, ArgTypes, TVarSet,
     ).
 
 find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ArgTypes,
-        ThePredId, PredName) :-
+        MaybeConstraintSearch, ThePredId, PredName) :-
     (
         % Lookup the argument types of the candidate predicate
         % (or the argument types + return type of the candidate function).
@@ -2201,7 +2209,19 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ArgTypes,
         pred_info_tvar_kinds(PredInfo, PredKindMap),
 
         arg_type_list_subsumes(TVarSet, ArgTypes, PredTVarSet, PredKindMap,
-            PredExistQVars0, PredArgTypes0)
+            PredExistQVars0, PredArgTypes0),
+
+        (
+            MaybeConstraintSearch = no
+        ;
+            MaybeConstraintSearch = yes(ConstraintSearch),
+            % Lookup the universal constraints on the condidate predicate.
+            pred_info_get_class_context(PredInfo, ProgConstraints),
+            ProgConstraints = constraints(UnivConstraints, _),
+            list__length(UnivConstraints, NumConstraints),
+            ConstraintSearch(NumConstraints, ProvenConstraints),
+            univ_constraints_match(ProvenConstraints, UnivConstraints)
+        )
     ->
         % We've found a matching predicate.
         % Was there was more than one matching predicate/function?
@@ -2211,7 +2231,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ArgTypes,
         PredName = qualified(Module, PName),
         (
             find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
-                _OtherPredId, _)
+                MaybeConstraintSearch, _OtherPredId, _)
         ->
             % XXX this should report an error properly, not
             % via error/1
@@ -2224,8 +2244,29 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ArgTypes,
         )
     ;
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
-            ThePredId, PredName)
+            MaybeConstraintSearch, ThePredId, PredName)
     ).
+
+    % Check that the universal constraints proven in the caller match the
+    % constraints on the callee.
+    %
+    % XXX we should rename apart the callee constraints and check that the
+    % proven constraints are instances of them.  This would give us better
+    % overloading resolution.  For the moment, we just check that the names
+    % and arities match, which is sufficient to prevent any compiler aborts
+    % in later stages.
+    %
+:- pred univ_constraints_match(list(prog_constraint)::in,
+    list(prog_constraint)::in) is semidet.
+
+univ_constraints_match([], []).
+univ_constraints_match([ProvenConstraint | ProvenConstraints],
+        [CalleeConstraint | CalleeConstraints]) :-
+    ProvenConstraint = constraint(Name, ProvenArgs),
+    list__length(ProvenArgs, Arity),
+    CalleeConstraint = constraint(Name, CalleeArgs),
+    list__length(CalleeArgs, Arity),
+    univ_constraints_match(ProvenConstraints, CalleeConstraints).
 
 get_pred_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         ArgTypes, ModuleInfo, PredId) :-
@@ -2235,7 +2276,7 @@ get_pred_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         predicate_table_search_pf_sym_arity(PredicateTable, IsFullyQualified,
             PredOrFunc, SymName, Arity, PredIds),
         % Resolve overloading using the argument types.
-        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes,
+        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ArgTypes, no,
             PredId0, _PredName)
     ->
         PredId = PredId0
