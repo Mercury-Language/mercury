@@ -196,3 +196,20 @@ Attempting to use parametric modes may cause the compiler to abort when
 compiling with intermodule-optimization enabled.  
 
 -----------------------------------------------------------------------------
+Subject: function symbol overloading
+Date: 14 Nov 2005
+
+The compiler sometimes reports a mode error for an introduced TypeClassInfo
+variable.  This can occur if there is an overloaded function symbol which is
+defined as a data constructor and also as a function with argument and return
+types which match those of the data constructor.
+
+The problem is that the typechecker can sometimes resolve the ambiguity
+if there is an unsatisfiable typeclass constraint on the function, but in
+a later stage the same resolution is not possible.  This can lead to the
+wrong definition being selected in the later stage.
+
+A workaround is to module qualify all uses of the data constructor where
+the function definition is also visible.
+
+-----------------------------------------------------------------------------
