@@ -828,8 +828,7 @@ process_arg_build(FileOrModule, OptionVariables, OptionArgs, _, yes,
 process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         FactTableObjFiles, !IO) :-
     globals__io_lookup_bool_option(generate_dependencies, GenerateDeps, !IO),
-    (
-        GenerateDeps = yes,
+    ( GenerateDeps = yes,
         ModulesToLink = [],
         FactTableObjFiles = [],
         (
@@ -839,10 +838,23 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             FileOrModule = module(ModuleName),
             generate_module_dependencies(ModuleName, !IO)
         )
-    ;
-        GenerateDeps = no,
-        process_module(OptionVariables, OptionArgs,
-            FileOrModule, ModulesToLink, FactTableObjFiles, !IO)
+    ; GenerateDeps = no,
+        globals__io_lookup_bool_option(generate_dependency_file,
+            GenerateDepFile, !IO),
+        ( GenerateDepFile = yes,
+            ModulesToLink = [],
+            FactTableObjFiles = [],
+            (
+                FileOrModule = file(FileName),
+                generate_file_dependency_file(FileName, !IO)
+            ;
+                FileOrModule = module(ModuleName),
+                generate_module_dependency_file(ModuleName, !IO)
+            )
+        ; GenerateDepFile = no,
+            process_module(OptionVariables, OptionArgs,
+                FileOrModule, ModulesToLink, FactTableObjFiles, !IO)
+        )
     ).
 
 :- type file_or_module
@@ -1417,6 +1429,7 @@ compile(SourceFileName, SourceFileModuleName, NestedSubModules0,
 
 mercury_compile(Module, NestedSubModules, FindTimestampFiles,
         FactTableObjFiles, !DumpInfo, !IO) :-
+    module_imports_get_module_name(Module, ModuleName),
     % If we are only typechecking or error checking, then we should not
     % modify any files, this includes writing to .d files.
     globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly, !IO),
@@ -1424,43 +1437,6 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
     bool__or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile),
     pre_hlds_pass(Module, DontWriteDFile, HLDS1, QualInfo, MaybeTimestamps,
         UndefTypes, UndefModes, Errors1, !DumpInfo, !IO),
-
-    globals__io_lookup_bool_option(generate_dependency_file, GenDepFile, !IO),
-    ( GenDepFile = no ->
-        mercury_compile_2(Module, NestedSubModules, FindTimestampFiles,
-            HLDS1, QualInfo, MaybeTimestamps,
-            UndefTypes, UndefModes, Errors1,
-            TypeCheckOnly, ErrorCheckOnly,
-            FactTableObjFiles, !DumpInfo, !IO)
-    ;
-        FactTableObjFiles = [],
-        ( Errors1 = yes ->
-            % If the number of errors is > 0, make sure that the compiler
-            % exits with a non-zero exit status.
-            io__get_exit_status(ExitStatus, !IO),
-            ( ExitStatus = 0 ->
-                io__set_exit_status(1, !IO)
-            ;
-                true
-            )
-        ;
-            true
-        )
-    ).
-
-:- pred mercury_compile_2(module_imports::in, list(module_name)::in,
-    find_timestamp_file_names::in(find_timestamp_file_names),
-    module_info::in,
-    make_hlds_qual_info::in, maybe(module_timestamps)::in,
-    bool::in, bool::in, bool::in,
-    bool::in, bool::in,
-    list(string)::out, dump_info::in, dump_info::out, io::di, io::uo) is det.
-
-mercury_compile_2(Module, NestedSubModules, FindTimestampFiles,
-        HLDS1, QualInfo, MaybeTimestamps, UndefTypes, UndefModes, Errors1,
-        TypeCheckOnly, ErrorCheckOnly,
-        FactTableObjFiles, !DumpInfo, !IO) :-
-    module_imports_get_module_name(Module, ModuleName),
     frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2,
         HLDS1, HLDS20, !DumpInfo, !IO),
     (
@@ -1475,7 +1451,6 @@ mercury_compile_2(Module, NestedSubModules, FindTimestampFiles,
             MakeOptInt, !IO),
         globals__io_lookup_bool_option(make_transitive_opt_interface,
             MakeTransOptInt, !IO),
-
         ( TypeCheckOnly = yes ->
             FactTableObjFiles = []
         ; ErrorCheckOnly = yes ->

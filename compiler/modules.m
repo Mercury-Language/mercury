@@ -640,6 +640,20 @@
     %
 :- pred generate_file_dependencies(file_name::in, io::di, io::uo) is det.
 
+    % generate_module_dependency_file(ModuleName):
+    %
+    % Generate the per module makefile dependency ('.d') file for the
+    % given module.
+    %
+:- pred generate_module_dependency_file(module_name::in, io::di, io::uo) is det.
+
+    % generate_file_dependency_file(FileName):
+    %
+    % Same as generate_module_dependency_file, but takes a file name instead of
+    % a module name.
+    %
+:- pred generate_file_dependency_file(file_name::in, io::di, io::uo) is det.
+
     % get_dependencies(Items, ImportDeps, UseDeps):
     %
     % Get the list of modules that a list of items (explicitly) depends on.
@@ -3971,9 +3985,24 @@ get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, !:OptDeps,
 
 generate_module_dependencies(ModuleName, !IO) :-
     map__init(DepsMap0),
-    generate_dependencies(ModuleName, DepsMap0, !IO).
+    generate_dependencies(output_all_dependencies, ModuleName, DepsMap0, !IO).
 
 generate_file_dependencies(FileName, !IO) :-
+    build_deps_map(FileName, ModuleName, DepsMap, !IO),
+    generate_dependencies(output_all_dependencies, ModuleName, DepsMap, !IO).
+
+generate_module_dependency_file(ModuleName, !IO) :-
+    map__init(DepsMap0),
+    generate_dependencies(output_d_file_only, ModuleName, DepsMap0, !IO).
+
+generate_file_dependency_file(FileName, !IO) :-
+    build_deps_map(FileName, ModuleName, DepsMap, !IO),
+    generate_dependencies(output_d_file_only, ModuleName, DepsMap, !IO).
+
+:- pred build_deps_map(file_name::in, module_name::out, deps_map::out,
+    io::di, io::uo) is det.
+
+build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
     % read in the top-level file (to figure out its module name)
     read_mod_from_file(FileName, ".m", "Reading file", no, no, Items, Error,
         ModuleName, _, !IO),
@@ -3984,19 +4013,26 @@ generate_file_dependencies(FileName, !IO) :-
     list__map(init_dependencies(SourceFileName, ModuleName, SubModuleNames,
         Error, Globals), SubModuleList, ModuleImportsList),
     map__init(DepsMap0),
-    list__foldl(insert_into_deps_map, ModuleImportsList, DepsMap0, DepsMap1),
-    generate_dependencies(ModuleName, DepsMap1, !IO).
+    list__foldl(insert_into_deps_map, ModuleImportsList, DepsMap0, DepsMap).
 
-:- pred generate_dependencies(module_name::in, deps_map::in,
+:- type generate_dependencies_mode
+    --->    output_d_file_only
+    ;       output_all_dependencies
+    .
+
+:- pred generate_dependencies(generate_dependencies_mode::in,
+    module_name::in, deps_map::in,
     io::di, io::uo) is det.
 
-generate_dependencies(ModuleName, DepsMap0, !IO) :-
+generate_dependencies(Mode, ModuleName, DepsMap0, !IO) :-
     % First, build up a map of the dependencies.
     generate_deps_map([ModuleName], DepsMap0, DepsMap, !IO),
+
     %
     % Check whether we could read the main `.m' file.
     %
-    map__lookup(DepsMap, ModuleName, deps(_, ModuleImports)),
+    map__lookup(DepsMap, ModuleName, ModuleDep),
+    ModuleDep = deps(_, ModuleImports),
     module_imports_get_error(ModuleImports, Error),
     ( Error = fatal_module_errors ->
         sym_name_to_string(ModuleName, ModuleString),
@@ -4004,11 +4040,15 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
             ModuleString, "'."], Message),
         report_error(Message, !IO)
     ;
-        module_imports_get_source_file_name(ModuleImports, SourceFileName),
-        generate_dependencies_write_dv_file(SourceFileName, ModuleName,
-            DepsMap, !IO),
-        generate_dependencies_write_dep_file(SourceFileName, ModuleName,
-            DepsMap, !IO),
+        ( Mode = output_d_file_only,
+            true
+        ; Mode = output_all_dependencies,
+            module_imports_get_source_file_name(ModuleImports, SourceFileName),
+            generate_dependencies_write_dv_file(SourceFileName, ModuleName,
+                DepsMap, !IO),
+            generate_dependencies_write_dep_file(SourceFileName, ModuleName,
+                DepsMap, !IO)
+        ),
 
         %
         % Compute the interface deps relation and the implementation deps
@@ -4064,9 +4104,14 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
         % write_relations("Rel", IntDepsRel, TransIntDepsRel,
         %   ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel),
 
-        generate_dependencies_write_d_files(DepsList, IntDepsRel, ImplDepsRel,
-            IndirectDepsRel, IndirectOptDepsRel, TransOptDepsOrdering, DepsMap,
-            !IO)
+        ( Mode = output_d_file_only,
+            DFilesToWrite = [ModuleDep]
+        ; Mode = output_all_dependencies,
+            DFilesToWrite = DepsList
+        ),
+        generate_dependencies_write_d_files(DFilesToWrite,
+            IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
+            TransOptDepsOrdering, DepsMap, !IO)
     ),
     %
     % For Java, the main target is actually a shell script which will
@@ -4076,7 +4121,7 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
     % time, since that is simpler and probably more efficient anyway.
     %
     globals__io_get_target(Target, !IO),
-    ( Target = java ->
+    ( Target = java, Mode = output_all_dependencies ->
         create_java_shell_script(ModuleName, _Succeeded, !IO)
     ;
         true
