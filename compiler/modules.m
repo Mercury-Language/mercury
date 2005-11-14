@@ -2964,7 +2964,7 @@ warn_if_duplicate_use_import_decls(ModuleName, !ImportedModules, !UsedModules,
 write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
     Module = module_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ParentDeps, IntDeps, ImplDeps, IndirectDeps,
-        _Children, InclDeps, _NestDeps, FactDeps0,
+        _Children, InclDeps, NestedDeps, FactDeps0,
         ContainsForeignCode, ForeignImports0, _ContainsForeignExport,
         Items, _Error, _Timestamps, _HasMain, _Dir),
 
@@ -3094,15 +3094,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             ILDateFileName, " ",
             JavaDateFileName
         ] , !IO),
-        write_dependencies_list(ParentDeps, ".optdate", DepStream, !IO),
-        write_dependencies_list(ParentDeps, ".trans_opt_date", DepStream, !IO),
-        write_dependencies_list(ParentDeps, ".c_date", DepStream, !IO),
-        write_dependencies_list(ParentDeps, ".s_date", DepStream, !IO),
-        write_dependencies_list(ParentDeps, ".pic_s_date", DepStream, !IO),
-        write_dependencies_list(ParentDeps, ".dir/*.$O", DepStream, !IO),
-        write_dependencies_list(ParentDeps, ".rlo", DepStream, !IO),
-        write_dependencies_list(ParentDeps, ".il_date", DepStream, !IO),
-        write_dependencies_list(ParentDeps, ".java_date", DepStream, !IO),
         io__write_strings(DepStream, [" : ", SourceFileName], !IO),
         % If the module contains nested sub-modules then `.int0'
         % file must first be built.
@@ -3116,6 +3107,30 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         write_dependencies_list(LongDeps, ".int", DepStream, !IO),
         write_dependencies_list(ShortDeps, ".int2", DepStream, !IO),
 
+        NestedExts = [
+                ".optdate",
+                ".trans_opt_date",
+                ".c_date",
+                ".s_date",
+                ".pic_s_date",
+                ".dir/*.$O",
+                ".rlo",
+                ".il_date",
+                ".java_date"],
+
+            % If a module contains nested-submodules then we need to build
+            % the nested children before attempting to build the parent
+            % module
+        ( NestedDeps = [] ->
+            true
+        ;
+            Write = (pred(Ext::in, !.LIO::di, !:LIO::uo) is det :-
+                module_name_to_file_name(ModuleName, Ext, no, ExtName, !LIO),
+                io__write_strings(DepStream, ["\n\n", ExtName, " : "], !LIO),
+                write_dependencies_list(NestedDeps, Ext, DepStream, !LIO)
+            ),
+            list__foldl(Write, NestedExts, !IO)
+        ),
         (
             FactDeps = [_ | _],
             io__write_strings(DepStream, [
