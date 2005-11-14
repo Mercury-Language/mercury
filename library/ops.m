@@ -108,7 +108,7 @@
 	% constructed with an operator are allowed to take.
 	% `f' represents the operator and `x' and `y' represent arguments.
 	% `x' represents an argument whose priority must be
-	% strictly lower that that of the operator.
+	% strictly lower than that of the operator.
 	% `y' represents an argument whose priority is
 	% lower or equal to that of the operator.
 	% For example, `yfx' indicates a left-associative infix operator,

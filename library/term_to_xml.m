@@ -221,7 +221,7 @@
 	% ElementMapping as the scheme to map functors to elements.
 	% MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
 	% reference and/or a DTD should be included.  Any non-canonical terms
-	% will be be written out in full.  If an embedded DTD is requested, but
+	% will be written out in full.  If an embedded DTD is requested, but
 	% it is not possible to generate a DTD for Term using ElementMapping,
 	% then a value other than `ok' is returned in DTDResult and nothing is
 	% written out.  See the dtd_generation_result type for a list of the
