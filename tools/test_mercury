@@ -363,8 +363,8 @@ status=0
 #-----------------------------------------------------------------------------#
 
 # NOTE: in order to make all of the machines useful for day-to-day work
-# the set of grades installed should include asm_fast.gc, hlc.gc and
-# a debugging grade.
+# the set of grades installed should include asm_fast.gc, hlc.gc,
+# a debugging grade and a trailing grade.
 
 case $HOST in
 	ender)
@@ -389,6 +389,21 @@ case $HOST in
 					asm_fast.gc.tr	\
 					asm_fast.gc.tr.debug"
 		;;
+	saturn)
+		CONFIG_OPTS=""
+		INSTALL_LIBGRADES="asm_fast.gc			\
+					asm_fast.gc.decldebug	\
+					asm_fast.gc.memprof	\
+					asm_fast.gc.prof	\
+					asm_fast.gc.profdeep	\
+					asm_fast.gc.tr.profdeep	\
+					asm_fast.gc.tr		\
+					asm_fast.gc.tr.debug	\
+					asm_fast.gc.mm		\
+					hlc.gc			\
+					hlc.gc.tr		\
+					hlc.par.gc		"
+					
 	jupiter)
 		# Ensure that the nogc grades get installed and tested
 		# on at least one host
@@ -397,6 +412,7 @@ case $HOST in
 	earth)
 		CONFIG_OPTS=""
 		INSTALL_LIBGRADES="asm_fast.gc		\
+				asm_fast.gc.tr		\
 				asm_fast.gc.debug.tr 	\
 				asm_fast.gc.prof 	\
 				asm_fast.gc.profdeep 	\
