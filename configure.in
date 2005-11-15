@@ -212,15 +212,24 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- implementation.
 
 		:- import_module bool, int, list.
-        
+       	
+		:- mutable(global_var,
+			int,
+			561,
+			ground,
+			[[untrailed, thread_safe, attach_to_io_state]]
+		).
+       	
 		main(!IO) :-
 			return_rtti_version(Version),
 			p(T),
 			q(T, _),
+			get_global_var(Global, !IO),
 			(
 				Version >= 8,
 				ac(2) ^ elem(3, 5) = 17,
-				(1 .. 2) = [[1, 2]]
+				(1 .. 2) = [[1, 2]],
+				Global = 561
 			->
 				io.print("Hello, world\n", !IO)
 			;
