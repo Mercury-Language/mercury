@@ -380,9 +380,8 @@ unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
 unravel_unification_2(term__variable(X), term__variable(Y), Context,
         MainContext, SubContext, Purity, Goal, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    make_atomic_unification(X, var(Y), Context, MainContext, SubContext, Goal,
-        !QualInfo),
-    check_expr_purity(Purity, Context, !ModuleInfo, !IO).
+    make_atomic_unification(X, var(Y), Context, MainContext, SubContext,
+        Purity, Goal, !QualInfo).
 
     % If we find a unification of the form
     %   X = f(A1, A2, A3)
@@ -465,7 +464,6 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
             PredOrFunc = function
         )
     ->
-        check_expr_purity(Purity, Context, !ModuleInfo, !IO),
         add_clause__qualify_lambda_mode_list(Modes1, Modes, Context,
             !QualInfo, !IO),
         Det = Det1,
@@ -517,7 +515,6 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         BeforeSInfo = !.SInfo,
         prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
 
-        check_expr_purity(Purity, Context, !ModuleInfo, !IO),
         map__init(EmptySubst),
         transform_goal(IfParseTree, EmptySubst, IfGoal, !VarSet,
             !ModuleInfo, !QualInfo, !SInfo, !IO),
@@ -545,7 +542,6 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         parse_field_list(FieldNameTerm, FieldNameResult),
         FieldNameResult = ok(FieldNames)
     ->
-        check_expr_purity(Purity, Context, !ModuleInfo, !IO),
         make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet, !SInfo, !IO),
         expand_get_field_function_call(Context, MainContext, SubContext,
             FieldNames, X, InputTermVar, !VarSet, Functor, _, Goal0,
@@ -564,7 +560,6 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         parse_field_list(FieldNameTerm, FieldNameResult),
         FieldNameResult = ok(FieldNames)
     ->
-        check_expr_purity(Purity, Context, !ModuleInfo, !IO),
         make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet, !SInfo, !IO),
         make_fresh_arg_var(FieldValueTerm, FieldValueVar, [InputTermVar],
             !VarSet, !SInfo, !IO),
@@ -902,17 +897,6 @@ partition_args_and_lambda_vars(ModuleInfo, [ Arg | Args ],
                 OutputLambdaVars = OutputLambdaVars0
             )
         ).
-
-:- pred check_expr_purity(purity::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-check_expr_purity(Purity, Context, !ModuleInfo, !IO) :-
-    ( Purity \= purity_pure ->
-        impure_unification_expr_error(Context, Purity, !IO),
-        module_info_incr_errors(!ModuleInfo)
-    ;
-        true
-    ).
 
 %-----------------------------------------------------------------------------%
 

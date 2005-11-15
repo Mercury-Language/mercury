@@ -1183,6 +1183,12 @@
     %
 :- pred create_atomic_complicated_unification(prog_var::in, unify_rhs::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    purity::in, hlds_goal::out) is det.
+
+    % As above, but with default purity pure.
+    %
+:- pred create_atomic_complicated_unification(prog_var::in, unify_rhs::in,
+    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
     hlds_goal::out) is det.
 
     % Create the hlds_goal for a unification that tests the equality of two
@@ -2150,11 +2156,17 @@ set_goal_contexts_2_shorthand(Context, bi_implication(LHS0, RHS0),
 
 create_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, Goal) :-
+    create_atomic_complicated_unification(LHS, RHS, Context,
+            UnifyMainContext, UnifySubContext, purity_pure, Goal).
+
+create_atomic_complicated_unification(LHS, RHS, Context,
+        UnifyMainContext, UnifySubContext, Purity, Goal) :-
     UMode = ((free - free) -> (free - free)),
     Mode = ((free -> free) - (free -> free)),
     Unification = complicated_unify(UMode, can_fail, []),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
-    goal_info_init(Context, GoalInfo),
+    goal_info_init(Context, GoalInfo0),
+    add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
     Goal = unify(LHS, RHS, Mode, Unification, UnifyContext) - GoalInfo.
 
 %-----------------------------------------------------------------------------%

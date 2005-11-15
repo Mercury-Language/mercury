@@ -64,6 +64,12 @@
     qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 :- pred make_atomic_unification(prog_var::in, unify_rhs::in, prog_context::in,
+    unify_main_context::in, unify_sub_contexts::in, purity::in, hlds_goal::out,
+    qual_info::in, qual_info::out) is det.
+
+    % As above, except with default purity pure.
+    %
+:- pred make_atomic_unification(prog_var::in, unify_rhs::in, prog_context::in,
     unify_main_context::in, unify_sub_contexts::in, hlds_goal::out,
     qual_info::in, qual_info::out) is det.
 
@@ -226,6 +232,11 @@ update_var_types(Var, Type, Context, !VarTypes, !IO) :-
 
 make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
         Goal, !QualInfo) :-
+    make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
+            purity_pure, Goal, !QualInfo).
+
+make_atomic_unification(Var, Rhs, Context, MainContext, SubContext, Purity,
+        Goal, !QualInfo) :-
     (
         Rhs = var(_)
     ;
@@ -235,7 +246,7 @@ make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
         record_used_functor(ConsId, !QualInfo)
     ),
     create_atomic_complicated_unification(Var, Rhs, Context,
-        MainContext, SubContext, Goal).
+        MainContext, SubContext, Purity, Goal).
 
 record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
     Id = SymName - Arity,

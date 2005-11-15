@@ -391,7 +391,7 @@ any_tree234__search(T, K, V) :-
     ).
 
 any_tree234__lookup(T, K, V) :-
-    ( impure any_tree234__search(T, K, V0) ->
+    promise_pure ( impure any_tree234__search(T, K, V0) ->
         V = V0
     ;
         report_lookup_error("any_tree234__lookup: key not found.", K, V)
@@ -400,7 +400,7 @@ any_tree234__lookup(T, K, V) :-
 %------------------------------------------------------------------------------%
 
 any_tree234__lower_bound_search(T, SearchK, K, V) :-
-    (
+    promise_pure (
         T = empty,
         fail
     ;
@@ -535,7 +535,9 @@ any_tree234__lower_bound_search(T, SearchK, K, V) :-
     ).
 
 any_tree234__lower_bound_lookup(T, SearchK, K, V) :-
-    ( impure any_tree234__lower_bound_search(T, SearchK, K0, V0) ->
+    promise_pure (
+        impure any_tree234__lower_bound_search(T, SearchK, K0, V0)
+    ->
         K = K0,
         V = V0
     ;
@@ -546,7 +548,7 @@ any_tree234__lower_bound_lookup(T, SearchK, K, V) :-
 %------------------------------------------------------------------------------%
 
 any_tree234__upper_bound_search(T, SearchK, K, V) :-
-    (
+    promise_pure (
         T = empty,
         fail
     ;
@@ -678,7 +680,9 @@ any_tree234__upper_bound_search(T, SearchK, K, V) :-
     ).
 
 any_tree234__upper_bound_lookup(T, SearchK, K, V) :-
-    ( impure any_tree234__upper_bound_search(T, SearchK, K0, V0) ->
+    promise_pure (
+        impure any_tree234__upper_bound_search(T, SearchK, K0, V0)
+    ->
         K = K0,
         V = V0
     ;
@@ -693,7 +697,9 @@ any_tree234__max_key(T0) = MaxKey :-
     ; T0 = three(_, _, NodeMaxKey, _, _, _, NodeMaxSubtree)
     ; T0 = four(_, _, _, _, NodeMaxKey, _, _, _, _, NodeMaxSubtree)
     ),
-    ( impure MaxSubtreeKey = any_tree234__max_key(NodeMaxSubtree) ->
+    promise_pure (
+        impure MaxSubtreeKey = any_tree234__max_key(NodeMaxSubtree)
+    ->
         MaxKey = MaxSubtreeKey
     ;
         MaxKey = NodeMaxKey
@@ -705,7 +711,9 @@ any_tree234__min_key(T0) = MinKey :-
     ; T0 = three(NodeMinKey, _, _, _, NodeMinSubtree, _, _)
     ; T0 = four(NodeMinKey, _, _, _, _, _, NodeMinSubtree, _, _, _)
     ),
-    ( impure MinSubtreeKey = any_tree234__min_key(NodeMinSubtree) ->
+    promise_pure (
+        impure MinSubtreeKey = any_tree234__min_key(NodeMinSubtree)
+    ->
         MinKey = MinSubtreeKey
     ;
         MinKey = NodeMinKey
@@ -1569,7 +1577,7 @@ any_tree234__delete(Tin, K, Tout) :-
         any_tree234(K, V)::oa, bool::out) is det.
 
 any_tree234__delete_2(Tin, K, Tout, RH) :-
-    (
+    promise_pure (
         Tin = empty,
         Tout = empty,
         RH = no
@@ -1831,7 +1839,7 @@ any_tree234__remove(Tin, K, V, Tout) :-
         any_tree234(K, V)::oa, bool::out) is semidet.
 
 any_tree234__remove_2(Tin, K, V, Tout, RH) :-
-    (
+    promise_pure (
         Tin = empty,
         fail
     ;

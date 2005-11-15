@@ -553,7 +553,9 @@ any_map__search(Map, K, V) :-
     any_tree234__search(Map, K, V).
 
 any_map__lookup(Map, K, V) :-
-    ( impure any_tree234__search(Map, K, V1) ->
+    promise_pure (
+        impure any_tree234__search(Map, K, V1)
+    ->
         V = V1
     ;
         report_lookup_error("any_map__lookup: key not found", K, V)
@@ -563,7 +565,9 @@ any_map__lower_bound_search(Map, SearchK, K, V) :-
     any_tree234__lower_bound_search(Map, SearchK, K, V).
 
 any_map__lower_bound_lookup(Map, SearchK, K, V) :-
-    ( impure any_tree234__lower_bound_search(Map, SearchK, K1, V1) ->
+    promise_pure (
+        impure any_tree234__lower_bound_search(Map, SearchK, K1, V1)
+    ->
         K = K1,
         V = V1
     ;
@@ -575,7 +579,9 @@ any_map__upper_bound_search(Map, SearchK, K, V) :-
     any_tree234__upper_bound_search(Map, SearchK, K, V).
 
 any_map__upper_bound_lookup(Map, SearchK, K, V) :-
-    ( impure any_tree234__upper_bound_search(Map, SearchK, K1, V1) ->
+    promise_pure (
+        impure any_tree234__upper_bound_search(Map, SearchK, K1, V1)
+    ->
         K = K1,
         V = V1
     ;
@@ -591,7 +597,9 @@ any_map__insert(Map0, K, V, Map) :-
     any_tree234__insert(Map0, K, V, Map).
 
 any_map__det_insert(Map0, K, V, Map) :-
-    ( impure any_tree234__insert(Map0, K, V, Map1) ->
+    promise_pure (
+        impure any_tree234__insert(Map0, K, V, Map1)
+    ->
         Map = Map1
     ;
         report_lookup_error("any_map__det_insert: key already present",
@@ -649,7 +657,9 @@ any_map__update(Map0, K, V, Map) :-
     any_tree234__update(Map0, K, V, Map).
 
 any_map__det_update(Map0, K, V, Map) :-
-    ( impure any_tree234__update(Map0, K, V, Map1) ->
+    promise_pure (
+        impure any_tree234__update(Map0, K, V, Map1)
+    ->
         Map = Map1
     ;
         report_lookup_error("any_map__det_update: key not found", K, V)
@@ -659,7 +669,7 @@ any_map__transform_value(P, K, !Map) :-
     any_tree234__transform_value(P, K, !Map).
 
 any_map__det_transform_value(P, K, !Map) :-
-    (
+    promise_pure (
         impure any_map__transform_value(P, K, !.Map, NewMap)
     ->
         !:Map = NewMap
@@ -710,7 +720,9 @@ any_map__remove(Map0, Key, Value, Map) :-
     any_tree234__remove(Map0, Key, Value, Map).
 
 any_map__det_remove(Map0, Key, Value, Map) :-
-    ( impure any_tree234__remove(Map0, Key, Value1, Map1) ->
+    promise_pure (
+        impure any_tree234__remove(Map0, Key, Value1, Map1)
+    ->
         Value = Value1,
         Map = Map1
     ;
@@ -766,7 +778,9 @@ any_map__overlay_large_map(Map0, Map1, Map) :-
 any_map__overlay_large_map_2([], Map, Map).
 any_map__overlay_large_map_2([K - V | AssocList], Map0, Map) :-
     unsafe_cast_to_ground(K),
-    ( impure any_map__insert(Map0, K, V, Map1) ->
+    promise_pure (
+        impure any_map__insert(Map0, K, V, Map1)
+    ->
         Map2 = Map1
     ;
         Map2 = Map0
@@ -785,7 +799,9 @@ any_map__select(Original, KeySet, NewMap) :-
 
 any_map__select_2([], _Original, New, New).
 any_map__select_2([K|Ks], Original, New0, New) :-
-    ( impure any_map__search(Original, K, V) ->
+    promise_pure (
+        impure any_map__search(Original, K, V)
+    ->
         any_map__set(New0, K, V, New1)
     ;
         New1 = New0
@@ -878,7 +894,9 @@ any_map__intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
     ).
 
 any_map__det_intersect(CommonPred, Map1, Map2, Common) :-
-    ( impure any_map__intersect(CommonPred, Map1, Map2, CommonPrime) ->
+    promise_pure (
+        impure any_map__intersect(CommonPred, Map1, Map2, CommonPrime)
+    ->
         Common = CommonPrime
     ;
         error("any_map__det_intersect: any_map__intersect failed")
@@ -938,7 +956,9 @@ any_map__union_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
     ).
 
 any_map__det_union(CommonPred, Map1, Map2, Union) :-
-    ( impure any_map__union(CommonPred, Map1, Map2, UnionPrime) ->
+    promise_pure (
+        impure any_map__union(CommonPred, Map1, Map2, UnionPrime)
+    ->
         Union = UnionPrime
     ;
         error("any_map__det_union: any_map__union failed")
