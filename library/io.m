@@ -1303,64 +1303,6 @@
 :- pred io__error_message(io__error::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
-%
-% Deprecated predicates.
-%
-
-% Do not use these in new programs!
-% They may be deleted in the next release.
-
-    % Use io__input_stream/3 instead -- it has identical semantics.
-:- pragma obsolete(io__current_input_stream/3).
-:- pred io__current_input_stream(io__input_stream::out, io::di, io::uo) is det.
-
-    % Use io__output_stream/3 instead -- it has identical semantics.
-:- pragma obsolete(io__current_output_stream/3).
-:- pred io__current_output_stream(io__output_stream::out, io::di, io::uo)
-    is det.
-
-    % Use io__binary_input_stream/3 instead -- it has identical semantics.
-:- pragma obsolete(io__current_binary_input_stream/3).
-:- pred io__current_binary_input_stream(io__binary_input_stream::out,
-    io::di, io::uo) is det.
-
-    % Use io__binary_output_stream/3 instead -- it has identical semantics.
-:- pragma obsolete(io__current_binary_output_stream/3).
-:- pred io__current_binary_output_stream(io__binary_output_stream::out,
-    io::di, io::uo) is det.
-
-    % io__tmpnam(Name, !IO) binds `Name' to a temporary file name
-    % which is different to the name of any existing file.
-    % It will reside in /tmp if the TMPDIR environment variable
-    % is not set, or in the directory specified by TMPDIR if it is set.
-    % Use of this predicate is deprecated, because it may
-    % result in race conditions.  Use io__make_temp/3 instead.
-    %
-:- pragma obsolete(io__tmpnam/3). % use io__make_temp/3 instead
-:- pred io__tmpnam(string::out, io::di, io::uo) is det.
-
-    % io__tmpnam(Dir, Prefix, Name, !IO) binds `Name' to a
-    % temporary file name which is different to the name of any
-    % existing file. It will reside in the directory specified by
-    % `Dir' and have a prefix using up to the first 5 characters
-    % of `Prefix'.
-    % Use of this predicate is deprecated, because it may
-    % result in race conditions.  Use io__make_temp/5 instead.
-    %
-:- pragma obsolete(io__tmpnam/5). % use io__make_temp/5 instead
-:- pred io__tmpnam(string::in, string::in, string::out, io::di, io::uo) is det.
-
-    % Write complete memory usage statistics to stderr,
-    % including information about all procedures and types.
-    % (You need to compile with memory profiling enabled.)
-    %
-    % OBSOLETE: call io__report_stats/3 instead, with the first argument
-    % specified as "full_memory_stats".
-    %
-:- pragma obsolete(io__report_full_memory_stats/2).
-:- pred io__report_full_memory_stats(io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -4764,9 +4706,6 @@ io__set_environment_var(Var, Value, !IO) :-
 io__report_stats(!IO) :-
     io__report_stats("standard", !IO).
 
-io__report_full_memory_stats(!IO) :-
-    io__report_stats("full_memory_stats", !IO).
-
 :- pragma promise_pure(io__report_stats/3).
 
 io__report_stats(Selector, !IO) :-
@@ -7041,15 +6980,6 @@ io__write_float(Stream, Float, !IO) :-
     MR_update_io(IO0, IO);
 }").
 
-current_input_stream(S, !IO) :-
-    input_stream(S, !IO).
-current_output_stream(S, !IO) :-
-    output_stream(S, !IO).
-current_binary_input_stream(S, !IO) :-
-    binary_input_stream(S, !IO).
-current_binary_output_stream(S, !IO) :-
-    binary_output_stream(S, !IO).
-
 :- pragma foreign_proc("C",
     io__set_input_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -7950,17 +7880,7 @@ io__setenv(Var, Value) :-
         ""io__putenv/1 not implemented for Java: "" + VarAndValue);
 ").
 
-/*---------------------------------------------------------------------------*/
-
-io__tmpnam(Name, !IO) :-
-    io__make_temp(Name, !IO),
-    io__remove_file(Name, _Result, !IO).
-
-io__tmpnam(Dir, Prefix, Name, !IO) :-
-    io__make_temp(Dir, Prefix, Name, !IO),
-    io__remove_file(Name, _Result, !IO).
-
-/*---------------------------------------------------------------------------*/
+%-----------------------------------------------------------------------------%
 
     % We need to do an explicit check of TMPDIR because not all
     % systems check TMPDIR for us (eg Linux #$%*@&).

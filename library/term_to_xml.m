@@ -413,7 +413,7 @@
 	% ElementMapping as the scheme to map functors to elements.
 	% MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
 	% reference and/or a DTD should be included.  Any non-canonical terms
-	% will be be written out in full.  If an embedded DTD is requested, but
+	% will be written out in full.  If an embedded DTD is requested, but
 	% it is not possible to generate a DTD for Term using ElementMapping,
 	% then a value other than `ok' is returned in DTDResult and nothing is
 	% written out.  See the dtd_generation_result type for a list of the
@@ -709,10 +709,6 @@ write_external_doctype(Root, DocType, !IO) :-
 :- pred make_unique_element(type_desc.type_desc::in, maybe_functor_info::in,
 	string::out, list(attr_from_source)::out) is det.
 
-% XXX This should be uncommented once memoing can be switched off for grades
-% which don't support it.
-% :- pragma memo(make_unique_element/4).
-
 make_unique_element(TypeDesc, du_functor(Functor, Arity), Element,
 		all_attr_sources) :-
 	(
@@ -746,10 +742,6 @@ make_unique_element(TypeDesc, none_du, Element, AttrFromSources) :-
 	%
 :- pred make_simple_element(type_desc.type_desc::in, maybe_functor_info::in,
 	string::out, list(attr_from_source)::out) is det.
-
-% XXX This should be uncommented once memoing can be switched off for grades
-% which don't support it.
-% :- pragma memo(make_simple_element/4).
 
 make_simple_element(_, du_functor(Functor, _), Element, all_attr_sources) :-
 	(
@@ -902,16 +894,12 @@ mangle_char(Chr, PrevChrs, list.append(PrevChrs, Chrs)) :-
 	list(maybe(int))::out, list(list(type_desc.pseudo_type_desc))::out,
 	list(list(attr_from_source))::out) is det.
 
-% XXX This should be uncommented once memoing can be switched off for grades
-% which don't support it.
-% :- pragma memo(get_elements_and_args/7).
-
 get_elements_and_args(MakeElement, TypeDesc, Elements, MaybeFunctors,
 		MaybeArities, ArgTypeLists, AttributeLists) :-
 	(
 		is_discriminated_union(TypeDesc, NumFunctors)
 	->
-		FunctorNums = 0 `..` (NumFunctors - 1),
+		FunctorNums = 0 .. (NumFunctors - 1),
 		(
 			list.map3(construct.get_functor(TypeDesc), FunctorNums,
 				Functors, Arities, ArgTypeLists0)
@@ -1157,15 +1145,11 @@ is_array(TypeDesc, ArgPseudoType) :-
 :- func get_field_names(type_desc.type_desc, string, int)
 	= list(maybe(string)).
 
-% XXX This should be uncommented once memoing can be switched off for grades
-% which don't support it.
-% :- pragma memo(get_field_names/3).
-
 get_field_names(TypeDesc, Functor, Arity) = MaybeFields :-
 	(
 		is_discriminated_union(TypeDesc, NumFunctors)
 	->
-		FunctorNums = 0`..`(NumFunctors - 1),
+		FunctorNums = 0 .. (NumFunctors - 1),
 		(
 			find_field_names(TypeDesc, FunctorNums, Functor,
 				Arity, FoundMaybeFields)

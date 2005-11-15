@@ -176,7 +176,7 @@
 :- func set_bbbtree__from_sorted_list(list(T)) = set_bbbtree(T).
 
     % `set_bbbtree__sorted_list_to_set_len(List, Set, N)' is true iff
-    % `Set' is the set set containing only the members of `List' and `N'
+    % `Set' is the set containing only the members of `List' and `N'
     % is the length of the list. If the length of the list is already known
     % then a noticeable speed improvement can be expected over
     % `set_bbbtree__sorted_list_to_set' as a significant cost involved
@@ -591,7 +591,7 @@ set_bbbtree__from_list(List) = Set :-
 %------------------------------------------------------------------------------%
 
 % The tree is created by first determining it's length. All lists of length
-% N have the same structure. The root of of the tree is the N // 2 element
+% N have the same structure. The root of the tree is the N // 2 element
 % of the list. Elements 1 to N // 2 - 1 make up the left subtree and elements
 % N // 2 + 1 to N make up the right subtree. The structure, which is known
 % due to the length of the list, is just created inorder while passing the
@@ -1038,7 +1038,7 @@ set_bbbtree__concat3(L, R, Set) :-
     ;
         set_bbbtree__size(R, RSize),
         ( RSize = 0 ->
-            % Right tree empty so just just return the left tree.
+            % Right tree empty so just return the left tree.
             Set = L
         ;
             % If the left tree is the larger of the two then

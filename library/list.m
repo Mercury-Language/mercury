@@ -339,7 +339,7 @@
     % list__index*(List, Position, Elem):
     %
     % These predicates select an element in a list from it's position.
-    % The `index0' preds consider the first element element to be element
+    % The `index0' preds consider the first element to be element
     % number zero, whereas the `index1' preds consider the first element
     % to be element number one. The `_det' preds call error/1 if the index
     % is out of range, whereas the semidet preds fail if the index is out of
