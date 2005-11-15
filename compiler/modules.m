@@ -3985,19 +3985,23 @@ get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, !:OptDeps,
 
 generate_module_dependencies(ModuleName, !IO) :-
     map__init(DepsMap0),
-    generate_dependencies(output_all_dependencies, ModuleName, DepsMap0, !IO).
+    generate_dependencies(output_all_dependencies,
+        dir__this_directory, ModuleName, DepsMap0, !IO).
 
 generate_file_dependencies(FileName, !IO) :-
     build_deps_map(FileName, ModuleName, DepsMap, !IO),
-    generate_dependencies(output_all_dependencies, ModuleName, DepsMap, !IO).
+    generate_dependencies(output_all_dependencies,
+        dir__dirname(FileName), ModuleName, DepsMap, !IO).
 
 generate_module_dependency_file(ModuleName, !IO) :-
     map__init(DepsMap0),
-    generate_dependencies(output_d_file_only, ModuleName, DepsMap0, !IO).
+    generate_dependencies(output_d_file_only,
+        dir__this_directory, ModuleName, DepsMap0, !IO).
 
 generate_file_dependency_file(FileName, !IO) :-
     build_deps_map(FileName, ModuleName, DepsMap, !IO),
-    generate_dependencies(output_d_file_only, ModuleName, DepsMap, !IO).
+    generate_dependencies(output_d_file_only,
+        dir__dirname(FileName), ModuleName, DepsMap, !IO).
 
 :- pred build_deps_map(file_name::in, module_name::out, deps_map::out,
     io::di, io::uo) is det.
@@ -4019,6 +4023,21 @@ build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
     --->    output_d_file_only
     ;       output_all_dependencies
     .
+
+:- pred generate_dependencies(generate_dependencies_mode::in,
+    dir_name::in, module_name::in, deps_map::in,
+    io::di, io::uo) is det.
+
+generate_dependencies(Mode, DirName, ModuleName, DepsMap, !IO) :-
+        % Set the search path to be given directory.
+    globals__io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
+    globals__io_set_option(search_directories, accumulating([DirName]), !IO),
+
+    generate_dependencies(Mode, ModuleName, DepsMap, !IO),
+
+        % Restore the search path.
+    globals__io_set_option(search_directories, accumulating(SearchDirs), !IO).
+
 
 :- pred generate_dependencies(generate_dependencies_mode::in,
     module_name::in, deps_map::in,
@@ -4347,7 +4366,7 @@ generate_deps_map([], !DepsMap, !IO).
 generate_deps_map([Module | Modules], !DepsMap, !IO) :-
         % Look up the module's dependencies, and determine whether
         % it has been processed yet.
-    lookup_dependencies(Module, no, Done, !DepsMap, ModuleImports, !IO),
+    lookup_dependencies(Module, yes, Done, !DepsMap, ModuleImports, !IO),
         % If the module hadn't been processed yet, then add its
         % imports, parents, and public children to the list of
         % dependencies we need to generate, and mark it as
