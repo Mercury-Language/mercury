@@ -403,7 +403,7 @@ case $HOST in
 					hlc.gc			\
 					hlc.gc.tr		\
 					hlc.par.gc		"
-					
+		;;					
 	jupiter)
 		# Ensure that the nogc grades get installed and tested
 		# on at least one host
