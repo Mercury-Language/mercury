@@ -970,21 +970,12 @@ case $HOST in $ROTD_HOST)
 		rm -f $UNSTABLE/mercury-test-failures-$version-unstable.txt
 	fi &&
 	ssh $BETA_FTPHOST "\
-	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR
-	    rm -f \
-		$BETA_FTPDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz \
-		$BETA_FTPDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz \
-		$BETA_FTPDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz \
-		$BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt" &&
+	    [ -d $BETA_FTPDIR ] || mkdir $BETA_FTPDIR" &&
 	scp $UNSTABLE/mercury-*-$version-unstable.* \
 		$BETA_FTPHOST:$BETA_FTPDIR &&
 	ssh $BETA_FTPHOST "\
 		echo $version > $BETA_FTPDIR/latest-unstable-version" &&
 	([ -d $BETA_WEBDIR ] || mkdir $BETA_WEBDIR) &&
-	rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
-	rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
-	rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
-	rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt &&
 	cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR &&
 	echo $version > $BETA_WEBDIR/latest-unstable-version \
 	|| set_status "copying ROTD"
