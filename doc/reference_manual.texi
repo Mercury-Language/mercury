@@ -6176,7 +6176,7 @@ make calls back to Mercury that may result in an exception being thrown.
 It is an error to apply this attribute to procedures that have determinism
 erroneous.  This attribute is ignored for code that is declared as not
 making calls back to Mercury via the @samp{will_not_call_mercury} attribute.
-Note: Predicates or functions that have polymorphic arguments but
+Note: predicates or functions that have polymorphic arguments but
 do not explicitly throw an exception, via a call to exception.throw/1
 or require.error/1, may still throw exceptions because they may be
 called with arguments whose types have user-defined equality or
@@ -6190,6 +6190,14 @@ polymorphic predicates and functions.
 @c The foreign_proc will apply only on the high level backend.
 @c @item @samp{low_level_backend}
 @c The foreign_proc will apply only on the low level backend.
+
+@item @samp{will_not_modify_trail/may_modify_trail}
+This attribute declares whether or not a foreign procedure modifies
+the trail (see @ref{Trailing}).  Specifying that a foreign procedure
+will not modify the trail may allow the compiler to generate more
+efficient code for that procedure.  In compilation grades that do not
+support trailing this attribute is ignored.  The default, in case 
+none is specified, is @samp{may_modify_trail}.
 
 @end table
 

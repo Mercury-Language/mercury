@@ -923,6 +923,17 @@ that depend upon the information obtained by termination analysis.
 
 <p>
 
+Trail usage analysis. (trailing_analysis.m)
+
+<ul>
+<li>
+	This pass annotates each module with information about whether
+	the procedures in the module modify the trail or not.  This
+	information can be used to avoid redundant trailing operations.
+</ul>
+
+<p>
+
 Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <ul>
@@ -1713,6 +1724,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-11-04 03:41:09 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-11-16 07:02:00 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>

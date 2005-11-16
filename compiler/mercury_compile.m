@@ -2208,7 +2208,7 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 123, "trailing analysis", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
     trans_opt__write_optfile(!.HLDS, !IO).
 
 :- pred frontend_pass_by_phases(module_info::in, module_info::out,
@@ -2322,12 +2322,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination2", !DumpInfo, !IO),
-
-    % XXX We should actually do this after any optimizations
-    % that introduce new predicates, so that we can add them
-    % to the trailing_info table as well.
-    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 123, "trail_usage", !DumpInfo, !IO),
     
     maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 125, "type_ctor_infos", !DumpInfo, !IO),
@@ -2372,6 +2366,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_unused_args(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
+    
+    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
 
     maybe_unneeded_code(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 170, "unneeded_code", !DumpInfo, !IO),

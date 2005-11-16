@@ -111,20 +111,26 @@
 %
 
 analyse_trail_usage(!ModuleInfo, !IO) :-
-    module_info_ensure_dependency_info(!ModuleInfo),
-    module_info_dependency_info(!.ModuleInfo, DepInfo),
-    hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-    globals.io_lookup_bool_option(debug_trail_usage, Debug, !IO),
-    list.foldl2(process_scc(Debug), SCCs, !ModuleInfo, !IO),
-    globals.io_lookup_bool_option(make_optimization_interface,
-        MakeOptInt, !IO),
+    globals.io_lookup_bool_option(use_trail, UseTrail, !IO),
     (
-        MakeOptInt = yes,
-        make_opt_int(!.ModuleInfo, !IO)
+        % Only run the analysis in trailing grades.
+        UseTrail = yes,
+        module_info_ensure_dependency_info(!ModuleInfo),
+        module_info_dependency_info(!.ModuleInfo, DepInfo),
+        hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
+        globals.io_lookup_bool_option(debug_trail_usage, Debug, !IO),
+        list.foldl2(process_scc(Debug), SCCs, !ModuleInfo, !IO),
+        globals.io_lookup_bool_option(make_optimization_interface,
+            MakeOptInt, !IO),
+        (
+            MakeOptInt = yes,
+            make_opt_int(!.ModuleInfo, !IO)
+        ;
+            MakeOptInt = no
+        )  
     ;
-        MakeOptInt = no
-    ).  
-
+        UseTrail = no
+    ).
 %----------------------------------------------------------------------------%
 % 
 % Perform trail usage analysis on a SCC 
@@ -146,9 +152,8 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
 process_scc(Debug, SCC, !ModuleInfo, !IO) :-
     ProcResults = check_procs_for_trail_mods(SCC, !.ModuleInfo),
     % 
-    % The `Results' above are the results of analysing each
-    % individual procedure in the SCC - we now have to combine
-    % them in a meaningful way.   
+    % The `Results' above are the results of analysing each individual
+    % procedure in the SCC - we now have to combine them in a meaningful way.   
     %
     Status = combine_individual_proc_results(ProcResults),
     %
@@ -284,6 +289,17 @@ check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, Goal, _, Result) :-
         % XXX This is far too conservative.
         Result = may_modify_trail
     ;
+        % Handle library predicates whose trailing status
+        % can be looked up in the known procedures table.
+        Name = pred_info_name(CallPredInfo),
+        PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
+        ModuleName = pred_info_module(CallPredInfo),
+        ModuleName = unqualified(ModuleNameStr),
+        Arity = pred_info_orig_arity(CallPredInfo),
+        known_procedure(PredOrFunc, ModuleNameStr, Name, Arity, Result0)
+    ->
+        Result = Result0
+    ;
         check_nonrecursive_call(ModuleInfo, VarTypes, CallPPId, CallArgs,
             Result)
     ).
@@ -318,8 +334,8 @@ check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, Goal, OuterGoalInfo,
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
     (
-        % If we're at a commit for goal that might modify the trail then
-        % we will need to emit some trailing code around the scope goal.
+        % If we're at a commit for Goal that might modify the trail then we
+        % will need to emit some trailing code around the scope goal.
         InnerCodeModel = model_non,
         OuterCodeModel \= model_non,
         Result0 \= will_not_modify_trail
@@ -374,7 +390,7 @@ check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, disj(Goals), _,
         Result0 = will_not_modify_trail,
         Result  = will_not_modify_trail
     ;
-        % One or or more fo the disjuncts may modify the trail, so
+        % One or or more of the disjuncts may modify the trail, so
         % we need to emit the trailing code - XXX could do better by
         % specialising conditional code.
         ( Result0 = conditional ; Result0 = may_modify_trail),
@@ -389,6 +405,23 @@ check_goals_for_trail_mods(SCC, ModuleInfo, VarTypes, Goals, Result) :-
         Results),
     list.foldl(combine_trailing_status, Results, will_not_modify_trail,
         Result).
+
+%----------------------------------------------------------------------------%
+%
+% "Known" library procedures
+%
+
+% known_procedure/4 is a table of library predicates whose trailing
+% status is hardcoded into the analyser.  For a few predicates this
+% information can make a big difference (particularly in the absence
+% of any form of intermodule analysis).
+
+:- pred known_procedure(pred_or_func::in, string::in, string::in, int::in,
+    trailing_status::out) is semidet.
+
+known_procedure(predicate, "require", "error", 1, will_not_modify_trail).
+known_procedure(function,  "require", "func_error", 1, will_not_modify_trail).
+known_procedure(_, "exception", "throw", 1, will_not_modify_trail).
 
 %----------------------------------------------------------------------------%
 %
