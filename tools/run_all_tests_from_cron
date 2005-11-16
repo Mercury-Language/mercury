@@ -88,16 +88,19 @@ case "$BRANCH" in
 			*)	BRANCH=latest ;;
 		esac
 		;;
-	    aral|jupiter)
-	    	# jupiter is currrently the rotd host, so only
-		# test the main branch on it.
-		#
+	    aral)
 		# Aral has limited disk space, and not having to expend it
 		# on the release branch helps conserve it.
 		#
 		BRANCH=latest
-	   	;; 
-	   earth|ceres|uranus|swordfish)
+	   	;;
+	   earth|juptier|ceres)
+		case $DAY in
+			*[13579]) BRANCH=$release_branch ;;
+			*)	  BRANCH=latest ;;
+		esac
+	   	;;
+	   uranus|swordfish)
 		# On odd-numbered days, test the release branch
 		# On even-numbered days, test the main branch
 		case $DAY in
