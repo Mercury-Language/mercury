@@ -24,7 +24,7 @@
 :- pred good_if_then_else(T::ia, int::out) is det.
 
 good_if_then_else(X, Y) :-
-    ( if   impure ia(X), ig(3)
+    ( if   promise_pure (impure ia(X)), ig(3)
       then Y = 1
       else Y = 2
     ).
@@ -40,7 +40,7 @@ bad_if_then_else1(X, Y) :-
 :- pred bad_if_then_else2(T::ia, int::out) is det.
 
 bad_if_then_else2(X, Y) :-
-    ( if   impure ia(X), impure ig(3)
+    ( if   promise_pure (impure ia(X), impure ig(3))
       then Y = 1
       else Y = 2
     ).
@@ -48,7 +48,7 @@ bad_if_then_else2(X, Y) :-
 :- pred good_negation(T::ia) is semidet.
 
 good_negation(X) :-
-    not (impure ia(X), ig(3)).
+    not (promise_pure ((impure ia(X), ig(3)))).
 
 :- pred bad_negation1(T::ia) is semidet.
 
@@ -58,7 +58,7 @@ bad_negation1(X) :-
 :- pred bad_negation2(T::ia) is semidet.
 
 bad_negation2(X) :-
-    not (impure ia(X), impure ig(3)).
+    not (promise_pure ((impure ia(X), impure ig(3)))).
 
 :- pred pure_pred_mode_specific_clauses(int).
 :- mode pure_pred_mode_specific_clauses(in) is semidet.
