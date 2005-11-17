@@ -5,11 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: frameopt.m.
 % Main author: zs.
-%
-% This module performs two kinds of transformation to optimize code
-% that manipulates detstack frames.
+
+% This module performs two kinds of transformation to optimize code that
+% manipulates detstack frames.
 %
 % The first and more common transformation transforms code such as
 %
@@ -90,7 +91,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__frameopt.
-
 :- interface.
 
 :- import_module libs.globals.
@@ -101,6 +101,8 @@
 :- import_module counter.
 :- import_module list.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
     % frameopt_main(ProcLabel, !LabelCounter, !Instrs, Globals, AnyChange,
     %   NewJumps):
@@ -146,6 +148,7 @@
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -168,6 +171,8 @@
 :- import_module svmap.
 :- import_module svqueue.
 :- import_module svset.
+
+%-----------------------------------------------------------------------------%
 
 frameopt_main(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
     opt_util__get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
@@ -1819,4 +1824,6 @@ search_teardown_par_map(teardown_par_map(ParMap), Label, ParallelLabel) :-
 
 this_file = "frameopt.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module frameopt.
 %-----------------------------------------------------------------------------%

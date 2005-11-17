@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: ml_code_gen.m
-% Main author: fjh
+% File: ml_code_gen.m.
+% Main author: fjh.
 
 % MLDS code generation -- convert from HLDS to MLDS.
 
@@ -706,7 +706,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend__ml_code_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -3476,7 +3475,7 @@ attribute_to_mlds_attribute(ModuleInfo, custom(Type)) =
 
 this_file = "ml_code_gen.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module ml_code_gen.
+%-----------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%

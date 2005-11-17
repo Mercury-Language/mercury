@@ -9,17 +9,16 @@
 % File: post_term_analysis.m
 % Main author: juliensf
 %
-% This module contains various checks that rely on the information 
-% produced by termination analysis. 
+% This module contains various checks that rely on the information produced by
+% termination analysis. 
 %
-% Currently, the only thing implemented in this module is a check to see
-% if user-defined special predicates terminate.  A warning is emitted
-% for all those that do not. 
+% Currently, the only thing implemented in this module is a check to see if
+% user-defined special predicates terminate.  A warning is emitted for all
+% those that do not. 
 % 
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.post_term_analysis.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -147,13 +146,11 @@ warn_non_term_user_special_pred(ModuleInfo, TypeTable,
 process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor,
         PredId, TypeDefn, !IO) :-
     (
-        special_pred_needs_term_check(ModuleInfo, SpecialPredId,
-            TypeDefn)
+        special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
     ->
         % Compiler generated special preds are always mode 0.
         proc_id_to_int(ProcId, 0),
-        module_info_pred_proc_info(ModuleInfo,
-            PredId, ProcId, _, ProcInfo),
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
         proc_info_goal(ProcInfo, BodyGoal),
         %
         % We cannot just look up the the termination_info because the
@@ -163,8 +160,8 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor,
         %
         ( not goal_cannot_loop(ModuleInfo, BodyGoal) ->
             get_type_defn_context(TypeDefn, Context),
-            emit_non_term_user_special_warning(Context,
-                SpecialPredId, TypeCtor, !IO)   
+            emit_non_term_user_special_warning(Context, SpecialPredId,
+                TypeCtor, !IO)   
         ;
             true
         )
@@ -185,11 +182,9 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
         % predicates since they are always user-defined.
         SpecialPredId = spec_pred_init
     ;   
-        get_user_unify_compare(ModuleInfo, TypeBody,
-            UnifyCompare),
+        get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare),
         (
-            UnifyCompare = unify_compare(MaybeUnify,
-                MaybeCompare),
+            UnifyCompare = unify_compare(MaybeUnify, MaybeCompare),
             ( 
                 MaybeUnify = yes(_),
                 SpecialPredId = spec_pred_unify 

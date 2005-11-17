@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% error_util.m
+
+% File: error_util.m.
 % Main author: zs.
-%
+
 % This module contains code that can be helpful in the formatting of
 % error messages.
 %
@@ -30,11 +30,10 @@
 % of a list of error message components. Each component may specify
 % a string to printed exactly as it is, or it may specify a string
 % containing a list of words, which may be broken at white space.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree__error_util.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -44,6 +43,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type format_component
     --->    fixed(string)   % This string should appear in the output
@@ -244,6 +245,9 @@
 :- pred report_warning(prog_context::in, int::in, list(format_component)::in,
     io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module parse_tree.prog_out.
@@ -257,6 +261,8 @@
 :- import_module list.
 :- import_module string.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 add_to_spec_at_end(NewPieces, Spec0, Spec) :-
     Spec0 = error_msg_spec(First, Context, ExtraIndent, Pieces0),
@@ -835,4 +841,6 @@ report_warning(Context, Indent, Components, !IO) :-
 
 this_file = "error_util.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module error_util.
 %-----------------------------------------------------------------------------%

@@ -17,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__type_util.
-
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -287,6 +286,7 @@
 :- import_module backend_libs.foreign.
 :- import_module check_hlds.purity.
 :- import_module hlds.hlds_out.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_io.
@@ -301,10 +301,12 @@
 :- import_module char.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module svmap.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
+
 
 type_ctor_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
     sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
@@ -463,6 +465,7 @@ is_solver_type(ModuleInfo, Type) :-
     type_body_is_solver_type(ModuleInfo, TypeBody).
 
     % Succeed if the type body is for a solver type.
+    %
 type_body_is_solver_type(ModuleInfo, TypeBody) :-
     (
         TypeBody = solver_type(_, _)
@@ -596,7 +599,8 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
                 ExistQVars0 = [_ | _],
                 (
                     EQVarAction = abort_on_exist_qvar,
-                    error("get_cons_id_arg_types: existentially typed cons_id")
+                    unexpected(this_file,
+                        "get_cons_id_arg_types: existentially typed cons_id")
                 ;
                     EQVarAction = fail_on_exist_qvar,
                     fail
@@ -674,7 +678,7 @@ get_type_and_cons_defn(ModuleInfo, Type, ConsId, TypeDefn, ConsDefn) :-
         TypeDefn = TypeDefnPrime,
         ConsDefn = ConsDefnPrime
     ;
-        error("gget_type_and_cons_defn")
+        unexpected(this_file, "gget_type_and_cons_defn")
     ).
 
 :- pred do_get_type_and_cons_defn(module_info::in, type_ctor::in, cons_id::in,
@@ -960,4 +964,12 @@ apply_rec_subst_to_constraint_map(Subst, !ConstraintMap) :-
 apply_rec_subst_to_constraint_map_2(Subst, _Key, !Value) :-
     apply_rec_subst_to_prog_constraint(Subst, !Value).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "type_util.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module type_util.
 %-----------------------------------------------------------------------------%

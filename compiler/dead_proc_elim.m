@@ -6,20 +6,21 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% The job of this module is to delete dead predicates, procedures
-% and type_ctor_gen_info structures from the HLDS.
+% 
+% File: dead_proc_elim.m.
+% Main author: zs.
+%
+% The job of this module is to delete dead predicates, procedures and
+% type_ctor_gen_info structures from the HLDS.
 %
 % It also computes the usage counts that inlining.m uses for the
 % `--inline-single-use' option.
 %
 % It also issues warnings about unused procedures.
 %
-% Main author: zs.
-%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__dead_proc_elim.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -29,6 +30,8 @@
 :- import_module io.
 :- import_module map.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type dead_proc_pass
     --->    warning_pass
@@ -128,7 +131,7 @@ analyze(ModuleInfo0, !:Needed) :-
     examine(Queue0, Examined0, ModuleInfo0, !Needed).
 
     % Add all exported entities to the queue and map.
-    % Note: changes here are likely to require changes to dead_pred_elim
+    % NOTE: changes here are likely to require changes to dead_pred_elim
     % as well.
     %
 :- pred initialize(module_info::in,
@@ -141,15 +144,12 @@ initialize(ModuleInfo, !:Queue, !:Needed) :-
     module_info_preds(ModuleInfo, PredTable),
     initialize_preds(PredIds, PredTable, !Queue, !Needed),
     module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
-    initialize_pragma_exports(PragmaExports,
-        !Queue, !Needed),
+    initialize_pragma_exports(PragmaExports, !Queue, !Needed),
     module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
-    initialize_base_gen_infos(TypeCtorGenInfos,
-        !Queue, !Needed),
+    initialize_base_gen_infos(TypeCtorGenInfos, !Queue, !Needed),
     module_info_get_class_table(ModuleInfo, Classes),
     module_info_get_instance_table(ModuleInfo, Instances),
-    initialize_class_methods(Classes, Instances,
-        !Queue, !Needed).
+    initialize_class_methods(Classes, Instances, !Queue, !Needed).
 
     % Add all normally exported procedures within the listed predicates
     % to the queue and map.
@@ -182,14 +182,12 @@ initialize_procs(PredId, [ProcId | ProcIds],
     % Add procedures exported to C by a pragma(export, ...) declaration
     % to the queue and map.
     %
-:- pred initialize_pragma_exports(
-    list(pragma_exported_proc)::in,
+:- pred initialize_pragma_exports(list(pragma_exported_proc)::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
 initialize_pragma_exports([], !Queue, !Needed).
-initialize_pragma_exports([PragmaProc | PragmaProcs],
-        !Queue, !Needed) :-
+initialize_pragma_exports([PragmaProc | PragmaProcs], !Queue, !Needed) :-
     PragmaProc = pragma_exported_proc(PredId, ProcId, _CFunction, _Ctxt),
     svqueue__put(proc(PredId, ProcId), !Queue),
     svmap__set(proc(PredId, ProcId), no, !Needed),
@@ -227,8 +225,7 @@ initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
     ;
         true
     ),
-    initialize_base_gen_infos(TypeCtorGenInfos,
-        !Queue, !Needed).
+    initialize_base_gen_infos(TypeCtorGenInfos, !Queue, !Needed).
 
 :- pred initialize_class_methods(class_table::in,
     instance_table::in, entity_queue::in, entity_queue::out,
@@ -291,8 +288,7 @@ examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
             (
                 Entity = proc(PredId, ProcId),
                 PredProcId = proc(PredId, ProcId),
-                examine_proc(PredProcId, ModuleInfo,
-                    !Queue, !Needed)
+                examine_proc(PredProcId, ModuleInfo, !Queue, !Needed)
             ;
                 Entity = base_gen_info(Module, Type, Arity),
                 examine_base_gen_info(Module, Type, Arity,
@@ -314,8 +310,8 @@ examine_base_gen_info(ModuleName, TypeName, Arity, ModuleInfo,
         !Queue, !Needed) :-
     module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
     (
-        find_base_gen_info(ModuleName, TypeName,
-            Arity, TypeCtorGenInfos, Refs)
+        find_base_gen_info(ModuleName, TypeName, Arity, TypeCtorGenInfos,
+            Refs)
     ->
         examine_refs(Refs, !Queue, !Needed)
     ;
@@ -334,8 +330,8 @@ find_base_gen_info(ModuleName, TypeName, TypeArity,
     ->
         Refs = [Unify, Compare]
     ;
-        find_base_gen_info(ModuleName, TypeName,
-            TypeArity, TypeCtorGenInfos, Refs)
+        find_base_gen_info(ModuleName, TypeName, TypeArity, TypeCtorGenInfos,
+            Refs)
     ).
 
 :- pred maybe_add_ref(maybe(pred_proc_id)::in,
@@ -373,8 +369,7 @@ examine_proc(proc(PredId, ProcId), ModuleInfo,
         map__lookup(ProcTable, ProcId, ProcInfo)
     ->
         proc_info_goal(ProcInfo, Goal),
-        examine_goal(Goal, proc(PredId, ProcId),
-            !Queue, !Needed)
+        examine_goal(Goal, proc(PredId, ProcId), !Queue, !Needed)
     ;
         true
     ).
@@ -500,8 +495,7 @@ eliminate(Pass, !.Needed, !ModuleInfo, !IO) :-
 
     Changed0 = no,
     ElimInfo0 = elimination_info(!.Needed, !.ModuleInfo, PredTable0, Changed0),
-    list__foldl2(eliminate_pred(Pass), PredIds,
-        ElimInfo0, ElimInfo, !IO),
+    list__foldl2(eliminate_pred(Pass), PredIds, ElimInfo0, ElimInfo, !IO),
     ElimInfo = elimination_info(!:Needed, !:ModuleInfo, PredTable, Changed),
 
     module_info_set_preds(PredTable, !ModuleInfo),
@@ -700,8 +694,7 @@ dead_pred_elim(!ModuleInfo) :-
     queue__init(Queue0),
     map__init(Needed0),
     module_info_get_pragma_exported_procs(!.ModuleInfo, PragmaExports),
-    initialize_pragma_exports(PragmaExports,
-        Queue0, _, Needed0, Needed1),
+    initialize_pragma_exports(PragmaExports, Queue0, _, Needed0, Needed1),
     %
     % The goals for the class method procs need to be
     % examined because they contain calls to the actual method
@@ -713,13 +706,13 @@ dead_pred_elim(!ModuleInfo) :-
     map__keys(Needed, Entities),
     queue__init(Queue1),
     set__init(NeededPreds0),
-    list__foldl2(dead_pred_elim_add_entity, Entities,
-        Queue1, Queue, NeededPreds0, NeededPreds1),
+    list__foldl2(dead_pred_elim_add_entity, Entities, Queue1, Queue,
+        NeededPreds0, NeededPreds1),
 
     set__init(Preds0),
     set__init(Names0),
-    DeadInfo0 = dead_pred_info(!.ModuleInfo, Queue,
-        Preds0, NeededPreds1, Names0),
+    DeadInfo0 = dead_pred_info(!.ModuleInfo, Queue, Preds0, NeededPreds1,
+        Names0),
 
     module_info_predids(!.ModuleInfo, PredIds),
     list__foldl(dead_pred_elim_initialize, PredIds, DeadInfo0, DeadInfo1),
@@ -850,7 +843,7 @@ dead_pred_elim_process_clause(clause(_, Goal, _, _), !DeadInfo) :-
     pre_modecheck_examine_goal(Goal, !DeadInfo).
 
 :- pred pre_modecheck_examine_goal(hlds_goal::in,
-        dead_pred_info::in, dead_pred_info::out) is det.
+    dead_pred_info::in, dead_pred_info::out) is det.
 
 pre_modecheck_examine_goal(conj(Goals) - _, !DeadInfo) :-
     list__foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).
@@ -925,4 +918,6 @@ dead_pred_info_add_pred_name(Name, !DeadInfo) :-
 
 this_file = "dead_proc_elim.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module dead_proc_elim.
 %-----------------------------------------------------------------------------%

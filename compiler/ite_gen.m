@@ -7,7 +7,6 @@
 %---------------------------------------------------------------------------%
 %
 % File: ite_gen.m
-%
 % Main authors: conway, fjh, zs.
 %
 % The predicates of this module generate code for if-then-elses, and for
@@ -17,7 +16,6 @@
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__ite_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -227,7 +225,7 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal,
 generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
         !CI) :-
     ( CodeModel = model_non ->
-        error("nondet negation")
+        unexpected(this_file, "generate_negation: nondet negation.")
     ;
         true
     ),
@@ -240,11 +238,13 @@ generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
         goal_info_set_resume_point(no_resume_point, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo
     ;
-        error("negated goal has no resume point")
+        unexpected(this_file, "generate_negation: " ++
+            "negated goal has no resume point.")
     ),
-
-    % For a negated simple test, we can generate better code than the
-    % general mechanism, because we don't have to flush the cache.
+    %
+    % For a negated simple test, we can generate better code than the general
+    % mechanism, because we don't have to flush the cache.
+    %
     (
         CodeModel = model_semi,
         GoalExpr = unify(_, _, _, simple_test(L, R), _),
@@ -268,8 +268,7 @@ generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
             Op = eq
         ),
         TestCode = node([
-            if_val(binop(Op, ValL, ValR), CodeAddr) -
-                "test inequality"
+            if_val(binop(Op, ValL, ValR), CodeAddr) - "test inequality"
         ]),
         code_info__leave_simple_neg(GoalInfo, SimpleNeg, !CI),
         Code = tree(tree(CodeL, CodeR), TestCode)
@@ -289,10 +288,11 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
         ResumeVars, ResumeLocs, Code, !CI) :-
 
     code_info__produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
-
-    % Maybe save the heap state current before the condition; this ought
-    % to be after we make the failure continuation % because that causes
-    % the cache to get flushed.
+    %
+    % Maybe save the heap state current before the condition; this ought to be
+    % after we make the failure continuation because that causes the cache to
+    % get flushed.
+    %
     code_info__get_globals(!.CI, Globals),
     (
         globals__lookup_bool_option(Globals,

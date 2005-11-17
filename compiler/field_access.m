@@ -5,8 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: field_access.
+
 % This submodule of make_hlds handles the declarations of fields
+
+%-----------------------------------------------------------------------------%
 
 :- module hlds__make_hlds__field_access.
 :- interface.
@@ -23,10 +27,12 @@
 :- import_module list.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
 :- type field_list == assoc_list(ctor_field_name, list(prog_term)).
 
-    % Expand a field update goal into a list of goals which
-    % each get or set one level of the structure.
+    % Expand a field update goal into a list of goals which each get or set
+    % one level of the structure.
     %
     % A field update goal:
     %   Term = Term0 ^ module_info ^ ctors :=  Ctors
@@ -43,8 +49,8 @@
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     svar_info::in, svar_info::out, io::di, io::uo) is det.
 
-    % Expand a field extraction goal into a list of goals which
-    % each get one level of the structure.
+    % Expand a field extraction goal into a list of goals which each get one
+    % level of the structure.
     %
     % A field extraction goal:
     %   := (ModuleName, ^ module_info ^ sub_info ^ module_name,
@@ -83,18 +89,23 @@
 :- pred parse_field_list(prog_term::in,
     maybe1(field_list, prog_var_type)::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_io.
 
 :- import_module bool.
 :- import_module int.
-:- import_module require.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
         FieldValueVar, TermInputVar, TermOutputVar, !VarSet, Functor,
@@ -116,7 +127,8 @@ expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
 
 expand_set_field_function_call_2(_, _, _, [], _, _, _, !VarSet, _, _, _,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    error("expand_set_field_function_call_2: empty list of field names").
+    unexpected(this_file,
+        "expand_set_field_function_call_2: empty list of field names").
 expand_set_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar,
         TermInputVar, TermOutputVar, !VarSet, Functor,
@@ -198,7 +210,8 @@ expand_get_field_function_call(Context, MainContext, SubContext0,
 
 expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _,
         !ModuleInfo, !QualInfo, !Sinfo, !IO) :-
-    error("expand_get_field_function_call_2: empty list of field names").
+    unexpected(this_file,
+        "expand_get_field_function_call_2: empty list of field names").
 expand_get_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar,
         TermInputVar, !VarSet, Functor, FieldSubContext, Goals,
@@ -283,3 +296,13 @@ parse_field_list(Term, MaybeFieldNames) :-
             MaybeFieldNames = error("expected field name", Term)
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "field_access.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module field_access.
+%-----------------------------------------------------------------------------%

@@ -6,25 +6,25 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
+% File: common.m.
 % Original author: squirrel (Jane Anna Langley).
 % Some bugs fixed by fjh.
 % Extensive revision by zs.
 % More revision by stayl.
 %
 % This module attempts to optimise out instances where a variable is
-% decomposed and then soon after reconstructed from the parts. If possible
-% we would like to "short-circuit" this process.
-% It also optimizes deconstructions of known cells, replacing them with
-% assignments to the arguments where this is guaranteed to not increase
-% the number of stack slots required by the goal.
-% Repeated calls to predicates with the same input arguments are replaced by
-% assigments and warnings are returned.
+% decomposed and then soon after reconstructed from the parts. If possible we
+% would like to "short-circuit" this process.  It also optimizes
+% deconstructions of known cells, replacing them with assignments to the
+% arguments where this is guaranteed to not increase the number of stack slots
+% required by the goal.  Repeated calls to predicates with the same input
+% arguments are replaced by assigments and warnings are returned.
 %
 % IMPORTANT: This module does a small subset of the job of compile-time
 % garbage collection, but it does so without paying attention to uniqueness
-% information, since the compiler does not yet have such information.
-% Once we implement ctgc, the assumptions made by this module will have
-% to be revisited.
+% information, since the compiler does not yet have such information.  Once we
+% implement ctgc, the assumptions made by this module will have to be
+% revisited.
 %
 %---------------------------------------------------------------------------%
 
@@ -38,12 +38,14 @@
 
 :- import_module list.
 
-    % If we find a deconstruction or a construction we cannot optimize,
-    % record the details of the memory cell in CommonInfo.
+%---------------------------------------------------------------------------%
+
+    % If we find a deconstruction or a construction we cannot optimize, record
+    % the details of the memory cell in CommonInfo.
     %
-    % If we find a construction that constructs a cell identical to one
-    % we have seen before, replace the construction with an assignment
-    % from the variable unified with that cell.
+    % If we find a construction that constructs a cell identical to one we
+    % have seen before, replace the construction with an assignment from the
+    % variable unified with that cell.
     %
 :- pred optimise_unification(unification::in, prog_var::in,
     unify_rhs::in, unify_mode::in, unify_context::in,
@@ -83,6 +85,7 @@
 :- pred common_info_clear_structs(common_info::in, common_info::out) is det.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -115,21 +118,22 @@
 :- import_module svmap.
 :- import_module term.
 
-    % The var_eqv field records information about which sets of variables
-    % are known to be equivalent, usually because they have been unified.
-    % This is useful when eliminating duplicate unifications and when
-    % eliminating duplicate calls.
+%---------------------------------------------------------------------------%
+
+    % The var_eqv field records information about which sets of variables are
+    % known to be equivalent, usually because they have been unified.  This is
+    % useful when eliminating duplicate unifications and when eliminating
+    % duplicate calls.
     %
-    % The all_structs and since_call_structs fields record information
-    % about the memory cells available for reuse. The all_structs field
-    % has info about all the cells available at the current program point.
-    % The since_call_structs field contains info about the subset of these
-    % cells that have been seen since the last stack flush, which is
-    % usually a call.
+    % The all_structs and since_call_structs fields record information about
+    % the memory cells available for reuse. The all_structs field has info
+    % about all the cells available at the current program point.  The
+    % since_call_structs field contains info about the subset of these cells
+    % that have been seen since the last stack flush, which is usually a call.
     %
-    % The reason why we make the distinction between structs seen before
-    % the last call and structs seen after is best explained by these two
-    % program fragments:
+    % The reason why we make the distinction between structs seen before the
+    % last call and structs seen after is best explained by these two program
+    % fragments:
     %
     % fragment 1:
     %   X => f(A1, A2, A3, A4),
@@ -176,9 +180,9 @@
     % type to information about cells involving that cons_id.
     %
     % The reason why we need the principal type constructors is that two
-    % syntactially identical structures have compatible representations
-    % if and only if their principal type constructors are the same.
-    % For example, if we have
+    % syntactially identical structures have compatible representations if and
+    % only if their principal type constructors are the same.  For example, if
+    % we have:
     %
     %   :- type maybe_err(T) --> ok(T) ; err(string).
     %
@@ -891,4 +895,6 @@ calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) :-
 
 this_file = "common.m".
 
+%---------------------------------------------------------------------------%
+:- end_module common.
 %---------------------------------------------------------------------------%

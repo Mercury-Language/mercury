@@ -17,7 +17,6 @@
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__unify_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -25,6 +24,8 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
+
+%---------------------------------------------------------------------------%
 
 :- type test_sense
     --->    branch_on_success
@@ -36,6 +37,7 @@
 :- pred generate_tag_test(prog_var::in, cons_id::in, test_sense::in,
     label::out, code_tree::out, code_info::in, code_info::out) is det.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -1126,4 +1128,5 @@ var_type_msg(Type, Msg) :-
 this_file = "unify_gen.m".
 
 %---------------------------------------------------------------------------%
+:- end_module unify_gen.
 %---------------------------------------------------------------------------%

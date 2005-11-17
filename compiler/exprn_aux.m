@@ -6,8 +6,11 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__exprn_aux.
+% File: exprn_aux.m.
 
+%-----------------------------------------------------------------------------%
+
+:- module ll_backend__exprn_aux.
 :- interface.
 
 :- import_module libs.options.
@@ -18,6 +21,8 @@
 :- import_module bool.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type exprn_opts
     --->    nlg_asm_sgt_ubf(
@@ -107,8 +112,9 @@
 
 :- import_module getopt_io.
 :- import_module int.
-:- import_module require.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
 init_exprn_opts(Options, ExprnOpts) :-
     getopt_io__lookup_bool_option(Options, gcc_non_local_gotos, NLG),
@@ -995,4 +1001,6 @@ lval_to_rval(Lval) = lval(Lval).
 
 this_file = "exprn_aux.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module exprn_aux.
 %-----------------------------------------------------------------------------%

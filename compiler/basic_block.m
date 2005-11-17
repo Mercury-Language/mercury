@@ -16,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__basic_block.
-
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -28,6 +27,8 @@
 :- import_module map.
 :- import_module set.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type block_map   ==  map(label, block_info).
 
@@ -94,6 +95,7 @@
     list(instruction)::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -103,6 +105,8 @@
 :- import_module require.
 :- import_module svmap.
 :- import_module svset.
+
+%-----------------------------------------------------------------------------%
 
 create_basic_blocks(Instrs0, Comments, ProcLabel, !C, NewLabels, LabelSeq,
         BlockMap) :-
@@ -233,4 +237,5 @@ flatten_basic_blocks([Label | Labels], BlockMap, Instrs) :-
     list__append([BlockLabelInstr | BlockInstrs], RestInstrs, Instrs).
 
 %-----------------------------------------------------------------------------%
+:- end_module basic_block.
 %-----------------------------------------------------------------------------%

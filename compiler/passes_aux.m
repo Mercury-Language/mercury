@@ -6,13 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% This file contains auxiliary routines for the passes
-% of the front and back ends of the compiler.
-
+% File: passes_aux.m.
 % Author: zs
 
-:- module hlds__passes_aux.
+% This file contains auxiliary routines for the passes of the front and back
+% ends of the compiler.
 
+%-----------------------------------------------------------------------------%
+
+:- module hlds__passes_aux.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -199,11 +201,13 @@
 :- pred maybe_set_exit_status(bool::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_out.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.process_util.
@@ -217,6 +221,8 @@
 :- import_module require.
 :- import_module string.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 process_all_nonimported_procs(Task, !ModuleInfo, !IO) :-
     True = (pred(_PredInfo::in) is semidet :- true),
@@ -266,8 +272,7 @@ process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !IO) :-
     ->
         true
     ;
-        call(Task, PredId, !ModuleInfo, PredInfo0, PredInfo, WarnCnt, ErrCnt,
-            !IO),
+        Task(PredId, !ModuleInfo, PredInfo0, PredInfo, WarnCnt, ErrCnt, !IO),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
         passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
     ).
@@ -304,34 +309,33 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
 
     (
         !.Task = update_module(Closure),
-        call(Closure, PredId, ProcId, Pred0, Proc0, Proc, !ModuleInfo)
+        Closure(PredId, ProcId, Pred0, Proc0, Proc, !ModuleInfo)
     ;
         !.Task = update_module_io(Closure),
-        call(Closure, PredId, ProcId, Proc0, Proc, !ModuleInfo, !IO)
+        Closure(PredId, ProcId, Proc0, Proc, !ModuleInfo, !IO)
     ;
         !.Task = update_proc(Closure),
-        call(Closure, !.ModuleInfo, Proc0, Proc)
+        Closure(!.ModuleInfo, Proc0, Proc)
     ;
         !.Task = update_proc_predid(Closure),
-        call(Closure, PredId, !.ModuleInfo, Proc0, Proc)
+        Closure(PredId, !.ModuleInfo, Proc0, Proc)
     ;
         !.Task = update_proc_predprocid(Closure),
-        call(Closure, PredId, ProcId, !.ModuleInfo, Proc0, Proc)
+        Closure(PredId, ProcId, !.ModuleInfo, Proc0, Proc)
     ;
         !.Task = update_proc_io(Closure),
-        call(Closure, PredId, ProcId, !.ModuleInfo, Proc0, Proc, !IO)
+        Closure(PredId, ProcId, !.ModuleInfo, Proc0, Proc, !IO)
     ;
         !.Task = update_proc_error(Closure),
-        call(Closure, PredId, ProcId, !ModuleInfo, Proc0, Proc,
-            WarnCnt, ErrCnt, !IO),
+        Closure(PredId, ProcId, !ModuleInfo, Proc0, Proc, WarnCnt, ErrCnt,
+            !IO),
         passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
     ;
         !.Task = update_pred_error(_),
-        error("passes_aux:process_non_imported_procs")
+        unexpected(this_file, "process_non_imported_procs")
     ;
         !.Task = update_module_cookie(Closure, Cookie0),
-        call(Closure, PredId, ProcId, Proc0, Proc, Cookie0, Cookie1,
-            !ModuleInfo),
+        Closure(PredId, ProcId, Proc0, Proc, Cookie0, Cookie1, !ModuleInfo),
         !:Task = update_module_cookie(Closure, Cookie1)
     ),
 
@@ -709,4 +713,12 @@ output_to_file(FileName, Action, Result, !IO) :-
         Result = no
     ).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "passes_aux.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module passes_aux.
 %-----------------------------------------------------------------------------%

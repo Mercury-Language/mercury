@@ -5,14 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: mode_constraint.m
-% Main author: dmo
-%
+
+% File: mode_constraint.m.
+% Main author: dmo.
+
 % This module implements the top level of the algorithm described in the
 % paper "Constraint-based mode analysis of Mercury" by David Overton,
 % Zoltan Somogyi and Peter Stuckey. That paper is the main documentation
 % of the concepts behind the algorithm as well as the algorithm itself.
+
+%-----------------------------------------------------------------------------%
 
 :- module check_hlds__mode_constraints.
 :- interface.
@@ -20,8 +22,13 @@
 :- import_module hlds.hlds_module.
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred process_module(module_info::in, module_info::out,
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -61,7 +68,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module robdd.
 :- import_module set.
 :- import_module sparse_bitset.
@@ -72,6 +78,8 @@
 :- import_module varset.
 
 % :- import_module unsafe.
+
+%-----------------------------------------------------------------------------%
 
 :- typeclass has_mc_info(T) where [
     func mc_info(T) = mode_constraint_info,
@@ -1199,8 +1207,7 @@ goal_constraints_2(GoalPath, _NonLocals, _Vars, CanSucceed, GoalExpr, GoalExpr,
     % Note: `_Modes' is invalid for higher-order calls at this point.
     (
         GenericCall = higher_order(Var, _, _, _),
-        generic_call_constrain_var(Var, GoalPath, !Constraint,
-            !GCInfo),
+        generic_call_constrain_var(Var, GoalPath, !Constraint, !GCInfo),
 
         % Record that the argument vars need to be constrained
         % once we know the higher order mode of the Var we are calling.
@@ -1213,17 +1220,17 @@ goal_constraints_2(GoalPath, _NonLocals, _Vars, CanSucceed, GoalExpr, GoalExpr,
     ;
         GenericCall = class_method(Var, _, _, _),
         generic_call_constrain_var(Var, GoalPath, !Constraint, !GCInfo),
-        error("mode_constraints.m: class_method call in clause")
+        unexpected(this_file, "class_method call in clause")
     ;
         GenericCall = cast(_),
-        error("mode_constraints.m: type/inst cast call NYI")
+        sorry(this_file, "type/inst cast call NYI")
     ;
         GenericCall = aditi_builtin(_, _),
-        error("mode_constraints.m: aditi_builtin call NYI")
+        sorry(this_file, "aditi_builtin call NYI")
     ).
 
 goal_constraints_2(_,_,_,_,switch(_,_,_),_,_,_,_,_) :-
-    error("mode_constraints.goal_constraints_2: switch (should be disj)").
+    unexpected(this_file, "goal_constraints_2: switch (should be disj)").
 
 goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
         not(Goal0), not(Goal), !Constraint, !GCInfo) :-
@@ -1308,15 +1315,16 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
         ), Locals, !Constraint, !GCInfo).
 
 goal_constraints_2(_,_,_,_,foreign_proc(_,_,_,_,_,_),_,_,_,_,_) :-
-    error("mode_constraints.goal_constraints_2: foreign_proc NYI").
+    sorry(this_file, "goal_constraints_2: foreign_proc NYI").
 goal_constraints_2(_,_,_,_,par_conj(_),_,_,_,_,_) :-
-    error("mode_constraints.goal_constraints_2: par_conj NYI").
+    sorry(this_file, "goal_constraints_2: par_conj NYI").
 goal_constraints_2(_,_,_,_,shorthand(_),_,_,_,_,_) :-
-    error("mode_constraints.goal_constraints_2: shorthand").
+    sorry(this_file, "goal_constraints_2: shorthand").
 
     % Constraints for the conjunction. If UseKnownVars = yes, generate
     % constraints only for the vars in KnownVars, otherwise generate
     % constraints only for the vars _not_ is KnownVars.
+    %
 :- pred conj_constraints(bool::in, mode_constraint_vars::in,
     mode_constraint_vars::in, goal_path::in,
     multi_map(prog_var, goal_path)::in,
@@ -2018,4 +2026,6 @@ proc_can_succeed(ProcInfo) :-
 
 this_file = "mode_constraints.m".
 
+%------------------------------------------------------------------------%
+:- end_module mode_constraints.
 %------------------------------------------------------------------------%

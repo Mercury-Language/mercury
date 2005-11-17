@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: modules.m
-% main author: fjh
+% File: modules.m.
+% Main author: fjh.
 
 % This module contains all the code for handling module imports and exports,
 % for computing module dependencies, and for generating makefile fragments to
@@ -39,7 +39,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree__modules.
-
 :- interface.
 
 :- import_module libs.globals.
@@ -823,7 +822,6 @@
 :- import_module library.
 :- import_module multi_map.
 :- import_module relation.
-:- import_module require.
 :- import_module sparse_bitset.
 :- import_module string.
 :- import_module svmap.
@@ -1067,7 +1065,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             SubDirName = "bin"
         ;
             string__append_list(["unknown extension `", Ext, "'"], ErrorMsg),
-            error(ErrorMsg)
+            unexpected(this_file, ErrorMsg)
         ),
         make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO)
     ).
@@ -1559,7 +1557,7 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
                 [], TypeDefnItems),
             (
                 Unexpected = yes,
-                error("strip_unnecessary_impl_defns_2: " ++
+                unexpected(this_file, "strip_unnecessary_impl_defns_2: " ++
                     "unexpected items in implementation section")
                 % XXX If the above exception is thrown and you need a
                 % workaround you, can replace the exception with this code:
@@ -2274,7 +2272,7 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
             )
         ;
             MaybeTimestamp = no,
-            error("write_interface_file with " ++
+            unexpected(this_file, "write_interface_file with " ++
                 "`--smart-recompilation', timestamp not read")
         )
     ;
@@ -2373,7 +2371,7 @@ binary_input_stream_cmp_2(TmpOutputFileStream, Byte, Continue, _, Differ,
         Continue = no
     ;
         TmpByteResult = error(TmpByteError),
-        Differ = error(TmpByteError) `with_type` io__res(bool),
+        Differ = error(TmpByteError) : io__res(bool),
         Continue = no
     ).
 
@@ -3075,7 +3073,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ( string__remove_suffix(SourceFileName, ".m", SourceFileBase) ->
             ErrFileName = SourceFileBase ++ ".err"
         ;
-            error("modules.m: source file doesn't end in `.m'")
+            unexpected(this_file, "source file doesn't end in `.m'")
         ),
         module_name_to_file_name(ModuleName, ".optdate", no, OptDateFileName,
             !IO),
@@ -5706,7 +5704,7 @@ get_source_file(DepsMap, ModuleName, FileName) :-
     ( string__remove_suffix(SourceFileName, ".m", SourceFileBase) ->
         FileName = SourceFileBase
     ;
-        error("modules.m: source file name doesn't end in `.m'")
+        unexpected(this_file, "source file name doesn't end in `.m'")
     ).
 
 :- pred append_to_init_list(io__output_stream::in, file_name::in,
@@ -6493,7 +6491,8 @@ process_module_private_interfaces(ReadModules, [Ancestor | Ancestors],
     ModuleName = !.Module ^ module_name,
     ModAncestors0 = !.Module ^ parent_deps,
     ( Ancestor = ModuleName ->
-        error("modules.m: module is its own ancestor?")
+        unexpected(this_file, "process_module_private_interfaces: " ++
+            "module is its own ancestor?")
     ; list__member(Ancestor, ModAncestors0) ->
         % we've already read it
         process_module_private_interfaces(ReadModules,
@@ -6638,7 +6637,7 @@ check_module_accessibility(ModuleName, AccessibleSubModules, Items,
             ),
             list__filter(FindImports, Items, ImportItems),
             ( ImportItems = [] ->
-                error("check_parent_module")
+                unexpected(this_file, "check_parent_module")
             ;
                 true
             ),
@@ -6671,7 +6670,8 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
     ; Item = module_defn(_, use(module(_))) ->
         DeclName = "use_module"
     ;
-        error("report_inaccessible_parent_error: invalid item")
+        unexpected(this_file,
+            "report_inaccessible_parent_error: invalid item")
     ),
     prog_out__write_context(Context, !IO),
     io__write_string("In module `", !IO),
@@ -7181,7 +7181,7 @@ report_error_implementation_in_interface(ModuleName, Context, !IO) :-
         ParentModule = ParentModule0,
         ChildModule = ChildModule0
     ;
-        error("report_error_implementation_in_interface")
+        unexpected(this_file, "report_error_implementation_in_interface")
     ),
     Pieces = [words("In interface for module"), sym_name(ParentModule),
         suffix(":"), nl,
@@ -7218,7 +7218,7 @@ report_error_duplicate_module_decl(ModuleName - Context, !IO) :-
         ParentModule = ParentModule0,
         ChildModule = ChildModule0
     ;
-        error("report_error_duplicate_module_decl")
+        unexpected(this_file, "report_error_duplicate_module_decl")
     ),
     Pieces = [words("In module"), sym_name(ParentModule), suffix(":"), nl,
         words("error: sub-module `" ++ ChildModule ++ "' declared"),
@@ -8020,24 +8020,23 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
                 Succeeded = yes,
                 maybe_write_string(Verbose, "% done.\n", !IO)
             ;
-                error("chmod exit status != 0"),
+                unexpected(this_file, "chmod exit status != 0"),
                 Succeeded = no
             )
         ;
             ChmodResult = error(Message),
-            error(io__error_message(Message)),
+            unexpected(this_file, io__error_message(Message)),
             Succeeded = no
         )
     ;
         OpenResult = error(Message),
-        error(io__error_message(Message)),
+        unexpected(this_file, io__error_message(Message)),
         Succeeded = no
     ).
 
 list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles, !IO) :-
     globals__io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-    globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs,
-        !IO),
+    globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
     AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
     (
         AnySubdirs = yes,

@@ -5,6 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: compile_target_code.m
 % Main authors: fjh, stayl
 %
@@ -13,7 +14,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs__compile_target_code.
-
 :- interface.
 
 :- import_module parse_tree.prog_io.
@@ -26,9 +26,12 @@
 :- import_module list.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
     % Are we generating position independent code (for use in a shared
     % library)? On some architectures, pic and non-pic code are incompatible,
     % so we need to generate `.o' and `.pic_o' files.
+    %
 :- type pic
     --->    pic
     ;       link_with_pic
@@ -117,7 +120,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Code to deal with `--split-c-files'.
+% Code to deal with `--split-c-files'
+%
 
     % split_c_to_obj(ErrorStream, ModuleName, NumChunks, Succeeded):
     %
@@ -177,12 +181,14 @@
     is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
 :- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
@@ -195,8 +201,9 @@
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
-:- import_module require.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 il_assemble(ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
     module_name_to_file_name(ModuleName, ".il", no, IL_File, !IO),
@@ -554,7 +561,8 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = yes,
         % this should have been caught in handle_options
-        error("compile_c_file: inconsistent record term size options")
+        unexpected(this_file,
+            "compile_c_file: inconsistent record term size options")
     ;
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = no,
@@ -668,7 +676,8 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
         MinimalModelStackCopy = yes,
         MinimalModelOwnStacks = yes,
         % this should have been caught in handle_options
-        error("compile_c_file: inconsistent minimal model options")
+        unexpected(this_file,
+            "compile_c_file: inconsistent minimal model options")
     ;
         MinimalModelStackCopy = yes,
         MinimalModelOwnStacks = no,
@@ -871,7 +880,7 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
         PIC = link_with_pic,
         % `--target asm' doesn't support any grades for
         % which `.lpic_o' files are needed.
-        error("compile_target_code__assemble: link_with_pic")
+        unexpected(this_file, "assemble: link_with_pic")
     ;
         PIC = non_pic,
         AsmExt = ".s",
@@ -972,7 +981,7 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
             OutputFileName = Module
         ;
             Modules = [],
-            error("link_module_list: no modules")
+            unexpected(this_file, "link_module_list: no modules")
         )
     ;
         OutputFileName = OutputFileName0
@@ -996,7 +1005,7 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
             join_module_list([FirstModule], Obj, ObjectsList, !IO)
         ;
             Modules = [],
-            error("link_module_list: no modules")
+            unexpected(this_file, "link_module_list: no modules")
         ),
         MakeLibCmdOK = yes
     ; SplitFiles = yes ->
@@ -1253,10 +1262,10 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
                 OutputFileName, !IO)
         ;
             LinkTargetType = static_library,
-            error("compile_target_code__link")
+            unexpected(this_file, "compile_target_code__link")
         ;
             LinkTargetType = java_archive,
-            error("compile_target_code__link")
+            unexpected(this_file, "compile_target_code__link")
         ;
             LinkTargetType = executable,
             CommandOpt = link_executable_command,
@@ -1554,7 +1563,7 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs, !IO) :-
         StdLibs = string__join_list(" ",
             [SharedTraceLibs, StdLib, RuntimeLib, SharedGCLibs])
     ;
-        error("unknown linkage " ++ MercuryLinkage)
+        unexpected(this_file, "unknown linkage " ++ MercuryLinkage)
     ).
 
 :- pred make_link_lib(linked_target_type::in, string::in, string::out,
@@ -1571,10 +1580,10 @@ make_link_lib(TargetType, LibName, LinkOpt, !IO) :-
         LinkLibSuffix = shlib_linker_link_lib_suffix
     ;
         TargetType = java_archive,
-        error("make_link_lib: java_archive")
+        unexpected(this_file, "make_link_lib: java_archive")
     ;
         TargetType = static_library,
-        error("make_link_lib: static_library")
+        unexpected(this_file, "make_link_lib: static_library")
     ),
     globals__io_lookup_string_option(LinkLibFlag, LinkLibOpt, !IO),
     globals__io_lookup_string_option(LinkLibSuffix, Suffix, !IO),
@@ -1615,10 +1624,10 @@ get_system_libs(TargetType, SystemLibs, !IO) :-
         globals__io_lookup_string_option(shared_libs, OtherSystemLibs, !IO)
     ;
         TargetType = static_library,
-        error("compile_target_code__get_std_libs: static library")
+        unexpected(this_file, "get_std_libs: static library")
     ;
         TargetType = java_archive,
-        error("compile_target_code__get_std_libs: java archive")
+        unexpected(this_file, "get_std_libs: java archive")
     ;
         TargetType = executable,
         globals__io_lookup_string_option(math_lib, OtherSystemLibs, !IO)
@@ -1783,7 +1792,7 @@ get_object_code_type(FileType, ObjectCodeType, !IO) :-
                 ObjectCodeType = non_pic
             ;
                 % The linkage string is checked by options.m.
-                error("unknown linkage " ++ MercuryLinkage)
+                unexpected(this_file, "unknown linkage " ++ MercuryLinkage)
             )
         )
     ).
@@ -1999,4 +2008,11 @@ maybe_pic_object_file_extension(PIC, ObjExt, !IO) :-
     maybe_pic_object_file_extension(Globals, PIC, ObjExt).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "compile_target_code.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module compile_target_code.
 %-----------------------------------------------------------------------------%

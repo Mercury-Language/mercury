@@ -27,7 +27,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.higher_order.
-
 :- interface.
 
 :- import_module hlds.hlds_module.

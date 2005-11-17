@@ -6,18 +6,18 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: export.m.
+% Main author: dgj.
+
 % This module defines predicates to produce the functions which are
 % exported to a foreign language via a `pragma export' declaration.
 
-% Note: any changes here might also require similar changes to the handling
+% NOTE: any changes here might also require similar changes to the handling
 % of `pragma import' declarations, which are handled in make_hlds.m.
-
-% Main authors: dgj.
 
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs__export.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -27,24 +27,25 @@
 
 :- import_module io.
 
-    % From the module_info, get a list of foreign_export_decls,
-    % each of which holds information about the declaration
-    % of a foreign function named in a `pragma export' declaration,
-    % which is used to allow a call to be made to a Mercury
-    % procedure from the foreign language.
+%-----------------------------------------------------------------------------%
+
+    % From the module_info, get a list of foreign_export_decls, each of which
+    % holds information about the declaration of a foreign function named in a
+    % `pragma export' declaration, which is used to allow a call to be made to
+    % a Mercury procedure from the foreign language.
     %
 :- pred get_foreign_export_decls(module_info::in, foreign_export_decls::out)
     is det.
 
-    % From the module_info, get a list of foreign_export_defns,
-    % each of which is a string containing the foreign code
-    % for defining a foreign function named in a `pragma export' decl.
+    % From the module_info, get a list of foreign_export_defns, each of which
+    % is a string containing the foreign code for defining a foreign function
+    % named in a `pragma export' decl.
     %
 :- pred get_foreign_export_defns(module_info::in, foreign_export_defns::out)
     is det.
 
-    % Produce an interface file containing declarations for the
-    % exported foreign functions (if required in this foreign language).
+    % Produce an interface file containing declarations for the exported
+    % foreign functions (if required in this foreign language).
     %
 :- pred produce_header_file(foreign_export_decls::in, module_name::in,
     io::di, io::uo) is det.
@@ -67,8 +68,8 @@
 :- pred convert_type_from_mercury(string::in, mer_type::in, string::out)
     is det.
 
-    % Succeeds iff the given C type is known by the compiler to be
-    % an integer or pointer type the same size as MR_Word.
+    % Succeeds iff the given C type is known by the compiler to be an integer
+    % or pointer type the same size as MR_Word.
     %
 :- pred c_type_is_word_sized_int_or_ptr(string::in) is semidet.
 
@@ -98,7 +99,6 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -334,7 +334,7 @@ to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
     %   holding the return value (if any),
     % - the actions on success and failure, and
     % - the argument locations/modes/types.
-
+    %
 :- pred get_export_info(pred_table::in, pred_id::in, proc_id::in, globals::in,
     module_info::in, string::out, string::out, string::out, string::out,
     string::out, assoc_list(arg_info, mer_type)::out) is det.
@@ -740,4 +740,6 @@ c_type_is_word_sized_int_or_ptr("MR_BaseTypeclassInfo").
 
 this_file = "export.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module export.
 %-----------------------------------------------------------------------------%

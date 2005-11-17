@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: name_mangle.m
+% File: name_mangle.m.
 %
 % This module defines routines for generating and/or outputing identifiers
 % for modules, predicates/functions, and procedures in forms that are

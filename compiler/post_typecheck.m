@@ -30,6 +30,7 @@
 % so they need to be a separate "post-typecheck pass".  For efficiency
 % reasons, this is in fact done at the same time as purity analysis --
 % the routines here are called from purity.m rather than mercury_compile.m.
+%-----------------------------------------------------------------------------%
 
 :- module check_hlds__post_typecheck.
 :- interface.
@@ -154,6 +155,8 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module svmap.
+:- import_module svvarset.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -841,7 +844,7 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
         !:ErrorProcs = [ProcId | !.ErrorProcs]
     ;
         proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
-        map__det_update(!.Procs, ProcId, ProcInfo, !:Procs)
+        svmap__det_update(ProcId, ProcInfo, !Procs)
     ),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
         !ErrorProcs, !Procs).
@@ -1603,17 +1606,16 @@ create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
 
 make_new_vars(Types, Vars, !VarTypes, !VarSet) :-
-    list__length(Types, NumVars),
-    varset__new_vars(!.VarSet, NumVars, Vars, !:VarSet),
-    map__det_insert_from_corresponding_lists(!.VarTypes, Vars, Types,
-        !:VarTypes).
+    list.length(Types, NumVars),
+    svvarset.new_vars(NumVars, Vars, !VarSet),
+    svmap.det_insert_from_corresponding_lists(Vars, Types, !VarTypes).
 
 :- pred make_new_var(mer_type::in, prog_var::out, vartypes::in, vartypes::out,
     prog_varset::in, prog_varset::out) is det.
 
 make_new_var(Type, Var, !VarTypes, !VarSet) :-
-    varset__new_var(!.VarSet, Var, !:VarSet),
-    map__det_insert(!.VarTypes, Var, Type, !:VarTypes).
+    svvarset.new_var(Var, !VarSet),
+    svmap.det_insert(Var, Type, !VarTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1675,8 +1677,7 @@ check_for_missing_definitions_2(TypeCtor, TypeDefn, !NumErrors,
                 words("definition.")
             ],
             get_type_defn_context(TypeDefn, TypeContext),
-            write_error_pieces(TypeContext, 0,
-                ErrorPieces, !IO),
+            write_error_pieces(TypeContext, 0, ErrorPieces, !IO),
             io.set_exit_status(1, !IO),
             !:FoundTypeError = yes,
             !:NumErrors = !.NumErrors + 1

@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: global_data.m.
 % Author: zs.
 %
 % This module manages global data structures for the LLDS backend.
@@ -13,7 +14,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__global_data.
-
 :- interface.
 
 :- import_module hlds.hlds_pred.
@@ -25,6 +25,8 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- type global_data.
 
@@ -86,6 +88,9 @@
     %
 :- pred rval_type_as_arg(rval::in, exprn_opts::in, llds_type::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.rtti.
@@ -99,6 +104,8 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type proc_var_map    ==  map(pred_proc_id, comp_gen_c_var).
 :- type proc_layout_map ==  map(pred_proc_id, proc_layout_info).
@@ -199,6 +206,7 @@ global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
     % the same sequence of argument types. We don't actually need the
     % cell type here, since we can't get to a cell_type_group from
     % the cell_group_map without knowing it.
+    %
 :- type cell_type_group
     --->    cell_type_group(
                 cell_type_number    :: int,
@@ -420,4 +428,6 @@ associate_natural_type(UnboxFloat, Rval, Rval - Type) :-
 
 this_file = "global_data.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module global_data.
 %-----------------------------------------------------------------------------%

@@ -5,19 +5,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
+% File: prog_rep.m.
+% Author: zs.
+
 % This module generates a representation of HLDS goals for the declarative
 % debugger. Since this representation is to be included in debuggable
 % executables, it should be as compact as possible, and therefore contains
 % only the information required by the declarative debugger. The structure
 % of this representation is defined by mdbcomp/program_representation.m.
-%
-% Author: zs.
-%
+
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__prog_rep.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -30,6 +30,8 @@
 :- import_module map.
 :- import_module std_util.
 
+%---------------------------------------------------------------------------%
+
     % A var_num_map maps each variable that occurs in any of a procedure's
     % layout structures to a number that uniquely identifies that variable,
     % and to its name.
@@ -39,11 +41,15 @@
     % dense when an optimization removes all references to a variable, and
     % becomes less dense still when we consider only variables that occur
     % in a layout structure. This is why we allocate our own id numbers.
+    %
 :- type var_num_map == map(prog_var, pair(int, string)).
 
 :- pred represent_proc(list(prog_var)::in, hlds_goal::in, 
     instmap::in, vartypes::in, var_num_map::in, module_info::in,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -62,11 +68,12 @@
 :- import_module mdbcomp.program_representation.
 
 :- import_module int.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
+
+%---------------------------------------------------------------------------%
 
 :- type prog_rep_info
     --->    info(
@@ -198,7 +205,7 @@ goal_expr_to_byte_list(unify(_, _, _, Uni, _), GoalInfo, InstMap0, Info,
             AtomicBytes
     ;
         Uni = complicated_unify(_, _, _),
-        error("goal_expr_to_byte_list: complicated_unify")
+        unexpected(this_file, "goal_expr_to_byte_list: complicated_unify")
     ).
 goal_expr_to_byte_list(switch(_, _, Cases), _, InstMap0, Info, !StackInfo, 
         Bytes) :-
@@ -243,12 +250,11 @@ goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
                 var_to_byte_list(Info, InputArg) ++
                 AtomicBytes
         ;
-            error("goal_expr_to_byte_list: cast arity != 2")
+            unexpected(this_file, "goal_expr_to_byte_list: cast arity != 2")
         )
     ;
         GenericCall = aditi_builtin(_, _),
-        error("Sorry, not yet implemented\n\
-            Aditi and declarative debugging")
+        sorry(this_file, "Aditi and declarative debugging NYI.")
     ).
 goal_expr_to_byte_list(call(PredId, _, Args, Builtin, _, _),
         GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
@@ -282,7 +288,7 @@ goal_expr_to_byte_list(foreign_proc(_, _PredId, _, Args, _, _),
         vars_to_byte_list(Info, ArgVars) ++ AtomicBytes.
 goal_expr_to_byte_list(shorthand(_), _, _, _, !StackInfo, _) :-
     % these should have been expanded out by now
-    error("goal_expr_to_byte_list: unexpected shorthand").
+    unexpected(this_file, "goal_expr_to_byte_list: unexpected shorthand").
 
 :- pred lhs_final_is_ground(prog_rep_info::in, uni_mode::in) is semidet.
 
@@ -307,9 +313,10 @@ filter_input_args(Info, [Mode | Modes], [Var | Vars],
     ),
     filter_input_args(Info, Modes, Vars, MaybeVars).
 filter_input_args(_, [], [_ | _], _) :-
-    error("filter_input_args: more vars than modes").
+    unexpected(this_file, "filter_input_args: mismatched lists").
 filter_input_args(_, [_ | _], [], _) :-
-    error("filter_input_args: more modes than vars").
+    unexpected(this_file, "filter_input_args: mismatched lists").
+
 %---------------------------------------------------------------------------%
 
 :- pred atomic_goal_info_to_byte_list(hlds_goal_info::in, instmap::in, 
@@ -488,4 +495,12 @@ lineno_to_byte_list(VarNum) = Bytes :-
 method_num_to_byte_list(VarNum) = Bytes :-
     short_to_byte_list(VarNum, Bytes).
 
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_rep.m".
+
+%---------------------------------------------------------------------------%
+:- end_module prog_rep.
 %---------------------------------------------------------------------------%

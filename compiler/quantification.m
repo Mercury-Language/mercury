@@ -9,9 +9,9 @@
 % File: quantification.m.
 % Main authors: fjh, conway.
 
-% Make implicit quantification explicit, and rename apart variables
-% with the same name that appear in distinct scopes. For the rules on
-% implicit quantification, see the Mercury language reference manual.
+% Make implicit quantification explicit, and rename apart variables with the
+% same name that appear in distinct scopes. For the rules on implicit
+% quantification, see the Mercury language reference manual.
 %
 % This pass also expands out bi-implications (that has to be done after
 % quantification, and preferably as soon as possible, so we do it here).
@@ -20,19 +20,17 @@
 % existential quantifiers in the form of `some/2' goals, we instead record
 % existential quantification in the goal_info for each goal. In fact we could
 % (and maybe even should?) even delete any explicit existential quantifiers
-% that were present in the source code, since the information they convey
-% will be stored in the goal_info (we currently don't do that).
+% that were present in the source code, since the information they convey will
+% be stored in the goal_info (we currently don't do that).
 %
-% The important piece of information that later stages of the compiler
-% want to know is "Does this goal bind any of its nonlocal variables?".
-% So, rather than storing a list of the variables which _are_ existentially
-% quantified in the goal_info, we store the set of variables which are _not_
-% quantified.
+% The important piece of information that later stages of the compiler want to
+% know is "Does this goal bind any of its nonlocal variables?".  So, rather
+% than storing a list of the variables which _are_ existentially quantified in
+% the goal_info, we store the set of variables which are _not_ quantified.
 
 %-----------------------------------------------------------------------------%
 
 :- module hlds__quantification.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -41,6 +39,8 @@
 
 :- import_module list.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
     % When the compiler performs structure reuse, using the ordinary nonlocals
     % during code generation causes variables taken from the reused cell in
@@ -118,6 +118,7 @@
 :- pred goal_vars(hlds_goal::in, set(prog_var)::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -134,6 +135,8 @@
 :- import_module term.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
     % The `outside vars', `lambda outside vars', and `quant vars'
     % fields are inputs; the `nonlocals' field is output; and
     % the `seen so far', the varset, the types, and the warnings fields
@@ -141,6 +144,7 @@
     % We use the convention that the input fields are callee save,
     % and the outputs are caller save.
     % The nonlocals_to_recompute field is constant.
+    %
 :- type quant_info
     --->    quant_info(
                 nonlocals_to_recompute  :: nonlocals_to_recompute,
@@ -1264,4 +1268,6 @@ set_warnings(Warnings, Q, Q ^ warnings := Warnings).
 
 this_file = "quantification.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module quantification.
 %-----------------------------------------------------------------------------%

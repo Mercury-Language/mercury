@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% det_report.m - reporting of determinism errors and warnings.
+% File: det_report.m.
+% Author: zs.
 
-% author: zs.
+% This module handles reporting of determinism errors and warnings.
 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__det_report.
-
 :- interface.
 
 :- import_module check_hlds.det_util.
@@ -27,9 +27,10 @@
 :- import_module set.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
 :- type det_msg
             % The followintg are warnings.
-
     --->    multidet_disj(prog_context, list(prog_context))
     ;       det_disj(prog_context, list(prog_context))
     ;       semidet_disj(prog_context, list(prog_context))
@@ -150,6 +151,7 @@
 :- pred compare_determinisms(determinism::in, determinism::in,
     det_comparison::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1635,4 +1637,6 @@ inst_preserving_append([H | T], B, [H | NT]) :-
 
 this_file = "det_report.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module det_report.
 %-----------------------------------------------------------------------------%

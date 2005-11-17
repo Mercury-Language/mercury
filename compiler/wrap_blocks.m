@@ -20,23 +20,30 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__wrap_blocks.
-
 :- interface.
 
 :- import_module ll_backend.llds.
 
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 :- pred wrap_blocks(list(instruction)::in, list(instruction)::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module ll_backend.opt_util.
 
 :- import_module bool.
 :- import_module int.
 :- import_module require.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 wrap_blocks(Instrs0, Instrs) :-
     wrap_instrs(Instrs0, 0, 0, [], Instrs).
@@ -47,15 +54,15 @@ wrap_blocks(Instrs0, Instrs) :-
     % reversed list of instructions starting with the first instruction
     % in this block that accesses a temp variable. Invariant: RevSofar
     % is always empty if R = 0 and F = 0.
-
+    %
 :- pred wrap_instrs(list(instruction)::in, int::in, int::in,
     list(instruction)::in, list(instruction)::out) is det.
 
 wrap_instrs([], R, F, RevSofar, []) :-
     ( RevSofar = [_ | _] ->
-        error("procedure ends with fallthrough")
+        unexpected(this_file, "procedure ends with fallthrough")
     ; ( R > 0 ; F > 0 ) ->
-        error("procedure ends without closing block")
+        unexpected(this_file, "procedure ends without closing block")
     ;
         true
     ).
@@ -90,4 +97,11 @@ wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "wrap_blocks.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module wrap_blocks.
 %-----------------------------------------------------------------------------%

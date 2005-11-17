@@ -6,12 +6,12 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: java_util.m
+% File: java_util.m.
 % Main authors: juliensf, mjwybrow.
 %
-% This module defines utility routines that are used by the
-% Java backend.  Much of the code below is similar to that in c_util.m;
-% changes made to this module may require changes to c_util.m.
+% This module defines utility routines that are used by the Java backend.
+% Much of the code below is similar to that in c_util.m; changes made to this
+% module may require changes to c_util.m.
 %
 %-----------------------------------------------------------------------------%
 
@@ -30,10 +30,9 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The following predicates all take as input an operator,
-% check if it is an operator of the specified kind,
-% and if so, return the name of the corresponding Java operator
-% that can be used to implement it.
+% The following predicates all take as input an operator, check if it is an
+% operator of the specified kind, and if so, return the name of the
+% corresponding Java operator that can be used to implement it.
 %
 
     % The operator returned will be either a prefix operator or function name.
@@ -186,4 +185,6 @@ java_util__is_keyword("while").
 
 this_file = "java_util.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module java_util.
 %-----------------------------------------------------------------------------%

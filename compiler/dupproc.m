@@ -17,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__dupproc.
-
 :- interface.
 
 % :- import_module hlds__hlds_pred.
@@ -28,19 +27,24 @@
 :- import_module list.
 :- import_module map.
 
+%-----------------------------------------------------------------------------%
+
 :- pred eliminate_duplicate_procs(assoc_list(proc_label, c_procedure)::in,
     list(c_procedure)::out,
     map(proc_label, proc_label)::in, map(proc_label, proc_label)::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module ll_backend.opt_util.
 
 :- import_module int.
-:- import_module require.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 eliminate_duplicate_procs(IdProcs, Procs, !DupProcMap) :-
     (
@@ -401,7 +405,7 @@ standardize_rval(Rval, StdRval, DupProcMap) :-
         StdRval = Rval
     ;
         Rval = var(_),
-        error("var in standardize_rval")
+        unexpected(this_file, "var in standardize_rval")
     ;
         Rval = mkword(_, _),
         StdRval = Rval
@@ -455,3 +459,13 @@ standardize_rval_const(Const, StdConst, DupProcMap) :-
         Const = data_addr_const(_, _),
         StdConst = Const
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "dupproc.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module dupproc.
+%-----------------------------------------------------------------------------%

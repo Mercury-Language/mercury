@@ -46,10 +46,12 @@
 
     % The symbol table for constructors. This table is used by the type-checker
     % to look up the type of functors/constants.
+    %
 :- type cons_table  ==  map(cons_id, list(hlds_cons_defn)).
 
     % A cons_defn is the definition of a constructor (i.e. a constant
     % or a functor) for a particular type.
+    %
 :- type hlds_cons_defn
     --->    hlds_cons_defn(
                 % maybe add tvarset here?
@@ -114,6 +116,7 @@
 :- interface.
 
     % The symbol table for types.
+    %
 :- type type_table  ==  map(type_ctor, hlds_type_defn).
 
     % This is how type, modes and constructors are represented. The parts that
@@ -319,11 +322,13 @@
             % of a specially reserved global variable.
 
     % The type `tag_bits' holds a primary tag value.
+    %
 :- type tag_bits    ==  int.    % actually only 2 (or maybe 3) bits
 
     % The type definitions for no_tag types have information mirrored in a
     % separate table for faster lookups. mode_util__mode_to_arg_mode makes
     % heavy use of type_util__type_is_no_tag_type.
+    %
 :- type no_tag_type
     --->    no_tag_type(
                 list(type_param),   % Formal type parameters.
@@ -454,7 +459,7 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
 :- interface.
 
     % The symbol table for insts.
-
+    %
 :- type inst_table.
 
 :- type user_inst_table.
@@ -650,18 +655,18 @@ user_inst_table_optimize(UserInstTable0, UserInstTable) :-
 :- interface.
 
     % The symbol table for modes.
-
+    %
 :- type mode_table.
 :- type mode_defns   == map(mode_id, hlds_mode_defn).
 
     % A hlds_mode_defn stores the information about a mode
     % definition such as
-    %   :- mode out :: free -> ground.
+    %   :- mode out == free >> ground.
     % or
-    %   :- mode in(I) :: I -> I.
+    %   :- mode in(I) == I >> I.
     % or
-    %   :- mode in_list_skel :: in(list_skel).
-
+    %   :- mode in_list_skel == in(list_skel).
+    %
 :- type hlds_mode_defn
     --->    hlds_mode_defn(
                 mode_varset     :: inst_varset,
@@ -684,7 +689,7 @@ user_inst_table_optimize(UserInstTable0, UserInstTable) :-
             ).
 
     % The only sort of mode definitions allowed are equivalence modes.
-
+    %
 :- type hlds_mode_body
     --->    eqv_mode(mer_mode).  % This mode is equivalent to some other mode.
 

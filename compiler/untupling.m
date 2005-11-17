@@ -89,7 +89,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__untupling.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -99,6 +98,7 @@
 :- pred untuple_arguments(module_info::in, module_info::out, io::di, io::uo)
     is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -128,6 +128,8 @@
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
     % The transform_map structure records which procedures were
     % transformed into what procedures during the first pass.
@@ -763,4 +765,6 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
 
 this_file = "untupling.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module untupling.
 %-----------------------------------------------------------------------------%

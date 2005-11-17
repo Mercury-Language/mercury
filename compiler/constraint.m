@@ -9,16 +9,14 @@
 % File: constraint.m
 % Main author: stayl.
 %
-% The constraint propagation transformation attempts to improve the
-% efficiency of a generate-and-test style program by statically
-% scheduling constraints as early as possible, where a "constraint" is
-% any pure goal which has no outputs, can fail, cannot loop and cannot
-% throw an exception.
+% The constraint propagation transformation attempts to improve the efficiency
+% of a generate-and-test style program by statically scheduling constraints as
+% early as possible, where a "constraint" is any pure goal which has no
+% outputs, can fail, cannot loop and cannot throw an exception.
 %
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__constraint.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -32,12 +30,11 @@
 
 :- type constraint_info.
 
-    % propagate_constraints_in_goal pushes constraints left and
-    % inward within a single goal. Specialized versions of
-    % procedures which are called with constrained outputs are
-    % created by deforest.m. Goals which deforest.m should try to
-    % propagate into calls are annotated with a `constraint' goal
-    % feature.
+    % propagate_constraints_in_goal pushes constraints left and inward within
+    % a single goal. Specialized versions of procedures which are called with
+    % constrained outputs are created by deforest.m. Goals which deforest.m
+    % should try to propagate into calls are annotated with a `constraint'
+    % goal feature.
     %
 :- pred propagate_constraints_in_goal(hlds_goal::in, hlds_goal::out,
     constraint_info::in, constraint_info::out) is det.
@@ -67,7 +64,6 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

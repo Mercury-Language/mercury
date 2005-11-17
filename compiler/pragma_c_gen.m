@@ -7,7 +7,6 @@
 %---------------------------------------------------------------------------%
 %
 % File: pragma_c_gen.m
-%
 % Main authors: dgj, conway, zs.
 %
 % The code in this module generates code for pragma_c_code goals.
@@ -18,9 +17,9 @@
 %
 % The scheme for model_non pragma_c_codes is substantially different,
 % so we handle them separately.
+%---------------------------------------------------------------------------%
 
 :- module ll_backend__pragma_c_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -32,6 +31,8 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+
+%---------------------------------------------------------------------------%
 
 :- pred pragma_c_gen__generate_pragma_c_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
@@ -47,6 +48,7 @@
     %
 :- func pragma_succ_ind_name = string.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -80,6 +82,8 @@
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
+
+%---------------------------------------------------------------------------%
 
 % The code we generate for an ordinary (model_det or model_semi) pragma_c_code
 % must be able to fit into the middle of a procedure, since such
@@ -340,6 +344,8 @@
 %   handle the case where the original pragma c_code procedure gets inlined
 %   and optimized away. Of course we also need to #undef it afterwards.
 
+%---------------------------------------------------------------------------%
+
 pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, GoalInfo, PragmaImpl, Code, !CI) :-
     (
@@ -572,19 +578,19 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
             MaybeFailLabel, no, MaybeDupl)
             - "Pragma C inclusion"
     ]),
-
-    % for semidet code, we need to insert the failure handling code here:
+    %
+    % For semidet code, we need to insert the failure handling code here:
     %
     %   goto skip_label;
     %   fail_label:
     %   <code to fail>
     %   skip_label:
     %
-    % for code with determinism failure, we need to insert the failure
+    % For code with determinism failure, we need to insert the failure
     % handling code here:
     %
     %   <code to fail>
-
+    %
     ( MaybeFailLabel = yes(TheFailLabel) ->
         code_info__get_next_label(SkipLabel, !CI),
         code_info__generate_failure(FailCode, !CI),
@@ -1109,8 +1115,8 @@ get_c_arg_list_vars([Arg | Args], [Var | Vars]) :-
 
 %---------------------------------------------------------------------------%
 
-    % pragma_select_out_args returns the list of variables
-    % which are outputs for a procedure.
+    % pragma_select_out_args returns the list of variables which are outputs
+    % for a procedure.
     %
 :- pred pragma_select_out_args(list(c_arg)::in, list(c_arg)::out) is det.
 
@@ -1421,4 +1427,5 @@ pragma_succ_ind_name = "MercurySuccessIndicator".
 this_file = "pragma_c_gen.m".
 
 %---------------------------------------------------------------------------%
+:- end_module pragma_c_gen.
 %---------------------------------------------------------------------------%

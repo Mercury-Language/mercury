@@ -82,6 +82,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
@@ -189,7 +190,7 @@
 
 :- type where_needed
     --->    everywhere
-    ;   branches(where_needed_branches).
+    ;       branches(where_needed_branches).
 
 :- type where_needed_branches   ==  map(branch_point, set(int)).
 
@@ -470,7 +471,7 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
                 BranchArmCounts, 0),
             BranchArmCount > Options ^ copy_limit
 
-            % We may also want to add ither space time tradeoffs. E.g. if
+            % We may also want to add other space time tradeoffs. E.g. if
             % profiling shows that Goal is required in 10 branches that
             % account for 99% of all executions and is not required in 5
             % branches that account for the remaining 1%, and Goal itself
@@ -616,7 +617,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         ->
             NumAlt = NumCases
         ;
-            error("process_goal_internal: switch count")
+            unexpected(this_file, "process_goal_internal: switch count")
         ),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
         BranchPoint = branch_point(GoalPath, switch(NumAlt)),
@@ -665,7 +666,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         Goal = GoalExpr - GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
-        error("shorthand in process_goal_internal")
+        unexpected(this_file, "shorthand in process_goal_internal")
     ).
 
 %---------------------------------------------------------------------------%
@@ -929,7 +930,7 @@ refine_goal(Goal0, Goal, !RefinedGoals) :-
         Goal = GoalExpr - GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
-        error("shorthand in refine_goal")
+        unexpected(this_file, "shorthand in refine_goal")
     ).
 
 :- pred refine_conj(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1123,4 +1124,12 @@ branch_point_is_complete(switch(NumFunctors), Alts) :-
     set__count(Alts, NumAlts),
     NumAlts = NumFunctors.
 
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "unneeded_code.m".
+
+%---------------------------------------------------------------------------%
+:- end_module unneeded_code.
 %---------------------------------------------------------------------------%

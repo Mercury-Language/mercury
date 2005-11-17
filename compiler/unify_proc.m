@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% unify_proc.m:
+% File: unify_proc.m.
 %
 % This module encapsulates access to the proc_requests table, and constructs
 % the clauses for out-of-line complicated unification procedures.
@@ -45,7 +45,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__unify_proc.
-
 :- interface.
 
 :- import_module check_hlds.mode_info.
@@ -60,6 +59,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type proc_requests.
 
@@ -170,12 +171,14 @@
 :- import_module term.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
     % We keep track of all the complicated unification procs we need
     % by storing them in the proc_requests structure.
     % For each unify_proc_id (i.e. type & mode), we store the proc_id
     % (mode number) of the unification procedure which corresponds to
     % that mode.
-
+    %
 :- type unify_req_map == map(unify_proc_id, proc_id).
 
 :- type req_queue == queue(pred_proc_id).
@@ -2011,4 +2014,6 @@ info_set_types(Types, UPI, UPI ^ vartypes := Types).
 
 this_file = "unify_proc.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module unify_proc.
 %-----------------------------------------------------------------------------%

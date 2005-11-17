@@ -6,18 +6,19 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% This module defines predicates for interfacing with foreign languages.
-% In particular, this module supports interfacing with languages
-% other than the target of compilation.
-
+% File: foreign.m.
 % Main authors: trd, dgj.
-% Parts of this code were originally written by dgj, and have since been
-% moved here.
+
+% This module defines predicates for interfacing with foreign languages.  In
+% particular, this module supports interfacing with languages other than the
+% target of compilation.
+
+% Parts of this code were originally written by dgj, and have since been moved
+% here.
 
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs__foreign.
-
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -170,11 +171,12 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
     IsWanted = (pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
@@ -312,8 +314,9 @@ extrude_pragma_implementation_2(java, il, _, _, _, _) :-
     is erroneous.
 
 unimplemented_combination(Lang1, Lang2) :-
-    error("unimplemented: calling " ++ foreign_language_string(Lang2)
-        ++ " foreign code from " ++ foreign_language_string(Lang1)).
+    sorry(this_file, "unimplemented: calling "
+        ++ foreign_language_string(Lang2) ++ " foreign code from "
+        ++ foreign_language_string(Lang1)).
 
     % XXX We haven't implemented these functions yet.
     % What is here is only a guide.
@@ -352,14 +355,13 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
     assoc_list__from_corresponding_lists(PragmaVars, ArgTypes,
         PragmaVarsAndTypes),
 
-    % Construct parts of the C_code string for calling a C_function.
-    % This C code fragment invokes the specified C function
-    % with the appropriate arguments from the list constructed
-    % above, passed in the appropriate manner (by value, or by
-    % passing the address to simulate pass-by-reference), and
-    % assigns the return value (if any) to the appropriate place.
-    % As this phase occurs before polymorphism, we don't know about
-    % the type-infos yet.  polymorphism.m is responsible for adding
+    % Construct parts of the C_code string for calling a C_function.  This C
+    % code fragment invokes the specified C function with the appropriate
+    % arguments from the list constructed above, passed in the appropriate
+    % manner (by value, or by passing the address to simulate
+    % pass-by-reference), and assigns the return value (if any) to the
+    % appropriate place.  As this phase occurs before polymorphism, we don't
+    % know about the type-infos yet.  polymorphism.m is responsible for adding
     % the type-info arguments to the list of variables.
 
     proc_info_declared_determinism(ProcInfo, MaybeDeclaredDetism),
@@ -410,10 +412,10 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
         )
     ;
         CodeModel = model_semi,
-        % We treat semidet functions the same as semidet predicates,
-        % which means that for Mercury functions the Mercury return
-        % value becomes the last argument, and the C return value
-        % is a bool that is used to indicate success or failure.
+        % We treat semidet functions the same as semidet predicates, which
+        % means that for Mercury functions the Mercury return value becomes
+        % the last argument, and the C return value is a bool that is used to
+        % indicate success or failure.
         C_Code0 = "SUCCESS_INDICATOR = "
     ;
         CodeModel = model_non,
@@ -455,8 +457,8 @@ include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode) - Type) :-
     % create_pragma_vars(Vars, Modes, ArgNum0, PragmaVars):
     %
     % Given list of vars and modes, and an initial argument number, allocate
-    % names to all the variables, and construct a single list containing
-    % the variables, names, and modes.
+    % names to all the variables, and construct a single list containing the
+    % variables, names, and modes.
     %
 :- pred create_pragma_vars(list(prog_var)::in, list(mer_mode)::in, int::in,
     list(pragma_var)::out) is det.

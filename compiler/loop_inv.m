@@ -95,23 +95,22 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__loop_inv.
-
 :- interface.
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
 
+%-----------------------------------------------------------------------------%
+
     % hoist_loop_invariants(PredId, ProcId, PredInfo,
     %       ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo)
     %
-    % Analyze the procedure identified by PredProcId and, if
-    % appropriate, split it into two applying the loop invariant
-    % hoisting optimization.
+    % Analyze the procedure identified by PredProcId and, if appropriate,
+    % split it into two applying the loop invariant hoisting optimization.
     %
 :- pred hoist_loop_invariants(pred_id::in, proc_id::in, pred_info::in,
-        proc_info::in, proc_info::out, module_info::in, module_info::out)
-        is det.
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -141,14 +140,10 @@
 :- import_module string.
 :- import_module term.
 
-:- func this_file = string.
-
-this_file = "loop_inv.m".
 
 %-----------------------------------------------------------------------------%
 
-hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
-        ModuleInfo0, ModuleInfo) :-
+hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
 
     ( if
 
@@ -163,10 +158,10 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % Obtain the requisite info for this procedure.
             %
         PredProcId = proc(PredId, ProcId),
-        hlds_pred__proc_info_goal(ProcInfo0, Body),
-        hlds_pred__proc_info_headvars(ProcInfo0, HeadVars),
-        hlds_pred__proc_info_argmodes(ProcInfo0, HeadVarModes),
-        hlds_pred__proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0,
+        hlds_pred__proc_info_goal(!.ProcInfo, Body),
+        hlds_pred__proc_info_headvars(!.ProcInfo, HeadVars),
+        hlds_pred__proc_info_argmodes(!.ProcInfo, HeadVarModes),
+        hlds_pred__proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
             InitialInstMap),
 
             % Find the set of variables that are used as (partly) unique
@@ -175,7 +170,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % inferred as unique may be hoistable if it is not used as a
             % unique input to any call.)
             %
-        UniquelyUsedVars = uniquely_used_vars(ModuleInfo0, Body),
+        UniquelyUsedVars = uniquely_used_vars(!.ModuleInfo, Body),
 
             % Find the set of candidate goals that may be invariant
             % and the set of recursive calls involved.
@@ -191,13 +186,13 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % We can calculate the set of invariant args from
             % the set of recursive calls.
             %
-        InvArgs0 = inv_args(ModuleInfo0, HeadVars, HeadVarModes, RecCalls),
+        InvArgs0 = inv_args(!.ModuleInfo, HeadVars, HeadVarModes, RecCalls),
         InvArgs  = InvArgs0 `delete_elems` UniquelyUsedVars,
 
             % Given the invariant args, we can calculate the set
             % of invariant goals and vars.
             %
-        inv_goals_vars(ModuleInfo0, UniquelyUsedVars,
+        inv_goals_vars(!.ModuleInfo, UniquelyUsedVars,
             InvGoals0, InvGoals1, InvArgs, InvVars1),
 
             % We don't want to hoist out unifications with constants (i.e.
@@ -217,7 +212,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % So here we compute the subset of InvGoals (and the corresponding
             % InvVars) that should not be hoisted.
             %
-        dont_hoist(ModuleInfo0, InvGoals1, DontHoistGoals, DontHoistVars),
+        dont_hoist(!.ModuleInfo, InvGoals1, DontHoistGoals, DontHoistVars),
 
         InvGoals = InvGoals1 `delete_elems` DontHoistGoals,
         InvVars  = InvVars1  `delete_elems` DontHoistVars,
@@ -256,7 +251,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             %
         create_aux_pred(PredProcId, HeadVars, ComputedInvVars,
             InitialAuxInstMap, AuxPredProcId, CallAux,
-            AuxPredInfo, AuxProcInfo, ModuleInfo0, ModuleInfo1),
+            AuxPredInfo, AuxProcInfo, !ModuleInfo),
 
             % We update the body of AuxProc by replacing adding the
             % set of computed invariant vars to the argument list,
@@ -266,19 +261,17 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             %
         gen_aux_proc(InvGoals, PredProcId,
             AuxPredProcId, CallAux, Body, AuxPredInfo, AuxProcInfo,
-            ModuleInfo1, ModuleInfo2),
+            !ModuleInfo),
 
             % We construct OutProc by replacing recursive calls to
             % the InProc at the end of recursive paths with calls
             % to the auxiliary procedure.
             %
-        gen_out_proc(PredProcId, PredInfo, ProcInfo0, ProcInfo, CallAux,
-            Body, ModuleInfo2, ModuleInfo)
+        gen_out_proc(PredProcId, PredInfo, !ProcInfo, CallAux, Body,
+            !ModuleInfo)
 
       else
-
-        ProcInfo   = ProcInfo0,
-        ModuleInfo = ModuleInfo0
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -528,8 +521,8 @@ refine_candidate_inv_args(RecCall - _RecCallInfo, MaybeInvArgs) =
       then list__map_corresponding(refine_candidate_inv_args_2,
                                    MaybeInvArgs,
                                    CallArgs)
-      else func_error("refine_candidate_inv_args/2: non call/6 \
-found in argument 1")
+      else func_error("refine_candidate_inv_args/2: " ++
+        "non call/6 found in argument 1")
     ).
 
 :- func refine_candidate_inv_args_2(maybe(prog_var), prog_var) =
@@ -923,9 +916,8 @@ gen_aux_proc_handle_non_recursive_call(Info, Goal0) = Goal :-
 
 %-----------------------------------------------------------------------------%
 
-    % We construct OutProc by replacing recursive calls to
-    % the InProc at the end of recursive paths with calls
-    % to the auxiliary procedure.
+    % We construct OutProc by replacing recursive calls to the InProc at the
+    % end of recursive paths with calls to the auxiliary procedure.
     %
 :- pred gen_out_proc(pred_proc_id::in, pred_info::in,
     proc_info::in, proc_info::out, hlds_goal::in, hlds_goal::in,
@@ -1036,12 +1028,11 @@ gen_aux_call(CallAux0 - _CallAuxInfo0, Call - CallInfo) =
         Args          = replace_initial_args(Args0, AuxArgs0),
         CallAux       = ( CallAux0 ^ call_args := Args )
             %
-            % Note that one might expect instmap_delta to change,
-            % however the invariant arguments are just that -
-            % invariant - hence their insts are not changed by
-            % the recursive call and there is no need to
-            % adjust the instmap_delta.  All other fields
-            % are correct for CallInfo.
+            % Note that one might expect instmap_delta to change, however the
+            % invariant arguments are just that - invariant - hence their
+            % insts are not changed by the recursive call and there is no need
+            % to adjust the instmap_delta.  All other fields are correct for
+            % CallInfo.
       then
         CallAux - CallInfo
       else
@@ -1057,15 +1048,16 @@ replace_initial_args([],       Ys      ) = Ys.
 replace_initial_args([X | Xs], [_ | Ys]) = [X | replace_initial_args(Xs, Ys)].
 
 replace_initial_args([_ | _],  []      ) = _ :-
-    error("replace_initial_args/2: first arg longer than second").
+    unexpected(this_file,
+        "replace_initial_args/2: first arg longer than second").
 
 %-----------------------------------------------------------------------------%
 
-    % This predicate computes the set of variables that are used
-    % as (partly) unique inputs to goals.  This information is
-    % needed because unique local values for which uniqueness is
-    % important cannot be hoisted, although those for which uniqueness
-    % is inferred, but not important, can be hoisted.
+    % This predicate computes the set of variables that are used as (partly)
+    % unique inputs to goals.  This information is needed because unique local
+    % values for which uniqueness is important cannot be hoisted, although
+    % those for which uniqueness is inferred, but not important, can be
+    % hoisted.
     %
     % TODO: get this to handle unification properly.  See the XXX below.
     %
@@ -1088,13 +1080,12 @@ uniquely_used_vars_2(MI, generic_call(_, Args, Modes, _) - _) =
 uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _) 
         =
     %
-    % XXX `Extras' should be empty for pure calls.  We cannot apply
-    % LIO to non-pure goals so we shoudn't need to consider `Extras'.
-    % However, we currently don't deal with the situation where we
-    % may be trying to apply LIO to a non-pure goal until *after* we
-    % have called this predicate, so `Extras' may not be empty.  As a
-    % work-around we just add any variables in `Extras' to the set of
-    % variables that cannot be hoisted.
+    % XXX `Extras' should be empty for pure calls.  We cannot apply LIO to
+    % non-pure goals so we shoudn't need to consider `Extras'.  However, we
+    % currently don't deal with the situation where we may be trying to apply
+    % LIO to a non-pure goal until *after* we have called this predicate, so
+    % `Extras' may not be empty.  As a work-around we just add any variables
+    % in `Extras' to the set of variables that cannot be hoisted.
     %
     list__filter_map_corresponding(uniquely_used_args(MI),
         list__map(foreign_arg_var, Args),
@@ -1330,4 +1321,11 @@ lhs_modes(UniModes) =
     list__map(func((Pre - _) -> (Post - _)) = (Pre -> Post), UniModes).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "loop_inv.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module loop_inv.
 %-----------------------------------------------------------------------------%

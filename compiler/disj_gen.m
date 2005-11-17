@@ -16,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__disj_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -39,6 +38,7 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.tree.
@@ -62,7 +62,7 @@ generate_disj(AddTrailOps, CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
         ( CodeModel = model_semi ->
             code_info__generate_failure(Code, !CI)
         ;
-            error("empty disjunction")
+            unexpected(this_file, "generate_disj: empty disjunction.")
         )
     ;
         Goals = [Goal | _],
@@ -158,7 +158,7 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
     code_tree::out, code_info::in, code_info::out) is det.
 
 generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
-    error("empty disjunction!").
+    unexpected(this_file, "generate_disjuncts: empty disjunction!").
 generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         MaybeEntryResumePoint, HijackInfo, DisjGoalInfo, EndLabel, ReclaimHeap,
         MaybeHpSlot0, MaybeTicketSlot, BranchStart0, MaybeEnd0, MaybeEnd,

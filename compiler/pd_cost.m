@@ -5,20 +5,22 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+
 % File: pd_cost.m
 % Main author: stayl
-%
+
 % pd_cost__goal gives a very rough guess as to how much work a given goal
 % will cause at runtime. This only counts the local cost not including
 % the time taken by called predicates.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__pd_cost.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
+
+%-----------------------------------------------------------------------------%
 
 :- pred pd_cost__goal(hlds_goal::in, int::out) is det.
 
@@ -36,15 +38,16 @@
 :- pred pd_cost__recursive_fold(int::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.hlds_data.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 
@@ -115,7 +118,7 @@ pd_cost__goal(foreign_proc(Attributes, _, _, Args, _, _) - _, Cost) :-
 
 pd_cost__goal(shorthand(_) - _, _) :-
     % these should have been expanded out by now
-    error("pd_cost__goal: unexpected shorthand").
+    unexpected(this_file, "pd_cost__goal: unexpected shorthand").
 
 :- pred pd_cost__unify(set(prog_var)::in, unification::in, int::out) is det.
 
@@ -185,4 +188,11 @@ pd_cost__fold(15).              % reward folding
 pd_cost__recursive_fold(25).    % reward recursive folding more
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "pd_cost.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module pd_cost.
 %-----------------------------------------------------------------------------%

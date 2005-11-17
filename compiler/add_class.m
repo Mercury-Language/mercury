@@ -20,6 +20,8 @@
 :- import_module list.
 :- import_module term.
 
+%-----------------------------------------------------------------------------%
+
 :- pred module_add_class_defn(list(prog_constraint)::in,
     list(prog_fundep)::in, sym_name::in, list(tvar)::in, class_interface::in,
     tvarset::in, prog_context::in, item_status::in,
@@ -39,6 +41,9 @@
     term__context::in, import_status::in, clauses_info::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -340,6 +345,7 @@ update_superclass_table_2(ClassId, Vars, VarSet, Constraint, !Supers) :-
     % - functions without mode declarations: add a default mode
     % - predicates without mode declarations: report an error
     % - mode declarations with no determinism: report an error
+    %
 :- pred check_method_modes(list(class_method)::in,
     list(maybe(pair(pred_id, proc_id)))::in,
     list(maybe(pair(pred_id, proc_id)))::out,
@@ -564,6 +570,12 @@ undefined_type_class_error(ClassName, Arity, Context, Description, !IO) :-
     write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).
 
+%-----------------------------------------------------------------------------%
+
 :- func this_file = string.
 
 this_file = "add_class.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module add_class.
+%-----------------------------------------------------------------------------%

@@ -5,14 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: reassign.m
-%
 % Author: zs.
-%
-% This module implements an LLDS->LLDS transformation that optimizes
-% away assignments to locations that already hold the assigned value.
-% It operates entirely within extended basic blocks.
+
+% This module implements an LLDS->LLDS transformation that optimizes away
+% assignments to locations that already hold the assigned value.  It operates
+% entirely within extended basic blocks.
 %
 % It is intended for instruction sequences such as the following extract
 % from tree234__search:
@@ -44,17 +43,17 @@
 % In general, for every assignment TargetLval = SourceRval, we record that
 % TargetLval now contains SourceRval; if SourceRval is of the form
 % lval(SourceLval), we also record that SourceLval now contains
-% lval(TargetLval). Later on, if we find an assignment that assigns
-% to an lval a value that it already holds, we remove the assignment.
-% The removed assignment will either be a copy of the original assignment
-% TargetLval = SourceRval, or its converse, SourceLval = lval(TargetLval).
-% The mechanism that enables us to do this is a map that maps lvals
+% lval(TargetLval). Later on, if we find an assignment that assigns to an lval
+% a value that it already holds, we remove the assignment.  The removed
+% assignment will either be a copy of the original assignment TargetLval =
+% SourceRval, or its converse, SourceLval = lval(TargetLval).  The mechanism
+% that enables us to do this is a map that maps lvals
 % (e.g. TargetLval) to its known contents (e.g. SourceRval).
 %
 % Of course, if any of the lvals occurring on the right hand side of an
-% assignment change, we cannot remove a later copy of that assignment or
-% of its converse. For example, we cannot remove the final assignment in
-% the following code.
+% assignment change, we cannot remove a later copy of that assignment or of
+% its converse. For example, we cannot remove the final assignment in the
+% following code:
 %
 %   MR_r3 = MR_stackvar(1);
 %   ...
@@ -97,14 +96,18 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__reassign.
-
 :- interface.
 
 :- import_module ll_backend.llds.
 
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 :- pred remove_reassign(list(instruction)::in, list(instruction)::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -112,7 +115,6 @@
 :- import_module ll_backend.code_util.
 
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module svmap.
@@ -437,4 +439,6 @@ make_dependent(Target, SubLval, !DepLvalMap) :-
 
 this_file = "reassign.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module reassign.
 %-----------------------------------------------------------------------------%

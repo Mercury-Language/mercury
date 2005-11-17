@@ -19,7 +19,6 @@
 %---------------------------------------------------------------------------%
 
 :- module backend_libs__type_class_info.
-
 :- interface.
 
 :- import_module backend_libs.rtti.
@@ -29,6 +28,8 @@
 :- import_module bool.
 :- import_module list.
 
+%---------------------------------------------------------------------------%
+
 :- pred type_class_info__generate_rtti(module_info::in, bool::in,
     list(rtti_data)::out) is det.
 
@@ -36,12 +37,16 @@
 
 :- func generate_class_name(class_id) = tc_name.
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -176,7 +181,7 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
             Interface)
     ;
         MaybeInterface = no,
-        error("generate_instance_decl: no interface")
+        unexpected(this_file, "generate_instance_decl: no interface")
     ),
     TCInstance = tc_instance(TCName, InstanceTCTypes, NumTypeVars,
         TCConstraints, MethodProcLabels),
@@ -195,7 +200,7 @@ generate_class_name(class_id(SymName, Arity)) = TCName :-
         SymName = qualified(ModuleName, ClassName)
     ;
         SymName = unqualified(_),
-        error("generate_class_name: unqualified sym_name")
+        unexpected(this_file, "generate_class_name: unqualified sym_name")
     ),
     TCName = tc_name(ModuleName, ClassName, Arity).
 
@@ -224,4 +229,12 @@ generate_tc_type(Type) = TCType :-
 
 type_class_info_rtti_version = 0.
 
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "type_class_info.m".
+
+%---------------------------------------------------------------------------%
+:- end_module type_class_info.
 %---------------------------------------------------------------------------%

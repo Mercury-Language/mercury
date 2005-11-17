@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% Utilities for LLDS to LLDS optimization.
-
+% File: opt_util.m.
 % Main author: zs.
+
+% Utilities for LLDS to LLDS optimization.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__opt_util.
-
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -23,6 +23,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type instrmap == map(label, instruction).
 :- type lvalmap == map(label, maybe(instruction)).
@@ -292,6 +294,7 @@
     map(label, label)::in, bool::in, list(instruction)::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -308,6 +311,8 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
     gather_comments(Instrs0, Comments1, Instrs1),
@@ -2092,4 +2097,6 @@ replace_labels_label(Label0, ReplMap, Label) :-
 
 this_file = "opt_util.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module opt_util.
 %-----------------------------------------------------------------------------%

@@ -5,50 +5,48 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: liveness.m
-%
+
+% File: liveness.m.
 % Main authors: conway, zs, trd.
+
+% This module traverses the goal for each procedure, and adds liveness
+% annotations to the goal_info for each sub-goal.  These annotations are the
+% pre-birth set, the post-birth set, the pre-death set, the post-death set,
+% and the resume_point field.
 %
-% This module traverses the goal for each procedure, and adds
-% liveness annotations to the goal_info for each sub-goal.
-% These annotations are the pre-birth set, the post-birth set,
-% the pre-death set, the post-death set, and the resume_point field.
-%
-% Because it recomputes each of these annotations from scratch, it is safe
-% to call this module multiple times, and in fact we do so if stack slot
+% Because it recomputes each of these annotations from scratch, it is safe to
+% call this module multiple times, and in fact we do so if stack slot
 % optimization is enabled.
 %
-% Note - the concept of `liveness' here is different to that used in
-% mode analysis. Mode analysis is concerned with the liveness of what
-% is *pointed* to by a variable, for the purpose of avoiding and/or keeping
-% track of aliasing and for structure re-use optimization, whereas here
-% we are concerned with the liveness of the variable itself, for the
-% purposes of optimizing stack slot and register usage.
-% Variables have a lifetime: each variable is born, gets used, and then dies.
-% To minimize stack slot and register usage, the birth should be
-% as late as possible (but before the first possible use), and the
-% death should be as early as possible (but after the last possible use).
+% NOTE: the concept of `liveness' here is different to that used in mode
+% analysis. Mode analysis is concerned with the liveness of what is *pointed*
+% to by a variable, for the purpose of avoiding and/or keeping track of
+% aliasing and for structure re-use optimization, whereas here we are
+% concerned with the liveness of the variable itself, for the purposes of
+% optimizing stack slot and register usage.  Variables have a lifetime: each
+% variable is born, gets used, and then dies.  To minimize stack slot and
+% register usage, the birth should be as late as possible (but before the
+% first possible use), and the death should be as early as possible (but after
+% the last possible use).
 %
 % We compute liveness related information in four distinct passes.
 %
 % The first pass, detect_liveness_in_goal, finds the first value-giving
-% occurrence of each variable on each computation path. Goals containing
-% the first such occurrence of a variable include that variable in their
-% pre-birth set. In branched structures, branches whose endpoint is not
-% reachable include a post-birth set listing the variables that should
-% have been born in that branch but haven't. Variables that shouldn't have
-% been born but have been (in computation paths that cannot succeed)
-% are included in the post-death set of the goal concerned.
+% occurrence of each variable on each computation path. Goals containing the
+% first such occurrence of a variable include that variable in their pre-birth
+% set. In branched structures, branches whose endpoint is not reachable
+% include a post-birth set listing the variables that should have been born in
+% that branch but haven't. Variables that shouldn't have been born but have
+% been (in computation paths that cannot succeed) are included in the
+% post-death set of the goal concerned.
 %
-% The second pass, detect_deadness_in_goal, finds the last occurrence
-% of each variable on each computation path. Goals containing the last
-% occurrence of a variable include that variable in their post-death
-% set. In branched structures, branches in which a variable is not
-% used at all include a pre-death set listing the variables that
-% have died in parallel branches. Branches whose end-points are unreachable
-% are handled specially; see the comment before union_branch_deadness for
-% details.
+% The second pass, detect_deadness_in_goal, finds the last occurrence of each
+% variable on each computation path. Goals containing the last occurrence of a
+% variable include that variable in their post-death set. In branched
+% structures, branches in which a variable is not used at all include a
+% pre-death set listing the variables that have died in parallel branches.
+% Branches whose end-points are unreachable are handled specially; see the
+% comment before union_branch_deadness for details.
 %
 % The third pass is optional: it delays the deaths of named variables until
 % the last possible moment. This can be useful if debugging is enabled, as it
@@ -63,20 +61,18 @@
 % (The second pass does propagate liveness forwards, but it does so only along
 % one branch of every branched control structure.)
 %
-% The fourth pass, detect_resume_points_in_goal, finds goals that
-% establish resume points and attaches to them a resume_point
-% annotation listing the variables that may be referenced by the
-% code at that resume point as well as the nature of the required
-% entry labels.
-%
+% The fourth pass, detect_resume_points_in_goal, finds goals that establish
+% resume points and attaches to them a resume_point annotation listing the
+% variables that may be referenced by the code at that resume point as well as
+% the nature of the required entry labels.
+
 % Typeinfo liveness calculation notes:
 %
-% When using accurate gc or execution tracing, liveness is computed
-% slightly differently.  The runtime system needs access to the
-% typeinfo variables of any variable that is live at a continuation or event.
-% (This includes typeclass info variables that hold typeinfos;
-% in the following "typeinfo variables" also includes typeclass info
-% variables.)
+% When using accurate gc or execution tracing, liveness is computed slightly
+% differently.  The runtime system needs access to the typeinfo variables of
+% any variable that is live at a continuation or event.  (This includes
+% typeclass info variables that hold typeinfos; in the following "typeinfo
+% variables" also includes typeclass info variables.)
 %
 % Hence, the invariant needed for typeinfo-liveness calculation:
 %   a variable holding a typeinfo must be live at any continuation
@@ -85,13 +81,12 @@
 %
 % Typeinfos are introduced as either one of the head variables, or a new
 % variable created by a goal in the procedure. If introduced as a head
-% variable, initial_liveness will add it to the initial live set of
-% variables -- no variable could be introduced earlier than the start of
-% the goal. If introduced by a goal in the procedure, that goal must
-% occur before any call that requires the typeinfo, so the variable will
-% be born before the continuation after the call. So the typeinfo
-% variables will always be born before any continuation where they are
-% needed.
+% variable, initial_liveness will add it to the initial live set of variables
+% -- no variable could be introduced earlier than the start of the goal. If
+% introduced by a goal in the procedure, that goal must occur before any call
+% that requires the typeinfo, so the variable will be born before the
+% continuation after the call. So the typeinfo variables will always be born
+% before any continuation where they are needed.
 %
 % A typeinfo variable becomes dead after both the following conditions
 % are true:
@@ -108,28 +103,28 @@
 % (2) is implemented by adding the typeinfo variables for the types of the
 %     nonlocals to the nonlocals for the purposes of computing liveness.
 %
-% In some circumstances, one of which is tests/debugger/resume_typeinfos.m,
-% it is possible for a typeinfo variable to be born in a goal without that
+% In some circumstances, one of which is tests/debugger/resume_typeinfos.m, it
+% is possible for a typeinfo variable to be born in a goal without that
 % typeinfo variable appearing anywhere else in the procedure body.
-% Nevertheless, with typeinfo liveness, we must consider such variables
-% to be born in such goals even though they do not appear in the nonlocals set
-% or in the instmap delta. (If they were not born, it would be an error for
-% them to die, and die they will, at the last occurrence of a variable whose
-% type they (partially) describe.) The special case solution we adopt for
-% such situations is that we consider the first appearance of a typeinfo
-% variable in the typeinfo-completed nonlocals set of a goal to be a value
-% giving occurrence, even if the typeinfo does not appear in the instmap delta.
-% This is safe, since with our current scheme for handling polymorphism,
-% the first appearance will in fact always ground the typeinfo.
+% Nevertheless, with typeinfo liveness, we must consider such variables to be
+% born in such goals even though they do not appear in the nonlocals set or in
+% the instmap delta. (If they were not born, it would be an error for them to
+% die, and die they will, at the last occurrence of a variable whose type they
+% (partially) describe.) The special case solution we adopt for such
+% situations is that we consider the first appearance of a typeinfo variable
+% in the typeinfo-completed nonlocals set of a goal to be a value giving
+% occurrence, even if the typeinfo does not appear in the instmap delta.  This
+% is safe, since with our current scheme for handling polymorphism, the first
+% appearance will in fact always ground the typeinfo.
 %
-% So typeinfo variables will always be born before they are needed, and
-% die only when no other variable needing them will be live, so the
-% invariant holds.
-%
+% So typeinfo variables will always be born before they are needed, and die
+% only when no other variable needing them will be live, so the invariant
+% holds.
+
 % Quantification notes:
 %
 % If a variable is not live on entry to a goal, but the goal gives it a value,
-% the code of this module assumes that
+% the code of this module assumes that:
 %
 % (a) any parallel goals also give it a value, or
 % (b) the variable is local to this goal and hence does not occur in parallel
@@ -140,21 +135,20 @@
 % If some of the parallel goals cannot succeed, the first pass will include
 % the variable in their post-birth sets.
 %
-% If a variable occurs in the nonlocal set of the goal, but is actually
-% local to the goal, then any occurrence of that variable in the postbirth
-% sets of parallel goals will lead to an inconsistency, because the variable
-% will not die on those parallel paths, but will die on the path that
-% actually gives a value to the variable.
+% If a variable occurs in the nonlocal set of the goal, but is actually local
+% to the goal, then any occurrence of that variable in the postbirth sets of
+% parallel goals will lead to an inconsistency, because the variable will not
+% die on those parallel paths, but will die on the path that actually gives a
+% value to the variable.
 %
-% The nonlocal set of a goal is in general allowed to overapproximate the
-% true set of nonlocal variables of the goal. Since this module requires
-% *exact* information about nonlocals, it must recompute the nonlocal sets
-% before starting.
+% The nonlocal set of a goal is in general allowed to overapproximate the true
+% set of nonlocal variables of the goal. Since this module requires *exact*
+% information about nonlocals, it must recompute the nonlocal sets before
+% starting.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__liveness.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -163,6 +157,8 @@
 
 :- import_module io.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
     % Add liveness annotations to the goal of the procedure. This consists of
     % the {pre,post}{birth,death} sets and resume point information.
@@ -204,11 +200,13 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
+:- import_module svset.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     requantify_proc(!ProcInfo),
@@ -1024,7 +1022,7 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
             !:GoalExpr = switch(Var, CanFail, Cases)
         ;
             MaybeBornVarsDelayedDead = no,
-            error("delay_death_goal_expr: empty switch")
+            unexpected(this_file, "delay_death_goal_expr: empty switch")
         )
     ;
         !.GoalExpr = not(Goal0),
@@ -1055,7 +1053,7 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
         !:GoalExpr = scope(Reason, Goal)
     ;
         !.GoalExpr = shorthand(_),
-        error("delay_death_goal_expr: shorthand")
+        unexpected(this_file, "delay_death_goal_expr: shorthand")
     ).
 
 :- pred delay_death_conj(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1339,7 +1337,7 @@ detect_resume_points_in_conj([Goal0 | Goals0], [Goal | Goals],
     live_info::in, set(prog_var)::in, set(prog_var)::out) is det.
 
 detect_resume_points_in_non_disj([], _, _, _, _, _, _) :-
-    error("empty nondet disjunction").
+    unexpected(this_file, "empty nondet disjunction").
 detect_resume_points_in_non_disj([Goal0 | Goals0], [Goal | Goals],
         Liveness0, Liveness, LiveInfo, ResumeVars0, Needed) :-
     (
@@ -1499,7 +1497,7 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
         string__append_list(PaddedRestNames, RestNames),
         Msg = "branches of " ++ GoalType ++ " disagree on liveness\n" ++
             "First: " ++ FirstNames ++ "\n" ++ "Rest:  " ++ RestNames ++ "\n",
-        error(Msg)
+        unexpected(this_file, Msg)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1516,14 +1514,13 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
     ;
         unexpected(this_file, "initial_liveness: list length mismatch")
     ),
-
-        % If a variable is unused in the goal, it shouldn't be
-        % in the initial liveness. (If we allowed it to start
-        % live, it wouldn't ever become dead, because it would
-        % have to be used to be killed).
-        % So we intersect the headvars with the non-locals and
-        % (if doing typeinfo liveness calculation) their
-        % typeinfo vars.
+    %
+    % If a variable is unused in the goal, it shouldn't be in the initial
+    % liveness. (If we allowed it to start live, it wouldn't ever become dead,
+    % because it would have to be used to be killed).  So we intersect the
+    % headvars with the non-locals and (if doing typeinfo liveness calculation)
+    % their typeinfo vars.
+    %
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_goal(ProcInfo, _Goal - GoalInfo),
     goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
@@ -1541,7 +1538,7 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
 initial_liveness_2([], [], [], _ModuleInfo, !Liveness).
 initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo, !Liveness) :-
     ( mode_to_arg_mode(ModuleInfo, M, T, top_in) ->
-        set__insert(!.Liveness, V, !:Liveness)
+        svset__insert(V, !Liveness)
     ;
         true
     ),
@@ -1617,7 +1614,7 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
         ModuleInfo = LiveInfo ^ module_info,
         mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
     ->
-        set__insert(!.ValueVars, Var, !:ValueVars)
+        svset__insert(Var, !ValueVars)
     ;
         true
     ),
@@ -1670,4 +1667,6 @@ live_info_init(ModuleInfo, TypeInfoLiveness, VarTypes, RttiVarMaps, VarSet,
 
 this_file = "liveness.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module liveness.
 %-----------------------------------------------------------------------------%

@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: ml_code_util.m
-% Main author: fjh
+% File: ml_code_util.m.
+% Main author: fjh.
 
 % This module is part of the MLDS code generator.
 % It defines the ml_gen_info type and its access routines.
@@ -34,7 +34,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Various utility routines used for MLDS code generation.
+% Various utility routines used for MLDS code generation
 %
 
     % Generate an MLDS assignment statement.
@@ -106,7 +106,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for generating expressions.
+% Routines for generating expressions
 %
 
     % conjunction: ml_gen_and(X,Y) = binop((and), X, Y),
@@ -119,7 +119,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for generating types.
+% Routines for generating types
 %
 
     % Convert a Mercury type to an MLDS type.
@@ -181,7 +181,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for generating labels and entity names.
+% Routines for generating labels and entity names
 %
 
     % Generate the mlds__entity_name and module name for the entry point
@@ -434,8 +434,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Routines for dealing with the environment pointer
-% used for nested functions.
+% Routines for dealing with the environment pointer used for nested functions
 %
 
     % Return an rval for a pointer to the current environment (the set of local
@@ -748,7 +747,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module counter.
-:- import_module require.
 :- import_module set.
 :- import_module stack.
 :- import_module string.
@@ -1350,7 +1348,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             string__append_list(["ml_gen_pred_label:\n",
                 "cannot make label for special pred `",
                 PredName, "'"], ErrorMessage),
-            error(ErrorMessage)
+            unexpected(this_file, ErrorMessage)
         )
     ;
         (
@@ -1623,7 +1621,7 @@ ml_gen_success(model_non, Context, [CallCont], !Info) :-
     ml_gen_call_current_success_cont(Context, CallCont, !Info).
 
 ml_gen_failure(model_det, _, _, !Info) :-
-    error("ml_code_gen: `fail' has determinism `det'").
+    unexpected(this_file, "ml_gen_failure: `fail' has determinism `det'").
 ml_gen_failure(model_semi, Context, [SetSuccessFalse], !Info) :-
     %
     % semidet fail:
@@ -2565,11 +2563,11 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
     ;
         HeadVars = [],
         HeadModes = [_ | _],
-        error("select_output_vars: length mismatch")
+        unexpected(this_file, "select_output_vars: length mismatch")
     ;
         HeadVars = [_ | _],
         HeadModes = [],
-        error("select_output_vars: length mismatch")
+        unexpected(this_file, "select_output_vars: length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2584,12 +2582,14 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
     %   etc.
     % Hence the offset to add to the argument number
     % to get the field number is 2.
+    %
 ml_closure_arg_offset = 2.
 
     % This function returns the offset to add to the argument
     % number of a typeclass_info arg to get its field number.
     % The Nth extra argument to pass to the method is
     % in field N of the typeclass_info, so the offset is zero.
+    %
 ml_typeclass_info_arg_offset = 0.
 
     % This function returns the offset to add to the method number
@@ -2607,6 +2607,7 @@ ml_typeclass_info_arg_offset = 0.
     %   description in notes/type_class_transformation.html for
     %   more information about the layout of base_typeclass_infos.)
     % Hence the offset is 4.
+    %
 ml_base_typeclass_info_method_offset = 4.
 
 %-----------------------------------------------------------------------------%
@@ -2634,6 +2635,6 @@ fixup_builtin_module(ModuleName0) = ModuleName :-
 
 this_file = "ml_code_util.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module ml_code_util.
-
 %-----------------------------------------------------------------------------%

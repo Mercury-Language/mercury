@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: par_conj.m:
-%
+% File: par_conj.m.
 % Main authors: conway.
 %
 % The predicates of this module generate code for parallel conjunctions.
@@ -28,27 +27,27 @@
 %     in the code:  conjunctions must not be reordered beyond the
 %     minimum necessary for mode correctness.
 %     This is justified for reasons performance modeling and ensuring
-%     predicatable termination properties.
+%     predictable termination properties.
 %     Parallel conjunction does not of itself suggest any information
 %     about which order two goals should be executed, however if
 %     coroutining (not currently implemented) is being used, then the
-%     data dependancies between the two goals will constrain the order
+%     data dependencies between the two goals will constrain the order
 %     of execution at runtime.
 %
 %   [Mode correctness]
 %   - `,'/2 has a *sequential* behaviour `A, B' proves `A' *then*
 %     proves `B'. Mode analysis only allows unidirectional data-
-%     dependancies for conjunction. In independant and-parallelism,
+%     dependencies for conjunction. In independent and-parallelism,
 %     for the goal `A & B', mode analysis requires that `A' and `B'
 %     bind disjoint sets of free variables (or when mode analysis
 %     supports it properly, disjoint sets of type-nodes), and that
 %     `A' does not require any bindings made in `B' and vice versa.
 %     In dependant and-parallelism, mode analysis requires that each
-%     variable (or type-node) have a unique producer (as in independant
+%     variable (or type-node) have a unique producer (as in independent
 %     and-parallelism), but an and-parallel goal may use bindings made
 %     in conjoined goals which may lead to coroutining.
 %
-% The current implementation only supports independant and-parallelism.
+% The current implementation only supports independent and-parallelism.
 % The syntax for parallel conjunction is `&'/2 which behaves like `,'/2
 % in that sequences get flattened (ie A & (B & C) <=> (A & B) & C).
 %
@@ -56,7 +55,7 @@
 % for sequential conjunction.
 %
 % Mode analysis schedules a parallel conjunction if all the conjuncts can
-% be scheduled independantly, and they bind disjoint sets of variables
+% be scheduled independently, and they bind disjoint sets of variables
 % (type-nodes). This is done by mode checking each conjunct with the same
 % initial instmap and `locking' (as is done for the nonlocal variables of a
 % negation[1]) any variables that get bound in that conjunct before
@@ -64,7 +63,7 @@
 % the conjunction the final instmaps from the conjuncts are merged by unifying
 % them. Since the variable `locking' ensures that the variables bound by each
 % conjunct are distinct from those bound by the other conjuncts, the
-% unification of the instmaps is guarenteed to succeed.
+% unification of the instmaps is guaranteed to succeed.
 %
 % In principle, the determinism of a parallel conjunction is derived from
 % its conjuncts in the same way as the determinism of a conjunction but
@@ -84,12 +83,12 @@
 % initialization code which creates a term on the heap to be used for
 % controlling the synchronization of the conjuncts and the code for the
 % conjuncts each proceeded by a command to start the conjunct as a new
-% thead of execution (except the last which executes in the "parent"
+% thread of execution (except the last which executes in the "parent"
 % thread), and each succeeded by a command that signals that the execution
 % of the conjunct has completed and terminates the thread (except for
 % the "parent" thread which suspends till all the other parallel conjuncts
 % have terminated, when it will be woken up). The synchronization terms
-% are refered to in the code as 'sync_term's.
+% are referred to in the code as 'sync_term's.
 %
 % The runtime support for parallel conjunction is documented in the runtime
 % directory in mercury_context.{c,h}.
@@ -107,9 +106,12 @@
 
 :- import_module list.
 
+%---------------------------------------------------------------------------%
+
 :- pred generate_par_conj(list(hlds_goal)::in, hlds_goal_info::in,
     code_model::in, code_tree::out, code_info::in, code_info::out) is det.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -119,6 +121,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.tree.
@@ -132,7 +135,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 
@@ -143,10 +145,10 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         CodeModel = model_det
     ;
         CodeModel = model_semi,
-        error("sorry, semidet parallel conjunction not implemented")
+        sorry(this_file, "semidet parallel conjunction not implemented")
     ;
         CodeModel = model_non,
-        error("sorry, nondet parallel conjunction not implemented")
+        sorry(this_file, "nondet parallel conjunction not implemented")
     ),
     code_info__get_globals(!.CI, Globals),
     globals__lookup_int_option(Globals, sync_term_size, STSize),
@@ -265,11 +267,11 @@ copy_outputs(CI, [Var | Vars], SpSlot, Code) :-
         NegSlotNum = (- SlotNum),
         DestSlot = field(yes(0), lval(SpSlot), const(int_const(NegSlotNum)))
     ;
-        error("par conj in model non procedure!")
+        unexpected(this_file,
+            "copy_outputs: par conj in model non procedure!")
     ),
     ThisCode = node([
-        assign(DestSlot, lval(SrcSlot))
-            - "copy result to parent stackframe"
+        assign(DestSlot, lval(SrcSlot)) - "copy result to parent stackframe"
     ]),
     Code = tree(ThisCode, RestCode),
     copy_outputs(CI, Vars, SpSlot, RestCode).
@@ -290,3 +292,13 @@ place_all_outputs([Var | Vars], !CI) :-
         code_info__set_var_location(Var, Slot, !CI)
     ),
     place_all_outputs(Vars, !CI).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "par_conj_gen.m".
+
+%----------------------------------------------------------------------------%
+:- end_module par_conj_gen.
+%----------------------------------------------------------------------------%

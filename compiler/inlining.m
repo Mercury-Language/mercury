@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: inlining.m.
 % Main author: conway.
 %
 % This module inlines
@@ -74,10 +75,9 @@
 % Due to the way in which we generate code for model_non pragma_foreign_code,
 % procedures whose body is such a pragma_foreign_code must NOT be inlined.
 
-:- module transform_hlds__inlining.
-
 %-----------------------------------------------------------------------------%
 
+:- module transform_hlds__inlining.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -89,6 +89,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+
+%-----------------------------------------------------------------------------%
 
 :- pred inlining(module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -151,6 +153,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.
@@ -166,7 +169,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module term.
@@ -174,7 +176,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % this structure holds option values, extracted from the globals
+    % This structure holds option values, extracted from the globals.
+    %
 :- type inline_params
     --->    params(
                 simple                  :: bool,
@@ -231,9 +234,9 @@ inlining(!ModuleInfo, !IO) :-
     ;
         map__init(NeededMap)
     ),
-
+    %
     % Build the call graph and extract the topological sort.
-    % Note: the topological sort returns a list of SCCs. Clearly, we want to
+    % NOTE: the topological sort returns a list of SCCs. Clearly, we want to
     % process the SCCs bottom to top (which is the order that they are
     % returned), but it is not easy to guess the best way to flatten each SCC
     % to achieve the best result. The current implementation just uses the
@@ -241,7 +244,7 @@ inlining(!ModuleInfo, !IO) :-
     % sophisticated approach would be to break the cycle so that
     % the procedure(s) that are called by higher SCCs are processed last,
     % but we do not implement that yet.
-
+    %
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
@@ -583,8 +586,8 @@ inlining__inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
         GoalInfo = GoalInfo0
     ;
         Goal0 = shorthand(_),
-        % these should have been expanded out by now
-        error("inlining__inlining_in_goal: unexpected shorthand")
+        % These should have been expanded out by now.
+        unexpected(this_file, "inlining_in_goal: unexpected shorthand")
     ;
         Goal0 = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
         inlining__inlining_in_call(PredId, ProcId, ArgVars, Builtin,
@@ -778,7 +781,8 @@ inlining__get_type_substitution(HeadTypes, ArgTypes,
         ->
             TypeSubn = TypeSubn1
         ;
-            error("inlining.m: type unification failed")
+            unexpected(this_file,
+                "get_type_substitution: type unification failed")
         )
     ).
 
@@ -991,4 +995,11 @@ ok_to_inline_language(c, c).
 %   ok_to_inline_language(c_slash_cplusplus, cplusplus).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "inlining.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module inlining.
 %-----------------------------------------------------------------------------%

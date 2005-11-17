@@ -5,23 +5,24 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+% 
+% File: ilds.m.
+% Main author: trd.
 %
 % ilds - The IL instruction set.
-% Main author: trd.
 %
 % The IL instruction set is documented in the Microsoft .NET Framework SDK.
 %
 % See
-%   http://msdn.microsoft.com/net/
+%   <http://msdn.microsoft.com/net/>
 % for more info, including a downloadable (Windows only) version of the
 % SDK available here:
-%   http://msdn.microsoft.com/downloads/default.asp?
-%       URL=/code/sample.asp?url=/msdn-files/027/000/976/msdncompositedoc.xml
+%   <http://msdn.microsoft.com/downloads/default.asp?
+%       URL=/code/sample.asp?url=/msdn-files/027/000/976/msdncompositedoc.xml>
 %
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend__ilds.
-
 :- interface.
 
 :- import_module assoc_list.
@@ -29,17 +30,21 @@
 :- import_module list.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
     % Returns the maximum stack usage of a list of IL instructions.
     %
 :- func calculate_max_stack(list(ilds__instr)) = int.
 
-    % A method parameter
+    % A method parameter.
+    %
 :- type param == pair(
             ilds__type,     % type of the parameter
             maybe(ilds__id) % name of the parameter (if any)
         ).
 
-    % A method signature
+    % A method signature.
+    % 
 :- type signature
     --->    signature(
                 call_conv,  % calling convention
@@ -48,6 +53,7 @@
             ).
 
     % A method reference.
+    %
 :- type methodref
     --->    methoddef(
                 call_conv,
@@ -69,14 +75,15 @@
             ).
 
     % A field reference.
+    %
 :- type fieldref
     --->    fieldref(ilds__type, class_member_name).
 
-% -------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
     % If an assembly name is empty it is a reference to a local type
     % in the same assembly.
-
+    %
 :- type structured_name
     --->    structured_name(
                 assembly_name,          % The name of the assembly.
@@ -94,11 +101,11 @@
                                         % not a nested class.
             ).
 
-    % If we are referencing a sub-module, then we need to record two
-    % names.  One is the sub-module name, which is used for
-    % references from the parent module, and the other is the
-    % assembly name for when the name is referenced from anywhere
-    % else.
+    % If we are referencing a sub-module, then we need to record two names.
+    % One is the sub-module name, which is used for references from the parent
+    % module, and the other is the assembly name for when the name is
+    % referenced from anywhere else.
+    % 
 :- type assembly_name
     --->    module(
                 il_module_name              :: ilds__id,
@@ -119,21 +126,25 @@
     % "Bar1.Bar2." is the namespace qualiifer,
     % "Baz1/Baz2/" is a class qualifier,
     % and "Quux" is the name of the nested class.
+    %
 :- type class_name == structured_name.
 
     % A assembly-qualified namespace name is a structured name.
-    % E.g. the ILASM name [Foo]Bar1.Bar2 is
+    % e.g. the ILASM name [Foo]Bar1.Bar2 is
     % structured_name("Foo", ["Bar1", "Bar2"], []).
+    %
 :- type namespace_name == structured_name.
 
-    % A member of a class
+    % A member of a class.
+    %
 :- type class_member_name
     --->    class_member_name(
                 class_name,
                 member_name
             ).
 
-    % The name of a member (method, field, event or property)
+    % The name of a member (method, field, event or property).
+    %
 :- type member_name
     --->    ctor            % constructor (initializes instances
                             % of this class)
@@ -143,7 +154,8 @@
 
     ;       id(ilds__id).   % ordinary method or field name
 
-    % calling conventions.
+    % Calling conventions.
+    % 
 :- type call_conv
     --->    call_conv(
                 bool,       % is this an instance method call?
@@ -162,7 +174,8 @@
     % was written, we should update this section (indeed, we should
     % update all of ilds.m and ilasm.m).
 
-    % return types
+    % Return types.
+    %
 :- type ret_type
     --->    void
     ;       simple_type(simple_type).
@@ -213,6 +226,7 @@
     % An ID must start with "<", "_" or an alphabetic character.
     % This initial character can be followed by any number of alphabetic
     % characters, decimal digits, ">", "<", or "_".
+    %
 :- type ilds__id == string.
 
     % XXX Should really limit this, but we don't really support
@@ -232,6 +246,7 @@
     ;       unsigned.  % or unordered for comparisons
 
     % A variable (local or argument) can be referred to by name or index
+    %
 :- type variable
     --->    name(ilds__id)
     ;       index(index).
@@ -244,10 +259,12 @@
 
     % Local variables, they all have names.
     % This should probably be the same as params.
+    %
 :- type locals == assoc_list(ilds__id, ilds__type).
 
     % Blocks can be just scope for locals, can surround a block of
     % handwritten code, or can introduce try or catch code.
+    %
 :- type blocktype
     --->    scope(locals)
             % scope just introduces a scope for local variables
@@ -375,15 +392,20 @@
 
     % Locations marked as dead by ann_dead -- positive numbers are stack slots,
     % negative numbers are locals.
+    %
 :- type location == int.
 
     % Static single assignment nodes are generated, numbered from 0,
     % by ann_def and ann_phi.
+    %
 :- type node_number == int.
 
 :- type label == string.
 
-    % Utility functions and predicates.
+%----------------------------------------------------------------------------%
+%
+% Utility functions and predicates
+%
 
     % Get the namespace portion of a class name.
     %
@@ -407,12 +429,17 @@
 :- func append_nested_class_name(ilds__class_name, ilds__nested_class_name) =
     ilds__class_name.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module libs.compiler_util.
 
 :- import_module int.
 :- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
         = SuffixName :-
@@ -614,4 +641,6 @@ get_calli_stack_difference(signature(CallConv, RetType, Params)) = Diff :-
 
 this_file = "ilds.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module ilds.
 %-----------------------------------------------------------------------------%

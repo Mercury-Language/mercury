@@ -6,11 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: equiv_type.m.
+% Main author: fjh.
+
 % This module contains a parse-tree to parse-tree transformation
 % that expands equivalence types. It also expands away `with_type`
 % and `with_inst` annotations on predicate and function type declarations.
 
-% main author: fjh
+%-----------------------------------------------------------------------------%
 
 :- module parse_tree__equiv_type.
 :- interface.
@@ -113,7 +116,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module svmap.
@@ -988,15 +990,14 @@ record_expanded_item_2(ItemId, ModuleName - Items0,
 finish_recording_expanded_items(_, no, no, no).
 finish_recording_expanded_items(_, no, yes(Info), yes(Info)).
 finish_recording_expanded_items(_, yes(_), no, _) :-
-    error("finish_recording_expanded_items").
+    unexpected(this_file, "finish_recording_expanded_items").
 finish_recording_expanded_items(Item, yes(_ - ExpandedItems),
         yes(Info0), yes(Info)) :-
     recompilation__record_expanded_items(Item, ExpandedItems, Info0, Info).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error(eqv_error::in,
-    io::di, io::uo) is det.
+:- pred report_error(eqv_error::in, io::di, io::uo) is det.
 
 report_error(circular_equivalence(Item) - Context, !IO) :-
     (
@@ -1051,4 +1052,6 @@ report_error(non_matching_with_type_with_inst(SymName, PredOrFunc) - Context,
 
 this_file = "equiv_type.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module equiv_type.
 %-----------------------------------------------------------------------------%

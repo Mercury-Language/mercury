@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: continuation_info.m.
 % Main author: trd.
 % Extensive modifications by zs.
-%
+
 % This file defines the data structures the code generator uses to collect
 % information that will later be converted into layout tables for accurate
 % garbage collection, stack tracing, execution tracing, deep profiling and
@@ -50,7 +50,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__continuation_info.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -73,8 +72,11 @@
 :- import_module set.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
     % Information for any procedure, includes information about the
     % procedure itself, and any internal labels within it.
+    %
 :- type proc_layout_info
     --->    proc_layout_info(
                 rtti_proc_label     :: rtti_proc_label,
@@ -148,7 +150,8 @@
         ).
 
     % Information about the labels internal to a procedure.
-:- type proc_label_layout_info  ==  map(int, internal_layout_info).
+    %
+:- type proc_label_layout_info == map(int, internal_layout_info).
 
     % Information for an internal label.
     %
@@ -224,6 +227,7 @@
     % possible for both fields to be set. In this case, stack_layout.m
     % will take the union of the relevant info. If neither field is set,
     % then the label's layout is required only for stack tracing.
+    %
 :- type internal_layout_info
     --->    internal_layout_info(
                 maybe(trace_port_layout_info),
@@ -247,6 +251,7 @@
             ).
 
     % Information about the layout of live data for a label.
+    %
 :- type layout_label_info
     --->    layout_label_info(
                 set(layout_var_info),
@@ -447,7 +452,7 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
         ReturnLabel = internal(ReturnLabelNum, _)
     ;
         ReturnLabel = entry(_, _),
-        error("process_continuation: bad return")
+        unexpected(this_file, "process_continuation: bad return")
     ),
     ( map__search(!.Internals, ReturnLabelNum, Internal0) ->
         Internal0 = internal_layout_info(Port0, Resume0, Return0)
@@ -784,7 +789,7 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
                 [s("find_typeinfos_for_tvars"),
                 s("can't find rval for type_info var"),
                 s(VarString)], ErrStr),
-            error(ErrStr)
+            unexpected(this_file, ErrStr)
         )
     ),
     list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
@@ -886,4 +891,6 @@ live_value_type(trace_data, unwanted).
 
 this_file = "continuation_info.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module continuation_info.
 %-----------------------------------------------------------------------------%

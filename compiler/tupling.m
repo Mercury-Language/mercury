@@ -94,6 +94,7 @@
     is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -125,7 +126,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.
-:- use_module mdbcomp__program_representation.
+:- use_module mdbcomp.program_representation.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -184,10 +185,8 @@ tuple_arguments_2(!ModuleInfo, TraceCounts0, !IO) :-
         optimize_saved_vars_cell_fv_load_cost, FieldVarLoadCost),
     globals__lookup_int_option(Globals,
         optimize_saved_vars_cell_fv_store_cost, FieldVarStoreCost),
-    globals__lookup_int_option(Globals,
-        tuple_costs_ratio, CostsRatio),
-    globals__lookup_int_option(Globals,
-        tuple_min_args, MinArgsToTuple),
+    globals__lookup_int_option(Globals, tuple_costs_ratio, CostsRatio),
+    globals__lookup_int_option(Globals, tuple_min_args, MinArgsToTuple),
     % These are the costs for untupled variables.  We just assume it is
     % the lesser of the cell and field variable costs (usually the field
     % variable costs should be smaller).
@@ -1980,3 +1979,7 @@ goal_path_step_to_mdbcomp_goal_path_step(
 :- func this_file = string.
 
 this_file = "tupling.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module tupling.
+%-----------------------------------------------------------------------------%

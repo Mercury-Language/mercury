@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: deep_profiling.m.
 % Main author: conway.
 %
 % This module applies the deep profiling transformation described in the paper
@@ -15,14 +16,16 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__deep_profiling.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 
+%-----------------------------------------------------------------------------%
+
 :- pred apply_deep_profiling_transformation(module_info::in, module_info::out)
     is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -62,6 +65,8 @@
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 apply_deep_profiling_transformation(!ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -1822,4 +1827,6 @@ record_hlds_proc_static(ProcStatic, ExcpVars, !ProcInfo) :-
 
 this_file = "deep_profiling.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module deep_profiling.
 %-----------------------------------------------------------------------------%

@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% optimize.m - LLDS to LLDS optimizations.
-
+% File: optimize.m.
 % Main author: zs.
+
+% This module contains LLDS to LLDS optimizations.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__optimize.
-
 :- interface.
 
 :- import_module ll_backend.global_data.
@@ -22,12 +22,15 @@
 :- import_module io.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 :- pred optimize_main(global_data::in,
     list(c_procedure)::in, list(c_procedure)::out, io::di, io::uo) is det.
 
 :- pred optimize__proc(global_data::in, c_procedure::in, c_procedure::out,
     io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -36,6 +39,7 @@
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.continuation_info.
@@ -61,10 +65,11 @@
 :- import_module dir.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 optimize_main(GlobalData, !Procs, !IO) :-
     list__map_foldl(optimize__proc(GlobalData), !Procs, !IO).
@@ -143,7 +148,7 @@ optimize__init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0,
         ( MkdirRes = ok(0) ->
             true
         ;
-            error("cannot make " ++ opt_subdir_name)
+            unexpected(this_file, "cannot make " ++ opt_subdir_name)
         ),
         FileName = BaseName ++ ".opt0",
         io__open_output(FileName, Res, !IO),
@@ -155,7 +160,7 @@ optimize__init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0,
             io__set_output_stream(OutputStream, _, !IO),
             io__close_output(FileStream, !IO)
         ;
-            error("cannot open " ++ FileName)
+            unexpected(this_file, "cannot open " ++ FileName)
         )
     ;
         OptDebugInfo = no_opt_debug_info
@@ -201,7 +206,7 @@ optimize__maybe_opt_debug(Instrs, Counter, Msg, ProcLabel, !OptDebugInfo,
             io__close_output(FileStream, !IO)
         ;
             ErrorMsg = "cannot open " ++ OptFileName,
-            error(ErrorMsg)
+            unexpected(this_file, ErrorMsg)
         ),
         (
             Same = yes,
@@ -585,4 +590,12 @@ escape_dir_char(Char, !Str) :-
         !:Str = !.Str ++ char_to_string(Char)
     ).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "optimize".
+
+%-----------------------------------------------------------------------------%
+:- end_module optimize.
 %-----------------------------------------------------------------------------%

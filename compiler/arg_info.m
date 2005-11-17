@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: arg_info.m
-% main author: fjh
+% File: arg_info.m
+% Main author: fjh.
 
 % This module is one of the pre-passes of the code generator.
 % It initializes the arg_info field of the proc_info structure in the HLDS,
@@ -34,6 +34,8 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
     % Annotate every non-aditi procedure in the module with information
     % about its argument passing interface.
@@ -112,6 +114,7 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
+:- import_module libs.compiler_util.
 
 :- import_module std_util.
 :- import_module map.
@@ -172,25 +175,24 @@ generate_proc_arg_info(ArgTypes, ModuleInfo, !ProcInfo) :-
 
     % This is the useful part of the code ;-).
     %
-    % This code is one of the places where we make assumptions
-    % about the calling convention.  This is the only place in
-    % the compiler that makes such assumptions, but there are
-    % other places scattered around the runtime and the library
-    % which also rely on it.
+    % This code is one of the places where we make assumptions about the
+    % calling convention.  This is the only place in the compiler that makes
+    % such assumptions, but there are other places scattered around the
+    % runtime and the library that also rely on it.
     %
     % We assume all input arguments always go in sequentially numbered
-    % registers starting at register number 1. We also assume that
-    % all output arguments go in sequentially numbered registers
-    % starting at register number 1, except for model_semi procedures,
-    % where the first register is reserved for the result and hence
-    % the output arguments start at register number 2.
+    % registers starting at register number 1. We also assume that all output
+    % arguments go in sequentially numbered registers starting at register
+    % number 1, except for model_semi procedures, where the first register is
+    % reserved for the result and hence the output arguments start at register
+    % number 2.
     %
-    % We allocate unused args as if they were outputs. The calling
-    % convention requires that we allocate them a register, and the choice
-    % should not matter since unused args should be rare. However, we
-    % do have to make sure that all the predicates in this module
-    % implement this decision consistently. (No code outside this module
-    % should know about the outcome of this decision.)
+    % We allocate unused args as if they were outputs. The calling convention
+    % requires that we allocate them a register, and the choice should not
+    % matter since unused args should be rare. However, we do have to make
+    % sure that all the predicates in this module implement this decision
+    % consistently. (No code outside this module should know about the outcome
+    % of this decision.)
     %
 make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
     ( CodeModel = model_semi ->
@@ -217,21 +219,21 @@ make_arg_infos_list([Mode | Modes], [Type | Types], !.InReg, !.OutReg,
     ArgInfo = arg_info(ArgReg, ArgMode),
     make_arg_infos_list(Modes, Types, !.InReg, !.OutReg, ModuleInfo, ArgInfos).
 make_arg_infos_list([], [_|_], _, _, _, _) :-
-    error("make_arg_infos_list: length mis-match").
+    unexpected(this_file, "make_arg_infos_list: length mismatch").
 make_arg_infos_list([_|_], [], _, _, _, _) :-
-    error("make_arg_infos_list: length mis-match").
+    unexpected(this_file, "make_arg_infos_list: length mismatch").
 
 %---------------------------------------------------------------------------%
 
 compute_in_and_out_vars(ModuleInfo, Vars, Modes, Types,
         !:InVars, !:OutVars) :-
     (
-        compute_in_and_out_vars_2(ModuleInfo,
-            Vars, Modes, Types, !:InVars, !:OutVars)
+        compute_in_and_out_vars_2(ModuleInfo, Vars, Modes, Types,
+            !:InVars, !:OutVars)
     ->
         true
     ;
-        error("compute_in_and_out_vars: length mismatch")
+        unexpected(this_file, "compute_in_and_out_vars: length mismatch")
     ).
 
 :- pred compute_in_and_out_vars_2(module_info::in,
@@ -257,7 +259,7 @@ unify_arg_info(model_det,
 unify_arg_info(model_semi,
     [arg_info(1, top_in), arg_info(2, top_in)]).
 unify_arg_info(model_non, _) :-
-    error("arg_info: nondet unify!").
+    unexpected(this_file, "unify_arg_info: nondet unify!").
 
 %---------------------------------------------------------------------------%
 
@@ -328,7 +330,7 @@ do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
     ->
         true
     ;
-        error("do_partition_proc_args: list length mismatch")
+        unexpected(this_file, "do_partition_proc_args: list length mismatch")
     ).
 
 :- pred partition_proc_args_2(list(prog_var)::in, list(mer_type)::in,
@@ -354,3 +356,13 @@ partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
     ),
     partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
         !Inputs, !Outputs, !Unuseds).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "arg_info.m".
+
+%----------------------------------------------------------------------------%
+:- end_module arg_info.
+%----------------------------------------------------------------------------%

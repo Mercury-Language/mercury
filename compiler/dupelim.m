@@ -5,11 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% dupelim.m - eliminate some duplicate code sequences.
-%
+
+% File: dupelim.m.
 % Author: zs.
-%
+
+% This module eliminate some duplicate code sequences.
+
 % Our algorithm has the following stages.
 %
 % 1.    Divide the code of the procedure into basic blocks.
@@ -42,7 +43,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__dupelim.
-
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -51,9 +51,12 @@
 :- import_module counter.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 :- pred dupelim_main(proc_label::in, counter::in, counter::out,
     list(instruction)::in, list(instruction)::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -68,26 +71,28 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
+:- import_module svmap.
 :- import_module svset.
 
     % A std_map maps a list of standardized instructions to the list
     % of labels whose basic blocks have that standardized form.
-:- type std_map     ==  map(list(instr), list(label)).
+    %
+:- type std_map == map(list(instr), list(label)).
 
     % cluster(Exemplar, OtherLabels) means that references to labels
     % in OtherLabels can be replaced with references to Exemplar
     % once its block has been replaced with the most specific
     % generalization of the blocks started by Exemplar and OtherLabels.
     % OtherLabels must be nonempty.
-:- type cluster     --->    cluster(label, list(label)).
+    %
+:- type cluster ---> cluster(label, list(label)).
 
 dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
     create_basic_blocks(Instrs0, Comments, ProcLabel, !C, _NewLabels,
         LabelSeq0, BlockMap0),
     map__init(StdMap0),
     set__init(Fixed0),
-    dupelim__build_maps(LabelSeq0, BlockMap0, StdMap0, StdMap,
-        Fixed0, Fixed),
+    dupelim__build_maps(LabelSeq0, BlockMap0, StdMap0, StdMap, Fixed0, Fixed),
     map__values(StdMap, StdList),
     find_clusters(StdList, Fixed, [], Clusters),
     (
@@ -121,14 +126,13 @@ dupelim__build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     BlockInfo = block_info(_, _, Instrs, _, _, MaybeFallThrough),
     standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
     ( map__search(!.StdMap, StdInstrs, Cluster) ->
-        map__det_update(!.StdMap, StdInstrs, [Label | Cluster],
-            !:StdMap)
+        svmap__det_update(StdInstrs, [Label | Cluster], !StdMap)
     ;
-        map__det_insert(!.StdMap, StdInstrs, [Label], !:StdMap)
+        svmap__det_insert(StdInstrs, [Label], !StdMap)
     ),
     (
         MaybeFallThrough = yes(FallIntoLabel),
-        set__insert(!.Fixed, FallIntoLabel, !:Fixed)
+        svset__insert(FallIntoLabel, !Fixed)
     ;
         MaybeFallThrough = no
     ),
@@ -232,7 +236,7 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
         ExMaybeFallThrough, UnifiedMaybeFallThrough),
     ExemplarInfo = block_info(ExLabel, ExLabelInstr, UnifiedInstrs,
         ExFallInto, ExSideLabels, UnifiedMaybeFallThrough),
-    map__det_update(!.BlockMap, Exemplar, ExemplarInfo, !:BlockMap),
+    svmap__det_update(Exemplar, ExemplarInfo, !BlockMap),
     process_clusters(Clusters, !LabelSeq, !BlockMap, !ReplMap).
 
     % Given the current form of a basic block (instructions and fallthrough),
@@ -267,7 +271,8 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
         process_elim_labels(ElimLabels, Instrs1, !LabelSeq, BlockMap,
             Exemplar, !ReplMap, Instrs, !MaybeFallThrough)
     ;
-        error("blocks with same standard form don't antiunify")
+        unexpected(this_file,
+            "blocks with same standard form don't antiunify")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -481,7 +486,7 @@ standardize_lval(Lval1, Lval) :-
         Lval = Lval1
     ;
         Lval1 = lvar(_),
-        error("lvar in standardize_lval")
+        unexpected(this_file, "lvar in standardize_lval")
     ).
 
     % Compute the standard form of an rval.
@@ -495,7 +500,7 @@ standardize_rval(Rval1, Rval) :-
         Rval = lval(Lval)
     ;
         Rval1 = var(_),
-        error("var in standardize_rval")
+        unexpected(this_file, "var in standardize_rval")
     ;
         Rval1 = mkword(_, _),
         Rval = Rval1
@@ -858,7 +863,7 @@ most_specific_rval(Rval1, Rval2, Rval) :-
         Rval = lval(Lval)
     ;
         Rval1 = var(_),
-        error("var in most_specific_rval")
+        unexpected(this_file, "var in most_specific_rval")
     ;
         Rval1 = mkword(_, _),
         Rval2 = Rval1,
@@ -890,4 +895,6 @@ most_specific_rval(Rval1, Rval2, Rval) :-
 
 this_file = "dupelim.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module dupelim.
 %-----------------------------------------------------------------------------%

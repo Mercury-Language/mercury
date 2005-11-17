@@ -17,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module libs__handle_options.
-
 :- interface.
 
 :- import_module libs.globals.
@@ -28,7 +27,10 @@
 :- import_module io.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % handle_options(Args, Errors, OptionArgs, NonOptionArgs, Link).
+    %
 :- pred handle_options(list(string)::in, list(string)::out, list(string)::out,
     list(string)::out, bool::out, io::di, io::uo) is det.
 
@@ -72,6 +74,7 @@
 :- pred grade_directory_component(globals::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -89,6 +92,8 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
     % io__write_string("original arguments\n", !IO),
@@ -2280,4 +2285,8 @@ convert_dump_alias("paths", "cP").
 convert_dump_alias("petdr", "din").
 convert_dump_alias("mm", "bdgvP").      % for debugging minimal model
 convert_dump_alias("osv", "bcdglmnpruvP").  % for debugging
-                        % --optimize-saved-vars-cell
+                                            % --optimize-saved-vars-cell
+
+%-----------------------------------------------------------------------------%
+:- end_module handle_options.
+%-----------------------------------------------------------------------------%

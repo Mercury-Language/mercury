@@ -5,28 +5,26 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: delay_construct.m
-%
 % Author: zs.
-%
-% This module transforms sequences of goals in procedure bodies.
-% It looks for a unification that constructs a ground term followed by
-% primitive goals, at least one of which can fail, and none of which take
-% the variable representing the cell as their input. Such code sequences
-% cause the cell to be constructed even if the following goal would fail,
-% which is wasteful. This module therefore reorders the sequence, moving the
-% construction unification past all the semidet primitives it can.
-%
-% The reason we don't move the construction past calls or composite goals
-% is that this may require storing the input arguments of the construction on
-% the stack, which may cause a slowdown bigger than the speedup available from
-% not having to construct the cell on some execution paths.
-%
+
+% This module transforms sequences of goals in procedure bodies.  It looks for
+% a unification that constructs a ground term followed by primitive goals, at
+% least one of which can fail, and none of which take the variable
+% representing the cell as their input. Such code sequences cause the cell to
+% be constructed even if the following goal would fail, which is wasteful.
+% This module therefore reorders the sequence, moving the construction
+% unification past all the semidet primitives it can.
+
+% The reason we don't move the construction past calls or composite goals is
+% that this may require storing the input arguments of the construction on the
+% stack, which may cause a slowdown bigger than the speedup available from not
+% having to construct the cell on some execution paths.
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__delay_construct.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -34,9 +32,12 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred delay_construct_proc(pred_id::in, proc_id::in, module_info::in,
     proc_info::in, proc_info::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -52,7 +53,6 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 
@@ -171,21 +171,21 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-% We maintain a list of delayed construction unifications that construct ground
-% terms, and the set of variables they define.
+% We maintain a list of delayed construction unifications that construct
+% ground terms, and the set of variables they define.
 %
-% When we find other construction unifications, we add them to the list.
-% It does not matter if they depend on other delayed construction unifications;
+% When we find other construction unifications, we add them to the list.  It
+% does not matter if they depend on other delayed construction unifications;
 % when we put them back into the conjunction, we do so in the original order.
 %
 % There are several reasons why we may not be able to delay a construction
-% unification past a conjunct. The conjunct may not be a primitive goal,
-% or it may be impure; in either case, we must insert all the delayed
-% construction unifications before it. The conjunct may also require the value
-% of a variable defined by a construction unification. In such cases, we could
-% drop before that goal only the construction unifications that define the
-% variables needed by the conjunct, either directly or indirectly through
-% the values required by some of those construction unifications. However,
+% unification past a conjunct. The conjunct may not be a primitive goal, or it
+% may be impure; in either case, we must insert all the delayed construction
+% unifications before it. The conjunct may also require the value of a
+% variable defined by a construction unification. In such cases, we could drop
+% before that goal only the construction unifications that define the
+% variables needed by the conjunct, either directly or indirectly through the
+% values required by some of those construction unifications. However,
 % separating out this set of delayed constructions from the others would
 % require somewhat complex code, and it is not clear that there would be any
 % significant benefit. We therefore insert *all* the delayed constructions
@@ -283,4 +283,6 @@ delay_construct_in_cases([case(Cons, Goal0) | Cases0], InstMap0, DelayInfo,
 
 this_file = "delay_construct.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module delay_construct.
 %-----------------------------------------------------------------------------%

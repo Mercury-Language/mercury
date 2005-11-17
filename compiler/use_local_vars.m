@@ -74,15 +74,18 @@
     int::in, int::in, bool::in, proc_label::in, counter::in, counter::out)
     is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module ll_backend.basic_block.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.livemap.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.opt_util.
-:- import_module parse_tree.error_util.
 
 :- import_module int.
 :- import_module map.
@@ -395,7 +398,8 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
             "substitute_lval_in_defn: mismatch in incr_hp"),
         Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type)
     ;
-        error("substitute_lval_in_defn: unexpected instruction")
+        unexpected(this_file,
+            "substitute_lval_in_defn: unexpected instruction")
     ),
     Instr = Uinstr - Comment.
 
@@ -447,7 +451,8 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
         Uinstr0 = livevals(_)
     ;
         Uinstr0 = block(_, _, _),
-        error("substitute_lval_in_instr_until_defn: found block")
+        unexpected(this_file,
+            "substitute_lval_in_instr_until_defn: found block")
     ;
         Uinstr0 = assign(Lval, _),
         ( Lval = OldLval ->
@@ -532,4 +537,6 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
 
 this_file = "use_local_vars.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module use_local_vars.
 %-----------------------------------------------------------------------------%

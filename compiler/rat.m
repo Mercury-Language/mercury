@@ -82,7 +82,7 @@
 
 :- implementation.
 
-:- import_module exception.
+:- import_module libs.compiler_util.
 
     % The normal form of a rat number has the following
     % properties:
@@ -144,7 +144,7 @@ X / Y = X * rat.reciprocal(Y).
 
 reciprocal(r(Num, Den)) = 
     ( Num = 0  ->
-        throw("rat.reciprocal/1: division by zero")
+        unexpected(this_file, "reciprocal/1: division by zero")
     ;
         r(signum(Num) * Den, int.abs(Num))
     ).
@@ -159,7 +159,7 @@ rat.abs(r(Num, Den)) = r(int.abs(Num), Den).
 
 rat_norm(Num, Den) = Rat :-
     ( Den = 0 ->
-        throw("rat.rat_norm: division by zero")
+        unexpected(this_file, "rat_norm: division by zero")
     ; Num = 0 ->
         Rat = r(0, 1)
     ;
@@ -234,4 +234,13 @@ write_rat(r(Numerator, Denominator), !IO) :-
     io.write_int(Denominator, !IO),
     io.write_char(')', !IO).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file= string.
+
+this_file = "rat.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module rat.
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

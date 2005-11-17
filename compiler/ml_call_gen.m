@@ -6,12 +6,11 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: ml_call_gen.m
-% Main author: fjh
+% File: ml_call_gen.m.
+% Main author: fjh.
 
-% This module is part of the MLDS code generator.
-% It handles code generation of procedures calls,
-% calls to builtins, and other closely related stuff.
+% This module is part of the MLDS code generator.  It handles code generation
+% of procedures calls, calls to builtins, and other closely related stuff.
 
 %-----------------------------------------------------------------------------%
 
@@ -27,6 +26,8 @@
 
 :- import_module bool.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % Generate MLDS code for an HLDS generic_call goal.
     % This includes boxing/unboxing the arguments if necessary.
@@ -114,6 +115,7 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -132,7 +134,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -952,6 +953,12 @@ ml_gen_simple_expr(unary(Op, Expr)) =
 ml_gen_simple_expr(binary(Op, Expr1, Expr2)) =
     binop(Op, ml_gen_simple_expr(Expr1), ml_gen_simple_expr(Expr2)).
 
+%-----------------------------------------------------------------------------%
+
 :- func this_file = string.
 
 this_file = "ml_call_gen.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module ml_call_gen.
+%-----------------------------------------------------------------------------%

@@ -16,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__llds_out.
-
 :- interface.
 
 :- import_module aditi_backend.rl_file.
@@ -34,6 +33,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
     % Given a 'c_file' structure, output the LLDS code inside it
     % into one or more .c files, depending on the setting of the
@@ -176,6 +177,7 @@
 
 :- func explain_stack_slots(stack_slots, prog_varset) = string.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1043,7 +1045,7 @@ output_common_decl_group(TypeNum - CommonDatas, !DeclSet, !IO) :-
         CommonData = common_data(ModuleName, _, TypeAndValue)
     ;
         CommonDatas = [],
-        error("output_common_decl_chunk: empty list")
+        unexpected(this_file, "output_common_decl_chunk: empty list")
     ),
     TypeDeclId = common_type(ModuleName, TypeNum),
     ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
@@ -1090,7 +1092,8 @@ output_common_decl_shorthand_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_decl_shorthand_chunk_entries([], !DeclSet, !IO) :-
-    error("output_common_decl_shorthand_chunk_entries: empty list").
+    unexpected(this_file,
+        "output_common_decl_shorthand_chunk_entries: empty list").
 output_common_decl_shorthand_chunk_entries([CommonData | CommonDatas],
         !DeclSet, !IO) :-
     CommonData = common_data(ModuleName, CellNum, TypeAndValue),
@@ -1121,7 +1124,7 @@ output_common_decl_chunk(ModuleName, TypeNum, CommonDatas, !DeclSet, !IO) :-
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_decl_chunk_entries([], !DeclSet, !IO) :-
-    error("output_common_decl_chunk_entries: empty list").
+    unexpected(this_file, "output_common_decl_chunk_entries: empty list").
 output_common_decl_chunk_entries([CommonData | CommonDatas], !DeclSet, !IO) :-
     CommonData = common_data(ModuleName, CellNum, TypeAndValue),
     TypeNum = common_cell_get_type_num(TypeAndValue),
@@ -1268,7 +1271,7 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         io__write_string("\n", !IO),
         output_reset_line_num(!IO)
     ;
-        error("output_user_foreign_code: unimplemented: " ++
+        unexpected(this_file, "output_user_foreign_code: unimplemented: " ++
             "foreign code other than C")
     ).
 
@@ -1305,7 +1308,7 @@ output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
             output_reset_line_num(!IO)
         )
     ;
-        error("output_user_foreign_code: unexpected: " ++
+        unexpected(this_file, "output_user_foreign_code: unexpected: " ++
             "foreign code other than C")
     ).
 
@@ -1601,7 +1604,7 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
     ;
         Label = internal(_, _),
         % These should have been separated out by group_c_labels.
-        error("output_c_label_init: internal/2")
+        unexpected(this_file, "output_c_label_init: internal/2")
     ),
     io__write_string(TabInitMacro, !IO),
     io__write_string(SuffixOpen, !IO),
@@ -1675,12 +1678,12 @@ output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
 :- pred find_caller_label(list(instruction)::in, label::out) is det.
 
 find_caller_label([], _) :-
-    error("cannot find caller label").
+    unexpected(this_file, "cannot find caller label").
 find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
     ( Instr0 = label(Label) ->
         (
             Label = internal(_, _),
-            error("caller label is internal label")
+            unexpected(this_file, "caller label is internal label")
         ;
             Label = entry(_, _),
             CallerLabel = Label
@@ -1831,7 +1834,7 @@ output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
     ->
         ( decl_set_is_member(pragma_c_struct(StructName), !.DeclSet) ->
             Msg = "struct " ++ StructName ++ " has been declared already",
-            error(Msg)
+            unexpected(this_file, Msg)
         ;
             true
         ),
@@ -2211,7 +2214,7 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
                 output_code_addr(FailCont, !IO)
             ;
                 MaybeFailCont = no,
-                error("output_instruction: no failcont")
+                unexpected(this_file, "output_instruction: no failcont")
             ),
             io__write_string(");\n", !IO)
         ;
@@ -2222,7 +2225,7 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
                 output_code_addr(FailCont, !IO)
             ;
                 MaybeFailCont = no,
-                error("output_instruction: no failcont")
+                unexpected(this_file, "output_instruction: no failcont")
             ),
             io__write_string(");\n", !IO)
         )
@@ -2828,7 +2831,7 @@ output_rval_decls(Lval, !DeclSet, !IO) :-
 output_rval_decls(lval(Lval), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
     output_lval_decls(Lval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
 output_rval_decls(var(_), _, _, _, _, _, _, !IO) :-
-    error("output_rval_decls: unexpected var").
+    unexpected(this_file, "output_rval_decls: unexpected var").
 output_rval_decls(mkword(_, Rval), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
     output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
@@ -3150,15 +3153,16 @@ output_decl_id(common_type(ModuleName, TypeNum), !IO) :-
 output_decl_id(data_addr(DataAddr), !IO) :-
     output_data_addr(DataAddr, !IO).
 output_decl_id(code_addr(_CodeAddress), !IO) :-
-    error("output_decl_id: code_addr unexpected").
+    unexpected(this_file, "output_decl_id: code_addr unexpected").
 output_decl_id(float_label(_Label), !IO) :-
-    error("output_decl_id: float_label unexpected").
+    unexpected(this_file, "output_decl_id: float_label unexpected").
 output_decl_id(pragma_c_struct(_Name), !IO) :-
-    error("output_decl_id: pragma_c_struct unexpected").
+    unexpected(this_file, "output_decl_id: pragma_c_struct unexpected").
 output_decl_id(type_info_like_struct(_Name), !IO) :-
-    error("output_decl_id: type_info_like_struct unexpected").
+    unexpected(this_file, "output_decl_id: type_info_like_struct unexpected").
 output_decl_id(typeclass_constraint_struct(_Name), !IO) :-
-    error("output_decl_id: class_constraint_struct unexpected").
+    unexpected(this_file,
+        "output_decl_id: class_constraint_struct unexpected").
 
 :- pred output_cons_arg_types(list(llds_type)::in, string::in, int::in,
     io::di, io::uo) is det.
@@ -3389,7 +3393,8 @@ output_int_const(N, Type, !IO) :-
         ( ok_int_const(N, Type) ->
             io__write_int(N, !IO)
         ;
-            error("output_int_const: constant does not fit in type")
+            unexpected(this_file,
+                "output_int_const: constant does not fit in type")
         )
     ;
         Check = no,
@@ -3410,19 +3415,19 @@ ok_int_const(N, uint_least16) :-
 ok_int_const(_N, int_least32).
 ok_int_const(_N, uint_least32).
 ok_int_const(_N, bool) :-
-    error("ok_int_const: not integer constant").
+    unexpected(this_file, "ok_int_const: not integer constant").
 ok_int_const(_N, integer).
 ok_int_const(_N, unsigned).
 ok_int_const(_, float) :-
-    error("ok_int_const: not integer constant").
+    unexpected(this_file, "ok_int_const: not integer constant").
 ok_int_const(_, word) :-
-    error("ok_int_const: not integer constant").
+    unexpected(this_file, "ok_int_const: not integer constant").
 ok_int_const(_, string) :-
-    error("ok_int_const: not integer constant").
+    unexpected(this_file, "ok_int_const: not integer constant").
 ok_int_const(_, data_ptr) :-
-    error("ok_int_const: not integer constant").
+    unexpected(this_file, "ok_int_const: not integer constant").
 ok_int_const(_, code_ptr) :-
-    error("ok_int_const: not integer constant").
+    unexpected(this_file, "ok_int_const: not integer constant").
 
 %-----------------------------------------------------------------------------%
 
@@ -3981,7 +3986,7 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
                 % We should never get here; the conditions that lead here
                 % in this switch should have been caught by the first
                 % if-then-else condition that tests Target.
-                error("output_call: calling label")
+                unexpected(this_file, "output_call: calling label")
             ;
                 NeedsPrefix = yes,
                 Wrapper = none,
@@ -4316,7 +4321,7 @@ label_to_c_string(internal(Num, ProcLabel), AddPrefix) = LabelStr :-
 output_reg(r, N, !IO) :-
     io__write_string(reg_to_string(r, N), !IO).
 output_reg(f, _, !IO) :-
-    error("Floating point registers not implemented").
+    sorry(this_file, "Floating point registers not implemented").
 
 :- pred output_tag(tag::in, io::di, io::uo) is det.
 
@@ -4348,7 +4353,7 @@ output_rval_as_type(Rval, DesiredType, !IO) :-
             ; DesiredType = data_ptr ->
                 output_float_rval_as_data_ptr(Rval, !IO)
             ;
-                error("output_rval_as_type: type error")
+                unexpected(this_file, "output_rval_as_type: type error")
             )
         ;
             (
@@ -4798,7 +4803,7 @@ output_rval(lval(Lval), !IO) :-
         output_lval(Lval, !IO)
     ).
 output_rval(var(_), !IO) :-
-    error("Cannot output a var(_) expression in code").
+    unexpected(this_file, "Cannot output a var(_) expression in code").
 output_rval(mem_addr(MemRef), !IO) :-
     (
         MemRef = stackvar_ref(N),
@@ -4974,7 +4979,7 @@ output_lval_as_word(Lval, !IO) :-
         output_lval(Lval, !IO)
     ; ActualType = float ->
         % Sanity check -- if this happens, the LLDS is ill-typed.
-        error("output_lval_as_word: got float")
+        unexpected(this_file, "output_lval_as_word: got float")
     ;
         io__write_string("MR_LVALUE_CAST(MR_Word,", !IO),
         output_lval(Lval, !IO),
@@ -4987,7 +4992,7 @@ output_lval(reg(Type, Num), !IO) :-
     output_reg(Type, Num, !IO).
 output_lval(stackvar(N), !IO) :-
     ( N =< 0 ->
-        error("stack var out of range")
+        unexpected(this_file, "stack var out of range")
     ;
         true
     ),
@@ -4996,7 +5001,7 @@ output_lval(stackvar(N), !IO) :-
     io__write_string(")", !IO).
 output_lval(framevar(N), !IO) :-
     ( N =< 0 ->
-        error("frame var out of range")
+        unexpected(this_file, "frame var out of range")
     ;
         true
     ),
@@ -5053,7 +5058,7 @@ output_lval(field(MaybeTag, Rval, FieldNumRval), !IO) :-
     ),
     io__write_string(")", !IO).
 output_lval(lvar(_), !IO) :-
-    error("Illegal to output an lvar").
+    unexpected(this_file, "output_lval/3: illegal to output an lvar.").
 output_lval(temp(Type, Num), !IO) :-
     (
         Type = r,
@@ -5077,7 +5082,7 @@ output_lval_for_assign(reg(RegType, Num), word, !IO) :-
     output_reg(RegType, Num, !IO).
 output_lval_for_assign(stackvar(N), word, !IO) :-
     ( N < 0 ->
-        error("stack var out of range")
+        unexpected(this_file, "stack var out of range")
     ;
         true
     ),
@@ -5086,7 +5091,7 @@ output_lval_for_assign(stackvar(N), word, !IO) :-
     io__write_string(")", !IO).
 output_lval_for_assign(framevar(N), word, !IO) :-
     ( N =< 0 ->
-        error("frame var out of range")
+        unexpected(this_file, "frame var out of range")
     ;
         true
     ),
@@ -5143,7 +5148,7 @@ output_lval_for_assign(field(MaybeTag, Rval, FieldNumRval), word, !IO) :-
     ),
     io__write_string(")", !IO).
 output_lval_for_assign(lvar(_), _, !IO) :-
-    error("output_lval_for_assign: lvar").
+    unexpected(this_file, "output_lval_for_assign: lvar").
 output_lval_for_assign(temp(RegType, Num), Type, !IO) :-
     (
         RegType = r,
@@ -5181,7 +5186,7 @@ output_binary_op(Op, !IO) :-
     ( c_util__binary_infix_op(Op, String) ->
         io__write_string(String, !IO)
     ;
-        error("llds_out.m: invalid binary operator")
+        unexpected(this_file, "output_binary_op/3: invalid binary operator")
     ).
 
 binary_op_to_string(Op) = Name :-
@@ -5208,7 +5213,7 @@ reg_to_string(r, N) =
     ; N =< max_virtual_r_reg ->
         "MR_r(" ++ int_to_string(N) ++ ")"
     ;
-        func_error("reg_to_string: register number too large")
+        unexpected(this_file, "reg_to_string: register number too large")
     ).
 reg_to_string(f, N) =
     "MR_f(" ++ int_to_string(N) ++ ")".
@@ -5302,4 +5307,6 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
 
 this_file = "llds_out.m".
 
+%---------------------------------------------------------------------------%
+:- end_module llds_out.
 %---------------------------------------------------------------------------%

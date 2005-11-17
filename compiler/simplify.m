@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: simplify.m.
 % Main authors: zs, stayl.
-%
+
 % The two jobs of the simplification module are
 %
 %   to find and exploit opportunities for simplifying the internal form
@@ -18,8 +19,8 @@
 %   they should not have been included in the program in the first place.
 %
 % Simplification is done in two passes. The first pass performs common
-% structure and duplicate call elimination. The second pass performs
-% excess assignment elimination and cleans up the code after the first pass.
+% structure and duplicate call elimination. The second pass performs excess
+% assignment elimination and cleans up the code after the first pass.
 %
 % Two passes are required because the goal must be requantified after the
 % optimizations in common.m are run so that excess assignment elimination
@@ -28,12 +29,10 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__simplify.
-
 :- interface.
 
 :- import_module check_hlds.common.
 :- import_module check_hlds.det_report.
-:- import_module check_hlds.det_util.
 :- import_module check_hlds.det_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
@@ -44,6 +43,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- pred simplify_pred(list(simplification)::in, pred_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
@@ -83,6 +84,7 @@
 :- type simplify_info.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -116,7 +118,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -2554,4 +2555,6 @@ simplify_info_undo_goal_updates(Info0, !Info) :-
 
 this_file = "simplify.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module simplify.
 %-----------------------------------------------------------------------------%

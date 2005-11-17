@@ -7,7 +7,6 @@
 %---------------------------------------------------------------------------%
 %
 % File: call_gen.m
-%
 % Authors: conway, zs.
 %
 % This module provides predicates for generating procedure calls,
@@ -17,7 +16,6 @@
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__call_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -31,16 +29,18 @@
 :- import_module assoc_list.
 :- import_module list.
 
-:- pred call_gen__generate_call(code_model::in, pred_id::in, proc_id::in,
+%---------------------------------------------------------------------------%
+
+:- pred generate_call(code_model::in, pred_id::in, proc_id::in,
     list(prog_var)::in, hlds_goal_info::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-:- pred call_gen__generate_generic_call(code_model::in, generic_call::in,
+:- pred generate_generic_call(code_model::in, generic_call::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
     hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
     is det.
 
-:- pred call_gen__generate_builtin(code_model::in, pred_id::in, proc_id::in,
+:- pred generate_builtin(code_model::in, pred_id::in, proc_id::in,
     list(prog_var)::in, code_tree::out, code_info::in, code_info::out)
     is det.
 
@@ -61,6 +61,7 @@
 :- pred call_gen__output_arg_locs(assoc_list(prog_var, arg_info)::in,
     assoc_list(prog_var, arg_loc)::out) is det.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -85,16 +86,15 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code,
-        !CI) :-
+generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
 
         % Find out which arguments are input and which are output.
     ArgInfo = code_info__get_pred_proc_arginfo(!.CI, PredId, ProcId),
@@ -144,7 +144,7 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code,
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_generic_call(OuterCodeModel, GenericCall, Args0,
+generate_generic_call(OuterCodeModel, GenericCall, Args0,
         Modes0, Det, GoalInfo, Code, !CI) :-
     % For a generic_call, we split the arguments into inputs and outputs,
     % put the inputs in the locations expected by mercury__do_call_closure in
@@ -168,13 +168,13 @@ call_gen__generate_generic_call(OuterCodeModel, GenericCall, Args0,
             GenericCall, Args0, Modes0, Det, GoalInfo, Code, !CI)
     ).
 
-:- pred call_gen__generate_generic_call_2(code_model::in, generic_call::in,
+:- pred generate_generic_call_2(code_model::in, generic_call::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
     hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
     is det.
 
-call_gen__generate_generic_call_2(_OuterCodeModel, GenericCall, Args,
-        Modes, Det, GoalInfo, Code, !CI) :-
+generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
+        GoalInfo, Code, !CI) :-
     Types = list__map(code_info__variable_type(!.CI), Args),
 
     code_info__get_module_info(!.CI, ModuleInfo),
@@ -667,4 +667,6 @@ give_vars_consecutive_arg_infos([Var | Vars], N0, ArgMode,
 
 this_file = "call_gen.m".
 
+%---------------------------------------------------------------------------%
+:- end_module call_gen.
 %---------------------------------------------------------------------------%

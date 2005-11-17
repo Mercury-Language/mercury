@@ -11,9 +11,9 @@
 %
 % Hyperhomogeneous form and the transformation are documented in
 % David Overton's PhD thesis.
+%-----------------------------------------------------------------------------%
 
 :- module hlds__hhf.
-
 :- interface.
 
 :- import_module hlds.hlds_pred.
@@ -23,11 +23,16 @@
 :- import_module bool.
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred process_pred(bool::in, pred_id::in, module_info::in,
     module_info::out, io::di, io::uo) is det.
 
 :- pred process_clauses_info(bool::in, module_info::in,
     clauses_info::in, clauses_info::out, inst_graph::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -48,6 +53,8 @@
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 process_pred(Simple, PredId, !ModuleInfo, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -528,4 +535,6 @@ same_type_list([A | As], [B | Bs]) :-
 
 this_file = "hhf.m".
 
+%------------------------------------------------------------------------%
+:- end_module hhf.
 %------------------------------------------------------------------------%

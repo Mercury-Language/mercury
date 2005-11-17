@@ -6,8 +6,9 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: goal_util.m.
 % Main author: conway.
-%
+
 % This module provides various utility procedures for manipulating HLDS goals,
 % e.g. some functionality for renaming variables in goals.
 
@@ -29,6 +30,8 @@
 :- import_module map.
 :- import_module set.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
     % Given a goal and an initial instmap, compute the final instmap that
     % results from the initial instmap after execution of the goal.
@@ -325,10 +328,11 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
+:- import_module svset.
+:- import_module svvarset.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -356,7 +360,7 @@ create_renaming_2([], _, !VarTypes, !VarSet, !RevUnifies, !RevNewVars,
         !Renaming).
 create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTypes, !VarSet,
         !RevUnifies, !RevNewVars, !Renaming) :-
-    varset__new_var(!.VarSet, NewVar, !:VarSet),
+    svvarset__new_var(NewVar, !VarSet),
     map__lookup(!.VarTypes, OrigVar, Type),
     svmap__det_insert(NewVar, Type, !VarTypes),
     ( instmap_delta_search_var(InstMapDelta, OrigVar, DeltaInst) ->
@@ -387,9 +391,9 @@ create_variables([V | Vs], OldVarNames, OldVarTypes, !Varset, !VarTypes,
     ( map__contains(!.Subn, V) ->
         true
     ;
-        varset__new_var(!.Varset, NV, !:Varset),
+        svvarset__new_var(NV, !Varset),
         ( varset__search_name(OldVarNames, V, Name) ->
-            varset__name_var(!.Varset, NV, Name, !:Varset)
+            svvarset__name_var(NV, Name, !Varset)
         ;
             true
         ),
@@ -439,7 +443,7 @@ rename_var(Must, Subn, V, N) :-
             term__var_to_int(V, VInt),
             string__format("rename_var: no substitute for var %i", [i(VInt)],
                 Msg),
-            error(Msg)
+            unexpected(this_file, Msg)
         )
     ).
 
@@ -740,10 +744,10 @@ goal_vars(Goal - _GoalInfo, Set) :-
     set(prog_var)::in, set(prog_var)::out) is det.
 
 goal_vars_2(unify(Var, RHS, _, Unif, _), !Set) :-
-    set__insert(!.Set, Var, !:Set),
+    svset__insert(Var, !Set),
     ( Unif = construct(_, _, _, _, CellToReuse, _, _) ->
         ( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
-            set__insert(!.Set, Var, !:Set)
+            svset__insert(Var, !Set)
         ;
             true
         )
@@ -754,11 +758,11 @@ goal_vars_2(unify(Var, RHS, _, Unif, _), !Set) :-
 
 goal_vars_2(generic_call(GenericCall, ArgVars, _, _), !Set) :-
     generic_call_vars(GenericCall, Vars0),
-    set__insert_list(!.Set, Vars0, !:Set),
-    set__insert_list(!.Set, ArgVars, !:Set).
+    svset__insert_list(Vars0, !Set),
+    svset__insert_list(ArgVars, !Set).
 
 goal_vars_2(call(_, _, ArgVars, _, _, _), !Set) :-
-    set__insert_list(!.Set, ArgVars, !:Set).
+    svset__insert_list(ArgVars, !Set).
 
 goal_vars_2(conj(Goals), !Set) :-
     goals_goal_vars(Goals, !Set).
@@ -770,18 +774,18 @@ goal_vars_2(disj(Goals), !Set) :-
     goals_goal_vars(Goals, !Set).
 
 goal_vars_2(switch(Var, _Det, Cases), !Set) :-
-    set__insert(!.Set, Var, !:Set),
+    svset__insert(Var, !Set),
     cases_goal_vars(Cases, !Set).
 
 goal_vars_2(scope(Reason, Goal - _), !Set) :-
     (
         Reason = exist_quant(Vars),
-        set__insert_list(!.Set, Vars, !:Set)
+        svset__insert_list(Vars, !Set)
     ;
         Reason = promise_purity(_, _)
     ;
         Reason = promise_equivalent_solutions(Vars),
-        set__insert_list(!.Set, Vars, !:Set)
+        svset__insert_list(Vars, !Set)
     ;
         Reason = barrier(_)
     ;
@@ -804,7 +808,7 @@ goal_vars_2(if_then_else(Vars, A - _, B - _, C - _), !Set) :-
 goal_vars_2(foreign_proc(_, _, _, Args, ExtraArgs, _), !Set) :-
     ArgVars = list__map(foreign_arg_var, Args),
     ExtraVars = list__map(foreign_arg_var, ExtraArgs),
-    set__insert_list(!.Set, list__append(ArgVars, ExtraVars), !:Set).
+    svset__insert_list(list__append(ArgVars, ExtraVars), !Set).
 
 goal_vars_2(shorthand(ShorthandGoal), !Set) :-
     goal_vars_2_shorthand(ShorthandGoal, !Set).
@@ -834,14 +838,14 @@ cases_goal_vars([case(_, Goal - _) | Cases], !Set) :-
 
 rhs_goal_vars(RHS, !Set) :-
     RHS = var(X),
-    set__insert(!.Set, X, !:Set).
+    svset__insert(X, !Set).
 rhs_goal_vars(RHS, !Set) :-
     RHS = functor(_Functor, _, ArgVars),
-    set__insert_list(!.Set, ArgVars, !:Set).
+    svset__insert_list(ArgVars, !Set).
 rhs_goal_vars(RHS, !Set) :-
     RHS = lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal - _),
-    set__insert_list(!.Set, NonLocals, !:Set),
-    set__insert_list(!.Set, LambdaVars, !:Set),
+    svset__insert_list(NonLocals, !Set),
+    svset__insert_list(LambdaVars, !Set),
     goal_vars_2(Goal, !Set).
 
 generic_call_vars(higher_order(Var, _, _, _), [Var]).
@@ -869,18 +873,15 @@ attach_features_to_case(Features, case(ConsId, Goal0), case(ConsId, Goal)) :-
 attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
     (
         GoalExpr0 = conj(Goals0),
-        list__map(attach_features_to_all_goals(Features),
-            Goals0, Goals),
+        list__map(attach_features_to_all_goals(Features), Goals0, Goals),
         GoalExpr = conj(Goals)
     ;
         GoalExpr0 = par_conj(Goals0),
-        list__map(attach_features_to_all_goals(Features),
-            Goals0, Goals),
+        list__map(attach_features_to_all_goals(Features), Goals0, Goals),
         GoalExpr = par_conj(Goals)
     ;
         GoalExpr0 = disj(Goals0),
-        list__map(attach_features_to_all_goals(Features),
-            Goals0, Goals),
+        list__map(attach_features_to_all_goals(Features), Goals0, Goals),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
@@ -937,9 +938,9 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         % sense.
         %
     TypeVarToProgVar = (func(TypeVar) = ProgVar :-
-            rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, Locn),
-            type_info_locn_var(Locn, ProgVar)
-        ),
+        rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, Locn),
+        type_info_locn_var(Locn, ProgVar)
+    ),
     NonLocalTypeInfoVars = set__map(TypeVarToProgVar, NonLocalTypeVars),
 
         % Find all the typeclass_infos that are non-local.  These
@@ -1241,10 +1242,9 @@ switch_to_disjunction(Var, [case(ConsId, Goal0) | Cases], InstMap,
 case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
         !ModuleInfo) :-
     ConsArity = cons_id_arity(ConsId),
-    varset__new_vars(!.VarSet, ConsArity, ArgVars, !:VarSet),
+    svvarset__new_vars(ConsArity, ArgVars, !VarSet),
     map__lookup(!.VarTypes, Var, VarType),
-    type_util__get_cons_id_arg_types(!.ModuleInfo,
-        VarType, ConsId, ArgTypes),
+    type_util__get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
     svmap__det_insert_from_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
     instmap__lookup_var(InstMap, Var, Inst0),
     (
@@ -1256,15 +1256,15 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
         unexpected(this_file, "case_to_disjunct - get_arg_insts failed")
     ),
     InstToUniMode = (pred(ArgInst::in, ArgUniMode::out) is det :-
-            ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
-        ),
+        ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
+    ),
     list__map(InstToUniMode, ArgInsts, UniModes),
     UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
     UnifyContext = unify_context(explicit, []),
-    Unification = deconstruct(Var, ConsId, ArgVars, UniModes,
-        can_fail, cannot_cgc),
-    ExtraGoal = unify(Var, functor(ConsId, no, ArgVars),
-        UniMode, Unification, UnifyContext),
+    Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
+        cannot_cgc),
+    ExtraGoal = unify(Var, functor(ConsId, no, ArgVars), UniMode,
+        Unification, UnifyContext),
     set__singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(ExtraInstMapDelta0),
     instmap_delta_bind_var_to_functor(Var, VarType, ConsId, InstMap,
@@ -1316,9 +1316,11 @@ if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
     ),
 
     det_negation_det(CondDetism, MaybeNegCondDet),
-    ( MaybeNegCondDet = yes(NegCondDet1) ->
+    (
+        MaybeNegCondDet = yes(NegCondDet1),
         NegCondDet = NegCondDet1
     ;
+        MaybeNegCondDet = no,
         unexpected(this_file,
             "if_then_else_to_disjunction: "
                 ++ "inappropriate determinism in a negation.")
@@ -1564,4 +1566,6 @@ foreign_code_uses_variable(Impl, VarName) :-
 
 this_file = "goal_util.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module goal_util.
 %-----------------------------------------------------------------------------%

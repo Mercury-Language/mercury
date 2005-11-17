@@ -5,32 +5,32 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File stack_alloc.m
-%
 % Authors: zs, conway.
-%
+
 % This module allocates stack slots to the variables that need to be saved
 % across a call, across a goal that may fail, or in a parallel conjunction.
-%
+
 % The jobs is done in two steps. First we traverse the predicate definition
 % looking for sets of variables that must be saved on the stack at the same
 % time. If --optimize-stack-slots is set, then this phase is done by
-% stack_opt.m; if --optimize-stack-slots is not set, then it is done by
-% this module. Then we use a graph colouring algorithm to find an allocation
-% of stack slots (colours) to variables such that in each set of variables
-% that must be saved at the same time, each variable has a different colour.
+% stack_opt.m; if --optimize-stack-slots is not set, then it is done by this
+% module. Then we use a graph colouring algorithm to find an allocation of
+% stack slots (colours) to variables such that in each set of variables that
+% must be saved at the same time, each variable has a different colour.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__stack_alloc.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 :- pred allocate_stack_slots_in_proc(pred_id::in, proc_id::in, module_info::in,
     proc_info::in, proc_info::out, io::di, io::uo) is det.
@@ -62,9 +62,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -246,7 +246,7 @@ allocate_same_stack_slot([Var | Vars], CodeModel, Slot, !StackSlots) :-
     ;
         Locn = det_slot(Slot)
     ),
-    map__det_insert(!.StackSlots, Var, Locn, !:StackSlots),
+    svmap__det_insert(Var, Locn, !StackSlots),
     allocate_same_stack_slot(Vars, CodeModel, Slot, !StackSlots).
 
     % We must not allocate the same stack slot to dummy variables. If we do,
@@ -255,11 +255,11 @@ allocate_same_stack_slot([Var | Vars], CodeModel, Slot, !StackSlots) :-
     % to save the next in the same stack slot; believing the first variable
     % to still be live, it will move it away.
     %
-    % In ordinary grades, it is possible to have one value of type io__state
-    % and another of type store__store live at the same time; in debugging
+    % In ordinary grades, it is possible to have one value of type io.state
+    % and another of type store.store live at the same time; in debugging
     % grades, due to our policy of extending variable lifetimes, more than
-    % one io__state may be live at the same time.
-
+    % one io.state may be live at the same time.
+    %
 :- pred allocate_dummy_stack_slots(list(prog_var)::in, code_model::in,
     int::in, stack_slots::in, stack_slots::out) is det.
 
@@ -268,4 +268,6 @@ allocate_dummy_stack_slots([Var | Vars], CodeModel, N0, !StackSlots) :-
     allocate_same_stack_slot([Var], CodeModel, N0, !StackSlots),
     allocate_dummy_stack_slots(Vars, CodeModel, N0 - 1, !StackSlots).
 
+%-----------------------------------------------------------------------------%
+:- end_module stack_alloc.
 %-----------------------------------------------------------------------------%

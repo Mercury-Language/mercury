@@ -5,10 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: follow_code.m.
 % Main author: conway.
 % Extensive modifications by zs.
-%
+
 % The problem attacked by this module is that sometimes the code generator
 % doesn't know where it should put the values of live variables at the end
 % of a branched control structure. All branches must put each live variable
@@ -24,11 +25,10 @@
 % where every live variable must be. If a branched control structure is
 % followed by builtin goals such as unifications, we push those goals into
 % each branch.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__follow_code.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -36,6 +36,8 @@
 :- import_module hlds.hlds_pred.
 
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- pred move_follow_code_in_proc(pred_id::in, proc_id::in, pred_info::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
@@ -55,6 +57,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.quantification.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
@@ -141,7 +144,7 @@ move_follow_code_in_goal_2(Goal @ unify(_, _, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(shorthand(_), _, _, _, _) :-
     % These should have been expanded out by now.
-    error("move_follow_code_in_goal_2: unexpected shorthand").
+    unexpected(this_file, "move_follow_code_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -307,4 +310,11 @@ move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
     Builtin = inline_builtin.
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "follow_code.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module follow_code.
 %-----------------------------------------------------------------------------%

@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: prog_type.m.
 % Main author: fjh
 %
 % Utility predicates dealing with type in the parse tree. The predicates for
@@ -15,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_type.
-
 :- interface.
 
 :- import_module libs.globals.
@@ -1332,4 +1332,6 @@ apply_partial_map_to_list(PartialMap, [X | Xs], [Y | Ys]) :-
 
 this_file = "prog_type.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module prog_type.
 %-----------------------------------------------------------------------------%

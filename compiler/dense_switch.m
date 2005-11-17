@@ -6,16 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% dense_switch.m
+% File: dense_switch.m.
+% Author: fjh.
 
 % For switches on atomic types, generate code using a dense jump table.
-
-% Author: fjh.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__dense_switch.
-
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -25,6 +23,8 @@
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
+
+%-----------------------------------------------------------------------------%
 
     % Should this switch be implemented as a dense jump table?
     % If so, we return the starting and ending values for the table,
@@ -52,6 +52,7 @@
     is semidet.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -71,6 +72,8 @@
 :- import_module map.
 :- import_module require.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
         FirstVal, LastVal, CanFail) :-
@@ -227,3 +230,7 @@ generate_case(!Cases, NextVal, CodeModel, SwitchGoalInfo, !MaybeEnd, Code,
         Comment = "compiler-introduced `fail' case of dense switch",
         code_info__generate_failure(Code, !CI)
     ).
+
+%----------------------------------------------------------------------------%
+:- end_module dense_switch.
+%----------------------------------------------------------------------------%

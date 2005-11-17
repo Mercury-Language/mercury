@@ -19,6 +19,8 @@
 :- import_module io.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % A solver type t defined with
     %
     % :- solver type st
@@ -49,6 +51,9 @@
     prog_context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds.make_hlds.add_pred.
@@ -63,6 +68,8 @@
 :- import_module string.
 :- import_module std_util.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
         SolverTypeDetails, Context, !Status, !ModuleInfo, !IO) :-
@@ -276,3 +283,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     FromAnyRepnItem = pragma(compiler(solver_type), FromAnyRepnForeignProc),
     add_item_clause(FromAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
         !IO).
+
+%-----------------------------------------------------------------------------%
+ :- end_module add_solver.
+%-----------------------------------------------------------------------------%

@@ -43,6 +43,8 @@
 :- import_module io.
 :- import_module set.
 
+%-----------------------------------------------------------------------------%
+
     % Check every predicate in a module.
     %
 :- pred check_module(module_info::in, module_info::out, io::di, io::uo) is det.
@@ -823,4 +825,6 @@ check_case_list([Case0 | Cases0], Var, [Case | Cases], [InstMap | InstMaps],
 
 this_file = "unique_modes.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module unique_modes.
 %-----------------------------------------------------------------------------%

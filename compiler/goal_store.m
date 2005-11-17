@@ -6,17 +6,16 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Module:   goal_store
-% Main authors: petdr
+% File: goal_store.m.
+% Main author: petdr.
 %
 % Define a type goal_store(Key) which allows a hlds_goal to be stored in a
-% dictionary like structure.  However there some operations on this
-% dictionary which are specific to hlds_goals.
+% dictionary like structure.  However there some operations on this dictionary
+% which are specific to hlds_goals.
 %
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__goal_store.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -57,7 +56,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 :- type goal_store(T) == map__map(T, stored_goal).
 
@@ -123,4 +123,11 @@ direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
         EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "goal_store.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module goal_store.
 %-----------------------------------------------------------------------------%

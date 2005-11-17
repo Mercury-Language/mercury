@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% jumpopt.m - optimize jumps to jumps.
-%
+
+% File: jumpopt.m.
 % Author: zs.
+
+% This module contains code that optimizes jumps to jumps.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__jumpopt.
-
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -23,6 +23,8 @@
 :- import_module counter.
 :- import_module list.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
     % jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
     %   Recjump, PessimizeTailCalls, CheckedNondetTailCall, !LabelCounter,
@@ -56,18 +58,21 @@
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module libs.compiler_util.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
 
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 % We first build up a bunch of tables giving information about labels.
 % We then traverse the instruction list, using the information in the
@@ -128,7 +133,8 @@ jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt, Recjump,
                 CheckedNondetTailCallInfo = yes(_ - !:C)
             ;
                 CheckedNondetTailCallInfo = no,
-                error("jumpopt_main: lost the next label number")
+                unexpected(this_file,
+                    "jumpopt_main: lost the next label number")
             )
         ;
             CheckedNondetTailCall = no,
@@ -753,7 +759,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         Uinstr0 = block(_, _, _),
         % These are supposed to be introduced only after jumpopt is run
         % for the last time.
-        error("jumpopt__instr_list: block")
+        unexpected(this_file, "instr_list: block")
     ;
         Uinstr0 = label(_),
         NewRemain = usual_case
@@ -948,7 +954,8 @@ jumpopt__adjust_livevals(PrevInstr, Instrs0, Instrs) :-
         ( BetweenLivevals = PrevLivevals ->
             Instrs = Instrs2
         ;
-            error("BetweenLivevals and PrevLivevals differ in jumpopt")
+            unexpected(this_file, "adjust_livevals: " ++
+                "BetweenLivevals and PrevLivevals differ")
         )
     ;
         Instrs = Instrs0
@@ -1017,7 +1024,7 @@ jumpopt__final_dest_2(Instrmap, LabelsSofar, SrcLabel, DestLabel,
 jumpopt__short_labels_rval(Instrmap, lval(Lval0), lval(Lval)) :-
     jumpopt__short_labels_lval(Instrmap, Lval0, Lval).
 jumpopt__short_labels_rval(_, var(_), _) :-
-    error("var rval in jumpopt__short_labels_rval").
+    unexpected(this_file, "var rval in short_labels_rval").
 jumpopt__short_labels_rval(Instrmap, mkword(Tag, Rval0), mkword(Tag, Rval)) :-
     jumpopt__short_labels_rval(Instrmap, Rval0, Rval).
 jumpopt__short_labels_rval(Instrmap, const(Const0), const(Const)) :-
@@ -1100,7 +1107,7 @@ jumpopt__short_labels_lval(Instrmap, field(Tag, Rval0, Field0),
 jumpopt__short_labels_lval(Instrmap, mem_ref(Rval0), mem_ref(Rval)) :-
     jumpopt__short_labels_rval(Instrmap, Rval0, Rval).
 jumpopt__short_labels_lval(_, lvar(_), _) :-
-    error("lvar lval in jumpopt__short_labels_lval").
+    unexpected(this_file, "lvar lval in short_labels_lval").
 
 :- pred short_pragma_component(instrmap::in,
     pragma_c_component::in, pragma_c_component::out,
@@ -1128,4 +1135,12 @@ short_pragma_component(Instrmap, !Component, !Redirect) :-
         !.Component = pragma_c_noop
     ).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "jumpopt.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module jumpopt.
 %-----------------------------------------------------------------------------%

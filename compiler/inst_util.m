@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% file: inst_util.m
-% author: fjh
-%
+
+% File: inst_util.m.
+% Author: fjh.
+
 % This module defines some utility routines for manipulating insts.
 %
 % The handling of `any' insts is not complete.  (See also inst_match.m)
@@ -34,7 +34,7 @@
 % `bound', `ground', and `any' are all represented the same way.
 % That works fine for the CLP(R) interface but might not be ideal
 % in the general case.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__inst_util.
@@ -48,12 +48,14 @@
 :- import_module list.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
     % Mode checking is like abstract interpretation. The predicates below
     % define the abstract unification operation which unifies two
-    % instantiatednesses. If the unification would be illegal, then
-    %% abstract unification fails. If the unification would fail, then
-    % the abstract unification will succeed, and the resulting
-    % instantiatedness will be `not_reached'.
+    % instantiatednesses. If the unification would be illegal, then abstract
+    % unification fails. If the unification would fail, then the abstract
+    % unification will succeed, and the resulting instantiatedness will be
+    % `not_reached'.
 
     % Compute the inst that results from abstractly unifying two variables.
     %
@@ -141,6 +143,7 @@
 :- func inst_may_restrict_cons_ids(module_info, mer_inst) = bool.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -150,16 +153,18 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module mdbcomp.prim_data.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_mode.
 
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module svmap.
 :- import_module svset.
+
+%-----------------------------------------------------------------------------%
 
 abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         !ModuleInfo) :-
@@ -812,7 +817,8 @@ unify_uniq(Live, Real, Det, mostly_clobbered, Uniq0, Uniq) :-
     determinism::in) is semidet.
 
 allow_unify_with_clobbered(live, _, _) :-
-    error("allow_unify_with_clobbered: clobbered value is live?").
+    unexpected(this_file,
+        "allow_unify_with_clobbered: clobbered value is live?").
 allow_unify_with_clobbered(dead, fake_unify, _).
 allow_unify_with_clobbered(dead, _, det).
 
@@ -823,9 +829,9 @@ allow_unify_with_clobbered(dead, _, det).
     % Sanity check.
 check_not_clobbered(Uniq, Real) :-
     ( Real = real_unify, Uniq = clobbered ->
-        error("abstractly_unify_inst_3: clobbered inst")
+        unexpected(this_file, "abstractly_unify_inst_3: clobbered inst")
     ; Real = real_unify, Uniq = mostly_clobbered ->
-        error("abstractly_unify_inst_3: mostly_clobbered inst")
+        unexpected(this_file, "abstractly_unify_inst_3: mostly_clobbered inst")
     ;
         true
     ).
@@ -890,7 +896,7 @@ make_ground_inst(ground(Uniq0, GroundInstInfo), IsLive, Uniq1, Real,
         ground(Uniq, GroundInstInfo), semidet, !ModuleInfo) :-
     unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _, _, _) :-
-    error("free inst var").
+    unexpected(this_file, "make_ground_inst: free inst var").
 make_ground_inst(constrained_inst_vars(InstVars, InstConstraint), IsLive,
         Uniq, Real, Inst, Det, !ModuleInfo) :-
     abstractly_unify_constrained_inst_vars(IsLive, InstVars,
@@ -1000,7 +1006,7 @@ make_any_inst(ground(Uniq0, PredInst), IsLive, Uniq1, Real,
     allow_unify_bound_any(Real),
     unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
 make_any_inst(inst_var(_), _, _, _, _, _, _, _) :-
-    error("free inst var").
+    unexpected(this_file, "make_any_inst: free inst var").
 make_any_inst(constrained_inst_vars(InstVars, InstConstraint), IsLive,
         Uniq, Real, Inst, Det, !ModuleInfo) :-
     abstractly_unify_constrained_inst_vars(IsLive, InstVars,
@@ -1116,9 +1122,9 @@ maybe_make_shared_inst_list([Inst0 | Insts0], [IsLive | IsLives],
     ),
     maybe_make_shared_inst_list(Insts0, IsLives, Insts, !ModuleInfo).
 maybe_make_shared_inst_list([], [_|_], _, _, _) :-
-    error("maybe_make_shared_inst_list: length mismatch").
+    unexpected(this_file, "maybe_make_shared_inst_list: length mismatch").
 maybe_make_shared_inst_list([_|_], [], _, _, _) :-
-    error("maybe_make_shared_inst_list: length mismatch").
+    unexpected(this_file, "maybe_make_shared_inst_list: length mismatch").
 
 make_shared_inst_list([], [], !ModuleInfo).
 make_shared_inst_list([Inst0 | Insts0], [Inst | Insts], !ModuleInfo) :-
@@ -1136,10 +1142,12 @@ make_shared_inst(any(Uniq0), any(Uniq), !ModuleInfo) :-
     make_shared(Uniq0, Uniq).
 make_shared_inst(free, free, !ModuleInfo) :-
     % The caller should ensure that this never happens.
-    error("make_shared_inst: cannot make shared version of `free'").
+    unexpected(this_file,
+        "make_shared_inst: cannot make shared version of `free'").
 make_shared_inst(free(T), free(T), !ModuleInfo) :-
     % The caller should ensure that this never happens.
-    error("make_shared_inst: cannot make shared version of `free(T)'").
+    unexpected(this_file,
+        "make_shared_inst: cannot make shared version of `free(T)'").
 make_shared_inst(bound(Uniq0, BoundInsts0), bound(Uniq, BoundInsts),
         !ModuleInfo) :-
     make_shared(Uniq0, Uniq),
@@ -1148,7 +1156,7 @@ make_shared_inst(ground(Uniq0, PredInst), ground(Uniq, PredInst),
         !ModuleInfo) :-
     make_shared(Uniq0, Uniq).
 make_shared_inst(inst_var(_), _, _, _) :-
-    error("free inst var").
+    unexpected(this_file, "make_shared_inst: free inst var").
 make_shared_inst(constrained_inst_vars(InstVars, Inst0), Inst, !ModuleInfo) :-
     make_shared_inst(Inst0, Inst1, !ModuleInfo),
     ( \+ inst_matches_final(Inst1, Inst0, !.ModuleInfo) ->
@@ -1157,7 +1165,7 @@ make_shared_inst(constrained_inst_vars(InstVars, Inst0), Inst, !ModuleInfo) :-
         Inst = constrained_inst_vars(InstVars, Inst1)
     ).
 make_shared_inst(abstract_inst(_,_), _, !ModuleInfo) :-
-    error("make_shared_inst(abstract_inst)").
+    unexpected(this_file, "make_shared_inst(abstract_inst)").
 make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     % Check whether the inst name is already in the shared_inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -1237,7 +1245,7 @@ make_mostly_uniq_inst(ground(Uniq0, PredInst), ground(Uniq, PredInst),
         !ModuleInfo) :-
     make_mostly_uniq(Uniq0, Uniq).
 make_mostly_uniq_inst(inst_var(_), _, _, _) :-
-    error("free inst var").
+    unexpected(this_file, "make_mostly_uniq_inst: free inst var").
 make_mostly_uniq_inst(constrained_inst_vars(InstVars, Inst0), Inst,
         !ModuleInfo) :-
     make_mostly_uniq_inst(Inst0, Inst1, !ModuleInfo),
@@ -1247,7 +1255,7 @@ make_mostly_uniq_inst(constrained_inst_vars(InstVars, Inst0), Inst,
         Inst = constrained_inst_vars(InstVars, Inst1)
     ).
 make_mostly_uniq_inst(abstract_inst(_,_), _, !ModuleInfo) :-
-    error("make_mostly_uniq_inst(abstract_inst)").
+    unexpected(this_file, "make_mostly_uniq_inst(abstract_inst)").
 make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     % Check whether the inst name is already in the mostly_uniq_inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -1575,7 +1583,7 @@ merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo,
     ).
 merge_inst_uniq(not_reached, Uniq, _, !Expansions, Uniq).
 merge_inst_uniq(inst_var(_), _, _, !Expansions, _) :-
-    error("merge_inst_uniq: unexpected inst_var").
+    unexpected(this_file, "merge_inst_uniq: unexpected inst_var").
 merge_inst_uniq(constrained_inst_vars(_InstVars, Inst0), UniqB, ModuleInfo,
         !Expansions, Uniq) :-
     merge_inst_uniq(Inst0, UniqB, ModuleInfo, !Expansions, Uniq).
@@ -1677,7 +1685,7 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, bound(_, BoundInsts),
     list__member(Inst, Insts),
     inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions).
 inst_contains_nonstandard_func_mode_2(_, inst_var(_), _) :-
-    error("internal error: uninstantiated inst parameter").
+    unexpected(this_file, "internal error: uninstantiated inst parameter").
 inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0) :-
     Inst = defined_inst(InstName),
     \+ set__member(Inst, Expansions0),
@@ -1703,7 +1711,7 @@ inst_contains_any_2(ModuleInfo, bound(_, BoundInsts), Expansions) :-
     inst_contains_any_2(ModuleInfo, Inst, Expansions).
 
 inst_contains_any_2(_ModuleInfo, inst_var(_), _Expansions) :-
-    error("internal error: uninstantiated inst parameter").
+    unexpected(this_file, "internal error: uninstantiated inst parameter").
 
 inst_contains_any_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
     \+ set__member(InstName, Expansions0),
@@ -1801,4 +1809,13 @@ inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
         MayRestrict = yes
     ).
 
+%-----------------------------------------------------------------------------%
+
+
+:- func this_file = string.
+
+this_file = "inst_util".
+
+%-----------------------------------------------------------------------------%
+:- end_module inst_util.
 %-----------------------------------------------------------------------------%

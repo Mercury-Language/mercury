@@ -5,29 +5,30 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% file: ll_pseudo_type_info.m
-% author: fjh
-%
+
+% File: ll_pseudo_type_info.m.
+% Author: fjh.
+
 % This module generates LLDS representations for pseudo-type-infos.
 %
-% Most of the work is done by pseudo_type_info.m, which generates
-% a back-end-independent representation of pseudo-type-infos;
-% this module just converts that representation to LLDS.
+% Most of the work is done by pseudo_type_info.m, which generates a
+% back-end-independent representation of pseudo-type-infos; this module just
+% converts that representation to LLDS.
 %
 % The documentation of the structures of pseudo-type-infos is in
-% runtime/mercury_type_info.h; that file also contains a list of all
-% the files that depend on such data structures.
-%
+% runtime/mercury_type_info.h; that file also contains a list of all the files
+% that depend on such data structures.
+
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__ll_pseudo_type_info.
-
 :- interface.
 
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
+
+%---------------------------------------------------------------------------%
 
     % construct_typed_pseudo_type_info(Type, NumUnivQTvars, ExistQVars,
     %   Rval, LldsType):
@@ -55,6 +56,7 @@
     rval::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -65,6 +67,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 construct_llds_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
         !StaticCellInfo, Pseudo) :-
@@ -171,3 +175,7 @@ convert_compound_type_info(RttiTypeCtor, ArgRvals0, Args, !StaticCellInfo,
     add_static_cell_natural_types([TypeCtorInfoRval | ArgRvals], DataAddr,
         !StaticCellInfo),
     Rval = const(data_addr_const(DataAddr, no)).
+
+%-----------------------------------------------------------------------------%
+:- end_module ll_pseudo_type_info.
+%-----------------------------------------------------------------------------%

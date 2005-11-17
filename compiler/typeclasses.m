@@ -16,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.typeclasses.
-
 :- interface.
 
 :- import_module check_hlds.typecheck_info.
@@ -85,6 +84,7 @@
     constraint_map::in, constraint_map::out,
     hlds_constraints::in, hlds_constraints::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

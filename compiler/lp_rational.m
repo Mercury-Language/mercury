@@ -322,6 +322,8 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
+
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module exception.
@@ -419,7 +421,8 @@ lp_terms_to_map_2(Var - Coeff0, !Map) :-
 non_false_constraint(Terms, Op, Constant) = Constraint :-
     Constraint = constraint(Terms, Op, Constant),
     ( if    is_false(Constraint)
-      then  throw("non_false_constraints/3: false constraint.") 
+      then  unexpected(this_file,
+                "non_false_constraints/3: false constraint.") 
       else  true
     ).
 
@@ -429,7 +432,8 @@ constraint(gte(Terms, Constant), Terms, (>=), Constant).
 
 non_false_constraint(Constraint, Terms, Operator, Constant) :-
     ( if    is_false(Constraint)
-      then  throw("non_false_constraint/4: false_constraint.") 
+      then  unexpected(this_file,
+                "non_false_constraint/4: false_constraint.") 
       else  true
     ),  
     (
@@ -440,7 +444,7 @@ non_false_constraint(Constraint, Terms, Operator, Constant) :-
         Operator   = (=)
     ;
         Constraint = gte(_, _),
-        throw("non_false_constraint/4: gte encountered.")
+        unexpected(this_file, "non_false_constraint/4: gte encountered.")
     ).
 
 :- func lp_terms(constraint) = lp_terms.
@@ -459,7 +463,7 @@ constant(gte(_, Constant)) = Constant.
 
 operator(lte(_, _)) = (=<).
 operator(eq(_,  _)) = (=).
-operator(gte(_,_))  = throw("operator/1: gte.").
+operator(gte(_,_))  = unexpected(this_file, "operator/1: gte.").
 
 :- func negate_operator(operator) = operator.
 
@@ -469,7 +473,7 @@ negate_operator((>=)) = (=<).
 
 nonneg_constr(lte([_ - (-rat.one)], rat.zero)).
 nonneg_constr(gte(_, _)) :-
-    throw("nonneg_constr/1: gte.").
+    unexpected(this_file, "nonneg_constr/1: gte.").
 
 make_nonneg_constr(Var) = constraint([Var - (-rat.one)], (=<), rat.zero).
 
@@ -542,7 +546,8 @@ normalize_terms_and_const(AbsVal, !.Terms, !.Const, !:Terms, !:Const) :-
             Coefficient = Coefficient0
         ),
         ( if    Coefficient = rat.zero 
-          then  throw("normalize_term_and_const/5: zero coefficient.") 
+          then  unexpected(this_file,
+                    "normalize_term_and_const/5: zero coefficient.") 
           else  true
         ),
         DivideBy = (func(Var - Coeff) = Var - (Coeff / Coefficient)),
@@ -656,7 +661,8 @@ substitute_vars_2(SubstMap, lte(Terms0, Const)) = Result :-
 substitute_vars_2(SubstMap, eq(Terms0, Const)) = Result :-
     Terms = list.map(substitute_term(SubstMap), Terms0),
     Result = eq(sum_like_terms(Terms), Const).
-substitute_vars_2(_, gte(_, _)) = throw("substitute_vars_2/2: gte."). 
+substitute_vars_2(_, gte(_, _)) = 
+    unexpected(this_file, "substitute_vars_2/2: gte."). 
 
 :- func substitute_term(map(lp_var, lp_var), lp_term) = lp_term.
 
@@ -1032,7 +1038,8 @@ simplex(Result, !Tableau) :-
                         Col = !.Tableau ^ cols,
                         MVal = !.Tableau ^ elem(Row, Col),
                         ( if    MaxVal = zero
-                          then  throw("simplex/3: zero divisor.")
+                          then  unexpected(this_file,
+                                    "simplex/3: zero divisor.")
                           else  true
                         ),
                         CVal = MVal / MaxVal,
@@ -1049,7 +1056,8 @@ simplex(Result, !Tableau) :-
                   then  true    % CellVal = 0 => multiple optimal sol'ns.
                   else
                         ( if    CellVal = zero
-                          then  throw("simplex/3: zero divisor.")
+                          then  unexpected(this_file,
+                                    "simplex/3: zero divisor.")
                           else  true    
                         ),
                         MaxVal1 = MVal / CellVal,
@@ -1060,7 +1068,7 @@ simplex(Result, !Tableau) :-
                 )
             )
         ),
-        std_util.aggregate(AllRows, MaxAgg, no, MaxResult),
+        aggregate(AllRows, MaxAgg, no, MaxResult),
         (
             MaxResult = no,
             Result = no
@@ -1092,7 +1100,8 @@ ensure_zero_obj_coeffs([Var | Vars], !Tableau) :-
         (
             Ones = [Row - Fac0 | _],
             ( if    Fac0 = zero
-              then  throw("ensure_zero_obj_coeffs/3: zero divisor.")
+              then  unexpected(this_file,
+                        "ensure_zero_obj_coeffs/3: zero divisor.")
               else  true
             ),
             Fac = -Val / Fac0,
@@ -1100,7 +1109,7 @@ ensure_zero_obj_coeffs([Var | Vars], !Tableau) :-
             ensure_zero_obj_coeffs(Vars, !Tableau)
         ;
             Ones = [],
-            throw("ensure_zero_obj_coeffs/3: " ++
+            unexpected(this_file, "ensure_zero_obj_coeffs/3: " ++
                 "problem with artificial variable.")
         )
     ).
@@ -1114,7 +1123,7 @@ fix_basis_and_rem_cols([Var | Vars], !Tableau) :-
         Val = !.Tableau ^ elem(R, Col),
         Ones = ( Val = zero -> Ones0 ; [Val - R | Ones0] )  
     ),
-    std_util.aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
+    aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
     (
         Res = [one - Row]
     ->
@@ -1124,7 +1133,7 @@ fix_basis_and_rem_cols([Var | Vars], !Tableau) :-
             Zz = !.Tableau ^ elem(Row, Col1),
             Zz \= zero
         ),
-        std_util.solutions(PivGoal, PivSolns),
+        solutions(PivGoal, PivSolns),
         (
             PivSolns = [],
             remove_col(Col, !Tableau),
@@ -1161,7 +1170,7 @@ pivot(P, Q, !Tableau) :-
         Ajq = T0 ^ elem(J, Q),
         Apk = T0 ^ elem(P, K),
         ( if    Apq = zero
-          then  throw("pivot/4 - ScaleCell: zero divisor.")
+          then  unexpected(this_file, "pivot/4 - ScaleCell: zero divisor.")
           else  true
         ),
         T = T0 ^ elem(J, K) := Ajk - Apk * Ajq / Apq 
@@ -1180,7 +1189,7 @@ pivot(P, Q, !Tableau) :-
     ScaleRow = (pred(K::in, T0::in, T::out) is det :-
         Apk = T0 ^ elem(P, K),
         ( if    Apq = zero
-          then  throw("pivot/4 - ScaleRow: zero divisor.")  
+          then  unexpected(this_file, "pivot/4 - ScaleRow: zero divisor.")  
           else  true    
         ),
         T = T0 ^ elem(P, K) := Apk / Apq 
@@ -1199,7 +1208,7 @@ row_op(Scale, From, To, !Tableau) :-
         Z = Y + (Scale * X),
         T = T0 ^ elem(To, Col) := Z
     ),
-    std_util.aggregate(AllCols, AddRow, !Tableau).
+    aggregate(AllCols, AddRow, !Tableau).
 
 %-----------------------------------------------------------------------------%
 
@@ -1207,14 +1216,14 @@ row_op(Scale, From, To, !Tableau) :-
 % (We should try this in lp.m as well).
 
 :- type tableau
-    ---> tableau(
-        rows         :: int,
-        cols         :: int,
-        var_nums     :: map(lp_var, int),
-        shunned_rows :: list(int),  
-        shunned_cols :: list(int),  
-        cells        :: map(pair(int), rat)
-    ).
+    --->    tableau(
+                rows         :: int,
+                cols         :: int,
+                var_nums     :: map(lp_var, int),
+                shunned_rows :: list(int),  
+                shunned_cols :: list(int),  
+                cells        :: map(pair(int), rat)
+            ).
 
 :- func init_tableau(int, int, map(lp_var, int)) = tableau.
 
@@ -1236,7 +1245,8 @@ get_cell(Tableau, Row, Col) = Cell :-
     ( if
             (list.member(Row, Tableau ^ shunned_rows)
             ;list.member(Col, Tableau ^ shunned_cols))
-      then  throw("get_cell/3: attempt to address shunned row/col.")
+      then  unexpected(this_file,
+                "get_cell/3: attempt to address shunned row/col.")
       else  true
     ),
     ( if    Cell0 = Tableau ^ cells ^ elem(Row - Col)
@@ -1250,7 +1260,8 @@ get_cell(Tableau, Row, Col) = Cell :-
 set_cell(J, K, R, Tableau0, Tableau) :-
     Tableau0 = tableau(Rows, Cols, VarNums, SR, SC, Cells0),
     ( if    (list.member(J, SR) ; list.member(K, SC))
-      then  throw("set_cell/5: Attempt to write shunned row/col.")
+      then  unexpected(this_file,
+                "set_cell/5: Attempt to write shunned row/col.")
       else  true
     ),
     ( if    R = zero 
@@ -1423,17 +1434,16 @@ project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :-
         EqlResult = inconsistent,
         Result = inconsistent
     ;
-        % Elimination of equations should not cause an abort
-        % since we are always making the matrix smaller.
+        % Elimination of equations should not cause an abort since we always
+        % make the matrix smaller.
         %
         EqlResult = aborted,
-        throw("project/5: abort from eliminate_equations.")
+        unexpected(this_file, "project/5: abort from eliminate_equations.")
     ;
         EqlResult = ok(Constraints1),
         % 
-        % Skip the call to fourier_elimination/6 if there are no
-        % variables to project - this avoids the transformation to
-        % vector form.
+        % Skip the call to fourier_elimination/6 if there are no variables to
+        % project - this avoids the transformation to vector form.
         %
         ( !.Vars \= [] ->
             Matrix0 = constraints_to_matrix(Constraints1),      
@@ -1459,7 +1469,7 @@ project(!.Vars @ [_|_], Varset, MaybeThreshold, Constraints0, Result) :-
 
 %-----------------------------------------------------------------------------%
 % 
-% Convert each constraint into `=<' form and give each an initial label.
+% Convert each constraint into `=<' form and give each an initial label
 %
 
 :- func constraints_to_matrix(constraints) = matrix.
@@ -1541,11 +1551,12 @@ eliminate_equations_2([Var | !.Vars], !:Vars, !Equations, !Inequations) :-
     ( find_target_equality(Var, Target, !Equations) ->
         substitute_variable(Target, Var, !Equations, !Inequations,
             SuccessFlag),
-        ( SuccessFlag = no  ->
+        ( 
+            SuccessFlag = no, 
             list.cons(Var, !Vars),
             list.cons(Target, !Equations)
         ;
-            true
+            SuccessFlag = yes 
         )
     ;
         list.cons(Var, !Vars)
@@ -1572,7 +1583,8 @@ find_target_equality(Var, Eqns) = find_target_equality_2(Var, Eqns, []).
 find_target_equality_2(_, [], _) = no.
 find_target_equality_2(Var, [Eqn | Eqns], Acc) = MaybeTargetEqn :-
     ( if    operator(Eqn) \= (=)
-      then  throw("find_target_equality_2/3: inequality encountered.")
+      then  unexpected(this_file,
+                "find_target_equality_2/3: inequality encountered.")
       else  true
     ),
     Coeffs = lp_terms(Eqn),
@@ -1597,7 +1609,8 @@ substitute_variable(Target0, Var, !Equations, !Inequations, Flag) :-
     normalize_constraint(Var, Target0, Target),
     constraint(Target, TargetCoeffs, Op, TargetConst),
     ( if    Op \= (=)
-      then  throw("substitute_variable/7: inequality encountered.")
+      then  unexpected(this_file,
+                "substitute_variable/7: inequality encountered.")
       else  true
     ),
     fix_coeff_and_const(Var, TargetCoeffs, TargetConst, Coeffs, Const),
@@ -1925,7 +1938,7 @@ collect_remaining_vars([Var - _ | Rest], TargetVar) = Result :-
 
 :- func find_max(list(pair(lp_var, int))) = lp_var.
 
-find_max([]) = throw("find_max/2: empty list passed as arg.").
+find_max([]) = unexpected(this_file, "find_max/2: empty list passed as arg.").
 find_max([Var0 - ExpnNum0 | Vars]) = fst(find_max_2(Vars, Var0 - ExpnNum0)).
 
 :- func find_max_2(assoc_list(lp_var, int), pair(lp_var, int)) = 
@@ -1980,7 +1993,8 @@ count_coeff(Var - Coeff, !Map) :-
         ; Coeff < zero ->
             Pos = Pos0, Neg = Neg0 + 1
         ;
-            throw("count_coeff/3: zero coefficient encountered.")
+            unexpected(this_file,
+                "count_coeff/3: zero coefficient encountered.")
         ),
         svmap.det_update(Var, coeff_info(Pos, Neg), !Map)
     ;
@@ -2012,8 +2026,8 @@ init_cc_map(Vars) = list.foldl(InitMap, Vars, map.init) :-
 normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
     ( Coefficient = !.Terms ^ elem(Var) ->
         ( if    Coefficient = zero
-          then  throw( 
-            "normalize_vector/5: zero coefficient in vector.")
+          then  unexpected(this_file ,
+                    "normalize_vector/5: zero coefficient in vector.")
           else  true
         ),
         DivVal = rat.abs(Coefficient),
@@ -2039,7 +2053,8 @@ normalize_constraint(Var, Constraint0, Constraint) :-
     lp_rational.constraint(Constraint0, Terms0, Op0, Constant0),
     ( assoc_list.search(Terms0, Var, Coefficient) ->
         ( if    Coefficient = zero
-          then  throw("normalize_constraint/3: zero coefficient constraint.")
+          then  unexpected(this_file,
+                    "normalize_constraint/3: zero coefficient constraint.")
           else  true
         ),
         Terms = list.map((func(V - C) = V - (C / Coefficient)), Terms0),
@@ -2076,11 +2091,11 @@ add_vectors(TermsA, ConstA, TermsB, ConstB, Terms, ConstA + ConstB) :-
           else  Coeffs = map.det_insert(Coeffs0, Var, NumA)
         )
     ),
-    std_util.aggregate(IsMapKey, AddVal, TermsB, Terms).
+    aggregate(IsMapKey, AddVal, TermsB, Terms).
 
 %-----------------------------------------------------------------------------%
 % 
-% Redundancy checking using the linear solver.
+% Redundancy checking using the linear solver
 %
 
     % Check if each constraint in the set is entailed by all the others.
@@ -2157,7 +2172,7 @@ opposing_inequalities(lte(TermsA, Const), lte(TermsB, -Const)) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% Entailment test.
+% Entailment test
 %
     
 entailed(Varset, Constraints, lte(Objective, Constant)) = Result :-
@@ -2198,7 +2213,7 @@ entailed(Varset, Constraints, Constraint) :-
         Result = entailed
     ;
         Result = inconsistent,
-        throw("entailed/3: inconsistent constraint set.")
+        unexpected(this_file, "entailed/3: inconsistent constraint set.")
     ;
         Result = not_entailed,
         fail 
@@ -2338,7 +2353,7 @@ output_constraint(OutputVar, eq(Terms, Constant), !IO) :-
     io.write_string("eq(", !IO),
     output_constraint_2(OutputVar, Terms, Constant, !IO).
 output_constraint(_, gte(_,_), _, _) :-
-    throw("output_constraint/3: gte encountered.").
+    unexpected(this_file, "output_constraint/3: gte encountered.").
     
 :- pred output_constraint_2(output_var::in, lp_terms::in,
     constant::in, io::di, io::uo) is det.

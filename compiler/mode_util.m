@@ -6,15 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: mode_util.m
-% main author: fjh
+% File: mode_util.m.
+% Main author: fjh.
 
 % This module contains utility predicates for dealing with modes and insts.
 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__mode_util.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -203,7 +202,6 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -653,7 +651,8 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         Inst = free             % XXX temporary hack
     ;
         Inst0 = free(_),
-        error("propagate_ctor_info_lazily: type info already present")
+        unexpected(this_file,
+            "propagate_ctor_info_lazily: typeinfo already present")
     ;
         Inst0 = bound(Uniq, BoundInsts0),
         apply_type_subst(Type0, Subst, Type),

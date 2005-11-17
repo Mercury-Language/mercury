@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% builtin_ops.m -- defines the builtin operator types.
+% File: builtin_ops.m -- defines the builtin operator types.
 % Main author: fjh.
 %
 % This module defines various types which enumerate the different builtin
@@ -23,6 +23,8 @@
 :- import_module mdbcomp.prim_data.
 
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- type unary_op
     --->    mktag
@@ -258,3 +260,7 @@ builtin_translation("float", ">=", 0, [X, Y],
     test(binary(float_ge, leaf(X), leaf(Y)))).
 builtin_translation("float", "=<", 0, [X, Y],
     test(binary(float_le, leaf(X), leaf(Y)))).
+
+%-----------------------------------------------------------------------------%
+:- end_module builtin_ops.
+%-----------------------------------------------------------------------------%

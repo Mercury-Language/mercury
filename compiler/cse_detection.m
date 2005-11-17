@@ -6,18 +6,18 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: cse_detection.m.
+% Main author: zs.
+% Much of the code is based on switch_detection.m by fjh.
+
 % Common subexpression detection - hoist common subexpression goals out of
 % branched structures. This can enable us to find more indexing opportunities
 % and hence can make the code more deterministic.
 % This code is switched on/off with the `--common-goal' option.
-%
-% Main author: zs.
-% Much of the code is based on switch_detection.m by fjh.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__cse_detection.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -62,7 +62,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -852,4 +851,6 @@ find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
 
 this_file = "cse_detection.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module cse_detection.
 %-----------------------------------------------------------------------------%

@@ -9,17 +9,15 @@
 % File: delay_info.m.
 % Main author: fjh.
 
-% This module implements part of the mode analysis algorithm.
-% In the mode analysis, reordering of conjunctions is done
-% by simulating coroutining at compile time.  This module
-% defines an abstract data type `delay_info' which records the
-% information necessary for suspending and waking up goals.
+% This module implements part of the mode analysis algorithm.  In the mode
+% analysis, reordering of conjunctions is done by simulating coroutining at
+% compile time.  This module defines an abstract data type `delay_info' that 
+% records the information necessary for suspending and waking up goals.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__delay_info.
-
 :- interface.
 
 :- import_module check_hlds.mode_errors.
@@ -96,11 +94,12 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module stack.
 :- import_module std_util.
 :- import_module svmap.
+
+%-----------------------------------------------------------------------------%
 
     % The delay_info structure is a tangled web of substructures
     % all of which are pointing at each other - debugging it
@@ -223,9 +222,9 @@ waiting_goal_vars_check_invariant([Var | Vars], GoalNum, GivenVars,
 
 %-----------------------------------------------------------------------------%
 
-    % Initialize the delay info structure in preparation for
-    % mode analysis of a goal.
-
+    % Initialize the delay info structure in preparation for mode analysis of
+    % a goal.
+    %
 delay_info__init(DelayInfo) :-
     CurrentDepth = 0,
     stack__init(DelayedGoalStack),
@@ -481,4 +480,6 @@ delay_info__wakeup_goal(Goal, !DelayInfo) :-
 
 this_file = "delay_info.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module delay_info.
 %-----------------------------------------------------------------------------%

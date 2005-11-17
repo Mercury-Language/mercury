@@ -6,15 +6,16 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% A module that provides functions that check whether goals fulfill
-% particular criteria.
-%
+% File: goal_form.m.
 % Main authors: conway, zs.
+%
+% A module that provides functions that check whether goals fulfill particular
+% criteria.
+%
 %
 %-----------------------------------------------------------------------------%
 
 :- module hlds__goal_form.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -22,6 +23,8 @@
 :- import_module hlds.hlds_pred.
 
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 %
 % The first three versions may be more accurate because they can use
@@ -586,7 +589,7 @@ goal_cannot_modify_trail_2(ModuleInfo, switch(_, _, Goals)) :-
         goal_cannot_modify_trail(ModuleInfo, Goal)
     ),
     list.all_true(CheckCase, Goals).
-goal_cannot_modify_trail_2(_, unify(_, _, _, _, _)). % XXX Is this correct.
+goal_cannot_modify_trail_2(_, unify(_, _, _, _, _)).
 goal_cannot_modify_trail_2(ModuleInfo, not(Goal)) :-
     goal_cannot_modify_trail(ModuleInfo, Goal).
 goal_cannot_modify_trail_2(ModuleInfo, scope(_, Goal)) :-

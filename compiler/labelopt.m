@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% labelopt.m - module to eliminate useless labels and dead code.
-
+% File: labelopt.m. 
 % Author: zs.
+
+% Module to eliminate useless labels and dead code.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__labelopt.
-
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -22,21 +22,24 @@
 :- import_module list.
 :- import_module set.
 
-    % Build up a set showing which labels are branched to,
-    % then traverse the instruction list removing unnecessary labels.
-    % If the instruction before the label branches away, we also
-    % remove the instruction block following the label.
+%-----------------------------------------------------------------------------%
+
+    % Build up a set showing which labels are branched to, then traverse the
+    % instruction list removing unnecessary labels.  If the instruction before
+    % the label branches away, we also remove the instruction block following
+    % the label.
     %
 :- pred labelopt_main(bool::in, set(label)::in,
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
-    % Build up a set showing which labels are referred to.
-    % The input set is the list of labels referred to from outside
-    % the given list of instructions.
+    % Build up a set showing which labels are referred to.  The input set is
+    % the list of labels referred to from outside the given list of
+    % instructions.
     %
 :- pred build_useset(list(instruction)::in, set(label)::in, set(label)::out)
     is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -44,6 +47,9 @@
 :- import_module ll_backend.opt_util.
 
 :- import_module std_util.
+:- import_module svset.
+
+%-----------------------------------------------------------------------------%
 
 labelopt_main(Final, LayoutLabelSet, Instrs0, Instrs, Mod) :-
     build_useset(Instrs0, LayoutLabelSet, Useset),
@@ -63,16 +69,16 @@ build_useset([], !Useset).
 build_useset([Instr | Instructions], !Useset) :-
     Instr = Uinstr - _Comment,
     opt_util__instr_labels(Uinstr, Labels, _CodeAddresses),
-    set__insert_list(!.Useset, Labels, !:Useset),
+    svset__insert_list(Labels, !Useset),
     build_useset(Instructions, !Useset).
 
 %-----------------------------------------------------------------------------%
 
-    % Go through the given instruction sequence. When we find a label,
-    % we check whether the label can be branched to either from within
-    % the procedure or from the outside. If yes, we leave it alone.
-    % If not, we delete it. We delete the following code as well if
-    % the label was preceded by code that cannot fall through.
+    % Go through the given instruction sequence. When we find a label, we
+    % check whether the label can be branched to either from within the
+    % procedure or from the outside. If yes, we leave it alone.  If not, we
+    % delete it. We delete the following code as well if the label was
+    % preceded by code that cannot fall through.
     %
     % We build up the generated instruction list in reverse order in
     % instr_list_2, because building it in right order here would make
@@ -129,9 +135,9 @@ instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
     instr_list_2(Instrs0, !RevInstrs, !Mod, !.Fallthrough, Useset).
 
     % Instead of removing eliminated instructions from the instruction list,
-    % we can replace them by placeholder comments. The original comment
-    % field on the instruction is often enough to deduce what the
-    % eliminated instruction was.
+    % we can replace them by placeholder comments. The original comment field
+    % on the instruction is often enough to deduce what the eliminated
+    % instruction was.
     %
 :- pred eliminate(instruction::in, maybe(bool)::in,
     list(instruction)::in, list(instruction)::out,
@@ -170,4 +176,12 @@ eliminate(Uinstr0 - Comment0, Label, !RevInstrs, !Mod) :-
 
 labelopt_eliminate_total(yes).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "labelopt.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module labelopt.
 %-----------------------------------------------------------------------------%

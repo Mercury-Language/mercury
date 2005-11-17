@@ -5,10 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+% 
+% File: compiler_util.
 % Main author: zs.
 %
 % This module contains code that can be helpful in any compiler module.
+%
+%-----------------------------------------------------------------------------%
 
 :- module libs__compiler_util.
 
@@ -16,10 +19,12 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
     % Call error/1 with a "Sorry, not implemented" message.
     %
-    % Use this for features that should be implemented (or at least
-    % could be implemented).
+    % Use this for features that should be implemented (or at least could be
+    % implemented).
     %
 :- func sorry(string, string) = _ is erroneous.
 :- pred sorry(string::in, string::in) is erroneous.
@@ -33,12 +38,12 @@
 :- pred unexpected(string::in, string::in) is erroneous.
 
     % Record the fact that a warning has been issued; set the exit status
-    % to error if the --halt-at-warn option is set.
+    % to error if the `--halt-at-warn' option is set.
     %
 :- pred record_warning(io::di, io::uo) is det.
 
     % Report a warning, and set the exit status to error if the
-    % --halt-at-warn option is set.
+    % `--halt-at-warn' option is set.
     %
 :- pred report_warning(string::in, io::di, io::uo) is det.
 
@@ -47,6 +52,9 @@
     %
 :- pred report_warning(io__output_stream::in, string::in, io::di, io::uo)
     is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -57,6 +65,8 @@
 :- import_module list.
 :- import_module require.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % Call error/1 with a "Sorry, not implemented" message.
     %
@@ -87,3 +97,7 @@ report_warning(Message, !IO) :-
 report_warning(Stream, Message, !IO) :-
     record_warning(!IO),
     io__write_string(Stream, Message, !IO).
+
+%-----------------------------------------------------------------------------%
+:- end_module compiler_util.
+%-----------------------------------------------------------------------------%

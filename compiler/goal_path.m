@@ -6,13 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% This module looks after goal paths, which associate each goal
-% with its position in a procedure definition,
-
+% File: goal_path.m.
 % Main author: zs.
 
-:- module check_hlds__goal_path.
+% This module looks after goal paths, which associate each goal with its
+% position in a procedure definition,
 
+%-----------------------------------------------------------------------------%
+
+:- module check_hlds__goal_path.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -21,6 +23,8 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+
+%-----------------------------------------------------------------------------%
 
     % IMPORTANT: the type constraint_id in hlds_data.m makes use of
     % goal_paths to identify constraints between the typechecking pass
@@ -46,6 +50,9 @@
 :- pred goal_path__fill_slots_in_goal(hlds_goal::in, vartypes::in,
     module_info::in, hlds_goal::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.type_util.
@@ -58,8 +65,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type slot_info
     --->    slot_info(
@@ -230,4 +238,6 @@ fill_switch_slots(Path0, N0, NumCases, SlotInfo,
 
 this_file = "goal_path.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module goal_path.
 %-----------------------------------------------------------------------------%

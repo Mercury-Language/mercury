@@ -5,25 +5,25 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: rtti.m.
+% Authors: zs, fjh.
+
 % Definitions of data structures for representing run-time type information
 % within the compiler. When output by rtti_out.m, values of most these types
-% will correspond to the types defined in runtime/mercury_type_info.h;
-% the documentation of those types can be found there.
+% will correspond to the types defined in runtime/mercury_type_info.h; the
+% documentation of those types can be found there.
 % The code to generate the structures is in type_ctor_info.m.
 % See also pseudo_type_info.m.
-%
-% This module is independent of whether we are compiling to LLDS or MLDS.
-% It is used as an intermediate data structure that we generate from the
-% HLDS, and which we can then convert to either LLDS or MLDS.
-% The LLDS actually incorporates this data structure unchanged.
-%
-% Authors: zs, fjh.
+
+% This module is independent of whether we are compiling to LLDS or MLDS.  It
+% is used as an intermediate data structure that we generate from the HLDS,
+% and which we can then convert to either LLDS or MLDS.  The LLDS actually
+% incorporates this data structure unchanged.
 
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs__rtti.
-
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -44,6 +44,7 @@
 % nonground (pseudo-typeinfos).
 
     % An rtti_type_info identifies a ground type.
+    %
 :- type rtti_type_info
     --->    plain_arity_zero_type_info(
                 rtti_type_ctor
@@ -60,6 +61,7 @@
             ).
 
     % An rtti_pseudo_type_info identifies a possibly non-ground type.
+    %
 :- type rtti_pseudo_type_info
     --->    plain_arity_zero_pseudo_type_info(
                 rtti_type_ctor
@@ -79,11 +81,13 @@
     % An rtti_maybe_pseudo_type_info identifies a type. If the type is
     % ground, it should be bound to plain; if it is non-ground, it should
     % be bound to pseudo.
+    %
 :- type rtti_maybe_pseudo_type_info
     --->    pseudo(rtti_pseudo_type_info)
     ;       plain(rtti_type_info).
 
     % An rtti_type_ctor uniquely identifies a fixed arity type constructor.
+    %
 :- type rtti_type_ctor
     --->    rtti_type_ctor(
                 module_name,        % module name
@@ -100,10 +104,12 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The data structures representing type constructors.
+% The data structures representing type constructors
+%
 
     % A type_ctor_data structure contains all the information that the
     % runtime system needs to know about a type constructor.
+    %
 :- type type_ctor_data
     --->    type_ctor_data(
                 tcr_version         :: int,
@@ -119,6 +125,7 @@
     % Each of the following values corresponds to one of the
     % MR_TYPE_CTOR_FLAG_* macros in runtime/mercury_type_info.h.
     % Their meanings are documented there.
+    %
 :- type type_ctor_flag
     --->    reserve_tag_flag
     ;       variable_arity_flag
@@ -159,7 +166,7 @@
     %
     % For notag types, the single functor descriptor fills the roles of
     % the second, third and fourth components.
-
+    %
 :- type type_ctor_details
     --->    enum(
                 enum_axioms         :: equality_axioms,
@@ -201,6 +208,7 @@
 
     % For a given du family type, this says whether the user has defined
     % their own unification predicate for the type.
+    %
 :- type equality_axioms
     --->    standard
     ;       user_defined.
@@ -208,6 +216,7 @@
     % Descriptor for a functor in an enum type.
     %
     % This type corresponds to the C type MR_EnumFunctorDesc.
+    %
 :- type enum_functor
     --->    enum_functor(
                 enum_name           :: string,
@@ -217,6 +226,7 @@
     % Descriptor for a functor in a notag type.
     %
     % This type corresponds to the C type MR_NotagFunctorDesc.
+    %
 :- type notag_functor
     --->    notag_functor(
                 nt_name             :: string,
@@ -229,6 +239,7 @@
     % address.
     %
     % This type mostly corresponds to the C type MR_DuFunctorDesc.
+    %
 :- type du_functor
     --->    du_functor(
                 du_name             :: string,
@@ -242,6 +253,7 @@
     % Descriptor for a functor represented by a reserved address.
     %
     % This type corresponds to the C type MR_ReservedAddrFunctorDesc.
+    %
 :- type reserved_functor
     --->    reserved_functor(
                 res_name            :: string,
@@ -255,6 +267,7 @@
     % although their structure is slightly different in order to make
     % searches on an array of the C structures as convenient as searches
     % on a list of values of this Mercury type.
+    %
 :- type maybe_reserved_functor
     --->    res_func(
                 mrf_res             :: reserved_functor
@@ -267,6 +280,7 @@
     % discriminated union type.
     %
     % Will probably need modification for the Java and IL back ends.
+    %
 :- type du_rep
     --->    du_ll_rep(
                 du_ll_ptag          :: int,
@@ -280,6 +294,7 @@
     % discriminated union functor.
     %
     % This type corresponds to the C type MR_DuExistInfo.
+    %
 :- type exist_info
     --->    exist_info(
                 exist_num_plain_typeinfos   :: int,
@@ -293,6 +308,7 @@
     % discriminated union functor.
     %
     % This type corresponds to the C type MR_DuExistLocn.
+    %
 :- type exist_typeinfo_locn
     --->    plain_typeinfo(
                 int         % The typeinfo is stored directly in the cell,
@@ -317,7 +333,7 @@
     %
     % The type sectag_table corresponds to the C type MR_DuPtagLayout.
     % The two maps are implemented in C as simple arrays.
-
+    %
 :- type ptag_map    == map(int, sectag_table).  % key is primary tag
 :- type stag_map    == map(int, du_functor).    % key is secondary tag
 
@@ -330,6 +346,7 @@
 
     % Describes the location of the secondary tag for a given primary tag
     % value in a given type.
+    %
 :- type sectag_locn
     --->    sectag_none
     ;       sectag_local
@@ -337,6 +354,7 @@
 
     % Describes the location of the secondary tag and its value for a
     % given functor in a given type.
+    %
 :- type sectag_and_locn
     --->    sectag_none
     ;       sectag_local(int)
@@ -344,6 +362,7 @@
 
     % Information about an argument of a functor in a discriminated union
     % type.
+    %
 :- type du_arg_info
     --->    du_arg_info(
                 du_arg_name         :: maybe(string),
@@ -355,6 +374,7 @@
     % type of the whole term, it should be bound to self. Otherwise, if
     % the argument's type is ground, it should be bound to plain; if it
     % is non-ground, it should be bound to pseudo.
+    %
 :- type rtti_maybe_pseudo_type_info_or_self
     --->    pseudo(rtti_pseudo_type_info)
     ;       plain(rtti_type_info)
@@ -362,6 +382,7 @@
 
     % The list of type constructors for types that are built into the
     % Mercury language or the Mercury standard library.
+    %
 :- type builtin_ctor
     --->    int
     ;       float
@@ -379,6 +400,7 @@
 
     % The list of type constructors that are used behind the scenes by
     % the Mercury implementation.
+    %
 :- type impl_ctor
     --->    hp
     ;       succip
@@ -400,10 +422,12 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The data structures representing type class dictionaries.
+% The data structures representing type class dictionaries
+%
 
     % A base_typeclass_info holds information about a typeclass instance.
     % See notes/type_class_transformation.html for details.
+    %
 :- type base_typeclass_info
     --->    base_typeclass_info(
                 % Num_extra = num_unconstrained + num_constraints,
@@ -439,6 +463,7 @@
 % are generated only on request, and used only by the debugger.
 
     % This type corresponds to the C type MR_TypeClassMethod.
+    %
 :- type tc_method_id
     --->    tc_method_id(
                 tcm_name                :: string,
@@ -447,6 +472,7 @@
             ).
 
     % Uniquely identifies a type class.
+    %
 :- type tc_name
     --->    tc_name(
                 tcn_module              :: module_name,
@@ -465,6 +491,7 @@
     % is to make it easier to allow us to maintain binary compatibility
     % even if the amount of information we want to record about type class
     % declarations changes.
+    %
 :- type tc_id
     --->    tc_id(
                 tc_id_name              :: tc_name,
@@ -483,6 +510,7 @@
 
     % This type corresponds to the C type MR_TypeClassConstraint_NStruct,
     % where N is the length of the list in the tcc_types field.
+    %
 :- type tc_constraint
     --->    tc_constraint(
                 tcc_class_name          :: tc_name,
@@ -494,6 +522,7 @@
     % structures related to the type class.
     %
     % This type corresponds to the C type MR_Instance.
+    %
 :- type tc_instance
     --->    tc_instance(
                 tci_type_class          :: tc_name,
@@ -619,7 +648,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The functions operating on RTTI data.
+% Functions operating on RTTI data
+%
 
 :- func encode_type_ctor_flags(set(type_ctor_flag)) = int.
 
@@ -811,6 +841,9 @@
 :- pred rtti_id_emits_type_ctor_info(rtti_id::in, rtti_type_ctor::out)
     is semidet.
 
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.name_mangle.
@@ -830,13 +863,17 @@
 :- import_module string.
 :- import_module varset.
 
-encode_type_ctor_flags(FlagSet) =
-        list__foldl(encode_type_ctor_flag, FlagList, 0) :-
-    set__to_sorted_list(FlagSet, FlagList).
+%----------------------------------------------------------------------------%
+
+encode_type_ctor_flags(FlagSet) = Encoding :-
+    set__to_sorted_list(FlagSet, FlagList),
+    Encoding = list__foldl(encode_type_ctor_flag, FlagList, 0).
 
 :- func encode_type_ctor_flag(type_ctor_flag, int) = int.
 
-    % The encoding here must match the one in runtime/mercury_type_info.h.
+    % NOTE: the encoding here must match the one in
+    %       runtime/mercury_type_info.h.
+    %
 encode_type_ctor_flag(reserve_tag_flag, N)    = N + 1.
 encode_type_ctor_flag(variable_arity_flag, N) = N + 2.
 encode_type_ctor_flag(kind_of_du_flag, N)     = N + 4.
@@ -1933,4 +1970,6 @@ rtti_id_emits_type_ctor_info(RttiId, TypeCtor) :-
 
 this_file = "rtti.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module rtti.
 %-----------------------------------------------------------------------------%

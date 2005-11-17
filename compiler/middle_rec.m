@@ -6,13 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
+% File: middle_rec.m.
+% Main authors: zs, conway.
+%
 % Code generation - do middle recursion optimization.
-% Main authors: zs and conway.
 %
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__middle_rec.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -21,6 +22,8 @@
 
 :- pred middle_rec__match_and_generate(hlds_goal::in, code_tree::out,
     code_info::in, code_info::out) is semidet.
+
+%---------------------------------------------------------------------------%
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -47,7 +50,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -609,7 +611,7 @@ insert_pragma_c_output_registers([Output | Outputs], !Used) :-
 %---------------------------------------------------------------------------%
 
     % Find all the labels defined in an instruction sequence.
-
+    %
 :- pred middle_rec__find_labels(list(instruction)::in, list(label)::out)
     is det.
 
@@ -636,4 +638,6 @@ middle_rec__find_labels_2([Instr - _ | Instrs], !Labels) :-
 
 this_file = "middle_rec.m".
 
+%---------------------------------------------------------------------------%
+:- end_module middle_rec.
 %---------------------------------------------------------------------------%

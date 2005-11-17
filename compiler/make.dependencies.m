@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: make.dependencies.m
-% Author: stayl
-%
+
+% File: make.dependencies.m.
+% Author: stayl.
+
 % Code to find the dependencies for a particular target,
 % e.g. module.c depends on module.m, import.int, etc.
+
 %-----------------------------------------------------------------------------%
 
-:- module make__dependencies.
-
+:- module make.dependencies.
 :- interface.
 
 %-----------------------------------------------------------------------------%
@@ -104,6 +105,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+%-----------------------------------------------------------------------------%
 
 :- type deps_result(T) == pair(bool, set(T)).
 :- type module_deps_result == deps_result(module_name).

@@ -29,6 +29,9 @@
 
 :- pred combine_decr_sp(list(instruction)::in, list(instruction)::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
@@ -41,8 +44,10 @@
 :- import_module std_util.
 :- import_module string.
 
-    % Patterns that can be switched off.
+%-----------------------------------------------------------------------------%
 
+    % Patterns that can be switched off.
+    %
 :- type pattern --->        incr_sp.
 
     % We zip down to the end of the instruction list, and start attempting
@@ -407,3 +412,7 @@ combine_decr_sp([Instr0 | Instrs0], Instrs) :-
     ;
         Instrs = [Instr0 | Instrs1]
     ).
+
+%-----------------------------------------------------------------------------%
+:- end_module peephole.
+%-----------------------------------------------------------------------------%

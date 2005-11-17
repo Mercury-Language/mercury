@@ -82,9 +82,10 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
+
 :- import_module bool.
 :- import_module int.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
@@ -576,7 +577,7 @@ ensure_zero_obj_coeffs([V | Vs], !Tableau) :-
             ensure_zero_obj_coeffs(Vs, !Tableau)
         ;
             Ones = [],
-            error("problem with artificial variable")
+            unexpected(this_file, "problem with artificial variable")
         )
     ).
 
@@ -702,7 +703,7 @@ index(Tableau, J, K, R) :-
     (
         (list.member(J, SR) ; list.member(K, SC))
     ->
-        error("attempt to address shunned row/col")
+        unexpected(this_file, "index: attempt to address shunned row/col")
     ;
         true
     ),
@@ -722,7 +723,7 @@ set_index(J, K, R, !Tableau) :-
     (
         (list.member(J, SR) ; list.member(K, SC))
     ->
-        error("attempt to write shunned row/col")
+        unexpected(this_file, "set_index: attempt to write shunned row/col")
     ;
         true
     ),
@@ -931,4 +932,12 @@ show_cell(Tableau, Row, Col, !IO) :-
     index(Tableau, Row, Col, Val),
     io.format("%2.2f\t", [f(Val)], !IO).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "lp.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module lp.
 %-----------------------------------------------------------------------------%

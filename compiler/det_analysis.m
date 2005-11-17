@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% det_analysis.m - the determinism analysis pass.
-
+% File: det_analysis.m - the determinism analysis pass.
 % Main authors: conway, fjh, zs.
 
 % This pass has three components:
@@ -22,18 +21,17 @@
 %   declarations to ensure that they are at least as deterministic as their
 %   declaration. This uses a form of the local inference pass.
 %
-% If we are to avoid global inference for predicates with
-% declarations, then it must be an error, not just a warning,
-% if the determinism checking step detects that the determinism
-% annotation was wrong.  If we were to issue just a warning, then
-% we would have to override the determinism annotation, and that
-% would force us to re-check the inferred determinism for all
-% calling predicates.
+% If we are to avoid global inference for predicates with declarations, then
+% it must be an error, not just a warning, if the determinism checking step
+% detects that the determinism annotation was wrong.  If we were to issue just
+% a warning, then we would have to override the determinism annotation, and
+% that would force us to re-check the inferred determinism for all calling
+% predicates.
 %
-% Alternately, we could leave it as a warning, but then we would
-% have to _make_ the predicate deterministic (or semideterministic)
-% by inserting run-time checking code which calls error/1 if the
-% predicate really isn't deterministic (semideterministic).
+% Alternately, we could leave it as a warning, but then we would have to
+% _make_ the predicate deterministic (or semideterministic) by inserting
+% run-time checking code which calls error/1 if the predicate really isn't
+% deterministic (semideterministic).
 
 % Determinism has three components:
 %
@@ -49,7 +47,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__det_analysis.
-
 :- interface.
 
 :- import_module check_hlds.det_report.
@@ -63,6 +60,8 @@
 
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % Perform determinism inference for local predicates with no determinism
     % declarations, and determinism checking for all other predicates.
@@ -99,6 +98,7 @@
     ;       first_soln.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -120,7 +120,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -736,7 +735,8 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             det_negation_det(CondDetism, MaybeNegDetism),
             (
                 MaybeNegDetism = no,
-                error("cannot find determinism of negated condition")
+                unexpected(this_file,
+                    "cannot find determinism of negated condition")
             ;
                 MaybeNegDetism = yes(NegDetism)
             ),
@@ -767,7 +767,8 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         det_negation_det(NegDetism, MaybeDetism),
         (
             MaybeDetism = no,
-            error("inappropriate determinism inside a negation")
+            unexpected(this_file,
+                "inappropriate determinism inside a negation")
         ;
             MaybeDetism = yes(Detism)
         ),
@@ -884,7 +885,7 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        error("det_infer_goal_2: unexpected shorthand")
+        unexpected(this_file, "det_infer_goal_2: unexpected shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1306,4 +1307,6 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
 
 this_file = "det_analysis.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module det_analysis.
 %-----------------------------------------------------------------------------%

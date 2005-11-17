@@ -18,7 +18,6 @@
 %----------------------------------------------------------------------------%
 
 :- module ll_backend__var_locn.
-
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -35,6 +34,8 @@
 :- import_module map.
 :- import_module set.
 :- import_module std_util.
+
+%----------------------------------------------------------------------------%
 
 :- type var_locn_info.
 
@@ -368,6 +369,8 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%----------------------------------------------------------------------------%
 
 :- type dead_or_alive   --->    dead ; alive.
 
@@ -2323,4 +2326,6 @@ set_exceptions(E, VI, VI ^ exceptions := E).
 
 this_file = "var_locn.m".
 
+%----------------------------------------------------------------------------%
+:- end_module var_locn.
 %----------------------------------------------------------------------------%

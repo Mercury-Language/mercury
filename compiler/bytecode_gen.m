@@ -6,15 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
+% File: bytecode_gen.m.
+% Author: zs.
+%
 % This module generates bytecode, which is intended to be used by a
 % (not yet implemented) bytecode interpreter/debugger.
-%
-% Author: zs.
 %
 %---------------------------------------------------------------------------%
 
 :- module bytecode_backend__bytecode_gen.
-
 :- interface.
 
 :- import_module bytecode_backend.bytecode.
@@ -22,6 +22,8 @@
 
 :- import_module io.
 :- import_module list.
+
+%---------------------------------------------------------------------------%
 
 :- pred gen_module(module_info::in, list(byte_code)::out,
     io::di, io::uo) is det.
@@ -311,7 +313,7 @@ gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
 %---------------------------------------------------------------------------%
 
     % Generate bytecode for a higher order call.
-
+    %
 :- pred gen_higher_order_call(prog_var::in, list(prog_var)::in,
     list(mer_mode)::in, determinism::in, byte_info::in, byte_tree::out) is det.
 
@@ -898,4 +900,6 @@ get_is_func(PredInfo, IsFunc) :-
 
 this_file = "bytecode_gen.m".
 
+%---------------------------------------------------------------------------%
+:- end_module bytecode_gen.
 %---------------------------------------------------------------------------%

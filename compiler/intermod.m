@@ -36,7 +36,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__intermod.
-
 :- interface.
 
 :- import_module hlds.hlds_module.

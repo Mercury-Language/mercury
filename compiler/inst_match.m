@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% file: inst_match.m
-% author: fjh
-%
+
+% File: inst_match.m.
+% Author: fjh.
+
 % This module defines some utility routines for comparing insts that are used
 % by modes.m and det_analysis.m.
 %
@@ -38,7 +38,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__inst_match.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -314,7 +313,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module svset.

@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: commit_gen.m
-%
+% File: commit_gen.m.
 % Main authors: conway, fjh, zs.
 %
 % The predicates of this module generate code for performing commits.
@@ -15,7 +14,6 @@
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__commit_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -25,7 +23,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred commit_gen__generate_commit(add_trail_ops::in, code_model::in,
+:- pred generate_commit(add_trail_ops::in, code_model::in,
     hlds_goal::in, code_tree::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -37,8 +35,8 @@
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 
-:- import_module require.
 :- import_module std_util.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -52,7 +50,8 @@ generate_commit(AddTrailOps, OuterCodeModel, Goal, Code, !Info) :-
             code_gen__generate_goal(InnerCodeModel, Goal, Code, !Info)
         ;
             InnerCodeModel = model_semi,
-            unexpected(this_file, "semidet model in det context")
+            unexpected(this_file, "generate_commit: " ++
+                "semidet model in det context")
         ;
             InnerCodeModel = model_non,
             code_info__prepare_for_det_commit(AddTrailOps, CommitInfo,

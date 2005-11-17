@@ -68,11 +68,12 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__lambda.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+
+%-----------------------------------------------------------------------------%
 
 :- pred process_module(module_info::in, module_info::out) is det.
 
@@ -110,10 +111,12 @@
 :- import_module term.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
 :- type lambda_info
     --->    lambda_info(
                 prog_varset,            % from the proc_info
-                vartypes,    % from the proc_info
+                vartypes,               % from the proc_info
                 prog_constraints,       % from the pred_info
                 tvarset,                % from the proc_info
                 inst_varset,            % from the proc_info
@@ -128,8 +131,9 @@
             ).
 
 %-----------------------------------------------------------------------------%
-
-    % This whole section just traverses the module structure.
+%
+% This whole section just traverses the module structure
+%
 
 process_module(!ModuleInfo) :-
     module_info_predids(!.ModuleInfo, PredIds),
@@ -591,4 +595,6 @@ uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
 
 this_file = "lambda.m".
 
+%---------------------------------------------------------------------------%
+:- end_module lambda.
 %---------------------------------------------------------------------------%

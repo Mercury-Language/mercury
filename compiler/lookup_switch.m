@@ -5,41 +5,41 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% lookup_switch.m
+
+% File: lookup_switch.m.
 % Author: conway.
-%
-% For switches on atomic types in which the cases contain only the construction
-% of constants, generate code which just assigns the values of the output
-% variables by indexing into an array of values for each output variable.
+
+% For switches on atomic types in which the cases contain only the
+% construction of constants, generate code which just assigns the values of
+% the output variables by indexing into an array of values for each output
+% variable.
 %
 % For switches that can fail, the generated code does a range check on the
-% index, and then does a lookup in a bit-vector to see if there is a value
-% for the appropriate case. If there is, then it does a lookup (using the
-% field macro) in the array of results. The array is padded with "0"s for
-% cases that are not covered. This is fine, since we do the lookup after
-% we check the bit-vector for the appropriate case.
+% index, and then does a lookup in a bit-vector to see if there is a value for
+% the appropriate case. If there is, then it does a lookup (using the field
+% macro) in the array of results. The array is padded with "0"s for cases that
+% are not covered. This is fine, since we do the lookup after we check the
+% bit-vector for the appropriate case.
 %
 % The current implementation works out whether or not it can do a lookup
-% switch by generating code for each case and looking to see that no code
-% got generated (i.e. only the code generation state got modified) and that
-% the output variables of the switch are all constants. This is potentially
-% quite inefficient because it does the work of generating code for the cases
-% and then may throw it away if a subsequent case generates actual code, or
-% non constant outputs.
+% switch by generating code for each case and looking to see that no code got
+% generated (i.e. only the code generation state got modified) and that the
+% output variables of the switch are all constants. This is potentially quite
+% inefficient because it does the work of generating code for the cases and
+% then may throw it away if a subsequent case generates actual code, or non
+% constant outputs.
 %
 % A potential improvement would be to make a single array for each switch,
-% since putting the values produced for each tag value side-by-side in
-% memory will tend to lead to fewer cache misses.
+% since putting the values produced for each tag value side-by-side in memory
+% will tend to lead to fewer cache misses.
 %
 % The number of bits per word is taken from the bits_per_word option which
-% uses a flag in the mc script with a value from configuration. This is
-% used when generating bit-vectors.
-%
+% uses a flag in the mc script with a value from configuration. This is used
+% when generating bit-vectors.
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__lookup_switch.
-
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -54,6 +54,8 @@
 :- import_module map.
 :- import_module set.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type case_consts == list(pair(int, list(rval))).
 
@@ -72,6 +74,7 @@
     maybe(set(prog_var))::in, abs_store_map::in, branch_end::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -96,8 +99,10 @@
 :- import_module int.
 :- import_module require.
 
-    % Most of this predicate is taken from dense_switch.m
+%-----------------------------------------------------------------------------%
 
+    % Most of this predicate is taken from dense_switch.m.
+    %
 is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
         ReqDensity, StoreMap, !MaybeEnd, CodeModel,
         FirstVal, LastVal, NeedRangeCheck, NeedBitVecTest, OutVars,
@@ -174,10 +179,9 @@ is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
 %---------------------------------------------------------------------------%
 
     % Figure out which variables are bound in the switch.
-    % We do this by using the current instmap and the instmap delta in
-    % the goal info to work out which variables are [further] bound by
-    % the switch.
-
+    % We do this by using the current instmap and the instmap delta in the
+    % goal info to work out which variables are [further] bound by the switch.
+    %
 :- pred figure_out_output_vars(code_info::in, hlds_goal_info::in,
     list(prog_var)::out) is det.
 
@@ -520,4 +524,6 @@ rearrange_vals_2([Var - Rval | Rest], Tag, Map0, Map) :-
 
 this_file = "lookup_switch.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module lookup_switch.
 %-----------------------------------------------------------------------------%

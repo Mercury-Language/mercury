@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% error_util.m
+% File: error_util.m.
 % Main author: zs.
 %
 % This module contains code that can be helpful in the formatting of
@@ -16,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module hlds__hlds_error_util.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -28,7 +27,10 @@
 :- import_module list.
 :- import_module std_util.
 
-    % Predicates to convert a predicate and procedure names to strings.
+%-----------------------------------------------------------------------------%
+%
+% Predicates to convert predicate and procedure names to strings
+%
 
 :- type should_module_qualify
     --->    should_module_qualify
@@ -61,11 +63,15 @@
 :- func describe_several_call_sites(module_info, should_module_qualify,
     assoc_list(pred_proc_id, prog_context)) = list(format_component).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.prim_data.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -75,13 +81,12 @@
 :- import_module string.
 :- import_module list.
 :- import_module term.
-:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
-    % The code of this predicate duplicates the functionality of
+    % NOTE: the code of this predicate duplicates the functionality of
     % hlds_out__write_pred_id. Changes here should be made there as well.
-
+    %
 describe_one_pred_name(Module, ShouldModuleQualify, PredId) = Pieces :-
     module_info_pred_info(Module, PredId, PredInfo),
     Pieces = describe_one_pred_info_name(ShouldModuleQualify, PredInfo).
@@ -135,7 +140,7 @@ describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
     ( list__drop(NumArgModes - Arity, ArgModes0, ArgModes) ->
         strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes)
     ;
-        error("describe_one_pred_name_mode: bad argument list")
+        unexpected(this_file, "describe_one_pred_name_mode: bad argument list")
     ),
     (
         PredOrFunc = predicate,
@@ -217,3 +222,13 @@ arg_modes_to_string(InstVarSet, ArgModes) = Str :-
         ArgsStr = mercury_mode_list_to_string(ArgModes, InstVarSet),
         Str = "(" ++ ArgsStr ++ ")"
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "hlds_error_util.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module hlds_error_util.
+%-----------------------------------------------------------------------------%

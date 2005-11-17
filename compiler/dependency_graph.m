@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: dependency_graph.m.
 % Main authors: bromage, conway, stayl.
 
 % The dependency_graph records which procedures depend on which other
@@ -21,13 +22,15 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__dependency_graph.
-
 :- interface.
+
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % Ensure that the module_info contains a version of the dependency_info
     % which only contains arcs between procedures for which there are clauses
@@ -129,6 +132,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -141,7 +145,6 @@
 :- import_module map.
 :- import_module multi_map.
 :- import_module relation.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -795,7 +798,7 @@ process_aditi_goal(Goal, !Info) :-
 process_aditi_goal(IsNeg, conj(Goals) - _, !Map, !Info) :-
     list__foldl2(process_aditi_goal(IsNeg), Goals, !Map, !Info).
 process_aditi_goal(_IsNeg, par_conj(_) - _, _, _, !Info) :-
-    error("process_aditi_goal - par_conj").
+    unexpected(this_file, "process_aditi_goal - par_conj").
 process_aditi_goal(IsNeg, disj(Goals) - _, !Map, !Info) :-
     list__foldl2(process_aditi_goal(IsNeg), Goals, !Map, !Info).
 process_aditi_goal(IsNeg, switch(_, _, Cases) - _, !Map, !Info) :-
@@ -828,7 +831,7 @@ process_aditi_goal(_IsNeg, generic_call(_, _, _, _) - _, !Map, !Info).
 process_aditi_goal(_IsNeg, foreign_proc(_, _, _, _, _, _) - _, !Map, !Info).
 process_aditi_goal(_, shorthand(_) - _, _, _, _, _) :-
     % these should have been expanded out by now
-    error("process_aditi_goal: unexpected shorthand").
+    unexpected(this_file, "process_aditi_goal: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -848,7 +851,7 @@ dependency_graph__merge_aditi_sccs(Info, Ordering) :-
         dependency_graph__merge_aditi_sccs_2(SCCTsort, ModuleInfo,
             EqvSCCs, MergedSCCs, NoMerge, SCCRel, SCCPred, [], Ordering)
     ;
-        error("dependency_graph__merge_aditi_sccs: " ++
+        unexpected(this_file, "merge_aditi_sccs: " ++
             "SCC dependency relation is cyclic")
     ).
 
@@ -1134,4 +1137,11 @@ aditi_scc_info_add_closure(Var, PredProcId, Map0, Map, !Info) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "dependency_graph.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module dependency_graph.
 %-----------------------------------------------------------------------------%

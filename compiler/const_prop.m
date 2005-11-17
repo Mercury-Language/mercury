@@ -14,14 +14,13 @@
 % construction unifications.
 %
 % XXX We should check for overflow.  This is particularly important when
-% cross-compiling, since the overflow behaviour of the host machine might
-% not be the same as that of the target machine, e.g. if they have different
-% word sizes.
+% cross-compiling, since the overflow behaviour of the host machine might not
+% be the same as that of the target machine, e.g. if they have different word
+% sizes.
 %
 %---------------------------------------------------------------------------%
 
 :- module transform_hlds__const_prop.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -31,6 +30,8 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+
+%---------------------------------------------------------------------------%
 
     % evaluate_call(PredId, ProcId, Args, VarTypes, Instmap, ModuleInfo,
     %   GoalExpr, GoalInfo):
@@ -44,6 +45,7 @@
     vartypes::in, instmap::in, module_info::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out) is semidet.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -76,8 +78,9 @@
 
 %---------------------------------------------------------------------------%
 
-    % This type groups the information from the HLDS
-    % about a procedure call argument.
+    % This type groups the information from the HLDS about a procedure call
+    % argument.
+    %
 :- type arg_hlds_info
     --->    arg_hlds_info(
                 arg_var     :: prog_var,
@@ -127,17 +130,17 @@ evaluate_call_2(Module, Pred, ModeNum, Args, Goal, !GoalInfo) :-
 
 %---------------------------------------------------------------------------%
 
-    % evaluate_det_call(ModuleName, ProcName, ModeNum,
-    %   Args, OutputArg, OutputArgVal):
+    % evaluate_det_call(ModuleName, ProcName, ModeNum, Args, OutputArg,
+    %   OutputArgVal):
     %
     % This attempts to evaluate a call to
     %   ModuleName.ProcName(Args)
     % whose mode is specified by ModeNum.
-    % If the call is a det call with one output that can be
-    % statically evaluated, evaluate_det_call succeeds with
-    % OutputArg being whichever of Args is output,
-    % and with OutputArgVal being the computed value of OutputArg.
-    % Otherwise it fails.
+    %
+    % If the call is a det call with one output that can be statically
+    % evaluated, evaluate_det_call succeeds with OutputArg being whichever of
+    % Args is output, and with OutputArgVal being the computed value of
+    % OutputArg.  Otherwise it fails.
     %
 :- pred evaluate_det_call(string::in, string::in, int::in,
     list(arg_hlds_info)::in, arg_hlds_info::out, cons_id::out) is semidet.
@@ -349,7 +352,7 @@ evaluate_det_call("string", Name, _, [X, Y, Z], Z, string_const(ZVal)) :-
     % call will fail.
     % Otherwise (i.e. if the call is not semidet, has any outputs,
     % or cannot be statically evaluated), evaluate_test fails.
-
+    %
 :- pred evaluate_test(string::in, string::in, int::in,
     list(arg_hlds_info)::in, bool::out) is semidet.
 
@@ -465,7 +468,7 @@ evaluate_test("private_builtin", "typed_unify", Mode, Args, Result) :-
 
 :- type arg_val
     --->    const(cons_id)
-    ;   var(arg_hlds_info).
+    ;       var(arg_hlds_info).
 
 :- pred evaluate_semidet_call(string::in, string::in, int::in,
     list(arg_hlds_info)::in, maybe(pair(arg_hlds_info, arg_val))::out)
@@ -579,4 +582,12 @@ make_construction(Arg, ConsId, Goal) :-
 make_true_or_fail(yes, conj([])).
 make_true_or_fail(no, disj([])).
 
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "const_prop.m".
+
+%---------------------------------------------------------------------------%
+:- end_module const_prop.
 %---------------------------------------------------------------------------%

@@ -62,6 +62,8 @@
 :- import_module io.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % Open the file "<module-name>.trans_opt.tmp", and write out the
     % declarations.
     %

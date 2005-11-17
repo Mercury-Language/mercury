@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: globals.m.
 % Main author: fjh.
 
 % This module exports the `globals' type and associated access predicates.
@@ -16,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module libs__globals.
-
 :- interface.
 
 :- import_module libs.options.
@@ -278,8 +278,9 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
+
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 
@@ -401,7 +402,7 @@ globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
         ( convert_foreign_language(String, ForeignLang0) ->
             ForeignLang = ForeignLang0
         ;
-            error("globals__io_get_backend_foreign_languages: " ++
+            unexpected(this_file, "io_get_backend_foreign_languages: " ++
                 "invalid foreign_language string")
         ), LangStrs).
 
@@ -439,7 +440,7 @@ globals__lookup_bool_option(Globals, Option, Value) :-
     ( OptionData = bool(Bool) ->
         Value = Bool
     ;
-        error("globals__lookup_bool_option: invalid bool option")
+        unexpected(this_file, "lookup_bool_option: invalid bool option")
     ).
 
 globals__lookup_string_option(Globals, Option, Value) :-
@@ -447,7 +448,7 @@ globals__lookup_string_option(Globals, Option, Value) :-
     ( OptionData = string(String) ->
         Value = String
     ;
-        error("globals__lookup_string_option: invalid string option")
+        unexpected(this_file, "lookup_string_option: invalid string option")
     ).
 
 globals__lookup_int_option(Globals, Option, Value) :-
@@ -455,7 +456,7 @@ globals__lookup_int_option(Globals, Option, Value) :-
     ( OptionData = int(Int) ->
         Value = Int
     ;
-        error("globals__lookup_int_option: invalid int option")
+        unexpected(this_file, "lookup_int_option: invalid int option")
     ).
 
 globals__lookup_maybe_string_option(Globals, Option, Value) :-
@@ -463,8 +464,8 @@ globals__lookup_maybe_string_option(Globals, Option, Value) :-
     ( OptionData = maybe_string(MaybeString) ->
         Value = MaybeString
     ;
-        error(
-        "globals__lookup_string_option: invalid maybe_string option")
+        unexpected(this_file,
+            "lookup_string_option: invalid maybe_string option")
     ).
 
 globals__lookup_accumulating_option(Globals, Option, Value) :-
@@ -472,7 +473,7 @@ globals__lookup_accumulating_option(Globals, Option, Value) :-
     ( OptionData = accumulating(Accumulating) ->
         Value = Accumulating
     ;
-        error("globals__lookup_accumulating_option: "
+        unexpected(this_file, "lookup_accumulating_option: "
             ++ "invalid accumulating option")
     ).
 
@@ -588,7 +589,7 @@ globals__io_get_globals(Globals, !IO) :-
     ( univ_to_type(UnivGlobals, Globals0) ->
         Globals = Globals0
     ;
-        error("globals__io_get_globals: univ_to_type failed")
+        unexpected(this_file, "io_get_globals: univ_to_type failed")
     ).
 
 globals__io_set_globals(Globals, !IO) :-
@@ -658,7 +659,7 @@ globals__io_lookup_foreign_language_option(Option, ForeignLang, !IO) :-
     ( convert_foreign_language(String, ForeignLang0) ->
         ForeignLang = ForeignLang0
     ;
-        error("globals__io_lookup_foreign_language_option: "
+        unexpected(this_file, "io_lookup_foreign_language_option: "
             ++ "invalid foreign_language option")
     ).
 
@@ -696,6 +697,13 @@ globals__io_printing_usage(AlreadyPrinted, !IO) :-
         % XXX there is a bit of a design flaw with regard to
         % uniqueness and io__set_globals
     globals__io_set_globals(Globals, !IO).
+
+%-----------------------------------------------------------------------------%
+
+
+:- func this_file = string.
+
+this_file = "globals.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module globals.

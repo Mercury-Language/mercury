@@ -5,13 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: inst_graph.m
-% Author: dmo
-%
+
+% File: inst_graph.m.
+% Author: dmo.
+
 % This module defines operations on instantiation graphs. The purpose of the
 % data structure and of the operations on it are defined in chapter 6 of
 % David Overton's PhD thesis.
+
+%-----------------------------------------------------------------------------%
 
 :- module hlds__inst_graph.
 :- interface.
@@ -21,6 +23,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+
+%-----------------------------------------------------------------------------%
 
 :- type inst_graph == map(prog_var, node).
 
@@ -177,18 +181,21 @@
     inst_graph_info.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
+:- import_module libs.compiler_util.
 
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 init(Vars, InstGraph) :-
     map__init(InstGraph0),
@@ -205,7 +212,7 @@ set_parent(Parent, Child, InstGraph0, InstGraph) :-
         map__det_update(InstGraph0, Child, node(Functors, parent(Parent)),
             InstGraph)
     ;
-        error("set_parent: node already has parent")
+        unexpected(this_file, "set_parent: node already has parent")
     ).
 
 top_level_node(InstGraph, Var, TopLevel) :-
@@ -361,7 +368,7 @@ merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
     ->
         Sub = Sub1
     ;
-        error("merge: non-variable terms in substitution")
+        unexpected(this_file, "merge: non-variable terms in substitution")
     ),
     map__foldl((pred(Var0::in, Node0::in, IG0::in, IG::out) is det :-
         Node0 = node(Functors0, MaybeParent),
@@ -460,4 +467,12 @@ inst_graph_info_init = inst_graph_info(InstGraph, [], VarSet, InstGraph) :-
     varset__init(VarSet),
     map__init(InstGraph).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "inst_graph.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module inst_graph.
 %-----------------------------------------------------------------------------%

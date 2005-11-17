@@ -10,63 +10,61 @@
 % Author: zs.
 %
 % This module performs a source-to-source program transformation that
-% implements term size profiling. The objective of the transformation is
-% to make it possible to find out the size of every term in constant time,
-% i.e. *without* traversing the term. (If finding out the size of a term
-% required traversing the term, the cost of this traversal would dominate
-% the cost of most procedures that took that term as input, and thus the
-% traversal overhead would introduce a "noise" that would overwhelm the
-% "signal" that profiling is trying to measure.) We can thus match the time
-% taken by a procedure against the size of its inputs, and use curve-fitting
-% to find out its actual complexity. (The theoretical minimum and maxiumum
-% complexities of most real algorithms are so different that they are of no
-% use.)
+% implements term size profiling. The objective of the transformation is to
+% make it possible to find out the size of every term in constant time, i.e.
+% *without* traversing the term. (If finding out the size of a term required
+% traversing the term, the cost of this traversal would dominate the cost of
+% most procedures that took that term as input, and thus the traversal
+% overhead would introduce a "noise" that would overwhelm the "signal" that
+% profiling is trying to measure.) We can thus match the time taken by a
+% procedure against the size of its inputs, and use curve-fitting to find out
+% its actual complexity. (The theoretical minimum and maxiumum complexities of
+% most real algorithms are so different that they are of no use.)
 %
 % The obvious way to avoid the traversal overhead on size lookup is to
 % calculate the size when the term is being constructed, which requires
-% traversing it anyway. In term profiling grades, we reserve an extra word
-% at the start of every memory cell (with a few exceptions explained below)
-% that stores the size of the whole term the memory cell is the top of.
-% The size is defined as the memory words in the term or the number of memory
-% cells in the term, depending on the grade.
+% traversing it anyway. In term profiling grades, we reserve an extra word at
+% the start of every memory cell (with a few exceptions explained below) that
+% stores the size of the whole term the memory cell is the top of.  The size
+% is defined as the memory words in the term or the number of memory cells in
+% the term, depending on the grade.
 %
 % The main job of this module is to annotate every construction unification
 % with the information that the code generator needs to fill in the term size
 % slot. In order to do this, it must be able to find out the sizes of the
-% arguments, which in turn requires knowing the arguments' types.
-% (Without type information, we cannot distinguish a pointer from an integer.)
-% Most of the code in this module is concerned with adding code to the
-% procedure being transformed to find or construct the typeinfos we need
-% in order to find out the sizes of subterms, mainly because we want to
-% minimize the number of goals that construct typeinfos that we add to the
-% procedure body.
+% arguments, which in turn requires knowing the arguments' types.  (Without
+% type information, we cannot distinguish a pointer from an integer.) Most of
+% the code in this module is concerned with adding code to the procedure being
+% transformed to find or construct the typeinfos we need in order to find out
+% the sizes of subterms, mainly because we want to minimize the number of
+% goals that construct typeinfos that we add to the procedure body.
 %
 % A minor job of this transformation is to look for places where the procedure
 % fills in a previously undefined field in a cell, and to add code at those
 % places to destructively increment the size slot of the cell by the size of
 % the newly added subterm.
 %
-% In theory, when this happens, we should also increase the sizes of
-% all the terms containing the term that had one or more of its fields
-% instantiated. We do not do so, because doing that would require
-% a lot more machinery. However, given our lack of support for partially
-% instantiated data structures, and the fact that the correctness of the
-% program does not in fact require term sizes to be computed accurately,
-% the problem this poses can be safely ignored.
+% In theory, when this happens, we should also increase the sizes of all the
+% terms containing the term that had one or more of its fields instantiated.
+% We do not do so, because doing that would require a lot more machinery.
+% However, given our lack of support for partially instantiated data
+% structures, and the fact that the correctness of the program does not in
+% fact require term sizes to be computed accurately, the problem this poses
+% can be safely ignored.
 %
 % The transformation we perform is not optimal: for example, if two branches
-% of a switch bind a variable to terms of the same size, we don't exploit
-% this fact. The transformation tries to get all the "low-hanging fruit";
-% we will go after higher hanging fruit if and when a performance evaluation
-% says we need to.
+% of a switch bind a variable to terms of the same size, we don't exploit this
+% fact. The transformation tries to get all the "low-hanging fruit"; we will
+% go after higher hanging fruit if and when a performance evaluation says we
+% need to.
 %
 % We do not associate sizes with the memory cells of a small set of types,
-% including type_infos, type_class_infos, closures and boxed floats.
-% The two reasons for this are that (1) the sizes of values of these types
-% practically never control the complexity of a procedure, so there is no
-% need for their sizes, and (2) this allows us to create e.g. static type_info
-% structures without worrying about term size slots. The set of type categories
-% whose values are always considered zero sized is defined by the predicate
+% including type_infos, type_class_infos, closures and boxed floats.  The two
+% reasons for this are that (1) the sizes of values of these types practically
+% never control the complexity of a procedure, so there is no need for their
+% sizes, and (2) this allows us to create e.g. static type_info structures
+% without worrying about term size slots. The set of type categories whose
+% values are always considered zero sized is defined by the predicate
 % zero_size_type in term_norm.m.
 %
 % We currently do not associate sizes with data types which are handled mostly
@@ -83,13 +81,14 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__size_prof.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
     % Specifies how term sizes are to be measured.
     %
@@ -148,13 +147,13 @@
 %
 % If there is a variable live at the current program point that already
 % contains a type_info for a given type, then the type_info_map will record
-% its identity. The type_ctor_map does likewise for variables that contain
-% the type_ctor_infos of type constructors. However, we treat type_ctor_map
+% its identity. The type_ctor_map does likewise for variables that contain the
+% type_ctor_infos of type constructors. However, we treat type_ctor_map
 % differently from type_info_maps, because the tradeoff are different.
-% Creating a new type_ctor_info reference is cheap: just return a pointer
-% to a static compiler-generated data structure. Creating a new type_info isn't
-% cheap: it requires memory allocation. This is why in some places (calls, ends
-% of branched control structures) we simply clean out the type_ctor_map:
+% Creating a new type_ctor_info reference is cheap: just return a pointer to a
+% static compiler-generated data structure. Creating a new type_info isn't
+% cheap: it requires memory allocation. This is why in some places (calls,
+% ends of branched control structures) we simply clean out the type_ctor_map:
 % it is cheaper to recreate a type_ctor_info than to store it or move it
 % around.
 %
@@ -1305,4 +1304,6 @@ ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName) :-
 
 this_file = "size_prof.m".
 
+%---------------------------------------------------------------------------%
+:- end_module size_prof.
 %---------------------------------------------------------------------------%

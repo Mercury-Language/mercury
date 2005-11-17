@@ -185,6 +185,8 @@
 :- import_module std_util.
 :- import_module term.
 
+%-----------------------------------------------------------------------------%
+
     % Run the polymorphism pass over the whole HLDS.
     %
 :- pred process_module(module_info::in, module_info::out, io::di, io::uo)
@@ -365,6 +367,9 @@
     prog_var::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -962,9 +967,9 @@ produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
     list(hlds_goal)::out) is det.
 
 assign_var_list([], [_ | _], _) :-
-    error("unify_proc__assign_var_list: length mismatch").
+    unexpected(this_file, "assign_var_list: length mismatch").
 assign_var_list([_ | _], [], _) :-
-    error("unify_proc__assign_var_list: length mismatch").
+    unexpected(this_file, "assign_var_list: length mismatch").
 assign_var_list([], [], []).
 assign_var_list([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
     assign_var(Var1, Var2, Goal),
@@ -1357,8 +1362,8 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
         LambdaDet = Det
     ;
         MaybeDet = no,
-        error("Sorry, not implemented: determinism inference " ++
-            "for higher order predicate terms")
+        sorry(this_file, "determinism inference " ++
+            "for higher order predicate terms.")
     ),
 
     % Construct the lambda expression.
@@ -2179,7 +2184,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
         SubClassVar = SubClassVar0
     ;
         MaybeSubClassVar = no,
-        error("MaybeSubClassVar = no")
+        unexpected(this_file, "MaybeSubClassVar = no")
     ),
 
     % Look up the definition of the subclass.
@@ -2196,7 +2201,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
         SuperClassIndex0 = SuperClassIndex
     ;
         % We shouldn't have got this far if the constraints were not satisfied.
-        error("polymorphism.m: constraint not in constraint list")
+        unexpected(this_file, "constraint not in constraint list")
     ),
 
     poly_info_get_varset(!.Info, VarSet0),

@@ -5,19 +5,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File:     purity.m
+
+% File: purity.m.
 % Authors:  scachte (Peter Schachte, main author and designer of purity system)
 %           trd (modifications for impure functions)
 %           rafe (modifications for solver goals in negated contexts)
+
 % Purpose:  handle `impure' and `promise_pure' declarations;
 %           finish off type checking.
-%
-% The main purpose of this module is check the consistency of the
-% `impure' and `promise_pure' (etc.) declarations, and to thus report
-% error messages if the program is not "purity-correct".
-% This includes treating procedures with different clauses for
-% different modes as impure, unless promised pure.
+
+% The main purpose of this module is check the consistency of the `impure' and
+% `promise_pure' (etc.) declarations, and to thus report error messages if the
+% program is not "purity-correct".  This includes treating procedures with
+% different clauses for different modes as impure, unless promised pure.
 %
 % There is a special case to do with solver type goals in negated contexts.
 % A pure goal taking solver type arguments with inst any may be used to
@@ -140,15 +140,16 @@
 :- import_module bool.
 :- import_module io.
 
-    % Purity check a whole module.  Also do the post-typecheck stuff
-    % described above, and eliminate double negations and calls
-    % to `private_builtin.unsafe_type_cast/2'.
-    % The first argument specifies whether there were any type
-    % errors (if so, we suppress some diagnostics in post_typecheck.m
-    % because they are usually spurious).
-    % The third argument specifies whether post_typecheck.m detected
-    % any errors that would cause problems for later passes
-    % (if so, we stop compilation after this pass).
+%-----------------------------------------------------------------------------%
+
+    % Purity check a whole module.  Also do the post-typecheck stuff described
+    % above, and eliminate double negations and calls to
+    % `private_builtin.unsafe_type_cast/2'.  The first argument specifies
+    % whether there were any type errors (if so, we suppress some diagnostics
+    % in post_typecheck.m because they are usually spurious).  The third
+    % argument specifies whether post_typecheck.m detected any errors that
+    % would cause problems for later passes (if so, we stop compilation after
+    % this pass).
     %
 :- pred puritycheck(bool::in, bool::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -168,6 +169,9 @@
     %
 :- pred impure_unification_expr_error(prog_context::in, purity::in,
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -202,7 +206,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -212,6 +215,7 @@
 %-----------------------------------------------------------------------------%
 %
 % Public Predicates
+%
 
 puritycheck(FoundTypeError, PostTypecheckError, !HLDS, !IO) :-
     globals__io_lookup_bool_option(statistics, Statistics, !IO),
@@ -565,7 +569,7 @@ compute_expr_purity_2(Unif0, GoalExpr, GoalInfo, ActualPurity, !Info) :-
             FixModes = modes_need_fixing,
             (
                 EvalMethod = lambda_normal,
-                error("compute_expr_purity_2: modes need " ++
+                unexpected(this_file, "compute_expr_purity_2: modes need " ++
                     "fixing for normal lambda_goal")
             ;
                 EvalMethod = lambda_aditi_bottom_up,
@@ -694,7 +698,7 @@ compute_expr_purity_2(ForeignProc0, ForeignProc, _, Purity, !Info) :-
 
 compute_expr_purity_2(shorthand(_), _, _, _, !Info) :-
     % These should have been expanded out by now.
-    error("compute_expr_purity_2: unexpected shorthand").
+    unexpected(this_file, "compute_expr_purity_2: unexpected shorthand").
 
 :- pred check_higher_order_purity(hlds_goal_info::in, cons_id::in,
     prog_var::in, list(prog_var)::in, purity::out,
@@ -954,9 +958,9 @@ compute_cases_purity([case(Ctor, Goal0) | Cases0], [case(Ctor, Goal) | Cases],
 
 fix_aditi_state_modes(_, _, [], [], []).
 fix_aditi_state_modes(_, _, [_|_], [], []) :-
-    error("purity:fix_aditi_state_modes").
+    unexpected(this_file, "fix_aditi_state_modes: mismatched lists").
 fix_aditi_state_modes(_, _, [], [_|_], []) :-
-    error("purity:fix_aditi_state_modes").
+    unexpected(this_file, "fix_aditi_state_modes: mismatched lists").
 fix_aditi_state_modes(SeenState0, AditiStateMode, [Type | Types],
         [ArgMode0 | Modes0], [ArgMode | Modes]) :-
     ( type_is_aditi_state(Type) ->
@@ -1047,7 +1051,8 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity,
         CodeStr = "impure"
     ;
         PromisedPurity = purity_impure,
-        error("purity__warn_unnecessary_promise_pure: promise_impure?")
+        unexpected(this_file,
+            "warn_unnecessary_promise_pure: promise_impure?")
     ),
     Pieces1 = [words("warning: unnecessary `" ++ Pragma ++ "' pragma."), nl],
     globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
@@ -1095,6 +1100,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
 
     % Errors and warnings reported by purity.m and post_typecheck.m
     % for problems within a goal.
+    %
 :- type post_typecheck_message
     --->    error(post_typecheck_error)
     ;       warning(post_typecheck_warning).
@@ -1216,9 +1222,8 @@ check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, !IO) :-
         purity_info_add_message(error(closure_purity_error(Context,
             DeclaredPurity, ActualPurity)), !IO)
     ;
-        % we don't bother to warn if the DeclaredPurity is less
-        % pure than the ActualPurity; that would lead to too many
-        % spurious warnings.
+        % We don't bother to warn if the DeclaredPurity is less pure than the
+        % ActualPurity; that would lead to too many spurious warnings.
         true
     ).
 
@@ -1270,4 +1275,12 @@ impure_unification_expr_error(Context, Purity, !IO) :-
 purity_info_add_message(Message, Info,
     Info ^ messages := [Message | Info ^ messages]).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "purity.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module purity.
 %-----------------------------------------------------------------------------%

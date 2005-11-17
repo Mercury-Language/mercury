@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% This module defines the bytecode used by the debugger.
-%
+
+% File: bytecode.m.
 % Author: zs.
-%
+
+% This module defines the bytecode used by the debugger.
+
 %---------------------------------------------------------------------------%
 
 :- module bytecode_backend__bytecode.
-
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
@@ -26,6 +26,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
+
+%---------------------------------------------------------------------------%
 
 :- type byte_tree   ==  tree(list(byte_code)).
 
@@ -139,19 +141,22 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.bytecode_data.
 :- import_module backend_libs.c_util.
 :- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module int.
 :- import_module library.
-:- import_module require.
 :- import_module string.
+
+%---------------------------------------------------------------------------%
 
 :- pred bytecode__version(int::out) is det.
 
@@ -539,7 +544,8 @@ output_is_func(IsFunc, !IO) :-
     ( ( IsFunc = 1 ; IsFunc = 0 ) ->
         output_byte(IsFunc, !IO)
     ;
-        error("Invalid predicate or function specified in bytecode")
+        unexpected(this_file, "output_is_func: " ++
+            "invalid predicate or function specified in bytecode")
     ).
 
 :- pred debug_is_func(byte_is_func::in, io::di, io::uo) is det.
@@ -550,7 +556,8 @@ debug_is_func(IsFunc, !IO) :-
     ; IsFunc = 0 ->
         debug_string("pred", !IO)
     ;
-        error("Invalid predicate or function specifier in bytecode")
+        unexpected(this_file, "debug_is_func: " ++
+            "invalid predicate or function specifier in bytecode.")
     ).
 
 %---------------------------------------------------------------------------%
@@ -773,15 +780,15 @@ output_cons_id(char_const(Char), !IO) :-
     output_byte(Byte, !IO).
     % XXX
 output_cons_id(base_typeclass_info_const(_, _, _), !IO) :-
-    error("Sorry, bytecode for typeclass not yet implemented"),
+    sorry(this_file, "bytecode for typeclass not yet implemented."),
     output_byte(8, !IO).
 output_cons_id(type_info_cell_constructor, !IO) :-
-    error("Sorry, bytecode for type_info_cell_constructor " ++
-        "not yet implemented"),
+    sorry(this_file, "bytecode for type_info_cell_constructor " ++
+        "not yet implemented."),
     output_byte(9, !IO).
 output_cons_id(typeclass_info_cell_constructor, !IO) :-
-    error("Sorry, bytecode for typeclass_info_cell_constructor " ++
-        "not yet implemented"),
+    sorry(this_file, "bytecode for typeclass_info_cell_constructor " ++
+        "not yet implemented."),
     output_byte(10, !IO).
 
 :- pred debug_cons_id(byte_cons_id::in, io::di, io::uo) is det.
@@ -1160,4 +1167,12 @@ debug_sym_name(qualified(Module, Val), !IO) :-
     io__write_string(Val, !IO),
     io__write_char(' ', !IO).
 
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "bytecode.m".
+
+%---------------------------------------------------------------------------%
+:- end_module bytecode.
 %---------------------------------------------------------------------------%

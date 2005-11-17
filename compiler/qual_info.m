@@ -9,6 +9,8 @@
 % File: qual_info.m.
 % Main author: fjh.
 
+%-----------------------------------------------------------------------------%
+
 :- module hlds__make_hlds__qual_info.
 :- interface.
 
@@ -24,6 +26,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- type qual_info.
 
@@ -99,7 +103,10 @@
 :- import_module term.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
     % Information used to process explicit type qualifications.
+    %
 :- type qual_info
     --->    qual_info(
                 eqv_map             :: eqv_map,
@@ -292,4 +299,6 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         Goal = GoalExpr - GoalInfo
     ).
 
+%-----------------------------------------------------------------------------%
+:- end_module qual_info.
 %-----------------------------------------------------------------------------%

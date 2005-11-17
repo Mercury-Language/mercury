@@ -5,22 +5,21 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+
 % File: deforest.m
 % Main author: stayl.
-%-----------------------------------------------------------------------------%
-%
+
 % Deforestation attempts to remove multiple traversals over data structures,
 % and construction followed by immediate deconstruction of data structures.
-% It does this by combining the bodies of pairs of called procedures in
-% a conjunction where the top-level functor of one of the argument variables
-% of the first called procedure is known at the end of some of the branches
-% of the body of that procedure, and the second called procedure switches on
-% that variable.
+% It does this by combining the bodies of pairs of called procedures in a
+% conjunction where the top-level functor of one of the argument variables of
+% the first called procedure is known at the end of some of the branches of
+% the body of that procedure, and the second called procedure switches on that
+% variable.
 %
-% The deforestation pass also inlines calls for which the top-level
-% goal in the called procedure is a switch and the functor of the
-% switched-on variable is known. This allows simplify.m to prune away
-% the failing branches.
+% The deforestation pass also inlines calls for which the top-level goal in
+% the called procedure is a switch and the functor of the switched-on variable
+% is known. This allows simplify.m to prune away the failing branches.
 %
 % The constraint propagation pass, which is called from the deforestation
 % pass, transforms the code so that goals which could fail are executed as
@@ -33,7 +32,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__deforest.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -43,6 +41,7 @@
 :- pred deforestation(module_info::in, module_info::out, io::di, io::uo)
     is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -93,14 +92,15 @@
 :- import_module term.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
 deforestation(!ModuleInfo, !IO) :-
     proc_arg_info_init(ProcArgInfo0),
     type_to_univ(ProcArgInfo0, UnivProcArgInfo0),
 
     % Find out which arguments of each procedure are switched on at the top
     % level or are constructed in a way which is possibly deforestable.
-    Task0 = update_module_cookie(get_branch_vars_proc,
-        UnivProcArgInfo0),
+    Task0 = update_module_cookie(get_branch_vars_proc, UnivProcArgInfo0),
     process_all_nonimported_procs(Task0, Task, !ModuleInfo, !IO),
     (
         Task = update_module_cookie(_, UnivProcArgInfo),
@@ -393,8 +393,7 @@ partially_evaluate_conj_goals([Goal0 | Goals0], RevGoals0, Goals,
     ;
         RevGoals2 = [Goal1 | RevGoals0]
     ),
-    partially_evaluate_conj_goals(Goals0, RevGoals2, Goals,
-        !PDInfo, !IO).
+    partially_evaluate_conj_goals(Goals0, RevGoals2, Goals, !PDInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -483,7 +482,7 @@ propagate_conj_constraints([Goal0 | Goals0],
 %-----------------------------------------------------------------------------%
 
 :- type annotated_conj ==
-        assoc_list(hlds_goal, maybe(pd_branch_info(prog_var))).
+    assoc_list(hlds_goal, maybe(pd_branch_info(prog_var))).
 
 :- pred deforest_conj(annotated_conj::in, set(prog_var)::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1982,4 +1981,6 @@ check_deforestation_improvement(Factor, CostDelta, SizeChange) :-
 
 this_file = "deforest.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module deforest.
 %-----------------------------------------------------------------------------%

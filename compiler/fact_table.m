@@ -46,8 +46,9 @@
 % XXX Cross compilation is not supported for fact tables that are indexed on
 % floats.
 
-:- module ll_backend__fact_table.
+%-----------------------------------------------------------------------------%
 
+:- module ll_backend__fact_table.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -57,6 +58,8 @@
 
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % fact_table_compile_facts(PredName, Arity, FileName, PredInfo0,
     %   PredInfo, Context, ModuleInfo, C_HeaderCode, PrimaryProcID):
@@ -81,10 +84,12 @@
     % C_ExtraCode declares the required labels and creates a new stack frame
     % with the required number of framevars. It then does all the work required
     % to look up the fact table.
+    %
 :- pred fact_table_generate_c_code(sym_name::in, list(pragma_var)::in,
     proc_id::in, proc_id::in, proc_info::in, list(mer_type)::in,
     module_info::in, string::out, string::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -123,11 +128,12 @@
 :- import_module map.
 :- import_module math.
 :- import_module parser.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
+
+%-----------------------------------------------------------------------------%
 
 :- type fact_result
     --->    ok
@@ -135,6 +141,7 @@
 
     % Proc_stream contains information about an open sort file for
     % a particular procedure.
+    %
 :- type proc_stream
     --->    proc_stream(
                 proc_id,            % ID of procedure.
@@ -3381,4 +3388,6 @@ print_error_report(MaybeContext - Components, !IO) :-
 
 this_file = "fact_table.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module fact_table.
 %-----------------------------------------------------------------------------%

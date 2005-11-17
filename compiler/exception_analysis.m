@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+
+% File: exception_analysis.m.
+% Author: juliensf.
+
+% This module performs an exception tracing analysis.  The aim is to annotate
+% the HLDS with information about whether each procedure might or will not
+% throw an exception.
 %
-% File    : exception_analysis.m
-% Author  : juliensf
-%
-% This module performs an exception tracing analysis.  The aim is to
-% annotate the HLDS with information about whether each procedure
-% might or will not throw an exception.
-%
-% This information can be useful to the compiler when applying
-% certain types of optimization.
+% This information can be useful to the compiler when applying certain types
+% of optimization.
 %
 % After running the analysis the exception behaviour of each procedure
 % is one of:
@@ -70,17 +70,18 @@
 % XXX We need to be a bit careful with transformations like tabling that
 % might add calls to exception.throw - at the moment this isn't a problem
 % because exception analysis takes place after the tabling transformation.
-%
+
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.exception_analysis.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
 :- import_module io.
+
+%----------------------------------------------------------------------------%
 
     % Perform the exception analysis on a module.
     %
@@ -126,7 +127,7 @@
 
 %----------------------------------------------------------------------------%
 %
-% Perform exception analysis on a module.
+% Perform exception analysis on a module
 %
 
 exception_analysis.process_module(!ModuleInfo, !IO) :-
@@ -143,7 +144,7 @@ exception_analysis.process_module(!ModuleInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 %
-% Perform exception analysis on a SCC.
+% Perform exception analysis on a SCC
 %
 
 :- type scc == list(pred_proc_id).
@@ -244,7 +245,7 @@ combine_individual_proc_results(ProcResults @ [_|_]) = SCC_Result :-
 
 %----------------------------------------------------------------------------%
 %
-% Process individual procedures.
+% Process individual procedures
 %
 
 :- pred check_proc_for_exceptions(scc::in, module_info::in,

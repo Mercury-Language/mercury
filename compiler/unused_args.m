@@ -41,11 +41,9 @@
 %
 % The predicates are then fixed up. Unused variables and unifications are
 % removed.
-
-:- module transform_hlds__unused_args.
-
 %-----------------------------------------------------------------------------%
 
+:- module transform_hlds__unused_args.
 :- interface.
 
 :- import_module analysis.
@@ -53,10 +51,16 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred unused_args__process_module(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-    % Instances used by mmc_analysis.m.
+%-----------------------------------------------------------------------------%
+%
+% Instances used by mmc_analysis.m
+%
+
 :- type unused_args_answer.
 :- type unused_args_func_info.
 :- instance analysis(unused_args_func_info, any_call, unused_args_answer).
@@ -66,6 +70,7 @@
 :- instance answer_pattern(unused_args_func_info, unused_args_answer).
 :- instance to_string(unused_args_answer).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -110,6 +115,8 @@
 :- import_module svmap.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
     % Information about the dependencies of a variable
     % that is not known to be used.
 :- type usage_info
@@ -131,7 +138,9 @@
             % context, pred name, arity, list of args to warn
 
 %-----------------------------------------------------------------------------%
-% Types and instances used by mmc_analysis.m.
+%
+% Types and instances used by mmc_analysis.m
+%
 
     % The list of unused arguments is in sorted order.
 :- type unused_args_answer
@@ -275,6 +284,7 @@ unused_args__process_module(!ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 %
 % Initialisation section
+%
 
     % Set initial status of all args of local procs by examining the
     % module_info. PredProcList is the list of procedures to do the fixpoint
@@ -451,7 +461,8 @@ initialise_vardep([Var | Vars], !VarDep) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates for manipulating the var_usage and var_dep structures.
+% Predicates for manipulating the var_usage and var_dep structures
+%
 
     % For each variable, ensure the typeinfos describing the type parameters
     % of the type of the variable depend on the head variable. For example,
@@ -544,8 +555,8 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Traversal of goal structure, building up dependencies for all
-% variables.
+% Traversal of goal structure, building up dependencies for all variables
+%
 
 :- type traverse_info
     --->    traverse_info(
@@ -780,7 +791,8 @@ traverse_list_of_goals(Info, [Goal | Goals], !VarDep) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Analysis section - do the fixpoint iteration.
+% Analysis section - do the fixpoint iteration
+%
 
     % Do a full iteration, check if anything changed, if so, repeat.
     %
@@ -882,10 +894,12 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
 
 %-----------------------------------------------------------------------------%
 %
-% Fix up the module.
+% Fix up the module
+%
 
-    % Information about predicates which have new predicates
-    % created for the optimized version.
+    % Information about predicates which have new predicates created for the
+    % optimized version.
+    %
 :- type proc_call_info == map(pred_proc_id, new_proc_info).
 
     % New pred_id, proc_id, name, and the indices in the argument
@@ -1805,4 +1819,6 @@ format_arg_list_2(First, List) = Pieces :-
 
 this_file = "unused_args.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module unused_args.
 %-----------------------------------------------------------------------------%

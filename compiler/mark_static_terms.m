@@ -6,26 +6,31 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% This module traverses the HLDS, updating the `how_to_construct'
-% field of construction unifications.  For each construction which
-% can be done statically, i.e. whose arguments are all static,
-% it replaces this field with `construct_statically'.
-% This field is then used by the MLDS back-end to determine when it can
-% generate static initialized constants rather than using
-% new_object() MLDS statements.
-
+% File: mark_static_terms.m.
 % Main author: fjh.
 
-:- module ml_backend__mark_static_terms.
+% This module traverses the HLDS, updating the `how_to_construct' field of
+% construction unifications.  For each construction which can be done
+% statically, i.e. whose arguments are all static, it replaces this field with
+% `construct_statically'.  This field is then used by the MLDS back-end to
+% determine when it can generate static initialized constants rather than
+% using new_object() MLDS statements.
 
+%-----------------------------------------------------------------------------%
+
+:- module ml_backend__mark_static_terms.
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+%-----------------------------------------------------------------------------%
+
+
 :- pred mark_static_terms(module_info::in, proc_info::in, proc_info::out)
     is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -43,9 +48,12 @@
 :- import_module std_util.
 :- import_module svmap.
 
-    % As we traverse the goal, we keep track of which variables are static
-    % at the current program point, and for each such variable, we keep
+%-----------------------------------------------------------------------------%
+
+    % As we traverse the goal, we keep track of which variables are static at
+    % the current program point, and for each such variable, we keep
     % information on how to construct it.
+    %
 :- type static_info == map(prog_var, static_cons).
 
 mark_static_terms(_ModuleInfo, !Proc) :-
@@ -207,4 +215,6 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
 
 this_file = "mark_static_terms.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module mark_static_terms.
 %-----------------------------------------------------------------------------%

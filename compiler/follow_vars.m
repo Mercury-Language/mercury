@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: follow_vars.m.
 % Main authors: conway, zs.
 
 % This module traverses the goal for every procedure, filling in the
@@ -27,7 +28,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__follow_vars.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -35,6 +35,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
+
+%-----------------------------------------------------------------------------%
 
 :- pred find_final_follow_vars(proc_info::in, abs_follow_vars_map::out,
     int::out) is det.
@@ -54,6 +56,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.quantification.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module ll_backend.call_gen.
 :- import_module ll_backend.code_util.
@@ -65,7 +68,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module svmap.
@@ -128,7 +130,7 @@ find_follow_vars_in_goal_expr(par_conj(Goals0), par_conj(Goals),
     % We record that at the end of each disjunct, live variables should
     % be in the locations given by the initial follow_vars, which reflects
     % the requirements of the code following the disjunction.
-
+    %
 find_follow_vars_in_goal_expr(disj(Goals0), disj(Goals), GoalInfo0, GoalInfo,
         VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
     goal_info_set_store_map(!.FollowVarsMap, GoalInfo0, GoalInfo),
@@ -143,7 +145,7 @@ find_follow_vars_in_goal_expr(not(Goal0), not(Goal), GoalInfo, GoalInfo,
     % We record that at the end of each arm of the switch, live variables
     % should be in the locations given by the initial follow_vars, which
     % reflects the requirements of the code following the switch.
-
+    %
 find_follow_vars_in_goal_expr(switch(Var, Det, Cases0),
         switch(Var, Det, Cases), GoalInfo0, GoalInfo,
         VarTypes, ModuleInfo,
@@ -221,7 +223,7 @@ find_follow_vars_in_goal_expr(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
 
 find_follow_vars_in_goal_expr(shorthand(_), _, _, _, _, _, _, _, _, _) :-
     % these should have been expanded out by now
-    error("find_follow_vars_in_goal_2: unexpected shorthand").
+    unexpected(this_file, "find_follow_vars_in_goal_2: unexpected shorthand").
 
 find_follow_vars_in_goal_expr(
         Call @ generic_call(GenericCall, Args, Modes, Det), Call,
@@ -433,4 +435,11 @@ find_follow_vars_in_conj([Goal0 | Goals0], [Goal | Goals], VarTypes,
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "follow_vars".
+
+%-----------------------------------------------------------------------------%
+:- end_module follow_vars.
 %-----------------------------------------------------------------------------%

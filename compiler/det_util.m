@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: det_util.m.
+% Main authors: fjh, zs.
+
 % Utility predicates used in two or more of the modules concerned with
 % determinism: switch_detection, cse_detection, det_analysis, det_report
 % and simplify.
-%
-% Main authors: fjh and zs.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__det_util.
-
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -30,7 +30,11 @@
 :- import_module list.
 :- import_module set.
 
-:- type maybe_changed   --->    changed ; unchanged.
+%-----------------------------------------------------------------------------%
+
+:- type maybe_changed
+    --->    changed
+    ;       unchanged.
 
 :- type det_info.
 
@@ -79,6 +83,7 @@
     is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -91,9 +96,10 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 delete_unreachable_cases([], _, []).
 delete_unreachable_cases([_ | _], [], []).
@@ -188,4 +194,6 @@ det_info_set_vartypes(DI, VarTypes, DI ^ vartypes := VarTypes).
 
 this_file = "det_util.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module det_util.
 %-----------------------------------------------------------------------------%

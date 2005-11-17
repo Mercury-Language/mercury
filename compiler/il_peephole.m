@@ -6,9 +6,10 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% il_peephole.m - local ILDS to ILDS optimizations based on pattern-matching.
-%
+% File: il_peephole.m.
 % Authors: trd (based on peephole.m by fjh and zs).
+%
+% Local ILDS to ILDS optimizations based on pattern-matching.
 %
 % Please note that some of the optimizations in this module are required
 % for verifiability of IL.
@@ -33,13 +34,14 @@
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend__il_peephole.
-
 :- interface.
 
 :- import_module ml_backend.ilasm.
 
 :- import_module bool.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % il_peephole__optimize(VerifyOnly, !IL):
     %
@@ -49,9 +51,10 @@
 :- pred il_peephole__optimize(bool::in,
     list(ilasm__decl)::in, list(ilasm__decl)::out) is det.
 
-:- implementation.
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-:- type instrs == list(instr).
+:- implementation.
 
 :- import_module ml_backend.ilds.
 
@@ -59,9 +62,12 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
+
+:- type instrs == list(instr).
 
 optimize(VerifyOnly, Decls0, Decls) :-
     % We zip down to the end of the instruction list, and start attempting
@@ -783,3 +789,13 @@ can_branch(stobj(_))                            = no.
 can_branch(sizeof(_Type))                       = no.
 can_branch(stsfld(_FieldRef))                   = no.
 can_branch(unbox(_Type))                        = no.
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "il_peephole.m".
+
+%----------------------------------------------------------------------------%
+:- end_module il_peephole.
+%----------------------------------------------------------------------------%

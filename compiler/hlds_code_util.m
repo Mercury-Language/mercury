@@ -6,16 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-%
-% file: hlds_code_util.m.
-%
+
+% File: hlds_code_util.m.
+
 % Various utilities routines for use during hlds generation.
-%
-%-----------------------------------------------------------------------------%
+
 %-----------------------------------------------------------------------------%
 
 :- module hlds__hlds_code_util.
-
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -23,6 +21,8 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % Are equivalence types fully expanded on this backend?
     %
@@ -39,6 +39,9 @@
     %
 :- pred make_instance_string(list(mer_type)::in, string::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.type_util.
@@ -54,7 +57,6 @@
 :- import_module bool.
 :- import_module char.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -160,4 +162,6 @@ type_to_string(Type, String) :-
 
 this_file = "hlds_code_util.m".
 
+%----------------------------------------------------------------------------%
+:- end_module hlds_code_util.
 %----------------------------------------------------------------------------%

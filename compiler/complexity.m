@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: complexity.m.
 % Author: zs.
-%
-% This module performs a program transformation that gathers information
-% about the relationship between the sizes of a procedure's input arguments
-% and the performance cost of the procedure in terms of memory and time.
+
+% This module performs a program transformation that gathers information about
+% the relationship between the sizes of a procedure's input arguments and the
+% performance cost of the procedure in terms of memory and time.
 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__complexity.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -24,10 +24,12 @@
 :- import_module io.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
     % read_spec_file(FileName, MaybeNumLinesProcMap, !IO):
     % Try to read in a complexity proc map from FileName. If successful,
-    % return the proc map and the number of entries in it. If not, return
-    % an error message.
+    % return the proc map and the number of entries in it. If not, return an
+    % error message.
     %
 :- pred read_spec_file(string::in,
     maybe_error(pair(int, complexity_proc_map))::out, io::di, io::uo) is det.
@@ -50,6 +52,7 @@
     pred_id::in, proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -84,6 +87,8 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 read_spec_file(FileName, MaybeNumLinesProcMap, !IO) :-
     io__open_input(FileName, ResStream, !IO),
@@ -571,4 +576,6 @@ make_type_info_var(Type, Context, PredId, !ProcInfo, !ModuleInfo,
 
 this_file = "complexity.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module complexity.
 %-----------------------------------------------------------------------------%
