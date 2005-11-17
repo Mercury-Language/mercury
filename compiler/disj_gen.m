@@ -12,8 +12,8 @@
 %
 % The predicates of this module generate code for disjunctions.
 %
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module ll_backend__disj_gen.
 
@@ -26,10 +26,13 @@
 
 :- import_module list.
 
-:- pred disj_gen__generate_disj(code_model::in, list(hlds_goal)::in,
+%-----------------------------------------------------------------------------%
+
+:- pred generate_disj(add_trail_ops::in, code_model::in, list(hlds_goal)::in,
     hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -51,7 +54,9 @@
 :- import_module std_util.
 :- import_module term.
 
-disj_gen__generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
+%-----------------------------------------------------------------------------%
+
+generate_disj(AddTrailOps, CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
     (
         Goals = [],
         ( CodeModel = model_semi ->
@@ -68,18 +73,18 @@ disj_gen__generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
         ;
             set__init(ResumeVars)
         ),
-        disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals,
+        generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals,
             DisjGoalInfo, Code, !CI)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred disj_gen__generate_real_disj(code_model::in, set(prog_var)::in,
-    list(hlds_goal)::in, hlds_goal_info::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred disj_gen__generate_real_disj(bool::in, code_model::in,
+    set(prog_var)::in, list(hlds_goal)::in, hlds_goal_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, DisjGoalInfo, Code,
-        !CI)  :-
+generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
+        Code, !CI)  :-
 
         % Make sure that the variables whose values will be needed
         % on backtracking to any disjunct are materialized into
@@ -93,8 +98,7 @@ disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, DisjGoalInfo, Code,
         % recovery for semi and det disjunctions, and delay saving
         % the ticket until necessary.
     code_info__get_globals(!.CI, Globals),
-    globals__lookup_bool_option(Globals, use_trail, UseTrail),
-    code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot,
+    code_info__maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
         !CI),
 
         % If we are using a grade in which we can recover memory
@@ -131,7 +135,7 @@ disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, DisjGoalInfo, Code,
     code_info__get_next_label(EndLabel, !CI),
 
     code_info__remember_position(!.CI, BranchStart),
-    disj_gen__generate_disjuncts(Goals, CodeModel, ResumeMap, no, HijackInfo,
+    generate_disjuncts(Goals, CodeModel, ResumeMap, no, HijackInfo,
         DisjGoalInfo, EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
         BranchStart, no, MaybeEnd, GoalsCode, !CI),
 
@@ -147,15 +151,15 @@ disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, DisjGoalInfo, Code,
 
 %---------------------------------------------------------------------------%
 
-:- pred disj_gen__generate_disjuncts(list(hlds_goal)::in, code_model::in,
+:- pred generate_disjuncts(list(hlds_goal)::in, code_model::in,
     resume_map::in, maybe(resume_point_info)::in, disj_hijack_info::in,
     hlds_goal_info::in, label::in, bool::in, maybe(lval)::in, maybe(lval)::in,
     position_info::in, maybe(branch_end_info)::in, maybe(branch_end_info)::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
-disj_gen__generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
     error("empty disjunction!").
-disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
+generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         MaybeEntryResumePoint, HijackInfo, DisjGoalInfo, EndLabel, ReclaimHeap,
         MaybeHpSlot0, MaybeTicketSlot, BranchStart0, MaybeEnd0, MaybeEnd,
         Code, !CI) :-
@@ -316,4 +320,12 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             RestoreTicketCode, UndoCode, GoalCode, SaveCode, EndCode])
     ).
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "disj_gen.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module disj_gen.
+%-----------------------------------------------------------------------------%

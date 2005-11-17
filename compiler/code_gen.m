@@ -43,6 +43,8 @@
 :- import_module io.
 :- import_module list.
 
+%---------------------------------------------------------------------------%
+
     % Translate a HLDS module to LLDS.
     %
 :- pred generate_code(module_info::in, global_data::in, global_data::out,
@@ -1080,7 +1082,16 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
                 error("nondet model in det/semidet context")
             )
         ),
-        code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, GoalCode, !CI),
+        %
+        % Check if we need to add trail ops, and if so, whether it is safe to
+        % omit them.  We only do the latter if we are optimizing trail usage.
+        %
+        code_info__get_globals(!.CI, Globals),
+        code_info__get_module_info(!.CI, ModuleInfo),
+        AddTrailOps = should_add_trail_ops(Globals, ModuleInfo,
+            Goal - GoalInfo),
+        code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, AddTrailOps, 
+            GoalCode, !CI),
         goal_info_get_features(GoalInfo, Features),
         code_info__get_proc_info(!.CI, ProcInfo),
 
@@ -1174,34 +1185,40 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
 %---------------------------------------------------------------------------%
 
 :- pred code_gen__generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    code_model::in, code_tree::out, code_info::in, code_info::out) is det.
+    code_model::in, add_trail_ops::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
-code_gen__generate_goal_2(unify(_, _, _, Uni, _), GoalInfo, CodeModel, Code,
-        !CI) :-
+code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+    Goal = unify(_, _, _, Uni, _),
     unify_gen__generate_unification(CodeModel, Uni, GoalInfo, Code, !CI).
-code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, Code, !CI) :-
+code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, _, Code, !CI) :-
     code_gen__generate_goals(Goals, CodeModel, Code, !CI).
-code_gen__generate_goal_2(par_conj(Goals), GoalInfo, CodeModel, Code, !CI) :-
+code_gen__generate_goal_2(par_conj(Goals), GoalInfo, CodeModel, _, Code, !CI) :-
     par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI).
-code_gen__generate_goal_2(disj(Goals), GoalInfo, CodeModel, Code, !CI) :-
-    disj_gen__generate_disj(CodeModel, Goals, GoalInfo, Code, !CI).
-code_gen__generate_goal_2(not(Goal), GoalInfo, CodeModel, Code, !CI) :-
-    ite_gen__generate_negation(CodeModel, Goal, GoalInfo, Code, !CI).
-code_gen__generate_goal_2(if_then_else(_Vars, Cond, Then, Else),
-        GoalInfo, CodeModel, Code, !CI) :-
-    ite_gen__generate_ite(CodeModel, Cond, Then, Else, GoalInfo, Code, !CI).
-code_gen__generate_goal_2(switch(Var, CanFail, CaseList),
-        GoalInfo, CodeModel, Code, !CI) :-
+code_gen__generate_goal_2(disj(Goals), GoalInfo, CodeModel, AddTrailOps,
+        Code, !CI) :-
+    disj_gen__generate_disj(AddTrailOps, CodeModel, Goals, GoalInfo, Code, !CI).
+code_gen__generate_goal_2(not(Goal), GoalInfo, CodeModel, AddTrailOps,
+        Code, !CI) :-
+    ite_gen__generate_negation(AddTrailOps, CodeModel, Goal, GoalInfo,
+        Code, !CI).
+code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, AddTrailOps, Code, !CI) :-
+    Goal = if_then_else(_Vars, Cond, Then, Else),
+    ite_gen__generate_ite(AddTrailOps, CodeModel, Cond, Then, Else, GoalInfo,
+        Code, !CI).
+code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+    Goal = switch(Var, CanFail, CaseList),
     switch_gen__generate_switch(CodeModel, Var, CanFail, CaseList,
         GoalInfo, Code, !CI).
-code_gen__generate_goal_2(scope(_, Goal), _GoalInfo, CodeModel, Code, !CI) :-
-    commit_gen__generate_commit(CodeModel, Goal, Code, !CI).
-code_gen__generate_goal_2(generic_call(GenericCall, Args, Modes, Det),
-        GoalInfo, CodeModel, Code, !CI) :-
+code_gen__generate_goal_2(scope(_, Goal), _GoalInfo, CodeModel, AddTrailOps,
+        Code, !CI) :-
+    commit_gen__generate_commit(AddTrailOps, CodeModel, Goal, Code, !CI).
+code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+    Goal = generic_call(GenericCall, Args, Modes, Det),
     call_gen__generate_generic_call(CodeModel, GenericCall, Args,
         Modes, Det, GoalInfo, Code, !CI).
-code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _,_),
-        GoalInfo, CodeModel, Code, !CI) :-
+code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+    Goal = call(PredId, ProcId, Args, BuiltinState, _, _),
     ( BuiltinState = not_builtin ->
         call_gen__generate_call(CodeModel, PredId, ProcId, Args,
             GoalInfo, Code, !CI)
@@ -1209,19 +1226,19 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _,_),
         call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
             Code, !CI)
     ).
-code_gen__generate_goal_2(foreign_proc(Attributes, PredId, ProcId,
-        Args, ExtraArgs, PragmaCode),
-        GoalInfo, CodeModel, Code, !CI) :-
+code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+    Goal = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+        PragmaCode),
     ( c = foreign_language(Attributes) ->
         pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
             PredId, ProcId, Args, ExtraArgs, GoalInfo, PragmaCode, Code, !CI)
     ;
         unexpected(this_file,
-            "code_gen__generate_goal_2: foreign code other than C unexpected")
+            "generate_goal_2: foreign code other than C unexpected")
     ).
-code_gen__generate_goal_2(shorthand(_), _, _, _, !CI) :-
+code_gen__generate_goal_2(shorthand(_), _, _, _, _, !CI) :-
     % These should have been expanded out by now.
-    unexpected(this_file, "code_gen__generate_goal_2: unexpected shorthand").
+    unexpected(this_file, "generate_goal_2: unexpected shorthand").
 
 %---------------------------------------------------------------------------%
 

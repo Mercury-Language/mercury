@@ -23,8 +23,13 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
 
-:- pred commit_gen__generate_commit(code_model::in, hlds_goal::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+%---------------------------------------------------------------------------%
+
+:- pred commit_gen__generate_commit(add_trail_ops::in, code_model::in,
+    hlds_goal::in, code_tree::out, code_info::in, code_info::out) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -35,7 +40,9 @@
 :- import_module require.
 :- import_module std_util.
 
-commit_gen__generate_commit(OuterCodeModel, Goal, Code, !Info) :-
+%---------------------------------------------------------------------------%
+
+generate_commit(AddTrailOps, OuterCodeModel, Goal, Code, !Info) :-
     Goal = _ - InnerGoalInfo,
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     (
@@ -48,7 +55,8 @@ commit_gen__generate_commit(OuterCodeModel, Goal, Code, !Info) :-
             unexpected(this_file, "semidet model in det context")
         ;
             InnerCodeModel = model_non,
-            code_info__prepare_for_det_commit(CommitInfo, PreCommit, !Info),
+            code_info__prepare_for_det_commit(AddTrailOps, CommitInfo,
+                PreCommit, !Info),
             code_gen__generate_goal(InnerCodeModel, Goal, GoalCode, !Info),
             code_info__generate_det_commit(CommitInfo, Commit, !Info),
             Code = tree(PreCommit, tree(GoalCode, Commit))
@@ -63,7 +71,8 @@ commit_gen__generate_commit(OuterCodeModel, Goal, Code, !Info) :-
             code_gen__generate_goal(InnerCodeModel, Goal, Code, !Info)
         ;
             InnerCodeModel = model_non,
-            code_info__prepare_for_semi_commit(CommitInfo, PreCommit, !Info),
+            code_info__prepare_for_semi_commit(AddTrailOps, CommitInfo,
+                PreCommit, !Info),
             code_gen__generate_goal(InnerCodeModel, Goal, GoalCode, !Info),
             code_info__generate_semi_commit(CommitInfo, Commit, !Info),
             Code = tree(PreCommit, tree(GoalCode, Commit))
@@ -79,4 +88,6 @@ commit_gen__generate_commit(OuterCodeModel, Goal, Code, !Info) :-
 
 this_file = "commit_gen.m".
 
+%---------------------------------------------------------------------------%
+:- end_module commit_gen.
 %---------------------------------------------------------------------------%

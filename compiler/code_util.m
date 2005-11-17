@@ -23,6 +23,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.globals.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
@@ -92,6 +93,19 @@
     is det.
 
 %---------------------------------------------------------------------------%
+%
+% Utility predicates used to implement trailing
+%
+    % Tests if we should add trail ops to the code we generate for
+    % the given goal.  This will be 'no' unless we are compiling
+    % in trailing grade.  It may also be 'no' in trailing grades if
+    % we are optimizing trail usage and trail usage analysis tells
+    % us that it is safe to omit the trail ops.
+    %  
+:- func should_add_trail_ops(globals, module_info, hlds_goal) = add_trail_ops.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -99,9 +113,9 @@
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_form.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_util.
 
@@ -441,10 +455,39 @@ build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
     ),
     build_input_arg_list_2(Rest0, VarArgs0).
 
+%---------------------------------------------------------------------------%
+%
+% Utility predicates used to implement trailing
+%
+
+should_add_trail_ops(Globals, ModuleInfo, Goal) = AddTrailOps :-
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    (
+        UseTrail = no,
+        AddTrailOps = no
+    ;
+        UseTrail = yes,
+        globals.lookup_bool_option(Globals, optimize_trail_usage,
+            OptTrailUsage),
+        (
+            OptTrailUsage = no,
+            AddTrailOps = yes
+        ;
+            OptTrailUsage = yes,
+            ( goal_cannot_modify_trail(ModuleInfo, Goal) ->
+                AddTrailOps = no
+            ;
+                AddTrailOps = yes
+            )
+        )
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "code_util.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module code_util.
 %-----------------------------------------------------------------------------%

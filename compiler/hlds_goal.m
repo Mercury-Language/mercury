@@ -1056,7 +1056,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Get/set predicates for the extra_goal_info strucutre..
+% Get/set predicates for the extra_goal_info structure
 %
 
 :- func goal_info_get_ho_values(hlds_goal_info) = ho_values.
@@ -2353,4 +2353,6 @@ goal_info_set_ho_values(Values, !GoalInfo) :-
 
 this_file = "hlds_goal".
 
+%-----------------------------------------------------------------------------%
+:- end_module hlds_goal.
 %-----------------------------------------------------------------------------%

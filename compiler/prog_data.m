@@ -352,7 +352,7 @@
 % Mutable variables
 %
 
-    % Indicates if  updates to the mutable are trailed or untrailed.
+    % Indicates if updates to the mutable are trailed or untrailed.
     %
 :- type trailed
     --->    trailed

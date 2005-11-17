@@ -1231,7 +1231,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     %
 :- type det_commit_info.
 
-:- pred prepare_for_det_commit(det_commit_info::out,
+:- pred prepare_for_det_commit(add_trail_ops::in, det_commit_info::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred generate_det_commit(det_commit_info::in,
@@ -1244,7 +1244,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     %
 :- type semi_commit_info.
 
-:- pred prepare_for_semi_commit(semi_commit_info::out,
+:- pred prepare_for_semi_commit(bool::in, semi_commit_info::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred generate_semi_commit(semi_commit_info::in,
@@ -1746,7 +1746,7 @@ make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
                                     % counter and trail pointer.
             ).
 
-prepare_for_det_commit(DetCommitInfo, Code, !CI) :-
+prepare_for_det_commit(AddTrailOps, DetCommitInfo, Code, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(_, _, CurfrMaxfr, _, _),
     (
@@ -1761,7 +1761,7 @@ prepare_for_det_commit(DetCommitInfo, Code, !CI) :-
         SaveMaxfrCode = empty,
         MaybeMaxfrSlot = no
     ),
-    maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode, !CI),
+    maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI),
     DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots),
     Code = tree(SaveMaxfrCode, SaveTrailCode).
 
@@ -1816,7 +1816,7 @@ generate_det_commit(DetCommitInfo, Code, !CI) :-
                             % the value of maxfr.
             ).
 
-prepare_for_semi_commit(SemiCommitInfo, Code, !CI) :-
+prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr, CondEnv,
         Allow),
@@ -1917,7 +1917,7 @@ prepare_for_semi_commit(SemiCommitInfo, Code, !CI) :-
                 - "hijack the redoip slot"
         ])
     ),
-    maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode, !CI),
+    maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI),
     SemiCommitInfo = semi_commit_info(FailInfo0, NewResumePoint,
         HijackInfo, MaybeTrailSlots),
     Code = tree(HijackCode, SaveTrailCode).
@@ -2584,14 +2584,12 @@ resume_point_stack_addr(ResumePoint, StackAddr) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_save_trail_info(maybe(pair(lval))::out,
+:- pred maybe_save_trail_info(bool::in, maybe(pair(lval))::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
-maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode, !CI) :-
-    get_globals(!.CI, Globals),
-    globals__lookup_bool_option(Globals, use_trail, UseTrail),
+maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
     (
-        UseTrail = yes,
+        AddTrailOps = yes,
         acquire_temp_slot(ticket_counter, CounterSlot, !CI),
         acquire_temp_slot(ticket, TrailPtrSlot, !CI),
         MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
@@ -2600,7 +2598,7 @@ maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode, !CI) :-
             store_ticket(TrailPtrSlot) - "save the trail pointer"
         ])
     ;
-        UseTrail = no,
+        AddTrailOps = no,
         MaybeTrailSlots = no,
         SaveTrailCode = empty
     ).

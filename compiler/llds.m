@@ -623,6 +623,8 @@
     ;       retry
     ;       gc.
 
+:- type add_trail_ops == bool.
+
     % Each call instruction has a list of liveinfo, which stores information
     % about which variables are live after the call (that is, on return).
     % The information is intended for use by the native garbage collector.

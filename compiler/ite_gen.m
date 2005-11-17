@@ -25,13 +25,17 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
 
-:- pred ite_gen__generate_ite(code_model::in, hlds_goal::in, hlds_goal::in,
+%---------------------------------------------------------------------------%
+
+:- pred ite_gen__generate_ite(add_trail_ops::in, code_model::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_info::in,
+    code_tree::out, code_info::in, code_info::out) is det.
+
+:- pred ite_gen__generate_negation(add_trail_ops::in, code_model::in,
     hlds_goal::in, hlds_goal_info::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-:- pred ite_gen__generate_negation(code_model::in, hlds_goal::in,
-    hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
-
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -57,8 +61,10 @@
 :- import_module string.
 :- import_module term.
 
-ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
-        Code, !CI) :-
+%---------------------------------------------------------------------------%
+
+generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal,
+        ElseGoal, IteGoalInfo, Code, !CI) :-
     CondGoal0 = CondExpr - CondInfo0,
     goal_info_get_code_model(CondInfo0, CondCodeModel),
     (
@@ -107,8 +113,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
     code_info__maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
     % Maybe save the current trail state before the condition.
-    globals__lookup_bool_option(Globals, use_trail, UseTrail),
-    code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot,
+    code_info__maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
         !CI),
 
     code_info__remember_position(!.CI, BranchStart),
@@ -217,9 +222,10 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
         EndLabelCode]),
     code_info__after_all_branches(StoreMap, MaybeEnd, !CI).
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-ite_gen__generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
+generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
+        !CI) :-
     ( CodeModel = model_non ->
         error("nondet negation")
     ;
@@ -268,19 +274,19 @@ ite_gen__generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI) :-
         code_info__leave_simple_neg(GoalInfo, SimpleNeg, !CI),
         Code = tree(tree(CodeL, CodeR), TestCode)
     ;
-        generate_negation_general(CodeModel, Goal, NotGoalInfo,
+        generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
             ResumeVars, ResumeLocs, Code, !CI)
     ).
 
     % The code of generate_negation_general is a cut-down version
     % of the code for if-then-elses.
     %
-:- pred generate_negation_general(code_model::in, hlds_goal::in,
-    hlds_goal_info::in, set(prog_var)::in, resume_locs::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred generate_negation_general(add_trail_ops::in, code_model::in,
+    hlds_goal::in, hlds_goal_info::in, set(prog_var)::in, resume_locs::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
-        Code, !CI) :-
+generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
+        ResumeVars, ResumeLocs, Code, !CI) :-
 
     code_info__produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
 
@@ -299,8 +305,7 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     ),
     code_info__maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
-    globals__lookup_bool_option(Globals, use_trail, UseTrail),
-    code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
+    code_info__maybe_save_ticket(AddTrailOps, SaveTicketCode,
         MaybeTicketSlot, !CI),
 
     code_info__prepare_for_ite_hijack(CodeModel, HijackInfo,
@@ -353,7 +358,7 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
 
     % Restore the heap pointer and solver state if necessary.
     code_info__maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
-    code_info__maybe_reset_discard_and_release_ticket( MaybeTicketSlot, undo,
+    code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, undo,
         RestoreTicketCode, !CI),
     trace__maybe_generate_negated_event_code(Goal, NotGoalInfo,
         neg_success, SuccessTraceCode, !CI),
@@ -447,10 +452,12 @@ wrap_transient(Code) =
         Code,
         "\t\tMR_restore_transient_registers();\n"]).
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "ite_gen".
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+:- end_module ite_gen.
+%-----------------------------------------------------------------------------%
