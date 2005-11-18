@@ -14,23 +14,46 @@
 
 :- type blah ---> blah(foo :: int).
 
-main -->
-	{ impure X = get_counter(4) },
-	print("X = "), 
-	print(X), 
-	{ impure Z = ( X = 3 -> 4 ; 5 ) },
-	print("Z = "), 
-	print(Z), 
-	{ impure L = (pred(X5::out) is det :- X5 = 4) },
-	{ L(P) },
-	print("P = "), 
-	print(P), 
-	{ impure M = blah(7) ^ foo },
-	print("M = "), 
-	print(M), 
-	{ impure B = 4 },
-	print(B), 
-	nl.
+main(!IO) :-
+	impure bad_impure_if_then_else_expr(!IO),
+	impure bad_impure_lambda_unification(!IO),
+	impure bad_impure_field_access(!IO),
+	impure bad_impure_assignment(!IO).
+
+:- impure pred bad_impure_if_then_else_expr(io::di, io::uo) is det.
+
+bad_impure_if_then_else_expr(!IO) :-
+	impure X = get_counter(4),
+	print("X = ", !IO), 
+	print(X, !IO), 
+	impure Z = ( X = 3 -> 4 ; 5 ),
+	print("Z = ", !IO), 
+	print(Z, !IO), 
+	nl(!IO).
+
+:- impure pred bad_impure_lambda_unification(io::di, io::uo) is det.
+
+bad_impure_lambda_unification(!IO) :-
+	impure L = (pred(X5::out) is det :- X5 = 4),
+	L(P),
+	print("P = ", !IO), 
+	print(P, !IO), 
+	nl(!IO).
+
+:- impure pred bad_impure_field_access(io::di, io::uo) is det.
+
+bad_impure_field_access(!IO) :-
+	impure M = blah(7) ^ foo,
+	print("M = ", !IO), 
+	print(M, !IO), 
+	nl(!IO).
+
+:- impure pred bad_impure_assignment(io::di, io::uo) is det.
+
+bad_impure_assignment(!IO) :-
+	impure B = 4,
+	print(B, !IO), 
+	nl(!IO).
 
 :- impure func get_counter(int) = int.
 :- impure pred some_pred(int::in, int::out) is det.

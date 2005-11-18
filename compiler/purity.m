@@ -135,7 +135,6 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
@@ -163,15 +162,6 @@
     %
 :- pred repuritycheck_proc(module_info::in, pred_proc_id::in, pred_info::in,
     pred_info::out) is det.
-
-    % Give an error message for unifications marked impure/semipure
-    % that are not function calls (e.g. impure X = 4)
-    %
-:- pred impure_unification_expr_error(prog_context::in, purity::in,
-    io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -738,22 +728,9 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
         true
     ),
 
-    % The unification itself is always pure,
-    % even if it is a unification with an impure higher-order term.
-    ActualPurity = purity_pure,
-
-    % Check for a bogus purity annotation on the unification.
-    infer_goal_info_purity(GoalInfo, DeclaredPurity),
-    (
-        DeclaredPurity \= purity_pure,
-        !.Info ^ implicit_purity = dont_make_implicit_promises
-    ->
-        goal_info_get_context(GoalInfo, Context),
-        Message = impure_unification_expr_error(Context, DeclaredPurity),
-        purity_info_add_message(error(Message), !Info)
-    ;
-        true
-    ).
+    % We take the annotated purity (if any) as the actual purity.
+    % This is checked for validity in modecheck_unify.m
+    infer_goal_info_purity(GoalInfo, ActualPurity).
 
     % The possible results of a purity check.
 :- type purity_check_result
@@ -1111,7 +1088,6 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
     --->    missing_body_impurity_error(prog_context, pred_id)
     ;       closure_purity_error(prog_context, purity, purity)
             % closure_purity_error(Context, DeclaredPurity, ActualPurity)
-    ;       impure_unification_expr_error(prog_context, purity)
     ;       aditi_builtin_error(aditi_builtin_error).
 
 :- type post_typecheck_warning
@@ -1129,9 +1105,6 @@ report_post_typecheck_message(ModuleInfo, error(Message), !IO) :-
     ;
         Message = closure_purity_error(Context, DeclaredPurity, ActualPurity),
         report_error_closure_purity(Context, DeclaredPurity, ActualPurity, !IO)
-    ;
-        Message = impure_unification_expr_error(Context, Purity),
-        impure_unification_expr_error(Context, Purity, !IO)
     ;
         Message = aditi_builtin_error(AditiError),
         report_aditi_builtin_error(AditiError, !IO)
@@ -1236,13 +1209,6 @@ report_error_closure_purity(Context, _DeclaredPurity, ActualPurity, !IO) :-
         fixed(ActualPurityName ++ ","),
         words("but closure was not declared"),
         fixed(ActualPurityName ++ ".")],
-    write_error_pieces(Context, 0, Pieces, !IO).
-
-impure_unification_expr_error(Context, Purity, !IO) :-
-    purity_name(Purity, PurityName),
-    Pieces = [words("Purity error: unification with expression"),
-        words("was declared"), fixed(PurityName ++ ","),
-        words("but expression was not a function call.")],
     write_error_pieces(Context, 0, Pieces, !IO).
 
 %-----------------------------------------------------------------------------%

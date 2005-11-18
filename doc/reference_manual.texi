@@ -8439,7 +8439,7 @@ with the standard library.  Newcomers to Mercury are hence encouraged to
 * Purity ordering::     	How purity levels are ordered 
 * Impurity semantics::  	What impure code means.
 * Declaring impurity::  	Declaring predicates impure.
-* Impure calls::        	Marking a call as impure.
+* Impure goals::        	Marking a goal as impure.
 * Promising purity::    	Promising that a predicate is pure.
 * Impurity Example::    	A simple example using impurity.
 * Higher-order impurity::    	Using impurity with higher-order code.
@@ -8577,32 +8577,37 @@ appropriate purity level.  An instance of the type class must provide
 method implementations that are at least as pure as the method
 declaration. 
 
-@node Impure calls
-@section Marking a call as impure
+@node Impure goals
+@section Marking a goal as impure
 
-Every call to a Mercury predicate or function also has exactly two
-purity values associated with it.
-One is the declared purity of the call, which is
-given by the programmer as an annotation of the call.
-The other value is the inferred purity,
-which is the purity of the predicate or function.
+If predicate @code{p/N} is declared to be @code{impure} (@code{semipure})
+then all calls to @code{p/N} must be annotated with @code{impure}
+(@code{semipure}):
 
-It is an error for the declared purity of a goal to be more pure than
-the inferred purity; the compiler should flag this as an error.
-The compiler should issue a warning if the declared purity of a goal is
-less pure than its inferred purity.
+@start example
+	impure p(X1, X2, ..., XN)
+@end example
 
-If a predicate is impure or semipure, all calls to it must be preceded
-with the word @code{impure} or @code{semipure}, respectively. 
+If function @code{f/N} is declared to be @code{impure} (@code{semipure})
+then all applications of @code{f/N} must be obtained by unification with a
+variable and the unification goal as a whole be annotated with @code{impure}
 
-If a function is impure or semipure, it must be called as part of a
-simple unification with a variable, and this unification must be
-prefixed by the word @code{impure} or @code{semipure}, respectively.
+@start example
+	impure X = f(X1, X2, ..., XN)
+@end example
 
-Note that only predicate calls and unifications of variables with 
-functions need to (and are permitted to) be prefixed
-with @code{impure} or @code{semipure}.  Compound goals never need this.
-See @ref{Impurity Example} for an example of this syntax.
+Any call or unification goal containing a non-local variable with inst any that
+appears in a negated context (i.e., in a negation or the condition of an
+if-then-else goal) must be given an @code{impure} annotation because it may
+violate referential transparency.
+
+Compound goals should not have purity annotations.
+
+The compiler will report an error if a required purity annotation is 
+omitted from a call or unification goal or if a @code{semipure} annotation
+is used where an @code{impure} annotation is required.  The compiler will
+report a warning if a semipure goal is annotated with @{impure} or a pure goal
+is annotated with @code{semipure}
 
 The requirement that impure or semipure calls be marked with
 @code{impure} or @code{semipure} allows someone 

@@ -469,8 +469,8 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         Det = Det1,
         term__coerce(GoalTerm1, GoalTerm),
         parse_goal(GoalTerm, ParsedGoal, !VarSet),
-        build_lambda_expression(X, LambdaPurity, PredOrFunc, EvalMethod,
-            Vars1, Modes, Det, ParsedGoal, Context, MainContext,
+        build_lambda_expression(X, Purity, LambdaPurity, PredOrFunc,
+            EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
             SubContext, Goal, !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !IO)
     ;
         % handle higher-order dcg pred expressions -
@@ -489,9 +489,9 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         parse_dcg_pred_goal(GoalTerm, ParsedGoal, DCG0, DCGn, !VarSet),
         list__append(Vars0, [term__variable(DCG0), term__variable(DCGn)],
             Vars1),
-        build_lambda_expression(X, DCGLambdaPurity, predicate, EvalMethod,
-            Vars1, Modes, Det, ParsedGoal, Context, MainContext, SubContext,
-            Goal0, !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !IO),
+        build_lambda_expression(X, Purity, DCGLambdaPurity, predicate,
+            EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
+            SubContext, Goal0, !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !IO),
         Goal0 = GoalExpr - GoalInfo0,
         add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo
@@ -522,13 +522,13 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
 
         unravel_unification(term__variable(X), ThenTerm,
-            Context, MainContext, SubContext, purity_pure, ThenGoal,
+            Context, MainContext, SubContext, Purity, ThenGoal,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
         finish_if_then_else_expr_then_goal(StateVars, BeforeSInfo, !SInfo),
 
         unravel_unification(term__variable(X), ElseTerm,
-            Context, MainContext, SubContext, purity_pure,
+            Context, MainContext, SubContext, Purity,
             ElseGoal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
         IfThenElse = if_then_else(StateVars ++ Vars, IfGoal, ThenGoal,
@@ -544,7 +544,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
     ->
         make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet, !SInfo, !IO),
         expand_get_field_function_call(Context, MainContext, SubContext,
-            FieldNames, X, InputTermVar, !VarSet, Functor, _, Goal0,
+            FieldNames, X, InputTermVar, Purity, !VarSet, Functor, _, Goal0,
             !ModuleInfo, !QualInfo, !SInfo, !IO),
 
         ArgContext = functor(Functor, MainContext, SubContext),
@@ -597,7 +597,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         (
             FunctorArgs = [],
             make_atomic_unification(X, functor(ConsId, no, []), Context,
-                MainContext, SubContext, Goal0, !QualInfo),
+                MainContext, SubContext, Purity, Goal0, !QualInfo),
             Goal0 = GoalExpr - GoalInfo0,
             add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
             % We could attach the from_ground_term feature to Goal,
@@ -609,7 +609,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
             FunctorArgs = [_ | _],
             make_fresh_arg_vars(FunctorArgs, HeadVars, !VarSet, !SInfo, !IO),
             make_atomic_unification(X, functor(ConsId, no, HeadVars), Context,
-                MainContext, SubContext, Goal0, !QualInfo),
+                MainContext, SubContext, Purity, Goal0, !QualInfo),
             ArgContext = functor(ConsId, MainContext, SubContext),
             % Should this be insert_... rather than append_...?
             % No, because that causes efficiency problems
@@ -697,17 +697,17 @@ ground_terms([Term | Terms]) :-
 % Code for building lambda expressions
 %
 
-:- pred build_lambda_expression(prog_var::in, purity::in, pred_or_func::in,
-    lambda_eval_method::in, list(prog_term)::in, list(mer_mode)::in,
-    determinism::in, goal::in, prog_context::in, unify_main_context::in,
-    unify_sub_contexts::in, hlds_goal::out,
+:- pred build_lambda_expression(prog_var::in, purity::in, purity::in,
+    pred_or_func::in, lambda_eval_method::in, list(prog_term)::in,
+    list(mer_mode)::in, determinism::in, goal::in, prog_context::in,
+    unify_main_context::in, unify_sub_contexts::in, hlds_goal::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     svar_info::in, io::di, io::uo) is det.
 
-build_lambda_expression(X, Purity, PredOrFunc, EvalMethod, Args0, Modes, Det,
-        ParsedGoal, Context, MainContext, SubContext, Goal, !VarSet,
-        !ModuleInfo, !QualInfo, !.SInfo, !IO) :-
+build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
+        EvalMethod, Args0, Modes, Det, ParsedGoal, Context, MainContext,
+        SubContext, Goal, !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !IO) :-
     %
     % In the parse tree, the lambda arguments can be any terms, but
     % in the HLDS they must be distinct variables.  So we introduce
@@ -850,10 +850,10 @@ build_lambda_expression(X, Purity, PredOrFunc, EvalMethod, Args0, Modes, Det,
             LambdaNonLocals = set.to_sorted_list(!.LambdaGoalVars)
         ),
 
-        make_atomic_unification(X,
-            lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
-                LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
-            Context, MainContext, SubContext, Goal, !QualInfo)
+        LambdaGoal = lambda_goal(LambdaPurity, PredOrFunc, EvalMethod,
+            modes_are_ok, LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
+        make_atomic_unification(X, LambdaGoal, Context, MainContext,
+            SubContext, UnificationPurity, Goal, !QualInfo)
     ).
 
     % Partition the lists of arguments and variables into lists

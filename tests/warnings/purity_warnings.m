@@ -31,7 +31,7 @@ impure_pred2 -->
 	{ semipure get_x(X) },
 	print("X = "), print(X), nl.
 
-:- semipure pred semipure_pred(io__state::di, io__state::uo) is det. % warn
+:- semipure pred semipure_pred(io__state::di, io__state::uo) is det.
 semipure_pred -->
 	semipure io__write_string("semipure_pred1\n").		% warn
 
@@ -57,9 +57,9 @@ semipure_pred -->
 		semipure print("semipure_method_b\n"))	% XXX should warn
 ].
 
-:- pred impure_method1a_impl(io::di, io::uo) is det.
+:- pred impure_method1a_impl(io::di, io::uo) is det.	% warn
 :- semipure pred impure_method2a_impl(io::di, io::uo) is det.
-:- pred semipure_method_a_impl(io::di, io::uo) is det.
+:- pred semipure_method_a_impl(io::di, io::uo) is det.	% warn
 
 impure_method1a_impl -->
 	impure print("impure_method1a_impl\n").		% warn

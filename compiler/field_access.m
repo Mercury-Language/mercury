@@ -81,7 +81,7 @@
     %
 :- pred expand_get_field_function_call(prog_context::in,
     unify_main_context::in, unify_sub_contexts::in, field_list::in,
-    prog_var::in, prog_var::in, prog_varset::in, prog_varset::out,
+    prog_var::in, prog_var::in, purity::in, prog_varset::in, prog_varset::out,
     cons_id::out, pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     svar_info::in, svar_info::out, io::di, io::uo) is det.
@@ -142,12 +142,12 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
             [TermInputVar, SubTermOutputVar]),
         construct_field_access_function_call(set, Context,
             MainContext, SubContext0, FieldName, TermOutputVar,
-            SetArgs, Functor, UpdateGoal, !QualInfo),
+            SetArgs, purity_pure, Functor, UpdateGoal, !QualInfo),
 
         % Extract the field containing the field to update.
         construct_field_access_function_call(get, Context,
             MainContext, SubContext0, FieldName, SubTermInputVar,
-            list__append(FieldArgVars, [TermInputVar]), _,
+            list__append(FieldArgVars, [TermInputVar]), purity_pure, _,
             GetSubFieldGoal, !QualInfo),
 
         % Recursively update the field.
@@ -165,7 +165,7 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
         SetArgs = list__append(FieldArgVars, [TermInputVar, FieldValueVar]),
         construct_field_access_function_call(set, Context,
             MainContext, SubContext0, FieldName, TermOutputVar,
-            SetArgs, Functor, Goal, !QualInfo),
+            SetArgs, purity_pure, Functor, Goal, !QualInfo),
         FieldSubContext = Functor - SubContext0,
         Goals1 = [Goal]
 
@@ -186,35 +186,35 @@ expand_dcg_field_extraction_goal(Context, MainContext, SubContext, FieldNames,
 
     % Process the access function as a get function on the output DCG variable.
     expand_get_field_function_call_2(Context, MainContext, SubContext,
-        FieldNames, FieldValueVar, TermOutputVar, !VarSet,
+        FieldNames, FieldValueVar, TermOutputVar, purity_pure, !VarSet,
         Functor, FieldSubContext, Goals1, !ModuleInfo, !QualInfo, !SInfo, !IO),
     Goals = [UnifyDCG | Goals1],
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, Goal).
 
 expand_get_field_function_call(Context, MainContext, SubContext0,
-        FieldNames, FieldValueVar, TermInputVar, !VarSet,
+        FieldNames, FieldValueVar, TermInputVar, Purity, !VarSet,
         Functor, FieldSubContext, Goal, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     expand_get_field_function_call_2(Context, MainContext, SubContext0,
-        FieldNames, FieldValueVar, TermInputVar, !VarSet,
+        FieldNames, FieldValueVar, TermInputVar, Purity, !VarSet,
         Functor, FieldSubContext, Goals, !ModuleInfo, !QualInfo, !SInfo, !IO),
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, Goal).
 
 :- pred expand_get_field_function_call_2(prog_context::in,
     unify_main_context::in, unify_sub_contexts::in, field_list::in,
-    prog_var::in, prog_var::in, prog_varset::in, prog_varset::out,
+    prog_var::in, prog_var::in, purity::in, prog_varset::in, prog_varset::out,
     cons_id::out, pair(cons_id, unify_sub_contexts)::out, list(hlds_goal)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     svar_info::in, svar_info::out, io::di, io::uo) is det.
 
-expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _,
+expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _,
         !ModuleInfo, !QualInfo, !Sinfo, !IO) :-
     unexpected(this_file,
         "expand_get_field_function_call_2: empty list of field names").
 expand_get_field_function_call_2(Context, MainContext, SubContext0,
         [FieldName - FieldArgs | FieldNames], FieldValueVar,
-        TermInputVar, !VarSet, Functor, FieldSubContext, Goals,
+        TermInputVar, Purity, !VarSet, Functor, FieldSubContext, Goals,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet, !SInfo, !IO),
     GetArgVars = list__append(FieldArgVars, [TermInputVar]),
@@ -222,15 +222,15 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
         FieldNames = [_ | _],
         varset__new_var(!.VarSet, SubTermInputVar, !:VarSet),
         construct_field_access_function_call(get, Context, MainContext,
-            SubContext0, FieldName, SubTermInputVar, GetArgVars, Functor, Goal,
-            !QualInfo),
+            SubContext0, FieldName, SubTermInputVar, GetArgVars, Purity,
+            Functor, Goal, !QualInfo),
 
         % recursively extract until we run out of field names
         TermInputArgNumber = 1 + list__length(FieldArgVars),
         TermInputContext = Functor - TermInputArgNumber,
         SubContext = [TermInputContext | SubContext0],
         expand_get_field_function_call_2(Context, MainContext,
-            SubContext, FieldNames, FieldValueVar, SubTermInputVar,
+            SubContext, FieldNames, FieldValueVar, SubTermInputVar, Purity,
             !VarSet, _, FieldSubContext, Goals1, !ModuleInfo, !QualInfo,
             !SInfo, !IO),
         Goals2 = [Goal | Goals1]
@@ -239,7 +239,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
         FieldSubContext = Functor - SubContext0,
         construct_field_access_function_call(get, Context,
             MainContext, SubContext0, FieldName, FieldValueVar,
-            GetArgVars, Functor, Goal, !QualInfo),
+            GetArgVars, Purity, Functor, Goal, !QualInfo),
         Goals2 = [Goal]
     ),
     ArgContext = functor(Functor, MainContext, SubContext0),
@@ -251,16 +251,17 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
 
 :- pred construct_field_access_function_call(field_access_type::in,
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
-    ctor_field_name::in, prog_var::in, list(prog_var)::in, cons_id::out,
-    hlds_goal::out, qual_info::in, qual_info::out) is det.
+    ctor_field_name::in, prog_var::in, list(prog_var)::in, purity::in,
+    cons_id::out, hlds_goal::out, qual_info::in, qual_info::out) is det.
 
 construct_field_access_function_call(AccessType, Context, MainContext,
-        SubContext, FieldName, RetArg, Args, Functor, Goal, !QualInfo) :-
+        SubContext, FieldName, RetArg, Args, Purity, Functor, Goal,
+        !QualInfo) :-
     field_access_function_name(AccessType, FieldName, FuncName),
     list__length(Args, Arity),
     Functor = cons(FuncName, Arity),
     make_atomic_unification(RetArg, functor(Functor, no, Args),
-        Context, MainContext, SubContext, Goal, !QualInfo).
+        Context, MainContext, SubContext, Purity, Goal, !QualInfo).
 
 parse_field_list(Term, MaybeFieldNames) :-
     (

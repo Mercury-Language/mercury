@@ -1,8 +1,12 @@
-impure_func_t7.m:021: Purity error: unification with expression was declared
-impure_func_t7.m:021:   impure, but expression was not a function call.
-impure_func_t7.m:024: Purity error: unification with expression was declared
-impure_func_t7.m:024:   impure, but expression was not a function call.
-impure_func_t7.m:028: Purity error: unification with expression was declared
-impure_func_t7.m:028:   impure, but expression was not a function call.
-impure_func_t7.m:031: Purity error: unification with expression was declared
-impure_func_t7.m:031:   impure, but expression was not a function call.
+impure_func_t7.m:029: In clause for `bad_impure_if_then_else_expr(di, uo)':
+impure_func_t7.m:029:   purity error: goal is marked as impure, but is actually
+impure_func_t7.m:029:   pure
+impure_func_t7.m:037: In clause for `bad_impure_lambda_unification(di, uo)':
+impure_func_t7.m:037:   purity error: goal is marked as impure, but is actually
+impure_func_t7.m:037:   pure
+impure_func_t7.m:046: In clause for `bad_impure_field_access(di, uo)':
+impure_func_t7.m:046:   purity error: goal is marked as impure, but is actually
+impure_func_t7.m:046:   pure
+impure_func_t7.m:054: In clause for `bad_impure_assignment(di, uo)':
+impure_func_t7.m:054:   purity error: goal is marked as impure, but is actually
+impure_func_t7.m:054:   pure
