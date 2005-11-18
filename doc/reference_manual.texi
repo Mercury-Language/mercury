@@ -8584,7 +8584,7 @@ If predicate @code{p/N} is declared to be @code{impure} (@code{semipure})
 then all calls to @code{p/N} must be annotated with @code{impure}
 (@code{semipure}):
 
-@start example
+@example
 	impure p(X1, X2, ..., XN)
 @end example
 
@@ -8592,7 +8592,7 @@ If function @code{f/N} is declared to be @code{impure} (@code{semipure})
 then all applications of @code{f/N} must be obtained by unification with a
 variable and the unification goal as a whole be annotated with @code{impure}
 
-@start example
+@example
 	impure X = f(X1, X2, ..., XN)
 @end example
 
@@ -8606,8 +8606,8 @@ Compound goals should not have purity annotations.
 The compiler will report an error if a required purity annotation is 
 omitted from a call or unification goal or if a @code{semipure} annotation
 is used where an @code{impure} annotation is required.  The compiler will
-report a warning if a semipure goal is annotated with @{impure} or a pure goal
-is annotated with @code{semipure}
+report a warning if a semipure goal is annotated with @code{impure} or a
+pure goal is annotated with @code{semipure}
 
 The requirement that impure or semipure calls be marked with
 @code{impure} or @code{semipure} allows someone 
