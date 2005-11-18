@@ -143,8 +143,9 @@ or if you are interfacing with the OS.)
 Calls to error/1 should always indicate an internal software error,
 not merely incorrect inputs from the user,
 or failure of some library routine or system call.
-In the compiler, use unexpected/2 or sorry/2 from error_util.m
-rather than error/1.
+In the compiler, use unexpected/2 or sorry/2 from compiler_util.m
+rather than error/1.  Use expect/3 from compiler_util rather than
+require/2.
 
 <p>
 
@@ -531,6 +532,6 @@ contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2005-05-10 04:58:30 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-11-18 06:22:53 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>

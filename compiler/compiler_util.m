@@ -36,6 +36,12 @@
     %
 :- func unexpected(string, string) = _ is erroneous.
 :- pred unexpected(string::in, string::in) is erroneous.
+    
+    % expect(Goal, ModuleName, Message):
+    %
+    % Call Goal, and call unexpected(ModuleName, Message) if Goal fails.
+    %
+:- pred expect((pred)::((pred) is semidet), string::in, string::in) is det.
 
     % Record the fact that a warning has been issued; set the exit status
     % to error if the `--halt-at-warn' option is set.
@@ -80,6 +86,13 @@ unexpected(Module, What) = _ :- unexpected(Module, What).
 unexpected(Module, What) :-
     string__format("%s: Unexpected: %s", [s(Module), s(What)], ErrorMessage),
     error(ErrorMessage).
+
+expect(Goal, Module, Message) :-
+    ( Goal ->
+        true
+    ;
+        unexpected(Module, Message)
+    ).
 
 record_warning(!IO) :-
     globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
