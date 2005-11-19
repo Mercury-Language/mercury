@@ -250,12 +250,13 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
                 Terminating, NonTerminating),
             ( 
                 NonTerminating = [],
-                partition_call_args(ModuleInfo, ArgModes, Args, _InVars, OutVars),
+                partition_call_args(ModuleInfo, ArgModes, Args,
+                    _InVars, OutVars),
                 params_get_ppid(Params, PPId),
                 Error = ho_inf_termination_const(PPId, Terminating),
                 error_if_intersect(OutVars, Context, Error, !Info)
             ;
-                NonTerminating = [_|_],
+                NonTerminating = [_ | _],
                 % XXX We should tell the user what the
                 % non-terminating closures are.
                 add_error(Context, horder_call, Params, !Info)
@@ -483,10 +484,10 @@ combine_paths(ok(Paths1, CanLoop1), ok(Paths2, CanLoop2), Params,
 
 compute_rec_start_vars([], [], Out) :-
     bag.init(Out).
-compute_rec_start_vars([_|_], [], _Out) :-
+compute_rec_start_vars([_ | _], [], _Out) :-
     unexpected(this_file,
         "compute_rec_start_vars/3: unmatched variables.").
-compute_rec_start_vars([], [_|_], _Out) :-
+compute_rec_start_vars([], [_ | _], _Out) :-
     unexpected(this_file,
         "compute_rec_start_vars/3: unmatched variables.").
 compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
@@ -573,8 +574,7 @@ record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
         Path = Path0
     ),
     svset.insert(Path, !PathSet),
-    record_change_2(Paths0, InVars, OutVars, CallGamma, CallPPIds,
-        !PathSet).
+    record_change_2(Paths0, InVars, OutVars, CallGamma, CallPPIds, !PathSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -616,27 +616,31 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 
 :- type traversal_params
     --->    traversal_params(
-                module_info,
+                module_info         :: module_info,
                 
-                functor_info,
+                functor_info        :: functor_info,
                 
-                pred_proc_id,   % The procedure we are tracing through.
+                ppid                :: pred_proc_id,
+                                    % The procedure we are tracing through.
                 
-                prog_context,   % The context of the procedure.
+                context             :: prog_context,
+                                    % The context of the procedure.
                 
-                vartypes,
+                vartypes            :: vartypes,
                 
-                map(pred_proc_id, list(bool)),
-                            % Output suppliers of each procedure.
-                            % Empty during pass 2.
+                output_suppliers    :: map(pred_proc_id, list(bool)),
+                                    % Output suppliers of each procedure.
+                                    % Empty during pass 2.
                     
-                map(pred_proc_id, list(bool)),
-                            % Rec input suppliers of each procedure.
-                            % Empty during pass 1.
+                rec_input_supplier  :: map(pred_proc_id, list(bool)),
+                                    % Rec input suppliers of each procedure.
+                                    % Empty during pass 1.
                 
-                int,        % Max number of errors to gather.
+                max_errors          :: int,
+                                    % Max number of errors to gather.
                 
-                int         % Max number of paths to analyze.
+                max_paths           :: int
+                                    % Max number of paths to analyze.
     ).
 
 init_traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context, VarTypes,
@@ -663,32 +667,15 @@ init_traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context, VarTypes,
 :- pred params_get_max_errors(traversal_params::in, int::out) is det.
 :- pred params_get_max_paths(traversal_params::in, int::out) is det.
 
-params_get_module_info(Params, A) :-
-    Params = traversal_params(A, _, _, _, _, _, _, _, _).
-
-params_get_functor_info(Params, B) :-
-    Params = traversal_params(_, B, _, _, _, _, _, _, _).
-
-params_get_ppid(Params, C) :-
-    Params = traversal_params(_, _, C, _, _, _, _, _, _).
-
-params_get_context(Params, D) :-
-    Params = traversal_params(_, _, _, D, _, _, _, _, _).
-
-params_get_var_types(Params, E) :-
-    Params = traversal_params(_, _, _, _, E, _, _, _, _).
-
-params_get_output_suppliers(Params, F) :-
-    Params = traversal_params(_, _, _, _, _, F, _, _, _).
-
-params_get_rec_input_suppliers(Params, G) :-
-    Params = traversal_params(_, _, _, _, _, _, G, _, _).
-
-params_get_max_errors(Params, H) :-
-    Params = traversal_params(_, _, _, _, _, _, _, H, _).
-
-params_get_max_paths(Params, I) :-
-    Params = traversal_params(_, _, _, _, _, _, _, _, I).
+params_get_module_info(Params, Params ^ module_info).
+params_get_functor_info(Params, Params ^ functor_info).
+params_get_ppid(Params, Params ^ ppid).
+params_get_context(Params, Params ^ context).
+params_get_var_types(Params, Params ^ vartypes).
+params_get_output_suppliers(Params, Params ^ output_suppliers).
+params_get_rec_input_suppliers(Params, Params ^ rec_input_supplier).
+params_get_max_errors(Params, Params ^ max_errors).
+params_get_max_paths(Params, Params ^ max_paths).
 
 %-----------------------------------------------------------------------------%
 
