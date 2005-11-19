@@ -1,0 +1,5 @@
+univ_cons(dummy)
+Unable to construct type.
+0
+get_functor_ordinal failed.
+Functor = dummy, Arity = 0, Args = []

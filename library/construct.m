@@ -339,6 +339,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         case MR_TYPECTOR_REP_TUPLE:
+        case MR_TYPECTOR_REP_DUMMY:
             Ordinal = 0;
             break;
 
@@ -589,6 +590,16 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                 }
             }
             break;
+
+        case MR_TYPECTOR_REP_DUMMY:
+            {
+                /*
+                ** The value of the dummy type will never be looked at,
+                ** so just set it to zero.
+                */
+                new_data = (MR_Word) 0;
+                break;
+            }
 
         default:
             new_data = (MR_Word) 0;     /* avoid a warning */

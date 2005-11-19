@@ -47,6 +47,7 @@ ORDINARY_PROGS=	\
 	dos \
 	dot_separator \
 	dst_test \
+	dummy_type_construct \
 	dupcall_impurity \
 	dupcall_types_bug \
 	elim_special_pred \
