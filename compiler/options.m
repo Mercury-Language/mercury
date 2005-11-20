@@ -2450,13 +2450,10 @@ quote_arg(Arg0) = Arg :-
 	% XXX Instead of using dir__use_windows_paths, this should really
 	% test whether we are using a Unix or Windows shell.
 	( dir__use_windows_paths ->
-		ArgList = quote_arg_windows(string__to_char_list(Arg0)),
-		(
-			ArgList = []
-		->
-			Arg = """"""
+		( ( string_contains_whitespace(Arg0) ; Arg0 = "" ) ->
+			Arg = """" ++ Arg0 ++ """"
 		;
-			Arg = string__from_char_list(ArgList)
+			Arg = Arg0
 		)
 	;
 		ArgList = quote_arg_unix(string__to_char_list(Arg0)),
@@ -2480,31 +2477,15 @@ quote_arg(Arg0) = Arg :-
 		)
 	).
 
-:- func quote_arg_windows(list(char)) = list(char).
+:- pred string_contains_whitespace(string::in) is semidet.
 
-quote_arg_windows([]) = [].
-quote_arg_windows([Char | Chars0]) = Chars :-
-	Chars1 = quote_arg_windows(Chars0),
-	( quote_char_windows(Char) ->
-		% We want whitespace characters within an argument to not be
-		% treated as whitespace when splitting the command line
-		% into words.
-		% Newlines and tabs within a word don't really make
-		% sense, so just convert them to spaces.
-		QuoteChar = ( char__is_whitespace(Char) -> ' ' ; Char ),
-		Chars = [('\\'), QuoteChar | Chars1]
-	;
-		Chars = [Char | Chars1]
+string_contains_whitespace(Str) :-
+	Chars = string.to_char_list(Str),
+	some [Char] (
+		list.member(Char, Chars),
+		char.is_whitespace(Char)
 	).
-
-:- pred quote_char_windows(char::in) is semidet.
-
-quote_char_windows(' ').
-quote_char_windows('\n').
-quote_char_windows('\t').
-quote_char_windows('"').
-quote_char_windows('%').
-
+  
 :- func quote_arg_unix(list(char)) = list(char).
 
 quote_arg_unix([]) = [].

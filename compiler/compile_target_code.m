@@ -390,7 +390,8 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
 	globals__io_lookup_accumulating_option(c_include_directory,
 		C_Incl_Dirs, !IO),
 	InclOpt = string__append_list(list__condense(list__map(
-		(func(C_INCL) = ["-I", C_INCL, " "]), C_Incl_Dirs))),
+		(func(C_INCL) = ["-I", quote_arg(C_INCL), " "]),
+		C_Incl_Dirs))),
 	globals__io_lookup_bool_option(split_c_files, Split_C_Files, !IO),
 	( Split_C_Files = yes ->
 		SplitOpt = "-DMR_SPLIT_C_FILES "
