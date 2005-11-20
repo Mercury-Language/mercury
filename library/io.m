@@ -1138,8 +1138,8 @@
     %
 :- pred io__make_temp(string::out, io::di, io::uo) is det.
 
-    % io__mktemp(Dir, Prefix, Name, IO0, IO) creates an empty file whose name
-    % is different to the name of any existing file. The file will reside
+    % io__make_temp(Dir, Prefix, Name, IO0, IO) creates an empty file whose
+    % name is different to the name of any existing file. The file will reside
     % in the directory specified by `Dir' and will have a prefix using up to
     % the first 5 characters of `Prefix'. Name is bound to the name of the
     % file. It is the responsibility of the program to delete the file
