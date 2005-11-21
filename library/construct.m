@@ -355,6 +355,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     SUCCESS_INDICATOR = success;
 }").
 
+:- pragma no_inline(construct/3).
 :- pragma foreign_proc("C",
     construct(TypeDesc::in, FunctorNumber::in, ArgList::in) = (Term::out),
     [will_not_call_mercury, thread_safe, promise_pure],
