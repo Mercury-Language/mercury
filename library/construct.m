@@ -314,12 +314,11 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 
     type_info = (MR_TypeInfo) TypeDesc;
 
-        /*
-        ** Get information for this functor number and
-        ** store in construct_info. If this is a discriminated union
-        ** type and if the functor number is in range, we
-        ** succeed.
-        */
+    /*
+    ** Get information for this functor number and store in construct_info.
+    ** If this is a discriminated union type and if the functor number is
+    ** in range, we succeed.
+    */
     MR_save_transient_registers();
     success = MR_get_functors_check_range(FunctorNumber, type_info,
         &construct_info);
@@ -334,12 +333,12 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                 enum_functor_desc->MR_enum_functor_ordinal;
             break;
 
+        case MR_TYPECTOR_REP_DUMMY:
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         case MR_TYPECTOR_REP_TUPLE:
-        case MR_TYPECTOR_REP_DUMMY:
             Ordinal = 0;
             break;
 
@@ -351,7 +350,38 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                 du_functor_desc->MR_du_functor_ordinal;
             break;
 
-        default:
+        case MR_TYPECTOR_REP_EQUIV:
+        case MR_TYPECTOR_REP_EQUIV_GROUND:
+        case MR_TYPECTOR_REP_FUNC:
+        case MR_TYPECTOR_REP_PRED:
+        case MR_TYPECTOR_REP_INT:
+        case MR_TYPECTOR_REP_FLOAT:
+        case MR_TYPECTOR_REP_CHAR:
+        case MR_TYPECTOR_REP_STRING:
+        case MR_TYPECTOR_REP_SUBGOAL:
+        case MR_TYPECTOR_REP_VOID:
+        case MR_TYPECTOR_REP_C_POINTER:
+        case MR_TYPECTOR_REP_STABLE_C_POINTER:
+        case MR_TYPECTOR_REP_TYPEINFO:
+        case MR_TYPECTOR_REP_TYPECTORINFO:
+        case MR_TYPECTOR_REP_TYPECLASSINFO:
+        case MR_TYPECTOR_REP_BASETYPECLASSINFO:
+        case MR_TYPECTOR_REP_TYPEDESC:
+        case MR_TYPECTOR_REP_TYPECTORDESC:
+        case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
+        case MR_TYPECTOR_REP_ARRAY:
+        case MR_TYPECTOR_REP_REFERENCE:
+        case MR_TYPECTOR_REP_SUCCIP:
+        case MR_TYPECTOR_REP_HP:
+        case MR_TYPECTOR_REP_CURFR:
+        case MR_TYPECTOR_REP_MAXFR:
+        case MR_TYPECTOR_REP_REDOFR:
+        case MR_TYPECTOR_REP_REDOIP:
+        case MR_TYPECTOR_REP_TRAIL_PTR:
+        case MR_TYPECTOR_REP_TICKET:
+        case MR_TYPECTOR_REP_FOREIGN:
+        case MR_TYPECTOR_REP_STABLE_FOREIGN:
+        case MR_TYPECTOR_REP_UNKNOWN:
             success = MR_FALSE;
 
         }
@@ -372,17 +402,12 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 
     type_info = (MR_TypeInfo) TypeDesc;
 
-        /*
-        ** If type_info is an equivalence type, expand it.
-        */
+    /* If type_info is an equivalence type, expand it. */
     MR_save_transient_registers();
     type_info = MR_collapse_equivalences(type_info);
     MR_restore_transient_registers();
 
-        /*
-        ** Check range of FunctorNum, get info for this
-        ** functor.
-        */
+    /* Check range of FunctorNum, get info for this functor. */
     MR_save_transient_registers();
     success =
         MR_get_functors_check_range(FunctorNumber, type_info, &construct_info)
@@ -390,14 +415,12 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
             construct_info.arg_pseudo_type_infos);
     MR_restore_transient_registers();
 
-        /*
-        ** Build the new term in `new_data'.
-        */
+    /* Build the new term in `new_data'. */
     if (success) {
         type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
         if (MR_type_ctor_rep(type_ctor_info) != construct_info.type_ctor_rep) {
-            MR_fatal_error(""construct:construct: type_ctor_rep mismatch"");
+            MR_fatal_error(""construct.construct: type_ctor_rep mismatch"");
         }
 
         switch (MR_type_ctor_rep(type_ctor_info)) {
@@ -475,7 +498,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                 functor_desc = construct_info.functor_info.du_functor_desc;
                 if (functor_desc->MR_du_functor_exist_info != NULL) {
                     MR_fatal_error(""not yet implemented: construction ""
-                        ""of terms containing existentially types"");
+                        ""of terms containing existential types"");
                 }
 
                 arg_list = ArgList;
@@ -493,7 +516,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 
                     MR_tag_offset_incr_hp_msg(new_data, ptag,
                         MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1 + arity,
-                        MR_PROC_LABEL, ""<created by construct:construct/3>"");
+                        MR_PROC_LABEL, ""<created by construct.construct/3>"");
 
                     size = MR_cell_size(arity);
                     MR_field(ptag, new_data, 0) =
@@ -518,7 +541,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 
                     MR_tag_offset_incr_hp_msg(new_data, ptag,
                         MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + arity,
-                        MR_PROC_LABEL, ""<created by construct:construct/3>"");
+                        MR_PROC_LABEL, ""<created by construct.construct/3>"");
 
                     size = MR_cell_size(arity);
                     for (i = 0; i < arity; i++) {
@@ -540,13 +563,16 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                     new_data = (MR_Word) 0;     /* avoid a warning */
                     MR_fatal_error(""construct(): cannot construct variable"");
 
+#ifdef MR_INCLUDE_SWITCH_DEFAULTS
                 default:
                     new_data = (MR_Word) 0;     /* avoid a warning */
                     MR_fatal_error(""construct(): unrecognised sectag locn"");
+#endif
+
                 }
 
                 if (! MR_list_is_empty(arg_list)) {
-                    MR_fatal_error(""excess arguments in construct:construct"");
+                    MR_fatal_error(""excess arguments in construct.construct"");
                 }
             }
             break;
@@ -567,7 +593,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                 } else {
                     MR_offset_incr_hp_msg(new_data, MR_SIZE_SLOT_SIZE,
                         MR_SIZE_SLOT_SIZE + arity, MR_PROC_LABEL,
-                        ""<created by construct:construct/3>"");
+                        ""<created by construct.construct/3>"");
 
                     size = MR_cell_size(arity);
                     arg_list = ArgList;
@@ -586,25 +612,182 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                     MR_define_size_slot(MR_mktag(0), new_data, size);
                     if (! MR_list_is_empty(arg_list)) {
                         MR_fatal_error(
-                            ""excess arguments in construct:construct"");
+                            ""excess arguments in construct.construct"");
                     }
                 }
             }
             break;
 
         case MR_TYPECTOR_REP_DUMMY:
-            {
-                /*
-                ** The value of the dummy type will never be looked at,
-                ** so just set it to zero.
-                */
-                new_data = (MR_Word) 0;
-                break;
-            }
+            /*
+            ** The value of the dummy type will never be looked at,
+            ** so it doesn't matter what new_data is set to.
+            */
+            new_data = (MR_Word) 0;
+            break;
+
+        case MR_TYPECTOR_REP_INT:
+            /* ints don't have functor ordinals. */
+            MR_fatal_error(
+                ""cannot construct int with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_FLOAT:
+            /* floats don't have functor ordinals. */
+            MR_fatal_error(
+                ""cannot construct floats with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_CHAR:
+            /* chars don't have functor ordinals. */
+            MR_fatal_error(
+                ""cannot construct chars with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_STRING:
+            /* strings don't have functor ordinals. */
+            MR_fatal_error(
+                ""cannot construct strings with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_EQUIV:
+        case MR_TYPECTOR_REP_EQUIV_GROUND:
+            /* These should be eliminated by MR_collapse_equivalences above. */
+            MR_fatal_error(""equiv type in in construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_VOID:
+            MR_fatal_error(
+                ""cannot construct void values with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_FUNC:
+            MR_fatal_error(
+                ""cannot construct functions with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_PRED:
+            MR_fatal_error(
+                ""cannot construct predicates with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_SUBGOAL:
+            MR_fatal_error(
+                ""cannot construct subgoals with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_TYPEDESC:
+            MR_fatal_error(
+                ""cannot construct type_descs with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_TYPECTORDESC:
+            MR_fatal_error(
+                ""cannot construct type_descs with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
+            MR_fatal_error(
+                ""cannot construct pseudotype_descs with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_TYPEINFO:
+            MR_fatal_error(
+                ""cannot construct type_infos with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_TYPECTORINFO:
+            MR_fatal_error(
+                ""cannot construct type_ctor_infos with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_TYPECLASSINFO:
+            MR_fatal_error(
+                ""cannot construct type_class_infos with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_BASETYPECLASSINFO:
+            MR_fatal_error(
+                ""cannot construct base_type_class_infos ""
+                ""with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_SUCCIP:
+            MR_fatal_error(
+                ""cannot construct succips with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_HP:
+            MR_fatal_error(
+                ""cannot construct hps with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_CURFR:
+            MR_fatal_error(
+                ""cannot construct curfrs with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_MAXFR:
+            MR_fatal_error(
+                ""cannot construct maxfrs with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_REDOFR:
+            MR_fatal_error(
+                ""cannot construct redofrs with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_REDOIP:
+            MR_fatal_error(
+                ""cannot construct redoips with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_TRAIL_PTR:
+            MR_fatal_error(
+                ""cannot construct trail_ptrs with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_TICKET:
+            MR_fatal_error(
+                ""cannot construct tickets with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_C_POINTER:
+        case MR_TYPECTOR_REP_STABLE_C_POINTER:
+            MR_fatal_error(
+                ""cannot construct c_pointers with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_ARRAY:
+            MR_fatal_error(
+                ""cannot construct arrays with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_REFERENCE:
+            MR_fatal_error(
+                ""cannot construct references with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_FOREIGN:
+        case MR_TYPECTOR_REP_STABLE_FOREIGN:
+            MR_fatal_error(
+                ""cannot construct values of foreign types ""
+                ""with construct.construct"");
+            break;
+
+        case MR_TYPECTOR_REP_UNKNOWN:
+            MR_fatal_error(
+                ""cannot construct values of unknown types ""
+                ""with construct.construct"");
+            break;
+
+#ifdef MR_INCLUDE_SWITCH_DEFAULTS
 
         default:
             new_data = (MR_Word) 0;     /* avoid a warning */
-            MR_fatal_error(""bad type_ctor_rep in construct:construct"");
+            MR_fatal_error(""bad type_ctor_rep in construct.construct"");
+
+#endif
         }
 
     end_of_main_switch:
@@ -651,7 +834,7 @@ construct_tuple(Args) =
     } else {
         MR_offset_incr_hp_msg(new_data, MR_SIZE_SLOT_SIZE,
             MR_SIZE_SLOT_SIZE + Arity, MR_PROC_LABEL,
-            ""<created by construct:construct_tuple/1>"");
+            ""<created by construct.construct_tuple/1>"");
 
         size = MR_cell_size(Arity);
         for (i = 0; i < Arity; i++) {
