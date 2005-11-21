@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 0.12 of the Mercury system.
+We are pleased to announce the release of version 0.12.1 of the Mercury system.
 
 Mercury is a modern general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -142,7 +142,7 @@ systems known to us.  However, the system does not need these
 extensions, and will work in their absence.
 
 The current Mercury system has been tested on Linux (x86),
-Solaris 8 (x86), MacOS X (PowerPC), and Windows (x86).
+Solaris 8 and Solaris 9 (x86), MacOS X (PowerPC), and Windows (x86).
 For Windows, we have have tested this release only on Windows XP Pro
 but it should also run fine on Windows 95, 98, ME, NT, and 2000.
 
