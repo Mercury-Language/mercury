@@ -154,6 +154,8 @@ set_status () {
 # This should usually be the same as $RELEASE_VERSION,
 # but with `*' instead of $DATE.
 #
+# NOTE: for beta releases you also need to set the value of
+#       NEXT_BETA_VERSION in w3/RELEASE_INFO.
 INSTALL_DIR_NAME=mercury-$BRANCH
 DATE=`date '+%Y-%m-%d'`
 case $BRANCH in
