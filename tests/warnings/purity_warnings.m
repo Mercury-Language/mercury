@@ -57,9 +57,9 @@ semipure_pred -->
 		semipure print("semipure_method_b\n"))	% XXX should warn
 ].
 
-:- pred impure_method1a_impl(io::di, io::uo) is det.	% warn
+:- impure pred impure_method1a_impl(io::di, io::uo) is det.
 :- semipure pred impure_method2a_impl(io::di, io::uo) is det.
-:- pred semipure_method_a_impl(io::di, io::uo) is det.	% warn
+:- semipure pred semipure_method_a_impl(io::di, io::uo) is det.
 
 impure_method1a_impl -->
 	impure print("impure_method1a_impl\n").		% warn

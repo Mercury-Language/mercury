@@ -14,12 +14,6 @@ purity_warnings.m:036:   No purity indicator is necessary.
 purity_warnings.m:065: In call to predicate `io.print/3':
 purity_warnings.m:065:   warning: unnecessary `impure' indicator.
 purity_warnings.m:065:   No purity indicator is necessary.
-purity_warnings.m:060: In predicate `purity_warnings.impure_method1a_impl/2':
-purity_warnings.m:060:   purity error: predicate is impure.
-purity_warnings.m:060:   It must be declared `impure' or promised pure.
 purity_warnings.m:071: In call to predicate `io.print/3':
 purity_warnings.m:071:   warning: unnecessary `semipure' indicator.
 purity_warnings.m:071:   No purity indicator is necessary.
-purity_warnings.m:062: In predicate `purity_warnings.semipure_method_a_impl/2':
-purity_warnings.m:062:   purity error: predicate is semipure.
-purity_warnings.m:062:   It must be declared `semipure' or promised pure.
