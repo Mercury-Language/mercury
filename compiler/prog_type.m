@@ -167,6 +167,11 @@
 
     % Return the list of type variables contained in a list of constraints.
     %
+:- pred prog_constraints_get_tvars(prog_constraints::in, list(tvar)::out)
+    is det.
+
+    % Return the list of type variables contained in a list of constraints.
+    %
 :- pred constraint_list_get_tvars(list(prog_constraint)::in, list(tvar)::out)
     is det.
 
@@ -701,6 +706,11 @@ strip_builtin_qualifiers_from_type_list(Types0, Types) :-
     list__map(strip_builtin_qualifiers_from_type, Types0, Types).
 
 %-----------------------------------------------------------------------------%
+
+prog_constraints_get_tvars(constraints(Univ, Exist), TVars) :-
+    constraint_list_get_tvars(Univ, UnivTVars),
+    constraint_list_get_tvars(Exist, ExistTVars),
+    list.append(UnivTVars, ExistTVars, TVars).
 
 constraint_list_get_tvars(Constraints, TVars) :-
     list.map(constraint_get_tvars, Constraints, TVarsList),

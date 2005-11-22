@@ -665,11 +665,10 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 
     Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
         Arity, ExistQVars0, ArgTypes0, ClassMethodClassContext0,
-        ArgModes, Errors, ArgTypeVars0, Status0, PredOrFunc),
+        ArgModes, Errors, TVarSet0, Status0, PredOrFunc),
 
     % Rename the instance variables apart from the class variables.
-    tvarset_merge_renaming(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
-        Renaming),
+    tvarset_merge_renaming(TVarSet0, InstanceVarSet, TVarSet1, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes1),
     apply_variable_renaming_to_prog_constraint_list(Renaming,
@@ -682,10 +681,19 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     apply_subst_to_prog_constraints(TypeSubst, ClassMethodClassContext0,
         ClassMethodClassContext1),
 
-    % Get rid of any unwanted type variables.
-    prog_type__vars_list(ArgTypes1, VarsToKeep0),
+    % Calculate which type variables we need to keep.  This includes all
+    % type variables appearing in the arguments, the class method context and
+    % the instance constraints.  (Type variables in the existq_tvars must
+    % occur either in the argument types or in the class method context;
+    % type variables in the instance types must appear in the arguments.)
+    prog_type__vars_list(ArgTypes1, ArgTVars),
+    prog_constraints_get_tvars(ClassMethodClassContext1, MethodContextTVars),
+    constraint_list_get_tvars(InstanceConstraints1, InstanceTVars),
+    list__condense([ArgTVars, MethodContextTVars, InstanceTVars], VarsToKeep0),
     list__sort_and_remove_dups(VarsToKeep0, VarsToKeep),
-    varset__squash(ArgTypeVars1, VarsToKeep, ArgTypeVars, SquashSubst),
+
+    % Project away the unwanted type variables.
+    varset__squash(TVarSet1, VarsToKeep, TVarSet, SquashSubst),
     apply_variable_renaming_to_type_list(SquashSubst, ArgTypes1, ArgTypes),
     apply_variable_renaming_to_prog_constraints(SquashSubst,
         ClassMethodClassContext1, ClassMethodClassContext),
@@ -737,7 +745,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
         InstanceTypes, InstanceConstraints, ClassMethodClassContext),
     pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
         Context, instance_method(MethodConstraints), Status, none,
-        Markers, ArgTypes, ArgTypeVars, ExistQVars, ClassContext,
+        Markers, ArgTypes, TVarSet, ExistQVars, ClassContext,
         Proofs, ConstraintMap, User, ClausesInfo, PredInfo0),
     pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
 
@@ -761,7 +769,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 
     Info = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
         ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
-        ArgTypeVars, Status, PredOrFunc).
+        TVarSet, Status, PredOrFunc).
 
 %---------------------------------------------------------------------------%
 

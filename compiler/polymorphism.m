@@ -719,11 +719,12 @@ setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
         pred_info_get_class_context(PredInfo, ClassContext),
         ExtraHeadVars0 = [],
         ExtraArgModes0 = [],
+        InstanceTVars = [],
         InstanceUnconstrainedTVars = [],
         InstanceUnconstrainedTypeInfoVars = [],
         setup_headvars_2(PredInfo, ClassContext,
             ExtraHeadVars0, ExtraArgModes0,
-            InstanceUnconstrainedTVars,
+            InstanceTVars, InstanceUnconstrainedTVars,
             InstanceUnconstrainedTypeInfoVars, HeadVars0, HeadVars,
             ExtraArgModes, HeadTypeVars, UnconstrainedTVars,
             ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars, !Info)
@@ -764,21 +765,21 @@ setup_headvars_instance_method(PredInfo,
     in_mode(InMode),
     list__duplicate(list__length(ExtraHeadVars0), InMode, ExtraArgModes0),
     setup_headvars_2(PredInfo, ClassContext,
-        ExtraHeadVars0, ExtraArgModes0, UnconstrainedInstanceTVars,
-        UnconstrainedInstanceTypeInfoVars, HeadVars0, HeadVars,
-        ExtraArgModes, HeadTypeVars,
+        ExtraHeadVars0, ExtraArgModes0, InstanceTVars,
+        UnconstrainedInstanceTVars, UnconstrainedInstanceTypeInfoVars,
+        HeadVars0, HeadVars, ExtraArgModes, HeadTypeVars,
         UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !Info).
 
 :- pred setup_headvars_2(pred_info::in, prog_constraints::in,
-    list(prog_var)::in, list(mer_mode)::in, list(tvar)::in,
+    list(prog_var)::in, list(mer_mode)::in, list(tvar)::in, list(tvar)::in,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out,
     list(mer_mode)::out, list(tvar)::out, list(tvar)::out,
     list(prog_var)::out, list(prog_var)::out,
     poly_info::in, poly_info::out) is det.
 
 setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
-        ExtraArgModes0, UnconstrainedInstanceTVars,
+        ExtraArgModes0, InstanceTVars, UnconstrainedInstanceTVars,
         UnconstrainedInstanceTypeInfoVars, HeadVars0,
         HeadVars, ExtraArgModes, HeadTypeVars, AllUnconstrainedTVars,
         AllExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars, !Info) :-
@@ -794,17 +795,26 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
     % The order of these variables is important, and must match the order
     % specified at the top of this file.
 
-    % Make a fresh variable for each class constraint, returning
-    % a list of variables that appear in the constraints, along
-    % with the location of the type infos for them.
+    % Make a fresh variable for each class constraint, returning a list of
+    % variables that appear in the constraints, along with the location of
+    % the type infos for them.  For the existential constraints, we want
+    % the rtti_varmaps to contain the internal view of the types (that is,
+    % with type variables bound) so we may need to look up the actual
+    % constraints in the constraint map.  For the universal constraints there
+    % is no distinction between the internal views and the external view, so
+    % we just use the constraints from the class context.
     ClassContext = constraints(UnivConstraints, ExistConstraints),
-    make_typeclass_info_head_vars(ExistConstraints, ExistHeadTypeClassInfoVars,
-        !Info),
-    rtti_varmaps_tvars(!.Info ^ rtti_varmaps, ExistConstrainedTVars),
-
+    prog_type__constraint_list_get_tvars(UnivConstraints,
+        UnivConstrainedTVars),
+    prog_type__constraint_list_get_tvars(ExistConstraints,
+        ExistConstrainedTVars),
+    poly_info_get_constraint_map(!.Info, ConstraintMap),
+    get_improved_exists_head_constraints(ConstraintMap, ExistConstraints,
+        ActualExistConstraints),
+    make_typeclass_info_head_vars(ActualExistConstraints,
+        ExistHeadTypeClassInfoVars, !Info),
     make_typeclass_info_head_vars(UnivConstraints, UnivHeadTypeClassInfoVars,
         !Info),
-    rtti_varmaps_tvars(!.Info ^ rtti_varmaps, UnivConstrainedTVars),
 
     list__append(UnivHeadTypeClassInfoVars, ExistHeadTypeClassInfoVars,
         ExtraHeadTypeClassInfoVars),
@@ -815,9 +825,9 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
     list__delete_elems(UnconstrainedTVars0, ExistConstrainedTVars,
         UnconstrainedTVars1),
 
-    % Typeinfos for the unconstrained instance tvars have already
-    % been introduced by setup_headvars_instance_method.
-    list__delete_elems(UnconstrainedTVars1, UnconstrainedInstanceTVars,
+    % Typeinfos for the instance tvars have already been introduced by
+    % setup_headvars_instance_method.
+    list__delete_elems(UnconstrainedTVars1, InstanceTVars,
         UnconstrainedTVars2),
     list__remove_dups(UnconstrainedTVars2, UnconstrainedTVars),
 
@@ -909,14 +919,33 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
 produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
         TypeInfoHeadVars, ExistTypeClassInfoHeadVars, Goal0, Goal, !Info) :-
     poly_info_get_var_types(!.Info, VarTypes0),
+    poly_info_get_constraint_map(!.Info, ConstraintMap),
     pred_info_arg_types(PredInfo, ArgTypes),
     pred_info_tvar_kinds(PredInfo, KindMap),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
-    % Figure out the bindings for any existentially quantified
-    % type variables in the head.
+    % Generate code to produce values for any existentially quantified
+    % typeclass_info variables in the head.
 
     PredExistConstraints = PredClassContext ^ exist_constraints,
+    get_improved_exists_head_constraints(ConstraintMap, PredExistConstraints,
+        ActualExistConstraints),
+    ExistQVarsForCall = [],
+    Goal0 = _ - GoalInfo,
+    goal_info_get_context(GoalInfo, Context),
+    make_typeclass_info_vars(ActualExistConstraints,
+        ExistQVarsForCall, Context, ExistTypeClassVars,
+        ExtraTypeClassGoals, !Info),
+    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+    list__foldl(rtti_reuse_typeclass_info_var, ExistTypeClassVars,
+        RttiVarMaps0, RttiVarMaps),
+    poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
+    assign_var_list(ExistTypeClassInfoHeadVars,
+        ExistTypeClassVars, ExtraTypeClassUnifyGoals),
+
+    % Figure out the bindings for any unconstrained existentially quantified
+    % type variables in the head.
+
     ( map__is_empty(VarTypes0) ->
         % This can happen for compiler generated procedures.
         map__init(PredToActualTypeSubst)
@@ -930,24 +959,6 @@ produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
         % error("polymorphism.m: type_list_subsumes failed")
         map__init(PredToActualTypeSubst)
     ),
-
-    % Generate code to produce values for any existentially quantified
-    % typeclass_info variables in the head.
-
-    ExistQVarsForCall = [],
-    Goal0 = _ - GoalInfo,
-    goal_info_get_context(GoalInfo, Context),
-    apply_rec_subst_to_prog_constraint_list(PredToActualTypeSubst,
-        PredExistConstraints, ActualExistConstraints),
-    make_typeclass_info_vars(ActualExistConstraints,
-        ExistQVarsForCall, Context, ExistTypeClassVars,
-        ExtraTypeClassGoals, !Info),
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    list__foldl(rtti_reuse_typeclass_info_var, ExistTypeClassVars,
-        RttiVarMaps0, RttiVarMaps),
-    poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
-    assign_var_list(ExistTypeClassInfoHeadVars,
-        ExistTypeClassVars, ExtraTypeClassUnifyGoals),
 
     % Apply the type bindings to the unconstrained type variables to give
     % the actual types, and then generate code to initialize the type_infos
@@ -985,6 +996,26 @@ assign_var(Var1, Var2, Goal) :-
         term__context_init(Context),
         create_atomic_complicated_unification(Var1, var(Var2), Context,
             explicit, [], Goal)
+    ).
+
+:- pred get_improved_exists_head_constraints(constraint_map::in,
+    list(prog_constraint)::in, list(prog_constraint)::out) is det.
+
+get_improved_exists_head_constraints(ConstraintMap,  ExistConstraints,
+        ActualExistConstraints) :-
+    list__length(ExistConstraints, NumExistConstraints),
+    (
+        search_hlds_constraint_list(ConstraintMap, unproven, [],
+            NumExistConstraints, ActualExistConstraints0)
+    ->
+        ActualExistConstraints = ActualExistConstraints0
+    ;
+        % Some predicates, for example typeclass methods and predicates for
+        % which we inferred the type, don't have constraint map entries for
+        % the head constraints.  In these cases we can just use the external
+        % constraints, since there can't be any difference between them and
+        % the internal ones.
+        ActualExistConstraints = ExistConstraints
     ).
 
 %-----------------------------------------------------------------------------%

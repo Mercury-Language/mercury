@@ -345,6 +345,7 @@ introduce_exists_casts_procs(ModuleInfo, PredInfo, [ProcId | ProcIds],
 introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     pred_info_arg_types(PredInfo, ArgTypes),
     pred_info_get_existq_tvar_binding(PredInfo, Subn),
+    pred_info_get_class_context(PredInfo, PredConstraints),
     OrigArity = pred_info_orig_arity(PredInfo),
     NumExtraHeadVars = list__length(ArgTypes) - OrigArity,
 
@@ -383,15 +384,19 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     % Add exists_casts for any existential type_infos or typeclass_infos.
     % We determine which of these are existential by looking at the mode.
     %
-    % Currently we pass in PredTypesMap so that the external type of type_infos
-    % and typeclass_infos can be looked up.  When the arguments of these two
-    % types are removed, we will no longer need to do this.
+    % Currently we pass in ExternalTypes so that the external type of
+    % type_infos and typeclass_infos can be looked up.  When the arguments
+    % of these two types are removed, we will no longer need to do this.
     %
     map__from_corresponding_lists(ExtraHeadVars1, ExtraArgTypes,
         ExternalTypes),
+    ExistConstraints = PredConstraints ^ exist_constraints,
+    assoc_list__from_corresponding_lists(ExtraArgModes, ExtraHeadVars1,
+        ExtraModesAndVars),
     introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
-        ExtraArgModes, ExtraHeadVars1, ExtraHeadVars, VarSet1, VarSet,
-        VarTypes1, VarTypes, RttiVarMaps0, RttiVarMaps, ExistsCastExtraGoals),
+        ExistConstraints, ExtraModesAndVars, ExtraHeadVars, VarSet1, VarSet,
+        VarTypes1, VarTypes, RttiVarMaps0, RttiVarMaps,
+        [], ExistsCastExtraGoals),
 
     Body0 = _ - GoalInfo0,
     goal_to_conj_list(Body0, Goals0),
@@ -460,22 +465,24 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
     ).
 
 :- pred introduce_exists_casts_extra(module_info::in, vartypes::in, tsubst::in,
-    list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in,  rtti_varmaps::out, list(hlds_goal)::out) is det.
+    list(prog_constraint)::in, assoc_list(mer_mode, prog_var)::in,
+    list(prog_var)::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out, rtti_varmaps::in,  rtti_varmaps::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-introduce_exists_casts_extra(_, _, _, [], [], [], !VarSet, !VarTypes,
-    !RttiVarMaps, []).
-introduce_exists_casts_extra(_, _, _, [], [_ | _], _, _, _, _, _, _, _, _) :-
-    unexpected(this_file, "introduce_exists_casts_extra: length mismatch").
-introduce_exists_casts_extra(_, _, _, [_ | _], [], _, _, _, _, _, _, _, _) :-
-    unexpected(this_file, "introduce_exists_casts_extra: length mismatch").
+introduce_exists_casts_extra(_, _, _, ExistConstraints, [], [], !VarSet,
+        !VarTypes, !RttiVarMaps, !ExtraGoals) :-
+    (
+        ExistConstraints = []
+    ;
+        ExistConstraints = [_ | _],
+        unexpected(this_file, "introduce_exists_casts_extra: length mismatch")
+    ).
+
 introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
-        [ArgMode | ArgModes], [Var0 | Vars0], [Var | Vars], !VarSet, !VarTypes,
-        !RttiVarMaps, ExtraGoals) :-
-    introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn, ArgModes,
-        Vars0, Vars, !VarSet, !VarTypes, !RttiVarMaps, ExtraGoals0),
-
+        ExistConstraints0, [ModeAndVar | ModesAndVars], [Var | Vars],
+        !VarSet, !VarTypes, !RttiVarMaps, !ExtraGoals) :-
+    ModeAndVar = ArgMode - Var0,
     (
         mode_is_output(ModuleInfo, ArgMode)
     ->
@@ -493,7 +500,7 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
         make_new_exist_cast_var(Var0, Var, !VarSet),
         svmap__det_insert(Var, ExternalType, !VarTypes),
         generate_cast(exists_cast, Var0, Var, Context, ExtraGoal),
-        ExtraGoals = [ExtraGoal | ExtraGoals0],
+        !:ExtraGoals = [ExtraGoal | !.ExtraGoals],
 
             % Update the rtti_varmaps.  The old variable needs to have the
             % substitution applied to its type/constraint.  The new variable
@@ -502,14 +509,34 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
         rtti_varmaps_var_info(!.RttiVarMaps, Var0, VarInfo),
         (
             VarInfo = type_info_var(TypeInfoType0),
+            % For type_infos, the old variable needs to have the substitution
+            % applied to its type, and the new variable needs to be associated
+            % with the unsubstituted type.
             apply_rec_subst_to_type(Subn, TypeInfoType0, TypeInfoType),
             rtti_set_type_info_type(Var0, TypeInfoType, !RttiVarMaps),
-            rtti_det_insert_type_info_type(Var, TypeInfoType0, !RttiVarMaps)
+            rtti_det_insert_type_info_type(Var, TypeInfoType0, !RttiVarMaps),
+            ExistConstraints = ExistConstraints0
         ;
-            VarInfo = typeclass_info_var(Constraint0),
-            apply_rec_subst_to_prog_constraint(Subn, Constraint0, Constraint),
-            rtti_set_typeclass_info_var(Constraint, Var0, !RttiVarMaps),
-            rtti_det_insert_typeclass_info_var(Constraint0, Var, !RttiVarMaps)
+            VarInfo = typeclass_info_var(_),
+            % For typeclass_infos, the constraint associated with the old
+            % variable was derived from the constraint map, so all binding
+            % and improvement has been applied.  The new variable needs to
+            % be associated with the corresponding existential head constraint,
+            % so we pop one off the front of the list.
+            (
+                ExistConstraints0 = [ExistConstraint | ExistConstraints]
+            ;
+                ExistConstraints0 = [],
+                unexpected(this_file, "introduce_exists_casts_extra: " ++
+                    "missing constraint")
+            ),
+            rtti_det_insert_typeclass_info_var(ExistConstraint, Var,
+                !RttiVarMaps),
+            % We also need to ensure that all type variables in the constraint
+            % have a location recorded, so we insert a location now if there
+            % is not already one.
+            ExistConstraint = constraint(_, ConstraintArgs),
+            maybe_add_type_info_locns(ConstraintArgs, Var, 1, !RttiVarMaps)
         ;
             VarInfo = non_rtti_var,
             unexpected(this_file, "introduce_exists_casts_extra: " ++
@@ -517,8 +544,27 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
         )
     ;
         Var = Var0,
-        ExtraGoals = ExtraGoals0
-    ).
+        ExistConstraints = ExistConstraints0
+    ),
+    introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
+        ExistConstraints, ModesAndVars, Vars, !VarSet, !VarTypes,
+        !RttiVarMaps, !ExtraGoals).
+
+:- pred maybe_add_type_info_locns(list(mer_type)::in, prog_var::in, int::in,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
+
+maybe_add_type_info_locns([], _, _, !RttiVarMaps).
+maybe_add_type_info_locns([Arg | Args], Var, Num, !RttiVarMaps) :-
+    (
+        Arg = variable(TVar, _),
+        \+ rtti_search_type_info_locn(!.RttiVarMaps, TVar, _)
+    ->
+        Locn = typeclass_info(Var, Num),
+        rtti_det_insert_type_info_locn(TVar, Locn, !RttiVarMaps)
+    ;
+        true
+    ),
+    maybe_add_type_info_locns(Args, Var, Num + 1, !RttiVarMaps).
 
 :- pred make_new_exist_cast_var(prog_var::in, prog_var::out,
     prog_varset::in, prog_varset::out) is det.
