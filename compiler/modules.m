@@ -3982,24 +3982,28 @@ get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, !:OptDeps,
 %-----------------------------------------------------------------------------%
 
 generate_module_dependencies(ModuleName, !IO) :-
-    map__init(DepsMap0),
+    map__init(DepsMap),
+    SearchIncludePath = no,
     generate_dependencies(output_all_dependencies,
-        dir__this_directory, ModuleName, DepsMap0, !IO).
+        SearchIncludePath, ModuleName, DepsMap, !IO).
 
 generate_file_dependencies(FileName, !IO) :-
     build_deps_map(FileName, ModuleName, DepsMap, !IO),
+    SearchIncludePath = no,
     generate_dependencies(output_all_dependencies,
-        dir__dirname(FileName), ModuleName, DepsMap, !IO).
+        SearchIncludePath, ModuleName, DepsMap, !IO).
 
 generate_module_dependency_file(ModuleName, !IO) :-
-    map__init(DepsMap0),
+    map__init(DepsMap),
+    SearchIncludePath = yes,
     generate_dependencies(output_d_file_only,
-        dir__this_directory, ModuleName, DepsMap0, !IO).
+        SearchIncludePath, ModuleName, DepsMap, !IO).
 
 generate_file_dependency_file(FileName, !IO) :-
     build_deps_map(FileName, ModuleName, DepsMap, !IO),
+    SearchIncludePath = yes,
     generate_dependencies(output_d_file_only,
-        dir__dirname(FileName), ModuleName, DepsMap, !IO).
+        SearchIncludePath, ModuleName, DepsMap, !IO).
 
 :- pred build_deps_map(file_name::in, module_name::out, deps_map::out,
     io::di, io::uo) is det.
@@ -4022,28 +4026,13 @@ build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
     ;       output_all_dependencies
     .
 
-:- pred generate_dependencies(generate_dependencies_mode::in,
-    dir_name::in, module_name::in, deps_map::in,
-    io::di, io::uo) is det.
-
-generate_dependencies(Mode, DirName, ModuleName, DepsMap, !IO) :-
-        % Set the search path to be given directory.
-    globals__io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
-    globals__io_set_option(search_directories, accumulating([DirName]), !IO),
-
-    generate_dependencies(Mode, ModuleName, DepsMap, !IO),
-
-        % Restore the search path.
-    globals__io_set_option(search_directories, accumulating(SearchDirs), !IO).
-
-
-:- pred generate_dependencies(generate_dependencies_mode::in,
+:- pred generate_dependencies(generate_dependencies_mode::in, bool::in,
     module_name::in, deps_map::in,
     io::di, io::uo) is det.
 
-generate_dependencies(Mode, ModuleName, DepsMap0, !IO) :-
+generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
     % First, build up a map of the dependencies.
-    generate_deps_map([ModuleName], DepsMap0, DepsMap, !IO),
+    generate_deps_map([ModuleName], Search, DepsMap0, DepsMap, !IO),
 
     %
     % Check whether we could read the main `.m' file.
@@ -4357,14 +4346,14 @@ get_dependencies_from_relation(DepsRel0, ModuleName, Deps) :-
     % (Module1 deps_rel Module2) means Module1 is imported by Module2.
 :- type deps_rel == relation(module_name).
 
-:- pred generate_deps_map(list(module_name)::in, deps_map::in, deps_map::out,
-    io::di, io::uo) is det.
+:- pred generate_deps_map(list(module_name)::in, bool::in,
+    deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-generate_deps_map([], !DepsMap, !IO).
-generate_deps_map([Module | Modules], !DepsMap, !IO) :-
+generate_deps_map([], _, !DepsMap, !IO).
+generate_deps_map([Module | Modules], Search, !DepsMap, !IO) :-
         % Look up the module's dependencies, and determine whether
         % it has been processed yet.
-    lookup_dependencies(Module, yes, Done, !DepsMap, ModuleImports, !IO),
+    lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports, !IO),
         % If the module hadn't been processed yet, then add its
         % imports, parents, and public children to the list of
         % dependencies we need to generate, and mark it as
@@ -4390,7 +4379,7 @@ generate_deps_map([Module | Modules], !DepsMap, !IO) :-
         Modules1 = Modules
     ),
         % Recursively process the remaining modules
-    generate_deps_map(Modules1, !DepsMap, !IO).
+    generate_deps_map(Modules1, Search, !DepsMap, !IO).
 
     % Construct a pair of dependency relations (the interface dependencies
     % and the implementation dependencies) for all the modules in the
