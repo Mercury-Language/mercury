@@ -20,6 +20,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module recompilation.
 
 :- import_module bool.

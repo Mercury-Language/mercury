@@ -155,6 +155,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 :- import_module recompilation.check.

@@ -21,6 +21,10 @@
 :- import_module recompilation.
 
 % The parse tree data type itself.
+% The parse tree is split in two.  The parts defined in prog_item is
+% only needed in the frontend of the compiler, the parts in prog_data
+% are needed throughout.
+:- include_module prog_item.
 :- include_module prog_data.
 
 % The parser.

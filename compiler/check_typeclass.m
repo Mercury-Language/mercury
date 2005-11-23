@@ -327,7 +327,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
     % any of the methods from the class interface. If so, add an appropriate
     % error message to the list of error messages.
     %
-:- pred check_for_bogus_methods(list(instance_method)::in, class_id::in,
+:- pred check_for_bogus_methods(instance_methods::in, class_id::in,
     list(pred_id)::in, prog_context::in, module_info::in,
     error_messages::in, error_messages::out) is det.
 
@@ -612,7 +612,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
     % being combined into a single definition.
     %
 :- pred get_matching_instance_defns(instance_body::in, pred_or_func::in,
-    sym_name::in, arity::in, list(instance_method)::out) is det.
+    sym_name::in, arity::in, instance_methods::out) is det.
 
 get_matching_instance_defns(abstract, _, _, _, []).
 get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,

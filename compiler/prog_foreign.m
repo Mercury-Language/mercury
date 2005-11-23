@@ -25,7 +25,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_foreign.
-
 :- interface.
 
 :- import_module libs.globals.
@@ -39,9 +38,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type foreign_decl_info       == list(foreign_decl_code).
+:- type foreign_decl_info == list(foreign_decl_code).
                                 % in reverse order
-:- type foreign_body_info       == list(foreign_body_code).
+:- type foreign_body_info == list(foreign_body_code).
                                 % in reverse order
 
 :- type foreign_decl_code
@@ -293,7 +292,7 @@ foreign_language_file_extension(il) = _ :-
     % Currently we don't use the globals to compare foreign language
     % interfaces, but if we added appropriate options we might want
     % to do this later.
-
+    %
 prefer_foreign_language(_Globals, c, Lang1, Lang2) =
     % When compiling to C, C is always preferred over any other language.
     ( Lang2 = c, not Lang1 = c ->

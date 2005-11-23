@@ -38,6 +38,8 @@
 
 :- implementation.
 
+:- import_module parse_tree.prog_item.
+
 %-----------------------------------------------------------------------------%
 
 get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-

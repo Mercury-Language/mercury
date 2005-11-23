@@ -89,6 +89,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.exception_analysis.

@@ -32,6 +32,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_foreign.
 :- import_module recompilation.
 

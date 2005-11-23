@@ -31,6 +31,7 @@
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module io.

@@ -40,7 +40,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.modules.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
 
 :- import_module bool.

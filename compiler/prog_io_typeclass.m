@@ -18,6 +18,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_util.
 
 :- import_module list.
@@ -683,7 +684,7 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
     ).
 
 :- pred parse_instance_methods(module_name::in, term::in, varset::in,
-    maybe1(list(instance_method))::out) is det.
+    maybe1(instance_methods)::out) is det.
 
 parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
     ( list_term_to_term_list(Methods, MethodList) ->

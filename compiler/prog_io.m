@@ -60,6 +60,7 @@
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_util.
 
 :- import_module bool.

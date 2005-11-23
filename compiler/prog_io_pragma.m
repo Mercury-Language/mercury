@@ -17,7 +17,7 @@
 
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_util.
 
 :- import_module list.
@@ -40,8 +40,9 @@
 
 :- implementation.
 
-:- import_module libs.lp_rational.
+%:- import_module libs.lp_rational.
 :- import_module libs.rat.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_util.
