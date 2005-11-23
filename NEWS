@@ -6,21 +6,30 @@ HIGHLIGHTS
 
 Changes to the Mercury language:
 * The Mercury typeclass system now supports functional dependencies.
+* A new language construct allows programmers to promise that any given
+  goal is pure or semipure.
+* A new language construct allows programmers to promise that all solutions
+  of a given goal are equivalent with respect to the relevant equality
+  theories.
 * We now have support for optional module initialisation and finalisation.
 * We now have support for impure module-local mutable variables.
 * We now have support for recognizing switches in which multiple switch arms
   have shared code.
+* We now allow users to control how each argument of a `pragma memo' predicate
+  is tabled.
 * Support for the old-style lambda, mode and pragma syntax has been removed.
 * ':' is now the type qualification operator, not a module qualifier.
 * To ensure soundness, goals in negated contexts using non-local variables
   with dynamic modes (inst "any") must now be marked as impure.
 
-
 Changes to the Mercury standard library:
 * We have added an `injection' module, for reversible maps that are injective.
 
 Changes to the Mercury compiler:
-* None yet.
+* The compiler now generates better error messages for determinism errors
+  involving single-solution contexts.
+* We have significantly improved the compiler's performance on predicates
+  with many clauses.
 
 Portability Improvements:
 * None yet.
@@ -33,9 +42,30 @@ Changes to the Mercury debugger:
   left the goal at which the term was available as the value of a program
   variable.
 * Users can now see the set of places where two terms differ from each other.
+* The declarative debugger now supports an `undo' command, and allows users to
+  select the search algorithm.
+* The declarative debugger can now exploit information from the "code
+  footprints" of passed and failed test cases to find bugs with fewer
+  questions. We have also added two tools, mslice and mdice, to manipulate
+  files containing such footprints.
+* Subterm dependency tracking in the declarative debugger is now significantly
+  faster.
 
 Changes to the compiler backends:
-* None yet.
+* We have implemented an optimization, --optimize-constructor-last-call,
+  that can turn recursive calls that are followed only by unifications that
+  construct output arguments into tail calls. This can reduce the stack space
+  requirements of the predicates to which it is applicable from linear
+  in the size of the input data to constant.
+* We have implemented an optimization, --tuple, that can replace several
+  arguments that are usually passed to predicates together with a single
+  tuple. This can reduce parameter passing overheads.
+* The compiler can now optimize away the trail manipulation code that would
+  ordinarily be required around if-then-elses if the condition of the
+  if-then-else cannot affect the trail.
+* The compiler now optimizes away any instructions referring to values of dummy
+  types. A type is a dummy type if it has one function symbol of arity zero.
+* Higher order calls are now cheaper on the low level C backend.
 
 Changes to the extras distribution:
 * We've added a library of data structures designed to work with solver types. 
@@ -50,6 +80,32 @@ Changes to the Mercury language:
 * We have added support for functional dependencies to the typeclass system.
   See the "Type classes" section of the Mercury Language Reference Manual for
   details.
+
+* A new language construct allows programmers to promise that any given
+  goal is pure or semipure. Given Goal, a goal that uses impure and/or
+  semipure code, the goal
+
+	  promise_pure ( Goal )
+
+  promises that Goal presents a pure interface. Given Goal, a goal that
+  uses impure code, the goal
+
+	  promise_semipure ( Goal )
+
+  promises that Goal presents a semipure interface.
+
+* A new language construct allows programmers to promise that all solutions
+  of a given goal are equivalent with respect to the relevant equality
+  theories. Given Goal, a goal that computes values for two variables,
+  X and Y, the goal
+
+  	promise_equivalent_solutions [X, Y] ( Goal )
+
+  promises that all solutions of Goal are equivalent with respect to the
+  equality theories of the types of X and Y. This means that the
+  promise_equivalent_solutions goal will be det if Goal is cc_multi,
+  and that the promise_equivalent_solutions goal will be semidet if Goal
+  is cc_nondet.
 
 * We have added support for optional module initialisation.  See the 
   "Module initialisation" section of the Mercury Language Reference
