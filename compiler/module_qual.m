@@ -793,12 +793,12 @@ qualify_type_defn(solver_type(SolverTypeDetails0, MaybeUserEqComp),
         solver_type(SolverTypeDetails, MaybeUserEqComp),
         !Info, !IO) :-
     SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
-        GroundInst0, AnyInst0),
+        GroundInst0, AnyInst0, MutableItems),
     qualify_type(RepnType0, RepnType,     !Info, !IO),
     qualify_inst(GroundInst0, GroundInst, !Info, !IO),
     qualify_inst(AnyInst0, AnyInst,       !Info, !IO),
     SolverTypeDetails  = solver_type_details(RepnType, InitPred,
-        GroundInst, AnyInst).
+        GroundInst, AnyInst, MutableItems).
 
 :- pred qualify_constructors(list(constructor)::in, list(constructor)::out,
     mq_info::in, mq_info::out, io::di, io::uo) is det.

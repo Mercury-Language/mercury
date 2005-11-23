@@ -890,14 +890,16 @@
     %   representation is <<representation type>>,
     %   initialisation is <<init pred name>>,
     %   ground         is <<ground inst>>,
-    %   any            is <<any inst>>
+    %   any            is <<any inst>>,
+    %   constraint_store is <<mutable(...) or [mutable(...), ...]>>
     % 
 :- type solver_type_details
     --->    solver_type_details(
                 representation_type :: mer_type,
                 init_pred           :: init_pred,
                 ground_inst         :: mer_inst,
-                any_inst            :: mer_inst
+                any_inst            :: mer_inst,
+                mutable_items       :: list(item)
             ).
 
     % An init_pred specifies the name of an impure user-defined predicate

@@ -2025,6 +2025,9 @@ parse_type_decl_where_term(IsSolverType, ModuleName, MaybeTerm0 @ yes(Term)) =
         parse_where_attribute(parse_where_is("any",
                 parse_where_inst_is(ModuleName)),
             AnyIsResult, !MaybeTerm),
+        parse_where_attribute(parse_where_is("constraint_store",
+                parse_where_mutable_is(ModuleName)),
+            CStoreIsResult, !MaybeTerm),
         parse_where_attribute(parse_where_is("equality",
                 parse_where_pred_is(ModuleName)),
             EqualityIsResult, !MaybeTerm),
@@ -2041,6 +2044,7 @@ parse_type_decl_where_term(IsSolverType, ModuleName, MaybeTerm0 @ yes(Term)) =
             InitialisationIsResult,
             GroundIsResult,
             AnyIsResult,
+            CStoreIsResult,
             EqualityIsResult,
             ComparisonIsResult,
             WhereEndResult,
@@ -2155,6 +2159,43 @@ parse_where_inst_is(_ModuleName, Term) =
 parse_where_type_is(_ModuleName, Term) = Result :-
     prog_io_util__parse_type(Term, Result).
 
+:- func parse_where_mutable_is(module_name, term) = maybe1(list(item)).
+
+parse_where_mutable_is(ModuleName, Term) = Result :-
+    (
+        Term = term__functor(term__atom("mutable"), _Args, _Ctxt)
+    ->
+        parse_mutable_decl_term(ModuleName, Term, Result0),
+        (
+            Result0 = ok(Mutable),
+            Result  = ok([Mutable])
+        ;
+            Result0 = error(Err, Trm),
+            Result  = error(Err, Trm)
+        )
+    ;
+        list_term_to_term_list(Term, Terms)
+    ->
+        map_parser(parse_mutable_decl_term(ModuleName), Terms, Result)
+    ;
+        Result = error("expected a mutable declaration or a list of " ++
+            "mutable declarations", Term)
+    ).
+
+:- pred parse_mutable_decl_term(module_name::in, term::in, maybe1(item)::out)
+        is det.
+
+parse_mutable_decl_term(ModuleName, Term, Result) :-
+    (
+        Term = term__functor(term__atom("mutable"), Args, _Ctxt),
+        varset__init(VarSet),
+        parse_mutable_decl(ModuleName, VarSet, Args, Result0)
+    ->
+        Result = Result0
+    ;
+        Result = error("expected a mutable declaration", Term)
+    ).
+
 :- pred parse_where_end(maybe(term)::in, maybe1(maybe(unit))::out) is det.
 
 parse_where_end(no,        ok(yes(unit))).
@@ -2168,6 +2209,7 @@ parse_where_end(yes(Term), error("attributes are either badly ordered or " ++
         maybe1(maybe(init_pred)),
         maybe1(maybe(mer_inst)),
         maybe1(maybe(mer_inst)),
+        maybe1(maybe(list(item))),
         maybe1(maybe(equality_pred)),
         maybe1(maybe(comparison_pred)),
         maybe1(maybe(unit)),
@@ -2181,6 +2223,7 @@ make_maybe_where_details(
         InitialisationIsResult,
         GroundIsResult,
         AnyIsResult,
+        CStoreIsResult,
         EqualityIsResult,
         ComparisonIsResult,
         WhereEndResult,
@@ -2214,6 +2257,10 @@ make_maybe_where_details(
     ->
         Result = error(String, Term)
     ;
+        CStoreIsResult = error(String, Term)
+    ->
+        Result = error(String, Term)
+    ;
         WhereEndResult = error(String, Term)
     ->
         Result = error(String, Term)
@@ -2228,7 +2275,8 @@ make_maybe_where_details(
             GroundIsResult         = ok(no),
             AnyIsResult            = ok(no),
             EqualityIsResult       = ok(no),
-            ComparisonIsResult     = ok(no)
+            ComparisonIsResult     = ok(no),
+            CStoreIsResult         = ok(no)
         ->
             Result = ok(no, yes(abstract_noncanonical_type(IsSolverType)))
         ;
@@ -2244,7 +2292,8 @@ make_maybe_where_details(
             GroundIsResult         = ok(MaybeGroundInst),
             AnyIsResult            = ok(MaybeAnyInst),
             EqualityIsResult       = ok(MaybeEqPred),
-            ComparisonIsResult     = ok(MaybeCmpPred)
+            ComparisonIsResult     = ok(MaybeCmpPred),
+            CStoreIsResult         = ok(MaybeMutableItems)
         ->
             (
                 MaybeGroundInst = yes(GroundInst)
@@ -2258,8 +2307,14 @@ make_maybe_where_details(
                 MaybeAnyInst = no,
                 AnyInst = ground_inst
             ),
+            (
+                MaybeMutableItems = yes(MutableItems)
+            ;
+                MaybeMutableItems = no,
+                MutableItems = []
+            ),
             MaybeSolverTypeDetails = yes(solver_type_details(
-                RepnType, InitPred, GroundInst, AnyInst)),
+                RepnType, InitPred, GroundInst, AnyInst, MutableItems)),
             (
                 MaybeEqPred = no,
                 MaybeCmpPred = no
@@ -2291,6 +2346,7 @@ make_maybe_where_details(
         ; InitialisationIsResult = ok(yes(_))
         ; GroundIsResult         = ok(yes(_))
         ; AnyIsResult            = ok(yes(_))
+        ; CStoreIsResult         = ok(yes(_))
         )
     ->
         Result = error("solver type attribute given for " ++

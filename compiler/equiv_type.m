@@ -452,12 +452,12 @@ replace_in_type_defn(EqvMap, TypeCtor,
         solver_type(SolverTypeDetails,  MaybeUserEqComp),
         ContainsCirc, !VarSet, !Info) :-
     SolverTypeDetails0 = solver_type_details(RepresentationType0, InitPred,
-        GroundInst, AnyInst),
+        GroundInst, AnyInst, MutableItems),
     replace_in_type_2(EqvMap, [TypeCtor], 
         RepresentationType0, RepresentationType,
         _, ContainsCirc, !VarSet, !Info),
     SolverTypeDetails = solver_type_details(RepresentationType, InitPred,
-        GroundInst, AnyInst).
+        GroundInst, AnyInst, MutableItems).
 
 %-----------------------------------------------------------------------------%
 

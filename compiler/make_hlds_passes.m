@@ -332,7 +332,9 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
         TypeDefn = solver_type(SolverTypeDetails, _MaybeUserEqComp)
     ->
         add_solver_type_decl_items(TVarSet, SymName, TypeParams,
-            SolverTypeDetails, Context, !Status, !ModuleInfo, !IO)
+            SolverTypeDetails, Context, !Status, !ModuleInfo, !IO),
+        add_solver_type_mutable_items_pass_1(SolverTypeDetails ^ mutable_items,
+            Context, !Status, !ModuleInfo, !IO)
     ;
         true
     ).
@@ -496,6 +498,18 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
         true
     ).
 
+
+:- pred add_solver_type_mutable_items_pass_1(list(item)::in, prog_context::in,
+    item_status::in, item_status::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+add_solver_type_mutable_items_pass_1([], _Context, !Status, !ModuleInfo, !IO).
+add_solver_type_mutable_items_pass_1([Item | Items], Context, !Status,
+        !ModuleInfo, !IO) :-
+    add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, _, !IO),
+    add_solver_type_mutable_items_pass_1(Items, Context, !Status, !ModuleInfo,
+        !IO).
+
 %-----------------------------------------------------------------------------%
 
 :- pred add_item_decl_pass_2(item::in, prog_context::in, item_status::in,
@@ -512,7 +526,16 @@ add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     Item = type_defn(VarSet, Name, Args, TypeDefn, Cond),
     module_add_type_defn(VarSet, Name, Args, TypeDefn, Cond, Context,
-        !.Status, !ModuleInfo, !IO).
+        !.Status, !ModuleInfo, !IO),
+    (
+        TypeDefn = solver_type(SolverTypeDetails, _MaybeUserEqComp)
+    ->
+        add_solver_type_mutable_items_pass_2(SolverTypeDetails ^ mutable_items,
+            Context, !Status, !ModuleInfo, !IO)
+    ;
+        true
+    ).
+
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     Item = pragma(Origin, Pragma),
     add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO).
@@ -655,6 +678,18 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         true
     ).
 
+
+:- pred add_solver_type_mutable_items_pass_2(list(item)::in, prog_context::in,
+    item_status::in, item_status::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+add_solver_type_mutable_items_pass_2([], _Context, !Status, !ModuleInfo, !IO).
+add_solver_type_mutable_items_pass_2([Item | Items], Context, !Status,
+        !ModuleInfo, !IO) :-
+    add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO),
+    add_solver_type_mutable_items_pass_2(Items, Context, !Status, !ModuleInfo,
+        !IO).
+
     % Check to see if there is a valid foreign_name attribute for this
     % backend.  If so, use it as the name of the global variable in
     % the target code, otherwise take the Mercury name for the mutable
@@ -771,6 +806,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         status_defined_in_this_module(!.Status, yes)
     ->
         add_solver_type_clause_items(SymName, TypeParams, SolverTypeDetails,
+            !Status, Context, !ModuleInfo, !QualInfo, !IO),
+        add_solver_type_mutable_items_clauses(SolverTypeDetails^mutable_items,
             !Status, Context, !ModuleInfo, !QualInfo, !IO)
     ;
         true
@@ -1248,6 +1285,20 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     ;
         true
     ).
+
+
+:- pred add_solver_type_mutable_items_clauses(list(item)::in,
+    import_status::in, import_status::out, prog_context::in,
+    module_info::in, module_info::out,
+    qual_info::in, qual_info::out, io::di, io::uo) is det.
+
+add_solver_type_mutable_items_clauses([], !Status, _Context,
+        !ModuleInfo, !QualInfo, !IO).
+add_solver_type_mutable_items_clauses([Item | Items], !Status, Context,
+        !ModuleInfo, !QualInfo, !IO) :-
+    add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO),
+    add_solver_type_mutable_items_clauses(Items, !Status, Context,
+        !ModuleInfo, !QualInfo, !IO).
 
     % If a module_defn updates the import_status, return the new status
     % and whether uses of the following items must be module qualified,

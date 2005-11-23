@@ -2226,19 +2226,24 @@ A solver type definition takes the following form:
 
 @example
 :- solver type solver_type
-        where   representation is representation_type,
-                initialisation is initialisation_pred,
-                ground         is ground_inst,
-                any            is any_inst,
-                equality       is equality_pred,
-                comparison     is comparison_pred.
+        where   representation   is representation_type,
+                initialisation   is initialisation_pred,
+                ground           is ground_inst,
+                any              is any_inst,
+                constraint_store is mutable_decls,
+                equality         is equality_pred,
+                comparison       is comparison_pred.
 @end example
 
 The @samp{representation} and @samp{initialisation} attributes are mandatory
 (@samp{initialization} is allowed as a synonym for @samp{initialisation}),
-@samp{ground_inst} and @samp{any_inst} default to @samp{ground}, the equality
-and comparison attributes are optional (although a solver type without equality
-would not be very useful), and attributes must appear in the order shown.
+@samp{ground_inst} and @samp{any_inst} default to @samp{ground},
+@samp{mutable_decls} is either a single mutable declaration
+(@pxref{Module-local mutable variables})
+or a comma separated list of mutable declarations in brackets,
+the equality and comparison attributes are optional (although a solver type
+without equality would not be very useful), and attributes must appear in the
+order shown.
 
 The @code{representation_type} is the type used to implement the
 @code{solver_type}.  A two-tier scheme of this kind is necessary for a
@@ -2312,6 +2317,28 @@ If @code{solver_type} is exported then it is a requirement that
 @code{representation_type}, @code{initialisation_pred}, and, if
 specified, @code{equality_pred} and @code{comparison_pred} are also
 exported from the same module.
+
+If provided, any mutable declarations given for the @code{constraint_store}
+attribute are equivalent to separate mutable declarations; their association
+with the solver type is for the purposes of documentation.  That is,
+
+@example
+:- solver type t
+	where ... constraint_store is [ mutable(a, int, 42, ground, []),
+					mutable(b, string, "Hi", ground, [])
+		  ],
+	      ...
+@end example
+
+@noindent
+is equivalent to
+
+@example
+:- solver type t
+	where ...
+:- mutable(a, int, 42, ground, []).
+:- mutable(b, string, "Hi", ground, []).
+@end example
 
 @node Implementing solver types
 @subsection Implementing solver types

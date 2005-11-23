@@ -1798,8 +1798,8 @@ mercury_output_where_attributes(TVarSet,
         solver_type_details::in, io::di, io::uo) is det.
 
 mercury_output_solver_type_details(TVarSet,
-        solver_type_details(RepresentationType, InitPred, GroundInst, AnyInst),
-        !IO) :-
+        solver_type_details(RepresentationType, InitPred, GroundInst, AnyInst,
+        MutableItems), !IO) :-
     io__write_string("representation is ", !IO),
     mercury_output_type(TVarSet, no, RepresentationType, !IO),
     io__write_string(",\n\t\tinitialisation is ", !IO),
@@ -1808,7 +1808,22 @@ mercury_output_solver_type_details(TVarSet,
     io__write_string(",\n\t\tground is ", !IO),
     mercury_output_inst(GroundInst, EmptyInstVarSet, !IO),
     io__write_string(",\n\t\tany is ", !IO),
-    mercury_output_inst(AnyInst, EmptyInstVarSet, !IO).
+    mercury_output_inst(AnyInst, EmptyInstVarSet, !IO),
+    (
+        MutableItems = []
+    ;
+        MutableItems = [_ | _],
+        io__write_string(",\n\t\tconstraint_store is [\n\t\t\t", !IO),
+        io__write_list(MutableItems, ",\n\t\t\t", mercury_output_item_2,
+            !IO),
+        io__write_string("\n\t\t]", !IO)
+    ).
+
+:- pred mercury_output_item_2(item::in, io::di, io::uo) is det.
+
+mercury_output_item_2(Item, !IO) :-
+    term__context_init(DummyContext),
+    mercury_output_item(Item, DummyContext, !IO).
 
 :- pred mercury_output_ctors(list(constructor)::in, tvarset::in,
     io::di, io::uo) is det.

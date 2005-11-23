@@ -155,11 +155,11 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
     ;
         Body0 = solver_type(SolverTypeDetails0, UserEq),
         SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
-            GroundInst, AnyInst),
+            GroundInst, AnyInst, MutableItems),
         equiv_type__replace_in_type(EqvMap, RepnType0, RepnType, _,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         SolverTypeDetails = solver_type_details(RepnType, InitPred,
-            GroundInst, AnyInst),
+            GroundInst, AnyInst, MutableItems),
         Body = solver_type(SolverTypeDetails, UserEq)
     ;
         Body0 = abstract_type(_),
