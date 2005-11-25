@@ -1366,7 +1366,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
     [will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
-    MR_pneg_enter_else();
+    MR_pneg_enter_else(""end_all_soln_neg_context"");
 #endif
 ").
 

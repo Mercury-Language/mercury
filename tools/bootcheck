@@ -1506,6 +1506,7 @@ then
         for d in $all_test_dirs
         do
             cp ${tests_prefix}tests/.mgnuc_copts ${tests_prefix}tests/$d
+            cp ${tests_prefix}tests/.mgnuc_opts ${tests_prefix}tests/$d
         done
 
         WORKSPACE_FLAGS=yes

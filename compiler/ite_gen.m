@@ -51,6 +51,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module require.
@@ -61,8 +62,8 @@
 
 %---------------------------------------------------------------------------%
 
-generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal,
-        ElseGoal, IteGoalInfo, Code, !CI) :-
+generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
+        IteGoalInfo, Code, !CI) :-
     CondGoal0 = CondExpr - CondInfo0,
     goal_info_get_code_model(CondInfo0, CondCodeModel),
     (
@@ -191,7 +192,7 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal,
     EndLabelCode = node([
         label(EndLabel) - "end of if-then-else"
     ]),
-    make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode,
+    make_pneg_context_wrappers(Globals, CondInfo, PNegCondCode, PNegThenCode,
         PNegElseCode),
     Code = tree_list([
         FlushCode,
@@ -340,8 +341,8 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
         % The call to reset_ticket(..., commit) here is necessary
         % in order to properly detect floundering.
         code_info__maybe_release_hp(MaybeHpSlot, !CI),
-        code_info__maybe_reset_prune_and_release_ticket(
-            MaybeTicketSlot, commit, PruneTicketCode, !CI),
+        code_info__maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
+            commit, PruneTicketCode, !CI),
         trace__maybe_generate_negated_event_code(Goal, NotGoalInfo,
             neg_failure, FailTraceCode, !CI),
         code_info__generate_failure(FailCode, !CI),
@@ -363,8 +364,8 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
     trace__maybe_generate_negated_event_code(Goal, NotGoalInfo,
         neg_success, SuccessTraceCode, !CI),
 
-    make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode,
-        PNegElseCode),
+    make_pneg_context_wrappers(Globals, NotGoalInfo, PNegCondCode,
+        PNegThenCode, PNegElseCode),
     Code = tree_list([
         FlushCode,
         PrepareHijackCode,
@@ -400,15 +401,26 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
     % contexts or not, which is why we wrap the condition inside
     % MR_pneg_enter_{cond,then,exit}.
     %
-:- pred make_pneg_context_wrappers(globals::in, code_tree::out, code_tree::out,
-    code_tree::out) is det.
+:- pred make_pneg_context_wrappers(globals::in, hlds_goal_info::in,
+    code_tree::out, code_tree::out, code_tree::out) is det.
 
-make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode, PNegElseCode)
-        :-
+make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
+        PNegElseCode) :-
     globals__lookup_bool_option(Globals, use_minimal_model_stack_copy_pneg,
         UseMinimalModelStackCopyPNeg),
     (
         UseMinimalModelStackCopyPNeg = yes,
+        goal_info_get_context(GoalInfo, Context),
+        term__context_file(Context, File),
+        term__context_line(Context, Line),
+        (
+            File \= "",
+            Line > 0
+        ->
+            CtxtStr = "\"" ++ File ++ ":" ++ int_to_string(Line) ++ "\""
+        ;
+            CtxtStr = "NULL"
+        ),
 
         PNegCondComponents = [
             pragma_c_raw_code(
@@ -422,7 +434,7 @@ make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode, PNegElseCode)
         ],
         PNegElseComponents = [
             pragma_c_raw_code(
-                wrap_transient("\t\tMR_pneg_enter_else();\n"),
+                wrap_transient("\t\tMR_pneg_enter_else(" ++ CtxtStr ++ ");\n"),
                 cannot_branch_away, live_lvals_info(set__init))
         ],
         PNegCondCode = node([

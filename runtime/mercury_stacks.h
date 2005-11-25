@@ -679,7 +679,7 @@ extern  MR_PNegStackFrame   *MR_pneg_stack_var;
 extern  void                MR_register_suspension(MR_Consumer *consumer);
 extern  void                MR_pneg_enter_cond(void);
 extern  void                MR_pneg_enter_then(void);
-extern  void                MR_pneg_enter_else(void);
+extern  void                MR_pneg_enter_else(const char *context);
 
 extern  void                MR_print_pneg_stack(FILE *fp);
 extern  void                MR_print_any_pneg_stack(FILE *fp,
