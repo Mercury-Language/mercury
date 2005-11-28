@@ -1600,7 +1600,8 @@
 :- type io__binary_stream ==    io__stream.
 
 :- type io__stream --->     io__stream(c_pointer).
-:- pragma foreign_type("C", io__stream, "MercuryFilePtr").
+:- pragma foreign_type("C", io__stream, "MercuryFilePtr",
+    [can_pass_as_mercury_type]).
 :- pragma foreign_type("il", io__stream,
     "class [mercury]mercury.io__csharp_code.MR_MercuryFileStruct").
 :- pragma foreign_type("Java", io__stream, "mercury.io.MR_MercuryFileStruct").
@@ -3105,7 +3106,7 @@ have_file_ids :- semidet_fail.
 % Buffer sizes are measured in Chars.
 
 :- type buffer.
-:- pragma foreign_type(c, buffer, "MR_Char *").
+:- pragma foreign_type(c, buffer, "MR_Char *", [can_pass_as_mercury_type]).
 
     % XXX It would be better to use a char_array (e.g. defined as char[] in
     % C#) type rather than array(char).  This is because on the Java and IL
