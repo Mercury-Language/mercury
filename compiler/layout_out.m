@@ -547,13 +547,7 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
         output_rval_decls(VarNums0, !DeclSet, !IO),
         output_rval_decls(TypeParams0, !DeclSet, !IO),
         LabelVars = label_has_var_info,
-        globals__io_lookup_bool_option(split_c_files, Split, !IO),
         (
-            % With --split-c-files, the names of common cells can't be of the
-            % form mercury_common_<n> (they have to be module qualified), which
-            % contradicts the assumptions of the CCC and CC0 variants of the
-            % MR_DEF_LL macro.
-            Split = no,
             LocnsTypes0 = const(data_addr_const(LTDataAddr, no)),
             LTDataAddr = data_addr(_, common(LTCellNum, _)),
             VarNums0 = const(data_addr_const(VNDataAddr, no)),

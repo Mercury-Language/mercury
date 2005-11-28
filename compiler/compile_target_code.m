@@ -119,38 +119,6 @@
     is det.
 
 %-----------------------------------------------------------------------------%
-%
-% Code to deal with `--split-c-files'
-%
-
-    % split_c_to_obj(ErrorStream, ModuleName, NumChunks, Succeeded):
-    %
-    % Compile the `.c' files produced for a module with `--split-c-files'.
-    %
-:- pred split_c_to_obj(io__output_stream::in, module_name::in,
-    int::in, bool::out, io::di, io::uo) is det.
-
-    % Write the number of `.c' files written by this compilation
-    % with `--split-c-files'.
-    %
-:- pred write_num_split_c_files(module_name::in, int::in, bool::out,
-    io::di, io::uo) is det.
-
-    % Find the number of `.c' files written by a previous compilation
-    % with `--split-c-files'.
-    %
-:- pred read_num_split_c_files(module_name::in, maybe_error(int)::out,
-    io::di, io::uo) is det.
-
-    % remove_split_c_output_files(ModuleName, NumChunks):
-    %
-    % Remove the `.c' and `.o' files written by a previous compilation
-    % with `--split-c-files'.
-    %
-:- pred remove_split_c_output_files(module_name::in, int::in,
-    io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
 
     % make_all_module_command(CommandName, MainModule, AllModuleNames,
     %   CommandString):
@@ -359,34 +327,6 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
 
 %-----------------------------------------------------------------------------%
 
-split_c_to_obj(ErrorStream, ModuleName, NumChunks, Succeeded, !IO) :-
-    split_c_to_obj(ErrorStream, ModuleName, 0, NumChunks, Succeeded, !IO).
-
-    % Compile each of the C files in `<module>.dir'.
-    %
-:- pred split_c_to_obj(io__output_stream::in, module_name::in,
-    int::in, int::in, bool::out, io::di, io::uo) is det.
-
-split_c_to_obj(ErrorStream, ModuleName, Chunk, NumChunks, Succeeded, !IO) :-
-    ( Chunk > NumChunks ->
-        Succeeded = yes
-    ;
-        % XXX should this use maybe_pic_object_file_extension?
-        globals__io_lookup_string_option(object_file_extension, Obj, !IO),
-        module_name_to_split_c_file_name(ModuleName, Chunk, ".c", C_File, !IO),
-        module_name_to_split_c_file_name(ModuleName, Chunk, Obj, O_File, !IO),
-        compile_c_file(ErrorStream, non_pic, C_File, O_File, Succeeded0, !IO),
-        (
-            Succeeded0 = no,
-            Succeeded = no
-        ;
-            Succeeded0 = yes,
-            Chunk1 = Chunk + 1,
-            split_c_to_obj(ErrorStream, ModuleName, Chunk1, NumChunks,
-                Succeeded, !IO)
-        )
-    ).
-
 % WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
 % Any changes there may also require changes here, and vice versa.
 
@@ -414,32 +354,21 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     join_string_list(C_Flags_List, "", "", " ", CFLAGS),
 
     globals__io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-    globals__io_lookup_bool_option(split_c_files, SplitCFiles, !IO),
     (
-        ( UseSubdirs = yes
-        ; SplitCFiles = yes
-        )
-    ->
+        UseSubdirs = yes,
         % The source file (foo.c) will be compiled in a subdirectory
         % (either Mercury/cs, foo.dir, or Mercury/dirs/foo.dir, depending
         % on which of these two options is set) so we need to add `-I.'
         % so it can include header files in the source directory.
         SubDirInclOpt = "-I. "
     ;
+        UseSubdirs = no,
         SubDirInclOpt = ""
     ),
     globals__io_lookup_accumulating_option(c_include_directory,
         C_Incl_Dirs, !IO),
     InclOpt = string__append_list(list__condense(list__map(
         (func(C_INCL) = ["-I", quote_arg(C_INCL), " "] ), C_Incl_Dirs))),
-    globals__io_lookup_bool_option(split_c_files, Split_C_Files, !IO),
-    (
-        Split_C_Files = yes,
-        SplitOpt = "-DMR_SPLIT_C_FILES "
-    ;
-        Split_C_Files = no,
-        SplitOpt = ""
-    ),
     globals__io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
     (
         HighLevelCode = yes,
@@ -771,7 +700,6 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     string__append_list([
         CC, " ", 
         SubDirInclOpt, InclOpt,
-        SplitOpt, " ", 
         OptimizeOpt, " ",
         HighLevelCodeOpt, 
         NestedFunctionsOpt, 
@@ -996,7 +924,6 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
     maybe_pic_object_file_extension(PIC, Obj, !IO),
 
     globals__io_get_target(Target, !IO),
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
     io__output_stream(OutputStream, !IO),
     ( Target = asm ->
         % For --target asm, we generate everything into a single object file.
@@ -1006,56 +933,39 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
         ;
             Modules = [],
             unexpected(this_file, "link_module_list: no modules")
-        ),
-        MakeLibCmdOK = yes
-    ; SplitFiles = yes ->
-        globals__io_lookup_string_option(library_extension, LibExt, !IO),
-        module_name_to_file_name(MainModuleName, LibExt, yes, SplitLibFileName,
-            !IO),
-        string__append(".dir/*", Obj, DirObj),
-        join_module_list(Modules, DirObj, ObjectList, !IO),
-        create_archive(OutputStream, SplitLibFileName, no, ObjectList,
-            MakeLibCmdOK, !IO),
-        ObjectsList = [SplitLibFileName]
+        )
     ;
-        MakeLibCmdOK = yes,
         join_module_list(Modules, Obj, ObjectsList, !IO)
     ),
-    (
-        MakeLibCmdOK = no,
-        Succeeded = no
+    ( TargetType = executable ->
+        list__map(
+            (pred(ModuleStr::in, ModuleName::out) is det :-
+                file_name_to_module_name(dir__basename_det(ModuleStr),
+                    ModuleName)
+            ), Modules, ModuleNames),
+        MustCompile = yes,
+        make_init_obj_file(OutputStream, MustCompile, MainModuleName,
+            ModuleNames, InitObjResult, !IO)
     ;
-        MakeLibCmdOK = yes,
-        ( TargetType = executable ->
-            list__map(
-                (pred(ModuleStr::in, ModuleName::out) is det :-
-                    file_name_to_module_name(dir__basename_det(ModuleStr),
-                        ModuleName)
-                ), Modules, ModuleNames),
-            MustCompile = yes,
-            make_init_obj_file(OutputStream, MustCompile, MainModuleName,
-                ModuleNames, InitObjResult, !IO)
-        ;
-            InitObjResult = yes("")
-        ),
-        (
-            InitObjResult = yes(InitObjFileName),
-            globals__io_lookup_accumulating_option(link_objects,
-                ExtraLinkObjectsList, !IO),
-            AllObjects0 = ObjectsList ++ ExtraLinkObjectsList
-                ++ FactTableObjFiles,
-            AllObjects =
-                ( InitObjFileName = "" ->
-                    AllObjects0
-                ;
-                    [InitObjFileName | AllObjects0]
-                ),
-            link(OutputStream, TargetType, MainModuleName, AllObjects,
-                Succeeded, !IO)
-        ;
-            InitObjResult = no,
-            Succeeded = no
-        )
+        InitObjResult = yes("")
+    ),
+    (
+        InitObjResult = yes(InitObjFileName),
+        globals__io_lookup_accumulating_option(link_objects,
+            ExtraLinkObjectsList, !IO),
+        AllObjects0 = ObjectsList ++ ExtraLinkObjectsList
+            ++ FactTableObjFiles,
+        AllObjects =
+            ( InitObjFileName = "" ->
+                AllObjects0
+            ;
+                [InitObjFileName | AllObjects0]
+            ),
+        link(OutputStream, TargetType, MainModuleName, AllObjects,
+            Succeeded, !IO)
+    ;
+        InitObjResult = no,
+        Succeeded = no
     ).
 
 make_init_obj_file(ErrorStream, ModuleName, ModuleNames, Result, !IO) :-
@@ -1872,82 +1782,6 @@ join_module_list([Module | Modules], Extension, [FileName | Rest], !IO) :-
     file_name_to_module_name(dir__basename_det(Module), ModuleName),
     module_name_to_file_name(ModuleName, Extension, no, FileName, !IO),
     join_module_list(Modules, Extension, Rest, !IO).
-
-%-----------------------------------------------------------------------------%
-
-write_num_split_c_files(ModuleName, NumChunks, Succeeded, !IO) :-
-    module_name_to_file_name(ModuleName, ".num_split", yes, NumChunksFileName,
-        !IO),
-    io__open_output(NumChunksFileName, Res, !IO),
-    ( Res = ok(OutputStream) ->
-        io__write_int(OutputStream, NumChunks, !IO),
-        io__nl(OutputStream, !IO),
-        io__close_output(OutputStream, !IO),
-        Succeeded = yes
-    ;
-        Succeeded = no,
-        io__progname_base("mercury_compile", ProgName, !IO),
-        io__write_string(ProgName, !IO),
-        io__write_string(": can't open `", !IO),
-        io__write_string(NumChunksFileName, !IO),
-        io__write_string("' for output\n", !IO)
-    ).
-
-read_num_split_c_files(ModuleName, MaybeNumChunks, !IO) :-
-    module_name_to_file_name(ModuleName, ".num_split", no, NumChunksFileName,
-        !IO),
-    io__open_input(NumChunksFileName, Res, !IO),
-    (
-        Res = ok(FileStream),
-        io__read_word(FileStream, MaybeNumChunksString, !IO),
-        io__close_input(FileStream, !IO),
-        (
-            MaybeNumChunksString = ok(NumChunksString),
-            (
-                string__to_int(string__from_char_list(NumChunksString),
-                    NumChunks)
-            ->
-                MaybeNumChunks = ok(NumChunks)
-            ;
-                MaybeNumChunks = error("Software error: error in `"
-                    ++ NumChunksFileName
-                    ++ "': expected single int.\n")
-            )
-        ;
-            MaybeNumChunksString = eof,
-            MaybeNumChunks = error("Software error: error in `"
-                ++ NumChunksFileName
-                ++ "': expected single int.\n")
-        ;
-            MaybeNumChunksString = error(_),
-            MaybeNumChunks = error("Software error: error in `"
-                ++ NumChunksFileName
-                ++ "': expected single int.\n")
-        )
-    ;
-        Res = error(Error),
-        MaybeNumChunks = error(io__error_message(Error))
-    ).
-
-remove_split_c_output_files(ModuleName, NumChunks, !IO) :-
-    remove_split_c_output_files(ModuleName, 0, NumChunks, !IO).
-
-:- pred remove_split_c_output_files(module_name::in, int::in, int::in,
-    io::di, io::uo) is det.
-
-remove_split_c_output_files(ModuleName, ThisChunk, NumChunks, !IO) :-
-    ( ThisChunk =< NumChunks ->
-        globals__io_lookup_string_option(object_file_extension, Obj, !IO),
-        module_name_to_split_c_file_name(ModuleName, ThisChunk, ".c",
-            CFileName, !IO),
-        module_name_to_split_c_file_name(ModuleName, ThisChunk, Obj,
-            ObjFileName, !IO),
-        io__remove_file(CFileName, _, !IO),
-        io__remove_file(ObjFileName, _, !IO),
-        remove_split_c_output_files(ModuleName, ThisChunk, NumChunks, !IO)
-    ;
-        true
-    ).
 
 %-----------------------------------------------------------------------------%
 

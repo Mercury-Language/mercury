@@ -30,6 +30,8 @@ Changes to the Mercury compiler:
   involving single-solution contexts.
 * We have significantly improved the compiler's performance on predicates
   with many clauses.
+* We have deleted the old --split-c-files option, as it conflicted with the
+  implementation of module initialisation and finalisation.
 
 Portability Improvements:
 * None yet.

@@ -117,9 +117,6 @@ Options:
         Disable optimization by the C compiler.
     --inline-alloc
         Inline calls to the memory allocator.
-    --split-c-files
-        This option must be specified if the argument C files were generated
-        by the Mercury compiler with --split-c-files.
     --mercury-standard-library-directory <directory>
     --mercury-stdlib-dir <directory>
         The directory containing the installed Mercury standard library.

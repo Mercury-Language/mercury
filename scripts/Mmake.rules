@@ -483,12 +483,6 @@ lib%.install: lib%.install_ints lib%.install_hdrs lib%.install_init \
 		lib%.install_library
 	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
 
-.PHONY: lib%.install_split
-lib%.install_split: lib%.install_ints lib%.install_init \
-		lib%.install_split_library
-	$(MMAKE) lib$*.install_split_grades || \
-			{ mercury_cleanup_install && exit 1; }
-
 .PHONY: lib%.install_init
 lib%.install_init: %.init install_lib_dirs
 	$(INSTALL) `vpath_find $*.init` $(INSTALL_MODULE_DIR)
@@ -499,10 +493,6 @@ lib%.install_library: lib%.$A lib%.$(EXT_FOR_SHARED_LIB) \
 			lib%.install_opts
 	$(INSTALL) `vpath_find lib$*.$A lib$*.$(EXT_FOR_SHARED_LIB)` \
 			$(INSTALL_MERC_LIB_DIR)
-	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$*.$A
-
-lib%.install_split_library: %.split.$A install_grade_dirs
-	$(INSTALL) `vpath_find $*.split.$A` $(INSTALL_MERC_LIB_DIR)/lib$*.$A
 	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$*.$A
 
 # XXX grade_files only contains the files for the default grade, not the
@@ -542,27 +532,6 @@ lib%.install_grades:
 	done && \
 	{ mv -f tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \
 		mv -f tmp_dir/* .; rmdir tmp_dir; true; }
-
-lib%.install_split_grades:
-	rm -rf tmp_dir && \
-	mkdir tmp_dir && \
-	{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv $($*.mihs) \
-		$($*.dirs) *.a *.so tmp_dir || true; } && \
-	for grade in $(ALL_LIBGRADES); do \
-		if [ "$$grade" != "$(GRADE)" ]; then \
-			$(MMAKE) GRADE=$$grade $*.depend || \
-				exit 1; \
-			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \
-				exit 1; \
-			rm -rf $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
-				$($*.mihs) $($*.dirs) *.a *.so; \
-		fi; \
-	done && \
-	{ mv tmp_dir/*.dir $(dirs_subdir). ; \
-	  mv tmp_dir/*.dep $(deps_subdir). ; \
-	  mv tmp_dir/*.dv $(deps_subdir). ; \
-	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
-
 
 .PHONY: install_lib_dirs
 install_lib_dirs:

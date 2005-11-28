@@ -339,7 +339,7 @@ to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
     module_info::in, string::out, string::out, string::out, string::out,
     string::out, assoc_list(arg_info, mer_type)::out) is det.
 
-get_export_info(Preds, PredId, ProcId, Globals, ModuleInfo, HowToDeclareLabel,
+get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
         C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
         ArgInfoTypes) :-
     map__lookup(Preds, PredId, PredInfo),
@@ -349,10 +349,6 @@ get_export_info(Preds, PredId, ProcId, Globals, ModuleInfo, HowToDeclareLabel,
             procedure_is_exported(ModuleInfo, PredInfo, ProcId)
         ;
             status_defined_in_this_module(Status, no)
-        ;
-            % for --split-c-files, we need to treat
-            % all procedures as if they were exported
-            globals__lookup_bool_option(Globals, split_c_files, yes)
         )
     ->
         HowToDeclareLabel = "MR_declare_entry"

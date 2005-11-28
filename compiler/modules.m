@@ -107,27 +107,6 @@
 :- pred module_name_to_lib_file_name(string::in, module_name::in, string::in,
     bool::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_split_c_file_name(Module, Num, Extension, FileName):
-    %
-    % Like module_name_to_file_name, but also allows a sequence number.
-    % The files produced by this predicate will all be in a subdirectory
-    % DirName, which be obtained by calling
-    % `module_name_to_file_name(Module, ".dir", DirName)'.
-    % This predicate does not create that directory.
-    %
-    % This predicate is used for the names of .c and .$O files for
-    % --split-c-files.
-    %
-:- pred module_name_to_split_c_file_name(module_name::in, int::in, string::in,
-    file_name::out, io::di, io::uo) is det.
-
-    % module_name_to_split_c_file_pattern(Module, Extension, FileName):
-    % Like module_name_to_split_c_file_name, but generates a wildcard pattern
-    % to match all such files with the given extension for the given module.
-    %
-:- pred module_name_to_split_c_file_pattern(module_name::in, string::in,
-    file_name::out, io::di, io::uo) is det.
-
     % fact_table_file_name(Module, FactTableFileName, Ext, MkDir, FileName):
     % Returns the filename to use when compiling fact table files.
     % If 'MkDir' is yes, then create any directories needed.
@@ -923,8 +902,6 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             % executable files
             ( Ext = ""
             ; Ext = ".exe"
-            ; Ext = ".split"
-            ; Ext = ".split.exe"
             ; Ext = ".dll"
             % library files
             ; Ext = ".a"
@@ -933,11 +910,6 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             ; Ext = ".dylib"
             ; Ext = ".$(EXT_FOR_SHARED_LIB)"
             ; Ext = ".jar"
-            ; Ext = ".split.a"
-            ; Ext = ".split.$A"
-            ; Ext = ".split.so"
-            ; Ext = ".split.dylib"
-            ; Ext = ".split.$(EXT_FOR_SHARED_LIB)"
             ; Ext = ".init"
                     % mercury_update_interface
                     % requires the `.init.tmp' files to
@@ -1070,19 +1042,6 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
         ),
         make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO)
     ).
-
-module_name_to_split_c_file_name(ModuleName, Num, Ext, FileName, !IO) :-
-    module_name_to_file_name(ModuleName, ".dir", no, DirName, !IO),
-    unqualify_name(ModuleName, BaseFileName),
-    dir__directory_separator(Slash),
-    string__format("%s%c%s_%03d%s",
-        [s(DirName), c(Slash), s(BaseFileName), i(Num), s(Ext)],
-        FileName).
-
-module_name_to_split_c_file_pattern(ModuleName, Ext, Pattern, !IO) :-
-    module_name_to_file_name(ModuleName, ".dir", no, DirName, !IO),
-    dir__directory_separator(Slash),
-    string__format("%s%c*%s", [s(DirName), c(Slash), s(Ext)], Pattern).
 
 file_name_to_module_name(FileName, ModuleName) :-
     string_to_sym_name(FileName, ".", ModuleName).
@@ -1225,9 +1184,7 @@ file_is_arch_or_grade_dependent(Globals, Ext) :-
     ).
 file_is_arch_or_grade_dependent(Globals, Ext) :-
     globals__lookup_string_option(Globals, library_extension, LibExt),
-    ( Ext = LibExt
-    ; Ext = ".split" ++ LibExt
-    ).
+    Ext = LibExt.
 file_is_arch_or_grade_dependent(Globals, Ext) :-
     globals__lookup_string_option(Globals, shared_library_extension, Ext).
 
@@ -1254,13 +1211,9 @@ file_is_arch_or_grade_dependent_2(".java").
 file_is_arch_or_grade_dependent_2(".java_date").
 file_is_arch_or_grade_dependent_2(".class").
 file_is_arch_or_grade_dependent_2(".dir").
-file_is_arch_or_grade_dependent_2(".num_split").
 file_is_arch_or_grade_dependent_2(".dll").
 file_is_arch_or_grade_dependent_2(".$A").
 file_is_arch_or_grade_dependent_2(".a").
-file_is_arch_or_grade_dependent_2(".split.$A").
-file_is_arch_or_grade_dependent_2(".split.a").
-file_is_arch_or_grade_dependent_2(".split").
 file_is_arch_or_grade_dependent_2("_init.c").
 file_is_arch_or_grade_dependent_2("_init.$O").
 
@@ -3093,8 +3046,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         module_name_to_file_name(ModuleName, ".pic_o", no, PicObjFileName,
             !IO),
         module_name_to_file_name(ModuleName, ".int0", no, Int0FileName, !IO),
-        module_name_to_split_c_file_pattern(ModuleName, ".$O",
-            SplitObjPattern, !IO),
         io__write_strings(DepStream, ["\n\n",
             OptDateFileName, " ",
             TransOptDateFileName, " ",
@@ -3102,7 +3053,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             CDateFileName, " ",
             AsmDateFileName, " ",
             PicAsmDateFileName, " ",
-            SplitObjPattern, " ",
             RLOFileName, " ",
             ILDateFileName, " ",
             JavaDateFileName
@@ -3183,7 +3133,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 CDateFileName, " ",
                 AsmDateFileName, " ",
                 PicAsmDateFileName, " ",
-                SplitObjPattern, " ",
                 RLOFileName, " ",
                 ILDateFileName, " ",
                 JavaDateFileName, " : "
@@ -3219,7 +3168,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                     CDateFileName, " ",
                     AsmDateFileName, " ",
                     PicAsmDateFileName, " ",
-                    SplitObjPattern, " ",
                     RLOFileName, " ",
                     ILDateFileName, " ",
                     JavaDateFileName, " : "
@@ -3245,37 +3193,30 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             HighLevelCode = yes,
             CompilationTarget = c
         ->
-            %
-            % For --high-level-code with --target c,
-            % we need to make sure that we
-            % generate the header files for imported modules
-            % before compiling the C files, since the generated C
-            % files #include those header files.
-            %
+            % For --high-level-code with --target c, we need to make sure that
+            % we generate the header files for imported modules before
+            % compiling the C files, since the generated C files
+            % #include those header files.
+
             io__write_strings(DepStream, [
                 "\n\n",
                 PicObjFileName, " ",
-                ObjFileName, " ",
-                SplitObjPattern, " :"
+                ObjFileName, " :"
             ], !IO),
             write_dependencies_list(AllDeps, ".mih", DepStream, !IO)
         ;
             true
         ),
 
-        %
-        % We need to tell make how to make the header
-        % files.  The header files are actually built by
-        % the same command that creates the .c or .s file,
-        % so we just make them depend on the .c or .s files.
-        % This is needed for the --high-level-code rule above,
-        % and for the rules introduced for
-        % `:- pragma foreign_import_module' declarations.
-        % In some grades the header file won't actually be built
-        % (e.g. LLDS grades for modules not containing
-        % `:- pragma export' declarations), but this
-        % rule won't do any harm.
-        %
+        % We need to tell make how to make the header files. The header files
+        % are actually built by the same command that creates the .c or .s
+        % file, so we just make them depend on the .c or .s files.
+        % This is needed for the --high-level-code rule above, and for
+        % the rules introduced for `:- pragma foreign_import_module'
+        % declarations. In some grades the header file won't actually be built
+        % (e.g. LLDS grades for modules not containing `:- pragma export'
+        % declarations), but this rule won't do any harm.
+
         module_name_to_file_name(ModuleName, ".c", no, CFileName, !IO),
         module_name_to_file_name(ModuleName, ".s", no, AsmFileName, !IO),
         module_name_to_file_name(ModuleName, ".mh", no, HeaderFileName, !IO),
@@ -3283,11 +3224,9 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         io__write_strings(DepStream, [
             "\n\n",
             "ifeq ($(TARGET_ASM),yes)\n",
-            HeaderFileName, " ", HeaderFileName2,
-                " : ", AsmFileName, "\n",
+            HeaderFileName, " ", HeaderFileName2, " : ", AsmFileName, "\n",
             "else\n",
-            HeaderFileName, " ",  HeaderFileName2,
-                " : ", CFileName, "\n",
+            HeaderFileName, " ",  HeaderFileName2, " : ", CFileName, "\n",
             "endif"
         ], !IO),
 
@@ -3347,6 +3286,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         io__write_strings(DepStream, [" : ", SourceFileName], !IO),
         write_dependencies_list(LongDeps, ".int3", DepStream, !IO),
         write_dependencies_list(ShortDeps, ".int3", DepStream, !IO),
+        io__write_string(DepStream, "\n\n", !IO),
 
         %
         % If we can pass the module name rather than the
@@ -3362,34 +3302,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             HaveMap = no,
             ModuleArg = SourceFileName
         ),
-
-        %
-        % XXX The rule below will cause an undefined make
-        % variable warning for $(MCFLAGS-module) when run,
-        % but there's no easy way to avoid that without using
-        % features only available in recent versions of make.
-        % The special case handling of $(MCFLAGS-module) in
-        % this rule is necessary because it's difficult to extract
-        % the module name from $@ (e.g. module.dir/module_000.o) in
-        % the code for TARGET_MCFLAGS in Mmake.vars.in using make's
-        % text handling functions ($(patsubst ...) only works for a
-        % single occurrence of the pattern).
-        %
-        % With recent versions of make (3.78 or later) it would be
-        % possible to avoid the warning using
-        %    $(if $(findstring undefined,$(origin MCFLAGS-module)),,\
-        %   $(MCFLAGS-module))
-        %
-        module_name_to_file_name(ModuleName, ".dir", no, DirFileName, !IO),
-        io__write_strings(DepStream, [
-            "\n\n",
-            SplitObjPattern, " : ",
-                SourceFileName, "\n",
-            "\trm -rf ", DirFileName, "\n",
-            "\t$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) ",
-                "$(MCFLAGS-", MakeVarName, ") ",
-                ModuleArg, "\n\n"
-        ], !IO),
 
         globals__io_get_target(Target, !IO),
         globals__io_lookup_bool_option(sign_assembly, SignAssembly, !IO),
@@ -4861,12 +4773,6 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io__write_string(DepStream, "\n", !IO),
 
     io__write_string(DepStream, MakeVarName, !IO),
-    io__write_string(DepStream, ".num_splits = ", !IO),
-    write_compact_dependencies_list(Modules, "$(num_splits_subdir)",
-        ".num_split", Basis, DepStream, !IO),
-    io__write_string(DepStream, "\n", !IO),
-
-    io__write_string(DepStream, MakeVarName, !IO),
     io__write_string(DepStream, ".dir_os = ", !IO),
     write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir/*.$O",
         Basis, DepStream, !IO),
@@ -5193,28 +5099,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         )
     ),
     io__write_strings(DepStream, Rules, !IO),
-
-    module_name_to_file_name(ModuleName, ".split", yes, SplitExeFileName, !IO),
-    module_name_to_file_name(ModuleName, ".split.$A", yes, SplitLibFileName,
-        !IO),
-    io__write_strings(DepStream, [
-        SplitExeFileName, " : ", SplitLibFileName, " ", InitObjFileName, " ",
-            All_MLObjsString, " ", All_MLLibsDepString, "\n",
-        "\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) ",
-            "-o ", SplitExeFileName, " ", InitObjFileName, " \\\n",
-        "\t\t", SplitLibFileName, " ", All_MLObjsString, " $(ALL_MLLIBS)\n\n"
-    ], !IO),
-
-    io__write_strings(DepStream, [
-        SplitLibFileName, " : $(", MakeVarName, ".dir_os) ",
-            All_MLObjsString, "\n",
-        "\trm -f ", SplitLibFileName, "\n",
-        "\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT) ",
-        SplitLibFileName, " ", All_MLObjsString, "\n",
-        "\tfind $(", MakeVarName, ".dirs) -name ""*.$O"" -print | \\\n",
-        "\t\txargs $(AR) q ", SplitLibFileName, "\n",
-        "\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
-    ], !IO),
 
     globals__io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
     (
@@ -5615,7 +5499,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         ".PHONY : ", CleanTargetName, "\n",
         CleanTargetName, " :\n",
         "\t-echo $(", MakeVarName, ".dirs) | xargs rm -rf \n",
-        "\t-echo $(", MakeVarName, ".num_splits) | xargs rm -rf \n",
         "\t-echo $(", MakeVarName, ".cs) ", InitCFileName,
             " | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".mihs) | xargs rm -f\n",
@@ -5675,8 +5558,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io__write_strings(DepStream, [
         "\t-rm -f ",
             ExeFileName, "$(EXT_FOR_EXE) ",
-            SplitExeFileName, " ",
-            SplitLibFileName, " ",
             InitFileName, " ",
             LibFileName, " ",
             SharedLibFileName, " ",

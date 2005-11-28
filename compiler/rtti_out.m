@@ -71,8 +71,8 @@
     % --split-c-files option; it governs whether the rtti_data is declared
     % in the generated code or not.
     %
-:- pred rtti_out__register_rtti_data_if_nec(rtti_data::in, bool::in,
-    io::di, io::uo) is det.
+:- pred rtti_out__register_rtti_data_if_nec(rtti_data::in, io::di, io::uo)
+    is det.
 
     % Output the C name of the rtti_data specified by the given rtti_id.
     %
@@ -1312,7 +1312,7 @@ output_rtti_data_decl_chunk(Group, RttiIds, !DeclSet, !IO) :-
     io__nl(!IO),
     output_rtti_type_decl(RttiId, !DeclSet, !IO),
     globals__io_get_globals(Globals, !IO),
-    LinkageStr = c_data_linkage_string(Globals, Linkage, yes, no),
+    LinkageStr = c_data_linkage_string(Linkage, no),
     InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
 
     io__write_string(LinkageStr, !IO),
@@ -1388,7 +1388,7 @@ output_rtti_id_storage_type_name(RttiId, BeingDefined, !DeclSet, !IO) :-
     output_rtti_type_decl(RttiId, !DeclSet, !IO),
     rtti_id_linkage(RttiId, Linkage),
     globals__io_get_globals(Globals, !IO),
-    LinkageStr = c_data_linkage_string(Globals, Linkage, yes, BeingDefined),
+    LinkageStr = c_data_linkage_string(Linkage, BeingDefined),
     io__write_string(LinkageStr, !IO),
 
     InclCodeAddr = rtti_id_would_include_code_addr(RttiId),
@@ -1545,18 +1545,11 @@ rtti_out__init_rtti_data_if_nec(Data, !IO) :-
         true
     ).
 
-rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
+rtti_out__register_rtti_data_if_nec(Data, !IO) :-
     ( Data = type_ctor_info(TypeCtorData) ->
         RttiTypeCtor = tcd_get_rtti_type_ctor(TypeCtorData),
         RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_info),
         io__write_string("\t{\n\t", !IO),
-        (
-            SplitFiles = yes,
-            output_rtti_id_storage_type_name_no_decl(RttiId, no, !IO),
-            io__write_string(";\n", !IO)
-        ;
-            SplitFiles = no
-        ),
         io__write_string("\tMR_register_type_ctor_info(\n\t\t&", !IO),
         output_rtti_id(RttiId, !IO),
         io__write_string(");\n\t}\n", !IO)
@@ -1565,14 +1558,6 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
         TCId = tc_id(TCName, _, _),
         RttiId = tc_rtti_id(TCName, type_class_decl),
         io__write_string("\t{\n\t", !IO),
-        (
-            SplitFiles = yes,
-            output_rtti_id_storage_type_name_no_decl(RttiId, no,
-                !IO),
-            io__write_string(";\n", !IO)
-        ;
-            SplitFiles = no
-        ),
         io__write_string("\tMR_register_type_class_decl(\n\t\t&", !IO),
         output_rtti_id(RttiId, !IO),
         io__write_string(");\n\t}\n", !IO)
@@ -1580,16 +1565,7 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
         TCInstance = tc_instance(TCName, TCTypes, _, _, _),
         RttiId = tc_rtti_id(TCName, type_class_instance(TCTypes)),
         io__write_string("\t{\n\t", !IO),
-        (
-            SplitFiles = yes,
-            output_rtti_id_storage_type_name_no_decl(RttiId, no,
-                !IO),
-            io__write_string(";\n", !IO)
-        ;
-            SplitFiles = no
-        ),
-        io__write_string("\tMR_register_type_class_instance(\n\t\t&",
-            !IO),
+        io__write_string("\tMR_register_type_class_instance(\n\t\t&", !IO),
         output_rtti_id(RttiId, !IO),
         io__write_string(");\n\t}\n", !IO)
     ;

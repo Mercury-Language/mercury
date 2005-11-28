@@ -1296,29 +1296,13 @@ compile_with_module_options(ModuleName, OptionVariables, OptionArgs,
 find_smart_recompilation_target_files(TopLevelModuleName,
         Globals, FindTargetFiles) :-
     globals__get_target(Globals, CompilationTarget),
-    (
-        CompilationTarget = c,
-        globals__lookup_bool_option(Globals, split_c_files, yes)
-    ->
-        FindTargetFiles = split_c_find_target_files
-    ;
-        ( CompilationTarget = c, TargetSuffix = ".c"
-        ; CompilationTarget = il, TargetSuffix = ".il"
-        ; CompilationTarget = java, TargetSuffix = ".java"
-        ; CompilationTarget = asm, TargetSuffix = ".s"
-        ),
-        FindTargetFiles = usual_find_target_files(CompilationTarget,
-            TargetSuffix, TopLevelModuleName)
-    ).
-
-:- pred split_c_find_target_files(module_name::in, list(file_name)::out,
-    io::di, io::uo) is det.
-
-split_c_find_target_files(ModuleName, [FileName], !IO) :-
-    globals__io_lookup_string_option(object_file_extension, Obj, !IO),
-    % We don't know how many chunks there should be, so just check
-    % the first.
-    module_name_to_split_c_file_name(ModuleName, 0, Obj, FileName, !IO).
+    ( CompilationTarget = c, TargetSuffix = ".c"
+    ; CompilationTarget = il, TargetSuffix = ".il"
+    ; CompilationTarget = java, TargetSuffix = ".java"
+    ; CompilationTarget = asm, TargetSuffix = ".s"
+    ),
+    FindTargetFiles = usual_find_target_files(CompilationTarget,
+        TargetSuffix, TopLevelModuleName).
 
 :- pred usual_find_target_files(compilation_target::in, string::in,
     module_name::in, module_name::in, list(file_name)::out,
@@ -1331,9 +1315,8 @@ usual_find_target_files(CompilationTarget, TargetSuffix, TopLevelModuleName,
         CompilationTarget = asm,
         ModuleName \= TopLevelModuleName
     ->
-        % With `--target asm' all the nested
-        % sub-modules are placed in the `.s' file
-        % of the top-level module.
+        % With `--target asm' all the nested sub-modules are placed
+        % in the `.s' file of the top-level module.
         TargetFiles = []
     ;
         module_name_to_file_name(ModuleName, TargetSuffix, yes, FileName, !IO),
@@ -4105,7 +4088,7 @@ output_pass(HLDS, GlobalData0, Procs, MaybeRLFile, ModuleName, CompileErrors,
     list__condense([StaticCells, ClosureLayouts, StackLayouts,
         TypeCtorTables, TypeClassInfos, AditiProcInfos], AllData),
     construct_c_file(HLDS, C_InterfaceInfo, Procs, GlobalVars, AllData, CFile,
-        NumChunks, !IO),
+        !IO),
     module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
     output_llds(ModuleName, CFile, ComplexityProcs, LayoutLabels, MaybeRLFile,
         Verbose, Stats, !IO),
@@ -4120,7 +4103,7 @@ output_pass(HLDS, GlobalData0, Procs, MaybeRLFile, ModuleName, CompileErrors,
     (
         TargetCodeOnly = no,
         io__output_stream(OutputStream, !IO),
-        c_to_obj(OutputStream, ModuleName, NumChunks, CompileOK, !IO),
+        c_to_obj(OutputStream, ModuleName, CompileOK, !IO),
         module_get_fact_table_files(HLDS, FactTableBaseFiles),
         list__map2_foldl(compile_fact_table_file(OutputStream),
             FactTableBaseFiles, FactTableObjFiles, FactTableCompileOKs, !IO),
@@ -4137,10 +4120,10 @@ output_pass(HLDS, GlobalData0, Procs, MaybeRLFile, ModuleName, CompileErrors,
 
 :- pred construct_c_file(module_info::in, foreign_interface_info::in,
     list(c_procedure)::in, list(comp_gen_c_var)::in, list(comp_gen_c_data)::in,
-    c_file::out, int::out, io::di, io::uo) is det.
+    c_file::out, io::di, io::uo) is det.
 
 construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars, AllData,
-        CFile, ComponentCount, !IO) :-
+        CFile, !IO) :-
     C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
         C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
     MangledModuleName = sym_name_mangle(ModuleSymName),
@@ -4173,15 +4156,8 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars, AllData,
     module_info_user_final_pred_c_names(ModuleInfo, UserFinalPredCNames),
 
     CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
-            GlobalVars, AllData, ChunkedModules, UserInitPredCNames,
-            UserFinalPredCNames),
-    list__length(C_BodyCode, UserCCodeCount),
-    list__length(C_ExportDefns, ExportCount),
-    list__length(GlobalVars, CompGenVarCount),
-    list__length(AllData, CompGenDataCount),
-    list__length(ChunkedModules, CompGenCodeCount),
-    ComponentCount = UserCCodeCount + ExportCount + CompGenVarCount +
-        CompGenDataCount + CompGenCodeCount.
+        GlobalVars, AllData, ChunkedModules, UserInitPredCNames,
+        UserFinalPredCNames).
 
 :- pred foreign_decl_code_is_local(foreign_decl_code::in) is semidet.
 
@@ -4272,25 +4248,17 @@ output_llds(ModuleName, LLDS0, ComplexityProcs, StackLayoutLabels, MaybeRLFile,
     maybe_flush_output(Verbose, !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred c_to_obj(io__output_stream::in, module_name::in,
-    int::in, bool::out, io::di, io::uo) is det.
+:- pred c_to_obj(io__output_stream::in, module_name::in, bool::out,
+    io::di, io::uo) is det.
 
-c_to_obj(ErrorStream, ModuleName, NumChunks, Succeeded, !IO) :-
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-    (
-        SplitFiles = yes,
-        compile_target_code__split_c_to_obj(ErrorStream, ModuleName,
-            NumChunks, Succeeded, !IO)
-    ;
-        SplitFiles = no,
-        get_linked_target_type(LinkedTargetType, !IO),
-        get_object_code_type(LinkedTargetType, PIC, !IO),
-        maybe_pic_object_file_extension(PIC, Obj, !IO),
-        module_name_to_file_name(ModuleName, ".c", no, C_File, !IO),
-        module_name_to_file_name(ModuleName, Obj, yes, O_File, !IO),
-        compile_target_code__compile_c_file(ErrorStream, PIC, C_File, O_File,
-            Succeeded, !IO)
-    ).
+c_to_obj(ErrorStream, ModuleName, Succeeded, !IO) :-
+    get_linked_target_type(LinkedTargetType, !IO),
+    get_object_code_type(LinkedTargetType, PIC, !IO),
+    maybe_pic_object_file_extension(PIC, Obj, !IO),
+    module_name_to_file_name(ModuleName, ".c", no, C_File, !IO),
+    module_name_to_file_name(ModuleName, Obj, yes, O_File, !IO),
+    compile_target_code__compile_c_file(ErrorStream, PIC, C_File, O_File,
+        Succeeded, !IO).
 
 :- pred compile_fact_table_file(io__output_stream::in, string::in,
     string::out, bool::out, io::di, io::uo) is det.

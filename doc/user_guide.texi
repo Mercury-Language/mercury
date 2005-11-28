@@ -534,12 +534,6 @@ Error messages are placed in @file{.err} files.
 Compiles and links @var{main-module} using the Mercury compiler.
 Error messages are placed in @file{.err} files.
 
-@item @var{main-module}.split
-Compiles and links @var{main-module} using the Mercury compiler,
-with the Mercury compiler's @samp{--split-c-files} option enabled.
-For more information about @samp{--split-c-files}, see
-@ref{Output-level (LLDS -> C) optimization options}.
-
 @item @var{main-module}.javas
 Compiles @var{main-module} to Java source files (@file{*.java}).
 
@@ -606,10 +600,8 @@ belonging to one of the modules of the program,
 and also the various possible executables, libraries and dependency files
 for the program as a whole ---
 @samp{@var{main-module}},
-@samp{@var{main-module}.split},
 @samp{lib@var{main-module}.a},
 @samp{lib@var{main-module}.so},
-@samp{@var{main-module}.split.a},
 @samp{@var{main-module}.init},
 @samp{@var{main-module}.dep}
 and
@@ -6883,34 +6875,6 @@ others.
 Perform analyses such as termination analysis and
 unused argument elimination across module boundaries.
 This option is not yet fully implemented.
-
-@sp 1
-@item --split-c-files
-@findex --split-c-files
-@findex --optimize-dead-procs
-@cindex Optimizing code size
-@cindex Optimizing space
-Generate each C function in its own C file,
-so that the linker will optimize away unused code.
-This has the same effect as @samp{--optimize-dead-procs},
-except that it works globally at link time, rather than
-over a single module, so it does a much better job of
-eliminating unused procedures.
-This option significantly increases compilation time,
-link time, and intermediate disk space requirements,
-but in return reduces the size of the final
-executable, typically by about 10--20%.
-This option is only useful with @samp{--procs-per-c-function 1},
-so this option automatically sets @samp{--procs-per-c-function 1}.
-
-@findex --high-level-code
-The @samp{--high-level-code} back-end does not support
-@samp{--split-c-files}.
-
-N.B.  When using @samp{mmake}, the @samp{--split-c-files} option should
-not be placed in the @samp{MCFLAGS} variable.  Instead, use the
-@samp{@var{MODULE}.split} target, i.e.@: type @samp{mmake foo.split}
-rather than @samp{mmake foo}.
 
 @end table
 

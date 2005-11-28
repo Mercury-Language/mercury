@@ -26,8 +26,6 @@
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
-:- import_module mdbcomp.prim_data.
-
 :- import_module bool.
 :- import_module io.
 :- import_module list.
@@ -37,10 +35,8 @@
 %-----------------------------------------------------------------------------%
 
     % Given a 'c_file' structure, output the LLDS code inside it
-    % into one or more .c files, depending on the setting of the
-    % --split-c-files option. The second argument gives the set of
-    % labels that have layout structures. The third gives the Aditi-RL
-    % code for the module.
+    % into a .c file. The second argument gives the set of labels that have
+    % layout structures. The third gives the Aditi-RL code for the module.
     %
 :- pred output_llds(c_file::in, list(complexity_proc_info)::in,
     map(label, data_addr)::in, maybe(rl_file)::in, io::di, io::uo) is det.
@@ -81,12 +77,12 @@
 
 :- pred output_data_addr(data_addr::in, io::di, io::uo) is det.
 
-    % c_data_linkage_string(Globals, DefaultLinkage, StaticEvenIfSplit,
-    %   BeingDefined):
+    % c_data_linkage_string(DefaultLinkage, BeingDefined):
+    %
     % Return a C string that gives the storage class appropriate for the
     % definition of a global variable with the specified properties.
     %
-:- func c_data_linkage_string(globals, linkage, bool, bool) = string.
+:- func c_data_linkage_string(linkage, bool) = string.
 
     % Given a boolean that states whether a data item includes code
     % addresses or not, return a C string that gives its "const-ness".
@@ -138,7 +134,7 @@
     % to put these in a new module (maybe llds_out_util).
 
 :- type decl_id
-    --->    common_type(module_name, int)
+    --->    common_type(int)
     ;       float_label(string)
     ;       code_addr(code_addr)
     ;       data_addr(data_addr)
@@ -182,8 +178,8 @@
 
 :- implementation.
 
-:- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.c_util.
+:- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
@@ -200,6 +196,7 @@
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.rtti_out.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
@@ -237,150 +234,15 @@ decl_set_is_member(DeclId, DeclSet) :-
 
 %-----------------------------------------------------------------------------%
 
-output_llds(C_File, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO) :-
-    C_File = c_file(ModuleName, C_HeaderInfo, UserForeignCodes, Exports, Vars,
-        Datas, Modules, UserInitPredCNames, UserFinalPredCNames),
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-    (
-        SplitFiles = yes,
-        module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName, !IO),
-        dir__make_directory(ObjDirName, _, !IO),
-
-        output_split_c_file_init(ModuleName, Modules, Datas, Vars,
-            ComplexityProcs, StackLayoutLabels, MaybeRLFile,
-            UserInitPredCNames, UserFinalPredCNames, !IO),
-        output_split_user_foreign_codes(UserForeignCodes, ModuleName,
-            C_HeaderInfo, ComplexityProcs, StackLayoutLabels, 1, Num1, !IO),
-        output_split_c_exports(Exports, ModuleName,
-            C_HeaderInfo, ComplexityProcs, StackLayoutLabels, Num1, Num2, !IO),
-        output_split_comp_gen_c_vars(Vars, ModuleName,
-            C_HeaderInfo, ComplexityProcs, StackLayoutLabels, Num2, Num3, !IO),
-        output_split_comp_gen_c_datas(Datas, ModuleName,
-            C_HeaderInfo, ComplexityProcs, StackLayoutLabels, Num3, Num4, !IO),
-        output_split_comp_gen_c_modules(Modules, ModuleName,
-            C_HeaderInfo, ComplexityProcs, StackLayoutLabels, Num4, Num, !IO),
-
-        compile_target_code__write_num_split_c_files(ModuleName, Num,
-            Succeeded, !IO),
-        (
-            Succeeded = no,
-            compile_target_code__remove_split_c_output_files(ModuleName, Num,
-                !IO)
-        ;
-            Succeeded = yes
-        )
-    ;
-        SplitFiles = no,
-        output_single_c_file(C_File, no, ComplexityProcs,
-            StackLayoutLabels, MaybeRLFile, !IO)
-    ).
-
-:- pred output_split_user_foreign_codes(list(user_foreign_code)::in,
-    module_name::in, list(foreign_decl_code)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    int::in, int::out, io::di, io::uo) is det.
-
-output_split_user_foreign_codes([], _, _, _, _, !Num, !IO).
-output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
-        ModuleName, C_HeaderLines, ComplexityProcs, StackLayoutLabels,
-        !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [UserForeignCode],
-        [], [], [], [], [], []),
-    output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
-        StackLayoutLabels, no, !IO),
-    !:Num = !.Num + 1,
-    output_split_user_foreign_codes(UserForeignCodes, ModuleName,
-        C_HeaderLines, ComplexityProcs, StackLayoutLabels, !Num, !IO).
-
-:- pred output_split_c_exports(list(foreign_export)::in, module_name::in,
-    list(foreign_decl_code)::in, list(complexity_proc_info)::in,
-    map(label, data_addr)::in, int::in, int::out, io::di, io::uo) is det.
-
-output_split_c_exports([], _, _, _, _, !Num, !IO).
-output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
-        ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [Export],
-        [], [], [], [], []),
-    output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
-        StackLayoutLabels, no, !IO),
-    !:Num = !.Num + 1,
-    output_split_c_exports(Exports, ModuleName, C_HeaderLines,
-        ComplexityProcs, StackLayoutLabels, !Num, !IO).
-
-:- pred output_split_comp_gen_c_vars(list(comp_gen_c_var)::in,
-    module_name::in, list(foreign_decl_code)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    int::in, int::out, io::di, io::uo) is det.
-
-output_split_comp_gen_c_vars([], _, _, _, _, !Num, !IO).
-output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
-        ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [], [Var], [], [], [], []),
-    output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
-        StackLayoutLabels, no, !IO),
-    !:Num = !.Num + 1,
-    output_split_comp_gen_c_vars(Vars, ModuleName, C_HeaderLines,
-        ComplexityProcs, StackLayoutLabels, !Num, !IO).
-
-:- pred output_split_comp_gen_c_datas(list(comp_gen_c_data)::in,
-    module_name::in, list(foreign_decl_code)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    int::in, int::out, io::di, io::uo) is det.
-
-output_split_comp_gen_c_datas([], _, _, _, _, !Num, !IO).
-output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
-        ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Data], [], [], []),
-    output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
-        StackLayoutLabels, no, !IO),
-    !:Num = !.Num + 1,
-    output_split_comp_gen_c_datas(Datas, ModuleName, C_HeaderLines,
-        ComplexityProcs, StackLayoutLabels, !Num, !IO).
-
-:- pred output_split_comp_gen_c_modules(list(comp_gen_c_module)::in,
-    module_name::in, list(foreign_decl_code)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    int::in, int::out, io::di, io::uo) is det.
-
-output_split_comp_gen_c_modules([], _, _, _, _, !Num, !IO).
-output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
-        ComplexityProcs, StackLayoutLabels, !Num, !IO) :-
-    CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [], [Module],
-        [], []),
-    output_single_c_file(CFile, yes(!.Num), ComplexityProcs,
-        StackLayoutLabels, no, !IO),
-    !:Num = !.Num + 1,
-    output_split_comp_gen_c_modules(Modules, ModuleName, C_HeaderLines,
-        ComplexityProcs, StackLayoutLabels, !Num, !IO).
-
-:- pred output_split_c_file_init(module_name::in, list(comp_gen_c_module)::in,
-    list(comp_gen_c_data)::in, list(comp_gen_c_var)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    maybe(rl_file)::in, list(string)::in, list(string)::in,
-    io::di, io::uo) is det.
-
-output_split_c_file_init(ModuleName, Modules, Datas, Vars, ComplexityProcs,
-        StackLayoutLabels, MaybeRLFile, UserInitPredCNames,
-        UserFinalPredCNames, !IO) :-
-    module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
-    module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName, !IO),
-
+output_llds(CFile, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO) :-
+    CFile = c_file(ModuleName, _, _, _, _, _, _, _, _),
+    module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO),
     io__open_output(FileName, Result, !IO),
     (
         Result = ok(FileStream),
-        library__version(Version),
-        io__set_output_stream(FileStream, OutputStream, !IO),
-        output_c_file_intro_and_grade(SourceFileName, Version, !IO),
-        output_init_comment(ModuleName, UserInitPredCNames,
-            UserFinalPredCNames, !IO),
-        output_c_file_mercury_headers(!IO),
-        io__write_string("\n", !IO),
         decl_set_init(DeclSet0),
-        output_c_module_init_list(ModuleName, Modules, Datas, Vars,
-            ComplexityProcs, StackLayoutLabels,
-            DeclSet0, _DeclSet, !IO),
-        c_util__output_rl_file(ModuleName, MaybeRLFile, !IO),
-        io__set_output_stream(OutputStream, _, !IO),
+        output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
+            MaybeRLFile, FileStream, DeclSet0, _, !IO),
         io__close_output(FileStream, !IO)
     ;
         Result = error(Error),
@@ -420,46 +282,11 @@ output_c_file_mercury_headers(!IO) :-
         GenBytecode = no
     ).
 
-:- pred output_single_c_file(c_file::in, maybe(int)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    maybe(rl_file)::in, io::di, io::uo) is det.
-
-output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
-        MaybeRLFile, !IO) :-
-    CFile = c_file(ModuleName, _, _, _, _, _, _, _, _),
-    (
-        SplitFiles = yes(Num),
-        module_name_to_split_c_file_name(ModuleName, Num, ".c", FileName, !IO)
-    ;
-        SplitFiles = no,
-        module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO)
-    ),
-    io__open_output(FileName, Result, !IO),
-    (
-        Result = ok(FileStream),
-        decl_set_init(DeclSet0),
-        do_output_single_c_file(CFile, SplitFiles, ComplexityProcs,
-            StackLayoutLabels, MaybeRLFile, FileStream, DeclSet0, _, !IO),
-        io__close_output(FileStream, !IO)
-    ;
-        Result = error(Error),
-        io__progname_base("llds.m", ProgName, !IO),
-        io__write_string("\n", !IO),
-        io__write_string(ProgName, !IO),
-        io__write_string(": can't open `", !IO),
-        io__write_string(FileName, !IO),
-        io__write_string("' for output:\n", !IO),
-        io__write_string(io__error_message(Error), !IO),
-        io__write_string("\n", !IO),
-        io__set_exit_status(1, !IO)
-    ).
-
-:- pred do_output_single_c_file(c_file::in, maybe(int)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    maybe(rl_file)::in, io__output_stream::in,
+:- pred output_single_c_file(c_file::in, list(complexity_proc_info)::in,
+    map(label, data_addr)::in, maybe(rl_file)::in, io__output_stream::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-do_output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
+output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
         MaybeRLFile, FileStream, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
         Vars, Datas, Modules, UserInitPredCNames, UserFinalPredCNames),
@@ -467,13 +294,8 @@ do_output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
     io__set_output_stream(FileStream, OutputStream, !IO),
     module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
     output_c_file_intro_and_grade(SourceFileName, Version, !IO),
-    (
-        SplitFiles = yes(_)
-    ;
-        SplitFiles = no,
-        output_init_comment(ModuleName, UserInitPredCNames,
-            UserFinalPredCNames, !IO)
-    ),
+    output_init_comment(ModuleName, UserInitPredCNames,
+        UserFinalPredCNames, !IO),
     output_c_file_mercury_headers(!IO),
 
     output_foreign_header_include_lines(C_HeaderLines, !IO),
@@ -497,15 +319,9 @@ do_output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
         !DeclSet, !IO),
     list__foldl(output_user_foreign_code, UserForeignCode, !IO),
     list__foldl(io__write_string, Exports, !IO),
-
-    (
-        SplitFiles = yes(_)
-    ;
-        SplitFiles = no,
-        io__write_string("\n", !IO),
-        output_c_module_init_list(ModuleName, Modules, Datas, Vars,
-            ComplexityProcs, StackLayoutLabels, !DeclSet, !IO)
-    ),
+    io__write_string("\n", !IO),
+    output_c_module_init_list(ModuleName, Modules, Datas, Vars,
+        ComplexityProcs, StackLayoutLabels, !DeclSet, !IO),
     c_util__output_rl_file(ModuleName, MaybeRLFile, !IO),
     io__set_output_stream(OutputStream, _, !IO).
 
@@ -550,17 +366,16 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     list__filter(MustInit, Modules, AlwaysInitModules, MaybeInitModules),
     list__chunk(AlwaysInitModules, 40, AlwaysInitModuleBunches),
     list__chunk(MaybeInitModules, 40, MaybeInitModuleBunches),
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
 
     output_init_bunch_defs(AlwaysInitModuleBunches, ModuleName,
-        "always", 0, SplitFiles, !IO),
+        "always", 0, !IO),
 
     (
         MaybeInitModuleBunches = []
     ;
         MaybeInitModuleBunches = [_ | _],
         output_init_bunch_defs(MaybeInitModuleBunches, ModuleName,
-            "maybe", 0, SplitFiles, !IO)
+            "maybe", 0, !IO)
     ),
 
     io__write_string("/* suppress gcc -Wmissing-decls warnings */\n", !IO),
@@ -621,11 +436,10 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     ),
 
     output_c_data_init_list(Datas, !IO),
-        % The call to the debugger initialization function
-        % is for bootstrapping; once the debugger has been modified
-        % to call do_init_modules_debugger() and all debuggable
-        % object files created before this change have been
-        % overwritten, it can be deleted.
+    % The call to the debugger initialization function is for bootstrapping;
+    % once the debugger has been modified to call do_init_modules_debugger()
+    % and all debuggable object files created before this change have been
+    % overwritten, it can be deleted.
     io__write_string("\t", !IO),
     output_init_name(ModuleName, !IO),
     io__write_string("init_debugger();\n", !IO),
@@ -640,7 +454,7 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     io__write_string("\t\treturn;\n", !IO),
     io__write_string("\t}\n", !IO),
     io__write_string("\tdone = MR_TRUE;\n", !IO),
-    output_type_tables_init_list(Datas, SplitFiles, !IO),
+    output_type_tables_init_list(Datas, !IO),
     io__write_string("}\n\n", !IO),
 
     output_debugger_init_list_decls(Datas, !DeclSet, !IO),
@@ -699,8 +513,8 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     map(label, data_addr)::in) is semidet.
 
 module_defines_label_with_layout(Module, StackLayoutLabels) :-
-        % Checking whether the set is empty or not
-        % allows us to avoid calling gather_c_module_labels.
+    % Checking whether the set is empty or not
+    % allows us to avoid calling gather_c_module_labels.
     \+ map__is_empty(StackLayoutLabels),
     Module = comp_gen_c_module(_, Procedures),
     gather_c_module_labels(Procedures, Labels),
@@ -708,47 +522,32 @@ module_defines_label_with_layout(Module, StackLayoutLabels) :-
     map__search(StackLayoutLabels, Label, _).
 
 :- pred output_init_bunch_defs(list(list(comp_gen_c_module))::in,
-    module_name::in, string::in, int::in, bool::in,
-    io::di, io::uo) is det.
+    module_name::in, string::in, int::in, io::di, io::uo) is det.
 
-output_init_bunch_defs([], _, _, _, _, !IO).
-output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq,
-        SplitFiles, !IO) :-
+output_init_bunch_defs([], _, _, _, !IO).
+output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq, !IO) :-
     io__write_string("static void ", !IO),
     output_bunch_name(ModuleName, InitStatus, Seq, !IO),
     io__write_string("(void)\n", !IO),
     io__write_string("{\n", !IO),
-    output_init_bunch_def(Bunch, ModuleName, SplitFiles, !IO),
+    output_init_bunch_def(Bunch, ModuleName, !IO),
     io__write_string("}\n\n", !IO),
     NextSeq = Seq + 1,
-    output_init_bunch_defs(Bunches, ModuleName, InitStatus, NextSeq,
-        SplitFiles, !IO).
+    output_init_bunch_defs(Bunches, ModuleName, InitStatus, NextSeq, !IO).
 
 :- pred output_init_bunch_def(list(comp_gen_c_module)::in, module_name::in,
-    bool::in, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
-output_init_bunch_def([], _, _, !IO).
-output_init_bunch_def([Module | Modules], ModuleName, SplitFiles, !IO) :-
+output_init_bunch_def([], _, !IO).
+output_init_bunch_def([Module | Modules], ModuleName, !IO) :-
     Module = comp_gen_c_module(C_ModuleName, _),
-    (
-        SplitFiles = yes,
-        io__write_string("\t{ extern MR_ModuleFunc ", !IO),
-        io__write_string(C_ModuleName, !IO),
-        io__write_string(";\n", !IO),
-        io__write_string("\t  ", !IO),
-        io__write_string(C_ModuleName, !IO),
-        io__write_string("(); }\n", !IO)
-    ;
-        SplitFiles = no,
-        io__write_string("\t", !IO),
-        io__write_string(C_ModuleName, !IO),
-        io__write_string("();\n", !IO)
-    ),
-    output_init_bunch_def(Modules, ModuleName, SplitFiles, !IO).
+    io__write_string("\t", !IO),
+    io__write_string(C_ModuleName, !IO),
+    io__write_string("();\n", !IO),
+    output_init_bunch_def(Modules, ModuleName, !IO).
 
 :- pred output_init_bunch_calls(list(list(comp_gen_c_module))::in,
-    module_name::in, string::in, int::in, io::di, io::uo)
-    is det.
+    module_name::in, string::in, int::in, io::di, io::uo) is det.
 
 output_init_bunch_calls([], _, _, _, !IO).
 output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq, !IO) :-
@@ -776,16 +575,16 @@ output_c_data_init_list([Data | Datas], !IO) :-
     % Output code to register each type_ctor_info defined in this module.
 
 :- pred output_type_tables_init_list(list(comp_gen_c_data)::in,
-    bool::in, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
-output_type_tables_init_list([], _, !IO).
-output_type_tables_init_list([Data | Datas], SplitFiles, !IO) :-
+output_type_tables_init_list([], !IO).
+output_type_tables_init_list([Data | Datas], !IO) :-
     ( Data = rtti_data(RttiData) ->
-        rtti_out__register_rtti_data_if_nec(RttiData, SplitFiles, !IO)
+        rtti_out__register_rtti_data_if_nec(RttiData, !IO)
     ;
         true
     ),
-    output_type_tables_init_list(Datas, SplitFiles, !IO).
+    output_type_tables_init_list(Datas, !IO).
 
     % Output declarations for each module layout defined in this module
     % (there should only be one, of course).
@@ -1038,43 +837,27 @@ classify_comp_gen_c_data([Data | Datas], !CommonMap, !CommonList,
 
 output_common_decl_group(TypeNum - CommonDatas, !DeclSet, !IO) :-
     io__write_string("\n", !IO),
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-    ExportedFromFile = SplitFiles,
     (
         CommonDatas = [CommonData | _],
-        CommonData = common_data(ModuleName, _, TypeAndValue)
+        CommonData = common_data(_, _, TypeAndValue)
     ;
         CommonDatas = [],
         unexpected(this_file, "output_common_decl_chunk: empty list")
     ),
-    TypeDeclId = common_type(ModuleName, TypeNum),
+    TypeDeclId = common_type(TypeNum),
     ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
         true
     ;
-        output_const_term_type(TypeAndValue, ModuleName, "", "", 0, _, !IO),
+        output_const_term_type(TypeAndValue, "", "", 0, _, !IO),
         io__write_string("\n", !IO),
         decl_set_insert(TypeDeclId, !DeclSet)
     ),
-    (
-        ExportedFromFile = no,
-        % There should be a macro MR_DEF_COMMON<n> for every n up to
-        % ChunkSize.
-        ChunkSize = 10,
-        list__chunk(list__reverse(CommonDatas), ChunkSize, CommonDataChunks),
-        list__foldl2(output_common_decl_shorthand_chunk(TypeNum),
-            CommonDataChunks, !DeclSet, !IO)
-    ;
-        ExportedFromFile = yes,
-        % ChunkSize should be as large as possible to reduce the size
-        % of the file being generated, but small enough not to overload
-        % the fixed limits of our target C compilers.
-        ChunkSize = 20,
-        % The process of creating the multi_map reverses the order of
-        % CommonDatas, we now undo this reversal.
-        list__chunk(list__reverse(CommonDatas), ChunkSize, CommonDataChunks),
-        list__foldl2(output_common_decl_chunk(ModuleName, TypeNum),
-            CommonDataChunks, !DeclSet, !IO)
-    ).
+    % There should be a macro MR_DEF_COMMON<n> for every n up to
+    % ChunkSize.
+    ChunkSize = 10,
+    list__chunk(list__reverse(CommonDatas), ChunkSize, CommonDataChunks),
+    list__foldl2(output_common_decl_shorthand_chunk(TypeNum),
+        CommonDataChunks, !DeclSet, !IO).
 
 :- pred output_common_decl_shorthand_chunk(int::in, list(common_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1110,13 +893,12 @@ output_common_decl_shorthand_chunk_entries([CommonData | CommonDatas],
         CommonDatas = []
     ).
 
-:- pred output_common_decl_chunk(module_name::in, int::in,
-    list(common_data)::in, decl_set::in, decl_set::out, io::di, io::uo)
-    is det.
+:- pred output_common_decl_chunk(int::in, list(common_data)::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_common_decl_chunk(ModuleName, TypeNum, CommonDatas, !DeclSet, !IO) :-
+output_common_decl_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
     io__write_string("const struct ", !IO),
-    output_common_cell_type_name(ModuleName, TypeNum, !IO),
+    output_common_cell_type_name(TypeNum, !IO),
     io__nl(!IO),
     output_common_decl_chunk_entries(CommonDatas, !DeclSet, !IO).
 
@@ -1167,22 +949,19 @@ output_common_data_decl(common_data(ModuleName, CellNum, TypeAndValue),
     % only within the C file generated for that module. However, if we generate
     % multiple C files, the code in each C file must be visible to the other
     % C files for that Mercury module.
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-    ExportedFromFile = SplitFiles,
     TypeNum = common_cell_get_type_num(TypeAndValue),
-    TypeDeclId = common_type(ModuleName, TypeNum),
+    TypeDeclId = common_type(TypeNum),
     ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
         true
     ;
-        output_const_term_type(TypeAndValue, ModuleName,
-            "", "", 0, _, !IO),
+        output_const_term_type(TypeAndValue, "", "", 0, _, !IO),
         io__write_string("\n", !IO),
         decl_set_insert(TypeDeclId, !DeclSet)
     ),
     VarName = common(CellNum, TypeNum),
     VarDeclId = data_addr(data_addr(ModuleName, VarName)),
     output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum,
-        ExportedFromFile, no, "", "", 0, _, !IO),
+        no, no, "", "", 0, _, !IO),
     decl_set_insert(VarDeclId, !DeclSet).
 
 :- pred output_comp_gen_c_module(map(label, data_addr)::in,
@@ -1238,18 +1017,11 @@ output_common_data_defn(common_data(ModuleName, CellNum, TypeAndValue),
     Args = common_cell_get_rvals(TypeAndValue),
     output_rvals_decls(Args, !DeclSet, !IO),
 
-    % The code for data local to a Mercury module should normally be visible
-    % only within the C file generated for that module. However, if we generate
-    % multiple C files, the code in each C file must be visible to the other
-    % C files for that Mercury module.
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-    ExportedFromFile = SplitFiles,
-
     TypeNum = common_cell_get_type_num(TypeAndValue),
     VarName = common(CellNum, TypeNum),
     VarDeclId = data_addr(data_addr(ModuleName, VarName)),
     output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum,
-        ExportedFromFile, yes, "", "", 0, _, !IO),
+        no, yes, "", "", 0, _, !IO),
     decl_set_insert(VarDeclId, !DeclSet).
 
 :- pred output_user_foreign_code(user_foreign_code::in, io::di, io::uo) is det.
@@ -1478,17 +1250,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
             DeclMacro = "MR_def_extern_entry("
         ;
             Label = entry(local, _),
-            % The code for procedures local to a Mercury module
-            % should normally be visible only within the C file
-            % generated for that module. However, if we generate
-            % multiple C files, the code in each C file must be
-            % visible to the other C files for that Mercury module.
-            globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-            ( SplitFiles = no ->
-                DeclMacro = "MR_decl_static("
-            ;
-                DeclMacro = "MR_def_extern_entry("
-            )
+            DeclMacro = "MR_decl_static("
         ;
             Label = entry(c_local, _),
             DeclMacro = "MR_decl_local("
@@ -3059,22 +2821,20 @@ common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
     %
     % Unless the term contains code addresses, and we don't have
     % static code addresses available, in which case we'll have
-    % to initialize them dynamically, so we must omit both `const's
-    % above.
+    % to initialize them dynamically, so we must omit both `const's above.
     %
     % output_const_term_type outputs the first part above. The second
     % and third parts are output by output_const_term_decl_or_defn.
     %
-:- pred output_const_term_type(common_cell_type_and_value::in, module_name::in,
+:- pred output_const_term_type(common_cell_type_and_value::in,
     string::in, string::in, int::in, int::out, io::di, io::uo) is det.
 
-output_const_term_type(TypeAndValue, ModuleName, FirstIndent, LaterIndent,
-        !N, !IO) :-
+output_const_term_type(TypeAndValue, FirstIndent, LaterIndent, !N, !IO) :-
     output_indent(FirstIndent, LaterIndent, !.N, !IO),
     !:N = !.N + 1,
     io__write_string("struct ", !IO),
     TypeNum = common_cell_get_type_num(TypeAndValue),
-    output_common_cell_type_name(ModuleName, TypeNum, !IO),
+    output_common_cell_type_name(TypeNum, !IO),
     io__write_string(" {\n", !IO),
     (
         TypeAndValue = plain_type_and_value(_, ArgsTypes),
@@ -3102,7 +2862,7 @@ output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum, Exported,
         io__write_string("static const struct ", !IO)
     ),
     TypeNum = common_cell_get_type_num(TypeAndValue),
-    output_common_cell_type_name(ModuleName, TypeNum, !IO),
+    output_common_cell_type_name(TypeNum, !IO),
     io__write_string(" ", !IO),
     VarDeclId = data_addr(ModuleName, common(CellNum, TypeNum)),
     output_decl_id(data_addr(VarDeclId), !IO),
@@ -3148,8 +2908,8 @@ data_name_may_include_non_static_code_address(tabling_pointer(_)) = no.
 
 :- pred output_decl_id(decl_id::in, io::di, io::uo) is det.
 
-output_decl_id(common_type(ModuleName, TypeNum), !IO) :-
-    output_common_cell_type_name(ModuleName, TypeNum, !IO).
+output_decl_id(common_type(TypeNum), !IO) :-
+    output_common_cell_type_name(TypeNum, !IO).
 output_decl_id(data_addr(DataAddr), !IO) :-
     output_data_addr(DataAddr, !IO).
 output_decl_id(code_addr(_CodeAddress), !IO) :-
@@ -3590,16 +3350,7 @@ output_label_as_code_addr_decls(entry(exported, ProcLabel), !IO) :-
     io__write_string("MR_decl_entry(", !IO),
     output_label(entry(exported, ProcLabel), no, !IO),
     io__write_string(");\n", !IO).
-output_label_as_code_addr_decls(entry(local, ProcLabel), !IO) :-
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-    (
-        SplitFiles = no
-    ;
-        SplitFiles = yes,
-        io__write_string("MR_decl_entry(", !IO),
-        output_label(entry(local, ProcLabel), no, !IO),
-        io__write_string(");\n", !IO)
-    ).
+output_label_as_code_addr_decls(entry(local, _ProcLabel), !IO).
 output_label_as_code_addr_decls(entry(c_local, _), !IO).
 output_label_as_code_addr_decls(internal(_, _), !IO).
 
@@ -3644,17 +3395,8 @@ output_data_addrs_decls([DataAddr | DataAddrs], FirstIndent, LaterIndent, !N,
     output_data_addrs_decls(DataAddrs, FirstIndent, LaterIndent, !N,
         !DeclSet, !IO).
 
-c_data_linkage_string(Globals, DefaultLinkage, StaticEvenIfSplit, BeingDefined)
-        = LinkageStr :-
-    globals__lookup_bool_option(Globals, split_c_files, SplitFiles),
-    (
-        (
-            DefaultLinkage = extern
-        ;
-            SplitFiles = yes,
-            StaticEvenIfSplit = no
-        )
-    ->
+c_data_linkage_string(DefaultLinkage, BeingDefined) = LinkageStr :-
+    ( DefaultLinkage = extern ->
         (
             BeingDefined = yes,
             LinkageStr = ""
@@ -3692,11 +3434,11 @@ c_data_const_string(Globals, InclCodeAddr) =
 output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
         LaterIndent, !IO) :-
     data_name_linkage(DataVarName, Linkage),
-    globals__io_get_globals(Globals, !IO),
-    LinkageStr = c_data_linkage_string(Globals, Linkage, no, BeingDefined),
+    LinkageStr = c_data_linkage_string(Linkage, BeingDefined),
     io__write_string(LinkageStr, !IO),
 
     InclCodeAddr = data_name_may_include_non_static_code_address(DataVarName),
+    globals__io_get_globals(Globals, !IO),
     io__write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
 
     io__write_string("struct ", !IO),
@@ -4165,51 +3907,35 @@ output_data_addr(layout_addr(LayoutName), !IO) :-
 :- pred output_data_addr(module_name::in, data_name::in, io::di, io::uo)
     is det.
 
-output_data_addr(ModuleName, VarName, !IO) :-
+output_data_addr(_ModuleName, VarName, !IO) :-
     (
         VarName = common(CellNum, _TypeNum),
-        output_common_prefix(ModuleName, common_prefix_var, !IO),
+        output_common_prefix(common_prefix_var, !IO),
         io__write_int(CellNum, !IO)
     ;
         VarName = tabling_pointer(ProcLabel),
         output_tabling_pointer_var_name(ProcLabel, !IO)
     ).
 
-:- pred output_common_cell_type_name(module_name::in, int::in, io::di, io::uo)
-    is det.
+:- pred output_common_cell_type_name(int::in, io::di, io::uo) is det.
 
-output_common_cell_type_name(ModuleName, TypeNum, !IO) :-
-    output_common_prefix(ModuleName, common_prefix_type, !IO),
+output_common_cell_type_name(TypeNum, !IO) :-
+    output_common_prefix(common_prefix_type, !IO),
     io__write_int(TypeNum, !IO).
 
 :- type common_prefix
     --->    common_prefix_var
     ;       common_prefix_type.
 
-:- pred output_common_prefix(module_name::in, common_prefix::in,
-    io::di, io::uo) is det.
+:- pred output_common_prefix(common_prefix::in, io::di, io::uo) is det.
 
-output_common_prefix(ModuleName, Prefix, !IO) :-
+output_common_prefix(Prefix, !IO) :-
     (
         Prefix = common_prefix_var,
         io__write_string(mercury_common_prefix, !IO)
     ;
         Prefix = common_prefix_type,
         io__write_string(mercury_common_type_prefix, !IO)
-    ),
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-    (
-        SplitFiles = no
-        % In the absence of split_c_files, common cells are always
-        % local to a C file, so we don't have to module qualify them,
-        % or the names of their types, and omitting the module
-        % qualification makes the generated C file significantly
-        % smaller in debugging grades.
-    ;
-        SplitFiles = yes,
-        MangledModuleName = sym_name_mangle(ModuleName),
-        io__write_string(MangledModuleName, !IO),
-        io__write_string("__", !IO)
     ).
 
 :- pred output_label_as_code_addr(label::in, io::di, io::uo) is det.
@@ -4264,23 +3990,9 @@ output_label_defn(entry(exported, ProcLabel), !IO) :-
     output_label(entry(exported, ProcLabel), !IO),
     io__write_string(");\n", !IO).
 output_label_defn(entry(local, ProcLabel), !IO) :-
-    % The code for procedures local to a Mercury module
-    % should normally be visible only within the C file
-    % generated for that module. However, if we generate
-    % multiple C files, the code in each C file must be
-    % visible to the other C files for that Mercury module.
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
-    (
-        SplitFiles = no,
-        io__write_string("MR_def_static(", !IO),
-        output_proc_label(ProcLabel, no, !IO),
-        io__write_string(")\n", !IO)
-    ;
-        SplitFiles = yes,
-        io__write_string("MR_def_entry(", !IO),
-        output_proc_label(ProcLabel, no, !IO),
-        io__write_string(")\n", !IO)
-    ).
+    io__write_string("MR_def_static(", !IO),
+    output_proc_label(ProcLabel, no, !IO),
+    io__write_string(")\n", !IO).
 output_label_defn(entry(c_local, ProcLabel), !IO) :-
     io__write_string("MR_def_local(", !IO),
     output_proc_label(ProcLabel, no, !IO),
@@ -4749,9 +4461,7 @@ output_rval(binop(Op, X, Y), !IO) :-
         io__write_string(")", !IO)
     ).
 output_rval(mkword(Tag, Exprn), !IO) :-
-    globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
     (
-        SplitFiles = no,
         Exprn = const(data_addr_const(DataAddr, no)),
         DataAddr = data_addr(_, DataName),
         DataName = common(CellNum, _TypeNum)
@@ -4876,9 +4586,7 @@ output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
         % reduces the size of the generated C source file, which has
         % a considerably longer lifetime. In debugging grades, the
         % file size difference can be very substantial.
-        globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
         (
-            SplitFiles = no,
             DataAddr = data_addr(_, DataName),
             DataName = common(CellNum, _TypeNum)
         ->

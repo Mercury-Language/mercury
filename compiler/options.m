@@ -457,7 +457,6 @@
     ;       use_opt_files
     ;       use_trans_opt_files
     ;       transitive_optimization
-    ;       split_c_files
 
     %   - HLDS
     ;       allow_inlining
@@ -1137,7 +1136,6 @@ option_defaults_2(special_optimization_option, [
     termination_norm                    -   string("total"),
     termination_error_limit             -   int(3),
     termination_path_limit              -   int(256),
-    split_c_files                       -   bool(no),
     termination2                        -   bool(no),
     termination2_norm                   -   string("total"),
     check_termination2                  -   bool(no),
@@ -2037,8 +2035,6 @@ long_option("procs-per-c-function", procs_per_c_function).
 long_option("procs-per-C-function", procs_per_c_function).
 long_option("everything-in-one-c-function", everything_in_one_c_function).
 long_option("everything-in-one-C-function", everything_in_one_c_function).
-long_option("split-c-files",        split_c_files).
-long_option("split-C-files",        split_c_files).
 long_option("inline-alloc",         inline_alloc).
 
 % Target code compilation options
@@ -3811,18 +3807,7 @@ options_help_optimization -->
         "--intermodule-analysis",
         "\tPerform analyses such as termination analysis and",
         "\tunused argument elimination across module boundaries.",
-        "\tThis option is not yet fully implemented.",
-        "--split-c-files",
-        "\tGenerate each C function in its own C file,",
-        "\tso that the linker will optimize away unused code.",
-        "\tThis option significantly increases compilation time,",
-        "\tlink time, and intermediate disk space requirements,",
-        "\tbut in return reduces the size of the final",
-        "\texecutable, typically by about 10-20%.",
-        "\tThis option is only useful with `--procs-per-c-function 1',",
-        "\tso this option automatically sets `--procs-per-c-function 1'.",
-        "\tThe `--high-level-code' back-end does not support",
-        "\t`--split-c-files'."
+        "\tThis option is not yet fully implemented."
     ]).
 
 :- pred options_help_hlds_hlds_optimization(io::di, io::uo) is det.

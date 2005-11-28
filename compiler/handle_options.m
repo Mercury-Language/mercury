@@ -858,12 +858,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(prop_mode_constraints, mode_constraints, bool(yes),
             !Globals),
 
-        % --split-c-files is not supported by the high-level C code generator.
-        option_implies(highlevel_code, split_c_files, bool(no), !Globals),
-
-        % --split-c-files implies --procs-per-c-function 1
-        option_implies(split_c_files, procs_per_c_function, int(1), !Globals),
-
         % Minimal model tabling is not compatible with high level code
         % or with trailing; see the comments in runtime/mercury_grade.h.
 

@@ -37,11 +37,6 @@
         --no-check)
             CHECK_OPTS= ;;
 
-        --split-c-files)
-            SPLIT_OPTS=-DMR_SPLIT_C_FILES ;;
-        --no-split-c-files)
-            SPLIT_OPTS= ;;
-
         --inline-alloc)
             INLINE_ALLOC_OPTS="-DMR_INLINE_ALLOC -DSILENT" ;;
         --no-inline-alloc)
