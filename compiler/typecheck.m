@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: typecheck.m.
 % Main author: fjh.
-%
+
 % This file contains the Mercury type-checker.
 %
 % The predicates in this module are named as follows:
@@ -140,7 +140,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -1299,7 +1298,8 @@ typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
         typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO)
     ;
         GenericCall0 = class_method(_, _, _, _),
-        error("typecheck_goal_2: unexpected class method call")
+        unexpected(this_file,
+            "typecheck_goal_2: unexpected class method call")
     ;
         GenericCall0 = cast(_),
         % A cast imposes no restrictions on its argument types,
@@ -1323,7 +1323,7 @@ typecheck_goal_2(unify(LHS, RHS0, C, D, UnifyContext),
     typecheck_unification(LHS, RHS0, RHS, GoalPath, !Info, !IO).
 
 typecheck_goal_2(switch(_, _, _), _, _, !Info, !IO) :-
-    error("unexpected switch").
+    unexpected(this_file, "typecheck_goal_2: unexpected switch").
 
 typecheck_goal_2(Goal @ foreign_proc(_, PredId, _, Args, _, _), Goal, GoalInfo,
         !Info, !IO) :-
@@ -1527,7 +1527,7 @@ typecheck_aditi_builtin_closure(CallId, OtherArgs, GoalPath, AdjustArgTypes,
             AdjustArgTypes, PredId, !Info, !IO)
     ;
         % An error should have been reported by make_hlds.m.
-        error("typecheck_aditi_builtin: " ++
+        unexpected(this_file, "typecheck_aditi_builtin: " ++
             "incorrect arity for builtin")
     ).
 
@@ -1832,7 +1832,7 @@ skip_arg([ArgTypeAssign0 | ArgTypeAssigns0],
         Args = Args1
     ;
         % this should never happen
-        error("typecheck.m: skip_arg")
+        unexpected(this_file, "skip_arg")
     ),
     ArgTypeAssign = args(TypeAssign, Args, Constraints),
     skip_arg(ArgTypeAssigns0, ArgTypeAssigns).
@@ -1876,7 +1876,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
         )
     ;
         ArgTypes0 = [],
-        error("arg_type_assign_var_has_type")
+        unexpected(this_file, "arg_type_assign_var_has_type")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1888,9 +1888,9 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
     int::in, typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
 typecheck_var_has_type_list([], [_ | _], _, !Info, !IO) :-
-    error("typecheck_var_has_type_list: length mismatch").
+    unexpected(this_file, "typecheck_var_has_type_list: length mismatch").
 typecheck_var_has_type_list([_ | _], [], _, !Info, !IO) :-
-    error("typecheck_var_has_type_list: length mismatch").
+    unexpected(this_file, "typecheck_var_has_type_list: length mismatch").
 typecheck_var_has_type_list([], [], _, !Info, !IO).
 typecheck_var_has_type_list([Var | Vars], [Type | Types], ArgNum, !Info,
         !IO) :-
@@ -2343,7 +2343,8 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
         ConsType = ConsType1,
         ArgTypes = ArgTypes1
     ;
-        error("get_cons_stuff: type_assign_rename_apart failed")
+        unexpected(this_file,
+            "get_cons_stuff: type_assign_rename_apart failed")
     ),
 
     % Add the constraints for this functor to the current constraint set.
@@ -2570,7 +2571,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
                 true
             )
         ;
-            error("make_pred_cons_info: split_list failed")
+            unexpected(this_file, "make_pred_cons_info: split_list failed")
         )
     ;
         IsPredOrFunc = function,
@@ -2601,7 +2602,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
                 PredExistQVars, FuncType, FuncArgTypes, PredConstraints),
             !:ConsInfos = [ConsInfo | !.ConsInfos]
         ;
-            error("make_pred_cons_info: split_list failed")
+            unexpected(this_file, "make_pred_cons_info: split_list failed")
         )
     ;
         true
@@ -3068,7 +3069,7 @@ split_cons_errors(MaybeConsInfoList, ConsInfoList, ConsErrors) :-
     ->
         ConsErrors = ConsErrors1
     ;
-        error("typecheck_info_get_ctor_list")
+        unexpected(this_file, "typecheck_info_get_ctor_list")
     ).
 
 %-----------------------------------------------------------------------------%

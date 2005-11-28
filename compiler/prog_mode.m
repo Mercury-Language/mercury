@@ -5,14 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: prog_mode.m.
 % Main author: fjh.
-%
+
 % Utility predicates dealing with modes and insts that do not require access
 % to the HLDS. (The predicates that do are in mode_util.m.)
 
-:- module parse_tree__prog_mode.
+%-----------------------------------------------------------------------------%
 
+:- module parse_tree__prog_mode.
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -133,11 +135,11 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module term.
@@ -178,9 +180,9 @@ make_std_mode(Name, Args) = Mode :-
 %-----------------------------------------------------------------------------%
 
 inst_lists_to_mode_list([], [_ | _], _) :-
-    error("inst_lists_to_mode_list: length mis-match").
+    unexpected(this_file, "inst_lists_to_mode_list: length mismatch").
 inst_lists_to_mode_list([_ | _], [], _) :-
-    error("inst_lists_to_mode_list: length mis-match").
+    unexpected(this_file, "inst_lists_to_mode_list: length mismatch").
 inst_lists_to_mode_list([], [], []).
 inst_lists_to_mode_list([Initial | Initials], [Final | Finals],
         [Mode | Modes]) :-
@@ -293,7 +295,8 @@ inst_apply_substitution(Subst, constrained_inst_vars(Vars, Inst0), Result) :-
     ( set__singleton_set(Vars, Var0) ->
         Var = Var0
     ;
-        error("inst_apply_substitution: multiple inst_vars found")
+        unexpected(this_file,
+            "inst_apply_substitution: multiple inst_vars found")
     ),
     ( map__search(Subst, Var, Replacement) ->
         Result = Replacement
@@ -655,5 +658,11 @@ strip_builtin_qualifiers_from_ground_inst_info(higher_order(Pred0),
     Pred0 = pred_inst_info(PorF, Modes0, Det),
     Pred = pred_inst_info(PorF, Modes, Det),
     strip_builtin_qualifiers_from_mode_list(Modes0, Modes).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_mode.m".
 
 %-----------------------------------------------------------------------------%

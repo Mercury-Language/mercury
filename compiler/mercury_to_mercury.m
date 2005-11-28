@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: mercury_to_mercury.m.
 % Main author: fjh.
 
 % This program converts the parse tree structure provided by prog_io
@@ -392,7 +393,6 @@
 :- import_module int.
 :- import_module lexer.
 :- import_module ops.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.

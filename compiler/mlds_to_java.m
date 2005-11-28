@@ -5,10 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% mlds_to_java - Convert MLDS to Java code.
+
+% File: mlds_to_java.m.
 % Main authors: juliensf, mjwybrow, fjh.
-%
+
+% Convert MLDS to Java code.
+
 % DONE:
 %   det and semidet predicates
 %   multiple output arguments
@@ -76,11 +78,10 @@
 % due to the fact that the back-end generates `break' statements for cases
 % in switches as they are output, meaning that we can't remove them in
 % a pass over the MLDS.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend__mlds_to_java.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -132,7 +133,6 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -226,7 +226,7 @@ mlds_lval_type(mem_ref(_, PtrType)) =
     ( PtrType = mlds__ptr_type(Type) ->
         Type
     ;
-        func_error("mlds_lval_type: mem_ref of non-pointer")
+        unexpected(this_file, "mlds_lval_type: mem_ref of non-pointer")
     ).
 
     % Succeeds iff the Rval represents an integer constant.

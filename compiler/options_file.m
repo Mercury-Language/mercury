@@ -5,17 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: options_file.m
-% Main author: stayl
-%
+
+% File: options_file.m.
+% Main author: stayl.
+
 % Code to deal with options for `mmc --make', including code to parse
 % an Mmakefile equivalent.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module make__options_file.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -75,6 +74,7 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
@@ -87,7 +87,6 @@
 :- import_module dir.
 :- import_module exception.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 
@@ -339,7 +338,7 @@ read_options_lines(Dir, !Variables, !IO) :-
         )
     ;
         LineResult = failed,
-        error("read_options_lines")
+        unexpected(this_file, "read_options_lines")
     ).
 
 :- pred read_options_lines_2(dir_name::in, options_variables::in,

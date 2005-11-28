@@ -6,15 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: term_norm.m
-% Main author: crs
+% File: term_norm.m.
+% Main author: crs.
 %
 % This modules defines predicates for computing functor norms.
 %
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_norm.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -84,7 +83,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.

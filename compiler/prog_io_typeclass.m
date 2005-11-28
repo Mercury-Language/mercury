@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: prog_io_typeclass.m.
 % Main authors: dgj.
-%
+
 % This module handles the parsing of typeclass declarations.
 % Perhaps some of this should go into prog_io_util.m?
 
-:- module parse_tree__prog_io_typeclass.
+%-----------------------------------------------------------------------------%
 
+:- module parse_tree__prog_io_typeclass.
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -48,8 +49,12 @@
 :- type maybe_class_and_inst_constraints ==
     maybe2(list(prog_constraint), inst_var_sub).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_util.
@@ -57,7 +62,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -97,7 +101,7 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
         ;
             % If the item we get back isn't a typeclass,
             % something has gone wrong...
-            error("prog_io_typeclass.m: item should be a typeclass")
+            unexpected(this_file, "item should be a typeclass")
         )
     ;
         ParsedMethods = error(String, Term),
@@ -167,7 +171,7 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
         ;
             % If the item we get back isn't a typeclass,
             % something has gone wrong...
-            error("prog_io_typeclass.m: item should be a typeclass")
+            unexpected(this_file, "item should be a typeclass")
         )
     ;
         ParsedConstraints = error(String, Term),
@@ -545,7 +549,7 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet, Result) :-
             % something has gone wrong...
             % Maybe we should use cleverer inst decls to avoid
             % this call to error.
-            error("prog_io_typeclass.m: item should be an instance")
+            unexpected(this_file, "item should be an instance")
         )
     ;
         ParsedConstraints = error(String, Term),
@@ -650,7 +654,7 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
         ;
             % If the item we get back isn't a typeclass,
             % something has gone wrong...
-            error("prog_io_typeclass.m: item should be an instance")
+            unexpected(this_file, "item should be an instance")
         )
     ;
         ParsedMethods = error(String, Term),
@@ -680,7 +684,8 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
             Result = ok(Item)
         )
     ;
-        error("check_tvars_in_constraint: expecting instance item")
+        unexpected(this_file,
+            "check_tvars_in_constraint: expecting instance item")
     ).
 
 :- pred parse_instance_methods(module_name::in, term::in, varset::in,
@@ -775,3 +780,11 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
                 "`func(<Name> / <Arity>) is <InstanceName>')", MethodTerm)
         )
     ).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_io_typeclass.m".
+
+%----------------------------------------------------------------------------%

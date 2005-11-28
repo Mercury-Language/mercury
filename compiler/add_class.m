@@ -67,7 +67,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -220,7 +219,7 @@ make_hlds_fundep_2(TVars, List) = list.foldl(Func, List, set.init) :-
 :- func get_list_index(list(T), hlds_class_argpos, T) = hlds_class_argpos.
 
 get_list_index([], _, _) = _ :-
-	error("get_list_index: element not found").
+	unexpected(this_file, "get_list_index: element not found").
 get_list_index([E | Es], N, X) =
 	( X = E ->
 		N
@@ -365,7 +364,8 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
             QualName = unqualified(_),
             % The class interface should be fully module qualified
             % by prog_io.m at the time it is read in.
-            error("add_default_class_method_func_modes: unqualified func")
+            unexpected(this_file,
+                "add_default_class_method_func_modes: unqualified func")
         ),
         list__length(TypesAndModes, PredArity),
         module_info_get_predicate_table(!.ModuleInfo, PredTable),
@@ -395,7 +395,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
                 )
             )
         ;
-            error("handle_methods_with_no_modes")
+            unexpected(this_file, "handle_methods_with_no_modes")
         )
     ;
         true
@@ -543,7 +543,7 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
                 !IO)
         )
     ;
-        error("produce_clause: invalid instance item")
+        unexpected(this_file, "produce_clause: invalid instance item")
     ).
 
 :- pred pred_method_with_no_modes_error(pred_info::in, io::di, io::uo) is det.

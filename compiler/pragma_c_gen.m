@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: pragma_c_gen.m
 % Main authors: dgj, conway, zs.
-%
+
 % The code in this module generates code for pragma_c_code goals.
 %
 % The schemes we use to generate code for model_det and model_semi
@@ -17,6 +17,7 @@
 %
 % The scheme for model_non pragma_c_codes is substantially different,
 % so we handle them separately.
+
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__pragma_c_gen.
@@ -77,7 +78,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -357,7 +357,7 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     ;
         PragmaImpl = nondet(Fields, FieldsContext, First, FirstContext,
             Later, LaterContext, Treat, Shared, SharedContext),
-        require(unify(ExtraArgs, []),
+        expect(unify(ExtraArgs, []), this_file,
             "generate_pragma_c_code: extra args nondet"),
         CanOptAwayUnnamedArgs = yes,
         pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
@@ -366,7 +366,7 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
             Treat, Shared, SharedContext, CanOptAwayUnnamedArgs, Code, !CI)
     ;
         PragmaImpl = import(Name, HandleReturn, Vars, Context),
-        require(unify(ExtraArgs, []),
+        expect(unify(ExtraArgs, []), this_file,
             "generate_pragma_c_code: extra args import"),
         C_Code = HandleReturn ++ " " ++ Name ++ "(" ++ Vars ++ ");",
 
@@ -649,7 +649,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         Args, _Fields, _FieldsContext,
         First, FirstContext, Later, LaterContext, Treat, Shared, SharedContext,
         CanOptAwayUnnamedArgs, Code, !CI) :-
-    require(unify(CodeModel, model_non),
+    expect(unify(CodeModel, model_non), this_file,
         "inappropriate code model for nondet pragma C code"),
     % Extract the may_call_mercury attribute.
     MayCallMercury = may_call_mercury(Attributes),

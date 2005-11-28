@@ -5,11 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: untupling.m.
-%
 % Author: wangp.
-%
+
 % This module takes the HLDS and transforms the locally-defined procedures as
 % follows: if the formal parameter of a procedure has a type consisting of a
 % single function symbol then that parameter is expanded into multiple
@@ -121,7 +120,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.

@@ -5,19 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% term_pass2.m
-%
+
+% File: term_pass2.m.
 % Main author of original version: crs.
 % Main author of this version: zs.
-%
+
 % This file contains the code that tries to prove that procedures terminate.
-%
 % For details, please refer to the papers mentioned in termination.m.
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_pass2.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -51,7 +49,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -371,7 +368,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, ModuleInfo, PassInfo,
     traverse_goal(Goal, Params, Info0, Info),
     (
         Info = ok(Paths, CanLoop),
-        require(unify(CanLoop, []),
+        expect(unify(CanLoop, []), this_file,
             "can_loop detected in pass2 but not pass1"),
         set.to_sorted_list(Paths, PathList),
         upper_bound_active_vars(PathList, ActiveVars),
@@ -388,7 +385,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, ModuleInfo, PassInfo,
             PassInfo, RecSupplierMap, NewRecSupplierMap1, CallInfo1, Result)
     ;
         Info = error(Errors, CanLoop),
-        require(unify(CanLoop, []),
+        expect(unify(CanLoop, []), this_file, 
             "can_loop detected in pass2 but not pass1"),
         Result = error(Errors)
     ).

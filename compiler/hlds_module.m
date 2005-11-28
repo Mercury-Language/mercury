@@ -6,6 +6,9 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: hlds_module.m.
+% Main authors: fjh, conway.
+
 % This module defines the part of the High Level Data Structure or HLDS
 % that deals with issues that are wider than a single predicate.
 
@@ -17,10 +20,9 @@
 %
 % There is a separate interface section for each of these.
 
-% Main authors: fjh, conway.
+%-----------------------------------------------------------------------------%
 
 :- module hlds__hlds_module.
-
 :- interface.
 
 :- import_module analysis.
@@ -54,7 +56,6 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module require.
 :- import_module string.
 :- import_module svmap.
 :- import_module svmulti_map.
@@ -985,7 +986,7 @@ module_info_pred_info(MI, PredId, PredInfo) :-
         pred_id_to_int(PredId, PredInt),
         string__int_to_string(PredInt, PredStr),
         string__append("cannot find predicate number ", PredStr, Msg),
-        error(Msg)
+        unexpected(this_file, Msg)
     ).
 
 module_info_proc_info(MI, PPId, ProcInfo) :-
@@ -1066,7 +1067,7 @@ module_info_dependency_info(MI, DepInfo) :-
         DepInfo = DepInfoPrime
     ;
         MaybeDepInfo = no,
-        error("Attempted to access invalid dependency_info")
+        unexpected(this_file, "Attempted to access invalid dependency_info")
     ).
 
 module_info_aditi_dependency_ordering(MI, AditiOrdering) :-
@@ -1078,7 +1079,8 @@ module_info_aditi_dependency_ordering(MI, AditiOrdering) :-
         AditiOrdering = OrderingPrime
     ;
         MaybeOrdering = no,
-        error("Attempted to access invalid aditi_dependency_ordering")
+        unexpected(this_file,
+            "Attempted to access invalid aditi_dependency_ordering")
     ).
 
 module_info_set_dependency_info(DependencyInfo, !MI) :-
@@ -2303,7 +2305,7 @@ get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         string__append_list(["get_pred_id_and_proc_id: ",
             "undefined/invalid ", PredOrFuncStr,
             "\n`", Name2, "/", ArityString, "'"], Msg),
-        error(Msg)
+        unexpected(this_file, Msg)
     ),
     get_proc_id(ModuleInfo, PredId, ProcId).
 
@@ -2334,7 +2336,7 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
                 "(use an explicit lambda expression instead)"],
                 Message)
         ),
-        error(Message)
+        unexpected(this_file, Message)
     ).
 
 lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
@@ -2374,7 +2376,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         string__int_to_string(Arity, ArityS),
         string__append_list(["can't locate ", ProcName, "/", ArityS],
             ErrorMessage),
-        error(ErrorMessage)
+        unexpected(this_file, ErrorMessage)
     ),
     module_info_pred_info(Module, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),
@@ -2383,16 +2385,18 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
         ( ProcIds = [ProcId0] ->
             ProcId = ProcId0
         ;
-            error(string__format("expected single mode for %s/%d",
-                [s(ProcName), i(Arity)]))
+            unexpected(this_file,
+                string__format("expected single mode for %s/%d",
+                    [s(ProcName), i(Arity)]))
         )
     ;
         ModeNo = mode_no(N),
         ( list__index0(ProcIds, N, ProcId0) ->
             ProcId = ProcId0
         ;
-            error(string__format("there is no mode %d for %s/%d",
-                [i(N), s(ProcName), i(Arity)]))
+            unexpected(this_file,
+                string__format("there is no mode %d for %s/%d",
+                    [i(N), s(ProcName), i(Arity)]))
         )
     ).
 

@@ -765,8 +765,12 @@
             % recompiling most of the modules in the compiler. Having this
             % option permanently here should reduce the need for that.
 
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 
 :- import_module assoc_list.
@@ -775,9 +779,10 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
+
+%----------------------------------------------------------------------------%
 
 :- type option_category
     --->    warning_option
@@ -2430,7 +2435,7 @@ enable_opt_levels(N0, N, OptionTable0, OptionTable) :-
         N1 = N0 + 1,
         enable_opt_levels(N1, N, OptionTable1, OptionTable)
     ;
-        error("Unknown optimization level")
+        unexpected(this_file, "Unknown optimization level")
     ).
 
 :- pred override_options(list(pair(option, option_data))::in,
@@ -4512,5 +4517,11 @@ write_tabbed_lines([Str | Strs], !IO) :-
     io__write_string(Str, !IO),
     io__write_char('\n', !IO),
     write_tabbed_lines(Strs, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "options.m".
 
 %-----------------------------------------------------------------------------%

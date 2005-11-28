@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: switch_gen.m
-% Authors: conway, fjh, zs
-%
+
+% File: switch_gen.m.
+% Authors: conway, fjh, zs.
+
 % This module handles the generation of code for switches, which are
 % disjunctions that do not require backtracking.  Switches are detected
 % in switch_detection.m.  This is the module that determines what
@@ -40,11 +40,10 @@
 %
 % For all other cases (or if the --smart-indexing option was disabled),
 % we just generate a chain of if-then-elses.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__switch_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -82,14 +81,12 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
-        Code, !CI) :-
+generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     % Choose which method to use to generate the switch.
     % CanFail says whether the switch covers all cases.
 

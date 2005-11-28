@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% Module:   accumulator
-% Main authors: petdr
-%
+
+% Module: accumulator.m.
+% Main authors: petdr.
+
 % Attempts to transform a single proc to a tail recursive form by
 % introducing accumlators.  The algorithm can do this if the code after
 % the recursive call has either the order independent state update or
@@ -136,12 +136,11 @@
 % transformation attempts to move each recursive call to the end
 % until one succeeds.  This makes the order of independent recursive
 % calls in the body irrelevant.
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__accumulator.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -183,7 +182,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

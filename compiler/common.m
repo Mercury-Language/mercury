@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: common.m.
 % Original author: squirrel (Jane Anna Langley).
 % Some bugs fixed by fjh.
 % Extensive revision by zs.
 % More revision by stayl.
-%
+
 % This module attempts to optimise out instances where a variable is
 % decomposed and then soon after reconstructed from the parts. If possible we
 % would like to "short-circuit" this process.  It also optimizes
@@ -25,7 +25,7 @@
 % information, since the compiler does not yet have such information.  Once we
 % implement ctgc, the assumptions made by this module will have to be
 % revisited.
-%
+
 %---------------------------------------------------------------------------%
 
 :- module check_hlds__common.
@@ -110,7 +110,6 @@
 :- import_module bool.
 :- import_module eqvclass.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -409,7 +408,7 @@ lookup_var_type_ctor(Info, Var) = TypeCtor :-
     ;
         % If we unify a variable with a function symbol, we *must* know
         % what the principal type constructor of its type is.
-        error("lookup_var_type_ctor: cannot find type_ctor")
+        unexpected(this_file, "lookup_var_type_ctor: cannot find type_ctor")
     ).
 
 %---------------------------------------------------------------------------%
@@ -618,11 +617,11 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
     list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
     list(prog_var)::out, list(mer_mode)::out) is semidet.
 
-partition_call_args(_, _, [], [_ | _], _, _, _) :-
-    error("partition_call_args").
-partition_call_args(_, _, [_ | _], [], _, _, _) :-
-    error("partition_call_args").
 partition_call_args(_, _, [], [], [], [], []).
+partition_call_args(_, _, [], [_ | _], _, _, _) :-
+    unexpected(this_file, "partition_call_args: length mismatch (1)").
+partition_call_args(_, _, [_ | _], [], _, _, _) :-
+    unexpected(this_file, "partition_call_args: length mismatch (2)").
 partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
         [Arg | Args], InputArgs, OutputArgs, OutputModes) :-
     partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,

@@ -4,15 +4,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: aditi_builtin_ops.m
-% Main author: stayl
+% File: aditi_builtin_ops.m.
+% Main author: stayl.
 %
-% Transform Aditi builtin generic_call goals into calls to
-% the predicates in extras/aditi/aditi_private_builtin.m.
+% Transform Aditi builtin generic_call goals into calls to the predicates in
+% extras/aditi/aditi_private_builtin.m.
 %
 %-----------------------------------------------------------------------------%
-:- module aditi_backend__aditi_builtin_ops.
 
+:- module aditi_backend__aditi_builtin_ops.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -31,6 +31,7 @@
 	module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -43,6 +44,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
@@ -55,11 +57,12 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module std_util.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 transform_aditi_builtins(ModuleInfo0, ModuleInfo) -->
 	passes_aux__process_all_nonimported_nonaditi_procs(
@@ -158,7 +161,8 @@ transform_aditi_builtins_in_goal_expr(Goal, _, Goal) -->
 transform_aditi_builtins_in_goal_expr(Goal, _, Goal) -->
 	{ Goal = call(_, _, _, _, _, _) }.
 transform_aditi_builtins_in_goal_expr(shorthand(_), _, _) -->
-	{ error("transform_aditi_builtins_in_goal_expr: shorthand") }.
+	{ unexpected(this_file,
+		"transform_aditi_builtins_in_goal_expr: shorthand") }.
 
 :- pred transform_aditi_bottom_up_closure(prog_var, pred_id, proc_id,
 		list(prog_var), hlds_goal_info, hlds_goal_expr,
@@ -282,7 +286,8 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	->
 		NonCurriedArgModes = NonCurriedArgModes0
 	;
-		error("transform_aditi_bottom_up_closure: list__drop failed")
+		unexpected(this_file,
+			"transform_aditi_bottom_up_closure: list__drop failed")
 	},
 	{ proc_info_interface_determinism(CalleeProcInfo, CalleeDetism) },
 	{ CastOutputInst = ground(shared,
@@ -378,7 +383,7 @@ transform_aditi_builtin_2(
 		State0Arg = State0Arg0,
 		StateArg = StateArg0
 	;
-		error(
+		unexpected(this_file,
 	"transform_aditi_builtin_2: wrong number of arguments in bulk update")
 	},
 
@@ -505,7 +510,8 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 	;
 		% post_typecheck.m ensures that all Aditi predicates
 		% have an aditi__state argument.
-		error("create_aditi_call_goal: no aditi__state")
+		unexpected(this_file,
+			"create_aditi_call_goal: no aditi__state")
 	},
 
 	%
@@ -596,7 +602,7 @@ make_type_info_for_var(Var, TypeInfo, Goals) -->
 	->
 		TypeInfo = TypeInfo0
 	;
-		error("make_type_infos_for_var")
+		unexpected(this_file, "make_type_infos_for_var")
 	},
 	{ poly_info_extract(PolyInfo, PredInfo0, PredInfo,
 		ProcInfo0, ProcInfo, ModuleInfo) },
@@ -739,4 +745,9 @@ deconstruct_aditi_transform_info(Info, PredId,
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "aditi_builtin_ops.m".
+
 %-----------------------------------------------------------------------------%

@@ -301,7 +301,6 @@
 
 :- import_module char.
 :- import_module int.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -641,7 +640,7 @@ finish_disjunction(Context, VarSet, DisjSInfos, Disjs, SInfo) :-
     svar_info.
 
 reconciled_disj_svar_info(_, []) = _ :-
-    error("make_hlds__reconciled_disj_svar_info: empty disjunct list").
+    unexpected(this_file, "reconciled_disj_svar_info: empty disjunct list").
 
 reconciled_disj_svar_info(VarSet, [{_, SInfo0} | DisjSInfos]) = SInfo :-
 
@@ -830,7 +829,7 @@ finish_call(!VarSet, !SInfo) :-
                 !:SInfo)
         )
     ;
-        error("make_hlds__finish_call: ctxt is not in_atom")
+        unexpected(this_file, "finish_call: ctxt is not in_atom")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1084,4 +1083,9 @@ report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !IO) :-
     io__set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "state_var.m".
+
 %-----------------------------------------------------------------------------%

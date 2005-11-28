@@ -6,10 +6,11 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% ml_tag_switch.m - generate switches based on primary and secondary tags,
-% for the MLDS back-end.
-
+% File: ml_tag_switch.m.
 % Author: fjh.
+
+% Generate switches based on primary and secondary tags, for the MLDS
+% back-end.
 
 %-----------------------------------------------------------------------------%
 
@@ -31,6 +32,9 @@
     can_fail::in, prog_context::in, mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
@@ -47,7 +51,6 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 
@@ -109,7 +112,7 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
     Case = PrimaryTag - ptag_case(SecTagLocn, GoalMap),
     map__lookup(PtagCountMap, PrimaryTag, CountInfo),
     CountInfo = SecTagLocn1 - MaxSecondary,
-    require(unify(SecTagLocn, SecTagLocn1),
+    expect(unify(SecTagLocn, SecTagLocn1), this_file,
         "ml_tag_switch.m: secondary tag locations differ"),
     map__to_assoc_list(GoalMap, GoalList),
     ( SecTagLocn = none ->

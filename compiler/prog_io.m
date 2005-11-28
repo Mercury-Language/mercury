@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: prog_io.m.
 % Main author: fjh.
-%
+
 % This module defines predicates for parsing Mercury programs.
 %
 % In some ways the representation of programs here is considerably
@@ -51,10 +51,11 @@
 % 2.  improve the handling of type and inst parameters
 % 3.  improve the error reporting (most of the semidet preds should
 %     be det and should return a meaningful indication of where an
-%     error occured).
+%     error occurred).
+
+%-----------------------------------------------------------------------------%
 
 :- module parse_tree__prog_io.
-
 :- interface.
 
 :- import_module libs.timestamp.
@@ -270,6 +271,7 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.modules.
@@ -291,7 +293,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module parser.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -545,7 +546,8 @@ check_end_module(EndModule, !Messages, !Items, !Error) :-
     ;
         % If there's no `:- module' declaration at this point, it is
         % an internal error -- read_first_item should have inserted one.
-        error("check_end_module: no `:- module' declaration")
+        unexpected(this_file,
+            "check_end_module: no `:- module' declaration")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1842,7 +1844,7 @@ parse_mutable_decl(_ModuleName, _VarSet, Terms, Result) :-
     ->
         Result = error(Msg, Term)
     ;
-        error("prog_io.parse_mutable_decl: shouldn't be here!")
+        unexpected(this_file, "parse_mutable_decl: shouldn't be here!")
     ).
 
 :- pred parse_mutable_name(term::in, maybe1(string)::out) is det.
@@ -2336,7 +2338,7 @@ make_maybe_where_details(
             Result = error("solver type definitions must have an" ++
                 "`initialisation' attribute", WhereTerm)
         ;
-            error("make_maybe_where_details: " ++
+           unexpected(this_file, "make_maybe_where_details: " ++
                 "shouldn't have reached this point! (1)")
         )
     ;
@@ -2357,7 +2359,7 @@ make_maybe_where_details(
     ->
         Result = ok(no, yes(unify_compare(MaybeEqPred, MaybeCmpPred)))
     ;
-        error("make_maybe_where_details: " ++
+        unexpected(this_file, "make_maybe_where_details: " ++
             "shouldn't have reached this point! (2)")
     ).
 
@@ -3424,7 +3426,7 @@ inst_var_constraints_are_consistent_in_inst(ground(_, GroundInstInfo), !Sub) :-
     ).
 inst_var_constraints_are_consistent_in_inst(not_reached, !Sub).
 inst_var_constraints_are_consistent_in_inst(inst_var(_), !Sub) :-
-    error("inst_var_constraints_are_consistent_in_inst: " ++
+    unexpected(this_file, "inst_var_constraints_are_consistent_in_inst: " ++
         "unconstrained inst_var").
 inst_var_constraints_are_consistent_in_inst(defined_inst(InstName), !Sub) :-
     ( InstName = user_inst(_, Insts) ->
@@ -4320,4 +4322,9 @@ convert_constructor_arg_list_2(ModuleName, MaybeFieldName, TypeTerm, Terms) =
 root_module_name(unqualified("")).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_io.m".
+
 %-----------------------------------------------------------------------------%

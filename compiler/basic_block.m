@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: basic_block.m.
 % Main author: zs.
-%
+
 % This module defines a representation for basic blocks, sequences of
-% instructions with one entry and one exit, and provides predicates
-% that convert a list of instructions into a list of basic blocks
-% and vice versa.
+% instructions with one entry and one exit, and provides predicates that
+% convert a list of instructions into a list of basic blocks and vice versa.
 
 %-----------------------------------------------------------------------------%
 
@@ -99,10 +99,10 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module ll_backend.opt_util.
 
 :- import_module int.
-:- import_module require.
 :- import_module svmap.
 :- import_module svset.
 
@@ -207,13 +207,13 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
             BlockFallInto, BlockSideLabels, BlockMaybeFallThrough),
         NextBlockInfo = block_info(NextBlockLabel, _, NextBlockInstrs,
             NextBlockFallInto, NextBlockSideLabels, NextBlockMaybeFallThrough),
-        require(unify(BlockLabel, Label),
+        expect(unify(BlockLabel, Label), this_file,
             "extend_basic_blocks: block label mismatch"),
-        require(unify(NextBlockLabel, NextLabel),
+        expect(unify(NextBlockLabel, NextLabel), this_file,
             "extend_basic_blocks: next block label mismatch"),
-        require(unify(BlockMaybeFallThrough, yes(NextLabel)),
+        expect(unify(BlockMaybeFallThrough, yes(NextLabel)), this_file,
             "extend_basic_blocks: fall through mismatch"),
-        require(unify(NextBlockFallInto, yes),
+        expect(unify(NextBlockFallInto, yes), this_file,
             "extend_basic_blocks: fall into mismatch"),
         NewBlockInfo = block_info(BlockLabel, BlockLabelInstr,
             BlockInstrs ++ NextBlockInstrs, BlockFallInto,
@@ -235,6 +235,12 @@ flatten_basic_blocks([Label | Labels], BlockMap, Instrs) :-
     map__lookup(BlockMap, Label, BlockInfo),
     BlockInfo = block_info(_, BlockLabelInstr, BlockInstrs, _, _, _),
     list__append([BlockLabelInstr | BlockInstrs], RestInstrs, Instrs).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "basic_block.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module basic_block.

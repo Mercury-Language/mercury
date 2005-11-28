@@ -5,12 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
-%
-% termination.m
-%
+
+% File: termination.m.
 % Main author: crs.
 % Significant modifications by zs.
-%
+
 % This termination analysis is based on the algorithm given by Gerhard Groeger
 % and Lutz Plumer in their paper "Handling of Mutual Recursion in Automatic
 % Termination Proofs for Logic Programs"  which was printed in JICSLP '92 (the
@@ -27,17 +26,18 @@
 % The termination analysis may use a number of different norms to calculate
 % the size of a term.  These are set by using the --termination-norm string
 % option.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.termination.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
     % Perform termination analysis on the module.
     %
@@ -90,7 +90,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module relation.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

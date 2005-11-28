@@ -6,15 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% Atsort.m - approximate topological sort. The sort is approximate because
-% it must work even on data that has cycles.
-
+% File: atsort.m.
 % Author: zs.
+
+% Approximate topological sort. The sort is approximate because it must work
+% even on data that has cycles.
 
 %-----------------------------------------------------------------------------%
 
 :- module libs__atsort.
-
 :- interface.
 
 :- import_module list.
@@ -43,10 +43,13 @@
 :- pred atsort__closure(list(T)::in, relmap(T)::in, list(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module require.
+:- import_module libs.compiler_util.
+
+:- import_module string.
 
 % :- pred main1(list(list(int))).
 % :- mode main1(out) is det.
@@ -78,7 +81,7 @@ atsort(Succmap, Predmap, MustSuccmap, MustPredmap, PrefOrder, Sortlist) :-
     ( Snodelist = Pnodelist ->
         Nodelist = Snodelist
     ;
-        error("succ and pred nodelists differ in atsort")
+        unexpected(this_file, "succ and pred nodelists differ in atsort")
     ),
     atsort__main(Nodelist, Succmap, Predmap, MustSuccmap, MustPredmap,
         PrefOrder, Sortlist).
@@ -157,7 +160,7 @@ atsort__must_avoid([Head | Tail], Avoidlist) :-
 :- pred atsort__choose_pref(list(T)::in, list(T)::in, T::out) is det.
 
 atsort__choose_pref([], _CanChoose, _Chosen) :-
-    error("cannot choose any node in atsort").
+    unexpected(this_file, "cannot choose any node in atsort").
 atsort__choose_pref([Pref | Prefs], CanChoose, Chosen) :-
     ( list__member(Pref, CanChoose) ->
         Chosen = Pref
@@ -311,5 +314,11 @@ atsort__maybe_insert([Node | Nodes], !List) :-
         !:List = [Node | !.List]
     ),
     atsort__maybe_insert(Nodes, !List).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "atsort.m".
 
 %-----------------------------------------------------------------------------%

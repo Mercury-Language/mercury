@@ -5,24 +5,24 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+
+% File: rtti_out.m.
+% Main author: zs.
+
+% This module contains code to output the RTTI data structures defined in
+% rtti.m as C code.
 %
-% This module contains code to output the RTTI data structures
-% defined in rtti.m as C code.
-%
-% This module is part of the LLDS back-end.  The decl_set data type
-% that it uses, which is defined in llds_out.m, represents a set of LLDS
-% declarations, and thus depends on the LLDS.  Also the code to output
-% code_addrs depends on the LLDS.
+% This module is part of the LLDS back-end.  The decl_set data type that it
+% uses, which is defined in llds_out.m, represents a set of LLDS declarations,
+% and thus depends on the LLDS.  Also the code to output code_addrs depends on
+% the LLDS.
 %
 % The MLDS back-end does not use this module; instead it converts the RTTI
 % data structures to MLDS (and then to C or Java, etc.).
-%
-% Main author: zs.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__rtti_out.
-
 :- interface.
 
 :- import_module backend_libs.rtti.
@@ -31,6 +31,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % Output a C expression holding the address of the C name of the specified
     % rtti_data, preceded by the string in the first argument (that string will
@@ -92,6 +94,9 @@
 :- pred output_rtti_id_storage_type_name_no_decl(rtti_id::in, bool::in,
     io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.c_util.
@@ -118,7 +123,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 
@@ -833,7 +837,7 @@ output_du_functor_defn(RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         Rep = du_ll_rep(Ptag, SectagAndLocn)
     ;
         Rep = du_hl_rep(_),
-        error("output_du_functor_defn: du_hl_rep")
+        unexpected(this_file, "output_du_functor_defn: du_hl_rep")
     ),
     (
         SectagAndLocn = sectag_none,
@@ -901,7 +905,8 @@ output_res_functor_defn(RttiTypeCtor, ResFunctor, !DeclSet, !IO) :-
         io__write_int(SmallPtr, !IO)
     ;
         Rep = reserved_object(_, _, _),
-        error("output_res_functor_defn: reserved object")
+        unexpected(this_file,
+            "output_res_functor_defn: reserved object")
     ),
     io__write_string("\n};\n", !IO).
 
@@ -1009,7 +1014,8 @@ output_du_arg_types(RttiTypeCtor, Ordinal, ArgTypes, !DeclSet, !IO) :-
     output_generic_rtti_data_defn_start(
         ctor_rtti_id(RttiTypeCtor, field_types(Ordinal)), !DeclSet, !IO),
     io__write_string(" = {\n", !IO),
-    require(list__is_not_empty(ArgTypes), "output_du_arg_types: empty list"),
+    expect(list__is_not_empty(ArgTypes), this_file,
+        "output_du_arg_types: empty list"),
     output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", ArgTypeDatas, !IO),
     io__write_string("};\n", !IO).
 
@@ -1021,7 +1027,8 @@ output_du_arg_names(RttiTypeCtor, Ordinal, MaybeNames, !DeclSet, !IO) :-
     output_generic_rtti_data_defn_start(
         ctor_rtti_id(RttiTypeCtor, field_names(Ordinal)), !DeclSet, !IO),
     io__write_string(" = {\n", !IO),
-    require(list__is_not_empty(MaybeNames), "output_du_arg_names: empty list"),
+    expect(list__is_not_empty(MaybeNames),
+        this_file, "output_du_arg_names: empty list"),
     output_maybe_quoted_strings(MaybeNames, !IO),
     io__write_string("};\n", !IO).
 
@@ -1103,7 +1110,7 @@ output_du_ptag_ordered_table(RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
     ; PtagList = [0 - _ | _] ->
         FirstPtag = 0
     ;
-        error("output_dummy_ptag_layout_defn: bad ptag list")
+        unexpected(this_file, "output_dummy_ptag_layout_defn: bad ptag list")
     ),
     output_du_ptag_ordered_table_body(RttiTypeCtor, PtagList, FirstPtag, !IO),
     io__write_string("\n};\n", !IO).
@@ -1114,7 +1121,7 @@ output_du_ptag_ordered_table(RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
 output_du_ptag_ordered_table_body(_RttiTypeCtor, [], _CurPtag, !IO).
 output_du_ptag_ordered_table_body(RttiTypeCtor,
         [Ptag - SectagTable | PtagTail], CurPtag, !IO) :-
-    require(unify(Ptag, CurPtag),
+    expect(unify(Ptag, CurPtag), this_file,
         "output_du_ptag_ordered_table_body: ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
     io__write_string("\t{ ", !IO),
@@ -1164,7 +1171,7 @@ output_res_value_ordered_table(RttiTypeCtor, ResFunctors, DuPtagTable,
         NumericResFunctorReps, SymbolicResFunctorReps),
     list__length(NumericResFunctorReps, NumNumericResFunctorReps),
     list__length(SymbolicResFunctorReps, NumSymbolicResFunctorReps),
-    require(unify(NumSymbolicResFunctorReps, 0),
+    expect(unify(NumSymbolicResFunctorReps, 0), this_file,
         "output_res_value_ordered_table: symbolic functors"),
 
     output_generic_rtti_data_defn_start(
@@ -1305,7 +1312,7 @@ output_rtti_data_decl_chunk(Group, RttiIds, !DeclSet, !IO) :-
         RttiIds = [RttiId | _]
     ;
         RttiIds = [],
-        error("output_rtti_data_decl_group: empty list")
+        unexpected(this_file, "output_rtti_data_decl_group: empty list")
     ),
     Group = data_group(CType, IsArray, Linkage),
 
@@ -1326,7 +1333,8 @@ output_rtti_data_decl_chunk(Group, RttiIds, !DeclSet, !IO) :-
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
-    error("output_rtti_data_decl_chunk_entries: empty list").
+    unexpected(this_file,
+        "output_rtti_data_decl_chunk_entries: empty list").
 output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
         !DeclSet, !IO) :-
     DataAddr = rtti_addr(RttiId),

@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: polymorphism.m
-% main author: fjh
+% File: polymorphism.m.
+% Main author: fjh.
 
 % This module is a pass over the HLDS.
 % It does a syntactic transformation to implement polymorphism, including
@@ -403,7 +403,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

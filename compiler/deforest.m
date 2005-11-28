@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: deforest.m
+% File: deforest.m.
 % Main author: stayl.
 
 % Deforestation attempts to remove multiple traversals over data structures,
@@ -85,7 +85,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -144,7 +143,7 @@ deforestation(!ModuleInfo, !IO) :-
         restore_det_warnings(OptionsToRestore, !IO),
 
         module_info_get_num_errors(!.ModuleInfo, Errors),
-        require(unify(Errors5, Errors),
+        expect(unify(Errors5, Errors), this_file,
             "determinism errors after deforestation")
     ;
         true

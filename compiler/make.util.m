@@ -5,16 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: make.util.m
-% Main author: stayl
-%
+
+% File: make.util.m.
+% Main author: stayl.
+
 % Assorted predicates used to implement `mmc --make'.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module make__util.
-
 :- interface.
 
 %-----------------------------------------------------------------------------%
@@ -259,6 +258,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module libs.compiler_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -785,7 +786,7 @@ module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName,
                 module_target_to_file_name(ForeignModuleName, object_code(PIC),
                     MkDir, Search, FileName, !IO)
             ;
-                error("module_target_to_file_name_2")
+                unexpected(this_file, "module_target_to_file_name_2")
             )
         ; TargetType = foreign_il_asm(Lang) ->
             (
@@ -795,14 +796,14 @@ module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName,
                 module_target_to_file_name(ForeignModuleName, il_asm, MkDir,
                     Search, FileName, !IO)
             ;
-                error("module_target_to_file_name_2")
+                unexpected(this_file, "module_target_to_file_name_2")
             )
         ; TargetType = fact_table_object(PIC, FactFile) ->
             maybe_pic_object_file_extension(PIC, Ext, !IO),
             fact_table_file_name(ModuleName, FactFile, Ext, MkDir, FileName,
                 !IO)
         ;
-            error("module_target_to_file_name_2")
+            unexpected(this_file, "module_target_to_file_name_2")
         )
     ).
 
@@ -961,7 +962,8 @@ maybe_warn_up_to_date_target(Target @ (ModuleName - FileType), !Info, !IO) :-
                 io__write_string(FileName, !IO)
             ;
                 FileType = misc_target(_),
-                error("maybe_warn_up_to_date_target: misc_target")
+                unexpected(this_file,
+                    "maybe_warn_up_to_date_target: misc_target")
             ),
             io__write_string("'.\n", !IO)
         ;

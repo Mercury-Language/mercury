@@ -5,14 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: prog_io_pragma.m.
 % Main authors: fjh, dgj.
-%
+
 % This module handles the parsing of pragma directives.
 
-:- module parse_tree__prog_io_pragma.
+%-----------------------------------------------------------------------------%
 
+:- module parse_tree__prog_io_pragma.
 :- interface.
 
 :- import_module libs.globals.
@@ -40,7 +41,7 @@
 
 :- implementation.
 
-%:- import_module libs.lp_rational.
+:- import_module libs.compiler_util.
 :- import_module libs.rat.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
@@ -50,7 +51,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -158,7 +158,8 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
                             "`:- pragma foreign_type' declaration",
                             ErrorAssertionTerm)
                     ;
-                        error("parse_pragma_type: unexpected failure of " ++
+                        unexpected(this_file,
+                            "parse_pragma_type: unexpected failure of " ++
                             "parse_maybe_foreign_type_assertion")
                     )
                 ;
@@ -1967,6 +1968,12 @@ parse_rational(Term, Rational) :-
     NumerTerm = term__functor(term__integer(Numer), [], _),
     DenomTerm = term__functor(term__integer(Denom), [], _),
     Rational = rat__rat(Numer, Denom).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_io_pragma.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module prog_io_pragma.

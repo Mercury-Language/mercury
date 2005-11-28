@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% rtti_to_mlds.m: convert RTTI data structures to MLDS.
-% Authors: fjh, zs
-%
+
+% File: rtti_to_mlds.m.
+% Authors: fjh, zs.
+
 % This module defines routines to convert from the back-end-independent
 % RTTI data structures into MLDS definitions.
 % The RTTI data structures are used for static data that is used
@@ -33,7 +33,7 @@
 % below which use list__append.  If possible these lists should instead be
 % manipulated through some use of prepending and/or list__reverse instead, so
 % that the algorithm stays O(N).
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend__rtti_to_mlds.
@@ -45,9 +45,14 @@
 
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % Return a list of MLDS definitions for the given rtti_data list.
     %
 :- func rtti_data_list_to_mlds(module_info, list(rtti_data)) = mlds__defns.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -74,10 +79,11 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 rtti_data_list_to_mlds(ModuleInfo, RttiDatas) = MLDS_Defns :-
     RealRttiDatas = list__filter(real_rtti_data, RttiDatas),
@@ -494,7 +500,8 @@ gen_type_info_defn(ModuleInfo, var_arity_type_info(VarArityId, ArgTypes),
     rtti_id::in, mlds__initializer::out, list(mlds__defn)::out) is det.
 
 gen_pseudo_type_info_defn(_, plain_arity_zero_pseudo_type_info(_), _, _, _) :-
-    error("gen_pseudo_type_info_defn: plain_arity_zero_pseudo_type_info").
+    unexpected(this_file,
+        "gen_pseudo_type_info_defn: plain_arity_zero_pseudo_type_info").
 gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, RttiId, Init,
         SubDefns) :-
     PseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, ArgTypes),
@@ -952,7 +959,7 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
 gen_du_ptag_ordered_table_body(_, _, [], _) = [].
 gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
         [Ptag - SectagTable | PtagTail], CurPtag) = [Init | Inits] :-
-    require(unify(Ptag, CurPtag),
+    expect(unify(Ptag, CurPtag), this_file,
         "gen_du_ptag_ordered_table_body: ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
     RttiName = du_ptag_layout(Ptag),
@@ -1463,7 +1470,8 @@ gen_init_proc_id_from_univ(ModuleInfo, ProcLabelUniv) = Init :-
     ( univ_to_type(ProcLabelUniv, ProcLabel) ->
         Init = gen_init_proc_id(ModuleInfo, ProcLabel)
     ;
-        error("gen_init_proc_id_from_univ: cannot extract univ value")
+        unexpected(this_file,
+            "gen_init_proc_id_from_univ: cannot extract univ value")
     ).
 
     % Succeed iff the specified rtti_data is one that requires an

@@ -6,13 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: hlds_pred.m.
+% Main authors: fjh, conway.
+
 % This module defines the part of the HLDS that deals with predicates
 % and procedures.
 
-% Main authors: fjh, conway.
+%-----------------------------------------------------------------------------%
 
 :- module hlds__hlds_pred.
-
 :- interface.
 
 :- import_module check_hlds.mode_constraint_robdd.
@@ -54,7 +56,6 @@
 
 % Standard library modules.
 :- import_module int.
-:- import_module require.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
@@ -2274,7 +2275,7 @@ pred_info_update_goal_type(GoalType1, !PredInfo) :-
         GoalType = GoalType0
     ;
         GoalType0 = promise(_),
-        error("pred_info_update_goal_type")
+        unexpected(this_file, "pred_info_update_goal_type")
     ),
     pred_info_set_goal_type(GoalType, !PredInfo).
 
@@ -3125,7 +3126,7 @@ proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
         MaybeHeadModesConstraint = yes(HeadModesConstraint)
     ;
         MaybeHeadModesConstraint = no,
-        error("proc_info_head_modes_constraint: no constraint")
+        unexpected(this_file, "proc_info_head_modes_constraint: no constraint")
     ).
 
 proc_info_set_head_modes_constraint(HMC, ProcInfo,
@@ -3194,7 +3195,7 @@ proc_info_arg_info(ProcInfo, ArgInfo) :-
         MaybeArgInfo0 = yes(ArgInfo)
     ;
         MaybeArgInfo0 = no,
-        error("proc_info_arg_info: arg_pass_info not set")
+        unexpected(this_file, "proc_info_arg_info: arg_pass_info not set")
     ).
 
 proc_info_get_termination2_info(ProcInfo, Termination2Info) :-
@@ -3245,7 +3246,8 @@ proc_info_get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
             list__append(TypeInfoVars0, TypeInfoVars1, TypeInfoVars)
         )
     ;
-        error("proc_info_get_typeinfo_vars_2: var not found in typemap")
+        unexpected(this_file,
+            "proc_info_get_typeinfo_vars_2: var not found in typemap")
     ).
 
 proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
@@ -3566,7 +3568,7 @@ field_extraction_function_args(Args, TermInputArg) :-
     ( Args = [TermInputArg0] ->
         TermInputArg = TermInputArg0
     ;
-        error("field_extraction_function_args")
+        unexpected(this_file, "field_extraction_function_args")
     ).
 
 field_update_function_args(Args, TermInputArg, FieldArg) :-
@@ -3574,7 +3576,7 @@ field_update_function_args(Args, TermInputArg, FieldArg) :-
         FieldArg = FieldArg0,
         TermInputArg = TermInputArg0
     ;
-        error("field_update_function_args")
+        unexpected(this_file, "field_update_function_args")
     ).
 
 field_access_function_name(get, FieldName, FieldName).
@@ -3847,7 +3849,8 @@ valid_determinism_for_eval_method(eval_memo(_), Detism) = Valid :-
         Valid = yes
     ).
 valid_determinism_for_eval_method(eval_table_io(_, _), _) = _ :-
-    error("valid_determinism_for_eval_method called after tabling phase").
+    unexpected(this_file,
+        "valid_determinism_for_eval_method called after tabling phase").
 valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
     % Determinism analysis isn't yet smart enough to know whether
     % a cannot_fail execution path is guaranteed not to go through

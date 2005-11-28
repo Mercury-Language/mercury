@@ -6,17 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-%
-% file: code_util.m.
-%
-% various utilities routines for code generation and recognition
-% of builtins.
-%
-%-----------------------------------------------------------------------------%
+
+% File: code_util.m.
+
+% Various utilities routines for code generation and recognition of builtins.
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__code_util.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -31,6 +28,8 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
     % Create a code address which holds the address of the specified procedure.
     % The `immed' argument should be `no' if the the caller wants the returned
@@ -122,7 +121,6 @@
 :- import_module bool.
 :- import_module char.
 :- import_module int.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.

@@ -5,13 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+
 % File: recompilation_check.m
 % Main author: stayl
-%
-% Check whether a module should be recompiled.
-%-----------------------------------------------------------------------------%
-:- module recompilation__check.
 
+% Check whether a module should be recompiled.
+
+%-----------------------------------------------------------------------------%
+
+:- module recompilation__check.
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -25,15 +27,13 @@
     --->    all_modules
     ;       some_modules(list(module_name)).
 
-:- type find_target_file_names ==
-        pred(module_name, list(file_name), io, io).
-:- inst find_target_file_names ==
-        (pred(in, out, di, uo) is det).
+:- type find_target_file_names == pred(module_name, list(file_name), io, io).
+:- inst find_target_file_names == (pred(in, out, di, uo) is det).
 
 :- type find_timestamp_file_names ==
-        pred(module_name, list(file_name), io, io).
+    pred(module_name, list(file_name), io, io).
 :- inst find_timestamp_file_names ==
-        (pred(in, out, di, uo) is det).
+   (pred(in, out, di, uo) is det).
 
     % should_recompile(ModuleName, FindTargetFiles,
     %   FindTimestampFiles, ModulesToRecompile, ReadModules)
@@ -79,7 +79,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module parser.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -121,7 +120,7 @@ should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
             Reasons = !.Info ^ recompilation_reasons
         ;
             Result = failed,
-            error("should_recompile_2")
+            unexpected(this_file, "should_recompile_2")
         ;
             Result = exception(Exception),
             ( univ_to_type(Exception, RecompileException0) ->
@@ -831,7 +830,7 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_for_ambiguities(_, _, _, clause(_, _, _, _, _, _) - _, !Info) :-
-    error("check_for_ambiguities: clause").
+    unexpected(this_file, "check_for_ambiguities: clause").
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         type_defn(_, Name, Params, Body, _) - _, !Info) :-
     Arity = list__length(Params),

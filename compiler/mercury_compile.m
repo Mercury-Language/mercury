@@ -195,7 +195,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module pprint.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -3343,7 +3342,8 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
         % sense anymore, because the polymorphism pass is necessary
         % for the proper mode analysis of code using existential
         % types.
-        error("sorry, `--no-polymorphism' is no longer supported")
+        unexpected(this_file,
+            "sorry, `--no-polymorphism' is no longer supported")
     ).
 
 :- pred maybe_type_ctor_infos(bool::in, bool::in,
@@ -3504,7 +3504,7 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
         (
             Deforest = no,
             Constraints = no,
-            error("mercury_compile__maybe_deforestation")
+            unexpected(this_file, "maybe_deforestation")
         ;
             Deforest = yes,
             Constraints = yes,
@@ -3684,7 +3684,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
     (
         AsWords = yes,
         AsCells = yes,
-        error("mercury_compile__maybe_term_size_prof: as_words and as_cells")
+        unexpected(this_file, "maybe_term_size_prof: as_words and as_cells")
     ;
         AsWords = yes,
         AsCells = no,
@@ -4190,19 +4190,19 @@ make_foreign_import_header_code(ForeignImportModule, Include, !IO) :-
             IncludeString, Context)
     ;
         Lang = csharp,
-        error("sorry. :- import_module not yet implemented: " ++
+        sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for C#")
     ;
         Lang = managed_cplusplus,
-        error("sorry. :- import_module not yet implemented: " ++
+        sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Managed C++")
     ;
         Lang = il,
-        error("sorry. :- import_module not yet implemented: " ++
+        sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for IL")
     ;
         Lang = java,
-        error("sorry. :- import_module not yet implemented: " ++
+        sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Java")
     ).
 
@@ -4698,4 +4698,9 @@ maybe_dump_rl(Procs, ModuleInfo, _StageNum, StageName, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "mercury_compile.m".
+
 %-----------------------------------------------------------------------------%

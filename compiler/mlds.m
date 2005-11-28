@@ -1690,7 +1690,6 @@
 :- import_module char.
 :- import_module int.
 :- import_module library.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 
@@ -2003,7 +2002,10 @@ abstractness(Flags) = promise_det(pred(Abstractness::out) is semidet :-
 :- mode promise_det(pred(out) is semidet) = out is det.
 
 promise_det(Pred) = X :-
-    (if Pred(X0) then X = X0 else error("promise_det failed")).
+    ( if    Pred(X0)
+      then  X = X0
+      else  unexpected(this_file, "promise_det failed")
+    ).
 
 %
 % Here we define the functions to set a member of the set.

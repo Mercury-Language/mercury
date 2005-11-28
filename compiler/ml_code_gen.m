@@ -716,7 +716,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module io.
-:- import_module map.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -755,7 +754,7 @@
 
     % Generate declarations for a list of local variables.
     %
-:- pred ml_gen_local_var_decls(prog_varset::in, map(prog_var, mer_type)::in,
+:- pred ml_gen_local_var_decls(prog_varset::in, vartypes::in,
     prog_context::in, prog_vars::in, mlds__defns::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -792,7 +791,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module require.
+:- import_module map.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -1263,7 +1262,7 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars, !Info) :-
     % local declarations for all the variables used in each sub-goal.
     %
 :- pred ml_gen_all_local_var_decls(hlds_goal::in, prog_varset::in,
-    map(prog_var, mer_type)::in, list(prog_var)::in, mlds__defns::out,
+    vartypes::in, list(prog_var)::in, mlds__defns::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_all_local_var_decls(Goal, VarSet, VarTypes, HeadVars, MLDS_LocalVars,
@@ -1962,7 +1961,7 @@ ml_gen_goal_expr(par_conj(Goals), CodeModel, Context,
 ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
         Context, Decls, Statements, !Info) :-
     determinism_to_code_model(Detism, CallCodeModel),
-    require(unify(CodeModel, CallCodeModel),
+    expect(unify(CodeModel, CallCodeModel), this_file,
         "ml_gen_generic_call: code model mismatch"),
     ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
         Decls, Statements, !Info).
@@ -2003,7 +2002,7 @@ ml_gen_goal_expr(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         PragmaImpl = nondet(LocalVarsDecls, LocalVarsContext,
             FirstCode, FirstContext, LaterCode, LaterContext,
             _Treatment, SharedCode, SharedContext),
-        require(unify(ExtraArgs, []),
+        expect(unify(ExtraArgs, []), this_file,
             "ml_gen_goal_expr: extra args"),
         ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
             PredId, ProcId, Args, OuterContext,
@@ -2012,7 +2011,7 @@ ml_gen_goal_expr(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
             SharedCode, SharedContext, Decls, Statements, !Info)
     ;
         PragmaImpl = import(Name, HandleReturn, Vars, _Context),
-        require(unify(ExtraArgs, []),
+        expect(unify(ExtraArgs, []), this_file,
             "ml_gen_goal_expr: extra args"),
         ForeignCode = string__append_list([HandleReturn, " ",
             Name, "(", Vars, ");"]),
@@ -2287,7 +2286,7 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
 
     % Generate <declaration of one local variable for each arg>
     ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
-    require(unify(ExtraArgs, []),
+    expect(unify(ExtraArgs, []), this_file,
         "ml_gen_ordinary_pragma_java_proc: extra args"),
 
     % Generate code to set the values of the input variables.
@@ -2335,7 +2334,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         Args, ExtraArgs, ForeignCode, Context, Decls, Statements, !Info) :-
 
     ml_gen_outline_args(Args, OutlineArgs, !Info),
-    require(unify(ExtraArgs, []),
+    expect(unify(ExtraArgs, []), this_file,
         "ml_gen_ordinary_pragma_managed_proc: extra args"),
 
     ForeignLang = foreign_language(Attributes),
@@ -2421,7 +2420,7 @@ ml_gen_outline_args([foreign_arg(Var, MaybeVarMode, OrigType) | Args],
 ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, ForeignCode, Context, Decls, Statements, !Info) :-
 
-    require(unify(ExtraArgs, []),
+    expect(unify(ExtraArgs, []), this_file,
         "ml_gen_ordinary_pragma_managed_proc: extra args"),
 
     % XXX FIXME need to handle model_semi code here,

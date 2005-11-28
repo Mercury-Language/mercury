@@ -5,12 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: hhf.m.
+% Author: dmo.
+
 % Convert superhomogeneous form to hyperhomogeneous form and output an
 % inst graph for the predicate based on this transformation.
 %
 % Hyperhomogeneous form and the transformation are documented in
 % David Overton's PhD thesis.
+
 %-----------------------------------------------------------------------------%
 
 :- module hlds__hhf.
@@ -48,7 +52,6 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module term.
@@ -317,9 +320,9 @@ process_unify(functor(ConsId0, IsExistConstruct, ArgsA), NonLocals, GoalInfo0,
 
 make_unifications([], [], _, _, _, _, []).
 make_unifications([_ | _], [], _, _, _, _, _) :-
-    error("hhf_make_unifications: length mismatch").
+    unexpected(this_file, "hhf_make_unifications: length mismatch (1)").
 make_unifications([], [_ | _], _, _, _, _, _) :-
-    error("hhf_make_unifications: length mismatch").
+    unexpected(this_file, "hhf_make_unifications: length mismatch (2)").
 make_unifications([A | As], [B | Bs], GI0, M, U, C,
         [unify(A, var(B), M, U, C) - GI | Us]) :-
     goal_info_get_nonlocals(GI0, GINonlocals0),

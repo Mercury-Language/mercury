@@ -5,11 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: use_local_vars.m
-%
 % Author: zs.
-%
+
 % This module implements an LLDS->LLDS transformation that optimizes the
 % sequence of instructions in a procedure body by replacing references to
 % relatively expensive locations: fake registers (Mercury abstract machine
@@ -60,7 +59,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__use_local_vars.
-
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -69,6 +67,8 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- pred use_local_vars__main(list(instruction)::in, list(instruction)::out,
     int::in, int::in, bool::in, proc_label::in, counter::in, counter::out)
@@ -89,7 +89,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -246,8 +245,8 @@ find_compulsory_lvals([Instr | Instrs], LiveMap, MaybeFallThrough,
     ;
         Uinstr = call(_, _, _, _, _, _)
     ->
-        require(unify(PrevLivevals, yes),
-            "find_compulsory_lvals: call without livevals"),
+        expect(unify(PrevLivevals, yes),
+            this_file, "find_compulsory_lvals: call without livevals"),
         % The livevals instruction will include all the live lvals
         % in MaybeCompulsoryLvals after we return.
         !:MaybeCompulsoryLvals = known(set__init)
@@ -317,8 +316,8 @@ opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
         counter__allocate(TempNum, !TempCounter),
         TempLval = temp(r, TempNum),
         lvals_in_lval(ChosenLval, SubChosenLvals),
-        require(unify(SubChosenLvals, []),
-            "opt_access: nonempty SubChosenLvals"),
+        expect(unify(SubChosenLvals, []),
+            this_file, "opt_access: nonempty SubChosenLvals"),
         substitute_lval_in_instr_until_defn(ChosenLval, TempLval,
             [Instr0 | TailInstrs0], Instrs1, 0, NumReplacements),
         set__insert(AlreadyTried0, ChosenLval, AlreadyTried1),
@@ -390,12 +389,12 @@ base_lval_worth_replacing_not_tried(AlreadyTried, NumRealRRegs, Lval) :-
 substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
     Instr0 = Uinstr0 - Comment,
     ( Uinstr0 = assign(ToLval, FromRval) ->
-        require(unify(ToLval, OldLval),
-            "substitute_lval_in_defn: mismatch in assign"),
+        expect(unify(ToLval, OldLval),
+            this_file, "substitute_lval_in_defn: mismatch in assign"),
         Uinstr = assign(NewLval, FromRval)
     ; Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, MO, Type) ->
-        require(unify(ToLval, OldLval),
-            "substitute_lval_in_defn: mismatch in incr_hp"),
+        expect(unify(ToLval, OldLval),
+            this_file, "substitute_lval_in_defn: mismatch in incr_hp"),
         Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type)
     ;
         unexpected(this_file,

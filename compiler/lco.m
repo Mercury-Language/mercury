@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% Author: zs
-%
+
+% File: lco.m.
+% Author: zs.
+
 % Transform predicates with calls that are tail recursive modulo construction
 % where (1) all recursive calls have the same args participating in the "modulo
 % construction" part and (2) all the other output args are returned in the same
@@ -102,7 +103,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__lco.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -138,7 +138,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -547,7 +546,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out) is det.
 
 update_call_args(_ModuleInfo, _VarTypes, [], [], UpdatedCallOutArgs, []) :-
-    require(unify(UpdatedCallOutArgs, []),
+    expect(unify(UpdatedCallOutArgs, []), this_file,
         "update_call_args: updating nonexistent arg").
 update_call_args(_ModuleInfo, _VarTypes, [], [_ | _], _, _) :-
     unexpected(this_file, "update_call_args: mismatches lists").
@@ -714,7 +713,7 @@ update_construct(Subst, Goal0, Goal) :-
                 unexpected(this_file, "update_construct: var RHS")
             ;
                 RHS0 = functor(RHSConsId, IsExistConstr, RHSVars0),
-                require(unify(ConsId, RHSConsId),
+                expect(unify(ConsId, RHSConsId), this_file,
                     "update_construct: cons_id mismatch"),
                 rename_var_list(no, Subst, RHSVars0, RHSVars),
                 RHS = functor(RHSConsId, IsExistConstr, RHSVars)
@@ -799,7 +798,7 @@ transform_variant_proc(ModuleInfo, AddrOutArgPosns, ProcInfo,
 
 make_addr_vars([], [], [], [], AddrOutArgPosns, _, _, [],
         !VarSet, !VarTypes) :-
-    require(unify(AddrOutArgPosns, []),
+    expect(unify(AddrOutArgPosns, []), this_file,
         "make_addr_vars: AddrOutArgPosns != []").
 make_addr_vars([], [_ | _], _, _, _, _, _, _, !VarSet, !VarTypes) :-
     unexpected(this_file, "make_addr_vars: mismatched lists").

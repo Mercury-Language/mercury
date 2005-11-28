@@ -5,21 +5,20 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: instmap.m
+
+% File: instmap.m.
 % Main author: bromage.
-%
+
 % This module contains code which implements the instmap and instmap_delta
 % ADTs.
-%
+
 % An instmap stores information on what instantiation states a set of
 % variables have.  An instmap_delta stores information on how these
 % instantiation states change across a goal.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module hlds__instmap.
-
 :- interface.
 
 :- import_module check_hlds.mode_errors.
@@ -317,14 +316,16 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module int.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 :- type instmap_delta   ==  instmap.
 
@@ -383,9 +384,9 @@ instmap_delta_from_mode_list(Var, Modes, ModuleInfo, InstMapDelta) :-
 
 instmap_delta_from_mode_list_2([], [], _, !InstMapDelta).
 instmap_delta_from_mode_list_2([], [_ | _], _, !InstMapDelta) :-
-    error("instmap_delta_from_mode_list_2").
+    unexpected(this_file, "instmap_delta_from_mode_list_2").
 instmap_delta_from_mode_list_2([_ | _], [], _, !InstMapDelta) :-
-    error("instmap_delta_from_mode_list_2").
+    unexpected(this_file, "instmap_delta_from_mode_list_2").
 instmap_delta_from_mode_list_2([Var | Vars], [Mode | Modes], ModuleInfo,
         !InstMapDelta) :-
     mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
@@ -473,9 +474,9 @@ instmap__set_vars([V | Vs], [I | Is], !InstMap) :-
     instmap__set(V, I, !InstMap),
     instmap__set_vars(Vs, Is, !InstMap).
 instmap__set_vars([_ | _], [], !InstMap) :-
-    error("instmap__set_vars").
+    unexpected(this_file, "instmap__set_vars: length mismatch (1)").
 instmap__set_vars([], [_ | _], !InstMap) :-
-    error("instmap__set_vars").
+    unexpected(this_file, "instmap__set_vars: length mismatch (2)").
 
 instmap_delta_set(_Var, _Inst, unreachable, unreachable).
 instmap_delta_set(Var, Inst, reachable(InstMapping0), Instmap) :-
@@ -542,7 +543,7 @@ bind_inst_to_functor(Type, ConsId, !Inst, !ModuleInfo) :-
     ->
         true
     ;
-        error("bind_inst_to_functor: mode error")
+        unexpected(this_file, "bind_inst_to_functor: mode error")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -788,7 +789,8 @@ merge_instmap_deltas(InstMap, NonLocals, VarTypes, Deltas,
         [], MergedDeltas, !ModuleInfo),
     (
         MergedDeltas = [],
-        error("merge_instmap_deltas: empty instmap_delta list.")
+        unexpected(this_file,
+            "merge_instmap_deltas: empty instmap_delta list.")
     ;
         MergedDeltas = [MergedDelta]
     ;
@@ -1050,7 +1052,7 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes,
         term__var_to_int(Var, VarInt),
         string__format("merge_instmapping_delta_2: error merging var %i",
             [i(VarInt)], Msg),
-        error(Msg)
+        unexpected(this_file, Msg)
     ),
     merge_instmapping_delta_2(Vars, InstMap, VarTypes,
         InstMappingA, InstMappingB, !InstMapping, !ModuleInfo).
@@ -1059,7 +1061,7 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes,
 %-----------------------------------------------------------------------------%
 
     % Given two instmap deltas, unify them to produce a new instmap_delta.
-
+    %
 unify_instmap_delta(_, _, unreachable, InstMapDelta, InstMapDelta,
         !ModuleInfo).
 unify_instmap_delta(_, _, reachable(InstMapping), unreachable,
@@ -1103,7 +1105,8 @@ unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
             ->
                 svmap__det_insert(Var, Inst, !InstMapping)
             ;
-                error("unify_instmapping_delta_2: unexpected error")
+                unexpected(this_file,
+                    "unify_instmapping_delta_2: unexpected error")
             )
         ;
             svmap__det_insert(Var, InstA, !InstMapping)
@@ -1144,7 +1147,7 @@ instmap_delta_apply_sub_2([V - I | AL], Must, Sub, IM0, IM) :-
             N = V
         ;
             Must = yes,
-            error("instmap_delta_apply_sub_2: no substitute")
+            unexpected(this_file, "instmap_delta_apply_sub_2: no substitute")
         )
     ),
     % XXX temporary hack alert XXX
@@ -1170,5 +1173,11 @@ instmap_delta_to_assoc_list(reachable(InstMapping), AL) :-
 var_is_ground_in_instmap(ModuleInfo, InstMap, Var) :-
     instmap__lookup_var(InstMap, Var, Inst),
     inst_is_ground(ModuleInfo, Inst).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "instmap.m".
 
 %-----------------------------------------------------------------------------%

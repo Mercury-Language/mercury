@@ -6,6 +6,9 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: layout_out.m.
+% Author: zs.
+
 % This structure converts layout structures from the representation used
 % within the compiler to the representation used by the runtime system.
 % The types of the inputs are defined in layout.m. The types of the outputs
@@ -14,13 +17,10 @@
 %
 % This module should be, but as yet isn't, independent of whether we are
 % compiling to LLDS or MLDS.
-%
-% Author: zs.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__layout_out.
-
 :- interface.
 
 :- import_module ll_backend.layout.
@@ -90,6 +90,7 @@
 :- pred output_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -113,7 +114,6 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module varset.
@@ -1051,7 +1051,7 @@ output_proc_layout_head_var_nums(ProcLabel, HeadVarNums, !DeclSet, !IO) :-
 
 output_proc_layout_var_names(ProcLabel, VarNames, MaxVarNum, !DeclSet, !IO) :-
     list__length(VarNames, VarNameCount),
-    require(unify(VarNameCount, MaxVarNum),
+    expect(unify(VarNameCount, MaxVarNum), this_file,
         "output_proc_layout_var_names: VarNameCount != MaxVarNum"),
     io__write_string("\n", !IO),
     output_layout_name_storage_type_name(proc_layout_var_names(ProcLabel), yes,

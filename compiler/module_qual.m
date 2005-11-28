@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: module_qual.m
-% Main authors: stayl, fjh
-%
+
+% File: module_qual.m.
+% Main authors: stayl, fjh.
+
 % Module qualifies types, insts and modes within declaration items.  The
 % head of all declarations should be module qualified in prog_io.m.
 % This module qualifies the bodies of the declarations.  Checks for
@@ -18,7 +18,7 @@
 % option is set, warns about modules imported in the interface that do
 % not need to be in the interface.  The modes of lambda expressions are
 % qualified in modes.m.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.module_qual.
@@ -138,7 +138,6 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
@@ -349,7 +348,8 @@ collect_mq_info_qualified_symname(SymName, !Info) :-
     ( SymName = qualified(ModuleName, _) ->
         mq_info_set_module_used(ModuleName, !Info)
     ;
-        error("collect_mq_info_qualified_symname: not qualified.")
+        unexpected(this_file,
+            "collect_mq_info_qualified_symname: not qualified.")
     ).
 
     % process_module_defn:

@@ -5,17 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: livemap.m
-%
 % Main author: zs.
-%
+
 % This module builds up a map that gives the set of live lvals at each label.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__livemap.
-
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -35,13 +33,15 @@
     %
 :- pred livemap__build(list(instruction)::in, maybe(livemap)::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module libs.compiler_util.
 :- import_module ll_backend.opt_util.
 
 :- import_module bool.
-:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

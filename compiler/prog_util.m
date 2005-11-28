@@ -6,13 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% main author: fjh
+% File: prog_util.
+% Main author: fjh.
 
-% various utility predicates acting on the parse tree data
-% structure defined in prog_data.m.
+% Various utility predicates acting on the parse tree data structure defined
+% in prog_data.m and prog_item.m
+
+%-----------------------------------------------------------------------------%
 
 :- module parse_tree__prog_util.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -269,6 +271,7 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
@@ -276,7 +279,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module svmap.
 :- import_module varset.
@@ -562,25 +564,27 @@ cons_id_arity(int_const(_)) = 0.
 cons_id_arity(string_const(_)) = 0.
 cons_id_arity(float_const(_)) = 0.
 cons_id_arity(pred_const(_, _)) =
-    func_error("cons_id_arity: can't get arity of pred_const").
+    unexpected(this_file, "cons_id_arity: can't get arity of pred_const").
 cons_id_arity(type_ctor_info_const(_, _, _)) =
-    func_error("cons_id_arity: can't get arity of type_ctor_info_const").
+    unexpected(this_file,
+        "cons_id_arity: can't get arity of type_ctor_info_const").
 cons_id_arity(base_typeclass_info_const(_, _, _, _)) =
-    func_error("cons_id_arity: " ++
+    unexpected(this_file, "cons_id_arity: " ++
         "can't get arity of base_typeclass_info_const").
 cons_id_arity(type_info_cell_constructor(_)) =
-    func_error("cons_id_arity: " ++
+    unexpected(this_file, "cons_id_arity: " ++
         "can't get arity of type_info_cell_constructor").
 cons_id_arity(typeclass_info_cell_constructor) =
-    func_error("cons_id_arity: " ++
+    unexpected(this_file, "cons_id_arity: " ++
         "can't get arity of typeclass_info_cell_constructor").
 cons_id_arity(tabling_pointer_const(_)) =
-    func_error("cons_id_arity: can't get arity of tabling_pointer_const").
+    unexpected(this_file,
+        "cons_id_arity: can't get arity of tabling_pointer_const").
 cons_id_arity(deep_profiling_proc_layout(_)) =
-    func_error("cons_id_arity: " ++
+    unexpected(this_file, "cons_id_arity: " ++
         "can't get arity of deep_profiling_proc_layout").
 cons_id_arity(table_io_decl(_)) =
-    func_error("cons_id_arity: can't get arity of table_io_decl").
+    unexpected(this_file, "cons_id_arity: can't get arity of table_io_decl").
 
 cons_id_maybe_arity(cons(_, Arity)) = yes(Arity).
 cons_id_maybe_arity(int_const(_)) = yes(0).
@@ -651,7 +655,8 @@ pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
         FuncArgs = FuncArgs0,
         FuncReturn = FuncReturn0
     ;
-        error("pred_args_to_func_args: function missing return value?")
+        unexpected(this_file,
+            "pred_args_to_func_args: function missing return value?")
     ).
 
 get_state_args(Args0, Args, State0, State) :-
@@ -665,7 +670,7 @@ get_state_args_det(Args0, Args, State0, State) :-
         State0 = State0A,
         State = StateA
     ;
-        error("hlds_pred__get_state_args_det")
+        unexpected(this_file, "get_state_args_det")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -712,7 +717,7 @@ substitute_var(Subst, Var0) = Var :-
     ( Term = term__variable(Var1) ->
         Var = Var1
     ;
-        error("substitute_var: invalid substitution")
+        unexpected(this_file, "substitute_var: invalid substitution")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -743,6 +748,12 @@ sym_name_and_term_to_term(qualified(ModuleNames, ModuleName), Term, Context) =
         Term],
         Context
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module prog_util.

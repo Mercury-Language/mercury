@@ -129,7 +129,6 @@
 :- import_module bool.
 :- import_module enum.
 :- import_module map.
-:- import_module require.
 :- import_module sparse_bitset.
 :- import_module std_util.
 :- import_module term.
@@ -756,8 +755,10 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
             SubInfo = no_construct_sub_info
         ;
             SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
-            require(unify(MaybeTakeAddr, no), "lambda term has take addr"),
-            require(unify(MaybeSize, no), "lambda term has size info")
+            expect(unify(MaybeTakeAddr, no), this_file,
+                "lambda term has take addr"),
+            expect(unify(MaybeSize, no), this_file,
+                "lambda term has size info")
         ),
         map__from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
         to_sorted_list(NonLocals, Args),

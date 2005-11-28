@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: arg_info.m
+% File: arg_info.m.
 % Main author: fjh.
 
 % This module is one of the pre-passes of the code generator.
@@ -119,12 +119,12 @@
 :- import_module std_util.
 :- import_module map.
 :- import_module int.
-:- import_module require.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
 %
-% This whole section just traverses the module structure.
+% This whole section just traverses the module structure
+%
 
 generate_arg_info(ModuleInfo0, ModuleInfo) :-
     module_info_preds(ModuleInfo0, Preds),

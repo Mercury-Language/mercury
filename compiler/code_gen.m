@@ -5,10 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% Code generation - convert from HLDS to LLDS.
-%
+
+% File: code_gen.m.
 % Main authors: conway, zs.
+
+% Code generation - convert from HLDS to LLDS.
 %
 % The two main tasks of this module are
 %
@@ -25,11 +26,10 @@
 % for switches by switch_gen and its subsidiary modules, for disjunctions
 % by disj_gen, and for pragma_c_codes by pragma_c_gen. The only kind of goal
 % handled directly by code_gen is the conjunction.
-%
+
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__code_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -113,7 +113,6 @@
 :- import_module counter.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -284,7 +283,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         % a retry command in the debugger from a point in the middle of this
         % procedure will do the wrong thing.
         proc_info_get_need_maxfr_slot(ProcInfo, HaveMaxfrSlot),
-        require(unify(HaveMaxfrSlot, yes),
+        expect(unify(HaveMaxfrSlot, yes), this_file,
             "should have reserved a slot for maxfr, but didn't")
     ;
         true
@@ -1072,14 +1071,14 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
             ( ContextModel \= model_det ->
                 true
             ;
-                error("semidet model in det context")
+                unexpected(this_file, "semidet model in det context")
             )
         ;
             CodeModel = model_non,
             ( ContextModel = model_non ->
                 true
             ;
-                error("nondet model in det/semidet context")
+                unexpected(this_file, "nondet model in det/semidet context")
             )
         ),
         %

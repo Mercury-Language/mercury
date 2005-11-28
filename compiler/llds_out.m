@@ -6,12 +6,13 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: llds_out.m.
+% Main authors: conway, fjh, zs.
+
 % LLDS - The Low-Level Data Structure.
 
 % This module defines the routines for printing out LLDS,
 % the Low Level Data Structure.
-
-% Main authors: conway, fjh, zs.
 
 %-----------------------------------------------------------------------------%
 
@@ -210,7 +211,6 @@
 :- import_module int.
 :- import_module library.   % for the version number.
 :- import_module multi_map.
-:- import_module require.
 :- import_module set.
 :- import_module set_tree234.
 :- import_module std_util.
@@ -1778,7 +1778,7 @@ output_instruction_list_while_block([Instr0 - Comment0 | Instrs], Label,
         unexpected(this_file, "label in block")
     ; Instr0 = goto(label(Label)) ->
         io__write_string("\tcontinue;\n", !IO),
-        require(unify(Instrs, []),
+        expect(unify(Instrs, []), this_file,
             "output_instruction_list_while_block: code after goto")
     ; Instr0 = if_val(Rval, label(Label)) ->
         io__write_string("\tif (", !IO),
@@ -4786,7 +4786,7 @@ output_lval(mem_ref(Rval), !IO) :-
     is det.
 
 output_lval_for_assign(reg(RegType, Num), word, !IO) :-
-    require(unify(RegType, r), "output_lval_for_assign: float reg"),
+    expect(unify(RegType, r), this_file, "output_lval_for_assign: float reg"),
     output_reg(RegType, Num, !IO).
 output_lval_for_assign(stackvar(N), word, !IO) :-
     ( N < 0 ->

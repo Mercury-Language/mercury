@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: switch_util.m
-% Author: fjh
-%
+
+% File: switch_util.m.
+% Author: fjh.
+
 % This module defines stuff for generating switches that is shared
 % between the MLDS and LLDS back-ends.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs__switch_util.
@@ -152,7 +152,6 @@
 
 :- import_module char.
 :- import_module int.
-:- import_module require.
 :- import_module string.
 :- import_module svmap.
 
@@ -410,7 +409,7 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
     ; Tag = shared_remote_tag(Primary, Secondary) ->
         ( map__search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
-            require(unify(StagLoc, remote),
+            expect(unify(StagLoc, remote), this_file,
                 "remote tag is shared with non-remote"),
             map__det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
             svmap__det_update(Primary, ptag_case(remote, StagGoalMap),
@@ -424,7 +423,7 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
     ; Tag = shared_local_tag(Primary, Secondary) ->
         ( map__search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
-            require(unify(StagLoc, local),
+            expect(unify(StagLoc, local), this_file,
                 "local tag is shared with non-local"),
             map__det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
             svmap__det_update(Primary, ptag_case(local, StagGoalMap),

@@ -5,10 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: process_util.m
-% Main author: stayl
-%
+
+% File: process_util.m.
+% Main author: stayl.
+
 % Process and signal handling, mainly for use by make.m and its sub-modules.
+
 %-----------------------------------------------------------------------------%
 
 :- module libs__process_util.
@@ -83,10 +85,10 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 
-:- import_module require.
 :- import_module std_util.
 
 build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info, !IO) :-
@@ -301,7 +303,7 @@ can_fork :- semidet_fail.
     io::di, io::uo) is det.
 
 call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
-    error("call_in_forked_process_2").
+    unexpected(this_file, "call_in_forked_process_2").
 
 :- pragma foreign_proc("C",
     call_in_forked_process_2(Pred::in(io_pred), ForkStatus::out, Status::out,

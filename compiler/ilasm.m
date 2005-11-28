@@ -3,10 +3,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% ilasm - Generate IL for the ilasm assembler
+
+% File: ilasm.m.
 % Main author: trd.
-%
+
+% Generate IL for the ilasm assembler.
 %
 % IL assembler syntax is documented in the Microsoft .NET Framework SDK.
 % See ilds.m for links to the documentation.
@@ -20,6 +21,8 @@
 %	    (events, properties, etc).
 %	[ ] Fix up all the XXXs.
 
+%-----------------------------------------------------------------------------%
+
 :- module ml_backend__ilasm.
 
 :- interface.
@@ -32,6 +35,8 @@
 :- import_module list.
 :- import_module std_util.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 :- pred ilasm__output(list(decl)::in, io::di, io::uo) is det.
 
@@ -274,6 +279,9 @@
 	--->	type(ilds__type)
 	;	methodref(ilds__methodref).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.c_util. % for output_float_literal
@@ -286,10 +294,11 @@
 :- import_module getopt_io.
 :- import_module int.
 :- import_module pprint.
-:- import_module require.
 :- import_module string.
 :- import_module term_io.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 	% Some versions of the IL assembler enforce a rule that if you output
 	% 	.assembly foo { }
@@ -305,7 +314,7 @@
 	% It's a good idea to do this anyway, as there is apparently a
 	% performance hit if you use assembly references to a symbol that is
 	% in the local assembly.
-
+	
 :- type ilasm_info --->
 		ilasm_info(
 			current_assembly :: ilds__id
@@ -854,7 +863,7 @@ output_simple_type_opcode(native_uint) --> io__write_string("u").
 output_simple_type_opcode(float32) --> io__write_string("r4").
 output_simple_type_opcode(float64) --> io__write_string("r8").
 output_simple_type_opcode(native_float) -->
-	{ error("unable to create opcode for native_float") }.
+	{ unexpected(this_file, "unable to create opcode for native_float") }.
 	% XXX should i4 be used for bool?
 output_simple_type_opcode(bool) --> io__write_string("i4").
 output_simple_type_opcode(char) --> io__write_string("i2").
@@ -1180,7 +1189,8 @@ output_instr(ldc(Type, Const), !Info, !IO) :-
 		io__write_string("ldc.r8\t", !IO),
 		c_util__output_float_literal(FloatConst, !IO)
 	;
-	 	error("Inconsistent arguments in ldc instruction")
+	 	unexpected(this_file,
+			"Inconsistent arguments in ldc instruction")
 	).
 
 output_instr(ldstr(String), !Info, !IO) :-
@@ -1418,7 +1428,7 @@ output_instr(ldsflda(FieldRef), !Info, !IO) :-
 
 	% XXX should be implemented
 output_instr(ldtoken(_), !Info, !IO) :-
-	error("output not implemented").
+	sorry(this_file, "output not implemented").
 
 output_instr(ldvirtftn(MethodRef), !Info, !IO) :-
 	io__write_string("ldvirtftn\t", !IO),

@@ -15,7 +15,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module hlds__make_hlds__superhomogeneous.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -129,7 +128,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: mode_ordering.m
-% Main author: dmo
+
+% File: mode_ordering.m.
+% Main author: dmo.
+
+%-----------------------------------------------------------------------------%
 
 :- module check_hlds__mode_ordering.
-
 :- interface.
 
 :- import_module check_hlds.mode_constraint_robdd.
@@ -41,6 +42,9 @@
     mode_constraint_info::in, module_info::in, pred_constraint_map::in,
     proc_info::in, proc_info::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
@@ -50,11 +54,11 @@
 % :- import_module mode_robdd__check.
 % :- import_module mode_robdd__tfeir.
 :- import_module mode_robdd.tfeirn.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module relation.
-:- import_module require.
 :- import_module set.
 :- import_module stack.
 :- import_module std_util.
@@ -199,11 +203,11 @@ mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
 
 mode_ordering__goal_2(Goal0, _, !GoalInfo, !MOI) :-
     Goal0 = generic_call(_GenericCall0, _Args, _Modes0, _Det),
-    error("mode_ordering__goal_2: generic_call NYI").
+    unexpected(this_file, "mode_ordering__goal_2: generic_call NYI").
 
 mode_ordering__goal_2(Goal0, _, !GoalInfo, !MOI) :-
     Goal0 = switch(_Var, _CanFail0, _Cases0),
-    error("mode_ordering__goal_2: switch").
+    unexpected(this_file, "mode_ordering__goal_2: switch").
 
 mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     Goal0 = unify(VarA, RHS0, UnifyMode, Unification0, Context),
@@ -317,7 +321,7 @@ mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
 
 mode_ordering__goal_2(Goal0, _, !GoalInfo, !MOI) :-
     Goal0 = foreign_proc(_, _, _, _, _, _),
-    error("mode_ordering__goal_2: pragma_foreign_code NYI").
+    unexpected(this_file, "mode_ordering__goal_2: pragma_foreign_code NYI").
 
 mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     Goal0 = par_conj(Goals0),
@@ -327,7 +331,7 @@ mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
 
 mode_ordering__goal_2(Goal0, _, !GoalInfo, !MOI) :-
     Goal0 = shorthand(_),
-    error("mode_ordering__goal_2: shorthand").
+    unexpected(this_file, "mode_ordering__goal_2: shorthand").
 
 :- pred mode_ordering__disj(hlds_goals::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -406,7 +410,7 @@ mode_ordering__conj(Goals0, Goals) :-
         ->
             Index = Index0
         ;
-            error("mode_ordering__conj: goal_path error")
+            unexpected(this_file, "mode_ordering__conj: goal_path error")
         )), Goals0, map__init),
 
     ProdMap =
@@ -447,7 +451,7 @@ mode_ordering__conj(Goals0, Goals) :-
         Goals = map__apply_to_list(TSort, GoalMap)
     ;
         % XXX Report a mode error for this.
-        error("mode_ordering__conj: Cycle in goal dependencies.")
+        unexpected(this_file, "conj: Cycle in goal dependencies.")
     ).
 
 :- pred set_atomic_prod_vars(set(prog_var)::out,
@@ -475,7 +479,8 @@ pred_info_create_proc_info_for_mode_decl_constraint(_ModeDeclConstraint,
         ProcId, !PredInfo) :-
     ( semidet_succeed ->
         % XXX
-        error("NYI: pred_info_create_proc_info_for_mode_decl_constraint")
+        sorry(this_file,
+            "NYI: pred_info_create_proc_info_for_mode_decl_constraint")
     ;
         % XXX keep det checker happy.
         ProcId = initial_proc_id
@@ -506,11 +511,11 @@ find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
     ->
         % XXX We are inferring modes for the called predicate. Need to add
         % a new mode to the requested procs map.
-        error("find_matching_proc: infer_modes NYI")
+        unexpected(this_file, "find_matching_proc: infer_modes NYI")
     ;
         % If we get here, it means there is a mode error which should have been
         % picked up by the constraints pass but was missed some how.
-        error("find_matching_proc: unexpected mode error")
+        unexpected(this_file, "find_matching_proc: unexpected mode error")
     ).
 
 :- pred find_matching_proc_2(assoc_list(proc_id, proc_info)::in,
@@ -564,3 +569,9 @@ report_ordering_mode_errors(_, !IO).
 
 lookup_pred_constraint(PCM, PredId, MC, MCInfo) :-
     map__lookup(PCM, PredId, pci(MC, MCInfo)).
+
+
+:- func this_file = string.
+
+this_file = "mode_ordering.m.".
+

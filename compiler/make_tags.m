@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: make_tags.m.
-% main author: fjh.
+% File: make_tags.m.
+% Main author: fjh.
 
 % This module is where we determine the representation for
 % discriminated union types.  Each d.u. type is represented as
@@ -93,7 +93,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%

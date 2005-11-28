@@ -6,14 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
+% File: psuedo_type_info.m.
+% Authors: trd, zs.
+
 % This module generates representations for pseudo-type-infos.
-%
+
 % The documentation of the structures of pseudo-type-infos is in
 % runtime/mercury_type_info.h; that file also contains a list of all
 % the files that depend on such data structures.
-%
-% Authors: trd, zs.
-%
+
 %---------------------------------------------------------------------------%
 
 :- module backend_libs__pseudo_type_info.
@@ -69,7 +70,6 @@
 
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module std_util.
 :- import_module term.
 
@@ -92,8 +92,8 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             TypeCtor = _QualTypeName - RealArity,
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
-            require(check_var_arity(VarArityId, PseudoArgs, RealArity),
-                "construct_pseudo_type_info: var arity mismatch"),
+            expect(check_var_arity(VarArityId, PseudoArgs, RealArity),
+                this_file, "construct_pseudo_type_info: var arity mismatch"),
             PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, PseudoArgs)
         ;
             TypeCtor = QualTypeName - Arity,
@@ -103,7 +103,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
-            require(check_arity(PseudoArgs, Arity),
+            expect(check_arity(PseudoArgs, Arity), this_file,
                 "construct_pseudo_type_info: arity mismatch"),
             (
                 PseudoArgs = [],
@@ -145,7 +145,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
                     "construct_pseudo_type_info: not in list")
             )
         ),
-        require(VarInt =< pseudo_typeinfo_max_var,
+        expect(VarInt =< pseudo_typeinfo_max_var, this_file,
             "construct_pseudo_type_info: type var exceeds limit"),
         PseudoTypeInfo = type_var(VarInt)
     ;
@@ -158,8 +158,8 @@ construct_type_info(Type, TypeInfo) :-
         ( type_is_var_arity(Type, VarArityId) ->
             TypeCtor = _QualTypeName - RealArity,
             generate_plain_args(TypeArgs, TypeInfoArgs),
-            require(check_var_arity(VarArityId, TypeInfoArgs, RealArity),
-                "construct_type_info: arity mismatch"),
+            expect(check_var_arity(VarArityId, TypeInfoArgs, RealArity),
+                this_file, "construct_type_info: arity mismatch"),
             TypeInfo = var_arity_type_info(VarArityId, TypeInfoArgs)
         ;
             TypeCtor = QualTypeName - Arity,
@@ -168,8 +168,8 @@ construct_type_info(Type, TypeInfo) :-
                 TypeModule),
             RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, Arity),
             generate_plain_args(TypeArgs, TypeInfoArgs),
-            require(check_arity(TypeInfoArgs, Arity),
-                "construct_type_info: arity mismatch"),
+            expect(check_arity(TypeInfoArgs, Arity),
+                this_file, "construct_type_info: arity mismatch"),
             (
                 TypeInfoArgs = [],
                 TypeInfo = plain_arity_zero_type_info(RttiTypeCtor)

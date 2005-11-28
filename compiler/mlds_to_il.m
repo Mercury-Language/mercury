@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% mlds_to_il - Convert MLDS to IL.
-% Main author: trd, petdr
-%
+
+% File: mlds_to_il.m - Convert MLDS to IL.
+% Main author: trd, petdr.
+
 % This module generates IL from MLDS.  Currently it's pretty tuned
 % towards generating assembler -- to generate code using
 % Reflection::Emit it is likely some changes will need to be made.
@@ -53,7 +53,7 @@
 % [ ] Add an option to do overflow checking.
 % [ ] Should replace hard-coded of int32 with a more abstract name such
 %     as `mercury_int_il_type'.
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -175,7 +175,6 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -771,7 +770,8 @@ decl_flags_to_classattrs(Flags) =
         Access = [public]
     ;
         AccessFlag = protected,
-        error("decl_flags_to_classattrs: protected access flag")
+        unexpected(this_file,
+            "decl_flags_to_classattrs: protected access flag")
     ;
         AccessFlag = private,
         Access = [private]
@@ -782,7 +782,8 @@ decl_flags_to_classattrs(Flags) =
         Access = [private]
     ;
         AccessFlag = local,
-        error("decl_flags_to_classattrs: local access flag")
+        unexpected(this_file,
+            "decl_flags_to_classattrs: local access flag")
     ).
 
 :- func decl_flags_to_nestedclassattrs(mlds__decl_flags) =
@@ -805,7 +806,8 @@ decl_flags_to_nestedclassattrs(Flags)
         Access = [nestedassembly]
     ;
         AccessFlag = local,
-        error("decl_flags_to_classattrs: local access flag")
+        unexpected(this_file,
+            "decl_flags_to_classattrs: local access flag")
     ).
 
 :- func decl_flags_to_classattrs_2(mlds__decl_flags) = list(ilasm__classattr).
@@ -848,7 +850,8 @@ decl_flags_to_methattrs(Flags)
         Access = [assembly]
     ;
         AccessFlag = local,
-        error("decl_flags_to_methattrs: local access flag")
+        unexpected(this_file, 
+            "decl_flags_to_methattrs: local access flag")
     ),
     PerInstanceFlag = per_instance(Flags),
     (
@@ -903,7 +906,8 @@ decl_flags_to_fieldattrs(Flags)
     ;
         AccessFlag = local,
         % Access = [private]
-        error("decl_flags_to_fieldattrs: local access flag")
+        unexpected(this_file,
+            "decl_flags_to_fieldattrs: local access flag")
     ),
     PerInstanceFlag = per_instance(Flags),
     (
@@ -1322,13 +1326,13 @@ mangle_dataname(common(Int))
 mangle_dataname(rtti(RttiId)) = MangledName :-
     rtti__id_to_c_identifier(RttiId, MangledName).
 mangle_dataname(module_layout) = _MangledName :-
-    error("unimplemented: mangling module_layout").
+    unexpected(this_file, "unimplemented: mangling module_layout").
 mangle_dataname(proc_layout(_)) = _MangledName :-
-    error("unimplemented: mangling proc_layout").
+    unexpected(this_file, "unimplemented: mangling proc_layout").
 mangle_dataname(internal_layout(_, _)) = _MangledName :-
-    error("unimplemented: mangling internal_layout").
+    unexpected(this_file, "unimplemented: mangling internal_layout").
 mangle_dataname(tabling_pointer(_)) = _MangledName :-
-    error("unimplemented: mangling tabling_pointer").
+    unexpected(this_file, "unimplemented: mangling tabling_pointer").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1370,7 +1374,8 @@ mlds_export_to_mlds_defn(
         ( EntName = data(var(VarName0)) ->
             VarName = qual(ModuleName, module_qual, VarName0)
         ;
-            error("exported method has argument without var name")
+            unexpected(this_file,
+                "exported method has argument without var name")
         )
     ),
     ArgTypes = mlds__get_arg_types(Inputs),
@@ -1388,7 +1393,7 @@ mlds_export_to_mlds_defn(
         CodeRval = const(code_addr_const(proc(
             qual(ModuleName, module_qual, PredLabel - ProcId), Signature)))
     ;
-        error("exported entity is not a function")
+        unexpected(this_file, "exported entity is not a function")
     ),
 
     % XXX Should we look for tail calls?
@@ -1735,7 +1740,7 @@ statement_to_il(statement(switch(_Type, _Val, _Range, _Cases, _Default),
     % The IL back-end only supports computed_gotos and if-then-else chains;
     % the MLDS code generator should either avoid generating MLDS switches,
     % or should transform them into computed_gotos or if-then-else chains.
-    error("mlds_to_il.m: `switch' not supported").
+    unexpected(this_file, "`switch' not supported").
 
 statement_to_il(statement(while(Condition, Body, AtLeastOnce),
         Context), Instrs, !Info) :-
@@ -2116,7 +2121,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
             Size = no,
             % XXX Do we need to handle this case?
             % I think it's needed for --high-level-data.
-            error("unknown size in MLDS new_object")
+            unexpected(this_file, "unknown size in MLDS new_object")
         ),
         load(SizeInWordsRval, LoadSizeInstrs, !Info),
 
@@ -2924,7 +2929,7 @@ mlds_inherits_to_ilds_inherits(DataRep, Inherits) = Extends :-
         Extends = extends(mlds_type_to_ilds_class_name(DataRep, InheritType))
     ;
         Inherits = [_, _ | _],
-        error("multiple inheritance not supported")
+        unexpected(this_file, "multiple inheritance not supported")
     ).
 
 :- pred mlds_signature_to_ilds_type_params(il_data_rep::in,
@@ -3068,10 +3073,10 @@ mlds_type_to_ilds_type(_, mlds__foreign_type(ForeignType))
         )
     ;
         ForeignType = c(_),
-        error("mlds_to_il: c foreign type")
+        unexpected(this_file, "c foreign type")
     ;
         ForeignType = java(_),
-        error("mlds_to_il: java foreign type")
+        unexpected(this_file, "java foreign type")
     ).
 
 mlds_type_to_ilds_type(ILDataRep, mlds__ptr_type(MLDSType)) =
@@ -3387,13 +3392,13 @@ mangle_dataname(common(Int), MangledName) :-
 mangle_dataname(rtti(RttiId), MangledName) :-
     rtti__id_to_c_identifier(RttiId, MangledName).
 mangle_dataname(module_layout, _MangledName) :-
-    error("unimplemented: mangling module_layout").
+    sorry(this_file, "unimplemented: mangling module_layout").
 mangle_dataname(proc_layout(_), _MangledName) :-
-    error("unimplemented: mangling proc_layout").
+    sorry(this_file, "unimplemented: mangling proc_layout").
 mangle_dataname(internal_layout(_, _), _MangledName) :-
-    error("unimplemented: mangling internal_layout").
+    sorry(this_file, "unimplemented: mangling internal_layout").
 mangle_dataname(tabling_pointer(_), _MangledName) :-
-    error("unimplemented: mangling tabling_pointer").
+    sorry(this_file, "unimplemented: mangling tabling_pointer").
 
     % We turn procedures into methods of classes.
 mangle_mlds_proc_label(qual(ModuleName, _, PredLabel - ProcId), MaybeSeqNum,
@@ -3404,13 +3409,13 @@ mangle_mlds_proc_label(qual(ModuleName, _, PredLabel - ProcId), MaybeSeqNum,
 :- pred mangle_entity_name(mlds__entity_name::in, string::out) is det.
 
 mangle_entity_name(type(_TypeName, _), _MangledName) :-
-    error("can't mangle type names").
+    unexpected(this_file, "can't mangle type names").
 mangle_entity_name(data(DataName), MangledName) :-
     mangle_dataname(DataName, MangledName).
 mangle_entity_name(function(_, _, _, _), _MangledName) :-
-    error("can't mangle function names").
+    unexpected(this_file, "can't mangle function names").
 mangle_entity_name(export(_), _MangledName) :-
-    error("can't mangle export names").
+    unexpected(this_file, "can't mangle export names").
 
     % Any valid Mercury identifier will be fine here too.
     % We quote all identifiers before we output them, so
@@ -3787,30 +3792,30 @@ simple_type_to_valuetype(char) =
     ilds__type([], valuetype(il_system_name(["Char"]))).
 simple_type_to_valuetype(object) = _ :-
     % ilds__type([], valuetype(il_system_name(["Object"]))).
-    error("no value class for System.Object").
+    unexpected(this_file, "no value class for System.Object").
 simple_type_to_valuetype(string) = _ :-
     % ilds__type([], valuetype(il_system_name(["String"]))).
-    error("no value class for System.String").
+    unexpected(this_file, "no value class for System.String").
 simple_type_to_valuetype(refany) = _ :-
-    error("no value class for refany").
+    unexpected(this_file, "no value class for refany").
 simple_type_to_valuetype(class(_)) = _ :-
-    error("no value class for class").
+    unexpected(this_file, "no value class for class").
 simple_type_to_valuetype(valuetype(Name)) =
     ilds__type([], valuetype(Name)).
 simple_type_to_valuetype(interface(_)) = _ :-
-    error("no value class for interface").
+    unexpected(this_file, "no value class for interface").
 simple_type_to_valuetype('[]'(_, _)) = _ :-
-    error("no value class for array").
+    unexpected(this_file, "no value class for array").
 simple_type_to_valuetype('&'( _)) = _ :-
-    error("no value class for '&'").
+    unexpected(this_file, "no value class for '&'").
 simple_type_to_valuetype('*'(_)) = _ :-
-    error("no value class for '*'").
+    unexpected(this_file, "no value class for '*'").
 simple_type_to_valuetype(native_float) = _ :-
-    error("no value class for native float").
+    unexpected(this_file, "no value class for native float").
 simple_type_to_valuetype(native_int) = _ :-
-    error("no value class for native int").
+    unexpected(this_file, "no value class for native int").
 simple_type_to_valuetype(native_uint) = _ :-
-    error("no value class for native uint").
+    unexpected(this_file, "no value class for native uint").
 
 %-----------------------------------------------------------------------------%
 

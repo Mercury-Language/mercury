@@ -5,10 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: store_alloc.m.
 % Original author: conway.
 % Extensive modification by zs.
-%
+
 % Allocates the storage location for each live variable at the end of
 % each branched structure, so that the code generator will generate code
 % which puts the variable in the same place in each branch.
@@ -25,7 +26,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__store_alloc.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -48,6 +48,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.
@@ -63,7 +64,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 
@@ -234,7 +234,7 @@ store_alloc_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
 
 store_alloc_in_goal_2(shorthand(_), _, _, _, _, _, _, _, _) :-
     % these should have been expanded out by now
-    error("store_alloc_in_goal_2: unexpected shorthand").
+    unexpected(this_file, "store_alloc_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -418,10 +418,9 @@ store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
             map__search(StackSlots, Var, StackSlot),
             StackSlotLocn = stack_slot_to_abs_locn(StackSlot),
             \+ set__member(StackSlotLocn, !.SeenLocns)
-            % Follow_vars was run, so the only
-            % reason why a var would not be in the
-            % follow_vars set is if it was supposed to
-            % be in its stack slot.
+            % Follow_vars was run, so the only reason why a var would not be
+            % in the follow_vars set is if it was supposed to be in its stack
+            % slot.
         ->
             Locn = StackSlotLocn
         ;
@@ -447,4 +446,9 @@ next_free_reg(Values, N0, N) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "store_alloc.m".
+
 %-----------------------------------------------------------------------------%

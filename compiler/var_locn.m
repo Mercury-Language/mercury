@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: var_locn.m
 % Author: zs.
-%
+
 % This module defines a set of predicates that operate on the abstract
 % 'var_locn_info' structure which maintains information about where variables
 % are stored, what their values are if they are not stored anywhere,
@@ -365,7 +365,6 @@
 :- import_module bag.
 :- import_module getopt_io.
 :- import_module int.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -515,7 +514,7 @@ reinit_state(VarLocs, !VarLocnInfo) :-
 
 init_state_2([], _, !VarStateMap, !LocVarMap).
 init_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap, !LocVarMap) :-
-    require(is_root_lval(Lval), "init_state_2: unexpected lval"),
+    expect(is_root_lval(Lval), this_file, "init_state_2: unexpected lval"),
     (
         MaybeLiveness = yes(Liveness),
         \+ set__member(Var, Liveness)
@@ -1380,7 +1379,7 @@ ensure_copies_are_present_lval([OtherSource | OtherSources], OneSource, Lval,
     var_locn_info::in, var_locn_info::out) is det.
 
 record_copy(Old, New, !VLI) :-
-    require(is_root_lval(New), "record_copy: non-root New lval"),
+    expect(is_root_lval(New), this_file, "record_copy: non-root New lval"),
     get_var_state_map(!.VLI, VarStateMap0),
     get_loc_var_map(!.VLI, LocVarMap0),
     set__list_to_set([Old, New], AssignSet),
@@ -1449,7 +1448,8 @@ record_copy_for_var(Old, New, Var, !VarStateMap, !LocVarMap) :-
     LvalSet = set__map(substitute_lval_in_lval(Token, New), LvalSet3),
     State = state(LvalSet, MaybeConstRval, MaybeExprRval,
         Using, DeadOrAlive),
-    require(nonempty_state(State), "record_copy_for_var: empty state"),
+    expect(nonempty_state(State), this_file,
+        "record_copy_for_var: empty state"),
     map__det_update(!.VarStateMap, Var, State, !:VarStateMap),
     record_change_in_root_dependencies(LvalSet0, LvalSet, Var, !LocVarMap).
 
@@ -1495,7 +1495,8 @@ var_becomes_dead(Var, FirstTime, !VLI) :-
             DeadOrAlive0),
         (
             DeadOrAlive0 = dead,
-            require(unify(FirstTime, no), "var_becomes_dead: already dead")
+            expect(unify(FirstTime, no), this_file,
+                "var_becomes_dead: already dead")
         ;
             DeadOrAlive0 = alive
         ),
@@ -1516,7 +1517,8 @@ var_becomes_dead(Var, FirstTime, !VLI) :-
             set_var_state_map(VarStateMap, !VLI)
         )
     ;
-        require(unify(FirstTime, no), "var_becomes_dead: premature deletion")
+        expect(unify(FirstTime, no), this_file,
+            "var_becomes_dead: premature deletion")
     ).
 
     % Given a set of lvals, return the set of root lvals among them and inside
@@ -1899,8 +1901,8 @@ expr_is_constant(VarStateMap, ExprnOpts,
 expr_is_constant(VarStateMap, ExprnOpts, var(Var), Rval) :-
     map__search(VarStateMap, Var, State),
     State = state(_, yes(Rval), _, _, _),
-    require(expr_is_constant(VarStateMap, ExprnOpts, Rval, _),
-        "non-constant rval in variable state").
+    expect(expr_is_constant(VarStateMap, ExprnOpts, Rval, _),
+        this_file, "non-constant rval in variable state").
 
 %----------------------------------------------------------------------------%
 
@@ -2146,8 +2148,8 @@ make_var_depend_on_lval_roots(Var, Lval, !LocVarMap) :-
     loc_var_map::in, loc_var_map::out) is det.
 
 make_var_depend_on_root_lval(Var, Lval, !LocVarMap) :-
-    require(is_root_lval(Lval),
-        "make_var_depend_on_root_lval: non-root lval"),
+    expect(is_root_lval(Lval),
+        this_file, "make_var_depend_on_root_lval: non-root lval"),
     ( map__search(!.LocVarMap, Lval, Vars0) ->
         set__insert(Vars0, Var, Vars),
         map__det_update(!.LocVarMap, Lval, Vars, !:LocVarMap)
@@ -2163,7 +2165,8 @@ make_var_depend_on_root_lval(Var, Lval, !LocVarMap) :-
     loc_var_map::in, loc_var_map::out) is det.
 
 make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
-    require(is_root_lval(Lval), "make_var_depend_on_root_lval: non-root lval"),
+    expect(is_root_lval(Lval), this_file,
+        "make_var_depend_on_root_lval: non-root lval"),
     ( map__search(!.LocVarMap, Lval, Vars0) ->
         set__delete(Vars0, Var, Vars),
         ( set__empty(Vars) ->

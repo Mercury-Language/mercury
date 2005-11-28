@@ -57,7 +57,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -1579,7 +1578,7 @@ generate_csn_vector(Length, CSNs, CSNVars, UnifyGoals, CellVar, !DeepInfo) :-
         UnifyGoals = [UnifyGoal],
         CellVar = CSNVar
     ;
-        require(Length =< max_save_restore_vector_size,
+        expect(Length =< max_save_restore_vector_size, this_file,
             "generate_csn_vector_unifies: too long"),
         list__map_foldl(generate_single_csn_unify, CSNs, CSNVarsGoals,
             !DeepInfo),

@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: lambda.m
-% main author: fjh
+% File: lambda.m.
+% Main author: fjh.
 
 % This module is a pass over the HLDS to deal with lambda expressions.
 %
@@ -104,7 +104,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

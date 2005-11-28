@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+ 
 % File: ilds.m.
 % Main author: trd.
-%
+
 % ilds - The IL instruction set.
 %
 % The IL instruction set is documented in the Microsoft .NET Framework SDK.
@@ -437,7 +437,6 @@
 :- import_module libs.compiler_util.
 
 :- import_module int.
-:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
@@ -465,7 +464,7 @@ get_class_namespace(structured_name(_, FullName, _)) = NamespaceName :-
 
 append_toplevel_class_name(structured_name(Assembly, Namespace, NestedClass),
         Class) = structured_name(Assembly, ClassName, []) :-
-    require(unify(NestedClass, []),
+    expect(unify(NestedClass, []), this_file,
         "append_toplevel_class_name: namespace name has nested class?"),
     list__append(Namespace, [Class], ClassName).
 

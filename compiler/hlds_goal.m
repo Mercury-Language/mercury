@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% The module defines the part of the HLDS that deals with goals.
-
+% File: hlds_goal.m.
 % Main authors: fjh, conway.
+
+% The module defines the part of the HLDS that deals with goals.
 
 %-----------------------------------------------------------------------------%
 
 :- module hlds__hlds_goal.
-
 :- interface.
 
 :- import_module hlds.hlds_llds.
@@ -1393,7 +1393,6 @@
 
 :- implementation.
 
-% :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
@@ -1403,7 +1402,6 @@
 
 :- import_module assoc_list.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module svmap.
 :- import_module svvarset.

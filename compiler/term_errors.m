@@ -5,17 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: term_errors.m
-% Main author: crs
-%
-% This module prints out the various error messages that are produced by
-% the various modules of termination analysis.
-%
+
+% File: term_errors.m.
+% Main author: crs.
+
+% This module prints out the various error messages that are produced by the
+% various modules of termination analysis.
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_errors.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -178,7 +177,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -321,11 +319,12 @@ description(pragma_foreign_code, _, _, Pieces, no) :-
         words("declaration.")
     ].
 
-description(inf_call(CallerPPId, CalleePPId),
-        Single, Module, Pieces, no) :-
+description(TermError, Single, Module, Pieces, no) :-
+    TermError = inf_call(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        require(unify(PPId, CallerPPId), "caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), this_file, 
+            "description (inf_call): caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -339,11 +338,12 @@ description(inf_call(CallerPPId, CalleePPId),
         words("in the size of the input arguments.")],
     Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ Pieces3.
 
-description(can_loop_proc_called(CallerPPId, CalleePPId),
-        Single, Module, Pieces, no) :-
+description(TermError, Single, Module, Pieces, no) :-
+    TermError = can_loop_proc_called(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        require(unify(PPId, CallerPPId), "caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), this_file,
+            "description (can_loop_proc_called): caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -363,11 +363,12 @@ description(imported_pred, _, _, Pieces, no) :-
         words("imported from another module.")
     ].
 
-description(horder_args(CallerPPId, CalleePPId), Single, Module,
-        Pieces, no) :-
+description(TermError, Single, Module, Pieces, no) :-
+    TermError = horder_args(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        require(unify(PPId, CallerPPId), "caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), this_file,
+            "description (horder_args): caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -380,11 +381,12 @@ description(horder_args(CallerPPId, CalleePPId), Single, Module,
     Piece3 = words("with one or more higher order arguments."),
     Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
 
-description(inf_termination_const(CallerPPId, CalleePPId),
-        Single, Module, Pieces, yes(CalleePPId)) :-
+description(TermError, Single, Module, Pieces, yes(CalleePPId)) :-
+    TermError = inf_termination_const(CallerPPId, CalleePPId),
     (
         Single = yes(PPId),
-        require(unify(PPId, CallerPPId), "caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), this_file,
+            "description (inf_termination_const): caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -397,11 +399,15 @@ description(inf_termination_const(CallerPPId, CalleePPId),
     Piece3 = words("which has a termination constant of infinity."),
     Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
 
-description(ho_inf_termination_const(CallerPPId, _ClosurePPIds),
-        Single, Module, Pieces, no) :-
+description(TermError, Single, Module, Pieces, no) :-
+    % 
+    % XXX We should print out the names of the non-terminating closures.
+    %
+    TermError = ho_inf_termination_const(CallerPPId, _ClosurePPIds),
     (
         Single = yes(PPId),
-        require(unify(PPId, CallerPPId), "caller outside this SCC"),
+        expect(unify(PPId, CallerPPId), this_file,
+            "description (ho_info_termination_const): caller outside this SCC"),
         Pieces1 = [words("It")]
     ;
         Single = no,
@@ -487,7 +493,8 @@ description(solver_failed, _, _, Pieces, no)  :-
     ].
 
 description(is_builtin(_PredId), _Single, _, Pieces, no) :-
-    % XXX require(unify(Single, yes(_)), "builtin not alone in SCC"),
+    % XXX expect(unify(Single, yes(_)), this_file,
+    %       "builtin not alone in SCC"),
     Pieces = [words("It is a builtin predicate.")].
 
 description(does_not_term_pragma(PredId), Single, Module,
@@ -497,7 +504,7 @@ description(does_not_term_pragma(PredId), Single, Module,
     (
         Single = yes(PPId),
         PPId = proc(SCCPredId, _),
-        require(unify(PredId, SCCPredId),
+        expect(unify(PredId, SCCPredId), this_file,
             "does not terminate pragma outside this SCC"),
         Pieces2 = [words("it.")]
     ;

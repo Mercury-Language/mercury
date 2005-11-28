@@ -121,7 +121,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -553,7 +552,7 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
         TypeAssigns = list__map(get_caller_arg_assign, ArgsTypeAssignSet),
         find_mismatched_args(ArgExpTypes, TypeAssigns, 1,
             SimpleMismatches, ComplexMismatches, AllMismatches),
-        require(list__is_not_empty(AllMismatches),
+        expect(list__is_not_empty(AllMismatches), this_file,
             "report_error_functor_arg_types: no mismatches"),
         ComplexMismatches = []
     ->

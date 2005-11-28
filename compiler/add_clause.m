@@ -76,7 +76,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -127,7 +126,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                     s("for a promise with an identical"),
                     s("name to an existing predicate"),
                     s(NameString)], String),
-                error(String)
+                unexpected(this_file, String)
             ;
                 true
             )
@@ -887,7 +886,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 FuncName = FuncName0,
                 FuncArity = FuncArity0
             ;
-                error("transform_dcg_record_syntax_2")
+                unexpected(this_file, "transform_dcg_record_syntax_2")
             ),
             % DCG arguments should always be distinct variables,
             % so this context should never be used.
@@ -915,7 +914,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 FuncName = FuncName0,
                 FuncArity = FuncArity0
             ;
-                error("transform_dcg_record_syntax_2")
+                unexpected(this_file, "transform_dcg_record_syntax_2")
             ),
             FieldArgNumber = 2,
             FieldArgContext = call(call(function - FuncName/FuncArity)),
@@ -934,7 +933,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 !QualInfo, !SInfo, !IO)
         )
     ;
-        error("make_hlds__do_transform_dcg_record_syntax")
+        unexpected(this_file, "do_transform_dcg_record_syntax")
     ).
 
 qualify_lambda_mode_list(Modes0, Modes, Context, !QualInfo, !IO) :-
@@ -1019,3 +1018,11 @@ get_disj(Goal, Subst, Disj0, Disj, !VarSet, !ModuleInfo, !QualInfo, SInfo,
             SInfo, SInfo1, !IO),
         Disj = [{Goal1, SInfo1} | Disj0]
     ).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "add_clause.m".
+
+%----------------------------------------------------------------------------%

@@ -57,7 +57,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 
@@ -304,11 +303,11 @@ tailcall_loop_label_name = "loop_top".
 :- pred generate_assign_args(opt_info::in, mlds__arguments::in,
     list(mlds_rval)::in, list(statement)::out, list(mlds__defn)::out) is det.
 
-generate_assign_args(_, [_|_], [], [], []) :-
-    error("generate_assign_args: length mismatch").
-generate_assign_args(_, [], [_|_], [], []) :-
-    error("generate_assign_args: length mismatch").
 generate_assign_args(_, [], [], [], []).
+generate_assign_args(_, [_|_], [], [], []) :-
+    unexpected(this_file, "generate_assign_args: length mismatch").
+generate_assign_args(_, [], [_|_], [], []) :-
+    unexpected(this_file, "generate_assign_args: length mismatch").
 generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
         Statements, TempDefns) :-
     Arg = mlds__argument(Name, Type, _ArgGCTraceCode),
@@ -368,7 +367,8 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
             TempDefns = [TempDefn | TempDefns0]
         )
     ;
-        error("generate_assign_args: function param is not a var")
+        unexpected(this_file,
+            "generate_assign_args: function param is not a var")
     ).
 
 %----------------------------------------------------------------------------

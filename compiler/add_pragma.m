@@ -143,7 +143,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -820,7 +819,8 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
     (
         Subst = []
     ->
-        error("handle_pragma_type_spec_subst: empty substitution")
+        unexpected(this_file,
+            "handle_pragma_type_spec_subst: empty substitution")
     ;
         find_duplicate_list_elements(VarsToSub, MultiSubstVars0),
         MultiSubstVars0 \= []

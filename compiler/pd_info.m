@@ -5,16 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: pd_info.m
-% Main author: stayl
-%
+
+% File: pd_info.m.
+% Main author: stayl.
+
 % Types for deforestation.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__pd_info.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -31,6 +30,8 @@
 :- import_module map.
 :- import_module set.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type pd_info
     --->    pd_info(
@@ -49,11 +50,13 @@
 
     % Map from list of called preds in the conjunctions
     % to the specialised versions.
+    %
 :- type goal_version_index == map(list(pred_proc_id), list(pred_proc_id)).
 
 :- type useless_versions == set(pair(pred_proc_id)).
 
     % Map from version id to the info about the version.
+    %
 :- type version_index == map(pred_proc_id, version_info).
 
 :- pred pd_info_init(module_info::in, pd_arg_info::in, pd_info::out) is det.
@@ -109,6 +112,7 @@
 :- pred pd_info_unset_unfold_info(pd_info::in, pd_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -117,6 +121,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
@@ -127,9 +132,10 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module require.
 :- import_module string.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 pd_info_init(ModuleInfo, ProcArgInfos, PDInfo) :-
 	map__init(GoalVersionIndex),
@@ -159,7 +165,7 @@ pd_info_get_unfold_info(PDInfo, UnfoldInfo) :-
 		MaybeUnfoldInfo = yes(UnfoldInfo)
 	;
 		MaybeUnfoldInfo = no,
-		error("pd_info_get_unfold_info: unfold_info not set.")
+		unexpected(this_file, "pd_info_get_unfold_info: unfold_info not set.")
 	).
 pd_info_get_goal_version_index(PDInfo, PDInfo ^ goal_version_index).
 pd_info_get_versions(PDInfo, PDInfo ^ versions).
@@ -720,4 +726,9 @@ pd_info__remove_version(PredProcId, !PDInfo) :-
 	pd_info_set_module_info(ModuleInfo, !PDInfo).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "pd_info.m".
+
 %-----------------------------------------------------------------------------%

@@ -6,16 +6,16 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: llds.m.
+% Main authors: conway, fjh.
+
 % LLDS - The Low-Level Data Structure.
 
 % This module defines the LLDS data structure itself.
 
-% Main authors: conway, fjh.
-
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__llds.
-
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
@@ -1038,9 +1038,14 @@
 
 :- func get_defining_module_name(proc_label) = module_name.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module require.
+:- import_module libs.compiler_util.
+
+%-----------------------------------------------------------------------------%
 
 stack_slot_to_lval(det_slot(N)) = stackvar(N).
 stack_slot_to_lval(nondet_slot(N)) = framevar(N).
@@ -1054,7 +1059,7 @@ abs_locn_to_lval_or_any_reg(abs_stackvar(N)) = lval(stackvar(N)).
 abs_locn_to_lval_or_any_reg(abs_framevar(N)) = lval(framevar(N)).
 
 abs_locn_to_lval(any_reg) = _ :-
-    error("abs_locn_to_lval: any_reg").
+    unexpected(this_file, "abs_locn_to_lval: any_reg").
 abs_locn_to_lval(abs_reg(N)) = reg(r, N).
 abs_locn_to_lval(abs_stackvar(N)) = stackvar(N).
 abs_locn_to_lval(abs_framevar(N)) = framevar(N).
@@ -1074,7 +1079,7 @@ break_up_local_label(Label, ProcLabel, LabelNum) :-
         Label = internal(LabelNum, ProcLabel)
     ;
         Label = entry(_, _),
-        error("break_up_local_label: entry label")
+        unexpected(this_file, "break_up_local_label: entry label")
     ).
 
 llds__wrap_rtti_data(RttiData, rtti_data(RttiData)).
@@ -1097,13 +1102,13 @@ llds__lval_type(succfr(_), data_ptr).
 llds__lval_type(prevfr(_), data_ptr).
 llds__lval_type(field(_, _, _), word).
 llds__lval_type(lvar(_), _) :-
-    error("lvar unexpected in llds__lval_type").
+    unexpected(this_file, "lvar unexpected in llds__lval_type").
 llds__lval_type(mem_ref(_), word).
 
 llds__rval_type(lval(Lval), Type) :-
     llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
-    error("var unexpected in llds__rval_type").
+    unexpected(this_file, "var unexpected in llds__rval_type").
     %
     % Note that mkword and data_addr consts must be of type data_ptr,
     % not of type word, to ensure that static consts containing
@@ -1200,5 +1205,11 @@ get_proc_label(internal(_, ProcLabel)) = ProcLabel.
 
 get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
 get_defining_module_name(special_proc(ModuleName, _, _, _, _, _)) = ModuleName.
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "llds.m".
 
 %-----------------------------------------------------------------------------%

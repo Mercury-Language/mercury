@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: special_pred.m
-% main author: fjh
+% File: special_pred.m
+% Main author: fjh
 
 % Certain predicates are implicitly defined for every type by the compiler.
 % This module defines most of the characteristics of those predicates.
@@ -104,10 +104,14 @@
     %
 :- pred compiler_generated_rtti_for_builtins(module_info::in) is semidet.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_mode.
@@ -116,7 +120,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
-:- import_module require.
 :- import_module string.
 
 special_pred_list([spec_pred_unify, spec_pred_index, spec_pred_compare]).
@@ -173,7 +176,8 @@ special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
     ( special_pred_get_type(SpecialId, ArgTypes, TypePrime) ->
         Type = TypePrime
     ;
-        error("special_pred_get_type_det: special_pred_get_type failed")
+        unexpected(this_file,
+            "special_pred_get_type_det: special_pred_get_type failed")
     ).
 
 special_pred_description(spec_pred_unify,   "unification predicate").
@@ -298,4 +302,9 @@ compiler_generated_rtti_for_builtins(ModuleInfo) :-
     ( Target = il ; Target = java ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "special_pred.m".
+
 %-----------------------------------------------------------------------------%

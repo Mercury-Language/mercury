@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: unneeded_code.m.
 % Author: zs.
-%
+
 % This module implements two related source-to-source transforms,
 % both of which focus on goals that produce some variables, where these
 % variables are not always required by the following computation.
@@ -52,17 +53,18 @@
 % the semantics options explicitly permit the change in the operational
 % semantics, which will usually be an improvement (e.g. avoiding an infinite
 % loop or an unnecessary exception).
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__unneeded_code.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 :- pred process_proc_msg(pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out,
@@ -92,16 +94,17 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module svmap.
+
+%-----------------------------------------------------------------------------%
 
     % The branch_alts and branch_point types record the information the
     % transform needs to know about a particular branched control
     % structure: where it is, what kind it is, and how many alternatives
     % it has.
-
+    %
 :- type branch_point
     --->    branch_point(
                 goal_path,  % The position of the branch point.
@@ -129,7 +132,7 @@
     % simple goal_path because without the branch_alts info, the
     % transformation cannot tell if a given set of branches of a branched
     % control structure covers all possible execution paths or not.
-
+    %
 :- type location
     --->    location(
                 branch_point,   % To which branched control structure
@@ -185,7 +188,7 @@
     % Z is needed in <gp>;s1; and <gp>;s2;t; but is not needed in the
     % <gp>;s2;e; else arm. Therefore the where_needed_branches map for Z
     % will map gp to 1 and <gp>;s2; to 1.
-
+    %
 :- type where_needed_map    ==  map(prog_var, where_needed).
 
 :- type where_needed
@@ -308,8 +311,8 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
         !.ModuleInfo, Options, WhereNeededMap1, _, map__init, RefinedGoals1,
         no, Changed),
     refine_goal(Goal1, Goal2, RefinedGoals1, RefinedGoals),
-    require(map__is_empty(RefinedGoals),
-        "process_proc: goal reattachment unsuccessful"),
+    expect(map__is_empty(RefinedGoals),
+        this_file, "process_proc: goal reattachment unsuccessful"),
     (
         Changed = yes,
             % We need to fix up the goal_info by recalculating

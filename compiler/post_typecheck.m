@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File      : post_typecheck.m
 % Author    : fjh
 % Purpose   : finish off type checking.
-%
+
 % This module does the final parts of type analysis:
 %
 %   - it resolves predicate overloading
@@ -30,6 +30,7 @@
 % so they need to be a separate "post-typecheck pass".  For efficiency
 % reasons, this is in fact done at the same time as purity analysis --
 % the routines here are called from purity.m rather than mercury_compile.m.
+
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__post_typecheck.
@@ -152,7 +153,6 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

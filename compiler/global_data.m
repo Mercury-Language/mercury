@@ -101,7 +101,6 @@
 :- import_module counter.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 

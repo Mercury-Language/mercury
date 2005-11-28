@@ -5,16 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% unused_args.m
-%
-% Main author - stayl, Jan 1996
-%
+
+% File: unused_args.m.
+% Main author: stayl.
+
 % Detects and removes unused input arguments in procedures, especially
-% type_infos. Currently only does analysis within a module.
+% type_infos.
 %
-% To enable the warnings use --warn-unused-args
-% To enable the optimisation use --optimize-unused-args
+% To enable the warnings use `--warn-unused-args'.
+% To enable the optimisation use `--optimize-unused-args'.
 %
 % An argument is considered used if it (or any of its aliases) are
 %   - used in a call to a predicate external to the current module
@@ -22,25 +21,27 @@
 %   - used to instantiate an output variable
 %   - involved in a simple test, switch or a semidet deconstruction
 %   - used as an argument to another predicate in this module which is used.
+%
 % When using alternate liveness calculation, the following variables are
 % also considered used
 %   - a type-info (or part of a type-info) of a type parameter of the
 %     type of a variable that is used (for example, if a variable
 %     of type list(T) is used, then TypeInfo_for_T is used)
 %
-% The first step is to determine which arguments of which predicates are
-% used locally to their predicate. For each unused argument, a set of
-% other arguments that it depends on is built up.
+% The first step is to determine which arguments of which predicates are used
+% locally to their predicate. For each unused argument, a set of other
+% arguments that it depends on is built up.
 %
 % The next step is to iterate over the this map, checking for each unused
-% argument whether any of the arguments it depends on has become used
-% in the last iteration. Iterations are repeated until a fixpoint is reached.
+% argument whether any of the arguments it depends on has become used in the
+% last iteration. Iterations are repeated until a fixpoint is reached.
 %
-% Warnings are then output. The warning message indicates which arguments
-% are used in none of the modes of a predicate.
+% Warnings are then output. The warning message indicates which arguments are
+% used in none of the modes of a predicate.
 %
 % The predicates are then fixed up. Unused variables and unifications are
 % removed.
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__unused_args.
@@ -108,7 +109,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -117,8 +117,9 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Information about the dependencies of a variable
-    % that is not known to be used.
+    % Information about the dependencies of a variable that is not known to be
+    % used.
+    %
 :- type usage_info
     --->    unused(set(prog_var), set(arg)).
 
@@ -634,7 +635,8 @@ traverse_goal(Info, Goal, !VarDep) :-
             )
         ;
             Unify = deconstruct(CellVar, _, Args, Modes, CanFail, _),
-            require(unify(CellVar, LHS), "traverse_goal: LHS != CellVar"),
+            expect(unify(CellVar, LHS), this_file,
+                "traverse_goal: LHS != CellVar"),
             partition_deconstruct_args(Info, Args, Modes,
                 InputVars, OutputVars),
             % The deconstructed variable is used if any of the variables that
@@ -652,7 +654,8 @@ traverse_goal(Info, Goal, !VarDep) :-
             )
         ;
             Unify = construct(CellVar, _, Args, _, _, _, _),
-            require(unify(CellVar, LHS), "traverse_goal: LHS != CellVar"),
+            expect(unify(CellVar, LHS), this_file,
+                "traverse_goal: LHS != CellVar"),
             ( local_var_is_used(!.VarDep, CellVar) ->
                 set_list_vars_used(Args, !VarDep)
             ;
@@ -1244,8 +1247,8 @@ fixup_unused_args(VarUsage, PredProcs, ProcCallInfo, !ModuleInfo, VeryVerbose,
         !IO) :-
     map__keys(VarUsage, VarUsageKeys),
     list__sort(PredProcs, SortedPredProcs),
-    require(unify(VarUsageKeys, SortedPredProcs),
-        "fixup_unused_args: VarUsageKeys != SortedPredProcs"),
+    expect(unify(VarUsageKeys, SortedPredProcs),
+        this_file, "fixup_unused_args: VarUsageKeys != SortedPredProcs"),
     list__foldl2(fixup_unused_args_proc(VeryVerbose, VarUsage, ProcCallInfo),
         PredProcs, !ModuleInfo, !IO).
 
@@ -1789,7 +1792,7 @@ report_unused_args(PredInfo, UnusedArgs, !IO) :-
 
 :- func format_arg_list(list(int)) = list(format_component).
 
-format_arg_list([]) = func_error("format_arg_list: empty list").
+format_arg_list([]) = unexpected(this_file, "format_arg_list: empty list").
 format_arg_list([Arg | Rest]) = Pieces :-
     ArgStr = int_to_string(Arg),
     (

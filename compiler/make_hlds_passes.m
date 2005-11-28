@@ -126,7 +126,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -562,7 +561,7 @@ add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
             predicate_table_set_preds(Preds, PredTable0, PredTable),
             module_info_set_predicate_table(PredTable, !ModuleInfo)
         ;
-            error("make_hlds_passes.m: can't find func declaration")
+            unexpected(this_file, "can't find func declaration")
         )
     ).
 add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !IO) :-
@@ -1442,7 +1441,7 @@ get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
     % check that the pragma is module qualified.
     (
         Name = unqualified(_),
-        error("get_matching_pred_ids: unqualified name")
+        unexpected(this_file, "get_matching_pred_ids: unqualified name")
     ;
         Name = qualified(_, _),
         predicate_table_search_sym_arity(PredTable0, is_fully_qualified,

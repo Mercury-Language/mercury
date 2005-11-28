@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: saved_vars.m.
 % Main author: zs.
 
 % This module traverses the goal for each procedure, looking for and
@@ -24,7 +25,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__saved_vars.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -54,7 +54,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module term.

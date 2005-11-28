@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: table_gen.m.
 % Main authors: zs, ohutch.
-%
+
 % This module transforms HLDS code to implement loop detection, memoing,
 % minimal model evaluation, or I/O idempotence. The transformation involves
 % adding calls to predicates defined in library/table_builtin.m and in
@@ -36,12 +37,13 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__table_gen.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 :- pred table_gen__process_module(module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -89,13 +91,13 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
     % Values of this type map the pred_id of a minimal_model tabled
@@ -1283,9 +1285,9 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
             IoStateAssignToVar = project_var(IoStateAssignToVarPrime)
         ;
             % The call to proc_info_has_io_state_pair in
-            % table_gen__process_procs should ensure that we
-            % never get here.
-            error("create_new_io_goal: one in / one out violation")
+            % table_gen.process_procs should ensure that we never get here.
+            unexpected(this_file,
+                "create_new_io_goal: one in / one out violation")
         ),
         generate_call("table_io_copy_io_state", det,
             [IoStateAssignFromVar, IoStateAssignToVar], pure_code,
@@ -3157,7 +3159,8 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                     LastMaybeArgMethod = yes(ArgMethod)
                 ;
                     LastMaybeArgMethod = no,
-                    error("get_input_output_vars: bad method for input var")
+                    unexpected(this_file,
+                        "get_input_output_vars: bad method for input var")
                 ),
                 !:MaybeSpecMethod = specified(MaybeArgMethods)
             ;
@@ -3183,7 +3186,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                 list__split_last(MaybeArgMethods0, MaybeArgMethods,
                     LastMaybeArgMethod)
             ->
-                require(unify(LastMaybeArgMethod, no),
+                expect(unify(LastMaybeArgMethod, no), this_file,
                     "get_input_output_vars: bad method for output var"),
                 !:MaybeSpecMethod = specified(MaybeArgMethods)
             ;

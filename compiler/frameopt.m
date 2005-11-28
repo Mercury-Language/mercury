@@ -164,7 +164,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module queue.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -1348,7 +1347,7 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
     map__lookup(!.BlockMap, Label0, BlockInfo0),
     BlockInfo0 = frame_block_info(Label0Copy, Instrs0, FallInto, SideLabels0,
         MaybeFallThrough0, Type),
-    require(unify(Label0, Label0Copy),
+    expect(unify(Label0, Label0Copy), this_file,
         "process_frame_delay: label in frame_block_info is not copy"),
     (
         Type = setup,
@@ -1443,8 +1442,8 @@ transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
             FallThroughLabel, OrdNeedsFrame, !.BlockMap, ProcLabel, !C,
             !SetupParMap, !TeardownParMap),
         MaybeFallThrough = yes(FallThroughLabel),
-        require(no_disagreement(SideAssocLabelMap,
-            FallThroughLabel0, FallThroughLabel),
+        expect(no_disagreement(SideAssocLabelMap,
+            FallThroughLabel0, FallThroughLabel), this_file,
             "transform_nostack_ordinary_block: disagreement"),
         AssocLabelMap = [FallThroughLabel0 - FallThroughLabel
             | SideAssocLabelMap],
@@ -1563,10 +1562,10 @@ create_parallels([Label0 | Labels0], Labels, FrameSize, Msg, ProcLabel, !C,
     map__lookup(!.BlockMap, Label0, BlockInfo0),
     BlockInfo0 = frame_block_info(Label0Copy, _, FallInto,
         SideLabels, MaybeFallThrough, Type),
-    require(unify(Label0, Label0Copy),
+    expect(unify(Label0, Label0Copy), this_file,
         "create_parallels: label in frame_block_info is not copy"),
     ( search_teardown_par_map(TeardownParMap, Label0, ParallelLabel) ->
-        require(unify(MaybeFallThrough, no),
+        expect(unify(MaybeFallThrough, no), this_file,
             "create_parallels: teardown block with parallel has fall through"),
         (
             SideLabels = [],
@@ -1602,7 +1601,7 @@ create_parallels([Label0 | Labels0], Labels, FrameSize, Msg, ProcLabel, !C,
                 "block in teardown_par_map is not teardown")
         )
     ; search_setup_par_map(SetupParMap, Label0, SetupLabel) ->
-        require(is_ordinary(Type),
+        expect(is_ordinary(Type), this_file,
             "create_parallels: block in setup map is not ordinary"),
         PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
         (
@@ -1722,7 +1721,8 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     map__lookup(BlockMap, Label, BlockInfo),
     BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
         SideLabels, MaybeFallThrough, Type),
-    require(unify(Label, BlockLabel), "describe_block: label mismatch"),
+    expect(unify(Label, BlockLabel), this_file,
+        "describe_block: label mismatch"),
     LabelStr = dump_label(ProcLabel, Label),
     BlockInstrsStr = dump_fullinstrs(ProcLabel, yes, BlockInstrs),
     Heading = "\nBLOCK " ++ LabelStr ++ "\n\n",
@@ -1756,9 +1756,9 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     ),
     (
         Type = setup,
-        require(unify(SideLabels, []),
+        expect(unify(SideLabels, []), this_file,
             "describe_block: setup, SideLabels=[_ | _]"),
-        require(is_yes(MaybeFallThrough),
+        expect(is_yes(MaybeFallThrough), this_file,
             "describe_block: setup, MaybeFallThrough=no"),
         TypeStr = "setup\n",
         OrdNeedsFrameStr = ""
@@ -1774,7 +1774,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
         map__lookup(OrdNeedsFrame, Label, NeedsFrame),
         (
             NeedsFrame = block_doesnt_need_frame,
-            require(unify(UsesFrame, block_doesnt_need_frame),
+            expect(unify(UsesFrame, block_doesnt_need_frame), this_file,
                 "describe_block: "
                 ++ "NeedsFrame=block_doesnt_need_frame, "
                 ++ "UsesFrame=block_needs_frame"),
@@ -1785,7 +1785,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
         )
     ;
         Type = teardown(RestoreSuccip, Livevals, Goto),
-        require(unify(MaybeFallThrough, no),
+        expect(unify(MaybeFallThrough, no), this_file,
             "describe_block: teardown, MaybeFallThrough=yes(_)"),
         TypeStr = "teardown\n"
             ++ "restore:  "

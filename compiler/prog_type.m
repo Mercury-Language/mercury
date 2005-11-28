@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: prog_type.m.
-% Main author: fjh
-%
+% Main author: fjh.
+
 % Utility predicates dealing with type in the parse tree. The predicates for
 % doing type substitutions are in prog_type_subst.m, while utility predicates
 % for dealing with types in the HLDS are in type_util.m.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_type.
@@ -410,7 +410,6 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type_subst.
 
-:- import_module require.
 :- import_module string.
 :- import_module svmap.
 
@@ -756,9 +755,9 @@ type_ctor_is_array(qualified(unqualified("array"), "array") - 1).
 
 remove_aditi_state([], [], []).
 remove_aditi_state([], [_ | _], _) :-
-    error("gremove_aditi_state").
+    unexpected(this_file, "gremove_aditi_state").
 remove_aditi_state([_ | _], [], _) :-
-    error("gremove_aditi_state").
+    unexpected(this_file, "gremove_aditi_state").
 remove_aditi_state([Type | Types], [Arg | Args0], Args) :-
     ( type_is_aditi_state(Type) ->
         remove_aditi_state(Types, Args0, Args)
@@ -1282,7 +1281,8 @@ type_list_subsumes_det(TypesA, TypesB, TypeSubst) :-
     ( type_list_subsumes(TypesA, TypesB, TypeSubstPrime) ->
         TypeSubst = TypeSubstPrime
     ;
-        error("type_list_subsumes_det: type_list_subsumes failed")
+        unexpected(this_file,
+            "type_list_subsumes_det: type_list_subsumes failed")
     ).
 
 arg_type_list_subsumes(TVarSet, ActualArgTypes, CalleeTVarSet, PredKindMap,

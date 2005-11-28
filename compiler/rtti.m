@@ -859,7 +859,6 @@
 :- import_module parse_tree.prog_util. % for mercury_public_builtin_module
 
 :- import_module int.
-:- import_module require.
 :- import_module string.
 :- import_module varset.
 
@@ -944,7 +943,7 @@ var_arity_id_to_rtti_type_ctor(tuple_type_info) = Ctor :-
 rtti_id_maybe_element_has_array_type(item_type(RttiId)) =
     rtti_id_has_array_type(RttiId).
 rtti_id_maybe_element_has_array_type(element_type(RttiId)) = no :-
-    require(unify(rtti_id_has_array_type(RttiId), yes),
+    expect(unify(rtti_id_has_array_type(RttiId), yes), this_file,
         "rtti_id_maybe_element_has_array_type: base is not array").
 
 rtti_id_has_array_type(ctor_rtti_id(_, RttiName)) =
@@ -1457,7 +1456,7 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
         TypeCtorDetails = enum(TypeCtorUserEq, _, _, _, IsDummy),
         (
             IsDummy = yes,
-            require(unify(TypeCtorUserEq, standard),
+            expect(unify(TypeCtorUserEq, standard), this_file,
                 "type_ctor_rep_to_string: dummy type with user equality"),
             RepStr = "MR_TYPECTOR_REP_DUMMY"
         ;

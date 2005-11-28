@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: make.module_target.m
-% Main author: stayl
-%
+
+% File: make.module_target.m.
+% Main author: stayl.
+
 % Build targets which relate to a single module (e.g. C code, object code,
 % interface files).
+
 %-----------------------------------------------------------------------------%
 
 :- module make__module_target.
-
 :- interface.
 
 %-----------------------------------------------------------------------------%
@@ -192,7 +193,7 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, !Info, !IO) :-
                 "foreign_import_module cycle.\n", !IO),
             io__set_exit_status(1, !IO)
         ;
-            error("make_module_target: " ++
+            unexpected(this_file, "make_module_target: " ++
                 "target being built, circular dependencies?")
         ),
         Succeeded = no
@@ -529,7 +530,8 @@ invoke_mmc(ErrorStream, MaybeArgFileName, Args, Succeeded, !IO) :-
         MaybeArgFileName = yes(ArgFileName)
     ;
         MaybeArgFileName = no,
-        error("make.module_target.invoke_mmc: argument file not created")
+        unexpected(this_file,
+            "make.module_target.invoke_mmc: argument file not created")
     ),
 
     io__open_output(ArgFileName, ArgFileOpenRes, !IO),
@@ -606,7 +608,7 @@ update_target_status(TargetStatus, TargetFile, Info,
 :- func compilation_task(globals, module_target_type) =
     compilation_task_result.
 
-compilation_task(_, source) = _ :- error("compilation_task").
+compilation_task(_, source) = _ :- unexpected(this_file, "compilation_task").
 compilation_task(_, errors) =
     process_module(errorcheck) - ["--errorcheck-only"].
 compilation_task(_, unqualified_short_interface) =
@@ -668,7 +670,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         % We shouldn't be attempting to build a target
         % if we couldn't find the dependencies for the
         % module.
-        error("touched_files: no module dependencies")
+        unexpected(this_file, "touched_files: no module dependencies")
     ),
 
     NestedChildren = Imports ^ nested_children,
@@ -688,7 +690,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         % We shouldn't be attempting to build a target
         % if we couldn't find the dependencies for the
         % module or its nested sub-modules.
-        error("touched_files: no nested module dependencies")
+        unexpected(this_file, "touched_files: no nested module dependencies")
     ),
 
     globals__io_get_target(CompilationTarget, !IO),

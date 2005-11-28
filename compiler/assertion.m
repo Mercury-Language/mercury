@@ -5,19 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% Module: assertion
-%
-% Main authors: petdr
-%
+
+% Module: assertion.m.
+% Main authors: petdr.
+
 % This module is an abstract interface to the assertion table.
 % Note that this is a first design and will probably change
 % substantially in the future.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module hlds__assertion.
-
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -145,7 +143,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

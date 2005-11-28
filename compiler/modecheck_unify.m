@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: modecheck_unify.m.
 % Main author: fjh.
-%
+
 % This module contains the code to modecheck a unification.
 %
 % Check that the unification doesn't attempt to unify two free variables
 % (or in general two free sub-terms) unless one of them is dead. (Also we
 % ought to split unifications up if necessary to avoid complicated
 % sub-unifications.)
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -79,7 +79,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -1173,7 +1172,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
     ->
         (
             SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize),
-            require(unify(MaybeTakeAddr, no),
+            expect(unify(MaybeTakeAddr, no), this_file,
                 "categorize_unify_var_lambda: take_addr")
         ;
             SubInfo0 = no_construct_sub_info
@@ -1270,7 +1269,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
     ->
         (
             SubInfo0 = construct_sub_info(MaybeTakeAddr, _MaybeSize0),
-            require(unify(MaybeTakeAddr, no),
+            expect(unify(MaybeTakeAddr, no), this_file,
                 "categorize_unify_var_functor: take_addr")
         ;
             SubInfo0 = no_construct_sub_info

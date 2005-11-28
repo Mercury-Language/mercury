@@ -68,7 +68,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module svmap.
@@ -230,7 +229,7 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
     map__lookup(!.BlockMap, Exemplar, ExemplarInfo0),
     ExemplarInfo0 = block_info(ExLabel, ExLabelInstr, ExInstrs0,
         ExFallInto, ExSideLabels, ExMaybeFallThrough),
-    require(unify(Exemplar, ExLabel), "exemplar label mismatch"),
+    expect(unify(Exemplar, ExLabel), this_file, "exemplar label mismatch"),
     process_elim_labels(ElimLabels, ExInstrs0, !LabelSeq, !.BlockMap,
         Exemplar, !ReplMap, UnifiedInstrs,
         ExMaybeFallThrough, UnifiedMaybeFallThrough),
@@ -261,7 +260,7 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
     map__lookup(BlockMap, ElimLabel, ElimLabelInfo),
     ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs,
         _, _, ElimMaybeFallThrough),
-    require(unify(ElimLabel, ElimLabel2), "elim label mismatch"),
+    expect(unify(ElimLabel, ElimLabel2), this_file, "elim label mismatch"),
     (
         most_specific_block(Instrs0, !.MaybeFallThrough, ElimInstrs,
             ElimMaybeFallThrough, Instrs1, !:MaybeFallThrough)

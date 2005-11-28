@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
-%
-% file: term_constr_initial.m
-% main author: juliensf
-%
+
+% File: term_constr_initial.m.
+% Main author: juliensf.
+
 % This module fills in the appropriate argument size information and
 % termination property for builtin and compiler generated predicates.
 % It also handles the processing of termination pragmas and sets
@@ -30,7 +30,6 @@
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_initial.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -89,7 +88,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module relation.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

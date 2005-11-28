@@ -73,7 +73,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -433,7 +432,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         Code = empty
     ;
         ConsTag = type_ctor_info_constant(ModuleName, TypeName, TypeArity),
-        require(unify(Args, []),
+        expect(unify(Args, []), this_file,
             "generate_construction_2: type_ctor_info constant has args"),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
         DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor, type_ctor_info)),
@@ -442,7 +441,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         Code = empty
     ;
         ConsTag = base_typeclass_info_constant(ModuleName, ClassId, Instance),
-        require(unify(Args, []),
+        expect(unify(Args, []), this_file,
             "generate_construction_2: base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
         code_info__assign_const_to_var(Var,
@@ -451,7 +450,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         Code = empty
     ;
         ConsTag = tabling_pointer_constant(PredId, ProcId),
-        require(unify(Args, []),
+        expect(unify(Args, []), this_file,
             "generate_construction_2: tabling_pointer constant has args"),
         code_info__get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
@@ -462,7 +461,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         Code = empty
     ;
         ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
-        require(unify(Args, []),
+        expect(unify(Args, []), this_file,
             "generate_construction_2: deep_profiling_proc_static has args"),
         code_info__get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
@@ -479,7 +478,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         Code = empty
     ;
         ConsTag = table_io_decl_tag(PredId, ProcId),
-        require(unify(Args, []),
+        expect(unify(Args, []), this_file,
             "generate_construction_2: table_io_decl has args"),
         code_info__get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
@@ -489,7 +488,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         Code = empty
     ;
         ConsTag = reserved_address(RA),
-        require(unify(Args, []),
+        expect(unify(Args, []), this_file,
             "generate_construction_2: reserved_address constant has args"),
         code_info__assign_const_to_var(Var, generate_reserved_address(RA),
             !CI),
@@ -503,9 +502,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             Var, Args, Modes, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
     ;
         ConsTag = pred_closure_tag(PredId, ProcId, EvalMethod),
-        require(unify(TakeAddr, []),
+        expect(unify(TakeAddr, []), this_file,
             "generate_construction_2: pred_closure_tag has take_addr"),
-        require(unify(MaybeSize, no),
+        expect(unify(MaybeSize, no), this_file,
             "generate_construction_2: pred_closure_tag has size"),
         generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo,
             Code, !CI)

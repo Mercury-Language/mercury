@@ -27,8 +27,8 @@
 %
 % See David Kemp's PhD thesis (available from http://www.cs.mu.oz.au/~kemp).
 %-----------------------------------------------------------------------------%
-:- module aditi_backend__context.
 
+:- module aditi_backend__context.
 :- interface.
 
 :- import_module aditi_backend.magic_util.

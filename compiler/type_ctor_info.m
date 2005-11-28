@@ -34,13 +34,14 @@
 %---------------------------------------------------------------------------%
 
 :- module backend_libs__type_ctor_info.
-
 :- interface.
 
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_module.
 
 :- import_module list.
+
+%---------------------------------------------------------------------------%
 
 :- pred generate_hlds(module_info::in, module_info::out) is det.
 
@@ -56,6 +57,9 @@
     %
 :- func compute_contains_var_bit_vector(
     list(rtti_maybe_pseudo_type_info_or_self)) = int.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -85,7 +89,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -589,13 +592,16 @@ make_enum_functors([], _, _, []).
 make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
         [EnumFunctor | EnumFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, FunctorArgs),
-    require(unify(ExistTvars, []), "existential arguments in functor in enum"),
-    require(unify(Constraints, []), "class constraints on functor in enum"),
+    expect(unify(ExistTvars, []), this_file,
+        "existential arguments in functor in enum"),
+    expect(unify(Constraints, []), this_file,
+        "class constraints on functor in enum"),
     list__length(FunctorArgs, Arity),
-    require(unify(Arity, 0), "functor in enum has nonzero arity"),
+    expect(unify(Arity, 0), this_file,
+        "functor in enum has nonzero arity"),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, FunctorArgs),
     map__lookup(ConsTagMap, ConsId, ConsTag),
-    require(unify(ConsTag, int_constant(NextOrdinal0)),
+    expect(unify(ConsTag, int_constant(NextOrdinal0)), this_file,
         "mismatch on constant assigned to functor in enum"),
     unqualify_name(SymName, FunctorName),
     EnumFunctor = enum_functor(FunctorName, NextOrdinal0),
@@ -703,12 +709,12 @@ make_maybe_res_functors([Functor | Functors], NextOrdinal, ConsTagMap,
         MaybeResFunctor = du_func(DuFunctor)
     ;
         ConsRep = reserved_rep(ResRep),
-        require(unify(Arity, 0),
-            "type_ctor_info__make_maybe_res_functors: bad arity"),
-        require(unify(ArgInfos, []),
-            "type_ctor_info__make_maybe_res_functors: bad args"),
-        require(unify(MaybeExistInfo, no),
-            "type_ctor_info__make_maybe_res_functors: bad exist"),
+        expect(unify(Arity, 0), this_file,
+            "make_maybe_res_functors: bad arity"),
+        expect(unify(ArgInfos, []), this_file,
+            "make_maybe_res_functors: bad args"),
+        expect(unify(MaybeExistInfo, no), this_file,
+            "make_maybe_res_functors: bad exist"),
         ResFunctor = reserved_functor(FunctorName, NextOrdinal, ResRep),
         MaybeResFunctor = res_func(ResFunctor)
     ),
@@ -837,7 +843,7 @@ find_type_info_index(Constraints, ClassTable, StartSlot, Tvar, !LocnMap) :-
     prog_constraint::out, int::in, int::out, int::out) is det.
 
 first_matching_type_class_info([], _, _, !N, _) :-
-    error("first_matching_type_class_info: not found").
+    unexpected(this_file, "first_matching_type_class_info: not found").
 first_matching_type_class_info([C | Cs], Tvar, MatchingConstraint, !N,
         TypeInfoIndex) :-
     C = constraint(_, Ts),
@@ -873,8 +879,8 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
         ),
         ( map__search(!.PtagTable, Ptag, SectagTable0) ->
             SectagTable0 = sectag_table(Locn0, NumSharers0, SectagMap0),
-            require(unify(SectagLocn, Locn0),
-                "type_ctor_info__make_du_ptag_ordered_table: " ++
+            expect(unify(SectagLocn, Locn0), this_file,
+                "make_du_ptag_ordered_table: " ++
                 "sectag locn disagreement"),
             map__det_insert(SectagMap0, Sectag, DuFunctor, SectagMap),
             SectagTable = sectag_table(Locn0, NumSharers0 + 1, SectagMap),

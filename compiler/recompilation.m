@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: recompilation.m
-% Main author: stayl
-%
+
+% File: recompilation.m.
+% Main author: stayl.
+
 % Type declarations for smart recompilation.
 % Predicates to record program items used by a compilation.
 %
@@ -22,8 +23,8 @@
 % importing it need to be recompiled.
 %
 %-----------------------------------------------------------------------------%
-:- module recompilation.
 
+:- module recompilation.
 :- interface.
 
 :- import_module check_hlds.
@@ -258,7 +259,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module string.
 :- import_module time.
 

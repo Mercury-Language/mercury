@@ -5,12 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% term_pass1.m
-%
+
+% File: term_pass1.m.
 % Main author: crs.
 % Significant parts rewritten by zs.
-%
+
 % This file contains the first pass of the termination analysis, whose job is
 % to discover an upper bound on the difference between the sizes of the output
 % arguments of a procedure on the one hand and the sizes of a selected set of
@@ -18,11 +17,10 @@
 % selected set of input arguments as the "output suppliers".
 %
 % For details, please refer to the papers mentioned in termination.m.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_pass1.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -73,7 +71,6 @@
 :- import_module float.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
@@ -86,20 +83,19 @@
 
 :- type pass1_result
     --->    ok(
-            list(path_info),
-                    % One entry for each path through the
-                    % code.
-            used_args,
-                    % The next output_supplier map.
-            list(termination_error_context)
-                    % There is an entry in this list for
-                    % each procedure in the SCC in which
-                    % the set of active vars is not
-                    % a subset of the input arguments.
-        )
-    ;   error(
-            list(termination_error_context)
-        ).
+                list(path_info),
+                        % One entry for each path through the
+                        % code.
+                used_args,
+                        % The next output_supplier map.
+                list(termination_error_context)
+                        % There is an entry in this list for each procedure in
+                        % the SCC in which the set of active vars is not a
+                        % subset of the input arguments.
+            )
+    ;       error(
+                list(termination_error_context)
+            ).
 
 find_arg_sizes_in_scc(SCC, ModuleInfo, PassInfo, ArgSize, TermErrors, !IO) :-
     init_output_suppliers(SCC, ModuleInfo, InitOutputSupplierMap),

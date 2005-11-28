@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: modes.m.
 % Main author: fjh.
-%
+
 % This module contains the top level of the code for mode checking and mode
 % inference.  It uses code in the subsidiary modules mode_info, delay_info,
 % inst_match, mode_errors, and mode_util.
@@ -127,9 +127,9 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__modes.
-
 :- interface.
 
+:- import_module check_hlds.mode_info.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -140,6 +140,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
     % modecheck(HLDS0, HLDS, UnsafeToContinue):
     %
@@ -190,8 +192,6 @@
 %-----------------------------------------------------------------------------%
 
 % The following predicates are used by unique_modes.m.
-
-:- import_module check_hlds.mode_info.
 
     % Modecheck a unification.
 
@@ -348,7 +348,6 @@
 :- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.purity.
@@ -358,11 +357,11 @@
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
-:- import_module hlds.instmap.
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -378,7 +377,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -1123,9 +1121,9 @@ modecheck_final_insts(HeadVars, InferModes, FinalInsts0, FinalInsts,
     list(mer_inst)::out) is det.
 
 maybe_clobber_insts([], [_ | _], _) :-
-    error("maybe_clobber_insts: length mismatch").
+    unexpected(this_file, "maybe_clobber_insts: length mismatch").
 maybe_clobber_insts([_ | _], [], _) :-
-    error("maybe_clobber_insts: length mismatch").
+    unexpected(this_file, "maybe_clobber_insts: length mismatch").
 maybe_clobber_insts([], [], []).
 maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
     ( IsLive = dead ->
@@ -1202,7 +1200,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
         check_final_insts(VarsTail, InstsTail, VarInstsTail,
             InferModes, ArgNum + 1, ModuleInfo, !Goal, !Changed, !ModeInfo)
     ;
-        error("check_final_insts: length mismatch")
+        unexpected(this_file, "check_final_insts: length mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1510,7 +1508,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
         % XXX We should probably fill this in so that
         % rerunning mode analysis works on code with typeclasses.
         GenericCall = class_method(_, _, _, _),
-        error("modecheck_goal_expr: class_method_call")
+        unexpected(this_file, "modecheck_goal_expr: class_method_call")
     ;
         GenericCall = cast(_CastType),
         (
@@ -1524,7 +1522,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
                 Mode1 = Mode1Prime,
                 Mode2 = Mode2Prime
             ;
-                error("modecheck_goal_expr: bad cast")
+                unexpected(this_file, "modecheck_goal_expr: bad cast")
             ),
             Mode1 = in_mode,
             Mode2 = out_mode,
@@ -1624,7 +1622,7 @@ modecheck_goal_expr(ForeignProc, GoalInfo, Goal, !ModeInfo, !IO) :-
 
 modecheck_goal_expr(shorthand(_), _, _, !ModeInfo, !IO) :-
     % these should have been expanded out by now
-    error("modecheck_goal_expr: unexpected shorthand").
+    unexpected(this_file, "modecheck_goal_expr: unexpected shorthand").
 
 append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).
 append_extra_goals(extra_goals(BeforeGoals, AfterGoals),
@@ -1730,7 +1728,7 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
     % one disjunct is initialised in all disjuncts.
     %
 :- pred handle_solver_vars_in_disjs(list(prog_var)::in,
-    map(prog_var, mer_type)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    vartypes::in, list(hlds_goal)::in, list(hlds_goal)::out,
     list(instmap)::in, list(instmap)::out, mode_info::in, mode_info::out)
     is det.
 
@@ -1742,8 +1740,7 @@ handle_solver_vars_in_disjs(NonLocals, VarTypes, Disjs0, Disjs,
     add_necessary_disj_init_calls(Disjs0, Disjs, InstMaps0, InstMaps,
         EnsureInitialised, !ModeInfo).
 
-:- pred handle_solver_vars_in_ite(list(prog_var)::in,
-    map(prog_var, mer_type)::in,
+:- pred handle_solver_vars_in_ite(list(prog_var)::in, vartypes::in,
     hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
     instmap::in, instmap::out, instmap::in, instmap::out, mode_info::in,
     mode_info::out) is det.
@@ -1798,9 +1795,9 @@ is_solver_var(VarTypes, ModuleInfo, Var) :-
 
 add_necessary_disj_init_calls([], [], [], [], _EnsureInitialised, !ModeInfo).
 add_necessary_disj_init_calls([], _, [_ | _], _, _, _, _) :-
-    error("modes.add_necessary_init_calls: mismatched lists").
+    unexpected(this_file, "add_necessary_init_calls: mismatched lists").
 add_necessary_disj_init_calls([_ | _], _, [], _, _, _, _) :-
-    error("modes.add_necessary_init_calls: mismatched lists").
+    unexpected(this_file, "add_necessary_init_calls: mismatched lists").
 add_necessary_disj_init_calls([Goal0 | Goals0], [Goal | Goals],
         [InstMap0 | InstMaps0], [InstMap | InstMaps],
         EnsureInitialised, !ModeInfo) :-
@@ -2765,7 +2762,7 @@ modecheck_par_conj_list([Goal0 | Goals0], [Goal | Goals], NonLocals,
         )
     ;
         PVars1 = [],
-        error("lost parallel vars")
+        unexpected(this_file, "modecheck_par_conj_list: lost parallel vars")
     ),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     mode_info_set_instmap(InstMap0, !ModeInfo),
@@ -2795,9 +2792,9 @@ compute_arg_offset(PredInfo, ArgOffset) :-
     % expected liveness.
     %
 modecheck_var_list_is_live([_ | _], [], _, _, !ModeInfo) :-
-    error("modecheck_var_list_is_live: length mismatch").
+    unexpected(this_file, "modecheck_var_list_is_live: length mismatch").
 modecheck_var_list_is_live([], [_ | _], _, _, !ModeInfo) :-
-    error("modecheck_var_list_is_live: length mismatch").
+    unexpected(this_file, "modecheck_var_list_is_live: length mismatch").
 modecheck_var_list_is_live([], [], _NeedExactMatch, _ArgNum, !ModeInfo).
 modecheck_var_list_is_live([Var | Vars], [IsLive | IsLives], NeedExactMatch,
         ArgNum0, !ModeInfo) :-
@@ -2847,9 +2844,9 @@ modecheck_var_has_inst_list(Vars, Insts, NeedEaxctMatch, ArgNum, Subst,
     mode_info::in, mode_info::out) is det.
 
 modecheck_var_has_inst_list_2([_ | _], [], _, _, !Subst, !ModeInfo) :-
-    error("modecheck_var_has_inst_list: length mismatch").
+    unexpected(this_file, "modecheck_var_has_inst_list: length mismatch").
 modecheck_var_has_inst_list_2([], [_ | _], _, _, !Subst, !ModeInfo) :-
-    error("modecheck_var_has_inst_list: length mismatch").
+    unexpected(this_file, "modecheck_var_has_inst_list: length mismatch").
 modecheck_var_has_inst_list_2([], [], _Exact, _ArgNum, !Subst, !ModeInfo).
 modecheck_var_has_inst_list_2([Var | Vars], [Inst | Insts], NeedExactMatch,
         ArgNum0, !Subst, !ModeInfo) :-
@@ -2898,7 +2895,7 @@ modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, ArgOffset,
         Vars = Vars1,
         Goals = Goals1
     ;
-        error("modecheck_set_var_inst_list: length mismatch")
+        unexpected(this_file, "modecheck_set_var_inst_list: length mismatch")
     ).
 
 :- pred modecheck_set_var_inst_list_2(list(prog_var)::in, list(mer_inst)::in,
@@ -2960,7 +2957,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
             ModuleInfo = ModuleInfo1,
             Inst = UnifyInst
         ;
-            error("modecheck_set_var_inst: unify_inst failed")
+            unexpected(this_file, "modecheck_set_var_inst: unify_inst failed")
         ),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
@@ -3168,7 +3165,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
     ->
         InitVarGoal = GoalExpr - GoalInfo
     ;
-        error("modes.construct_initialisation_call")
+        unexpected(this_file, "construct_initialisation_call")
     ).
 
 :- pred build_call(module_name::in, string::in, list(prog_var)::in,
@@ -3246,7 +3243,8 @@ mode_context_to_unify_context(_, unify(UnifyContext, _), UnifyContext).
 mode_context_to_unify_context(_, call(CallId, Arg),
         unify_context(call(CallId, Arg), [])).
 mode_context_to_unify_context(_, uninitialized, _) :-
-    error("mode_context_to_unify_context: uninitialized context").
+    unexpected(this_file,
+        "mode_context_to_unify_context: uninitialized context").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3420,11 +3418,11 @@ report_wrong_mode_for_main(ProcInfo, !ModuleInfo, !IO) :-
     % Given a list of variables, and a list of livenesses,
     % select the live variables.
     %
-get_live_vars([_ | _], [], _) :-
-    error("get_live_vars: length mismatch").
-get_live_vars([], [_ | _], _) :-
-    error("get_live_vars: length mismatch").
 get_live_vars([], [], []).
+get_live_vars([_ | _], [], _) :-
+    unexpected(this_file, "get_live_vars: length mismatch").
+get_live_vars([], [_ | _], _) :-
+    unexpected(this_file, "get_live_vars: length mismatch").
 get_live_vars([Var | Vars], [IsLive | IsLives], LiveVars) :-
     (
         IsLive = live,
@@ -3448,4 +3446,9 @@ get_live_vars([Var | Vars], [IsLive | IsLives], LiveVars) :-
 check_circular_modes(!Module, !IO).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "modes.m".
+
 %-----------------------------------------------------------------------------%

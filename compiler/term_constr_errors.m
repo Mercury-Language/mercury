@@ -5,14 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% term_constr_errors.m
-% main author: juliensf.
-%
+
+% File: term_constr_errors.m.
+% Main author: juliensf.
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_errors.
-
 :- interface.
 
 :- import_module hlds.hlds_module. 
@@ -78,6 +77,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_error_util.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
@@ -85,7 +85,6 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -223,7 +222,8 @@ description(can_loop_proc_called(CallerPPId, CalleePPId),
 		Single, Module, Pieces, no) :-
 	(
 		Single = yes(PPId),
-		require(unify(PPId, CallerPPId), "caller outside this SCC"),
+		expect(unify(PPId, CallerPPId), this_file,
+            "caller outside this SCC"),
 		Piece1 = [words("It")]
 	;
 		Single = no,
@@ -249,7 +249,7 @@ description(does_not_term_pragma(PredId), Single, Module, Pieces, no) :-
 	(
 		Single = yes(PPId),
 		PPId = proc(SCCPredId, _),
-		require(unify(PredId, SCCPredId), 
+		expect(unify(PredId, SCCPredId), this_file,
 			"does not terminate pragma outside this SCC"),
 		Piece2 = [words("it.")]
 	;
@@ -273,6 +273,12 @@ indirect_error(imported_pred).
 indirect_error(horder_call).
 indirect_error(does_not_term_pragma(_)).
 indirect_error(can_loop_proc_called(_, _)).	
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "term_constr_errors.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module term_constr_errors.

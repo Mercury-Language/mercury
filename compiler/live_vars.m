@@ -5,11 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File live_vars.m
-%
+
+% File: live_vars.m.
 % Main authors: conway, zs.
-%
+
 % This module finds out what variables need to be saved across calls,
 % across goals that may fail, and in parallel conjunctions. It then does those
 % things with that information. First, it attaches that information to the
@@ -17,11 +16,10 @@
 % the relevant type class method of the allocator-specific data structure
 % it is passed; the basic stack slot allocator and the optimizing stack slot
 % allocator pass different instances of this type class.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__live_vars.
-
 :- interface.
 
 % Parse tree modules
@@ -71,6 +69,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
+:- import_module libs.compiler_util.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.llds.
 
@@ -78,7 +77,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%
@@ -305,7 +303,7 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo, GoalInfo,
 		_ResumeVars0, _AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
 	Goal = unify(_, _, _, Unification, _),
 	( Unification = complicated_unify(_, _, _) ->
-		error("build_live_sets_in_goal_2: complicated_unify")
+		unexpected(this_file, "build_live_sets_in_goal_2: complicated_unify")
 	;
 		true
 	).
@@ -343,7 +341,7 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
 
 build_live_sets_in_goal_2(shorthand(_), _,_,_,_,_,_,_,_,_,_,_) :-
 	% these should have been expanded out by now
-	error("build_live_sets_in_goal_2: unexpected shorthand").
+	unexpected(this_file, "build_live_sets_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -551,5 +549,11 @@ record_resume_site(NeedInResume, !GoalInfo, !StackAlloc) :-
 record_par_conj(NeedInParConj, !GoalInfo, !StackAlloc) :-
 	goal_info_set_need_in_par_conj(NeedInParConj, !GoalInfo),
 	at_par_conj(NeedInParConj, !.GoalInfo, !StackAlloc).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "live_vars.m".
 
 %-----------------------------------------------------------------------------%

@@ -5,11 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: tupling.m.
-%
 % Author: wangp.
-%
+
 % This module takes the HLDS and performs a tupling transformation on the
 % locally-defined procedures.  That is, instead of passing all of the
 % procedure's arguments separately, it will try to bundle some of them up and
@@ -79,11 +78,10 @@
 %
 % XXX: we need to check that mprof can demangle the names of the transformed
 % procedures correctly
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__tupling.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -137,7 +135,6 @@
 :- import_module map.
 :- import_module multi_map.
 :- import_module relation.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

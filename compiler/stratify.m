@@ -4,8 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% stratify.m - the stratification analysis pass.
-
+% File: stratify.m.
 % Main authors: ohutch, conway.
 
 % This module performs stratification analysis.
@@ -24,12 +23,10 @@
 %
 % The second pass is necessary because the rebuilt call graph does not
 % allow the detection of definite non-stratification.
-%
 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__stratify.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -44,6 +41,9 @@
 :- pred stratify__check_stratification(module_info::in, module_info::out,
 	io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.mode_util.
@@ -53,6 +53,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -66,7 +67,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module relation.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -229,7 +229,8 @@ first_order_check_goal(generic_call(_Var, _Vars, _Modes, _Det), _GInfo,
 	_Negated, _WholeScc, _ThisPredProcId, _Error,  !ModuleInfo, !IO).
 first_order_check_goal(shorthand(_), _, _, _, _, _, !ModuleInfo, !IO) :-
 	% these should have been expanded out by now
-	error("first_order_check_goal: unexpected shorthand").
+	unexpected(this_file,
+		"first_order_check_goal: unexpected shorthand").
 
 :- pred first_order_check_goal_list(list(hlds_goal)::in, bool::in,
 	list(pred_proc_id)::in, pred_proc_id::in, bool::in,
@@ -388,7 +389,8 @@ higher_order_check_goal(generic_call(GenericCall, _Vars, _Modes, _Det),
 	).
 higher_order_check_goal(shorthand(_), _, _, _, _, _, _, _, _, !IO) :-
 	% these should have been expanded out by now
-	error("higher_order_check_goal: unexpected shorthand").
+	unexpected(this_file,
+		"higher_order_check_goal: unexpected shorthand").
 
 :- pred higher_order_check_goal_list(list(hlds_goal)::in, bool::in,
 	set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
@@ -551,7 +553,8 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
 			;
 				CHOInOut = ho_none,
 				% XXX : what is a good message for this?
-				error("merge_calls : this cant happen!")
+				unexpected(this_file,
+					"merge_calls : this cannot happen!")
 			),
 			NewCInfo = info(CHaveAT, CHOInOut),
 			NewPInfo = info(PHaveAT, PHOInOut),
@@ -673,9 +676,11 @@ bool_2_ho_in_out(no, no, ho_none).
 
 higherorder_in_out1([], [], _ModuleInfo, !HOIn, !HOOut).
 higherorder_in_out1([], [_ | _], _, !HOIn, !HOOut) :-
-	error("higherorder_in_out1: lists were different lengths").
+	unexpected(this_file,
+		"higherorder_in_out1: lists were different lengths").
 higherorder_in_out1([_ | _], [], _, !HOIn, !HOOut) :-
-	error("higherorder_in_out1: lists were different lengths").
+	unexpected(this_file,
+		"higherorder_in_out1: lists were different lengths").
 higherorder_in_out1([Type | Types], [Mode | Modes], ModuleInfo,
 		!HOIn, !HOOut) :-
 	(
@@ -767,7 +772,7 @@ check_goal1(foreign_proc(_Attrib, _CPred, _CProc, _, _, _),
 		!Calls, !HasAT, !CallsHO).
 check_goal1(shorthand(_), _, _, _, _, _, _) :-
 	% these should have been expanded out by now
-	error("check_goal1: unexpected shorthand").
+	unexpected(this_file, "check_goal1: unexpected shorthand").
 
 :- pred check_goal_list(list(hlds_goal)::in,
 	set(pred_proc_id)::in, set(pred_proc_id)::out,
@@ -848,7 +853,7 @@ get_called_procs(not(Goal - _GoalInfo), !Calls) :-
 get_called_procs(foreign_proc(_Attrib, _CPred, _CProc, _, _, _), !Calls).
 get_called_procs(shorthand(_), !Calls) :-
 	% these should have been expanded out by now
-	error("get_called_procs: unexpected shorthand").
+	unexpected(this_file, "get_called_procs: unexpected shorthand").
 
 :- pred check_goal_list(list(hlds_goal)::in,
 	list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
@@ -902,5 +907,11 @@ emit_message(ThisPredProc, Context, Message, Error, !ModuleInfo, !IO) :-
 		VerboseErrors = no,
 		globals.io_set_extra_error_info(yes, !IO)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "stratify.m".
 
 %-----------------------------------------------------------------------------%

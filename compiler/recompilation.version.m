@@ -5,16 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: recompilation_version.m
-% Main author: stayl
-%
+
+% File: recompilation_version.m.
+% Main author: stayl.
+
 % Compute version numbers for program items in interface files.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module recompilation__version.
-
 :- interface.
 
 :- import_module libs.timestamp.
@@ -57,7 +56,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module varset.
 

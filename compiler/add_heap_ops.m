@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: add_heap_ops.m.
 % Author: fjh.
-%
+
 % This module is an HLDS-to-HLDS transformation that inserts code to
 % handle heap reclamation on backtracking, by saving and restoring
 % the values of the heap pointer.
@@ -22,7 +23,7 @@
 % LLDS code, rather than via an HLDS to HLDS transformation.
 %
 % This module is very similar to add_trail_ops.m.
-%
+
 %-----------------------------------------------------------------------------%
 
 % XXX check goal_infos for correctness
@@ -59,7 +60,6 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -74,7 +74,7 @@
     % table that it contains to lookup the pred_ids for the builtin procedures
     % that we insert calls to. We do not update the module_info as we're
     % traversing the goal.
-
+    %
 :- type heap_ops_info
     --->    heap_ops_info(
                 varset      :: prog_varset,

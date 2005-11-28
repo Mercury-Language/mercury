@@ -42,6 +42,9 @@
 :- pred combine_status(import_status::in, import_status::in,
     import_status::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.
@@ -53,6 +56,7 @@
 :- import_module hlds.make_tags.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_out.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
@@ -65,7 +69,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -539,7 +542,7 @@ combine_status(StatusA, StatusB, Status) :-
     ( combine_status_2(StatusA, StatusB, CombinedStatus) ->
         Status = CombinedStatus
     ;
-        error("unexpected status for type definition")
+        unexpected(this_file, "unexpected status for type definition")
     ).
 
 :- pred combine_status_2(import_status::in, import_status::in,
@@ -707,7 +710,7 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
             QualifiedConsId, Context, ImportStatus, FirstField,
             !FieldNameTable, !IO)
     ;
-        error("ctors_add: cons_id not qualified")
+        unexpected(this_file, "ctors_add: cons_id not qualified")
     ),
     ctors_add(Rest, TypeCtor, TVarSet, NeedQual, PQInfo, Context,
         ImportStatus, !FieldNameTable, !Ctors, !IO).
@@ -750,7 +753,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     ( FieldName = qualified(FieldModule0, _) ->
         FieldModule = FieldModule0
     ;
-        error("add_ctor_field_name: unqualified field name")
+        unexpected(this_file, "add_ctor_field_name: unqualified field name")
     ),
     (
         %
@@ -764,7 +767,8 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         ( ConflictingDefns = [ConflictingDefn] ->
             ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _)
         ;
-            error("add_ctor_field_name: multiple conflicting fields")
+            unexpected(this_file,
+                "add_ctor_field_name: multiple conflicting fields")
         ),
 
         % XXX we should record each error
@@ -809,3 +813,11 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
 do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
     multi_map__set(!.FieldNameTable, qualified(ModuleName, FieldName),
         FieldNameDefn, !:FieldNameTable).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "add_type.m".
+
+%----------------------------------------------------------------------------%

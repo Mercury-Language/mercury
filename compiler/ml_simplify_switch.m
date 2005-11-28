@@ -32,10 +32,12 @@
     statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_switch_gen.
@@ -45,7 +47,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%
@@ -202,7 +203,7 @@ find_first_and_last_case_3(match_value(Rval), !Min, !Max) :-
         int__min(Val, !Min),
         int__max(Val, !Max)
     ;
-        error("find_first_and_last_case_3: non-int case")
+        unexpected(this_file, "find_first_and_last_case_3: non-int case")
     ).
 find_first_and_last_case_3(match_range(MinRval, MaxRval),
         !Min, !Max) :-
@@ -213,7 +214,7 @@ find_first_and_last_case_3(match_range(MinRval, MaxRval),
         int__min(RvalMin, !Min),
         int__max(RvalMax, !Max)
     ;
-        error("find_first_and_last_case_3: non-int case")
+        unexpected(this_file, "find_first_and_last_case_3: non-int case")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -352,7 +353,7 @@ insert_case_into_map(match_value(Rval), ThisLabel, !CaseLabelsMap) :-
     ( Rval = const(int_const(Val)) ->
         map__det_insert(!.CaseLabelsMap, Val, ThisLabel, !:CaseLabelsMap)
     ;
-        error("insert_case_into_map: non-int case")
+        unexpected(this_file, "insert_case_into_map: non-int case")
     ).
 insert_case_into_map(match_range(MinRval, MaxRval), ThisLabel,
         !CaseLabelsMap) :-
@@ -362,7 +363,7 @@ insert_case_into_map(match_range(MinRval, MaxRval), ThisLabel,
     ->
         insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap)
     ;
-        error("insert_case_into_map: non-int case")
+        unexpected(this_file, "insert_case_into_map: non-int case")
     ).
 
 :- pred insert_range_into_map(int::in, int::in, mlds__label::in,
@@ -460,5 +461,11 @@ ml_gen_case_match_cond(match_range(MinRval, MaxRval), SwitchRval) =
     binop(logical_and,
         binop(int_gt, SwitchRval, MinRval),
         binop(int_le, SwitchRval, MaxRval)).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "ml_simplify_switch.m".
 
 %-----------------------------------------------------------------------------%

@@ -5,14 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: disj_gen.m:
-%
 % Main authors: conway, zs.
-%
+
 % The predicates of this module generate code for disjunctions.
-%
-%-----------------------------------------------------------------------------%
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__disj_gen.
@@ -49,7 +47,6 @@
 
 :- import_module bool.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module term.
@@ -223,9 +220,9 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                 BranchStart0, BranchStart),
             tree__flatten(SaveHpCode, HpCodeList),
             tree__flatten(BranchSaveHpCode, BranchHpCodeList),
-            require(unify(HpCodeList, BranchHpCodeList),
+            expect(unify(HpCodeList, BranchHpCodeList), this_file,
                 "cannot use same code for saving hp"),
-            require(unify(HpSlot, BranchHpSlot),
+            expect(unify(HpSlot, BranchHpSlot), this_file,
                 "cannot allocate same slot for saved hp")
         ;
             SaveHpCode = empty,

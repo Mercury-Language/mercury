@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% Module:   mlds_to_managed
-% Main author:  trd, petdr.
-%
+
+% Module: mlds_to_managed.m.
+% Main author: trd, petdr.
+
 % Generate code for the foreign language interface to C# and managed C++.
-%
+
+%-----------------------------------------------------------------------------%
 
 :- module ml_backend__mlds_to_managed.
 :- interface.
@@ -71,10 +72,11 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 output_managed_code(Lang, MLDS, !IO) :-
     MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns,
@@ -727,7 +729,7 @@ write_input_arg_as_foreign_type(Lang, Arg, !IO) :-
     ( EntityName = data(var(VarName)) ->
         write_mlds_var_name_for_parameter(VarName, !IO)
     ;
-        error("found a variable in a list")
+        unexpected(this_file, "found a variable in a list")
     ).
 
 :- pred write_parameter_initializer(foreign_language::in(managed_lang),

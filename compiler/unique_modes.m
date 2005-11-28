@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: unique_modes.m.
 % Main author: fjh
-%
+
 % This module checks that variables with a unique mode (as opposed to a
 % mostly-unique mode) really are unique, and not nondet live - i.e. that
 % they cannot be referenced on backtracking. (Actually the term "nondet live"
@@ -99,7 +100,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.

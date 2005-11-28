@@ -165,7 +165,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module queue.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -579,7 +578,7 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
         post_typecheck__finish_imported_pred_no_io(!.ModuleInfo,
             ErrorProcs,  PredInfo0, PredInfo)
     ),
-    require(unify(ErrorProcs, []),
+    expect(unify(ErrorProcs, []), this_file,
         "add_lazily_generated_special_pred: error in post_typecheck"),
 
     % Call polymorphism to introduce type_info arguments
@@ -610,8 +609,8 @@ collect_type_defn(ModuleInfo, TypeCtor, Type, TVarSet, TypeBody, Context) :-
     hlds_data__get_type_defn_status(TypeDefn, TypeStatus),
     hlds_data__get_type_defn_context(TypeDefn, Context),
 
-    require(special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody,
-        TypeStatus), "add_lazily_generated_unify_pred"),
+    expect(special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody,
+        TypeStatus), this_file, "add_lazily_generated_unify_pred"),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeArgs),
     construct_type(TypeCtor, TypeArgs, Type).
 

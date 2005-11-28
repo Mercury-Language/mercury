@@ -64,7 +64,6 @@
 
 :- import_module bool.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module term.

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: size_prof.m
 % Author: zs.
-%
+
 % This module performs a source-to-source program transformation that
 % implements term size profiling. The objective of the transformation is to
 % make it possible to find out the size of every term in constant time, i.e.
@@ -77,7 +77,7 @@
 % for strings and arrays would be desirable, since real programs do contain
 % predicates whose complexity is governed by the length of an array or a
 % string, but this remains future work.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__size_prof.
@@ -131,7 +131,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -701,7 +700,7 @@ process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type, ConsId,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
     (
         MaybeDynamicSizeVar = no,
-        require(unify(ArgGoals, []),
+        expect(unify(ArgGoals, []), this_file,
             "process_cons_construct: nonempty ArgGoals"),
         (
             NonDefinedArgs = [],
@@ -744,7 +743,7 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
     (
         MaybeDynamicSizeVar = no,
-        require(unify(ArgGoals, []),
+        expect(unify(ArgGoals, []), this_file,
             "process_cons_deconstruct: nonempty ArgGoals"),
         GoalExpr = GoalExpr0
     ;

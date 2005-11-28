@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% tag_switch.m - generate switches based on primary and secondary tags.
-
+% File: tag_switch.m.
 % Author: zs.
+
+% Generate switches based on primary and secondary tags.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__tag_switch.
-
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -25,12 +25,17 @@
 
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % Generate intelligent indexing code for tag based switches.
     %
 :- pred generate_tag_switch(list(extended_case)::in, prog_var::in,
     code_model::in, can_fail::in, hlds_goal_info::in, label::in,
     branch_end::in, branch_end::out, code_tree::out,
     code_info::in, code_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -53,7 +58,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 
@@ -335,7 +339,7 @@ generate_primary_try_me_else_chain([PtagGroup | PtagGroups], TagRval, VarRval,
     PtagGroup = Primary - ptag_case(StagLoc, StagGoalMap),
     map__lookup(PtagCountMap, Primary, CountInfo),
     CountInfo = StagLoc1 - MaxSecondary,
-    require(unify(StagLoc, StagLoc1),
+    expect(unify(StagLoc, StagLoc1), this_file,
         "generate_primary_try_me_else_chain: secondary tag locations differ"),
     (
         ( PtagGroups = [_ | _]
@@ -396,7 +400,7 @@ generate_primary_try_chain([PtagGroup | PtagGroups], TagRval, VarRval,
     PtagGroup = Primary - ptag_case(StagLoc, StagGoalMap),
     map__lookup(PtagCountMap, Primary, CountInfo),
     CountInfo = StagLoc1 - MaxSecondary,
-    require(unify(StagLoc, StagLoc1),
+    expect(unify(StagLoc, StagLoc1), this_file,
         "secondary tag locations differ in generate_primary_try_chain"),
     (
         ( PtagGroups = [_ | _]
@@ -469,7 +473,7 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, VarRval,
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map__lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLoc1 - MaxSecondary,
-            require(unify(StagLoc, StagLoc1),
+            expect(unify(StagLoc, StagLoc1), this_file,
                 "secondary tag locations differ " ++
                 "in generate_primary_jump_table"),
             code_info__get_next_label(NewLabel, !CI),
@@ -533,12 +537,12 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
             )
         ;
             PtagGroups = [CurPrimaryPrime - PrimaryInfo],
-            require(unify(CurPrimary, CurPrimaryPrime),
+            expect(unify(CurPrimary, CurPrimaryPrime), this_file,
                 "generate_primary_binary_search: cur_primary mismatch"),
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map__lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLoc1 - MaxSecondary,
-            require(unify(StagLoc, StagLoc1),
+            expect(unify(StagLoc, StagLoc1), this_file,
                 "secondary tag locations differ " ++
                 "in generate_primary_jump_table"),
             generate_primary_tag_code(StagGoalMap, CurPrimary, MaxSecondary,
@@ -859,7 +863,7 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
 generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary, CodeModel,
         SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd, Labels, Code, !CI) :-
     ( CurSecondary > MaxSecondary ->
-        require(unify(CaseList, []),
+        expect(unify(CaseList, []), this_file,
             "caselist not empty when reaching limiting secondary tag"),
         Labels = [],
         Code = empty
@@ -934,7 +938,7 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             StagGoals = [CurSecPrime - stag_goal(ConsId, Goal)],
             Comment = "case " ++ cons_id_to_string(ConsId),
             CommentCode = node([comment(Comment) - ""]),
-            require(unify(CurSec, CurSecPrime),
+            expect(unify(CurSec, CurSecPrime), this_file,
                 "generate_secondary_binary_search: cur_secondary mismatch"),
             trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
                 TraceCode, !CI),

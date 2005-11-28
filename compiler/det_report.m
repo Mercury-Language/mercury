@@ -180,7 +180,6 @@
 :- import_module getopt_io.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -687,7 +686,7 @@ det_diagnose_goal_2(foreign_proc(_, _, _, _, _, _), GoalInfo, Desired,
 
 det_diagnose_goal_2(shorthand(_), _, _, _, _, _, _, !Specs) :-
     % These should have been expanded out by now.
-    error("det_diagnose_goal_2: unexpected shorthand").
+    unexpected(this_file, "det_diagnose_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
@@ -1251,7 +1250,7 @@ det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
     ( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->
         TypeCtorStr = hlds_out__type_ctor_to_string(TypeCtor)
     ;
-        error("det_report_msg: type_to_ctor_and_args failed")
+        unexpected(this_file, "det_report_msg: type_to_ctor_and_args failed")
     ),
     (
         Pieces0 = [],
@@ -1300,7 +1299,7 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
     ( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->
         TypeCtorStr = hlds_out__type_ctor_to_string(TypeCtor)
     ;
-        error("det_report_msg: type_to_ctor_and_args failed")
+        unexpected(this_file, "det_report_msg: type_to_ctor_and_args failed")
     ),
     (
         Pieces0 = [],
@@ -1391,7 +1390,8 @@ det_report_msg(par_conj_not_det(InferredDetism, PredId,
     ; MaxSoln = at_most_many ->
         First = "Error: parallel conjunct may have multiple solutions."
     ;
-        error("strange determinism error for parallel conjunction")
+        unexpected(this_file,
+            "strange determinism error for parallel conjunction")
     ),
     Rest = "The current implementation supports only single-solution"
         ++ "non-failing parallel conjunctions.",
@@ -1467,7 +1467,7 @@ det_report_msg(
         set.to_sorted_list(Vars)),
     (
         VarNames = [],
-        error("det_report_msg: " ++
+        unexpected(this_file, "det_report_msg: " ++
             "promise_equivalent_solutions_missing_vars empty")
     ;
         VarNames = [_],
@@ -1485,7 +1485,7 @@ det_report_msg(promise_equivalent_solutions_extra_vars(Context, VarSet, Vars),
         set.to_sorted_list(Vars)),
     (
         VarNames = [],
-        error("det_report_msg: " ++
+        unexpected(this_file, "det_report_msg: " ++
             "promise_equivalent_solutions_extra_vars empty")
     ;
         VarNames = [_],

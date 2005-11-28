@@ -5,11 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% 
+ 
 % File: dead_proc_elim.m.
 % Main author: zs.
-%
+
 % The job of this module is to delete dead predicates, procedures and
 % type_ctor_gen_info structures from the HLDS.
 %
@@ -17,7 +16,7 @@
 % `--inline-single-use' option.
 %
 % It also issues warnings about unused procedures.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__dead_proc_elim.
@@ -85,7 +84,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module queue.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

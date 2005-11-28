@@ -5,13 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: recompilation.usage.m
-% Main author: stayl
-%
-% Write the file recording which imported items were used by a compilation.
-%-----------------------------------------------------------------------------%
-:- module recompilation__usage.
 
+% File: recompilation.usage.m.
+% Main author: stayl.
+
+% Write the file recording which imported items were used by a compilation.
+
+%-----------------------------------------------------------------------------%
+
+:- module recompilation__usage.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -103,7 +105,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module queue.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -760,7 +761,7 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
                 ( ConsId = cons(ConsName, ConsArity) ->
                     FieldCtor = field(TypeCtor, ConsName - ConsArity)
                 ;
-                    error("weird cons_id in hlds_field_defn")
+                    unexpected(this_file, "weird cons_id in hlds_field_defn")
                 )
             ), FieldDefns)
     ;
@@ -957,7 +958,7 @@ find_items_used_by_item(predicate_item, ItemId, !Info) :-
 find_items_used_by_item(function_item, ItemId, !Info) :-
     record_used_pred_or_func(function, ItemId, !Info).
 find_items_used_by_item(functor_item, _, !Info) :-
-    error("find_items_used_by_item: functor").
+    unexpected(this_file, "find_items_used_by_item: functor").
 find_items_used_by_item(mutable_item, _MutableItemId, !Info).
     %
     % Mutables are expanded into other item types which track the

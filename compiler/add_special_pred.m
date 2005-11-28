@@ -48,12 +48,16 @@
     hlds_type_body::in, prog_context::in, import_status::in,
     module_info::in, module_info::out) is det.
 
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.special_pred.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
@@ -63,10 +67,11 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module varset.
+
+%----------------------------------------------------------------------------%
 
     % The only place that the index predicate for a type can ever
     % be called from is the compare predicate for that type.
@@ -223,7 +228,7 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
                 do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
                     TypeCtor, TypeBody, Context, Status0, !ModuleInfo)
             ;
-                error("make_hlds.add_special_pred: " ++
+                unexpected(this_file, "add_special_pred: " ++
                     "attempt to add initialise pred for non-solver type")
             )
         )
@@ -423,3 +428,11 @@ adjust_special_pred_status(SpecialPredId, !Status) :-
     ;
         true
     ).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "add_special_pred.m".
+
+%----------------------------------------------------------------------------%

@@ -43,6 +43,7 @@
     % Given a list of instructions, skip past any comment instructions
     % at the start and return the remaining instructions. We do this because
     % comment instructions get in the way of peephole optimization.
+    %
 :- pred skip_comments(list(instruction)::in, list(instruction)::out) is det.
 
 :- pred skip_comments_livevals(list(instruction)::in,
@@ -308,7 +309,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module int.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 
@@ -1925,7 +1925,7 @@ replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
         MaybeFix = yes(FixLabel0),
         replace_labels_label(FixLabel0, ReplMap, FixLabel),
             % We cannot replace the label in the C code string itself.
-        require(unify(FixLabel0, FixLabel),
+        expect(unify(FixLabel0, FixLabel), this_file,
             "trying to replace Mercury label in C code")
     ),
     (
@@ -1934,7 +1934,7 @@ replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
         MaybeLayout = yes(LayoutLabel0),
         replace_labels_label(LayoutLabel0, ReplMap, LayoutLabel),
             % We cannot replace a label that has a layout structure.
-        require(unify(LayoutLabel0, LayoutLabel),
+        expect(unify(LayoutLabel0, LayoutLabel), this_file,
             "trying to replace Mercury label with layout")
     ),
     (
@@ -1943,7 +1943,7 @@ replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
         MaybeOnlyLayout = yes(OnlyLayoutLabel0),
         replace_labels_label(OnlyLayoutLabel0, ReplMap, OnlyLayoutLabel),
             % We cannot replace a label that has a layout structure.
-        require(unify(OnlyLayoutLabel0, OnlyLayoutLabel),
+        expect(unify(OnlyLayoutLabel0, OnlyLayoutLabel), this_file,
             "trying to replace Mercury label with layout")
     ),
     (

@@ -18,7 +18,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend__ml_string_switch.
-
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -32,12 +31,14 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
@@ -50,7 +51,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 
@@ -248,7 +248,7 @@ gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
         ( ConsTag = string_constant(String0) ->
             String = String0
         ;
-            error("gen_hash_slots: string expected")
+            unexpected(this_file, "gen_hash_slots: string expected")
         ),
         StringRval = const(string_const(String)),
         ml_gen_goal(CodeModel, Goal, GoalStatement, !Info),

@@ -95,7 +95,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -234,10 +233,12 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
     ( TagVal = int_constant(Int) ->
         ConstValue = const(int_const(Int))
     ;
-        error("ml_gen_enum_constant: enum constant needs int tag")
+        unexpected(this_file,
+            "ml_gen_enum_constant: enum constant needs int tag")
     ),
     % Sanity check.
-    require(unify(Arity, 0), "ml_gen_enum_constant: arity != []"),
+    expect(unify(Arity, 0), this_file,
+        "ml_gen_enum_constant: arity != []"),
 
     % Generate an MLDS definition for this enumeration constant.
     unqualify_name(Name, UnqualifiedName),

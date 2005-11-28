@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: ite_gen.m
+% File: ite_gen.m.
 % Main authors: conway, fjh, zs.
 %
 % The predicates of this module generate code for if-then-elses, and for
@@ -54,7 +54,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

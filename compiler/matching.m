@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% Authors: pjs, zs
-%
+
+% File: matching.m.
+% Authors: pjs, zs.
+
 % Module `matching' - performs bipartite graph maximal matching computation
 % specialized for the stack slot optimization. The structure of the graph
 % on which the algorithm operates is documented in the paper "Using the heap
 % to eliminate stack accesses" by Zoltan Somogyi and Peter Stuckey.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs__matching.
-
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -87,12 +87,13 @@
 % Uncomment if you want to dump performance information into the .err file.
 % :- import_module unsafe.
 
+:- import_module libs.compiler_util.
+
 :- import_module assoc_list.
 :- import_module int.
 :- import_module io.
 :- import_module map.
 :- import_module queue.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -621,7 +622,7 @@ compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
     ; set__equal(MarkedFieldBenefits, FieldBenefits) ->
         ViaCellVars = ViaCellVars1
     ;
-        error("compute_via_cell_vars: theorem violation: " ++
+        unexpected(this_file, "compute_via_cell_vars: theorem violation: " ++
             "intersection neither empty nor full")
     ).
 
@@ -751,5 +752,11 @@ project_benefit_op(benefit_node(BenefitOp, _CopyNum)) = BenefitOp.
 :- func project_cost_op(cost_node) = cost_operation.
 
 project_cost_op(cost_node(CostOp, _CopyNum)) = CostOp.
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "matching.m".
 
 %-----------------------------------------------------------------------------%

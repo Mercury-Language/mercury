@@ -15,7 +15,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__mode_errors.
-
 :- interface.
 
 :- import_module hlds.hlds_pred.
@@ -255,11 +254,12 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 report_mode_error(ModeError, ModeInfo, !IO) :-
     Specs = mode_error_to_specs(ModeError, ModeInfo),
@@ -683,7 +683,7 @@ mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
         Specs = InitSpecs ++ LaterSpecs
     ;
         CalleeModeErrors = [],
-        error("report_mode_error_in_callee: no error")
+        unexpected(this_file, "report_mode_error_in_callee: no error")
     ).
 
 :- func mode_error_no_matching_mode_to_specs(mode_info::in, list(prog_var)::in,
@@ -1251,7 +1251,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
         ( list__drop(NumToDrop, !ArgModes) ->
             true
         ;
-            error("report_pred_proc_id: list__drop failed")
+            unexpected(this_file, "report_pred_proc_id: list__drop failed")
         ),
 
         varset__init(VarSet),

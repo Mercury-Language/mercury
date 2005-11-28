@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: proc_label.m
-% main author: zs
+% File: proc_label.m.
+% Main author: zs.
 
 % This file defines backend-independent identifiers for procedures that a
 % backend can use as the basis for the names of the labels or functions
@@ -17,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs__proc_label.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -51,6 +50,9 @@
 
 :- func make_uni_label(module_info, type_ctor, proc_id) = proc_label.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.rtti.
@@ -61,7 +63,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module list.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 

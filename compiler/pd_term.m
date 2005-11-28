@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: pd_term.m
-% Main author: stayl
-%
+
+% File: pd_term.m.
+% Main author: stayl.
+
 % Termination checking for the deforestation process.
 % There are two places where care must be taken to ensure
 % termination of the process:
@@ -34,11 +34,10 @@
 % - Use homeomorphic embedding instead of term sizes as suggested in
 %   the papers on partial deduction from K.U. Leuven. This will be
 %   useful (necessary?) if we start propagating equality constraints.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__pd_term.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -49,6 +48,8 @@
 
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
     % pd_term__global_check(Module, CallGoal1, BetweenGoals, CallGoal2,
     %   InstMap, Versions, Info0, Info, Result):
@@ -97,11 +98,13 @@
 :- type pd_proc_term_info.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.pd_util.
 
@@ -109,8 +112,9 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
 :- type global_term_info
     --->    global_term_info(
@@ -203,7 +207,7 @@ pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         ),
         SingleGoalCover = SingleGoalCover0
     ;
-        error("pd_term__global_check")
+        unexpected(this_file, "global_check")
     ),
     !:Info = global_term_info(SingleGoalCover, MultipleGoalCover).
 
@@ -302,9 +306,9 @@ pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
 
 pd_term__split_out_non_increasing([], [], no, []).
 pd_term__split_out_non_increasing([_|_], [], _, _) :-
-    error("pd_term__split_out_non_increasing").
+    unexpected(this_file, "split_out_non_increasing (1)").
 pd_term__split_out_non_increasing([], [_|_], _, _) :-
-    error("pd_term__split_out_non_increasing").
+    unexpected(this_file, "split_out_non_increasing (2)").
 pd_term__split_out_non_increasing([Arg - OldSize | Args0],
         [_ - NewSize | Args], FoundDecreasing, NonIncreasing) :-
     pd_term__split_out_non_increasing(Args0, Args,
@@ -322,4 +326,9 @@ pd_term__split_out_non_increasing([Arg - OldSize | Args0],
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "pd_term.m".
+
 %-----------------------------------------------------------------------------%

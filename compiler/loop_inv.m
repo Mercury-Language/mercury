@@ -5,11 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% loop_inv.m
-% Main author: rafe
-%
+
+% File: loop_inv.m.
+% Main author: rafe,
+
 % CONSERVATIVE LOOP INVARIANT HOISTING.
-%
+
 %-----------------------------------------------------------------------------%
 %
 % The basic idea can be outlined as a transformation on functions.
@@ -134,7 +135,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -521,7 +521,7 @@ refine_candidate_inv_args(RecCall - _RecCallInfo, MaybeInvArgs) =
       then list__map_corresponding(refine_candidate_inv_args_2,
                                    MaybeInvArgs,
                                    CallArgs)
-      else func_error("refine_candidate_inv_args/2: " ++
+      else unexpected(this_file, "refine_candidate_inv_args/2: " ++
         "non call/6 found in argument 1")
     ).
 
@@ -1036,7 +1036,7 @@ gen_aux_call(CallAux0 - _CallAuxInfo0, Call - CallInfo) =
       then
         CallAux - CallInfo
       else
-        func_error("gen_aux_call/2: args not both ordinary calls")
+        unexpected(this_file, "gen_aux_call/2: args not both ordinary calls")
     ).
 
 %-----------------------------------------------------------------------------%

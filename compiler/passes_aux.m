@@ -218,7 +218,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module varset.
 
@@ -639,7 +638,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
     ( list__drop(NumToDrop, ArgModes0, ArgModes1) ->
         ArgModes = ArgModes1
     ;
-        error("report_pred_proc_id: list__drop failed")
+        unexpected(this_file, "report_pred_proc_id: list__drop failed")
     ),
     (
         MaybeContext = yes(OutContext)

@@ -187,7 +187,6 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 
@@ -675,7 +674,7 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 		mlds_output_pragma_export_type(suffix, RetType),
 		io__write_string(") ")
 	;
-		{ error("mlds_output_pragma_export: multiple return types") }
+		{ unexpected(this_file, "mlds_output_pragma_export: multiple return types") }
 	),
 
 	mlds_output_fully_qualified_name(FuncName),
@@ -1304,7 +1303,7 @@ gen_class(Name, Context, ClassDefn, GlobalInfo0, GlobalInfo) -->
 		ClassModuleName = mlds__append_class_qualifier(ModuleName,
 			QualKind, Globals, ClassName, ClassArity)
 	;
-		error("mlds_output_enum_constants")
+		unexpected(this_file, "mlds_output_enum_constants")
 	},
 
 	%
@@ -1473,7 +1472,8 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn) -->
 			qual(EnumModuleName, type_qual, Name)),
 		mlds_output_initializer(Type, Initializer)
 	;
-		{ error("mlds_output_enum_constant: constant is not data") }
+		{ unexpected(this_file,
+			"mlds_output_enum_constant: constant is not data") }
 	).
 
 ***********/
@@ -1577,7 +1577,7 @@ get_return_type(List, GlobalInfo, GCC_Type) -->
 	; { List = [Type] } ->
 		build_type(Type, GlobalInfo, GCC_Type)
 	;
-		{ error(this_file ++ ": multiple return types") }
+		{ unexpected(this_file, "multiple return types") }
 	).
 
 	% get_func_name(Name, ModuleName, FuncName, AsmFuncName):
@@ -1633,7 +1633,7 @@ get_func_name(FunctionName, FuncName, AsmFuncName) :-
 			FuncName = SpecialPredName ++ TypeName
 		)
 	;
-		error("get_func_name: non-function")
+		unexpected(this_file, "get_func_name: non-function")
 	).
 
 	% XXX same as mlds_output_pred_label in mlds_to_c,
@@ -1714,7 +1714,8 @@ build_param_types_and_decls([Arg|Args], ModuleName, GlobalInfo,
 		{ SymbolTable = map__det_insert(SymbolTable0,
 			qual(ModuleName, module_qual, ArgName), ParamDecl) }
 	;
-		{ error("build_param_types_and_decls: invalid param name") }
+		{ unexpected(this_file,
+			"build_param_types_and_decls: invalid param name") }
 	),
 	{ ParamTypes = gcc__cons_param_types(GCC_Type, ParamTypes0) },
 	{ ParamDecls = gcc__cons_param_decls(ParamDecl, ParamDecls0) }.
@@ -2011,7 +2012,7 @@ build_rtti_type(RttiIdMaybeElement, Size, GCC_Type, !IO) :-
 		)
 	;
 		RttiIdMaybeElement = element_type(_),
-		require(unify(IsArray, yes),
+		expect(unify(IsArray, yes), this_file,
 			"build_rtti_type: element of non-array"),
 		GCC_Type = BaseType
 	).
@@ -2285,7 +2286,7 @@ build_type_info_type(var_arity_type_info(_VarArityTypeId, ArgTypes), GCC_Type)
 build_pseudo_type_info_type(type_var(_), _) -->
 	% we use small integers to represent type_vars,
 	% rather than pointers, so there is no pointed-to type
-	{ error("mlds_rtti_type: type_var") }.
+	{ unexpected(this_file, "mlds_rtti_type: type_var") }.
 build_pseudo_type_info_type(plain_arity_zero_pseudo_type_info(_), GCC_Type) -->
 	build_rtti_type_name(type_ctor_info, GCC_Type).
 build_pseudo_type_info_type(plain_pseudo_type_info(_TypeCtor, ArgTypes),
@@ -2832,7 +2833,7 @@ gen_stmt(_DefnInfo, computed_goto(_Expr, _Labels), _) -->
 gen_stmt(DefnInfo, Call, _) -->
 	{ Call = call(_Signature, FuncRval, MaybeObject, CallArgs,
 		Results, CallKind) },
-	{ require(unify(MaybeObject, no), this_file ++ ": method call") },
+	{ expect(unify(MaybeObject, no), this_file, "method call") },
 	build_args(CallArgs, DefnInfo, GCC_ArgList),
 	build_rval(FuncRval, DefnInfo, GCC_FuncRval),
 	{
@@ -3199,9 +3200,9 @@ gen_atomic_stmt(_DefnInfo, outline_foreign_proc(_, _, _, _), _Context) -->
 :- mode gen_init_args(in, in, in, in, in, in, in, in, di, uo) is det.
 
 gen_init_args([_|_], [], _, _, _, _, _, _) -->
-	{ error("gen_init_args: length mismatch") }.
+	{ unexpected(this_file, "gen_init_args: length mismatch") }.
 gen_init_args([], [_|_], _, _, _, _, _, _) -->
-	{ error("gen_init_args: length mismatch") }.
+	{ unexpected(this_file, "gen_init_args: length mismatch") }.
 gen_init_args([], [], _, _, _, _, _, _) --> [].
 gen_init_args([Arg | Args], [ArgType | ArgTypes], Context,
 		ArgNum, Target, Type, Tag, DefnInfo) -->
@@ -3238,7 +3239,7 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	;
 		% The field type for field(_, _, offset(_), _, _) lvals
 		% must be something that maps to MR_Box.
-		{ error("unexpected field type") }
+		{ unexpected(this_file, "unexpected field type") }
 	),
 
 	% generate the tagged pointer whose field we want to extract

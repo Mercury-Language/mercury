@@ -5,21 +5,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% term_traversal.m
-%
+
+% File: term_traversal.m.
 % Main author: crs.
 % Significant rewrite by zs.
-%
+
 % This module contains the code used to traverse procedure bodies
 % for both passes of termination analysis.
 %
 % For details, please refer to the papers mentioned in termination.m.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_traversal.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -119,7 +117,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module svset.
 
@@ -529,7 +526,7 @@ unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
         unexpected(this_file, "unify_change/8: variable type.")
     ).
 
-:- pred filter_args_and_modes(map(prog_var, mer_type)::in, list(prog_var)::in,
+:- pred filter_args_and_modes(vartypes::in, list(prog_var)::in,
     list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out) is det.
 
 filter_args_and_modes(VarTypes, Args0, Args, Modes0, Modes) :-

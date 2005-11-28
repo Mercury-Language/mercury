@@ -5,14 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File pd_util.m
-% Main author: stayl.
-%
-% Utility predicates for deforestation and partial evaluation.
-%
-%-----------------------------------------------------------------------------%
-:- module transform_hlds__pd_util.
 
+% File pd_util.m.
+% Main author: stayl.
+
+% Utility predicates for deforestation and partial evaluation.
+
+%-----------------------------------------------------------------------------%
+
+:- module transform_hlds__pd_util.
 :- interface.
 
 :- import_module check_hlds.mode_errors.
@@ -173,7 +174,6 @@
 
 :- import_module assoc_list.
 :- import_module int.
-:- import_module require.
 :- import_module set.
 :- import_module term.
 :- import_module svmap.
@@ -379,7 +379,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
     disable_det_warnings(OptionsToRestore, !IO),
     det_report_msgs(Msgs, ModuleInfo, _, ErrCnt, !IO),
     restore_det_warnings(OptionsToRestore, !IO),
-    require(unify(ErrCnt, 0),
+    expect(unify(ErrCnt, 0), this_file,
         "rerun_det_analysis: determinism errors").
 
 %-----------------------------------------------------------------------------%

@@ -5,11 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File stack_opt.
-%
 % Author: zs.
-%
+
 % The input to this module is a HLDS structure with annotations on three kinds
 % of goals:
 %
@@ -66,11 +65,10 @@
 %
 % The principles of this optimization are documented in the paper "Using the
 % heap to eliminate stack accesses" by Zoltan Somogyi and Peter Stuckey.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__stack_opt.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -78,9 +76,12 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred stack_opt_cell(pred_id::in, proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -101,6 +102,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.call_gen.
@@ -117,7 +119,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module svmap.
@@ -125,6 +126,8 @@
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 % The opt_stack_alloc structure is constructed by live_vars.m. It contains
 % the set of vars that definitely need their own stack slots, and which this
@@ -651,7 +654,7 @@ close_path(Path0) = Path :-
     Path0 = path(FlushState, CurSegment, FirstSegment0, OtherSegments0,
         FlushAnchors, IntervalIds),
     ( FlushState = current_is_before_first_flush ->
-        require(set__empty(FirstSegment0),
+        expect(set__empty(FirstSegment0), this_file,
             "close_path: FirstSegment0 not empty"),
         FirstSegment = CurSegment,
         OtherSegments = OtherSegments0
@@ -788,20 +791,20 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
     map__lookup(IntervalInfo ^ interval_succ, IntervalId, SuccessorIds),
     (
         SuccessorIds = [],
-        require(may_have_no_successor(End),
+        expect(may_have_no_successor(End), this_file,
             "find_all_branches: unexpected no successor")
-        % require(unify(MaybeSearchAnchor0, no),
+        % expect(unify(MaybeSearchAnchor0, no), this_file,
         %   "find_all_branches: no successor while in search"),
         % that test may fail if we come to a call that cannot succeed
     ;
         SuccessorIds = [SuccessorId | MoreSuccessorIds],
         (
             MoreSuccessorIds = [],
-            require(may_have_one_successor(End),
+            expect(may_have_one_successor(End), this_file,
                 "find_all_branches: unexpected one successor")
         ;
             MoreSuccessorIds = [_ | _],
-            require(may_have_more_successors(End),
+            expect(may_have_more_successors(End), this_file,
                 "find_all_branches: unexpected more successors")
         ),
         (
@@ -864,7 +867,8 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
             ElseStartId = ElseStartIdPrime,
             CondStartId = CondStartIdPrime
         ;
-            error("find_all_branches_from: ite not else, cond")
+            unexpected(this_file,
+                "find_all_branches_from: ite not else, cond")
         ),
         MaybeSearchAnchorCond = yes(cond_then(EndGoalPath)),
         apply_interval_find_all_branches(RelevantVars,
@@ -901,7 +905,8 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
                 MaybeSearchAnchor0, IntervalInfo,
                 StackOptInfo, SuccessorId, !AllPaths)
         ;
-            error("more successor ids")
+            unexpected(this_file,
+                "find_all_branches_from: more successor ids")
         )
     ).
 
@@ -969,7 +974,7 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
 :- pred consolidate_after_join(list(all_paths)::in, all_paths::out) is det.
 
 consolidate_after_join([], _) :-
-    error("consolidate_after_join: no paths to join").
+    unexpected(this_file, "consolidate_after_join: no paths to join").
 consolidate_after_join([First | Rest], AllPaths) :-
     PathsList = list__map(project_paths_from_all_paths, [First | Rest]),
     Paths0 = set__union_list(PathsList),
@@ -1102,5 +1107,11 @@ dump_matching_result(MatchingResult, !IO) :-
     io__write_string("insert anchors: ", !IO),
     io__write_list(set__to_sorted_list(InsertAnchors), " ", io__write, !IO),
     io__write_string("\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "stack_opt.m".
 
 %-----------------------------------------------------------------------------%

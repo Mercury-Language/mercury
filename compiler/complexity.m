@@ -82,7 +82,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -567,8 +566,8 @@ make_type_info_var(Type, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, PredInfo0, PredInfo,
         !ProcInfo, !:ModuleInfo),
-    require(unify(PredInfo0, PredInfo),
-        "complexity__make_type_info_var: modified pred_info").
+    expect(unify(PredInfo0, PredInfo), this_file,
+        "make_type_info_var: modified pred_info").
 
 %-----------------------------------------------------------------------------%
 

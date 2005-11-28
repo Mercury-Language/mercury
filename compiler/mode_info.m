@@ -15,7 +15,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__mode_info.
-
 :- interface.
 
 :- import_module check_hlds.delay_info.
@@ -32,7 +31,6 @@
 :- import_module bag.
 :- import_module bool.
 :- import_module list.
-:- import_module map.
 :- import_module set.
 :- import_module std_util.
 
@@ -127,8 +125,7 @@
 :- pred mode_info_get_liveness(mode_info::in, set(prog_var)::out) is det.
 :- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
 :- pred mode_info_get_instvarset(mode_info::in, inst_varset::out) is det.
-:- pred mode_info_get_var_types(mode_info::in,
-    map(prog_var, mer_type)::out) is det.
+:- pred mode_info_get_var_types(mode_info::in, vartypes::out) is det.
 :- pred mode_info_get_delay_info(mode_info::in, delay_info::out) is det.
 :- pred mode_info_get_live_vars(mode_info::in, bag(prog_var)::out) is det.
 :- pred mode_info_get_nondet_live_vars(mode_info::in, bag(prog_var)::out)
@@ -180,7 +177,7 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_varset(prog_varset::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_var_types(map(prog_var, mer_type)::in,
+:- pred mode_info_set_var_types(vartypes::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_delay_info(delay_info::in,
     mode_info::in, mode_info::out) is det.
@@ -276,8 +273,8 @@
 :- import_module libs.options.
 
 :- import_module int.
+:- import_module map.
 :- import_module queue.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module svbag.
@@ -661,7 +658,8 @@ mode_info_unlock_vars(Reason, Vars, !ModeInfo) :-
     ->
         LockedVars = LockedVars1
     ;
-        error("mode_info_unlock_vars: some kind of nesting error")
+        unexpected(this_file,
+            "mode_info_unlock_vars: some kind of nesting error")
     ),
     mode_info_set_locked_vars(LockedVars, !ModeInfo).
 
@@ -687,7 +685,8 @@ mode_info_set_checking_extra_goals(Checking, !MI) :-
         % This should never happen - once the extra goals are
         % introduced, rechecking the goal should not introduce
         % more extra goals.
-        error("mode analysis: rechecking extra goals " ++
+        unexpected(this_file, 
+            "mode analysis: rechecking extra goals " ++
             "adds more extra goals")
     ;
         !:MI = !.MI ^ mode_sub_info ^ checking_extra_goals := Checking

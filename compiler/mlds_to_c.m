@@ -103,7 +103,6 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -966,7 +965,7 @@ pointed_to_type(PtrType) =
     ( PtrType = mlds__ptr_type(Type) ->
         Type
     ;
-        func_error("pointed_to_type: not pointer")
+        unexpected(this_file, "pointed_to_type: not pointer")
     ).
 
 :- func boxed_name(mlds__entity_name) = mlds__entity_name.
@@ -1027,7 +1026,8 @@ det_func_signature(mlds__func_params(Args, _RetTypes)) = Params :-
         InputArgs = InputArgs0,
         ReturnArg = ReturnArg0
     ;
-        error("det_func_signature: function missing return value?")
+        unexpected(this_file,
+            "det_func_signature: function missing return value?")
     ),
     (
         ReturnArg = mlds__argument(_ReturnArgName,
@@ -1035,7 +1035,8 @@ det_func_signature(mlds__func_params(Args, _RetTypes)) = Params :-
     ->
         ReturnArgType = ReturnArgType0
     ;
-        error("det_func_signature: function return type!")
+        unexpected(this_file,
+            "det_func_signature: function return type!")
     ),
     Params = mlds__func_params(InputArgs, [ReturnArgType]).
 
@@ -1287,7 +1288,7 @@ mlds_output_class(Indent, Name, Context, ClassDefn, !IO) :-
         ClassModuleName = mlds__append_class_qualifier(ModuleName,
             QualKind, Globals, ClassName, ClassArity)
     ;
-        error("mlds_output_enum_constants")
+        unexpected(this_file, "mlds_output_enum_constants")
     ),
 
     % Hoist out static members, since plain old C doesn't support
@@ -1406,7 +1407,8 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn, !IO) :-
             qual(EnumModuleName, type_qual, Name), !IO),
         mlds_output_initializer(Type, Initializer, !IO)
     ;
-        error("mlds_output_enum_constant: constant is not data")
+        unexpected(this_file,
+            "mlds_output_enum_constant: constant is not data")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1810,11 +1812,11 @@ mlds_output_data_name(rtti(RttiId), !IO) :-
     rtti__id_to_c_identifier(RttiId, RttiAddrName),
     io__write_string(RttiAddrName, !IO).
 mlds_output_data_name(module_layout, !IO) :-
-    error("mlds_to_c.m: NYI: module_layout").
+    sorry(this_file, "NYI: module_layout").
 mlds_output_data_name(proc_layout(_ProcLabel), !IO) :-
-    error("mlds_to_c.m: NYI: proc_layout").
+    sorry(this_file, "NYI: proc_layout").
 mlds_output_data_name(internal_layout(_ProcLabel, _FuncSeqNum), !IO) :-
-    error("mlds_to_c.m: NYI: internal_layout").
+    sorry(this_file, "NYI: internal_layout").
 mlds_output_data_name(tabling_pointer(ProcLabel), !IO) :-
     io__write_string("table_for_", !IO),
     mlds_output_proc_label(ProcLabel, !IO).
@@ -1931,7 +1933,7 @@ mlds_output_type_prefix(mlds__rtti_type(RttiIdMaybeElement), !IO) :-
     rtti_id_maybe_element_c_type(RttiIdMaybeElement, CType, _IsArray),
     io__write_string(CType, !IO).
 mlds_output_type_prefix(mlds__unknown_type, !IO) :-
-    error("mlds_to_c.m: prefix has unknown type").
+    unexpected(this_file, "prefix has unknown type").
 
 :- pred mlds_output_mercury_type_prefix(mer_type::in, type_category::in,
     io::di, io::uo) is det.
@@ -2009,7 +2011,7 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory, !IO) :-
         ( type_to_ctor_and_args(Type, TypeCtor, _ArgsTypes) ->
             mlds_output_mercury_user_type_name(TypeCtor, TypeCategory, !IO)
         ;
-            error("mlds_output_mercury_user_type_prefix")
+            unexpected(this_file, "mlds_output_mercury_user_type_prefix")
         )
     ;
         HighLevelData = no,
@@ -2782,7 +2784,7 @@ mlds_output_atomic_stmt(Indent, _FuncInfo, assign(Lval, Rval), _, !IO) :-
     io__write_string(";\n", !IO).
 
 mlds_output_atomic_stmt(_Indent, _FuncInfo, delete_object(_Lval), _, !IO) :-
-    error("mlds_to_c.m: sorry, delete_object not implemented").
+    sorry(this_file, "delete_object not implemented").
 
 mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
     NewObject = new_object(Target, MaybeTag, _HasSecTag, Type, MaybeSize,
@@ -2920,7 +2922,7 @@ mlds_output_atomic_stmt(Indent, _FuncInfo, restore_hp(Rval), _, !IO) :-
     io__write_string(");\n", !IO).
 
 mlds_output_atomic_stmt(_Indent, _FuncInfo, trail_op(_TrailOp), _, !IO) :-
-    error("mlds_to_c.m: sorry, trail_ops not implemented").
+    sorry(this_file, "trail_ops not implemented").
 
 mlds_output_atomic_stmt(_Indent, _FuncInfo,
     inline_target_code(TargetLang, Components), Context, !IO) :-
@@ -2928,12 +2930,12 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo,
         list__foldl(mlds_output_target_code_component(Context), Components,
             !IO)
     ;
-        error("mlds_to_c.m: sorry, inline_target_code only works for lang_C")
+        sorry(this_file, "inline_target_code only works for lang_C")
     ).
 
 mlds_output_atomic_stmt(_Indent, _FuncInfo,
         outline_foreign_proc(_Lang, _Vs, _Lvals, _Code), _Context, !IO) :-
-    error("mlds_to_c.m: outline_foreign_proc is not used in C backend").
+    unexpected(this_file, "outline_foreign_proc is not used in C backend").
 
 :- pred mlds_output_target_code_component(mlds__context::in,
     target_code_component::in, io::di, io::uo) is det.
@@ -3011,9 +3013,9 @@ type_needs_forwarding_pointer_space(mlds__unknown_type) = _ :-
     indent::in, io::di, io::uo) is det.
 
 mlds_output_init_args([_|_], [], _, _, _, _, _, !IO) :-
-    error("mlds_output_init_args: length mismatch").
+    unexpected(this_file, "mlds_output_init_args: length mismatch").
 mlds_output_init_args([], [_|_], _, _, _, _, _, !IO) :-
-    error("mlds_output_init_args: length mismatch").
+    unexpected(this_file, "mlds_output_init_args: length mismatch").
 mlds_output_init_args([], [], _, _, _, _, _, !IO).
 mlds_output_init_args([Arg | Args], [ArgType | ArgTypes], Context,
         ArgNum, Base, Tag, Indent, !IO) :-
@@ -3067,7 +3069,7 @@ mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval),
     ;
         % The field type for field(_, _, offset(_), _, _) lvals
         % must be something that maps to MR_Box.
-        error("unexpected field type")
+        unexpected(this_file, "unexpected field type")
     ),
     (
         MaybeTag = yes(Tag),
@@ -3452,7 +3454,8 @@ mlds_output_binary_op(Op, !IO) :-
     ( c_util__binary_infix_op(Op, OpStr) ->
         io__write_string(OpStr, !IO)
     ;
-        error("mlds_output_binary_op: invalid binary operator")
+        unexpected(this_file,
+            "mlds_output_binary_op: invalid binary operator")
     ).
 
 :- pred mlds_output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.

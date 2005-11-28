@@ -49,6 +49,8 @@
 :- pred add_base_relation_index(sym_name::in, arity::in, index_spec::in,
     import_status::in, prog_context::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -58,6 +60,7 @@
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_util.
@@ -69,7 +72,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module term.
@@ -95,7 +97,7 @@ transform_aditi_builtin(UpdateStr, Args0, Context, Goal, !VarSet,
         transform_aditi_bulk_update(UpdateStr, Update, Args0,
             Context, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO)
     ;
-        error("transform_aditi_builtin")
+        unexpected(this_file, "transform_aditi_builtin")
     ).
 
 :- pred transform_aditi_tuple_update(string::in, aditi_tuple_update::in,
@@ -415,7 +417,7 @@ aditi_bulk_update_goal_info(bulk_modify, PredOrFunc,
     ( list__take(PredArity, Args, CallArgs0) ->
         CallArgs = CallArgs0
     ;
-        error("aditi_delete_insert_delete_modify_goal_info")
+        unexpected(this_file, "aditi_delete_insert_delete_modify_goal_info")
     ),
 
     % Join the result of the modify goal with the relation to be updated.
@@ -600,3 +602,11 @@ check_index_attribute_pred(ModuleInfo, Name, Arity, Context, Attrs, PredId,
     ;
         true
     ).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "add_aditi.m".
+
+%----------------------------------------------------------------------------%

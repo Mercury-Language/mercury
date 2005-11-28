@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% hlds_out.m
-
+% File: hlds_out.m.
 % Main authors: conway, fjh.
 
 % There is quite a bit of overlap between the following modules:
@@ -31,7 +30,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module hlds__hlds_out.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -282,7 +280,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -3294,7 +3291,7 @@ write_type_body(_Indent, TVarSet,
     list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
 
 write_constructors(_Indent, _TVarSet, [], _, !IO) :-
-    error("write_constructors: empty constructor list?").
+    unexpected(this_file, "write_constructors: empty constructor list?").
 write_constructors(Indent, TVarSet, [C], TagValues, !IO) :-
     write_indent(Indent, !IO),
     io__write_char('\t', !IO),
@@ -4106,7 +4103,7 @@ inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 :- func bound_insts_to_term(list(bound_inst), prog_context) = prog_term.
 
 bound_insts_to_term([], _) = _ :-
-    error("bound_insts_to_term([])").
+    unexpected(this_file, "bound_insts_to_term([])").
 bound_insts_to_term([functor(ConsId, Args) | BoundInsts], Context) = Term :-
     (
         cons_id_and_args_to_term(ConsId,
@@ -4122,7 +4119,8 @@ bound_insts_to_term([functor(ConsId, Args) | BoundInsts], Context) = Term :-
                 Context, Term)
         )
     ;
-        error("bound_insts_to_term: cons_id_and_args_to_term failed")
+        unexpected(this_file,
+            "bound_insts_to_term: cons_id_and_args_to_term failed")
     ).
 
 :- func det_to_term(determinism, prog_context) = prog_term.

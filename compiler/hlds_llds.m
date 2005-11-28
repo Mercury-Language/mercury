@@ -6,13 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: hlds_llds.m.
+% Author: zs.
+
 % This module defines annotations on HLDS goals that are used by the LLDS
 % back end.
 
-% Author: zs.
+%-----------------------------------------------------------------------------%
 
 :- module hlds__hlds_llds.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -30,8 +32,9 @@
     --->    det_slot(int)
     ;       nondet_slot(int).
 
+    % Maps variables to their stack slots.
+    %
 :- type stack_slots ==  map(prog_var, stack_slot).
-                        % Maps variables to their stack slots.
 
 :- type abs_locn
     --->    any_reg
@@ -116,6 +119,7 @@
     % par_conj_engine_vars gives the set of variables that the execution
     % mechanism of the parallel conjunction requires to be stored in stack
     % slots.
+    %
 :- type need_in_par_conj
     --->    need_in_par_conj(
                 par_conj_engine_vars    :: set(prog_var)
@@ -125,13 +129,12 @@
 
 %-----------------------------------------------------------------------------%
 
-% Instead of recording the liveness of every variable at every
-% part of the goal, we just keep track of the initial liveness
-% and the changes in liveness.  Note that when traversing forwards
-% through a goal, deaths must be applied before births;
-% this is necessary to handle certain circumstances where a
-% variable can occur in both the post-death and post-birth sets,
-% or in both the pre-death and pre-birth sets.
+% Instead of recording the liveness of every variable at every part of the
+% goal, we just keep track of the initial liveness and the changes in
+% liveness.  Note that when traversing forwards through a goal, deaths must be
+% applied before births; this is necessary to handle certain circumstances
+% where a variable can occur in both the post-death and post-birth sets, or in
+% both the pre-death and pre-birth sets.
 
 :- pred goal_info_get_pre_births(hlds_goal_info::in,
     set(prog_var)::out) is det.
@@ -270,18 +273,20 @@
 :- func abs_locn_to_string(abs_locn) = string.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.goal_util.
+:- import_module libs.compiler_util.
 
 :- import_module assoc_list.
 :- import_module list.
-:- import_module require.
 :- import_module string.
 
     % For the meaning of this type, see the documentation of the
     % maybe_need field of llds_code_gen_details below.
+    %
 :- type maybe_need
     --->    no_need
     ;       need_call(need_across_call)
@@ -369,7 +374,7 @@ goal_info_get_pre_births(GoalInfo, PreBirths) :-
     ( PreBirthsPrime = CodeGenInfo ^ llds_code_gen ^ pre_births ->
         PreBirths = PreBirthsPrime
     ;
-        error("goal_info_get_pre_births: no code_gen_info")
+        unexpected(this_file, "goal_info_get_pre_births: no code_gen_info")
     ).
 
 goal_info_get_post_births(GoalInfo, PostBirths) :-
@@ -377,7 +382,7 @@ goal_info_get_post_births(GoalInfo, PostBirths) :-
     ( PostBirthsPrime = CodeGenInfo ^ llds_code_gen ^ post_births ->
         PostBirths = PostBirthsPrime
     ;
-        error("goal_info_get_post_births: no code_gen_info")
+        unexpected(this_file, "goal_info_get_post_births: no code_gen_info")
     ).
 
 goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
@@ -385,7 +390,7 @@ goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
     ( PreDeathsPrime = CodeGenInfo ^ llds_code_gen ^ pre_deaths ->
         PreDeaths = PreDeathsPrime
     ;
-        error("goal_info_get_pre_deaths: no code_gen_info")
+        unexpected(this_file, "goal_info_get_pre_deaths: no code_gen_info")
     ).
 
 goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
@@ -393,7 +398,7 @@ goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
     ( PostDeathsPrime = CodeGenInfo ^ llds_code_gen ^ post_deaths ->
         PostDeaths = PostDeathsPrime
     ;
-        error("goal_info_get_post_deaths: no code_gen_info")
+        unexpected(this_file, "goal_info_get_post_deaths: no code_gen_info")
     ).
 
 goal_info_get_follow_vars(GoalInfo, FollowVars) :-
@@ -401,7 +406,7 @@ goal_info_get_follow_vars(GoalInfo, FollowVars) :-
     ( FollowVarsPrime = CodeGenInfo ^ llds_code_gen ^ follow_vars ->
         FollowVars = FollowVarsPrime
     ;
-        error("goal_info_get_follow_vars: no code_gen_info")
+        unexpected(this_file, "goal_info_get_follow_vars: no code_gen_info")
     ).
 
 goal_info_get_store_map(GoalInfo, StoreMap) :-
@@ -409,7 +414,7 @@ goal_info_get_store_map(GoalInfo, StoreMap) :-
     ( StoreMapPrime = CodeGenInfo ^ llds_code_gen ^ store_map ->
         StoreMap = StoreMapPrime
     ;
-        error("goal_info_get_store_map: no code_gen_info")
+        unexpected(this_file, "goal_info_get_store_map: no code_gen_info")
     ).
 
 goal_info_get_resume_point(GoalInfo, ResumePoint) :-
@@ -417,7 +422,7 @@ goal_info_get_resume_point(GoalInfo, ResumePoint) :-
     ( ResumePointPrime = CodeGenInfo ^ llds_code_gen ^ resume_point ->
         ResumePoint = ResumePointPrime
     ;
-        error("goal_info_get_resume_point: no code_gen_info")
+        unexpected(this_file, "goal_info_get_resume_point: no code_gen_info")
     ).
 
 goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
@@ -429,7 +434,7 @@ goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
             MaybeNeedAtCall = no
         )
     ;
-        error("goal_info_get_need_at_call: no code_gen_info")
+        unexpected(this_file, "goal_info_get_need_at_call: no code_gen_info")
     ).
 
 goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
@@ -441,7 +446,7 @@ goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
             MaybeNeedInResume = no
         )
     ;
-        error("goal_info_get_need_in_resume: no code_gen_info")
+        unexpected(this_file, "goal_info_get_need_in_resume: no code_gen_info")
     ).
 
 goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
@@ -453,7 +458,8 @@ goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
             MaybeNeedInParConj = no
         )
     ;
-        error("goal_info_get_need_in_par_conj: no code_gen_info")
+        unexpected(this_file,
+            "goal_info_get_need_in_par_conj: no code_gen_info")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -602,7 +608,8 @@ goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-
         Resume = resume_point(Vars, Locs)
     ;
         Resume = no_resume_point,
-        error("goal_info_resume_vars_and_loc: no resume point")
+        unexpected(this_file,
+            "goal_info_resume_vars_and_loc: no resume point")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -713,5 +720,11 @@ abs_locn_to_string(any_reg) = "any_reg".
 abs_locn_to_string(abs_reg(N)) = "r" ++ int_to_string(N).
 abs_locn_to_string(abs_stackvar(N)) = "stackvar" ++ int_to_string(N).
 abs_locn_to_string(abs_framevar(N)) = "framevar" ++ int_to_string(N).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "hlds_llds.m".
 
 %-----------------------------------------------------------------------------%

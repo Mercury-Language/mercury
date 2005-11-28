@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: modecheck_call.m.
 % Main author: fjh.
-%
+
 % This file contains the code to modecheck a call.
 %
 % Check that there is a mode declaration for the predicate which matches
@@ -16,7 +16,7 @@
 % implied modes.)  If the called predicate is one for which we must infer
 % the modes, then a new mode for the called predicate whose initial insts
 % are the result of normalising the current inst of the arguments.
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -33,6 +33,8 @@
 
 :- import_module list.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- pred modecheck_call_pred(pred_id::in, maybe(determinism)::in,
     proc_id::in, proc_id::out, list(prog_var)::in, list(prog_var)::out,
@@ -88,6 +90,7 @@
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.hlds_data.
 :- import_module hlds.instmap.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -95,10 +98,11 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         ArgVars0, ArgVars, GoalInfo, ExtraGoals, !ModeInfo) :-
@@ -110,7 +114,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     pred_info_procedures(PredInfo, Procs),
     ( MayChangeCalledProc = may_not_change_called_proc ->
         ( ProcId0 = invalid_proc_id ->
-            error("modecheck_call_pred: invalid proc_id")
+            unexpected(this_file, "modecheck_call_pred: invalid proc_id")
         ;
             ProcIds = [ProcId0]
         )
@@ -713,7 +717,7 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     list(mer_mode)::out) is det.
 
 choose_best_match(_, [], _, _, _, _, _, _) :-
-    error("choose_best_match: no best match").
+    unexpected(this_file, "choose_best_match: no best match").
 choose_best_match(ModeInfo,
         [proc_mode(ProcId, InstVarSub, ArgModes) | ProcIds], PredId,
         Procs, ArgVars, TheProcId, TheInstVarSub, TheArgModes) :-
@@ -795,7 +799,7 @@ compare_inst_list(ModuleInfo, InstsA, InstsB, ArgInsts, Types, Result) :-
     ->
         Result = Result0
     ;
-        error("compare_inst_list: length mis-match")
+        unexpected(this_file, "compare_inst_list: length mismatch")
     ).
 
 :- pred compare_inst_list_2(module_info::in,
@@ -820,9 +824,9 @@ compare_inst_list_2(ModuleInfo, [InstA | InstsA], [InstB | InstsB],
 
 compare_liveness_list([], [], same).
 compare_liveness_list([_|_], [], _) :-
-    error("compare_liveness_list: length mis-match").
+    unexpected(this_file, "compare_liveness_list: length mismatch (1)").
 compare_liveness_list([], [_|_], _) :-
-    error("compare_liveness_list: length mis-match").
+    unexpected(this_file, "compare_liveness_list: length mismatch (2)").
 compare_liveness_list([LiveA | LiveAs], [LiveB | LiveBs], Result) :-
     compare_liveness(LiveA, LiveB, Result0),
     compare_liveness_list(LiveAs, LiveBs, Result1),
@@ -967,4 +971,9 @@ compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "modecheck_call.m".
+
 %-----------------------------------------------------------------------------%

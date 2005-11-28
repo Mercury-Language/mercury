@@ -5,11 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% File: code_info.m
-%
+
+% File: code_info.m.
 % Main authors: conway, zs.
-%
+
 % This file defines the code_info type and various operations on it.
 % The code_info structure is the 'state' of the code generator.
 %
@@ -24,11 +23,10 @@
 %   - interfacing to var_locn
 %   - managing the info required by garbage collection and value numbering
 %   - managing stack slots
-%
+
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__code_info.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -55,6 +53,9 @@
 :- import_module std_util.
 :- import_module term.
 
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.proc_label.
@@ -62,6 +63,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_code_util.
+:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module libs.tree.
@@ -74,7 +76,6 @@
 
 :- import_module char.
 :- import_module int.
-:- import_module require.
 :- import_module set.
 :- import_module stack.
 :- import_module string.
@@ -764,7 +765,7 @@ pre_goal_update(GoalInfo, Atomic, !CI) :-
         ResumePoint = no_resume_point
     ;
         ResumePoint = resume_point(_, _),
-        error("pre_goal_update with resume point")
+        unexpected(this_file, "pre_goal_update with resume point")
     ),
     goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
     (
@@ -773,7 +774,7 @@ pre_goal_update(GoalInfo, Atomic, !CI) :-
     ;
         MaybeFollowVars = no
     ),
-    % note: we must be careful to apply deaths before births
+    % NOTE: we must be careful to apply deaths before births
     goal_info_get_pre_deaths(GoalInfo, PreDeaths),
     rem_forward_live_vars(PreDeaths, !CI),
     maybe_make_vars_forward_dead(PreDeaths, no, !CI),
@@ -821,7 +822,7 @@ lookup_type_defn(CI, Type) = TypeDefn :-
     ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
         TypeCtor = TypeCtorPrime
     ;
-        error("unknown type in lookup_type_defn")
+        unexpected(this_file, "unknown type in lookup_type_defn")
     ),
     module_info_get_type_table(ModuleInfo, TypeTable),
     map__lookup(TypeTable, TypeCtor, TypeDefn).
@@ -902,7 +903,7 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, Path, Layout,
         Label = internal(LabelNum, _)
     ;
         Label = entry(_, _),
-        error("add_trace_layout_for_label: entry")
+        unexpected(this_file, "add_trace_layout_for_label: entry")
     ),
     ( map__search(Internals0, LabelNum, Internal0) ->
         Internal0 = internal_layout_info(Exec0, Resume, Return),
@@ -910,7 +911,8 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, Path, Layout,
             Exec0 = no
         ;
             Exec0 = yes(_),
-            error("adding trace layout for already known label")
+            unexpected(this_file,
+                "adding trace layout for already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
         map__det_update(Internals0, LabelNum, Internal, Internals)
@@ -927,7 +929,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
         Label = internal(LabelNum, _)
     ;
         Label = entry(_, _),
-        error("add_trace_layout_for_label: entry")
+        unexpected(this_file, "add_trace_layout_for_label: entry")
     ),
     ( map__search(Internals0, LabelNum, Internal0) ->
         Internal0 = internal_layout_info(Exec, Resume0, Return),
@@ -935,7 +937,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
             Resume0 = no
         ;
             Resume0 = yes(_),
-            error("adding gc layout for already known label")
+            unexpected(this_file, "adding gc layout for already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
         map__det_update(Internals0, LabelNum, Internal, Internals)
@@ -1084,7 +1086,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
             ResumeKnown1 = resume_point_known(Redoip1)
         ->
             ResumeKnown = resume_point_known(Redoip0),
-            require(unify(Redoip0, Redoip1),
+            expect(unify(Redoip0, Redoip1), this_file,
                 "redoip mismatch in generate_branch_end")
         ;
             ResumeKnown = resume_point_unknown
@@ -1105,7 +1107,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
         ;
             Hijack = not_allowed
         ),
-        require(unify(CondEnv0, CondEnv1),
+        expect(unify(CondEnv0, CondEnv1), this_file,
             "some but not all branches inside a non condition"),
         FailInfo = fail_info(R, ResumeKnown, CurfrMaxfr, CondEnv0, Hijack),
         set_fail_info(FailInfo, EndCodeInfo1, EndCodeInfoA),
@@ -1127,7 +1129,7 @@ after_all_branches(StoreMap, MaybeEnd, !CI) :-
         remake_with_store_map(StoreMap, !CI)
     ;
         MaybeEnd = no,
-        error("no branches in branched control structure")
+        unexpected(this_file, "no branches in branched control structure")
     ).
 
     % remake_with_store_map throws away the var_info data structure, forgetting
@@ -1500,7 +1502,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         ])
     ;
         HijackInfo = disj_quarter_hijack,
-        require(unify(CurfrMaxfr, must_be_equal),
+        expect(unify(CurfrMaxfr, must_be_equal), this_file,
             "maxfr may differ from curfr in disj_quarter_hijack"),
         stack__top_det(ResumePoints, ResumePoint),
         pick_stack_resume_point(ResumePoint, _, StackLabel),
@@ -1512,9 +1514,9 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         ])
     ;
         HijackInfo = disj_half_hijack(RedoipSlot),
-        require(unify(ResumeKnown, resume_point_unknown),
+        expect(unify(ResumeKnown, resume_point_unknown), this_file,
             "resume point known in disj_half_hijack"),
-        require(unify(CurfrMaxfr, must_be_equal),
+        expect(unify(CurfrMaxfr, must_be_equal), this_file,
             "maxfr may differ from curfr in disj_half_hijack"),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = node([
@@ -1523,7 +1525,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         ])
     ;
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
-        require(unify(CurfrMaxfr, may_be_different),
+        expect(unify(CurfrMaxfr, may_be_different), this_file,
             "maxfr same as curfr in disj_full_hijack"),
         Code = node([
             assign(redoip(lval(maxfr)), lval(RedoipSlot))
@@ -1720,7 +1722,7 @@ enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
     make_fake_resume_map(ResumeVarList, ResumeMap0, ResumeMap),
     ResumePoint = orig_only(ResumeMap, do_redo),
     effect_resume_point(ResumePoint, model_semi, Code, !CI),
-    require(unify(Code, empty), "nonempty code for simple neg"),
+    expect(unify(Code, empty), this_file, "nonempty code for simple neg"),
     pre_goal_update(GoalInfo, yes, !CI).
 
 leave_simple_neg(GoalInfo, FailInfo, !CI) :-
@@ -2061,7 +2063,7 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
         map__keys(NewMap, NewKeys),
         set__list_to_set(OldKeys, OldKeySet),
         set__list_to_set(NewKeys, NewKeySet),
-        require(set__subset(OldKeySet, NewKeySet),
+        expect(set__subset(OldKeySet, NewKeySet), this_file,
             "non-nested resume point variable sets")
     ;
         true
@@ -2284,7 +2286,7 @@ pick_stack_resume_point(ResumePoint, Map, Addr) :-
         Map = Map1,
         Addr = Addr1
     ;
-        error("no stack resume point")
+        unexpected(this_file, "no stack resume point")
     ).
 
 :- pred maybe_pick_stack_resume_point(resume_point_info::in,
@@ -2522,7 +2524,7 @@ extract_label_from_code_addr(CodeAddr, Label) :-
     ( CodeAddr = label(Label0) ->
         Label = Label0
     ;
-        error("extract_label_from_code_addr: non-label!")
+        unexpected(this_file, "extract_label_from_code_addr: non-label!")
     ).
 
 :- pred place_resume_vars(assoc_list(prog_var, set(lval))::in,
@@ -2639,7 +2641,7 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode,
 clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
     (
         ResumePoint0 = orig_only(_, _),
-        error("cloning orig_only resume point")
+        unexpected(this_file, "cloning orig_only resume point")
     ;
         ResumePoint0 = stack_only(Map1, _),
         get_next_label(Label1, !CI),
@@ -3191,7 +3193,7 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
         var_locn__assign_expr_to_var(Var, Rval, Code,
         VarLocnInfo0, VarLocnInfo)
     ;
-        error("assign_expr_to_var: non-var lvals")
+        unexpected(this_file, "assign_expr_to_var: non-var lvals")
     ),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3295,7 +3297,7 @@ acquire_reg_for_var(Var, Lval, !CI) :-
 
 acquire_reg(Type, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    require(unify(Type, r), "acquire_reg: unknown reg type"),
+    expect(unify(Type, r), this_file, "acquire_reg: unknown reg type"),
     var_locn__acquire_reg(Lval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3379,7 +3381,8 @@ valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
             ),
             N < 0
         ->
-            error("valid_stack_slot: nondummy var in dummy stack slot")
+            unexpected(this_file,
+                "valid_stack_slot: nondummy var in dummy stack slot")
         ;
             true
         )
@@ -3706,7 +3709,7 @@ get_variable_slot(CI, Var, Slot) :-
         string__int_to_string(Num, NumStr),
         string__append_list(["get_variable_slot: variable `",
             Name, "' (", NumStr, ") not found"], Str),
-        error(Str)
+        unexpected(this_file, Str)
     ).
 
 get_total_stackslot_count(CI, NumSlots) :-
@@ -3753,4 +3756,9 @@ stack_variable_reference(CI, Num, mem_addr(Ref)) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "code_info.m".
+
 %---------------------------------------------------------------------------%

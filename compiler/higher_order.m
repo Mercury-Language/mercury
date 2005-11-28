@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: higher_order.m
-% main author: stayl
+% File: higher_order.m.
+% Main author: stayl.
 
 % Specializes calls to higher order or polymorphic predicates where the value
 % of one or more higher order, type_info or typeclass_info arguments are known.
@@ -73,7 +73,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

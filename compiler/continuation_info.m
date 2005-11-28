@@ -371,7 +371,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
-:- import_module require.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
@@ -674,9 +673,11 @@ generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
         unexpected(this_file, "var has more than one lval in stack resume map")
     ),
     ( Lval = stackvar(N) ->
-        require(N > 0, "generate_resume_layout_for_var: bad stackvar")
+        expect(N > 0, this_file,
+            "generate_resume_layout_for_var: bad stackvar")
     ; Lval = stackvar(N) ->
-        require(N > 0, "generate_resume_layout_for_var: bad framevar")
+        expect(N > 0, this_file,
+            "generate_resume_layout_for_var: bad framevar")
     ;
         true
     ),

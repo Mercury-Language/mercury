@@ -97,7 +97,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
@@ -469,7 +468,7 @@ generate_terms_2(Index, [Var | Vars], Map, !CI) :-
     ArrayTerm = const(data_addr_const(DataAddr, no)),
     LookupLval = field(yes(0), ArrayTerm, Index),
     code_info__assign_lval_to_var(Var, LookupLval, Code, !CI),
-    require(tree__is_empty(Code), "generate_terms_2: nonempty code"),
+    expect(tree__is_empty(Code), this_file, "generate_terms_2: nonempty code"),
     generate_terms_2(Index, Vars, Map, !CI).
 
 :- pred construct_args(list(pair(int, rval))::in, int::in, list(rval)::out)

@@ -7,7 +7,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__clause_to_proc.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -58,6 +57,7 @@
 	proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -79,13 +79,14 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 maybe_add_default_func_modes([], Preds, Preds).
 maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
@@ -200,7 +201,8 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
             % `HeadVar__n' names.
             %
             VarSet = list__foldl(set_arg_names, Args, VarSet0),
-            require(unify(ExtraArgs, []), "copy_clauses_to_proc: extra_args")
+            expect(unify(ExtraArgs, []), this_file,
+                "copy_clauses_to_proc: extra_args")
         ;
             VarSet = VarSet0
         ),

@@ -5,8 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: add_mode.m.
+
 % This submodule of make_hlds handles the declarations of new insts and modes.
+
+%-----------------------------------------------------------------------------%
 
 :- module hlds__make_hlds__add_mode.
 :- interface.
@@ -28,18 +32,23 @@
     mode_defn::in, condition::in, prog_context::in, item_status::in,
     module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.make_hlds_error.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_mode.
 
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
+
+%----------------------------------------------------------------------------%
 
 module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
         item_status(Status, _NeedQual), !ModuleInfo, InvalidMode, !IO) :-
@@ -68,7 +77,7 @@ module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
 
 insts_add(_, _, _, abstract_inst, _, _, _, !Insts, !IO) :-
     % XXX handle abstract insts
-    error("sorry, abstract insts not implemented").
+    sorry(this_file, "abstract insts not implemented").
 insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
         !IO) :-
     list__length(Args, Arity),
@@ -217,3 +226,11 @@ report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context, !IO) :-
         % reported when we processed the definition of Id.
         true
     ).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "add_mode".
+
+%----------------------------------------------------------------------------%

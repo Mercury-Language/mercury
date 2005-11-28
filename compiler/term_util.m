@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% term_util.m
+% File: term_util.m.
 % Main author: crs.
 %
 % This module:
@@ -17,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_util.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -176,7 +175,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
-:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

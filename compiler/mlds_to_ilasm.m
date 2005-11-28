@@ -3,14 +3,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% mlds_to_ilasm - Convert MLDS to IL assembler code.
+
+% File: mlds_to_ilasm.
 % Main author: trd.
-%
-% This code converts the MLDS representation into IL assembler.
-% This module takes care of creating the appropriate files and
-% generating output, while mlds_to_il takes care of generated IL from
-% MLDS.
+
+% This code converts the MLDS representation into IL assembler.  This module
+% takes care of creating the appropriate files and generating output, while
+% mlds_to_il takes care of generated IL from MLDS.
+
+%-----------------------------------------------------------------------------%
 
 :- module ml_backend__mlds_to_ilasm.
 :- interface.
@@ -20,7 +21,7 @@
 :- import_module io.
 
 	% Convert the MLDS to IL and write it to a file.
-
+	%
 :- pred mlds_to_ilasm__output_mlds(mlds::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -58,7 +59,6 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -99,7 +99,7 @@ output_foreign_file(MLDS, ForeignLang, !IO) :-
 		output_to_file(File,
 			(pred(di, uo) is det --> CodeGenerator(MLDS)), !IO)
 	;
-		error("mlds_to_ilasm__output_foreign_file: " ++
+		unexpected(this_file, "output_foreign_file: " ++
 			"unexpected language")
 	).
 

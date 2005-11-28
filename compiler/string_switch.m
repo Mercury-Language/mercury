@@ -6,17 +6,15 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% string_switch.m
-%
+% File: string_switch.m.
+% Author: fjh.
+
 % For switches on strings, we generate a hash table using open addressing
 % to resolve hash conflicts.
-%
-% Author: fjh.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__string_switch.
-
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -32,6 +30,7 @@
     code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -39,6 +38,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
+:- import_module libs.compiler_util.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace.
@@ -48,7 +48,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 
@@ -172,7 +171,7 @@ gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
         ( ConsTag = string_constant(String0) ->
             String = String0
         ;
-            error("gen_hash_slots: string expected")
+            unexpected(this_file, "gen_hash_slots: string expected")
         ),
         StringRval = const(string_const(String)),
         code_info__get_next_label(Label, !CI),
@@ -210,5 +209,11 @@ this_is_last_case(Slot, TableSize, Table) :-
         \+ map__contains(Table, Slot1),
         this_is_last_case(Slot1, TableSize, Table)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "string_switch.m".
 
 %-----------------------------------------------------------------------------%

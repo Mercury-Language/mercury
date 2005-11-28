@@ -6,8 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__prog_out.
-
+% File: prog_out.m.
 % Main author: fjh.
 
 % This module defines some predicates which output various parts
@@ -19,6 +18,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- module parse_tree__prog_out.
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -167,11 +167,11 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
@@ -365,7 +365,7 @@ write_list([Import1, Import2], Writer, !IO) :-
 write_list([Import], Writer, !IO) :-
     call(Writer, Import, !IO).
 write_list([], _, !IO) :-
-    error("write_module_list").
+    unexpected(this_file, "write_list: empty list").
 
 write_string_list([], !IO).
 write_string_list([Name], !IO) :-
@@ -473,4 +473,9 @@ arg_tabling_method_to_string(arg_addr) = "addr".
 arg_tabling_method_to_string(arg_promise_implied) = "promise_implied".
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_out.m".
+
 %-----------------------------------------------------------------------------%

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: stack_layout.m.
 % Main authors: trd, zs.
-%
+
 % This module generates label, procedure, module and closure layout structures
 % for code in the current module for the LLDS backend. Layout structures are
 % used by the parts of the runtime system that need to look at the stacks
@@ -22,11 +22,10 @@
 %
 % The C types of the structures we generate are defined and documented in
 % runtime/mercury_stack_layout.h.
-%
+
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__stack_layout.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -40,6 +39,8 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+
+%---------------------------------------------------------------------------%
 
     % Process all the continuation information stored in the HLDS,
     % converting it into LLDS data structures.
@@ -67,6 +68,9 @@
 :- pred lookup_string_in_table(string::in, int::out,
     stack_layout_info::in, stack_layout_info::out) is det.
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs.rtti.
@@ -77,6 +81,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.
@@ -95,7 +100,6 @@
 :- import_module counter.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
@@ -593,7 +597,8 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         CallLabel = CallLabelPrime
     ;
         MaybeCallLabel = no,
-        error("construct_trace_layout: call label not present")
+        unexpected(this_file,
+            "construct_trace_layout: call label not present")
     ),
     TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot),
@@ -602,7 +607,8 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         CallLabel = internal(CallLabelNum, CallProcLabel)
     ;
         CallLabel = entry(_, _),
-        error("construct_trace_layout: entry call label")
+        unexpected(this_file,
+            "construct_trace_layout: entry call label")
     ),
     CallLabelLayout = label_layout(CallProcLabel, CallLabelNum,
         label_has_var_info),
@@ -843,7 +849,8 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     ;
         Trace = yes(_),
         Return = yes(_),
-        error("label has both trace and return layout info")
+        unexpected(this_file,
+            "label has both trace and return layout info")
     ),
     get_agc_stack_layout(!.Info, AgcStackLayout),
     (
@@ -1043,7 +1050,7 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         ( set__remove_least(Locns, LeastLocn, _) ->
             Locn = LeastLocn
         ;
-            error("tvar has empty set of locations")
+            unexpected(this_file, "tvar has empty set of locations")
         ),
         represent_locn_as_int_rval(Locn, Rval),
         construct_type_param_locn_vector(TVarLocns, NextSlot, VectorTail),
@@ -1054,7 +1061,8 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         % This slot will never be referred to.
         Vector = [const(int_const(0)) - uint_least32 | VectorTail]
     ;
-        error("unsorted tvars in construct_type_param_locn_vector")
+        unexpected(this_file,
+            "unsorted tvars in construct_type_param_locn_vector")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1159,7 +1167,7 @@ construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
             Locn = direct(reg(_, _))
         )
     ->
-        error("construct_liveval_array_infos: " ++
+        unexpected(this_file, "construct_liveval_array_infos: " ++
             "unexpected reference to dummy value")
     ;
         BytesSoFar < BytesLimit,
@@ -1274,7 +1282,8 @@ make_table_data(RttiProcLabel, Kind, TableInfo, TableData,
         convert_table_arg_info(TableArgInfo, NumPTIs, PTIVectorRval,
             TVarVectorRval, !StaticCellInfo),
         NumArgs = NumInputs + NumOutputs,
-        require(unify(NumArgs, NumPTIs), "make_table_data: args mismatch"),
+        expect(unify(NumArgs, NumPTIs), this_file,
+            "make_table_data: args mismatch"),
         TableData = table_gen_data(RttiProcLabel, NumInputs, NumOutputs, Steps,
             PTIVectorRval, TVarVectorRval)
     ).
@@ -1400,9 +1409,9 @@ represent_locn_as_int(direct(Lval), Word) :-
     represent_lval(Lval, Word).
 represent_locn_as_int(indirect(Lval, Offset), Word) :-
     represent_lval(Lval, BaseWord),
-    require((1 << long_lval_offset_bits) > Offset,
-    "represent_locn: offset too large to be represented"),
-    BaseAndOffset is (BaseWord << long_lval_offset_bits) + Offset,
+    expect((1 << long_lval_offset_bits) > Offset, this_file,
+        "represent_locn: offset too large to be represented"),
+    BaseAndOffset = (BaseWord << long_lval_offset_bits) + Offset,
     make_tagged_word(lval_indirect, BaseAndOffset, Word).
 
     % Construct a four byte representation of an lval.
@@ -1414,10 +1423,10 @@ represent_lval(reg(r, Num), Word) :-
 represent_lval(reg(f, Num), Word) :-
     make_tagged_word(lval_f_reg, Num, Word).
 represent_lval(stackvar(Num), Word) :-
-    require(Num > 0, "represent_lval: bad stackvar"),
+    expect(Num > 0, this_file, "represent_lval: bad stackvar"),
     make_tagged_word(lval_stackvar, Num, Word).
 represent_lval(framevar(Num), Word) :-
-    require(Num > 0, "represent_lval: bad framevar"),
+    expect(Num > 0, this_file, "represent_lval: bad framevar"),
     make_tagged_word(lval_framevar, Num, Word).
 represent_lval(succip, Word) :-
     make_tagged_word(lval_succip, 0, Word).
@@ -1431,38 +1440,38 @@ represent_lval(sp, Word) :-
     make_tagged_word(lval_sp, 0, Word).
 
 represent_lval(temp(_, _), _) :-
-    error("stack_layout: continuation live value stored in temp register").
+    unexpected(this_file, "continuation live value stored in temp register").
 
 represent_lval(succip(_), _) :-
-    error("stack_layout: continuation live value stored in fixed slot").
+    unexpected(this_file, "continuation live value stored in fixed slot").
 represent_lval(redoip(_), _) :-
-    error("stack_layout: continuation live value stored in fixed slot").
+    unexpected(this_file, "continuation live value stored in fixed slot").
 represent_lval(redofr(_), _) :-
-    error("stack_layout: continuation live value stored in fixed slot").
+    unexpected(this_file, "continuation live value stored in fixed slot").
 represent_lval(succfr(_), _) :-
-    error("stack_layout: continuation live value stored in fixed slot").
+    unexpected(this_file, "continuation live value stored in fixed slot").
 represent_lval(prevfr(_), _) :-
-    error("stack_layout: continuation live value stored in fixed slot").
+    unexpected(this_file, "continuation live value stored in fixed slot").
 
 represent_lval(field(_, _, _), _) :-
-    error("stack_layout: continuation live value stored in field").
+    unexpected(this_file, "continuation live value stored in field").
 represent_lval(mem_ref(_), _) :-
-    error("stack_layout: continuation live value stored in mem_ref").
+    unexpected(this_file, "continuation live value stored in mem_ref").
 represent_lval(lvar(_), _) :-
-    error("stack_layout: continuation live value stored in lvar").
+    unexpected(this_file, "continuation live value stored in lvar").
 
-    % Some things in this module are encoded using a low tag.
-    % This is not done using the normal compiler mkword, but by
-    % doing the bit shifting here.
+    % Some things in this module are encoded using a low tag.  This is not
+    % done using the normal compiler mkword, but by doing the bit shifting
+    % here.
     %
-    % This allows us to use more than the usual 2 or 3 bits, but
-    % we have to use low tags and cannot tag pointers this way.
+    % This allows us to use more than the usual 2 or 3 bits, but we have to
+    % use low tags and cannot tag pointers this way.
     %
 :- pred make_tagged_word(locn_type::in, int::in, int::out) is det.
 
 make_tagged_word(Locn, Value, TaggedValue) :-
     locn_type_code(Locn, Tag),
-    TaggedValue is (Value << long_lval_tag_bits) + Tag.
+    TaggedValue = (Value << long_lval_tag_bits) + Tag.
 
 :- type locn_type
     --->    lval_r_reg
@@ -1520,13 +1529,13 @@ represent_locn_as_byte(LayoutLocn, Rval) :-
 :- pred represent_lval_as_byte(lval::in, int::out) is semidet.
 
 represent_lval_as_byte(reg(r, Num), Byte) :-
-    require(Num > 0, "represent_lval_as_byte: bad reg"),
+    expect(Num > 0, this_file, "represent_lval_as_byte: bad reg"),
     make_tagged_byte(0, Num, Byte).
 represent_lval_as_byte(stackvar(Num), Byte) :-
-    require(Num > 0, "represent_lval_as_byte: bad stackvar"),
+    expect(Num > 0, this_file, "represent_lval_as_byte: bad stackvar"),
     make_tagged_byte(1, Num, Byte).
 represent_lval_as_byte(framevar(Num), Byte) :-
-    require(Num > 0, "represent_lval_as_byte: bad framevar"),
+    expect(Num > 0, this_file, "represent_lval_as_byte: bad framevar"),
     make_tagged_byte(2, Num, Byte).
 represent_lval_as_byte(succip, Byte) :-
     locn_type_code(lval_succip, Val),
@@ -1707,7 +1716,8 @@ set_static_cell_info(SCI, LI, LI ^ static_cell_info := SCI).
 
 %---------------------------------------------------------------------------%
 %
-% Access to the string_table data structure.
+% Access to the string_table data structure
+%
 
 :- type string_table
     --->    string_table(
@@ -1746,3 +1756,11 @@ lookup_string_in_table(String, Offset, !Info) :-
         % Says that the name of the variable is "TOO_MANY_VARIABLES".
         Offset = 1
     ).
+
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "stack_layout.m".
+
+%---------------------------------------------------------------------------%

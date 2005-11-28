@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: trace.m.
 % Author: zs.
-%
+
 % This module handles the generation of traces for the trace analysis system.
 %
 % For the general basis of trace analysis systems, see the paper
@@ -45,7 +46,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__trace.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -59,12 +59,14 @@
 :- import_module map.
 :- import_module set.
 :- import_module std_util.
+%-----------------------------------------------------------------------------%
 
     % The kinds of external ports for which the code we generate will
     % call MR_trace. The redo port is not on this list, because for that
     % port the code that calls MR_trace is not in compiler-generated code,
     % but in the runtime system.  Likewise for the exception port.
     % (The same comment applies to the type `trace_port' in llds.m.)
+    %
 :- type external_trace_port
     --->    call
     ;       exit
@@ -73,6 +75,7 @@
     % These ports are different from other internal ports (even neg_enter)
     % because their goal path identifies not the goal we are about to enter
     % but the goal we have just left.
+    %
 :- type negation_end_port
     --->    neg_success
     ;       neg_failure.
@@ -222,6 +225,7 @@
 :- pred trace__maybe_setup_redo_event(trace_info::in, code_tree::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -246,13 +250,15 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
     % Information specific to a trace port.
+    %
 :- type trace_port_info
     --->    external
     ;       internal(
@@ -815,7 +821,8 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
         ; Port = nondet_pragma_later ->
             Path = [later]
         ;
-            error("bad nondet pragma port")
+            unexpected(this_file, "generate_event_code: " ++
+                "bad nondet pragma port")
         )
     ),
     VarTypes = code_info__get_var_types(!.CI),
@@ -906,7 +913,7 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
             MaybeFromFullSlot = yes(Lval),
             % The code in the runtime looks for the from-full flag in
             % framevar 5; see the comment before trace__reserved_slots.
-            require(unify(Lval, framevar(5)),
+            expect(unify(Lval, framevar(5)), this_file,
                 "from-full flag not stored in expected slot"),
             Code = node([
                 mkframe(temp_frame(nondet_stack_proc),
@@ -1063,7 +1070,7 @@ trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
     ( CodeModel = model_non ->
         RedoLayoutSlot = framevar(4)
     ;
-        error("attempt to access redo layout slot " ++
+        unexpected(this_file, "attempt to access redo layout slot " ++
             "for det or semi procedure")
     ).
 

@@ -334,16 +334,17 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         % module's object file was built.
         list__map_foldl2(
             (pred(ModuleName::in, ForeignFiles::out,
-                MakeInfo0::in, MakeInfo::out, di, uo) is det -->
+                MakeInfo0::in, MakeInfo::out, !.IO::di, !:IO::uo) is det :-
             get_module_dependencies(ModuleName, MaybeImports,
-                MakeInfo0, MakeInfo),
+                MakeInfo0, MakeInfo, !IO),
             (
-                { MaybeImports = yes(Imports) },
-                external_foreign_code_files(PIC, Imports, ForeignFiles)
+                MaybeImports = yes(Imports),
+                external_foreign_code_files(PIC, Imports, ForeignFiles, !IO)
             ;
-                { MaybeImports = no },
+                MaybeImports = no,
                 % This error should have been detected earlier.
-                { error("build_linked_target: error in dependencies") }
+                unexpected(this_file,
+                    "build_linked_target: error in dependencies")
             )
             ), AllModulesList, ExtraForeignFiles, !Info, !IO),
         ForeignObjects = list__map(
@@ -352,9 +353,9 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 
         maybe_pic_object_file_extension(PIC, ObjExtToUse, !IO),
         list__map_foldl(
-            (pred(ObjModule::in, ObjToLink::out, di, uo) is det -->
+            (pred(ObjModule::in, ObjToLink::out, !.IO::di, !:IO::uo) is det :-
                 module_name_to_file_name(ObjModule,
-                    ObjExtToUse, no, ObjToLink)
+                    ObjExtToUse, no, ObjToLink, !IO)
             ), ObjModules, ObjList, !IO),
 
         % LinkObjects may contain `.a' files which must come
@@ -694,7 +695,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
     ;
         MaybeMCFlags = no,
         % Errors should have been caught before.
-        error("install_library_grade: bad DEFAULT_MCFLAGS")
+        unexpected(this_file, "install_library_grade: bad DEFAULT_MCFLAGS")
     ),
 
     (

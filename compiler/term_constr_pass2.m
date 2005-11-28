@@ -5,21 +5,20 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% file: term_constr_pass2.m
-% main author: juliensf
-% 
+
+% File: term_constr_pass2.m.
+% Main author: juliensf.
+ 
 % This module analyses a SCC of the call-graph and tries to prove that
 % it terminates.
 %
 % XXX This version is just a place-holder.  It attempts a very simple
 % proof method which is essentially what the existing termination analyser 
 % does.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_pass2.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -31,8 +30,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % This structure holds the values of options used to control
-    % pass 2.
+    % This structure holds the values of options used to control pass 2.
     %
 :- type pass2_options.
 
@@ -40,7 +38,6 @@
     % Initialise the pass2_options structure.  `MaxMatrixSize' specifies
     % the maximum number of constraints we allow a matrix to grow to
     % before we abort and try other approximations. 
-    %
     % 
 :- func pass2_options_init(int) = pass2_options.
 
@@ -73,7 +70,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

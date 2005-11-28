@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
+% File: add_trail_ops.m.
 % Author: fjh.
-%
+
 % This module is an HLDS-to-HLDS transformation that inserts code to
 % handle trailing.  The transformation involves adding calls to impure
 % predicates defined in library/private_builtin.m, which in turn call
@@ -61,7 +62,6 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

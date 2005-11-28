@@ -3,7 +3,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
+% File: base_typeclass_info.m.
+% Author: dgj.
+
 % This module generates the RTTI data for the global variables (or constants)
 % that hold the base_typeclass_info structures of the typeclass instances
 % defined by the current module.
@@ -12,14 +15,11 @@
 % ways to represent type information, including a description of the
 % base_typeclass_info structures.
 %
-% Author: dgj.
-%
 % XXX The function of this file will soon be taken over by type_class_info.m.
-%
+
 %---------------------------------------------------------------------------%
 
 :- module backend_libs__base_typeclass_info.
-
 :- interface.
 
 :- import_module backend_libs.rtti.
@@ -27,8 +27,13 @@
 
 :- import_module list.
 
+%---------------------------------------------------------------------------%
+
 :- pred base_typeclass_info__generate_rtti(module_info::in,
 	list(rtti_data)::out) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -38,6 +43,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -50,7 +56,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -112,7 +117,8 @@ gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
 	base_typeclass_info::out) is det.
 
 gen_body(no, _, _, _, _, _) :-
-	error("pred_proc_ids should have been filled in by check_typeclass.m").
+	unexpected(this_file, "pred_proc_ids should have " ++
+		"been filled in by check_typeclass.m").
 gen_body(yes(PredProcIds0), Types, Constraints, ModuleInfo, ClassId,
 		BaseTypeClassInfo) :-
 	prog_type__vars_list(Types, TypeVars),
@@ -153,5 +159,11 @@ gen_superclass_count(ClassId, ModuleInfo, NumSuperClasses, ClassArity) :-
 	map__lookup(ClassTable, ClassId, ClassDefn),
 	list__length(ClassDefn ^ class_supers, NumSuperClasses),
 	list__length(ClassDefn ^ class_vars, ClassArity).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "base_typeclass_info.m".
 
 %----------------------------------------------------------------------------%

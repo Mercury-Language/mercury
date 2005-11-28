@@ -112,7 +112,6 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -122,7 +121,8 @@
 
 ml_gen_unification(Unification, CodeModel, Context, [], Statements, !Info) :-
     Unification = assign(TargetVar, SourceVar),
-    require(unify(CodeModel, model_det), "ml_code_gen: assign not det"),
+    expect(unify(CodeModel, model_det), this_file,
+        "ml_code_gen: assign not det"),
     (
         % Skip dummy argument types, since they will not have been declared.
         ml_variable_type(!.Info, TargetVar, Type),
@@ -153,7 +153,7 @@ ml_gen_unification(Unification, CodeModel, Context, [], Statements, !Info) :-
 
 ml_gen_unification(Unification, CodeModel, Context, [], [Statement], !Info) :-
     Unification = simple_test(Var1, Var2),
-    require(unify(CodeModel, model_semi),
+    expect(unify(CodeModel, model_semi), this_file,
         "ml_code_gen: simple_test not semidet"),
     ml_variable_type(!.Info, Var1, Type),
     ( Type = builtin(string) ->
@@ -172,7 +172,8 @@ ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         !Info) :-
     Unification = construct(Var, ConsId, Args, ArgModes, HowToConstruct,
         _CellIsUnique, SubInfo),
-    require(unify(CodeModel, model_det), "ml_code_gen: construct not det"),
+    expect(unify(CodeModel, model_det), this_file,
+        "ml_code_gen: construct not det"),
     (
         SubInfo = no_construct_sub_info,
         TakeAddr = []
@@ -184,7 +185,7 @@ ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         ;
             MaybeTakeAddr = yes(TakeAddr)
         ),
-        require(unify(MaybeSizeProfInfo, no),
+        expect(unify(MaybeSizeProfInfo, no), this_file,
             "ml_code_gen: term size profiling not yet supported")
     ),
     ml_gen_construct(Var, ConsId, Args, ArgModes, TakeAddr, HowToConstruct,
@@ -651,7 +652,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         Decls = []
     ;
         HowToConstruct = construct_statically(StaticArgs),
-        require(unify(TakeAddr, []),
+        expect(unify(TakeAddr, []), this_file, 
             "ml_gen_new_object: cannot take address of static object's field"),
 
         % Find out the types of the constructor arguments.
@@ -1048,9 +1049,9 @@ ml_gen_box_const_rval_list([Type | Types], [Rval | Rvals], Context,
         BoxedRvals, !Info),
     ConstDefns = list__append(ConstDefns1, ConstDefns2).
 ml_gen_box_const_rval_list([], [_|_], _, _, _, !Info) :-
-    error("ml_gen_box_const_rval_list: length mismatch").
+    unexpected(this_file, "ml_gen_box_const_rval_list: length mismatch").
 ml_gen_box_const_rval_list([_|_], [], _, _, _, !Info) :-
-    error("ml_gen_box_const_rval_list: length mismatch").
+    unexpected(this_file, "ml_gen_box_const_rval_list: length mismatch").
 
 :- pred ml_gen_box_const_rval(mlds_type::in, mlds_rval::in, prog_context::in,
     mlds__defns::out, mlds_rval::out,
