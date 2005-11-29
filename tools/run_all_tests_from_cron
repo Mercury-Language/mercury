@@ -94,20 +94,14 @@ case "$BRANCH" in
 		#
 		BRANCH=latest
 	   	;;
-	   earth|juptier|ceres)
-		case $DAY in
-			*[13579]) BRANCH=$release_branch ;;
-			*)	  BRANCH=latest ;;
+	   juptier)
+		case `date '+%w'` in
+			0) BRANCH=$release_branch ;;
+			*) BRANCH=latest ;;
 		esac
 	   	;;
-	   uranus|swordfish)
-		# On odd-numbered days, test the release branch
-		# On even-numbered days, test the main branch
-		case $DAY in
-			*[13579]) BRANCH=latest ;;
-			*)	  BRANCH=$release_branch ;;
-		esac
-		;;
+	   uranus|swordfish|ceres|earth)
+		BRANCH=latest ;;
 	    *)
 	    	# On anything else just test the main branch.
 		BRANCH=latest
