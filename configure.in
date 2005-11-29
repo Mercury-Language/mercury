@@ -270,7 +270,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- pragma foreign_proc("C", return_rtti_version(Version::out),
 			[[may_call_mercury, promise_pure, terminates,
-			  ordinary_despite_detism]], "
+			  ordinary_despite_detism, will_not_modify_trail]], "
 			Version = MR_RTTI_VERSION;
 		").
 
