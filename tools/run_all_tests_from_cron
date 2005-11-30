@@ -206,7 +206,7 @@ echo "test_mercury $test_status: $BRANCH $HOST $C_COMPILER" > $mail_subject
 
 # NB we can't just pipe into `mutt' because the $mail_subject file
 # needs to be written before `mutt' is started.
-mutt -s "`cat $mail_subject`" zs@cs.mu.oz.au < $tmpfile
+mutt -s "`cat $mail_subject`" juliensf@cs.mu.oz.au < $tmpfile
 rm -f $tmpfile $tmpscript $mail_subject
 
 #-----------------------------------------------------------------------------#
