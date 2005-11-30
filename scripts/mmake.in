@@ -373,7 +373,7 @@ export MMAKEFILE
 {
 cat ${MMAKE_VARS}
 echo $dvs | xargs cat
-cat $include_makefile $MMAKEFILE
+echo $include_makefile $MMAKEFILE | xargs cat
 echo 'ifneq ($(MMAKE_AUTO_INCLUDE_DS),no)'
 echo $ds | xargs cat
 echo 'endif'
