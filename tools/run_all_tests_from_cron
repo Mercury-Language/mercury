@@ -94,7 +94,7 @@ case "$BRANCH" in
 		#
 		BRANCH=latest
 	   	;;
-	   juptier)
+	   jupiter)
 		case `date '+%w'` in
 			0) BRANCH=$release_branch ;;
 			*) BRANCH=latest ;;

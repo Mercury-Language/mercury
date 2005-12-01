@@ -92,7 +92,8 @@ export CLASSPATH
 ROTD_HOST=jupiter
 
 # Host to use to build the release of the day mercury-gcc source distribution.
-GCC_ROTD_HOST=hg
+# We don't currently test the gcc backend.
+# GCC_ROTD_HOST=
 
 set_status () {
 	case "$*" in
@@ -213,6 +214,11 @@ case $HOST in
 	aral)		OPTIMIZE="-O3" ;;
 	ceres)		OPTIMIZE="-O5" ;;	# hlc
 	uranus)		OPTIMIZE="-O3" ;;
+	sophie)		OPTIMIZE="-O5 --intermodule-optimization" ;;
+	boadicea)	OPTIMIZE="-O4 --intermodule-optimization" ;;
+	surprise)	OPTIMIZE="-O3 --intermodule-optimization" ;;
+	lively)		OPTIMIZE="-O5 --intermodule-optimization" ;; # hlc
+	polychrest)	OPTIMIZE="-O4 --intermodule-optimization --introduce-accumulators" ;;
 esac
 
 # on some systems, the file system we're using does not support links
@@ -255,18 +261,14 @@ case $FULLARCH in
 		;;
 esac
 
-#case $HOST in hg)
-#	INSTALL_MGNUCFLAGS="$INSTALL_MGNUCFLAGS --c-debug"
-#	INSTALL_MLFLAGS="$INSTALL_MLFLAGS --c-debug"
-#	;;   
-#esac
-
 # This list of hosts for which we install into /home/$HOST rather than
 # /home/mercury should match the corresponding list in run_all_tests_from_cron.
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-	hg|ender|roy|earth|ceres|aral|jupiter|swordfish|saturn|uranus)
+	earth|ceres|aral|jupiter|swordfish|saturn|uranus)
+		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
+	sophie|boadicea|surpise|lively|polychrest)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -369,11 +371,6 @@ status=0
 # a debugging grade and a trailing grade.
 
 case $HOST in
-	ender)
-		# Test out these options, to make sure they continue
-		# to work
-		CONFIG_OPTS="--enable-hlc-prof-grades \
-			--enable-new-mercuryfile-struct" ;;
 	ceres)
 		# On these hosts, test the high-level back-end more:
 		# bootstrap the compiler in hlc.gc,
@@ -455,6 +452,61 @@ case $HOST in
 	uranus)
 		CONFIG_OPTS=""
 		;;
+
+	sophie)
+		CONFIG_OPTS=""
+		INSTALL_LIBGRADES="asm_fast.gc				\
+					asm_fast			\
+					asm_fast.gc.tr			\
+					asm_fast.gc.decldebug		\
+					hlc				\
+					hlc.gc				\
+					hlc.gc.prof			\
+					hlc.gc.memprof"
+		;;
+	boadicea)
+		CONFIG_OPTS=""
+		INSTALL_LIBGRADES="asm_fast.gc				\
+					hlc.gc				\
+					asm_fast.gc.decldebug		\
+					reg				\
+					reg.gc				\
+					reg.gc.tr			\
+					reg.gc.profdeep			\
+					reg.gc.tr.profdeep"
+		;;
+	surprise)
+		CONFIG_OPTS=""
+		INSTALL_LIBGRADES="asm_fast.gc		\
+					none		\
+					none.gc		\
+					none.gc.tr	\
+					none.gc.profdeep	\
+					none.gc.profdeep.tr"
+		;;
+	lively)
+		CONFIG_OPTS=""
+		DEFAULT_GRADE="hlc.gc"
+		export DEFAULT_GRADE
+		INSTALL_GRADE="hlc.gc"
+		INSTALL_LIBGRADES="hlc.gc.prof 		\
+					hlc		\
+					hlc.gc.tr 	\
+					hlc.gc.tr.prof	\
+					hlc.gc.tr.memprof \
+					hlc.par.gc	\
+					asm_fast.gc	\
+					asm_fast.gc.tr.debug"
+		;;
+	polychrest)
+		CONFIG_OPTS=""
+		INSTALL_LIBGRADES="asm_fast.gc	\
+					asm_fast.gc.tr.debug	\
+					hlc.gc			\
+					asm_fast.gc.mm		\
+					reg.gc.mm		\
+					none.gc.mm"
+		;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -520,7 +572,6 @@ cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case "$C_COMPILER" in
 	asm)	with_asm=true ;;
 	*)	case $HOST in
-			hg)	with_asm=true ;;
 			*)	with_asm=false ;;
 		esac
 		;;
@@ -699,17 +750,6 @@ case $status in 0)
 		;;
     esac
 
-	# If you want to add extra grades to install on specific hosts,
-	# do it here.  Any grade which is tested later, but which is not
-	# installed above, should be installed here.
-    case $HOST in
-    	hg)	mmake install_grades LIBGRADES="asm_fast.par.gc" || \
-    			set_status "install asm_fast.par.gc"
-		;;
-	*)
-		;;
-    esac
-
     case $install_anyway_stage1 in
         false)	cd ../.. || set_status "cd ../.." ;;
         true)	cd .. || set_status "cd .." ;;
@@ -746,11 +786,6 @@ unset MERCURY_COMPILER
 PATH="$INSTALL_DIR/bin:$PATH"
 
 GRADES="`(cd $DIR/mercury && mmake echo_libgrades)`"
-case $HOST in
-   hg)
-   	GRADES="$GRADES asm_fast.par.gc"
-	;;
-esac
 
 #-----------------------------------------------------------------------------#
 
@@ -921,34 +956,7 @@ do
 	esac
 	echo "test_mercury finished tests for grade $grade at `date`" 1>&2
 done
-case $HOST in hg)
-	echo "test_mercury starting tests for --target asm at `date`" 1>&2
-	case $BRANCH in
-	    0.10)
-		# XXX Note that some of these tests are expected to fail
-		# on the 0.10 branch with `--target asm' (in particular
-		# the tests of tabling and nested modules), so we don't
-		# set status=1 if these tests fail.
-		./runtests --target asm -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" \
-			-g hlc.gc -m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
-			$PARALLEL
-		;;
-	    *)
-		mmake --target asm GRADE=hlc.gc \
-			EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-			EXTRA_CFLAGS="$TEST_CFLAGS" \
-			EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
-			EXTRA_MLFLAGS="$TEST_MLFLAGS" \
-			$PARALLEL runtests \
-			|| set_status "tests of --target asm in grade $grade"
-		if [ -f runtests.errs ]; then
-			touch $TEST_ERROR_FILE
-			cat runtest.errs >> $TEST_ERROR_FILE
-		fi
-		;;
-	esac
-	;;
-esac
+
 if [ -s $TEST_ERROR_FILE ]; then
 	fgrep "FAILED TEST" $TEST_ERROR_FILE > $FAILED_TESTS_FILE
 fi
@@ -1026,9 +1034,6 @@ case $HOST in
 		;;
 	saturn)
 		fullname=x86_64-unknown-linux-gnu-libc2.3
-		;;
-	ender)	
-		fullname=i686-pc-linux-libc2.1-gnu-O3
 		;;
 	*)
 		fullname=$fullarch
