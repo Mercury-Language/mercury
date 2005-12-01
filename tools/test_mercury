@@ -268,7 +268,7 @@ esac
 case $HOST in
 	earth|ceres|aral|jupiter|swordfish|saturn|uranus)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
-	sophie|boadicea|surpise|lively|polychrest)
+	sophie|boadicea|surprise|lively|polychrest)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
