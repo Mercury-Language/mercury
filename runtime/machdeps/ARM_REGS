@@ -1,0 +1,117 @@
+
+This file contains the relevant part of config/arm/arm.h from the
+GNU C source code which describes how each register is used.
+
+/* Register allocation in ARM Procedure Call Standard (as used on RISCiX):
+   (S - saved over call).
+
+	r0	   *	argument word/integer result
+ 	r1-r3		argument word
+ 
+ 	r4-r8	     S	register variable
+ 	r9	     S	(rfp) register variable (real frame pointer)
+ 	
+ 	r10  	   F S	(sl) stack limit (used by -mapcs-stack-check)
+ 	r11 	   F S	(fp) argument pointer
+ 	r12		(ip) temp workspace
+ 	r13  	   F S	(sp) lower end of current stack frame
+ 	r14		(lr) link address/workspace
+ 	r15	   F	(pc) program counter
+ 
+ 	f0		floating point result
+ 	f1-f3		floating point scratch
+ 
+ 	f4-f7	     S	floating point variable
+ 
+ 	cc		This is NOT a real register, but is used internally
+ 	                to represent things that use or set the condition
+ 			codes.
+ 	sfp             This isn't either.  It is used during rtl generation
+ 	                since the offset between the frame pointer and the
+ 			auto's isn't known until after register allocation.
+ 	afp		Nor this, we only need this because of non-local
+ 	                goto.  Without it fp appears to be used and the
+ 			elimination code won't get rid of sfp.  It tracks
+ 			fp exactly at all times.
+ 
+    *: See CONDITIONAL_REGISTER_USAGE  */
+ 
+ /* The stack backtrace structure is as follows:
+   fp points to here:  |  save code pointer  |      [fp]
+                       |  return link value  |      [fp, #-4]
+                       |  return sp value    |      [fp, #-8]
+                       |  return fp value    |      [fp, #-12]
+                      [|  saved r10 value    |]
+                      [|  saved r9 value     |]
+                      [|  saved r8 value     |]
+                      [|  saved r7 value     |]
+                      [|  saved r6 value     |]
+                      [|  saved r5 value     |]
+                      [|  saved r4 value     |]
+                      [|  saved r3 value     |]
+                      [|  saved r2 value     |]
+                      [|  saved r1 value     |]
+                      [|  saved r0 value     |]
+                      [|  saved f7 value     |]     three words
+                      [|  saved f6 value     |]     three words
+                      [|  saved f5 value     |]     three words
+                      [|  saved f4 value     |]     three words
+   r0-r3 are not normally saved in a C function.  */
+ 
+ /* 1 for registers that have pervasive standard uses
+    and are not available for the register allocator.  */
+ #define FIXED_REGISTERS  \
+ {                        \
+   0,0,0,0,0,0,0,0,	 \
+   0,0,0,0,0,1,0,1,	 \
+   0,0,0,0,0,0,0,0,	 \
+   1,1,1			 \
+ }
+ 
+ /* 1 for registers not available across function calls.
+    These must include the FIXED_REGISTERS and also any
+    registers that can be used without being saved.
+    The latter must include the registers where values are returned
+    and the register where structure-value addresses are passed.
+    Aside from that, you can include as many other registers as you like.
+    The CC is not preserved over function calls on the ARM 6, so it is 
+    easier to assume this for all.  SFP is preserved, since FP is. */
+ #define CALL_USED_REGISTERS  \
+ {                            \
+   1,1,1,1,0,0,0,0,	     \
+   0,0,0,0,1,1,1,1,	     \
+   1,1,1,1,0,0,0,0,	     \
+   1,1,1			     \
+ }
+ 
+ #ifndef SUBTARGET_CONDITIONAL_REGISTER_USAGE
+ #define SUBTARGET_CONDITIONAL_REGISTER_USAGE
+ #endif
+ 
+ #define CONDITIONAL_REGISTER_USAGE				\
+ {								\
+   int regno;							\
+ 								\
+   if (TARGET_SOFT_FLOAT || TARGET_THUMB)			\
+     {								\
+       for (regno = FIRST_ARM_FP_REGNUM;				\
+ 	   regno <= LAST_ARM_FP_REGNUM; ++regno)		\
+ 	fixed_regs[regno] = call_used_regs[regno] = 1;		\
+     }								\
+   if (PIC_OFFSET_TABLE_REGNUM != INVALID_REGNUM)		\
+     {								\
+       fixed_regs[PIC_OFFSET_TABLE_REGNUM] = 1;			\
+       call_used_regs[PIC_OFFSET_TABLE_REGNUM] = 1;		\
+     }								\
+   else if (TARGET_APCS_STACK)					\
+     {								\
+       fixed_regs[10]     = 1;					\
+       call_used_regs[10] = 1;					\
+     }								\
+   if (TARGET_APCS_FRAME)					\
+     {								\
+       fixed_regs[ARM_HARD_FRAME_POINTER_REGNUM] = 1;		\
+       call_used_regs[ARM_HARD_FRAME_POINTER_REGNUM] = 1;	\
+     }								\
+   SUBTARGET_CONDITIONAL_REGISTER_USAGE				\
+ }
