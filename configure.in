@@ -3136,6 +3136,13 @@ case "$host" in
 		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=
 		;;
+ 	arm*-*)
+ 		# NUM_REAL_REGS=4
+ 		# but succip and sp are real regs, so subtract 2
+ 		NUM_REAL_R_REGS=2
+ 		NUM_REAL_R_TEMPS=0
+ 		HAVE_DELAY_SLOT=
+ 		;;
 	*)
 		NUM_REAL_R_REGS=0
 		NUM_REAL_R_TEMPS=6

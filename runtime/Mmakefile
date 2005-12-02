@@ -131,6 +131,7 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 			machdeps/mips_regs.h	\
 			machdeps/pa_regs.h	\
 			machdeps/rs6000_regs.h  \
+			machdeps/arm_regs.h	\
 			machdeps/sparc_regs.h	\
 			machdeps/x86_64_regs.h
 
