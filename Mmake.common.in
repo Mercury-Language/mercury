@@ -387,8 +387,8 @@ HEADER_CLEAN_FILTER = \
 #
 # The two rules should differ only in the filenames they use and in the fact
 # that the automatically created header file for module x is allowed to have
-# two macros, X_H and X_DECL_GUARD over and above what HEADER_CLEAN_FILTER
-# allows.
+# three macros, X_H, X_MH and X_DECL_GUARD over and above what
+# HEADER_CLEAN_FILTER allows.
 #
 # XXX We should consider deleting the special handling of these macros, and
 # requiring instead that the compiler put MERCURY_ prefixes in front of them,
