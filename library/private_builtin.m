@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -479,6 +479,9 @@ public static int MR_SECTAG_NONE				= 0;
 public static int MR_SECTAG_LOCAL				= 1;
 public static int MR_SECTAG_REMOTE				= 2;
 public static int MR_SECTAG_VARIABLE				= 3;
+
+public static int MR_PREDICATE                          = 0;
+public static int MR_FUNCTION                           = 1;
 
 public static bool
 special__Unify____type_info_1_0(
