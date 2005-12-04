@@ -481,6 +481,9 @@ public static int MR_SECTAG_LOCAL                       = 1;
 public static int MR_SECTAG_REMOTE                      = 2;
 public static int MR_SECTAG_VARIABLE                    = 3;
 
+public static int MR_PREDICATE                          = 0;
+public static int MR_FUNCTION                           = 1;
+
 public static bool
 special__Unify____type_info_1_0(
     object[] type_info, object[] x, object[] y)
