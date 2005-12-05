@@ -294,6 +294,7 @@ special___Unify___pseudo_type_desc_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
         ""foreign code for unifying pseudo_type_desc"");
+    return false;
 }
 
 ").
