@@ -129,7 +129,8 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 			machdeps/sparc_regs.h	\
 			machdeps/alpha_regs.h	\
 			machdeps/pa_regs.h	\
-			machdeps/rs6000_regs.h
+			machdeps/rs6000_regs.h	\
+			machdeps/arm_regs.h	
 
 # MCPP_HDRS are header files in Microsoft's Managed extensions for C++
 
