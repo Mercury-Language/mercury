@@ -516,10 +516,17 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
                 InitSucceeded = yes,
                 make_linked_target(MainModuleName - static_library,
                     StaticSucceeded, !Info, !IO),
+                shared_libraries_supported(SharedLibsSupported, !IO),
                 (
                     StaticSucceeded = yes,
-                    make_linked_target(MainModuleName - shared_library,
-                        Succeeded, !Info, !IO)
+                    (
+                        SharedLibsSupported = yes,
+                        make_linked_target(MainModuleName - shared_library,
+                            Succeeded, !Info, !IO)
+                    ;
+                        SharedLibsSupported = no,
+                        Succeeded = yes
+                    )
                 ;
                     StaticSucceeded = no,
                     Succeeded = no
@@ -544,6 +551,16 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
             Succeeded = no
         )
     ).
+
+:- pred shared_libraries_supported(bool::out, io::di, io::uo) is det.
+
+shared_libraries_supported(Supported, !IO) :-
+    % XXX This seems to be the standard way to check whether shared libraries
+    % are supported but it's not very nice.
+    globals__io_lookup_string_option(library_extension, LibExt, !IO),
+    globals__io_lookup_string_option(shared_library_extension, SharedLibExt,
+        !IO),
+    Supported = (if LibExt \= SharedLibExt then yes else no).
 
 %-----------------------------------------------------------------------------%
 
@@ -626,10 +643,14 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
 
         globals__io_get_target(Target, !IO),
         (
-            % `.mh' files are only generated for modules containing
+            % `.mh' files are (were) only generated for modules containing
             % `:- pragma export' declarations.
-            ( Target = c ; Target = asm ),
-            Imports ^ contains_foreign_export = contains_foreign_export
+            % But `.mh' files are expected by Mmake so always generate them,
+            % otherwise there is trouble using libraries installed by
+            % `mmc --make' with Mmake.
+            % XXX If we ever phase out mmake we could revert this behaviour.
+            ( Target = c ; Target = asm )
+            % Imports ^ contains_foreign_export = contains_foreign_export
         ->
             install_subdir_file(SubdirLinkSucceeded, LibDir/"inc",
                 ModuleName, "mh", HeaderSucceded1, !IO),
@@ -758,9 +779,13 @@ install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
         ;
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/Grade,
             install_file(LibFileName, GradeLibDir, LibSuccess, !IO),
-            install_file(SharedLibFileName, GradeLibDir, SharedLibSuccess,
-                !IO),
-            LibsSucceeded = LibSuccess `and` SharedLibSuccess
+            ( LibFileName = SharedLibFileName ->
+                LibsSucceeded = LibSuccess
+            ;
+                install_file(SharedLibFileName, GradeLibDir, SharedLibSuccess,
+                    !IO),
+                LibsSucceeded = LibSuccess `and` SharedLibSuccess
+            )
         ),
 
         list__map_foldl2(install_grade_ints_and_headers(LinkSucceeded, Grade),
@@ -801,7 +826,7 @@ install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName, Succeeded,
 
             % This is needed so that the file will be
             % found in Mmake's VPATH.
-            IntDir = LibDir/"int",
+            IntDir = LibDir/"ints",
             install_subdir_file(LinkSucceeded, IntDir, ModuleName, "mih",
                 HeaderSucceded2, !IO),
 

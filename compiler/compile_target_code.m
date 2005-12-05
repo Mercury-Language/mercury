@@ -1373,6 +1373,8 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
         globals__io_set_option(use_grade_subdirs, bool(yes), !IO),
 
         io__set_output_stream(ErrorStream, OutputStream, !IO),
+        % Remove the target of the symlink/copy in case it already exists.
+        io__remove_file(UserDirFileName, _, !IO),
         make_symlink_or_copy_file(OutputFileName, UserDirFileName,
             Succeeded, !IO),
         io__set_output_stream(OutputStream, _, !IO)
