@@ -468,12 +468,12 @@ case $HOST in
 		CONFIG_OPTS=""
 		INSTALL_LIBGRADES="asm_fast.gc				\
 					hlc.gc				\
-					asm_fast.gc.decldebug		\
-					reg				\
-					reg.gc				\
-					reg.gc.tr			\
-					reg.gc.profdeep			\
-					reg.gc.tr.profdeep"
+					hlc.gc.tr			\
+					asm_fast.gc.tr.decldebug	\
+					asm_fast.gc.tr			\
+					asm_fast.gc.tr.prof		\
+					asm_fast.gc.tr.memprof		\
+					asm_fast.gc.tr.profdeep"
 		;;
 	surprise)
 		CONFIG_OPTS=""
