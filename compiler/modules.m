@@ -4927,7 +4927,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     %
     % These next two lines are a workaround for the bug described above.
     %
-    write_compact_dependencies_list(Modules, "$(ints_subdir)", ".int0",
+    write_compact_dependencies_list(Modules, "$(int0s_subdir)", ".int0",
         Basis, DepStream, !IO),
     write_compact_dependencies_separator(Basis, DepStream, !IO),
     %
