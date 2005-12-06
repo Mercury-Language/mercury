@@ -101,7 +101,7 @@
     % we are optimizing trail usage and trail usage analysis tells
     % us that it is safe to omit the trail ops.
     %  
-:- func should_add_trail_ops(globals, module_info, hlds_goal) = add_trail_ops.
+:- func should_add_trail_ops(globals, hlds_goal) = add_trail_ops.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -458,7 +458,7 @@ build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
 % Utility predicates used to implement trailing
 %
 
-should_add_trail_ops(Globals, ModuleInfo, Goal) = AddTrailOps :-
+should_add_trail_ops(Globals, Goal) = AddTrailOps :-
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
         UseTrail = no,
@@ -472,7 +472,7 @@ should_add_trail_ops(Globals, ModuleInfo, Goal) = AddTrailOps :-
             AddTrailOps = yes
         ;
             OptTrailUsage = yes,
-            ( goal_cannot_modify_trail(ModuleInfo, Goal) ->
+            ( goal_cannot_modify_trail(Goal) ->
                 AddTrailOps = no
             ;
                 AddTrailOps = yes

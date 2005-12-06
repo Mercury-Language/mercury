@@ -110,7 +110,7 @@ goal_add_trail_ops(!Goal, !Info) :-
     OptTrailUsage = !.Info ^ opt_trail_usage,
     (
         OptTrailUsage = yes,
-        goal_cannot_modify_trail(!.Info ^ module_info, !.Goal)
+        goal_cannot_modify_trail(!.Goal)
     ->
         % Don't add trail ops if the goal cannot modify the trail
         % and we are optimizing trail usage.

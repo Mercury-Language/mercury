@@ -1086,9 +1086,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
         % omit them.  We only do the latter if we are optimizing trail usage.
         %
         code_info__get_globals(!.CI, Globals),
-        code_info__get_module_info(!.CI, ModuleInfo),
-        AddTrailOps = should_add_trail_ops(Globals, ModuleInfo,
-            Goal - GoalInfo),
+        AddTrailOps = should_add_trail_ops(Globals, Goal - GoalInfo),
         code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, AddTrailOps, 
             GoalCode, !CI),
         goal_info_get_features(GoalInfo, Features),

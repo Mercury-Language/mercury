@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
-% file: trailing_analysis.m
-% author: juliensf
-%
+ 
+% File: trailing_analysis.m.
+% Author: juliensf.
+
 % This module implements trail usage analysis.  It annotates the HLDS with
-% information about which procedures may modify the trail.
+% information about which procedures will not modify the trail.
 %
-% It intended to be used in helping the compiler decide when it is safe to
-% omit trailing operations in trailing grades.  After running the analysis
-% the trailing status of each procedure is one of:
+% The compiler can use this information to omit redundant trailing operations
+% in trailing grades.  After running the analysis the trailing status of each
+% procedue is one of:
 %
 %   (1) will_not_modify_trail
 %   (2) may_modify_trail
@@ -35,24 +35,24 @@
 % or comparison predicate.
 %
 % For procedures defined using the foreign language interface we rely upon
-% the user annotations, `will_not_modify_trail' and `may_not_modify_trail'.
+% the user annotations `will_not_modify_trail' and `may_not_modify_trail'.
 %
 % The predicates for determining if individual goals modify the trail
 % are in goal_form.m.
-% 
+ 
 % TODO:
-%   - Rather than using the predicates in goal_form.m., annotate each
-%     goal with trail usage information.  These would prevent multiple
-%     traversals of the goal structure.  It would also make it easier
-%     to do "clever" things during the trailing transformation.
 %
 %   - Use the results of closure analysis to determine the trailing
 %     status of higher-order calls.
-%
+%   - Improve the analysis in the presence of solver types.
+%   - Lift some of the restrictions on compiler-generated unification and 
+%     comparison preds.
+%   - Create specialised versions of higher-order procedures based on
+%     whether or not their arguments modify the trail.
+
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.trailing_analysis.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -60,7 +60,9 @@
 
 :- import_module io.
 
-    % Perform trailing analysis on a module.
+%----------------------------------------------------------------------------%
+
+    % Perform trail usage analysis on a module.
     %
 :- pred analyse_trail_usage(module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -110,18 +112,31 @@
 % Perform trail usage analysis on a module
 %
 
+% The analysis is carried out in two passes.  Both passes do a bottom-up
+% traversal of the callgraph, one SCC at a time.  For each SCC the first
+% pass works out the trailing_status for each procedure in the SCC.  The
+% second pass then uses this information to annotate the goals in each
+% procedure with trail usage information.
+%
+% The second pass is only run if we are going to use the information,
+% that is if we are generating code as opposed to building the optimization
+% interfaces.
+
 analyse_trail_usage(!ModuleInfo, !IO) :-
     globals.io_lookup_bool_option(use_trail, UseTrail, !IO),
     (
         % Only run the analysis in trailing grades.
         UseTrail = yes,
+        globals.io_lookup_bool_option(make_optimization_interface,
+            MakeOptInt, !IO),
+        globals.io_lookup_bool_option(make_transitive_opt_interface,
+            MakeTransOptInt, !IO),
+        Pass1Only = MakeOptInt `bool.or` MakeTransOptInt,
         module_info_ensure_dependency_info(!ModuleInfo),
         module_info_dependency_info(!.ModuleInfo, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
         globals.io_lookup_bool_option(debug_trail_usage, Debug, !IO),
-        list.foldl2(process_scc(Debug), SCCs, !ModuleInfo, !IO),
-        globals.io_lookup_bool_option(make_optimization_interface,
-            MakeOptInt, !IO),
+        list.foldl2(process_scc(Debug, Pass1Only), SCCs, !ModuleInfo, !IO),
         (
             MakeOptInt = yes,
             make_opt_int(!.ModuleInfo, !IO)
@@ -141,15 +156,15 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
 :- type proc_results == list(proc_result).
 
 :- type proc_result
-    ---> proc_result(
-            ppid :: pred_proc_id,
-            status :: trailing_status
-    ).
+    --->    proc_result(
+                ppid   :: pred_proc_id,
+                status :: trailing_status
+            ).
 
-:- pred process_scc(bool::in, scc::in,
+:- pred process_scc(bool::in, bool::in, scc::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-process_scc(Debug, SCC, !ModuleInfo, !IO) :-
+process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
     ProcResults = check_procs_for_trail_mods(SCC, !.ModuleInfo),
     % 
     % The `Results' above are the results of analysing each individual
@@ -173,7 +188,13 @@ process_scc(Debug, SCC, !ModuleInfo, !IO) :-
         Info = Info0 ^ elem(PPId) := Status
     ),
     list.foldl(Update, SCC, TrailingInfo0, TrailingInfo),
-    module_info_set_trailing_info(TrailingInfo, !ModuleInfo). 
+    module_info_set_trailing_info(TrailingInfo, !ModuleInfo),
+    (
+        Pass1Only = no,
+        list.foldl(annotate_proc, SCC, !ModuleInfo)
+    ;
+        Pass1Only = yes
+    ).
 
     % Check each procedure in the SCC individually.
     %
@@ -277,6 +298,7 @@ check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, Goal, _, Result) :-
             ),
             special_pred_name_arity(SpecialPredId, Name, _, Arity)
         ;
+            % XXX This is too conservative.
             pred_info_get_origin(CallPredInfo, Origin),
             Origin = special_pred(SpecialPredId - _),
             ( SpecialPredId = spec_pred_compare
@@ -286,22 +308,15 @@ check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, Goal, _, Result) :-
     ->
         % At the moment we assume that calls to out-of-line
         % unification/comparisons are going to modify the trail.
-        % XXX This is far too conservative.
         Result = may_modify_trail
     ;
         % Handle library predicates whose trailing status
         % can be looked up in the known procedures table.
-        Name = pred_info_name(CallPredInfo),
-        PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
-        ModuleName = pred_info_module(CallPredInfo),
-        ModuleName = unqualified(ModuleNameStr),
-        Arity = pred_info_orig_arity(CallPredInfo),
-        known_procedure(PredOrFunc, ModuleNameStr, Name, Arity, Result0)
+        pred_info_has_known_status(CallPredInfo, Result0)
     ->
         Result = Result0
     ;
-        check_nonrecursive_call(ModuleInfo, VarTypes, CallPPId, CallArgs,
-            Result)
+        check_call(ModuleInfo, VarTypes, CallPPId, CallArgs, Result)
     ).
 check_goal_for_trail_mods_2(_, _ModuleInfo, _VarTypes, Goal, _GoalInfo,
         Result) :-
@@ -333,29 +348,13 @@ check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, Goal, OuterGoalInfo,
     InnerGoal = _ - InnerGoalInfo,
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
-    (
-        % If we're at a commit for Goal that might modify the trail then we
-        % will need to emit some trailing code around the scope goal.
-        InnerCodeModel = model_non,
-        OuterCodeModel \= model_non,
-        Result0 \= will_not_modify_trail
-    ->
-        Result = may_modify_trail 
-    ;   
-        Result = Result0 
-    ).
+    Result = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, Result0).
 check_goal_for_trail_mods_2(_, _, _, Goal, _, Result) :-
     Goal = foreign_proc(Attributes, _, _, _, _, _),
-    %
-    % XXX polymorphic foreign calls.
-    ( may_modify_trail(Attributes) = may_modify_trail ->
-        Result = may_modify_trail
-    ;
-        Result = will_not_modify_trail
-    ).
+    Result = attributes_imply_trail_mod(Attributes).
 check_goal_for_trail_mods_2(_, _, _, shorthand(_), _, _) :-
     unexpected(this_file,
-        "shorthand goal encountered during trailing analysis.").
+        "shorthand goal encountered during trail usage analysis.").
 check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, Goal, _, Result) :-
     Goal = switch(_, _, Cases),
     CaseGoals = list.map((func(case(_, CaseGoal)) = CaseGoal), Cases),
@@ -370,8 +369,6 @@ check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, Goal, _, Result) :-
         Result0 = will_not_modify_trail,
         Result  = will_not_modify_trail
     ;
-        % XXX In the case where this is conditional we could do better
-        % by creating specialised versions of the procedure.
         ( Result0 = conditional ; Result0 = may_modify_trail),
         Result = may_modify_trail
     ).
@@ -408,20 +405,67 @@ check_goals_for_trail_mods(SCC, ModuleInfo, VarTypes, Goals, Result) :-
 
 %----------------------------------------------------------------------------%
 %
-% "Known" library procedures
+% Utility procedure for processing goals
 %
 
-% known_procedure/4 is a table of library predicates whose trailing
-% status is hardcoded into the analyser.  For a few predicates this
-% information can make a big difference (particularly in the absence
-% of any form of intermodule analysis).
+:- func attributes_imply_trail_mod(pragma_foreign_proc_attributes) = 
+    trailing_status.
 
+attributes_imply_trail_mod(Attributes) =
+    ( may_modify_trail(Attributes) = may_modify_trail ->
+        may_modify_trail
+    ;
+        will_not_modify_trail
+    ).
+    
+:- func scope_implies_trail_mod(code_model, code_model, trailing_status)
+    = trailing_status.
+
+scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, InnerStatus) = 
+    (
+        % If we're at a commit for a goal that might modify the trail
+        % then we need to emit some trailing code around the scope goal.
+        InnerCodeModel = model_non,
+        OuterCodeModel \= model_non,
+        InnerStatus \= will_not_modify_trail
+    ->
+        may_modify_trail
+    ;
+        InnerStatus
+    ).
+    
+%----------------------------------------------------------------------------%
+%
+% "Known" library procedures
+%
+    % Succeeds if the given pred_info is for a predicate or function
+    % whose trailing status can be looked up in the known procedures
+    % table.  Returns the trailing status corresponding to that procedure.
+    % Fails if there was no corresponding entry in the table.
+    %
+:- pred pred_info_has_known_status(pred_info::in, trailing_status::out)
+    is semidet.
+
+pred_info_has_known_status(PredInfo, Status) :-
+    Name = pred_info_name(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    ModuleName = unqualified(ModuleNameStr),
+    Arity = pred_info_orig_arity(PredInfo),
+    known_procedure(PredOrFunc, ModuleNameStr, Name, Arity, Status).
+
+    % known_procedure/4 is a table of library predicates whose trailing
+    % status is hardcoded into the analyser.  For a few predicates this
+    % information can make a big difference (particularly in the absence
+    % of any form of intermodule analysis).
+    %
 :- pred known_procedure(pred_or_func::in, string::in, string::in, int::in,
     trailing_status::out) is semidet.
 
 known_procedure(predicate, "require", "error", 1, will_not_modify_trail).
 known_procedure(function,  "require", "func_error", 1, will_not_modify_trail).
 known_procedure(_, "exception", "throw", 1, will_not_modify_trail).
+known_procedure(_, "exception", "rethrow", 1, will_not_modify_trail).
 
 %----------------------------------------------------------------------------%
 %
@@ -472,10 +516,12 @@ combine_trailing_status(conditional, may_modify_trail, may_modify_trail).
 % Extra procedures for handling calls
 %
 
-:- pred check_nonrecursive_call(module_info::in, vartypes::in,
+    % Check the trailing status of a call.
+    % 
+:- pred check_call(module_info::in, vartypes::in,
     pred_proc_id::in, prog_vars::in, trailing_status::out) is det.
 
-check_nonrecursive_call(ModuleInfo, VarTypes, PPId, Args, Result) :-
+check_call(ModuleInfo, VarTypes, PPId, Args, Result) :-
     module_info_get_trailing_info(ModuleInfo, TrailingInfo),
     ( map.search(TrailingInfo, PPId, CalleeTrailingStatus) ->
         (
@@ -512,7 +558,7 @@ check_vars(ModuleInfo, VarTypes, Vars) = Result :-
 
 % This is used in the analysis of calls to polymorphic procedures.
 %
-% By saying a `type may modify the trail' we mean that tail modification
+% By saying that a "type may modify the trail" we mean that tail modification
 % may occur as a result of a unification or comparison involving the type
 % because it has a user-defined equality/comparison predicate that modifies
 % the trail.
@@ -525,14 +571,15 @@ check_vars(ModuleInfo, VarTypes, Vars) = Result :-
 % procedure is as follows:
 %
 % Examine the functor and then recursively examine the arguments.
+%
 % * If everything will not will_not_modify_trail then the type will not
 %   modify the trail.
 %
 % * If at least one of the types may modify the trail then the type will
 %   will modify the trail.
 %
-% * If at least one of the types is conditional and none of them throw then
-%   the type is conditional.
+% * If at least one of the types is conditional and none of them modify
+%   the trail then the type is conditional.
 
     % Return the collective trailing status of a list of types.
     %
@@ -610,13 +657,175 @@ check_user_type(ModuleInfo, Type) = Status :-
 
 %----------------------------------------------------------------------------%
 %
+% Code for attaching trail usage information to goals
+%
+    
+    % Traverse the body of the procedure and attach will_not_modify trail
+    % features to the goal_infos of those procedure that cannot modify the
+    % trail.
+    %
+:- pred annotate_proc(pred_proc_id::in,
+    module_info::in, module_info::out) is det.
+
+annotate_proc(PPId, !ModuleInfo) :-
+    some [!ProcInfo, !Body] (
+      module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
+      proc_info_goal(!.ProcInfo, !:Body),
+      proc_info_vartypes(!.ProcInfo, VarTypes),
+      annotate_goal(!.ModuleInfo, VarTypes, !Body, _Status), 
+      proc_info_set_goal(!.Body, !ProcInfo),
+      module_info_set_pred_proc_info(PPId, PredInfo, !.ProcInfo, !ModuleInfo)
+    ).
+
+:- pred annotate_goal(module_info::in, vartypes::in,
+    hlds_goal::in, hlds_goal::out, trailing_status::out) is det.
+
+annotate_goal(ModuleInfo, VarTypes, !Goal, Status) :-
+    !.Goal = GoalExpr0 - GoalInfo0,
+    annotate_goal_2(ModuleInfo, VarTypes, GoalInfo0, GoalExpr0, GoalExpr,
+        Status),
+    ( Status = will_not_modify_trail ->
+        goal_info_add_feature(will_not_modify_trail, GoalInfo0, GoalInfo)
+    ;
+        GoalInfo = GoalInfo0
+    ),
+    !:Goal = GoalExpr - GoalInfo.
+        
+:- pred annotate_goal_2(module_info::in, vartypes::in,
+    hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out,
+    trailing_status::out) is det.
+
+annotate_goal_2(ModuleInfo, VarTypes, _, !Goal, Status) :-
+    !.Goal = conj(Conjuncts0),
+    annotate_goal_list(ModuleInfo, VarTypes, Conjuncts0, Conjuncts, Status),
+    !:Goal = conj(Conjuncts). 
+annotate_goal_2(ModuleInfo, VarTypes, _, !Goal, Status) :-
+    !.Goal = par_conj(Conjuncts0),
+    annotate_goal_list(ModuleInfo, VarTypes, Conjuncts0, Conjuncts, Status),
+    !:Goal = par_conj(Conjuncts).
+annotate_goal_2(ModuleInfo, VarTypes, _, !Goal, Status) :-
+    !.Goal = call(CallPredId, CallProcId, CallArgs, _, _, _),
+    CallPPId = proc(CallPredId, CallProcId),
+    module_info_pred_info(ModuleInfo, CallPredId, CallPredInfo),
+    (
+        pred_info_is_builtin(CallPredInfo)
+    ->
+        Status = will_not_modify_trail
+    ;
+        % Handle unify and compare.
+        (
+            ModuleName = pred_info_module(CallPredInfo),
+            any_mercury_builtin_module(ModuleName),
+            Name = pred_info_name(CallPredInfo),
+            Arity = pred_info_orig_arity(CallPredInfo),
+            ( SpecialPredId = spec_pred_compare
+            ; SpecialPredId = spec_pred_unify
+            ),
+            special_pred_name_arity(SpecialPredId, Name, _, Arity)
+        ;
+            pred_info_get_origin(CallPredInfo, Origin),
+            Origin = special_pred(SpecialPredId - _),
+            ( SpecialPredId = spec_pred_compare
+            ; SpecialPredId = spec_pred_unify
+            )
+        )
+    ->
+        Status = may_modify_trail
+    ;
+        % Handle library predicates whose trailing status
+        % can be looked up in the known procedure table.
+        pred_info_has_known_status(CallPredInfo, Status0)
+    ->
+        Status = Status0   
+    ;   
+        % This time around we will be checking recursive calls as well.
+        check_call(ModuleInfo, VarTypes, CallPPId, CallArgs, Status)
+    ).
+annotate_goal_2(_ModuleInfo, _VarTypes, _, !Goal, Status) :-
+    % XXX Use closure analysis results here.
+    !.Goal = generic_call(_, _, _, _),
+    Status = may_modify_trail.
+annotate_goal_2(ModuleInfo, VarTypes, _, !Goal, Status) :-
+    !.Goal = switch(Var, CanFail, Cases0),
+    annotate_cases(ModuleInfo, VarTypes, Cases0, Cases, Status),
+    !:Goal = switch(Var, CanFail, Cases).
+annotate_goal_2(_ModuleInfo, _VarTypes, _, !Goal, Status) :-
+    !.Goal = unify(_, _, _, Kind, _),
+    ( Kind = complicated_unify(_, _, _) ->
+        unexpected(this_file, "complicated unify during trail usage analysis.")
+    ;
+        true
+    ),
+    Status = will_not_modify_trail.
+annotate_goal_2(ModuleInfo, VarTypes, _, !Goal, Status) :-
+    !.Goal = disj(Disjuncts0),
+    annotate_goal_list(ModuleInfo, VarTypes, Disjuncts0, Disjuncts, Status),
+    !:Goal = disj(Disjuncts).
+annotate_goal_2(ModuleInfo, VarTypes, _, !Goal, Status) :-
+    !.Goal = not(NegGoal0),
+    annotate_goal(ModuleInfo, VarTypes, NegGoal0, NegGoal, Status),
+    !:Goal = not(NegGoal).
+annotate_goal_2(ModuleInfo, VarTypes, OuterGoalInfo, !Goal, Status) :-
+    !.Goal = scope(Reason, InnerGoal0),
+    annotate_goal(ModuleInfo, VarTypes, InnerGoal0, InnerGoal, Status0),
+    InnerGoal = _ - InnerGoalInfo,
+    goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
+    goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
+    Status = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, Status0),
+    !:Goal = scope(Reason, InnerGoal).
+annotate_goal_2(ModuleInfo, VarTypes, _, !Goal, Status) :-
+    !.Goal = if_then_else(Vars, If0, Then0, Else0),
+    annotate_goal(ModuleInfo, VarTypes, If0, If, IfStatus),
+    annotate_goal(ModuleInfo, VarTypes, Then0, Then, ThenStatus),
+    annotate_goal(ModuleInfo, VarTypes, Else0, Else, ElseStatus),
+    (
+        IfStatus   = will_not_modify_trail,
+        ThenStatus = will_not_modify_trail,
+        ElseStatus = will_not_modify_trail
+    ->
+        Status = will_not_modify_trail
+    ;
+        Status = may_modify_trail
+    ), 
+    !:Goal = if_then_else(Vars, If, Then, Else).
+annotate_goal_2( _, _, _, !Goal, Status) :-
+    !.Goal = foreign_proc(Attributes, _, _, _, _, _),
+    Status = attributes_imply_trail_mod(Attributes).
+annotate_goal_2(_, _, _, shorthand(_), _, _) :-
+    unexpected(this_file, "shorthand goal").
+    
+:- pred annotate_goal_list(module_info::in, vartypes::in, hlds_goals::in,
+    hlds_goals::out, trailing_status::out) is det.
+
+annotate_goal_list(ModuleInfo, VarTypes, !Goals, Status) :-
+    list.map2(annotate_goal(ModuleInfo, VarTypes), !Goals, Statuses), 
+    list.foldl(combine_trailing_status, Statuses, will_not_modify_trail,
+        Status).
+    
+:- pred annotate_cases(module_info::in, vartypes::in,
+    list(case)::in, list(case)::out, trailing_status::out) is det.
+
+annotate_cases(ModuleInfo, VarTypes, !Cases, Status) :-
+    list.map2(annotate_case(ModuleInfo, VarTypes), !Cases, Statuses),
+    list.foldl(combine_trailing_status, Statuses, will_not_modify_trail,
+        Status).
+
+:- pred annotate_case(module_info::in, vartypes::in,
+    case::in, case::out, trailing_status::out) is det.
+
+annotate_case(ModuleInfo, VarTypes, !Case, Status) :-
+    !.Case = case(ConsId, Goal0),
+    annotate_goal(ModuleInfo, VarTypes, Goal0, Goal, Status),
+    !:Case = case(ConsId, Goal).
+
+%----------------------------------------------------------------------------%
+%
 % Stuff for intermodule optimization
 % 
 
-:- pred trailing_analysis.make_opt_int(module_info::in, io::di, io::uo)
-    is det.
+:- pred make_opt_int(module_info::in, io::di, io::uo) is det.
 
-trailing_analysis.make_opt_int(ModuleInfo, !IO) :-
+make_opt_int(ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
@@ -704,8 +913,9 @@ dump_trail_usage_debug_info(ModuleInfo, SCC, Status, !IO) :-
 output_proc_names(ModuleInfo, SCC, !IO) :-
     list.foldl(output_proc_name(ModuleInfo), SCC, !IO).
 
-:- pred output_proc_name(module_info::in, pred_proc_id::in,
-    io::di, io::uo) is det.
+:- pred output_proc_name(module_info::in, pred_proc_id::in, io::di, io::uo)
+    is det.
+
 output_proc_name(Moduleinfo, PPId, !IO) :-
    Pieces = describe_one_proc_name(Moduleinfo, should_module_qualify, PPId), 
    Str = error_pieces_to_string(Pieces),

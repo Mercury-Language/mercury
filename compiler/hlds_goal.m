@@ -1004,7 +1004,7 @@
                             % mark the unifications it creates, and get
                             % the singleton warning code to respect it.
 
-    ;       mode_check_clauses_goal.
+    ;       mode_check_clauses_goal
                             % This goal is the main disjunction of a predicate
                             % with the mode_check_clauses pragma. No compiler
                             % pass should try to invoke quadratic or worse
@@ -1012,6 +1012,11 @@
                             % probably has many arms (possibly several
                             % thousand). This feature may be attached to
                             % switches as well as disjunctions.
+                            
+    ;       will_not_modify_trail.
+                            % This goal will not modify the trail, so it
+                            % is safe for the compiler to omit trailing 
+                            % primitives when generating code for this goal.
 
     % We can think of the goal that defines a procedure to be a tree,
     % whose leaves are primitive goals and whose interior nodes are
