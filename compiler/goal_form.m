@@ -109,11 +109,17 @@
     int::out, int::out) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% Trail usage
+%
 
-    % Succeeds if the goal (and its subgoals) do not modify the trail.
-    % (Requires --analyse-trail-usage to be of any use.)
+    % Succeeds if the goal does not modify the trail.
     %
 :- pred goal_cannot_modify_trail(hlds_goal::in) is semidet.
+
+    % Succeeds if the goal may modify the trail.
+    %
+:- pred goal_may_modify_trail(hlds_goal::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -557,9 +563,14 @@ count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
         int__max(Max0, Max1, Max)
     ).
 %-----------------------------------------------------------------------------%
+%
+% Trail usage
+%
 
 goal_cannot_modify_trail(Goal) :-
     goal_has_feature(Goal, will_not_modify_trail).
+goal_may_modify_trail(Goal) :-
+    not goal_cannot_modify_trail(Goal).
 
 %-----------------------------------------------------------------------------%
 

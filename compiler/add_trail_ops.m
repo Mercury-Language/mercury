@@ -23,7 +23,12 @@
 % in the Mercury implementation.
 %
 % This pass is very similar to add_heap_ops.m.
-%
+
+% NOTE: it is important that passes following this one do not attempt
+%       to reorder disjunctions.  If trail usage optimization is being
+%       performed and a disjunction is reordered then the trail might
+%       be corrupted.
+
 %-----------------------------------------------------------------------------%
 
 % XXX check goal_infos for correctness
@@ -41,6 +46,7 @@
 :- pred add_trail_ops(bool::in, module_info::in,
     proc_info::in, proc_info::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -67,6 +73,8 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
     % As we traverse the goal, we add new variables to hold the trail tickets
     % (i.e. saved values of the trail pointer) and the saved values of the
@@ -141,7 +149,7 @@ goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
     % back-tracking.
     new_ticket_var(TicketVar, !Info),
     gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
-    disj_add_trail_ops(Goals0, yes, CodeModel, TicketVar, Goals, !Info),
+    disj_add_trail_ops(Goals0, yes, no, CodeModel, TicketVar, Goals, !Info),
     Goal = conj([StoreTicketGoal, disj(Goals) - GoalInfo]).
 
 goal_expr_add_trail_ops(switch(A, B, Cases0), GI, switch(A, B, Cases) - GI,
@@ -299,56 +307,89 @@ goal_expr_add_trail_ops(shorthand(_), _, _, !Info) :-
 conj_add_trail_ops(Goals0, Goals, !Info) :-
     list__map_foldl(goal_add_trail_ops, Goals0, Goals, !Info).
 
-:- pred disj_add_trail_ops(hlds_goals::in, bool::in, code_model::in,
-    prog_var::in, hlds_goals::out,
+:- pred disj_add_trail_ops(hlds_goals::in, bool::in, bool::in,
+    code_model::in, prog_var::in, hlds_goals::out,
     trail_ops_info::in, trail_ops_info::out) is det.
 
-disj_add_trail_ops([], _, _, _, [], !Info).
-disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
-        [Goal | Goals], !Info) :-
+disj_add_trail_ops([], _, _, _, _, [], !Info).
+disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, PrevDisjunctModifiesTrail,
+        CodeModel, TicketVar, [Goal | Goals], !Info) :-
     Goal0 = _ - GoalInfo0,
     goal_info_get_context(GoalInfo0, Context),
 
     % First undo the effects of any earlier branches.
     (
         IsFirstBranch = yes,
-        UndoList = []
+        UndoList = [],
+        expect(unify(PrevDisjunctModifiesTrail, no), this_file,
+            "PrevDisjunctModifiesTrail = yes for initial disjunct.")
     ;
         IsFirstBranch = no,
-        gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
+        %
+        % We only need to undo the changes from the last disjunction if it
+        % actually modified the trail.  We only do this if
+        % `--optimize-trail-usage' is set.
+        % 
+        (
+            PrevDisjunctModifiesTrail = no,
+            !.Info ^ opt_trail_usage = yes
+        ->
+            UndoList0 = []
+        ;
+            gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal,
+                !.Info),
+            UndoList0 = [ResetTicketUndoGoal]
+        ),
         (
             Goals0 = [],
             % Once we've reached the last disjunct, we can discard
             % the trail ticket.
             gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
-            UndoList = [ResetTicketUndoGoal, DiscardTicketGoal]
+            UndoList = UndoList0 ++ [DiscardTicketGoal]
         ;
             Goals0 = [_ | _],
-            UndoList = [ResetTicketUndoGoal]
+            UndoList = UndoList0
         )
     ),
-
-    % Then execute the disjunct goal.
-    goal_add_trail_ops(Goal0, Goal1, !Info),
-
-    % For model_semi and model_det disjunctions, once we reach the end
-    % of the disjunct goal, we're committing to this disjunct, so we need to
-    % prune the trail ticket.
-    ( CodeModel = model_non ->
+    %
+    % Add trailing code to the disjunct itself.  We can omit the trailing code
+    % if the disjunct doesn't modify the trail and `--optimize-trail-usage' is
+    % set.
+    %
+    ThisDisjunctModifiesTrail = pred_to_bool(goal_may_modify_trail(Goal0)),
+    CanOmitTrailOps =
+        not(ThisDisjunctModifiesTrail) `and` !.Info ^ opt_trail_usage,
+    (
+        CanOmitTrailOps = yes, 
+        Goal1 = Goal0,
         PruneList = []
     ;
-        gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
-            !.Info),
-        gen_prune_ticket(Context, PruneTicketGoal, !.Info),
-        PruneList = [ResetTicketCommitGoal, PruneTicketGoal]
+        CanOmitTrailOps = no,
+        goal_add_trail_ops(Goal0, Goal1, !Info),
+        %
+        % For model_semi and model_det disjunctions, once we reach the end of
+        % the disjunct goal, we're committing to this disjunct, so we need to
+        % prune the trail ticket.
+        %
+        ( CodeModel = model_non ->
+            PruneList = []
+        ;
+            gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
+                !.Info),
+            gen_prune_ticket(Context, PruneTicketGoal, !.Info),
+            PruneList = [ResetTicketCommitGoal, PruneTicketGoal]
+        )
     ),
-
+    %
     % Package up the stuff we built earlier.
+    %
     Goal1 = _ - GoalInfo1,
     conj_list_to_goal(UndoList ++ [Goal1] ++ PruneList, GoalInfo1, Goal),
-
+    %
     % Recursively handle the remaining disjuncts.
-    disj_add_trail_ops(Goals0, no, CodeModel, TicketVar, Goals, !Info).
+    %
+    disj_add_trail_ops(Goals0, no, ThisDisjunctModifiesTrail, CodeModel,
+        TicketVar, Goals, !Info).
 
 :- pred cases_add_trail_ops(list(case)::in, list(case)::out,
     trail_ops_info::in, trail_ops_info::out) is det.

@@ -4288,6 +4288,10 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
         process_all_nonimported_nonaditi_procs, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 405, "ml_backend_simplify", !DumpInfo, !IO),
 
+    % NOTE: it is unsafe for passes after add_trail_ops to reorder
+    % disjunctions if trail usage has been optimized.  Such reordering
+    % may result in the trail being corrupted.
+    %
     maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 410, "add_trail_ops", !DumpInfo, !IO),
 

@@ -56,6 +56,7 @@ syn keyword mercuryCInterface   tabled_for_io local untrailed trailed
 syn keyword mercuryCInterface   attach_to_io_state 
 syn keyword mercuryCInterface   can_pass_as_mercury_type stable
 syn keyword mercuryCInterface   will_not_throw_exception
+syn keyword mercuryCInterface   may_modify_trail will_not_modify_trail
 syn keyword mercuryCInterface   export import
 syn keyword mercuryImpure       impure semipure
 syn keyword mercuryToDo         XXX TODO NOTE         

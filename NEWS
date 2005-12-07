@@ -62,9 +62,8 @@ Changes to the compiler backends:
 * We have implemented an optimization, --tuple, that can replace several
   arguments that are usually passed to predicates together with a single
   tuple. This can reduce parameter passing overheads.
-* The compiler can now optimize away the trail manipulation code that would
-  ordinarily be required around if-then-elses if the condition of the
-  if-then-else cannot affect the trail.
+* The compiler can now optimize away the trail manipulation code from parts
+  of the program that cannot affect trail.
 * The compiler now optimizes away any instructions referring to values of dummy
   types. A type is a dummy type if it has one function symbol of arity zero.
 * Higher order calls are now cheaper on the low level C backend.
