@@ -697,9 +697,17 @@ remove_file(ModuleName, Ext, !Info, !IO) :-
     remove_file(FileName, !Info, !IO).
 
 remove_file(FileName, !Info, !IO) :-
+    verbose_msg(report_remove_file(FileName), !IO),
     io__remove_file(FileName, _, !IO),
     !:Info = !.Info ^ file_timestamps :=
         map__delete(!.Info ^ file_timestamps, FileName).
+
+:- pred report_remove_file(string::in, io::di, io::uo) is det.
+
+report_remove_file(FileName, !IO) :-
+    io__write_string("Removing ", !IO),
+    io__write_string(FileName, !IO),
+    io__nl(!IO).
 
 %-----------------------------------------------------------------------------%
 
