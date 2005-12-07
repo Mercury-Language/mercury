@@ -1526,8 +1526,27 @@ static void
 MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
     MR_Word *base_sp, MR_Word *base_curfr)
 {
-    MR_TrieNode     call_table;
-    MR_EvalMethod   eval_method;
+    MR_TrieNode             call_table;
+    MR_EvalMethod           eval_method;
+    const MR_User_Proc_Id   *user;
+
+    if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
+        if (MR_PROC_LAYOUT_HAS_PROC_ID(level_layout)) {
+            if (! MR_PROC_LAYOUT_IS_UCI(level_layout)) {
+                user = &level_layout->MR_sle_user;
+                if (MR_streq(user->MR_user_decl_module, "exception") &&
+                    MR_streq(user->MR_user_name, "builtin_catch") &&
+                    (user->MR_user_arity == 3))
+                {
+                    /*
+                    ** builtin_catch doesn't fill in the MR_sle_exec_trace
+                    ** field, but we know its evaluation method, so we return.
+                    */
+                    return;
+                }
+            }
+        }
+    }
 
     if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
         /*

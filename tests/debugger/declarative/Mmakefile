@@ -84,7 +84,8 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 DECLDEBUG_DECLARATIVE_PROGS=	\
 	builtin_call_rep	\
 	sort			\
-	priv_builtin_bug
+	priv_builtin_bug	\
+	catch_retry
 	
 # The following should not be run in decldebug grades.
 #
@@ -227,6 +228,12 @@ catch.out: catch catch.inp
 	$(MDB_STD) ./catch < catch.inp 2>&1 | \
 		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
 		> catch.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+catch_retry.out: catch_retry catch_retry.inp
+	$(MDB_STD) ./catch_retry < catch_retry.inp 2>&1 | \
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		> catch_retry.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 closure_dependency.out: closure_dependency closure_dependency.$(DEBUG_INP)
