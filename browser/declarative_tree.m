@@ -1525,8 +1525,8 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
 		;
 			Contour = [],
 			(
-				AllTraced = no,
-				MaybeEnd = no
+				MaybeEnd = no,
+				AllTraced = no
 			->
 				Primitive = primitive(File, Line, BoundVars,
 					AtomicGoal, Path, no),

@@ -223,6 +223,10 @@
     %
 :- pred any_mercury_builtin_module(sym_name::in) is semidet.
 
+    % Succeeds iff the specified module will never be traced.
+    %
+:- pred non_traced_mercury_builtin_module(sym_name::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -312,6 +316,13 @@ any_mercury_builtin_module(Module) :-
     ( mercury_public_builtin_module(Module)
     ; mercury_private_builtin_module(Module)
     ; mercury_table_builtin_module(Module)
+    ; mercury_profiling_builtin_module(Module)
+    ; mercury_term_size_prof_builtin_module(Module)
+    ; aditi_private_builtin_module(Module)
+    ).
+
+non_traced_mercury_builtin_module(Module) :-
+    ( mercury_table_builtin_module(Module)
     ; mercury_profiling_builtin_module(Module)
     ; mercury_term_size_prof_builtin_module(Module)
     ; aditi_private_builtin_module(Module)

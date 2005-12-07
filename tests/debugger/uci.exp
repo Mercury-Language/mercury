@@ -27,67 +27,43 @@ mdb> c
 mdb> print goal
 __Compare__('>', b1(11), a1(1))
 mdb> c
-      26:     12  3 CALL __Compare__ for uci.t2/2-0 (det)
-mdb> print goal
-__Compare__(_, a2(1, 2), a2(1, 2))
-mdb> c
-      27:     12  3 EXIT __Compare__ for uci.t2/2-0 (det)
-mdb> print goal
-__Compare__('=', a2(1, 2), a2(1, 2))
-mdb> c
-      36:     16  3 CALL __Compare__ for uci.t3/3-0 (det)
+      34:     15  3 CALL __Compare__ for uci.t3/3-0 (det)
 mdb> print goal
 __Compare__(_, b3(11, 12, 13), a3(1, 2, 3))
 mdb> c
-      37:     16  3 EXIT __Compare__ for uci.t3/3-0 (det)
+      35:     15  3 EXIT __Compare__ for uci.t3/3-0 (det)
 mdb> print goal
 __Compare__('>', b3(11, 12, 13), a3(1, 2, 3))
 mdb> c
-      46:     20  3 CALL __Compare__ for uci.t4/4-0 (det)
+      44:     19  3 CALL __Compare__ for uci.t4/4-0 (det)
 mdb> print goal
 __Compare__(_, a4(1, 2, 3, 4), b4(11, 12, 13, 14))
 mdb> c
-      47:     20  3 EXIT __Compare__ for uci.t4/4-0 (det)
+      45:     19  3 EXIT __Compare__ for uci.t4/4-0 (det)
 mdb> print goal
 __Compare__('<', a4(1, 2, 3, 4), b4(11, 12, 13, 14))
 mdb> c
-      64:     27  3 CALL __Unify__ for uci.t1/1-0 (semidet)
-mdb> print goal
-__Unify__(a1(1), a1(1))
-mdb> c
-      65:     27  3 EXIT __Unify__ for uci.t1/1-0 (semidet)
-mdb> print goal
-__Unify__(a1(1), a1(1))
-mdb> c
-      74:     31  3 CALL __Unify__ for uci.t2/2-0 (semidet)
+      70:     29  3 CALL __Unify__ for uci.t2/2-0 (semidet)
 mdb> print goal
 __Unify__(a2(1, 2), b2(11, 12))
 mdb> c
-      75:     31  3 FAIL __Unify__ for uci.t2/2-0 (semidet)
+      71:     29  3 FAIL __Unify__ for uci.t2/2-0 (semidet)
 mdb> print goal
 __Unify__(a2(1, 2), b2(11, 12))
 mdb> c
-      84:     35  3 CALL __Unify__ for uci.t3/3-0 (semidet)
-mdb> print goal
-__Unify__(b3(11, 12, 13), b3(11, 12, 13))
-mdb> c
-      85:     35  3 EXIT __Unify__ for uci.t3/3-0 (semidet)
-mdb> print goal
-__Unify__(b3(11, 12, 13), b3(11, 12, 13))
-mdb> c
-      94:     39  3 CALL __Unify__ for uci.t4/4-0 (semidet)
+      88:     36  3 CALL __Unify__ for uci.t4/4-0 (semidet)
 mdb> print goal
 __Unify__(a4(1, 2, 3, 4), b4(11, 12, 13, 14))
 mdb> c
-      95:     39  3 FAIL __Unify__ for uci.t4/4-0 (semidet)
+      89:     36  3 FAIL __Unify__ for uci.t4/4-0 (semidet)
 mdb> print goal
 __Unify__(a4(1, 2, 3, 4), b4(11, 12, 13, 14))
 mdb> c
-     104:     43  3 CALL __Compare__ for uci.i/3-0 (det)
+      98:     40  3 CALL __Compare__ for uci.i/3-0 (det)
 mdb> print goal
 __Compare__(_, ai(1), bi(11))
 mdb> c
-     105:     43  3 EXIT __Compare__ for uci.i/3-0 (det)
+      99:     40  3 EXIT __Compare__ for uci.i/3-0 (det)
 mdb> print goal
 __Compare__('<', ai(1), bi(11))
 mdb> c

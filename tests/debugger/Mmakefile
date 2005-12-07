@@ -505,7 +505,7 @@ uci.out: uci uci.inp
 	$(MDB) ./uci < uci.inp 2>&1 > uci.out 2>&1
 
 uci_index.out: uci_index uci_index.inp
-	$(MDB) ./uci_index < uci_index.inp 2>&1 > uci_index.out 2>&1
+	$(MDB_STD) ./uci_index < uci_index.inp 2>&1 > uci_index.out 2>&1
 
 # When WORKSPACE is set, use $(WORKSPACE)/tools/lmc to compile the query.
 ifneq ($(origin WORKSPACE), undefined)

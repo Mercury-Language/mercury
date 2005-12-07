@@ -83,9 +83,10 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 #
 DECLDEBUG_DECLARATIVE_PROGS=	\
 	builtin_call_rep	\
-	sort			\
+	catch_retry		\
 	priv_builtin_bug	\
-	catch_retry
+	sort			\
+	typed_unify
 	
 # The following should not be run in decldebug grades.
 #
@@ -430,6 +431,11 @@ pd.out: pd pd.inp
 priv_builtin_bug.out: priv_builtin_bug priv_builtin_bug.inp
 	$(MDB_STD) ./priv_builtin_bug < priv_builtin_bug.inp > \
 		priv_builtin_bug.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+typed_unify.out: typed_unify typed_unify.inp
+	$(MDB_STD) ./typed_unify < typed_unify.inp > \
+		typed_unify.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 propositional.out: propositional propositional.inp

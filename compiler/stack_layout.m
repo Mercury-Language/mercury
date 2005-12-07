@@ -92,6 +92,7 @@
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.prog_rep.
 :- import_module ll_backend.trace.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
@@ -425,8 +426,9 @@ update_label_table_2(ProcLabel, LabelNum, LabelVars, Context,
     ).
 
 :- pred find_valid_return_context(
-    assoc_list(code_addr, pair(prog_context, goal_path))::in,
-    code_addr::out, prog_context::out, goal_path::out) is semidet.
+    assoc_list(code_addr, pair(prog_context, hlds_goal.goal_path))::in,
+    code_addr::out, prog_context::out, hlds_goal.goal_path::out)
+    is semidet.
 
 find_valid_return_context([TargetContext | TargetContexts],
         ValidTarget, ValidContext, ValidGoalPath) :-

@@ -739,6 +739,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.program_representation.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_gen.
 :- import_module parse_tree.prog_data.

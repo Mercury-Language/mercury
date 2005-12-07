@@ -35,7 +35,12 @@
 
 :- interface.
 
-:- import_module char, list, std_util, bool.
+:- import_module mdbcomp.prim_data.
+
+:- import_module bool.
+:- import_module char.
+:- import_module list.
+:- import_module std_util.
 
     % A representation of the goal we execute. These need to be generated
     % statically and stored inside the executable.
@@ -177,11 +182,12 @@
     %
 :- func goal_generates_internal_event(goal_rep) = bool.
 
-    % call_is_primitive(ModuleName, PredName): succeeds iff a call to the
-    % named predicate behaves like a primitive operation, in the sense that
-    % it does not generate events.
+    % call_does_not_generate_events(ModuleName, PredName, Arity): succeeds iff
+    % a call to the named predicate will not generate events in a debugging
+    % grade.
     %
-:- pred call_is_primitive(string::in, string::in) is semidet.
+:- pred call_does_not_generate_events(string::in, string::in, int::in)
+    is semidet.
 
     % The atomic goal's module, name and arity.
 :- type atomic_goal_id
@@ -315,6 +321,21 @@
 :- mode var_num_rep_byte(in, out) is det.
 :- mode var_num_rep_byte(out, in) is semidet.
 
+    % Some predicates that operate on polymorphic values do not need
+    % the type_infos describing the types bound to the variables.
+    % It is of course faster not to pass type_infos to such predicates
+    % (especially since may also be able to avoid constructing those
+    % type_infos), and it can also be easier for a compiler module
+    % (e.g. common.m, size_prof.m) that generates calls to such predicates
+    % not to have to create those type_infos.
+    %
+    % All the predicates for whose names no_type_info_builtin succeeds
+    % are defined by compiler implementors. They are all predicates
+    % implemented by foreign language code in the standard library.
+    % For some, but not all, the compiler generates code inline.
+    %
+:- pred no_type_info_builtin(module_name::in, string::in, int::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -322,8 +343,6 @@
 :- import_module char.
 :- import_module require.
 :- import_module string.
-
-:- import_module mdbcomp.prim_data.
 
 atomic_goal_generates_event(unify_construct_rep(_, _, _)) = no.
 atomic_goal_generates_event(unify_deconstruct_rep(_, _, _)) = no.
@@ -337,21 +356,26 @@ atomic_goal_generates_event(higher_order_call_rep(_, Args)) = yes(Args).
 atomic_goal_generates_event(method_call_rep(_, _, Args)) = yes(Args).
 atomic_goal_generates_event(builtin_call_rep(_, _, _)) = no.
 atomic_goal_generates_event(plain_call_rep(ModuleName, PredName, Args)) =
-    ( call_is_primitive(ModuleName, PredName) ->
-        % These calls behave as primitives and do not generate events.
+    ( call_does_not_generate_events(ModuleName, PredName, list.length(Args)) ->
         no
     ;
         yes(Args)
     ).
 
-call_is_primitive(ModuleName, PredName) :-
+call_does_not_generate_events(ModuleName, PredName, Arity) :-
     (
         string_to_sym_name(ModuleName, ".", SymModuleName),
-        any_mercury_builtin_module(SymModuleName)
+        non_traced_mercury_builtin_module(SymModuleName)
     ;
-        % The following are also treated as primitive since events from
-        % compiler generated predicates are not included in the annotated trace
-        % at the moment.
+        % The debugger cannot handle calls to polymorphic builtins that 
+        % do not take a type_info argument, so such calls are not traced.
+        string_to_sym_name(ModuleName, ".", SymModuleName),
+        no_type_info_builtin(SymModuleName, PredName, Arity)
+    ;
+        pred_is_external(ModuleName, PredName, Arity)
+    ;
+        % Events from compiler generated predicates are not included in the
+        % annotated trace at the moment.
         (
             PredName = "__Unify__"
         ;
@@ -501,5 +525,61 @@ goal_type_byte(18, goal_builtin_call).
 
 var_num_rep_byte(byte, 0).
 var_num_rep_byte(short, 1).
+
+%-----------------------------------------------------------------------------%
+
+no_type_info_builtin(ModuleName, PredName, Arity) :-
+    no_type_info_builtin_2(ModuleNameType, PredName, Arity),
+    (
+        ModuleNameType = builtin,
+        mercury_public_builtin_module(ModuleName)
+    ;
+        ModuleNameType = private_builtin,
+        mercury_private_builtin_module(ModuleName)
+    ;
+        ModuleNameType = table_builtin,
+        mercury_table_builtin_module(ModuleName)
+    ;
+        ModuleNameType = term_size_prof_builtin,
+        mercury_term_size_prof_builtin_module(ModuleName)
+    ).
+
+:- type builtin_mod
+    --->    builtin
+    ;       private_builtin
+    ;       table_builtin
+    ;       term_size_prof_builtin.
+
+:- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
+    is semidet.
+
+no_type_info_builtin_2(private_builtin, "store_at_ref", 2).
+no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
+no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
+no_type_info_builtin_2(private_builtin,
+    "superclass_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "instance_constraint_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "type_info_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+    "unconstrained_type_info_from_typeclass_info", 3).
+no_type_info_builtin_2(table_builtin, "table_restore_any_answer", 3).
+no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
+no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeinfo", 3).
+no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeclassinfo", 3).
+no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
+
+    % True iff the given predicate is defined with an :- external
+    % declaration.  Note that the arity includes the hidden type info
+    % arguments for polymorphic predicates.
+    %
+:- pred pred_is_external(string::in, string::in, int::in) is semidet.
+
+pred_is_external("exception", "builtin_catch", 4).
+pred_is_external("exception", "builtin_throw", 1).
+pred_is_external("builtin", "unify", 3).
+pred_is_external("builtin", "compare", 4).
+pred_is_external("builtin", "compare_representation", 4).
 
 %-----------------------------------------------------------------------------%

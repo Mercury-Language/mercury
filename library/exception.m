@@ -733,6 +733,14 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 :- mode builtin_catch(pred(out) is multi, in(handler), out) is multi.
 :- mode builtin_catch(pred(out) is nondet, in(handler), out) is nondet.
 
+%
+% IMPORTANT: any changes or additions to external predicates should be
+% reflected in the definition of pred_is_external in
+% mdbcomp/program_representation.m.  The debugger needs to know what predicates
+% are defined externally, so that it knows not to expect events for those
+% predicates.
+%
+
 :- external(builtin_throw/1).
 :- external(builtin_catch/3).
 

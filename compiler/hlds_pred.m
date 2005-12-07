@@ -2767,21 +2767,6 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred non_special_body_should_use_typeinfo_liveness(globals::in,
     bool::out) is det.
 
-    % Some predicates that operate on polymorphic values do not need
-    % the type_infos describing the types bound to the variables.
-    % It is of course faster not to pass type_infos to such predicates
-    % (especially since may also be able to avoid constructing those
-    % type_infos), and it can also be easier for a compiler module
-    % (e.g. common.m, size_prof.m) that generates calls to such predicates
-    % not to have to create those type_infos.
-    %
-    % All the predicates for whose names no_type_info_builtin succeeds
-    % are defined by compiler implementors. They are all predicates
-    % implemented by foreign language code in the standard library.
-    % For some, but not all, the compiler generates code inline.
-    %
-:- pred no_type_info_builtin(module_name::in, string::in, int::in) is semidet.
-
     % If the procedure has a input/output pair of io__state arguments,
     % return the positions of those arguments in the argument list.
     % The positions are given as argument numbers, with the first argument
@@ -2828,7 +2813,9 @@ attribute_list_to_attributes(Attributes, Attributes).
     is semidet.
 
 :- implementation.
+
 :- import_module check_hlds.mode_errors.
+:- import_module mdbcomp.program_representation.
 
 :- type proc_info --->
     proc_info(
@@ -3375,48 +3362,6 @@ body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeInfoLiveness) :-
 non_special_body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
     globals__lookup_bool_option(Globals, body_typeinfo_liveness,
         BodyTypeInfoLiveness).
-
-no_type_info_builtin(ModuleName, PredName, Arity) :-
-    no_type_info_builtin_2(ModuleNameType, PredName, Arity),
-    (
-        ModuleNameType = builtin,
-        mercury_public_builtin_module(ModuleName)
-    ;
-        ModuleNameType = private_builtin,
-        mercury_private_builtin_module(ModuleName)
-    ;
-        ModuleNameType = table_builtin,
-        mercury_table_builtin_module(ModuleName)
-    ;
-        ModuleNameType = term_size_prof_builtin,
-        mercury_term_size_prof_builtin_module(ModuleName)
-    ).
-
-:- type builtin_mod
-    --->    builtin
-    ;       private_builtin
-    ;       table_builtin
-    ;       term_size_prof_builtin.
-
-:- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
-    is semidet.
-
-no_type_info_builtin_2(private_builtin, "store_at_ref", 2).
-no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
-no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
-no_type_info_builtin_2(private_builtin,
-    "superclass_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "instance_constraint_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-    "unconstrained_type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(table_builtin, "table_restore_any_answer", 3).
-no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
-no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeinfo", 3).
-no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeclassinfo", 3).
-no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
 
 proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
     proc_info_headvars(ProcInfo, HeadVars),

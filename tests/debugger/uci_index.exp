@@ -1,18 +1,18 @@
-       1:      1  1 CALL pred uci_index.main/2-0 (det) uci_index.m:13
+      E1:     C1 CALL pred uci_index.main/2-0 (det) uci_index.m:13
 mdb> echo on
 Command echo enabled.
 mdb> context none
 Contexts will not be printed.
 mdb> step
-       2:      2  2 CALL func uci_index.mai/0-0 (det)
+      E2:     C2 CALL func uci_index.mai/0-0 (det)
 mdb> step
-       3:      2  2 EXIT func uci_index.mai/0-0 (det)
+      E3:     C2 EXIT func uci_index.mai/0-0 (det)
 mdb> step
-       4:      3  2 CALL func uci_index.mbi/0-0 (det)
+      E4:     C3 CALL func uci_index.mbi/0-0 (det)
 mdb> step
-       5:      3  2 EXIT func uci_index.mbi/0-0 (det)
+      E5:     C3 EXIT func uci_index.mbi/0-0 (det)
 mdb> step
-       6:      4  2 CALL __Compare__ for uci_index.i/0-0 (det)
+      E6:     C4 CALL __Compare__ for uci_index.i/0-0 (det)
 mdb> step
-       7:      4  2 EXIT __Compare__ for uci_index.i/0-0 (det)
+      E7:     C4 EXIT __Compare__ for uci_index.i/0-0 (det)
 mdb> quit -y

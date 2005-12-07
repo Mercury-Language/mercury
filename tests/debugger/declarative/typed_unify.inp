@@ -1,0 +1,15 @@
+register --quiet
+echo on
+table_io start
+step
+finish
+step
+step
+finish
+untrust 0
+dd
+b 1
+track -a
+info
+quit
+quit -y

@@ -479,6 +479,13 @@ get_one_solution_io(Pred, X, !IO) :-
 ").
 
 %-----------------------------------------------------------------------------%
+%
+% IMPORTANT: any changes or additions to external predicates should be
+% reflected in the definition of pred_is_external in
+% mdbcomp/program_representation.m.  The debugger needs to know what predicates
+% are defined externally, so that it knows not to expect events for those
+% predicates.
+%
 
 :- external(unify/2).
 :- external(compare/3).

@@ -1,0 +1,32 @@
+      E1:     C1 CALL pred typed_unify.main/2-0 (det) typed_unify.m:13
+mdb> mdb> echo on
+Command echo enabled.
+mdb> table_io start
+I/O tabling started.
+mdb> step
+      E2:     C2 CALL func std_util.univ/1-1 (det) std_util.m:1652 (typed_unify.m:14)
+mdb> finish
+      E3:     C2 EXIT func std_util.univ/1-1 (det) std_util.m:1652 (typed_unify.m:14)
+mdb> step
+      E4:     C1 COND pred typed_unify.main/2-0 (det) c4;?; typed_unify.m:15
+mdb> step
+      E5:     C3 CALL pred std_util.type_to_univ/2-2 (semidet) std_util.m:1676 (typed_unify.m:15)
+mdb> finish
+      E6:     C3 EXIT pred std_util.type_to_univ/2-2 (semidet) std_util.m:1676 (typed_unify.m:15)
+mdb> untrust 0
+mdb> dd
+type_to_univ(1, univ_cons(1))
+Valid? b 1
+browser> track -a
+1
+type_to_univ(_, univ_cons(1))
+Valid? info
+Context of current question : std_util.m:1670 (std_util.m:1652)
+Search mode                 : top down                         
+The current question was chosen because the marked subterm was bound by
+the untraced call inside the predicate std_util.type_to_univ/2
+(std_util.m:1672). The path to the subterm in the atom is 2/2.
+dd> quit
+Diagnosis aborted.
+      E6:     C3 EXIT pred std_util.type_to_univ/2-2 (semidet) std_util.m:1676 (typed_unify.m:15)
+mdb> quit -y

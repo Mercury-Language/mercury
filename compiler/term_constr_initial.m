@@ -69,6 +69,7 @@
 :- import_module libs.polyhedron.
 :- import_module libs.rat.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
@@ -514,7 +515,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     PredArity  = pred_info_orig_arity(PredInfo),
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
     (
-        hlds_pred.no_type_info_builtin(PredModule, PredName, PredArity)
+        no_type_info_builtin(PredModule, PredName, PredArity)
     ->
         Constrs = process_no_type_info_builtin(PredName, HeadVars,
             SizeVarMap)

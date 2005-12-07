@@ -392,6 +392,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.

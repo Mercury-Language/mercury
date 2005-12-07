@@ -63,7 +63,7 @@ mdb> c
 mdb> print goal
 __Compare__(_, ai(1), bi(11))
 mdb> c
-      99:     40  3 EXIT __Compare__ for uci.i/3-0 (det)
+     101:     40  3 EXIT __Compare__ for uci.i/3-0 (det)
 mdb> print goal
 __Compare__('<', ai(1), bi(11))
 mdb> c

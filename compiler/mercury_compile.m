@@ -152,6 +152,7 @@
 :- import_module make.options_file.
 :- import_module make.util.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
@@ -1163,7 +1164,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         globals.io_lookup_bool_option(trace_prof, TraceProf, !IO),
        
         ( 
-            any_mercury_builtin_module(ModuleName),
+            non_traced_mercury_builtin_module(ModuleName),
             not (
                     mercury_profiling_builtin_module(ModuleName),
                     TraceProf = yes
