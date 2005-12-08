@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2004 The University of Melbourne.
+** Copyright (C) 2002-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -66,13 +66,13 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
   typedef struct mercury__type_desc__type_desc_0_s * MR_Type_Desc;
   typedef struct mercury__type_desc__pseudo_type_desc_0_s * MR_Pseudo_Type_Desc;
   typedef struct mercury__type_desc__type_ctor_desc_0_s * MR_Type_Ctor_Desc;
-  typedef struct mercury__private_builtin__type_info_1_s *
+  typedef struct mercury__private_builtin__type_info_0_s *
   	MR_Mercury_Type_Info;
-  typedef struct mercury__private_builtin__type_ctor_info_1_s *
+  typedef struct mercury__private_builtin__type_ctor_info_0_s *
   	MR_Mercury_Type_Ctor_Info;
-  typedef struct mercury__private_builtin__typeclass_info_1_s *
+  typedef struct mercury__private_builtin__typeclass_info_0_s *
   	MR_Mercury_TypeClass_Info;
-  typedef struct mercury__private_builtin__base_typeclass_info_1_s *
+  typedef struct mercury__private_builtin__base_typeclass_info_0_s *
   	MR_Mercury_Base_TypeClass_Info;
 #else
   /* for --no-high-level-data, they're all just `MR_Word' */

@@ -2930,7 +2930,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
         ;
             HighLevelData = no,
             % For --no-high-level-data, we only need to use a cast is for
-            % polymorphic types, which are `Word' in the C interface but
+            % polymorphic types, which are `MR_Word' in the C interface but
             % `MR_Box' in the MLDS back-end. Except for MC++, where
             % polymorphic types are MR_Box, but we get here only if Lang
             % is c or java.

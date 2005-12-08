@@ -286,7 +286,7 @@ typed_compare(R, X, Y) :-
 :- type base_typeclass_info.
 
     % The following types are used by compiler/ml_code_util.m as the types
-    % used for copying type_info/1 and typeclass_info/1 types.
+    % used for copying type_info/0 and typeclass_info/0 types.
     % XXX Document me better
     %
 :- type sample_type_info
@@ -340,7 +340,7 @@ typed_compare(R, X, Y) :-
 
 :- implementation.
 
-    % The definitions for type_ctor_info/1 and type_info/1.
+    % The definitions for type_ctor_info/0 and type_info/0.
 
 :- pragma foreign_code("C#", "
 
@@ -1453,7 +1453,7 @@ no_clauses(PredName) :-
     {
         // stub only
         throw new java.lang.Error
-            (""unify/2 for type type_info/1"");
+            (""unify/2 for type type_info/0"");
     }
 
     public static boolean
@@ -1461,7 +1461,7 @@ no_clauses(PredName) :-
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
-        throw new java.lang.Error(""unify/2 for type typeclass_info/1"");
+        throw new java.lang.Error(""unify/2 for type typeclass_info/0"");
     }
 
     public static boolean
@@ -1508,7 +1508,7 @@ no_clauses(PredName) :-
     {
         // stub only
         throw new java.lang.Error
-            (""compare/2 for type type_info/1"");
+            (""compare/2 for type type_info/0"");
     }
 
     public static mercury.builtin.Comparison_result_0
@@ -1525,7 +1525,7 @@ no_clauses(PredName) :-
     {
         // stub only
         throw new java.lang.Error
-            (""compare/2 for type typeclass_info/1"");
+            (""compare/2 for type typeclass_info/0"");
     }
 
 ").
