@@ -86,6 +86,7 @@ DECLDEBUG_DECLARATIVE_PROGS=	\
 	catch_retry		\
 	priv_builtin_bug	\
 	sort			\
+	track_through_catch	\
 	typed_unify
 	
 # The following should not be run in decldebug grades.
@@ -431,6 +432,11 @@ pd.out: pd pd.inp
 priv_builtin_bug.out: priv_builtin_bug priv_builtin_bug.inp
 	$(MDB_STD) ./priv_builtin_bug < priv_builtin_bug.inp > \
 		priv_builtin_bug.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+track_through_catch.out: track_through_catch track_through_catch.inp
+	$(MDB_STD) ./track_through_catch < track_through_catch.inp > \
+		track_through_catch.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 typed_unify.out: typed_unify typed_unify.inp

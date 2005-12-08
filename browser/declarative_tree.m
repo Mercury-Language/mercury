@@ -829,60 +829,35 @@ trace_subterm_mode(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode) :-
 trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 	find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart),
 	(
-		ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, NodeId,
-			StartPath, MaybeProcRep),
+		ChainStart = chain_start(StartLoc, ArgNum, TotalArgs,
+			NodeId, StartPath, MaybeProcRep),
 		Mode = start_loc_to_subterm_mode(StartLoc),
 		(
 			MaybeProcRep = no,
 			Origin = not_found
 		;
 			MaybeProcRep = yes(ProcRep),
-			det_trace_node_from_id(Store, NodeId, Node),
-			materialize_contour(Store, NodeId, Node, [], Contour0),
 			(
-				StartLoc = parent_goal(CallId, CallNode),
-				Contour = list.append(Contour0,
-					[CallId - CallNode])
-			;
-				StartLoc = cur_goal,
-				Contour = Contour0
-			),
-			ProcRep = proc_rep(HeadVars, GoalRep),
-			is_traced_grade(AllTraced),
-			MaybePrims = make_primitive_list(Store,
-				[goal_and_path(GoalRep, [])],
-				Contour, StartPath, ArgNum, TotalArgs,
-				HeadVars, AllTraced, []),
-			(
-				MaybePrims = yes(primitive_list_and_var(
-					Primitives, Var, MaybeClosure)),
 				%
-				% If the subterm is in a closure argument (i.e.
-				% an argument passed to the predicate that
-				% originally formed the closure), then the
-				% argument number of the closure argument is
-				% prefixed to the term path, since the closure
-				% is itself a term.  This is done because at
-				% the time of the closure call it is not easy
-				% to decide if the call is higher order or not,
-				% without repeating all the work done in
-				% make_primitive_list, so the original TermPath
-				% doesn't reflect the closure argument
-				% position.
-				%
-				(
-					MaybeClosure = yes,
-					AdjustedTermPath = [ArgNum | TermPath]
-				;
-					MaybeClosure = no,
-					AdjustedTermPath = TermPath
-				),
-				traverse_primitives(Primitives, Var,
-					AdjustedTermPath, Store, ProcRep,
-					Origin)
+				% catch_impl's body is a single call to
+				% builtin_catch.  builtin_catch doesn't
+				% generate any events, so we need to
+				% handle catch_impl specially.
+				% If the subterm being tracked is an
+				% input to builtin_catch then we know the
+				% origin will be in the first argument of
+				% catch_impl, because builtin_catch is
+				% only called from catch_impl.
+				% 
+				proc_rep_is_catch_impl(ProcRep),
+				StartLoc = parent_goal(_, _)
+			->
+				Origin = input(user_head_var(1),
+					[ArgNum | TermPath])
 			;
-				MaybePrims = no,
-				Origin = not_found
+				trace_dependency_in_proc_rep(Store, TermPath,
+					StartLoc, ArgNum, TotalArgs, NodeId,
+					StartPath, ProcRep, Origin)
 			)
 		)
 	;
@@ -892,6 +867,67 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 		% mode of the subterm is output.
 		Mode = subterm_out
 	).
+
+:- pred trace_dependency_in_proc_rep(S::in, term_path::in, 
+	start_loc(R)::in, int::in, int::in, R::in, maybe(goal_path)::in,
+	proc_rep::in, subterm_origin(edt_node(R))::out) 
+	is det <= annotated_trace(S, R).
+
+trace_dependency_in_proc_rep(Store, TermPath, StartLoc, ArgNum,
+	TotalArgs, NodeId, StartPath, ProcRep, Origin) :-
+	det_trace_node_from_id(Store, NodeId, Node),
+	materialize_contour(Store, NodeId, Node, [], Contour0),
+	(
+		StartLoc = parent_goal(CallId, CallNode),
+		Contour = list.append(Contour0,
+			[CallId - CallNode])
+	;
+		StartLoc = cur_goal,
+		Contour = Contour0
+	),
+	ProcRep = proc_rep(HeadVars, GoalRep),
+	is_traced_grade(AllTraced),
+	MaybePrims = make_primitive_list(Store,
+		[goal_and_path(GoalRep, [])],
+		Contour, StartPath, ArgNum, TotalArgs,
+		HeadVars, AllTraced, []),
+	(
+		MaybePrims = yes(primitive_list_and_var(
+			Primitives, Var, MaybeClosure)),
+		%
+		% If the subterm is in a closure argument then the argument
+		% number of the closure argument is prefixed to the term path,
+		% since the closure is itself a term.  This is done here
+		% because at the time of the closure call it is not easy to
+		% decide if the call is higher order or not, without repeating
+		% all the work done in make_primitive_list.
+		%
+		(
+			MaybeClosure = yes,
+			AdjustedTermPath = [ArgNum | TermPath]
+		;
+			MaybeClosure = no,
+			AdjustedTermPath = TermPath
+		),
+		traverse_primitives(Primitives, Var,
+			AdjustedTermPath, Store, ProcRep,
+			Origin)
+	;
+		MaybePrims = no,
+		Origin = not_found
+	).
+
+	% proc_rep_is_catch_impl(ProcRep) is true if ProcRep is a
+	% representation of exception.catch_impl (the converse
+	% is true assuming exception.builtin_catch is only called from
+	% exception.catch_impl).
+	%
+:- pred proc_rep_is_catch_impl(proc_rep::in) is semidet.
+
+proc_rep_is_catch_impl(ProcRep) :-
+	ProcRep = proc_rep([A, B, C, D], atomic_goal_rep(_, "exception.m", _,
+		[D], plain_call_rep("exception", "builtin_catch",
+			[A, B, C, D]))).
 
 :- pred find_chain_start(S::in, R::in, arg_pos::in, term_path::in,
 	dependency_chain_start(R)::out) is det <= annotated_trace(S, R).
@@ -1423,7 +1459,6 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
 					MaybePrims = yes(
 						primitive_list_and_var(
 							Primitives0, Var, no))
-
 				;
 					% Perhaps this is a closure and the
 					% argument was passed in when the

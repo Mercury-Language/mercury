@@ -1,0 +1,30 @@
+      E1:     C1 CALL pred track_through_catch.main/2-0 (cc_multi) track_through_catch.m:13
+mdb> mdb> echo on
+Command echo enabled.
+mdb> untrust 0
+mdb> table_io start
+I/O tabling started.
+mdb> break r
+ 0: + stop  interface pred track_through_catch.r/2-0 (det)
+mdb> c
+      E2:     C2 CALL pred track_through_catch.r/2-0 (det) track_through_catch.m:30 (track_through_catch.m:26)
+mdb> delete *
+ 0: E stop  interface pred track_through_catch.r/2-0 (det)
+mdb> f
+      E3:     C2 EXIT pred track_through_catch.r/2-0 (det) track_through_catch.m:30 (track_through_catch.m:26)
+mdb> dd
+r(2, 2)
+Valid? b 1
+browser> track -a
+succeeded(2)
+p(2)
+Valid? info
+Context of current question : track_through_catch.m:21 (track_through_catch.m:14)
+Search mode                 : top down                                           
+The current question was chosen because the marked subterm was bound by
+the unification inside the predicate track_through_catch.p/1
+(track_through_catch.m:21). The path to the subterm in the atom is 1.
+dd> quit
+Diagnosis aborted.
+      E3:     C2 EXIT pred track_through_catch.r/2-0 (det) track_through_catch.m:30 (track_through_catch.m:26)
+mdb> quit -y

@@ -699,8 +699,15 @@ wrap_exception(Exception, exception(Exception)).
 :- mode catch_impl(pred(out) is multi,     in(handler), out) is multi.
 :- mode catch_impl(pred(out) is nondet,    in(handler), out) is nondet.
 
-% by default we call the external implementation, but specific backends
+%
+% By default we call the external implementation, but specific backends
 % can provide their own definition using foreign_proc.
+% NOTE: The subterm dependency tracking algorithm in the declarative
+%       debugger expects builtin_catch to only be called from catch_impl.
+%       If catch_impl is modified for a backend that supports debugging,
+%       or builtin_catch is called from somewhere else, then
+%       the code in browser/declarative_tree.m will need to be modified.
+%
 
 throw_impl(Univ::in) :-
 	builtin_throw(Univ).
