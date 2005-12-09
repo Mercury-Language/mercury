@@ -16,9 +16,17 @@ BUILDING A MINGW COMPILER UNDER MSYS
 To build the source distribution under MSYS follow these steps:
 
 1.  Download and install MinGW and MSYS (available from www.mingw.org).
-    For MinGW install "the minimal set of packages required to build C/C++" and
-    "the full set of utility packages".
-
+    You will need to install the following MinGW packages:
+      * gcc-core-3.4.2-20040916-1.tar.gz
+      * mingw-runtime-3.9.tar.gz
+      * w32api-3.5.tar.gz
+      * binutils-2.15.91-20040904-1.tar.gz
+    and the following MSYS packages:
+      * MSYS-1.0.10.exe
+      * msysDTK-1.0.1.exe
+    Later versions of the above packages may also work, but earlier versions
+    should be avoided.
+    
 2.  Open an MSYS session and unpack the source distribution with a command 
     like:
     tar -xvzf mercury-compiler-rotd-2005-09-29-unstable.tar.gz
