@@ -1,0 +1,18 @@
+      E1:     C1 CALL pred uci_index.main/2-0 (det) uci_index.m:13
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> step
+      E2:     C2 CALL func uci_index.mai/0-0 (det)
+mdb> step
+      E3:     C2 EXIT func uci_index.mai/0-0 (det)
+mdb> step
+      E4:     C3 CALL func uci_index.mbi/0-0 (det)
+mdb> step
+      E5:     C3 EXIT func uci_index.mbi/0-0 (det)
+mdb> step
+      E6:     C4 CALL __Compare__ for uci_index.i/0-0 (det)
+mdb> step
+      E7:     C5 CALL pred private_builtin.builtin_int_lt/2-0 (semidet)
+mdb> quit -y
