@@ -750,7 +750,7 @@ index0_det(List, N) = Elem :-
 :- pred index0(any_list(T)::ia, int::in, T::oa) is semidet.
 
 index0([X | Xs], N, Y) :-
-    ( if N = 0 then Y = X else index0(Xs, N, Y) ).
+    ( if N = 0 then Y = X else index0(Xs, N - 1, Y) ).
 
 index1_det(List, N) = index0_det(List, N - 1).
 
