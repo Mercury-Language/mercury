@@ -390,6 +390,7 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
 
 mlds_output_init_and_final_comments(ModuleName,
         UserInitPredCNames, UserFinalPredCNames, !IO) :-
+    io.write_string("/*\n", !IO),
     (
         UserInitPredCNames = [],
         UserFinalPredCNames = []
@@ -398,17 +399,17 @@ mlds_output_init_and_final_comments(ModuleName,
         % any module init or final preds.
         true
     ;
-        io.write_string("/*\n", !IO),
         io.write_string("INIT ", !IO),
         output_init_name(ModuleName, !IO),
         io.write_string("init\n", !IO),
         list.foldl(mlds_output_required_user_init_comment,
             UserInitPredCNames, !IO),
         list.foldl(mlds_output_required_user_final_comment,
-            UserFinalPredCNames, !IO),
-        io.write_string("ENDINIT\n", !IO),
-        io.write_string("*/\n\n", !IO)
-    ).
+            UserFinalPredCNames, !IO)
+    ),
+    % We always write out ENDINIT so that mkinit doesn't scan the whole file.
+    io.write_string("ENDINIT\n", !IO),
+    io.write_string("*/\n\n", !IO).
 
 :- pred mlds_output_required_user_init_comment(string::in, io::di, io::uo)
     is det.
