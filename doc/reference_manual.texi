@@ -9118,14 +9118,6 @@ three different pragmas for tabling, to cover these three cases:
 and throws an exception if a loop is detected,
 while @samp{pragma minimal_model} computes the ``minimal model'' semantics.
 
-@c XXX we should fix this bug...
-@cartouche
-@strong{Warning:}
-The current implementation of @samp{pragma memo} declarations
-is not designed to work for procedures
-with determinism @samp{nondet} or @samp{multi}.
-@end cartouche
-
 The syntax for each of these declarations is
 
 @example
