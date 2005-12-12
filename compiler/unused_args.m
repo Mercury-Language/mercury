@@ -192,20 +192,8 @@ unused_args_answer_to_string(unused_args(Args)) =
 :- func unused_args_answer_from_string(string) = unused_args_answer is semidet.
 
 unused_args_answer_from_string(String) = unused_args(Args) :-
-    string__foldl2(accumulate_ints_from_chars, String, [], Digits, [], Args0),
-    Args = list__reverse([det_to_int(from_rev_char_list(Digits)) | Args0]),
-    semidet_succeed.
-
-:- pred accumulate_ints_from_chars(char::in,
-    list(char)::in, list(char)::out, list(int)::in, list(int)::out) is det.
-
-accumulate_ints_from_chars(Char, !Digits, !Ints) :-
-    ( char__is_digit(Char) ->
-        !:Digits = [Char | !.Digits]
-    ;
-        !:Digits = [],
-        !:Ints = [det_to_int(from_rev_char_list(!.Digits)) | !.Ints]
-    ).
+    Words = string.words(String),
+    list.map(string.to_int, Words, Args).
 
 %-----------------------------------------------------------------------------%
 
@@ -1245,10 +1233,6 @@ get_unused_arg_nos(LocalVars, [HeadVar | HeadVars], ArgNo, UnusedArgs) :-
 
 fixup_unused_args(VarUsage, PredProcs, ProcCallInfo, !ModuleInfo, VeryVerbose,
         !IO) :-
-    map__keys(VarUsage, VarUsageKeys),
-    list__sort(PredProcs, SortedPredProcs),
-    expect(unify(VarUsageKeys, SortedPredProcs),
-        this_file, "fixup_unused_args: VarUsageKeys != SortedPredProcs"),
     list__foldl2(fixup_unused_args_proc(VeryVerbose, VarUsage, ProcCallInfo),
         PredProcs, !ModuleInfo, !IO).
 

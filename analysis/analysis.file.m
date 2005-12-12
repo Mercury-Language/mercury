@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 University of Melbourne.
+% Copyright (C) 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -224,7 +224,8 @@ read_analysis_file_3(ParseEntry, Results0, Results, !IO) :-
 	parser__read_term(TermResult, !IO),
 	(
 		TermResult = term(_, Term) `with_type` read_term,
-		ParseEntry(Term, Results0, Results)
+		ParseEntry(Term, Results0, Results1),
+		read_analysis_file_3(ParseEntry, Results1, Results, !IO)
 	;
 		TermResult = eof,
 		Results = Results0
