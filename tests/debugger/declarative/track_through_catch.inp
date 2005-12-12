@@ -2,13 +2,14 @@ register --quiet
 echo on
 untrust 0
 table_io start
-break r
+break try
+*
 c
-delete *
 f
 dd
-b 1
-track -a
+b 2
+cd 1
+track
 info
 quit
 quit -y

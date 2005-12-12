@@ -188,3 +188,22 @@ MR_print_debug_vars(FILE *fp, MR_Event_Details *event_details)
         (long) MR_trace_call_depth);
 #endif
 }
+
+MR_bool
+MR_trace_proc_layout_is_builtin_catch(const MR_Proc_Layout *layout)
+{
+    const MR_User_Proc_Id   *user;
+
+    if (MR_PROC_LAYOUT_HAS_PROC_ID(layout)) {
+        if (! MR_PROC_LAYOUT_IS_UCI(layout)) {
+            user = &layout->MR_sle_user;
+            if (MR_streq(user->MR_user_decl_module, "exception") &&
+                MR_streq(user->MR_user_name, "builtin_catch") &&
+                (user->MR_user_arity == 3))
+            {
+                return MR_TRUE;
+            }
+        }
+    }
+    return MR_FALSE;
+}

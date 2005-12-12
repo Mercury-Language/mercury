@@ -69,4 +69,12 @@ extern	void	MR_print_succip_reg(FILE *fp, MR_Word *saved_regs);
 extern	void	MR_print_r_regs(FILE *fp, MR_Word *saved_regs);
 extern	void	MR_print_debug_vars(FILE *fp, MR_Event_Details *event_details);
 
+/*
+** This function returns MR_TRUE if the layout is for exception.builtin_catch
+** and false otherwise.  Because builtin_catch creates a stack frame, but no
+** events, it must be handled specially by some parts of the debugger.
+*/
+extern	MR_bool	MR_trace_proc_layout_is_builtin_catch(
+			const MR_Proc_Layout *layout);
+
 #endif /* MERCURY_TRACE_UTIL_H */

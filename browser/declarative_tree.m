@@ -49,6 +49,7 @@
 
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.io_action.
+:- import_module mdb.term_rep.
 :- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
@@ -838,22 +839,11 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 		;
 			MaybeProcRep = yes(ProcRep),
 			(
-				%
-				% catch_impl's body is a single call to
-				% builtin_catch.  builtin_catch doesn't
-				% generate any events, so we need to
-				% handle catch_impl specially.
-				% If the subterm being tracked is an
-				% input to builtin_catch then we know the
-				% origin will be in the first argument of
-				% catch_impl, because builtin_catch is
-				% only called from catch_impl.
-				% 
-				proc_rep_is_catch_impl(ProcRep),
-				StartLoc = parent_goal(_, _)
+				trace_dependency_special_case(Store, ProcRep,
+					Ref, StartLoc, ArgNum, TermPath,
+					NodeId, Origin0)
 			->
-				Origin = input(user_head_var(1),
-					[ArgNum | TermPath])
+				Origin = Origin0
 			;
 				trace_dependency_in_proc_rep(Store, TermPath,
 					StartLoc, ArgNum, TotalArgs, NodeId,
@@ -866,6 +856,65 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 		% The only time a subtree will be required is if the
 		% mode of the subterm is output.
 		Mode = subterm_out
+	).
+
+	% trace_dependency_special_case handles special cases not
+	% handled by the usual subterm dependency tracking algorithm,
+	% At the moment it handles tracking of subterms through catch_impl.
+	%
+:- pred trace_dependency_special_case(S::in, proc_rep::in, R::in,
+	start_loc(R)::in, int::in, term_path::in, R::in,
+	subterm_origin(edt_node(R))::out) is semidet
+	<= annotated_trace(S, R).
+
+trace_dependency_special_case(Store, ProcRep, Ref, StartLoc, ArgNum, TermPath,
+		NodeId, Origin) :-
+	%
+	% catch_impl's body is a single call to
+	% builtin_catch.  builtin_catch doesn't
+	% generate any events, so we need to
+	% handle catch_impl specially.
+	% 
+	proc_rep_is_catch_impl(ProcRep),
+	(
+		StartLoc = parent_goal(_, _),
+		%
+		% The subterm being tracked is an
+		% input to builtin_catch so we know the
+		% origin will be in the first argument of
+		% catch_impl, because builtin_catch is
+		% only called from catch_impl.
+		%
+		Origin = input(user_head_var(1),
+			[ArgNum | TermPath])
+	;
+		StartLoc = cur_goal,
+		%
+		% The subterm being tracked is an output of 
+		% catch_impl so we know its origin will be the output
+		% of the closure passed to try.
+		% If the closure succeeded, then we continue to track the
+		% subterm in the child call to
+		% exception.wrap_success_or_failure, otherwise we stop tracking
+		% at the catch_impl.  XXX In future we should track exception
+		% values to the throw that created them.
+		%
+		exit_node_from_id(Store, Ref, ExitNode),
+		ExitAtom = get_trace_exit_atom(ExitNode),
+		ExitAtom = atom(_, Args),
+		list.index1_det(Args, ArgNum, TryResultArgInfo),
+		TryResultArgInfo = arg_info(_, _, yes(TryResultRep)),
+		rep_to_univ(TryResultRep, TryResultUniv),
+		univ_value(TryResultUniv) = TryResult,
+		std_util.deconstruct(TryResult, Functor, _, _),
+		(
+			Functor = "succeeded"
+		->
+			Origin = output(dynamic(NodeId), 
+				any_head_var_from_back(1), TermPath)
+		;
+			Origin = primitive_op("exception.m", 0, builtin_call)
+		)
 	).
 
 :- pred trace_dependency_in_proc_rep(S::in, term_path::in, 
@@ -1772,9 +1821,17 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 		traverse_call(BoundVars, File, Line, Args, MaybeNodeId, Prims,
 			Var0, TermPath0, Store, ProcRep, Origin)
 	;
-		AtomicGoal = plain_call_rep(_, _, Args),
-		traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
-			Prims, Var0, TermPath0, Store, ProcRep, Origin)
+		AtomicGoal = plain_call_rep(Module, Name, Args),
+		( 
+			list.member(Var0, BoundVars),
+			plain_call_is_special_case(Module, Name, Args, NewVar)
+		->
+			traverse_primitives(Prims, NewVar, TermPath0, Store,
+				ProcRep, Origin)
+		;
+			traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
+				Prims, Var0, TermPath0, Store, ProcRep, Origin)
+		)
 	;
 		AtomicGoal = builtin_call_rep(_, _, _),
 		( list.member(Var0, BoundVars) ->
@@ -1784,6 +1841,23 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 				Store, ProcRep, Origin)
 		)
 	).
+
+	% Some foreign calls, such as casts, are handled specially
+	% to improve the accuracy of the subterm dependency tracking
+	% algorithm.
+	%
+:- pred plain_call_is_special_case(string::in, string::in, list(var_rep)::in,
+	var_rep::out) is semidet.
+
+plain_call_is_special_case(Module, Name, Args, NewVar) :-
+	%
+	% std_util.cc_multi_equal is the same as a unification for the
+	% purposes of subterm dependency tracking.
+	%
+	Module = "std_util",
+	Name = "cc_multi_equal",
+	list.length(Args, 3),
+	index1_det(Args, 2) = NewVar.
 
 :- type plain_call_info
 	--->	plain_call_info(

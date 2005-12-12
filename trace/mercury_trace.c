@@ -1219,6 +1219,17 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 #endif
 
         level_layout = return_label_layout->MR_sll_entry;
+
+        /*
+        ** Don't unwind to builtin_catch, because builtin_catch has
+        ** no CALL event, even though it has a stack frame.
+        */
+        if ((i == ancestor_level - 1) &&
+            MR_trace_proc_layout_is_builtin_catch(level_layout))
+        {
+            i--;
+        }
+            
         *problem = MR_undo_updates_of_maxfr(level_layout,
                 *base_sp_ptr, *base_curfr_ptr, base_maxfr_ptr);
 

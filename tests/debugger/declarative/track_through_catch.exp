@@ -4,18 +4,37 @@ Command echo enabled.
 mdb> untrust 0
 mdb> table_io start
 I/O tabling started.
-mdb> break r
- 0: + stop  interface pred track_through_catch.r/2-0 (det)
+mdb> break try
+Ambiguous procedure specification. The matches are:
+0: pred exception.try/3-3 (cc_multi)
+1: pred exception.try/3-2 (cc_multi)
+2: pred exception.try/3-1 (cc_multi)
+3: pred exception.try/3-0 (cc_multi)
+4: pred exception.try/2-3 (cc_multi)
+5: pred exception.try/2-2 (cc_multi)
+6: pred exception.try/2-1 (cc_multi)
+7: pred exception.try/2-0 (cc_multi)
+
+Which do you want to put a breakpoint on (0-7 or *)? *
+ 0: + stop  interface pred exception.try/3-3 (cc_multi)
+ 1: + stop  interface pred exception.try/3-2 (cc_multi)
+ 2: + stop  interface pred exception.try/3-1 (cc_multi)
+ 3: + stop  interface pred exception.try/3-0 (cc_multi)
+ 4: + stop  interface pred exception.try/2-3 (cc_multi)
+ 5: + stop  interface pred exception.try/2-2 (cc_multi)
+ 6: + stop  interface pred exception.try/2-1 (cc_multi)
+ 7: + stop  interface pred exception.try/2-0 (cc_multi)
 mdb> c
-      E2:     C2 CALL pred track_through_catch.r/2-0 (det) track_through_catch.m:30 (track_through_catch.m:26)
-mdb> delete *
- 0: E stop  interface pred track_through_catch.r/2-0 (det)
+      E2:     C2 CALL pred exception.try/2-0 (cc_multi) exception.m:470 (track_through_catch.m:15)
 mdb> f
-      E3:     C2 EXIT pred track_through_catch.r/2-0 (det) track_through_catch.m:30 (track_through_catch.m:26)
+      E3:     C3 CALL pred exception.try/3-0 (cc_multi) exception.m:474 (exception.m:472)
+      E4:     C3 EXIT pred exception.try/3-0 (cc_multi) exception.m:474 (exception.m:472)
+      E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:470 (track_through_catch.m:15)
 mdb> dd
-r(2, 2)
-Valid? b 1
-browser> track -a
+try(q(2), succeeded(2))
+Valid? b 2
+browser> cd 1
+browser> track
 succeeded(2)
 p(2)
 Valid? info
@@ -26,5 +45,5 @@ the unification inside the predicate track_through_catch.p/1
 (track_through_catch.m:21). The path to the subterm in the atom is 1.
 dd> quit
 Diagnosis aborted.
-      E3:     C2 EXIT pred track_through_catch.r/2-0 (det) track_through_catch.m:30 (track_through_catch.m:26)
+      E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:470 (track_through_catch.m:15)
 mdb> quit -y
