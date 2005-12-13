@@ -461,8 +461,8 @@ case $HOST in
 					asm_fast.gc.decldebug		\
 					hlc				\
 					hlc.gc				\
-					hlc.gc.prof			\
-					hlc.gc.memprof"
+					hl.gc				\
+					hl.gc.tr"
 		;;
 	boadicea)
 		CONFIG_OPTS=""
