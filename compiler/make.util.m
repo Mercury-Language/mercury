@@ -454,9 +454,8 @@ unredirect_output(ModuleName, ErrorOutputStream, !Info, !IO) :-
                 LinesToWrite, !IO),
             io__output_stream(CurrentOutputStream, !IO),
             io__input_stream_foldl2_io(TmpErrorInputStream,
-                write_error_char(ErrorFileOutputStream,
-                CurrentOutputStream, LinesToWrite),
-                0, TmpFileInputRes, !IO),
+                write_error_char(ErrorFileOutputStream, CurrentOutputStream),
+                LinesToWrite, TmpFileInputRes, !IO),
             (
                 TmpFileInputRes = ok(_)
             ;
@@ -492,18 +491,26 @@ unredirect_output(ModuleName, ErrorOutputStream, !Info, !IO) :-
     io__remove_file(TmpErrorFileName, _, !IO).
 
 :- pred write_error_char(io__output_stream::in, io__output_stream::in,
-    int::in, char::in, int::in, int::out, io::di, io::uo) is det.
+    char::in, int::in, int::out, io::di, io::uo) is det.
 
-write_error_char(FullOutputStream, PartialOutputStream, LineLimit,
-        Char, !Lines, !IO) :-
+write_error_char(FullOutputStream, PartialOutputStream, Char,
+        !LinesRemaining, !IO) :-
     io__write_char(FullOutputStream, Char, !IO),
-    ( !.Lines < LineLimit ->
-        io__write_char(PartialOutputStream, Char, !IO)
-    ;
-        true
-    ),
-    ( Char = '\n' ->
-        !:Lines = !.Lines + 1
+    ( !.LinesRemaining > 0 ->
+        io__write_char(PartialOutputStream, Char, !IO),
+        ( Char = '\n' ->
+            !:LinesRemaining = !.LinesRemaining - 1
+        ;
+            true
+        )
+    ; !.LinesRemaining = 0 ->
+        io.output_stream_name(FullOutputStream, FullOutputFileName, !IO),
+        io.write_string(PartialOutputStream, "... error log truncated, see `",
+            !IO),
+        io.write_string(PartialOutputStream, FullOutputFileName, !IO),
+        io.write_string(PartialOutputStream, "' for the complete log.\n", !IO),
+        % Only write the above message once.
+        !:LinesRemaining = -1
     ;
         true
     ).
