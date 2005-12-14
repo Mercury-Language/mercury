@@ -274,7 +274,7 @@ store__new(S) :-
 
 :- pragma foreign_proc("C",
     store__do_init(_S0::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     /* TypeInfo_for_S */
 ").
@@ -308,7 +308,7 @@ store__new(S) :-
 
 :- pragma foreign_proc("C",
     new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_offset_incr_hp_msg(Mutvar, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
         MR_PROC_LABEL, ""store:mutvar/2"");
@@ -319,7 +319,7 @@ store__new(S) :-
 
 :- pragma foreign_proc("C",
     get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     Val = * (MR_Word *) Mutvar;
     S = S0;
@@ -327,7 +327,7 @@ store__new(S) :-
 
 :- pragma foreign_proc("C",
     set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     * (MR_Word *) Mutvar = Val;
     S = S0;
@@ -365,7 +365,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
 
 :- pragma foreign_proc("C",
     unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_offset_incr_hp_msg(Mutvar, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
         MR_PROC_LABEL, ""store:mutvar/2"");
@@ -469,7 +469,7 @@ store__new_cyclic_mutvar(Func, MutVar, !Store) :-
 
 :- pragma foreign_proc("C",
     new_ref(Val::di, Ref::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
         MR_PROC_LABEL, ""store:ref/2"");
@@ -498,7 +498,7 @@ copy_ref_value(Ref, Val) -->
 
 :- pragma foreign_proc("C",
     unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure],
+[will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     Val = * (MR_Word *) Ref;
     S = S0;

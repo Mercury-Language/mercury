@@ -490,7 +490,7 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 
 :- pragma foreign_proc("C",
     bounds_checks,
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 #ifdef ML_OMIT_ARRAY_BOUNDS_CHECKS
     SUCCESS_INDICATOR = MR_FALSE;
@@ -574,12 +574,11 @@ array__init(Size, Item, Array) :-
         array__init_2(Size, Item, Array)
     ).
 
-:- pred array__init_2(int, T, array(T)).
-:- mode array__init_2(in, in, array_uo) is det.
+:- pred array__init_2(int::in, T::in, array(T)::array_uo) is det.
 
 :- pragma foreign_proc("C",
     array__init_2(Size::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
     ML_init_array(Array, Size, Item);
@@ -587,7 +586,7 @@ array__init(Size, Item, Array) :-
 
 :- pragma foreign_proc("C",
     array__make_empty_array(Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     ML_alloc_array(Array, 1, MR_PROC_LABEL);
     ML_init_array(Array, 0, 0);
@@ -639,14 +638,14 @@ array__init(Size, Item, Array) :-
 
 :- pragma foreign_proc("C",
     array__min(Array::array_ui, Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     /* Array not used */
     Min = 0;
 ").
 :- pragma foreign_proc("C",
     array__min(Array::in, Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     /* Array not used */
     Min = 0;
@@ -684,13 +683,13 @@ array__init(Size, Item, Array) :-
 
 :- pragma foreign_proc("C",
     array__max(Array::array_ui, Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Max = Array->size - 1;
 ").
 :- pragma foreign_proc("C",
     array__max(Array::in, Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Max = Array->size - 1;
 ").
@@ -744,13 +743,13 @@ array__bounds(Array, Min, Max) :-
 
 :- pragma foreign_proc("C",
     array__size(Array::array_ui, Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Max = Array->size;
 ").
 :- pragma foreign_proc("C",
     array__size(Array::in, Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Max = Array->size;
 ").
@@ -843,13 +842,13 @@ array__lookup(Array, Index, Item) :-
 
 :- pragma foreign_proc("C",
     array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Item = Array->elements[Index];
 ").
 :- pragma foreign_proc("C",
     array__unsafe_lookup(Array::in, Index::in, Item::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Item = Array->elements[Index];
 ").
@@ -894,7 +893,7 @@ array__set(Array0, Index, Item, Array) :-
 
 :- pragma foreign_proc("C",
     array__unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Array0->elements[Index] = Item; /* destructive update! */
     Array = Array0;
@@ -969,7 +968,7 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 
 :- pragma foreign_proc("C",
     array__resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     if ((Array0)->size == Size) {
         Array = Array0;
@@ -1084,7 +1083,7 @@ array__shrink(Array0, Size, Array) :-
 
 :- pragma foreign_proc("C",
     array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
     ML_shrink_array(Array, Array0, Size);
@@ -1148,7 +1147,7 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 
 :- pragma foreign_proc("C",
     array__copy(Array0::array_ui, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     ML_alloc_array(Array, Array0->size + 1, MR_PROC_LABEL);
     ML_copy_array(Array, (MR_ConstArrayPtr) Array0);
@@ -1156,7 +1155,7 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 
 :- pragma foreign_proc("C",
     array__copy(Array0::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     ML_alloc_array(Array, Array0->size + 1, MR_PROC_LABEL);
     ML_copy_array(Array, (MR_ConstArrayPtr) Array0);

@@ -171,18 +171,21 @@ builtin_compare_string(R, S1, S2) :-
 
 :- pred builtin_strcmp(int::out, string::in, string::in) is det.
 
-:- pragma foreign_proc("C", builtin_strcmp(Res::out, S1::in, S2::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
+:- pragma foreign_proc("C",
+    builtin_strcmp(Res::out, S1::in, S2::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Res = strcmp(S1, S2);
 ").
 
-:- pragma foreign_proc("C#", builtin_strcmp(Res::out, S1::in, S2::in),
+:- pragma foreign_proc("C#",
+    builtin_strcmp(Res::out, S1::in, S2::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Res = System.String.Compare(S1, S2);
 ").
-:- pragma foreign_proc("Java", builtin_strcmp(Res::out, S1::in, S2::in),
+:- pragma foreign_proc("Java",
+    builtin_strcmp(Res::out, S1::in, S2::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Res = S1.compareTo(S2);
@@ -549,7 +552,7 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
     type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
         TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
 ").
@@ -557,7 +560,7 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
     unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
         Index::in, TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
 ").
@@ -565,7 +568,7 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
     superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
         TypeClassInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     TypeClassInfo =
         MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
@@ -574,7 +577,7 @@ special__Compare____base_typeclass_info_1_0(
 :- pragma foreign_proc("C",
     instance_constraint_from_typeclass_info(TypeClassInfo0::in,
         Index::in, TypeClassInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     TypeClassInfo =
         MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
@@ -987,7 +990,7 @@ trailed_nondet_pragma_foreign_code :-
 
 :- pragma foreign_proc("C",
     gc_trace(Pointer::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
 #ifdef MR_NATIVE_GC
     *(MR_Word *)Pointer =
@@ -1002,14 +1005,14 @@ trailed_nondet_pragma_foreign_code :-
 
 :- pragma foreign_proc("C",
     free_heap(Val::di),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     MR_free_heap((void *) Val);
 ").
 
 :- pragma foreign_proc("C",
     mark_hp(SavedHeapPointer::out),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
 #ifndef MR_CONSERVATIVE_GC
     MR_mark_hp(SavedHeapPointer);
@@ -1021,7 +1024,7 @@ trailed_nondet_pragma_foreign_code :-
 
 :- pragma foreign_proc("C",
     restore_hp(SavedHeapPointer::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
 #ifndef MR_CONSERVATIVE_GC
     MR_restore_hp(SavedHeapPointer);
@@ -1310,9 +1313,9 @@ sorry(PredName) :-
 no_clauses(PredName) :-
     error("no clauses for " ++ PredName).
 
-:- pragma foreign_proc(c,
+:- pragma foreign_proc("C",
     imp,
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "").
 :- pragma foreign_proc(il,  
     imp,
@@ -1323,9 +1326,10 @@ no_clauses(PredName) :-
     [will_not_call_mercury, thread_safe],
 "").
 
-:- pragma foreign_proc(c,
+:- pragma foreign_proc("C",
     semip,
-    [will_not_call_mercury, thread_safe, promise_semipure],
+    [will_not_call_mercury, thread_safe, promise_semipure,
+        will_not_modify_trail],
 "").
 :- pragma foreign_proc(il,  
     semip,

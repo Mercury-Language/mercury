@@ -408,13 +408,13 @@ get_one_solution(CCPred) = OutVal :-
 
 :- pragma foreign_proc("C",
     cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
     Y = X;
 ").
 :- pragma foreign_proc("C",
     cc_cast(X :: (pred(out) is cc_nondet)) = (Y :: out(pred(out) is semidet)),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
     Y = X;
 ").
@@ -459,7 +459,7 @@ get_one_solution_io(Pred, X, !IO) :-
 :- pragma foreign_proc("C",
     cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
         (Y :: out(pred(out, di, uo) is det)),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
     Y = X;
 ").
@@ -730,7 +730,7 @@ deep_copy(java.lang.Object original) {
 
 :- pragma foreign_proc("C",
     copy(Value::ui, Copy::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
     MR_save_transient_registers();
     Copy = MR_deep_copy(Value, (MR_TypeInfo) TypeInfo_for_T, NULL, NULL);
@@ -739,7 +739,7 @@ deep_copy(java.lang.Object original) {
 
 :- pragma foreign_proc("C",
     copy(Value::in, Copy::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
     MR_save_transient_registers();
     Copy = MR_deep_copy(Value, (MR_TypeInfo) TypeInfo_for_T, NULL, NULL);

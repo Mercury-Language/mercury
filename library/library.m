@@ -149,7 +149,7 @@
 
 :- pragma foreign_proc("C",
     library__version(Version::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_ConstString version_string =
         MR_VERSION "", configured for "" MR_FULLARCH;

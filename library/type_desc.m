@@ -322,7 +322,7 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
 
 :- pragma foreign_proc("C",
     is_univ_pseudo_type_desc(PseudoTypeDesc::in, TypeVarNum::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
     MR_PseudoTypeInfo   pseudo_type_info;
 
@@ -346,7 +346,7 @@ is_univ_pseudo_type_desc(_PseudoTypeDesc, -1) :-
 
 :- pragma foreign_proc("C",
     is_exist_pseudo_type_desc(PseudoTypeDesc::in, TypeVarNum::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
     MR_PseudoTypeInfo   pseudo_type_info;
 
@@ -368,7 +368,7 @@ is_exist_pseudo_type_desc(_PseudoTypeDesc, -1) :-
 
 :- pragma foreign_proc("C",
     type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
     PseudoTypeDesc = TypeDesc;
 ").
@@ -394,7 +394,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
 
 :- pragma foreign_proc("C",
     type_of(_Value::unused) = (TypeInfo::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "{
     TypeInfo = TypeInfo_for_T;
 
@@ -546,7 +546,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 
 :- pragma foreign_proc("C",
     type_ctor(TypeInfo::in) = (TypeCtor::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "{
     MR_TypeCtorInfo type_ctor_info;
     MR_TypeInfo     type_info;
@@ -562,7 +562,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 
 :- pragma foreign_proc("C",
     pseudo_type_ctor(PseudoTypeInfo::in) = (TypeCtor::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "{
     MR_TypeCtorInfo     type_ctor_info;
     MR_PseudoTypeInfo   pseudo_type_info;
@@ -585,7 +585,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 
 :- pragma foreign_proc("C",
     type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
     MR_TypeInfo     type_info;
@@ -631,7 +631,7 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 :- pragma foreign_proc("C",
     pseudo_type_ctor_and_args(PseudoTypeDesc::in, TypeCtorDesc::out,
         ArgPseudoTypeInfos::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "{
     MR_TypeCtorDesc     type_ctor_desc;
     MR_PseudoTypeInfo   pseudo_type_info;
@@ -658,7 +658,7 @@ pseudo_type_ctor_and_args(_, _, _) :-
 :- pragma promise_pure(make_type/2).
 :- pragma foreign_proc("C",
     make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
     MR_TypeCtorInfo type_ctor_info;
@@ -699,7 +699,7 @@ pseudo_type_ctor_and_args(_, _, _) :-
 
 :- pragma foreign_proc("C",
     make_type(TypeCtorDesc::out, ArgTypes::out) = (TypeDesc::in),
-    [will_not_call_mercury, thread_safe],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
     MR_TypeInfo     type_info;
@@ -716,7 +716,7 @@ pseudo_type_ctor_and_args(_, _, _) :-
 :- pragma foreign_proc("C",
     type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
         TypeCtorName::out, TypeCtorArity::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
 
@@ -773,7 +773,7 @@ type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
     % itself. It is intended for use from C code, since Mercury code can access
     % this type_info easily enough even without this predicate.
     %
-    % XXX This code relies on the type "type_desc:type_desc" being the
+    % XXX This code relies on the type "type_desc.type_desc" being the
     % same type as the builtin type "typeinfo".
     %
 :- func get_type_info_for_type_info = type_desc__type_desc.

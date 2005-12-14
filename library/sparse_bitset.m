@@ -1103,7 +1103,7 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
     % better to be safe.
 :- pragma foreign_proc("C",
     make_bitset_elem(A::in, B::in) = (Pair::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "{
 #define ML_BITSET_TAG MR_FIRST_UNRESERVED_RAW_TAG
 

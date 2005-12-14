@@ -438,7 +438,7 @@ X rem Y = Rem :-
 
 :- pragma foreign_proc("C",
     domain_checks,
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
     SUCCESS_INDICATOR = MR_FALSE;
@@ -610,7 +610,7 @@ is(X, X).
 
 :- pragma foreign_proc("C",
     int__to_float(IntVal::in, FloatVal::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     FloatVal = IntVal;
 ").
@@ -637,7 +637,7 @@ is(X, X).
 
 :- pragma foreign_proc("C",
     int__max_int(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     if (sizeof(MR_Integer) == sizeof(int)) {
         Max = INT_MAX;
@@ -650,7 +650,7 @@ is(X, X).
 
 :- pragma foreign_proc("C",
     int__min_int(Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     if (sizeof(MR_Integer) == sizeof(int)) {
         Min = INT_MIN;
@@ -663,28 +663,28 @@ is(X, X).
 
 :- pragma foreign_proc("C",
     int__bits_per_int(Bits::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Bits = ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
     int__quot_bits_per_int(Int::in) = (Div::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Div = Int / ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
     int__times_bits_per_int(Int::in) = (Result::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Result = Int * ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
     int__rem_bits_per_int(Int::in) = (Rem::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Rem = Int % ML_BITS_PER_INT;
 ").

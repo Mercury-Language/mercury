@@ -451,14 +451,14 @@ char__det_from_int(Int) = Char :-
 
 :- pragma foreign_proc("C",
     char__to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Int = (MR_UnsignedChar) Character;
 ").
 
 :- pragma foreign_proc("C",
     char__to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
 ").

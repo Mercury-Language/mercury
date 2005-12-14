@@ -255,7 +255,7 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	domain_checks,
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = MR_FALSE;
@@ -292,7 +292,7 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float(IntVal::in) = (FloatVal::out),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
 	FloatVal = IntVal;
 ").
@@ -339,7 +339,7 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float__floor_to_int(X :: in) = (Floor :: out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Floor = (MR_Integer) floor(X);
 ").
@@ -365,7 +365,7 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float__round_to_int(X :: in) = (Round :: out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Round = (MR_Integer) floor(X + 0.5);
 ").
@@ -391,7 +391,7 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float__truncate_to_int(X :: in) = (Trunc :: out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Trunc = (MR_Integer) X;
 ").
@@ -498,7 +498,7 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	% non-negative, as this condition is not guaranteed by either API.
 :- pragma foreign_proc("C",
 	float__hash(F::in) = (H::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	H = MR_hash_float(F);
 ").
@@ -532,9 +532,9 @@ is_nan_or_inf(Float) :-
 	; is_inf(Float)
 	).
 
-:- pragma foreign_proc(c,
+:- pragma foreign_proc("C",
 	is_nan(Flt::in),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	SUCCESS_INDICATOR = MR_is_nan(Flt);
 ").
@@ -553,9 +553,9 @@ is_nan_or_inf(Float) :-
 	succeeded = java.lang.Double.isNaN(Flt);
 ").
 
-:- pragma foreign_proc(c,
+:- pragma foreign_proc("C",
 	is_inf(Flt::in),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	SUCCESS_INDICATOR = MR_is_inf(Flt);
 ").
@@ -614,7 +614,7 @@ is_nan_or_inf(Float) :-
 
 :- pragma foreign_proc("C",
 	float__max = (Max::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Max = ML_FLOAT_MAX;
 ").
@@ -633,7 +633,7 @@ is_nan_or_inf(Float) :-
 
 :- pragma foreign_proc("C",
 	float__min = (Min::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Min = ML_FLOAT_MIN;
 ").
@@ -654,7 +654,7 @@ float__min = 2.2250738585072014e-308.
 
 :- pragma foreign_proc("C",
 	float__epsilon = (Eps::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Eps = ML_FLOAT_EPSILON;
 ").
@@ -676,7 +676,7 @@ float__epsilon = 2.2204460492503131e-16.
 
 :- pragma foreign_proc("C",
 	float__radix = (Radix::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Radix = ML_FLOAT_RADIX;
 ").
@@ -694,7 +694,7 @@ float__radix = 2.
 
 :- pragma foreign_proc("C",
 	float__mantissa_digits = (MantDig::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	MantDig = ML_FLOAT_MANT_DIG;
 ").
@@ -710,7 +710,7 @@ float__mantissa_digits = 53.
 
 :- pragma foreign_proc("C",
 	float__min_exponent = (MinExp::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	MinExp = ML_FLOAT_MIN_EXP;
 ").
@@ -726,7 +726,7 @@ float__min_exponent = -1021.
 
 :- pragma foreign_proc("C",
 	float__max_exponent = (MaxExp::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	MaxExp = ML_FLOAT_MAX_EXP;
 ").

@@ -654,7 +654,7 @@ very_unsafe_perform_io(Goal, Result) :-
 
 :- impure pred make_io_state(io::uo) is det.
 :- pragma foreign_proc("C", make_io_state(_IO::uo),
-	[will_not_call_mercury, thread_safe], "").
+	[will_not_call_mercury, thread_safe, will_not_modify_trail], "").
 :- pragma foreign_proc("C#", make_io_state(_IO::uo),
 	[will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc("Java", make_io_state(_IO::uo),

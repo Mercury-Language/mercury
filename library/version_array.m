@@ -283,21 +283,21 @@ cmp_version_array_2(I, VAa, VAb, R) :-
 
 :- pragma foreign_proc("C",
     version_array.empty = (VA::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     VA = ML_va_new_empty();
 ").
 
 :- pragma foreign_proc("C",
     version_array.new(N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     VA = ML_va_new(N, X);
 ").
 
 :- pragma foreign_proc("C",
     resize(VA0::in, N::in, X::in) = (VA::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     VA = ML_va_resize(VA0, N, X);
 ").
@@ -305,7 +305,7 @@ cmp_version_array_2(I, VAa, VAb, R) :-
 resize(N, X, VA, resize(VA, N, X)).
 
 :- pragma foreign_proc("C", size(VA::in) = (N::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     N = ML_va_size(VA);
 ").
@@ -314,24 +314,24 @@ resize(N, X, VA, resize(VA, N, X)).
 
 :- pragma foreign_proc("C",
     get_if_in_range(VA::in, I::in, X::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     SUCCESS_INDICATOR = ML_va_get(VA, I, &X);
 ").
 
 :- pred set_if_in_range(version_array(T)::in, int::in, T::in,
-                    version_array(T)::out) is semidet.
+    version_array(T)::out) is semidet.
 
 :- pragma foreign_proc("C",
     set_if_in_range(VA0::in, I::in, X::in, VA::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     SUCCESS_INDICATOR = ML_va_set(VA0, I, X, &VA);
 ").
 
 :- pragma foreign_proc("C",
     unsafe_rewind(VA0::in) = (VA::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     VA = ML_va_rewind(VA0);
 ").

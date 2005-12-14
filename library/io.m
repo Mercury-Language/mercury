@@ -3089,8 +3089,9 @@ io__file_id(FileName, Result, !IO) :-
 
 % Can we retrieve inode numbers on this system.
 have_file_ids :- semidet_fail.
-:- pragma foreign_proc("C", have_file_ids,
-    [promise_pure, will_not_call_mercury, thread_safe],
+:- pragma foreign_proc("C",
+    have_file_ids,
+    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
 #if defined(MR_BROKEN_STAT_ST_INO) || !defined(MR_HAVE_STAT)
     /* Win32 returns junk in the st_ino field of `struct stat'. */
