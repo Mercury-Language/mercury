@@ -132,9 +132,11 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
     code_info__get_next_label(EndLabel, !CI),
 
     code_info__remember_position(!.CI, BranchStart),
+    PrevBranchModifiesTrail = no,
     generate_disjuncts(Goals, CodeModel, ResumeMap, no, HijackInfo,
-        DisjGoalInfo, EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
-        BranchStart, no, MaybeEnd, GoalsCode, !CI),
+        DisjGoalInfo, EndLabel, ReclaimHeap, PrevBranchModifiesTrail,
+        MaybeHpSlot, MaybeTicketSlot, BranchStart, no, MaybeEnd, GoalsCode,
+        !CI),
 
     goal_info_get_store_map(DisjGoalInfo, StoreMap),
     code_info__after_all_branches(StoreMap, MaybeEnd, !CI),
@@ -150,25 +152,29 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
 
 :- pred generate_disjuncts(list(hlds_goal)::in, code_model::in,
     resume_map::in, maybe(resume_point_info)::in, disj_hijack_info::in,
-    hlds_goal_info::in, label::in, bool::in, maybe(lval)::in, maybe(lval)::in,
-    position_info::in, maybe(branch_end_info)::in, maybe(branch_end_info)::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+    hlds_goal_info::in, label::in, bool::in, bool::in, maybe(lval)::in,
+    maybe(lval)::in, position_info::in, maybe(branch_end_info)::in,
+    maybe(branch_end_info)::out, code_tree::out, code_info::in,
+    code_info::out) is det.
 
-generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
     unexpected(this_file, "generate_disjuncts: empty disjunction!").
 generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         MaybeEntryResumePoint, HijackInfo, DisjGoalInfo, EndLabel, ReclaimHeap,
-        MaybeHpSlot0, MaybeTicketSlot, BranchStart0, MaybeEnd0, MaybeEnd,
-        Code, !CI) :-
+        PrevBranchModifiesTrail, MaybeHpSlot0, MaybeTicketSlot, BranchStart0,
+        MaybeEnd0, MaybeEnd, Code, !CI) :-
 
     code_info__reset_to_position(BranchStart0, !CI),
-
-        % If this is not the first disjunct, generate the
-        % resume point by which arrive at this disjunct.
-    ( MaybeEntryResumePoint = yes(EntryResumePoint) ->
+    %
+    % If this is not the first disjunct, generate the resume point by which
+    % we arrive at this disjunct.
+    %
+    (
+        MaybeEntryResumePoint = yes(EntryResumePoint), 
         code_info__generate_resume_point(EntryResumePoint,
             EntryResumePointCode, !CI)
     ;
+        MaybeEntryResumePoint = no,
         EntryResumePointCode = empty
     ),
 
@@ -178,28 +184,37 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         % Emit code for a non-last disjunct, including setting things
         % up for the execution of the next disjunct.
 
-        ( MaybeEntryResumePoint = yes(_) ->
-                % Reset the heap pointer to recover memory
-                % allocated by the previous disjunct(s),
-                % if necessary.
+        (
+            MaybeEntryResumePoint = yes(_),
+            % Reset the heap pointer to recover memory allocated by the
+            % previous disjunct(s), if necessary.
             code_info__maybe_restore_hp(MaybeHpSlot0, RestoreHpCode),
 
-                % Reset the solver state if necessary.
-            code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
-                RestoreTicketCode)
+            % Reset the solver state if necessary.
+            (
+                PrevBranchModifiesTrail = yes,
+                code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
+                    RestoreTicketCode)
+            ;
+                % Don't bother if the previous branch is known not to modify
+                % the trail.
+                PrevBranchModifiesTrail = no,
+                RestoreTicketCode = empty
+            )
         ;
+            MaybeEntryResumePoint = no,
             RestoreHpCode = empty,
             RestoreTicketCode = empty
         ),
-
-            % The pre_goal_update sanity check insists on
-            % no_resume_point, to make sure that all resume
-            % points have been handled by surrounding code.
+        %
+        % The pre_goal_update sanity check insists on no_resume_point, to make
+        % sure that all resume points have been handled by surrounding code.
+        %
         goal_info_set_resume_point(no_resume_point, GoalInfo0, GoalInfo),
         Goal = GoalExpr0 - GoalInfo,
-
-            % Save hp if it needs to be saved and hasn't been
-            % saved previously.
+        % 
+        % Save hp if it needs to be saved and hasn't been saved previously.
+        %
         (
             ReclaimHeap = yes,
             goal_may_allocate_heap(Goal),
@@ -207,15 +222,14 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         ->
             code_info__save_hp(SaveHpCode, HpSlot, !CI),
             MaybeHpSlot = yes(HpSlot),
-                % This method of updating BranchStart0 is
-                % ugly. The best alternative would be to
-                % arrange things so that a remember_position
-                % here could get BranchStart, but doing so
-                % is iffy because we have already created
-                % the resumption point for entry into this
-                % disjunction, which overwrites part of the
-                % location-dependent state originally in
-                % BranchStart0.
+            %
+            % This method of updating BranchStart0 is ugly. The best
+            % alternative would be to arrange things so that a
+            % remember_position here could get BranchStart, but doing so is
+            % iffy because we have already created the resumption point for
+            % entry into this disjunction, which overwrites part of the
+            % location-dependent state originally in BranchStart0.
+            %
             code_info__save_hp_in_branch(BranchSaveHpCode, BranchHpSlot,
                 BranchStart0, BranchStart),
             tree__flatten(SaveHpCode, HpCodeList),
@@ -261,19 +275,19 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             code_info__reset_resume_known(BranchStart, !CI)
         ),
 
-            % Forget the variables that are needed only at the
-            % resumption point at the start of the next disjunct,
-            % so that we don't generate exceptions when their
-            % storage is clobbered by the movement of the live
-            % variables to the places indicated in the store map.
+        % Forget the variables that are needed only at the resumption point at
+        % the start of the next disjunct, so that we don't generate exceptions
+        % when their storage is clobbered by the movement of the live
+        % variables to the places indicated in the store map.
+        %
         code_info__pop_resume_point(!CI),
         code_info__pickup_zombies(Zombies, !CI),
         code_info__make_vars_forward_dead(Zombies, !CI),
 
-            % Put every variable whose value is needed after
-            % the disjunction to the place indicated by StoreMap,
-            % and accumulate information about the code_info state
-            % at the ends of the branches so far.
+        % Put every variable whose value is needed after the disjunction to
+        % the place indicated by StoreMap, and accumulate information about
+        % the code_info state at the ends of the branches so far.
+        %
         goal_info_get_store_map(DisjGoalInfo, StoreMap),
         code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
             SaveCode, !CI),
@@ -282,10 +296,15 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             goto(label(EndLabel)) - "skip to end of nondet disj"
         ]),
 
+        % Check if this branch modifies the trail. If it doesn't then the next
+        % branch can avoid resetting it.
+        %
+        ThisBranchModifiesTrail = pred_to_bool(goal_may_modify_trail(Goal)),
+
         disj_gen__generate_disjuncts(Goals, CodeModel, FullResumeMap,
             yes(NextResumePoint), HijackInfo, DisjGoalInfo,
-            EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
-            BranchStart, MaybeEnd1, MaybeEnd, RestCode, !CI),
+            EndLabel, ReclaimHeap, ThisBranchModifiesTrail, MaybeHpSlot,
+            MaybeTicketSlot, BranchStart, MaybeEnd1, MaybeEnd, RestCode, !CI),
 
         Code = tree_list([EntryResumePointCode, RestoreHpCode,
             RestoreTicketCode, SaveHpCode, ModContCode, TraceCode,
@@ -294,12 +313,19 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
     ;
         % Emit code for the last disjunct
 
-            % Restore the heap pointer and solver state
-            % if necessary.
+        % Restore the heap pointer and solver state if necessary.
+        %
         code_info__maybe_restore_and_release_hp(MaybeHpSlot0, RestoreHpCode,
             !CI),
-        code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
-            undo, RestoreTicketCode, !CI),
+        (
+            PrevBranchModifiesTrail = yes,
+            code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot,
+                undo, RestoreTicketCode, !CI)
+        ;
+            PrevBranchModifiesTrail = no,
+            code_info__maybe_discard_and_release_ticket(MaybeTicketSlot,
+                RestoreTicketCode, !CI)
+        ),
 
         code_info__undo_disj_hijack(HijackInfo, UndoCode, !CI),
 

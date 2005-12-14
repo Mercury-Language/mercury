@@ -2834,6 +2834,9 @@ pickup_zombies(Zombies, !CI) :-
 :- pred reset_discard_and_release_ticket(lval::in, reset_trail_reason::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
+:- pred discard_and_release_ticket(lval::in, code_tree::out,
+    code_info::in, code_info::out) is det.
+
 :- pred maybe_save_ticket(bool::in, code_tree::out,
     maybe(lval)::out, code_info::in, code_info::out) is det.
 
@@ -2856,6 +2859,9 @@ pickup_zombies(Zombies, !CI) :-
 :- pred maybe_reset_discard_and_release_ticket(maybe(lval)::in,
     reset_trail_reason::in, code_tree::out, code_info::in, code_info::out)
     is det.
+
+:- pred maybe_discard_and_release_ticket(maybe(lval)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -2960,6 +2966,12 @@ reset_discard_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
     ]),
     release_temp_slot(TicketSlot, !CI).
 
+discard_and_release_ticket(TicketSlot, Code, !CI) :-
+    Code = node([
+        discard_ticket - "Pop ticket stack"
+    ]),
+    release_temp_slot(TicketSlot, !CI).
+
 %---------------------------------------------------------------------------%
 
 maybe_save_ticket(Maybe, Code, MaybeTicketSlot, !CI) :-
@@ -3025,6 +3037,15 @@ maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
         MaybeTicketSlot = yes(TicketSlot),
         reset_discard_and_release_ticket(TicketSlot, Reason,
             Code, !CI)
+    ;
+        MaybeTicketSlot = no,
+        Code = empty
+    ).
+
+maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI) :-
+    (
+        MaybeTicketSlot = yes(TicketSlot),
+        discard_and_release_ticket(TicketSlot, Code, !CI)
     ;
         MaybeTicketSlot = no,
         Code = empty

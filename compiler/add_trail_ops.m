@@ -361,24 +361,23 @@ disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, PrevDisjunctModifiesTrail,
         not(ThisDisjunctModifiesTrail) `and` !.Info ^ opt_trail_usage,
     (
         CanOmitTrailOps = yes, 
-        Goal1 = Goal0,
-        PruneList = []
+        Goal1 = Goal0
     ;
         CanOmitTrailOps = no,
-        goal_add_trail_ops(Goal0, Goal1, !Info),
-        %
-        % For model_semi and model_det disjunctions, once we reach the end of
-        % the disjunct goal, we're committing to this disjunct, so we need to
-        % prune the trail ticket.
-        %
-        ( CodeModel = model_non ->
-            PruneList = []
-        ;
-            gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
-                !.Info),
-            gen_prune_ticket(Context, PruneTicketGoal, !.Info),
-            PruneList = [ResetTicketCommitGoal, PruneTicketGoal]
-        )
+        goal_add_trail_ops(Goal0, Goal1, !Info)
+    ),
+    %
+    % For model_semi and model_det disjunctions, once we reach the end of
+    % the disjunct goal, we're committing to this disjunct, so we need to
+    % prune the trail ticket.
+    %
+    ( CodeModel = model_non ->
+        PruneList = []
+    ;
+        gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
+            !.Info),
+        gen_prune_ticket(Context, PruneTicketGoal, !.Info),
+        PruneList = [ResetTicketCommitGoal, PruneTicketGoal]
     ),
     %
     % Package up the stuff we built earlier.

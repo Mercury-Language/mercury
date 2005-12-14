@@ -1352,6 +1352,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(make_optimization_interface, optimize_unused_args,
             bool(no), !Globals),
 
+        % The results of trail usage analysis assume that trail usage
+        % optimization is being done, i.e that redundant trailing operations
+        % are really being eliminated.
+        option_implies(analyse_trail_usage, optimize_trail_usage,
+            bool(yes), !Globals),
+
         % The information needed for generating the module ordering
         % is only available while generating the dependencies.
         option_implies(generate_module_order, generate_dependencies,
