@@ -38,7 +38,7 @@ init_foo(X) :-
 % unification in the condition.
 
 test_any_free_unify(List, Result) :-
-	( List = [_ | _] ->
+	promise_pure ( List = [_ | _] ->
 		Result = no
 	;
 		Result = yes

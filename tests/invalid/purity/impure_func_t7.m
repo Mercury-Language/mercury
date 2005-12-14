@@ -16,9 +16,9 @@
 
 main(!IO) :-
 	impure bad_impure_if_then_else_expr(!IO),
-	impure bad_impure_lambda_unification(!IO),
-	impure bad_impure_field_access(!IO),
-	impure bad_impure_assignment(!IO).
+	bad_impure_lambda_unification(!IO),
+	bad_impure_field_access(!IO),
+	bad_impure_assignment(!IO).
 
 :- impure pred bad_impure_if_then_else_expr(io::di, io::uo) is det.
 
@@ -31,7 +31,7 @@ bad_impure_if_then_else_expr(!IO) :-
 	print(Z, !IO), 
 	nl(!IO).
 
-:- impure pred bad_impure_lambda_unification(io::di, io::uo) is det.
+:- pred bad_impure_lambda_unification(io::di, io::uo) is det.
 
 bad_impure_lambda_unification(!IO) :-
 	impure L = (pred(X5::out) is det :- X5 = 4),
@@ -40,7 +40,7 @@ bad_impure_lambda_unification(!IO) :-
 	print(P, !IO), 
 	nl(!IO).
 
-:- impure pred bad_impure_field_access(io::di, io::uo) is det.
+:- pred bad_impure_field_access(io::di, io::uo) is det.
 
 bad_impure_field_access(!IO) :-
 	impure M = blah(7) ^ foo,
@@ -48,7 +48,7 @@ bad_impure_field_access(!IO) :-
 	print(M, !IO), 
 	nl(!IO).
 
-:- impure pred bad_impure_assignment(io::di, io::uo) is det.
+:- pred bad_impure_assignment(io::di, io::uo) is det.
 
 bad_impure_assignment(!IO) :-
 	impure B = 4,

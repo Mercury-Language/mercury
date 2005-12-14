@@ -1356,10 +1356,7 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     %
     mode_info_lock_vars(if_then_else, NonLocals, !ModeInfo),
     mode_info_add_live_vars(ThenVars, !ModeInfo),
-    mode_info_get_in_negated_context(!.ModeInfo, InNegatedContext0),
-    mode_info_set_in_negated_context(yes, !ModeInfo),
     modecheck_goal(Cond0, Cond, !ModeInfo, !IO),
-    mode_info_set_in_negated_context(InNegatedContext0, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapCond),
     mode_info_remove_live_vars(ThenVars, !ModeInfo),
     mode_info_unlock_vars(if_then_else, NonLocals, !ModeInfo),
@@ -1384,6 +1381,18 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     instmap__merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
         !ModeInfo),
     Goal = if_then_else(Vars, Cond, Then, Else),
+    mode_info_get_instmap(!.ModeInfo, InstMap),
+    (
+        mode_info_get_in_promise_purity_scope(!.ModeInfo, no)
+    ->
+        goal_get_nonlocals(Cond, CondNonLocals0),
+        CondNonLocals =
+            set__to_sorted_list(CondNonLocals0 `intersect` NonLocals),
+        check_no_inst_any_vars(if_then_else, CondNonLocals,
+            InstMap0, InstMap, !ModeInfo)
+    ;
+        true
+    ),
     mode_checkpoint(exit, "if-then-else", !ModeInfo, !IO).
 
 modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
@@ -1407,13 +1416,20 @@ modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
     % that the negation does not bind them.
     %
     mode_info_lock_vars(negation, NonLocals, !ModeInfo),
-    mode_info_get_in_negated_context(!.ModeInfo, InNegatedContext0),
-    mode_info_set_in_negated_context(yes, !ModeInfo),
     modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
-    mode_info_set_in_negated_context(InNegatedContext0, !ModeInfo),
     mode_info_set_live_vars(LiveVars0, !ModeInfo),
     mode_info_unlock_vars(negation, NonLocals, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
+    (
+        mode_info_get_in_promise_purity_scope(!.ModeInfo, no)
+    ->
+        goal_info_get_nonlocals(GoalInfo0, NegNonLocals),
+        instmap__init_unreachable(Unreachable),
+        check_no_inst_any_vars(negation, set__to_sorted_list(NegNonLocals),
+            InstMap0, Unreachable, !ModeInfo)
+    ;
+        true
+    ),
     mode_checkpoint(exit, "not", !ModeInfo, !IO).
 
 modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
@@ -1459,6 +1475,14 @@ modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
             mode_checkpoint(exit, "scope", !ModeInfo, !IO),
             SubGoal = GoalExpr - _
         )
+    ; Reason = promise_purity(_Implicit, _Purity) ->
+        mode_info_get_in_promise_purity_scope(!.ModeInfo, InPPScope),
+        mode_info_set_in_promise_purity_scope(yes, !ModeInfo),
+        mode_checkpoint(enter, "scope", !ModeInfo, !IO),
+        modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+        mode_checkpoint(exit, "scope", !ModeInfo, !IO),
+        GoalExpr = scope(Reason, SubGoal),
+        mode_info_set_in_promise_purity_scope(InPPScope, !ModeInfo)
     ;
         mode_checkpoint(enter, "scope", !ModeInfo, !IO),
         modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
@@ -1623,6 +1647,35 @@ modecheck_goal_expr(ForeignProc, GoalInfo, Goal, !ModeInfo, !IO) :-
 modecheck_goal_expr(shorthand(_), _, _, !ModeInfo, !IO) :-
     % these should have been expanded out by now
     unexpected(this_file, "modecheck_goal_expr: unexpected shorthand").
+
+
+    % If the condition of a negation or if-then-else contains any inst any
+    % non-locals (a potential referential transparency violation)
+    % we need to check that the programmer has recognised the
+    % possibility and placed the if-then-else in a promise_<purity>
+    % scope.
+    %
+:- pred check_no_inst_any_vars(negated_context_desc::in, prog_vars::in,
+        instmap::in, instmap::in, mode_info::in, mode_info::out) is det.
+
+check_no_inst_any_vars(_, [], _, _, !ModeInfo).
+
+check_no_inst_any_vars(NegCtxtDesc, [NonLocal | NonLocals], InstMap0, InstMap,
+        !ModeInfo) :-
+    (
+        (   instmap__lookup_var(InstMap0, NonLocal, Inst)
+        ;   instmap__lookup_var(InstMap,  NonLocal, Inst)
+        ),
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        inst_contains_any(ModuleInfo, Inst)
+    ->
+        mode_info_error(make_singleton_set(NonLocal),
+            purity_error_should_be_in_promise_purity_scope(NegCtxtDesc,
+            NonLocal), !ModeInfo)
+    ;
+        check_no_inst_any_vars(NegCtxtDesc, NonLocals, InstMap0, InstMap,
+            !ModeInfo)
+    ).
 
 append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).
 append_extra_goals(extra_goals(BeforeGoals, AfterGoals),

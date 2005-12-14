@@ -33,7 +33,7 @@
 %
 main(!IO) :-
     p(Xs),
-    promise_pure ( if impure member((X - _), Xs) then Y = X else Y = 0 ),
+    promise_pure ( if member((X - _), Xs) then Y = X else Y = 0 ),
     io.write_int(Y, !IO).
 
 :- pred i(st::oa) is det.

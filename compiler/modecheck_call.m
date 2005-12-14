@@ -105,7 +105,7 @@
 %-----------------------------------------------------------------------------%
 
 modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
-        ArgVars0, ArgVars, GoalInfo, ExtraGoals, !ModeInfo) :-
+        ArgVars0, ArgVars, _GoalInfo, ExtraGoals, !ModeInfo) :-
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
     mode_info_get_preds(!.ModeInfo, Preds),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
@@ -125,42 +125,8 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 
     compute_arg_offset(PredInfo, ArgOffset),
     pred_info_get_markers(PredInfo, Markers),
-
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    AnyVars =
-        list__filter(var_inst_contains_any(ModuleInfo, InstMap), ArgVars0),
-
     (
-        % If we are in a negated context and one or more vars have
-        % inst any then this call is required to be marked impure
-        % since it may violate referential transparency.
-        %
-        mode_info_get_in_negated_context(!.ModeInfo, yes),
-        \+ goal_info_is_impure(GoalInfo),
-        AnyVars \= []
-    ->
-        set__init(WaitingVars),
-        mode_info_error(WaitingVars, purity_error_should_be_impure(AnyVars),
-            !ModeInfo),
-        TheProcId = invalid_proc_id,
-        ArgVars = ArgVars0,
-        ExtraGoals = no_extra_goals
-    ;
-        % Report a purity error if a pred call is erroneously marked as impure
-        % in a negated context.
-        %
-        mode_info_get_in_negated_context(!.ModeInfo, yes),
-        goal_info_is_impure(GoalInfo),
-        AnyVars = [],
-        Purity \= purity_impure
-    ->
-        set__init(WaitingVars),
-        mode_info_error(WaitingVars, purity_error_wrongly_impure(Purity),
-            !ModeInfo),
-        TheProcId = invalid_proc_id,
-        ArgVars = ArgVars0,
-        ExtraGoals = no_extra_goals
-    ;
         % In order to give better diagnostics, we handle the cases where there
         % are zero or one modes for the called predicate specially.
         %

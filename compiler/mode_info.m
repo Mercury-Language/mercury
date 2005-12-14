@@ -120,7 +120,7 @@
 :- pred mode_info_get_warnings(mode_info::in, list(mode_warning_info)::out)
     is det.
 :- pred mode_info_get_need_to_requantify(mode_info::in, bool::out) is det.
-:- pred mode_info_get_in_negated_context(mode_info::in, bool::out) is det.
+:- pred mode_info_get_in_promise_purity_scope(mode_info::in, bool::out) is det.
 :- pred mode_info_get_num_errors(mode_info::in, int::out) is det.
 :- pred mode_info_get_liveness(mode_info::in, set(prog_var)::out) is det.
 :- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
@@ -169,7 +169,7 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_need_to_requantify(bool::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_in_negated_context(bool::in,
+:- pred mode_info_set_in_promise_purity_scope(bool::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_add_live_vars(set(prog_var)::in,
     mode_info::in, mode_info::out) is det.
@@ -320,8 +320,11 @@
                 % after mode analysis finishes.
                 need_to_requantify      :: bool,
 
-                % Set to `yes' if we are in a negated context.
-                in_negated_context      :: bool
+                % Set to `yes' if we are in a promise_<purity> scope.  This
+                % information is needed to check that potentially impure
+                % uses of inst any non-locals in negated contexts are
+                % properly acknowledged by the programmer.
+                in_promise_purity_scope :: bool
             ).
 
 :- type mode_info
@@ -473,7 +476,8 @@ mode_info_get_locked_vars(MI, MI ^ locked_vars).
 mode_info_get_errors(MI, MI ^ errors).
 mode_info_get_warnings(MI, MI ^ mode_sub_info ^ warnings).
 mode_info_get_need_to_requantify(MI, MI ^ mode_sub_info ^ need_to_requantify).
-mode_info_get_in_negated_context(MI, MI ^ mode_sub_info ^ in_negated_context).
+mode_info_get_in_promise_purity_scope(MI,
+    MI ^ mode_sub_info ^ in_promise_purity_scope).
 mode_info_get_delay_info(MI, MI ^ delay_info).
 mode_info_get_live_vars(MI, MI ^ live_vars).
 mode_info_get_nondet_live_vars(MI, MI ^ nondet_live_vars).
@@ -498,8 +502,8 @@ mode_info_set_warnings(Warnings, MI,
     MI ^ mode_sub_info ^ warnings := Warnings).
 mode_info_set_need_to_requantify(NTRQ, MI,
     MI ^ mode_sub_info ^ need_to_requantify := NTRQ).
-mode_info_set_in_negated_context(INC, MI,
-    MI ^ mode_sub_info ^ in_negated_context := INC).
+mode_info_set_in_promise_purity_scope(INC, MI,
+    MI ^ mode_sub_info ^ in_promise_purity_scope := INC).
 mode_info_set_delay_info(DelayInfo, MI, MI ^ delay_info := DelayInfo).
 mode_info_set_live_vars(LiveVarsList, MI, MI ^ live_vars := LiveVarsList).
 mode_info_set_nondet_live_vars(NondetLiveVars, MI,

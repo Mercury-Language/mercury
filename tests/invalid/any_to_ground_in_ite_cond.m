@@ -33,7 +33,7 @@
 main(!IO) :-
     i(X),
     promise_pure (
-      if impure p(X) then
+      if p(X) then
         io.write_string("aye\n", !IO)
       else
         io.write_string("nay\n", !IO)

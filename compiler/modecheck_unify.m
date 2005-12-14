@@ -98,58 +98,6 @@
 modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
         Unify, !ModeInfo, !IO) :-
     (
-        mode_info_get_in_negated_context(!.ModeInfo, yes),
-        (
-            RHS = var(Y),
-            Vars = [Y]
-        ;
-            RHS = functor(_, _, Vars)
-        ),
-        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-        mode_info_get_instmap(!.ModeInfo, InstMap),
-        AnyVars =
-            list__filter(var_inst_contains_any(ModuleInfo, InstMap), Vars)
-            % If this unification is in a negated context, but doesn't
-            % have an `impure' annotation, then none of the variables
-            % involved are allowed to have inst any.
-            %
-    ->
-        (
-            AnyVars = [_ | _],
-            (
-                goal_info_is_impure(UnifyGoalInfo0)
-            ->
-                modecheck_unification_2(X, RHS, Unification0, UnifyContext,
-                    UnifyGoalInfo0, Unify, !ModeInfo, !IO)
-            ;
-                set__init(WaitingVars),
-                mode_info_error(WaitingVars,
-                    purity_error_should_be_impure(AnyVars), !ModeInfo),
-                Unify = conj([])
-            )
-        ;
-            AnyVars = [],
-            (
-                goal_info_is_pure(UnifyGoalInfo0)
-            ->
-                modecheck_unification_2(X, RHS, Unification0, UnifyContext,
-                    UnifyGoalInfo0, Unify, !ModeInfo, !IO)
-            ;
-                set__init(WaitingVars),
-                mode_info_error(WaitingVars,
-                    purity_error_wrongly_impure(purity_pure), !ModeInfo),
-                Unify = conj([])
-            )
-        )
-    ;
-        mode_info_get_in_negated_context(!.ModeInfo, no),
-        \+ goal_info_is_pure(UnifyGoalInfo0)
-    ->
-        set__init(WaitingVars),
-        mode_info_error(WaitingVars,
-            purity_error_wrongly_impure(purity_pure), !ModeInfo),
-        Unify = conj([])
-    ;
             % If this is a lambda unification containing some inst any
             % nonlocals, then the lambda should be marked as impure.
             %

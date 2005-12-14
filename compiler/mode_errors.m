@@ -128,19 +128,21 @@
             % One of the head variables did not have the expected final inst
             % on exit from the proc.
 
-    ;       purity_error_should_be_impure(list(prog_var))
-            % A goal in a negated context contains vars with inst any was
-            % not marked impure, as it should be.
-
-    ;       purity_error_wrongly_impure(purity)
-            % A goal in a negated context was erroneously marked as impure.
-            % The purity argument specifies what purity the goal has.
+    ;       purity_error_should_be_in_promise_purity_scope(
+                negated_context_desc, prog_var)
+            % The condition of an if-then-else or the body of a negation
+            % contained an inst any non-local, but was not inside a
+            % promise_purity scope.
 
     ;       purity_error_lambda_should_be_impure(list(prog_var)).
             % A lambda term containing inst any non-locals should have been
             % declared impure, but hasn't been (executing such a lambda may
             % further constrain the inst any variables, thereby violating
             % referential transparency).
+
+:- type negated_context_desc
+    --->    if_then_else
+    ;       negation.
 
 :- type schedule_culprit
     --->    goal_itself_was_impure
@@ -344,11 +346,10 @@ mode_error_to_specs(ModeError, ModeInfo) = Specs :-
         Specs = mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst,
             Inst, Reason)
     ;
-        ModeError = purity_error_should_be_impure(Vars),
-        Specs = purity_error_should_be_impure_to_specs(ModeInfo, Vars)
-    ;
-        ModeError = purity_error_wrongly_impure(Purity),
-        Specs = purity_error_wrongly_impure_to_specs(ModeInfo, Purity)
+        ModeError = purity_error_should_be_in_promise_purity_scope(NegCtxt,
+            Var),
+        Specs = purity_error_should_be_in_promise_purity_scope_to_specs(
+            NegCtxt, ModeInfo, Var)
     ;
         ModeError = purity_error_lambda_should_be_impure(Vars),
         Specs = purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars)
@@ -1092,35 +1093,33 @@ mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
 
 %-----------------------------------------------------------------------------%
 
-:- func purity_error_should_be_impure_to_specs(mode_info::in,
-        list(prog_var)::in) = (list(error_msg_spec)::out(error_msg_specs))
-        is det.
-
-purity_error_should_be_impure_to_specs(ModeInfo, Vars) = Specs :-
-    mode_info_get_context(ModeInfo, Context),
-    mode_info_get_varset(ModeInfo, VarSet),
-    Pieces = [
-        words("purity error: goal should be impure because it appears"),
-        words("in a negated context, but involves the following variables"),
-        words("whose insts contain `any':"),
-        words(mercury_vars_to_string(Vars, VarSet, no))
-    ],
-    Specs = [
-        mode_info_context_to_spec(ModeInfo),
-        error_msg_spec(no, Context, 0, Pieces)
-    ].
-
-%-----------------------------------------------------------------------------%
-
-:- func purity_error_wrongly_impure_to_specs(mode_info::in, purity::in) =
+:- func purity_error_should_be_in_promise_purity_scope_to_specs(
+        negated_context_desc::in, mode_info::in, prog_var::in) =
         (list(error_msg_spec)::out(error_msg_specs)) is det.
 
-purity_error_wrongly_impure_to_specs(ModeInfo, Purity) = Specs :-
+purity_error_should_be_in_promise_purity_scope_to_specs(NegCtxtDesc,
+        ModeInfo, Var) = Specs :-
     mode_info_get_context(ModeInfo, Context),
-    Pieces = [
-        words("purity error: goal is marked as impure, but is actually"),
-        words(if Purity = purity_pure then "pure" else "semipure")
-    ],
+    mode_info_get_varset(ModeInfo, VarSet),
+    (
+        NegCtxtDesc = if_then_else,
+        Pieces = [
+            words("purity error: if-then-else"),
+            words("should be inside a promise_purity"),
+            words("scope because non-local variable"),
+            words(mercury_var_to_string(Var, VarSet, no)),
+            words("has inst any and appears in the condition.")
+        ]
+    ;
+        NegCtxtDesc = negation,
+        Pieces = [
+            words("purity error: negation"),
+            words("should be inside a promise_purity"),
+            words("scope because non-local variable"),
+            words(mercury_var_to_string(Var, VarSet, no)),
+            words("has inst any and appears in the body.")
+        ]
+    ),
     Specs = [
         mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)
@@ -1139,7 +1138,8 @@ purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars) = Specs :-
         words("purity error: lambda should be impure because it"),
         words("contains the following non-local variables"),
         words("whose insts contain `any':"),
-        words(mercury_vars_to_string(Vars, VarSet, no))
+        words(mercury_vars_to_string(Vars, VarSet, no)),
+        suffix("."), nl
     ],
     Specs = [
         mode_info_context_to_spec(ModeInfo),

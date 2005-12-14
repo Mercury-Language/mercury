@@ -2381,10 +2381,10 @@ program).
 Referential transparency can be violated if a non-local solver type variable
 with inst @code{any} is used in a negated context (i.e., the body of a negated
 goal or the condition of an if-then-else) or in a lambda expression.  Programs
-are therefore required to place @code{impure} annotations on such goals or
-lambda expressions, even if they would normally be considered pure.  This
-impurity propagates through the enclosing goal structure as specified in
-@ref{Impurity}.
+are therefore required to place such goals inside a @code{promise_pure},
+@code{promise_semipure}, or @code{promise_impure} scope, and to declare such
+lambda expressions to be @code{impure}, even if they would normally be
+considered pure.
 
 @node Polymorphic solver types
 @subsection Polymorphic solver types
