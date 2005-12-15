@@ -709,33 +709,33 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
                 fprintf(stderr,
                         "\n***    Checking zone %s#%d: "
                         "0x%08lx - 0x%08lx - 0x%08lx",
-                        zone->name, zone->id,
-                        (unsigned long) zone->bottom,
-                        (unsigned long) zone->redzone,
-                        (unsigned long) zone->top);
+                        zone->MR_zone_name, zone->MR_zone_id,
+                        (unsigned long) zone->MR_zone_bottom,
+                        (unsigned long) zone->MR_zone_redzone,
+                        (unsigned long) zone->MR_zone_top);
 
-                if ((zone->redzone <= address) &&
-                        (address <= zone->top))
+                if ((zone->MR_zone_redzone <= address) &&
+                        (address <= zone->MR_zone_top))
                 {
                     fprintf(stderr,
                         "\n***     Address is within"
                         " redzone of "
                         "%s#%d (!!zone overflowed!!)\n",
-                        zone->name, zone->id);
-                } else if ((zone->bottom <= address) &&
-                        (address <= zone->top))
+                        zone->MR_zone_name, zone->MR_zone_id);
+                } else if ((zone->MR_zone_bottom <= address) &&
+                        (address <= zone->MR_zone_top))
                 {
                     fprintf(stderr, "\n***     Address is"
                             " within zone %s#%d\n",
-                            zone->name, zone->id);
+                            zone->MR_zone_name, zone->MR_zone_id);
                 }
                 /*
                 ** Don't need to call handler, because it
                 ** has much less information than we do.
                 */
-                /* return zone->handler(fault_addr,
+                /* return zone->MR_zone_handler(fault_addr,
                         zone, rec); */
-                zone = zone->next;
+                zone = zone->MR_zone_next;
             }
         }
         return;
