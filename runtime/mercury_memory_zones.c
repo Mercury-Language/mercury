@@ -554,7 +554,12 @@ MR_extend_zone(MR_MemoryZone *zone, size_t new_size)
         MR_fatal_error(buf);
     }
 
-    base_incr = new_base - old_base;
+    /*
+    ** XXX the casts to MR_Integer are here because this code was
+    ** relying on the gcc extension that allows arithmetic on void
+    ** pointers - this breaks when compiling with Visual C - juliensf.
+    */
+    base_incr = (MR_Integer)new_base - (MR_Integer)old_base;
 
     zone->MR_zone_desired_size = new_size;
     zone->MR_zone_bottom = new_base;
