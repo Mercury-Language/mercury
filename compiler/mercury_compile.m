@@ -90,6 +90,9 @@
 :- import_module transform_hlds.unused_args.
 :- import_module transform_hlds.unneeded_code.
 :- import_module transform_hlds.lco.
+:- import_module transform_hlds.ctgc.
+:- import_module transform_hlds.ctgc.structure_sharing.
+:- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.size_prof.
 :- import_module ll_backend.deep_profiling.
 
@@ -2375,7 +2378,10 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 190, "magic", !DumpInfo, !IO),
 
     maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 195, "dead_procs", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 192, "dead_procs", !DumpInfo, !IO),
+
+    maybe_data_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO), 
+    maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO), 
     
     % If we are compiling in a deep profiling grade then now rerun simplify.
     % The reason for doing this now is that we want to take advantage of any
@@ -3678,6 +3684,25 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     ;
         Dead = no
     ).
+
+:- pred maybe_data_structure_sharing_analysis(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_data_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :- 
+    globals__io_lookup_bool_option(data_structure_sharing_analysis, 
+        Sharing, !IO), 
+    (
+        Sharing = yes, 
+        maybe_write_string(Verbose, "% Data structure sharing analysis...\n",
+            !IO), 
+        maybe_flush_output(Verbose, !IO), 
+        data_structure_sharing_analysis(!HLDS, !IO), 
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        Sharing = no
+    ).
+
 
 :- pred maybe_term_size_prof(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

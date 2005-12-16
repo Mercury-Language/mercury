@@ -41,6 +41,8 @@
    :- include_module term_norm.
    :- include_module term_util.
 
+:- include_module transform_hlds.ctgc.
+
 :- include_module term_constr_main.
     :- include_module term_constr_initial.
 		% Pass 1.

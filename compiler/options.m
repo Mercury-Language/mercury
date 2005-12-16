@@ -509,6 +509,7 @@
     ;       follow_code
     ;       prev_code
     ;       optimize_dead_procs
+    ;       data_structure_sharing_analysis
     ;       deforestation
     ;       deforestation_depth_limit
     ;       deforestation_cost_factor
