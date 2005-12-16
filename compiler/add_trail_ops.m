@@ -7,13 +7,23 @@
 %-----------------------------------------------------------------------------%
 
 % File: add_trail_ops.m.
-% Author: fjh.
+% Authors: fjh, juliensf.
 
 % This module is an HLDS-to-HLDS transformation that inserts code to
-% handle trailing.  The transformation involves adding calls to impure
-% predicates defined in library/private_builtin.m, which in turn call
-% macros defined in runtime/mercury_trail.h.
+% handle trailing.  The module implements two ways of doing this:
+% 
+% (1) by adding calls to impure predicates defined in
+%     library/private_builtin.m, which in turn call macros defined in
+%     runtime/mercury_trail.h.
 %
+% (2) by inserting foreign_procs that call the macros defined in 
+%     runtime/mercury_trail.h.
+%
+% There is a space/time tradeoff between these two methods, the second
+% is generally faster but results in larger executables.  The
+% `--generate-trail-ops-inline' option can be used to control which
+% of the methods is used.
+
 % This pass is currently only used for the MLDS back-end.
 % For some reason (perhaps efficiency?? or more likely just historical?),
 % the LLDS back-end inserts the trail operations as it is generating
@@ -21,13 +31,18 @@
 %
 % See compiler/notes/trailing.html for more information about trailing
 % in the Mercury implementation.
-%
-% This pass is very similar to add_heap_ops.m.
+
+% This module also implements trail usage optimization for those backends
+% that use it to implement trailing (see trailing_analysis.m for details).
 
 % NOTE: it is important that passes following this one do not attempt
 %       to reorder disjunctions.  If trail usage optimization is being
 %       performed and a disjunction is reordered then the trail might
 %       be corrupted.
+
+% TODO:
+%       - explore the space/time tradeoff between the inlining and
+%         non-inlining methods of implementing trailing.
 
 %-----------------------------------------------------------------------------%
 
@@ -43,7 +58,7 @@
 
 :- import_module bool.
 
-:- pred add_trail_ops(bool::in, module_info::in,
+:- pred add_trail_ops(bool::in, bool::in, module_info::in,
     proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -59,9 +74,11 @@
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
@@ -88,20 +105,21 @@
     %
 :- type trail_ops_info
     --->    trail_ops_info(
-                varset        :: prog_varset,
-                var_types     :: vartypes,
-                module_info   :: module_info,
-                opt_trail_usage :: bool
+                varset          :: prog_varset,
+                var_types       :: vartypes,
+                module_info     :: module_info,
+                opt_trail_usage :: bool,
+                inline_ops      :: bool
             ).
 
-add_trail_ops(OptTrailUsage, ModuleInfo0, !Proc) :-
+add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !Proc) :-
     proc_info_goal(!.Proc, Goal0),
     proc_info_varset(!.Proc, VarSet0),
     proc_info_vartypes(!.Proc, VarTypes0),
     TrailOpsInfo0 = trail_ops_info(VarSet0, VarTypes0, ModuleInfo0,
-        OptTrailUsage),
+        OptTrailUsage, GenerateInline),
     goal_add_trail_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),
-    TrailOpsInfo = trail_ops_info(VarSet, VarTypes, _, _),
+    TrailOpsInfo = trail_ops_info(VarSet, VarTypes, _, _, _),
     proc_info_set_goal(Goal, !Proc),
     proc_info_set_varset(VarSet, !Proc),
     proc_info_set_vartypes(VarTypes, !Proc),
@@ -290,8 +308,8 @@ goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
         % "Sorry, not implemented" error message.
         ModuleInfo = !.Info^ module_info,
         goal_info_get_context(GoalInfo, Context),
-        generate_call("trailed_nondet_pragma_foreign_code", erroneous, [], [],
-            [], ModuleInfo, Context, SorryNotImplementedCode),
+        trail_generate_call("trailed_nondet_pragma_foreign_code", erroneous,
+            [], [], [], ModuleInfo, Context, SorryNotImplementedCode),
         Goal = SorryNotImplementedCode
     ;
         Goal = PragmaForeign - GoalInfo
@@ -406,64 +424,161 @@ cases_add_trail_ops([Case0 | Cases0], [Case | Cases], !Info) :-
     trail_ops_info::in) is det.
 
 gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
-    generate_call("store_ticket", det, [TicketVar], [impure_goal],
-        [TicketVar - ground_inst], Info ^ module_info, Context,
-        SaveTicketGoal).
+    GenerateInline = Info ^ inline_ops,
+    (     
+        GenerateInline = no,
+        trail_generate_call("store_ticket", det, [TicketVar], [impure_goal],
+            [TicketVar - trail_ground_inst], Info ^ module_info, Context,
+            SaveTicketGoal)
+    ;
+        GenerateInline =  yes,
+        Args = [foreign_arg(TicketVar, yes("Ticket" - out_mode),
+            ticket_type)],
+        ForeignCode = "MR_store_ticket(Ticket);",
+        trail_generate_foreign_proc("store_ticket", [impure_goal],
+            [TicketVar - trail_ground_inst], Info ^ module_info, Context,
+            Args, ForeignCode, SaveTicketGoal)
+    ).
 
 :- pred gen_reset_ticket_undo(prog_var::in, prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
-    generate_call("reset_ticket_undo", det, [TicketVar], [impure_goal],
-        [], Info ^ module_info, Context, ResetTicketGoal).
+    GenerateInline = Info ^ inline_ops,
+    (     
+        GenerateInline = no,
+        trail_generate_call("reset_ticket_undo", det, [TicketVar],
+            [impure_goal], [], Info ^ module_info, Context, ResetTicketGoal)
+    ;
+        GenerateInline = yes,
+        Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
+            ticket_type)],
+        ForeignCode = "MR_reset_ticket(Ticket, MR_undo);",
+        trail_generate_foreign_proc("reset_ticket_undo", [impure_goal],
+            [], Info ^ module_info, Context, Args, ForeignCode, 
+            ResetTicketGoal)
+    ).
 
 :- pred gen_reset_ticket_solve(prog_var::in, prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
-    generate_call("reset_ticket_solve", det, [TicketVar], [impure_goal],
-        [], Info ^ module_info, Context, ResetTicketGoal).
+    GenerateInline = Info ^ inline_ops,
+    (     
+        GenerateInline = no,
+        trail_generate_call("reset_ticket_solve", det, [TicketVar],
+            [impure_goal], [], Info ^ module_info, Context, ResetTicketGoal)
+    ;
+        GenerateInline = yes,
+        Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
+            ticket_type)],
+        ForeignCode = "MR_reset_ticket(Ticket, MR_solve);",
+        trail_generate_foreign_proc("reset_ticket_solve", [impure_goal],
+            [], Info ^ module_info, Context, Args, ForeignCode, 
+            ResetTicketGoal)
+    ).
 
 :- pred gen_reset_ticket_commit(prog_var::in, prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
-    generate_call("reset_ticket_commit", det, [TicketVar], [impure_goal],
-        [], Info ^ module_info, Context, ResetTicketGoal).
+    GenerateInline = Info ^ inline_ops,
+    (     
+        GenerateInline = no,
+        trail_generate_call("reset_ticket_commit", det, [TicketVar],
+            [impure_goal], [], Info ^ module_info, Context, ResetTicketGoal)
+    ;
+        GenerateInline = yes,
+        Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
+            ticket_type)],
+        ForeignCode = "MR_reset_ticket(Ticket, MR_commit);",
+        trail_generate_foreign_proc("reset_ticket_commit", [impure_goal],
+            [], Info ^ module_info, Context, Args, ForeignCode, 
+            ResetTicketGoal)
+    ).
 
 :- pred gen_prune_ticket(prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_prune_ticket(Context, PruneTicketGoal, Info) :-
-    generate_call("prune_ticket", det, [], [impure_goal],
-        [], Info ^ module_info, Context, PruneTicketGoal).
+    GenerateInline = Info ^ inline_ops,
+    (     
+        GenerateInline = no,
+        trail_generate_call("prune_ticket", det, [], [impure_goal],
+            [], Info ^ module_info, Context, PruneTicketGoal)
+    ;   
+        GenerateInline = yes,
+        Args = [],
+        ForeignCode = "MR_prune_ticket();",
+        trail_generate_foreign_proc("prune_ticket", [impure_goal],
+            [], Info ^ module_info, Context, Args, ForeignCode, 
+            PruneTicketGoal)
+    ).
 
 :- pred gen_discard_ticket(prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
-    generate_call("discard_ticket", det, [], [impure_goal], [],
-        Info ^ module_info, Context, DiscardTicketGoal).
+    GenerateInline = Info ^ inline_ops,
+    (   
+        GenerateInline = no,
+        trail_generate_call("discard_ticket", det, [], [impure_goal], [],
+            Info ^ module_info, Context, DiscardTicketGoal)
+    ;
+        GenerateInline = yes,
+        Args = [],
+        ForeignCode = "MR_discard_ticket();",
+        trail_generate_foreign_proc("discard_ticket", [impure_goal],
+            [], Info ^ module_info, Context, Args, ForeignCode, 
+            DiscardTicketGoal)
+    ).
 
 :- pred gen_mark_ticket_stack(prog_var::in, prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
         Info) :-
-    generate_call("mark_ticket_stack", det, [SavedTicketCounterVar],
-        [impure_goal], [], Info ^ module_info, Context, MarkTicketStackGoal).
+    GenerateInline = Info ^ inline_ops,
+    (   
+        GenerateInline = no,
+        trail_generate_call("mark_ticket_stack", det,
+            [SavedTicketCounterVar],
+            [impure_goal], [], Info ^ module_info, Context,
+            MarkTicketStackGoal)
+    ;
+        GenerateInline = yes,
+        Args = [foreign_arg(SavedTicketCounterVar,
+            yes("TicketCounter" - out_mode), ticket_counter_type)],
+        ForeignCode = "MR_mark_ticket_stack(TicketCounter);",
+        trail_generate_foreign_proc("mark_ticket_stack", [impure_goal],
+            [], Info ^ module_info, Context, Args, ForeignCode, 
+            MarkTicketStackGoal)
+    ).
 
 :- pred gen_prune_tickets_to(prog_var::in, prog_context::in, hlds_goal::out,
     trail_ops_info::in) is det.
 
 gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
         Info) :-
-    generate_call("prune_tickets_to", det, [SavedTicketCounterVar],
-        [impure_goal], [], Info ^ module_info, Context, PruneTicketsToGoal).
+    GenerateInline = Info ^ inline_ops,
+    (   
+        GenerateInline = no,
+        trail_generate_call("prune_tickets_to", det, [SavedTicketCounterVar],
+            [impure_goal], [], Info ^ module_info, Context,
+            PruneTicketsToGoal)
+    ;
+        GenerateInline = yes,
+        Args = [foreign_arg(SavedTicketCounterVar,
+            yes("TicketCounter" - in_mode), ticket_counter_type)],
+        ForeignCode = "MR_prune_tickets_to(TicketCounter);",
+        trail_generate_foreign_proc("prune_tickets_to", [impure_goal],
+            [], Info ^ module_info, Context, Args, ForeignCode, 
+            PruneTicketsToGoal)
+    ).
 
-:- func ground_inst = mer_inst.
+:- func trail_ground_inst = mer_inst.
 
-ground_inst = ground(unique, none).
+trail_ground_inst = ground(unique, none).
 
 %-----------------------------------------------------------------------------%
 
@@ -502,16 +617,42 @@ ticket_counter_type = c_pointer_type.
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_call(string::in, determinism::in, list(prog_var)::in,
+:- pred trail_generate_call(string::in, determinism::in, list(prog_var)::in,
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term__context::in, hlds_goal::out) is det.
 
-generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,
+trail_generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,
         Context, CallGoal) :-
     mercury_private_builtin_module(BuiltinModule),
     goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
         only_mode, Detism, Args, Features, InstMap, ModuleInfo,
         Context, CallGoal).
+
+%-----------------------------------------------------------------------------%
+
+:- pred trail_generate_foreign_proc(string::in, 
+    list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
+    module_info::in, term.context::in, list(foreign_arg)::in, string::in,
+    hlds_goal::out) is det.
+
+trail_generate_foreign_proc(PredName, Features, InstMap,
+        ModuleInfo, Context, Args, ForeignCode, ForeignProcGoal) :-
+    mercury_private_builtin_module(PrivateBuiltinModule),
+    Detism = det, 
+    some [!ForeignProcAttrs] (
+        % XXX handle other target languages here.
+        !:ForeignProcAttrs = default_attributes(c),
+        set_may_call_mercury(will_not_call_mercury, !ForeignProcAttrs),
+        set_thread_safe(thread_safe, !ForeignProcAttrs),
+        FinalForeignProcAttrs = !.ForeignProcAttrs
+    ),
+    PrefixCode = "",
+    ExtraArgs  = [],
+    SuffixCode = "",
+    goal_util.generate_foreign_proc(PrivateBuiltinModule, PredName,
+        predicate, only_mode, Detism, FinalForeignProcAttrs,
+        Args, ExtraArgs, PrefixCode, ForeignCode, SuffixCode, Features,
+        InstMap, ModuleInfo, Context, ForeignProcGoal).
 
 %-----------------------------------------------------------------------------%
 

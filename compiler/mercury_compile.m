@@ -3159,9 +3159,12 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
     (
         UseTrail = yes,
         globals.io_lookup_bool_option(optimize_trail_usage, OptTrailUse, !IO),
+        globals.io_lookup_bool_option(generate_trail_ops_inline,
+            GenerateInline, !IO),
         maybe_write_string(Verbose, "% Adding trailing operations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_proc(add_trail_ops(OptTrailUse)),
+        process_all_nonimported_procs(
+            update_proc(add_trail_ops(OptTrailUse, GenerateInline)),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)

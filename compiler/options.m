@@ -318,6 +318,7 @@
     ;       nondet_copy_out
     ;       put_commit_in_own_func
     ;       put_nondet_env_on_heap
+    ;       generate_trail_ops_inline
 
     % IL back-end compilation model options
     ;       verifiable_code
@@ -1044,6 +1045,7 @@ option_defaults_2(compilation_model_option, [
     nondet_copy_out                     -   bool(no),
     put_commit_in_own_func              -   bool(no),
     put_nondet_env_on_heap              -   bool(no),
+    generate_trail_ops_inline           -   bool(no),
 
     % IL back-end compilation model options
     verifiable_code                     -   bool(no),
@@ -1751,6 +1753,7 @@ long_option("det-copy-out",         det_copy_out).
 long_option("nondet-copy-out",      nondet_copy_out).
 long_option("put-commit-in-own-func",   put_commit_in_own_func).
 long_option("put-nondet-env-on-heap",   put_nondet_env_on_heap).
+long_option("generate-trail-ops-inline", generate_trail_ops_inline).
 % IL back-end compilation model options
 long_option("verifiable-code",      verifiable_code).
 long_option("verifiable",           verifiable_code).
