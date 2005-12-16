@@ -29,6 +29,10 @@ LINK_RUNTIME_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 -include Mmake.library.params
 
+# Override the default rule in `mmake --use-mmc-make' that asks `mmc' to
+# create a missing optional params file.
+Mmake.library.params:
+
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include Mercury.options
@@ -53,7 +57,13 @@ ifeq ($(LIBRARY_INTERMODULE),yes)
 # If you want to actually check termination for the library, then you need
 # to add --check-termination to INTER_FLAGS, but that is not enabled by default
 # because it probably just results in spurious warnings.
+# A different flags file is used when `--use-mmc-make' is in effect as
+# some options are (currently) incompatible with `mmc --make'.
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+INTER_FLAGS = --flags INTER_FLAGS_MMC_MAKE
+else
 INTER_FLAGS = --flags INTER_FLAGS
+endif
 
 else
 

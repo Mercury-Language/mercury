@@ -344,7 +344,7 @@ while test $# -gt 0; do
         use_subdirs=no ;;
 
     --use-mmc-make)
-        use_mmc_make=yes ;;
+        use_mmc_make=yes; use_subdirs=yes ;;
     --no-use-mmc-make)
         use_mmc_make=no ;;
 
@@ -647,7 +647,7 @@ then
         $LN_S $root/library/print_extra_inits .
         cp $root/library/Mmake* $root/library/Mercury.options .
         cp $root/library/*_FLAGS.in .
-        cp $root/library/INTER_FLAGS .
+        cp $root/library/INTER_FLAGS* .
         cp $root/library/.mgnu* .
         $LN_S $root/library/$STD_LIB_NAME.init .
         $LN_S $root/library/RESERVED_MACRO_NAMES .
@@ -856,6 +856,24 @@ then
             exit 1
         fi
 
+        case $use_mmc_make in
+            yes)
+                # The rules to generate *_FLAGS files from *_FLAGS.in files
+                # will not run if we are using `mmc --make' so run them now.
+                if (cd $stage2dir && \
+                    $MMAKE compiler/COMP_FLAGS library/LIB_FLAGS \
+                    mdbcomp/MDBCOMP_FLAGS analysis/ANALYSIS_FLAGS \
+                    slice/SLICE_FLAGS profiler/PROF_FLAGS \
+                    deep_profiler/DEEP_FLAGS)
+                then
+                    echo "building of stage 2 flags files successful"
+                else
+                    echo "building of stage 2 flags files not successful"
+                    exit 1
+                fi
+                ;;
+        esac
+        
         if (cd $stage2dir && \
             $MMAKE $mmake_opts dep_library dep_mdbcomp \
             dep_browser dep_analysis dep_compiler dep_slice \
@@ -1083,7 +1101,7 @@ then
     $LN_S $root/library/library_strong_name.sn .
     cp $root/library/Mmake* $root/library/Mercury.options .
     cp $root/library/*_FLAGS.in .
-    cp $root/library/INTER_FLAGS .
+    cp $root/library/INTER_FLAGS* .
     cp $root/library/.mgnu* .
     $LN_S $root/library/$STD_LIB_NAME.init .
     cd $root/$stage3dir

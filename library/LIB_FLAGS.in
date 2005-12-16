@@ -10,6 +10,7 @@
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime
+--c-include-directory ../robdd
 -L../boehm_gc
 -L../runtime
 -L../library
