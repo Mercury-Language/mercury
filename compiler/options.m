@@ -1226,6 +1226,7 @@ option_defaults_2(optimization_option, [
     optimize_constructor_last_call_accumulator -    bool(no),
     optimize_constructor_last_call      -   bool(no),
     optimize_dead_procs                 -   bool(no),
+    data_structure_sharing_analysis     -   bool(no),
     deforestation                       -   bool(no),
     deforestation_depth_limit           -   int(4),
     deforestation_cost_factor           -   int(1000),
@@ -1915,6 +1916,8 @@ long_option("optimize-constructor-last-call",
                     optimize_constructor_last_call).
 long_option("optimize-dead-procs",  optimize_dead_procs).
 long_option("optimise-dead-procs",  optimize_dead_procs).
+long_option("data-structure-sharing-analysis",
+    data_structure_sharing_analysis).
 long_option("deforestation",        deforestation).
 long_option("deforestation-depth-limit",    deforestation_depth_limit).
 long_option("deforestation-cost-factor",    deforestation_cost_factor).
