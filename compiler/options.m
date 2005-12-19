@@ -318,7 +318,6 @@
     ;       nondet_copy_out
     ;       put_commit_in_own_func
     ;       put_nondet_env_on_heap
-    ;       generate_trail_ops_inline
 
     % IL back-end compilation model options
     ;       verifiable_code
@@ -561,6 +560,7 @@
     ;       optimize_tailcalls
     ;       optimize_initializations
     ;       eliminate_local_vars
+    ;       generate_trail_ops_inline
 
     %   - LLDS
     ;       common_data
@@ -1046,7 +1046,6 @@ option_defaults_2(compilation_model_option, [
     nondet_copy_out                     -   bool(no),
     put_commit_in_own_func              -   bool(no),
     put_nondet_env_on_heap              -   bool(no),
-    generate_trail_ops_inline           -   bool(no),
 
     % IL back-end compilation model options
     verifiable_code                     -   bool(no),
@@ -1258,9 +1257,10 @@ option_defaults_2(optimization_option, [
     allow_hijacks                       -   bool(yes),
 
     % MLDS
-    optimize_tailcalls                  -   bool(no),
+    optimize_tailcalls                  -  bool(no),
     optimize_initializations            -  bool(no),
-    eliminate_local_vars                -   bool(no),
+    eliminate_local_vars                -  bool(no),
+    generate_trail_ops_inline           -  bool(yes),
 
     % LLDS
     common_data                         -   bool(no),
@@ -1755,7 +1755,6 @@ long_option("det-copy-out",         det_copy_out).
 long_option("nondet-copy-out",      nondet_copy_out).
 long_option("put-commit-in-own-func",   put_commit_in_own_func).
 long_option("put-nondet-env-on-heap",   put_nondet_env_on_heap).
-long_option("generate-trail-ops-inline", generate_trail_ops_inline).
 % IL back-end compilation model options
 long_option("verifiable-code",      verifiable_code).
 long_option("verifiable",           verifiable_code).
@@ -1997,6 +1996,7 @@ long_option("optimise-tailcalls",   optimize_tailcalls).
 long_option("optimize-initializations", optimize_initializations).
 long_option("optimise-initializations", optimize_initializations).
 long_option("eliminate-local-vars", eliminate_local_vars).
+long_option("generate-trail-ops-inline", generate_trail_ops_inline).
 
 % LLDS optimizations
 long_option("common-data",          common_data).
@@ -4124,8 +4124,12 @@ options_help_mlds_mlds_optimization -->
         "\tassignment statements into initializers.",
         "--eliminate-local-vars",
         "\tEliminate local variables with known values, where possible,",
-        "\tby replacing occurrences of such variables with their values."
-    ]).
+        "\tby replacing occurrences of such variables with their values.",
+        "--no-generate-trail-ops-inline",
+        "\tDo not generate trailing operations inline,",
+        "\tbut instead insert calls to the versions of these operations",
+        "\tin the standard library."
+]).
 
 
 :- pred options_help_rl_rl_optimization(io::di, io::uo) is det.

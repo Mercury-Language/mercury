@@ -7227,6 +7227,13 @@ rather than converting such assignments statements into initializers.
 @findex --eliminate-local-variables
 Eliminate local variables with known values, where possible,
 by replacing occurrences of such variables with their values.
+
+@item --no-generate-trail-ops-inline
+@findex --no-generate-trail-ops-inline
+@findex --generate-trail-ops-inline
+Do not generate trailing operations inline,
+but instead insert calls to the versions of these operations
+in the standard library.
 @end table
 
 @node Medium-level (HLDS -> LLDS) optimization options
