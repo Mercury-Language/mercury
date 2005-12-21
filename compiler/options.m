@@ -3021,7 +3021,7 @@ options_help_aux_output -->
 % "--trace-prof" is not documented because if is only intended for developers
 % of the deep profiler.
 %       "--trace-prof"",
-%       "\tEnable tracing of deep profiling service pedicates.",
+%       "\tEnable tracing of deep profiling service predicates.",
 % I/O tabling is deliberately not documented. It is mean to be switched on,
 % with consistent parameters, in debugging grades, and to be consistently
 % switched off in non-debugging grades. Inconsistent use of the options
@@ -3978,11 +3978,12 @@ options_help_hlds_hlds_optimization -->
         "--analyse-trail-usage",
         "\tEnable trail usage analysis.  Identify those",
         "\tprocedures that will not modify the trail.",
-        "\tThis information can be used to reduce the overhead",
+        "\tThis information is used to reduce the overhead",
         "\tof trailing."
 % `--no-optimize-trail-usage' is a developer-only option.  It 
 % is intended for benchmarking the trail usage optimization.
-% Otherwise, there is usually not any point in turning it off.
+% Otherwise, it should not be turned off as doing so interferes with
+% the results of the trail usage analysis.
         %"--no-optimize-trail-usage",
         %"\tDo not try and restrict trailing to those parts",
         %"\tof the program that actually use it."

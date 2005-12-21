@@ -7150,6 +7150,14 @@ optimization passes.
 @c values that higher-order valued variables can take.
 @c Some optimizations can make use of this information.
 
+@sp 1
+@item --analyse-trail-usage
+@findex --analyse-trail-usage
+Enable trail usage analysis.  Identify those
+procedures that will not modify the trail.
+This information is used to reduce the overhead
+of trailing.
+
 @c @sp 1
 @c @item --untuple
 @c @findex --untuple
