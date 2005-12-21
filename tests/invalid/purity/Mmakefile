@@ -42,16 +42,16 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
-# With `mmc --make', errors should go only to the `.err' file,
-# not stderr.
-ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-%.err: %.m
-	if $(MCM) $*.err > /dev/null 2>&1 ; then false; else true; fi
-else
+# See ../Mmakefile explanation of this.
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 %.err: %.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) --errorcheck-only $* \
 		> $*.err 2>&1; \
 	then false; else true; fi
+else
+$(addsuffix .err,$(PROGS)):
+	-$(MCM) $@
+	if $(MCM) -r $@ > /dev/null 2>&1 ; then false; else true; fi
 endif
 
 clean_local:

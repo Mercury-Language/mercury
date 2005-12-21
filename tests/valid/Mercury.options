@@ -103,3 +103,4 @@ MCFLAGS-untuple_bug		= -O0 --untuple --trace rep --trace-optimized
 MCFLAGS-vn_float		= -O5
 MCFLAGS-zero_arity		= --infer-modes
 MGNUCFLAGS-reg_bug		= --no-ansi
+MCFLAGS-reg_bug			= --no-ansi-c

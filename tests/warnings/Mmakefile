@@ -57,8 +57,8 @@ $(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;
 
 # Build the `.analysis' file for unused_args_analysis2
 # before building unused_args_analysis.c.
-$(cs_subdir)unused_args_analysis.c: $(cs_subdir)unused_args_analysis2.c
-unused_args_analysis.err: $(cs_subdir)unused_args_analysis2.c
+unused_args_analysis.c: unused_args_analysis2.c
+unused_args_analysis.err: unused_args_analysis.c
 
 # Check that `mmc --make up_to_date.m' generates a warning.
 up_to_date.runtest:
