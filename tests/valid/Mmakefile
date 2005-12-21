@@ -21,6 +21,7 @@ TYPECLASS_PROGS= \
 	abstract_typeclass \
 	complex_constraint \
 	constraint_proof_bug \
+	exists_bug \
 	exists_fundeps \
 	exists_fundeps_2 \
 	exists_fundeps_3 \

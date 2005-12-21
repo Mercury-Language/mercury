@@ -754,8 +754,8 @@ setup_headvars_instance_method(PredInfo,
     pred_info_arg_types(PredInfo, ArgTypeVarSet, _, _),
     make_head_vars(UnconstrainedInstanceTVars,
         ArgTypeVarSet, UnconstrainedInstanceTypeInfoVars, !Info),
-    make_typeclass_info_head_vars(InstanceConstraints,
-        InstanceHeadTypeClassInfoVars, !Info),
+    make_typeclass_info_head_vars(do_record_type_info_locns,
+        InstanceConstraints, InstanceHeadTypeClassInfoVars, !Info),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     list__foldl(rtti_reuse_typeclass_info_var,
         InstanceHeadTypeClassInfoVars, RttiVarMaps0, RttiVarMaps),
@@ -811,10 +811,23 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
     poly_info_get_constraint_map(!.Info, ConstraintMap),
     get_improved_exists_head_constraints(ConstraintMap, ExistConstraints,
         ActualExistConstraints),
-    make_typeclass_info_head_vars(ActualExistConstraints,
+    (
+        pred_info_get_markers(PredInfo, PredMarkers),
+        check_marker(PredMarkers, class_method)
+    ->
+        % For class methods we record the type_info_locns even for the
+        % existential constraints.  It's easier to do it here than when we
+        % are expanding class method bodies, and we know there won't be any
+        % references to the type_info after the instance method call so
+        % recording them now won't be a problem.
+        RecordExistQLocns = do_record_type_info_locns
+    ;
+        RecordExistQLocns = do_not_record_type_info_locns
+    ),
+    make_typeclass_info_head_vars(RecordExistQLocns, ActualExistConstraints,
         ExistHeadTypeClassInfoVars, !Info),
-    make_typeclass_info_head_vars(UnivConstraints, UnivHeadTypeClassInfoVars,
-        !Info),
+    make_typeclass_info_head_vars(do_record_type_info_locns, UnivConstraints,
+        UnivHeadTypeClassInfoVars, !Info),
 
     list__append(UnivHeadTypeClassInfoVars, ExistHeadTypeClassInfoVars,
         ExtraHeadTypeClassInfoVars),
@@ -2062,7 +2075,8 @@ make_typeclass_info_var(Constraint, Seen, ExistQVars,
         make_typeclass_info_from_proof(Constraint, Seen, Proof, ExistQVars,
             Context, MaybeVar, !ExtraGoals, !Info)
     ;
-        make_typeclass_info_head_var(Constraint, NewVar, !Info),
+        make_typeclass_info_head_var(do_record_type_info_locns, Constraint,
+            NewVar, !Info),
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         rtti_reuse_typeclass_info_var(NewVar, RttiVarMaps0, RttiVarMaps),
         poly_info_set_rtti_varmaps(RttiVarMaps, !Info),
@@ -2406,8 +2420,8 @@ maybe_insert_var(yes(Var), Vars, [Var | Vars]).
 make_existq_typeclass_info_vars(ExistentialConstraints, ExtraTypeClassVars,
         ExtraGoals, !Info) :-
     poly_info_get_rtti_varmaps(!.Info, OldRttiVarMaps),
-    make_typeclass_info_head_vars(ExistentialConstraints, ExtraTypeClassVars,
-        !Info),
+    make_typeclass_info_head_vars(do_record_type_info_locns,
+        ExistentialConstraints, ExtraTypeClassVars, !Info),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     list__foldl(rtti_reuse_typeclass_info_var, ExtraTypeClassVars,
         RttiVarMaps0, RttiVarMaps),
@@ -2876,81 +2890,105 @@ gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-    % Create a head var for each class constraint, and make an entry in
-    % the typeinfo locations map for each constrained type var.
+    % Usually when we call make_typeclass_info_head_var, we want to record
+    % the type_info_locn for each constrained type var so that later goals
+    % will know where to get the type_info from.  However, when setting up
+    % head vars for existential constraints on the predicate/function we
+    % are processing, we assume that the type_infos will be produced
+    % somewhere else in the goal.  In this case, we don't want to record
+    % the type_info_locns (if we did, then the code to actually produce the
+    % type_info will just try to get it from here, which would be a mode
+    % error).
     %
-:- pred make_typeclass_info_head_vars(list(prog_constraint)::in,
-    list(prog_var)::out, poly_info::in, poly_info::out) is det.
+:- type record_type_info_locns
+    --->    do_record_type_info_locns
+    ;       do_not_record_type_info_locns.
 
-make_typeclass_info_head_vars(Constraints, ExtraHeadVars, !Info) :-
-    list__map_foldl(make_typeclass_info_head_var, Constraints, ExtraHeadVars,
-        !Info).
+    % Create a head var for each class constraint.
+    %
+:- pred make_typeclass_info_head_vars(record_type_info_locns::in,
+    list(prog_constraint)::in, list(prog_var)::out,
+    poly_info::in, poly_info::out) is det.
 
-:- pred make_typeclass_info_head_var(prog_constraint::in,
-    prog_var::out, poly_info::in, poly_info::out) is det.
+make_typeclass_info_head_vars(RecordLocns, Constraints, ExtraHeadVars,
+        !Info) :-
+    list__map_foldl(make_typeclass_info_head_var(RecordLocns), Constraints,
+        ExtraHeadVars, !Info).
 
-make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
+:- pred make_typeclass_info_head_var(record_type_info_locns::in,
+    prog_constraint::in, prog_var::out, poly_info::in, poly_info::out) is det.
+
+make_typeclass_info_head_var(RecordLocns, Constraint, ExtraHeadVar, !Info) :-
     (
         poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         rtti_search_typeclass_info_var(RttiVarMaps0, Constraint, ExistingVar)
     ->
         ExtraHeadVar = ExistingVar
     ;
-        poly_info_get_module_info(!.Info, ModuleInfo),
-
-        Constraint = constraint(ClassName0, ClassTypes),
-
-        % Work out how many superclasses the class has.
-        list__length(ClassTypes, ClassArity),
-        ClassId = class_id(ClassName0, ClassArity),
-        module_info_get_class_table(ModuleInfo, ClassTable),
-        map__lookup(ClassTable, ClassId, ClassDefn),
-        SuperClasses = ClassDefn ^ class_supers,
-        list__length(SuperClasses, NumSuperClasses),
-
-        unqualify_name(ClassName0, ClassName),
-
         % Make a new variable to contain the dictionary for this typeclass
         % constraint.
+        Constraint = constraint(ClassName0, _ClassTypes),
+        unqualify_name(ClassName0, ClassName),
         new_typeclass_info_var(Constraint, ClassName, ExtraHeadVar, !Info),
-
-        % Find all the type variables in the constraint, and remember what
-        % index they appear in in the typeclass info.
-
-        % The first type_info will be just after the superclass infos.
-        First = NumSuperClasses + 1,
-        prog_type__vars_list(ClassTypes, ClassTypeVars0),
-        list__map_foldl(make_index, ClassTypeVars0, ClassTypeVars, First, _),
-
-        % Work out which type variables we haven't seen before, or which we
-        % assumed earlier would be produced in a type_info (this can happen for
-        % code which needs mode reordering and which calls existentially
-        % quantified predicates or deconstructs existentially quantified
-        % terms).
-        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-        IsNew = (pred(TypeVar0::in) is semidet :-
-            TypeVar0 = TypeVar - _Index,
-            (
-                rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocn)
-            ->
-                TypeInfoLocn = type_info(_)
-            ;
-                true
-            )
-        ),
-        list__filter(IsNew, ClassTypeVars, NewClassTypeVars),
-
-        % Make an entry in the TypeInfo locations map for each new type
-        % variable. The type variable can be found at the previously calculated
-        % offset with the new typeclass_info.
-        MakeEntry = (pred(IndexedTypeVar::in, R0::in, R::out) is det :-
-                IndexedTypeVar = TheTypeVar - Index,
-                Location = typeclass_info(ExtraHeadVar, Index),
-                rtti_set_type_info_locn(TheTypeVar, Location, R0, R)
-            ),
-        list__foldl(MakeEntry, NewClassTypeVars, RttiVarMaps0, RttiVarMaps),
-        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
+        (
+            RecordLocns = do_record_type_info_locns,
+            record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info)
+        ;
+            RecordLocns = do_not_record_type_info_locns
+        )
     ).
+
+:- pred record_constraint_type_info_locns(prog_constraint::in, prog_var::in,
+    poly_info::in, poly_info::out) is det.
+
+record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
+    poly_info_get_module_info(!.Info, ModuleInfo),
+
+    % Work out how many superclasses the class has.
+    Constraint = constraint(ClassName, ClassTypes),
+    list__length(ClassTypes, ClassArity),
+    ClassId = class_id(ClassName, ClassArity),
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    map__lookup(ClassTable, ClassId, ClassDefn),
+    SuperClasses = ClassDefn ^ class_supers,
+    list__length(SuperClasses, NumSuperClasses),
+
+    % Find all the type variables in the constraint, and remember what
+    % index they appear in in the typeclass info.
+
+    % The first type_info will be just after the superclass infos.
+    First = NumSuperClasses + 1,
+    prog_type__vars_list(ClassTypes, ClassTypeVars0),
+    list__map_foldl(make_index, ClassTypeVars0, ClassTypeVars, First, _),
+
+    % Work out which type variables we haven't seen before, or which we
+    % assumed earlier would be produced in a type_info (this can happen for
+    % code which needs mode reordering and which calls existentially
+    % quantified predicates or deconstructs existentially quantified
+    % terms).
+    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+    IsNew = (pred(TypeVar0::in) is semidet :-
+        TypeVar0 = TypeVar - _Index,
+        (
+            rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocn)
+        ->
+            TypeInfoLocn = type_info(_)
+        ;
+            true
+        )
+    ),
+    list__filter(IsNew, ClassTypeVars, NewClassTypeVars),
+
+    % Make an entry in the TypeInfo locations map for each new type
+    % variable. The type variable can be found at the previously calculated
+    % offset with the new typeclass_info.
+    MakeEntry = (pred(IndexedTypeVar::in, R0::in, R::out) is det :-
+            IndexedTypeVar = TheTypeVar - Index,
+            Location = typeclass_info(ExtraHeadVar, Index),
+            rtti_set_type_info_locn(TheTypeVar, Location, R0, R)
+        ),
+    list__foldl(MakeEntry, NewClassTypeVars, RttiVarMaps0, RttiVarMaps),
+    poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
 :- pred make_index(T::in, pair(T, int)::out, int::in, int::out) is det.
 
