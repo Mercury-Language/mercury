@@ -2501,6 +2501,7 @@ opt_level(0, _, [
 % have a good payoff while still keeping compilation time small.
 
 opt_level(1, OptionTable, [
+    use_local_vars              -   bool(yes),
     c_optimize                  -   bool(yes),  % XXX we want `gcc -O1'
     optimize_frames             -   bool(yes),
     optimize_delay_slot         -   bool(DelaySlot),
@@ -2560,7 +2561,6 @@ opt_level(3, _, [
 % and increases the inlining thresholds.
 
 opt_level(4, _, [
-    use_local_vars              -   bool(yes),
     inline_simple_threshold     -   int(8),
     inline_compound_threshold   -   int(20),
     higher_order_size_limit     -   int(30)
