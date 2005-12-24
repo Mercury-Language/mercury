@@ -45,8 +45,6 @@
 %   - Use the results of closure analysis to determine the trailing
 %     status of higher-order calls.
 %   - Improve the analysis in the presence of solver types.
-%   - Lift some of the restrictions on compiler-generated unification and 
-%     comparison preds.
 %   - Create specialised versions of higher-order procedures based on
 %     whether or not their arguments modify the trail.
 
@@ -287,27 +285,20 @@ check_goal_for_trail_mods_2(SCC, ModuleInfo, VarTypes, Goal, _, Result) :-
         % There are no builtins that will modify the trail.
         Result = will_not_modify_trail
     ;
-        % Handle unify and compare.
-        (
-            ModuleName = pred_info_module(CallPredInfo),
-            any_mercury_builtin_module(ModuleName),
-            Name = pred_info_name(CallPredInfo),
-            Arity = pred_info_orig_arity(CallPredInfo),
-            ( SpecialPredId = spec_pred_compare
-            ; SpecialPredId = spec_pred_unify
-            ),
-            special_pred_name_arity(SpecialPredId, Name, _, Arity)
-        ;
-            % XXX This is too conservative.
-            pred_info_get_origin(CallPredInfo, Origin),
-            Origin = special_pred(SpecialPredId - _),
-            ( SpecialPredId = spec_pred_compare
-            ; SpecialPredId = spec_pred_unify
-            )
-        )   
+        % Handle builtin unify and compare.
+        % NOTE: the type specific unify and compare predicates are just
+        % treated as though they were normal predicates.
+        ModuleName = pred_info_module(CallPredInfo),
+        any_mercury_builtin_module(ModuleName),
+        Name = pred_info_name(CallPredInfo),
+        Arity = pred_info_orig_arity(CallPredInfo),
+        ( SpecialPredId = spec_pred_compare
+        ; SpecialPredId = spec_pred_unify
+        ),
+        special_pred_name_arity(SpecialPredId, Name, _, Arity)
     ->
-        % At the moment we assume that calls to out-of-line
-        % unification/comparisons are going to modify the trail.
+        % XXX We should examine the argument types of calls to builtin.unify/2
+        % and builtin.compare/3 and then make a decision based on those.
         Result = may_modify_trail
     ;
         % Handle library predicates whose trailing status
@@ -712,23 +703,15 @@ annotate_goal_2(ModuleInfo, VarTypes, _, !Goal, Status) :-
     ->
         Status = will_not_modify_trail
     ;
-        % Handle unify and compare.
-        (
-            ModuleName = pred_info_module(CallPredInfo),
-            any_mercury_builtin_module(ModuleName),
-            Name = pred_info_name(CallPredInfo),
-            Arity = pred_info_orig_arity(CallPredInfo),
-            ( SpecialPredId = spec_pred_compare
-            ; SpecialPredId = spec_pred_unify
-            ),
-            special_pred_name_arity(SpecialPredId, Name, _, Arity)
-        ;
-            pred_info_get_origin(CallPredInfo, Origin),
-            Origin = special_pred(SpecialPredId - _),
-            ( SpecialPredId = spec_pred_compare
-            ; SpecialPredId = spec_pred_unify
-            )
-        )
+        % Handle builtin unify and compare.
+        ModuleName = pred_info_module(CallPredInfo),
+        any_mercury_builtin_module(ModuleName),
+        Name = pred_info_name(CallPredInfo),
+        Arity = pred_info_orig_arity(CallPredInfo),
+        ( SpecialPredId = spec_pred_compare
+        ; SpecialPredId = spec_pred_unify
+        ),
+        special_pred_name_arity(SpecialPredId, Name, _, Arity)
     ->
         Status = may_modify_trail
     ;

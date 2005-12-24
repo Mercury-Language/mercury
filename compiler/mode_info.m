@@ -409,7 +409,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
     module_info_get_globals(ModuleInfo, Globals),
     globals__lookup_bool_option(Globals, debug_modes, DebugModes),
     globals__lookup_int_option(Globals, debug_modes_pred_id,
-    DebugModesPredId),
+        DebugModesPredId),
     pred_id_to_int(PredId, PredIdInt),
     (
         DebugModes = yes,

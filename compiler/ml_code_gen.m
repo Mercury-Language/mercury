@@ -3125,7 +3125,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, Context,
         ;
             HighLevelData = no,
             % For --no-high-level-data, we only need to use a cast is for
-            % polymorphic types, which are `Word' in the C interface but
+            % polymorphic types, which are `MR_Word' in the C interface but
             % `MR_Box' in the MLDS back-end.
             (
                 ( OrigType = variable(_, _)
