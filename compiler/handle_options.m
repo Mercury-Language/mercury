@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1804,7 +1804,7 @@ display_compiler_version(!IO) :-
     library__version(Version),
     io__write_strings([
         "Mercury Compiler, version ", Version, "\n",
-        "Copyright (C) 1993-2005 The University of Melbourne\n"
+        "Copyright (C) 1993-2006 The University of Melbourne\n"
     ], !IO).
 
 usage(!IO) :-
@@ -1828,7 +1828,7 @@ long_usage(!IO) :-
     % usage message, but there is no simple way to avoid that.
     library__version(Version),
     io__write_strings(["Mercury Compiler, version ", Version, "\n"], !IO),
-    io__write_string("Copyright (C) 1993-2005 " ++
+    io__write_string("Copyright (C) 1993-2006 " ++
         "The University of Melbourne\n", !IO),
     io__write_string("Usage: mmc [<options>] <arguments>\n", !IO),
     io__write_string("Arguments:\n", !IO),
