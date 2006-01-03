@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -465,17 +465,25 @@ should_add_trail_ops(Globals, Goal) = AddTrailOps :-
         AddTrailOps = no
     ;
         UseTrail = yes,
-        globals.lookup_bool_option(Globals, optimize_trail_usage,
-            OptTrailUsage),
+        globals.lookup_bool_option(Globals, disable_trail_ops,
+            DisableTrailOps),
         (
-            OptTrailUsage = no,
-            AddTrailOps = yes
+            DisableTrailOps = yes,
+            AddTrailOps = no
         ;
-            OptTrailUsage = yes,
-            ( goal_cannot_modify_trail(Goal) ->
-                AddTrailOps = no
-            ;
+            DisableTrailOps = no,
+            globals.lookup_bool_option(Globals, optimize_trail_usage,
+                OptTrailUsage),
+            (
+                OptTrailUsage = no,
                 AddTrailOps = yes
+            ;
+                OptTrailUsage = yes,
+                ( goal_cannot_modify_trail(Goal) ->
+                    AddTrailOps = no
+                ;
+                    AddTrailOps = yes
+                )
             )
         )
     ).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -417,6 +417,9 @@
     ;       use_minimal_model_stack_copy_cut
             % These four are used to analyze the performance effects
             % of minimal model tabling.
+
+    ;       disable_trail_ops
+            % This is used to analyze the performance effects of trailing.
 
     % Code generation options
     ;       low_level_debug
@@ -1075,7 +1078,8 @@ option_defaults_2(internal_use_option, [
     disable_minimal_model_stack_copy_pneg - bool(no),
     disable_minimal_model_stack_copy_cut -  bool(no),
     use_minimal_model_stack_copy_pneg   -   bool(no),
-    use_minimal_model_stack_copy_cut    -   bool(no)
+    use_minimal_model_stack_copy_cut    -   bool(no), 
+    disable_trail_ops                   -   bool(no)
 ]).
 option_defaults_2(code_gen_option, [
     % Code Generation Options
@@ -1781,6 +1785,7 @@ long_option("new-type-class-rtti",  new_type_class_rtti).
 long_option("rtti-line-numbers",    rtti_line_numbers).
 long_option("disable-mm-pneg",      disable_minimal_model_stack_copy_pneg).
 long_option("disable-mm-cut",       disable_minimal_model_stack_copy_cut).
+long_option("disable-trail-ops",    disable_trail_ops).
 
 % code generation options
 long_option("low-level-debug",      low_level_debug).

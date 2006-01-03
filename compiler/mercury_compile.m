@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3163,7 +3163,22 @@ maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
 maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
     globals__io_lookup_bool_option(use_trail, UseTrail, !IO),
     (
+        UseTrail = no,
+        EmitTrailOps = no
+    ;
         UseTrail = yes,
+        globals__io_lookup_bool_option(disable_trail_ops, DisableTrailOps,
+            !IO),
+        (
+            DisableTrailOps = yes,
+            EmitTrailOps = no
+        ;
+            DisableTrailOps = no,
+            EmitTrailOps = yes
+        )
+    ),
+    (
+        EmitTrailOps = yes,
         globals.io_lookup_bool_option(optimize_trail_usage, OptTrailUse, !IO),
         globals.io_get_target(Target, !IO),
         (
@@ -3187,7 +3202,7 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        UseTrail = no
+        EmitTrailOps = no
     ).
 
 :- pred maybe_add_heap_ops(bool::in, bool::in,
