@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2005 The University of Melbourne. 
+# Copyright (C) 1995-2006 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -2076,7 +2076,7 @@ AC_SUBST(MR_BZERO_NEEDS_STRINGS_HEADER)
 # (Actually I don't know if `-fno-functions-cse' is really needed.
 # Maybe you can get away without it.  But better to err on the safe side...)
 #
-# For alpha and for mips, and probably on other architectures, when using
+# For alpha, mips, and ARM, and probably on other architectures, when using
 # non-local gotos we need -fomit-frame-pointer, otherwise when compiling
 # with --no-c-optimize we run into a problem similar to the one above:
 # Gcc generates code which initializes the frame pointer in the
@@ -2141,6 +2141,9 @@ case $ac_cv_prog_gcc in yes)
 		mercury_cv_asm_labels=no
 		mercury_cv_gcc_labels=no
 		;;
+ 	arm*-*)
+ 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
+ 		;;
 	# On hppa64, ia64 and powerpc64 the test programs appear to work, but
 	# larger programs die with an Illegal Instruction fault.
 	hppa64-*)
@@ -3567,6 +3570,15 @@ case "$host" in
 		    AC_MSG_RESULT(no)
 		fi
 		;;
+ 	arm*-linux|arm*-linux-gnu)
+ 		AC_MSG_RESULT(yes)
+ 		EXT_FOR_SHARED_LIB=so
+ 		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+ 		# One can build gcc with a default PIC register other than sl
+ 		# so let's force it. If you change this, 
+ 		# update MR_ARM_PIC_REG in runtime/mercury_goto.h as well.
+ 		CFLAGS_FOR_PIC="-mpic-register=sl $CFLAGS_FOR_PIC"
+ 		;;
 	*)
 		# CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating
 		# libgc.a.  If the system doesn't support shared libraries,

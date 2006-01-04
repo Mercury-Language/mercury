@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001, 2003-2005 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -464,6 +464,66 @@
     #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
 	"	.type _entry_" MR_STRINGIFY(label) ",#function\n"
   #endif
+
+#elif defined(__arm__)
+	
+   /*
+   ** The following code for supporting non-local gotos and PIC on ARM
+   ** is thanks to Sergey Khorev <iamphet@nm.ru>.
+   */
+   #if MR_PIC
+ 
+     /*
+     ** At each entry point, where we may have been jumped to from
+     ** code in a different C file, we need to set up the PIC register.
+     ** We do this by adding _GLOBAL_OFFSET_TABLE_ value to the PC register 
+     ** Current instruction address is (PC - 8) hence -(0b + 8)
+     ** (I don't understand the details exactly, this code is
+     ** basically copied from the output of `gcc -fpic -S' for a function
+     ** containing setjmp.)
+     ** A little bit more detail can be obtained from GCC source
+     ** (function arm_finalize_pic in gcc/config/arm/arm.c)
+     ** Note that `0f' means the label `0:' following the current
+     ** instruction, and `0b' means the label `0:' before the current
+     ** instruction.
+     ** GCC doesn't like it when we clobber the PIC register but it seems we
+     ** can safely keep GCC uninformed because we just do GCC's work
+     ** and the PIC register is saved over call
+     ** Loading arbitrary immediate values into ARM registers is not possible
+     ** directly hence the .word directive in the code section and the branch 
+     ** instruction bypassing it.
+     ** If you change MR_ARM_PIC_REG, update CFLAGS_FOR_PIC (-mpic-register)
+     ** in configure.in.
+     */
+     #define MR_ARM_PIC_REG "sl"
+ 
+     #define MR_INLINE_ASM_FIXUP_REGS				\
+       "	    ldr	" MR_ARM_PIC_REG ", 1f\n"			\
+       "0:\n"							\
+       "	    add	" MR_ARM_PIC_REG ", pc, " MR_ARM_PIC_REG "\n"	\
+       "	    b 2f\n"						\
+       "1:\n"							\
+       "	    .word	_GLOBAL_OFFSET_TABLE_-(0b+8)\n"		\
+       "2:\n"
+ 
+     /*
+     ** For Linux-ELF shared libraries, we need to declare that the type of
+     ** labels is #function (i.e. code, not data), otherwise the dynamic
+     ** linker seems to get confused, and we end up jumping into the data
+     ** section.  Hence the `.type' directive below.
+     */
+     #ifdef __ELF__
+       #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+ 	  "	.type _entry_" MR_STRINGIFY(label) ",#function\n"
+     #endif
+ 
+     /*
+     ** Save a few clock ticks branching past MR_INLINE_ASM_FIXUP_REGS
+     */
+     #define MR_ASM_FALLTHROUGH(label) \
+       goto MR_skip(label);
+ 
+   #endif
 
 #endif
 
