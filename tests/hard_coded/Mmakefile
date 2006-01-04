@@ -110,6 +110,7 @@ ORDINARY_PROGS=	\
 	intermod_poly_mode \
 	intermod_pragma_clause \
 	intermod_type_qual \
+	intermod_unused_args \
 	int_fold_up_down \
 	join_list \
 	list_series_int \
@@ -566,6 +567,10 @@ constant_prop_1.il: constant_prop_1.il_date
 	grep foobar $@
 	grep 1234 $@
 	grep '5678\.0' $@
+
+# Force intermod_unused_args2.m to be compiled and analysed before
+# intermod_unused_args.m.
+intermod_unused_args.c: intermod_unused_args2.c
 
 #-----------------------------------------------------------------------------#
 

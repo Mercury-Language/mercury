@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1172,10 +1172,10 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !ProcCallInfo,
     % Assign the old procedure to a new predicate.
     proc_info_headvars(ProcInfo0, HeadVars0),
     remove_listof_elements(1, UnusedArgs, HeadVars0, HeadVars),
-    proc_info_set_headvars(HeadVars, ProcInfo0, HeadVarsProcInfo),
-    proc_info_argmodes(HeadVarsProcInfo, ArgModes0),
+    proc_info_set_headvars(HeadVars, ProcInfo0, ProcInfo1),
+    proc_info_argmodes(ProcInfo1, ArgModes0),
     remove_listof_elements(1, UnusedArgs, ArgModes0, ArgModes),
-    proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
+    proc_info_set_argmodes(ArgModes, ProcInfo1, ProcInfo),
     map__set(NewProcs0, ProcId, ProcInfo, NewProcs),
     pred_info_set_procedures(NewProcs, NewPredInfo0, NewPredInfo),
 
