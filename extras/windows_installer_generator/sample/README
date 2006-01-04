@@ -6,17 +6,5 @@ and then do:
 
 mmc --make gen_merc_wxs
 
-
-Usage: gen_merc_wxs <version> <path to merc files> <guid command> <out file>
-
-For example the command:
-
-gen_merc_wxs 0.12.0 c:\mercury uuidgen installer.wxs
-
-will produce the file installer.wxs based on the files in c:\mercury.
-The .wxs file can then be compiled into a Microsoft installer (.msi) 
-file using the Wix compiler and linker (candle.exe and light.exe), available
-from wix.sourceforge.net:
-
-candle installer.wxs
-light installer.wixobj
+The script gen_merc_msi can then be used to generate a Windows installer
+for Mercury.  See the comments in that script for usage information.

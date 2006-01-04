@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -55,7 +55,7 @@
     %
 :- pred annotate_files(language::in, list(file(L))::in, 
     id_supply::in, id_supply::out, 
-    string::in, string::in, list(annotated_file)::out, 
+    io.input_stream::in, string::in, list(annotated_file)::out, 
     io::di, io::uo) is det <= language_independent_tokens(L).
 
 :- pred gen_files(string::in, shortcut_function(L)::in,
@@ -73,7 +73,7 @@
     %
 :- pred is_shortcut_from_programs_menu(list(annotated_file)::in) is semidet.
 
-:- pred gen_guid(string::in, guid::out, io::di, io::uo) is det.
+:- pred gen_guid(io.input_stream::in, guid::out, io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -136,15 +136,15 @@ add_file(ShortCutsMap, DirName, BaseName, FileType, yes, !Files, !IO) :-
     ).
 
 :- pred annotate_file(language::in, file(L)::in, id_supply::in, id_supply::out,
-    string::in, string::in, annotated_file::out, 
+    io.input_stream::in, string::in, annotated_file::out, 
     io::di, io::uo) is det <= language_independent_tokens(L).
 
-annotate_file(Language, file(Name, ShortCuts), !IdSupply, GUIDGenCmd, Path, 
+annotate_file(Language, file(Name, ShortCuts), !IdSupply, GUIDFile, Path, 
         AnnotatedFile, !IO) :-
     allocate_id(ComponentId, !IdSupply),
     allocate_id(FileId, !IdSupply),
     annotate_shortcuts(Language, ShortCuts, AnnShortCuts, !IdSupply),
-    gen_guid(GUIDGenCmd, GUID, !IO),
+    gen_guid(GUIDFile, GUID, !IO),
     AnnotatedFile = annotated_file(ComponentId, GUID, 
         FileId, Name, Path, AnnShortCuts).
 annotate_file(Language, directory(Name, Files), !IdStore, GUIDGenCmd, Path0,
@@ -156,11 +156,11 @@ annotate_file(Language, directory(Name, Files), !IdStore, GUIDGenCmd, Path0,
     AnnotatedDir = annotated_directory(DirId, Name, AnnotatedFiles).
 
 annotate_files(_, [], !IdStore, _, _, [], !IO).
-annotate_files(Language, [File | Files], !IdStore, GUIDGenCmd, Path, 
+annotate_files(Language, [File | Files], !IdStore, GUIDStream, Path, 
         [AnnFile | AnnFiles], !IO) :-
-    annotate_file(Language, File, !IdStore, GUIDGenCmd, Path, AnnFile,
+    annotate_file(Language, File, !IdStore, GUIDStream, Path, AnnFile,
         !IO),
-    annotate_files(Language, Files, !IdStore, GUIDGenCmd, Path, AnnFiles,
+    annotate_files(Language, Files, !IdStore, GUIDStream, Path, AnnFiles,
         !IO).
 
 :- pred annotate_shortcuts(language::in, list(shortcut(L))::in, 
@@ -279,43 +279,14 @@ is_shortcut_from_programs_menu_2([annotated_shortcut(_, programs, _) | _]).
 is_shortcut_from_programs_menu_2([_ | Rest]) :-
     is_shortcut_from_programs_menu_2(Rest).
 
-gen_guid(Cmd, GUID, !IO) :-
-    io.make_temp(TempFile, !IO),
-    io.call_system_return_signal(Cmd ++ " > " ++ TempFile, CallRes, !IO),
+gen_guid(GUIDFile, GUID, !IO) :-
+    io.read_line_as_string(GUIDFile, Result, !IO), 
     (
-        CallRes = ok(ExitStatus),
-        ( if ExitStatus = exited(0) then
-            io.see(TempFile, SeeRes, !IO),
-            (
-                SeeRes = ok,
-                io.read_line_as_string(ReadRes, !IO),
-                (   
-                    ReadRes = ok(Line),
-                    GUID = string.to_upper(
-                        string.rstrip(Line)),
-                    io.seen(!IO),
-                    io.remove_file(TempFile, _, !IO)
-                ;
-                    ReadRes = eof,
-                    io.remove_file(TempFile, _, !IO),
-                    throw(guid_gen_error(guid_eof))
-                ;
-                    ReadRes = error(Err),
-                    io.remove_file(TempFile, _, !IO),
-                    throw(guid_gen_error(
-                        guid_io_error(Err)))
-                )
-            ;
-                SeeRes = error(Err),
-                io.remove_file(TempFile, _, !IO),
-                throw(guid_gen_error(guid_io_error(Err)))
-            )
-        else
-            io.remove_file(TempFile, _, !IO),
-            throw(guid_gen_error(guid_cmd_error(ExitStatus)))
-        )
+        Result = ok(GUID)
     ;
-        CallRes = error(Err),
-        io.remove_file(TempFile, _, !IO),
+        Result = error(Err),
         throw(guid_gen_error(guid_io_error(Err)))
+    ;
+        Result = eof,
+        throw(guid_gen_error(guid_eof))
     ).

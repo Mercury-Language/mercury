@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,10 +26,10 @@
 
 :- import_module wix.
 
-% gen_annotated_installer(Installer, GUIDGenCmd, AnnotatedInstaller, !IO).
+% gen_annotated_installer(Installer, GUIDStream, AnnotatedInstaller, !IO).
 %
 
-:- pred gen_annotated_installer(installer(L)::in, string::in,
+:- pred gen_annotated_installer(installer(L)::in, io.input_stream::in,
     annotated_installer::out, io::di, io::uo) is det 
     <= language_independent_tokens(L).
 
@@ -39,6 +39,7 @@
 
 :- implementation.
 
+:- import_module bool.
 :- import_module exception.
 :- import_module int.
 :- import_module list.
@@ -62,7 +63,8 @@
                 ann_installer_bitmaps       :: map(string, id),
                 ann_installer_removedlg_id  :: id,
                 ann_installer_finish_id     :: id,
-                ann_installer_checkifadmin  :: maybe(string)
+                ann_installer_checkifadmin  :: maybe(string),
+                ann_insatller_all_users     :: bool
             ).
 
 :- type ann_set_env_var
@@ -100,7 +102,8 @@
 
 annotated_installer_to_xml(Installer) = XML :-
     Installer = annotated_installer(Product, LanguageId, EnvVarsGUID, EnvVars,
-        WizardSteps, BitMaps, RemoveDlgId, FinishDlgId, CheckIfAdmin),
+        WizardSteps, BitMaps, RemoveDlgId, FinishDlgId, CheckIfAdmin,
+        AllUsers),
     language_to_lcid(LanguageId, LCID),
     Product = annotated_product(
         GUID,
@@ -112,6 +115,14 @@ annotated_installer_to_xml(Installer) = XML :-
         Comments,
         Contents,
         DefInstallLoc),
+    (
+        AllUsers = yes,
+        AllUsersPropertyList = [elem("Property", [id_attr("ALLUSERS")],
+            [data("2")])]
+    ;
+        AllUsers = no,
+        AllUsersPropertyList = []
+    ),
     XML = elem("Wix", [
             attr("xmlns","http://schemas.microsoft.com/wix/2003/01/wix")],
         [
@@ -139,6 +150,7 @@ annotated_installer_to_xml(Installer) = XML :-
             else
                 []
             ) ++
+            AllUsersPropertyList ++
             [elem("Media", [
                 id_attr("1"),
                 attr("Cabinet", "contents.cab"),
@@ -185,7 +197,7 @@ ann_set_env_var_to_xml(ann_set_env_var(Name, Value, HowSet, SysOrUser, EnvId))
         attr("System", system_or_user_to_string(SysOrUser)),
         attr("Value", Value)], []).
 
-gen_annotated_installer(Installer, GUIDGenCmd, AnnotatedInstaller, !IO) :-
+gen_annotated_installer(Installer, GUIDStream, AnnotatedInstaller, !IO) :-
     some [!IdSupply, !DialogIdMap, !BitMaps] (
         !:IdSupply = init_id_supply,
         !:DialogIdMap = map.init,
@@ -194,7 +206,7 @@ gen_annotated_installer(Installer, GUIDGenCmd, AnnotatedInstaller, !IO) :-
             Product, 
             Language, 
             EnvVars, 
-            ShortCuts, 
+            ShortCuts, AllUsers,
             Title, InstallHeading, InstallDescr,
             Next, Back, Cancel, Install, CancelMessage, 
             RemoveHeading, RemoveConfirm, Remove,
@@ -251,12 +263,10 @@ gen_annotated_installer(Installer, GUIDGenCmd, AnnotatedInstaller, !IO) :-
 
         annotate_env_vars(Language, EnvVars, AnnEnvVars, !IdSupply,
             RequiredPrivilege),
-        (
-            RequiredPrivilege = admin,
+        ( if ( RequiredPrivilege = admin ; AllUsers = yes ) then
             det_translate(MustBeAdminMessage, Language, MustBeAdminMsgStr),
             CheckForAdmin = yes(MustBeAdminMsgStr)
-        ;
-            RequiredPrivilege = normal,
+        else
             CheckForAdmin = no
         ),
         det_translate(ManufacturerToken, Language, Manufacturer),
@@ -265,11 +275,11 @@ gen_annotated_installer(Installer, GUIDGenCmd, AnnotatedInstaller, !IO) :-
         det_translate(CommentsToken, Language, Comments),
         det_translate(DefaultInstallToken, Language, DefInsLoc),
         gen_files(FilesPath, ShortCuts, Files, !IO),
-        annotate_files(Language, Files, !.IdSupply, _, GUIDGenCmd, FilesPath, 
+        annotate_files(Language, Files, !.IdSupply, _, GUIDStream, FilesPath, 
             AnnotatedFiles, !IO),
-        gen_guid(GUIDGenCmd, ProductGUID, !IO),
-        gen_guid(GUIDGenCmd, UpgradeGUID, !IO),
-        gen_guid(GUIDGenCmd, EnvVarsGUID, !IO),
+        gen_guid(GUIDStream, ProductGUID, !IO),
+        gen_guid(GUIDStream, UpgradeGUID, !IO),
+        gen_guid(GUIDStream, EnvVarsGUID, !IO),
         AnnotatedInstaller = 
             annotated_installer(
                 annotated_product(
@@ -290,7 +300,8 @@ gen_annotated_installer(Installer, GUIDGenCmd, AnnotatedInstaller, !IO) :-
                 !.BitMaps,
                 RemoveDlgId,
                 FinishDlgId,
-                CheckForAdmin
+                CheckForAdmin,
+                AllUsers
             )
     ).
 

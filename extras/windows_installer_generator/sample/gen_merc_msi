@@ -1,0 +1,95 @@
+#!/bin/sh
+# This script will generate a windows installer for Mercury.
+#
+
+USAGE="Usage: gen_merc_msi VERSION INSTALL_DIR MINGW_DIR"
+
+# Before running this script perform the following actions:
+# 1. Compile and install Mercury, under MSYS, to INSTALL_DIR.
+# 2. Build the pdf and html documentation and install it to 
+#    INSTALL_DIR/lib/mercury/doc.
+#    (you may need to build the pdf documentation on a Linux machine, since
+#    pdftex doesn't work very well under Cygwin or MSYS).
+# 3. Checkout tutorial/book/book.pdf to INSTALL_DIR/lib/mercury/doc.
+# 4. Install a minimal version of MinGW 3.4.2 (www.mingw.org) to MINGW_DIR.
+# 4. Make sure light and candle (available from wix.sourceforge.org) are
+#    in the PATH.
+# 5. Make sure uuidgen is in the PATH.
+# 6. Compile gen_merc_wxs.m (in this directory) on a system that generates
+#    unix style newlines such as an appropriately configured version of 
+#    Cygwin.
+#
+# Note that INSTALL_DIR has no relationship to where the compiler will be
+# installed on the user's machine when they run the installer, so can be 
+# anywhere.  INSTALL_DIR should be specified with a path that windows will
+# understand (such as c:/mercury, not /cygdrive/c/mercury).
+# VERSION is the version number the user will see in the generated installer.
+# It should match the version number of the compiler in INSTALL_DIR.
+#
+# This script should be run from the same directory it resides in.
+#
+
+VERSION=$1 ; shift
+INSTALL_DIR=$1 ; shift
+MINGW_DIR=$1 ; shift
+
+case $VERSION in
+	"")
+		echo $USAGE
+		exit 1
+		;;
+esac
+
+case $INSTALL_DIR in
+	"")
+		echo $USAGE
+		exit 1
+		;;
+esac
+
+case $MINGW_DIR in
+	"")
+		echo $USAGE
+		exit 1
+		;;
+esac
+
+# Install a new configuration file
+cp -f Mercury.config $INSTALL_DIR/lib/mercury/conf || exit 1
+
+# Copy mercury_compile.exe to mmc.exe so that mmc can be invoked from the
+# command prompt.
+mv -f $INSTALL_DIR/bin/mercury_compile.exe $INSTALL_DIR/bin/mmc.exe || \
+	mv -f $INSTALL_DIR/lib/mercury/bin/i686-pc-mingw32/mercury_compile.exe \
+	$INSTALL_DIR/bin/mmc.exe # || exit 1
+
+# Install a C version of mdb.
+echo Copying mdb...
+$MINGW_DIR/bin/gcc -o mdb.exe mdb.c | exit 1
+cp -f mdb.exe $INSTALL_DIR/bin | exit 1
+
+# Combine a special purpose mdbrc and the installed mdb_doc script
+# into one script, so that mdbrc doesn't have to know where mdb_doc resides.
+cat $INSTALL_DIR/lib/mercury/mdb/mdb_doc ./mdbrc > \
+	$INSTALL_DIR/lib/mercury/mdb/mdbrc || exit 1
+
+# Copy MinGW files.
+echo Copying MinGW...
+cp -rf $MINGW_DIR/bin/* $INSTALL_DIR/bin && \
+cp -rf $MINGW_DIR/lib/* $INSTALL_DIR/lib && \
+cp -rf $MINGW_DIR/include $INSTALL_DIR && \
+cp -rf $MINGW_DIR/libexec $INSTALL_DIR || exit 1
+
+# Generate GUIDs
+echo Generating GUIDs...
+uuidgen -n10000 > uuids
+
+# Generate the installer.
+echo Generating mercury-compiler-$VERSION.wxs...
+./gen_merc_wxs $VERSION $INSTALL_DIR uuids mercury-compiler-$VERSION.wxs || exit 1
+sleep 1
+echo Generating mercury-compiler-$VERSION.wixobj...
+candle mercury-compiler-$VERSION.wxs || exit 1
+sleep 1
+echo Generating mercury-compiler-$VERSION.msi...
+light mercury-compiler-$VERSION.wixobj || exit 1

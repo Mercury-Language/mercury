@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -326,7 +326,7 @@ finish_dialog(Title, Heading, Message, Finish, BackgroundSrc) =
     dialog(finish_dlg, 370 - 270, Title, not_modeless, [
         button(236 - 243, 56 - 17, not_default, Finish, [exit]),
         bitmap(0 - 0, 370 - 234, BackgroundSrc),
-        text(135 - 70, 220 - 60, Message, normal),
+        text(135 - 70, 220 - 160, Message, normal),
         text(135 - 20, 220 - 60, Heading, heading),
         line(0 - 234, 370 - 0)]).
 
@@ -689,7 +689,7 @@ generate_wizard_dialogs_2(Title, Next, Back, Cancel, Install, BannerSrc,
         WizardStep = wizard_start(Heading, Message),
         Background = [bitmap(0 - 0, 370 - 234, BackgroundSrc)],
         HeadingText = [text(135 - 20, 220 - 60, Heading, heading)],
-        MessageText = [text(135 - 70, 220 - 30, Message, normal)],
+        MessageText = [text(135 - 70, 220 - 160, Message, normal)],
         BottomLine = [line(0 - 234, 370 - 0)],
         WizControls = NextButton ++ CancelButton ++
             HeadingText ++ MessageText ++ Background ++

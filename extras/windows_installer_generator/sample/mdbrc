@@ -1,0 +1,16 @@
+alias	s	step
+alias	g	goto
+alias	f	finish
+alias	r	retry
+alias	v	vars
+alias	p	print
+alias	P	print *
+alias	d	stack
+alias	c	continue
+alias	b	break
+alias	h	help
+alias	?	help
+alias	excp	exception
+alias	e	exception
+alias	EMPTY	step
+alias	NUMBER	step

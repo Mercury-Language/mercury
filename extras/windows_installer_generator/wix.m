@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,6 +14,7 @@
 
 :- interface.
 
+:- import_module bool.
 :- import_module int.
 :- import_module io.
 :- import_module list.
@@ -21,7 +22,7 @@
 
 :- import_module wix_gui.
 
-    % generate_installer(Installer, GUIDGenCommand, FileName, Result, !IO).
+    % generate_installer(Installer, GUIDFile, FileName, Result, !IO).
     %
     % Generate a Wix source file which can then be compiled into a
     % Windows installer (.msi) file.
@@ -30,11 +31,11 @@
     % By convention Wix source files have the suffix `.wxs'.
     % The Installer argument contains all the information necessary to 
     % generate the installer (see the installer type below).
-    % GUIDGenCommand is a command to execute to generate a GUID.
+    % GUIDFile is a file of GUIDs (one per line).  
     % A GUID is a unique identifier that Windows uses to keep track of
-    % each installed component.  A seperate GUID is generated for 
-    % each file installed.  `uuidgen.exe' is an example of a GUID generator
-    % and is available for both Windows and Linux.
+    % each installed component.  
+    % There should be at least as many GUIDs in the file as there are files in
+    % the product the installer is for.
     %
     % To compile the generated .wxs file into a windows installer first
     % download the Wix toolset from wix.sourceforge.net and then run:
@@ -93,6 +94,9 @@
                     % menu (see the definition of the shortcut_function 
                     % type below).
                 wix_shortcut_func           :: shortcut_function(L),
+
+                    % If yes then the shortcuts will be visible to all users.
+                wix_all_users               :: bool,
 
                     % A token representing the text to display in the
                     % title bar of the installer GUI.
@@ -542,35 +546,42 @@
 :- import_module std_util.
 :- import_module term_to_xml.
 
-generate_installer(Installer, GUIDGenCmd, FileName, Result, !IO) :-
-    io.open_output(FileName, OpenResult, !IO),
+generate_installer(Installer, GUIDFile, FileName, Result, !IO) :-
+    io.open_output(FileName, OpenOutputResult, !IO),
     (
-        OpenResult = ok(OutStream),
-        %
-        % We know that, operationally, for a given input,
-        % gen_annotated_installer will either always throw an exception
-        % or always succeed.
-        %
-        promise_equivalent_solutions [TryResult, !:IO] (
-            try_io(
-                wix_installer.gen_annotated_installer(Installer, GUIDGenCmd), 
-                TryResult, 
-                !IO)
-        ),
+        OpenOutputResult = ok(OutStream),
+        io.open_input(GUIDFile, OpenInputResult, !IO),
         (
-            TryResult = succeeded(AnnInstaller),
-            write_xml_doc(OutStream, AnnInstaller, !IO),
-            Result = ok
-        ;
-            TryResult = exception(Univ),
-            ( if univ_to_type(Univ, WixError) then
-                Result = wix_error(WixError)
-            else
-                throw(Univ)
+            OpenInputResult = ok(GUIDStream),
+            %
+            % We know that, operationally, for a given input,
+            % gen_annotated_installer will either always throw an exception
+            % or always succeed.
+            %
+            promise_equivalent_solutions [TryResult, !:IO] (
+                try_io(
+                    wix_installer.gen_annotated_installer(Installer, GUIDStream), 
+                    TryResult, 
+                    !IO)
+            ),
+            (
+                TryResult = succeeded(AnnInstaller),
+                write_xml_doc(OutStream, AnnInstaller, !IO),
+                Result = ok
+            ;
+                TryResult = exception(Univ),
+                ( if univ_to_type(Univ, WixError) then
+                    Result = wix_error(WixError)
+                else
+                    throw(Univ)
+                )
             )
+        ;
+            OpenInputResult = error(IOError),
+            Result = wix_error(io_error(IOError))
         )
     ;
-        OpenResult = error(IOError),
+        OpenOutputResult = error(IOError),
         Result = wix_error(io_error(IOError))
     ).
 
