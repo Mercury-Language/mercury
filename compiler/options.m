@@ -735,6 +735,7 @@
     ;       mercury_configuration_directory_special
     ;       install_command
     ;       libgrades
+    ;       lib_linkages
     ;       flags_file
     ;       options_files
     ;       config_file
@@ -1458,6 +1459,7 @@ option_defaults_2(build_system_option, [
     mercury_configuration_directory     -   maybe_string(no),
     install_command                     -   string("cp"),
     libgrades                           -   accumulating([]),
+    lib_linkages                        -   accumulating([]),
     flags_file                          -   file_special,
     options_files                       -   accumulating(["Mercury.options"]),
 
@@ -2198,6 +2200,8 @@ long_option("install-command",      install_command).
 long_option("use-symlinks",         use_symlinks).
 long_option("library-grade",        libgrades).
 long_option("libgrade",             libgrades).
+long_option("library-linkage",      lib_linkages).
+long_option("lib-linkage",          lib_linkages).
 long_option("flags",                flags_file).
 long_option("flags-file",           flags_file).
 long_option("options-file",         options_files).
@@ -4457,6 +4461,14 @@ options_help_build_system -->
         "--libgrade <grade>",
         "\tAdd <grade> to the list of compilation grades in",
         "\twhich a library to be installed should be built.",
+        "--no-libgrade",
+        "\tClear the list of compilation grades in which a library",
+        "\tto be installed should be built.",
+        "--lib-linkage {shared|static}",
+        "\tSpecify whether libraries should be installed for shared",
+        "\tor static linking.  This option can be specified multiple",
+        "\ttimes.  By default libraries will be installed for",
+        "\tboth shared and static linking.",
         "--flags <file>",
         "--flags-file <file>",
         "\tTake options from the specified file, and handle them",

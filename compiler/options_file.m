@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -877,6 +877,7 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
     ;       libraries
     ;       lib_dirs
     ;       lib_grades
+    ;       lib_linkages
     ;       install_prefix
     ;       stdlib_dir
     ;       config_dir
@@ -892,8 +893,8 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result, !IO) :-
     % `MCFLAGS'. Settings in `MCFLAGS' (e.g. `--no-mercury-stdlib-dir')
     % should override settings of these MERCURY_STDLIB_DIR in the environment.
 options_variable_types =
-    [grade_flags, linkage, mercury_linkage, lib_grades, stdlib_dir,
-    config_dir, mmc_flags, c_flags, java_flags, ilasm_flags,
+    [grade_flags, linkage, mercury_linkage, lib_grades, lib_linkages,
+    stdlib_dir, config_dir, mmc_flags, c_flags, java_flags, ilasm_flags,
     csharp_flags, mcpp_flags, ml_objs, lib_dirs, ld_flags,
     libraries, ml_libs, c2init_args, install_prefix].
 
@@ -914,6 +915,7 @@ options_variable_name(c2init_args) = "C2INITARGS".
 options_variable_name(libraries) = "LIBRARIES".
 options_variable_name(lib_dirs) = "LIB_DIRS".
 options_variable_name(lib_grades) = "LIBGRADES".
+options_variable_name(lib_linkages) = "LIB_LINKAGES".
 options_variable_name(install_prefix) = "INSTALL_PREFIX".
 options_variable_name(stdlib_dir) = "MERCURY_STDLIB_DIR".
 options_variable_name(config_dir) = "MERCURY_CONFIG_DIR".
@@ -940,6 +942,7 @@ options_variable_type_is_target_specific(install_prefix) = yes.
 options_variable_type_is_target_specific(stdlib_dir) = no.
 options_variable_type_is_target_specific(config_dir) = no.
 options_variable_type_is_target_specific(lib_grades) = yes.
+options_variable_type_is_target_specific(lib_linkages) = yes.
 options_variable_type_is_target_specific(linkage) = yes.
 options_variable_type_is_target_specific(mercury_linkage) = yes.
 
@@ -994,6 +997,7 @@ mmc_option_type(c2init_args) = option([], "--init-file").
 mmc_option_type(libraries) = option([], "--mercury-library").
 mmc_option_type(lib_dirs) = option([], "--mercury-library-directory").
 mmc_option_type(lib_grades) = option(["--no-libgrade"], "--libgrade").
+mmc_option_type(lib_linkages) = option(["--no-lib-linkage"], "--lib-linkage").
 mmc_option_type(install_prefix) = option([], "--install-prefix").
 mmc_option_type(stdlib_dir) = option([], "--mercury-stdlib-dir").
 mmc_option_type(config_dir) = option([], "--mercury-config-dir").

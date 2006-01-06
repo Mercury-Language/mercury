@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,9 +51,22 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
     ;
         ExtraOptions = []
     ),
-    build_with_module_options(MainModuleName, ExtraOptions,
-        make_linked_target_2(MainModuleName - FileType),
-        Succeeded, !Info, !IO).
+    globals.io_lookup_accumulating_option(lib_linkages, LibLinkages, !IO),
+    (
+        (
+            FileType = static_library,
+            not list.member("static", LibLinkages)
+        ;
+            FileType = shared_library,
+            not list.member("shared", LibLinkages)
+        )
+    ->
+        Succeeded = yes
+    ;
+        build_with_module_options(MainModuleName, ExtraOptions,
+            make_linked_target_2(MainModuleName - FileType),
+            Succeeded, !Info, !IO)
+    ).
 
 :- pred make_linked_target_2(linked_target_file::in, list(string)::in,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
@@ -778,12 +791,13 @@ install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
             install_file(JarFileName, GradeLibDir, LibsSucceeded, !IO)
         ;
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/Grade,
-            install_file(LibFileName, GradeLibDir, LibSuccess, !IO),
+            maybe_install_library_file("static", LibFileName, GradeLibDir,
+                LibSuccess, !IO),
             ( LibFileName = SharedLibFileName ->
                 LibsSucceeded = LibSuccess
             ;
-                install_file(SharedLibFileName, GradeLibDir, SharedLibSuccess,
-                    !IO),
+                maybe_install_library_file("shared", SharedLibFileName,
+                    GradeLibDir, SharedLibSuccess, !IO),
                 LibsSucceeded = LibSuccess `and` SharedLibSuccess
             )
         ),
@@ -871,6 +885,17 @@ install_subdir_file(SubdirLinkSucceeded, InstallDir, ModuleName, Ext,
     ;
         SubdirLinkSucceeded = yes,
         Succeeded = Succeeded1
+    ).
+
+:- pred maybe_install_library_file(string::in, file_name::in, dir_name::in,
+    bool::out, io::di, io::uo) is det.
+
+maybe_install_library_file(Linkage, FileName, InstallDir, Succeeded, !IO) :-
+    globals.io_lookup_accumulating_option(lib_linkages, LibLinkages, !IO),
+    ( list.member(Linkage, LibLinkages) ->
+        install_file(FileName, InstallDir, Succeeded, !IO)
+    ;
+        Succeeded = yes
     ).
 
 :- pred install_file(file_name::in, dir_name::in, bool::out,

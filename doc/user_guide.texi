@@ -562,8 +562,11 @@ necessary interface files. The variable @code{INSTALL} specifies
 the name of the command to use to install each file, by default
 @samp{cp}. The variable @code{INSTALL_MKDIR} specifies the command to use
 to create directories, by default @samp{mkdir -p}.
+For @samp{mmc --make} whether to install libraries for static or shared
+linking can be specified with the @code{LIB_LINKAGES} variable.
 For more information, see @ref{Installing libraries}.
 @vindex LIBGRADES
+@vindex LIB_LINKAGES
 @vindex INSTALL
 @vindex INSTALL_MKDIR
 
@@ -803,6 +806,13 @@ were actually installed.
 Note also that any @code{GRADEFLAGS} settings will also be applied when
 the library is built in each of the listed grades, so you may not get what
 you expect if those options are not subsumed by each of the grades listed.
+
+@item LIB_LINKAGES
+@vindex LIB_LINKAGES
+A list of linkage styles (@samp{shared} or @samp{static}) for which libraries
+should be built and installed.  The default is to install libraries for both
+static and shared linking.  This variable only has an effect with
+@samp{mmc --make}.
 @end table
 
 Other variables also exist --- see
@@ -7565,6 +7575,21 @@ The default command is @samp{cp}.
 @findex --libgrade
 Add @var{grade} to the list of compilation grades in
 which a library to be installed should be built.
+
+@sp 1
+@item --no-libgrade
+@findex --no-libgrade
+Clear the list of compilation grades in which a library
+to be installed should be built.  The main use of this is to avoid
+building and installing the default set of grades.
+
+@sp 1
+@item --lib-linkage @{shared,static@}
+@findex --lib-linkage
+Specify whether libraries should be installed for shared
+or static linking.  This option can be specified multiple
+times.  By default libraries will be installed for
+both shared and static linking.
 
 @sp 1
 @item --flags @var{file}

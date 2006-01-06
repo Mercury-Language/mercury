@@ -645,6 +645,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % without checking timestamps.
         option_implies(rebuild, make, bool(yes), !Globals),
 
+        % If no --lib-linkage option has been specified, default to the
+        % set of all possible linkages.
+        globals__lookup_accumulating_option(!.Globals, lib_linkages,
+            LibLinkages0),
+        ( LibLinkages0 = [] ->
+            globals__set_option(lib_linkages,
+                accumulating(["static", "shared"]), !Globals)
+        ;
+            true
+        ),
+
         % make.m controls generating object code and linking itself,
         % so mercury_compile.m should only generate target code when
         % given a module to process.
