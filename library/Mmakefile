@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2005 The University of Melbourne.
+# Copyright (C) 1997-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -471,6 +471,8 @@ install: install_mercury
 .PHONY: install_all
 install_all: install_mercury
 
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
+
 .PHONY: install_mercury
 install_mercury: install_ints install_hdrs install_init install_library
 
@@ -561,6 +563,20 @@ endif  #ifneq (,$(findstring il,$(GRADE)))
 # that has been compiled with `--split-c-files'.
 .PHONY: install_split_library
 install_split_library: lib$(STD_LIB_NAME).install_split_library
+
+else	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
+
+# Prevent `mmc --make' from installing the default set of grades for
+# `libFOO.install' targets.
+MCFLAGS += --no-libgrade
+
+.PHONY: install_mercury
+install_mercury: lib$(STD_LIB_NAME).install
+
+.PHONY: install_library
+install_library: lib$(STD_LIB_NAME).install
+
+endif	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 else
 
