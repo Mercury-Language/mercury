@@ -1,18 +1,18 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: deep_profiling.m.
 % Main author: conway.
-%
+
 % This module applies the deep profiling transformation described in the paper
 % ``Engineering a profiler for a logic programming language'' by Thomas Conway
 % and Zoltan Somogyi.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__deep_profiling.
@@ -80,8 +80,7 @@ apply_deep_profiling_transformation(!ModuleInfo) :-
     module_info_predids(!.ModuleInfo, PredIds),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_get_preds(PredTable0, PredMap0),
-    list__foldl(transform_predicate(!.ModuleInfo), PredIds,
-        PredMap0, PredMap),
+    list.foldl(transform_predicate(!.ModuleInfo), PredIds, PredMap0, PredMap),
     predicate_table_set_preds(PredMap, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
@@ -128,8 +127,8 @@ apply_tail_recursion_to_proc(PredProcId, !ModuleInfo) :-
         ClonePredProcId = proc(PredId, CloneProcId),
         ApplyInfo = apply_tail_recursion_info(!.ModuleInfo,
             [PredProcId - ClonePredProcId], Detism, Outputs),
-        apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
-        no, FoundTailCall, _),
+        apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, no,
+            FoundTailCall, _),
         FoundTailCall = yes
     ->
         proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
@@ -328,8 +327,7 @@ apply_tail_recursion_to_conj([Goal0 | Goals0], ApplyInfo0, [Goal | Goals],
 apply_tail_recursion_to_disj([], _, [], !FoundTailCall).
 apply_tail_recursion_to_disj([Goal0], ApplyInfo, [Goal],
         !FoundTailCall) :-
-    apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
-        !FoundTailCall, _).
+    apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall, _).
 apply_tail_recursion_to_disj([Goal0 | Goals0], ApplyInfo, [Goal0 | Goals],
         !FoundTailCall) :-
     Goals0 = [_ | _],
@@ -342,10 +340,8 @@ apply_tail_recursion_to_disj([Goal0 | Goals0], ApplyInfo, [Goal0 | Goals],
 apply_tail_recursion_to_cases([], _, [], !FoundTailCall).
 apply_tail_recursion_to_cases([case(ConsId, Goal0) | Cases0], ApplyInfo,
         [case(ConsId, Goal) | Cases], !FoundTailCall) :-
-    apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
-        !FoundTailCall, _),
-    apply_tail_recursion_to_cases(Cases0, ApplyInfo, Cases,
-        !FoundTailCall).
+    apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall, _),
+    apply_tail_recursion_to_cases(Cases0, ApplyInfo, Cases, !FoundTailCall).
 
 %-----------------------------------------------------------------------------%
 
@@ -381,16 +377,13 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         GoalExpr = unify(_, _, _, _, _)
     ;
         GoalExpr = conj(Goals),
-        figure_out_rec_call_numbers_in_goal_list(Goals,
-            !N, !TailCallSites)
+        figure_out_rec_call_numbers_in_goal_list(Goals, !N, !TailCallSites)
     ;
         GoalExpr = disj(Goals),
-        figure_out_rec_call_numbers_in_goal_list(Goals,
-            !N, !TailCallSites)
+        figure_out_rec_call_numbers_in_goal_list(Goals, !N, !TailCallSites)
     ;
         GoalExpr = switch(_, _, Cases),
-        figure_out_rec_call_numbers_in_case_list(Cases,
-            !N, !TailCallSites)
+        figure_out_rec_call_numbers_in_case_list(Cases, !N, !TailCallSites)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         figure_out_rec_call_numbers(Cond, !N, !TailCallSites),
@@ -398,8 +391,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         figure_out_rec_call_numbers(Else, !N, !TailCallSites)
     ;
         GoalExpr = par_conj(Goals),
-        figure_out_rec_call_numbers_in_goal_list(Goals,
-            !N, !TailCallSites)
+        figure_out_rec_call_numbers_in_goal_list(Goals, !N, !TailCallSites)
     ;
         GoalExpr = scope(_, Goal1),
         figure_out_rec_call_numbers(Goal1, !N, !TailCallSites)
@@ -591,8 +583,7 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "det_call_port_code_sr", 4,
             [ProcStaticVar, TopCSD, MiddleCSD, ActivationPtr1],
             [TopCSD, MiddleCSD, ActivationPtr1], CallPortCode0),
-        goal_add_feature(save_deep_excp_vars,
-            CallPortCode0, CallPortCode),
+        goal_add_feature(save_deep_excp_vars, CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "det_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, ActivationPtr1], [], ExitPortCode)
     ;
@@ -600,8 +591,7 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "det_call_port_code_ac", 3,
             [ProcStaticVar, TopCSD, MiddleCSD],
             [TopCSD, MiddleCSD], CallPortCode0),
-        goal_add_feature(save_deep_excp_vars,
-            CallPortCode0, CallPortCode),
+        goal_add_feature(save_deep_excp_vars, CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "det_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode)
     ),
@@ -674,8 +664,8 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     ),
 
     IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
-    ProcStatic = hlds_proc_static(FileName, LineNumber,
-        IsInInterface, CallSites),
+    ProcStatic = hlds_proc_static(FileName, LineNumber, IsInInterface,
+        CallSites),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
     ProcStaticConsId = deep_profiling_proc_layout(ShroudedPredProcId),
     generate_unify(ProcStaticConsId, ProcStaticVar, BindProcStaticVarGoal),
@@ -791,8 +781,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             OldOutermostProcDyn2, NewOutermostProcDyn],
             [TopCSD, MiddleCSD, OldOutermostProcDyn2, NewOutermostProcDyn],
             CallPortCode0),
-        goal_add_feature(save_deep_excp_vars,
-            CallPortCode0, CallPortCode),
+        goal_add_feature(save_deep_excp_vars, CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "non_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, OldOutermostProcDyn2], [],
             ExitPortCode),
@@ -809,8 +798,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             [ProcStaticVar, TopCSD, MiddleCSD, NewOutermostProcDyn],
             [TopCSD, MiddleCSD, NewOutermostProcDyn],
             CallPortCode0),
-        goal_add_feature(save_deep_excp_vars,
-            CallPortCode0, CallPortCode),
+        goal_add_feature(save_deep_excp_vars, CallPortCode0, CallPortCode),
         generate_call(ModuleInfo, "non_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode),
         generate_call(ModuleInfo, "non_fail_port_code_ac", 2,
@@ -826,12 +814,12 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         RedoPortGoalInfo0, RedoPortGoalInfo),
     RedoPortCode = RedoPortExpr - RedoPortGoalInfo,
 
-    % Even though the procedure has a model_non interface determinism,
-    % the actual determinism of its original body goal may have been
-    % at_most once. However, the exit/redo disjunction we insert into
-    % the procedure body means that the procedure body does actually leave
-    % a nondet stack frame when it succeeds, and its determinism must be
-    % adjusted accordingly.
+    % Even though the procedure has a model_non interface determinism, the
+    % actual determinism of its original body goal may have been at_most once.
+    % However, the exit/redo disjunction we insert into the procedure body
+    % means that the procedure body does actually leave a nondet stack frame
+    % when it succeeds, and its determinism must be adjusted accordingly.
+    %
     goal_info_get_determinism(GoalInfo0, Detism0),
     determinism_components(Detism0, CanFail, _),
     determinism_components(Detism, CanFail, at_most_many),
@@ -953,14 +941,13 @@ transform_goal(Path, scope(Reason0, SubGoal0) - GoalInfo0, Goal,
         Reason = Reason0,
         AddForceCommit = no
     ;
-        % Given a subgoal containing both at_most_many code and
-        % impure code, determinism analysis will remove the `scope'
-        % wrapped around that subgoal if it is allowed to. If we get
-        % here, then the subgoal inside the `scope' contains
-        % at_most_many code (which means that removing the scope
-        % will change its determinism) and the deep profiling
+        % Given a subgoal containing both at_most_many code and impure code,
+        % determinism analysis will remove the `scope' wrapped around that
+        % subgoal if it is allowed to. If we get here, then the subgoal inside
+        % the `scope' contains at_most_many code (which means that removing
+        % the scope will change its determinism) and the deep profiling
         % transformation will make it impure as well.
-
+        %
         MaybeCut = cut,
         ( Reason0 = commit(_) ->
             Reason = commit(force_pruning),
@@ -985,12 +972,9 @@ transform_goal(Path, scope(Reason0, SubGoal0) - GoalInfo0, Goal,
 transform_goal(Path, if_then_else(IVars, Cond0, Then0, Else0) - GoalInfo0,
         if_then_else(IVars, Cond, Then, Else) - GoalInfo,
         AddedImpurity, !DeepInfo) :-
-    transform_goal([ite_cond | Path], Cond0, Cond, AddedImpurityC,
-        !DeepInfo),
-    transform_goal([ite_then | Path], Then0, Then, AddedImpurityT,
-        !DeepInfo),
-    transform_goal([ite_else | Path], Else0, Else, AddedImpurityE,
-        !DeepInfo),
+    transform_goal([ite_cond | Path], Cond0, Cond, AddedImpurityC, !DeepInfo),
+    transform_goal([ite_then | Path], Then0, Then, AddedImpurityT, !DeepInfo),
+    transform_goal([ite_else | Path], Else0, Else, AddedImpurityE, !DeepInfo),
     (
         ( AddedImpurityC = yes
         ; AddedImpurityT = yes
@@ -1011,8 +995,7 @@ transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
         !DeepInfo) :-
     Goal0 = foreign_proc(Attrs, _, _, _, _, _),
     ( may_call_mercury(Attrs) = may_call_mercury ->
-        wrap_foreign_code(Path, Goal0 - GoalInfo0, GoalAndInfo,
-            !DeepInfo),
+        wrap_foreign_code(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo),
         AddedImpurity = yes
     ;
         GoalAndInfo = Goal0 - GoalInfo0,
@@ -1206,10 +1189,12 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
         module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals,
             use_zeroing_for_ho_cycles, UseZeroing),
-        ( UseZeroing = yes ->
+        (
+            UseZeroing = yes,
             transform_higher_order_call(Globals, GoalCodeModel,
                 Goal1, Goal2, !DeepInfo)
         ;
+            UseZeroing = no,
             Goal2 = Goal1
         )
     ),
@@ -1305,8 +1290,7 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal, !DeepInfo) :-
 
         !:DeepInfo = !.DeepInfo ^ vars := VarSet,
         !:DeepInfo = !.DeepInfo ^ var_types := VarTypes,
-        ExtraNonLocals = set__list_to_set(
-            [SavedCountVar, SavedPtrVar]),
+        ExtraNonLocals = set__list_to_set([SavedCountVar, SavedPtrVar]),
 
         generate_call(!.DeepInfo ^ module_info,
             "save_and_zero_activation_info_ac", 2,
