@@ -71,4 +71,9 @@ term
 	This directory tests the compiler's termination analyser.  These
 	tests work by comparing the contents of the .trans_opt file emitted
 	by the compiler with the hand-written `.trans_opt_exp' file.
-	This directory is also used for testing the compiler's exception analysis.
+	This directory is also used for testing the compiler's exception
+	analysis.
+
+trailing
+	This directory contains tests that make use of the trail.
+	These tests are only run in trailing grades.

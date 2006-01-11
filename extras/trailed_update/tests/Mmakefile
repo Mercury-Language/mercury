@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2002 The University of Melbourne.
+# Copyright (C) 1997-2002, 2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -35,9 +35,9 @@ C2INITARGS = ../trailed_update.init
 # The "var_test" program does not work in ".rt" grades,
 # since it uses the "var" module which does not work in ".rt" grades.
 ifeq "$(findstring .rt,$(GRADE))" ".rt"
-PROGS	=	func_trail_test func_trail_test_2
+PROGS	=
 else
-PROGS	=	func_trail_test func_trail_test_2 var_test 
+PROGS	=	var_test 
 endif
 
 DEPENDS =	$(PROGS:%=%.depend)

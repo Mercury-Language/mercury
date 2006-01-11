@@ -2,19 +2,19 @@
 :- interface.
 :- import_module io.
 
-:- impure pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 
-main -->
-	( { impure trail_test } ->
-		io__write_string("Success\n")
+:- pragma promise_pure(main/2).
+main(!IO) :-
+	( impure trail_test ->
+		io.write_string("Success\n", !IO)
 	;
-		io__write_string("Failure\n")
+		io.write_string("Failure\n", !IO)
 	).
-
 
 :- impure pred trail_test is failure.
 
@@ -27,7 +27,6 @@ trail_test :-
 	impure leave(I),
 	impure trail_test_message("after", I, J),
 	fail.
-	
 
 :- pred small_int(int::out) is multi.
 
@@ -40,27 +39,23 @@ small_int(3).
 :- impure pred enter(int::in) is det.
 :- impure pred leave(int::in) is det.
 
-:- pragma c_header_code("
-#include <stdio.h>
+:- pragma foreign_decl("C",
+"
+	#include <stdio.h>
+	#include ""mercury_trail.h""	
+
+	void enter_failing(int handle, MR_untrail_reason reason);
+	void leave_failing(int handle, MR_untrail_reason reason);
 ").
 
-:- pragma c_code(trail_test_message(Prefix::in, I::in, J::in),
-	will_not_call_mercury, "
-	    printf(""%s: %d %d\n"",
-		   (char *)Prefix, (int)I, (int)J);
+:- pragma foreign_proc("C",
+	trail_test_message(Prefix::in, I::in, J::in),
+	[will_not_call_mercury, will_not_modify_trail],
+"
+printf(\"%s: %d %d\\n\", (char *)Prefix, (int)I, (int)J);
 ").
 
-
-:- pragma c_header_code("
-#include <mercury_trail.h>
-
-
-void enter_failing(int handle, MR_untrail_reason reason);
-void leave_failing(int handle, MR_untrail_reason reason);
-
-
-#include <stdio.h>
-
+:- pragma foreign_code("C", "
 
 void enter_failing(int handle, MR_untrail_reason reason) {
 	switch (reason) {
@@ -68,14 +63,13 @@ void enter_failing(int handle, MR_untrail_reason reason) {
 	    case MR_undo:
 	    case MR_retry:
 /*		printf(""enter_failing: exception/undo/retry\n""); */
-	        printf(""=> fail back inside: %d\n"", handle);
+	        printf(\"=> fail back inside: %d\\n\", handle);
 		break;
 	    default:
-		printf(""enter_failing: default\n"");
+		printf(\"enter_failing: default\\n\");
 		break;
 	}
 }
-
 
 void leave_failing(int handle, MR_untrail_reason reason) {
 	switch (reason) {
@@ -83,28 +77,33 @@ void leave_failing(int handle, MR_untrail_reason reason) {
 	    case MR_undo:
 	    case MR_retry:
 /*		printf(""leave_failing: exception/undo/retry\n""); */
-	        printf(""<= fail back outside: %d\n"", handle);
+	        printf(\"<= fail back outside: %d\\n\", handle);
 		break;
 	    case MR_commit:
 	    case MR_solve:
-		printf(""leave_failing: commit/solve\n"");
+		printf(\"leave_failing: commit/solve\\n\");
 		break;
 	    default:
-		printf(""leave_failing: default\n"");
+		printf(\"leave_failing: default\\n\");
 		/* we may need to do something if reason == MR_gc */
 		break;
 	}
 }
-
 ").
 
-:- pragma c_code(enter(I::in), will_not_call_mercury, "
-	printf("">> enter (%d)\n"", (int) I);
+:- pragma foreign_proc("C",
+	enter(I::in),
+	[will_not_call_mercury, may_modify_trail],
+"
+	printf(\">> enter (%d)\\n\", (int) I);
 	MR_trail_function(leave_failing, (void *) I);
 ").
 
 
-:- pragma c_code(leave(I::in), will_not_call_mercury, "
-	printf(""<< leave (%d)\n"", (int) I);
+:- pragma foreign_proc("C",
+	leave(I::in),
+	[will_not_call_mercury, may_modify_trail],
+"
+	printf(\"<< leave (%d)\\n\", (int) I);
 	MR_trail_function(enter_failing, (void *) I);
 ").

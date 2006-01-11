@@ -1,0 +1,26 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = trailing
+
+#-----------------------------------------------------------------------------#
+
+ifneq "$(filter tr%,$(GRADE))" ""
+	TRAIL_PROGS = 
+else
+	TRAIL_PROGS =			\
+		func_trail_test		\
+		func_trail_test_2
+endif
+
+#-----------------------------------------------------------------------------#
+
+TESTS = $(TRAIL_PROGS)
+SUBDIRS = 
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
