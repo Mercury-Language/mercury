@@ -1,4 +1,6 @@
 LIB_DIRS = install/lib/mercury
-LIBRARIES-complex_test = complex_numbers
 
+LIBRARIES-complex_test = complex_numbers
 MCFLAGS-complex_test = --linkage shared
+
+LIBRARIES-linkage_test = linkage_test2

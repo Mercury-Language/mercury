@@ -11,6 +11,7 @@ MMAKE_USE_MMC_MAKE=yes
 PROGS =	\
 		complex_test \
 		hello \
+		linkage_test \
 		rebuild
 
 # These tests only work if the workspace was compiled with `--use-subdirs'.
@@ -29,6 +30,8 @@ include $(TESTS_DIR)/Mmake.common
 
 complex_test.log: install_libs
 
+linkage_test.log: install_libs_linkage_test2
+
 # Just test that the executable is rebuilt.
 rebuild.runtest:
 	$(MCM) --rebuild rebuild
@@ -39,13 +42,28 @@ rebuild.runtest:
 build_object.runtest: build_object.o
 
 .PHONY: install_libs
-install_libs: start_runtests_local
-	cd lib; \
+install_libs: TESTS_FLAGS start_runtests_local
+	( cd lib; \
 	$(MCM) --no-libgrade --install-prefix $(shell pwd)/install \
-			libcomplex_numbers.install
+			libcomplex_numbers.install ) \
+	|| touch complex_test.failed
 
-realclean_local:
+.PHONY: install_libs_linkage_test2
+install_libs_linkage_test2: TESTS_FLAGS start_runtests_local
+	( cd lib; \
+	$(MCM) --no-libgrade --install-prefix $(shell pwd)/install \
+			liblinkage_test2.install --lib-linkage static ) \
+	|| touch linkage_test.failed
+
+# Copy/symlink TESTS_FLAGS into the current directory for when
+# we change into the `lib' subdirectory.
+TESTS_FLAGS: ../TESTS_FLAGS
+	ln -s $< $@ || cp $< $@
+
+realclean_local: TESTS_FLAGS
 	rm -rf install rebuild.err2
-	cd lib; $(MCM) complex_numbers.realclean
+	# ./TESTS_FLAGS is expected by the following line.
+	cd lib; $(MCM) complex_numbers.realclean linkage_test2.realclean
+	rm -f TESTS_FLAGS
 
 #-----------------------------------------------------------------------------#
