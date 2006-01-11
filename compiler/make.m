@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +11,6 @@
 % A builtin Mercury-specific make replacement.
 %
 % TODO:
-% - `--split-c-files'
 % - transitive inter-module optimization (probably won't bother since
 %   that is being rewritten anyway)
 % - parallel/distributed builds

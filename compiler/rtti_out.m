@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,9 +69,7 @@
 
     % Output C code (e.g. a call to MR_register_type_ctor_info()) to register
     % the rtti_data in the type tables, if it represents a data structure
-    % that should be so registered. The bool should be the value of the
-    % --split-c-files option; it governs whether the rtti_data is declared
-    % in the generated code or not.
+    % that should be so registered.
     %
 :- pred rtti_out__register_rtti_data_if_nec(rtti_data::in, io::di, io::uo)
     is det.
