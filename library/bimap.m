@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999, 2004-2005 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -204,7 +204,8 @@
     % association list does not implicitly defined a bijection.
     %
 :- func bimap__det_from_assoc_list(assoc_list(K, V)) = bimap(K, V).
-:- pred bimap__det_from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out) is det.
+:- pred bimap__det_from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out)
+    is det.
 
     % Convert a pair of lists into a bimap. Fails if the lists do not
     % implicitly define a bijection or if the lists are of unequal length.
