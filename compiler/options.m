@@ -2900,7 +2900,7 @@ options_help_verbosity -->
 %       "--debug-closure",
 %       "\tOutput detailed debugging traces of the closure analysis."
         "--debug-trail-usage",
-        "\tOutput detail debugging traces of the `--analyse-trail-usage'",
+        "\tOutput detailed debugging traces of the `--analyse-trail-usage'",
         "\toption."
     ]).
 
