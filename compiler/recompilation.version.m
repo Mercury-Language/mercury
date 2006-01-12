@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,6 +39,7 @@
     %
 :- func version_numbers_version_number = int.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -779,7 +780,6 @@ item_is_unchanged(Item1, Item2) = Result :-
         Result = no
     ).
 
-    %
     % Apply a substitution to the existq_tvars, types_and_modes, and
     % prog_constraints so that the type variables from both declarations
     % being checked are contained in the same tvarset, then check that
@@ -941,7 +941,7 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
 
     % Combined typeclass method type and mode declarations are split as for
     % ordinary predicate declarations, so the varsets won't necessarily match
-    % up if a typeclass declration is read back from an interface file.
+    % up if a typeclass declaration is read back from an interface file.
     %
 :- pred class_interface_is_unchanged(class_interface::in,
     class_interface::in) is semidet.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 University of Melbourne.
+% Copyright (C) 2001-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,7 +142,7 @@
     %
     % For predicates declared using `with_type` annotations,
     % the version number in the interface file and the
-    % version_numbers map will refer tothe arity before expansion
+    % version_numbers map will refer to the arity before expansion
     % of the `with_type` annotation, so that needs to be recorded
     % here as well.
     %
@@ -172,7 +172,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % An simple_item_set records the single possible match for an item.
+    % A simple_item_set records the single possible match for an item.
+    %
 :- type simple_item_set ==
     map(pair(string, arity), map(module_qualifier, module_name)).
 
