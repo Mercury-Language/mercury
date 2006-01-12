@@ -19,5 +19,4 @@
 --c-include-directory ../trace
 --c-include-directory ../analysis
 --no-main
---linkage shared
 --config-file ../scripts/Mercury.config.bootstrap

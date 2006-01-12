@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2005 The University of Melbourne. 
+# Copyright (C) 2002-2006 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -198,6 +198,8 @@ endif
 MLOBJS += $(STATIC_TRACE_LIBS) $(STATIC_STD_LIBS) \
 		$(STATIC_RT_LIBS) $(STATIC_GC_LIBS)
 
+MCFLAGS += --mercury-linkage static
+
 else # LINK_STATIC != yes
 
 LINK_RT_LIB_OPTS=
@@ -224,6 +226,8 @@ MLFLAGS      += $(LIB_DIR_OPTS)
 # now in FLAGS files
 # MCFLAGS    += $(LIB_DIR_OPTS)
 MLLIBS       += $(LINK_LIB_OPTS)
+
+MCFLAGS      += --mercury-linkage shared
 
 ifeq ($(SET_RPATH),yes)
 MLFLAGS += $(LIB_DIR_OPTS:-L%=-R%)

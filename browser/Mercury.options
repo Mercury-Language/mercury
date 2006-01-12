@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2005 University of Melbourne.
+# Copyright (C) 2002-2006 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -19,5 +19,10 @@ MCFLAGS-mdb.declarative_edt = --no-optimize-higher-order
 MCFLAGS-mdb.declarative_analyser = --no-optimize-unused-args
 MCFLAGS-mdb.declarative_execution = --no-optimize-unused-args
 
+# XXX This line is needed so that `mmake --use-mmc-make libmer_browser'
+# passes `-lmer_mdbcomp' to `mmc --make' in the MLLIBS variable.
+EXTRA_LIBRARIES-libmer_browser = mer_mdbcomp
+
+# Whereas these lines are needed for plain `mmake'.
 EXTRA_LIBRARIES-libmer_browser.so = mer_mdbcomp
 EXTRA_LIBRARIES-libmer_browser.dylib = mer_mdbcomp

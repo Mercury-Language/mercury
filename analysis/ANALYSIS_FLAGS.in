@@ -17,4 +17,7 @@
 --c-include-directory ../browser/Mercury/mihs
 --c-include-directory ../trace
 --c-include-directory ../analysis
+-L../boehm_gc
+-L../runtime
+-L../library
 --config-file ../scripts/Mercury.config.bootstrap
