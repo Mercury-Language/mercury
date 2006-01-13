@@ -722,12 +722,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             bool(yes), !Globals),
         option_implies(find_all_recompilation_reasons, verbose_recompilation,
             bool(yes), !Globals),
-
         %
-        % Disable `--smart-recompilation' for compilation options
-        % which either do not produce a compiled output file or
-        % for which smart recompilation will not work.
+        % Disable `--smart-recompilation' for compilation options which either
+        % do not produce a compiled output file or for which smart
+        % recompilation will not work.
         %
+        option_implies(generate_source_file_mapping, smart_recompilation,
+            bool(no), !Globals),
         option_implies(generate_dependencies, smart_recompilation, bool(no),
             !Globals),
         option_implies(generate_dependency_file, smart_recompilation, bool(no),
