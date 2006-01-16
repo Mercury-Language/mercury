@@ -1,4 +1,3 @@
-typeclass_mode.m:005: Error: mode declaration for predicate
-typeclass_mode.m:005:   `typeclass_mode.p/1'
-typeclass_mode.m:005:   without preceding `pred' declaration.
-typeclass_mode.m:005: Error: no clauses for predicate `p/1'.
+typeclass_mode.m:005: Error: mode declaration for type class method
+typeclass_mode.m:005:   `typeclass_mode.p'/1 without corresponding predicate
+typeclass_mode.m:005:   method declaration.

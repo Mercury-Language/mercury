@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -255,27 +255,106 @@ class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
 	OldFunDeps = FunDeps.
 
 :- pred module_add_class_interface(sym_name::in, list(tvar)::in,
-    list(class_method)::in, item_status::in,
+    class_methods::in, item_status::in,
     list(maybe(pair(pred_id, proc_id)))::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_class_interface(Name, Vars, Methods, Status, PredProcIds,
         !ModuleInfo, !IO) :-
-    module_add_class_interface_2(Name, Vars, Methods, Status, PredProcIds0,
-        !ModuleInfo, !IO),
-    check_method_modes(Methods, PredProcIds0, PredProcIds,
-        !ModuleInfo, !IO).
+    list.filter(is_class_method_mode_item, Methods, ModeMethods,
+        PredOrFuncMethods),
+    some [!PPIds] (
+        add_class_pred_or_func_methods(Name, Vars, PredOrFuncMethods, Status,
+            !:PPIds, !ModuleInfo, !IO),
+        %
+        % Add the pred_or_func_mode decls.  Since we have already added the
+        % predicate/function method decls there should already be an entry in
+        % the predicate table corresponding to the mode item we are about to
+        % add.  If not, report an error.
+        %
+        list.foldl3(add_class_pred_or_func_mode_method(Name, Vars, Status),
+            ModeMethods, !PPIds, !ModuleInfo, !IO),
+        check_method_modes(Methods, !.PPIds, PredProcIds, !ModuleInfo, !IO)
+    ).
 
-:- pred module_add_class_interface_2(sym_name::in, list(tvar)::in,
-    list(class_method)::in, item_status::in,
+:- pred is_class_method_mode_item(class_method::in) is semidet.
+
+is_class_method_mode_item(Method) :-
+    Method = pred_or_func_mode(_, _, _, _, _, _, _, _).
+        
+:- pred add_class_pred_or_func_mode_method(sym_name::in,
+    list(tvar)::in, item_status::in, class_method::in,
+    list(maybe(pair(pred_id, proc_id)))::in,
     list(maybe(pair(pred_id, proc_id)))::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-module_add_class_interface_2(_, _, [], _, [], !ModuleInfo, !IO).
-module_add_class_interface_2(Name, Vars, [M | Ms], Status, [P | Ps],
+add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
+        !PredProcIds, !ModuleInfo, !IO) :-
+    (
+        Method = pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _),
+        unexpected(this_file, "add_class_pred_or_func_mode_method: " ++
+            "pred_or_func method item")
+    ;
+        Method = pred_or_func_mode(_VarSet, MaybePredOrFunc, PredName,
+            Modes, _WithInst, _MaybeDet, _Cond, Context)
+    ),
+    module_info_get_predicate_table(!.ModuleInfo, PredTable),
+    PredArity = list.length(Modes) : int,
+    (
+        % The only way this could have happened now is if a `with_inst`
+        % annotation was not expanded.
+        %
+        MaybePredOrFunc = no,
+        unexpected(this_file, "add_class_pred_or_func_mode_method: " ++
+            "unexpanded `with_inst` annotation")
+    ;
+        MaybePredOrFunc = yes(PredOrFunc)
+    ),
+    (
+        predicate_table_search_pf_sym_arity(PredTable, is_fully_qualified,
+            PredOrFunc, PredName, PredArity, Preds),
+        Preds \= []
+    ->
+        (
+            % This case should have been caught above.
+            Preds = [],
+            unexpected(this_file, "empty list")
+        ;
+            Preds = [PredId],
+            module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+            pred_info_get_markers(PredInfo, PredMarkers),
+            ( check_marker(PredMarkers, class_method) ->
+                module_add_class_method(Method, Name, Vars, Status,
+                    PredProcId, !ModuleInfo, !IO),
+                list.cons(PredProcId, !PredProcIds)
+            ;
+                % XXX It may also be worth reporting that although there
+                % wasn't a matching class method, there was a matching
+                % predicate/function.
+                missing_pred_or_func_method_error(PredName, PredArity,
+                    PredOrFunc, Context, !ModuleInfo, !IO)
+            )
+        ;   
+            % This shouldn't happen.
+            Preds = [_, _ | _],
+            unexpected(this_file, "multiple preds matching method mode")
+        )
+    ;
+        missing_pred_or_func_method_error(PredName, PredArity, 
+            PredOrFunc, Context, !ModuleInfo, !IO)
+    ).
+
+:- pred add_class_pred_or_func_methods(sym_name::in, list(tvar)::in,
+    class_methods::in, item_status::in,
+    list(maybe(pair(pred_id, proc_id)))::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+add_class_pred_or_func_methods(_, _, [], _, [], !ModuleInfo, !IO).
+add_class_pred_or_func_methods(Name, Vars, [M | Ms], Status, [P | Ps],
         !ModuleInfo, !IO) :-
     module_add_class_method(M, Name, Vars, Status, P, !ModuleInfo, !IO),
-    module_add_class_interface_2(Name, Vars, Ms, Status, Ps, !ModuleInfo, !IO).
+    add_class_pred_or_func_methods(Name, Vars, Ms, Status, Ps, !ModuleInfo,
+        !IO).
 
 :- pred module_add_class_method(class_method::in, sym_name::in, list(tvar)::in,
     item_status::in, maybe(pair(pred_id, proc_id))::out,
@@ -345,7 +424,7 @@ update_superclass_table_2(ClassId, Vars, VarSet, Constraint, !Supers) :-
     % - predicates without mode declarations: report an error
     % - mode declarations with no determinism: report an error
     %
-:- pred check_method_modes(list(class_method)::in,
+:- pred check_method_modes(class_methods::in,
     list(maybe(pair(pred_id, proc_id)))::in,
     list(maybe(pair(pred_id, proc_id)))::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -560,7 +639,7 @@ pred_method_with_no_modes_error(PredInfo, !IO) :-
     write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).
 
-:- pred undefined_type_class_error(sym_name::in, int::in, prog_context::in,
+:- pred undefined_type_class_error(sym_name::in, arity::in, prog_context::in,
     string::in, io::di, io::uo) is det.
 
 undefined_type_class_error(ClassName, Arity, Context, Description, !IO) :-
@@ -569,6 +648,23 @@ undefined_type_class_error(ClassName, Arity, Context, Description, !IO) :-
         words("without preceding typeclass declaration.")],
     write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).
+
+:- pred missing_pred_or_func_method_error(sym_name::in, arity::in,
+    pred_or_func::in, prog_context::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
+
+missing_pred_or_func_method_error(Name, Arity, PredOrFunc, Context,
+        !ModuleInfo, !IO) :-
+    NoPredOrFuncMsg = [
+        words("Error: mode declaration for type class method"),
+        sym_name_and_arity(Name / Arity),
+        words("without corresponding"),
+        pred_or_func(PredOrFunc),
+        words("method declaration.")
+    ],
+    write_error_pieces(Context, 0, NoPredOrFuncMsg, !IO),
+    io.set_exit_status(1, !IO),
+    module_info_incr_errors(!ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -541,7 +541,7 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
     % do not count as distinguishable.
     %
     % The code for this is similar to the code for
-    % modes_are_indentical/4 and compare_proc/5 below.
+    % modes_are_identical/4 and compare_proc/5 below.
     %
 modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     pred_info_procedures(PredInfo, Procs),

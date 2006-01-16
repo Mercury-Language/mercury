@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,7 +96,6 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     ModuleName = pred_info_module(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, Origin),
@@ -116,6 +115,15 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
         Pieces = [words("`" ++ promise_to_string(PromiseType) ++ "'"),
             words("declaration")]
     ;
+        ( check_marker(Markers, class_method) ->
+            Prefix = [
+                        words("type class"),
+                        pred_or_func(PredOrFunc),
+                        words("method")
+                     ]
+        ;
+            Prefix = [pred_or_func(PredOrFunc)]
+        ),
         string__int_to_string(OrigArity, ArityPart),
         string__append_list([
             "`",
@@ -124,7 +132,7 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
             "/",
             ArityPart,
             "'"], SpecStr),
-        Pieces = [words(PredOrFuncStr), fixed(SpecStr)]
+        Pieces = Prefix ++ [fixed(SpecStr)]
     ).
 
 describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,

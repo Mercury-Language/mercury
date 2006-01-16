@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 University of Melbourne.
+% Copyright (C) 1997-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -243,7 +243,7 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
     ).
 
 :- pred parse_class_methods(module_name::in, term::in, varset::in,
-    maybe1(list(class_method))::out) is det.
+    maybe1(class_methods)::out) is det.
 
 parse_class_methods(ModuleName, Methods, VarSet, Result) :-
     (

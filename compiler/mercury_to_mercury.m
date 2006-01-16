@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -807,7 +807,7 @@ mercury_to_string_promise_type(true) = "promise".
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_class_methods(list(class_method)::in, io::di, io::uo) is det.
+:- pred output_class_methods(class_methods::in, io::di, io::uo) is det.
 
 output_class_methods(Methods, !IO) :-
     io__write_list(Methods, ",\n", output_class_method, !IO).

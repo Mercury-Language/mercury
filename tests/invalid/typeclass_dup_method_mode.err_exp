@@ -1,0 +1,4 @@
+typeclass_dup_method_mode.m:005: In mode declarations for type class predicate
+typeclass_dup_method_mode.m:005:   method `typeclass_dup_method_mode.p/1':
+typeclass_dup_method_mode.m:005:   error: duplicate mode declaration.
+typeclass_dup_method_mode.m:006:   Here is the conflicting mode declaration.

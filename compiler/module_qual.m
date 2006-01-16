@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1178,8 +1178,8 @@ qualify_class_name(Class0, Class, !Info, !IO) :-
     mq_info_get_classes(!.Info, ClassIdSet),
     find_unique_match(Class0, Class, ClassIdSet, class_id, !Info, !IO).
 
-:- pred qualify_class_interface(list(class_method)::in,
-    list(class_method)::out, mq_info::in, mq_info::out,
+:- pred qualify_class_interface(class_methods::in,
+    class_methods::out, mq_info::in, mq_info::out,
     io::di, io::uo) is det.
 
 qualify_class_interface([], [], !Info, !IO).

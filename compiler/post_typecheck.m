@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,8 +50,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % finish_preds(PredIds, ReportTypeErrors, NumErrors, FoundTypeError,
-    %   !Module):
+    % finish_preds(PredIds, ReportTypeErrors, NumErrors, FoundError,
+    %   !ModuleInfo):
     %
     % Check that all Aditi predicates have an `aditi__state' argument.
     % Check that the all of the types which have been inferred for the
@@ -62,7 +62,7 @@
     % Also bind any unbound type variables to the type `void'. Note that
     % when checking assertions we take the conservative approach of warning
     % about unbound type variables. There may be cases for which this doesn't
-    % make sense. FoundTypeError will be `yes' if there were errors which
+    % make sense. FoundError will be `yes' if there were errors which
     % should prevent further processing (e.g. polymorphism or mode analysis).
     %
 :- pred finish_preds(list(pred_id)::in, bool::in, int::out, bool::out,
@@ -162,11 +162,11 @@
 %-----------------------------------------------------------------------------%
 
 finish_preds(PredIds, ReportTypeErrors, NumErrors,
-        FoundTypeError, !ModuleInfo, !IO) :-
+        PostTypecheckError, !ModuleInfo, !IO) :-
     finish_preds(PredIds, ReportTypeErrors, !ModuleInfo,
-        0, NumErrors0, no, FoundTypeError0, !IO),
+        0, NumErrors0, no, PostTypecheckError0, !IO),
     check_for_missing_definitions(!.ModuleInfo, NumErrors0, NumErrors,
-        FoundTypeError0, FoundTypeError, !IO).
+        PostTypecheckError0, PostTypecheckError, !IO).
 
 :- pred finish_preds(list(pred_id)::in, bool::in,
     module_info::in, module_info::out, int::in, int::out,
@@ -174,7 +174,7 @@ finish_preds(PredIds, ReportTypeErrors, NumErrors,
 
 finish_preds([], _, !ModuleInfo, !NumErrors, !PostTypecheckError, !IO).
 finish_preds([PredId | PredIds], ReportTypeErrors, !ModuleInfo, !NumErrors,
-        !FoundTypeError, !IO) :-
+        !PostTypecheckError, !IO) :-
     some [!PredInfo] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         (
@@ -194,7 +194,7 @@ finish_preds([PredId | PredIds], ReportTypeErrors, !ModuleInfo, !NumErrors,
             % can cause internal errors in polymorphism.m if we try to
             % continue, so we need to halt compilation after this pass.
             ( UnboundTypeErrsInThisPred \= 0 ->
-                !:FoundTypeError = yes
+                !:PostTypecheckError = yes
             ;
                 true
             ),
@@ -203,7 +203,8 @@ finish_preds([PredId | PredIds], ReportTypeErrors, !ModuleInfo, !NumErrors,
             report_unbound_inst_vars(!.ModuleInfo, PredId, ErrorProcs,
                 !PredInfo, !IO),
             check_for_indistinguishable_modes(!.ModuleInfo, PredId,
-                !PredInfo, !IO),
+                FoundModeError, !PredInfo, !IO),
+            bool.or(FoundModeError, !PostTypecheckError),
 
             % Check that main/2 has the right type.
             (
@@ -230,7 +231,7 @@ finish_preds([PredId | PredIds], ReportTypeErrors, !ModuleInfo, !NumErrors,
         ),
         module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo),
         finish_preds(PredIds, ReportTypeErrors,
-            !ModuleInfo, !NumErrors, !FoundTypeError, !IO)
+            !ModuleInfo, !NumErrors, !PostTypecheckError, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -658,7 +659,7 @@ finish_pred_no_io(ModuleInfo, ErrorProcs, !PredInfo) :-
 finish_ill_typed_pred(ModuleInfo, PredId, !PredInfo, !IO) :-
     propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo),
     report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo, !IO),
-    check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !IO).
+    check_for_indistinguishable_modes(ModuleInfo, PredId, _, !PredInfo, !IO).
 
     % For imported preds, we just need to ensure that all constructors
     % occurring in predicate mode declarations are module qualified.
@@ -681,7 +682,7 @@ finish_imported_pred(ModuleInfo, PredId, !PredInfo, !IO) :-
     % finish_ill_typed_pred? [zs]
     finish_imported_pred_no_io(ModuleInfo, ErrorProcs, !PredInfo),
     report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo, !IO),
-    check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !IO).
+    check_for_indistinguishable_modes(ModuleInfo, PredId, _, !PredInfo, !IO).
 
 finish_imported_pred_no_io(ModuleInfo, Errors, !PredInfo) :-
     % Make sure the var-types field in the clauses_info is valid for imported
@@ -798,7 +799,7 @@ check_type_of_main(PredInfo, !IO) :-
             pred_info_context(PredInfo, Context),
             error_util__write_error_pieces(Context, 0,
                 [words("Error: arguments of main/2"),
-                words("must have type `io__state'.")], !IO),
+                words("must have type `io.state'.")], !IO),
             io__set_exit_status(1, !IO)
         )
     ;
@@ -891,9 +892,10 @@ unbound_inst_var_error(PredId, ProcInfo, ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred check_for_indistinguishable_modes(module_info::in, pred_id::in,
-    pred_info::in, pred_info::out, io::di, io::uo) is det.
+    bool::out, pred_info::in, pred_info::out, io::di, io::uo) is det.
 
-check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !IO) :-
+check_for_indistinguishable_modes(ModuleInfo, PredId, FoundError, 
+        !PredInfo, !IO) :-
     (
         % Don't check for indistinguishable modes in unification predicates.
         % The default (in, in) mode must be semidet, but for single-value types
@@ -904,35 +906,36 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !IO) :-
         pred_info_get_origin(!.PredInfo, Origin),
         Origin = special_pred(spec_pred_unify - _)
     ->
-        true
+        FoundError = no 
     ;
         ProcIds = pred_info_procids(!.PredInfo),
         check_for_indistinguishable_modes(ModuleInfo, PredId,
-            ProcIds, [], !PredInfo, !IO)
+            ProcIds, [], no, FoundError, !PredInfo, !IO)
     ).
 
 :- pred check_for_indistinguishable_modes(module_info::in, pred_id::in,
-    list(proc_id)::in, list(proc_id)::in, pred_info::in, pred_info::out,
-    io::di, io::uo) is det.
+    list(proc_id)::in, list(proc_id)::in, bool::in, bool::out,
+    pred_info::in, pred_info::out, io::di, io::uo) is det.
 
-check_for_indistinguishable_modes(_, _, [], _, !PredInfo, !IO).
+check_for_indistinguishable_modes(_, _, [], _, !FoundError, !PredInfo, !IO).
 check_for_indistinguishable_modes(ModuleInfo, PredId, [ProcId | ProcIds],
-        PrevProcIds, !PredInfo, !IO) :-
+        PrevProcIds, !FoundError, !PredInfo, !IO) :-
     check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId,
         PrevProcIds, Removed, !PredInfo, !IO),
     (
         Removed = yes,
+        !:FoundError = yes,
         PrevProcIds1 = PrevProcIds
     ;
         Removed = no,
         PrevProcIds1 = [ProcId | PrevProcIds]
     ),
     check_for_indistinguishable_modes(ModuleInfo, PredId, ProcIds,
-        PrevProcIds1, !PredInfo, !IO).
+        PrevProcIds1, !FoundError, !PredInfo, !IO).
 
 :- pred check_for_indistinguishable_mode(module_info::in, pred_id::in,
-    proc_id::in, list(proc_id)::in, bool::out,
-    pred_info::in, pred_info::out, io::di, io::uo) is det.
+    proc_id::in, list(proc_id)::in, bool::out, pred_info::in, pred_info::out,
+    io::di, io::uo) is det.
 
 check_for_indistinguishable_mode(_, _, _, [], no, !PredInfo, !IO).
 check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
@@ -1644,7 +1647,7 @@ check_for_missing_definitions_2(TypeCtor, TypeDefn, !NumErrors,
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody = abstract_type(_)
     ->
-        % We expect builtin types character, float, int and
+        % We expect the builtin types character, float, int and
         % string to have abstract declarations with no
         % definitions.  The following types from the type_desc
         % module also only have abstract declarations:

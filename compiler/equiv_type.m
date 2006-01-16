@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -482,8 +482,8 @@ replace_in_prog_constraint(EqvMap, Constraint0, Constraint, !VarSet, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred replace_in_class_interface(list(class_method)::in,
-    eqv_map::in, eqv_inst_map::in, list(class_method)::out,
+:- pred replace_in_class_interface(class_methods::in,
+    eqv_map::in, eqv_inst_map::in, class_methods::out,
     list(eqv_error)::in, list(eqv_error)::out,
     equiv_type_info::in, equiv_type_info::out) is det.
 

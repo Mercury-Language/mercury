@@ -440,7 +440,7 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
     map__set(IdMap0, NameArity, MatchingItems, IdMap),
     !:GatheredItems = update_ids(!.GatheredItems, ItemType, IdMap).
 
-:- func split_class_method_types_and_modes(class_method) = list(class_method).
+:- func split_class_method_types_and_modes(class_method) = class_methods.
 
 split_class_method_types_and_modes(Method0) = Items :-
     % Always strip the context from the item -- this is needed
@@ -950,8 +950,8 @@ class_interface_is_unchanged(abstract, abstract).
 class_interface_is_unchanged(concrete(Methods1), concrete(Methods2)) :-
     class_methods_are_unchanged(Methods1, Methods2).
 
-:- pred class_methods_are_unchanged(list(class_method)::in,
-    list(class_method)::in) is semidet.
+:- pred class_methods_are_unchanged(class_methods::in,
+    class_methods::in) is semidet.
 
 class_methods_are_unchanged([], []).
 class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-

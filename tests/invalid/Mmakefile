@@ -161,12 +161,16 @@ SINGLEMODULE= \
 	tricky_assert1 \
 	typeclass_bogus_method \
 	typeclass_constraint_extra_var \
+	typeclass_dup_method_mode \
 	typeclass_missing_det \
 	typeclass_missing_det_2 \
 	typeclass_missing_det_3 \
 	typeclass_missing_mode \
 	typeclass_missing_mode_2 \
 	typeclass_mode \
+	typeclass_mode_2 \
+	typeclass_mode_3 \
+	typeclass_mode_4 \
 	typeclass_test_1 \
 	typeclass_test_10 \
 	typeclass_test_11 \
@@ -226,10 +230,8 @@ TYPE_SPEC_MODULES = \
 #		the pragma foreign_proc rather than the pragma foreign_type)
 #	duplicate_instance_3 (the error is only detected when doing
 #		normal static linking; the error goes undetected
-#		when doing dynamic linking, or when the library
-#		was built with `--split-c-files')
+#		when doing dynamic linking)
 #	parent.undeclared_child (just not yet implemented)
-#	typeclass_mode_{2,3,4} (compiler calls error/1)
 #	ho_default_func_4 (due to a bug in the mode-checker ---
 #			see XXX comment in inst_match:inst_matches_final_3)
 #	inst_matches_final_bug (due to same bug as ho_default_func_4)
