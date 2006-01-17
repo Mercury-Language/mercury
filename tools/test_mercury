@@ -75,8 +75,6 @@ case $HOST in
 		;;
 esac
 
-
-
 # directories to use
 
 TESTDIR=$TOPDIR/test_mercury
@@ -90,6 +88,10 @@ export CLASSPATH
 # Host to use to build the release of the day source distribution
 # for the mercury-compiler, mercury-tests, and mercury-extras distributions.
 ROTD_HOST=jupiter
+
+# Host to use to build the G12 rlease of the day source distribution
+# for the mercury-compiler, mercury-tests, and mercury-extras distributions.
+G12_ROTD_HOST=swordfish
 
 # Host to use to build the release of the day mercury-gcc source distribution.
 # We don't currently test the gcc backend.
@@ -167,6 +169,16 @@ case $BRANCH in
 		RELEASE_VERSION=rotd-$DATE
 		RELEASE_VERSION_PATTERN=rotd-*
 		;;
+	g12)
+		# At the moment we don't have a tagged g12 rotd
+		# so just use the main branch.
+		# CHECKOUT_OPTS=-r<g12_rotd_tagname>
+		CHECKOUT_OPTS=-A
+		BASE_TAG_NAME=g12-rotd
+		FTP_DIR_NAME=g12-rotd
+		RELEASE_VERSION=g12-rotd-$DATE
+		RELEASE_VERSION_PATERN=g12-rotd-*
+		;;
 	0.12)
 		CHECKOUT_OPTS=-rversion-0_12-branch
 		BASE_TAG_NAME=version-0_12-branch
@@ -206,7 +218,9 @@ case $HOST in
 			;;
 	earth)		OPTIMIZE="-O2" ;;
 	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
-	swordfish)	OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation" ;;
+	$G12_ROTD_HOST|swordfish)
+		OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation"
+		;;
 	mundroo|mundula)
 			OPTIMIZE=-O2; use_cp_opt="--use-cp" ;;
 			# On mundroo, "mkdir -p scripts" aborts
@@ -439,6 +453,12 @@ case $HOST in
 		# it requires trailing versions of most of the grades.
 		# XXX Most of this should be moved to saturn when it is ready.
 		CONFIG_OPTS="--disable-java-grade"
+		case $BRANCH in
+			g12)
+				DEFAULT_GRADE=hlc.gc.tr
+				export $DEFAULT_GRADE
+			;;
+		esac
 		INSTALL_LIBGRADES="asm_fast.gc				\
 					hlc.gc.tr			\
 					hlc.gc.tr.prof 			\
@@ -839,12 +859,12 @@ esac
 
 echo "test_mercury starting to create distribution at `date`" 1>&2
 
-case $HOST in $ROTD_HOST)
-	# The tests on $ROTD_HOST are run with `--intermodule-optimization',
-	# so we need to do a `mmake realclean' before building the C files
-	# for the source distribution. The extra compilation time for
-	# `--intermodule-optimization' is probably not acceptable for the
-	# source distribution.
+case $HOST in $ROTD_HOST|$G12_ROTD_HOST)
+	# The tests on $ROTD_HOST and $G12_ROTD_HOST are run with
+	# `--intermodule-optimization', so we need to do a `mmake realclean'
+	# before building the C files for the source distribution. The extra
+	# compilation time for `--intermodule-optimization' is probably not
+	# acceptable for the source distribution.
 	{ cd $DIR/mercury &&
 	mmake realclean MMAKEFLAGS=$PARALLEL &&
 	(cd $DIR/tests &&
@@ -1238,7 +1258,7 @@ esac
 
 # Now rebuild the index files on the www site
 case $HOST in 
-    $ROTD_HOST)
+    $ROTD_HOST|$G12_ROTD_HOST)
 	echo "test_mercury generating www index files, starting at `date`" 1>&2
 	(
 	cd $BETA_WEBDIR_TOP &&
