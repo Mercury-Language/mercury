@@ -219,7 +219,10 @@ case $HOST in
 	earth)		OPTIMIZE="-O2" ;;
 	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
 	$G12_ROTD_HOST|swordfish)
-		OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation"
+		case $BRANCH in
+			g12) OPTIMIZE="-O2" ;;
+			*)   OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation" ;;
+		esac
 		;;
 	mundroo|mundula)
 			OPTIMIZE=-O2; use_cp_opt="--use-cp" ;;
