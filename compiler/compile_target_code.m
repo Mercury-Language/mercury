@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1382,6 +1382,7 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
 		globals__io_set_option(use_grade_subdirs, bool(yes), !IO),
 
 		io__set_output_stream(ErrorStream, OutputStream, !IO),
+		io__remove_file(UserDirFileName, _, !IO),
 		make_symlink_or_copy_file(OutputFileName, UserDirFileName,
 			Succeeded, !IO),
 		io__set_output_stream(OutputStream, _, !IO)

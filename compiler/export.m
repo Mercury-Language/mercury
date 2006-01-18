@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%)
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -625,7 +625,7 @@ export__produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
 			"*/\n"], !IO),
 		MangledModuleName = sym_name_mangle(ModuleName),
 		string__to_upper(MangledModuleName, UppercaseModuleName),
-		string__append(UppercaseModuleName, "_H", GuardMacroName),
+		string__append(UppercaseModuleName, "_MH", GuardMacroName),
 		io__write_strings([
 			"#ifndef ", GuardMacroName, "\n",
 			"#define ", GuardMacroName, "\n",

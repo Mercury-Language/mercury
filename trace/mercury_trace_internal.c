@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2005 The University of Melbourne.
+** Copyright (C) 1998-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -812,7 +812,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
 static const char MR_trace_banner[] =
 "Melbourne Mercury Debugger, mdb version %s.\n\
-Copyright 1998-2005 The University of Melbourne, Australia.\n\
+Copyright 1998-2006 The University of Melbourne, Australia.\n\
 mdb is free software, covered by the GNU General Public License.\n\
 There is absolutely no warranty for mdb.\n";
 

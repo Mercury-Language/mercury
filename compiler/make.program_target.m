@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2004, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -539,11 +539,21 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
 				make_linked_target(MainModuleName -
 					static_library, StaticSucceeded,
 					!Info, !IO),
+				shared_libraries_supported(
+					SharedLibsSupported, !IO),
 				(
 					StaticSucceeded = yes,
-					make_linked_target(MainModuleName -
-						shared_library, Succeeded,
-						!Info, !IO)
+					(
+						SharedLibsSupported = yes,
+						make_linked_target(
+						    MainModuleName -
+						    shared_library,
+						    Succeeded,
+						    !Info, !IO)
+					;
+						SharedLibsSupported = no,
+						Succeeded = yes
+					)
 				;
 					StaticSucceeded = no,
 					Succeeded = no
@@ -568,6 +578,14 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
 			Succeeded = no
 		)
 	).
+
+:- pred shared_libraries_supported(bool::out, io::di, io::uo) is det.
+
+shared_libraries_supported(Supported, !IO) :-
+	globals__io_lookup_string_option(library_extension, LibExt, !IO),
+	globals__io_lookup_string_option(shared_library_extension,
+		SharedLibExt, !IO),
+	Supported = ( if LibExt \= SharedLibExt then yes else no ).
 
 %-----------------------------------------------------------------------------%
 
@@ -842,7 +860,7 @@ install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName, Succeeded,
 
 			% This is needed so that the file will be
 			% found in Mmake's VPATH.
-			IntDir = LibDir/"int",
+			IntDir = LibDir/"ints",
 			install_subdir_file(LinkSucceeded, IntDir,
 				ModuleName, "mih", HeaderSucceded2, !IO),
 

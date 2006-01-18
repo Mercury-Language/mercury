@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1133,7 +1133,9 @@ make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded,
         io__write_string("' to `", !IO),
         io__write_string(DestinationFileName, !IO),
         io__write_string("': ", !IO),
-        io__write_string(io__error_message(Error), !IO)
+        io__write_string(io__error_message(Error), !IO),
+        io__nl(!IO),
+        io__flush_output(!IO)
     ).
 
 :- pred make_file_name(dir_name::in, bool::in, bool::in, file_name::in,
