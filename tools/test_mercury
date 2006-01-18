@@ -465,6 +465,7 @@ case $HOST in
 		INSTALL_LIBGRADES="asm_fast.gc				\
 					hlc.gc.tr			\
 					hlc.gc.tr.prof 			\
+					hlc.gc.tr.memprof		\
 					asm_fast.gc.tr			\
 					asm_fast.gc.tr.prof 		\
 					asm_fast.gc.tr.memprof 		\
