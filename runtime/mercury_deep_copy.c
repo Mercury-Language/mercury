@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -141,6 +141,19 @@ MR_Word *MR_has_forwarding_pointer;
 		(val2) = swap_tmp;	\
 	} while (0)
 
+/*
+** The above macro won't suffice when we want to swap the pointers to the
+** heap and the global heap since it will cause gcc to emit warnings about
+** lvalue casts being deprecated.  In that case we use the following macro.
+*/
+#define SWAP_HEAP_AND_GLOBAL_HEAP			\
+	do {						\
+		MR_Word *swap_tmp;			\
+		swap_tmp = MR_hp;			\
+		MR_hp_word = (MR_Word) MR_global_hp; 	\
+		MR_global_hp = swap_tmp;		\
+	} while (0)
+
 #ifdef MR_MIGHT_RECLAIM_HP_ON_FAILURE
 
 /*
@@ -163,8 +176,8 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 	/* temporarily swap the heap with the global heap */
 	SWAP(MR_ENGINE(MR_eng_heap_zone), MR_ENGINE(MR_eng_global_heap_zone),
 		MR_MemoryZone *);
-	SWAP(MR_hp, MR_global_hp, MR_Word *);
-
+	SWAP_HEAP_AND_GLOBAL_HEAP;
+	
 	/* copy values from the heap to the global heap */
 	MR_save_transient_hp();
 	result = MR_deep_copy(term, type_info, lower_limit,
@@ -174,8 +187,8 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 	/* swap the heap and global heap back again */
 	SWAP(MR_ENGINE(MR_eng_heap_zone), MR_ENGINE(MR_eng_global_heap_zone),
 		MR_MemoryZone *);
-	SWAP(MR_hp, MR_global_hp, MR_Word *);
-
+	SWAP_HEAP_AND_GLOBAL_HEAP;	
+	
 	MR_save_transient_hp();	/* Because we played with MR_hp */
 
 	return result;
