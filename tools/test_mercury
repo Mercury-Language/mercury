@@ -466,7 +466,8 @@ case $HOST in
 					asm_fast.gc.tr.memprof 		\
 					asm_fast.gc.tr.profdeep		\
 					asm_fast.gc.tr.debug"
-			;;
+				;;
+			*)
 				INSTALL_LIBGRADES="asm_fast.gc		\
 					hlc.gc.tr			\
 					hlc.gc.tr.prof 			\
@@ -477,7 +478,7 @@ case $HOST in
 					asm_fast.gc.tr.profdeep		\
 					asm_fast.gc.tr.decldebug	\
 					hlc.gc"
-			;;
+				;;
 		esac
 		;; 
 	uranus)
