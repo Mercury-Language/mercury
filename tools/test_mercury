@@ -172,8 +172,7 @@ case $BRANCH in
 	g12)
 		# At the moment we don't have a tagged g12 rotd
 		# so just use the main branch.
-		# CHECKOUT_OPTS=-r<g12_rotd_tagname>
-		CHECKOUT_OPTS=-A
+		CHECKOUT_OPTS=-rg12-0_1_0
 		BASE_TAG_NAME=g12-rotd
 		FTP_DIR_NAME=g12-rotd
 		RELEASE_VERSION=g12-rotd-$DATE
@@ -220,7 +219,7 @@ case $HOST in
 	saturn)		OPTIMIZE="-O5 --intermodule-optimization" ;;
 	$G12_ROTD_HOST|swordfish)
 		case $BRANCH in
-			g12) OPTIMIZE="-O2" ;;
+			g12) OPTIMIZE="-O3" ;;
 			*)   OPTIMIZE="-O4 --intermodule-optimization --constraint-propagation" ;;
 		esac
 		;;
@@ -460,9 +459,15 @@ case $HOST in
 			g12)
 				DEFAULT_GRADE=hlc.gc.tr
 				export $DEFAULT_GRADE
+				INSTALL_LIBGRADES="hlc.gc.tr		\
+					hl.gc.tr			\
+					asm_fast.gc.tr			\
+					asm_fast.gc.tr.prof 		\
+					asm_fast.gc.tr.memprof 		\
+					asm_fast.gc.tr.profdeep		\
+					asm_fast.gc.tr.debug"
 			;;
-		esac
-		INSTALL_LIBGRADES="asm_fast.gc				\
+				INSTALL_LIBGRADES="asm_fast.gc		\
 					hlc.gc.tr			\
 					hlc.gc.tr.prof 			\
 					hlc.gc.tr.memprof		\
@@ -472,6 +477,8 @@ case $HOST in
 					asm_fast.gc.tr.profdeep		\
 					asm_fast.gc.tr.decldebug	\
 					hlc.gc"
+			;;
+		esac
 		;; 
 	uranus)
 		CONFIG_OPTS=""
