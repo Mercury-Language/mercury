@@ -2,7 +2,7 @@ This directory contains the source distribution for the University of Melbourne
 Mercury compiler, version @VERSION@.
 
 	The Mercury implementation is free software, but it is Copyright
-	(C) 1993-2003 The University of Melbourne.  It is distributed
+	(C) 1993-2006 The University of Melbourne.  It is distributed
 	under the terms of the GNU General Public License.  See the file
 	COPYING for copying permission.
 

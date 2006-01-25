@@ -1,5 +1,11 @@
+
+NEWS for Mecury 0.12.2
+----------------------
+
+This release fixes some bugs with `mmc --make' and `--smart-recompilation'.
+
 NEWS for Mercury 0.12.1
-------------------------
+-----------------------
 
 This release is primarily a bug-fix release.
 It fixes a problem with predicates that have existentially typed
