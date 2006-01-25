@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2005 The University of Melbourne.
+# Copyright (C) 1995-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -443,9 +443,9 @@ case "$FULLARCH" in
         ;;
     i*86-*)
         # The use of stack_pointer in the ASM_JUMP macro defined in
-        # runtime/goto.h causes lots of warnings about using possibly
-        # uninitialized variables; there's no easy way to supress them
-        # except by disabling the warning.
+        # runtime/mercury_goto.h causes lots of warnings about using possibly
+        # uninitialized variables; there's no easy way to supress them except
+        # by disabling the warning.
         case "$COMPILER" in
             gcc)
                 CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
