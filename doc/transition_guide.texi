@@ -14,7 +14,7 @@
 @ifnottex
 This file is an aid for people porting Prolog programs to Mercury.
 
-Copyright (C) 1995-2005 The University of Melbourne.
+Copyright (C) 1995-2006 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice

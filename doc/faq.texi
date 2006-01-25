@@ -24,7 +24,7 @@
 This file is the Mercury Frequently Asked Questions List, version <VERSION>.
 It contains a list of frequently asked questions about Mercury, with answers.
 
-Copyright (C) 1995-1997,1999,2001-2005 The University of Melbourne.
+Copyright (C) 1995-1997,1999,2001-2006 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this FAQ list provided the copyright notice and this permission notice
