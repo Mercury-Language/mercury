@@ -14,7 +14,7 @@
 @ifnottex
 This file documents the Mercury standard library, version <VERSION>.
 
-Copyright (C) 1995-1997,1999-2005 The University of Melbourne.
+Copyright (C) 1995-1997,1999-2006 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
