@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -4969,6 +4969,12 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io__write_string(DepStream, "\n", !IO),
 
     io__write_string(DepStream, MakeVarName, !IO),
+    io__write_string(DepStream, ".imdgs = ", !IO),
+    write_compact_dependencies_list(Modules, "$(imdgs_subdir)",
+        ".imdg", Basis, DepStream, !IO),
+    io__write_string(DepStream, "\n", !IO),
+
+    io__write_string(DepStream, MakeVarName, !IO),
     io__write_string(DepStream, ".schemas = ", !IO),
     write_compact_dependencies_list(Modules, "", ".base_schema",
         Basis, DepStream, !IO),
@@ -5548,6 +5554,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\t-echo $(", MakeVarName, ".trans_opts) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".analysiss) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".requests) | xargs rm -f\n",
+        "\t-echo $(", MakeVarName, ".imdgs) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".ds) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".module_deps) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".all_mhs) | xargs rm -f\n",

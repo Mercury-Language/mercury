@@ -171,6 +171,7 @@
     ;       make_private_interface
     ;       make_optimization_interface
     ;       make_transitive_optimization_interface
+    ;       make_analysis_registry
     ;       compile_to_target_code.
 
 :- type module_target_type
@@ -181,6 +182,7 @@
     ;       short_interface
     ;       unqualified_short_interface
     ;       intermodule_interface
+    ;       analysis_registry
     ;       aditi_code
     ;       c_header(c_header_type)
     ;       c_code

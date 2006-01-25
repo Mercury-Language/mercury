@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -844,6 +844,24 @@
     in, out, in, out, in, out) is semidet.
 :- mode list__map_foldl2(pred(in, out, in, out, in, out) is nondet,
     in, out, in, out, in, out) is nondet.
+
+    % Same as list__map_foldl, but with two mapped outputs and two
+    % accumulators.
+    %
+:- pred list__map2_foldl2(pred(L, M, N, A, A, B, B), list(L), list(M), list(N),
+    A, A, B, B).
+:- mode list__map2_foldl2(pred(in, out, out, in, out, di, uo) is det,
+    in, out, out, in, out, di, uo) is det.
+:- mode list__map2_foldl2(pred(in, out, out, in, out, in, out) is det,
+    in, out, out, in, out, in, out) is det.
+:- mode list__map2_foldl2(pred(in, out, out, in, out, di, uo) is cc_multi,
+    in, out, out, in, out, di, uo) is cc_multi.
+:- mode list__map2_foldl2(pred(in, out, out, in, out, in, out) is cc_multi,
+    in, out, out, in, out, in, out) is cc_multi.
+:- mode list__map2_foldl2(pred(in, out, out, in, out, in, out) is semidet,
+    in, out, out, in, out, in, out) is semidet.
+:- mode list__map2_foldl2(pred(in, out, out, in, out, in, out) is nondet,
+    in, out, out, in, out, in, out) is nondet.
 
     % Same as list__map_foldl, but with three accumulators.
     %
@@ -1816,6 +1834,11 @@ list__map_foldl2(_, [], [], !A, !B).
 list__map_foldl2(P, [H0 | T0], [H | T], !A, !B) :-
     call(P, H0, H, !A, !B),
     list__map_foldl2(P, T0, T, !A, !B).
+
+list__map2_foldl2(_, [], [], [], !A, !B).
+list__map2_foldl2(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B) :-
+    call(P, H0, H1, H2, !A, !B),
+    list__map2_foldl2(P, T0, T1, T2, !A, !B).
 
 list__map_foldl3(_, [], [], !A, !B, !C).
 list__map_foldl3(P, [H0 | T0], [H | T], !A, !B, !C) :-

@@ -1115,11 +1115,13 @@ make_module_realclean(ModuleName, !Info, !IO) :-
     make_module_clean(ModuleName, !Info, !IO),
     list__foldl2(remove_target_file(ModuleName),
         [private_interface, long_interface, short_interface,
-        unqualified_short_interface, intermodule_interface,
+        unqualified_short_interface, intermodule_interface, analysis_registry,
         aditi_code, c_header(mh)
         ],
         !Info, !IO),
-    remove_file(ModuleName, module_dep_file_extension, !Info, !IO).
+    remove_file(ModuleName, module_dep_file_extension, !Info, !IO),
+    remove_file(ModuleName, ".imdg", !Info, !IO),
+    remove_file(ModuleName, ".request", !Info, !IO).
 
 %-----------------------------------------------------------------------------%
 

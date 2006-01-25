@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2005 The University of Melbourne.
+# Copyright (C) 1996-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -594,6 +594,7 @@ opts_subdir=$(SUBDIR)opts/
 trans_opts_subdir=$(SUBDIR)trans_opts/
 analysiss_subdir=$(SUBDIR)analysiss/
 requests_subdir=$(SUBDIR)requests/
+imdgs_subdir=$(SUBDIR)imdgs/
 date0s_subdir=$(SUBDIR)date0s/
 dates_subdir=$(SUBDIR)dates/
 date3s_subdir=$(SUBDIR)date3s/
@@ -635,6 +636,7 @@ opts_subdir=
 trans_opts_subdir=
 analysiss_subdir=
 requests_subdir=
+imdgs_subdir=
 date0s_subdir=
 dates_subdir=
 date3s_subdir=

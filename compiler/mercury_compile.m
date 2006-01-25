@@ -1483,13 +1483,12 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
     list(string)::out, dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
-        MaybeTimestamps, ModuleName, HLDS21, FactTableBaseFiles, !DumpInfo,
+        MaybeTimestamps, ModuleName, !.HLDS, FactTableBaseFiles, !DumpInfo,
         !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     globals__io_lookup_bool_option(statistics, Stats, !IO),
-    maybe_output_prof_call_graph(Verbose, Stats,
-        HLDS21, HLDS25, !IO),
-    middle_pass(ModuleName, HLDS25, HLDS50, !DumpInfo, !IO),
+    maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO),
+    middle_pass(ModuleName, !HLDS, !DumpInfo, !IO),
     globals__io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
     globals__io_lookup_bool_option(aditi_only, AditiOnly, !IO),
     globals__io_get_target(Target, !IO),
@@ -1506,19 +1505,24 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     io__remove_file(UsageFileName, _, !IO),
 
     % magic sets can report errors.
-    module_info_get_num_errors(HLDS50, NumErrors),
+    module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors = 0 ->
         globals__io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
             !IO),
         (
             IntermodAnalysis = yes,
-            module_info_get_analysis_info(HLDS50, AnalysisInfo),
-            analysis__write_analysis_files(
-                module_name_to_module_id(ModuleName), AnalysisInfo, !IO)
+            module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
+            module_info_get_all_deps(!.HLDS, ImportedModules),
+            ModuleId = module_name_to_module_id(ModuleName),
+            ImportedModuleIds = set.map(module_name_to_module_id,
+                ImportedModules),
+            analysis__write_analysis_files(ModuleId, ImportedModuleIds,
+                AnalysisInfo0, AnalysisInfo, !IO),
+            module_info_set_analysis_info(AnalysisInfo, !HLDS)
         ;
             IntermodAnalysis = no
         ),
-        maybe_generate_rl_bytecode(Verbose, MaybeRLFile, HLDS50, HLDS51, !IO),
+        maybe_generate_rl_bytecode(Verbose, MaybeRLFile, !HLDS, !IO),
         (
             ( Target = c
             ; Target = asm
@@ -1529,17 +1533,15 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             % <module>.mh containing function prototypes
             % for the `:- pragma export'ed procedures.
             %
-            export__get_foreign_export_decls(HLDS50, ExportDecls),
+            export__get_foreign_export_decls(!.HLDS, ExportDecls),
             export__produce_header_file(ExportDecls, ModuleName, !IO)
         ;
             true
         ),
         ( AditiOnly = yes ->
-            HLDS = HLDS51,
             FactTableBaseFiles = []
         ; Target = il ->
-            HLDS = HLDS51,
-            mlds_backend(HLDS, _, MLDS, !DumpInfo, !IO),
+            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             (
                 TargetCodeOnly = yes,
                 mlds_to_il_assembler(MLDS, !IO)
@@ -1554,9 +1556,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             ),
             FactTableBaseFiles = []
         ; Target = java ->
-            HLDS = HLDS51,
-            mlds_backend(HLDS, _, MLDS, !DumpInfo, !IO),
-            mlds_to_java(HLDS, MLDS, !IO),
+            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
+            mlds_to_java(!.HLDS, MLDS, !IO),
             (
                 TargetCodeOnly = yes
             ;
@@ -1571,8 +1572,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             FactTableBaseFiles = []
         ; Target = asm ->
             % compile directly to assembler using the gcc back-end
-            HLDS = HLDS51,
-            mlds_backend(HLDS, _, MLDS, !DumpInfo, !IO),
+            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             maybe_mlds_to_gcc(MLDS, MaybeRLFile, ContainsCCode, !IO),
             (
                 TargetCodeOnly = yes
@@ -1596,8 +1596,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             ),
             FactTableBaseFiles = []
         ; HighLevelCode = yes ->
-            HLDS = HLDS51,
-            mlds_backend(HLDS, _, MLDS, !DumpInfo, !IO),
+            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             mlds_to_high_level_c(MLDS, MaybeRLFile, !IO),
             (
                 TargetCodeOnly = yes
@@ -1615,11 +1614,11 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             ),
             FactTableBaseFiles = []
         ;
-            backend_pass(HLDS51, HLDS, GlobalData, LLDS, !DumpInfo, !IO),
-            output_pass(HLDS, GlobalData, LLDS, MaybeRLFile, ModuleName,
+            backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
+            output_pass(!.HLDS, GlobalData, LLDS, MaybeRLFile, ModuleName,
                 _CompileErrors, FactTableBaseFiles, !IO)
         ),
-        recompilation__usage__write_usage_file(HLDS, NestedSubModules,
+        recompilation__usage__write_usage_file(!.HLDS, NestedSubModules,
             MaybeTimestamps, !IO),
         FindTimestampFiles(ModuleName, TimestampFiles, !IO),
         list__foldl(touch_datestamp, TimestampFiles, !IO)

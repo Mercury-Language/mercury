@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,7 +107,13 @@
     % Map from proc to an indication of whether or not it
     % modifies the trail.
     %
-:- type trailing_info == map(pred_proc_id, trailing_status).
+:- type trailing_info == map(pred_proc_id, proc_trailing_info).
+
+:- type proc_trailing_info
+    --->    proc_trailing_info(
+                proc_trailing_status        :: trailing_status,
+                proc_maybe_analysis_status  :: maybe(analysis_status)
+            ).
 
     % List of procedures for which there are user-requested type
     % specializations, and a list of predicates which should be

@@ -212,6 +212,14 @@ target_dependencies(_, intermodule_interface) =
             long_interface `of` non_intermod_direct_imports,
             short_interface `of` non_intermod_indirect_imports
         ]).
+target_dependencies(_, analysis_registry) = 
+    % XXX not sure about this.
+    combine_deps_list([
+        source `of` self,
+        private_interface `of` parents,
+        long_interface `of` non_intermod_direct_imports,
+        short_interface `of` non_intermod_indirect_imports
+    ]).
 target_dependencies(_, foreign_il_asm(_)) =
     combine_deps_list([
         il_asm `of` self,

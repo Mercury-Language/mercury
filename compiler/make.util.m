@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 University of Melbourne.
+% Copyright (C) 2002-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -730,6 +730,7 @@ target_extension(_, long_interface) = yes(".int").
 target_extension(_, short_interface) = yes(".int2").
 target_extension(_, unqualified_short_interface) = yes(".int3").
 target_extension(_, intermodule_interface) = yes(".opt").
+target_extension(_, analysis_registry) = yes(".analysis").
 target_extension(_, aditi_code) = yes(".rlo").
 target_extension(_, c_header(mih)) = yes(".mih").
 target_extension(_, c_header(mh)) = yes(".mh").
@@ -851,6 +852,7 @@ search_for_file_type(long_interface) = yes(search_directories).
 search_for_file_type(short_interface) = yes(search_directories).
 search_for_file_type(unqualified_short_interface) = yes(search_directories).
 search_for_file_type(intermodule_interface) = yes(intermod_directories).
+search_for_file_type(analysis_registry) = yes(intermod_directories).
 search_for_file_type(aditi_code) = no.
 search_for_file_type(c_header(_)) = yes(c_include_directory).
 search_for_file_type(c_code) = no.
@@ -876,6 +878,7 @@ target_is_grade_or_arch_dependent(long_interface, no).
 target_is_grade_or_arch_dependent(short_interface, no).
 target_is_grade_or_arch_dependent(unqualified_short_interface, no).
 target_is_grade_or_arch_dependent(intermodule_interface, yes).
+target_is_grade_or_arch_dependent(analysis_registry, yes).
 target_is_grade_or_arch_dependent(aditi_code, no).
 target_is_grade_or_arch_dependent(c_header(mh), no).
 target_is_grade_or_arch_dependent(c_header(mih), yes).

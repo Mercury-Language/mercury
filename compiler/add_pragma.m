@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,6 +105,7 @@
 
 :- implementation.
 
+:- import_module analysis.
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
 :- import_module check_hlds.mode_util.
@@ -599,7 +600,8 @@ add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum, TrailingStatus,
     ->
         module_info_get_trailing_info(!.ModuleInfo, TrailingInfo0),
         proc_id_to_int(ProcId, ModeNum),
-        map.set(TrailingInfo0, proc(PredId, ProcId), TrailingStatus,
+        map.set(TrailingInfo0, proc(PredId, ProcId),
+            proc_trailing_info(TrailingStatus, no),
             TrailingInfo),
         module_info_set_trailing_info(TrailingInfo, !ModuleInfo)
     ;

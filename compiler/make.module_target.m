@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -622,6 +622,8 @@ compilation_task(_, private_interface) =
 compilation_task(_, intermodule_interface) =
     process_module(make_optimization_interface) -
         ["--make-optimization-interface"].
+compilation_task(_, analysis_registry) =
+    sorry(this_file, ".analysis targets").
 compilation_task(_, aditi_code) =
     process_module(compile_to_target_code) - ["--aditi-only"].
 compilation_task(Globals, c_header(_)) = compilation_task(Globals, c_code).

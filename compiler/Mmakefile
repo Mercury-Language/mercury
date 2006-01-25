@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003, 2005 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005-2006 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -273,8 +273,10 @@ ints:	$(MC_PROG).ints
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
-	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m
+tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m \
+		$(ANALYSIS_DIR)/*.m
+	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m \
+		$(ANALYSIS_DIR)/*.m
 
 .PHONY: tags_file_exists
 tags_file_exists:

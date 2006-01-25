@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -202,6 +202,10 @@
     % Returns all the predids that are used in a list of goals.
     %
 :- pred predids_from_goals(list(hlds_goal)::in, list(pred_id)::out) is det.
+
+    % Returns all the procedures that are used within a goal.
+    %
+:- pred pred_proc_ids_from_goal(hlds_goal::in, list(pred_proc_id)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1544,6 +1548,10 @@ predids_from_goal(Goal, PredIds) :-
         % goal_calls_pred_id has multiple modes.
     P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
     solutions(P, PredIds).
+
+pred_proc_ids_from_goal(Goal, PredProcIds) :-
+    P = (pred(PredProcId::out) is nondet :- goal_calls(Goal, PredProcId)),
+    solutions(P, PredProcIds).
 
 %-----------------------------------------------------------------------------%
 
