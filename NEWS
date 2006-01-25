@@ -186,6 +186,8 @@ Changes to the Mercury standard library:
 
 * We have added string.word_wrap/2.
 
+* We have added list.det_split_list/4.
+
 
 Changes to the extras distribution:
 

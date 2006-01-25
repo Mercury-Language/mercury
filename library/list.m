@@ -193,6 +193,14 @@
 :- pred list__split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
     is semidet.
 
+    % list__det_split_list(Len, List, Start, End):
+    %
+    % A deterministic version of list__split_list, which aborts instead
+    % of failing if Len > list__length(List).
+    %
+:- pred list__det_split_list(int::in, list(T)::in, list(T)::out, list(T)::out)
+    is det.
+
     % list__take(Len, List, Start):
     %
     % `Start' is the first `Len' elements of `List'. Fails if `List' has
@@ -1526,6 +1534,16 @@ list__split_list(N, List, Start, End) :-
         List = [Head | List1],
         Start = [Head | Start1],
         list__split_list(N - 1, List1, Start1, End)
+    ).
+
+list__det_split_list(N, List, Start, End) :-
+    ( if
+        list__split_list(N, List, Start0, End0)
+    then
+        Start = Start0,
+        End = End0
+    else
+        error("list__det_split_list: index out of range")
     ).
 
 list__take(N, As, Bs) :-
