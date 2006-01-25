@@ -6959,15 +6959,15 @@ once.  (This is a separate optimization to @samp{--optimize-rl-invariants}.)
 @findex --common-struct
 Disable optimization of common term structures.
 
-@sp 1
-@item --no-common-goal
-@findex --no-common-goal
-@findex --common-goal
-Disable optimization of common goals.
-At the moment this optimization
-detects only common deconstruction unifications.
-Disabling this optimization reduces the class of predicates
-that the compiler considers to be deterministic.
+@c @sp 1
+@c @item --no-common-goal
+@c @findex --no-common-goal
+@c @findex --common-goal
+@c Disable optimization of common goals.
+@c At the moment this optimization
+@c detects only common deconstruction unifications.
+@c Disabling this optimization reduces the class of predicates
+@c that the compiler considers to be deterministic.
 
 @item --constraint-propagation
 @findex --constraint-propagation
