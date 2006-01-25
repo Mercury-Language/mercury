@@ -16,6 +16,10 @@ Unless otherwise stated, the tests in each directory compile
 the test programs and compare their output against hand-coded
 `.exp' (or `.exp2', `.exp3', etc) files.
 
+NOTE: if you add a new (sub)directory to the test suite then you
+      may need to update the value of the variable `all_test_dirs'
+      in tools/bootcheck.
+
 benchmarks
 	This directory contains Mercury versions of the benchmarks.
 

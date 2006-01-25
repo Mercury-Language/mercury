@@ -146,10 +146,10 @@ endif
 
 #
 # For some test cases, there is more than one valid output.
-# We try matching the output with the `.err_exp' file, and if that
-# doesn't succeed, and there are `.err_exp2', `.err_exp3', `.err_exp4' or `.err_exp5'
-# files, then we try matching against those too.  If none succeed,
-# the shortest of the diffs is put into the `.err_res' file.
+# We try matching the output with the `.err_exp' file, and if that doesn't
+# succeed, and there are `.err_exp2', `.err_exp3', `.err_exp4' or `.err_exp5'
+# files, then we try matching against those too.  If none succeed, the
+# shortest of the diffs is put into the `.err_res' file.
 #
 %.err_res: %.err %.err_exp
 	@echo "Comparing $*.err with $*.err_exp*,"

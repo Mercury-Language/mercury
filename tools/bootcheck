@@ -1490,6 +1490,7 @@ then
             recompilation
             tabling
             term
+            trailing
             valid
             warnings"
 
