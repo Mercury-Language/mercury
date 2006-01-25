@@ -1,5 +1,5 @@
 -----------------------------------------------------------------------------
-| Copyright (C) 2003 The University of Melbourne.
+| Copyright (C) 2003, 2006 The University of Melbourne.
 | This file may only be copied under the terms of the GNU General
 | Public License - see the file COPYING in the Mercury distribution.
 -----------------------------------------------------------------------------
@@ -18,6 +18,7 @@ when modules change.
 
 TODO:
 - dependency tracking and invalidation after source modifications
+  (partially done but requires testing with more analyses)
 - garbage collection of unused versions
 - least fixpoint analyses
 
@@ -58,14 +59,16 @@ calls. It might be possible to analyse such calls where the set of
 possibly called predicates is known, but it is better to optimize away
 higher-order or class method calls where possible.
 
+The client should call `analysis__record_dependency' for each external
+analysis result that is made use of by the module.
+
 When compilation of a module is complete, the client should
 call `analysis__write_analysis_files' to write out all
 information collected during the compilation.
 
 Called by analysis passes to record analysis requests and lookup
 answers for imported functions. The status of each answer recorded
-in the database is one of the following (this is currently not
-implemented):
+in the database is one of the following:
 
 * invalid - the answer was computed using information which has changed,
   and must be recomputed. `invalid' entries may not be used in analysis
@@ -81,6 +84,7 @@ implemented):
   dependency graph which contains `fixpoint_invalid' entries. (Note that
   the method for handling least fixpoint analyses is not described in
   Nicholas Nethercote's thesis).
+  This is not yet implemented.
 
 * suboptimal - the entry does not depend on any `invalid' or
   `fixpoint_invalid' entries, but may be improved by further

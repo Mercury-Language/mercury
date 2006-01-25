@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005 The University of Melbourne.
+% Copyright (C) 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,16 +8,18 @@
 %
 % An analysis file contains analysis results for a single module.
 %-----------------------------------------------------------------------------%
+
 :- module analysis__file.
 
 :- interface.
 
-:- pred read_module_analysis_results(analysis_info::in,
-	module_id::in, module_analysis_map(analysis_result)::out,
+:- pred read_module_analysis_results(analysis_info::in, module_id::in,
+	analysis_status::out, module_analysis_map(analysis_result)::out,
 	io__state::di, io__state::uo) is det.
 
 :- pred write_module_analysis_results(analysis_info::in,
-	module_id::in, module_analysis_map(analysis_result)::in,
+	module_id::in, analysis_status::in,
+	module_analysis_map(analysis_result)::in,
 	io__state::di, io__state::uo) is det.
 
 :- pred read_module_analysis_requests(analysis_info::in,
@@ -28,27 +30,93 @@
 	module_id::in, module_analysis_map(analysis_request)::in,
 	io__state::di, io__state::uo) is det.
 
+:- pred read_module_imdg(analysis_info::in, module_id::in,
+	module_analysis_map(imdg_arc)::out, io::di, io::uo) is det.
+
+:- pred write_module_imdg(analysis_info::in, module_id::in,
+	module_analysis_map(imdg_arc)::in, io::di, io::uo) is det.
+
 :- pred empty_request_file(analysis_info::in, module_id::in,
 	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
-% The format of an analysis file is:
+
+% The format of an analysis result file is:
 %
 % version_number.
-% analysis_name(analysis_version, func_id, call_pattern, answer_pattern).
-%-----------------------------------------------------------------------------%
+% module_status.
+% analysis_name(analysis_version, func_id, call_pattern, answer_pattern,
+%   result_status).
+
+% The format of an IMDG file is:
+%
+% version_number.
+% calling_module -> analysis_name(analysis_version, func_id, call_pattern).
+
+% The format of an analysis request file is:
+%
+% version_number.
+% analysis_name(analysis_version, func_id, call_pattern).
+
 :- import_module bool, exception, parser, term, term_io, varset.
 
 :- type invalid_analysis_file ---> invalid_analysis_file.
 
 :- func version_number = int.
-version_number = 1.
+version_number = 2.
 
-read_module_analysis_results(Info, ModuleId, ModuleResults, !IO) :-
-	read_analysis_file(Info ^ compiler, ModuleId, ".analysis",
-		parse_result_entry(Info ^ compiler),
-		map__init, ModuleResults, !IO).
+%-----------------------------------------------------------------------------%
+
+read_module_analysis_results(Info, ModuleId, ModuleStatus, ModuleResults,
+		!IO) :-
+	read_module_analysis_results_2(Info ^ compiler, ModuleId,
+		ModuleStatus, ModuleResults, !IO).
+
+:- pred read_module_analysis_results_2(Compiler::in, module_id::in,
+	analysis_status::out, module_analysis_map(analysis_result)::out, 
+	io::di, io::uo) is det <= compiler(Compiler).
+
+read_module_analysis_results_2(Compiler, ModuleId, ModuleStatus, ModuleResults,
+		!IO) :-
+	read_analysis_file(Compiler, ModuleId, ".analysis",
+		read_module_status, optimal, ModuleStatus,
+		parse_result_entry(Compiler),
+		map__init, ModuleResults0, !IO),
+	% If the module's overall status is `invalid' then at least one 
+	% of its results is invalid so ignore them all.
+	(
+		( ModuleStatus = optimal
+		; ModuleStatus = suboptimal
+		),
+		ModuleResults = ModuleResults0
+	;
+		ModuleStatus = invalid,
+		ModuleResults = map.init
+	).
+
+:- pred read_module_status(analysis_status::out, io::di, io::uo) is det.
+
+read_module_status(Status, !IO) :-
+	parser__read_term(TermResult `with_type` read_term, !IO),
+	( TermResult = term(_, term__functor(term__atom(String), [], _)) ->
+		( analysis_status_to_string(Status0, String) ->
+			Status = Status0
+		;
+			throw(invalid_analysis_file)
+		)
+	;
+		throw(invalid_analysis_file)
+	).
+
+:- pred analysis_status_to_string(analysis_status, string).
+:- mode analysis_status_to_string(in, out) is det.
+:- mode analysis_status_to_string(out, in) is semidet.
+
+analysis_status_to_string(invalid, "invalid").
+analysis_status_to_string(suboptimal, "suboptimal").
+analysis_status_to_string(optimal, "optimal").
 
 :- pred parse_result_entry(Compiler::in)
 		`with_type` parse_entry(module_analysis_map(analysis_result))
@@ -58,29 +126,30 @@ parse_result_entry(Compiler, Term, Results0, Results) :-
     (	
 	Term = term__functor(term__atom(AnalysisName),
 			[VersionNumberTerm, FuncIdTerm,
-			CallPatternTerm, AnswerPatternTerm], _),
+			CallPatternTerm, AnswerPatternTerm, StatusTerm], _),
 	FuncIdTerm = term__functor(term__string(FuncId), [], _),
 	CallPatternTerm = term__functor(
 			term__string(CallPatternString), [], _),
 	AnswerPatternTerm = term__functor(
 			term__string(AnswerPatternString), [], _),
-	analysis_type(_ `with_type` unit(FuncInfo), _ `with_type` unit(Call),
+	StatusTerm = term__functor(term__string(StatusString), [], _),
+	analysis_type(_ `with_type` unit(Call),
 			_ `with_type` unit(Answer)) =
 			analyses(Compiler, AnalysisName),
 
 	CallPattern = from_string(CallPatternString) `with_type` Call,
-	AnswerPattern = from_string(AnswerPatternString) `with_type` Answer
+	AnswerPattern = from_string(AnswerPatternString) `with_type` Answer,
+	analysis_status_to_string(Status, StatusString)
     ->
 	(
 		VersionNumber = analysis_version_number(
-				_ `with_type` FuncInfo, _ `with_type` Call,
+				_ `with_type` Call,
 				_ `with_type` Answer),
 		VersionNumberTerm = term__functor(
 				term__integer(VersionNumber), [], _)
 	->
-		Result = 'new analysis_result'(
-				unit1 `with_type` unit(FuncInfo),
-				CallPattern, AnswerPattern),
+		Result = 'new analysis_result'(CallPattern, AnswerPattern,
+			Status),
 		( AnalysisResults0 = map__search(Results0, AnalysisName) ->
 			AnalysisResults1 = AnalysisResults0
 		;
@@ -107,6 +176,7 @@ parse_result_entry(Compiler, Term, Results0, Results) :-
 
 read_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 	read_analysis_file(Info ^ compiler, ModuleId, ".request",
+		nop, unit, _NoHeader,
 		parse_request_entry(Info ^ compiler),
 		map__init, ModuleRequests, !IO).
 
@@ -121,21 +191,18 @@ parse_request_entry(Compiler, Term, Requests0, Requests) :-
 	FuncIdTerm = term__functor(term__string(FuncId), [], _),
 	CallPatternTerm = term__functor(
 		term__string(CallPatternString), [], _),
-	analysis_type(_ `with_type` unit(FuncInfo),
-		_ `with_type` unit(Call), _ `with_type` unit(Answer)) =
+	analysis_type(_ `with_type` unit(Call), _ `with_type` unit(Answer)) =
 		analyses(Compiler, AnalysisName),
 	CallPattern = from_string(CallPatternString) `with_type` Call
     ->
 	(
 		VersionNumber = analysis_version_number(
-				_ `with_type` FuncInfo, _ `with_type` Call,
+				_ `with_type` Call,
 				_ `with_type` Answer),
 		VersionNumberTerm = term__functor(
 				term__integer(VersionNumber), [], _)
 	->
-		Result = 'new analysis_request'(
-				unit1 `with_type` unit(FuncInfo),
-				CallPattern),
+		Result = 'new analysis_request'(CallPattern),
 		(
 			AnalysisRequests0 = map__search(Requests0,
 				AnalysisName)
@@ -163,49 +230,123 @@ parse_request_entry(Compiler, Term, Requests0, Requests) :-
 	throw(invalid_analysis_file)
     ).
 
+read_module_imdg(Info, ModuleId, ModuleEntries, !IO) :-
+    read_analysis_file(Info ^ compiler, ModuleId, ".imdg",
+	nop, unit, _NoHeader,
+	parse_imdg_arc(Info ^ compiler),
+	map.init, ModuleEntries, !IO).
+
+:- pred parse_imdg_arc(Compiler::in)
+	    `with_type` parse_entry(module_analysis_map(imdg_arc))
+	    `with_inst` parse_entry <= compiler(Compiler).
+
+parse_imdg_arc(Compiler, Term, Arcs0, Arcs) :-
+    (
+	Term = term.functor(atom("->"),
+	    [term.functor(string(DependentModule), [], _), ResultTerm], _),
+	ResultTerm = functor(atom(AnalysisName),
+	    [VersionNumberTerm, FuncIdTerm, CallPatternTerm], _),
+	FuncIdTerm = term.functor(term.string(FuncId), [], _),
+	CallPatternTerm = functor(string(CallPatternString), [], _),
+	analysis_type(_ : unit(Call), _ : unit(Answer))
+	    = analyses(Compiler, AnalysisName),
+	CallPattern = from_string(CallPatternString) : Call
+    ->
+	(
+	    VersionNumber = analysis_version_number(_ : Call, _ : Answer),
+	    VersionNumberTerm = term.functor(
+		term.integer(VersionNumber), [], _)
+	->
+	    Arc = 'new imdg_arc'(CallPattern, DependentModule),
+	    ( AnalysisArcs0 = map.search(Arcs0, AnalysisName) ->
+		AnalysisArcs1 = AnalysisArcs0
+	    ;
+		AnalysisArcs1 = map.init
+	    ),
+	    ( FuncArcs0 = map.search(AnalysisArcs1, FuncId) ->
+		FuncArcs = [Arc | FuncArcs0]
+	    ;
+		FuncArcs = [Arc]
+	    ),
+	    Arcs = map.set(Arcs0, AnalysisName, 
+		map.set(AnalysisArcs1, FuncId, FuncArcs))
+    	;
+	    % Ignore results with an out-of-date version number.
+	    % XXX: is that the right thing to do?
+	    %	   do we really need a version number for the IMDG?
+	    Arcs = Arcs0
+	)
+    ;
+	throw(invalid_analysis_file)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- type read_analysis_header(T) == pred(T, io, io).
+:- inst read_analysis_header == (pred(out, di, uo) is det).
+
 :- type parse_entry(T) == pred(term, T, T).
 :- inst parse_entry == (pred(in, in, out) is det).
 
 :- pred read_analysis_file(Compiler::in, module_id::in, string::in,
+		read_analysis_header(Header)::in(read_analysis_header),
+		Header::in, Header::out,
 		parse_entry(T)::in(parse_entry), T::in, T::out,
 		io__state::di, io__state::uo) is det <= compiler(Compiler).
 
-read_analysis_file(Compiler, ModuleId, Suffix, ParseEntry,
-		ModuleResults0, ModuleResults, !IO) :-
+read_analysis_file(Compiler, ModuleId, Suffix,
+		ReadHeader, DefaultHeader, Header,
+		ParseEntry, ModuleResults0, ModuleResults, !IO) :-
 	module_id_to_file_name(Compiler, ModuleId,
 		Suffix, AnalysisFileName, !IO),
 	io__open_input(AnalysisFileName, OpenResult, !IO),
 	(
 		OpenResult = ok(Stream),
+		debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+			io.print("Reading analysis file ", !IO),
+			io.print(AnalysisFileName, !IO),
+			io.nl(!IO)
+		), !IO),
 		io__set_input_stream(Stream, OldStream, !IO),
+
 		promise_only_solution_io(
-		    (pred(R::out, di, uo) is cc_multi -->
-			try_io((pred(Results1::out, di, uo) is det -->
+		    (pred(HR::out, di, uo) is cc_multi -->
+			try_io((pred({Header1, Results1}::out, di, uo)
+				    is det -->
+			    check_analysis_file_version_number,
+			    ReadHeader(Header1),
 			    read_analysis_file_2(ParseEntry,
 			    		ModuleResults0, Results1)
-			), R)
+			), HR)
 		    ), Result, !IO),
 		(
-			Result = succeeded(ModuleResults)
+			Result = succeeded({Header, ModuleResults})
 		;
 			Result = failed,
+			Header = DefaultHeader,
 			ModuleResults = ModuleResults0
 		;
 			Result = exception(_),
 			% XXX Report error.
+			Header = DefaultHeader,
 			ModuleResults = ModuleResults0
 		),
 		io__set_input_stream(OldStream, _, !IO),
 		io__close_input(Stream, !IO)
 	;
 		OpenResult = error(_),
+		debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+			io.print("Error reading analysis file: ", !IO),
+			io.print(AnalysisFileName, !IO),
+			io.nl(!IO)
+		), !IO),
+		Header = DefaultHeader,
 		ModuleResults = ModuleResults0
 	).
 
-:- pred read_analysis_file_2(parse_entry(T)::in(parse_entry),
-	T::in, T::out, io__state::di, io__state::uo) is det.
+:- pred check_analysis_file_version_number(io::di, io::uo) is det.
 
-read_analysis_file_2(ParseEntry, Results0, Results, !IO) :-
+check_analysis_file_version_number(!IO) :-
 	parser__read_term(TermResult `with_type` read_term, !IO),
 	(
 		TermResult = term(_, term__functor(
@@ -214,18 +355,17 @@ read_analysis_file_2(ParseEntry, Results0, Results, !IO) :-
 		true
 	;
 		throw(invalid_analysis_file)
-	),
-	read_analysis_file_3(ParseEntry, Results0, Results, !IO).
+	).
 
-:- pred read_analysis_file_3(parse_entry(T)::in(parse_entry),
+:- pred read_analysis_file_2(parse_entry(T)::in(parse_entry),
 	T::in, T::out, io__state::di, io__state::uo) is det.
 
-read_analysis_file_3(ParseEntry, Results0, Results, !IO) :-
+read_analysis_file_2(ParseEntry, Results0, Results, !IO) :-
 	parser__read_term(TermResult, !IO),
 	(
 		TermResult = term(_, Term) `with_type` read_term,
 		ParseEntry(Term, Results0, Results1),
-		read_analysis_file_3(ParseEntry, Results1, Results, !IO)
+		read_analysis_file_2(ParseEntry, Results1, Results, !IO)
 	;
 		TermResult = eof,
 		Results = Results0
@@ -234,15 +374,40 @@ read_analysis_file_3(ParseEntry, Results0, Results, !IO) :-
 		throw(invalid_analysis_file)
 	).
 
-write_module_analysis_results(Info, ModuleId, ModuleResults, !IO) :-
+%-----------------------------------------------------------------------------%
+
+write_module_analysis_results(Info, ModuleId, ModuleStatus, ModuleResults,
+		!IO) :-
+	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+		io.print("Writing module analysis results for ", !IO),
+		io.print(ModuleId, !IO),
+		io.nl(!IO)
+	), !IO),
+	WriteHeader = write_module_status(ModuleStatus),
 	write_analysis_file(Info ^ compiler, ModuleId, ".analysis",
-		write_result_entry, ModuleResults, !IO).
+		WriteHeader, write_result_entry, ModuleResults, !IO).
+
+:- pred write_module_status(analysis_status::in, io::di, io::uo) is det.
+
+write_module_status(Status, !IO) :-
+    term_io.write_term_nl(init:varset, Term, !IO),
+    Term = functor(atom(String), [], context_init),
+    analysis_status_to_string(Status, String).
 
 write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 	module_id_to_file_name(Info ^ compiler, ModuleId, ".request",
 		AnalysisFileName, !IO),
+	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+		io.print("Writing module analysis requests to ", !IO),
+		io.print(AnalysisFileName, !IO),
+		io.nl(!IO)
+	), !IO),
 	io__open_input(AnalysisFileName, InputResult, !IO),
 	( InputResult = ok(InputStream) ->
+		%
+		% Request file already exists.  Check it has the right version
+		% number, then append the new requests to the end.
+		%
 		io__set_input_stream(InputStream, OldInputStream, !IO),
 		parser__read_term(VersionResult `with_type` read_term, !IO),
 		io__set_input_stream(OldInputStream, _, !IO),
@@ -272,6 +437,7 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 	),
 	( Appended = no ->
 		write_analysis_file(Info ^ compiler, ModuleId, ".request",
+			nop,
 			write_request_entry(Info ^ compiler),
 			ModuleRequests, !IO)
 	;
@@ -281,17 +447,17 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 :- pred write_result_entry `with_type` write_entry(analysis_result)
 		`with_inst` write_entry.
 
-write_result_entry(AnalysisName, FuncId,
-		analysis_result(_ `with_type` unit(FuncInfo), Call, Answer),
-		!IO) :-
-	VersionNumber = analysis_version_number(_ `with_type` FuncInfo,
-				Call, Answer), 
+write_result_entry(AnalysisName, FuncId, Result, !IO) :-
+	Result = analysis_result(Call, Answer, Status),
+	VersionNumber = analysis_version_number(Call, Answer), 
+	analysis_status_to_string(Status, StatusString),
 	term_io__write_term_nl(varset__init `with_type` varset,
 		functor(atom(AnalysisName), [
 			functor(integer(VersionNumber), [], context_init),
 		    	functor(string(FuncId), [], context_init),
 			functor(string(to_string(Call)), [], context_init),
-			functor(string(to_string(Answer)), [], context_init)
+			functor(string(to_string(Answer)), [], context_init),
+			functor(string(StatusString), [], context_init)
 		], context_init), !IO).
 
 :- pred write_request_entry(Compiler::in)
@@ -299,15 +465,15 @@ write_result_entry(AnalysisName, FuncId,
 		`with_inst` write_entry <= compiler(Compiler).
 
 write_request_entry(Compiler, AnalysisName, FuncId,
-		analysis_request(_, Call), !IO) :-
+		analysis_request(Call), !IO) :-
 	(
-		analysis_type(_ `with_type` unit(FuncInfo),
+		analysis_type(
 			_ `with_type` unit(Call),
 			_ `with_type` unit(Answer)) =
 			analyses(Compiler, AnalysisName)
 	->
 		VersionNumber = analysis_version_number(
-			_ `with_type` FuncInfo, _ `with_type` Call,
+			_ `with_type` Call,
 			_ `with_type`  Answer)
 	;
 		error("write_request_entry: unknown analysis type")
@@ -320,14 +486,49 @@ write_request_entry(Compiler, AnalysisName, FuncId,
 			functor(string(to_string(Call)), [], context_init)
 		], context_init), !IO).
 
+write_module_imdg(Info, ModuleId, ModuleEntries, !IO) :-
+    write_analysis_file(Info ^ compiler, ModuleId, ".imdg",
+	nop, write_imdg_arc(Info ^ compiler), ModuleEntries, !IO).
+
+:- pred write_imdg_arc(Compiler::in)
+	    `with_type` write_entry(imdg_arc)
+	    `with_inst` write_entry <= compiler(Compiler).
+
+write_imdg_arc(Compiler, AnalysisName, FuncId,
+	imdg_arc(Call, DependentModule), !IO) :-
+    (
+	analysis_type(_ : unit(Call), _ : unit(Answer))
+	    = analyses(Compiler, AnalysisName)
+    ->
+	VersionNumber = analysis_version_number(_ : Call, _ : Answer)
+    ;
+	error("write_imdg_arc: unknown analysis type")
+    ),
+    term_io.write_term_nl(varset.init : varset,
+	functor(atom("->"), [
+	    functor(string(DependentModule), [], context_init),
+	    ResultTerm
+	], context_init), !IO),
+    ResultTerm = functor(atom(AnalysisName), [
+	functor(integer(VersionNumber), [], context_init),
+	functor(string(FuncId), [], context_init),
+	functor(string(to_string(Call)), [], context_init)
+    ], context_init).
+
+%-----------------------------------------------------------------------------%
+
+:- type write_header == pred(io, io).
+:- inst write_header == (pred(di, uo) is det).
+
 :- type write_entry(T) == pred(analysis_name, func_id, T, io__state, io__state).
 :- inst write_entry == (pred(in, in, in, di, uo) is det).
 
 :- pred write_analysis_file(Compiler::in, module_id::in, string::in,
+	write_header::in(write_header),
 	write_entry(T)::in(write_entry), module_analysis_map(T)::in,
 	io__state::di, io__state::uo) is det <= compiler(Compiler).
 
-write_analysis_file(Compiler, ModuleId, Suffix,
+write_analysis_file(Compiler, ModuleId, Suffix, WriteHeader,
 		WriteEntry, ModuleResults, !IO) :-
 	module_id_to_file_name(Compiler, ModuleId,
 		Suffix, AnalysisFileName, !IO),
@@ -337,6 +538,7 @@ write_analysis_file(Compiler, ModuleId, Suffix,
 		io__set_output_stream(Stream, OldOutput, !IO),
 		io__write_int(version_number, !IO),
 		io__write_string(".\n", !IO),
+		WriteHeader(!IO),
 		write_analysis_entries(WriteEntry, ModuleResults, !IO),
 		io__set_output_stream(OldOutput, _, !IO),
 		io__close_output(Stream, !IO)
@@ -367,5 +569,17 @@ write_analysis_entries(WriteEntry, ModuleResults, !IO) :-
 empty_request_file(Info, ModuleId, !IO) :-
 	module_id_to_file_name(Info ^ compiler, ModuleId, ".request", 
 		RequestFileName, !IO),
+	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+		io.print("Removing request file ", !IO),
+		io.print(RequestFileName, !IO),
+		io.nl(!IO)
+	), !IO),
 	io__remove_file(RequestFileName, _, !IO).
 
+:- pred nop(io::di, io::uo) is det.
+
+nop(!IO).
+
+:- pred nop(unit::out, io::di, io::uo) is det.
+
+nop(unit, !IO).

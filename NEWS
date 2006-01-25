@@ -181,7 +181,8 @@ Changes to the Mercury standard library:
 
 * We have added an `injection' module, for reversible maps that are injective.
 
-* We have added list.foldl_corresponding/5 and list.foldl2_corresponding/7.
+* We have added list.foldl_corresponding/5, list.foldl2_corresponding/7
+  and list.map2_foldl2/8.
 
 * We have added string.word_wrap/2.
 

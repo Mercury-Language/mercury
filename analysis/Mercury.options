@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2003 University of Melbourne.
+# Copyright (C) 2003, 2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -7,3 +7,7 @@
 #-----------------------------------------------------------------------------#
 
 MCFLAGS-mer_analysis = --no-warn-nothing-exported
+
+# XXX work around a bug that sometimes appears at -O4 and above.
+# mmc -r analysis.file.c -s asm_fast.gc -O4 --intermodule-optimisation
+MCFLAGS-analysis.file = --no-optimise-higher-order
