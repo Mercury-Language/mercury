@@ -1,2 +1,2 @@
 Uncaught Mercury exception:
-Software Error: string__format: invalid conversion specifier.
+Software Error: string.format: invalid conversion specifier.

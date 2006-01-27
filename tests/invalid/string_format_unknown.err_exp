@@ -1,0 +1,18 @@
+string_format_unknown.m:021: Unknown format string in call to
+string_format_unknown.m:021:   `string.format'/3.
+string_format_unknown.m:023: Mismatched format and values in call to
+string_format_unknown.m:023:   `string.format'/3:
+string_format_unknown.m:023:   invalid conversion specifier.
+string_format_unknown.m:026: Mismatched format and values in call to
+string_format_unknown.m:026:   `io.format'/4:
+string_format_unknown.m:026:   invalid conversion specifier.
+string_format_unknown.m:027: Mismatched format and values in call to
+string_format_unknown.m:027:   `io.format'/5:
+string_format_unknown.m:027:   invalid conversion specifier.
+string_format_unknown.m:028: Mismatched format and values in call to
+string_format_unknown.m:028:   `io.format'/4:
+string_format_unknown.m:028:   invalid conversion specifier.
+string_format_unknown.m:038: Unknown format values in call to `io.format'/5.
+string_format_unknown.m:043: Mismatched format and values in call to
+string_format_unknown.m:043:   `io.format'/5:
+string_format_unknown.m:043:   invalid conversion specifier.

@@ -42,6 +42,10 @@ MCFLAGS-make.program_target = --no-ansi-c
 MCFLAGS-mode_robdd.tfeirn = -O3
 MCFLAGS-mode_robdd.implications = -O0
 
+# rl_info.m contains a general purpose wrapper around string.format
+# that needs this option.
+# MCFLAGS-aditi_backend.rl_info = --no-warn-unknown-format-calls
+
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.  Note that we need to compile these with
 # -DMR_NO_BACKWARDS_COMPAT, because otherwise there are name

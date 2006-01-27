@@ -496,7 +496,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 true
             ),
 
-
             % On the .NET backend we will be using a language independent
             % debugger not mdb.  Thus --debug has to imply --target-debug.
             ( given_trace_level_is_none(TraceLevel) = no ->
@@ -649,11 +648,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % set of all possible linkages.
         globals__lookup_accumulating_option(!.Globals, lib_linkages,
             LibLinkages0),
-        ( LibLinkages0 = [] ->
+        (
+            LibLinkages0 = [],
             globals__set_option(lib_linkages,
                 accumulating(["static", "shared"]), !Globals)
         ;
-            true
+            LibLinkages0 = [_ | _]
         ),
 
         % make.m controls generating object code and linking itself,
@@ -755,13 +755,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % disable --line-numbers when building the `.int', `.opt', etc. files,
         % since including line numbers in those would cause unnecessary
         % recompilation
-        option_implies(make_private_interface,      line_numbers, bool(no),
+        option_implies(make_private_interface,          line_numbers, bool(no),
             !Globals),
-        option_implies(make_interface,          line_numbers, bool(no),
+        option_implies(make_interface,                  line_numbers, bool(no),
             !Globals),
-        option_implies(make_short_interface,        line_numbers, bool(no),
+        option_implies(make_short_interface,            line_numbers, bool(no),
             !Globals),
-        option_implies(make_optimization_interface, line_numbers, bool(no),
+        option_implies(make_optimization_interface,     line_numbers, bool(no),
             !Globals),
         option_implies(make_transitive_opt_interface,   line_numbers, bool(no),
             !Globals),
@@ -865,7 +865,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 !Globals)
         ;
             true
-        ), 
+        ),
 
         option_implies(prop_mode_constraints, mode_constraints, bool(yes),
             !Globals),
@@ -2009,14 +2009,12 @@ compute_grade_components(Options, GradeComponents) :-
 	% be included in the grade string.  It is `no' for
 	% those components that are just synonyms for other
 	% comments, as .mm is for .mmsc.
-	% 
+	%
 	% NOTE: .picreg components are handled separately.
-	% (see compute_grade_components/3). 
-	%  
-
+	% (see compute_grade_components/3).
+	%
 :- pred grade_component_table(string, grade_component,
-    list(pair(option, option_data)), maybe(list(option_data)),
-    bool).
+    list(pair(option, option_data)), maybe(list(option_data)), bool).
 :- mode grade_component_table(in, out, out, out, out) is semidet.
 :- mode grade_component_table(out, in, out, out, out) is multi.
 :- mode grade_component_table(out, out, out, out, out) is multi.

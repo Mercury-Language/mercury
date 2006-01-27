@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -549,7 +549,7 @@ report_type_error(Context, ArgNum, RemainingTerms, PredOrFunc, !Errors) :-
     ->
         Msg = "Type error in return value of function."
     ;
-        string__format("Type error in argument %s.", [i(ArgNum)], Msg)
+        string__format("Type error in argument %d.", [i(ArgNum)], Msg)
     ),
     add_error_report(Context, [words(Msg)], !Errors).
 

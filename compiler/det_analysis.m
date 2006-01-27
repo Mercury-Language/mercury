@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,7 +79,7 @@
     %
 :- pred det_infer_proc(pred_id::in, proc_id::in, module_info::in,
     module_info::out, globals::in, determinism::out, determinism::out,
-    list(det_msg)::out) is det.
+    list(context_det_msg)::out) is det.
 
     % Infers the determinism of `Goal0' and returns this in `Detism'.
     % It annotates the goal and all its subgoals with their determinism
@@ -87,7 +87,8 @@
     %
 :- pred det_infer_goal(hlds_goal::in, hlds_goal::out, instmap::in,
     soln_context::in, list(failing_context)::in, det_info::in,
-    determinism::out, list(failing_context)::out, list(det_msg)::out) is det.
+    determinism::out, list(failing_context)::out, list(context_det_msg)::out)
+    is det.
 
     % Work out how many solutions are needed for a given determinism.
     %
@@ -176,7 +177,7 @@ global_inference_pass(!ModuleInfo, ProcList, Debug, !IO) :-
 
 :- pred global_inference_single_pass(pred_proc_list::in, bool::in,
     module_info::in, module_info::out,
-    list(det_msg)::in, list(det_msg)::out,
+    list(context_det_msg)::in, list(context_det_msg)::out,
     maybe_changed::in, maybe_changed::out, io::di, io::uo) is det.
 
 global_inference_single_pass([], _, !ModuleInfo, !Msgs, !Changed, !IO).
@@ -283,7 +284,10 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
         determinism_to_code_model(ToBeCheckedDetism, ToBeCheckedCodeModel),
         ToBeCheckedCodeModel \= model_det
     ->
-        !:Msgs = [has_io_state_but_not_det(PredId, ProcId) | !.Msgs]
+        proc_info_context(Proc0, ProcContext),
+        IOStateMsg = has_io_state_but_not_det(PredId, ProcId),
+        IOStateContextMsg = context_det_msg(ProcContext, IOStateMsg),
+        !:Msgs = [IOStateContextMsg | !.Msgs]
     ;
         true
     ),
@@ -300,7 +304,17 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
         ; NewDetism = nondet
         )
     ->
-        list.cons(export_model_non_proc(PredId, ProcId, NewDetism), !Msgs)
+        (
+            get_exported_proc_context(ExportedProcs, PredId, ProcId,
+                PragmaContext)
+        ->
+            ExportMsg = export_model_non_proc(PredId, ProcId, NewDetism),
+            ExportContextMsg = context_det_msg(PragmaContext, ExportMsg),
+            list.cons(ExportContextMsg, !Msgs)
+        ;
+            unexpected(this_file,
+                "Cannot find proc in table of pragma exported procs")
+        )
     ;
         true
     ),
@@ -314,6 +328,16 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
     pred_info_set_procedures(Procs, Pred0, Pred),
     map__det_update(Preds0, PredId, Pred, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
+
+:- pred get_exported_proc_context(list(pragma_exported_proc)::in,
+    pred_id::in, proc_id::in, prog_context::out) is semidet.
+
+get_exported_proc_context([Proc | Procs], PredId, ProcId, Context) :-
+    ( Proc = pragma_exported_proc(PredId, ProcId, _, Context0) ->
+        Context = Context0
+    ;
+        get_exported_proc_context(Procs, PredId, ProcId, Context)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -464,12 +488,12 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
 :- pred det_infer_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, instmap::in, soln_context::in,
     list(failing_context)::in, det_info::in, determinism::out,
-    list(failing_context)::out, list(det_msg)::out) is det.
+    list(failing_context)::out, list(context_det_msg)::out) is det.
 
 det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         RightFailingContexts, DetInfo, Detism, GoalFailingContexts, !:Msgs) :-
     (
-        GoalExpr0 = conj(Goals0), 
+        GoalExpr0 = conj(Goals0),
         % The determinism of a conjunction is the worst case of the elements
         % of that conjuction.
         det_infer_conj(Goals0, Goals, InstMap0, SolnContext,
@@ -488,10 +512,12 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         ->
             true
         ;
+            goal_info_get_context(GoalInfo, Context),
             det_info_get_pred_id(DetInfo, PredId),
             det_info_get_proc_id(DetInfo, ProcId),
             Msg = par_conj_not_det(Detism, PredId, ProcId, GoalInfo, Goals),
-            !:Msgs = [Msg | !.Msgs]
+            ContextMsg = context_det_msg(Context, Msg),
+            !:Msgs = [ContextMsg | !.Msgs]
         ),
         GoalExpr = par_conj(Goals)
     ;
@@ -572,10 +598,13 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
                 !:Msgs = [],
                 determinism_components(Detism, CanFail, at_most_many)
             ;
+                goal_info_get_context(GoalInfo, GoalContext),
                 det_get_proc_info(DetInfo, ProcInfo),
                 proc_info_varset(ProcInfo, VarSet),
-                !:Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
-                    PredId, ProcId0, VarSet, RightFailingContexts)],
+                Msg = cc_pred_in_wrong_context(GoalInfo, Detism0,
+                    PredId, ProcId0, VarSet, RightFailingContexts),
+                ContextMsg = context_det_msg(GoalContext, Msg),
+                !:Msgs = [ContextMsg],
                 ProcId = ProcId0,
                 % Code elsewhere relies on the assumption that
                 % SolnContext = all_solns => NumSolns \= at_most_many_cc,
@@ -599,6 +628,7 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
     ;
         GoalExpr0 = generic_call(GenericCall, _ArgVars, _Modes, CallDetism),
         determinism_components(CallDetism, CanFail, NumSolns),
+        goal_info_get_context(GoalInfo, Context),
         (
             NumSolns = at_most_many_cc,
             SolnContext = all_solns
@@ -609,8 +639,10 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             % or introduced later (for calls).
             det_get_proc_info(DetInfo, ProcInfo),
             proc_info_varset(ProcInfo, VarSet),
-            !:Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo,
-                CallDetism, VarSet, RightFailingContexts)],
+            Msg = higher_order_cc_pred_in_wrong_context(GoalInfo, CallDetism,
+                VarSet, RightFailingContexts),
+            ContextMsg = context_det_msg(Context, Msg),
+            !:Msgs = [ContextMsg],
             % Code elsewhere relies on the assumption that
             % SolnContext = all_soln => NumSolns \= at_most_many_cc,
             % so we need to enforce that here.
@@ -621,7 +653,6 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         ),
         (
             CanFail = can_fail,
-            goal_info_get_context(GoalInfo, Context),
             GoalFailingContexts = [Context - generic_call_goal(GenericCall)]
         ;
             CanFail = cannot_fail,
@@ -805,9 +836,10 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             ( set__empty(BugVars) ->
                 ScopeMsgs1 = []
             ;
-                ScopeMsg1 = promise_equivalent_solutions_missing_vars(Context,
-                    VarSet, BugVars),
-                ScopeMsgs1 = [ScopeMsg1]
+                ScopeMsg1 = promise_equivalent_solutions_missing_vars(VarSet,
+                    BugVars),
+                ContextScopeMsg1 = context_det_msg(Context, ScopeMsg1),
+                ScopeMsgs1 = [ContextScopeMsg1]
             ),
             % Which vars were listed in the promise_equivalent_solutions
             % but not bound inside the scope?
@@ -815,9 +847,10 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             ( set__empty(ExtraVars) ->
                 ScopeMsgs2 = []
             ;
-                ScopeMsg2 = promise_equivalent_solutions_extra_vars(Context,
-                    VarSet, ExtraVars),
-                ScopeMsgs2 = [ScopeMsg2]
+                ScopeMsg2 = promise_equivalent_solutions_extra_vars(VarSet,
+                    ExtraVars),
+                ContextScopeMsg2 = context_det_msg(Context, ScopeMsg2),
+                ScopeMsgs2 = [ContextScopeMsg2]
             ),
             ScopeMsgs = ScopeMsgs1 ++ ScopeMsgs2
         ;
@@ -844,7 +877,12 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
                 may_throw_exception(Attributes) = will_not_throw_exception,
                 Detism0 = erroneous
             ->
-                !:Msgs = [will_not_throw_with_erroneous(PredId, ProcId)]
+                proc_info_context(ProcInfo, ProcContext),
+                WillNotThrowMsg =
+                    will_not_throw_with_erroneous(PredId, ProcId),
+                WillNotThrowContextMsg =
+                    context_det_msg(ProcContext, WillNotThrowMsg),
+                !:Msgs = [WillNotThrowContextMsg]
             ;
                 !:Msgs = []
             ),
@@ -859,9 +897,13 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
                 NumSolns1 = at_most_many_cc,
                 SolnContext = all_solns
             ->
+                goal_info_get_context(GoalInfo, GoalContext),
                 proc_info_varset(ProcInfo, VarSet),
-                !:Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
-                    PredId, ProcId, VarSet, RightFailingContexts) | !.Msgs],
+                WrongContextMsg = cc_pred_in_wrong_context(GoalInfo, Detism0,
+                    PredId, ProcId, VarSet, RightFailingContexts),
+                WrongContextContextMsg = context_det_msg(GoalContext,
+                    WrongContextMsg),
+                !:Msgs = [WrongContextContextMsg | !.Msgs],
                 NumSolns = at_most_many
             ;
                 NumSolns = NumSolns1
@@ -877,7 +919,10 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             )
         ;
             MaybeDetism = no,
-            !:Msgs = [pragma_c_code_without_det_decl(PredId, ProcId)],
+            proc_info_context(ProcInfo, Context),
+            Msg = pragma_c_code_without_det_decl(PredId, ProcId),
+            ContextMsg = context_det_msg(Context, Msg),
+            !:Msgs = [ContextMsg],
             Detism = erroneous,
             GoalFailingContexts = []
         ),
@@ -893,7 +938,7 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
 :- pred det_infer_conj(list(hlds_goal)::in, list(hlds_goal)::out, instmap::in,
     soln_context::in, list(failing_context)::in, det_info::in,
     determinism::out, list(failing_context)::in, list(failing_context)::out,
-    list(det_msg)::out) is det.
+    list(context_det_msg)::out) is det.
 
 det_infer_conj([], [], _InstMap0, _SolnContext, _RightFailingContexts,
         _DetInfo, det, !ConjFailingContexts, []).
@@ -939,7 +984,7 @@ det_infer_conj([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
 :- pred det_infer_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     instmap::in, soln_context::in, list(failing_context)::in, det_info::in,
     determinism::out, list(failing_context)::in, list(failing_context)::out,
-    list(det_msg)::out) is det.
+    list(context_det_msg)::out) is det.
 
 det_infer_par_conj([], [], _InstMap0, _SolnContext, _RightFailingContexts,
         _DetInfo, det, !ConjFailingContexts, []).
@@ -964,7 +1009,7 @@ det_infer_par_conj([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
     soln_context::in, list(failing_context)::in, det_info::in,
     can_fail::in, soln_count::in, determinism::out,
     list(failing_context)::in, list(failing_context)::out,
-    list(det_msg)::out) is det.
+    list(context_det_msg)::out) is det.
 
 det_infer_disj([], [], _InstMap0, _SolnContext, _RightFailingContexts,
         _DetInfo, CanFail, MaxSolns, Detism, !DisjFailingContexts, []) :-
@@ -1017,7 +1062,7 @@ det_infer_disj([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
     soln_context::in, list(failing_context)::in, det_info::in, can_fail::in,
     soln_count::in, determinism::out,
     list(failing_context)::in, list(failing_context)::out,
-    list(det_msg)::out) is det.
+    list(context_det_msg)::out) is det.
 
 det_infer_switch([], [], _InstMap0, _SolnContext, _RightFailingContexts,
         _DetInfo, CanFail, MaxSolns, Detism, !SwitchFailingContexts, []) :-
@@ -1082,7 +1127,7 @@ det_find_matching_non_cc_mode_2([TestProcId - ProcInfo | Rest],
 :- pred det_check_for_noncanonical_type(prog_var::in, bool::in, can_fail::in,
     soln_context::in, list(failing_context)::in, list(failing_context)::in,
     hlds_goal_info::in, cc_unify_context::in, det_info::in, soln_count::out,
-    list(det_msg)::in, list(det_msg)::out) is det.
+    list(context_det_msg)::in, list(context_det_msg)::out) is det.
 
 det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         SolnContext, FailingContextsA, FailingContextsB, GoalInfo, GoalContext,
@@ -1099,13 +1144,18 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         det_type_has_user_defined_equality_pred(DetInfo, Type)
     ->
         ( CanFail = can_fail ->
+            goal_info_get_context(GoalInfo, Context),
             proc_info_varset(ProcInfo, VarSet),
-            !:Msgs = [cc_unify_can_fail(GoalInfo, Var, Type, VarSet,
-                GoalContext) | !.Msgs]
+            Msg = cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
+            ContextMsg = context_det_msg(Context, Msg),
+            !:Msgs = [ContextMsg | !.Msgs]
         ; SolnContext = all_solns ->
+            goal_info_get_context(GoalInfo, Context),
             proc_info_varset(ProcInfo, VarSet),
-            !:Msgs = [cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
-                GoalContext, FailingContextsA ++ FailingContextsB) | !.Msgs]
+            Msg = cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
+                GoalContext, FailingContextsA ++ FailingContextsB),
+            ContextMsg = context_det_msg(Context, Msg),
+            !:Msgs = [ContextMsg | !.Msgs]
         ;
             true
         ),

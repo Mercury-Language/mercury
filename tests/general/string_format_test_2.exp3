@@ -1,2 +1,2 @@
 Uncaught Mercury exception:
-Software Error: string__format: format string invalid.
+Software Error: string.format: format string invalid.

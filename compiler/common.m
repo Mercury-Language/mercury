@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -576,8 +576,9 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 types_match_exactly_list(OutputArgTypes1, OutputArgTypes2)
             ->
                 goal_info_get_context(GoalInfo, Context),
-                simplify_info_do_add_msg(
-                    duplicate_call(SeenCall, PrevContext, Context), !Info)
+                Msg = duplicate_call(SeenCall, PrevContext),
+                ContextMsg = context_det_msg(Context, Msg),
+                simplify_info_do_add_det_msg(ContextMsg, !Info)
             ;
                 true
             ),

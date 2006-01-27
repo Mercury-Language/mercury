@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1322,7 +1322,7 @@ attribute_to_custom_attribute(DataRep, custom(MLDSType))
 mangle_dataname(var(MLDSVarName))
     = mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(common(Int))
-    = string__format("common_%s", [i(Int)]).
+    = string__format("common_%d", [i(Int)]).
 mangle_dataname(rtti(RttiId)) = MangledName :-
     rtti__id_to_c_identifier(RttiId, MangledName).
 mangle_dataname(module_layout) = _MangledName :-
@@ -3388,7 +3388,7 @@ mangle_dataname_module(yes(DataName), !ModuleName) :-
 mangle_dataname(var(MLDSVarName), Name) :-
     Name = mangle_mlds_var_name(MLDSVarName).
 mangle_dataname(common(Int), MangledName) :-
-    string__format("common_%s", [i(Int)], MangledName).
+    string__format("common_%d", [i(Int)], MangledName).
 mangle_dataname(rtti(RttiId), MangledName) :-
     rtti__id_to_c_identifier(RttiId, MangledName).
 mangle_dataname(module_layout, _MangledName) :-

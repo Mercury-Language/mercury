@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,7 +67,7 @@
 :- pred type_ctor_name_and_arity(type_ctor_info::in,
         string::out, string::out, int::out) is det.
 
-:- pred deconstruct(T, noncanon_handling, string, int, list(std_util__univ)).
+:- pred deconstruct(T, noncanon_handling, string, int, list(std_util.univ)).
 :- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
 :- mode deconstruct(in, in(canonicalize), out, out, out) is det.
 :- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
@@ -82,13 +82,13 @@
 %
 % Implementations for use from construct.
 
-:- func num_functors(type_desc__type_desc) = int.
+:- func num_functors(type_desc.type_desc) = int.
 
-:- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
-    list(type_desc__type_desc)::out) is semidet.
+:- pred get_functor(type_desc.type_desc::in, int::in, string::out, int::out,
+    list(type_desc.type_desc)::out) is semidet.
 
-:- pred get_functor_with_names(type_desc__type_desc::in, int::in, string::out,
-    int::out, list(type_desc__type_desc)::out, list(string)::out)
+:- pred get_functor_with_names(type_desc.type_desc::in, int::in, string::out,
+    int::out, list(type_desc.type_desc)::out, list(string)::out)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -328,8 +328,8 @@ get_functor_with_names(TypeDesc, FunctorNumber, FunctorName, Arity,
     get_functor_impl(TypeDesc, FunctorNumber, FunctorName, Arity,
         TypeInfoList, Names).
 
-:- pred get_functor_impl(type_desc__type_desc::in, int::in,
-    string::out, int::out, list(type_desc__type_desc)::out,
+:- pred get_functor_impl(type_desc.type_desc::in, int::in,
+    string::out, int::out, list(type_desc.type_desc)::out,
     list(string)::out) is semidet.
 
 get_functor_impl(TypeDesc, FunctorNumber,
@@ -403,7 +403,7 @@ get_functor_impl(TypeDesc, FunctorNumber,
         TypeInfoList = iterate(1, Arity, (func(I) =
             unsafe_cast(TypeInfo ^ var_arity_type_info_index(I)))
         ),
-        Names = list__duplicate(Arity, null_string)
+        Names = list.duplicate(Arity, null_string)
     ;
         TypeCtorRep = int,
         fail
@@ -495,7 +495,7 @@ get_functor_impl(TypeDesc, FunctorNumber,
 
 :- pred get_functor_du(type_ctor_rep::in(du), type_info::in,
     type_ctor_info::in, int::in, string::out, int::out,
-    list(type_desc__type_desc)::out, list(string)::out) is semidet.
+    list(type_desc.type_desc)::out, list(string)::out) is semidet.
 
 get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
         FunctorName, Arity, TypeDescList, Names) :-
@@ -523,11 +523,11 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
     ( ArgNames = DuFunctorDesc ^ du_functor_arg_names ->
         Names = iterate(0, Arity - 1, (func(I) = ArgNames ^ unsafe_index(I)))
     ;
-        Names = list__duplicate(Arity, null_string)
+        Names = list.duplicate(Arity, null_string)
     ).
 
 :- pred get_functor_enum(type_ctor_rep::in(enum), type_ctor_info::in, int::in,
-    string::out, int::out, list(type_desc__type_desc)::out, list(string)::out)
+    string::out, int::out, list(type_desc.type_desc)::out, list(string)::out)
     is det.
 
 get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
@@ -542,7 +542,7 @@ get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     Names = [].
 
 :- pred get_functor_notag(type_ctor_rep::in(notag), type_ctor_info::in,
-    int::in, string::out, int::out, list(type_desc__type_desc)::out,
+    int::in, string::out, int::out, list(type_desc.type_desc)::out,
     list(string)::out) is det.
 
 get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
@@ -588,7 +588,7 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
 get_type_info(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("get_type_info").
+    private_builtin.sorry("get_type_info").
 
 :- func get_var_arity_typeinfo_arity(type_info) = int.
 
@@ -607,7 +607,7 @@ get_type_info(_) = _ :-
 ").
 
 get_var_arity_typeinfo_arity(_) = _ :-
-    private_builtin__sorry("get_var_arity_typeinfo_arity").
+    private_builtin.sorry("get_var_arity_typeinfo_arity").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1082,7 +1082,7 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
         Functor, Arity, Arguments).
 
 :- pred deconstruct(T, type_info, type_ctor_info, type_ctor_rep,
-    noncanon_handling, string, int, list(std_util__univ)).
+    noncanon_handling, string, int, list(std_util.univ)).
 :- mode deconstruct(in, in, in, in, in(do_not_allow), out, out, out) is det.
 :- mode deconstruct(in, in, in, in, in(canonicalize), out, out, out) is det.
 :- mode deconstruct(in, in, in, in,
@@ -1092,7 +1092,7 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     % Code to perform deconstructions (XXX not yet complete).
     %
     % There are many cases to implement here, only the ones that were
-    % immediately useful (e.g. called by io__write) have been implemented
+    % immediately useful (e.g. called by io.write) have been implemented
     % so far.
 
 deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
@@ -1133,7 +1133,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor = FunctorDesc ^ du_functor_name,
             Arity = FunctorDesc ^ du_functor_arity,
             Arguments = iterate(0, Arity - 1,
-                (func(X) = std_util__univ(
+                (func(X) = std_util.univ(
                     get_arg(Term, X, SecTagLocn, FunctorDesc, TypeInfo))
                 ))
         ;
@@ -1148,7 +1148,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor = FunctorDesc ^ du_functor_name,
             Arity = FunctorDesc ^ du_functor_arity,
             Arguments = iterate(0, Arity - 1,
-                (func(X) = std_util__univ(
+                (func(X) = std_util.univ(
                     get_arg(Term, X, SecTagLocn, FunctorDesc, TypeInfo))
                 ))
         ;
@@ -1194,7 +1194,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = int,
         det_dynamic_cast(Term, Int),
-        Functor = string__int_to_string(Int),
+        Functor = string.int_to_string(Int),
         Arity = 0,
         Arguments = []
     ;
@@ -1230,10 +1230,10 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         type_ctor_and_args(TypeInfo, _TypeCtorInfo, TypeArgs),
         Functor = "{}",
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
-        list__map_foldl(
+        list.map_foldl(
             (pred(TI::in, U::out, Index::in, Next::out) is det :-
                 SubTerm = get_subterm(TI, Term, Index, 0),
-                U = std_util__univ(SubTerm),
+                U = std_util.univ(SubTerm),
                 Next = Index + 1
             ), TypeArgs, Arguments, 0, _)
     ;
@@ -1275,9 +1275,9 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         TypeCtorRep = array,
 
         % Constrain the T in array(T) to the correct element type.
-        std_util__type_ctor_and_args(std_util__type_of(Term), _, Args),
+        std_util.type_ctor_and_args(std_util.type_of(Term), _, Args),
         ( Args = [ElemType] ->
-            std_util__has_type(Elem, ElemType),
+            std_util.has_type(Elem, ElemType),
             same_array_elem_type(Array, Elem)
         ;
             error("An array which doesn't have a type_ctor arg")
@@ -1286,9 +1286,9 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         det_dynamic_cast(Term, Array),
 
         Functor = "<<array>>",
-        Arity = array__size(Array),
-        Arguments = array__foldr(
-            (func(Elem, List) = [std_util__univ(Elem) | List]),
+        Arity = array.size(Array),
+        Arguments = array.foldr(
+            (func(Elem, List) = [std_util.univ(Elem) | List]),
             Array, [])
     ;
         TypeCtorRep = succip,
@@ -1394,8 +1394,8 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
 :- pred det_dynamic_cast(T::in, U::out) is det.
 
 det_dynamic_cast(Term, Actual) :-
-    std_util__type_to_univ(Term, Univ),
-    std_util__det_univ_to_type(Univ, Actual).
+    std_util.type_to_univ(Term, Univ),
+    std_util.det_univ_to_type(Univ, Actual).
 
 :- pred same_array_elem_type(array(T)::unused, T::unused) is det.
 
@@ -1405,7 +1405,7 @@ same_array_elem_type(_, _).
     notag_ground_usereq; reserved_addr_usereq).
 
 :- pred handle_usereq_type(T, type_info, type_ctor_info, type_ctor_rep,
-        noncanon_handling, string, int, list(std_util__univ)).
+        noncanon_handling, string, int, list(std_util.univ)).
 
 :- mode handle_usereq_type(in, in, in, in(usereq),
     in(do_not_allow), out, out, out) is erroneous.
@@ -1453,15 +1453,21 @@ handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
 :- func expand_type_name(type_ctor_info, bool) = string.
 
 expand_type_name(TypeCtorInfo, Wrap) = Name :-
-    ( Wrap = yes ->
-        FmtStr = "<<%s.%s/%d>>"
+    (
+        Wrap = yes,
+        LeftWrapper = "<<",
+        RightWrapper = ">>"
     ;
-        FmtStr = "%s.%s/%d"
+        Wrap = no,
+        LeftWrapper = "",
+        RightWrapper = ""
     ),
-    Name = string__format(FmtStr,
-        [s(TypeCtorInfo ^ type_ctor_module_name),
+    Name = string.format("%s%s.%s/%d%s",
+        [s(LeftWrapper),
+        s(TypeCtorInfo ^ type_ctor_module_name),
         s(TypeCtorInfo ^ type_ctor_name),
-        i(TypeCtorInfo ^ type_ctor_arity)]).
+        i(TypeCtorInfo ^ type_ctor_arity),
+        s(RightWrapper)]).
 
     % Retrieve an argument number from a term, given the functor descriptor.
     %
@@ -1506,10 +1512,10 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 #endif
 ").
 high_level_data :-
-    ( std_util__semidet_succeed ->
-        private_builtin__sorry("high_level_data")
+    ( std_util.semidet_succeed ->
+        private_builtin.sorry("high_level_data")
     ;
-        std_util__semidet_succeed
+        std_util.semidet_succeed
     ).
 
 :- pred get_arg_type_info(type_info::in, P::in, T::in,
@@ -1539,7 +1545,7 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
             Arity = TypeCtorInfo ^ type_ctor_arity,
             StartRegionSize = 1
         ),
-        ArgTypeInfo0 = std_util__no,
+        ArgTypeInfo0 = std_util.no,
         UpperBound = Arity + StartRegionSize - 1,
 
         iterate_foldl(StartRegionSize, UpperBound,
@@ -1552,23 +1558,23 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
                 ->
                     TI = TI0
                 ;
-                    TI0 = std_util__yes(TypeInfo0)
+                    TI0 = std_util.yes(TypeInfo0)
                 ->
                     unsafe_promise_unique(TypeInfo0, TypeInfo1),
                     update_type_info_index(I, ETypeInfo, TypeInfo1, TypeInfo),
-                    TI = std_util__yes(TypeInfo)
+                    TI = std_util.yes(TypeInfo)
                 ;
                     NewTypeInfo0 = new_type_info(CastTypeInfo, UpperBound),
                     update_type_info_index(I, ETypeInfo, NewTypeInfo0,
                         NewTypeInfo),
-                    TI = std_util__yes(NewTypeInfo)
+                    TI = std_util.yes(NewTypeInfo)
                 )
             ), ArgTypeInfo0, MaybeArgTypeInfo),
         (
-            MaybeArgTypeInfo = std_util__yes(ArgTypeInfo1),
+            MaybeArgTypeInfo = std_util.yes(ArgTypeInfo1),
             ArgTypeInfo = ArgTypeInfo1
         ;
-            MaybeArgTypeInfo = std_util__no,
+            MaybeArgTypeInfo = std_util.no,
             ArgTypeInfo = CastTypeInfo
         )
     ).
@@ -1850,7 +1856,7 @@ pseudotypeinfo_max_var = 1024.
 get_type_ctor_info(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("get_type_ctor_info").
+    private_builtin.sorry("get_type_ctor_info").
 
 :- pred same_pointer_value(T::in, T::in) is semidet.
 :- pred same_pointer_value_untyped(T::in, U::in) is semidet.
@@ -1874,7 +1880,7 @@ same_pointer_value(X, Y) :- same_pointer_value_untyped(X, Y).
 same_pointer_value_untyped(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("same_pointer_value_untyped").
+    private_builtin.sorry("same_pointer_value_untyped").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2109,9 +2115,9 @@ get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :-
 :- func typeclass_info_type_info(type_info, int) = type_info.
 
 typeclass_info_type_info(TypeClassInfo, Index) = unsafe_cast(TypeInfo) :-
-    private_builtin__type_info_from_typeclass_info(
-        unsafe_cast(TypeClassInfo) `with_type` private_builtin__typeclass_info,
-        Index, TypeInfo `with_type` private_builtin__type_info).
+    private_builtin.type_info_from_typeclass_info(
+        unsafe_cast(TypeClassInfo) `with_type` private_builtin.typeclass_info,
+        Index, TypeInfo `with_type` private_builtin.type_info).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2160,16 +2166,16 @@ update_type_info_index(_::in, _::in, X::di, X::uo) :-
 :- pred semidet_unimplemented(string::in) is semidet.
 
 semidet_unimplemented(S) :-
-    ( std_util__semidet_succeed ->
+    ( std_util.semidet_succeed ->
         error("rtti_implementation: unimplemented: " ++ S)
     ;
-        std_util__semidet_succeed
+        std_util.semidet_succeed
     ).
 
 :- pred det_unimplemented(string::in) is det.
 
 det_unimplemented(S) :-
-    ( std_util__semidet_succeed ->
+    ( std_util.semidet_succeed ->
         error("rtti_implementation: unimplemented: " ++ S)
     ;
         true
@@ -2202,7 +2208,7 @@ det_unimplemented(S) :-
 type_ctor_arity(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_ctor_arity").
+    private_builtin.sorry("type_ctor_arity").
 
 :- some [P] func type_ctor_unify_pred(type_ctor_info) = P.
 :- pragma foreign_proc("C#",
@@ -2230,7 +2236,7 @@ type_ctor_arity(_) = _ :-
 type_ctor_unify_pred(_) = "dummy value" :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_ctor_unify_pred").
+    private_builtin.sorry("type_ctor_unify_pred").
 
 :- some [P] func type_ctor_compare_pred(type_ctor_info) = P.
 :- pragma foreign_proc("C#",
@@ -2260,7 +2266,7 @@ type_ctor_unify_pred(_) = "dummy value" :-
 type_ctor_compare_pred(_) = "dummy value" :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_ctor_compare_pred").
+    private_builtin.sorry("type_ctor_compare_pred").
 
 :- func type_ctor_rep(type_ctor_info) = type_ctor_rep.
 :- pragma foreign_proc("C#",
@@ -2289,7 +2295,7 @@ type_ctor_compare_pred(_) = "dummy value" :-
 type_ctor_rep(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_ctor_rep").
+    private_builtin.sorry("type_ctor_rep").
 
 :- func type_ctor_module_name(type_ctor_info) = string.
 
@@ -2319,7 +2325,7 @@ type_ctor_rep(_) = _ :-
 type_ctor_module_name(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_ctor_module_name").
+    private_builtin.sorry("type_ctor_module_name").
 
 :- func type_ctor_name(type_ctor_info) = string.
 
@@ -2347,7 +2353,7 @@ type_ctor_module_name(_) = _ :-
 type_ctor_name(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_ctor_name").
+    private_builtin.sorry("type_ctor_name").
 
 :- func type_ctor_functors(type_ctor_info) = type_functors.
 
@@ -2369,7 +2375,7 @@ type_ctor_name(_) = _ :-
 type_ctor_functors(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_ctor_functors").
+    private_builtin.sorry("type_ctor_functors").
 
 :- func type_layout(type_ctor_info) = type_layout.
 
@@ -2397,7 +2403,7 @@ type_ctor_functors(_) = _ :-
 type_layout(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_layout").
+    private_builtin.sorry("type_layout").
 
 :- func type_ctor_num_functors(type_ctor_info) = int.
 
@@ -2412,7 +2418,7 @@ type_layout(_) = _ :-
 type_ctor_num_functors(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("type_ctor_num_functors").
+    private_builtin.sorry("type_ctor_num_functors").
 
 :- pragma foreign_proc("C",
     unsafe_cast(VarIn::in) = (VarOut::out),
@@ -2436,7 +2442,7 @@ type_ctor_num_functors(_) = _ :-
 unsafe_cast(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("unsafe_cast").
+    private_builtin.sorry("unsafe_cast").
 
 %-----------------------------------------------------------------------------%
 %
@@ -2703,7 +2709,7 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
     Item = ((object []) Array)[Num];
 ").
 unsafe_index(_, _) = _ :-
-    private_builtin__sorry("rtti_implementation__unsafe_index").
+    private_builtin.sorry("rtti_implementation.unsafe_index").
 
  %--------------------------%
 
@@ -2715,7 +2721,7 @@ unsafe_index(_, _) = _ :-
     Enum = mercury.runtime.LowLevelData.make_enum(Num);
 ").
 unsafe_make_enum(_) = _ :-
-    private_builtin__sorry("rtti_implementation__unsafe_make_enum").
+    private_builtin.sorry("rtti_implementation.unsafe_make_enum").
 
  %--------------------------%
 
@@ -2741,7 +2747,7 @@ unsafe_make_enum(_) = _ :-
 null(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("rtti_implementation__null/1").
+    private_builtin.sorry("rtti_implementation.null/1").
 
  %--------------------------%
 
@@ -2767,7 +2773,7 @@ null(_) :-
 null_string = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("rtti_implementation__null_string/0").
+    private_builtin.sorry("rtti_implementation.null_string/0").
 
  %--------------------------%
 
@@ -2790,6 +2796,6 @@ null_string = _ :-
 unsafe_get_enum_value(_) = _ :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    private_builtin__sorry("rtti_implementation__unsafe_get_enum_value/1").
+    private_builtin.sorry("rtti_implementation.unsafe_get_enum_value/1").
 
 %-----------------------------------------------------------------------------%

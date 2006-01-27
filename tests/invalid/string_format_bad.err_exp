@@ -1,0 +1,16 @@
+string_format_bad.m:020: Mismatched format and values in call to
+string_format_bad.m:020:   `string.format'/3:
+string_format_bad.m:020:   format string invalid.
+string_format_bad.m:022: Mismatched format and values in call to
+string_format_bad.m:022:   `string.format'/3:
+string_format_bad.m:022:   invalid conversion specifier.
+string_format_bad.m:025: Mismatched format and values in call to `io.format'/4:
+string_format_bad.m:025:   invalid conversion specifier.
+string_format_bad.m:026: Mismatched format and values in call to `io.format'/5:
+string_format_bad.m:026:   invalid conversion specifier.
+string_format_bad.m:027: Mismatched format and values in call to `io.format'/4:
+string_format_bad.m:027:   invalid conversion specifier.
+string_format_bad.m:036: Mismatched format and values in call to `io.format'/5:
+string_format_bad.m:036:   invalid conversion specifier.
+string_format_bad.m:041: Mismatched format and values in call to `io.format'/5:
+string_format_bad.m:041:   invalid conversion specifier.

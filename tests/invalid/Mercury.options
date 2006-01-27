@@ -67,7 +67,12 @@ MCFLAGS-overloading = 		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-pragma_c_code_no_det =	--warn-inferred-erroneous
 MCFLAGS-record_syntax_errors =	--verbose-error-messages
-MCFLAGS-sub_c = 	--verbose-error-messages --no-intermodule-optimization \
+MCFLAGS-string_format_bad =	--halt-at-warn --warn-known-bad-format-calls \
+				--warn-unknown-format-calls
+MCFLAGS-string_format_unknown =	--halt-at-warn --warn-known-bad-format-calls \
+				--warn-unknown-format-calls
+MCFLAGS-sub_c = 		--verbose-error-messages \
+				--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 
 # Force this test to be compiled in a non-trailing grade since in this

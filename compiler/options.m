@@ -106,6 +106,8 @@
     ;       warn_dead_procs
     ;       warn_table_with_inline
     ;       warn_non_term_special_preds
+    ;       warn_known_bad_format_calls
+    ;       warn_unknown_format_calls
 
     % Verbosity options
     ;       verbose
@@ -849,7 +851,9 @@ option_defaults_2(warning_option, [
     warn_stubs                          -   bool(yes),
     warn_dead_procs                     -   bool(no),
     warn_table_with_inline              -   bool(yes),
-    warn_non_term_special_preds         -   bool(yes)
+    warn_non_term_special_preds         -   bool(yes),
+    warn_known_bad_format_calls         -   bool(no),
+    warn_unknown_format_calls           -   bool(no)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1547,6 +1551,8 @@ long_option("warn-stubs",               warn_stubs).
 long_option("warn-dead-procs",          warn_dead_procs).
 long_option("warn-table-with-inline",   warn_table_with_inline).
 long_option("warn-non-term-special-preds", warn_non_term_special_preds).
+long_option("warn-known-bad-format-calls", warn_known_bad_format_calls).
+long_option("warn-unknown-format-calls", warn_unknown_format_calls).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -2818,7 +2824,15 @@ options_help_warning -->
         "\tcomparison predicates, or solver type initialisation predicates",
         "\tthat cannot be proved to terminate.  This option is only",
         "\tenabled when termination analysis is enabled.",
-        "\t(See the ""Termination Analysis Options"" section below)."
+        "\t(See the ""Termination Analysis Options"" section below).",
+        "--no-warn-known-bad-format-call",
+        "\tDo not warn about calls to string.format or io.format that",
+        "\tthe compiler knows for sure contain mismatches between the format",
+        "\tstring and the supplied values.",
+        "--warn-unknown-format-call",
+        "\tWarn about calls to string.format or io.format for which",
+        "\tthe compiler cannot tell whether there are any mismatches between",
+        "\tthe format string and the supplied values."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
-% vim:ts=4 sw=4 expandtab tw=0 wm=0
+% vim:ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne
+% Copyright (C) 2000-2006 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -454,8 +454,8 @@ write(Stream, W, X, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % This is a contraction of Wadler's pretty, layout and be
-    % functions, adapted to work with a strict evaluation order.
+    % This is a contraction of Wadler's pretty, layout and be functions,
+    % adapted to work with a strict evaluation order.
     %
 :- pred layout_best(pred(string, T, T), int, doc, T, T).
 :- mode layout_best(pred(in, di, uo) is det, in, in, di, uo) is det.

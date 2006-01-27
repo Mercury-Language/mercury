@@ -829,6 +829,8 @@ so that the compiler does the right thing for options such as
 	simplify.m also attempts to partially evaluate calls to builtin
 	procedures if the inputs are all constants (this is const_prop.m
 	in the transform_hlds.m package).
+	simplify.m also calls format_call.m to look for
+	(possibly) incorrect uses of string.format io.format.
 	<p>
 
 </dl>
@@ -1724,6 +1726,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-11-23 04:44:10 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-01-27 05:52:09 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

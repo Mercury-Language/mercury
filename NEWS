@@ -26,6 +26,9 @@ Changes to the Mercury standard library:
 * We have added an `injection' module, for reversible maps that are injective.
 
 Changes to the Mercury compiler:
+* The compiler now generates error messages for mismatches between format
+  strings and lists of values to be printed in calls to string.format and
+  io.format.
 * The compiler now generates better error messages for determinism errors
   involving single-solution contexts.
 * We have significantly improved the compiler's performance on predicates
@@ -188,6 +191,17 @@ Changes to the Mercury standard library:
 
 * We have added list.det_split_list/4.
 
+Changes to the Mercury compiler:
+
+* The compiler now generates error messages for known mismatches between format
+  strings and lists of values to be printed in calls to string.format and
+  io.format, unless the user specifies the --no-warn-known-bad-format-call
+  option.
+
+  If the user specifies the --warn-unknown-format-call option, the compiler
+  will also generate error messages for calls to string.format and io.format
+  in which the format string or the structure of the list of values to be
+  printed are not statically available.
 
 Changes to the extras distribution:
 

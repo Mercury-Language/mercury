@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -218,6 +218,12 @@
 :- pred aditi_private_builtin_module(sym_name::out) is det.
 :- func aditi_private_builtin_module = sym_name.
 
+    % Returns the sym_name of the module with the given name in the
+    % Mercury standard library.
+    %
+:- pred mercury_std_lib_module_name(string::in, sym_name::out) is det.
+:- func mercury_std_lib_module_name(string) = sym_name.
+
     % Succeeds iff the specified module is one of the builtin modules listed
     % above which may be automatically imported.
     %
@@ -311,6 +317,8 @@ aditi_public_builtin_module = unqualified("aditi").
 aditi_public_builtin_module(aditi_public_builtin_module).
 aditi_private_builtin_module = unqualified("aditi_private_builtin").
 aditi_private_builtin_module(aditi_private_builtin_module).
+mercury_std_lib_module_name(Name) = unqualified(Name).
+mercury_std_lib_module_name(Name, unqualified(Name)).
 
 any_mercury_builtin_module(Module) :-
     ( mercury_public_builtin_module(Module)

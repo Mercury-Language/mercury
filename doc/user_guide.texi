@@ -5295,6 +5295,20 @@ that cannot be proved to terminate.  This option is only
 enabled when termination analysis is enabled.
 (See @ref{Termination analysis options} for further details).
 
+@sp 1
+@item --no-warn-known-bad-format-call
+@findex --no-warn-known-bad-format-call
+Do not warn about calls to string.format or io.format that
+the compiler knows for sure contain mismatches between the format
+string and the supplied values.
+
+@sp 1
+@item --warn-unknown-format-call
+@findex --warn-unknown-format-call
+Warn about calls to string.format or io.format for which
+the compiler cannot tell whether there are any mismatches between
+the format string and the supplied values.
+
 @end table
 
 @node Verbosity options
