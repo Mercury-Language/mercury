@@ -8,7 +8,7 @@ eval 'exec perl -w -S $0 ${1+"$@"}'
     if $_running_under_some_shell;
 
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-2001, 2003, 2005 The University of Melbourne.
+# Copyright (C) 1994-2001, 2003, 2005-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -333,11 +333,11 @@ if ($emacs) {
 } elsif ($keep_dups) {
     # Vim and elvis expect the tags file to be sorted so they can do
     # binary search.
-    open(OUT, "| sort > tags") ||
+    open(OUT, "| LC_COLLATE=C sort > tags") ||
         die "mtags: error opening pipe: $!\n";
 } else {
     # Remove duplicate tags for vi.
-    open(OUT, "| sort -u +0 -1 > tags") ||
+    open(OUT, "| LC_COLLATE=C sort -u +0 -1 > tags") ||
         die "mtags: error opening pipe: $!\n";
 }
 $context = "implementation";
@@ -350,7 +350,7 @@ while ($#ARGV >= 0)
         open(OUT, ">> TAGS") || die "mtags: error opening TAGS: $!\n";
         printf OUT "\f\n%s,%d\n", $file, 0;
         close(OUT) || die "mtags: error closing TAGS: $!\n";
-        # open(OUT, "| sort -u +0 -1 >> TAGS") ||
+        # open(OUT, "| LC_COLLATE=C sort -u +0 -1 >> TAGS") ||
         open(OUT, ">> TAGS") ||
             die "mtags: error opening pipe: $!\n";
     }
