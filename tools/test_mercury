@@ -170,13 +170,11 @@ case $BRANCH in
 		RELEASE_VERSION_PATTERN=rotd-*
 		;;
 	g12)
-		# At the moment we don't have a tagged g12 rotd
-		# so just use the main branch.
 		CHECKOUT_OPTS=-rg12-0_1_0
-		BASE_TAG_NAME=g12-rotd
-		FTP_DIR_NAME=g12-rotd
-		RELEASE_VERSION=g12-rotd-$DATE
-		RELEASE_VERSION_PATERN=g12-rotd-*
+		BASE_TAG_NAME=g12-0_1_0
+		FTP_DIR_NAME=g12
+		RELEASE_VERSION=g12-0.1.0
+		RELEASE_VERSION_PATTERN=g12-0.1.0*
 		;;
 	0.12)
 		
