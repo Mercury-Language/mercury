@@ -2827,12 +2827,12 @@ options_help_warning -->
         "\t(See the ""Termination Analysis Options"" section below).",
         "--no-warn-known-bad-format-call",
         "\tDo not warn about calls to string.format or io.format that",
-        "\tthe compiler knows for sure contain mismatches between the format",
-        "\tstring and the supplied values.",
+        "\tthe compiler knows for sure contain mismatches between the",
+        "\tformat string and the supplied values.",
         "--warn-unknown-format-call",
         "\tWarn about calls to string.format or io.format for which",
-        "\tthe compiler cannot tell whether there are any mismatches between",
-        "\tthe format string and the supplied values."
+        "\tthe compiler cannot tell whether there are any mismatches",
+        "\tbetween the format string and the supplied values."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.
