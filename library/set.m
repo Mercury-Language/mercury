@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2005 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -277,6 +277,15 @@
 :- mode set__fold3(pred(in, in, out, in, out, in, out) is semidet, in,
     in, out, in, out, in, out) is semidet.
 
+:- pred set__fold4(pred(T, A, A, B, B, C, C, D, D), set(T), A, A, B, B,
+        C, C, D, D).
+:- mode set__fold4(pred(in, in, out, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out, in, out) is det.
+:- mode set__fold4(pred(in, in, out, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, in, out, di, uo) is det.
+:- mode set__fold4(pred(in, in, out, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out, in, out) is semidet.
+    
     % set__divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
@@ -503,6 +512,9 @@ set__fold2(F, S, !A, !B) :-
 
 set__fold3(F, S, !A, !B, !C) :-
     list__foldl3(F, set__to_sorted_list(S), !A, !B, !C).
+
+set__fold4(F, S, !A, !B, !C, !D) :-
+    list__foldl4(F, set__to_sorted_list(S), !A, !B, !C, !D).
 
 set__divide(P, Set, TruePart, FalsePart) :-
     set_ordlist__divide(P, Set, TruePart, FalsePart).
