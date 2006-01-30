@@ -16,6 +16,7 @@ MCFLAGS-poly_io_retry = --trace-table-io-all
 MCFLAGS-poly_io_retry2 = --trace-table-io-all
 MCFLAGS-queens_rep = --trace rep
 MCFLAGS-shallow = --trace shallow
+MCFLAGS-shallow2 = --trace deep
 MCFLAGS-tabled_read = --trace-table-io-all
 MCFLAGS-tabled_read_unitize = --trace-table-io-all
 MCFLAGS-tabled_read_decl = --trace-table-io-all
@@ -48,5 +49,6 @@ MCFLAGS-solver_test = -O2 --no-optimize-dead-procs
 # The following is necessary for shared libraries to work on Linux.
 GRADEFLAGS-interactive = --pic-reg
 MLFLAGS-interactive = --shared
+MERCURY_LINKAGE-interactive = shared
 
 MCFLAGS-fib = --allow-table-reset
