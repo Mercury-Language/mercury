@@ -87,6 +87,7 @@ OTHER_PROGS= \
 	empty_bound_inst_list \
 	empty_switch \
 	error \
+	eval \
 	existential_cons \
 	explicit_quant \
 	export_before_func \

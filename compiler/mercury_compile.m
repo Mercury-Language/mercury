@@ -2735,7 +2735,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     globals__lookup_bool_option(Globals, optimize, Optimize),
     (
         Optimize = yes,
-        optimize__proc(!.GlobalData, ProcCode0, ProcCode, !IO)
+        optimize_proc(!.GlobalData, ProcCode0, ProcCode, !IO)
     ;
         Optimize = no,
         ProcCode = ProcCode0
@@ -4041,7 +4041,7 @@ maybe_do_optimize(GlobalData, Verbose, Stats, !LLDS, !IO) :-
         Optimize = yes,
         maybe_write_string(Verbose, "% Doing optimizations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        optimize_main(GlobalData, !LLDS, !IO),
+        optimize_procs(GlobalData, !LLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

@@ -692,12 +692,13 @@
     %
 :- pred touch_datestamp(file_name::in, io::di, io::uo) is det.
 
-    % update_interface(FileName, Succeeded):
+    % update_interface_return_succeeded(FileName, Succeeded):
     %
     % Call the shell script mercury_update_interface to update the
     % interface file FileName if it has changed.
     %
-:- pred update_interface(file_name::in, bool::out, io::di, io::uo) is det.
+:- pred update_interface_return_succeeded(file_name::in, bool::out,
+    io::di, io::uo) is det.
 
 :- pred update_interface(file_name::in, io::di, io::uo) is det.
 
@@ -2242,7 +2243,7 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
         % update <Module>.int from <Module>.int.tmp if necessary
 
 update_interface(OutputFileName, !IO) :-
-    update_interface(OutputFileName, Succeeded, !IO),
+    update_interface_return_succeeded(OutputFileName, Succeeded, !IO),
     (
         Succeeded = no,
         report_error("problem updating interface files.", !IO)
@@ -2250,7 +2251,7 @@ update_interface(OutputFileName, !IO) :-
         Succeeded = yes
     ).
 
-update_interface(OutputFileName, Succeeded, !IO) :-
+update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Updating interface:\n", !IO),
     TmpOutputFileName = OutputFileName ++ ".tmp",

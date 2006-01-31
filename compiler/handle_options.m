@@ -1707,7 +1707,25 @@ postprocess_options_lowlevel(!Globals) :-
     option_implies(optimize_frames, optimize_jumps, bool(yes), !Globals),
 
         % --optimize-proc-dups is implemented only with --trad-passes.
-    option_implies(optimize_proc_dups, trad_passes, bool(yes), !Globals).
+    option_implies(optimize_proc_dups, trad_passes, bool(yes), !Globals),
+
+    globals.lookup_bool_option(!.Globals, optimize_frames, OptFrames),
+    globals.lookup_bool_option(!.Globals, use_local_vars, OptLocalVars),
+    globals.lookup_int_option(!.Globals, optimize_repeat, OptRepeat),
+    (
+        ( OptFrames = yes
+        ; OptLocalVars = yes
+        ),
+        OptRepeat < 1
+    ->
+        % The frame optimization and the local vars optimization depend on
+        % the jump and label optimization having been done. They are turned
+        % on above, but they still won't be executed unless optimize_repeat
+        % is at least one.
+        globals__set_option(optimize_repeat, int(1), !Globals)
+    ;
+        true
+    ).
 
     % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue):
     % If the SourceBoolOption is set to yes, then the ImpliedOption is set
