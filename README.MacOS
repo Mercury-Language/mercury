@@ -68,9 +68,8 @@ currently no known workaround.
 Known bugs and unsupported features
 -----------------------------------
 
-The following features are not supported on Mac OS X:
+The following feature is not supported on Mac OS X:
 	- interactive queries in mdb
-	- the '--split-c-files' option to mmc
 
 The 'asm_fast' grades will not work on powerpc-darwin machines, primarily
 because of a (long-standing) bug in gcc's powerpc backend (GCC bug #10901).
