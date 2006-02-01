@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,6 +29,7 @@
 :- import_module transform_hlds.term_util.
 
 :- import_module bag.
+:- import_module io.
 :- import_module list.
 :- import_module set.
 :- import_module std_util.
@@ -93,13 +94,15 @@
 
 :- type traversal_params.
 
-:- pred init_traversal_params(module_info::in, functor_info::in,
+:- pred init_traversal_params(functor_info::in,
     pred_proc_id::in, prog_context::in, vartypes::in,
     used_args::in, used_args::in, int::in, int::in,
     traversal_params::out) is det.
 
-:- pred traverse_goal(hlds_goal::in, traversal_params::in,
-    traversal_info::in, traversal_info::out) is det.
+:- pred traverse_goal(
+    hlds_goal::in, traversal_params::in,
+    traversal_info::in, traversal_info::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred upper_bound_active_vars(list(path_info)::in, bag(prog_var)::out) is det.
 
@@ -122,7 +125,7 @@
 
 %-----------------------------------------------------------------------------%
 
-traverse_goal(Goal, Params, !Info) :-
+traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     Goal = GoalExpr - GoalInfo,
     (
         goal_info_get_determinism(GoalInfo, Detism),
@@ -132,17 +135,18 @@ traverse_goal(Goal, Params, !Info) :-
     ;
         true
     ),
-    traverse_goal_2(GoalExpr, GoalInfo, Params, !Info).
+    traverse_goal_2(GoalExpr, GoalInfo, Params, !Info, !ModuleInfo, !IO).
 
 :- pred traverse_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    traversal_params::in, traversal_info::in, traversal_info::out) is det.
+    traversal_params::in, traversal_info::in, traversal_info::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
-        _GoalInfo, Params, !Info) :-
+traverse_goal_2(Goal, _GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
+    Goal = unify(_Var, _RHS, _UniMode, Unification, _Context),
     (
         Unification = construct(OutVar, ConsId, Args, Modes, _, _, _),
         (
-            unify_change(OutVar, ConsId, Args, Modes, Params,
+            unify_change(!.ModuleInfo, OutVar, ConsId, Args, Modes, Params,
                 Gamma, InVars, OutVars0)
         ->
             bag.insert(OutVars0, OutVar, OutVars),
@@ -155,7 +159,7 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
     ;
         Unification = deconstruct(InVar, ConsId, Args, Modes, _, _),
         (
-            unify_change(InVar, ConsId, Args, Modes, Params,
+            unify_change(!.ModuleInfo, InVar, ConsId, Args, Modes, Params,
                 Gamma0, InVars0, OutVars)
         ->
             bag.insert(InVars0, InVar, InVars),
@@ -163,7 +167,7 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
             record_change(InVars, OutVars, Gamma, [], !Info)
         ;
             unexpected(this_file,
-            "traverse_goal_2/5: higher order deconstruction.")
+                "traverse_goal_2/5: higher order deconstruction.")
         )
     ;
         Unification = assign(OutVar, InVar),
@@ -178,47 +182,47 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
         unexpected(this_file, "traverse_goal_2/5: complicated unify.")
     ).
 
-traverse_goal_2(conj(Goals), _, Params, !Info) :-
+traverse_goal_2(conj(Goals), _, Params, !Info, !ModuleInfo, !IO) :-
     list.reverse(Goals, RevGoals),
-    traverse_conj(RevGoals, Params, !Info).
+    traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO).
 
-traverse_goal_2(par_conj(Goals), _, Params, !Info) :-
+traverse_goal_2(par_conj(Goals), _, Params, !Info, !ModuleInfo, !IO) :-
     list.reverse(Goals, RevGoals),
-    traverse_conj(RevGoals, Params, !Info).
+    traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO).
 
-traverse_goal_2(switch(_, _, Cases), _, Params, !Info) :-
-    traverse_switch(Cases, Params, !Info).
+traverse_goal_2(switch(_, _, Cases), _, Params, !Info, !ModuleInfo, !IO) :-
+    traverse_switch(Cases, Params, !Info, !ModuleInfo, !IO).
 
-traverse_goal_2(disj(Goals), _, Params, !Info) :-
-    traverse_disj(Goals, Params, !Info).
+traverse_goal_2(disj(Goals), _, Params, !Info, !ModuleInfo, !IO) :-
+    traverse_disj(Goals, Params, !Info, !ModuleInfo, !IO).
 
-traverse_goal_2(not(Goal), _, Params, !Info) :-
-    % The negated goal will not affect the argument sizes since it
-    % cannot bind any active variables.  However, we must traverse
-    % it anyway during pass 1 to ensure that it does not call any
-    % non-terminating procedures.  Pass 2 relies on pass 1 having
-    % done this.
-    traverse_goal(Goal, Params, !Info).
+traverse_goal_2(not(Goal), _, Params, !Info, !ModuleInfo, !IO) :-
+    % The negated goal will not affect the argument sizes since it cannot bind
+    % any active variables.  However, we must traverse it during pass 1 to
+    % ensure that it does not call any non-terminating procedures.  Pass 2
+    % relies on pass 1 having done this.
+    traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO).
 
-traverse_goal_2(scope(_, Goal), _GoalInfo, Params, !Info) :-
-    traverse_goal(Goal, Params, !Info).
+traverse_goal_2(scope(_, Goal), _GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
+    traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO).
 
-traverse_goal_2(if_then_else(_, Cond, Then, Else), _, Params, !Info) :-
-    traverse_conj([Then, Cond], Params, !.Info, CondThenInfo),
-    traverse_goal(Else, Params, !.Info, ElseInfo),
+traverse_goal_2(Goal, _, Params, !Info, !ModuleInfo, !IO) :-
+    Goal = if_then_else(_, Cond, Then, Else),
+    traverse_conj([Then, Cond], Params, !.Info, CondThenInfo, !ModuleInfo,
+        !IO),
+    traverse_goal(Else, Params, !.Info, ElseInfo, !ModuleInfo, !IO),
     combine_paths(CondThenInfo, ElseInfo, Params, !:Info).
 
-traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
+traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
     Goal = foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
-    params_get_module_info(Params, ModuleInfo),
-    module_info_pred_proc_info(ModuleInfo, CallPredId, CallProcId, _,
+    module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
         CallProcInfo),
     proc_info_argmodes(CallProcInfo, CallArgModes),
     ArgVars = list.map(foreign_arg_var, Args),
-    partition_call_args(ModuleInfo, CallArgModes, ArgVars, _InVars, OutVars),
+    partition_call_args(!.ModuleInfo, CallArgModes, ArgVars, _InVars, OutVars),
     goal_info_get_context(GoalInfo, Context),
 
-    ( is_termination_known(ModuleInfo, proc(CallPredId, CallProcId)) ->
+    ( is_termination_known(!.ModuleInfo, proc(CallPredId, CallProcId)) ->
         error_if_intersect(OutVars, Context, pragma_foreign_code, !Info)
     ;
         ( attributes_imply_termination(Attributes) ->
@@ -228,7 +232,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
         )
     ).
             
-traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
+traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
     Goal = generic_call(Details, Args, ArgModes, _),
     goal_info_get_context(GoalInfo, Context),
     (
@@ -240,14 +244,14 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
         % anything about the size of the arguments of the higher-order call,
         % so we assume that they are unbounded.
         %
-        params_get_module_info(Params, ModuleInfo),
         ( ClosureValues0 = ClosureValueMap ^ elem(Var) ->
             ClosureValues = set.to_sorted_list(ClosureValues0),
-            list.filter(terminates(ModuleInfo), ClosureValues,
+            % XXX intermod
+            list.filter(terminates(!.ModuleInfo), ClosureValues,
                 Terminating, NonTerminating),
             ( 
                 NonTerminating = [],
-                partition_call_args(ModuleInfo, ArgModes, Args,
+                partition_call_args(!.ModuleInfo, ArgModes, Args,
                     _InVars, OutVars),
                 params_get_ppid(Params, PPId),
                 Error = ho_inf_termination_const(PPId, Terminating),
@@ -285,20 +289,20 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
         add_error(Context, aditi_call, Params, !Info)
     ).
 
-traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
+traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
     Goal = call(CallPredId, CallProcId, Args, _, _, _),
     goal_info_get_context(GoalInfo, Context),
-    params_get_module_info(Params, ModuleInfo),
     params_get_ppid(Params, PPId),
     CallPPId = proc(CallPredId, CallProcId),
 
-    module_info_pred_proc_info(ModuleInfo, CallPredId, CallProcId, _,
+    module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
         CallProcInfo),
     proc_info_argmodes(CallProcInfo, CallArgModes),
+    % XXX intermod
     proc_info_get_maybe_arg_size_info(CallProcInfo, CallArgSizeInfo),
     proc_info_get_maybe_termination_info(CallProcInfo, CallTerminationInfo),
 
-    partition_call_args(ModuleInfo, CallArgModes, Args, InVars, OutVars),
+    partition_call_args(!.ModuleInfo, CallArgModes, Args, InVars, OutVars),
 
     % Handle existing paths
     (
@@ -311,9 +315,9 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
             inf_termination_const(PPId, CallPPId), !Info)
     ;
         CallArgSizeInfo = no,
-        % We should get to this point only in pass 1.
-        % In pass 2, OutputSuppliersMap will be empty,
-        % which will lead to a runtime abort in map.lookup.
+        % We should get to this point only in pass 1.  In pass 2,
+        % OutputSuppliersMap will be empty, which will lead to a runtime abort
+        % in map.lookup.
         params_get_output_suppliers(Params, OutputSuppliersMap),
         map.lookup(OutputSuppliersMap, CallPPId, OutputSuppliers),
         remove_unused_args(InVars, Args, OutputSuppliers, UsedInVars),
@@ -359,7 +363,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info) :-
         true
     ).
 
-traverse_goal_2(shorthand(_), _, _, _, _) :-
+traverse_goal_2(shorthand(_), _, _, _, _, _, _, _, _) :-
     % These should have been expanded out by now.
     unexpected(this_file, "traverse_goal_2/5: shorthand goal.").
 
@@ -368,32 +372,35 @@ traverse_goal_2(shorthand(_), _, _, _, _) :-
     % traverse_conj should be invoked with a reversed list of goals.
     % This is to keep stack consumption down.
     %
-:- pred traverse_conj(list(hlds_goal)::in, traversal_params::in,
-    traversal_info::in, traversal_info::out) is det.
+:- pred traverse_conj(hlds_goals::in, traversal_params::in,
+    traversal_info::in, traversal_info::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-traverse_conj([], _, !Info).
-traverse_conj([Goal | Goals], Params, !Info) :-
-    traverse_goal(Goal, Params, !Info),
-    traverse_conj(Goals, Params, !Info).
+traverse_conj([], _, !Info, !ModuleInfo, !IO).
+traverse_conj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
+    traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO),
+    traverse_conj(Goals, Params, !Info, !ModuleInfo, !IO).
 
-:- pred traverse_disj(list(hlds_goal)::in, traversal_params::in,
-    traversal_info::in, traversal_info::out) is det.
+:- pred traverse_disj(hlds_goals::in, traversal_params::in,
+    traversal_info::in, traversal_info::out, module_info::in,
+    module_info::out, io::di, io::uo) is det.
 
-traverse_disj([], _, _, ok(Empty, [])) :-
+traverse_disj([], _, _, ok(Empty, []), !ModuleInfo, !IO) :-
     set.init(Empty).
-traverse_disj([Goal | Goals], Params, !Info) :-
-    traverse_goal(Goal, Params, !.Info, GoalInfo),
-    traverse_disj(Goals, Params, !.Info, GoalsInfo),
+traverse_disj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
+    traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
+    traverse_disj(Goals, Params, !.Info, GoalsInfo, !ModuleInfo, !IO),
     combine_paths(GoalInfo, GoalsInfo, Params, !:Info).
 
 :- pred traverse_switch(list(case)::in, traversal_params::in,
-    traversal_info::in, traversal_info::out) is det.
+    traversal_info::in, traversal_info::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-traverse_switch([], _, _, ok(Empty, [])) :-
+traverse_switch([], _, _, ok(Empty, []), !ModuleInfo, !IO) :-
     set.init(Empty).
-traverse_switch([case(_, Goal) | Cases], Params, !Info) :-
-    traverse_goal(Goal, Params, !.Info, GoalInfo),
-    traverse_switch(Cases, Params, !.Info, CasesInfo),
+traverse_switch([case(_, Goal) | Cases], Params, !Info, !ModuleInfo, !IO) :-
+    traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
+    traverse_switch(Cases, Params, !.Info, CasesInfo, !ModuleInfo, !IO),
     combine_paths(GoalInfo, CasesInfo, Params, !:Info).
 
 %-----------------------------------------------------------------------------%
@@ -507,17 +514,17 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
     % input or output bags. The predicate fails if invoked on a higher
     % order unification.
     %
-:- pred unify_change(prog_var::in, cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, traversal_params::in, int::out, bag(prog_var)::out,
-    bag(prog_var)::out) is semidet.
+:- pred unify_change(module_info::in, prog_var::in, cons_id::in,
+    list(prog_var)::in, list(uni_mode)::in, traversal_params::in, int::out,
+    bag(prog_var)::out, bag(prog_var)::out) is semidet.
 
-unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
+unify_change(ModuleInfo, OutVar, ConsId, Args0, Modes0, Params, Gamma,
+        InVars, OutVars) :-
     params_get_functor_info(Params, FunctorInfo),
     params_get_var_types(Params, VarTypes),
     map.lookup(VarTypes, OutVar, Type),
     \+ type_is_higher_order(Type, _, _, _, _),
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        params_get_module_info(Params, ModuleInfo),
         filter_args_and_modes(VarTypes, Args0, Args1, Modes0, Modes1),
         functor_norm(FunctorInfo, TypeCtor, ConsId, ModuleInfo,
             Gamma, Args1, Args, Modes1, Modes),
@@ -613,42 +620,38 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 
 :- type traversal_params
     --->    traversal_params(
-                module_info         :: module_info,
+                functor_info :: functor_info,
                 
-                functor_info        :: functor_info,
+                ppid :: pred_proc_id,
+                % The procedure we are tracing through.
                 
-                ppid                :: pred_proc_id,
-                                    % The procedure we are tracing through.
+                context :: prog_context,
+                % The context of the procedure.
                 
-                context             :: prog_context,
-                                    % The context of the procedure.
+                vartypes :: vartypes,
                 
-                vartypes            :: vartypes,
-                
-                output_suppliers    :: map(pred_proc_id, list(bool)),
-                                    % Output suppliers of each procedure.
-                                    % Empty during pass 2.
+                output_suppliers :: map(pred_proc_id, list(bool)),
+                % Output suppliers of each procedure.
+                % Empty during pass 2.
                     
                 rec_input_supplier  :: map(pred_proc_id, list(bool)),
-                                    % Rec input suppliers of each procedure.
-                                    % Empty during pass 1.
+                % Recursive input suppliers of each procedure.
+                % Empty during pass 1.
                 
-                max_errors          :: int,
-                                    % Max number of errors to gather.
+                max_errors :: int,
+                % Maximum number of errors to gather.
                 
-                max_paths           :: int
-                                    % Max number of paths to analyze.
-    ).
+                max_paths :: int
+                % Maximum number of paths to analyze.
+        ).
 
-init_traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context, VarTypes,
+init_traversal_params(FunctorInfo, PredProcId, Context, VarTypes,
         OutputSuppliers, RecInputSuppliers, MaxErrors, MaxPaths,
         Params) :-
-    Params = traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context,
+    Params = traversal_params(FunctorInfo, PredProcId, Context,
         VarTypes, OutputSuppliers, RecInputSuppliers,
         MaxErrors, MaxPaths).
 
-:- pred params_get_module_info(traversal_params::in, module_info::out)
-    is det.
 :- pred params_get_functor_info(traversal_params::in, functor_info::out)
     is det.
 :- pred params_get_ppid(traversal_params::in, pred_proc_id::out)
@@ -664,7 +667,6 @@ init_traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context, VarTypes,
 :- pred params_get_max_errors(traversal_params::in, int::out) is det.
 :- pred params_get_max_paths(traversal_params::in, int::out) is det.
 
-params_get_module_info(Params, Params ^ module_info).
 params_get_functor_info(Params, Params ^ functor_info).
 params_get_ppid(Params, Params ^ ppid).
 params_get_context(Params, Params ^ context).

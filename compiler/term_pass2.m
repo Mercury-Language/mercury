@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2005 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,14 +22,18 @@
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.term_util.
 
+:- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % NOTE: This code assumes that the SCC does not call any nonterminating
     % procedures.  If it does then that fact should have been detected
     % during pass 1.
     %
-:- pred prove_termination_in_scc(list(pred_proc_id)::in, module_info::in,
-    pass_info::in, int::in, termination_info::out) is det.
+:- pred prove_termination_in_scc(list(pred_proc_id)::in,
+    pass_info::in, int::in, termination_info::out, module_info::in,
+    module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -61,34 +65,32 @@
     ;       down.
 
 :- type call_weight_info
-    == pair(list(termination_error_context), call_weight_graph).
+    == pair(termination_error_contexts, call_weight_graph).
 
-:- type call_weight_graph
-    == map(pred_proc_id,       % The max noninfinite weight
-                        % call from this proc
-            map(pred_proc_id,   % to this proc
-                pair(prog_context, int))).
-                        % is at this context and with
-                        % this weight.
+    % The maximum non-infinite weight from proc to proc and which context
+    % it occurs at.
+    %
+:- type call_weight_graph == map(pred_proc_id, call_weight_dst_map).
+:- type call_weight_dst_map == map(pred_proc_id, pair(prog_context, int)).
 
 :- type pass2_result
-    ---> ok(
-            call_weight_info,
-            used_args
-         )
-    
-    ;    error(
-            list(termination_error_context)
-         ).
+    --->    ok(
+                call_weight_info,
+                used_args
+            )
+    ;       error(
+                termination_error_contexts
+            ).
 
 %------------------------------------------------------------------------------%
 
-prove_termination_in_scc(SCC, ModuleInfo, PassInfo, SingleArgs, Termination) :-
-    init_rec_input_suppliers(SCC, ModuleInfo, InitRecSuppliers),
-    prove_termination_in_scc_trial(SCC, InitRecSuppliers, down, ModuleInfo,
-        PassInfo, Termination1),
+prove_termination_in_scc(SCC, PassInfo, SingleArgs, Termination,
+        !ModuleInfo, !IO) :-
+    init_rec_input_suppliers(SCC, !.ModuleInfo, InitRecSuppliers),
+    prove_termination_in_scc_trial(SCC, InitRecSuppliers, down, PassInfo,
+        Termination0, !ModuleInfo, !IO),
     (
-        Termination1 = can_loop(Errors),
+        Termination0 = can_loop(Errors),
         (
             % On large SCCs, single arg analysis can require many iterations,
             % so we allow the user to limit the size of the SCCs we will try it
@@ -101,16 +103,23 @@ prove_termination_in_scc(SCC, ModuleInfo, PassInfo, SingleArgs, Termination) :-
             \+ (
                 list.member(Error, Errors),
                 Error = _ - imported_pred
-            ),
-            prove_termination_in_scc_single_arg(SCC, ModuleInfo, PassInfo)
+            )
         ->
-            Termination = cannot_loop(unit)
+            prove_termination_in_scc_single_arg(SCC, PassInfo,
+                SingleArgTerminates, !ModuleInfo, !IO),
+            (
+                SingleArgTerminates = yes,
+                Termination = cannot_loop(unit)
+            ;
+                SingleArgTerminates = no,
+                Termination = Termination0
+            )
         ;
-            Termination = Termination1
+            Termination = Termination0
         )
     ;
-        Termination1 = cannot_loop(unit),
-        Termination = Termination1
+        Termination0 = cannot_loop(unit),
+        Termination = Termination0
     ).
 
     % Initialise the set of recursive input suppliers to be the set of all
@@ -155,16 +164,18 @@ init_rec_input_suppliers([PPId | PPIds], ModuleInfo, RecSupplierMap) :-
     % sets cannot decrease.
     %
 :- pred prove_termination_in_scc_single_arg(list(pred_proc_id)::in,
-    module_info::in, pass_info::in) is semidet.
+    pass_info::in, bool::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-prove_termination_in_scc_single_arg(SCC, ModuleInfo, PassInfo) :-
+prove_termination_in_scc_single_arg(SCC, PassInfo, Terminates, !ModuleInfo,
+        !IO) :-
     ( 
         SCC = [FirstPPId | LaterPPIds],
-        lookup_proc_arity(FirstPPId, ModuleInfo, FirstArity),
-        find_min_arity_proc(LaterPPIds, FirstPPId, FirstArity, ModuleInfo,
+        FirstArity = lookup_proc_arity(FirstPPId, !.ModuleInfo),
+        find_min_arity_proc(LaterPPIds, FirstPPId, FirstArity, !.ModuleInfo,
             TrialPPId, RestSCC),
         prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, 1,
-            ModuleInfo, PassInfo)
+            PassInfo, Terminates, !ModuleInfo, !IO)
     ;
         SCC = [],
         unexpected(this_file,
@@ -174,13 +185,14 @@ prove_termination_in_scc_single_arg(SCC, ModuleInfo, PassInfo) :-
     % Find a procedure of minimum arity among the given list and the tentative
     % guess.
     %
-:- pred find_min_arity_proc(list(pred_proc_id)::in, pred_proc_id::in, int::in,
-    module_info::in, pred_proc_id::out, list(pred_proc_id)::out) is det.
+:- pred find_min_arity_proc(list(pred_proc_id)::in, pred_proc_id::in,
+    arity::in, module_info::in, pred_proc_id::out,
+    list(pred_proc_id)::out) is det.
 
 find_min_arity_proc([], BestSofarPPId, _, _, BestSofarPPId, []).
 find_min_arity_proc([PPId | PPIds], BestSofarPPId, BestSofarArity, ModuleInfo,
         BestPPId, RestSCC) :-
-    lookup_proc_arity(PPId, ModuleInfo, Arity),
+    Arity = lookup_proc_arity(PPId, ModuleInfo),
     ( Arity < BestSofarArity ->
         find_min_arity_proc(PPIds, PPId, Arity, ModuleInfo, BestPPId,
             RestSCC0),
@@ -194,22 +206,28 @@ find_min_arity_proc([PPId | PPIds], BestSofarPPId, BestSofarArity, ModuleInfo,
     % Perform single arg analysis on the SCC.
     %
 :- pred prove_termination_in_scc_single_arg_2(pred_proc_id::in,
-    list(pred_proc_id)::in, int::in, module_info::in, pass_info::in)
-    is semidet.
+    list(pred_proc_id)::in, int::in, pass_info::in, bool::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
-        ModuleInfo, PassInfo) :-
-    init_rec_input_suppliers_single_arg(TrialPPId, RestSCC,
-        ArgNum0, ModuleInfo, InitRecSuppliers),
-    prove_termination_in_scc_trial([TrialPPId | RestSCC], InitRecSuppliers,
-        up, ModuleInfo, PassInfo, Termination),
-    ( 
-        Termination = cannot_loop(unit)
+        PassInfo, Terminates, !ModuleInfo, !IO) :-
+    (
+        init_rec_input_suppliers_single_arg(TrialPPId, RestSCC,
+            ArgNum0, !.ModuleInfo, InitRecSuppliers) 
+    ->
+        prove_termination_in_scc_trial([TrialPPId | RestSCC], InitRecSuppliers,
+            up, PassInfo, Termination, !ModuleInfo, !IO),
+        ( 
+            Termination = cannot_loop(unit),
+            Terminates = yes
+        ;
+            Termination = can_loop(_),
+            ArgNum1 = ArgNum0 + 1,
+            prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC,
+                ArgNum1, PassInfo, Terminates, !ModuleInfo, !IO)
+        )
     ;
-        Termination = can_loop(_),
-        ArgNum1 = ArgNum0 + 1,
-        prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC,
-            ArgNum1, ModuleInfo, PassInfo)
+        Terminates = no
     ).
 
 :- pred init_rec_input_suppliers_single_arg(pred_proc_id::in,
@@ -231,21 +249,21 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 :- pred init_rec_input_suppliers_add_single_arg(list(mer_mode)::in, int::in,
     module_info::in, list(bool)::out) is semidet.
 
-init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
+init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, ModuleInfo,
         BoolList) :-
     (
-        mode_is_input(Module, Mode),
+        mode_is_input(ModuleInfo, Mode),
         ArgNum = 1
     ->
         list.map(map_to_no, Modes, BoolList1),
         BoolList = [yes | BoolList1]
     ;
         (
-            mode_is_output(Module, Mode)
+            mode_is_output(ModuleInfo, Mode)
         ->
             NextArgNum = ArgNum
         ;
-            mode_is_input(Module, Mode),
+            mode_is_input(ModuleInfo, Mode),
             ArgNum > 1
         ->
             NextArgNum = ArgNum - 1
@@ -254,7 +272,7 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
         )
     ->
         init_rec_input_suppliers_add_single_arg(Modes, NextArgNum,
-            Module, BoolList1),
+            ModuleInfo, BoolList1),
         BoolList = [no | BoolList1]
     ;
         fail
@@ -273,23 +291,23 @@ init_rec_input_suppliers_single_arg_others([PPId | PPIds], Module,
     init_rec_input_suppliers_single_arg_others(PPIds, Module,
         !RecSupplierMap).
 
-:- pred lookup_proc_arity(pred_proc_id::in, module_info::in, int::out) is det.
+:- func lookup_proc_arity(pred_proc_id, module_info) = arity.
 
-lookup_proc_arity(PPId, Module, Arity) :-
-    module_info_pred_proc_info(Module, PPId, _, ProcInfo),
+lookup_proc_arity(PPId, ModuleInfo) = Arity :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_headvars(ProcInfo, HeadVars),
     list.length(HeadVars, Arity).
 
 %-----------------------------------------------------------------------------%
 
 :- pred prove_termination_in_scc_trial(list(pred_proc_id)::in, used_args::in,
-    fixpoint_dir::in, module_info::in, pass_info::in,
-    termination_info::out) is det.
+    fixpoint_dir::in, pass_info::in, termination_info::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir, ModuleInfo,
-        PassInfo, Termination) :-
-    prove_termination_in_scc_fixpoint(SCC, FixDir, ModuleInfo, PassInfo,
-        InitRecSuppliers, Result),
+prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir,
+        PassInfo, Termination, !ModuleInfo, !IO) :-
+    prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
+        InitRecSuppliers, Result, !ModuleInfo, !IO),
     (
         Result = ok(CallInfo, _),
         CallInfo = InfCalls - CallWeights,
@@ -300,7 +318,7 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir, ModuleInfo,
             list.take_upto(MaxErrors, InfCalls, ReportedInfCalls),
             Termination = can_loop(ReportedInfCalls)
         ;
-            zero_or_positive_weight_cycles(CallWeights, ModuleInfo, Cycles),
+            zero_or_positive_weight_cycles(CallWeights, !.ModuleInfo, Cycles),
             Cycles \= []
         ->
             PassInfo = pass_info(_, MaxErrors, _),
@@ -317,16 +335,17 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir, ModuleInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred prove_termination_in_scc_fixpoint(list(pred_proc_id)::in,
-    fixpoint_dir::in, module_info::in, pass_info::in, used_args::in,
-    pass2_result::out) is det.
+    fixpoint_dir::in, pass_info::in, used_args::in, pass2_result::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-prove_termination_in_scc_fixpoint(SCC, FixDir, ModuleInfo, PassInfo,
-        RecSupplierMap0, Result) :-
+prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
+        RecSupplierMap0, Result, !ModuleInfo, !IO) :-
     map.init(NewRecSupplierMap0),
     map.init(CallWeightGraph0),
     CallInfo0 = [] - CallWeightGraph0,
-    prove_termination_in_scc_pass(SCC, FixDir, ModuleInfo, PassInfo,
-        RecSupplierMap0, NewRecSupplierMap0, CallInfo0, Result1),
+    prove_termination_in_scc_pass(SCC, FixDir, PassInfo,
+        RecSupplierMap0, NewRecSupplierMap0, CallInfo0, Result1, !ModuleInfo,
+        !IO),
     (
         Result1 = ok(_, RecSupplierMap1),
         ( RecSupplierMap1 = RecSupplierMap0 ->
@@ -335,7 +354,7 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, ModuleInfo, PassInfo,
             Result = Result1
         ;
             prove_termination_in_scc_fixpoint(SCC, FixDir,
-                ModuleInfo, PassInfo, RecSupplierMap1, Result)
+                PassInfo, RecSupplierMap1, Result, !ModuleInfo, !IO)
         )
     ;
         Result1 = error(_),
@@ -348,24 +367,26 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, ModuleInfo, PassInfo,
     % procedure in that SCC.
     %
 :- pred prove_termination_in_scc_pass(list(pred_proc_id)::in, fixpoint_dir::in,
-    module_info::in, pass_info::in, used_args::in, used_args::in,
-    call_weight_info::in, pass2_result::out) is det.
+    pass_info::in, used_args::in, used_args::in,
+    call_weight_info::in, pass2_result::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-prove_termination_in_scc_pass([], _, _, _, _, NewRecSupplierMap, CallInfo,
-        ok(CallInfo, NewRecSupplierMap)).
-prove_termination_in_scc_pass([PPId | PPIds], FixDir, ModuleInfo, PassInfo,
-        RecSupplierMap, NewRecSupplierMap0, CallInfo0, Result) :-
-    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
+prove_termination_in_scc_pass([], _, _, _, NewRecSupplierMap, CallInfo,
+        ok(CallInfo, NewRecSupplierMap), !ModuleInfo, !IO).
+prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
+        RecSupplierMap, NewRecSupplierMap0, CallInfo0, Result,
+        !ModuleInfo, !IO) :-
+    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_context(PredInfo, Context),
     proc_info_goal(ProcInfo, Goal),
     proc_info_vartypes(ProcInfo, VarTypes),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
-    init_traversal_params(ModuleInfo, FunctorInfo, PPId, Context, VarTypes,
+    init_traversal_params(FunctorInfo, PPId, Context, VarTypes,
         EmptyMap, RecSupplierMap, MaxErrors, MaxPaths, Params),
     set.init(PathSet0),
     Info0 = ok(PathSet0, []),
-    traverse_goal(Goal, Params, Info0, Info),
+    traverse_goal(Goal, Params, Info0, Info, !ModuleInfo, !IO),
     (
         Info = ok(Paths, CanLoop),
         expect(unify(CanLoop, []), this_file,
@@ -381,8 +402,9 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, ModuleInfo, PassInfo,
         map.det_insert(NewRecSupplierMap0, PPId, RecSuppliers,
             NewRecSupplierMap1),
         add_call_arcs(PathList, RecSuppliers0Bag, CallInfo0, CallInfo1),
-        prove_termination_in_scc_pass(PPIds, FixDir, ModuleInfo,
-            PassInfo, RecSupplierMap, NewRecSupplierMap1, CallInfo1, Result)
+        prove_termination_in_scc_pass(PPIds, FixDir,
+            PassInfo, RecSupplierMap, NewRecSupplierMap1, CallInfo1, Result,
+            !ModuleInfo, !IO)
     ;
         Info = error(Errors, CanLoop),
         expect(unify(CanLoop, []), this_file, 
@@ -458,9 +480,10 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
         unexpected(this_file,
             "add_call_arcs/4: no call site in path in stage 2.")
     ),
-    ( GammaVars = [] ->
-        true
+    (
+        GammaVars = []
     ;
+        GammaVars = [_|_],
         unexpected(this_file,
             "add_call_arc/4: gamma variables in path in stage 2.")
     ),
@@ -527,13 +550,13 @@ zero_or_positive_weight_cycles_2([PPId | PPIds], CallWeights, Module, Cycles) :-
 
 :- pred zero_or_positive_weight_cycles_from(pred_proc_id::in,
     call_weight_graph::in, module_info::in,
-    list(termination_error_context)::out) is det.
+    termination_error_contexts::out) is det.
 
 zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles) :-
     map.lookup(CallWeights, PPId, NeighboursMap),
     map.to_assoc_list(NeighboursMap, NeighboursList),
     PPId = proc(PredId, _ProcId),
-   module_info_pred_info(Module, PredId, PredInfo),
+    module_info_pred_info(Module, PredId, PredInfo),
     pred_info_context(PredInfo, Context),
     zero_or_positive_weight_cycles_from_neighbours(NeighboursList,
         PPId, Context, 0, [], CallWeights, Cycles).

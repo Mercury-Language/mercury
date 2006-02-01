@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,23 +54,22 @@
     %
     % where | | represents a semilinear norm.
     %
-:- type arg_size_info ==
-    generic_arg_size_info(list(termination_error_context)).
+:- type arg_size_info == generic_arg_size_info(termination_error_contexts).
 
 :- type termination_info ==
-    generic_termination_info(unit, list(termination_error_context)).
+    generic_termination_info(unit, termination_error_contexts).
 
     % The type `used_args' holds a mapping which specifies for each procedure
     % which of its arguments are used.
     %
-:- type used_args   ==  map(pred_proc_id, list(bool)).
+:- type used_args == map(pred_proc_id, list(bool)).
 
 :- type pass_info
-    ---> pass_info(
-            functor_info,
-            int,        % Max number of errors to gather.
-            int         % Max number of paths to analyze.
-         ).
+    --->    pass_info(
+                functor_info,
+                int,        % Max number of errors to gather.
+                int         % Max number of paths to analyze.
+            ).
 
 %-----------------------------------------------------------------------------%
 

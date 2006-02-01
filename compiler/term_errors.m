@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003-2005 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,6 +142,7 @@
             % make calls back to Mercury.  By default such
             % code is assumed to be non-terminating.
 
+:- type termination_error_contexts == list(termination_error_context).
 :- type termination_error_context == pair(prog_context, termination_error).
 
 :- pred report_term_errors(list(pred_proc_id)::in,
