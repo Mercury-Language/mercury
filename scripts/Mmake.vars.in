@@ -261,7 +261,7 @@ EXTRA_MS_ILASMFLAGS =
 LIB_MS_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 # MS_AL is the Microsoft assembly linker, which creates assemblies.
-MS_AL		= al
+MS_AL		= @MS_AL@ 
 
 # MS_CSC is the command line version of C# compiler
 # XXX we should also support the Portable.NET and Mono C# compilers,
@@ -269,7 +269,7 @@ MS_AL		= al
 # (What about Rotor?)
 
 FIX_PATH_FOR_CSC = @CYGPATH@
-MS_CSC		= csc
+MS_CSC		= @MS_CSC@ 
 ALL_MS_CSCFLAGS	= $(MS_CSCFLAGS) $(EXTRA_MS_CSCFLAGS) $(TARGET_MS_CSCFLAGS) \
 		$(LIB_MS_CSCFLAGS)
 MS_CSCFLAGS	=

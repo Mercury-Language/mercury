@@ -1696,6 +1696,8 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
     get_subterm(TypeInfo::in, Term::in, Index::in, ExtraArgs::in) = (Arg::out),
     [promise_pure],
 "
+    // Mention TypeInfo_for_U to avoid a warning.
+    
     int i = Index + ExtraArgs;
     try {
         // try low level data

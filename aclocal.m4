@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2004 The University of Melbourne.
+# Copyright (C) 1999,2001-2004, 2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -227,7 +227,8 @@ AC_MSG_RESULT($mercury_cv_microsoft_visual_cpp)
 MS_CL=`basename "$MS_CL"`
 
 # Check for the C# (C sharp) compiler.
-AC_PATH_PROG(MS_CSC, csc)
+# cscc is the DotGNU C# compiler.
+AC_PATH_PROGS(MS_CSC, csc cscc)
 MS_CSC=`basename "$MS_CSC"`
 
 # We default to the Beta 2 version of the library
@@ -270,10 +271,16 @@ EOF
 fi
 MS_DOTNET_LIBRARY_VERSION=$mercury_cv_microsoft_dotnet_library_version
 
+# Check for the assembly linker.
+# ilalink is the DotGNU assembly linker.
+AC_PATH_PROGS(MS_AL, al ilalink)
+MS_AL=`basename "$MS_AL"`
+
 AC_SUBST(ILASM)
 AC_SUBST(GACUTIL)
 AC_SUBST(MS_CL)
 AC_SUBST(MS_CSC)
+AC_SUBST(MS_AL)
 AC_SUBST(MS_DOTNET_SDK_DIR)
 AC_SUBST(MS_DOTNET_LIBRARY_VERSION)
 AC_SUBST(MS_VISUALCPP_DIR)
