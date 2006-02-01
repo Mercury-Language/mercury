@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+
 % File: mmc_analysis.m
 % Main author: stayl
-%
-% Specify Mercury compiler analyses to be used with the
-% inter-module analysis framework.
+
+% Specify Mercury compiler analyses to be used with the inter-module analysis
+% framework.
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__mmc_analysis.
-
 :- interface.
 
 :- import_module analysis.
@@ -21,6 +22,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+
+%-----------------------------------------------------------------------------%
 
 :- type mmc ---> mmc.
 
@@ -35,11 +38,15 @@
 :- pred module_id_func_id(module_info::in, pred_proc_id::in,
         module_id::out, func_id::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.trailing_analysis.
 :- import_module transform_hlds.unused_args.
 
@@ -47,18 +54,25 @@
 :- import_module std_util.
 :- import_module string.
 
+%-----------------------------------------------------------------------------%
+
 :- instance compiler(mmc) where [
     compiler_name(mmc) = "mmc",
 
     analyses(mmc, "trail_usage") =
         'new analysis_type'(
-            unit1 `with_type` unit(any_call),
-            unit1 `with_type` unit(trailing_analysis_answer)),
+            unit1 : unit(any_call),
+            unit1 : unit(trailing_analysis_answer)),
+
+    analyses(mmc, "exception_analysis") =
+        'new analysis_type'(
+            unit1 : unit(any_call),
+            unit1 : unit(exception_analysis_answer)),
 
     analyses(mmc, "unused_args") =
         'new analysis_type'(
-            unit1 `with_type` unit(unused_args_call),
-            unit1 `with_type` unit(unused_args_answer)),
+            unit1 : unit(unused_args_call),
+            unit1 : unit(unused_args_answer)),
 
     module_id_to_file_name(mmc, ModuleId, Ext, FileName) -->
         module_name_to_file_name(module_id_to_module_name(ModuleId),
@@ -86,3 +100,6 @@ module_id_func_id(ModuleInfo, proc(PredId, ProcId), ModuleId, FuncId) :-
     ModuleId = module_name_to_module_id(PredModule),
     FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
         PredName, PredArity, ProcId).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

@@ -2899,7 +2899,7 @@ mercury_compile.maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
     (
         ExceptionAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing exceptions...\n", !IO),
-        exception_analysis.process_module(!HLDS, !IO),
+        analyse_exceptions_in_module(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

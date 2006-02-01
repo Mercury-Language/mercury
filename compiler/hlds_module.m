@@ -97,22 +97,28 @@
             ).
 
     % Map from proc to a list of unused argument numbers.
+    %
 :- type unused_arg_info == map(pred_proc_id, list(int)).
 
-    % Map from proc to an indication of whether or not it
-    % might throw an exception.
+    % Map from proc to an indication of whether or not it might throw an
+    % exception.
     % 
-:- type exception_info == map(pred_proc_id, exception_status).
+:- type exception_info == map(pred_proc_id, proc_exception_info).
 
-    % Map from proc to an indication of whether or not it
-    % modifies the trail.
+:- type proc_exception_info
+    --->    proc_exception_info(
+                proc_exception_status :: exception_status,
+                proc_maybe_excep_analysis_status :: maybe(analysis_status)
+            ).
+    
+    % Map from proc to an indication of whether or not it modifies the trail.
     %
 :- type trailing_info == map(pred_proc_id, proc_trailing_info).
 
 :- type proc_trailing_info
     --->    proc_trailing_info(
-                proc_trailing_status        :: trailing_status,
-                proc_maybe_analysis_status  :: maybe(analysis_status)
+                proc_trailing_status :: trailing_status,
+                proc_maybe_trail_analysis_status  :: maybe(analysis_status)
             ).
 
     % List of procedures for which there are user-requested type

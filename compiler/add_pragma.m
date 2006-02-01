@@ -569,12 +569,15 @@ add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
             PredOrFunc, SymName, Arity, [PredId])
     ->
-        module_info_get_exception_info(!.ModuleInfo, ExceptionsInfo0),
-        % convert the mode number to a proc_id
-        proc_id_to_int(ProcId, ModeNum),
-        map__set(ExceptionsInfo0, proc(PredId, ProcId), ThrowStatus,
-            ExceptionsInfo),
-        module_info_set_exception_info(ExceptionsInfo, !ModuleInfo)
+        some [!ExceptionInfo] (
+            module_info_get_exception_info(!.ModuleInfo, !:ExceptionInfo),
+            % convert the mode number to a proc_id
+            proc_id_to_int(ProcId, ModeNum),
+            ProcExceptionInfo = proc_exception_info(ThrowStatus, no),
+            svmap.set(proc(PredId, ProcId), ProcExceptionInfo,
+                !ExceptionInfo),
+            module_info_set_exception_info(!.ExceptionInfo, !ModuleInfo)
+        )
     ;
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.

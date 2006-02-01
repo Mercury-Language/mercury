@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -272,7 +272,8 @@ goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
     Goal = call(PredId, ProcId, _, _, _, _),
     MaybeModuleInfo = yes(ModuleInfo),
     module_info_get_exception_info(ModuleInfo, ExceptionInfo),
-    map.search(ExceptionInfo, proc(PredId, ProcId), will_not_throw).
+    map.search(ExceptionInfo, proc(PredId, ProcId), ProcExceptionInfo),
+    ProcExceptionInfo = proc_exception_info(will_not_throw, _).
 goal_cannot_throw_expr(_, unify(_, _, _, Uni, _)) :-
     % Complicated unifies are _non_builtin_
     (
