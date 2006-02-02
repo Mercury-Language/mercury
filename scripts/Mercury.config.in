@@ -15,7 +15,8 @@
 #
 # Environment variables: MERCURY_STDLIB_DIR, MERCURY_C_COMPILER,
 # MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL,
-# MERCURY_JAVA_COMPILER, MERCURY_JAVA_INTERPRETER.
+# MERCURY_JAVA_COMPILER, MERCURY_JAVA_INTERPRETER,
+# MERCURY_CSHARP_COMPILER.
 
 # These settings won't override settings in the environment.
 MERCURY_STDLIB_DIR=@LIBDIR@
@@ -25,6 +26,7 @@ MERCURY_C_COMPILER=@CC@
 MERCURY_MATH_LIB=@MATH_LIB@
 MERCURY_JAVA_COMPILER=@JAVAC@
 MERCURY_JAVA_INTERPRETER=@JAVA_INTERPRETER@
+MERCURY_CSHARP_COMPILER=@MS_CSC@
 # $(MATH_LIB) needs to be defined because it may
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
@@ -49,6 +51,7 @@ DEFAULT_MCFLAGS=\
 		--cc "$(MERCURY_C_COMPILER)" \
 		--java-compiler "$(MERCURY_JAVA_COMPILER)" \
 		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
+		--csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
 		--cflags-for-ansi "@CFLAGS_FOR_ANSI@" \
 		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \
 		--cflags-for-warnings "@CFLAGS_FOR_WARNINGS@" \
