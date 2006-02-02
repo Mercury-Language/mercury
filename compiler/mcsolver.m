@@ -383,25 +383,25 @@ make_solver_cstrts(PCs) = SCs:-
     Eqvs = PCs ^ prep_eqv_vars,
 
     Assgts =
-        map(
+        list.map(
             func(X == V) = (eqv_var(Eqvs, X) == V),
             PCs ^ prep_assgts
         ),
 
     Impls =
-        map(
+        list.map(
             func((X == VX) `implies` (Y == VY)) =
                 ((eqv_var(Eqvs, X) == VX) `implies` (eqv_var(Eqvs, Y) == VY)),
             PCs ^ prep_impls
         ),
 
     ComplexCstrts =
-        map(eqv_complex_cstrt(Eqvs), PCs ^ prep_complex_cstrts),
+        list.map(eqv_complex_cstrt(Eqvs), PCs ^ prep_complex_cstrts),
 
         % Construct the propagation graph.
         %
     PropGraph =
-        foldl(
+        list.foldl(
             func(((X == VX) `implies` (Y == VY)), YesPG - NoPG) =
                 ( if   VX = yes then set(YesPG, X, (Y == VY)) - NoPG
                                 else YesPG - set(NoPG, X, (Y == VY))
@@ -413,7 +413,7 @@ make_solver_cstrts(PCs) = SCs:-
         % Construct the complex constraints map.
         %
     ComplexCstrtsMap =
-        foldl(
+        list.foldl(
             func(ComplexCstrt, CCM) =
                 foldl(  
                     func(Z, CCMa) = multi_map.set(CCMa, Z, ComplexCstrt),
@@ -427,21 +427,21 @@ make_solver_cstrts(PCs) = SCs:-
         % Find the set of variables we have to solve for.
         %
     AssgtVars =
-        foldl(
+        list.foldl(
             func((X == _V), Vars) = [X | Vars],
             Assgts,
             []
         ),
 
     AndImplVars =
-        foldl(
+        list.foldl(
             func((X == _VX) `implies` (Y == _VY), Vars) = [X, Y | Vars],
             Impls,
             AssgtVars
         ),
 
     AndComplexCstrtVars =
-        foldl(
+        list.foldl(
             func(ComplexCstrt, Vars) =
                 complex_cstrt_vars(ComplexCstrt) ++ Vars,
             ComplexCstrts,
@@ -466,7 +466,7 @@ eqv_var(Eqvs, X) = eqvclass.get_minimum_element(Eqvs, X).
     %
 :- func eqv_vars(eqv_vars, vars) = vars.
 
-eqv_vars(Eqvs, Xs) = map(eqv_var(Eqvs), Xs).
+eqv_vars(Eqvs, Xs) = list.map(eqv_var(Eqvs), Xs).
 
     % Returns all the variables that participate in this constraint.
     %
@@ -621,7 +621,7 @@ solve_complex_cstrt(SCs, X, V, eqv_disj(Y, Zs), Bs0, Bs) :-
         ;
             V  = no,
 % unsafe.io(write_string("0<")),
-            solve_assgts(SCs, map(func(Z) = (Z == no), Zs), Bs0, Bs)
+            solve_assgts(SCs, list.map(func(Z) = (Z == no), Zs), Bs0, Bs)
         )
       else /* X in Zs */
         (
@@ -645,7 +645,7 @@ solve_complex_cstrt(SCs, X, V, at_most_one(Ys0), Bs0, Bs) :-
     ;
         V  = yes,
         list.delete_first(Ys0, X, Ys),
-        solve_assgts(SCs, map(func(Y) = (Y == no), Ys), Bs0, Bs)
+        solve_assgts(SCs, list.map(func(Y) = (Y == no), Ys), Bs0, Bs)
     ).
 
 solve_complex_cstrt(SCs, X, V, exactly_one(Ys0), Bs0, Bs) :-
@@ -666,7 +666,7 @@ solve_complex_cstrt(SCs, X, V, exactly_one(Ys0), Bs0, Bs) :-
     ;
         V  = yes,
         list.delete_first(Ys0, X, Ys),
-        solve_assgts(SCs, map(func(Y) = (Y == no), Ys), Bs0, Bs)
+        solve_assgts(SCs, list.map(func(Y) = (Y == no), Ys), Bs0, Bs)
     ).
 
 solve_complex_cstrt(SCs, X, V, disj_of_assgts(Assgtss), Bs0, Bs) :-
