@@ -139,6 +139,7 @@
     ;       debug_make
     ;       debug_closure
     ;       debug_trail_usage
+    ;       debug_mode_constraints 
 
     % Output options
     ;       make_short_interface
@@ -885,7 +886,8 @@ option_defaults_2(verbosity_option, [
     debug_stack_opt                     -   int(-1),
     debug_make                          -   bool(no),
     debug_closure                       -   bool(no),
-    debug_trail_usage                   -   bool(no)
+    debug_trail_usage                   -   bool(no),
+    debug_mode_constraints              -   bool(no)
 ]).
 option_defaults_2(output_option, [
     % Output Options (mutually exclusive)
@@ -1591,6 +1593,7 @@ long_option("debug-stack-opt",      debug_stack_opt).
 long_option("debug-make",           debug_make).
 long_option("debug-closure",        debug_closure).
 long_option("debug-trail-usage",    debug_trail_usage).
+long_option("debug-mode-constraints", debug_mode_constraints).
 
 % output options (mutually exclusive)
 long_option("generate-source-file-mapping",
@@ -2916,6 +2919,11 @@ options_help_verbosity -->
         "--debug-trail-usage",
         "\tOutput detailed debugging traces of the `--analyse-trail-usage'",
         "\toption."
+% The mode constraints code is still experimental so this option is
+% currently commented out.
+%         "--debug-mode-constraints",
+%         "\tOutput detailed debugging traces of the `--prop-mode-constraints'",
+%         "\toption."
     ]).
 
 :- pred options_help_output(io::di, io::uo) is det.
@@ -3143,7 +3151,18 @@ options_help_aux_output -->
         "\trelations to `<module>.derived_schema'.",
         "\tA schema string is a representation of the types",
         "\tof a relation.",
-
+% The mode constraints code is still experimental so these options are
+% currently commented out.
+%       "--mode-constraints"
+%       "\tRun constraint based mode analysis. The default is to",
+%       "\tuse the robdd solution using the full (subtyping)",
+%       "\tconstraints and dump results.",
+%       "--simple-mode-constraints",
+%       "\tUse only the simplified constraint system when running",
+%       "\tthe robdd solver constraints based mode analysis.",
+%       "--prop-mode-constraints",
+%       "\tUse the new propagation solver for constraints based",
+%       "\tmode analysis.",
         "--sign-assembly",
         "\tSign the current assembly with the Mercury strong name.",
         "\tTo use assemblies created with this command all the Mercury",

@@ -1,12 +1,12 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: mode_constraint.m.
+% File: mode_constraints.m.
 % Main author: dmo.
 
 % This module implements the top level of the algorithm described in the
@@ -19,6 +19,8 @@
 :- module check_hlds__mode_constraints.
 :- interface.
 
+:- import_module check_hlds.abstract_mode_constraints.
+:- import_module check_hlds.prop_mode_constraints.
 :- import_module hlds.hlds_module.
 :- import_module io.
 
@@ -27,14 +29,21 @@
 :- pred process_module(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
+    % dump_abstract_constraints(ModuleInfo, Varset, PredConstraintsMap, !IO)
+    %
+    % Dumps the constraints in the PredConstraintsMap to file
+    % modulename.mode_constraints
+    %
+:- pred dump_abstract_constraints(module_info::in, mc_varset::in,
+    pred_constraints_map::in, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module check_hlds.prop_mode_constraints.
-:- import_module check_hlds.abstract_mode_constraints.
 :- import_module check_hlds.build_mode_constraints.
+:- import_module check_hlds.ordering_mode_constraints.
 
 :- import_module check_hlds.goal_path.
 :- import_module check_hlds.mode_constraint_robdd.
@@ -104,9 +113,10 @@ process_module(!ModuleInfo, !IO) :-
 
     get_predicate_sccs(!.ModuleInfo, SCCs),
 
-    % Stage 1: Process SCCs bottom-up to determine variable producers.
     (
         New = no,
+
+        % Stage 1: Process SCCs bottom-up to determine variable producers.
         list__foldl3(process_scc(Simple), SCCs,
             !ModuleInfo, map__init, PredConstraintMap, !IO),
 
@@ -125,33 +135,65 @@ process_module(!ModuleInfo, !IO) :-
         clear_caches(!IO)
     ;
         New = yes,
-        list__foldl3(prop_mode_constraints__process_scc(!.ModuleInfo), SCCs,
-            varset.init, ConstraintVarset,
-            bimap.init, _ConstraintVarMap,
-            map.init, AbstractModeConstraints
+
+        % Stage 1: Process SCCs bottom-up to determine constraints on
+        % variable producers and consumers.
+        list__foldl3(prop_mode_constraints__process_scc,
+            SCCs, !ModuleInfo, var_info_init, VarInfo,
+            map.init, AbstractModeConstraints),
+
+        globals__io_lookup_bool_option(debug_mode_constraints, Debug, !IO),
+        (   Debug = yes,
+            ConstraintVarset = mc_varset(VarInfo),
+            pretty_print_pred_constraints_map(!.ModuleInfo, ConstraintVarset,
+                AbstractModeConstraints, !IO)
+        ;
+            Debug = no
         ),
 
-        hlds_module.module_info_get_name(!.ModuleInfo, ModuleName),
+        % Stage 2: Order conjunctions based on solutions to
+        % the producer-consumer constraints.
+        ModuleInfo0 = !.ModuleInfo,
+        ConstraintVarMap = rep_var_map(VarInfo),
+        promise_equivalent_solutions [ModuleInfo1] (
+            mode_reordering(AbstractModeConstraints, ConstraintVarMap, SCCs,
+                ModuleInfo0, ModuleInfo1)
+        ),
+        !:ModuleInfo = ModuleInfo1,
 
-        CreateDirectories = yes,
-        parse_tree.modules.module_name_to_file_name(ModuleName,
-            ".mode_constraints", CreateDirectories, FileName, !IO),
-        OutputFile = FileName,
-
-        io.open_output(OutputFile, IOResult, !IO),
         (
-            IOResult = ok(OutputStream),
-            io.set_output_stream(OutputStream, OldOutStream, !IO),
-            pretty_print_pred_constraints_map(!.ModuleInfo, ConstraintVarset,
-                AbstractModeConstraints, !IO),
-            io.set_output_stream(OldOutStream, _, !IO),
-            io.close_output(OutputStream, !IO)
+            Debug = yes,
+            list.foldl(ordering_mode_constraints.dump_goal_paths(!.ModuleInfo),
+                SCCs, !IO)
         ;
-            IOResult = error(_),
-            unexpected(this_file,
-                "failed to open " ++ FileName ++ " for output.")
+            Debug = no
         )
+
     ).
+
+dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
+    !IO) :-
+
+    hlds_module.module_info_get_name(ModuleInfo, ModuleName),
+    CreateDirectories = yes,
+    parse_tree.modules.module_name_to_file_name(ModuleName,
+        ".mode_constraints", CreateDirectories, FileName, !IO),
+    OutputFile = FileName,
+
+    io.open_output(OutputFile, IOResult, !IO),
+    (
+        IOResult = ok(OutputStream),
+        io.set_output_stream(OutputStream, OldOutStream, !IO),
+        pretty_print_pred_constraints_map(ModuleInfo, ConstraintVarset,
+            ModeConstraints, !IO),
+        io.set_output_stream(OldOutStream, _, !IO),
+        io.close_output(OutputStream, !IO)
+    ;
+        IOResult = error(_),
+        unexpected(this_file,
+            "failed to open " ++ FileName ++ " for output.")
+    ).
+
 
 :- pred process_scc(bool::in, list(pred_id)::in,
     module_info::in, module_info::out,

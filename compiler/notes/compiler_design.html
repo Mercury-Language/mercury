@@ -756,11 +756,13 @@ so that the compiler does the right thing for options such as
 
 <dt> constraint based mode analysis propagation solver
 
-	<dd> This is an new alternative
+	<dd> This is a new alternative
 	for the constraint based mode analysis algorithm.
-	So far it builds a system of boolean constraints
-	about where variables can be bound,
-	but does not solve those constraints as yet.
+	It will perform conjunct reordering for mercury
+	programs of a limited syntax (it calls error if
+	it encounters higher order code or a parallel
+	conjunction, or is asked to infer modes).
+
 
 	<ul>
 	<li> prop_mode_constraints.m is the interface to the old
@@ -769,6 +771,11 @@ so that the compiler does the right thing for options such as
 	to build constraints for it.
 	<li> abstract_mode_constraints.m describes data structures for the
 	constraints themselves.
+	<li> ordering_mode_constraints.m solves constraints to determine
+	the producing and consuming goals for program variables, and
+	performs conjunct reordering based on the result.
+	<li> mcsolver.m contains the constraint solver used by
+	ordering_mode_constraints.m.
 	</ul>
 	<p>
 
@@ -1726,6 +1733,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2006-01-27 05:52:09 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-02-02 00:38:30 $ by $Author: richardf $@cs.mu.oz.au. <br>
 </body>
 </html>

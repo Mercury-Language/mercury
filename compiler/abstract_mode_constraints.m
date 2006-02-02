@@ -1,74 +1,78 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: abstract_mode_constraints.m
 % Main author: richardf
-%
+
 % This module contains data structures designed for use with constraints
-% based mode analysis. They represent constraints between constraint
-% variables, such as those one might use to describe where a program
-% variable may be produced.
-%
+% based mode analysis. It deals specifically with constraints for
+% determining producing and consuming goals for program variables.
+
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.abstract_mode_constraints.
-
 :- interface.
 
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
+
+:- import_module assoc_list.
 :- import_module bool.
-:- import_module counter.
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module multi_map.
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
+    % `unit'-like type used to distinguish mode constraint variables.
+    %
 :- type mc_type.
 :- type mc_var == var(mc_type).         % Constraint variable.
 :- type mc_varset == varset(mc_type).   % Source of constraint variables.
 
 %-----------------------------------------------------------------------------%
 %
-% Data structures for storing abstract constraints. Conjunctions and
-% disjunctions can be formed. The atomic constraints between constraint
-% variables are designed around the types of constraints required by
-% constraint based mode analysis. The paper "Constraint-based mode
-% analysis of Mercury" by David Overton, Zoltan Somogyi and Peter
-% Stuckey documents these mode constraints.
+% Abstract Constraints
 %
 
+% Data structures for storing abstract constraints. Conjunctions and
+% disjunctions can be nested. The atomic constraints between constraint
+% variables are designed around the types of constraints required by
+% producer/consumer determining in constraint based mode analysis. The
+% paper "Constraint-based mode analysis of Mercury" by David Overton,
+% Zoltan Somogyi and Peter Stuckey documents these mode constraints.
+
     % Represents conjunctions and disjunctions between atomic
-    % constraints on constraint variables.  The advantage of the
-    % constraints for this implementation of mode checking is that
-    % they can be expressed almost entirely as variable to variable
-    % constraints, with little use for the disj and conj functors of
-    % this structure.
+    % constraints on constraint variables.
     %
 :- type constraint_formulae == list(constraint_formula).
 :- type constraint_formula
     --->    atomic_constraint(var_constraint)
 
     ;       disj(constraint_formulae)
-            % Initially included for the purposes of
-            % representing the mode declaration constraints,
-            % which are a disjunction of conjunctions of
-            % other constraints.  The intended form is:
-            % disj([conj(...), ..., conj(...)]) Note
-            % disj([]) represents false.
+            % Primarily included for the purposes of representing mode
+            % declaration and call constraints, which are a disjunction
+            % of conjunctions of atomic constraints.  The intended form
+            % is: disj([conj(...), ..., conj(...)])
+            %
+            % Note: disj([]) represents false.
 
     ;       conj(constraint_formulae).
             % See disj.
-            % Note that conj([]) is the empty constraint, or true.
+            % Note: conj([]) is the empty constraint, or true.
 
-% var_constraint represents a constraint between variables
+    % var_constraint represents a boolean constraint between
+    % producer/consumer constraint variables
+    %
 :- type var_constraint == var_constraint(mc_type).
 :- type var_constraint(T)
     --->    equiv_bool(var(T), bool)
@@ -83,292 +87,430 @@
 
     ;       equiv_disj(var(T), list(var(T)))
             % equiv_disj(X, [Y1,...,Yn]) gives X<->OR(Y1,...,Yn)
-            % XXX Thinking of making a constraint that is
-            % the conjunction of equiv_disj and at_most_one
-            % because they occur together so often.
 
     ;       at_most_one(list(var(T)))
-            % at_most_one(Xs) gives
+            % at_most_one(Xs) gives the constraint
             % (all Xi, Xj in Xs).(i = j or not(Xi and Xj))
 
-    ;       at_least_one(list(var(T)))
-            % at_least_one(Xs) gives OR(Xs)
-
     ;       exactly_one(list(var(T))).
-            % exactly_one(Xs) gives
-            % at_least_one(Xs) and at_most_one(Xs)
+            % exactly_one(Xs) gives XOR(Xs)
 
-    % Attempts to print the constraint_formulae it is passed in a
-    % human readable format. Always puts a new line after it is finished.
+    % Maps from producer/consumer constraint variables to a boolean
+    % binding for them.
+    %
+:- type mc_bindings == map(mc_var, bool).
+
+%-----------------------------------------------------------------------------%
+%
+% Constraint collection structures.
+%
+
+:- type constraint_and_annotation ==
+    pair(constraint_formula, constraint_annotation).
+
+    % Various information about the creation of the constraint in
+    % question.
+    %
+:- type constraint_annotation
+    --->    constraint_annotation(
+                context     ::      prog_context
+                                    % Context of the goal this constraint
+                                    % was formed for.
+            ).
+
+    % producer/consumer constraints for a predicate.
+    %
+:- type pred_p_c_constraints --->
+    pred_constraints(
+        proc_constraints    ::  multi_map(proc_id, constraint_and_annotation),
+                                % Stores procedure specific constraints
+                                % such as mode declaration constraints.
+        pred_constraints    ::  assoc_list(constraint_formula, 
+                                    constraint_annotation)
+                                % Stores constraints that apply to all
+                                % procedures of the predicate -
+                                % typically generated from its clauses.
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % Prints the constraint_formulae it is passed in a human readable
+    % format.
     %
 :- pred pretty_print_constraints(mc_varset::in, constraint_formulae::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%
-% The remainder of the code in this module is not in use! It is intended
-% to supply a basic structure for a propagation solver to deal with the
-% constraints defined above.
-%
-% Propagation would work like this: Initially constraint variables are
-% bound during constraint construction, propagation, or once all
-% possible propagation has been done, a variable may have true or false
-% arbitrarily chosen for it and the choicepoint recorded.  Once a
-% variable has been bound, the propagator looks it up in the var_map
-% field of mode_constraints_info. The var_state structure will then
-% reveal which constraints this variable participates in. These
-% constraints are then looked up in the constraint_map field of
-% mode_constraints_info. Then can be refined due to the variable having
-% been bound, and may now imply new bindings on other variables. These
-% new variables can be put in a stack, queue or similar structure to be
-% bound and propagated once the first variable's constraints have been
-% fully processed.
-%
-% This code is by no means complete; some speculative fields exist or
-% have been commented out. Only the basic structure and functionality
-% described above is truly intended.
-%
-
-% XXX   What's lacking in this is the following:
-% Done  1)  An at least one constraint, for when equiv_disj simplifies
-%   2)  A good reason to keep the propagate if true/false lists
-%   3)  A separate way to store lists of variable equivalences,
-%       so that only one of a list of equivalent variables need
-%       be used in the constraints.
-%   4)  A way to store whether a variable being bound will have
-%       an effect on a particular constraint - but this can change
-%       without reference to a variable, so maybe not a practical idea.
-%   5)  T/F lists for variables known to be true/false for all
-%       possible models?
-%   6)  Access and manipulation predicates.
-
-:- type mode_constraints_info --->
-    mode_constraints_info(
-        constraint_map  :: map(constraint_id, constraint),
-                        % Constraining the variables in the var_map.
-
-        var_map         :: map(mc_var, var_state),
-                        % The variables this constraint system constrains.
-
-        id_counter      :: counter
-                        % Supplies unique IDs for the constraint map.
-    ).
-
-:- type constraint_id == int.
-
-:- type constraint --->
-    constraint(
-        id              :: constraint_id,
-
-        current         :: constraint_formula_and_vars,
-                        % Formula modified as variables are bound.
-
-        original        :: constraint_formula_and_vars
-
-%       dead            :: bool
-%                       % For if the current constraint is empty...
-%                       % don't know if this will be used.
-    ).
-
-:- type constraint_formula_and_vars --->
-    constraint_formula_and_vars(
-        constraint_formula  :: constraint_formula,
-        participating_vars  :: list(mc_var)
-    ).
-
-:- type var_state --->
-    var_state(
-        is_bound        :: maybe(var_binding),
-                        % If it is bound, some certain information
-                        % should be recorded. See var_binding type.
-
-        is_constrained  :: list(constrainment_info)
-                        % A list of the constraints that this variable
-                        % participates in. May include propagation tree
-                        % information in the form of branches for bound
-                        % true/false, however this may have a
-                        % significant cost in space.
-    ).
-
-:- type var_binding --->
-    var_binding(
-        bool            :: bool,
-                        % What the variable has been bound to.
-
-        binding_constraint  :: constraint_id,
-                        % The constraint that finally bound it.
-
-        history         :: list(mc_var)
-                        % The variables in the constraint that bound this
-                        % variable that had already been bound at that point
-                        % - their binding_constraint and history can be looked
-                        % at recursively to build the full history. I strongly
-                        % prefer this to listing the full history each time
-                        % a variable is bound, for space considerations.
-        ).
-
-:- type constrainment_info --->
-    constrainment_info(
-%       variable        :: mc_var,
-%                       % To make it clear what variable
-%                       % the propagation information is for.
-%
-%       propagate_if_true :: list(var_binding),
-%                       % The history field should be empty.
-%                       % In the end it gets the participating
-%                       % variables of this constraint that
-%                       % have been bound.
-%
-%       propagate_if_false :: list(var_binding),
-
-        constraint      :: constraint_id
-    ).
-
-    % Initiates all the parts of a mode_constraints_info type.
+    % Prints the constraint_formulae it is passed in a human readable
+    % format.
     %
-:- pred abstract_mode_constraints.init(mode_constraints_info::out) is det.
+:- pred dump_constraints_and_annotations(mc_varset::in,
+    assoc_list(constraint_formula, constraint_annotation)::in,
+    io::di, io::uo) is det.
+
+    % Prints a list of models for the constraint system.
+    %
+:- pred pretty_print_solutions(mc_varset::in, list(mc_bindings)::in, io::di,
+    io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Initialises all the parts of a pred_p_c_constraints type.
+    %
+:- pred abstract_mode_constraints.init(pred_p_c_constraints::out) is det.
 
     % Function version if init/1.
-:- func abstract_mode_constraints.init = mode_constraints_info.
-
-    % Incorporates a new constraint into the system.
     %
-:- pred abstract_mode_constraints.add_constraint(constraint_formula::in,
-    mode_constraints_info::in, mode_constraints_info::out) is det.
+:- func abstract_mode_constraints.init = pred_p_c_constraints.
+
+    % add_constraint(Formula, !PredConstraints) adds the constraint
+    % given by Formula to the constraint system in PredConstraints.
+    %
+:- pred abstract_mode_constraints.add_constraint(prog_context::in,
+    constraint_formula::in, pred_p_c_constraints::in,
+    pred_p_c_constraints::out) is det.
 
     % Function version of add_constraint/3.
     %
-:- func abstract_mode_constraints.add_constraint(constraint_formula,
-    mode_constraints_info) = mode_constraints_info.
+:- func abstract_mode_constraints.add_constraint(prog_context,
+    constraint_formula, pred_p_c_constraints) = pred_p_c_constraints.
+
+    % Adds a procedure specific constraint to the system.
+    %
+:- pred abstract_mode_constraints.add_constraint(prog_context::in, proc_id::in,
+    constraint_formula::in, pred_p_c_constraints::in,
+    pred_p_c_constraints::out) is det.
+
+    % pred_constraints_to_formulae rips the barebones
+    % constraints (those that apply to all procedures of a
+    % predicate) out of the pred_p_c_constraints structure
+    % and returns them as a list of constraint formulae.
+    %
+:- func abstract_mode_constraints.pred_constraints_to_formulae(
+    pred_p_c_constraints) = constraint_formulae.
+
+    % pred_constraints_to_formulae/2 returns all constraints that
+    % apply to the given procedure from the pred_p_c_constraints,
+    % including constraints that apply to all procedures.
+    %
+:- func abstract_mode_constraints.pred_constraints_to_formulae(
+    proc_id, pred_p_c_constraints) = constraint_formulae.
+
+    % pred_constraints_to_formulae_and_annotations returns constraints
+    % that apply to all procedures of a predicate as a list of pairs of
+    % constraint_formula and constraint_annotation.
+    %
+:- func pred_constraints_to_formulae_and_annotations(pred_p_c_constraints) =
+    assoc_list(constraint_formula, constraint_annotation).
+
+    % pred_constraints_to_formulae_and_annotations(ProcId, PredConstraints)
+    % returns all constraints that apply to the given procedure from the
+    % pred_p_c_constraints, including constraints that apply to all
+    % procedures, with their constraint annotations, in pairs.
+    %
+:- func pred_constraints_to_formulae_and_annotations(proc_id,
+    pred_p_c_constraints) = assoc_list(constraint_formula,
+    constraint_annotation).
+
+    % proc_constraints_to_formulae_and_annotations(ProcId, PredConstraints)
+    % returns constraints that apply specifically to the given
+    % procedure (but not constraints that apply to all procedures).
+    %
+:- func proc_constraints_to_formulae_and_annotations(proc_id,
+    pred_p_c_constraints) = assoc_list(constraint_formula,
+    constraint_annotation).
+
+%-----------------------------------------------------------------------------%
+
+    % equiv_no(Context, MCVar, !Constraints) constrains MCVar to `no' in
+    % Constraints. Context should be the context of the goal or
+    % declaration that imposed this constraint.
+    %
+:- pred equiv_no(prog_context::in, mc_var::in, pred_p_c_constraints::in,
+    pred_p_c_constraints::out) is det.
+
+    % equivalent(Context, MCVars, !Constraints) constrains MCVars in
+    % Constraints to all take the same value. Context should be the context of
+    % the goal or declaration that imposed this constraint.
+    %
+:- pred equivalent(prog_context::in, list(mc_var)::in, pred_p_c_constraints::in,
+    pred_p_c_constraints::out) is det.
+
+    % equiv_disj(Context, X, Ys, !Constraints) constrains X and Ys in
+    % Constraints such that (X <-> disj(Ys)) - ie if X is true at least one of
+    % Ys must be true, if X is false, all of Ys must be false. Context should
+    % be the context of the goal or declaration that imposed this constraint.
+    %
+:- pred equiv_disj(prog_context::in, mc_var::in, list(mc_var)::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
+
+    % at_most_one(Context, MCVars, !Constraints) constrains MCVars in
+    % Constraints such that at most one of them can be true. Context should be
+    % the context of the goal or declaration that imposed this constraint.
+    %
+:- pred at_most_one(prog_context::in, list(mc_var)::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
+
+    % not_both(Context, A, B, !Constraints) constrains mode constraint
+    % variables A and B in Constraints by the constraint (not A ^ B). Context
+    % should be the context of the goal or declaration that imposed this
+    % constraint.
+    %
+:- pred not_both(prog_context::in, mc_var::in, mc_var::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
+
+    % exactly_one(Context, MCVars, !Constraints) constrains MCVars in
+    % Constraints such that exactly one of them is `yes'. Context should be
+    % the context of the goal or declaration that imposed this constraint.
+    %
+:- pred exactly_one(prog_context::in, list(mc_var)::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
+
+    % xor(Context, A, B, !Constraints) constrains mode constraint variables A
+    % and B in Constraints by the constraint (A xor B), ie constrains exactly
+    % one of them to be true. Context should be the context of the goal or
+    % declaration that imposed this constraint.
+    %
+:- pred xor(prog_context::in, mc_var::in, mc_var::in, pred_p_c_constraints::in,
+    pred_p_c_constraints::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module parse_tree.error_util.
+
+:- import_module int.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
+    % `unit'-like type used to distinguish mode constraint variables.
+    %
 :- type mc_type ---> mc_type.
 
-    % Initiates all the parts of a mode_constraints_info type.
+    % Initialises all the parts of a mode_constraints_info type.
     %
-abstract_mode_constraints.init(ModeConstraintsInfo) :-
-        % Start allocating ids from 0.
-    ModeConstraintsInfo = mode_constraints_info(map.init, map.init,
-        counter.init(0)).
+abstract_mode_constraints.init(pred_constraints(multi_map.init, [])).
 
     % See the predicate version.
     %
-abstract_mode_constraints.init = ModeConstraintsInfo :-
-    abstract_mode_constraints.init(ModeConstraintsInfo).
+abstract_mode_constraints.init = PredConstraints :-
+    abstract_mode_constraints.init(PredConstraints).
 
-    % Incorporates a new constraint into the system.
+    % add_constraint(Formula, !PredConstraints) adds the constraint
+    % given by Formula to the constraint system in PredConstraints.
     %
-abstract_mode_constraints.add_constraint(ConstraintFormula,
-        !ModeConstraintsInfo) :-
-    formula_to_formula_and_vars(ConstraintFormula, Vars, FormulaAndVars),
-    counter.allocate(NewID, !.ModeConstraintsInfo ^ id_counter, NewCounter),
-    !:ModeConstraintsInfo = !.ModeConstraintsInfo ^ id_counter := NewCounter,
-    update_vars_map_with_constrainment_info(constrainment_info(NewID),
-        Vars, !ModeConstraintsInfo),
-    Constraint = constraint(NewID, FormulaAndVars, FormulaAndVars),
-    ConstraintMap0 = !.ModeConstraintsInfo ^ constraint_map,
-    map.det_insert(ConstraintMap0, NewID, Constraint, ConstraintMap),
-    !:ModeConstraintsInfo = !.ModeConstraintsInfo ^ constraint_map :=
-        ConstraintMap.
+abstract_mode_constraints.add_constraint(Context,
+    ConstraintFormula, !PredConstraints) :-
+    AllProcsConstraints = !.PredConstraints ^ pred_constraints,
+    ConstraintAnnotation = constraint_annotation(Context),
+    FormulaAndAnnotation = pair(ConstraintFormula, ConstraintAnnotation),
+    !:PredConstraints = !.PredConstraints ^ pred_constraints :=
+        list.cons(FormulaAndAnnotation, AllProcsConstraints).
+
 
     % Functional version of add_constraint/3.
     %
-abstract_mode_constraints.add_constraint(CF, MCI0) = MCI :-
-    abstract_mode_constraints.add_constraint(CF, MCI0, MCI).
+abstract_mode_constraints.add_constraint(Ctxt, CF, PCs0) = PCs :-
+    abstract_mode_constraints.add_constraint(Ctxt, CF, PCs0, PCs).
 
-    % update_vars_map_with_constrainment_info adds the supplied
-    % constrainment_info to the list of constraints associated with each of
-    % the variables supplied in the mode_constraints_info structure.
+    % add_constraint(Context, ProcId, Formula, !PredConstraints) adds the
+    % constraint given by Formula to the constraint system in
+    % PredConstraints, and associates it specificaly with procedure
+    % ProcId.
     %
-:- pred update_vars_map_with_constrainment_info(constrainment_info::in,
-    list(mc_var)::in,
-    mode_constraints_info::in, mode_constraints_info::out) is det.
+add_constraint(Context, ProcId, ConstraintFormula, !PredConstraints) :-
+    ProcConstraints = !.PredConstraints ^ proc_constraints,
+    ConstraintAnnotation = constraint_annotation(Context),
+    FormulaAndAnnotation = pair(ConstraintFormula, ConstraintAnnotation),
+    
+    !:PredConstraints = !.PredConstraints ^ proc_constraints :=
+        multi_map.add(ProcConstraints, ProcId, FormulaAndAnnotation).
 
-update_vars_map_with_constrainment_info(_ConstrainmentInfo, [], !MCI).
-update_vars_map_with_constrainment_info(ConstrainmentInfo, [Var | Vars],
-        !MCI) :-
-    ( map.search(!.MCI ^ var_map, Var, OldVarState) ->
-        CInfoList = [ConstrainmentInfo | OldVarState ^ is_constrained],
-        VarState = OldVarState ^ is_constrained := CInfoList,
-        !:MCI = !.MCI ^ var_map :=
-            map.det_update(!.MCI ^ var_map, Var, VarState)
-    ;
-        VarState = var_state(no, [ConstrainmentInfo]),
-        !:MCI = !.MCI ^ var_map :=
-            map.det_insert(!.MCI ^ var_map, Var, VarState)
-    ),
-    update_vars_map_with_constrainment_info(ConstrainmentInfo, Vars, !MCI).
-
-    % formula_to_formula_and_vars makes the list Vars of variables that
-    % appear in Formula and packages Formula and Vars together in
-    % FormulaAndVars.
+    % pred_constraints_to_formulae returns constraints that apply
+    % to all procedures of a predicate as a list of constraint formulae.
     %
-:- pred formula_to_formula_and_vars(constraint_formula::in, list(mc_var)::out,
-    constraint_formula_and_vars::out) is det.
+pred_constraints_to_formulae(PCs) = assoc_list.keys(PCs ^ pred_constraints).
 
-formula_to_formula_and_vars(Formula, Vars, FormulaAndVars) :-
-    formula_to_vars(Formula, Vars),
-    FormulaAndVars = constraint_formula_and_vars(Formula, Vars).
-
-    % Sub section of the formula_to_formula_and_vars predicate, Vars is the
-    % variables that appear in Formula.
+    % pred_constraints_to_formulae/2 returns all constraints that
+    % apply to the given procedure from the pred_p_c_constraints,
+    % including constraints that apply to all procedures.
     %
-:- pred formula_to_vars(constraint_formula::in, list(mc_var)::out) is det.
+pred_constraints_to_formulae(ProcId, PredConstraints) = ConstraintFormulae :-
+    ThisProcConstraints = multi_map.lookup(PredConstraints ^ proc_constraints,
+        ProcId),
+    AllProcConstraints = PredConstraints ^ pred_constraints,
+    ConstraintFormulae = assoc_list.keys(ThisProcConstraints) ++
+        assoc_list.keys(AllProcConstraints).
 
-formula_to_vars(Formula, Vars) :-
-    Formula = atomic_constraint(VarConstraint),
-    var_constraint_to_vars(VarConstraint, Vars).
-formula_to_vars(Formula, Vars) :-
-    Formula = disj(Formulae),
-    list.foldr(
-        (pred(Formula1::in, Vars1::in, VarsNew::out) is det :-
-            formula_to_vars(Formula1, Vars2),
-            append(Vars2, Vars1, VarsNew)
-        ),
-        Formulae, [], Vars).
-formula_to_vars(Formula, Vars) :-
-    Formula = conj(Formulae),
-    list.foldr(formula_to_vars_accumulate, Formulae, [], Vars).
-
-:- pred formula_to_vars_accumulate(constraint_formula::in,
-    list(mc_var)::in, list(mc_var)::out) is det.
-
-formula_to_vars_accumulate(Formula, !Vars) :-
-    formula_to_vars(Formula, NewVars),
-    append(NewVars, !Vars).
-
-    % var_constraint_to_vars takes a constraint between variables as input
-    % and gives a list of those variables as output.
+    % pred_constraints_to_formulae_and_annotations returns constraints
+    % that apply to all procedures of a predicate as a list of pairs of
+    % constraint_formula and constraint_annotation.
     %
-:- pred var_constraint_to_vars(var_constraint::in, list(mc_var)::out) is det.
+pred_constraints_to_formulae_and_annotations(PredConstraints) =
+    PredConstraints ^ pred_constraints.
 
-var_constraint_to_vars(equiv_bool(Var, _B), [Var]).
-var_constraint_to_vars(equivalent(Vars), Vars).
-var_constraint_to_vars(implies(V1, V2), [V1, V2]).
-var_constraint_to_vars(equiv_disj(Var, Vars), [Var | Vars]).
-var_constraint_to_vars(at_most_one(Vars), Vars).
-var_constraint_to_vars(at_least_one(Vars), Vars).
-var_constraint_to_vars(exactly_one(Vars), Vars).
+    % pred_constraints_to_formulae_and_annotations(PredConstraints)
+    % returns all constraints that apply to the given procedure from the
+    % pred_p_c_constraints, including constraints that apply to all
+    % procedures, with their constraint annotations, in pairs.
+    %
+pred_constraints_to_formulae_and_annotations(ProcId, PredConstraints) =
+        ConstraintFormulae :-
+    ThisProcConstraints = multi_map.lookup(PredConstraints ^ proc_constraints,
+        ProcId),
+    AllProcConstraints = PredConstraints ^ pred_constraints,
+    ConstraintFormulae = ThisProcConstraints ++ AllProcConstraints.
 
-% Some thoughts:
-% add_constraint or similar pred adds the specified constraint (making
-% sure that the variables in it are added if need be, and updated with a
-% link to that constraint. What to do if one or more of the variables
-% are already bound? Still put in the original - so that you can always
-% know that if you put something in it will be there, but also put in an
-% updated version according to the bindings? This seems like a good
-% idea, though it forces propagation...
-% Any predicate that edits constraints leaves the 'original' as it is,
-% and only modifies the 'current' branch - eg replacing one var with an
-% equivalent etc.
+proc_constraints_to_formulae_and_annotations(ProcId, PredConstraints) =
+    multi_map.lookup(PredConstraints ^ proc_constraints, ProcId).
+
+%-----------------------------------------------------------------------------%
+%
+% Predicates to allow easy adding of var_constraints.
+%
+
+equiv_no(Context, MCVar, !Constraints) :-
+    abstract_mode_constraints.add_constraint(Context,
+        atomic_constraint(equiv_bool(MCVar, no)), !Constraints).
+
+equivalent(Context, MCVars, !Constraints) :-
+    abstract_mode_constraints.add_constraint(Context,
+        atomic_constraint(equivalent(MCVars)), !Constraints).
+
+equiv_disj(Context, X, Ys, !Constraints) :-
+    abstract_mode_constraints.add_constraint(Context,
+        atomic_constraint(equiv_disj(X, Ys)), !Constraints).
+
+at_most_one(Context, MCVars, !Constraints) :-
+    abstract_mode_constraints.add_constraint(Context,
+        atomic_constraint(at_most_one(MCVars)), !Constraints).
+
+not_both(Context, A, B, !Constraints) :-
+    at_most_one(Context, [A, B], !Constraints).
+
+exactly_one(Context, MCVars, !Constraints) :-
+    abstract_mode_constraints.add_constraint(Context,
+        atomic_constraint(exactly_one(MCVars)), !Constraints).
+
+xor(Context, A, B, !Constraints) :-
+    exactly_one(Context, [A, B], !Constraints).
+
+%-----------------------------------------------------------------------------%
+%
+% Dumping constraints for --debug-mode-constraints
+%
+
+dump_constraints_and_annotations(Varset, ConstraintsAndAnnotations, !IO) :-
+    Indent = 0,
+    keys_and_values(ConstraintsAndAnnotations, Constraints, Annotations),
+    list.foldl_corresponding(dump_constraint(Varset, Indent), Annotations,
+        Constraints, !IO).
+
+    % Dumps a list of constraints using the same constraint annotation
+    % at indent level indicated by the int.
+    %
+:- pred dump_constraints(mc_varset::in, int::in, constraint_annotation::in,
+    constraint_formulae::in, io::di, io::uo) is det.
+
+dump_constraints(Varset, Indent, Annotation, Constraints, !IO) :-
+    list.foldl(dump_constraint(Varset, Indent, Annotation), Constraints, !IO).
+
+    % Prints one constraint_formulae to the output. The int is an
+    % indent level.
+    %
+:- pred dump_constraint(mc_varset::in, int::in, constraint_annotation::in,
+    constraint_formula::in, io::di, io::uo) is det.
+
+dump_constraint(Varset, Indent, Annotation, disj(Constraints), !IO) :-
+    Context = context(Annotation),
+    write_error_pieces_maybe_with_context(yes(Context), Indent,
+        [words("disj(")], !IO),
+    dump_constraints(Varset, Indent+1, Annotation, Constraints, !IO),
+    write_error_pieces_maybe_with_context(yes(Context), Indent,
+        [words(") end disj")], !IO).
+
+dump_constraint(Varset, Indent, Annotation, conj(Constraints), !IO) :-
+    Context = context(Annotation),
+    write_error_pieces_maybe_with_context(yes(Context), Indent,
+        [words("conj(")], !IO),
+    dump_constraints(Varset, Indent+1, Annotation, Constraints, !IO),
+    write_error_pieces_maybe_with_context(yes(Context), Indent,
+        [words(") end conj")], !IO).
+
+dump_constraint(Varset, Indent, Annotation, atomic_constraint(Constraint),
+        !IO) :-
+    dump_var_constraint(Varset, Indent, Annotation, Constraint, !IO).
+
+    % Prints a var_constraint to the output. The int is an indent level.
+    %
+:- pred dump_var_constraint(mc_varset::in, int::in, constraint_annotation::in,
+    var_constraint::in, io::di, io::uo) is det.
+
+dump_var_constraint(Varset, Indent, Annotation, equiv_bool(X, Val), !IO) :-
+    mc_var_list_to_string(Varset, [X], VarName),
+    mc_var_val_to_string(Val, ValString),
+    Context = context(Annotation),
+
+    write_error_pieces_maybe_with_context(yes(Context), Indent,
+        [words(VarName ++ " = " ++ ValString)], !IO).
+
+dump_var_constraint(Varset, Indent, Annotation, equivalent(Xs), !IO) :-
+    mc_var_list_to_string(Varset, Xs, VarsString),
+    Context = context(Annotation),
+    write_error_pieces_maybe_with_context(yes(Context), Indent,
+        [words("equivalent(" ++ VarsString ++ ")")], !IO).
+
+dump_var_constraint(Varset, Indent, Annotation, implies(X, Y), !IO) :-
+    mc_var_list_to_string(Varset, [X], XName),
+    mc_var_list_to_string(Varset, [Y], YName),
+    Context = context(Annotation),
+
+    write_error_pieces_maybe_with_context(yes(Context), Indent,
+        [words(XName ++ " -> " ++ YName)], !IO).
+
+dump_var_constraint(Varset, Indent, Annotation, equiv_disj(X, Xs), !IO) :-
+    mc_var_list_to_string(Varset, [X], XName),
+    mc_var_list_to_string(Varset, Xs, XsString),
+    Context = context(Annotation),
+    Pieces = [words(XName ++ " <-> disj(" ++ XsString ++ ")")],
+    
+    write_error_pieces_maybe_with_context(yes(Context), Indent, Pieces, !IO).
+
+dump_var_constraint(Varset, Indent, Annotation, at_most_one(Xs), !IO) :-
+    mc_var_list_to_string(Varset, Xs, XsString),
+    Pieces = [words("at_most_one(" ++ XsString ++ ")")],
+    Context = context(Annotation),
+    write_error_pieces_maybe_with_context(yes(Context), Indent, Pieces, !IO).
+
+dump_var_constraint(Varset, Indent, Annotation, exactly_one(Xs), !IO) :-
+    mc_var_list_to_string(Varset, Xs, XsString),
+    Pieces = [words("exactly_one(" ++ XsString ++ ")")],
+    Context = context(Annotation),
+    write_error_pieces_maybe_with_context(yes(Context), Indent, Pieces, !IO).
+
+    % mc_var_list_to_string(Varset, MCVars, MCVarsString)
+    % Makes a comma separated list of MCVars as a string.
+    %
+:- pred mc_var_list_to_string(mc_varset::in, list(mc_var)::in,
+    string::out) is det.
+
+mc_var_list_to_string(_Varset, [], "").
+mc_var_list_to_string(Varset, [MCVar], VarName) :-
+    varset.lookup_name(Varset, MCVar, VarName).
+mc_var_list_to_string(Varset, [MCVar1, MCVar2 | MCVars],
+    VarName ++ ", " ++ VarNames) :-
+    varset.lookup_name(Varset, MCVar1, VarName),
+    mc_var_list_to_string(Varset, [MCVar2 | MCVars], VarNames).
+
+    % Makes a string representation of an mc_var binding.
+    %
+:- pred mc_var_val_to_string(bool::in, string::out) is det.
+
+mc_var_val_to_string(yes, "yes").
+mc_var_val_to_string(no, "no").
+
 
 %-----------------------------------------------------------------------------%
 %
@@ -447,11 +589,6 @@ pretty_print_var_constraint(VarSet, at_most_one(Xs), !IO) :-
     pretty_print_mc_vars(VarSet, Xs, !IO),
     io.write_string(")", !IO).
 
-pretty_print_var_constraint(VarSet, at_least_one(Xs), !IO) :-
-    io.write_string("at_least_one(", !IO),
-    pretty_print_mc_vars(VarSet, Xs, !IO),
-    io.write_string(")", !IO).
-
 pretty_print_var_constraint(VarSet, exactly_one(Xs), !IO) :-
     io.write_string("exactly_one(", !IO),
     pretty_print_mc_vars(VarSet, Xs, !IO),
@@ -482,3 +619,34 @@ pretty_print_mc_vars(VarSet, [Var | Vars], !IO) :-
         io.write_string(", ", !IO),
         pretty_print_mc_vars(VarSet, Vars, !IO)
     ).
+
+%-----------------------------------------------------------------------------%
+
+    % Prints a list of models for the constraint system.
+    %
+pretty_print_solutions(VarSet, Solutions, !IO) :-
+    list.foldl2(pretty_print_bindings(VarSet), Solutions, 0, _,  !IO).
+
+    % Prints the variable bindings of this solution, one per line.
+    %
+:- pred pretty_print_bindings(mc_varset::in, mc_bindings::in, int::in, int::out,
+    io::di, io::uo) is det.
+
+pretty_print_bindings(VarSet, Bindings, N, N + 1, !IO) :-
+    io.write_string("Solution " ++ string.from_int(N) ++ ":\n{\n", !IO),
+    Variables = map.keys(Bindings),
+    list.foldl((pred(Var::in, IO0::di, IO::uo) is det :-
+            io.write_string("    ", IO0, IO1),
+            io.write_string(varset.lookup_name(VarSet, Var), IO1, IO2),
+            io.write_string(" = ", IO2, IO3),
+            map.lookup(Bindings, Var, Value),
+            io.print(Value, IO3, IO4),
+            io.nl(IO4, IO)
+        ),
+        Variables, !IO),
+    io.write_string("}\n", !IO).
+
+
+%----------------------------------------------------------------------------%
+:- end_module abstract_mode_constraints.
+%----------------------------------------------------------------------------%
