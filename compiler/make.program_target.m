@@ -708,7 +708,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade, Succeeded,
 
 install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
         Info0, Succeeded, !IO) :-
-    globals__io_get_globals(Globals, !IO),
+    globals__io_get_globals(OrigGlobals, !IO),
 
     % Set up so that grade-dependent files for the current grade
     % don't overwrite the files for the default grade.
@@ -756,15 +756,19 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
             Info1, Info2, !IO),
         (
             LibSucceeded = yes,
-            install_library_grade_files(LinkSucceeded0, Grade, ModuleName,
-                AllModules, Succeeded, Info2, Info3, !IO),
+            % `GradeDir' differs from `Grade' in that it is in canonical form,
+            % and it does not include any `.picreg' component.
+            globals__io_get_globals(Globals, !IO),
+            grade_directory_component(Globals, GradeDir),
+            install_library_grade_files(LinkSucceeded0, GradeDir,
+                ModuleName, AllModules, Succeeded, Info2, Info3, !IO),
             make_grade_clean(ModuleName, AllModules, Info3, _, !IO)
         ;
             LibSucceeded = no,
             Succeeded = no
         )
     ),
-    globals__io_set_globals(unsafe_promise_unique(Globals), !IO).
+    globals__io_set_globals(unsafe_promise_unique(OrigGlobals), !IO).
 
     % Install the `.a', `.so', `.jar', `.opt' and `.mih' files
     % for the current grade.
@@ -773,9 +777,9 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
     list(module_name)::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
+install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
         Succeeded, !Info, !IO) :-
-    make_grade_install_dirs(Grade, DirResult, LinkSucceeded1, !IO),
+    make_grade_install_dirs(GradeDir, DirResult, LinkSucceeded1, !IO),
     LinkSucceeded = LinkSucceeded0 `and` LinkSucceeded1,
     (
         DirResult = yes,
@@ -786,11 +790,11 @@ install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
 
         globals__io_lookup_string_option(install_prefix, Prefix, !IO),
 
-        ( Grade = "java" ->
+        ( GradeDir = "java" ->
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/"java",
             install_file(JarFileName, GradeLibDir, LibsSucceeded, !IO)
         ;
-            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/Grade,
+            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
             maybe_install_library_file("static", LibFileName, GradeLibDir,
                 LibSuccess, !IO),
             ( LibFileName = SharedLibFileName ->
@@ -802,7 +806,8 @@ install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
             )
         ),
 
-        list__map_foldl2(install_grade_ints_and_headers(LinkSucceeded, Grade),
+        list__map_foldl2(
+            install_grade_ints_and_headers(LinkSucceeded, GradeDir),
             AllModules, IntsHeadersSucceeded, !Info, !IO),
         Succeeded = bool__and_list([LibsSucceeded | IntsHeadersSucceeded])
     ;
@@ -815,7 +820,7 @@ install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
 :- pred install_grade_ints_and_headers(bool::in, string::in, module_name::in,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName, Succeeded,
+install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
         !Info, !IO) :-
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
@@ -834,7 +839,7 @@ install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName, Succeeded,
                 Imports ^ foreign_code = contains_foreign_code(_)
             )
         ->
-            GradeIncDir = LibDir/"lib"/Grade/"inc",
+            GradeIncDir = LibDir/"lib"/GradeDir/"inc",
             install_subdir_file(LinkSucceeded, GradeIncDir, ModuleName, "mih",
                 HeaderSucceded1, !IO),
 
@@ -853,7 +858,7 @@ install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName, Succeeded,
             !IO),
         (
             Intermod = yes,
-            GradeIntDir = LibDir/"ints"/Grade,
+            GradeIntDir = LibDir/"ints"/GradeDir,
             install_subdir_file(LinkSucceeded, GradeIntDir, ModuleName, "opt",
                 OptSucceded, !IO)
         ;

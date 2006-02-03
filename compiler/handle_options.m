@@ -644,12 +644,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % without checking timestamps.
         option_implies(rebuild, make, bool(yes), !Globals),
 
-        % Canonicalise the arguments to --libgrade options.
-        % Unrecognised grade strings are left as is and will be caught later.
-        globals__lookup_accumulating_option(!.Globals, libgrades, LibGrades0),
-        LibGrades = list__map(canonical_grade_or_identity, LibGrades0),
-        globals__set_option(libgrades, accumulating(LibGrades), !Globals),
-
         % If no --lib-linkage option has been specified, default to the
         % set of all possible linkages.
         globals__lookup_accumulating_option(!.Globals, lib_linkages,
@@ -1965,24 +1959,6 @@ grade_directory_component(Globals, Grade) :-
 compute_grade(Globals, Grade) :-
     globals__get_options(Globals, Options),
     compute_grade_components(Options, Components),
-    components_to_grade(Components, Grade).
-
-:- func canonical_grade_or_identity(string) = string is det.
-
-canonical_grade_or_identity(Grade0) =
-    (if canonical_grade(Grade0) = Grade then Grade else Grade0).
-
-:- func canonical_grade(string) = string is semidet.
-
-canonical_grade(GradeString) = Grade :-
-    convert_grade_option(GradeString, map__init, Options),
-    compute_grade_components(Options, Components),
-    components_to_grade(Components, Grade).
-
-:- pred components_to_grade(list(pair(grade_component, string))::in,
-     string::out) is det.
-
-components_to_grade(Components, Grade) :-
     (
         Components = [],
         Grade = "none"
