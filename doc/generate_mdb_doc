@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1998-1999,2002, 2004-2005 The University of Melbourne.
+# Copyright (C) 1998-1999,2002, 2004-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -32,7 +32,7 @@ for section in interactive forward backward browsing breakpoint \
 do
 	case $section in
 		interactive)	category=queries ;;
-		i/o)		category=table_io ;;
+		i/o)		category=io_tabling ;;
 		declarative)	category=mdb_dd ;;
 		*)		category=$section ;;
 	esac

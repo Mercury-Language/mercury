@@ -37,8 +37,8 @@ breakpoint - Commands that let users set and control breakpoints.
              `enable', `delete', `modules', `procedures' and `register'.
 
 end
-document_category 600 table_io
-table_io   - Commands that let users control the tabling of I/O actions.
+document_category 600 io_tabling
+io_tabling - Commands that let users control the tabling of I/O actions.
              The only such command is `table_io'.
 
 end
