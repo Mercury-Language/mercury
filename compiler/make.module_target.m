@@ -60,8 +60,11 @@
 
 :- implementation.
 
+:- import_module analysis.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module transform_hlds.
+:- import_module transform_hlds.mmc_analysis.
 
 %-----------------------------------------------------------------------------%
 
@@ -231,22 +234,52 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
         debug_file_msg(TargetFile, "target file does not exist", !IO),
         DepsResult = out_of_date
     ;
-        %
-        % Compare the oldest of the timestamps of the touched
-        % files with the timestamps of the dependencies.
-        %
-        list__map_foldl2(get_timestamp_file_timestamp,
-            TouchedTargetFiles, TouchedTargetFileTimestamps, !Info, !IO),
-        list__map_foldl2(get_file_timestamp([dir__this_directory]),
-            TouchedFiles, TouchedFileTimestamps, !Info, !IO),
-        MaybeOldestTimestamp0 = list__foldl(find_oldest_timestamp,
-            TouchedTargetFileTimestamps, ok(newest_timestamp)),
-        MaybeOldestTimestamp = list__foldl(find_oldest_timestamp,
-            TouchedFileTimestamps, MaybeOldestTimestamp0),
+        ( TargetFile = ModuleName - analysis_registry ->
+            force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis,
+                !.Info, !IO)
+        ;
+            ForceReanalysis = no
+        ),
+        (
+            ForceReanalysis = yes,
+            DepsResult = out_of_date
+        ;
+            ForceReanalysis = no,
+            %
+            % Compare the oldest of the timestamps of the touched
+            % files with the timestamps of the dependencies.
+            %
+            list__map_foldl2(get_timestamp_file_timestamp,
+                TouchedTargetFiles, TouchedTargetFileTimestamps, !Info, !IO),
+            list__map_foldl2(get_file_timestamp([dir__this_directory]),
+                TouchedFiles, TouchedFileTimestamps, !Info, !IO),
+            MaybeOldestTimestamp0 = list__foldl(find_oldest_timestamp,
+                TouchedTargetFileTimestamps, ok(newest_timestamp)),
+            MaybeOldestTimestamp = list__foldl(find_oldest_timestamp,
+                TouchedFileTimestamps, MaybeOldestTimestamp0),
+    
+            get_file_name(no, TargetFile, TargetFileName, !Info, !IO),
+            check_dependencies(TargetFileName, MaybeOldestTimestamp,
+                MakeDepsSuccess, DepFilesToMake, DepsResult, !Info, !IO)
+        )
+    ).
 
-        get_file_name(no, TargetFile, TargetFileName, !Info, !IO),
-        check_dependencies(TargetFileName, MaybeOldestTimestamp,
-            MakeDepsSuccess, DepFilesToMake, DepsResult, !Info, !IO)
+:- pred force_reanalysis_of_suboptimal_module(module_name::in, bool::out,
+    make_info::in, io::di, io::uo) is det.
+                
+force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis, Info,
+        !IO) :-
+    (if Info ^ reanalysis_passes > 0 then
+        ModuleId = module_name_to_module_id(ModuleName),
+        analysis__read_module_overall_status(mmc, ModuleId,
+            MaybeAnalysisStatus, !IO),
+        ( MaybeAnalysisStatus = yes(suboptimal) ->
+            ForceReanalysis = yes
+        ;
+            ForceReanalysis = no
+        )
+    else
+        ForceReanalysis = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -332,7 +365,8 @@ build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
     io__set_output_stream(ErrorStream, OldOutputStream, !IO),
     ( 
         (ModuleTask = compile_to_target_code
-        ; ModuleTask = make_optimization_interface)
+        ; ModuleTask = make_optimization_interface
+        ; ModuleTask = make_analysis_registry)
      ->
         call_in_forked_process(call_mercury_compile_main([ModuleArg]),
             invoke_mmc(ErrorStream, ArgFileName, AllOptionArgs ++ [ModuleArg]),
@@ -623,7 +657,7 @@ compilation_task(_, intermodule_interface) =
     process_module(make_optimization_interface) -
         ["--make-optimization-interface"].
 compilation_task(_, analysis_registry) =
-    sorry(this_file, ".analysis targets").
+    process_module(make_analysis_registry) - ["--make-analysis-registry"].
 compilation_task(_, aditi_code) =
     process_module(compile_to_target_code) - ["--aditi-only"].
 compilation_task(Globals, c_header(_)) = compilation_task(Globals, c_code).

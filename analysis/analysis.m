@@ -199,8 +199,19 @@
 	% requests and results for the current compilation to the
 	% analysis files.
 	%
-:- pred write_analysis_files(module_id::in, set(module_id)::in, 
-	analysis_info::in, analysis_info::out, io::di, io::uo) is det.
+:- pred write_analysis_files(Compiler::in, module_id::in, set(module_id)::in, 
+	analysis_info::in, analysis_info::out, io::di, io::uo) is det
+	<= compiler(Compiler).
+
+	% read_module_overall_status(Compiler, ModuleId, MaybeModuleStatus,
+	%   !IO)
+	% Attempt to read the overall status from a module `.analysis' file.
+	%
+:- pred read_module_overall_status(Compiler::in, module_id::in,
+	maybe(analysis_status)::out, io::di, io::uo) is det
+	<= compiler(Compiler).
+
+:- pred enable_debug_messages(bool::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -317,6 +328,15 @@ init_analysis_info(Compiler) =
 %-----------------------------------------------------------------------------%
 
 lookup_results(ModuleId, FuncId, ResultList, !Info, !IO) :-
+    lookup_results(no, ModuleId, FuncId, ResultList, !Info, !IO).
+
+:- pred lookup_results(bool::in, module_id::in, func_id::in,
+	list({Call, Answer, analysis_status})::out, 
+	analysis_info::in, analysis_info::out, io::di, io::uo) is det
+	<= analysis(Call, Answer).
+
+lookup_results(AllowInvalidModules, ModuleId, FuncId, ResultList,
+	!Info, !IO) :-
     debug_msg((pred(!.IO::di, !:IO::uo) is det :-
 	io.write_string("Looking up analysis results for ", !IO),
 	io.write_string(ModuleId, !IO),
@@ -325,13 +345,20 @@ lookup_results(ModuleId, FuncId, ResultList, !Info, !IO) :-
 	io.nl(!IO)
     ), !IO),
     ensure_old_module_analysis_results_loaded(ModuleId, !Info, !IO),
-    lookup_results_2(!.Info ^ old_analysis_results,
-	ModuleId, FuncId, ResultList),
-    debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-	io.write_string("Found these results: ", !IO),
-	io.print(ResultList, !IO),
-	io.nl(!IO)
-    ), !IO).
+    (if
+	AllowInvalidModules = no,
+	!.Info ^ module_statuses ^ det_elem(ModuleId) = invalid
+    then
+	ResultList = []
+    else
+	lookup_results_2(!.Info ^ old_analysis_results,
+	    ModuleId, FuncId, ResultList),
+	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+	    io.write_string("Found these results: ", !IO),
+	    io.print(ResultList, !IO),
+	    io.nl(!IO)
+	), !IO)
+    ).
 
 :- pred lookup_results_2(analysis_map(analysis_result)::in, module_id::in,
 	func_id::in, list({Call, Answer, analysis_status})::out) is det
@@ -405,14 +432,14 @@ more_precise_answer(Result, Best0, Best) :-
 	Best = Best0
     ).
 
-:- pred lookup_exactly_matching_result(module_id::in, func_id::in, Call::in,
-	maybe({Call, Answer, analysis_status})::out, 
+:- pred lookup_exactly_matching_result_even_from_invalid_modules(module_id::in,
+	func_id::in, Call::in, maybe({Call, Answer, analysis_status})::out,
 	analysis_info::in, analysis_info::out, io::di, io::uo) is det
 	<= analysis(Call, Answer).
 
-lookup_exactly_matching_result(ModuleId, FuncId, Call, MaybeResult,
-        !Info, !IO) :-
-    lookup_results(ModuleId, FuncId, AllResultsList, !Info, !IO),
+lookup_exactly_matching_result_even_from_invalid_modules(ModuleId,
+	FuncId, Call, MaybeResult, !Info, !IO) :-
+    lookup_results(yes, ModuleId, FuncId, AllResultsList, !Info, !IO),
     ResultList = list.filter(
         (pred(({ResultCall, _, _})::in) is semidet :-
                 equivalent(Call, ResultCall)
@@ -614,8 +641,8 @@ update_analysis_registry_4(ModuleId, AnalysisName, FuncId, NewResults,
 update_analysis_registry_5(ModuleId, AnalysisName, FuncId, NewResult,
 	!Info, !IO) :-
     NewResult = analysis_result(Call, NewAnswer, NewStatus),
-    lookup_exactly_matching_result(ModuleId, FuncId, Call, MaybeResult,
-	!Info, !IO),
+    lookup_exactly_matching_result_even_from_invalid_modules(ModuleId, FuncId,
+	Call, MaybeResult, !Info, !IO),
     (
 	% There was a previous answer for this call pattern.
 	%
@@ -878,7 +905,7 @@ ensure_old_imdg_loaded(ModuleId, !Info, !IO) :-
     % and will write out data currently cached in the analysis_info
     % structure out to disk.
     % 
-write_analysis_files(ModuleId, ImportedModuleIds, !Info, !IO) :-
+write_analysis_files(Compiler, ModuleId, ImportedModuleIds, !Info, !IO) :-
     % The current module was just compiled so we set its status to the
     % lub of all the new analysis results generated.
     (if NewResults = !.Info ^ new_analysis_results ^ elem(ModuleId) then
@@ -916,7 +943,21 @@ write_analysis_files(ModuleId, ImportedModuleIds, !Info, !IO) :-
     empty_request_file(!.Info, ModuleId, !IO),
 
     % Write the intermodule dependency graphs.
-    map.foldl(write_module_imdg(!.Info), !.Info ^ old_imdg, !IO).
+    map.foldl(write_module_imdg(!.Info), !.Info ^ old_imdg, !IO),
+    
+    % Touch a timestamp file to indicate the last time that this module was
+    % analysed.
+    module_id_to_file_name(Compiler, ModuleId, ".analysis_date",
+	TimestampFileName, !IO),
+    io.open_output(TimestampFileName, Result, !IO),
+    (
+        Result = ok(OutputStream),
+        io.write_string(OutputStream, "\n", !IO),
+        io.close_output(OutputStream, !IO)
+    ;
+        Result = error(IOError),
+	error(io.error_message(IOError))
+    ).
 
 :- pred write_analysis_files_2(analysis_info::in, module_id::in,
 	module_analysis_map(analysis_result)::in, io::di, io::uo) is det.
@@ -925,6 +966,12 @@ write_analysis_files_2(Info, ModuleId, ModuleResults, !IO) :-
     ModuleStatus = Info ^ module_statuses ^ det_elem(ModuleId),
     write_module_analysis_results(Info, ModuleId,
 	ModuleStatus, ModuleResults, !IO).
+
+%-----------------------------------------------------------------------------%
+
+read_module_overall_status(Compiler, ModuleId, MaybeModuleStatus, !IO) :-
+    analysis.file.read_module_overall_status(Compiler, ModuleId,
+	MaybeModuleStatus, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -961,13 +1008,19 @@ lub_result_statuses_4(analysis_result(_, _, Status), Acc) =
 
 %-----------------------------------------------------------------------------%
 
-% XXX make this enableable with a command-line option.  A problem is that we
-% don't want to make the analysis directory dependent on anything in the
-% compiler directory.
+:- mutable(debug_analysis, bool, no, ground, [untrailed, attach_to_io_state]).
+
+enable_debug_messages(Debug, !IO) :-
+    set_debug_analysis(Debug, !IO).
 
 :- pred debug_msg(pred(io, io)::in(pred(di, uo) is det), io::di, io::uo)
     is det.
 
-debug_msg(_P, !IO) :-
-    % P(!IO),
-    true.
+debug_msg(P, !IO) :-
+    get_debug_analysis(Debug, !IO),
+    (
+	Debug = yes,
+	P(!IO)
+    ;
+	Debug = no
+    ).

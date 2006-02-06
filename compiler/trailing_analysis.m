@@ -203,9 +203,10 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
     %
     % Record the analysis results for the intermodule analysis
     %
-    globals__io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
+    globals__io_lookup_bool_option(make_analysis_registry,
+        MakeAnalysisRegistry, !IO),
     (
-        Intermod = yes,
+        MakeAnalysisRegistry = yes,
         (
             MaybeAnalysisStatus = yes(AnalysisStatus),
             record_trailing_analysis_results(TrailingStatus, AnalysisStatus,
@@ -215,7 +216,7 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
             unexpected(this_file, "process_scc: no analysis status")
         )
     ;
-        Intermod = no
+        MakeAnalysisRegistry = no
     ),
     (
         Pass1Only = no,
@@ -1108,21 +1109,33 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
     Call = any_call,
     analysis.lookup_best_result(ModuleId, FuncId, Call,
         MaybeBestStatus, !AnalysisInfo, !IO),
+    globals__io_lookup_bool_option(make_analysis_registry,
+        MakeAnalysisRegistry, !IO),
     (
         MaybeBestStatus = yes({BestCall, trailing_analysis_answer(Result),
             AnalysisStatus}),
-        record_dependencies(ModuleId, FuncId, BestCall,
-            ModuleInfo, CallerSCC, !AnalysisInfo)
+        (
+            MakeAnalysisRegistry = yes,
+            record_dependencies(ModuleId, FuncId, BestCall,
+                ModuleInfo, CallerSCC, !AnalysisInfo)
+        ;
+            MakeAnalysisRegistry = no
+        )
     ;
         MaybeBestStatus = no,
         % If we do not have any information about the callee procedure
         % then assume that it modifies the trail.
         top(Call) = trailing_analysis_answer(Result),
         AnalysisStatus = suboptimal,
-        analysis.record_request(analysis_name, ModuleId, FuncId, Call,
-            !AnalysisInfo),
-        record_dependencies(ModuleId, FuncId, Call,
-            ModuleInfo, CallerSCC, !AnalysisInfo)
+        (
+            MakeAnalysisRegistry = yes,
+            analysis.record_request(analysis_name, ModuleId, FuncId, Call,
+                !AnalysisInfo),
+            record_dependencies(ModuleId, FuncId, Call,
+                ModuleInfo, CallerSCC, !AnalysisInfo)
+        ;
+            MakeAnalysisRegistry = no
+        )
     ).
 
     % XXX if the procedures in CallerSCC definitely come from the

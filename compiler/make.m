@@ -144,8 +144,14 @@
         importing_module        :: maybe(module_name),
 
         % Targets specified on the command line.
-        command_line_targets    :: set(pair(module_name, target_type))
+        command_line_targets    :: set(pair(module_name, target_type)),
 
+        % The remaining number of analysis passes that we will allow on
+        % `suboptimal' modules.  It starts at the value of `--analysis-repeat'
+        % and decrements to zero as analysis passes on `suboptimal' modules are
+        % performed.  `invalid' modules are not affected as they will always be
+        % reanalysed.
+        reanalysis_passes       :: int
     ).
 
 :- type make_error
@@ -205,6 +211,7 @@
     --->    clean
     ;       realclean
     ;       build_all(module_target_type)
+    ;       build_analyses
     ;       build_library
     ;       install_library.
 
@@ -277,12 +284,14 @@ make__process_args(Variables, OptionArgs, Targets0, !IO) :-
             ClassifiedTargets),
 
         ShouldRebuildDeps = yes,
+        globals__io_lookup_int_option(analysis_repeat, AnalysisRepeat, !IO),
         MakeInfo0 = make_info(map__init, map__init, OptionArgs, Variables,
             map__init,
             init_cached_direct_imports,
             init_cached_transitive_dependencies,
             ShouldRebuildDeps, KeepGoing,
-            set__init, no, set__list_to_set(ClassifiedTargets)),
+            set__init, no, set__list_to_set(ClassifiedTargets),
+            AnalysisRepeat),
 
         %
         % Build the targets, stopping on any errors if
@@ -389,6 +398,11 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
     ->
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(build_all(errors))
+    ;
+        Suffix = ".analyse"
+    ->
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = misc_target(build_analyses)
     ;
         Suffix = ".clean"
     ->

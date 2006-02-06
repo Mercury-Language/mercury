@@ -5464,6 +5464,11 @@ Output detailed debugging traces of the `--make' option.
 @c @findex --debug-closures
 @c Output detailed debugging traces of the `--analyse-closures' option.
 
+@sp 1
+@item --debug-intermodule-analysis
+@findex --debug-intermodule-analysis
+Output detailed debugging traces of the `--intermodule-analysis' option.
+
 @end table
 
 @node Output options
@@ -6899,6 +6904,12 @@ others.
 Perform analyses such as termination analysis and
 unused argument elimination across module boundaries.
 This option is not yet fully implemented.
+
+@item --analysis-repeat <n>
+@findex --analysis-repeat
+The maximum number of times to repeat analyses of suboptimal modules with
+@samp{--intermodule-analyses} (default: 0).  This option only works with
+@samp{mmc --make}.
 
 @end table
 

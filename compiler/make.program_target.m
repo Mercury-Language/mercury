@@ -40,8 +40,11 @@
 
 :- implementation.
 
+:- import_module analysis.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module transform_hlds.
+:- import_module transform_hlds.mmc_analysis.
 
 %-----------------------------------------------------------------------------%
 
@@ -63,9 +66,29 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
     ->
         Succeeded = yes
     ;
-        build_with_module_options(MainModuleName, ExtraOptions,
-            make_linked_target_2(MainModuleName - FileType),
-            Succeeded, !Info, !IO)
+        % When using `--intermodule-analysis', perform an analysis pass first.
+        % The analysis of one module may invalidate the results of a module we
+        % analysed earlier, so this step must be carried out until all the
+        % `.analysis' files are in a valid state before we can continue.
+        globals__io_lookup_bool_option(intermodule_analysis,
+            IntermoduleAnalysis, !IO),
+        (
+            IntermoduleAnalysis = yes,
+            make_misc_target(MainModuleName - build_analyses,
+                ExtraOptions, Succeeded0, !Info, !IO)
+        ;
+            IntermoduleAnalysis = no,
+            Succeeded0 = yes
+        ),
+        (
+            Succeeded0 = yes,
+            build_with_module_options(MainModuleName, ExtraOptions,
+                make_linked_target_2(MainModuleName - FileType),
+                Succeeded, !Info, !IO)
+        ;
+            Succeeded0 = no,
+            Succeeded = no
+        )
     ).
 
 :- pred make_linked_target_2(linked_target_file::in, list(string)::in,
@@ -501,6 +524,10 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
             Succeeded = Succeeded0 `and` Succeeded1
         )
     ;
+        TargetType = build_analyses,
+        build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
+            !Info, !IO)
+    ;
         TargetType = build_library,
         ShortInts = make_dependency_list(AllModules,
             unqualified_short_interface),
@@ -564,6 +591,103 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
             Succeeded = no
         )
     ).
+
+:- pred build_analysis_files(module_name::in, list(module_name)::in,
+    bool::in, bool::out, make_info::in, make_info::out, io::di, io::uo)
+    is det.
+
+build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
+        !Info, !IO) :-
+    get_target_modules(analysis_registry, AllModules, TargetModules,
+        !Info, !IO),
+    globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
+    ( Succeeded0 = no, KeepGoing = no ->
+        Succeeded = no
+    ;
+        foldl2_maybe_stop_at_error(KeepGoing,
+            make_module_target,
+            make_dependency_list(TargetModules, analysis_registry),
+            Succeeded1, !Info, !IO),
+        
+        % Find which module analysis files are suboptimal or invalid.
+        % If there are any invalid files then we repeat the analysis pass.
+        % If there are only suboptimal files then we repeat the analysis up
+        % to the number of times given by the user.
+        ReanalysisPasses = !.Info ^ reanalysis_passes,
+        ReanalyseSuboptimal = (if ReanalysisPasses > 1 then yes else no),
+        modules_needing_reanalysis(ReanalyseSuboptimal, TargetModules,
+            InvalidModules, SuboptimalModules, !IO),
+        ( list__is_not_empty(InvalidModules) ->
+            maybe_reanalyse_modules_message(!IO),
+            list__foldl(reset_analysis_registry_dependency_status,
+                InvalidModules, !Info),
+            build_analysis_files(MainModuleName, AllModules,
+                Succeeded0, Succeeded, !Info, !IO)
+        ; list__is_not_empty(SuboptimalModules) ->
+            list__foldl(reset_analysis_registry_dependency_status,
+                SuboptimalModules, !Info),
+            !:Info = !.Info ^ reanalysis_passes := ReanalysisPasses - 1,
+            maybe_reanalyse_modules_message(!IO),
+            build_analysis_files(MainModuleName, AllModules,
+                Succeeded0, Succeeded, !Info, !IO)
+        ;
+            Succeeded = Succeeded0 `and` Succeeded1
+        )
+    ).
+
+:- pred modules_needing_reanalysis(bool::in, list(module_name)::in,
+    list(module_name)::out, list(module_name)::out, io::di, io::uo) is det.
+
+modules_needing_reanalysis(_, [], [], [], !IO).
+modules_needing_reanalysis(ReanalyseSuboptimal, [Module | Modules],
+        InvalidModules, SuboptimalModules, !IO) :-
+    analysis.read_module_overall_status(mmc, module_name_to_module_id(Module),
+        MaybeModuleStatus, !IO),
+    (
+        MaybeModuleStatus = yes(ModuleStatus),
+        (
+            ModuleStatus = optimal,
+            modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
+                InvalidModules, SuboptimalModules, !IO)
+        ;
+            ModuleStatus = suboptimal,
+            modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
+                InvalidModules, SuboptimalModules0, !IO),
+            (
+                ReanalyseSuboptimal = yes,
+                SuboptimalModules = [Module | SuboptimalModules0]
+            ;
+                ReanalyseSuboptimal = no,
+                SuboptimalModules = SuboptimalModules0
+            )
+        ;
+            ModuleStatus = invalid,
+            modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
+                InvalidModules0, SuboptimalModules, !IO),
+            InvalidModules = [Module | InvalidModules0]
+        )
+    ;
+        MaybeModuleStatus = no,
+        % The analysis file does not exist.  For some reason it wasn't created
+        % in this or an earlier pass (and hence probably won't be created no
+        % matter how many times we repeat the analysis).
+        %
+        % XXX: Currently modules which are basically empty do not get
+        % `.analysis' files produced.  After that is fixed we can probably
+        % consider modules with missing `.analysis' files to be invalid.
+        %
+        % XXX: MaybeModuleStatus could be `no' for some other reason
+        %
+        modules_needing_reanalysis(ReanalyseSuboptimal, Modules,
+            InvalidModules, SuboptimalModules, !IO)
+    ).
+
+:- pred reset_analysis_registry_dependency_status(module_name::in,
+    make_info::in, make_info::out) is det.
+
+reset_analysis_registry_dependency_status(ModuleName, Info,
+        Info ^ dependency_status ^ elem(Dep) := not_considered) :-
+    Dep = target(ModuleName - analysis_registry).
 
 :- pred shared_libraries_supported(bool::out, io::di, io::uo) is det.
 

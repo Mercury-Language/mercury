@@ -140,6 +140,7 @@
     ;       debug_closure
     ;       debug_trail_usage
     ;       debug_mode_constraints 
+    ;       debug_intermodule_analysis
 
     % Output options
     ;       make_short_interface
@@ -147,6 +148,7 @@
     ;       make_private_interface
     ;       make_optimization_interface
     ;       make_transitive_opt_interface
+    ;       make_analysis_registry
     ;       generate_source_file_mapping
     ;       generate_dependency_file
     ;       generate_dependencies
@@ -457,12 +459,13 @@
     ;       opt_level_number
     ;       opt_space                   % Default is to optimize time.
     ;       intermodule_optimization
-    ;       intermodule_analysis
     ;       read_opt_files_transitively
     ;       automatic_intermodule_optimization
     ;       use_opt_files
     ;       use_trans_opt_files
     ;       transitive_optimization
+    ;       intermodule_analysis
+    ;       analysis_repeat
 
     %   - HLDS
     ;       allow_inlining
@@ -887,7 +890,8 @@ option_defaults_2(verbosity_option, [
     debug_make                          -   bool(no),
     debug_closure                       -   bool(no),
     debug_trail_usage                   -   bool(no),
-    debug_mode_constraints              -   bool(no)
+    debug_mode_constraints              -   bool(no),
+    debug_intermodule_analysis          -   bool(no)
 ]).
 option_defaults_2(output_option, [
     % Output Options (mutually exclusive)
@@ -900,6 +904,7 @@ option_defaults_2(output_option, [
     make_private_interface              -   bool(no),
     make_optimization_interface         -   bool(no),
     make_transitive_opt_interface       -   bool(no),
+    make_analysis_registry              -   bool(no),
     convert_to_mercury                  -   bool(no),
     typecheck_only                      -   bool(no),
     errorcheck_only                     -   bool(no),
@@ -1141,12 +1146,13 @@ option_defaults_2(special_optimization_option, [
     opt_level_number                    -   int(-2),
     opt_space                           -   special,
     intermodule_optimization            -   bool(no),
-    intermodule_analysis                -   bool(no),
     read_opt_files_transitively         -   bool(yes),
     automatic_intermodule_optimization  -   bool(yes),
     use_opt_files                       -   bool(no),
     use_trans_opt_files                 -   bool(no),
     transitive_optimization             -   bool(no),
+    intermodule_analysis                -   bool(no),
+    analysis_repeat                     -   int(0),
     check_termination                   -   bool(no),
     verbose_check_termination           -   bool(no),
     termination                         -   bool(no),
@@ -1594,6 +1600,7 @@ long_option("debug-make",           debug_make).
 long_option("debug-closure",        debug_closure).
 long_option("debug-trail-usage",    debug_trail_usage).
 long_option("debug-mode-constraints", debug_mode_constraints).
+long_option("debug-intermodule-analysis",   debug_intermodule_analysis).
 
 % output options (mutually exclusive)
 long_option("generate-source-file-mapping",
@@ -1615,6 +1622,7 @@ long_option("make-transitive-optimization-interface",
 long_option("make-transitive-optimisation-interface",
                     make_transitive_opt_interface).
 long_option("make-trans-opt",       make_transitive_opt_interface).
+long_option("make-analysis-registry",   make_analysis_registry).
 long_option("convert-to-mercury",   convert_to_mercury).
 long_option("convert-to-Mercury",   convert_to_mercury).
 long_option("pretty-print",         convert_to_mercury).
@@ -1838,7 +1846,6 @@ long_option("optimise-space",       opt_space).
 long_option("intermod-opt",        intermodule_optimization).
 long_option("intermodule-optimization", intermodule_optimization).
 long_option("intermodule-optimisation", intermodule_optimization).
-long_option("intermodule-analysis", intermodule_analysis).
 long_option("read-opt-files-transitively", read_opt_files_transitively).
 long_option("automatic-intermodule-optimization",
                     automatic_intermodule_optimization).
@@ -1851,6 +1858,8 @@ long_option("transitive-intermodule-optimization",
 long_option("transitive-intermodule-optimisation",
                     transitive_optimization).
 long_option("trans-intermod-opt",   transitive_optimization).
+long_option("intermodule-analysis", intermodule_analysis).
+long_option("analysis-repeat",      analysis_repeat).
 
 % HLDS->HLDS optimizations
 long_option("inlining",             inlining).
@@ -2918,6 +2927,9 @@ options_help_verbosity -->
 %       "\tOutput detailed debugging traces of the closure analysis."
         "--debug-trail-usage",
         "\tOutput detailed debugging traces of the `--analyse-trail-usage'",
+        "\toption.",
+        "--debug-intermodule-analysis",
+        "\tOutput detailed debugging traces of the `--intermodule-analysis'",
         "\toption."
 % The mode constraints code is still experimental so this option is
 % currently commented out.
@@ -3861,7 +3873,11 @@ options_help_optimization -->
         "--intermodule-analysis",
         "\tPerform analyses such as termination analysis and",
         "\tunused argument elimination across module boundaries.",
-        "\tThis option is not yet fully implemented."
+        "\tThis option is not yet fully implemented.",
+        "--analysis-repeat <n>",
+        "\tThe maximum number of times to repeat analyses of",
+        "\tsuboptimal modules with `--intermodule-analyses'",
+        "\t(default: 0)."
     ]).
 
 :- pred options_help_hlds_hlds_optimization(io::di, io::uo) is det.

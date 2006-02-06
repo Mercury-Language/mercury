@@ -240,6 +240,11 @@
 :- pred maybe_make_target_message(io__output_stream::in, target_file::in,
     io::di, io::uo) is det.
 
+    % Write a message "Reanalysing invalid/suboptimal modules" if
+    % `--verbose-make' is set.
+    %
+:- pred maybe_reanalyse_modules_message(io::di, io::uo) is det.
+
     % Write a message "** Error making <filename>".
     %
 :- pred target_file_error(target_file::in, io::di, io::uo) is det.
@@ -259,7 +264,10 @@
 
 :- implementation.
 
+:- import_module analysis.
 :- import_module libs.compiler_util.
+:- import_module transform_hlds.
+:- import_module transform_hlds.mmc_analysis.
 
 %-----------------------------------------------------------------------------%
 
@@ -559,7 +567,62 @@ get_dependency_timestamp(target(Target), MaybeTimestamp, !Info, !IO) :-
         MaybeTimestamp = MaybeTimestamp0
     ).
 
-get_target_timestamp(Search, ModuleName - FileType, MaybeTimestamp,
+get_target_timestamp(Search, Target, MaybeTimestamp, !Info, !IO) :-
+    ( Target = ModuleName - analysis_registry ->
+        get_target_timestamp_analysis_registry(Search, ModuleName,
+            MaybeTimestamp, !Info, !IO)
+    ;
+        get_target_timestamp_2(Search, Target, MaybeTimestamp, !Info, !IO)
+    ).
+
+    % Special treatment for `.analysis' files.  If the `.analysis' file is
+    % valid then we look at the corresponding `.analysis_date' file to get the
+    % last time that the module was actually analysed (the file may have been
+    % rewritten or had it's status changed while analysing other modules).
+    % If the `.analysis' file is invalid then we treat it as out of date.
+    %
+:- pred get_target_timestamp_analysis_registry(bool::in, module_name::in,
+    maybe_error(timestamp)::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+get_target_timestamp_analysis_registry(Search, ModuleName, MaybeTimestamp,
+        !Info, !IO) :-
+    ModuleId = module_name_to_module_id(ModuleName),
+    analysis.read_module_overall_status(mmc, ModuleId, MaybeStatus, !IO),
+    (
+        MaybeStatus = yes(Status),
+        (
+            ( Status = optimal
+            ; Status = suboptimal
+            ),
+            get_timestamp_file_timestamp(ModuleName - analysis_registry,
+                MaybeTimestamp0, !Info, !IO),
+            (
+                MaybeTimestamp0 = ok(_),
+                MaybeTimestamp = MaybeTimestamp0
+            ;
+                MaybeTimestamp0 = error(_),
+                % If the `.analysis' file exists with status `optimal' or
+                % `suboptimal' but there is no `.analysis_date' file, then the
+                % `.analysis' file must just have been created while analysing
+                % a different module.
+                MaybeTimestamp = ok(oldest_timestamp)
+            )
+        ;
+            Status = invalid,
+            MaybeTimestamp = error("invalid module")
+        )
+    ;
+        MaybeStatus = no,
+        get_target_timestamp_2(Search, ModuleName - analysis_registry,  
+            MaybeTimestamp, !Info, !IO)
+    ).
+
+:- pred get_target_timestamp_2(bool::in, target_file::in,
+    maybe_error(timestamp)::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+get_target_timestamp_2(Search, ModuleName - FileType, MaybeTimestamp,
         !Info, !IO) :-
     get_file_name(Search, ModuleName - FileType, FileName, !Info, !IO),
     (
@@ -572,11 +635,14 @@ get_target_timestamp(Search, ModuleName - FileType, MaybeTimestamp,
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp0, !Info, !IO),
     (
         MaybeTimestamp0 = error(_),
-        FileType = intermodule_interface
+        ( FileType = intermodule_interface
+        ; FileType = analysis_registry
+        )
     ->
         % If a `.opt' file in another directory doesn't exist,
         % it just means that a library wasn't compiled with
         % `--intermodule-optimization'.
+        % Similarly for `.analysis' files.
 
         get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
         (
@@ -826,12 +892,18 @@ module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName,
     % Note that we need a timestamp file for `.err' files because
     % errors are written to the `.err' file even when writing interfaces.
     % The timestamp is only updated when compiling to target code.
+    %
+    % We need a timestamp file for `.analysis' files because they
+    % can be modified in the process of analysing _another_ module.
+    % The timestamp is only updated after actually analysing the module that
+    % the `.analysis' file corresponds to.
 timestamp_extension(_, errors) = ".err_date".
 timestamp_extension(_, private_interface) = ".date0".
 timestamp_extension(_, long_interface) = ".date".
 timestamp_extension(_, short_interface) = ".date".
 timestamp_extension(_, unqualified_short_interface) = ".date3".
 timestamp_extension(_, intermodule_interface) = ".optdate".
+timestamp_extension(_, analysis_registry) = ".analysis_date".
 timestamp_extension(_, c_code) = ".c_date".
 timestamp_extension(Globals, c_header(_)) = Ext :-
     globals__get_target(Globals, Target),
@@ -952,6 +1024,15 @@ maybe_make_target_message(OutputStream, TargetFile, !IO) :-
             write_target_file(TargetFile),
             io__nl,
             io__set_output_stream(OldOutputStream, _)
+        ), !IO).
+
+maybe_reanalyse_modules_message(!IO) :-
+    io__output_stream(OutputStream, !IO),
+    verbose_msg(
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io__set_output_stream(OutputStream, OldOutputStream, !IO),
+            io__write_string("Reanalysing invalid/suboptimal modules\n", !IO),
+            io__set_output_stream(OldOutputStream, _, !IO)
         ), !IO).
 
 target_file_error(TargetFile, !IO) :-

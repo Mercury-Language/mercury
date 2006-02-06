@@ -270,15 +270,16 @@ unused_args__process_module(!ModuleInfo, !IO) :-
     ;
         MaybeOptFile = no
     ),
-    globals__io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
+    globals__io_lookup_bool_option(make_analysis_registry,
+        MakeAnalysisRegistry, !IO),
     (
-        Intermod = yes,
+        MakeAnalysisRegistry = yes,
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
         list__foldl2(record_intermod_dependencies(!.ModuleInfo),
             PredProcs, AnalysisInfo0, AnalysisInfo, !IO),
         module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
     ;
-        Intermod = no
+        MakeAnalysisRegistry = no
     ),
     globals__io_lookup_bool_option(optimize_unused_args, DoFixup, !IO),
     (
@@ -434,8 +435,16 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
             ;
                 MaybeBestResult = no,
                 % XXX makes too many requests
-                analysis.record_request(analysis_name, PredModuleId, 
-                    FuncId, Call, AnalysisInfo1, AnalysisInfo)
+                globals__io_lookup_bool_option(make_analysis_registry,
+                    MakeAnalysisRegistry, !IO),
+                (
+                    MakeAnalysisRegistry = yes,
+                    analysis.record_request(analysis_name, PredModuleId, 
+                        FuncId, Call, AnalysisInfo1, AnalysisInfo)
+                ;
+                    MakeAnalysisRegistry = no,
+                    AnalysisInfo = AnalysisInfo1
+                )
             ),
             module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
         ;
@@ -987,7 +996,12 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         % XXX: optimal?  If we know some output arguments are not going to be
         % used by the caller then more input arguments could be deduced to be
         % unused.  This analysis doesn't handle that yet.
-        ( procedure_is_exported(!.ModuleInfo, OrigPredInfo, ProcId) ->
+        globals__io_lookup_bool_option(make_analysis_registry,
+            MakeAnalysisRegistry, !IO),
+        ( 
+            MakeAnalysisRegistry = yes,
+            procedure_is_exported(!.ModuleInfo, OrigPredInfo, ProcId)
+        ->
             analysis__record_result(ModuleId, FuncId, Call, Answer, optimal,
                 AnalysisInfo1, AnalysisInfo)
         ;

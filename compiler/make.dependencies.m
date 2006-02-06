@@ -213,7 +213,6 @@ target_dependencies(_, intermodule_interface) =
             short_interface `of` non_intermod_indirect_imports
         ]).
 target_dependencies(_, analysis_registry) = 
-    % XXX not sure about this.
     combine_deps_list([
         source `of` self,
         private_interface `of` parents,
@@ -263,9 +262,11 @@ interface_file_dependencies =
 
 compiled_code_dependencies(Globals) = Deps :-
     globals__lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals__lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
     (
         Intermod = yes,
-        Deps = combine_deps_list([
+        Deps0 = combine_deps_list([
             intermodule_interface `of` self,
             intermodule_interface `of` intermod_imports,
             map_find_module_deps(imports,
@@ -274,7 +275,18 @@ compiled_code_dependencies(Globals) = Deps :-
         ])
     ;
         Intermod = no,
-        Deps = compiled_code_dependencies
+        Deps0 = compiled_code_dependencies
+    ),
+    (
+        IntermodAnalysis = yes,
+        Deps = combine_deps_list([
+            analysis_registry `of` self,
+            analysis_registry `of` direct_imports,
+            Deps0
+        ])
+    ;
+        IntermodAnalysis = no,
+        Deps = Deps0
     ).
 
 :- func compiled_code_dependencies =

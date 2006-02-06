@@ -211,9 +211,10 @@ check_scc_for_exceptions(SCC, !ModuleInfo, !IO) :-
     %
     % Record the analysis results for intermodule analysis.
     %
-    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis, !IO),
+    globals.io_lookup_bool_option(make_analysis_registry,
+        MakeAnalysisRegistry, !IO),
     (
-        IntermodAnalysis = yes,
+        MakeAnalysisRegistry = yes,
         (
             MaybeAnalysisStatus = yes(AnalysisStatus),
             record_exception_analysis_results(Status, AnalysisStatus, SCC,
@@ -224,7 +225,7 @@ check_scc_for_exceptions(SCC, !ModuleInfo, !IO) :-
                 "check_scc_for_exceptions: no analysis status.")
         )
     ;
-        IntermodAnalysis = no
+        MakeAnalysisRegistry = no
     ).
 
     % Check each procedure in the SCC individually.
@@ -985,20 +986,33 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
     Call = any_call,
     lookup_best_result(ModuleId, FuncId, Call, MaybeBestStatus, !AnalysisInfo,
         !IO),
+    globals__io_lookup_bool_option(make_analysis_registry,
+        MakeAnalysisRegistry, !IO),
     (
         MaybeBestStatus = yes({BestCall, exception_analysis_answer(Result),
             AnalysisStatus}),
-        record_dependencies(ModuleId, FuncId, BestCall, ModuleInfo, CallerSCC,
-            !AnalysisInfo)
+        (
+            MakeAnalysisRegistry = yes,
+            record_dependencies(ModuleId, FuncId, BestCall, ModuleInfo,
+                CallerSCC, !AnalysisInfo)
+        ;
+            MakeAnalysisRegistry = no
+        )
     ;
         MaybeBestStatus = no,
         % If we do not have any information about the callee procedure then
         % assume that it throws an exception.
         top(Call) = exception_analysis_answer(Result),
         AnalysisStatus = suboptimal,
-        record_request(analysis_name, ModuleId, FuncId, Call, !AnalysisInfo),
-        record_dependencies(ModuleId, FuncId, Call, ModuleInfo, CallerSCC,
-            !AnalysisInfo)
+        (
+            MakeAnalysisRegistry = yes,
+            record_request(analysis_name, ModuleId, FuncId, Call,
+                !AnalysisInfo),
+            record_dependencies(ModuleId, FuncId, Call, ModuleInfo, CallerSCC,
+                !AnalysisInfo)
+        ;
+            MakeAnalysisRegistry = no
+        )
     ).
 
     % XXX If the procedures in CallerSCC definitely come from the

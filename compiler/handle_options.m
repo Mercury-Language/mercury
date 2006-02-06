@@ -78,6 +78,7 @@
 
 :- implementation.
 
+:- import_module analysis.
 :- import_module libs.compiler_util.
 :- import_module libs.trace_params.
 :- import_module parse_tree.
@@ -120,6 +121,8 @@ handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
             MakeOptimizationInt, !IO),
         globals__io_lookup_bool_option(make_transitive_opt_interface,
             MakeTransOptInt, !IO),
+        globals__io_lookup_bool_option(make_analysis_registry,
+            MakeAnalysisRegistry, !IO),
         globals__io_lookup_bool_option(convert_to_mercury,
             ConvertToMercury, !IO),
         globals__io_lookup_bool_option(typecheck_only, TypecheckOnly, !IO),
@@ -132,7 +135,7 @@ handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
         globals__io_lookup_bool_option(aditi_only, AditiOnly, !IO),
         bool__or_list([GenerateDependencies, GenerateDependencyFile,
             MakeInterface, MakePrivateInterface, MakeShortInterface,
-            MakeOptimizationInt, MakeTransOptInt,
+            MakeOptimizationInt, MakeTransOptInt, MakeAnalysisRegistry,
             ConvertToMercury, TypecheckOnly,
             ErrorcheckOnly, TargetCodeOnly,
             GenerateIL, CompileOnly, AditiOnly],
@@ -747,6 +750,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             smart_recompilation, bool(no), !Globals),
         option_implies(make_transitive_opt_interface,
             smart_recompilation, bool(no), !Globals),
+        option_implies(make_analysis_registry,
+            smart_recompilation, bool(no), !Globals),
         option_implies(errorcheck_only, smart_recompilation, bool(no),
             !Globals),
         option_implies(typecheck_only, smart_recompilation, bool(no),
@@ -852,6 +857,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ;
             true
         ),
+
+        globals__lookup_bool_option(!.Globals, debug_intermodule_analysis,
+            DebugIntermoduleAnalysis),
+        analysis__enable_debug_messages(DebugIntermoduleAnalysis, !IO),
 
         globals__lookup_int_option(!.Globals, dump_hlds_pred_id,
             DumpHLDSPredId),

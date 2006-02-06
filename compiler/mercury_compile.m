@@ -543,6 +543,7 @@ compiling_to_asm(Globals) :-
         generate_dependency_file, make_interface,
         make_short_interface, make_private_interface,
         make_optimization_interface, make_transitive_opt_interface,
+        make_analysis_registry,
         typecheck_only, errorcheck_only],
     BoolList = list__map((func(Opt) = Bool :-
         globals__lookup_bool_option(Globals, Opt, Bool)),
@@ -1438,6 +1439,8 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
             MakeOptInt, !IO),
         globals__io_lookup_bool_option(make_transitive_opt_interface,
             MakeTransOptInt, !IO),
+        globals__io_lookup_bool_option(make_analysis_registry,
+            MakeAnalysisRegistry, !IO),
         ( TypeCheckOnly = yes ->
             FactTableObjFiles = []
         ; ErrorCheckOnly = yes ->
@@ -1459,6 +1462,9 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
             FactTableObjFiles = []
         ; MakeTransOptInt = yes ->
             output_trans_opt_file(HLDS21, !DumpInfo, !IO),
+            FactTableObjFiles = []
+        ; MakeAnalysisRegistry = yes ->
+            output_analysis_file(ModuleName, HLDS21, !DumpInfo, !IO),
             FactTableObjFiles = []
         ;
             mercury_compile_after_front_end(NestedSubModules,
@@ -1507,21 +1513,6 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     % magic sets can report errors.
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors = 0 ->
-        globals__io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
-            !IO),
-        (
-            IntermodAnalysis = yes,
-            module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
-            module_info_get_all_deps(!.HLDS, ImportedModules),
-            ModuleId = module_name_to_module_id(ModuleName),
-            ImportedModuleIds = set.map(module_name_to_module_id,
-                ImportedModules),
-            analysis__write_analysis_files(ModuleId, ImportedModuleIds,
-                AnalysisInfo0, AnalysisInfo, !IO),
-            module_info_set_analysis_info(AnalysisInfo, !HLDS)
-        ;
-            IntermodAnalysis = no
-        ),
         maybe_generate_rl_bytecode(Verbose, MaybeRLFile, !HLDS, !IO),
         (
             ( Target = c
@@ -2196,6 +2187,46 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
     trans_opt__write_optfile(!.HLDS, !IO).
+
+:- pred output_analysis_file(module_name::in,
+    module_info::in, dump_info::in, dump_info::out,
+    io::di, io::uo) is det.
+
+output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
+    globals__io_lookup_bool_option(verbose, Verbose, !IO),
+    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals__io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
+    %
+    % Closure analysis assumes that lambda expressions have
+    % been converted into separate predicates.
+    %
+    (
+        ClosureAnalysis = yes,
+        process_lambdas(Verbose, Stats, !HLDS, !IO)
+    ;
+        ClosureAnalysis = no
+    ),
+    maybe_dump_hlds(!.HLDS, 110, "lambda", !DumpInfo, !IO),
+    maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 117, "closure_analysis", !DumpInfo, !IO),
+    maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 118, "exception_analysis", !DumpInfo, !IO),
+    maybe_termination(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 120, "termination", !DumpInfo, !IO),
+    maybe_termination2(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
+    maybe_unused_args(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
+    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
+
+    module_info_get_analysis_info(!.HLDS, AnalysisInfo),
+    module_info_get_all_deps(!.HLDS, ImportedModules),
+    ModuleId = module_name_to_module_id(ModuleName),
+    ImportedModuleIds = set.map(module_name_to_module_id,
+        ImportedModules),
+    analysis__write_analysis_files(mmc, ModuleId, ImportedModuleIds,
+        AnalysisInfo, _AnalysisInfo, !IO).
 
 :- pred frontend_pass_by_phases(module_info::in, module_info::out,
     bool::out, dump_info::in, dump_info::out, io::di, io::uo) is det.
@@ -3647,10 +3678,13 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     globals__lookup_bool_option(Globals, intermod_unused_args, Intermod),
     globals__lookup_bool_option(Globals, optimize_unused_args, Optimize),
     globals__lookup_bool_option(Globals, warn_unused_args, Warn),
+    globals__lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
     (
         ( Optimize = yes
         ; Warn = yes
         ; Intermod = yes
+        ; IntermodAnalysis = yes
         )
     ->
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
