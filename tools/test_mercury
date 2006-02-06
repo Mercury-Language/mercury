@@ -404,7 +404,7 @@ case $HOST in
 					asm_fast.gc.tr.debug"
 		;;
 	saturn)
-		CONFIG_OPTS=""
+		CONFIG_OPTS="--disable-dotnet-grades"
 		INSTALL_LIBGRADES="asm_fast.gc			\
 					asm_fast.gc.decldebug	\
 					asm_fast.gc.memprof	\
@@ -424,7 +424,7 @@ case $HOST in
 		CONFIG_OPTS="--disable-java-grade --enable-nogc-grades"
 		;;
 	earth)
-		CONFIG_OPTS=""
+		CONFIG_OPTS="--disable-dotnet-grades"
 		INSTALL_LIBGRADES="asm_fast.gc		\
 				asm_fast.gc.tr		\
 				asm_fast.gc.debug.tr 	\
