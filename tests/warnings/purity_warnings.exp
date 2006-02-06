@@ -11,9 +11,15 @@ purity_warnings.m:028:   warning: declared impure but actually semipure.
 purity_warnings.m:036: In call to predicate `io.write_string/3':
 purity_warnings.m:036:   warning: unnecessary `semipure' indicator.
 purity_warnings.m:036:   No purity indicator is necessary.
+purity_warnings.m:034: In predicate `purity_warnings.semipure_pred/2':
+purity_warnings.m:034:   warning: declared semipure but actually pure.
 purity_warnings.m:065: In call to predicate `io.print/3':
 purity_warnings.m:065:   warning: unnecessary `impure' indicator.
 purity_warnings.m:065:   No purity indicator is necessary.
+purity_warnings.m:060: In predicate `purity_warnings.impure_method1a_impl/2':
+purity_warnings.m:060:   warning: declared impure but actually pure.
 purity_warnings.m:071: In call to predicate `io.print/3':
 purity_warnings.m:071:   warning: unnecessary `semipure' indicator.
 purity_warnings.m:071:   No purity indicator is necessary.
+purity_warnings.m:062: In predicate `purity_warnings.semipure_method_a_impl/2':
+purity_warnings.m:062:   warning: declared semipure but actually pure.
