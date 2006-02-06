@@ -129,7 +129,7 @@ process_scc(SCC0, !ModuleInfo, !VarInfo, !Constraints) :-
     %      whether they are produced or consumed.)
     %   3) Adds mode declaration constraints to Constraints
     %   4) Adds goal constraints to Constraints
-    % 
+    %
     % NOTE: it relies on the head variables for any predicate
     % without mode declarations that is called by this one (PredId)
     % to have the constraint variables corresponding to the empty
@@ -279,8 +279,8 @@ pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
     map.lookup(PredConstraintsMap, PredId, PredConstraints),
     FormulaeAndAnnotations = pred_constraints_to_formulae_and_annotations(
         PredConstraints),
-    abstract_mode_constraints.dump_constraints_and_annotations(
-        ConstraintVarset, FormulaeAndAnnotations, !IO),
+    dump_constraints_and_annotations(ConstraintVarset, FormulaeAndAnnotations,
+        !IO),
     list.foldl(pretty_print_proc_constraints(ModuleInfo, ConstraintVarset,
         PredConstraints, PredId), pred_info_all_procids(PredInfo), !IO).
 
@@ -300,8 +300,8 @@ pretty_print_proc_constraints(ModuleInfo, ConstraintVarset, PredConstraints,
         should_module_qualify, proc(PredId, ProcId)) ++ [suffix(":")], !IO),
     FormulaeAndAnnotations =
         proc_constraints_to_formulae_and_annotations(ProcId, PredConstraints),
-    abstract_mode_constraints.dump_constraints_and_annotations(
-        ConstraintVarset, FormulaeAndAnnotations, !IO).
+    dump_constraints_and_annotations(ConstraintVarset, FormulaeAndAnnotations,
+        !IO).
 
 %----------------------------------------------------------------------------%
 :- end_module prop_mode_constraints.

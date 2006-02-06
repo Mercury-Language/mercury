@@ -125,7 +125,7 @@
         proc_constraints    ::  multi_map(proc_id, constraint_and_annotation),
                                 % Stores procedure specific constraints
                                 % such as mode declaration constraints.
-        pred_constraints    ::  assoc_list(constraint_formula, 
+        pred_constraints    ::  assoc_list(constraint_formula,
                                     constraint_annotation)
                                 % Stores constraints that apply to all
                                 % procedures of the predicate -
@@ -154,46 +154,35 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Initialises all the parts of a pred_p_c_constraints type.
-    %
-:- pred abstract_mode_constraints.init(pred_p_c_constraints::out) is det.
-
     % Function version if init/1.
     %
-:- func abstract_mode_constraints.init = pred_p_c_constraints.
+:- func init = pred_p_c_constraints.
 
     % add_constraint(Formula, !PredConstraints) adds the constraint
     % given by Formula to the constraint system in PredConstraints.
     %
-:- pred abstract_mode_constraints.add_constraint(prog_context::in,
-    constraint_formula::in, pred_p_c_constraints::in,
-    pred_p_c_constraints::out) is det.
-
-    % Function version of add_constraint/3.
-    %
-:- func abstract_mode_constraints.add_constraint(prog_context,
-    constraint_formula, pred_p_c_constraints) = pred_p_c_constraints.
+:- pred add_constraint(prog_context::in, constraint_formula::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
     % Adds a procedure specific constraint to the system.
     %
-:- pred abstract_mode_constraints.add_constraint(prog_context::in, proc_id::in,
-    constraint_formula::in, pred_p_c_constraints::in,
-    pred_p_c_constraints::out) is det.
+:- pred add_constraint(prog_context::in, proc_id::in, constraint_formula::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
     % pred_constraints_to_formulae rips the barebones
     % constraints (those that apply to all procedures of a
     % predicate) out of the pred_p_c_constraints structure
     % and returns them as a list of constraint formulae.
     %
-:- func abstract_mode_constraints.pred_constraints_to_formulae(
-    pred_p_c_constraints) = constraint_formulae.
+:- func pred_constraints_to_formulae(pred_p_c_constraints)
+    = constraint_formulae.
 
     % pred_constraints_to_formulae/2 returns all constraints that
     % apply to the given procedure from the pred_p_c_constraints,
     % including constraints that apply to all procedures.
     %
-:- func abstract_mode_constraints.pred_constraints_to_formulae(
-    proc_id, pred_p_c_constraints) = constraint_formulae.
+:- func pred_constraints_to_formulae(proc_id, pred_p_c_constraints)
+    = constraint_formulae.
 
     % pred_constraints_to_formulae_and_annotations returns constraints
     % that apply to all procedures of a predicate as a list of pairs of
@@ -208,16 +197,16 @@
     % procedures, with their constraint annotations, in pairs.
     %
 :- func pred_constraints_to_formulae_and_annotations(proc_id,
-    pred_p_c_constraints) = assoc_list(constraint_formula,
-    constraint_annotation).
+    pred_p_c_constraints)
+    = assoc_list(constraint_formula, constraint_annotation).
 
     % proc_constraints_to_formulae_and_annotations(ProcId, PredConstraints)
     % returns constraints that apply specifically to the given
     % procedure (but not constraints that apply to all procedures).
     %
 :- func proc_constraints_to_formulae_and_annotations(proc_id,
-    pred_p_c_constraints) = assoc_list(constraint_formula,
-    constraint_annotation).
+    pred_p_c_constraints)
+    = assoc_list(constraint_formula, constraint_annotation).
 
 %-----------------------------------------------------------------------------%
 
@@ -225,15 +214,15 @@
     % Constraints. Context should be the context of the goal or
     % declaration that imposed this constraint.
     %
-:- pred equiv_no(prog_context::in, mc_var::in, pred_p_c_constraints::in,
-    pred_p_c_constraints::out) is det.
+:- pred equiv_no(prog_context::in, mc_var::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
     % equivalent(Context, MCVars, !Constraints) constrains MCVars in
     % Constraints to all take the same value. Context should be the context of
     % the goal or declaration that imposed this constraint.
     %
-:- pred equivalent(prog_context::in, list(mc_var)::in, pred_p_c_constraints::in,
-    pred_p_c_constraints::out) is det.
+:- pred equivalent(prog_context::in, list(mc_var)::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
     % equiv_disj(Context, X, Ys, !Constraints) constrains X and Ys in
     % Constraints such that (X <-> disj(Ys)) - ie if X is true at least one of
@@ -270,8 +259,8 @@
     % one of them to be true. Context should be the context of the goal or
     % declaration that imposed this constraint.
     %
-:- pred xor(prog_context::in, mc_var::in, mc_var::in, pred_p_c_constraints::in,
-    pred_p_c_constraints::out) is det.
+:- pred xor(prog_context::in, mc_var::in, mc_var::in,
+    pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -285,35 +274,23 @@
 
 %-----------------------------------------------------------------------------%
 
-    % `unit'-like type used to distinguish mode constraint variables.
+    % Dummy type used to distinguish mode constraint variables.
     %
 :- type mc_type ---> mc_type.
 
     % Initialises all the parts of a mode_constraints_info type.
     %
-abstract_mode_constraints.init(pred_constraints(multi_map.init, [])).
-
-    % See the predicate version.
-    %
-abstract_mode_constraints.init = PredConstraints :-
-    abstract_mode_constraints.init(PredConstraints).
+init = pred_constraints(multi_map.init, []).
 
     % add_constraint(Formula, !PredConstraints) adds the constraint
     % given by Formula to the constraint system in PredConstraints.
     %
-abstract_mode_constraints.add_constraint(Context,
-    ConstraintFormula, !PredConstraints) :-
+add_constraint(Context, ConstraintFormula, !PredConstraints) :-
     AllProcsConstraints = !.PredConstraints ^ pred_constraints,
     ConstraintAnnotation = constraint_annotation(Context),
     FormulaAndAnnotation = pair(ConstraintFormula, ConstraintAnnotation),
     !:PredConstraints = !.PredConstraints ^ pred_constraints :=
         list.cons(FormulaAndAnnotation, AllProcsConstraints).
-
-
-    % Functional version of add_constraint/3.
-    %
-abstract_mode_constraints.add_constraint(Ctxt, CF, PCs0) = PCs :-
-    abstract_mode_constraints.add_constraint(Ctxt, CF, PCs0, PCs).
 
     % add_constraint(Context, ProcId, Formula, !PredConstraints) adds the
     % constraint given by Formula to the constraint system in
@@ -324,7 +301,6 @@ add_constraint(Context, ProcId, ConstraintFormula, !PredConstraints) :-
     ProcConstraints = !.PredConstraints ^ proc_constraints,
     ConstraintAnnotation = constraint_annotation(Context),
     FormulaAndAnnotation = pair(ConstraintFormula, ConstraintAnnotation),
-    
     !:PredConstraints = !.PredConstraints ^ proc_constraints :=
         multi_map.add(ProcConstraints, ProcId, FormulaAndAnnotation).
 
@@ -372,27 +348,27 @@ proc_constraints_to_formulae_and_annotations(ProcId, PredConstraints) =
 %
 
 equiv_no(Context, MCVar, !Constraints) :-
-    abstract_mode_constraints.add_constraint(Context,
-        atomic_constraint(equiv_bool(MCVar, no)), !Constraints).
+    add_constraint(Context, atomic_constraint(equiv_bool(MCVar, no)),
+        !Constraints).
 
 equivalent(Context, MCVars, !Constraints) :-
-    abstract_mode_constraints.add_constraint(Context,
-        atomic_constraint(equivalent(MCVars)), !Constraints).
+    add_constraint(Context, atomic_constraint(equivalent(MCVars)),
+        !Constraints).
 
 equiv_disj(Context, X, Ys, !Constraints) :-
-    abstract_mode_constraints.add_constraint(Context,
-        atomic_constraint(equiv_disj(X, Ys)), !Constraints).
+    add_constraint(Context, atomic_constraint(equiv_disj(X, Ys)),
+        !Constraints).
 
 at_most_one(Context, MCVars, !Constraints) :-
-    abstract_mode_constraints.add_constraint(Context,
-        atomic_constraint(at_most_one(MCVars)), !Constraints).
+    add_constraint(Context, atomic_constraint(at_most_one(MCVars)),
+        !Constraints).
 
 not_both(Context, A, B, !Constraints) :-
     at_most_one(Context, [A, B], !Constraints).
 
 exactly_one(Context, MCVars, !Constraints) :-
-    abstract_mode_constraints.add_constraint(Context,
-        atomic_constraint(exactly_one(MCVars)), !Constraints).
+    add_constraint(Context, atomic_constraint(exactly_one(MCVars)),
+        !Constraints).
 
 xor(Context, A, B, !Constraints) :-
     exactly_one(Context, [A, B], !Constraints).
@@ -425,19 +401,15 @@ dump_constraints(Varset, Indent, Annotation, Constraints, !IO) :-
 
 dump_constraint(Varset, Indent, Annotation, disj(Constraints), !IO) :-
     Context = context(Annotation),
-    write_error_pieces_maybe_with_context(yes(Context), Indent,
-        [words("disj(")], !IO),
+    write_error_pieces(Context, Indent, [words("disj(")], !IO),
     dump_constraints(Varset, Indent+1, Annotation, Constraints, !IO),
-    write_error_pieces_maybe_with_context(yes(Context), Indent,
-        [words(") end disj")], !IO).
+    write_error_pieces(Context, Indent, [words(") end disj")], !IO).
 
 dump_constraint(Varset, Indent, Annotation, conj(Constraints), !IO) :-
     Context = context(Annotation),
-    write_error_pieces_maybe_with_context(yes(Context), Indent,
-        [words("conj(")], !IO),
+    write_error_pieces(Context, Indent, [words("conj(")], !IO),
     dump_constraints(Varset, Indent+1, Annotation, Constraints, !IO),
-    write_error_pieces_maybe_with_context(yes(Context), Indent,
-        [words(") end conj")], !IO).
+    write_error_pieces(Context, Indent, [words(") end conj")], !IO).
 
 dump_constraint(Varset, Indent, Annotation, atomic_constraint(Constraint),
         !IO) :-
@@ -452,22 +424,20 @@ dump_var_constraint(Varset, Indent, Annotation, equiv_bool(X, Val), !IO) :-
     mc_var_list_to_string(Varset, [X], VarName),
     mc_var_val_to_string(Val, ValString),
     Context = context(Annotation),
-
-    write_error_pieces_maybe_with_context(yes(Context), Indent,
+    write_error_pieces(Context, Indent,
         [words(VarName ++ " = " ++ ValString)], !IO).
 
 dump_var_constraint(Varset, Indent, Annotation, equivalent(Xs), !IO) :-
     mc_var_list_to_string(Varset, Xs, VarsString),
     Context = context(Annotation),
-    write_error_pieces_maybe_with_context(yes(Context), Indent,
+    write_error_pieces(Context, Indent,
         [words("equivalent(" ++ VarsString ++ ")")], !IO).
 
 dump_var_constraint(Varset, Indent, Annotation, implies(X, Y), !IO) :-
     mc_var_list_to_string(Varset, [X], XName),
     mc_var_list_to_string(Varset, [Y], YName),
     Context = context(Annotation),
-
-    write_error_pieces_maybe_with_context(yes(Context), Indent,
+    write_error_pieces(Context, Indent,
         [words(XName ++ " -> " ++ YName)], !IO).
 
 dump_var_constraint(Varset, Indent, Annotation, equiv_disj(X, Xs), !IO) :-
@@ -475,20 +445,19 @@ dump_var_constraint(Varset, Indent, Annotation, equiv_disj(X, Xs), !IO) :-
     mc_var_list_to_string(Varset, Xs, XsString),
     Context = context(Annotation),
     Pieces = [words(XName ++ " <-> disj(" ++ XsString ++ ")")],
-    
-    write_error_pieces_maybe_with_context(yes(Context), Indent, Pieces, !IO).
+    write_error_pieces(Context, Indent, Pieces, !IO).
 
 dump_var_constraint(Varset, Indent, Annotation, at_most_one(Xs), !IO) :-
     mc_var_list_to_string(Varset, Xs, XsString),
     Pieces = [words("at_most_one(" ++ XsString ++ ")")],
     Context = context(Annotation),
-    write_error_pieces_maybe_with_context(yes(Context), Indent, Pieces, !IO).
+    write_error_pieces(Context, Indent, Pieces, !IO).
 
 dump_var_constraint(Varset, Indent, Annotation, exactly_one(Xs), !IO) :-
     mc_var_list_to_string(Varset, Xs, XsString),
     Pieces = [words("exactly_one(" ++ XsString ++ ")")],
     Context = context(Annotation),
-    write_error_pieces_maybe_with_context(yes(Context), Indent, Pieces, !IO).
+    write_error_pieces(Context, Indent, Pieces, !IO).
 
     % mc_var_list_to_string(Varset, MCVars, MCVarsString)
     % Makes a comma separated list of MCVars as a string.
@@ -510,7 +479,6 @@ mc_var_list_to_string(Varset, [MCVar1, MCVar2 | MCVars],
 
 mc_var_val_to_string(yes, "yes").
 mc_var_val_to_string(no, "no").
-
 
 %-----------------------------------------------------------------------------%
 %
@@ -635,17 +603,19 @@ pretty_print_solutions(VarSet, Solutions, !IO) :-
 pretty_print_bindings(VarSet, Bindings, N, N + 1, !IO) :-
     io.write_string("Solution " ++ string.from_int(N) ++ ":\n{\n", !IO),
     Variables = map.keys(Bindings),
-    list.foldl((pred(Var::in, IO0::di, IO::uo) is det :-
-            io.write_string("    ", IO0, IO1),
-            io.write_string(varset.lookup_name(VarSet, Var), IO1, IO2),
-            io.write_string(" = ", IO2, IO3),
-            map.lookup(Bindings, Var, Value),
-            io.print(Value, IO3, IO4),
-            io.nl(IO4, IO)
-        ),
-        Variables, !IO),
+    list.foldl(pretty_print_binding(VarSet, Bindings), Variables, !IO),
     io.write_string("}\n", !IO).
 
+:- pred pretty_print_binding(mc_varset::in, mc_bindings::in, mc_var::in,
+    io::di, io::uo) is det.
+
+pretty_print_binding(VarSet, Bindings, Var, !IO) :-
+    io.write_string("    ", !IO),
+    io.write_string(varset.lookup_name(VarSet, Var), !IO),
+    io.write_string(" = ", !IO),
+    map.lookup(Bindings, Var, Value),
+    io.print(Value, !IO),
+    io.nl(!IO).
 
 %----------------------------------------------------------------------------%
 :- end_module abstract_mode_constraints.

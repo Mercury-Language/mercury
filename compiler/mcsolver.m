@@ -13,7 +13,7 @@
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Fri Dec 31 14:45:18 EST 2004
 %
-% A constraint solver targetted specifically at David Overton's 
+% A constraint solver targetted specifically at David Overton's
 % constraint-based mode analysis.
 %
 %-----------------------------------------------------------------------------%
@@ -28,11 +28,9 @@
 :- import_module list.
 :- import_module std_util.
 
-
-
+    % Convenient abbreviations.
 :- type var == abstract_mode_constraints.mc_var.
 :- type vars == list(var).
-    % Convenient abbreviations
 
     % Structure in which to collect constraints.
     %
@@ -42,8 +40,6 @@
     %
 :- type solver_cstrts.
 
-
-
     % We start by collecting our constraints together in a prep_cstrts
     % structure, before preparing them for the solver.
     %
@@ -52,8 +48,8 @@
     % Prepares the constraints described in abstract_mode_constraints.m
     % appropriately.
     %
-:- pred prepare_abstract_constraints(constraint_formulae::in, prep_cstrts::in,
-    prep_cstrts::out) is det.
+:- pred prepare_abstract_constraints(constraint_formulae::in,
+    prep_cstrts::in, prep_cstrts::out) is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
@@ -89,7 +85,7 @@
     % rather than this predicate.
     %
 :- pred equivalent_to_disjunction(var::in, vars::in,
-        prep_cstrts::in, prep_cstrts::out) is det.
+    prep_cstrts::in, prep_cstrts::out) is det.
 
     % NOTE: where possible, prepare_abstract_constraints/3 should be used
     % rather than this predicate.
@@ -115,7 +111,6 @@
     %
 :- pred solve(solver_cstrts::in, mc_bindings::out) is nondet.
 
-
     % For debugging purposes only.
 % :- pred main(io :: di, io :: uo) is det.
 
@@ -137,7 +132,6 @@
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
-
 
     % Assignment constraints.
     %
@@ -194,7 +188,7 @@
             ).
 
     % This type just holds the various constraints passed to
-    % the solver.  We separate constraints into four classes: 
+    % the solver.  We separate constraints into four classes:
     %
     % - necessary equivalences are handled by renaming vars in
     %   an equivalence class to a single member of the equivalence
@@ -267,8 +261,8 @@ prepare_abstract_constraint(disj(Formulae), !PCs) :-
     % Prepares an atomic constraint (as described in
     % abstract_mode_constraints.m) appropriately.
     %
-:- pred prepare_var_constraint(var_constraint::in, prep_cstrts::in,
-    prep_cstrts::out) is det.
+:- pred prepare_var_constraint(var_constraint::in,
+    prep_cstrts::in, prep_cstrts::out) is det.
 
 prepare_var_constraint(equiv_bool(Var, Value), !PCs) :-
     assign(Var, Value, !PCs).
@@ -292,7 +286,7 @@ prepare_var_constraint(exactly_one(Vars), !PCs) :-
 
 equivalent(X, Y, PCs0, PCs) :-
     PCs = PCs0 ^ prep_eqv_vars :=
-            ensure_equivalence(PCs0 ^ prep_eqv_vars, X, Y).
+        ensure_equivalence(PCs0 ^ prep_eqv_vars, X, Y).
 
 %-----------------------------------------------------------------------------%
 
@@ -332,39 +326,50 @@ assign(X, V, PCs0, PCs) :-
 %-----------------------------------------------------------------------------%
 
 equivalent_to_disjunction(X, Ys, PCs0, PCs) :-
-    ( if      Ys = []  then
+    (
+        Ys = [],
         assign(X, no, PCs0, PCs)
-      else if Ys = [Y] then
+    ;
+        Ys = [Y],
         equivalent(X, Y, PCs0, PCs)
-      else
+    ;
+        Ys = [_, _ | _],
         PCs = PCs0 ^ prep_complex_cstrts :=
-                [eqv_disj(X, Ys) | PCs0 ^ prep_complex_cstrts]
+            [eqv_disj(X, Ys) | PCs0 ^ prep_complex_cstrts]
     ).
 
 %-----------------------------------------------------------------------------%
 
 at_most_one(Xs, PCs0, PCs) :-
-    ( if Xs = [X, Y] then
-        not_both(X, Y, PCs0, PCs)
-      else if Xs = [_, _, _ | _] then
-        PCs = PCs0 ^ prep_complex_cstrts :=
-                [at_most_one(Xs) | PCs0 ^ prep_complex_cstrts]
-      else
+    (
+        Xs = [],
         PCs = PCs0
+    ;
+        Xs = [_],
+        PCs = PCs0
+    ;
+        Xs = [X, Y],
+        not_both(X, Y, PCs0, PCs)
+    ;
+        Xs = [_, _, _ | _],
+        PCs = PCs0 ^ prep_complex_cstrts :=
+            [at_most_one(Xs) | PCs0 ^ prep_complex_cstrts]
     ).
 
 %-----------------------------------------------------------------------------%
 
 exactly_one(Xs, PCs0, PCs) :-
-    ( if Xs = [X] then
-        assign(X, yes, PCs0, PCs)
-      else if Xs = [_, _ | _] then
-        PCs = PCs0 ^ prep_complex_cstrts :=
-                [exactly_one(Xs) | PCs0 ^ prep_complex_cstrts]
-      else
+    (
+        Xs = [],
         PCs = PCs0
+    ;
+        Xs = [X],
+        assign(X, yes, PCs0, PCs)
+    ;
+        Xs = [_, _ | _],
+        PCs = PCs0 ^ prep_complex_cstrts :=
+            [exactly_one(Xs) | PCs0 ^ prep_complex_cstrts]
     ).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -415,7 +420,7 @@ make_solver_cstrts(PCs) = SCs:-
     ComplexCstrtsMap =
         list.foldl(
             func(ComplexCstrt, CCM) =
-                foldl(  
+                foldl(
                     func(Z, CCMa) = multi_map.set(CCMa, Z, ComplexCstrt),
                     complex_cstrt_vars(ComplexCstrt),
                     CCM
@@ -454,7 +459,6 @@ make_solver_cstrts(PCs) = SCs:-
         %
     SCs = solver_cstrts(AllVars, Eqvs, Assgts, PropGraph, ComplexCstrtsMap).
 
-
     % eqv_var(Eqvs, Var) returns a representative member of all the
     % variables equivalent to Var (in Eqvs)
     %
@@ -478,10 +482,9 @@ complex_cstrt_vars(exactly_one(Xs)) = Xs.
 complex_cstrt_vars(disj_of_assgts(Assgtss)) =
     list.foldl(list.foldl(func((V == _), Vs) = [V | Vs]), Assgtss, []).
 
-
     % Replaces all the variables in the supplied constraint with
-    % a representative variable from those constrained to be
-    % equivalent to the original.
+    % a representative variable from those constrained to be equivalent
+    % to the original.
     %
 :- func eqv_complex_cstrt(eqv_vars, complex_cstrt) = complex_cstrt.
 
@@ -509,7 +512,6 @@ solve(SCs, Bindings) :-
     bind_equivalent_vars(SCs, Bindings0, Bindings).
 %     unsafe.io(nl).
 
-
     % solve(SCs, Bs0, Bs) succeeds if Bs satisfies the constraints SCs,
     % given that Bs0 is known to not conflict with any of the constraints
     % in SCs.
@@ -520,11 +522,11 @@ solve(SCs, Bs0, Bs) :-
     solve_assgts(SCs, SCs ^ assgts, Bs0, Bs1),
     solve_vars(SCs, SCs ^ vars, Bs1, Bs).
 
-    % Propagates the binding for every variable that has been
-    % solved for to every variable it is equivalent to.
+    % Propagates the binding for every variable that has been solved for
+    % to every variable it is equivalent to.
     %
-:- pred bind_equivalent_vars(solver_cstrts::in, mc_bindings::in,
-    mc_bindings::out) is det.
+:- pred bind_equivalent_vars(solver_cstrts::in,
+    mc_bindings::in, mc_bindings::out) is det.
 
 bind_equivalent_vars(SCs, !Bindings) :-
     Equivalences = SCs ^ eqv_vars,
@@ -555,17 +557,16 @@ bind_all(Vars, Val, !Bindings) :-
     % binding in Assgts, propagating the results when called for.
     %
 :- pred solve_assgts(solver_cstrts::in, assgts::in,
-        mc_bindings::in, mc_bindings::out) is semidet.
+    mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_assgts(SCs, Assgts, Bs0, Bs) :-
     list.foldl(solve_assgt(SCs), Assgts, Bs0, Bs).
 
-
     % solve_assgt(SCs, (X == V), Bs0, Bs) attempts to bind variable X
     % to value V. It propagates the results if it succeeds.
     %
-:- pred solve_assgt(solver_cstrts::in, assgt::in, mc_bindings::in,
-    mc_bindings::out) is semidet.
+:- pred solve_assgt(solver_cstrts::in, assgt::in,
+    mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_assgt(SCs, (X == V), Bs0, Bs) :-
     ( if Bs0 ^ elem(X) = V0 then
@@ -591,25 +592,23 @@ solve_assgt(SCs, (X == V), Bs0, Bs) :-
 %-----------------------------------------------------------------------------%
 
     % solve_complex_cstrts(SCs, X, V, ComplexCstrts, Bs0, Bs) succeeds
-    % if the binding (X == V) (which should already have been added to
-    % Bs0) is consistant with the complex constraints variable X
-    % participates in in SCs. It also propagates results where
-    % appropriate.
+    % if the binding (X == V) (which should already have been added to Bs0)
+    % is consistant with the complex constraints variable X participates
+    % in SCs. It also propagates results where appropriate.
     %
 :- pred solve_complex_cstrts(solver_cstrts::in, var::in, bool::in,
-        complex_cstrts::in, mc_bindings::in, mc_bindings::out) is semidet.
+    complex_cstrts::in, mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_complex_cstrts(SCs, X, V, ComplexCstrts, Bs0, Bs) :-
     list.foldl(solve_complex_cstrt(SCs, X, V), ComplexCstrts, Bs0, Bs).
 
     % solve_complex_cstrt(SCs, X, V, ComplexCstrt, Bs0, Bs) succeeds
-    % if the binding (X == V) (which should already have been added to
-    % Bs0) is consistant with ComplexCstrt (in which X should
-    % participate in in SCs). It also propagates results where
-    % appropriate.
+    % if the binding (X == V) (which should already have been added to Bs0)
+    % is consistant with ComplexCstrt (in which X should participate in SCs).
+    % It also propagates results where appropriate.
     %
 :- pred solve_complex_cstrt(solver_cstrts::in, var::in, bool::in,
-        complex_cstrt::in, mc_bindings::in, mc_bindings::out) is semidet.
+    complex_cstrt::in, mc_bindings::in, mc_bindings::out) is semidet.
 
 solve_complex_cstrt(SCs, X, V, eqv_disj(Y, Zs), Bs0, Bs) :-
     ( if X = Y then
@@ -651,9 +650,8 @@ solve_complex_cstrt(SCs, X, V, at_most_one(Ys0), Bs0, Bs) :-
 solve_complex_cstrt(SCs, X, V, exactly_one(Ys0), Bs0, Bs) :-
     (
         V  = no,
-
-        % A variable in Ys0 uniquely not bound to 'no' is bound to
-        % yes. Fails if all Ys0 are 'no'.
+        % A variable in Ys0 uniquely not bound to 'no' is bound to yes.
+        % Fails if all Ys0 are 'no'.
         Ys = list.filter(
             (pred(Y0::in) is semidet :- not map.search(Bs0, Y0, no)), Ys0),
         (
@@ -670,7 +668,7 @@ solve_complex_cstrt(SCs, X, V, exactly_one(Ys0), Bs0, Bs) :-
     ).
 
 solve_complex_cstrt(SCs, X, V, disj_of_assgts(Assgtss), Bs0, Bs) :-
-    % Filter for the assignments compatable with binding X to V
+    % Filter for the assignments compatible with binding X to V.
     list.filter(
         (pred(Assgts::in) is semidet :-
             list.member((X == bool.not(V)), Assgts)
@@ -688,7 +686,6 @@ solve_complex_cstrt(SCs, X, V, disj_of_assgts(Assgtss), Bs0, Bs) :-
         NotConflicting = [_, _ | _],
         Bs = Bs0
     ).
-    
 
 %-----------------------------------------------------------------------------%
 
@@ -719,15 +716,14 @@ ComplexCstrtMap ^ var_complex_cstrts(X) =
     % to each of Vars and propagates results, looking for a solution
     % to SCs.
     %
-:- pred solve_vars(solver_cstrts::in, vars::in, mc_bindings::in,
-    mc_bindings::out) is nondet.
+:- pred solve_vars(solver_cstrts::in, vars::in,
+    mc_bindings::in, mc_bindings::out) is nondet.
 
 solve_vars(SCs, Vars, Bs0, Bs) :-
     list.foldl(solve_var(SCs), Vars, Bs0, Bs).
 
-
-:- pred solve_var(solver_cstrts::in, var::in, mc_bindings::in,
-    mc_bindings::out) is nondet.
+:- pred solve_var(solver_cstrts::in, var::in,
+    mc_bindings::in, mc_bindings::out) is nondet.
 
 solve_var(SCs, X, Bs0, Bs) :-
     ( if contains(Bs0, X) then
@@ -749,7 +745,6 @@ all_yes(Bs, [X | Xs]) :-
     Bs ^ elem(X) = yes,
     all_yes(Bs, Xs).
 
-
     % all_no(Bs, Xs) succeeds if Bs indicates all Xs are bound to no
     %
 :- pred all_no(mc_bindings::in, vars::in) is semidet.
@@ -762,9 +757,9 @@ all_no(Bs, [X | Xs]) :-
 %-----------------------------------------------------------------------------%
 
 % main(!IO) :-
-% 
+%
 %     NameBindingss = solutions(solve(append_simple)),
-% 
+%
 %     io.nl(!IO),
 %     io.write_list(NameBindingss, "\n\n", io.print, !IO),
 %     io.nl(!IO).
