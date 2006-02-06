@@ -83,10 +83,11 @@ case "$BRANCH" in
 		# twice during the week and once on the weekend.
 		# During the week, test the main branch.
 		# On the weekend, test the release branch.
-		case `date '+%w'` in
-			0|6)	BRANCH=$release_branch ;;
-			*)	BRANCH=latest ;;
-		esac
+		#case `date '+%w'` in
+		#	0|6)	BRANCH=$release_branch ;;
+		#	*)	BRANCH=latest ;;
+		#esac
+		BRANCH=latest
 		;;
 	    aral)
 		# Aral has limited disk space, and not having to expend it
