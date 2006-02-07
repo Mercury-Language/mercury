@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: compile_target_code.m
-% Main authors: fjh, stayl
-%
+
+% File: compile_target_code.m.
+% Main authors: fjh, stayl.
+
 % Code to compile the generated `.c', `.s', `.o', etc, files.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs__compile_target_code.
@@ -182,11 +182,13 @@ il_assemble(ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
     % so we always need to build the dll.
     %
     il_assemble(ErrorStream, IL_File, DllFile, no_main, DllSucceeded, !IO),
-    ( HasMain = has_main ->
+    ( 
+        HasMain = has_main,
         module_name_to_file_name(ModuleName, ".exe", yes, ExeFile, !IO),
         il_assemble(ErrorStream, IL_File, ExeFile, HasMain, ExeSucceeded, !IO),
         Succeeded = DllSucceeded `and` ExeSucceeded
     ;
+        HasMain = no_main,
         Succeeded = DllSucceeded
     ).
 
@@ -221,9 +223,11 @@ il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Succeeded, !IO) :-
         Debug = no,
         DebugOpt = ""
     ),
-    ( HasMain = has_main ->
+    ( 
+        HasMain = has_main,
         TargetOpt = ""
     ;
+        HasMain = no_main,
         TargetOpt = "/dll "
     ),
     string__append_list([ILASM, " ", SignOpt, VerboseOpt, DebugOpt,
@@ -278,7 +282,7 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
     join_string_list(CSCFlagsList, "", "", " ", CSCFlags),
 
     % XXX This is because the MS C# compiler doesn't understand
-    % / as a directory seperator.
+    % / as a directory separator.
     CSharpFileName = string__replace_all(CSharpFileName0, "/", "\\\\"),
 
     globals__io_lookup_bool_option(target_debug, Debug, !IO),
@@ -1269,9 +1273,11 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
         ->
             globals__io_lookup_accumulating_option(
                 runtime_link_library_directories, RpathDirs, !IO),
-            ( RpathDirs = [] ->
+            ( 
+                RpathDirs = [],
                 RpathOpts = ""
             ;
+                RpathDirs = [_|_],
                 globals__io_lookup_string_option(RpathSepOpt, RpathSep, !IO),
                 globals__io_lookup_string_option(RpathFlagOpt, RpathFlag, !IO),
                 RpathOpts0 = string__join_list(RpathSep, RpathDirs),
@@ -1512,10 +1518,12 @@ get_system_libs(TargetType, SystemLibs, !IO) :-
     ;
         globals__io_lookup_string_option(trace_libs, SystemTraceLibs0, !IO),
         globals__io_lookup_bool_option(use_readline, UseReadline, !IO),
-        ( UseReadline = yes ->
+        (
+            UseReadline = yes,
             globals__io_lookup_string_option(readline_libs, ReadlineLibs, !IO),
             SystemTraceLibs = SystemTraceLibs0 ++ " " ++ ReadlineLibs
         ;
+            UseReadline = no,
             SystemTraceLibs = SystemTraceLibs0
         )
     ),
