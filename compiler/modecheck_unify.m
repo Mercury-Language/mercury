@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,6 +67,8 @@
 :- import_module hlds.make_hlds.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_mode.
@@ -648,7 +650,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 
     %
     % Optimize away construction of unused terms by replacing the unification
-    % with `true'. Optimize % away unifications which always fail by replacing
+    % with `true'. Optimize away unifications which always fail by replacing
     % them with `fail'.
     %
     (
@@ -666,17 +668,24 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % Unifying two preds is not erroneous as far as the mode checker
         % is concerned, but a mode _error_.
         Goal = disj([]),
-        InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
+        globals__io_lookup_bool_option(warn_unification_cannot_succeed,
+            WarnCannotSucceed, !IO),
         (
-            InitMayHaveSubtype = yes
-            % Suppress the warning, since the unification may succeed
-            % in another mode in which the initial inst of X,
-            % or of another head variable that is unified with it,
-            % is not so constrained.
+            WarnCannotSucceed = yes,
+            InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
+            (
+                InitMayHaveSubtype = yes
+                % Suppress the warning, since the unification may succeed
+                % in another mode in which the initial inst of X,
+                % or of another head variable that is unified with it,
+                % is not so constrained.
+            ;
+                InitMayHaveSubtype = no,
+                Warning = cannot_succeed_var_functor(X, InstOfX, ConsId),
+                mode_info_warning(Warning, !ModeInfo)
+            )
         ;
-            InitMayHaveSubtype = no,
-            Warning = cannot_succeed_var_functor(X, InstOfX, ConsId),
-            mode_info_warning(Warning, !ModeInfo)
+            WarnCannotSucceed = no
         )
     ;
         Functor = functor(ConsId, IsExistConstruction, ArgVars),
@@ -956,19 +965,28 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         % Unifying two preds is not erroneous as far as the
         % mode checker is concerned, but a mode _error_.
         Unify = disj([]),
-        InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals__lookup_bool_option(Globals, warn_unification_cannot_succeed,
+            WarnCannotSucceed),
         (
-            InitMayHaveSubtype = yes
-            % Suppress the warning, since the unification may succeed
-            % in another mode in which the initial inst of X or Y,
-            % or of another head variable that is unified with one of them,
-            % is not so constrained.
+            WarnCannotSucceed = yes,
+            InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
+            (
+                InitMayHaveSubtype = yes
+                % Suppress the warning, since the unification may succeed
+                % in another mode in which the initial inst of X or Y,
+                % or of another head variable that is unified with one of them,
+                % is not so constrained.
+            ;
+                InitMayHaveSubtype = no,
+                mode_get_insts(ModuleInfo0, ModeOfX, InstOfX, _),
+                mode_get_insts(ModuleInfo0, ModeOfY, InstOfY, _),
+                Warning = cannot_succeed_var_var(X, Y, InstOfX, InstOfY),
+                mode_info_warning(Warning, !ModeInfo)
+            )
         ;
-            InitMayHaveSubtype = no,
-            mode_get_insts(ModuleInfo0, ModeOfX, InstOfX, _),
-            mode_get_insts(ModuleInfo0, ModeOfY, InstOfY, _),
-            Warning = cannot_succeed_var_var(X, Y, InstOfX, InstOfY),
-            mode_info_warning(Warning, !ModeInfo)
+            WarnCannotSucceed = no
         )
     ;
         Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification, UnifyContext)

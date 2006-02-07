@@ -93,6 +93,7 @@
     ;       warn_missing_trans_opt_files
     ;       warn_missing_trans_opt_deps
     ;       warn_non_stratification
+    ;       warn_unification_cannot_succeed
     ;       warn_simple_code
     ;       warn_duplicate_calls
     ;       warn_missing_module_name
@@ -843,6 +844,7 @@ option_defaults_2(warning_option, [
     warn_missing_opt_files              -   bool(yes),
     warn_missing_trans_opt_files        -   bool(no),
     warn_missing_trans_opt_deps         -   bool(yes),
+    warn_unification_cannot_succeed     -   bool(yes),
     warn_simple_code                    -   bool(yes),
     warn_duplicate_calls                -   bool(no),
     warn_missing_module_name            -   bool(yes),
@@ -1545,6 +1547,8 @@ long_option("warn-non-stratification",  warn_non_stratification).
 long_option("warn-missing-opt-files",   warn_missing_opt_files).
 long_option("warn-missing-trans-opt-files", warn_missing_trans_opt_files).
 long_option("warn-missing-trans-opt-deps",  warn_missing_trans_opt_deps).
+long_option("warn-unification-cannot-succeed",
+                    warn_unification_cannot_succeed).
 long_option("warn-simple-code",         warn_simple_code).
 long_option("warn-duplicate-calls",     warn_duplicate_calls).
 long_option("warn-missing-module-name", warn_missing_module_name).
@@ -2327,6 +2331,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0,
             warn_missing_opt_files          -   bool(Enable),
             warn_missing_trans_opt_files    -   bool(Enable),
             warn_missing_trans_opt_deps     -   bool(Enable),
+            warn_unification_cannot_succeed -   bool(Enable),
             warn_simple_code                -   bool(Enable),
             warn_missing_module_name        -   bool(Enable),
             warn_wrong_module_name          -   bool(Enable),
@@ -2795,6 +2800,8 @@ options_help_warning -->
         "\tWarn about possible non-stratification in the module.",
         "\tNon-stratification occurs when a predicate/function can call",
         "\titself negatively through some path along its call graph.",
+        "--no-warn-unification-cannot-succeed",
+        "\tDisable warnings about unifications which cannot succeed.",
         "--no-warn-simple-code",
         "\tDisable warnings about constructs which are so",
         "\tsimple that they are likely to be programming errors.",
