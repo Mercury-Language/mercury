@@ -779,6 +779,7 @@
 
 :- implementation.
 
+:- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 :- import_module libs.options.
@@ -1066,25 +1067,36 @@ maybe_make_symlink(LinkTarget, LinkName, Result, !IO) :-
     ).
 
 copy_file(Source, Destination, Res, !IO) :-
-    io__open_binary_input(Source, SourceRes, !IO),
+    % Try to use the system's cp command in order to preserve metadata.
+    globals__io_lookup_string_option(install_command, InstallCommand, !IO),
+    Command = string__join_list("   ", list__map(quote_arg,
+        [InstallCommand, Source, Destination])),
+    io__output_stream(OutputStream, !IO),
+    invoke_system_command(OutputStream, verbose, Command, Succeeded, !IO),
     (
-        SourceRes = ok(InputStream),
-        io__open_binary_output(Destination, DestRes, !IO),
+        Succeeded = yes,
+        Res = ok
+    ;
+        Succeeded = no,
+        io__open_binary_input(Source, SourceRes, !IO),
         (
-            DestRes = ok(OutputStream),
-            % XXX Depending on file size it may be
-            % faster to call the system's cp command.
-            WriteByte = io__write_byte(OutputStream),
-            io__binary_input_stream_foldl_io(InputStream, WriteByte, Res, !IO),
-            io__close_binary_input(InputStream, !IO),
-            io__close_binary_output(OutputStream, !IO)
+            SourceRes = ok(SourceStream),
+            io__open_binary_output(Destination, DestRes, !IO),
+            (
+                DestRes = ok(DestStream),
+                WriteByte = io__write_byte(DestStream),
+                io__binary_input_stream_foldl_io(SourceStream, WriteByte, Res,
+                    !IO),
+                io__close_binary_input(SourceStream, !IO),
+                io__close_binary_output(DestStream, !IO)
+            ;
+                DestRes = error(Error),
+                Res = error(Error)
+            )
         ;
-            DestRes = error(Error),
+            SourceRes = error(Error),
             Res = error(Error)
         )
-    ;
-        SourceRes = error(Error),
-        Res = error(Error)
     ).
 
 make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded,

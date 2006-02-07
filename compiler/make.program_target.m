@@ -718,7 +718,7 @@ install_library(MainModuleName, Succeeded, !Info, !IO) :-
         ModulesDir = Prefix/"lib"/"mercury"/"modules",
         module_name_to_file_name(MainModuleName, ".init", no, InitFileName,
             !IO),
-        install_file(InitFileName, ModulesDir, InitSucceded, !IO),
+        install_file(InitFileName, ModulesDir, InitSucceeded, !IO),
 
         list__map_foldl2(install_ints_and_headers(LinkSucceeded), AllModules,
             IntsSucceeded, !Info, !IO),
@@ -728,7 +728,7 @@ install_library(MainModuleName, Succeeded, !Info, !IO) :-
         install_library_grade_files(LinkSucceeded, Grade, MainModuleName,
             AllModules, GradeSucceeded, !Info, !IO),
         (
-            InitSucceded = yes,
+            InitSucceeded = yes,
             bool__and_list(IntsSucceeded) = yes,
             GradeSucceeded = yes
         ->
@@ -789,18 +789,18 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
             ( Target = c ; Target = asm )
             % Imports ^ contains_foreign_export = contains_foreign_export
         ->
-            install_subdir_file(SubdirLinkSucceeded, LibDir/"inc",
-                ModuleName, "mh", HeaderSucceded1, !IO),
+            module_name_to_file_name(ModuleName, ".mh", no, FileName, !IO),
+            install_file(FileName, LibDir/"inc", HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             install_subdir_file(SubdirLinkSucceeded, LibDir/"ints", ModuleName,
-                "mh", HeaderSucceded2, !IO),
+                "mh", HeaderSucceeded2, !IO),
 
-            HeaderSucceded = HeaderSucceded1 `and` HeaderSucceded2
+            HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         ;
-            HeaderSucceded = yes
+            HeaderSucceeded = yes
         ),
-        Succeeded = bool__and_list([HeaderSucceded | Results])
+        Succeeded = bool__and_list([HeaderSucceeded | Results])
     ;
         MaybeImports = no,
         Succeeded = no
@@ -965,17 +965,17 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
         ->
             GradeIncDir = LibDir/"lib"/GradeDir/"inc",
             install_subdir_file(LinkSucceeded, GradeIncDir, ModuleName, "mih",
-                HeaderSucceded1, !IO),
+                HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be
             % found in Mmake's VPATH.
             IntDir = LibDir/"ints",
             install_subdir_file(LinkSucceeded, IntDir, ModuleName, "mih",
-                HeaderSucceded2, !IO),
+                HeaderSucceeded2, !IO),
 
-            HeaderSucceded = HeaderSucceded1 `and` HeaderSucceded2
+            HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
         ;
-            HeaderSucceded = yes
+            HeaderSucceeded = yes
         ),
 
         globals__io_lookup_bool_option(intermodule_optimization, Intermod,
@@ -984,12 +984,12 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
             Intermod = yes,
             GradeIntDir = LibDir/"ints"/GradeDir,
             install_subdir_file(LinkSucceeded, GradeIntDir, ModuleName, "opt",
-                OptSucceded, !IO)
+                OptSucceeded, !IO)
         ;
             Intermod = no,
-            OptSucceded = yes
+            OptSucceeded = yes
         ),
-        Succeeded = HeaderSucceded `and` OptSucceded
+        Succeeded = HeaderSucceeded `and` OptSucceeded
     ;
         MaybeImports = no,
         Succeeded = no
@@ -1058,7 +1058,7 @@ make_install_dirs(Result, LinkResult, !IO) :-
     Results0 = [Result1, Result2, Result3],
 
     Subdirs = ["int0", "int", "int2", "int3", "opt", "trans_opt",
-        "module_dep"],
+        "mh", "mih", "module_dep"],
     list__map_foldl(make_install_symlink(IntsSubdir), Subdirs, LinkResults,
         !IO),
     LinkResult = bool__and_list(LinkResults),
@@ -1099,7 +1099,7 @@ make_grade_install_dirs(Grade, Result, LinkResult, !IO) :-
         Results = Results0
     ;
         LinkResult = no,
-        make_directory(GradeIncSubdir/"mih", Result4, !IO),
+        make_directory(GradeIncSubdir/"mihs", Result4, !IO),
         make_directory(GradeIntsSubdir/"opts", Result5, !IO),
         make_directory(GradeIntsSubdir/"trans_opts", Result6, !IO),
         Results = [Result4, Result5, Result6 | Results0]
