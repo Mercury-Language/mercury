@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2005 The University of Melbourne.
+% Copyright (C) 1998-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -144,6 +144,18 @@
     %
 :- pred save_term_to_file_xml(string::in, browser_term::in,
     io__output_stream::in, io::di, io::uo) is cc_multi.
+
+    % Remove "/dir/../" sequences from a list of directories to yield
+    % a form that lacks ".." entries.
+    % If there are more ".." entries than normal entries then the
+    % empty list is returned.
+    %
+:- pred simplify_dirs(list(dir)::in, list(dir)::out(simplified_dirs)) is det.
+
+    % True if the given string can be used to cd to the return value of a
+    % function.
+    %
+:- pred string_is_return_value_alias(string::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -1390,19 +1402,20 @@ deref_subterm(BrowserTerm, Path, RevPath0, Result) :-
             (
                 (
                     Step = child_num(N),
-                    % The first argument of a non-array
-                    % is numbered argument 1.
-                    list__index1(Args, N, ArgUniv)
-                ;
-                    Step = child_name(Name),
-                    MaybeReturn = yes(ArgUniv),
-                    ( Name = "r"
-                    ; Name = "res"
-                    ; Name = "result"
+                    (
+                        N = list.length(Args) + 1,
+                        MaybeReturn = yes(ReturnValue)
+                    ->
+                        ArgUniv = ReturnValue
+                    ;
+                        % The first argument of a non-array
+                        % is numbered argument 1.
+                        list__index1(Args, N, ArgUniv)
                     )
                 ;
-                    Step = parent,
-                    error("deref_subterm: found parent")
+                    Step = child_name(Name),
+                    string_is_return_value_alias(Name),
+                    MaybeReturn = yes(ArgUniv)
                 )
             ->
                 deref_subterm_2(ArgUniv, SimplifiedPathTail,
@@ -1413,6 +1426,13 @@ deref_subterm(BrowserTerm, Path, RevPath0, Result) :-
             )
         )
     ).
+
+string_is_return_value_alias("r").
+string_is_return_value_alias("res").
+string_is_return_value_alias("rv").
+string_is_return_value_alias("result").
+string_is_return_value_alias("return").
+string_is_return_value_alias("ret").
 
 :- pred deref_result_univ_to_browser_term(deref_result(univ)::in,
     deref_result(browser_term)::out) is det.
@@ -1649,11 +1669,6 @@ split_dirs(Cs, Names) :-
 not_slash(C) :-
     C \= ('/').
 
-    % Remove "/dir/../" sequences from a list of directories to yield
-    % a form that lacks ".." entries.
-    %
-:- pred simplify_dirs(list(dir)::in, list(dir)::out) is det.
-
 simplify_dirs(Dirs, SimpleDirs) :-
     list.reverse(Dirs, RevDirs),
     simplify_rev_dirs(RevDirs, 0, [], SimpleDirs).
@@ -1666,14 +1681,16 @@ simplify_dirs(Dirs, SimpleDirs) :-
     % SoFar accumulates the simplified dirs processed so far so we can be
     % tail recursive.
     %
-:- pred simplify_rev_dirs(list(dir)::in, int::in, list(dir)::in,
-    list(dir)::out) is det.
+:- pred simplify_rev_dirs(list(dir)::in, int::in,
+    list(dir)::in(simplified_dirs), list(dir)::out(simplified_dirs)) is det.
 
 simplify_rev_dirs([], _, SimpleDirs, SimpleDirs).
 simplify_rev_dirs([Dir | Dirs], N, SoFar, SimpleDirs) :-
-    ( Dir = parent ->
+    (
+        Dir = parent,
         simplify_rev_dirs(Dirs, N+1, SoFar, SimpleDirs)
     ;
+        ( Dir = child_num(_) ; Dir = child_name(_) ),
         ( N > 0 ->
             simplify_rev_dirs(Dirs, N-1, SoFar, SimpleDirs)
         ;

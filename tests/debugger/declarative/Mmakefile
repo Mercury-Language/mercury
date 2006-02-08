@@ -49,6 +49,7 @@ DECLARATIVE_PROGS=		\
 	lpe_example		\
 	mapinit			\
 	mismatch_on_call	\
+	named_fields		\
 	negation		\
 	neg_conj		\
 	nodescend_tracking	\
@@ -406,6 +407,11 @@ neg_conj.out: neg_conj neg_conj.inp
 nodescend_tracking.out: nodescend_tracking nodescend_tracking.inp
 	$(MDB_STD) ./nodescend_tracking < nodescend_tracking.inp \
 		> nodescend_tracking.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+named_fields.out: named_fields named_fields.inp
+	$(MDB_STD) ./named_fields < named_fields.inp \
+		> named_fields.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 negation.out: negation negation.inp

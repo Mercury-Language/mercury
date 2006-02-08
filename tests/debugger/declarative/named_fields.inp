@@ -1,0 +1,47 @@
+register --quiet
+table_io allow
+table_io start
+echo on
+break swap
+c
+f
+dd -a
+browse
+cd 1/field1
+ls
+track
+info
+undo
+browse 1
+cd field1
+ls
+track
+info
+undo
+browse
+cd 2/field2
+ls
+track
+info
+undo
+browse
+cd result/field2
+ls
+track
+info
+undo
+browse 2
+cd field2
+ls
+track
+info
+undo
+browse 2
+track field2
+info
+undo
+browse 2
+track field3
+quit
+quit
+quit -y

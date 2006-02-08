@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,6 +16,7 @@
 
 :- import_module mdb.browser_term.
 :- import_module mdb.parse.
+:- import_module mdb.term_rep.
 :- import_module mdbcomp.program_representation.
 
 :- import_module bool.
@@ -95,6 +96,12 @@
 	;	child_num(int)
 	;	child_name(string).
 
+:- inst dir_no_parent
+	---> 	child_num(ground)
+	;	child_name(ground).
+
+:- inst simplified_dirs == list_skel(dir_no_parent).
+
 	% The browser is required to behave differently for different
 	% caller circumstances.  The following type enumerates the
 	% various possibilities.
@@ -160,7 +167,8 @@
 :- func browser_info__get_num_printed_io_actions(browser_persistent_state)
 	= int.
 
-:- pred convert_dirs_to_term_path(list(dir)::in, term_path::out) is det.
+:- pred convert_dirs_to_term_path(term_rep::in,
+	list(dir)::in(simplified_dirs), term_path::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -243,8 +251,12 @@
 :- implementation.
 
 :- import_module deconstruct.
+:- import_module int.
 :- import_module io.
 :- import_module require.
+:- import_module string.
+
+:- import_module mdb.term_rep.
 
 :- pragma export(browser_info__init_persistent_state(out),
 		"ML_BROWSE_init_persistent_state").
@@ -711,12 +723,26 @@ pretty_value(BrowserDb, Univ0) = Value :-
 
 %---------------------------------------------------------------------------%
 
-convert_dirs_to_term_path([], []).
-convert_dirs_to_term_path([child_num(N) | Dirs], [N | TermPath]) :-
-	convert_dirs_to_term_path(Dirs, TermPath).
-convert_dirs_to_term_path([child_name(_) | _], _) :-
-	error("convert_dirs_to_term_path: not in canonical form").
-convert_dirs_to_term_path([parent | _], _) :-
-	error("convert_dirs_to_term_path: not in canonical form").
+convert_dirs_to_term_path(_, [], []).
+convert_dirs_to_term_path(Term, [child_num(N) | Dirs], [N | TermPath]) :-
+	(
+		term_rep.argument(Term, N, Subterm)
+	->
+		convert_dirs_to_term_path(Subterm, Dirs, TermPath)
+	;
+		error("convert_dirs_to_term_path:" ++
+			"invalid argument")
+	).
+convert_dirs_to_term_path(Term, [child_name(Name) | Dirs], [N | TermPath]) :-
+	(
+		term_rep.field_pos(Name, Term, Pos),
+		term_rep.argument(Term, Pos, Subterm)
+	->
+		convert_dirs_to_term_path(Subterm, Dirs, TermPath),
+		N = Pos
+	;
+		error("convert_dirs_to_term_path:" ++
+			"invalid field name")
+	).
 
 %---------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -525,12 +525,19 @@ print_chosen_io_action(MaybeIoActions, ActionNum, User0, OK, !IO) :-
 :- pred browse_io_action(io_action::in, maybe_track_subterm(term_path)::out,
 	user_state::in, user_state::out, io::di, io::uo) is cc_multi.
 
-browse_io_action(IoAction, MaybeTrack, !User, !IO) :-
+browse_io_action(IoAction, no_track, !User, !IO) :-
 	Term = io_action_to_browser_term(IoAction),
 	browse_browser_term(Term, !.User ^ instr, !.User ^ outstr, no,
 		MaybeTrackDirs, !.User ^ browser, Browser, !IO),
-	convert_maybe_track_dirs_to_term_path(MaybeTrackDirs, 
-		MaybeTrack),
+	(
+		MaybeTrackDirs = track(_, _, _),
+		io.write_string(!.User ^ outstr,
+			"Sorry, tracking of I/O actions is not yet " ++
+			"supported.\n", !IO),
+		browse_io_action(IoAction, _, !User, !IO)
+	;
+		MaybeTrackDirs = no_track
+	),
 	!:User = !.User ^ browser := Browser.
 
 :- pred browse_decl_bug(decl_bug::in, maybe(int)::in, user_state::in,
@@ -578,7 +585,7 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, !User, !IO) :-
 			yes(get_subterm_mode_from_atoms_for_arg(ArgNum, 
 				InitAtom, FinalAtom)),
 			MaybeTrackDirs, !.User ^ browser, Browser, !IO),
-		convert_maybe_track_dirs_to_term_path(
+		convert_maybe_track_dirs_to_term_path_from_arg(ArgRep,
 			MaybeTrackDirs, MaybeTrack),
 		!:User = !.User ^ browser := Browser
 	;
@@ -622,7 +629,7 @@ browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO) :-
 	browse_browser_term(BrowserTerm, !.User ^ instr, !.User ^ outstr,
 		yes(get_subterm_mode_from_atoms(InitAtom, FinalAtom)),
 		MaybeTrackDirs, !.User ^ browser, Browser, !IO),
-	convert_maybe_track_dirs_to_term_path(
+	convert_maybe_track_dirs_to_term_path_from_atom(FinalAtom,
 		MaybeTrackDirs, MaybeTrack),
 	!:User = !.User ^ browser := Browser.
 
@@ -641,11 +648,11 @@ browse_xml_atom(Atom, User, !IO) :-
 	save_and_browse_browser_term_xml(BrowserTerm, User ^ outstr, 
 		User ^ outstr, User ^ browser, !IO).
 
-:- func get_subterm_mode_from_atoms(trace_atom, trace_atom, list(dir)) 
-	= browser_term_mode.
+:- func get_subterm_mode_from_atoms(trace_atom::in, trace_atom::in,
+	list(dir)::in(simplified_dirs)) = (browser_term_mode::out) is det.
 
 get_subterm_mode_from_atoms(InitAtom, FinalAtom, Dirs) = Mode :-
-	convert_dirs_to_term_path(Dirs, Path),
+	convert_dirs_to_term_path_from_atom(FinalAtom, Dirs, Path),
 	(
 		Path = [ArgNum | TermPath],
 		ArgPos = arg_num_to_arg_pos(ArgNum),
@@ -669,12 +676,13 @@ get_subterm_mode_from_atoms_and_term_path(InitAtom, FinalAtom, ArgPos,
 		Mode = unbound
 	).
 
-:- func get_subterm_mode_from_atoms_for_arg(int, trace_atom, trace_atom, 
-	list(dir)) = browser_term_mode.
+:- func get_subterm_mode_from_atoms_for_arg(int::in, trace_atom::in,
+	trace_atom::in, list(dir)::in(simplified_dirs)) =
+	(browser_term_mode::out) is det.
 
 get_subterm_mode_from_atoms_for_arg(ArgNum, InitAtom, FinalAtom, Dirs) 
 		= Mode :-
-	convert_dirs_to_term_path(Dirs, TermPath),
+	convert_dirs_to_term_path_from_atom(FinalAtom, Dirs, TermPath),
 	ArgPos = arg_num_to_arg_pos(ArgNum),
 	Mode = get_subterm_mode_from_atoms_and_term_path(InitAtom, FinalAtom,
 		ArgPos, TermPath).
@@ -734,14 +742,29 @@ print_atom_argument(Atom, ArgNum, User, OK, !IO) :-
 		OK = no
 	).
 
-:- pred convert_maybe_track_dirs_to_term_path(
-	maybe_track_subterm(list(dir))::in, 
+:- pred convert_maybe_track_dirs_to_term_path_from_atom(
+	trace_atom::in,
+	maybe_track_subterm(list(dir))::in,
 	maybe_track_subterm(term_path)::out) is det.
 
-convert_maybe_track_dirs_to_term_path(no_track, no_track).
-convert_maybe_track_dirs_to_term_path(track(HowTrack, ShouldAssertInvalid,
-		Dirs), track(HowTrack, ShouldAssertInvalid, TermPath)) :-
-	convert_dirs_to_term_path(Dirs, TermPath).
+convert_maybe_track_dirs_to_term_path_from_atom(_, no_track, no_track).
+convert_maybe_track_dirs_to_term_path_from_atom(Atom,
+		track(HowTrack, ShouldAssertInvalid, Dirs),
+		track(HowTrack, ShouldAssertInvalid, TermPath)) :-
+	simplify_dirs(Dirs, SimplifiedDirs),
+	convert_dirs_to_term_path_from_atom(Atom, SimplifiedDirs, TermPath).
+
+:- pred convert_maybe_track_dirs_to_term_path_from_arg(
+	term_rep::in,
+	maybe_track_subterm(list(dir))::in,
+	maybe_track_subterm(term_path)::out) is det.
+
+convert_maybe_track_dirs_to_term_path_from_arg(_, no_track, no_track).
+convert_maybe_track_dirs_to_term_path_from_arg(Term,
+		track(HowTrack, ShouldAssertInvalid, Dirs),
+		track(HowTrack, ShouldAssertInvalid, TermPath)) :-
+	simplify_dirs(Dirs, SimplifiedDirs),
+	convert_dirs_to_term_path(Term, SimplifiedDirs, TermPath).
 
 	% Reverse the first argument and append the second to it.
 	%
@@ -1272,5 +1295,54 @@ set_browser_state(Browser, !User) :-
 get_user_output_stream(User) = User ^ outstr.
 
 set_user_testing_flag(Testing, User, User ^ testing := Testing).
+
+%-----------------------------------------------------------------------------%
+
+:- pred convert_dirs_to_term_path_from_atom(trace_atom::in,
+	list(dir)::in(simplified_dirs), term_path::out) is det.
+
+convert_dirs_to_term_path_from_atom(_, [], []).
+convert_dirs_to_term_path_from_atom(atom(_, Args), [Dir | Dirs], TermPath) :-
+	(
+		Dir = child_num(Pos),
+		Arg = list.det_index1(Args, Pos),
+		Arg = arg_info(_, _, MaybeValue)
+	;
+		Dir = child_name(Name),
+		( string_is_return_value_alias(Name) ->
+			( list.last(Args, LastArg) ->
+				LastArg = arg_info(_, _, MaybeValue),
+				Pos = list.length(Args)
+			;
+				throw(internal_error(
+					"convert_dirs_to_term_path_from_atom",
+					"argument list empty"))
+			)
+		;
+			throw(internal_error(
+				"convert_dirs_to_term_path_from_atom",
+				"argument of atom cannot be named"))
+		)
+	),
+	(
+		MaybeValue = yes(TermRep),
+		convert_dirs_to_term_path(TermRep, Dirs, TermPath0),
+		TermPath = [Pos | TermPath0]
+	;
+		MaybeValue = no,
+		(
+			% The user can cd to an unbound argument, but they
+			% can't cd into subterms of an unbound argument.
+			(
+				Dirs = [],
+				TermPath = [Pos]
+			;
+				Dirs = [_ | _],
+				throw(internal_error(
+					"convert_dirs_to_term_path_from_atom",
+					"no value for first position in path"))
+			)
+		)
+	).
 
 %-----------------------------------------------------------------------------%

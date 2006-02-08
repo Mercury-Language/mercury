@@ -40,13 +40,12 @@ browser> ^1
 browser> p
 two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
 browser> ^..^2
-error: there is no subterm 2
 browser> p
-two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
+'_'
 browser> ^..^3
 error: there is no subterm 3
 browser> p
-two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
+'_'
 browser> ^..^r
 browser> p
 '_'
