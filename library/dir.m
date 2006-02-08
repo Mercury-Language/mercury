@@ -1,24 +1,23 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995,1997,1999-2000,2002-2005 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999-2000,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
 % File: dir.m.
 % Main authors: fjh, stayl.
+% Stability: high.
 
 % Filename and directory handling.
-% Stability: high.
 %
-% Note that the predicates and functions in this module change
-% directory separators in paths passed to them to the normal
-% separator for the platform, if that doesn't change the meaning
-% of the path name.
+% Note that the predicates and functions in this module change directory
+% separators in paths passed to them to the normal separator for the platform,
+% if that doesn't change the meaning of the path name.
 %
-% Duplicate directory separators and trailing separators are also
-% removed where that doesn't change the meaning of the path name.
+% Duplicate directory separators and trailing separators are also removed
+% where that doesn't change the meaning of the path name.
 %
 %-----------------------------------------------------------------------------%
 
@@ -93,6 +92,10 @@
     % As above, but throws an exception instead of failing.
     %
 :- func dir__basename_det(string) = string.
+
+    % A synonym for the above.
+    %
+:- func dir__det_basename(string) = string.
 
     % dir__dirname(PathName) = DirName.
     %
@@ -177,8 +180,8 @@
     % A predicate passed to dir__foldl2 to process each entry in a directory.
     % Processing will stop if Continue is bound to `no'.
     %
-:- type dir__foldl_pred(T) == pred(string, string, io__file_type, bool,
-                    T, T, io, io).
+:- type dir__foldl_pred(T) ==
+    pred(string, string, io__file_type, bool, T, T, io, io).
 :- inst dir__foldl_pred == (pred(in, in, in, out, in, out, di, uo) is det).
 
     % dir__foldl2(P, DirName, InitialData, Result, !IO).
@@ -301,6 +304,8 @@ dir__this_directory = ".".
 dir__parent_directory = "..".
 
 %-----------------------------------------------------------------------------%
+
+dir__det_basename(FileName) = dir__basename_det(FileName).
 
 dir__basename_det(FileName) =
     ( BaseName = dir__basename(FileName) ->
