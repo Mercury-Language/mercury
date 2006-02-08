@@ -894,8 +894,11 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
     ),
     globals__io_set_globals(unsafe_promise_unique(OrigGlobals), !IO).
 
-    % Install the `.a', `.so', `.jar', `.opt' and `.mih' files
-    % for the current grade.
+    % Install the `.a', `.so', `.jar', `.opt' and `.mih' files for the current
+    % grade.
+    %
+    % NOTE: changes here may require changes to
+    %       modules.get_install_name_option/4.
     %
 :- pred install_library_grade_files(bool::in, string::in, module_name::in,
     list(module_name)::in, bool::out, make_info::in, make_info::out,

@@ -1287,12 +1287,19 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             RpathOpts = ""
         ),
                 
-        % Set up the installed name for shared libraries.
+        % Set up the install name for shared libraries.
         (
             UseInstallName = yes,
             LinkTargetType = shared_library
-        ->
-            get_install_name_option(OutputFileName, InstallNameOpt, !IO)
+        ->  
+            % NOTE: `ShLibFileName' must *not* be prefixed with a directory.
+            %       get_install_name_option will prefix it with the correct
+            %       directory which is the one where the library is going to
+            %       be installed, *not* where it is going to be built. 
+            %        
+            sym_name_to_string(ModuleName, BaseFileName),
+            ShLibFileName = "lib" ++ BaseFileName ++ SharedLibExt,
+            get_install_name_option(ShLibFileName, InstallNameOpt, !IO)
         ;
             InstallNameOpt = ""
         ),

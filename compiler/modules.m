@@ -7967,14 +7967,23 @@ get_env_classpath(Classpath, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+% Changes to the following predicate may require similar changes to
+% make.program_target.install_library_grade_files/9.
+
 get_install_name_option(OutputFileName, InstallNameOpt, !IO) :-
-    globals.io_lookup_string_option(shlib_linker_install_name_flag,
-        InstallNameFlag, !IO),
-    globals.io_lookup_string_option(shlib_linker_install_name_path,
-        InstallNamePath, !IO),
-    dir.directory_separator(Slash),
-    InstallNameOpt = InstallNameFlag++InstallNamePath++
-        char_to_string(Slash)++OutputFileName.
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_string_option(Globals, shlib_linker_install_name_flag,
+        InstallNameFlag),
+    globals.lookup_string_option(Globals, shlib_linker_install_name_path,
+        InstallNamePath0),
+    ( InstallNamePath0 = "" ->
+        globals.lookup_string_option(Globals, install_prefix, InstallPrefix),
+        grade_directory_component(Globals, GradeDir),
+        InstallNamePath = InstallPrefix / "lib" / "mercury" / "lib" / GradeDir
+    ;
+        InstallNamePath = InstallNamePath0
+    ),   
+    InstallNameOpt = InstallNameFlag ++ InstallNamePath / OutputFileName.
 
 %-----------------------------------------------------------------------------%
 

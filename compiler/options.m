@@ -1453,7 +1453,7 @@ option_defaults_2(link_option, [
     linker_error_undefined_flag         -   string("-Wl,-no-undefined"),
     shlib_linker_use_install_name       -   bool(no),
     shlib_linker_install_name_flag      -   string("-install_name "),
-    shlib_linker_install_name_path      -   string("$(INSTALL_MERC_LIB_DIR)")
+    shlib_linker_install_name_path      -   string("")
 ]).
 option_defaults_2(build_system_option, [
     % Build System Options
