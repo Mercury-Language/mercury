@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -39,10 +39,9 @@ extern  void        MR_trace_show_progress_supertree(MR_Unsigned event_number);
 typedef enum { MR_DECL_NODUMP, MR_DECL_DUMP } MR_Decl_Mode;
 
 extern  MR_bool     MR_trace_start_decl_debug(MR_Decl_Mode mode, 
-                        const char *out,
-                        MR_bool new_session, MR_Trace_Cmd_Info *cmd,
-                        MR_Event_Info *event_info,
-                        MR_Event_Details *event_details, MR_Code **jumpaddr);
+                        const char *outfile, MR_bool new_session,
+                        MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+                        MR_Code **jumpaddr);
 
 /*
 ** The declarative debugger may need to perform many retries during one

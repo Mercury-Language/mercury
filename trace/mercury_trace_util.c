@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2002, 2004-2005 The University of Melbourne.
+** Copyright (C) 2000-2002, 2004-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -173,14 +173,14 @@ MR_print_r_regs(FILE *fp, MR_Word *saved_regs)
 }
 
 void
-MR_print_debug_vars(FILE *fp, MR_Event_Details *event_details)
+MR_print_debug_vars(FILE *fp, MR_Event_Info *event_info)
 {
 #ifndef MR_HIGHLEVEL_CODE
-    fprintf(fp, "from event details:\n");
+    fprintf(fp, "from event info:\n");
     fprintf(fp, "call event %ld, call seq %ld, depth %ld\n",
-        (long) event_details->MR_event_number,
-        (long) event_details->MR_call_seqno,
-        (long) event_details->MR_call_depth);
+        (long) event_info->MR_event_number,
+        (long) event_info->MR_call_seqno,
+        (long) event_info->MR_call_depth);
     fprintf(fp, "from global vars:\n");
     fprintf(fp, "call event %ld, call seq %ld, depth %ld\n",
         (long) MR_trace_event_number,

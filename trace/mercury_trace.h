@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2003, 2005 The University of Melbourne.
+** Copyright (C) 1997-2003, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,18 +42,6 @@ typedef struct MR_Event_Info_Struct {
 	MR_Word				MR_saved_regs[MR_MAX_FAKE_REG];
 	int				MR_max_mr_num;
 } MR_Event_Info;
-
-/*
-** MR_Event_Details is used to save some globals across calls to
-** MR_trace_debug_cmd.  It is passed to MR_trace_retry which can
-** then override the saved values.
-*/
-
-typedef struct MR_Event_Details_Struct {
-	MR_Unsigned			MR_event_number;
-	MR_Unsigned			MR_call_seqno;
-	MR_Unsigned			MR_call_depth;
-} MR_Event_Details;
 
 /*
 ** The above declarations are part of the interface between MR_trace_real
@@ -150,7 +138,6 @@ typedef	enum {
 } MR_Retry_Result;
 
 extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
-				MR_Event_Details *event_details,
 				int ancestor_level,
 				MR_Retry_Across_Io across_io,
 				MR_bool assume_all_io_is_tabled,

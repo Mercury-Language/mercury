@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -572,9 +572,15 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 */
 
 #define MR_TRACE_CALL_MERCURY(STATEMENTS) do {				\
-		MR_bool	saved_io_enabled;				\
+		MR_bool		saved_io_enabled;			\
+		MR_Unsigned     saved_trace_call_seqno;			\
+		MR_Unsigned     saved_trace_call_depth;			\
+		MR_Unsigned     saved_trace_event_number;		\
 									\
 		saved_io_enabled = MR_io_tabling_enabled;		\
+		saved_trace_call_seqno = MR_trace_call_seqno;		\
+		saved_trace_call_depth = MR_trace_call_depth;		\
+		saved_trace_event_number = MR_trace_event_number;	\
 		MR_io_tabling_enabled = MR_FALSE;			\
 		MR_restore_transient_registers();			\
 		MR_save_registers();					\
@@ -582,6 +588,9 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 		MR_restore_registers();					\
 		MR_save_transient_registers();				\
 		MR_io_tabling_enabled = saved_io_enabled;		\
+		MR_trace_call_seqno = saved_trace_call_seqno;		\
+		MR_trace_call_depth = saved_trace_call_depth;		\
+		MR_trace_event_number = saved_trace_event_number;	\
 	} while (0)
 
 #endif /* MERCURY_TRACE_BASE_H */

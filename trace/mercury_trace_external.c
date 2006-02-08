@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2005 The University of Melbourne.
+** Copyright (C) 1998-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -489,7 +489,6 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Word			type_list;
 	MR_Word			var;
 	MR_Code			*jumpaddr = NULL;
-	MR_Event_Details	event_details;
 	const char		*message;
 	MR_bool			include_trace_data = MR_TRUE;
 	const MR_Label_Layout	*layout = event_info->MR_event_sll;
@@ -507,18 +506,6 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 
 	MR_debug_enabled = MR_FALSE;
 	MR_update_trace_func_enabled();
-
-	/*
-	** These globals can be overwritten when we call Mercury code,
-	** such as the code in browser/debugger_interface.m.
-	** We therefore save them here and restore them before
-	** exiting from this function.  However, we store the
-	** saved values in a structure that we pass to MR_trace_debug_cmd,
-	** to allow them to be modified by MR_trace_retry().
-	*/
-	event_details.MR_call_seqno = MR_trace_call_seqno;
-	event_details.MR_call_depth = MR_trace_call_depth;
-	event_details.MR_event_number = MR_trace_event_number;
 
 	MR_trace_init_point_vars(event_info->MR_event_sll,
 		event_info->MR_saved_regs, event_info->MR_trace_port,
@@ -619,8 +606,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_RETRY\n");
 				}
-				retry_result = MR_trace_retry(event_info, 
-					&event_details, 0,
+				retry_result = MR_trace_retry(event_info, 0,
 					MR_RETRY_IO_ONLY_IF_SAFE, 
 					MR_FALSE, "", &unsafe_retry, 
 					&message, NULL, NULL, &jumpaddr);
@@ -906,17 +892,6 @@ done:
 	cmd->MR_trace_must_check = cmd->MR_trace_must_check
 		|| cmd->MR_trace_check_integrity;
 #endif
-
-	/*
-	** Restore the event numbers, in case the Mercury
-	** code that we call from the trace system
-	** (e.g. browser/debugger_interface.m)
-	** clobbered them.  That could happen if that code
-	** had been compiled with debugging enabled.
-	*/
-	MR_trace_call_seqno = event_details.MR_call_seqno;
-	MR_trace_call_depth = event_details.MR_call_depth;
-	MR_trace_event_number = event_details.MR_event_number;
 
 	MR_debug_enabled = MR_TRUE;
 	MR_update_trace_func_enabled();

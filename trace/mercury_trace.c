@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -616,7 +616,7 @@ MR_trace_real_decl_implicit_subtree(const MR_Label_Layout *layout)
 #define MR_INIT_ARG_COUNT   20
 
 MR_Retry_Result
-MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
+MR_trace_retry(MR_Event_Info *event_info,
     int ancestor_level, MR_Retry_Across_Io across_io,
     MR_bool assume_all_io_is_tabled, const char *retry_interactive_message,
     MR_bool *unsafe_retry, const char **problem,
@@ -1016,16 +1016,6 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_print_label(stdout, *jumpaddr);
     printf("\n");
 #endif
-
-    /*
-    ** Overriding MR_trace_call_seqno etc is not enough, because
-    ** we will restore the values of those variables later. We must
-    ** also override the saved copies.
-    */
-
-    event_details->MR_call_seqno = MR_trace_call_seqno;
-    event_details->MR_call_depth = MR_trace_call_depth;
-    event_details->MR_event_number = MR_trace_event_number;
 
     if (args != NULL) {
         MR_free(args);

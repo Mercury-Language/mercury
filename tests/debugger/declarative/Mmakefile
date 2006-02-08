@@ -85,6 +85,7 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 DECLDEBUG_DECLARATIVE_PROGS=	\
 	builtin_call_rep	\
 	catch_retry		\
+	condition_bug		\
 	priv_builtin_bug	\
 	sort			\
 	track_through_catch	\
@@ -246,6 +247,11 @@ closure_dependency.out: closure_dependency closure_dependency.$(DEBUG_INP)
 
 comp_gen.out: comp_gen comp_gen.inp
 	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+condition_bug.out: condition_bug condition_bug.inp
+	$(MDB_STD) ./condition_bug < condition_bug.inp \
+		> condition_bug.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 confirm_abort.out: confirm_abort confirm_abort.inp

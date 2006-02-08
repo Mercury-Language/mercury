@@ -1,0 +1,14 @@
+register --quiet
+echo on
+untrust 0
+table_io start
+break io.write_string/3
+condition Message = "english"
+continue
+finish
+dd
+browse 1
+track
+info
+quit
+quit -y

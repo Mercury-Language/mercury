@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2005 The University of Melbourne.
+** Copyright (C) 1998-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -388,7 +388,6 @@ static    const char        *MR_trace_start_collecting(MR_Unsigned event,
                                 MR_bool create_supertree,
                                 MR_Trace_Cmd_Info *cmd,
                                 MR_Event_Info *event_info,
-                                MR_Event_Details *event_details,
                                 MR_Code **jumpaddr);
 static    MR_Code           *MR_trace_restart_decl_debug(
                                 MR_Trace_Node call_preceding,
@@ -397,21 +396,17 @@ static    MR_Code           *MR_trace_restart_decl_debug(
                                 MR_bool create_supertree,
                                 MR_Unsigned depth_limit,
                                 MR_Trace_Cmd_Info *cmd,
-                                MR_Event_Info *event_info,
-                                MR_Event_Details *event_details);
+                                MR_Event_Info *event_info);
 static    MR_Code           *MR_decl_diagnosis(MR_Trace_Node root,
                                 MR_Trace_Cmd_Info *cmd,
                                 MR_Event_Info *event_info,
-                                MR_Event_Details *event_details,
                                 MR_bool new_tree);
 static    MR_Code           *MR_decl_go_to_selected_event(MR_Unsigned event,
                                 MR_Trace_Cmd_Info *cmd,
-                                MR_Event_Info *event_info,
-                                MR_Event_Details *event_details);
+                                MR_Event_Info *event_info);
 static    MR_Code           *MR_trace_decl_retry_supertree(
                                 MR_Unsigned max_distance,
-                                MR_Event_Info *event_info,
-                                MR_Event_Details *event_details);
+                                MR_Event_Info *event_info);
 static    MR_String         MR_trace_node_path(MR_Trace_Node node);
 static    MR_Trace_Port     MR_trace_node_port(MR_Trace_Node node);
 static    MR_Unsigned       MR_trace_node_seqno(MR_Trace_Node node);
@@ -473,7 +468,6 @@ MR_trace_decl_debug(MR_Event_Info *event_info)
 {
     const MR_Proc_Layout    *entry;
     MR_Unsigned             depth;
-    MR_Event_Details        event_details;
     MR_Integer              trace_suppress;
     MR_Unsigned             node_depth;
     MR_Unsigned             call_seqno;
@@ -530,12 +524,8 @@ MR_trace_decl_debug(MR_Event_Info *event_info)
         /*
         ** Call the front end.
         */
-        event_details.MR_call_seqno = MR_trace_call_seqno;
-        event_details.MR_call_depth = MR_trace_call_depth;
-        event_details.MR_event_number = MR_trace_event_number;
-
         return MR_decl_diagnosis(MR_edt_return_node, &MR_trace_ctrl,
-            event_info, &event_details, MR_TRUE);
+            event_info, MR_TRUE);
     }
 
     return NULL;
@@ -610,8 +600,6 @@ MR_trace_include_event(const MR_Proc_Layout *entry,
             } else if (event_info->MR_call_seqno == MR_edt_start_seqno
                 && MR_port_is_entry(event_info->MR_trace_port))
             {
-                MR_Event_Details    event_details;
-
                 /*
                 ** We are entering the top of the currently
                 ** materialized portion of the annotated trace.
@@ -622,7 +610,7 @@ MR_trace_include_event(const MR_Proc_Layout *entry,
                 */
                 MR_edt_inside = MR_TRUE;
                 *jumpaddr = MR_trace_decl_retry_supertree(MR_edt_max_depth,
-                    event_info, &event_details);
+                    event_info);
                 /*
                 ** Reset the depth since we will now
                 ** be at the top of the supertree to be
@@ -691,11 +679,7 @@ static void
 MR_trace_construct_node(MR_Event_Info *event_info)
 {
     MR_Trace_Node       trace;
-    MR_Event_Details    event_details;
 
-    event_details.MR_call_seqno = MR_trace_call_seqno;
-    event_details.MR_call_depth = MR_trace_call_depth;
-    event_details.MR_event_number = MR_trace_event_number;
     trace = MR_trace_current_node;
 
     MR_debug_enabled = MR_FALSE;
@@ -755,12 +739,6 @@ MR_trace_construct_node(MR_Event_Info *event_info)
     MR_debug_enabled = MR_TRUE;
     MR_update_trace_func_enabled();
 
-    /*
-    ** Restore globals from the saved copies.
-    */
-    MR_trace_call_seqno = event_details.MR_call_seqno;
-    MR_trace_call_depth = event_details.MR_call_depth;
-    MR_trace_event_number = event_details.MR_event_number;
     MR_trace_current_node = trace;
 }
 
@@ -771,7 +749,7 @@ MR_trace_construct_node(MR_Event_Info *event_info)
 
 static MR_Code *
 MR_trace_decl_retry_supertree(MR_Unsigned max_distance,
-    MR_Event_Info *event_info, MR_Event_Details *event_details)
+    MR_Event_Info *event_info)
 {
     MR_Code             *jumpaddr;
     int                 retry_distance;
@@ -796,8 +774,7 @@ MR_trace_decl_retry_supertree(MR_Unsigned max_distance,
         retry_mode = MR_RETRY_IO_INTERACTIVE;
     }
 
-    retry_result = MR_trace_retry(event_info, event_details,
-        retry_distance, retry_mode,
+    retry_result = MR_trace_retry(event_info, retry_distance, retry_mode,
         MR_trace_decl_assume_all_io_is_tabled,
         MR_DECL_UNTABLED_IO_RETRY_MESSAGE, &unsafe_retry,
         &problem, MR_mdb_in, MR_mdb_out, &jumpaddr);
@@ -1569,7 +1546,7 @@ MR_decl_print_all_trusted(FILE *fp, MR_bool mdb_command_format)
 MR_bool
 MR_trace_start_decl_debug(MR_Decl_Mode mode, const char *outfile,
     MR_bool new_session, MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-    MR_Event_Details *event_details, MR_Code **jumpaddr)
+    MR_Code **jumpaddr)
 {
     MR_Retry_Result         result;
     const MR_Proc_Layout    *entry;
@@ -1589,7 +1566,7 @@ MR_trace_start_decl_debug(MR_Decl_Mode mode, const char *outfile,
         MR_decl_mode = mode;
         MR_selected_trace_func_ptr = MR_trace_real_decl;
         *jumpaddr = MR_decl_diagnosis((MR_Trace_Node) NULL, cmd,
-            event_info, event_details, MR_FALSE);
+            event_info, MR_FALSE);
         return MR_TRUE;
     }
 
@@ -1660,7 +1637,7 @@ MR_trace_start_decl_debug(MR_Decl_Mode mode, const char *outfile,
     MR_trace_current_node = (MR_Trace_Node) NULL;
     message = MR_trace_start_collecting(event_info->MR_event_number,
         event_info->MR_call_seqno, MR_edt_default_depth_limit,
-        MR_FALSE, cmd, event_info, event_details, jumpaddr);
+        MR_FALSE, cmd, event_info, jumpaddr);
 
     if (message == NULL) {
         first_time = MR_FALSE;
@@ -1677,8 +1654,7 @@ MR_trace_start_decl_debug(MR_Decl_Mode mode, const char *outfile,
 static MR_Code *
 MR_trace_restart_decl_debug(MR_Trace_Node call_preceding, MR_Unsigned event,
     MR_Unsigned seqno, MR_bool create_supertree, MR_Unsigned depth_limit,
-    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-    MR_Event_Details *event_details)
+    MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
     const char  *message;
     MR_Code     *jumpaddr;
@@ -1692,7 +1668,7 @@ MR_trace_restart_decl_debug(MR_Trace_Node call_preceding, MR_Unsigned event,
     MR_trace_current_node = call_preceding;
 
     message = MR_trace_start_collecting(event, seqno, depth_limit,
-        create_supertree, cmd, event_info, event_details, &jumpaddr);
+        create_supertree, cmd, event_info, &jumpaddr);
 
     if (message != NULL) {
         fflush(MR_mdb_out);
@@ -1709,8 +1685,7 @@ MR_trace_restart_decl_debug(MR_Trace_Node call_preceding, MR_Unsigned event,
 static const char *
 MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     MR_Unsigned maxdepth, MR_bool create_supertree, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Event_Details *event_details,
-    MR_Code **jumpaddr)
+    MR_Event_Info *event_info, MR_Code **jumpaddr)
 {
     const char      *problem;
     MR_Retry_Result retry_result;
@@ -1749,7 +1724,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
             return problem;
         }
 
-        retry_result = MR_trace_retry(event_info, event_details,
+        retry_result = MR_trace_retry(event_info,
             retry_distance, MR_RETRY_IO_INTERACTIVE,
             MR_trace_decl_assume_all_io_is_tabled,
             MR_DECL_UNTABLED_IO_RETRY_MESSAGE, &unsafe_retry,
@@ -1785,7 +1760,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     MR_edt_building_supertree = create_supertree;
     MR_edt_suspicion_accumulator = 0;
     MR_edt_start_time = MR_get_user_cpu_miliseconds();
-    MR_edt_first_event = event_details->MR_event_number;
+    MR_edt_first_event = event_info->MR_event_number;
 
     /*
     ** The deepest we will build any implicit subtree to will be
@@ -1794,13 +1769,6 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     */
     MR_trace_init_implicit_subtree_counters(
         MR_edt_desired_nodes_in_subtree / 2 + 1);
-
-    /*
-    ** Restore globals from the saved copies.
-    */
-    MR_trace_call_seqno = event_details->MR_call_seqno;
-    MR_trace_call_depth = event_details->MR_call_depth;
-    MR_trace_event_number = event_details->MR_event_number;
 
     /*
     ** Single step through every event.
@@ -1818,8 +1786,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 
 static MR_Code *
 MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Event_Details *event_details,
-    MR_bool new_tree)
+    MR_Event_Info *event_info, MR_bool new_tree)
 {
     MR_Word         response;
     MR_bool         bug_found;
@@ -1854,9 +1821,6 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         MR_selected_trace_func_ptr = MR_trace_real;
         MR_debug_enabled = MR_TRUE;
         MR_update_trace_func_enabled();
-        MR_trace_call_seqno = event_details->MR_call_seqno;
-        MR_trace_call_depth = event_details->MR_call_depth;
-        MR_trace_event_number = event_details->MR_event_number;
 
         return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
     }
@@ -1913,18 +1877,12 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
     MR_update_trace_func_enabled();
     MR_selected_trace_func_ptr = MR_trace_real_decl;
 
-    MR_trace_call_seqno = event_details->MR_call_seqno;
-    MR_trace_call_depth = event_details->MR_call_depth;
-    MR_trace_event_number = event_details->MR_event_number;
-
     if (bug_found) {
-        return MR_decl_go_to_selected_event(bug_event, cmd, event_info,
-            event_details);
+        return MR_decl_go_to_selected_event(bug_event, cmd, event_info);
     }
 
     if (symptom_found) {
-        return MR_decl_go_to_selected_event(symptom_event, cmd, event_info,
-            event_details);
+        return MR_decl_go_to_selected_event(symptom_event, cmd, event_info);
     }
 
     if (no_bug_found) {
@@ -1933,7 +1891,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         ** event where the `dd' command was initially given.
         */
         return MR_decl_go_to_selected_event(MR_edt_initial_event, cmd,
-            event_info, event_details);
+            event_info);
     }
 
     if (require_subtree) {
@@ -1943,8 +1901,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         ** limit.
         */
         return MR_trace_restart_decl_debug(call_preceding, final_event,
-            topmost_seqno, MR_FALSE, requested_subtree_depth, cmd, event_info,
-            event_details);
+            topmost_seqno, MR_FALSE, requested_subtree_depth, cmd, event_info);
     }
 
     if (require_supertree) {
@@ -1953,7 +1910,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
         */
         return MR_trace_restart_decl_debug((MR_Trace_Node) NULL, final_event,
             topmost_seqno, MR_TRUE, MR_edt_default_depth_limit, cmd,
-            event_info, event_details);
+            event_info);
     }
 
     /* We shouldn't ever get here. */
@@ -1962,7 +1919,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 
 static MR_Code *
 MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
-    MR_Event_Info *event_info, MR_Event_Details *event_details)
+    MR_Event_Info *event_info)
 {
     const char      *problem;
     MR_Retry_Result retry_result;
@@ -1999,7 +1956,7 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
             MR_print_stack_regs(stdout, event_info->MR_saved_regs);
             MR_print_succip_reg(stdout, event_info->MR_saved_regs);
 #endif
-            retry_result = MR_trace_retry(event_info, event_details,
+            retry_result = MR_trace_retry(event_info,
                 ancestor_level, MR_RETRY_IO_INTERACTIVE,
                 MR_trace_decl_assume_all_io_is_tabled,
                 MR_DECL_UNTABLED_IO_RETRY_MESSAGE,
@@ -2449,7 +2406,6 @@ MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node)
 static void
 MR_decl_print_edt_stats(void)
 {
-    MR_Event_Details    event_details;
     MR_bool             debug_enabled_before = MR_debug_enabled;
     pid_t               pid;
     char                cmdstr[200];
@@ -2483,24 +2439,10 @@ MR_decl_print_edt_stats(void)
     MR_debug_enabled = MR_FALSE;
     MR_update_trace_func_enabled();
 
-    /*
-    ** Save the trace globals in case the called Mercury code is traced.
-    */
-    event_details.MR_call_seqno = MR_trace_call_seqno;
-    event_details.MR_call_depth = MR_trace_call_depth;
-    event_details.MR_event_number = MR_trace_event_number;
-
     fprintf(stderr, "Benchmarking stats:\n");
     MR_TRACE_CALL_MERCURY(
         ML_report_stats();
     );
-
-    /*
-    ** Restore the trace globals in case the called Mercury code is traced.
-    */
-    MR_trace_call_seqno = event_details.MR_call_seqno;
-    MR_trace_call_depth = event_details.MR_call_depth;
-    MR_trace_event_number = event_details.MR_event_number;
 
     MR_debug_enabled = debug_enabled_before;
     MR_update_trace_func_enabled();
