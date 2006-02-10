@@ -153,13 +153,9 @@ process_module(!ModuleInfo, !IO) :-
 
         % Stage 2: Order conjunctions based on solutions to
         % the producer-consumer constraints.
-        ModuleInfo0 = !.ModuleInfo,
         ConstraintVarMap = rep_var_map(VarInfo),
-        promise_equivalent_solutions [ModuleInfo1] (
-            mode_reordering(AbstractModeConstraints, ConstraintVarMap, SCCs,
-                ModuleInfo0, ModuleInfo1)
-        ),
-        !:ModuleInfo = ModuleInfo1,
+        mode_reordering(AbstractModeConstraints, ConstraintVarMap, SCCs,
+            !ModuleInfo),
 
         (
             Debug = yes,

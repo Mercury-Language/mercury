@@ -64,7 +64,7 @@
     % the predicates in SCCs should be stored in the VarMap.
     %
 :- pred mode_reordering(pred_constraints_map::in, mc_var_map::in,
-    list(list(pred_id))::in, module_info::in, module_info::out) is cc_multi.
+    list(list(pred_id))::in, module_info::in, module_info::out) is det.
 
     % dump_goal_paths(ModuleInfo, PredIds, !IO)
     %
@@ -119,6 +119,39 @@
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
+%
+
+    % This type stores information about mode analysis failures.
+    % The information is used when preparing error messages.
+    %
+:- type mode_analysis_failures == list(mode_analysis_failure).
+
+    % This type stores information about a mode analysis failure.
+    % The information is used when preparing error messages.
+    %
+:- type mode_analysis_failure
+   --->     no_producer_consumer_sols(
+                failing_predicate   ::  pred_proc_id
+                                    % The predicate for which the
+                                    % producer/consumer analysis
+                                    % failed to be solved
+            )
+
+    ;
+            mode_inference_failed(
+                caller              ::  pred_id,
+                                    % The predicate calling the
+                                    % predicate for which mode
+                                    % inference has failed.
+
+                scc                 :: list(pred_id)
+                                    % The SCC of predicates to be
+                                    % mode inferred for which
+                                    % the mode inference failed.
+            )
+
+    ;
+            conjunct_ordering_failed(pred_proc_id).
 
     % A map from program variables to related producer/consumer
     % constraint variables' abstract representations. The constraint
@@ -134,17 +167,7 @@
 %
 
 mode_reordering(PredConstraintsMap, VarMap, SCCs, !ModuleInfo) :-
-    (
-        list.foldl(scc_reordering(PredConstraintsMap, VarMap), SCCs,
-            !ModuleInfo)
-    ->
-        true
-    ;
-        % XXX Until mode inference is complete and the final
-        % structure of this module is decided this is all that
-        % can be done.
-        sorry(this_file, "mode ordering failure")
-    ).
+    list.foldl(scc_reordering(PredConstraintsMap, VarMap), SCCs, !ModuleInfo).
 
     % scc_reording(PredConstraintsMap, VarMap, SCC, !ModuleInfo)
     %
@@ -153,7 +176,7 @@ mode_reordering(PredConstraintsMap, VarMap, SCCs, !ModuleInfo) :-
     % producer consumer constraints in PredConstraintsMap.
     %
 :- pred scc_reordering(pred_constraints_map::in, mc_var_map::in,
-    list(pred_id)::in, module_info::in, module_info::out) is nondet.
+    list(pred_id)::in, module_info::in, module_info::out) is det.
 
 scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
     % Process only predicates from this module
@@ -161,8 +184,8 @@ scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
         SCC0, _, SCC),
 
     list.filter(
-        (pred(PredID::in) is semidet :-
-            module_info_pred_info(!.ModuleInfo, PredID, PredInfo),
+        (pred(PredId::in) is semidet :-
+            module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_infer_modes(PredInfo)
         ), SCC, PredsToInfer, PredsToCheck),
 
@@ -177,15 +200,15 @@ scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
     list.foldl(pred_reordering(PredConstraintsMap, VarMap), PredsToCheck,
         !ModuleInfo).
 
-    % pred_reordering(PredConstraintsMap, VarMap, PredID, !ModuleInfo)
+    % pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo)
     % applies mode reordering to conjunctions in the body goal of the
-    % predicate PredID for each procedure in that predicate.
+    % predicate PredId for each procedure in that predicate.
     %
 :- pred pred_reordering(pred_constraints_map::in, mc_var_map::in,
-    pred_id::in, module_info::in, module_info::out) is nondet.
+    pred_id::in, module_info::in, module_info::out) is det.
 
-pred_reordering(PredConstraintsMap, VarMap, PredID, !ModuleInfo) :-
-    module_info_pred_info(!.ModuleInfo, PredID, PredInfo0),
+pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 
     ( pred_info_infer_modes(PredInfo0) ->
         % XXX GIVE UP FOR NOW!!!! In reality, execution shouldn't
@@ -195,51 +218,105 @@ pred_reordering(PredConstraintsMap, VarMap, PredID, !ModuleInfo) :-
         % XXX Maybe move this outside of this predicate - then
         % the predicate can assume that the correct procedures
         % have been created and that they have the correct bodies.
-        copy_module_clauses_to_procs([PredID], !ModuleInfo),
+        copy_module_clauses_to_procs([PredId], !ModuleInfo),
 
-        module_info_pred_info(!.ModuleInfo, PredID, PredInfo1),
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo1),
 
-        PredConstraints = map.lookup(PredConstraintsMap, PredID),
-        ProcIDs = pred_info_all_procids(PredInfo1),
-        list.foldl(proc_reordering(PredConstraints, VarMap, PredID), ProcIDs,
-            PredInfo1, PredInfo),
+        PredConstraints = map.lookup(PredConstraintsMap, PredId),
+        ProcIds = pred_info_all_procids(PredInfo1),
+        list.foldl2(proc_reordering(PredConstraints, VarMap, PredId), ProcIds,
+            [], Errors, PredInfo1, PredInfo),
 
-        module_info_set_pred_info(PredID, PredInfo, !ModuleInfo)
+        (
+            Errors = [],
+            module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+        ;
+            Errors = [_ | _],
+            % XXX Deal with mode errors here!
+            % This is a placeholder error message.
+            ErrorsString = string.string(Errors),
+            sorry(this_file, "mode checking failure: " ++ ErrorsString)
+        )
     ).
 
-    % proc_reordering(PredConstraints, VarMap, PredID, ProcID, !PredInfo)
+    % proc_reordering(PredConstraints, VarMap, PredId, ProcId, !PredInfo)
     %
-    % Orders conjunctions in procedure ProcID of predicate PredID, according
+    % Orders conjunctions in procedure ProcId of predicate PredId, according
     % to the producer consumer constraints in PredConstraints. The procedure
     % with the modified body goal replaces its original in PredInfo.
     %
 :- pred proc_reordering(pred_p_c_constraints::in, mc_var_map::in, pred_id::in,
-    proc_id::in, pred_info::in, pred_info::out) is nondet.
+    proc_id::in, mode_analysis_failures::in, mode_analysis_failures::out,
+    pred_info::in, pred_info::out) is det.
 
-proc_reordering(PredConstraints, VarMap, PredID, ProcID, !PredInfo) :-
-    pred_info_proc_info(!.PredInfo, ProcID, ProcInfo0),
+proc_reordering(PredConstraints, VarMap, PredId, ProcId, !Errors, !PredInfo) :-
+    pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
     proc_info_goal(ProcInfo0, Goal0),
 
-    ConstraintFormulae = pred_constraints_to_formulae(ProcID, PredConstraints),
+    ConstraintFormulae = pred_constraints_to_formulae(ProcId, PredConstraints),
 
     PrepConstraints0 = new_prep_cstrts,
     prepare_abstract_constraints(ConstraintFormulae, PrepConstraints0,
         PrepConstraints1),
     SolverConstraints = make_solver_cstrts(PrepConstraints1),
 
-    mcsolver.solve(SolverConstraints, Bindings),
-    goal_reordering(PredID, VarMap, Bindings, Goal0, Goal),
+    % solve_proc_reordering is cc_multi because each of its solutions
+    % is equivalent in the sense that they all contain the same goals
+    % and conjunctions are ordered according to some legitimate
+    % solution to the producing and consuming goals of program
+    % variables.
+    Errors0 = !.Errors,
+    promise_equivalent_solutions [Errors1, Goal] (
+        solve_proc_reordering(VarMap, PredId, ProcId, SolverConstraints,
+            Errors0, Errors1, Goal0, Goal)
+    ),
+    !:Errors = Errors1,
 
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
-    pred_info_set_proc_info(ProcID, ProcInfo, !PredInfo).
+    pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo).
+
+    % solve_proc_reordering(VarMap, PredId, ProcId, SolverConstraints,
+    %   !Errors, !Goal)
+    %
+    % Performs the nondeterministic constraint solving for proc_reordering
+    % - using the constraints in SolverConstraints to order the goals
+    % in Goal (from procedure ProcId in predicate PredId). Any failure
+    % is stored in Errors, and the predicate still proceeds.
+    % VarMap should contain any constraint variables referring to Goal
+    % and the program variables in it.
+    %
+    % solve_proc_reordering is cc_multi because each of its solutions
+    % is equivalent in the sense that they all contain the same goals
+    % and conjunctions are ordered according to some legitimate
+    % solution to the producing and consuming goals of program
+    % variables.
+    %
+:- pred solve_proc_reordering(mc_var_map::in, pred_id::in, proc_id::in,
+    solver_cstrts::in, mode_analysis_failures::in, mode_analysis_failures::out,
+    hlds_goal::in, hlds_goal::out) is cc_multi.
+
+solve_proc_reordering(VarMap, PredId, ProcId, SolverConstraints,
+        !Errors, !Goal) :-
+    (
+        mcsolver.solve(SolverConstraints, Bindings),
+        goal_reordering(PredId, VarMap, Bindings, !Goal)
+    ->
+        true
+    ;
+        ( mcsolver.solve(SolverConstraints, _) ->
+            list.cons(conjunct_ordering_failed(proc(PredId, ProcId)), !Errors)
+        ;
+            list.cons(no_producer_consumer_sols(proc(PredId, ProcId)), !Errors)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 %
 % Conjunction reordering
 %
 
-    % goal_reordering(PredID, VarMap, Bindings, !Goal) applies mode
-    % reordering to conjunctions in Goal (from predicate PredID) and its
+    % goal_reordering(PredId, VarMap, Bindings, !Goal) applies mode
+    % reordering to conjunctions in Goal (from predicate PredId) and its
     % children. VarMap should contain all producer/consumer constraint
     % variables relevant to said conjunctions, and Bindings should
     % contain bindings for them.
@@ -247,22 +324,22 @@ proc_reordering(PredConstraints, VarMap, PredID, ProcID, !PredInfo) :-
 :- pred goal_reordering(pred_id::in, mc_var_map::in, mc_bindings::in,
     hlds_goal::in, hlds_goal::out) is semidet.
 
-goal_reordering(PredID, VarMap, Bindings, GoalExpr0 - GoalInfo,
+goal_reordering(PredId, VarMap, Bindings, GoalExpr0 - GoalInfo,
     GoalExpr - GoalInfo) :-
-    goal_expr_reordering(PredID, VarMap, Bindings, GoalExpr0, GoalExpr).
+    goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr).
 
-    % goal_expr_reordering(PredID, VarMap, Bindings, !GoalExpr) applies
+    % goal_expr_reordering(PredId, VarMap, Bindings, !GoalExpr) applies
     % mode reordering to conjunctions in GoalExpr (from predicate
-    % PredID) and its children. VarMap should contain all
+    % PredId) and its children. VarMap should contain all
     % producer/consumer constraint variables relevant to said
     % conjunctions, and Bindings should contain bindings for them.
     %
 :- pred goal_expr_reordering(pred_id::in, mc_var_map::in, mc_bindings::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is semidet.
 
-goal_expr_reordering(PredID, VarMap, Bindings, conj(Goals0), conj(Goals)) :-
+goal_expr_reordering(PredId, VarMap, Bindings, conj(Goals0), conj(Goals)) :-
     % Build constraints for this conjunction.
-    make_conjuncts_nonlocal_repvars(PredID, Goals0, RepVarMap),
+    make_conjuncts_nonlocal_repvars(PredId, Goals0, RepVarMap),
     conjunct_ordering_constraints(VarMap, Bindings, RepVarMap,
         ordering_init(list.length(Goals0)), OrderingConstraintsInfo),
 
@@ -271,12 +348,12 @@ goal_expr_reordering(PredID, VarMap, Bindings, conj(Goals0), conj(Goals)) :-
     list.map(list.index1_det(Goals0), Order, Goals1),
 
     % Then recurse on the reordered goals
-    list.map(goal_reordering(PredID, VarMap, Bindings), Goals1, Goals).
+    list.map(goal_reordering(PredId, VarMap, Bindings), Goals1, Goals).
 
     % goal_expr_reordering for atomic goals, and ones that shouldn't
     % exist yet.
     %
-goal_expr_reordering(_PredID, _VarMap, _Bindings, GoalExpr, GoalExpr) :-
+goal_expr_reordering(_PredId, _VarMap, _Bindings, GoalExpr, GoalExpr) :-
     (
         GoalExpr = call(_, _, _, _, _, _)
     ;
@@ -293,26 +370,26 @@ goal_expr_reordering(_PredID, _VarMap, _Bindings, GoalExpr, GoalExpr) :-
         unexpected(this_file, "switch")
     ).
 
-goal_expr_reordering(PredID, VarMap, Bindings, disj(Goals0), disj(Goals)) :-
-    list.map(goal_reordering(PredID, VarMap, Bindings), Goals0, Goals).
+goal_expr_reordering(PredId, VarMap, Bindings, disj(Goals0), disj(Goals)) :-
+    list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals).
 
-goal_expr_reordering(PredID, VarMap, Bindings, not(Goal0), not(Goal)) :-
-    goal_reordering(PredID, VarMap, Bindings, Goal0, Goal).
+goal_expr_reordering(PredId, VarMap, Bindings, not(Goal0), not(Goal)) :-
+    goal_reordering(PredId, VarMap, Bindings, Goal0, Goal).
 
-goal_expr_reordering(PredID, VarMap, Bindings, scope(Reason, Goal0),
+goal_expr_reordering(PredId, VarMap, Bindings, scope(Reason, Goal0),
         scope(Reason, Goal)) :-
-    goal_reordering(PredID, VarMap, Bindings, Goal0, Goal).
+    goal_reordering(PredId, VarMap, Bindings, Goal0, Goal).
 
-goal_expr_reordering(PredID, VarMap, Bindings,
+goal_expr_reordering(PredId, VarMap, Bindings,
         if_then_else(Vars, Cond0, Then0, Else0),
         if_then_else(Vars, Cond, Then, Else)) :-
-    goal_reordering(PredID, VarMap, Bindings, Cond0, Cond),
-    goal_reordering(PredID, VarMap, Bindings, Then0, Then),
-    goal_reordering(PredID, VarMap, Bindings, Else0, Else).
+    goal_reordering(PredId, VarMap, Bindings, Cond0, Cond),
+    goal_reordering(PredId, VarMap, Bindings, Then0, Then),
+    goal_reordering(PredId, VarMap, Bindings, Else0, Else).
 
-goal_expr_reordering(PredID, VarMap, Bindings, par_conj(Goals0),
+goal_expr_reordering(PredId, VarMap, Bindings, par_conj(Goals0),
         par_conj(Goals)) :-
-    list.map(goal_reordering(PredID, VarMap, Bindings), Goals0, Goals).
+    list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals).
 
 %-----------------------------------------------------------------------------%
 
@@ -397,7 +474,7 @@ add_lt_constraint(A, B, !OCI) :-
 
 %-----------------------------------------------------------------------------%
 
-    % make_conjuncts_nonlocal_repvars(PredID, Goals, RepvarMap)
+    % make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap)
     %
     % The keys of RepvarMap are the program variables nonlocal
     % to Goals. Each is mapped to the mc_rep_var representation
@@ -407,8 +484,8 @@ add_lt_constraint(A, B, !OCI) :-
 :- pred make_conjuncts_nonlocal_repvars(pred_id::in, hlds_goals::in,
     prog_var_at_conjuncts_map::out) is det.
 
-make_conjuncts_nonlocal_repvars(PredID, Goals, RepvarMap) :-
-    list.foldl(make_conjunct_nonlocal_repvars(PredID), Goals,
+make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap) :-
+    list.foldl(make_conjunct_nonlocal_repvars(PredId), Goals,
         multi_map.init, RepvarMap).
 
     % See make_conjuncts_nonlocal_repvars; acts on a single conjunct.
@@ -416,14 +493,14 @@ make_conjuncts_nonlocal_repvars(PredID, Goals, RepvarMap) :-
 :- pred make_conjunct_nonlocal_repvars(pred_id::in, hlds_goal::in,
     prog_var_at_conjuncts_map::in, prog_var_at_conjuncts_map::out) is det.
 
-make_conjunct_nonlocal_repvars(PredID, Goal, !RepvarMap) :-
+make_conjunct_nonlocal_repvars(PredId, Goal, !RepvarMap) :-
     GoalInfo = snd(Goal),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     goal_info_get_goal_path(GoalInfo, GoalPath),
 
     set.fold(
         (pred(NL::in, RMap0::in, RMap::out) is det :-
-            multi_map.set(RMap0, NL, NL `in` PredID `at` GoalPath, RMap)
+            multi_map.set(RMap0, NL, NL `in` PredId `at` GoalPath, RMap)
         ),
         NonLocals, !RepvarMap).
 
@@ -494,7 +571,7 @@ produced_at_path(VarMap, Bindings, RepVar) :-
     %
 :- func get_position_in_conj(mc_rep_var::in) = (conjunct_id::out) is semidet.
 
-get_position_in_conj(_ProgVar `in` _PredID `at` [conj(N) | _]) = N.
+get_position_in_conj(_ProgVar `in` _PredId `at` [conj(N) | _]) = N.
 
     % Predicate version of get_position_in_conj
     %

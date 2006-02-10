@@ -427,6 +427,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, CallerPredId, GoalExpr,
         % No modes declared so just constrain the hearvars
         pred_info_clauses_info(CalleePredInfo, CalleeClausesInfo),
         clauses_info_headvars(CalleeClausesInfo, CalleeHeadVars),
+        add_mode_infer_callee(CalleePredId, !Constraints),
         add_call_headvar_constraints(ProgVarset, Context, GoalPath,
             CallerPredId, Args, CalleePredId, CalleeHeadVars,
             !VarInfo, !Constraints)

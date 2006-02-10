@@ -27,6 +27,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
+:- import_module set.
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
@@ -126,10 +127,14 @@
                                 % Stores procedure specific constraints
                                 % such as mode declaration constraints.
         pred_constraints    ::  assoc_list(constraint_formula,
-                                    constraint_annotation)
+                                    constraint_annotation),
                                 % Stores constraints that apply to all
                                 % procedures of the predicate -
                                 % typically generated from its clauses.
+        mode_infer_callees  ::  set(pred_id)
+                                % Collection of predicates with no
+                                % declared modes that are called by
+                                % this predicate.
     ).
 
 %-----------------------------------------------------------------------------%
@@ -168,6 +173,15 @@
     %
 :- pred add_constraint(prog_context::in, proc_id::in, constraint_formula::in,
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
+
+    % add_mode_infer_callee(PredId, !PredConstraints)
+    %
+    % Records in PredConstraints that predicate PredId is called and
+    % needs to have modes inferred for it for mode analysis of the
+    % predicate PredConstraints refers to.
+    %
+:- pred add_mode_infer_callee(pred_id::in, pred_p_c_constraints::in,
+    pred_p_c_constraints::out) is det.
 
     % pred_constraints_to_formulae rips the barebones
     % constraints (those that apply to all procedures of a
@@ -280,7 +294,7 @@
 
     % Initialises all the parts of a mode_constraints_info type.
     %
-init = pred_constraints(multi_map.init, []).
+init = pred_constraints(multi_map.init, [], set.init).
 
     % add_constraint(Formula, !PredConstraints) adds the constraint
     % given by Formula to the constraint system in PredConstraints.
@@ -303,6 +317,11 @@ add_constraint(Context, ProcId, ConstraintFormula, !PredConstraints) :-
     FormulaAndAnnotation = pair(ConstraintFormula, ConstraintAnnotation),
     !:PredConstraints = !.PredConstraints ^ proc_constraints :=
         multi_map.add(ProcConstraints, ProcId, FormulaAndAnnotation).
+
+add_mode_infer_callee(PredId, !PredConstraints) :-
+    ModeInferCallees = !.PredConstraints ^ mode_infer_callees,
+    !:PredConstraints = !.PredConstraints ^ mode_infer_callees :=
+        set.insert(ModeInferCallees, PredId).
 
     % pred_constraints_to_formulae returns constraints that apply
     % to all procedures of a predicate as a list of constraint formulae.
