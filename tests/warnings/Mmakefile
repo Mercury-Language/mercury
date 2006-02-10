@@ -28,11 +28,14 @@ ERRORCHECK_PROGS= \
 	singleton_test \
 	state_vars_test \
 	table_with_inline \
-	unused_args_analysis \
 	unify_f_g \
 	unused_args_test \
 	unused_import \
 	warn_stubs
+
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+ERRORCHECK_PROGS += unused_args_analysis
+endif
 
 PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
 
