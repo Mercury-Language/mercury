@@ -2,6 +2,7 @@
 # The completion test requires mdb to use readline, even though
 # the input is not a terminal.
 MCFLAGS-completion = --runtime-flags --force-readline
+C2INITFLAGS-completion = --runtime-flags --force-readline
 
 # The debugger can't know about type class declarations unless we generate
 # the new type of RTTI for them.
