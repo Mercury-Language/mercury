@@ -2132,9 +2132,9 @@ mercury_format_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
     ),
     add_string(" = ", !U),
     mercury_format_type(VarSet, AppendVarnums, RetType, !U),
+    mercury_format_det_annotation(MaybeDet, !U),
     mercury_format_class_context(ClassContext, ExistQVars, VarSet,
         AppendVarnums, !U),
-    mercury_format_det_annotation(MaybeDet, !U),
     add_string(Separator, !U).
 
 %-----------------------------------------------------------------------------%

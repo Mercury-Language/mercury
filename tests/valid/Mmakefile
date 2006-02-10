@@ -26,6 +26,7 @@ TYPECLASS_PROGS= \
 	exists_fundeps_2 \
 	exists_fundeps_3 \
 	flatten_conj_bug \
+	func_class \
 	func_method \
 	fundeps \
 	instance_superclass \
