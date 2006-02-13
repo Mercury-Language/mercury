@@ -63,6 +63,16 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Find all modules in the current directory which are
+    % reachable (by import) from the given module.
+    % Return a list of `--local-module-id' options suitable for the
+    % command line.
+    %
+:- pred make_local_module_id_options(module_name::in, bool::out,
+    list(string)::out, make_info::in, make_info::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
 :- pred dependency_status(dependency_file::in, dependency_status::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -105,6 +115,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module transform_hlds.
+:- import_module transform_hlds__mmc_analysis.
 
 %-----------------------------------------------------------------------------%
 
@@ -884,6 +897,19 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
             Modules = Modules0
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+make_local_module_id_options(ModuleName, Success, Options, !Info, !IO) :-
+    find_reachable_local_modules(ModuleName, Success, LocalModules,
+        !Info, !IO),
+    set.fold(make_local_module_id_option, LocalModules, [], Options).
+
+:- pred make_local_module_id_option(module_name::in, list(string)::in,
+    list(string)::out) is det.
+
+make_local_module_id_option(ModuleName, Opts,
+    ["--local-module-id", module_name_to_module_id(ModuleName) | Opts]).
 
 %-----------------------------------------------------------------------------%
 

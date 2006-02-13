@@ -759,6 +759,7 @@
     ;       help
     ;       version
     ;       fullarch
+    ;       local_module_id
     ;       compiler_sufficiently_recent
             % This option is used to test that the compiler is sufficiently
             % recent when no other test can easily be constructed in
@@ -1493,6 +1494,7 @@ option_defaults_2(miscellaneous_option, [
     help                                -   bool(no),
     version                             -   bool(no),
     fullarch                            -   string(""),
+    local_module_id                     -   accumulating([]),
     compiler_sufficiently_recent        -   bool(no),
     experiment                          -   string("")
 ]).
@@ -2242,6 +2244,7 @@ long_option("version",              version).
 long_option("filenames-from-stdin", filenames_from_stdin).
 long_option("aditi-user",           aditi_user).
 long_option("fullarch",             fullarch).
+long_option("local-module-id",      local_module_id).
 long_option("bug-intermod-2002-06-13",  compiler_sufficiently_recent).
 long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
 long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent).
@@ -4598,6 +4601,8 @@ options_help_misc -->
 
         % The `--fullarch' option is reserved for
         % use by the `Mercury.config' file.
+
+        % The `--local-module-id' option is used by `mmc --make'.
     ]).
 
 :- pred write_tabbed_lines(list(string)::in, io::di, io::uo) is det.

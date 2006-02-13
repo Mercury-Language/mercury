@@ -52,6 +52,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module relation.
 :- import_module set.
 :- import_module std_util.
 
@@ -633,6 +634,20 @@
     %
 :- pred generate_file_dependency_file(file_name::in, io::di, io::uo) is det.
 
+    % add_module_relations(LookupModuleImports, ModuleName,
+    %   !IntDepsRel, !ImplDepsRel)
+    %
+    % Add a module's interface and implementation dependencies to IntDepsRel
+    % and ImplDepsRel respectively.  Dependencies are found using the
+    % LookupModuleImports function.
+    %
+:- pred add_module_relations(lookup_module_imports::lookup_module_imports,
+    module_name::in, relation(module_name)::in, relation(module_name)::out,
+    relation(module_name)::in, relation(module_name)::out) is det.
+
+:- type lookup_module_imports == (func(module_name) = module_imports).
+:- mode lookup_module_imports == in(func(in) = out is det).
+
     % get_dependencies(Items, ImportDeps, UseDeps):
     %
     % Get the list of modules that a list of items (explicitly) depends on.
@@ -803,7 +818,6 @@
 :- import_module getopt_io.
 :- import_module library.
 :- import_module multi_map.
-:- import_module relation.
 :- import_module sparse_bitset.
 :- import_module string.
 :- import_module svmap.
@@ -1152,6 +1166,7 @@ make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
             Search = yes,
             ( Ext = ".opt"
             ; Ext = ".trans_opt"
+            ; Ext = ".analysis"
             )
         )
     ->
@@ -1213,6 +1228,10 @@ file_is_arch_or_grade_dependent_2(".opt").
 file_is_arch_or_grade_dependent_2(".optdate").
 file_is_arch_or_grade_dependent_2(".trans_opt").
 file_is_arch_or_grade_dependent_2(".trans_opt_date").
+file_is_arch_or_grade_dependent_2(".analysis").
+file_is_arch_or_grade_dependent_2(".analysis_date").
+file_is_arch_or_grade_dependent_2(".imdg").
+file_is_arch_or_grade_dependent_2(".request").
 file_is_arch_or_grade_dependent_2(".mih").
 file_is_arch_or_grade_dependent_2(".c").
 file_is_arch_or_grade_dependent_2(".c_date").
@@ -4321,46 +4340,67 @@ deps_list_to_deps_rel([Deps | DepsList], DepsMap, !IntRel, !ImplRel) :-
     Deps = deps(_, ModuleImports),
     ModuleError = ModuleImports ^ error,
     ( ModuleError \= fatal_module_errors ->
-        %
-        % Add interface dependencies to the interface deps relation.
-        %
-        % Note that we need to do this both for the interface imports
-        % of this module and for the *implementation* imports of
-        % its ancestors.  This is because if this module is defined
-        % in the implementation section of its parent, then the
-        % interface of this module may depend on things
-        % imported only by its parent's implementation.
-        %
-        % If this module was actually defined in the interface
-        % section of one of its ancestors, then it should only
-        % depend on the interface imports of that ancestor,
-        % so the dependencies added here are in fact more
-        % conservative than they need to be in that case.
-        % However, that should not be a major problem.
-        %
-        ModuleName = ModuleImports ^ module_name,
-        ParentDeps = ModuleImports ^ parent_deps,
-        svrelation__add_element(ModuleName, IntModuleKey, !IntRel),
-        add_int_deps(IntModuleKey, ModuleImports, !IntRel),
-        add_parent_impl_deps_list(DepsMap, IntModuleKey, ParentDeps, !IntRel),
-
-        %
-        % Add implementation dependencies to the impl. deps relation.
-        % (The implementation dependencies are a superset of the
-        % interface dependencies.)
-        %
-        % Note that we need to do this both for the imports
-        % of this module and for the imports of its parents,
-        % because this module may depend on things imported
-        % only by its parents.
-        %
-        svrelation__add_element(ModuleName, ImplModuleKey, !ImplRel),
-        add_impl_deps(ImplModuleKey, ModuleImports, !ImplRel),
-        add_parent_impl_deps_list(DepsMap, ImplModuleKey, ParentDeps, !ImplRel)
+        module_imports_to_deps_rel(ModuleImports,
+            lookup_module_imports(DepsMap), !IntRel, !ImplRel)
     ;
         true
     ),
     deps_list_to_deps_rel(DepsList, DepsMap, !IntRel, !ImplRel).
+
+:- func lookup_module_imports(deps_map, module_name) = module_imports.
+
+lookup_module_imports(DepsMap, ModuleName) = ModuleImports :-
+    map__lookup(DepsMap, ModuleName, deps(_, ModuleImports)).
+
+add_module_relations(LookupModuleImports, ModuleName, !IntRel, !ImplRel) :-
+    ModuleImports = LookupModuleImports(ModuleName),
+    module_imports_to_deps_rel(ModuleImports, LookupModuleImports,
+        !IntRel, !ImplRel).
+
+:- pred module_imports_to_deps_rel(module_imports::in,
+    lookup_module_imports::lookup_module_imports,
+    deps_rel::in, deps_rel::out, deps_rel::in, deps_rel::out) is det.
+
+module_imports_to_deps_rel(ModuleImports, LookupModuleImports,
+        !IntRel, !ImplRel) :-
+    %
+    % Add interface dependencies to the interface deps relation.
+    %
+    % Note that we need to do this both for the interface imports
+    % of this module and for the *implementation* imports of
+    % its ancestors.  This is because if this module is defined
+    % in the implementation section of its parent, then the
+    % interface of this module may depend on things
+    % imported only by its parent's implementation.
+    %
+    % If this module was actually defined in the interface
+    % section of one of its ancestors, then it should only
+    % depend on the interface imports of that ancestor,
+    % so the dependencies added here are in fact more
+    % conservative than they need to be in that case.
+    % However, that should not be a major problem.
+    %
+    ModuleName = ModuleImports ^ module_name,
+    ParentDeps = ModuleImports ^ parent_deps,
+    svrelation__add_element(ModuleName, IntModuleKey, !IntRel),
+    add_int_deps(IntModuleKey, ModuleImports, !IntRel),
+    add_parent_impl_deps_list(LookupModuleImports, IntModuleKey, ParentDeps,
+        !IntRel),
+
+    %
+    % Add implementation dependencies to the impl. deps relation.
+    % (The implementation dependencies are a superset of the
+    % interface dependencies.)
+    %
+    % Note that we need to do this both for the imports
+    % of this module and for the imports of its parents,
+    % because this module may depend on things imported
+    % only by its parents.
+    %
+    svrelation__add_element(ModuleName, ImplModuleKey, !ImplRel),
+    add_impl_deps(ImplModuleKey, ModuleImports, !ImplRel),
+    add_parent_impl_deps_list(LookupModuleImports, ImplModuleKey, ParentDeps,
+        !ImplRel).
 
     % Add interface dependencies to the interface deps relation.
     %
@@ -4389,18 +4429,20 @@ add_impl_deps(ModuleKey, ModuleImports, !Rel) :-
     % Add parent implementation dependencies for the given Parent module
     % to the impl. deps relation values for the given ModuleKey.
     %
-:- pred add_parent_impl_deps(deps_map::in, relation_key::in, module_name::in,
-    deps_rel::in, deps_rel::out) is det.
+:- pred add_parent_impl_deps(lookup_module_imports::lookup_module_imports,
+    relation_key::in, module_name::in, deps_rel::in, deps_rel::out) is det.
 
-add_parent_impl_deps(DepsMap, ModuleKey, Parent, !Rel) :-
-    map__lookup(DepsMap, Parent, deps(_, ParentModuleImports)),
+add_parent_impl_deps(LookupModuleImports, ModuleKey, Parent, !Rel) :-
+    ParentModuleImports = LookupModuleImports(Parent),
     add_impl_deps(ModuleKey, ParentModuleImports, !Rel).
 
-:- pred add_parent_impl_deps_list(deps_map::in, relation_key::in,
-    list(module_name)::in, deps_rel::in, deps_rel::out) is det.
+:- pred add_parent_impl_deps_list(lookup_module_imports::lookup_module_imports,
+    relation_key::in, list(module_name)::in, deps_rel::in, deps_rel::out)
+    is det.
 
-add_parent_impl_deps_list(DepsMap, ModuleKey, Parents, !Rel) :-
-    list__foldl(add_parent_impl_deps(DepsMap, ModuleKey), Parents, !Rel).
+add_parent_impl_deps_list(LookupModuleImports, ModuleKey, Parents, !Rel) :-
+    list__foldl(add_parent_impl_deps(LookupModuleImports, ModuleKey), Parents,
+        !Rel).
 
     % Add a single dependency to a relation.
     %

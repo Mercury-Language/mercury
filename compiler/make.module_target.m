@@ -26,6 +26,15 @@
 :- pred make_module_target(dependency_file::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
+    % make_module_target_extra_options(ExtraOpts, Target, Success, Info0, Info)
+    %
+    % Make a target corresponding to a single module, with extra command line
+    % options.
+    %
+:- pred make_module_target_extra_options(list(string)::in,
+    dependency_file::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
     % record_made_target(Target, Task, MakeSucceeded)
     %
     % Record whether building a target succeeded or not.
@@ -75,10 +84,15 @@ make_module_target(TargetFile, Succeeded1, Succeeded1 `and` Succeeded2,
         !Info, !IO) :-
     make_module_target(TargetFile, Succeeded2, !Info, !IO).
 
-make_module_target(file(_, _) @ Dep, Succeeded, !Info, !IO) :-
+make_module_target(DepFile, Succeeded, !Info, !IO) :-
+    make_module_target_extra_options([], DepFile, Succeeded, !Info, !IO).
+
+make_module_target_extra_options(_ExtraOptions, file(_, _) @ Dep,
+        Succeeded, !Info, !IO) :-
     dependency_status(Dep, Status, !Info, !IO),
     Succeeded = ( Status = error -> no ; yes ).
-make_module_target(target(TargetFile) @ Dep, Succeeded, !Info, !IO) :-
+make_module_target_extra_options(ExtraOptions, target(TargetFile) @ Dep,
+        Succeeded, !Info, !IO) :-
     dependency_status(Dep, Status, !Info, !IO),
     (
         Status = not_considered,
@@ -100,7 +114,7 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, !Info, !IO) :-
                 CompilationTask = process_module(_) - _,
                 Imports ^ source_file_module_name \= ModuleName
             ->
-                make_module_target(
+                make_module_target_extra_options(ExtraOptions,
                     target(Imports ^ source_file_module_name - FileType),
                     Succeeded, !Info, !IO)
             ;
@@ -167,8 +181,8 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, !Info, !IO) :-
                         set__delete(!.Info ^ command_line_targets,
                             ModuleName - module_target(FileType)),
                     build_target(CompilationTask, TargetFile, Imports,
-                        TouchedTargetFiles, TouchedFiles, Succeeded,
-                        !Info, !IO)
+                        TouchedTargetFiles, TouchedFiles, ExtraOptions,
+                        Succeeded, !Info, !IO)
                 ;
                     DepsResult = up_to_date,
                     maybe_warn_up_to_date_target(
@@ -286,11 +300,11 @@ force_reanalysis_of_suboptimal_module(ModuleName, ForceReanalysis, Info,
 
 :- pred build_target(compilation_task_result::in, target_file::in,
     module_imports::in, list(target_file)::in, list(file_name)::in,
-    bool::out, make_info::in, make_info::out,
+    list(string)::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
-        TouchedFiles, Succeeded, !Info, !IO) :-
+        TouchedFiles, ExtraOptions, Succeeded, !Info, !IO) :-
     maybe_make_target_message(TargetFile, !IO),
     TargetFile = ModuleName - _FileType,
     CompilationTask = Task - TaskOptions,
@@ -322,8 +336,8 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
         ),
     build_with_check_for_interrupt(
         build_with_module_options_and_output_redirect(ModuleName,
-        TaskOptions,
-        build_target_2(ModuleName, Task, MaybeArgFileName, Imports)),
+            ExtraOptions ++ TaskOptions,
+            build_target_2(ModuleName, Task, MaybeArgFileName, Imports)),
         Cleanup, Succeeded, !Info, !IO),
     record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
         TouchedFiles, !Info, !IO).

@@ -36,9 +36,22 @@
 	% Describe the analyses which can be performed by a compiler.
 	func analyses(Compiler, analysis_name) = analysis_type is semidet,
 
-	% module_id_to_file_name(Compiler, ModuleId, Ext, FileName)
-	pred module_id_to_file_name(Compiler::in, module_id::in,
-		string::in, string::out, io__state::di, io__state::uo) is det
+	% module_id_to_read_file_name(Compiler, ModuleId, Ext, FileName)
+	pred module_id_to_read_file_name(Compiler::in, module_id::in,
+		string::in, maybe_error(string)::out, io::di, io::uo) is det,
+
+	% module_id_to_write_file_name(Compiler, ModuleId, Ext, FileName)
+	pred module_id_to_write_file_name(Compiler::in, module_id::in,
+		string::in, string::out, io::di, io::uo) is det,
+
+	% module_is_local(Compiler, ModuleId, IsLocal, !IO)
+	%
+	% IsLocal is `yes' if the module is not a "library" module, i.e. we are
+	% able to reanalyse the module, not just use results that already
+	% exist.
+	% 
+	pred module_is_local(Compiler::in, module_id::in, bool::out,
+	    io::di, io::uo) is det
 ].
 
 :- type module_id == string.
@@ -911,7 +924,10 @@ write_analysis_files(Compiler, ModuleId, ImportedModuleIds, !Info, !IO) :-
     (if NewResults = !.Info ^ new_analysis_results ^ elem(ModuleId) then
 	ModuleStatus = lub_result_statuses(NewResults)
     else
-	ModuleStatus = optimal
+	ModuleStatus = optimal,
+	% Force an `.analysis' file to be written out for this module,
+	% even though there are no results recorded for it.
+	!:Info = !.Info ^ new_analysis_results ^ elem(ModuleId) := map.init
     ),
 
     update_analysis_registry(!Info, !IO),
@@ -931,11 +947,11 @@ write_analysis_files(Compiler, ModuleId, ImportedModuleIds, !Info, !IO) :-
     % Write the results for all the modules we know of.  For the
     % module being compiled, the analysis results may have changed.
     % For other modules, their overall statuses may have changed.
-    map.foldl(write_analysis_files_2(!.Info),
+    write_local_modules(!.Info, write_module_analysis_results,
 	!.Info ^ old_analysis_results, !IO),
 
     % Write the requests for the imported modules.
-    map.foldl(write_module_analysis_requests(!.Info),
+    write_local_modules(!.Info, write_module_analysis_requests,
 	!.Info ^ analysis_requests, !IO),
 
     % Remove the requests for the current module since we (should have)
@@ -943,11 +959,12 @@ write_analysis_files(Compiler, ModuleId, ImportedModuleIds, !Info, !IO) :-
     empty_request_file(!.Info, ModuleId, !IO),
 
     % Write the intermodule dependency graphs.
-    map.foldl(write_module_imdg(!.Info), !.Info ^ old_imdg, !IO),
+    write_local_modules(!.Info, write_module_imdg,
+	!.Info ^ old_imdg, !IO),
     
     % Touch a timestamp file to indicate the last time that this module was
     % analysed.
-    module_id_to_file_name(Compiler, ModuleId, ".analysis_date",
+    module_id_to_write_file_name(Compiler, ModuleId, ".analysis_date",
 	TimestampFileName, !IO),
     io.open_output(TimestampFileName, Result, !IO),
     (
@@ -959,10 +976,38 @@ write_analysis_files(Compiler, ModuleId, ImportedModuleIds, !Info, !IO) :-
 	error(io.error_message(IOError))
     ).
 
-:- pred write_analysis_files_2(analysis_info::in, module_id::in,
+:- type write_module_analysis_map(T) ==
+    (pred(analysis_info, module_id, module_analysis_map(T), io, io)).
+:- mode write_module_analysis_map == in(pred(in, in, in, di, uo) is det).
+
+:- pred write_local_modules(analysis_info::in,
+    write_module_analysis_map(T)::write_module_analysis_map,
+    analysis_map(T)::in, io::di, io::uo) is det.
+:- pred write_local_modules_2(analysis_info::in,
+    write_module_analysis_map(T)::write_module_analysis_map,
+    module_id::in, module_analysis_map(T)::in, io::di, io::uo) is det.
+
+write_local_modules(Info, Write, AnalysisMap, !IO) :-
+    map.foldl(write_local_modules_2(Info, Write), AnalysisMap, !IO).
+
+write_local_modules_2(Info, Write, ModuleId, ModuleResults, !IO) :-
+    module_is_local(Info ^ compiler, ModuleId, IsLocal, !IO),
+    (
+	IsLocal = yes,
+	Write(Info, ModuleId, ModuleResults, !IO)
+    ;
+	IsLocal = no,
+	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+	    io.write_string("Not writing file for non-local module ", !IO),
+	    io.write_string(ModuleId, !IO),
+	    io.nl(!IO)
+	), !IO)
+    ).
+
+:- pred write_module_analysis_results(analysis_info::in, module_id::in,
 	module_analysis_map(analysis_result)::in, io::di, io::uo) is det.
 
-write_analysis_files_2(Info, ModuleId, ModuleResults, !IO) :-
+write_module_analysis_results(Info, ModuleId, ModuleResults, !IO) :-
     ModuleStatus = Info ^ module_statuses ^ det_elem(ModuleId),
     write_module_analysis_results(Info, ModuleId,
 	ModuleStatus, ModuleResults, !IO).

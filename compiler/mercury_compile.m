@@ -3678,13 +3678,10 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     globals__lookup_bool_option(Globals, intermod_unused_args, Intermod),
     globals__lookup_bool_option(Globals, optimize_unused_args, Optimize),
     globals__lookup_bool_option(Globals, warn_unused_args, Warn),
-    globals__lookup_bool_option(Globals, intermodule_analysis,
-        IntermodAnalysis),
     (
         ( Optimize = yes
         ; Warn = yes
         ; Intermod = yes
-        ; IntermodAnalysis = yes
         )
     ->
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),

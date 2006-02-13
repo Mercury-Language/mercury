@@ -46,6 +46,9 @@
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
+:- import_module relation.
+:- import_module svrelation.
+
 %-----------------------------------------------------------------------------%
 
 make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
@@ -610,41 +613,91 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
 
 build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
         !Info, !IO) :-
-    get_target_modules(analysis_registry, AllModules, TargetModules,
+    get_target_modules(analysis_registry, AllModules, TargetModules0,
         !Info, !IO),
     globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
     ( Succeeded0 = no, KeepGoing = no ->
         Succeeded = no
     ;
-        foldl2_maybe_stop_at_error(KeepGoing,
-            make_module_target,
-            make_dependency_list(TargetModules, analysis_registry),
-            Succeeded1, !Info, !IO),
-        
-        % Find which module analysis files are suboptimal or invalid.
-        % If there are any invalid files then we repeat the analysis pass.
-        % If there are only suboptimal files then we repeat the analysis up
-        % to the number of times given by the user.
-        ReanalysisPasses = !.Info ^ reanalysis_passes,
-        ReanalyseSuboptimal = (if ReanalysisPasses > 1 then yes else no),
-        modules_needing_reanalysis(ReanalyseSuboptimal, TargetModules,
-            InvalidModules, SuboptimalModules, !IO),
-        ( list__is_not_empty(InvalidModules) ->
-            maybe_reanalyse_modules_message(!IO),
-            list__foldl(reset_analysis_registry_dependency_status,
-                InvalidModules, !Info),
-            build_analysis_files(MainModuleName, AllModules,
-                Succeeded0, Succeeded, !Info, !IO)
-        ; list__is_not_empty(SuboptimalModules) ->
-            list__foldl(reset_analysis_registry_dependency_status,
-                SuboptimalModules, !Info),
-            !:Info = !.Info ^ reanalysis_passes := ReanalysisPasses - 1,
-            maybe_reanalyse_modules_message(!IO),
-            build_analysis_files(MainModuleName, AllModules,
-                Succeeded0, Succeeded, !Info, !IO)
+        reverse_ordered_modules(!.Info ^ module_dependencies,
+            TargetModules0, TargetModules),
+        make_local_module_id_options(MainModuleName, Succeeded1,
+            LocalModulesOpts, !Info, !IO),
+        (
+            Succeeded1 = yes,
+            build_analysis_files_2(MainModuleName, TargetModules, 
+                LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)
         ;
-            Succeeded = Succeeded0 `and` Succeeded1
+            Succeeded1 = no,
+            Succeeded = no
         )
+    ).
+
+:- pred build_analysis_files_2(module_name::in, list(module_name)::in,
+    list(string)::in, bool::in, bool::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
+        Succeeded0, Succeeded, !Info, !IO) :-
+    globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
+    foldl2_maybe_stop_at_error(KeepGoing,
+        make_module_target_extra_options(LocalModulesOpts),
+        make_dependency_list(TargetModules, analysis_registry),
+        Succeeded1, !Info, !IO),
+    % Maybe we should have an option to reanalyse cliques before moving 
+    % upwards in the dependency graph?
+
+    % Find which module analysis files are suboptimal or invalid.
+    % If there are any invalid files then we repeat the analysis pass.
+    % If there are only suboptimal files then we repeat the analysis up
+    % to the number of times given by the user.
+    ReanalysisPasses = !.Info ^ reanalysis_passes,
+    ReanalyseSuboptimal = (if ReanalysisPasses > 1 then yes else no),
+    modules_needing_reanalysis(ReanalyseSuboptimal, TargetModules,
+        InvalidModules, SuboptimalModules, !IO),
+    ( list__is_not_empty(InvalidModules) ->
+        maybe_reanalyse_modules_message(!IO),
+        list__foldl(reset_analysis_registry_dependency_status,
+            InvalidModules, !Info),
+        build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
+            Succeeded0, Succeeded, !Info, !IO)
+    ; list__is_not_empty(SuboptimalModules) ->
+        list__foldl(reset_analysis_registry_dependency_status,
+            SuboptimalModules, !Info),
+        !:Info = !.Info ^ reanalysis_passes := ReanalysisPasses - 1,
+        maybe_reanalyse_modules_message(!IO),
+        build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
+            Succeeded0, Succeeded, !Info, !IO)
+    ;
+        Succeeded = Succeeded0 `and` Succeeded1
+    ).
+
+    % Return a list of modules in reverse order of their dependencies, i.e.
+    % the list is the module dependency graph from bottom-up.  Mutually
+    % dependent modules (modules which form a clique in the dependency graph)
+    % are returned adjacent in the list in arbitrary order.
+    %
+:- pred reverse_ordered_modules(map(module_name, maybe(module_imports))::in,
+    list(module_name)::in, list(module_name)::out) is det.
+
+reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
+    list__foldl2(add_module_relations(lookup_module_imports(ModuleDeps)),
+        Modules0, relation__init, _IntRel, relation__init, ImplRel),
+    relation__atsort(ImplRel, Order0),
+    list__reverse(Order0, Order1),
+    list__map(set__to_sorted_list, Order1, Order2),
+    list__condense(Order2, Modules).
+
+:- func lookup_module_imports(map(module_name, maybe(module_imports)),
+    module_name) = module_imports.
+
+lookup_module_imports(ModuleDeps, ModuleName) = ModuleImports :-
+    map__lookup(ModuleDeps, ModuleName, MaybeModuleImports),
+    (
+        MaybeModuleImports = yes(ModuleImports)
+    ;
+        MaybeModuleImports = no,
+        unexpected(this_file, "lookup_module_imports")
     ).
 
 :- pred modules_needing_reanalysis(bool::in, list(module_name)::in,
@@ -944,7 +997,7 @@ install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
         Succeeded = no
     ).
 
-    % Install the `.opt' and `.mih' files for the current grade.
+    % Install the `.opt', `.analysis' and `.mih' files for the current grade.
     %
 :- pred install_grade_ints_and_headers(bool::in, string::in, module_name::in,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
@@ -983,18 +1036,31 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
             HeaderSucceeded = yes
         ),
 
+        GradeIntDir = LibDir/"ints"/GradeDir,
         globals__io_lookup_bool_option(intermodule_optimization, Intermod,
             !IO),
         (
             Intermod = yes,
-            GradeIntDir = LibDir/"ints"/GradeDir,
             install_subdir_file(LinkSucceeded, GradeIntDir, ModuleName, "opt",
                 OptSucceeded, !IO)
         ;
             Intermod = no,
             OptSucceeded = yes
         ),
-        Succeeded = HeaderSucceeded `and` OptSucceeded
+
+        globals__io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
+            !IO),
+        (
+            IntermodAnalysis = yes,
+            install_subdir_file(LinkSucceeded, GradeIntDir,
+                ModuleName, "analysis", IntermodAnalysisSucceeded, !IO)
+        ;
+            IntermodAnalysis = no,
+            IntermodAnalysisSucceeded = yes
+        ),
+        
+        Succeeded = HeaderSucceeded `and` OptSucceeded `and`
+            IntermodAnalysisSucceeded
     ;
         MaybeImports = no,
         Succeeded = no
@@ -1097,7 +1163,7 @@ make_grade_install_dirs(Grade, Result, LinkResult, !IO) :-
 
     make_install_symlink(GradeIncSubdir, "mih", LinkResult0, !IO),
     list__map_foldl(make_install_symlink(GradeIntsSubdir),
-        ["opt", "trans_opt"], LinkResults, !IO),
+        ["opt", "trans_opt", "analysis"], LinkResults, !IO),
     LinkResult = bool__and_list([LinkResult0 | LinkResults]),
     (
         LinkResult = yes,
@@ -1107,7 +1173,8 @@ make_grade_install_dirs(Grade, Result, LinkResult, !IO) :-
         make_directory(GradeIncSubdir/"mihs", Result4, !IO),
         make_directory(GradeIntsSubdir/"opts", Result5, !IO),
         make_directory(GradeIntsSubdir/"trans_opts", Result6, !IO),
-        Results = [Result4, Result5, Result6 | Results0]
+        make_directory(GradeIntsSubdir/"analysiss", Result7, !IO),
+        Results = [Result4, Result5, Result6, Result7 | Results0]
     ),
     print_mkdir_errors(Results, Result, !IO).
 

@@ -43,7 +43,10 @@
 
 :- implementation.
 
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.modules.
+:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.exception_analysis.
@@ -51,8 +54,10 @@
 :- import_module transform_hlds.unused_args.
 
 :- import_module bool.
+:- import_module list.
 :- import_module std_util.
 :- import_module string.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
@@ -74,10 +79,38 @@
             unit1 : unit(unused_args_call),
             unit1 : unit(unused_args_answer)),
 
-    module_id_to_file_name(mmc, ModuleId, Ext, FileName) -->
-        module_name_to_file_name(module_id_to_module_name(ModuleId),
-            Ext, yes, FileName)
+    module_id_to_read_file_name(mmc, ModuleId, Ext, FileName, !IO) :-
+        mmc_module_id_to_read_file_name(ModuleId, Ext, FileName, !IO),
+
+    module_id_to_write_file_name(mmc, ModuleId, Ext, FileName, !IO) :-
+        mmc_module_id_to_write_file_name(ModuleId, Ext, FileName, !IO),
+
+    module_is_local(mmc, ModuleId, IsLocal, !IO) :-
+        mmc_module_is_local(ModuleId, IsLocal, !IO)
 ].
+
+:- pred mmc_module_id_to_read_file_name(module_id::in, string::in,
+    maybe_error(string)::out, io::di, io::uo) is det.
+
+mmc_module_id_to_read_file_name(ModuleId, Ext, MaybeFileName, !IO) :-
+    ModuleName = module_id_to_module_name(ModuleId),
+    modules.module_name_to_search_file_name(ModuleName, Ext, FileName0, !IO),
+    globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
+    search_for_file(Dirs, FileName0, MaybeFileName, !IO).
+
+:- pred mmc_module_id_to_write_file_name(module_id::in, string::in, string::out,
+    io::di, io::uo) is det.
+
+mmc_module_id_to_write_file_name(ModuleId, Ext, FileName, !IO) :-
+    ModuleName = module_id_to_module_name(ModuleId),
+    module_name_to_file_name(ModuleName, Ext, yes, FileName, !IO).
+
+:- pred mmc_module_is_local(module_id::in, bool::out, io::di, io::uo) is det.
+
+mmc_module_is_local(ModuleId, IsLocal, !IO) :-
+    globals__io_lookup_accumulating_option(local_module_id, LocalModuleIds,
+        !IO),
+    IsLocal = (if ModuleId `list.member` LocalModuleIds then yes else no).
 
 module_name_to_module_id(ModuleName) = ModuleId :-
     sym_name_to_string(ModuleName, ModuleId).

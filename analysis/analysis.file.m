@@ -87,8 +87,20 @@ request_suffix = ".request".
 %-----------------------------------------------------------------------------%
 
 read_module_overall_status(Compiler, ModuleId, MaybeModuleStatus, !IO) :-
-    module_id_to_file_name(Compiler, ModuleId, analysis_registry_suffix,
-	AnalysisFileName, !IO),
+    module_id_to_read_file_name(Compiler, ModuleId, analysis_registry_suffix,
+	MaybeAnalysisFileName, !IO),
+    (
+	MaybeAnalysisFileName = ok(AnalysisFileName),
+	read_module_overall_status_2(AnalysisFileName, MaybeModuleStatus, !IO)
+    ;
+	MaybeAnalysisFileName = error(_),
+	MaybeModuleStatus = no
+    ).
+
+:- pred read_module_overall_status_2(string::in, maybe(analysis_status)::out,
+    io::di, io::uo) is det.
+
+read_module_overall_status_2(AnalysisFileName, MaybeModuleStatus, !IO) :-
     io__open_input(AnalysisFileName, OpenResult, !IO),
     (
 	OpenResult = ok(Stream),
@@ -331,11 +343,18 @@ parse_imdg_arc(Compiler, Term, Arcs0, Arcs) :-
 read_analysis_file(Compiler, ModuleId, Suffix,
 		ReadHeader, DefaultHeader, Header,
 		ParseEntry, ModuleResults0, ModuleResults, !IO) :-
-	module_id_to_file_name(Compiler, ModuleId,
-		Suffix, AnalysisFileName, !IO),
-	read_analysis_file(AnalysisFileName,
-		ReadHeader, DefaultHeader, Header,
-		ParseEntry, ModuleResults0, ModuleResults, !IO).
+	module_id_to_read_file_name(Compiler, ModuleId,
+		Suffix, MaybeAnalysisFileName, !IO),
+	(
+		MaybeAnalysisFileName = ok(AnalysisFileName),
+		read_analysis_file(AnalysisFileName,
+			ReadHeader, DefaultHeader, Header,
+			ParseEntry, ModuleResults0, ModuleResults, !IO)
+	;
+		MaybeAnalysisFileName = error(_),
+		Header = DefaultHeader,
+		ModuleResults = ModuleResults0
+	).
 
 :- pred read_analysis_file(string::in,
 		read_analysis_header(Header)::in(read_analysis_header),
@@ -443,7 +462,8 @@ write_module_status(Status, !IO) :-
     analysis_status_to_string(Status, String).
 
 write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
-	module_id_to_file_name(Info ^ compiler, ModuleId, request_suffix,
+	Compiler = Info ^ compiler,
+	module_id_to_write_file_name(Compiler, ModuleId, request_suffix,
 		AnalysisFileName, !IO),
 	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
 		io.print("Writing module analysis requests to ", !IO),
@@ -469,7 +489,7 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 				io__set_output_stream(AppendStream,
 					OldOutputStream, !IO),
 				write_analysis_entries(
-					write_request_entry(Info ^ compiler),
+					write_request_entry(Compiler),
 					ModuleRequests, !IO),
 				io__set_output_stream(OldOutputStream, _, !IO),
 				io__close_output(AppendStream, !IO),
@@ -484,9 +504,8 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 		Appended = no
 	),
 	( Appended = no ->
-		write_analysis_file(Info ^ compiler, ModuleId, request_suffix,
-			nop,
-			write_request_entry(Info ^ compiler),
+		write_analysis_file(AnalysisFileName,
+			nop, write_request_entry(Compiler),
 			ModuleRequests, !IO)
 	;
 		true
@@ -576,10 +595,19 @@ write_imdg_arc(Compiler, AnalysisName, FuncId,
 	write_entry(T)::in(write_entry), module_analysis_map(T)::in,
 	io__state::di, io__state::uo) is det <= compiler(Compiler).
 
-write_analysis_file(Compiler, ModuleId, Suffix, WriteHeader,
-		WriteEntry, ModuleResults, !IO) :-
-	module_id_to_file_name(Compiler, ModuleId,
-		Suffix, AnalysisFileName, !IO),
+write_analysis_file(Compiler, ModuleId, Suffix, WriteHeader, WriteEntry,
+		ModuleResults, !IO) :-
+	module_id_to_write_file_name(Compiler, ModuleId, Suffix,
+		AnalysisFileName, !IO),
+	write_analysis_file(AnalysisFileName, WriteHeader, WriteEntry,
+		ModuleResults, !IO).
+    
+:- pred write_analysis_file(string::in, write_header::in(write_header),
+	write_entry(T)::in(write_entry), module_analysis_map(T)::in,
+	io__state::di, io__state::uo) is det.
+
+write_analysis_file(AnalysisFileName, WriteHeader, WriteEntry,
+		ModuleResults, !IO) :-
 	io__open_output(AnalysisFileName, OpenResult, !IO),
 	(
 		OpenResult = ok(Stream),
@@ -615,7 +643,7 @@ write_analysis_entries(WriteEntry, ModuleResults, !IO) :-
 	    ), ModuleResults, !IO).
 
 empty_request_file(Info, ModuleId, !IO) :-
-	module_id_to_file_name(Info ^ compiler, ModuleId, request_suffix,
+	module_id_to_write_file_name(Info ^ compiler, ModuleId, request_suffix,
 		RequestFileName, !IO),
 	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
 		io.print("Removing request file ", !IO),
