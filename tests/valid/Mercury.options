@@ -18,9 +18,9 @@ GRADEFLAGS-agc_ite		= --gc accurate
 GRADEFLAGS-agc_unbound_typevars	= --gc accurate
 GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
-GRADEFLAGS-csharp_hello		= --grade il
-GRADEFLAGS-foreign_type_spec	= --grade il
-GRADEFLAGS-foreign_type_spec.foreign	= --grade il
+GRADEFLAGS-csharp_hello		= --il
+GRADEFLAGS-foreign_type_spec	=  --il
+GRADEFLAGS-foreign_type_spec.foreign = --il
 
 MCFLAGS-aditi_calls_mercury	= --aditi --aditi-calls-mercury
 MCFLAGS-aditi_error_bug		= --aditi
