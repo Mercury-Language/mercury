@@ -9,12 +9,12 @@
 % File: options.m.
 % Main author: fjh.
 
-% This defines the stuff necessary so that getopt_io.m
-% can parse the command-line options.
+% This defines the stuff necessary so that getopt_io.m can parse the
+% command-line options.
 
-% IMPORTANT NOTE: any changes to the options should be
-% reflected in both the help message produced below,
-% and in the Mercury User's Guide (../doc/user_guide.texi).
+% IMPORTANT NOTE: any changes to the options should be reflected in both the
+% help message produced below, and in the Mercury User's Guide
+% (../doc/user_guide.texi).
 
 %-----------------------------------------------------------------------------%
 

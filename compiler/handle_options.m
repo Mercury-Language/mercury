@@ -676,13 +676,42 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % and they don't need to be recreated when compiling to C.
         option_implies(invoked_by_mmc_make,
             generate_mmc_make_module_dependencies, bool(no), !Globals),
+      
+        % `--transitive-intermodule-optimization' and `--make' are 
+        % not compatible with each other.
+        %
+        globals.lookup_bool_option(!.Globals, transitive_optimization,
+            TransOpt),
+        (
+            TransOpt = yes,
+            globals.lookup_bool_option(!.Globals, make, UsingMMC_Make),
+            globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
+                InvokedByMMC_Make),
+            ( UsingMMC_Make `bool.or` InvokedByMMC_Make = yes ->
+                add_error("`--transitive-intermodule-optimization' is" ++
+                    " incompatible with `mmc --make'.", !Errors)
+            ;
+                true
+            )
+        ;
+            TransOpt = no
+        ),
 
-        % --make does not handle --transitive-intermodule-optimization.
-        % --transitive-intermodule-optimization is in the process of
-        % being rewritten anyway.
-        option_implies(make, transitive_optimization, bool(no), !Globals),
-        option_implies(invoked_by_mmc_make, transitive_optimization, bool(no),
-            !Globals),
+        % `--intermodule-optimization' and `--intermodule-analysis' are
+        % not compatible with each other.
+        globals.lookup_bool_option(!.Globals, intermodule_optimization,
+            InterModOpt),
+        globals.lookup_bool_option(!.Globals, intermodule_analysis,
+            InterModAnalysis),
+        (
+            InterModOpt = yes,
+            InterModAnalysis = yes
+        ->
+            add_error("`--intermodule-optimization' is" ++
+                " incompatible with `--intermodule-analysis'.", !Errors)
+        ;
+            true
+        ),
 
         ( io__have_symlinks ->
             true

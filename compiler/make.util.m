@@ -116,7 +116,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Timestamp handling.
+% Timestamp handling
 %
 
     % Find the timestamp updated when a target is produced.
@@ -165,7 +165,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Remove file a file, deleting the cached timestamp.
+% Remove file a file, deleting the cached timestamp
 %
 
     % Remove the target file and the corresponding timestamp file.
@@ -209,7 +209,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Debugging, verbose and error messages.
+% Debugging, verbose and error messages
 %
 
     % Apply the given predicate if `--debug-make' is set.

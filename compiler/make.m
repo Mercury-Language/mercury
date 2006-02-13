@@ -11,14 +11,11 @@
 % A builtin Mercury-specific make replacement.
 %
 % TODO:
-% - transitive inter-module optimization (probably won't bother since
-%   that is being rewritten anyway)
 % - parallel/distributed builds
 %
 %-----------------------------------------------------------------------------%
 
 :- module make.
-
 :- interface.
 
 :- include_module make__options_file.
@@ -176,7 +173,6 @@
     ;       make_interface
     ;       make_private_interface
     ;       make_optimization_interface
-    ;       make_transitive_optimization_interface
     ;       make_analysis_registry
     ;       compile_to_target_code.
 
