@@ -1,0 +1,175 @@
+#!/bin/sh
+#
+# This program implements a genetic algorithm to determine an optimal
+# set of optimisation flags to be passed to the Mercury compiler for a
+# given program.
+#
+# It is based around two data structures: the genotype and the
+# phenotype.  This shell script contains a loop that, for each
+# generation, evaluates the genotypes in the current generation (which
+# gives their phenotypes), and evolves the genotypes in the next
+# generation of individuals.
+#
+# There are two subprograms: evaluate and evolve, and for each of these
+# subprograms (as well as this shell script), there is a .conf file.  A
+# dependency tree for these shell scripts, configuration files and
+# Mercury modules is shown below.  The subprograms above call the ones
+# directly below them, but not the other way around.
+#
+#	gator
+#		gator.conf
+#		evaluate
+#			evaluate.conf
+#		evolve.m
+#			evolve.conf
+#			genotype.m
+#			phenotype.m
+#			tausworthe3.m
+#
+
+prog=`basename "$0"`
+usage="usage: $prog [-g generation] [-k] [-v]"
+
+while getopts g:kv f
+do
+	case $f in
+	g)	generation="$OPTARG";;
+	k)	kill=true;;
+	v)	set -x;;
+	\?)	echo "$usage" >&2; exit 1;;
+esac
+done
+shift `expr $OPTIND - 1`
+
+. gator.conf || exit 1
+
+#
+# We need to have ssh-agent(1) running so that the user doesn't have to
+# type a password/passphrase every time we connect to another server.
+#
+while ! ssh-add
+do
+	eval `ssh-agent`
+done
+
+kill=${kill:-false}
+if $kill
+then
+	i=1
+	while [ $i -le $num_hosts ]
+	do
+		eval "host=\${host$i}"
+		ssh "$host" pkill evaluate
+		i=`expr $i + 1`
+	done
+
+	exec pkill gator
+fi
+
+mmc --make evolve || exit 1
+
+generation=${generation:-1}
+while true
+do
+	#
+	# We maintain a FIFO queue which contains (the index of) all the
+	# hosts available for us to use, and which are not busy
+	# evaluating a genotype.
+	#
+
+	fifo="${TMPDIR:-/tmp}"/"$prog"$$
+	rm -rf "$fifo" || exit 1
+	mkfifo "$fifo"
+	trap 'cd /; /bin/rm -f "$fifo"; exit' 0 1 2 3 15
+
+	#
+	# Note that throughout the program, the shell variable $i is
+	# used as an index to the host, and $j is used as an index to
+	# the genotype.
+	#
+
+	i=1
+	while [ $i -le $num_hosts ]
+	do
+		echo "$i" >>"$fifo" &
+		i=`expr $i + 1`
+	done
+
+	#
+	# For each genotype, find a host to evaluate it on.  Once we're
+	# done evaluating the genotype, put the host back into the queue.
+	#
+
+	genotypes=generations/$generation/genotypes
+	num_genotypes=`wc -l <"$genotypes"` || exit 1
+
+	j=1
+	while [ $j -le $num_genotypes ]
+	do
+		out=generations/$generation/evaluate.out.$j
+		err=generations/$generation/evaluate.err.$j
+
+		read i
+
+		eval "host=\${host$i}"
+		eval "workspace=\${workspace$i}"
+		eval "benchmarks=\${benchmarks$i}"
+		eval "path=\${path$i}"
+
+		(
+			sed -n ${j}p <"$genotypes" | ssh "$host" nice -n 19 \
+			    "$workspace"/evaluate -b "$benchmarks" -p "$path" \
+			    -v -w "$workspace" >"$out" 2>"$err"
+
+			echo "$i"
+		) &
+
+		j=`expr $j + 1`
+	done <"$fifo" >>"$fifo"
+
+	#
+	# After all the genotypes have been evaluated, combine the
+	# fragments that make up the "$phenotypes" file.
+	#
+
+	phenotypes=generations/$generation/phenotypes
+
+	echo '[' >"$phenotypes"
+
+	wait
+
+	j=1
+	while [ $j -le $num_genotypes ]
+	do
+		out=generations/$generation/evaluate.out.$j
+		err=generations/$generation/evaluate.err.$j
+
+		cat "$out" >>"$phenotypes"
+		[ $j -lt $num_genotypes ] && echo ',' >>"$phenotypes"
+
+		# These files can be around 6 MB per generation (uncompressed).
+		bzip2 "$err"
+
+		j=`expr $j + 1`
+	done
+
+	echo '].' >>"$phenotypes"
+
+	#
+	# Generate the next set of genotypes.
+	#
+
+	next_generation=`expr $generation + 1`
+
+	next_genotypes=generations/$next_generation/genotypes
+	ladder=generations/$generation/ladder
+
+	mkdir generations/$next_generation
+	./evolve -g "$genotypes" -h "$next_genotypes" -l "$ladder" \
+	    -p "$phenotypes" || exit 1
+
+	generation="$next_generation"
+done
+
+# NOTREACHED
+exit 1

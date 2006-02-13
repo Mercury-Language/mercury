@@ -1,0 +1,158 @@
+                                 gator
+
+1 Introduction
+
+Mercury provides a large number of compile-time options that enable or
+disable optimisations to the code being generated.  It can be difficult
+to determine which ones to apply, especially since different options may
+work better with different programs or different inputs.  This program
+attempts to find the optimal set of optimisation flags to be passed to
+mmc(1).  It works using a genetic algorithm; see the following URLs for
+details on how genetic algorithms work:
+
+             http://en.wikipedia.org/wiki/Genetic_algorithm
+     http://www.cs.cmu.edu/Groups/AI/html/faqs/ai/genetic/top.html
+
+The program is invoked using the gator script.  It may be useful (if
+something goes wrong) to turn on the verbose flag and pipe the output to
+a file:
+
+                    ./gator -v 2>&1 | tee gator.out
+
+The program stores its output in the directory generations.  Each generation
+has its own subdirectory within generations.  For example, information about
+the first generation is stored in generations/1.
+
+There are a number of files in each of these directories.  The most
+useful one is the file "ladder".  This file contains a table listing all
+of the individuals in a generation.  Each individual is given a number,
+between 1 and the size of its generation, in the first column of the
+table.  The second column contains the "fitness" of an individual.  The
+third column contains the "genotype" of an individual, which is the list
+of compiler options that are passed to the compiler.
+
+The program is intended to be general enough to test different programs,
+as well as different programming languages and compilers.  The following
+sections describe how to configure gator to do this.
+
+2 Configuring for your network
+
+gator has been written to utilise multiple hosts on a network.  In
+order to configure gator for your network, the gator.conf file needs
+to contain information about all the hosts to be used.
+
+Configuring gator.conf involves defining a set of variables and
+assigning them values.  The syntax is the same as defining shell
+variables in /bin/sh.
+
+The following variable must be defined:
+
+	num_hosts: the number of hosts available for benchmarking.  This
+		may include the host from which gator is being run, if
+		it is also being used to run the benchmarks.
+
+For each host, the following variables need to be defined, where $i is
+an integer between 1 and $num_hosts.
+
+	host$i: the name of the host we are connecting to.  This is
+		passed as a command-line argument to ssh(1).  Make sure
+		you have a copy of the host's SSH public key in your
+		cache before you run gator.
+
+	workspace$i: the path to a directory containing gator.  Note
+		that nothing is written to this directory, it is just
+		used to access the dotime and evaluate.conf files from
+		a remote host.  It can be the same on all hosts, as long
+		as this directory is also mounted on all of the remote
+		machines.
+
+	benchmarks$i: similar to workspace$i, except it contains the
+		benchmarks directory from CVS.  Note that each host must
+		have its own benchmarks directory.
+
+	path$i: the path to the directory containing the compiler.  This
+		is pre-pended to $PATH in the evaluate script.
+
+3 Configuring for your software
+
+The evaluate.conf file allows the user to change the benchmarking
+information gathered by gator.  This is useful if gator is being
+used to test different compilers, and/or different programs.
+
+The syntax is identical to that of gator.conf (see section 2).
+
+The following variable must be defined:
+
+	num_progs: the number of programs used for benchmarking.  Note
+		that if the number of programs is changed, the way that
+		"fitness" is evaluated will need to be changed.  This
+		should be done by defining a new set of "Weightings" in
+		evolve.conf (see section 4).
+
+For each program, the following variables need to be defined, where $i
+is an integer between 1 and $num_progs.
+
+	prog$i: the full path to the executable for the program (which
+		may not yet be built).  This may or may not be contained
+		under "$benchmarks" (see section 2).
+
+	clean$i: the command used to completely clean up the source
+		directory (e.g., "make realclean").
+
+	compile$i: the command used to compile the program.  Note that
+		you may assume there is a $flags shell variable which
+		gives the optimization flags passed to the compiler.
+
+	run$i: the command used to run the program.
+
+4 Configuring parameters for the genetic operators
+
+If the intention is to, for example, optimise for space instead of time,
+then it may be necessary to modify certain parameters of the genetic
+operators.  This can be achieved by modifying the evolve.conf file,
+which allows the user to tweak the parameters of certain genetic
+operators including the fitness operator and the mutation operator.
+
+The syntax of evolve.conf is a bit different to that of gator.conf and
+evaluate.conf.  Currently, evolve.conf must contain two terms that can
+be read by io.read/3.
+
+The first term contains the "Weightings" used by phenotype.fitness/2.
+This parameter is coupled with the number of programs being tested (by
+default 5, see section 3 on evaluate.conf).  For each program, there are
+three measurements taken by the software:  the time taken to compile,
+the resulting executable size and the time taken to run the executable.
+Because of this, the list must be of length $num_progs * 3.
+
+The following examples give cause gator to search for a set of flags
+that will compile in the least amount of time,
+
+			[ 1.0, 1.0, 1.0, 1.0, 1.0,
+			  0.0, 0.0, 0.0, 0.0, 0.0,
+			  0.0, 0.0, 0.0, 0.0, 0.0 ].
+
+weight compile times and run times equally,
+
+			[ 0.5, 0.5, 0.5, 0.5, 0.5,
+			  0.0, 0.0, 0.0, 0.0, 0.0,
+			  0.5, 0.5, 0.5, 0.5, 0.5 ].
+
+or optimise for space, while ignoring the second program in the set.
+
+			[ 0.0, 0.0, 0.0, 0.0, 0.0,
+			  1.0, 0.0, 1.0, 1.0, 1.0,
+			  0.0, 0.0, 0.0, 0.0, 0.0 ].
+
+The second term contains a complete list of flags that can be passed to
+the compiler.  This is used by genotype.mutation/5, which toggles a
+random flag in an individual's genotype.
+
+5 Further modifying the genetic operators
+
+The genetic operators themselves can be modified directly.  They are
+implemented in the following functions/predicates:
+
+	phenotype.fitness/2
+	phenotype.selection/6
+	genotype.crossover/6
+	genotype.mutation/5

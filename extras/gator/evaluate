@@ -1,0 +1,105 @@
+#!/bin/sh
+#
+# This shell script reads genotypes from standard input.  A genotype is
+# a whitespace-separated set of compiler flags.  The genotypes are
+# separated by a newline character.
+#
+# For each genotype, the program generates a phenotype, which it prints
+# to standard output.  Each phenotype consists of compile times,
+# executable sizes and run times for a number of benchmark programs.
+# See evaluate.conf for the list of benchmark programs, and phenotype.m
+# for details on the phenotype data structure.
+#
+# If for some reason, an executable is not produced by the compiler, we
+# print a large number for the executable size and run time, so that the
+# genes are unlikely to be passed on to the next generation (and cause
+# further compilation errors).
+#
+
+prog=`basename "$0"`
+usage="usage: $prog -b path_to_benchmarks -p path [-v] -w path_to_workspace"
+
+while getopts b:p:vw: f
+do
+	case $f in
+	b)	benchmarks="$OPTARG";;
+	p)	PATH="$OPTARG":$PATH;;
+	w)	workspace="$OPTARG";;
+	v)	set -x;;
+	\?)	echo "$usage" >&2; exit 1;;
+	esac
+done
+shift `expr $OPTIND - 1`
+
+read flags || exit 1
+[ -r "$workspace"/evaluate.conf ] && . "$workspace"/evaluate.conf
+
+echo 'phenotype(['
+
+#
+# Print the list of compile times.
+#
+i=1
+while [ $i -le $num_progs ]
+do
+	eval "prog=\${prog$i}"
+	eval "clean=\${clean$i}"
+	eval "compile=\${compile$i}"
+	
+	cd `dirname "$prog"`
+	eval "$clean"
+	"$workspace"/dotime eval "$compile" | tail -n 1 | awk '{ print $1 }' |
+	    sed 's/u$//'
+	
+	[ $i -lt $num_progs ] && echo ','
+	i=`expr $i + 1`
+done
+	
+echo '], ['
+	
+#
+# Print the list of executable sizes.
+#
+i=1
+while [ $i -le $num_progs ]
+do
+	eval "prog=\${prog$i}"
+
+	if [ -x "$prog" ]
+	then
+		ls -l "$prog" | awk '{ print $5 }'
+	else
+		echo '99999999999999999999999999999999999999999999999999999999'
+	fi
+	
+	[ $i -lt $num_progs ] && echo ','
+	i=`expr $i + 1`
+done
+	
+echo '], ['
+
+#
+# Print the list of run times.
+#
+i=1
+while [ $i -le $num_progs ]
+do
+	eval "prog=\${prog$i}"
+	eval "run=\${run$i}"
+
+	if [ -x "$prog" ]
+	then
+		cd `dirname "$prog"`
+		"$workspace"/dotime eval "$run" | tail -n 1 |
+		    awk '{ print $1 }' | sed 's/u$//'
+	else
+		echo '999999999999999999999999999999999999999999999999999999.9'
+	fi
+
+	[ $i -lt $num_progs ] && echo ','
+	i=`expr $i + 1`
+done
+
+echo '])'
+
+exit 0
