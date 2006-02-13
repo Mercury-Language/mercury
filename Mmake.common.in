@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2005 The University of Melbourne. 
+# Copyright (C) 1995-2006 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -142,6 +142,9 @@ GRADESTRING = $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
 # Options to pass to the Mercury compiler
 # now included in FLAGS files
 # MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
+
+# Options to pass to the C compiler when building Boehm-GC.
+BOEHM_CFLAGS = @ENABLE_BOEHM_LARGE_CONFIG@
 
 # Do we want to deal with intermodule information when building the library?
 # By default yes, since this way we note immediately when intermodule

@@ -420,6 +420,33 @@ case "$mercury_cv_with_cc" in
 esac
 #-----------------------------------------------------------------------------#
 #
+# Determine whether to define LARGE_CONFIG when compiling boehm_gc.
+# XXX This should probably be enabled by default.
+#
+AC_ARG_ENABLE(gc-large-config,
+[  --enable-gc-large-config
+                          enable large heaps when using conservative GC],
+enable_gc_large_config="$enableval",enable_gc_large_config=no)
+AC_MSG_CHECKING(whether to enable large heaps when using conservative GC)
+case $enable_gc_large_config in
+	yes)
+		AC_MSG_RESULT(yes)
+		ENABLE_BOEHM_LARGE_CONFIG=-DLARGE_CONFIG
+		;;
+	no)
+		AC_MSG_RESULT(no)
+		ENABLE_BOEHM_LARGE_CONFIG=
+		;;
+	*)
+		AC_MSG_RESULT(yes)
+		AC_MSG_WARN([unexpected argument to --enable-gc-large-config])
+		ENABLE_BOEHM_LARGE_CONFIG=-DLARGE_CONFIG
+		;;
+esac
+AC_SUBST(ENABLE_BOEHM_LARGE_CONFIG)
+
+#-----------------------------------------------------------------------------#
+#
 # Find the GCC source code
 # and determine whether or not to enable the GCC back-end interface.
 #
