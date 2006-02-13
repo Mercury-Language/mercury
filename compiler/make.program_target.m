@@ -357,9 +357,20 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         Succeeded = no
     ;
         DepsResult = up_to_date,
-        maybe_warn_up_to_date_target(MainModuleName - linked_target(FileType),
-            !Info, !IO),
-        Succeeded = yes
+        globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs,
+            !IO),
+        (
+            UseGradeSubdirs = yes,
+            maybe_symlink_or_copy_linked_target_message(
+                MainModuleName - linked_target(FileType), !IO),
+            compile_target_code__post_link_make_symlink_or_copy(ErrorStream,
+                FileType, MainModuleName, Succeeded, !IO)
+        ;
+            UseGradeSubdirs = no,
+            maybe_warn_up_to_date_target(
+                MainModuleName - linked_target(FileType), !Info, !IO),
+            Succeeded = yes
+        )
     ;
         DepsResult = out_of_date,
         maybe_make_linked_target_message(OutputFileName, !IO),
@@ -556,7 +567,8 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
                 InitSucceeded = yes,
                 make_linked_target(MainModuleName - static_library,
                     StaticSucceeded, !Info, !IO),
-                shared_libraries_supported(SharedLibsSupported, !IO),
+                compile_target_code__shared_libraries_supported(
+                    SharedLibsSupported, !IO),
                 (
                     StaticSucceeded = yes,
                     (
@@ -688,16 +700,6 @@ modules_needing_reanalysis(ReanalyseSuboptimal, [Module | Modules],
 reset_analysis_registry_dependency_status(ModuleName, Info,
         Info ^ dependency_status ^ elem(Dep) := not_considered) :-
     Dep = target(ModuleName - analysis_registry).
-
-:- pred shared_libraries_supported(bool::out, io::di, io::uo) is det.
-
-shared_libraries_supported(Supported, !IO) :-
-    % XXX This seems to be the standard way to check whether shared libraries
-    % are supported but it's not very nice.
-    globals__io_lookup_string_option(library_extension, LibExt, !IO),
-    globals__io_lookup_string_option(shared_library_extension, SharedLibExt,
-        !IO),
-    Supported = (if LibExt \= SharedLibExt then yes else no).
 
 %-----------------------------------------------------------------------------%
 

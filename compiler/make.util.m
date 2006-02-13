@@ -259,6 +259,12 @@
 :- pred maybe_warn_up_to_date_target(pair(module_name, target_type)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
+    % Write a message "Making symlink/copy of <filename>" if
+    % `--verbose-message' is set.
+    %
+:- pred maybe_symlink_or_copy_linked_target_message(
+    pair(module_name, target_type)::in, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1045,25 +1051,13 @@ file_error(TargetFile, !IO) :-
     io__write_string(TargetFile, !IO),
     io__write_string("'.\n", !IO).
 
-maybe_warn_up_to_date_target(Target @ (ModuleName - FileType), !Info, !IO) :-
+maybe_warn_up_to_date_target(Target, !Info, !IO) :-
     globals__io_lookup_bool_option(warn_up_to_date, Warn, !IO),
     (
         Warn = yes,
         ( set__member(Target, !.Info ^ command_line_targets) ->
             io__write_string("** Nothing to be done for `", !IO),
-            (
-                FileType = module_target(ModuleTargetType),
-                write_target_file(ModuleName - ModuleTargetType, !IO)
-            ;
-                FileType = linked_target(LinkedTargetType),
-                linked_target_file_name(ModuleName, LinkedTargetType, FileName,
-                    !IO),
-                io__write_string(FileName, !IO)
-            ;
-                FileType = misc_target(_),
-                unexpected(this_file,
-                    "maybe_warn_up_to_date_target: misc_target")
-            ),
+            write_module_or_linked_target(Target, !IO),
             io__write_string("'.\n", !IO)
         ;
             true
@@ -1073,6 +1067,32 @@ maybe_warn_up_to_date_target(Target @ (ModuleName - FileType), !Info, !IO) :-
     ),
     !:Info = !.Info ^ command_line_targets :=
         set__delete(!.Info ^ command_line_targets, Target).
+
+maybe_symlink_or_copy_linked_target_message(Target, !IO) :-
+    verbose_msg(
+        (pred(!.IO::di, !:IO::uo) is det :-
+            io__write_string("Making symlink/copy of ", !IO),
+            write_module_or_linked_target(Target, !IO),
+            io__write_string("\n", !IO)
+        ), !IO).
+
+:- pred write_module_or_linked_target(pair(module_name, target_type)::in,
+    io::di, io::uo) is det.
+
+write_module_or_linked_target(ModuleName - FileType, !IO) :-
+    (
+        FileType = module_target(ModuleTargetType),
+        write_target_file(ModuleName - ModuleTargetType, !IO)
+    ;
+        FileType = linked_target(LinkedTargetType),
+        linked_target_file_name(ModuleName, LinkedTargetType, FileName,
+            !IO),
+        io__write_string(FileName, !IO)
+    ;
+        FileType = misc_target(_),
+        unexpected(this_file,
+            "maybe_warn_up_to_date_target: misc_target")
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -101,6 +101,14 @@
 :- pred link(io__output_stream::in, linked_target_type::in, module_name::in,
     list(string)::in, bool::out, io::di, io::uo) is det.
 
+    % post_link_make_symlink_or_copy(TargetType, MainModuleName, Succeeded)
+    %
+    % If `--use-grade-subdirs' is enabled, link or copy the executable or
+    % library into the user's directory after having successfully built it.
+    %
+:- pred post_link_make_symlink_or_copy(io__output_stream::in,
+    linked_target_type::in, module_name::in, bool::out, io::di, io::uo) is det.
+
     % link_module_list(ModulesToLink, FactTableObjFiles, Succeeded):
     %
     % The elements of ModulesToLink are the output of
@@ -109,6 +117,13 @@
     %
 :- pred link_module_list(list(string)::in, list(string)::in, bool::out,
     io::di, io::uo) is det.
+
+    % shared_libraries_supported(SharedLibsSupported, !IO)
+    %
+    % Return whether or not shared libraries are supported on the current
+    % platform.
+    % 
+:- pred shared_libraries_supported(bool::out, io::di, io::uo) is det.
 
     % get_object_code_type(TargetType, PIC):
     %
@@ -1136,19 +1151,11 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
     globals__io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_write_string(Verbose, "% Linking...\n", !IO),
-    globals__io_lookup_string_option(library_extension, LibExt, !IO),
-    globals__io_lookup_string_option(shared_library_extension, SharedLibExt,
-        !IO),
-    globals__io_lookup_string_option(executable_file_extension, ExeExt, !IO),
+    link_output_filename(LinkTargetType, ModuleName, _Ext, OutputFileName, !IO),
     ( LinkTargetType = static_library ->
-        Ext = LibExt,
-        module_name_to_lib_file_name("lib", ModuleName, LibExt, yes,
-            OutputFileName, !IO),
         create_archive(ErrorStream, OutputFileName, yes, ObjectsList,
             LinkSucceeded, !IO)
     ; LinkTargetType = java_archive ->
-        Ext = ".jar",
-        module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO),
         create_java_archive(ErrorStream, ModuleName, OutputFileName,
             ObjectsList, LinkSucceeded, !IO)
     ;
@@ -1170,16 +1177,7 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
                 AllowUndef = no,
                 globals__io_lookup_string_option(
                     linker_error_undefined_flag, UndefOpt, !IO)
-            ),
-            Ext = SharedLibExt,
-            module_name_to_lib_file_name("lib", ModuleName, Ext, yes,
-                OutputFileName, !IO)
-        ;
-            LinkTargetType = static_library,
-            unexpected(this_file, "compile_target_code__link")
-        ;
-            LinkTargetType = java_archive,
-            unexpected(this_file, "compile_target_code__link")
+            )
         ;
             LinkTargetType = executable,
             CommandOpt = link_executable_command,
@@ -1189,9 +1187,13 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             ThreadFlagsOpt = linker_thread_flags,
             DebugFlagsOpt = linker_debug_flags,
             TraceFlagsOpt = linker_trace_flags,
-            UndefOpt = "",
-            Ext = ExeExt,
-            module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO)
+            UndefOpt = ""
+        ;
+            LinkTargetType = static_library,
+            unexpected(this_file, "compile_target_code__link")
+        ;
+            LinkTargetType = java_archive,
+            unexpected(this_file, "compile_target_code__link")
         ),
 
         % Should the executable be stripped?
@@ -1264,9 +1266,10 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
         % Set up the runtime library path.
         globals__io_lookup_bool_option(shlib_linker_use_install_name,
             UseInstallName, !IO),
+        shared_libraries_supported(SharedLibsSupported, !IO),
         (
             UseInstallName = no,
-            SharedLibExt \= LibExt,
+            SharedLibsSupported = yes,
             ( Linkage = "shared"
             ; LinkTargetType = shared_library
             )
@@ -1298,6 +1301,8 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
             %       be installed, *not* where it is going to be built. 
             %        
             sym_name_to_string(ModuleName, BaseFileName),
+            globals__io_lookup_string_option(shared_library_extension,
+                SharedLibExt, !IO),
             ShLibFileName = "lib" ++ BaseFileName ++ SharedLibExt,
             get_install_name_option(ShLibFileName, InstallNameOpt, !IO)
         ;
@@ -1368,31 +1373,37 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
         )
     ),
     maybe_report_stats(Stats, !IO),
-    globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
     (
         LinkSucceeded = yes,
-        UseGradeSubdirs = yes
-    ->
-        % Link/copy the executable into the user's directory.
-        globals__io_set_option(use_subdirs, bool(no), !IO),
-        globals__io_set_option(use_grade_subdirs, bool(no), !IO),
-        ( LinkTargetType = executable ->
-            module_name_to_file_name(ModuleName, Ext, no, UserDirFileName, !IO)
-        ;
-            module_name_to_lib_file_name("lib", ModuleName, Ext, no,
-                UserDirFileName, !IO)
-        ),
-        globals__io_set_option(use_subdirs, bool(yes), !IO),
-        globals__io_set_option(use_grade_subdirs, bool(yes), !IO),
-
-        io__set_output_stream(ErrorStream, OutputStream, !IO),
-        % Remove the target of the symlink/copy in case it already exists.
-        io__remove_file(UserDirFileName, _, !IO),
-        make_symlink_or_copy_file(OutputFileName, UserDirFileName,
-            Succeeded, !IO),
-        io__set_output_stream(OutputStream, _, !IO)
+        post_link_make_symlink_or_copy(ErrorStream, LinkTargetType,
+            ModuleName, Succeeded, !IO)
     ;
-        Succeeded = LinkSucceeded
+        LinkSucceeded = no,
+        Succeeded = no
+    ).
+
+:- pred link_output_filename(linked_target_type::in, module_name::in,
+    string::out, string::out, io::di, io::uo) is det.
+
+link_output_filename(LinkTargetType, ModuleName, Ext, OutputFileName, !IO) :-
+    (
+        LinkTargetType = static_library,
+        globals__io_lookup_string_option(library_extension, Ext, !IO),
+        module_name_to_lib_file_name("lib", ModuleName, Ext, yes,
+            OutputFileName, !IO)
+    ;
+        LinkTargetType = shared_library,
+        globals__io_lookup_string_option(shared_library_extension, Ext, !IO),
+        module_name_to_lib_file_name("lib", ModuleName, Ext, yes,
+            OutputFileName, !IO)
+    ;
+        LinkTargetType = java_archive,
+        Ext = ".jar",
+        module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO)
+    ;
+        LinkTargetType = executable,
+        globals__io_lookup_string_option(executable_file_extension, Ext, !IO),
+        module_name_to_file_name(ModuleName, Ext, yes, OutputFileName, !IO)
     ).
 
     % Find the standard Mercury libraries, and the system
@@ -1569,6 +1580,44 @@ use_thread_libs(UseThreadLibs, !IO) :-
     globals__io_lookup_bool_option(parallel, Parallel, !IO),
     globals__io_get_gc_method(GCMethod, !IO),
     UseThreadLibs = ( ( Parallel = yes ; GCMethod = mps ) -> yes ; no ).
+
+post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
+        Succeeded, !IO) :-
+    globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
+    (
+        UseGradeSubdirs = yes,
+        link_output_filename(LinkTargetType, ModuleName,
+            Ext, OutputFileName, !IO),
+        % Link/copy the executable into the user's directory.
+        globals__io_set_option(use_subdirs, bool(no), !IO),
+        globals__io_set_option(use_grade_subdirs, bool(no), !IO),
+        ( LinkTargetType = executable ->
+            module_name_to_file_name(ModuleName, Ext, no, UserDirFileName, !IO)
+        ;
+            module_name_to_lib_file_name("lib", ModuleName, Ext, no,
+                UserDirFileName, !IO)
+        ),
+        globals__io_set_option(use_subdirs, bool(yes), !IO),
+        globals__io_set_option(use_grade_subdirs, bool(yes), !IO),
+
+        io__set_output_stream(ErrorStream, OutputStream, !IO),
+        % Remove the target of the symlink/copy in case it already exists.
+        io__remove_file(UserDirFileName, _, !IO),
+        make_symlink_or_copy_file(OutputFileName, UserDirFileName,
+            Succeeded, !IO),
+        io__set_output_stream(OutputStream, _, !IO)
+    ;
+        UseGradeSubdirs = no,
+        Succeeded = yes
+    ).
+
+shared_libraries_supported(Supported, !IO) :-
+    % XXX This seems to be the standard way to check whether shared libraries
+    % are supported but it's not very nice.
+    globals__io_lookup_string_option(library_extension, LibExt, !IO),
+    globals__io_lookup_string_option(shared_library_extension, SharedLibExt,
+        !IO),
+    Supported = (if LibExt \= SharedLibExt then yes else no).
 
 %-----------------------------------------------------------------------------%
 
