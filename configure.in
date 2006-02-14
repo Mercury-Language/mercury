@@ -421,12 +421,11 @@ esac
 #-----------------------------------------------------------------------------#
 #
 # Determine whether to define LARGE_CONFIG when compiling boehm_gc.
-# XXX This should probably be enabled by default.
 #
 AC_ARG_ENABLE(gc-large-config,
-[  --enable-gc-large-config
-                          enable large heaps when using conservative GC],
-enable_gc_large_config="$enableval",enable_gc_large_config=no)
+[  --disable-gc-large-config
+                          disable large heaps when using conservative GC],
+enable_gc_large_config="$enableval",enable_gc_large_config=yes)
 AC_MSG_CHECKING(whether to enable large heaps when using conservative GC)
 case $enable_gc_large_config in
 	yes)
