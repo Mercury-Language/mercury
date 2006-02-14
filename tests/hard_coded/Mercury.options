@@ -25,8 +25,13 @@ MCFLAGS-intermod_type_qual =	--intermodule-optimization
 MCFLAGS-intermod_type_qual2 =	--intermodule-optimization
 MCFLAGS-intermod_multimode =	--intermodule-optimization
 MCFLAGS-intermod_multimode_main = --intermodule-optimization
-MCFLAGS-intermod_unused_args =	--intermodule-analysis --optimise-unused-args
-MCFLAGS-intermod_unused_args2 =	--intermodule-analysis --optimise-unused-args
+
+# We disable intermodule-optimization here because it isn't compatible with
+# intermodule-analysis.
+#
+MCFLAGS-intermod_unused_args =	--no-intermodule-optimization --intermodule-analysis --optimise-unused-args
+MCFLAGS-intermod_unused_args2 = --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
+
 MCFLAGS-loop_inv_test 	= 	--loop-invariants --trace-optimized
 MCFLAGS-loop_inv_test0 	= 	--loop-invariants --trace-optimized
 MCFLAGS-loop_inv_test1 	= 	--loop-invariants --trace-optimized
