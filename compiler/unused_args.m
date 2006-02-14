@@ -414,22 +414,25 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                 MaybeBestResult, AnalysisInfo0, AnalysisInfo1, !IO),
             (
                 MaybeBestResult = yes({_, unused_args(UnusedArgs), _}),
-                ( UnusedArgs \= [] ->
+                ( 
+                    UnusedArgs = [_|_],
                     proc_info_headvars(ProcInfo, HeadVars),
-                    list__map(list__index1_det(HeadVars), UnusedArgs, UnusedVars),
+                    list__map(list__index1_det(HeadVars), UnusedArgs,
+                        UnusedVars),
                     initialise_vardep(UnusedVars, !.VarDep, VarDep),
                     svmap__set(proc(PredId, ProcId), VarDep, !VarUsage),
-                    globals__io_lookup_bool_option(optimize_unused_args, Optimize,
-                        !IO),
+                    globals__io_lookup_bool_option(optimize_unused_args,
+                        Optimize, !IO),
                     (
                         Optimize = yes,
-                        make_imported_unused_args_pred_info(proc(PredId, ProcId),
-                            UnusedArgs, !OptProcs, !ModuleInfo)
+                        make_imported_unused_args_pred_info(
+                            proc(PredId, ProcId), UnusedArgs, !OptProcs,
+                            !ModuleInfo)
                     ;
                         Optimize = no
                     )
                 ;
-                    true
+                    UnusedArgs = [] 
                 ),
                 AnalysisInfo = AnalysisInfo1
             ;
@@ -646,10 +649,10 @@ traverse_goal(Info, Goal, !VarDep) :-
         set_list_vars_used(Args, !VarDep)
     ;
         GoalExpr = foreign_proc(_, _, _, Args, ExtraArgs, _),
-        % Only arguments with names can be used in the foreign code.
-        % The code in here should be kept in sync with the treatment of
-        % foreign_procs in fixup_goal_expr: any variable considered unused here
-        % should be renamed apart in fixup_goal_expr.
+        % Only arguments with names can be used in the foreign code.  The code
+        % in here should be kept in sync with the treatment of foreign_procs
+        % in fixup_goal_expr: any variable considered unused here should be
+        % renamed apart in fixup_goal_expr.
         ArgIsUsed = (pred(Arg::in, Var::out) is semidet :-
             Arg = foreign_arg(Var, MaybeNameAndMode, _),
             MaybeNameAndMode = yes(_)
@@ -1000,7 +1003,12 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
             MakeAnalysisRegistry, !IO),
         ( 
             MakeAnalysisRegistry = yes,
-            procedure_is_exported(!.ModuleInfo, OrigPredInfo, ProcId)
+            procedure_is_exported(!.ModuleInfo, OrigPredInfo, ProcId),
+            not is_unify_or_compare_pred(OrigPredInfo)
+            % XXX What about class instance methods and predicates used
+            %     for type specialization.  (These are a problem for 
+            %     intermodule-optimization; they may not be here.)
+            %     (See exception_analysis.should_write_exception_info/4).
         ->
             analysis__record_result(ModuleId, FuncId, Call, Answer, optimal,
                 AnalysisInfo1, AnalysisInfo)
@@ -1129,8 +1137,6 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
             string__int_to_string(TypeArity, TypeAr),
             sym_name_to_string(TypeModule, TypeModuleString0),
             string__replace_all(TypeModuleString0, ".", "__",
-                TypeModuleString1),
-            string__replace_all(TypeModuleString1, ":", "__",
                 TypeModuleString),
             string__append_list([Name0, "_", TypeModuleString,
                 "__", TypeName, "_", TypeAr], Name1)
