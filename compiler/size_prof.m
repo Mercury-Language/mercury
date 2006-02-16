@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2005 The University of Melbourne.
+% Copyright (C) 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -221,22 +221,22 @@ process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
         hlds_out__write_pred_proc_id(!.ModuleInfo, PredId, ProcId, !IO),
         io__write_string(": ", !IO),
         process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-            !ModuleInfo),
+            !ModuleInfo, !IO),
         io__write_string("done.\n", !IO)
     ;
         VeryVerbose = no,
         process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-            !ModuleInfo)
+            !ModuleInfo, !IO)
     ).
 
 :- pred process_proc(construct_transform::in, pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out)
-    is det.
+    proc_info::in, proc_info::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     Simplifications = [],
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
-        !ModuleInfo, !ProcInfo, _Msgs),
+        !ModuleInfo, !ProcInfo, _Msgs, !IO),
 
     proc_info_goal(!.ProcInfo, Goal0),
     proc_info_varset(!.ProcInfo, VarSet0),

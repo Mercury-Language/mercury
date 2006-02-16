@@ -56,10 +56,11 @@
 
 :- pred simplify_proc_return_msgs(list(simplification)::in, pred_id::in,
     proc_id::in, module_info::in, module_info::out,
-    proc_info::in, proc_info::out, set(context_det_msg)::out) is det.
+    proc_info::in, proc_info::out, set(context_det_msg)::out,
+    io::di, io::uo) is det.
 
 :- pred process_goal(hlds_goal::in, hlds_goal::out,
-    simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
     % Find out which simplifications should be run from the options table
     % stored in the globals. The first argument states whether warnings
@@ -144,7 +145,7 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo,
     ),
     MaybeMsgs0 = no,
     simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
-        MaybeMsgs0, MaybeMsgs),
+        MaybeMsgs0, MaybeMsgs, !IO),
     (
         MaybeMsgs = yes(Msgs0 - Msgs1),
         set__union(Msgs0, Msgs1, Msgs2),
@@ -162,15 +163,16 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo,
     list(proc_id)::in, module_info::in, module_info::out,
     pred_info::in, pred_info::out,
     maybe(pair(set(context_det_msg)))::in,
-    maybe(pair(set(context_det_msg)))::out) is det.
+    maybe(pair(set(context_det_msg)))::out,
+    io::di, io::uo) is det.
 
-simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !Msgs).
+simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !Msgs, !IO).
 simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
-        !PredInfo, !MaybeMsgs) :-
+        !PredInfo, !MaybeMsgs, !IO) :-
     pred_info_procedures(!.PredInfo, Procs0),
     map__lookup(Procs0, ProcId, Proc0),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
-        !ModuleInfo, Proc0, Proc, ProcMsgSet),
+        !ModuleInfo, Proc0, Proc, ProcMsgSet, !IO),
     map__det_update(Procs0, ProcId, Proc, Procs),
     pred_info_set_procedures(Procs, !PredInfo),
     set__to_sorted_list(ProcMsgSet, ProcMsgs),
@@ -189,15 +191,15 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
         !:MaybeMsgs = yes(ProcAnyModeMsgSet - ProcAllModeMsgSet)
     ),
     simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
-        !MaybeMsgs).
+        !MaybeMsgs, !IO).
 
 simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
     write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo, !IO),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
-        !Proc, _).
+        !Proc, _, !IO).
 
 simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
-        !ProcInfo, DetMsgs) :-
+        !ProcInfo, DetMsgs, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     proc_info_vartypes(!.ProcInfo, VarTypes0),
     det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, Globals,
@@ -221,7 +223,7 @@ simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         Goal1 = Goal0
     ),
 
-    process_goal(Goal1, Goal, Info0, Info),
+    process_goal(Goal1, Goal, Info0, Info, !IO),
 
     simplify_info_get_varset(Info, VarSet),
     simplify_info_get_var_types(Info, VarTypes),
@@ -264,7 +266,7 @@ simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         DetMsgs = DetMsgs1
     ).
 
-process_goal(Goal0, Goal, !Info) :-
+process_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_simplifications(!.Info, Simplifications0),
     simplify_info_get_instmap(!.Info, InstMap0),
 
@@ -279,7 +281,7 @@ process_goal(Goal0, Goal, !Info) :-
         set__delete_list(Simplifications0, NotOnFirstPass, Simplifications1),
         simplify_info_set_simplifications(Simplifications1, !Info),
 
-        do_process_goal(Goal0, Goal1, !Info),
+        do_process_goal(Goal0, Goal1, !Info, !IO),
 
         NotOnSecondPass = [warn_simple_code, warn_duplicate_calls,
             common_struct, duplicate_calls],
@@ -290,14 +292,14 @@ process_goal(Goal0, Goal, !Info) :-
     ),
     % On the second pass do excess assignment elimination and some cleaning up
     % after the common structure pass.
-    do_process_goal(Goal1, Goal, !Info).
+    do_process_goal(Goal1, Goal, !Info, !IO).
 
 :- pred do_process_goal(hlds_goal::in, hlds_goal::out,
-    simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-do_process_goal(Goal0, Goal, !Info) :-
+do_process_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_instmap(!.Info, InstMap0),
-    simplify_goal(Goal0, Goal1, !Info),
+    simplify_goal(Goal0, Goal1, !Info, !IO),
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     ( simplify_info_requantify(!.Info) ->
@@ -393,12 +395,16 @@ set_by_option(Globals, Option, Simplification, !Simplifications) :-
 %-----------------------------------------------------------------------------%
 
 :- pred simplify_goal(hlds_goal::in, hlds_goal::out,
-    simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-simplify_goal(Goal0, Goal - GoalInfo, !Info) :-
+simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
     Goal0 = _ - GoalInfo0,
     goal_info_get_determinism(GoalInfo0, Detism),
     simplify_info_get_det_info(!.Info, DetInfo),
+    simplify_info_get_module_info(!.Info, ModuleInfo0),
+    goal_cannot_loop_or_throw(Goal0, Goal0CannotLoopOrThrow, ModuleInfo0,
+        ModuleInfo, !IO),
+    simplify_info_set_module_info(ModuleInfo, !Info),
     (
         %
         % if --no-fully-strict,
@@ -408,7 +414,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info) :-
         % ensure goal is pure or semipure
         \+ goal_info_is_impure(GoalInfo0),
         ( det_info_get_fully_strict(DetInfo, no)
-        ; goal_cannot_loop_or_throw(Goal0)
+        ; Goal0CannotLoopOrThrow = yes
         )
     ->
         % warn about this, unless the goal was an explicit
@@ -456,7 +462,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info) :-
         % ensure goal is pure or semipure
         \+ goal_info_is_impure(GoalInfo0),
         ( det_info_get_fully_strict(DetInfo, no)
-        ; goal_cannot_loop_or_throw(Goal0)
+        ; Goal0CannotLoopOrThrow = yes
         )
     ->
 % The following warning is disabled, because it often results in spurious
@@ -521,7 +527,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info) :-
     ),
     simplify_info_maybe_clear_structs(before, Goal2, !Info),
     Goal2 = GoalExpr2 - GoalInfo2,
-    simplify_goal_2(GoalExpr2, Goal, GoalInfo2, GoalInfo3, !Info),
+    simplify_goal_2(GoalExpr2, Goal, GoalInfo2, GoalInfo3, !Info, !IO),
     simplify_info_maybe_clear_structs(after, Goal - GoalInfo3, !Info),
     enforce_invariant(GoalInfo3, GoalInfo, !Info).
 
@@ -558,12 +564,12 @@ enforce_invariant(GoalInfo0, GoalInfo, !Info) :-
 
 :- pred simplify_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
-    simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-simplify_goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     simplify_info_get_instmap(!.Info, InstMap0),
     excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info),
-    simplify_conj(Goals1, [], Goals, GoalInfo0, !Info),
+    simplify_conj(Goals1, [], Goals, GoalInfo0, !Info, !IO),
     simplify_info_set_instmap(InstMap0, !Info),
     (
         Goals = [],
@@ -597,26 +603,27 @@ simplify_goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info) :-
         GoalInfo = GoalInfo0
     ).
 
-simplify_goal_2(par_conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_2(par_conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     (
         Goals0 = [],
         goal_info_get_context(GoalInfo0, Context),
         true_goal(Context, Goal - GoalInfo)
     ;
         Goals0 = [SingleGoal0],
-        simplify_goal(SingleGoal0, SingleGoal - SingleGoalInfo, !Info),
+        simplify_goal(SingleGoal0, SingleGoal - SingleGoalInfo, !Info, !IO),
         maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal, Goal, GoalInfo,
             !Info)
     ;
         Goals0 = [_, _ | _],
         GoalInfo = GoalInfo0,
-        simplify_par_conj(Goals0, Goals, !.Info, !Info),
+        simplify_par_conj(Goals0, Goals, !.Info, !Info, !IO),
         Goal = par_conj(Goals)
     ).
 
-simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     simplify_info_get_instmap(!.Info, InstMap0),
-    simplify_disj(Disjuncts0, [], Disjuncts, [], InstMaps, !.Info, !Info),
+    simplify_disj(Disjuncts0, [], Disjuncts, [], InstMaps, !.Info, !Info,
+        !IO),
     (
         Disjuncts = [],
         goal_info_get_context(GoalInfo0, Context),
@@ -662,7 +669,7 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info) :-
     ).
 
 simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
-        GoalInfo0, GoalInfo, !Info) :-
+        GoalInfo0, GoalInfo, !Info, !IO) :-
     simplify_info_get_instmap(!.Info, InstMap0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     instmap__lookup_var(InstMap0, Var, VarInst),
@@ -676,7 +683,7 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
         MaybeConsIds = no
     ),
     simplify_switch(Var, Cases1, [], Cases, [], InstMaps,
-        SwitchCanFail0, SwitchCanFail, !.Info, !Info),
+        SwitchCanFail0, SwitchCanFail, !.Info, !Info, !IO),
     (
         Cases = [],
         % An empty switch always fails.
@@ -780,7 +787,7 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
         true
     ).
 
-simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info) :-
+simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
     Goal0 = generic_call(GenericCall, Args, Modes, Det),
     (
         simplify_do_calls(!.Info),
@@ -807,7 +814,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info) :-
         Goal = Goal0
     ).
 
-simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     Goal0 = call(PredId, ProcId, Args, IsBuiltin, _, _),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -838,7 +845,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
             GoalInfo0, GoalInfo, !Info)
     ).
 
-simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     Goal0 = unify(LT0, RT0, M, U0, C),
     (
         % A unification of the form X = X can be safely
@@ -866,7 +873,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
         simplify_info_set_common_info(common_info_init, !Info),
 
         % Don't attempt to pass structs out of lambda_goals.
-        simplify_goal(LambdaGoal0, LambdaGoal, !Info),
+        simplify_goal(LambdaGoal0, LambdaGoal, !Info, !IO),
         simplify_info_set_common_info(Common1, !Info),
         simplify_info_set_instmap(InstMap1, !Info),
         RT = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
@@ -879,7 +886,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
     ->
         ( RT0 = var(V) ->
             process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
-                GoalInfo0, Goal1, !Info),
+                GoalInfo0, Goal1, !Info, !IO),
             Goal1 = Goal - GoalInfo
         ;
             unexpected(this_file, "invalid RHS for complicated unify")
@@ -909,7 +916,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
     ).
 
 simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
-        GoalInfo0, GoalInfo, !Info) :-
+        GoalInfo0, GoalInfo, !Info, !IO) :-
     % (A -> B ; C) is logically equivalent to (A, B ; ~A, C).
     % If the determinism of A means that one of these disjuncts
     % cannot succeed, then we replace the if-then-else with the
@@ -942,7 +949,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
         list__append(CondList, ThenList, List),
-        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info),
+        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info, !IO),
         goal_info_get_context(GoalInfo0, Context),
         Msg = ite_cond_cannot_fail,
         ContextMsg = context_det_msg(Context, Msg),
@@ -985,7 +992,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         ),
         goal_to_conj_list(Else0, ElseList),
         List = [Cond | ElseList],
-        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info),
+        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info, !IO),
         goal_info_get_context(GoalInfo0, Context),
         Msg = ite_cond_cannot_succeed,
         ContextMsg = context_det_msg(Context, Msg),
@@ -997,7 +1004,7 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
         list__append(CondList, ThenList, List),
-        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info),
+        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info, !IO),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
     ;
@@ -1007,11 +1014,11 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         %
         Info0 = !.Info,
         simplify_info_get_instmap(!.Info, InstMap0),
-        simplify_goal(Cond0, Cond, !Info),
+        simplify_goal(Cond0, Cond, !Info, !IO),
         simplify_info_update_instmap(Cond, !Info),
-        simplify_goal(Then0, Then, !Info),
+        simplify_goal(Then0, Then, !Info, !IO),
         simplify_info_post_branch_update(Info0, !Info),
-        simplify_goal(Else0, Else, !Info),
+        simplify_goal(Else0, Else, !Info, !IO),
         simplify_info_post_branch_update(Info0, !Info),
         Cond = _ - CondInfo,
         goal_info_get_instmap_delta(CondInfo, CondDelta),
@@ -1048,7 +1055,8 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             )
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
-            simplify_goal_2(IfThenElse, Goal, GoalInfo1, GoalInfo, !Info)
+            simplify_goal_2(IfThenElse, Goal, GoalInfo1, GoalInfo, !Info,
+                !IO)
         ;
             (
                 % If-then-elses that are det or semidet may nevertheless
@@ -1073,11 +1081,11 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         )
     ).
 
-simplify_goal_2(not(Goal0), Goal, GoalInfo0, GoalInfo, !Info) :-
+simplify_goal_2(not(Goal0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     % Can't use calls or unifications seen within a negation,
     % since non-local variables may not be bound within the negation.
     simplify_info_get_common_info(!.Info, Common),
-    simplify_goal(Goal0, Goal1, !Info),
+    simplify_goal(Goal0, Goal1, !Info, !IO),
     simplify_info_set_common_info(Common, !Info),
     Goal1 = _ - GoalInfo1,
     goal_info_get_determinism(GoalInfo1, Detism),
@@ -1120,9 +1128,9 @@ simplify_goal_2(not(Goal0), Goal, GoalInfo0, GoalInfo, !Info) :-
     ).
 
 simplify_goal_2(scope(Reason0, Goal1), GoalExpr, SomeInfo, GoalInfo,
-        !Info) :-
+        !Info, !IO) :-
     simplify_info_get_common_info(!.Info, Common),
-    simplify_goal(Goal1, Goal2, !Info),
+    simplify_goal(Goal1, Goal2, !Info, !IO),
     nested_scopes(Reason0, Goal2, SomeInfo, Goal),
     Goal = GoalExpr - GoalInfo,
     ( Goal = scope(FinalReason, _) - _ ->
@@ -1168,7 +1176,7 @@ simplify_goal_2(scope(Reason0, Goal1), GoalExpr, SomeInfo, GoalInfo,
         true
     ).
 
-simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info) :-
+simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
     Goal0 = foreign_proc(_, PredId, ProcId, Args, ExtraArgs, _),
     (
         simplify_do_calls(!.Info),
@@ -1182,7 +1190,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info) :-
         Goal = Goal0
     ).
 
-simplify_goal_2(shorthand(_), _, _, _, !Info) :-
+simplify_goal_2(shorthand(_), _, _, _, _, _, _, _) :-
     % These should have been expanded out by now.
     unexpected(this_file, "goal_2: unexpected shorthand").
 
@@ -1404,10 +1412,11 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
 
 :- pred process_compl_unify(prog_var::in, prog_var::in, uni_mode::in,
     can_fail::in, list(prog_var)::in, unify_context::in, hlds_goal_info::in,
-    hlds_goal::out, simplify_info::in, simplify_info::out) is det.
+    hlds_goal::out, simplify_info::in, simplify_info::out,
+    io::di, io::uo) is det.
 
 process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
-        GoalInfo0, Goal, !Info) :-
+        GoalInfo0, Goal, !Info, !IO) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_var_types(!.Info, VarTypes),
     map__lookup(VarTypes, XVar, Type),
@@ -1430,7 +1439,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         generate_simple_call(mercury_private_builtin_module,
             "builtin_unify_pred", predicate, mode_no(0), semidet,
             [XVar, YVar], [], [], ModuleInfo, GContext, Call0 - _),
-        simplify_goal_2(Call0, Call1, GoalInfo0, GoalInfo, !Info),
+        simplify_goal_2(Call0, Call1, GoalInfo0, GoalInfo, !Info, !IO),
         Call = Call1 - GoalInfo,
         ExtraGoals = []
     ;
@@ -1476,7 +1485,8 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
             make_type_info_vars(TypeArgs, TypeInfoVars, ExtraGoals, !Info),
             call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
                 ModuleInfo, Context, GoalInfo0, Call0, CallGoalInfo0),
-            simplify_goal_2(Call0, Call1, CallGoalInfo0, CallGoalInfo1, !Info),
+            simplify_goal_2(Call0, Call1, CallGoalInfo0, CallGoalInfo1, !Info,
+                !IO),
             Call = Call1 - CallGoalInfo1
         )
     ),
@@ -1736,25 +1746,25 @@ maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo, Goal1, Goal, GoalInfo, !Info) :-
 
 :- pred simplify_conj(list(hlds_goal)::in, list(hlds_goal)::in,
     list(hlds_goal)::out, hlds_goal_info::in,
-    simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-simplify_conj([], RevGoals, Goals, _, !Info) :-
+simplify_conj([], RevGoals, Goals, _, !Info, !IO) :-
     list__reverse(RevGoals, Goals).
-simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
+simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
     Info0 = !.Info,
     % Flatten conjunctions.
     ( Goal0 = conj(SubGoals) - _ ->
         list__append(SubGoals, Goals0, Goals1),
-        simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info)
+        simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info, !IO)
     ;
-        simplify_goal(Goal0, Goal1, !Info),
+        simplify_goal(Goal0, Goal1, !Info, !IO),
         (
             % Flatten conjunctions.
             Goal1 = conj(SubGoals1) - _
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
             list__append(SubGoals1, Goals0, Goals1),
-            simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info)
+            simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info, !IO)
         ;
             % Delete unreachable goals.
             (
@@ -1791,7 +1801,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info) :-
         ;
             conjoin_goal_and_rev_goal_list(Goal1, !RevGoals),
             simplify_info_update_instmap(Goal1, !Info),
-            simplify_conj(Goals0, !.RevGoals, Goals, ConjInfo, !Info)
+            simplify_conj(Goals0, !.RevGoals, Goals, ConjInfo, !Info, !IO)
         )
     ).
 
@@ -1809,13 +1819,14 @@ conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
 %-----------------------------------------------------------------------------%
 
 :- pred simplify_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    simplify_info::in, simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::in, simplify_info::out,
+    io::di, io::uo) is det.
 
-simplify_par_conj([], [], _, !Info).
-simplify_par_conj([Goal0 |Goals0], [Goal | Goals], Info0, !Info) :-
-    simplify_goal(Goal0, Goal, !Info),
+simplify_par_conj([], [], _, !Info, !IO).
+simplify_par_conj([Goal0 |Goals0], [Goal | Goals], Info0, !Info, !IO) :-
+    simplify_goal(Goal0, Goal, !Info, !IO),
     simplify_info_post_branch_update(Info0, !Info),
-    simplify_par_conj(Goals0, Goals, Info0, !Info).
+    simplify_par_conj(Goals0, Goals, Info0, !Info, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1954,12 +1965,12 @@ renaming_transitive_closure(VarRenaming0, VarRenaming) :-
 :- pred simplify_switch(prog_var::in, list(case)::in, list(case)::in,
     list(case)::out, list(instmap_delta)::in, list(instmap_delta)::out,
     can_fail::in, can_fail::out, simplify_info::in,
-    simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-simplify_switch(_, [], RevCases, Cases, !InstMaps, !CanFail, _, !Info) :-
+simplify_switch(_, [], RevCases, Cases, !InstMaps, !CanFail, _, !Info, !IO) :-
     list__reverse(RevCases, Cases).
 simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
-        !CanFail, Info0, !Info) :-
+        !CanFail, Info0, !Info, !IO) :-
     simplify_info_get_instmap(Info0, InstMap0),
     Case0 = case(ConsId, Goal0),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
@@ -1969,7 +1980,7 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
         ModuleInfo0, ModuleInfo1),
     simplify_info_set_module_info(ModuleInfo1, !Info),
     simplify_info_set_instmap(InstMap1, !Info),
-    simplify_goal(Goal0, Goal, !Info),
+    simplify_goal(Goal0, Goal, !Info, !IO),
 
         % Remove failing branches.
     ( Goal = disj([]) - _ ->
@@ -1998,7 +2009,7 @@ simplify_switch(Var, [Case0 | Cases0], RevCases0, Cases, !InstMaps,
 
     simplify_info_post_branch_update(Info0, !Info),
     simplify_switch(Var, Cases0, RevCases, Cases, !InstMaps, !CanFail, Info0,
-        !Info).
+        !Info, !IO).
 
     % Create a semidet unification at the start of a singleton case
     % in a can_fail switch.
@@ -2053,13 +2064,14 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal - ExtraGoalInfo,
 :- pred simplify_disj(list(hlds_goal)::in, list(hlds_goal)::in,
     list(hlds_goal)::out,
     list(instmap_delta)::in, list(instmap_delta)::out,
-    simplify_info::in, simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::in, simplify_info::out,
+    io::di, io::uo) is det.
 
-simplify_disj([], RevGoals, Goals, !PostBranchInstMaps, _, !Info) :-
+simplify_disj([], RevGoals, Goals, !PostBranchInstMaps, _, !Info, !IO) :-
     list__reverse(RevGoals, Goals).
 simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
-        Info0, !Info) :-
-    simplify_goal(Goal0, Goal, !Info),
+        Info0, !Info, !IO) :-
+    simplify_goal(Goal0, Goal, !Info, !IO),
     Goal = _ - GoalInfo,
 
     (
@@ -2108,7 +2120,8 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
     ),
 
     simplify_info_post_branch_update(Info0, !Info),
-    simplify_disj(Goals0, RevGoals1, Goals, !PostBranchInstMaps, Info0, !Info).
+    simplify_disj(Goals0, RevGoals1, Goals, !PostBranchInstMaps, Info0, !Info,
+        !IO).
 
     % Disjunctions that cannot succeed more than once when viewed from the
     % outside generally need some fixing up, and/or some warnings to be issued.
@@ -2140,11 +2153,11 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
     %
 :- pred fixup_disj(list(hlds_goal)::in, determinism::in, bool::in,
     hlds_goal_info::in, hlds_goal_expr::out,
-    simplify_info::in, simplify_info::out) is det.
+    simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, Goal, !Info) :-
+fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, Goal, !Info, !IO) :-
     det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
-    simplify_goal(IfThenElse, Simplified, !Info),
+    simplify_goal(IfThenElse, Simplified, !Info, !IO),
     Simplified = Goal - _.
 
     % det_disj_to_ite is used to transform disjunctions that occur

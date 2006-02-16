@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__goal_util.
+:- module hlds.goal_util.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -26,6 +26,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module set.
@@ -52,10 +53,9 @@
     % insts of NewVar are taken from the insts of the corresponding
     % OutputVar in InstMapDelta (the initial inst is free).
     %
-:- pred create_renaming(list(prog_var)::in, instmap_delta::in,
+:- pred create_renaming(prog_vars::in, instmap_delta::in,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
-    list(hlds_goal)::out, list(prog_var)::out,
-    prog_var_renaming::out) is det.
+    hlds_goals::out, prog_vars::out, prog_var_renaming::out) is det.
 
 % The predicates rename_var* take a structure and a mapping from var -> var
 % and apply that translation. If a var in the input structure does not
@@ -63,7 +63,7 @@
 
     % rename_vars_in_goals(MustRename, Substitution, GoalList, NewGoalList).
 :- pred rename_vars_in_goals(bool::in, prog_var_renaming::in,
-    list(hlds_goal)::in, list(hlds_goal)::out) is det.
+    hlds_goals::in, hlds_goals::out) is det.
 
 :- pred rename_vars_in_goal(prog_var_renaming::in,
     hlds_goal::in, hlds_goal::out) is det.
@@ -99,9 +99,8 @@
     % uniqueness in the type map for this reason - such is the sacrifice
     % for generality.)
     %
-:- pred create_variables(list(prog_var)::in, prog_varset::in,
-    vartypes::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out,
+:- pred create_variables(prog_vars::in, prog_varset::in, vartypes::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
     % Return all the variables in the goal.
@@ -114,13 +113,12 @@
     % Unlike quantification.goal_vars, this predicate returns
     % even the explicitly quantified variables.
     %
-:- pred goals_goal_vars(list(hlds_goal)::in, set(prog_var)::in,
+:- pred goals_goal_vars(hlds_goals::in, set(prog_var)::in,
     set(prog_var)::out) is det.
 
     % Return all the variables in a generic call.
     %
-:- pred generic_call_vars(generic_call::in, list(prog_var)::out)
-    is det.
+:- pred generic_call_vars(generic_call::in, prog_vars::out) is det.
 
     % Attach the given goal features to the given goal and all its subgoals.
     %
@@ -145,9 +143,8 @@
     % i.e. a constraint which contrains an existentially quantified type
     % variable.
     %
-:- pred extra_nonlocal_typeinfos(rtti_varmaps::in,
-    vartypes::in, existq_tvars::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+:- pred extra_nonlocal_typeinfos(rtti_varmaps::in, vartypes::in,
+    existq_tvars::in, set(prog_var)::in, set(prog_var)::out) is det.
 
     % See whether the goal is a branched structure.
     %
@@ -159,7 +156,7 @@
 
     % Return an indication of the size of the list of goals.
     %
-:- pred goals_size(list(hlds_goal)::in, int::out) is det.
+:- pred goals_size(hlds_goals::in, int::out) is det.
 
     % Return an indication of the size of the list of clauses.
     %
@@ -201,7 +198,7 @@
 
     % Returns all the predids that are used in a list of goals.
     %
-:- pred predids_from_goals(list(hlds_goal)::in, list(pred_id)::out) is det.
+:- pred predids_from_goals(hlds_goals::in, list(pred_id)::out) is det.
 
     % Returns all the procedures that are used within a goal.
     %
@@ -214,9 +211,8 @@
     % This aborts if any of the constructors are existentially typed.
     %
 :- pred switch_to_disjunction(prog_var::in, list(case)::in,
-    instmap::in, list(hlds_goal)::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out,
-    module_info::in, module_info::out) is det.
+    instmap::in, hlds_goals::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out, module_info::in, module_info::out) is det.
 
     % Convert a case into a conjunction by adding a tag test
     % (deconstruction unification) to the case goal.
@@ -224,8 +220,7 @@
     %
 :- pred case_to_disjunct(prog_var::in, cons_id::in, hlds_goal::in,
     instmap::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out,
-    module_info::in, module_info::out) is det.
+    vartypes::in, vartypes::out, module_info::in, module_info::out) is det.
 
     % Transform an if-then-else into ( Cond, Then ; \+ Cond, Else ),
     % since magic.m and rl_gen.m don't handle if-then-elses.
@@ -235,27 +230,66 @@
 
 %-----------------------------------------------------------------------------%
 
-    % can_reorder_goals(ModuleInfo, FullyStrict, Goal1, Goal2).
+    % can_reorder_goals(ModuleInfo, VarTypes, FullyStrict, 
+    %   InstmapBeforeGoal1, Goal1, InstmapBeforeGoal2, Goal2).
     %
     % Goals can be reordered if
     % - the goals are independent
     % - the goals are not impure
-    % - any possible change in termination behaviour is allowed
-    %   according to the semantics options.
+    % - any possible change in termination behaviour is allowed according
+    %   to the semantics options.
+    %
+    % NOTE: this version is deprecated; new code should use the following
+    %       version because it supports the intermodule-analysis framework.
     %
 :- pred can_reorder_goals(module_info::in, vartypes::in, bool::in,
     instmap::in, hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
 
-    % reordering_maintains_termination(ModuleInfo,
-    %    FullyStrict, Goal1, Goal2)
+    % can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeGoal1, Goal1,
+    %   InstmapBeforeGoal2, Goal2, Result, !ModuleInfo, !IO).
     %
-    % Succeeds if any possible change in termination behaviour from
-    % reordering the goals is allowed according to the semantics options.
-    % The information computed by termination analysis is used when
-    % making this decision.
+    % Result is `yes' if the goals can be reordered; no otherwise.
+    %
+    % Goals can be reordered if
+    % - the goals are independent
+    % - the goals are not impure
+    % - any possible change in termination behaviour is allowed according
+    %   to the semantics options.
+    %
+    % NOTE: new code should use this version as it supports the
+    %       intermodule-analysis framework.
+    %
+:- pred can_reorder_goals(vartypes::in, bool::in, instmap::in,
+    hlds_goal::in, instmap::in, hlds_goal::in, bool::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+    
+    % reordering_maintains_termination(ModuleInfo, FullyStrict, Goal1, Goal2).
+    %
+    % Succeeds if any possible change in termination behaviour from reordering
+    % the goals is allowed according to the semantics options.
+    % The information computed by termination and exception analyses is used
+    % when making this decision.
+    %
+    % NOTE: this version is deprecated; new code should use the following
+    %       version because it supports the intermodule-analysis framework.
     %
 :- pred reordering_maintains_termination(module_info::in, bool::in,
     hlds_goal::in, hlds_goal::in) is semidet.
+
+    % reordering_maintains_termination(FullyStrict, Goal1, Goal2, Result,
+    %   !ModuleInfo, !IO).
+    %
+    % Result is `yes' if any possible change in termination behaviour from
+    % reordering the goals is allowed according to the semantics options.
+    % The information computed by termination and exception analyses is used
+    % when making this decision.
+    %
+    % NOTE: new code should use this version as it supports the 
+    %       intermodule-analysis framework.
+    %
+:- pred reordering_maintains_termination(bool::in, hlds_goal::in,
+    hlds_goal::in, bool::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
     % generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
     %   Detism, Args, Features, InstMapDelta, ModuleInfo, Context,
@@ -272,7 +306,7 @@
     % from 0.
     %
 :- pred generate_simple_call(module_name::in, string::in,
-    pred_or_func::in, mode_no::in, determinism::in, list(prog_var)::in,
+    pred_or_func::in, mode_no::in, determinism::in, prog_vars::in,
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term__context::in, hlds_goal::out) is det.
 
@@ -354,10 +388,9 @@ create_renaming(OrigVars, InstMapDelta, !VarTypes, !VarSet, Unifies, NewVars,
     list__reverse(RevNewVars, NewVars),
     list__reverse(RevUnifies, Unifies).
 
-:- pred create_renaming_2(list(prog_var)::in, instmap_delta::in,
+:- pred create_renaming_2(prog_vars::in, instmap_delta::in,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    list(prog_var)::in, list(prog_var)::out,
+    hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
 create_renaming_2([], _, !VarTypes, !VarSet, !RevUnifies, !RevNewVars,
@@ -1059,7 +1092,7 @@ goal_expr_size_shorthand(bi_implication(LHS, RHS), Size) :-
 goal_calls(GoalExpr - _, PredProcId) :-
     goal_expr_calls(GoalExpr, PredProcId).
 
-:- pred goals_calls(list(hlds_goal), pred_proc_id).
+:- pred goals_calls(hlds_goals, pred_proc_id).
 :- mode goals_calls(in, in) is semidet.
 :- mode goals_calls(in, out) is nondet.
 
@@ -1119,7 +1152,7 @@ goal_expr_calls(call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 goal_calls_pred_id(GoalExpr - _, PredId) :-
     goal_expr_calls_pred_id(GoalExpr, PredId).
 
-:- pred goals_calls_pred_id(list(hlds_goal), pred_id).
+:- pred goals_calls_pred_id(hlds_goals, pred_id).
 :- mode goals_calls_pred_id(in, in) is semidet.
 :- mode goals_calls_pred_id(in, out) is nondet.
 
@@ -1196,7 +1229,7 @@ goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
     Unify = construct(_, _, _, _, HowToConstruct, _, _),
     HowToConstruct = reuse_cell(_).
 
-:- pred goals_contain_reconstruction(list(hlds_goal)::in) is semidet.
+:- pred goals_contain_reconstruction(hlds_goals::in) is semidet.
 
 goals_contain_reconstruction(Goals) :-
     list__member(Goal, Goals),
@@ -1408,6 +1441,51 @@ can_reorder_goals(ModuleInfo, VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
     \+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
         InstmapBeforeLaterGoal, VarTypes, ModuleInfo).
 
+can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
+        EarlierGoal, InstmapBeforeLaterGoal, LaterGoal, CanReorder,
+        !ModuleInfo, !IO) :-
+
+    EarlierGoal = _ - EarlierGoalInfo,
+    LaterGoal = _ - LaterGoalInfo,
+
+    % Impure goals cannot be reordered.
+    ( goal_info_is_impure(EarlierGoalInfo) ->
+        CanReorder = no
+    ; goal_info_is_impure(LaterGoalInfo) ->
+        CanReorder = no
+    ;
+        reordering_maintains_termination(FullyStrict,
+            EarlierGoal, LaterGoal, MaintainsTermination, !ModuleInfo, !IO),
+        (
+            MaintainsTermination = no,
+            CanReorder = no
+        ;
+            MaintainsTermination = yes,
+            ( 
+                % Don't reorder the goals if the later goal depends on the
+                % outputs of the current goal.
+                %
+                goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
+                    InstmapBeforeEarlierGoal, VarTypes, !.ModuleInfo)
+            ->
+                CanReorder = no
+            ;
+                % Don't reorder the goals if the later goal changes the
+                % instantiatedness of any of the non-locals of the earlier
+                % goal. This is necessary if the later goal clobbers any of
+                % the non-locals of the earlier goal, and avoids rerunning
+                % full mode analysis in other cases.
+                %
+                goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
+                    InstmapBeforeLaterGoal, VarTypes, !.ModuleInfo)
+            ->
+                CanReorder = no
+            ;
+                CanReorder = yes
+            )
+        )
+    ).
+
 reordering_maintains_termination(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal) :-
     EarlierGoal = _ - EarlierGoalInfo,
@@ -1437,7 +1515,43 @@ reordering_maintains_termination(ModuleInfo, FullyStrict,
         true
     ).
 
+reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
+        MaintainsTermination, !ModuleInfo, !IO) :-
+    EarlierGoal = _ - EarlierGoalInfo,
+    LaterGoal = _ - LaterGoalInfo,
+
+    goal_info_get_determinism(EarlierGoalInfo, EarlierDetism),
+    determinism_components(EarlierDetism, EarlierCanFail, _),
+    goal_info_get_determinism(LaterGoalInfo, LaterDetism),
+    determinism_components(LaterDetism, LaterCanFail, _),
     %
+    % If --fully-strict was specified, don't convert (can_loop, can_fail) into
+    % (can_fail, can_loop).
+    %
+    goal_cannot_loop_or_throw(EarlierGoal, EarlierCannotLoopOrThrow,
+        !ModuleInfo, !IO),
+    (
+        FullyStrict = yes,
+        EarlierCannotLoopOrThrow = no,
+        LaterCanFail = can_fail
+    ->
+        MaintainsTermination = no
+    ;
+        % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
+        % this could worsen the termination properties of the program.
+        %
+        goal_cannot_loop_or_throw(LaterGoal, LaterCannotLoopOrThrow,
+            !ModuleInfo, !IO),
+        (
+            EarlierCanFail = can_fail,
+            LaterCannotLoopOrThrow = no
+        ->
+            MaintainsTermination = no
+        ;
+            MaintainsTermination = yes
+        )
+    ).
+            
     % If the earlier goal changes the instantiatedness of a variable
     % that is used in the later goal, then the later goal depends on
     % the earlier goal.

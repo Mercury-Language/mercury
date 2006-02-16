@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000,2002-2005 The University of Melbourne.
+% Copyright (C) 1999-2000,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -136,6 +136,9 @@
 % transformation attempts to move each recursive call to the end
 % until one succeeds.  This makes the order of independent recursive
 % calls in the body irrelevant.
+
+% XXX replace calls to can_reorder_goals with calls to the version that
+%     use the intermodule-analysis framework.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2005 University of Melbourne.
+% Copyright (C) 1998-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,6 +31,8 @@
 :- import_module set.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
     % Pick out the pred_proc_ids of the calls in a list of atomic goals.
     %
 :- pred goal_get_calls(hlds_goal::in, list(pred_proc_id)::out) is det.
@@ -44,7 +46,7 @@
     % Apply simplify.m to the goal.
     %
 :- pred simplify_goal(list(simplification)::in, hlds_goal::in,
-    hlds_goal::out, pd_info::in, pd_info::out) is det.
+    hlds_goal::out, pd_info::in, pd_info::out, io::di, io::uo) is det.
 
     % Apply unique_modes.m to the goal.
     %
@@ -86,7 +88,7 @@
     % information about the argument variables.
     %
 :- pred convert_branch_info(pd_branch_info(int)::in,
-    list(prog_var)::in, pd_branch_info(prog_var)::out) is det.
+    prog_vars::in, pd_branch_info(prog_var)::out) is det.
 
     % inst_MSG(InstA, InstB, InstC):
     %
@@ -130,7 +132,7 @@
     % which contain only conj, some, not and atomic goals, since deforest.m
     % only attempts to optimize those types of conjunctions.
     %
-:- pred goals_match(module_info::in, hlds_goal::in, list(prog_var)::in,
+:- pred goals_match(module_info::in, hlds_goal::in, prog_vars::in,
     list(mer_type)::in, hlds_goal::in, vartypes::in,
     map(prog_var, prog_var)::out, tsubst::out) is semidet.
 
@@ -142,9 +144,14 @@
     % - any possible change in termination behaviour is allowed
     %   according to the semantics options.
     %
+    % XXX use the intermodule-analysis framework here (and see if this
+    %     version can be merged with the similarly named predicate in
+    %     goal_util.m).
+    %
 :- pred can_reorder_goals(module_info::in, bool::in,
     hlds_goal::in, hlds_goal::in) is semidet.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -205,7 +212,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
         constraint_info_init(ModuleInfo0, VarTypes0, VarSet0, InstMap, CInfo0),
         Goal0 = _ - GoalInfo0,
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        constraint__propagate_constraints_in_goal(!Goal, CInfo0, CInfo),
+        constraint__propagate_constraints_in_goal(!Goal, CInfo0, CInfo, !IO),
         constraint_info_deconstruct(CInfo, ModuleInfo, VarTypes, VarSet,
             Changed),
         pd_info_set_module_info(ModuleInfo, !PDInfo),
@@ -221,10 +228,10 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
             rerun_det_analysis(!Goal, !PDInfo, !IO),
             module_info_get_globals(ModuleInfo, Globals),
             simplify__find_simplifications(no, Globals, Simplifications),
-            simplify_goal(Simplifications, !Goal, !PDInfo)
+            simplify_goal(Simplifications, !Goal, !PDInfo, !IO)
         ;
             % Use Goal0 rather than the output of propagate_constraints_in_goal
-            % because constraint propagation can make the % quantification
+            % because constraint propagation can make the quantification
             % information more conservative even if it doesn't optimize
             % anything.
             Changed = no,
@@ -236,7 +243,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-simplify_goal(Simplifications, Goal0, Goal, !PDInfo) :-
+simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
     % Construct a simplify_info.
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
@@ -248,7 +255,7 @@ simplify_goal(Simplifications, Goal0, Goal, !PDInfo) :-
     simplify_info_init(DetInfo0, Simplifications, InstMap0, ProcInfo0,
         SimplifyInfo0),
 
-    simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo),
+    simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo, !IO),
 
     % Deconstruct the simplify_info.
     simplify_info_get_module_info(SimplifyInfo, ModuleInfo),
@@ -328,7 +335,7 @@ get_goal_live_vars(PDInfo, _ - GoalInfo, !:Vars) :-
     get_goal_live_vars_2(ModuleInfo, NonLocalsList, InstMap, InstMapDelta,
         !Vars).
 
-:- pred get_goal_live_vars_2(module_info::in, list(prog_var)::in,
+:- pred get_goal_live_vars_2(module_info::in, prog_vars::in,
     instmap::in, instmap_delta::in,
     set(prog_var)::in, set(prog_var)::out) is det.
 
@@ -401,7 +408,7 @@ convert_branch_info(ArgInfo, Args, VarInfo) :-
     VarInfo = pd_branch_info(BranchVarMap, LeftVars, OpaqueVars).
 
 :- pred convert_branch_info_2(assoc_list(int, set(int))::in,
-    list(prog_var)::in, pd_var_info::in, pd_var_info::out) is det.
+    prog_vars::in, pd_var_info::in, pd_var_info::out) is det.
 
 convert_branch_info_2([], _, !VarInfo).
 convert_branch_info_2([ArgNo - Branches | ArgInfos], Args,
@@ -481,7 +488,7 @@ get_opaque_args(ModuleInfo, ArgNo, [ArgMode | ArgModes],
     % in the branches, compute the argument numbers for which we have extra
     % information.
     %
-:- pred get_extra_info_headvars(list(prog_var)::in, int::in,
+:- pred get_extra_info_headvars(prog_vars::in, int::in,
     set(prog_var)::in, pd_var_info::in,
     branch_info_map(int)::in, branch_info_map(int)::out,
     set(int)::in, set(int)::out) is det.
@@ -530,7 +537,7 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
         MaybeBranchInfo = no
     ).
 
-:- pred get_branch_vars_goal_2(module_info::in, list(hlds_goal)::in,
+:- pred get_branch_vars_goal_2(module_info::in, hlds_goals::in,
     bool::in, vartypes::in, instmap::in,
     set(prog_var)::in, set(prog_var)::out,
     pd_var_info::in, pd_var_info::out) is semidet.
@@ -643,7 +650,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
     % Look at the goals in the branches for extra information.
     %
 :- pred get_sub_branch_vars_goal(pd_arg_info::in,
-    list(hlds_goal)::in, vartypes::in, instmap::in,
+    hlds_goals::in, vartypes::in, instmap::in,
     branch_info_map(prog_var)::in, branch_info_map(prog_var)::out,
     module_info::in, module_info::out) is det.
 
@@ -676,7 +683,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         VarTypes, InstMap, Vars2, SubVars, !ModuleInfo).
 
 :- pred examine_branch_list(module_info::in, pd_arg_info::in, int::in,
-    list(hlds_goal)::in, vartypes::in, instmap::in,
+    hlds_goals::in, vartypes::in, instmap::in,
     branch_info_map(prog_var)::in, branch_info_map(prog_var)::out) is det.
 
 examine_branch_list(_, _, _, [], _, _, !Vars).
@@ -708,7 +715,7 @@ examine_case_list(ProcArgInfo, BranchNo, Var,
         VarTypes, InstMap, !Vars, !ModuleInfo).
 
 :- pred examine_branch(module_info::in, pd_arg_info::in, int::in,
-    list(hlds_goal)::in, vartypes::in, instmap::in,
+    hlds_goals::in, vartypes::in, instmap::in,
     branch_info_map(prog_var)::in, branch_info_map(prog_var)::out) is det.
 
 examine_branch(_, _, _, [], _, _, !Vars).
@@ -740,7 +747,7 @@ examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
     examine_branch(ModuleInfo, ProcArgInfo, BranchNo,
         Goals, VarTypes, InstMap1, !Vars).
 
-:- pred combine_vars(int::in, list(prog_var)::in,
+:- pred combine_vars(int::in, prog_vars::in,
     branch_info_map(prog_var)::in, branch_info_map(prog_var)::out) is det.
 
 combine_vars(_, [], !Vars).
@@ -966,7 +973,7 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
     map__apply_to_list(NewArgs, NewVarTypes, NewArgTypes),
     type_list_subsumes(MatchingArgTypes, NewArgTypes, TypeSubn).
 
-:- pred collect_matching_arg_types(list(prog_var)::in, list(mer_type)::in,
+:- pred collect_matching_arg_types(prog_vars::in, list(mer_type)::in,
     map(prog_var, prog_var)::in, list(mer_type)::in, list(mer_type)::out)
     is det.
 
@@ -989,7 +996,7 @@ collect_matching_arg_types([Arg | Args], [Type | Types],
     % Check that the shape of the goals matches, and that there is a mapping
     % from the variables in the old goal to the variables in the new goal.
     %
-:- pred goals_match_2(list(hlds_goal)::in, list(hlds_goal)::in,
+:- pred goals_match_2(hlds_goals::in, hlds_goals::in,
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out) is semidet.
 
 goals_match_2([], [], !ONRenaming).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 University of Melbourne.
+% Copyright (C) 1999-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -208,7 +208,7 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
         % Inlining may have created some opportunities for simplification.
         globals__io_get_globals(Globals, !IO),
         simplify__find_simplifications(no, Globals, Simplifications),
-        pd_util__simplify_goal(Simplifications, !Goal, !PDInfo),
+        pd_util__simplify_goal(Simplifications, !Goal, !PDInfo, !IO),
 
         pd_util__propagate_constraints(!Goal, !PDInfo, !IO),
 
@@ -1629,7 +1629,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     % Be a bit more aggressive with common structure elimination.
     % This helps achieve folding in some cases.
     Simplifications = [extra_common_struct | Simplifications0],
-    pd_util__simplify_goal(Simplifications, Goal2, Goal3, !PDInfo),
+    pd_util__simplify_goal(Simplifications, Goal2, Goal3, !PDInfo, !IO),
     pd_info_set_instmap(InstMap0, !PDInfo),
 
     % Perform any folding which may now be possible.
@@ -1858,7 +1858,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         pd_info_get_module_info(!.PDInfo, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
         simplify__find_simplifications(no, Globals, Simplifications),
-        pd_util__simplify_goal(Simplifications, Goal3, Goal4, !PDInfo),
+        pd_util__simplify_goal(Simplifications, Goal3, Goal4, !PDInfo, !IO),
 
         pd_info_get_cost_delta(!.PDInfo, CostDelta1),
         CostDelta = CostDelta1 - CostDelta0,

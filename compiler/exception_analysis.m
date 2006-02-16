@@ -81,6 +81,7 @@
 :- import_module analysis.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_data.
 
 :- import_module io.
 
@@ -95,6 +96,19 @@
     %
 :- pred write_pragma_exceptions(module_info::in, exception_info::in,
     pred_id::in, io::di, io::uo) is det.
+
+    % Look the exception status of the given procedure.  This predicate
+    % is intended to be used by optimisations that use exception analysis
+    % information, *not* for use within the exception analysis itself.  
+    % This predicate abstracts away differences between
+    % intermodule-optimization and intermodule-analysis.
+    %
+    % NOTE: if intermodule-analysis is enabled then this procedure will
+    %       update the IMDG as well.
+    %
+:- pred lookup_exception_analysis_result(pred_proc_id::in,
+    exception_status::out, module_info::in, module_info::out, io::di, io::uo)
+    is det.
 
 %----------------------------------------------------------------------------%
 %
@@ -125,7 +139,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -1159,6 +1172,63 @@ write_pragma_exceptions(ModuleInfo, ExceptionInfo, PredId, !IO) :-
             )), ProcIds, !IO)
     ;
         ShouldWrite = no      
+    ).
+
+%----------------------------------------------------------------------------%
+% 
+% External interface to exception analysis information
+%
+
+lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo, !IO) :-
+    PPId = proc(PredId, _),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    IsImported = pred_to_bool(pred_info_is_imported(PredInfo)),
+    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
+        !IO),
+    %
+    % If we the procedure we are calling is imported and we are using
+    % intermodule-analysis then we need to look up the exception status in the
+    % analysis registry; otherwise we look it up in the the exception_info
+    % table.
+    %
+    UseAnalysisRegistry = IsImported `bool.and` IntermodAnalysis,
+    (
+        % If the procedure is not imported then it's exception_status
+        % will be in the exception_info table.
+        UseAnalysisRegistry = no,
+        module_info_get_exception_info(!.ModuleInfo, ExceptionInfo),
+        ( 
+            map.search(ExceptionInfo, PPId, ProcExceptionInfo)
+        ->
+            ProcExceptionInfo = proc_exception_info(ExceptionStatus, _)
+        ;
+            ExceptionStatus = may_throw(user_exception)
+        )
+    ;
+        UseAnalysisRegistry = yes,
+        some [!AnalysisInfo] (
+            module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
+            module_id_func_id(!.ModuleInfo, PPId, ModuleId, FuncId),
+            lookup_best_result(ModuleId, FuncId, any_call, MaybeBestStatus,
+                !AnalysisInfo, !IO),
+            (
+                MaybeBestStatus = yes({_Call, Answer, AnalysisStatus}),
+                ( AnalysisStatus = invalid ->
+                    unexpected(this_file,
+                        "invalid exception_analysis answer")
+                ;
+                    Answer = exception_analysis_answer(ExceptionStatus)
+                )
+            ;
+                MaybeBestStatus = no,
+                ExceptionStatus = may_throw(user_exception) 
+            ),
+            module_info_get_name(!.ModuleInfo, ThisModuleName),
+            ThisModuleId = module_name_to_module_id(ThisModuleName),
+            record_dependency(ThisModuleId, analysis_name, ModuleId, FuncId,
+                any_call, !AnalysisInfo),
+            module_info_set_analysis_info(!.AnalysisInfo, !ModuleInfo)
+        )
     ).
 
 %----------------------------------------------------------------------------%
