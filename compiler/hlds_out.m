@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3090,7 +3090,7 @@ write_rtti_var_info(Indent, AppendVarNums, RttiVarMaps, VarSet, TVarSet, Var,
         mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
     ;
         VarInfo = typeclass_info_var(Constraint),
-        io__write_string("typeclass_info for", !IO),
+        io__write_string("typeclass_info for ", !IO),
         mercury_output_constraint(TVarSet, AppendVarNums, Constraint, !IO)
     ;
         VarInfo = non_rtti_var,
