@@ -1,5 +1,12 @@
 #!/bin/sh
 #
+# Copyright (C) 2005-2006 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#
+# File: gator.
+# Main author: samrith.
+#
 # This shell script reads genotypes from standard input.  A genotype is
 # a whitespace-separated set of compiler flags.  The genotypes are
 # separated by a newline character.

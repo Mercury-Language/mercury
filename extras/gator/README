@@ -136,11 +136,12 @@ is an integer between 1 and $num_progs.
 
 For example, suppose we want to change the program being optimised.
 The new program is in "benchmarks/progs/ray/proj.m", rather than
-"mercury/samples/hello.m".  The first thing that needs to be done is to
-copy the program's source code to each of the hosts.  Then, the
-gator.conf file needs to be modified.  The new file is similar to the
-example given above, except that the $benchmarks1 and $benchmarks2
-directories are different:
+"mercury/samples/hello.m".  The first thing that needs to be done is
+to copy the program's source code to any one of the hosts.  gator will
+then find it and copy it to the other hosts.  Then, the gator.conf
+file needs to be modified.  The new file is similar to the example
+given above, except that the $benchmarks1 and $benchmarks2 directories
+are different:
 
 	benchmarks1=/home/jupiter/samrith/benchmarks
 	benchmarks2=/home/saturn/samrith/benchmarks

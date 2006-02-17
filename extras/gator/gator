@@ -1,5 +1,12 @@
 #!/bin/sh
 #
+# Copyright (C) 2005-2006 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#
+# File: gator.
+# Main author: samrith.
+#
 # This program implements a genetic algorithm to determine an optimal
 # set of optimisation flags to be passed to the Mercury compiler for a
 # given program.
@@ -28,19 +35,21 @@
 #
 
 prog=`basename "$0"`
-usage="usage: $prog [-g generation] [-k] [-v]"
+usage="usage: $prog [-g generation] [-k] [-n count] [-v]"
 
-while getopts g:kv f
+while getopts g:kn:v f
 do
 	case $f in
 	g)	generation="$OPTARG";;
 	k)	kill=true;;
+	n)	count="$OPTARG";;
 	v)	set -x;;
 	\?)	echo "$usage" >&2; exit 1;;
 esac
 done
 shift `expr $OPTIND - 1`
 
+echo '==> Reading gator.conf' >&2
 . gator.conf || exit 1
 
 #
@@ -59,12 +68,63 @@ then
 	while [ $i -le $num_hosts ]
 	do
 		eval "host=\${host$i}"
+		printf "==> Killing evaluate on %s\n" $host >&2
 		ssh "$host" pkill evaluate
 		i=`expr $i + 1`
 	done
 
+	echo '==> Killing ssh-agent' >&2
+	ssh-agent -k
+
+	echo '==> Killing gator' >&2
 	exec pkill gator
 fi
+
+tmp="${TMPDIR:-/tmp}"/"$prog"$$
+rm -rf "$tmp" && mkdir "$tmp" || exit 1
+
+trap 'ssh-agent -k; rm -rf "$tmp"; exit' 0 1 2 3 15
+
+i=1
+while [ $i -le $num_hosts ]
+do
+	eval "host=\${host$i}"
+	eval "benchmarks=\${benchmarks$i}"
+
+	if ssh "$host" [ -d "$benchmarks" ]
+	then
+		printf "==> Copying sources from %s:%s\n" "$host" \
+		    "$benchmarks" >&2
+
+		ssh "$host" '(cd '"$benchmarks"' && tar -cf - .) | bzip2' \
+		    >"$tmp"/benchmarks.tar.bz2
+		break
+	fi
+
+	i=`expr $i + 1`
+done
+
+if [ ! -f "$tmp"/benchmarks.tar.bz2 ]
+then
+	echo '==> Error: couldn'\''t find benchmark program sources' >&2
+	exit 1
+fi
+
+i=1
+while [ $i -le $num_hosts ]
+do
+	eval "host=\${host$i}"
+	eval "benchmarks=\${benchmarks$i}"
+
+	printf "==> Copying sources to %s:%s\n" "$host" "$benchmarks" >&2
+
+	ssh "$host" rm -rf "$benchmarks"
+	ssh "$host" mkdir "$benchmarks"
+	ssh "$host" 'bzip2 -dc - | (cd '"$benchmarks"' && tar -xf -)' \
+	    <"$tmp"/benchmarks.tar.bz2
+
+	i=`expr $i + 1`
+done
 
 mmc --make evolve || exit 1
 
@@ -77,10 +137,8 @@ do
 	# evaluating a genotype.
 	#
 
-	fifo="${TMPDIR:-/tmp}"/"$prog"$$
-	rm -rf "$fifo" || exit 1
-	mkfifo "$fifo"
-	trap 'cd /; /bin/rm -f "$fifo"; exit' 0 1 2 3 15
+	fifo="$tmp"/fifo
+	rm -rf "$fifo" && mkfifo "$fifo" || exit 1
 
 	#
 	# Note that throughout the program, the shell variable $i is
@@ -115,6 +173,9 @@ do
 		eval "workspace=\${workspace$i}"
 		eval "benchmarks=\${benchmarks$i}"
 		eval "path=\${path$i}"
+
+		printf "==> Connecting to %s (%d/%d = %d%%)\n" $host $j \
+		    $num_genotypes `expr 100 \* $j / $num_genotypes` >&2
 
 		(
 			sed -n ${j}p <"$genotypes" | ssh "$host" nice -n 19 \
@@ -164,11 +225,21 @@ do
 	next_genotypes=generations/$next_generation/genotypes
 	ladder=generations/$generation/ladder
 
+	printf "==> Next generation: %d\n" $next_generation >&2
+
 	mkdir generations/$next_generation
 	./evolve -g "$genotypes" -h "$next_genotypes" -l "$ladder" \
 	    -p "$phenotypes" || exit 1
 
 	generation="$next_generation"
+
+	#
+	# Print the top $count individuals in the history of the evolution.
+	#
+
+	echo "==> Current top %d\n" $n >&2
+	sort -rnk3 generations/*/ladder | grep -v '[0-9]e-' | head -n $count |
+	    sed -e 's/[ 	]*$//'
 done
 
 # NOTREACHED
