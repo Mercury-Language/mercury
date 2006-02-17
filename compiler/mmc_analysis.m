@@ -96,7 +96,14 @@ mmc_module_id_to_read_file_name(ModuleId, Ext, MaybeFileName, !IO) :-
     ModuleName = module_id_to_module_name(ModuleId),
     modules.module_name_to_search_file_name(ModuleName, Ext, FileName0, !IO),
     globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
-    search_for_file(Dirs, FileName0, MaybeFileName, !IO).
+    search_for_file(Dirs, FileName0, MaybeFileName, !IO),
+    (
+        MaybeFileName = ok(_),
+        % `search_for_file' actually opens the file.
+        io.seen(!IO)
+    ;
+        MaybeFileName = error(_)
+    ).
 
 :- pred mmc_module_id_to_write_file_name(module_id::in, string::in, string::out,
     io::di, io::uo) is det.
