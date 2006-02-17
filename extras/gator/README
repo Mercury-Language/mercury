@@ -7,11 +7,11 @@ disable optimisations to the code being generated.  It can be difficult
 to determine which ones to apply, especially since different options may
 work better with different programs or different inputs.  This program
 attempts to find the optimal set of optimisation flags to be passed to
-mmc(1).  It works using a genetic algorithm; see the following URLs for
-details on how genetic algorithms work:
+the compiler.  It works using a genetic algorithm; see the following
+URLs for details on how genetic algorithms work:
 
-             http://en.wikipedia.org/wiki/Genetic_algorithm
-     http://www.cs.cmu.edu/Groups/AI/html/faqs/ai/genetic/top.html
+            <http://en.wikipedia.org/wiki/Genetic_algorithm>
+    <http://www.cs.cmu.edu/Groups/AI/html/faqs/ai/genetic/top.html>
 
 The program is invoked using the gator script.  It may be useful (if
 something goes wrong) to turn on the verbose flag and pipe the output to
@@ -31,9 +31,10 @@ table.  The second column contains the "fitness" of an individual.  The
 third column contains the "genotype" of an individual, which is the list
 of compiler options that are passed to the compiler.
 
-The program is intended to be general enough to test different programs,
-as well as different programming languages and compilers.  The following
-sections describe how to configure gator to do this.
+By default, gator is configured to optimise a simple "hello world"
+program written in Mercury.  The following sections describe how to
+configure gator to test different programs, including those using
+different programming languages and compilers.
 
 2 Configuring for your network
 
@@ -73,6 +74,34 @@ an integer between 1 and $num_hosts.
 	path$i: the path to the directory containing the compiler.  This
 		is pre-pended to $PATH in the evaluate script.
 
+The hosts in gator.conf are accessed using ssh(1) and ssh-agent(1).  It
+is necessary to have SSH keys set up on each of these hosts.  See the
+following URL for details on how to use ssh-agent(1):
+                                    
+                  <http://mah.everybody.org/docs/ssh>
+
+As an example, suppose we are setting up gator to run on a network
+containing two hosts named "jupiter" and "saturn".
+
+	num_hosts=2
+
+	host1=jupiter
+	workspace1=$HOME/mercury/extras/gator
+	benchmarks1=/home/jupiter/samrith/mercury/samples
+	path1=/home/jupiter/public/mercury-latest/i686-pc-linux-gnu/bin
+
+	host2=saturn
+	workspace2=$HOME/mercury/extras/gator
+	benchmarks2=/home/saturn/samrith/mercury/samples
+	path2=/home/saturn/public/mercury-latest/i686-pc-linux-gnu/bin
+
+In this example, $workspace1 and $workspace2 are both the same path, and
+are on the same NFS-mounted filesystem.  All of the workspaces may be on
+the same filesystem, although they don't have to be.  However, the
+benchmark directories must be separate directories, so that separate
+builds can be done on each host.  In this example, $benchmarks1 and
+$benchmarks2 are located on their host's local filesystems.
+
 3 Configuring for your software
 
 The evaluate.conf file allows the user to change the benchmarking
@@ -105,6 +134,31 @@ is an integer between 1 and $num_progs.
 
 	run$i: the command used to run the program.
 
+For example, suppose we want to change the program being optimised.
+The new program is in "benchmarks/progs/ray/proj.m", rather than
+"mercury/samples/hello.m".  The first thing that needs to be done is to
+copy the program's source code to each of the hosts.  Then, the
+gator.conf file needs to be modified.  The new file is similar to the
+example given above, except that the $benchmarks1 and $benchmarks2
+directories are different:
+
+	benchmarks1=/home/jupiter/samrith/benchmarks
+	benchmarks2=/home/saturn/samrith/benchmarks
+
+The evaluate.conf file would look like this:
+
+	num_progs=1
+
+	prog1="$benchmarks"/progs/ray/proj
+	clean1="mmc --make proj.realclean; rm -rf Mercury"
+	compile1="mmc --make -O0 $flags proj"
+	run1="./proj -f 100 -S -s 0.4 2 -a 0.1 dh.scene 140 140 0 0 0 >dh.ppm"
+
+The example above gives just one Mercury program.  The default
+evolve.conf file is set up for just one Mercury program, so if more
+programs or different compilers are used, it is necessary to modify
+evolve.conf (see section 4 for details).
+
 4 Configuring parameters for the genetic operators
 
 If the intention is to, for example, optimise for space instead of time,
@@ -118,14 +172,14 @@ evaluate.conf.  Currently, evolve.conf must contain two terms that can
 be read by io.read/3.
 
 The first term contains the "Weightings" used by phenotype.fitness/2.
-This parameter is coupled with the number of programs being tested (by
-default 5, see section 3 on evaluate.conf).  For each program, there are
-three measurements taken by the software:  the time taken to compile,
-the resulting executable size and the time taken to run the executable.
-Because of this, the list must be of length $num_progs * 3.
+This parameter is coupled with the number of programs being tested
+(see section 3 on evaluate.conf).  For each program, there are three
+measurements taken by the software: the compile time, the executable
+size and the time taken to run the executable.  Because of this,
+the list must be of length $num_progs * 3.
 
-The following examples give cause gator to search for a set of flags
-that will compile in the least amount of time,
+These next examples cause gator to search for a set of flags that
+will minimize the compilation time for five programs,
 
 			[ 1.0, 1.0, 1.0, 1.0, 1.0,
 			  0.0, 0.0, 0.0, 0.0, 0.0,
@@ -146,6 +200,41 @@ or optimise for space, while ignoring the second program in the set.
 The second term contains a complete list of flags that can be passed to
 the compiler.  This is used by genotype.mutation/5, which toggles a
 random flag in an individual's genotype.
+
+Suppose the evaluate.conf file (see section 3 for details) specifies two
+programs, both of which are compiled with gcc(1).  In this case, the
+first term would need to be a list of length $num_progs * 3 = 2 * 3 = 6.
+The second term would need to contain a list of gcc optimisation
+options, rather than mmc options.  The following example works for gcc
+3.3.5.
+
+	[ 0.5, 0.5, 0.0, 0.0, 1.0, 1.0 ].
+
+	[ "-fbranch-probabilities", "-fcaller-saves",
+	  "-fcprop-registers", "-fcse-follow-jumps",
+	  "-fcse-skip-blocks", "-fdata-sections", "-fdelayed-branch",
+	  "-fdelete-null-pointer-checks", "-fexpensive-optimizations",
+	  "-ffast-math", "-ffloat-store", "-fforce-addr", "-fforce-mem",
+	  "-ffunction-sections", "-fgcse", "-fgcse-lm", "-fgcse-sm",
+	  "-floop-optimize", "-fcrossjumping", "-fif-conversion",
+	  "-fif-conversion2", "-finline-functions", "-fkeep-inline-functions",
+	  "-fkeep-static-consts", "-fmerge-constants",
+	  "-fmerge-all-constants", "-fmove-all-movables", "-fnew-ra",
+	  "-fno-branch-count-reg", "-fno-default-inline", "-fno-defer-pop",
+	  "-fno-function-cse", "-fno-guess-branch-probability", "-fno-inline",
+	  "-fno-math-errno", "-fno-peephole", "-fno-peephole2",
+	  "-funsafe-math-optimizations", "-ffinite-math-only",
+	  "-fno-trapping-math", "-fno-zero-initialized-in-bss",
+	  "-fomit-frame-pointer", "-foptimize-register-move",
+	  "-foptimize-sibling-calls", "-fprefetch-loop-arrays",
+	  "-freduce-all-givs", "-fregmove", "-frename-registers",
+	  "-freorder-blocks", "-freorder-functions", "-frerun-cse-after-loop",
+	  "-frerun-loop-opt", "-fschedule-insns", "-fschedule-insns2",
+	  "-fno-sched-interblock", "-fno-sched-spec", "-fsched-spec-load",
+	  "-fsched-spec-load-dangerous", "-fsignaling-nans",
+	  "-fsingle-precision-constant", "-fssa", "-fssa-ccp", "-fssa-dce",
+	  "-fstrength-reduce", "-fstrict-aliasing", "-ftracer",
+	  "-fthread-jumps", "-funroll-all-loops", "-funroll-loops" ].
 
 5 Further modifying the genetic operators
 
