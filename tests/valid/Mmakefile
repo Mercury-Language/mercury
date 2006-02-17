@@ -68,6 +68,7 @@ OTHER_PROGS= \
 	any_inst_merge \
 	any_matches_bound \
 	big_foreign_type \
+	builtin_false \
 	common_struct_bug \
 	complicated_unify \
 	compl_unify_bug \

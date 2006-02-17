@@ -417,15 +417,17 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
         ; Goal0CannotLoopOrThrow = yes
         )
     ->
-        % warn about this, unless the goal was an explicit
-        % `fail', or some goal containing `fail'.
-
+        % Warn about this, unless the goal was an explicit `fail', call to
+        % `builtin.false/0' or  some goal containing `fail' or a call to
+        % `builtin.false/0'.
+        %
         goal_info_get_context(GoalInfo0, Context),
         (
             simplify_do_warn(!.Info),
             \+ (
-                goal_contains_goal(Goal0, SubGoal),
-                SubGoal = disj([]) - _
+                    goal_contains_goal(Goal0, SubGoal),
+                    ( SubGoal = disj([]) - _
+                    ; goal_is_call_to_builtin_false(SubGoal))
             )
         ->
             Msg = goal_cannot_succeed,
@@ -559,6 +561,12 @@ enforce_invariant(GoalInfo0, GoalInfo, !Info) :-
     ;
         GoalInfo = GoalInfo0
     ).
+                    
+:- pred goal_is_call_to_builtin_false(hlds_goal::in) is semidet.
+
+goal_is_call_to_builtin_false(Goal - _) :-
+    Goal = call(_, _, _, _, _, SymName),
+    SymName = qualified(mercury_public_builtin_module, "false").
 
 %-----------------------------------------------------------------------------%
 
