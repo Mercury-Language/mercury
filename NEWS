@@ -74,6 +74,7 @@ Changes to the compiler backends:
 Changes to the extras distribution:
 * We've added a library of data structures designed to work with solver types. 
 * We've added a library to generate Windows installer packages.
+* We've added a program to generate optimisation flags for the compiler.
 
 
 DETAILED LISTING
@@ -216,6 +217,13 @@ Changes to the extras distribution:
   The directory extras/windows_installer_generator contains a library to
   generate Wix source files.  WiX is an XML language that is used to generate
   Microsoft Windows Installer (.msi) packages.
+
+* We've added a program to generate optimisation flags for the compiler.
+
+  The directory extras/gator contains a program to search for the
+  optimal set of compiler flags for a given program.  The search
+  algorithm used is a genetic algorithm, which can run in parallel over
+  multiple hosts (by default, 1).
 
 
 NEWS for Mercury 0.12.1
