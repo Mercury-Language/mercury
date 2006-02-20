@@ -435,7 +435,7 @@ annotate_conj_constraints(ModuleInfo,
         goal_info_is_pure(GoalInfo),
 
         % Don't propagate goals that can loop or throw exceptions.
-        GoalCannotLoopOrThrow = no
+        GoalCannotLoopOrThrow = yes
     ->
         % It's a constraint, add it to the list of constraints
         % to be attached to goals earlier in the conjunction.
