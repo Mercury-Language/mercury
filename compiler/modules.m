@@ -1167,6 +1167,8 @@ make_file_name(SubDirName, Search, MkDir, BaseName, Ext, FileName, !IO) :-
             ( Ext = ".opt"
             ; Ext = ".trans_opt"
             ; Ext = ".analysis"
+            ; Ext = ".imdg"
+            ; Ext = ".request"
             )
         )
     ->

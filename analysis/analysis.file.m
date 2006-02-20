@@ -15,35 +15,76 @@
 
 	% read_module_overall_status(Compiler, ModuleId, MaybeModuleStatus,
 	%   !IO)
+	%
 	% Attempt to read the overall status from a module `.analysis' file.
+	% If the module has outstanding requests, then an overall status of
+	% `optimal' is downgraded to `suboptimal'.
 	%
 :- pred read_module_overall_status(Compiler::in, module_id::in,
 	maybe(analysis_status)::out, io::di, io::uo) is det
 	<= compiler(Compiler).
-
+	
+	% read_module_analysis_results(AnalysisInfo, ModuleId,
+	%   OverallStatus, AnalysisResults, ExtraInfo, !IO)
+	%
+	% Read the overall module status, analysis results and
+	% any extra info from a `.analysis' file.
+	%
 :- pred read_module_analysis_results(analysis_info::in, module_id::in,
 	analysis_status::out, module_analysis_map(analysis_result)::out,
-	io__state::di, io__state::uo) is det.
+	module_extra_info_map::out, io::di, io::uo) is det.
 
+	% write_module_analysis_results(AnalysisInfo, ModuleId,
+	%   OverallStatus, AnalysisResults, ExtraInfo, !IO)
+	%
+	% Write the overall module status, analysis results and
+	% extra info to a `.analysis' file.
+	%
 :- pred write_module_analysis_results(analysis_info::in,
 	module_id::in, analysis_status::in,
 	module_analysis_map(analysis_result)::in,
-	io__state::di, io__state::uo) is det.
+	module_extra_info_map::in, io::di, io::uo) is det.
 
+	% read_module_analysis_requests(AnalysisInfo, ModuleId,
+	%   ModuleRequests, !IO)
+	%
+	% Read outstanding analysis requests to a module from disk.
+	%
 :- pred read_module_analysis_requests(analysis_info::in,
 	module_id::in, module_analysis_map(analysis_request)::out,
 	io__state::di, io__state::uo) is det.
 
+	% write_module_analysis_requests(AnalysisInfo, ModuleId,
+	%   ModuleRequests, !IO)
+	%
+	% Write outstanding analysis requests for a module to disk.
+	%
 :- pred write_module_analysis_requests(analysis_info::in,
 	module_id::in, module_analysis_map(analysis_request)::in,
 	io__state::di, io__state::uo) is det.
 
+	% read_module_imdg(AnalysisInfo, ModuleId, ModuleEntries, !IO)
+	%
+	% Read the intermodule dependencies graph entries for a module
+	% from disk.
+	%
 :- pred read_module_imdg(analysis_info::in, module_id::in,
 	module_analysis_map(imdg_arc)::out, io::di, io::uo) is det.
 
+	% write_module_imdg(AnalysisInfo, ModuleId, ModuleEntries, !IO)
+	%
+	% Write the intermodule dependencies graph entries for a module
+	% to disk.
+	%
 :- pred write_module_imdg(analysis_info::in, module_id::in,
 	module_analysis_map(imdg_arc)::in, io::di, io::uo) is det.
 
+	% empty_request_file(AnalysisInfo, ModuleId, !IO)
+	%
+	% Delete the file containing outstanding analysis requests for a
+	% module.  This means all the analysis requests should have been
+	% satisfied already.
+	%
 :- pred empty_request_file(analysis_info::in, module_id::in,
 	io__state::di, io__state::uo) is det.
 
@@ -55,8 +96,11 @@
 %
 % version_number.
 % module_status.
+% extra_info(key, extra_info).
 % analysis_name(analysis_version, func_id, call_pattern, answer_pattern,
 %   result_status).
+%
+% All extra_infos, if any, must come before the analysis results.
 
 % The format of an IMDG file is:
 %
@@ -91,7 +135,21 @@ read_module_overall_status(Compiler, ModuleId, MaybeModuleStatus, !IO) :-
 	MaybeAnalysisFileName, !IO),
     (
 	MaybeAnalysisFileName = ok(AnalysisFileName),
-	read_module_overall_status_2(AnalysisFileName, MaybeModuleStatus, !IO)
+	read_module_overall_status_2(AnalysisFileName, MaybeModuleStatus0, !IO),
+	( MaybeModuleStatus0 = yes(optimal) ->
+	    module_id_to_read_file_name(Compiler, ModuleId, request_suffix,
+		MaybeRequestFileName, !IO),
+	    (
+		% There are outstanding requests for this module.
+		MaybeRequestFileName = ok(_),
+		MaybeModuleStatus = yes(suboptimal)
+	    ;
+		MaybeRequestFileName = error(_),
+		MaybeModuleStatus = MaybeModuleStatus0
+	    )
+	;
+	    MaybeModuleStatus = MaybeModuleStatus0
+	)
     ;
 	MaybeAnalysisFileName = error(_),
 	MaybeModuleStatus = no
@@ -131,16 +189,86 @@ read_module_overall_status_2(AnalysisFileName, MaybeModuleStatus, !IO) :-
 	MaybeModuleStatus = no
     ).
 
+%-----------------------------------------------------------------------------%
+
 read_module_analysis_results(Info, ModuleId, ModuleStatus, ModuleResults,
-		!IO) :-
-	% If the module's overall status is `invalid' then at least one of its
-	% results is invalid.  However, we can't just discard the results as we
-	% want to know which results change after we reanalyse the module.
-	Compiler = Info ^ compiler,
-	read_analysis_file(Compiler, ModuleId, analysis_registry_suffix,
-		read_module_status, optimal, ModuleStatus,
-		parse_result_entry(Compiler),
-		map__init, ModuleResults, !IO).
+	ExtraInfo, !IO) :-
+    % If the module's overall status is `invalid' then at least one of its
+    % results is invalid.  However, we can't just discard the results as we
+    % want to know which results change after we reanalyse the module.
+    Compiler = Info ^ compiler,
+    module_id_to_read_file_name(Compiler, ModuleId, analysis_registry_suffix,
+	MaybeAnalysisFileName, !IO),
+    (
+	MaybeAnalysisFileName = ok(AnalysisFileName),
+	read_module_analysis_results_2(Compiler, AnalysisFileName,
+	    ModuleStatus, ModuleResults, ExtraInfo, !IO)
+    ;
+	MaybeAnalysisFileName = error(_),
+	ModuleStatus = optimal,
+	ModuleResults = map.init,
+	ExtraInfo = map.init
+    ).
+
+:- pred read_module_analysis_results_2(Compiler::in, string::in,
+    analysis_status::out, module_analysis_map(analysis_result)::out,
+    module_extra_info_map::out, io::di, io::uo) is det <= compiler(Compiler).
+
+read_module_analysis_results_2(Compiler, AnalysisFileName,
+	ModuleStatus, ModuleResults, ExtraInfo, !IO) :-
+    ModuleResults0 = map.init,
+    io.open_input(AnalysisFileName, OpenResult, !IO),
+    (
+	OpenResult = ok(Stream),
+	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+	    io.print("Reading analysis registry file ", !IO),
+	    io.print(AnalysisFileName, !IO),
+	    io.nl(!IO)
+	), !IO),
+	io.set_input_stream(Stream, OldStream, !IO),
+
+	check_analysis_file_version_number(!IO),
+	read_module_status(ModuleStatus, !IO),
+	read_module_extra_infos(map.init, ExtraInfo,
+	    MaybeFirstResultEntry, !IO),
+	(
+	    MaybeFirstResultEntry = yes(FirstResultEntry),
+	    ParseEntry = parse_result_entry(Compiler),
+	    promise_only_solution_io(
+		(pred(Results3::out, !.IO::di, !:IO::uo) is cc_multi :-
+		    try_io((pred(Results2::out, !.IO::di, !:IO::uo) is det :-
+			ParseEntry(FirstResultEntry, ModuleResults0, Results1),
+			read_analysis_file_2(ParseEntry, Results1, Results2,
+			    !IO)
+		    ), Results3, !IO)
+		), Results, !IO),
+	    (
+		Results = succeeded(ModuleResults)
+	    ;
+		Results = failed,
+		ModuleResults = ModuleResults0
+	    ;
+		Results = exception(_),
+		% XXX Report error.
+		ModuleResults = ModuleResults0
+	    )
+	;
+	    MaybeFirstResultEntry = no,
+	    ModuleResults = map.init
+	),
+	io.set_input_stream(OldStream, _, !IO),
+	io.close_input(Stream, !IO)
+    ;
+	OpenResult = error(_),
+	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+	    io.print("Error reading analysis registry file: ", !IO),
+	    io.print(AnalysisFileName, !IO),
+	    io.nl(!IO)
+	), !IO),
+	ModuleStatus = optimal,
+	ModuleResults = ModuleResults0,
+	ExtraInfo = map.init
+    ).
 
 :- pred read_module_status(analysis_status::out, io::di, io::uo) is det.
 
@@ -163,6 +291,40 @@ read_module_status(Status, !IO) :-
 analysis_status_to_string(invalid, "invalid").
 analysis_status_to_string(suboptimal, "suboptimal").
 analysis_status_to_string(optimal, "optimal").
+
+:- pred read_module_extra_infos(module_extra_info_map::in,
+    module_extra_info_map::out, maybe(term)::out, io::di, io::uo) is det.
+
+read_module_extra_infos(ExtraInfo0, ExtraInfo, MaybeFirstResultEntry, !IO) :-
+    parser.read_term(TermResult, !IO),
+    (
+	TermResult = eof,
+	ExtraInfo = ExtraInfo0,
+	MaybeFirstResultEntry = no
+    ;
+	TermResult = error(_, _),
+	throw(invalid_analysis_file)
+    ;
+	TermResult = term(_, Term),
+	(
+	    Term = term.functor(atom("extra_info"), Args, _)
+	->
+	    (
+		Args = [KeyTerm, ValueTerm],
+		KeyTerm = term.functor(string(Key), [], _),
+		ValueTerm = term.functor(string(Value), [], _)
+	    ->
+		map.det_insert(ExtraInfo0, Key, Value, ExtraInfo1),
+		read_module_extra_infos(ExtraInfo1, ExtraInfo,
+		    MaybeFirstResultEntry, !IO)
+	    ;
+		throw(invalid_analysis_file)
+	    )
+	;
+	    ExtraInfo = ExtraInfo0,
+	    MaybeFirstResultEntry = yes(Term)
+	)
+    ).
 
 :- pred parse_result_entry(Compiler::in)
 		`with_type` parse_entry(module_analysis_map(analysis_result))
@@ -220,9 +382,10 @@ parse_result_entry(Compiler, Term, Results0, Results) :-
 	throw(invalid_analysis_file)
     ).
 
+%-----------------------------------------------------------------------------%
+
 read_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 	read_analysis_file(Info ^ compiler, ModuleId, request_suffix,
-		nop, unit, _NoHeader,
 		parse_request_entry(Info ^ compiler),
 		map__init, ModuleRequests, !IO).
 
@@ -276,9 +439,10 @@ parse_request_entry(Compiler, Term, Requests0, Requests) :-
 	throw(invalid_analysis_file)
     ).
 
+%-----------------------------------------------------------------------------%
+
 read_module_imdg(Info, ModuleId, ModuleEntries, !IO) :-
     read_analysis_file(Info ^ compiler, ModuleId, imdg_suffix,
-	nop, unit, _NoHeader,
 	parse_imdg_arc(Info ^ compiler),
 	map.init, ModuleEntries, !IO).
 
@@ -335,35 +499,30 @@ parse_imdg_arc(Compiler, Term, Arcs0, Arcs) :-
 :- inst parse_entry == (pred(in, in, out) is det).
 
 :- pred read_analysis_file(Compiler::in, module_id::in, string::in,
-		read_analysis_header(Header)::in(read_analysis_header),
-		Header::in, Header::out,
 		parse_entry(T)::in(parse_entry), T::in, T::out,
 		io__state::di, io__state::uo) is det <= compiler(Compiler).
 
 read_analysis_file(Compiler, ModuleId, Suffix,
-		ReadHeader, DefaultHeader, Header,
 		ParseEntry, ModuleResults0, ModuleResults, !IO) :-
 	module_id_to_read_file_name(Compiler, ModuleId,
 		Suffix, MaybeAnalysisFileName, !IO),
 	(
 		MaybeAnalysisFileName = ok(AnalysisFileName),
 		read_analysis_file(AnalysisFileName,
-			ReadHeader, DefaultHeader, Header,
 			ParseEntry, ModuleResults0, ModuleResults, !IO)
 	;
-		MaybeAnalysisFileName = error(_),
-		Header = DefaultHeader,
+		MaybeAnalysisFileName = error(Message),
+		debug_msg(io.print("Couldn't open " ++ Suffix ++
+			" for module " ++ ModuleId ++
+			": " ++ Message ++ "\n"), !IO),
 		ModuleResults = ModuleResults0
 	).
 
 :- pred read_analysis_file(string::in,
-		read_analysis_header(Header)::in(read_analysis_header),
-		Header::in, Header::out,
 		parse_entry(T)::in(parse_entry), T::in, T::out,
 		io__state::di, io__state::uo) is det.
 
 read_analysis_file(AnalysisFileName,
-		ReadHeader, DefaultHeader, Header,
 		ParseEntry, ModuleResults0, ModuleResults, !IO) :-
 	io__open_input(AnalysisFileName, OpenResult, !IO),
 	(
@@ -376,25 +535,21 @@ read_analysis_file(AnalysisFileName,
 		io__set_input_stream(Stream, OldStream, !IO),
 
 		promise_only_solution_io(
-		    (pred(HR::out, di, uo) is cc_multi -->
-			try_io((pred({Header1, Results1}::out, di, uo)
-				    is det -->
+		    (pred(R::out, di, uo) is cc_multi -->
+			try_io((pred(Results1::out, di, uo) is det -->
 			    check_analysis_file_version_number,
-			    ReadHeader(Header1),
 			    read_analysis_file_2(ParseEntry,
 			    		ModuleResults0, Results1)
-			), HR)
+			), R)
 		    ), Result, !IO),
 		(
-			Result = succeeded({Header, ModuleResults})
+			Result = succeeded(ModuleResults)
 		;
 			Result = failed,
-			Header = DefaultHeader,
 			ModuleResults = ModuleResults0
 		;
 			Result = exception(_),
 			% XXX Report error.
-			Header = DefaultHeader,
 			ModuleResults = ModuleResults0
 		),
 		io__set_input_stream(OldStream, _, !IO),
@@ -406,7 +561,6 @@ read_analysis_file(AnalysisFileName,
 			io.print(AnalysisFileName, !IO),
 			io.nl(!IO)
 		), !IO),
-		Header = DefaultHeader,
 		ModuleResults = ModuleResults0
 	).
 
@@ -441,18 +595,26 @@ read_analysis_file_2(ParseEntry, Results0, Results, !IO) :-
 	).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 write_module_analysis_results(Info, ModuleId, ModuleStatus, ModuleResults,
-		!IO) :-
-	debug_msg((pred(!.IO::di, !:IO::uo) is det :-
-		io.print("Writing module analysis results for ", !IO),
-		io.print(ModuleId, !IO),
-		io.nl(!IO)
-	), !IO),
-	WriteHeader = write_module_status(ModuleStatus),
-	write_analysis_file(Info ^ compiler,
-		ModuleId, analysis_registry_suffix,
-		WriteHeader, write_result_entry, ModuleResults, !IO).
+	ExtraInfo, !IO) :-
+    debug_msg((pred(!.IO::di, !:IO::uo) is det :-
+	io.print("Writing module analysis results for ", !IO),
+	io.print(ModuleId, !IO),
+	io.nl(!IO)
+    ), !IO),
+    WriteHeader = write_module_status_and_extra_info(ModuleStatus, ExtraInfo),
+    write_analysis_file(Info ^ compiler,
+	ModuleId, analysis_registry_suffix,
+	WriteHeader, write_result_entry, ModuleResults, !IO).
+
+:- pred write_module_status_and_extra_info(analysis_status::in,
+    module_extra_info_map::in, io::di, io::uo) is det.
+
+write_module_status_and_extra_info(Status, ExtraInfo, !IO) :-
+    write_module_status(Status, !IO),
+    map.foldl(write_extra_info, ExtraInfo, !IO).
 
 :- pred write_module_status(analysis_status::in, io::di, io::uo) is det.
 
@@ -460,6 +622,33 @@ write_module_status(Status, !IO) :-
     term_io.write_term_nl(init:varset, Term, !IO),
     Term = functor(atom(String), [], context_init),
     analysis_status_to_string(Status, String).
+
+:- pred write_extra_info(extra_info_key::in, string::in,
+    io::di, io::uo) is det.
+
+write_extra_info(Key, Value, !IO) :-
+    term_io.write_term_nl(varset.init : varset, Term, !IO),
+    Term = functor(atom("extra_info"), [KeyTerm, ValueTerm], context_init),
+    KeyTerm = functor(string(Key), [], context_init),
+    ValueTerm = functor(string(Value), [], context_init).
+
+:- pred write_result_entry `with_type` write_entry(analysis_result)
+		`with_inst` write_entry.
+
+write_result_entry(AnalysisName, FuncId, Result, !IO) :-
+	Result = analysis_result(Call, Answer, Status),
+	VersionNumber = analysis_version_number(Call, Answer), 
+	analysis_status_to_string(Status, StatusString),
+	term_io__write_term_nl(varset__init `with_type` varset,
+		functor(atom(AnalysisName), [
+			functor(integer(VersionNumber), [], context_init),
+		    	functor(string(FuncId), [], context_init),
+			functor(string(to_string(Call)), [], context_init),
+			functor(string(to_string(Answer)), [], context_init),
+			functor(string(StatusString), [], context_init)
+		], context_init), !IO).
+
+%-----------------------------------------------------------------------------%
 
 write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 	Compiler = Info ^ compiler,
@@ -511,22 +700,6 @@ write_module_analysis_requests(Info, ModuleId, ModuleRequests, !IO) :-
 		true
 	).
 
-:- pred write_result_entry `with_type` write_entry(analysis_result)
-		`with_inst` write_entry.
-
-write_result_entry(AnalysisName, FuncId, Result, !IO) :-
-	Result = analysis_result(Call, Answer, Status),
-	VersionNumber = analysis_version_number(Call, Answer), 
-	analysis_status_to_string(Status, StatusString),
-	term_io__write_term_nl(varset__init `with_type` varset,
-		functor(atom(AnalysisName), [
-			functor(integer(VersionNumber), [], context_init),
-		    	functor(string(FuncId), [], context_init),
-			functor(string(to_string(Call)), [], context_init),
-			functor(string(to_string(Answer)), [], context_init),
-			functor(string(StatusString), [], context_init)
-		], context_init), !IO).
-
 :- pred write_request_entry(Compiler::in)
 		`with_type` write_entry(analysis_request)
 		`with_inst` write_entry <= compiler(Compiler).
@@ -552,6 +725,8 @@ write_request_entry(Compiler, AnalysisName, FuncId,
 		    	functor(string(FuncId), [], context_init),
 			functor(string(to_string(Call)), [], context_init)
 		], context_init), !IO).
+
+%-----------------------------------------------------------------------------%
 
 write_module_imdg(Info, ModuleId, ModuleEntries, !IO) :-
     write_analysis_file(Info ^ compiler, ModuleId, imdg_suffix,
@@ -642,6 +817,8 @@ write_analysis_entries(WriteEntry, ModuleResults, !IO) :-
 		    ), FuncResults)
 	    ), ModuleResults, !IO).
 
+%-----------------------------------------------------------------------------%
+
 empty_request_file(Info, ModuleId, !IO) :-
 	module_id_to_write_file_name(Info ^ compiler, ModuleId, request_suffix,
 		RequestFileName, !IO),
@@ -652,10 +829,8 @@ empty_request_file(Info, ModuleId, !IO) :-
 	), !IO),
 	io__remove_file(RequestFileName, _, !IO).
 
+%-----------------------------------------------------------------------------%
+
 :- pred nop(io::di, io::uo) is det.
 
 nop(!IO).
-
-:- pred nop(unit::out, io::di, io::uo) is det.
-
-nop(unit, !IO).

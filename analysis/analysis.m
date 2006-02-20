@@ -110,6 +110,14 @@
 :- typeclass answer_pattern(Answer)
 		<= (partial_order(Answer), to_string(Answer)) where [].
 
+	% Extra information may be stored in a module's `.analysis' file, apart
+	% from the analysis results.  This information is indexed by a string
+	% key.  The extra information must be convertable to/from a string.
+	%
+:- type extra_info_key == string.
+
+:- typeclass extra_info(ExtraInfo) <= to_string(ExtraInfo) where [].
+
 :- typeclass partial_order(T) where [
 	pred more_precise_than(T::in, T::in) is semidet,
 	pred equivalent(T::in, T::in) is semidet
@@ -176,6 +184,11 @@
 	% N.B. Newly recorded results will NOT be found.  This
 	% is intended for looking up results from _other_ modules.
 	%
+	% If the returned best result has a call pattern that is different
+	% from the given call pattern, then it is the analysis writer's
+	% responsibility to request a more precise analysis from the
+	% called module, using `record_request'.
+	%
 :- pred lookup_best_result(module_id::in, func_id::in, Call::in,
 	maybe({Call, Answer, analysis_status})::out,
 	analysis_info::in, analysis_info::out, io::di, io::uo) is det
@@ -203,10 +216,23 @@
 	list(Call)::out, analysis_info::in, analysis_info::out,
 	io::di, io::uo) is det <= call_pattern(Call).
 
-	% Record a request for a local function.
+	% Record a request for a function in an imported module.
+	%
 :- pred record_request(analysis_name::in, module_id::in, func_id::in,
 	Call::in, analysis_info::in, analysis_info::out) is det
 	<= call_pattern(Call).
+
+	% Lookup extra information about a module, using the key given.
+	%
+:- pred lookup_module_extra_info(module_id::in, extra_info_key::in,
+	maybe(ExtraInfo)::out, analysis_info::in, analysis_info::out,
+	io::di, io::uo) is det <= extra_info(ExtraInfo).
+
+	% Record extra information about a module under the given key.
+	%
+:- pred record_module_extra_info(module_id::in, extra_info_key::in,
+	ExtraInfo::in, analysis_info::in, analysis_info::out) is det
+	<= extra_info(ExtraInfo).
 
 	% Should be called after all analysis is completed to write the
 	% requests and results for the current compilation to the
@@ -267,6 +293,12 @@
 		old_analysis_results :: analysis_map(analysis_result),
 		new_analysis_results :: analysis_map(analysis_result),
 
+			% The extra info map stores any extra information
+			% needed by one or more analysis results.
+			%
+		old_extra_infos	    :: map(module_id, module_extra_info_map),
+		new_extra_infos	    :: map(module_id, module_extra_info_map),
+
 			% The Inter-module Dependency Graph records
 			% dependencies of an entire module's analysis results
 			% on another module's answer patterns. e.g. assume
@@ -317,6 +349,8 @@
 :- type module_analysis_map(T)	== map(analysis_name, func_analysis_map(T)).
 :- type func_analysis_map(T)	== map(func_id, list(T)).
 
+:- type module_extra_info_map	== map(extra_info_key, string).
+
 %-----------------------------------------------------------------------------%
 %
 % The "any" call pattern
@@ -336,7 +370,7 @@
 
 init_analysis_info(Compiler) =
     'new analysis_info'(Compiler, map__init, map__init, map__init, map__init,
-	map__init, map__init).
+	map__init, map__init, map__init, map__init).
 
 %-----------------------------------------------------------------------------%
 
@@ -519,7 +553,8 @@ lookup_requests(AnalysisName, ModuleId, FuncId, CallPatterns, !Info, !IO) :-
     ),
     ( CallPatterns0 = ModuleRequests ^ elem(AnalysisName) ^ elem(FuncId) ->
         CallPatterns = list__filter_map(
-            (func(Call0) = Call is semidet :- univ(Call) = univ(Call0)),
+            (func(analysis_request(Call0)) = Call is semidet :-
+		univ(Call) = univ(Call0)),
             CallPatterns0)
     ;
         CallPatterns = []
@@ -586,6 +621,29 @@ record_dependency(CallerModuleId, AnalysisName, CalleeModuleId, FuncId, Call,
 	    FuncArcs = [Dep | FuncArcs1]
 	)
     ).
+
+%-----------------------------------------------------------------------------%
+
+lookup_module_extra_info(ModuleId, Key, MaybeExtraInfo, !Info, !IO) :-
+    ensure_old_module_analysis_results_loaded(ModuleId, !Info, !IO),
+    ModuleExtraInfos = !.Info ^ old_extra_infos ^ det_elem(ModuleId),
+    (
+	String = ModuleExtraInfos ^ elem(Key),
+	ExtraInfo = from_string(String)
+    ->
+	MaybeExtraInfo = yes(ExtraInfo)
+    ;
+	MaybeExtraInfo = no
+    ).
+
+record_module_extra_info(ModuleId, Key, ExtraInfo, !Info) :-
+    ( ModuleMap0 = !.Info ^ new_extra_infos ^ elem(ModuleId) ->
+	ModuleMap1 = ModuleMap0
+    ;
+	ModuleMap1 = map.init
+    ),
+    ModuleMap = map.set(ModuleMap1, Key, to_string(ExtraInfo)),
+    !:Info = !.Info ^ new_extra_infos ^ elem(ModuleId) := ModuleMap.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -813,6 +871,30 @@ taint_module_overall_status(Status, ModuleId, !Info, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- pred update_extra_infos(analysis_info::in, analysis_info::out) is det.
+
+update_extra_infos(Info0, Info) :-
+    map.foldl(update_extra_infos_2,
+	Info0 ^ new_extra_infos,
+	Info0 ^ old_extra_infos, ExtraInfos),
+    Info = (Info0
+	^ old_extra_infos := ExtraInfos)
+	^ new_extra_infos := map.init.
+
+:- pred update_extra_infos_2(module_id::in, module_extra_info_map::in,
+    map(module_id, module_extra_info_map)::in, 
+    map(module_id, module_extra_info_map)::out) is det.
+
+update_extra_infos_2(ModuleId, ExtraInfoB, ModuleMap0, ModuleMap) :-
+    ( ExtraInfoA = ModuleMap0 ^ elem(ModuleId) ->
+	map.overlay(ExtraInfoA, ExtraInfoB, ExtraInfo),
+	ModuleMap = ModuleMap0 ^ elem(ModuleId) := ExtraInfo
+    ;
+	ModuleMap = ModuleMap0 ^ elem(ModuleId) := ExtraInfoB
+    ).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
     % For each module N imported by M:
@@ -892,10 +974,11 @@ ensure_old_module_analysis_results_loaded(ModuleId, !Info, !IO) :-
 	map.lookup(!.Info ^ module_statuses, ModuleId, _StatusMustExist)
     else
 	read_module_analysis_results(!.Info, ModuleId,
-	    ModuleStatus, ModuleResults, !IO),
-	!:Info = (!.Info
+	    ModuleStatus, ModuleResults, ExtraInfos, !IO),
+	!:Info = ((!.Info
 		^ module_statuses ^ elem(ModuleId) := ModuleStatus)
-		^ old_analysis_results ^ elem(ModuleId) := ModuleResults
+		^ old_analysis_results ^ elem(ModuleId) := ModuleResults)
+		^ old_extra_infos ^ elem(ModuleId) := ExtraInfos
     ).
 
 :- pred ensure_old_imdg_loaded(module_id::in, analysis_info::in,
@@ -931,16 +1014,22 @@ write_analysis_files(Compiler, ModuleId, ImportedModuleIds, !Info, !IO) :-
     ),
 
     update_analysis_registry(!Info, !IO),
+    update_extra_infos(!Info),
 
     !:Info = !.Info ^ module_statuses ^ elem(ModuleId) := ModuleStatus,
 
     update_intermodule_dependencies(ModuleId, ImportedModuleIds,
 	!Info, !IO),
-    (if map.is_empty(!.Info ^ new_analysis_results) then
+    (if map.is_empty(!.Info ^ new_analysis_results),
+	map.is_empty(!.Info ^ new_extra_infos)
+    then
 	true
     else
-	io.print("Warning: new_analysis_results is not empty\n", !IO),
+	io.print("Warning: new_analysis_results or extra_infos is not empty\n",
+	    !IO),
 	io.print(!.Info ^ new_analysis_results, !IO),
+	io.nl(!IO),
+	io.print(!.Info ^ new_extra_infos, !IO),
 	io.nl(!IO)
     ),
 
@@ -1009,8 +1098,13 @@ write_local_modules_2(Info, Write, ModuleId, ModuleResults, !IO) :-
 
 write_module_analysis_results(Info, ModuleId, ModuleResults, !IO) :-
     ModuleStatus = Info ^ module_statuses ^ det_elem(ModuleId),
-    write_module_analysis_results(Info, ModuleId,
-	ModuleStatus, ModuleResults, !IO).
+    ( ModuleExtraInfo0 = Info ^ old_extra_infos ^ elem(ModuleId) ->
+	ModuleExtraInfo = ModuleExtraInfo0
+    ;
+	ModuleExtraInfo = map.init
+    ),
+    analysis.file.write_module_analysis_results(Info, ModuleId,
+	ModuleStatus, ModuleResults, ModuleExtraInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
