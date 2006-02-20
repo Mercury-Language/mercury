@@ -237,7 +237,7 @@ do
 	# Print the top $count individuals in the history of the evolution.
 	#
 
-	echo "==> Current top %d\n" $n >&2
+	printf "==> Current top %d\n" $n >&2
 	sort -rnk3 generations/*/ladder | grep -v '[0-9]e-' | head -n $count |
 	    sed -e 's/[ 	]*$//'
 done
