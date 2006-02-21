@@ -410,7 +410,7 @@ annotate_conj_constraints(ModuleInfo,
     Goal = GoalExpr - GoalInfo,
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     CI_ModuleInfo0 = !.Info ^ module_info, 
-    goal_cannot_loop_or_throw(Goal, GoalCannotLoopOrThrow,
+    goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
         CI_ModuleInfo0, CI_ModuleInfo, !IO),
     !:Info = !.Info ^ module_info := CI_ModuleInfo,
     (
@@ -434,8 +434,8 @@ annotate_conj_constraints(ModuleInfo,
         % Don't propagate impure goals.
         goal_info_is_pure(GoalInfo),
 
-        % Don't propagate goals that can loop or throw exceptions.
-        GoalCannotLoopOrThrow = yes
+        % Only propagate goals that cannot loop or throw exceptions.
+        GoalCanLoopOrThrow = cannot_loop_or_throw
     ->
         % It's a constraint, add it to the list of constraints
         % to be attached to goals earlier in the conjunction.

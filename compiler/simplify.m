@@ -402,7 +402,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
     goal_info_get_determinism(GoalInfo0, Detism),
     simplify_info_get_det_info(!.Info, DetInfo),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
-    goal_cannot_loop_or_throw(Goal0, Goal0CannotLoopOrThrow, ModuleInfo0,
+    goal_can_loop_or_throw(Goal0, Goal0CanLoopOrThrow, ModuleInfo0,
         ModuleInfo, !IO),
     simplify_info_set_module_info(ModuleInfo, !Info),
     (
@@ -414,7 +414,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
         % ensure goal is pure or semipure
         \+ goal_info_is_impure(GoalInfo0),
         ( det_info_get_fully_strict(DetInfo, no)
-        ; Goal0CannotLoopOrThrow = yes
+        ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
     ->
         % Warn about this, unless the goal was an explicit `fail', call to
@@ -464,7 +464,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
         % ensure goal is pure or semipure
         \+ goal_info_is_impure(GoalInfo0),
         ( det_info_get_fully_strict(DetInfo, no)
-        ; Goal0CannotLoopOrThrow = yes
+        ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
     ->
 % The following warning is disabled, because it often results in spurious

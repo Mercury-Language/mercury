@@ -1528,11 +1528,11 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
     % If --fully-strict was specified, don't convert (can_loop, can_fail) into
     % (can_fail, can_loop).
     %
-    goal_cannot_loop_or_throw(EarlierGoal, EarlierCannotLoopOrThrow,
-        !ModuleInfo, !IO),
+    goal_can_loop_or_throw(EarlierGoal, EarlierCanLoopOrThrow, !ModuleInfo,
+        !IO),
     (
         FullyStrict = yes,
-        EarlierCannotLoopOrThrow = no,
+        EarlierCanLoopOrThrow = can_loop_or_throw,
         LaterCanFail = can_fail
     ->
         MaintainsTermination = no
@@ -1540,11 +1540,11 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
         % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
         % this could worsen the termination properties of the program.
         %
-        goal_cannot_loop_or_throw(LaterGoal, LaterCannotLoopOrThrow,
+        goal_can_loop_or_throw(LaterGoal, LaterCanLoopOrThrow,
             !ModuleInfo, !IO),
         (
             EarlierCanFail = can_fail,
-            LaterCannotLoopOrThrow = no
+            LaterCanLoopOrThrow = can_loop_or_throw
         ->
             MaintainsTermination = no
         ;

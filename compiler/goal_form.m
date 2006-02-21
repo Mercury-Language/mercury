@@ -21,8 +21,27 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module bool.
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
+
+    % An indication of whether a goal can loop forever.
+    %
+:- type goal_loop_status
+    --->    can_loop 
+    ;       cannot_loop. 
+
+    % An indication of whether a goal can throw an exception.
+    %
+:- type goal_throw_status
+    --->    can_throw 
+    ;       cannot_throw. 
+
+    % An indication of whether a goal can loop forever or throw an exception.
+    %
+:- type goal_loop_or_throw_status
+    --->    can_loop_or_throw 
+    ;       cannot_loop_or_throw.
 
 %-----------------------------------------------------------------------------%
 %
@@ -32,22 +51,22 @@
 % XXX Eventually we will only use these versions and the others can be
 %     deleted.
 
-    % Return `yes' if the given goal cannot throw an exception; return `no'
-    % otherwise.
+    % Return `goal_can_throw' if the given goal may throw an exception; return
+    % `goal_cannot_throw' otherwise.
     %
     % This version differs from the ones below in that it can use results from
     % the intermodule-analysis framework (if they are available).  The HLDS
     % and I/O state need to be threaded through in case analysis files need to
     % be read and in case IMDGs need to be updated.
     %
-:- pred goal_cannot_throw(hlds_goal::in, bool::out,
+:- pred goal_can_throw(hlds_goal::in, goal_throw_status::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-    % Return `yes' if the goal cannot loop and cannot throw an exception;
-    % return `no' otherwise.
+    % Return `can_loop_or_throw' if the goal may loop forever or throw an
+    % exception and return `cannot_loop_or_throw' otherwise.
     %
-:- pred goal_cannot_loop_or_throw(hlds_goal::in, bool::out, module_info::in,
-    module_info::out, io::di, io::uo) is det.
+:- pred goal_can_loop_or_throw(hlds_goal::in, goal_loop_or_throw_status::out,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -159,6 +178,7 @@
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_util.
 
+:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -170,18 +190,19 @@
 % intermodule-analysis framework
 %
 
-goal_cannot_throw(GoalExpr - GoalInfo, Result, !ModuleInfo, !IO) :-
+goal_can_throw(GoalExpr - GoalInfo, Result, !ModuleInfo, !IO) :-
     goal_info_get_determinism(GoalInfo, Determinism),
     ( Determinism \= erroneous ->
-        goal_cannot_throw_2(GoalExpr, GoalInfo, Result, !ModuleInfo, !IO)
+        goal_can_throw_2(GoalExpr, GoalInfo, Result, !ModuleInfo, !IO)
     ;
-        Result = no
+        Result = can_throw
     ).
 
-:- pred goal_cannot_throw_2(hlds_goal_expr::in, hlds_goal_info::in,
-    bool::out, module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred goal_can_throw_2(hlds_goal_expr::in, hlds_goal_info::in,
+    goal_throw_status::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-goal_cannot_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
+goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     (
         Goal = conj(Goals)
     ;
@@ -192,39 +213,39 @@ goal_cannot_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
         Goal = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
         Goals = [IfGoal, ThenGoal, ElseGoal]
     ),
-    goals_cannot_throw(Goals, Result, !ModuleInfo, !IO).
-goal_cannot_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
+    goals_can_throw(Goals, Result, !ModuleInfo, !IO).
+goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     Goal = call(PredId, ProcId, _, _, _, _),
-    lookup_exception_analysis_result(proc(PredId, ProcId),
-        Status, !ModuleInfo, !IO),
+    lookup_exception_analysis_result(proc(PredId, ProcId), Status,
+        !ModuleInfo, !IO),
     ( Status = will_not_throw ->
-        Result = yes
+        Result = cannot_throw
     ;
-        Result = no
+        Result = can_throw
     ).
-goal_cannot_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
+goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     % XXX We should use results form closure analysis here.
     Goal = generic_call(_, _, _, _),
-    Result = no.
-goal_cannot_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
+    Result = can_throw.
+goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     Goal = switch(_, _, Cases),
-    cases_cannot_throw(Cases, Result, !ModuleInfo, !IO).
-goal_cannot_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
+    cases_can_throw(Cases, Result, !ModuleInfo, !IO).
+goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     Goal = unify(_, _, _, Uni, _),
     % Complicated unifies are _non_builtin_
     ( Uni = complicated_unify(_, _, _) ->
-        Result = no
+        Result = can_throw 
     ;
-        Result = yes
+        Result = cannot_throw
     ).
-goal_cannot_throw_2(OuterGoal, _, Result, !ModuleInfo, !IO) :-
+goal_can_throw_2(OuterGoal, _, Result, !ModuleInfo, !IO) :-
     (
         OuterGoal = not(InnerGoal)
     ;
         OuterGoal = scope(_, InnerGoal)
     ),
-    goal_cannot_throw(InnerGoal, Result, !ModuleInfo, !IO).
-goal_cannot_throw_2(Goal, _, Result, !ModuleInfo, !IO) :-
+    goal_can_throw(InnerGoal, Result, !ModuleInfo, !IO).
+goal_can_throw_2(Goal, _, Result, !ModuleInfo, !IO) :-
     Goal = foreign_proc(Attributes, _, _, _, _, _),
     ExceptionStatus = may_throw_exception(Attributes),
     (
@@ -235,49 +256,56 @@ goal_cannot_throw_2(Goal, _, Result, !ModuleInfo, !IO) :-
             may_call_mercury(Attributes) = will_not_call_mercury    
         )
     ->
-        Result = yes
+        Result = cannot_throw
     ;
-        Result = no
+        Result = can_throw
     ).
-goal_cannot_throw_2(Goal, _, yes, !ModuleInfo, !IO) :-
+goal_can_throw_2(Goal, _, can_throw, !ModuleInfo, !IO) :-
     Goal = shorthand(_).    % XXX maybe call unexpected/2 here.
     
-:- pred goals_cannot_throw(hlds_goals::in, bool::out,
+:- pred goals_can_throw(hlds_goals::in, goal_throw_status::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-goals_cannot_throw([], yes, !ModuleInfo, !IO).
-goals_cannot_throw([Goal | Goals], Result, !ModuleInfo, !IO) :-
-    goal_cannot_throw(Goal, Result0, !ModuleInfo, !IO),
+goals_can_throw([], cannot_throw, !ModuleInfo, !IO).
+goals_can_throw([Goal | Goals], Result, !ModuleInfo, !IO) :-
+    goal_can_throw(Goal, Result0, !ModuleInfo, !IO),
     (
-        Result0 = yes,
-        goals_cannot_throw(Goals, Result, !ModuleInfo, !IO)
+        Result0 = cannot_throw,
+        goals_can_throw(Goals, Result, !ModuleInfo, !IO)
     ;
-        Result0 = no,
-        Result  = no
+        Result0 = can_throw,
+        Result  = can_throw 
     ).
 
-:- pred cases_cannot_throw(list(case)::in, bool::out,
+:- pred cases_can_throw(list(case)::in, goal_throw_status::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-cases_cannot_throw([], yes, !ModuleInfo, !IO).
-cases_cannot_throw([Case | Cases], Result, !ModuleInfo, !IO) :-
+cases_can_throw([], cannot_throw, !ModuleInfo, !IO).
+cases_can_throw([Case | Cases], Result, !ModuleInfo, !IO) :-
     Case = case(_, Goal),
-    goal_cannot_throw(Goal, Result0, !ModuleInfo, !IO),
+    goal_can_throw(Goal, Result0, !ModuleInfo, !IO),
     (
-        Result0 = yes,
-        cases_cannot_throw(Cases, Result, !ModuleInfo, !IO)
+        Result0 = cannot_throw,
+        cases_can_throw(Cases, Result, !ModuleInfo, !IO)
     ;
-        Result0 = no,
-        Result  = no
+        Result0 = can_throw,
+        Result  = can_throw 
     ).
 
-goal_cannot_loop_or_throw(Goal, Result, !ModuleInfo, !IO) :-
+goal_can_loop_or_throw(Goal, Result, !ModuleInfo, !IO) :-
     % XXX this will need to change after the termination analyses are
     %     converted to use the intermodule-analysis framework.
     ( goal_cannot_loop(!.ModuleInfo, Goal) ->
-        goal_cannot_throw(Goal, Result, !ModuleInfo, !IO)
+        goal_can_throw(Goal, ThrowResult, !ModuleInfo, !IO),
+        (
+            ThrowResult = can_throw,
+            Result = can_loop_or_throw
+        ;
+            ThrowResult = cannot_throw,
+            Result = cannot_loop_or_throw
+        )
     ;
-        Result = no
+        Result = can_loop_or_throw
     ).
 
 %-----------------------------------------------------------------------------%
