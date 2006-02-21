@@ -8,17 +8,14 @@
 
 :- implementation.
 
-:- mutable(child_global, int, 200, ground, [untrailed, thread_safe]).
+:- mutable(child_global, int, 200, ground,
+	[untrailed, thread_safe, attach_to_io_state]).
 
 run_child(!IO) :-
 	io.write_string("In child ...\n", !IO),
-	promise_pure (
-		semipure get_parent_global(ParentGlobal),
-		semipure get_child_global(ChildGlobal)
-	),
+	get_parent_global(ParentGlobal, !IO),
+	get_child_global(ChildGlobal, !IO),
 	io.format("    parent_global = %d\n", [i(ParentGlobal)], !IO),
 	io.format("    child_global  = %d\n", [i(ChildGlobal)], !IO),
-	promise_pure (
-		impure set_parent_global(ParentGlobal + 1),
-		impure set_child_global(ChildGlobal + 1)
-	).
+	set_parent_global(ParentGlobal + 1, !IO),
+	set_child_global(ChildGlobal + 1, !IO).
