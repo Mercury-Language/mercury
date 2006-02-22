@@ -437,15 +437,25 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                 AnalysisInfo = AnalysisInfo1
             ;
                 MaybeBestResult = no,
-                % XXX makes too many requests
-                globals__io_lookup_bool_option(make_analysis_registry,
-                    MakeAnalysisRegistry, !IO),
+                module_is_local(mmc, PredModuleId, IsLocal, !IO),
                 (
-                    MakeAnalysisRegistry = yes,
-                    analysis.record_request(analysis_name, PredModuleId, 
-                        FuncId, Call, AnalysisInfo1, AnalysisInfo)
+                    IsLocal = yes,
+                    % XXX makes too many requests
+                    globals__io_lookup_bool_option(make_analysis_registry,
+                        MakeAnalysisRegistry, !IO),
+                    (
+                        MakeAnalysisRegistry = yes,
+                        analysis.record_result(PredModuleId, FuncId,
+                            Call, top(Call) : unused_args_answer, suboptimal,
+                            AnalysisInfo1, AnalysisInfo2),
+                        analysis.record_request(analysis_name, PredModuleId, 
+                            FuncId, Call, AnalysisInfo2, AnalysisInfo)
+                    ;
+                        MakeAnalysisRegistry = no,
+                        AnalysisInfo = AnalysisInfo1
+                    )
                 ;
-                    MakeAnalysisRegistry = no,
+                    IsLocal = no,
                     AnalysisInfo = AnalysisInfo1
                 )
             ),

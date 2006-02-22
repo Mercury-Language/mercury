@@ -1165,16 +1165,27 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         MaybeBestStatus = no,
         % If we do not have any information about the callee procedure
         % then assume that it modifies the trail.
-        top(Call) = trailing_analysis_answer(Result),
-        AnalysisStatus = suboptimal,
+        top(Call) = Answer,
+        Answer = trailing_analysis_answer(Result),
+        module_is_local(mmc, ModuleId, IsLocal, !IO),
         (
-            MakeAnalysisRegistry = yes,
-            analysis.record_request(analysis_name, ModuleId, FuncId, Call,
-                !AnalysisInfo),
-            record_dependencies(ModuleId, FuncId, Call,
-                ModuleInfo, CallerSCC, !AnalysisInfo)
+            IsLocal = yes,
+            AnalysisStatus = suboptimal,
+            (
+                MakeAnalysisRegistry = yes,
+                analysis.record_result(ModuleId, FuncId,
+                    Call, Answer, AnalysisStatus, !AnalysisInfo),
+                analysis.record_request(analysis_name, ModuleId, FuncId, Call,
+                    !AnalysisInfo),
+                record_dependencies(ModuleId, FuncId, Call,
+                    ModuleInfo, CallerSCC, !AnalysisInfo)
+            ;
+                MakeAnalysisRegistry = no
+            )
         ;
-            MakeAnalysisRegistry = no
+            IsLocal = no,
+            % We can't do any better anyway.
+            AnalysisStatus = optimal
         )
     ).
 

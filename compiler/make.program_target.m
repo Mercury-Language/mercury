@@ -619,7 +619,10 @@ build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
         Succeeded = no
     ;
         reverse_ordered_modules(!.Info ^ module_dependencies,
-            TargetModules0, TargetModules),
+            TargetModules0, TargetModules1),
+        % Filter out the non-local modules so we don't try to reanalyse them.
+        list.filter((pred(Mod::in) is semidet :- list.member(Mod, AllModules)),
+            TargetModules1, TargetModules),
         make_local_module_id_options(MainModuleName, Succeeded1,
             LocalModulesOpts, !Info, !IO),
         (
