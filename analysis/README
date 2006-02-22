@@ -45,6 +45,14 @@ must be convertible to strings.
 Analysis database
 =================
 
+Before analysing a module, the client should call
+`analysis__lookup_results' and `analysis__lookup_requests' to find the
+call patterns for which the module should be analysed, in addition to
+the "default" call pattern (top).  `lookup_results' will give the call
+patterns which we have encountered before whereas `lookup_requests'
+will give the call patterns which have been recently requested by
+other modules.
+
 When analysing a module, at each call to an imported function
 the client should call `analysis__lookup_results' or
 `analysis__lookup_best_result' to find the results which
@@ -52,7 +60,9 @@ match the call pattern.
 
 If no results exist, the client should call `analysis__record_request',
 to ask that a specialized version be created on the next compilation
-of the client module.
+of the client module.  The client should also record the suboptimal
+result that was used in place of a more specialized result in the
+imported module's analysis registry.
 
 There is currently no way to analyse higher-order or class method
 calls. It might be possible to analyse such calls where the set of
@@ -148,6 +158,15 @@ or `suboptimal' answers.
 It the responsibility of the analysis implementor to ensure termination of
 the analysis process by not generating an infinite number of requests.
 
+Note: although `mmc' does not have an analysis dependency checker as
+described above, `mmc --make' now understands the intermodule analysis
+framework.  Before the pass to compile modules to target code, there
+is an analysis pass.  This is similar to the optimisation interface
+pass which generated `.opt' and `.trans_opt' files.  `mmc --make' will
+repeat the analysis pass as long as there are invalid analysis
+registries, with the option to repeat the analysis pass as many times
+as desired in order to bring `suboptimal' modules to `optimal'.
+
 Granularity of dependencies
 ===========================
 
@@ -163,4 +182,59 @@ the analyses in the Mercury compiler currently record the information
 required for the more precise approach, and I would expect that other
 compilers not designed for inter-module analysis would also not
 record that information.
+
+Differences of the implementation from Nick's thesis
+====================================================
+
+We do not store "version calling patterns" in the .analysis files
+However, we have .request files which contain calling patterns for
+which we had no answer, and lookup_best_result() predicate
+automatically matches a calling pattern to the best possible result
+available.
+
+We do not support "perfect calls" any differently from any other
+calls.
+
+Our IMDGs only record entire modules as being dependent on some
+analysis result so if an analysis result changes, we can only
+mark/invalidate an entire module which makes use of the result.
+This means having an analysis status associated with each individial
+analysis result is somewhat pointless at the moment, as individial
+statuses will never be marked/invalidated, and we also can't make
+use of them to reanalyse only the procedures that actually need
+analysing.
+
+Still to do
+===========
+
+Page numbers are references to Nick's thesis.
+
+We do not yet remove analysis results for procedures which no longer
+exist. (p. 107)
+
+In the get_ext_answer procedure Nick uses a glb function in addition
+to a is_more_precise(Ans', Ans_glb) call.  I don't know if this is
+necessary. (p. 108)
+
+Garbage collection of calling patterns that are no longer used in the
+program.  Our IMDGs do not record exactly which calling patterns are
+in use so I'm not sure how this would be done.
+
+Removal of IMDG arcs for modules that used to import a module, but no
+longer do so.  This would not be hard if we remember which
+modules were imported by M previously in M.imdg. (p. 110)
+
+There is no special handling yet of procedure level cycles.
+We cannot follow the approach of p. 116 as we have not enough
+information in our IMDGs.
+
+Our treatment of library modules is fairly dumb.  We just assume that
+library modules have read-only analysis files, and that we cannot make
+requests to or reanalysis library modules. (p. 117)
+
+Modules are currently always analysed from the bottom of the module
+dependency graph upwards.  When some analyses start making meaningful
+requests (unlike now where all call patterns are of the type
+`any_call'), the order that modules are analysed in should be changed
+to reduce unnecessary reanalyses.
 
