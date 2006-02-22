@@ -649,7 +649,28 @@
     ;       mode_check_clauses(
                 mode_check_clause_name  :: sym_name,
                 mode_check_clause_arity :: arity
-            ).
+            )
+
+    %
+    % CTGC pragma: structure sharing / structure reuse analysis.
+    %
+    ;
+            structure_sharing(
+                sharing_p_or_f          :: pred_or_func,
+                sharing_name            :: sym_name,
+                sharing_mode            :: list(mer_mode),
+                sharing_headvars        :: prog_vars, 
+                sharing_headvartypes    :: list(mer_type),
+                sharing_description     :: maybe(structure_sharing_domain)
+            )
+            % After structure sharing analysis, the compiler generates
+            % structure sharing pragmas to be stored in and read from
+            % optimization interface files. 
+            %
+            % The list of modes consists of the declared argmodes (or inferred
+            % argmodes if there are no declared ones). 
+
+    .
 
 %-----------------------------------------------------------------------------%
 %

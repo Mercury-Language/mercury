@@ -52,6 +52,11 @@
     maybe(pragma_termination_info)::in, prog_context::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
+:- pred add_pragma_structure_sharing(pred_or_func::in, sym_name::in,
+    list(mer_mode)::in, list(prog_var)::in, list(mer_type)::in, 
+    maybe(structure_sharing_domain)::in, prog_context::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
     % module_add_pragma_import:
     %
     % Handles `pragma import' declarations, by figuring out which predicate
@@ -129,6 +134,7 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_io.
+:- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -336,6 +342,8 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         add_pred_marker("check_termination", Name, Arity, ImportStatus,
             Context, check_termination, [terminates, does_not_terminate],
             !ModuleInfo, !IO)
+    ;
+        Pragma = structure_sharing(_, _, _, _, _, _)
     ;
         Pragma = mode_check_clauses(Name, Arity),
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
@@ -1129,6 +1137,92 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         %        "`:- pragma termination2_info' declaration", !IO),
         %   module_info_incr_errors(!ModuleInfo)
     ).
+
+%-----------------------------------------------------------------------------%
+
+add_pragma_structure_sharing(_PredOrFunc, _SymName, _ModeList, _HeadVars,
+        _Types, no, _Context, !ModuleInfo, !IO).
+add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
+        Types, yes(SharingDomain), Context, !ModuleInfo, !IO):-
+    module_info_get_predicate_table(!.ModuleInfo, Preds),
+    list__length(ModeList, Arity),
+    (
+        predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
+            PredOrFunc, SymName, Arity, PredIds),
+        PredIds = [_ | _]
+    ->
+        ( PredIds = [PredId] ->
+            module_info_preds(!.ModuleInfo, PredTable0),
+            map__lookup(PredTable0, PredId, PredInfo0),
+            pred_info_procedures(PredInfo0, ProcTable0),
+            map__to_assoc_list(ProcTable0, ProcList),
+            (
+                get_procedure_matching_declmodes(ProcList, ModeList,
+                    !.ModuleInfo, ProcId)
+            ->
+                map__lookup(ProcTable0, ProcId, ProcInfo0),
+               
+                % Rename headvars/types to those used in the proc_info. 
+                proc_info_headvars(ProcInfo0, ProcHeadVars), 
+
+                % As the HeadVars recorded in the pragma may contain additional
+                % vars (e.g. typeinfos), and in the same time ProcHeadVars does
+                % not, make sure to remove all TypeInfo-vars from HeadVars, 
+                % the same for the list Types.
+                Diff = list.length(HeadVars) - list.length(ProcHeadVars),
+                (
+                    list.drop(Diff, HeadVars, RemHeadVars0), 
+                    list.drop(Diff, Types, RemTypes0)
+                -> 
+                    RemHeadVars = RemHeadVars0, 
+                    RemTypes = RemTypes0
+                ;
+                    unexpected(this_file, "Impossible situation.")
+                ),
+                map__from_corresponding_lists(RemHeadVars, ProcHeadVars,
+                    MapHeadVars), 
+                pred_info_arg_types(PredInfo0, ArgTypes),
+                TypeSubst0 = map.init, 
+                (
+                    type_unify_list(RemTypes, ArgTypes, [], TypeSubst0, 
+                        TypeSubst1)
+                ->
+                    TypeSubst = TypeSubst1
+                ;
+                    TypeSubst = TypeSubst0
+                ),
+                rename_structure_sharing_domain(MapHeadVars, TypeSubst,
+                    SharingDomain, RenamedSharingDomain), 
+                proc_info_set_structure_sharing(RenamedSharingDomain, 
+                    ProcInfo0, ProcInfo), 
+                map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+                pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+                map__det_update(PredTable0, PredId, PredInfo, PredTable),
+                module_info_set_preds(PredTable, !ModuleInfo)
+            ;
+                module_info_incr_errors(!ModuleInfo),
+                Pieces = [words("Error: `:- pragma structure_sharing'"),
+                    words("declaration for undeclared mode of"),
+                    simple_call_id(PredOrFunc - SymName/Arity), suffix(".")],
+                write_error_pieces(Context, 0, Pieces, !IO)
+            )
+        ;
+            module_info_incr_errors(!ModuleInfo),
+            Pieces = [words("Error: ambiguous predicate name"),
+                simple_call_id(PredOrFunc - SymName/Arity),
+                words("in"), fixed("`pragma structure_sharing'.")],
+            write_error_pieces(Context, 0, Pieces, !IO)
+        )
+    ;
+        % XXX This happens in `.trans_opt' files sometimes --
+        % so just ignore it
+        true
+        %   undefined_pred_or_func_error(SymName, Arity, Context,
+        %       "`:- pragma structure_sharing' declaration",
+        %       !IO),
+        %   module_info_incr_errors(!ModuleInfo)
+    ).
+
 
 %-----------------------------------------------------------------------------%
 

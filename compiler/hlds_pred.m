@@ -2673,6 +2673,12 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_termination2_info(termination2_info::in,
     proc_info::in, proc_info::out) is det.
 
+:- pred proc_info_get_structure_sharing(proc_info::in,
+    maybe(structure_sharing_domain)::out) is det.
+
+:- pred proc_info_set_structure_sharing(structure_sharing_domain::in, 
+    proc_info::in, proc_info::out) is det.
+
 :- pred proc_info_head_modes_constraint(proc_info::in, mode_constraint::out)
     is det.
 
@@ -2965,13 +2971,17 @@ attribute_list_to_attributes(Attributes, Attributes).
 
         maybe_deep_profile_proc_info :: maybe(deep_profile_proc_info),
 
-        maybe_untuple_info          :: maybe(untuple_proc_info)
+        maybe_untuple_info          :: maybe(untuple_proc_info), 
                                     % If set, it means this procedure was
                                     % created from another procedure by the
                                     % untupling transformation. This slot
                                     % records which of the procedure's
                                     % arguments were derived from which
                                     % arguments in the original procedure.
+                                    
+        maybe_structure_sharing     :: maybe(structure_sharing_domain)
+                                    % Structure sharing information as obtained
+                                    % by the structure sharing analysis.
     ).
 
     % Some parts of the procedure aren't known yet. We initialize
@@ -3000,7 +3010,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
         ClauseBody, CanProcess, ModeErrors, RttiVarMaps, eval_normal,
         proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
-        ArgInfo, InitialLiveness, no, no, no, no, no)).
+        ArgInfo, InitialLiveness, no, no, no, no, no, no)).
 
 proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
         HeadLives, DeclaredDetism, InferredDetism, Goal, CanProcess,
@@ -3008,7 +3018,7 @@ proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
         IsAddressTaken, StackSlots, ArgInfo, Liveness, ProcInfo) :-
     ModeErrors = [],
     ProcSubInfo = proc_sub_info(ArgSizes, Termination, Termination2,
-        IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no, no, no),
+        IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no, no, no, no),
     ProcInfo = proc_info(Context, BodyVarSet, BodyTypes, HeadVars,
         InstVarSet, no, HeadModes, no, HeadLives,
         DeclaredDetism, InferredDetism, Goal, CanProcess, ModeErrors,
@@ -3030,7 +3040,7 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
     ModeErrors = [],
     Term2Info = term_constr_main__term2_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken,
-        StackSlots, no, Liveness, no, no, no, no, no),
+        StackSlots, no, Liveness, no, no, no, no, no, no),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
         MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
@@ -3191,6 +3201,13 @@ proc_info_get_termination2_info(ProcInfo, Termination2Info) :-
 proc_info_set_termination2_info(Termination2Info, !ProcInfo) :-
     !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ termination2 :=
         Termination2Info.
+
+proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
+    MaybeSharing = ProcInfo ^ proc_sub_info ^ maybe_structure_sharing.
+
+proc_info_set_structure_sharing(Sharing, !ProcInfo) :- 
+    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ maybe_structure_sharing :=
+        yes(Sharing).
 
 proc_info_get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
     TVarMap = RttiVarMaps ^ ti_varmap,

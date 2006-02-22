@@ -518,7 +518,6 @@
     ;       follow_code
     ;       prev_code
     ;       optimize_dead_procs
-    ;       data_structure_sharing_analysis
     ;       deforestation
     ;       deforestation_depth_limit
     ;       deforestation_cost_factor
@@ -531,6 +530,10 @@
     ;       termination_norm
     ;       termination_error_limit
     ;       termination_path_limit
+
+    % Stuff for the CTGC system (structure sharing / structure reuse).
+    ;       structure_sharing_analysis
+    ;           structure_sharing_widening
 
     % Stuff for the new termination analyser.
     ;       termination2
@@ -1158,6 +1161,8 @@ option_defaults_2(special_optimization_option, [
     analysis_repeat                     -   int(0),
     check_termination                   -   bool(no),
     verbose_check_termination           -   bool(no),
+    structure_sharing_analysis          -   bool(no), 
+    structure_sharing_widening          -   int(0),
     termination                         -   bool(no),
     termination_single_args             -   int(0),
     termination_norm                    -   string("total"),
@@ -1245,7 +1250,6 @@ option_defaults_2(optimization_option, [
     optimize_constructor_last_call_accumulator -    bool(no),
     optimize_constructor_last_call      -   bool(no),
     optimize_dead_procs                 -   bool(no),
-    data_structure_sharing_analysis     -   bool(no),
     deforestation                       -   bool(no),
     deforestation_depth_limit           -   int(4),
     deforestation_cost_factor           -   int(1000),
@@ -1946,8 +1950,6 @@ long_option("optimize-constructor-last-call",
                     optimize_constructor_last_call).
 long_option("optimize-dead-procs",  optimize_dead_procs).
 long_option("optimise-dead-procs",  optimize_dead_procs).
-long_option("data-structure-sharing-analysis",
-    data_structure_sharing_analysis).
 long_option("deforestation",        deforestation).
 long_option("deforestation-depth-limit",    deforestation_depth_limit).
 long_option("deforestation-cost-factor",    deforestation_cost_factor).
@@ -2001,6 +2003,10 @@ long_option("tuple",                tuple).
 long_option("tuple-trace-counts-file",  tuple_trace_counts_file).
 long_option("tuple-costs-ratio",    tuple_costs_ratio).
 long_option("tuple-min-args",       tuple_min_args).
+
+% CTGC related options.
+long_option("structure-sharing",    structure_sharing_analysis).
+long_option("structure-sharing-widening", structure_sharing_widening).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",       smart_indexing).
@@ -2738,6 +2744,7 @@ options_help -->
     options_help_aux_output,
     options_help_semantics,
     options_help_termination,
+    options_help_ctgc,
     options_help_compilation_model,
     options_help_code_generation,
     options_help_optimization,
@@ -3236,6 +3243,20 @@ options_help_semantics -->
         "\tPerform at most <n> passes of mode inference (default: 30)."
     ]).
 
+
+:- pred options_help_ctgc(io::di, io::uo) is det.
+
+options_help_ctgc -->
+    io__write_string("\nCompile Time Garbage Collection Options:\n"),
+    write_tabbed_lines([
+        "--structure-sharing",
+        "\tPerform structure sharing analysis for all encountered",
+        "\tpredicates.", 
+        "--structure-sharing-widening <n>",
+        "\tPerform widening when the set of structure sharing pairs becomes",
+        "\tlarger than <n>. When n=0, widening is not enabled.",
+        "\t(default: 0)."
+    ]).
 
 :- pred options_help_termination(io::di, io::uo) is det.
 

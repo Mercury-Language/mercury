@@ -43,6 +43,7 @@
 
 :- import_module libs.compiler_util.
 :- import_module libs.rat.
+:- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_goal.
@@ -1169,6 +1170,52 @@ parse_pragma_type(ModuleName, "check_termination", PragmaTerms, ErrorTerm,
         (pred(Name::in, Arity::in, Pragma::out) is det :-
             Pragma = check_termination(Name, Arity)),
         PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "structure_sharing", PragmaTerms, ErrorTerm, 
+        _VarSet, Result) :- 
+    (
+        PragmaTerms = [
+            PredAndModesTerm0, 
+            HeadVarsTerm, 
+            HeadVarTypesTerm, 
+            SharingInformationTerm
+        ],
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
+            ErrorTerm, "`:- pragma structure_sharing' declaration",
+            NameAndModesResult),
+        NameAndModesResult = ok(PredName - PredOrFunc, ModeList),
+
+        % Parse the headvariables: 
+        HeadVarsTerm = term__functor(term__atom("vars"), ListHVTerm, _),
+        term__vars_list(ListHVTerm, HeadVarsGeneric),
+        list__map(term__coerce_var, HeadVarsGeneric, HeadVars),
+
+        % Parse the types: 
+        HeadVarTypesTerm = term__functor(term__atom("types"), ListTypeTerms, 
+            _), 
+        parse_types(ListTypeTerms, ok(Types)), 
+
+        % Parse the actual structure sharing information.
+        
+        (
+            SharingInformationTerm = term__functor(term__atom("not_available"),
+                _, _),
+            MaybeSharingAs = no
+        ;
+            SharingInformationTerm = term__functor(term__atom("yes"), 
+                SharingTerm, _), 
+            SharingTerm = [ SharingAsTerm ],
+            MaybeSharingAs = yes(parse_structure_sharing_domain(SharingAsTerm))
+        ), 
+
+        Result0 = ok(pragma(user, structure_sharing(PredOrFunc, PredName, 
+            ModeList, HeadVars, Types, MaybeSharingAs)))
+    ->
+        Result = Result0
+    ;
+        Result = error("syntax error in `:- pragma structure_sharing' " ++
+            "declaration", ErrorTerm)
+    ).
 
 parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-

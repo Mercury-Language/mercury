@@ -28,12 +28,15 @@
 :- include_module prog_data.
 
 % The parser.
-:- include_module prog_io.
+:- include_module prog_io. 
    :- include_module prog_io_dcg.
    :- include_module prog_io_goal.
    :- include_module prog_io_pragma.
    :- include_module prog_io_typeclass.
    :- include_module prog_io_util.
+
+% Parser/pretty-printer/utility routines for the ctgc related types.
+:- include_module prog_ctgc.
 
 % Pretty-printers.
 :- include_module mercury_to_mercury.

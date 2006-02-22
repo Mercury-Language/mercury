@@ -320,6 +320,60 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Stuff for the `structure_sharing_info' pragma.
+%
+
+   
+    % Whenever structure sharing analysis is unable to determine a good
+    % approximation of the set of structure sharing pairs that might exist
+    % during the execution of a program, it must use "top" as the only safe
+    % approximation. In order to collect some useful basic feedback information
+    % as to `why' a top was generated, we use: 
+:- type top_feedback == string. 
+
+    % Elements of the structure sharing domain lattice are either bottom
+    % (no structure sharing), top (any kind of structure sharing), or
+    % a list of structure sharing pairs. 
+    %
+:- type structure_sharing_domain
+    --->    bottom
+    ;       real(structure_sharing)
+    ;       top(list(top_feedback)). 
+
+    % Public representation of structure sharing.
+    %
+:- type structure_sharing == list(structure_sharing_pair).
+
+    % A structure sharing pair represents the information that two
+    % datastructures might be represented by the same memoryspace, hence
+    % its representation as a pair of datastructures.
+    %
+:- type structure_sharing_pair == pair(datastruct).
+
+    % A datastructure is a concept that designates a particular subterm of the
+    % term to which a particular variable may be bound. 
+    %
+:- type datastruct 
+    --->    selected_cel(
+                sc_var ::   prog_var,
+                sc_selector ::  selector
+            ).
+
+    % A selector describes a path in a type-tree.
+    %
+:- type selector == list(unit_selector).
+
+    % Unit-selectors are either term selectors or type selectors.  A term
+    % selector selects a subterm f/n of a term, where f is a functor
+    % (identified by the cons_id), and n an integer.  A type selector
+    % designates any subterm that has that specific type.
+    %
+:- type unit_selector 
+    --->    termsel(cons_id, int)       % term selector
+    ;       typesel(mer_type).          % type selector
+
+%-----------------------------------------------------------------------------%
+%
 % Stuff for the `unused_args' pragma
 %
 

@@ -92,6 +92,9 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
+:- import_module transform_hlds.ctgc.
+:- import_module transform_hlds.ctgc.structure_sharing.
+:- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.term_constr_main.
@@ -144,6 +147,8 @@ trans_opt__write_optfile(Module, !IO) :-
         list__foldl(term_constr_main.output_pred_termination2_info(Module),
             PredIds, !IO),
 
+        list__foldl(structure_sharing.analysis.write_pred_sharing_info(Module),
+            PredIds, !IO), 
         module_info_get_exception_info(Module, ExceptionInfo),
         list__foldl(
             exception_analysis__write_pragma_exceptions(Module, ExceptionInfo),

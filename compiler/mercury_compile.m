@@ -2056,6 +2056,8 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
     globals__lookup_bool_option(Globals, statistics, Stats),
     globals__lookup_bool_option(Globals, termination, Termination),
     globals__lookup_bool_option(Globals, termination2, Termination2),
+    globals__lookup_bool_option(Globals, structure_sharing_analysis, 
+        SharingAnalysis), 
     globals__lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
     globals__lookup_bool_option(Globals, analyse_closures,
@@ -2076,6 +2078,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             ; Termination2 = yes
             ; ExceptionAnalysis = yes
             ; TrailingAnalysis = yes
+            ; SharingAnalysis = yes
             )
         ->
             frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo, !IO),
@@ -2114,6 +2117,13 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     maybe_termination2(Verbose, Stats, !HLDS, !IO)
                 ;
                     Termination2 = no
+                ),
+                (
+                    SharingAnalysis = yes, 
+                    maybe_structure_sharing_analysis(Verbose, Stats,
+                        !HLDS, !IO)
+                ;
+                    SharingAnalysis = no
                 ),
                 (
                     TrailingAnalysis = yes,
@@ -2186,6 +2196,8 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO),
     trans_opt__write_optfile(!.HLDS, !IO).
 
 :- pred output_analysis_file(module_name::in,
@@ -2410,7 +2422,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 192, "dead_procs", !DumpInfo, !IO),
 
-    maybe_data_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO), 
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO), 
     maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO), 
     
     % If we are compiling in a deep profiling grade then now rerun simplify.
@@ -3742,18 +3754,18 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         Dead = no
     ).
 
-:- pred maybe_data_structure_sharing_analysis(bool::in, bool::in,
+:- pred maybe_structure_sharing_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_data_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :- 
-    globals__io_lookup_bool_option(data_structure_sharing_analysis, 
+maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :- 
+    globals__io_lookup_bool_option(structure_sharing_analysis, 
         Sharing, !IO), 
     (
         Sharing = yes, 
-        maybe_write_string(Verbose, "% Data structure sharing analysis...\n",
+        maybe_write_string(Verbose, "% Structure sharing analysis...\n",
             !IO), 
         maybe_flush_output(Verbose, !IO), 
-        data_structure_sharing_analysis(!HLDS, !IO), 
+        structure_sharing_analysis(!HLDS, _SharingTable, !IO), 
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

@@ -314,6 +314,11 @@
 	maybe(generic_arg_size_info(T))::in,
 	maybe(generic_termination_info(S, T))::in, io::di, io::uo) is det.
 
+:- pred write_pragma_structure_sharing_info(pred_or_func::in, sym_name::in,
+    list(mer_mode)::in, prog_context::in, prog_vars::in, 
+    maybe(prog_varset)::in, list(mer_type)::in, maybe(tvarset)::in, 
+    maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
+
     % Write the given arg size info. Verbose if the second arg is yes.
     %
 :- pred write_maybe_arg_size_info(maybe(generic_arg_size_info(T))::in,
@@ -384,6 +389,7 @@
 :- import_module libs.options.
 :- import_module libs.rat.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -392,6 +398,7 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module lexer.
+:- import_module map.
 :- import_module ops.
 :- import_module set.
 :- import_module string.
@@ -682,6 +689,11 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         Pragma = check_termination(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate,
             "check_termination", no, !IO)
+    ;
+        Pragma = structure_sharing(PredOrFunc, PredName, ModesList, HeadVars,
+            Types, MaybeStructureSharing), 
+        write_pragma_structure_sharing_info(PredOrFunc, PredName, ModesList, 
+            Context, HeadVars, no, Types, no, MaybeStructureSharing, !IO)
     ;
         Pragma = mode_check_clauses(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate,
@@ -4335,6 +4347,70 @@ write_maybe_pragma_termination_info(yes(Termination), !IO) :-
 	),
 	io.write_string(TerminationStr, !IO).	
 
+%-----------------------------------------------------------------------------%
+
+write_pragma_structure_sharing_info(PredOrFunc, SymName, Modes, Context, 
+        HeadVars, MaybeVarSet, HeadVarTypes, MaybeTypeVarSet, 
+        MaybeSharingAs, !IO) :- 
+    io__write_string(":- pragma structure_sharing(", !IO), 
+    varset__init(InitVarSet), 
+    (
+        MaybeVarSet = yes(VarSet)
+    ; 
+        MaybeVarSet = no, 
+        varset__init(VarSet)
+    ),
+    (
+        MaybeTypeVarSet = yes(TypeVarSet)
+    ;
+        MaybeTypeVarSet = no, 
+        varset__init(TypeVarSet)
+    ),
+
+    (
+        PredOrFunc = predicate, 
+        mercury_output_pred_mode_subdecl(InitVarSet, SymName,
+            Modes, no, Context, !IO)
+    ;
+        PredOrFunc = function,
+        pred_args_to_func_args(Modes, FuncModeList, RetMode),
+        mercury_output_func_mode_subdecl(InitVarSet, SymName,
+            FuncModeList, RetMode, no, Context, !IO)
+    ),
+    % write headvars and types:
+    io__write_string(", ", !IO), 
+    write_vars_and_types(HeadVars, VarSet, HeadVarTypes, TypeVarSet, !IO), 
+    % write structure sharing information. 
+    io__write_string(", ", !IO), 
+    prog_ctgc.print_interface_structure_sharing_domain(VarSet, TypeVarSet, 
+        MaybeSharingAs, !IO),
+    io__write_string(").\n", !IO).
+
+:- pred write_vars_and_types(prog_vars::in, prog_varset::in, 
+    list(mer_type)::in, tvarset::in, io::di, io::uo) is det.
+
+write_vars_and_types(HeadVars, VarSet, HeadVarTypes, TypeVarSet, !IO) :- 
+    (
+        HeadVars = []
+    -> 
+        io__write_string("vars, types", !IO)
+    ;
+        io__write_string("vars(", !IO), 
+        mercury_output_vars(HeadVars, VarSet, no, !IO), 
+        io__write_string("), ", !IO),
+
+        io__write_string("types(", !IO), 
+        io__write_list(HeadVarTypes, ",", mercury_output_type(TypeVarSet, no),
+            !IO), 
+        io__write_string(")", !IO)
+    ).
+
+:- pred write_type_of_var(vartypes::in, tvarset::in, prog_var::in, io::di, 
+    io::uo) is det.
+write_type_of_var(VarTypes, TypeVarSet, Var, !IO):- 
+    map.lookup(VarTypes, Var, VarType), 
+    mercury_output_type(TypeVarSet, no, VarType, !IO). 
+    
 %---------------------------------------------------------------------------%
 
 :- func this_file = string.

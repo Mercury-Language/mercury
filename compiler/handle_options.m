@@ -729,6 +729,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(check_termination2, termination2, bool(yes), !Globals),
         option_implies(check_termination2, warn_missing_trans_opt_files,
             bool(yes), !Globals),
+        option_implies(structure_sharing_analysis, 
+            transitive_optimization, bool(yes), !Globals), 
         option_implies(make_transitive_opt_interface, transitive_optimization,
             bool(yes), !Globals),
         option_implies(transitive_optimization, intermodule_optimization,
@@ -2339,9 +2341,9 @@ char_is_not(A, B) :-
 
 :- pred convert_dump_alias(string::in, string::out) is semidet.
 
-convert_dump_alias("ALL", "abcdfgilmnprstuvBCDIMPTU").
+convert_dump_alias("ALL", "abcdfgilmnprstuvBCDIMPSTU").
 convert_dump_alias("allD", "abcdfgilmnprstuvBCDMPT").
-convert_dump_alias("all", "abcdfgilmnprstuvBCMPT").
+convert_dump_alias("all", "abcdfgilmnprstuvBCMPST").
 convert_dump_alias("most", "bcdfgilmnprstuvP").
 convert_dump_alias("trans", "bcdglmnstuv").
 convert_dump_alias("codegen", "dfnprsu").

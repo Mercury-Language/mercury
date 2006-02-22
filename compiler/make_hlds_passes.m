@@ -921,6 +921,12 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             MaybeSuccessArgSizeInfo, MaybeFailureArgSizeInfo,
             MaybeTerminationInfo, Context, !ModuleInfo, !IO)
     ;
+        Pragma = structure_sharing(PredOrFunc, SymName, ModeList,
+            HeadVars, Types, SharingDomain)
+    -> 
+        add_pragma_structure_sharing(PredOrFunc, SymName, ModeList,
+            HeadVars, Types, SharingDomain, Context, !ModuleInfo, !IO)
+    ;
         Pragma = reserve_tag(TypeName, TypeArity)
     ->
         add_pragma_reserve_tag(TypeName, TypeArity, !.Status,

@@ -269,6 +269,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -3633,6 +3634,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     proc_info_context(Proc, ModeContext),
     proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize),
     proc_info_get_maybe_termination_info(Proc, MaybeTermination),
+    proc_info_get_structure_sharing(Proc, MaybeStructureSharing), 
     proc_info_rtti_varmaps(Proc, RttiVarMaps),
     proc_info_eval_method(Proc, EvalMethod),
     proc_info_is_address_taken(Proc, IsAddressTaken),
@@ -3666,6 +3668,16 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         io__write_string("% Termination properties: ", !IO),
         write_maybe_termination_info(MaybeTermination, yes, !IO),
         io__nl(!IO)
+    ;
+        true
+    ),
+
+        % Dump structure sharing information.
+    ( string__contains_char(Verbose, 'S') ->
+        write_indent(Indent, !IO),
+        io__write_string("% Structure sharing: \n", !IO),
+        dump_maybe_structure_sharing_domain(VarSet, TVarSet, 
+            MaybeStructureSharing, !IO)
     ;
         true
     ),
