@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2002-2004 The University of Melbourne.
+** Copyright (C) 2002-2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,7 +18,7 @@
 #endif
 #include "mercury_type_info.h"
 #include "mercury_type_desc.h"
-#include "mercury_heap.h"       /* for MR_offset_incr_hp_atomic_msg() */
+#include "mercury_heap.h"       /* for MR_offset_incr_hp_msg() */
 #include "mercury_misc.h"       /* for MR_fatal_error() */
 
 MR_TypeCtorDesc
@@ -166,7 +166,7 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
             type_ctor_desc);
 
         MR_restore_transient_registers();
-        MR_offset_incr_hp_atomic_msg(new_type_info_arena_word, 0,
+        MR_offset_incr_hp_msg(new_type_info_arena_word, 0,
             MR_var_arity_type_info_size(arity), "MR_make_type", "type_info");
         new_type_info_arena = (MR_Word *) new_type_info_arena_word;
         MR_save_transient_registers();
@@ -181,7 +181,7 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
         }
 
         MR_restore_transient_registers();
-        MR_offset_incr_hp_atomic_msg(new_type_info_arena_word, 0,
+        MR_offset_incr_hp_msg(new_type_info_arena_word, 0,
             MR_fixed_arity_type_info_size(arity), "MR_make_type", "type_info");
         new_type_info_arena = (MR_Word *) new_type_info_arena_word;
         MR_save_transient_registers();
