@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -708,23 +708,15 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
         ConsId = float_const(FloatVal),
         ByteConsId = float_const(FloatVal)
     ;
-        ConsId = pred_const(ShroudedPredProcId, EvalMethod),
+        ConsId = pred_const(ShroudedPredProcId, _EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        (
-            EvalMethod = lambda_normal,
-            predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
+        predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
 
-            module_info_pred_info(ModuleInfo, PredId, PredInfo),
-            get_is_func(PredInfo, IsFunc),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        get_is_func(PredInfo, IsFunc),
 
-            proc_id_to_int(ProcId, ProcInt),
-            ByteConsId = pred_const(ModuleName, PredName, Arity, IsFunc,
-                ProcInt)
-        ;
-            EvalMethod = lambda_aditi_bottom_up,
-            % XXX
-            sorry(this_file, "bytecode for Aditi lambda expressions")
-        )
+        proc_id_to_int(ProcId, ProcInt),
+        ByteConsId = pred_const(ModuleName, PredName, Arity, IsFunc, ProcInt)
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
         ByteConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity)

@@ -963,8 +963,6 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
             (
                 ImportStatus = imported(_)
             ;
-                pred_info_is_aditi_relation(PredInfo)
-            ;
                 % We generate incorrect and unnecessary code for the external
                 % special preds which are pseudo_imported, so just ignore them.
                 is_unify_or_compare_pred(PredInfo),

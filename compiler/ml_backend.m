@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,7 +84,6 @@
 :- import_module check_hlds.    % needed for type_util, mode_util,
                                 % and polymorphism.
 :- import_module mdbcomp.
-:- import_module aditi_backend. % need aditi_backend.rl_file
 
 :- end_module ml_backend.
 

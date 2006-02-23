@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -882,7 +882,7 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, InlinePromisedPure,
     is semidet.
 
 inlining__can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
-        InlinePromisedPure, CallingPredMarkers, ModuleInfo) :-
+        InlinePromisedPure, _CallingPredMarkers, ModuleInfo) :-
 
     % Don't inline builtins, the code generator will handle them.
     BuiltinState = not_builtin,
@@ -946,19 +946,6 @@ inlining__can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         )
     =>
         ok_to_inline_language(ForeignLanguage, Target)
-    ),
-
-    % Don't inline memoed Aditi predicates.
-    pred_info_get_markers(PredInfo, CalledPredMarkers),
-    \+ check_marker(CalledPredMarkers, aditi_memo),
-
-    % Don't inline Aditi procedures into non-Aditi procedures, since this could
-    % result in joins being performed by backtracking rather than by more
-    % efficient methods in the database.
-    pred_info_get_markers(PredInfo, CalledPredMarkers),
-    \+ (
-        \+ check_marker(CallingPredMarkers, aditi),
-        check_marker(CalledPredMarkers, aditi)
     ),
 
     (

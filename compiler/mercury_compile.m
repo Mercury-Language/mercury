@@ -82,9 +82,6 @@
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.loop_inv.
 :- import_module transform_hlds.deforest.
-:- import_module aditi_backend.aditi_builtin_ops.
-:- import_module aditi_backend.dnf.
-:- import_module aditi_backend.magic.
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.delay_construct.
 :- import_module transform_hlds.unused_args.
@@ -113,11 +110,6 @@
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.dupproc.
 
-    % the Aditi-RL back-end
-:- import_module aditi_backend.rl_gen.
-:- import_module aditi_backend.rl_opt.
-:- import_module aditi_backend.rl_out.
-
     % the bytecode back-end
 :- import_module bytecode_backend.bytecode_gen.
 :- import_module bytecode_backend.bytecode.
@@ -139,9 +131,6 @@
 :- import_module ml_backend.ml_util.               % MLDS utility predicates
 
     % miscellaneous compiler modules
-:- import_module aditi_backend.rl.
-:- import_module aditi_backend.rl_dump.
-:- import_module aditi_backend.rl_file.
 :- import_module check_hlds.goal_path.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_data.
@@ -1434,7 +1423,6 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
         globals__io_lookup_bool_option(verbose, Verbose, !IO),
         globals__io_lookup_bool_option(statistics, Stats, !IO),
         maybe_write_dependency_graph(Verbose, Stats, HLDS20, HLDS21, !IO),
-        maybe_generate_schemas(HLDS21, Verbose, Stats, !IO),
         globals__io_lookup_bool_option(make_optimization_interface,
             MakeOptInt, !IO),
         globals__io_lookup_bool_option(make_transitive_opt_interface,
@@ -1447,15 +1435,13 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
             % we may still want to run `unused_args' so that we get
             % the appropriate warnings
             globals__io_lookup_bool_option(warn_unused_args, UnusedArgs, !IO),
-            ( UnusedArgs = yes ->
+            (
+                UnusedArgs = yes,
                 globals__io_set_option(optimize_unused_args, bool(no), !IO),
-                maybe_unused_args(Verbose, Stats, HLDS21, HLDS22, !IO)
+                maybe_unused_args(Verbose, Stats, HLDS21, _HLDS22, !IO)
             ;
-                HLDS22 = HLDS21
+                UnusedArgs = no
             ),
-            % magic sets can report errors.
-            maybe_transform_dnf(Verbose, Stats, HLDS22, HLDS23, !IO),
-            maybe_magic(Verbose, Stats, HLDS23, _, !IO),
             FactTableObjFiles = []
         ; MakeOptInt = yes ->
             % only run up to typechecking when making the .opt file
@@ -1496,7 +1482,6 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO),
     middle_pass(ModuleName, !HLDS, !DumpInfo, !IO),
     globals__io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
-    globals__io_lookup_bool_option(aditi_only, AditiOnly, !IO),
     globals__io_get_target(Target, !IO),
     globals__io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
 
@@ -1510,10 +1495,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     module_name_to_file_name(ModuleName, ".used", no, UsageFileName, !IO),
     io__remove_file(UsageFileName, _, !IO),
 
-    % magic sets can report errors.
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors = 0 ->
-        maybe_generate_rl_bytecode(Verbose, MaybeRLFile, !HLDS, !IO),
         (
             ( Target = c
             ; Target = asm
@@ -1529,9 +1512,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         ;
             true
         ),
-        ( AditiOnly = yes ->
-            FactTableBaseFiles = []
-        ; Target = il ->
+        ( Target = il ->
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             (
                 TargetCodeOnly = yes,
@@ -1564,20 +1545,17 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         ; Target = asm ->
             % compile directly to assembler using the gcc back-end
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-            maybe_mlds_to_gcc(MLDS, MaybeRLFile, ContainsCCode, !IO),
+            maybe_mlds_to_gcc(MLDS, ContainsCCode, !IO),
             (
                 TargetCodeOnly = yes
             ;
                 TargetCodeOnly = no,
-                % We don't invoke the assembler to produce an
-                % object file yet -- that is done at
-                % the top level.
+                % We don't invoke the assembler to produce an object file yet
+                % -- that is done at the top level.
                 %
-                % But if the module contained `pragma c_code',
-                % then we will have compiled that to a
-                % separate C file.  We need to invoke the
-                % C compiler on that.
-                %
+                % But if the module contained `pragma c_code', then we will
+                % have compiled that to a separate C file. We need to invoke
+                % the C compiler on that.
                 (
                     ContainsCCode = yes,
                     mercury_compile_asm_c_code(ModuleName, !IO)
@@ -1588,7 +1566,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             FactTableBaseFiles = []
         ; HighLevelCode = yes ->
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-            mlds_to_high_level_c(MLDS, MaybeRLFile, !IO),
+            mlds_to_high_level_c(MLDS, !IO),
             (
                 TargetCodeOnly = yes
             ;
@@ -1606,7 +1584,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             FactTableBaseFiles = []
         ;
             backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
-            output_pass(!.HLDS, GlobalData, LLDS, MaybeRLFile, ModuleName,
+            output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
                 _CompileErrors, FactTableBaseFiles, !IO)
         ),
         recompilation__usage__write_usage_file(!.HLDS, NestedSubModules,
@@ -2405,20 +2383,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_lco(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 175, "lco", !DumpInfo, !IO),
 
-    maybe_transform_aditi_builtins(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 180, "aditi_builtins", !DumpInfo, !IO),
-
-    % DNF transformations should be after inlining.
-    maybe_transform_dnf(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 185, "dnf", !DumpInfo, !IO),
-
-    % Magic sets should be the last thing done to Aditi procedures
-    % before RL code generation, and must come immediately after DNF.
-    % Note that if this pass is done, it will also invokes dead_proc_elim
-    % (XXX which means dead_proc_elim may get done twice).
-    maybe_magic(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 190, "magic", !DumpInfo, !IO),
-
     maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 192, "dead_procs", !DumpInfo, !IO),
 
@@ -2455,62 +2419,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 210, "complexity", !DumpInfo, !IO),
 
     maybe_dump_hlds(!.HLDS, 299, "middle_pass", !DumpInfo, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred maybe_generate_rl_bytecode(bool::in, maybe(rl_file)::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-maybe_generate_rl_bytecode(Verbose, MaybeRLFile, !ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(aditi, Aditi, !IO),
-    (
-        Aditi = yes,
-        module_info_get_do_aditi_compilation(!.ModuleInfo, AditiCompile),
-        (
-            AditiCompile = do_aditi_compilation,
-
-            % Generate the RL procedures.
-            maybe_write_string(Verbose, "% Generating RL...\n", !IO),
-            maybe_flush_output(Verbose, !IO),
-            rl_gen__module(!.ModuleInfo, RLProcs0, !IO),
-            maybe_dump_rl(RLProcs0, !.ModuleInfo, "", "", !IO),
-
-            % Optimize the RL procedures.
-            rl_opt__procs(!.ModuleInfo, RLProcs0, RLProcs, !IO),
-            maybe_dump_rl(RLProcs, !.ModuleInfo, "", ".opt", !IO),
-
-            % Convert the RL procedures to bytecode.
-            rl_out__generate_rl_bytecode(RLProcs, MaybeRLFile, !ModuleInfo,
-                !IO)
-        ;
-            AditiCompile = no_aditi_compilation,
-            globals__io_lookup_bool_option(aditi_only, AditiOnly, !IO),
-            (
-                AditiOnly = yes,
-
-                % Always generate a `.rlo' file if compiling
-                % with `--aditi-only'.
-                RLProcs = [],
-                rl_out__generate_rl_bytecode(RLProcs, MaybeRLFile, !ModuleInfo,
-                    !IO)
-            ;
-                AditiOnly = no,
-                MaybeRLFile = no
-            )
-        )
-    ;
-        Aditi = no,
-        MaybeRLFile = no
-    ).
-
-:- pred generate_aditi_proc_info(module_info::in, list(rtti_data)::out) is det.
-
-generate_aditi_proc_info(HLDS, AditiProcInfoRttiData) :-
-    module_info_get_aditi_top_down_procs(HLDS, Procs),
-    AditiProcInfoRttiData = list__map(
-        (func(aditi_top_down_proc(proc(PredId, ProcId), _)) =
-            rtti__make_aditi_proc_info(HLDS, PredId, ProcId)
-        ), Procs).
 
 %-----------------------------------------------------------------------------%
 
@@ -2565,7 +2473,7 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 320, "followcode", !DumpInfo, !IO),
 
     simplify(no, ll_backend, Verbose, Stats,
-        process_all_nonimported_nonaditi_procs, !HLDS, !IO),
+        process_all_nonimported_procs, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 325, "ll_backend_simplify", !DumpInfo, !IO),
 
     compute_liveness(Verbose, Stats, !HLDS, !IO),
@@ -2623,12 +2531,10 @@ backend_pass_by_preds_2([PredId | PredIds], !HLDS,
     map__lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     (
-        ( ProcIds = []
-        ; hlds_pred__pred_info_is_aditi_relation(PredInfo)
-        )
-    ->
+        ProcIds = [],
         ProcList = []
     ;
+        ProcIds = [_ | _],
         globals__io_lookup_bool_option(verbose, Verbose, !IO),
         (
             Verbose = yes,
@@ -3349,23 +3255,6 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_generate_schemas(module_info::in,
-    bool::in, bool::in, io::di, io::uo) is det.
-
-maybe_generate_schemas(ModuleInfo, Verbose, Stats, !IO) :-
-    globals__io_lookup_bool_option(generate_schemas, Generate, !IO),
-    (
-        Generate = yes,
-        maybe_write_string(Verbose, "% Writing schema file...", !IO),
-        rl_out__generate_schema_file(ModuleInfo, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        Generate = no
-    ).
-
-%-----------------------------------------------------------------------------%
-
 :- pred tabling(bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
@@ -3488,7 +3377,7 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
         untuple_arguments(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         simplify(no, post_untuple, Verbose, Stats,
-            process_all_nonimported_nonaditi_procs, !HLDS, !IO),
+            process_all_nonimported_procs, !HLDS, !IO),
         maybe_report_stats(Stats, !IO)
     ;
         Untuple = no
@@ -3606,40 +3495,6 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
         true
     ).
 
-:- pred maybe_transform_dnf(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-maybe_transform_dnf(Verbose, Stats, !HLDS, !IO) :-
-    module_info_get_do_aditi_compilation(!.HLDS, Aditi),
-    ( Aditi = do_aditi_compilation ->
-        maybe_write_string(Verbose,
-            "% Disjunctive normal form transformation...", !IO),
-        maybe_flush_output(Verbose, !IO),
-        module_info_predids(!.HLDS, PredIds),
-        set__init(AditiPreds0),
-        list__foldl(add_aditi_procs(!.HLDS), PredIds, AditiPreds0, AditiPreds),
-        dnf__transform_module(no, yes(AditiPreds), !HLDS),
-        maybe_write_string(Verbose, " done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        true
-    ).
-
-:- pred add_aditi_procs(module_info::in, pred_id::in,
-    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
-
-add_aditi_procs(HLDS0, PredId, AditiPreds0, AditiPreds) :-
-    module_info_pred_info(HLDS0, PredId, PredInfo),
-    ( hlds_pred__pred_info_is_aditi_relation(PredInfo) ->
-        ProcIds = pred_info_procids(PredInfo),
-        AddProc = (pred(ProcId::in, Preds0::in, Preds::out) is det :-
-            set__insert(Preds0, proc(PredId, ProcId), Preds)
-        ),
-        list__foldl(AddProc, ProcIds, AditiPreds0, AditiPreds)
-    ;
-        AditiPreds = AditiPreds0
-    ).
-
 :- pred maybe_loop_inv(bool::in, bool::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
@@ -3723,21 +3578,6 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
         UnneededCode = no
     ).
 
-:- pred maybe_magic(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-maybe_magic(Verbose, Stats, !HLDS, !IO) :-
-    module_info_get_do_aditi_compilation(!.HLDS, Aditi),
-    ( Aditi = do_aditi_compilation ->
-        maybe_write_string(Verbose,
-            "% Supplementary magic sets transformation...", !IO),
-        maybe_flush_output(Verbose, !IO),
-        magic__process_module(!HLDS, !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        true
-    ).
-
 :- pred maybe_eliminate_dead_procs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -3801,7 +3641,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Applying term size profiling transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_nonaditi_procs(
+        process_all_nonimported_procs(
             update_module_io(size_prof__process_proc_msg(Transform)),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
@@ -3869,7 +3709,7 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Applying complexity experiment transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_nonaditi_procs(
+        process_all_nonimported_procs(
             update_module_io(complexity__process_proc_msg(NumProcs, ProcMap)),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
@@ -3926,22 +3766,6 @@ maybe_lco(Verbose, Stats, !HLDS, !IO) :-
         maybe_report_stats(Stats, !IO)
     ;
         LCO = no
-    ).
-
-:- pred maybe_transform_aditi_builtins(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-maybe_transform_aditi_builtins(Verbose, Stats, !HLDS, !IO) :-
-    module_info_get_do_aditi_compilation(!.HLDS, Aditi),
-    ( Aditi = do_aditi_compilation ->
-        maybe_write_string(Verbose, "% Transforming away RL builtins...\n",
-            !IO),
-        maybe_flush_output(Verbose, !IO),
-        transform_aditi_builtins(!HLDS, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -4007,8 +3831,8 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
     ->
         maybe_write_string(Verbose, "% Migrating branch code...", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_nonaditi_procs(update_module(
-            move_follow_code_in_proc), !HLDS, !IO),
+        process_all_nonimported_procs(update_module(move_follow_code_in_proc),
+            !HLDS, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -4021,8 +3845,8 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
 compute_liveness(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Computing liveness...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    process_all_nonimported_nonaditi_procs(
-        update_proc_io(detect_liveness_proc), !HLDS, !IO),
+    process_all_nonimported_procs(update_proc_io(detect_liveness_proc),
+        !HLDS, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -4032,7 +3856,7 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
 compute_stack_vars(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Computing stack vars...", !IO),
     maybe_flush_output(Verbose, !IO),
-    process_all_nonimported_nonaditi_procs(
+    process_all_nonimported_procs(
         update_proc_io(allocate_stack_slots_in_proc), !HLDS, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
@@ -4043,7 +3867,7 @@ compute_stack_vars(Verbose, Stats, !HLDS, !IO) :-
 allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Allocating store map...", !IO),
     maybe_flush_output(Verbose, !IO),
-    process_all_nonimported_nonaditi_procs(
+    process_all_nonimported_procs(
         update_proc_predid(allocate_store_maps(final_allocation)), !HLDS, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
@@ -4141,10 +3965,9 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 % The LLDS output pass
 
 :- pred output_pass(module_info::in, global_data::in, list(c_procedure)::in,
-    maybe(rl_file)::in, module_name::in, bool::out, list(string)::out,
-    io::di, io::uo) is det.
+    module_name::in, bool::out, list(string)::out, io::di, io::uo) is det.
 
-output_pass(HLDS, GlobalData0, Procs, MaybeRLFile, ModuleName, CompileErrors,
+output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         FactTableObjFiles, !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     globals__io_lookup_bool_option(statistics, Stats, !IO),
@@ -4157,7 +3980,6 @@ output_pass(HLDS, GlobalData0, Procs, MaybeRLFile, ModuleName, CompileErrors,
     %
     type_ctor_info__generate_rtti(HLDS, TypeCtorRttiData),
     base_typeclass_info__generate_rtti(HLDS, OldTypeClassInfoRttiData),
-    generate_aditi_proc_info(HLDS, AditiProcInfoRttiData),
     globals__io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti, !IO),
     type_class_info__generate_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
@@ -4165,7 +3987,6 @@ output_pass(HLDS, GlobalData0, Procs, MaybeRLFile, ModuleName, CompileErrors,
         TypeClassInfoRttiData),
     list__map(llds__wrap_rtti_data, TypeCtorRttiData, TypeCtorTables),
     list__map(llds__wrap_rtti_data, TypeClassInfoRttiData, TypeClassInfos),
-    list__map(llds__wrap_rtti_data, AditiProcInfoRttiData, AditiProcInfos),
     stack_layout__generate_llds(HLDS, GlobalData0, GlobalData, StackLayouts,
         LayoutLabels),
     %
@@ -4184,11 +4005,11 @@ output_pass(HLDS, GlobalData0, Procs, MaybeRLFile, ModuleName, CompileErrors,
     % Next we put it all together and output it to one or more C files.
     %
     list__condense([StaticCells, ClosureLayouts, StackLayouts,
-        TypeCtorTables, TypeClassInfos, AditiProcInfos], AllData),
+        TypeCtorTables, TypeClassInfos], AllData),
     construct_c_file(HLDS, C_InterfaceInfo, Procs, GlobalVars, AllData, CFile,
         !IO),
     module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
-    output_llds(ModuleName, CFile, ComplexityProcs, LayoutLabels, MaybeRLFile,
+    output_llds(ModuleName, CFile, ComplexityProcs, LayoutLabels,
         Verbose, Stats, !IO),
 
     C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
@@ -4331,9 +4152,9 @@ combine_chunks_2([Chunk | Chunks], ModuleName, Num, [Module | Modules]) :-
 
 :- pred output_llds(module_name::in, c_file::in,
     list(complexity_proc_info)::in, map(llds__label, llds__data_addr)::in,
-    maybe(rl_file)::in, bool::in, bool::in, io::di, io::uo) is det.
+    bool::in, bool::in, io::di, io::uo) is det.
 
-output_llds(ModuleName, LLDS0, ComplexityProcs, StackLayoutLabels, MaybeRLFile,
+output_llds(ModuleName, LLDS0, ComplexityProcs, StackLayoutLabels,
         Verbose, Stats, !IO) :-
     maybe_write_string(Verbose, "% Writing output to `", !IO),
     module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO),
@@ -4341,7 +4162,7 @@ output_llds(ModuleName, LLDS0, ComplexityProcs, StackLayoutLabels, MaybeRLFile,
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
     transform_llds(LLDS0, LLDS, !IO),
-    output_llds(LLDS, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO),
+    output_llds(LLDS, ComplexityProcs, StackLayoutLabels, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_flush_output(Verbose, !IO),
     maybe_report_stats(Stats, !IO).
@@ -4383,7 +4204,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     globals__io_lookup_bool_option(statistics, Stats, !IO),
 
     simplify(no, ml_backend, Verbose, Stats,
-        process_all_nonimported_nonaditi_procs, !HLDS, !IO),
+        process_all_nonimported_procs, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 405, "ml_backend_simplify", !DumpInfo, !IO),
 
     % NOTE: it is unsafe for passes after add_trail_ops to reorder
@@ -4546,14 +4367,13 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
     type_ctor_info__generate_rtti(HLDS, TypeCtorRtti),
     base_typeclass_info__generate_rtti(HLDS, TypeClassInfoRtti),
 
-    generate_aditi_proc_info(HLDS, AditiProcInfoRtti),
     module_info_get_globals(HLDS, Globals),
     globals__lookup_bool_option(Globals, new_type_class_rtti,
         NewTypeClassRtti),
     type_class_info__generate_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
     list__condense([TypeCtorRtti, TypeClassInfoRtti,
-        NewTypeClassInfoRttiData, AditiProcInfoRtti], RttiData),
+        NewTypeClassInfoRttiData], RttiData),
     RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
     MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
         FinalPreds),
@@ -4563,15 +4383,14 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
 
 % The `--high-level-C' MLDS output pass
 
-:- pred mlds_to_high_level_c(mlds::in, maybe(rl_file)::in,
-    io::di, io::uo) is det.
+:- pred mlds_to_high_level_c(mlds::in, io::di, io::uo) is det.
 
-mlds_to_high_level_c(MLDS, MaybeRLFile, !IO) :-
+mlds_to_high_level_c(MLDS, !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     globals__io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_write_string(Verbose, "% Converting MLDS to C...\n", !IO),
-    mlds_to_c__output_mlds(MLDS, MaybeRLFile, "", !IO),
+    mlds_to_c__output_mlds(MLDS, "", !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to C.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -4586,16 +4405,15 @@ mlds_to_java(ModuleInfo, MLDS, !IO) :-
     maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred maybe_mlds_to_gcc(mlds::in, maybe(rl_file)::in, bool::out,
-    io::di, io::uo) is det.
+:- pred maybe_mlds_to_gcc(mlds::in, bool::out, io::di, io::uo) is det.
 
-maybe_mlds_to_gcc(MLDS, MaybeRLFile, ContainsCCode, !IO) :-
+maybe_mlds_to_gcc(MLDS, ContainsCCode, !IO) :-
     globals__io_lookup_bool_option(verbose, Verbose, !IO),
     globals__io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_write_string(Verbose,
         "% Passing MLDS to GCC and compiling to assembler...\n", !IO),
-    maybe_mlds_to_gcc__compile_to_asm(MLDS, MaybeRLFile, ContainsCCode, !IO),
+    maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode, !IO),
     maybe_write_string(Verbose, "% Finished compiling to assembler.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -4722,9 +4540,8 @@ maybe_dump_mlds(MLDS, StageNum, StageName, !IO) :-
     ( should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) ->
         maybe_write_string(Verbose, "% Dumping out MLDS as C...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        string__append_list(["_dump.", StageNumStr, "-", StageName],
-            DumpSuffix),
-        mlds_to_c__output_mlds(MLDS, no, DumpSuffix, !IO),
+        DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
+        mlds_to_c__output_mlds(MLDS, DumpSuffix, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         true
@@ -4765,38 +4582,6 @@ dump_mlds(DumpFile, MLDS, !IO) :-
         string__append_list(["can't open file `", DumpFile, "' for output."],
             ErrorMessage),
         report_error(ErrorMessage, !IO)
-    ).
-
-:- pred maybe_dump_rl(list(rl_proc)::in, module_info::in,
-    string::in, string::in, io::di, io::uo) is det.
-
-maybe_dump_rl(Procs, ModuleInfo, _StageNum, StageName, !IO) :-
-    globals__io_lookup_bool_option(dump_rl, Dump, !IO),
-    (
-        Dump = yes,
-        module_info_get_name(ModuleInfo, ModuleName0),
-        mdbcomp__prim_data__sym_name_to_string(ModuleName0, ModuleName),
-        string__append_list([ModuleName, ".rl_dump", StageName], DumpFile),
-        globals__io_lookup_bool_option(verbose, Verbose, !IO),
-        maybe_write_string(Verbose, "% Dumping out RL to `", !IO),
-        maybe_write_string(Verbose, DumpFile, !IO),
-        maybe_write_string(Verbose, "'...", !IO),
-        maybe_flush_output(Verbose, !IO),
-        io__open_output(DumpFile, Res, !IO),
-        ( Res = ok(FileStream) ->
-            io__set_output_stream(FileStream, OutputStream, !IO),
-            list__foldl(rl_dump__write_procedure(ModuleInfo), Procs, !IO),
-            io__set_output_stream(OutputStream, _, !IO),
-            io__close_output(FileStream, !IO),
-            maybe_write_string(Verbose, " done.\n", !IO)
-        ;
-            maybe_write_string(Verbose, "\n", !IO),
-            string__append_list(["can't open file `", DumpFile,
-                "' for output."], ErrorMessage),
-            report_error(ErrorMessage, !IO)
-        )
-    ;
-        Dump = no
     ).
 
 %-----------------------------------------------------------------------------%

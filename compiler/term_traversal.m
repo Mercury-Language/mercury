@@ -276,17 +276,6 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
         add_error(Context, method_call, Params, !Info)
     ;
         Details = cast(_)
-    ;
-        Details = aditi_builtin(_, _),
-        %   
-        % Aditi builtins are not guaranteed to terminate
-        % - all of them cause the transaction to abort if an error occurs
-        % (e.g. if the database server dies).
-        % - all except `aditi_insert' execute a user-specified goal
-        % which could possibly loop. Analysis of the termination of
-        % goals executed bottom-up is not yet implemented.
-        %
-        add_error(Context, aditi_call, Params, !Info)
     ).
 
 traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-

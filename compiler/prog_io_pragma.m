@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -943,115 +943,6 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm, _VarSet,
     ;
         Result = error("wrong number of arguments in " ++
             "`:- pragma fact_table' declaration", ErrorTerm)
-    ).
-
-parse_pragma_type(ModuleName, "aditi", PragmaTerms, ErrorTerm, _, Result) :-
-    parse_simple_pragma(ModuleName, "aditi",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = aditi(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
-
-parse_pragma_type(ModuleName, "base_relation", PragmaTerms, ErrorTerm, _,
-        Result) :-
-    parse_simple_pragma(ModuleName, "base_relation",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = base_relation(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
-
-parse_pragma_type(ModuleName, "aditi_index", PragmaTerms, ErrorTerm, _,
-        Result) :-
-    ( PragmaTerms = [PredNameArityTerm, IndexTypeTerm, AttributesTerm] ->
-        parse_pred_name_and_arity(ModuleName, "aditi_index",
-        PredNameArityTerm, ErrorTerm, NameArityResult),
-        (
-            NameArityResult = ok(PredName, PredArity),
-            (
-                IndexTypeTerm = term__functor(term__atom(IndexTypeStr), [], _),
-                (
-                    IndexTypeStr = "unique_B_tree",
-                    IndexType = unique_B_tree
-                ;
-                    IndexTypeStr = "non_unique_B_tree",
-                    IndexType = non_unique_B_tree
-                )
-            ->
-                convert_int_list(AttributesTerm, AttributeResult),
-                (
-                    AttributeResult = ok(Attributes),
-                    Result = ok(pragma(user, aditi_index(PredName, PredArity,
-                        index_spec(IndexType, Attributes))))
-                ;
-                    AttributeResult = error(_, AttrErrorTerm),
-                    Result = error("expected attribute list for " ++
-                        "`:- pragma aditi_index' declaration", AttrErrorTerm)
-                )
-            ;
-                Result = error("expected index type for " ++
-                    "`:- pragma aditi_index' declaration", IndexTypeTerm)
-                )
-        ;
-            NameArityResult = error(NameErrorMsg, NameErrorTerm),
-            Result = error(NameErrorMsg, NameErrorTerm)
-        )
-    ;
-        Result = error("wrong number of arguments in " ++
-            "`:- pragma aditi_index' declaration", ErrorTerm)
-    ).
-
-parse_pragma_type(ModuleName, "naive", PragmaTerms, ErrorTerm, _, Result) :-
-    parse_simple_pragma(ModuleName, "naive",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = naive(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
-
-parse_pragma_type(ModuleName, "psn", PragmaTerms, ErrorTerm, _, Result) :-
-    parse_simple_pragma(ModuleName, "psn",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = psn(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
-
-parse_pragma_type(ModuleName, "aditi_memo", PragmaTerms, ErrorTerm, _,
-        Result) :-
-    parse_simple_pragma(ModuleName, "aditi_memo",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = aditi_memo(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
-
-parse_pragma_type(ModuleName, "aditi_no_memo", PragmaTerms, ErrorTerm, _,
-        Result) :-
-    parse_simple_pragma(ModuleName, "aditi_no_memo",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = aditi_no_memo(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
-
-parse_pragma_type(ModuleName, "supp_magic", PragmaTerms, ErrorTerm, _,
-        Result) :-
-    parse_simple_pragma(ModuleName, "supp_magic",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = supp_magic(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
-
-parse_pragma_type(ModuleName, "context", PragmaTerms, ErrorTerm, _, Result) :-
-    parse_simple_pragma(ModuleName, "context",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = context(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
-
-parse_pragma_type(ModuleName, "owner", PragmaTerms, ErrorTerm, _, Result) :-
-    ( PragmaTerms = [SymNameAndArityTerm, OwnerTerm] ->
-        ( OwnerTerm = term__functor(term__atom(Owner), [], _) ->
-            parse_simple_pragma(ModuleName, "owner",
-                (pred(Name::in, Arity::in, Pragma::out) is det :-
-                    Pragma = owner(Name, Arity, Owner)),
-                [SymNameAndArityTerm], ErrorTerm, Result)
-        ;
-            ErrorMsg = "expected owner name for `:- pragma owner' declaration",
-            Result = error(ErrorMsg, OwnerTerm)
-        )
-    ;
-        ErrorMsg = "wrong number of arguments in " ++
-            "`:- pragma owner' declaration",
-        Result = error(ErrorMsg, ErrorTerm)
     ).
 
 parse_pragma_type(ModuleName, "promise_pure", PragmaTerms, ErrorTerm, _VarSet,

@@ -230,7 +230,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % can_reorder_goals(ModuleInfo, VarTypes, FullyStrict, 
+    % can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
     %   InstmapBeforeGoal1, Goal1, InstmapBeforeGoal2, Goal2).
     %
     % Goals can be reordered if
@@ -262,7 +262,7 @@
 :- pred can_reorder_goals(vartypes::in, bool::in, instmap::in,
     hlds_goal::in, instmap::in, hlds_goal::in, bool::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
-    
+
     % reordering_maintains_termination(ModuleInfo, FullyStrict, Goal1, Goal2).
     %
     % Succeeds if any possible change in termination behaviour from reordering
@@ -284,7 +284,7 @@
     % The information computed by termination and exception analyses is used
     % when making this decision.
     %
-    % NOTE: new code should use this version as it supports the 
+    % NOTE: new code should use this version as it supports the
     %       intermodule-analysis framework.
     %
 :- pred reordering_maintains_termination(bool::in, hlds_goal::in,
@@ -635,9 +635,9 @@ rename_unify_rhs(Must, Subn,
         functor(Functor, E, ArgVars0), functor(Functor, E, ArgVars)) :-
     rename_var_list(Must, Subn, ArgVars0, ArgVars).
 rename_unify_rhs(Must, Subn,
-        lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+        lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals0, Vars0, Modes, Det, Goal0),
-        lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+        lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal)) :-
     rename_var_list(Must, Subn, NonLocals0, NonLocals),
     rename_var_list(Must, Subn, Vars0, Vars),
@@ -713,9 +713,6 @@ rename_generic_call(Must, Subn,
         class_method(Var, Method, ClassId, MethodId)) :-
     rename_var(Must, Subn, Var0, Var).
 rename_generic_call(_, _, cast(CastType), cast(CastType)).
-rename_generic_call(_Must, _Subn,
-        aditi_builtin(Builtin, PredCallId),
-        aditi_builtin(Builtin, PredCallId)).
 
 %-----------------------------------------------------------------------------%
 
@@ -880,7 +877,7 @@ rhs_goal_vars(RHS, !Set) :-
     RHS = functor(_Functor, _, ArgVars),
     svset__insert_list(ArgVars, !Set).
 rhs_goal_vars(RHS, !Set) :-
-    RHS = lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal - _),
+    RHS = lambda_goal(_, _, _, NonLocals, LambdaVars, _, _, Goal - _),
     svset__insert_list(NonLocals, !Set),
     svset__insert_list(LambdaVars, !Set),
     goal_vars_2(Goal, !Set).
@@ -888,7 +885,6 @@ rhs_goal_vars(RHS, !Set) :-
 generic_call_vars(higher_order(Var, _, _, _), [Var]).
 generic_call_vars(class_method(Var, _, _, _), [Var]).
 generic_call_vars(cast(_), []).
-generic_call_vars(aditi_builtin(_, _), []).
 
 %-----------------------------------------------------------------------------%
 
@@ -1461,7 +1457,7 @@ can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
             CanReorder = no
         ;
             MaintainsTermination = yes,
-            ( 
+            (
                 % Don't reorder the goals if the later goal depends on the
                 % outputs of the current goal.
                 %
@@ -1551,7 +1547,7 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
             MaintainsTermination = yes
         )
     ).
-            
+
     % If the earlier goal changes the instantiatedness of a variable
     % that is used in the later goal, then the later goal depends on
     % the earlier goal.

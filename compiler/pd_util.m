@@ -1084,20 +1084,6 @@ match_generic_call(higher_order(_, Purity, PredOrFunc, Arity),
         higher_order(_, Purity, PredOrFunc, Arity)).
 match_generic_call(class_method(_, MethodNum, ClassId, CallId),
         class_method(_, MethodNum, ClassId, CallId)).
-match_generic_call(aditi_builtin(Builtin1, CallId),
-        aditi_builtin(Builtin2, CallId)) :-
-    match_aditi_builtin(Builtin1, Builtin2).
-
-    % Check that two `aditi_builtin' goals are equivalent.
-    %
-:- pred match_aditi_builtin(aditi_builtin::in, aditi_builtin::in) is semidet.
-
-    % The other fields are all implied by the pred_proc_id.
-match_aditi_builtin(aditi_tuple_update(Update, PredId),
-        aditi_tuple_update(Update, PredId)).
-    % The syntax used does not change the result of the call.
-match_aditi_builtin(aditi_bulk_update(Update, PredId, _),
-        aditi_bulk_update(Update, PredId, _)).
 
 %-----------------------------------------------------------------------------%
 

@@ -105,8 +105,8 @@ load_structure_sharing_table_3(ModuleInfo, PredId, ProcId, !SharingTable):-
     io::uo) is det.
 
 annotate_liveness(!ModuleInfo, !IO):- 
-    process_all_nonimported_nonaditi_procs(
-        update_proc_io(detect_liveness_proc), !ModuleInfo, !IO).
+    process_all_nonimported_procs(update_proc_io(detect_liveness_proc),
+        !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -121,10 +121,8 @@ sharing_analysis(!ModuleInfo, !SharingTable, !IO):-
     module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo), 
     (
         MaybeDepInfo = yes(DepInfo),
-        hlds_dependency_info_get_dependency_ordering(DepInfo, 
-            SCCs), 
-        list.foldl2(analyse_scc(!.ModuleInfo), SCCs, !SharingTable, 
-            !IO)
+        hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs), 
+        list.foldl2(analyse_scc(!.ModuleInfo), SCCs, !SharingTable, !IO)
     ;
         MaybeDepInfo = no,
         unexpected(this_file, "No dependency information.")

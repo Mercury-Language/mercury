@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -485,7 +485,6 @@ traverse_goal(Goal @ generic_call(CallType, _, _, _) - Info,
     ( CallType = higher_order(_, _, _, _), DoWrite = yes
     ; CallType = class_method(_, _, _, _), DoWrite = no
     ; CallType = cast(_), DoWrite = no
-    ; CallType = aditi_builtin(_, _), DoWrite = yes
     ).
 traverse_goal(switch(Var, CanFail, Cases0) - Info,
         switch(Var, CanFail, Cases) - Info, DoWrite, !Info) :-
@@ -692,8 +691,8 @@ add_proc_2(PredId, DoWrite, !Info) :-
 
 module_qualify_unify_rhs(_LHS, RHS @ var(_Var), RHS, yes, !Info).
 module_qualify_unify_rhs(_LHS,
-        lambda_goal(A,B,C,D,E,F,G,H,Goal0),
-        lambda_goal(A,B,C,D,E,F,G,H,Goal), DoWrite, !Info) :-
+        lambda_goal(A, B, C, D, E, F, G,Goal0),
+        lambda_goal(A, B, C, D, E, F, G,Goal), DoWrite, !Info) :-
     traverse_goal(Goal0, Goal, DoWrite, !Info).
 module_qualify_unify_rhs(_LHS, RHS @ functor(Functor, _Exist, _Vars),
         RHS, DoWrite, !Info) :-
@@ -1774,24 +1773,12 @@ should_output_marker(obsolete, no).
 should_output_marker(user_marked_inline, yes).
 should_output_marker(user_marked_no_inline, yes).
 should_output_marker(heuristic_inline, no).
-should_output_marker(dnf, yes).
-should_output_marker(aditi, yes).
-should_output_marker(base_relation, yes).
-should_output_marker(aditi_memo, yes).
-should_output_marker(aditi_no_memo, yes).
-should_output_marker(naive, yes).
-should_output_marker(psn, yes).
-should_output_marker(supp_magic, yes).
-should_output_marker(context, yes).
 should_output_marker(promised_pure, yes).
 should_output_marker(promised_semipure, yes).
 should_output_marker(terminates, yes).
 should_output_marker(does_not_terminate, yes).
     % Termination should only be checked in the defining module.
 should_output_marker(check_termination, no).
-should_output_marker(generate_inline, _) :-
-    % This marker should only occur after the magic sets transformation.
-    unexpected(this_file, "should_output_marker: generate_inline").
 should_output_marker(calls_are_fully_qualified, no).
 should_output_marker(mode_check_clauses, yes).
 

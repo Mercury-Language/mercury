@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1784,7 +1784,6 @@ clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
     pred_info_get_class_context(PredInfo0, ClassContext),
     pred_info_get_constraint_proofs(PredInfo0, ClassProofs),
     pred_info_get_constraint_map(PredInfo0, ClassConstraintMap),
-    pred_info_get_aditi_owner(PredInfo0, Owner),
     pred_info_get_origin(PredInfo0, OrigOrigin),
     pred_info_clauses_info(PredInfo0, ClausesInfo),
 
@@ -1801,7 +1800,7 @@ clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
     pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
         Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
         ExistQVars, ClassContext, ClassProofs, ClassConstraintMap,
-        Owner, ClausesInfo, PredInfo),
+        ClausesInfo, PredInfo),
 
     ModuleInfo0 = !.TableInfo ^ table_module_info,
     module_info_get_predicate_table(ModuleInfo0, PredTable0),
@@ -1844,13 +1843,11 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
         pred_info_get_exist_quant_tvars(PredInfo, PredExistQVars),
         pred_info_get_class_context(PredInfo, PredClassContext),
         pred_info_get_assertions(PredInfo, PredAssertions),
-        pred_info_get_aditi_owner(PredInfo, AditiOwner),
         pred_info_get_markers(PredInfo, Markers),
         pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext,
                 created(io_tabling), local, Markers, PredArgTypes,
                 PredTypeVarSet, PredExistQVars, PredClassContext,
-                PredAssertions, AditiOwner, NewProcInfo, NewProcId,
-                NewPredInfo),
+                PredAssertions, NewProcInfo, NewProcId, NewPredInfo),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
 		predicate_table_insert(NewPredInfo, NewPredId,
 			PredicateTable0, PredicateTable),
@@ -1886,16 +1883,6 @@ keep_marker(obsolete) = no.
 keep_marker(user_marked_inline) = no.
 keep_marker(user_marked_no_inline) = no.
 keep_marker(heuristic_inline) = no.
-keep_marker(dnf) = no.
-keep_marker(aditi) = no.                % consider calling error
-keep_marker(base_relation) = no.        % consider calling error
-keep_marker(naive) = no.                % consider calling error
-keep_marker(psn) = no.                  % consider calling error
-keep_marker(aditi_memo) = no.           % consider calling error
-keep_marker(aditi_no_memo) = no.        % consider calling error
-keep_marker(supp_magic) = no.           % consider calling error
-keep_marker(context) = no.              % consider calling error
-keep_marker(generate_inline) = no.      % consider calling error
 keep_marker(class_method) = no.
 keep_marker(class_instance_method) = no.
 keep_marker(named_class_instance_method) = no.

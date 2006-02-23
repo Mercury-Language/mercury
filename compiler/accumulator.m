@@ -1490,7 +1490,6 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     pred_info_context(OrigPredInfo, PredContext),
     pred_info_get_markers(OrigPredInfo, Markers),
     pred_info_get_class_context(OrigPredInfo, ClassContext),
-    pred_info_get_aditi_owner(OrigPredInfo, Owner),
     pred_info_get_origin(OrigPredInfo, OldOrigin),
 
     set__init(Assertions),
@@ -1508,7 +1507,7 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     Origin = transformed(accumulator(OutVarNums), OldOrigin, OrigPredId),
     pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
         local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
-        Assertions, Owner, NewProcInfo, NewProcId, NewPredInfo).
+        Assertions, NewProcInfo, NewProcId, NewPredInfo).
 
 %-----------------------------------------------------------------------------%
 

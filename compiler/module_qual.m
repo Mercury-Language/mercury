@@ -1097,16 +1097,6 @@ qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
     qualify_type_spec_subst(Subst0, Subst, !Info, !IO).
 qualify_pragma(X@fact_table(_, _, _), X, !Info, !IO).
 qualify_pragma(X@reserve_tag(_, _), X, !Info, !IO).
-qualify_pragma(X@aditi(_, _), X, !Info, !IO).
-qualify_pragma(X@base_relation(_, _), X, !Info, !IO).
-qualify_pragma(X@aditi_index(_, _, _), X, !Info, !IO).
-qualify_pragma(X@supp_magic(_, _), X, !Info, !IO).
-qualify_pragma(X@context(_, _), X, !Info, !IO).
-qualify_pragma(X@aditi_memo(_, _), X, !Info, !IO).
-qualify_pragma(X@aditi_no_memo(_, _), X, !Info, !IO).
-qualify_pragma(X@naive(_, _), X, !Info, !IO).
-qualify_pragma(X@psn(_, _), X, !Info, !IO).
-qualify_pragma(X@owner(_, _, _), X, !Info, !IO).
 qualify_pragma(X@promise_pure(_, _), X, !Info, !IO).
 qualify_pragma(X@promise_semipure(_, _), X, !Info, !IO).
 qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term),

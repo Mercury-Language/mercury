@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -66,7 +66,6 @@
 
 :- implementation.
 
-:- import_module aditi_backend.rl.
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
@@ -309,10 +308,6 @@ call_gen__generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
         SpecifierArgInfos = [],
         FirstImmediateInputReg = 1,
         HoCallVariant = unknown     % dummy; not used
-    ;
-        GenericCall = aditi_builtin(_, _),
-        % These should have been transformed into normal calls.
-        unexpected(this_file, "generic_call_info: aditi_builtin")
     ).
 
     % Some of the values that generic call passes to the dispatch routine
@@ -367,9 +362,6 @@ call_gen__generic_call_nonvar_setup(class_method(_, Method, _, _),
     ).
 call_gen__generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
     unexpected(this_file, "generic_call_nonvar_setup: cast").
-call_gen__generic_call_nonvar_setup(aditi_builtin(_, _), _, _, _, _, !CI) :-
-    % These should have been transformed into normal calls.
-    unexpected(this_file, "generic_call_nonvar_setup: aditi_builtin").
 
 %---------------------------------------------------------------------------%
 

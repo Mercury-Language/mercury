@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -167,11 +167,9 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         purity_to_markers(Purity, PurityMarkers),
         markers_to_marker_list(PurityMarkers, MarkersList),
         list__foldl(add_marker, MarkersList, Markers0, Markers),
-        globals__io_lookup_string_option(aditi_user, Owner, !IO),
         pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
             user(PredName), Status, none, Markers, Types, TVarSet, ExistQVars,
-            ClassContext, Proofs, ConstraintMap, Owner, ClausesInfo,
-            PredInfo0),
+            ClassContext, Proofs, ConstraintMap, ClausesInfo, PredInfo0),
         (
             predicate_table_search_pf_m_n_a(PredTable0,
                 is_fully_qualified, PredOrFunc, MNameOfPred,
@@ -416,11 +414,9 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
         % Existential types must be declared, they won't be inferred.
     ExistQVars = [],
     init_markers(Markers0),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals__lookup_string_option(Globals, aditi_user, Owner),
     pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
         Origin, Status, none, Markers0, Types, TVarSet, ExistQVars,
-        ClassContext, Proofs, ConstraintMap, Owner, ClausesInfo, PredInfo0),
+        ClassContext, Proofs, ConstraintMap, ClausesInfo, PredInfo0),
     add_marker(infer_type, Markers0, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
     (

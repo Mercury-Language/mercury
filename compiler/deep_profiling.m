@@ -115,8 +115,6 @@ apply_tail_recursion_to_proc(PredProcId, !ModuleInfo) :-
     proc_info_goal(ProcInfo0, Goal0),
     proc_info_interface_determinism(ProcInfo0, Detism),
     (
-        % Don't transform Aditi procedures; we can't profile them.
-        \+ hlds_pred__pred_info_is_aditi_relation(PredInfo0),
         determinism_components(Detism, _CanFail, SolnCount),
         SolnCount \= at_most_many,
         proc_info_headvars(ProcInfo0, HeadVars),
@@ -453,11 +451,6 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
         % managing the deep profiling call graph, or we'd get
         % infinite recursion.
         mercury_profiling_builtin_module(PredModuleName)
-    ->
-        true
-    ;
-        % Don't transform Aditi procedures; we can't profile them.
-        hlds_pred__is_aditi_relation(ModuleInfo, PredId)
     ->
         true
     ;
@@ -1028,9 +1021,6 @@ transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
         GenericCall = cast(_),
         GoalAndInfo = Goal0 - GoalInfo0,
         AddedImpurity = no
-    ;
-        GenericCall = aditi_builtin(_, _),
-        unexpected(this_file, "deep_profiling__transform_call: aditi_builtin")
     ).
 
 :- pred transform_conj(int::in, goal_path::in,
@@ -1156,15 +1146,12 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
             Generic = higher_order(ClosureVar, _, _, _),
             generate_call(ModuleInfo, "prepare_for_ho_call", 2,
                 [SiteNumVar, ClosureVar], [], PrepareGoal),
-            CallSite = higher_order_call(FileName, LineNumber,
-                GoalPath)
+            CallSite = higher_order_call(FileName, LineNumber, GoalPath)
         ;
-            Generic = class_method(TypeClassInfoVar, MethodNum,
-                _, _),
+            Generic = class_method(TypeClassInfoVar, MethodNum, _, _),
             varset__new_named_var(!.DeepInfo ^ vars, "MethodNum",
                 MethodNumVar, VarSet2),
-            map__set(!.DeepInfo ^ var_types, MethodNumVar, IntType,
-                VarTypes2),
+            map__set(!.DeepInfo ^ var_types, MethodNumVar, IntType, VarTypes2),
             generate_unify(int_const(MethodNum), MethodNumVar,
                 MethodNumVarGoal),
             !:DeepInfo = ((!.DeepInfo ^ vars := VarSet2)
@@ -1181,9 +1168,6 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
         ;
             Generic = cast(_),
             unexpected(this_file, "deep_profiling__wrap_call: cast")
-        ;
-            Generic = aditi_builtin(_, _),
-            unexpected(this_file, "deep_profiling__wrap_call: aditi_builtin")
         ),
         goal_info_get_code_model(GoalInfo0, GoalCodeModel),
         module_info_get_globals(ModuleInfo, Globals),

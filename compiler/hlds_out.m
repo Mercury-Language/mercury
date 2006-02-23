@@ -55,8 +55,6 @@
 :- pred write_cons_id(cons_id::in, io::di, io::uo) is det.
 :- func cons_id_to_string(cons_id) = string.
 
-:- pred aditi_builtin_name(aditi_builtin::in, string::out) is det.
-
     % write_pred_id/4 writes out a message such as
     %       predicate `foo:bar/3'
     % or    function `foo:myfoo/5'
@@ -433,9 +431,6 @@ generic_call_id_to_string(class_method(_ClassId, MethodId)) =
     simple_call_id_to_string(MethodId).
 generic_call_id_to_string(cast(CastType)) =
     cast_type_to_string(CastType).
-generic_call_id_to_string(aditi_builtin(AditiBuiltin, CallId)) = Str :-
-    aditi_builtin_name(AditiBuiltin, Name),
-    Str = "`" ++ Name ++ "' of " ++ simple_call_id_to_string(CallId).
 
 :- func cast_type_to_string(cast_type) = string.
 
@@ -526,38 +521,6 @@ arg_number_to_string(generic_call(class_method(_, _)), ArgNum) =
     "argument " ++ int_to_string(ArgNum).
 arg_number_to_string(generic_call(cast(_)), ArgNum) =
     "argument " ++ int_to_string(ArgNum).
-arg_number_to_string(generic_call(aditi_builtin(Builtin, CallId)), ArgNum) =
-    aditi_builtin_arg_number_to_string(Builtin, CallId, ArgNum).
-
-:- pred write_aditi_builtin_arg_number(aditi_builtin::in,
-    simple_call_id::in, int::in, io::di, io::uo) is det.
-
-write_aditi_builtin_arg_number(Builtin, SimpleCallId, ArgNum, !IO) :-
-    Str = aditi_builtin_arg_number_to_string(Builtin, SimpleCallId, ArgNum),
-    io__write_string(Str, !IO).
-
-:- func aditi_builtin_arg_number_to_string(aditi_builtin, simple_call_id, int)
-    = string.
-
-aditi_builtin_arg_number_to_string(aditi_tuple_update(InsertDelete, _),
-        _ - _/Arity, ArgNum) = Str :-
-    ( ArgNum =< Arity ->
-        ( InsertDelete = insert, OpStr = "inserted"
-        ; InsertDelete = delete, OpStr = "deleted"
-        ),
-        Str = "argument " ++ int_to_string(ArgNum) ++
-            " of the " ++ OpStr ++ " tuple"
-    ;
-        Str = "argument " ++ int_to_string(ArgNum - Arity + 1)
-    ).
-aditi_builtin_arg_number_to_string(aditi_bulk_update(_, _, pred_term),
-        _, ArgNum) = Str :-
-    Str = "argument " ++ int_to_string(ArgNum).
-aditi_builtin_arg_number_to_string(
-        aditi_bulk_update(_, _, sym_name_and_closure), _, ArgNum) = Str :-
-    % The original goal had a sym_name/arity
-    % at the front of the argument list.
-    Str = "argument " ++ int_to_string(ArgNum + 1).
 
 %-----------------------------------------------------------------------------%
 
@@ -851,7 +814,6 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     pred_info_get_purity(PredInfo, Purity),
     pred_info_get_head_type_params(PredInfo, HeadTypeParams),
-    pred_info_get_indexes(PredInfo, Indexes),
     globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
     ( string__contains_char(Verbose, 'v') ->
         AppendVarNums = yes
@@ -914,20 +876,6 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
         ;
             write_constraint_map(Indent, TVarSet, ConstraintMap, AppendVarNums,
                 !IO)
-        ),
-
-        % XXX The indexes are not part of the clauses_info,
-        % so why is this code inside this if-then-else
-        % with the condition `string__contains_char(Verbose, 'C')'?
-        % Shouldn't it be dependent on a different letter?
-
-        (
-            Indexes = []
-        ;
-            Indexes = [_ | _],
-            io__write_string("% indexes: ", !IO),
-            io__write_list(Indexes, ", ", mercury_output_index_spec, !IO),
-            io__nl(!IO)
         ),
 
         (
@@ -1049,7 +997,6 @@ marker_name(infer_modes, "infer_modes").
 marker_name(user_marked_inline, "inline").
 marker_name(user_marked_no_inline, "no_inline").
 marker_name(heuristic_inline, "heuristic_inline").
-marker_name(dnf, "dnf").
 marker_name(obsolete, "obsolete").
 marker_name(class_method, "class_method").
 marker_name(class_instance_method, "class_instance_method").
@@ -1061,15 +1008,6 @@ marker_name(promised_semipure, "promise_semipure").
 marker_name(terminates, "terminates").
 marker_name(check_termination, "check_termination").
 marker_name(does_not_terminate, "does_not_terminate").
-marker_name(aditi, "aditi").
-marker_name(base_relation, "base_relation").
-marker_name(generate_inline, "generate_inline").
-marker_name(aditi_memo, "aditi_memo").
-marker_name(aditi_no_memo, "aditi_no_memo").
-marker_name(naive, "naive").
-marker_name(psn, "psn").
-marker_name(supp_magic, "supp_magic").
-marker_name(context, "context").
 marker_name(calls_are_fully_qualified, "calls_are_fully_qualified").
 marker_name(mode_check_clauses, "mode_check_clauses").
 
@@ -1675,7 +1613,7 @@ write_goal_2(disj(List), ModuleInfo, VarSet, AppendVarNums,
     ).
 
 write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
-        ModuleInfo, VarSet, AppendVarNums, Indent, Follow, _, !IO) :-
+        _ModuleInfo, VarSet, AppendVarNums, Indent, Follow, _, !IO) :-
     % XXX we should print more info here
     (
         GenericCall = higher_order(PredVar, Purity, PredOrFunc, _),
@@ -1755,11 +1693,6 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         write_indent(Indent, !IO),
         mercury_output_term(Term, VarSet, AppendVarNums, !IO),
         io__write_string(Follow, !IO)
-    ;
-        GenericCall = aditi_builtin(AditiBuiltin, CallId),
-        write_indent(Indent, !IO),
-        write_aditi_builtin(ModuleInfo, AditiBuiltin, CallId, ArgVars, VarSet,
-            AppendVarNums, Indent, Follow, !IO)
     ).
 
 write_goal_2(call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
@@ -2209,85 +2142,6 @@ write_var_name_list([Var1 - Name1, VarName2 | Vars], !IO) :-
     io__write_string(", ", !IO),
     write_var_name_list([VarName2 | Vars], !IO).
 
-:- pred write_aditi_builtin(module_info::in, aditi_builtin::in,
-    simple_call_id::in, list(prog_var)::in, prog_varset::in, bool::in,
-    int::in, string::in, io::di, io::uo) is det.
-
-write_aditi_builtin(_ModuleInfo, aditi_tuple_update(InsertDelete, PredId),
-        CallId, ArgVars, VarSet, AppendVarNums, Indent, Follow, !IO) :-
-    % make_hlds.m checks the arity so this cannot fail.
-    get_state_args_det(ArgVars, Args, State0Var, StateVar),
-    write_indent(Indent, !IO),
-    (
-        InsertDelete = insert,
-        io__write_string("aditi_insert(", !IO)
-    ;
-        InsertDelete = delete,
-        io__write_string("aditi_delete(", !IO)
-    ),
-    CallId = PredOrFunc - SymName / _,
-    (
-        PredOrFunc = predicate,
-        write_sym_name_and_args(SymName, Args, VarSet, AppendVarNums, !IO)
-    ;
-        PredOrFunc = function,
-        pred_args_to_func_args(Args, FuncArgs, RetArg),
-        io__write_string("(", !IO),
-        write_sym_name_and_args(SymName, FuncArgs, VarSet,
-            AppendVarNums, !IO),
-        io__write_string(" = ", !IO),
-        mercury_output_var(RetArg, VarSet, AppendVarNums, !IO),
-        io__write_string(")", !IO)
-    ),
-    io__write_string(", ", !IO),
-    mercury_output_var(State0Var, VarSet, AppendVarNums, !IO),
-    io__write_string(", ", !IO),
-    mercury_output_var(StateVar, VarSet, AppendVarNums, !IO),
-    io__write_string(")", !IO),
-    io__write_string(Follow, !IO),
-    io__nl(!IO),
-    write_aditi_builtin_pred_id(Indent, PredId, !IO).
-
-write_aditi_builtin(_ModuleInfo, Builtin, CallId, ArgVars, VarSet,
-        AppendVarNums, Indent, Follow, !IO) :-
-    Builtin = aditi_bulk_update(_, PredId, _Syntax),
-    write_indent(Indent, !IO),
-    aditi_builtin_name(Builtin, UpdateName),
-    io__write_string(UpdateName, !IO),
-    io__write_string("(", !IO),
-    CallId = PredOrFunc - _,
-    PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
-    io__write_string(PredOrFuncStr, !IO),
-    io__write_string(" ", !IO),
-    simple_call_id_to_sym_name_and_arity(CallId, SymArity),
-    prog_out__write_sym_name_and_arity(SymArity, !IO),
-    io__write_string(", ", !IO),
-    mercury_output_vars(ArgVars, VarSet, AppendVarNums, !IO),
-    io__write_string(")", !IO),
-    io__write_string(Follow, !IO),
-    io__nl(!IO),
-    write_aditi_builtin_pred_id(Indent, PredId, !IO).
-
-:- pred write_aditi_builtin_pred_id(int::in, pred_id::in,
-    io::di, io::uo) is det.
-
-write_aditi_builtin_pred_id(Indent, PredId, !IO) :-
-    write_indent(Indent, !IO),
-    io__write_string("% Update of pred_id: ", !IO),
-    pred_id_to_int(PredId, PredInt),
-    io__write_int(PredInt, !IO),
-    io__write_string(".\n", !IO).
-
-aditi_builtin_name(aditi_tuple_update(_, _), "aditi_insert").
-aditi_builtin_name(aditi_bulk_update(Update, _, _), Name) :-
-    aditi_bulk_update_name(Update, Name).
-
-:- pred aditi_bulk_update_name(aditi_bulk_update::in, string::out) is det.
-
-aditi_bulk_update_name(bulk_insert, "aditi_bulk_insert").
-aditi_bulk_update_name(bulk_delete, "aditi_bulk_delete").
-aditi_bulk_update_name(bulk_modify, "aditi_bulk_modify").
-
 :- pred write_unification(unification::in, module_info::in, prog_varset::in,
     inst_varset::in, bool::in, int::in, io::di, io::uo) is det.
 
@@ -2509,22 +2363,14 @@ write_unify_rhs_3(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
     ;
         true
     ).
-write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocals,
-        Vars, Modes, Det, Goal), ModuleInfo, VarSet, InstVarSet, AppendVarNums,
-        Indent, MaybeType, TypeQual, !IO) :-
+write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
+        Vars, Modes, Det, Goal), ModuleInfo, VarSet, InstVarSet,
+        AppendVarNums, Indent, MaybeType, TypeQual, !IO) :-
     Indent1 = Indent + 1,
     write_purity_prefix(Purity, !IO),
     (
-        EvalMethod = lambda_normal,
-        EvalStr = ""
-    ;
-        EvalMethod = lambda_aditi_bottom_up,
-        EvalStr = "aditi_bottom_up "
-    ),
-    (
         PredOrFunc = predicate,
         io__write_string("(", !IO),
-        io__write_string(EvalStr, !IO),
         (
             Vars = [],
             io__write_string("(pred)", !IO)
@@ -2547,7 +2393,6 @@ write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocals,
         pred_args_to_func_args(Modes, ArgModes, RetMode),
         pred_args_to_func_args(Vars, ArgVars, RetVar),
         io__write_string("(", !IO),
-        io__write_string(EvalStr, !IO),
         (
             ArgVars = [],
             io__write_string("(func)", !IO)
@@ -2607,7 +2452,7 @@ unify_rhs_to_string(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
     ),
     Str = functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo,
         AppendVarNums).
-unify_rhs_to_string(lambda_goal(_, _, _, _, _, _, _, _, _), _, _, _)
+unify_rhs_to_string(lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
     = "lambda goal".
 
 :- pred write_sym_name_and_args(sym_name::in, list(prog_var)::in,

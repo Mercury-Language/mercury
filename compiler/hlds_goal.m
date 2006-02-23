@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,8 +91,6 @@
                                     % The modes of the argument variables.
                                     % For higher_order calls, this field
                                     % is junk until after mode analysis.
-                                    % For aditi_builtins, this field
-                                    % is junk until after purity checking.
 
                 gcall_detism        :: determinism
                                     % The determinism of the call.
@@ -379,14 +377,9 @@
                 simple_call_id  % name of the called method
             )
 
-    ;       cast(cast_type)
+    ;       cast(cast_type).
             % cast(Input, Output): Assigns `Input' to `Output', performing
             % a type and/or inst cast.
-
-    ;       aditi_builtin(
-                aditi_builtin,
-                simple_call_id
-            ).
 
     % The various kinds of casts that we can do.
     %
@@ -445,7 +438,6 @@
                 rhs_eval_method     :: lambda_eval_method,
                                     % Should be `normal' except for
                                     % closures executed by Aditi.
-                rhs_aditi           :: fix_aditi_state_modes,
                 rhs_nonlocals       :: list(prog_var),
                                     % Non-locals of the goal excluding
                                     % the lambda quantified variables.
@@ -1360,16 +1352,6 @@
                             %       X = 1)
                             %    )
 
-    % For lambda expressions built automatically for Aditi updates
-    % the modes of `aditi__state' arguments may need to be fixed
-    % by purity.m because make_hlds.m does not know which relation
-    % is being updated, so it doesn't know which are the `aditi__state'
-    % arguments.
-    %
-:- type fix_aditi_state_modes
-    --->    modes_need_fixing
-    ;       modes_are_ok.
-
 %-----------------------------------------------------------------------------%
 %
 % Stuff specific to a back-end. At the moment, only the LLDS back-end
@@ -1447,15 +1429,11 @@ hlds_goal__generic_call_id(higher_order(_, Purity, PorF, Arity),
 hlds_goal__generic_call_id(class_method(_, _, ClassId, MethodId),
         generic_call(class_method(ClassId, MethodId))).
 hlds_goal__generic_call_id(cast(CastType), generic_call(cast(CastType))).
-hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
-        generic_call(aditi_builtin(Builtin, Name))).
 
 generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
 generic_call_pred_or_func(class_method(_, _, _, CallId)) =
     simple_call_id_pred_or_func(CallId).
 generic_call_pred_or_func(cast(_)) = predicate.
-generic_call_pred_or_func(aditi_builtin(_, CallId)) =
-    simple_call_id_pred_or_func(CallId).
 
 :- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -72,13 +72,6 @@
     %
 :- pred parse_func_expression(term::in, lambda_eval_method::out,
     list(prog_term)::out, list(mer_mode)::out, determinism::out) is semidet.
-
-    % parse_lambda_eval_method/3 extracts the `aditi_bottom_up'
-    % annotation (if any) from a pred expression and returns the
-    % rest of the term.
-    %
-:- pred parse_lambda_eval_method(term(T)::in, lambda_eval_method::out,
-    term(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -329,31 +322,28 @@ parse_lambda_arg(Term, ArgTerm, Mode) :-
 % Code for parsing pred/func expressions
 %
 
-parse_pred_expression(PredTerm, EvalMethod, Args, Modes, Det) :-
-    PredTerm = term__functor(term__atom("is"), [PredEvalArgsTerm, DetTerm], _),
+parse_pred_expression(PredTerm, lambda_normal, Args, Modes, Det) :-
+    PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
     DetTerm = term__functor(term__atom(DetString), [], _),
     standard_det(DetString, Det),
-    parse_lambda_eval_method(PredEvalArgsTerm, EvalMethod, PredArgsTerm),
     PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
     parse_pred_expr_args(PredArgsList, Args, Modes),
     inst_var_constraints_are_consistent_in_modes(Modes).
 
-parse_dcg_pred_expression(PredTerm, EvalMethod, Args, Modes, Det) :-
-    PredTerm = term__functor(term__atom("is"), [PredEvalArgsTerm, DetTerm], _),
+parse_dcg_pred_expression(PredTerm, lambda_normal, Args, Modes, Det) :-
+    PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
     DetTerm = term__functor(term__atom(DetString), [], _),
     standard_det(DetString, Det),
-    parse_lambda_eval_method(PredEvalArgsTerm, EvalMethod, PredArgsTerm),
     PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
     parse_dcg_pred_expr_args(PredArgsList, Args, Modes),
     inst_var_constraints_are_consistent_in_modes(Modes).
 
-parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
+parse_func_expression(FuncTerm, lambda_normal, Args, Modes, Det) :-
     % Parse a func expression with specified modes and determinism.
     FuncTerm = term__functor(term__atom("is"), [EqTerm, DetTerm], _),
-    EqTerm = term__functor(term__atom("="), [FuncEvalArgsTerm, RetTerm], _),
+    EqTerm = term__functor(term__atom("="), [FuncArgsTerm, RetTerm], _),
     DetTerm = term__functor(term__atom(DetString), [], _),
     standard_det(DetString, Det),
-    parse_lambda_eval_method(FuncEvalArgsTerm, EvalMethod, FuncArgsTerm),
     FuncArgsTerm = term__functor(term__atom("func"), FuncArgsList, _),
 
     ( parse_pred_expr_args(FuncArgsList, Args0, Modes0) ->
@@ -374,14 +364,12 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
         list__map(term__coerce, Args1, Args)
     ).
 
-parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
+parse_func_expression(FuncTerm, lambda_normal, Args, Modes, Det) :-
     % Parse a func expression with unspecified modes and determinism.
-    FuncTerm = term__functor(term__atom("="), [FuncEvalArgsTerm, RetTerm], _),
-    parse_lambda_eval_method(FuncEvalArgsTerm, EvalMethod, FuncArgsTerm),
+    FuncTerm = term__functor(term__atom("="), [FuncArgsTerm, RetTerm], _),
     FuncArgsTerm = term__functor(term__atom("func"), Args0, _),
 
-    % The argument modes default to `in',
-    % the return mode defaults to `out',
+    % The argument modes default to `in', the return mode defaults to `out',
     % and the determinism defaults to `det'.
     in_mode(InMode),
     out_mode(OutMode),
@@ -393,20 +381,6 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
     inst_var_constraints_are_consistent_in_modes(Modes),
     list__append(Args0, [RetTerm], Args1),
     list__map(term__coerce, Args1, Args).
-
-parse_lambda_eval_method(Term0, EvalMethod, Term) :-
-    ( Term0 = term__functor(term__atom(MethodStr), [Term1], _) ->
-        ( MethodStr = "aditi_bottom_up" ->
-            EvalMethod = lambda_aditi_bottom_up,
-            Term = Term1
-        ;
-            EvalMethod = lambda_normal,
-            Term = Term0
-        )
-    ;
-        EvalMethod = lambda_normal,
-        Term = Term0
-    ).
 
 :- pred parse_pred_expr_args(list(term)::in, list(prog_term)::out,
     list(mer_mode)::out) is semidet.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 
 :- import_module list.
 
-    % ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
+    % ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes,
     %   HowToConstruct, Context, Decls, Statements):
     %
     % Generate code to construct a closure for the procedure specified
@@ -33,10 +33,10 @@
     % by ArgVars (and ArgModes), and to store the pointer to the resulting
     % closure in Var.
     %
-:- pred ml_gen_closure(pred_id::in, proc_id::in, lambda_eval_method::in,
-    prog_var::in, prog_vars::in, list(uni_mode)::in, how_to_construct::in,
-    prog_context::in, mlds__defns::out, statements::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_closure(pred_id::in, proc_id::in, prog_var::in, prog_vars::in,
+    list(uni_mode)::in, how_to_construct::in, prog_context::in,
+    mlds__defns::out, statements::out, ml_gen_info::in, ml_gen_info::out)
+    is det.
 
     % ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
     %   Context, WrapperFuncRval, WrapperFuncType):
@@ -96,10 +96,10 @@
 % so ideally they should not be used here.
 :- import_module ll_backend.
 :- import_module ll_backend.continuation_info. % needed for
-                                                % `generate_closure_layout'
+                                               % `generate_closure_layout'
 :- import_module ll_backend.llds.              % needed for `layout_locn'
 :- import_module ll_backend.stack_layout.      % needed for
-                                                % `represent_locn_as_int'
+                                               % `represent_locn_as_int'
 
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_unify_gen.
@@ -114,21 +114,13 @@
 :- import_module string.
 :- import_module term.
 
-ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
-        HowToConstruct, Context, Decls, Statements, !Info) :-
+ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
+        Decls, Statements, !Info) :-
     % This constructs a closure.
     % The representation of closures for the LLDS backend is defined in
     % runtime/mercury_ho_call.h.
     % XXX should we use a different representation for closures
     % in the MLDS backend?
-
-    (
-        EvalMethod = lambda_normal
-    ;
-        EvalMethod = lambda_aditi_bottom_up,
-        % These are transformed away by aditi_builtin_ops.m.
-        sorry(this_file, "`aditi_bottom_up' closures")
-    ),
 
     % Generate a value for the closure layout; this is a static constant
     % that holds information about how the structure of this closure.
@@ -190,8 +182,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_closure_layout(PredId, ProcId, Context,
-        ClosureLayoutRval, ClosureLayoutType,
-        ClosureLayoutDefns, !Info) :-
+        ClosureLayoutRval, ClosureLayoutType, ClosureLayoutDefns, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     continuation_info__generate_closure_layout(ModuleInfo, PredId, ProcId,
         ClosureLayoutInfo),

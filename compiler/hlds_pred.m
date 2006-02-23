@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -132,8 +132,7 @@
 :- type generic_call_id
     --->    higher_order(purity, pred_or_func, arity)
     ;       class_method(class_id, simple_call_id)
-    ;       cast(cast_type)
-    ;       aditi_builtin(aditi_builtin, simple_call_id).
+    ;       cast(cast_type).
 
 :- type pred_proc_list  ==  list(pred_proc_id).
 
@@ -1166,44 +1165,6 @@ add_clause(Clause, !ClausesRep) :-
                         % that this predicate be inlined. Does not override
                         % user_marked_no_inline.
 
-    % The default flags for Aditi predicates are
-    % aditi, dnf, supp_magic, psn and memo.
-
-    ;       dnf         % Requests that this predicate be transformed into
-                        % disjunctive normal form.
-
-    ;       aditi       % Generate bottom-up Aditi-RL for this predicate.
-
-    ;       base_relation   % This predicate is an Aditi base relation.
-
-    % `naive' and `psn' are mutually exclusive.
-    ;       naive       % Use naive evaluation of this Aditi predicate.
-    ;       psn         % Use predicate semi-naive evaluation of this
-                        % Aditi predicate.
-
-    ;       aditi_memo  % Requests that this Aditi predicate be evaluated using
-                        % memoing. This has no relation to eval_method field
-                        % of the pred_info, which is ignored for Aditi
-                        % predicates.
-    ;       aditi_no_memo % Ensure that this Aditi predicate is not memoed.
-
-    % `context' and `supp_magic' are mutually exclusive. One of them must be
-    % performed on all Aditi predicates. `supp_magic' is the default.
-
-    ;       supp_magic  % Perform the supplementary magic sets transformation
-                        % on this predicate. See magic.m
-    ;       context     % Perform the context transformation on the predicate.
-                        % See context.m
-
-    ;       generate_inline
-                        % Used for small Aditi predicates which project a
-                        % relation to be used as input to a call to an Aditi
-                        % predicate in a lower SCC. The goal for the predicate
-                        % should consist of fail, true or a single rule.
-                        % These relations are never memoed. The reason for this
-                        % marker is explained where it is introduced in
-                        % magic_util__create_closure.
-
     ;       class_method
                         % Requests that this predicate be transformed into
                         % the appropriate call to a class method.
@@ -1277,10 +1238,6 @@ add_clause(Clause, !ClausesRep) :-
                         % with this predicate in the underlying
                         % implementation.
 
-    % Aditi predicates are identified by their owner as well as
-    % module, name and arity.
-:- type aditi_owner == string.
-
 :- type pred_transformation
     --->    higher_order_specialization(
                 int % Sequence number among the higher order
@@ -1327,12 +1284,7 @@ add_clause(Clause, !ClausesRep) :-
             ).
 
 :- type pred_creation
-    --->    aditi_magic
-    ;       aditi_magic_interface
-    ;       aditi_magic_supp
-    ;       aditi_join
-    ;       aditi_rl_exprn
-    ;       deforestation
+    --->    deforestation
                 % I/O tabling will create a new predicate if the predicate
                 % to be I/O tabled must not be inlined.
     ;       io_tabling.
@@ -1352,8 +1304,7 @@ add_clause(Clause, !ClausesRep) :-
                 % arguments.
     ;       created(pred_creation)
                 % The predicate was created by the compiler, and there is no
-                % information available on where it came from. (Mostly because
-                % such relationships are fuzzy in the Aditi backend.)
+                % information available on where it came from.
     ;       assertion(string, int)
                 % The predicate represents an assertion.
     ;       lambda(string, int, int)
@@ -1377,8 +1328,7 @@ add_clause(Clause, !ClausesRep) :-
     pred_or_func::in, prog_context::in, pred_origin::in, import_status::in,
     goal_type::in, pred_markers::in, list(mer_type)::in, tvarset::in,
     existq_tvars::in, prog_constraints::in, constraint_proof_map::in,
-    constraint_map::in, aditi_owner::in, clauses_info::in,
-    pred_info::out) is det.
+    constraint_map::in, clauses_info::in, pred_info::out) is det.
 
     % pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin,
     %   Status, Markers, TypeVarSet, ExistQVars, ArgTypes,
@@ -1392,13 +1342,12 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
     prog_context::in, pred_origin::in, import_status::in, pred_markers::in,
     list(mer_type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
-    set(assert_id)::in, aditi_owner::in, proc_info::in, proc_id::out,
-    pred_info::out) is det.
+    set(assert_id)::in, proc_info::in, proc_id::out, pred_info::out) is det.
 
     % define_new_pred(Origin, Goal, CallGoal, Args, ExtraArgs,
     %   InstMap, PredName, TVarSet, VarTypes, ClassContext,
-    %   TVarMap, TCVarMap, VarSet, Markers, Owner, IsAddressTaken,
-    %   ModuleInfo0, ModuleInfo, PredProcId)
+    %   TVarMap, TCVarMap, VarSet, Markers, IsAddressTaken,
+    %   !ModuleInfo, PredProcId)
     %
     % Create a new predicate for the given goal, returning a goal to
     % call the created predicate. ExtraArgs is the list of extra
@@ -1409,9 +1358,8 @@ add_clause(Clause, !ClausesRep) :-
     hlds_goal::in, hlds_goal::out, list(prog_var)::in, list(prog_var)::out,
     instmap::in, string::in, tvarset::in, vartypes::in,
     prog_constraints::in, rtti_varmaps::in, prog_varset::in,
-    inst_varset::in, pred_markers::in, aditi_owner::in,
-    is_address_taken::in, module_info::in, module_info::out,
-    pred_proc_id::out) is det.
+    inst_varset::in, pred_markers::in, is_address_taken::in,
+    module_info::in, module_info::out, pred_proc_id::out) is det.
 
     % Various predicates for accessing the information stored in the
     % pred_id and pred_info data structures.
@@ -1459,8 +1407,6 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_get_unproven_body_constraints(pred_info::in,
     list(prog_constraint)::out) is det.
 :- pred pred_info_get_assertions(pred_info::in, set(assert_id)::out) is det.
-:- pred pred_info_get_aditi_owner(pred_info::in, string::out) is det.
-:- pred pred_info_get_indexes(pred_info::in, list(index_spec)::out) is det.
 :- pred pred_info_clauses_info(pred_info::in, clauses_info::out) is det.
 :- pred pred_info_procedures(pred_info::in, proc_table::out) is det.
 
@@ -1499,10 +1445,6 @@ add_clause(Clause, !ClausesRep) :-
 :- pred pred_info_set_unproven_body_constraints(list(prog_constraint)::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_assertions(set(assert_id)::in,
-    pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_aditi_owner(string::in, pred_info::in, pred_info::out)
-    is det.
-:- pred pred_info_set_indexes(list(index_spec)::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_clauses_info(clauses_info::in,
     pred_info::in, pred_info::out) is det.
@@ -1869,15 +1811,6 @@ calls_are_fully_qualified(Markers) =
         assertions          :: set(assert_id),
                             % List of assertions which mention this predicate.
 
-        aditi_owner         :: aditi_owner,
-                            % The owner of this predicate if it is an Aditi
-                            % predicate. Set to the value of --aditi-user
-                            % if no `:- pragma owner' declaration exists.
-
-        indexes             :: list(index_spec),
-                            % Indexes if this predicate is an Aditi base
-                            % relation, ignored otherwise.
-
         clauses_info        :: clauses_info,
 
         procedures          :: proc_table
@@ -1885,7 +1818,7 @@ calls_are_fully_qualified(Markers) =
 
 pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
         Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
-        ClassContext, ClassProofs, ClassConstraintMap, User,
+        ClassContext, ClassProofs, ClassConstraintMap,
         ClausesInfo, PredInfo) :-
     unqualify_name(SymName, PredName),
     sym_name_get_module_name(SymName, ModuleName, PredModuleName),
@@ -1898,18 +1831,17 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
     map__init(ExistQVarBindings),
     UnprovenBodyConstraints = [],
     set__init(Assertions),
-    Indexes = [],
     map__init(Procs),
     PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Context, Origin, Status, GoalType, Markers, Attributes,
         ArgTypes, TypeVarSet, TypeVarSet, Kinds, ExistQVars, ExistQVarBindings,
         HeadTypeParams, ClassContext, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [],
-        Assertions, User, Indexes, ClausesInfo, Procs).
+        Assertions, ClausesInfo, Procs).
 
 pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
         Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
-        Assertions, User, ProcInfo, ProcId, PredInfo) :-
+        Assertions, ProcInfo, ProcId, PredInfo) :-
     list__length(ArgTypes, Arity),
     proc_info_varset(ProcInfo, VarSet),
     proc_info_vartypes(ProcInfo, VarTypes),
@@ -1925,7 +1857,6 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     map__init(Kinds),
     map__init(ExistQVarBindings),
     UnprovenBodyConstraints = [],
-    Indexes = [],
 
     % The empty list of clauses is a little white lie.
     Clauses = forw([]),
@@ -1944,11 +1875,11 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
         ArgTypes, TypeVarSet, TypeVarSet, Kinds, ExistQVars, ExistQVarBindings,
         HeadTypeParams, ClassContext, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [], Assertions,
-        User, Indexes, ClausesInfo, Procs).
+        ClausesInfo, Procs).
 
 define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
         InstMap0, PredName, TVarSet, VarTypes0, ClassContext,
-        RttiVarMaps, VarSet0, InstVarSet, Markers, Owner,
+        RttiVarMaps, VarSet0, InstVarSet, Markers,
         IsAddressTaken, ModuleInfo0, ModuleInfo, PredProcId) :-
     Goal0 = _GoalExpr - GoalInfo,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
@@ -2011,7 +1942,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 
     pred_info_create(ModuleName, SymName, predicate, Context, Origin,
         ExportStatus, Markers, ArgTypes, TVarSet, ExistQVars,
-        ClassContext, Assertions, Owner, ProcInfo, ProcId, PredInfo),
+        ClassContext, Assertions, ProcInfo, ProcId, PredInfo),
 
     module_info_get_predicate_table(ModuleInfo0, PredTable0),
     predicate_table_insert(PredInfo, PredId, PredTable0, PredTable),
@@ -2060,8 +1991,6 @@ pred_info_get_constraint_proofs(PI, PI ^ constraint_proofs).
 pred_info_get_constraint_map(PI, PI ^ constraint_map).
 pred_info_get_unproven_body_constraints(PI, PI ^ unproven_body_constraints).
 pred_info_get_assertions(PI, PI ^ assertions).
-pred_info_get_aditi_owner(PI, PI ^ aditi_owner).
-pred_info_get_indexes(PI, PI ^ indexes).
 pred_info_clauses_info(PI, PI ^ clauses_info).
 pred_info_procedures(PI, PI ^ procedures).
 
@@ -2081,8 +2010,6 @@ pred_info_set_constraint_map(X, PI, PI ^ constraint_map := X).
 pred_info_set_unproven_body_constraints(X, PI,
     PI ^ unproven_body_constraints := X).
 pred_info_set_assertions(X, PI, PI ^ assertions := X).
-pred_info_set_aditi_owner(X, PI, PI ^ aditi_owner := X).
-pred_info_set_indexes(X, PI, PI ^ indexes := X).
 pred_info_set_clauses_info(X, PI, PI ^ clauses_info := X).
 pred_info_set_procedures(X, PI, PI ^ procedures := X).
 
@@ -3645,112 +3572,6 @@ prog_varset_init(VarSet) :- varset__init(VarSet).
 
 is_unify_or_compare_pred(PredInfo) :-
     pred_info_get_origin(PredInfo, special_pred(_)). % XXX bug
-
-%-----------------------------------------------------------------------------%
-
-    % Predicates to check whether a given predicate is an Aditi query.
-
-:- interface.
-
-:- pred is_base_relation(module_info::in, pred_id::in) is semidet.
-
-:- pred is_derived_relation(module_info::in, pred_id::in) is semidet.
-
-    % Is the given predicate a base or derived Aditi relation.
-    %
-:- pred is_aditi_relation(module_info::in, pred_id::in) is semidet.
-
-    % Is the predicate `aditi:aggregate_compute_initial', declared
-    % in extras/aditi/aditi.m.
-    % Special code is generated for each call to this in rl_gen.m.
-    %
-:- pred is_aditi_aggregate(module_info::in, pred_id::in) is semidet.
-
-:- pred pred_info_is_aditi_relation(pred_info::in) is semidet.
-
-:- pred pred_info_is_aditi_aggregate(pred_info::in) is semidet.
-
-:- pred pred_info_is_base_relation(pred_info::in) is semidet.
-
-    % Aditi can optionally memo the results of predicates
-    % between calls to reduce redundant computation.
-    %
-:- pred is_aditi_memoed(module_info::in, pred_id::in) is semidet.
-
-    % Differential evaluation is a method of evaluating recursive
-    % Aditi predicates which uses the just new tuples in each
-    % iteration where possible rather than the full relations,
-    % reducing the sizes of joins.
-    %
-:- pred is_differential(module_info::in, pred_id::in) is semidet.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-is_base_relation(ModuleInfo, PredId) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_is_base_relation(PredInfo).
-
-pred_info_is_base_relation(PredInfo) :-
-    pred_info_get_markers(PredInfo, Markers),
-    check_marker(Markers, base_relation).
-
-is_derived_relation(ModuleInfo, PredId) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_markers(PredInfo, Markers),
-    check_marker(Markers, aditi),
-    \+ pred_info_is_base_relation(PredInfo),
-    \+ pred_info_is_aditi_aggregate(PredInfo).
-
-is_aditi_relation(ModuleInfo, PredId) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_is_aditi_relation(PredInfo).
-
-pred_info_is_aditi_relation(PredInfo) :-
-    pred_info_get_markers(PredInfo, Markers),
-    check_marker(Markers, aditi).
-
-is_aditi_aggregate(ModuleInfo, PredId) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_is_aditi_aggregate(PredInfo).
-
-pred_info_is_aditi_aggregate(PredInfo) :-
-    Module = pred_info_module(PredInfo),
-    Name = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    aditi_aggregate(Module, Name, Arity).
-
-:- pred aditi_aggregate(sym_name::in, string::in, int::in)
-    is semidet.
-
-aditi_aggregate(unqualified("aditi"), "aggregate_compute_initial",
-    5).
-
-is_aditi_memoed(ModuleInfo, PredId) :-
-    % XXX memoing doesn't work yet.
-    semidet_fail,
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_markers(PredInfo, Markers),
-    (
-        check_marker(Markers, aditi_memo)
-    ;
-        % Memoing is the default for Aditi procedures.
-        semidet_fail,   % XXX leave it off for now to reduce memory usage.
-        check_marker(Markers, aditi),
-        \+ check_marker(Markers, aditi_no_memo)
-    ).
-
-is_differential(ModuleInfo, PredId) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_markers(PredInfo, Markers),
-    (
-        check_marker(Markers, psn)
-    ;
-        % Predicate semi-naive evaluation is the default.
-        check_marker(Markers, aditi),
-        \+ check_marker(Markers, naive)
-    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

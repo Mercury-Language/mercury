@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -282,10 +282,10 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
 
 process_unify(var(Y), _, _, X, Mode, Unif, Context, GoalExpr, !HI) :-
     GoalExpr = unify(X, var(Y), Mode, Unif, Context).
-process_unify(lambda_goal(A,B,C,D,E,F,G,H,LambdaGoal0), NonLocals, _, X, Mode,
+process_unify(lambda_goal(A,B,C,D,E,F,G,LambdaGoal0), NonLocals, _, X, Mode,
         Unif, Context, GoalExpr, !HI) :-
     process_goal(NonLocals, LambdaGoal0, LambdaGoal, !HI),
-    GoalExpr = unify(X, lambda_goal(A,B,C,D,E,F,G,H,LambdaGoal), Mode,
+    GoalExpr = unify(X, lambda_goal(A,B,C,D,E,F,G,LambdaGoal), Mode,
         Unif, Context).
 process_unify(functor(ConsId0, IsExistConstruct, ArgsA), NonLocals, GoalInfo0,
         X, Mode, Unif, Context, GoalExpr, !HI) :-

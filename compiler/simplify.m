@@ -864,8 +864,8 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         goal_info_get_context(GoalInfo0, Context),
         true_goal(Context, Goal - GoalInfo)
     ;
-        RT0 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-            NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal0)
+        RT0 = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
+            Vars, Modes, LambdaDeclaredDet, LambdaGoal0)
     ->
         simplify_info_enter_lambda(!Info),
         simplify_info_get_common_info(!.Info, Common1),
@@ -884,8 +884,8 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         simplify_goal(LambdaGoal0, LambdaGoal, !Info, !IO),
         simplify_info_set_common_info(Common1, !Info),
         simplify_info_set_instmap(InstMap1, !Info),
-        RT = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-            NonLocals, Vars, Modes, LambdaDeclaredDet, LambdaGoal),
+        RT = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
+            Vars, Modes, LambdaDeclaredDet, LambdaGoal),
         simplify_info_leave_lambda(!Info),
         Goal = unify(LT0, RT, M, U0, C),
         GoalInfo = GoalInfo0
@@ -1360,10 +1360,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         % Don't warn about impure procedures, since they may modify the state
         % in ways not visible to us (unlike pure and semipure procedures).
         pred_info_get_purity(PredInfo1, Purity),
-        \+ Purity = purity_impure,
-
-        % Don't warn about Aditi relations.
-        \+ hlds_pred__pred_info_is_aditi_relation(PredInfo1)
+        \+ Purity = purity_impure
     ->
         goal_info_get_context(GoalInfo0, Context2),
         InfiniteRecMsg = warn_infinite_recursion,
@@ -2574,9 +2571,6 @@ will_flush(generic_call(GenericCall, _, _, _), BeforeAfter) = WillFlush :-
     ;
         GenericCall = cast(_),
         WillFlush0 = no
-    ;
-        GenericCall = aditi_builtin(_, _),
-        WillFlush0 = yes
     ),
     (
         BeforeAfter = before,

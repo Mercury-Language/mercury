@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,11 +17,9 @@
 :- module ml_backend__maybe_mlds_to_gcc.
 :- interface.
 
-:- import_module aditi_backend.rl_file.
 :- import_module ml_backend.mlds.
 
 :- import_module bool.
-:- import_module std_util.
 :- use_module io.
 
 :- type frontend_callback(T) == pred(T, io__state, io__state).
@@ -38,7 +36,7 @@
 	% message, depending on whether the gcc back-end interface has
 	% been enabled.  In the former case,
 	% the bool returned is `yes' iff the module contained C code.
-:- pred maybe_mlds_to_gcc__compile_to_asm(mlds__mlds::in, maybe(rl_file)::in,
+:- pred maybe_mlds_to_gcc__compile_to_asm(mlds__mlds::in,
 	bool::out, io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -52,8 +50,8 @@
 maybe_mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
 	mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput).
 
-maybe_mlds_to_gcc__compile_to_asm(MLDS, RLFile, ContainsCCode) -->
-	mlds_to_gcc__compile_to_asm(MLDS, RLFile, ContainsCCode).
+maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
+	mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode).
 
 #else
 
@@ -63,7 +61,7 @@ maybe_mlds_to_gcc__compile_to_asm(MLDS, RLFile, ContainsCCode) -->
 maybe_mlds_to_gcc__run_gcc_backend(_ModuleName, CallBack, CallBackOutput) -->
 	CallBack(CallBackOutput).
 
-maybe_mlds_to_gcc__compile_to_asm(_MLDS, _, no) -->
+maybe_mlds_to_gcc__compile_to_asm(_MLDS, no) -->
 	report_error(
 "Sorry, `--target asm' not supported: this installation of the Mercury\n" ++
 "compiler was built without support for the GCC back-end interface.").

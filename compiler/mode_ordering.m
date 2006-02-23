@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -263,11 +263,11 @@ mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
         % Unification = construct(VarA, _ConsId, _ArgVars,
         %   _UniModes, _HowTo, _CellUniq, _MaybeRLExprId),
         Unification = Unification0, % XXX
-        RHS0 = lambda_goal(A, B, C, D, NonLocals, LambdaVars, Modes0,
-                H, SubGoal0),
+        RHS0 = lambda_goal(A, B, C, NonLocals, LambdaVars, Modes0,
+            G, SubGoal0),
         Modes = Modes0, % XXX
-        RHS = lambda_goal(A, B, C, D, NonLocals, LambdaVars, Modes,
-                H, SubGoal),
+        RHS = lambda_goal(A, B, C, NonLocals, LambdaVars, Modes,
+            G, SubGoal),
 
         goal_info_get_goal_path(!.GoalInfo, GoalPath),
         enter_lambda_goal(GoalPath, !MOI),

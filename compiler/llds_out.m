@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,6 @@
 :- module ll_backend__llds_out.
 :- interface.
 
-:- import_module aditi_backend.rl_file.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
@@ -31,16 +30,15 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
     % Given a 'c_file' structure, output the LLDS code inside it
     % into a .c file. The second argument gives the set of labels that have
-    % layout structures. The third gives the Aditi-RL code for the module.
+    % layout structures.
     %
 :- pred output_llds(c_file::in, list(complexity_proc_info)::in,
-    map(label, data_addr)::in, maybe(rl_file)::in, io::di, io::uo) is det.
+    map(label, data_addr)::in, io::di, io::uo) is det.
 
     % output_rval_decls(Rval, DeclSet0, DeclSet) outputs the declarations
     % of any static constants, etc. that need to be declared before
@@ -214,6 +212,7 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module std_util.
+:- import_module std_util.
 :- import_module string.
 :- import_module svmulti_map.
 :- import_module term.
@@ -234,7 +233,7 @@ decl_set_is_member(DeclId, DeclSet) :-
 
 %-----------------------------------------------------------------------------%
 
-output_llds(CFile, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO) :-
+output_llds(CFile, ComplexityProcs, StackLayoutLabels, !IO) :-
     CFile = c_file(ModuleName, _, _, _, _, _, _, _, _),
     module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO),
     io__open_output(FileName, Result, !IO),
@@ -242,7 +241,7 @@ output_llds(CFile, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO) :-
         Result = ok(FileStream),
         decl_set_init(DeclSet0),
         output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
-            MaybeRLFile, FileStream, DeclSet0, _, !IO),
+            FileStream, DeclSet0, _, !IO),
         io__close_output(FileStream, !IO)
     ;
         Result = error(Error),
@@ -283,11 +282,11 @@ output_c_file_mercury_headers(!IO) :-
     ).
 
 :- pred output_single_c_file(c_file::in, list(complexity_proc_info)::in,
-    map(label, data_addr)::in, maybe(rl_file)::in, io__output_stream::in,
+    map(label, data_addr)::in, io__output_stream::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
-        MaybeRLFile, FileStream, !DeclSet, !IO) :-
+        FileStream, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
         Vars, Datas, Modules, UserInitPredCNames, UserFinalPredCNames),
     library__version(Version),
@@ -322,7 +321,6 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     io__write_string("\n", !IO),
     output_c_module_init_list(ModuleName, Modules, Datas, Vars,
         ComplexityProcs, StackLayoutLabels, !DeclSet, !IO),
-    c_util__output_rl_file(ModuleName, MaybeRLFile, !IO),
     io__set_output_stream(OutputStream, _, !IO).
 
 :- pred order_layout_datas(list(layout_data)::in, list(layout_data)::out)
@@ -765,16 +763,6 @@ output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
     io__write_string("INIT ", !IO),
     output_init_name(ModuleName, !IO),
     io__write_string("init\n", !IO),
-    globals__io_lookup_bool_option(aditi, Aditi, !IO),
-    (
-        Aditi = yes,
-        RLName = make_rl_data_name(ModuleName),
-        io__write_string("ADITI_DATA ", !IO),
-        io__write_string(RLName, !IO),
-        io__write_string("\n", !IO)
-    ;
-        Aditi = no
-    ),
     list__foldl(output_required_user_init_comment, UserInitPredCNames, !IO),
     list__foldl(output_required_user_final_comment, UserFinalPredCNames, !IO),
     io__write_string("ENDINIT\n", !IO),

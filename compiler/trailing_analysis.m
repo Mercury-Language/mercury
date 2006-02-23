@@ -424,12 +424,6 @@ check_goal_for_trail_mods_2(_, _VarTypes, Goal, _GoalInfo,
         Details = cast(_),
         Result  = will_not_modify_trail,
         MaybeAnalysisStatus = yes(optimal)
-    ;
-        % XXX I'm not sure what the correct thing to do for 
-        % aditi builtins is.
-        Details = aditi_builtin(_, _),
-        Result = may_modify_trail,
-        MaybeAnalysisStatus = yes(optimal)
     ).
 check_goal_for_trail_mods_2(SCC, VarTypes, not(Goal), _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-

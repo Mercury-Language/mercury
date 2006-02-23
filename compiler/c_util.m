@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,15 +20,11 @@
 :- module backend_libs__c_util.
 :- interface.
 
-:- import_module aditi_backend.
-:- import_module aditi_backend.rl_file.
 :- import_module backend_libs.builtin_ops.
-:- import_module mdbcomp.prim_data.
 
 :- import_module char.
 :- import_module int.
 :- import_module io.
-:- import_module std_util.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -140,15 +136,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Currently the `.rlo' files are stored as static data in the executable.
-    % It may be better to store them in separate files in a known location
-    % and load them at runtime.
-    %
-:- pred output_rl_file(module_name::in, maybe(rl_file)::in, io::di, io::uo)
-    is det.
-
-%-----------------------------------------------------------------------------%
-
     % output_c_file_intro_and_grade(SourceFileName, Version):
     %
     % Outputs a comment which includes the settings used to generate
@@ -169,9 +156,11 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_foreign.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module list.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 %
@@ -436,46 +425,6 @@ binary_infix_op(int_lt, "<").
 binary_infix_op(int_gt, ">").
 binary_infix_op(int_le, "<=").
 binary_infix_op(int_ge, ">=").
-
-%-----------------------------------------------------------------------------%
-
-output_rl_file(ModuleName, MaybeRLFile, !IO) :-
-    globals__io_lookup_bool_option(aditi, Aditi, !IO),
-    (
-        Aditi = no
-    ;
-        Aditi = yes,
-        io__write_string("\n\n/* Aditi-RL code for this module. */\n", !IO),
-        RLDataConstName = make_rl_data_name(ModuleName),
-        io__write_string("const char ", !IO),
-        io__write_string(RLDataConstName, !IO),
-        io__write_string("[] = {", !IO),
-        (
-            MaybeRLFile = yes(RLFile),
-            rl_file__write_binary(output_rl_byte, RLFile, Length, !IO),
-            io__write_string("0};\n", !IO)
-        ;
-            MaybeRLFile = no,
-            io__write_string("};\n", !IO),
-            Length = 0
-        ),
-
-        % Store the length of the data in
-        % mercury__aditi_rl_data__<module>__length.
-
-        string__append(RLDataConstName, "__length", RLDataConstLength),
-        io__write_string("const int ", !IO),
-        io__write_string(RLDataConstLength, !IO),
-        io__write_string(" = ", !IO),
-        io__write_int(Length, !IO),
-        io__write_string(";\n\n", !IO)
-    ).
-
-:- pred output_rl_byte(int::in, io::di, io::uo) is det.
-
-output_rl_byte(Byte, !IO) :-
-    io__write_int(Byte, !IO),
-    io__write_string(", ", !IO).
 
 %-----------------------------------------------------------------------------%
 

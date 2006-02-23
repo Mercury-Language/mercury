@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -358,11 +358,9 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         % XXX this context might not be empty
     ClassContext = constraints([], []),
     ExistQVars = [],
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals__lookup_string_option(Globals, aditi_user, Owner),
     pred_info_init(ModuleName, PredName, Arity, predicate, Context,
         Origin, Status, none, Markers, ArgTypes, TVarSet, ExistQVars,
-        ClassContext, Proofs, ConstraintMap, Owner, ClausesInfo0, PredInfo0),
+        ClassContext, Proofs, ConstraintMap, ClausesInfo0, PredInfo0),
     ArgLives = no,
     varset__init(InstVarSet),
         % Should not be any inst vars here so it's ok to use a

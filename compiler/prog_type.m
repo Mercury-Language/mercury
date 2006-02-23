@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -484,7 +484,7 @@ type_to_ctor_and_args(defined(SymName, Args, _), SymName - Arity, Args) :-
 type_to_ctor_and_args(builtin(BuiltinType), SymName - 0, []) :-
     builtin_type_to_string(BuiltinType, Name),
     SymName = unqualified(Name).
-type_to_ctor_and_args(higher_order(Args0, MaybeRet, Purity, EvalMethod),
+type_to_ctor_and_args(higher_order(Args0, MaybeRet, Purity, _EvalMethod),
         SymName - Arity, Args) :-
     Arity = list.length(Args0),
     (
@@ -498,21 +498,14 @@ type_to_ctor_and_args(higher_order(Args0, MaybeRet, Purity, EvalMethod),
     ),
     SymName0 = unqualified(PorFStr),
     (
-        EvalMethod = lambda_aditi_bottom_up,
-        insert_module_qualifier("aditi_bottom_up", SymName0, SymName1)
-    ;
-        EvalMethod = lambda_normal,
-        SymName1 = SymName0
-    ),
-    (
         Purity = purity_pure,
-        SymName = SymName1
+        SymName = SymName0
     ;
         Purity = purity_semipure,
-        insert_module_qualifier("semipure", SymName1, SymName)
+        insert_module_qualifier("semipure", SymName0, SymName)
     ;
         Purity = purity_impure,
-        insert_module_qualifier("impure", SymName1, SymName)
+        insert_module_qualifier("impure", SymName0, SymName)
     ).
 type_to_ctor_and_args(tuple(Args, _), unqualified("{}") - Arity, Args) :-
     Arity = list.length(Args).
@@ -538,10 +531,6 @@ get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
     (
         SymName = qualified(unqualified(Qualifier), PorFStr),
         (
-            Qualifier = "aditi_bottom_up",
-            EvalMethod = lambda_aditi_bottom_up,
-            Purity = purity_pure
-        ;
             Qualifier = "impure",
             Purity = purity_impure,
             EvalMethod = lambda_normal

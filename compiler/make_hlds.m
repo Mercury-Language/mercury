@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -104,7 +104,6 @@
 
 :- implementation.
 
-:- include_module add_aditi.
 :- include_module add_class.
 :- include_module add_clause.
 :- include_module add_mode.

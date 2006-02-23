@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -724,7 +724,7 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), !Calls,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _Fix,
+		RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod,
 			_NonLocals, _Vars, _Modes, _Determinism,
 			Goal - _GoalInfo)
 	->
@@ -807,7 +807,7 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), !Calls) :-
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _Fix,
+		RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod,
 			_NonLocals, _Vars, _Modes, _Determinism,
 			Goal - _GoalInfo)
 	->

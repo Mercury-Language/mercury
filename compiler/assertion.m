@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -594,9 +594,9 @@ equal_unification(functor(ConsId, E, VarsA), functor(ConsId, E, VarsB),
         !Subst) :-
     equal_vars(VarsA, VarsB, !Subst).
 equal_unification(LambdaGoalA, LambdaGoalB, !Subst) :-
-    LambdaGoalA = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+    LambdaGoalA = lambda_goal(Purity, PredOrFunc, EvalMethod,
         NLVarsA, LVarsA, Modes, Det, GoalA),
-    LambdaGoalB = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+    LambdaGoalB = lambda_goal(Purity, PredOrFunc, EvalMethod,
         NLVarsB, LVarsB, Modes, Det, GoalB),
     equal_vars(NLVarsA, NLVarsB, !Subst),
     equal_vars(LVarsA, LVarsB, !Subst),
@@ -813,7 +813,7 @@ assertion__in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
             "assertion__in_interface_check_unify_rhs: " ++
             "type_to_ctor_and_args failed.")
     ).
-assertion__in_interface_check_unify_rhs(lambda_goal(_,_,_,_,_,_,_,_,Goal),
+assertion__in_interface_check_unify_rhs(lambda_goal(_,_,_,_,_,_,_,Goal),
         _Var, _Context, PredInfo, !Module, !IO) :-
     assertion__in_interface_check(Goal, PredInfo, !Module, !IO).
 

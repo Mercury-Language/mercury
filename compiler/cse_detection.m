@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -242,14 +242,14 @@ detect_cse_in_goal_2(Goal @ call(_, _, _, _, _, _), _, _, !CseInfo, no, Goal).
 detect_cse_in_goal_2(unify(LHS, RHS0, Mode, Unify,  UnifyContext), _, InstMap0,
         !CseInfo, Redo, unify(LHS, RHS, Mode,Unify, UnifyContext)) :-
     (
-        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-            NonLocalVars, Vars, Modes, Det, Goal0)
+        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+            Vars, Modes, Det, Goal0)
     ->
         ModuleInfo = !.CseInfo ^ module_info,
         instmap__pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap),
         detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal),
-        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-            NonLocalVars, Vars, Modes, Det, Goal)
+        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+            Vars, Modes, Det, Goal)
     ;
         RHS = RHS0,
         Redo = no

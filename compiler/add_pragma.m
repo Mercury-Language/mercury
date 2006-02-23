@@ -117,7 +117,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
-:- import_module hlds.make_hlds.add_aditi.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_passes.
@@ -264,53 +263,6 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         % -- they need to be handled after the type definitions
         % have been added).
         Pragma = reserve_tag(_, _)
-    ;
-        Pragma = aditi(PredName, Arity),
-        maybe_enable_aditi_compilation(!.Status, Context, !ModuleInfo, !IO),
-        add_pred_marker("aditi", PredName, Arity, ImportStatus, Context,
-            aditi, [], !ModuleInfo, !IO),
-        add_stratified_pred("aditi", PredName, Arity, Context, !ModuleInfo,
-            !IO)
-    ;
-        Pragma = base_relation(PredName, Arity),
-        maybe_enable_aditi_compilation(!.Status, Context, !ModuleInfo, !IO),
-        add_pred_marker("aditi", PredName, Arity, ImportStatus, Context, aditi,
-            [], !ModuleInfo, !IO),
-        add_pred_marker("base_relation", PredName, Arity, ImportStatus,
-            Context, base_relation, [], !ModuleInfo, !IO),
-        module_mark_as_external(PredName, Arity, Context, !ModuleInfo, !IO)
-    ;
-        Pragma = aditi_index(PredName, Arity, Index),
-        add_base_relation_index(PredName, Arity, Index, ImportStatus,
-            Context, !ModuleInfo, !IO)
-    ;
-        Pragma = naive(PredName, Arity),
-        add_pred_marker("naive", PredName, Arity, ImportStatus,
-            Context, naive, [psn], !ModuleInfo, !IO)
-    ;
-        Pragma = psn(PredName, Arity),
-        add_pred_marker("psn", PredName, Arity, ImportStatus,
-            Context, psn, [naive], !ModuleInfo, !IO)
-    ;
-        Pragma = aditi_memo(Name, Arity),
-        add_pred_marker("aditi_memo", Name, Arity, ImportStatus,
-            Context, aditi_memo, [aditi_no_memo], !ModuleInfo, !IO)
-    ;
-        Pragma = aditi_no_memo(PredName, Arity),
-        add_pred_marker("aditi_no_memo", PredName, Arity, ImportStatus,
-            Context, aditi_no_memo, [aditi_memo], !ModuleInfo, !IO)
-    ;
-        Pragma = supp_magic(PredName, Arity),
-        add_pred_marker("supp_magic", PredName, Arity, ImportStatus,
-            Context, supp_magic, [context], !ModuleInfo, !IO)
-    ;
-        Pragma = context(PredName, Arity),
-        add_pred_marker("context", PredName, Arity, ImportStatus,
-            Context, context, [supp_magic], !ModuleInfo, !IO)
-    ;
-        Pragma = owner(PredName, Arity, Owner),
-        set_pred_owner(PredName, Arity, Owner, ImportStatus,
-            Context, !ModuleInfo, !IO)
     ;
         Pragma = promise_pure(Name, Arity),
         add_pred_marker("promise_pure", Name, Arity, ImportStatus,
@@ -742,21 +694,19 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             ),
 
             ModuleName = pred_info_module(PredInfo0),
-            pred_info_get_aditi_owner(PredInfo0, Owner),
             pred_info_get_origin(PredInfo0, OrigOrigin),
             SubstDesc = list__map(subst_desc, Subst),
             Origin = transformed(type_specialization(SubstDesc),
                 OrigOrigin, PredId),
             pred_info_init(ModuleName, SpecName, PredArity, PredOrFunc,
                 Context, Origin, Status, none, Markers, Types, TVarSet,
-                ExistQVars, ClassContext, Proofs, ConstraintMap, Owner,
+                ExistQVars, ClassContext, Proofs, ConstraintMap,
                 Clauses, NewPredInfo0),
             pred_info_set_procedures(Procs, NewPredInfo0, NewPredInfo),
             module_info_get_predicate_table(!.ModuleInfo, PredTable0),
             predicate_table_insert(NewPredInfo, NewPredId,
                 PredTable0, PredTable),
-            module_info_set_predicate_table(PredTable,
-                !ModuleInfo),
+            module_info_set_predicate_table(PredTable, !ModuleInfo),
 
             %
             % Record the type specialisation in the module_info.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -750,7 +750,6 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     proc_info_varset(ProcInfo, VarSet),
     proc_info_inst_varset(ProcInfo, InstVarSet),
     pred_info_get_markers(PredInfo, Markers),
-    pred_info_get_aditi_owner(PredInfo, Owner),
     pred_info_get_origin(PredInfo, OrigOrigin),
 
     PredName = pred_info_name(PredInfo),
@@ -783,7 +782,6 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         VarSet,                 % in
         InstVarSet,             % in
         Markers,                % in
-        Owner,                  % in
         address_is_not_taken,   % in
         ModuleInfo0,
         ModuleInfo,

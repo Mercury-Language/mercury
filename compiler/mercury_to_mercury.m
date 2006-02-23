@@ -625,40 +625,6 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         add_int(TypeArity, !IO),
         add_string(").\n", !IO)
     ;
-        Pragma = aditi(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "aditi", no, !IO)
-    ;
-        Pragma = base_relation(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "base_relation",
-            no, !IO)
-    ;
-        Pragma = aditi_index(Pred, Arity, Index),
-        mercury_format_pragma_index(Pred, Arity, Index, !IO)
-    ;
-        Pragma = aditi_memo(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "aditi_memo",
-            no, !IO)
-    ;
-        Pragma = aditi_no_memo(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "aditi_no_memo",
-            no, !IO)
-    ;
-        Pragma = supp_magic(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "supp_magic",
-            no, !IO)
-    ;
-        Pragma = context(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "context", no, !IO)
-    ;
-        Pragma = owner(Pred, Arity, Owner),
-        mercury_format_pragma_owner(Pred, Arity, Owner, !IO)
-    ;
-        Pragma = naive(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "naive", no, !IO)
-    ;
-        Pragma = psn(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, predicate, "psn", no, !IO)
-    ;
         Pragma = promise_pure(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate, "promise_pure", no,
             !IO)
@@ -4130,8 +4096,6 @@ output_eval_method(EvalMethod, !Str) :-
 
 output_lambda_eval_method(lambda_normal, !Str) :-
     output_string("normal", !Str).
-output_lambda_eval_method(lambda_aditi_bottom_up, !Str) :-
-    output_string("aditi_bottom_up", !Str).
 
 :- pred output_index_type(index_type::in, string::di, string::uo) is det.
 

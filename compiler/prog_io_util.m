@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -341,16 +341,14 @@ parse_builtin_type(Term, BuiltinType) :-
 :- pred parse_higher_order_type(term::in, list(mer_type)::out,
     maybe(mer_type)::out, purity::out, lambda_eval_method::out) is semidet.
 
-parse_higher_order_type(Term0, ArgTypes, MaybeRet, Purity, EvalMethod) :-
+parse_higher_order_type(Term0, ArgTypes, MaybeRet, Purity, lambda_normal) :-
     parse_purity_annotation(Term0, Purity, Term1),
-    ( Term1 = term__functor(term__atom("="), [FuncAndArgs0, Ret], _) ->
-        parse_lambda_eval_method(FuncAndArgs0, EvalMethod, FuncAndArgs),
+    ( Term1 = term__functor(term__atom("="), [FuncAndArgs, Ret], _) ->
         FuncAndArgs = term__functor(term__atom("func"), Args, _),
         parse_type(Ret, ok(RetType)),
         MaybeRet = yes(RetType)
     ;
-        parse_lambda_eval_method(Term1, EvalMethod, PredTerm),
-        PredTerm = term__functor(term__atom("pred"), Args, _),
+        Term1 = term__functor(term__atom("pred"), Args, _),
         MaybeRet = no
     ),
     parse_types(Args, ok(ArgTypes)).
@@ -424,9 +422,6 @@ unparse_qualified_term(qualified(Qualifier, Name), Args, Term) :-
     term::out) is det.
 
 maybe_add_lambda_eval_method(lambda_normal, Term, Term).
-maybe_add_lambda_eval_method(lambda_aditi_bottom_up, Term0, Term) :-
-    Context = term__context_init,
-    Term = term__functor(term__atom("aditi_bottom_up"), [Term0], Context).
 
 :- pred maybe_add_purity_annotation(purity::in, term::in, term::out) is det.
 

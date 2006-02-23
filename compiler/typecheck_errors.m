@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -403,7 +403,7 @@ report_error_unif_var_var(Info, X, Y, TypeAssignSet, !IO) :-
 
     write_type_assign_set_msg(TypeAssignSet, VarSet, !IO).
 
-report_error_lambda_var(Info, PredOrFunc, EvalMethod, Var, ArgVars,
+report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
         TypeAssignSet, !IO) :-
     typecheck_info_get_context(Info, Context),
     typecheck_info_get_varset(Info, VarSet),
@@ -418,14 +418,9 @@ report_error_lambda_var(Info, PredOrFunc, EvalMethod, Var, ArgVars,
     io__write_string("\n", !IO),
     prog_out__write_context(Context, !IO),
 
-    ( EvalMethod = lambda_normal, EvalStr = ""
-    ; EvalMethod = lambda_aditi_bottom_up, EvalStr = "aditi_bottom_up "
-    ),
-
     (
         PredOrFunc = predicate,
         io__write_string("  and `", !IO),
-        io__write_string(EvalStr, !IO),
         io__write_string("pred(", !IO),
         mercury_output_vars(ArgVars, VarSet, no, !IO),
         io__write_string(") :- ...':\n", !IO)
@@ -433,7 +428,6 @@ report_error_lambda_var(Info, PredOrFunc, EvalMethod, Var, ArgVars,
         PredOrFunc = function,
         pred_args_to_func_args(ArgVars, FuncArgs, RetVar),
         io__write_string("  and `", !IO),
-        io__write_string(EvalStr, !IO),
         io__write_string("func(", !IO),
         mercury_output_vars(FuncArgs, VarSet, no, !IO),
         io__write_string(") = ", !IO),
@@ -1032,14 +1026,6 @@ language_builtin("impure", 1).
 language_builtin("semipure", 1).
 language_builtin("all", 2).
 language_builtin("some", 2).
-language_builtin("aditi_insert", 3).
-language_builtin("aditi_delete", 3).
-language_builtin("aditi_bulk_insert", 3).
-language_builtin("aditi_bulk_insert", 4).
-language_builtin("aditi_bulk_delete", 3).
-language_builtin("aditi_bulk_delete", 4).
-language_builtin("aditi_bulk_modify", 3).
-language_builtin("aditi_bulk_modify", 4).
 
 :- pred report_wrong_arity_constructor(sym_name::in, arity::in, list(int)::in,
     prog_context::in, io::di, io::uo) is det.

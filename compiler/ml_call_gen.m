@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,8 +157,6 @@ ml_gen_generic_call(class_method(_, _, _, _) @ GenericCall, ArgVars, ArgModes,
 ml_gen_generic_call(cast(_), ArgVars, _ArgModes, _Determinism, Context,
         Decls, Statements, !Info) :-
     ml_gen_cast(Context, ArgVars, Decls, Statements, !Info).
-ml_gen_generic_call(aditi_builtin(_, _), _, _, _, _, _, _, !Info) :-
-    unexpected(this_file, "ml_gen_generic_call: aditi_builtin").
 
 :- pred ml_gen_generic_call_2(generic_call::in, list(prog_var)::in,
     list(mer_mode)::in, determinism::in, prog_context::in,
@@ -232,9 +230,6 @@ ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
     ;
         GenericCall = cast(_),
         unexpected(this_file, "ml_gen_generic_call_2: cast")
-    ;
-        GenericCall = aditi_builtin(_, _),
-        unexpected(this_file, "ml_gen_generic_call_2: aditi_builtin")
     ),
 
     % Assign the function address rval to a new local variable. This makes

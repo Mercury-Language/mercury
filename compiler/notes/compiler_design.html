@@ -27,8 +27,8 @@ library, runtime, etc.) fit together.
 
 The main job of the compiler is to translate Mercury into C, although it
 can also translate (subsets of) Mercury to some other languages:
-Mercury bytecode (for a planned bytecode interpreter), MSIL (for the
-Microsoft .NET platform) and RL (the Aditi Relational Language).
+Mercury bytecode (for a planned bytecode interpreter) and MSIL (for the
+Microsoft .NET platform).
 
 <p>
 
@@ -115,14 +115,6 @@ Taking all this into account, the structure looks like this:
                <li> 5b. MLDS transformations (MLDS -&gt; MLDS)
                <li> 6b. output code
      	       (MLDS -&gt; C or MLDS -&gt; MSIL or MLDS -&gt; Java, etc.)
-               </ul>
-          <li> c. RL back-end
-               <br> Package: aditi_backend.m
-               <ul type=disc>
-               <li> 3c. RL-back-end-specific HLDS-&gt;HLDS transformations
-               <li> 4c. code generation (annotated HLDS -&gt; RL)
-               <li> 5c. low-level optimizations (RL -&gt; RL)
-               <li> 6c. output code (RL -&gt; RL-bytecode)
                </ul>
           <li> d. bytecode back-end
                <br> Package: bytecode_backend.m
@@ -402,11 +394,6 @@ Eliminates universal quantification
 and implication (using `A =&gt; B' ===&gt; `not(A, not B)').
 
 <dt>
-add_aditi.m
-<dd>
-Expands out references to Aditi builtin operations.
-
-<dt>
 add_pred.m
 <dd>
 Handles type and mode declarations for predicates.
@@ -620,8 +607,8 @@ so that the compiler does the right thing for options such as
 	  type checking that can't be done in the main type checking pass.
 	  It also removes assertions from further processing.
 	  post_typecheck.m reports errors for unbound type and inst variables,
-	  for unsatisfied type class constraints, for indistinguishable
-	  predicate or function modes, and for invalid Aditi calls and updates.
+	  for unsatisfied type class constraints and for indistinguishable
+	  predicate or function modes.
 	</ul>
 	<p>
 
@@ -1458,99 +1445,6 @@ is invoked to turn the .java file into a .class file containing Java bytecodes.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-<h3> c. Aditi-RL BACK-END </h3>
-
-<p>
-
-This is the aditi_backend.m package.
-
-<h4> 3c. Aditi-specific HLDS -&gt; HLDS transformations</h4>
-
-The Aditi back-end first performs some HLDS-to-HLDS transformations
-that are specific to the Aditi back-end:
-
-<ul>
-
-<li> conversion of Aditi procedures into disjunctive normal form (dnf.m).
-  The supplementary magic sets and context transformations are only defined
-  for predicates in DNF.
-
-<li> transformation of Aditi builtins into normal calls to predicates
-  in extras/aditi/aditi_private_builtin.m (aditi_builtin_ops.m).
-
-<li> supplementary magic sets or supplementary context transformation of
-	Aditi procedures (magic.m, magic_util.m, context.m).
-  The magic sets or context transformations must be applied to convert the
-  program to a form for which Aditi-RL bytecode can be generated.
-
-</ul>
-
-<h4> 4c. Aditi-RL generation </h4>
-
-<ul>
-<li> rl_gen.m converts HLDS to RL.
-
-<li> rl_relops.m generates RL for relational operations such as joins.
-
-<li> rl_info.m defines a state type.
-
-<li> rl.m defines the representation of Aditi-RL used within the
-Mercury compiler. There are some slight differences between rl.m
-and Aditi-RL to make optimization easier.
-
-<li> rl_dump.m contains predicates to write the types defined in rl.m.
-</ul>
-
-<h4> 5c. Aditi-RL optimization </h4>
-
-<ul>
-<li> rl_opt.m invokes the RL optimization passes.
-
-<li> rl_block.m converts an RL procedure into basic blocks, and performs
-  other tasks such as detecting the loops in those basic blocks.
-
-<li> rl_analyse.m contains a generic data-flow analysis procedure for
-  RL procedures.
-
-<li> rl_liveness.m uses rl_analyse.m to insert code to initialise relations
-  and clear references to them when they are no longer needed.
-
-<li> rl_loop.m moves invariants out of loops.
-
-<li> rl_block_opt.m performs common subexpression elimination and instruction
-  merging on basic blocks.
-
-<li> rl_key.m computes upper and lower bounds on the non-locals of a goal
-  for which the goal could succeed, which is useful for determining when
-  an index could be used for a relational operation.
-
-<li> rl_sort.m introduces sort-merge and indexed versions of relational
-  operations where possible, and optimizes away unnecessary sorting and
-  indexing.
-
-<li> rl_stream.m detects relations which do not need to be materialised.
-</ul>  
-
-<h4> 6c. Output Aditi-RL code </h4>
-
-<ul>
-<li> rl_out.m converts from the instructions defined in rl.m
-  to bytecode either as data in the &lt;module&gt;.c file or
-  to &lt;module&gt;.rlo and outputs a text representation to
-  &lt;module&gt;.rla.
-
-<li> rl_exprn.m is called from rl_out.m to convert top down Mercury
-  code (in HLDS form) to Aditi bytecode.
-
-<li> rl_code.m contains the definition of the bytecodes interpreted
-  by Aditi. This file is automatically generated from the Aditi sources.
- 
-<li> rl_file.m contains routines to output the bytecodes defined in rl_code.m.
-</ul>
-
-<hr>
-<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-
 <h3> d. BYTECODE BACK-END </h3>
 
 <p>
@@ -1572,7 +1466,7 @@ bytecode interpreter has not yet been written.
 <li> bytecode_gen.m contains the predicates that translate HLDS into bytecode.
 
 <li> bytecode_data.m contains the predicates that translate ints, strings
-  and floats into bytecode. This is also used by rl_code.m.
+  and floats into bytecode.
 </ul>
 
 <hr>
@@ -1683,7 +1577,7 @@ The following modules are part of the libs.m package.
 	<dt> tree.m
 		<dd>
 		A simple tree data type. <br>
-		Used by the LLDS, RL, and IL back-ends for collecting
+		Used by the LLDS, and IL back-ends for collecting
 		together the different fragments of the generated code.
 
 	<dt> lp.m
@@ -1733,6 +1627,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2006-02-02 00:38:30 $ by $Author: richardf $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-02-23 09:37:20 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

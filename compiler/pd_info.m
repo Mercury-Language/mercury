@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -642,7 +642,6 @@ pd_info__define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
 	pred_info_typevarset(PredInfo, TVarSet),
 	pred_info_get_markers(PredInfo, Markers),
 	pred_info_get_class_context(PredInfo, ClassContext),
-	pred_info_get_aditi_owner(PredInfo, Owner),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
@@ -651,7 +650,7 @@ pd_info__define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
 	% --typeinfo-liveness properly.
 	hlds_pred__define_new_pred(Origin, Goal, CallGoal, Args, _ExtraArgs,
 		InstMap, Name, TVarSet, VarTypes, ClassContext, RttiVarMaps,
-		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
+		VarSet, InstVarSet, Markers, address_is_not_taken,
 		ModuleInfo0, ModuleInfo, PredProcId),
 	pd_info_set_module_info(ModuleInfo, !PDInfo).
 

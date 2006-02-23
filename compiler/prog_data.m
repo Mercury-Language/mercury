@@ -862,17 +862,8 @@
     % Describe how a lambda expression is to be evaluated.
     %
     % `normal' is the top-down Mercury execution algorithm.
-    %
-    % `lambda_eval_method's other than `lambda_normal' are used for lambda
-    % expressions constructed for arguments of the builtin Aditi
-    % update constructs.
-    %
-    % `lambda_aditi_bottom_up' expressions are used as database queries to
-    % produce a set of tuples to be inserted or deleted.
-    %
 :- type lambda_eval_method
-    --->    lambda_normal
-    ;       lambda_aditi_bottom_up.
+    --->    lambda_normal.
 
 %-----------------------------------------------------------------------------%
 %

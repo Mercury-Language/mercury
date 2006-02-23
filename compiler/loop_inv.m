@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -749,7 +749,6 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     hlds_pred__proc_info_varset(ProcInfo, VarSet),
     hlds_pred__proc_info_inst_varset(ProcInfo, InstVarSet),
     hlds_pred__pred_info_get_markers(PredInfo, Markers),
-    hlds_pred__pred_info_get_aditi_owner(PredInfo, Owner),
     hlds_pred__pred_info_get_origin(PredInfo, OrigOrigin),
 
     PredName = hlds_pred__pred_info_name(PredInfo),
@@ -786,7 +785,6 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         VarSet,         % in    - ???
         InstVarSet,     % in    - ???
         Markers,        % in    - Markers for the new aux proc.
-        Owner,          % in    - The Aditi owner string for the new aux proc.
         address_is_not_taken,
                         % in    - The address of the new aux proc is not taken.
         ModuleInfo0,

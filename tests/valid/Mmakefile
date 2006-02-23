@@ -11,7 +11,7 @@ AGC_PROGS= \
 	agc_ite \
 	agc_unbound_typevars \
 	agc_unbound_typevars2 \
-	agc_unused_in 
+	agc_unused_in
 
 TRAIL_PROGS= \
 	complex_failure \
@@ -41,23 +41,10 @@ TYPECLASS_PROGS= \
 	typeclass_constraint_nonvar_bug \
 	typeclass_det_warning
 
-ADITI_PROGS= \
-	aditi_calls_mercury \
-	aditi_error_bug \
-	aditi_update \
-	base_relation \
-	base_relation2 \
-	context_anc \
-	ite_to_disj
-
 	# This test is compiled with --no-special-preds,
 	# which doesn't work in jump.* and fast.* grades.
 NO_SPECIAL_PREDS_PROGS= \
 	unify_typeinfo_bug
-
-	# This test does not produce a `.c' file.
-RLO_PROGS= \
-	aditi_query
 
 	# Tests for which we should only produce a `.il' file.
 IL_PROGS = \
@@ -288,8 +275,6 @@ else
 	PROGS2=$(PROGS1) $(TRAIL_PROGS)
 endif
 
-# Aditi is only implemented for the C and asm back-ends
-# (i.e. not grades java* il*).
 ifneq "$(filter java% il%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	# We currently don't do any testing in grade java on this directory.
 	ifneq "$(findstring java,$(GRADE))$" ""
@@ -298,7 +283,7 @@ ifneq "$(filter java% il%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 		PROGS3 = $(PROGS2)
 	endif
 else
-	PROGS3 = $(PROGS2) $(ADITI_PROGS)
+	PROGS3 = $(PROGS2)
 endif
 
 ifeq "$(filter hl% java% il%,$(GRADE))" ""
@@ -313,16 +298,10 @@ else
 	OBJ_PROGS = $(PROGS4)
 endif
 
-ifneq "$(findstring java,$(GRADE))" ""
-	ALL_RLO_PROGS =
-else
-	ALL_RLO_PROGS = $(RLO_PROGS)
-endif
-
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
-	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS)
+	PROGS = $(OBJ_PROGS)
 else
-	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(IL_PROGS)
+	PROGS = $(OBJ_PROGS) $(IL_PROGS)
 endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.

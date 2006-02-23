@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -437,9 +437,6 @@ check_goal_2(generic_call(GenericCall, Args, Modes, Det), _GoalInfo0, Goal,
     ;
         % Casts are introduced by the compiler and should be mode correct.
         GenericCall = cast(_),
-        ArgOffset = 0
-    ;
-        GenericCall = aditi_builtin(_, _),
         ArgOffset = 0
     ),
     check_call_modes(Args, Modes, ArgOffset, Det, NeverSucceeds, !ModeInfo),

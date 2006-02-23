@@ -580,16 +580,6 @@ is_pred_pragma(trailing_info(PredOrFunc, Name, Arity, _, _),
 		yes(yes(PredOrFunc) - Name / Arity)).
 is_pred_pragma(fact_table(Name, Arity, _), yes(no - Name / Arity)).
 is_pred_pragma(reserve_tag(_TypeName, _TypeArity), no).
-is_pred_pragma(aditi(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(base_relation(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(aditi_index(Name, Arity, _), yes(no - Name / Arity)).
-is_pred_pragma(naive(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(psn(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(aditi_memo(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(aditi_no_memo(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(supp_magic(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(context(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(owner(Name, Arity, _), yes(no - Name / Arity)).
 is_pred_pragma(tabled(_, Name, Arity, MaybePredOrFunc, _),
         yes(MaybePredOrFunc - Name / Arity)).
 is_pred_pragma(promise_pure(Name, Arity), yes(no - Name / Arity)).

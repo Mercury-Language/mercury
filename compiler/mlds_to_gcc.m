@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,13 +92,10 @@
 :- interface.
 
 :- import_module ml_backend.
-:- import_module aditi_backend.
-:- import_module aditi_backend.rl_file.
 :- import_module ml_backend.maybe_mlds_to_gcc.
 :- import_module ml_backend.mlds.
 
 :- import_module bool.
-:- import_module std_util.
 :- use_module io.
 
 	% run_gcc_backend(ModuleName, CallBack, CallBackOutput):
@@ -112,10 +109,9 @@
 	% Due to limitations in the GCC back-end, this procedure
 	% must not be called more than once per process.
 
-:- pred mlds_to_gcc__run_gcc_backend(mercury_module_name,
-		frontend_callback(T), T, io__state, io__state).
-:- mode mlds_to_gcc__run_gcc_backend(in, in(frontend_callback), out,
-		di, uo) is det.
+:- pred mlds_to_gcc__run_gcc_backend(mercury_module_name::in,
+	frontend_callback(T)::in(frontend_callback), T::out,
+	io.state::di, io.state::uo) is det.
 
 	% compile_to_gcc(MLDS, ContainsCCode):
 	%
@@ -140,9 +136,8 @@
 	%     which foreign language compilers it needs to invoke,
 	%     and which object files to link into the executable.
 
-:- pred mlds_to_gcc__compile_to_asm(mlds__mlds, maybe(rl_file), bool,
-		io__state, io__state).
-:- mode mlds_to_gcc__compile_to_asm(in, in, out, di, uo) is det.
+:- pred mlds_to_gcc__compile_to_asm(mlds__mlds::in, bool::out,
+	io.state::di, io.state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -187,6 +182,7 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module std_util.
 :- import_module string.
 :- import_module term.
 
@@ -243,7 +239,7 @@ mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
 		maybe_write_string(Verbose, "% GCC back-end done.\n")
 	).
 
-mlds_to_gcc__compile_to_asm(MLDS, MaybeRLFile, ContainsCCode) -->
+mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 	% XXX We need to handle initialise declarations properly here.
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0,
 		InitPreds, FinalPreds) },
@@ -283,8 +279,7 @@ mlds_to_gcc__compile_to_asm(MLDS, MaybeRLFile, ContainsCCode) -->
 		% file if there are foreign_decls that were defined in the
 		% module that we're compiling.
 		{ ForeignCode = mlds__foreign_code(_Decls, _Imports, [], []) },
-		{ ForeignDefns = [] },
-		{ MaybeRLFile = no }
+		{ ForeignDefns = [] }
 	->
 		{ ContainsCCode = no },
 		{ NeedInitFn = yes }
@@ -301,7 +296,7 @@ mlds_to_gcc__compile_to_asm(MLDS, MaybeRLFile, ContainsCCode) -->
 		{ ForeignMLDS = mlds(ModuleName, AllForeignCode, Imports,
 			list__map(make_public, ForeignDefns), InitPreds,
 			FinalPreds) },
-		mlds_to_c__output_c_file(ForeignMLDS, MaybeRLFile, "")
+		mlds_to_c__output_c_file(ForeignMLDS, "")
 	),
 	%
 	% Generate the .mih C header file for this module.

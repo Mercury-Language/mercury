@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -283,9 +283,9 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         )
     ;
         % Lambda expressions.
-        Tag = pred_closure_tag(PredId, ProcId, EvalMethod),
-        ml_gen_closure(PredId, ProcId, EvalMethod, Var, Args, ArgModes,
-            HowToConstruct, Context, Decls, Statements, !Info)
+        Tag = pred_closure_tag(PredId, ProcId, _EvalMethod),
+        ml_gen_closure(PredId, ProcId, Var, Args, ArgModes, HowToConstruct,
+            Context, Decls, Statements, !Info)
     ;
         % Ordinary compound terms.
         ( Tag = single_functor

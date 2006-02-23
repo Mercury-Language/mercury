@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -670,7 +670,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, _, !RHS, !Unification, !Info) :-
     ),
     set_nonlocals(Vars, !Info).
 implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
-    !.RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+    !.RHS = lambda_goal(Purity, PredOrFunc, EvalMethod,
         LambdaNonLocals0, LambdaVars0, Modes, Det, Goal0),
     %
     % Note: make_hlds.m has already done most of the hard work for
@@ -716,7 +716,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
     set_lambda_outside(LambdaOutsideVars, !Info),
     implicitly_quantify_goal(Goal1, Goal, !Info),
 
-    !:RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+    !:RHS = lambda_goal(Purity, PredOrFunc, EvalMethod,
         LambdaNonLocals, LambdaVars, Modes, Det, Goal),
 
     get_nonlocals(!.Info, NonLocals0),
@@ -1062,7 +1062,7 @@ unify_rhs_vars(NonLocalsToRecompute, functor(_, _, ArgVars), MaybeSetArgs,
         insert_list(!.Set, ArgVars, !:Set)
     ).
 unify_rhs_vars(NonLocalsToRecompute,
-        lambda_goal(_, _, _, _, _, LambdaVars, _, _, Goal), _,
+        lambda_goal(_, _, _, _, LambdaVars, _, _, Goal), _,
         !Set, !LambdaSet) :-
     % Note that the NonLocals list is not counted, since all the
     % variables in that list must occur in the goal.

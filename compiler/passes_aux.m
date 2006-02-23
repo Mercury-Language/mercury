@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -108,12 +108,6 @@
 
 :- pred process_matching_nonimported_procs(task::task, task::out(task),
     pred(pred_info)::in(pred(in) is semidet),
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-:- pred process_all_nonimported_nonaditi_procs(task::task,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-:- pred process_all_nonimported_nonaditi_procs(task::task, task::out(task),
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred process_all_nonimported_procs(task::task, task::out(task),
@@ -226,18 +220,6 @@
 process_all_nonimported_procs(Task, !ModuleInfo, !IO) :-
     True = (pred(_PredInfo::in) is semidet :- true),
     process_matching_nonimported_procs(Task, True, !ModuleInfo, !IO).
-
-process_all_nonimported_nonaditi_procs(Task, !ModuleInfo, !IO) :-
-    NotAditi = (pred(PredInfo::in) is semidet :-
-        \+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
-    ),
-    process_matching_nonimported_procs(Task, NotAditi, !ModuleInfo, !IO).
-
-process_all_nonimported_nonaditi_procs(!Task, !ModuleInfo, !IO) :-
-    NotAditi = (pred(PredInfo::in) is semidet :-
-        \+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
-    ),
-    process_matching_nonimported_procs(!Task, NotAditi, !ModuleInfo, !IO).
 
 process_all_nonimported_procs(!Task, !ModuleInfo, !IO) :-
     True = (pred(_PredInfo::in) is semidet :- true),

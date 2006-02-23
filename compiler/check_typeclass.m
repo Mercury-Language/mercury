@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -723,8 +723,6 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     ;
         Markers = Markers1
     ),
-    module_info_get_globals(ModuleInfo0, Globals),
-    globals__lookup_string_option(Globals, aditi_user, User),
 
     ( status_is_imported(Status0, yes) ->
         Status = opt_imported
@@ -745,7 +743,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
         Context, instance_method(MethodConstraints), Status, none,
         Markers, ArgTypes, TVarSet, ExistQVars, ClassContext,
-        Proofs, ConstraintMap, User, ClausesInfo, PredInfo0),
+        Proofs, ConstraintMap, ClausesInfo, PredInfo0),
     pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
 
     % Add procs with the expected modes and determinisms

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -480,7 +480,7 @@ compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
     perform_goal_purity_checks(CallContext, PredId,
         DeclaredPurity, ActualPurity, !Info).
 compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
-        GoalExpr, GoalInfo, Purity, !Info) :-
+        GoalExpr, _GoalInfo, Purity, !Info) :-
     (
         GenericCall0 = higher_order(_, Purity, _, _),
         GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
@@ -492,32 +492,6 @@ compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
         GenericCall0 = cast(_),
         Purity = purity_pure,
         GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
-    ;
-        GenericCall0 = aditi_builtin(Builtin0, CallId0),
-        Purity = purity_pure,
-        goal_info_get_context(GoalInfo, Context),
-        RunPostTypecheck = !.Info ^ run_post_typecheck,
-        (
-            RunPostTypecheck = yes,
-            ModuleInfo = !.Info ^ module_info,
-            PredInfo = !.Info ^ pred_info,
-            post_typecheck__finish_aditi_builtin(ModuleInfo, PredInfo, Args,
-                Context, Builtin0, Builtin, CallId0, CallId, Modes,
-                MaybeMessage),
-            (
-                MaybeMessage = yes(Message),
-                purity_info_add_message(error(aditi_builtin_error(Message)),
-                    !Info)
-            ;
-                MaybeMessage = no
-            ),
-            GenericCall = aditi_builtin(Builtin, CallId)
-        ;
-            RunPostTypecheck = no,
-            GenericCall = GenericCall0,
-            Modes = Modes0
-        ),
-        GoalExpr = generic_call(GenericCall, Args, Modes, Det)
     ).
 compute_expr_purity(switch(Var, Canfail, Cases0),
         switch(Var, Canfail, Cases), _, Purity, !Info) :-
@@ -525,42 +499,18 @@ compute_expr_purity(switch(Var, Canfail, Cases0),
 compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity, !Info) :-
     Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext),
     (
-        RHS0 = lambda_goal(LambdaPurity, F, EvalMethod,
-            FixModes, H, Vars, Modes0, K, Goal0 - Info0)
+        RHS0 = lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
+            Modes, K, Goal0 - Info0)
     ->
-        RHS = lambda_goal(LambdaPurity, F, EvalMethod,
-            modes_are_ok, H, Vars, Modes, K, Goal - Info0),
+        RHS = lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
+            Modes, K, Goal - Info0),
         compute_expr_purity(Goal0, Goal, Info0, GoalPurity, !Info),
         check_closure_purity(GoalInfo, LambdaPurity, GoalPurity, !Info),
-
-        VarTypes = !.Info ^ vartypes,
-        (
-            FixModes = modes_are_ok,
-            Modes = Modes0
-        ;
-            FixModes = modes_need_fixing,
-            (
-                EvalMethod = lambda_normal,
-                unexpected(this_file, "compute_expr_purity: modes need " ++
-                    "fixing for normal lambda_goal")
-            ;
-                EvalMethod = lambda_aditi_bottom_up,
-                % Make sure `aditi_bottom_up' expressions have
-                % a `ui' mode for their aditi_state.
-                StateMode = aditi_mui_mode
-            ),
-            map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
-            SeenState = no,
-            fix_aditi_state_modes(SeenState, StateMode, LambdaVarTypes,
-                Modes0, Modes)
-        ),
         GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext),
         % the unification itself is always pure,
         % even if the lambda expression body is impure
         infer_goal_info_purity(GoalInfo, DeclaredPurity),
-        (
-            DeclaredPurity \= purity_pure
-        ->
+        ( DeclaredPurity \= purity_pure ->
             goal_info_get_context(GoalInfo, Context),
             Message = impure_unification_expr_error(Context, DeclaredPurity),
             purity_info_add_message(error(Message), !Info)
@@ -903,37 +853,6 @@ compute_cases_purity([case(Ctor, Goal0) | Cases0], [case(Ctor, Goal) | Cases],
     worst_purity(GoalPurity, !.Purity) = !:Purity,
     compute_cases_purity(Cases0, Cases, !Purity, !Info).
 
-    % Make sure lambda expressions introduced by the compiler
-    % have the correct mode for their `aditi__state' arguments.
-    %
-:- pred fix_aditi_state_modes(bool::in, mer_mode::in, list(mer_type)::in,
-    list(mer_mode)::in, list(mer_mode)::out) is det.
-
-fix_aditi_state_modes(_, _, [], [], []).
-fix_aditi_state_modes(_, _, [_|_], [], []) :-
-    unexpected(this_file, "fix_aditi_state_modes").
-fix_aditi_state_modes(_, _, [], [_|_], []) :-
-    unexpected(this_file, "fix_aditi_state_modes").
-fix_aditi_state_modes(SeenState0, AditiStateMode, [Type | Types],
-        [ArgMode0 | Modes0], [ArgMode | Modes]) :-
-    ( type_is_aditi_state(Type) ->
-        (
-            SeenState0 = yes,
-            % The only Aditi builtin which takes a closure with two
-            % `aditi__state' arguments is `aditi_bulk_modify'.
-            % The second `aditi__state' argument has mode unused.
-            unused_mode(ArgMode)
-        ;
-            SeenState0 = no,
-            ArgMode = AditiStateMode
-        ),
-        SeenState = yes
-    ;
-        ArgMode = ArgMode0,
-        SeenState = SeenState0
-    ),
-    fix_aditi_state_modes(SeenState, AditiStateMode, Types, Modes0, Modes).
-
 %-----------------------------------------------------------------------------%
 
 :- func pred_context(module_info, pred_info, pred_id) = list(format_component).
@@ -1063,8 +982,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
     --->    missing_body_impurity_error(prog_context, pred_id)
     ;       closure_purity_error(prog_context, purity, purity)
             % closure_purity_error(Context, DeclaredPurity, ActualPurity)
-    ;       impure_unification_expr_error(prog_context, purity)
-    ;       aditi_builtin_error(aditi_builtin_error).
+    ;       impure_unification_expr_error(prog_context, purity).
 
 :- type post_typecheck_warning
     --->    unnecessary_body_impurity_decl(prog_context, pred_id, purity)
@@ -1084,9 +1002,6 @@ report_post_typecheck_message(ModuleInfo, error(Message), !IO) :-
     ;
         Message = impure_unification_expr_error(Context, Purity),
         impure_unification_expr_error(Context, Purity, !IO)
-    ;
-        Message = aditi_builtin_error(AditiError),
-        report_aditi_builtin_error(AditiError, !IO)
     ).
 
 report_post_typecheck_message(ModuleInfo, warning(Warning), !IO) :-

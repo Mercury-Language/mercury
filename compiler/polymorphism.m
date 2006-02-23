@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -435,21 +435,10 @@ process_module(!ModuleInfo, !IO) :-
 maybe_process_pred(PredId, !ModuleInfo, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     (
-        (
-            % Leave Aditi aggregates alone, since calls to them must be
-            % monomorphic. This avoids unnecessarily creating type_infos
-            % in Aditi code, since they will just be stripped out later.
-            % The input to an aggregate must be a closure holding the address
-            % of an Aditi procedure. The monomorphism of Aditi procedures
-            % is checked by magic.m. Other Aditi procedures should still be
-            % processed, to handle complicated unifications.
-            hlds_pred__pred_info_is_aditi_aggregate(PredInfo)
-        ;
-            PredModule = pred_info_module(PredInfo),
-            PredName = pred_info_name(PredInfo),
-            PredArity = pred_info_orig_arity(PredInfo),
-            no_type_info_builtin(PredModule, PredName, PredArity)
-        )
+        PredModule = pred_info_module(PredInfo),
+        PredName = pred_info_name(PredInfo),
+        PredArity = pred_info_orig_arity(PredInfo),
+        no_type_info_builtin(PredModule, PredName, PredArity)
     ->
         % Just copy the clauses to the proc_infos.
         copy_module_clauses_to_procs([PredId], !ModuleInfo)
@@ -1175,8 +1164,8 @@ process_unify(XVar, Y, Mode, Unification0, UnifyContext, GoalInfo0, Goal,
         process_unify_functor(XVar, ConsId, Args, Mode,
             Unification0, UnifyContext, GoalInfo0, Goal, !Info)
     ;
-        Y = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-            ArgVars0, LambdaVars, Modes, Det, LambdaGoal0),
+        Y = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars0,
+            LambdaVars, Modes, Det, LambdaGoal0),
 
         % For lambda expressions, we must recursively traverse the lambda goal.
         process_goal(LambdaGoal0, LambdaGoal1, !Info),
@@ -1187,8 +1176,8 @@ process_unify(XVar, Y, Mode, Unification0, UnifyContext, GoalInfo0, Goal,
             LambdaGoal1, LambdaGoal, NonLocalTypeInfos, !Info),
         set__to_sorted_list(NonLocalTypeInfos, NonLocalTypeInfosList),
         list__append(NonLocalTypeInfosList, ArgVars0, ArgVars),
-        Y1 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-            ArgVars, LambdaVars, Modes, Det, LambdaGoal),
+        Y1 = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
+            LambdaVars, Modes, Det, LambdaGoal),
         goal_info_get_nonlocals(GoalInfo0, NonLocals0),
         set__union(NonLocals0, NonLocalTypeInfos, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
@@ -1413,8 +1402,8 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % Construct the lambda expression.
 
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Functor = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
-        ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
+    Functor = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars0,
+        LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
 
 :- pred make_fresh_vars(list(mer_type)::in, list(prog_var)::out,
     prog_varset::in, prog_varset::out,
@@ -1758,12 +1747,6 @@ process_call(PredId, ArgVars0, GoalInfo0, GoalInfo, ExtraVars, ExtraGoals,
         ;
             % Some builtins don't need or want the type_info.
             no_type_info_builtin(PredModule, PredName, PredArity)
-        ;
-            % Leave Aditi relations alone, since they must
-            % be monomorphic. This is checked by magic.m.
-            hlds_pred__pred_info_is_aditi_relation(PredInfo)
-        ;
-            hlds_pred__pred_info_is_aditi_aggregate(PredInfo)
         )
     ->
         GoalInfo = GoalInfo0,

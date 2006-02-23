@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1540,8 +1540,8 @@ add_marker_pred_info(Marker, !PredInfo) :-
     %
 :- pred marker_must_be_exported(marker::in) is semidet.
 
-marker_must_be_exported(aditi).
-marker_must_be_exported(base_relation).
+marker_must_be_exported(_) :-
+    semidet_fail.
 
 maybe_check_field_access_function(FuncName, FuncArity, Status, Context,
         Module, !IO) :-

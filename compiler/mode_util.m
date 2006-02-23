@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -951,7 +951,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
     (
         RecomputeAtomic = no,
         goal_is_atomic(Goal0),
-        Goal0 \= unify(_, lambda_goal(_,_,_,_,_,_,_,_,_), _, _, _)
+        Goal0 \= unify(_, lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
         % Lambda expressions always need to be processed.
     ->
         Goal = Goal0,
@@ -1075,16 +1075,16 @@ recompute_instmap_delta_2(Atomic, unify(LHS, RHS0, UniMode0, Uni, Context),
         GoalInfo, unify(LHS, RHS, UniMode, Uni, Context), VarTypes,
         InstMap0, InstMapDelta, !RI) :-
     (
-        RHS0 = lambda_goal(Purity, PorF, EvalMethod, FixModes,
-            NonLocals, LambdaVars, Modes, Det, Goal0)
+        RHS0 = lambda_goal(Purity, PorF, EvalMethod, NonLocals,
+            LambdaVars, Modes, Det, Goal0)
     ->
         ModuleInfo0 = !.RI ^ module_info,
         instmap__pre_lambda_update(ModuleInfo0, LambdaVars, Modes,
             InstMap0, InstMap),
         recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes,
             InstMap, _, !RI),
-        RHS = lambda_goal(Purity, PorF, EvalMethod, FixModes,
-            NonLocals, LambdaVars, Modes, Det, Goal)
+        RHS = lambda_goal(Purity, PorF, EvalMethod, NonLocals,
+            LambdaVars, Modes, Det, Goal)
     ;
         RHS = RHS0
     ),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,7 +21,6 @@
 :- import_module transform_hlds.
 
 % Back-ends that we currently use or plan to use.
-:- import_module aditi_backend.
 :- import_module ll_backend.
 :- import_module ml_backend.
 

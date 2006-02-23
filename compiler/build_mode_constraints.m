@@ -456,10 +456,6 @@ add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
     ;
         % No mode constraints
         Details = cast(_)
-    ;
-        % XXX Need to do something here.
-        Details = aditi_builtin(_, _),
-        sorry(this_file, "class_method generic_call")
     ).
 
 add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
@@ -505,7 +501,7 @@ add_goal_expr_constraints(_ModuleInfo, ProgVarset, PredId,
             % - it could be a test, so no constraints.
         )
     ;
-        RHS = lambda_goal(_, _, _, _, _, _, _, _, _),
+        RHS = lambda_goal(_, _, _, _, _, _, _, _),
         sorry(this_file, "unify with lambda goal")
     ).
 

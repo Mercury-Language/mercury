@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 University of Melbourne.
+% Copyright (C) 2000-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -252,9 +252,6 @@ goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
         ;
             unexpected(this_file, "goal_expr_to_byte_list: cast arity != 2")
         )
-    ;
-        GenericCall = aditi_builtin(_, _),
-        sorry(this_file, "Aditi and declarative debugging NYI.")
     ).
 goal_expr_to_byte_list(call(PredId, _, Args, Builtin, _, _),
         GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -849,7 +849,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
         ),
 
         LambdaGoal = lambda_goal(LambdaPurity, PredOrFunc, EvalMethod,
-            modes_are_ok, LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
+            LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
         make_atomic_unification(X, LambdaGoal, Context, MainContext,
             SubContext, UnificationPurity, Goal, !QualInfo)
     ).

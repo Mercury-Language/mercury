@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1288,7 +1288,7 @@ typecheck_goal_2(call(_, B, Args, D, E, Name),
         PredId, !Info, !IO).
 
 typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
-        generic_call(GenericCall, Args, C, D), GoalInfo, !Info, !IO) :-
+        generic_call(GenericCall, Args, C, D), _GoalInfo, !Info, !IO) :-
     hlds_goal__generic_call_id(GenericCall0, CallId),
     typecheck_info_set_called_predid(CallId, !Info),
     (
@@ -1298,20 +1298,12 @@ typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
         typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO)
     ;
         GenericCall0 = class_method(_, _, _, _),
-        unexpected(this_file,
-            "typecheck_goal_2: unexpected class method call")
+        unexpected(this_file, "typecheck_goal_2: unexpected class method call")
     ;
         GenericCall0 = cast(_),
         % A cast imposes no restrictions on its argument types,
         % so nothing needs to be done here.
         GenericCall = GenericCall0
-    ;
-        GenericCall0 = aditi_builtin(AditiBuiltin0, PredCallId),
-        checkpoint("aditi builtin", !Info, !IO),
-        goal_info_get_goal_path(GoalInfo, GoalPath),
-        typecheck_aditi_builtin(PredCallId, Args, GoalPath,
-            AditiBuiltin0, AditiBuiltin, !Info, !IO),
-        GenericCall = aditi_builtin(AditiBuiltin, PredCallId)
     ).
 
 typecheck_goal_2(unify(LHS, RHS0, C, D, UnifyContext),
@@ -1443,119 +1435,6 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
     RetType = variable(RetTypeVar, star),
     construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
         FuncType).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typecheck_aditi_builtin(simple_call_id::in, list(prog_var)::in,
-    goal_path::in, aditi_builtin::in, aditi_builtin::out,
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
-
-typecheck_aditi_builtin(CallId, Args, GoalPath, !Builtin, !Info, !IO) :-
-    % This must succeed because make_hlds.m does not add a clause
-    % to the clauses_info if it contains Aditi updates with the
-    % wrong number of arguments.
-    get_state_args_det(Args, OtherArgs, State0, State),
-    % XXX Using the old version of !Builtin in typecheck_aditi_state_args
-    % looks wrong; it should be documented or fixed - zs
-    Builtin0 = !.Builtin,
-    typecheck_aditi_builtin_2(CallId, OtherArgs, GoalPath, !Builtin, !Info,
-        !IO),
-    typecheck_aditi_state_args(Builtin0, CallId, State0, State, !Info,
-        !IO).
-
-    % Typecheck the arguments of an Aditi update other than
-    % the `aditi__state' arguments.
-    %
-:- pred typecheck_aditi_builtin_2(simple_call_id::in, list(prog_var)::in,
-    goal_path::in, aditi_builtin::in, aditi_builtin::out,
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
-
-typecheck_aditi_builtin_2(CallId, Args, GoalPath,
-        aditi_tuple_update(Update, _),
-        aditi_tuple_update(Update, PredId), !Info, !IO) :-
-    % The tuple to insert or delete has the same argument types
-    % as the relation being inserted into or deleted from.
-    typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info, !IO).
-typecheck_aditi_builtin_2(CallId, Args, GoalPath,
-        aditi_bulk_update(Update, _, Syntax),
-        aditi_bulk_update(Update, PredId, Syntax), !Info, !IO) :-
-    CallId = PredOrFunc - _,
-    InsertDeleteAdjustArgTypes =
-        (pred(RelationArgTypes::in, UpdateArgTypes::out) is det :-
-            construct_higher_order_type(purity_pure, PredOrFunc,
-                lambda_aditi_bottom_up, RelationArgTypes, ClosureType),
-            UpdateArgTypes = [ClosureType]
-    ),
-
-    % `aditi_modify' takes a closure which takes two sets of arguments
-    % corresponding to those of the base relation, one set for
-    % the tuple to delete, and one for the tuple to insert.
-    ModifyAdjustArgTypes =
-        (pred(RelationArgTypes::in, AditiModifyTypes::out) is det :-
-            list__append(RelationArgTypes, RelationArgTypes, ClosureArgTypes),
-            construct_higher_order_pred_type(purity_pure,
-                lambda_aditi_bottom_up, ClosureArgTypes, ClosureType),
-            AditiModifyTypes = [ClosureType]
-    ),
-    (
-        Update = bulk_insert,
-        AdjustArgTypes = InsertDeleteAdjustArgTypes
-    ;
-        Update = bulk_delete,
-        AdjustArgTypes = InsertDeleteAdjustArgTypes
-    ;
-        Update = bulk_modify,
-        AdjustArgTypes = ModifyAdjustArgTypes
-    ),
-    typecheck_aditi_builtin_closure(CallId, Args, GoalPath, AdjustArgTypes,
-        PredId, !Info, !IO).
-
-    % Check that there is only one argument (other than the `aditi__state'
-    % arguments) passed to an `aditi_delete', `aditi_bulk_insert',
-    % `aditi_bulk_delete' or `aditi_modify', then typecheck that argument.
-    %
-:- pred typecheck_aditi_builtin_closure(simple_call_id::in,
-    list(prog_var)::in, goal_path::in,
-    adjust_arg_types::in(adjust_arg_types),
-    pred_id::out, typecheck_info::in, typecheck_info::out,
-    io::di, io::uo) is det.
-
-typecheck_aditi_builtin_closure(CallId, OtherArgs, GoalPath, AdjustArgTypes,
-        PredId, !Info, !IO) :-
-    ( OtherArgs = [HOArg] ->
-        typecheck_call_pred_adjust_arg_types(CallId, [HOArg], GoalPath,
-            AdjustArgTypes, PredId, !Info, !IO)
-    ;
-        % An error should have been reported by make_hlds.m.
-        unexpected(this_file, "typecheck_aditi_builtin: " ++
-            "incorrect arity for builtin")
-    ).
-
-    % Typecheck the DCG state arguments in the argument
-    % list of an Aditi builtin.
-    %
-:- pred typecheck_aditi_state_args(aditi_builtin::in, simple_call_id::in,
-    prog_var::in, prog_var::in,
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
-
-typecheck_aditi_state_args(Builtin, CallId, AditiState0Var, AditiStateVar,
-        !Info, !IO) :-
-    StateType = aditi_state_type,
-    typecheck_var_has_type_list([AditiState0Var, AditiStateVar],
-        [StateType, StateType],
-        aditi_builtin_first_state_arg(Builtin, CallId), !Info, !IO).
-
-    % Return the index in the argument list of the first
-    % `aditi__state' DCG argument.
-    %
-:- func aditi_builtin_first_state_arg(aditi_builtin, simple_call_id) = int.
-
-aditi_builtin_first_state_arg(aditi_tuple_update(_, _),
-        _ - _/Arity) = Arity + 1.
-    % XXX removing the space between the 2 and the `.' will possibly
-    % cause lexing to fail as io__putback_char will be called twice
-    % in succession in lexer__get_int_dot.
-aditi_builtin_first_state_arg(aditi_bulk_update(_, _, _), _) = 2 .
 
 %-----------------------------------------------------------------------------%
 
@@ -2027,9 +1906,9 @@ typecheck_unification(X, functor(F, E, As), functor(F, E, As), GoalPath,
     typecheck_unify_var_functor(X, F, As, GoalPath, !Info, !IO),
     perform_context_reduction(OrigTypeAssignSet, !Info, !IO).
 typecheck_unification(X,
-        lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+        lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal0),
-        lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+        lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal), _, !Info, !IO) :-
     typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, X, Vars,
         !Info, !IO),
@@ -2555,21 +2434,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
                 GoalPath, PredClassContext, PredConstraints),
             ConsInfo = cons_type_info(PredTypeVarSet, PredExistQVars,
                 PredType, ArgTypes, PredConstraints),
-            !:ConsInfos = [ConsInfo | !.ConsInfos],
-
-            % If the predicate has an Aditi marker, we also add the
-            % `aditi pred(...)' type, which is used for inputs to the
-            % Aditi bulk update operations and also to Aditi aggregates.
-            pred_info_get_markers(PredInfo, Markers),
-            ( check_marker(Markers, aditi) ->
-                construct_higher_order_pred_type(Purity,
-                    lambda_aditi_bottom_up, PredTypeParams, PredType2),
-                ConsInfo2 = cons_type_info(PredTypeVarSet,
-                    PredExistQVars, PredType2, ArgTypes, PredConstraints),
-                !:ConsInfos = [ConsInfo2 | !.ConsInfos]
-            ;
-                true
-            )
+            !:ConsInfos = [ConsInfo | !.ConsInfos]
         ;
             unexpected(this_file, "make_pred_cons_info: split_list failed")
         )

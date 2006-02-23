@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2535,7 +2535,6 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     pred_info_get_markers(PredInfo0, MarkerList),
     pred_info_get_goal_type(PredInfo0, GoalType),
     pred_info_get_class_context(PredInfo0, ClassContext),
-    pred_info_get_aditi_owner(PredInfo0, Owner),
     varset.init(EmptyVarSet),
     map.init(EmptyVarTypes),
     map.init(EmptyTVarNameMap),
@@ -2552,8 +2551,8 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     Origin = transformed(Transform, OrigOrigin, CallerPredId),
     pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
         Status, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
-        ClassContext, EmptyProofs, EmptyConstraintMap, Owner,
-        ClausesInfo, NewPredInfo0),
+        ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
+        NewPredInfo0),
     pred_info_set_typevarset(TypeVarSet, NewPredInfo0, NewPredInfo1),
 
     module_info_get_predicate_table(ModuleInfo0, PredTable0),

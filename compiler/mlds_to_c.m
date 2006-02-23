@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,14 +25,11 @@
 :- module ml_backend__mlds_to_c.
 :- interface.
 
-:- import_module aditi_backend.
-:- import_module aditi_backend.rl_file.
 :- import_module ml_backend.mlds.
 
 :- import_module io.
-:- import_module std_util.
 
-    % output_mlds(MLDS, MaybeRLFile, Suffix):
+    % output_mlds(MLDS, Suffix):
     %
     % Output C code the the appropriate C file and C declarations to the
     % appropriate header file. The file names are determined by the module
@@ -40,8 +37,7 @@
     % for debugging dumps. For normal output, the suffix should be the empty
     % string.)
     %
-:- pred mlds_to_c__output_mlds(mlds::in, maybe(rl_file)::in, string::in,
-    io::di, io::uo) is det.
+:- pred mlds_to_c__output_mlds(mlds::in, string::in, io::di, io::uo) is det.
 
     % output_header_file(MLDS, Suffix):
     %
@@ -52,13 +48,12 @@
 :- pred mlds_to_c__output_header_file(mlds::in, string::in,
     io::di, io::uo) is det.
 
-    % output_c_file(MLDS, MaybeRLFile, Suffix):
+    % output_c_file(MLDS, Suffix):
     %
     % Output C code for the specified MLDS module to the appropriate C file.
     % See output_mlds for the meaning of Suffix.
     %
-:- pred mlds_to_c__output_c_file(mlds::in, maybe(rl_file)::in, string::in,
-    io::di, io::uo) is det.
+:- pred mlds_to_c__output_c_file(mlds::in, string::in, io::di, io::uo) is det.
 
     % Output an MLDS context in C #line format.
     % This is useful for other foreign language interfaces such as
@@ -114,7 +109,7 @@
 
 %-----------------------------------------------------------------------------%
 
-mlds_to_c__output_mlds(MLDS, MaybeRLFile, Suffix, !IO) :-
+mlds_to_c__output_mlds(MLDS, Suffix, !IO) :-
     % We output the source file before outputting the header, since the Mmake
     % dependencies say the header file depends on the source file, and so if
     % we wrote them out in the other order, this might lead to unnecessary
@@ -123,15 +118,14 @@ mlds_to_c__output_mlds(MLDS, MaybeRLFile, Suffix, !IO) :-
     % XXX At some point we should also handle output of any non-C
     % foreign code (Ada, Fortran, etc.) to appropriate files.
     %
-    output_c_file(MLDS, MaybeRLFile, Suffix, !IO),
+    output_c_file(MLDS, Suffix, !IO),
     output_header_file(MLDS, Suffix, !IO).
 
-mlds_to_c__output_c_file(MLDS, MaybeRLFile, Suffix, !IO) :-
+mlds_to_c__output_c_file(MLDS, Suffix, !IO) :-
     ModuleName = mlds__get_module_name(MLDS),
     module_name_to_file_name(ModuleName, ".c" ++ Suffix, yes, SourceFile, !IO),
     Indent = 0,
-    output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS, MaybeRLFile),
-        !IO).
+    output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS), !IO).
 
     % Generate the header file.
     %
@@ -248,10 +242,9 @@ mlds_output_src_import(_Indent, Import, !IO) :-
     % it is actually the target file, but there's no obvious alternative term
     % to use which also has a clear and concise abbreviation, so never mind...)
     %
-:- pred mlds_output_src_file(indent::in, mlds::in, maybe(rl_file)::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_src_file(indent::in, mlds::in, io::di, io::uo) is det.
 
-mlds_output_src_file(Indent, MLDS, MaybeRLFile, !IO) :-
+mlds_output_src_file(Indent, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns,
         InitPreds, FinalPreds),
 
@@ -301,8 +294,6 @@ mlds_output_src_file(Indent, MLDS, MaybeRLFile, !IO) :-
     io__nl(!IO),
     mlds_output_init_fn_defns(MLDS_ModuleName, FuncDefns, TypeCtorInfoDefns,
         !IO),
-    io__nl(!IO),
-    c_util__output_rl_file(ModuleName, MaybeRLFile, !IO),
     io__nl(!IO),
     mlds_output_grade_var(!IO),
     io__nl(!IO),

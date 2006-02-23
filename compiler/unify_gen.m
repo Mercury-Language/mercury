@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -42,7 +42,6 @@
 
 :- implementation.
 
-:- import_module aditi_backend.rl.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
@@ -315,7 +314,7 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         ConstStag = const(int_const(Num)),
         StagTestRval = binop(eq, VarStag, ConstStag),
         TestRval = binop(logical_and, PtagTestRval, StagTestRval)
-    ;   
+    ;
         ConsTag = shared_local_tag(Bits, Num),
         ConstStag = mkword(Bits, unop(mkbody, const(int_const(Num)))),
         TestRval = binop(eq, Rval, ConstStag)
@@ -392,11 +391,11 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             Modes = [Mode]
         ->
             (
-                TakeAddr = [], 
+                TakeAddr = [],
                 Type = code_info__variable_type(!.CI, Arg),
                 generate_sub_unify(ref(Var), ref(Arg), Mode, Type, Code, !CI)
             ;
-                TakeAddr = [_ | _], 
+                TakeAddr = [_ | _],
                 unexpected(this_file,
                     "generate_construction_2: notag: take_addr")
             )
@@ -647,24 +646,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         CodeAddr = code_info__make_entry_label(!.CI, ModuleInfo,
             PredId, ProcId, no),
         code_util__extract_proc_label_from_code_addr(CodeAddr, ProcLabel),
-        (
-            EvalMethod = lambda_normal,
-            CallArgsRval = const(code_addr_const(CodeAddr))
-        ;
-            EvalMethod = lambda_aditi_bottom_up,
-            rl__get_c_interface_rl_proc_name(ModuleInfo,
-                proc(PredId, ProcId), RLProcName),
-            rl__proc_name_to_string(RLProcName, RLProcNameStr),
-            InputTypes = list__map(code_info__variable_type(!.CI), Args),
-            rl__schema_to_string(ModuleInfo, InputTypes, InputSchemaStr),
-            AditiCallArgs = [
-                const(string_const(RLProcNameStr)),
-                const(string_const(InputSchemaStr))
-            ],
-            code_info__add_static_cell_natural_types(AditiCallArgs,
-                CallArgsDataAddr, !CI),
-            CallArgsRval = const(data_addr_const(CallArgsDataAddr, no))
-        ),
+        CallArgsRval = const(code_addr_const(CodeAddr)),
         continuation_info__generate_closure_layout( ModuleInfo, PredId, ProcId,
             ClosureInfo),
         module_info_get_name(ModuleInfo, ModuleName),
@@ -678,7 +660,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         code_info__get_static_cell_info(!.CI, StaticCellInfo0),
         hlds.hlds_pred.pred_info_get_origin(PredInfo, PredOrigin),
         stack_layout__construct_closure_layout(CallerProcLabel,
-            SeqNo, ClosureInfo, ProcLabel, ModuleName, FileName, LineNumber, 
+            SeqNo, ClosureInfo, ProcLabel, ModuleName, FileName, LineNumber,
             PredOrigin, GoalPathStr, StaticCellInfo0, StaticCellInfo,
             ClosureLayoutRvalsTypes, Data),
         code_info__set_static_cell_info(StaticCellInfo, !CI),

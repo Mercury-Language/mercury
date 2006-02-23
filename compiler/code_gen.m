@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -157,12 +157,10 @@ generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId, Predicates, !IO) :-
     map__lookup(PredInfos, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     (
-        ( ProcIds = []
-        ; hlds_pred__pred_info_is_aditi_relation(PredInfo)
-        )
-    ->
+        ProcIds = [],
         Predicates = []
     ;
+        ProcIds = [_ | _],
         module_info_get_globals(ModuleInfo, Globals),
         globals__lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (

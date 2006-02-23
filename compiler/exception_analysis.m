@@ -481,9 +481,6 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, GoalInfo,
         !:Result = !.Result ^ status := may_throw(user_exception)
     ;
         Details = cast(_)
-    ;
-        Details = aditi_builtin(_, _),
-        !:Result = !.Result ^ status := may_throw(user_exception)
     ).
 check_goal_for_exceptions_2(SCC, VarTypes, not(Goal), _,
         !Result, !ModuleInfo, !IO) :-

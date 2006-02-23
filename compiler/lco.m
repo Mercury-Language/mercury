@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -718,7 +718,7 @@ update_construct(Subst, Goal0, Goal) :-
                 rename_var_list(no, Subst, RHSVars0, RHSVars),
                 RHS = functor(RHSConsId, IsExistConstr, RHSVars)
             ;
-                RHS0 = lambda_goal(_, _, _, _, _, _, _, _, _),
+                RHS0 = lambda_goal(_, _, _, _, _, _, _, _),
                 unexpected(this_file, "update_construct: lambda RHS")
             ),
             GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),

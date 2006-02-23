@@ -103,7 +103,7 @@ modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
             % If this is a lambda unification containing some inst any
             % nonlocals, then the lambda should be marked as impure.
             %
-        RHS = lambda_goal(Purity, _, _, _, NonLocals, _, _, _, _),
+        RHS = lambda_goal(Purity, _, _, NonLocals, _, _, _, _),
         Purity \= purity_impure,
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -269,7 +269,7 @@ modecheck_unification_2(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
 
 modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         unify(X, RHS, Mode, Unification, UnifyContext), !ModeInfo, !IO) :-
-    LambdaGoal = lambda_goal(Purity, PredOrFunc, EvalMethod, _,
+    LambdaGoal = lambda_goal(Purity, PredOrFunc, EvalMethod,
         ArgVars, Vars, Modes0, Det, Goal0),
 
     % First modecheck the lambda goal itself:
@@ -400,12 +400,13 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
 
         % Now modecheck the unification of X with the lambda-expression.
 
-        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod,
-            modes_are_ok, ArgVars, Vars, Modes, Det, Goal),
+        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
+            Vars, Modes, Det, Goal),
         modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes, Det,
             RHS0, RHS, Unification0, Unification, Mode, !ModeInfo)
     ;
-        list__filter((pred(Var :: in) is semidet :-
+        list__filter(
+            (pred(Var :: in) is semidet :-
                 instmap__lookup_var(InstMap1, Var, Inst),
                 \+ inst_is_ground(ModuleInfo2, Inst)
             ), NonLocalsList, NonGroundNonLocals),
@@ -419,8 +420,8 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
                 "modecheck_unification_2(lambda): very strange var")
         ),
             % Return any old garbage.
-        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
-            ArgVars, Vars, Modes0, Det, Goal0),
+        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
+            Vars, Modes0, Det, Goal0),
         Mode = (free -> free) - (free -> free),
         Unification = Unification0
     ).
@@ -1175,12 +1176,10 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
             proc(PredId, ProcId) =
                 unshroud_pred_proc_id(ShroudedPredProcId),
             (
-                RHS0 = lambda_goal(_, _, EvalMethod, _,
-                    _, _, _, _, Goal),
+                RHS0 = lambda_goal(_, _, EvalMethod, _, _, _, _, Goal),
                 Goal = call(PredId, ProcId, _, _, _, _) - _
             ->
-                module_info_pred_info(ModuleInfo,
-                    PredId, PredInfo),
+                module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 PredModule = pred_info_module(PredInfo),
                 PredName = pred_info_name(PredInfo),
                 RHS = functor(cons(qualified(PredModule, PredName), Arity),

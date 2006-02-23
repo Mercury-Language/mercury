@@ -2089,10 +2089,10 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
     ).
 
 % pragma `obsolete', `terminates', `does_not_terminate'
-% `termination_info', `check_termination', `aditi', `base_relation',
-% `owner', and `reserve_tag' pragma declarations are supposed to go
-% in the interface, but all other pragma declarations are implementation
-% details only, and should go in the implementation.
+% `termination_info', `check_termination', and `reserve_tag' pragma
+% declarations are supposed to go in the interface, but all other pragma
+% declarations are implementation details only, and should go in the
+% implementation.
 
 % XXX we should allow c_header_code;
 % but if we do allow it, we should put it in the generated
@@ -2126,18 +2126,6 @@ pragma_allowed_in_interface(terminates(_, _), yes).
 pragma_allowed_in_interface(does_not_terminate(_, _), yes).
 pragma_allowed_in_interface(check_termination(_, _), yes).
 pragma_allowed_in_interface(structure_sharing(_, _, _, _, _, _), yes).
-    % `aditi', `base_relation', `index' and `owner' pragmas must be in the
-    % interface for exported preds. This is checked in make_hlds.m.
-pragma_allowed_in_interface(aditi(_, _), yes).
-pragma_allowed_in_interface(base_relation(_, _), yes).
-pragma_allowed_in_interface(aditi_index(_, _, _), yes).
-pragma_allowed_in_interface(supp_magic(_, _), no).
-pragma_allowed_in_interface(context(_, _), no).
-pragma_allowed_in_interface(aditi_memo(_, _), no).
-pragma_allowed_in_interface(aditi_no_memo(_, _), no).
-pragma_allowed_in_interface(naive(_, _), no).
-pragma_allowed_in_interface(psn(_, _), no).
-pragma_allowed_in_interface(owner(_, _, _), yes).
 pragma_allowed_in_interface(mode_check_clauses(_, _), yes).
 
 check_for_no_exports(Items, ModuleName, !IO) :-
@@ -2757,7 +2745,6 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
     mercury_table_builtin_module(MercuryTableBuiltin),
     mercury_profiling_builtin_module(MercuryProfilingBuiltin),
     mercury_term_size_prof_builtin_module(MercuryTermSizeProfBuiltin),
-    aditi_private_builtin_module(AditiPrivateBuiltin),
     !:ImportDeps = [MercuryPublicBuiltin | !.ImportDeps],
     !:UseDeps = [MercuryPrivateBuiltin | !.UseDeps],
     (
@@ -2797,13 +2784,6 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         !:UseDeps = [MercuryTermSizeProfBuiltin | !.UseDeps]
     ;
         true
-    ),
-    globals__lookup_bool_option(Globals, aditi, Aditi),
-    (
-        Aditi = yes,
-        !:UseDeps = [AditiPrivateBuiltin | !.UseDeps]
-    ;
-        Aditi = no
     ).
 
 :- pred contains_tabling_pragma(item_list::in) is semidet.
@@ -3576,10 +3556,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 JavaDateFileName, " : ", SourceFileName, "\n",
                 "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
                     "--java-only ", ModuleArg,
-                    " $(ERR_REDIRECT)\n",
-                RLOFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--aditi-only ", ModuleArg,
                     " $(ERR_REDIRECT)\n"
             ], !IO)
         ;
@@ -5651,19 +5627,9 @@ get_source_file(DepsMap, ModuleName, FileName) :-
 append_to_init_list(DepStream, InitFileName, Module, !IO) :-
     InitFuncName0 = make_init_name(Module),
     string__append(InitFuncName0, "init", InitFuncName),
-    RLName = make_rl_data_name(Module),
     io__write_strings(DepStream, [
         "\techo ""INIT ", InitFuncName, """ >> ", InitFileName, "\n"
-    ], !IO),
-    globals__io_lookup_bool_option(aditi, Aditi, !IO),
-    (
-        Aditi = yes,
-        io__write_strings(DepStream, [
-            "\techo ""ADITI_DATA ", RLName, """ >> ", InitFileName, "\n"
-        ], !IO)
-    ;
-        Aditi = no
-    ).
+    ], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -5781,10 +5747,7 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
     Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
         ContainsPragmaExport),
     ForeignProcLangs = map__values(LangMap),
-    LangSet1 = set__insert_list(LangSet0, ForeignProcLangs),
-    globals__lookup_bool_option(Globals, aditi, Aditi),
-    % We generate a C constant containing the Aditi-RL code.
-    LangSet = ( Aditi = yes -> set__insert(LangSet1, c) ; LangSet1 ).
+    LangSet = set__insert_list(LangSet0, ForeignProcLangs).
 
 :- pred get_item_foreign_code(globals::in, item_and_context::in,
     module_foreign_info::in, module_foreign_info::out) is det.
@@ -7693,13 +7656,7 @@ reorderable_item(module_defn(_, ModuleDefn)) = Reorderable :-
     ; ModuleDefn = version_numbers(_, _), Reorderable = no
     ).
 reorderable_item(pragma(_, Pragma)) = Reorderable :-
-    ( Pragma = aditi(_, _), Reorderable = no
-    ; Pragma = aditi_index(_, _, _), Reorderable = no
-    ; Pragma = aditi_memo(_, _), Reorderable = no
-    ; Pragma = aditi_no_memo(_, _), Reorderable = no
-    ; Pragma = base_relation(_, _), Reorderable = no
-    ; Pragma = check_termination(_, _), Reorderable = yes
-    ; Pragma = context(_, _), Reorderable = no
+    ( Pragma = check_termination(_, _), Reorderable = yes
     ; Pragma = does_not_terminate(_, _), Reorderable = yes
     ; Pragma = exceptions(_, _, _, _, _), Reorderable = yes
     ; Pragma = trailing_info(_, _, _, _, _), Reorderable = yes
@@ -7712,16 +7669,12 @@ reorderable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = import(_, _, _, _, _), Reorderable = no
     ; Pragma = inline(_, _), Reorderable = yes
     ; Pragma = mode_check_clauses(_, _), Reorderable = yes
-    ; Pragma = naive(_, _), Reorderable = no
     ; Pragma = no_inline(_, _), Reorderable = yes
     ; Pragma = obsolete(_, _), Reorderable = yes
-    ; Pragma = owner(_, _, _), Reorderable = no
     ; Pragma = promise_pure(_, _), Reorderable = yes
     ; Pragma = promise_semipure(_, _), Reorderable = yes
-    ; Pragma = psn(_, _), Reorderable = no
     ; Pragma = reserve_tag(_, _), Reorderable = yes
     ; Pragma = source_file(_), Reorderable = no
-    ; Pragma = supp_magic(_, _), Reorderable = no
     ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
     ; Pragma = terminates(_, _), Reorderable = yes
     ; Pragma = termination2_info(_, _, _, _, _, _), Reorderable = no
@@ -7783,13 +7736,7 @@ chunkable_item(module_defn(_, ModuleDefn)) = Reorderable :-
     ; ModuleDefn = version_numbers(_, _), Reorderable = no
     ).
 chunkable_item(pragma(_, Pragma)) = Reorderable :-
-    ( Pragma = aditi(_, _), Reorderable = no
-    ; Pragma = aditi_index(_, _, _), Reorderable = no
-    ; Pragma = aditi_memo(_, _), Reorderable = no
-    ; Pragma = aditi_no_memo(_, _), Reorderable = no
-    ; Pragma = base_relation(_, _), Reorderable = no
-    ; Pragma = check_termination(_, _), Reorderable = yes
-    ; Pragma = context(_, _), Reorderable = no
+    ( Pragma = check_termination(_, _), Reorderable = yes
     ; Pragma = does_not_terminate(_, _), Reorderable = yes
     ; Pragma = exceptions(_, _, _, _, _), Reorderable = no
     ; Pragma = export(_, _, _, _), Reorderable = yes
@@ -7801,16 +7748,12 @@ chunkable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = import(_, _, _, _, _), Reorderable = no
     ; Pragma = inline(_, _), Reorderable = yes
     ; Pragma = mode_check_clauses(_, _), Reorderable = yes
-    ; Pragma = naive(_, _), Reorderable = no
     ; Pragma = no_inline(_, _), Reorderable = yes
     ; Pragma = obsolete(_, _), Reorderable = yes
-    ; Pragma = owner(_, _, _), Reorderable = no
     ; Pragma = promise_pure(_, _), Reorderable = yes
     ; Pragma = promise_semipure(_, _), Reorderable = yes
-    ; Pragma = psn(_, _), Reorderable = no
     ; Pragma = reserve_tag(_, _), Reorderable = yes
     ; Pragma = source_file(_), Reorderable = no
-    ; Pragma = supp_magic(_, _), Reorderable = no
     ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
     ; Pragma = terminates(_, _), Reorderable = yes
     ; Pragma = termination2_info( _, _, _, _, _, _), Reorderable = no

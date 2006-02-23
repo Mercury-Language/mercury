@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,7 +56,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.make_hlds.add_aditi.
 :- import_module hlds.make_hlds.add_pragma.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.
@@ -690,20 +689,6 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
             Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ;
-        % Check for an Aditi builtin.
-        Purity = purity_pure,
-        Name = unqualified(Name1),
-        ( Name1 = "aditi_insert"
-        ; Name1 = "aditi_delete"
-        ; Name1 = "aditi_bulk_insert"
-        ; Name1 = "aditi_bulk_delete"
-        ; Name1 = "aditi_bulk_modify"
-        )
-    ->
-        term__apply_substitution_to_list(Args1, Subst, Args2),
-        transform_aditi_builtin(Name1, Args2, Context, Goal, !VarSet,
-            !ModuleInfo, !QualInfo, !SInfo, !IO)
-    ;
         prepare_for_call(!SInfo),
         term__apply_substitution_to_list(Args1, Subst, Args),
         make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !IO),
@@ -859,6 +844,18 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, !VarSet,
         prog_out__write_context(Context, !IO),
         io__write_string("  in DCG field access goal.\n", !IO)
     ).
+
+    % Produce an invalid goal.
+    %
+:- pred invalid_goal(string::in, list(prog_term)::in, hlds_goal_info::in,
+    hlds_goal::out, prog_varset::in, prog_varset::out,
+    svar_info::in, svar_info::out, io::di, io::uo) is det.
+
+invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet, !SInfo, !IO) :-
+    make_fresh_arg_vars(Args0, HeadVars, !VarSet, !SInfo, !IO),
+    MaybeUnifyContext = no,
+    Goal = call(invalid_pred_id, invalid_proc_id, HeadVars, not_builtin,
+        MaybeUnifyContext, unqualified(UpdateStr)) - GoalInfo.
 
 :- pred transform_dcg_record_syntax_2(field_access_type::in, field_list::in,
     list(prog_term)::in, prog_context::in, hlds_goal::out,

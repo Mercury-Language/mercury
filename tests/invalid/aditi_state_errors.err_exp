@@ -1,7 +1,0 @@
-aditi_state_errors.m:007: Error: `:- pragma base_relation' declaration for
-aditi_state_errors.m:007:   predicate `aditi_state_errors.no_aditi_state/2'
-aditi_state_errors.m:007:   without an `aditi__state' argument.
-aditi_state_errors.m:010: Error: `:- pragma base_relation' declaration for
-aditi_state_errors.m:010:   predicate `aditi_state_errors.output_aditi_state/3'
-aditi_state_errors.m:010:   without an `aditi__state' argument with mode
-aditi_state_errors.m:010:   `aditi_mui'.

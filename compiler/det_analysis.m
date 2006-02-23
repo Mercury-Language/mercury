@@ -994,8 +994,8 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS,
         Detism, GoalFailingContexts, !:Msgs) :-
     % Unifications are either deterministic or semideterministic.
     (
-        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-            NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal0)
+        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+            Vars, Modes, LambdaDeclaredDet, Goal0)
     ->
         ( determinism_components(LambdaDeclaredDet, _, at_most_many_cc) ->
             LambdaSolnContext = first_soln
@@ -1010,8 +1010,8 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS,
         det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
             Goal, GoalInfo, DetInfo, CheckLambdaMsgs),
         list__append(GoalMsgs, CheckLambdaMsgs, !:Msgs),
-        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
-            NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal)
+        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+            Vars, Modes, LambdaDeclaredDet, Goal)
     ;
         RHS = RHS0,
         !:Msgs = []

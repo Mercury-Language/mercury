@@ -421,7 +421,7 @@ number_robdd_variables_in_rhs(_, _, Vars, !RHS, !NRInfo) :-
     !.RHS = functor(_, _, Args),
     Vars = Args.
 number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
-    !.RHS = lambda_goal(_, _, _, _, LambdaNonLocals, LambdaVars, _, _,
+    !.RHS = lambda_goal(_, _, _, LambdaNonLocals, LambdaVars, _, _,
         LambdaGoal0),
     Vars = LambdaNonLocals,
     VarTypes = !.NRInfo ^ vartypes,
@@ -1262,9 +1262,6 @@ goal_constraints_2(GoalPath, _NonLocals, _Vars, CanSucceed, GoalExpr, GoalExpr,
     ;
         GenericCall = cast(_),
         sorry(this_file, "type/inst cast call NYI")
-    ;
-        GenericCall = aditi_builtin(_, _),
-        sorry(this_file, "aditi_builtin call NYI")
     ).
 
 goal_constraints_2(_,_,_,_,switch(_,_,_),_,_,_,_,_) :-
@@ -1536,7 +1533,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
     ).
 
 unify_constraints(Var, GoalPath, RHS0, RHS, !Constraint, !GCInfo) :-
-    RHS0 = lambda_goal(_, _, _, _, NonLocals, LambdaVars, Modes, _, Goal0),
+    RHS0 = lambda_goal(_, _, _, NonLocals, LambdaVars, Modes, _, Goal0),
     InstGraph = !.GCInfo ^ inst_graph,
 
     % Variable Var is made ground by this goal.

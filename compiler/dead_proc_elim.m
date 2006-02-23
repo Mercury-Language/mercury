@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -881,7 +881,7 @@ pre_modecheck_examine_unify_rhs(functor(Functor, _, _), !DeadInfo) :-
     ;
         true
     ).
-pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, _, _, Goal),
+pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, _, Goal),
         !DeadInfo) :-
     pre_modecheck_examine_goal(Goal, !DeadInfo).
 

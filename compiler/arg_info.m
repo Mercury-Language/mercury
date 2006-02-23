@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2005 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -149,20 +149,16 @@ generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
 generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map__lookup(PredTable0, PredId, PredInfo0),
-    ( hlds_pred__pred_info_is_aditi_relation(PredInfo0) ->
-        true
-    ;
-        pred_info_procedures(PredInfo0, ProcTable0),
-        pred_info_arg_types(PredInfo0, ArgTypes),
-        map__lookup(ProcTable0, ProcId, ProcInfo0),
+    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_arg_types(PredInfo0, ArgTypes),
+    map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-        generate_proc_arg_info(ArgTypes, !.ModuleInfo, ProcInfo0, ProcInfo),
+    generate_proc_arg_info(ArgTypes, !.ModuleInfo, ProcInfo0, ProcInfo),
 
-        map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-        map__det_update(PredTable0, PredId, PredInfo, PredTable),
-        module_info_set_preds(PredTable, !ModuleInfo)
-    ),
+    map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    map__det_update(PredTable0, PredId, PredInfo, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo),
     generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).
 
 generate_proc_arg_info(ArgTypes, ModuleInfo, !ProcInfo) :-

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -123,7 +123,6 @@
                 pred_markers,           % from the pred_info
                 pred_or_func,
                 string,                 % pred/func name
-                aditi_owner,
                 module_info,
                 bool                    % true iff we need to recompute
                                         % the nonlocals
@@ -173,7 +172,6 @@ process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     pred_info_typevarset(!.PredInfo, TypeVarSet0),
     pred_info_get_markers(!.PredInfo, Markers),
     pred_info_get_class_context(!.PredInfo, Constraints0),
-    pred_info_get_aditi_owner(!.PredInfo, Owner),
     proc_info_headvars(!.ProcInfo, HeadVars),
     proc_info_varset(!.ProcInfo, VarSet0),
     proc_info_vartypes(!.ProcInfo, VarTypes0),
@@ -185,11 +183,10 @@ process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     % Process the goal.
     Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
         InstVarSet0, RttiVarMaps0, Markers, PredOrFunc,
-        PredName, Owner, !.ModuleInfo, MustRecomputeNonLocals0),
+        PredName, !.ModuleInfo, MustRecomputeNonLocals0),
     process_goal(Goal0, Goal1, Info0, Info1),
     Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet,
-        _, RttiVarMaps, _, _, _, _, !:ModuleInfo,
-        MustRecomputeNonLocals),
+        _, RttiVarMaps, _, _, _, !:ModuleInfo, MustRecomputeNonLocals),
 
     % Check if we need to requantify.
     (
@@ -290,7 +287,7 @@ process_cases([case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases],
 
 process_unify_goal(XVar, Y0, Mode, Unification0, Context, GoalExpr, !Info) :-
     (
-        Y0 = lambda_goal(Purity, PredOrFunc, EvalMethod, _,
+        Y0 = lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocalVars, Vars, Modes, Det, LambdaGoal0)
     ->
         % First, process the lambda goal recursively, in case it contains
@@ -316,7 +313,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         Unification, LambdaInfo0, LambdaInfo) :-
     LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
         InstVarSet, RttiVarMaps, Markers, POF, OrigPredName,
-        Owner, ModuleInfo0, MustRecomputeNonLocals0),
+        ModuleInfo0, MustRecomputeNonLocals0),
 
     % Calculate the constraints which apply to this lambda expression.
     % Note currently we only allow lambda expressions to have universally
@@ -378,13 +375,6 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         LambdaGoal = call(PredId0, ProcId0, CallVars, _, _, _) - _,
         module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0,
             Call_PredInfo, Call_ProcInfo),
-        (
-            EvalMethod = lambda_aditi_bottom_up,
-            pred_info_get_markers(Call_PredInfo, Call_Markers),
-            check_marker(Call_Markers, aditi)
-        ;
-            EvalMethod = lambda_normal
-        ),
         list__remove_suffix(CallVars, Vars, InitialVars),
 
         % check that none of the variables that we're trying to
@@ -486,40 +476,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         list__append(ArgModes1, Modes, AllArgModes),
         map__apply_to_list(AllArgVars, VarTypes, ArgTypes),
 
-        purity_to_markers(Purity, LambdaMarkers0),
-        (
-            % Pass through the aditi markers for aggregate query closures.
-            % XXX we should differentiate between normal top-down closures
-            % and aggregate query closures, possibly by using a different type
-            % for aggregate queries. Currently all nondet lambda expressions
-            % within Aditi predicates are treated as aggregate inputs.
-            % EvalMethod = (aditi_bottom_up),
-            determinism_components(Detism, _, at_most_many),
-            check_marker(Markers, aditi)
-        ->
-            markers_to_marker_list(Markers, MarkerList0),
-            list__filter(
-                (pred(Marker::in) is semidet :-
-                    % Pass through only Aditi markers. Don't pass through
-                    % `context' markers, since they are useless for
-                    % non-recursive predicates such as the created predicate.
-                    ( Marker = aditi
-                    ; Marker = dnf
-                    ; Marker = psn
-                    ; Marker = naive
-                    ; Marker = supp_magic
-                    ; Marker = aditi_memo
-                    ; Marker = aditi_no_memo
-                    )),
-                MarkerList0, MarkerList),
-            list__foldl(add_marker, MarkerList, LambdaMarkers0, LambdaMarkers)
-        ;
-            EvalMethod = lambda_aditi_bottom_up
-        ->
-            add_marker(aditi, LambdaMarkers0, LambdaMarkers)
-        ;
-            LambdaMarkers = LambdaMarkers0
-        ),
+        purity_to_markers(Purity, LambdaMarkers),
 
         % Now construct the proc_info and pred_info for the new single-mode
         % predicate, using the information computed above.
@@ -543,7 +500,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         set__init(Assertions),
         pred_info_create(ModuleName, PredName, PredOrFunc, LambdaContext,
             lambda(OrigFile, OrigLine, LambdaCount), local, LambdaMarkers,
-            ArgTypes, TVarSet, ExistQVars, Constraints, Assertions, Owner,
+            ArgTypes, TVarSet, ExistQVars, Constraints, Assertions,
             ProcInfo, ProcId, PredInfo),
 
         % Save the new predicate in the predicate table.
@@ -560,7 +517,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
     Unification = construct(Var, ConsId, ArgVars, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-        InstVarSet, RttiVarMaps, Markers, POF, OrigPredName, Owner,
+        InstVarSet, RttiVarMaps, Markers, POF, OrigPredName,
         ModuleInfo, MustRecomputeNonLocals).
 
 :- pred constraint_contains_vars(list(tvar)::in, prog_constraint::in)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1572,13 +1572,6 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
         modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo),
         AllArgs0 = Args0,
         AllArgs = Args
-    ;
-        GenericCall = aditi_builtin(AditiBuiltin, UpdatedCallId),
-        modecheck_aditi_builtin(AditiBuiltin, UpdatedCallId, Modes0,
-            Args0, Args, Det, ExtraGoals, !ModeInfo),
-        Modes = Modes0,
-        AllArgs0 = Args0,
-        AllArgs = Args
     ),
 
     Goal1 = generic_call(GenericCall, Args, Modes, Det),
@@ -2418,7 +2411,7 @@ candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
         % variable that was not supplied as an argument).
         %
     Goal = unify(X, RHS, _, _, _) - _GoalInfo,
-    RHS  = lambda_goal(_, _, _, _, _, _, _, _, _),
+    RHS  = lambda_goal(_, _, _, _, _, _, _, _),
         % If this is a construction then X must be free.
     not set__member(X, !.NonFree),
         % But X becomes instantiated.
