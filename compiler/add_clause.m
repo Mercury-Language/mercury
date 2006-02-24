@@ -438,18 +438,17 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
     qual_info_set_found_syntax_error(no, !QualInfo),
     (
         FoundError = yes,
-            % Don't insert clauses containing syntax errors into
-            % the clauses_info, because doing that would cause
-            % typecheck.m to report spurious type errors.
-            % Don't report singleton variable warnings if there
-            % were syntax errors.
-        true_goal(Goal)
+        % Don't insert clauses containing syntax errors into the clauses_info,
+        % because doing that would cause typecheck.m to report spurious type
+        % errors. Don't report singleton variable warnings if there were
+        % syntax errors.
+        Goal = true_goal
     ;
         FoundError = no,
         Goal = Goal0,
 
-            % If we have foreign clauses, we should only add this clause
-            % for modes *not* covered by the foreign clauses.
+        % If we have foreign clauses, we should only add this clause
+        % for modes *not* covered by the foreign clauses.
         (
             HasForeignClauses = yes,
             get_clause_list_any_order(ClausesRep0, AnyOrderClauseList),
@@ -492,7 +491,7 @@ add_clause_transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity,
         prepare_for_head(!:SInfo),
         term__apply_substitution_to_list(Args0, Subst, Args1),
         substitute_state_var_mappings(Args1, Args, !VarSet, !SInfo, !IO),
-        hlds_goal__true_goal(HeadGoal0),
+        HeadGoal0 = true_goal,
         ( GoalType = promise(_) ->
             HeadGoal = HeadGoal0
         ;
@@ -531,8 +530,8 @@ transform_goal_2(fail, _, _, disj([]) - GoalInfo, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !IO) :-
     goal_info_init(GoalInfo),
     prepare_for_next_conjunct(set__init, !VarSet, !SInfo).
-transform_goal_2(true, _, _, conj([]) - GoalInfo, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !IO) :-
+transform_goal_2(true, _, _, conj(plain_conj, []) - GoalInfo, !VarSet,
+        !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     goal_info_init(GoalInfo),
     prepare_for_next_conjunct(set__init, !VarSet, !SInfo).
 transform_goal_2(all(Vars0, Goal0), Context, Subst, Goal, !VarSet, !ModuleInfo,
@@ -572,7 +571,7 @@ transform_goal_2(promise_purity(Implicit, Purity, Goal0), _, Subst,
 transform_goal_2(
         promise_equivalent_solutions(Vars0, DotSVars0, ColonSVars0, Goal0),
         Context, Subst,
-        scope(promise_equivalent_solutions(Vars), Goal) - GoalInfo,
+        scope(promise_solutions(Vars, equivalent_solutions), Goal) - GoalInfo,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     substitute_vars(Vars0, Subst, Vars1),
     substitute_vars(DotSVars0, Subst, DotSVars1),
@@ -734,10 +733,10 @@ transform_goal_2(unify(A0, B0, Purity), Context, Subst, Goal, !VarSet,
     % unification to be !X (it may be !.X or !:X, however).
     ( A0 = functor(atom("!"), [variable(StateVarA)], _) ->
         report_svar_unify_error(Context, !.VarSet, StateVarA, !IO),
-        true_goal(Goal)
+        Goal = true_goal
     ; B0 = functor(atom("!"), [variable(StateVarB)], _) ->
         report_svar_unify_error(Context, !.VarSet, StateVarB, !IO),
-        true_goal(Goal)
+        Goal = true_goal
     ;
         prepare_for_call(!SInfo),
         term__apply_substitution(A0, Subst, A),

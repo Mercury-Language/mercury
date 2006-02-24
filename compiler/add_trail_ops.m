@@ -149,14 +149,11 @@ goal_add_trail_ops(!Goal, !Info) :-
 :- pred goal_expr_add_trail_ops(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, trail_ops_info::in, trail_ops_info::out) is det.
 
-goal_expr_add_trail_ops(conj(Goals0), GI, conj(Goals) - GI, !Info) :-
-    conj_add_trail_ops(Goals0, Goals, !Info).
-
-goal_expr_add_trail_ops(par_conj(Goals0), GI, par_conj(Goals) - GI, !Info) :-
+goal_expr_add_trail_ops(conj(ConjType, Goals0), GI, conj(ConjType, Goals) - GI,
+        !Info) :-
     conj_add_trail_ops(Goals0, Goals, !Info).
 
 goal_expr_add_trail_ops(disj([]), GI, disj([]) - GI, !Info).
-
 goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
     Goals0 = [_ | _],
 
@@ -168,7 +165,7 @@ goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
     new_ticket_var(TicketVar, !Info),
     gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
     disj_add_trail_ops(Goals0, yes, no, CodeModel, TicketVar, Goals, !Info),
-    Goal = conj([StoreTicketGoal, disj(Goals) - GoalInfo]).
+    Goal = conj(plain_conj, [StoreTicketGoal, disj(Goals) - GoalInfo]).
 
 goal_expr_add_trail_ops(switch(A, B, Cases0), GI, switch(A, B, Cases) - GI,
         !Info) :-
@@ -183,8 +180,8 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     InnerGoal = _ - InnerGoalInfo,
     goal_info_get_determinism(InnerGoalInfo, Determinism),
     determinism_components(Determinism, _CanFail, NumSolns),
-    true_goal(Context, True),
-    fail_goal(Context, Fail),
+    True = true_goal_with_context(Context),
+    Fail = fail_goal_with_context(Context),
     ModuleInfo = !.Info ^ module_info,
     ( NumSolns = at_most_zero ->
         % The "then" part of the if-then-else will be unreachable, but to
@@ -236,21 +233,23 @@ goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
         % discard this trail ticket before backtracking over it.
         gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
         gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
-        fail_goal(Context, FailGoal),
+        FailGoal = fail_goal_with_context(Context),
 
         % Put it all together.
         Goal2 = scope(Reason, Goal1) - OuterGoalInfo,
-        SuccCode = conj([Goal2, ResetTicketCommitGoal, PruneTicketsToGoal])
+        SuccCode = conj(plain_conj,
+            [Goal2, ResetTicketCommitGoal, PruneTicketsToGoal])
             - OuterGoalInfo,
         ( OuterCodeModel = model_semi ->
             FailGoal = _ - FailGoalInfo,
-            FailCode = conj([ResetTicketUndoGoal, DiscardTicketGoal, FailGoal])
+            FailCode = conj(plain_conj,
+                [ResetTicketUndoGoal, DiscardTicketGoal, FailGoal])
                 - FailGoalInfo,
             Goal3 = disj([SuccCode, FailCode]) - OuterGoalInfo
         ;
             Goal3 = SuccCode
         ),
-        Goal = conj([MarkTicketStackGoal, StoreTicketGoal, Goal3])
+        Goal = conj(plain_conj, [MarkTicketStackGoal, StoreTicketGoal, Goal3])
     ;
         goal_add_trail_ops(Goal0, Goal1, !Info),
         Goal = scope(Reason, Goal1)
@@ -275,21 +274,22 @@ goal_expr_add_trail_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
     ( CondCodeModel = model_non ->
         gen_reset_ticket_solve(TicketVar, Context, ResetTicketSolveGoal,
             !.Info),
-        Then = conj([ResetTicketSolveGoal, Then1]) - Then1GoalInfo
+        Then = conj(plain_conj, [ResetTicketSolveGoal, Then1]) - Then1GoalInfo
     ;
         gen_reset_ticket_commit(TicketVar, Context, ResetTicketCommitGoal,
             !.Info),
         gen_prune_ticket(Context, PruneTicketGoal, !.Info),
-        Then = conj([ResetTicketCommitGoal, PruneTicketGoal, Then1])
+        Then = conj(plain_conj,
+            [ResetTicketCommitGoal, PruneTicketGoal, Then1])
             - Then1GoalInfo
     ),
     gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
     gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
     Else1 = _ - Else1GoalInfo,
-    Else = conj([ResetTicketUndoGoal, DiscardTicketGoal, Else1])
+    Else = conj(plain_conj, [ResetTicketUndoGoal, DiscardTicketGoal, Else1])
         - Else1GoalInfo,
     IfThenElse = if_then_else(A, Cond, Then, Else) - GoalInfo,
-    Goal = conj([StoreTicketGoal, IfThenElse]).
+    Goal = conj(plain_conj, [StoreTicketGoal, IfThenElse]).
 
 goal_expr_add_trail_ops(Goal @ call(_, _, _, _, _, _), GI, Goal - GI, !Info).
 

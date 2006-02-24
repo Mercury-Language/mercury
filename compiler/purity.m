@@ -445,9 +445,8 @@ applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
 :- pred compute_expr_purity(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, purity::out, purity_info::in, purity_info::out) is det.
 
-compute_expr_purity(conj(Goals0), conj(Goals), _, Purity, !Info) :-
-    compute_goals_purity(Goals0, Goals, purity_pure, Purity, !Info).
-compute_expr_purity(par_conj(Goals0), par_conj(Goals), _, Purity, !Info) :-
+compute_expr_purity(conj(ConjType, Goals0), conj(ConjType, Goals), _, Purity,
+        !Info) :-
     compute_goals_purity(Goals0, Goals, purity_pure, Purity, !Info).
 compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
     Goal0 = call(PredId0, ProcId, Vars, BIState, UContext, Name0),
@@ -581,7 +580,7 @@ compute_expr_purity(scope(Reason, Goal0), scope(Reason, Goal),
         !:Info = !.Info ^ implicit_purity := ImplicitPurity0,
         Purity = PromisedPurity
     ;
-        Reason = promise_equivalent_solutions(_),
+        Reason = promise_solutions(_, _),
         compute_goal_purity(Goal0, Goal, Purity, !Info)
     ;
         Reason = commit(_),

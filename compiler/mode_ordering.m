@@ -176,17 +176,24 @@ mode_ordering__goal(GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo, !MOI) :-
     mode_ordering__info::in, mode_ordering__info::out) is det.
 
 mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
-    Goal0 = conj(Goals0),
-    Goal = conj(Goals),
-    list__map_foldl(mode_ordering__goal, Goals0, Goals1, !MOI),
-    mode_ordering__conj(Goals1, Goals),
-    union_mode_vars_sets(Goals, !GoalInfo),
-    ConsVars = !.GoalInfo ^ consuming_vars,
-    !:GoalInfo = !.GoalInfo ^ consuming_vars :=
-        ConsVars `difference` !.GoalInfo ^ producing_vars,
-    NeedVars = !.GoalInfo ^ need_visible_vars,
-    !:GoalInfo = !.GoalInfo ^ need_visible_vars :=
-        NeedVars `difference` !.GoalInfo ^ make_visible_vars.
+    Goal0 = conj(ConjType, Goals0),
+    Goal = conj(ConjType, Goals),
+    (
+        ConjType = plain_conj,
+        list__map_foldl(mode_ordering__goal, Goals0, Goals1, !MOI),
+        mode_ordering__conj(Goals1, Goals),
+        union_mode_vars_sets(Goals, !GoalInfo),
+        ConsVars = !.GoalInfo ^ consuming_vars,
+        !:GoalInfo = !.GoalInfo ^ consuming_vars :=
+            ConsVars `difference` !.GoalInfo ^ producing_vars,
+        NeedVars = !.GoalInfo ^ need_visible_vars,
+        !:GoalInfo = !.GoalInfo ^ need_visible_vars :=
+            NeedVars `difference` !.GoalInfo ^ make_visible_vars
+    ;
+        ConjType = parallel_conj,
+        list__map_foldl(mode_ordering__goal, Goals0, Goals, !MOI),
+        union_mode_vars_sets(Goals, !GoalInfo)
+    ).
 
 mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     Goal0 = call(PredId, _, Args, _, _, _),
@@ -322,12 +329,6 @@ mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
 mode_ordering__goal_2(Goal0, _, !GoalInfo, !MOI) :-
     Goal0 = foreign_proc(_, _, _, _, _, _),
     unexpected(this_file, "mode_ordering__goal_2: pragma_foreign_code NYI").
-
-mode_ordering__goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
-    Goal0 = par_conj(Goals0),
-    Goal = par_conj(Goals),
-    list__map_foldl(mode_ordering__goal, Goals0, Goals, !MOI),
-    union_mode_vars_sets(Goals, !GoalInfo).
 
 mode_ordering__goal_2(Goal0, _, !GoalInfo, !MOI) :-
     Goal0 = shorthand(_),

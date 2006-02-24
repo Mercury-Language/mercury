@@ -988,7 +988,7 @@ modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var, Case0, Case,
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        true_goal(Goal1),
+        Goal1 = true_goal,
         InstMap = InstMap1
     ),
 
@@ -1035,7 +1035,7 @@ unique_modecheck_clause_switch(HeadVars, InstMap0, ArgFinalInsts0, Var,
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        true_goal(Goal1)
+        Goal1 = true_goal
     ),
 
     % Don't lose the information added by the functor test above.
@@ -1257,15 +1257,13 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !ModeInfo, !IO) :-
     compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo, !ModeInfo).
 
 compute_goal_instmap_delta(InstMap0, Goal, !GoalInfo, !ModeInfo) :-
-    ( Goal = conj([]) ->
-        %
-        % When modecheck_unify.m replaces a unification with a
-        % dead variable with `true', make sure the instmap_delta
-        % of the goal is empty. The code generator and
-        % mode_util__recompute_instmap_delta can be confused
-        % by references to the dead variable in the instmap_delta,
+    ( Goal = conj(plain_conj, []) ->
+        % When modecheck_unify.m replaces a unification with a dead variable
+        % with `true', make sure the instmap_delta of the goal is empty.
+        % The code generator and mode_util.recompute_instmap_delta can be
+        % confused by references to the dead variable in the instmap_delta,
         % resulting in calls to error/1.
-        %
+
         instmap_delta_init_reachable(DeltaInstMap),
         mode_info_set_instmap(InstMap0, !ModeInfo)
     ;
@@ -1275,51 +1273,54 @@ compute_goal_instmap_delta(InstMap0, Goal, !GoalInfo, !ModeInfo) :-
     ),
     goal_info_set_instmap_delta(DeltaInstMap, !GoalInfo).
 
-modecheck_goal_expr(conj(List0), GoalInfo0, Goal, !ModeInfo, !IO) :-
-    mode_checkpoint(enter, "conj", !ModeInfo, !IO),
+modecheck_goal_expr(conj(ConjType, Goals0), GoalInfo0, Goal, !ModeInfo, !IO) :-
     (
-        List0 = [],         % for efficiency, optimize common case
-        Goal = conj([])
+        ConjType = plain_conj,
+        mode_checkpoint(enter, "conj", !ModeInfo, !IO),
+        (
+            Goals0 = [],         % for efficiency, optimize common case
+            Goal = conj(plain_conj, [])
+        ;
+            Goals0 = [_ | _],
+            modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO),
+            conj_list_to_goal(Goals, GoalInfo0, Goal - _GoalInfo)
+        ),
+        mode_checkpoint(exit, "conj", !ModeInfo, !IO)
     ;
-        List0 = [_ | _],
-        modecheck_conj_list(List0, List, !ModeInfo, !IO),
-        conj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo)
-    ),
-    mode_checkpoint(exit, "conj", !ModeInfo, !IO).
-
-    % To modecheck a parallel conjunction, we modecheck each
-    % conjunct independently (just like for disjunctions).
-    % To make sure that we don't try to bind a variable more than
-    % once (by binding it in more than one conjunct), we maintain a
-    % datastructure that keeps track of three things:
-    %
-    % - the set of variables that are nonlocal to the conjuncts
-    %   (which may be a superset of the nonlocals of the par_conj
-    %   as a whole);
-    % - the set of nonlocal variables that have been bound in the
-    %   current conjunct; and
-    % - the set of variables that were bound in previous conjuncts.
-    %
-    % When binding a variable, we check that it wasn't in the set of
-    % variables bound in other conjuncts, and we add it to the set of
-    % variables bound in this conjunct.
-    %
-    % At the end of the conjunct, we add the set of variables bound in
-    % this conjunct to the set of variables bound in previous conjuncts
-    % and set the set of variables bound in the current conjunct to
-    % empty.
-    %
-    % A stack of these structures is maintained to handle nested parallel
-    % conjunctions properly.
-    %
-modecheck_goal_expr(par_conj(List0), GoalInfo0, par_conj(List), !ModeInfo,
-        !IO) :-
-    mode_checkpoint(enter, "par_conj", !ModeInfo, !IO),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
-    modecheck_par_conj_list(List0, List, NonLocals, InstMapNonlocalList,
-        !ModeInfo, !IO),
-    instmap__unify(NonLocals, InstMapNonlocalList, !ModeInfo),
-    mode_checkpoint(exit, "par_conj", !ModeInfo, !IO).
+        ConjType = parallel_conj,
+        % To modecheck a parallel conjunction, we modecheck each
+        % conjunct independently (just like for disjunctions).
+        % To make sure that we don't try to bind a variable more than
+        % once (by binding it in more than one conjunct), we maintain a
+        % datastructure that keeps track of three things:
+        %
+        % - the set of variables that are nonlocal to the conjuncts
+        %   (which may be a superset of the nonlocals of the par_conj
+        %   as a whole);
+        % - the set of nonlocal variables that have been bound in the
+        %   current conjunct; and
+        % - the set of variables that were bound in previous conjuncts.
+        %
+        % When binding a variable, we check that it wasn't in the set of
+        % variables bound in other conjuncts, and we add it to the set of
+        % variables bound in this conjunct.
+        %
+        % At the end of the conjunct, we add the set of variables bound in
+        % this conjunct to the set of variables bound in previous conjuncts
+        % and set the set of variables bound in the current conjunct to
+        % empty.
+        %
+        % A stack of these structures is maintained to handle nested parallel
+        % conjunctions properly.
+        %
+        mode_checkpoint(enter, "par_conj", !ModeInfo, !IO),
+        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        modecheck_par_conj_list(Goals0, Goals, NonLocals, InstMapNonlocalList,
+            !ModeInfo, !IO),
+        Goal = conj(parallel_conj, Goals),
+        instmap__unify(NonLocals, InstMapNonlocalList, !ModeInfo),
+        mode_checkpoint(exit, "par_conj", !ModeInfo, !IO)
+    ).
 
 modecheck_goal_expr(disj(Disjs0), GoalInfo0, Goal, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "disj", !ModeInfo, !IO),
@@ -1367,7 +1368,7 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        true_goal(Then1),
+        Then1 = true_goal,
         InstMapThen1 = InstMapCond
     ),
     mode_info_set_instmap(InstMap0, !ModeInfo),
@@ -1444,7 +1445,7 @@ modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
             mode_info_get_instmap(!.ModeInfo, InstMap0),
             instmap__lookup_var(InstMap0, TermVar, InstOfVar),
             InstOfVar = free,
-            SubGoal0 = conj([UnifyTermGoal | UnifyArgGoals])
+            SubGoal0 = conj(plain_conj, [UnifyTermGoal | UnifyArgGoals])
                 - SubGoalInfo,
             % If TermVar created by an impure unification, which is
             % possible for solver types, it is possible for
@@ -1463,7 +1464,7 @@ modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
             % algorithm delay it repeatedly.
 
             list__reverse([UnifyTermGoal | UnifyArgGoals], RevConj),
-            RevSubGoal0 = conj(RevConj) - SubGoalInfo,
+            RevSubGoal0 = conj(plain_conj, RevConj) - SubGoalInfo,
             mode_checkpoint(enter, "ground scope", !ModeInfo, !IO),
             modecheck_goal(RevSubGoal0, SubGoal, !ModeInfo, !IO),
             mode_checkpoint(exit, "ground scope", !ModeInfo, !IO),
@@ -1751,7 +1752,7 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
         % and we end up repeating the process forever.
         mode_info_add_goals_live_vars(GoalList0, !ModeInfo),
         modecheck_conj_list_no_delay(GoalList0, GoalList, !ModeInfo, !IO),
-        Goal = conj(GoalList),
+        Goal = conj(plain_conj, GoalList),
         mode_info_set_checking_extra_goals(no, !ModeInfo),
         mode_info_set_may_change_called_proc(MayChangeCalledProc0, !ModeInfo)
     ;
@@ -2016,7 +2017,7 @@ mode_info_add_goals_live_vars([Goal | Goals], !ModeInfo) :-
     (
         % Recurse into conjunctions, in case there are any conjunctions
         % that have not been flattened.
-        Goal = conj(ConjGoals) - _
+        Goal = conj(plain_conj, ConjGoals) - _
     ->
         mode_info_add_goals_live_vars(ConjGoals, !ModeInfo)
     ;
@@ -2029,7 +2030,7 @@ mode_info_remove_goals_live_vars([Goal | Goals], !ModeInfo) :-
     (
         % Recurse into conjunctions, in case there are any conjunctions
         % that have not been flattened.
-        Goal = conj(ConjGoals) - _
+        Goal = conj(plain_conj, ConjGoals) - _
     ->
         mode_info_remove_goals_live_vars(ConjGoals, !ModeInfo)
     ;
@@ -2051,7 +2052,7 @@ modecheck_conj_list_2([], [], !ImpurityErrors, !ModeInfo, !IO).
 modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
         !IO) :-
     (
-        Goal0 = conj(ConjGoals) - _
+        Goal0 = conj(plain_conj, ConjGoals) - _
     ->
         list__append(ConjGoals, Goals0, Goals1),
         modecheck_conj_list_2(Goals1, Goals, !ImpurityErrors, !ModeInfo, !IO)
@@ -2158,7 +2159,7 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
         % in the list of successfully scheduled goals.
         % We flatten out conjunctions if we can. They can arise
         % when Goal0 was a scope(from_ground_term, _) goal.
-        ( Goal = conj(SubGoals) - _ ->
+        ( Goal = conj(plain_conj, SubGoals) - _ ->
             Goals = ScheduledSolverGoals ++ SubGoals ++ Goals2
         ;
             Goals = ScheduledSolverGoals ++ [Goal | Goals2]
@@ -2448,28 +2449,17 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         !CandidateVars),
     !:NonFree = set__union(NonFreeThen, NonFreeElse).
 
-candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % A parallel conjunction.
-        %
-    Goal = par_conj(Goals) - _GoalInfo,
-    candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars).
-
 candidate_init_vars_3(ModeInfo, Goal0, !NonFree, !CandidateVars) :-
-        % An existentially quantified goal.
-        %
     Goal0 = scope(_, Goal) - _GoalInfo,
     candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars).
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % A conjunction.
-        %
-    Goal = conj(Goals) - _GoalInfo,
+    Goal = conj(_ConjType, Goals) - _GoalInfo,
     candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars).
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % XXX Is the determinism field of a generic_call
-        % valid at this point?  Determinism analysis is run after
-        % mode analysis.
+        % XXX Is the determinism field of a generic_call valid at this point?
+        % Determinism analysis is run after mode analysis.
         %
         % We assume that generic calls are deterministic.
         % The modes field of higher_order calls is junk until
@@ -2502,7 +2492,8 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
     candidate_init_vars_call(ModeInfo, Args, ArgModes,
         !NonFree, !CandidateVars).
 
-    % Filter pred succeeding if a variable does not have a solver type.
+    % This filter pred succeeds if the given variable does not have
+    % a solver type.
     %
 :- pred non_solver_var(module_info::in, vartypes::in, prog_var::in) is semidet.
 
@@ -2510,8 +2501,7 @@ non_solver_var(ModuleInfo, VarTypes, Var) :-
     VarType = VarTypes ^ det_elem(Var),
     not type_util__type_is_solver_type(ModuleInfo, VarType).
 
-    % Update !NonFree and !CandidateVars given the args and modes for
-    % a call.
+    % Update !NonFree and !CandidateVars given the args and modes for a call.
     %
 :- pred candidate_init_vars_call(mode_info::in,
     list(prog_var)::in, list(mer_mode)::in,
@@ -2566,16 +2556,14 @@ candidate_init_vars_call(ModeInfo, [Arg | Args], [Mode | Modes],
 modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
         !ImpurityErrors, !ModeInfo, !IO) :-
     (
-            % There are no unscheduled goals, so we don't
-            % need to do anything.
+            % There are no unscheduled goals, so we don't need to do anything.
             %
         DelayedGoals0 = [],
         DelayedGoals  = [],
         Goals         = []
     ;
-            % There are some unscheduled goals.  See if
-            % allowing extra initialisation calls (for
-            % a single goal) makes a difference.
+            % There are some unscheduled goals. See if allowing extra
+            % initialisation calls (for a single goal) makes a difference.
             %
         DelayedGoals0 = [_ | _],
 
@@ -2599,8 +2587,8 @@ modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
         (
             length(DelayedGoals1) < length(DelayedGoals0)
         ->
-                % We scheduled some goals.  Keep going
-                % until we flounder or succeed.
+                % We scheduled some goals. Keep going until we either
+                % flounder or succeed.
                 %
             modecheck_delayed_goals_eager(DelayedGoals1, DelayedGoals,
                 Goals2, !ImpurityErrors, !ModeInfo, !IO),
@@ -2616,14 +2604,14 @@ modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
 hlds_goal_from_delayed_goal(delayed_goal(_WaitingVars, _ModeError, Goal)) =
     Goal.
 
-    % Check whether there are any delayed goals (other than 
-    % unifications) at the point where we are about to schedule an impure goal.
-    % If so, that is an error. Headvar unifications are allowed to be delayed
-    % because in the case of output arguments, they cannot be scheduled
-    % until the variable value is known. If headvar unifications couldn't be
-    % delayed past impure goals, impure predicates wouldn't be able to have
-    % outputs! (Note that we first try to schedule any delayed solver goals
-    % waiting for initialisation.)
+    % Check whether there are any delayed goals (other than unifications)
+    % at the point where we are about to schedule an impure goal. If so,
+    % that is an error. Headvar unifications are allowed to be delayed
+    % because in the case of output arguments, they cannot be scheduled until
+    % the variable value is known. If headvar unifications couldn't be delayed
+    % past impure goals, impure predicates wouldn't be able to have outputs!
+    % (Note that we first try to schedule any delayed solver goals waiting
+    % for initialisation.)
     %
 :- pred check_for_impurity_error(hlds_goal::in, list(hlds_goal)::out,
     impurity_errors::in, impurity_errors::out,
@@ -2683,7 +2671,7 @@ is_headvar_unification_goal(HeadVars, delayed_goal(_, _, Goal - _)) :-
 
     % Given an association list of Vars - Goals,
     % combine all the Vars together into a single set.
-
+    %
 :- pred get_all_waiting_vars(list(delayed_goal)::in, set(prog_var)::out)
     is det.
 
@@ -2702,7 +2690,6 @@ get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
     is det.
 
 redelay_goals([], DelayInfo, DelayInfo).
-
 redelay_goals([DelayedGoal | DelayedGoals], DelayInfo0, DelayInfo) :-
     DelayedGoal = delayed_goal(_WaitingVars, ModeErrorInfo, Goal),
     delay_info__delay_goal(DelayInfo0, ModeErrorInfo, Goal, DelayInfo1),
@@ -2746,7 +2733,7 @@ modecheck_case_list([Case0 | Cases0], Var, [Case | Cases],
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        true_goal(Goal1),
+        Goal1 = true_goal,
         InstMap = InstMap1
     ),
 
@@ -2853,13 +2840,12 @@ modecheck_var_list_is_live([Var | Vars], [IsLive | IsLives], NeedExactMatch,
 :- pred modecheck_var_is_live(prog_var::in, is_live::in, bool::in,
     mode_info::in, mode_info::out) is det.
 
-    % `live' means possibly used later on, and
-    % `dead' means definitely not used later on.
-    % If you don't need an exact match, then
-    % the only time you get an error is if you pass a variable
-    % which is live to a predicate that expects the variable to
-    % be dead; the predicate may use destructive update to clobber
-    % the variable, so we must be sure that it is dead after the call.
+    % `live' means possibly used later on, and `dead' means definitely not used
+    % later on. If you don't need an exact match, then the only time you get
+    % an error is if you pass a variable which is live to a predicate
+    % that expects the variable to be dead; the predicate may use destructive
+    % update to clobber the variable, so we must be sure that it is dead
+    % after the call.
     %
 modecheck_var_is_live(VarId, ExpectedIsLive, NeedExactMatch, !ModeInfo) :-
     mode_info_var_is_live(!.ModeInfo, VarId, VarIsLive),
@@ -2876,9 +2862,8 @@ modecheck_var_is_live(VarId, ExpectedIsLive, NeedExactMatch, !ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Given a list of variables and a list of initial insts, ensure
-    % that the inst of each variable matches the corresponding initial
-    % inst.
+    % Given a list of variables and a list of initial insts, ensure that
+    % the inst of each variable matches the corresponding initial inst.
     %
 modecheck_var_has_inst_list(Vars, Insts, NeedEaxctMatch, ArgNum, Subst,
         !ModeInfo) :-
@@ -2946,8 +2931,8 @@ modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, ArgOffset,
 
 :- pred modecheck_set_var_inst_list_2(list(prog_var)::in, list(mer_inst)::in,
     list(mer_inst)::in, int::in, list(prog_var)::out,
-    extra_goals::in, extra_goals::out,
-    mode_info::in, mode_info::out) is semidet.
+    extra_goals::in, extra_goals::out, mode_info::in, mode_info::out)
+    is semidet.
 
 modecheck_set_var_inst_list_2([], [], [], _, [], !ExtraGoals, !ModeInfo).
 modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
@@ -2969,7 +2954,7 @@ modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     ( instmap__is_reachable(InstMap0) ->
         % The new inst must be computed by unifying the
-        % old inst and the proc's final inst
+        % old inst and the proc's final inst.
         instmap__lookup_var(InstMap0, Var0, VarInst0),
         handle_implied_mode(Var0, VarInst0, InitialInst, Var, !ExtraGoals,
             !ModeInfo),
@@ -2993,7 +2978,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     ( instmap__is_reachable(InstMap0) ->
         % The new inst must be computed by unifying the
-        % old inst and the proc's final inst
+        % old inst and the proc's final inst.
         instmap__lookup_var(InstMap0, Var0, Inst0),
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         (
@@ -3009,8 +2994,8 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         map__lookup(VarTypes, Var0, Type),
         (
-            % if the top-level inst of the variable is not_reached,
-            % then the instmap as a whole must be unreachable
+            % If the top-level inst of the variable is not_reached,
+            % then the instmap as a whole must be unreachable.
             inst_expand(ModuleInfo, Inst, not_reached)
         ->
             instmap__init_unreachable(InstMap),
@@ -3034,15 +3019,12 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
             % then we need to report an error...
             mode_info_var_is_locked(!.ModeInfo, Var0, Reason0),
             \+ (
-                % ...unless the goal is a unification and the
-                % var was unified with something no more
-                % instantiated than itself.
-                % This allows for the case of `any = free', for
-                % example. The call to
-                % inst_matches_binding, above will fail for the
-                % var with mode `any >> any' however, it should
-                % be allowed because it has only been unified
-                % with a free variable.
+                % ...unless the goal is a unification and the var was unified
+                % with something no more instantiated than itself. This allows
+                % for the case of `any = free', for example. The call to
+                % inst_matches_binding, above will fail for the var with
+                % mode `any >> any' however, it should be allowed because
+                % it has only been unified with a free variable.
                 MaybeUInst = yes(UInst),
                 inst_is_at_least_as_instantiated(Inst, UInst, Type,
                     ModuleInfo),
@@ -3116,15 +3098,14 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
 
         Var = Var0,
 
-        % If the variable's type is not a solver type (in
-        % which case inst `any' means the same as inst
-        % `ground') then this is an implied mode that we
+        % If the variable's type is not a solver type (in which case inst `any'
+        % means the same as inst `ground') then this is an implied mode that we
         % don't yet know how to handle.
         %
-        % If the variable's type is a solver type then we need to
-        % insert a call to the solver type's initialisation predicate.
-        % (To avoid unnecessary complications, we avoid doing this if
-        % there are any mode errors recorded at this point.)
+        % If the variable's type is a solver type then we need to insert a call
+        % to the solver type's initialisation predicate. (To avoid unnecessary
+        % complications, we avoid doing this if there are any mode errors
+        % recorded at this point.)
 
         mode_info_get_context(!.ModeInfo, Context),
         mode_info_get_mode_context(!.ModeInfo, ModeContext),
@@ -3142,7 +3123,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
             insert_extra_initialisation_call(Var, VarType, InitialInst,
                 Context, CallUnifyContext, !ExtraGoals, !ModeInfo)
         ;
-            % If the type is a type variable, or isn't a solver type
+            % If the type is a type variable, or isn't a solver type,
             % then give up.
             set__singleton_set(WaitingVars, Var0),
             mode_info_error(WaitingVars,

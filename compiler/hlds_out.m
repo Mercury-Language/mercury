@@ -1110,7 +1110,7 @@ write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
             Modes, VarSet, AppendVarNums, HeadTerms, PredOrFunc,
             UseDeclaredModes, !IO)
     ),
-    ( Goal = conj([]) - _GoalInfo ->
+    ( Goal = conj(plain_conj, []) - _GoalInfo ->
         io__write_string(".\n", !IO)
     ;
         io__write_string(" :-\n", !IO),
@@ -1475,8 +1475,15 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
             io__write_string("\n", !IO)
         )
     ;
-        Reason = promise_equivalent_solutions(Vars),
-        io__write_string("promise_equivalent_solutions [", !IO),
+        Reason = promise_solutions(Vars, Kind),
+        (
+            Kind = equivalent_solutions,
+            io__write_string("promise_equivalent_solutions", !IO)
+        ;
+            Kind = same_solutions,
+            io__write_string("promise_same_solutions", !IO)
+        ),
+        io__write_string(" [", !IO),
         mercury_output_vars(Vars, VarSet, AppendVarNums, !IO),
         io__write_string("] (\n", !IO)
     ;
@@ -1553,45 +1560,47 @@ write_goal_2(not(Goal), ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
     io__write_string(")", !IO),
     io__write_string(Follow, !IO).
 
-write_goal_2(conj(List), ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
-        TypeQual, !IO) :-
+write_goal_2(conj(ConjType, List), ModuleInfo, VarSet, AppendVarNums, Indent,
+        Follow, TypeQual, !IO) :-
     (
         List = [Goal | Goals],
-        globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-        ( Verbose \= "" ->
-            write_indent(Indent, !IO),
-            io__write_string("( % conjunction\n", !IO),
-            write_conj(Goal, Goals, ModuleInfo, VarSet, AppendVarNums,
-                Indent + 1, "\n", Verbose, ",\n", TypeQual, !IO),
+        (
+            ConjType = plain_conj,
+            globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+            ( Verbose \= "" ->
+                write_indent(Indent, !IO),
+                io__write_string("( % conjunction\n", !IO),
+                write_conj(Goal, Goals, ModuleInfo, VarSet, AppendVarNums,
+                    Indent + 1, "\n", Verbose, ",\n", TypeQual, !IO),
+                write_indent(Indent, !IO),
+                io__write_string(")", !IO),
+                io__write_string(Follow, !IO)
+            ;
+                write_conj(Goal, Goals, ModuleInfo, VarSet, AppendVarNums,
+                    Indent, Follow, Verbose, ",\n", TypeQual, !IO)
+            )
+        ;
+            ConjType = parallel_conj,
+            io__write_string("( % parallel conjunction\n", !IO),
+            write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1,
+                "\n", TypeQual, !IO),
+            % See comments at write_goal_list.
+            write_goal_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent,
+                "&\n", TypeQual, !IO),
             write_indent(Indent, !IO),
             io__write_string(")", !IO),
             io__write_string(Follow, !IO)
-        ;
-            write_conj(Goal, Goals, ModuleInfo, VarSet, AppendVarNums, Indent,
-                Follow, Verbose, ",\n", TypeQual, !IO)
         )
     ;
         List = [],
         write_indent(Indent, !IO),
-        io__write_string("true", !IO),
-        io__write_string(Follow, !IO)
-    ).
-
-write_goal_2(par_conj(List), ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
-        TypeQual, !IO) :-
-    write_indent(Indent, !IO),
-    ( List = [Goal | Goals] ->
-        io__write_string("( % parallel conjunction\n", !IO),
-        write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",
-            TypeQual, !IO),
-        % See comments at write_goal_list.
-        write_goal_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent,
-            "&\n", TypeQual, !IO),
-        write_indent(Indent, !IO),
-        io__write_string(")", !IO),
-        io__write_string(Follow, !IO)
-    ;
-        io__write_string("/* parallel */ true", !IO),
+        (
+            ConjType = plain_conj,
+            io__write_string("true", !IO)
+        ;
+            ConjType = parallel_conj,
+            io__write_string("/* parallel */ true", !IO)
+        ),
         io__write_string(Follow, !IO)
     ).
 

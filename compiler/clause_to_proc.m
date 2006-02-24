@@ -408,7 +408,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     HeadVars = ExtraHeadVars ++ OrigHeadVars,
     set__list_to_set(HeadVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-    Body = conj(Goals) - GoalInfo,
+    Body = conj(plain_conj, Goals) - GoalInfo,
     proc_info_set_body(VarSet, VarTypes, HeadVars, Body, RttiVarMaps,
         !ProcInfo).
 

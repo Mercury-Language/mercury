@@ -695,7 +695,7 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
     InactiveInstmapDelta = bind_vars(OutputVars),
     (
         CodeModel = model_det,
-        InactiveGoalExpr = conj([OrigGoal, MarkInactiveGoal])
+        InactiveGoalExpr = conj(plain_conj, [OrigGoal, MarkInactiveGoal])
     ;
         CodeModel = model_semi,
         goal_info_get_instmap_delta(OrigGoalInfo, InstMapDelta),
@@ -703,8 +703,8 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
             Unifies, NewVars, Renaming),
         rename_vars_in_goal(Renaming, OrigGoal, RenamedOrigGoal),
 
-        ThenGoalExpr = conj(list__append(Unifies, [MarkInactiveGoal])),
-        list__append([TableTipVar | OutputVars], NewVars, ThenVars),
+        ThenGoalExpr = conj(plain_conj, Unifies ++ [MarkInactiveGoal]),
+        ThenVars = [TableTipVar | OutputVars] ++ NewVars,
         set__list_to_set(ThenVars, ThenNonLocals),
         goal_info_init_hide(ThenNonLocals, InactiveInstmapDelta, Detism,
             purity_impure, Context, ThenGoalInfo),
@@ -720,7 +720,7 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
             AfterInstMapDelta, multidet, purity_impure, Context,
             AfterGoalInfo),
         AfterGoal = AfterGoalExpr - AfterGoalInfo,
-        FirstGoalExpr = conj([OrigGoal, AfterGoal]),
+        FirstGoalExpr = conj(plain_conj, [OrigGoal, AfterGoal]),
         goal_info_get_nonlocals(OrigGoalInfo, OrigGINonLocals),
         set__insert(OrigGINonLocals, TableTipVar, FirstNonlocals),
         goal_info_set_nonlocals(FirstNonlocals, OrigGoalInfo, FirstGoalInfo),
@@ -743,7 +743,7 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
         purity_impure, Context, SwitchGoalInfo),
     SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
-    GoalExpr = conj([LookUpGoal, SwitchGoal]),
+    GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
     goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, Detism,
         purity_impure, Context, GoalInfo),
     Goal = GoalExpr - GoalInfo.
@@ -925,7 +925,7 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
     % The case CodeModel = model_non was caught by the code above.
     (
         CodeModel = model_det,
-        InactiveGoalExpr = conj([OrigGoal | SaveAnswerGoals]),
+        InactiveGoalExpr = conj(plain_conj, [OrigGoal | SaveAnswerGoals]),
         goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
             Detism, purity_impure, Context, InactiveGoalInfo),
         InactiveGoal = InactiveGoalExpr - InactiveGoalInfo,
@@ -942,7 +942,7 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
             Unifies, NewVars, Renaming),
         rename_vars_in_goal(Renaming, OrigGoal, RenamedOrigGoal),
 
-        ThenGoalExpr = conj(list__append(Unifies, SaveAnswerGoals)),
+        ThenGoalExpr = conj(plain_conj, Unifies ++ SaveAnswerGoals),
         list__append([TableTipVar | OutputVars], NewVars, ThenVars),
         set__list_to_set(ThenVars, ThenNonLocals),
         goal_info_init_hide(ThenNonLocals, InactiveInstmapDelta,
@@ -971,7 +971,7 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
         goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta, Detism,
             purity_impure, Context, InactiveGoalInfo),
         InactiveGoal = InactiveGoalExpr - InactiveGoalInfo,
-        fail_goal(FailedGoal),
+        FailedGoal = fail_goal,
 
         mercury_table_builtin_module(TB),
         SwitchArms = [
@@ -988,7 +988,7 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
         Detism, purity_impure, Context, SwitchGoalInfo),
     SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
-    GoalExpr = conj([LookUpGoal, SwitchGoal]),
+    GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
     goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
     Goal = GoalExpr - GoalInfo.
@@ -1056,7 +1056,7 @@ create_new_memo_non_goal(Detism, OrigGoal, PredId, ProcId,
         "", MarkCompleteCode, "", impure_code, [],
         ModuleInfo, Context, MarkCompleteGoal),
 
-    OrigSaveExpr = conj([OrigGoal | SaveAnswerGoals]),
+    OrigSaveExpr = conj(plain_conj, [OrigGoal | SaveAnswerGoals]),
     set__insert(OrigNonLocals, RecordVar, OrigSaveNonLocals),
     create_instmap_delta([OrigGoal | SaveAnswerGoals], OrigSaveIMD0),
     instmap_delta_restrict(OrigSaveNonLocals, OrigSaveIMD0, OrigSaveIMD),
@@ -1071,7 +1071,7 @@ create_new_memo_non_goal(Detism, OrigGoal, PredId, ProcId,
         purity_impure, Context, AfterGoalInfo),
     AfterGoal = AfterExpr - AfterGoalInfo,
 
-    OrigSaveAfterExpr = conj([OrigSaveGoal, AfterGoal]),
+    OrigSaveAfterExpr = conj(plain_conj, [OrigSaveGoal, AfterGoal]),
     OrigSaveAfterGoal = OrigSaveAfterExpr - OrigSaveGoalInfo,
 
     InactiveExpr = disj([OrigSaveAfterGoal, MarkCompleteGoal]),
@@ -1095,7 +1095,7 @@ create_new_memo_non_goal(Detism, OrigGoal, PredId, ProcId,
         purity_impure, Context, SwitchGoalInfo),
     SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
-    GoalExpr = conj([LookUpGoal, SwitchGoal]),
+    GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
     goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
     Goal = GoalExpr - GoalInfo.
@@ -1264,7 +1264,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         MaybeProcTableInfo = yes(ProcTableInfo)
     ;
         TableDecl = table_io_proc,
-        true_goal(TableIoDeclGoal),
+        TableIoDeclGoal = true_goal,
         NumberedRestoreVars =
             list__map(project_out_arg_method, SavedOutputVars),
         NumberedSaveVars = list__map(project_out_arg_method, SavedOutputVars),
@@ -1297,7 +1297,8 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
             [IoStateAssignFromVar - ground(clobbered, none),
             IoStateAssignToVar - ground(unique, none)],
             ModuleInfo, Context, IoStateAssignGoal),
-        RestoreAnswerGoalExpr = conj([RestoreAnswerGoal0, IoStateAssignGoal]),
+        RestoreAnswerGoalExpr = conj(plain_conj,
+            [RestoreAnswerGoal0, IoStateAssignGoal]),
         create_instmap_delta([RestoreAnswerGoal0, IoStateAssignGoal],
             RestoreAnswerInstMapDelta0),
         RestoreAnswerGoal0 = _ - RestoreAnswerGoal0Info,
@@ -1333,7 +1334,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         CallSaveAnswerGoalList = [LeftBracketGoal, NewGoal,
             RightBracketGoal, TableIoDeclGoal | SaveAnswerGoals]
     ),
-    CallSaveAnswerGoalExpr = conj(CallSaveAnswerGoalList),
+    CallSaveAnswerGoalExpr = conj(plain_conj, CallSaveAnswerGoalList),
     create_instmap_delta(CallSaveAnswerGoalList, CallSaveAnswerInstMapDelta0),
     set__insert(OrigNonLocals, TipVar, CallSaveAnswerNonLocals),
     instmap_delta_restrict(CallSaveAnswerNonLocals,
@@ -1355,7 +1356,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         purity_impure, Context, GenIfNecGoalInfo),
     GenIfNecGoal = GenIfNecGoalExpr - GenIfNecGoalInfo,
 
-    CheckAndGenAnswerGoalExpr = conj([LookupGoal, GenIfNecGoal]),
+    CheckAndGenAnswerGoalExpr = conj(plain_conj, [LookupGoal, GenIfNecGoal]),
     create_instmap_delta([LookupGoal, GenIfNecGoal],
         CheckAndGenAnswerInstMapDelta0),
     set__insert_list(OrigNonLocals, [TableVar, CounterVar, StartVar],
@@ -1464,7 +1465,7 @@ table_gen__create_new_mm_goal(Detism, OrigGoal, PredId, ProcId,
         SubgoalVar, ModuleInfo, TablingViaExtraArgs, Context,
         !VarTypes, !VarSet, SuspendGoal),
 
-    MainExpr = conj([OrigGoal | SaveAnswerGoals]),
+    MainExpr = conj(plain_conj, [OrigGoal | SaveAnswerGoals]),
     set__insert_list(OrigNonLocals, [SubgoalVar, StatusVar], MainNonLocals),
     create_instmap_delta([OrigGoal | SaveAnswerGoals], MainIMD0),
     instmap_delta_restrict(MainNonLocals, MainIMD0, MainIMD),
@@ -1488,7 +1489,7 @@ table_gen__create_new_mm_goal(Detism, OrigGoal, PredId, ProcId,
     goal_info_add_feature(hide_debug_event, MainGoalInfo, SwitchGoalInfo),
     SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
-    GoalExpr = conj([LookUpGoal, SwitchGoal]),
+    GoalExpr = conj(plain_conj, [LookUpGoal, SwitchGoal]),
     goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, nondet, purity_impure,
         Context, GoalInfo),
     Goal = GoalExpr - GoalInfo.
@@ -1668,7 +1669,8 @@ table_gen__do_own_stack_transform(Detism, OrigGoal, PredId, ProcId,
         [AnswerBlockArg], RestoreArgs, "", "", RestoreCodeStr,
         impure_code, RestoreInstMapDeltaSrc, ModuleInfo, Context, RestoreGoal),
 
-    GoalExpr = conj(LookupSetupGoals ++ [GetNextAnswerGoal, RestoreGoal]),
+    GoalExpr = conj(plain_conj,
+        LookupSetupGoals ++ [GetNextAnswerGoal, RestoreGoal]),
     goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
     Goal = GoalExpr - GoalInfo,
@@ -1746,7 +1748,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo, Context,
         Context, !VarTypes, !VarSet, !TableInfo, SaveAnswerGoals),
 
     proc_info_goal(!.ProcInfo, OrigGoal),
-    GoalExpr = conj([PickupGoal, OrigGoal | SaveAnswerGoals]),
+    GoalExpr = conj(plain_conj, [PickupGoal, OrigGoal | SaveAnswerGoals]),
     OrigGoal = _ - OrigGoalInfo,
     goal_info_get_determinism(OrigGoalInfo, Detism),
     set__insert(OrigNonLocals, GeneratorVar, NonLocals),
@@ -1996,7 +1998,7 @@ generate_simple_call_table_lookup_goal(StatusType, SetupPred,
         attach_call_table_tip(SetupGoal0, SetupGoal),
         list__append(LookupGoals, [SetupGoal], LookupSetupGoals)
     ),
-    GoalExpr = conj(LookupSetupGoals),
+    GoalExpr = conj(plain_conj, LookupSetupGoals),
     Vars = list__map(project_var, NumberedVars),
     set__list_to_set([StatusVar, TableTipVar | Vars], NonLocals),
     goal_info_init_hide(NonLocals, bind_vars([TableTipVar, StatusVar]),
@@ -2051,7 +2053,7 @@ generate_memo_non_call_table_lookup_goal(NumberedVars,
     attach_call_table_tip(SetupGoal0, SetupGoal),
     list__append(LookupPrefixGoals, [SetupGoal], LookupSetupGoals),
 
-    GoalExpr = conj(LookupSetupGoals),
+    GoalExpr = conj(plain_conj, LookupSetupGoals),
     Vars = list__map(project_var, NumberedVars),
     set__list_to_set([StatusVar, RecordVar | Vars], NonLocals),
     goal_info_init_hide(NonLocals, bind_vars([RecordVar, StatusVar]),
@@ -2117,7 +2119,7 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
             attach_call_table_tip(SetupGoal0, SetupGoal),
         list__append(LookupGoals, [SetupGoal], LookupSetupGoals)
     ),
-    GoalExpr = conj(LookupSetupGoals),
+    GoalExpr = conj(plain_conj, LookupSetupGoals),
     Vars = list__map(project_var, NumberedVars),
     set__list_to_set([StatusVar, SubgoalVar | Vars], NonLocals),
     goal_info_init_hide(NonLocals, bind_vars([SubgoalVar, StatusVar]),
@@ -2749,7 +2751,7 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
             generate_call(GetPredName, det, [TipVar, RestoreBlockVar],
                 semipure_code, ground_vars([RestoreBlockVar]),
                 ModuleInfo, Context, GetBlockGoal),
-            GoalExpr = conj([GetBlockGoal | RestoreGoals]),
+            GoalExpr = conj(plain_conj, [GetBlockGoal | RestoreGoals]),
             set__list_to_set([TipVar | OutputVars], NonLocals),
             goal_info_init_hide(NonLocals, OrigInstMapDelta,
                 det, purity_semipure, Context, GoalInfo),
@@ -2757,7 +2759,7 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
         )
     ;
         NumberedOutputVars = [],
-        true_goal(Goal)
+        Goal = true_goal
     ).
 
     % Generate a goal for restoring the output arguments from
@@ -2796,7 +2798,7 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
         Args, RestoreArgs, "", ShortcutStr, RestoreCodeStr, impure_code,
         RestoreInstMapDeltaSrc, ModuleInfo, Context, ShortcutGoal),
 
-    GoalExpr = conj([ReturnAnswerBlocksGoal, ShortcutGoal]),
+    GoalExpr = conj(plain_conj, [ReturnAnswerBlocksGoal, ShortcutGoal]),
     set__list_to_set([RecordVar | OutputVars], NonLocals),
     goal_info_init_hide(NonLocals, OrigInstMapDelta, Detism, purity_semipure,
         Context, GoalInfo),
@@ -2876,10 +2878,10 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
             tabling_c_attributes, Args, RestoreArgs, "", ShortcutStr,
             RestoreCodeStr, impure_code, RestoreInstMapDeltaSrc, ModuleInfo,
             Context, ShortcutGoal),
-        GoalExpr = conj([ReturnAnswerBlocksGoal, ShortcutGoal])
+        GoalExpr = conj(plain_conj, [ReturnAnswerBlocksGoal, ShortcutGoal])
     ;
         TablingViaExtraArgs = no,
-        GoalExpr = conj([ReturnAnswerBlocksGoal | RestoreGoals])
+        GoalExpr = conj(plain_conj, [ReturnAnswerBlocksGoal | RestoreGoals])
     ),
     set__list_to_set([SubgoalVar | OutputVars], NonLocals),
     goal_info_init_hide(NonLocals, OrigInstMapDelta, Detism, Purity,
@@ -2978,7 +2980,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarTypes, !VarSet, Goal) :-
     generate_call("table_error", erroneous, [MessageVar], pure_code, [],
         ModuleInfo, Context, CallGoal),
 
-    GoalExpr = conj([MessageStrGoal, CallGoal]),
+    GoalExpr = conj(plain_conj, [MessageStrGoal, CallGoal]),
     goal_info_init_hide(set__init, bind_vars([]), erroneous, purity_impure,
         Context, GoalInfo),
     Goal = GoalExpr - GoalInfo.
@@ -3054,8 +3056,7 @@ append_fail(Goal, GoalAndThenFail) :-
     instmap_delta_init_unreachable(UnreachInstMapDelta),
     goal_info_init_hide(NonLocals, UnreachInstMapDelta, failure, purity_impure,
         Context, ConjGoalInfo),
-    fail_goal(FailGoal),
-    GoalAndThenFail = conj([Goal, FailGoal]) - ConjGoalInfo.
+    GoalAndThenFail = conj(plain_conj, [Goal, fail_goal]) - ConjGoalInfo.
 
 :- pred gen_int_construction(string::in, int::in,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,

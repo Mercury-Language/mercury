@@ -446,7 +446,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
         ),
         pd_cost__goal(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
-        fail_goal(Context, Goal1)
+        Goal1 = fail_goal_with_context(Context)
     ;
         %
         % If --no-fully-strict, replace goals which cannot fail and have
@@ -488,10 +488,10 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
 %       % cases are usually spurious.
 %       (
 %           simplify_do_warn(!.Info),
-%           % Goal0 \= conj([]) - _,
+%           % Goal0 \= conj(plain_conj, []) - _,
 %           \+ (Goal0 = call(_, _, _, _, _, SymName) - _,
 %               unqualify_name(SymName, "!")),
-%           Goal0 \= conj(_) - _,
+%           Goal0 \= conj(plain_conj, _) - _,
 %           Goal0 \= some(_, _) - _,
 %           \+ (Goal0 = unify(_, _, _, Unification, _) - _,
 %               Unification = deconstruct(_, _, _, _, _))
@@ -513,7 +513,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
         pd_cost__goal(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
         goal_info_get_context(GoalInfo0, Context),
-        true_goal(Context, Goal1)
+        Goal1 = true_goal_with_context(Context)
     ;
         Goal1 = Goal0
     ),
@@ -574,58 +574,62 @@ goal_is_call_to_builtin_false(Goal - _) :-
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-simplify_goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
-    simplify_info_get_instmap(!.Info, InstMap0),
-    excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info),
-    simplify_conj(Goals1, [], Goals, GoalInfo0, !Info, !IO),
-    simplify_info_set_instmap(InstMap0, !Info),
+simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
+        !Info, !IO) :-
     (
-        Goals = [],
-        goal_info_get_context(GoalInfo0, Context),
-        true_goal(Context, Goal - GoalInfo)
-    ;
-        Goals = [SingleGoal - SingleGoalInfo],
-        % a singleton conjunction is equivalent to the goal itself
-        maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal, Goal, GoalInfo,
-            !Info)
-    ;
-        Goals = [_, _ | _],
-        %
-        % Conjunctions that cannot produce solutions may nevertheless
-        % contain nondet and multi goals. If this happens, the conjunction
-        % is put inside a `scope' to appease the code generator.
-        %
-        goal_info_get_determinism(GoalInfo0, Detism),
+        ConjType = plain_conj,
+        simplify_info_get_instmap(!.Info, InstMap0),
+        excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info),
+        simplify_conj(Goals1, [], Goals, GoalInfo0, !Info, !IO),
+        simplify_info_set_instmap(InstMap0, !Info),
         (
-            simplify_do_once(!.Info),
-            determinism_components(Detism, CanFail, at_most_zero),
-            contains_multisoln_goal(Goals)
-        ->
-            determinism_components(InnerDetism, CanFail, at_most_many),
-            goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
-            InnerGoal = conj(Goals) - InnerInfo,
-            Goal = scope(commit(dont_force_pruning), InnerGoal)
+            Goals = [],
+            goal_info_get_context(GoalInfo0, Context),
+            Goal - GoalInfo = true_goal_with_context(Context)
         ;
-            Goal = conj(Goals)
-        ),
-        GoalInfo = GoalInfo0
-    ).
-
-simplify_goal_2(par_conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
-    (
-        Goals0 = [],
-        goal_info_get_context(GoalInfo0, Context),
-        true_goal(Context, Goal - GoalInfo)
+            Goals = [SingleGoal - SingleGoalInfo],
+            % A singleton conjunction is equivalent to the goal itself.
+            maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal,
+                Goal, GoalInfo, !Info)
+        ;
+            Goals = [_, _ | _],
+            %
+            % Conjunctions that cannot produce solutions may nevertheless
+            % contain nondet and multi goals. If this happens, the conjunction
+            % is put inside a `scope' to appease the code generator.
+            %
+            goal_info_get_determinism(GoalInfo0, Detism),
+            (
+                simplify_do_once(!.Info),
+                determinism_components(Detism, CanFail, at_most_zero),
+                contains_multisoln_goal(Goals)
+            ->
+                determinism_components(InnerDetism, CanFail, at_most_many),
+                goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
+                InnerGoal = conj(plain_conj, Goals) - InnerInfo,
+                Goal = scope(commit(dont_force_pruning), InnerGoal)
+            ;
+                Goal = conj(plain_conj, Goals)
+            ),
+            GoalInfo = GoalInfo0
+        )
     ;
-        Goals0 = [SingleGoal0],
-        simplify_goal(SingleGoal0, SingleGoal - SingleGoalInfo, !Info, !IO),
-        maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal, Goal, GoalInfo,
-            !Info)
-    ;
-        Goals0 = [_, _ | _],
-        GoalInfo = GoalInfo0,
-        simplify_par_conj(Goals0, Goals, !.Info, !Info, !IO),
-        Goal = par_conj(Goals)
+        ConjType = parallel_conj,
+        (
+            Goals0 = [],
+            goal_info_get_context(GoalInfo0, Context),
+            Goal - GoalInfo = true_goal_with_context(Context)
+        ;
+            Goals0 = [SingleGoal0],
+            simplify_goal(SingleGoal0, SingleGoal - SingleGoalInfo, !Info, !IO),
+            maybe_wrap_goal(GoalInfo0, SingleGoalInfo, SingleGoal,
+                Goal, GoalInfo, !Info)
+        ;
+            Goals0 = [_, _ | _],
+            GoalInfo = GoalInfo0,
+            simplify_par_conj(Goals0, Goals, !.Info, !Info, !IO),
+            Goal = conj(parallel_conj, Goals)
+        )
     ).
 
 simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
@@ -635,7 +639,7 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     (
         Disjuncts = [],
         goal_info_get_context(GoalInfo0, Context),
-        fail_goal(Context, Goal - GoalInfo)
+        Goal - GoalInfo = fail_goal_with_context(Context)
     ;
         Disjuncts = [SingleGoal],
         % A singleton disjunction is equivalent to the goal itself.
@@ -698,7 +702,7 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
         pd_cost__eliminate_switch(CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
         goal_info_get_context(GoalInfo0, Context),
-        fail_goal(Context, Goal - GoalInfo)
+        Goal - GoalInfo = fail_goal_with_context(Context)
     ;
         Cases = [case(ConsId, SingleGoal)],
         % A singleton switch is equivalent to the goal itself with a
@@ -748,7 +752,7 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
                     CombinedGoalInfo),
 
                 simplify_info_set_requantify(!Info),
-                Goal = conj(GoalList),
+                Goal = conj(plain_conj, GoalList),
                 GoalInfo = CombinedGoalInfo
             )
         ;
@@ -862,7 +866,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         RT0 = var(LT0)
     ->
         goal_info_get_context(GoalInfo0, Context),
-        true_goal(Context, Goal - GoalInfo)
+        Goal - GoalInfo = true_goal_with_context(Context)
     ;
         RT0 = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
             Vars, Modes, LambdaDeclaredDet, LambdaGoal0)
@@ -871,8 +875,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         simplify_info_get_common_info(!.Info, Common1),
         simplify_info_get_module_info(!.Info, ModuleInfo),
         simplify_info_get_instmap(!.Info, InstMap1),
-        instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
-            InstMap1, InstMap2),
+        instmap.pre_lambda_update(ModuleInfo, Vars, Modes, InstMap1, InstMap2),
         simplify_info_set_instmap(InstMap2, !Info),
 
         % Don't attempt to pass structs into lambda_goals,
@@ -957,7 +960,8 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
         list__append(CondList, ThenList, List),
-        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info, !IO),
+        simplify_goal(conj(plain_conj, List) - GoalInfo0, Goal - GoalInfo,
+            !Info, !IO),
         goal_info_get_context(GoalInfo0, Context),
         Msg = ite_cond_cannot_fail,
         ContextMsg = context_det_msg(Context, Msg),
@@ -1000,7 +1004,8 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         ),
         goal_to_conj_list(Else0, ElseList),
         List = [Cond | ElseList],
-        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info, !IO),
+        simplify_goal(conj(plain_conj, List) - GoalInfo0, Goal - GoalInfo,
+            !Info, !IO),
         goal_info_get_context(GoalInfo0, Context),
         Msg = ite_cond_cannot_succeed,
         ContextMsg = context_det_msg(Context, Msg),
@@ -1012,7 +1017,8 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         goal_to_conj_list(Cond0, CondList),
         goal_to_conj_list(Then0, ThenList),
         list__append(CondList, ThenList, List),
-        simplify_goal(conj(List) - GoalInfo0, Goal - GoalInfo, !Info, !IO),
+        simplify_goal(conj(plain_conj, List) - GoalInfo0, Goal - GoalInfo,
+            !Info, !IO),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
     ;
@@ -1112,14 +1118,14 @@ simplify_goal_2(not(Goal0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     ),
     (
         % replace `not true' with `fail'
-        Goal1 = conj([]) - _GoalInfo
+        Goal1 = conj(plain_conj, []) - _GoalInfo
     ->
-        fail_goal(Context, Goal - GoalInfo)
+        Goal - GoalInfo = fail_goal_with_context(Context)
     ;
         % replace `not fail' with `true'
         Goal1 = disj([]) - _GoalInfo2
     ->
-        true_goal(Context, Goal - GoalInfo)
+        Goal - GoalInfo = true_goal_with_context(Context)
     ;
         % remove double negation
         Goal1 = not(SubGoal - SubGoalInfo) - _,
@@ -1161,7 +1167,7 @@ simplify_goal_2(scope(Reason0, Goal1), GoalExpr, SomeInfo, GoalInfo,
             FinalReason = exist_quant(_),
             KeepCommon = no
         ;
-            FinalReason = promise_equivalent_solutions(_),
+            FinalReason = promise_solutions(_, _),
             KeepCommon = no
         ),
         (
@@ -1278,10 +1284,10 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
 
     (
         Invert   = no,
-        GoalExpr = conj([CmpGoal, UfyGoal])
+        GoalExpr = conj(plain_conj, [CmpGoal, UfyGoal])
     ;
         Invert   = yes,
-        GoalExpr = conj([CmpGoal, not(UfyGoal) - UfyInfo])
+        GoalExpr = conj(plain_conj, [CmpGoal, not(UfyGoal) - UfyInfo])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1774,14 +1780,14 @@ simplify_conj([], RevGoals, Goals, _, !Info, !IO) :-
 simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
     Info0 = !.Info,
     % Flatten conjunctions.
-    ( Goal0 = conj(SubGoals) - _ ->
+    ( Goal0 = conj(plain_conj, SubGoals) - _ ->
         list__append(SubGoals, Goals0, Goals1),
         simplify_conj(Goals1, !.RevGoals, Goals, ConjInfo, !Info, !IO)
     ;
         simplify_goal(Goal0, Goal1, !Info, !IO),
         (
             % Flatten conjunctions.
-            Goal1 = conj(SubGoals1) - _
+            Goal1 = conj(plain_conj, SubGoals1) - _
         ->
             simplify_info_undo_goal_updates(Info0, !Info),
             list__append(SubGoals1, Goals0, Goals1),
@@ -1815,8 +1821,8 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
                 % determinism information when deciding what can never succeed.
                 Goal0 = _ - GoalInfo0,
                 goal_info_get_context(GoalInfo0, Context),
-                fail_goal(Context, Fail),
-                conjoin_goal_and_rev_goal_list(Fail, !RevGoals)
+                FailGoal = fail_goal_with_context(Context),
+                conjoin_goal_and_rev_goal_list(FailGoal, !RevGoals)
             ),
             list__reverse(!.RevGoals, Goals)
         ;
@@ -1830,7 +1836,7 @@ simplify_conj([Goal0 | Goals0], !.RevGoals, Goals, ConjInfo, !Info, !IO) :-
     hlds_goals::in, hlds_goals::out) is det.
 
 conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
-    ( Goal = conj(Goals) - _ ->
+    ( Goal = conj(plain_conj, Goals) - _ ->
         list__reverse(Goals, Goals1),
         list__append(Goals1, RevGoals0, RevGoals)
     ;
@@ -2212,7 +2218,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
         Cond = Disjunct,
         Cond = _CondGoal - CondGoalInfo,
 
-        true_goal(Then),
+        Then = true_goal,
 
         det_disj_to_ite(Disjuncts, GoalInfo, Rest),
         Rest = _RestGoal - RestGoalInfo,
@@ -2603,8 +2609,14 @@ will_flush(foreign_proc(_, _, _, _, _, _), BeforeAfter) = WillFlush :-
         BeforeAfter = after,
         WillFlush = yes
     ).
-will_flush(par_conj(_), _) = yes.
-will_flush(conj(_), _) = no.
+will_flush(conj(ConjType, _), _) = WillFlush :-
+    (
+        ConjType = plain_conj,
+        WillFlush = no
+    ;
+        ConjType = parallel_conj,
+        WillFlush = yes
+    ).
 will_flush(switch(_, _, _), _) = no.
 will_flush(disj(_), BeforeAfter) = WillFlush :-
     (

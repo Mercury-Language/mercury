@@ -347,16 +347,17 @@ invariant_goal_candidates_2(_PPId,
         IGCs).
 
 invariant_goal_candidates_2(PPId,
-        conj(Conjuncts)                              - _GoalInfo, IGCs) =
-    list__foldl(invariant_goal_candidates_2(PPId),
-                Conjuncts,
-                IGCs).
-
-invariant_goal_candidates_2(PPId,
-        par_conj(ParConjuncts)                       - _GoalInfo, IGCs) =
-    list__foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
-                ParConjuncts,
-                IGCs).
+        conj(ConjType, Conjuncts)                    - _GoalInfo, IGCs0)
+        = IGCs :-
+    (
+        ConjType = plain_conj,
+        IGCs = list__foldl(invariant_goal_candidates_2(PPId), Conjuncts, IGCs0)
+    ;
+        ConjType = parallel_conj,
+        IGCs = list__foldl(
+            invariant_goal_candidates_keeping_path_candidates(PPId),
+            Conjuncts, IGCs0)
+    ).
 
 invariant_goal_candidates_2(PPId,
         disj(Disjuncts)                              - _GoalInfo, IGCs) =
@@ -381,7 +382,7 @@ invariant_goal_candidates_2(PPId,
 invariant_goal_candidates_2(PPId,
         if_then_else(_XVs, Cond, Then, Else)         - GoalInfo,  IGCs0)
         = IGCs :-
-    CondThenGoal = conj([Cond, Then]) - GoalInfo,
+    CondThenGoal = conj(plain_conj, [Cond, Then]) - GoalInfo,
     IGCs1        = invariant_goal_candidates_keeping_path_candidates(PPId,
                         CondThenGoal, IGCs0),
     ElseGoal     = Else,
@@ -857,11 +858,8 @@ gen_aux_proc_2(Info, ForeignProc @ foreign_proc(_, _, _, _, _, _) -
         GoalInfo) =
     gen_aux_proc_handle_non_recursive_call(Info, ForeignProc - GoalInfo).
 
-gen_aux_proc_2(Info, conj(Conjuncts) - GoalInfo) =
-    conj(gen_aux_proc_list(Info, Conjuncts)) - GoalInfo.
-
-gen_aux_proc_2(Info, par_conj(Conjs) - GoalInfo) =
-    par_conj(gen_aux_proc_list(Info, Conjs)) - GoalInfo.
+gen_aux_proc_2(Info, conj(ConjType, Conjuncts) - GoalInfo) =
+    conj(ConjType, gen_aux_proc_list(Info, Conjuncts)) - GoalInfo.
 
 gen_aux_proc_2(Info, disj(Disjuncts) - GoalInfo) =
     disj(gen_aux_proc_list(Info, Disjuncts)) - GoalInfo.
@@ -906,10 +904,10 @@ gen_aux_proc_switch(Info, Cases) =
 :- func gen_aux_proc_handle_non_recursive_call(gen_aux_proc_info, hlds_goal) =
     hlds_goal.
 
-gen_aux_proc_handle_non_recursive_call(Info, Goal0) = Goal :-
+gen_aux_proc_handle_non_recursive_call(Info, Goal0) =
     ( if   invariant_goal(Info ^ inv_goals, Goal0)
-      then true_goal(Goal)
-      else Goal = Goal0
+      then true_goal
+      else Goal0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -974,12 +972,8 @@ gen_out_proc_2(_PPId, _CallAux,
     ForeignProc - GoalInfo.
 
 gen_out_proc_2(PPId, CallAux,
-        conj(Conjuncts)                                - GoalInfo) =
-    conj(list__map(gen_out_proc_2(PPId, CallAux), Conjuncts)) - GoalInfo.
-
-gen_out_proc_2(PPId, CallAux,
-        par_conj(ParConjuncts)                         - GoalInfo) =
-    par_conj(list__map(gen_out_proc_2(PPId, CallAux), ParConjuncts))
+        conj(ConjType, Conjuncts)                     - GoalInfo) =
+    conj(ConjType, list__map(gen_out_proc_2(PPId, CallAux), Conjuncts))
         - GoalInfo.
 
 gen_out_proc_2(PPId, CallAux,
@@ -1093,11 +1087,8 @@ uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _)
     %
 uniquely_used_vars_2(_MI, unify(_LHS, _RHS, _UMode, _UKind, _) - _) = [].
 
-uniquely_used_vars_2(MI, conj(Conjuncts) - _) =
+uniquely_used_vars_2(MI, conj(_, Conjuncts) - _) =
     list__condense(list__map(uniquely_used_vars_2(MI), Conjuncts)).
-
-uniquely_used_vars_2(MI, par_conj(ParConjuncts) - _) =
-    list__condense(list__map(uniquely_used_vars_2(MI), ParConjuncts)).
 
 uniquely_used_vars_2(MI, disj(Disjuncts) - _) =
     list__condense(list__map(uniquely_used_vars_2(MI), Disjuncts)).
@@ -1187,8 +1178,8 @@ goal_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _) - _) = Inputs :-
         Inputs = ( if UnifyRHS = var(RHS) then [LHS, RHS] else [LHS] )
     ).
 
-goal_inputs(_MI, conj(_) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: conj/1 in hlds_goal").
+goal_inputs(_MI, conj(_, _) - _) = _ :-
+    unexpected(this_file, "goal_inputs/2: conj/2 in hlds_goal").
 
 goal_inputs(_MI, switch(_, _, _) - _) = _ :-
     unexpected(this_file, "goal_inputs/2: switch/3 in hlds_goal").
@@ -1204,9 +1195,6 @@ goal_inputs(_MI, scope(_, _) - _) = _ :-
 
 goal_inputs(_MI, if_then_else(_, _, _, _) - _) = _ :-
     unexpected(this_file, "goal_inputs/2: if_then_else/4 in hlds_goal").
-
-goal_inputs(_MI, par_conj(_) - _) = _ :-
-    unexpected(this_file, "goal_inputs/2: par_conj/2 in hlds_goal").
 
 goal_inputs(_MI, shorthand(_) - _) = _ :-
     unexpected(this_file, "goal_inputs/2: shorthand/1 in hlds_goal").
@@ -1270,8 +1258,8 @@ goal_outputs(MI, unify(LHS, _RHS, _, Kind, _) - _) = Outputs :-
         Outputs = []
     ).
 
-goal_outputs(_MI, conj(_) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: conj/1 in hlds_goal").
+goal_outputs(_MI, conj(_, _) - _) = _ :-
+    unexpected(this_file, "goal_outputs/2: conj/2 in hlds_goal").
 
 goal_outputs(_MI, switch(_, _, _) - _) = _ :-
     unexpected(this_file, "goal_outputs/2: switch/3 in hlds_goal").
@@ -1287,9 +1275,6 @@ goal_outputs(_MI, scope(_, _) - _) = _ :-
 
 goal_outputs(_MI, if_then_else(_, _, _, _) - _) = _ :-
     unexpected(this_file, "goal_outputs/2: if_then_else/4 in hlds_goal").
-
-goal_outputs(_MI, par_conj(_) - _) = _ :-
-    unexpected(this_file, "goal_outputs/2: par_conj/1 in hlds_goal").
 
 goal_outputs(_MI, shorthand(_) - _) = _ :-
     unexpected(this_file, "goal_outputs/2: shorthand/1 in hlds_goal").

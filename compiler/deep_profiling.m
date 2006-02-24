@@ -240,11 +240,18 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
             Continue = no
         )
     ;
-        GoalExpr0 = conj(Goals0),
-        apply_tail_recursion_to_conj(Goals0, ApplyInfo, Goals,
-            !FoundTailCall, Continue),
-        GoalExpr = conj(Goals),
-        Goal = GoalExpr - GoalInfo0
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            apply_tail_recursion_to_conj(Goals0, ApplyInfo, Goals,
+                !FoundTailCall, Continue),
+            GoalExpr = conj(ConjType, Goals),
+            Goal = GoalExpr - GoalInfo0
+        ;
+            ConjType = parallel_conj,
+            Goal = Goal0,
+            Continue = no
+        )
     ;
         GoalExpr0 = disj(Goals0),
         apply_tail_recursion_to_disj(Goals0, ApplyInfo, Goals, !FoundTailCall),
@@ -266,10 +273,6 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
             !FoundTailCall, _),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = GoalExpr - GoalInfo0,
-        Continue = no
-    ;
-        GoalExpr0 = par_conj(_),
-        Goal = Goal0,
         Continue = no
     ;
         GoalExpr0 = scope(_, _),
@@ -374,7 +377,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
     ;
         GoalExpr = unify(_, _, _, _, _)
     ;
-        GoalExpr = conj(Goals),
+        GoalExpr = conj(_ConjType, Goals),
         figure_out_rec_call_numbers_in_goal_list(Goals, !N, !TailCallSites)
     ;
         GoalExpr = disj(Goals),
@@ -387,9 +390,6 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         figure_out_rec_call_numbers(Cond, !N, !TailCallSites),
         figure_out_rec_call_numbers(Then, !N, !TailCallSites),
         figure_out_rec_call_numbers(Else, !N, !TailCallSites)
-    ;
-        GoalExpr = par_conj(Goals),
-        figure_out_rec_call_numbers_in_goal_list(Goals, !N, !TailCallSites)
     ;
         GoalExpr = scope(_, Goal1),
         figure_out_rec_call_numbers(Goal1, !N, !TailCallSites)
@@ -590,7 +590,7 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     ),
 
     make_impure(GoalInfo0, GoalInfo),
-    Goal = conj([
+    Goal = conj(plain_conj, [
         BindProcStaticVarGoal,
         CallPortCode,
         TransformedGoal,
@@ -694,11 +694,11 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         NewNonlocals),
 
     make_impure(GoalInfo0, GoalInfo),
-    Goal = conj([
+    Goal = conj(plain_conj, [
         BindProcStaticVarGoal,
         CallPortCode,
         disj([
-            conj([
+            conj(plain_conj, [
                 TransformedGoal,
                 ExitPortCode
             ]) - ExitConjGoalInfo,
@@ -827,11 +827,11 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         ExitRedoNonLocals),
 
     make_impure(GoalInfo1, GoalInfo),
-    Goal = conj([
+    Goal = conj(plain_conj, [
         BindProcStaticVarGoal,
         CallPortCode,
         disj([
-            conj([
+            conj(plain_conj, [
                 TransformedGoal,
                 disj([
                     ExitPortCode,
@@ -898,13 +898,8 @@ is_proc_in_interface(ModuleInfo, PredId, _ProcId) = IsInInterface :-
 :- pred transform_goal(goal_path::in, hlds_goal::in, hlds_goal::out, bool::out,
     deep_info::in, deep_info::out) is det.
 
-transform_goal(Path, conj(Goals0) - GoalInfo0, conj(Goals) - GoalInfo,
-        AddedImpurity, !DeepInfo) :-
-    transform_conj(0, Path, Goals0, Goals, AddedImpurity, !DeepInfo),
-    add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
-
-transform_goal(Path, par_conj(Goals0) - GoalInfo0,
-        par_conj(Goals) - GoalInfo, AddedImpurity, !DeepInfo) :-
+transform_goal(Path, conj(ConjType, Goals0) - GoalInfo0,
+        conj(ConjType, Goals) - GoalInfo, AddedImpurity, !DeepInfo) :-
     transform_conj(0, Path, Goals0, Goals, AddedImpurity, !DeepInfo),
     add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
 
@@ -1160,7 +1155,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
                 [SiteNumVar, TypeClassInfoVar, MethodNumVar],
                 [], PrepareCallGoal),
             PrepareCallGoal = _ - PrepareCallGoalInfo,
-            PrepareGoal = conj([
+            PrepareGoal = conj(plain_conj, [
                 MethodNumVarGoal,
                 PrepareCallGoal
             ]) - PrepareCallGoalInfo,
@@ -1217,7 +1212,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
                 [SiteNumVarGoal, PrepareGoal, Goal2],
                 ExitGoals
             ], Goals),
-            Goal = conj(Goals) - GoalInfo
+            Goal = conj(plain_conj, Goals) - GoalInfo
         ;
 
             ExtraVars = list_to_set([MiddleCSD | SaveRestoreVars]),
@@ -1235,21 +1230,20 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
             list__condense([
                 CallGoals,
                 [disj([
-                    conj([
+                    conj(plain_conj, [
                         SiteNumVarGoal,
                         PrepareGoal,
                         Goal2 |
                         ExitGoals
                     ]) - WrappedGoalGoalInfo,
-                    conj(
-                        FailGoalsAndFail
-                    ) - ReturnFailsGoalInfo
+                    conj(plain_conj, FailGoalsAndFail) - ReturnFailsGoalInfo
                 ]) - WrappedGoalGoalInfo]
             ], Goals),
-            Goal = conj(Goals) - GoalInfo
+            Goal = conj(plain_conj, Goals) - GoalInfo
         )
     ;
-        Goal = conj([SiteNumVarGoal, PrepareGoal, Goal2]) - GoalInfo
+        Goal = conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal2])
+            - GoalInfo
     ).
 
 :- pred transform_higher_order_call(globals::in, code_model::in,
@@ -1324,21 +1318,21 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal, !DeepInfo) :-
     make_impure(GoalInfo0, GoalInfo),
     (
         CodeModel = model_det,
-        Goal = conj([
+        Goal = conj(plain_conj, [
             SaveStuff,
             Goal0,
             RestoreStuff
         ]) - GoalInfo
     ;
         CodeModel = model_semi,
-        Goal = conj([
+        Goal = conj(plain_conj, [
             SaveStuff,
             disj([
-                conj([
+                conj(plain_conj, [
                     Goal0,
                     RestoreStuff
                 ]) - ExtGoalInfo,
-                conj([
+                conj(plain_conj, [
                     RestoreStuff,
                     FailGoal
                 ]) - RestoreFailGoalInfo
@@ -1346,20 +1340,20 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal, !DeepInfo) :-
         ]) - GoalInfo
     ;
         CodeModel = model_non,
-        Goal = conj([
+        Goal = conj(plain_conj, [
             SaveStuff,
             disj([
-                conj([
+                conj(plain_conj, [
                     Goal0,
                     disj([
                         RestoreStuff,
-                        conj([
+                        conj(plain_conj, [
                             ReZeroStuff,
                             FailGoal
                         ]) - RezeroFailGoalInfo
                     ]) - NoBindExtGoalInfo
                 ]) - ExtGoalInfo,
-                conj([
+                conj(plain_conj, [
                     RestoreStuff,
                     FailGoal
                 ]) - RestoreFailGoalInfo
@@ -1390,7 +1384,7 @@ wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
     CallSite = callback(FileName, LineNumber, GoalPath),
 
     make_impure(GoalInfo0, GoalInfo),
-    Goal = conj([SiteNumVarGoal, PrepareGoal, Goal0]) - GoalInfo,
+    Goal = conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal0]) - GoalInfo,
     !:DeepInfo = !.DeepInfo ^ site_num_counter := SiteNumCounter,
     !:DeepInfo = !.DeepInfo ^ vars := VarSet,
     !:DeepInfo = !.DeepInfo ^ var_types := VarTypes,

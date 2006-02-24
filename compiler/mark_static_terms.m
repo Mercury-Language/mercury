@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -71,10 +71,8 @@ goal_mark_static_terms(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, !SI) :-
 :- pred goal_expr_mark_static_terms(hlds_goal_expr::in, hlds_goal_expr::out,
     static_info::in, static_info::out) is det.
 
-goal_expr_mark_static_terms(conj(Goals0), conj(Goals), !SI) :-
-    conj_mark_static_terms(Goals0, Goals, !SI).
-
-goal_expr_mark_static_terms(par_conj(Goals0), par_conj(Goals), !SI) :-
+goal_expr_mark_static_terms(conj(ConjType, Goals0), conj(ConjType, Goals),
+        !SI) :-
     % It's OK to treat parallel conjunctions as if they were sequential here,
     % since if we mark any variables as static, the computation of those
     % variables will be done at compile time.

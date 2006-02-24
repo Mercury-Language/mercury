@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -113,28 +113,27 @@ find_follow_vars_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo,
     abs_follow_vars_map::in, abs_follow_vars_map::out,
     int::in, int::out) is det.
 
-find_follow_vars_in_goal_expr(conj(Goals0), conj(Goals), GoalInfo, GoalInfo,
+find_follow_vars_in_goal_expr(conj(ConjType, Goals0), conj(ConjType, Goals),
+        GoalInfo, GoalInfo, VarTypes, ModuleInfo, !FollowVarsMap,
+        !NextNonReserved) :-
+    (
+        ConjType = plain_conj,
+        find_follow_vars_in_conj(Goals0, Goals, VarTypes, ModuleInfo,
+            no, !FollowVarsMap, !NextNonReserved)
+    ;
+        ConjType = parallel_conj,
+        find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes,
+            ModuleInfo, !FollowVarsMap, !NextNonReserved)
+    ).
+
+find_follow_vars_in_goal_expr(disj(Goals0), disj(Goals), GoalInfo0, GoalInfo,
         VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
-    find_follow_vars_in_conj(Goals0, Goals, VarTypes, ModuleInfo,
-        no, !FollowVarsMap, !NextNonReserved).
-
-find_follow_vars_in_goal_expr(par_conj(Goals0), par_conj(Goals),
-        GoalInfo, GoalInfo, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved) :-
-        % find_follow_vars_in_disj treats its list of goals as a
-        % series of independent goals, so we can use it to process
-        % independent parallel conjunction.
-    find_follow_vars_in_disj(Goals0, Goals, VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved).
-
     % We record that at the end of each disjunct, live variables should
     % be in the locations given by the initial follow_vars, which reflects
     % the requirements of the code following the disjunction.
-    %
-find_follow_vars_in_goal_expr(disj(Goals0), disj(Goals), GoalInfo0, GoalInfo,
-        VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
+
     goal_info_set_store_map(!.FollowVarsMap, GoalInfo0, GoalInfo),
-    find_follow_vars_in_disj(Goals0, Goals, VarTypes, ModuleInfo,
+    find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes, ModuleInfo,
         !FollowVarsMap, !NextNonReserved).
 
 find_follow_vars_in_goal_expr(not(Goal0), not(Goal), GoalInfo, GoalInfo,
@@ -142,17 +141,23 @@ find_follow_vars_in_goal_expr(not(Goal0), not(Goal), GoalInfo, GoalInfo,
     find_follow_vars_in_goal(Goal0, Goal, VarTypes, ModuleInfo,
         !FollowVarsMap, !NextNonReserved).
 
+find_follow_vars_in_goal_expr(switch(Var, Det, Cases0),
+        switch(Var, Det, Cases), GoalInfo0, GoalInfo, VarTypes, ModuleInfo,
+        !FollowVarsMap, !NextNonReserved) :-
     % We record that at the end of each arm of the switch, live variables
     % should be in the locations given by the initial follow_vars, which
     % reflects the requirements of the code following the switch.
-    %
-find_follow_vars_in_goal_expr(switch(Var, Det, Cases0),
-        switch(Var, Det, Cases), GoalInfo0, GoalInfo,
-        VarTypes, ModuleInfo,
-        !FollowVarsMap, !NextNonReserved) :-
+
     goal_info_set_store_map(!.FollowVarsMap, GoalInfo0, GoalInfo),
     find_follow_vars_in_cases(Cases0, Cases, VarTypes, ModuleInfo,
         !FollowVarsMap, !NextNonReserved).
+
+find_follow_vars_in_goal_expr(
+        if_then_else(Vars, Cond0, Then0, Else0),
+        if_then_else(Vars, Cond, Then, Else),
+        GoalInfo0, GoalInfo, VarTypes, ModuleInfo,
+        FollowVarsMap0, FollowVarsMapCond,
+        NextNonReserved0, NextNonReservedCond) :-
 
     % Set the follow_vars field for the condition, the then-part and the
     % else-part, since in general they have requirements about where
@@ -170,13 +175,6 @@ find_follow_vars_in_goal_expr(switch(Var, Det, Cases0),
     % live variables should be in the locations given by the initial
     % follow_vars, which reflects the requirements of the code
     % following the if-then-else.
-
-find_follow_vars_in_goal_expr(
-        if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else),
-        GoalInfo0, GoalInfo, VarTypes, ModuleInfo,
-        FollowVarsMap0, FollowVarsMapCond,
-        NextNonReserved0, NextNonReservedCond) :-
     find_follow_vars_in_goal(Then0, Then1, VarTypes, ModuleInfo,
         FollowVarsMap0, FollowVarsMapThen,
         NextNonReserved0, NextNonReservedThen),
@@ -321,16 +319,15 @@ find_follow_vars_from_sequence([InVar | InVars], NextRegNum, !FollowVarsMap,
 
 %-----------------------------------------------------------------------------%
 
-    % We attach a follow_vars to each arm of a switch, since inside
-    % each arm the preferred locations for variables will in general
-    % be different.
+    % We attach a follow_vars to each arm of a switch, since inside each arm
+    % the preferred locations for variables will in general be different.
 
-    % For the time being, we return the follow_vars computed from
-    % the first arm as the preferred requirements of the switch as
-    % a whole. This is close to right, since the first disjunct will
-    % definitely be the first to be entered. However, the follow_vars
-    % computed for the disjunction as a whole can profitably mention
-    % variables that are not live in the first disjunct, but may be
+    % For the time being, we return the follow_vars computed from the first arm
+    % as the preferred requirements of the compound goal (disjunction or
+    % parallel conjunction) as a whole. This is close to right, since the first
+    % disjunct will definitely be the first to be entered. However, the
+    % follow_vars computed for the disjunction as a whole can profitably
+    % mention variables that are not live in the first disjunct, but may be
     % needed in the second and later disjuncts. In general, we may
     % wish to take into account the requirements of all disjuncts
     % up to the first non-failing disjunct. (The requirements of
@@ -340,16 +337,16 @@ find_follow_vars_from_sequence([InVar | InVars], NextRegNum, !FollowVarsMap,
     % entered at all.)
     %
     % This code is used both for disjunction and parallel conjunction.
+    %
+:- pred find_follow_vars_in_independent_goals(list(hlds_goal)::in,
+    list(hlds_goal)::out, vartypes::in, module_info::in,
+    abs_follow_vars_map::in, abs_follow_vars_map::out, int::in, int::out)
+    is det.
 
-:- pred find_follow_vars_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    vartypes::in, module_info::in,
-    abs_follow_vars_map::in, abs_follow_vars_map::out,
-    int::in, int::out) is det.
-
-find_follow_vars_in_disj([], [], _, _ModuleInfo,
+find_follow_vars_in_independent_goals([], [], _, _ModuleInfo,
         FollowVarsMap,  FollowVarsMap,
         NextNonReserved, NextNonReserved).
-find_follow_vars_in_disj([Goal0 | Goals0], [Goal | Goals],
+find_follow_vars_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
         VarTypes, ModuleInfo, FollowVarsMap0, FollowVarsMap,
         NextNonReserved0, NextNonReserved) :-
     find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
@@ -357,7 +354,7 @@ find_follow_vars_in_disj([Goal0 | Goals0], [Goal | Goals],
         NextNonReserved0, NextNonReserved),
     FollowVars = abs_follow_vars(FollowVarsMap, NextNonReserved),
     goal_set_follow_vars(yes(FollowVars), Goal1, Goal),
-    find_follow_vars_in_disj(Goals0, Goals, VarTypes, ModuleInfo,
+    find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes, ModuleInfo,
         FollowVarsMap0, _FollowVarsMap,
         NextNonReserved0, _NextNonReserved).
 

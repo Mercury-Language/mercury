@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -334,15 +334,18 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo,
     set(prog_var)::in, set(prog_var)::out, set(prog_var)::in,
     live_info::in) is det.
 
-detect_liveness_in_goal_2(conj(Goals0), conj(Goals), !Liveness, _, LiveInfo) :-
-    detect_liveness_in_conj(Goals0, Goals, !Liveness, LiveInfo).
-
-detect_liveness_in_goal_2(par_conj(Goals0), par_conj(Goals), !Liveness,
-        NonLocals, LiveInfo) :-
-    set__init(Union0),
-    detect_liveness_in_par_conj(Goals0, Goals, !.Liveness, NonLocals,
-        LiveInfo, Union0, Union),
-    set__union(Union, !Liveness).
+detect_liveness_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
+        !Liveness, NonLocals, LiveInfo) :-
+    (
+        ConjType = plain_conj,
+        detect_liveness_in_conj(Goals0, Goals, !Liveness, LiveInfo)
+    ;
+        ConjType = parallel_conj,
+        set__init(Union0),
+        detect_liveness_in_par_conj(Goals0, Goals, !.Liveness, NonLocals,
+            LiveInfo, Union0, Union),
+        set__union(Union, !Liveness)
+    ).
 
 detect_liveness_in_goal_2(disj(Goals0), disj(Goals), !Liveness,
         NonLocals, LiveInfo) :-
@@ -528,18 +531,20 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Deadness,
     hlds_goal_info::in, set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, live_info::in) is det.
 
-detect_deadness_in_goal_2(conj(Goals0), conj(Goals), _, !Deadness, Liveness0,
-        LiveInfo) :-
-    detect_deadness_in_conj(Goals0, Goals, !Deadness, Liveness0, LiveInfo).
-
-detect_deadness_in_goal_2(par_conj(Goals0), par_conj(Goals), GoalInfo,
-        !Deadness, Liveness0, LiveInfo) :-
-    liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
-        _, CompletedNonLocals),
-    set__init(Union0),
-    detect_deadness_in_par_conj(Goals0, Goals, !.Deadness, Liveness0,
-        CompletedNonLocals, LiveInfo, Union0, Union),
-    set__union(Union, !Deadness).
+detect_deadness_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
+        GoalInfo, !Deadness, Liveness0, LiveInfo) :-
+    (
+        ConjType = plain_conj,
+        detect_deadness_in_conj(Goals0, Goals, !Deadness, Liveness0, LiveInfo)
+    ;
+        ConjType = parallel_conj,
+        liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+            _, CompletedNonLocals),
+        set__init(Union0),
+        detect_deadness_in_par_conj(Goals0, Goals, !.Deadness, Liveness0,
+            CompletedNonLocals, LiveInfo, Union0, Union),
+        set__union(Union, !Deadness)
+    ).
 
 detect_deadness_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, !Deadness,
         Liveness0, LiveInfo) :-
@@ -831,10 +836,8 @@ update_liveness_expr(call(_, _, _, _, _, _), _, _, !Liveness).
 update_liveness_expr(generic_call(_, _, _, _), _, _, !Liveness).
 update_liveness_expr(unify(_, _, _, _, _), _, _, !Liveness).
 update_liveness_expr(foreign_proc(_, _, _, _, _, _), _, _, !Liveness).
-update_liveness_expr(conj(Goals), _, LiveInfo, !Liveness) :-
-    update_liveness_conj(Goals, LiveInfo, !Liveness).
-update_liveness_expr(par_conj(Goals), _, LiveInfo, !Liveness) :-
-        % XXX do these need special treatment?
+update_liveness_expr(conj(_ConjType, Goals), _, LiveInfo, !Liveness) :-
+    % XXX Do parallel conjunctions need special treatment?
     update_liveness_conj(Goals, LiveInfo, !Liveness).
 update_liveness_expr(disj(Goals), _GoalInfo, LiveInfo, !Liveness) :-
     ( find_reachable_goal(Goals, Goal) ->
@@ -989,14 +992,16 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
     ;
         !.GoalExpr = foreign_proc(_, _, _, _, _, _)
     ;
-        !.GoalExpr = conj(Goals0),
-        delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet),
-        !:GoalExpr = conj(Goals)
-    ;
-        !.GoalExpr = par_conj(Goals0),
-        delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead,
-            VarSet),
-        !:GoalExpr = par_conj(Goals)
+        !.GoalExpr = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet)
+        ;
+            ConjType = parallel_conj,
+            delay_death_par_conj(Goals0, Goals, !BornVars, !DelayedDead,
+                VarSet)
+        ),
+        !:GoalExpr = conj(ConjType, Goals)
     ;
         !.GoalExpr = disj(Goals0),
         delay_death_disj(Goals0, GoalDeaths, !.BornVars, !.DelayedDead,
@@ -1178,15 +1183,17 @@ detect_resume_points_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo0,
     set(prog_var)::in, set(prog_var)::out, hlds_goal_info::in,
     live_info::in, set(prog_var)::in) is det.
 
-detect_resume_points_in_goal_2(conj(Goals0), conj(Goals), !Liveness, _,
-        LiveInfo, ResumeVars0) :-
-    detect_resume_points_in_conj(Goals0, Goals, !Liveness,
-        LiveInfo, ResumeVars0).
-
-detect_resume_points_in_goal_2(par_conj(Goals0), par_conj(Goals), !Liveness, _,
-        LiveInfo, ResumeVars0) :-
-    detect_resume_points_in_par_conj(Goals0, Goals, !Liveness,
-        LiveInfo, ResumeVars0).
+detect_resume_points_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
+        !Liveness, _, LiveInfo, ResumeVars0) :-
+    (
+        ConjType = plain_conj,
+        detect_resume_points_in_conj(Goals0, Goals, !Liveness,
+            LiveInfo, ResumeVars0)
+    ;
+        ConjType = parallel_conj,
+        detect_resume_points_in_par_conj(Goals0, Goals, !Liveness,
+            LiveInfo, ResumeVars0)
+    ).
 
 detect_resume_points_in_goal_2(disj(Goals0), disj(Goals), !Liveness, GoalInfo,
         LiveInfo, ResumeVars0) :-

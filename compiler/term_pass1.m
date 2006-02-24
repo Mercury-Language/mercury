@@ -322,8 +322,7 @@ check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO) :-
 
 check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors,
         !ModuleInfo, !IO):-
-    ( Goal = conj(Goals)
-    ; Goal = par_conj(Goals)
+    ( Goal = conj(_, Goals)
     ; Goal = disj(Goals)
     ),
     list.foldl3(check_goal_non_term_calls(PPId, VarTypes), Goals,

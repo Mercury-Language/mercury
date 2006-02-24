@@ -323,13 +323,16 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
 
     (
         CodeModel = model_det,
-        TransformedGoalExpr = conj(SlotGoals ++ [OrigGoal, ExitGoal]),
+        TransformedGoalExpr = conj(plain_conj,
+            SlotGoals ++ [OrigGoal, ExitGoal]),
         TransformedGoal = TransformedGoalExpr - ImpureOrigGoalInfo
     ;
         CodeModel = model_semi,
-        OrigAfterGoal = conj([OrigGoal, ExitGoal]) - ImpureOrigGoalInfo,
+        OrigAfterGoal = conj(plain_conj, [OrigGoal, ExitGoal])
+            - ImpureOrigGoalInfo,
         DisjGoal = disj([OrigAfterGoal, FailGoal]) - ImpureOrigGoalInfo,
-        TransformedGoal = conj(SlotGoals ++ [DisjGoal]) - ImpureOrigGoalInfo
+        TransformedGoal = conj(plain_conj,
+            SlotGoals ++ [DisjGoal]) - ImpureOrigGoalInfo
     ;
         CodeModel = model_non,
         RedoGoal0 = RedoGoalExpr - RedoGoalInfo0,
@@ -342,9 +345,11 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
             multidet, purity_impure, Context, AfterGoalInfo),
         AfterGoal = disj([ExitGoal, RedoGoal]) - AfterGoalInfo,
 
-        OrigAfterGoal = conj([OrigGoal, AfterGoal]) - ImpureOrigGoalInfo,
+        OrigAfterGoal = conj(plain_conj, [OrigGoal, AfterGoal])
+            - ImpureOrigGoalInfo,
         DisjGoal = disj([OrigAfterGoal, FailGoal]) - ImpureOrigGoalInfo,
-        TransformedGoal = conj(SlotGoals ++ [DisjGoal]) - ImpureOrigGoalInfo
+        TransformedGoal = conj(plain_conj, SlotGoals ++ [DisjGoal])
+            - ImpureOrigGoalInfo
     ),
 
     mercury_term_size_prof_builtin_module(TSPB),
@@ -358,7 +363,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
         Context, SwitchGoalInfo),
     SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
-    GoalExpr = conj([IsActiveGoal, SwitchGoal]),
+    GoalExpr = conj(plain_conj, [IsActiveGoal, SwitchGoal]),
     goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, purity_impure,
         Context, GoalInfo),
     Goal = GoalExpr - GoalInfo,

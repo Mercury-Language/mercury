@@ -114,7 +114,7 @@ modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
         set__init(WaitingVars),
         mode_info_error(WaitingVars,
             purity_error_lambda_should_be_impure(AnyVars), !ModeInfo),
-        Unify = conj([])
+        Unify = conj(plain_conj, [])
     ;
         modecheck_unification_2(X, RHS, Unification0, UnifyContext,
             UnifyGoalInfo0, Unify, !ModeInfo, !IO)
@@ -195,7 +195,8 @@ modecheck_unification_2(X, var(Y), Unification0, UnifyContext, UnifyGoalInfo0,
             MaybeInitX = yes(InitGoal - InitGoalInfo),
             modes__compute_goal_instmap_delta(InstMap, Unify0,
                 UnifyGoalInfo0, UnifyGoalInfo, !ModeInfo),
-            Unify = conj([InitGoal - InitGoalInfo, Unify0 - UnifyGoalInfo])
+            Unify = conj(plain_conj,
+                [InitGoal - InitGoalInfo, Unify0 - UnifyGoalInfo])
         )
     ;
         set__list_to_set([X, Y], WaitingVars),
@@ -658,7 +659,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         Unification = construct(_, _, _, _, _, _, _),
         LiveX = dead
     ->
-        Goal = conj([])
+        Goal = conj(plain_conj, [])
     ;
         Det = failure
     ->
@@ -948,13 +949,13 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         Unification = assign(AssignTarget, AssignSource),
         mode_info_var_is_live(!.ModeInfo, AssignTarget, dead)
     ->
-        Unify = conj([]),
+        Unify = conj(plain_conj, []),
         record_optimize_away(GoalInfo, AssignTarget, AssignSource, !ModeInfo)
     ;
         Unification = simple_test(TestVar1, TestVar2),
         Det = det
     ->
-        Unify = conj([]),
+        Unify = conj(plain_conj, []),
         record_optimize_away(GoalInfo, TestVar1, TestVar2, !ModeInfo)
     ;
         Det = failure

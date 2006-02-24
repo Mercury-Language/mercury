@@ -275,33 +275,38 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
 :- pred deforest_goal(hlds_goal::in, hlds_goal::out,
     pd_info::in, pd_info::out, io::di, io::uo) is det.
 
-deforest_goal(conj(!.Goals) - Info, conj(!:Goals) - Info, !PDInfo, !IO) :-
-    pd_info_get_instmap(!.PDInfo, InstMap0),
-    partially_evaluate_conj_goals(!.Goals, [], !:Goals, !PDInfo, !IO),
-    pd_info_set_instmap(InstMap0, !PDInfo),
-    goal_info_get_nonlocals(Info, NonLocals),
-    globals__io_lookup_bool_option(deforestation, Deforestation, !IO),
+deforest_goal(conj(ConjType, !.Goals) - Info, conj(ConjType, !:Goals) - Info,
+        !PDInfo, !IO) :-
     (
-        Deforestation = yes,
-        compute_goal_infos(!Goals, !PDInfo),
+        ConjType = plain_conj,
+        pd_info_get_instmap(!.PDInfo, InstMap0),
+        partially_evaluate_conj_goals(!.Goals, [], !:Goals, !PDInfo, !IO),
         pd_info_set_instmap(InstMap0, !PDInfo),
-        deforest_conj(!.Goals, NonLocals, [], !:Goals, !PDInfo, !IO)
+        goal_info_get_nonlocals(Info, NonLocals),
+        globals__io_lookup_bool_option(deforestation, Deforestation, !IO),
+        (
+            Deforestation = yes,
+            compute_goal_infos(!Goals, !PDInfo),
+            pd_info_set_instmap(InstMap0, !PDInfo),
+            deforest_conj(!.Goals, NonLocals, [], !:Goals, !PDInfo, !IO)
+        ;
+            Deforestation = no
+        ),
+        globals__io_lookup_bool_option(constraint_propagation, Constraints,
+            !IO),
+        pd_info_set_instmap(InstMap0, !PDInfo),
+        (
+            Constraints = yes,
+            propagate_conj_constraints(!.Goals, NonLocals, [], !:Goals,
+                !PDInfo, !IO)
+        ;
+            Constraints = no
+        ),
+        pd_info_set_instmap(InstMap0, !PDInfo)
     ;
-        Deforestation = no
-    ),
-    globals__io_lookup_bool_option(constraint_propagation, Constraints, !IO),
-    pd_info_set_instmap(InstMap0, !PDInfo),
-    (
-        Constraints = yes,
-        propagate_conj_constraints(!.Goals, NonLocals, [], !:Goals,
-            !PDInfo, !IO)
-    ;
-        Constraints = no
-    ),
-    pd_info_set_instmap(InstMap0, !PDInfo).
-
-    % XXX cannot deforest across parallel_conjunctions!
-deforest_goal(par_conj(Goals) - Info, par_conj(Goals) - Info, !PDInfo, !IO).
+        ConjType = parallel_conj
+        % XXX cannot deforest across parallel_conjunctions!
+    ).
 
 deforest_goal(disj(Goals0) - Info, disj(Goals) - Info, !PDInfo, !IO) :-
     deforest_disj(Goals0, Goals, !PDInfo, !IO).
@@ -386,7 +391,7 @@ partially_evaluate_conj_goals([Goal0 | Goals0], RevGoals0, Goals,
         !PDInfo, !IO) :-
     deforest_goal(Goal0, Goal1, !PDInfo, !IO),
     pd_info_update_goal(Goal1, !PDInfo),
-    ( Goal1 = conj(Goals1) - _ ->
+    ( Goal1 = conj(plain_conj, Goals1) - _ ->
         list__reverse(Goals1, RevGoals1),
         list__append(RevGoals1, RevGoals0, RevGoals2)
     ;
@@ -781,8 +786,8 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo, !IO) :-
     maybe(hlds_goal)::in, bool::out,
     pd_info::in, pd_info::out, io::di, io::uo) is det.
 
-can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal,
-        ShouldTry, !PDInfo, !IO) :-
+can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
+        !PDInfo, !IO) :-
     pd_info_get_pred_info(!.PDInfo, PredInfo),
     globals__io_lookup_option(deforestation_depth_limit, DepthLimitOpt, !IO),
     pd_info_get_depth(!.PDInfo, Depth0),
@@ -936,8 +941,8 @@ call_call(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal, MaybeGoal,
 
 call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals,
         MaybeLaterGoal, MaybeGoal, !PDInfo, !IO) :-
-    create_conj(EarlierGoal, BetweenGoals,
-        MaybeLaterGoal, ConjNonLocals, FoldGoal),
+    create_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ConjNonLocals,
+        FoldGoal),
 
     pd_info__search_version(!.PDInfo, FoldGoal, MaybeVersion, !IO),
     pd_info_get_parent_versions(!.PDInfo, Parents),
@@ -1033,8 +1038,8 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             % variables in BetweenGoals is less than
             % --deforestation-vars-threshold, go ahead and optimize.
 
-            module_info_pred_proc_info(ModuleInfo0,
-                PredId1, ProcId1, _, CalledProcInfo1),
+            module_info_pred_proc_info(ModuleInfo0, PredId1, ProcId1, _,
+                CalledProcInfo1),
             proc_info_goal(CalledProcInfo1, CalledGoal1),
             goal_util__goal_vars(CalledGoal1, GoalVars1),
             set__to_sorted_list(GoalVars1, GoalVarsList1),
@@ -1055,10 +1060,10 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         pd_debug__message("unfolding first call\n", [], !IO),
 
-        unfold_call(no, no, PredId1, ProcId1, Args1,
-            EarlierGoal, UnfoldedCall, DidUnfold, !PDInfo, !IO),
-        create_conj(UnfoldedCall, BetweenGoals,
-            MaybeLaterGoal, NonLocals, DeforestGoal0),
+        unfold_call(no, no, PredId1, ProcId1, Args1, EarlierGoal, UnfoldedCall,
+            DidUnfold, !PDInfo, !IO),
+        create_conj(UnfoldedCall, BetweenGoals, MaybeLaterGoal, NonLocals,
+            DeforestGoal0),
         set__to_sorted_list(NonLocals, NonLocalsList),
 
         (
@@ -1101,11 +1106,8 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             pd_info_get_module_info(!.PDInfo, ModuleInfo),
 
             predicate_name(ModuleInfo, PredId, PredName),
-            pd_debug__message("\nCreated predicate %s\n",
-                [s(PredName)], !IO),
-            (
-                MaybeLaterGoal = yes(call(PredId2, ProcId2, _, _, _, _) - _)
-            ->
+            pd_debug__message("\nCreated predicate %s\n", [s(PredName)], !IO),
+            ( MaybeLaterGoal = yes(call(PredId2, ProcId2, _, _, _, _) - _) ->
                 CalledPreds = [proc(PredId1, ProcId1), proc(PredId2, ProcId2)]
             ;
                 CalledPreds = [proc(PredId1, ProcId1)]
@@ -1252,7 +1254,7 @@ create_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, NonLocals, FoldGoal) :-
     EarlierGoal = _ - EarlierGoalInfo,
     goal_info_get_context(EarlierGoalInfo, EarlierContext),
     goal_info_set_context(EarlierContext, ConjInfo0, ConjInfo),
-    FoldGoal = conj(DeforestConj) - ConjInfo.
+    FoldGoal = conj(plain_conj, DeforestConj) - ConjInfo.
 
 %-----------------------------------------------------------------------------%
 
@@ -1698,7 +1700,7 @@ append_goal(Goal0, BetweenGoals, GoalToAppend0,
     goal_list_determinism(Goals, Detism),
     goal_list_purity(Goals, Purity),
     goal_info_init(NonLocals, Delta, Detism, Purity, GoalInfo),
-    Goal = conj(Goals) - GoalInfo.
+    Goal = conj(plain_conj, Goals) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

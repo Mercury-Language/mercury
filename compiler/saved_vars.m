@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -109,20 +109,20 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
 
 saved_vars_in_goal(GoalExpr0 - GoalInfo0, Goal, !SlotInfo) :-
     (
-        GoalExpr0 = conj(Goals0),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        saved_vars_in_conj(Goals0, Goals, NonLocals, !SlotInfo),
-        conj_list_to_goal(Goals, GoalInfo0, Goal)
-    ;
-        GoalExpr0 = par_conj(Goals0),
-        % saved_vars_in_disj treats its goal list as an independent list
-        % of goals, so we can use it to process the list of parallel
-        % conjuncts too.
-        saved_vars_in_disj(Goals0, Goals, !SlotInfo),
-        Goal = par_conj(Goals) - GoalInfo0
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            goal_info_get_nonlocals(GoalInfo0, NonLocals),
+            saved_vars_in_conj(Goals0, Goals, NonLocals, !SlotInfo),
+            conj_list_to_goal(Goals, GoalInfo0, Goal)
+        ;
+            ConjType = parallel_conj,
+            saved_vars_in_independent_goals(Goals0, Goals, !SlotInfo),
+            Goal = conj(ConjType, Goals) - GoalInfo0
+        )
     ;
         GoalExpr0 = disj(Goals0),
-        saved_vars_in_disj(Goals0, Goals, !SlotInfo),
+        saved_vars_in_independent_goals(Goals0, Goals, !SlotInfo),
         Goal = disj(Goals) - GoalInfo0
     ;
         GoalExpr0 = not(NegGoal0),
@@ -227,6 +227,7 @@ ok_to_duplicate(save_deep_excp_vars) = no.
 ok_to_duplicate(dont_warn_singleton) = yes.
 ok_to_duplicate(mode_check_clauses_goal) = yes.
 ok_to_duplicate(will_not_modify_trail) = yes.
+ok_to_duplicate(promise_same_deconstruct) = yes.
 
     % Divide a list of goals into an initial subsequence of goals
     % that construct constants, and all other goals.
@@ -261,7 +262,7 @@ can_push(Var, First) :-
     goal_info_get_nonlocals(FirstInfo, FirstNonLocals),
     ( set__member(Var, FirstNonLocals) ->
         (
-            FirstExpr = conj(_)
+            FirstExpr = conj(plain_conj, _)
         ;
             FirstExpr = scope(_, _)
         ;
@@ -344,15 +345,18 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = conj(Conj),
-            list__append(Conj, Goals0, Goals1),
-            saved_vars_delay_goal(Goals1, Goals, Construct, Var,
-                IsNonLocal, !SlotInfo)
-        ;
-            Goal0Expr = par_conj(_ParConj),
-            saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
-                IsNonLocal, !SlotInfo),
-            Goals = [Goal0|Goals1]
+            Goal0Expr = conj(ConjType, Conj),
+            (
+                ConjType = plain_conj,
+                list.append(Conj, Goals0, Goals1),
+                saved_vars_delay_goal(Goals1, Goals, Construct, Var,
+                    IsNonLocal, !SlotInfo)
+            ;
+                ConjType = parallel_conj,
+                saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
+                    IsNonLocal, !SlotInfo),
+                Goals = [Goal0 | Goals1]
+            )
         ;
             Goal0Expr = scope(Reason, SomeGoal0),
             rename_var(Var, NewVar, Subst, !SlotInfo),
@@ -477,17 +481,18 @@ push_into_cases_rename([case(ConsId, Goal0) | Cases0],
 
 %-----------------------------------------------------------------------------%
 
-    % saved_vars_in_disj does a saved_vars_in_goal on an list of
+    % saved_vars_in_goal does a saved_vars_in_goal on an list of
     % independent goals, and is used to process disjunctions and
     % parallel conjunctions.
     %
-:- pred saved_vars_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    slot_info::in, slot_info::out) is det.
+:- pred saved_vars_in_independent_goals(list(hlds_goal)::in,
+    list(hlds_goal)::out, slot_info::in, slot_info::out) is det.
 
-saved_vars_in_disj([], [], !SlotInfo).
-saved_vars_in_disj([Goal0 | Goals0], [Goal | Goals], !SlotInfo) :-
+saved_vars_in_independent_goals([], [], !SlotInfo).
+saved_vars_in_independent_goals([Goal0 | Goals0], [Goal | Goals],
+        !SlotInfo) :-
     saved_vars_in_goal(Goal0, Goal, !SlotInfo),
-    saved_vars_in_disj(Goals0, Goals, !SlotInfo).
+    saved_vars_in_independent_goals(Goals0, Goals, !SlotInfo).
 
 :- pred saved_vars_in_switch(list(case)::in, list(case)::out,
     slot_info::in, slot_info::out) is det.

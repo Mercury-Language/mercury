@@ -377,7 +377,7 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
             % relevant equality theory, we want to prune away all but one
             % of those solutions.
 
-            ScopeReason = promise_equivalent_solutions(_)
+            ScopeReason = promise_solutions(_, _)
         )
     ->
         Prune = yes
@@ -445,7 +445,7 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         % nondet and multidet goals. If this happens, the conjunction is put
         % inside a scope goal to appease the code generator.
 
-        Goal1 = conj(ConjGoals),
+        Goal1 = conj(plain_conj, ConjGoals),
         Solns = at_most_zero,
         some [ConjGoalInfo] (
             list__member(_ - ConjGoalInfo, ConjGoals),
@@ -493,19 +493,21 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
 det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
         RightFailingContexts, DetInfo, Detism, GoalFailingContexts, !:Msgs) :-
     (
-        GoalExpr0 = conj(Goals0),
-        % The determinism of a conjunction is the worst case of the elements
-        % of that conjuction.
-        det_infer_conj(Goals0, Goals, InstMap0, SolnContext,
-            RightFailingContexts, DetInfo, Detism, [], GoalFailingContexts,
-            !:Msgs),
-        GoalExpr = conj(Goals)
-    ;
-        GoalExpr0 = par_conj(Goals0),
-        det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
-            RightFailingContexts, DetInfo, Detism, GoalFailingContexts,
-            !:Msgs),
-        GoalExpr = par_conj(Goals)
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            % The determinism of a conjunction is the worst case of the
+            % determinism of the goals of that conjuction.
+            det_infer_conj(Goals0, Goals, InstMap0, SolnContext,
+                RightFailingContexts, DetInfo, Detism, [], GoalFailingContexts,
+                !:Msgs)
+        ;
+            ConjType = parallel_conj,
+            det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
+                RightFailingContexts, DetInfo, Detism, GoalFailingContexts,
+                !:Msgs)
+        ),
+        GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
         det_infer_disj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
@@ -1167,7 +1169,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
     % Existential quantification may require a cut to throw away solutions,
     % but we cannot rely on explicit quantification to detect this.
     % Therefore cuts are handled in det_infer_goal.
-    ( Reason = promise_equivalent_solutions(Vars) ->
+    ( Reason = promise_solutions(Vars, Kind) ->
         SolnContextToUse = first_soln,
         goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
         instmap_delta_changed_vars(InstmapDelta, ChangedVars),
@@ -1180,13 +1182,12 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         proc_info_varset(ProcInfo, VarSet),
 
         % Which vars were bound inside the scope but not listed
-        % in the promise_equivalent_solutions?
+        % in the promise_{equivalent,same}_solutions?
         set__difference(BoundVars, set__list_to_set(Vars), BugVars),
         ( set__empty(BugVars) ->
             ScopeMsgs1 = []
         ;
-            ScopeMsg1 = promise_equivalent_solutions_missing_vars(VarSet,
-                BugVars),
+            ScopeMsg1 = promise_solutions_missing_vars(Kind, VarSet, BugVars),
             ContextScopeMsg1 = context_det_msg(Context, ScopeMsg1),
             ScopeMsgs1 = [ContextScopeMsg1]
         ),
@@ -1196,8 +1197,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ( set__empty(ExtraVars) ->
             ScopeMsgs2 = []
         ;
-            ScopeMsg2 = promise_equivalent_solutions_extra_vars(VarSet,
-                ExtraVars),
+            ScopeMsg2 = promise_solutions_extra_vars(Kind, VarSet, ExtraVars),
             ContextScopeMsg2 = context_det_msg(Context, ScopeMsg2),
             ScopeMsgs2 = [ContextScopeMsg2]
         ),

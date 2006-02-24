@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2005 University of Melbourne.
+% Copyright (C) 1998-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,10 +53,7 @@
 
 %-----------------------------------------------------------------------------%
 
-pd_cost__goal(conj(Goals) - _, Cost) :-
-    pd_cost__goals(Goals, 0, Cost).
-
-pd_cost__goal(par_conj(Goals) - _, Cost) :-
+pd_cost__goal(conj(_, Goals) - _, Cost) :-
     pd_cost__goals(Goals, 0, Cost).
 
 pd_cost__goal(disj(Goals) - _, Cost) :-

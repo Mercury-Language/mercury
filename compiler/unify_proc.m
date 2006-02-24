@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -716,7 +716,7 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
 
         Any = any(shared),
         generate_cast(equiv_type_cast, X0, X, Any, Any, Context, CastGoal),
-        Goal = conj([InitGoal, CastGoal]) - GoalInfo,
+        Goal = conj(plain_conj, [InitGoal, CastGoal]) - GoalInfo,
         quantify_clauses_body([X], Goal, Context, Clauses, !Info)
     ;
         unexpected(this_file, "generate_initialise_clauses: " ++
@@ -746,7 +746,7 @@ generate_unify_clauses(Type, TypeBody, H1, H2, Context, Clauses, !Info) :-
                 quantify_clauses_body([H1, H2], Goal, Context, Clauses, !Info)
             ;
                 EnumDummy = is_dummy,
-                true_goal(Context, Goal),
+                Goal = true_goal_with_context(Context),
                 % XXX check me
                 quantify_clauses_body([H1, H2], Goal, Context, Clauses, !Info)
             ;
@@ -881,7 +881,7 @@ generate_user_defined_unify_clauses(UserEqCompare, H1, H2, Context, Clauses,
 
         create_atomic_complicated_unification(ResultVar, equal_functor,
             Context, explicit, [], UnifyGoal),
-        Goal = conj([CallGoal, UnifyGoal]) - GoalInfo
+        Goal = conj(plain_conj, [CallGoal, UnifyGoal]) - GoalInfo
     ;
         unexpected(this_file, "generate_user_defined_unify_clauses")
     ),
@@ -1582,7 +1582,7 @@ generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y, Context, Goal,
 
     build_call("compare_error", [], Context, Abort, !Info),
 
-    Goal = conj([
+    Goal = conj(plain_conj, [
         Call_X_Index,
         Call_Y_Index,
         if_then_else([], Call_Less_Than, Return_Less_Than,
@@ -1786,7 +1786,8 @@ compare_args_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys], R,
 
         create_atomic_complicated_unification(R, var(R1),
             Context, explicit, [], Return_R1),
-        Condition = conj([Do_Comparison, Check_Not_Equal]) - GoalInfo,
+        Condition = conj(plain_conj, [Do_Comparison, Check_Not_Equal])
+            - GoalInfo,
         compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R, Context, ElseCase,
             !Info),
         Goal = if_then_else([], Condition, Return_R1, ElseCase) - GoalInfo
@@ -1920,7 +1921,7 @@ unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys],
         info_get_module_info(!.Info, ModuleInfo),
         is_dummy_argument_type(ModuleInfo, Type)
     ->
-        true_goal(Goal)
+        Goal = true_goal
     ;
         % When unifying existentially typed arguments, the arguments may have
         % different types; in that case, rather than just unifying them,

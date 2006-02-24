@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -158,25 +158,28 @@ resume_locs_include_stack(stack_and_orig, yes).
 	set(prog_var)::in, set(prog_var)::out,
 	set(prog_var)::in, set(prog_var)::out) is det <= stack_alloc_info(T).
 
-build_live_sets_in_goal_2(conj(Goals0), conj(Goals), GoalInfo, GoalInfo,
-		ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
-	build_live_sets_in_conj(Goals0, Goals, ResumeVars0, AllocData,
-		!StackAlloc, !Liveness, !NondetLiveness).
-
-build_live_sets_in_goal_2(par_conj(Goals0), par_conj(Goals),
-		GoalInfo0, GoalInfo, ResumeVars0, AllocData,
-		!StackAlloc, !Liveness, !NondetLiveness) :-
-	goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals),
-	set__union(NonLocals, !.Liveness, LiveSet),
-    % Since each parallel conjunct may be run on a different Mercury engine
-    % to the current engine, we must save all the variables that are live
-    % or nonlocal to the parallel conjunction. Nonlocal variables that are
-    % currently free, but are bound inside one of the conjuncts need a
-    % stackslot because they are passed out by reference to that stackslot.
-	NeedInParConj = need_in_par_conj(LiveSet),
-	record_par_conj(NeedInParConj, GoalInfo0, GoalInfo, !StackAlloc),
-	build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
-		!StackAlloc, !Liveness, !NondetLiveness).
+build_live_sets_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
+        GoalInfo0, GoalInfo, ResumeVars0, AllocData,
+        !StackAlloc, !Liveness, !NondetLiveness) :-
+    (
+        ConjType = plain_conj,
+        GoalInfo = GoalInfo0,
+        build_live_sets_in_conj(Goals0, Goals, ResumeVars0, AllocData,
+            !StackAlloc, !Liveness, !NondetLiveness)
+    ;
+        ConjType = parallel_conj,
+        goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals),
+        set__union(NonLocals, !.Liveness, LiveSet),
+        % Since each parallel conjunct may be run on a different Mercury engine
+        % to the current engine, we must save all the variables that are live
+        % or nonlocal to the parallel conjunction. Nonlocal variables that are
+        % currently free, but are bound inside one of the conjuncts need a
+        % stackslot because they are passed out by reference to that stackslot.
+        NeedInParConj = need_in_par_conj(LiveSet),
+        record_par_conj(NeedInParConj, GoalInfo0, GoalInfo, !StackAlloc),
+        build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
+            !StackAlloc, !Liveness, !NondetLiveness)
+    ).
 
 build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
 		ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-

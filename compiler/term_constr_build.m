@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005 The University of Melbourne.
+% Copyright (C) 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -393,7 +393,9 @@ build_abstract_goal(Goal, AbstractGoal, !Info) :-
 :- pred build_abstract_goal_2(hlds_goal::in, abstract_goal::out, 
     traversal_info::in, traversal_info::out) is det.
 
-build_abstract_goal_2(conj(Goals) - _, AbstractGoal, !Info) :-
+build_abstract_goal_2(conj(_, Goals) - _, AbstractGoal, !Info) :-
+    % For the purposes of termination analysis there is no 
+    % distinction between parallel conjunctions and normal ones.
     build_abstract_conj(Goals, AbstractGoal, !Info).
 
 build_abstract_goal_2(disj(Goals) - _, AbstractGoal, !Info) :-
@@ -498,12 +500,6 @@ build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :-
     % 
 build_abstract_goal_2(shorthand(_) - _, _, _, _) :- 
     unexpected(this_file, "shorthand/1 goal during termination analysis.").
-
-    % For the purposes of termination analysis there is no 
-    % distinction between parallel conjunctions and normal ones.
-    %
-build_abstract_goal_2(par_conj(Goals) - _, AbstractGoal, !Info) :-
-    build_abstract_conj(Goals, AbstractGoal, !Info).
 
 %------------------------------------------------------------------------------%
 %

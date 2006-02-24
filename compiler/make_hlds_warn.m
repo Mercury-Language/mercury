@@ -130,12 +130,7 @@ warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId, MI,
 
 warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
         MI, !IO) :-
-    Goal = conj(Goals),
-    warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI,
-        !IO).
-warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
-        MI, !IO) :-
-    Goal = par_conj(Goals),
+    Goal = conj(_ConjType, Goals),
     warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI,
         !IO).
 warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
@@ -159,7 +154,7 @@ warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
     %
     (
         ( Reason = exist_quant(Vars)
-        ; Reason = promise_equivalent_solutions(Vars)
+        ; Reason = promise_solutions(Vars, _)
         ),
         Vars = [_ | _]
     ->

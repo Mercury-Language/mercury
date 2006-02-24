@@ -236,14 +236,16 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr0 = foreign_proc(_, _, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = conj(Goals0),
+        GoalExpr0 = conj(ConjType, Goals0),
         list__map_foldl(process_goal(NonLocals), Goals0, Goals1, !HI),
-        flatten_conj(Goals1, Goals),
-        GoalExpr = conj(Goals)
-    ;
-        GoalExpr0 = par_conj(Goals0),
-        list__map_foldl(process_goal(NonLocals), Goals0, Goals, !HI),
-        GoalExpr = par_conj(Goals)
+        (
+            ConjType = plain_conj,
+            flatten_conj(Goals1, Goals)
+        ;
+            ConjType = parallel_conj,
+            Goals = Goals1
+        ),
+        GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
         list__map_foldl(goal_use_own_nonlocals, Goals0, Goals, !HI),
@@ -312,7 +314,7 @@ process_unify(functor(ConsId0, IsExistConstruct, ArgsA), NonLocals, GoalInfo0,
     goal_info_set_nonlocals(GINonlocals, GoalInfo0, GoalInfo),
     UnifyGoal = unify(X, functor(ConsId, IsExistConstruct, Args),
         Mode, Unif, Context) - GoalInfo,
-    GoalExpr = conj([UnifyGoal | Unifications]).
+    GoalExpr = conj(plain_conj, [UnifyGoal | Unifications]).
 
 :- pred make_unifications(list(prog_var)::in, list(prog_var)::in,
     hlds_goal_info::in, unify_mode::in, unification::in, unify_context::in,
@@ -370,7 +372,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
 flatten_conj([], []).
 flatten_conj([Goal | Goals0], Goals) :-
     flatten_conj(Goals0, Goals1),
-    ( Goal = conj(SubGoals) - _ ->
+    ( Goal = conj(plain_conj, SubGoals) - _ ->
         list__append(SubGoals, Goals1, Goals)
     ;
         Goals = [Goal | Goals1]

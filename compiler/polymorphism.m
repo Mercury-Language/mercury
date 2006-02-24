@@ -993,7 +993,7 @@ assign_var_list([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
 
 assign_var(Var1, Var2, Goal) :-
     ( Var1 = Var2 ->
-        true_goal(Goal)
+        Goal = true_goal
     ;
         term__context_init(Context),
         create_atomic_complicated_unification(Var1, var(Var2), Context,
@@ -1071,13 +1071,9 @@ process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
 
     % The rest of the clauses just process goals recursively.
 process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = conj(Goals0),
+    GoalExpr = conj(ConjType, Goals0),
     process_goal_list(Goals0, Goals, !Info),
-    Goal = conj(Goals) - GoalInfo.
-process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = par_conj(Goals0),
-    process_goal_list(Goals0, Goals, !Info),
-    Goal = par_conj(Goals) - GoalInfo.
+    Goal = conj(ConjType, Goals) - GoalInfo.
 process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
     GoalExpr = disj(Goals0),
     process_goal_list(Goals0, Goals, !Info),

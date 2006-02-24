@@ -351,28 +351,32 @@ acceptable_detism_for_lco(cc_nondet).
 
 lco_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, !Info, ConstInfo) :-
     (
-        Goal0 = conj(Goals0),
-        lco_in_conj(list__reverse(Goals0), [], bag__init, MaybeGoals,
-            !Info, ConstInfo),
+        Goal0 = conj(ConjType, Goals0),
         (
-            MaybeGoals = yes(Goals),
-            Goal = conj(Goals)
-        ;
-            MaybeGoals = no,
-            % If the top-level conjunction doesn't end with some unifications
-            % we can move before a recursive call, maybe it ends with a switch
-            % or if-then-else, some of whose arms fit that pattern.
-            ( list__split_last(Goals0, AllButLast, Last0) ->
-                lco_in_goal(Last0, Last, !Info, ConstInfo),
-                Goal = conj(AllButLast ++ [Last])
+            ConjType = plain_conj,
+            lco_in_conj(list__reverse(Goals0), [], bag__init, MaybeGoals,
+                !Info, ConstInfo),
+            (
+                MaybeGoals = yes(Goals),
+                Goal = conj(plain_conj, Goals)
             ;
-                Goal = Goal0
+                MaybeGoals = no,
+                % If the top-level conjunction doesn't end with some
+                % unifications we can move before a recursive call,
+                % maybe it ends with a switch or if-then-else, some of whose
+                % arms fit that pattern.
+                ( list__split_last(Goals0, AllButLast, Last0) ->
+                    lco_in_goal(Last0, Last, !Info, ConstInfo),
+                    Goal = conj(plain_conj, AllButLast ++ [Last])
+                ;
+                    Goal = Goal0
+                )
             )
+        ;
+            ConjType = parallel_conj,
+            Goal = Goal0,
+            !:Info = !.Info ^ permitted := not_permitted
         )
-    ;
-        Goal0 = par_conj(_),
-        Goal = Goal0,
-        !:Info = !.Info ^ permitted := not_permitted
     ;
         Goal0 = disj(Goals0),
         % There is no point in looking for tail calls in the non-last
@@ -847,12 +851,14 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
 transform_variant_goal(ModuleInfo, VarToAddr, InstMap0,
         GoalExpr0 - GoalInfo, GoalExpr - GoalInfo) :-
     (
-        GoalExpr0 = conj(Goals0),
-        transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, Goals0, Goals),
-        GoalExpr = conj(Goals)
-    ;
-        GoalExpr0 = par_conj(_),
-        unexpected(this_file, "transform_variant_goal: par_conj")
+        GoalExpr0 = conj(ConjType, Goals0),
+        ( ConjType = parallel_conj ->
+            unexpected(this_file, "transform_variant_goal: parallel_conj")
+        ;
+            transform_variant_conj(ModuleInfo, VarToAddr, InstMap0,
+                Goals0, Goals),
+            GoalExpr = conj(ConjType, Goals)
+        )
     ;
         GoalExpr0 = disj(Goals0),
         list__map(transform_variant_goal(ModuleInfo, VarToAddr, InstMap0),
@@ -908,7 +914,7 @@ transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, [Goal0 | Goals0],
     transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal),
     update_instmap(Goal0, InstMap0, InstMap1),
     transform_variant_conj(ModuleInfo, VarToAddr, InstMap1, Goals0, Goals),
-    ( Goal = conj(SubConj) - _ ->
+    ( Goal = conj(plain_conj, SubConj) - _ ->
         Conj = SubConj ++ Goals
     ;
         Conj = [Goal | Goals]
@@ -936,7 +942,7 @@ transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
     ;
         GroundingVarToAddr = [_ | _],
         list__map(make_store_goal(ModuleInfo), GroundingVarToAddr, StoreGoals),
-        GoalExpr = conj([GoalExpr0 - GoalInfo | StoreGoals])
+        GoalExpr = conj(plain_conj, [GoalExpr0 - GoalInfo | StoreGoals])
     ).
 
 :- pred is_grounding(module_info::in, instmap::in, instmap::in,

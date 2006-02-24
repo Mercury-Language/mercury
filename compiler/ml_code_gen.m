@@ -1941,19 +1941,15 @@ ml_gen_goal_expr(not(Goal), CodeModel, Context,
         Decls, Statements, !Info) :-
     ml_gen_negation(Goal, CodeModel, Context, Decls, Statements, !Info).
 
-ml_gen_goal_expr(conj(Goals), CodeModel, Context,
+ml_gen_goal_expr(conj(_ConjType, Goals), CodeModel, Context,
         Decls, Statements, !Info) :-
+    % XXX Currently we treat parallel conjunction the same as
+    % sequential conjunction -- parallelism is not yet implemented.
     ml_gen_conj(Goals, CodeModel, Context, Decls, Statements, !Info).
 
 ml_gen_goal_expr(disj(Goals), CodeModel, Context,
         Decls, Statements, !Info) :-
     ml_gen_disj(Goals, CodeModel, Context, Decls, Statements, !Info).
-
-ml_gen_goal_expr(par_conj(Goals), CodeModel, Context,
-        Decls, Statements, !Info) :-
-    % XXX currently we treat parallel conjunction the same as
-    % sequential conjunction -- parallelism is not yet implemented
-    ml_gen_conj(Goals, CodeModel, Context, Decls, Statements, !Info).
 
 ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
         Context, Decls, Statements, !Info) :-

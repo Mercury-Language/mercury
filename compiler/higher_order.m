@@ -528,23 +528,23 @@ fixup_proc_info(MustRecompute, Goal0, !Info) :-
 :- pred traverse_goal_2(hlds_goal::in, hlds_goal::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_goal_2(conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo, !Info) :-
-    list.map_foldl(traverse_goal_2, Goals0, Goals, !Info).
-
-traverse_goal_2(par_conj(Goals0) - GoalInfo, par_conj(Goals) - GoalInfo,
-        !Info) :-
-    % traverse_disj treats its list of goals as independent
-    % rather than specifically disjoint, so we can use it
-    % to process a list of independent parallel conjuncts.
-    traverse_disj(Goals0, Goals, !Info).
+traverse_goal_2(conj(ConjType, Goals0) - GoalInfo,
+        conj(ConjType, Goals) - GoalInfo, !Info) :-
+    (
+        ConjType = plain_conj,
+        list.map_foldl(traverse_goal_2, Goals0, Goals, !Info)
+    ;
+        ConjType = parallel_conj,
+        traverse_independent_goals(Goals0, Goals, !Info)
+    ).
 
 traverse_goal_2(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo, !Info) :-
-    traverse_disj(Goals0, Goals, !Info).
+    traverse_independent_goals(Goals0, Goals, !Info).
 
-    % A switch is treated as a disjunction.
-    %
 traverse_goal_2(switch(Var, CanFail, Cases0) - GoalInfo,
         switch(Var, CanFail, Cases) - GoalInfo, !Info) :-
+    % A switch is treated as a disjunction.
+    %
     traverse_cases(Cases0, Cases, !Info).
 
     % Check whether this call could be specialized.
@@ -567,15 +567,15 @@ traverse_goal_2(Goal0, Goal, !Info) :-
         Goal = Goal0
     ).
 
+traverse_goal_2(Goal0, Goal, !Info) :-
     % Check whether this call can be specialized.
     %
-traverse_goal_2(Goal0, Goal, !Info) :-
     Goal0 = call(_, _, _, _, _, _) - _,
     maybe_specialize_call(Goal0, Goal, !Info).
 
+traverse_goal_2(Goal0, Goal, !Info) :-
     % if-then-elses are handled as disjunctions.
     %
-traverse_goal_2(Goal0, Goal, !Info) :-
     Goal0 = if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo,
     get_pre_branch_info(PreInfo, !Info),
     traverse_goal_2(Cond0, Cond, !Info),
@@ -620,31 +620,34 @@ traverse_goal_2(shorthand(_) - _, _, !Info) :-
     % specialization information before the goal, then merge the
     % results to give the specialization information after the disjunction.
     %
-    % This code is used both for disjunction and parallel conjunction.
+    % We do the same for parallel conjunctions.
     %
-:- pred traverse_disj(hlds_goals::in, hlds_goals::out,
+:- pred traverse_independent_goals(hlds_goals::in, hlds_goals::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_disj([], [], !Info).
-traverse_disj([Goal0 | Goals0], [Goal | Goals], !Info) :-
+traverse_independent_goals([], [], !Info).
+traverse_independent_goals([Goal0 | Goals0], [Goal | Goals], !Info) :-
     get_pre_branch_info(PreInfo, !Info),
     traverse_goal_2(Goal0, Goal, !Info),
     get_post_branch_info(PostInfo0, !Info),
-    traverse_disj_2(PreInfo, Goals0, Goals, PostInfo0, PostInfo, !Info),
+    traverse_independent_goals_2(PreInfo, Goals0, Goals, PostInfo0, PostInfo,
+        !Info),
     set_post_branch_info(PostInfo, !Info).
 
-:- pred traverse_disj_2(pre_branch_info::in, hlds_goals::in, hlds_goals::out,
+:- pred traverse_independent_goals_2(pre_branch_info::in,
+    hlds_goals::in, hlds_goals::out,
     post_branch_info::in, post_branch_info::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_disj_2(_, [], [], PostInfo, PostInfo, !Info).
-traverse_disj_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
+traverse_independent_goals_2(_, [], [], PostInfo, PostInfo, !Info).
+traverse_independent_goals_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
         PostInfo0, PostInfo, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     traverse_goal_2(Goal0, Goal, !Info),
     get_post_branch_info(PostInfo1, !Info),
     merge_post_branch_infos(PostInfo0, PostInfo1, PostInfo2),
-    traverse_disj_2(PreInfo, Goals0, Goals, PostInfo2, PostInfo, !Info).
+    traverse_independent_goals_2(PreInfo, Goals0, Goals, PostInfo2, PostInfo,
+        !Info).
 
     % Switches are treated in exactly the same way as disjunctions.
     %
@@ -1119,7 +1122,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
             Result = specialized(ExtraTypeInfoGoals, Goal1),
             goal_to_conj_list(Goal1 - GoalInfo, GoalList1),
             list.append(ExtraTypeInfoGoals, GoalList1, GoalList),
-            Goal = conj(GoalList)
+            Goal = conj(plain_conj, GoalList)
         ;
             Result = not_specialized,
             Goal = Goal0
@@ -1232,7 +1235,8 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
                 Goal = Goal2
             ;
                 ExtraTypeInfoGoals = [_ | _],
-                Goal = conj(ExtraTypeInfoGoals ++ [Goal2 - GoalInfo])
+                Goal = conj(plain_conj,
+                    ExtraTypeInfoGoals ++ [Goal2 - GoalInfo])
             )
         ;
             Result = not_specialized,
@@ -2037,7 +2041,7 @@ call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
 specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
     (
         MaybeResult = no,
-        GoalExpr = conj([])     % true
+        GoalExpr = conj(plain_conj, [])     % true
     ;
         MaybeResult = yes(ComparisonResult),
         Eq = cons(qualified(mercury_public_builtin_module, "="), 0),
@@ -2086,7 +2090,8 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
             Detism = det,
             goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
                 Context, GoalInfo),
-            GoalExpr = conj([CastGoal1, CastGoal2, Call - GoalInfo]),
+            GoalExpr = conj(plain_conj,
+                [CastGoal1, CastGoal2, Call - GoalInfo]),
             !:Info = !.Info ^ proc_info := ProcInfo
         )
     ).
@@ -2118,7 +2123,8 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
             unify_context(explicit, [])),
         goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
             Context, GoalInfo),
-        GoalExpr = conj([ExtractGoal1, ExtractGoal2, SpecialGoal - GoalInfo]),
+        GoalExpr = conj(plain_conj,
+            [ExtractGoal1, ExtractGoal2, SpecialGoal - GoalInfo]),
         !:Info = !.Info ^ proc_info := ProcInfo2
     ;
         MaybeResult = yes(ComparisonResult),
@@ -2138,7 +2144,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
                 not_builtin, MaybeContext, SymName),
             goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
                 Context, GoalInfo),
-            GoalExpr = conj([ExtractGoal1, ExtractGoal2,
+            GoalExpr = conj(plain_conj, [ExtractGoal1, ExtractGoal2,
                 SpecialGoal - GoalInfo]),
             !:Info = !.Info ^ proc_info := ProcInfo2
         ;
@@ -2152,7 +2158,8 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
                 not_builtin, MaybeContext, SymName),
             goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
                 Context, GoalInfo),
-            GoalExpr = conj([ExtractGoal1, CastGoal1, ExtractGoal2, CastGoal2,
+            GoalExpr = conj(plain_conj,
+                [ExtractGoal1, CastGoal1, ExtractGoal2, CastGoal2,
                 SpecialGoal - GoalInfo]),
             !:Info = !.Info ^ proc_info := ProcInfo4
         )

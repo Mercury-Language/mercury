@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -204,12 +204,9 @@
 
 %-----------------------------------------------------------------------------%
 
-build_interval_info_in_goal(conj(Goals) - _GoalInfo, !IntervalInfo, !Acc) :-
-    build_interval_info_in_conj(Goals, !IntervalInfo, !Acc).
-
-build_interval_info_in_goal(par_conj(Goals) - _GoalInfo, !IntervalInfo,
+build_interval_info_in_goal(conj(ConjType, Goals) - _GoalInfo, !IntervalInfo,
         !Acc) :-
-    build_interval_info_in_par_conj(Goals, !IntervalInfo, !Acc).
+    build_interval_info_in_conj(Goals, ConjType, !IntervalInfo, !Acc).
 
 build_interval_info_in_goal(disj(Goals) - GoalInfo, !IntervalInfo, !Acc) :-
     (
@@ -461,25 +458,17 @@ build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_interval_info_in_conj(list(hlds_goal)::in,
+:- pred build_interval_info_in_conj(list(hlds_goal)::in, conj_type::in,
     interval_info::in, interval_info::out, T::in, T::out) is det
     <= build_interval_info_acc(T).
 
-build_interval_info_in_conj([], !IntervalInfo, !Acc).
-build_interval_info_in_conj([Goal | Goals], !IntervalInfo, !Acc) :-
-    build_interval_info_in_conj(Goals, !IntervalInfo, !Acc),
-    build_interval_info_in_goal(Goal, !IntervalInfo, !Acc).
-
-:- pred build_interval_info_in_par_conj(list(hlds_goal)::in,
-    interval_info::in, interval_info::out, T::in, T::out) is det
-    <= build_interval_info_acc(T).
-
-build_interval_info_in_par_conj([], !IntervalInfo, !Acc).
-build_interval_info_in_par_conj([Goal | Goals], !IntervalInfo, !Acc) :-
+build_interval_info_in_conj([], _, !IntervalInfo, !Acc).
+build_interval_info_in_conj([Goal | Goals], ConjType, !IntervalInfo, !Acc) :-
     % XXX zs: I am not sure that passing interval_info from the first goal
-    % to the rest is OK. Maybe we should pass the initial interval_info to
-    % all the conjuncts, and then merge the resulting interval_infos.
-    build_interval_info_in_par_conj(Goals, !IntervalInfo, !Acc),
+    % to the rest is OK when ConjType = parallel_conj. Maybe we should pass
+    % the initial interval_info to all the conjuncts, and then merge the
+    % resulting interval_infos.
+    build_interval_info_in_conj(Goals, ConjType, !IntervalInfo, !Acc),
     build_interval_info_in_goal(Goal, !IntervalInfo, !Acc).
 
 :- pred build_interval_info_in_disj(list(hlds_goal)::in, maybe_needs_flush::in,
@@ -500,7 +489,7 @@ build_interval_info_in_disj([Goal | Goals], MaybeNeedsFlush,
 
 :- pred build_interval_info_in_cases(list(case)::in,
     anchor::in, anchor::in, interval_id::in, interval_id::in,
-    list(set(interval_id))::out, interval_info::in, interval_info::out, 
+    list(set(interval_id))::out, interval_info::in, interval_info::out,
     T::in, T::out) is det <= build_interval_info_acc(T).
 
 build_interval_info_in_cases([], _, _, _, _, [], !IntervalInfo, !Acc).
@@ -852,17 +841,10 @@ record_decisions_in_goal(!Goal, VarSet0, VarSet, VarTypes0, VarTypes,
 
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         MaybeFeature) :-
-    Goal0 = conj(Goals0) - GoalInfo,
+    Goal0 = conj(ConjType, Goals0) - GoalInfo,
     record_decisions_in_conj(Goals0, Goals, !VarInfo, !VarRename,
-        InsertMap, MaybeFeature),
-    Goal = conj(Goals) - GoalInfo.
-
-record_decisions_in_goal(Goal0, Goal, !VarInfo, VarRename0, map__init,
-        InsertMap, MaybeFeature) :-
-    Goal0 = par_conj(Goals0) - GoalInfo,
-    record_decisions_in_par_conj(Goals0, Goals, !VarInfo, VarRename0,
-        InsertMap, MaybeFeature),
-    Goal = par_conj(Goals) - GoalInfo.
+        ConjType, InsertMap, MaybeFeature),
+    Goal = conj(ConjType, Goals) - GoalInfo.
 
 record_decisions_in_goal(Goal0,  Goal, !VarInfo, !VarRename, InsertMap,
         MaybeFeature) :-
@@ -940,7 +922,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         Reason0 = promise_purity(_, _),
         Reason = Reason0
     ;
-        Reason0 = promise_equivalent_solutions(_),
+        Reason0 = promise_solutions(_, _),
         Reason = Reason0
     ;
         Reason0 = commit(_),
@@ -1130,32 +1112,23 @@ record_decisions_at_call_site(Goal0, Goal, !VarInfo, !VarRename,
 
 :- pred record_decisions_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     var_info::in, var_info::out, rename_map::in, rename_map::out,
-    insert_map::in, maybe(goal_feature)::in) is det.
+    conj_type::in, insert_map::in, maybe(goal_feature)::in) is det.
 
-record_decisions_in_conj([], [], !VarInfo, !VarRename, _, _).
+record_decisions_in_conj([], [], !VarInfo, !VarRename, _, _, _).
 record_decisions_in_conj([Goal0 | Goals0], Goals, !VarInfo, !VarRename,
-        InsertMap, MaybeFeature) :-
-    record_decisions_in_goal(Goal0, Goal1, !VarInfo, !VarRename,
+        ConjType, InsertMap, MaybeFeature) :-
+    record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename,
         InsertMap, MaybeFeature),
-    record_decisions_in_conj(Goals0, Goals1, !VarInfo, !VarRename,
-        InsertMap, MaybeFeature),
-    ( Goal1 = conj(SubGoals) - _ ->
-        Goals = list__append(SubGoals, Goals1)
+    record_decisions_in_conj(Goals0, TailGoals, !VarInfo, !VarRename,
+        ConjType, InsertMap, MaybeFeature),
+    (
+        Goal = conj(InnerConjType, SubGoals) - _,
+        ConjType = InnerConjType
+    ->
+        Goals = SubGoals ++ TailGoals
     ;
-        Goals = [Goal1 | Goals1]
+        Goals = [Goal | TailGoals]
     ).
-
-:- pred record_decisions_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    var_info::in, var_info::out, rename_map::in, insert_map::in,
-        maybe(goal_feature)::in) is det.
-
-record_decisions_in_par_conj([], [], !VarInfo, _, _, _).
-record_decisions_in_par_conj([Goal0 | Goals0], [Goal | Goals], !VarInfo,
-        VarRename0, InsertMap, MaybeFeature) :-
-    record_decisions_in_goal(Goal0, Goal, !VarInfo, VarRename0, _,
-        InsertMap, MaybeFeature),
-    record_decisions_in_par_conj(Goals0, Goals, !VarInfo, VarRename0,
-        InsertMap, MaybeFeature).
 
 :- pred record_decisions_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
     var_info::in, var_info::out, rename_map::in, list(insert_spec)::in,

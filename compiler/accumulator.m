@@ -419,7 +419,7 @@ attempt_transform_2([Id | Ids], C, M, Rec, HeadVars, InitialInstMap, TopLevel,
 standardize(Goal0, Goal) :-
     (
         (
-            Goal0 = conj([Goal1]) - _
+            Goal0 = conj(plain_conj, [Goal1]) - _
         ;
             Goal0 = disj([Goal1]) - _
         )
@@ -1104,7 +1104,7 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
         ModuleInfo, !Substs, !VarSet, !VarTypes, UpdateOut, UpdateAccOut,
         BasePairs),
 
-    Accs = set__to_sorted_list(InitAccs) `append` UpdateAccOut,
+    Accs = set__to_sorted_list(InitAccs) ++ UpdateAccOut,
 
     divide_base_case(UpdateOut, Out, GoalStore, !.VarTypes, ModuleInfo,
         UpdateBase, AssocBase, OtherBase),
@@ -1456,7 +1456,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
     % We place the extra accumulator variables at the start, because placing
     % them at the end breaks the convention that the last variable of a
     % function is the output variable.
-    HeadVars = Accs `append` HeadVars0,
+    HeadVars = Accs ++ HeadVars0,
 
     % XXX we don't want to use the inst of the var as it can be more specific
     % than it should be. ie int_const(1) when it should be any integer.
@@ -1465,7 +1465,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
     Inst = ground(shared, none),
     inst_lists_to_mode_list([Inst], [Inst], Mode),
     list__duplicate(list__length(Accs), list__det_head(Mode), AccModes),
-    HeadModes = AccModes `append` HeadModes0,
+    HeadModes = AccModes ++ HeadModes0,
 
     list__map(map__lookup(VarTypes), Accs, AccTypes),
 
@@ -1498,7 +1498,7 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     term__context_line(Context, Line),
     Counter = 0,
 
-    Types = NewTypes `append` Types0,
+    Types = NewTypes ++ Types0,
 
     make_pred_name_with_context(ModuleName, "AccFrom", PredOrFunc, Name,
         Line, Counter, SymName),
@@ -1541,7 +1541,7 @@ create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
 
 create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName) = Call :-
     OrigCall = call(_PredId, _ProcId, Args, Builtin, Context, _Name) - GI,
-    Call = call(AccPredId, AccProcId, Accs `append` Args,
+    Call = call(AccPredId, AccProcId, Accs ++ Args,
         Builtin, Context, AccName) - GI.
 
     % Create the goals which are to replace the original predicate.
@@ -1562,12 +1562,12 @@ create_orig_goal(Call, Substs, HeadToCallSubst, CallToHeadSubst,
 
     goal_util__rename_vars_in_goal(CallToHeadSubst, Call, BaseCall),
     Cbefore = goal_list(set__to_sorted_list(Before), C),
-    Uupdate = goal_list(set__to_sorted_list(UpdateBase) `append`
+    Uupdate = goal_list(set__to_sorted_list(UpdateBase) ++
         set__to_sorted_list(Update), U),
     Cbase = goal_list(base_case_ids(C), C),
-    calculate_goal_info(conj(Cbefore `append` Uupdate `append` [BaseCall]),
+    calculate_goal_info(conj(plain_conj, Cbefore ++ Uupdate ++ [BaseCall]),
         OrigRecGoal),
-    calculate_goal_info(conj(Cbase), OrigBaseGoal).
+    calculate_goal_info(conj(plain_conj, Cbase), OrigBaseGoal).
 
     % Create the goals which are to go in the new accumulator
     % version of the predicate.
@@ -1576,8 +1576,8 @@ create_orig_goal(Call, Substs, HeadToCallSubst, CallToHeadSubst,
     list(pair(prog_var))::in, sets::in, goal_store::in,
     goal_store::in, hlds_goal::out, hlds_goal::out) is det.
 
-create_acc_goal(Call, Substs, HeadToCallSubst,
-        BaseIds, BasePairs, Sets, C, CS, AccBaseGoal, AccRecGoal) :-
+create_acc_goal(Call, Substs, HeadToCallSubst, BaseIds, BasePairs, Sets,
+        C, CS, AccBaseGoal, AccRecGoal) :-
     Substs = substs(AccVarSubst, RecCallSubst, AssocCallSubst, UpdateSubst),
 
     BaseIds = base(_UpdateBase, AssocBase, OtherBase),
@@ -1603,13 +1603,13 @@ create_acc_goal(Call, Substs, HeadToCallSubst,
         Construct `union` ConstructAssoc),
 
     BaseCase = goal_list(set__to_sorted_list(AssocBase `union` OtherBase)
-        `append` Bafter, B),
+        ++ Bafter, B),
 
     list__map(acc_unification, BasePairs, UpdateBase),
 
-    calculate_goal_info(conj(Cbefore `append` Rassoc `append`
-        Rupdate `append` [RecCall] `append` Rconstruct), AccRecGoal),
-    calculate_goal_info(conj(UpdateBase `append` BaseCase), AccBaseGoal).
+    calculate_goal_info(conj(plain_conj, Cbefore ++ Rassoc ++ Rupdate
+        ++ [RecCall] ++ Rconstruct), AccRecGoal),
+    calculate_goal_info(conj(plain_conj, UpdateBase ++ BaseCase), AccBaseGoal).
 
     % Create the U set of goals (those that will be used in the
     % original recursive case) by renaming all the goals which are
@@ -1622,7 +1622,7 @@ create_acc_goal(Call, Substs, HeadToCallSubst,
 
 create_new_orig_recursive_goals(UpdateBase, Update, HeadToCallSubst,
         UpdateSubst, C)
-    = rename(set__to_sorted_list(Update), UpdateSubst, C, Ubase) :-
+        = rename(set__to_sorted_list(Update), UpdateSubst, C, Ubase) :-
     Ubase = rename(set__to_sorted_list(UpdateBase),
         chain_subst(HeadToCallSubst, UpdateSubst), C, goal_store__init).
 
@@ -1829,9 +1829,7 @@ goal_list(Ids, GS) = Goals :-
 :- pred calculate_goal_info(hlds_goal_expr::in, hlds_goal::out) is det.
 
 calculate_goal_info(GoalExpr, GoalExpr - GoalInfo) :-
-    (
-        GoalExpr = conj(GoalList)
-    ->
+    ( GoalExpr = conj(plain_conj, GoalList) ->
         goal_list_nonlocals(GoalList, NonLocals),
         goal_list_instmap_delta(GoalList, InstMapDelta),
         goal_list_determinism(GoalList, Determinism),

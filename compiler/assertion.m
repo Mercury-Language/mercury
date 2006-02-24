@@ -15,7 +15,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__assertion.
+:- module hlds.assertion.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -29,15 +29,15 @@
 
     % Get the hlds_goal which represents the assertion.
     %
-:- pred assertion__goal(assert_id::in, module_info::in, hlds_goal::out) is det.
+:- pred goal(assert_id::in, module_info::in, hlds_goal::out) is det.
 
     % Record into the pred_info of each pred used in the assertion
     % the assert_id.
     %
-:- pred assertion__record_preds_used_in(hlds_goal::in, assert_id::in,
+:- pred record_preds_used_in(hlds_goal::in, assert_id::in,
     module_info::in, module_info::out) is det.
 
-    % assertion__is_commutativity_assertion(Id, MI, Vs, CVs):
+    % is_commutativity_assertion(Id, MI, Vs, CVs):
     %
     % Does the assertion represented by the assertion id, Id,
     % state the commutativity of a pred/func?
@@ -53,10 +53,10 @@
     % arguments, Is, can be any where providing they are in
     % identical locations on both sides of the equivalence).
     %
-:- pred assertion__is_commutativity_assertion(assert_id::in, module_info::in,
+:- pred is_commutativity_assertion(assert_id::in, module_info::in,
     prog_vars::in, pair(prog_var)::out) is semidet.
 
-    % assertion__is_associativity_assertion(Id, MI, Vs, CVs, OV):
+    % is_associativity_assertion(Id, MI, Vs, CVs, OV):
     %
     % Does the assertion represented by the assertion id, Id,
     % state the associativity of a pred/func?
@@ -80,10 +80,10 @@
     % arguments, Is, can be any where providing they are in
     % identical locations on both sides of the equivalence).
     %
-:- pred assertion__is_associativity_assertion(assert_id::in, module_info::in,
+:- pred is_associativity_assertion(assert_id::in, module_info::in,
     prog_vars::in, pair(prog_var)::out, prog_var::out) is semidet.
 
-    % assertion__is_associativity_assertion(Id, MI, PId, Vs, SPair):
+    % is_associativity_assertion(Id, MI, PId, Vs, SPair):
     %
     % Recognise assertions in the form
     %   all [A,B,S0,S]
@@ -95,10 +95,10 @@
     % and given the actual variables, Vs, to the call to p, return
     % the pair of variables which are state variables, SPair.
     %
-:- pred assertion__is_update_assertion(assert_id::in, module_info::in,
+:- pred is_update_assertion(assert_id::in, module_info::in,
     pred_id::in, prog_vars::in, pair(prog_var)::out) is semidet.
 
-    % assertion__is_construction_equivalence_assertion(Id, MI, C, P):
+    % is_construction_equivalence_assertion(Id, MI, C, P):
     %
     % Can a single construction unification whose functor is
     % determined by the cons_id, C, be expressed as a call
@@ -108,20 +108,20 @@
     % The assertion will be in a form similar to
     %   all [L,H,T] ( L = [H|T] <=> append([H], T, L) )
     %
-:- pred assertion__is_construction_equivalence_assertion(assert_id::in,
+:- pred is_construction_equivalence_assertion(assert_id::in,
     module_info::in, cons_id::in, pred_id::in) is semidet.
 
     % Ensure that an assertion which is defined in an interface
     % doesn't refer to any constructors, functions and predicates
     % defined in the implementation of that module.
     %
-:- pred assertion__in_interface_check(hlds_goal::in, pred_info::in,
+:- pred in_interface_check(hlds_goal::in, pred_info::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
     % Place a hlds_goal into a standard form.  Currently all the
     % code does is replace conj([G]) with G.
     %
-:- pred assertion__normalise_goal(hlds_goal::in, hlds_goal::out) is det.
+:- pred normalise_goal(hlds_goal::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -152,9 +152,9 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assertion__is_commutativity_assertion(AssertId, Module, CallVars,
+is_commutativity_assertion(AssertId, Module, CallVars,
         CommutativeVars) :-
-    assertion__goal(AssertId, Module, Goal),
+    goal(AssertId, Module, Goal),
     equivalent(Goal, P, Q),
     P = call(PredId, _, VarsP, _, _, _) - _,
     Q = call(PredId, _, VarsQ, _, _, _) - _,
@@ -196,9 +196,9 @@ commutative_var_ordering_2(VarP, VarQ, [P | Ps], [Q | Qs], [V | Vs],
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assertion__is_associativity_assertion(AssertId, Module, CallVars,
+is_associativity_assertion(AssertId, Module, CallVars,
         AssociativeVars, OutputVar) :-
-    assertion__goal(AssertId, Module, Goal - GoalInfo),
+    goal(AssertId, Module, Goal - GoalInfo),
     equivalent(Goal - GoalInfo, P, Q),
 
     goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
@@ -206,14 +206,14 @@ assertion__is_associativity_assertion(AssertId, Module, CallVars,
         % There may or may not be a some [] depending on whether
         % the user explicity qualified the call or not.
     (
-        P = scope(_, conj(PCalls0) - _) - _PGoalInfo,
-        Q = scope(_, conj(QCalls0) - _) - _QGoalInfo
+        P = scope(_, conj(plain_conj, PCalls0) - _) - _PGoalInfo,
+        Q = scope(_, conj(plain_conj, QCalls0) - _) - _QGoalInfo
     ->
         PCalls = PCalls0,
         QCalls = QCalls0
     ;
-        P = conj(PCalls) - _PGoalInfo,
-        Q = conj(QCalls) - _QGoalInfo
+        P = conj(plain_conj, PCalls) - _PGoalInfo,
+        Q = conj(plain_conj, QCalls) - _QGoalInfo
     ),
     promise_equivalent_solutions [AssociativeVars, OutputVar] (
          associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
@@ -245,18 +245,18 @@ associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     % If you read the predicate documentation, you will note that
     % for each pair of variables on the left hand side there are an equivalent
     % pair of variables on the right hand side. As the pairs of variables
-    % are not symmetric, the call to list__perm will only succeed once,
+    % are not symmetric, the call to list.perm will only succeed once,
     % if at all.
-    assoc_list__from_corresponding_lists(PairsL, PairsR, Pairs),
-    list__perm(Pairs, [(A - AB) - (B - A), (B - C) - (C - BC),
+    assoc_list.from_corresponding_lists(PairsL, PairsR, Pairs),
+    list.perm(Pairs, [(A - AB) - (B - A), (B - C) - (C - BC),
         (AB - ABC) - (BC - ABC)]),
 
-    assoc_list__from_corresponding_lists(Vs, CallVars, AssocList),
-    list__filter((pred(X-_Y::in) is semidet :- X = AB),
+    assoc_list.from_corresponding_lists(Vs, CallVars, AssocList),
+    list.filter((pred(X-_Y::in) is semidet :- X = AB),
         AssocList, [_AB - OutputVar]),
-    list__filter((pred(X-_Y::in) is semidet :- X = A),
+    list.filter((pred(X-_Y::in) is semidet :- X = A),
         AssocList, [_A - CallVarA]),
-    list__filter((pred(X-_Y::in) is semidet :- X = B),
+    list.filter((pred(X-_Y::in) is semidet :- X = B),
         AssocList, [_B - CallVarB]).
 
     % reorder(Ps, Qs, Ls, Rs):
@@ -267,11 +267,11 @@ associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     hlds_goals::out, hlds_goals::out) is multi.
 
 reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
-    list__perm(PCalls, LHSCalls),
-    list__perm(QCalls, RHSCalls).
+    list.perm(PCalls, LHSCalls),
+    list.perm(QCalls, RHSCalls).
 reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
-    list__perm(PCalls, RHSCalls),
-    list__perm(QCalls, LHSCalls).
+    list.perm(PCalls, RHSCalls),
+    list.perm(QCalls, LHSCalls).
 
     % process_one_side(Gs, Us, L, Ps):
     %
@@ -294,8 +294,8 @@ process_one_side(Goals, UniversiallyQuantifiedVars, PredId,
 
     % Filter out all the invariant arguments, and then make sure that
     % their is only 3 arguments left.
-    list__filter((pred(X-Y::in) is semidet :- not X = Y), Vars0, Vars),
-    list__length(Vars, number_of_associative_vars).
+    list.filter((pred(X-Y::in) is semidet :- not X = Y), Vars0, Vars),
+    list.length(Vars, number_of_associative_vars).
 
 :- func number_of_associative_vars = int.
 
@@ -304,7 +304,7 @@ number_of_associative_vars = 3.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % assertion__is_update_assertion(Id, MI, PId, Ss):
+    % is_update_assertion(Id, MI, PId, Ss):
     %
     % is true iff the assertion, Id, is about a predicate, PId,
     % which takes some state as input and produces some state as
@@ -320,23 +320,23 @@ number_of_associative_vars = 3.
     %       (some [SB] (update(S0,B,SB), update(SB,A,S)))
     %   ).
     %
-assertion__is_update_assertion(AssertId, Module, _PredId, CallVars,
+is_update_assertion(AssertId, Module, _PredId, CallVars,
         StateA - StateB) :-
-    assertion__goal(AssertId, Module, Goal - GoalInfo),
+    goal(AssertId, Module, Goal - GoalInfo),
     equivalent(Goal - GoalInfo, P, Q),
     goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
 
         % There may or may not be an explicit some [Vars] there,
         % as quantification now works correctly.
     (
-        P = scope(_, conj(PCalls0) - _) - _PGoalInfo,
-        Q = scope(_, conj(QCalls0) - _) - _QGoalInfo
+        P = scope(_, conj(plain_conj, PCalls0) - _) - _PGoalInfo,
+        Q = scope(_, conj(plain_conj, QCalls0) - _) - _QGoalInfo
     ->
         PCalls = PCalls0,
         QCalls = QCalls0
     ;
-        P = conj(PCalls) - _PGoalInfo,
-        Q = conj(QCalls) - _QGoalInfo
+        P = conj(plain_conj, PCalls) - _PGoalInfo,
+        Q = conj(plain_conj, QCalls) - _QGoalInfo
     ),
 
     solutions(update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars),
@@ -356,21 +356,21 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     process_two_linked_calls(RHSCalls, UniversiallyQuantifiedVars, PredId,
         SB, PairsR, _),
 
-    assoc_list__from_corresponding_lists(PairsL, PairsR, Pairs0),
-    list__filter((pred(X-Y::in) is semidet :- X \= Y), Pairs0, Pairs),
-    list__length(Pairs) = 2,
+    assoc_list.from_corresponding_lists(PairsL, PairsR, Pairs0),
+    list.filter((pred(X-Y::in) is semidet :- X \= Y), Pairs0, Pairs),
+    list.length(Pairs) = 2,
 
     % If you read the predicate documentation, you will note that
     % for each pair of variables on the left hand side there is an equivalent
     % pair of variables on the right hand side. As the pairs of variables
-    % are not symmetric, the call to list__perm will only succeed once,
+    % are not symmetric, the call to list.perm will only succeed once,
     % if at all.
-    list__perm(Pairs, [(S0 - SA) - (SB - S0), (SA - S) - (S - SB)]),
+    list.perm(Pairs, [(S0 - SA) - (SB - S0), (SA - S) - (S - SB)]),
 
-    assoc_list__from_corresponding_lists(Vs, CallVars, AssocList),
-    list__filter((pred(X-_Y::in) is semidet :- X = S0),
+    assoc_list.from_corresponding_lists(Vs, CallVars, AssocList),
+    list.filter((pred(X-_Y::in) is semidet :- X = S0),
         AssocList, [_S0 - StateA]),
-    list__filter((pred(X-_Y::in) is semidet :- X = SA),
+    list.filter((pred(X-_Y::in) is semidet :- X = SA),
         AssocList, [_SA - StateB]).
 
 %-----------------------------------------------------------------------------%
@@ -397,18 +397,17 @@ process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
         % By definition it must be existentially quantified and
         % a member of both variable lists.
     CommonVars = list_to_set(VarsA) `intersect` list_to_set(VarsB),
-    set__singleton_set(CommonVars `difference` UniversiallyQuantifiedVars,
+    set.singleton_set(CommonVars `difference` UniversiallyQuantifiedVars,
         LinkingVar),
 
         % Set up mapping between the variables in the two calls.
-    assoc_list__from_corresponding_lists(VarsA, VarsB, Vars).
+    assoc_list.from_corresponding_lists(VarsA, VarsB, Vars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assertion__is_construction_equivalence_assertion(AssertId, Module,
-        ConsId, PredId) :-
-    assertion__goal(AssertId, Module, Goal),
+is_construction_equivalence_assertion(AssertId, Module, ConsId, PredId) :-
+    goal(AssertId, Module, Goal),
     equivalent(Goal, P, Q),
     ( single_construction(P, ConsId) ->
         predicate_call(Q, PredId)
@@ -434,17 +433,17 @@ single_construction(unify(_, UnifyRhs, _, _, _) - _,
 :- pred predicate_call(hlds_goal::in, pred_id::in) is semidet.
 
 predicate_call(Goal, PredId) :-
-    ( Goal = conj(Goals) - _ ->
-        list__member(Call, Goals),
+    ( Goal = conj(plain_conj, Goals) - _ ->
+        list.member(Call, Goals),
         Call = call(PredId, _, _, _, _, _) - _,
-        list__delete(Goals, Call, Unifications),
+        list.delete(Goals, Call, Unifications),
         P = (pred(G::in) is semidet :-
             not (
                 G = unify(_, UnifyRhs, _, _, _) - _,
                 UnifyRhs = functor(_, _, _)
             )
         ),
-        list__filter(P, Unifications, [])
+        list.filter(P, Unifications, [])
     ;
         Goal = call(PredId, _, _, _, _, _) - _
     ).
@@ -452,16 +451,16 @@ predicate_call(Goal, PredId) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assertion__goal(AssertId, Module, Goal) :-
+goal(AssertId, Module, Goal) :-
     module_info_get_assertion_table(Module, AssertTable),
     assertion_table_lookup(AssertTable, AssertId, PredId),
     module_info_pred_info(Module, PredId, PredInfo),
     pred_info_clauses_info(PredInfo, ClausesInfo),
     clauses_info_clauses_only(ClausesInfo, Clauses),
     ( Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)] ->
-        assertion__normalise_goal(Goal0, Goal)
+        normalise_goal(Goal0, Goal)
     ;
-        unexpected(this_file, "assertion__goal: not an assertion")
+        unexpected(this_file, "goal: not an assertion")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -471,12 +470,12 @@ assertion__goal(AssertId, Module, Goal) :-
 
 implies(Goal, P, Q) :-
         % Goal = (P => Q)
-    Goal = not(conj(GoalList) - GI) - _,
-    list__reverse(GoalList) = [NotQ | Ps],
+    Goal = not(conj(plain_conj, GoalList) - GI) - _,
+    list.reverse(GoalList) = [NotQ | Ps],
     ( Ps = [P0] ->
         P = P0
     ;
-        P = conj(list__reverse(Ps)) - GI
+        P = conj(plain_conj, list.reverse(Ps)) - GI
     ),
     NotQ = not(Q) - _.
 
@@ -484,8 +483,8 @@ implies(Goal, P, Q) :-
 
 equivalent(Goal, P, Q) :-
         % Goal = P <=> Q
-    Goal = conj([A, B]) - _GoalInfo,
-    map__init(Subst),
+    Goal = conj(plain_conj, [A, B]) - _GoalInfo,
+    map.init(Subst),
     implies(A, PA, QA),
     implies(B, QB, PB),
     equal_goals(PA, PB, Subst, _),
@@ -503,7 +502,7 @@ equivalent(Goal, P, Q) :-
 :- pred equal_goals(hlds_goal::in, hlds_goal::in,
     subst::in, subst::out) is semidet.
 
-equal_goals(conj(GoalAs) - _, conj(GoalBs) - _, !Subst) :-
+equal_goals(conj(ConjType, GoalAs) - _, conj(ConjType, GoalBs) - _, !Subst) :-
     equal_goals_list(GoalAs, GoalBs, !Subst).
 equal_goals(call(PredId, _, VarsA, _, _, _) - _,
         call(PredId, _, VarsB, _, _, _) - _, !Subst) :-
@@ -538,11 +537,9 @@ equal_goals(foreign_proc(Attribs, PredId, _, ArgsA, ExtraA, _) - _,
     % and as such will not participate in assertions.
     ExtraA = [],
     ExtraB = [],
-    VarsA = list__map(foreign_arg_var, ArgsA),
-    VarsB = list__map(foreign_arg_var, ArgsB),
+    VarsA = list.map(foreign_arg_var, ArgsA),
+    VarsB = list.map(foreign_arg_var, ArgsB),
     equal_vars(VarsA, VarsB, !Subst).
-equal_goals(par_conj(GoalAs) - _, par_conj(GoalBs) - _, !Subst) :-
-    equal_goals_list(GoalAs, GoalBs, !Subst).
 equal_goals(shorthand(ShorthandGoalA) - GoalInfoA,
         shorthand(ShorthandGoalB) - GoalInfoB, !Subst) :-
     equal_goals_shorthand(ShorthandGoalA - GoalInfoA,
@@ -571,10 +568,10 @@ equal_goals_shorthand(bi_implication(LeftGoalA, RightGoalA) - GoalInfo,
     is semidet.
 
 equal_var(VA, VB, !Subst) :-
-    ( map__search(!.Subst, VA, SubstVA) ->
+    ( map.search(!.Subst, VA, SubstVA) ->
         SubstVA = VB
     ;
-        map__insert(!.Subst, VA, VB, !:Subst)
+        map.insert(!.Subst, VA, VB, !:Subst)
     ).
 
 :- pred equal_vars(prog_vars::in, prog_vars::in, subst::in, subst::out)
@@ -623,12 +620,12 @@ equal_goals_cases([CaseA | CaseAs], [CaseB | CaseBs], !Subst) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assertion__record_preds_used_in(Goal, AssertId, !Module) :-
+record_preds_used_in(Goal, AssertId, !Module) :-
         % Explicit lambda expression needed since
         % goal_calls_pred_id has multiple modes.
     P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
     solutions(P, PredIds),
-    list__foldl(update_pred_info(AssertId), PredIds, !Module).
+    list.foldl(update_pred_info(AssertId), PredIds, !Module).
 
 %-----------------------------------------------------------------------------%
 
@@ -643,84 +640,87 @@ assertion__record_preds_used_in(Goal, AssertId, !Module) :-
 update_pred_info(AssertId, PredId, !Module) :-
     module_info_pred_info(!.Module, PredId, PredInfo0),
     pred_info_get_assertions(PredInfo0, Assertions0),
-    set__insert(Assertions0, AssertId, Assertions),
+    set.insert(Assertions0, AssertId, Assertions),
     pred_info_set_assertions(Assertions, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !Module).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assertion__normalise_goal(Goal @ call(_, _, _, _, _, _) - GI, Goal - GI).
-assertion__normalise_goal(Goal @ generic_call(_, _, _, _) - GI, Goal - GI).
-assertion__normalise_goal(Goal @ unify(_, _, _, _, _) - GI, Goal - GI).
-assertion__normalise_goal(Goal @ foreign_proc(_, _, _, _, _, _) - GI,
-        Goal - GI).
-assertion__normalise_goal(conj(Goals0) - GI, conj(Goals) - GI) :-
-    assertion__normalise_conj(Goals0, Goals).
-assertion__normalise_goal(switch(A,B,Case0s) - GI, switch(A,B,Cases)-GI) :-
-    assertion__normalise_cases(Case0s, Cases).
-assertion__normalise_goal(disj(Goal0s) - GI, disj(Goals) - GI) :-
-    assertion__normalise_goals(Goal0s, Goals).
-assertion__normalise_goal(not(Goal0) - GI, not(Goal) - GI) :-
-    assertion__normalise_goal(Goal0, Goal).
-assertion__normalise_goal(scope(Reason, Goal0) - GI,
+normalise_goal(Goal @ call(_, _, _, _, _, _) - GI, Goal - GI).
+normalise_goal(Goal @ generic_call(_, _, _, _) - GI, Goal - GI).
+normalise_goal(Goal @ unify(_, _, _, _, _) - GI, Goal - GI).
+normalise_goal(Goal @ foreign_proc(_, _, _, _, _, _) - GI, Goal - GI).
+normalise_goal(conj(ConjType, Goals0) - GI,
+        conj(ConjType, Goals) - GI) :-
+    (
+        ConjType = plain_conj,
+        normalise_conj(Goals0, Goals)
+    ;
+        ConjType = parallel_conj,
+        normalise_goals(Goals0, Goals)
+    ).
+normalise_goal(switch(A,B,Case0s) - GI, switch(A,B,Cases)-GI) :-
+    normalise_cases(Case0s, Cases).
+normalise_goal(disj(Goal0s) - GI, disj(Goals) - GI) :-
+    normalise_goals(Goal0s, Goals).
+normalise_goal(not(Goal0) - GI, not(Goal) - GI) :-
+    normalise_goal(Goal0, Goal).
+normalise_goal(scope(Reason, Goal0) - GI,
         scope(Reason, Goal) - GI) :-
-    assertion__normalise_goal(Goal0, Goal).
-assertion__normalise_goal(if_then_else(A, If0, Then0, Else0) - GI,
+    normalise_goal(Goal0, Goal).
+normalise_goal(if_then_else(A, If0, Then0, Else0) - GI,
         if_then_else(A, If, Then, Else) - GI) :-
-    assertion__normalise_goal(If0, If),
-    assertion__normalise_goal(Then0, Then),
-    assertion__normalise_goal(Else0, Else).
-assertion__normalise_goal(par_conj(Goal0s) - GI, par_conj(Goals) - GI) :-
-    assertion__normalise_goals(Goal0s, Goals).
-assertion__normalise_goal(shorthand(ShortHandGoal0) - GI0,
+    normalise_goal(If0, If),
+    normalise_goal(Then0, Then),
+    normalise_goal(Else0, Else).
+normalise_goal(shorthand(ShortHandGoal0) - GI0,
         shorthand(ShortHandGoal) - GI) :-
-    assertion__normalise_goal_shorthand(ShortHandGoal0 - GI0,
-        ShortHandGoal - GI).
+    normalise_goal_shorthand(ShortHandGoal0 - GI0, ShortHandGoal - GI).
 
     % Place a shorthand goal into a standard form. Currently
     % all the code does is replace conj([G]) with G.
     %
-:- pred assertion__normalise_goal_shorthand(
+:- pred normalise_goal_shorthand(
     pair(shorthand_goal_expr, hlds_goal_info)::in,
     pair(shorthand_goal_expr, hlds_goal_info)::out) is det.
 
-assertion__normalise_goal_shorthand(bi_implication(LHS0, RHS0) - GI,
+normalise_goal_shorthand(bi_implication(LHS0, RHS0) - GI,
         bi_implication(LHS, RHS) - GI) :-
-    assertion__normalise_goal(LHS0, LHS),
-    assertion__normalise_goal(RHS0, RHS).
+    normalise_goal(LHS0, LHS),
+    normalise_goal(RHS0, RHS).
 
 %-----------------------------------------------------------------------------%
 
-:- pred assertion__normalise_conj(hlds_goals::in, hlds_goals::out) is det.
+:- pred normalise_conj(hlds_goals::in, hlds_goals::out) is det.
 
-assertion__normalise_conj([], []).
-assertion__normalise_conj([Goal0 | Goal0s], Goals) :-
+normalise_conj([], []).
+normalise_conj([Goal0 | Goal0s], Goals) :-
     goal_to_conj_list(Goal0, ConjGoals),
-    assertion__normalise_conj(Goal0s, Goal1s),
-    list__append(ConjGoals, Goal1s, Goals).
+    normalise_conj(Goal0s, Goal1s),
+    list.append(ConjGoals, Goal1s, Goals).
 
-:- pred assertion__normalise_cases(list(case)::in, list(case)::out) is det.
+:- pred normalise_cases(list(case)::in, list(case)::out) is det.
 
-assertion__normalise_cases([], []).
-assertion__normalise_cases([Case0 | Case0s], [Case | Cases]) :-
+normalise_cases([], []).
+normalise_cases([Case0 | Case0s], [Case | Cases]) :-
     Case0 = case(ConsId, Goal0),
-    assertion__normalise_goal(Goal0, Goal),
+    normalise_goal(Goal0, Goal),
     Case = case(ConsId, Goal),
-    assertion__normalise_cases(Case0s, Cases).
+    normalise_cases(Case0s, Cases).
 
-:- pred assertion__normalise_goals(hlds_goals::in, hlds_goals::out) is det.
+:- pred normalise_goals(hlds_goals::in, hlds_goals::out) is det.
 
-assertion__normalise_goals([], []).
-assertion__normalise_goals([Goal0 | Goal0s], [Goal | Goals]) :-
-    assertion__normalise_goal(Goal0, Goal),
-    assertion__normalise_goals(Goal0s, Goals).
+normalise_goals([], []).
+normalise_goals([Goal0 | Goal0s], [Goal | Goals]) :-
+    normalise_goal(Goal0, Goal),
+    normalise_goals(Goal0s, Goals).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assertion__in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo,
-        _PredInfo, !Module, !IO) :-
+in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo, _PredInfo,
+        !Module, !IO) :-
     module_info_pred_info(!.Module, PredId, CallPredInfo),
     pred_info_import_status(CallPredInfo, ImportStatus),
     ( is_defined_in_implementation_section(ImportStatus) = yes ->
@@ -732,14 +732,12 @@ assertion__in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo,
     ;
         true
     ).
-assertion__in_interface_check(generic_call(_, _, _, _) - _, _,
-        !Module, !IO).
-assertion__in_interface_check(unify(Var, RHS, _, _, _) - GoalInfo,
-        PredInfo, !Module, !IO) :-
+in_interface_check(generic_call(_, _, _, _) - _, _, !Module, !IO).
+in_interface_check(unify(Var, RHS, _, _, _) - GoalInfo, PredInfo,
+        !Module, !IO) :-
     goal_info_get_context(GoalInfo, Context),
-    assertion__in_interface_check_unify_rhs(RHS, Var, Context,
-        PredInfo, !Module, !IO).
-assertion__in_interface_check(foreign_proc(_, PredId, _, _, _, _) -
+    in_interface_check_unify_rhs(RHS, Var, Context, PredInfo, !Module, !IO).
+in_interface_check(foreign_proc(_, PredId, _, _, _, _) -
         GoalInfo, _PredInfo, !Module, !IO) :-
     module_info_pred_info(!.Module, PredId, PragmaPredInfo),
     pred_info_import_status(PragmaPredInfo, ImportStatus),
@@ -754,54 +752,49 @@ assertion__in_interface_check(foreign_proc(_, PredId, _, _, _, _) -
     ;
         true
     ).
-assertion__in_interface_check(conj(Goals) - _, PredInfo, !Module, !IO) :-
-    assertion__in_interface_check_list(Goals, PredInfo, !Module, !IO).
-assertion__in_interface_check(switch(_, _, _) - _, _, _, _, !IO) :-
-    unexpected(this_file,
-        "assertion__in_interface_check: assertion contains switch.").
-assertion__in_interface_check(disj(Goals) - _, PredInfo, !Module, !IO) :-
-    assertion__in_interface_check_list(Goals, PredInfo, !Module, !IO).
-assertion__in_interface_check(not(Goal) - _, PredInfo, !Module, !IO) :-
-    assertion__in_interface_check(Goal, PredInfo, !Module, !IO).
-assertion__in_interface_check(scope(_, Goal) - _, PredInfo, !Module, !IO) :-
-    assertion__in_interface_check(Goal, PredInfo, !Module, !IO).
-assertion__in_interface_check(if_then_else(_, If, Then, Else) - _,
-        PredInfo, !Module, !IO) :-
-    assertion__in_interface_check(If, PredInfo, !Module, !IO),
-    assertion__in_interface_check(Then, PredInfo, !Module, !IO),
-    assertion__in_interface_check(Else, PredInfo, !Module, !IO).
-assertion__in_interface_check(par_conj(Goals) - _, PredInfo, !Module, !IO) :-
-    assertion__in_interface_check_list(Goals, PredInfo, !Module, !IO).
-assertion__in_interface_check(shorthand(ShorthandGoal) - _GoalInfo, PredInfo,
+in_interface_check(conj(_, Goals) - _, PredInfo, !Module, !IO) :-
+    in_interface_check_list(Goals, PredInfo, !Module, !IO).
+in_interface_check(switch(_, _, _) - _, _, _, _, !IO) :-
+    unexpected(this_file, "in_interface_check: assertion contains switch.").
+in_interface_check(disj(Goals) - _, PredInfo, !Module, !IO) :-
+    in_interface_check_list(Goals, PredInfo, !Module, !IO).
+in_interface_check(not(Goal) - _, PredInfo, !Module, !IO) :-
+    in_interface_check(Goal, PredInfo, !Module, !IO).
+in_interface_check(scope(_, Goal) - _, PredInfo, !Module, !IO) :-
+    in_interface_check(Goal, PredInfo, !Module, !IO).
+in_interface_check(if_then_else(_, If, Then, Else) - _, PredInfo,
         !Module, !IO) :-
-    assertion__in_interface_check_shorthand(ShorthandGoal,
-        PredInfo, !Module, !IO).
-
-:- pred assertion__in_interface_check_shorthand(shorthand_goal_expr::in,
-    pred_info::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
-
-assertion__in_interface_check_shorthand(bi_implication(LHS, RHS), PredInfo,
+    in_interface_check(If, PredInfo, !Module, !IO),
+    in_interface_check(Then, PredInfo, !Module, !IO),
+    in_interface_check(Else, PredInfo, !Module, !IO).
+in_interface_check(shorthand(ShorthandGoal) - _GoalInfo, PredInfo,
         !Module, !IO) :-
-    assertion__in_interface_check(LHS, PredInfo, !Module, !IO),
-    assertion__in_interface_check(RHS, PredInfo, !Module, !IO).
+    in_interface_check_shorthand(ShorthandGoal, PredInfo, !Module, !IO).
+
+:- pred in_interface_check_shorthand(shorthand_goal_expr::in,
+    pred_info::in, module_info::in, module_info::out, io::di, io::uo) is det.
+
+in_interface_check_shorthand(bi_implication(LHS, RHS), PredInfo,
+        !Module, !IO) :-
+    in_interface_check(LHS, PredInfo, !Module, !IO),
+    in_interface_check(RHS, PredInfo, !Module, !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred assertion__in_interface_check_unify_rhs(unify_rhs::in, prog_var::in,
+:- pred in_interface_check_unify_rhs(unify_rhs::in, prog_var::in,
     prog_context::in, pred_info::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-assertion__in_interface_check_unify_rhs(var(_), _, _, _, !Module, !IO).
-assertion__in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
+in_interface_check_unify_rhs(var(_), _, _, _, !Module, !IO).
+in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
         PredInfo, !Module, !IO) :-
     pred_info_clauses_info(PredInfo, ClausesInfo),
     clauses_info_vartypes(ClausesInfo, VarTypes),
-    map__lookup(VarTypes, Var, Type),
+    map.lookup(VarTypes, Var, Type),
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
         module_info_get_type_table(!.Module, Types),
-        map__lookup(Types, TypeCtor, TypeDefn),
-        hlds_data__get_type_defn_status(TypeDefn, TypeStatus),
+        map.lookup(Types, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
         ( is_defined_in_implementation_section(TypeStatus) = yes ->
             write_assertion_interface_error(Context, cons(ConsId),
                 !Module, !IO)
@@ -810,22 +803,21 @@ assertion__in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
         )
     ;
         unexpected(this_file,
-            "assertion__in_interface_check_unify_rhs: " ++
-            "type_to_ctor_and_args failed.")
+            "in_interface_check_unify_rhs: type_to_ctor_and_args failed.")
     ).
-assertion__in_interface_check_unify_rhs(lambda_goal(_,_,_,_,_,_,_,Goal),
+in_interface_check_unify_rhs(lambda_goal(_, _, _, _, _, _, _, Goal),
         _Var, _Context, PredInfo, !Module, !IO) :-
-    assertion__in_interface_check(Goal, PredInfo, !Module, !IO).
+    in_interface_check(Goal, PredInfo, !Module, !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred assertion__in_interface_check_list(hlds_goals::in, pred_info::in,
+:- pred in_interface_check_list(hlds_goals::in, pred_info::in,
     module_info::in, module_info::out, io::di, io::uo)is det.
 
-assertion__in_interface_check_list([], _, !Module, !IO).
-assertion__in_interface_check_list([Goal0 | Goal0s], PredInfo, !Module, !IO) :-
-    assertion__in_interface_check(Goal0, PredInfo, !Module, !IO),
-    assertion__in_interface_check_list(Goal0s, PredInfo, !Module, !IO).
+in_interface_check_list([], _, !Module, !IO).
+in_interface_check_list([Goal0 | Goal0s], PredInfo, !Module, !IO) :-
+    in_interface_check(Goal0, PredInfo, !Module, !IO),
+    in_interface_check_list(Goal0s, PredInfo, !Module, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -881,7 +873,7 @@ write_assertion_interface_error(Context, Type, !Module, !IO) :-
         words(IdStr), words("which is defined in the "),
         words("implementation section of module"),
         fixed(ModuleStr ++ ".")], !IO),
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         write_error_pieces_not_first_line(Context, 0,

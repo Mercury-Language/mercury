@@ -260,12 +260,9 @@ detect_cse_in_goal_2(not(Goal0), _GoalInfo, InstMap, !CseInfo, Redo,
 detect_cse_in_goal_2(scope(Reason, Goal0), _GoalInfo, InstMap,
         !CseInfo, Redo, scope(Reason, Goal)) :-
     detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal).
-detect_cse_in_goal_2(conj(Goals0), _GoalInfo, InstMap, !CseInfo, Redo,
-        conj(Goals)) :-
-    detect_cse_in_conj(Goals0, InstMap, !CseInfo, Redo, Goals).
-detect_cse_in_goal_2(par_conj(Goals0), _, InstMap, !CseInfo, Redo,
-        par_conj(Goals)) :-
-    detect_cse_in_par_conj(Goals0, InstMap, !CseInfo, Redo, Goals).
+detect_cse_in_goal_2(conj(ConjType, Goals0), _GoalInfo, InstMap, !CseInfo,
+        Redo, conj(ConjType, Goals)) :-
+    detect_cse_in_conj(Goals0, ConjType, InstMap, !CseInfo, Redo, Goals).
 detect_cse_in_goal_2(disj(Goals0), GoalInfo, InstMap, !CseInfo, Redo, Goal) :-
     ( Goals0 = [] ->
         Redo = no,
@@ -295,31 +292,23 @@ detect_cse_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_cse_in_conj(list(hlds_goal)::in, instmap::in, cse_info::in,
-    cse_info::out, bool::out, list(hlds_goal)::out) is det.
+:- pred detect_cse_in_conj(list(hlds_goal)::in, conj_type::in, instmap::in,
+    cse_info::in, cse_info::out, bool::out, list(hlds_goal)::out) is det.
 
-detect_cse_in_conj([], _InstMap, !CseInfo, no, []).
-detect_cse_in_conj([Goal0 | Goals0], InstMap0, !CseInfo, Redo, Goals) :-
-    detect_cse_in_goal_1(Goal0, InstMap0, !CseInfo, Redo1, Goal1, InstMap1),
-    detect_cse_in_conj(Goals0, InstMap1, !CseInfo, Redo2, Goals1),
-    ( Goal1 = conj(ConjGoals) - _ ->
-        list__append(ConjGoals, Goals1, Goals)
+detect_cse_in_conj([], _ConjType, _InstMap, !CseInfo, no, []).
+detect_cse_in_conj([Goal0 | Goals0], ConjType, InstMap0, !CseInfo, Redo,
+        Goals) :-
+    detect_cse_in_goal_1(Goal0, InstMap0, !CseInfo, Redo1, Goal, InstMap1),
+    detect_cse_in_conj(Goals0, ConjType, InstMap1, !CseInfo, Redo2, TailGoals),
+    (
+        Goal = conj(InnerConjType, ConjGoals) - _,
+        ConjType = InnerConjType
+    ->
+        Goals = ConjGoals ++ TailGoals
     ;
-        Goals = [Goal1 | Goals1]
+        Goals = [Goal | TailGoals]
     ),
-    bool__or(Redo1, Redo2, Redo).
-
-%-----------------------------------------------------------------------------%
-
-:- pred detect_cse_in_par_conj(list(hlds_goal)::in, instmap::in, cse_info::in,
-    cse_info::out, bool::out, list(hlds_goal)::out) is det.
-
-detect_cse_in_par_conj([], _InstMap, !CseInfo, no, []).
-detect_cse_in_par_conj([Goal0 | Goals0], InstMap0, !CseInfo, Redo,
-        [Goal | Goals]) :-
-    detect_cse_in_goal(Goal0, InstMap0, !CseInfo, Redo1, Goal),
-    detect_cse_in_par_conj(Goals0, InstMap0, !CseInfo, Redo2, Goals),
-    bool__or(Redo1, Redo2, Redo).
+    bool.or(Redo1, Redo2, Redo).
 
 %-----------------------------------------------------------------------------%
 
@@ -348,7 +337,7 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap,
     ->
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
-        Goal = conj([Unify, disj(Goals) - GoalInfo0]),
+        Goal = conj(plain_conj, [Unify, disj(Goals) - GoalInfo0]),
         Redo = yes
     ;
         detect_cse_in_disj(Vars, Goals0, GoalInfo0, InstMap,
@@ -386,7 +375,8 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
     ->
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
-        Goal = conj([Unify, switch(SwitchVar, CanFail, Cases) - GoalInfo]),
+        Goal = conj(plain_conj,
+            [Unify, switch(SwitchVar, CanFail, Cases) - GoalInfo]),
         Redo = yes
     ;
         detect_cse_in_cases(Vars, SwitchVar, CanFail, Cases0, GoalInfo,
@@ -428,7 +418,7 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
     ->
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
-        Goal = conj([Unify, if_then_else(IfVars, Cond0, Then, Else)
+        Goal = conj(plain_conj, [Unify, if_then_else(IfVars, Cond0, Then, Else)
             - GoalInfo]),
         Redo = yes
     ;

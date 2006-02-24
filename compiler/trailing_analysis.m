@@ -466,11 +466,7 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
         ( Result0 = conditional ; Result0 = may_modify_trail),
         Result = may_modify_trail
     ).
-check_goal_for_trail_mods_2(SCC, VarTypes, conj(Goals), _,
-        Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    check_goals_for_trail_mods(SCC, VarTypes, Goals,
-        Result, MaybeAnalysisStatus, !ModuleInfo, !IO).
-check_goal_for_trail_mods_2(SCC, VarTypes, par_conj(Goals), _,
+check_goal_for_trail_mods_2(SCC, VarTypes, conj(_, Goals), _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
     check_goals_for_trail_mods(SCC, VarTypes, Goals,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO).
@@ -827,15 +823,10 @@ annotate_goal(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = conj(Conjuncts0),
+    !.Goal = conj(ConjType, Conjuncts0),
     annotate_goal_list(VarTypes, Conjuncts0, Conjuncts, Status, !ModuleInfo,
         !IO),
-    !:Goal = conj(Conjuncts). 
-annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = par_conj(Conjuncts0),
-    annotate_goal_list(VarTypes, Conjuncts0, Conjuncts, Status, !ModuleInfo,
-        !IO),
-    !:Goal = par_conj(Conjuncts).
+    !:Goal = conj(ConjType, Conjuncts). 
 annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = call(CallPredId, CallProcId, CallArgs, _, _, _),
     CallPPId = proc(CallPredId, CallProcId),

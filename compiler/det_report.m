@@ -82,9 +82,9 @@
     ;       export_model_non_proc(pred_id, proc_id, determinism)
             % Procedure with multi or nondet detism exported
             % via :- pragma export ...
-    ;       promise_equivalent_solutions_missing_vars(prog_varset,
+    ;       promise_solutions_missing_vars(promise_solutions_kind, prog_varset,
                 set(prog_var))
-    ;       promise_equivalent_solutions_extra_vars(prog_varset,
+    ;       promise_solutions_extra_vars(promise_solutions_kind, prog_varset,
                 set(prog_var)).
 
 :- type seen_call_id
@@ -541,12 +541,8 @@ det_diagnose_goal(Goal - GoalInfo, Desired, SwitchContext, DetInfo, Diagnosed,
     list(error_msg_spec)::in(known_error_msg_specs),
     list(error_msg_spec)::out(known_error_msg_specs)) is det.
 
-det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, Context, DetInfo,
-        Diagnosed, !Specs) :-
-    det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed, !Specs).
-
-det_diagnose_goal_2(par_conj(Goals), _GoalInfo, Desired, _Actual,
-        Context, DetInfo, Diagnosed, !Specs) :-
+det_diagnose_goal_2(conj(_, Goals), _GoalInfo, Desired, _Actual, Context,
+        DetInfo, Diagnosed, !Specs) :-
     det_diagnose_conj(Goals, Desired, Context, DetInfo, Diagnosed, !Specs).
 
 det_diagnose_goal_2(disj(Goals), GoalInfo, Desired, Actual, SwitchContext,
@@ -1142,8 +1138,8 @@ det_msg_get_type(pragma_c_code_without_det_decl(_, _), det_error).
 det_msg_get_type(has_io_state_but_not_det(_, _), det_error).
 det_msg_get_type(will_not_throw_with_erroneous(_, _), det_error).
 det_msg_get_type(export_model_non_proc(_, _, _), det_error).
-det_msg_get_type(promise_equivalent_solutions_missing_vars(_, _), det_error).
-det_msg_get_type(promise_equivalent_solutions_extra_vars(_, _), det_error).
+det_msg_get_type(promise_solutions_missing_vars(_, _, _), det_error).
+det_msg_get_type(promise_solutions_extra_vars(_, _, _), det_error).
 
 det_msg_is_any_mode_msg(multidet_disj(_), all_modes).
 det_msg_is_any_mode_msg(det_disj(_), all_modes).
@@ -1173,10 +1169,8 @@ det_msg_is_any_mode_msg(pragma_c_code_without_det_decl(_, _), any_mode).
 det_msg_is_any_mode_msg(has_io_state_but_not_det(_, _), any_mode).
 det_msg_is_any_mode_msg(will_not_throw_with_erroneous(_, _), any_mode).
 det_msg_is_any_mode_msg(export_model_non_proc(_, _, _), any_mode).
-det_msg_is_any_mode_msg(promise_equivalent_solutions_missing_vars(_, _),
-    any_mode).
-det_msg_is_any_mode_msg(promise_equivalent_solutions_extra_vars(_, _),
-    any_mode).
+det_msg_is_any_mode_msg(promise_solutions_missing_vars(_, _, _), any_mode).
+det_msg_is_any_mode_msg(promise_solutions_extra_vars(_, _, _), any_mode).
 
 :- pred det_report_msg(det_msg::in, prog_context::in, module_info::in,
     io::di, io::uo) is det.
@@ -1501,14 +1495,15 @@ det_report_msg(export_model_non_proc(_PredId, _ProcId, Detism), Context,
         fixed(hlds_out.determinism_to_string(Detism) ++ ",")
         ],
     write_error_pieces(Context, 0, Pieces, !IO).
-det_report_msg(promise_equivalent_solutions_missing_vars(VarSet, Vars),
-        Context, _, !IO) :-
+det_report_msg(promise_solutions_missing_vars(Kind, VarSet, Vars), Context, _,
+        !IO) :-
     VarNames = list.map(lookup_var_name_in_varset(VarSet),
         set.to_sorted_list(Vars)),
+    KindStr = promise_solutions_kind_str(Kind),
     (
         VarNames = [],
         unexpected(this_file, "det_report_msg: " ++
-            "promise_equivalent_solutions_missing_vars empty")
+            "promise_solutions_missing_vars empty")
     ;
         VarNames = [_],
         ListStr = "a variable that is not listed:"
@@ -1516,17 +1511,18 @@ det_report_msg(promise_equivalent_solutions_missing_vars(VarSet, Vars),
         VarNames = [_, _ | _],
         ListStr = "some variables that are not listed:"
     ),
-    Pieces = [words("Error: the promise_equivalent_solutions goal binds "),
+    Pieces = [words("Error: the"), words(KindStr), words("goal binds"),
           words(ListStr)] ++ list_to_pieces(VarNames) ++ [suffix(".")],
     error_util.write_error_pieces(Context, 0, Pieces, !IO).
-det_report_msg(promise_equivalent_solutions_extra_vars(VarSet, Vars), Context,
-        _, !IO) :-
+det_report_msg(promise_solutions_extra_vars(Kind, VarSet, Vars), Context, _,
+        !IO) :-
     VarNames = list.map(lookup_var_name_in_varset(VarSet),
         set.to_sorted_list(Vars)),
+    KindStr = promise_solutions_kind_str(Kind),
     (
         VarNames = [],
         unexpected(this_file, "det_report_msg: " ++
-            "promise_equivalent_solutions_extra_vars empty")
+            "promise_solutions_extra_vars empty")
     ;
         VarNames = [_],
         ListStr = "an extra variable:"
@@ -1534,9 +1530,16 @@ det_report_msg(promise_equivalent_solutions_extra_vars(VarSet, Vars), Context,
         VarNames = [_, _ | _],
         ListStr = "some extra variables:"
     ),
-    Pieces = [words("Error: the promise_equivalent_solutions goal lists "),
+    Pieces = [words("Error: the"), words(KindStr), words("goal lists"),
           words(ListStr)] ++ list_to_pieces(VarNames) ++ [suffix(".")],
     error_util.write_error_pieces(Context, 0, Pieces, !IO).
+
+:- func promise_solutions_kind_str(promise_solutions_kind) = string.
+
+promise_solutions_kind_str(equivalent_solutions)
+    = "promise_equivalent_solutions".
+promise_solutions_kind_str(same_solutions)
+    = "promise_same_solutions".
 
 :- func lookup_var_name_in_varset(prog_varset, prog_var) = string.
 

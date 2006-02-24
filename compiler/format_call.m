@@ -362,11 +362,7 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
         !ConjMaps, !PredMap, !RelevantVars, ModuleInfo),
     Goal = GoalExpr - GoalInfo,
     (
-        GoalExpr = conj(Conjuncts),
-        traverse_conj(Conjuncts, CurId, !FormatCallSites, !Counter,
-            !ConjMaps, !PredMap, !RelevantVars, ModuleInfo)
-    ;
-        GoalExpr = par_conj(Conjuncts),
+        GoalExpr = conj(_, Conjuncts),
         traverse_conj(Conjuncts, CurId, !FormatCallSites, !Counter,
             !ConjMaps, !PredMap, !RelevantVars, ModuleInfo)
     ;

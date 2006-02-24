@@ -232,17 +232,26 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             label(EndLabel), endof_negation]),
         Code =  tree_list([EnterCode, SomeCode, EndofCode])
     ;
-        GoalExpr = scope(_, Goal),
-        gen_goal(Goal, !ByteInfo, SomeCode),
-        get_next_temp(Temp, !ByteInfo),
-        EnterCode = node([enter_commit(Temp)]),
-        EndofCode = node([endof_commit(Temp)]),
-        Code = tree_list([EnterCode, SomeCode, EndofCode])
+        GoalExpr = scope(_, InnerGoal),
+        gen_goal(InnerGoal, !ByteInfo, InnerCode),
+        goal_info_get_determinism(GoalInfo, OuterDetism),
+        InnerGoal = _ - InnerGoalInfo,
+        goal_info_get_determinism(InnerGoalInfo, InnerDetism),
+        determinism_to_code_model(OuterDetism, OuterCodeModel),
+        determinism_to_code_model(InnerDetism, InnerCodeModel),
+        ( InnerCodeModel = OuterCodeModel ->
+            Code = InnerCode
+        ;
+            get_next_temp(Temp, !ByteInfo),
+            EnterCode = node([enter_commit(Temp)]),
+            EndofCode = node([endof_commit(Temp)]),
+            Code = tree_list([EnterCode, InnerCode, EndofCode])
+        )
     ;
-        GoalExpr = conj(GoalList),
+        GoalExpr = conj(plain_conj, GoalList),
         gen_conj(GoalList, !ByteInfo, Code)
     ;
-        GoalExpr = par_conj(_GoalList),
+        GoalExpr = conj(parallel_conj, _GoalList),
         sorry(this_file, "bytecode_gen of parallel conjunction")
     ;
         GoalExpr = disj(GoalList),

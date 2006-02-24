@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -116,14 +116,17 @@ move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, !R) :-
 :- pred move_follow_code_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
     pair(bool)::in, bool::in, bool::out) is det.
 
-move_follow_code_in_goal_2(conj(Goals0), conj(Goals), Flags, !R) :-
-    move_follow_code_in_conj(Goals0, Goals, Flags, !R).
-move_follow_code_in_goal_2(par_conj(Goals0), par_conj(Goals), Flags, !R) :-
-    % move_follow_code_in_disj treats its list of goals as independent goals,
-    % so we can use it to process the independent parallel conjuncts.
-    move_follow_code_in_disj(Goals0, Goals, Flags, !R).
+move_follow_code_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
+        Flags, !R) :-
+    (
+        ConjType = plain_conj,
+        move_follow_code_in_conj(Goals0, Goals, Flags, !R)
+    ;
+        ConjType = parallel_conj,
+        move_follow_code_in_independent_goals(Goals0, Goals, Flags, !R)
+    ).
 move_follow_code_in_goal_2(disj(Goals0), disj(Goals), Flags, !R) :-
-    move_follow_code_in_disj(Goals0, Goals, Flags, !R).
+    move_follow_code_in_independent_goals(Goals0, Goals, Flags, !R).
 move_follow_code_in_goal_2(not(Goal0), not(Goal), Flags, !R) :-
     move_follow_code_in_goal(Goal0, Goal, Flags, !R).
 move_follow_code_in_goal_2(switch(Var, Det, Cases0),
@@ -147,16 +150,17 @@ move_follow_code_in_goal_2(shorthand(_), _, _, _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-    % move_follow_code_in_disj is used both for disjunction and
+    % move_follow_code_in_independent_goals is used both for disjunction and
     % parallel conjunction.
     %
-:- pred move_follow_code_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    pair(bool)::in, bool::in, bool::out) is det.
+:- pred move_follow_code_in_independent_goals(list(hlds_goal)::in,
+    list(hlds_goal)::out, pair(bool)::in, bool::in, bool::out) is det.
 
-move_follow_code_in_disj([], [], _, !R).
-move_follow_code_in_disj([Goal0|Goals0], [Goal|Goals], Flags, !R) :-
+move_follow_code_in_independent_goals([], [], _, !R).
+move_follow_code_in_independent_goals([Goal0|Goals0], [Goal|Goals], Flags,
+        !R) :-
     move_follow_code_in_goal(Goal0, Goal, Flags, !R),
-    move_follow_code_in_disj(Goals0, Goals, Flags, !R).
+    move_follow_code_in_independent_goals(Goals0, Goals, Flags, !R).
 
 %-----------------------------------------------------------------------------%
 
@@ -234,8 +238,8 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
         Goal = disj(Goals)
     ;
         Goal0 = if_then_else(Vars, Cond, Then0, Else0),
-        follow_code__conjoin_goal_and_goal_list(Then0, FollowGoals, Then),
-        follow_code__conjoin_goal_and_goal_list(Else0, FollowGoals, Else),
+        follow_code_conjoin_goal_and_goal_list(Then0, FollowGoals, Then),
+        follow_code_conjoin_goal_and_goal_list(Else0, FollowGoals, Else),
         Goal = if_then_else(Vars, Cond, Then, Else)
     ).
 
@@ -247,7 +251,7 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 move_follow_code_move_goals_cases([], _FollowGoals, []).
 move_follow_code_move_goals_cases([Case0|Cases0], FollowGoals, [Case|Cases]) :-
     Case0 = case(Cons, Goal0),
-    follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
+    follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
     Case = case(Cons, Goal),
     move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases).
 
@@ -258,7 +262,7 @@ move_follow_code_move_goals_cases([Case0|Cases0], FollowGoals, [Case|Cases]) :-
 
 move_follow_code_move_goals_disj([], _FollowGoals, []).
 move_follow_code_move_goals_disj([Goal0|Goals0], FollowGoals, [Goal|Goals]) :-
-    follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
+    follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal),
     move_follow_code_move_goals_disj(Goals0, FollowGoals, Goals).
 
 %-----------------------------------------------------------------------------%
@@ -267,10 +271,10 @@ move_follow_code_move_goals_disj([Goal0|Goals0], FollowGoals, [Goal|Goals]) :-
     % blank goal_info), checking that the determinism of the goal is not
     % changed.
     %
-:- pred follow_code__conjoin_goal_and_goal_list(hlds_goal::in,
+:- pred follow_code_conjoin_goal_and_goal_list(hlds_goal::in,
     list(hlds_goal)::in, hlds_goal::out) is semidet.
 
-follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
+follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
     Goal0 = GoalExpr0 - GoalInfo0,
     goal_info_get_determinism(GoalInfo0, Detism0),
     determinism_components(Detism0, _CanFail0, MaxSolns0),
@@ -278,11 +282,11 @@ follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
         Goal = Goal0
     ;
         check_follow_code_detism(FollowGoals, Detism0),
-        ( GoalExpr0 = conj(GoalList0) ->
+        ( GoalExpr0 = conj(plain_conj, GoalList0) ->
             list__append(GoalList0, FollowGoals, GoalList),
-            GoalExpr = conj(GoalList)
+            GoalExpr = conj(plain_conj, GoalList)
         ;
-            GoalExpr = conj([Goal0 | FollowGoals])
+            GoalExpr = conj(plain_conj, [Goal0 | FollowGoals])
         ),
         Goal = GoalExpr - GoalInfo0
     ).

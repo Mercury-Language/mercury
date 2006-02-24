@@ -220,13 +220,9 @@ process_goal(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, !Info) :-
         process_unify_goal(XVar, Y, Mode, Unification, Context,
             GoalExpr, !Info)
     ;
-        GoalExpr0 = conj(Goals0),
+        GoalExpr0 = conj(ConjType, Goals0),
         process_goal_list(Goals0, Goals, !Info),
-        GoalExpr = conj(Goals)
-    ;
-        GoalExpr0 = par_conj(Goals0),
-        process_goal_list(Goals0, Goals, !Info),
-        GoalExpr = par_conj(Goals)
+        GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
         process_goal_list(Goals0, Goals, !Info),

@@ -640,7 +640,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
 
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),
-    Body = conj([UnifyGoal, CallGoal]) - GoalInfo,
+    Body = conj(plain_conj, [UnifyGoal, CallGoal]) - GoalInfo,
     StubClause = clause([], Body, mercury, Context).
 
 :- pred rename_instance_method_constraints(tvar_renaming::in,
@@ -1232,12 +1232,8 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info, !IO) :-
     hlds_goal_info::in, typecheck_info::in, typecheck_info::out,
     io::di, io::uo) is det.
 
-typecheck_goal_2(conj(List0), conj(List), _, !Info, !IO) :-
+typecheck_goal_2(conj(ConjType, List0), conj(ConjType, List), _, !Info, !IO) :-
     checkpoint("conj", !Info, !IO),
-    typecheck_goal_list(List0, List, !Info, !IO).
-
-typecheck_goal_2(par_conj(List0), par_conj(List), _, !Info, !IO) :-
-    checkpoint("par_conj", !Info, !IO),
     typecheck_goal_list(List0, List, !Info, !IO).
 
 typecheck_goal_2(disj(List0), disj(List), _, !Info, !IO) :-
@@ -1268,7 +1264,7 @@ typecheck_goal_2(scope(Reason, SubGoal0), scope(Reason, SubGoal), _, !Info,
     ;
         Reason = promise_purity(_, _)
     ;
-        Reason = promise_equivalent_solutions(Vars),
+        Reason = promise_solutions(Vars, _),
         ensure_vars_have_a_type(Vars, !Info, !IO)
     ;
         Reason = commit(_)

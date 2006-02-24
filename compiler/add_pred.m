@@ -234,7 +234,7 @@ add_builtin(PredId, Types, !PredInfo) :-
         Module = mercury_private_builtin_module,
         Name = "store_at_ref"
     ->
-        GoalExpr = conj([])
+        GoalExpr = conj(plain_conj, [])
     ;
         GoalExpr = call(PredId, ModeId, HeadVars, inline_builtin,
             MaybeUnifyContext, SymName)

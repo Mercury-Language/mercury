@@ -194,15 +194,17 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
                 VarTypes, NonLocalsList, ModuleInfo, [], Goal, !Requant)
         )
     ;
-        Goal0 = conj(Goals0),
-        detect_switches_in_conj(ModuleInfo, VarTypes, InstMap0, Goals0, Goals,
-            !Requant),
-        Goal = conj(Goals)
-    ;
-        Goal0 = par_conj(Goals0),
-        detect_switches_in_par_conj(ModuleInfo, VarTypes, InstMap0,
-            Goals0, Goals, !Requant),
-        Goal = par_conj(Goals)
+        Goal0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            detect_switches_in_conj(ModuleInfo, VarTypes, InstMap0,
+                Goals0, Goals, !Requant)
+        ;
+            ConjType = parallel_conj,
+            detect_switches_in_par_conj(ModuleInfo, VarTypes, InstMap0,
+                Goals0, Goals, !Requant)
+        ),
+        Goal = conj(ConjType, Goals)
     ;
         Goal0 = not(SubGoal0),
         detect_switches_in_goal(ModuleInfo, VarTypes, InstMap0,
@@ -460,7 +462,7 @@ expand_sub_disjs(Var, [LeftGoal | LeftGoals], !Cases) :-
 
 expand_sub_disj(Var, Goal, !Cases) :-
     Goal = GoalExpr - GoalInfo,
-    ( GoalExpr = conj(SubGoals) ->
+    ( GoalExpr = conj(plain_conj, SubGoals) ->
         expand_sub_disj_process_conj(Var, SubGoals, [], GoalInfo, !Cases)
     ; GoalExpr = disj(_) ->
         expand_sub_disj_process_conj(Var, [Goal], [], GoalInfo, !Cases)
@@ -500,12 +502,12 @@ expand_sub_disj_process_conj(Var, ConjGoals, !.RevUnifies, GoalInfo,
     hlds_goal_info::in, hlds_goal::in, hlds_goal::out) is det.
 
 create_expanded_conjunction(Unifies, RestGoals, GoalInfo, Disjunct, Goal) :-
-    ( Disjunct = conj(DisjunctGoals) - _ ->
+    ( Disjunct = conj(plain_conj, DisjunctGoals) - _ ->
         Conjuncts = Unifies ++ DisjunctGoals ++ RestGoals
     ;
         Conjuncts = Unifies ++ [Disjunct] ++ RestGoals
     ),
-    Goal = conj(Conjuncts) - GoalInfo.
+    Goal = conj(plain_conj, Conjuncts) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 
@@ -584,11 +586,16 @@ find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
 
 find_bind_var_2(Var, ProcessUnify, Goal0 - GoalInfo, Goal, !Subst, !Result,
         !Info, FoundDeconstruct) :-
-    ( Goal0 = scope(Reason, SubGoal0) ->
+    (
+        Goal0 = scope(Reason, SubGoal0)
+    ->
         find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
             !Result, !Info, FoundDeconstruct),
         Goal = scope(Reason, SubGoal) - GoalInfo
-    ; Goal0 = conj(SubGoals0) ->
+    ;
+        Goal0 = conj(ConjType, SubGoals0),
+        ConjType = plain_conj
+    ->
         (
             SubGoals0 = [],
             Goal = Goal0 - GoalInfo,
@@ -597,9 +604,11 @@ find_bind_var_2(Var, ProcessUnify, Goal0 - GoalInfo, Goal, !Subst, !Result,
             SubGoals0 = [_ | _],
             conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
                 !Subst, !Result, !Info, FoundDeconstruct),
-            Goal = conj(SubGoals) - GoalInfo
+            Goal = conj(ConjType, SubGoals) - GoalInfo
         )
-    ; Goal0 = unify(LHS, RHS, _, UnifyInfo0, _) ->
+    ;
+        Goal0 = unify(LHS, RHS, _, UnifyInfo0, _)
+    ->
         (
             % Check whether the unification is a deconstruction unification
             % on either Var or on a variable aliased to Var.

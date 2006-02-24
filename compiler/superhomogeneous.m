@@ -759,12 +759,12 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
         illegal_state_var_func_result(PredOrFunc, Args0, StateVar)
     ->
         report_illegal_func_svar_result(Context, !.VarSet, StateVar, !IO),
-        true_goal(Goal)
+        Goal = true_goal
     ;
         lambda_args_contain_bang_state_var(Args0, StateVar)
     ->
         report_illegal_bang_svar_lambda_arg(Context, !.VarSet, StateVar, !IO),
-        true_goal(Goal)
+        Goal = true_goal
     ;
         prepare_for_lambda(!SInfo),
         substitute_state_var_mappings(Args0, Args, !VarSet, !SInfo, !IO),
@@ -797,7 +797,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
         % the lambda expression; those corresponding to args whose mode
         % is input or unused.
         %
-        hlds_goal.true_goal(HeadBefore0),
+        HeadBefore0 = true_goal,
         insert_arg_unifications(NonOutputLambdaVars, NonOutputArgs,
             Context, ArgContext, HeadBefore0, HeadBefore, !VarSet,
             !ModuleInfo, !QualInfo, !SInfo, !IO),
@@ -806,7 +806,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
         % the lambda expression; those corresponding to args whose mode
         % is output.
         %
-        hlds_goal.true_goal(HeadAfter0),
+        HeadAfter0 = true_goal,
         insert_arg_unifications(OutputLambdaVars, OutputArgs,
             Context, ArgContext, HeadAfter0, HeadAfter, !VarSet,
             !ModuleInfo, !QualInfo, !SInfo, !IO),

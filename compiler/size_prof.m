@@ -319,29 +319,31 @@ process_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = foreign_proc(_, _, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = conj(Goals0),
-        process_conj(Goals0, Goals, !Info),
-        GoalExpr = conj(Goals)
-    ;
-        GoalExpr0 = par_conj(Goals0),
-        % This transformation produces code that is much less than
-        % optimal. However, it ought to be more robust than any better
-        % transformation, and there is no point in spending time on a
-        % better transformation while parallel conjunctions are rare.
-        TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
-        TypeInfoMap0 = !.Info ^ type_info_map,
-        RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
-        TypeCtorMap0 = !.Info ^ type_ctor_map,
-        KnownSizeMap0 = !.Info ^ known_size_map,
-        process_par_conj(Goals0, Goals, !Info, TargetTypeInfoMap0,
-            TypeInfoMap0, TypeCtorMap0, KnownSizeMap0),
-        !:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap0,
-        !:Info = !.Info ^ type_info_map := TypeInfoMap0,
-        !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
-        !:Info = !.Info ^ type_ctor_map := map__init,
-        !:Info = !.Info ^ rev_type_ctor_map := map__init,
-        !:Info = !.Info ^ known_size_map := KnownSizeMap0,
-        GoalExpr = par_conj(Goals)
+        GoalExpr0 = conj(ConjType, Goals0),
+        (
+            ConjType = plain_conj,
+            process_conj(Goals0, Goals, !Info)
+        ;
+            ConjType = parallel_conj,
+            % This transformation produces code that is much less than
+            % optimal. However, it ought to be more robust than any better
+            % transformation, and there is no point in spending time on a
+            % better transformation while parallel conjunctions are rare.
+            TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
+            TypeInfoMap0 = !.Info ^ type_info_map,
+            RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
+            TypeCtorMap0 = !.Info ^ type_ctor_map,
+            KnownSizeMap0 = !.Info ^ known_size_map,
+            process_par_conj(Goals0, Goals, !Info, TargetTypeInfoMap0,
+                TypeInfoMap0, TypeCtorMap0, KnownSizeMap0),
+            !:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap0,
+            !:Info = !.Info ^ type_info_map := TypeInfoMap0,
+            !:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
+            !:Info = !.Info ^ type_ctor_map := map__init,
+            !:Info = !.Info ^ rev_type_ctor_map := map__init,
+            !:Info = !.Info ^ known_size_map := KnownSizeMap0
+        ),
+        GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         (
@@ -481,7 +483,7 @@ process_conj([], [], !Info).
 process_conj([Goal0 | Goals0], Conj, !Info) :-
     process_goal(Goal0, Goal, !Info),
     process_conj(Goals0, Goals, !Info),
-    ( Goal = conj(SubConj) - _ ->
+    ( Goal = conj(plain_conj, SubConj) - _ ->
         % Flatten out any conjunction introduced by process_goal.
         % We never create conjunctions more than one level deep,
         % so this single test is sufficient to ensure that we never
@@ -726,7 +728,7 @@ process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type, ConsId,
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         UnifyGoal = UnifyExpr - GoalInfo,
         Goals = list__condense([ArgGoals, SizeGoals, [UnifyGoal]]),
-        GoalExpr = conj(Goals)
+        GoalExpr = conj(plain_conj, Goals)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -759,7 +761,7 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
             Context, UpdateGoal),
         % Put UnifyGoal first in case it fails.
         Goals = [UnifyGoal] ++ ArgGoals ++ SizeGoals ++ [UpdateGoal],
-        GoalExpr = conj(Goals)
+        GoalExpr = conj(plain_conj, Goals)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1008,16 +1008,18 @@ recompute_instmap_delta_2(Atomic, switch(Var, Det, Cases0), GoalInfo,
             VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
     ).
 
-recompute_instmap_delta_2(Atomic, conj(Goals0), _, conj(Goals),
-        VarTypes, InstMap, InstMapDelta, !RI) :-
-    recompute_instmap_delta_conj(Atomic, Goals0, Goals,
-        VarTypes, InstMap, InstMapDelta, !RI).
-
-recompute_instmap_delta_2(Atomic, par_conj(Goals0), GoalInfo,
-        par_conj(Goals), VarTypes, InstMap, InstMapDelta, !RI) :-
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
-    recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
-        VarTypes, InstMap, NonLocals, InstMapDelta, !RI).
+recompute_instmap_delta_2(Atomic, conj(ConjType, Goals0), GoalInfo,
+        conj(ConjType, Goals), VarTypes, InstMap, InstMapDelta, !RI) :-
+    (
+        ConjType = plain_conj,
+        recompute_instmap_delta_conj(Atomic, Goals0, Goals,
+            VarTypes, InstMap, InstMapDelta, !RI)
+    ;
+        ConjType = parallel_conj,
+        goal_info_get_nonlocals(GoalInfo, NonLocals),
+        recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
+            VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
+    ).
 
 recompute_instmap_delta_2(Atomic, disj(Goals0), GoalInfo, disj(Goals),
         VarTypes, InstMap, InstMapDelta, !RI) :-

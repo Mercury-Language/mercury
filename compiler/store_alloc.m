@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -170,15 +170,17 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, Liveness0, Liveness,
     last_locns::in, last_locns::out, set(prog_var)::in, set(prog_var)::in,
     store_alloc_info::in) is det.
 
-store_alloc_in_goal_2(conj(Goals0), conj(Goals), !Liveness, !LastLocns,
-        ResumeVars0, _, StoreAllocInfo) :-
-    store_alloc_in_conj(Goals0, Goals, !Liveness, !LastLocns,
-        ResumeVars0, StoreAllocInfo).
-
-store_alloc_in_goal_2(par_conj(Goals0), par_conj(Goals),
+store_alloc_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
         !Liveness, !LastLocns, ResumeVars0, _, StoreAllocInfo) :-
-    store_alloc_in_par_conj(Goals0, Goals, !Liveness, !LastLocns,
-        ResumeVars0, StoreAllocInfo).
+    (
+        ConjType = plain_conj,
+        store_alloc_in_conj(Goals0, Goals, !Liveness, !LastLocns,
+            ResumeVars0, StoreAllocInfo)
+    ;
+        ConjType = parallel_conj,
+        store_alloc_in_par_conj(Goals0, Goals, !Liveness, !LastLocns,
+            ResumeVars0, StoreAllocInfo)
+    ).
 
 store_alloc_in_goal_2(disj(Goals0), disj(Goals), !Liveness, !LastLocns,
         ResumeVars0, _, StoreAllocInfo) :-
@@ -233,7 +235,7 @@ store_alloc_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
         !Liveness, !LastLocns, _, _, _).
 
 store_alloc_in_goal_2(shorthand(_), _, _, _, _, _, _, _, _) :-
-    % these should have been expanded out by now
+    % These should have been expanded out by now.
     unexpected(this_file, "store_alloc_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%

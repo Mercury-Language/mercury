@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -33,13 +35,13 @@
 
 :- import_module io.
 
-	% Perform stratification analysis, for the given module.
-	% If the "warn-non-stratification" option is set this
-	% pred will check the entire module for stratification
-	% otherwise it will only check preds in the stratified_preds
-	% set of the module_info structure.
+    % Perform stratification analysis, for the given module. If the
+    % "warn-non-stratification" option is set, this predicate will check
+    % the entire module for stratification, otherwise it will only check
+    % the predicates in the stratified_preds set of the module_info structure.
+    %
 :- pred stratify__check_stratification(module_info::in, module_info::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -72,597 +74,576 @@
 :- import_module string.
 
 stratify__check_stratification(!ModuleInfo, !IO) :-
-	module_info_ensure_dependency_info(!ModuleInfo),
-	module_info_dependency_info(!.ModuleInfo, DepInfo),
+    module_info_ensure_dependency_info(!ModuleInfo),
+    module_info_dependency_info(!.ModuleInfo, DepInfo),
 
-	hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph0),
-	relation__atsort(DepGraph0, FOSCCs1),
-	dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
-	globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
-	module_info_get_stratified_preds(!.ModuleInfo, StratifiedPreds),
-	first_order_check_sccs(FOSCCs, StratifiedPreds, Warn, !ModuleInfo,
-		!IO).
+    hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph0),
+    relation__atsort(DepGraph0, FOSCCs1),
+    dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
+    globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
+    module_info_get_stratified_preds(!.ModuleInfo, StratifiedPreds),
+    first_order_check_sccs(FOSCCs, StratifiedPreds, Warn, !ModuleInfo, !IO).
 
-	% The following code was used for the second pass of this module but
-	% as that pass is disabled so is this code. The higher order code
-	% is disabled because it is currently unable to detect cases where a
-	% higher order proc is hidden in some complex data structure
-	%
-	% gen_conservative_graph(Module2, DepGraph0, DepGraph, HOInfo),
-	% relation__atsort(DepGraph, HOSCCs1),
-	% dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs),
-	% higher_order_check_sccs(HOSCCs, HOInfo, !ModuleInfo, !IO).
+    % The following code was used for the second pass of this module but
+    % as that pass is disabled so is this code. The higher order code
+    % is disabled because it is currently unable to detect cases where a
+    % higher order proc is hidden in some complex data structure
+    %
+    % gen_conservative_graph(Module2, DepGraph0, DepGraph, HOInfo),
+    % relation__atsort(DepGraph, HOSCCs1),
+    % dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs),
+    % higher_order_check_sccs(HOSCCs, HOInfo, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- pred dep_sets_to_lists_and_sets(list(set(pred_proc_id))::in,
-	assoc_list(list(pred_proc_id), set(pred_id))::in,
-	assoc_list(list(pred_proc_id), set(pred_id))::out) is det.
+    assoc_list(list(pred_proc_id), set(pred_id))::in,
+    assoc_list(list(pred_proc_id), set(pred_id))::out) is det.
 
 dep_sets_to_lists_and_sets([], !DepList).
 dep_sets_to_lists_and_sets([PredProcSet | PredProcSets], !DepList) :-
-        set__to_sorted_list(PredProcSet, PredProcList),
-	list__map(get_proc_id, PredProcList, ProcList),
-	set__list_to_set(ProcList, ProcSet),
-	!:DepList = [PredProcList - ProcSet | !.DepList],
+    set__to_sorted_list(PredProcSet, PredProcList),
+    list__map(get_proc_id, PredProcList, ProcList),
+    set__list_to_set(ProcList, ProcSet),
+    !:DepList = [PredProcList - ProcSet | !.DepList],
         dep_sets_to_lists_and_sets(PredProcSets, !DepList).
 
 :- pred get_proc_id(pred_proc_id::in, pred_id::out) is det.
 
 get_proc_id(proc(PredId, _), PredId).
 
-	% check the first order SCCs for stratification
+    % Check the first order SCCs for stratification.
+    %
 :- pred first_order_check_sccs(
-	assoc_list(list(pred_proc_id), set(pred_id))::in,
-	set(pred_id)::in, bool::in, module_info::in, module_info::out,
-	io::di, io::uo) is det.
+    assoc_list(list(pred_proc_id), set(pred_id))::in,
+    set(pred_id)::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
 first_order_check_sccs([], _, _, !ModuleInfo, !IO).
 first_order_check_sccs([SCCl - SCCs | Rest], StratifiedPreds, Warn0,
-		!ModuleInfo, !IO) :-
-	(
-		set__intersect(SCCs, StratifiedPreds, Intersection),
-		set__empty(Intersection)
-	->
-		Warn = Warn0
-	;
-		Warn = yes
-	),
-	(
-		Warn = yes,
-		first_order_check_scc(SCCl, no, !ModuleInfo, !IO)
-	;
-		Warn = no
-	),
-	first_order_check_sccs(Rest, StratifiedPreds, Warn0, !ModuleInfo, !IO).
+        !ModuleInfo, !IO) :-
+    (
+        set__intersect(SCCs, StratifiedPreds, Intersection),
+        set__empty(Intersection)
+    ->
+        Warn = Warn0
+    ;
+        Warn = yes
+    ),
+    (
+        Warn = yes,
+        first_order_check_scc(SCCl, no, !ModuleInfo, !IO)
+    ;
+        Warn = no
+    ),
+    first_order_check_sccs(Rest, StratifiedPreds, Warn0, !ModuleInfo, !IO).
 
 :- pred first_order_check_scc(list(pred_proc_id)::in, bool::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 first_order_check_scc(Scc, Error, !ModuleInfo, !IO) :-
-	first_order_check_scc_2(Scc, Scc, Error, !ModuleInfo, !IO).
+    first_order_check_scc_2(Scc, Scc, Error, !ModuleInfo, !IO).
 
 :- pred first_order_check_scc_2(list(pred_proc_id)::in, list(pred_proc_id)::in,
-	bool::in, module_info::in, module_info::out, io::di, io::uo) is det.
+    bool::in, module_info::in, module_info::out, io::di, io::uo) is det.
 
 first_order_check_scc_2([], _Scc, _, !ModuleInfo, !IO).
 first_order_check_scc_2([PredProcId | Remaining], WholeScc, Error, !ModuleInfo,
-		!IO) :-
-	PredProcId = proc(PredId, ProcId),
-	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-	pred_info_procedures(PredInfo, ProcTable),
-	map__lookup(ProcTable, ProcId, Proc),
-	proc_info_goal(Proc, Goal - GoalInfo),
-	first_order_check_goal(Goal, GoalInfo, no, WholeScc,
-		PredProcId, Error, !ModuleInfo, !IO),
-	first_order_check_scc_2(Remaining, WholeScc, Error, !ModuleInfo, !IO).
+        !IO) :-
+    PredProcId = proc(PredId, ProcId),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    pred_info_procedures(PredInfo, ProcTable),
+    map__lookup(ProcTable, ProcId, Proc),
+    proc_info_goal(Proc, Goal - GoalInfo),
+    first_order_check_goal(Goal, GoalInfo, no, WholeScc,
+        PredProcId, Error, !ModuleInfo, !IO),
+    first_order_check_scc_2(Remaining, WholeScc, Error, !ModuleInfo, !IO).
 
 :- pred first_order_check_goal(hlds_goal_expr::in, hlds_goal_info::in,
-	bool::in, list(pred_proc_id)::in, pred_proc_id::in, bool::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+    bool::in, list(pred_proc_id)::in, pred_proc_id::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-first_order_check_goal(conj(Goals), _GoalInfo, Negated, WholeScc,
-		ThisPredProcId, Error, !ModuleInfo, !IO) :-
-	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO).
-first_order_check_goal(par_conj(Goals), _GoalInfo, Negated, WholeScc,
-		ThisPredProcId, Error, !ModuleInfo, !IO) :-
-	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO).
+first_order_check_goal(conj(_ConjType, Goals), _GoalInfo, Negated, WholeScc,
+        ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO).
 first_order_check_goal(disj(Goals), _GoalInfo, Negated,
-		WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
-	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO).
+        WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO).
 first_order_check_goal(switch(_Var, _Fail, Cases), _GoalInfo, Negated,
-		WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
-	first_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO).
+        WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO).
 first_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo,
-		Else - EInfo), _GoalInfo, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO) :-
-	first_order_check_goal(Cond, CInfo, yes, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO),
-	first_order_check_goal(Then, TInfo, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO),
-	first_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO).
+        Else - EInfo), _GoalInfo, Negated, WholeScc, ThisPredProcId, Error,
+        !ModuleInfo, !IO) :-
+    first_order_check_goal(Cond, CInfo, yes, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO),
+    first_order_check_goal(Then, TInfo, Negated, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO),
+    first_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO).
 first_order_check_goal(scope(_, Goal - GoalInfo), _GoalInfo, Negated,
-		WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
-	first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
-		ThisPredProcId, Error, !ModuleInfo, !IO).
+        WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+        ThisPredProcId, Error, !ModuleInfo, !IO).
 first_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated,
-		WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
-	first_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO).
+        WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO).
 first_order_check_goal(foreign_proc(_Attributes, CPred, CProc, _, _, _),
-		GoalInfo, Negated, WholeScc, ThisPredProcId, Error,
-		!ModuleInfo, !IO) :-
-	(
-		Negated = yes,
-		list__member(proc(CPred, CProc),  WholeScc)
-	->
-		goal_info_get_context(GoalInfo, Context),
-		emit_message(ThisPredProcId, Context,
-			"call introduces a non-stratified loop",
-			Error, !ModuleInfo, !IO)
-	;
-		true
-	).
+        GoalInfo, Negated, WholeScc, ThisPredProcId, Error,
+        !ModuleInfo, !IO) :-
+    (
+        Negated = yes,
+        list__member(proc(CPred, CProc),  WholeScc)
+    ->
+        goal_info_get_context(GoalInfo, Context),
+        emit_message(ThisPredProcId, Context,
+            "call introduces a non-stratified loop", Error, !ModuleInfo, !IO)
+    ;
+        true
+    ).
 first_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
-	_Negated, _WholeScc, _ThisPredProcId, _, !ModuleInfo, !IO).
+        _Negated, _WholeScc, _ThisPredProcId, _, !ModuleInfo, !IO).
 first_order_check_goal(call(CPred, CProc, _Args, _BuiltinState, _Contex, _Sym),
-		GInfo, Negated, WholeScc, ThisPredProcId, Error, !ModuleInfo,
-		!IO) :-
-	Callee = proc(CPred, CProc),
-	(
-		Negated = yes,
-		list__member(Callee, WholeScc)
-	->
-		goal_info_get_context(GInfo, Context),
-		emit_message(ThisPredProcId, Context,
-			"call introduces a non-stratified loop",
-			Error, !ModuleInfo, !IO)
-	;
-		true
-	).
+        GInfo, Negated, WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    Callee = proc(CPred, CProc),
+    (
+        Negated = yes,
+        list__member(Callee, WholeScc)
+    ->
+        goal_info_get_context(GInfo, Context),
+        emit_message(ThisPredProcId, Context,
+            "call introduces a non-stratified loop", Error, !ModuleInfo, !IO)
+    ;
+        true
+    ).
 first_order_check_goal(generic_call(_Var, _Vars, _Modes, _Det), _GInfo,
-	_Negated, _WholeScc, _ThisPredProcId, _Error,  !ModuleInfo, !IO).
+        _Negated, _WholeScc, _ThisPredProcId, _Error,  !ModuleInfo, !IO).
 first_order_check_goal(shorthand(_), _, _, _, _, _, !ModuleInfo, !IO) :-
-	% these should have been expanded out by now
-	unexpected(this_file,
-		"first_order_check_goal: unexpected shorthand").
+    % these should have been expanded out by now
+    unexpected(this_file, "first_order_check_goal: unexpected shorthand").
 
 :- pred first_order_check_goal_list(list(hlds_goal)::in, bool::in,
-	list(pred_proc_id)::in, pred_proc_id::in, bool::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+    list(pred_proc_id)::in, pred_proc_id::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 first_order_check_goal_list([], _, _, _, _, !ModuleInfo, !IO).
 first_order_check_goal_list([Goal - GoalInfo | Goals], Negated, WholeScc,
-		ThisPredProcId, Error, !ModuleInfo, !IO) :-
-	first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
-		ThisPredProcId, Error, !ModuleInfo, !IO),
-	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO).
+        ThisPredProcId, Error, !ModuleInfo, !IO) :-
+    first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+        ThisPredProcId, Error, !ModuleInfo, !IO),
+    first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO).
 
 :- pred first_order_check_case_list(list(case)::in, bool::in,
-	list(pred_proc_id)::in, pred_proc_id::in, bool::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+    list(pred_proc_id)::in, pred_proc_id::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 first_order_check_case_list([], _, _, _, _, !ModuleInfo, !IO).
 first_order_check_case_list([Case | Goals], Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO) :-
-	Case = case(_ConsId, Goal - GoalInfo),
-	first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
-		ThisPredProcId, Error, !ModuleInfo, !IO),
-	first_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
-		Error, !ModuleInfo, !IO).
+        Error, !ModuleInfo, !IO) :-
+    Case = case(_ConsId, Goal - GoalInfo),
+    first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+        ThisPredProcId, Error, !ModuleInfo, !IO),
+    first_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
+        Error, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
  % XXX : Currently we don't allow the higher order case so this code
  % is disabled.
 
-	% check the higher order SCCs for stratification
+    % Check the higher order SCCs for stratification.
+    %
 :- pred higher_order_check_sccs(
-	assoc_list(list(pred_proc_id), set(pred_proc_id))::in,
-	ho_map::in, module_info::in, module_info::out, io::di, io::uo) is det.
+    assoc_list(list(pred_proc_id), set(pred_proc_id))::in,
+    ho_map::in, module_info::in, module_info::out, io::di, io::uo) is det.
 
 higher_order_check_sccs([], _HOInfo, !ModuleInfo, !IO).
 higher_order_check_sccs([SCCl - SCCs | Rest], HOInfo, !ModuleInfo, !IO) :-
-	higher_order_check_scc(SCCl, SCCs, HOInfo, !ModuleInfo, !IO),
-	higher_order_check_sccs(Rest, HOInfo, !ModuleInfo, !IO).
+    higher_order_check_scc(SCCl, SCCs, HOInfo, !ModuleInfo, !IO),
+    higher_order_check_sccs(Rest, HOInfo, !ModuleInfo, !IO).
 
 :- pred higher_order_check_scc(list(pred_proc_id)::in, set(pred_proc_id)::in,
-	ho_map::in, module_info::in, module_info::out, io::di, io::uo) is det.
+    ho_map::in, module_info::in, module_info::out, io::di, io::uo) is det.
 
 higher_order_check_scc([], _WholeScc, _HOInfo, !ModuleInfo, !IO).
 higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
-		!ModuleInfo, !IO) :-
-	PredProcId = proc(PredId, ProcId),
-	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-	globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
-	Error = no,
-	(
-		Warn = yes,
-		map__search(HOInfo, PredProcId, HigherOrderInfo)
-	->
-		HigherOrderInfo = info(HOCalls, _),
-		set__intersect(HOCalls, WholeScc, HOLoops),
-		( set__empty(HOLoops) ->
-			HighOrderLoops = no
-		;
-			HighOrderLoops = yes
-		),
-		pred_info_procedures(PredInfo, ProcTable),
-		map__lookup(ProcTable, ProcId, Proc),
-		proc_info_goal(Proc, Goal - GoalInfo),
-		higher_order_check_goal(Goal, GoalInfo, no, WholeScc,
-			PredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
-	;
-		true
-	),
-	higher_order_check_scc(Remaining, WholeScc, HOInfo, !ModuleInfo, !IO).
+        !ModuleInfo, !IO) :-
+    PredProcId = proc(PredId, ProcId),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
+    Error = no,
+    (
+        Warn = yes,
+        map__search(HOInfo, PredProcId, HigherOrderInfo)
+    ->
+        HigherOrderInfo = info(HOCalls, _),
+        set__intersect(HOCalls, WholeScc, HOLoops),
+        ( set__empty(HOLoops) ->
+            HighOrderLoops = no
+        ;
+            HighOrderLoops = yes
+        ),
+        pred_info_procedures(PredInfo, ProcTable),
+        map__lookup(ProcTable, ProcId, Proc),
+        proc_info_goal(Proc, Goal - GoalInfo),
+        higher_order_check_goal(Goal, GoalInfo, no, WholeScc,
+            PredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
+    ;
+        true
+    ),
+    higher_order_check_scc(Remaining, WholeScc, HOInfo, !ModuleInfo, !IO).
 
 :- pred higher_order_check_goal(hlds_goal_expr::in, hlds_goal_info::in,
-	bool::in, set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+    bool::in, set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-higher_order_check_goal(conj(Goals), _GoalInfo, Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO).
-higher_order_check_goal(par_conj(Goals), _GoalInfo, Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO).
+higher_order_check_goal(conj(_ConjType, Goals), _GoalInfo, Negated, WholeScc,
+        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO).
 higher_order_check_goal(disj(Goals), _GoalInfo, Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO).
-higher_order_check_goal(switch(_Var, _Fail, Cases), _GoalInfo,
-		Negated, WholeScc, ThisPredProcId, HighOrderLoops,
-		Error, !ModuleInfo, !IO) :-
-	higher_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO).
+        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO).
+higher_order_check_goal(switch(_Var, _Fail, Cases), _GoalInfo, Negated,
+        WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    higher_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO).
 higher_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo,
-		Else - EInfo), _GoalInfo, Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-	higher_order_check_goal(Cond, CInfo, yes, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO),
-	higher_order_check_goal(Then, TInfo, Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO),
-	higher_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO).
+        Else - EInfo), _GoalInfo, Negated, WholeScc,
+        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    higher_order_check_goal(Cond, CInfo, yes, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO),
+    higher_order_check_goal(Then, TInfo, Negated, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO),
+    higher_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO).
 higher_order_check_goal(scope(_, Goal - GoalInfo), _GoalInfo, Negated,
-		WholeScc, ThisPredProcId, HighOrderLoops,
-		Error, !ModuleInfo, !IO) :-
-	higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO).
+        WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO).
 higher_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-	higher_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO).
+        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    higher_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO).
 higher_order_check_goal(foreign_proc(_IsRec, _, _, _, _, _), _GoalInfo,
-		_Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, _,
-		!ModuleInfo, !IO).
+        _Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, _,
+        !ModuleInfo, !IO).
 higher_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
-		_Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, _Error,
-		!ModuleInfo, !IO).
+        _Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, _Error,
+        !ModuleInfo, !IO).
 higher_order_check_goal((call(_CPred, _CProc, _Args, _Builtin, _Contex, Sym)),
-		GoalInfo, _Negated, _WholeScc, ThisPredProcId, HighOrderLoops,
-		Error, !ModuleInfo, !IO) :-
-	(
-		% XXX : is this good enough to detect all calls to solutions ?
-		HighOrderLoops = yes,
-		( Sym = unqualified(Name)
-		; Sym = qualified(_, Name)
-		),
-		Name = "solutions"
-	->
-		goal_info_get_context(GoalInfo, Context),
-		emit_message(ThisPredProcId, Context,
-			"call to solutions/2 introduces a non-stratified loop",
-			Error, !ModuleInfo, !IO)
-
-	;
-		true
-	).
+        GoalInfo, _Negated, _WholeScc, ThisPredProcId, HighOrderLoops,
+        Error, !ModuleInfo, !IO) :-
+    (
+        % XXX : is this good enough to detect all calls to solutions ?
+        HighOrderLoops = yes,
+        ( Sym = unqualified(Name)
+        ; Sym = qualified(_, Name)
+        ),
+        Name = "solutions"
+    ->
+        goal_info_get_context(GoalInfo, Context),
+        emit_message(ThisPredProcId, Context,
+            "call to solutions/2 introduces a non-stratified loop",
+            Error, !ModuleInfo, !IO)
+    ;
+        true
+    ).
 
 higher_order_check_goal(generic_call(GenericCall, _Vars, _Modes, _Det),
-		GoalInfo, Negated, _WholeScc, ThisPredProcId, HighOrderLoops,
-		Error, !ModuleInfo, !IO) :-
-	(
-		Negated = yes,
-		HighOrderLoops = yes,
-		( GenericCall = higher_order(_, _, _, _), Msg = "higher order"
-		; GenericCall = class_method(_, _, _, _), Msg = "class method"
-		)
-	->
-		goal_info_get_context(GoalInfo, Context),
-		string__append(Msg,
-			" call may introduce a non-stratified loop",
-			ErrorMsg),
-		emit_message(ThisPredProcId, Context, ErrorMsg,
-			Error, !ModuleInfo, !IO)
-	;
-		true
-	).
+        GoalInfo, Negated, _WholeScc, ThisPredProcId, HighOrderLoops,
+        Error, !ModuleInfo, !IO) :-
+    (
+        Negated = yes,
+        HighOrderLoops = yes,
+        ( GenericCall = higher_order(_, _, _, _), Msg = "higher order"
+        ; GenericCall = class_method(_, _, _, _), Msg = "class method"
+        )
+    ->
+        goal_info_get_context(GoalInfo, Context),
+        ErrorMsg = Msg ++ " call may introduce a non-stratified loop",
+        emit_message(ThisPredProcId, Context, ErrorMsg, Error, !ModuleInfo,
+            !IO)
+    ;
+        true
+    ).
 higher_order_check_goal(shorthand(_), _, _, _, _, _, _, _, _, !IO) :-
-	% these should have been expanded out by now
-	unexpected(this_file,
-		"higher_order_check_goal: unexpected shorthand").
+    % these should have been expanded out by now
+    unexpected(this_file, "higher_order_check_goal: unexpected shorthand").
 
 :- pred higher_order_check_goal_list(list(hlds_goal)::in, bool::in,
-	set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+    set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 higher_order_check_goal_list([], _, _, _, _, _, !ModuleInfo, !IO).
 higher_order_check_goal_list([Goal - GoalInfo | Goals], Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
-	higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
-	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO).
+        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
+    higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO).
 
 :- pred higher_order_check_case_list(list(case)::in, bool::in,
-	set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+    set(pred_proc_id)::in, pred_proc_id::in, bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 higher_order_check_case_list([], _, _, _, _, _, !ModuleInfo, !IO).
 higher_order_check_case_list([Case | Goals], Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO) :-
-	Case = case(_ConsId, Goal - GoalInfo),
-	higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
-		ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
-	higher_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, !ModuleInfo, !IO).
+        HighOrderLoops, Error, !ModuleInfo, !IO) :-
+    Case = case(_ConsId, Goal - GoalInfo),
+    higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
+        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO),
+    higher_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
+        HighOrderLoops, Error, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% direction higher order params can flow in a proc
+    % Direction higher order params can flow in a procedure.
 :- type ho_in_out
-	--->	ho_in
-	;	ho_out
-	;	ho_in_out
-	;	ho_none.
+    --->    ho_in
+    ;       ho_out
+    ;       ho_in_out
+    ;       ho_none.
 
-	% this structure is used to hold the higher order
-	% characteristics of a proc
+    % This structure is used to hold the higher order characteristics of a
+    % procedure.
 :- type higher_order_info
-	--->	info(
-			set(pred_proc_id),  % possible higher order
-					    % addrs than can reach the
-					    % proc
-			ho_in_out	    % possible paths the addrs can
-					    % take in and out of the proc
-		).
+    --->    info(
+                set(pred_proc_id),  % Possible higher order addresses that
+                                    % can reach the procedure.
+                ho_in_out           % Possible paths the address can take
+                                    % in and out of the procedure.
+            ).
 
-	% a map from all non imported procs to there higher order
-	% info
+    % A map from all non imported procedures to there higher order info.
 :- type ho_map   == map(pred_proc_id, higher_order_info).
 
-	% a map from all non imported procs to all the procs they can
-	% call
+    % A map from all non imported procs to all the procedures they can call.
 :- type call_map == map(pred_proc_id, set(pred_proc_id)).
 
-	% given a module and a dependency graph this pred
-	% builds a new dependency graph with all possible
-	% higher order calls added, it also returns a map of all the
-	% higher order info collected by this pred
-:- pred gen_conservative_graph(module_info::in, dependency_graph::in,
-	dependency_graph::out, ho_map::out) is det.
+    % Given a module and a dependency graph, this predicate builds
+    % a new dependency graph with all possible higher order calls added.
+    % It also returns a map of all the higher order info it collects.
+    %
+:- pred gen_conservative_graph(module_info::in,
+    dependency_graph::in, dependency_graph::out, ho_map::out) is det.
 
 gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
-	get_call_info(ModuleInfo, ProcCalls, HOInfo0, CallsHO),
-	map__keys(ProcCalls, Callers),
-	iterate_solution(Callers, ProcCalls, CallsHO, HOInfo0, HOInfo),
-	map__to_assoc_list(HOInfo, HOInfoL),
-	add_new_arcs(HOInfoL, CallsHO, !DepGraph).
+    get_call_info(ModuleInfo, ProcCalls, HOInfo0, CallsHO),
+    map__keys(ProcCalls, Callers),
+    iterate_solution(Callers, ProcCalls, CallsHO, HOInfo0, HOInfo),
+    map__to_assoc_list(HOInfo, HOInfoL),
+    add_new_arcs(HOInfoL, CallsHO, !DepGraph).
 
-	% For a given module collects for each non imported proc a set
-	% of called procs and a higher order info structure. This pred
-	% also returns a set of all non imported procs that make a
-	% higher order call
+    % For a given module, collects for each non imported procedure
+    % a set of called procedures and a higher order info structure.
+    % This pred also returns a set of all non imported procedures that
+    % make a higher order call.
+    %
 :- pred get_call_info(module_info::in, call_map::out, ho_map::out,
-	set(pred_proc_id)::out) is det.
+    set(pred_proc_id)::out) is det.
 
 get_call_info(ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
-	map__init(!:ProcCalls),
-	map__init(!:HOInfo),
-	set__init(!:CallsHO),
-	module_info_predids(ModuleInfo, PredIds),
-	expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
+    map__init(!:ProcCalls),
+    map__init(!:HOInfo),
+    set__init(!:CallsHO),
+    module_info_predids(ModuleInfo, PredIds),
+    expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
 
-	% find the transitive closure of a given list of procs
-	% this pred is used to see how face a higher order address can
-	% reach though proc calls
+    % Finds the transitive closure of a given list of procedures.
+    % This pred is used to see how face(???) a higher order address
+    % can reach though procedure calls.
+    %
 :- pred iterate_solution(list(pred_proc_id)::in, call_map::in,
-	set(pred_proc_id)::in, ho_map::in, ho_map::out) is det.
+    set(pred_proc_id)::in, ho_map::in, ho_map::out) is det.
 
 iterate_solution(PredProcs, ProcCalls, CallsHO, !HOInfo) :-
-        tc(PredProcs, ProcCalls, CallsHO, !HOInfo, no, Changed),
-        (
-                Changed = no
-        ;
-                Changed = yes,
-                iterate_solution(PredProcs, ProcCalls, CallsHO, !HOInfo)
-        ).
+    tc(PredProcs, ProcCalls, CallsHO, !HOInfo, no, Changed),
+    (
+        Changed = no
+    ;
+        Changed = yes,
+        iterate_solution(PredProcs, ProcCalls, CallsHO, !HOInfo)
+    ).
 
-	% for each caller merge any higher order addresses it takes with all of
-	% its callees and return if any change has occurred
+    % For each caller, merge any higher order addresses it takes with all of
+    % its callees, and return if any change has occurred.
+    %
 :- pred tc(list(pred_proc_id)::in, call_map::in, set(pred_proc_id)::in,
-	ho_map::in, ho_map::out, bool::in, bool::out) is det.
+    ho_map::in, ho_map::out, bool::in, bool::out) is det.
 
 tc([], _, _, !HOInfo, !Changed).
-tc([P | Ps], ProcCalls, CallsHO, !HOInfo, !Changed) :-
-	map__lookup(ProcCalls, P, PCalls),
-	set__to_sorted_list(PCalls, PCallsL),
-	merge_calls(PCallsL, P, CallsHO, yes, !HOInfo, !Changed),
-	tc(Ps, ProcCalls, CallsHO, !HOInfo, !Changed).
+tc([PredProcId | PredProcIds], ProcCalls, CallsHO, !HOInfo, !Changed) :-
+    map__lookup(ProcCalls, PredProcId, PCalls),
+    set__to_sorted_list(PCalls, PCallsL),
+    merge_calls(PCallsL, PredProcId, CallsHO, yes, !HOInfo, !Changed),
+    tc(PredProcIds, ProcCalls, CallsHO, !HOInfo, !Changed).
 
-	% merge any higher order addresses that can pass between the
-	% given caller and callees. This code also merges any possible
-	% addresses that can pass in and out of higher order calls
+    % Merge any higher order addresses that can pass between the given caller
+    % and callees. This code also merges any possible addresses that can pass
+    % in and out of higher order calls.
+    %
 :- pred merge_calls(list(pred_proc_id)::in, pred_proc_id::in,
-	set(pred_proc_id)::in, bool::in, ho_map::in, ho_map::out,
-	bool::in, bool::out) is det.
+    set(pred_proc_id)::in, bool::in, ho_map::in, ho_map::out,
+    bool::in, bool::out) is det.
 
 merge_calls([], _, _, _, !HOInfo, !Changed).
 merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
-	( map__search(!.HOInfo, C, CInfo) ->
-		map__lookup(!.HOInfo, P, PInfo),
-		CInfo = info(CHaveAT0, CHOInOut),
-		PInfo = info(PHaveAT0, PHOInOut),
-		% first merge the first order info, if we need to
-		( CHOInOut = ho_none ->
-			true
-		;
-			(
-				CHOInOut = ho_in,
-				( set__subset(PHaveAT0, CHaveAT0) ->
-					CHaveAT = CHaveAT0
-				;
-					set__union(PHaveAT0, CHaveAT0,
-						CHaveAT),
-					!:Changed = yes
-				),
-				PHaveAT = PHaveAT0
-			;
-				CHOInOut = ho_out,
-				( set__subset(CHaveAT0, PHaveAT0) ->
-					PHaveAT = PHaveAT0
-				;
-					set__union(CHaveAT0, PHaveAT0,
-						PHaveAT),
-					!:Changed = yes
-				),
-				CHaveAT = CHaveAT0
-			;
-				CHOInOut = ho_in_out,
-				( CHaveAT0 = PHaveAT0 ->
-					CHaveAT = CHaveAT0,
-					PHaveAT = PHaveAT0
-				;
-					set__union(CHaveAT0, PHaveAT0,
-						NewHaveAT),
-					CHaveAT = NewHaveAT,
-					PHaveAT = NewHaveAT,
-					!:Changed = yes
-				)
-			;
-				CHOInOut = ho_none,
-				% XXX : what is a good message for this?
-				unexpected(this_file,
-					"merge_calls : this cannot happen!")
-			),
-			NewCInfo = info(CHaveAT, CHOInOut),
-			NewPInfo = info(PHaveAT, PHOInOut),
-			map__det_update(!.HOInfo, C, NewCInfo, !:HOInfo),
-			map__det_update(!.HOInfo, P, NewPInfo, !:HOInfo)
-		),
-		% then, if we need to, merge the higher order info
-		(
-			DoingFirstOrder = yes,
-			set__member(P, CallsHO)
-		->
-			map__lookup(!.HOInfo, P, PHOInfo),
-			PHOInfo = info(PossibleCalls, _),
-			set__to_sorted_list(PossibleCalls, PossibleCallsL),
-			merge_calls(PossibleCallsL, P, CallsHO, no,
-				!HOInfo, !Changed)
-		;
-			true
-		),
-		merge_calls(Cs, P, CallsHO, DoingFirstOrder, !HOInfo, !Changed)
-	;
-		merge_calls(Cs, P, CallsHO, DoingFirstOrder, !HOInfo, !Changed)
-	).
+    ( map__search(!.HOInfo, C, CInfo) ->
+        map__lookup(!.HOInfo, P, PInfo),
+        CInfo = info(CHaveAT0, CHOInOut),
+        PInfo = info(PHaveAT0, PHOInOut),
+        % First merge the first order info, if we need to.
+        ( CHOInOut = ho_none ->
+            true
+        ;
+            (
+                CHOInOut = ho_in,
+                ( set__subset(PHaveAT0, CHaveAT0) ->
+                    CHaveAT = CHaveAT0
+                ;
+                    set__union(PHaveAT0, CHaveAT0, CHaveAT),
+                    !:Changed = yes
+                ),
+                PHaveAT = PHaveAT0
+            ;
+                CHOInOut = ho_out,
+                ( set__subset(CHaveAT0, PHaveAT0) ->
+                    PHaveAT = PHaveAT0
+                ;
+                    set__union(CHaveAT0, PHaveAT0, PHaveAT),
+                    !:Changed = yes
+                ),
+                CHaveAT = CHaveAT0
+            ;
+                CHOInOut = ho_in_out,
+                ( CHaveAT0 = PHaveAT0 ->
+                    CHaveAT = CHaveAT0,
+                    PHaveAT = PHaveAT0
+                ;
+                    set__union(CHaveAT0, PHaveAT0, NewHaveAT),
+                    CHaveAT = NewHaveAT,
+                    PHaveAT = NewHaveAT,
+                    !:Changed = yes
+                )
+            ;
+                CHOInOut = ho_none,
+                % XXX : what is a good message for this?
+                unexpected(this_file, "merge_calls : this cannot happen!")
+            ),
+            NewCInfo = info(CHaveAT, CHOInOut),
+            NewPInfo = info(PHaveAT, PHOInOut),
+            map__det_update(!.HOInfo, C, NewCInfo, !:HOInfo),
+            map__det_update(!.HOInfo, P, NewPInfo, !:HOInfo)
+        ),
+        % Then, if we need to, merge the higher order info.
+        (
+            DoingFirstOrder = yes,
+            set__member(P, CallsHO)
+        ->
+            map__lookup(!.HOInfo, P, PHOInfo),
+            PHOInfo = info(PossibleCalls, _),
+            set__to_sorted_list(PossibleCalls, PossibleCallsL),
+            merge_calls(PossibleCallsL, P, CallsHO, no, !HOInfo, !Changed)
+        ;
+            true
+        ),
+        merge_calls(Cs, P, CallsHO, DoingFirstOrder, !HOInfo, !Changed)
+    ;
+        merge_calls(Cs, P, CallsHO, DoingFirstOrder, !HOInfo, !Changed)
+    ).
 
-	% given the set of procs that make higher order calls and a
-	% list of procs and higher order call info this pred rebuilds
-	% the given call graph with new arcs for every possible higher
-	% order call
+    % Given the set of procedures that make higher order calls and a
+    % list of procedures and higher order call info, this predicate rebuilds
+    % the given call graph with new arcs for every possible higher order call.
+    %
 :- pred add_new_arcs(assoc_list(pred_proc_id, higher_order_info)::in,
-	set(pred_proc_id)::in, dependency_graph::in, dependency_graph::out)
-	is det.
+    set(pred_proc_id)::in, dependency_graph::in, dependency_graph::out) is det.
 
 add_new_arcs([], _, !DepGraph).
 add_new_arcs([Caller - CallerInfo | Cs], CallsHO, !DepGraph) :-
-	(
-		% only add arcs for callers who call higher order procs
-		set__member(Caller, CallsHO)
-	->
-		CallerInfo = info(PossibleCallees0, _),
-		set__to_sorted_list(PossibleCallees0, PossibleCallees),
-		relation__lookup_element(!.DepGraph, Caller, CallerKey),
-		add_new_arcs2(PossibleCallees, CallerKey, !DepGraph)
-	;
-		true
-	),
-	add_new_arcs(Cs, CallsHO, !DepGraph).
+    % Only add arcs for callers who call higher order procs.
+    ( set__member(Caller, CallsHO) ->
+        CallerInfo = info(PossibleCallees0, _),
+        set__to_sorted_list(PossibleCallees0, PossibleCallees),
+        relation__lookup_element(!.DepGraph, Caller, CallerKey),
+        add_new_arcs2(PossibleCallees, CallerKey, !DepGraph)
+    ;
+        true
+    ),
+    add_new_arcs(Cs, CallsHO, !DepGraph).
 
 :- pred add_new_arcs2(list(pred_proc_id)::in, relation_key::in,
-	dependency_graph::in, dependency_graph::out) is det.
+    dependency_graph::in, dependency_graph::out) is det.
 
 add_new_arcs2([], _, !DepGraph).
 add_new_arcs2([Callee | Cs], CallerKey, !DepGraph) :-
-	relation__lookup_element(!.DepGraph, Callee, CalleeKey),
-	relation__add(!.DepGraph, CallerKey, CalleeKey, !:DepGraph),
-	add_new_arcs2(Cs, CallerKey, !DepGraph).
+    relation__lookup_element(!.DepGraph, Callee, CalleeKey),
+    relation__add(!.DepGraph, CallerKey, CalleeKey, !:DepGraph),
+    add_new_arcs2(Cs, CallerKey, !DepGraph).
 
-	% for each given pred id pass all non imported procs onto the
-	% process_procs pred
+    % For each given pred id, pass all non imported procs onto the
+    % process_procs predicate.
+    %
 :- pred expand_predids(list(pred_id)::in, module_info::in,
-	call_map::in, call_map::out, ho_map::in, ho_map::out,
-	set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+    call_map::in, call_map::out, ho_map::in, ho_map::out,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
 expand_predids([], _, !ProcCalls, !HOInfo, !CallsHO).
 expand_predids([PredId | PredIds], ModuleInfo, !ProcCalls, !HOInfo,
-		!CallsHO) :-
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	Procs = pred_info_non_imported_procids(PredInfo),
-	pred_info_procedures(PredInfo, ProcTable),
-	pred_info_arg_types(PredInfo, ArgTypes),
-	process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,
-		!ProcCalls, !HOInfo, !CallsHO),
-	expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
+        !CallsHO) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    Procs = pred_info_non_imported_procids(PredInfo),
+    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_arg_types(PredInfo, ArgTypes),
+    process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,
+        !ProcCalls, !HOInfo, !CallsHO),
+    expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
 
-	% for each given proc id generate the set of procs it calls and
-	% its higher order info structure
+    % For each given proc id, generate the set of procedures it calls
+    % and its higher order info structure.
+    %
 :- pred process_procs(list(proc_id)::in, module_info::in, pred_id::in,
-	list(mer_type)::in, proc_table::in, call_map::in, call_map::out,
-	ho_map::in, ho_map::out, set(pred_proc_id)::in, set(pred_proc_id)::out)
-	is det.
+    list(mer_type)::in, proc_table::in, call_map::in, call_map::out,
+    ho_map::in, ho_map::out, set(pred_proc_id)::in, set(pred_proc_id)::out)
+    is det.
 
 process_procs([], _, _, _, _, !ProcCalls, !HOInfo, !CallsHO).
 process_procs([ProcId | Procs], ModuleInfo, PredId, ArgTypes, ProcTable,
-		!ProcCalls, !HOInfo, !CallsHO) :-
-	map__lookup(ProcTable, ProcId, ProcInfo),
-	proc_info_argmodes(ProcInfo, ArgModes),
-	proc_info_goal(ProcInfo, Goal - _GoalInfo),
-	PredProcId = proc(PredId, ProcId),
-	check_goal(Goal, Calls, HaveAT, CallsHigherOrder),
-	map__det_insert(!.ProcCalls, PredProcId, Calls, !:ProcCalls),
-	higherorder_in_out(ArgTypes, ArgModes, ModuleInfo, HOInOut),
-	map__det_insert(!.HOInfo, PredProcId, info(HaveAT, HOInOut), !:HOInfo),
-	(
-		CallsHigherOrder = yes,
-		set__insert(!.CallsHO, PredProcId, !:CallsHO)
-	;
-		CallsHigherOrder = no
-	),
-	process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,
-		!ProcCalls, !HOInfo, !CallsHO).
+        !ProcCalls, !HOInfo, !CallsHO) :-
+    map__lookup(ProcTable, ProcId, ProcInfo),
+    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_goal(ProcInfo, Goal - _GoalInfo),
+    PredProcId = proc(PredId, ProcId),
+    check_goal(Goal, Calls, HaveAT, CallsHigherOrder),
+    map__det_insert(!.ProcCalls, PredProcId, Calls, !:ProcCalls),
+    higherorder_in_out(ArgTypes, ArgModes, ModuleInfo, HOInOut),
+    map__det_insert(!.HOInfo, PredProcId, info(HaveAT, HOInOut), !:HOInfo),
+    (
+        CallsHigherOrder = yes,
+        set__insert(!.CallsHO, PredProcId, !:CallsHO)
+    ;
+        CallsHigherOrder = no
+    ),
+    process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,
+        !ProcCalls, !HOInfo, !CallsHO).
 
-	% determine if a given set of modes and types indicates that
-	% higher order values can be passed into and/or out of a proc
+    % Determine if a given set of modes and types indicates that
+    % higher order values can be passed into and/or out of a procedure.
+    %
 :- pred higherorder_in_out(list(mer_type)::in, list(mer_mode)::in,
-	module_info::in, ho_in_out::out) is det.
+    module_info::in, ho_in_out::out) is det.
 
 higherorder_in_out(Types, Modes, ModuleInfo, HOInOut) :-
-	higherorder_in_out1(Types, Modes, ModuleInfo, no, HOIn, no, HOOut),
-	bool_2_ho_in_out(HOIn, HOOut, HOInOut).
+    higherorder_in_out1(Types, Modes, ModuleInfo, no, HOIn, no, HOOut),
+    bool_2_ho_in_out(HOIn, HOOut, HOInOut).
 
 :- pred bool_2_ho_in_out(bool::in, bool::in, ho_in_out::out) is det.
 
@@ -672,241 +653,233 @@ bool_2_ho_in_out(yes, yes, ho_in_out).
 bool_2_ho_in_out(no, no, ho_none).
 
 :- pred higherorder_in_out1(list(mer_type)::in, list(mer_mode)::in,
-	module_info::in, bool::in, bool::out, bool::in, bool::out) is det.
+    module_info::in, bool::in, bool::out, bool::in, bool::out) is det.
 
 higherorder_in_out1([], [], _ModuleInfo, !HOIn, !HOOut).
 higherorder_in_out1([], [_ | _], _, !HOIn, !HOOut) :-
-	unexpected(this_file,
-		"higherorder_in_out1: lists were different lengths").
+    unexpected(this_file, "higherorder_in_out1: lists were different lengths").
 higherorder_in_out1([_ | _], [], _, !HOIn, !HOOut) :-
-	unexpected(this_file,
-		"higherorder_in_out1: lists were different lengths").
+    unexpected(this_file, "higherorder_in_out1: lists were different lengths").
 higherorder_in_out1([Type | Types], [Mode | Modes], ModuleInfo,
-		!HOIn, !HOOut) :-
-	(
-		% XXX : will have to use a more general check for higher
-		% order constants in parameters user could hide higher
-		% order consts in a data structure etc..
-		type_is_higher_order(Type, _, _, _, _)
-	->
-		( mode_is_input(ModuleInfo, Mode) ->
-			!:HOIn = yes
-		; mode_is_output(ModuleInfo, Mode) ->
-			!:HOOut = yes
-		;
-			true
-		)
-	;
-		true
-	),
-	higherorder_in_out1(Types, Modes, ModuleInfo, !HOIn, !HOOut).
+        !HOIn, !HOOut) :-
+    (
+        % XXX Will have to use a more general check for higher order constants
+        % in parameters user could hide higher order consts in a data structure
+        % etc..
+        type_is_higher_order(Type, _, _, _, _)
+    ->
+        ( mode_is_input(ModuleInfo, Mode) ->
+            !:HOIn = yes
+        ; mode_is_output(ModuleInfo, Mode) ->
+            !:HOOut = yes
+        ;
+            true
+        )
+    ;
+        true
+    ),
+    higherorder_in_out1(Types, Modes, ModuleInfo, !HOIn, !HOOut).
 
-	% return the set of all procs called in and all addresses
-	% taken, in a given goal
+    % Return the set of all procedures called in the given goal
+    % and all addresses taken in the given goal.
+    %
 :- pred check_goal(hlds_goal_expr::in, set(pred_proc_id)::out,
-	set(pred_proc_id)::out, bool::out) is det.
+    set(pred_proc_id)::out, bool::out) is det.
 
 check_goal(Goal, Calls, TakenAddrs, CallsHO) :-
-	set__init(Calls0),
-	set__init(TakenAddrs0),
-	check_goal1(Goal, Calls0, Calls, TakenAddrs0, TakenAddrs, no, CallsHO).
+    set__init(Calls0),
+    set__init(TakenAddrs0),
+    check_goal1(Goal, Calls0, Calls, TakenAddrs0, TakenAddrs, no, CallsHO).
 
 :- pred check_goal1(hlds_goal_expr::in,
-	set(pred_proc_id)::in, set(pred_proc_id)::out,
-	set(pred_proc_id)::in, set(pred_proc_id)::out,
-	bool::in, bool::out) is det.
+    set(pred_proc_id)::in, set(pred_proc_id)::out,
+    set(pred_proc_id)::in, set(pred_proc_id)::out,
+    bool::in, bool::out) is det.
 
-	% see if a goal has its address taken
 check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), !Calls,
-		!HasAT, !CallsHO) :-
-	(
-		% currently this code assumes that all procs called in a
-		% lambda goal have addresses taken. this is not
-		% always to case, but should be a suitable approximation for
-		% the stratification analysis
-		RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod,
-			_NonLocals, _Vars, _Modes, _Determinism,
-			Goal - _GoalInfo)
-	->
-		get_called_procs(Goal, [], CalledProcs),
-		set__insert_list(!.HasAT, CalledProcs, !:HasAT)
-	;
-		% currently when this pass is run the construct/4
-		% case will not happen as higher order constants have
-		% been transformed to lambda goals. see above
-		Unification = construct(_Var2, ConsId, _, _, _, _, _)
-	->
-		( ConsId = pred_const(ShroudedPredProcId, _) ->
-			PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
-			set__insert(!.HasAT, PredProcId, !:HasAT)
-		;
-			true
-		)
-	;
-		true
-	).
-	% add this call to the call list
+        !HasAT, !CallsHO) :-
+    % See if a goal has its address taken.
+    (
+        % Currently this code assumes that all procs called in a lambda goal
+        % have addresses taken. This is not always to case, but should be
+        % a suitable approximation for the stratification analysis.
+        RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _NonLocals, _Vars,
+            _Modes, _Determinism, Goal - _GoalInfo)
+    ->
+        get_called_procs(Goal, [], CalledProcs),
+        set__insert_list(!.HasAT, CalledProcs, !:HasAT)
+    ;
+        % Currently when this pass is run the construct/4 case will not happen
+        % as higher order constants have been transformed to lambda goals.
+        % See above.
+        Unification = construct(_Var2, ConsId, _, _, _, _, _)
+    ->
+        ( ConsId = pred_const(ShroudedPredProcId, _) ->
+            PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
+            set__insert(!.HasAT, PredProcId, !:HasAT)
+        ;
+            true
+        )
+    ;
+        true
+    ).
 check_goal1(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), !Calls,
-		!HasAT, !CallsHO) :-
-	set__insert(!.Calls, proc(CPred, CProc), !:Calls).
-	% record that the higher order call was made
+        !HasAT, !CallsHO) :-
+    % Add this call to the call list.
+    set__insert(!.Calls, proc(CPred, CProc), !:Calls).
 check_goal1(generic_call(_Var, _Vars, _Modes, _Det), !Calls, !HasAT, _, yes).
-check_goal1(conj(Goals), !Calls, !HasAT, !CallsHO) :-
-	check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
-check_goal1(par_conj(Goals), !Calls, !HasAT, !CallsHO) :-
-	check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
+    % Record that the higher order call was made.
+check_goal1(conj(_ConjType, Goals), !Calls, !HasAT, !CallsHO) :-
+    check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
 check_goal1(disj(Goals), !Calls, !HasAT, !CallsHO) :-
-	check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
+    check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
 check_goal1(switch(_Var, _Fail, Cases), !Calls, !HasAT, !CallsHO) :-
-	check_case_list(Cases, !Calls, !HasAT, !CallsHO).
+    check_case_list(Cases, !Calls, !HasAT, !CallsHO).
 check_goal1(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo, Else - _EInfo),
-		!Calls, !HasAT, !CallsHO) :-
-	check_goal1(Cond, !Calls, !HasAT, !CallsHO),
-	check_goal1(Then, !Calls, !HasAT, !CallsHO),
-	check_goal1(Else, !Calls, !HasAT, !CallsHO).
+        !Calls, !HasAT, !CallsHO) :-
+    check_goal1(Cond, !Calls, !HasAT, !CallsHO),
+    check_goal1(Then, !Calls, !HasAT, !CallsHO),
+    check_goal1(Else, !Calls, !HasAT, !CallsHO).
 check_goal1(scope(_, Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
-	check_goal1(Goal, !Calls, !HasAT, !CallsHO).
+    check_goal1(Goal, !Calls, !HasAT, !CallsHO).
 check_goal1(not(Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
-	check_goal1(Goal, !Calls, !HasAT, !CallsHO).
+    check_goal1(Goal, !Calls, !HasAT, !CallsHO).
 check_goal1(foreign_proc(_Attrib, _CPred, _CProc, _, _, _),
-		!Calls, !HasAT, !CallsHO).
+        !Calls, !HasAT, !CallsHO).
 check_goal1(shorthand(_), _, _, _, _, _, _) :-
-	% these should have been expanded out by now
-	unexpected(this_file, "check_goal1: unexpected shorthand").
+    % These should have been expanded out by now.
+    unexpected(this_file, "check_goal1: unexpected shorthand").
 
 :- pred check_goal_list(list(hlds_goal)::in,
-	set(pred_proc_id)::in, set(pred_proc_id)::out,
-	set(pred_proc_id)::in, set(pred_proc_id)::out,
-	bool::in, bool::out) is det.
+    set(pred_proc_id)::in, set(pred_proc_id)::out,
+    set(pred_proc_id)::in, set(pred_proc_id)::out,
+    bool::in, bool::out) is det.
 
 check_goal_list([], !Calls, !HasAT, !CallsHO).
 check_goal_list([Goal - _GoalInfo | Goals], !Calls, !HasAT, !CallsHO) :-
-	check_goal1(Goal, !Calls, !HasAT, !CallsHO),
-	check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
+    check_goal1(Goal, !Calls, !HasAT, !CallsHO),
+    check_goal_list(Goals, !Calls, !HasAT, !CallsHO).
 
 :- pred check_case_list(list(case)::in,
-	set(pred_proc_id)::in, set(pred_proc_id)::out,
-	set(pred_proc_id)::in, set(pred_proc_id)::out,
-	bool::in, bool::out) is det.
+    set(pred_proc_id)::in, set(pred_proc_id)::out,
+    set(pred_proc_id)::in, set(pred_proc_id)::out,
+    bool::in, bool::out) is det.
 
 check_case_list([], !Calls, !HasAT, !CallsHO).
 check_case_list([Case | Goals], !Calls, !HasAT, !CallsHO) :-
-	Case = case(_ConsId, Goal - _GoalInfo),
-	check_goal1(Goal, !Calls, !HasAT, !CallsHO),
-	check_case_list(Goals, !Calls, !HasAT, !CallsHO).
+    Case = case(_ConsId, Goal - _GoalInfo),
+    check_goal1(Goal, !Calls, !HasAT, !CallsHO),
+    check_case_list(Goals, !Calls, !HasAT, !CallsHO).
 
-	% This pred returns a list of all the calls in a given set of
-	% goals including calls in unification lambda functions and
-	% pred_proc_id's in constructs
+    % This pred returns a list of all the calls in a given set of goals,
+    % including calls in unification lambda functions and pred_proc_id's
+    % in constructs.
+    %
 :- pred get_called_procs(hlds_goal_expr::in,
-	list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), !Calls) :-
-	(
-		% currently this code assumes that all procs called in a
-		% lambda goal have addresses taken. this is not
-		% always to case, but should be a suitable approximation for
-		% the stratification analysis
-		RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod,
-			_NonLocals, _Vars, _Modes, _Determinism,
-			Goal - _GoalInfo)
-	->
-		get_called_procs(Goal, !Calls)
-	;
-		% currently when this pass is run the construct/4
-		% case will not happen as higher order constants have
-		% been transformed to lambda goals see above
-		Unification = construct(_Var2, ConsId, _, _, _, _, _)
-	->
-		( ConsId = pred_const(ShroudedPredProcId, _) ->
-			PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
-			!:Calls = [PredProcId | !.Calls]
-		;
-			true
-		)
-	;
-		true
-	).
+    (
+        % Currently this code assumes that all procs called in a lambda goal
+        % have addresses taken. This is not always to case, but should be
+        % a suitable approximation for the stratification analysis.
+        RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _NonLocals, _Vars,
+            _Modes, _Determinism, Goal - _GoalInfo)
+    ->
+        get_called_procs(Goal, !Calls)
+    ;
+        % Currently when this pass is run the construct/4 case will not happen
+        % as higher order constants have been transformed to lambda goals.
+        % See above.
+        Unification = construct(_Var2, ConsId, _, _, _, _, _)
+    ->
+        ( ConsId = pred_const(ShroudedPredProcId, _) ->
+            PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
+            !:Calls = [PredProcId | !.Calls]
+        ;
+            true
+        )
+    ;
+        true
+    ).
 
-	% add this call to the call list
 get_called_procs(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), !Calls) :-
-	!:Calls = [proc(CPred, CProc) | !.Calls].
+    % Add this call to the call list.
+    !:Calls = [proc(CPred, CProc) | !.Calls].
 
 get_called_procs(generic_call(_Var, _Vars, _Modes, _Det), !Calls).
 
-get_called_procs(conj(Goals), !Calls) :-
-	check_goal_list(Goals, !Calls).
-get_called_procs(par_conj(Goals), !Calls) :-
-	check_goal_list(Goals, !Calls).
+get_called_procs(conj(_ConjType, Goals), !Calls) :-
+    check_goal_list(Goals, !Calls).
 get_called_procs(disj(Goals), !Calls) :-
-	check_goal_list(Goals, !Calls).
+    check_goal_list(Goals, !Calls).
 get_called_procs(switch(_Var, _Fail, Cases), !Calls) :-
-	check_case_list(Cases, !Calls).
+    check_case_list(Cases, !Calls).
 get_called_procs(if_then_else(_Vars, Cond - _, Then - _, Else - _), !Calls) :-
-	get_called_procs(Cond, !Calls),
-	get_called_procs(Then, !Calls),
-	get_called_procs(Else, !Calls).
+    get_called_procs(Cond, !Calls),
+    get_called_procs(Then, !Calls),
+    get_called_procs(Else, !Calls).
 get_called_procs(scope(_, Goal - _GoalInfo), !Calls) :-
-	get_called_procs(Goal, !Calls).
+    get_called_procs(Goal, !Calls).
 get_called_procs(not(Goal - _GoalInfo), !Calls) :-
-	get_called_procs(Goal, !Calls).
+    get_called_procs(Goal, !Calls).
 get_called_procs(foreign_proc(_Attrib, _CPred, _CProc, _, _, _), !Calls).
 get_called_procs(shorthand(_), !Calls) :-
-	% these should have been expanded out by now
-	unexpected(this_file, "get_called_procs: unexpected shorthand").
+    % These should have been expanded out by now.
+    unexpected(this_file, "get_called_procs: unexpected shorthand").
 
 :- pred check_goal_list(list(hlds_goal)::in,
-	list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 check_goal_list([], !Calls).
 check_goal_list([Goal - _GoalInfo | Goals], !Calls) :-
-	get_called_procs(Goal, !Calls),
-	check_goal_list(Goals, !Calls).
+    get_called_procs(Goal, !Calls),
+    check_goal_list(Goals, !Calls).
 
 :- pred check_case_list(list(case)::in,
-	list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
+    list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 check_case_list([], !Calls).
 check_case_list([Case | Goals], !Calls) :-
-	Case = case(_ConsId, Goal - _GoalInfo),
-	get_called_procs(Goal, !Calls),
-	check_case_list(Goals, !Calls).
+    Case = case(_ConsId, Goal - _GoalInfo),
+    get_called_procs(Goal, !Calls),
+    check_case_list(Goals, !Calls).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred emit_message(pred_proc_id::in, prog_context::in, string::in, bool::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 emit_message(ThisPredProc, Context, Message, Error, !ModuleInfo, !IO) :-
-	ThisPredProc = proc(TPred, TProc),
-	report_pred_proc_id(!.ModuleInfo, TPred, TProc, yes(Context), _Context,
-		!IO),
-	prog_out__write_context(Context, !IO),
-	(
-		Error = no,
-		io__write_string("  warning: ", !IO)
-	;
-		Error = yes,
-		module_info_incr_errors(!ModuleInfo),
-		io__set_exit_status(1, !IO),
-		io__write_string("  error: ", !IO)
-	),
-	io__write_string(Message, !IO),
-	io__write_char('\n', !IO),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-	(
-		VerboseErrors = yes,
-		io__write_string("\tA non-stratified loop is a " ++
-			"loop in the call graph of the given\n", !IO),
-		io__write_string("\tpredicate/function that allows it " ++
-			"to call itself negatively. This\n", !IO),
-		io__write_string("\tcan cause problems for bottom up " ++
-			"evaluation of the predicate/function.\n", !IO)
-	;
-		VerboseErrors = no,
-		globals.io_set_extra_error_info(yes, !IO)
-	).
+    ThisPredProc = proc(TPred, TProc),
+    report_pred_proc_id(!.ModuleInfo, TPred, TProc, yes(Context), _Context,
+        !IO),
+    prog_out__write_context(Context, !IO),
+    (
+        Error = no,
+        io__write_string("  warning: ", !IO)
+    ;
+        Error = yes,
+        module_info_incr_errors(!ModuleInfo),
+        io__set_exit_status(1, !IO),
+        io__write_string("  error: ", !IO)
+    ),
+    io__write_string(Message, !IO),
+    io__write_char('\n', !IO),
+    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    (
+        VerboseErrors = yes,
+        io__write_string("\tA non-stratified loop is a " ++
+            "loop in the call graph of the given\n", !IO),
+        io__write_string("\tpredicate/function that allows it " ++
+            "to call itself negatively. This\n", !IO),
+        io__write_string("\tcan cause problems for bottom up " ++
+            "evaluation of the predicate/function.\n", !IO)
+    ;
+        VerboseErrors = no,
+        globals.io_set_extra_error_info(yes, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 

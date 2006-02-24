@@ -1062,7 +1062,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         ConstructRestrictNonLocals, [TermOutputVar | ConstructArgs],
         UnifyContext, ConstructGoal),
 
-    Conj = conj([DeconstructGoal, ConstructGoal]) - OldGoalInfo,
+    Conj = conj(plain_conj, [DeconstructGoal, ConstructGoal]) - OldGoalInfo,
 
     % Make mode analysis treat the translated access function
     % as an atomic goal.

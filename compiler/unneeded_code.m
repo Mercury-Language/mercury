@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -253,11 +253,11 @@ pre_process_proc(!ProcInfo) :-
 %
 % The first phase traverses the procedure body, keeping track of which
 % variables are needed where. When it finds a goal that can be deleted,
-% it deletes it by replacing it with the goal `true' (i.e. conj([])).
-% When it finds a goal that can be moved, it does the same, but also
-% records in the RefinedGoalsMap that the deleted goal must later be
-% inserted at the starts of the branches where its outputs may be needed,
-% and accordingly notes that its own inputs are needed in those branches.
+% it deletes it by replacing it with the goal `true'. When it finds a goal
+% that can be moved, it does the same, but also records in the RefinedGoalsMap
+% that the deleted goal must later be inserted at the starts of the branches
+% where its outputs may be needed, and accordingly notes that its own inputs
+% are needed in those branches.
 %
 % The second phase traverses the modified problem body, and inserts the
 % goals in the RefinedGoalsMap at the starts of the indicated branches.
@@ -353,7 +353,7 @@ process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
         map__to_assoc_list(Branches, BranchList),
         list__foldl(insert_branch_into_refined_goals(Goal0), BranchList,
             !RefinedGoals),
-        true_goal(Goal),
+        Goal = true_goal,
         !:Changed = yes
     ),
     undemand_virgin_outputs(Goal0, ModuleInfo, InitInstMap,
@@ -465,13 +465,12 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
             % Do not delete the `true' goal, since deleting it is a no-op,
             % and thus does *not* strictly reduce the number of computation
             % paths on which a subgoal of the procedure body is executed.
-            GoalExpr = conj([])
+            GoalExpr = true_goal_expr
         ;
             !.WhereInfo = branches(BranchMap),
             map__values(BranchMap, BranchArms),
             list__map(set__count, BranchArms, BranchArmCounts),
-            BranchArmCount = list__foldl(int__plus,
-                BranchArmCounts, 0),
+            BranchArmCount = list.foldl(int__plus, BranchArmCounts, 0),
             BranchArmCount > Options ^ copy_limit
 
             % We may also want to add other space time tradeoffs. E.g. if
@@ -599,17 +598,20 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
             !WhereNeededMap)
     ;
-        GoalExpr0 = par_conj(_),
-        Goal = Goal0,
-        demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
-            !WhereNeededMap)
-    ;
-        GoalExpr0 = conj(Conjuncts0),
-        process_conj(Conjuncts0, Conjuncts, InitInstMap, FinalInstMap,
-            VarTypes, ModuleInfo, Options, !WhereNeededMap, !RefinedGoals,
-            !Changed),
-        GoalExpr = conj(Conjuncts),
-        Goal = GoalExpr - GoalInfo0
+        GoalExpr0 = conj(ConjType, Conjuncts0),
+        (
+            ConjType = plain_conj,
+            process_conj(Conjuncts0, Conjuncts, InitInstMap, FinalInstMap,
+                VarTypes, ModuleInfo, Options, !WhereNeededMap, !RefinedGoals,
+                !Changed),
+            GoalExpr = conj(plain_conj, Conjuncts),
+            Goal = GoalExpr - GoalInfo0
+        ;
+            ConjType = parallel_conj,
+            Goal = Goal0,
+            demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
+                !WhereNeededMap)
+        )
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         (
@@ -720,7 +722,7 @@ process_rev_bracketed_conj([BracketedGoal | BracketedGoals], Goals, VarTypes,
         ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed),
     process_rev_bracketed_conj(BracketedGoals, Goals1, VarTypes,
         ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed),
-    ( true_goal(Goal1) ->
+    ( Goal1 = true_goal_expr - _ ->
         Goals = Goals1
     ;
         Goals = [Goal1 | Goals1]
@@ -895,13 +897,16 @@ refine_goal(Goal0, Goal, !RefinedGoals) :-
         GoalExpr0 = foreign_proc(_, _, _, _, _, _),
         Goal = Goal0
     ;
-        GoalExpr0 = par_conj(_),
-        Goal = Goal0
-    ;
-        GoalExpr0 = conj(Conjuncts0),
-        refine_conj(Conjuncts0, Conjuncts, !RefinedGoals),
-        GoalExpr = conj(Conjuncts),
-        Goal = GoalExpr - GoalInfo0
+        GoalExpr0 = conj(ConjType, Conjuncts0),
+        (
+            ConjType = plain_conj,
+            refine_conj(Conjuncts0, Conjuncts, !RefinedGoals),
+            GoalExpr = conj(ConjType, Conjuncts),
+            Goal = GoalExpr - GoalInfo0
+        ;
+            ConjType = parallel_conj,
+            Goal = Goal0
+        )
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
@@ -943,8 +948,8 @@ refine_conj([], [], !RefinedGoals).
 refine_conj([Goal0 | Goals0], Goals, !RefinedGoals) :-
     refine_goal(Goal0, HeadGoal, !RefinedGoals),
     refine_conj(Goals0, TailGoals, !RefinedGoals),
-    ( HeadGoal = conj(HeadGoals) - _ ->
-        list__append(HeadGoals, TailGoals, Goals)
+    ( HeadGoal = conj(plain_conj, HeadGoals) - _ ->
+        Goals = HeadGoals ++ TailGoals
     ;
         Goals = [HeadGoal | TailGoals]
     ).

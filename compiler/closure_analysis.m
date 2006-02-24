@@ -179,10 +179,10 @@ process_proc(Debug, PPId, !ModuleInfo, !IO) :-
     hlds_goal::in, hlds_goal::out, closure_info::in, closure_info::out) is det.
 
 process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
-    Goal0 = conj(Goals0) - GoalInfo,
+    Goal0 = conj(ConjType, Goals0) - GoalInfo,
     list.map_foldl(process_goal(VarTypes, ModuleInfo), Goals0, Goals,
         !ClosureInfo),
-    Goal = conj(Goals) - GoalInfo.
+    Goal = conj(ConjType, Goals) - GoalInfo.
 process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     Goal0 = GoalExpr - GoalInfo0,
     GoalExpr =  call(CallPredId, CallProcId, CallArgs, _, _, _),
@@ -383,11 +383,6 @@ process_goal(_, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     list.filter_map(ForeignHOArgs, Args, OutputForeignHOArgs),
     svmap.det_insert_from_assoc_list(OutputForeignHOArgs, !ClosureInfo),
     Goal = GoalExpr - GoalInfo. 
-process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
-    Goal0 = par_conj(Goals0) - GoalInfo,
-    list.map_foldl(process_goal(VarTypes, ModuleInfo), Goals0, Goals,
-        !ClosureInfo),
-    Goal = par_conj(Goals) - GoalInfo.
 process_goal(_, _, shorthand(_) - _, _, _, _) :-
     unexpected(this_file, "shorthand/1 goal during closure analysis.").
 
@@ -445,9 +440,7 @@ merge_closure_values(exclusive(A), exclusive(B), exclusive(A `set.union` B)).
 :- pred dump_closure_info(prog_varset::in, hlds_goal::in,
     io::di, io::uo) is det.
 
-dump_closure_info(Varset, conj(Goals) - _, !IO) :-
-    list.foldl(dump_closure_info(Varset), Goals, !IO).
-dump_closure_info(Varset, par_conj(Goals) - _, !IO) :-
+dump_closure_info(Varset, conj(_ConjType, Goals) - _, !IO) :-
     list.foldl(dump_closure_info(Varset), Goals, !IO).
 dump_closure_info(Varset, call(_,_,_,_,_,_) - GoalInfo, !IO) :-
     dump_ho_values(GoalInfo, Varset, !IO).

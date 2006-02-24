@@ -349,7 +349,7 @@ number_robdd_variables_in_goal(InstGraph, ParentNonLocals, Occurring,
     number_robdd_info::in, number_robdd_info::out) is det.
 
 number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
-        conj(Goals0), conj(Goals), !RInfo) :-
+        conj(ConjType, Goals0), conj(ConjType, Goals), !RInfo) :-
     number_robdd_variables_in_goals(InstGraph, NonLocals, Occurring,
         Goals0, Goals, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
@@ -378,10 +378,6 @@ number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
     number_robdd_variables_in_goal(InstGraph, NonLocals, OccElse,
         Else0, Else, !RInfo),
     Occurring = OccCond `set__union` OccThen `set__union` OccElse.
-number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
-        par_conj(Goals0), par_conj(Goals), !RInfo) :-
-    number_robdd_variables_in_goals(InstGraph, NonLocals, Occurring,
-        Goals0, Goals, !RInfo).
 number_robdd_variables_in_goal_2(_, _, _, _, _, shorthand(_), _, !RInfo) :-
     unexpected(this_file, "number_robdd_variables_in_goal_2: shorthand").
 
@@ -1126,30 +1122,36 @@ goal_constraints(ParentNonLocals, CanSucceed, GoalExpr0 - GoalInfo0,
     hlds_goal_expr::out, mode_constraint::in, mode_constraint::out,
     goal_constraints_info::in, goal_constraints_info::out) is det.
 
-goal_constraints_2(GoalPath, NonLocals, _, CanSucceed, conj(Goals0),
-        conj(Goals), !Constraint, !GCInfo) :-
-    multi_map__init(Usage0),
+goal_constraints_2(GoalPath, NonLocals, _, CanSucceed, conj(ConjType, Goals0),
+        conj(ConjType, Goals), !Constraint, !GCInfo) :-
+    (
+        ConjType = plain_conj,
+        multi_map__init(Usage0),
 
-    Usage = list__foldl(func(G, U0) =
-        list__foldl((func(V, U1) = U :-
-            multi_map__set(U1, V, goal_path(G), U)),
-            set__to_sorted_list(vars(G)), U0),
-        Goals0, Usage0),
+        Usage = list__foldl(func(G, U0) =
+            list__foldl((func(V, U1) = U :-
+                multi_map__set(U1, V, goal_path(G), U)),
+                set__to_sorted_list(vars(G)), U0),
+            Goals0, Usage0),
 
-    known_vars(ensure_normalised(!.Constraint), KnownTrue, KnownFalse),
+        known_vars(ensure_normalised(!.Constraint), KnownTrue, KnownFalse),
 
-    % Generate conj constraints for known vars first since these should be
-    % more efficient and provide lots of useful information for the subgoal
-    % constraints.
-    conj_constraints(yes, KnownTrue, KnownFalse, GoalPath, Usage,
-        !Constraint, !GCInfo),
+        % Generate conj constraints for known vars first since these should be
+        % more efficient and provide lots of useful information for the subgoal
+        % constraints.
+        conj_constraints(yes, KnownTrue, KnownFalse, GoalPath, Usage,
+            !Constraint, !GCInfo),
 
-    conj_subgoal_constraints(NonLocals, CanSucceed, !Constraint,
-        Goals0, Goals, !GCInfo),
+        conj_subgoal_constraints(NonLocals, CanSucceed, !Constraint,
+            Goals0, Goals, !GCInfo),
 
-    % Generate the rest of the constraints.
-    conj_constraints(no, KnownTrue, KnownFalse, GoalPath, Usage,
-        !Constraint, !GCInfo).
+        % Generate the rest of the constraints.
+        conj_constraints(no, KnownTrue, KnownFalse, GoalPath, Usage,
+            !Constraint, !GCInfo)
+    ;
+        ConjType = parallel_conj,
+        sorry(this_file, "goal_constraints_2: par_conj NYI")
+    ).
 
 goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed, disj(Goals0),
         disj(Goals), !Constraint, !GCInfo) :-
@@ -1351,8 +1353,6 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
 
 goal_constraints_2(_,_,_,_,foreign_proc(_,_,_,_,_,_),_,_,_,_,_) :-
     sorry(this_file, "goal_constraints_2: foreign_proc NYI").
-goal_constraints_2(_,_,_,_,par_conj(_),_,_,_,_,_) :-
-    sorry(this_file, "goal_constraints_2: par_conj NYI").
 goal_constraints_2(_,_,_,_,shorthand(_),_,_,_,_,_) :-
     sorry(this_file, "goal_constraints_2: shorthand").
 

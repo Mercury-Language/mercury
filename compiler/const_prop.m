@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -578,8 +578,8 @@ make_construction(Arg, ConsId, Goal) :-
 
 :- pred make_true_or_fail(bool::in, hlds_goal_expr::out) is det.
 
-make_true_or_fail(yes, conj([])).
-make_true_or_fail(no, disj([])).
+make_true_or_fail(yes, true_goal_expr).
+make_true_or_fail(no, fail_goal_expr).
 
 %---------------------------------------------------------------------------%
 

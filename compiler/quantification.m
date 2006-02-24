@@ -313,7 +313,7 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
         Reason1 = Reason0,
         Vars0 = []
     ;
-        Reason0 = promise_equivalent_solutions(_),
+        Reason0 = promise_solutions(_, _),
         Reason1 = Reason0,
         Vars0 = []
     ;
@@ -353,10 +353,10 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
             Reason1 = promise_purity(_, _),
             Reason = Reason1
         ;
-            Reason1 = promise_equivalent_solutions(PromiseVars0),
+            Reason1 = promise_solutions(PromiseVars0, Kind),
             goal_util__rename_var_list(no, RenameMap,
                 PromiseVars0, PromiseVars),
-            Reason = promise_equivalent_solutions(PromiseVars)
+            Reason = promise_solutions(PromiseVars, Kind)
         ;
             Reason1 = commit(_),
             Reason = Reason1
@@ -379,14 +379,9 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
     Expr = scope(Reason, Goal).
 
 implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
-    Expr0 = conj(Goals0),
+    Expr0 = conj(ConjType, Goals0),
     implicitly_quantify_conj(Goals0, Goals, !Info),
-    Expr = conj(Goals).
-
-implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
-    Expr0 = par_conj(Goals0),
-    implicitly_quantify_conj(Goals0, Goals, !Info),
-    Expr = par_conj(Goals).
+    Expr = conj(ConjType, Goals).
 
 implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
     Expr0 = disj(Goals0),
@@ -622,16 +617,16 @@ implicitly_quantify_goal_2_shorthand(bi_implication(LHS0, RHS0), Context, Goal,
     set_goal_nonlocals(NonLocalVars, GoalInfo1, GI, !Info),
     NotLHS = not(LHS) - LHS_GI,
     NotRHS = not(RHS) - RHS_GI,
-    ForwardsImplication = not(conj([LHS, NotRHS]) - GI) - GI,
+    ForwardsImplication = not(conj(plain_conj, [LHS, NotRHS]) - GI) - GI,
 
     % Rename apart the local variables of the goals we've just duplicated.
-    ReverseImplication0 = not(conj([RHS, NotLHS]) - GI) - GI,
+    ReverseImplication0 = not(conj(plain_conj, [RHS, NotLHS]) - GI) - GI,
     goal_vars_bitset(NonLocalsToRecompute, ReverseImplication0, GoalVars),
     difference(GoalVars, NonLocalVars, RenameVars),
     rename_apart(RenameVars, _, ReverseImplication0, ReverseImplication,
         !Info),
 
-    Goal = conj([ForwardsImplication, ReverseImplication]).
+    Goal = conj(plain_conj, [ForwardsImplication, ReverseImplication]).
 
 :- pred implicitly_quantify_atomic_goal(list(prog_var)::in,
     quant_info::in, quant_info::out) is det.
@@ -968,10 +963,12 @@ goal_vars_2(_, generic_call(GenericCall, ArgVars1, _, _), !Set, !LambdaSet) :-
 goal_vars_2(_, call(_, _, ArgVars, _, _, _), !Set, !LambdaSet) :-
     insert_list(!.Set, ArgVars, !:Set).
 
-goal_vars_2(NonLocalsToRecompute, conj(Goals), !Set, !LambdaSet) :-
-    goal_list_vars_2(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
-
-goal_vars_2(NonLocalsToRecompute, par_conj(Goals), !Set, !LambdaSet) :-
+goal_vars_2(NonLocalsToRecompute, conj(ConjType, Goals), !Set, !LambdaSet) :-
+    (
+        ConjType = plain_conj
+    ;
+        ConjType = parallel_conj
+    ),
     goal_list_vars_2(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
 
 goal_vars_2(NonLocalsToRecompute, disj(Goals), !Set, !LambdaSet) :-
@@ -992,7 +989,7 @@ goal_vars_2(NonLocalsToRecompute, scope(Reason, Goal), Set0, !:Set,
     ;
         Reason = promise_purity(_, _)
     ;
-        Reason = promise_equivalent_solutions(Vars),
+        Reason = promise_solutions(Vars, _Kind),
         insert_list(!.Set, Vars, !:Set)
     ;
         Reason = commit(_)

@@ -390,10 +390,7 @@ dependency_graph__add_arcs_in_goal(Goal - _GoalInfo, PPId, !DepGraph) :-
     relation_key::in, dependency_graph(T)::in, dependency_graph(T)::out) is det
     <= dependency_node(T).
 
-dependency_graph__add_arcs_in_goal_2(conj(Goals), Caller, !DepGraph) :-
-    dependency_graph__add_arcs_in_list(Goals, Caller, !DepGraph).
-
-dependency_graph__add_arcs_in_goal_2(par_conj(Goals), Caller, !DepGraph) :-
+dependency_graph__add_arcs_in_goal_2(conj(_, Goals), Caller, !DepGraph) :-
     dependency_graph__add_arcs_in_list(Goals, Caller, !DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(disj(Goals), Caller, !DepGraph) :-

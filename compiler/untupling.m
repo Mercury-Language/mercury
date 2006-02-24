@@ -364,13 +364,14 @@ create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
 :- pred conjoin_goals_keep_detism(hlds_goal::in, hlds_goal::in,
     hlds_goal::out) is det.
 
-conjoin_goals_keep_detism(GoalA, GoalB, conj(GoalList) - GoalInfo) :-
+conjoin_goals_keep_detism(GoalA, GoalB, Goal) :-
     goal_to_conj_list(GoalA, GoalListA),
     goal_to_conj_list(GoalB, GoalListB),
     list__append(GoalListA, GoalListB, GoalList),
     goal_list_determinism(GoalList, Determinism),
     goal_info_init(GoalInfo0),
-    goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo).
+    goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
+    Goal = conj(plain_conj, GoalList) - GoalInfo.
 
 :- pred build_untuple_map(list(prog_var)::in, list(list(prog_var))::in,
     untuple_map::in, untuple_map::out) is det.
@@ -545,18 +546,21 @@ fix_calls_in_goal(scope(Reason, Goal0) - GoalInfo,
     fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap,
         ModuleInfo).
 
-fix_calls_in_goal(conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
-    fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, TransformMap,
-        ModuleInfo).
-
-fix_calls_in_goal(par_conj(Goals0) - GoalInfo, par_conj(Goals) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
-    % I am not sure whether parallel conjunctions should be treated
-    % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
-    % this is untested.
-    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
-        TransformMap, ModuleInfo).
+fix_calls_in_goal(conj(ConjType, Goals0) - GoalInfo,
+        conj(ConjType, Goals) - GoalInfo, !VarSet, !VarTypes,
+        TransformMap, ModuleInfo) :-
+    (
+        ConjType = plain_conj,
+        fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, TransformMap,
+            ModuleInfo)
+    ;
+        ConjType = parallel_conj,
+        % I am not sure whether parallel conjunctions should be treated
+        % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
+        % this is untested.
+        fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
+            TransformMap, ModuleInfo)
+    ).
 
 fix_calls_in_goal(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo,
         !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
@@ -595,7 +599,7 @@ fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes, TransformMap,
         ModuleInfo),
     fix_calls_in_conj(Goals0, Goals1, !VarSet, !VarTypes, TransformMap,
         ModuleInfo),
-    (if Goal1 = conj(ConjGoals) - _ then
+    (if Goal1 = conj(plain_conj, ConjGoals) - _ then
         Goals = ConjGoals ++ Goals1
     else
         Goals = [Goal1 | Goals1]

@@ -250,31 +250,35 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
     hlds_goal_expr::out, mode_info::in, mode_info::out,
     io::di, io::uo) is det.
 
-check_goal_2(conj(List0), _GoalInfo0, conj(List), !ModeInfo, !IO) :-
-    mode_checkpoint(enter, "conj", !ModeInfo, !IO),
+check_goal_2(conj(ConjType, List0), GoalInfo0, conj(ConjType, List),
+        !ModeInfo, !IO) :-
     (
-        List0 = [],
-        % For efficiency, optimize common case.
-        List = []
+        ConjType = plain_conj,
+        mode_checkpoint(enter, "conj", !ModeInfo, !IO),
+        (
+            List0 = [],
+            % For efficiency, optimize common case.
+            List = []
+        ;
+            List0 = [_ | _],
+            mode_info_add_goals_live_vars(List0, !ModeInfo),
+            check_conj(List0, List, !ModeInfo, !IO)
+        ),
+        mode_checkpoint(exit, "conj", !ModeInfo, !IO)
     ;
-        List0 = [_ | _],
-        mode_info_add_goals_live_vars(List0, !ModeInfo),
-        check_conj(List0, List, !ModeInfo, !IO)
-    ),
-    mode_checkpoint(exit, "conj", !ModeInfo, !IO).
-
-check_goal_2(par_conj(List0), GoalInfo0, par_conj(List), !ModeInfo, !IO) :-
-    mode_checkpoint(enter, "par_conj", !ModeInfo, !IO),
-    goal_info_get_nonlocals(GoalInfo0, NonLocals),
-    mode_info_add_live_vars(NonLocals, !ModeInfo),
-    % Build a multiset of the nonlocals of the conjuncts so that we can figure
-    % out which variables must be made shared at the start of the parallel
-    % conjunction.
-    make_par_conj_nonlocal_multiset(List0, NonLocalsBag),
-    check_par_conj(List0, NonLocalsBag, List, InstMapList, !ModeInfo, !IO),
-    instmap__unify(NonLocals, InstMapList, !ModeInfo),
-    mode_info_remove_live_vars(NonLocals, !ModeInfo),
-    mode_checkpoint(exit, "par_conj", !ModeInfo, !IO).
+        ConjType = parallel_conj,
+        mode_checkpoint(enter, "par_conj", !ModeInfo, !IO),
+        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        mode_info_add_live_vars(NonLocals, !ModeInfo),
+        % Build a multiset of the nonlocals of the conjuncts so that we can
+        % figure out which variables must be made shared at the start of the
+        % parallel conjunction.
+        make_par_conj_nonlocal_multiset(List0, NonLocalsBag),
+        check_par_conj(List0, NonLocalsBag, List, InstMapList, !ModeInfo, !IO),
+        instmap__unify(NonLocals, InstMapList, !ModeInfo),
+        mode_info_remove_live_vars(NonLocals, !ModeInfo),
+        mode_checkpoint(exit, "par_conj", !ModeInfo, !IO)
+    ).
 
 check_goal_2(disj(List0), GoalInfo0, disj(List), !ModeInfo, !IO) :-
     mode_checkpoint(enter, "disj", !ModeInfo, !IO),
@@ -370,7 +374,7 @@ check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having unique mode information.
-        true_goal(Then),
+        Then = true_goal,
         InstMapThen = InstMapCond
     ),
     mode_info_set_instmap(InstMap0, !ModeInfo),
@@ -632,7 +636,7 @@ check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism, NeverSucceeds,
 check_conj([], [], !ModeInfo, !IO).
 check_conj([Goal0 | Goals0], Goals, !ModeInfo, !IO) :-
     (
-        Goal0 = conj(ConjGoals) - _
+        Goal0 = conj(plain_conj, ConjGoals) - _
     ->
         list__append(ConjGoals, Goals0, Goals1),
         check_conj(Goals1, Goals, !ModeInfo, !IO)
@@ -804,7 +808,7 @@ check_case_list([Case0 | Cases0], Var, [Case | Cases], [InstMap | InstMaps],
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having unique mode information.
-        true_goal(Goal1)
+        Goal1 = true_goal
     ),
 
     mode_info_get_instmap(!.ModeInfo, InstMap),

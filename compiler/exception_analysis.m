@@ -531,8 +531,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result,
 check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result, !ModuleInfo,
         !IO) :-
     ( Goal = disj(Goals)
-    ; Goal = par_conj(Goals)
-    ; Goal = conj(Goals)
+    ; Goal = conj(_, Goals)
     ),
     check_goals_for_exceptions(SCC, VarTypes, Goals, !Result, !ModuleInfo,
         !IO).

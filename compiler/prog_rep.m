@@ -129,12 +129,13 @@ goal_to_byte_list(GoalExpr - GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
     instmap::in, prog_rep_info::in, 
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
-goal_expr_to_byte_list(conj(Goals), _, InstMap0, Info, !StackInfo, Bytes) :-
+goal_expr_to_byte_list(conj(ConjType, Goals), _, InstMap0, Info, !StackInfo,
+        Bytes) :-
+    expect(unify(ConjType, plain_conj), this_file,
+        "non-plain conjunction and declarative debugging"),
     conj_to_byte_list(Goals, InstMap0, Info, !StackInfo, ConjBytes),
     Bytes = [goal_type_to_byte(goal_conj)] ++
         length_to_byte_list(Goals) ++ ConjBytes.
-goal_expr_to_byte_list(par_conj(_), _, _, _, !StackInfo, _) :-
-    sorry("prog_rep", "parallel conjunctions and declarative debugging").
 goal_expr_to_byte_list(disj(Goals), _, InstMap0, Info, !StackInfo, Bytes) :-
     disj_to_byte_list(Goals, InstMap0, Info, !StackInfo, DisjBytes),
     Bytes = [goal_type_to_byte(goal_disj)] ++

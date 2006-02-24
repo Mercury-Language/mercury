@@ -62,16 +62,16 @@ middle_rec__match_and_generate(Goal, Instrs, !CI) :-
     Case1 = case(ConsId1, Goal1),
     Case2 = case(ConsId2, Goal2),
     (
-        contains_only_builtins(Goal1),
+        contains_only_builtins(Goal1) = yes,
         contains_simple_recursive_call(Goal2, !.CI)
     ->
-        middle_rec__generate_switch(Var, ConsId1, Goal1, Goal2,
+        middle_rec_generate_switch(Var, ConsId1, Goal1, Goal2,
             GoalInfo, Instrs, !CI)
     ;
-        contains_only_builtins(Goal2),
+        contains_only_builtins(Goal2) = yes,
         contains_simple_recursive_call(Goal1, !.CI)
     ->
-        middle_rec__generate_switch(Var, ConsId2, Goal2, Goal1,
+        middle_rec_generate_switch(Var, ConsId2, Goal2, Goal1,
             GoalInfo, Instrs, !CI)
     ;
         fail
@@ -89,7 +89,7 @@ middle_rec__match_and_generate(Goal, Instrs, !CI) :-
     is semidet.
 
 contains_simple_recursive_call(Goal - _, CodeInfo) :-
-    Goal = conj(Goals),
+    Goal = conj(plain_conj, Goals),
     contains_simple_recursive_call_conj(Goals, CodeInfo).
 
 :- pred contains_simple_recursive_call_conj(list(hlds_goal)::in, code_info::in)
@@ -97,15 +97,14 @@ contains_simple_recursive_call(Goal - _, CodeInfo) :-
 
 contains_simple_recursive_call_conj([Goal | Goals], CodeInfo) :-
     Goal = GoalExpr - _,
-    ( contains_only_builtins_expr(GoalExpr) ->
+    ( contains_only_builtins_expr(GoalExpr) = yes ->
         contains_simple_recursive_call_conj(Goals, CodeInfo)
     ;
         is_recursive_call(GoalExpr, CodeInfo),
-        contains_only_builtins_list(Goals)
+        contains_only_builtins_list(Goals) = yes
     ).
 
-:- pred is_recursive_call(hlds_goal_expr::in, code_info::in)
-    is semidet.
+:- pred is_recursive_call(hlds_goal_expr::in, code_info::in) is semidet.
 
 is_recursive_call(Goal, CodeInfo) :-
     Goal = call(CallPredId, CallProcId, _, BuiltinState, _, _),
@@ -115,72 +114,118 @@ is_recursive_call(Goal, CodeInfo) :-
     code_info__get_proc_id(CodeInfo, ProcId),
     ProcId = CallProcId.
 
-    % contains_only_builtins(G) is true if G is a leaf procedure,
+    % contains_only_builtins(G) returns `yes' if G is a leaf procedure,
     % i.e. control does not leave G to call another procedure, even
     % if that procedure is a complicated unification. It also does not contain
     % unifications that take the addresses of fields.
     %
-:- pred contains_only_builtins(hlds_goal::in) is semidet.
+:- func contains_only_builtins(hlds_goal) = bool.
 
-contains_only_builtins(Goal - _GoalInfo) :-
+contains_only_builtins(Goal - _GoalInfo) =
     contains_only_builtins_expr(Goal).
 
-:- pred contains_only_builtins_expr(hlds_goal_expr::in) is semidet.
+:- func contains_only_builtins_expr(hlds_goal_expr) = bool.
 
-contains_only_builtins_expr(conj(Goals)) :-
+contains_only_builtins_expr(conj(ConjType, Goals)) = OnlyBuiltins :-
+    (
+        ConjType = plain_conj,
+        OnlyBuiltins = contains_only_builtins_list(Goals)
+    ;
+        ConjType = parallel_conj,
+        OnlyBuiltins = no
+    ).
+contains_only_builtins_expr(disj(Goals)) =
     contains_only_builtins_list(Goals).
-contains_only_builtins_expr(disj(Goals)) :-
-    contains_only_builtins_list(Goals).
-contains_only_builtins_expr(switch(_Var, _Category, Cases)) :-
+contains_only_builtins_expr(switch(_Var, _Category, Cases)) =
     contains_only_builtins_cases(Cases).
-contains_only_builtins_expr(not(Goal)) :-
+contains_only_builtins_expr(not(Goal)) =
     contains_only_builtins(Goal).
-contains_only_builtins_expr(scope(_, Goal)) :-
+contains_only_builtins_expr(scope(_, Goal)) =
     contains_only_builtins(Goal).
-contains_only_builtins_expr(if_then_else(_Vars, Cond, Then, Else)) :-
-    contains_only_builtins(Cond),
-    contains_only_builtins(Then),
-    contains_only_builtins(Else).
-contains_only_builtins_expr(call(_, _, _, BuiltinState, _, _)) :-
-    BuiltinState = inline_builtin.
-contains_only_builtins_expr(unify(_, _, _, Uni, _)) :-
+contains_only_builtins_expr(if_then_else(_Vars, Cond, Then, Else))
+        = OnlyBuiltins :-
+    (
+        contains_only_builtins(Cond) = yes,
+        contains_only_builtins(Then) = yes,
+        contains_only_builtins(Else) = yes
+    ->
+        OnlyBuiltins = yes
+    ;
+        OnlyBuiltins = no
+    ).
+contains_only_builtins_expr(call(_, _, _, BuiltinState, _, _))
+        = OnlyBuiltins :-
+    (
+        BuiltinState = inline_builtin,
+        OnlyBuiltins = yes
+    ;
+        BuiltinState = out_of_line_builtin,
+        OnlyBuiltins = no
+        ;
+        BuiltinState = not_builtin,
+        OnlyBuiltins = no
+    ).
+contains_only_builtins_expr(unify(_, _, _, Uni, _)) = OnlyBuiltins :-
     % Complicated unifies are _non_builtin_
     (
-        Uni = assign(_, _)
+        Uni = assign(_, _),
+        OnlyBuiltins = yes
     ;
-        Uni = simple_test(_, _)
+        Uni = simple_test(_, _),
+        OnlyBuiltins = yes
     ;
         Uni = construct(_, _, _, _, _, _, SubInfo),
         (
-            SubInfo = no_construct_sub_info
+            SubInfo = no_construct_sub_info,
+            OnlyBuiltins = yes
         ;
-            SubInfo = construct_sub_info(no, _)
+            SubInfo = construct_sub_info(TakeAddressFields, _),
+            (
+                TakeAddressFields = no,
+                OnlyBuiltins = yes
+            ;
+                TakeAddressFields = yes(_),
+                OnlyBuiltins = no
+            )
         )
     ;
-        Uni = deconstruct(_, _, _, _, _, _)
+        Uni = deconstruct(_, _, _, _, _, _),
+        OnlyBuiltins = yes
+    ;
+        Uni = complicated_unify(_, _, _),
+        OnlyBuiltins = no
+    ).
+contains_only_builtins_expr(foreign_proc(_, _, _, _, _, _)) = no.
+contains_only_builtins_expr(generic_call(_, _, _, _)) = no.
+contains_only_builtins_expr(shorthand(_)) = no.
+
+:- func contains_only_builtins_cases(list(case)) = bool.
+
+contains_only_builtins_cases([]) = yes.
+contains_only_builtins_cases([case(_ConsId, Goal) | Cases]) = OnlyBuiltins :-
+    ( contains_only_builtins(Goal) = yes ->
+        OnlyBuiltins = contains_only_builtins_cases(Cases)
+    ;
+        OnlyBuiltins = no
     ).
 
-:- pred contains_only_builtins_cases(list(case)::in) is semidet.
+:- func contains_only_builtins_list(list(hlds_goal)) = bool.
 
-contains_only_builtins_cases([]).
-contains_only_builtins_cases([case(_ConsId, Goal) | Cases]) :-
-    contains_only_builtins(Goal),
-    contains_only_builtins_cases(Cases).
-
-:- pred contains_only_builtins_list(list(hlds_goal)::in) is semidet.
-
-contains_only_builtins_list([]).
-contains_only_builtins_list([Goal | Goals]) :-
-    contains_only_builtins(Goal),
-    contains_only_builtins_list(Goals).
+contains_only_builtins_list([]) = yes.
+contains_only_builtins_list([Goal | Goals]) = OnlyBuiltins :-
+    ( contains_only_builtins(Goal) = yes ->
+        OnlyBuiltins = contains_only_builtins_list(Goals)
+    ;
+        OnlyBuiltins = no
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_switch(prog_var::in, cons_id::in, hlds_goal::in,
+:- pred middle_rec_generate_switch(prog_var::in, cons_id::in, hlds_goal::in,
     hlds_goal::in, hlds_goal_info::in, code_tree::out,
     code_info::in, code_info::out) is semidet.
 
-middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
+middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         Instrs, !CI) :-
     code_info__get_stack_slots(!.CI, StackSlots),
     code_info__get_varset(!.CI, VarSet),
@@ -347,12 +392,12 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_downloop_test(list(instruction)::in, label::in,
+:- pred generate_downloop_test(list(instruction)::in, label::in,
     list(instruction)::out) is det.
 
-middle_rec__generate_downloop_test([], _, _) :-
+generate_downloop_test([], _, _) :-
     unexpected(this_file, "generate_downloop_test on empty list").
-middle_rec__generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
+generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
     ( Instr0 = if_val(Test, _OldTarget) - _Comment ->
         (
             Instrs0 = []
@@ -365,18 +410,18 @@ middle_rec__generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
         code_util__neg_rval(Test, NewTest),
         Instrs = [if_val(NewTest, label(Target)) - "test on downward loop"]
     ;
-        middle_rec__generate_downloop_test(Instrs0, Target, Instrs1),
+        generate_downloop_test(Instrs0, Target, Instrs1),
         Instrs = [Instr0 | Instrs1]
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__split_rec_code(list(instruction)::in,
+:- pred split_rec_code(list(instruction)::in,
     list(instruction)::out, list(instruction)::out) is det.
 
-middle_rec__split_rec_code([], _, _) :-
+split_rec_code([], _, _) :-
     unexpected(this_file, "did not find call in split_rec_code").
-middle_rec__split_rec_code([Instr0 | Instrs1], Before, After) :-
+split_rec_code([Instr0 | Instrs1], Before, After) :-
     ( Instr0 = call(_, _, _, _, _, _) - _ ->
         (
             opt_util__skip_comments(Instrs1, Instrs2),
@@ -389,7 +434,7 @@ middle_rec__split_rec_code([Instr0 | Instrs1], Before, After) :-
             unexpected(this_file, "split_rec_code: call not followed by label")
         )
     ;
-        middle_rec__split_rec_code(Instrs1, Before1, After),
+        split_rec_code(Instrs1, Before1, After),
         Before = [Instr0 | Before1]
     ).
 

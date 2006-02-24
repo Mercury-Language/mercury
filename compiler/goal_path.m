@@ -132,13 +132,9 @@ mode_equiv_step(Step) :-
 
 fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
     (
-        Goal0 = conj(Goals0),
+        Goal0 = conj(ConjType, Goals0),
         fill_conj_slots(Path0, 0, SlotInfo, Goals0, Goals),
-        Goal = conj(Goals)
-    ;
-        Goal0 = par_conj(Goals0),
-        fill_conj_slots(Path0, 0, SlotInfo, Goals0, Goals),
-        Goal = par_conj(Goals)
+        Goal = conj(ConjType, Goals)
     ;
         Goal0 = disj(Goals0),
         fill_disj_slots(Path0, 0, SlotInfo, Goals0, Goals),

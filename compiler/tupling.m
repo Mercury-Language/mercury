@@ -1080,11 +1080,15 @@ count_load_stores_in_goal(scope(_Reason, Goal) - _GoalInfo, CountInfo,
         !CountState) :-
     count_load_stores_in_goal(Goal, CountInfo, !CountState).
 
-count_load_stores_in_goal(conj(Goals) - _GoalInfo, CountInfo, !CountState) :-
-    count_load_stores_in_conj(Goals, CountInfo, !CountState).
-
-count_load_stores_in_goal(par_conj(_) - _, _, !_) :-
-    sorry(this_file, "tupling with parallel conjunctions").
+count_load_stores_in_goal(conj(ConjType, Goals) - _GoalInfo, CountInfo,
+        !CountState) :-
+    (
+        ConjType = plain_conj,
+        count_load_stores_in_conj(Goals, CountInfo, !CountState)
+    ;
+        ConjType = parallel_conj,
+        sorry(this_file, "tupling with parallel conjunctions")
+    ).
 
 count_load_stores_in_goal(disj(Goals) - _GoalInfo, CountInfo, !CountState) :-
     count_load_stores_in_disj(Goals, CountInfo, !CountState).
@@ -1713,16 +1717,18 @@ fix_calls_in_goal(scope(Reason, Goal0) - GoalInfo,
         !VarSet, !VarTypes, TransformMap) :-
     fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap).
 
-fix_calls_in_goal(conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap) :-
-    fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, TransformMap).
-
-fix_calls_in_goal(par_conj(Goals0) - GoalInfo, par_conj(Goals) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap) :-
-    % XXX: I am not sure whether parallel conjunctions should be treated
-    % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
-    % this is untested.
-    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes, TransformMap).
+fix_calls_in_goal(conj(ConjType, Goals0) - GoalInfo,
+        conj(ConjType, Goals) - GoalInfo, !VarSet, !VarTypes, TransformMap) :-
+    (
+        ConjType = plain_conj,
+        fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, TransformMap)
+    ;
+        ConjType = parallel_conj,
+        % XXX: I am not sure whether parallel conjunctions should be treated
+        % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
+        % this is untested.
+        fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes, TransformMap)
+    ).
 
 fix_calls_in_goal(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo,
         !VarSet, !VarTypes, TransformMap) :-
@@ -1753,7 +1759,7 @@ fix_calls_in_conj([], [], !VarSet, !VarTypes, _).
 fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes, TransformMap) :-
     fix_calls_in_goal(Goal0, Goal1, !VarSet, !VarTypes, TransformMap),
     fix_calls_in_conj(Goals0, Goals1, !VarSet, !VarTypes, TransformMap),
-    ( Goal1 = conj(ConjGoals) - _ ->
+    ( Goal1 = conj(plain_conj, ConjGoals) - _ ->
         Goals = ConjGoals ++ Goals1
     ;
         Goals = [Goal1 | Goals1]

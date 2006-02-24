@@ -21,6 +21,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+:- import_module bool.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -113,11 +114,10 @@
     %
 :- pred goal_can_loop_or_throw(hlds_goal::in) is semidet.
 
-    % goal_is_flat(Goal) is true if Goal does not contain any
-    % branched structures (ie if-then-else or disjunctions or
-    % switches.)
+    % goal_is_flat(Goal) return `yes' if Goal does not contain any
+    % branched structures (ie if-then-else or disjunctions or switches.)
     %
-:- pred goal_is_flat(hlds_goal::in) is semidet.
+:- func goal_is_flat(hlds_goal) = bool.
 
     % Determine whether a goal might allocate some heap space, i.e.
     % whether it contains any construction unifications or predicate
@@ -204,11 +204,9 @@ goal_can_throw(GoalExpr - GoalInfo, Result, !ModuleInfo, !IO) :-
 
 goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     (
-        Goal = conj(Goals)
+        Goal = conj(_, Goals)
     ;
         Goal = disj(Goals)
-    ;
-        Goal = par_conj(Goals)
     ;
         Goal = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
         Goals = [IfGoal, ThenGoal, ElseGoal]
@@ -341,10 +339,12 @@ goal_cannot_loop_aux(MaybeModuleInfo, Goal) :-
     Goal = GoalExpr - _,
     goal_cannot_loop_expr(MaybeModuleInfo, GoalExpr).
 
+    % XXX This predicate should be replaced by a function returning a bool.
+    %
 :- pred goal_cannot_loop_expr(maybe(module_info)::in, hlds_goal_expr::in)
     is semidet.
 
-goal_cannot_loop_expr(MaybeModuleInfo, conj(Goals)) :-
+goal_cannot_loop_expr(MaybeModuleInfo, conj(plain_conj, Goals)) :-
     list__member(Goal, Goals) =>
         goal_cannot_loop_aux(MaybeModuleInfo, Goal).
 goal_cannot_loop_expr(MaybeModuleInfo, disj(Goals)) :-
@@ -409,10 +409,12 @@ goal_cannot_throw_aux(MaybeModuleInfo, GoalExpr - GoalInfo) :-
     not Determinism = erroneous,
     goal_cannot_throw_expr(MaybeModuleInfo, GoalExpr).
 
+    % XXX This predicate should be replaced by a function returning a bool.
+    %
 :- pred goal_cannot_throw_expr(maybe(module_info)::in, hlds_goal_expr::in)
     is semidet.
 
-goal_cannot_throw_expr(MaybeModuleInfo, conj(Goals)) :-
+goal_cannot_throw_expr(MaybeModuleInfo, conj(plain_conj, Goals)) :-
     list.member(Goal, Goals) =>
         goal_cannot_throw_aux(MaybeModuleInfo, Goal).
 goal_cannot_throw_expr(MaybeModuleInfo, disj(Goals)) :-
@@ -459,28 +461,38 @@ goal_cannot_throw_expr(_, unify(_, _, _, Uni, _)) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_is_flat(Goal - _GoalInfo) :-
-    goal_is_flat_expr(Goal).
+goal_is_flat(Goal - _GoalInfo) = goal_is_flat_expr(Goal).
 
-:- pred goal_is_flat_expr(hlds_goal_expr::in) is semidet.
+:- func goal_is_flat_expr(hlds_goal_expr) = bool.
 
-goal_is_flat_expr(conj(Goals)) :-
-    goal_is_flat_list(Goals).
-goal_is_flat_expr(not(Goal)) :-
-    goal_is_flat(Goal).
-goal_is_flat_expr(scope(_, Goal)) :-
-    goal_is_flat(Goal).
-goal_is_flat_expr(generic_call(_, _, _, _)).
-goal_is_flat_expr(call(_, _, _, _, _, _)).
-goal_is_flat_expr(unify(_, _, _, _, _)).
-goal_is_flat_expr(foreign_proc(_, _, _, _, _, _)).
+goal_is_flat_expr(generic_call(_, _, _, _)) = yes.
+goal_is_flat_expr(call(_, _, _, _, _, _)) = yes.
+goal_is_flat_expr(unify(_, _, _, _, _)) = yes.
+goal_is_flat_expr(foreign_proc(_, _, _, _, _, _)) = yes.
+goal_is_flat_expr(conj(ConjType, Goals)) = IsFlat :-
+    (
+        ConjType = parallel_conj,
+        IsFlat = no
+    ;
+        ConjType = plain_conj,
+        IsFlat = goal_is_flat_list(Goals)
+    ).
+goal_is_flat_expr(disj(_)) = no.
+goal_is_flat_expr(switch(_, _, _)) = no.
+goal_is_flat_expr(if_then_else(_, _, _, _)) = no.
+goal_is_flat_expr(not(Goal)) = goal_is_flat(Goal).
+goal_is_flat_expr(scope(_, Goal)) = goal_is_flat(Goal).
+goal_is_flat_expr(shorthand(_)) = no.
 
-:- pred goal_is_flat_list(list(hlds_goal)::in) is semidet.
+:- func goal_is_flat_list(list(hlds_goal)) = bool.
 
-goal_is_flat_list([]).
-goal_is_flat_list([Goal | Goals]) :-
-    goal_is_flat(Goal),
-    goal_is_flat_list(Goals).
+goal_is_flat_list([]) = yes.
+goal_is_flat_list([Goal | Goals]) = IsFlat :-
+    ( goal_is_flat(Goal) = yes ->
+        IsFlat = goal_is_flat_list(Goals)
+    ;
+        IsFlat = no
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -523,9 +535,14 @@ goal_may_allocate_heap_2(scope(_, Goal), May) :-
     goal_may_allocate_heap(Goal, May).
 goal_may_allocate_heap_2(not(Goal), May) :-
     goal_may_allocate_heap(Goal, May).
-goal_may_allocate_heap_2(conj(Goals), May) :-
-    goal_list_may_allocate_heap(Goals, May).
-goal_may_allocate_heap_2(par_conj(_), yes).
+goal_may_allocate_heap_2(conj(ConjType, Goals), May) :-
+    (
+        ConjType = parallel_conj,
+        May = yes
+    ;
+        ConjType = plain_conj,
+        goal_list_may_allocate_heap(Goals, May)
+    ).
 goal_may_allocate_heap_2(disj(Goals), May) :-
     goal_list_may_allocate_heap(Goals, May).
 goal_may_allocate_heap_2(switch(_Var, _Det, Cases), May) :-
@@ -582,7 +599,8 @@ cannot_stack_flush_2(unify(_, _, _, Unify, _)) :-
     Unify \= complicated_unify(_, _, _).
 cannot_stack_flush_2(call(_, _, _, BuiltinState, _, _)) :-
     BuiltinState = inline_builtin.
-cannot_stack_flush_2(conj(Goals)) :-
+cannot_stack_flush_2(conj(ConjType, Goals)) :-
+    ConjType = plain_conj,
     cannot_stack_flush_goals(Goals).
 cannot_stack_flush_2(switch(_, _, Cases)) :-
     cannot_stack_flush_cases(Cases).
@@ -617,7 +635,8 @@ cannot_fail_before_stack_flush(GoalExpr - GoalInfo) :-
 
 :- pred cannot_fail_before_stack_flush_2(hlds_goal_expr::in) is semidet.
 
-cannot_fail_before_stack_flush_2(conj(Goals)) :-
+cannot_fail_before_stack_flush_2(conj(ConjType, Goals)) :-
+    ConjType = plain_conj,
     cannot_fail_before_stack_flush_conj(Goals).
 
 :- pred cannot_fail_before_stack_flush_conj(list(hlds_goal)::in) is semidet.
@@ -668,9 +687,7 @@ count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
     ;
         Count = 0
     ).
-count_recursive_calls_2(conj(Goals), PredId, ProcId, Min, Max) :-
-    count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0, Min, Max).
-count_recursive_calls_2(par_conj(Goals), PredId, ProcId, Min, Max) :-
+count_recursive_calls_2(conj(_, Goals), PredId, ProcId, Min, Max) :-
     count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0, Min, Max).
 count_recursive_calls_2(disj(Goals), PredId, ProcId, Min, Max) :-
     count_recursive_calls_disj(Goals, PredId, ProcId, Min, Max).

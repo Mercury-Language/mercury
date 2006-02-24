@@ -622,10 +622,7 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 traverse_goal(Info, Goal, !VarDep) :-
     Goal = GoalExpr - _GoalInfo,
     (
-        GoalExpr = conj(Goals),
-        traverse_list_of_goals(Info, Goals, !VarDep)
-    ;
-        GoalExpr = par_conj(Goals),
+        GoalExpr = conj(_ConjType, Goals),
         traverse_list_of_goals(Info, Goals, !VarDep)
     ;
         GoalExpr = disj(Goals),
@@ -1431,14 +1428,9 @@ fixup_goal(Goal0, Goal, !Info, Changed) :-
 
 fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
     (
-        GoalExpr0 = conj(Goals0),
+        GoalExpr0 = conj(ConjType, Goals0),
         fixup_conjuncts(Goals0, Goals, !Info, no, Changed),
-        GoalExpr = conj(Goals),
-        Goal = GoalExpr - GoalInfo0
-    ;
-        GoalExpr0 = par_conj(Goals0),
-        fixup_conjuncts(Goals0, Goals, !Info, no, Changed),
-        GoalExpr = par_conj(Goals),
+        GoalExpr = conj(ConjType, Goals),
         Goal = GoalExpr - GoalInfo0
     ;
         GoalExpr0 = disj(Goals0),
@@ -1490,7 +1482,7 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
             GoalExpr = GoalExpr0,
             Changed = ChangedPrime
         ;
-            GoalExpr = conj([]),
+            GoalExpr = true_goal_expr,
             Changed = yes
         ),
         Goal = GoalExpr - GoalInfo0
@@ -1563,8 +1555,8 @@ fixup_conjuncts([Goal0 | Goals0], Goals, !Info, !Changed) :-
     ;
         LocalChanged = no
     ),
-    % Replacing a goal with conj([]) signals that it is no longer needed.
-    ( Goal = conj([]) - _ ->
+    % Replacing a goal with true signals that it is no longer needed.
+    ( Goal = true_goal_expr - _ ->
         Goals = Goals1
     ;
         Goals = [Goal | Goals1]

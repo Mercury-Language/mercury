@@ -508,10 +508,8 @@ rename_vars_in_goal(Must, Subn, Goal0 - GoalInfo0, Goal - GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-rename_vars_in_goal_expr(Must, Subn, conj(Goals0), conj(Goals)) :-
-    rename_vars_in_goals(Must, Subn, Goals0, Goals).
-
-rename_vars_in_goal_expr(Must, Subn, par_conj(Goals0), par_conj(Goals)) :-
+rename_vars_in_goal_expr(Must, Subn, conj(ConjType, Goals0),
+        conj(ConjType, Goals)) :-
     rename_vars_in_goals(Must, Subn, Goals0, Goals).
 
 rename_vars_in_goal_expr(Must, Subn, disj(Goals0), disj(Goals)) :-
@@ -543,9 +541,9 @@ rename_vars_in_goal_expr(Must, Subn,
         Reason0 = promise_purity(_, _),
         Reason = Reason0
     ;
-        Reason0 = promise_equivalent_solutions(Vars0),
+        Reason0 = promise_solutions(Vars0, Kind),
         rename_var_list(Must, Subn, Vars0, Vars),
-        Reason = promise_equivalent_solutions(Vars)
+        Reason = promise_solutions(Vars, Kind)
     ;
         Reason0 = barrier(_),
         Reason = Reason0
@@ -800,10 +798,7 @@ goal_vars_2(generic_call(GenericCall, ArgVars, _, _), !Set) :-
 goal_vars_2(call(_, _, ArgVars, _, _, _), !Set) :-
     svset__insert_list(ArgVars, !Set).
 
-goal_vars_2(conj(Goals), !Set) :-
-    goals_goal_vars(Goals, !Set).
-
-goal_vars_2(par_conj(Goals), !Set) :-
+goal_vars_2(conj(_, Goals), !Set) :-
     goals_goal_vars(Goals, !Set).
 
 goal_vars_2(disj(Goals), !Set) :-
@@ -820,7 +815,7 @@ goal_vars_2(scope(Reason, Goal - _), !Set) :-
     ;
         Reason = promise_purity(_, _)
     ;
-        Reason = promise_equivalent_solutions(Vars),
+        Reason = promise_solutions(Vars, _),
         svset__insert_list(Vars, !Set)
     ;
         Reason = barrier(_)
@@ -907,13 +902,9 @@ attach_features_to_case(Features, case(ConsId, Goal0), case(ConsId, Goal)) :-
 
 attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
     (
-        GoalExpr0 = conj(Goals0),
+        GoalExpr0 = conj(ConjType, Goals0),
         list__map(attach_features_to_all_goals(Features), Goals0, Goals),
-        GoalExpr = conj(Goals)
-    ;
-        GoalExpr0 = par_conj(Goals0),
-        list__map(attach_features_to_all_goals(Features), Goals0, Goals),
-        GoalExpr = par_conj(Goals)
+        GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
         list__map(attach_features_to_all_goals(Features), Goals0, Goals),
@@ -1042,11 +1033,15 @@ cases_size([case(_, Goal) | Cases], Size) :-
 
 :- pred goal_expr_size(hlds_goal_expr::in, int::out) is det.
 
-goal_expr_size(conj(Goals), Size) :-
-    goals_size(Goals, Size).
-goal_expr_size(par_conj(Goals), Size) :-
-    goals_size(Goals, Size1),
-    Size = Size1 + 1.
+goal_expr_size(conj(ConjType, Goals), Size) :-
+    goals_size(Goals, InnerSize),
+    (
+        ConjType = plain_conj,
+        Size = InnerSize
+    ;
+        ConjType = parallel_conj,
+        Size = InnerSize + 1
+    ).
 goal_expr_size(disj(Goals), Size) :-
     goals_size(Goals, Size1),
     Size = Size1 + 1.
@@ -1116,9 +1111,7 @@ cases_calls([case(_, Goal) | Cases], PredProcId) :-
 :- mode goal_expr_calls(in, in) is semidet.
 :- mode goal_expr_calls(in, out) is nondet.
 
-goal_expr_calls(conj(Goals), PredProcId) :-
-    goals_calls(Goals, PredProcId).
-goal_expr_calls(par_conj(Goals), PredProcId) :-
+goal_expr_calls(conj(_ConjType, Goals), PredProcId) :-
     goals_calls(Goals, PredProcId).
 goal_expr_calls(disj(Goals), PredProcId) :-
     goals_calls(Goals, PredProcId).
@@ -1176,9 +1169,7 @@ cases_calls_pred_id([case(_, Goal) | Cases], PredId) :-
 :- mode goal_expr_calls_pred_id(in, in) is semidet.
 :- mode goal_expr_calls_pred_id(in, out) is nondet.
 
-goal_expr_calls_pred_id(conj(Goals), PredId) :-
-    goals_calls_pred_id(Goals, PredId).
-goal_expr_calls_pred_id(par_conj(Goals), PredId) :-
+goal_expr_calls_pred_id(conj(_ConjType, Goals), PredId) :-
     goals_calls_pred_id(Goals, PredId).
 goal_expr_calls_pred_id(disj(Goals), PredId) :-
     goals_calls_pred_id(Goals, PredId).
@@ -1207,11 +1198,9 @@ goal_contains_reconstruction(_Goal - _) :-
 
 :- pred goal_expr_contains_reconstruction(hlds_goal_expr::in) is semidet.
 
-goal_expr_contains_reconstruction(conj(Goals)) :-
+goal_expr_contains_reconstruction(conj(_ConjType, Goals)) :-
     goals_contain_reconstruction(Goals).
 goal_expr_contains_reconstruction(disj(Goals)) :-
-    goals_contain_reconstruction(Goals).
-goal_expr_contains_reconstruction(par_conj(Goals)) :-
     goals_contain_reconstruction(Goals).
 goal_expr_contains_reconstruction(switch(_, _, Cases)) :-
     list__member(Case, Cases),
@@ -1235,18 +1224,11 @@ goals_contain_reconstruction(Goals) :-
 
 %-----------------------------------------------------------------------------%
 
-    % goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
-    % i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
-    % or indirect sub-goal.
-    %
 goal_contains_goal(Goal, Goal).
 goal_contains_goal(Goal - _, SubGoal) :-
     direct_subgoal(Goal, DirectSubGoal),
     goal_contains_goal(DirectSubGoal, SubGoal).
 
-    % direct_subgoal(Goal, SubGoal) is true iff SubGoal is
-    % a direct sub-goal of Goal.
-    %
 direct_subgoal(scope(_, Goal), Goal).
 direct_subgoal(not(Goal), Goal).
 direct_subgoal(if_then_else(_, If, Then, Else), Goal) :-
@@ -1254,9 +1236,7 @@ direct_subgoal(if_then_else(_, If, Then, Else), Goal) :-
     ; Goal = Then
     ; Goal = Else
     ).
-direct_subgoal(conj(ConjList), Goal) :-
-    list__member(Goal, ConjList).
-direct_subgoal(par_conj(ConjList), Goal) :-
+direct_subgoal(conj(_ConjType, ConjList), Goal) :-
     list__member(Goal, ConjList).
 direct_subgoal(disj(DisjList), Goal) :-
     list__member(Goal, DisjList).
@@ -1324,7 +1304,7 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
     infer_goal_info_purity(CaseGoalInfo, CasePurity),
     goal_info_init(CaseNonLocals, InstMapDelta,
         Detism, CasePurity, CombinedGoalInfo),
-    Disjunct = conj(GoalList) - CombinedGoalInfo.
+    Disjunct = conj(plain_conj, GoalList) - CombinedGoalInfo.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -94,38 +94,40 @@ delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
 
 delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
     (
-        GoalExpr0 = conj(Goals0),
-        goal_info_get_determinism(GoalInfo0, Detism),
-        determinism_components(Detism, CanFail, MaxSoln),
+        GoalExpr0 = conj(ConjType, Goals0),
         (
-            % If the conjunction cannot fail, then its conjuncts cannot fail
-            % either, so we have no hope of pushing a construction past a
-            % failing goal.
-            %
-            % If the conjuntion contains goals that can succeed more than once,
-            % which is possible if MaxSoln is at_most_many or at_most_many_cc,
-            % then moving a construction to the right may increase the number
-            % of times the construction is executed. We are therefore careful
-            % to make sure delay_construct_in_conj doesn't move constructions
-            % across goals that succeed more than once.
-            %
-            % If the conjunction cannot succeed, i.e. MaxSoln is at_most_zero,
-            % there is no point in trying to speed it up.
+            ConjType = plain_conj,
+            goal_info_get_determinism(GoalInfo0, Detism),
+            determinism_components(Detism, CanFail, MaxSoln),
+            (
+                % If the conjunction cannot fail, then its conjuncts cannot
+                % fail either, so we have no hope of pushing a construction
+                % past a failing goal.
+                %
+                % If the conjuntion contains goals that can succeed more than
+                % once, which is possible if MaxSoln is at_most_many or
+                % at_most_many_cc, then moving a construction to the right
+                % may increase the number of times the construction is
+                % executed. We are therefore careful to make sure
+                % delay_construct_in_conj doesn't move constructions
+                % across goals that succeed more than once. If the conjunction
+                % cannot succeed, i.e. MaxSoln is at_most_zero, there is no
+                % point in trying to speed it up.
 
-            CanFail = can_fail,
-            MaxSoln \= at_most_zero
-        ->
-            delay_construct_in_conj(Goals0, InstMap0, DelayInfo, set__init, [],
-                Goals1)
+                CanFail = can_fail,
+                MaxSoln \= at_most_zero
+            ->
+                delay_construct_in_conj(Goals0, InstMap0, DelayInfo, set__init,
+                    [], Goals1)
+            ;
+                Goals1 = Goals0
+            )
         ;
+            ConjType = parallel_conj,
             Goals1 = Goals0
         ),
         delay_construct_in_goals(Goals1, InstMap0, DelayInfo, Goals),
-        Goal = conj(Goals) - GoalInfo0
-    ;
-        GoalExpr0 = par_conj(Goals0),
-        delay_construct_in_goals(Goals0, InstMap0, DelayInfo, Goals),
-        Goal = par_conj(Goals) - GoalInfo0
+        Goal = conj(ConjType, Goals) - GoalInfo0
     ;
         GoalExpr0 = disj(Goals0),
         delay_construct_in_goals(Goals0, InstMap0, DelayInfo, Goals),

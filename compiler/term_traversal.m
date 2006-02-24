@@ -182,11 +182,7 @@ traverse_goal_2(Goal, _GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
         unexpected(this_file, "traverse_goal_2/5: complicated unify.")
     ).
 
-traverse_goal_2(conj(Goals), _, Params, !Info, !ModuleInfo, !IO) :-
-    list.reverse(Goals, RevGoals),
-    traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO).
-
-traverse_goal_2(par_conj(Goals), _, Params, !Info, !ModuleInfo, !IO) :-
+traverse_goal_2(conj(_, Goals), _, Params, !Info, !ModuleInfo, !IO) :-
     list.reverse(Goals, RevGoals),
     traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO).
 

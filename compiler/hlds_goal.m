@@ -41,10 +41,33 @@
 
 :- type hlds_goal_expr
 
-    --->    conj(hlds_goals)
-            % A conjunction. NOTE: conjunctions must be fully flattened before
-            % mode analysis. As a general rule, it is a good idea to keep them
-            % flattened.
+    --->    unify(
+                % A unification. Initially only the terms and the context
+                % are known. Mode analysis fills in the missing information.
+
+                unify_lhs           :: prog_var,
+                                    % The variable on the left hand side
+                                    % of the unification.  NOTE: for
+                                    % convenience this field is duplicated
+                                    % in the unification structure below.
+
+                unify_rhs           :: unify_rhs,
+                                    % Whatever is on the right hand side
+                                    % of the unification.
+
+                unify_mode          :: unify_mode,
+                                    % the mode of the unification.
+
+                unify_kind          :: unification,
+                                    % This field says what category of
+                                    % unification it is, and contains
+                                    % information specific to each category.
+
+                unify_context       :: unify_context
+                                    % The location of the unification
+                                    % in the original source code
+                                    % (for use in error messages).
+            )
 
     ;       call(
                 % A predicate call. Initially only the sym_name, arguments,
@@ -96,6 +119,39 @@
                                     % The determinism of the call.
             )
 
+    ;       foreign_proc(
+                % Foreign code from a pragma foreign_proc(...) decl.
+
+                foreign_attr        :: pragma_foreign_proc_attributes,
+
+                foreign_pred_id     :: pred_id,
+                                    % The called predicate.
+
+                foreign_proc_id     :: proc_id,
+                                    % The mode of the predicate.
+
+                foreign_args        :: list(foreign_arg),
+                foreign_extra_args  :: list(foreign_arg),
+                                    % Extra arguments added when compiler
+                                    % passes such as tabling stuff more
+                                    % code into a foreign proc than the
+                                    % declared interface of the called
+                                    % Mercury procedure would allow.
+
+                foreign_impl        :: pragma_foreign_code_impl
+                                    % Extra information for model_non
+                                    % pragma_foreign_codes; none for others.
+            )
+
+    ;       conj(conj_type, hlds_goals)
+            % A conjunction. NOTE: plain conjunctions must be fully flattened
+            % before mode analysis. As a general rule, it is a good idea to
+            % keep them flattened.
+
+    ;       disj(hlds_goals)
+            % A disjunction.
+            % NOTE: disjunctions should be fully flattened.
+
     ;       switch(
                 % Deterministic disjunctions are converted into switches
                 % by the switch detection pass.
@@ -110,38 +166,6 @@
 
                 switch_cases        :: list(case)
             )
-
-    ;       unify(
-                % A unification. Initially only the terms and the context
-                % are known. Mode analysis fills in the missing information.
-
-                unify_lhs           :: prog_var,
-                                    % The variable on the left hand side
-                                    % of the unification.  NOTE: for
-                                    % convenience this field is duplicated
-                                    % in the unification structure below.
-
-                unify_rhs           :: unify_rhs,
-                                    % Whatever is on the right hand side
-                                    % of the unification.
-
-                unify_mode          :: unify_mode,
-                                    % the mode of the unification.
-
-                unify_kind          :: unification,
-                                    % This field says what category of
-                                    % unification it is, and contains
-                                    % information specific to each category.
-
-                unify_context       :: unify_context
-                                    % The location of the unification
-                                    % in the original source code
-                                    % (for use in error messages).
-            )
-
-    ;       disj(hlds_goals)
-            % A disjunction.
-            % NOTE: disjunctions should be fully flattened.
 
     ;       not(hlds_goal)
             % A negation.
@@ -172,38 +196,19 @@
                 ite_else            :: hlds_goal    % The <Else> part
             )
 
-    ;       foreign_proc(
-                % Foreign code from a pragma foreign_proc(...) decl.
-
-                foreign_attr        :: pragma_foreign_proc_attributes,
-
-                foreign_pred_id     :: pred_id,
-                                    % The called predicate.
-
-                foreign_proc_id     :: proc_id,
-                                    % The mode of the predicate.
-
-                foreign_args        :: list(foreign_arg),
-                foreign_extra_args  :: list(foreign_arg),
-                                    % Extra arguments added when compiler
-                                    % passes such as tabling stuff more
-                                    % code into a foreign proc than the
-                                    % declared interface of the called
-                                    % Mercury procedure would allow.
-
-                foreign_impl        :: pragma_foreign_code_impl
-                                    % Extra information for model_non
-                                    % pragma_foreign_codes; none for others.
-            )
-
-    ;       par_conj(hlds_goals)
-            % Parallel conjunction.
-
     ;       shorthand(shorthand_goal_expr).
             % Goals that stand for some other, usually bigger goal.
             % All shorthand goals are eliminated during or shortly after
             % the construction of the HLDS, so most passes of the compiler
             % will just call error/1 if they occur.
+
+:- type conj_type
+    --->    plain_conj
+    ;       parallel_conj.
+
+:- type after_semantic_analysis
+    --->    before_semantic_analysis
+    ;       after_semantic_analysis.
 
     % Instances of these `shorthand' goals are implemented by a
     % hlds --> hlds transformation that replaces them with
@@ -227,7 +232,7 @@
             % existentially quantified. The compiler may do whatever
             % preserves this fact.
 
-    ;       promise_equivalent_solutions(list(prog_var))
+    ;       promise_solutions(list(prog_var), promise_solutions_kind)
             % Even though the code inside the scope may have multiple
             % solutions, the creator of the scope (which may be the user
             % or a compiler pass) promises that all these solutions are
@@ -296,6 +301,10 @@
             %
             % This kind of scope is not intended to be meaningful after
             % mode analysis, and should be removed after mode analysis.
+
+:- type promise_solutions_kind
+    --->    equivalent_solutions
+    ;       same_solutions.
 
 :- type removable
     --->    removable
@@ -1006,11 +1015,23 @@
                             % probably has many arms (possibly several
                             % thousand). This feature may be attached to
                             % switches as well as disjunctions.
-                            
-    ;       will_not_modify_trail.
+
+    ;       will_not_modify_trail
                             % This goal will not modify the trail, so it
-                            % is safe for the compiler to omit trailing 
+                            % is safe for the compiler to omit trailing
                             % primitives when generating code for this goal.
+
+    ;       promise_same_deconstruct.
+                            % This goal is a deconstruction unification
+                            % occurring in a promise_same_conj conjunction,
+                            % which would naturally have detism cc_multi
+                            % due to the deconstructed variable's type having
+                            % user-defined equality. However, this annotation
+                            % means that the programmer has promised that
+                            % the results of the conjunction don't depend
+                            % on which of the possible concrete representations
+                            % of the abstract value the deconstructed variable
+                            % actually has.
 
     % We can think of the goal that defines a procedure to be a tree,
     % whose leaves are primitive goals and whose interior nodes are
@@ -1138,15 +1159,17 @@
 
     % Return the HLDS equivalent of `true'.
     %
-:- pred true_goal(hlds_goal::out) is det.
+:- func true_goal = hlds_goal.
+:- func true_goal_expr = hlds_goal_expr.
 
-:- pred true_goal(prog_context::in, hlds_goal::out) is det.
+:- func true_goal_with_context(prog_context) = hlds_goal.
 
     % Return the HLDS equivalent of `fail'.
     %
-:- pred fail_goal(hlds_goal::out) is det.
+:- func fail_goal = hlds_goal.
+:- func fail_goal_expr = hlds_goal_expr.
 
-:- pred fail_goal(prog_context::in, hlds_goal::out) is det.
+:- func fail_goal_with_context(prog_context) = hlds_goal.
 
     % Return the union of all the nonlocals of a list of goals.
     %
@@ -1850,14 +1873,14 @@ goal_path_step_to_string(later, "l;").
 %
 
 goal_to_conj_list(Goal, ConjList) :-
-    ( Goal = (conj(List) - _) ->
+    ( Goal = (conj(plain_conj, List) - _) ->
         ConjList = List
     ;
         ConjList = [Goal]
     ).
 
 goal_to_par_conj_list(Goal, ConjList) :-
-    ( Goal = par_conj(List) - _ ->
+    ( Goal = conj(parallel_conj, List) - _ ->
         ConjList = List
     ;
         ConjList = [Goal]
@@ -1874,14 +1897,14 @@ conj_list_to_goal(ConjList, GoalInfo, Goal) :-
     ( ConjList = [Goal0] ->
         Goal = Goal0
     ;
-        Goal = conj(ConjList) - GoalInfo
+        Goal = conj(plain_conj, ConjList) - GoalInfo
     ).
 
 par_conj_list_to_goal(ConjList, GoalInfo, Goal) :-
     ( ConjList = [Goal0] ->
         Goal = Goal0
     ;
-        Goal = par_conj(ConjList) - GoalInfo
+        Goal = conj(parallel_conj, ConjList) - GoalInfo
     ).
 
 disj_list_to_goal(DisjList, GoalInfo, Goal) :-
@@ -1893,16 +1916,16 @@ disj_list_to_goal(DisjList, GoalInfo, Goal) :-
 
 conjoin_goal_and_goal_list(Goal0, Goals, Goal) :-
     Goal0 = GoalExpr0 - GoalInfo0,
-    ( GoalExpr0 = conj(GoalList0) ->
+    ( GoalExpr0 = conj(plain_conj, GoalList0) ->
         list__append(GoalList0, Goals, GoalList),
-        GoalExpr = conj(GoalList)
+        GoalExpr = conj(plain_conj, GoalList)
     ;
-        GoalExpr = conj([Goal0 | Goals])
+        GoalExpr = conj(plain_conj, [Goal0 | Goals])
     ),
     Goal = GoalExpr - GoalInfo0.
 
 conjoin_goals(Goal1, Goal2, Goal) :-
-    ( Goal2 = conj(Goals2) - _ ->
+    ( Goal2 = conj(plain_conj, Goals2) - _ ->
         GoalList = Goals2
     ;
         GoalList = [Goal2]
@@ -1917,7 +1940,7 @@ negate_goal(Goal, GoalInfo, NegatedGoal) :-
         NegatedGoal = Goal1
     ;
         % Convert negated conjunctions of negations into disjunctions.
-        Goal = conj(NegatedGoals) - _,
+        Goal = conj(plain_conj, NegatedGoals) - _,
         all_negated(NegatedGoals, UnnegatedGoals)
     ->
         NegatedGoal = disj(UnnegatedGoals) - GoalInfo
@@ -1930,7 +1953,8 @@ negate_goal(Goal, GoalInfo, NegatedGoal) :-
 all_negated([], []).
 all_negated([not(Goal) - _ | NegatedGoals], [Goal | Goals]) :-
     all_negated(NegatedGoals, Goals).
-all_negated([conj(NegatedConj) - _GoalInfo | NegatedGoals], Goals) :-
+all_negated([conj(plain_conj, NegatedConj) - _GoalInfo | NegatedGoals],
+        Goals) :-
     all_negated(NegatedConj, Goals1),
     all_negated(NegatedGoals, Goals2),
     list__append(Goals1, Goals2, Goals).
@@ -1943,7 +1967,7 @@ all_negated([conj(NegatedConj) - _GoalInfo | NegatedGoals], Goals) :-
 goal_has_foreign(Goal) = HasForeign :-
     Goal = GoalExpr - _,
     (
-        GoalExpr = conj(Goals),
+        GoalExpr = conj(_, Goals),
         HasForeign = goal_list_has_foreign(Goals)
     ;
         GoalExpr = call(_, _, _, _, _, _),
@@ -1981,9 +2005,6 @@ goal_has_foreign(Goal) = HasForeign :-
     ;
         GoalExpr = foreign_proc(_, _, _, _, _, _),
         HasForeign = yes
-    ;
-        GoalExpr = par_conj(Goals),
-        HasForeign = goal_list_has_foreign(Goals)
     ;
         GoalExpr = shorthand(ShorthandGoal),
         HasForeign = goal_has_foreign_shorthand(ShorthandGoal)
@@ -2023,33 +2044,37 @@ goal_is_atomic(unify(_, _, _, _, _)) = yes.
 goal_is_atomic(generic_call(_, _, _, _)) = yes.
 goal_is_atomic(call(_, _, _, _, _, _)) = yes.
 goal_is_atomic(foreign_proc(_, _, _, _, _,  _)) = yes.
-goal_is_atomic(conj(Conj)) =
+goal_is_atomic(conj(plain_conj, Conj)) =
     ( Conj = [] -> yes ; no ).
+goal_is_atomic(conj(parallel_conj, _)) = no.
 goal_is_atomic(disj(Disj)) =
     ( Disj = [] -> yes ; no ).
 goal_is_atomic(if_then_else(_, _, _, _)) = no.
 goal_is_atomic(not(_)) = no.
 goal_is_atomic(switch(_, _, _)) = no.
 goal_is_atomic(scope(_, _)) = no.
-goal_is_atomic(par_conj(_)) = no.
 goal_is_atomic(shorthand(_)) = no.
 
 %-----------------------------------------------------------------------------%
 
-true_goal(conj([]) - GoalInfo) :-
+true_goal = true_goal_expr - GoalInfo :-
     instmap_delta_init_reachable(InstMapDelta),
     goal_info_init(set__init, InstMapDelta, det, purity_pure, GoalInfo).
 
-true_goal(Context, Goal - GoalInfo) :-
-    true_goal(Goal - GoalInfo0),
+true_goal_expr = conj(plain_conj, []).
+
+true_goal_with_context(Context) = Goal - GoalInfo :-
+    Goal - GoalInfo0 = true_goal,
     goal_info_set_context(Context, GoalInfo0, GoalInfo).
 
-fail_goal(disj([]) - GoalInfo) :-
+fail_goal = fail_goal_expr - GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
     goal_info_init(set__init, InstMapDelta, failure, purity_pure, GoalInfo).
 
-fail_goal(Context, Goal - GoalInfo) :-
-    fail_goal(Goal - GoalInfo0),
+fail_goal_expr = disj([]).
+
+fail_goal_with_context(Context) = Goal - GoalInfo :-
+    Goal - GoalInfo0 = fail_goal,
     goal_info_set_context(Context, GoalInfo0, GoalInfo).
 
 %-----------------------------------------------------------------------------%
@@ -2096,11 +2121,9 @@ set_goal_contexts(Context, Goal0 - GoalInfo0, Goal - GoalInfo) :-
 :- pred set_goal_contexts_2(prog_context::in, hlds_goal_expr::in,
     hlds_goal_expr::out) is det.
 
-set_goal_contexts_2(Context, conj(Goals0), conj(Goals)) :-
+set_goal_contexts_2(Context, conj(ConjType, Goals0), conj(ConjType, Goals)) :-
     list__map(set_goal_contexts(Context), Goals0, Goals).
 set_goal_contexts_2(Context, disj(Goals0), disj(Goals)) :-
-    list__map(set_goal_contexts(Context), Goals0, Goals).
-set_goal_contexts_2(Context, par_conj(Goals0), par_conj(Goals)) :-
     list__map(set_goal_contexts(Context), Goals0, Goals).
 set_goal_contexts_2(Context, if_then_else(Vars, Cond0, Then0, Else0),
         if_then_else(Vars, Cond, Then, Else)) :-

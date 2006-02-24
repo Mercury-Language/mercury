@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,10 +107,8 @@ goal_add_heap_ops(GoalExpr0 - GoalInfo, Goal, !Info) :-
 :- pred goal_expr_add_heap_ops(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, heap_ops_info::in, heap_ops_info::out) is det.
 
-goal_expr_add_heap_ops(conj(Goals0), GI, conj(Goals) - GI, !Info) :-
-    conj_add_heap_ops(Goals0, Goals, !Info).
-
-goal_expr_add_heap_ops(par_conj(Goals0), GI, par_conj(Goals) - GI, !Info) :-
+goal_expr_add_heap_ops(conj(ConjType, Goals0), GI, conj(ConjType, Goals) - GI,
+        !Info) :-
     conj_add_heap_ops(Goals0, Goals, !Info).
 
 goal_expr_add_heap_ops(disj([]), GI, disj([]) - GI, !Info).
@@ -134,7 +132,7 @@ goal_expr_add_heap_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
         gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info),
         disj_add_heap_ops(Goals0, yes, yes(SavedHeapPointerVar), GoalInfo,
             Goals, !Info),
-        Goal = conj([MarkHeapPointerGoal, disj(Goals) - GoalInfo])
+        Goal = conj(plain_conj, [MarkHeapPointerGoal, disj(Goals) - GoalInfo])
     ;
         disj_add_heap_ops(Goals0, yes, no, GoalInfo, Goals, !Info),
         Goal = disj(Goals)
@@ -153,8 +151,8 @@ goal_expr_add_heap_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
     InnerGoal = _ - InnerGoalInfo,
     goal_info_get_determinism(InnerGoalInfo, Determinism),
     determinism_components(Determinism, _CanFail, NumSolns),
-    true_goal(Context, True),
-    fail_goal(Context, Fail),
+    True = true_goal_with_context(Context),
+    Fail = fail_goal_with_context(Context),
     ModuleInfo = !.Info ^ module_info,
     ( NumSolns = at_most_zero ->
         % The "then" part of the if-then-else will be unreachable, but to
@@ -191,9 +189,10 @@ goal_expr_add_heap_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
         gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal,
             !Info),
         Else1 = _ - Else1GoalInfo,
-        Else = conj([RestoreHeapPointerGoal, Else1]) - Else1GoalInfo,
+        Else = conj(plain_conj, [RestoreHeapPointerGoal, Else1])
+            - Else1GoalInfo,
         IfThenElse = if_then_else(A, Cond, Then, Else) - GoalInfo,
-        Goal = conj([MarkHeapPointerGoal, IfThenElse])
+        Goal = conj(plain_conj, [MarkHeapPointerGoal, IfThenElse])
     ;
         Goal = if_then_else(A, Cond, Then, Else1)
     ).
@@ -271,7 +270,8 @@ disj_add_heap_ops([Goal0 | Goals0], IsFirstBranch, MaybeSavedHeapPointerVar,
         % disjunction, so that the heap pointer variable can scope over
         % these disjuncts.
         Disj = disj([Goal | Goals1]) - DisjGoalInfo,
-        DisjGoals = [conj([MarkHeapPointerGoal, Disj]) - DisjGoalInfo]
+        DisjGoals = [conj(plain_conj, [MarkHeapPointerGoal, Disj])
+            - DisjGoalInfo]
     ;
         % Just recursively handle the remaining disjuncts.
         disj_add_heap_ops(Goals0, no, MaybeSavedHeapPointerVar, DisjGoalInfo,

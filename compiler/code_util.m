@@ -270,9 +270,7 @@ goal_may_alloc_temp_frame_2(scope(_, Goal), May) :-
     ).
 goal_may_alloc_temp_frame_2(not(Goal), May) :-
     goal_may_alloc_temp_frame(Goal, May).
-goal_may_alloc_temp_frame_2(conj(Goals), May) :-
-    goal_list_may_alloc_temp_frame(Goals, May).
-goal_may_alloc_temp_frame_2(par_conj(Goals), May) :-
+goal_may_alloc_temp_frame_2(conj(_ConjType, Goals), May) :-
     goal_list_may_alloc_temp_frame(Goals, May).
 goal_may_alloc_temp_frame_2(disj(Goals), May) :-
     goal_list_may_alloc_temp_frame(Goals, May).

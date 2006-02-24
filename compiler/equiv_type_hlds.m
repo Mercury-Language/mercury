@@ -657,16 +657,11 @@ replace_in_goal(EqvMap, Goal0 @ (GoalExpr0 - GoalInfo0), Goal,
     `with_type` replacer(hlds_goal_expr, replace_info)
     `with_inst` replacer.
 
-replace_in_goal_expr(EqvMap, Goal0 @ conj(Goals0), Goal, Changed, !Info) :-
+replace_in_goal_expr(EqvMap, Goal0 @ conj(ConjType, Goals0), Goal, Changed,
+        !Info) :-
     replace_in_list(replace_in_goal(EqvMap), Goals0, Goals,
         Changed, !Info),
-    ( Changed = yes, Goal = conj(Goals)
-    ; Changed = no, Goal = Goal0
-    ).
-replace_in_goal_expr(EqvMap, Goal0 @ par_conj(Goals0), Goal, Changed, !Info) :-
-    replace_in_list(replace_in_goal(EqvMap), Goals0, Goals,
-        Changed, !Info),
-    ( Changed = yes, Goal = par_conj(Goals)
+    ( Changed = yes, Goal = conj(ConjType, Goals)
     ; Changed = no, Goal = Goal0
     ).
 replace_in_goal_expr(EqvMap, Goal0 @ disj(Goals0), Goal, Changed, !Info) :-
@@ -785,7 +780,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         ( Goals = [Goal1 - _] ->
             Goal = Goal1
         ;
-            Goal = conj(Goals)
+            Goal = conj(plain_conj, Goals)
         ),
         !:Info = !.Info ^ recompute := yes
     ;
@@ -801,7 +796,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         Body = eqv_type(_)
     ->
         Changed = yes,
-        Goal = conj([]),
+        Goal = conj(plain_conj, []),
         !:Info = !.Info ^ recompute := yes
     ;
         Goal0 ^ unify_mode = LMode0 - RMode0,

@@ -59,13 +59,13 @@
 
     % Translate a HLDS goal to LLDS.
     %
-:- pred code_gen__generate_goal(code_model::in, hlds_goal::in, code_tree::out,
+:- pred generate_goal(code_model::in, hlds_goal::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
     % Return the message that identifies the procedure to pass to
     % the incr_sp_push_msg macro in the generated C code.
     %
-:- func code_gen__push_msg(module_info, pred_id, proc_id) = string.
+:- func push_msg(module_info, pred_id, proc_id) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -299,7 +299,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         % The set of recorded live values at calls (for value numbering)
         % and returns (for accurate gc and execution tracing) do not yet record
         % the stack slot holding the succip, so add it to those sets.
-        code_gen__add_saved_succip(Instructions0,
+        add_saved_succip(Instructions0,
             SuccipSlot, Instructions)
     ;
         MaybeSuccipSlot = no,
@@ -394,7 +394,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         goal_has_foreign(Goal) = no
     ->
         EmptyLabelCounter = counter__init(0),
-        code_gen__bytecode_stub(ModuleInfo, PredId, ProcId,
+        bytecode_stub(ModuleInfo, PredId, ProcId,
             BytecodeInstructions),
         Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
             BytecodeInstructions, ProcLabel, EmptyLabelCounter, MayAlterRtti)
@@ -503,7 +503,7 @@ maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
     % has set up the code generator state to reflect what the machine
     % state will be on entry to the procedure. Ensuring that the
     % machine state at exit will conform to the expectation
-    % of the caller is the job of code_gen__generate_exit.
+    % of the caller is the job of generate_exit.
     %
     % The reason why we generate the entry code after the body is that
     % information such as the total number of stack slots needed,
@@ -515,12 +515,12 @@ maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
     % Code_gen__generate_entry cannot depend on the code generator
     % state, since when it is invoked this state is not appropriate
     % for the procedure entry. Nor can it change the code generator state,
-    % since that would confuse code_gen__generate_exit.
+    % since that would confuse generate_exit.
     %
     % Generating CALL trace events is done by generate_category_code,
     % since only on entry to generate_category_code is the code generator
     % state set up right. Generating EXIT trace events is done by
-    % code_gen__generate_exit. Generating FAIL trace events is done
+    % generate_exit. Generating FAIL trace events is done
     % by generate_category_code, since this requires modifying how
     % we generate code for the body of the procedure (failures must
     % now branch to a different place). Since FAIL trace events are
@@ -569,10 +569,10 @@ generate_category_code(model_det, Goal, ResumePoint, TraceSlotInfo, Code,
             TraceCallCode = empty,
             MaybeTraceCallLabel = no
         ),
-        code_gen__generate_goal(model_det, Goal, BodyCode, !CI),
-        code_gen__generate_entry(!.CI, model_det, Goal, ResumePoint,
+        generate_goal(model_det, Goal, BodyCode, !CI),
+        generate_entry(!.CI, model_det, Goal, ResumePoint,
             FrameInfo, EntryCode),
-        code_gen__generate_exit(model_det, FrameInfo, TraceSlotInfo,
+        generate_exit(model_det, FrameInfo, TraceSlotInfo,
             BodyContext, _, ExitCode, !CI),
         Code = tree_list([EntryCode, TraceCallCode, BodyCode, ExitCode])
     ).
@@ -602,10 +602,10 @@ generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
                 "generate_category_code: call events suppressed")
         ),
         MaybeTraceCallLabel = yes(TraceCallLabel),
-        code_gen__generate_goal(model_semi, Goal, BodyCode, !CI),
-        code_gen__generate_entry(!.CI, model_semi, Goal, ResumePoint,
+        generate_goal(model_semi, Goal, BodyCode, !CI),
+        generate_entry(!.CI, model_semi, Goal, ResumePoint,
             FrameInfo, EntryCode),
-        code_gen__generate_exit(model_semi, FrameInfo, TraceSlotInfo,
+        generate_exit(model_semi, FrameInfo, TraceSlotInfo,
             BodyContext, RestoreDeallocCode, ExitCode, !CI),
 
         code_info__generate_resume_point(ResumePoint, ResumeCode, !CI),
@@ -628,10 +628,10 @@ generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
     ;
         MaybeTraceInfo = no,
         MaybeTraceCallLabel = no,
-        code_gen__generate_goal(model_semi, Goal, BodyCode, !CI),
-        code_gen__generate_entry(!.CI, model_semi, Goal, ResumePoint,
+        generate_goal(model_semi, Goal, BodyCode, !CI),
+        generate_entry(!.CI, model_semi, Goal, ResumePoint,
             FrameInfo, EntryCode),
-        code_gen__generate_exit(model_semi, FrameInfo, TraceSlotInfo,
+        generate_exit(model_semi, FrameInfo, TraceSlotInfo,
             BodyContext, RestoreDeallocCode, ExitCode, !CI),
         code_info__generate_resume_point(ResumePoint, ResumeCode, !CI),
         Code = tree_list([EntryCode, BodyCode, ExitCode,
@@ -657,10 +657,10 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
                 "generate_category_code: call events suppressed")
         ),
         MaybeTraceCallLabel = yes(TraceCallLabel),
-        code_gen__generate_goal(model_non, Goal, BodyCode, !CI),
-        code_gen__generate_entry(!.CI, model_non, Goal, ResumePoint,
+        generate_goal(model_non, Goal, BodyCode, !CI),
+        generate_entry(!.CI, model_non, Goal, ResumePoint,
             FrameInfo, EntryCode),
-        code_gen__generate_exit(model_non, FrameInfo, TraceSlotInfo,
+        generate_exit(model_non, FrameInfo, TraceSlotInfo,
             BodyContext, _, ExitCode, !CI),
 
         code_info__generate_resume_point(ResumePoint, ResumeCode, !CI),
@@ -710,10 +710,10 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
     ;
         MaybeTraceInfo = no,
         MaybeTraceCallLabel = no,
-        code_gen__generate_goal(model_non, Goal, BodyCode, !CI),
-        code_gen__generate_entry(!.CI, model_non, Goal, ResumePoint,
+        generate_goal(model_non, Goal, BodyCode, !CI),
+        generate_entry(!.CI, model_non, Goal, ResumePoint,
             FrameInfo, EntryCode),
-        code_gen__generate_exit(model_non, FrameInfo, TraceSlotInfo,
+        generate_exit(model_non, FrameInfo, TraceSlotInfo,
             BodyContext, _, ExitCode, !CI),
         Code = tree_list([EntryCode, BodyCode, ExitCode])
     ).
@@ -739,10 +739,10 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
     % need a stack frame, and if the procedure is nondet, then the code
     % to fill in the succip slot is subsumed by the mkframe.
 
-:- pred code_gen__generate_entry(code_info::in, code_model::in, hlds_goal::in,
+:- pred generate_entry(code_info::in, code_model::in, hlds_goal::in,
     resume_point_info::in, frame_info::out, code_tree::out) is det.
 
-code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
+generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         EntryCode) :-
     code_info__get_stack_slots(CI, StackSlots),
     code_info__get_varset(CI, VarSet),
@@ -790,7 +790,7 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
 
-    PushMsg = code_gen__push_msg(ModuleInfo, PredId, ProcId),
+    PushMsg = push_msg(ModuleInfo, PredId, ProcId),
     ( CodeModel = model_non ->
         code_info__resume_point_stack_addr(OutsideResumePoint,
             OutsideResumeAddress),
@@ -869,11 +869,11 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     % of the epilogue are handled when traversing the pragma C code goal;
     % we need only #undef a macro defined by the procedure prologue.
 
-:- pred code_gen__generate_exit(code_model::in, frame_info::in,
+:- pred generate_exit(code_model::in, frame_info::in,
     trace_slot_info::in, prog_context::in, code_tree::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
-code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
+generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
         RestoreDeallocCode, ExitCode, !CI) :-
     StartComment = node([
         comment("Start of procedure epilogue") - ""
@@ -1046,7 +1046,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 
 %---------------------------------------------------------------------------%
 
-code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
+generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
     % Generate a goal. This predicate arranges for the necessary updates of
     % the generic data structures before and after the actual code generation,
     % which is delegated to goal-specific predicates.
@@ -1086,7 +1086,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
         %
         code_info__get_globals(!.CI, Globals),
         AddTrailOps = should_add_trail_ops(Globals, Goal - GoalInfo),
-        code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, AddTrailOps, 
+        generate_goal_2(Goal, GoalInfo, CodeModel, AddTrailOps, 
             GoalCode, !CI),
         goal_info_get_features(GoalInfo, Features),
         code_info__get_proc_info(!.CI, ProcInfo),
@@ -1132,8 +1132,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
             set__member(save_deep_excp_vars, Features)
         ->
             DeepSaveVars = compute_deep_save_excp_vars(ProcInfo),
-            code_info__save_variables_on_stack(DeepSaveVars, DeepSaveCode,
-                !CI),
+            save_variables_on_stack(DeepSaveVars, DeepSaveCode, !CI),
             Code = tree(CodeUptoTip, DeepSaveCode)
         ;
             Code = CodeUptoTip
@@ -1180,40 +1179,42 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
+:- pred generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
     code_model::in, add_trail_ops::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
     Goal = unify(_, _, _, Uni, _),
     unify_gen__generate_unification(CodeModel, Uni, GoalInfo, Code, !CI).
-code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, _, Code, !CI) :-
-    code_gen__generate_goals(Goals, CodeModel, Code, !CI).
-code_gen__generate_goal_2(par_conj(Goals), GoalInfo, CodeModel, _, Code, !CI) :-
-    par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI).
-code_gen__generate_goal_2(disj(Goals), GoalInfo, CodeModel, AddTrailOps,
-        Code, !CI) :-
+generate_goal_2(conj(ConjType, Goals), GoalInfo, CodeModel, _, Code, !CI) :-
+    (
+        ConjType = plain_conj,
+        generate_goals(Goals, CodeModel, Code, !CI)
+    ;
+        ConjType = parallel_conj,
+        par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI)
+    ).
+generate_goal_2(disj(Goals), GoalInfo, CodeModel, AddTrailOps, Code, !CI) :-
     disj_gen__generate_disj(AddTrailOps, CodeModel, Goals, GoalInfo, Code, !CI).
-code_gen__generate_goal_2(not(Goal), GoalInfo, CodeModel, AddTrailOps,
-        Code, !CI) :-
+generate_goal_2(not(Goal), GoalInfo, CodeModel, AddTrailOps, Code, !CI) :-
     ite_gen__generate_negation(AddTrailOps, CodeModel, Goal, GoalInfo,
         Code, !CI).
-code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, AddTrailOps, Code, !CI) :-
+generate_goal_2(Goal, GoalInfo, CodeModel, AddTrailOps, Code, !CI) :-
     Goal = if_then_else(_Vars, Cond, Then, Else),
     ite_gen__generate_ite(AddTrailOps, CodeModel, Cond, Then, Else, GoalInfo,
         Code, !CI).
-code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
     Goal = switch(Var, CanFail, CaseList),
     switch_gen__generate_switch(CodeModel, Var, CanFail, CaseList,
         GoalInfo, Code, !CI).
-code_gen__generate_goal_2(scope(_, Goal), _GoalInfo, CodeModel, AddTrailOps,
-        Code, !CI) :-
+generate_goal_2(scope(_, Goal), _GoalInfo, CodeModel, AddTrailOps, Code,
+        !CI) :-
     commit_gen__generate_commit(AddTrailOps, CodeModel, Goal, Code, !CI).
-code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
     Goal = generic_call(GenericCall, Args, Modes, Det),
     call_gen__generate_generic_call(CodeModel, GenericCall, Args,
         Modes, Det, GoalInfo, Code, !CI).
-code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
     Goal = call(PredId, ProcId, Args, BuiltinState, _, _),
     ( BuiltinState = not_builtin ->
         call_gen__generate_call(CodeModel, PredId, ProcId, Args,
@@ -1222,7 +1223,7 @@ code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
         call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
             Code, !CI)
     ).
-code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
+generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
     Goal = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         PragmaCode),
     ( c = foreign_language(Attributes) ->
@@ -1232,7 +1233,7 @@ code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, _, Code, !CI) :-
         unexpected(this_file,
             "generate_goal_2: foreign code other than C unexpected")
     ).
-code_gen__generate_goal_2(shorthand(_), _, _, _, _, !CI) :-
+generate_goal_2(shorthand(_), _, _, _, _, !CI) :-
     % These should have been expanded out by now.
     unexpected(this_file, "generate_goal_2: unexpected shorthand").
 
@@ -1242,17 +1243,17 @@ code_gen__generate_goal_2(shorthand(_), _, _, _, _, !CI) :-
     % conjunction, state information flows directly from one conjunct
     % to the next.
     %
-:- pred code_gen__generate_goals(hlds_goals::in, code_model::in,
+:- pred generate_goals(hlds_goals::in, code_model::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
-code_gen__generate_goals([], _, empty, !CI).
-code_gen__generate_goals([Goal | Goals], CodeModel, Code, !CI) :-
-    code_gen__generate_goal(CodeModel, Goal, Code1, !CI),
+generate_goals([], _, empty, !CI).
+generate_goals([Goal | Goals], CodeModel, Code, !CI) :-
+    generate_goal(CodeModel, Goal, Code1, !CI),
     code_info__get_instmap(!.CI, Instmap),
     ( instmap__is_unreachable(Instmap) ->
         Code = Code1
     ;
-        code_gen__generate_goals(Goals, CodeModel, Code2, !CI),
+        generate_goals(Goals, CodeModel, Code2, !CI),
         Code = tree(Code1, Code2)
     ).
 
@@ -1262,11 +1263,11 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Code, !CI) :-
     % of instructions looking for livevals and calls, adding succip in the
     % stackvar number given as an argument.
     %
-:- pred code_gen__add_saved_succip(list(instruction)::in, int::in,
+:- pred add_saved_succip(list(instruction)::in, int::in,
     list(instruction)::out) is det.
 
-code_gen__add_saved_succip([], _StackLoc, []).
-code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
+add_saved_succip([], _StackLoc, []).
+add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
         [Instrn - Comment | Instrns]) :-
     (
         Instrn0 = livevals(LiveVals0),
@@ -1286,14 +1287,14 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
     ;
         Instrn = Instrn0
     ),
-    code_gen__add_saved_succip(Instrns0, StackLoc, Instrns).
+    add_saved_succip(Instrns0, StackLoc, Instrns).
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__bytecode_stub(module_info::in, pred_id::in, proc_id::in,
+:- pred bytecode_stub(module_info::in, pred_id::in, proc_id::in,
     list(instruction)::out) is det.
 
-code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
+bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleSymName = pred_info_module(PredInfo),
@@ -1349,9 +1350,11 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
 %---------------------------------------------------------------------------%
 
-:- type type_giving_arg --->    last_arg ; last_but_one_arg.
+:- type type_giving_arg
+    --->    last_arg
+    ;       last_but_one_arg.
 
-code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
+push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ModuleName = pred_info_module(PredInfo),
@@ -1359,7 +1362,7 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_origin(PredInfo, Origin),
     ( Origin = special_pred(SpecialId - TypeCtor) ->
-        code_gen__find_arg_type_ctor_name(TypeCtor, TypeName),
+        find_arg_type_ctor_name(TypeCtor, TypeName),
         SpecialPredName = get_special_pred_id_generic_name(SpecialId),
         FullPredName = SpecialPredName ++ "_for_" ++ TypeName
     ;
@@ -1373,9 +1376,9 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
         FullPredName ++ "/" ++ int_to_string(Arity) ++ "-" ++
         int_to_string(proc_id_to_int(ProcId)).
 
-:- pred code_gen__find_arg_type_ctor_name((type_ctor)::in, string::out) is det.
+:- pred find_arg_type_ctor_name((type_ctor)::in, string::out) is det.
 
-code_gen__find_arg_type_ctor_name(TypeCtor, TypeName) :-
+find_arg_type_ctor_name(TypeCtor, TypeName) :-
     TypeCtor = TypeCtorSymName - TypeCtorArity,
     mdbcomp__prim_data__sym_name_to_string(TypeCtorSymName, TypeCtorName),
     string__int_to_string(TypeCtorArity, ArityStr),

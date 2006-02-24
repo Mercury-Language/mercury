@@ -296,8 +296,15 @@ add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo, !VarInfo) :-
 
         % Switch on GoalExpr for recursion
     (
-        GoalExpr = conj(Goals),
-        list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo)
+        GoalExpr = conj(ConjType, Goals),
+        (
+            ConjType = plain_conj,
+            list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals,
+                !VarInfo)
+        ;
+            ConjType = parallel_conj
+            % XXX handle this
+        )
     ;
         GoalExpr = call(_, _, _, _, _, _)
     ;
@@ -322,8 +329,6 @@ add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo, !VarInfo) :-
         list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo)
     ;
         GoalExpr = foreign_proc(_, _, _, _, _, _)
-    ;
-        GoalExpr = par_conj(_Goals)
     ;
         GoalExpr = shorthand(_ShorthandGoalExpr)
     ).
@@ -405,18 +410,28 @@ add_goal_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr - GoalInfo,
     mode_constraints::out) is det.
 
 add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        conj(Goals), Context, GoalPath, Nonlocals, !VarInfo, !Constraints) :-
-    list.foldl(add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId,
-        Nonlocals), Goals, conj_constraints_info_init, ConjConstraintsInfo),
-    VarMap = rep_var_map(!.VarInfo),
+        conj(ConjType, Goals), Context, GoalPath, Nonlocals, !VarInfo,
+        !Constraints) :-
+    (
+        ConjType = plain_conj,
+        list.foldl(
+            add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId,
+                Nonlocals),
+            Goals, conj_constraints_info_init, ConjConstraintsInfo),
+        VarMap = rep_var_map(!.VarInfo),
 
-    list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
-        Goals, !VarInfo, !Constraints),
-    map.foldl(add_local_var_conj_constraints(Context),
-        locals_positions(ConjConstraintsInfo), !Constraints),
-    map.foldl2(add_nonlocal_var_conj_constraints(ProgVarset, PredId,
-        Context, GoalPath), nonlocals_positions(ConjConstraintsInfo),
-        !VarInfo, !Constraints).
+        list.foldl2(add_goal_constraints(ModuleInfo, ProgVarset, PredId),
+            Goals, !VarInfo, !Constraints),
+        map.foldl(add_local_var_conj_constraints(Context),
+            locals_positions(ConjConstraintsInfo), !Constraints),
+        map.foldl2(add_nonlocal_var_conj_constraints(ProgVarset, PredId,
+            Context, GoalPath), nonlocals_positions(ConjConstraintsInfo),
+            !VarInfo, !Constraints)
+    ;
+        ConjType = parallel_conj,
+        % XXX Need to do something here.
+        sorry(this_file, "par_conj")
+    ).
 
 add_goal_expr_constraints(ModuleInfo, ProgVarset, CallerPredId, GoalExpr,
         Context, GoalPath, _Nonlocals, !VarInfo, !Constraints) :-
@@ -635,11 +650,6 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
     ;
         unexpected(this_file, "no mode declaration for foreign proc")
     ).
-
-add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
-        par_conj(_Goals), _Context, _GoalPath, _Nonlocals, _, _, _, _) :-
-    % XXX Need to do something here.
-    sorry(this_file, "par_conj").
 
 add_goal_expr_constraints(_ModuleInfo, _ProgVarset, _PredId,
         shorthand(_ShorthandGoalExpr), _Context, _GoalPath, _Nonlocals,

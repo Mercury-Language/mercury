@@ -469,10 +469,8 @@ goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
 :- pred traverse_goal(hlds_goal::in, hlds_goal::out, bool::out,
     intermod_info::in, intermod_info::out) is det.
 
-traverse_goal(conj(Goals0) - Info, conj(Goals) - Info, DoWrite, !Info) :-
-    traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
-traverse_goal(par_conj(Goals0) - Info, par_conj(Goals) - Info, DoWrite,
-        !Info) :-
+traverse_goal(conj(ConjType, Goals0) - Info, conj(ConjType, Goals) - Info,
+        DoWrite, !Info) :-
     traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
 traverse_goal(disj(Goals0) - Info, disj(Goals) - Info, DoWrite, !Info) :-
     traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
@@ -1577,7 +1575,7 @@ write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
     (
         (
             % Pull the foreign code out of the goal.
-            Goal = conj(Goals) - _,
+            Goal = conj(plain_conj, Goals) - _,
             list__filter((pred(X::in) is semidet :-
                     X = foreign_proc(_, _, _, _, _, _) - _
                 ), Goals, [ForeignCodeGoal]),

@@ -404,9 +404,7 @@ examine_goal(GoalExpr - _, CurrProc, !Queue, !Needed) :-
 
 examine_expr(disj(Goals), CurrProc, !Queue, !Needed) :-
     examine_goals(Goals, CurrProc, !Queue, !Needed).
-examine_expr(conj(Goals), CurrProc, !Queue, !Needed) :-
-    examine_goals(Goals, CurrProc, !Queue, !Needed).
-examine_expr(par_conj(Goals), CurrProc, !Queue, !Needed) :-
+examine_expr(conj(_ConjType, Goals), CurrProc, !Queue, !Needed) :-
     examine_goals(Goals, CurrProc, !Queue, !Needed).
 examine_expr(not(Goal), CurrProc, !Queue, !Needed) :-
     examine_goal(Goal, CurrProc, !Queue, !Needed).
@@ -580,7 +578,7 @@ eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
             (pred(Id::in, PTable0::in, PTable::out) is det :-
                 map__lookup(ProcTable0, Id, ProcInfo0),
                 goal_info_init(GoalInfo),
-                Goal = conj([]) - GoalInfo,
+                Goal = true_goal_expr - GoalInfo,
                 proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
                 map__det_update(PTable0, Id, ProcInfo, PTable)
             ),
@@ -843,9 +841,7 @@ dead_pred_elim_process_clause(clause(_, Goal, _, _), !DeadInfo) :-
 :- pred pre_modecheck_examine_goal(hlds_goal::in,
     dead_pred_info::in, dead_pred_info::out) is det.
 
-pre_modecheck_examine_goal(conj(Goals) - _, !DeadInfo) :-
-    list__foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).
-pre_modecheck_examine_goal(par_conj(Goals) - _, !DeadInfo) :-
+pre_modecheck_examine_goal(conj(_ConjType, Goals) - _, !DeadInfo) :-
     list__foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).
 pre_modecheck_examine_goal(disj(Goals) - _, !DeadInfo) :-
     list__foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).

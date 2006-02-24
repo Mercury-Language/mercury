@@ -337,18 +337,25 @@ goal_reordering(PredId, VarMap, Bindings, GoalExpr0 - GoalInfo,
 :- pred goal_expr_reordering(pred_id::in, mc_var_map::in, mc_bindings::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is semidet.
 
-goal_expr_reordering(PredId, VarMap, Bindings, conj(Goals0), conj(Goals)) :-
-    % Build constraints for this conjunction.
-    make_conjuncts_nonlocal_repvars(PredId, Goals0, RepVarMap),
-    conjunct_ordering_constraints(VarMap, Bindings, RepVarMap,
-        ordering_init(list.length(Goals0)), OrderingConstraintsInfo),
+goal_expr_reordering(PredId, VarMap, Bindings, conj(ConjType, Goals0),
+        conj(ConjType, Goals)) :-
+    (
+        ConjType = plain_conj,
+        % Build constraints for this conjunction.
+        make_conjuncts_nonlocal_repvars(PredId, Goals0, RepVarMap),
+        conjunct_ordering_constraints(VarMap, Bindings, RepVarMap,
+            ordering_init(list.length(Goals0)), OrderingConstraintsInfo),
 
-    % Then solve the constraints and reorder.
-    minimum_reordering(OrderingConstraintsInfo, Order),
-    list.map(list.index1_det(Goals0), Order, Goals1),
+        % Then solve the constraints and reorder.
+        minimum_reordering(OrderingConstraintsInfo, Order),
+        list.map(list.index1_det(Goals0), Order, Goals1),
 
-    % Then recurse on the reordered goals
-    list.map(goal_reordering(PredId, VarMap, Bindings), Goals1, Goals).
+        % Then recurse on the reordered goals
+        list.map(goal_reordering(PredId, VarMap, Bindings), Goals1, Goals)
+    ;
+        ConjType = parallel_conj,
+        list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals)
+    ).
 
     % goal_expr_reordering for atomic goals, and ones that shouldn't
     % exist yet.
@@ -386,10 +393,6 @@ goal_expr_reordering(PredId, VarMap, Bindings,
     goal_reordering(PredId, VarMap, Bindings, Cond0, Cond),
     goal_reordering(PredId, VarMap, Bindings, Then0, Then),
     goal_reordering(PredId, VarMap, Bindings, Else0, Else).
-
-goal_expr_reordering(PredId, VarMap, Bindings, par_conj(Goals0),
-        par_conj(Goals)) :-
-    list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals).
 
 %-----------------------------------------------------------------------------%
 
@@ -792,7 +795,7 @@ dump_goal_expr_goal_paths(_Indent, GoalExpr, !IO) :-
     ).
 
 dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
-    GoalExpr = conj(Goals),
+    GoalExpr = conj(_, Goals),
     list.foldl(dump_goal_goal_paths(Indent), Goals, !IO).
 
 dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
@@ -810,10 +813,6 @@ dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
 dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
     GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
     Goals = [CondGoal, ThenGoal, ElseGoal],
-    list.foldl(dump_goal_goal_paths(Indent), Goals, !IO).
-
-dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
-    GoalExpr = par_conj(Goals),
     list.foldl(dump_goal_goal_paths(Indent), Goals, !IO).
 
 %-----------------------------------------------------------------------------%
