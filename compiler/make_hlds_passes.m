@@ -44,10 +44,6 @@
     module_info::out, qual_info::out, bool::out, bool::out, io::di, io::uo)
     is det.
 
-/* ### In `add_item_clause(in, in, out, in, in, out, in, out, */
-/* ###   di, uo)': */
-/* ###   error: determinism declaration not satisfied. */
-/* ###   Declared `det', inferred `semidet'. */
 :- pred add_item_clause(item::in, import_status::in, import_status::out,
     prog_context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out, io::di, io::uo) is det.
