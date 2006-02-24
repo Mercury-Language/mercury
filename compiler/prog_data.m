@@ -620,6 +620,7 @@
     may_throw_exception.
 :- func ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
 :- func may_modify_trail(pragma_foreign_proc_attributes) = may_modify_trail.
+:- func box_policy(pragma_foreign_proc_attributes) = box_policy.
 :- func extra_attributes(pragma_foreign_proc_attributes)
     = pragma_foreign_proc_extra_attributes.
 
@@ -663,6 +664,10 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
+:- pred set_box_policy(box_policy::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
 :- pred add_extra_attribute(pragma_foreign_proc_extra_attribute::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
@@ -697,10 +702,14 @@
     ;       will_not_modify_trail.
 
 :- type pragma_var
-    --->    pragma_var(prog_var, string, mer_mode).
+    --->    pragma_var(prog_var, string, mer_mode, box_policy).
             % variable, name, mode
             % We explicitly store the name because we need the real
             % name in code_gen.
+
+:- type box_policy
+    --->    native_if_possible
+    ;       always_boxed.
 
     % This type specifies the termination property of a procedure
     % defined using pragma c_code or pragma foreign_proc.
@@ -1385,6 +1394,7 @@
                 legacy_purity_behaviour :: bool,
                 ordinary_despite_detism :: bool,
                 may_modify_trail        :: may_modify_trail,
+                box_policy              :: box_policy,
                 extra_attributes        ::
                                 list(pragma_foreign_proc_extra_attribute)
             ).
@@ -1392,7 +1402,8 @@
 default_attributes(Language) =
     attributes(Language, may_call_mercury, not_thread_safe,
         not_tabled_for_io, purity_impure, depends_on_mercury_calls,
-        default_exception_behaviour, no, no, may_modify_trail, []).
+        default_exception_behaviour, no, no, may_modify_trail,
+        native_if_possible, []).
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -1414,6 +1425,8 @@ set_ordinary_despite_detism(OrdinaryDespiteDetism, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ ordinary_despite_detism := OrdinaryDespiteDetism.
 set_may_modify_trail(MayModifyTrail, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ may_modify_trail := MayModifyTrail.
+set_box_policy(BoxPolicyStr, Attrs0, Attrs) :-
+    Attrs = Attrs0 ^ box_policy := BoxPolicyStr.
 
 attributes_to_strings(Attrs) = StringList :-
     % We ignore Lang because it isn't an attribute that you can put
@@ -1421,7 +1434,7 @@ attributes_to_strings(Attrs) = StringList :-
     % is at the start of the pragma.
     Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
         Purity, Terminates, Exceptions, _LegacyBehaviour,
-        OrdinaryDespiteDetism, MayModifyTrail, ExtraAttributes),
+        OrdinaryDespiteDetism, MayModifyTrail, BoxPolicy, ExtraAttributes),
     (
         MayCallMercury = may_call_mercury,
         MayCallMercuryStr = "may_call_mercury"
@@ -1493,10 +1506,17 @@ attributes_to_strings(Attrs) = StringList :-
         MayModifyTrail = will_not_modify_trail,
         MayModifyTrailStrList = ["will_not_modify_trail"]
     ),
+    (
+        BoxPolicy = native_if_possible,
+        BoxPolicyStr = []
+    ;
+        BoxPolicy = always_boxed,
+        BoxPolicyStr = ["always_boxed"]
+    ),
     StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
         PurityStrList] ++ TerminatesStrList ++ ExceptionsStrList ++
         OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
-        list__map(extra_attribute_to_string, ExtraAttributes).
+        BoxPolicyStr ++ list__map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,
     Attributes0 ^ extra_attributes :=

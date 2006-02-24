@@ -561,7 +561,7 @@ enforce_invariant(GoalInfo0, GoalInfo, !Info) :-
     ;
         GoalInfo = GoalInfo0
     ).
-                    
+
 :- pred goal_is_call_to_builtin_false(hlds_goal::in) is semidet.
 
 goal_is_call_to_builtin_false(Goal - _) :-
@@ -1147,7 +1147,7 @@ simplify_goal_2(scope(Reason0, Goal1), GoalExpr, SomeInfo, GoalInfo,
             KeepCommon = yes
         ;
             FinalReason = commit(_),
-            KeepCommon = no 
+            KeepCommon = no
         ;
             FinalReason = from_ground_term(_),
             KeepCommon = yes
@@ -1185,22 +1185,38 @@ simplify_goal_2(scope(Reason0, Goal1), GoalExpr, SomeInfo, GoalInfo,
     ).
 
 simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
-    Goal0 = foreign_proc(_, PredId, ProcId, Args, ExtraArgs, _),
+    Goal0 = foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs0, Impl),
+    BoxPolicy = box_policy(Attributes),
+    (
+        BoxPolicy = native_if_possible,
+        Args = Args0,
+        ExtraArgs = ExtraArgs0,
+        Goal1 = Goal0
+    ;
+        BoxPolicy = always_boxed,
+        Args = list.map(make_arg_always_boxed, Args0),
+        ExtraArgs = list.map(make_arg_always_boxed, ExtraArgs0),
+        Goal1 = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs, Impl)
+    ),
     (
         simplify_do_calls(!.Info),
         goal_info_is_pure(GoalInfo),
         ExtraArgs = []
-    ->
+        ->
         ArgVars = list__map(foreign_arg_var, Args),
-        common__optimise_call(PredId, ProcId, ArgVars, GoalInfo, Goal0, Goal,
+        common__optimise_call(PredId, ProcId, ArgVars, GoalInfo, Goal1, Goal,
             !Info)
     ;
-        Goal = Goal0
+        Goal = Goal1
     ).
 
 simplify_goal_2(shorthand(_), _, _, _, _, _, _, _) :-
     % These should have been expanded out by now.
     unexpected(this_file, "goal_2: unexpected shorthand").
+
+:- func make_arg_always_boxed(foreign_arg) = foreign_arg.
+
+make_arg_always_boxed(Arg) = Arg ^ arg_box_policy := always_boxed.
 
 %-----------------------------------------------------------------------------%
 
@@ -1558,7 +1574,7 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         %   - extract info from the poly_info and put it in the proc_info,
         %   - copy the information from the proc_info back into the
         %     simplify_info.
- 
+
         module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
             !:PredInfo, !:ProcInfo),
         proc_info_set_vartypes(VarTypes0, !ProcInfo),

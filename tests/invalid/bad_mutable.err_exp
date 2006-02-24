@@ -9,5 +9,3 @@ bad_mutable.m:013:   error: undefined inst `special_ground'/0.
 bad_mutable.m:005: Error: `mutable' declaration in module interface.
 bad_mutable.m:023: Error: multiple foreign_name attributes specified for the C
 bad_mutable.m:023:   backend.
-bad_mutable.m:023: Error: multiple foreign_name attributes specified for the C
-bad_mutable.m:023:   backend.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -433,7 +433,7 @@ gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
     ;
         GenerateInline =  yes,
         Args = [foreign_arg(TicketVar, yes("Ticket" - out_mode),
-            ticket_type)],
+            ticket_type, native_if_possible)],
         ForeignCode = "MR_store_ticket(Ticket);",
         trail_generate_foreign_proc("store_ticket", [impure_goal],
             [TicketVar - trail_ground_inst], Info ^ module_info, Context,
@@ -452,7 +452,7 @@ gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
     ;
         GenerateInline = yes,
         Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
-            ticket_type)],
+            ticket_type, native_if_possible)],
         ForeignCode = "MR_reset_ticket(Ticket, MR_undo);",
         trail_generate_foreign_proc("reset_ticket_undo", [impure_goal],
             [], Info ^ module_info, Context, Args, ForeignCode, 
@@ -471,7 +471,7 @@ gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
     ;
         GenerateInline = yes,
         Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
-            ticket_type)],
+            ticket_type, native_if_possible)],
         ForeignCode = "MR_reset_ticket(Ticket, MR_solve);",
         trail_generate_foreign_proc("reset_ticket_solve", [impure_goal],
             [], Info ^ module_info, Context, Args, ForeignCode, 
@@ -490,7 +490,7 @@ gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
     ;
         GenerateInline = yes,
         Args = [foreign_arg(TicketVar, yes("Ticket" - in_mode),
-            ticket_type)],
+            ticket_type, native_if_possible)],
         ForeignCode = "MR_reset_ticket(Ticket, MR_commit);",
         trail_generate_foreign_proc("reset_ticket_commit", [impure_goal],
             [], Info ^ module_info, Context, Args, ForeignCode, 
@@ -548,7 +548,8 @@ gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
     ;
         GenerateInline = yes,
         Args = [foreign_arg(SavedTicketCounterVar,
-            yes("TicketCounter" - out_mode), ticket_counter_type)],
+            yes("TicketCounter" - out_mode), ticket_counter_type,
+            native_if_possible)],
         ForeignCode = "MR_mark_ticket_stack(TicketCounter);",
         trail_generate_foreign_proc("mark_ticket_stack", [impure_goal],
             [], Info ^ module_info, Context, Args, ForeignCode, 
@@ -569,7 +570,8 @@ gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
     ;
         GenerateInline = yes,
         Args = [foreign_arg(SavedTicketCounterVar,
-            yes("TicketCounter" - in_mode), ticket_counter_type)],
+            yes("TicketCounter" - in_mode), ticket_counter_type,
+            native_if_possible)],
         ForeignCode = "MR_prune_tickets_to(TicketCounter);",
         trail_generate_foreign_proc("prune_tickets_to", [impure_goal],
             [], Info ^ module_info, Context, Args, ForeignCode, 

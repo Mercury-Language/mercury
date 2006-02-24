@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -283,9 +283,9 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
         SlotGoals),
 
     IsActiveOutputArg = foreign_arg(IsActiveVar,
-        yes(IsActiveVarName - out_mode), is_active_type),
+        yes(IsActiveVarName - out_mode), is_active_type, native_if_possible),
     SlotInputArg = foreign_arg(SlotVar,
-        yes(SlotVarName - in_mode), int_type),
+        yes(SlotVarName - in_mode), int_type, native_if_possible),
 
     ProcNumStr = int_to_string(ProcNum),
 
@@ -400,7 +400,7 @@ generate_slot_goals(ProcNum, NumberedVars, NumProfiledVars, Context, PredId,
         ProcVarName, SlotVarName, PredId, !ProcInfo, !ModuleInfo,
         PrefixGoals, ForeignArgs, FillCodeStr),
     SlotVarArg = foreign_arg(SlotVar,
-        yes(SlotVarName - out_mode), int_type),
+        yes(SlotVarName - out_mode), int_type, native_if_possible),
     PredName = "complexity_call_proc",
     DeclCodeStr = "\tMR_ComplexityProc *" ++ ProcVarName ++ ";\n",
     PredCodeStr = "\tMR_" ++ PredName ++ "(" ++
@@ -448,9 +448,9 @@ generate_size_goal(ArgVar, VarSeqNum, Context, NumProfiledVars, ProcVarName,
     ArgName = "arg" ++ int_to_string(VarSeqNum),
     TypeInfoArgName = "input_typeinfo" ++ int_to_string(VarSeqNum),
     ForeignArg = foreign_arg(ArgVar,
-        yes(ArgName - in_mode), VarType),
+        yes(ArgName - in_mode), VarType, native_if_possible),
     ForeignTypeInfoArg = foreign_arg(TypeInfoVar,
-        yes(TypeInfoArgName - in_mode), TypeInfoType),
+        yes(TypeInfoArgName - in_mode), TypeInfoType, native_if_possible),
     ForeignArgs = [ForeignTypeInfoArg, ForeignArg],
     CodeStr = "\t" ++ MacroName ++ "(" ++
         ProcVarName ++ ", " ++

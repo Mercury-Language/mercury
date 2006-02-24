@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2005 The University of Melbourne.
+% Copyright (C) 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -903,9 +903,9 @@ replace_in_list(Repl, List0 @ [H0 | T0], List, Changed, !Acc) :-
     equiv_type_info::in, equiv_type_info::out) is det.
 
 replace_in_foreign_arg(EqvMap, Arg0, Arg, Changed, !VarSet, !Info) :-
-    Arg0 = foreign_arg(Var, NameMode, Type0),
+    Arg0 = foreign_arg(Var, NameMode, Type0, BoxPolicy),
     replace_in_type(EqvMap, Type0, Type, Changed, !VarSet, !Info),
-    ( Changed = yes, Arg = foreign_arg(Var, NameMode, Type)
+    ( Changed = yes, Arg = foreign_arg(Var, NameMode, Type, BoxPolicy)
     ; Changed = no, Arg = Arg0
     ).
 

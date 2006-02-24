@@ -610,8 +610,10 @@ rename_arg_list(Must, Subn, [Arg0 | Args0], [Arg | Args]) :-
 :- pred rename_arg(bool::in, prog_var_renaming::in,
     foreign_arg::in, foreign_arg::out) is det.
 
-rename_arg(Must, Subn, foreign_arg(Var0, B, C), foreign_arg(Var, B, C)) :-
-    rename_var(Must, Subn, Var0, Var).
+rename_arg(Must, Subn, Arg0, Arg) :-
+    Arg0 = foreign_arg(Var0, B, C, D),
+    rename_var(Must, Subn, Var0, Var),
+    Arg = foreign_arg(Var, B, C, D).
 
 %-----------------------------------------------------------------------------%
 

@@ -2441,7 +2441,8 @@ generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 :- pred pragma_vars_to_names_string(list(pragma_var)::in, string::out) is det.
 
 pragma_vars_to_names_string([], "").
-pragma_vars_to_names_string([pragma_var(_, Name, _) | PVars], NamesString) :-
+pragma_vars_to_names_string([pragma_var(_, Name, _, _) | PVars],
+        NamesString) :-
     pragma_vars_to_names_string(PVars, NamesString0),
     string__append_list([Name, ", ", NamesString0], NamesString).
 
@@ -2460,8 +2461,8 @@ generate_cc_multi_code(PredName, PragmaVars, ProcCode) :-
     string::in, string::out) is det.
 
 generate_cc_multi_code_2([], _, _, !ProcCode).
-generate_cc_multi_code_2([pragma_var(_, VarName, _) | PragmaVars], StructName,
-        ArgNum, !ProcCode) :-
+generate_cc_multi_code_2([pragma_var(_, VarName, _, _) | PragmaVars],
+        StructName, ArgNum, !ProcCode) :-
     string__format("\t\t%s = %s[0][0].V_%d;\n", [s(VarName), s(StructName),
         i(ArgNum)], NewProcCode),
     string__append(NewProcCode, !ProcCode),
@@ -2573,7 +2574,7 @@ generate_hash_code([], [_ | _], _, _, _, _, _, _, _) :-
     unexpected(this_file, "generate_hash_code").
 generate_hash_code([_ | _], [], _, _, _, _, _, _, _) :-
     unexpected(this_file, "generate_hash_code").
-generate_hash_code([pragma_var(_, Name, Mode) | PragmaVars], [Type | Types],
+generate_hash_code([pragma_var(_, Name, Mode, _) | PragmaVars], [Type | Types],
         ModuleInfo, LabelName, LabelNum, PredName, ArgNum,
         FactTableSize, C_Code) :-
     NextArgNum = ArgNum + 1,
@@ -2771,7 +2772,7 @@ generate_fact_lookup_code(_, [_ | _], [], _, _, _, _) :-
 generate_fact_lookup_code(_, [], [_ | _], _, _, _, _) :-
     unexpected(this_file, "generate_fact_lookup_code: too many types").
 generate_fact_lookup_code(PredName,
-        [pragma_var(_, VarName, Mode) | PragmaVars],
+        [pragma_var(_, VarName, Mode, _) | PragmaVars],
         [Type | Types], ModuleInfo, ArgNum, FactTableSize, C_Code) :-
     NextArgNum = ArgNum + 1,
     ( mode_is_fully_output(ModuleInfo, Mode) ->
@@ -2956,7 +2957,7 @@ void mercury_sys_init_%s_module(void) {
 
 generate_argument_vars_code(PragmaVars, Types, ModuleInfo, DeclCode, InputCode,
         OutputCode, SaveRegsCode, GetRegsCode, NumInputArgs) :-
-    list__map((pred(X::in, Y::out) is det :- X = pragma_var(_, _, Y)),
+    list__map((pred(X::in, Y::out) is det :- X = pragma_var(_, _, Y, _)),
         PragmaVars, Modes),
     make_arg_infos(Types, Modes, model_non, ModuleInfo, ArgInfos),
     generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, ModuleInfo,
@@ -2980,7 +2981,7 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
         SaveRegsCode = "",
         GetRegsCode = ""
     ;
-        PragmaVars0 = [pragma_var(_, VarName, _) | PragmaVars],
+        PragmaVars0 = [pragma_var(_, VarName, _, _) | PragmaVars],
         ArgInfos0 = [arg_info(Loc, ArgMode) | ArgInfos],
         Types0 = [Type | Types]
     ->
@@ -3077,7 +3078,7 @@ generate_test_condition_code(_, [], [_ | _], _, _, _, _, "") :-
 generate_test_condition_code(FactTableName, [PragmaVar | PragmaVars],
         [Type | Types], ModuleInfo, ArgNum, !.IsFirstInputArg,
         FactTableSize, CondCode) :-
-    PragmaVar = pragma_var(_, Name, Mode),
+    PragmaVar = pragma_var(_, Name, Mode, _),
     ( mode_is_fully_input(ModuleInfo, Mode) ->
         ( Type = builtin(string) ->
             Template =

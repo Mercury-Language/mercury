@@ -664,7 +664,7 @@ traverse_goal(Info, Goal, !VarDep) :-
         % in fixup_goal_expr: any variable considered unused here should be
         % renamed apart in fixup_goal_expr.
         ArgIsUsed = (pred(Arg::in, Var::out) is semidet :-
-            Arg = foreign_arg(Var, MaybeNameAndMode, _),
+            Arg = foreign_arg(Var, MaybeNameAndMode, _, _),
             MaybeNameAndMode = yes(_)
         ),
         list__filter_map(ArgIsUsed, Args ++ ExtraArgs, UsedVars),
@@ -1524,7 +1524,7 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
     fixup_info::in, fixup_info::out, bool::in, bool::out) is det.
 
 rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
-    Arg0 = foreign_arg(OldVar, MaybeName, OrigType),
+    Arg0 = foreign_arg(OldVar, MaybeName, OrigType, BoxPolicy),
     (
         MaybeName = yes(_),
         Arg = Arg0
@@ -1545,7 +1545,7 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
         % It is possible for an unnamed input argument to occur more than once
         % in the list of foreign_args.
         svmap__set(OldVar, NewVar, !Subst),
-        Arg = foreign_arg(NewVar, MaybeName, OrigType),
+        Arg = foreign_arg(NewVar, MaybeName, OrigType, BoxPolicy),
         !:Changed = yes
     ).
 

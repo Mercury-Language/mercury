@@ -271,10 +271,10 @@
                 prog_context        % the declaration's context
             )
 
-    ;   pred_or_func_mode(
-            % pred_or_func_mode(...) here represents a `mode ...'
-            % declaration in a type class body.  Such a declaration
-            % declares a mode for one of the type class methods.
+    ;       pred_or_func_mode(
+                % pred_or_func_mode(...) here represents a `mode ...'
+                % declaration in a type class body.  Such a declaration
+                % declares a mode for one of the type class methods.
 
                 inst_varset,        % inst variables
                 maybe(pred_or_func),% whether the method is a pred

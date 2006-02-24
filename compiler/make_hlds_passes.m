@@ -44,6 +44,10 @@
     module_info::out, qual_info::out, bool::out, bool::out, io::di, io::uo)
     is det.
 
+/* ### In `add_item_clause(in, in, out, in, in, out, in, out, */
+/* ###   di, uo)': */
+/* ###   error: determinism declaration not satisfied. */
+/* ###   Declared `det', inferred `semidet'. */
 :- pred add_item_clause(item::in, import_status::in, import_status::out,
     prog_context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out, io::di, io::uo) is det.
@@ -97,6 +101,8 @@
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.foreign.
 :- import_module check_hlds.clause_to_proc.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
@@ -138,10 +144,10 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
     some [!Module] (
         globals__io_get_globals(Globals, !IO),
         mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
-            module_info_init(Name, Items, Globals, PQInfo, no, !:Module),
-            add_item_list_decls_pass_1(Items,
-                item_status(local, may_be_unqualified), !Module,
-                no, InvalidModes0, !IO),
+        module_info_init(Name, Items, Globals, PQInfo, no, !:Module),
+        add_item_list_decls_pass_1(Items,
+            item_status(local, may_be_unqualified), !Module,
+            no, InvalidModes0, !IO),
         globals__io_lookup_bool_option(statistics, Statistics, !IO),
         maybe_write_string(Statistics, "% Processed all items in pass 1\n",
             !IO),
@@ -276,10 +282,10 @@ add_item_list_decls_pass_1([Item - Context | Items], Status0, !ModuleInfo,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 add_item_list_decls_pass_2([], _, !ModuleInfo, !IO).
-add_item_list_decls_pass_2([Item - Context | Items], Status0, !ModuleInfo,
+add_item_list_decls_pass_2([Item - Context | Items], !.Status, !ModuleInfo,
         !IO) :-
-    add_item_decl_pass_2(Item, Context, Status0, Status1, !ModuleInfo, !IO),
-    add_item_list_decls_pass_2(Items, Status1, !ModuleInfo, !IO).
+    add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO),
+    add_item_list_decls_pass_2(Items, !.Status, !ModuleInfo, !IO).
 
     % pass 3:
     % Add the clauses one by one to the module.
@@ -454,7 +460,7 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     % We add the initialise decl and the foreign_decl on the second pass and
     % the foreign_proc clauses on the third pass.
-    Item = mutable(Name, Type, _InitValue, Inst, Attrs),
+    Item = mutable(Name, Type, _InitValue, Inst, MutAttrs),
     !.Status = item_status(ImportStatus, _),
     ( status_defined_in_this_module(ImportStatus, yes) ->
         module_info_get_name(!.ModuleInfo, ModuleName),
@@ -473,7 +479,7 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
         %
         % If requested, create the pure access predicates as well.
         %
-        CreatePureInterface = mutable_var_attach_to_io_state(Attrs),
+        CreatePureInterface = mutable_var_attach_to_io_state(MutAttrs),
         (
             CreatePureInterface = yes,
             PureGetPredDecl = prog_mutable.pure_get_pred_decl(ModuleName,
@@ -496,7 +502,6 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     ;
         true
     ).
-
 
 :- pred add_solver_type_mutable_items_pass_1(list(item)::in, prog_context::in,
     item_status::in, item_status::out, module_info::in, module_info::out,
@@ -543,7 +548,7 @@ add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
         PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
         _MaybeDet, _Cond, _Purity, _ClassContext),
     %
-    % add default modes for function declarations, if necessary
+    % Add default modes for function declarations, if necessary.
     %
     (
         PredOrFunc = predicate
@@ -595,7 +600,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     Item = initialise(Origin, _, _),
     !.Status = item_status(ImportStatus, _),
     ( ImportStatus = exported ->
-        ( 
+        (
             Origin = user,
             error_is_exported(Context, "`initialise' declaration", !IO),
             module_info_incr_errors(!ModuleInfo)
@@ -607,7 +612,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
                 Details = mutable_decl
             ;
                 ( Details = initialise_decl
-                ; Details = solver_type 
+                ; Details = solver_type
                 ; Details = foreign_imports
                 ; Details = finalise_decl
                 ),
@@ -623,7 +628,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     Item = finalise(Origin, _, _),
     !.Status = item_status(ImportStatus, _),
     ( ImportStatus = exported ->
-        ( 
+        (
             Origin = user,
             error_is_exported(Context, "`finalise' declaration", !IO),
             module_info_incr_errors(!ModuleInfo)
@@ -637,7 +642,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         true
     ).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
-    Item = mutable(Name, _Type, _InitTerm, _Inst, Attrs),
+    Item = mutable(Name, _Type, _InitTerm, _Inst, MutAttrs),
     !.Status = item_status(ImportStatus, _),
     ( ImportStatus = exported ->
         error_is_exported(Context, "`mutable' declaration", !IO),
@@ -651,32 +656,38 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     % duplicating the definition of the global variable in any submodules.
     %
     ( status_defined_in_this_module(ImportStatus, yes) ->
-        mutable_var_maybe_foreign_names(Attrs) = MaybeForeignNames,
-        (
-            MaybeForeignNames = no,
-            TargetMutableName = mutable_c_var_name(ModuleName, Name)
-        ;
-            MaybeForeignNames = yes(ForeignNames),
-            %
-            % Report any errors with the foreign_name attributes during
-            % this pass.
-            %
-            ReportErrors = yes,
-            get_global_name_from_foreign_names(ReportErrors, Context,
-                ModuleName, Name, ForeignNames, TargetMutableName, !IO) 
-        ),
+        globals.io_get_target(CompilationTarget, !IO),
         %
-        % XXX We don't currently support languages other than C.
-        % 
-        module_info_get_name(!.ModuleInfo, ModuleName),
-        ForeignDecl = get_global_foreign_decl(TargetMutableName),
-        add_item_decl_pass_2(ForeignDecl, Context, !Status, !ModuleInfo, !IO),
-        ForeignCode = get_global_foreign_defn(TargetMutableName),
-        add_item_decl_pass_2(ForeignCode, Context, !Status, !ModuleInfo, !IO)
-    ;   
+        % XXX We don't currently support the foreign_name attribute
+        % for languages other than C.
+        %
+        ( CompilationTarget = c ->
+            mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
+            module_info_get_name(!.ModuleInfo, ModuleName),
+            (
+                MaybeForeignNames = no
+            ;
+                MaybeForeignNames = yes(ForeignNames),
+                %
+                % Report any errors with the foreign_name attributes
+                % during this pass.
+                %
+                ReportErrors = yes,
+                get_global_name_from_foreign_names(ReportErrors, Context,
+                    ModuleName, Name, ForeignNames, _TargetMutableName, !IO)
+            )
+        ;
+            NYIError = [
+                words("Error: foreign_name mutable attribute not yet"),
+                words("implemented for the"),
+                fixed(compilation_target_string(CompilationTarget)),
+                words("backend.")
+            ],
+            write_error_pieces(Context, 0, NYIError, !IO)
+        )
+    ;
         true
     ).
-
 
 :- pred add_solver_type_mutable_items_pass_2(list(item)::in, prog_context::in,
     item_status::in, item_status::out, module_info::in, module_info::out,
@@ -694,59 +705,37 @@ add_solver_type_mutable_items_pass_2([Item | Items], Context, !Status,
     % the target code, otherwise take the Mercury name for the mutable
     % and mangle it into an appropriate variable name.
     %
- :- pred get_global_name_from_foreign_names(bool::in, prog_context::in, 
+ :- pred get_global_name_from_foreign_names(bool::in, prog_context::in,
     module_name::in, string::in, list(foreign_name)::in, string::out,
     io::di, io::uo) is det.
 
 get_global_name_from_foreign_names(ReportErrors, Context, ModuleName,
         MercuryMutableName, ForeignNames, TargetMutableName, !IO) :-
-    globals.io_get_target(CompilationTarget, !IO),
-    %
-    % XXX We don't currently support the foreign_name attribute for languages
-    % other than C.
-    %
-    ( CompilationTarget = c ->
-        solutions(get_matching_foreign_name(ForeignNames, c),
-            TargetMutableNames),
+    solutions(get_matching_foreign_name(ForeignNames, c), TargetMutableNames),
+    (
+        TargetMutableNames = [],
+        TargetMutableName = mutable_c_var_name(ModuleName,
+            MercuryMutableName)
+    ;
+        TargetMutableNames = [foreign_name(_, TargetMutableName)]
+        % XXX We should really check that this is a valid identifier
+        % in the target language here.
+    ;
+        TargetMutableNames = [_, _ | _],
         (
-            TargetMutableNames = [],
-            TargetMutableName = mutable_c_var_name(ModuleName,
-                MercuryMutableName)
-        ;
-            TargetMutableNames = [foreign_name(_, TargetMutableName)]
-            % XXX We should really check that this is a valid identifier
-            % in the target language here.
-        ;
-            TargetMutableNames = [_, _ | _],
+            ReportErrors = yes,
+            globals.io_get_target(CompilationTarget, !IO),
             MultipleNamesError = [
                 words("Error: multiple foreign_name attributes specified"),
                 words("for the"),
                 fixed(compilation_target_string(CompilationTarget)),
                 words("backend.")
             ],
-            write_error_pieces(Context, 0, MultipleNamesError, !IO),
-            TargetMutableName = mutable_c_var_name(ModuleName,
-                MercuryMutableName)
-        )
-    ;
-        (
-            ReportErrors = yes,
-            NYIError = [
-                words("Error: foreign_name mutable attribute not yet"),
-                words("implemented for the"),
-                fixed(compilation_target_string(CompilationTarget)),
-                words("backend.")
-            ],
-            write_error_pieces(Context, 0, NYIError, !IO)
+            write_error_pieces(Context, 0, MultipleNamesError, !IO)
         ;
             ReportErrors = no
         ),
-        %
-        % This is just a dummy value - we only get here if an error
-        % has occured.
-        % 
-        TargetMutableName = mutable_c_var_name(ModuleName,
-            MercuryMutableName)
+        TargetMutableName = mutable_c_var_name(ModuleName, MercuryMutableName)
     ).
 
 :- pred get_matching_foreign_name(list(foreign_name)::in,
@@ -770,7 +759,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             %
             unqualify_name(PredName, UnqualifiedPredName),
             ClauseId = simple_call_id_to_string(PredOrFunc,
-                unqualified(UnqualifiedPredName) / Arity), 
+                unqualified(UnqualifiedPredName) / Arity),
             error_is_exported(Context, "clause for " ++ ClauseId, !IO),
             module_info_incr_errors(!ModuleInfo)
         ;
@@ -905,7 +894,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         ;
             add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !IO)
         )
-    ; 
+    ;
         Pragma = termination_info(PredOrFunc, SymName, ModeList,
             MaybeArgSizeInfo, MaybeTerminationInfo)
     ->
@@ -970,7 +959,7 @@ add_item_clause(instance(_, _, _, _, _, _), !Status, _, !ModuleInfo, !QualInfo,
         !IO).
 add_item_clause(initialise(user, SymName, Arity), !Status, Context,
         !ModuleInfo, !QualInfo, !IO) :-
-    % 
+    %
     % To handle a `:- initialise initpred.' declaration we need to:
     % (1) construct a new C function name, CName, to use to export initpred,
     % (2) add the export pragma that does this
@@ -1022,7 +1011,7 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
                 Purity = purity_impure
             ->
                 module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
-                PragmaExportedItem = 
+                PragmaExportedItem =
                     pragma(compiler(initialise_decl),
                         export(SymName, predicate, [], CName)),
                 add_item_clause(PragmaExportedItem, !Status, Context,
@@ -1074,7 +1063,7 @@ add_item_clause(initialise(compiler(Details), SymName, _Arity),
     ).
 add_item_clause(finalise(Origin, SymName, Arity),
         !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
-    % 
+    %
     % To handle a `:- finalise finalpred.' declaration we need to:
     % (1) construct a new C function name, CName, to use to export finalpred,
     % (2) add `:- pragma export(finalpred(di, uo), CName).',
@@ -1162,18 +1151,62 @@ add_item_clause(finalise(Origin, SymName, Arity),
         module_info_incr_errors(!ModuleInfo)
     ).
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
-    Item = mutable(Name, _Type, InitTerm, Inst, MutAttrs),
+    Item = mutable(Name, Type, InitTerm, Inst, MutAttrs),
     ( status_defined_in_this_module(!.Status, yes) ->
         module_info_get_name(!.ModuleInfo, ModuleName),
         varset.new_named_var(varset.init, "X", X, ProgVarSet0),
         InstVarset = varset.init,
         Attrs0 = default_attributes(c),
-        set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
-        ( mutable_var_thread_safe(MutAttrs) = thread_safe ->
-            set_thread_safe(thread_safe, Attrs1, Attrs)
+        globals.io_lookup_bool_option(mutable_always_boxed, AlwaysBoxed, !IO),
+        (
+            AlwaysBoxed = yes,
+            BoxPolicy = always_boxed
         ;
-            Attrs = Attrs1
+            AlwaysBoxed = no,
+            BoxPolicy = native_if_possible
         ),
+        set_box_policy(BoxPolicy, Attrs0, Attrs1),
+
+        set_may_call_mercury(will_not_call_mercury, Attrs1, Attrs2),
+        ( mutable_var_thread_safe(MutAttrs) = thread_safe ->
+            set_thread_safe(thread_safe, Attrs2, Attrs)
+        ;
+            Attrs = Attrs2
+        ),
+
+        mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
+        (
+            MaybeForeignNames = no,
+            TargetMutableName = mutable_c_var_name(ModuleName, Name)
+        ;
+            MaybeForeignNames = yes(ForeignNames),
+            ReportErrors = no, % We've already reported them during pass 2.
+            get_global_name_from_foreign_names(ReportErrors, Context,
+                ModuleName, Name, ForeignNames, TargetMutableName, !IO)
+        ),
+
+        globals.io_get_target(CompilationTarget, !IO),
+        %
+        % We add the foreign code declaration and definition here rather than
+        % in pass 2 because the target-language-specific type name depends on
+        % whether there are any foreign_type declarations for Type.
+        %
+        % XXX We don't currently support the foreign_name attribute
+        % for languages other than C.
+        %
+        ( CompilationTarget = c ->
+            get_mutable_global_foreign_decl_defn(!.ModuleInfo, Type,
+                TargetMutableName, ForeignDecl, ForeignDefn),
+            ItemStatus0 = item_status(local, may_be_unqualified),
+            add_item_decl_pass_2(ForeignDecl, Context, ItemStatus0, _,
+                !ModuleInfo, !IO),
+            add_item_decl_pass_2(ForeignDefn, Context, ItemStatus0, _,
+                !ModuleInfo, !IO)
+        ;
+            % The error message was printed in pass 2.
+            true
+        ),
+
         %
         % Add the `:- initialise' declaration and clause for the
         % initialise predicate.
@@ -1187,27 +1220,18 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                 [InitTerm], purity_impure) - Context),
         add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,
             !IO),
-        mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
-        (
-            MaybeForeignNames = no,
-            TargetMutableName = mutable_c_var_name(ModuleName, Name)
-        ;
-            MaybeForeignNames = yes(ForeignNames),
-            ReportErrors = no,    % We've already reported them during pass 2.
-            get_global_name_from_foreign_names(ReportErrors, Context,
-                ModuleName, Name, ForeignNames, TargetMutableName, !IO)
-        ),
         set_purity(purity_semipure, Attrs, GetAttrs),
         NonPureGetClause = pragma(compiler(mutable_decl),
             foreign_proc(GetAttrs,
                 mutable_get_pred_sym_name(ModuleName, Name), predicate,
-                [pragma_var(X, "X", out_mode(Inst))], ProgVarSet0, InstVarset,
+                [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
+                ProgVarSet0, InstVarset,
                 ordinary("X = " ++ TargetMutableName ++ ";", yes(Context)))),
         add_item_clause(NonPureGetClause, !Status, Context, !ModuleInfo,
             !QualInfo, !IO),
         TrailMutableUpdates = mutable_var_trailed(MutAttrs),
         (
-            TrailMutableUpdates = untrailed, 
+            TrailMutableUpdates = untrailed,
             TrailCode = ""
         ;
             TrailMutableUpdates = trailed,
@@ -1232,23 +1256,25 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                 TrailCode = ""
             )
         ),
-        NonPureSetClause = pragma(compiler(mutable_decl), foreign_proc(Attrs,
-            mutable_set_pred_sym_name(ModuleName, Name), predicate,
-            [pragma_var(X, "X", in_mode(Inst))], ProgVarSet0, InstVarset,
-            ordinary(TrailCode ++ TargetMutableName ++ " = X;",
+        NonPureSetClause = pragma(compiler(mutable_decl),
+            foreign_proc(Attrs,
+                mutable_set_pred_sym_name(ModuleName, Name), predicate,
+                [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
+                ProgVarSet0, InstVarset,
+                ordinary(TrailCode ++ TargetMutableName ++ " = X;",
                 yes(Context)))),
         add_item_clause(NonPureSetClause, !Status, Context, !ModuleInfo,
             !QualInfo, !IO),
 
         % Create pure access predicates for the mutable if requested.
         %
-        % XXX We don't define these directly in terms of the non-pure 
+        % XXX We don't define these directly in terms of the non-pure
         % access predicates because I/O tabling doesn't currently work
         % for impure/semipure predicates.  At the moment we just generate
         % another pair of foreign_procs.
 
         ( mutable_var_attach_to_io_state(MutAttrs) = yes ->
-            set_tabled_for_io(tabled_for_io, Attrs0, PureIntAttrs0),
+            set_tabled_for_io(tabled_for_io, Attrs1, PureIntAttrs0),
             set_purity(purity_pure, PureIntAttrs0, PureIntAttrs),
             varset.new_named_var(ProgVarSet0, "IO0", IO0, ProgVarSet1),
             varset.new_named_var(ProgVarSet1, "IO",  IO,  ProgVarSet),
@@ -1256,10 +1282,10 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                 foreign_proc(PureIntAttrs,
                     mutable_set_pred_sym_name(ModuleName, Name), predicate,
                     [
-                        pragma_var(X,   "X",   in_mode(Inst)),
-                        pragma_var(IO0, "IO0", di_mode),
-                        pragma_var(IO,  "IO",  uo_mode)
-                    ], ProgVarSet, InstVarset, 
+                        pragma_var(X,    "X",  in_mode(Inst), BoxPolicy),
+                        pragma_var(IO0, "IO0", di_mode, native_if_possible),
+                        pragma_var(IO,  "IO",  uo_mode, native_if_possible)
+                    ], ProgVarSet, InstVarset,
                     ordinary(TargetMutableName ++ " = X; IO = IO0;",
                         yes(Context)
                     )
@@ -1271,14 +1297,12 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                 foreign_proc(PureIntAttrs,
                     mutable_get_pred_sym_name(ModuleName, Name), predicate,
                     [
-                        pragma_var(X,   "X",   out_mode(Inst)),
-                        pragma_var(IO0, "IO0", di_mode),
-                        pragma_var(IO,  "IO",  uo_mode)
+                        pragma_var(X,    "X",  out_mode(Inst), BoxPolicy),
+                        pragma_var(IO0, "IO0", di_mode, native_if_possible),
+                        pragma_var(IO,  "IO",  uo_mode, native_if_possible)
                     ], ProgVarSet, InstVarset,
-                    ordinary(
-                                "X = " ++ TargetMutableName ++ ";" ++
-                                "IO = IO0;",
-                                yes(Context)
+                    ordinary("X = " ++ TargetMutableName ++ "; IO = IO0;",
+                        yes(Context)
                     )
                 )
             ),
@@ -1291,6 +1315,34 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         true
     ).
 
+    % Create the foreign_decl for the mutable. The bool should be true if
+    % mutables are always boxed.
+    %
+:- pred get_mutable_global_foreign_decl_defn(module_info::in, mer_type::in,
+    string::in, item::out, item::out) is det.
+
+get_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
+        Decl, Defn) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
+    globals.get_target(Globals, Backend),
+    ( Backend = c ->
+        TypeName = global_foreign_type_name(AlwaysBoxed, c, ModuleInfo, Type),
+        Decl = pragma(compiler(mutable_decl),
+            foreign_decl(c, foreign_decl_is_exported,
+                "extern " ++ TypeName ++ " " ++ TargetMutableName ++ ";")),
+        Defn = pragma(compiler(mutable_decl),
+            foreign_code(c, TypeName ++ " " ++ TargetMutableName ++ ";"))
+    ;
+        sorry(this_file, "we don't yet support mutables for non-C backends")
+    ).
+
+:- func global_foreign_type_name(bool, foreign_language, module_info, mer_type)
+    = string.
+
+global_foreign_type_name(yes, _, _, _) = "MR_Word".
+global_foreign_type_name(no, Lang, ModuleInfo, Type) =
+    to_type_string(Lang, ModuleInfo, Type).
 
 :- pred add_solver_type_mutable_items_clauses(list(item)::in,
     import_status::in, import_status::out, prog_context::in,

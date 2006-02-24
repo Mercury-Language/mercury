@@ -291,10 +291,12 @@ endif
 
 # Fact tables currently work only in the C grades.
 # The foreign_type_assertion test is currently meaningful only in C grades.
+# Mutables work properly only in C grades.
 ifeq "$(filter il% java%,$(GRADE))" ""
 	C_ONLY_PROGS= \
 		factt \
 		factt_sort_test \
+		float_gv \
 		foreign_type_assertion
 else
 	C_ONLY_PROGS=

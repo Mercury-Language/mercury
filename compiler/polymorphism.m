@@ -1115,7 +1115,7 @@ process_goal_expr(GoalExpr, _GoalInfo, _Goal, !Info) :-
 type_info_vars(_ModuleInfo, [], InitString) = InitString.
 type_info_vars(ModuleInfo, [Arg | Args], InitString) = String :-
     String0 = type_info_vars(ModuleInfo, Args, InitString),
-    Arg = foreign_arg(_, MaybeNameMode, _),
+    MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
     (
         MaybeNameMode = yes(ArgName0 - Mode),
         ( mode_is_output(ModuleInfo, Mode) ->
@@ -1598,10 +1598,10 @@ process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars, Args) :-
 
 :- pred foreign_proc_add_typeclass_info(bool::in, mer_mode::in,
     pragma_foreign_code_impl::in, tvarset::in, prog_constraint::in,
-    maybe(pair(string, mer_mode))::out) is det.
+    pair(maybe(pair(string, mer_mode)), box_policy)::out) is det.
 
 foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
-        Constraint, MaybeArgName) :-
+        Constraint, MaybeArgName - native_if_possible) :-
     Constraint = constraint(Name0, Types),
     mdbcomp__prim_data__sym_name_to_string(Name0, "__", Name),
     prog_type__vars_list(Types, TypeVars),
@@ -1621,10 +1621,10 @@ foreign_proc_add_typeclass_info(CanOptAwayUnnamed, Mode, Impl, TypeVarSet,
 
 :- pred foreign_proc_add_typeinfo(bool::in, mer_mode::in,
     pragma_foreign_code_impl::in, tvarset::in, tvar::in,
-    maybe(pair(string, mer_mode))::out) is det.
+    pair(maybe(pair(string, mer_mode)), box_policy)::out) is det.
 
 foreign_proc_add_typeinfo(CanOptAwayUnnamed, Mode, Impl, TypeVarSet, TVar,
-        MaybeArgName) :-
+        MaybeArgName - native_if_possible) :-
     ( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
         string__append("TypeInfo_for_", TypeVarName, C_VarName),
         % If the variable name corresponding to the type_info isn't mentioned

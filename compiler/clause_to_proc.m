@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -263,10 +263,12 @@ contains_nonpure_goal([Goal | Goals]) :-
 
 :- func set_arg_names(foreign_arg, prog_varset) = prog_varset.
 
-set_arg_names(foreign_arg(Arg, MaybeNameMode, _), Vars0) = Vars :-
+set_arg_names(Arg, Vars0) = Vars :-
+    Var = foreign_arg_var(Arg),
+    MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
     (
         MaybeNameMode = yes(Name - _),
-        varset__name_var(Vars0, Arg, Name, Vars)
+        varset__name_var(Vars0, Var, Name, Vars)
     ;
         MaybeNameMode = no,
         Vars = Vars0
@@ -283,7 +285,7 @@ get_purity(_Goal - GoalInfo, Purity) :-
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
     Clause = clause(ProcIds, _, _, _),
-    % an empty list here means that the clause applies to all procs
+    % An empty list here means that the clause applies to all procs.
     ( ProcIds = [] ->
         MatchingClauses = [Clause | MatchingClauses1]
     ; list__member(ProcId, ProcIds) ->

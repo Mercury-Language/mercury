@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -371,7 +371,7 @@ process_goal(_, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     Goal0 = GoalExpr - GoalInfo,
     GoalExpr = foreign_proc(_, _, _, Args, _ExtraArgs, _),
     ForeignHOArgs = (pred(Arg::in, Out::out) is semidet :-
-        Arg = foreign_arg(Var, NameMode, Type),
+        Arg = foreign_arg(Var, NameMode, Type, _BoxPolicy),
         %
         % A 'no' here means that the foreign argument is unused.
         %

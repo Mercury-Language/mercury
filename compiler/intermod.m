@@ -1788,26 +1788,30 @@ should_output_marker(mode_check_clauses, yes).
 get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
     (
         Args = [Arg | ArgsTail],
-        Modes = [Mode | ModesTail]
-    ->
-        Arg = foreign_arg(Var, MaybeNameAndMode, _),
+        Modes = [Mode | ModesTail],
+        Arg = foreign_arg(Var, MaybeNameAndMode, _, _),
         (
             MaybeNameAndMode = no,
             Name = "_"
         ;
             MaybeNameAndMode = yes(Name - _Mode2)
         ),
-        PragmaVar = pragma_var(Var, Name, Mode),
+        PragmaVar = pragma_var(Var, Name, Mode, native_if_possible),
         varset__name_var(!.VarSet, Var, Name, !:VarSet),
         get_pragma_foreign_code_vars(ArgsTail, ModesTail, !VarSet,
             PragmaVarsTail),
         PragmaVars = [PragmaVar | PragmaVarsTail]
     ;
         Args = [],
-        Modes = []
-    ->
+        Modes = [],
         PragmaVars = []
     ;
+        Args = [],
+        Modes = [_ | _],
+        unexpected(this_file, "get_pragma_foreign_code_vars")
+    ;
+        Args = [_ | _],
+        Modes = [],
         unexpected(this_file, "get_pragma_foreign_code_vars")
     ).
 

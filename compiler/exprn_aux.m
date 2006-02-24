@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -506,20 +506,20 @@ substitute_lval_in_live_lval_info(OldLval, NewLval,
 substitute_lval_in_pragma_c_input(OldLval, NewLval, Out0, Out,
         !N) :-
     Out0 = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval0,
-        MaybeForeign),
+        MaybeForeign, BoxPolicy),
     substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
     Out = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval,
-        MaybeForeign).
+        MaybeForeign, BoxPolicy).
 
 :- pred substitute_lval_in_pragma_c_output(lval::in, lval::in,
     pragma_c_output::in, pragma_c_output::out, int::in, int::out) is det.
 
 substitute_lval_in_pragma_c_output(OldLval, NewLval, Out0, Out, !N) :-
     Out0 = pragma_c_output(Lval0, VarType, IsDummy, OrigType, Name,
-        MaybeForeign),
+        MaybeForeign, BoxPolicy),
     substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
     Out = pragma_c_output(Lval, VarType, IsDummy, OrigType, Name,
-        MaybeForeign).
+        MaybeForeign, BoxPolicy).
 
 :- pred substitute_lval_in_rval_count(lval::in, lval::in,
     rval::in, rval::out, int::in, int::out) is det.

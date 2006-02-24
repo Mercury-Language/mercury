@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -209,8 +209,9 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         % The `func(in) = out(<i_ground>) is det' mode.
         %
     ToGroundRepnSymName = solver_to_ground_repn_symname(TypeSymName, Arity),
-    ToGroundRepnArgs = [ pragma_var(X, "X", in_mode      ),
-                         pragma_var(Y, "Y", OutGroundMode) ],
+    XTGPragmaVar = pragma_var(X, "X", in_mode, native_if_possible),
+    YTGPragmaVar = pragma_var(Y, "Y", OutGroundMode, native_if_possible),
+    ToGroundRepnArgs = [XTGPragmaVar, YTGPragmaVar],
     ToGroundRepnForeignProc =
         foreign_proc(
             Attrs,
@@ -228,8 +229,9 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         % The `func(in(any)) = out(<i_any>) is det' mode.
         %
     ToAnyRepnSymName = solver_to_any_repn_symname(TypeSymName, Arity),
-    ToAnyRepnArgs = [ pragma_var(X, "X", in_any_mode),
-                      pragma_var(Y, "Y", OutAnyMode ) ],
+    XTAPragmaVar = pragma_var(X, "X", in_any_mode, native_if_possible),
+    YTAPragmaVar = pragma_var(Y, "Y", OutAnyMode, native_if_possible),
+    ToAnyRepnArgs = [XTAPragmaVar, YTAPragmaVar],
     ToAnyRepnForeignProc =
         foreign_proc(
             Attrs,
@@ -247,8 +249,9 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         % The `func(in(<i_ground>)) = out is det' mode.
         %
     FromGroundRepnSymName = repn_to_ground_solver_symname(TypeSymName, Arity),
-    FromGroundRepnArgs        = [ pragma_var(X, "X", InGroundMode),
-                          pragma_var(Y, "Y", out_mode) ],
+    XFGPragmaVar = pragma_var(X, "X", InGroundMode, native_if_possible),
+    YFGPragmaVar = pragma_var(Y, "Y", out_mode, native_if_possible),
+    FromGroundRepnArgs = [XFGPragmaVar, YFGPragmaVar],
     FromGroundRepnForeignProc =
         foreign_proc(
             Attrs,
@@ -267,8 +270,9 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         % The `func(in(<i_any>)) = out(any) is det' mode.
         %
     FromAnyRepnSymName = repn_to_any_solver_symname(TypeSymName, Arity),
-    FromAnyRepnArgs = [ pragma_var(X, "X", InAnyMode   ),
-                        pragma_var(Y, "Y", out_any_mode) ],
+    XFAPragmaVar = pragma_var(X, "X", InAnyMode, native_if_possible),
+    YFAPragmaVar = pragma_var(Y, "Y", out_any_mode, native_if_possible),
+    FromAnyRepnArgs = [XFAPragmaVar, YFAPragmaVar],
     FromAnyRepnForeignProc =
         foreign_proc(
             Attrs,

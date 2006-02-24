@@ -344,17 +344,19 @@
     --->    foreign_arg(
                 arg_var         :: prog_var,
                 arg_name_mode   :: maybe(pair(string, mer_mode)),
-                arg_type        :: mer_type
+                arg_type        :: mer_type,
+                arg_box_policy  :: box_policy
             ).
 
 :- func foreign_arg_var(foreign_arg) = prog_var.
 :- func foreign_arg_maybe_name_mode(foreign_arg) =
     maybe(pair(string, mer_mode)).
 :- func foreign_arg_type(foreign_arg) = mer_type.
+:- func foreign_arg_box(foreign_arg) = box_policy.
 
 :- pred make_foreign_args(list(prog_var)::in,
-    list(maybe(pair(string, mer_mode)))::in, list(mer_type)::in,
-    list(foreign_arg)::out) is det.
+    list(pair(maybe(pair(string, mer_mode)), box_policy))::in,
+    list(mer_type)::in, list(foreign_arg)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1399,19 +1401,21 @@
 foreign_arg_var(Arg) = Arg ^ arg_var.
 foreign_arg_maybe_name_mode(Arg) = Arg ^ arg_name_mode.
 foreign_arg_type(Arg) = Arg ^ arg_type.
+foreign_arg_box(Arg) = Arg ^ arg_box_policy.
 
-make_foreign_args(Vars, NamesModes, Types, Args) :-
+make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
     (
         Vars = [Var | VarsTail],
-        NamesModes = [NameMode | NamesModesTail],
+        NamesModesBoxes = [NameModeBox | NamesModesBoxesTail],
         Types = [Type | TypesTail]
     ->
-        make_foreign_args(VarsTail, NamesModesTail, TypesTail, ArgsTail),
-        Arg = foreign_arg(Var, NameMode, Type),
+        make_foreign_args(VarsTail, NamesModesBoxesTail, TypesTail, ArgsTail),
+        NameModeBox = NameMode - Box,
+        Arg = foreign_arg(Var, NameMode, Type, Box),
         Args = [Arg | ArgsTail]
     ;
         Vars = [],
-        NamesModes = [],
+        NamesModesBoxes = [],
         Types = []
     ->
         Args = []

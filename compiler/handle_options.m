@@ -943,6 +943,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
+        option_implies(highlevel_code, mutable_always_boxed, bool(no),
+            !Globals),
+
         option_implies(target_debug, strip, bool(no), !Globals),
 
         % Inlining happens before the deep profiling transformation, so if

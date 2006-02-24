@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,6 +19,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
+
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -48,14 +49,6 @@
     %
 :- func init_pred_decl(module_name, string) = item.
 
-    % Create the foreign_decl for the mutable.
-    %
-:- func get_global_foreign_decl(string) = item.
-
-    % Create the foreign_code that defines the mutable.
-    %
-:- func get_global_foreign_defn(string) = item.
-
 :- func mutable_get_pred_sym_name(sym_name, string) = sym_name.
 
 :- func mutable_set_pred_sym_name(sym_name, string) = sym_name.
@@ -69,9 +62,11 @@
 
 :- implementation.
 
-:- import_module libs.globals.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
+:- import_module libs.compiler_util.
+
 :- import_module list.
 :- import_module std_util.
 :- import_module varset.
@@ -126,13 +121,6 @@ pure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         no /* with_type */, no /* with_inst */, yes(det),
         true /* condition */, purity_pure, Constraints).
 
-    % Return the type io.state.
-    % XXX Perhaps this should be in prog_type?
-    %
-:- func io_state_type = mer_type.
-
-io_state_type = defined(qualified(unqualified("io"), "state"), [], star).
-
 init_pred_decl(ModuleName, Name) = InitPredDecl :-
     VarSet = varset__init,
     InstVarSet = varset__init,
@@ -142,17 +130,6 @@ init_pred_decl(ModuleName, Name) = InitPredDecl :-
         predicate, mutable_init_pred_sym_name(ModuleName, Name),
         [], no /* with_type */, no /* with_inst */, yes(det),
         true /* condition */, purity_impure, Constraints).
-
-%-----------------------------------------------------------------------------%
-
-get_global_foreign_decl(TargetMutableName) =
-    pragma(compiler(mutable_decl),
-        foreign_decl(c, foreign_decl_is_exported,
-            "extern MR_Word " ++ TargetMutableName ++ ";")).
-
-get_global_foreign_defn(TargetMutableName) =
-    pragma(compiler(mutable_decl),
-        foreign_code(c, "MR_Word " ++ TargetMutableName ++ ";")).
 
 %-----------------------------------------------------------------------------%
 
@@ -169,6 +146,12 @@ mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
     RawCVarName       = "mutable_variable_" ++ Name,
     QualifiedCVarName = qualified(ModuleName, RawCVarName),
     MangledCVarName   = sym_name_mangle(QualifiedCVarName).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "prog_mutable.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module prog_mutable.

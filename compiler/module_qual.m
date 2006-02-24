@@ -1123,8 +1123,8 @@ qualify_pragma(X@mode_check_clauses(_, _), X, !Info, !IO).
     mq_info::in, mq_info::out, io::di, io::uo) is det.
 
 qualify_pragma_vars([], [], !Info, !IO).
-qualify_pragma_vars([pragma_var(Var, Name, Mode0) | PragmaVars0],
-        [pragma_var(Var, Name, Mode) | PragmaVars], !Info, !IO) :-
+qualify_pragma_vars([pragma_var(Var, Name, Mode0, Box) | PragmaVars0],
+        [pragma_var(Var, Name, Mode, Box) | PragmaVars], !Info, !IO) :-
     qualify_mode(Mode0, Mode, !Info, !IO),
     qualify_pragma_vars(PragmaVars0, PragmaVars, !Info, !IO).
 

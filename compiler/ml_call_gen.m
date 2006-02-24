@@ -77,7 +77,7 @@
     % holding a value of the source type, produce an rval that converts
     % the source rval to the destination type.
     %
-:- pred ml_gen_box_or_unbox_rval(mer_type::in, mer_type::in,
+:- pred ml_gen_box_or_unbox_rval(mer_type::in, mer_type::in, box_policy::in,
     mlds_rval::in, mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
@@ -99,9 +99,9 @@
     % from the ArgNum-th entry in the `type_params' local.
     % (If ForClosureWrapper = no, then ArgNum is unused.)
     %
-:- pred ml_gen_box_or_unbox_lval(mer_type::in, mer_type::in, mlds_lval::in,
-    var_name::in, prog_context::in, bool::in, int::in, mlds_lval::out,
-    mlds__defns::out, statements::out, statements::out,
+:- pred ml_gen_box_or_unbox_lval(mer_type::in, mer_type::in, box_policy::in,
+    mlds_lval::in, var_name::in, prog_context::in, bool::in, int::in,
+    mlds_lval::out, mlds__defns::out, statements::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate the appropriate MLDS type for a continuation function
@@ -310,7 +310,7 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
         ( is_dummy_argument_type(ModuleInfo, DestType) ->
             Statements = []
         ;
-            ml_gen_box_or_unbox_rval(SrcType, DestType,
+            ml_gen_box_or_unbox_rval(SrcType, DestType, native_if_possible,
                 lval(SrcLval), CastRval, !Info),
             Assign = ml_gen_assign(DestLval, CastRval, Context),
             Statements = [Assign]
@@ -660,8 +660,8 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
             ;
                 VarRval = lval(VarLval)
             ),
-            ml_gen_box_or_unbox_rval(CallerType, CalleeType, VarRval, ArgRval,
-                !Info),
+            ml_gen_box_or_unbox_rval(CallerType, CalleeType,
+                native_if_possible, VarRval, ArgRval, !Info),
             InputRvals = [ArgRval | InputRvals1],
             OutputLvals = OutputLvals1,
             OutputTypes = OutputTypes1,
@@ -669,8 +669,9 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
             ConvOutputStatements = ConvOutputStatements1
         ;
             % It's an output argument.
-            ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName,
-                Context, ForClosureWrapper, ArgNum, ArgLval, ThisArgConvDecls,
+            ml_gen_box_or_unbox_lval(CallerType, CalleeType,
+                native_if_possible, VarLval, VarName, Context,
+                ForClosureWrapper, ArgNum, ArgLval, ThisArgConvDecls,
                 _ThisArgConvInput, ThisArgConvOutput, !Info),
             ConvDecls = ThisArgConvDecls ++ ConvDecls1,
             ConvOutputStatements = ThisArgConvOutput ++ ConvOutputStatements1,
@@ -716,9 +717,14 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 ml_gen_mem_addr(Lval) =
     (if Lval = mem_ref(Rval, _) then Rval else mem_addr(Lval)).
 
-ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval, !Info) :-
+ml_gen_box_or_unbox_rval(SourceType, DestType, BoxPolicy, VarRval, ArgRval,
+        !Info) :-
     % Convert VarRval, of type SourceType, to ArgRval, of type DestType.
     (
+        BoxPolicy = always_boxed
+    ->
+        ArgRval = VarRval
+    ;
         % If converting from polymorphic type to concrete type, then unbox.
         SourceType = variable(_, _),
         DestType \= variable(_, _)
@@ -780,14 +786,14 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval, !Info) :-
         ArgRval = VarRval
     ).
 
-ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
-        ForClosureWrapper, ArgNum, ArgLval, ConvDecls,
+ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
+        Context, ForClosureWrapper, ArgNum, ArgLval, ConvDecls,
         ConvInputStatements, ConvOutputStatements, !Info) :-
     % First see if we can just convert the lval as an rval;
     % if no boxing/unboxing is required, then ml_box_or_unbox_rval
     % will return its argument unchanged, and so we're done.
-    ml_gen_box_or_unbox_rval(CalleeType, CallerType, lval(VarLval),
-        BoxedRval, !Info),
+    ml_gen_box_or_unbox_rval(CalleeType, CallerType, BoxPolicy,
+        lval(VarLval), BoxedRval, !Info),
     ( BoxedRval = lval(VarLval) ->
         ArgLval = VarLval,
         ConvDecls = [],
@@ -851,17 +857,17 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
             % to/from the output argument whose address we were passed.
 
             % Assign to the freshly generated arg variable.
-            ml_gen_box_or_unbox_rval(CallerType, CalleeType,
+            ml_gen_box_or_unbox_rval(CallerType, CalleeType, BoxPolicy,
                 lval(VarLval), ConvertedVarRval, !Info),
-            AssignInputStatement = ml_gen_assign(ArgLval,
-                ConvertedVarRval, Context),
+            AssignInputStatement = ml_gen_assign(ArgLval, ConvertedVarRval,
+                Context),
             ConvInputStatements = [AssignInputStatement],
 
             % Assign from the freshly generated arg variable.
-            ml_gen_box_or_unbox_rval(CalleeType, CallerType,
+            ml_gen_box_or_unbox_rval(CalleeType, CallerType, BoxPolicy,
                 lval(ArgLval), ConvertedArgRval, !Info),
-            AssignOutputStatement = ml_gen_assign(VarLval,
-                ConvertedArgRval, Context),
+            AssignOutputStatement = ml_gen_assign(VarLval, ConvertedArgRval,
+                Context),
             ConvOutputStatements = [AssignOutputStatement]
         )
     ).

@@ -17,19 +17,20 @@ THIS_DIR = hard_coded/sub-modules
 SUB_MODULE_PROGS= \
 	accessibility \
 	accessibility2 \
+	class \
 	deeply_nested \
-	use_submodule \
-	parent \
-	parent2 \
+	finalise_parent \
+	initialise_parent \
+	mutable_parent \
 	nested \
 	nested2 \
 	nested3 \
-	class \
 	nested_intermod_main \
-	initialise_parent \
+	non_word_mutable \
+	parent \
+	parent2 \
 	ts \
-	mutable_parent \
-	finalise_parent
+	use_submodule
 
 # We currently don't do any testing in grade java on this directory.
 ifneq "$(findstring java,$(GRADE))" ""

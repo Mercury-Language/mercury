@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -337,7 +337,7 @@ livemap__build_live_lval_info(live_lvals_info(LiveLvalSet), !Livevals,
 
 livemap__build_livemap_pragma_inputs([], !Livevals).
 livemap__build_livemap_pragma_inputs([Input | Inputs], !Livevals) :-
-    Input = pragma_c_input(_, _, _, _, Rval, _),
+    Input = pragma_c_input(_, _, _, _, Rval, _, _),
     ( Rval = lval(Lval) ->
         livemap__insert_proper_liveval(Lval, !Livevals)
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -577,7 +577,9 @@
 
                 % If in_original_type is a foreign type, info about
                 % that foreign type.
-                in_maybe_foreign_type       :: maybe(pragma_c_foreign_type)
+                in_maybe_foreign_type       :: maybe(pragma_c_foreign_type),
+
+                in_box_policy               :: box_policy
             ).
 
     % A pragma_c_output represents the code that stores one of
@@ -603,7 +605,9 @@
 
                 % If in_original_type is a foreign type, info about
                 % that foreign type.
-                out_maybe_foreign_type      :: maybe(pragma_c_foreign_type)
+                out_maybe_foreign_type      :: maybe(pragma_c_foreign_type),
+
+                out_box_policy              :: box_policy
             ).
 
 :- type pragma_c_foreign_type

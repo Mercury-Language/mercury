@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -401,7 +401,7 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
         (
             PredOrFunc = function,
             pred_args_to_func_args(!Args, RetArg),
-            RetArg = pragma_var(_, RetArgName, RetMode) - RetType,
+            RetArg = pragma_var(_, RetArgName, RetMode, _) - RetType,
             mode_to_arg_mode(!.ModuleInfo, RetMode, RetType, RetArgMode),
             RetArgMode = top_out,
             \+ type_util__is_dummy_argument_type(!.ModuleInfo, RetType)
@@ -449,7 +449,7 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
 :- pred include_import_arg(module_info::in, pair(pragma_var, mer_type)::in)
     is semidet.
 
-include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode) - Type) :-
+include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode, _Box) - Type) :-
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
     ArgMode \= top_unused,
     \+ type_util__is_dummy_argument_type(ModuleInfo, Type).
@@ -470,7 +470,7 @@ create_pragma_vars([Var | Vars], [Mode | Modes], ArgNum0,
     ArgNum = ArgNum0 + 1,
     string__int_to_string(ArgNum, ArgNumString),
     string__append("Arg", ArgNumString, ArgName),
-    PragmaVar = pragma_var(Var, ArgName, Mode),
+    PragmaVar = pragma_var(Var, ArgName, Mode, native_if_possible),
     create_pragma_vars(Vars, Modes, ArgNum, PragmaVars).
 create_pragma_vars([_ | _], [], _, _) :-
     unexpected(this_file, "create_pragma_vars: length mis-match").
@@ -487,7 +487,7 @@ create_pragma_vars([], [_ | _], _, _) :-
 
 create_pragma_import_c_code([], _ModuleInfo, !C_Code).
 create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo, !C_Code) :-
-    PragmaVar = pragma_var(_Var, ArgName, Mode),
+    PragmaVar = pragma_var(_Var, ArgName, Mode, _BoxPolicy),
 
     % Construct the C code fragment for passing this argument, and append it
     % to !.C_Code. Note that C handles output arguments by passing the

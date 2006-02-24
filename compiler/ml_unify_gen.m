@@ -363,7 +363,7 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
             % to the appropriate type.
             ml_gen_static_const_arg(Arg, StaticArg, ArgRval, !Info),
             ml_variable_type(!.Info, Arg, ArgType),
-            ml_gen_box_or_unbox_rval(ArgType, VarType,
+            ml_gen_box_or_unbox_rval(ArgType, VarType, native_if_possible,
                 ArgRval, Rval, !Info)
         ;
             unexpected(this_file, "ml_code_gen: no_tag: arity != 1")
@@ -1024,8 +1024,8 @@ ml_gen_box_or_unbox_const_rval_list(ArgTypes, FieldTypes, ArgRvals,
             % Otherwise, fall back on ml_gen_box_or_unbox_rval.
             % XXX This might still generate stuff which is not legal
             % in a static initializer!
-            ml_gen_box_or_unbox_rval(ArgType, FieldType, ArgRval,
-                FieldRval, !Info),
+            ml_gen_box_or_unbox_rval(ArgType, FieldType, native_if_possible,
+                ArgRval, FieldRval, !Info),
             BoxConstDefns0 = []
         ),
         ml_gen_box_or_unbox_const_rval_list(ArgTypes1, FieldTypes1, ArgRvals1,
@@ -1236,8 +1236,8 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
             not is_dummy_argument_type(ModuleInfo, ArgType),
             not is_dummy_argument_type(ModuleInfo, ConsArgType)
         ->
-            ml_gen_box_or_unbox_rval(ArgType, BoxedArgType, lval(Lval), Rval,
-                !Info)
+            ml_gen_box_or_unbox_rval(ArgType, BoxedArgType, native_if_possible,
+                lval(Lval), Rval, !Info)
         ;
             Rval = const(null(MLDS_Type))
         ),
@@ -1592,8 +1592,8 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
         LeftMode = top_in,
         RightMode = top_out
     ->
-        ml_gen_box_or_unbox_rval(FieldType, ArgType, lval(FieldLval),
-            FieldRval, !Info),
+        ml_gen_box_or_unbox_rval(FieldType, ArgType, native_if_possible,
+            lval(FieldLval), FieldRval, !Info),
         Statement = ml_gen_assign(ArgLval, FieldRval, Context),
         !:Statements = [Statement | !.Statements]
     ;
@@ -1601,8 +1601,8 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
         LeftMode = top_out,
         RightMode = top_in
     ->
-        ml_gen_box_or_unbox_rval(ArgType, FieldType, lval(ArgLval), ArgRval,
-            !Info),
+        ml_gen_box_or_unbox_rval(ArgType, FieldType, native_if_possible,
+            lval(ArgLval), ArgRval, !Info),
         Statement = ml_gen_assign(FieldLval, ArgRval, Context),
         !:Statements = [Statement | !.Statements]
     ;

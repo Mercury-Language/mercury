@@ -1907,7 +1907,7 @@ write_goal_2_shorthand(bi_implication(LHS, RHS), ModuleInfo, VarSet,
 
 write_foreign_args([], _, _, _, !IO).
 write_foreign_args([Arg | Args], VarSet, TVarSet, AppendVarNums, !IO) :-
-    Arg = foreign_arg(Var, MaybeNameMode, Type),
+    Arg = foreign_arg(Var, MaybeNameMode, Type, BoxPolicy),
     mercury_output_var(Var, VarSet, AppendVarNums, !IO),
     (
         MaybeNameMode = yes(Name - Mode),
@@ -1922,6 +1922,12 @@ write_foreign_args([Arg | Args], VarSet, TVarSet, AppendVarNums, !IO) :-
         io__write_string(")", !IO)
     ;
         MaybeNameMode = no
+    ),
+    (
+        BoxPolicy = native_if_possible
+    ;
+        BoxPolicy = always_boxed,
+        io__write_string("$alwaysboxed", !IO)
     ),
     io__write_string("@", !IO),
     mercury_output_type(TVarSet, AppendVarNums, Type, !IO),

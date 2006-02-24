@@ -3054,7 +3054,7 @@ mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
         % The predicate or function arguments in a `:- pragma import'
         % declaration are not named.
         ImportModes = list__map(
-            (func(pragma_var(_, _, ImportMode)) = ImportMode), Vars0),
+            (func(pragma_var(_, _, ImportMode, _)) = ImportMode), Vars0),
 
         mercury_format_pragma_import(PredName, PredOrFunc, ImportModes,
             Attributes, C_Function, !U)
@@ -3162,7 +3162,7 @@ mercury_format_pragma_foreign_code_vars(Vars, ProgVarset, InstVarset, !U) :-
 mercury_format_pragma_foreign_code_vars_2([], _, _, !U).
 mercury_format_pragma_foreign_code_vars_2([Var | Vars], ProgVarset, 
         InstVarset, !U) :-
-    Var = pragma_var(_Var, VarName, Mode),
+    Var = pragma_var(_Var, VarName, Mode, _BoxPolicy),
     add_string(VarName, !U),
     add_string(" :: ", !U),
     mercury_format_mode(Mode, simple_inst_info(InstVarset), !U),
@@ -3488,12 +3488,10 @@ mercury_format_tabs(Indent, !U) :-
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_format_pragma_foreign_attributes(
-    pragma_foreign_proc_attributes::in,
-    U::di, U::uo) is det <= output(U).
+    pragma_foreign_proc_attributes::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_foreign_attributes(Attributes, !U) :-
-    % This is one case where it is a bad idea to use field
-    % accessors.
+    % This is one case where it is a bad idea to use field accessors.
     add_string("[", !U),
     add_list(attributes_to_strings(Attributes), ", ", add_string, !U),
     add_string("]", !U).

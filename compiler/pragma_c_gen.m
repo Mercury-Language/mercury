@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1045,6 +1045,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
                                 % inlining/specialization
                                 % (the actual type may be an instance
                                 % of this type, if this type is polymorphic).
+                box_policy,
                 arg_info
             ).
 
@@ -1053,7 +1054,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 
 make_c_arg_list([], [], []).
 make_c_arg_list([Arg | ArgTail], [ArgInfo | ArgInfoTail], [CArg | CArgTail]) :-
-    Arg = foreign_arg(Var, MaybeNameMode, Type),
+    Arg = foreign_arg(Var, MaybeNameMode, Type, BoxPolicy),
     (
         MaybeNameMode = yes(Name - _),
         MaybeName = yes(Name)
@@ -1061,7 +1062,7 @@ make_c_arg_list([Arg | ArgTail], [ArgInfo | ArgInfoTail], [CArg | CArgTail]) :-
         MaybeNameMode = no,
         MaybeName = no
     ),
-    CArg = c_arg(Var, MaybeName, Type, ArgInfo),
+    CArg = c_arg(Var, MaybeName, Type, BoxPolicy, ArgInfo),
     make_c_arg_list(ArgTail, ArgInfoTail, CArgTail).
 make_c_arg_list([], [_ | _], _) :-
     unexpected(this_file, "pragma_c_gen__make_c_arg_list length mismatch").
@@ -1090,7 +1091,7 @@ get_highest_arg_num([arg_info(Loc, _) | ArgInfos], !Max) :-
 make_extra_c_arg_list_seq([], _, _, []).
 make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
         [CArg | CArgs]) :-
-    ExtraArg = foreign_arg(Var, MaybeNameMode, OrigType),
+    ExtraArg = foreign_arg(Var, MaybeNameMode, OrigType, BoxPolicy),
     (
         MaybeNameMode = yes(Name - Mode),
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode)
@@ -1101,7 +1102,7 @@ make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
     NextReg = LastReg + 1,
     % Extra args are always input.
     ArgInfo = arg_info(NextReg, ArgMode),
-    CArg = c_arg(Var, yes(Name), OrigType, ArgInfo),
+    CArg = c_arg(Var, yes(Name), OrigType, BoxPolicy, ArgInfo),
     make_extra_c_arg_list_seq(ExtraArgs, ModuleInfo, NextReg, CArgs).
 
 %---------------------------------------------------------------------------%
@@ -1110,7 +1111,7 @@ make_extra_c_arg_list_seq([ExtraArg | ExtraArgs], ModuleInfo, LastReg,
 
 get_c_arg_list_vars([], []).
 get_c_arg_list_vars([Arg | Args], [Var | Vars]) :-
-    Arg = c_arg(Var, _, _, _),
+    Arg = c_arg(Var, _, _, _, _),
     get_c_arg_list_vars(Args, Vars).
 
 %---------------------------------------------------------------------------%
@@ -1123,7 +1124,7 @@ get_c_arg_list_vars([Arg | Args], [Var | Vars]) :-
 pragma_select_out_args([], []).
 pragma_select_out_args([Arg | Rest], Out) :-
     pragma_select_out_args(Rest, OutTail),
-    Arg = c_arg(_, _, _, ArgInfo),
+    Arg = c_arg(_, _, _, _, ArgInfo),
     ArgInfo = arg_info(_Loc, Mode),
     ( Mode = top_out ->
         Out = [Arg | OutTail]
@@ -1139,7 +1140,7 @@ pragma_select_out_args([Arg | Rest], Out) :-
 pragma_select_in_args([], []).
 pragma_select_in_args([Arg | Rest], In) :-
     pragma_select_in_args(Rest, InTail),
-    Arg = c_arg(_, _, _, ArgInfo),
+    Arg = c_arg(_, _, _, _, ArgInfo),
     ArgInfo = arg_info(_Loc, Mode),
     ( Mode = top_in ->
         In = [Arg | InTail]
@@ -1194,11 +1195,17 @@ var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeName)
 make_pragma_decls([], _, _, []).
 make_pragma_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
     make_pragma_decls(Args, Module, CanOptAwayUnnamedArgs, DeclsTail),
-    Arg = c_arg(Var, MaybeArgName, OrigType, _ArgInfo),
+    Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
     (
         MaybeName = yes(Name),
-        OrigTypeString = foreign__to_type_string(c, Module, OrigType),
+        (
+            BoxPolicy = native_if_possible,
+            OrigTypeString = foreign__to_type_string(c, Module, OrigType)
+        ;
+            BoxPolicy = always_boxed,
+            OrigTypeString = "MR_Word"
+        ),
         Decl = pragma_c_arg_decl(OrigType, OrigTypeString, Name),
         Decls = [Decl | DeclsTail]
     ;
@@ -1213,7 +1220,7 @@ make_pragma_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
 
 find_dead_input_vars([], _, !DeadVars).
 find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
-    Arg = c_arg(Var, _MaybeName, _Type, _ArgInfo),
+    Arg = c_arg(Var, _MaybeName, _Type, _BoxPolicy, _ArgInfo),
     ( set__member(Var, PostDeaths) ->
         set__insert(!.DeadVars, Var, !:DeadVars)
     ;
@@ -1233,7 +1240,7 @@ find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
 get_pragma_input_vars([], [], _, empty, !CI).
 get_pragma_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
         !CI) :-
-    Arg = c_arg(Var, MaybeArgName, OrigType, _ArgInfo),
+    Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
     (
         MaybeName = yes(Name),
@@ -1247,7 +1254,7 @@ get_pragma_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
             IsDummy = no
         ),
         Input = pragma_c_input(Name, VarType, IsDummy, OrigType, Rval,
-            MaybeForeign),
+            MaybeForeign, BoxPolicy),
         get_pragma_input_vars(Args, Inputs1, CanOptAwayUnnamedArgs, RestCode,
             !CI),
         Inputs = [Input | Inputs1],
@@ -1294,7 +1301,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
 
 pragma_acquire_regs([], [], !CI).
 pragma_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
-    Arg = c_arg(Var, _, _, _),
+    Arg = c_arg(Var, _, _, _, _),
     code_info__acquire_reg_for_var(Var, Reg, !CI),
     pragma_acquire_regs(Args, Regs, !CI).
 
@@ -1313,7 +1320,7 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs],
         CanOptAwayUnnamedArgs, Outputs, !CI) :-
     place_pragma_output_args_in_regs(Args, Regs, CanOptAwayUnnamedArgs,
         OutputsTail, !CI),
-    Arg = c_arg(Var, MaybeArgName, OrigType, _ArgInfo),
+    Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
     code_info__release_reg(Reg, !CI),
     ( code_info__variable_is_forward_live(!.CI, Var) ->
         code_info__set_var_location(Var, Reg, !CI),
@@ -1330,7 +1337,7 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs],
                 IsDummy = no
             ),
             PragmaCOutput = pragma_c_output(Reg, VarType, IsDummy, OrigType,
-                Name, MaybeForeign),
+                Name, MaybeForeign, BoxPolicy),
             Outputs = [PragmaCOutput | OutputsTail]
         ;
             MaybeName = no,
@@ -1355,7 +1362,7 @@ place_pragma_output_args_in_regs([], [_ | _], _, _, !CI) :-
 input_descs_from_arg_info(_, [], _, []).
 input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
     input_descs_from_arg_info(CI, Args, CanOptAwayUnnamedArgs, InputsTail),
-    Arg = c_arg(Var, MaybeArgName, OrigType, ArgInfo),
+    Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, ArgInfo),
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
     (
         MaybeName = yes(Name),
@@ -1370,7 +1377,7 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
             IsDummy = no
         ),
         Input = pragma_c_input(Name, VarType, IsDummy, OrigType, lval(Reg),
-            MaybeForeign),
+            MaybeForeign, BoxPolicy),
         Inputs = [Input | InputsTail]
     ;
         MaybeName = no,
@@ -1389,7 +1396,7 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
 output_descs_from_arg_info(_, [], _, []).
 output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
     output_descs_from_arg_info(CI, Args, CanOptAwayUnnamedArgs, OutputsTail),
-    Arg = c_arg(Var, MaybeArgName, OrigType, ArgInfo),
+    Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, ArgInfo),
     MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
     (
         MaybeName = yes(Name),
@@ -1404,7 +1411,7 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
             IsDummy = no
         ),
         Output = pragma_c_output(Reg, VarType, IsDummy, OrigType, Name,
-            MaybeForeign),
+            MaybeForeign, BoxPolicy),
         Outputs = [Output | OutputsTail]
     ;
         MaybeName = no,

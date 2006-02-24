@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1329,7 +1329,7 @@ pragma_c_component_get_rvals_and_lvals(pragma_c_noop,
 
 pragma_c_inputs_get_rvals([], []).
 pragma_c_inputs_get_rvals([I | Inputs], [R | Rvals]) :-
-    I = pragma_c_input(_Name, _VarType, _IsDummy, _OrigType, R, _),
+    I = pragma_c_input(_Name, _VarType, _IsDummy, _OrigType, R, _, _),
     pragma_c_inputs_get_rvals(Inputs, Rvals).
 
     % Extract the lvals from the pragma_c_output.
@@ -1339,7 +1339,7 @@ pragma_c_inputs_get_rvals([I | Inputs], [R | Rvals]) :-
 
 pragma_c_outputs_get_lvals([], []).
 pragma_c_outputs_get_lvals([O | Outputs], [L | Lvals]) :-
-    O = pragma_c_output(L, _VarType, _IsDummy, _OrigType, _Name, _),
+    O = pragma_c_output(L, _VarType, _IsDummy, _OrigType, _Name, _, _),
     pragma_c_outputs_get_lvals(Outputs, Lvals).
 
     % Determine all the rvals and lvals referenced by a list of instructions.

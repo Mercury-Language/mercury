@@ -1486,7 +1486,8 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 map__det_update(Preds0, PredId, !.PredInfo, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable),
                 module_info_set_predicate_table(PredTable, !ModuleInfo),
-                pragma_get_var_infos(PVars, ArgInfo),
+                pragma_get_var_infos(PVars, ArgInfoBox),
+                assoc_list.keys(ArgInfoBox, ArgInfo),
                 maybe_warn_pragma_singletons(PragmaImpl, PragmaForeignLanguage,
                     ArgInfo, Context, PredOrFunc - PredName/Arity,
                     !.ModuleInfo, !IO)
@@ -1820,7 +1821,7 @@ check_pred_args_against_tabling([Mode | Modes], ModuleInfo, ArgNum,
 
 pragma_get_modes([], []).
 pragma_get_modes([PragmaVar | Vars], [Mode | Modes]) :-
-    PragmaVar = pragma_var(_Var, _Name, Mode),
+    PragmaVar = pragma_var(_Var, _Name, Mode, _BoxPolicy),
     pragma_get_modes(Vars, Modes).
 
 %-----------------------------------------------------------------------------%
@@ -1831,7 +1832,7 @@ pragma_get_modes([PragmaVar | Vars], [Mode | Modes]) :-
 
 pragma_get_vars([], []).
 pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
-    PragmaVar = pragma_var(Var, _Name, _Mode),
+    PragmaVar = pragma_var(Var, _Name, _Mode, _BoxPolicy),
     pragma_get_vars(PragmaVars, Vars).
 
 %---------------------------------------------------------------------------%
@@ -1839,12 +1840,13 @@ pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
     % Extract the names from the list of pragma_vars.
     %
 :- pred pragma_get_var_infos(list(pragma_var)::in,
-    list(maybe(pair(string, mer_mode)))::out) is det.
+    list(pair(maybe(pair(string, mer_mode)), box_policy))::out) is det.
 
 pragma_get_var_infos([], []).
-pragma_get_var_infos([PragmaVar | PragmaVars], [yes(Name - Mode) | Info]) :-
-    PragmaVar = pragma_var(_Var, Name, Mode),
-    pragma_get_var_infos(PragmaVars, Info).
+pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
+    PragmaVar = pragma_var(_Var, Name, Mode, BoxPolicy),
+    Info = yes(Name - Mode) - BoxPolicy,
+    pragma_get_var_infos(PragmaVars, Infos).
 
 module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
         !ModuleInfo, !QualInfo, !IO) :-
@@ -1976,7 +1978,7 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
         Modes0 = [Mode | ModesTail]
     ->
         varset__lookup_name(VarSet, Var, Name),
-        PragmaVar = pragma_var(Var, Name, Mode),
+        PragmaVar = pragma_var(Var, Name, Mode, native_if_possible),
         fact_table_pragma_vars(VarsTail, ModesTail, VarSet, PragmaVarsTail),
         PragmaVars0 = [PragmaVar | PragmaVarsTail]
     ;

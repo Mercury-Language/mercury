@@ -394,8 +394,8 @@
     % Merge the information in rtti_varmaps A and B to produce C.  Where
     % information conflicts, use the information in B rather than A.
     %
-:- pred rtti_varmaps_overlay(rtti_varmaps::in, rtti_varmaps::in,
-    rtti_varmaps::out) is det.
+:- pred rtti_varmaps_overlay(rtti_varmaps::in,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
 
 %-----------------------------------------------------------------------------%
 

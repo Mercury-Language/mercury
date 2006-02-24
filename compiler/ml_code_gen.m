@@ -1397,9 +1397,9 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
             % to convert its type from HeadType to BodyType.
             ml_gen_info_get_varset(!.Info, VarSet),
             VarName = ml_gen_var_name(VarSet, Var),
-            ml_gen_box_or_unbox_lval(HeadType, BodyType, HeadVarLval, VarName,
-                Context, no, 0, BodyLval, ConvDecls, ConvInputStatements,
-                ConvOutputStatements, !Info),
+            ml_gen_box_or_unbox_lval(HeadType, BodyType, native_if_possible,
+                HeadVarLval, VarName, Context, no, 0, BodyLval, ConvDecls,
+                ConvInputStatements, ConvOutputStatements, !Info),
 
             % Ensure that for any uses of this variable in the procedure body,
             % we use the BodyLval (which has type BodyType) rather than the
@@ -2382,12 +2382,18 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_outline_args([], [], !Info).
-ml_gen_outline_args([foreign_arg(Var, MaybeVarMode, OrigType) | Args],
-        [OutlineArg | OutlineArgs], !Info) :-
+ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
+    Arg = foreign_arg(Var, MaybeVarMode, OrigType, BoxPolicy),
     ml_gen_outline_args(Args, OutlineArgs, !Info),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_var(!.Info, Var, VarLval),
-    ml_gen_type(!.Info, OrigType, MldsType),
+    (
+        BoxPolicy = native_if_possible,
+        ml_gen_type(!.Info, OrigType, MldsType)
+    ;
+        BoxPolicy = always_boxed,
+        MldsType = mlds.generic_type
+    ),
     (
         MaybeVarMode = yes(ArgName - Mode),
         \+ is_dummy_argument_type(ModuleInfo, OrigType),
@@ -2484,7 +2490,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
 
 build_arg_map([], !ArgMap).
 build_arg_map([ForeignArg | ForeignArgs], !ArgMap) :-
-    ForeignArg = foreign_arg(Var, _, _),
+    ForeignArg = foreign_arg(Var, _, _, _),
     map__det_insert(!.ArgMap, Var, ForeignArg, !:ArgMap),
     build_arg_map(ForeignArgs, !ArgMap).
 
@@ -2496,9 +2502,15 @@ build_arg_map([ForeignArg | ForeignArgs], !ArgMap) :-
 ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
         VarSet, Context, IsByRef, Var, Statement) :-
     map__lookup(ArgMap, Var, ForeignArg),
-    ForeignArg = foreign_arg(_, MaybeNameMode, Type),
+    ForeignArg = foreign_arg(_, MaybeNameMode, Type, BoxPolicy),
     not is_dummy_argument_type(ModuleInfo, Type),
-    MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
+    (
+        BoxPolicy = always_boxed,
+        MLDSType = mlds.generic_type
+    ;
+        BoxPolicy = native_if_possible,
+        MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type)
+    ),
 
     VarName = ml_gen_var_name(VarSet, Var),
     QualVarName = qual(MLDSModuleName, module_qual, VarName),
@@ -2525,7 +2537,7 @@ ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
 ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
         MLDSContext, ByRefOutputVars, CopiedOutputVars, Var, Defn) :-
     map__lookup(ArgMap, Var, ForeignArg),
-    ForeignArg = foreign_arg(_, MaybeNameMode, Type),
+    ForeignArg = foreign_arg(_, MaybeNameMode, Type, BoxPolicy),
     VarName = ml_gen_var_name(VarSet, Var),
     (
         MaybeNameMode = yes(UserVarNameString - _),
@@ -2533,6 +2545,13 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
     ;
         MaybeNameMode = no,
         sorry(this_file, "no variable name for var")
+    ),
+    (
+        BoxPolicy = always_boxed,
+        MLDSType0 = mlds.generic_type
+    ;
+        BoxPolicy = native_if_possible,
+        MLDSType0 = mercury_type_to_mlds_type(ModuleInfo, Type)
     ),
 
     % Dummy arguments are just mapped to integers, since they shouldn't be
@@ -2542,12 +2561,12 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
         MLDSType = mlds__native_int_type
     ; list__member(Var, ByRefOutputVars) ->
         Initializer = no_initializer,
-        MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type)
+        MLDSType = MLDSType0
     ; list__member(Var, CopiedOutputVars) ->
         Initializer = no_initializer,
-        MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type)
+        MLDSType = MLDSType0
     ;
-        MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
+        MLDSType = MLDSType0,
         QualVarName = qual(MLDSModuleName, module_qual, VarName),
         Initializer = init_obj(lval(var(QualVarName, MLDSType)))
     ),
@@ -2805,14 +2824,20 @@ ml_gen_pragma_c_decls(Info, Lang, [Arg | Args], [Decl | Decls]) :-
 :- pred ml_gen_pragma_c_decl(ml_gen_info::in, foreign_language::in,
     foreign_arg::in, target_code_component::out) is det.
 
-ml_gen_pragma_c_decl(Info, Lang, foreign_arg(_Var, MaybeNameAndMode, Type),
-        Decl) :-
+ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
+    Arg = foreign_arg(_Var, MaybeNameAndMode, Type, BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     (
         MaybeNameAndMode = yes(ArgName - _Mode),
         \+ var_is_singleton(ArgName)
     ->
-        TypeString = foreign__to_type_string(Lang, ModuleInfo, Type),
+        (
+            BoxPolicy = always_boxed,
+            TypeString = "MR_Word"
+        ;
+            BoxPolicy = native_if_possible,
+            TypeString = foreign__to_type_string(Lang, ModuleInfo, Type)
+        ),
         string__format("\t%s %s;\n", [s(TypeString), s(ArgName)], DeclString)
     ;
         % If the variable doesn't occur in the ArgNames list,
@@ -2861,13 +2886,13 @@ ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
 ml_gen_pragma_c_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     (
-        ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType),
+        ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
         MaybeNameAndMode = yes(ArgName - Mode),
         \+ var_is_singleton(ArgName),
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_in)
     ->
         ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType,
-            AssignInput, !Info)
+            BoxPolicy, AssignInput, !Info)
     ;
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
@@ -2875,11 +2900,11 @@ ml_gen_pragma_c_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     ).
 
 :- pred ml_gen_pragma_c_gen_input_arg(foreign_language::in, prog_var::in,
-    string::in, mer_type::in, list(target_code_component)::out,
+    string::in, mer_type::in, box_policy::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
-        !Info) :-
+ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
+        AssignInput, !Info) :-
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -2890,8 +2915,8 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, AssignInput,
         % generated for this variable.
         ArgRval = const(int_const(0))
     ;
-        ml_gen_box_or_unbox_rval(VarType, OrigType, lval(VarLval),
-            ArgRval, !Info)
+        ml_gen_box_or_unbox_rval(VarType, OrigType, BoxPolicy,
+            lval(VarLval), ArgRval, !Info)
     ),
     % At this point we have an rval with the right type for *internal* use
     % in the code generated by the Mercury compiler's MLDS back-end. We need
@@ -2983,7 +3008,7 @@ ml_gen_pragma_java_output_arg_list(Lang, [Java_Arg | Java_Args], Context,
 
 ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
         ConvDecls, ConvOutputStatements, !Info) :-
-    ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType),
+    ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     (
         MaybeNameAndMode = yes(ArgName - Mode),
@@ -2995,8 +3020,8 @@ ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
         % code generated by the Mercury compiler's MLDS back-end.
         ml_variable_type(!.Info, Var, VarType),
         ml_gen_var(!.Info, Var, VarLval),
-        ml_gen_box_or_unbox_lval(VarType, OrigType, VarLval,
-            mlds__var_name(ArgName, no), Context, no, 0,
+        ml_gen_box_or_unbox_lval(VarType, OrigType, BoxPolicy,
+            VarLval, mlds__var_name(ArgName, no), Context, no, 0,
             ArgLval, ConvDecls, _ConvInputStatements,
             ConvOutputStatements, !Info),
         % This is the MLDS type of the original argument, which we need to
@@ -3050,8 +3075,9 @@ ml_gen_pragma_c_output_arg_list(Lang, [ForeignArg | ForeignArgs], Context,
     mlds__defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_output_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
-        Context, AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
+ml_gen_pragma_c_output_arg(Lang, Arg, Context, AssignOutput, ConvDecls,
+        ConvOutputStatements, !Info) :-
+    Arg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     (
         MaybeNameAndMode = yes(ArgName - Mode),
@@ -3059,7 +3085,7 @@ ml_gen_pragma_c_output_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
         \+ is_dummy_argument_type(ModuleInfo, OrigType),
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out)
     ->
-        ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType,
+        ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             Context, AssignOutput, ConvDecls, ConvOutputStatements, !Info)
     ;
         % If the variable doesn't occur in the ArgNames list,
@@ -3070,15 +3096,15 @@ ml_gen_pragma_c_output_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
     ).
 
 :- pred ml_gen_pragma_c_gen_output_arg(foreign_language::in, prog_var::in,
-    string::in, mer_type::in, prog_context::in,
+    string::in, mer_type::in, box_policy::in, prog_context::in,
     list(target_code_component)::out, mlds__defns::out,
     statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, Context,
-        AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
+ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
+        Context, AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
-    ml_gen_box_or_unbox_lval(VarType, OrigType, VarLval,
+    ml_gen_box_or_unbox_lval(VarType, OrigType, BoxPolicy, VarLval,
         mlds__var_name(ArgName, no), Context, no, 0, ArgLval,
         ConvDecls, _ConvInputStatements, ConvOutputStatements, !Info),
     % At this point we have an lval with the right type for *internal* use

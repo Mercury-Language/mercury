@@ -1062,13 +1062,13 @@ parse_pragma_type(ModuleName, "check_termination", PragmaTerms, ErrorTerm,
             Pragma = check_termination(Name, Arity)),
         PragmaTerms, ErrorTerm, Result).
 
-parse_pragma_type(ModuleName, "structure_sharing", PragmaTerms, ErrorTerm, 
-        _VarSet, Result) :- 
+parse_pragma_type(ModuleName, "structure_sharing", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
     (
         PragmaTerms = [
-            PredAndModesTerm0, 
-            HeadVarsTerm, 
-            HeadVarTypesTerm, 
+            PredAndModesTerm0,
+            HeadVarsTerm,
+            HeadVarTypesTerm,
             SharingInformationTerm
         ],
         parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
@@ -1076,30 +1076,30 @@ parse_pragma_type(ModuleName, "structure_sharing", PragmaTerms, ErrorTerm,
             NameAndModesResult),
         NameAndModesResult = ok(PredName - PredOrFunc, ModeList),
 
-        % Parse the headvariables: 
+        % Parse the headvariables:
         HeadVarsTerm = term__functor(term__atom("vars"), ListHVTerm, _),
         term__vars_list(ListHVTerm, HeadVarsGeneric),
         list__map(term__coerce_var, HeadVarsGeneric, HeadVars),
 
-        % Parse the types: 
-        HeadVarTypesTerm = term__functor(term__atom("types"), ListTypeTerms, 
-            _), 
-        parse_types(ListTypeTerms, ok(Types)), 
+        % Parse the types:
+        HeadVarTypesTerm = term__functor(term__atom("types"), ListTypeTerms,
+            _),
+        parse_types(ListTypeTerms, ok(Types)),
 
         % Parse the actual structure sharing information.
-        
+
         (
             SharingInformationTerm = term__functor(term__atom("not_available"),
                 _, _),
             MaybeSharingAs = no
         ;
-            SharingInformationTerm = term__functor(term__atom("yes"), 
-                SharingTerm, _), 
+            SharingInformationTerm = term__functor(term__atom("yes"),
+                SharingTerm, _),
             SharingTerm = [ SharingAsTerm ],
             MaybeSharingAs = yes(parse_structure_sharing_domain(SharingAsTerm))
-        ), 
+        ),
 
-        Result0 = ok(pragma(user, structure_sharing(PredOrFunc, PredName, 
+        Result0 = ok(pragma(user, structure_sharing(PredOrFunc, PredName,
             ModeList, HeadVars, Types, MaybeSharingAs)))
     ->
         Result = Result0
@@ -1294,7 +1294,8 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       terminates(terminates)
     ;       will_not_throw_exception
     ;       ordinary_despite_detism
-    ;       may_modify_trail(may_modify_trail).
+    ;       may_modify_trail(may_modify_trail)
+    ;       box_policy(box_policy).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
     string::in, term::in, maybe1(pragma_foreign_proc_attributes)::out)
@@ -1332,7 +1333,8 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
         terminates(depends_on_mercury_calls) - terminates(terminates),
         terminates(depends_on_mercury_calls) - terminates(does_not_terminate),
         may_modify_trail(may_modify_trail) -
-            may_modify_trail(will_not_modify_trail)
+            may_modify_trail(will_not_modify_trail),
+        box_policy(native_if_possible) - box_policy(always_boxed)
     ],
     (
         parse_pragma_foreign_proc_attributes_term0(Term, AttrList)
@@ -1381,6 +1383,8 @@ process_attribute(ordinary_despite_detism, !Attrs) :-
     set_ordinary_despite_detism(yes, !Attrs).
 process_attribute(may_modify_trail(TrailMod), !Attrs) :-
     set_may_modify_trail(TrailMod, !Attrs).
+process_attribute(box_policy(BoxPolicy), !Attrs) :-
+    set_box_policy(BoxPolicy, !Attrs).
 
     % Aliasing is currently ignored in the main branch compiler.
     %
@@ -1453,7 +1457,9 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
         Flag = ordinary_despite_detism
     ; parse_may_modify_trail(Term, TrailMod) ->
         Flag = may_modify_trail(TrailMod)
-    ; 
+    ; parse_box_policy(Term, BoxPolicy) ->
+        Flag = box_policy(BoxPolicy)
+    ;
         fail
     ).
 
@@ -1476,13 +1482,20 @@ parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
     not_thread_safe).
 parse_threadsafe(term__functor(term__atom("maybe_thread_safe"), [], _),
     maybe_thread_safe).
-    
+
 :- pred parse_may_modify_trail(term::in, may_modify_trail::out) is semidet.
 
 parse_may_modify_trail(term.functor(term.atom("may_modify_trail"), [], _),
     may_modify_trail).
 parse_may_modify_trail(term.functor(term.atom("will_not_modify_trail"), [], _),
     will_not_modify_trail).
+
+:- pred parse_box_policy(term::in, box_policy::out) is semidet.
+
+parse_box_policy(term.functor(term.atom("native_if_possible"), [], _),
+    native_if_possible).
+parse_box_policy(term.functor(term.atom("always_boxed"), [], _),
+    always_boxed).
 
 :- pred parse_tabled_for_io(term::in, tabled_for_io::out) is semidet.
 
@@ -1607,9 +1620,10 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
             ( convert_mode(allow_constrained_inst_var, ModeTerm, Mode0) ->
                 constrain_inst_vars_in_mode(Mode0, Mode),
                 term__coerce_var(Var, ProgVar),
-                P = (pragma_var(ProgVar, VarName, Mode)),
+                PragmaVar = pragma_var(ProgVar, VarName, Mode,
+                    native_if_possible),
                 parse_pragma_c_code_varlist(VarSet, Vars, PragmaVars0, Error),
-                PragmaVars = [P|PragmaVars0]
+                PragmaVars = [PragmaVar | PragmaVars0]
             ;
                 PragmaVars = [],
                 Error = yes("unknown mode in pragma c_code")

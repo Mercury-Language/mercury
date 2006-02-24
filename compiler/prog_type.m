@@ -279,6 +279,7 @@
 :- func sample_typeclass_info_type = mer_type.
 :- func comparison_result_type = mer_type.
 :- func aditi_state_type = mer_type.
+:- func io_state_type = mer_type.
 
     % Construct the types of type_infos and type_ctor_infos.
     %
@@ -734,7 +735,8 @@ constructor_list_represents_dummy_argument_type([Ctor], no) :-
 
 type_is_io_state(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, []),
-    TypeCtor = qualified(unqualified("io"), "state") - 0.
+    mercury_std_lib_module_name("io", ModuleName),
+    TypeCtor = qualified(ModuleName, "state") - 0.
 
 type_is_aditi_state(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, []),
@@ -841,6 +843,10 @@ type_ctor_info_type = defined(Name, [], star) :-
 aditi_state_type = defined(Name, [], star) :-
     aditi_public_builtin_module(BuiltinModule),
     Name = qualified(BuiltinModule, "state").
+
+io_state_type = defined(Name, [], star) :-
+    mercury_std_lib_module_name("io", Module),
+    Name = qualified(Module, "state").
 
 %-----------------------------------------------------------------------------%
 
