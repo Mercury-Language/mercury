@@ -524,33 +524,7 @@ ENABLE_GCC_BACK_END=$enable_gcc_back_end
 GCC_SRC_DIR=$gcc_src_dir
 AC_SUBST(ENABLE_GCC_BACK_END)
 AC_SUBST(GCC_SRC_DIR)
-#-----------------------------------------------------------------------------#
-#
-# Determine whether or not to enable the Aditi back-end.
-#
-AC_ARG_ENABLE(aditi-back-end,
-[  --disable-aditi-back-end
-                          disable the Mercury compiler's Aditi back-end],
-enable_aditi_back_end="$enableval",enable_aditi_back_end=yes)
-AC_MSG_CHECKING(whether to enable the Aditi back-end)
-case $enable_aditi_back_end in
-	no)
-		if test "$BOOTSTRAP_MC" = ""; then
-			enable_aditi_back_end=yes
-			AC_MSG_RESULT(yes)
-			AC_MSG_WARN(
-[--disable-aditi-back-end requires an already
-	installed Mercury compiler])
-		else
-			# This will regenerate compiler/rl_out.m and
-			# compiler/rl_file.m.
-			AC_MSG_RESULT($enable_aditi_back_end)
-			remake_dependencies=true
-		fi
-		;;
-esac
-ENABLE_ADITI_BACK_END=$enable_aditi_back_end
-AC_SUBST(ENABLE_ADITI_BACK_END)
+
 #-----------------------------------------------------------------------------#
 MERCURY_MSG("looking for GNU Make...")
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
@@ -4392,8 +4366,7 @@ esac],
 
 case "$remake_dependencies.$reconfiguring" in "true.no")
 	MERCURY_MSG(
-"regenerating dependencies to enable GCC backend
-	and/or disable Aditi backend.")
+"regenerating dependencies to enable GCC backend.")
 
 	MMAKE_DIR=`pwd`/scripts scripts/mmake depend || exit 1
 	;;

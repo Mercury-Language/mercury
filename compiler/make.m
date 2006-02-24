@@ -185,7 +185,6 @@
     ;       unqualified_short_interface
     ;       intermodule_interface
     ;       analysis_registry
-    ;       aditi_code
     ;       c_header(c_header_type)
     ;       c_code
     ;       il_code

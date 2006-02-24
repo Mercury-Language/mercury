@@ -1238,19 +1238,18 @@ quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
     %           X3 = Y3
     %       ).
     %
-    % Note that in the disjuncts handling constants, we want to unify Y with X,
-    % not with the constant. Doing this allows dupelim to take the code
-    % fragments implementing the switch arms for constants and eliminate
-    % all but one of them. This can be a significant code size saving
-    % for types with lots of constants, such as the one representing Aditi
-    % bytecodes, which can lead to significant reductions in C compilation
-    % time. The keep_constant_binding feature on the cast goals is there to ask
-    % mode analysis to copy any known bound inst on the cast-from variable
-    % to the cast-to variable. This is necessary to keep determinism analysis
-    % working for modes in which the inputs of the unify predicate are known
-    % to be bound to the same constant, modes whose determinism should
-    % therefore be inferred to be det. (tests/general/det_complicated_unify2.m
-    % tests this case.)
+    % Note that in the disjuncts handling constants, we want to unify Y with
+    % X, not with the constant. Doing this allows dupelim to take the code
+    % fragments implementing the switch arms for constants and eliminate all
+    % but one of them. This can be a significant code size saving for types
+    % with lots of constants which can lead to significant reductions in C
+    % compilation time. The keep_constant_binding feature on the cast goals is
+    % there to ask mode analysis to copy any known bound inst on the cast-from
+    % variable to the cast-to variable. This is necessary to keep determinism
+    % analysis working for modes in which the inputs of the unify predicate
+    % are known to be bound to the same constant, modes whose determinism
+    % should therefore be inferred to be det.
+    % (tests/general/det_complicated_unify2.m tests this case.)
     %
 :- pred generate_du_unify_clauses(list(constructor)::in,
     prog_var::in, prog_var::in, prog_context::in,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,15 +42,6 @@
 :- func ground_inst = mer_inst.
 :- func free_inst = mer_inst.
 :- func any_inst = mer_inst.
-
-    % Construct the modes used for `aditi__state' arguments.
-    % XXX These should be unique, but are not yet because that
-    % would require alias tracking.
-    %
-:- func aditi_mui_mode = mer_mode.
-:- func aditi_ui_mode = mer_mode.
-:- func aditi_di_mode = mer_mode.
-:- func aditi_uo_mode = mer_mode.
 
 :- pred make_std_mode(string::in, list(mer_inst)::in, mer_mode::out) is det.
 :- func make_std_mode(string, list(mer_inst)) = mer_mode.
@@ -160,11 +151,6 @@ uo_mode = make_std_mode("uo", []).
 unused_mode = make_std_mode("unused", []).
 in_any_mode = make_std_mode("in", [any_inst]).
 out_any_mode = make_std_mode("out", [any_inst]).
-
-aditi_mui_mode = Mode :- in_mode(Mode).
-aditi_ui_mode = Mode :- in_mode(Mode).
-aditi_di_mode = Mode :- in_mode(Mode).
-aditi_uo_mode = Mode :- out_mode(Mode).
 
 ground_inst = ground(shared, none).
 free_inst = free.

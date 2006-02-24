@@ -209,14 +209,7 @@
 
 :- pred type_is_io_state(mer_type::in) is semidet.
 
-:- pred type_is_aditi_state(mer_type::in) is semidet.
-
 :- pred type_ctor_is_array(type_ctor::in) is semidet.
-
-    % Remove an `aditi:state' from the given list if one is present.
-    %
-:- pred remove_aditi_state(list(mer_type)::in, list(T)::in, list(T)::out)
-    is det.
 
     % A test for type_info-related types that are introduced by
     % polymorphism.m.  These need to be handled specially in certain
@@ -278,7 +271,6 @@
 :- func sample_type_info_type = mer_type.
 :- func sample_typeclass_info_type = mer_type.
 :- func comparison_result_type = mer_type.
-:- func aditi_state_type = mer_type.
 :- func io_state_type = mer_type.
 
     % Construct the types of type_infos and type_ctor_infos.
@@ -728,7 +720,6 @@ builtin_type_ctors_with_no_hlds_type_defn =
 
 is_builtin_dummy_argument_type("io", "state", 0).    % io.state/0
 is_builtin_dummy_argument_type("store", "store", 1). % store.store/1.
-% XXX should we include aditi.state/0 in this list?
 
 constructor_list_represents_dummy_argument_type([Ctor], no) :-
     Ctor = ctor([], [], _, []).
@@ -738,24 +729,7 @@ type_is_io_state(Type) :-
     mercury_std_lib_module_name("io", ModuleName),
     TypeCtor = qualified(ModuleName, "state") - 0.
 
-type_is_aditi_state(Type) :-
-    type_to_ctor_and_args(Type, TypeCtor, []),
-    TypeCtor = qualified(unqualified("aditi"), "state") - 0.
-
 type_ctor_is_array(qualified(unqualified("array"), "array") - 1).
-
-remove_aditi_state([], [], []).
-remove_aditi_state([], [_ | _], _) :-
-    unexpected(this_file, "gremove_aditi_state").
-remove_aditi_state([_ | _], [], _) :-
-    unexpected(this_file, "gremove_aditi_state").
-remove_aditi_state([Type | Types], [Arg | Args0], Args) :-
-    ( type_is_aditi_state(Type) ->
-        remove_aditi_state(Types, Args0, Args)
-    ;
-        remove_aditi_state(Types, Args0, Args1),
-        Args = [Arg | Args1]
-    ).
 
 is_introduced_type_info_type(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, _),
@@ -839,10 +813,6 @@ type_info_type = defined(Name, [], star) :-
 type_ctor_info_type = defined(Name, [], star) :-
     mercury_private_builtin_module(BuiltinModule),
     Name = qualified(BuiltinModule, "type_ctor_info").
-
-aditi_state_type = defined(Name, [], star) :-
-    aditi_public_builtin_module(BuiltinModule),
-    Name = qualified(BuiltinModule, "state").
 
 io_state_type = defined(Name, [], star) :-
     mercury_std_lib_module_name("io", Module),

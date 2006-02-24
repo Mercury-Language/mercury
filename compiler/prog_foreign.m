@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -169,10 +169,6 @@
     % Returns the name of the initialization function for a given module.
     %
 :- func make_init_name(module_name) = string.
-
-    % Returns the name of the Aditi-RL code constant for a given module.
-    %
-:- func make_rl_data_name(module_name) = string.
 
     % Mangle a possibly module-qualified Mercury symbol name
     % into a C identifier.
@@ -351,10 +347,6 @@ foreign_type_language(java(_)) = java.
 make_init_name(ModuleName) = InitName :-
     MangledModuleName = sym_name_mangle(ModuleName),
     InitName = "mercury__" ++ MangledModuleName ++ "__".
-
-make_rl_data_name(ModuleName) = RLDataConstName :-
-    MangledModuleName = sym_name_mangle(ModuleName),
-    RLDataConstName = "mercury__aditi_rl_data__" ++ MangledModuleName.
 
 sym_name_mangle(unqualified(Name)) =
     name_mangle(Name).

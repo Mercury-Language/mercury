@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -55,7 +55,7 @@
 #define MAXLINE     256 /* maximum number of characters per line */
                         /* (characters after this limit are ignored) */
 
-/* --- used to collect a list of strings, e.g. Aditi data constant names --- */
+/* --- used to collect a list of strings --- */
 
 typedef struct String_List_struct {
     char                        *data;
@@ -245,9 +245,6 @@ static int          req_final_module_max = 0;
 static int          req_final_module_next = 0;
 #define MR_FINAL_REQ_MODULE_SIZE    10
 
-/* List of names of Aditi-RL code constants. */
-static String_List  *rl_data = NULL;
-
 /* options and arguments, set by parse_options() */
 static const char   *output_file_name = NULL;
 static const char   *entry_point = "mercury__main_2_0";
@@ -257,7 +254,6 @@ static int          maxcalls = MAXCALLS;
 static int          num_files;
 static char         **files;
 static MR_bool      output_main_func = MR_TRUE;
-static MR_bool      aditi = MR_FALSE;
 static MR_bool      need_initialization_code = MR_FALSE;
 static MR_bool      need_tracing = MR_FALSE;
 static const char   *experimental_complexity = NULL;
@@ -317,18 +313,6 @@ static const char header2[] =
     "   GC_INIT();\n"
     "}\n"
     "#endif\n"
-    ;
-
-static const char aditi_header[] =
-    "\n"
-    "/*\n"
-    "** MR_do_load_aditi_rl_code() uploads all the Aditi-RL code\n"
-    "** for the program to a database to which the program currently\n"
-    "** has a connection, returning a status value as described in\n"
-    "** aditi2/src/api/aditi_err.h in the Aditi sources.\n"
-    "*/\n"
-    "static MR_Box MR_do_load_aditi_rl_code(MR_Box connection,\n"
-    "           MR_Box transaction);\n"
     ;
 
 static const char mercury_funcs1[] =
@@ -416,7 +400,6 @@ static const char mercury_funcs2[] =
     "       &ML_type_info_for_list_of_type_info;\n"
     "   MR_type_info_for_list_of_pseudo_type_info = (MR_TypeInfo)\n"
     "       &ML_type_info_for_list_of_pseudo_type_info;\n"
-    "   MR_address_of_do_load_aditi_rl_code = %s;\n"
     "#ifdef MR_CONSERVATIVE_GC\n"
     "   MR_address_of_init_gc = init_gc;\n"
     "#endif\n"
@@ -512,8 +495,6 @@ static const char main_func[] =
     "}\n"
     ;
 
-static const char aditi_rl_data_str[] = "mercury__aditi_rl_data__";
-
 /* --- function prototypes --- */
 static  void    parse_options(int argc, char *argv[]);
 static  void    usage(void);
@@ -528,7 +509,6 @@ static  void    output_headers(void);
 static  int     output_sub_init_functions(Purpose purpose,
                     const char **func_names, int num_func_names);
 static  void    output_main_init_function(Purpose purpose, int num_bunches);
-static  void    output_aditi_load_function(void);
 static  void    output_main(void);
 static  void    process_file(const char *filename);
 static  void    process_init_file(const char *filename);
@@ -644,11 +624,6 @@ main(int argc, char **argv)
         req_final_modules, req_final_module_next);
     output_main_init_function(PURPOSE_REQ_FINAL, num_bunches);
 
-    
-    if (aditi) {
-        output_aditi_load_function();
-    }
-
     output_main();
 
     if (num_errors > 0) {
@@ -674,12 +649,8 @@ parse_options(int argc, char *argv[])
     int         i;
     String_List *tmp_slist;
 
-    while ((c = getopt(argc, argv, "aA:c:g:iI:lo:r:tw:xX:")) != EOF) {
+    while ((c = getopt(argc, argv, "A:c:g:iI:lo:r:tw:xX:")) != EOF) {
         switch (c) {
-        case 'a':
-            aditi = MR_TRUE;
-            break;
-
         case 'A':
             /*
             ** Add the argument to the end of the list of always executed
@@ -786,7 +757,6 @@ usage(void)
 {
     fputs("Usage: mkinit [options] files...\n", stderr);
     fputs("Options:\n", stderr);
-    fputs("  -a:\t\tenable Aditi\n", stderr);
     fputs("  -c maxcalls:\tset the max size of an init function\n", stderr);
     fputs("  -g grade:\tset the grade of the executable\n", stderr);
     fputs("  -i:\t\tenable initialization code\n", stderr);
@@ -1010,9 +980,6 @@ output_headers(void)
 
     printf(header2, need_tracing);
 
-    if (aditi) {
-        fputs(aditi_header, stdout);
-    }
 }
 
 static int
@@ -1086,15 +1053,8 @@ output_main_init_function(Purpose purpose, int num_bunches)
 static void
 output_main(void)
 {
-    const char  *aditi_load_func;
     String_List *list;
     char        *options_str;
-
-    if (aditi) {
-        aditi_load_func = "MR_do_load_aditi_rl_code";
-    } else {
-        aditi_load_func = "NULL";
-    }
 
     if (experimental_complexity != NULL) {
         output_complexity_experiment_table(experimental_complexity);
@@ -1106,7 +1066,7 @@ output_main(void)
 
     printf(mercury_funcs1, hl_entry_point, entry_point);
     printf(mercury_funcs2, num_experimental_complexity_procs,
-        aditi_load_func, hl_entry_point, entry_point);
+        hl_entry_point, entry_point);
 
     printf("   MR_runtime_flags = \"");
     for (list = runtime_flags; list != NULL; list = list->next) {
@@ -1178,12 +1138,10 @@ process_init_file(const char *filename)
     const char * const  reqinit_str = "REQUIRED_INIT ";
     const char * const  reqfinal_str = "REQUIRED_FINAL ";
     const char * const  endinit_str = "ENDINIT";
-    const char * const  aditi_init_str = "ADITI_DATA ";
     const int           init_strlen = strlen(init_str);
     const int           reqinit_strlen = strlen(reqinit_str);
     const int           reqfinal_strlen = strlen(reqfinal_str);
     const int           endinit_strlen = strlen(endinit_str);
-    const int           aditi_init_strlen = strlen(aditi_init_str);
     char                line[MAXLINE];
     char                *rl_data_name;
     FILE                *cfile;
@@ -1252,21 +1210,6 @@ process_init_file(const char *filename)
             req_final_modules[req_final_module_next] =
                 checked_strdup(func_name);
             req_final_module_next++;
-        } else if (aditi &&
-            strncmp(line, aditi_init_str, aditi_init_strlen) == 0)
-        {
-            int j;
-
-            for (j = aditi_init_strlen; MR_isalnumunder(line[j]); j++) {
-                /* VOID */
-            }
-            line[j] = '\0';
-
-            rl_data_name = checked_malloc(
-                strlen(line + aditi_init_strlen) + 1);
-            strcpy(rl_data_name, line + aditi_init_strlen);
-            add_rl_data(rl_data_name);
-
         } else if (strncmp(line, endinit_str, endinit_strlen) == 0) {
             break;
         }
@@ -1307,114 +1250,6 @@ output_init_function(const char *func_name, int *num_bunches_ptr,
         func_name, module_suffix[purpose], main_func_arg_decl[purpose]);
     printf("\t  %s%s(%s); }\n",
         func_name, module_suffix[purpose], main_func_arg[purpose]);
-}
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** Load the Aditi-RL for each module into the database.
-** MR_do_load_aditi_rl_code() is called by MR_load_aditi_rl_code()
-** in runtime/mercury_wrapper.c, which is called by
-** `aditi__connect/6' in extras/aditi/aditi.m.
-*/
-
-static void
-output_aditi_load_function(void)
-{
-    int         len;
-    int         filenum;
-    char        filename[1000];
-    int         num_rl_modules;
-    String_List *node;
-
-    printf("\n/*\n** Load the Aditi-RL code for the program into the\n");
-    printf("** currently connected database.\n*/\n");
-    printf("#include \"mercury_heap.h\"\n");
-    printf("#include \"netapi.h\"\n");
-    printf("#include \"AditiStatus.h\"\n");
-
-    /*
-    ** Declare all the RL data constants.
-    ** Each RL data constant is named mercury___aditi_rl_data__<module>.
-    */
-    for (node = rl_data; node != NULL; node = node->next) {
-        printf("extern const char %s[];\n", node->data);
-        printf("extern const int %s__length;\n", node->data);
-    }
-
-    printf("\n");
-    printf("extern MR_Box\n");
-    printf("MR_do_load_aditi_rl_code(MR_Box boxed_connection, "
-        "MR_Box boxed_transaction)\n{\n"),
-
-    /* Build an array containing the addresses of the RL data constants. */
-    printf("\tstatic const char *rl_data[] = {\n\t\t");
-    for (node = rl_data; node != NULL; node = node->next) {
-        printf("%s,\n\t\t", node->data);
-    }
-    printf("NULL};\n");
-
-    /* Build an array containing the lengths of the RL data constants. */
-    printf("\tstatic const int * const rl_data_lengths[] = {\n\t\t");
-    num_rl_modules = 0;
-    for (node = rl_data; node != NULL; node = node->next) {
-        num_rl_modules++;
-        printf("&%s__length,\n\t\t", node->data);
-    }
-    printf("0};\n");
-
-    printf("\tconst int num_rl_modules = %d;\n", num_rl_modules);
-
-    printf(
-"        /* The ADITI_TYPE macro puts a prefix on the type name. */\n"
-"        ADITI_TYPE(AditiStatus) status = ADITI_ENUM(AditiStatus_OK);\n"
-"        int    i;\n"
-"        char   *bytecode;\n"
-"        MR_Box result;\n"
-"        apiID  connection;\n"
-"        apiID  transaction;\n"
-"\n"
-"        MR_MAYBE_UNBOX_FOREIGN_TYPE(apiID, boxed_connection, \n"
-"                        connection);\n"
-"        MR_MAYBE_UNBOX_FOREIGN_TYPE(apiID, boxed_transaction, \n"
-"                        transaction);\n"
-"\n"
-"        /*\n"
-"        ** Load the Aditi-RL for each module in turn.\n"
-"        */\n"
-"        for (i = 0; i < num_rl_modules; i++) {\n"
-"            if (*rl_data_lengths[i] != 0) {\n"
-"                /* The ADITI_API macro puts a prefix on the function name. */\n"
-"                status = ADITI_API(api_blob_to_string)(*rl_data_lengths[i],\n"
-"                                (char *) rl_data[i], &bytecode);\n"
-"                /* The ADITI_ENUM macro puts a prefix on the enum constant. */\n"
-"                if (status != ADITI_ENUM(AditiStatus_OK)) {\n"
-"                    break;\n"
-"                }\n"
-"                status = ADITI_API(module_load)(connection,\n"
-"                        transaction, bytecode);\n"
-"                free(bytecode);\n"
-"                if (status != ADITI_ENUM(AditiStatus_OK)) {\n"
-"                    break;\n"
-"                }\n"
-"            }\n"
-"        }\n"
-"        MR_MAYBE_BOX_FOREIGN_TYPE(ADITI_TYPE(AditiStatus), status, result);\n"
-"        return result;\n"
-"}\n");
-}
-
-/*---------------------------------------------------------------------------*/
-
-static void
-add_rl_data(char *data)
-{
-    String_List *new_node;
-
-    new_node = checked_malloc(sizeof(String_List));
-    new_node->data = data;
-    new_node->next = rl_data;
-    rl_data = new_node;
 }
 
 /*---------------------------------------------------------------------------*/

@@ -887,9 +887,7 @@ det_infer_generic_call(GenericCall, CallDetism,
         SolnContext = all_solns
     ->
         % This error can only occur for higher-order calls.
-        % Class method calls are only introduced by polymorphism,
-        % and the aditi_builtins are all det (for the updates)
-        % or introduced later (for calls).
+        % Class method calls are only introduced by polymorphism.
         det_get_proc_info(DetInfo, ProcInfo),
         proc_info_varset(ProcInfo, VarSet),
         Msg = higher_order_cc_pred_in_wrong_context(GoalInfo, CallDetism,

@@ -46,11 +46,6 @@
     determinism::out, extra_goals::out,
     mode_info::in, mode_info::out) is det.
 
-:- pred modecheck_aditi_builtin(aditi_builtin::in, simple_call_id::in,
-    list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
-    determinism::out, extra_goals::out,
-    mode_info::in, mode_info::out) is det.
-
 :- pred modecheck_builtin_cast(list(mer_mode)::in,
     list(prog_var)::in, list(prog_var)::out, determinism::out,
     extra_goals::out, mode_info::in, mode_info::out) is det.
@@ -271,21 +266,6 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
         Args = Args0,
         ExtraGoals = no_extra_goals
     ).
-
-modecheck_aditi_builtin(AditiBuiltin, _, Modes, Args0, Args, Det, ExtraGoals,
-        !ModeInfo) :-
-    aditi_builtin_determinism(AditiBuiltin, Det),
-
-    % The argument modes are set by post_typecheck.m, so all
-    % that needs to be done here is to check that they match.
-    ArgOffset = 0,
-    modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
-        !ModeInfo).
-
-:- pred aditi_builtin_determinism(aditi_builtin::in, determinism::out) is det.
-
-aditi_builtin_determinism(aditi_tuple_update(_, _), det).
-aditi_builtin_determinism(aditi_bulk_update(_, _, _), det).
 
 modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo) :-
     Det = det,

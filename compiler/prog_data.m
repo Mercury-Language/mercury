@@ -206,7 +206,6 @@
     ;       own_stacks.     % Each generator has its own stacks.
 
     % The evaluation method that should be used for a procedure.
-    % Ignored for Aditi procedures.
     %
 :- type eval_method
     --->    eval_normal                 % normal mercury evaluation
@@ -250,26 +249,6 @@
 
     ;       table_io_alone.     % The procedure is tabled for I/O by itself;
                                 % it can have no Mercury descendants.
-
-%-----------------------------------------------------------------------------%
-%
-% Stuff for the `aditi_index' pragma
-%
-
-    % For Aditi base relations, an index_spec specifies how the base
-    % relation is indexed.
-    %
-:- type index_spec
-    --->    index_spec(
-                index_type,
-                list(int)   % Which attributes are being indexed on
-                            % (attribute numbers start at 1)
-            ).
-
-    % Hash indexes?
-:- type index_type
-    --->    unique_B_tree
-    ;       non_unique_B_tree.
 
 %-----------------------------------------------------------------------------%
 %

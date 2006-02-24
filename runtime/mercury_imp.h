@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998,2000,2003-2005 The University of Melbourne.
+** Copyright (C) 1993-1998,2000,2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -59,7 +59,6 @@
 #include	"mercury_goto.h"
 #include	"mercury_calls.h"
 #include	"mercury_ho_call.h"
-#include	"mercury_aditi.h"
 #include	"mercury_engine.h"
 
 #include	"mercury_memory.h"

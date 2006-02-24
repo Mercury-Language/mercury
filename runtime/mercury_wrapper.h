@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2005 The University of Melbourne.
+** Copyright (C) 1994-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -44,20 +44,6 @@ extern	void	mercury_runtime_main(void);
 */
 
 extern	int	mercury_runtime_terminate(void);
-
-/*
-** MR_load_aditi_rl_code() uploads all the Aditi-RL code for
-** the program to a database specified by connection. The code
-** will be stored in the context of the given transaction.
-** The return value is described by aditi2/src/AditiStatus/AditiStatus.h
-** in the Aditi sources.
-** Aborts if the executable was not compiled for Aditi execution.
-** The return value is an Aditi error code.
-** We use MR_Box here rather than the actual argument types to
-** avoid dependencies on the Aditi headers.
-*/
-
-extern	MR_Box	MR_load_aditi_rl_code(MR_Box connection, MR_Box transaction);
 
 /*
 ** MR_init_conservative_GC() initializes the conservative collector.
@@ -123,8 +109,6 @@ extern	MR_TypeInfo	MR_type_info_for_list_of_pseudo_type_info;
 #ifdef MR_CONSERVATIVE_GC
 extern	void		(*MR_address_of_init_gc)(void);
 #endif
-
-extern	MR_Box		(*MR_address_of_do_load_aditi_rl_code)(MR_Box, MR_Box);
 
 /*
 ** MR_trace_getline(const char *, FILE *, FILE *) and

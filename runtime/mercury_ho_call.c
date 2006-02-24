@@ -6,7 +6,7 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -907,7 +907,7 @@ finish_closure_compare:
 
 /*---------------------------------------------------------------------------*/
 /*
-** Code to construct closures, for use by browser/dl.m and Aditi.
+** Code to construct closures, for use by browser/dl.m.
 */
 
 #ifdef MR_HIGHLEVEL_CODE

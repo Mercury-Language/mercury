@@ -48,15 +48,6 @@
     prog_context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out, io::di, io::uo) is det.
 
-    % If there are any Aditi procedures enable Aditi compilation.
-    % If there are only imported Aditi procedures, magic.m still
-    % needs to remove the `aditi' and `base_relation' markers
-    % so that the procedures are not ignored by the code
-    % generation annotation passes (e.g. arg_info.m).
-    %
-:- pred maybe_enable_aditi_compilation(item_status::in, term__context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
 :- pred add_stratified_pred(string::in, sym_name::in, arity::in,
     term__context::in, module_info::in, module_info::out, io::di, io::uo)
     is det.
@@ -1376,22 +1367,6 @@ module_defn_update_import_status(abstract_imported,
         item_status(abstract_imported, must_be_qualified)).
 
 %-----------------------------------------------------------------------------%
-
-maybe_enable_aditi_compilation(_Status, Context, !ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(aditi, Aditi, !IO),
-    (
-        Aditi = no,
-        prog_out__write_context(Context, !IO),
-        io__write_string("Error: compilation of Aditi procedures\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  requires the `--aditi' option.\n", !IO),
-        io__set_exit_status(1, !IO),
-        module_info_incr_errors(!ModuleInfo)
-    ;
-        Aditi = yes,
-        % There are Aditi procedures - enable Aditi code generation.
-        module_info_set_do_aditi_compilation(!ModuleInfo)
-    ).
 
 :- pred add_promise_clause(promise_type::in, list(term(prog_var_type))::in,
     prog_varset::in, goal::in, prog_context::in, import_status::in,

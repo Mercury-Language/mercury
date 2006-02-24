@@ -607,9 +607,6 @@ dlls_subdir=$(SUBDIR)dlls/
 ss_subdir=$(SUBDIR)ss/
 pic_ss_subdir=$(SUBDIR)pic_ss/
 os_subdir=$(SUBDIR)os/
-# `.rlo' files are used by the Aditi query shell, which
-# doesn't know about `--use-subdirs'.
-rlos_subdir=
 ils_subdir=$(SUBDIR)ils/
 javas_subdir=$(SUBDIR)javas/
 dirs_subdir=$(SUBDIR)dirs/

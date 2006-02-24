@@ -204,20 +204,6 @@
 :- pred mercury_term_size_prof_builtin_module(sym_name::out) is det.
 :- func mercury_term_size_prof_builtin_module = sym_name.
 
-    % Returns the name of the module containing the public builtins
-    % used by the Aditi transaction interface, currently "aditi".
-    % This module is not automatically imported (XXX should it be?).
-    %
-:- pred aditi_public_builtin_module(sym_name::out) is det.
-:- func aditi_public_builtin_module = sym_name.
-
-    % Returns the name of the module containing the private builtins used by
-    % the Aditi transaction interface, currently "aditi_private_builtin".
-    % This module is automatically imported iff the Aditi interface is enabled.
-    %
-:- pred aditi_private_builtin_module(sym_name::out) is det.
-:- func aditi_private_builtin_module = sym_name.
-
     % Returns the sym_name of the module with the given name in the
     % Mercury standard library.
     %
@@ -313,10 +299,6 @@ mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_profiling_builtin_module(mercury_profiling_builtin_module).
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_term_size_prof_builtin_module(mercury_term_size_prof_builtin_module).
-aditi_public_builtin_module = unqualified("aditi").
-aditi_public_builtin_module(aditi_public_builtin_module).
-aditi_private_builtin_module = unqualified("aditi_private_builtin").
-aditi_private_builtin_module(aditi_private_builtin_module).
 mercury_std_lib_module_name(Name) = unqualified(Name).
 mercury_std_lib_module_name(Name, unqualified(Name)).
 
@@ -326,12 +308,10 @@ any_mercury_builtin_module(Module) :-
     ; mercury_table_builtin_module(Module)
     ; mercury_profiling_builtin_module(Module)
     ; mercury_term_size_prof_builtin_module(Module)
-    ; aditi_private_builtin_module(Module)
     ).
 
 non_traced_mercury_builtin_module(Module) :-
     ( mercury_table_builtin_module(Module)
     ; mercury_profiling_builtin_module(Module)
     ; mercury_term_size_prof_builtin_module(Module)
-    ; aditi_private_builtin_module(Module)
     ).

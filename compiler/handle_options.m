@@ -132,13 +132,11 @@ handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
         globals__io_get_target(Target, !IO),
         GenerateIL = (if Target = il then yes else no),
         globals__io_lookup_bool_option(compile_only, CompileOnly, !IO),
-        globals__io_lookup_bool_option(aditi_only, AditiOnly, !IO),
         bool__or_list([GenerateDependencies, GenerateDependencyFile,
             MakeInterface, MakePrivateInterface, MakeShortInterface,
             MakeOptimizationInt, MakeTransOptInt, MakeAnalysisRegistry,
-            ConvertToMercury, TypecheckOnly,
-            ErrorcheckOnly, TargetCodeOnly,
-            GenerateIL, CompileOnly, AditiOnly],
+            ConvertToMercury, TypecheckOnly, ErrorcheckOnly, TargetCodeOnly,
+            GenerateIL, CompileOnly],
             NotLink),
         bool__not(NotLink, Link),
         globals__io_lookup_bool_option(smart_recompilation, Smart, !IO),
@@ -802,13 +800,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(make_transitive_opt_interface,   line_numbers, bool(no),
             !Globals),
 
-        % `--aditi-only' is only used by the Aditi query shell,
-        % for queries which should only be compiled once.
-        % recompilation_check.m currently doesn't check whether
-        % the `.rlo' file is up to date (with `--no-aditi-only' the
-        % Aditi-RL bytecode is embedded in the `.c' file).
-        option_implies(aditi_only, smart_recompilation, bool(no), !Globals),
-
         % We never use version number information in `.int3',
         % `.opt' or `.trans_opt' files.
         option_implies(make_short_interface, generate_item_version_numbers,
@@ -1422,25 +1413,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % doesn't match the file name.
         option_implies(generate_source_file_mapping, warn_wrong_module_name,
             bool(no), !Globals),
-
-        % --aditi-only implies --aditi.
-        option_implies(aditi_only, aditi, bool(yes), !Globals),
-
-        % Set --aditi-user to the value of $USER if it is not set already.
-        % If $USER is not set, use the string "guest".
-        globals__lookup_string_option(!.Globals, aditi_user, User0),
-        ( User0 = "" ->
-            io__get_environment_var("USER", MaybeUser, !IO),
-            (
-                MaybeUser = yes(User)
-            ;
-                MaybeUser = no,
-                User = "guest"
-            ),
-            globals__set_option(aditi_user, string(User), !Globals)
-        ;
-            true
-        ),
 
         globals__lookup_string_option(!.Globals, fullarch, FullArch),
 

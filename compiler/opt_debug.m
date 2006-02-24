@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -339,11 +339,6 @@ dump_data_addr(rtti_addr(ctor_rtti_id(RttiTypeCtor, DataName))) =
 dump_data_addr(rtti_addr(tc_rtti_id(TCName, TCDataName))) =
     "tc_rtti_addr(" ++ dump_rtti_type_class_name(TCName) ++ ", "
         ++ dump_tc_rtti_name(TCDataName) ++ ")".
-dump_data_addr(rtti_addr(aditi_rtti_id(ProcLabel))) =
-    "aditi_rtti_addr("
-        ++ sym_name_to_string(
-            qualified(ProcLabel ^ proc_module, ProcLabel ^ proc_name))
-        ++ ")".
 dump_data_addr(layout_addr(LayoutName)) =
     "layout_addr(" ++ dump_layout_name(LayoutName) ++ ")".
 

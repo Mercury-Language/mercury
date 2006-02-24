@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2005 The University of Melbourne.
+% Copyright (C) 2000, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,8 +14,7 @@
 %
 % We define this in a different module than the `determinism' type because
 % it is only used by some of the different back-ends, not all of them.
-% It is used by the MLDS, LLDS, and bytecode back-ends, but not by the
-% Aditi-RL back-end.
+% It is used by the MLDS, LLDS, and bytecode back-ends.
 %
 %-----------------------------------------------------------------------------%
 

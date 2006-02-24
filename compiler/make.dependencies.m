@@ -179,7 +179,6 @@ target_dependencies(_, private_interface) = interface_file_dependencies.
 target_dependencies(_, long_interface) = interface_file_dependencies.
 target_dependencies(_, short_interface) = interface_file_dependencies.
 target_dependencies(_, unqualified_short_interface) = source `of` self.
-target_dependencies(Globals, aditi_code) = compiled_code_dependencies(Globals).
 target_dependencies(Globals, c_header(_)) =
         target_dependencies(Globals, c_code).
 target_dependencies(Globals, c_code) = compiled_code_dependencies(Globals).

@@ -102,8 +102,8 @@
                 % polymorphic to be written as ordinary predicates in Mercury
                 % and require special casing, either because their arity is
                 % variable, or they take higher-order arguments of variable
-                % arity. This currently includes higher-order calls,
-                % class-method calls, Aditi calls and the Aditi update goals.
+                % arity. This currently includes higher-order calls and
+                % class-method calls.
                 %
                 gcall_details       :: generic_call,
 
@@ -285,10 +285,6 @@
             % A non-removable explicit quantification may be introduced
             % to keep related goals together where optimizations that
             % separate the goals can only result in worse behaviour.
-            % An example is the closures for the builtin Aditi update
-            % predicates - they should be kept close to the update call
-            % where possible to make it easier to use indexes for the
-            % update.
             %
             % A barrier says nothing about the determinism of either
             % the inner or the outer goal, or about pruning.
@@ -447,8 +443,8 @@
                 rhs_purity          :: purity,
                 rhs_p_or_f          :: pred_or_func,
                 rhs_eval_method     :: lambda_eval_method,
-                                    % Should be `normal' except for
-                                    % closures executed by Aditi.
+                                    % Currently, we don't support any other
+                                    % value than `normal'.
                 rhs_nonlocals       :: list(prog_var),
                                     % Non-locals of the goal excluding
                                     % the lambda quantified variables.
@@ -1293,89 +1289,6 @@
     is det.
 :- pred deconstruct_tuple(prog_var::in, list(prog_var)::in, hlds_goal::out)
     is det.
-
-%-----------------------------------------------------------------------------%
-%
-% Stuff specific to Aditi.
-%
-
-    % Builtin Aditi operations.
-    % These are transformed into ordinary Mercury calls
-    % by aditi_builtin_ops.m before code generation.
-    %
-:- type aditi_builtin
-
-    --->    aditi_tuple_update(
-                % Insert or delete a single tuple into/from a base relation.
-                % Arguments:
-                %   the arguments of tuple to insert
-                %   aditi__state::di, aditi__state::uo
-
-                aditi_tuple_update,
-                pred_id             % base relation to insert into
-            )
-
-    ;       aditi_bulk_update(
-                % Insert/delete/modify operations which take
-                % an input closure.
-                % Arguments:
-                %   the closure producing the tuples to insert/delete/modify
-                %   aditi__state::di, aditi__state::uo
-                % These operations all have two variants.
-                %
-                % A pretty syntax:
-                %
-                % aditi_bulk_insert(p(DB, X, Y) :- q(DB, X, Y)).
-                % aditi_bulk_delete(p(DB, X, Y) :- q(DB, X, Y)).
-                % aditi_bulk_modify(
-                %   (p(DB, X0, Y0) ==> p(_, X, Y) :-
-                %       X = X0 + 1,
-                %       Y = Y0 + 3
-                %   )).
-                %
-                % An ugly syntax:
-                %
-                % InsertPred = (aditi_bottom_up
-                %   pred(DB::aditi_mui, X::out, Y::out) :-
-                %       q(DB, X, Y)
-                % ),
-                % aditi_bulk_insert(pred p/3, InsertPred).
-                %
-                % DeletePred = (aditi_bottom_up
-                %   pred(DB::aditi_mui, X::out, Y::out) :-
-                %       p(DB, X, Y),
-                %       q(DB, X, Y)
-                % ),
-                % aditi_bulk_delete(pred p/3, DeletePred).
-
-                aditi_bulk_update,
-                pred_id,
-                aditi_builtin_syntax
-            ).
-
-:- type aditi_tuple_update
-    --->    delete          % `aditi_delete'
-    ;       insert.         % `aditi_insert'
-
-:- type aditi_bulk_update
-    --->    bulk_delete     % `aditi_bulk_delete'
-    ;       bulk_insert     % `aditi_bulk_insert'
-    ;       bulk_modify.    % `aditi_bulk_modify'
-
-    % Which syntax was used for an `aditi_delete' or `aditi_modify'
-    % call. The first syntax is prettier, the second is used
-    % where the closure to be passed in is not known at the call site.
-    % (See the "Aditi update syntax" section of the Mercury Language
-    % Reference Manual).
-    %
-:- type aditi_builtin_syntax
-    --->    pred_term       % e.g. aditi_bulk_insert(p(_, X) :- X = 1).
-    ;       sym_name_and_closure.
-                            % e.g.
-                            % aditi_insert(p/2,
-                            %    (pred(_::in, X::out) is nondet:-
-                            %       X = 1)
-                            %    )
 
 %-----------------------------------------------------------------------------%
 %

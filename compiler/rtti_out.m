@@ -140,42 +140,6 @@ output_rtti_data_defn(type_class_decl(TCDecl), !DeclSet, !IO) :-
     output_type_class_decl_defn(TCDecl, !DeclSet, !IO).
 output_rtti_data_defn(type_class_instance(InstanceDecl), !DeclSet, !IO) :-
     output_type_class_instance_defn(InstanceDecl, !DeclSet, !IO).
-output_rtti_data_defn(aditi_proc_info(ProcLabel, InputTypeInfo,
-        OutputTypeInfo), !DeclSet, !IO) :-
-    output_aditi_proc_info_defn(ProcLabel, InputTypeInfo, OutputTypeInfo,
-        !DeclSet, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- pred output_aditi_proc_info_defn(rtti_proc_label::in,
-    rtti_type_info::in, rtti_type_info::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_aditi_proc_info_defn(ProcLabel, InputTypeInfo, OutputTypeInfo,
-        !DeclSet, !IO) :-
-    output_type_info_defn(InputTypeInfo, !DeclSet, !IO),
-    output_type_info_defn(OutputTypeInfo, !DeclSet, !IO),
-    CodeAddr = make_code_addr(ProcLabel), 
-    output_code_addr_decls(CodeAddr, !DeclSet, !IO),
-
-    output_rtti_id_storage_type_name(aditi_rtti_id(ProcLabel), yes,
-        !DeclSet, !IO),
-    io__write_string(" = {\n\t(MR_Code *) ", !IO),
-    output_static_code_addr(CodeAddr, !IO),
-    io__write_string(",\n\t", !IO),
-    io__write_string("""", !IO),
-    c_util__output_quoted_string(
-        proc_label_to_c_string(make_proc_label_from_rtti(ProcLabel), no), !IO),
-    io__write_string(""",\n\t", !IO),
-    output_cast_addr_of_rtti_data("(MR_TypeInfo) ", type_info(InputTypeInfo),
-        !IO),
-    io__write_string(",\n\t", !IO),
-    output_cast_addr_of_rtti_data("(MR_TypeInfo) ", type_info(OutputTypeInfo),
-        !IO),
-    io__write_string(",\n\t", !IO),
-    io__write_int(represent_determinism(ProcLabel ^ proc_interface_detism),
-        !IO),
-    io__write_string("\n};\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1538,16 +1502,6 @@ rtti_out__init_rtti_data_if_nec(Data, !IO) :-
             "not yet supported without static code addresses""\n", !IO),
         io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n", !IO)
     ;
-        Data = aditi_proc_info(ProcLabel, _, _)
-    ->
-        io__write_string("\tMR_INIT_ADITI_PROC_INFO(", !IO),
-        rtti_data_to_id(Data, DataId),
-        rtti__id_to_c_identifier(DataId, CId),
-        io__write_string(CId, !IO),
-        io__write_string(", ", !IO),
-        output_code_addr(make_code_addr(ProcLabel), !IO),
-        io__write_string(");\n", !IO)
-    ;   
         true
     ).
 

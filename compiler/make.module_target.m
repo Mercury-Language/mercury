@@ -672,8 +672,6 @@ compilation_task(_, intermodule_interface) =
         ["--make-optimization-interface"].
 compilation_task(_, analysis_registry) =
     process_module(make_analysis_registry) - ["--make-analysis-registry"].
-compilation_task(_, aditi_code) =
-    process_module(compile_to_target_code) - ["--aditi-only"].
 compilation_task(Globals, c_header(_)) = compilation_task(Globals, c_code).
 compilation_task(_, c_code) =
     process_module(compile_to_target_code) - ["--compile-to-c"].

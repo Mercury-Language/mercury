@@ -1260,9 +1260,7 @@ make_module_clean(ModuleName, !Info, !IO) :-
         [errors, c_code, c_header(mih), il_code, java_code],
         !Info, !IO),
 
-    list__foldl2(remove_file(ModuleName),
-        [".used", ".prof", ".derived_schema", ".base_schema"],
-        !Info, !IO),
+    list__foldl2(remove_file(ModuleName), [".used", ".prof"], !Info, !IO),
 
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
@@ -1317,9 +1315,14 @@ make_module_clean(ModuleName, !Info, !IO) :-
 make_module_realclean(ModuleName, !Info, !IO) :-
     make_module_clean(ModuleName, !Info, !IO),
     list__foldl2(remove_target_file(ModuleName),
-        [private_interface, long_interface, short_interface,
-        unqualified_short_interface, intermodule_interface, analysis_registry,
-        aditi_code, c_header(mh)
+        [
+            private_interface, 
+            long_interface, 
+            short_interface,
+            unqualified_short_interface, 
+            intermodule_interface, 
+            analysis_registry,
+            c_header(mh)
         ],
         !Info, !IO),
     remove_file(ModuleName, module_dep_file_extension, !Info, !IO),

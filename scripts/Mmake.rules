@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2005 The University of Melbourne.
+# Copyright (C) 1995-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -25,7 +25,6 @@ main_target: $(MAIN_TARGET)
 		.date0 .date .date3 .optdate .trans_opt_date \
 		.c .$O .pic_o \
 		.i .s .pic_s \
-		.rlo \
 		.java .class \
 		.il .dll .exe .cpp .cs \
 		.c_date .il_date .java_date .s_date .pic_s_date
@@ -238,11 +237,6 @@ $(cs_subdir)%.c : $(c_dates_subdir)%.c_date
 
 $(c_dates_subdir)%.c_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $(*F) $(ERR_REDIRECT)
-
-# Aditi-RL back-end
-$(rlos_subdir)%.rlo : %.m
-	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
-		--aditi-only $(*F) $(ERR_REDIRECT)
 
 # Java back-end
 

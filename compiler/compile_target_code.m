@@ -865,9 +865,7 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
     io__open_output(TmpInitFileName, InitFileRes, !IO),
     (
         InitFileRes = ok(InitFileStream),
-        globals__io_lookup_bool_option(aditi, Aditi, !IO),
-        list__foldl(make_init_file_aditi(InitFileStream, Aditi), AllModules,
-            !IO),
+        list__foldl(make_init_file(InitFileStream), AllModules, !IO),
         globals__io_lookup_maybe_string_option(extra_init_command,
             MaybeInitFileCommand, !IO),
         (
@@ -899,24 +897,15 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
         Succeeded = no
     ).
 
-:- pred make_init_file_aditi(io__output_stream::in, bool::in, module_name::in,
+:- pred make_init_file(io.output_stream::in, module_name::in,
     io::di, io::uo) is det.
 
-make_init_file_aditi(InitFileStream, Aditi, ModuleName, !IO) :-
+make_init_file(InitFileStream, ModuleName, !IO) :-
     InitFuncName0 = make_init_name(ModuleName),
     InitFuncName = InitFuncName0 ++ "init",
     io__write_string(InitFileStream, "INIT ", !IO),
     io__write_string(InitFileStream, InitFuncName, !IO),
-    io__nl(InitFileStream, !IO),
-    (
-        Aditi = yes,
-        RLName = make_rl_data_name(ModuleName),
-        io__write_string(InitFileStream, "ADITI_DATA ", !IO),
-        io__write_string(InitFileStream, RLName, !IO),
-        io__nl(InitFileStream, !IO)
-    ;
-        Aditi = no
-    ).
+    io__nl(InitFileStream, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1067,9 +1056,6 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
     globals__io_lookup_bool_option(main, Main, !IO),
     NoMainOpt = ( Main = no -> "-l" ; "" ),
 
-    globals__io_lookup_bool_option(aditi, Aditi, !IO),
-    AditiOpt = ( Aditi = yes -> "-a" ; "" ),
-
     globals__io_lookup_string_option(experimental_complexity,
         ExperimentalComplexity, !IO),
     ( ExperimentalComplexity = "" ->
@@ -1081,11 +1067,18 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
     globals__io_lookup_string_option(mkinit_command, Mkinit, !IO),
     TmpInitCFileName = InitCFileName ++ ".tmp",
     MkInitCmd = string__append_list(
-        [Mkinit, " -g ", Grade, " ", TraceOpt, " ", ExtraInitsOpt,
-        " ", NoMainOpt, " ", AditiOpt,
-        " ", ExperimentalComplexityOpt, " ", RuntimeFlags,
-        " -o ", quote_arg(TmpInitCFileName), " ", InitFileDirs,
-        " ", InitFileNames, " ", CFileNames]),
+        [   Mkinit,
+            " -g ", Grade,
+            " ", TraceOpt,
+            " ", ExtraInitsOpt,
+            " ", NoMainOpt,
+            " ", ExperimentalComplexityOpt,
+            " ", RuntimeFlags,
+            " -o ", quote_arg(TmpInitCFileName),
+            " ", InitFileDirs,
+            " ", InitFileNames, 
+            " ", CFileNames
+        ]),
     invoke_system_command(ErrorStream, verbose, MkInitCmd, MkInitOK0, !IO),
     maybe_report_stats(Stats, !IO),
     (

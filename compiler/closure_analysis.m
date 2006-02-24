@@ -231,10 +231,6 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     Goal = GoalExpr - GoalInfo.       
 process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     Goal0 = GoalExpr - GoalInfo0,
-    %    
-    % XXX We should probably just ignore Aditi stuff and unsafe_casts
-    % but annotating them with closure_infos won't hurt.
-    %
     GoalExpr = generic_call(Details, GCallArgs, GCallModes, _),
     partition_arguments(ModuleInfo, VarTypes, GCallArgs, GCallModes,
         set.init, InputArgs0, set.init, OutputArgs),
@@ -292,8 +288,6 @@ process_goal(VarTypes, _, Goal, Goal, !ClosureInfo) :-
     ( 
         Unification = construct(LHS, RHS, _, _, _, _, _),
         ( 
-            % NOTE: we don't bother worrying about features
-            % that relate to Aditi, i.e. when EvalMethod = (aditi_bottom_up)
             RHS = pred_const(ShroudedPPId, EvalMethod),
             EvalMethod = lambda_normal 
         ->

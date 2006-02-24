@@ -6,7 +6,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2005 The University of Melbourne.
+** Copyright (C) 1994-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -318,9 +318,6 @@ MR_TypeStat         MR_type_stat_c_compare;
 **   calls main/2 in the user's program.
 ** - The Mercury runtime finalization, namely mercury_runtime_terminate(),
 **   calls io__finalize_state/2 in the Mercury library.
-** - `aditi__connect/6' in extras/aditi/aditi.m calls
-**   MR_do_load_aditi_rl_code() in the automatically
-**   generated C init file.
 **
 ** But, to enable Quickstart of shared libraries on Irix 5,
 ** and in general to avoid various other complications
@@ -357,8 +354,6 @@ MR_TypeInfo     MR_type_info_for_list_of_char;
 MR_TypeInfo     MR_type_info_for_list_of_string;
 MR_TypeInfo     MR_type_info_for_list_of_type_info;
 MR_TypeInfo     MR_type_info_for_list_of_pseudo_type_info;
-
-MR_Box  (*MR_address_of_do_load_aditi_rl_code)(MR_Box, MR_Box);
 
 char        *(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 char        *(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
@@ -2341,23 +2336,6 @@ mercury_runtime_terminate(void)
     MR_restore_regs_from_mem(c_regs);
 
     return mercury_exit_status;
-}
-
-/*---------------------------------------------------------------------------*/
-
-MR_Box
-MR_load_aditi_rl_code(MR_Box connection, MR_Box bytecode_transaction)
-{
-    if (MR_address_of_do_load_aditi_rl_code != NULL) {
-        return (*MR_address_of_do_load_aditi_rl_code)(connection,
-            bytecode_transaction);
-    } else {
-        MR_fatal_error(
-            "attempt to load Aditi-RL code from an executable\n"
-            "not compiled for Aditi execution.\n"
-            "Add `--aditi' to C2INITFLAGS.\n"
-        );
-    }
 }
 
 /*---------------------------------------------------------------------------*/

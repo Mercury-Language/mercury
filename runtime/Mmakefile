@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2005 The University of Melbourne.
+# Copyright (C) 1998-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -23,7 +23,6 @@ MAIN_TARGET=all
 HDRS		=	\
 			mercury.h		\
 			mercury_accurate_gc.h	\
-			mercury_aditi.h		\
 			mercury_agc_debug.h	\
 			mercury_array_macros.h	\
 			mercury_bootstrap.h	\

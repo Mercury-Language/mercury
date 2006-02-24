@@ -973,7 +973,6 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             ; Ext = ".check"
             ; Ext = ".ints"
             ; Ext = ".int3s"
-            ; Ext = ".rlos"
             ; Ext = ".ss"
             ; Ext = ".pic_ss"
             ; Ext = ".ils"
@@ -981,11 +980,6 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName, !IO) :-
             ; Ext = ".classes"
             ; Ext = ".opts"
             ; Ext = ".trans_opts"
-            % The following files are only used by the Aditi
-            % query shell which doesn't know about --use-subdirs.
-            ; Ext = ".base_schema"
-            ; Ext = ".derived_schema"
-            ; Ext = ".rlo"
             )
         ;
             % output files intended for use by the user
@@ -3055,7 +3049,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         module_name_to_file_name(ModuleName, ".pic_s_date", no,
             PicAsmDateFileName, !IO),
         module_name_to_file_name(ModuleName, ".$O", no, ObjFileName, !IO),
-        module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName, !IO),
         module_name_to_file_name(ModuleName, ".il_date", no, ILDateFileName,
             !IO),
         module_name_to_file_name(ModuleName, ".java_date", no,
@@ -3070,7 +3063,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             CDateFileName, " ",
             AsmDateFileName, " ",
             PicAsmDateFileName, " ",
-            RLOFileName, " ",
             ILDateFileName, " ",
             JavaDateFileName
         ] , !IO),
@@ -3094,7 +3086,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 ".s_date",
                 ".pic_s_date",
                 ".dir/*.$O",
-                ".rlo",
                 ".il_date",
                 ".java_date"],
 
@@ -3150,7 +3141,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 CDateFileName, " ",
                 AsmDateFileName, " ",
                 PicAsmDateFileName, " ",
-                RLOFileName, " ",
                 ILDateFileName, " ",
                 JavaDateFileName, " : "
             ], !IO),
@@ -3185,7 +3175,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                     CDateFileName, " ",
                     AsmDateFileName, " ",
                     PicAsmDateFileName, " ",
-                    RLOFileName, " ",
                     ILDateFileName, " ",
                     JavaDateFileName, " : "
                 ], !IO),
@@ -4762,12 +4751,6 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     ], !IO),
 
     io__write_string(DepStream, MakeVarName, !IO),
-    io__write_string(DepStream, ".rlos = ", !IO),
-    write_compact_dependencies_list(Modules, "$(rlos_subdir)", ".rlo",
-        Basis, DepStream, !IO),
-    io__write_string(DepStream, "\n", !IO),
-
-    io__write_string(DepStream, MakeVarName, !IO),
     io__write_string(DepStream, ".useds = ", !IO),
     write_compact_dependencies_list(Modules, "$(useds_subdir)", ".used",
         Basis, DepStream, !IO),
@@ -5006,15 +4989,6 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io__write_string(DepStream, ".imdgs = ", !IO),
     write_compact_dependencies_list(Modules, "$(imdgs_subdir)",
         ".imdg", Basis, DepStream, !IO),
-    io__write_string(DepStream, "\n", !IO),
-
-    io__write_string(DepStream, MakeVarName, !IO),
-    io__write_string(DepStream, ".schemas = ", !IO),
-    write_compact_dependencies_list(Modules, "", ".base_schema",
-        Basis, DepStream, !IO),
-    io__write_string(DepStream, " ", !IO),
-    write_compact_dependencies_list(Modules, "", ".derived_schema",
-        Basis, DepStream, !IO),
     io__write_string(DepStream, "\n", !IO),
 
     io__write_string(DepStream, MakeVarName, !IO),
@@ -5483,7 +5457,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         TransOptsTargetName, !IO),
     module_name_to_file_name(ModuleName, ".ss", no, SsTargetName, !IO),
     module_name_to_file_name(ModuleName, ".pic_ss", no, PicSsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".rlos", no, RLOsTargetName, !IO),
     module_name_to_file_name(ModuleName, ".ils", no, ILsTargetName, !IO),
     module_name_to_file_name(ModuleName, ".javas", no, JavasTargetName, !IO),
     module_name_to_file_name(ModuleName, ".classes", no, ClassesTargetName,
@@ -5512,8 +5485,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         SsTargetName, " : $(", MakeVarName, ".ss)\n\n",
         ".PHONY : ", PicSsTargetName, "\n",
         PicSsTargetName, " : $(", MakeVarName, ".pic_ss)\n\n",
-        ".PHONY : ", RLOsTargetName, "\n",
-        RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n",
         ".PHONY : ", ILsTargetName, "\n",
         ILsTargetName, " : $(", MakeVarName, ".ils)\n\n",
         ".PHONY : ", JavasTargetName, "\n",
@@ -5562,8 +5533,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\t-echo $(", MakeVarName, ".javas) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".profs) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".errs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".foreign_cs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".schemas) | xargs rm -f\n"
+        "\t-echo $(", MakeVarName, ".foreign_cs) | xargs rm -f\n"
     ], !IO),
 
     io__write_string(DepStream, "\n", !IO),
@@ -5595,8 +5565,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\t-echo $(", MakeVarName, ".all_mihs) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".dlls) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".foreign_dlls) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".classes) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".rlos) | xargs rm -f\n"
+        "\t-echo $(", MakeVarName, ".classes) | xargs rm -f\n"
     ], !IO),
     io__write_strings(DepStream, [
         "\t-rm -f ",

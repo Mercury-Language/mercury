@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -310,8 +310,6 @@ ops__op_table("^", after, xfy, 99).         % ISO Prolog (prec. 200,
                                             % Mercury (record syntax)
 ops__op_table("^", before, fx, 100).        % Mercury extension
                                             % (record syntax)
-ops__op_table("aditi_bottom_up", before, fx, 500). % Mercury extension
-ops__op_table("aditi_top_down", before, fx, 500). % Mercury extension
 ops__op_table("all", before, fxy, 950).     % Mercury/NU-Prolog extension
 ops__op_table("and", after, xfy, 720).      % NU-Prolog extension
 ops__op_table("div", after, yfx, 400).      % standard ISO Prolog

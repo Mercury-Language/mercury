@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -571,14 +571,6 @@
             )
     ;       type_class_instance(
                 tc_instance
-            )
-            % A procedure to be called top-down by Aditi when evaluating
-            % a join condition. These procedures only have one input and one
-            % output argument, both of which must have a ground {}/N type.
-    ;       aditi_proc_info(
-                rtti_proc_label,    % The procedure to call.
-                rtti_type_info,     % Type of the input argument.
-                rtti_type_info      % Type of the output argument.
             ).
 
 % All rtti_data data structures and all their components are identified
@@ -591,8 +583,7 @@
 
 :- type rtti_id
     --->    ctor_rtti_id(rtti_type_ctor, ctor_rtti_name)
-    ;       tc_rtti_id(tc_name, tc_rtti_name)
-    ;       aditi_rtti_id(rtti_proc_label).
+    ;       tc_rtti_id(tc_name, tc_rtti_name).
 
 :- type ctor_rtti_name
     --->    exist_locns(int)                % functor ordinal
@@ -700,10 +691,6 @@
     %
 :- pred proc_label_pred_proc_id(rtti_proc_label::in,
     pred_id::out, proc_id::out) is det.
-
-    % Construct an aditi_proc_info for a given procedure.
-    %
-:- func make_aditi_proc_info(module_info, pred_id, proc_id) = rtti_data.
 
     % Return the C variable name of the RTTI data structure identified
     % by the input argument.
@@ -893,7 +880,6 @@ rtti_data_to_id(type_class_decl(tc_decl(TCId, _, _)),
     TCId = tc_id(TCName, _, _).
 rtti_data_to_id(type_class_instance(tc_instance(TCName, TCTypes, _, _, _)),
         tc_rtti_id(TCName, type_class_instance(TCTypes))).
-rtti_data_to_id(aditi_proc_info(ProcLabel, _, _), aditi_rtti_id(ProcLabel)).
 
 tcd_get_rtti_type_ctor(TypeCtorData) = RttiTypeCtor :-
     ModuleName = TypeCtorData ^ tcr_module_name,
@@ -950,7 +936,6 @@ rtti_id_has_array_type(ctor_rtti_id(_, RttiName)) =
     ctor_rtti_name_has_array_type(RttiName).
 rtti_id_has_array_type(tc_rtti_id(_, TCRttiName)) =
     tc_rtti_name_has_array_type(TCRttiName).
-rtti_id_has_array_type(aditi_rtti_id(_)) = no.
 
 ctor_rtti_name_has_array_type(RttiName) = IsArray :-
     ctor_rtti_name_type(RttiName, _, IsArray).
@@ -962,8 +947,6 @@ rtti_id_is_exported(ctor_rtti_id(_, RttiName)) =
     ctor_rtti_name_is_exported(RttiName).
 rtti_id_is_exported(tc_rtti_id(_, TCRttiName)) =
     tc_rtti_name_is_exported(TCRttiName).
-% MR_AditiProcInfos must be exported to be visible to dlsym().
-rtti_id_is_exported(aditi_rtti_id(_)) = yes.
 
 ctor_rtti_name_is_exported(exist_locns(_))              = no.
 ctor_rtti_name_is_exported(exist_locn)                  = no.
@@ -1065,26 +1048,10 @@ proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
     PredId = ProcLabel ^ pred_id,
     ProcId = ProcLabel ^ proc_id.
 
-make_aditi_proc_info(ModuleInfo, PredId, ProcId) =
-        aditi_proc_info(ProcLabel, InputTypeInfo, OutputTypeInfo) :-
-    ProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-
-    % The types of the arguments must be ground.
-    ( ProcLabel ^ proc_arg_types = [InputArgType, OutputArgType] ->
-        pseudo_type_info__construct_type_info(InputArgType, InputTypeInfo),
-        pseudo_type_info__construct_type_info(OutputArgType, OutputTypeInfo)
-    ;
-        unexpected(this_file,
-            "make_aditi_proc_info: incorrect number of arguments")
-    ).
-
 id_to_c_identifier(ctor_rtti_id(RttiTypeCtor, RttiName), Str) :-
     Str = name_to_string(RttiTypeCtor, RttiName).
 id_to_c_identifier(tc_rtti_id(TCName, TCRttiName), Str) :-
     tc_name_to_string(TCName, TCRttiName, Str).
-id_to_c_identifier(aditi_rtti_id(RttiProcLabel), Str) :-
-    Str = "AditiProcInfo_For_" ++
-        proc_label_to_c_string(make_proc_label_from_rtti(RttiProcLabel), no).
 
 :- func name_to_string(rtti_type_ctor, ctor_rtti_name) = string.
 
@@ -1657,7 +1624,6 @@ rtti_id_would_include_code_addr(ctor_rtti_id(_, RttiName)) =
     ctor_rtti_name_would_include_code_addr(RttiName).
 rtti_id_would_include_code_addr(tc_rtti_id(_, TCRttiName)) =
     tc_rtti_name_would_include_code_addr(TCRttiName).
-rtti_id_would_include_code_addr(aditi_rtti_id(_)) = yes.
 
 ctor_rtti_name_would_include_code_addr(exist_locns(_)) =                no.
 ctor_rtti_name_would_include_code_addr(exist_locn)  =                   no.
@@ -1732,7 +1698,6 @@ rtti_id_c_type(ctor_rtti_id(_, RttiName), CTypeName, IsArray) :-
     ctor_rtti_name_c_type(RttiName, CTypeName, IsArray).
 rtti_id_c_type(tc_rtti_id(_, TCRttiName), CTypeName, IsArray) :-
     tc_rtti_name_c_type(TCRttiName, CTypeName, IsArray).
-rtti_id_c_type(aditi_rtti_id(_), "MR_Aditi_Proc_Info", no).
 
 ctor_rtti_name_c_type(RttiName, CTypeName, IsArray) :-
     ctor_rtti_name_type(RttiName, GenTypeName, IsArray),
@@ -1759,8 +1724,6 @@ rtti_id_java_type(ctor_rtti_id(_, RttiName), JavaTypeName, IsArray) :-
     ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray).
 rtti_id_java_type(tc_rtti_id(_, TCRttiName), JavaTypeName, IsArray) :-
     tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray).
-rtti_id_java_type(aditi_rtti_id(_), _, _) :-
-    unexpected(this_file, "Aditi not supported for the Java back-end").
 
 ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
     ctor_rtti_name_type(RttiName, GenTypeName0, IsArray),
@@ -1927,9 +1890,6 @@ module_qualify_name_of_rtti_id(RttiId) = ShouldModuleQualify :-
         RttiId = tc_rtti_id(_, TCRttiName),
         ShouldModuleQualify =
             module_qualify_name_of_tc_rtti_name(TCRttiName)
-    ;
-        RttiId = aditi_rtti_id(_),
-        ShouldModuleQualify = yes
     ).
 
 module_qualify_name_of_ctor_rtti_name(_) = yes.

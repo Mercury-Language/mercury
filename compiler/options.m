@@ -132,8 +132,6 @@
     ;       debug_term          % term = constraint termination analysis 
     ;       debug_opt_pred_id
     ;       debug_pd            % pd = partial deduction/deforestation
-    ;       debug_rl_gen
-    ;       debug_rl_opt
     ;       debug_il_asm        % il_asm = IL generation via asm
     ;       debug_liveness
     ;       debug_stack_opt
@@ -160,7 +158,6 @@
     ;       target_code_only
     ;       compile_only
     ;       compile_to_shared_lib
-    ;       aditi_only
     ;       output_grade_string
     ;       output_link_command
     ;       output_shared_lib_link_command
@@ -205,9 +202,6 @@
     ;       dump_hlds_options
     ;       dump_mlds
     ;       verbose_dump_mlds
-    ;       generate_schemas
-    ;       dump_rl
-    ;       dump_rl_bytecode
     ;       mode_constraints
     ;       simple_mode_constraints
     ;       prop_mode_constraints
@@ -274,11 +268,7 @@
     ;       record_term_sizes_as_cells
     ;       experimental_complexity
 
-    % (c) Aditi
-    ;       aditi   
-    ;       aditi_calls_mercury
-
-    % (d) Miscellaneous
+    % (c) Miscellaneous
     ;       gc
     ;       parallel
     ;       use_trail
@@ -760,7 +750,6 @@
     ;       intermod_directories
     ;       use_search_directories_for_intermod
     ;       filenames_from_stdin
-    ;       aditi_user
     ;       help
     ;       version
     ;       fullarch
@@ -890,8 +879,6 @@ option_defaults_2(verbosity_option, [
     debug_opt                           -   bool(no),
     debug_opt_pred_id                   -   int(-1),
     debug_pd                            -   bool(no),
-    debug_rl_gen                        -   bool(no),
-    debug_rl_opt                        -   bool(no),
     debug_il_asm                        -   bool(no),
     debug_liveness                      -   int(-1),
     debug_stack_opt                     -   int(-1),
@@ -919,7 +906,6 @@ option_defaults_2(output_option, [
     target_code_only                    -   bool(no),
     compile_only                        -   bool(no),
     compile_to_shared_lib               -   bool(no),
-    aditi_only                          -   bool(no),
     output_grade_string                 -   bool(no),
     output_link_command                 -   bool(no),
     output_shared_lib_link_command      -   bool(no)
@@ -956,8 +942,6 @@ option_defaults_2(aux_output_option, [
     dump_hlds_options                   -   string(""),
     dump_mlds                           -   accumulating([]),
     verbose_dump_mlds                   -   accumulating([]),
-    dump_rl                             -   bool(no),
-    dump_rl_bytecode                    -   bool(no),
     mode_constraints                    -   bool(no),
     simple_mode_constraints             -   bool(no),
     prop_mode_constraints               -   bool(no),
@@ -965,8 +949,7 @@ option_defaults_2(aux_output_option, [
     benchmark_modes_repeat              -   int(1),
     sign_assembly                       -   bool(no),
     % XXX should default to no but currently broken
-    separate_assemblies                 -   bool(yes),
-    generate_schemas                    -   bool(no)
+    separate_assemblies                 -   bool(yes)
 ]).
 option_defaults_2(language_semantics_option, [
     strict_sequential                   -   special,
@@ -1025,8 +1008,6 @@ option_defaults_2(compilation_model_option, [
     use_minimal_model_own_stacks        -   bool(no),
     minimal_model_debug                 -   bool(no),
     type_layout                         -   bool(yes),
-    aditi                               -   bool(no),
-    aditi_calls_mercury                 -   bool(no), % XXX eventually yes
 
     % Data representation compilation model options
     reserve_tag                         -   bool(no),
@@ -1497,7 +1478,6 @@ option_defaults_2(build_system_option, [
 option_defaults_2(miscellaneous_option, [
     % Miscellaneous Options
     filenames_from_stdin                -   bool(no),
-    aditi_user                          -   string(""),
     help                                -   bool(no),
     version                             -   bool(no),
     fullarch                            -   string(""),
@@ -1600,8 +1580,6 @@ long_option("debug-term",           debug_term).
 long_option("debug-opt",            debug_opt).
 long_option("debug-opt-pred-id",    debug_opt_pred_id).
 long_option("debug-pd",             debug_pd).
-long_option("debug-rl-gen",         debug_rl_gen).
-long_option("debug-rl-opt",         debug_rl_opt).
     % debug-il-asm does very low-level printf style debugging of
     % IL assembler.  Each instruction is written on stdout before it
     % is executed.  It is a temporary measure until the IL debugging
@@ -1644,7 +1622,6 @@ long_option("errorcheck-only",      errorcheck_only).
 long_option("target-code-only",     target_code_only).
 long_option("compile-only",         compile_only).
 long_option("compile-to-shared-lib",    compile_to_shared_lib).
-long_option("aditi-only",           aditi_only).
 long_option("output-grade-string",  output_grade_string).
 long_option("output-link-command",  output_link_command).
 long_option("output-shared-lib-link-command", output_shared_lib_link_command).
@@ -1684,11 +1661,8 @@ long_option("dump-mlds",            dump_mlds).
 long_option("mlds-dump",            dump_mlds).
 long_option("verbose-dump-mlds",    verbose_dump_mlds).
 long_option("verbose-mlds-dump",    verbose_dump_mlds).
-long_option("dump-rl",              dump_rl).
-long_option("dump-rl-bytecode",     dump_rl_bytecode).
 long_option("sign-assembly",        sign_assembly).
 long_option("separate-assemblies",  separate_assemblies).
-long_option("generate-schemas",     generate_schemas).
 long_option("mode-constraints",     mode_constraints).
 long_option("simple-mode-constraints",  simple_mode_constraints).
 long_option("prop-mode-constraints",    prop_mode_constraints).
@@ -1754,8 +1728,6 @@ long_option("use-trail",            use_trail).
 long_option("type-layout",          type_layout).
 long_option("maybe-thread-safe",    maybe_thread_safe).
 long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
-long_option("aditi",                aditi).
-long_option("aditi-calls-mercury",  aditi_calls_mercury).
 % Data representation options
 long_option("reserve-tag",          reserve_tag).
 long_option("use-minimal-model-stack_copy", use_minimal_model_stack_copy).
@@ -2252,7 +2224,6 @@ long_option("use-search-directories-for-intermod",
 long_option("help",                 help).
 long_option("version",              version).
 long_option("filenames-from-stdin", filenames_from_stdin).
-long_option("aditi-user",           aditi_user).
 long_option("fullarch",             fullarch).
 long_option("local-module-id",      local_module_id).
 long_option("bug-intermod-2002-06-13",  compiler_sufficiently_recent).
@@ -2756,7 +2727,6 @@ options_help -->
     options_help_hlds_llds_optimization,
     options_help_llds_llds_optimization,
     options_help_mlds_mlds_optimization,
-    options_help_rl_rl_optimization,
     options_help_output_optimization,
     options_help_target_code_compilation,
     options_help_link,
@@ -2933,10 +2903,6 @@ options_help_verbosity -->
         "--debug-pd",
         "\tOutput detailed debugging traces of the partial",
         "\tdeduction and deforestation process.",
-        "--debug-rl-gen",
-        "\tOutput detailed debugging traces of Aditi-RL code generation.",
-        "--debug-rl-opt",
-        "\tOutput detailed debugging traces of Aditi-RL optimization.",
         "--debug-liveness <pred_id>",
         "\tOutput detailed debugging traces of the liveness analysis",
         "\tof the predicate with the given predicate id.",
@@ -3025,9 +2991,6 @@ options_help_output -->
         % --compile-to-shared-lib is intended only for use
         % by the debugger's interactive query facility,
         % so it isn't documented.
-        "--aditi-only",
-        "\tWrite Aditi-RL bytecode to `<module>.rlo' and",
-        "\tdo not compile to C.",
         "--output-grade-string",
         "\tCompute the grade of the library to link with based on",
         "\tthe command line options, and print it to the standard",
@@ -3170,20 +3133,6 @@ options_help_aux_output -->
         "--verbose-dump-mlds <stage number or name>",
         "\tDump the internal compiler representation of the MLDS, after",
         "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'.",
-        "--dump-rl",
-        "\tOutput a human readable form of the compiler's internal",
-        "\trepresentation of the generated Aditi-RL code to",
-        "\t`<module>.rl_dump'.",
-        "--dump-rl-bytecode",
-        "\tOutput a human readable representation of the generated",
-        "\tAditi-RL bytecodes to `<module>.rla'.",
-        "\tAditi-RL bytecodes are directly executed by the Aditi system.",
-        "--generate-schemas",
-        "\tOutput schema strings for Aditi base relations",
-        "\tto `<module>.base_schema' and for Aditi derived",
-        "\trelations to `<module>.derived_schema'.",
-        "\tA schema string is a representation of the types",
-        "\tof a relation.",
 % The mode constraints code is still experimental so these options are
 % currently commented out.
 %       "--mode-constraints"
@@ -3482,16 +3431,6 @@ options_help_compilation_model -->
         "\tlisted in the given file.",
         "\tThis option is supported for the C back-end, with",
         "\t--no-highlevel-code."
-    ]),
-    io__write_string("      Aditi\n"),
-    write_tabbed_lines([
-        "--aditi",
-        "\tEnable Aditi compilation. You need to enable this",
-        "\toption if you are making use of the Aditi deductive",
-        "\tdatabase interface."
-        % XXX --aditi-calls-mercury is not fully implemented.
-        % "--aditi-calls-mercury",
-        % "\tEnable calling ordinary Mercury code from Aditi."
     ]),
 
     io__write_string("      Miscellaneous optional features\n"),
@@ -4236,30 +4175,6 @@ options_help_mlds_mlds_optimization -->
         "\tin the standard library."
 ]).
 
-
-:- pred options_help_rl_rl_optimization(io::di, io::uo) is det.
-
-options_help_rl_rl_optimization -->
-    io__write_string("\n    Aditi-RL optimizations:\n"),
-    write_tabbed_lines([
-        "--optimize-rl",
-        "\tEnable the optimizations of Aditi-RL procedures",
-        "\tdescribed below.",
-        "\t--optimize-rl-invariants",
-        "\tOptimize loop invariants in Aditi-RL procedures.",
-        "\t--optimize-rl-index",
-        "\tUse indexing to optimize access to relations in Aditi-RL",
-        "\tprocedures.",
-        "\t--detect-rl-streams",
-        "\tDetect cases where intermediate results in Aditi-RL",
-        "\tprocedures do not need to be materialised."
-        /*
-        % This option is not yet used.
-        "--optimize-rl-cse",
-        "\tOptimize common subexpressions in Aditi-RL procedures.",
-        */
-    ]).
-
 :- pred options_help_output_optimization(io::di, io::uo) is det.
 
 options_help_output_optimization -->
@@ -4618,14 +4533,6 @@ options_help_misc -->
         "\tis reached. (This allows a program or user to interactively",
         "\tcompile several modules without the overhead of process",
         "\tcreation for each one.)",
-        "--aditi-user",
-        "\tSpecify the Aditi login of the owner of the predicates",
-        "\tin any Aditi RL files produced. The owner field is",
-        "\tused along with module, name and arity to identify",
-        "\tpredicates, and is also used for security checks.",
-        "\tDefaults to the value of the `USER' environment",
-        "\tvariable. If `$USER' is not set, `--aditi-user'",
-        "\tdefaults to the string ""guest"".",
         "--version",
         "\tDisplay the compiler version."
 

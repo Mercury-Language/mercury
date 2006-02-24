@@ -1991,9 +1991,6 @@ build_rtti_type(RttiIdMaybeElement, Size, GCC_Type, !IO) :-
 	;
 		RttiId = tc_rtti_id(_, TCRttiName),
 		build_rtti_type_tc_name(TCRttiName, BaseType, !IO)
-	;
-		RttiId = aditi_rtti_id(_),
-		build_rtti_type_aditi_name(BaseType, !IO)
 	),
 	IsArray = rtti_id_has_array_type(RttiId),
 	(
@@ -2217,25 +2214,6 @@ build_rtti_type_tc_name(type_class_instance_constraints(_), GCC_Type, !IO) :-
 build_rtti_type_tc_name(type_class_instance_methods(_), _GCC_Type, !IO) :-
 	sorry(this_file,
 		"build_rtti_type_tc_name: type_class_instance_methods").
-
-:- pred build_rtti_type_aditi_name(gcc__type::out,
-		io__state::di, io__state::uo) is det.
-
-build_rtti_type_aditi_name(GCC_Type, !IO) :-
-	% typedef struct {
-	%	MR_ProcAddr	MR_aditi_proc_addr;
-	%	MR_String	MR_aditi_proc_name;
-	%	MR_TypeInfo	MR_aditi_input_type_info;
-	%	MR_TypeInfo	MR_aditi_output_type_info;
-	%	MR_Determinism	MR_aditi_proc_detism;
-	% } MR_Aditi_Proc_Info;
-	build_struct_type("MR_Aditi_Proc_Info",
-		['MR_ProcAddr'		- "MR_aditi_proc_addr",
-		 'MR_String'		- "MR_aditi_proc_name",
-		 'MR_TypeInfo'		- "MR_aditi_input_type_info",
-		 'MR_TypeInfo'		- "MR_aditi_output_type_info",
-		 'MR_Determinism'	- "MR_aditi_proc_detism"],
-		GCC_Type, !IO).
 
 :- pred build_type_info_type(rtti_type_info::in,
 	gcc__type::out, io__state::di, io__state::uo) is det.
@@ -2629,7 +2607,6 @@ fixup_rtti_id(ctor_rtti_id(RttiTypeCtor0, RttiName0))
 	RttiTypeCtor = fixup_rtti_type_ctor(RttiTypeCtor0),
 	RttiName = fixup_rtti_name(RttiName0).
 fixup_rtti_id(tc_rtti_id(TCName, TCRttiName)) = tc_rtti_id(TCName, TCRttiName).
-fixup_rtti_id(aditi_rtti_id(ProcLabel)) = aditi_rtti_id(ProcLabel).
 
 	% XXX sometimes earlier stages of the compiler forget to add
 	% the appropriate qualifiers for stuff in the `builtin' module;

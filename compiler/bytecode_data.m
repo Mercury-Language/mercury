@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2000, 2003-2005 The University of Melbourne.
+% Copyright (C) 1999-2000, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -10,10 +10,7 @@
 % Authors: zs, aet, stayl.
 %
 % This module defines the representation of basic types used by the bytecode
-% interpreter and by the Aditi bytecodes.
-%
-% NOTE: this file is included in both the Mercury compiler and the Aditi
-% bytecode assembler.
+% interpreter.
 %
 %---------------------------------------------------------------------------%
 

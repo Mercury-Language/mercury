@@ -153,12 +153,6 @@
                                     % becomes exported.
             ).
 
-    % This field should be set to `do_aditi_compilation' if there
-    % are local Aditi predicates.
-:- type do_aditi_compilation
-    --->    do_aditi_compilation
-    ;       no_aditi_compilation.
-
     % Maps the full names of procedures (in the sense of
     % complexity_proc_name in complexity.m) to the number of their slot
     % in MR_complexity_proc_table.
@@ -189,20 +183,10 @@
     ;       complexity_input_fixed_size
     ;       complexity_output.
 
-    % Mercury procedures which can be called from Aditi join conditions.
-    % Each procedure has one input and one output argument.
-    % The compiler generates a constant structure containing
-    % the address and other information for each procedure,
-    % which Aditi will find using dlsym().
-:- type aditi_top_down_proc
-    --->    aditi_top_down_proc(
-                pred_proc_id,
-                string      % name of the constant.
-            ).
-
 %-----------------------------------------------------------------------------%
-
-    % Various predicates for manipulating the module_info data structure
+%
+% Various predicates for manipulating the module_info data structure
+%
 
     % Create an empty module_info for a given module name (and the
     % global options).  The item_list is passed so that we can
@@ -420,12 +404,6 @@
 :- pred module_info_set_stratified_preds(set(pred_id)::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_get_do_aditi_compilation(module_info::in,
-    do_aditi_compilation::out) is det.
-
-:- pred module_info_set_do_aditi_compilation(module_info::in, module_info::out)
-    is det.
-
 :- pred module_info_get_type_spec_info(module_info::in, type_spec_info::out)
     is det.
 
@@ -456,15 +434,6 @@
 
 :- pred module_info_set_complexity_proc_infos(list(complexity_proc_info)::in,
     module_info::in, module_info::out) is det.
-
-:- pred module_info_get_aditi_top_down_procs(module_info::in,
-    list(aditi_top_down_proc)::out) is det.
-
-:- pred module_info_set_aditi_top_down_procs(module_info::in,
-    list(aditi_top_down_proc)::in, module_info::out) is det.
-
-:- pred module_info_next_aditi_top_down_proc(module_info::in, int::out,
-    module_info::out) is det.
 
 :- pred module_info_new_user_init_pred(sym_name::in, string::out,
     module_info::in, module_info::out) is det.
@@ -560,9 +529,6 @@
     %
 :- pred module_info_dependency_info(module_info::in, dependency_info::out)
     is det.
-
-:- pred module_info_aditi_dependency_ordering(module_info::in,
-    aditi_dependency_ordering::out) is det.
 
     % Please see module_info_ensure_dependency_info for the
     % constraints on this dependency_info.
@@ -697,10 +663,6 @@
                 % back-end).
                 indirectly_imported_module_specifiers :: set(module_specifier),
 
-                % Are there any local Aditi predicates for which Aditi-RL
-                % must be produced?
-                do_aditi_compilation        :: do_aditi_compilation,
-
                 % Data used for user-guided type specialization.
                 type_spec_info              :: type_spec_info,
 
@@ -717,12 +679,6 @@
 
                 % Information for the inter-module analysis framework.
                 analysis_info               :: analysis_info,
-
-                % List of top-down procedures which could be called from
-                % bottom-up Aditi procedures.
-                aditi_top_down_procs        :: list(aditi_top_down_proc),
-
-                aditi_proc_counter          :: counter,
 
                 % Exported C names for preds appearing in `:- initialise
                 % initpred' directives in this module, in order of appearance.
@@ -772,17 +728,17 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     ModuleSubInfo = module_sub_info(Name, Globals, no, [], [], [], [], no, 0,
         [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
         map.init, counter__init(1), ImportedModules,
-        IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
-        NoTagTypes, no, [], init_analysis_info(mmc),
-        [], counter__init(1), [], []),
+        IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
+        init_analysis_info(mmc), [], []),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, SuperClassTable, InstanceTable, AssertionTable,
         ExclusiveTable, FieldNameTable, RecompInfo).
 
 %-----------------------------------------------------------------------------%
-
-    % Various predicates which access the module_info data structure.
+%
+% Various predicates which access the module_info data structure
+%
 
 module_info_get_predicate_table(MI, MI ^ predicate_table).
 module_info_get_proc_requests(MI, MI ^ proc_requests).
@@ -852,8 +808,6 @@ module_info_get_imported_module_specifiers(MI,
     MI ^ sub_info ^ imported_module_specifiers).
 module_info_get_indirectly_imported_module_specifiers(MI,
     MI ^ sub_info ^ indirectly_imported_module_specifiers).
-module_info_get_do_aditi_compilation(MI,
-    MI ^ sub_info ^ do_aditi_compilation).
 module_info_get_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
 module_info_get_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
 module_info_get_analysis_info(MI, MI ^ sub_info ^ analysis_info).
@@ -861,12 +815,6 @@ module_info_get_maybe_complexity_proc_map(MI,
     MI ^ sub_info ^ maybe_complexity_proc_map).
 module_info_get_complexity_proc_infos(MI,
     MI ^ sub_info ^ complexity_proc_infos).
-module_info_get_aditi_top_down_procs(MI, MI ^ sub_info ^ aditi_top_down_procs).
-
-module_info_next_aditi_top_down_proc(MI0, Proc, MI) :-
-    Counter0 = MI0 ^ sub_info ^ aditi_proc_counter,
-    counter__allocate(Proc, Counter0, Counter),
-    MI = MI0 ^ sub_info ^ aditi_proc_counter := Counter.
 
     % XXX There is some debate as to whether duplicate initialise directives
     % in the same module should constitute an error. Currently it is not, but
@@ -966,8 +914,6 @@ module_add_indirectly_imported_module_specifiers(Modules, MI,
     MI ^ sub_info ^ indirectly_imported_module_specifiers :=
         set__insert_list(MI ^ sub_info ^ indirectly_imported_module_specifiers,
             Modules)).
-module_info_set_do_aditi_compilation(MI,
-    MI ^ sub_info ^ do_aditi_compilation := do_aditi_compilation).
 module_info_set_type_spec_info(NewVal, MI,
     MI ^ sub_info ^ type_spec_info := NewVal).
 module_info_set_no_tag_types(NewVal, MI,
@@ -978,8 +924,6 @@ module_info_set_maybe_complexity_proc_map(NewVal, MI,
     MI ^ sub_info ^ maybe_complexity_proc_map := NewVal).
 module_info_set_complexity_proc_infos(NewVal, MI,
     MI ^ sub_info ^ complexity_proc_infos := NewVal).
-module_info_set_aditi_top_down_procs(MI, NewVal,
-    MI ^ sub_info ^ aditi_top_down_procs := NewVal).
 
 %-----------------------------------------------------------------------------%
 
@@ -1080,19 +1024,6 @@ module_info_dependency_info(MI, DepInfo) :-
     ;
         MaybeDepInfo = no,
         unexpected(this_file, "Attempted to access invalid dependency_info")
-    ).
-
-module_info_aditi_dependency_ordering(MI, AditiOrdering) :-
-    module_info_dependency_info(MI, DepInfo),
-    hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo,
-        MaybeOrdering),
-    (
-        MaybeOrdering = yes(OrderingPrime),
-        AditiOrdering = OrderingPrime
-    ;
-        MaybeOrdering = no,
-        unexpected(this_file,
-            "Attempted to access invalid aditi_dependency_ordering")
     ).
 
 module_info_set_dependency_info(DependencyInfo, !MI) :-
@@ -1210,16 +1141,6 @@ module_add_fact_table_file(FileName, !Module) :-
 :- type dependency_ordering(T)  == list(list(T)).
 :- type dependency_ordering     == dependency_ordering(pred_proc_id).
 
-:- type aditi_dependency_ordering   == list(aditi_scc).
-
-    % Each Aditi SCC contains one or more SCCs from the original dependency
-    % ordering and the entry points of the SCC. SCCs which are only called from
-    % one other SCC and are not called through negation or aggregation are
-    % merged into the parent SCC. This makes the low-level RL optimizations
-    % more effective while maintaining stratification.
-:- type aditi_scc
-    --->    aditi_scc(dependency_ordering, list(pred_proc_id)).
-
 :- type dependency_graph(T)     == relation(T).
 :- type dependency_graph        == dependency_graph(pred_proc_id).
 :- type dependency_info(T).
@@ -1233,19 +1154,12 @@ module_add_fact_table_file(FileName, !Module) :-
 :- pred hlds_dependency_info_get_dependency_ordering(dependency_info(T)::in,
     dependency_ordering(T)::out) is det.
 
-:- pred hlds_dependency_info_get_maybe_aditi_dependency_ordering(
-    dependency_info::in, maybe(aditi_dependency_ordering)::out) is det.
-
 :- pred hlds_dependency_info_set_dependency_graph(dependency_graph(T)::in,
     dependency_info(T)::in, dependency_info(T)::out) is det.
 
 :- pred hlds_dependency_info_set_dependency_ordering(
     dependency_ordering(T)::in,
     dependency_info(T)::in, dependency_info(T)::out) is det.
-
-:- pred hlds_dependency_info_set_aditi_dependency_ordering(
-    aditi_dependency_ordering::in,
-    dependency_info::in, dependency_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1254,27 +1168,21 @@ module_add_fact_table_file(FileName, !Module) :-
 :- type dependency_info(T)
     --->    dependency_info(
                 dep_graph       :: dependency_graph(T),
-                dep_ord         :: dependency_ordering(T),
-                dep_aditi_ord   :: maybe(aditi_dependency_ordering)
-                                % Dependency ordering of Aditi SCCs
+                dep_ord         :: dependency_ordering(T)
             ).
 
 hlds_dependency_info_init(DepInfo) :-
     relation__init(DepRel),
     DepOrd = [],
-    DepInfo = dependency_info(DepRel, DepOrd, no).
+    DepInfo = dependency_info(DepRel, DepOrd).
 
 hlds_dependency_info_get_dependency_graph(DepInfo, DepInfo ^ dep_graph).
 hlds_dependency_info_get_dependency_ordering(DepInfo, DepInfo ^ dep_ord).
-hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo,
-    DepInfo ^ dep_aditi_ord).
 
 hlds_dependency_info_set_dependency_graph(DepGraph, DepInfo,
     DepInfo ^ dep_graph := DepGraph).
 hlds_dependency_info_set_dependency_ordering(DepOrd, DepInfo,
     DepInfo ^ dep_ord := DepOrd).
-hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
-    DepInfo ^ dep_aditi_ord := yes(DepOrd)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

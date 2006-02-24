@@ -68,10 +68,6 @@
             % There is a call to a typeclass method at the associated
             % context.  Valid in both passes.
 
-    ;       aditi_call
-            % There is a call to an Aditi builtin at the associated
-            % context. Valid in both passes.
-
     ;       inf_termination_const(pred_proc_id, pred_proc_id)
             % inf_termination_const(Caller, Callee)
             % The call from Caller to Callee at the associated
@@ -186,7 +182,6 @@
 
 indirect_error(horder_call).
 indirect_error(method_call).
-indirect_error(aditi_call).
 indirect_error(pragma_foreign_code).
 indirect_error(imported_pred).
 indirect_error(can_loop_proc_called(_, _)).
@@ -306,9 +301,6 @@ description(horder_call, _, _, Pieces, no) :-
 
 description(method_call, _, _, Pieces, no) :-
     Pieces = [words("It contains a typeclass method call.")].
-
-description(aditi_call, _, _, Pieces, no) :-
-    Pieces = [words("It contains an Aditi builtin call.")]. 
 
 description(pragma_foreign_code, _, _, Pieces, no) :-
     Pieces = [

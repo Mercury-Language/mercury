@@ -7,9 +7,6 @@
 * Mercury User's Guide: (mercury_user_guide).  The Mercury User's Guide.
 @end direntry
 
-@c Uncomment the line below to enable documentation of the Aditi interface.
-@set aditi
-
 @c @smallbook
 @c @cropmarks
 @finalout
@@ -114,8 +111,6 @@ how to build and debug Mercury programs.
 * Running::         Execution of programs built with the Mercury compiler.
 * Using Mmake::     ``Mercury Make'', a tool for building Mercury programs.
 * Libraries::       Creating and using libraries of Mercury modules.
-* Using Aditi::     Executing Mercury predicates using the Aditi
-                    deductive database.
 * Debugging::       The Mercury debugger @samp{mdb}.
 * Profiling::       Analyzing the performance of Mercury programs.
 * Invocation::      List of options for the Mercury compiler.
@@ -240,11 +235,6 @@ Java bytecode and Java archives respectively.
 @file{.il} files are Intermediate Language (IL) files
 for the .NET Common Language Runtime.
 @c XXX mention .dll and .exe?
-
-@ifset aditi
-Files ending in @file{.rlo} are Aditi-RL bytecode files, which are
-executed by the Aditi deductive database system (@pxref{Using Aditi}).
-@end ifset
 
 @c ----------------------------------------------------------------------------
 
@@ -577,9 +567,6 @@ and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
 @samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql}, @samp{.used},
 @samp{.mih},
-@ifset aditi
-@samp{.derived_schema}, @samp{.base_schema}
-@end ifset
 and @samp{.err} files
 belonging to the named @var{main-module} or its imported modules.
 Use this target whenever you wish to change compilation model
@@ -595,9 +582,6 @@ removes the @samp{.int}, @samp{.int0}, @samp{.int2},
 @samp{.int3}, @samp{.opt}, @samp{.trans_opt},
 @samp{.date}, @samp{.date0}, @samp{.date3}, @samp{.optdate},
 @samp{.trans_opt_date},
-@ifset aditi
-@samp{.rlo},
-@end ifset
 @samp{.mh} and @samp{.d} files
 belonging to one of the modules of the program,
 and also the various possible executables, libraries and dependency files
@@ -4568,42 +4552,6 @@ with the @samp{mode} command.
 
 @c ----------------------------------------------------------------------------
 
-@ifset aditi
-@node Using Aditi
-@chapter Using Aditi
-@cindex Aditi
-@cindex database, deductive
-@cindex deductive database
-
-The Mercury compiler allows compilation of predicates for execution
-using the Aditi2 deductive database system. There are several sources
-of useful information:
-
-@itemize @bullet
-@item
-the ``Aditi deductive database interface'' section of the
-``Implementation-dependent extensions'' chapter in the
-Mercury Language Reference Manual
-@item
-the Aditi web site at <http://www.cs.mu.oz.au/aditi>
-@item
-the documentation supplied with Aditi, especially the file
-@file{$ADITI_HOME/doc/aditi.m}
-@item
-the samples provided with the Aditi distribution in @file{$ADITI_HOME/demos}
-@end itemize
-
-As an alternative to compiling stand-alone programs, you can execute
-queries using the Aditi query shell.
-
-The Aditi interface library is installed as part of the Aditi
-installation process. To use the Aditi library in your programs, use
-the Mmakefile in @file{$ADITI_HOME/demos/transactions} as a template.
-
-@end ifset
-
-@c ----------------------------------------------------------------------------
-
 @node Profiling
 @chapter Profiling
 @pindex mprof
@@ -5429,21 +5377,6 @@ to the optimization of the predicate or function with the specified pred id.
 Output detailed debugging traces of the partial
 deduction and deforestation process.
 
-@ifset aditi
-@sp 1
-@item --debug-rl-gen
-@findex --debug-rl-gen
-Output detailed debugging traces of Aditi-RL code generation
-(@pxref{Using Aditi}).
-
-@sp 1
-@item --debug-rl-opt
-@findex --debug-rl-opt
-Output detailed debugging traces of Aditi-RL optimization
-(@pxref{Using Aditi}).
-@end ifset
-@c aditi
-
 @sp 1
 @item --debug-liveness <n>
 @findex --debug-liveness
@@ -5616,15 +5549,6 @@ but not object code.
 Generate C code in @file{@var{module}.c}
 and object code in @file{@var{module}.o}
 but do not attempt to link the named modules.
-
-@ifset aditi
-@sp 1
-@item --aditi-only
-@findex --aditi-only
-Write Aditi-RL bytecode to @file{@var{module}.rlo} and do not compile to C
-(@pxref{Using Aditi}).
-@end ifset
-@c aditi
 
 @sp 1
 @item --output-grade-string
@@ -5849,33 +5773,6 @@ Specifies the number of times the mode analysis algorithm should run.
 More repetitions may smooth out fluctuations
 due to background load or clock granularity.
 This option is ignored unless --benchmark-modes is also given.
-
-@ifset aditi
-@sp 1
-@item --dump-rl
-@findex --dump-rl
-Output a human readable form of the internal compiler representation
-of the generated Aditi-RL code to @file{@var{module}.rl_dump}
-(@pxref{Using Aditi}).
-
-@sp 1
-@item --dump-rl-bytecode
-@findex --dump-rl-bytecode
-Output a human readable representation of the generated Aditi-RL
-bytecodes @file{@var{module}.rla}. Aditi-RL bytecodes are directly
-executed by the Aditi system (@pxref{Using Aditi}).
-
-@sp 1
-@item --generate-schemas
-@findex --generate-schemas
-Output schema strings for Aditi base relations to
-@file{@var{module}.base_schema} and for Aditi derived
-relations to @file{@var{module}.derived_schema}. A schema
-string is a representation of the types of the attributes
-of a relation (@pxref{Using Aditi}).
-
-@end ifset
-@c aditi
 
 @end table
 
@@ -6553,24 +6450,6 @@ attribute.  @samp{yes} means that a foreign procedure with the
 procedure is treated as though it has a @samp{not_thread_safe}
 attribute.  The default is @samp{no}.
 
-@ifset aditi
-@sp 1
-@item --aditi
-@findex --aditi
-Enable Aditi compilation.  You need to enable this option if you
-are making use of the Aditi deductive database interface (@pxref{Using Aditi}).
-
-@c --aditi-calls-mercury is not fully implemented.
-@ignore
-@sp 1
-@item --aditi-calls-mercury
-@findex --aditi-calls-mercury
-Enable calling ordinary Mercury code from Aditi.
-@end ignore
-
-@end ifset
-@c aditi
-
 @end table
 
 @node Developer compilation model options
@@ -6798,9 +6677,6 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 * Medium-level (HLDS -> LLDS) optimization options::
 * Low-level (LLDS -> LLDS) optimization options::
 * Output-level (LLDS -> C) optimization options::
-@ifset aditi
-* Aditi-RL optimization options::
-@end ifset
 @end menu
 
 @node Overall optimization options
@@ -7497,43 +7373,6 @@ but tends to severely stress the C compiler.
 
 @end table
 
-@ifset aditi
-@node Aditi-RL optimization options
-@subsection Aditi-RL optimization options
-
-These optimizations are applied to the Aditi-RL code produced
-for predicates with @samp{:- pragma aditi(@dots{})} declarations
-(@pxref{Using Aditi}).
-
-@table @code
-@item --optimize-rl
-@findex --optimize-rl
-Enable the optimizations of Aditi-RL procedures described below.
-
-@sp 1
-@item --optimize-rl-cse
-@findex --optimize-rl-cse
-Optimize common subexpressions in Aditi-RL procedures.
-
-@sp 1
-@item --optimize-rl-invariants
-@findex --optimize-rl-invariants
-Optimize loop invariants in Aditi-RL procedures.
-
-@sp 1
-@item --optimize-rl-index
-@findex --optimize-rl-index
-Use indexing to optimize access to relations in Aditi-RL procedures.
-
-@sp 1
-@item --detect-rl-streams
-@findex --detect-rl-streams
-Detect cases where intermediate results in Aditi-RL procedures
-do not need to be materialised.
-@end table
-@end ifset
-@c aditi
-
 @node Build system options
 @section Build system options
 @table @code
@@ -7730,19 +7569,6 @@ standard input. Repeat this until EOF is reached. (This allows a program
 or user to interactively compile several modules without the overhead of
 process creation for each one.)
 
-@ifset aditi
-@sp 1
-@item --aditi-user
-@findex --aditi-user
-Specify the Aditi login of the owner of the predicates in any Aditi RL
-files produced if no @samp{:- pragma owner(@dots{})} declaration is given.
-The owner field is used along with module, name and arity to identify
-predicates, and is also used for security checks. Defaults to the value
-of the @samp{USER} environment variable. If @samp{USER} is not set,
-@samp{--aditi-user} defaults to the string ``guest''.
-
-@end ifset
-@c aditi
 @end table
 
 @node Target code compilation options

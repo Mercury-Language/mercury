@@ -161,10 +161,6 @@
 :- pred mercury_output_pragma_trailing_info(pred_or_func::in, sym_name::in,
     arity::in, mode_num::in, trailing_status::in, io::di, io::uo) is det.
 
-    % Write an Aditi index specifier.
-    %
-:- pred mercury_output_index_spec(index_spec::in, io::di, io::uo) is det.
-
     % Output the given foreign_decl declaration.
     %
 :- pred mercury_output_pragma_foreign_decl(foreign_language::in,
@@ -350,7 +346,6 @@
     pred add_class_id(class_id::in, U::di, U::uo) is det,
     pred add_eval_method(eval_method::in, U::di, U::uo) is det,
     pred add_lambda_eval_method(lambda_eval_method::in, U::di, U::uo) is det,
-    pred add_index_type(index_type::in, U::di, U::uo) is det,
     pred add_escaped_string(string::in, U::di, U::uo) is det,
     pred add_format(string::in, list(io__poly_type)::in, U::di, U::uo) is det,
     pred add_list(list(T)::in, string::in,
@@ -3431,45 +3426,6 @@ mercury_format_pragma_fact_table(Pred, Arity, FileName, !U) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_format_pragma_owner(sym_name::in, arity::in, string::in,
-    U::di, U::uo) is det <= output(U).
-
-mercury_format_pragma_owner(Pred, Arity, Owner, !U) :-
-    add_string(":- pragma owner(", !U),
-    mercury_format_bracketed_sym_name(Pred, next_to_graphic_token, !U),
-    add_string("/", !U),
-    add_int(Arity, !U),
-    add_string(", ", !U),
-    add_quoted_atom(Owner, !U),
-    add_string(").\n", !U).
-
-:- pred mercury_format_pragma_index(sym_name::in, arity::in, index_spec::in,
-    U::di, U::uo) is det <= output(U).
-
-mercury_format_pragma_index(PredName, Arity, IndexSpec, !U) :-
-    add_string(":- pragma aditi_index(", !U),
-    mercury_format_bracketed_sym_name(PredName, next_to_graphic_token, !U),
-    add_string("/", !U),
-    add_int(Arity, !U),
-    add_string(", ", !U),
-    mercury_format_index_spec(IndexSpec, !U),
-    add_string(").\n", !U).
-
-mercury_output_index_spec(IndexSpec, !IO) :-
-    mercury_format_index_spec(IndexSpec, !IO).
-
-:- pred mercury_format_index_spec(index_spec::in,
-    U::di, U::uo) is det <= output(U).
-
-mercury_format_index_spec(IndexSpec, !IO) :-
-    IndexSpec = index_spec(IndexType, Attrs),
-    add_index_type(IndexType, !IO),
-    add_string(", [", !IO),
-    mercury_format_int_list(Attrs, !IO),
-    add_string("]", !IO).
-
-%-----------------------------------------------------------------------------%
-
 mercury_output_newline(Indent, !IO) :-
     io__write_char('\n', !IO),
     mercury_format_tabs(Indent, !IO).
@@ -3991,7 +3947,6 @@ maybe_unqualify_sym_name(yes, Name0, unqualified(Name)) :-
     pred(add_class_id/3) is io__write,
     pred(add_eval_method/3) is io__write,
     pred(add_lambda_eval_method/3) is io__write,
-    pred(add_index_type/3) is io__write,
     pred(add_escaped_string/3) is term_io__write_escaped_string,
     pred(add_format/4) is io__format,
     pred(add_list/5) is io__write_list
@@ -4010,7 +3965,6 @@ maybe_unqualify_sym_name(yes, Name0, unqualified(Name)) :-
     pred(add_class_id/3) is output_class_id,
     pred(add_eval_method/3) is output_eval_method,
     pred(add_lambda_eval_method/3) is output_lambda_eval_method,
-    pred(add_index_type/3) is output_index_type,
     pred(add_escaped_string/3) is output_escaped_string,
     pred(add_format/4) is output_format,
     pred(add_list/5) is output_list
@@ -4094,13 +4048,6 @@ output_eval_method(EvalMethod, !Str) :-
 
 output_lambda_eval_method(lambda_normal, !Str) :-
     output_string("normal", !Str).
-
-:- pred output_index_type(index_type::in, string::di, string::uo) is det.
-
-output_index_type(unique_B_tree, !Str) :-
-    output_string("unique_B_tree", !Str).
-output_index_type(non_unique_B_tree, !Str) :-
-    output_string("non_unique_B_tree", !Str).
 
 :- pred output_format(string::in, list(io__poly_type)::in,
     string::di, string::uo) is det.
