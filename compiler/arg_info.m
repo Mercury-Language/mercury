@@ -37,8 +37,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Annotate every non-aditi procedure in the module with information
-    % about its argument passing interface.
+    % Annotate every procedure in the module with information about its
+    % argument passing interface.
     %
 :- pred generate_arg_info(module_info::in, module_info::out) is det.
 

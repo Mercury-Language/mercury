@@ -6,16 +6,6 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-# Compilation of rl_code.c is really slow, especially with --trace deep,
-# at the default level of -O2, due to the C optimizer's use of quadratic
-# algorithms on a couple of 20,000-line functions (the automatically
-# generated index and compare routines on the bytecode type). The code in this
-# module can't really benefit from those algorithms anyway. With -O1 and
-# --trace deep, it still takes 8 minutes on miles. Simon can change the
-# --trace-minimum to --trace deep in his workspaces if he needs to.
-CFLAGS-aditi_backend.rl_code=-O0
-MCFLAGS-aditi_backend.rl_code=--opt-space --trace minimum
-
 # llds_out.m contains some sanity checking code that is usually turned off.
 # However, the cost of checking whether they turned off exceeds the cost of
 # performing them unless inlining is enabled.
@@ -41,10 +31,6 @@ MCFLAGS-make.program_target = --no-ansi-c
 # This is the same bug as tests/valid/ho_and_type_spec_bug
 MCFLAGS-mode_robdd.tfeirn = -O3
 MCFLAGS-mode_robdd.implications = -O0
-
-# rl_info.m contains a general purpose wrapper around string.format
-# that needs this option.
-# MCFLAGS-aditi_backend.rl_info = --no-warn-unknown-format-calls
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.  Note that we need to compile these with
