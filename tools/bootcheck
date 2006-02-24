@@ -163,8 +163,7 @@ expect_listed_failures=true
 extras=false
 jfactor=""
 keep_objs=false
-mmake_opts=""
-make_opts="-k"
+mmake_opts="-k"
 outfile=""
 runtests=true
 do_bootcheck=true
@@ -273,8 +272,6 @@ while test $# -gt 0; do
 
     -m|--mmake|--mmake-opts)
         mmake_opts="$mmake_opts $2"; shift ;;
-    -M|--make-opts)
-        make_opts="$make_opts $2"; shift ;;
 
     -o|--output-file)
         outfile="$2"; shift ;;
