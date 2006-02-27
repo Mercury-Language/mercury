@@ -5,44 +5,50 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: ctgc.structure_sharing.domain.m
-% Main authors: nancy
-%
-% Definition of the abstract domain for representing structure sharing between 
-% data structures. 
+
+% File: ctgc.structure_sharing.domain.m.
+% Main author: nancy.
+
+% This module defines the abstract domain for representing structure sharing
+% between data structures.
+
 % This domain forms a complete lattice. It has a bottom element (representing 
 % the definite absence of any possible structure sharing), and a top element
 % (that represents any possible structure sharing), a least upper bound 
 % operation, and a comparison predicate (is_subsumed_by). 
-%
+
 % The auxiliary functions needed for using the domain within the abstract
 % semantics on which the implementation of the analysis is based are: 
+%
 %   * project: limit the abstract information to include only the 
 %       information regarding some given set of variables.
+%
 %   * rename: given a mapping of variables, this operation renames every
 %       occurrence of a variable to its mapping.
+%
 %   * init: create an initial empty sharing set that represents the absence
 %     of any possible sharing. 
+%
 %   * comb: combine new sharing information (that usually stems from a
 %     procedure call) with existing sharing such that the result correctly 
 %     approximates the real sharing that would exist when new concrete
 %     sharing is added to existing sharing. 
+%
 %   * add: add the sharing created by a primitive operation (unification)
 %     to any existing sharing. 
-%   
+   
 % Additional operations: 
 %   * extend_datastruct: compute the set of datastructures referring to the
 %     same memory space as a given datastructure, using sharing information;
 %     needed by the reuse analysis to check whether a given datastructure is 
 %     the last pointer to the memory space it refers to. 
+%
 %   * conversion operations between the public and private representation
 %     for sharing sets. 
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_sharing.domain.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -55,6 +61,8 @@
 :- import_module map. 
 :- import_module set.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % The hidden representation for structure sharing.
     %
@@ -89,8 +97,7 @@
     %   * vars(SharingIn minus SharingOut) union Vars = emptyset.
     %
 :- pred project(prog_vars::in, sharing_as::in, sharing_as::out) is det.
-:- pred project_set(set(prog_var)::in, sharing_as::in, 
-    sharing_as::out) is det.
+:- pred project_set(set(prog_var)::in, sharing_as::in, sharing_as::out) is det.
 
     % Renaming operation.
     % This operation renames the variables and type variables occurring
@@ -105,7 +112,7 @@
     % using the module information. A list of variables and types is used as
     % the actual variables and types. 
     % recorded in the module info. 
-    % rename_using_module_info(ModuleInfo, PredProcId, ActualVars, ActualTypes,
+    % rename_using_module_info(ModuleInfo, PPId, ActualVars, ActualTypes,
     %   FormalSharing, ActualSharing). 
     %
 :- pred rename_using_module_info(module_info::in, pred_proc_id::in, 
@@ -188,13 +195,16 @@
 :- func to_structure_sharing_domain(sharing_as) = structure_sharing_domain.
 
 %-----------------------------------------------------------------------------%
-% Sharing table. Table used to temporarely record the sharing analysis results.
-% (instead of saving in the HLDS and having to continuously convert between
-% the public and private representation of structure sharing)
+%
+% Sharing table
 %
 
-    % Mapping between pred_proc_id's and the sharing information that has
-    % been derived for the corresponding procedure definitions. 
+% This table used to temporarily record the sharing analysis results, instead
+% of saving in the HLDS and having to continuously convert between the public
+% and private representation of structure sharing.
+
+    % Mapping between pred_proc_ids and sharing information that has been
+    % derived for the corresponding procedure definitions. 
     %
 :- type sharing_as_table == map(pred_proc_id, sharing_as).
 
@@ -214,6 +224,8 @@
     sharing_as_table::in, sharing_as_table::out) is det. 
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation. 
 
 :- import_module check_hlds.type_util.
@@ -225,10 +237,13 @@
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.selector.
 
-
 :- import_module int.
 :- import_module require.
 :- import_module std_util.
+:- import_module svmap.
+:- import_module svset.
+
+%-----------------------------------------------------------------------------%
 
 :- type sharing_as 
     --->    real_as(sharing_set)
@@ -250,6 +265,7 @@ top_sharing(Msg, SharingAs) = TopSharing :-
         list.cons(Msg, Msgs0, Msgs)
     ), 
     TopSharing = top(Msgs).
+
 is_top(top(_)).
 
 size(bottom) = 0.
@@ -257,27 +273,31 @@ size(real_as(SharingSet)) =  sharing_set_size(SharingSet).
 
 short_description(bottom) = "b". 
 short_description(top(_)) = "t".
-short_description(real_as(SharingSet)) = 
-    string.int_to_string(sharing_set_size(SharingSet)).
+short_description(real_as(SharingSet)) =
+        string.from_int(sharing_set_size(SharingSet)).
 
     % inproject = projection such that result contains information about
     %   selection of variables only. 
+    %
     % outproject = projection such that result contains information about
     %   all variables _except_ the selection of variables.
-:- type projection_type ---> inproject; outproject. 
+    %
+:- type projection_type
+    --->    inproject
+    ;       outproject. 
 
 project(ListVars, !SharingAs) :- 
     project(inproject, ListVars, !SharingAs). 
 
 :- pred project(projection_type::in, prog_vars::in, sharing_as::in, 
     sharing_as::out) is det.
+
 project(ProjectionType, ListVars, !SharingAs) :- 
     (
         !.SharingAs = bottom
     ;
         !.SharingAs = real_as(SharingSet0),
-        sharing_set_project(ProjectionType, ListVars, SharingSet0, 
-            SharingSet),
+        sharing_set_project(ProjectionType, ListVars, SharingSet0, SharingSet),
         !:SharingAs = wrap(SharingSet)
     ;
         !.SharingAs = top(_)
@@ -289,8 +309,7 @@ project_set(SetVars, !SharingAs) :-
 rename(MapVar, TypeSubst, !SharingAs) :- 
     (
         !.SharingAs = real_as(SharingSet0),
-        sharing_set_rename(MapVar, TypeSubst, SharingSet0, 
-            SharingSet),
+        sharing_set_rename(MapVar, TypeSubst, SharingSet0, SharingSet),
         !:SharingAs = real_as(SharingSet)
     ;
         !.SharingAs = bottom
@@ -298,9 +317,9 @@ rename(MapVar, TypeSubst, !SharingAs) :-
         !.SharingAs = top(_) 
     ).
 
-rename_using_module_info(ModuleInfo, PredProcId, ActualVars, ActualTypes,
+rename_using_module_info(ModuleInfo, PPId, ActualVars, ActualTypes,
         ActualTVarset, FormalSharing, ActualSharing):- 
-    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
 
     % head variables.
     proc_info_headvars(ProcInfo, FormalVars),
@@ -355,13 +374,13 @@ add(ModuleInfo, ProcInfo, Unification, GoalInfo, OldSharing) = NewSharing :-
     UnifSharing = sharing_from_unification(ModuleInfo, ProcInfo, Unification, 
         GoalInfo),
     ResultSharing = comb(ModuleInfo, ProcInfo, UnifSharing, OldSharing),
-
-    % When the unification is a construction unification, some local variables
-    % may become totally useless for the rest of the code (deaths), and so 
-    % any structure sharing involving these variables may safely be removed. 
     %
-    % Note that this "useless" sharing information can not be removed earlier
-    % as it can contribute to new sharing with the comb operation. 
+    % When the unification is a construction unification, some local variables
+    % may become totally useless for the rest of the code (deaths), and so any
+    % structure sharing involving these variables may safely be removed. 
+    %
+    % NOTE: this "useless" sharing information can not be removed earlier as
+    % it can contribute to new sharing with the comb operation. 
     %
     (
         Unification = construct(_, _, _, _, _, _, _)
@@ -385,26 +404,26 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification,
         list.takewhile(is_introduced_typeinfo_arg(ProcInfo), Args0, 
             _TypeInfoArgs, Args), 
         number_args(Args, NumberedArgs),
-        list.foldl(
-            add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId),
-            NumberedArgs,
-            sharing_set_init, 
-            SharingSet0),
-        create_internal_sharing(ModuleInfo, ProcInfo, Var, ConsId, 
-            NumberedArgs, SharingSet0, SharingSet), 
-        Sharing = wrap(SharingSet)
+        some [!SharingSet] (
+            !:SharingSet = sharing_set_init,
+            list.foldl(add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId),
+                NumberedArgs, !SharingSet),
+            create_internal_sharing(ModuleInfo, ProcInfo, Var, ConsId, 
+                NumberedArgs, !SharingSet), 
+            Sharing = wrap(!.SharingSet)
+        )
     ; 
         Unification = deconstruct(Var, ConsId, Args0, _, _, _),
         list.takewhile(is_introduced_typeinfo_arg(ProcInfo), Args0, 
             _TypeInfoArgs, Args), 
         number_args(Args, NumberedArgs),
         optimize_for_deconstruct(GoalInfo, NumberedArgs, ReducedNumberedArgs),
-        list.foldl(
-            add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId),
-            ReducedNumberedArgs,
-            sharing_set_init, 
-            SharingSet),
-        Sharing = wrap(SharingSet)
+        some [!SharingSet] (
+            !:SharingSet = sharing_set_init,
+            list.foldl(add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId),
+                ReducedNumberedArgs, !SharingSet),
+            Sharing = wrap(!.SharingSet)
+        )
     ; 
         Unification = assign(X, Y),
         (
@@ -426,12 +445,14 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification,
     ). 
 
 :- pred is_introduced_typeinfo_arg(proc_info::in, prog_var::in) is semidet.
+
 is_introduced_typeinfo_arg(ProcInfo, Var) :- 
     proc_info_vartypes(ProcInfo, VarTypes), 
     map.lookup(VarTypes, Var, Type),
     is_introduced_type_info_type(Type).
     
 :- pred number_args(prog_vars::in, list(pair(int, prog_var))::out) is det.
+
 number_args(Args, NumberedArgs) :- 
     list.map_foldl(
         pred(A::in, AP::out, Nin::in, Nout::out) is det:- 
@@ -444,22 +465,23 @@ number_args(Args, NumberedArgs) :-
         1, _).
 
 :- pred add_var_arg_sharing(module_info::in, proc_info::in, prog_var::in,
-    cons_id::in, pair(int, prog_var)::in, sharing_set::in, 
-    sharing_set::out) is det.
-add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId, N - Arg, 
-    Sharing0, Sharing) :- 
+    cons_id::in, pair(int, prog_var)::in,
+    sharing_set::in, sharing_set::out) is det.
+
+add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId, N - Arg, !Sharing) :- 
     (
         arg_has_primitive_type(ModuleInfo, ProcInfo, Arg)
     -> 
-        Sharing = Sharing0
+        true    
     ; 
         Data1 = datastruct.init(Var, ConsId, N),
         Data2 = datastruct.init(Arg), 
-        new_entry(ModuleInfo, ProcInfo, Data1 - Data2, Sharing0, Sharing)
+        new_entry(ModuleInfo, ProcInfo, Data1 - Data2, !Sharing)
     ).
 
 :- pred arg_has_primitive_type(module_info::in, proc_info::in, 
     prog_var::in) is semidet.
+
 arg_has_primitive_type(ModuleInfo, ProcInfo, Var):- 
     proc_info_vartypes(ProcInfo, VarTypes), 
     map.lookup(VarTypes, Var, Type),
@@ -469,11 +491,13 @@ arg_has_primitive_type(ModuleInfo, ProcInfo, Var):-
     % this must be recorded as an extra sharing pair. 
     % E.g.: X = f(Y,Y), then the sharing between f/1 and f/2 must be recorded.
     % XXX Different implementation!
+    %
 :- pred create_internal_sharing(module_info::in, proc_info::in, 
     prog_var::in, cons_id::in, list(pair(int, prog_var))::in, 
     sharing_set::in, sharing_set::out) is det.
+
 create_internal_sharing(ModuleInfo, ProcInfo, Var, ConsId, NumberedArgs, 
-    !Sharing) :- 
+        !Sharing) :- 
     % For every argument and the occurrence of the variable of that argument
     % in the rest of the arguments, add the appropriate sharing pair. 
     (
@@ -499,34 +523,34 @@ create_internal_sharing(ModuleInfo, ProcInfo, Var, ConsId, NumberedArgs,
         NumberedArgs = []
     ).
 
-    % For deconstructions, a huge optimization can be made by
-    % avoiding the construction of sharing between variables that are not
-    % used in the remainder of the code anyway. The set of used args is
-    % known as the pre-birth set as computed by the liveness-pass (liveness.m).
+    % For deconstructions, a huge optimization can be made by avoiding the
+    % construction of sharing between variables that are not used in the
+    % remainder of the code anyway. The set of used args is known as the
+    % pre-birth set as computed by the liveness-pass (liveness.m).
+    %
     % XXX Why was the original implementation so complicated? 
+    %
 :- pred optimize_for_deconstruct(hlds_goal_info::in, 
-    list(pair(int, prog_var))::in, 
-    list(pair(int, prog_var))::out) is det.
-optimize_for_deconstruct(GoalInfo, NumberedArgs0, NumberedArgs) :- 
+    list(pair(int, prog_var))::in, list(pair(int, prog_var))::out) is det.
+
+optimize_for_deconstruct(GoalInfo, !NumberedArgs) :- 
     hlds_llds.goal_info_get_pre_births(GoalInfo, PreBirthSet),
-    list.filter(
-        pred(NumberedArg::in) is semidet :- 
-        (
+    list.filter((pred(NumberedArg::in) is semidet :- 
             NumberedArg = _N - Var, 
             set.member(Var, PreBirthSet)
-        ),
-        NumberedArgs0, 
-        NumberedArgs).
-
+        ), !NumberedArgs).
 
 :- func optimization_remove_deaths(proc_info, hlds_goal_info,
     sharing_as) = sharing_as.
+
 optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :- 
     proc_info_headvars(ProcInfo, HeadVars), 
     set.list_to_set(HeadVars, HeadVarsSet), 
     hlds_llds.goal_info_get_post_deaths(GoalInfo, Deaths0), 
-        % Make sure to keep all the information about the headvars, 
-        % even if they are in the post deaths set. 
+    %
+    % Make sure to keep all the information about the headvars, 
+    % even if they are in the post deaths set. 
+    %    
     set.difference(Deaths0, HeadVarsSet, Deaths), 
     set.to_sorted_list(Deaths, DeathsList), 
     project(outproject, DeathsList, Sharing0, Sharing).
@@ -577,7 +601,7 @@ least_upper_bound(ModuleInfo, ProcInfo, SharingList) =
         init). 
 
 extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingAs) = 
-    Datastructures :- 
+        Datastructures :- 
     (
         SharingAs = bottom,
         Datastructures = []
@@ -628,7 +652,6 @@ from_structure_sharing_domain(SharingDomain) = SharingAs :-
         SharingAs = top(Msgs)
     ).
 
-
 to_structure_sharing_domain(SharingAs) = SharingDomain :- 
     (
         SharingAs = bottom, 
@@ -642,14 +665,14 @@ to_structure_sharing_domain(SharingAs) = SharingDomain :-
     ).
 
 %-----------------------------------------------------------------------------%
-% sharing_as_table:
+%
+% sharing_as_table
+%
 
 sharing_as_table_init = map.init.
-sharing_as_table_search(PredProcId, Table) = Table^elem(PredProcId).
-sharing_as_table_set(PredProcId, Sharing, Table0, Table) :- 
-    Table = Table0^elem(PredProcId) := Sharing.
-
-
+sharing_as_table_search(PPId, Table) = Table ^ elem(PPId).
+sharing_as_table_set(PPId, Sharing, !Table) :- 
+    !:Table = !.Table ^ elem(PPId) := Sharing.
 
 %-----------------------------------------------------------------------------%
 % Type: sharing_set. 
@@ -701,27 +724,28 @@ sharing_as_table_set(PredProcId, Sharing, Table0, Table) :-
 %
 
 :- type sharing_set 
-    ---> sharing_set(
-        int,    % number of structure sharing pairs represented
-                % by the set.
-        map(prog_var, selector_sharing_set)
-    ).
+    --->    sharing_set(
+                int,    % number of structure sharing pairs represented
+                        % by the set.
+                map(prog_var, selector_sharing_set)
+            ).
 
 :- type selector_sharing_set 
-    ---> selector_sharing_set(
-        int,    % number of data structures represented by this
-                % set. 
-        map(selector, data_set)
-    ).
+    --->    selector_sharing_set(
+                int,    % number of data structures represented by this
+                        % set. 
+                map(selector, data_set)
+            ).
 
 :- type data_set 
-    ---> datastructures(
-        int,    % size of the set of data structures.
-        set(datastruct)
-    ). 
+    --->    datastructures(
+                int,    % size of the set of data structures.
+                set(datastruct)
+            ). 
 
 %-----------------------------------------------------------------------------%
-% sharing_set predicates/functions.
+%
+% sharing_set predicates/functions
 %
     
 :- func sharing_set_init = sharing_set is det.
@@ -731,12 +755,11 @@ sharing_as_table_set(PredProcId, Sharing, Table0, Table) :-
 :- pred wrap(sharing_set::in, sharing_as::out) is det.
 :- func wrap(sharing_set) = sharing_as.
 
-:- pred sharing_set_project(projection_type::in, 
-    prog_vars::in, sharing_set::in, 
-    sharing_set::out) is det.
+:- pred sharing_set_project(projection_type::in, prog_vars::in,
+    sharing_set::in, sharing_set::out) is det.
+
 :- pred sharing_set_rename(map(prog_var, prog_var)::in, 
-    tsubst::in, sharing_set::in, 
-    sharing_set::out) is det.
+    tsubst::in, sharing_set::in, sharing_set::out) is det.
 
 :- func sharing_set_comb(module_info, proc_info, sharing_set, sharing_set) =
     sharing_set.
@@ -756,12 +779,12 @@ sharing_as_table_set(PredProcId, Sharing, Table0, Table) :-
     % Conversion between list of sharing data structures to 
     % sharing_set's and vice versa.
     %
-    % Note: from_sharing_pair_list assumes that the sharing set is minimal, ie,
+    % NOTE: from_sharing_pair_list assumes that the sharing set is minimal, ie,
     % there are no two sharing pairs in that set such that one sharing pair
     % subsumes the other pair.
+    %
 :- func from_sharing_pair_list(structure_sharing) = sharing_set.
 :- func to_sharing_pair_list(sharing_set) = structure_sharing.
-
 
 %-----------------------------------------------------------------------------%
 
@@ -789,29 +812,23 @@ sharing_set_project(ProjectionType, Vars, SharingSet0, SharingSet) :-
         ProjectionType = outproject, 
         map.keys(Map0, AllVars), 
         set.difference(set.list_to_set(AllVars), 
-                        set.list_to_set(Vars), Remainder),
+            set.list_to_set(Vars), Remainder),
         map.select(Map0, Remainder, Map1)
     ),
-    map.foldl(
-        pred(Var::in, SelSet0::in, S0::in, S::out) is det :- 
-            (
-            selector_sharing_set_project(ProjectionType, 
-                Vars, SelSet0, SelSet), 
-            (
-                selector_sharing_set_is_empty(SelSet)
-            ->
-                S = S0
-            ;
-                S0 = sharing_set(Size0, M0),    
-                map.det_insert(M0, Var, SelSet, M),
-                Size = Size0 +
-                    selector_sharing_set_size(SelSet),
-                S = sharing_set(Size, M)
-            )
-           ), 
-        Map1, 
-        sharing_set_init, 
-        SharingSet).
+    map.foldl((pred(Var::in, SelSet0::in, !.S::in, !:S::out) is det :- 
+                selector_sharing_set_project(ProjectionType, Vars,
+                    SelSet0, SelSet), 
+                (
+                    selector_sharing_set_is_empty(SelSet)
+                ->
+                    true
+                ;
+                    !.S = sharing_set(Size0, M0),    
+                    map.det_insert(M0, Var, SelSet, M),
+                    Size = Size0 + selector_sharing_set_size(SelSet),
+                    !:S = sharing_set(Size, M)
+                )
+        ), Map1, sharing_set_init, SharingSet).
 
 sharing_set_rename(Dict, TypeSubst, SharingSet0, SharingSet) :- 
     SharingSet0 = sharing_set(Size, Map0), 
@@ -865,8 +882,9 @@ sharing_set_rename(Dict, TypeSubst, SharingSet0, SharingSet) :-
     %   * sharing pairs formed using paths of length three N - O - N, where
     %   N are sharing pairs from NewSharingSet, and O is a sharing pair from
     %   OldSharingSet. 
-sharing_set_comb(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet) = 
-    ResultSharingSet :- 
+    %
+sharing_set_comb(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet)
+        = ResultSharingSet :- 
 
     % paths of length 2: 
     OldNewSharingSet = sharing_set_altclos_2(ModuleInfo, ProcInfo,    
@@ -885,8 +903,8 @@ sharing_set_comb(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet) =
 :- func sharing_set_altclos_2(module_info, proc_info, sharing_set, 
     sharing_set) = sharing_set.
 
-sharing_set_altclos_2(ModuleInfo, ProcInfo, NewSharingSet, 
-    OldSharingSet) = ResultSharingSet :- 
+sharing_set_altclos_2(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet)
+        = ResultSharingSet :- 
 
     NewSharingSet = sharing_set(_, NewMap), 
     OldSharingSet = sharing_set(_, OldMap), 
@@ -905,23 +923,19 @@ sharing_set_altclos_2(ModuleInfo, ProcInfo, NewSharingSet,
     map.select(OldMap, CommonVarsSet, OldMap1), 
 
     proc_info_vartypes(ProcInfo, VarTypes), 
-
+    %
     % for each common var V, compute the sharing pairs A-B, such that
     % \exists X where var(X) = V, and X-A \in NewSharingSet, and X-B \in 
     % OldSharingSet.
-    list.foldl(
-        pred(Var::in, SS0::in, SS::out) is det :- 
-        (  
+    %    
+    list.foldl((pred(Var::in, !.SS::in, !:SS::out) is det :- 
             map.lookup(VarTypes, Var, Type), 
             map.lookup(NewMap1, Var, NewSelSet),
             map.lookup(OldMap1, Var, OldSelSet),
             SharingPairs = selector_sharing_set_altclos(ModuleInfo, ProcInfo, 
                 Type, NewSelSet, OldSelSet), 
-            new_entries(ModuleInfo, ProcInfo, SharingPairs, SS0, SS)
-        ), 
-        CommonVars,
-        sharing_set_init, 
-        ResultSharingSet).
+            new_entries(ModuleInfo, ProcInfo, SharingPairs, !SS)
+        ), CommonVars, sharing_set_init, ResultSharingSet).
 
 
 % sharing_set_altclos_3_directed(ModuleInfo, ProcInfo, NewSharingSet, 
@@ -934,7 +948,7 @@ sharing_set_altclos_2(ModuleInfo, ProcInfo, NewSharingSet,
     sharing_set) = sharing_set.
 
 sharing_set_altclos_3_directed(ModuleInfo, ProcInfo, NewSharingSet, 
-    OldSharingSet) = ResultSharingSet :- 
+        OldSharingSet) = ResultSharingSet :- 
 
     NewSharingSet = sharing_set(_, NewMap), 
     OldSharingSet = sharing_set(_, OldMap), 
@@ -954,12 +968,12 @@ sharing_set_altclos_3_directed(ModuleInfo, ProcInfo, NewSharingSet,
     % As each and every pair within OldMapProjected needs to be looked at, 
     % we might as well use the full list representation: 
     OldSharingPairs = to_sharing_pair_list(OldSharingSetProjected),
-
+    %
     % Now for each sharing pair X-Y represented by OldMapProjected, find
     % all the datastructures in NewSharingMap that cover X, find
     % all the datastructures in NewSharingMap that cover Y, and compute
     % the crossproduct of both sets returning the set of new sharing pairs.
-
+    %
     list.foldl(
         pred(X - Y::in, SS0::in, SS::out) is det :- 
         (
@@ -988,7 +1002,7 @@ sharing_set_is_subsumed_by(ModuleInfo, ProcInfo, SharingSet1, SharingSet2):-
         SharingSet2), to_sharing_pair_list(SharingSet1)).
 
 sharing_set_least_upper_bound(ModuleInfo, ProcInfo, Set1, Set2) = Union :- 
-    % Foldling over the map could be done, but the union is easier to describe
+    % Folding over the map could be done, but the union is easier to describe
     % by picking each of the sharing pairs represented by the smallest sharing
     % set, and adding them to the other sharing set. 
     Set1 = sharing_set(Size1, _), 
@@ -1012,15 +1026,16 @@ sharing_set_least_upper_bound(ModuleInfo, ProcInfo, ListSharingSet) =
         ListSharingSet, sharing_set_init).
         
 sharing_set_extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingSet)
-    = Datastructures :- 
+        = Datastructures :- 
     SharingSet = sharing_set(_, SharingMap),
     Var = Datastruct^sc_var,
     Selector = Datastruct^sc_selector,
     (
         map.search(SharingMap, Var, SelectorSet)
     ->
-            % The type of the variable is needed to be able to compare
-            % datastructures.
+        % The type of the variable is needed to be able to compare
+        % datastructures.
+        %
         proc_info_vartypes(ProcInfo, VarTypes),
         map.lookup(VarTypes, Var, VarType),
         Datastructures = selector_sharing_set_extend_datastruct(ModuleInfo, 
@@ -1035,7 +1050,6 @@ sharing_set_apply_widening(ModuleInfo, ProcInfo, !SharingSet):-
         selector_sharing_set_apply_widening(ModuleInfo, ProcInfo),
         SharingMap0, SharingMap, 0, NewSize),
     !:SharingSet = sharing_set(NewSize, SharingMap).
-
          
 from_sharing_pair_list(SharingPairs) = SharingSet :-
     list.foldl(new_entry_no_controls, SharingPairs, sharing_set_init,
@@ -1051,8 +1065,10 @@ from_sharing_pair_list(SharingPairs) = SharingSet :-
     % XXX
     % Due to the above checks, this operation may become quite costly. To
     % verify!
-:- pred new_entry(module_info::in, proc_info::in, 
-    structure_sharing_pair::in, sharing_set::in, sharing_set::out) is det.
+    %
+:- pred new_entry(module_info::in, proc_info::in, structure_sharing_pair::in,
+    sharing_set::in, sharing_set::out) is det.
+
 new_entry(ModuleInfo, ProcInfo, SharingPair0, !SharingSet) :- 
     % Normalize the sharing pair before doing anything. 
     SharingPair0 = DataX0 - DataY0, 
@@ -1071,8 +1087,9 @@ new_entry(ModuleInfo, ProcInfo, SharingPair0, !SharingSet) :-
         new_entry_no_controls(SharingPair, !SharingSet)
     ).
 
-:- pred new_entry_no_controls(structure_sharing_pair::in, sharing_set::in,
-    sharing_set::out) is det.
+:- pred new_entry_no_controls(structure_sharing_pair::in,
+    sharing_set::in, sharing_set::out) is det.
+
 new_entry_no_controls(SharingPair, !SS) :-
     SharingPair = Data1 - Data2, 
     new_directed_entry(Data1, Data2, !SS),
@@ -1086,14 +1103,17 @@ new_entry_no_controls(SharingPair, !SS) :-
 
 :- pred remove_entries(structure_sharing::in, sharing_set::in,
     sharing_set::out) is det.
+
 remove_entries(SharingPairs, !SS):- 
     list.foldl(remove_entry, SharingPairs, !SS).
 
     % Remove a structure sharing pair that is known to be explicitly 
     % represented in the sharing set. 
     % Software error if the sharing pair is not part of the set.
-:- pred remove_entry(structure_sharing_pair::in, sharing_set::in, 
-    sharing_set::out) is det.
+    %
+:- pred remove_entry(structure_sharing_pair::in,
+    sharing_set::in, sharing_set::out) is det.
+
 remove_entry(SharingPair, !SharingSet) :- 
     SharingPair = Data1 - Data2, 
     remove_directed_entry(Data1, Data2, !SharingSet), 
@@ -1105,8 +1125,9 @@ remove_entry(SharingPair, !SharingSet) :-
         remove_directed_entry(Data2, Data1, !SharingSet)
     ).
 
-:- pred remove_directed_entry(datastruct::in, datastruct::in, sharing_set::in,
-    sharing_set::out) is det.
+:- pred remove_directed_entry(datastruct::in, datastruct::in,
+    sharing_set::in, sharing_set::out) is det.
+
 remove_directed_entry(FromData, ToData, SharingSet0, SharingSet) :- 
     FromVar = FromData ^ sc_var, 
     FromSel = FromData ^ sc_selector, 
@@ -1150,7 +1171,6 @@ remove_directed_entry(FromData, ToData, SharingSet0, SharingSet) :-
         unexpected(this_file, "Removing non-existant sharing pair.")
     ).
 
-
     % Determine if the sharing set subsumes the sharing information
     % represented by the structure sharing pair. 
     % This means: \exists A-B \in SharingSet, such that A-B is more general
@@ -1158,6 +1178,7 @@ remove_directed_entry(FromData, ToData, SharingSet0, SharingSet) :-
     %
 :- pred sharing_set_subsumes_sharing_pair(module_info::in, proc_info::in,
     sharing_set::in, structure_sharing_pair::in) is semidet.
+
 sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet, 
         SharingPair):- 
     SharingSet = sharing_set(_, SharingMap), 
@@ -1203,11 +1224,13 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
 
     % Return the list of sharing pairs included in the sharing set that are 
     % less or equal to the given sharing pair. 
+    %
 :- pred sharing_set_subsumed_subset(module_info::in, proc_info::in, 
-    sharing_set::in, structure_sharing_pair::in, 
-    structure_sharing::out) is det.
+    sharing_set::in, structure_sharing_pair::in, structure_sharing::out)
+    is det.
+
 sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair, 
-    SubsumedPairs) :- 
+        SubsumedPairs) :- 
     SharingSet = sharing_set(_, SharingMap), 
 
     SharingPair = Data1 - Data2, 
@@ -1224,12 +1247,12 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
         map.search(SharingMap, Var1, SelSharingSet)
     ->
         SelSharingSet = selector_sharing_set(_, SelSharingMap), 
-
-            % Determine all Selector-Dataset pairs where
-            %   * Selector is less or equal to Sel1 wrt some extension E,
-            %   * Dataset is a set of datastructures less or equal to Data2 
-            %   (wrt the same extension E). 
-
+        %
+        % Determine all Selector-Dataset pairs where
+        %   * Selector is less or equal to Sel1 wrt some extension E,
+        %   * Dataset is a set of datastructures less or equal to Data2 
+        %   (wrt the same extension E). 
+        %
         map.keys(SelSharingMap, SelectorList), 
         list.filter_map(
             pred(Selector::in, SPairs::out) is semidet :- 
@@ -1259,15 +1282,17 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
     
 :- pred new_entries(module_info::in, proc_info::in, structure_sharing::in, 
     sharing_set::in, sharing_set::out) is det.
+
 new_entries(ModuleInfo, ProcInfo, SharingPairs, !SS) :- 
     list.foldl(new_entry(ModuleInfo, ProcInfo), SharingPairs, !SS).
 
 :- pred new_directed_entry(datastruct::in, datastruct::in, 
-                sharing_set::in, sharing_set::out) is det.
+    sharing_set::in, sharing_set::out) is det.
+
 new_directed_entry(FromData, ToData, SharingSet0, SharingSet):- 
     SharingSet0 = sharing_set(Size0, Map0), 
-    Var = FromData^sc_var, 
-    Selector = FromData^sc_selector, 
+    Var = FromData ^ sc_var, 
+    Selector = FromData ^ sc_selector, 
     (
         map.search(Map0, Var, Selectors0)
     ->
@@ -1293,7 +1318,6 @@ new_directed_entry(FromData, ToData, SharingSet0, SharingSet):-
         )
     ), 
     SharingSet = sharing_set(Size, Map). 
-
 
 to_sharing_pair_list(SharingSet0) = SharingPairs :- 
     SharingSet = without_doubles(SharingSet0),
@@ -1368,23 +1392,27 @@ directed_entry_is_member(FromData, ToData, SharingSet) :-
     Dataset = datastructures(_, Datastructures),
     set.member(ToData, Datastructures).
 
-        
 %-----------------------------------------------------------------------------%
-% selector_sharing_set predicates/functions.
-%-----------------------------------------------------------------------------%
+%
+% selector_sharing_set predicates/functions
+%
+
 :- func selector_sharing_set_init = selector_sharing_set.
+
 :- pred selector_sharing_set_is_empty(selector_sharing_set::in) is semidet.
+
 :- func selector_sharing_set_size(selector_sharing_set) = int. 
 
 :- pred selector_sharing_set_project(projection_type::in, prog_vars::in, 
     selector_sharing_set::in, selector_sharing_set::out) is det.
+
 :- pred selector_sharing_set_rename(map(prog_var, prog_var)::in, 
-    tsubst::in, selector_sharing_set::in, 
-    selector_sharing_set::out) is det.
+    tsubst::in, selector_sharing_set::in, selector_sharing_set::out) is det.
 
     % selector_sharing_set_new_entry(Selector, Datastruct, SS0, SS):
     % Adds Datastruct into SS0 using Selector as a key. Fails if that 
     % Datastructs is already present with that selector. 
+    %
 :- pred selector_sharing_set_new_entry(selector::in, datastruct::in, 
     selector_sharing_set::in, selector_sharing_set::out) is semidet.
 
@@ -1398,13 +1426,12 @@ directed_entry_is_member(FromData, ToData, SharingSet) :-
     prog_var::in, selector_sharing_set::in, selector_sharing_set::out,
     int::in, int::out) is det.
 
-
 selector_sharing_set_init = selector_sharing_set(0, map.init).
 selector_sharing_set_is_empty(selector_sharing_set(0, _Map)).
 selector_sharing_set_size(selector_sharing_set(Size,_)) = Size.
 
 selector_sharing_set_project(ProjectionType, Vars, SelSharingSet0, 
-    SelSharingSet):- 
+        SelSharingSet):- 
     SelSharingSet0 = selector_sharing_set(_, Map0), 
     map.foldl(selector_sharing_set_project_2(ProjectionType, Vars), 
         Map0, selector_sharing_set_init, SelSharingSet).
@@ -1434,11 +1461,12 @@ selector_sharing_set_rename(Dict, Subst, SelSharingSet0, SelSharingSet):-
 
 :- pred selector_sharing_set_rename_2(map(prog_var, prog_var)::in, 
     tsubst::in, selector::in, data_set::in, 
-    map(selector, data_set)::in, map(selector, data_set)::out) is det. 
+    map(selector, data_set)::in, map(selector, data_set)::out) is det.
+
 selector_sharing_set_rename_2(Dict, Subst, Selector0, DataSet0, !Map) :- 
-    prog_ctgc.rename_selector(Subst, Selector0, Selector), 
+    rename_selector(Subst, Selector0, Selector), 
     data_set_rename(Dict, Subst, DataSet0, DataSet), 
-    map.det_insert(!.Map, Selector, DataSet, !:Map).
+    svmap.det_insert(Selector, DataSet, !Map).
 
 selector_sharing_set_new_entry(Selector, Datastruct, SelSharingSet0, 
         SelSharingSet) :- 
@@ -1457,30 +1485,31 @@ selector_sharing_set_new_entry(Selector, Datastruct, SelSharingSet0,
     SelSharingSet = selector_sharing_set(Size, Map). 
 
 selector_sharing_set_altclos(ModuleInfo, ProcInfo, Type, NewSelSet, 
-    OldSelSet) = NewSharingPairs :- 
+        OldSelSet) = NewSharingPairs :- 
 
     NewSelSet = selector_sharing_set(_, NewMap), 
     OldSelSet = selector_sharing_set(_, OldMap), 
-
-    % get the selectors
+    %
+    % Get the selectors.
+    %
     map.keys(NewMap, NewSelectors), 
     map.keys(OldMap, OldSelectors),
-
-    % for each selector in NewSelectors, verify each selector in OldSelector,
+    %
+    % For each selector in NewSelectors, verify each selector in OldSelector,
     % if either one is less or equal to the other, then generate the structure
     % sharing pair as appropriate. 
+    %
     NewSharingPairs = list.condense(list.map(
         selector_sharing_set_altclos_2(ModuleInfo, ProcInfo, Type, NewMap, 
             OldMap, OldSelectors), 
         NewSelectors)).
-
 
 :- func selector_sharing_set_altclos_2(module_info, proc_info, mer_type, 
     map(selector, data_set), map(selector, data_set), list(selector), 
     selector) = structure_sharing. 
 
 selector_sharing_set_altclos_2(ModuleInfo, ProcInfo, Type, NewMap, OldMap, 
-    OldSelectors, NewSel) = SharingPairs :- 
+        OldSelectors, NewSel) = SharingPairs :- 
     map.lookup(NewMap, NewSel, NewSelDataSet),
     SharingPairs = list.condense(list.map(
         selector_sharing_set_altclos_3(ModuleInfo, ProcInfo, Type, 
@@ -1491,7 +1520,7 @@ selector_sharing_set_altclos_2(ModuleInfo, ProcInfo, Type, NewMap, OldMap,
     data_set, map(selector, data_set), selector, selector) = structure_sharing. 
 
 selector_sharing_set_altclos_3(ModuleInfo, ProcInfo, Type, NewSelDataSet, 
-    OldMap, NewSel, OldSel) = SharingPairs :- 
+        OldMap, NewSel, OldSel) = SharingPairs :- 
     map.lookup(OldMap, OldSel, OldSelDataSet),
     SharingPairs = basic_closure(ModuleInfo, ProcInfo, Type, NewSelDataSet, 
         OldSelDataSet, NewSel, OldSel).
@@ -1500,7 +1529,7 @@ selector_sharing_set_altclos_3(ModuleInfo, ProcInfo, Type, NewSelDataSet,
     data_set, data_set, selector, selector) = structure_sharing. 
 
 basic_closure(ModuleInfo, _ProcInfo, Type, NewDataSet, OldDataSet, 
-    NewSel, OldSel) = SharingPairs :- 
+        NewSel, OldSel) = SharingPairs :- 
     % three cases: 
     % 1. NewSel <= OldSel then generate sharing pairs.
     % 2. OldSel <= NewSel then generate sharing pairs.
@@ -1513,7 +1542,6 @@ basic_closure(ModuleInfo, _ProcInfo, Type, NewDataSet, OldDataSet,
         data_set_termshift(OldDataSet, Extension, TermShiftedOldDataSet), 
         SharingPairs = data_set_directed_closure(TermShiftedOldDataSet, 
             NewDataSet)
-
     ;
         % OldSel <= NewSel ie, \exists Extension: NewSel.Extension = OldSel.
         selector.subsumed_by(ModuleInfo, OldSel, NewSel, Type, Extension)
@@ -1527,7 +1555,7 @@ basic_closure(ModuleInfo, _ProcInfo, Type, NewDataSet, OldDataSet,
     ).
 
 selector_sharing_set_extend_datastruct(ModuleInfo, VarType, Selector, 
-    SelectorSharingSet) =  Datastructures :-
+        SelectorSharingSet) =  Datastructures :-
     SelectorSharingSet = selector_sharing_set(_, SelectorMap),
     Datastructures =  
         list.condense(
@@ -1594,31 +1622,35 @@ selector_sharing_set_apply_widening_2(ModuleInfo, ProcInfo, ProgVar,
         DataSetFinal = data_set_least_upper_bound(ModuleInfo, ProcInfo,
             DataSet1, ExistingDataSet),
         DataSetFinalSize = data_set_size(DataSetFinal), 
-        map.det_update(!.DataMap, NewSelector, DataSetFinal, !:DataMap),
+        svmap.det_update(NewSelector, DataSetFinal, !DataMap),
         !:DataMapSize = !.DataMapSize - ExistingDataSetSize + 
             DataSetFinalSize
     ;
-        map.det_insert(!.DataMap, NewSelector, DataSet1, !:DataMap),
+        svmap.det_insert(NewSelector, DataSet1, !DataMap),
         !:DataMapSize = !.DataMapSize + data_set_size(DataSet1)
     ).
 
 %-----------------------------------------------------------------------------%
-% data_set predicates/functions.
-%-----------------------------------------------------------------------------%
+%
+% data_set predicates/functions
+%
 
 :- func data_set_init = data_set.
+
 :- pred data_set_is_empty(data_set::in) is semidet.
+
 :- func data_set_size(data_set) = int.
 
-:- pred data_set_project(projection_type::in, prog_vars::in, data_set::in, 
-    data_set::out) is det.
-:- pred data_set_rename(map(prog_var, prog_var)::in, 
-    tsubst::in, 
+:- pred data_set_project(projection_type::in, prog_vars::in,
     data_set::in, data_set::out) is det.
+
+:- pred data_set_rename(map(prog_var, prog_var)::in, 
+    tsubst::in, data_set::in, data_set::out) is det.
+
 :- pred data_set_termshift(data_set::in, selector::in, data_set::out) is det.
 
 :- pred data_set_new_entry(datastruct::in, data_set::in, data_set::out) 
-        is semidet.
+    is semidet.
 
 :- func data_set_directed_closure(data_set, data_set) = structure_sharing.
 
@@ -1629,28 +1661,27 @@ selector_sharing_set_apply_widening_2(ModuleInfo, ProcInfo, ProgVar,
     data_set) = data_set.
 
 data_set_init = datastructures(0, set.init).
+
 data_set_is_empty(datastructures(0, _Set)).
+
 data_set_size(datastructures(Size, _)) = Size.
-data_set_project(ProjectionType, Vars, DataSet0, DataSet) :- 
-    data_set_filter(
-        pred(Data::in) is semidet :- 
+
+data_set_project(ProjectionType, Vars, !DataSet) :- 
+    FilterData = (pred(Data::in) is semidet :-
+        Var = Data ^ sc_var,
         (
-            Var = Data^sc_var,
-            ( 
-                ProjectionType = inproject, 
-                list.member(Var, Vars)
-            ; 
-                ProjectionType = outproject, 
-                \+ list.member(Var, Vars)
-            )
-        ),
-        DataSet0, 
-        DataSet). 
+            ProjectionType = inproject,
+            list.member(Var, Vars)
+        ;
+            ProjectionType = outproject,
+            not list.member(Var, Vars)
+        )
+    ),
+    data_set_filter(FilterData, !DataSet).
 
 data_set_rename(Dict, Subst, !DataSet) :- 
     !.DataSet = datastructures(_Size, Datastructs0), 
-    Datastructs = set.map(prog_ctgc.rename_datastruct(Dict, Subst), 
-        Datastructs0),
+    Datastructs = set.map(rename_datastruct(Dict, Subst), Datastructs0),
     !:DataSet = datastructures(set.count(Datastructs), Datastructs). 
 
 data_set_termshift(DataSet0, Selector, DataSet) :- 
@@ -1672,20 +1703,18 @@ data_set_directed_closure(FromData, ToData) = SharingPairs :-
     set.to_sorted_list(SetOfPairs, SharingPairs).
 
 :- pred set_cross_product(set(T1)::in, set(T2)::in, 
-                set(pair(T1, T2))::out) is det.
+    set(pair(T1, T2))::out) is det.
 
 set_cross_product(Set0, Set1, CrossProduct):-
-    solutions_set(
-        pred(Pair::out) is nondet :- 
-        (
+    solutions_set((pred(Pair::out) is nondet :- 
             set.member(Elem0, Set0), 
             set.member(Elem1, Set1), 
             Pair = Elem0 - Elem1
-        ), 
-        CrossProduct).
+        ), CrossProduct).
 
-:- pred data_set_filter(pred(datastruct), data_set, data_set).
-:- mode data_set_filter(pred(in) is semidet, in, out) is det.
+:- pred data_set_filter(pred(datastruct)::in(pred(in) is semidet),
+    data_set::in, data_set::out) is det.
+
 data_set_filter(Pred, !DataSet) :- 
     !.DataSet = datastructures(_, Datastructs0), 
     Datastructs = set.filter(Pred, Datastructs0),
@@ -1695,16 +1724,16 @@ data_set_least_upper_bound(ModuleInfo, ProcInfo, DataSet1,
         DataSet2) = DataSet :- 
     DataSet1 = datastructures(_, Datastructs1), 
     DataSet2 = datastructures(_, Datastructs2),
-    set.fold(
-        data_set_add_datastruct(ModuleInfo, ProcInfo), 
+    set.fold(data_set_add_datastruct(ModuleInfo, ProcInfo), 
         Datastructs1, Datastructs2, Datastructs),
     DataSet = datastructures(set.count(Datastructs), Datastructs).
 
 :- pred data_set_add_datastruct(module_info::in, proc_info::in, 
     datastruct::in, set(datastruct)::in, set(datastruct)::out) is det.
+
 data_set_add_datastruct(ModuleInfo, ProcInfo, Data, !Datastructs) :- 
     (
-        % Perform the simple check of exact occurence in the set first... 
+        % Perform the simple check of exact occurrence in the set first... 
         set.member(Data, !.Datastructs)
     -> 
         true
@@ -1714,7 +1743,7 @@ data_set_add_datastruct(ModuleInfo, ProcInfo, Data, !Datastructs) :-
     -> 
         true
     ;
-        set.insert(!.Datastructs, Data, !:Datastructs)
+        svset.insert(Data, !Datastructs)
     ).
 
 % XXX ProcInfo could be replaced by a mercury type, as all the datastructures
@@ -1723,20 +1752,23 @@ data_set_add_datastruct(ModuleInfo, ProcInfo, Data, !Datastructs) :-
 % datastruct).
 data_set_apply_widening(ModuleInfo, ProcInfo, !DataSet):- 
     !.DataSet = datastructures(_, Datastructs0), 
-    set.fold(
-        data_set_widen_and_add(ModuleInfo, ProcInfo), 
+    set.fold(data_set_widen_and_add(ModuleInfo, ProcInfo), 
         Datastructs0, set.init, Datastructs),
     !:DataSet = datastructures(set.count(Datastructs), Datastructs). 
 
 :- pred data_set_widen_and_add(module_info::in, proc_info::in, datastruct::in,
     set(datastruct)::in, set(datastruct)::out) is det.
+
 data_set_widen_and_add(ModuleInfo, ProcInfo, Data0, !Datastructs):-
-    ctgc.datastruct.apply_widening(ModuleInfo, ProcInfo, Data0, Data),
+    datastruct.apply_widening(ModuleInfo, ProcInfo, Data0, Data),
     data_set_add_datastruct(ModuleInfo, ProcInfo, Data, !Datastructs).
 
 %-----------------------------------------------------------------------------%
+
 :- func this_file = string.
 
 this_file = "structure_sharing.domain.m".
+
 %-----------------------------------------------------------------------------%
-:- end_module transform_hlds.ctgc.structure_sharing.domain.
+:- end_module structure_sharing.domain.
+%-----------------------------------------------------------------------------%

@@ -1,18 +1,20 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: ctgc.datastruct.m
-% Main authors: nancy
-%
+
+% File: ctgc.datastruct.m.
+% Main author: nancy.
+
 % Definition of predicates and functions for the manipulation of 
-% datastructures. 
+% datastructures.
+ 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.datastruct.
-
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -20,6 +22,8 @@
 :- import_module hlds.hlds_pred.
 
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 	% Create an initial top-datastruct of the given variable.
 	%
@@ -66,12 +70,16 @@
 :- pred apply_widening(module_info::in, proc_info::in, datastruct::in, 
 	datastruct::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module transform_hlds.ctgc.selector.
 
 :- import_module map.
 
+%-----------------------------------------------------------------------------%
 
 init(V) = init(V, []).
 init(V, Sel) = selected_cel(V, Sel). 
@@ -127,4 +135,6 @@ apply_widening(ModuleInfo, ProcInfo, !Data) :-
 	apply_widening(ModuleInfo, Type, Sel0, Sel), 
 	!:Data = init(Var, Sel).
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.datastruct.
+%-----------------------------------------------------------------------------%

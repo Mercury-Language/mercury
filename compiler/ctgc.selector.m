@@ -5,22 +5,23 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: ctgc.selector.m
-% Main authors: nancy
-%
-% Definition of predicates and functions for the manipulation of 
-% selectors. 
+
+% File: ctgc.selector.m.
+% Main author: nancy.
+
+% Definition of predicates and functions for the manipulation of selectors.
+
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.selector.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % Create a selector as either the top selector, a term selector, 
     % or a type selector.
@@ -38,8 +39,9 @@
     % Returns true if Selector0 is subsumed by Selector1. This means that
     % Selector1 is more general than Selector0, hence, there exists an
     % extension Ext, such that Selector1.Extension = Selector0. 
-    % Note that the type specifies the type of the term to which the selectors
-    % refer. 
+    %
+    % NOTE: the type specifies the type of the term to which the selectors
+    %       refer. 
     %
 :- pred subsumed_by(module_info::in, selector::in, selector::in, 
 	mer_type::in, selector::out) is semidet.
@@ -64,6 +66,9 @@
 :- pred apply_widening(module_info::in, mer_type::in,
 		selector::in, selector::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.type_util.
@@ -75,6 +80,8 @@
 :- import_module map.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 top_selector = [].
 init(Cons, Index) = [termsel(Cons, Index)].
@@ -112,24 +119,24 @@ subsumed_by_2(ModuleInfo, S1, S2, MainType, Extension):-
         type_on_path(ModuleInfo, type_of_node(ModuleInfo, MainType, S2_part1),
             SubType, Rest, Remainder),
 
-        % step 3: % S2_part1.TS.S1_part2 should be more general than S1.
+        % step 3:
+        % % S2_part1.TS.S1_part2 should be more general than S1.
         subsumed_by_2(ModuleInfo, Remainder, S2_part2, SubType, Extension)
 	; 	
-        % If the second selector S2 has no type-
-        % selectors, we have the simple case where S1 can be more
-        % general than S2 if there exists a path "Extension" such that
-        % S1.Extension = S2
+        % If the second selector S2 has no type-selectors, we have the
+        % simple case where S1 can be more general than S2 if there exists
+        % a path "Extension" such that S1.Extension = S2
         subsumed_by(S1, S2, Extension)
 	). 
 
 :- pred subsumed_by(selector::in, selector::in, selector::out) is semidet.
+
 subsumed_by(S1, S2, Extension):-
 	list.append(S2, Extension, S1). 
 
 type_of_node(ModuleInfo, StartType, Selector) = SubType :-
 	(
-		Selector = [ UnitSelector | RestSelector ]
-	->
+		Selector = [ UnitSelector | RestSelector ],
 		(
 			UnitSelector = termsel(ConsId, Index),
 			SubType0 = select_subtype(ModuleInfo, StartType, ConsId, Index) 
@@ -137,7 +144,8 @@ type_of_node(ModuleInfo, StartType, Selector) = SubType :-
 			UnitSelector = typesel(SubType0)
 		),
 		SubType = type_of_node(ModuleInfo, SubType0, RestSelector)
-	;
+    ;
+        Selector = [],
 		SubType = StartType
 	).
 
@@ -163,41 +171,45 @@ select_subtype(ModuleInfo, Type, ConsID, Choice) = SubType :-
 	;
 		unexpected(this_file, "get_type_of_node: existential type.")
 	).
-
-
-
-    % split_upto_type_selector(Sin, S1, TS, S2): 
+    
+    % split_upto_type_selector(Sin, S1, TS, S2).
+    %
     % This predicate succeeds if there exists a typeselector TS, such that Sin
     % is equivalent to append(S1, [TS | S2]) and S1 contains no other type
     % selector. It fails otherwise. 
+    %
 :- pred split_upto_type_selector(selector::in, selector::out, 
-		unit_selector::out, selector::out) is semidet.
+    unit_selector::out, selector::out) is semidet.
 
 split_upto_type_selector(Sin, S1, TS, S2):-
     list.takewhile(is_term_selector, Sin, S1, Remainder), 
     Remainder = [TS | S2 ].
 
 :- pred is_term_selector(unit_selector::in) is semidet.
+
 is_term_selector(termsel(_, _)).
                 
-    % type_on_path(ModuleInfo, FromType, ToType, Path, Remainder):
+    % type_on_path(ModuleInfo, FromType, ToType, Path, Remainder).
+    %
     % This predicate verifies that the path Path starting from FromType
     % encounters at least one type node with the type ToType.  Remainder is the
     % remainder of the Path after stripping it to the last encounter of a node
     % with "ToType". 
+    % 
     % XXX Changed w.r.t. original implementation!
     % 
 :- pred type_on_path(module_info::in, mer_type::in, mer_type::in, 
-		selector::in, selector::out) is semidet.
+    selector::in, selector::out) is semidet.
 
 type_on_path(ModuleInfo, FromType, ToType, Path, RemainderPath) :-
+    %
     % In checking this, at least one step of the Path must be done. Indeed, if
     % FromType = ToType, than RemainderPath would be equal to Path, which would
-    % contradict the actual meaning of a type selector: A type-selector is a
+    % contradict the actual meaning of a type selector: a type-selector is a
     % shortcut notation for any non-zero (!) selector that selects a node of
     % the type described by the type-selector. 
-    type_on_path_2(first, ModuleInfo, FromType, 
-        ToType, Path, RemainderPath).
+    %
+    type_on_path_2(first, ModuleInfo, FromType, ToType, Path, RemainderPath).
 
     % In checking whether a type is encountered on a given selector-path 
     % we check whether the type of a selector is encountered _after_ the first
@@ -213,7 +225,7 @@ type_on_path(ModuleInfo, FromType, ToType, Path, RemainderPath) :-
     ;       subsequent. 
 
 :- pred type_on_path_2(step::in, module_info::in, mer_type::in, mer_type::in, 
-		selector::in, selector::out) is semidet.
+    selector::in, selector::out) is semidet.
 
 type_on_path_2(Step, ModuleInfo, FromType, ToType, Path, RemainderPath) :- 
 	(
@@ -275,17 +287,13 @@ normalize_with_type_information(ModuleInfo, Type, !Selector) :-
 		branch_map_insert(Type, top_selector, BranchMap0, BranchMap1),
 		normalize_wti(ModuleInfo, Type, BranchMap1, top_selector, !Selector)
 	).
-
 	
 :- pred normalize_wti(module_info::in, mer_type::in, branch_map::in, 
 	selector::in, selector::in, selector::out) is det.
 
-
-normalize_wti(ModuleInfo, VarType, BranchMap0, SelectorAcc0, 
-    !Selector) :- 
+normalize_wti(ModuleInfo, VarType, BranchMap0, SelectorAcc0, !Selector) :- 
     (
-        !.Selector = [ UnitSelector | SelRest ]
-    ->
+        !.Selector = [ UnitSelector | SelRest ],
         Class = classify_type(ModuleInfo, VarType),
         (
             Class = type_cat_user_ctor
@@ -337,24 +345,23 @@ normalize_wti(ModuleInfo, VarType, BranchMap0, SelectorAcc0,
             append(SelectorAcc0, !Selector)
         )
     ;
-        % SEL0 = []		
+        !.Selector = [],
         !:Selector = SelectorAcc0
     ).
 
 apply_widening(ModuleInfo, MainType, !Selector) :- 
     (
         !.Selector = []
-    -> 
-        true
     ; 
+        !.Selector = [_|_],
         UnitSelector = typesel(type_of_node(ModuleInfo, MainType, !.Selector)),
         !:Selector = [UnitSelector]
     ).
 
-
 %-----------------------------------------------------------------------------%
+%
 % BRANCH_MAP : copy/pasted from wimvh/bta_reduce.m
-%-----------------------------------------------------------------------------%
+%
 
 :- type branch_map == assoc_list(mer_type, selector).
 
@@ -383,8 +390,11 @@ branch_map_search([ (T1 - S1) | Ms ], T2, S):-
         branch_map_search(Ms, T2, S)
     ).
 
-
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string. 
+
 this_file = "ctgc.selector.m".
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

@@ -5,17 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: prog_ctgc.m
-% Main author: nancy
-%
+
+% File: prog_ctgc.m.
+% Main author: nancy.
+
 % Utility operations (parsing, printing, renaming) for compile-time garbage
 % collection related information, i.e. structure sharing and structure reuse. 
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_ctgc.
-
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -28,8 +27,9 @@
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
-% Parsing  routines
-%-----------------------------------------------------------------------------%
+%
+% Parsing routines
+%
 
 :- func parse_unit_selector(term(T)) = unit_selector. 
 :- func parse_selector(term(T)) = selector.
@@ -39,15 +39,15 @@
 :- func parse_structure_sharing_domain(term(T)) = structure_sharing_domain.
 
 %-----------------------------------------------------------------------------%
+%
 % Printing routines
-%-----------------------------------------------------------------------------%
+%
 
-:- pred print_selector(tvarset::in, selector::in, io__state::di, 
-    io__state::uo) is det.
+:- pred print_selector(tvarset::in, selector::in, io::di, io::uo) is det.
 :- pred print_datastruct(prog_varset::in, tvarset::in, datastruct::in, 
-    io__state::di, io__state::uo) is det.
+    io::di, io::uo) is det.
 :- pred print_structure_sharing_pair(prog_varset::in, tvarset::in, 
-    structure_sharing_pair::in, io__state::di, io__state::uo) is det.
+    structure_sharing_pair::in, io::di, io::uo) is det.
     
     % Print list of structure sharing pairs.
     %
@@ -62,13 +62,13 @@
     %
 :- pred print_structure_sharing(prog_varset::in, tvarset::in, 
     maybe(int)::in, string::in, string::in, string::in, 
-    structure_sharing::in, io__state::di, io__state::uo) is det.
+    structure_sharing::in, io::di, io::uo) is det.
 
     % Print complete list of structure sharing pairs as a list (using "[",
     % ",", and "]"). This can later be parsed automatically. 
     %
 :- pred print_structure_sharing(prog_varset::in, tvarset::in, 
-    structure_sharing::in, io__state::di, io__state::uo) is det.
+    structure_sharing::in, io::di, io::uo) is det.
 
     % Print structure sharing domain. 
     %
@@ -84,23 +84,21 @@
     % MaybeThreshold = no. 
     %
 :- pred print_structure_sharing_domain(prog_varset::in, tvarset::in, bool::in,
-    maybe(int)::in, structure_sharing_domain::in, io__state::di,
-    io__state::uo) is det.
+    maybe(int)::in, structure_sharing_domain::in, io::di, io::uo) is det.
 
     % Print the available structure sharing information as a
     % mercury-comment (used in the hlds-dump).
     %
 :- pred dump_maybe_structure_sharing_domain(prog_varset::in, tvarset::in, 
-    maybe(structure_sharing_domain)::in, io__state::di, 
-    io__state::uo) is det.
+    maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
 
 :- pred print_interface_structure_sharing_domain(prog_varset::in, 
-    tvarset::in, maybe(structure_sharing_domain)::in, io__state::di, 
-    io__state::uo) is det.
+    tvarset::in, maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
-% Renaming operations.
-%-----------------------------------------------------------------------------%
+%
+% Renaming operations
+%
 
 :- pred rename_unit_selector(tsubst::in, unit_selector::in, 
     unit_selector::out) is det.
@@ -119,6 +117,8 @@
     structure_sharing_domain::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation. 
 
 :- import_module libs.compiler_util.
@@ -134,8 +134,9 @@
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-% Implementation: Parsing routines
-%-----------------------------------------------------------------------------%
+%
+% Parsing routines
+%
 
 parse_unit_selector(Term) = UnitSelector :- 
     ( 
@@ -146,37 +147,35 @@ parse_unit_selector(Term) = UnitSelector :-
             Args = [ ConsTerm, ArityTerm, PosTerm ]
         ->
             ( 
-                prog_io__sym_name_and_args(ConsTerm, ConsIDName, []),
+                sym_name_and_args(ConsTerm, ConsIdName, []),
                 ArityTerm = term__functor(term__integer(Arity), _, _),
                 PosTerm = term__functor(term__integer(Pos), _, _)
             ->
-                ConsID = cons(ConsIDName, Arity),
-                UnitSelector = termsel(ConsID, Pos)
+                ConsId = cons(ConsIdName, Arity),
+                UnitSelector = termsel(ConsId, Pos)
             ;
                 ConsTerm = term__functor(term__integer(X), _, _)
             ->
-                ConsID = int_const(X), 
-                UnitSelector = termsel(ConsID, 0)
+                ConsId = int_const(X), 
+                UnitSelector = termsel(ConsId, 0)
             ;
                 ConsTerm = term__functor(term__float(X), _, _)
             ->
-                ConsID = float_const(X),
-                UnitSelector = termsel(ConsID, 0)
+                ConsId = float_const(X),
+                UnitSelector = termsel(ConsId, 0)
             ;
                 ConsTerm = term__functor(term__string(S), _, _)
             ->
-                ConsID = string_const(S),
-                UnitSelector = termsel(ConsID, 0)
+                ConsId = string_const(S),
+                UnitSelector = termsel(ConsId, 0)
             ;
                 unexpected(this_file, "parse_unit_selector: " ++ 
                     "unknown cons_id in unit selector")
             )
         ; 
-     
             Cons = "typesel",
             Args = [ TypeSelectorTerm ]
         ->
-            
             parse_type(term__coerce(TypeSelectorTerm), MaybeTypeSelector), 
             (
                 MaybeTypeSelector = ok(TypeSelector),
@@ -193,7 +192,6 @@ parse_unit_selector(Term) = UnitSelector :-
    ;
       unexpected(this_file, "parse_unit_selector: term not a functor")
    ).
-
 
 parse_selector(Term) = Selector :- 
     (
@@ -249,9 +247,9 @@ parse_structure_sharing(Term) = SharingPairs :-
             Cons = "[]",
             SharingPairs0 = []
         )
-        -> 
+    -> 
             SharingPairs = SharingPairs0
-        ;
+    ;
             unexpected(this_file, "Error while parsing list of structure " ++ 
                 "sharing pairs.")
     ).
@@ -277,16 +275,18 @@ parse_structure_sharing_domain(Term) = SharingAs :-
     ).
 
 %-----------------------------------------------------------------------------%
-% Implementation: Printing routines
-%-----------------------------------------------------------------------------%
+%
+% Printing routines
+%
 
 :- func selector_to_string(tvarset, selector) = string.
+
 selector_to_string(TVarSet, Selector) =  String :- 
     (
-        Selector = []
-    -> 
+        Selector = [],
         String = "[]"
     ; 
+        Selector = [_|_],
         SelectorStrings = list.map(unit_selector_to_string(TVarSet), 
             Selector),
         string.append_list(["[", 
@@ -295,6 +295,7 @@ selector_to_string(TVarSet, Selector) =  String :-
     ). 
 
 :- func unit_selector_to_string(tvarset, unit_selector) = string.
+
 unit_selector_to_string(_, termsel(ConsId, Index)) = 
     string.append_list(["sel(",
         mercury_cons_id_to_string(ConsId, needs_brackets),
@@ -347,12 +348,11 @@ print_structure_sharing(ProgVarSet, TypeVarSet, MaybeLimit, Start, Sep, End,
     io.write_list(SharingPairs, Sep, 
         print_structure_sharing_pair(ProgVarSet, TypeVarSet), !IO), 
     (
-        CompleteList = no
-    -> 
+        CompleteList = no,
         io.write_string(Sep, !IO), 
         io.write_string("...", !IO)
     ; 
-        true
+        CompleteList = yes 
     ),
     io.write_string(End, !IO). 
 
@@ -362,7 +362,7 @@ print_structure_sharing(ProgVarSet, TypeVarSet, SharingPairs, !IO) :-
 
 :- pred print_structure_sharing_domain(prog_varset::in, tvarset::in, 
     bool::in, maybe(int)::in, string::in, string::in, string::in, 
-    structure_sharing_domain::in, io__state::di, io__state::uo) is det.
+    structure_sharing_domain::in, io::di, io::uo) is det.
 
 print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
     MaybeThreshold, Start, Separator, End, SharingAs, !IO) :- 
@@ -396,18 +396,18 @@ print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
 
 dump_maybe_structure_sharing_domain(_, _, no, !IO) :-
     io.write_string("% no sharing information available.\n", !IO).
-dump_maybe_structure_sharing_domain(ProgVarSet, TypeVarSet, 
-    yes(SharingAs), !IO) :- 
+dump_maybe_structure_sharing_domain(ProgVarSet, TypeVarSet, yes(SharingAs),
+        !IO) :- 
     print_structure_sharing_domain(ProgVarSet, TypeVarSet, yes,
         no, "%\t ", "\n%\t", "\n", SharingAs, !IO).
 
 print_interface_structure_sharing_domain(_, _, no, !IO) :- 
     io.write_string("not_available", !IO).
-print_interface_structure_sharing_domain(ProgVarSet, TypeVarSet, 
-    yes(SharingAs), !IO) :- 
+print_interface_structure_sharing_domain(ProgVarSet, TypeVarSet,
+        yes(SharingAs), !IO) :- 
     io.write_string("yes(", !IO), 
-    print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, 
-        no, SharingAs, !IO), 
+    print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, no, SharingAs,
+        !IO), 
     io.write_string(")", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -443,5 +443,10 @@ rename_structure_sharing_domain(Dict, TypeSubst,
     rename_structure_sharing(Dict, TypeSubst, List0, List).
 
 %-----------------------------------------------------------------------------%
+
 :- func this_file = string.
+
 this_file = "prog_ctgc.m".
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

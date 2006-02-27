@@ -301,13 +301,12 @@
 %
 % Stuff for the `structure_sharing_info' pragma.
 %
-
-   
     % Whenever structure sharing analysis is unable to determine a good
     % approximation of the set of structure sharing pairs that might exist
     % during the execution of a program, it must use "top" as the only safe
     % approximation. In order to collect some useful basic feedback information
     % as to `why' a top was generated, we use: 
+    %
 :- type top_feedback == string. 
 
     % Elements of the structure sharing domain lattice are either bottom
@@ -324,8 +323,8 @@
 :- type structure_sharing == list(structure_sharing_pair).
 
     % A structure sharing pair represents the information that two
-    % datastructures might be represented by the same memoryspace, hence
-    % its representation as a pair of datastructures.
+    % data structures might be represented by the same memoryspace, hence
+    % its representation as a pair of datastructs.
     %
 :- type structure_sharing_pair == pair(datastruct).
 
@@ -334,8 +333,8 @@
     %
 :- type datastruct 
     --->    selected_cel(
-                sc_var ::   prog_var,
-                sc_selector ::  selector
+                sc_var      :: prog_var,
+                sc_selector :: selector
             ).
 
     % A selector describes a path in a type-tree.
