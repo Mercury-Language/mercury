@@ -22,6 +22,7 @@ ERRORCHECK_PROGS= \
 	infinite_recursion \
 	inf_recursion_lambda \
 	missing_if \
+	non_stratification \
 	pragma_source_file \
 	purity_warnings \
 	simple_code \

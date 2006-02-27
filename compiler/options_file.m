@@ -323,15 +323,13 @@ read_options_lines(Dir, !Variables, !IO) :-
         LineResult = exception(Exception),
         ( Exception = univ(options_file_error(Error)) ->
             io__input_stream_name(FileName, !IO),
-            prog_out__write_context(term__context_init(FileName, LineNumber),
-                !IO),
-            io__write_string(Error, !IO),
-            io__nl(!IO),
-
-            % This will be caught by `read_options_files'.
-            % The open options files aren't closed on
-            % the way up, but we'll be exiting straight
+            write_error_pieces(term.context_init(FileName, LineNumber),
+                0, [words(Error)], !IO),
+            %
+            % This will be caught by `read_options_files'.  The open options
+            % files aren't closed on the way up, but we'll be exiting straight
             % away so that doesn't matter.
+            %
             throw(found_options_file_error)
         ;
             rethrow(LineResult)

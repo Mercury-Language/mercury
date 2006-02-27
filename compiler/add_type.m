@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -675,12 +675,16 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
         OtherConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
     ->
         % XXX we should record each error using module_info_incr_errors
-        prog_out__write_context(Context, !IO),
-        io__write_string("Error: constructor `", !IO),
-        hlds_out__write_cons_id(QualifiedConsId, !IO),
-        io__write_string("' for type `", !IO),
-        hlds_out__write_type_ctor(TypeCtor, !IO),
-        io__write_string("' multiply defined.\n", !IO),
+        QualifiedConsIdStr = cons_id_to_string(QualifiedConsId),
+        TypeCtorStr = type_ctor_to_string(TypeCtor),
+        ErrMsg = [
+            words("Error: constructor"),
+            quote(QualifiedConsIdStr),
+            words("for type"),
+            quote(TypeCtorStr),
+            words("multiply defined.")
+        ],
+        write_error_pieces(Context, 0, ErrMsg, !IO),
         io__set_exit_status(1, !IO),
         QualifiedConsDefns = QualifiedConsDefns1
     ;

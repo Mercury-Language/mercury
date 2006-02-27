@@ -21,6 +21,8 @@
 :- import_module io.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 :- pred module_add_clause(prog_varset::in, pred_or_func::in, sym_name::in,
     list(prog_term)::in, goal::in, import_status::in, prog_context::in,
     goal_type::in, module_info::in, module_info::out,
@@ -48,6 +50,9 @@
 
 :- pred qualify_lambda_mode_list(list(mer_mode)::in, list(mer_mode)::out,
     prog_context::in, qual_info::in, qual_info::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -80,6 +85,8 @@
 :- import_module string.
 :- import_module term_io.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
         Context, GoalType, !ModuleInfo, !QualInfo, !IO) :-
@@ -214,8 +221,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             % easier when redefining builtins to use normal Mercury code.
             pred_info_is_builtin(!.PredInfo)
         ->
-            prog_out__write_context(Context, !IO),
-            report_warning("Warning: clause for builtin.\n", !IO)
+            report_warning(Context, 0,
+                [words("Warning: clause for builtin.")], !IO)
         ;
             pred_info_clauses_info(!.PredInfo, Clauses0),
             pred_info_typevarset(!.PredInfo, TVarSet0),
@@ -339,14 +346,14 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
     ;
         ModeAnnotations = mixed,
         module_info_incr_errors(!ModuleInfo),
-        io__set_exit_status(1, !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("In clause for ", !IO),
-        hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
-        io__write_string(":\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  syntax error: some but not all " ++
-            "arguments have mode annotations.\n", !IO),
+        io.set_exit_status(1, !IO),
+        PredIdStr = pred_id_to_string(!.ModuleInfo, PredId),
+        ModeAnnotationErrMsg = [
+            words("In clause for"), fixed(PredIdStr), suffix(":"), nl,
+            words("syntax error: some but not all arguments"),
+            words("have mode annotations.")
+        ],
+        write_error_pieces(Context, 0, ModeAnnotationErrMsg, !IO),
         % apply the clause to all modes
         % XXX would it be better to apply it to none?
         ProcIds = pred_info_all_procids(PredInfo)

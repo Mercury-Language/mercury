@@ -43,3 +43,5 @@ MCFLAGS-foreign_term_invalid = --enable-termination
 MCFLAGS-non_term_user_special = --enable-termination
 
 MCFLAGS-warn_dead_procs 	= --warn-dead-procs --infer-all
+
+MCFLAGS-non_stratification = --warn-non-stratification --verbose-error-messages

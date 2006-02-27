@@ -40,7 +40,7 @@
     % the entire module for stratification, otherwise it will only check
     % the predicates in the stratified_preds set of the module_info structure.
     %
-:- pred stratify__check_stratification(module_info::in, module_info::out,
+:- pred check_stratification(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -51,6 +51,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -59,6 +60,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -201,7 +203,7 @@ first_order_check_goal(foreign_proc(_Attributes, CPred, CProc, _, _, _),
     ->
         goal_info_get_context(GoalInfo, Context),
         emit_message(ThisPredProcId, Context,
-            "call introduces a non-stratified loop", Error, !ModuleInfo, !IO)
+            "call introduces a non-stratified loop.", Error, !ModuleInfo, !IO)
     ;
         true
     ).
@@ -216,7 +218,7 @@ first_order_check_goal(call(CPred, CProc, _Args, _BuiltinState, _Contex, _Sym),
     ->
         goal_info_get_context(GInfo, Context),
         emit_message(ThisPredProcId, Context,
-            "call introduces a non-stratified loop", Error, !ModuleInfo, !IO)
+            "call introduces a non-stratified loop.", Error, !ModuleInfo, !IO)
     ;
         true
     ).
@@ -350,7 +352,7 @@ higher_order_check_goal((call(_CPred, _CProc, _Args, _Builtin, _Contex, Sym)),
     ->
         goal_info_get_context(GoalInfo, Context),
         emit_message(ThisPredProcId, Context,
-            "call to solutions/2 introduces a non-stratified loop",
+            "call to solutions/2 introduces a non-stratified loop.",
             Error, !ModuleInfo, !IO)
     ;
         true
@@ -367,7 +369,7 @@ higher_order_check_goal(generic_call(GenericCall, _Vars, _Modes, _Det),
         )
     ->
         goal_info_get_context(GoalInfo, Context),
-        ErrorMsg = Msg ++ " call may introduce a non-stratified loop",
+        ErrorMsg = Msg ++ " call may introduce a non-stratified loop.",
         emit_message(ThisPredProcId, Context, ErrorMsg, Error, !ModuleInfo,
             !IO)
     ;
@@ -851,35 +853,36 @@ check_case_list([Case | Goals], !Calls) :-
 :- pred emit_message(pred_proc_id::in, prog_context::in, string::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-emit_message(ThisPredProc, Context, Message, Error, !ModuleInfo, !IO) :-
-    ThisPredProc = proc(TPred, TProc),
-    report_pred_proc_id(!.ModuleInfo, TPred, TProc, yes(Context), _Context,
-        !IO),
-    prog_out__write_context(Context, !IO),
+emit_message(PPId, Context, Message, Error, !ModuleInfo, !IO) :-
+    PPIdDescription = describe_one_proc_name_mode(!.ModuleInfo,
+        should_not_module_qualify, PPId),
+    ErrMsgStart = [words("In")] ++ PPIdDescription ++ [suffix(":"), nl],
     (
         Error = no,
-        io__write_string("  warning: ", !IO)
+        ErrOrWarnMsg = words("warning:")
     ;
         Error = yes,
         module_info_incr_errors(!ModuleInfo),
-        io__set_exit_status(1, !IO),
-        io__write_string("  error: ", !IO)
+        io.set_exit_status(1, !IO),
+        ErrOrWarnMsg = words("error:")
     ),
-    io__write_string(Message, !IO),
-    io__write_char('\n', !IO),
+    ErrMsgMiddle = [ ErrOrWarnMsg, words(Message) ],
     globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
-        io__write_string("\tA non-stratified loop is a " ++
-            "loop in the call graph of the given\n", !IO),
-        io__write_string("\tpredicate/function that allows it " ++
-            "to call itself negatively. This\n", !IO),
-        io__write_string("\tcan cause problems for bottom up " ++
-            "evaluation of the predicate/function.\n", !IO)
+        ErrMsgFinal = [ nl,
+            words("A non-stratified loop is a loop in the call graph"),
+            words("of the given predicate/function that allows it to call"),
+            words("itself negatively.  This can cause problems for bottom"),
+            words("up evaluation of the predicate/function.")
+        ]
     ;
         VerboseErrors = no,
+        ErrMsgFinal = [],
         globals.io_set_extra_error_info(yes, !IO)
-    ).
+    ),
+    ErrMsg = ErrMsgStart ++ ErrMsgMiddle ++ ErrMsgFinal,
+    write_error_pieces(Context, 0, ErrMsg, !IO).
 
 %-----------------------------------------------------------------------------%
 

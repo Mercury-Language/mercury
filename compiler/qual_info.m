@@ -93,6 +93,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -100,6 +101,7 @@
 
 :- import_module map.
 :- import_module std_util.
+:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -221,18 +223,19 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
     vartypes::in, vartypes::out, io::di, io::uo) is det.
 
 update_var_types(Var, Type, Context, !VarTypes, !IO) :-
-    ( map__search(!.VarTypes, Var, Type0) ->
+    ( map.search(!.VarTypes, Var, Type0) ->
         ( Type = Type0 ->
             true
         ;
-            prog_out__write_context(Context, !IO),
-            io__write_string("Error: explicit type qualification does\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  not match prior qualification.\n", !IO),
+            ErrMsg = [
+                words("Error: explicit type qualification does"),
+                words("not match prior qualification.")
+            ],
+            write_error_pieces(Context, 0, ErrMsg, !IO),
             io__set_exit_status(1, !IO)
         )
     ;
-        map__det_insert(!.VarTypes, Var, Type, !:VarTypes)
+        svmap.det_insert(Var, Type, !VarTypes)
     ).
 
 %-----------------------------------------------------------------------------%

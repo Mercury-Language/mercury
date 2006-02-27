@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,7 +59,7 @@
                             % in one piece, as it is, appended directly
                             % after the previous format_component, without
                             % any intervening space.
-
+            
     ;       words(string)   % This string contains words separated by
                             % white space. The words should appear in
                             % the output in the given order, but the
@@ -85,10 +85,13 @@
     ;       nl              % Insert a line break if there has been text
                             % output since the last line break.
 
-    ;       nl_indent_delta(int).
+    ;       nl_indent_delta(int)
                             % Act as nl, but also add the given integer
                             % (which should be a small positive or negative
-                            % integer) to the current indent level.
+                            % integer) to the current indent level
+    
+    ;       quote(string). % Act as fixed, but surround the string by `'
+                           % quotes.
 
 :- type format_components == list(format_component).
 
@@ -475,6 +478,9 @@ error_pieces_to_string([Component | Components]) = Str :-
         Component = nl_indent_delta(_),
         % There is nothing we can do about the indent delta.
         Str = "\n" ++ TailStr
+    ;
+        Component = quote(Word),
+        Str = join_string_and_tail(add_quotes(Word), Components, TailStr)
     ).
 
 :- func join_string_and_tail(string, list(format_component), string) = string.
@@ -554,6 +560,9 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
         Strings = rev_words_to_strings(RevWords0),
         list.cons(paragraph(Strings, IndentDelta), !Paras),
         RevWords1 = []
+    ;
+        Component = quote(Word),
+        RevWords1 = [word(add_quotes(Word)) | RevWords0]
     ),
     convert_components_to_paragraphs_acc(Components, RevWords1, !Paras).
 

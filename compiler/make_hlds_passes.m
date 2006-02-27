@@ -412,9 +412,11 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
                 true
             )
         ;
-            prog_out__write_context(Context, !IO),
-            report_warning("Warning: `external' declaration requires arity.\n",
-                !IO)
+            ExternalArityWarnMsg = [
+                words("Warning:"), quote("external"),
+                words("declaration requires arity.")
+            ],
+            report_warning(Context, 0, ExternalArityWarnMsg, !IO)
         )
     ; ModuleDefn = module(_ModuleName) ->
         report_unexpected_decl("module", Context, !IO)

@@ -56,8 +56,8 @@
 :- func cons_id_to_string(cons_id) = string.
 
     % write_pred_id/4 writes out a message such as
-    %       predicate `foo:bar/3'
-    % or    function `foo:myfoo/5'
+    %       predicate `foo.bar/3'
+    % or    function `foo.myfoo/5'
     % except in some special cases where the predicate name is mangled
     % and we can print a more meaningful identification of the predicate
     % in question.

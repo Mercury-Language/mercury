@@ -2018,15 +2018,15 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
     (
         Item0 = clause(_, _, _, _, _, _)
     ->
-        prog_out__write_context(Context, !IO),
-        report_warning("Warning: clause in module interface.\n", !IO),
+        ClauseWarning = [words("Warning: clause in module interface.")],
+        report_warning(Context, 0, ClauseWarning, !IO),
         check_for_clauses_in_interface(Items0, Items, !IO)
     ;
         Item0 = pragma(_, Pragma),
         pragma_allowed_in_interface(Pragma, no)
     ->
-        prog_out__write_context(Context, !IO),
-        report_warning("Warning: pragma in module interface.\n", !IO),
+        PragmaWarning = [words("Warning: pragma in module interface.")],
+        report_warning(Context, 0, PragmaWarning, !IO),
         check_for_clauses_in_interface(Items0, Items, !IO)
     ;
         Items = [ItemAndContext0 | Items1],
@@ -2806,13 +2806,14 @@ warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
             ; list__member(ModuleName, UsedModules)
             )
         ->
-            module_name_to_file_name(ModuleName, ".m", no,
-                FileName, !IO),
+            module_name_to_file_name(ModuleName, ".m", no, FileName, !IO),
             term__context_init(FileName, 1, Context),
-            prog_out__write_context(Context, !IO),
-            report_warning("Warning: module `", !IO),
-            prog_out__write_sym_name(ModuleName, !IO),
-            io__write_string("' imports itself!\n", !IO)
+            SelfImportWarning = [
+                words("Warning: module"),
+                sym_name(ModuleName),
+                words("imports itself!")
+            ],
+            report_warning(Context, 0, SelfImportWarning, !IO)
         ;
             true
         ),
@@ -6543,41 +6544,31 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
         unexpected(this_file,
             "report_inaccessible_parent_error: invalid item")
     ),
-    prog_out__write_context(Context, !IO),
-    io__write_string("In module `", !IO),
-    prog_out__write_sym_name(ModuleName, !IO),
-    io__write_string("':\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_strings(["  error in `", DeclName, "' declaration:\n"], !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  module `", !IO),
-    prog_out__write_sym_name(qualified(ParentModule, SubModule), !IO),
-    io__write_string("' is inaccessible.\n", !IO),
+    ErrMsg0 = [
+        words("In module"), sym_name(ModuleName), suffix(":"), nl,
+        words("error in"), quote(DeclName), words("declaration:"), nl,
+        words("module"), sym_name(qualified(ParentModule, SubModule)),
+        words("is inaccessible."), nl
+    ],
     globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
+
         VerboseErrors = yes,
-        prog_out__write_context(Context, !IO),
-        io__write_string("  Either there was no prior ", !IO),
-        io__write_string("`import_module' or\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  `use_module' declaration to import ", !IO),
-        io__write_string("module\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  `", !IO),
-        prog_out__write_sym_name(ParentModule, !IO),
-        io__write_string("', or the interface for module\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  `", !IO),
-        prog_out__write_sym_name(ParentModule, !IO),
-        io__write_string("' does not contain an `include_module'\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  declaration for module `", !IO),
-        io__write_string(SubModule, !IO),
-        io__write_string("'.\n", !IO)
+        ErrMsg = ErrMsg0 ++ [
+            words("Either there was no prior"), quote("import_module"),
+            words("or"), quote("use_module"),
+            words("declaration to import module"), sym_name(ParentModule),
+            suffix(","), words("or the interface for module"),
+            sym_name(ParentModule), words("does not contain an"),
+            quote("include_module"), words("declaration for module"),
+            quote(SubModule), suffix(".")
+        ]
     ;
         VerboseErrors = no,
+        ErrMsg = ErrMsg0,
         globals.io_set_extra_error_info(yes, !IO)
     ),
+    write_error_pieces(Context, 0, ErrMsg, !IO),
     io__set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
