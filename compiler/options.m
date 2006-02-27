@@ -3829,6 +3829,8 @@ options_help_optimization -->
         "--transitive-intermodule-optimization",
         "\tImport the transitive intermodule optimization data.",
         "\tThis data is imported from `<module>.trans_opt' files.",
+        "\tNote that `--transitive-intermodule-optimization' does not",
+        "\twork with `mmc --make'.",
         "--no-read-opt-files-transitively",
         "\tOnly read the inter-module optimization information",
         "\tfor directly imported modules, not the transitive",

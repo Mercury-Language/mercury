@@ -6755,6 +6755,8 @@ to make intermodule optimizations.  The @file{@var{module}.trans_opt} files
 are different to the @file{@var{module}.opt} files as @samp{.trans_opt}
 files may depend on other @samp{.trans_opt} files, whereas each
 @samp{.opt} file may only depend on the corresponding @samp{.m} file. 
+Note that @samp{--transitive-intermodule-optimization} does not 
+work with @samp{mmc --make}.
 
 @sp 1
 @item --no-read-opt-files-transitively
