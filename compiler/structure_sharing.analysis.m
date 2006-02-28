@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: structure_sharing.analysis.m
-% Main authors: nancy
+% File: structure_sharing.analysis.m.
+% Main authors: nancy.
 
 % Implementation of the structure sharing analysis needed for compile-time
 % garbage collection (CTGC).
@@ -46,7 +46,9 @@
 :- import_module libs.options.
 :- import_module ll_backend.liveness.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.fixpoint_table.
@@ -58,21 +60,37 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
 
-structure_sharing_analysis(!ModuleInfo, SharingTable, !IO):-
-    % preliminary step:
-    % annotate the liveness (as in liveness.m)
+structure_sharing_analysis(!ModuleInfo, !:SharingTable, !IO):-
+    %
+    % Annotate the HLDS with liveness information.
+    %
     annotate_liveness(!ModuleInfo, !IO),
-    % load all structure sharing information present in the HLDS.
-    load_structure_sharing_table(!.ModuleInfo, SharingTable0),
-
-    % analysis
-    sharing_analysis(!ModuleInfo, SharingTable0, SharingTable, !IO).
+    %
+    % Load all structure sharing information present in the HLDS.
+    %
+    load_structure_sharing_table(!.ModuleInfo, !:SharingTable),
+    %
+    % Analyse structure sharing for the module.
+    %
+    sharing_analysis(!ModuleInfo, !SharingTable, !IO),
+    %
+    % Maybe write structure sharing pragmas to .opt files.
+    %
+    globals.io_lookup_bool_option(make_optimization_interface,
+        MakeOptInt, !IO),
+    (
+        MakeOptInt = yes,
+        make_opt_int(!.ModuleInfo, !IO)
+    ;
+        MakeOptInt = no
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -126,7 +144,10 @@ annotate_liveness(!ModuleInfo, !IO):-
     sharing_as_table::in, sharing_as_table::out, io::di, io::uo) is det.
 
 sharing_analysis(!ModuleInfo, !SharingTable, !IO):-
-    % Perform the analysis based on the strongly connected components.
+    %
+    % Perform a bottom-up traversal of the SCCs in the program,
+    % analysing structure sharing in each one as we go.
+    %
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
     (
@@ -613,20 +634,62 @@ ss_fixpoint_table_get_final_as_semidet(PPId, T) =
     fixpoint_table.get_final_semidet(PPId, T).
 
 %-----------------------------------------------------------------------------%
+%
+% Code for writing out optimization interfaces
+%
+
+:- pred make_opt_int(module_info::in, io::di, io::uo) is det.
+
+make_opt_int(ModuleInfo, !IO) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    maybe_write_string(Verbose, "% Appending structure_sharing pragmas to ",
+        !IO),
+    maybe_write_string(Verbose, add_quotes(OptFileName), !IO),
+    maybe_write_string(Verbose, "...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        module_info_predids(ModuleInfo, PredIds),   
+        list.foldl(write_pred_sharing_info(ModuleInfo), PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).  
+
+%-----------------------------------------------------------------------------%
+%
+% Code for writing out structure_sharing pragmas
+%
 
 write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_import_status(PredInfo, ImportStatus),
+    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+    TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
     (
         (
             ImportStatus = exported
         ;
             ImportStatus = opt_exported
         ),
-        \+ is_unify_or_compare_pred(PredInfo)
+        \+ is_unify_or_compare_pred(PredInfo),
+
+        % XXX These should be allowed, but the predicate declaration for the
+        % specialized predicate is not produced before the termination pragmas
+        % are read in, resulting in an undefined predicate error.
+        \+ set.member(PredId, TypeSpecForcePreds)
     ->
-        % XXX We most probably need to handle predicate produced by type
-        % specialization here as well (see termination.m).    
         PredName = pred_info_name(PredInfo),
         ProcIds = pred_info_procids(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
