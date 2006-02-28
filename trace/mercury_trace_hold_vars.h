@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2005 The University of Melbourne.
+** Copyright (C) 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,9 +17,11 @@
 #ifndef MERCURY_TRACE_HOLD_VARS_H
 #define MERCURY_TRACE_HOLD_VARS_H
 
-#include <stdio.h>              /* for FILE         */
 #include "mercury_std.h"        /* for MR_bool      */
 #include "mercury_types.h"      /* for MR_Word etc  */
+
+#include <stdio.h>              /* for FILE         */
+
 
 /*
 ** Add a new variable with the given name, type and value to the set
