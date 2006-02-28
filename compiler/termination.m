@@ -112,7 +112,7 @@ analyse_termination_in_module(!ModuleInfo, !IO) :-
     module_info_predids(!.ModuleInfo, PredIds),
     check_preds(PredIds, !ModuleInfo, !IO),
     %
-    % Process all the SCCs of the call graph in a bottom up order.
+    % Process all the SCCs of the call graph in a bottom-up order.
     %
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),

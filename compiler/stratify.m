@@ -873,8 +873,8 @@ emit_message(PPId, Context, Message, Error, !ModuleInfo, !IO) :-
         ErrMsgFinal = [ nl,
             words("A non-stratified loop is a loop in the call graph"),
             words("of the given predicate/function that allows it to call"),
-            words("itself negatively.  This can cause problems for bottom"),
-            words("up evaluation of the predicate/function.")
+            words("itself negatively.  This can cause problems for"),
+            words("bottom-up evaluation of the predicate/function.")
         ]
     ;
         VerboseErrors = no,

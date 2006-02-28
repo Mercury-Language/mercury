@@ -88,7 +88,7 @@
     ;       nl_indent_delta(int)
                             % Act as nl, but also add the given integer
                             % (which should be a small positive or negative
-                            % integer) to the current indent level
+                            % integer) to the current indent level.
     
     ;       quote(string). % Act as fixed, but surround the string by `'
                            % quotes.

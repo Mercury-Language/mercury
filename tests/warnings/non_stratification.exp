@@ -3,4 +3,4 @@ non_stratification.m:012:   warning: call introduces a non-stratified loop.
 non_stratification.m:012:   A non-stratified loop is a loop in the call graph
 non_stratification.m:012:   of the given predicate/function that allows it to
 non_stratification.m:012:   call itself negatively. This can cause problems for
-non_stratification.m:012:   bottom up evaluation of the predicate/function.
+non_stratification.m:012:   bottom-up evaluation of the predicate/function.
