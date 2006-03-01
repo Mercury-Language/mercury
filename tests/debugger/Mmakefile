@@ -17,6 +17,7 @@ RETRY_PROGS = \
 	tabled_read_decl
 
 NONRETRY_PROGS = \
+	ambiguity			\
 	breakpoints			\
 	browse_pretty			\
 	class_decl			\
@@ -222,6 +223,9 @@ include Mercury.options
 %.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#
+
+ambiguity.out: ambiguity ambiguity.inp
+	$(MDB_STD) ./ambiguity < ambiguity.inp > ambiguity.out 2>&1
 
 all_solutions.out: all_solutions all_solutions.inp
 	$(MDB) ./all_solutions < all_solutions.inp > all_solutions.out 2>&1

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2005 The University of Melbourne.
+** Copyright (C) 1998-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -380,24 +380,32 @@ MR_dump_module_procs(FILE *fp, const char *name)
     strcmp(proc1->MR_sle_user.MR_user_decl_module,                      \
         proc2->MR_sle_user.MR_user_decl_module)
 
-#define MR_proc_compare_arity(proc1, proc2)                              \
-    (proc1->MR_sle_user.MR_user_arity - proc2->MR_sle_user.MR_user_arity)
+#define MR_proc_compare_pf(proc1, proc2)                                \
+    ((int) proc1->MR_sle_user.MR_user_pred_or_func -                    \
+        (int) proc2->MR_sle_user.MR_user_pred_or_func)
 
-#define MR_proc_compare_mode(proc1, proc2)                               \
+#define MR_proc_compare_arity(proc1, proc2)                             \
+    (MR_sle_user_adjusted_arity(proc1) - MR_sle_user_adjusted_arity(proc2))
+
+#define MR_proc_compare_mode(proc1, proc2)                              \
     (proc1->MR_sle_user.MR_user_mode - proc2->MR_sle_user.MR_user_mode)
 
-#define MR_proc_same_name(proc1, proc2)                                  \
+#define MR_proc_same_name(proc1, proc2)                                 \
     (MR_proc_compare_name(proc1, proc2) == 0)
 
-#define MR_proc_same_module_name(proc1, proc2)                           \
+#define MR_proc_same_module_name(proc1, proc2)                          \
     (MR_proc_compare_module_name(proc1, proc2) == 0)
 
-#define MR_proc_same_arity(proc1, proc2)                                 \
+#define MR_proc_same_pf(proc1, proc2)                                   \
+    (MR_proc_compare_pf(proc1, proc2) == 0)
+
+#define MR_proc_same_arity(proc1, proc2)                                \
     (MR_proc_compare_arity(proc1, proc2) == 0)
 
-#define MR_proc_same_name_module_arity(proc1, proc2)                     \
-    (MR_proc_same_name(proc1, proc2) &&                                  \
-    MR_proc_same_module_name(proc1, proc2) &&                            \
+#define MR_proc_same_name_module_pf_arity(proc1, proc2)                 \
+    (MR_proc_same_name(proc1, proc2) &&                                 \
+    MR_proc_same_module_name(proc1, proc2) &&                           \
+    MR_proc_same_pf(proc1, proc2) &&                                    \
     MR_proc_same_arity(proc1, proc2))
 
 static int
@@ -413,17 +421,24 @@ MR_compare_proc_layout_by_name(const void *ptr1, const void *ptr2)
     proc_addr2 = (const MR_Proc_Layout **) ptr2;
     proc1 = *proc_addr1;
     proc2 = *proc_addr2;
+
     result = MR_proc_compare_name(proc1, proc2);
     if (result != 0) {
         return result;
     }
 
     /*
-    ** Return equal only if the module name and the arity are the same as well,
-    ** in order to group all procedures of a predicate together.
+    ** Return equal only if the module name, pred_or_func and the arity
+    ** are the same as well, in order to group all procedures of a predicate
+    ** or function together.
     */
 
     result = MR_proc_compare_module_name(proc1, proc2);
+    if (result != 0) {
+        return result;
+    }
+
+    result = MR_proc_compare_pf(proc1, proc2);
     if (result != 0) {
         return result;
     }
@@ -479,8 +494,27 @@ MR_compare_type_ctor_by_name(const void *ptr1, const void *ptr2)
     return MR_type_compare_arity(type_ctor1, type_ctor2);
 }
 
+static  MR_bool
+MR_module_in_arena(const char *name, char **names, int num_names)
+{
+    int i;
+
+    if (num_names == 0) {
+        return MR_TRUE;
+    }
+
+    for (i = 0; i < num_names; i++) {
+        if (MR_streq(name, names[i])) {
+            return MR_TRUE;
+        }
+    }
+
+    return MR_FALSE;
+}
+
 void
-MR_print_ambiguities(FILE *fp)
+MR_print_ambiguities(FILE *fp, char **arena_module_names,
+    int arena_num_modules)
 {
     int                     module_num;
     int                     proc_num;
@@ -488,6 +522,7 @@ MR_print_ambiguities(FILE *fp)
     int                     end_proc_num;
     int                     end_type_num;
     int                     num_procs;
+    int                     num_all_types;
     int                     num_types;
     int                     next_proc_num;
     int                     procs_in_module;
@@ -528,12 +563,16 @@ MR_print_ambiguities(FILE *fp)
     next_proc_num = 0;
     for (module_num = 0; module_num < MR_module_info_next; module_num++) {
         module = MR_module_infos[module_num];
-        procs_in_module = MR_module_infos[module_num]->MR_ml_proc_count;
-        for (proc_num = 0; proc_num < procs_in_module; proc_num++) {
-            cur_proc = module->MR_ml_procs[proc_num];
-            if (! MR_PROC_LAYOUT_IS_UCI(cur_proc)) {
-                procs[next_proc_num] = cur_proc;
-                next_proc_num++;
+        if (MR_module_in_arena(module->MR_ml_name,
+            arena_module_names, arena_num_modules))
+        {
+            procs_in_module = MR_module_infos[module_num]->MR_ml_proc_count;
+            for (proc_num = 0; proc_num < procs_in_module; proc_num++) {
+                cur_proc = module->MR_ml_procs[proc_num];
+                if (! MR_PROC_LAYOUT_IS_UCI(cur_proc)) {
+                    procs[next_proc_num] = cur_proc;
+                    next_proc_num++;
+                }
             }
         }
     }
@@ -559,7 +598,7 @@ MR_print_ambiguities(FILE *fp)
             num_distinct = 1;
 
             for (i = proc_num + 1; i < end_proc_num; i++) {
-                if (MR_proc_same_name_module_arity(procs[i-1], procs[i])) {
+                if (MR_proc_same_name_module_pf_arity(procs[i-1], procs[i])) {
                     report[i] = MR_FALSE;
                 } else {
                     report[i] = MR_TRUE;
@@ -578,7 +617,7 @@ MR_print_ambiguities(FILE *fp)
                                 == MR_PREDICATE ? "pred" : "func"),
                             procs[i]->MR_sle_user.MR_user_decl_module,
                             procs[i]->MR_sle_user.MR_user_name,
-                            procs[i]->MR_sle_user.MR_user_arity);
+                            MR_sle_user_adjusted_arity(procs[i]));
                     }
                 }
             }
@@ -594,8 +633,8 @@ MR_print_ambiguities(FILE *fp)
     free(procs);
     free(report);
 
-    type_ctor_list = MR_all_type_ctor_infos(&num_types);
-    type_ctors = malloc(sizeof(MR_TypeCtorInfo) * num_types);
+    type_ctor_list = MR_all_type_ctor_infos(&num_all_types);
+    type_ctors = malloc(sizeof(MR_TypeCtorInfo) * num_all_types);
     if (type_ctors == NULL) {
         fprintf(MR_mdb_err, "Error: could not allocate sufficient memory\n");
         return;
@@ -604,10 +643,15 @@ MR_print_ambiguities(FILE *fp)
     type_num = 0;
     MR_for_dlist (element_ptr, type_ctor_list) {
         type_ctor_info = (MR_TypeCtorInfo) MR_dlist_data(element_ptr);
-        type_ctors[type_num] = type_ctor_info;
-        type_num++;
+        if (MR_module_in_arena(type_ctor_info->MR_type_ctor_module_name,
+            arena_module_names, arena_num_modules))
+        {
+            type_ctors[type_num] = type_ctor_info;
+            type_num++;
+        }
     }
 
+    num_types = type_num;
     qsort(type_ctors, num_types, sizeof(MR_TypeCtorInfo),
         MR_compare_type_ctor_by_name);
 
@@ -914,18 +958,15 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 
 #define match_user_proc_name(spec, cur)                                 \
     (((spec)->MR_proc_name == NULL) ||                                  \
-    MR_streq((spec)->MR_proc_name,                                      \
-        cur->MR_sle_user.MR_user_name))
+    MR_streq((spec)->MR_proc_name, cur->MR_sle_user.MR_user_name))
 
 #define match_user_proc_arity(spec, cur)                                \
     (((spec)->MR_proc_arity < 0) ||                                     \
-    (spec)->MR_proc_arity ==                                            \
-        MR_sle_user_adjusted_arity(cur))
+    (spec)->MR_proc_arity == MR_sle_user_adjusted_arity(cur))
 
 #define match_user_proc_mode(spec, cur)                                 \
     (((spec)->MR_proc_mode < 0) ||                                      \
-    (spec)->MR_proc_mode ==                                             \
-        cur->MR_sle_user.MR_user_mode)
+    (spec)->MR_proc_mode == cur->MR_sle_user.MR_user_mode)
 
 #define match_user_proc_pf(spec, cur)                                   \
     (((int) (spec)->MR_proc_prefix < 0) ||                              \
@@ -937,18 +978,15 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 
 #define match_uci_type_name(spec, cur)                                  \
     (((spec)->MR_proc_name == NULL) ||                                  \
-    MR_streq((spec)->MR_proc_name,                                      \
-        cur->MR_sle_uci.MR_uci_type_name))
+    MR_streq((spec)->MR_proc_name, cur->MR_sle_uci.MR_uci_type_name))
 
 #define match_uci_type_arity(spec, cur)                                 \
     (((spec)->MR_proc_arity < 0) ||                                     \
-    (spec)->MR_proc_arity ==                                            \
-        cur->MR_sle_uci.MR_uci_type_arity)
+    (spec)->MR_proc_arity == cur->MR_sle_uci.MR_uci_type_arity)
 
 #define match_uci_proc_mode(spec, cur)                                  \
     (((spec)->MR_proc_mode < 0) ||                                      \
-    (spec)->MR_proc_mode ==                                             \
-        cur->MR_sle_uci.MR_uci_mode)
+    (spec)->MR_proc_mode == cur->MR_sle_uci.MR_uci_mode)
 
 #define match_uci_pred_name(spec, cur)                                  \
     (((int) (spec)->MR_proc_prefix < 0) ||                              \
@@ -1095,7 +1133,7 @@ MR_trace_proc_spec_completer(const char *word, size_t word_len)
 
 static char *
 MR_trace_proc_spec_completer_next(const char *dont_use_this_word,
-        size_t dont_use_this_len, MR_Completer_Data *completer_data)
+    size_t dont_use_this_len, MR_Completer_Data *completer_data)
 {
     MR_Proc_Completer_Data  *data;
     char                    *name;

@@ -3990,17 +3990,28 @@ the list will include the procedures of
 compiler generated unify, compare, index and initialization predicates.
 Normally, the list includes the procedures of only user defined predicates.
 @sp 1
-@item ambiguity [@var{filename}]
+@item ambiguity [-o @var{filename}] [@var{modulename} ...]
 @kindex ambiguity (mdb command)
-Print all ambiguous predicate, function and type names,
-to the named file if a filename is given,
-and to standard output otherwise.
+Print all ambiguous predicate, function and type constructor names.
 A predicate or function name is ambiguous
 if a predicate or function is defined with that name
 in more than one module or with more than one arity.
-A type name is ambiguous
-if a type is defined with that name
+A type constructor name is ambiguous
+if a type constructor is defined with that name
 in more than one module or with more than one arity.
+@sp 1
+If any module names are given, then only those modules are consulted,
+(any ambiguities involving predicates, functions and type constructors
+in non-listed modules are ignored).
+The module names have to be fully qualified,
+if a module @var{child} is a submodule of module @var{parent},
+the module name list must include @var{parent.child};
+listing just @var{child} won't work,
+since that is not a fully qualified module name.
+@sp 1
+If the @samp{-o} or @samp{--outputfile} option is given,
+the output goes to the file named as the argument of the option;
+otherwise, it goes to standard output.
 @end table
 
 @node Declarative debugging

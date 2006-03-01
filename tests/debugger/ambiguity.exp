@@ -1,0 +1,21 @@
+      E1:     C1 CALL pred ambiguity.main/2-0 (det) ambiguity.m:21
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> ambiguity ambiguity
+Ambiguous predicate and function names:
+
+pred ambiguity.p/2
+func ambiguity.p/1
+func ambiguity.p/2
+func ambiguity.p/3
+
+Ambiguous type names:
+
+ambiguity.t/0
+ambiguity.t/1
+mdb> continue
+2.50000000000000
+t1
+u2(42)
+1
