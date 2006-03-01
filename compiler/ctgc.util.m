@@ -41,17 +41,17 @@
 
 %-----------------------------------------------------------------------------%
 
-preds_requiring_no_analysis(ModuleInfo, PPIds) :- 
-    module_info_get_special_pred_map(ModuleInfo, SpecialPredMap), 
-    map.values(SpecialPredMap, SpecialPreds), 
+preds_requiring_no_analysis(ModuleInfo, PPIds) :-
+    module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
+    map.values(SpecialPredMap, SpecialPreds),
     (
         list.filter(pred_id_in(SpecialPreds), PPIds, SpecialPredProcs),
         SpecialPredProcs = [_|_]
-    ; 
+    ;
         % or some of the predicates are not defined in this
-        % module. 
-        list.filter(not_defined_in_this_module(ModuleInfo),     
-            PPIds, FilteredPPIds), 
+        % module.
+        list.filter(not_defined_in_this_module(ModuleInfo),
+            PPIds, FilteredPPIds),
         FilteredPPIds = [_|_]
     ).
 
@@ -59,7 +59,7 @@ preds_requiring_no_analysis(ModuleInfo, PPIds) :-
 
 pred_id_in(PredIds, PPId):-
     PPId = proc(PredId, _),
-    list.member(PredId, PredIds). 
+    list.member(PredId, PredIds).
 
 :- pred not_defined_in_this_module(module_info::in, pred_proc_id::in)
     is semidet.

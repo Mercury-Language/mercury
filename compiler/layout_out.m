@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1146,9 +1146,7 @@ origin_name(Origin, Name0) = Name :-
         Origin = lambda(FileName0, LineNum, SeqNo),
         ( string__append("IntroducedFrom", _, Name0) ->
             string__replace_all(FileName0, ".", "_", FileName),
-            (
-                SeqNo > 1
-            ->
+            ( SeqNo > 1 ->
                 string__format("lambda%d_%s_%d",
                     [i(SeqNo), s(FileName), i(LineNum)], Name)
             ;

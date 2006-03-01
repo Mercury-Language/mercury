@@ -8,7 +8,7 @@
 % Main author: nancy
 
 % Package grouping all the modules that are used for compile-time garbage
-% collection. 
+% collection.
 
 %-----------------------------------------------------------------------------%
 

@@ -21,9 +21,9 @@
 :- include_module domain.
 
 :- import_module hlds.
-	% Structure sharing information can be optimised using some
-	% of the liveness information as used in liveness.m. 
-	% This explains the import of ll_backend here. 
+    % Structure sharing information can be optimised using some
+    % of the liveness information as used in liveness.m. 
+    % This explains the import of ll_backend here. 
 :- import_module ll_backend.
 
 %-----------------------------------------------------------------------------%
