@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2000, 2002-2005 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -34,8 +34,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef MR_HAVE_STDLIB_H
-  #include <stdlib.h>       /* for memalign and posix_memalign */
+#include <stdlib.h>   /* for memalign and posix_memalign */
+
+#ifdef MR_HAVE_MALLOC_H
+    #include <malloc.h>     /* for memalign */
 #endif
 
 #ifdef MR_HAVE_SYS_SIGINFO_H

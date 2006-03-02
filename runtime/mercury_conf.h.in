@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003, 2005 The University of Melbourne.
+** Copyright (C) 1995-2003, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -128,6 +128,7 @@
 **	MR_HAVE_WINDOWS_H	we have <windows.h>
 **	MR_HAVE_IEEEFP_H	we have <ieeefp.h>
 **	MR_HAVE_DIRENT_H	we have <dirent.h>
+**	MR_HAVE_MALLOC_H	we have <malloc.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -149,6 +150,7 @@
 #undef	MR_HAVE_WINDOWS_H
 #undef	MR_HAVE_IEEEFP_H
 #undef	MR_HAVE_DIRENT_H
+#undef	MR_HAVE_MALLOC_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
