@@ -2107,7 +2107,7 @@ MR_do_interpreter(void)
   #endif
 
   #if !defined(MR_CONSERVATIVE_GC) && !defined(MR_NATIVE_GC)
-    MR_hp = saved_hp;
+    MR_hp_word = (MR_Word) saved_hp;
   #endif
 }
 
