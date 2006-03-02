@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1773,7 +1773,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
 	swap_heaps_temp_hp_zone = MR_ENGINE(MR_eng_heap_zone);		\\
 									\\
 	/* set heap to solutions heap */				\\
-	MR_hp = MR_sol_hp;						\\
+	MR_hp_word = (MR_Word) MR_sol_hp;				\\
 	MR_ENGINE(MR_eng_heap_zone) =					\\
 		MR_ENGINE(MR_eng_solutions_heap_zone);			\\
 									\\
@@ -2362,7 +2362,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 
 	/* reset the heap */
 	assert(MR_EXCEPTION_STRUCT->MR_excp_heap_ptr <= MR_hp);
-	MR_hp = MR_EXCEPTION_STRUCT->MR_excp_heap_ptr;
+	MR_hp_word = (MR_Word) MR_EXCEPTION_STRUCT->MR_excp_heap_ptr;
 
 	/* MR_deep_copy the exception back to the ordinary heap */
 	assert(MR_EXCEPTION_STRUCT->MR_excp_solns_heap_ptr <=

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1168,7 +1168,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
     MR_ENGINE(MR_eng_heap_zone) = MR_ENGINE(MR_eng_solutions_heap_zone);
     MR_ENGINE(MR_eng_solutions_heap_zone) = temp_zone;
     temp_hp = MR_hp;
-    MR_hp = MR_sol_hp;
+    MR_hp_word = (MR_Word) MR_sol_hp;
     MR_sol_hp = temp_hp;
 #endif
 }").
