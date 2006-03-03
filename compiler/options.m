@@ -585,12 +585,6 @@
     ;       optimize_reassign
     ;       optimize_repeat
 
-    %   - RL
-    ;       optimize_rl
-    ;       optimize_rl_cse
-    ;       optimize_rl_invariants
-    ;       optimize_rl_index
-    ;       detect_rl_streams
     %   - C
     ;       use_macro_for_redo_fail
     ;       emit_c_loops
@@ -1292,14 +1286,7 @@ option_defaults_2(optimization_option, [
     use_macro_for_redo_fail             -   bool(no),
     emit_c_loops                        -   bool(no),
     procs_per_c_function                -   int(1),
-    everything_in_one_c_function        -   special,
-
-    % RL
-    optimize_rl                         -   bool(no),
-    optimize_rl_cse                     -   bool(no),
-    optimize_rl_invariants              -   bool(no),
-    optimize_rl_index                   -   bool(no),
-    detect_rl_streams                   -   bool(no)
+    everything_in_one_c_function        -   special
 ]).
 option_defaults_2(target_code_compilation_option, [
     % Target code compilation options
@@ -2042,17 +2029,6 @@ long_option("optimise-reassign",    optimize_reassign).
 long_option("optimize-repeat",      optimize_repeat).
 long_option("optimise-repeat",      optimize_repeat).
 
-% RL optimizations
-long_option("optimize-rl",          optimize_rl).
-long_option("optimise-rl",          optimize_rl).
-long_option("optimize-rl-cse",      optimize_rl_cse).
-long_option("optimise-rl-cse",      optimize_rl_cse).
-long_option("optimize-rl-invariants",   optimize_rl_invariants).
-long_option("optimise-rl-invariants",   optimize_rl_invariants).
-long_option("optimize-rl-index",    optimize_rl_index).
-long_option("optimise-rl-index",    optimize_rl_index).
-long_option("detect-rl-streams",    detect_rl_streams).
-
 % LLDS->C optimizations
 long_option("use-macro-for-redo-fail",  use_macro_for_redo_fail).
 long_option("emit-c-loops",         emit_c_loops).
@@ -2547,10 +2523,6 @@ opt_level(2, _, [
     % optimize_duplicate_calls  -   bool(yes),
     simple_neg                  -   bool(yes),
 
-    optimize_rl                 -   bool(yes),
-    optimize_rl_index           -   bool(yes),
-    detect_rl_streams           -   bool(yes),
-
     optimize_initializations    -  bool(yes)
 ]).
 
@@ -2631,14 +2603,12 @@ opt_level(6, _, [
 %       Because it can cause slowdowns at high optimization levels;
 %       cause unknown
 %   type_specialization:
-%   optimize_rl_invariant:
 %       XXX why not?
 %
 %   introduce_accumulators:
 %       XXX Disabled until a bug in extras/trailed_update/var.m
 %       is resolved.
 %
-%   optimize_rl_cse:
 %   optimize_constructor_last_call:
 %       Not implemented yet.
 
