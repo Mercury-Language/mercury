@@ -44,8 +44,10 @@
 %
 
 :- pred print_selector(tvarset::in, selector::in, io::di, io::uo) is det.
+
 :- pred print_datastruct(prog_varset::in, tvarset::in, datastruct::in,
     io::di, io::uo) is det.
+
 :- pred print_structure_sharing_pair(prog_varset::in, tvarset::in,
     structure_sharing_pair::in, io::di, io::uo) is det.
 
@@ -87,8 +89,8 @@
 :- pred print_structure_sharing_domain(prog_varset::in, tvarset::in, bool::in,
     maybe(int)::in, structure_sharing_domain::in, io::di, io::uo) is det.
 
-    % Print the available structure sharing information as a
-    % mercury-comment (used in the hlds-dump).
+    % Print the available structure sharing information as a Mercury comment.
+    % This is used in HLDS dumps.
     %
 :- pred dump_maybe_structure_sharing_domain(prog_varset::in, tvarset::in,
     maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
@@ -282,7 +284,7 @@ parse_structure_sharing_domain(Term) = SharingAs :-
 
 :- func selector_to_string(tvarset, selector) = string.
 
-selector_to_string(TVarSet, Selector) =  String :-
+selector_to_string(TVarSet, Selector) = String :-
     (
         Selector = [],
         String = "[]"
@@ -381,8 +383,7 @@ do_print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
         ;
             VerboseTop = yes,
             io.write_string("top([", !IO),
-            io.write_list(Msgs, Separator,
-                io.write_string, !IO),
+            io.write_list(Msgs, Separator, io.write_string, !IO),
             io.write_string("])", !IO)
         )
     ;
@@ -421,8 +422,10 @@ rename_unit_selector(Subst, !UnitSelector) :-
         prog_type_subst.apply_subst_to_type(Subst, Type0, Type),
         !:UnitSelector = typesel(Type)
     ).
+
 rename_selector(TypeSubst, !Selector) :-
     list.map(rename_unit_selector(TypeSubst), !Selector).
+
 rename_datastruct(Dict, Subst, !Data) :-
     !.Data = selected_cel(Var0, Sel0),
     map.lookup(Dict, Var0, Var),
@@ -430,6 +433,7 @@ rename_datastruct(Dict, Subst, !Data) :-
     !:Data = selected_cel(Var, Sel).
 rename_datastruct(Dict, Subst, Data0) = Data :-
     rename_datastruct(Dict, Subst, Data0, Data).
+
 rename_structure_sharing_pair(Dict, TypeSubst, !Pair) :-
     !.Pair = D1 - D2,
     rename_datastruct(Dict, TypeSubst, D1, Da),
@@ -437,11 +441,11 @@ rename_structure_sharing_pair(Dict, TypeSubst, !Pair) :-
     !:Pair = Da - Db.
 rename_structure_sharing(Dict, TypeSubst, !List) :-
     list.map(rename_structure_sharing_pair(Dict, TypeSubst), !List).
+
 rename_structure_sharing_domain(_, _, bottom, bottom).
-rename_structure_sharing_domain(_, _, X@top(_), X).
-rename_structure_sharing_domain(Dict, TypeSubst,
-        real(List0), real(List)):-
-    rename_structure_sharing(Dict, TypeSubst, List0, List).
+rename_structure_sharing_domain(_, _, X @ top(_), X).
+rename_structure_sharing_domain(Dict, TypeSubst, real(!.List), real(!:List)):-
+    rename_structure_sharing(Dict, TypeSubst, !List).
 
 %-----------------------------------------------------------------------------%
 

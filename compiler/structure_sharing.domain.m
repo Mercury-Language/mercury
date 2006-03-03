@@ -204,9 +204,9 @@
 % Sharing table
 %
 
-% This table used to temporarily record the sharing analysis results, instead
-% of saving in the HLDS and having to continuously convert between the public
-% and private representation of structure sharing.
+% This table is used to temporarily record the sharing analysis results,
+% instead of saving in the HLDS and having to continuously convert between the
+% public and private representation of structure sharing.
 
     % Mapping between pred_proc_ids and sharing information that has been
     % derived for the corresponding procedure definitions.
@@ -453,15 +453,11 @@ is_introduced_typeinfo_arg(ProcInfo, Var) :-
 :- pred number_args(prog_vars::in, list(pair(int, prog_var))::out) is det.
 
 number_args(Args, NumberedArgs) :-
-    list.map_foldl(
-        pred(A::in, AP::out, Nin::in, Nout::out) is det:-
-        (
-            AP = Nin - A,
-            Nout = Nin + 1
-        ),
-        Args,
-        NumberedArgs,
-        1, _).
+    NumberArg = (pred(A::in, AP::out, !.N::in, !:N::out) is det :-
+        AP = !.N - A,
+        !:N = !.N + 1
+    ),
+    list.map_foldl(NumberArg, Args, NumberedArgs, 1, _).
 
 :- pred add_var_arg_sharing(module_info::in, proc_info::in, prog_var::in,
     cons_id::in, pair(int, prog_var)::in,
@@ -500,17 +496,18 @@ create_internal_sharing(ModuleInfo, ProcInfo, Var, ConsId, NumberedArgs,
     (
         NumberedArgs = [First | Remainder],
         First = Pos1 - Var1,
-        list.foldl(
-            pred(OtherNumberedArg::in, S0::in, S::out) is det :-
+        AddPair = (pred(OtherNumberedArg::in,
+                !.Sharing::in, !:Sharing::out) is det :-
             ( OtherNumberedArg = Pos2 - Var1 ->
                 % Create sharing between Pos1 and Pos2
                 Data1 = datastruct_init_with_pos(Var, ConsId, Pos1),
                 Data2 = datastruct_init_with_pos(Var, ConsId, Pos2),
-                new_entry(ModuleInfo, ProcInfo, Data1 - Data2, S0, S)
+                new_entry(ModuleInfo, ProcInfo, Data1 - Data2, !Sharing)
             ;
-                S = S0
-            ),
-            Remainder, !Sharing),
+                true
+            )
+        ),
+        list.foldl(AddPair, Remainder, !Sharing),
         create_internal_sharing(ModuleInfo, ProcInfo, Var, ConsId, Remainder,
             !Sharing)
     ;
@@ -529,10 +526,11 @@ create_internal_sharing(ModuleInfo, ProcInfo, Var, ConsId, NumberedArgs,
 
 optimize_for_deconstruct(GoalInfo, !NumberedArgs) :-
     hlds_llds.goal_info_get_pre_births(GoalInfo, PreBirthSet),
-    list.filter((pred(NumberedArg::in) is semidet :-
-            NumberedArg = _N - Var,
-            set.member(Var, PreBirthSet)
-        ), !NumberedArgs).
+    IsPreBirthArg = (pred(NumberedArg::in) is semidet :-
+        Var = snd(NumberedArg),
+        set.member(Var, PreBirthSet)
+    ),
+    list.filter(IsPreBirthArg, !NumberedArgs).
 
 :- func optimization_remove_deaths(proc_info, hlds_goal_info,
     sharing_as) = sharing_as.
@@ -540,7 +538,7 @@ optimize_for_deconstruct(GoalInfo, !NumberedArgs) :-
 optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :-
     proc_info_headvars(ProcInfo, HeadVars),
     set.list_to_set(HeadVars, HeadVarsSet),
-    hlds_llds.goal_info_get_post_deaths(GoalInfo, Deaths0),
+    goal_info_get_post_deaths(GoalInfo, Deaths0),
     %
     % Make sure to keep all the information about the headvars,
     % even if they are in the post deaths set.
@@ -549,7 +547,7 @@ optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :-
     set.to_sorted_list(Deaths, DeathsList),
     sharing_as_project_with_type(outproject, DeathsList, Sharing0, Sharing).
 
-sharing_as_is_subsumed_by(ModuleInfo, ProcInfo, Sharing1, Sharing2):-
+sharing_as_is_subsumed_by(ModuleInfo, ProcInfo, Sharing1, Sharing2) :-
     (
         Sharing2 = top(_)
     ;
@@ -786,6 +784,7 @@ wrap(SharingSet, SharingAs) :-
     ;
         SharingAs = real_as(SharingSet)
     ).
+
 wrap(SharingSet) = SharingAs :-
     wrap(SharingSet, SharingAs).
 
@@ -846,7 +845,7 @@ do_sharing_set_rename(Dict, TypeSubst, Var0, SelectorSet0, !Map) :-
     % ;
     %   map.det_insert(!.Map, Var, SelectorSet1, !:Map)
     % )
-    map.det_insert(!.Map, Var, SelectorSet, !:Map).
+    svmap.det_insert(Var, SelectorSet, !Map).
 
     % The implementation for combining sharing sets is to compute the
     % alternating closure of those sets.

@@ -82,7 +82,9 @@
 %-----------------------------------------------------------------------------%
 
 datastruct_init(V) = datastruct_init_with_selector(V, []).
+
 datastruct_init_with_selector(V, Sel) = selected_cel(V, Sel).
+
 datastruct_init_with_pos(V, ConsId, Int)
     = datastruct_init_with_selector(V, selector_init(ConsId, Int)).
 

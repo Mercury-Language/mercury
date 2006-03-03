@@ -110,8 +110,9 @@ load_structure_sharing_table(ModuleInfo, SharingTable) :-
 
 load_structure_sharing_table_2(ModuleInfo, PredId, !SharingTable) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
     list.foldl(load_structure_sharing_table_3(ModuleInfo, PredId),
-        pred_info_procids(PredInfo), !SharingTable).
+        ProcIds, !SharingTable).
 
 :- pred load_structure_sharing_table_3(module_info::in, pred_id::in,
     proc_id::in, sharing_as_table::in, sharing_as_table::out) is det.
@@ -121,8 +122,9 @@ load_structure_sharing_table_3(ModuleInfo, PredId, ProcId, !SharingTable) :-
     proc_info_get_structure_sharing(ProcInfo, MaybePublicSharing),
     (
         MaybePublicSharing = yes(PublicSharing),
-        sharing_as_table_set(proc(PredId, ProcId),
-            from_structure_sharing_domain(PublicSharing), !SharingTable)
+        PPId = proc(PredId, ProcId),
+        PrivateSharing = from_structure_sharing_domain(PublicSharing),
+        sharing_as_table_set(PPId, PrivateSharing, !SharingTable)
     ;
         MaybePublicSharing = no
     ).
@@ -167,10 +169,10 @@ sharing_analysis(!ModuleInfo, !SharingTable, !IO) :-
     module_info::in, module_info::out) is det.
 
 save_sharing_in_module_info(PPId, SharingAs, !ModuleInfo) :-
-    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
+    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
     proc_info_set_structure_sharing(to_structure_sharing_domain(SharingAs),
         ProcInfo0, ProcInfo),
-    module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo).
+    module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
 :- pred analyse_scc(module_info::in, list(pred_proc_id)::in,
     sharing_as_table::in, sharing_as_table::out, io::di, io::uo) is det.
@@ -216,57 +218,96 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
         !IO),
 
     % Collect relevant procedure information.
+    %
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
-    PPId = proc(PredId, ProcId),
     proc_info_headvars(ProcInfo, HeadVars),
 
     % Write progress message for the start of analysing current procedure.
+    %
     Run = ss_fixpoint_table_which_run(!.FixpointTable),
     TabledAsDescr = ss_fixpoint_table_get_short_description(PPId,
         !.FixpointTable),
-    passes_aux.write_proc_progress_message(
+    write_proc_progress_message(
         "% Sharing analysis (run " ++ string.int_to_string(Run) ++ ") ",
-        PredId, ProcId, ModuleInfo, !IO),
+        PPId, ModuleInfo, !IO),
 
     % In some cases the sharing can be predicted to be bottom, in which
     % case a full sharing analysis is not needed.
-    Sharing0 = sharing_as_init,
-    ( bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) ->
-        maybe_write_string(Verbose, "\t\t: bottom predicted", !IO),
-        Sharing = Sharing0
-    ;
-        % Start analysis.
-        proc_info_goal(ProcInfo, Goal),
-        analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
-            !FixpointTable, Sharing0, Sharing1, !IO),
-        FullAsDescr = short_description(Sharing1),
-
-        sharing_as_project(HeadVars, Sharing1, Sharing2),
-        ProjAsDescr = short_description(Sharing2),
-
-        structure_sharing.domain.apply_widening(ModuleInfo, ProcInfo,
-           WideningLimit, WideningDone, Sharing2, Sharing3),
-        (
-            WideningDone = yes,
-            WidenAsDescr = short_description(Sharing3)
+    %
+    some [!Sharing] (
+        !:Sharing = sharing_as_init,
+        ( bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) ->
+            maybe_write_string(Verbose, "\t\t: bottom predicted", !IO)
         ;
-            WideningDone = no,
-            WidenAsDescr = "-"
+            % Start analysis.
+            proc_info_goal(ProcInfo, Goal),
+            analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
+                !FixpointTable, !Sharing, !IO),
+            FullAsDescr = short_description(!.Sharing),
+
+            sharing_as_project(HeadVars, !Sharing),
+            ProjAsDescr = short_description(!.Sharing),
+
+            domain.apply_widening(ModuleInfo, ProcInfo, WideningLimit,
+                WideningDone, !Sharing),
+            (
+                WideningDone = yes,
+                WidenAsDescr = short_description(!.Sharing)
+            ;
+                WideningDone = no,
+                WidenAsDescr = "-"
+            ),
+
+            maybe_write_string(Verbose, "\t\t: " ++
+                TabledAsDescr ++ "->" ++
+                FullAsDescr ++ "/" ++
+                ProjAsDescr ++ "/" ++
+                WidenAsDescr, !IO)
         ),
-
-        maybe_write_string(Verbose, "\t\t: " ++
-            TabledAsDescr ++ "->" ++
-            FullAsDescr ++ "/" ++
-            ProjAsDescr ++ "/" ++
-            WidenAsDescr, !IO),
-
-        Sharing = Sharing3
+        ss_fixpoint_table_new_as(ModuleInfo, ProcInfo, PPId, !.Sharing,
+            !FixpointTable)
     ),
-    ss_fixpoint_table_new_as(ModuleInfo, ProcInfo, PPId, Sharing,
-        !FixpointTable),
-
     maybe_write_string(Verbose, "\t\t (ft = " ++
         ss_fixpoint_table_description(!.FixpointTable) ++ ")\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+    % Succeeds if the sharing of a procedure can safely be approximated by
+    % "bottom", simply by looking at the modes and types of the arguments.
+    %
+:- pred bottom_sharing_is_safe_approximation(module_info::in,
+    proc_info::in) is semidet.
+
+bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) :-
+    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_argmodes(ProcInfo, Modes),
+    proc_info_vartypes(ProcInfo, VarTypes),
+    list.map(map.lookup(VarTypes), HeadVars, Types),
+
+    ModeTypePairs = assoc_list.from_corresponding_lists(Modes, Types),
+
+    Test = (pred(Pair::in) is semidet :-
+        Pair = Mode - Type,
+
+        % mode is not unique nor clobbered.
+        mode_get_insts(ModuleInfo, Mode, _LeftInst, RightInst),
+        \+ inst_is_unique(ModuleInfo, RightInst),
+        \+ inst_is_clobbered(ModuleInfo, RightInst),
+
+        % mode is output.
+        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+        ArgMode = top_out,
+
+        % type is not primitive
+        \+ type_is_atomic(Type, ModuleInfo)
+    ),
+    list.filter(Test, ModeTypePairs, TrueModeTypePairs),
+    TrueModeTypePairs = [].
+
+%-----------------------------------------------------------------------------%
+%
+% Structure sharing analysis of goals
+%
 
 :- pred analyse_goal(module_info::in, pred_info::in, proc_info::in,
     sharing_as_table::in, hlds_goal::in,
@@ -361,17 +402,27 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         unexpected(this_file, "analyse_goal: shorthand goal.")
     ).
 
+%-----------------------------------------------------------------------------%
+%
+% Additional code for analysing disjuctions
+%
+
 :- pred analyse_disj(module_info::in, pred_info::in, proc_info::in,
     sharing_as_table::in, sharing_as::in, hlds_goal::in,
     ss_fixpoint_table::in, ss_fixpoint_table::out,
     sharing_as::in, sharing_as::out, io::di, io::uo) is det.
 
-analyse_disj(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
+analyse_disj(ModuleInfo, PredInfo, ProcInfo, SharingTable, SharingBeforeDisj,
         Goal, !FixpointTable, !Sharing, !IO) :-
     analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
-        !FixpointTable, Sharing0, GoalSharing, !IO),
+        !FixpointTable, SharingBeforeDisj, GoalSharing, !IO),
     !:Sharing = sharing_as_least_upper_bound(ModuleInfo, ProcInfo, !.Sharing,
         GoalSharing).
+
+%-----------------------------------------------------------------------------%
+%
+% Additional code for analysing switches
+%
 
 :- pred analyse_case(module_info::in, pred_info::in, proc_info::in,
     sharing_as_table::in, sharing_as::in, case::in,
@@ -387,12 +438,15 @@ analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
         CaseSharing).
 
 %-----------------------------------------------------------------------------%
-
+%
+% Code for handling calls
+%
+    
     % Lookup the sharing information of a procedure identified by its
     % pred_proc_id.
     % 1 - first look in the fixpoint table (which may change the state
     %     of this table wrt recursiveness);
-    % 2 - then look in sharing_s_table (as we might already have analysed
+    % 2 - then look in sharing_as_table (as we might already have analysed
     %     the predicate, if defined in same module, or analysed in other
     %     imported module)
     % 3 - try to predict bottom;
@@ -446,24 +500,15 @@ predict_called_pred_is_bottom(ModuleInfo, PPId) :-
         % 2. bottom_sharing_is_safe_approximation
         bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo)
     ;
-        % 3. call to builtin/private_builtin procedures, namely
-        % "unify", "index" or "compare".
-        PredName = pred_info_name(PredInfo),
-        PredArity = pred_info_orig_arity(PredInfo),
-        (
-            special_pred_name_arity(_, PredName, _, PredArity)
-        ;
-            special_pred_name_arity(_, _, PredName, PredArity)
-        )
+        % 3. call to a compiler generate special predicate:
+        % "unify", "index", "compare" or "initialise".
+        pred_info_get_origin(PredInfo, Origin),
+        Origin = special_pred(_)
     ;
         % 4. (XXX UNSAFE!! To verify) any call to private_builtin and builtin
         % procedures.
         PredModule = pred_info_module(PredInfo),
-        (
-            mercury_private_builtin_module(PredModule)
-        ;
-            mercury_public_builtin_module(PredModule)
-        )
+        any_mercury_builtin_module(PredModule)
     ).
 
 :- func top_sharing_not_found(module_info, pred_proc_id) = sharing_as.
@@ -479,40 +524,6 @@ top_sharing_not_found(ModuleInfo, PPId) = TopSharing :-
         int_to_string(pred_info_orig_arity(PredInfo)) ++ " (id = " ++
         int_to_string(pred_id_to_int(PredId)) ++ "," ++
         int_to_string(proc_id_to_int(ProcId))).
-
-%-----------------------------------------------------------------------------%
-
-    % Succeeds if the sharing of a procedure can safely be approximated by
-    % "bottom", simply by looking at the modes and types of the arguments.
-    %
-:- pred bottom_sharing_is_safe_approximation(module_info::in,
-    proc_info::in) is semidet.
-
-bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) :-
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, Modes),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    list.map(map.lookup(VarTypes), HeadVars, Types),
-
-    ModeTypePairs = assoc_list.from_corresponding_lists(Modes, Types),
-
-    Test = (pred(Pair::in) is semidet :-
-        Pair = Mode - Type,
-
-        % mode is not unique nor clobbered.
-        mode_get_insts(ModuleInfo, Mode, _LeftInst, RightInst),
-        \+ inst_is_unique(ModuleInfo, RightInst),
-        \+ inst_is_clobbered(ModuleInfo, RightInst),
-
-        % mode is output.
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-        ArgMode = top_out,
-
-        % type is not primitive
-        \+ type_is_atomic(Type, ModuleInfo)
-    ),
-    list.filter(Test, ModeTypePairs, TrueModeTypePairs),
-    TrueModeTypePairs = [].
 
 %-----------------------------------------------------------------------------%
 
@@ -684,8 +695,8 @@ write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
         \+ is_unify_or_compare_pred(PredInfo),
 
         % XXX These should be allowed, but the predicate declaration for the
-        % specialized predicate is not produced before the termination pragmas
-        % are read in, resulting in an undefined predicate error.
+        % specialized predicate is not produced before the structure_sharing
+        % pramgas are read in, resulting in an undefined predicate error.
         \+ set.member(PredId, TypeSpecForcePreds)
     ->
         PredName = pred_info_name(PredInfo),
