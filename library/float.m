@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2005 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -292,21 +292,21 @@ X / Y = Z :-
 
 :- pragma foreign_proc("C",
 	float(IntVal::in) = (FloatVal::out),
-	[will_not_call_mercury, promise_pure, will_not_modify_trail],
+	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	FloatVal = IntVal;
 ").
 
 :- pragma foreign_proc("C#",
 	float(IntVal::in) = (FloatVal::out),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	FloatVal = (double) IntVal;
 ").
 
 :- pragma foreign_proc("Java",
 	float(IntVal::in) = (FloatVal::out),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	FloatVal = (double) IntVal;
 ").
