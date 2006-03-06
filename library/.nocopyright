@@ -3,4 +3,5 @@
 .mgnuc_opts
 library_strong_name.sn
 INTER_FLAGS
+INTER_FLAGS_MMC_MAKE
 LIB_FLAGS.in
