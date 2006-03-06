@@ -1,3 +1,4 @@
 --intermodule-optimization
 --no-warn-smart-recompilation
 --analyse-exceptions
+--analyse-trail-usage
