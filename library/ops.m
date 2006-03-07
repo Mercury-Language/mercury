@@ -244,10 +244,8 @@ ops__mercury_max_priority(_Table) = 1200.
 
 :- func ops__mercury_arg_priority(mercury_op_table) = ops__priority.
 
-    % XXX ISO prolog syntax would require us to change this to 999,
-    % but we need bug-for-bug compatibility with the NU-Prolog parser
-    % in order to support e.g. `::' in args.
-ops__mercury_arg_priority(_Table) = 1201.
+    % This needs to be less than then priority of the ','/2 operator.
+ops__mercury_arg_priority(_Table) = 999.
 
     % Changes here may require changes to doc/reference_manual.texi.
 :- pred ops__op_table(string, ops__category, ops__specifier, ops__priority).

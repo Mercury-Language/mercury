@@ -1,6 +1,6 @@
-with_type.m:024: Error: `with_inst` and determinism both specified: with_type_4(_1 :: in, list(_2) :: in).
-with_type.m:027: Error: `with_inst` specified without `with_type`: with_type_5(_1 :: in, list(_2) :: in).
-with_type.m:030: Error: invalid inst in `with_inst`: with_inst(with_type(with_type_6(_1 :: in, list(_2) :: in), map_pred(string, string)), pred(in, in, out) is foo).
+with_type.m:024: Error: `with_inst` and determinism both specified: with_type_4((_1 :: in), (list(_2) :: in)).
+with_type.m:027: Error: `with_inst` specified without `with_type`: with_type_5((_1 :: in), (list(_2) :: in)).
+with_type.m:030: Error: invalid inst in `with_inst`: with_inst(with_type(with_type_6((_1 :: in), (list(_2) :: in)), map_pred(string, string)), pred(in, in, out) is foo).
 with_type.m:032: Error: `with_inst` specified without argument modes: with_type_7(_1, list(_2)).
 with_type.m:012: In type declaration for predicate `with_type.with_type_1':
 with_type.m:012:   error: expected higher order predicate type after

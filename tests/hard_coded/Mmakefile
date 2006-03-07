@@ -523,6 +523,26 @@ mapped_module.depend: Mercury.modules
 
 #-----------------------------------------------------------------------------#
 
+# For term_io_test, we want to run it once using the supplied input file.
+# But we want to check that the output parses the same as the input did,
+# so we also run it with the .exp file as the input.
+
+term_io_test.fix_out: term_io_test term_io_test.exp
+	./term_io_test < term_io_test.exp > $@ 2>&1 || \
+		{ grep . $@ /dev/null; exit 1; }
+
+term_io_test.res: term_io_test.out term_io_test.fix_out
+	@echo "Comparing term_io_test.{,fix_}out with term_io_test.exp,"
+	@echo "	results in $@"
+	@-rm -f $@ term_io_test.res
+	@{ diff $(DIFF_OPTS) term_io_test.exp term_io_test.out > $@ && \
+		echo "term_io_test.out matched term_io_test.exp"; } && \
+	{ diff $(DIFF_OPTS) term_io_test.exp term_io_test.fix_out >> $@ && \
+		echo "term_io_test.fix_out matched term_io_test.exp"; } || \
+	{ echo "** term_io_test.{,fix_}out did not match the expected output"; \
+		cat $@; \
+		exit 1; }
+
 nonascii.out:	nonascii.data
 
 nonascii.data:	nonascii_gen

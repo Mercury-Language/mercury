@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 1995-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -294,14 +294,25 @@ parse_term(Term, !PS) :-
 
 parse_arg(Term, !PS) :-
     get_ops_table(!.PS, OpTable),
-    parse_term_2(ops__arg_priority(OpTable), argument, Term, !PS).
+    % XXX We should do the following:
+    %   ArgPriority = ops__arg_priority(OpTable),
+    % but that would mean we can't, for example, parse '::'/2 in arguments
+    % the way we want to.  Perhaps a better solution would be to change the
+    % priority of '::'/2, but we need to analyse the impact of that further.
+    ArgPriority = ops__max_priority(OpTable) + 1,
+    parse_term_2(ArgPriority, argument, Term, !PS).
 
 :- pred parse_list_elem(parse(term(T))::out,
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
 
 parse_list_elem(Term, !PS) :-
     get_ops_table(!.PS, OpTable),
-    parse_term_2(ops__arg_priority(OpTable), list_elem, Term, !PS).
+    % XXX We should do the following:
+    %   ArgPriority = ops__arg_priority(OpTable),
+    % but that would mean we can't, for example, parse promise_pure/0 in
+    % foreign attribute lists.
+    ArgPriority = ops__max_priority(OpTable) + 1,
+    parse_term_2(ArgPriority, list_elem, Term, !PS).
 
 :- pred parse_term_2(int::in, term_kind::in, parse(term(T))::out,
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
